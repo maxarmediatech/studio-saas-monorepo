@@ -1,26 +1,34 @@
 import { withContentCollections } from "@content-collections/next";
-// @ts-expect-error - PrismaPlugin is not typed
-import { PrismaPlugin } from "@prisma/nextjs-monorepo-workaround-plugin";
-import type { NextConfig } from "next";
 import nextIntlPlugin from "next-intl/plugin";
 
 const withNextIntl = nextIntlPlugin("./modules/i18n/request.ts");
 
-const nextConfig: NextConfig = {
+type RemotePattern = {
+	protocol?: "http" | "https";
+	hostname: string;
+	port?: string;
+	pathname?: string;
+};
+
+const imageRemotePatterns: RemotePattern[] = [
+	{
+		// google profile images
+		protocol: "https",
+		hostname: "lh3.googleusercontent.com",
+	},
+	{
+		// github profile images
+		protocol: "https",
+		hostname: "avatars.githubusercontent.com",
+	},
+];
+
+const nextConfig = {
+	cacheComponents: true,
+	reactCompiler: true,
 	transpilePackages: ["@repo/api", "@repo/auth", "@repo/database"],
 	images: {
-		remotePatterns: [
-			{
-				// google profile images
-				protocol: "https",
-				hostname: "lh3.googleusercontent.com",
-			},
-			{
-				// github profile images
-				protocol: "https",
-				hostname: "avatars.githubusercontent.com",
-			},
-		],
+		remotePatterns: imageRemotePatterns,
 	},
 	async redirects() {
 		return [
@@ -40,22 +48,6 @@ const nextConfig: NextConfig = {
 				permanent: true,
 			},
 		];
-	},
-	eslint: {
-		ignoreDuringBuilds: true,
-	},
-	webpack: (config, { webpack, isServer }) => {
-		config.plugins.push(
-			new webpack.IgnorePlugin({
-				resourceRegExp: /^pg-native$|^cloudflare:sockets$/,
-			}),
-		);
-
-		if (isServer) {
-			config.plugins.push(new PrismaPlugin());
-		}
-
-		return config;
 	},
 };
 
