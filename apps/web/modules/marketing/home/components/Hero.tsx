@@ -29,7 +29,7 @@ export function Hero() {
 
 				<p className="mx-auto mt-4 max-w-lg text-balance text-foreground/60 text-lg">
 					This is a demo application built with NebulaForge. It will
-				save you a lot of time and effort building your next SaaS.
+					save you a lot of time and effort building your next SaaS.
 				</p>
 
 				<div className="mt-6 flex flex-col items-center justify-center gap-3 md:flex-row">
