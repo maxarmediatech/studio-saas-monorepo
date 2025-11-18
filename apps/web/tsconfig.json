@@ -4,13 +4,13 @@
 		"plugins": [{ "name": "next" }],
 		"paths": {
 			"@analytics": ["./modules/analytics"],
-			"@marketing/*": ["./modules/marketing/*"],
+
 			"@saas/*": ["./modules/saas/*"],
 			// "@repo/ui/*": ["./modules/ui/*"],
 			"@i18n": ["./modules/i18n"],
 			"@i18n/*": ["./modules/i18n/*"],
 			"@shared/*": ["./modules/shared/*"],
-			"content-collections": ["./.content-collections/generated"],
+
 			"@/*": ["./*"],
 			"@repo/ui/*": ["../../packages/ui/src/*"]
 		}
