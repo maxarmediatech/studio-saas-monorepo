@@ -94,15 +94,15 @@
 	"devDependencies": {
 		"@biomejs/biome": "2.3.6",
 
-		"@playwright/test": "^1.55.0",
+		"@playwright/test": "^1.56.1",
 		"@repo/auth": "workspace:*",
 		"@repo/tailwind-config": "workspace:*",
 		"@repo/tsconfig": "workspace:*",
 
-		"@tailwindcss/postcss": "^4.1.12",
+		"@tailwindcss/postcss": "^4.1.17",
 		"@types/js-cookie": "^3.0.4",
 
-		"@types/node": "24.3.1",
+		"@types/node": "24.10.1",
 		"@types/nprogress": "^0.2.3",
 		"@types/react": "19.2.6",
 		"@types/react-dom": "19.2.3",
@@ -112,7 +112,7 @@
 		"dotenv": "^17.2.3",
 
 		"postcss": "8.5.6",
-		"start-server-and-test": "^2.0.13",
+		"start-server-and-test": "^2.1.2",
 		"tailwindcss": "4.1.17",
 		"typescript": "5.9.3",
 		"zod": "^4.1.12"
