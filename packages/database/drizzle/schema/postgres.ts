@@ -37,6 +37,7 @@ export const user = pgTable("user", {
 	onboardingComplete: boolean("onboardingComplete").default(false).notNull(),
 	paymentsCustomerId: text("paymentsCustomerId"),
 	locale: text("locale"),
+	twoFactorEnabled: boolean("twoFactorEnabled"),
 });
 
 export const session = pgTable(
