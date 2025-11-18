@@ -6,7 +6,7 @@ import Image from "next/image";
 
 export const mdxComponents = {
 	a: (props) => {
-		const { href, children, ...rest } = props;
+		const { href, children, popover, ...rest } = props;
 		const isInternalLink =
 			href && (href.startsWith("/") || href.startsWith("#"));
 
@@ -15,7 +15,13 @@ export const mdxComponents = {
 				{children}
 			</LocaleLink>
 		) : (
-			<a target="_blank" rel="noopener noreferrer" href={href} {...rest}>
+			<a
+				target="_blank"
+				rel="noopener noreferrer"
+				href={href}
+				popover={popover}
+				{...rest}
+			>
 				{children}
 			</a>
 		);
