@@ -3,10 +3,8 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { authClient } from "@repo/auth/client";
 import { config } from "@repo/config";
-import { useAuthErrorMessages } from "@saas/auth/hooks/errors-messages";
-import { OrganizationInvitationAlert } from "@saas/organizations/components/OrganizationInvitationAlert";
-import { Alert, AlertDescription, AlertTitle } from "@ui/components/alert";
-import { Button } from "@ui/components/button";
+import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
+import { Button } from "@repo/ui/components/button";
 import {
 	Form,
 	FormControl,
@@ -14,8 +12,10 @@ import {
 	FormItem,
 	FormLabel,
 	FormMessage,
-} from "@ui/components/form";
-import { Input } from "@ui/components/input";
+} from "@repo/ui/components/form";
+import { Input } from "@repo/ui/components/input";
+import { useAuthErrorMessages } from "@saas/auth/hooks/errors-messages";
+import { OrganizationInvitationAlert } from "@saas/organizations/components/OrganizationInvitationAlert";
 import {
 	AlertTriangleIcon,
 	ArrowRightIcon,
@@ -120,7 +120,7 @@ export function SignupForm({ prefillEmail }: { prefillEmail?: string }) {
 			</p>
 
 			{form.formState.isSubmitSuccessful && !invitationOnlyMode ? (
-				<Alert variant="success">
+				<Alert variant="default">
 					<MailboxIcon />
 					<AlertTitle>
 						{t("auth.signup.hints.verifyEmail")}
@@ -139,7 +139,7 @@ export function SignupForm({ prefillEmail }: { prefillEmail?: string }) {
 						>
 							{form.formState.isSubmitted &&
 								form.formState.errors.root && (
-									<Alert variant="error">
+									<Alert variant="destructive">
 										<AlertTriangleIcon />
 										<AlertDescription>
 											{form.formState.errors.root.message}
@@ -227,7 +227,9 @@ export function SignupForm({ prefillEmail }: { prefillEmail?: string }) {
 								/>
 							)}
 
-							<Button loading={form.formState.isSubmitting}>
+							<Button
+							// loading={form.formState.isSubmitting}
+							>
 								{t("auth.signup.submit")}
 							</Button>
 						</form>

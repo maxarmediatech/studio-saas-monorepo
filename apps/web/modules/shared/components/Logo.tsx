@@ -1,4 +1,4 @@
-import { cn } from "@ui/lib";
+import { cn } from "@repo/ui/lib/utils";
 
 export function Logo({
 	withLabel = true,

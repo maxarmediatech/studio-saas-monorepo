@@ -2,18 +2,18 @@
 
 import { LocaleLink, useLocalePathname } from "@i18n/routing";
 import { config } from "@repo/config";
-import { useSession } from "@saas/auth/hooks/use-session";
-import { ColorModeToggle } from "@shared/components/ColorModeToggle";
-import { LocaleSwitch } from "@shared/components/LocaleSwitch";
-import { Logo } from "@shared/components/Logo";
-import { Button } from "@ui/components/button";
+import { Button } from "@repo/ui/components/button";
 import {
 	Sheet,
 	SheetContent,
 	SheetTitle,
 	SheetTrigger,
-} from "@ui/components/sheet";
-import { cn } from "@ui/lib";
+} from "@repo/ui/components/sheet";
+import { cn } from "@repo/ui/lib/utils";
+import { useSession } from "@saas/auth/hooks/use-session";
+import { ColorModeToggle } from "@shared/components/ColorModeToggle";
+import { LocaleSwitch } from "@shared/components/LocaleSwitch";
+import { Logo } from "@shared/components/Logo";
 import { MenuIcon } from "lucide-react";
 import NextLink from "next/link";
 import { useTranslations } from "next-intl";
@@ -147,7 +147,7 @@ export function NavBar() {
 								<Button
 									className="lg:hidden"
 									size="icon"
-									variant="light"
+									variant="ghost"
 									aria-label="Menu"
 								>
 									<MenuIcon className="size-4" />

@@ -2,9 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { authClient } from "@repo/auth/client";
-import { useSession } from "@saas/auth/hooks/use-session";
-import { UserAvatarUpload } from "@saas/settings/components/UserAvatarUpload";
-import { Button } from "@ui/components/button";
+import { Button } from "@repo/ui/components/button";
 import {
 	Form,
 	FormControl,
@@ -12,8 +10,10 @@ import {
 	FormField,
 	FormItem,
 	FormLabel,
-} from "@ui/components/form";
-import { Input } from "@ui/components/input";
+} from "@repo/ui/components/form";
+import { Input } from "@repo/ui/components/input";
+import { useSession } from "@saas/auth/hooks/use-session";
+import { UserAvatarUpload } from "@saas/settings/components/UserAvatarUpload";
 import { ArrowRightIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect } from "react";
@@ -104,7 +104,10 @@ export function OnboardingStep1({ onCompleted }: { onCompleted: () => void }) {
 						</FormControl>
 					</FormItem>
 
-					<Button type="submit" loading={form.formState.isSubmitting}>
+					<Button
+						type="submit"
+						// loading={form.formState.isSubmitting}
+					>
 						{t("onboarding.continue")}
 						<ArrowRightIcon className="ml-2 size-4" />
 					</Button>

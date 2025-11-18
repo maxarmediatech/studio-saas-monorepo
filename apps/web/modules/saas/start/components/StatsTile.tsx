@@ -1,8 +1,13 @@
 "use client";
 
+import { Badge } from "@repo/ui/components/badge";
+import {
+	Card,
+	CardContent,
+	CardHeader,
+	CardTitle,
+} from "@repo/ui/components/card";
 import { useLocaleCurrency } from "@shared/hooks/locale-currency";
-import { Badge } from "@ui/components/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@ui/components/card";
 import { useFormatter } from "next-intl";
 import { useMemo } from "react";
 
@@ -66,7 +71,9 @@ export function StatsTile({
 						{context && <small>{context}</small>}
 					</strong>
 					{trend && (
-						<Badge status={trend > 0 ? "success" : "error"}>
+						<Badge
+						// status={trend > 0 ? "success" : "error"}
+						>
 							{formattedTrend}
 						</Badge>
 					)}

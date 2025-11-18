@@ -1,15 +1,15 @@
 "use client";
 import { LocaleLink } from "@i18n/routing";
 import { type Config, config } from "@repo/config";
+import { Button } from "@repo/ui/components/button";
+import { Tabs, TabsList, TabsTrigger } from "@repo/ui/components/tabs";
+import { cn } from "@repo/ui/lib/utils";
 import { usePlanData } from "@saas/payments/hooks/plan-data";
 import type { PlanId } from "@saas/payments/types";
 import { useLocaleCurrency } from "@shared/hooks/locale-currency";
 import { useRouter } from "@shared/hooks/router";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation } from "@tanstack/react-query";
-import { Button } from "@ui/components/button";
-import { Tabs, TabsList, TabsTrigger } from "@ui/components/tabs";
-import { cn } from "@ui/lib";
 import {
 	ArrowRightIcon,
 	BadgePercentIcon,
@@ -262,7 +262,7 @@ export function PricingTable({
 										{isEnterprise ? (
 											<Button
 												className="mt-4 w-full"
-												variant="light"
+												variant="ghost"
 												asChild
 											>
 												<LocaleLink href="/contact">
@@ -275,7 +275,7 @@ export function PricingTable({
 												className="mt-4 w-full"
 												variant={
 													recommended
-														? "primary"
+														? "default"
 														: "secondary"
 												}
 												onClick={() =>
@@ -284,7 +284,7 @@ export function PricingTable({
 														price?.productId,
 													)
 												}
-												loading={loading === planId}
+												// loading={loading === planId}
 											>
 												{userId || organizationId
 													? t("pricing.choosePlan")

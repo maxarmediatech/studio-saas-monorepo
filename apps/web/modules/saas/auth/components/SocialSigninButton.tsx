@@ -2,7 +2,7 @@
 
 import { authClient } from "@repo/auth/client";
 import { config } from "@repo/config";
-import { Button } from "@ui/components/button";
+import { Button } from "@repo/ui/components/button";
 import { parseAsString, useQueryState } from "nuqs";
 import { oAuthProviders } from "../constants/oauth-providers";
 
@@ -31,7 +31,7 @@ export function SocialSigninButton({
 	return (
 		<Button
 			onClick={() => onSignin()}
-			variant="light"
+			variant="ghost"
 			type="button"
 			className={className}
 		>

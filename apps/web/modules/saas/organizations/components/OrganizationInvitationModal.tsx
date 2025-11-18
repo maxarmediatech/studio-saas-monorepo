@@ -1,11 +1,11 @@
 "use client";
 
 import { authClient } from "@repo/auth/client";
+import { Button } from "@repo/ui/components/button";
 import { OrganizationLogo } from "@saas/organizations/components/OrganizationLogo";
 import { organizationListQueryKey } from "@saas/organizations/lib/api";
 import { useRouter } from "@shared/hooks/router";
 import { useQueryClient } from "@tanstack/react-query";
-import { Button } from "@ui/components/button";
 import { CheckIcon, XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -92,10 +92,10 @@ export function OrganizationInvitationModal({
 			<div className="flex gap-2">
 				<Button
 					className="flex-1"
-					variant="light"
+					variant="ghost"
 					onClick={() => onSelectAnswer(false)}
 					disabled={!!submitting}
-					loading={submitting === "reject"}
+					// loading={submitting === "reject"}
 				>
 					<XIcon className="mr-1.5 size-4" />
 					{t("organizations.invitationModal.decline")}
@@ -104,7 +104,7 @@ export function OrganizationInvitationModal({
 					className="flex-1"
 					onClick={() => onSelectAnswer(true)}
 					disabled={!!submitting}
-					loading={submitting === "accept"}
+					// loading={submitting === "accept"}
 				>
 					<CheckIcon className="mr-1.5 size-4" />
 					{t("organizations.invitationModal.accept")}

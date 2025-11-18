@@ -1,10 +1,10 @@
 "use client";
 import { authClient } from "@repo/auth/client";
+import { Button } from "@repo/ui/components/button";
+import { Skeleton } from "@repo/ui/components/skeleton";
 import { useUserPasskeysQuery } from "@saas/auth/lib/api";
 import { SettingsItem } from "@saas/shared/components/SettingsItem";
 import { useQueryClient } from "@tanstack/react-query";
-import { Button } from "@ui/components/button";
-import { Skeleton } from "@ui/components/skeleton";
 import { KeyIcon, PlusIcon, TrashIcon } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -89,7 +89,7 @@ export function PasskeysBlock() {
 								</small>
 							</div>
 							<Button
-								variant="light"
+								variant="ghost"
 								size="icon"
 								className="shrink-0"
 								onClick={() => deletePasskey(passkey.id)}
@@ -101,7 +101,7 @@ export function PasskeysBlock() {
 				)}
 
 				<div className="flex justify-start">
-					<Button variant="light" onClick={addPasskey}>
+					<Button variant="ghost" onClick={addPasskey}>
 						<PlusIcon className="mr-1.5 size-4" />
 						Add passkey
 					</Button>

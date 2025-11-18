@@ -1,11 +1,11 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
+import { Button } from "@repo/ui/components/button";
+import { Input } from "@repo/ui/components/input";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation } from "@tanstack/react-query";
-import { Alert, AlertDescription, AlertTitle } from "@ui/components/alert";
-import { Button } from "@ui/components/button";
-import { Input } from "@ui/components/input";
 import { CheckCircleIcon, KeyIcon } from "lucide-react";
 
 import { useTranslations } from "next-intl";
@@ -52,7 +52,7 @@ export function Newsletter() {
 
 				<div className="mx-auto max-w-lg">
 					{form.formState.isSubmitSuccessful ? (
-						<Alert variant="success">
+						<Alert variant="default">
 							<CheckCircleIcon />
 							<AlertTitle>
 								{t("newsletter.hints.success.title")}
@@ -74,7 +74,7 @@ export function Newsletter() {
 								<Button
 									type="submit"
 									className="ml-4"
-									loading={form.formState.isSubmitting}
+									// loading={form.formState.isSubmitting}
 								>
 									{t("newsletter.submit")}
 								</Button>

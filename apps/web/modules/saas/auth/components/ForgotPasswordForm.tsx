@@ -2,9 +2,8 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { authClient } from "@repo/auth/client";
-import { useAuthErrorMessages } from "@saas/auth/hooks/errors-messages";
-import { Alert, AlertDescription, AlertTitle } from "@ui/components/alert";
-import { Button } from "@ui/components/button";
+import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
+import { Button } from "@repo/ui/components/button";
 import {
 	Form,
 	FormControl,
@@ -12,8 +11,9 @@ import {
 	FormItem,
 	FormLabel,
 	FormMessage,
-} from "@ui/components/form";
-import { Input } from "@ui/components/input";
+} from "@repo/ui/components/form";
+import { Input } from "@repo/ui/components/input";
+import { useAuthErrorMessages } from "@saas/auth/hooks/errors-messages";
 import { AlertTriangleIcon, ArrowLeftIcon, MailboxIcon } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -73,7 +73,7 @@ export function ForgotPasswordForm() {
 			</p>
 
 			{form.formState.isSubmitSuccessful ? (
-				<Alert variant="success">
+				<Alert variant="default">
 					<MailboxIcon />
 					<AlertTitle>
 						{t("auth.forgotPassword.hints.linkSent.title")}
@@ -89,7 +89,7 @@ export function ForgotPasswordForm() {
 						onSubmit={onSubmit}
 					>
 						{form.formState.errors.root && (
-							<Alert variant="error">
+							<Alert variant="destructive">
 								<AlertTriangleIcon />
 								<AlertTitle>
 									{form.formState.errors.root.message}
@@ -116,7 +116,9 @@ export function ForgotPasswordForm() {
 							)}
 						/>
 
-						<Button loading={form.formState.isSubmitting}>
+						<Button
+						// loading={form.formState.isSubmitting}
+						>
 							{t("auth.forgotPassword.submit")}
 						</Button>
 					</form>
