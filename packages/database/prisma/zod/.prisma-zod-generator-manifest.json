@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "generatorVersion": "0.0.0",
-  "generatedAt": "2025-11-18T16:54:35.897Z",
+  "generatedAt": "2025-11-18T17:01:35.739Z",
   "outputPath": "/Users/rakesh/Developer/agency/studio-saas-monorepo/packages/database/prisma/zod",
   "files": [
     "index.ts"
