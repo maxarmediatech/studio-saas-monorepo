@@ -1,8 +1,8 @@
 "use client";
 
+import { Badge } from "@repo/ui/components/badge";
 import { usePlanData } from "@saas/payments/hooks/plan-data";
 import { usePurchases } from "@saas/payments/hooks/purchases";
-import { Badge } from "@ui/components/badge";
 
 export function ActivePlanBadge({
 	organizationId,
@@ -23,7 +23,7 @@ export function ActivePlanBadge({
 	}
 	return (
 		<Badge
-			status="info"
+			// status=''
 			className="flex items-center gap-1 px-1.5 text-xs normal-case"
 		>
 			{activePlanData.title}

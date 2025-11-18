@@ -1,6 +1,6 @@
 import { Slot, Slottable } from "@radix-ui/react-slot";
+import { cn } from "@repo/ui/lib/utils";
 import { Spinner } from "@shared/components/Spinner";
-import { cn } from "@ui/lib";
 import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
 import * as React from "react";

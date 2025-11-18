@@ -2,6 +2,9 @@
 
 import { type UIMessage, useChat } from "@ai-sdk/react";
 import { eventIteratorToStream } from "@orpc/client";
+import { Button } from "@repo/ui/components/button";
+import { Textarea } from "@repo/ui/components/textarea";
+import { cn } from "@repo/ui/lib/utils";
 import { SidebarContentLayout } from "@saas/shared/components/SidebarContentLayout";
 import { orpcClient } from "@shared/lib/orpc-client";
 import { orpc } from "@shared/lib/orpc-query-utils";
@@ -11,9 +14,6 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { Button } from "@ui/components/button";
-import { Textarea } from "@ui/components/textarea";
-import { cn } from "@ui/lib";
 import { EllipsisIcon, PlusIcon, SendIcon } from "lucide-react";
 import { useFormatter } from "next-intl";
 import { useQueryState } from "nuqs";
@@ -175,10 +175,10 @@ export function AiChat({ organizationId }: { organizationId?: string }) {
 			sidebar={
 				<div>
 					<Button
-						variant="light"
+						variant="ghost"
 						size="sm"
 						className="mb-4 flex w-full items-center gap-2"
-						loading={createChatMutation.isPending}
+						// loading={createChatMutation.isPending}
 						onClick={createNewChat}
 					>
 						<PlusIcon className="size-4" />

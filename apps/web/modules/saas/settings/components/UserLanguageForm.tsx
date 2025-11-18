@@ -4,15 +4,15 @@ import { updateLocale } from "@i18n/lib/update-locale";
 import { authClient } from "@repo/auth/client";
 import { config } from "@repo/config";
 import type { Locale } from "@repo/i18n";
-import { SettingsItem } from "@saas/shared/components/SettingsItem";
-import { useMutation } from "@tanstack/react-query";
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "@ui/components/select";
+} from "@repo/ui/components/select";
+import { SettingsItem } from "@saas/shared/components/SettingsItem";
+import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";

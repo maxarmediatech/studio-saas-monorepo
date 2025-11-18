@@ -1,14 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
-import {
-	organizationListQueryKey,
-	useCreateOrganizationMutation,
-} from "@saas/organizations/lib/api";
-import { useRouter } from "@shared/hooks/router";
-import { useQueryClient } from "@tanstack/react-query";
-import { Button } from "@ui/components/button";
+import { Button } from "@repo/ui/components/button";
 import {
 	Form,
 	FormControl,
@@ -16,8 +9,15 @@ import {
 	FormItem,
 	FormLabel,
 	FormMessage,
-} from "@ui/components/form";
-import { Input } from "@ui/components/input";
+} from "@repo/ui/components/form";
+import { Input } from "@repo/ui/components/input";
+import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
+import {
+	organizationListQueryKey,
+	useCreateOrganizationMutation,
+} from "@saas/organizations/lib/api";
+import { useRouter } from "@shared/hooks/router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -99,7 +99,7 @@ export function CreateOrganizationForm({
 					<Button
 						className="mt-6 w-full"
 						type="submit"
-						loading={form.formState.isSubmitting}
+						// loading={form.formState.isSubmitting}
 					>
 						{t("organizations.createForm.submit")}
 					</Button>

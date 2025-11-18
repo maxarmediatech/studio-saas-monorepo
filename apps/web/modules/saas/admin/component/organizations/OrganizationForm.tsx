@@ -1,6 +1,22 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Button } from "@repo/ui/components/button";
+import {
+	Card,
+	CardContent,
+	CardHeader,
+	CardTitle,
+} from "@repo/ui/components/card";
+import {
+	Form,
+	FormControl,
+	FormField,
+	FormItem,
+	FormLabel,
+	FormMessage,
+} from "@repo/ui/components/form";
+import { Input } from "@repo/ui/components/input";
 import { getAdminPath } from "@saas/admin/lib/links";
 import { InviteMemberForm } from "@saas/organizations/components/InviteMemberForm";
 import { OrganizationMembersBlock } from "@saas/organizations/components/OrganizationMembersBlock";
@@ -13,17 +29,6 @@ import {
 import { useRouter } from "@shared/hooks/router";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useQueryClient } from "@tanstack/react-query";
-import { Button } from "@ui/components/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@ui/components/card";
-import {
-	Form,
-	FormControl,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
-} from "@ui/components/form";
-import { Input } from "@ui/components/input";
 import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -128,10 +133,10 @@ export function OrganizationForm({
 							<div className="flex justify-end">
 								<Button
 									type="submit"
-									loading={
-										updateOrganizationMutation.isPending ||
-										createOrganizationMutation.isPending
-									}
+									// loading={
+									// 	updateOrganizationMutation.isPending ||
+									// 	createOrganizationMutation.isPending
+									// }
 								>
 									{t("admin.organizations.form.save")}
 								</Button>

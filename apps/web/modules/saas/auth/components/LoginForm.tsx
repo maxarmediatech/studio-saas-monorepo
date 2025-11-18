@@ -3,21 +3,21 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { authClient } from "@repo/auth/client";
 import { config } from "@repo/config";
-import { useAuthErrorMessages } from "@saas/auth/hooks/errors-messages";
-import { sessionQueryKey } from "@saas/auth/lib/api";
-import { OrganizationInvitationAlert } from "@saas/organizations/components/OrganizationInvitationAlert";
-import { useRouter } from "@shared/hooks/router";
-import { useQueryClient } from "@tanstack/react-query";
-import { Alert, AlertDescription, AlertTitle } from "@ui/components/alert";
-import { Button } from "@ui/components/button";
+import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
+import { Button } from "@repo/ui/components/button";
 import {
 	Form,
 	FormControl,
 	FormField,
 	FormItem,
 	FormLabel,
-} from "@ui/components/form";
-import { Input } from "@ui/components/input";
+} from "@repo/ui/components/form";
+import { Input } from "@repo/ui/components/input";
+import { useAuthErrorMessages } from "@saas/auth/hooks/errors-messages";
+import { sessionQueryKey } from "@saas/auth/lib/api";
+import { OrganizationInvitationAlert } from "@saas/organizations/components/OrganizationInvitationAlert";
+import { useRouter } from "@shared/hooks/router";
+import { useQueryClient } from "@tanstack/react-query";
 import {
 	AlertTriangleIcon,
 	ArrowRightIcon,
@@ -164,7 +164,7 @@ export function LoginForm() {
 
 			{form.formState.isSubmitSuccessful &&
 			signinMode === "magic-link" ? (
-				<Alert variant="success">
+				<Alert variant="default">
 					<MailboxIcon />
 					<AlertTitle>
 						{t("auth.login.hints.linkSent.title")}
@@ -199,7 +199,7 @@ export function LoginForm() {
 
 							{form.formState.isSubmitted &&
 								form.formState.errors.root?.message && (
-									<Alert variant="error">
+									<Alert variant="destructive">
 										<AlertTriangleIcon />
 										<AlertTitle>
 											{form.formState.errors.root.message}
@@ -286,7 +286,7 @@ export function LoginForm() {
 								className="w-full"
 								type="submit"
 								variant="secondary"
-								loading={form.formState.isSubmitting}
+								// loading={form.formState.isSubmitting}
 							>
 								{signinMode === "magic-link"
 									? t("auth.login.sendMagicLink")
@@ -322,7 +322,7 @@ export function LoginForm() {
 
 								{config.auth.enablePasskeys && (
 									<Button
-										variant="light"
+										variant="ghost"
 										className="w-full sm:col-span-2"
 										onClick={() => signInWithPasskey()}
 									>

@@ -5,9 +5,9 @@ import { ProgressProvider } from "@bprogress/next/app";
 import { config } from "@repo/config";
 import { ApiClientProvider } from "@shared/components/ApiClientProvider";
 import { ConsentBanner } from "@shared/components/ConsentBanner";
-import { Toaster } from "@ui/components/toast";
 import { ThemeProvider } from "next-themes";
 import type { PropsWithChildren } from "react";
+import { Toaster } from "sonner";
 
 export function ClientProviders({ children }: PropsWithChildren) {
 	return (

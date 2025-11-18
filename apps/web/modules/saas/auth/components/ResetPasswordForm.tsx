@@ -3,11 +3,8 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { authClient } from "@repo/auth/client";
 import { config } from "@repo/config";
-import { useAuthErrorMessages } from "@saas/auth/hooks/errors-messages";
-import { useSession } from "@saas/auth/hooks/use-session";
-import { useRouter } from "@shared/hooks/router";
-import { Alert, AlertTitle } from "@ui/components/alert";
-import { Button } from "@ui/components/button";
+import { Alert, AlertTitle } from "@repo/ui/components/alert";
+import { Button } from "@repo/ui/components/button";
 import {
 	Form,
 	FormControl,
@@ -15,14 +12,17 @@ import {
 	FormItem,
 	FormLabel,
 	FormMessage,
-} from "@ui/components/form";
-import { PasswordInput } from "@ui/components/password-input";
+} from "@repo/ui/components/form";
+import { useAuthErrorMessages } from "@saas/auth/hooks/errors-messages";
+import { useSession } from "@saas/auth/hooks/use-session";
+import { useRouter } from "@shared/hooks/router";
 import { AlertTriangleIcon, ArrowLeftIcon, MailboxIcon } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
+import { PasswordInput } from "@/modules/ui/components/password-input";
 
 const formSchema = z.object({
 	password: z.string().min(8),
@@ -80,7 +80,7 @@ export function ResetPasswordForm() {
 			</p>
 
 			{form.formState.isSubmitSuccessful ? (
-				<Alert variant="success">
+				<Alert variant="default">
 					<MailboxIcon />
 					<AlertTitle>
 						{t("auth.resetPassword.hints.success")}
@@ -93,7 +93,7 @@ export function ResetPasswordForm() {
 						onSubmit={onSubmit}
 					>
 						{form.formState.errors.root && (
-							<Alert variant="error">
+							<Alert variant="destructive">
 								<AlertTriangleIcon />
 								<AlertTitle>
 									{form.formState.errors.root.message}
@@ -120,7 +120,9 @@ export function ResetPasswordForm() {
 							)}
 						/>
 
-						<Button loading={form.formState.isSubmitting}>
+						<Button
+						// loading={form.formState.isSubmitting}
+						>
 							{t("auth.resetPassword.submit")}
 						</Button>
 					</form>

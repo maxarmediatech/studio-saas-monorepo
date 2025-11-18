@@ -1,7 +1,7 @@
 "use client";
 
 import { MobileIcon } from "@radix-ui/react-icons";
-import { cn } from "@ui/lib";
+import { cn } from "@repo/ui/lib/utils";
 import {
 	CloudIcon,
 	ComputerIcon,

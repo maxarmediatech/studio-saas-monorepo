@@ -1,4 +1,4 @@
-import { cn } from "@ui/lib";
+import { cn } from "@repo/ui/lib/utils";
 import { useTranslations } from "next-intl";
 
 export function FaqSection({ className }: { className?: string }) {

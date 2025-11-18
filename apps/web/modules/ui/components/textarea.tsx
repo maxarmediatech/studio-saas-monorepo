@@ -1,4 +1,4 @@
-import { cn } from "@ui/lib";
+import { cn } from "@repo/ui/lib/utils";
 import * as React from "react";
 
 const Textarea = ({

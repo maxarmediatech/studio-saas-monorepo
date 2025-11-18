@@ -1,9 +1,7 @@
 "use client";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { authClient } from "@repo/auth/client";
-import { SettingsItem } from "@saas/shared/components/SettingsItem";
-import { useRouter } from "@shared/hooks/router";
-import { Button } from "@ui/components/button";
+import { Button } from "@repo/ui/components/button";
 import {
 	Form,
 	FormControl,
@@ -11,12 +9,14 @@ import {
 	FormItem,
 	FormLabel,
 	FormMessage,
-} from "@ui/components/form";
-import { PasswordInput } from "@ui/components/password-input";
+} from "@repo/ui/components/form";
+import { SettingsItem } from "@saas/shared/components/SettingsItem";
+import { useRouter } from "@shared/hooks/router";
 import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
+import { PasswordInput } from "@/modules/ui/components/password-input";
 
 const formSchema = z.object({
 	currentPassword: z.string().min(1),
@@ -110,7 +110,7 @@ export function ChangePasswordForm() {
 						<div className="flex justify-end">
 							<Button
 								type="submit"
-								loading={form.formState.isSubmitting}
+								// loading={form.formState.isSubmitting}
 								disabled={
 									!(
 										form.formState.isValid &&

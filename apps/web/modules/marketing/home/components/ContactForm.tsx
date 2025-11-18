@@ -5,10 +5,8 @@ import {
 	type ContactFormValues,
 	contactFormSchema,
 } from "@repo/api/modules/contact/types";
-import { orpc } from "@shared/lib/orpc-query-utils";
-import { useMutation } from "@tanstack/react-query";
-import { Alert, AlertTitle } from "@ui/components/alert";
-import { Button } from "@ui/components/button";
+import { Alert, AlertTitle } from "@repo/ui/components/alert";
+import { Button } from "@repo/ui/components/button";
 import {
 	Form,
 	FormControl,
@@ -16,9 +14,11 @@ import {
 	FormItem,
 	FormLabel,
 	FormMessage,
-} from "@ui/components/form";
-import { Input } from "@ui/components/input";
-import { Textarea } from "@ui/components/textarea";
+} from "@repo/ui/components/form";
+import { Input } from "@repo/ui/components/input";
+import { Textarea } from "@repo/ui/components/textarea";
+import { orpc } from "@shared/lib/orpc-query-utils";
+import { useMutation } from "@tanstack/react-query";
 import { MailCheckIcon, MailIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
@@ -51,7 +51,7 @@ export function ContactForm() {
 	return (
 		<div>
 			{form.formState.isSubmitSuccessful ? (
-				<Alert variant="success">
+				<Alert variant="default">
 					<MailCheckIcon />
 					<AlertTitle>
 						{t("contact.form.notifications.success")}
@@ -64,7 +64,7 @@ export function ContactForm() {
 						className="flex flex-col items-stretch gap-4"
 					>
 						{form.formState.errors.root?.message && (
-							<Alert variant="error">
+							<Alert variant="destructive">
 								<MailIcon />
 								<AlertTitle>
 									{form.formState.errors.root.message}
@@ -123,7 +123,7 @@ export function ContactForm() {
 						<Button
 							type="submit"
 							className="w-full"
-							loading={form.formState.isSubmitting}
+							// loading={form.formState.isSubmitting}
 						>
 							{t("contact.form.submit")}
 						</Button>

@@ -4,14 +4,14 @@ import { updateLocale } from "@i18n/lib/update-locale";
 import { useLocalePathname, useLocaleRouter } from "@i18n/routing";
 import { config } from "@repo/config";
 import type { Locale } from "@repo/i18n";
-import { Button } from "@ui/components/button";
+import { Button } from "@repo/ui/components/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuRadioGroup,
 	DropdownMenuRadioItem,
 	DropdownMenuTrigger,
-} from "@ui/components/dropdown-menu";
+} from "@repo/ui/components/dropdown-menu";
 import { LanguagesIcon } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale } from "next-intl";

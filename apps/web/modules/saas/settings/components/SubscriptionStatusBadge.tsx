@@ -1,8 +1,9 @@
 "use client";
 
-import type { BadgeProps } from "@ui/components/badge";
-import { Badge } from "@ui/components/badge";
+// import type { BadgeProps } from "@repo/ui/components/badge";
+import { Badge } from "@repo/ui/components/badge";
 import { useTranslations } from "next-intl";
+import type { BadgeProps } from "@/modules/ui/components/badge";
 
 export function SubscriptionStatusBadge({
 	status,
@@ -34,5 +35,11 @@ export function SubscriptionStatusBadge({
 		unpaid: "error",
 	};
 
-	return <Badge status={badgeColors[status]}>{badgeLabels[status]}</Badge>;
+	return (
+		<Badge
+		// status={badgeColors[status]}
+		>
+			{badgeLabels[status]}
+		</Badge>
+	);
 }

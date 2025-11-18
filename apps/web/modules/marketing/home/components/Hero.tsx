@@ -1,5 +1,5 @@
 import { LocaleLink } from "@i18n/routing";
-import { Button } from "@ui/components/button";
+import { Button } from "@repo/ui/components/button";
 import { ArrowRightIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -33,13 +33,13 @@ export function Hero() {
 				</p>
 
 				<div className="mt-6 flex flex-col items-center justify-center gap-3 md:flex-row">
-					<Button size="lg" variant="primary" asChild>
+					<Button size="lg" variant="default" asChild>
 						<Link href="/auth/login">
 							Get started
 							<ArrowRightIcon className="ml-2 size-4" />
 						</Link>
 					</Button>
-					<Button variant="light" size="lg" asChild>
+					<Button variant="ghost" size="lg" asChild>
 						<LocaleLink href="/docs">Documentation</LocaleLink>
 					</Button>
 				</div>
