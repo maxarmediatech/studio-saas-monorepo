@@ -1,13 +1,16 @@
+import type { Metadata } from "next";
+import type { PropsWithChildren } from "react";
 import "@repo/ui/globals.css";
+import { config } from "@repo/config";
 
-export default function RootLayout({
-	children,
-}: {
-	children: React.ReactNode;
-}) {
-	return (
-		<html lang="en" suppressHydrationWarning>
-			<body>{children}</body>
-		</html>
-	);
+export const metadata: Metadata = {
+	title: {
+		absolute: config.appName,
+		default: config.appName,
+		template: `%s | ${config.appName}`,
+	},
+};
+
+export default function RootLayout({ children }: PropsWithChildren) {
+	return children;
 }
