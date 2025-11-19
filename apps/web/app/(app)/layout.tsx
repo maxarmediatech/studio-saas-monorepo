@@ -11,11 +11,17 @@ import { getServerQueryClient } from "@shared/lib/server";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { redirect } from "next/navigation";
 import { NextIntlClientProvider } from "next-intl";
-import { getLocale, getMessages } from "next-intl/server";
-import type { PropsWithChildren } from "react";
+import { getMessages, setRequestLocale } from "next-intl/server";
+import { type PropsWithChildren, Suspense } from "react";
 
-export default async function AppLayout({ children }: PropsWithChildren) {
-	const locale = await getLocale();
+type Props = PropsWithChildren & {
+	params: Promise<{ locale?: string }>;
+};
+
+async function AppContent({
+	children,
+	locale,
+}: PropsWithChildren & { locale: string }) {
 	const messages = await getMessages();
 	const session = await getSession();
 
@@ -59,5 +65,20 @@ export default async function AppLayout({ children }: PropsWithChildren) {
 				</HydrationBoundary>
 			</NextIntlClientProvider>
 		</Document>
+	);
+}
+
+export default async function AppLayout({ children, params }: Props) {
+	const { locale } = await params;
+
+	// Enable static rendering with cacheComponents
+	if (locale) {
+		setRequestLocale(locale);
+	}
+
+	return (
+		<Suspense fallback={null}>
+			<AppContent locale={locale || "en"}>{children}</AppContent>
+		</Suspense>
 	);
 }
