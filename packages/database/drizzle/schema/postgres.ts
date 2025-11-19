@@ -1,7 +1,6 @@
 import { relations } from "drizzle-orm";
 import {
 	boolean,
-	integer,
 	pgEnum,
 	pgTable,
 	text,
@@ -37,7 +36,6 @@ export const users = pgTable("users", {
 	onboardingComplete: boolean("onboarding_complete").default(false).notNull(),
 	paymentsCustomerId: text("payments_customer_id"),
 	locale: text("locale"),
-	twoFactorEnabled: boolean("two_factor_enabled"),
 });
 
 export const sessions = pgTable(
@@ -91,34 +89,6 @@ export const verifications = pgTable("verifications", {
 	expiresAt: timestamp("expires_at").notNull(),
 	createdAt: timestamp("created_at"),
 	updatedAt: timestamp("updated_at"),
-});
-
-export const passkey = pgTable("passkey", {
-	id: varchar("id", { length: 255 })
-		.$defaultFn(() => uuidv7())
-		.primaryKey(),
-	name: text("name"),
-	publicKey: text("public_key").notNull(),
-	userId: text("user_id")
-		.notNull()
-		.references(() => users.id, { onDelete: "cascade" }),
-	credentialID: text("credential_id").notNull(),
-	counter: integer("counter").notNull(),
-	deviceType: text("device_type").notNull(),
-	backedUp: boolean("backed_up").notNull(),
-	transports: text("transports"),
-	createdAt: timestamp("created_at"),
-});
-
-export const twoFactor = pgTable("two_factor", {
-	id: varchar("id", { length: 255 })
-		.$defaultFn(() => uuidv7())
-		.primaryKey(),
-	secret: text("secret").notNull(),
-	backupCodes: text("backup_codes").notNull(),
-	userId: text("user_id")
-		.notNull()
-		.references(() => users.id, { onDelete: "cascade" }),
 });
 
 export const organizations = pgTable(
@@ -200,11 +170,9 @@ export const purchase = pgTable("purchase", {
 export const userRelations = relations(users, ({ many }) => ({
 	sessions: many(sessions),
 	accounts: many(accounts),
-	passkeys: many(passkey),
 	invitations: many(invitations),
 	purchases: many(purchase),
 	memberships: many(members),
-	twoFactors: many(twoFactor),
 }));
 
 export const organizationRelations = relations(organizations, ({ many }) => ({
@@ -238,13 +206,6 @@ export const accountRelations = relations(accounts, ({ one }) => ({
 	}),
 }));
 
-export const passkeyRelations = relations(passkey, ({ one }) => ({
-	user: one(users, {
-		fields: [passkey.userId],
-		references: [users.id],
-	}),
-}));
-
 export const invitationRelations = relations(invitations, ({ one }) => ({
 	organization: one(organizations, {
 		fields: [invitations.organizationId],
@@ -263,13 +224,6 @@ export const purchaseRelations = relations(purchase, ({ one }) => ({
 	}),
 	user: one(users, {
 		fields: [purchase.userId],
-		references: [users.id],
-	}),
-}));
-
-export const twoFactorRelations = relations(twoFactor, ({ one }) => ({
-	user: one(users, {
-		fields: [twoFactor.userId],
 		references: [users.id],
 	}),
 }));
