@@ -5,36 +5,32 @@ import {
 } from "drizzle-zod";
 import { z } from "zod";
 import {
-	account,
-	aiChat,
-	invitation,
-	member,
-	organization,
-	passkey,
+	accounts,
+	invitations,
+	members,
+	organizations,
 	purchase,
-	session,
-	user,
-	verification,
+	sessions,
+	users,
+	verifications,
 } from "./schema";
 
-export const AiChatSchema = createSelectSchema(aiChat);
-export const UserSchema = createSelectSchema(user);
-export const UserUpdateSchema = createUpdateSchema(user, {
+export const UserSchema = createSelectSchema(users);
+export const UserUpdateSchema = createUpdateSchema(users, {
 	id: z.string(),
 });
-export const OrganizationSchema = createSelectSchema(organization);
-export const OrganizationUpdateSchema = createUpdateSchema(organization, {
+export const OrganizationSchema = createSelectSchema(organizations);
+export const OrganizationUpdateSchema = createUpdateSchema(organizations, {
 	id: z.string(),
 });
-export const MemberSchema = createSelectSchema(member);
-export const InvitationSchema = createSelectSchema(invitation);
+export const MemberSchema = createSelectSchema(members);
+export const InvitationSchema = createSelectSchema(invitations);
 export const PurchaseSchema = createSelectSchema(purchase);
 export type Purchase = typeof purchase.$inferSelect;
 export const PurchaseInsertSchema = createInsertSchema(purchase);
 export const PurchaseUpdateSchema = createUpdateSchema(purchase, {
 	id: z.string(),
 });
-export const SessionSchema = createSelectSchema(session);
-export const AccountSchema = createSelectSchema(account);
-export const VerificationSchema = createSelectSchema(verification);
-export const PasskeySchema = createSelectSchema(passkey);
+export const SessionSchema = createSelectSchema(sessions);
+export const AccountSchema = createSelectSchema(accounts);
+export const VerificationSchema = createSelectSchema(verifications);

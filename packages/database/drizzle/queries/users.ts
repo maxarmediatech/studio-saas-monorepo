@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import type { z } from "zod";
 import { db } from "../client";
-import { account, user } from "../schema/postgres";
+import { accounts, users } from "../schema/postgres";
 import type { UserUpdateSchema } from "../zod";
 
 export async function getUsers({
@@ -13,7 +13,7 @@ export async function getUsers({
 	offset: number;
 	query?: string;
 }) {
-	return await db.query.user.findMany({
+	return await db.query.users.findMany({
 		where: (user, { like }) => like(user.name, `%${query}%`),
 		limit,
 		offset,
@@ -21,17 +21,17 @@ export async function getUsers({
 }
 
 export async function countAllUsers() {
-	return db.$count(user);
+	return db.$count(users);
 }
 
 export async function getUserById(id: string) {
-	return await db.query.user.findFirst({
+	return await db.query.users.findFirst({
 		where: (user, { eq }) => eq(user.id, id),
 	});
 }
 
 export async function getUserByEmail(email: string) {
-	return await db.query.user.findFirst({
+	return await db.query.users.findFirst({
 		where: (user, { eq }) => eq(user.email, email),
 	});
 }
@@ -50,7 +50,7 @@ export async function createUser({
 	onboardingComplete: boolean;
 }) {
 	const [{ id }] = await db
-		.insert(user)
+		.insert(users)
 		.values({
 			email,
 			name,
@@ -61,7 +61,7 @@ export async function createUser({
 			updatedAt: new Date(),
 		})
 		.returning({
-			id: user.id,
+			id: users.id,
 		});
 
 	const newUser = await getUserById(id);
@@ -70,7 +70,7 @@ export async function createUser({
 }
 
 export async function getAccountById(id: string) {
-	return await db.query.account.findFirst({
+	return await db.query.accounts.findFirst({
 		where: (account, { eq }) => eq(account.id, id),
 	});
 }
@@ -87,7 +87,7 @@ export async function createUserAccount({
 	hashedPassword?: string;
 }) {
 	const [{ id }] = await db
-		.insert(account)
+		.insert(accounts)
 		.values({
 			userId,
 			accountId,
@@ -97,7 +97,7 @@ export async function createUserAccount({
 			password: hashedPassword,
 		})
 		.returning({
-			id: account.id,
+			id: accounts.id,
 		});
 
 	const newAccount = await getAccountById(id);
@@ -108,5 +108,8 @@ export async function createUserAccount({
 export async function updateUser(
 	updatedUser: z.infer<typeof UserUpdateSchema>,
 ) {
-	return db.update(user).set(updatedUser).where(eq(user.id, updatedUser.id));
+	return db
+		.update(users)
+		.set(updatedUser)
+		.where(eq(users.id, updatedUser.id));
 }

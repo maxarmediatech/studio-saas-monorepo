@@ -1,7 +1,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import type { z } from "zod";
 import { db } from "../client";
-import { member, organization } from "../schema/postgres";
+import { invitations, members, organizations } from "../schema/postgres";
 import type { OrganizationUpdateSchema } from "../zod";
 
 export async function getOrganizations({
@@ -13,7 +13,7 @@ export async function getOrganizations({
 	offset: number;
 	query?: string;
 }) {
-	return db.query.organization.findMany({
+	return db.query.organizations.findMany({
 		where: query
 			? (org, { like }) => like(org.name, `%${query}%`)
 			: undefined,
@@ -21,7 +21,7 @@ export async function getOrganizations({
 		offset,
 		extras: {
 			membersCount:
-				sql<number>`(SELECT COUNT(*) FROM ${member} WHERE ${member.organizationId} = ${organization.id})`.as(
+				sql<number>`(SELECT COUNT(*) FROM ${members} WHERE ${members.organizationId} = ${organizations.id})`.as(
 					"membersCount",
 				),
 		},
@@ -29,11 +29,11 @@ export async function getOrganizations({
 }
 
 export async function countAllOrganizations() {
-	return db.$count(organization);
+	return db.$count(organizations);
 }
 
 export async function getOrganizationById(id: string) {
-	return db.query.organization.findFirst({
+	return db.query.organizations.findFirst({
 		where: (org, { eq }) => eq(org.id, id),
 		with: {
 			members: true,
@@ -43,7 +43,7 @@ export async function getOrganizationById(id: string) {
 }
 
 export async function getInvitationById(id: string) {
-	return db.query.invitation.findFirst({
+	return db.query.invitations.findFirst({
 		where: (invitation, { eq }) => eq(invitation.id, id),
 		with: {
 			organization: true,
@@ -52,7 +52,7 @@ export async function getInvitationById(id: string) {
 }
 
 export async function getOrganizationBySlug(slug: string) {
-	return db.query.organization.findFirst({
+	return db.query.organizations.findFirst({
 		where: (org, { eq }) => eq(org.slug, slug),
 	});
 }
@@ -61,7 +61,7 @@ export async function getOrganizationMembership(
 	organizationId: string,
 	userId: string,
 ) {
-	return db.query.member.findFirst({
+	return db.query.members.findFirst({
 		where: (member, { eq }) =>
 			and(
 				eq(member.organizationId, organizationId),
@@ -76,14 +76,14 @@ export async function getOrganizationMembership(
 export async function getOrganizationWithPurchasesAndMembersCount(
 	organizationId: string,
 ) {
-	return db.query.organization.findFirst({
+	return db.query.organizations.findFirst({
 		where: (org, { eq }) => eq(org.id, organizationId),
 		with: {
 			purchases: true,
 		},
 		extras: {
 			membersCount:
-				sql<number>`(SELECT COUNT(*) FROM ${member} WHERE ${member.organizationId} = ${organization.id})`.as(
+				sql<number>`(SELECT COUNT(*) FROM ${members} WHERE ${members.organizationId} = ${organizations.id})`.as(
 					"membersCount",
 				),
 		},
@@ -91,7 +91,7 @@ export async function getOrganizationWithPurchasesAndMembersCount(
 }
 
 export async function getPendingInvitationByEmail(email: string) {
-	return db.query.invitation.findFirst({
+	return db.query.invitations.findFirst({
 		where: (invitation, { eq }) =>
 			and(eq(invitation.email, email), eq(invitation.status, "pending")),
 	});
@@ -101,7 +101,7 @@ export async function updateOrganization(
 	updatedOrganization: z.infer<typeof OrganizationUpdateSchema>,
 ) {
 	return db
-		.update(organization)
+		.update(organizations)
 		.set(updatedOrganization)
-		.where(eq(organization.id, updatedOrganization.id));
+		.where(eq(organizations.id, updatedOrganization.id));
 }
