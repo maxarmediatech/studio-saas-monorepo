@@ -17,11 +17,15 @@
 	"main": "./index.ts",
 	"name": "@repo/database",
 	"scripts": {
+		"generate": "dotenv -c -e ../../.env -- drizzle-kit generate --config=drizzle.config.ts",
+		"migrate": "dotenv -c -e ../../.env -- drizzle-kit migrate --config=drizzle.config.ts",
+		"push": "dotenv -c -e ../../.env -- drizzle-kit push --config=drizzle.config.ts",
+		"studio": "dotenv -c -e ../../.env -- drizzle-kit studio --config=drizzle.config.ts",
+		"seed": "dotenv -c -e ../../.env -- tsx drizzle/seed.ts",
 		"type-check": "tsc --noEmit",
-		"db:generate": "drizzle-kit generate",
-		"db:migrate": "drizzle-kit migrate",
-		"db:push": "drizzle-kit push",
-		"db:studio": "drizzle-kit studio"
+		"db:generate": "pnpm run generate",
+		"db:migrate": "pnpm run migrate",
+		"db:seed": "pnpm run seed"
 	},
 	"types": "./**/.tsx",
 	"version": "0.0.0"
