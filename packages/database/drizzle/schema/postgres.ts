@@ -1,4 +1,3 @@
-import { createId as cuid } from "@paralleldrive/cuid2";
 import { relations } from "drizzle-orm";
 import {
 	boolean,
@@ -11,6 +10,7 @@ import {
 	uniqueIndex,
 	varchar,
 } from "drizzle-orm/pg-core";
+import { v7 as uuidv7 } from "uuid";
 
 // Enums
 export const purchaseTypeEnum = pgEnum("PurchaseType", [
@@ -21,7 +21,7 @@ export const purchaseTypeEnum = pgEnum("PurchaseType", [
 // Tables
 export const user = pgTable("user", {
 	id: varchar("id", { length: 255 })
-		.$defaultFn(() => cuid())
+		.$defaultFn(() => uuidv7())
 		.primaryKey(),
 	name: text("name").notNull(),
 	email: text("email").notNull().unique(),
@@ -44,7 +44,7 @@ export const session = pgTable(
 	"session",
 	{
 		id: varchar("id", { length: 255 })
-			.$defaultFn(() => cuid())
+			.$defaultFn(() => uuidv7())
 			.primaryKey(),
 		expiresAt: timestamp("expiresAt").notNull(),
 		ipAddress: text("ipAddress"),
@@ -63,7 +63,7 @@ export const session = pgTable(
 
 export const account = pgTable("account", {
 	id: varchar("id", { length: 255 })
-		.$defaultFn(() => cuid())
+		.$defaultFn(() => uuidv7())
 		.primaryKey(),
 	accountId: text("accountId").notNull(),
 	providerId: text("providerId").notNull(),
@@ -84,7 +84,7 @@ export const account = pgTable("account", {
 
 export const verification = pgTable("verification", {
 	id: varchar("id", { length: 255 })
-		.$defaultFn(() => cuid())
+		.$defaultFn(() => uuidv7())
 		.primaryKey(),
 	identifier: text("identifier").notNull(),
 	value: text("value").notNull(),
@@ -95,7 +95,7 @@ export const verification = pgTable("verification", {
 
 export const passkey = pgTable("passkey", {
 	id: varchar("id", { length: 255 })
-		.$defaultFn(() => cuid())
+		.$defaultFn(() => uuidv7())
 		.primaryKey(),
 	name: text("name"),
 	publicKey: text("publicKey").notNull(),
@@ -112,7 +112,7 @@ export const passkey = pgTable("passkey", {
 
 export const twoFactor = pgTable("twoFactor", {
 	id: varchar("id", { length: 255 })
-		.$defaultFn(() => cuid())
+		.$defaultFn(() => uuidv7())
 		.primaryKey(),
 	secret: text("secret").notNull(),
 	backupCodes: text("backupCodes").notNull(),
@@ -125,7 +125,7 @@ export const organization = pgTable(
 	"organization",
 	{
 		id: varchar("id", { length: 255 })
-			.$defaultFn(() => cuid())
+			.$defaultFn(() => uuidv7())
 			.primaryKey(),
 		name: text("name").notNull(),
 		slug: text("slug"),
@@ -142,7 +142,7 @@ export const member = pgTable(
 	"member",
 	{
 		id: varchar("id", { length: 255 })
-			.$defaultFn(() => cuid())
+			.$defaultFn(() => uuidv7())
 			.primaryKey(),
 		organizationId: text("organizationId")
 			.notNull()
@@ -163,7 +163,7 @@ export const member = pgTable(
 
 export const invitation = pgTable("invitation", {
 	id: varchar("id", { length: 255 })
-		.$defaultFn(() => cuid())
+		.$defaultFn(() => uuidv7())
 		.primaryKey(),
 	organizationId: text("organizationId")
 		.notNull()
@@ -179,7 +179,7 @@ export const invitation = pgTable("invitation", {
 
 export const purchase = pgTable("purchase", {
 	id: varchar("id", { length: 255 })
-		.$defaultFn(() => cuid())
+		.$defaultFn(() => uuidv7())
 		.primaryKey(),
 	organizationId: text("organizationId").references(() => organization.id, {
 		onDelete: "cascade",
@@ -198,7 +198,7 @@ export const purchase = pgTable("purchase", {
 
 export const aiChat = pgTable("aiChat", {
 	id: varchar("id", { length: 255 })
-		.$defaultFn(() => cuid())
+		.$defaultFn(() => uuidv7())
 		.primaryKey(),
 	organizationId: text("organizationId").references(() => organization.id, {
 		onDelete: "cascade",
