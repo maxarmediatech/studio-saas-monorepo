@@ -1,10 +1,9 @@
-import { Document } from "@shared/components/Document";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
 import { type PropsWithChildren, Suspense } from "react";
 
 type Props = PropsWithChildren & {
-	params: Promise<{ locale?: string }>;
+	params: Promise<{ locale: string }>;
 };
 
 async function PublicContent({
@@ -14,11 +13,9 @@ async function PublicContent({
 	const messages = await getMessages();
 
 	return (
-		<Document locale={locale}>
-			<NextIntlClientProvider messages={messages}>
-				{children}
-			</NextIntlClientProvider>
-		</Document>
+		<NextIntlClientProvider locale={locale} messages={messages}>
+			{children}
+		</NextIntlClientProvider>
 	);
 }
 
@@ -26,13 +23,11 @@ export default async function PublicLayout({ children, params }: Props) {
 	const { locale } = await params;
 
 	// Enable static rendering with cacheComponents
-	if (locale) {
-		setRequestLocale(locale);
-	}
+	setRequestLocale(locale);
 
 	return (
 		<Suspense fallback={null}>
-			<PublicContent locale={locale || "en"}>{children}</PublicContent>
+			<PublicContent locale={locale}>{children}</PublicContent>
 		</Suspense>
 	);
 }

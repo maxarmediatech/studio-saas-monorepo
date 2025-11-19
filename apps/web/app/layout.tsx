@@ -12,5 +12,6 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: PropsWithChildren) {
+	// Children will be the locale-specific layout which includes <html> and <body>
 	return children;
 }

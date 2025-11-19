@@ -5,7 +5,6 @@ import { getOrganizationList, getSession } from "@saas/auth/lib/server";
 import { ActiveOrganizationProvider } from "@saas/organizations/components/ActiveOrganizationProvider";
 import { organizationListQueryKey } from "@saas/organizations/lib/api";
 import { ConfirmationAlertProvider } from "@saas/shared/components/ConfirmationAlertProvider";
-import { Document } from "@shared/components/Document";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { getServerQueryClient } from "@shared/lib/server";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
@@ -15,7 +14,7 @@ import { getMessages, setRequestLocale } from "next-intl/server";
 import { type PropsWithChildren, Suspense } from "react";
 
 type Props = PropsWithChildren & {
-	params: Promise<{ locale?: string }>;
+	params: Promise<{ locale: string }>;
 };
 
 async function AppContent({
@@ -52,19 +51,17 @@ async function AppContent({
 	}
 
 	return (
-		<Document locale={locale}>
-			<NextIntlClientProvider messages={messages}>
-				<HydrationBoundary state={dehydrate(queryClient)}>
-					<SessionProvider>
-						<ActiveOrganizationProvider>
-							<ConfirmationAlertProvider>
-								{children}
-							</ConfirmationAlertProvider>
-						</ActiveOrganizationProvider>
-					</SessionProvider>
-				</HydrationBoundary>
-			</NextIntlClientProvider>
-		</Document>
+		<NextIntlClientProvider locale={locale} messages={messages}>
+			<HydrationBoundary state={dehydrate(queryClient)}>
+				<SessionProvider>
+					<ActiveOrganizationProvider>
+						<ConfirmationAlertProvider>
+							{children}
+						</ConfirmationAlertProvider>
+					</ActiveOrganizationProvider>
+				</SessionProvider>
+			</HydrationBoundary>
+		</NextIntlClientProvider>
 	);
 }
 
@@ -72,13 +69,11 @@ export default async function AppLayout({ children, params }: Props) {
 	const { locale } = await params;
 
 	// Enable static rendering with cacheComponents
-	if (locale) {
-		setRequestLocale(locale);
-	}
+	setRequestLocale(locale);
 
 	return (
 		<Suspense fallback={null}>
-			<AppContent locale={locale || "en"}>{children}</AppContent>
+			<AppContent locale={locale}>{children}</AppContent>
 		</Suspense>
 	);
 }
