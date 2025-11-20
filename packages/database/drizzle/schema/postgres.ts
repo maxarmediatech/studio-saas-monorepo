@@ -36,6 +36,7 @@ export const users = pgTable("users", {
 	onboardingComplete: boolean("onboarding_complete").default(false).notNull(),
 	paymentsCustomerId: text("payments_customer_id"),
 	locale: text("locale"),
+	twoFactorEnabled: boolean("two_factor_enabled").default(false).notNull(),
 });
 
 export const sessions = pgTable(
@@ -90,6 +91,21 @@ export const verifications = pgTable("verifications", {
 	createdAt: timestamp("created_at"),
 	updatedAt: timestamp("updated_at"),
 });
+
+export const twoFactor = pgTable(
+	"two_factors",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		secret: text("secret").notNull(),
+		backupCodes: text("backup_codes").notNull(),
+		userId: text("user_id")
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+	},
+	(table) => [uniqueIndex("two_factors_user_id_idx").on(table.userId)],
+);
 
 export const organizations = pgTable(
 	"organizations",
@@ -173,6 +189,7 @@ export const userRelations = relations(users, ({ many }) => ({
 	invitations: many(invitations),
 	purchases: many(purchase),
 	memberships: many(members),
+	twoFactors: many(twoFactor),
 }));
 
 export const organizationRelations = relations(organizations, ({ many }) => ({
@@ -224,6 +241,13 @@ export const purchaseRelations = relations(purchase, ({ one }) => ({
 	}),
 	user: one(users, {
 		fields: [purchase.userId],
+		references: [users.id],
+	}),
+}));
+
+export const twoFactorRelations = relations(twoFactor, ({ one }) => ({
+	user: one(users, {
+		fields: [twoFactor.userId],
 		references: [users.id],
 	}),
 }));

@@ -11,6 +11,7 @@ import {
 	organizations,
 	purchase,
 	sessions,
+	twoFactor,
 	users,
 	verifications,
 } from "./schema";
@@ -34,3 +35,4 @@ export const PurchaseUpdateSchema = createUpdateSchema(purchase, {
 export const SessionSchema = createSelectSchema(sessions);
 export const AccountSchema = createSelectSchema(accounts);
 export const VerificationSchema = createSelectSchema(verifications);
+export const TwoFactorSchema = createSelectSchema(twoFactor);

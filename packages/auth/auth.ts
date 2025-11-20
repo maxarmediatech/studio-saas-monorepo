@@ -19,6 +19,7 @@ import {
 	magicLink,
 	openAPI,
 	organization,
+	twoFactor,
 	username,
 } from "better-auth/plugins";
 import { passkey } from "better-auth/plugins/passkey";
@@ -248,6 +249,7 @@ export const auth = betterAuth({
 		}),
 		openAPI(),
 		invitationOnlyPlugin(),
+		twoFactor(),
 	],
 	onAPIError: {
 		onError(error, ctx) {
