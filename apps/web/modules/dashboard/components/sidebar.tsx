@@ -1,7 +1,34 @@
 "use client";
 
-import Image from "next/image";
-import { useState } from "react";
+import { Button } from "@repo/ui/components/button";
+import {
+	Collapsible,
+	CollapsibleContent,
+	CollapsibleTrigger,
+} from "@repo/ui/components/collapsible";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@repo/ui/components/dropdown-menu";
+import { Input } from "@repo/ui/components/input";
+import { Kbd } from "@repo/ui/components/kbd";
+import {
+	Sidebar,
+	SidebarContent,
+	SidebarFooter,
+	SidebarGroup,
+	SidebarGroupContent,
+	SidebarGroupLabel,
+	SidebarHeader,
+	SidebarMenu,
+	SidebarMenuButton,
+	SidebarMenuItem,
+	SidebarSeparator,
+} from "@repo/ui/components/sidebar";
+import { cn } from "@repo/ui/lib/utils";
 import {
 	Bell,
 	Calendar,
@@ -19,42 +46,12 @@ import {
 	Sparkles,
 	Users,
 } from "lucide-react";
-
-import { Button } from "@repo/ui/components/button";
-import { Input } from "@repo/ui/components/input";
-import {
-	Sidebar,
-	SidebarContent,
-	SidebarFooter,
-	SidebarGroup,
-	SidebarGroupContent,
-	SidebarGroupLabel,
-	SidebarHeader,
-	SidebarMenu,
-	SidebarMenuButton,
-	SidebarMenuItem,
-	SidebarSeparator,
-} from "@repo/ui/components/sidebar";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from "@repo/ui/components/dropdown-menu";
-import {
-	Collapsible,
-	CollapsibleContent,
-	CollapsibleTrigger,
-} from "@repo/ui/components/collapsible";
-import { Kbd } from "@repo/ui/components/kbd";
-import { cn } from "@repo/ui/lib/utils";
-
+import Image from "next/image";
+import Link from "next/link";
+import { useState } from "react";
 import { UpgradeCard } from "@/modules/dashboard/components/upgrade-card";
 
-export function DashboardSidebar(
-	props: React.ComponentProps<typeof Sidebar>,
-) {
+export function DashboardSidebar(props: React.ComponentProps<typeof Sidebar>) {
 	const [favoritesOpen, setFavoritesOpen] = useState(true);
 
 	return (
@@ -170,13 +167,15 @@ export function DashboardSidebar(
 					<SidebarGroupContent>
 						<SidebarMenu>
 							<SidebarMenuItem>
-								<SidebarMenuButton
-									isActive
-									className="h-7 text-sm text-muted-foreground"
-								>
-									<LayoutDashboard className="size-4" />
-									<span>Dashboard</span>
-								</SidebarMenuButton>
+								<Link href={"/dashboard"} prefetch>
+									<SidebarMenuButton
+										isActive
+										className="h-7 text-sm text-muted-foreground"
+									>
+										<LayoutDashboard className="size-4" />
+										<span>Dashboard</span>
+									</SidebarMenuButton>
+								</Link>
 							</SidebarMenuItem>
 							<SidebarMenuItem>
 								<SidebarMenuButton className="h-7 text-sm text-muted-foreground">
@@ -209,7 +208,10 @@ export function DashboardSidebar(
 				<SidebarSeparator />
 
 				<SidebarGroup>
-					<Collapsible open={favoritesOpen} onOpenChange={setFavoritesOpen}>
+					<Collapsible
+						open={favoritesOpen}
+						onOpenChange={setFavoritesOpen}
+					>
 						<CollapsibleTrigger asChild>
 							<SidebarGroupLabel className="h-4 pb-4 pt-2 text-xs text-muted-foreground hover:text-foreground hover:bg-transparent cursor-pointer">
 								<span>Favorites</span>

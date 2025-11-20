@@ -1,4 +1,5 @@
 import { config } from "@repo/config";
+import { SidebarInset, SidebarProvider } from "@repo/ui/components/sidebar";
 import { SessionProvider } from "@saas/auth/components/SessionProvider";
 import { sessionQueryKey } from "@saas/auth/lib/api";
 import { getOrganizationList, getSession } from "@saas/auth/lib/server";
@@ -12,6 +13,8 @@ import { redirect } from "next/navigation";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
 import { type PropsWithChildren, Suspense } from "react";
+
+import { DashboardSidebar } from "@/modules/dashboard/components";
 
 type Props = PropsWithChildren & {
 	params: Promise<{ locale: string }>;
@@ -56,7 +59,16 @@ async function AppContent({
 				<SessionProvider>
 					<ActiveOrganizationProvider>
 						<ConfirmationAlertProvider>
-							{children}
+							<SidebarProvider className="bg-sidebar">
+								<DashboardSidebar />
+								<SidebarInset>
+									<div className="h-svh overflow-hidden lg:p-2 w-full bg-sidebar">
+										<div className="lg:border lg:rounded-md overflow-hidden flex flex-col items-center justify-start h-full w-full bg-background">
+											{children}
+										</div>
+									</div>
+								</SidebarInset>
+							</SidebarProvider>
 						</ConfirmationAlertProvider>
 					</ActiveOrganizationProvider>
 				</SessionProvider>
