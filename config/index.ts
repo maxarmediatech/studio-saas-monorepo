@@ -58,7 +58,7 @@ export const config = {
 		// Whether users should be able to create accounts (otherwise users can only be by admins)
 		enableSignup: true,
 		// Whether users should be able to sign in with a magic link
-		enableMagicLink: false,
+		enableMagicLink: true,
 		// Whether users should be able to sign in with a social provider
 		enableSocialLogin: true,
 		// Whether users should be able to sign in with a passkey
