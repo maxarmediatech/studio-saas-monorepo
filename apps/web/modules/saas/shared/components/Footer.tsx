@@ -8,9 +8,9 @@ export function Footer() {
 				"container max-w-6xl py-6 text-center text-foreground/60 text-xs",
 			)}
 		>
-			<span>
-				<a href="https://nebulaforge.dev">Built with NebulaForge</a>
-			</span>
+			{/* <span>
+				<a href="https://nebulaforge.dev">Maxar Media Pvt Ltd</a>
+			</span> */}
 			<span className="opacity-50"> | </span>
 			<LocaleLink href="/legal/privacy-policy">Privacy policy</LocaleLink>
 			<span className="opacity-50"> | </span>

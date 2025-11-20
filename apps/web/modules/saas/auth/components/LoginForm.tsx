@@ -3,11 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { authClient } from "@repo/auth/client";
 import { config } from "@repo/config";
-import {
-	Alert,
-	AlertDescription,
-	AlertTitle,
-} from "@repo/ui/components/alert";
+import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
 import { Button } from "@repo/ui/components/button";
 import {
 	Form,
@@ -28,6 +24,7 @@ import {
 	EyeIcon,
 	EyeOffIcon,
 	MailboxIcon,
+	Loader2Icon,
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -153,14 +150,18 @@ export function LoginForm() {
 			signinMode === "magic-link" ? (
 				<Alert>
 					<MailboxIcon />
-					<AlertTitle>{t("auth.login.hints.linkSent.title")}</AlertTitle>
+					<AlertTitle>
+						{t("auth.login.hints.linkSent.title")}
+					</AlertTitle>
 					<AlertDescription>
 						{t("auth.login.hints.linkSent.message")}
 					</AlertDescription>
 				</Alert>
 			) : (
 				<>
-					{invitationId && <OrganizationInvitationAlert className="mb-6" />}
+					{invitationId && (
+						<OrganizationInvitationAlert className="mb-6" />
+					)}
 
 					<Form {...form}>
 						<form
@@ -172,7 +173,10 @@ export function LoginForm() {
 									<LoginModeSwitch
 										activeMode={signinMode}
 										onChange={(mode) =>
-											form.setValue("mode", mode as typeof signinMode)
+											form.setValue(
+												"mode",
+												mode as typeof signinMode,
+											)
 										}
 									/>
 								)}
@@ -192,9 +196,14 @@ export function LoginForm() {
 								name="email"
 								render={({ field }) => (
 									<FormItem>
-										<FormLabel>{t("auth.signup.email")}</FormLabel>
+										<FormLabel>
+											{t("auth.signup.email")}
+										</FormLabel>
 										<FormControl>
-											<Input {...field} autoComplete="email" />
+											<Input
+												{...field}
+												autoComplete="email"
+											/>
 										</FormControl>
 									</FormItem>
 								)}
@@ -209,27 +218,39 @@ export function LoginForm() {
 											<FormItem>
 												<div className="flex justify-between gap-4">
 													<FormLabel>
-														{t("auth.signup.password")}
+														{t(
+															"auth.signup.password",
+														)}
 													</FormLabel>
 
 													<Link
 														href="/auth/forgot-password"
 														className="text-foreground/60 text-xs"
 													>
-														{t("auth.login.forgotPassword")}
+														{t(
+															"auth.login.forgotPassword",
+														)}
 													</Link>
 												</div>
 												<FormControl>
 													<div className="relative">
 														<Input
-															type={showPassword ? "text" : "password"}
+															type={
+																showPassword
+																	? "text"
+																	: "password"
+															}
 															className="pr-10"
 															{...field}
 															autoComplete="current-password"
 														/>
 														<button
 															type="button"
-															onClick={() => setShowPassword(!showPassword)}
+															onClick={() =>
+																setShowPassword(
+																	!showPassword,
+																)
+															}
 															className="absolute inset-y-0 right-0 flex items-center pr-4 text-primary text-xl"
 														>
 															{showPassword ? (
@@ -248,35 +269,48 @@ export function LoginForm() {
 							<Button
 								className="w-full"
 								type="submit"
-								variant="secondary"
-								// loading={form.formState.isSubmitting}
+								variant="default"
+								disabled={form.formState.isSubmitting}
 							>
-								{signinMode === "magic-link"
-									? t("auth.login.sendMagicLink")
-									: t("auth.login.submit")}
+								<span className="inline-flex items-center justify-center gap-2">
+									{form.formState.isSubmitting && (
+										<Loader2Icon
+											className="size-4 animate-spin"
+											aria-hidden="true"
+										/>
+									)}
+									{signinMode === "magic-link"
+										? t("auth.login.sendMagicLink")
+										: t("auth.login.submit")}
+								</span>
 							</Button>
 						</form>
 					</Form>
 
-					{config.auth.enableSignup && config.auth.enableSocialLogin && (
-						<>
-							<div className="relative my-6 h-4">
-								<hr className="relative top-2" />
-								<p className="-translate-x-1/2 absolute top-0 left-1/2 mx-auto inline-block h-4 bg-card px-2 text-center font-medium text-foreground/60 text-sm leading-tight">
-									{t("auth.login.continueWith")}
-								</p>
-							</div>
+					{config.auth.enableSignup &&
+						config.auth.enableSocialLogin && (
+							<>
+								<div className="relative my-6 h-4">
+									<hr className="relative top-2" />
+									<p className="-translate-x-1/2 absolute top-0 left-1/2 mx-auto inline-block h-4 bg-card px-2 text-center font-medium text-foreground/60 text-sm leading-tight">
+										{t("auth.login.continueWith")}
+									</p>
+								</div>
 
-							<div className="grid grid-cols-1 items-stretch gap-2 sm:grid-cols-2">
-								{Object.keys(oAuthProviders).map((providerId) => (
-									<SocialSigninButton
-										key={providerId}
-										provider={providerId as OAuthProvider}
-									/>
-								))}
-							</div>
-						</>
-					)}
+								<div className="grid grid-cols-1 items-stretch gap-2">
+									{Object.keys(oAuthProviders).map(
+										(providerId) => (
+											<SocialSigninButton
+												key={providerId}
+												provider={
+													providerId as OAuthProvider
+												}
+											/>
+										),
+									)}
+								</div>
+							</>
+						)}
 
 					{config.auth.enableSignup && (
 						<div className="mt-6 text-center text-sm">

@@ -31,14 +31,14 @@ export function SocialSigninButton({
 	return (
 		<Button
 			onClick={() => onSignin()}
-			variant="ghost"
+			variant="outline"
 			type="button"
-			className={className}
+			className={`w-full justify-center ${className ?? ""}`}
 		>
 			{providerData.icon && (
-				<i className="mr-2 text-primary">
-					<providerData.icon className="size-4" />
-				</i>
+				<span className="mr-2 inline-flex items-center">
+					<providerData.icon className="size-4" aria-hidden="true" />
+				</span>
 			)}
 			{providerData.name}
 		</Button>
