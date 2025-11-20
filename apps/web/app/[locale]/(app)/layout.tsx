@@ -61,9 +61,9 @@ async function AppContent({
 						<ConfirmationAlertProvider>
 							<SidebarProvider className="bg-sidebar">
 								<DashboardSidebar />
-								<SidebarInset>
+								<SidebarInset className="min-w-0">
 									<div className="h-svh overflow-hidden lg:p-2 w-full bg-sidebar">
-										<div className="lg:border lg:rounded-md overflow-hidden flex flex-col items-center justify-start h-full w-full bg-background">
+										<div className="lg:border lg:rounded-md overflow-hidden flex flex-col h-full w-full bg-background">
 											{children}
 										</div>
 									</div>
