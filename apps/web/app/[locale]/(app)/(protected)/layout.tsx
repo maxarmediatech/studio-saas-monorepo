@@ -35,7 +35,7 @@ export default async function ProtectedAppLayout({ children, params }: Props) {
 			(org) => org.id === session?.session.activeOrganizationId,
 		) || organizations.at(0);
 
-	let organizationId: string | undefined =
+	const organizationId: string | undefined =
 		config.organizations.enable && activeOrganization
 			? activeOrganization.id
 			: undefined;

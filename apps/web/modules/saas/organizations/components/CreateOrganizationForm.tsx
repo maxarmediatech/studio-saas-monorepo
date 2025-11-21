@@ -18,8 +18,8 @@ import {
 } from "@saas/organizations/lib/api";
 import { useRouter } from "@shared/hooks/router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -68,9 +68,7 @@ export function CreateOrganizationForm({
 			});
 
 			const localePrefix = locale ? `/${locale}` : "";
-			router.replace(
-				redirectTo ?? `${localePrefix}/choose-plan`,
-			);
+			router.replace(redirectTo ?? `${localePrefix}/choose-plan`);
 		} catch {
 			toast.error(t("organizations.createForm.notifications.error"));
 		}
