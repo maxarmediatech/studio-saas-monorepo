@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { authClient } from "@repo/auth/client";
 import { config } from "@repo/config";
-import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
+import { Alert, AlertDescription } from "@repo/ui/components/alert";
 import { Button } from "@repo/ui/components/button";
 import {
 	Form,
@@ -21,6 +21,7 @@ import {
 	ArrowRightIcon,
 	EyeIcon,
 	EyeOffIcon,
+	Loader2Icon,
 	MailboxIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -122,9 +123,9 @@ export function SignupForm({ prefillEmail }: { prefillEmail?: string }) {
 			{form.formState.isSubmitSuccessful && !invitationOnlyMode ? (
 				<Alert variant="default">
 					<MailboxIcon />
-					<AlertTitle>
+					<AlertDescription>
 						{t("auth.signup.hints.verifyEmail")}
-					</AlertTitle>
+					</AlertDescription>
 				</Alert>
 			) : (
 				<>
@@ -228,9 +229,18 @@ export function SignupForm({ prefillEmail }: { prefillEmail?: string }) {
 							)}
 
 							<Button
-							// loading={form.formState.isSubmitting}
+								type="submit"
+								disabled={form.formState.isSubmitting}
 							>
-								{t("auth.signup.submit")}
+								<span className="inline-flex items-center justify-center gap-2">
+									{form.formState.isSubmitting && (
+										<Loader2Icon
+											className="size-4 animate-spin"
+											aria-hidden="true"
+										/>
+									)}
+									{t("auth.signup.submit")}
+								</span>
 							</Button>
 						</form>
 					</Form>

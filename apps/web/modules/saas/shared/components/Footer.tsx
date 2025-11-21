@@ -11,7 +11,7 @@ export function Footer() {
 			{/* <span>
 				<a href="https://nebulaforge.dev">Maxar Media Pvt Ltd</a>
 			</span> */}
-			<span className="opacity-50"> | </span>
+			{/* <span className="opacity-50"> | </span> */}
 			<LocaleLink href="/legal/privacy-policy">Privacy policy</LocaleLink>
 			<span className="opacity-50"> | </span>
 			<LocaleLink href="/legal/terms">Terms and conditions</LocaleLink>

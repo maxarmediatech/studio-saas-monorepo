@@ -68,7 +68,7 @@ export const config = {
 		// Whether users should be activate two factor authentication
 		enableTwoFactor: true,
 		// where users should be redirected after the sign in
-		redirectAfterSignIn: "/app",
+		redirectAfterSignIn: "/",
 		// where users should be redirected after logout
 		redirectAfterLogout: "/",
 		// how long a session should be valid
@@ -77,7 +77,7 @@ export const config = {
 	// Mails
 	mails: {
 		// the from address for mails
-		from: "noreply@nebulaforge.dev",
+		from: "noreply@updates.studsol.com",
 	},
 	// Frontend
 	ui: {
