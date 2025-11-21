@@ -8,6 +8,7 @@ import { sessionQueryKey } from "@saas/auth/lib/api";
 import {
 	activeOrganizationQueryKey,
 	useActiveOrganizationQuery,
+	useOrganizationListQuery,
 } from "@saas/organizations/lib/api";
 import { useRouter } from "@shared/hooks/router";
 import { orpc } from "@shared/lib/orpc-query-utils";
@@ -26,17 +27,31 @@ export function ActiveOrganizationProvider({
 	const queryClient = useQueryClient();
 	const { session, user } = useSession();
 	const params = useParams();
+	const { data: organizations } = useOrganizationListQuery();
 
-	const activeOrganizationSlug = params.organizationSlug as string;
+	const activeOrganizationSlug =
+		(params.organizationSlug as string | undefined) ||
+		organizations?.find(
+			(org) => org.id === session?.session?.activeOrganizationId,
+		)?.slug ||
+		organizations?.[0]?.slug ||
+		"";
+	const locale = params.locale as string | undefined;
+	const localePrefix = locale ? `/${locale}` : "";
+	const hasActiveOrganizationSlug = activeOrganizationSlug.length > 0;
 
 	const { data: activeOrganization } = useActiveOrganizationQuery(
 		activeOrganizationSlug,
 		{
-			enabled: !!activeOrganizationSlug,
+			enabled: hasActiveOrganizationSlug,
 		},
 	);
 
 	const refetchActiveOrganization = async () => {
+		if (!hasActiveOrganizationSlug) {
+			return;
+		}
+
 		await queryClient.refetchQueries({
 			queryKey: activeOrganizationQueryKey(activeOrganizationSlug),
 		});
@@ -82,16 +97,18 @@ export function ActiveOrganizationProvider({
 			};
 		});
 
-		router.push(`/app/${newActiveOrganization.slug}`);
+		router.push(`${localePrefix}/${newActiveOrganization.slug}`);
 	};
 
-	const [loaded, setLoaded] = useState(activeOrganization !== undefined);
+	const [loaded, setLoaded] = useState(
+		activeOrganization !== undefined || !hasActiveOrganizationSlug,
+	);
 
 	useEffect(() => {
-		if (!loaded && activeOrganization !== undefined) {
+		if (!loaded && (activeOrganization !== undefined || !hasActiveOrganizationSlug)) {
 			setLoaded(true);
 		}
-	}, [activeOrganization]);
+	}, [activeOrganization, hasActiveOrganizationSlug, loaded]);
 
 	const activeOrganizationUserRole = activeOrganization?.members.find(
 		(member) => member.userId === session?.userId,
