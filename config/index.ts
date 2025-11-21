@@ -10,18 +10,18 @@ export const config = {
 		// You need to define a label that is shown in the language selector and a currency that should be used for pricing with this locale
 		locales: {
 			en: {
-				currency: "USD",
+				currency: "INR",
 				label: "English",
 			},
 			de: {
-				currency: "USD",
+				currency: "INR",
 				label: "Deutsch",
 			},
 		},
 		// The default locale is used if no locale is provided
 		defaultLocale: "en",
 		// The default currency is used for pricing if no currency is provided
-		defaultCurrency: "USD",
+		defaultCurrency: "INR",
 		// The name of the cookie that is used to determine the locale
 		localeCookieName: "NEXT_LOCALE",
 	},
@@ -121,48 +121,72 @@ export const config = {
 	payments: {
 		// define the products that should be available in the checkout
 		plans: {
-			// The free plan is treated differently. It will automatically be assigned if the user has no other plan.
-			free: {
-				isFree: true,
+			freelancer: {
+				prices: [
+					{
+						type: "recurring",
+						productId: process.env
+							.NEXT_PUBLIC_PRICE_ID_FREELANCER_MONTHLY as string,
+						interval: "month",
+						amount: 599,
+						currency: "INR",
+						trialPeriodDays: 14,
+					},
+					{
+						type: "recurring",
+						productId: process.env
+							.NEXT_PUBLIC_PRICE_ID_FREELANCER_YEARLY as string,
+						interval: "year",
+						amount: 6590,
+						currency: "INR",
+						trialPeriodDays: 14,
+					},
+				],
 			},
-			pro: {
+			starter: {
 				recommended: true,
 				prices: [
 					{
 						type: "recurring",
 						productId: process.env
-							.NEXT_PUBLIC_PRICE_ID_PRO_MONTHLY as string,
+							.NEXT_PUBLIC_PRICE_ID_STARTER_MONTHLY as string,
 						interval: "month",
-						amount: 29,
-						currency: "USD",
-						seatBased: true,
-						trialPeriodDays: 7,
+						amount: 899,
+						currency: "INR",
+						trialPeriodDays: 14,
 					},
 					{
 						type: "recurring",
 						productId: process.env
-							.NEXT_PUBLIC_PRICE_ID_PRO_YEARLY as string,
+							.NEXT_PUBLIC_PRICE_ID_STARTER_YEARLY as string,
 						interval: "year",
-						amount: 290,
-						currency: "USD",
-						seatBased: true,
-						trialPeriodDays: 7,
+						amount: 9889,
+						currency: "INR",
+						trialPeriodDays: 14,
 					},
 				],
 			},
-			lifetime: {
+			growth: {
 				prices: [
 					{
-						type: "one-time",
+						type: "recurring",
 						productId: process.env
-							.NEXT_PUBLIC_PRICE_ID_LIFETIME as string,
-						amount: 799,
-						currency: "USD",
+							.NEXT_PUBLIC_PRICE_ID_GROWTH_MONTHLY as string,
+						interval: "month",
+						amount: 1999,
+						currency: "INR",
+						trialPeriodDays: 14,
+					},
+					{
+						type: "recurring",
+						productId: process.env
+							.NEXT_PUBLIC_PRICE_ID_GROWTH_YEARLY as string,
+						interval: "year",
+						amount: 21989,
+						currency: "INR",
+						trialPeriodDays: 14,
 					},
 				],
-			},
-			enterprise: {
-				isEnterprise: true,
 			},
 		},
 	},

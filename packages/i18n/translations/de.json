@@ -451,51 +451,37 @@
 	"pricing": {
 		"choosePlan": "Plan auswählen",
 		"contactSales": "Vertrieb kontaktieren",
-		"description": "Wähle das passende Paket für dich aus.",
+		"description": "Tarife für Fotostudios in Indien. Preise inkl. Steuern.",
 		"getStarted": "Jetzt loslegen",
 		"month": "Monat",
 		"monthly": "Monatlich",
 		"products": {
-			"basic": {
-				"description": "Perfekt für den Einstieg",
+			"freelancer": {
+				"description": "Für Solo-Fotograf:innen: 1 Studio, 1 Crew, unbegrenzte Buchungen.",
 				"features": {
-					"anotherFeature": "Ein weiteres erstaunliches Merkmal",
-					"limitedSupport": "Begrenzter Support"
+					"singleStudio": "1 Studio-Workspace",
+					"singleCrew": "1 Crew-Mitglied",
+					"unlimitedBookings": "Unbegrenzte Buchungen"
 				},
-				"title": "Basic"
+				"title": "Freelancer"
 			},
-			"enterprise": {
-				"description": "Maßgeschneiderter Plan für deine Anforderungen",
+			"starter": {
+				"description": "Empfohlen: Launch-Preis für dein erstes Studio (inkl. Steuern).",
 				"features": {
-					"enterpriseSupport": "Support für Unternehmen",
-					"unlimitedProjects": "Unbegrenzte Projekte"
+					"singleStudio": "1 Studio-Workspace",
+					"unlimitedBookings": "Unbegrenzte Buchungen",
+					"crewCap": "Bis zu 20 Crew-Mitglieder"
 				},
-				"title": "Enterprise"
+				"title": "Studio Starter"
 			},
-			"free": {
-				"description": "Kostenloser Start",
+			"growth": {
+				"description": "Fünf Studios mit unbegrenzten Buchungen – ideal zum Skalieren.",
 				"features": {
-					"anotherFeature": "Ein weiteres erstaunliches Merkmal",
-					"limitedSupport": "Begrenzter Support"
+					"studios": "5 Studio-Workspaces inklusive",
+					"unlimitedBookings": "Unbegrenzte Buchungen",
+					"crewCap": "Bis zu 20 Crew-Mitglieder pro Studio"
 				},
-				"title": "Free"
-			},
-			"lifetime": {
-				"description": "Einmal kaufen. Für immer verwenden.",
-				"features": {
-					"extendSupport": "Erweiterter Support",
-					"noRecurringCosts": "Keine wiederkehrenden Kosten"
-				},
-				"title": "Lifetime"
-			},
-			"pro": {
-				"description": "Am besten für Teams",
-				"features": {
-					"anotherFeature": "Ein weiteres erstaunliches Merkmal",
-					"fiveMembers": "Bis zu 5 Mitglieder",
-					"fullSupport": "Voller Support"
-				},
-				"title": "Pro"
+				"title": "Multi-Studio"
 			}
 		},
 		"purchase": "Kaufen",

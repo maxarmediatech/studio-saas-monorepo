@@ -15,36 +15,31 @@ export function usePlanData() {
 			features: ReactNode[];
 		}
 	> = {
-		free: {
-			title: t("pricing.products.free.title"),
-			description: t("pricing.products.free.description"),
+		freelancer: {
+			title: t("pricing.products.freelancer.title"),
+			description: t("pricing.products.freelancer.description"),
 			features: [
-				t("pricing.products.free.features.anotherFeature"),
-				t("pricing.products.free.features.limitedSupport"),
+				t("pricing.products.freelancer.features.singleStudio"),
+				t("pricing.products.freelancer.features.singleCrew"),
+				t("pricing.products.freelancer.features.unlimitedBookings"),
 			],
 		},
-		pro: {
-			title: t("pricing.products.pro.title"),
-			description: t("pricing.products.pro.description"),
+		starter: {
+			title: t("pricing.products.starter.title"),
+			description: t("pricing.products.starter.description"),
 			features: [
-				t("pricing.products.pro.features.anotherFeature"),
-				t("pricing.products.pro.features.fullSupport"),
+				t("pricing.products.starter.features.singleStudio"),
+				t("pricing.products.starter.features.unlimitedBookings"),
+				t("pricing.products.starter.features.crewCap"),
 			],
 		},
-		enterprise: {
-			title: t("pricing.products.enterprise.title"),
-			description: t("pricing.products.enterprise.description"),
+		growth: {
+			title: t("pricing.products.growth.title"),
+			description: t("pricing.products.growth.description"),
 			features: [
-				t("pricing.products.enterprise.features.unlimitedProjects"),
-				t("pricing.products.enterprise.features.enterpriseSupport"),
-			],
-		},
-		lifetime: {
-			title: t("pricing.products.lifetime.title"),
-			description: t("pricing.products.lifetime.description"),
-			features: [
-				t("pricing.products.lifetime.features.noRecurringCosts"),
-				t("pricing.products.lifetime.features.extendSupport"),
+				t("pricing.products.growth.features.studios"),
+				t("pricing.products.growth.features.unlimitedBookings"),
+				t("pricing.products.growth.features.crewCap"),
 			],
 		},
 	};
