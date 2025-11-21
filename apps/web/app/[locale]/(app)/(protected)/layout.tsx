@@ -1,13 +1,12 @@
 import { config } from "@repo/config";
 import { createPurchasesHelper } from "@repo/payments/lib/helper";
-import { getOrganizationList, getSession } from "@saas/auth/lib/server";
 import { SidebarInset, SidebarProvider } from "@repo/ui/components/sidebar";
-import { DashboardSidebar } from "@/modules/dashboard/components";
+import { getOrganizationList, getSession } from "@saas/auth/lib/server";
+import { orpcClient } from "@shared/lib/orpc-client";
 import { attemptAsync } from "es-toolkit";
 import { redirect } from "next/navigation";
 import type { PropsWithChildren } from "react";
-
-import { orpcClient } from "@shared/lib/orpc-client";
+import { DashboardSidebar } from "@/modules/dashboard/components";
 
 type Props = PropsWithChildren & {
 	params: Promise<{ locale: string }>;
@@ -31,35 +30,38 @@ export default async function ProtectedAppLayout({ children, params }: Props) {
 		? await getOrganizationList()
 		: [];
 
-	let organizationId: string | undefined;
+	const activeOrganization =
+		organizations.find(
+			(org) => org.id === session?.session.activeOrganizationId,
+		) || organizations.at(0);
 
-	if (config.organizations.enable && config.organizations.requireOrganization) {
-		const organization =
-			organizations.find(
-				(org) => org.id === session?.session.activeOrganizationId,
-			) || organizations[0];
-
-		if (!organization) {
-			redirect(
-				`/${locale}/new-organization?redirectTo=${encodeURIComponent(`/${locale}`)}`,
-			);
-		}
-
-		organizationId = organization.id;
-	}
-
-	const hasFreePlan = Object.values(config.payments.plans).some(
-		(plan) => "isFree" in plan,
-	);
+	let organizationId: string | undefined =
+		config.organizations.enable && activeOrganization
+			? activeOrganization.id
+			: undefined;
 
 	if (
 		config.organizations.enable &&
-		config.organizations.enableBilling &&
-		!hasFreePlan
+		config.organizations.requireOrganization &&
+		!organizationId
 	) {
-		if (!organizationId) {
+		redirect(
+			`/${locale}/new-organization?redirectTo=${encodeURIComponent(`/${locale}/choose-plan`)}`,
+		);
+	}
+
+	const billingEnabled =
+		(config.organizations.enable && config.organizations.enableBilling) ||
+		config.users.enableBilling;
+
+	if (billingEnabled) {
+		if (
+			config.organizations.enable &&
+			config.organizations.enableBilling &&
+			!organizationId
+		) {
 			redirect(
-				`/${locale}/new-organization?redirectTo=${encodeURIComponent(`/${locale}`)}`,
+				`/${locale}/new-organization?redirectTo=${encodeURIComponent(`/${locale}/choose-plan`)}`,
 			);
 		}
 
@@ -76,7 +78,9 @@ export default async function ProtectedAppLayout({ children, params }: Props) {
 		const purchases = data?.purchases ?? [];
 		const { activePlan } = createPurchasesHelper(purchases);
 
-		if (!activePlan) {
+		const hasSelectedPlan = purchases.length > 0 && !!activePlan;
+
+		if (!hasSelectedPlan) {
 			redirect(`/${locale}/choose-plan`);
 		}
 	}

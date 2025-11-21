@@ -1,3 +1,4 @@
+import { config } from "@repo/config";
 import { createPurchasesHelper } from "@repo/payments/lib/helper";
 import { getOrganizationList, getSession } from "@saas/auth/lib/server";
 import { PricingTable } from "@saas/payments/components/PricingTable";
@@ -28,18 +29,26 @@ export default async function ChoosePlanPage({ params }: Props) {
 		redirect("/auth/login");
 	}
 
-	const organizationList = await getOrganizationList();
-	const organization =
-		organizationList.find(
-			(org) => org.id === session.session.activeOrganizationId,
-		) || organizationList.at(0);
+	let organizationId: string | undefined;
 
-	if (!organization) {
-		redirect(`/${locale}/new-organization`);
+	if (config.organizations.enable && config.organizations.enableBilling) {
+		const organizationList = await getOrganizationList();
+		const organization =
+			organizationList.find(
+				(org) => org.id === session.session.activeOrganizationId,
+			) || organizationList.at(0);
+
+		if (!organization) {
+			redirect(
+				`/${locale}/new-organization?redirectTo=${encodeURIComponent(`/${locale}/choose-plan`)}`,
+			);
+		}
+
+		organizationId = organization?.id;
 	}
 
 	const [error, purchases] = await attemptAsync(() =>
-		getPurchases(organization.id),
+		getPurchases(organizationId),
 	);
 
 	if (error || !purchases) {
@@ -47,8 +56,9 @@ export default async function ChoosePlanPage({ params }: Props) {
 	}
 
 	const { activePlan } = createPurchasesHelper(purchases);
+	const hasPurchases = purchases.length > 0;
 
-	if (activePlan) {
+	if (hasPurchases && activePlan) {
 		redirect(`/${locale}`);
 	}
 
@@ -64,7 +74,18 @@ export default async function ChoosePlanPage({ params }: Props) {
 			</div>
 
 			<div>
-				<PricingTable organizationId={organization.id} />
+				<PricingTable
+					activePlanId={
+						hasPurchases ? activePlan?.id : undefined
+					}
+					{...(organizationId
+						? {
+								organizationId,
+							}
+						: {
+								userId: session.user.id,
+							})}
+				/>
 			</div>
 		</AuthWrapper>
 	);

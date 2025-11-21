@@ -19,6 +19,7 @@ import {
 import { useRouter } from "@shared/hooks/router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
+import { useParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -31,12 +32,15 @@ type FormValues = z.infer<typeof formSchema>;
 
 export function CreateOrganizationForm({
 	defaultName,
+	redirectTo,
 }: {
 	defaultName?: string;
+	redirectTo?: string;
 }) {
 	const t = useTranslations();
 	const router = useRouter();
 	const queryClient = useQueryClient();
+	const { locale } = useParams<{ locale?: string }>();
 	const { setActiveOrganization } = useActiveOrganization();
 	const createOrganizationMutation = useCreateOrganizationMutation();
 	const form = useForm<FormValues>({
@@ -63,7 +67,10 @@ export function CreateOrganizationForm({
 				queryKey: organizationListQueryKey,
 			});
 
-			router.replace(`/${newOrganization.slug}`);
+			const localePrefix = locale ? `/${locale}` : "";
+			router.replace(
+				redirectTo ?? `${localePrefix}/choose-plan`,
+			);
 		} catch {
 			toast.error(t("organizations.createForm.notifications.error"));
 		}

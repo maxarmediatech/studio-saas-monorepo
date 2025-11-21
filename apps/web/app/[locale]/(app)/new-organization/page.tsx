@@ -6,10 +6,21 @@ import { redirect } from "next/navigation";
 
 type Props = {
 	params: Promise<{ locale: string }>;
+	searchParams: Promise<{ redirectTo?: string }>;
 };
 
-export default async function NewOrganizationPage({ params }: Props) {
-	const { locale } = await params;
+export default async function NewOrganizationPage({
+	params,
+	searchParams,
+}: Props) {
+	const [{ locale }, rawSearchParams] = await Promise.all([
+		params,
+		searchParams,
+	]);
+	const redirectTo = Array.isArray(rawSearchParams.redirectTo)
+		? rawSearchParams.redirectTo[0]
+		: rawSearchParams.redirectTo;
+
 	const organizations = await getOrganizationList();
 
 	if (
@@ -22,7 +33,9 @@ export default async function NewOrganizationPage({ params }: Props) {
 
 	return (
 		<AuthWrapper>
-			<CreateOrganizationForm />
+			<CreateOrganizationForm
+				redirectTo={redirectTo ?? `/${locale}/choose-plan`}
+			/>
 		</AuthWrapper>
 	);
 }

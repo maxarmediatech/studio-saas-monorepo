@@ -26,7 +26,9 @@ export default async function AppHomePage({ params }: Props) {
 			) || organizations[0];
 
 		if (!organization) {
-			redirect(`/${locale}/new-organization`);
+			redirect(
+				`/${locale}/new-organization?redirectTo=${encodeURIComponent(`/${locale}/choose-plan`)}`,
+			);
 		}
 
 		redirect(`/${locale}/${organization.slug}`);
