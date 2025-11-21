@@ -130,7 +130,7 @@ export const config = {
 						interval: "month",
 						amount: 599,
 						currency: "INR",
-						trialPeriodDays: 30,
+						trialPeriodDays: 0,
 					},
 					{
 						type: "recurring",
@@ -139,7 +139,7 @@ export const config = {
 						interval: "year",
 						amount: 6590,
 						currency: "INR",
-						trialPeriodDays: 30,
+						trialPeriodDays: 0,
 					},
 				],
 			},
