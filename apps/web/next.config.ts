@@ -20,6 +20,11 @@ const imageRemotePatterns: RemotePattern[] = [
 		protocol: "https",
 		hostname: "avatars.githubusercontent.com",
 	},
+	{
+		// dicebear avatars used in dashboard mocks
+		protocol: "https",
+		hostname: "api.dicebear.com",
+	},
 ];
 
 const nextConfig = {

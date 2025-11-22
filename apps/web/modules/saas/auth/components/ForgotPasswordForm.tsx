@@ -14,7 +14,12 @@ import {
 } from "@repo/ui/components/form";
 import { Input } from "@repo/ui/components/input";
 import { useAuthErrorMessages } from "@saas/auth/hooks/errors-messages";
-import { AlertTriangleIcon, ArrowLeftIcon, MailboxIcon } from "lucide-react";
+import {
+	AlertTriangleIcon,
+	ArrowLeftIcon,
+	Loader2Icon,
+	MailboxIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
@@ -117,9 +122,18 @@ export function ForgotPasswordForm() {
 						/>
 
 						<Button
-						// loading={form.formState.isSubmitting}
+							type="submit"
+							disabled={form.formState.isSubmitting}
 						>
-							{t("auth.forgotPassword.submit")}
+							<span className="inline-flex items-center justify-center gap-2">
+								{form.formState.isSubmitting && (
+									<Loader2Icon
+										className="size-4 animate-spin"
+										aria-hidden="true"
+									/>
+								)}
+								{t("auth.forgotPassword.submit")}
+							</span>
 						</Button>
 					</form>
 				</Form>

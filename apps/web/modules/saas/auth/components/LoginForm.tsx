@@ -23,8 +23,8 @@ import {
 	ArrowRightIcon,
 	EyeIcon,
 	EyeOffIcon,
-	KeyIcon,
 	MailboxIcon,
+	Loader2Icon,
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -135,22 +135,6 @@ export function LoginForm() {
 		}
 	};
 
-	const signInWithPasskey = async () => {
-		try {
-			await authClient.signIn.passkey();
-
-			router.replace(redirectPath);
-		} catch (e) {
-			form.setError("root", {
-				message: getAuthErrorMessage(
-					e && typeof e === "object" && "code" in e
-						? (e.code as string)
-						: undefined,
-				),
-			});
-		}
-	};
-
 	const signinMode = form.watch("mode");
 
 	return (
@@ -164,7 +148,7 @@ export function LoginForm() {
 
 			{form.formState.isSubmitSuccessful &&
 			signinMode === "magic-link" ? (
-				<Alert variant="default">
+				<Alert>
 					<MailboxIcon />
 					<AlertTitle>
 						{t("auth.login.hints.linkSent.title")}
@@ -285,31 +269,36 @@ export function LoginForm() {
 							<Button
 								className="w-full"
 								type="submit"
-								variant="secondary"
-								// loading={form.formState.isSubmitting}
+								variant="default"
+								disabled={form.formState.isSubmitting}
 							>
-								{signinMode === "magic-link"
-									? t("auth.login.sendMagicLink")
-									: t("auth.login.submit")}
+								<span className="inline-flex items-center justify-center gap-2">
+									{form.formState.isSubmitting && (
+										<Loader2Icon
+											className="size-4 animate-spin"
+											aria-hidden="true"
+										/>
+									)}
+									{signinMode === "magic-link"
+										? t("auth.login.sendMagicLink")
+										: t("auth.login.submit")}
+								</span>
 							</Button>
 						</form>
 					</Form>
 
-					{(config.auth.enablePasskeys ||
-						(config.auth.enableSignup &&
-							config.auth.enableSocialLogin)) && (
-						<>
-							<div className="relative my-6 h-4">
-								<hr className="relative top-2" />
-								<p className="-translate-x-1/2 absolute top-0 left-1/2 mx-auto inline-block h-4 bg-card px-2 text-center font-medium text-foreground/60 text-sm leading-tight">
-									{t("auth.login.continueWith")}
-								</p>
-							</div>
+					{config.auth.enableSignup &&
+						config.auth.enableSocialLogin && (
+							<>
+								<div className="relative my-6 h-4">
+									<hr className="relative top-2" />
+									<p className="-translate-x-1/2 absolute top-0 left-1/2 mx-auto inline-block h-4 bg-card px-2 text-center font-medium text-foreground/60 text-sm leading-tight">
+										{t("auth.login.continueWith")}
+									</p>
+								</div>
 
-							<div className="grid grid-cols-1 items-stretch gap-2 sm:grid-cols-2">
-								{config.auth.enableSignup &&
-									config.auth.enableSocialLogin &&
-									Object.keys(oAuthProviders).map(
+								<div className="grid grid-cols-1 items-stretch gap-2">
+									{Object.keys(oAuthProviders).map(
 										(providerId) => (
 											<SocialSigninButton
 												key={providerId}
@@ -319,20 +308,9 @@ export function LoginForm() {
 											/>
 										),
 									)}
-
-								{config.auth.enablePasskeys && (
-									<Button
-										variant="ghost"
-										className="w-full sm:col-span-2"
-										onClick={() => signInWithPasskey()}
-									>
-										<KeyIcon className="mr-1.5 size-4 text-primary" />
-										{t("auth.login.loginWithPasskey")}
-									</Button>
-								)}
-							</div>
-						</>
-					)}
+								</div>
+							</>
+						)}
 
 					{config.auth.enableSignup && (
 						<div className="mt-6 text-center text-sm">

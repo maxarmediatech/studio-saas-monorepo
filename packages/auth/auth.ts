@@ -22,7 +22,6 @@ import {
 	twoFactor,
 	username,
 } from "better-auth/plugins";
-import { passkey } from "better-auth/plugins/passkey";
 import { parse as parseCookies } from "cookie";
 import { updateSeatsInOrganizationSubscription } from "./lib/organization";
 import { invitationOnlyPlugin } from "./plugins/invitation-only";
@@ -43,6 +42,7 @@ export const auth = betterAuth({
 	appName: config.appName,
 	database: drizzleAdapter(db, {
 		provider: "pg",
+		usePlural: true,
 	}),
 	advanced: {
 		database: {
@@ -56,7 +56,7 @@ export const auth = betterAuth({
 	account: {
 		accountLinking: {
 			enabled: true,
-			trustedProviders: ["google", "github"],
+			trustedProviders: ["google"],
 		},
 	},
 	hooks: {
@@ -195,16 +195,15 @@ export const auth = betterAuth({
 			clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
 			scope: ["email", "profile"],
 		},
-		github: {
-			clientId: process.env.GITHUB_CLIENT_ID as string,
-			clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
-			scope: ["user:email"],
-		},
+		// github: {
+		// 	clientId: process.env.GITHUB_CLIENT_ID as string,
+		// 	clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
+		// 	scope: ["user:email"],
+		// },
 	},
 	plugins: [
 		username(),
 		admin(),
-		passkey(),
 		magicLink({
 			disableSignUp: false,
 			sendMagicLink: async ({ email, url }, request) => {

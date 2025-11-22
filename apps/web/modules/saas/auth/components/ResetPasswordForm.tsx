@@ -16,7 +16,12 @@ import {
 import { useAuthErrorMessages } from "@saas/auth/hooks/errors-messages";
 import { useSession } from "@saas/auth/hooks/use-session";
 import { useRouter } from "@shared/hooks/router";
-import { AlertTriangleIcon, ArrowLeftIcon, MailboxIcon } from "lucide-react";
+import {
+	AlertTriangleIcon,
+	ArrowLeftIcon,
+	Loader2Icon,
+	MailboxIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -121,9 +126,18 @@ export function ResetPasswordForm() {
 						/>
 
 						<Button
-						// loading={form.formState.isSubmitting}
+							type="submit"
+							disabled={form.formState.isSubmitting}
 						>
-							{t("auth.resetPassword.submit")}
+							<span className="inline-flex items-center justify-center gap-2">
+								{form.formState.isSubmitting && (
+									<Loader2Icon
+										className="size-4 animate-spin"
+										aria-hidden="true"
+									/>
+								)}
+								{t("auth.resetPassword.submit")}
+							</span>
 						</Button>
 					</form>
 				</Form>

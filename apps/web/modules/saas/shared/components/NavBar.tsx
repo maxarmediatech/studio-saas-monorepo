@@ -6,7 +6,6 @@ import { useActiveOrganization } from "@saas/organizations/hooks/use-active-orga
 import { UserMenu } from "@saas/shared/components/UserMenu";
 import { Logo } from "@shared/components/Logo";
 import {
-	BotMessageSquareIcon,
 	ChevronRightIcon,
 	HomeIcon,
 	SettingsIcon,
@@ -36,14 +35,6 @@ export function NavBar() {
 			href: basePath,
 			icon: HomeIcon,
 			isActive: pathname === basePath,
-		},
-		{
-			label: t("app.menu.aiChatbot"),
-			href: activeOrganization
-				? `/app/${activeOrganization.slug}/chatbot`
-				: "/app/chatbot",
-			icon: BotMessageSquareIcon,
-			isActive: pathname.includes("/chatbot"),
 		},
 		...(activeOrganization && !config.organizations.hideOrganization
 			? [
