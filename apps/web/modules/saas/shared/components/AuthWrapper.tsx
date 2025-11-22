@@ -1,11 +1,9 @@
-import { config } from "@repo/config";
 import { cn } from "@repo/ui/lib/utils";
 import { Footer } from "@saas/shared/components/Footer";
 import { ColorModeToggle } from "@shared/components/ColorModeToggle";
-import { LocaleSwitch } from "@shared/components/LocaleSwitch";
 import { Logo } from "@shared/components/Logo";
 import Link from "next/link";
-import { type PropsWithChildren, Suspense } from "react";
+import type { PropsWithChildren } from "react";
 
 export function AuthWrapper({
 	children,
@@ -21,11 +19,11 @@ export function AuthWrapper({
 						</Link>
 
 						<div className="flex items-center justify-end gap-2">
-							{config.i18n.enabled && (
+							{/* {config.i18n.enabled && (
 								<Suspense>
 									<LocaleSwitch withLocaleInUrl={false} />
 								</Suspense>
-							)}
+							)} */}
 							<ColorModeToggle />
 						</div>
 					</div>
