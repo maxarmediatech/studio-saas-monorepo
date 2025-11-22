@@ -34,18 +34,17 @@ export default function Error({
 						</span>
 						<div className="space-y-1">
 							<p className="text-xs font-semibold uppercase tracking-[0.2em] text-destructive">
-								Plan flow error
+								Application error
 							</p>
 							<h1 className="text-2xl font-semibold leading-tight sm:text-3xl">
-								We hit a snag while loading your plan options.
+								Something went wrong while loading this page.
 							</h1>
 						</div>
 					</div>
 
 					<p className="text-muted-foreground">
-						An unexpected server issue blocked this step. We&apos;ve
-						captured the details so you can retry safely or take an
-						alternate path below.
+						An unexpected server issue blocked this step. You can
+						retry, return home, or choose another path below.
 					</p>
 
 					<div className="flex flex-wrap items-center gap-3">
@@ -57,13 +56,6 @@ export default function Error({
 							<Link href={`${localePrefix || ""}/`}>
 								<Home className="h-4 w-4" aria-hidden />
 								Back home
-							</Link>
-						</Button>
-						<Button variant="outline" asChild>
-							<Link
-								href={`${localePrefix || ""}/new-organization?redirectTo=${encodeURIComponent(`${localePrefix || ""}/choose-plan`)}`}
-							>
-								Start a new organization
 							</Link>
 						</Button>
 					</div>
