@@ -32,7 +32,7 @@ export function ActiveOrganizationProvider({
 	const activeOrganizationSlug =
 		(params.organizationSlug as string | undefined) ||
 		organizations?.find(
-			(org) => org.id === session?.session?.activeOrganizationId,
+			(org) => org.id === session?.activeOrganizationId,
 		)?.slug ||
 		organizations?.[0]?.slug ||
 		"";
