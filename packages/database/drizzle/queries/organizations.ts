@@ -1,7 +1,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import type { z } from "zod";
 import { db } from "../client";
-import { invitations, members, organizations } from "../schema/postgres";
+import { members, organizations } from "../schema/postgres";
 import type { OrganizationUpdateSchema } from "../zod";
 
 export async function getOrganizations({

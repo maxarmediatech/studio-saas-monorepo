@@ -92,7 +92,7 @@ export const verifications = pgTable("verifications", {
 	updatedAt: timestamp("updated_at"),
 });
 
-export const twoFactor = pgTable(
+export const twoFactors = pgTable(
 	"two_factors",
 	{
 		id: varchar("id", { length: 255 })
@@ -163,7 +163,7 @@ export const invitations = pgTable("invitations", {
 		.references(() => users.id, { onDelete: "cascade" }),
 });
 
-export const purchase = pgTable("purchase", {
+export const purchases = pgTable("purchases", {
 	id: varchar("id", { length: 255 })
 		.$defaultFn(() => uuidv7())
 		.primaryKey(),
@@ -187,15 +187,15 @@ export const userRelations = relations(users, ({ many }) => ({
 	sessions: many(sessions),
 	accounts: many(accounts),
 	invitations: many(invitations),
-	purchases: many(purchase),
+	purchases: many(purchases),
 	memberships: many(members),
-	twoFactors: many(twoFactor),
+	twoFactors: many(twoFactors),
 }));
 
 export const organizationRelations = relations(organizations, ({ many }) => ({
 	members: many(members),
 	invitations: many(invitations),
-	purchases: many(purchase),
+	purchases: many(purchases),
 }));
 
 export const memberRelations = relations(members, ({ one }) => ({
@@ -234,20 +234,20 @@ export const invitationRelations = relations(invitations, ({ one }) => ({
 	}),
 }));
 
-export const purchaseRelations = relations(purchase, ({ one }) => ({
+export const purchaseRelations = relations(purchases, ({ one }) => ({
 	organization: one(organizations, {
-		fields: [purchase.organizationId],
+		fields: [purchases.organizationId],
 		references: [organizations.id],
 	}),
 	user: one(users, {
-		fields: [purchase.userId],
+		fields: [purchases.userId],
 		references: [users.id],
 	}),
 }));
 
-export const twoFactorRelations = relations(twoFactor, ({ one }) => ({
+export const twoFactorRelations = relations(twoFactors, ({ one }) => ({
 	user: one(users, {
-		fields: [twoFactor.userId],
+		fields: [twoFactors.userId],
 		references: [users.id],
 	}),
 }));

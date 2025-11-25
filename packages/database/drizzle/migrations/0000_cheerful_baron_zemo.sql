@@ -44,7 +44,7 @@ CREATE TABLE "organizations" (
 	"payments_customer_id" text
 );
 --> statement-breakpoint
-CREATE TABLE "purchase" (
+CREATE TABLE "purchases" (
 	"id" varchar(255) PRIMARY KEY NOT NULL,
 	"organization_id" text,
 	"user_id" text,
@@ -55,7 +55,7 @@ CREATE TABLE "purchase" (
 	"status" text,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp,
-	CONSTRAINT "purchase_subscription_id_unique" UNIQUE("subscription_id")
+	CONSTRAINT "purchases_subscription_id_unique" UNIQUE("subscription_id")
 );
 --> statement-breakpoint
 CREATE TABLE "sessions" (
@@ -69,6 +69,13 @@ CREATE TABLE "sessions" (
 	"token" text NOT NULL,
 	"created_at" timestamp NOT NULL,
 	"updated_at" timestamp NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "two_factors" (
+	"id" varchar(255) PRIMARY KEY NOT NULL,
+	"secret" text NOT NULL,
+	"backup_codes" text NOT NULL,
+	"user_id" text NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "users" (
@@ -88,6 +95,7 @@ CREATE TABLE "users" (
 	"onboarding_complete" boolean DEFAULT false NOT NULL,
 	"payments_customer_id" text,
 	"locale" text,
+	"two_factor_enabled" boolean DEFAULT false NOT NULL,
 	CONSTRAINT "users_email_unique" UNIQUE("email"),
 	CONSTRAINT "users_username_unique" UNIQUE("username")
 );
@@ -106,9 +114,11 @@ ALTER TABLE "invitations" ADD CONSTRAINT "invitations_organization_id_organizati
 ALTER TABLE "invitations" ADD CONSTRAINT "invitations_inviter_id_users_id_fk" FOREIGN KEY ("inviter_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "members" ADD CONSTRAINT "members_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "members" ADD CONSTRAINT "members_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "purchase" ADD CONSTRAINT "purchase_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "purchase" ADD CONSTRAINT "purchase_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "purchases" ADD CONSTRAINT "purchases_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "purchases" ADD CONSTRAINT "purchases_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "sessions" ADD CONSTRAINT "sessions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "two_factors" ADD CONSTRAINT "two_factors_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE UNIQUE INDEX "members_user_org_idx" ON "members" USING btree ("user_id","organization_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "organizations_slug_idx" ON "organizations" USING btree ("slug");--> statement-breakpoint
-CREATE UNIQUE INDEX "sessions_token_idx" ON "sessions" USING btree ("token");
+CREATE UNIQUE INDEX "sessions_token_idx" ON "sessions" USING btree ("token");--> statement-breakpoint
+CREATE UNIQUE INDEX "two_factors_user_id_idx" ON "two_factors" USING btree ("user_id");
