@@ -161,12 +161,28 @@ export const webhookHandler: WebhookHandler = async (req) => {
 
 		const payload = `${webhookId}.${webhookTimestamp}.${body}`;
 		const crypto = await import("node:crypto");
-		const expectedSignature = crypto
-			.createHmac("sha256", webhookSecret)
-			.update(payload)
-			.digest("hex");
 
-		if (webhookSignature !== expectedSignature) {
+		// Svix webhook secrets are prefixed with "whsec_" and base64-encoded
+		const secretBytes = Buffer.from(
+			webhookSecret.startsWith("whsec_")
+				? webhookSecret.slice(6)
+				: webhookSecret,
+			"base64",
+		);
+
+		const expectedSignature = crypto
+			.createHmac("sha256", secretBytes)
+			.update(payload)
+			.digest("base64");
+
+		// Svix signature header format: "v1,<base64_signature>" (may have multiple space-separated signatures)
+		const signatures = webhookSignature.split(" ");
+		const isValid = signatures.some((sig) => {
+			const [version, sigValue] = sig.split(",");
+			return version === "v1" && sigValue === expectedSignature;
+		});
+
+		if (!isValid) {
 			logger.error("Invalid webhook signature");
 			return new Response("Invalid webhook signature.", {
 				status: 401,
