@@ -8,6 +8,13 @@
       "when": 1764053076400,
       "tag": "0000_cheerful_baron_zemo",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1764091373501,
+      "tag": "0001_perpetual_killer_shrike",
+      "breakpoints": true
     }
   ]
 }

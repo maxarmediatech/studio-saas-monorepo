@@ -14,6 +14,7 @@ import {
 	twoFactors,
 	users,
 	verifications,
+	webhookEvents,
 } from "./schema";
 
 export const UserSchema = createSelectSchema(users);
@@ -36,3 +37,9 @@ export const SessionSchema = createSelectSchema(sessions);
 export const AccountSchema = createSelectSchema(accounts);
 export const VerificationSchema = createSelectSchema(verifications);
 export const TwoFactorSchema = createSelectSchema(twoFactors);
+export const WebhookEventSchema = createSelectSchema(webhookEvents);
+export type WebhookEvent = typeof webhookEvents.$inferSelect;
+export const WebhookEventInsertSchema = createInsertSchema(webhookEvents);
+export const WebhookEventUpdateSchema = createUpdateSchema(webhookEvents, {
+	id: z.string(),
+});

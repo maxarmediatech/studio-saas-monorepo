@@ -1,6 +1,10 @@
 import {
 	createPurchase,
+	createWebhookEvent,
 	getPurchaseBySubscriptionId,
+	getWebhookEventByWebhookId,
+	markWebhookEventFailed,
+	markWebhookEventProcessed,
 	updatePurchase,
 } from "@repo/database";
 import { logger } from "@repo/logs";
@@ -127,6 +131,7 @@ export const cancelSubscription: CancelSubscription = async (id) => {
 
 export const webhookHandler: WebhookHandler = async (req) => {
 	const webhookSecret = process.env.DODO_PAYMENTS_WEBHOOK_SECRET as string;
+	const apiKey = process.env.DODO_PAYMENTS_API_KEY as string;
 
 	if (!webhookSecret) {
 		logger.error(
@@ -140,7 +145,17 @@ export const webhookHandler: WebhookHandler = async (req) => {
 	}
 
 	try {
+		if (!apiKey) {
+			logger.error("Missing DODO_PAYMENTS_API_KEY environment variable");
+			return new Response("Server misconfigured.", { status: 500 });
+		}
+
 		const body = await req.text();
+
+		if (!body.length) {
+			logger.error("Empty webhook body");
+			return new Response("Empty webhook body.", { status: 400 });
+		}
 
 		const webhookHeaders = {
 			"webhook-id": req.headers.get("webhook-id") || "",
@@ -159,7 +174,7 @@ export const webhookHandler: WebhookHandler = async (req) => {
 
 		// Use SDK's built-in webhook verification
 		const client = new DodoPayments({
-			bearerToken: process.env.DODO_PAYMENTS_API_KEY as string,
+			bearerToken: apiKey,
 			webhookKey: webhookSecret,
 		});
 
@@ -175,10 +190,28 @@ export const webhookHandler: WebhookHandler = async (req) => {
 			return new Response("Invalid webhook signature.", { status: 401 });
 		}
 
+		const webhookId = webhookHeaders["webhook-id"];
 		const { type, data } = event as {
 			type: string;
 			data: Record<string, unknown>;
 		};
+
+		// Check for duplicate webhook (idempotency via database)
+		const existingEvent = await getWebhookEventByWebhookId(webhookId);
+		if (existingEvent) {
+			logger.info("Webhook already processed, skipping", {
+				webhookId,
+				eventType: type,
+			});
+			return new Response(null, { status: 200 });
+		}
+
+		// Log webhook event before processing
+		const eventId = await createWebhookEvent({
+			webhookId,
+			eventType: type,
+			payload: JSON.stringify(data),
+		});
 
 		// Helper to safely extract string values
 		const getString = (val: unknown): string | null =>
@@ -196,48 +229,226 @@ export const webhookHandler: WebhookHandler = async (req) => {
 				? (val as Record<string, string>)
 				: null;
 
-		switch (type) {
-			// Subscription becomes active (new subscription or reactivation)
-			case "subscription.active": {
-				const subscription_id = getString(data.subscription_id);
-				const product_id = getString(data.product_id);
-				const customer = getCustomer(data.customer);
-				const metadata = getMetadata(data.metadata);
+		try {
+			switch (type) {
+				// Subscription becomes active (new subscription or reactivation)
+				case "subscription.active": {
+					const subscription_id = getString(data.subscription_id);
+					const product_id = getString(data.product_id);
+					const customer = getCustomer(data.customer);
+					const metadata = getMetadata(data.metadata);
 
-				if (!subscription_id) {
-					logger.error(
-						"Missing subscription_id in subscription.active",
-					);
+					if (!subscription_id) {
+						throw new Error(
+							"Missing subscription_id in subscription.active",
+						);
+					}
+
+					const existingPurchase =
+						await getPurchaseBySubscriptionId(subscription_id);
+
+					if (existingPurchase) {
+						await updatePurchase({
+							id: existingPurchase.id,
+							status: "active",
+							productId: product_id ?? undefined,
+						});
+					} else {
+						const customerId =
+							customer?.customer_id || customer?.email || "";
+						if (!customerId) {
+							throw new Error(
+								"Missing customer info in subscription.active",
+							);
+						}
+
+						await createPurchase({
+							subscriptionId: subscription_id,
+							organizationId: metadata?.organization_id || null,
+							userId: metadata?.user_id || null,
+							customerId,
+							type: "SUBSCRIPTION",
+							productId: product_id || "",
+							status: "active",
+						});
+
+						if (customer?.customer_id || customer?.email) {
+							await setCustomerIdToEntity(
+								customer?.customer_id || customer?.email || "",
+								{
+									organizationId: metadata?.organization_id,
+									userId: metadata?.user_id,
+								},
+							);
+						}
+					}
 					break;
 				}
 
-				const existingPurchase =
-					await getPurchaseBySubscriptionId(subscription_id);
+				// Subscription renewed (payment successful, stays active)
+				case "subscription.renewed": {
+					const subscription_id = getString(data.subscription_id);
+					const product_id = getString(data.product_id);
 
-				if (existingPurchase) {
-					await updatePurchase({
-						id: existingPurchase.id,
-						status: "active",
-						productId: product_id ?? undefined,
-					});
-				} else {
+					if (!subscription_id) {
+						throw new Error(
+							"Missing subscription_id in subscription.renewed",
+						);
+					}
+
+					const existingPurchase =
+						await getPurchaseBySubscriptionId(subscription_id);
+
+					if (existingPurchase) {
+						await updatePurchase({
+							id: existingPurchase.id,
+							status: "active",
+							productId: product_id ?? undefined,
+						});
+					}
+					break;
+				}
+
+				// Subscription plan changed
+				case "subscription.plan_changed": {
+					const subscription_id = getString(data.subscription_id);
+					const product_id = getString(data.product_id);
+					const status = getString(data.status);
+
+					if (!subscription_id) {
+						throw new Error(
+							"Missing subscription_id in subscription.plan_changed",
+						);
+					}
+
+					const existingPurchase =
+						await getPurchaseBySubscriptionId(subscription_id);
+
+					if (existingPurchase) {
+						await updatePurchase({
+							id: existingPurchase.id,
+							status: status || "active",
+							productId: product_id ?? undefined,
+						});
+					}
+					break;
+				}
+
+				// Subscription on hold (e.g., payment issues)
+				case "subscription.on_hold": {
+					const subscription_id = getString(data.subscription_id);
+
+					if (!subscription_id) {
+						throw new Error(
+							"Missing subscription_id in subscription.on_hold",
+						);
+					}
+
+					const existingPurchase =
+						await getPurchaseBySubscriptionId(subscription_id);
+
+					if (existingPurchase) {
+						await updatePurchase({
+							id: existingPurchase.id,
+							status: "on_hold",
+						});
+					}
+					break;
+				}
+
+				// Subscription payment failed
+				case "subscription.failed": {
+					const subscription_id = getString(data.subscription_id);
+
+					if (!subscription_id) {
+						throw new Error(
+							"Missing subscription_id in subscription.failed",
+						);
+					}
+
+					const existingPurchase =
+						await getPurchaseBySubscriptionId(subscription_id);
+
+					if (existingPurchase) {
+						await updatePurchase({
+							id: existingPurchase.id,
+							status: "failed",
+						});
+					}
+					break;
+				}
+
+				// Subscription cancelled
+				case "subscription.cancelled": {
+					const subscription_id = getString(data.subscription_id);
+
+					if (!subscription_id) {
+						throw new Error(
+							"Missing subscription_id in subscription.cancelled",
+						);
+					}
+
+					const existingPurchase =
+						await getPurchaseBySubscriptionId(subscription_id);
+
+					if (existingPurchase) {
+						await updatePurchase({
+							id: existingPurchase.id,
+							status: "cancelled",
+						});
+					}
+					break;
+				}
+
+				// Subscription expired
+				case "subscription.expired": {
+					const subscription_id = getString(data.subscription_id);
+
+					if (!subscription_id) {
+						throw new Error(
+							"Missing subscription_id in subscription.expired",
+						);
+					}
+
+					const existingPurchase =
+						await getPurchaseBySubscriptionId(subscription_id);
+
+					if (existingPurchase) {
+						await updatePurchase({
+							id: existingPurchase.id,
+							status: "expired",
+						});
+					}
+					break;
+				}
+
+				// One-time payment succeeded
+				case "payment.succeeded": {
+					const payment_id = getString(data.payment_id);
+					const product_id = getString(data.product_id);
+					const customer = getCustomer(data.customer);
+					const metadata = getMetadata(data.metadata);
+
+					if (!payment_id) {
+						throw new Error(
+							"Missing payment_id in payment.succeeded",
+						);
+					}
+
 					const customerId =
 						customer?.customer_id || customer?.email || "";
 					if (!customerId) {
-						logger.error(
-							"Missing customer info in subscription.active",
+						throw new Error(
+							"Missing customer info in payment.succeeded",
 						);
-						break;
 					}
 
 					await createPurchase({
-						subscriptionId: subscription_id,
 						organizationId: metadata?.organization_id || null,
 						userId: metadata?.user_id || null,
 						customerId,
-						type: "SUBSCRIPTION",
+						type: "ONE_TIME",
 						productId: product_id || "",
-						status: "active",
 					});
 
 					if (customer?.customer_id || customer?.email) {
@@ -249,164 +460,36 @@ export const webhookHandler: WebhookHandler = async (req) => {
 							},
 						);
 					}
-				}
-				break;
-			}
-
-			// Subscription renewed (payment successful, stays active)
-			case "subscription.renewed": {
-				const subscription_id = getString(data.subscription_id);
-				const product_id = getString(data.product_id);
-
-				if (!subscription_id) break;
-
-				const existingPurchase =
-					await getPurchaseBySubscriptionId(subscription_id);
-
-				if (existingPurchase) {
-					await updatePurchase({
-						id: existingPurchase.id,
-						status: "active",
-						productId: product_id ?? undefined,
-					});
-				}
-				break;
-			}
-
-			// Subscription plan changed
-			case "subscription.plan_changed": {
-				const subscription_id = getString(data.subscription_id);
-				const product_id = getString(data.product_id);
-				const status = getString(data.status);
-
-				if (!subscription_id) break;
-
-				const existingPurchase =
-					await getPurchaseBySubscriptionId(subscription_id);
-
-				if (existingPurchase) {
-					await updatePurchase({
-						id: existingPurchase.id,
-						status: status || "active",
-						productId: product_id ?? undefined,
-					});
-				}
-				break;
-			}
-
-			// Subscription on hold (e.g., payment issues)
-			case "subscription.on_hold": {
-				const subscription_id = getString(data.subscription_id);
-
-				if (!subscription_id) break;
-
-				const existingPurchase =
-					await getPurchaseBySubscriptionId(subscription_id);
-
-				if (existingPurchase) {
-					await updatePurchase({
-						id: existingPurchase.id,
-						status: "on_hold",
-					});
-				}
-				break;
-			}
-
-			// Subscription payment failed
-			case "subscription.failed": {
-				const subscription_id = getString(data.subscription_id);
-
-				if (!subscription_id) break;
-
-				const existingPurchase =
-					await getPurchaseBySubscriptionId(subscription_id);
-
-				if (existingPurchase) {
-					await updatePurchase({
-						id: existingPurchase.id,
-						status: "failed",
-					});
-				}
-				break;
-			}
-
-			// Subscription cancelled
-			case "subscription.cancelled": {
-				const subscription_id = getString(data.subscription_id);
-
-				if (!subscription_id) break;
-
-				const existingPurchase =
-					await getPurchaseBySubscriptionId(subscription_id);
-
-				if (existingPurchase) {
-					await updatePurchase({
-						id: existingPurchase.id,
-						status: "cancelled",
-					});
-				}
-				break;
-			}
-
-			// Subscription expired
-			case "subscription.expired": {
-				const subscription_id = getString(data.subscription_id);
-
-				if (!subscription_id) break;
-
-				const existingPurchase =
-					await getPurchaseBySubscriptionId(subscription_id);
-
-				if (existingPurchase) {
-					await updatePurchase({
-						id: existingPurchase.id,
-						status: "expired",
-					});
-				}
-				break;
-			}
-
-			// One-time payment succeeded
-			case "payment.succeeded": {
-				const payment_id = getString(data.payment_id);
-				const product_id = getString(data.product_id);
-				const customer = getCustomer(data.customer);
-				const metadata = getMetadata(data.metadata);
-
-				if (!payment_id) break;
-
-				const customerId =
-					customer?.customer_id || customer?.email || "";
-				if (!customerId) {
-					logger.error("Missing customer info in payment.succeeded");
 					break;
 				}
 
-				await createPurchase({
-					organizationId: metadata?.organization_id || null,
-					userId: metadata?.user_id || null,
-					customerId,
-					type: "ONE_TIME",
-					productId: product_id || "",
-				});
-
-				if (customer?.customer_id || customer?.email) {
-					await setCustomerIdToEntity(
-						customer?.customer_id || customer?.email || "",
-						{
-							organizationId: metadata?.organization_id,
-							userId: metadata?.user_id,
-						},
-					);
-				}
-				break;
+				default:
+					logger.info(`Unhandled webhook event type: ${type}`);
 			}
 
-			default:
-				logger.info(`Unhandled webhook event type: ${type}`);
-		}
+			// Mark webhook as successfully processed
+			await markWebhookEventProcessed(eventId);
 
-		return new Response(null, { status: 200 });
+			return new Response(null, { status: 200 });
+		} catch (processingError) {
+			const errorMessage =
+				processingError instanceof Error
+					? processingError.message
+					: "Unknown error";
+
+			logger.error("Error processing webhook event", {
+				error: errorMessage,
+				eventType: type,
+				webhookId,
+			});
+
+			// Mark webhook as failed with error message
+			await markWebhookEventFailed(eventId, errorMessage);
+
+			return new Response(`Webhook error: ${errorMessage}`, {
+				status: 400,
+			});
+		}
 	} catch (error) {
 		logger.error("Error processing webhook", {
 			error: error instanceof Error ? error.message : error,

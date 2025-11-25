@@ -182,6 +182,23 @@ export const purchases = pgTable("purchases", {
 	updatedAt: timestamp("updated_at"),
 });
 
+export const webhookEvents = pgTable(
+	"webhook_events",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		webhookId: text("webhook_id").notNull(),
+		eventType: text("event_type").notNull(),
+		payload: text("payload").notNull(),
+		processed: boolean("processed").default(false).notNull(),
+		processedAt: timestamp("processed_at"),
+		errorMessage: text("error_message"),
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+	},
+	(table) => [uniqueIndex("webhook_events_webhook_id_idx").on(table.webhookId)],
+);
+
 // Relations
 export const userRelations = relations(users, ({ many }) => ({
 	sessions: many(sessions),
