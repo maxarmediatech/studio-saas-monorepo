@@ -48,9 +48,16 @@ export async function createPurchase(
 export async function updatePurchase(
 	updatedPurchase: z.infer<typeof PurchaseUpdateSchema>,
 ) {
+	const { id, ...data } = updatedPurchase;
+
+	if (!id) {
+		throw new Error("Missing id for purchase update");
+	}
+
 	const [row] = await db
 		.update(purchases)
-		.set(updatedPurchase)
+		.set(data)
+		.where(eq(purchases.id, id))
 		.returning({ id: purchases.id });
 
 	if (!row) {

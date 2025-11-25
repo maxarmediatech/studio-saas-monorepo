@@ -453,8 +453,19 @@ export const webhookHandler: WebhookHandler = async (req) => {
 					break;
 				}
 
-				// One-time payment succeeded
+				// One-time payment succeeded (skip if it's a subscription payment)
 				case "payment.succeeded": {
+					const subscription_id = getString(data.subscription_id);
+
+					// Skip if this payment is for a subscription - handled by subscription events
+					if (subscription_id) {
+						logger.info(
+							"Skipping payment.succeeded for subscription payment",
+							{ subscription_id },
+						);
+						break;
+					}
+
 					const payment_id = getString(data.payment_id);
 					const product_id = getString(data.product_id);
 					const customer = getCustomer(data.customer);
