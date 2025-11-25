@@ -491,7 +491,10 @@
 		"trialPeriod": "{days} {days, plural, one {Tag} other {Tage}} kostenlose Testphase",
 		"year": "Jahr",
 		"yearly": "Jährlich",
-		"perSeat": "Sitz"
+		"perSeat": "Sitz",
+		"notifications": {
+			"checkoutError": "Checkout konnte nicht gestartet werden. Bitte versuche es erneut."
+		}
 	},
 	"settings": {
 		"account": {

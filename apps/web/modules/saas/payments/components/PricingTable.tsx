@@ -14,11 +14,13 @@ import {
 	ArrowRightIcon,
 	BadgePercentIcon,
 	CheckIcon,
+	Loader2Icon,
 	PhoneIcon,
 	StarIcon,
 } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useState } from "react";
+import { toast } from "sonner";
 
 const plans = config.payments.plans as Config["payments"]["plans"];
 
@@ -37,7 +39,7 @@ export function PricingTable({
 	const format = useFormatter();
 	const router = useRouter();
 	const localeCurrency = useLocaleCurrency();
-	const [loading, setLoading] = useState<PlanId | false>(false);
+	const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
 	const [interval, setInterval] = useState<"month" | "year">("month");
 
 	const { planData } = usePlanData();
@@ -61,7 +63,7 @@ export function PricingTable({
 			return;
 		}
 
-		setLoading(planId);
+		setLoadingPlan(planId);
 
 		try {
 			const { checkoutLink } =
@@ -76,8 +78,9 @@ export function PricingTable({
 			window.location.href = checkoutLink;
 		} catch (error) {
 			console.error(error);
+			toast.error(t("pricing.notifications.checkoutError"));
 		} finally {
-			setLoading(false);
+			setLoadingPlan(null);
 		}
 	};
 
@@ -284,11 +287,20 @@ export function PricingTable({
 														price?.productId,
 													)
 												}
-												// loading={loading === planId}
+												disabled={
+													loadingPlan ===
+													(planId as PlanId)
+												}
 											>
-												{userId || organizationId
-													? t("pricing.choosePlan")
-													: t("pricing.getStarted")}
+												<span className="inline-flex items-center justify-center gap-2">
+													{loadingPlan ===
+														(planId as PlanId) && (
+														<Loader2Icon className="size-4 animate-spin" />
+													)}
+													{userId || organizationId
+														? t("pricing.choosePlan")
+														: t("pricing.getStarted")}
+												</span>
 												<ArrowRightIcon className="ml-2 size-4" />
 											</Button>
 										)}

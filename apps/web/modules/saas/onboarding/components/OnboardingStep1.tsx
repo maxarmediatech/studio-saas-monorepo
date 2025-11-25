@@ -14,12 +14,13 @@ import {
 import { Input } from "@repo/ui/components/input";
 import { useSession } from "@saas/auth/hooks/use-session";
 import { UserAvatarUpload } from "@saas/settings/components/UserAvatarUpload";
-import { ArrowRightIcon } from "lucide-react";
+import { ArrowRightIcon, Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 import type { SubmitHandler } from "react-hook-form";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { toast } from "sonner";
 
 const formSchema = z.object({
 	name: z.string(),
@@ -57,6 +58,7 @@ export function OnboardingStep1({ onCompleted }: { onCompleted: () => void }) {
 				type: "server",
 				message: t("onboarding.notifications.accountSetupFailed"),
 			});
+			toast.error(t("onboarding.notifications.accountSetupFailed"));
 		}
 	};
 
@@ -106,11 +108,21 @@ export function OnboardingStep1({ onCompleted }: { onCompleted: () => void }) {
 
 					<Button
 						type="submit"
-						// loading={form.formState.isSubmitting}
+						disabled={form.formState.isSubmitting}
 					>
-						{t("onboarding.continue")}
+						<span className="inline-flex items-center gap-2">
+							{form.formState.isSubmitting && (
+								<Loader2Icon className="size-4 animate-spin" />
+							)}
+							{t("onboarding.continue")}
+						</span>
 						<ArrowRightIcon className="ml-2 size-4" />
 					</Button>
+					{form.formState.errors.root?.message && (
+						<p className="text-destructive text-sm">
+							{form.formState.errors.root.message}
+						</p>
+					)}
 				</form>
 			</Form>
 		</div>

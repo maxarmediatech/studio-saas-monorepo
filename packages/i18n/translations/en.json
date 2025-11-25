@@ -494,7 +494,10 @@
 		"trialPeriod": "{days} {days, plural, one {day} other {days}} free trial",
 		"year": "{count, plural, one {year} other {{count} years}}",
 		"yearly": "Yearly",
-		"perSeat": "seat"
+		"perSeat": "seat",
+		"notifications": {
+			"checkoutError": "Could not start checkout. Please try again."
+		}
 	},
 	"settings": {
 		"account": {
