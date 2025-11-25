@@ -10,8 +10,8 @@
 		"clean": "turbo clean",
 		"format": "biome format . --write",
 		"typecheck": "turbo typecheck",
-		"db:generate": "turbo db:generate",
-		"db:migrate": "turbo db:migrate",
+		"db:generate": "pnpm --filter @repo/database generate",
+		"db:migrate": "pnpm --filter @repo/database migrate",
 		"db:seed": "turbo db:seed"
 	},
 	"engines": {
