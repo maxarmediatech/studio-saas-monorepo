@@ -1,6 +1,7 @@
 import {
 	createPurchase,
 	createWebhookEvent,
+	getPurchaseByPaymentId,
 	getPurchaseBySubscriptionId,
 	getWebhookEventByWebhookId,
 	markWebhookEventFailed,
@@ -220,9 +221,8 @@ export const webhookHandler: WebhookHandler = async (req) => {
 				const code = (error as { code?: string })?.code;
 				if (code === "23505") {
 					// Unique constraint violation on webhook_id; another instance logged it first
-					const dedupedEvent = await getWebhookEventByWebhookId(
-						webhookId,
-					);
+					const dedupedEvent =
+						await getWebhookEventByWebhookId(webhookId);
 					if (dedupedEvent) {
 						eventId = dedupedEvent.id;
 					} else {
@@ -456,17 +456,28 @@ export const webhookHandler: WebhookHandler = async (req) => {
 				// One-time payment succeeded (skip if it's a subscription payment)
 				case "payment.succeeded": {
 					const subscription_id = getString(data.subscription_id);
+					const payment_id = getString(data.payment_id);
 
 					// Skip if this payment is for a subscription - handled by subscription events
 					if (subscription_id) {
-						logger.info(
-							"Skipping payment.succeeded for subscription payment",
-							{ subscription_id },
-						);
+						const existingSubscriptionPurchase =
+							await getPurchaseBySubscriptionId(subscription_id);
+
+						if (!existingSubscriptionPurchase) {
+							logger.warn(
+								"Received subscription payment before subscription purchase exists",
+								{ subscription_id, payment_id },
+							);
+						} else {
+							logger.info(
+								"Skipping payment.succeeded for subscription payment",
+								{ subscription_id, payment_id },
+							);
+						}
+
 						break;
 					}
 
-					const payment_id = getString(data.payment_id);
 					const product_id = getString(data.product_id);
 					const customer = getCustomer(data.customer);
 					const metadata = getMetadata(data.metadata);
@@ -475,6 +486,16 @@ export const webhookHandler: WebhookHandler = async (req) => {
 						throw new Error(
 							"Missing payment_id in payment.succeeded",
 						);
+					}
+
+					const existingPaymentPurchase =
+						await getPurchaseByPaymentId(payment_id);
+
+					if (existingPaymentPurchase) {
+						logger.info("Payment already processed, skipping", {
+							payment_id,
+						});
+						break;
 					}
 
 					const customerId =
@@ -491,6 +512,7 @@ export const webhookHandler: WebhookHandler = async (req) => {
 						customerId,
 						type: "ONE_TIME",
 						productId: product_id || "",
+						paymentId: payment_id,
 					});
 
 					if (customer?.customer_id || customer?.email) {

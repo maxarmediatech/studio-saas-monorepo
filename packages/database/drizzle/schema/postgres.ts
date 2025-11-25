@@ -176,6 +176,7 @@ export const purchases = pgTable("purchases", {
 	type: purchaseTypeEnum("type").notNull(),
 	customerId: text("customer_id").notNull(),
 	subscriptionId: text("subscription_id").unique(),
+	paymentId: text("payment_id").unique(),
 	productId: text("product_id").notNull(),
 	status: text("status"),
 	createdAt: timestamp("created_at").defaultNow().notNull(),

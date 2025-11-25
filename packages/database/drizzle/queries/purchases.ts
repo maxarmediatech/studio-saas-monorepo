@@ -30,6 +30,12 @@ export async function getPurchaseBySubscriptionId(subscriptionId: string) {
 	});
 }
 
+export async function getPurchaseByPaymentId(paymentId: string) {
+	return db.query.purchases.findFirst({
+		where: (purchase, { eq }) => eq(purchase.paymentId, paymentId),
+	});
+}
+
 export async function createPurchase(
 	insertedPurchase: z.infer<typeof PurchaseInsertSchema>,
 ) {
