@@ -5,6 +5,7 @@ import { getBaseUrl } from "@repo/utils";
 
 const link = new RPCLink({
 	url: `${getBaseUrl()}/api/rpc`,
+	method: "GET",
 	headers: async () => {
 		if (typeof window !== "undefined") {
 			return {};

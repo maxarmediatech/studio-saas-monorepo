@@ -98,7 +98,8 @@ export const app = new Hono()
 		});
 
 		if (matched) {
-			return c.newResponse(response.body, response);
+			// Forward the response directly to avoid re-locking the body stream
+			return response;
 		}
 
 		await next();
