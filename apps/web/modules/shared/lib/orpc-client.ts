@@ -11,7 +11,7 @@ const link = new RPCLink({
 		}
 
 		const { headers } = await import("next/headers");
-		const forwardedHeaders = headers();
+		const forwardedHeaders = await headers();
 		const blocked = new Set([
 			// Let fetch calculate the correct body size for the new request
 			"content-length",
