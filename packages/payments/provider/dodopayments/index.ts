@@ -30,8 +30,9 @@ export function getDodoPaymentsClient() {
 
 	dodoPaymentsClient = new DodoPayments({
 		bearerToken: dodoPaymentsApiKey,
-		environment:
-			process.env.NODE_ENV === "production" ? "live_mode" : "test_mode",
+		environment: "test_mode",
+		// environment:
+		// 	process.env.NODE_ENV === "production" ? "live_mode" : "test_mode",
 	});
 
 	return dodoPaymentsClient;
