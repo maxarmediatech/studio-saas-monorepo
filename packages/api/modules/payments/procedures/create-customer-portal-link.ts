@@ -36,7 +36,10 @@ export const createCustomerPortalLink = protectedProcedure
 						purchase.organizationId,
 						user.id,
 					);
-				if (userOrganizationMembership?.role !== "owner") {
+				if (
+					!userOrganizationMembership ||
+					userOrganizationMembership.role !== "owner"
+				) {
 					throw new ORPCError("FORBIDDEN");
 				}
 			}

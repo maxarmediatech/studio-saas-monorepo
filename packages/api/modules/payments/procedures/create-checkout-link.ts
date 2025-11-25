@@ -1,6 +1,9 @@
 import { ORPCError } from "@orpc/client";
 import { type Config, config } from "@repo/config";
-import { getOrganizationById } from "@repo/database";
+import {
+	getOrganizationById,
+	getOrganizationMembership,
+} from "@repo/database";
 import { logger } from "@repo/logs";
 import {
 	createCheckoutLink as createCheckoutLinkFn,
@@ -33,6 +36,26 @@ export const createCheckoutLink = protectedProcedure
 			input: { productId, redirectUrl, type, organizationId },
 			context: { user },
 		}) => {
+			if (
+				config.organizations.enable &&
+				config.organizations.enableBilling &&
+				!config.users.enableBilling &&
+				!organizationId
+			) {
+				throw new ORPCError("FORBIDDEN");
+			}
+
+			if (organizationId) {
+				const membership = await getOrganizationMembership(
+					organizationId,
+					user.id,
+				);
+
+				if (!membership || membership.role !== "owner") {
+					throw new ORPCError("FORBIDDEN");
+				}
+			}
+
 			const customerId = await getCustomerIdFromEntity(
 				organizationId
 					? {
