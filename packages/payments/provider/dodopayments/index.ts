@@ -198,7 +198,7 @@ export const webhookHandler: WebhookHandler = async (req) => {
 
 		// Check for duplicate webhook (idempotency via database)
 		const existingEvent = await getWebhookEventByWebhookId(webhookId);
-		if (existingEvent) {
+		if (existingEvent?.processed) {
 			logger.info("Webhook already processed, skipping", {
 				webhookId,
 				eventType: type,
@@ -206,12 +206,43 @@ export const webhookHandler: WebhookHandler = async (req) => {
 			return new Response(null, { status: 200 });
 		}
 
-		// Log webhook event before processing
-		const eventId = await createWebhookEvent({
-			webhookId,
-			eventType: type,
-			payload: JSON.stringify(data),
-		});
+		let eventId = existingEvent?.id;
+
+		// Log webhook event before processing (reuse existing record if it failed previously)
+		if (!eventId) {
+			try {
+				eventId = await createWebhookEvent({
+					webhookId,
+					eventType: type,
+					payload: body,
+				});
+			} catch (error) {
+				const code = (error as { code?: string })?.code;
+				if (code === "23505") {
+					// Unique constraint violation on webhook_id; another instance logged it first
+					const dedupedEvent = await getWebhookEventByWebhookId(
+						webhookId,
+					);
+					if (dedupedEvent) {
+						eventId = dedupedEvent.id;
+					} else {
+						throw error;
+					}
+				} else {
+					throw error;
+				}
+			}
+		}
+
+		if (!eventId) {
+			logger.error("Failed to log webhook event", {
+				webhookId,
+				eventType: type,
+			});
+			return new Response("Failed to log webhook event.", {
+				status: 500,
+			});
+		}
 
 		// Helper to safely extract string values
 		const getString = (val: unknown): string | null =>

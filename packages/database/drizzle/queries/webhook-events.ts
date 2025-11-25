@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import type { z } from "zod";
 import { db } from "../client";
 import { webhookEvents } from "../schema";
-import type { WebhookEventInsertSchema, WebhookEventUpdateSchema } from "../zod";
+import type { WebhookEventInsertSchema } from "../zod";
 
 export async function getWebhookEventByWebhookId(webhookId: string) {
 	return db.query.webhookEvents.findFirst({
@@ -31,6 +31,7 @@ export async function markWebhookEventProcessed(id: string) {
 		.set({
 			processed: true,
 			processedAt: new Date(),
+			errorMessage: null,
 		})
 		.where(eq(webhookEvents.id, id));
 }
