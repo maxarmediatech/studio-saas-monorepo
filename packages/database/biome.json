@@ -18,6 +18,6 @@
 		}
 	},
 	"files": {
-		"includes": ["**", "!prisma/zod/index.ts"]
+		"includes": ["**"]
 	}
 }
