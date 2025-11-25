@@ -9,9 +9,9 @@ import {
 	invitations,
 	members,
 	organizations,
-	purchase,
+	purchases,
 	sessions,
-	twoFactor,
+	twoFactors,
 	users,
 	verifications,
 } from "./schema";
@@ -26,13 +26,13 @@ export const OrganizationUpdateSchema = createUpdateSchema(organizations, {
 });
 export const MemberSchema = createSelectSchema(members);
 export const InvitationSchema = createSelectSchema(invitations);
-export const PurchaseSchema = createSelectSchema(purchase);
-export type Purchase = typeof purchase.$inferSelect;
-export const PurchaseInsertSchema = createInsertSchema(purchase);
-export const PurchaseUpdateSchema = createUpdateSchema(purchase, {
+export const PurchaseSchema = createSelectSchema(purchases);
+export type Purchase = typeof purchases.$inferSelect;
+export const PurchaseInsertSchema = createInsertSchema(purchases);
+export const PurchaseUpdateSchema = createUpdateSchema(purchases, {
 	id: z.string(),
 });
 export const SessionSchema = createSelectSchema(sessions);
 export const AccountSchema = createSelectSchema(accounts);
 export const VerificationSchema = createSelectSchema(verifications);
-export const TwoFactorSchema = createSelectSchema(twoFactor);
+export const TwoFactorSchema = createSelectSchema(twoFactors);
