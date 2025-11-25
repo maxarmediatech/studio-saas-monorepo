@@ -2,6 +2,27 @@ import { authClient } from "@repo/auth/client";
 import { config } from "@repo/config";
 import { useQuery } from "@tanstack/react-query";
 
+export type UserPasskey = {
+	id: string;
+	name?: string | null;
+	deviceType?: string | null;
+	createdAt: string | Date;
+};
+
+export type PasskeyClient = {
+	listUserPasskeys?: () => Promise<{
+		data: UserPasskey[];
+		error?: unknown;
+	}>;
+	addPasskey?: (options?: unknown) => Promise<unknown>;
+	deletePasskey?: (options: { id: string }) => Promise<unknown>;
+};
+
+const passkeyClient = (authClient as { passkey?: PasskeyClient }).passkey;
+
+export const hasPasskeySupport = Boolean(passkeyClient?.listUserPasskeys);
+export const getPasskeyClient = () => passkeyClient;
+
 export const sessionQueryKey = ["user", "session"] as const;
 
 export const useSessionQuery = () => {
@@ -48,13 +69,18 @@ export const useUserPasskeysQuery = () => {
 	return useQuery({
 		queryKey: userPasskeyQueryKey,
 		queryFn: async () => {
-			const { data, error } = await authClient.passkey.listUserPasskeys();
+			if (!passkeyClient?.listUserPasskeys) {
+				return [];
+			}
+
+			const { data, error } = await passkeyClient.listUserPasskeys();
 
 			if (error) {
 				throw error;
 			}
 
-			return data;
+			return data ?? [];
 		},
+		enabled: Boolean(passkeyClient?.listUserPasskeys),
 	});
 };

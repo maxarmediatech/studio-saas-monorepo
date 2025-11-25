@@ -49,7 +49,7 @@ export function ForgotPasswordForm() {
 				window.location.origin,
 			).toString();
 
-			const { error } = await authClient.forgetPassword({
+			const { error } = await authClient.requestPasswordReset({
 				email,
 				redirectTo,
 			});

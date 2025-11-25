@@ -26,8 +26,39 @@ import { parse as parseCookies } from "cookie";
 import { updateSeatsInOrganizationSubscription } from "./lib/organization";
 import { invitationOnlyPlugin } from "./plugins/invitation-only";
 
-const getLocaleFromRequest = (request?: Request) => {
-	const cookies = parseCookies(request?.headers.get("cookie") ?? "");
+type RequestLike =
+	| Request
+	| {
+			request?: Request;
+			headers?:
+				| Headers
+				| {
+						get?: (name: string) => string | null;
+						cookie?: string;
+				  };
+	  }
+	| undefined;
+
+const getLocaleFromRequest = (request?: RequestLike) => {
+	if (request instanceof Request) {
+		const cookies = parseCookies(request.headers.get("cookie") ?? "");
+		return (
+			(cookies[config.i18n.localeCookieName] as Locale) ??
+			config.i18n.defaultLocale
+		);
+	}
+
+	const cookieHeader =
+		request?.request instanceof Request
+			? request.request.headers.get("cookie")
+			: typeof request?.headers === "object" &&
+					request?.headers !== null
+				? typeof (request.headers as Headers).get === "function"
+					? (request.headers as Headers).get("cookie")
+					: (request.headers as { cookie?: string }).cookie
+				: undefined;
+
+	const cookies = parseCookies(cookieHeader ?? "");
 	return (
 		(cookies[config.i18n.localeCookieName] as Locale) ??
 		config.i18n.defaultLocale

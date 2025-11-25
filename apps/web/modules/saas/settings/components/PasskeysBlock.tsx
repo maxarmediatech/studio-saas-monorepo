@@ -1,8 +1,12 @@
 "use client";
-import { authClient } from "@repo/auth/client";
 import { Button } from "@repo/ui/components/button";
 import { Skeleton } from "@repo/ui/components/skeleton";
-import { useUserPasskeysQuery } from "@saas/auth/lib/api";
+import {
+	getPasskeyClient,
+	hasPasskeySupport,
+	useUserPasskeysQuery,
+	userPasskeyQueryKey,
+} from "@saas/auth/lib/api";
 import { SettingsItem } from "@saas/shared/components/SettingsItem";
 import { useQueryClient } from "@tanstack/react-query";
 import { KeyIcon, PlusIcon, TrashIcon } from "lucide-react";
@@ -13,14 +17,37 @@ export function PasskeysBlock() {
 	const t = useTranslations();
 	const queryClient = useQueryClient();
 	const formatter = useFormatter();
+	const passkeyClient = getPasskeyClient();
 
 	const { data: passkeys, isPending } = useUserPasskeysQuery();
 
+	if (!hasPasskeySupport || !passkeyClient) {
+		return (
+			<SettingsItem
+				title={t("settings.account.security.passkeys.title")}
+				description={t("settings.account.security.passkeys.description")}
+			>
+				<p className="text-sm text-foreground/60">
+					Passkeys are not available in this build.
+				</p>
+			</SettingsItem>
+		);
+	}
+
 	const addPasskey = async () => {
-		await authClient.passkey.addPasskey({
+		const addPasskeyFn = passkeyClient.addPasskey;
+
+		if (!addPasskeyFn) {
+			toast.error("Passkey registration is not available.");
+			return;
+		}
+
+		await addPasskeyFn({
 			fetchOptions: {
 				onSuccess: () => {
-					queryClient.invalidateQueries({ queryKey: ["passkeys"] });
+					queryClient.invalidateQueries({
+						queryKey: userPasskeyQueryKey,
+					});
 					toast.success(
 						t(
 							"settings.account.security.passkeys.notifications.addPasskey.success.title",
@@ -39,9 +66,16 @@ export function PasskeysBlock() {
 	};
 
 	const deletePasskey = (id: string) => {
+		const deletePasskeyFn = passkeyClient.deletePasskey;
+
+		if (!deletePasskeyFn) {
+			toast.error("Passkey deletion is not available.");
+			return;
+		}
+
 		toast.promise(
 			async () => {
-				await authClient.passkey.deletePasskey({
+				await deletePasskeyFn({
 					id,
 				});
 			},
