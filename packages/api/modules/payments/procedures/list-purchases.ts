@@ -7,7 +7,7 @@ import { protectedProcedure } from "../../../orpc/procedures";
 
 export const listPurchases = protectedProcedure
 	.route({
-		method: "GET",
+		method: "POST",
 		path: "/payments/purchases",
 		tags: ["Payments"],
 		summary: "Get purchases",
