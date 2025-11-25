@@ -1,6 +1,5 @@
 import {
 	createPurchase,
-	deletePurchaseBySubscriptionId,
 	getPurchaseBySubscriptionId,
 	updatePurchase,
 } from "@repo/database";
@@ -133,190 +132,286 @@ export const webhookHandler: WebhookHandler = async (req) => {
 		logger.error(
 			"Missing DODO_PAYMENTS_WEBHOOK_SECRET environment variable",
 		);
-		return new Response("Missing webhook secret.", {
-			status: 400,
-		});
+		return new Response("Missing webhook secret.", { status: 400 });
 	}
 
 	if (!req.body) {
-		return new Response("Invalid request.", {
-			status: 400,
-		});
+		return new Response("Invalid request.", { status: 400 });
 	}
 
 	try {
 		const body = await req.text();
-		const headers = req.headers;
 
-		const webhookId = headers.get("webhook-id");
-		const webhookSignature = headers.get("webhook-signature");
-		const webhookTimestamp = headers.get("webhook-timestamp");
+		const webhookHeaders = {
+			"webhook-id": req.headers.get("webhook-id") || "",
+			"webhook-signature": req.headers.get("webhook-signature") || "",
+			"webhook-timestamp": req.headers.get("webhook-timestamp") || "",
+		};
 
-		if (!webhookId || !webhookSignature || !webhookTimestamp) {
+		if (
+			!webhookHeaders["webhook-id"] ||
+			!webhookHeaders["webhook-signature"] ||
+			!webhookHeaders["webhook-timestamp"]
+		) {
 			logger.error("Missing required webhook headers");
-			return new Response("Missing webhook headers.", {
-				status: 400,
-			});
+			return new Response("Missing webhook headers.", { status: 400 });
 		}
 
-		const payload = `${webhookId}.${webhookTimestamp}.${body}`;
-		const crypto = await import("node:crypto");
-
-		// Svix webhook secrets are prefixed with "whsec_" and base64-encoded
-		const secretBytes = Buffer.from(
-			webhookSecret.startsWith("whsec_")
-				? webhookSecret.slice(6)
-				: webhookSecret,
-			"base64",
-		);
-
-		const expectedSignature = crypto
-			.createHmac("sha256", secretBytes)
-			.update(payload)
-			.digest("base64");
-
-		// Svix signature header format: "v1,<base64_signature>" (may have multiple space-separated signatures)
-		const signatures = webhookSignature.split(" ");
-		const isValid = signatures.some((sig) => {
-			const [version, sigValue] = sig.split(",");
-			return version === "v1" && sigValue === expectedSignature;
+		// Use SDK's built-in webhook verification
+		const client = new DodoPayments({
+			bearerToken: process.env.DODO_PAYMENTS_API_KEY as string,
+			webhookKey: webhookSecret,
 		});
 
-		if (!isValid) {
-			logger.error("Invalid webhook signature");
-			return new Response("Invalid webhook signature.", {
-				status: 401,
-			});
-		}
-
-		const event = JSON.parse(body);
-		const { type, data } = event;
+		let event: { type: string; data: Record<string, unknown> };
 
 		try {
-			switch (type) {
-				case "checkout.session.completed": {
-					const { metadata, customer, subscription_id, product_id } =
-						data;
+			event = client.webhooks.unwrap(body, {
+				headers: webhookHeaders,
+			}) as unknown as typeof event;
+			logger.info("Webhook signature verified", { type: event.type });
+		} catch (error) {
+			logger.error("Invalid webhook signature", { error });
+			return new Response("Invalid webhook signature.", { status: 401 });
+		}
 
-					if (subscription_id) {
-						await createPurchase({
-							subscriptionId: subscription_id,
-							organizationId: metadata?.organization_id || null,
-							userId: metadata?.user_id || null,
-							customerId:
-								customer?.customer_id || customer?.email,
-							type: "SUBSCRIPTION",
-							productId: product_id,
-							status: "active",
-						});
+		const { type, data } = event as {
+			type: string;
+			data: Record<string, unknown>;
+		};
 
-						await setCustomerIdToEntity(
-							customer?.customer_id || customer?.email,
-							{
-								organizationId: metadata?.organization_id,
-								userId: metadata?.user_id,
-							},
-						);
-					} else {
-						await createPurchase({
-							organizationId: metadata?.organization_id || null,
-							userId: metadata?.user_id || null,
-							customerId:
-								customer?.customer_id || customer?.email,
-							type: "ONE_TIME",
-							productId: product_id,
-						});
+		// Helper to safely extract string values
+		const getString = (val: unknown): string | null =>
+			typeof val === "string" ? val : null;
+		const getCustomer = (
+			val: unknown,
+		): { customer_id?: string; email?: string } | null =>
+			val && typeof val === "object"
+				? (val as Record<string, string>)
+				: null;
+		const getMetadata = (
+			val: unknown,
+		): { organization_id?: string; user_id?: string } | null =>
+			val && typeof val === "object"
+				? (val as Record<string, string>)
+				: null;
 
-						await setCustomerIdToEntity(
-							customer?.customer_id || customer?.email,
-							{
-								organizationId: metadata?.organization_id,
-								userId: metadata?.user_id,
-							},
-						);
-					}
+		switch (type) {
+			// Subscription becomes active (new subscription or reactivation)
+			case "subscription.active": {
+				const subscription_id = getString(data.subscription_id);
+				const product_id = getString(data.product_id);
+				const customer = getCustomer(data.customer);
+				const metadata = getMetadata(data.metadata);
+
+				if (!subscription_id) {
+					logger.error(
+						"Missing subscription_id in subscription.active",
+					);
 					break;
 				}
 
-				case "subscription.created": {
-					const {
-						metadata,
-						customer,
-						subscription_id,
-						product_id,
-						status,
-					} = data;
+				const existingPurchase =
+					await getPurchaseBySubscriptionId(subscription_id);
+
+				if (existingPurchase) {
+					await updatePurchase({
+						id: existingPurchase.id,
+						status: "active",
+						productId: product_id ?? undefined,
+					});
+				} else {
+					const customerId =
+						customer?.customer_id || customer?.email || "";
+					if (!customerId) {
+						logger.error(
+							"Missing customer info in subscription.active",
+						);
+						break;
+					}
 
 					await createPurchase({
 						subscriptionId: subscription_id,
 						organizationId: metadata?.organization_id || null,
 						userId: metadata?.user_id || null,
-						customerId: customer?.customer_id || customer?.email,
+						customerId,
 						type: "SUBSCRIPTION",
-						productId: product_id,
-						status: status || "active",
+						productId: product_id || "",
+						status: "active",
 					});
 
+					if (customer?.customer_id || customer?.email) {
+						await setCustomerIdToEntity(
+							customer?.customer_id || customer?.email || "",
+							{
+								organizationId: metadata?.organization_id,
+								userId: metadata?.user_id,
+							},
+						);
+					}
+				}
+				break;
+			}
+
+			// Subscription renewed (payment successful, stays active)
+			case "subscription.renewed": {
+				const subscription_id = getString(data.subscription_id);
+				const product_id = getString(data.product_id);
+
+				if (!subscription_id) break;
+
+				const existingPurchase =
+					await getPurchaseBySubscriptionId(subscription_id);
+
+				if (existingPurchase) {
+					await updatePurchase({
+						id: existingPurchase.id,
+						status: "active",
+						productId: product_id ?? undefined,
+					});
+				}
+				break;
+			}
+
+			// Subscription plan changed
+			case "subscription.plan_changed": {
+				const subscription_id = getString(data.subscription_id);
+				const product_id = getString(data.product_id);
+				const status = getString(data.status);
+
+				if (!subscription_id) break;
+
+				const existingPurchase =
+					await getPurchaseBySubscriptionId(subscription_id);
+
+				if (existingPurchase) {
+					await updatePurchase({
+						id: existingPurchase.id,
+						status: status || "active",
+						productId: product_id ?? undefined,
+					});
+				}
+				break;
+			}
+
+			// Subscription on hold (e.g., payment issues)
+			case "subscription.on_hold": {
+				const subscription_id = getString(data.subscription_id);
+
+				if (!subscription_id) break;
+
+				const existingPurchase =
+					await getPurchaseBySubscriptionId(subscription_id);
+
+				if (existingPurchase) {
+					await updatePurchase({
+						id: existingPurchase.id,
+						status: "on_hold",
+					});
+				}
+				break;
+			}
+
+			// Subscription payment failed
+			case "subscription.failed": {
+				const subscription_id = getString(data.subscription_id);
+
+				if (!subscription_id) break;
+
+				const existingPurchase =
+					await getPurchaseBySubscriptionId(subscription_id);
+
+				if (existingPurchase) {
+					await updatePurchase({
+						id: existingPurchase.id,
+						status: "failed",
+					});
+				}
+				break;
+			}
+
+			// Subscription cancelled
+			case "subscription.cancelled": {
+				const subscription_id = getString(data.subscription_id);
+
+				if (!subscription_id) break;
+
+				const existingPurchase =
+					await getPurchaseBySubscriptionId(subscription_id);
+
+				if (existingPurchase) {
+					await updatePurchase({
+						id: existingPurchase.id,
+						status: "cancelled",
+					});
+				}
+				break;
+			}
+
+			// Subscription expired
+			case "subscription.expired": {
+				const subscription_id = getString(data.subscription_id);
+
+				if (!subscription_id) break;
+
+				const existingPurchase =
+					await getPurchaseBySubscriptionId(subscription_id);
+
+				if (existingPurchase) {
+					await updatePurchase({
+						id: existingPurchase.id,
+						status: "expired",
+					});
+				}
+				break;
+			}
+
+			// One-time payment succeeded
+			case "payment.succeeded": {
+				const payment_id = getString(data.payment_id);
+				const product_id = getString(data.product_id);
+				const customer = getCustomer(data.customer);
+				const metadata = getMetadata(data.metadata);
+
+				if (!payment_id) break;
+
+				const customerId =
+					customer?.customer_id || customer?.email || "";
+				if (!customerId) {
+					logger.error("Missing customer info in payment.succeeded");
+					break;
+				}
+
+				await createPurchase({
+					organizationId: metadata?.organization_id || null,
+					userId: metadata?.user_id || null,
+					customerId,
+					type: "ONE_TIME",
+					productId: product_id || "",
+				});
+
+				if (customer?.customer_id || customer?.email) {
 					await setCustomerIdToEntity(
-						customer?.customer_id || customer?.email,
+						customer?.customer_id || customer?.email || "",
 						{
 							organizationId: metadata?.organization_id,
 							userId: metadata?.user_id,
 						},
 					);
-					break;
 				}
-
-				case "subscription.updated": {
-					const { subscription_id, status, product_id } = data;
-
-					const existingPurchase =
-						await getPurchaseBySubscriptionId(subscription_id);
-
-					if (existingPurchase) {
-						await updatePurchase({
-							id: existingPurchase.id,
-							status: status,
-							productId: product_id,
-						});
-					}
-					break;
-				}
-
-				case "subscription.cancelled": {
-					await deletePurchaseBySubscriptionId(data.subscription_id);
-					break;
-				}
-
-				default:
-					logger.info(`Unhandled webhook event type: ${type}`);
-					return new Response("Unhandled event type.", {
-						status: 200,
-					});
+				break;
 			}
 
-			return new Response(null, { status: 204 });
-		} catch (error) {
-			logger.error("Error processing webhook event", {
-				error: error instanceof Error ? error.message : error,
-				eventType: type,
-				webhookId,
-			});
-
-			return new Response(
-				`Webhook error: ${error instanceof Error ? error.message : ""}`,
-				{
-					status: 400,
-				},
-			);
+			default:
+				logger.info(`Unhandled webhook event type: ${type}`);
 		}
+
+		return new Response(null, { status: 200 });
 	} catch (error) {
 		logger.error("Error processing webhook", {
 			error: error instanceof Error ? error.message : error,
 		});
 
-		return new Response("Invalid webhook payload.", {
-			status: 400,
-		});
+		return new Response("Webhook processing failed.", { status: 500 });
 	}
 };
