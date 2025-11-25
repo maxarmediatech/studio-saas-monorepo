@@ -3,29 +3,16 @@ import { RPCLink } from "@orpc/client/fetch";
 import type { ApiRouterClient } from "@repo/api/orpc/router";
 import { getBaseUrl } from "@repo/utils";
 
+declare global {
+	var $orpcClient: ApiRouterClient | undefined;
+}
+
 const link = new RPCLink({
-	url: `${getBaseUrl()}/api/rpc`,
-	headers: async () => {
-		if (typeof window !== "undefined") {
-			return {};
+	url: () => {
+		if (typeof window === "undefined") {
+			throw new Error("RPCLink should not be used on the server side.");
 		}
-
-		const { headers } = await import("next/headers");
-		const forwardedHeaders = await headers();
-		const blocked = new Set([
-			// Let fetch calculate the correct body size for the new request
-			"content-length",
-			// Hop-by-hop headers that should not be forwarded
-			"connection",
-			"transfer-encoding",
-			"host",
-		]);
-
-		return Object.fromEntries(
-			Array.from(forwardedHeaders.entries()).filter(
-				([key]) => !blocked.has(key.toLowerCase()),
-			),
-		);
+		return `${getBaseUrl()}/api/rpc`;
 	},
 	interceptors: [
 		onError((error) => {
@@ -38,4 +25,5 @@ const link = new RPCLink({
 	],
 });
 
-export const orpcClient: ApiRouterClient = createORPCClient(link);
+export const orpcClient: ApiRouterClient =
+	globalThis.$orpcClient ?? createORPCClient(link);

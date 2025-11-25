@@ -1,3 +1,5 @@
+import "../modules/shared/lib/orpc-client.server";
+
 import { config } from "@repo/config";
 import "@repo/ui/globals.css";
 import { cn } from "@repo/ui/lib/utils";
