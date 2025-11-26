@@ -13,6 +13,7 @@ import {
 import { useRouter } from "@shared/hooks/router";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useQueryClient } from "@tanstack/react-query";
+import { useParams } from "next/navigation";
 import nProgress from "nprogress";
 import { type ReactNode, useEffect, useState } from "react";
 import { ActiveOrganizationContext } from "../lib/active-organization-context";
@@ -23,11 +24,18 @@ export function ActiveOrganizationProvider({
 	children: ReactNode;
 }) {
 	const router = useRouter();
+	const params = useParams<{ organizationSlug?: string }>();
 	const queryClient = useQueryClient();
 	const { session, user } = useSession();
 	const { data: organizations } = useOrganizationListQuery();
 
+	const routeOrganizationSlug =
+		typeof params?.organizationSlug === "string"
+			? params.organizationSlug
+			: undefined;
+
 	const activeOrganizationSlug =
+		routeOrganizationSlug ||
 		organizations?.find(
 			(org) => org.id === session?.activeOrganizationId,
 		)?.slug ||
