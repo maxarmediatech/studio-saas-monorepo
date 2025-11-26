@@ -157,6 +157,7 @@ export const invitations = pgTable("invitations", {
 	email: text("email").notNull(),
 	role: text("role"),
 	status: text("status").notNull(),
+	createdAt: timestamp("created_at").defaultNow().notNull(),
 	expiresAt: timestamp("expires_at").notNull(),
 	inviterId: text("inviter_id")
 		.notNull()
@@ -197,7 +198,9 @@ export const webhookEvents = pgTable(
 		errorMessage: text("error_message"),
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 	},
-	(table) => [uniqueIndex("webhook_events_webhook_id_idx").on(table.webhookId)],
+	(table) => [
+		uniqueIndex("webhook_events_webhook_id_idx").on(table.webhookId),
+	],
 );
 
 // Relations
