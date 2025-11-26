@@ -1,7 +1,16 @@
 import { config } from "@repo/config";
 import { createPurchasesHelper } from "@repo/payments/lib/helper";
-import { getOrganizationList, getSession } from "@saas/auth/lib/server";
+import { isOrganizationAdmin } from "@repo/auth/lib/helper";
+import {
+	getActiveOrganization,
+	getOrganizationList,
+	getSession,
+} from "@saas/auth/lib/server";
+import { InviteMemberForm } from "@saas/organizations/components/InviteMemberForm";
+import { OrganizationMembersBlock } from "@saas/organizations/components/OrganizationMembersBlock";
 import { orpcClient } from "@shared/lib/orpc-client";
+import { SettingsList } from "@saas/shared/components/SettingsList";
+import { SignOutButton } from "@saas/shared/components/SignOutButton";
 import { attemptAsync } from "es-toolkit";
 import { redirect } from "next/navigation";
 
@@ -16,16 +25,26 @@ export default async function AppHomePage() {
 		? await getOrganizationList()
 		: [];
 
-	const activeOrganization = config.organizations.enable
+	const activeOrganizationFromList = config.organizations.enable
 		? organizations.find(
 				(org) => org.id === session?.session.activeOrganizationId,
 			) || organizations.at(0)
 		: undefined;
 
 	const organizationId =
-		config.organizations.enable && activeOrganization
-			? activeOrganization.id
+		config.organizations.enable && activeOrganizationFromList
+			? activeOrganizationFromList.id
 			: undefined;
+
+	const fullOrganization =
+		config.organizations.enable && activeOrganizationFromList?.slug
+			? await getActiveOrganization(activeOrganizationFromList.slug)
+			: null;
+
+	const organizationForDisplay = fullOrganization ?? activeOrganizationFromList;
+	const canManageMembers =
+		Array.isArray(fullOrganization?.members) &&
+		isOrganizationAdmin(fullOrganization, session?.user);
 
 	const billingEnabled =
 		(config.organizations.enable && config.organizations.enableBilling) ||
@@ -95,9 +114,17 @@ export default async function AppHomePage() {
 								<dt className="text-muted-foreground">
 									Name
 								</dt>
-								<dd className="font-medium">
-									{activeOrganization?.name ??
-										"No organization"}
+								<dd className="font-medium flex gap-2 items-center">
+									{organizationForDisplay ? (
+										<a
+											className="text-primary hover:underline"
+											href={`/app/${organizationForDisplay.slug}`}
+										>
+											{organizationForDisplay.name}
+										</a>
+									) : (
+										"No organization"
+									)}
 								</dd>
 							</div>
 							<div className="flex justify-between gap-4">
@@ -105,13 +132,13 @@ export default async function AppHomePage() {
 									Slug
 								</dt>
 								<dd className="font-medium">
-									{activeOrganization?.slug ?? "—"}
+									{organizationForDisplay?.slug ?? "—"}
 								</dd>
 							</div>
 							<div className="flex justify-between gap-4">
 								<dt className="text-muted-foreground">ID</dt>
 								<dd className="font-medium">
-									{activeOrganization?.id ?? "—"}
+									{organizationForDisplay?.id ?? "—"}
 								</dd>
 							</div>
 						</dl>
@@ -147,7 +174,9 @@ export default async function AppHomePage() {
 							</dt>
 							<dd className="font-medium">
 								{activePlan?.price
-									? `${activePlan.price.interval}ly`
+									? "interval" in activePlan.price
+										? `${activePlan.price.interval}ly`
+										: "one-time"
 									: "—"}
 							</dd>
 						</div>
@@ -166,6 +195,41 @@ export default async function AppHomePage() {
 					</p>
 				)}
 			</section>
+
+			<section className="rounded-lg border bg-card p-4 flex items-start justify-between gap-4">
+				<div>
+					<div className="text-sm font-medium text-muted-foreground">
+						Session
+					</div>
+					<p className="text-sm text-muted-foreground mt-1">
+						Sign out of your account.
+					</p>
+				</div>
+				<SignOutButton />
+			</section>
+
+			{config.organizations.enable && organizationForDisplay && (
+				<section className="space-y-4">
+					<div>
+						<h2 className="text-xl font-semibold tracking-tight">
+							Members
+						</h2>
+						<p className="text-muted-foreground">
+							Invite teammates and review current access.
+						</p>
+					</div>
+					<SettingsList>
+						{canManageMembers && (
+							<InviteMemberForm
+								organizationId={organizationForDisplay.id}
+							/>
+						)}
+						<OrganizationMembersBlock
+							organizationId={organizationForDisplay.id}
+						/>
+					</SettingsList>
+				</section>
+			)}
 		</div>
 	);
 }

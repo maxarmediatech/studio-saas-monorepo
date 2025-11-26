@@ -1,6 +1,11 @@
+import { isOrganizationAdmin } from "@repo/auth/lib/helper";
 import { config } from "@repo/config";
 import { createPurchasesHelper } from "@repo/payments/lib/helper";
 import { getActiveOrganization, getSession } from "@saas/auth/lib/server";
+import { InviteMemberForm } from "@saas/organizations/components/InviteMemberForm";
+import { OrganizationMembersBlock } from "@saas/organizations/components/OrganizationMembersBlock";
+import { SettingsList } from "@saas/shared/components/SettingsList";
+import { SignOutButton } from "@saas/shared/components/SignOutButton";
 import { orpcClient } from "@shared/lib/orpc-client";
 import { attemptAsync } from "es-toolkit";
 import { notFound } from "next/navigation";
@@ -30,6 +35,10 @@ export default async function OrganizationPage({ params }: Props) {
 		return notFound();
 	}
 
+	const canManageMembers =
+		Array.isArray(activeOrganization.members) &&
+		isOrganizationAdmin(activeOrganization, session?.user);
+
 	const billingEnabled =
 		(config.organizations.enable && config.organizations.enableBilling) ||
 		config.users.enableBilling;
@@ -45,7 +54,7 @@ export default async function OrganizationPage({ params }: Props) {
 			}),
 		);
 
-		const purchases = purchaseError ? [] : purchasesData?.purchases ?? [];
+		const purchases = purchaseError ? [] : (purchasesData?.purchases ?? []);
 		activePlan = createPurchasesHelper(purchases).activePlan;
 	}
 
@@ -139,7 +148,9 @@ export default async function OrganizationPage({ params }: Props) {
 							</dt>
 							<dd className="font-medium">
 								{activePlan?.price
-									? `${activePlan.price.interval}ly`
+									? "interval" in activePlan.price
+										? `${activePlan.price.interval}ly`
+										: "one-time"
 									: "—"}
 							</dd>
 						</div>
@@ -157,6 +168,39 @@ export default async function OrganizationPage({ params }: Props) {
 						Billing is currently disabled.
 					</p>
 				)}
+			</section>
+
+			<section className="rounded-lg border bg-card p-4 flex items-start justify-between gap-4">
+				<div>
+					<div className="text-sm font-medium text-muted-foreground">
+						Session
+					</div>
+					<p className="text-sm text-muted-foreground mt-1">
+						Sign out of your account.
+					</p>
+				</div>
+				<SignOutButton />
+			</section>
+
+			<section className="space-y-4">
+				<div>
+					<h2 className="text-xl font-semibold tracking-tight">
+						Members
+					</h2>
+					<p className="text-muted-foreground">
+						Invite teammates and review current access.
+					</p>
+					</div>
+					<SettingsList>
+						{canManageMembers && (
+							<InviteMemberForm
+								organizationId={activeOrganization.id}
+							/>
+						)}
+						<OrganizationMembersBlock
+						organizationId={activeOrganization.id}
+					/>
+				</SettingsList>
 			</section>
 		</div>
 	);
