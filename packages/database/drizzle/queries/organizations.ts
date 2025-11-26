@@ -21,9 +21,7 @@ export async function getOrganizations({
 		offset,
 		extras: {
 			membersCount:
-				sql<number>`(SELECT COUNT(*) FROM ${members} WHERE ${members.organizationId} = ${organizations.id})`.as(
-					"membersCount",
-				),
+				sql<number>`(SELECT COUNT(*) FROM "members" WHERE "members"."organization_id" = "organizations"."id")`.as("membersCount"),
 		},
 	});
 }
@@ -83,9 +81,7 @@ export async function getOrganizationWithPurchasesAndMembersCount(
 		},
 		extras: {
 			membersCount:
-				sql<number>`(SELECT COUNT(*) FROM ${members} WHERE ${members.organizationId} = ${organizations.id})`.as(
-					"membersCount",
-				),
+				sql<number>`(SELECT COUNT(*) FROM "members" WHERE "members"."organization_id" = "organizations"."id")`.as("membersCount"),
 		},
 	});
 }
