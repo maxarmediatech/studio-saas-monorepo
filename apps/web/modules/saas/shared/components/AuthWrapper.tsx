@@ -23,7 +23,7 @@ export function AuthWrapper({
 						<div className="flex items-center justify-end gap-2">
 							{config.i18n.enabled && (
 								<Suspense>
-									<LocaleSwitch withLocaleInUrl={false} />
+									<LocaleSwitch />
 								</Suspense>
 							)}
 							<ColorModeToggle />

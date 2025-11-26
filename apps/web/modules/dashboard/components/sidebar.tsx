@@ -48,25 +48,17 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useParams, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
 import { UpgradeCard } from "@/modules/dashboard/components/upgrade-card";
 
 export function DashboardSidebar(props: React.ComponentProps<typeof Sidebar>) {
 	const pathname = usePathname();
-	const { locale } = useParams<{ locale?: string }>();
-	const localePrefix = useMemo(
-		() => (locale ? `/${locale}` : ""),
-		[locale],
-	);
-	const dashboardHref = useMemo(
-		() => `${localePrefix}/dashboard`,
-		[localePrefix],
-	);
+	const dashboardHref = useMemo(() => "/app/dashboard", []);
 	const dashboardActive =
 		pathname === dashboardHref ||
-		pathname === localePrefix ||
-		pathname === `${localePrefix}/`;
+		pathname === "/app" ||
+		pathname === "/app/";
 	const [favoritesOpen, setFavoritesOpen] = useState(true);
 
 	return (

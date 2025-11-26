@@ -1,5 +1,5 @@
-import { LocaleLink } from "@i18n/routing";
 import { cn } from "@repo/ui/lib/utils";
+import Link from "next/link";
 
 export function Footer() {
 	return (
@@ -8,13 +8,9 @@ export function Footer() {
 				"container max-w-6xl py-6 text-center text-foreground/60 text-xs",
 			)}
 		>
-			{/* <span>
-				<a href="https://nebulaforge.dev">Maxar Media Pvt Ltd</a>
-			</span> */}
-			{/* <span className="opacity-50"> | </span> */}
-			<LocaleLink href="/legal/privacy-policy">Privacy policy</LocaleLink>
+			<Link href="/legal/privacy-policy">Privacy policy</Link>
 			<span className="opacity-50"> | </span>
-			<LocaleLink href="/legal/terms">Terms and conditions</LocaleLink>
+			<Link href="/legal/terms">Terms and conditions</Link>
 		</footer>
 	);
 }

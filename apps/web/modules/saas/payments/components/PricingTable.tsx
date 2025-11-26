@@ -1,5 +1,4 @@
 "use client";
-import { LocaleLink } from "@i18n/routing";
 import { type Config, config } from "@repo/config";
 import { Button } from "@repo/ui/components/button";
 import { Tabs, TabsList, TabsTrigger } from "@repo/ui/components/tabs";
@@ -18,11 +17,18 @@ import {
 	PhoneIcon,
 	StarIcon,
 } from "lucide-react";
-import { useFormatter, useTranslations } from "next-intl";
+import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 
 const plans = config.payments.plans as Config["payments"]["plans"];
+
+function formatCurrency(amount: number, currency: string) {
+	return new Intl.NumberFormat("en-IN", {
+		style: "currency",
+		currency,
+	}).format(amount);
+}
 
 export function PricingTable({
 	className,
@@ -35,8 +41,6 @@ export function PricingTable({
 	organizationId?: string;
 	activePlanId?: string;
 }) {
-	const t = useTranslations();
-	const format = useFormatter();
 	const router = useRouter();
 	const localeCurrency = useLocaleCurrency();
 	const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
@@ -78,7 +82,7 @@ export function PricingTable({
 			window.location.href = checkoutLink;
 		} catch (error) {
 			console.error(error);
-			toast.error(t("pricing.notifications.checkoutError"));
+			toast.error("Failed to create checkout. Please try again.");
 		} finally {
 			setLoadingPlan(null);
 		}
@@ -105,12 +109,8 @@ export function PricingTable({
 						data-test="price-table-interval-tabs"
 					>
 						<TabsList className="border-foreground/10">
-							<TabsTrigger value="month">
-								{t("pricing.monthly")}
-							</TabsTrigger>
-							<TabsTrigger value="year">
-								{t("pricing.yearly")}
-							</TabsTrigger>
+							<TabsTrigger value="month">Monthly</TabsTrigger>
+							<TabsTrigger value="year">Yearly</TabsTrigger>
 						</TabsList>
 					</Tabs>
 				</div>
@@ -166,7 +166,7 @@ export function PricingTable({
 											<div className="-mt-9 flex justify-center">
 												<div className="mb-2 flex h-6 w-auto items-center gap-1.5 rounded-full bg-primary px-2 py-1 font-semibold text-primary-foreground text-xs">
 													<StarIcon className="size-3" />
-													{t("pricing.recommended")}
+													Recommended
 												</div>
 											</div>
 										)}
@@ -210,9 +210,7 @@ export function PricingTable({
 											price.trialPeriodDays && (
 												<div className="mt-4 flex items-center justify-start font-medium text-primary text-sm opacity-80">
 													<BadgePercentIcon className="mr-2 size-4" />
-													{t("pricing.trialPeriod", {
-														days: price.trialPeriodDays,
-													})}
+													{price.trialPeriodDays} day free trial
 												</div>
 											)}
 									</div>
@@ -223,40 +221,23 @@ export function PricingTable({
 												className="block font-medium text-2xl lg:text-3xl"
 												data-test="price-table-plan-price"
 											>
-												{format.number(price.amount, {
-													style: "currency",
-													currency: price.currency,
-												})}
+												{formatCurrency(
+													price.amount,
+													price.currency,
+												)}
 												{"interval" in price && (
 													<span className="font-normal text-xs opacity-60">
 														{" / "}
 														{interval === "month"
-															? t(
-																	"pricing.month",
-																	{
-																		count:
-																			price.intervalCount ??
-																			1,
-																	},
-																)
-															: t(
-																	"pricing.year",
-																	{
-																		count:
-																			price.intervalCount ??
-																			1,
-																	},
-																)}
+															? "month"
+															: "year"}
 													</span>
 												)}
 												{organizationId &&
 													"seatBased" in price &&
 													price.seatBased && (
 														<span className="font-normal text-xs opacity-60">
-															{" / "}
-															{t(
-																"pricing.perSeat",
-															)}
+															{" / seat"}
 														</span>
 													)}
 											</strong>
@@ -268,10 +249,10 @@ export function PricingTable({
 												variant="ghost"
 												asChild
 											>
-												<LocaleLink href="/contact">
+												<Link href="/contact">
 													<PhoneIcon className="mr-2 size-4" />
-													{t("pricing.contactSales")}
-												</LocaleLink>
+													Contact Sales
+												</Link>
 											</Button>
 										) : (
 											<Button
@@ -298,8 +279,8 @@ export function PricingTable({
 														<Loader2Icon className="size-4 animate-spin" />
 													)}
 													{userId || organizationId
-														? t("pricing.choosePlan")
-														: t("pricing.getStarted")}
+														? "Choose Plan"
+														: "Get Started"}
 												</span>
 												<ArrowRightIcon className="ml-2 size-4" />
 											</Button>

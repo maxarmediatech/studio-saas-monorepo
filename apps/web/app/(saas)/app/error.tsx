@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
 import { useEffect } from "react";
 import { AlertTriangle, Home, RotateCcw } from "lucide-react";
 import { Button } from "@repo/ui/components/button";
@@ -13,9 +12,6 @@ export default function Error({
 	error: Error & { digest?: string };
 	reset: () => void;
 }) {
-	const params = useParams<{ locale?: string }>();
-	const localePrefix = params?.locale ? `/${params.locale}` : "";
-
 	useEffect(() => {
 		// Surface the error for observability tools
 		console.error("Choose plan route crashed", {
@@ -53,7 +49,7 @@ export default function Error({
 							Try again
 						</Button>
 						<Button variant="secondary" asChild className="gap-2">
-							<Link href={`${localePrefix || ""}/`}>
+							<Link href="/app">
 								<Home className="h-4 w-4" aria-hidden />
 								Back home
 							</Link>
