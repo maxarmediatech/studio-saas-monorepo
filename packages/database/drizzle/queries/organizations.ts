@@ -1,8 +1,20 @@
-import { and, eq, sql } from "drizzle-orm";
+import { type AnyColumn, and, eq, sql } from "drizzle-orm";
+import { PgDialect } from "drizzle-orm/pg-core";
 import type { z } from "zod";
 import { db } from "../client";
 import { members, organizations } from "../schema/postgres";
 import type { OrganizationUpdateSchema } from "../zod";
+
+const pgDialect = new PgDialect();
+
+/**
+ * Workaround for Drizzle ORM bug where sql`` interpolates wrong table name in extras
+ * @see https://github.com/drizzle-team/drizzle-orm/issues/1815
+ */
+function countRelation(fieldId: AnyColumn, refId: AnyColumn) {
+	const sqlChunks = sql`(SELECT COUNT(*) FROM ${refId.table} WHERE ${refId} = ${fieldId})`;
+	return sql.raw(pgDialect.sqlToQuery(sqlChunks).sql).mapWith(Number);
+}
 
 export async function getOrganizations({
 	limit,
@@ -20,8 +32,9 @@ export async function getOrganizations({
 		limit,
 		offset,
 		extras: {
-			membersCount:
-				sql<number>`(SELECT COUNT(*) FROM "members" WHERE "members"."organization_id" = "organizations"."id")`.as("membersCount"),
+			membersCount: countRelation(organizations.id, members.organizationId).as(
+				"membersCount",
+			),
 		},
 	});
 }
@@ -80,8 +93,9 @@ export async function getOrganizationWithPurchasesAndMembersCount(
 			purchases: true,
 		},
 		extras: {
-			membersCount:
-				sql<number>`(SELECT COUNT(*) FROM "members" WHERE "members"."organization_id" = "organizations"."id")`.as("membersCount"),
+			membersCount: countRelation(organizations.id, members.organizationId).as(
+				"membersCount",
+			),
 		},
 	});
 }
