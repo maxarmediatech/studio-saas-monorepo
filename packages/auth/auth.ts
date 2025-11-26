@@ -2,6 +2,7 @@ import { config } from "@repo/config";
 import {
 	db,
 	getInvitationById,
+	getOrganizationsByUserId,
 	getPurchasesByOrganizationId,
 	getPurchasesByUserId,
 	getUserByEmail,
@@ -88,6 +89,29 @@ export const auth = betterAuth({
 		accountLinking: {
 			enabled: true,
 			trustedProviders: ["google"],
+		},
+	},
+	databaseHooks: {
+		session: {
+			create: {
+				before: async (session) => {
+					// Auto-set activeOrganizationId when session is created
+					if (config.organizations.enable && session.userId) {
+						const memberships = await getOrganizationsByUserId(
+							session.userId,
+						);
+						const firstOrg = memberships[0]?.organization;
+
+						return {
+							data: {
+								...session,
+								activeOrganizationId: firstOrg?.id ?? null,
+							},
+						};
+					}
+					return { data: session };
+				},
+			},
 		},
 	},
 	hooks: {

@@ -105,3 +105,12 @@ export async function updateOrganization(
 		.set(updatedOrganization)
 		.where(eq(organizations.id, updatedOrganization.id));
 }
+
+export async function getOrganizationsByUserId(userId: string) {
+	return db.query.members.findMany({
+		where: (member, { eq }) => eq(member.userId, userId),
+		with: {
+			organization: true,
+		},
+	});
+}

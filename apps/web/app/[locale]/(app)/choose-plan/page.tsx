@@ -25,6 +25,8 @@ export default async function ChoosePlanPage({ params }: Props) {
 	const t = await getTranslations();
 	const session = await getSession();
 
+	console.log({ session });
+
 	if (!session) {
 		redirect("/auth/login");
 	}
@@ -47,9 +49,13 @@ export default async function ChoosePlanPage({ params }: Props) {
 		organizationId = organization?.id;
 	}
 
+	console.log({ organizationId });
+
 	const [error, purchases] = await attemptAsync(() =>
 		getPurchases(organizationId),
 	);
+
+	console.log({ purchases });
 
 	if (error || !purchases) {
 		throw new Error("Failed to fetch purchases");
@@ -75,9 +81,7 @@ export default async function ChoosePlanPage({ params }: Props) {
 
 			<div>
 				<PricingTable
-					activePlanId={
-						hasPurchases ? activePlan?.id : undefined
-					}
+					activePlanId={hasPurchases ? activePlan?.id : undefined}
 					{...(organizationId
 						? {
 								organizationId,
