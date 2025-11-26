@@ -20,6 +20,7 @@ import { useRouter } from "@shared/hooks/router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
+import { Loader2Icon } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -101,9 +102,17 @@ export function CreateOrganizationForm({
 					<Button
 						className="mt-6 w-full"
 						type="submit"
-						// loading={form.formState.isSubmitting}
+						disabled={form.formState.isSubmitting}
 					>
-						{t("organizations.createForm.submit")}
+						<span className="inline-flex items-center justify-center gap-2">
+							{form.formState.isSubmitting && (
+								<Loader2Icon
+									className="size-4 animate-spin"
+									aria-hidden="true"
+								/>
+							)}
+							{t("organizations.createForm.submit")}
+						</span>
 					</Button>
 				</form>
 			</Form>
