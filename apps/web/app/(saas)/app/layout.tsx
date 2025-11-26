@@ -1,6 +1,5 @@
 import { config } from "@repo/config";
 import { createPurchasesHelper } from "@repo/payments/lib/helper";
-import { SidebarInset, SidebarProvider } from "@repo/ui/components/sidebar";
 import { sessionQueryKey } from "@saas/auth/lib/api";
 import { getOrganizationList, getSession } from "@saas/auth/lib/server";
 import { ActiveOrganizationProvider } from "@saas/organizations/components/ActiveOrganizationProvider";
@@ -12,7 +11,6 @@ import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { attemptAsync } from "es-toolkit";
 import { redirect } from "next/navigation";
 import type { PropsWithChildren } from "react";
-import { DashboardSidebar } from "@/modules/dashboard/components";
 
 export default async function ProtectedAppLayout({
 	children,
@@ -102,18 +100,7 @@ export default async function ProtectedAppLayout({
 	return (
 		<HydrationBoundary state={dehydrate(queryClient)}>
 			<ActiveOrganizationProvider>
-				<ConfirmationAlertProvider>
-					<SidebarProvider className="bg-sidebar">
-						<DashboardSidebar />
-						<SidebarInset className="min-w-0">
-							<div className="h-svh overflow-hidden lg:p-2 w-full bg-sidebar">
-								<div className="lg:border lg:rounded-md overflow-hidden flex flex-col h-full w-full bg-background">
-									{children}
-								</div>
-							</div>
-						</SidebarInset>
-					</SidebarProvider>
-				</ConfirmationAlertProvider>
+				<ConfirmationAlertProvider>{children}</ConfirmationAlertProvider>
 			</ActiveOrganizationProvider>
 		</HydrationBoundary>
 	);
