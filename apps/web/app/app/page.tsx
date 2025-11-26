@@ -3,14 +3,8 @@ import { getOrganizationList, getSession } from "@saas/auth/lib/server";
 import { PageHeader } from "@saas/shared/components/PageHeader";
 import UserStart from "@saas/start/UserStart";
 import { redirect } from "next/navigation";
-import { getTranslations } from "next-intl/server";
 
-type Props = {
-	params: Promise<{ locale: string }>;
-};
-
-export default async function AppHomePage({ params }: Props) {
-	const { locale } = await params;
+export default async function AppHomePage() {
 	const session = await getSession();
 
 	if (!session) {
@@ -27,20 +21,18 @@ export default async function AppHomePage({ params }: Props) {
 
 		if (!organization) {
 			redirect(
-				`/${locale}/new-organization?redirectTo=${encodeURIComponent(`/${locale}/choose-plan`)}`,
+				`/new-organization?redirectTo=${encodeURIComponent("/choose-plan")}`,
 			);
 		}
 
-		redirect(`/${locale}/${organization.slug}`);
+		redirect(`/app/${organization.slug}`);
 	}
-
-	const t = await getTranslations();
 
 	return (
 		<div>
 			<PageHeader
-				title={t("start.welcome", { name: session?.user.name })}
-				subtitle={t("start.subtitle")}
+				title={`Welcome, ${session?.user.name}`}
+				subtitle="Here's an overview of your account"
 			/>
 
 			<UserStart />

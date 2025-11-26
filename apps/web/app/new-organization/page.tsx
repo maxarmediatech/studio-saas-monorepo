@@ -5,18 +5,11 @@ import { AuthWrapper } from "@saas/shared/components/AuthWrapper";
 import { redirect } from "next/navigation";
 
 type Props = {
-	params: Promise<{ locale: string }>;
 	searchParams: Promise<{ redirectTo?: string }>;
 };
 
-export default async function NewOrganizationPage({
-	params,
-	searchParams,
-}: Props) {
-	const [{ locale }, rawSearchParams] = await Promise.all([
-		params,
-		searchParams,
-	]);
+export default async function NewOrganizationPage({ searchParams }: Props) {
+	const rawSearchParams = await searchParams;
 	const redirectTo = Array.isArray(rawSearchParams.redirectTo)
 		? rawSearchParams.redirectTo[0]
 		: rawSearchParams.redirectTo;
@@ -28,14 +21,12 @@ export default async function NewOrganizationPage({
 		(!config.organizations.enableUsersToCreateOrganizations &&
 			(!config.organizations.requireOrganization || organizations.length > 0))
 	) {
-		redirect(`/${locale}`);
+		redirect("/app");
 	}
 
 	return (
 		<AuthWrapper>
-			<CreateOrganizationForm
-				redirectTo={redirectTo ?? `/${locale}/choose-plan`}
-			/>
+			<CreateOrganizationForm redirectTo={redirectTo ?? "/choose-plan"} />
 		</AuthWrapper>
 	);
 }

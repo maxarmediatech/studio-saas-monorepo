@@ -3,9 +3,13 @@ import "../modules/shared/lib/orpc-client.server";
 import { config } from "@repo/config";
 import "@repo/ui/globals.css";
 import { cn } from "@repo/ui/lib/utils";
+import { ClientProviders } from "@shared/components/ClientProviders";
+import { ConsentProvider } from "@shared/components/ConsentProvider";
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { Geist } from "next/font/google";
-import type { PropsWithChildren } from "react";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
+import { type PropsWithChildren, Suspense } from "react";
 
 const sansFont = Geist({
 	weight: ["400", "500", "600", "700"],
@@ -21,6 +25,17 @@ export const metadata: Metadata = {
 	},
 };
 
+async function ConsentWrapper({ children }: PropsWithChildren) {
+	const cookieStore = await cookies();
+	const consentCookie = cookieStore.get("consent");
+
+	return (
+		<ConsentProvider initialConsent={consentCookie?.value === "true"}>
+			{children}
+		</ConsentProvider>
+	);
+}
+
 export default function RootLayout({ children }: PropsWithChildren) {
 	return (
 		<html
@@ -33,7 +48,13 @@ export default function RootLayout({ children }: PropsWithChildren) {
 					"min-h-screen bg-background text-foreground antialiased",
 				)}
 			>
-				{children}
+				<NuqsAdapter>
+					<Suspense fallback={null}>
+						<ConsentWrapper>
+							<ClientProviders>{children}</ClientProviders>
+						</ConsentWrapper>
+					</Suspense>
+				</NuqsAdapter>
 			</body>
 		</html>
 	);

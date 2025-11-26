@@ -6,11 +6,11 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 type Props = {
-	params: Promise<{ locale: string; invitationId: string }>;
+	params: Promise<{ invitationId: string }>;
 };
 
 export default async function OrganizationInvitationPage({ params }: Props) {
-	const { invitationId, locale } = await params;
+	const { invitationId } = await params;
 
 	const invitation = await auth.api.getInvitation({
 		query: {
@@ -20,7 +20,7 @@ export default async function OrganizationInvitationPage({ params }: Props) {
 	});
 
 	if (!invitation) {
-		redirect(`/${locale}`);
+		redirect("/app");
 	}
 
 	const organization = await getOrganizationById(invitation.organizationId);

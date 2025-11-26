@@ -5,27 +5,15 @@ import { PricingTable } from "@saas/payments/components/PricingTable";
 import { getPurchases } from "@saas/payments/lib/server";
 import { AuthWrapper } from "@saas/shared/components/AuthWrapper";
 import { attemptAsync } from "es-toolkit";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { getTranslations } from "next-intl/server";
 
-type Props = {
-	params: Promise<{ locale: string }>;
+export const metadata: Metadata = {
+	title: "Choose Plan",
 };
 
-export async function generateMetadata() {
-	const t = await getTranslations();
-
-	return {
-		title: t("choosePlan.title"),
-	};
-}
-
-export default async function ChoosePlanPage({ params }: Props) {
-	const { locale } = await params;
-	const t = await getTranslations();
+export default async function ChoosePlanPage() {
 	const session = await getSession();
-
-	console.log({ session });
 
 	if (!session) {
 		redirect("/auth/login");
@@ -42,20 +30,16 @@ export default async function ChoosePlanPage({ params }: Props) {
 
 		if (!organization) {
 			redirect(
-				`/${locale}/new-organization?redirectTo=${encodeURIComponent(`/${locale}/choose-plan`)}`,
+				`/new-organization?redirectTo=${encodeURIComponent("/choose-plan")}`,
 			);
 		}
 
 		organizationId = organization?.id;
 	}
 
-	console.log({ organizationId });
-
 	const [error, purchases] = await attemptAsync(() =>
 		getPurchases(organizationId),
 	);
-
-	console.log({ purchases });
 
 	if (error || !purchases) {
 		throw new Error("Failed to fetch purchases");
@@ -65,17 +49,17 @@ export default async function ChoosePlanPage({ params }: Props) {
 	const hasPurchases = purchases.length > 0;
 
 	if (hasPurchases && activePlan) {
-		redirect(`/${locale}`);
+		redirect("/app");
 	}
 
 	return (
 		<AuthWrapper contentClass="max-w-5xl">
 			<div className="mb-4 text-center">
 				<h1 className="text-center font-bold text-2xl lg:text-3xl">
-					{t("choosePlan.title")}
+					Choose Your Plan
 				</h1>
 				<p className="text-muted-foreground text-sm lg:text-base">
-					{t("choosePlan.description")}
+					Select a plan that works best for you
 				</p>
 			</div>
 

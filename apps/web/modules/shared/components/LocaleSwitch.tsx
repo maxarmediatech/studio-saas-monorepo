@@ -1,7 +1,6 @@
 "use client";
 
 import { updateLocale } from "@i18n/lib/update-locale";
-import { useLocalePathname, useLocaleRouter } from "@i18n/routing";
 import { config } from "@repo/config";
 import type { Locale } from "@repo/i18n";
 import { Button } from "@repo/ui/components/button";
@@ -13,23 +12,26 @@ import {
 	DropdownMenuTrigger,
 } from "@repo/ui/components/dropdown-menu";
 import { LanguagesIcon } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useLocale } from "next-intl";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 
-const { locales } = config.i18n;
+const { locales, defaultLocale, localeCookieName } = config.i18n;
 
-export function LocaleSwitch({
-	withLocaleInUrl = true,
-}: {
-	withLocaleInUrl?: boolean;
-}) {
-	const localeRouter = useLocaleRouter();
-	const localePathname = useLocalePathname();
+function getLocaleFromCookie(): string {
+	if (typeof document === "undefined") return defaultLocale;
+	const match = document.cookie.match(
+		new RegExp(`(^| )${localeCookieName}=([^;]+)`),
+	);
+	return match?.[2] ?? defaultLocale;
+}
+
+export function LocaleSwitch() {
 	const router = useRouter();
-	const searchParams = useSearchParams();
-	const currentLocale = useLocale();
-	const [value, setValue] = useState<string>(currentLocale);
+	const [value, setValue] = useState<string>(defaultLocale);
+
+	useEffect(() => {
+		setValue(getLocaleFromCookie());
+	}, []);
 
 	return (
 		<DropdownMenu modal={false}>
@@ -42,20 +44,10 @@ export function LocaleSwitch({
 			<DropdownMenuContent>
 				<DropdownMenuRadioGroup
 					value={value}
-					onValueChange={(value) => {
-						setValue(value);
-
-						if (withLocaleInUrl) {
-							localeRouter.replace(
-								`${localePathname}?${searchParams.toString()}`,
-								{
-									locale: value,
-								},
-							);
-						} else {
-							updateLocale(value as Locale);
-							router.refresh();
-						}
+					onValueChange={(newValue) => {
+						setValue(newValue);
+						updateLocale(newValue as Locale);
+						router.refresh();
 					}}
 				>
 					{Object.entries(locales).map(([locale, { label }]) => {

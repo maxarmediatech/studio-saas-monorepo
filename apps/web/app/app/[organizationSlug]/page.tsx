@@ -2,7 +2,6 @@ import { getActiveOrganization } from "@saas/auth/lib/server";
 import OrganizationStart from "@saas/organizations/components/OrganizationStart";
 import { PageHeader } from "@saas/shared/components/PageHeader";
 import { notFound } from "next/navigation";
-import { getTranslations } from "next-intl/server";
 
 type Props = {
 	params: Promise<{ organizationSlug: string }>;
@@ -20,7 +19,6 @@ export async function generateMetadata({ params }: Props) {
 
 export default async function OrganizationPage({ params }: Props) {
 	const { organizationSlug } = await params;
-	const t = await getTranslations();
 
 	const activeOrganization = await getActiveOrganization(organizationSlug);
 
@@ -32,7 +30,7 @@ export default async function OrganizationPage({ params }: Props) {
 		<div>
 			<PageHeader
 				title={activeOrganization.name}
-				subtitle={t("organizations.start.subtitle")}
+				subtitle="Manage your organization"
 			/>
 
 			<OrganizationStart />
