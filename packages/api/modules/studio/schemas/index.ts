@@ -6,6 +6,7 @@
  */
 
 export * from "./common";
+export * from "./configuration";
 
 // Domain schemas will be added as they are created:
 // export * from "./booking";
@@ -16,4 +17,3 @@ export * from "./common";
 // export * from "./deliverable";
 // export * from "./payment";
 // export * from "./expense";
-// export * from "./configuration";
