@@ -43,6 +43,13 @@
       "when": 1766126893774,
       "tag": "0005_round_whizzer",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1766130092300,
+      "tag": "0006_puzzling_ozymandias",
+      "breakpoints": true
     }
   ]
 }
