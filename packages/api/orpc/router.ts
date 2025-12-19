@@ -9,6 +9,7 @@ import { newsletterRouter } from "../modules/newsletter/router";
 import { organizationsRouter } from "../modules/organizations/router";
 import { paymentsRouter } from "../modules/payments/router";
 import { shootsRouter } from "../modules/shoots/router";
+import { tasksRouter } from "../modules/tasks/router";
 import { usersRouter } from "../modules/users/router";
 import { publicProcedure } from "./procedures";
 
@@ -29,6 +30,7 @@ export const router = publicProcedure
 		crews: crewsRouter,
 		bookings: bookingsRouter,
 		shoots: shootsRouter,
+		tasks: tasksRouter,
 	});
 
 export type ApiRouterClient = RouterClient<typeof router>;
