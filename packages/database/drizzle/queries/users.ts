@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import type { z } from "zod";
 import { db } from "../client";
-import { accounts, users } from "../schema/postgres";
+import { accounts, users } from "../schema";
 import type { UserUpdateSchema } from "../zod";
 
 export async function getUsers({
