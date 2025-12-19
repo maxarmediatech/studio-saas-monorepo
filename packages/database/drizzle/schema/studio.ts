@@ -1,8 +1,10 @@
 import { relations, sql } from "drizzle-orm";
 import {
 	boolean,
+	check,
 	date,
 	decimal,
+	foreignKey,
 	index,
 	integer,
 	jsonb,
@@ -187,6 +189,7 @@ export const bookings = pgTable(
 		),
 	},
 	(table) => [
+		uniqueIndex("bookings_id_org_idx").on(table.id, table.organizationId),
 		uniqueIndex("bookings_org_ref_idx")
 			.on(table.organizationId, table.referenceNumber)
 			.where(sql`deleted_at IS NULL`),
@@ -204,9 +207,7 @@ export const bookingParticipants = pgTable(
 		id: varchar("id", { length: 255 })
 			.$defaultFn(() => uuidv7())
 			.primaryKey(),
-		bookingId: varchar("booking_id", { length: 255 })
-			.notNull()
-			.references(() => bookings.id, { onDelete: "cascade" }),
+		bookingId: varchar("booking_id", { length: 255 }).notNull(),
 		clientId: varchar("client_id", { length: 255 })
 			.notNull()
 			.references(() => clients.id, { onDelete: "cascade" }),
@@ -221,6 +222,10 @@ export const bookingParticipants = pgTable(
 			.notNull(),
 	},
 	(table) => [
+		foreignKey({
+			columns: [table.bookingId],
+			foreignColumns: [bookings.id],
+		}).onDelete("cascade"),
 		uniqueIndex("booking_participants_uniq_idx").on(
 			table.bookingId,
 			table.clientId,
@@ -258,6 +263,10 @@ export const bookingEvents = pgTable(
 			.notNull(),
 	},
 	(table) => [
+		foreignKey({
+			columns: [table.bookingId, table.organizationId],
+			foreignColumns: [bookings.id, bookings.organizationId],
+		}).onDelete("cascade"),
 		index("booking_events_booking_idx").on(table.bookingId),
 		index("booking_events_org_date_idx").on(
 			table.organizationId,
@@ -719,6 +728,10 @@ export const assignmentSubmissions = pgTable(
 		index("assignment_submissions_deliverable_idx").on(table.deliverableId),
 		index("assignment_submissions_crew_idx").on(table.submittedBy),
 		index("assignment_submissions_status_idx").on(table.status),
+		check(
+			"assignment_submissions_task_or_deliverable",
+			sql`(task_id IS NOT NULL AND deliverable_id IS NULL) OR (task_id IS NULL AND deliverable_id IS NOT NULL)`,
+		),
 	],
 );
 
@@ -794,7 +807,10 @@ export const receivedAmounts = pgTable(
 		notes: text("notes"),
 
 		// Link to payment schedule if this fulfills a scheduled payment
-		paymentScheduleId: varchar("payment_schedule_id", { length: 255 }),
+		paymentScheduleId: varchar("payment_schedule_id", { length: 255 }).references(
+			() => paymentSchedules.id,
+			{ onDelete: "set null" },
+		),
 
 		createdBy: varchar("created_by", { length: 255 }).references(
 			() => users.id,
@@ -985,6 +1001,10 @@ export const expenseAssignments = pgTable(
 		index("expense_assignments_booking_idx").on(table.bookingId),
 		index("expense_assignments_shoot_idx").on(table.shootId),
 		index("expense_assignments_crew_idx").on(table.crewId),
+		check(
+			"expense_assignments_single_target",
+			sql`(booking_id IS NOT NULL AND shoot_id IS NULL AND crew_id IS NULL) OR (booking_id IS NULL AND shoot_id IS NOT NULL AND crew_id IS NULL) OR (booking_id IS NULL AND shoot_id IS NULL AND crew_id IS NOT NULL)`,
+		),
 	],
 );
 
