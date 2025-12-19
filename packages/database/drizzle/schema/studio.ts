@@ -14,7 +14,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { v7 as uuidv7 } from "uuid";
 import { users } from "./auth";
-import { organizations } from "./core";
+import { invitations, members, organizations, purchases } from "./core";
 import { bookingPhaseEnum, configTypeEnum } from "./enums";
 
 // ============================================================================
@@ -265,6 +265,21 @@ export const clientRelations = relations(clients, ({ one, many }) => ({
 		references: [organizations.id],
 	}),
 	bookingParticipants: many(bookingParticipants),
+	createdByUser: one(users, {
+		fields: [clients.createdBy],
+		references: [users.id],
+		relationName: "clientCreatedBy",
+	}),
+	updatedByUser: one(users, {
+		fields: [clients.updatedBy],
+		references: [users.id],
+		relationName: "clientUpdatedBy",
+	}),
+	deletedByUser: one(users, {
+		fields: [clients.deletedBy],
+		references: [users.id],
+		relationName: "clientDeletedBy",
+	}),
 }));
 
 export const bookingRelations = relations(bookings, ({ one, many }) => ({
@@ -274,6 +289,21 @@ export const bookingRelations = relations(bookings, ({ one, many }) => ({
 	}),
 	participants: many(bookingParticipants),
 	events: many(bookingEvents),
+	createdByUser: one(users, {
+		fields: [bookings.createdBy],
+		references: [users.id],
+		relationName: "bookingCreatedBy",
+	}),
+	updatedByUser: one(users, {
+		fields: [bookings.updatedBy],
+		references: [users.id],
+		relationName: "bookingUpdatedBy",
+	}),
+	deletedByUser: one(users, {
+		fields: [bookings.deletedBy],
+		references: [users.id],
+		relationName: "bookingDeletedBy",
+	}),
 }));
 
 export const bookingParticipantRelations = relations(
@@ -295,6 +325,15 @@ export const bookingEventRelations = relations(bookingEvents, ({ one }) => ({
 		fields: [bookingEvents.bookingId],
 		references: [bookings.id],
 	}),
+}));
+
+export const organizationRelations = relations(organizations, ({ many }) => ({
+	members: many(members),
+	invitations: many(invitations),
+	purchases: many(purchases),
+	configurations: many(configurations),
+	clients: many(clients),
+	bookings: many(bookings),
 }));
 
 // ============================================================================

@@ -5,9 +5,9 @@ export * from "./enums";
 export * from "./auth";
 
 // Core tables (organizations, members, invitations, purchases, webhookEvents)
-// Also includes userRelations, organizationRelations
+// Also includes userRelations
 export * from "./core";
 
 // Studio domain tables (configurations, clients, bookings)
-// Also includes all studio relations
+// Also includes organizationRelations and studio relations
 export * from "./studio";

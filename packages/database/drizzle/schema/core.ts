@@ -149,15 +149,6 @@ export const userRelations = relations(users, ({ many }) => ({
 }));
 
 /**
- * Organization relations
- */
-export const organizationRelations = relations(organizations, ({ many }) => ({
-	members: many(members),
-	invitations: many(invitations),
-	purchases: many(purchases),
-}));
-
-/**
  * Member relations
  */
 export const memberRelations = relations(members, ({ one }) => ({
