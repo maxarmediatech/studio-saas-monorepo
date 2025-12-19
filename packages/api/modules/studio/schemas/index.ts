@@ -14,6 +14,4 @@ export * from "./shoot";
 export * from "./task";
 export * from "./deliverable";
 export * from "./payment";
-
-// Domain schemas will be added as they are created:
-// export * from "./expense";
+export * from "./expense";
