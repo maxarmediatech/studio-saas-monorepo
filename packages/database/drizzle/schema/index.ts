@@ -1,19 +1,13 @@
 // Enums (must be first as other files depend on them)
 export * from "./enums";
 
-// Core tables (NebulaForge base)
+// Auth tables (users, sessions, accounts, verifications, twoFactors)
 export * from "./auth";
-export * from "./organizations";
-export * from "./billing";
 
-// Studio domain tables
-export * from "./configurations";
-export * from "./clients";
-export * from "./bookings";
+// Core tables (organizations, members, invitations, purchases, webhookEvents)
+// Also includes userRelations, organizationRelations
+export * from "./core";
 
-// Cross-file relations (span multiple schema files)
-export {
-	userRelations,
-	organizationRelations,
-	clientBookingsRelation,
-} from "./relations";
+// Studio domain tables (configurations, clients, bookings)
+// Also includes all studio relations
+export * from "./studio";

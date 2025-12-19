@@ -14,7 +14,9 @@ export async function getUsers({
 	query?: string;
 }) {
 	return await db.query.users.findMany({
-		where: (user, { like }) => like(user.name, `%${query}%`),
+		where: query
+			? (user, { like }) => like(user.name, `%${query}%`)
+			: undefined,
 		limit,
 		offset,
 	});

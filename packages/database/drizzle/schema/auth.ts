@@ -12,6 +12,7 @@ import { v7 as uuidv7 } from "uuid";
 // ============================================================================
 // AUTH TABLES
 // Core authentication tables from NebulaForge + better-auth
+// Note: userRelations is defined in core.ts as it spans multiple files
 // ============================================================================
 
 export const users = pgTable("users", {
@@ -113,7 +114,7 @@ export const twoFactors = pgTable(
 );
 
 // ============================================================================
-// AUTH RELATIONS
+// AUTH RELATIONS (self-contained, don't reference other domains)
 // ============================================================================
 
 export const sessionRelations = relations(sessions, ({ one }) => ({

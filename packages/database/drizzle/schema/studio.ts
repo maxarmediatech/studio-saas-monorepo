@@ -1,32 +1,29 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
+	boolean,
+	date,
 	decimal,
 	index,
+	integer,
+	jsonb,
 	pgTable,
 	text,
 	timestamp,
 	uniqueIndex,
 	varchar,
-	date,
 } from "drizzle-orm/pg-core";
 import { v7 as uuidv7 } from "uuid";
 import { users } from "./auth";
-import { clients } from "./clients";
-import { bookingPhaseEnum } from "./enums";
-import { organizations } from "./organizations";
+import { organizations } from "./core";
+import { bookingPhaseEnum, configTypeEnum } from "./enums";
 
 // ============================================================================
-// BOOKINGS TABLE
-// Core entity - represents a wedding/event project
+// CONFIGURATIONS TABLE
+// Per-organization customizable settings (statuses, priorities, categories)
 // ============================================================================
 
-/**
- * Bookings - the central entity for studio project management
- * Represents a wedding, corporate event, or any photography/videography project
- * All other domain entities (shoots, tasks, deliverables, payments) link to a booking
- */
-export const bookings = pgTable(
-	"bookings",
+export const configurations = pgTable(
+	"configurations",
 	{
 		id: varchar("id", { length: 255 })
 			.$defaultFn(() => uuidv7())
@@ -35,30 +32,61 @@ export const bookings = pgTable(
 			.notNull()
 			.references(() => organizations.id, { onDelete: "cascade" }),
 
-		// Identification
-		referenceNumber: varchar("reference_number", { length: 50 }).notNull(),
+		type: configTypeEnum("type").notNull(),
+		key: varchar("key", { length: 100 }).notNull(),
+		label: text("label").notNull(),
+		description: text("description"),
+
+		color: varchar("color", { length: 20 }),
+		icon: varchar("icon", { length: 50 }),
+		sortOrder: integer("sort_order").default(0).notNull(),
+
+		isDefault: boolean("is_default").default(false).notNull(),
+		isSystem: boolean("is_system").default(false).notNull(),
+		metadata: jsonb("metadata"),
+
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		uniqueIndex("configurations_org_type_key_idx").on(
+			table.organizationId,
+			table.type,
+			table.key,
+		),
+		index("configurations_org_type_idx").on(
+			table.organizationId,
+			table.type,
+		),
+	],
+);
+
+// ============================================================================
+// CLIENTS TABLE
+// Customer/contact management for studio bookings
+// ============================================================================
+
+export const clients = pgTable(
+	"clients",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 })
+			.notNull()
+			.references(() => organizations.id, { onDelete: "cascade" }),
+
 		name: text("name").notNull(),
+		email: text("email"),
+		phoneNumber: text("phone_number"),
+		alternatePhone: text("alternate_phone"),
+		address: text("address"),
+		metadata: jsonb("metadata"),
 
-		// Type & Package (validated against configurations table)
-		bookingType: text("booking_type").notNull(),
-		packageType: text("package_type").notNull(),
-		packageCost: decimal("package_cost", { precision: 12, scale: 2 }).notNull(),
-
-		// Status (system-critical enum - drives business logic)
-		status: bookingPhaseEnum("status").notNull().default("new"),
-
-		// Financial cache (updated via application logic when payments/expenses change)
-		totalReceived: decimal("total_received", { precision: 12, scale: 2 })
-			.default("0")
-			.notNull(),
-		totalExpenses: decimal("total_expenses", { precision: 12, scale: 2 })
-			.default("0")
-			.notNull(),
-
-		// Details
-		note: text("note"),
-
-		// Audit fields
 		createdBy: varchar("created_by", { length: 255 }).references(
 			() => users.id,
 			{ onDelete: "set null" },
@@ -74,7 +102,6 @@ export const bookings = pgTable(
 			.defaultNow()
 			.notNull(),
 
-		// Soft delete
 		deletedAt: timestamp("deleted_at", { withTimezone: true }),
 		deletedBy: varchar("deleted_by", { length: 255 }).references(
 			() => users.id,
@@ -82,14 +109,76 @@ export const bookings = pgTable(
 		),
 	},
 	(table) => [
-		// Reference number must be unique within an organization
+		index("clients_organization_idx").on(table.organizationId),
+		uniqueIndex("clients_org_phone_idx")
+			.on(table.organizationId, table.phoneNumber)
+			.where(sql`phone_number IS NOT NULL AND deleted_at IS NULL`),
+		uniqueIndex("clients_org_email_idx")
+			.on(table.organizationId, table.email)
+			.where(sql`email IS NOT NULL AND deleted_at IS NULL`),
+	],
+);
+
+// ============================================================================
+// BOOKINGS TABLES
+// Core entity - represents a wedding/event project
+// ============================================================================
+
+export const bookings = pgTable(
+	"bookings",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 })
+			.notNull()
+			.references(() => organizations.id, { onDelete: "cascade" }),
+
+		referenceNumber: varchar("reference_number", { length: 50 }).notNull(),
+		name: text("name").notNull(),
+
+		bookingType: text("booking_type").notNull(),
+		packageType: text("package_type").notNull(),
+		packageCost: decimal("package_cost", { precision: 12, scale: 2 }).notNull(),
+
+		status: bookingPhaseEnum("status").notNull().default("new"),
+
+		totalReceived: decimal("total_received", { precision: 12, scale: 2 })
+			.default("0")
+			.notNull(),
+		totalExpenses: decimal("total_expenses", { precision: 12, scale: 2 })
+			.default("0")
+			.notNull(),
+
+		note: text("note"),
+
+		createdBy: varchar("created_by", { length: 255 }).references(
+			() => users.id,
+			{ onDelete: "set null" },
+		),
+		updatedBy: varchar("updated_by", { length: 255 }).references(
+			() => users.id,
+			{ onDelete: "set null" },
+		),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+
+		deletedAt: timestamp("deleted_at", { withTimezone: true }),
+		deletedBy: varchar("deleted_by", { length: 255 }).references(
+			() => users.id,
+			{ onDelete: "set null" },
+		),
+	},
+	(table) => [
 		uniqueIndex("bookings_org_ref_idx").on(
 			table.organizationId,
 			table.referenceNumber,
 		),
-		// Fast lookup by status for dashboard/filters
 		index("bookings_org_status_idx").on(table.organizationId, table.status),
-		// Fast lookup by created date for sorting/pagination
 		index("bookings_org_created_idx").on(
 			table.organizationId,
 			table.createdAt,
@@ -97,16 +186,6 @@ export const bookings = pgTable(
 	],
 );
 
-// ============================================================================
-// BOOKING PARTICIPANTS TABLE
-// Links clients to bookings with roles (bride, groom, company, etc.)
-// ============================================================================
-
-/**
- * BookingParticipants - junction table linking clients to bookings
- * Each participant has a role (e.g., "bride", "groom", "company", "contact")
- * Role is validated against configurations table
- */
 export const bookingParticipants = pgTable(
 	"booking_participants",
 	{
@@ -120,10 +199,8 @@ export const bookingParticipants = pgTable(
 			.notNull()
 			.references(() => clients.id, { onDelete: "cascade" }),
 
-		// Role in the booking (validated against configurations: relation_type)
 		role: text("role").notNull(),
 
-		// Timestamps
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.defaultNow()
 			.notNull(),
@@ -132,27 +209,15 @@ export const bookingParticipants = pgTable(
 			.notNull(),
 	},
 	(table) => [
-		// Each client can only have one role per booking
 		uniqueIndex("booking_participants_uniq_idx").on(
 			table.bookingId,
 			table.clientId,
 			table.role,
 		),
-		// Fast lookup by booking
 		index("booking_participants_booking_idx").on(table.bookingId),
 	],
 );
 
-// ============================================================================
-// BOOKING EVENTS TABLE
-// For multi-day events (e.g., wedding with engagement, haldi, sangeet, etc.)
-// ============================================================================
-
-/**
- * BookingEvents - represents individual events within a booking
- * Useful for multi-day weddings with separate functions
- * Each event can have its own date, venue, and notes
- */
 export const bookingEvents = pgTable(
 	"booking_events",
 	{
@@ -163,14 +228,12 @@ export const bookingEvents = pgTable(
 			.notNull()
 			.references(() => bookings.id, { onDelete: "cascade" }),
 
-		// Event details
-		eventType: text("event_type").notNull(), // engagement, haldi, sangeet, wedding, reception
+		eventType: text("event_type").notNull(),
 		eventDate: date("event_date").notNull(),
 		venue: text("venue"),
 		venueAddress: text("venue_address"),
 		notes: text("notes"),
 
-		// Timestamps
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.defaultNow()
 			.notNull(),
@@ -179,16 +242,30 @@ export const bookingEvents = pgTable(
 			.notNull(),
 	},
 	(table) => [
-		// Fast lookup by booking
 		index("booking_events_booking_idx").on(table.bookingId),
-		// Fast lookup by date for calendar views
 		index("booking_events_date_idx").on(table.eventDate),
 	],
 );
 
 // ============================================================================
-// BOOKING RELATIONS
+// RELATIONS
+// All studio domain relations defined here
 // ============================================================================
+
+export const configurationsRelations = relations(configurations, ({ one }) => ({
+	organization: one(organizations, {
+		fields: [configurations.organizationId],
+		references: [organizations.id],
+	}),
+}));
+
+export const clientRelations = relations(clients, ({ one, many }) => ({
+	organization: one(organizations, {
+		fields: [clients.organizationId],
+		references: [organizations.id],
+	}),
+	bookingParticipants: many(bookingParticipants),
+}));
 
 export const bookingRelations = relations(bookings, ({ one, many }) => ({
 	organization: one(organizations, {
@@ -197,23 +274,6 @@ export const bookingRelations = relations(bookings, ({ one, many }) => ({
 	}),
 	participants: many(bookingParticipants),
 	events: many(bookingEvents),
-	createdByUser: one(users, {
-		fields: [bookings.createdBy],
-		references: [users.id],
-		relationName: "bookingCreatedBy",
-	}),
-	updatedByUser: one(users, {
-		fields: [bookings.updatedBy],
-		references: [users.id],
-		relationName: "bookingUpdatedBy",
-	}),
-	deletedByUser: one(users, {
-		fields: [bookings.deletedBy],
-		references: [users.id],
-		relationName: "bookingDeletedBy",
-	}),
-	// Note: relations to shoots, tasks, deliverables, payments, expenses
-	// will be added in their respective files
 }));
 
 export const bookingParticipantRelations = relations(
@@ -241,9 +301,17 @@ export const bookingEventRelations = relations(bookingEvents, ({ one }) => ({
 // TYPE EXPORTS
 // ============================================================================
 
+export type Configuration = typeof configurations.$inferSelect;
+export type NewConfiguration = typeof configurations.$inferInsert;
+
+export type Client = typeof clients.$inferSelect;
+export type NewClient = typeof clients.$inferInsert;
+
 export type Booking = typeof bookings.$inferSelect;
 export type NewBooking = typeof bookings.$inferInsert;
+
 export type BookingParticipant = typeof bookingParticipants.$inferSelect;
 export type NewBookingParticipant = typeof bookingParticipants.$inferInsert;
+
 export type BookingEvent = typeof bookingEvents.$inferSelect;
 export type NewBookingEvent = typeof bookingEvents.$inferInsert;
