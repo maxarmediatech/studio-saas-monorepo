@@ -64,6 +64,9 @@ export const configurations = pgTable(
 			table.type,
 			table.key,
 		),
+		uniqueIndex("configurations_org_type_default_idx")
+			.on(table.organizationId, table.type)
+			.where(sql`is_default = true`),
 		index("configurations_org_type_idx").on(
 			table.organizationId,
 			table.type,
@@ -180,10 +183,9 @@ export const bookings = pgTable(
 		),
 	},
 	(table) => [
-		uniqueIndex("bookings_org_ref_idx").on(
-			table.organizationId,
-			table.referenceNumber,
-		),
+		uniqueIndex("bookings_org_ref_idx")
+			.on(table.organizationId, table.referenceNumber)
+			.where(sql`deleted_at IS NULL`),
 		index("bookings_org_status_idx").on(table.organizationId, table.status),
 		index("bookings_org_created_idx").on(
 			table.organizationId,
@@ -221,6 +223,7 @@ export const bookingParticipants = pgTable(
 			table.role,
 		),
 		index("booking_participants_booking_idx").on(table.bookingId),
+		index("booking_participants_client_idx").on(table.clientId),
 	],
 );
 
@@ -233,6 +236,9 @@ export const bookingEvents = pgTable(
 		bookingId: varchar("booking_id", { length: 255 })
 			.notNull()
 			.references(() => bookings.id, { onDelete: "cascade" }),
+		organizationId: varchar("organization_id", { length: 255 })
+			.notNull()
+			.references(() => organizations.id, { onDelete: "cascade" }),
 
 		eventType: text("event_type").notNull(),
 		eventDate: date("event_date").notNull(),
@@ -249,6 +255,10 @@ export const bookingEvents = pgTable(
 	},
 	(table) => [
 		index("booking_events_booking_idx").on(table.bookingId),
+		index("booking_events_org_date_idx").on(
+			table.organizationId,
+			table.eventDate,
+		),
 		index("booking_events_date_idx").on(table.eventDate),
 	],
 );
@@ -834,6 +844,10 @@ export const bookingEventRelations = relations(bookingEvents, ({ one }) => ({
 	booking: one(bookings, {
 		fields: [bookingEvents.bookingId],
 		references: [bookings.id],
+	}),
+	organization: one(organizations, {
+		fields: [bookingEvents.organizationId],
+		references: [organizations.id],
 	}),
 }));
 
