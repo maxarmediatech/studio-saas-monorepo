@@ -11,6 +11,7 @@ import { paymentsRouter } from "../modules/payments/router";
 import { shootsRouter } from "../modules/shoots/router";
 import { tasksRouter } from "../modules/tasks/router";
 import { deliverablesRouter } from "../modules/deliverables/router";
+import { studioPaymentsRouter } from "../modules/studio-payments/router";
 import { usersRouter } from "../modules/users/router";
 import { publicProcedure } from "./procedures";
 
@@ -33,6 +34,7 @@ export const router = publicProcedure
 		shoots: shootsRouter,
 		tasks: tasksRouter,
 		deliverables: deliverablesRouter,
+		studioPayments: studioPaymentsRouter,
 	});
 
 export type ApiRouterClient = RouterClient<typeof router>;
