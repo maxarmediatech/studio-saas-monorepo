@@ -10,9 +10,9 @@ export * from "./configuration";
 export * from "./client";
 export * from "./crew";
 export * from "./booking";
+export * from "./shoot";
 
 // Domain schemas will be added as they are created:
-// export * from "./shoot";
 // export * from "./task";
 // export * from "./deliverable";
 // export * from "./payment";

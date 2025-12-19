@@ -31,6 +31,7 @@ export interface StudioContext {
 			id: string;
 			name: string;
 			slug: string | null;
+			timezone: string;
 		};
 	};
 	user: {
