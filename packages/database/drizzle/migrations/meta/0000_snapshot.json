@@ -1,5 +1,5 @@
 {
-  "id": "82e93c8a-ff9f-4c63-9ab1-f57a3cf41500",
+  "id": "f0ec3f1a-2f81-46fc-9579-c395f826f948",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -3563,7 +3563,12 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "expenses_amount_positive": {
+          "name": "expenses_amount_positive",
+          "value": "amount > 0"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.invoice_line_items": {
@@ -3664,7 +3669,20 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "invoice_line_items_quantity_positive": {
+          "name": "invoice_line_items_quantity_positive",
+          "value": "quantity > 0"
+        },
+        "invoice_line_items_unit_price_non_negative": {
+          "name": "invoice_line_items_unit_price_non_negative",
+          "value": "unit_price >= 0"
+        },
+        "invoice_line_items_amount_consistency": {
+          "name": "invoice_line_items_amount_consistency",
+          "value": "amount = quantity * unit_price"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.invoices": {
@@ -3973,7 +3991,16 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "invoices_amounts_non_negative": {
+          "name": "invoices_amounts_non_negative",
+          "value": "subtotal >= 0 AND tax_amount >= 0 AND discount_amount >= 0 AND total_amount >= 0"
+        },
+        "invoices_paid_amount_range": {
+          "name": "invoices_paid_amount_range",
+          "value": "paid_amount >= 0 AND paid_amount <= total_amount"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.payment_schedules": {
@@ -4221,7 +4248,16 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "payment_schedules_amount_positive": {
+          "name": "payment_schedules_amount_positive",
+          "value": "amount > 0"
+        },
+        "payment_schedules_paid_amount_range": {
+          "name": "payment_schedules_paid_amount_range",
+          "value": "paid_amount >= 0 AND paid_amount <= amount"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.received_amounts": {
@@ -4467,7 +4503,12 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "received_amounts_amount_positive": {
+          "name": "received_amounts_amount_positive",
+          "value": "amount > 0"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.shoot_assignments": {
@@ -4951,7 +4992,12 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "submission_feedback_rating_range": {
+          "name": "submission_feedback_rating_range",
+          "value": "rating IS NULL OR (rating >= 1 AND rating <= 5)"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.submission_files": {

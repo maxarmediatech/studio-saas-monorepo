@@ -344,7 +344,8 @@ CREATE TABLE "expenses" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"deleted_at" timestamp with time zone,
-	"deleted_by" varchar(255)
+	"deleted_by" varchar(255),
+	CONSTRAINT "expenses_amount_positive" CHECK (amount > 0)
 );
 --> statement-breakpoint
 CREATE TABLE "invoice_line_items" (
@@ -356,7 +357,10 @@ CREATE TABLE "invoice_line_items" (
 	"amount" numeric(12, 2) NOT NULL,
 	"sort_order" integer DEFAULT 0 NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "invoice_line_items_quantity_positive" CHECK (quantity > 0),
+	CONSTRAINT "invoice_line_items_unit_price_non_negative" CHECK (unit_price >= 0),
+	CONSTRAINT "invoice_line_items_amount_consistency" CHECK (amount = quantity * unit_price)
 );
 --> statement-breakpoint
 CREATE TABLE "invoices" (
@@ -382,7 +386,9 @@ CREATE TABLE "invoices" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"deleted_at" timestamp with time zone,
-	"deleted_by" varchar(255)
+	"deleted_by" varchar(255),
+	CONSTRAINT "invoices_amounts_non_negative" CHECK (subtotal >= 0 AND tax_amount >= 0 AND discount_amount >= 0 AND total_amount >= 0),
+	CONSTRAINT "invoices_paid_amount_range" CHECK (paid_amount >= 0 AND paid_amount <= total_amount)
 );
 --> statement-breakpoint
 CREATE TABLE "payment_schedules" (
@@ -402,7 +408,9 @@ CREATE TABLE "payment_schedules" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"deleted_at" timestamp with time zone,
-	"deleted_by" varchar(255)
+	"deleted_by" varchar(255),
+	CONSTRAINT "payment_schedules_amount_positive" CHECK (amount > 0),
+	CONSTRAINT "payment_schedules_paid_amount_range" CHECK (paid_amount >= 0 AND paid_amount <= amount)
 );
 --> statement-breakpoint
 CREATE TABLE "received_amounts" (
@@ -420,7 +428,8 @@ CREATE TABLE "received_amounts" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"deleted_at" timestamp with time zone,
-	"deleted_by" varchar(255)
+	"deleted_by" varchar(255),
+	CONSTRAINT "received_amounts_amount_positive" CHECK (amount > 0)
 );
 --> statement-breakpoint
 CREATE TABLE "shoot_assignments" (
@@ -460,7 +469,8 @@ CREATE TABLE "submission_feedback" (
 	"feedback_by" varchar(255) NOT NULL,
 	"comment" text NOT NULL,
 	"rating" integer,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "submission_feedback_rating_range" CHECK (rating IS NULL OR (rating >= 1 AND rating <= 5))
 );
 --> statement-breakpoint
 CREATE TABLE "submission_files" (

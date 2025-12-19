@@ -778,7 +778,13 @@ export const submissionFeedback = pgTable(
 			.defaultNow()
 			.notNull(),
 	},
-	(table) => [index("submission_feedback_submission_idx").on(table.submissionId)],
+	(table) => [
+		index("submission_feedback_submission_idx").on(table.submissionId),
+		check(
+			"submission_feedback_rating_range",
+			sql`rating IS NULL OR (rating >= 1 AND rating <= 5)`,
+		),
+	],
 );
 
 // ============================================================================
@@ -838,6 +844,10 @@ export const receivedAmounts = pgTable(
 		index("received_amounts_booking_idx").on(table.bookingId),
 		index("received_amounts_date_idx").on(table.receivedDate),
 		index("received_amounts_schedule_idx").on(table.paymentScheduleId),
+		check(
+			"received_amounts_amount_positive",
+			sql`amount > 0`,
+		),
 	],
 );
 
@@ -899,6 +909,14 @@ export const paymentSchedules = pgTable(
 		index("payment_schedules_booking_idx").on(table.bookingId),
 		index("payment_schedules_due_date_idx").on(table.dueDate),
 		index("payment_schedules_status_idx").on(table.status),
+		check(
+			"payment_schedules_amount_positive",
+			sql`amount > 0`,
+		),
+		check(
+			"payment_schedules_paid_amount_range",
+			sql`paid_amount >= 0 AND paid_amount <= amount`,
+		),
 	],
 );
 
@@ -960,6 +978,10 @@ export const expenses = pgTable(
 		index("expenses_org_date_idx").on(table.organizationId, table.expenseDate),
 		index("expenses_category_idx").on(table.category),
 		index("expenses_bill_to_idx").on(table.billTo),
+		check(
+			"expenses_amount_positive",
+			sql`amount > 0`,
+		),
 	],
 );
 
@@ -1088,6 +1110,14 @@ export const invoices = pgTable(
 		index("invoices_booking_idx").on(table.bookingId),
 		index("invoices_status_idx").on(table.status),
 		index("invoices_issue_date_idx").on(table.issueDate),
+		check(
+			"invoices_amounts_non_negative",
+			sql`subtotal >= 0 AND tax_amount >= 0 AND discount_amount >= 0 AND total_amount >= 0`,
+		),
+		check(
+			"invoices_paid_amount_range",
+			sql`paid_amount >= 0 AND paid_amount <= total_amount`,
+		),
 	],
 );
 
@@ -1117,7 +1147,21 @@ export const invoiceLineItems = pgTable(
 			.defaultNow()
 			.notNull(),
 	},
-	(table) => [index("invoice_line_items_invoice_idx").on(table.invoiceId)],
+	(table) => [
+		index("invoice_line_items_invoice_idx").on(table.invoiceId),
+		check(
+			"invoice_line_items_quantity_positive",
+			sql`quantity > 0`,
+		),
+		check(
+			"invoice_line_items_unit_price_non_negative",
+			sql`unit_price >= 0`,
+		),
+		check(
+			"invoice_line_items_amount_consistency",
+			sql`amount = quantity * unit_price`,
+		),
+	],
 );
 
 // ============================================================================
