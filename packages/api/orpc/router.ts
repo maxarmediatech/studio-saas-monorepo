@@ -1,5 +1,6 @@
 import type { RouterClient } from "@orpc/server";
 import { adminRouter } from "../modules/admin/router";
+import { clientsRouter } from "../modules/clients/router";
 import { configurationsRouter } from "../modules/configurations/router";
 import { contactRouter } from "../modules/contact/router";
 import { newsletterRouter } from "../modules/newsletter/router";
@@ -21,6 +22,7 @@ export const router = publicProcedure
 
 		// Studio domain routers
 		configurations: configurationsRouter,
+		clients: clientsRouter,
 	});
 
 export type ApiRouterClient = RouterClient<typeof router>;
