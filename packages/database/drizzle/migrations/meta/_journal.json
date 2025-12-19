@@ -15,6 +15,13 @@
       "when": 1766146289661,
       "tag": "0001_dashing_abomination",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1766158628019,
+      "tag": "0002_slim_freak",
+      "breakpoints": true
     }
   ]
 }

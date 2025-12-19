@@ -14,6 +14,9 @@ import { deliverablesRouter } from "../modules/deliverables/router";
 import { studioPaymentsRouter } from "../modules/studio-payments/router";
 import { expensesRouter } from "../modules/expenses/router";
 import { usersRouter } from "../modules/users/router";
+import { dashboardRouter } from "../modules/dashboard/router";
+import { submissionsRouter } from "../modules/submissions/router";
+import { myAssignmentsRouter } from "../modules/my-assignments/router";
 import { publicProcedure } from "./procedures";
 
 export const router = publicProcedure
@@ -37,6 +40,11 @@ export const router = publicProcedure
 		deliverables: deliverablesRouter,
 		studioPayments: studioPaymentsRouter,
 		expenses: expensesRouter,
+
+		// Support routers
+		dashboard: dashboardRouter,
+		submissions: submissionsRouter,
+		myAssignments: myAssignmentsRouter,
 	});
 
 export type ApiRouterClient = RouterClient<typeof router>;

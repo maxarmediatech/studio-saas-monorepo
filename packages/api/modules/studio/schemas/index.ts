@@ -15,3 +15,6 @@ export * from "./task";
 export * from "./deliverable";
 export * from "./payment";
 export * from "./expense";
+export * from "./dashboard";
+export * from "./submission";
+export * from "./my-assignments";
