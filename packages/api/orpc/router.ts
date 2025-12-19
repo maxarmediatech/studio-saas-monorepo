@@ -3,6 +3,7 @@ import { adminRouter } from "../modules/admin/router";
 import { clientsRouter } from "../modules/clients/router";
 import { configurationsRouter } from "../modules/configurations/router";
 import { contactRouter } from "../modules/contact/router";
+import { crewsRouter } from "../modules/crews/router";
 import { newsletterRouter } from "../modules/newsletter/router";
 import { organizationsRouter } from "../modules/organizations/router";
 import { paymentsRouter } from "../modules/payments/router";
@@ -23,6 +24,7 @@ export const router = publicProcedure
 		// Studio domain routers
 		configurations: configurationsRouter,
 		clients: clientsRouter,
+		crews: crewsRouter,
 	});
 
 export type ApiRouterClient = RouterClient<typeof router>;

@@ -8,10 +8,10 @@
 export * from "./common";
 export * from "./configuration";
 export * from "./client";
+export * from "./crew";
 
 // Domain schemas will be added as they are created:
 // export * from "./booking";
-// export * from "./crew";
 // export * from "./shoot";
 // export * from "./task";
 // export * from "./deliverable";
