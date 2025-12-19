@@ -17,8 +17,12 @@ import { v7 as uuidv7 } from "uuid";
 import { users } from "./auth";
 import { invitations, members, organizations, purchases } from "./core";
 import {
+	billToEnum,
 	bookingPhaseEnum,
 	configTypeEnum,
+	invoiceStatusEnum,
+	paymentMethodEnum,
+	paymentScheduleStatusEnum,
 	submissionStatusEnum,
 	workflowStatusEnum,
 } from "./enums";
@@ -765,6 +769,384 @@ export const submissionFeedback = pgTable(
 );
 
 // ============================================================================
+// RECEIVED AMOUNTS TABLE
+// Payments received from clients for bookings
+// ============================================================================
+
+export const receivedAmounts = pgTable(
+	"received_amounts",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 })
+			.notNull()
+			.references(() => organizations.id, { onDelete: "cascade" }),
+		bookingId: varchar("booking_id", { length: 255 })
+			.notNull()
+			.references(() => bookings.id, { onDelete: "cascade" }),
+
+		amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+		paymentMethod: paymentMethodEnum("payment_method").notNull(),
+		transactionReference: varchar("transaction_reference", { length: 100 }),
+
+		receivedDate: date("received_date").notNull(),
+		notes: text("notes"),
+
+		// Link to payment schedule if this fulfills a scheduled payment
+		paymentScheduleId: varchar("payment_schedule_id", { length: 255 }),
+
+		createdBy: varchar("created_by", { length: 255 }).references(
+			() => users.id,
+			{ onDelete: "set null" },
+		),
+		updatedBy: varchar("updated_by", { length: 255 }).references(
+			() => users.id,
+			{ onDelete: "set null" },
+		),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+
+		deletedAt: timestamp("deleted_at", { withTimezone: true }),
+		deletedBy: varchar("deleted_by", { length: 255 }).references(
+			() => users.id,
+			{ onDelete: "set null" },
+		),
+	},
+	(table) => [
+		index("received_amounts_org_idx").on(table.organizationId),
+		index("received_amounts_booking_idx").on(table.bookingId),
+		index("received_amounts_date_idx").on(table.receivedDate),
+		index("received_amounts_schedule_idx").on(table.paymentScheduleId),
+	],
+);
+
+// ============================================================================
+// PAYMENT SCHEDULES TABLE
+// Scheduled payment milestones for bookings
+// ============================================================================
+
+export const paymentSchedules = pgTable(
+	"payment_schedules",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 })
+			.notNull()
+			.references(() => organizations.id, { onDelete: "cascade" }),
+		bookingId: varchar("booking_id", { length: 255 })
+			.notNull()
+			.references(() => bookings.id, { onDelete: "cascade" }),
+
+		name: text("name").notNull(), // "Advance", "Before Wedding", "Final Payment"
+		amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+		dueDate: date("due_date").notNull(),
+
+		status: paymentScheduleStatusEnum("status").default("pending").notNull(),
+
+		paidAmount: decimal("paid_amount", { precision: 12, scale: 2 })
+			.default("0")
+			.notNull(),
+		paidAt: timestamp("paid_at", { withTimezone: true }),
+
+		notes: text("notes"),
+		sortOrder: integer("sort_order").default(0).notNull(),
+
+		createdBy: varchar("created_by", { length: 255 }).references(
+			() => users.id,
+			{ onDelete: "set null" },
+		),
+		updatedBy: varchar("updated_by", { length: 255 }).references(
+			() => users.id,
+			{ onDelete: "set null" },
+		),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+
+		deletedAt: timestamp("deleted_at", { withTimezone: true }),
+		deletedBy: varchar("deleted_by", { length: 255 }).references(
+			() => users.id,
+			{ onDelete: "set null" },
+		),
+	},
+	(table) => [
+		index("payment_schedules_org_idx").on(table.organizationId),
+		index("payment_schedules_booking_idx").on(table.bookingId),
+		index("payment_schedules_due_date_idx").on(table.dueDate),
+		index("payment_schedules_status_idx").on(table.status),
+	],
+);
+
+// ============================================================================
+// EXPENSES TABLE
+// Studio expenses (can be linked to bookings/shoots)
+// ============================================================================
+
+export const expenses = pgTable(
+	"expenses",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 })
+			.notNull()
+			.references(() => organizations.id, { onDelete: "cascade" }),
+
+		description: text("description").notNull(),
+		amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+
+		// Category is TEXT - configurable via configurations table (config_type: expense_category)
+		category: text("category"),
+
+		expenseDate: date("expense_date").notNull(),
+		billTo: billToEnum("bill_to").default("studio").notNull(),
+
+		paymentMethod: paymentMethodEnum("payment_method"),
+		transactionReference: varchar("transaction_reference", { length: 100 }),
+		vendor: text("vendor"),
+
+		notes: text("notes"),
+		metadata: jsonb("metadata"),
+
+		createdBy: varchar("created_by", { length: 255 }).references(
+			() => users.id,
+			{ onDelete: "set null" },
+		),
+		updatedBy: varchar("updated_by", { length: 255 }).references(
+			() => users.id,
+			{ onDelete: "set null" },
+		),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+
+		deletedAt: timestamp("deleted_at", { withTimezone: true }),
+		deletedBy: varchar("deleted_by", { length: 255 }).references(
+			() => users.id,
+			{ onDelete: "set null" },
+		),
+	},
+	(table) => [
+		index("expenses_org_idx").on(table.organizationId),
+		index("expenses_date_idx").on(table.expenseDate),
+		index("expenses_org_date_idx").on(table.organizationId, table.expenseDate),
+		index("expenses_category_idx").on(table.category),
+		index("expenses_bill_to_idx").on(table.billTo),
+	],
+);
+
+export const expenseAssignments = pgTable(
+	"expense_assignments",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		expenseId: varchar("expense_id", { length: 255 })
+			.notNull()
+			.references(() => expenses.id, { onDelete: "cascade" }),
+
+		// Can be linked to booking, shoot, or crew
+		bookingId: varchar("booking_id", { length: 255 }).references(
+			() => bookings.id,
+			{ onDelete: "cascade" },
+		),
+		shootId: varchar("shoot_id", { length: 255 }).references(() => shoots.id, {
+			onDelete: "cascade",
+		}),
+		crewId: varchar("crew_id", { length: 255 }).references(() => crews.id, {
+			onDelete: "cascade",
+		}),
+
+		// Percentage or fixed amount allocation
+		allocationPercentage: decimal("allocation_percentage", {
+			precision: 5,
+			scale: 2,
+		}),
+		allocationAmount: decimal("allocation_amount", { precision: 12, scale: 2 }),
+
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		index("expense_assignments_expense_idx").on(table.expenseId),
+		index("expense_assignments_booking_idx").on(table.bookingId),
+		index("expense_assignments_shoot_idx").on(table.shootId),
+		index("expense_assignments_crew_idx").on(table.crewId),
+	],
+);
+
+// ============================================================================
+// INVOICES TABLE
+// Invoice management for bookings
+// ============================================================================
+
+export const invoices = pgTable(
+	"invoices",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 })
+			.notNull()
+			.references(() => organizations.id, { onDelete: "cascade" }),
+		bookingId: varchar("booking_id", { length: 255 })
+			.notNull()
+			.references(() => bookings.id, { onDelete: "cascade" }),
+
+		// Organization-scoped invoice number
+		invoiceNumber: varchar("invoice_number", { length: 50 }).notNull(),
+
+		status: invoiceStatusEnum("status").default("draft").notNull(),
+
+		issueDate: date("issue_date").notNull(),
+		dueDate: date("due_date"),
+
+		// Calculated totals (cached for performance)
+		subtotal: decimal("subtotal", { precision: 12, scale: 2 })
+			.default("0")
+			.notNull(),
+		taxAmount: decimal("tax_amount", { precision: 12, scale: 2 })
+			.default("0")
+			.notNull(),
+		discountAmount: decimal("discount_amount", { precision: 12, scale: 2 })
+			.default("0")
+			.notNull(),
+		totalAmount: decimal("total_amount", { precision: 12, scale: 2 })
+			.default("0")
+			.notNull(),
+		paidAmount: decimal("paid_amount", { precision: 12, scale: 2 })
+			.default("0")
+			.notNull(),
+
+		notes: text("notes"),
+		terms: text("terms"),
+
+		sentAt: timestamp("sent_at", { withTimezone: true }),
+		paidAt: timestamp("paid_at", { withTimezone: true }),
+
+		metadata: jsonb("metadata"),
+
+		createdBy: varchar("created_by", { length: 255 }).references(
+			() => users.id,
+			{ onDelete: "set null" },
+		),
+		updatedBy: varchar("updated_by", { length: 255 }).references(
+			() => users.id,
+			{ onDelete: "set null" },
+		),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+
+		deletedAt: timestamp("deleted_at", { withTimezone: true }),
+		deletedBy: varchar("deleted_by", { length: 255 }).references(
+			() => users.id,
+			{ onDelete: "set null" },
+		),
+	},
+	(table) => [
+		uniqueIndex("invoices_org_number_idx")
+			.on(table.organizationId, table.invoiceNumber)
+			.where(sql`deleted_at IS NULL`),
+		index("invoices_org_idx").on(table.organizationId),
+		index("invoices_booking_idx").on(table.bookingId),
+		index("invoices_status_idx").on(table.status),
+		index("invoices_issue_date_idx").on(table.issueDate),
+	],
+);
+
+export const invoiceLineItems = pgTable(
+	"invoice_line_items",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		invoiceId: varchar("invoice_id", { length: 255 })
+			.notNull()
+			.references(() => invoices.id, { onDelete: "cascade" }),
+
+		description: text("description").notNull(),
+		quantity: decimal("quantity", { precision: 10, scale: 2 })
+			.default("1")
+			.notNull(),
+		unitPrice: decimal("unit_price", { precision: 12, scale: 2 }).notNull(),
+		amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+
+		sortOrder: integer("sort_order").default(0).notNull(),
+
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [index("invoice_line_items_invoice_idx").on(table.invoiceId)],
+);
+
+// ============================================================================
+// ATTACHMENTS TABLE
+// Generic file attachments for any entity
+// ============================================================================
+
+export const attachments = pgTable(
+	"attachments",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 })
+			.notNull()
+			.references(() => organizations.id, { onDelete: "cascade" }),
+
+		// Polymorphic reference - can be attached to any entity
+		entityType: varchar("entity_type", { length: 50 }).notNull(), // booking, shoot, expense, invoice, etc.
+		entityId: varchar("entity_id", { length: 255 }).notNull(),
+
+		fileName: text("file_name").notNull(),
+		fileUrl: text("file_url").notNull(),
+		fileSize: integer("file_size"),
+		mimeType: text("mime_type"),
+
+		description: text("description"),
+
+		uploadedBy: varchar("uploaded_by", { length: 255 }).references(
+			() => users.id,
+			{ onDelete: "set null" },
+		),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+
+		deletedAt: timestamp("deleted_at", { withTimezone: true }),
+		deletedBy: varchar("deleted_by", { length: 255 }).references(
+			() => users.id,
+			{ onDelete: "set null" },
+		),
+	},
+	(table) => [
+		index("attachments_org_idx").on(table.organizationId),
+		index("attachments_entity_idx").on(table.entityType, table.entityId),
+	],
+);
+
+// ============================================================================
 // RELATIONS
 // All studio domain relations defined here
 // ============================================================================
@@ -809,6 +1191,10 @@ export const bookingRelations = relations(bookings, ({ one, many }) => ({
 	shoots: many(shoots),
 	tasks: many(tasks),
 	deliverables: many(deliverables),
+	receivedAmounts: many(receivedAmounts),
+	paymentSchedules: many(paymentSchedules),
+	invoices: many(invoices),
+	expenseAssignments: many(expenseAssignments),
 	createdByUser: one(users, {
 		fields: [bookings.createdBy],
 		references: [users.id],
@@ -1108,6 +1494,168 @@ export const submissionFeedbackRelations = relations(
 );
 
 // ----------------------------------------------------------------------------
+// Financial Relations
+// ----------------------------------------------------------------------------
+
+export const receivedAmountRelations = relations(receivedAmounts, ({ one }) => ({
+	organization: one(organizations, {
+		fields: [receivedAmounts.organizationId],
+		references: [organizations.id],
+	}),
+	booking: one(bookings, {
+		fields: [receivedAmounts.bookingId],
+		references: [bookings.id],
+	}),
+	paymentSchedule: one(paymentSchedules, {
+		fields: [receivedAmounts.paymentScheduleId],
+		references: [paymentSchedules.id],
+	}),
+	createdByUser: one(users, {
+		fields: [receivedAmounts.createdBy],
+		references: [users.id],
+		relationName: "receivedAmountCreatedBy",
+	}),
+	updatedByUser: one(users, {
+		fields: [receivedAmounts.updatedBy],
+		references: [users.id],
+		relationName: "receivedAmountUpdatedBy",
+	}),
+	deletedByUser: one(users, {
+		fields: [receivedAmounts.deletedBy],
+		references: [users.id],
+		relationName: "receivedAmountDeletedBy",
+	}),
+}));
+
+export const paymentScheduleRelations = relations(
+	paymentSchedules,
+	({ one, many }) => ({
+		organization: one(organizations, {
+			fields: [paymentSchedules.organizationId],
+			references: [organizations.id],
+		}),
+		booking: one(bookings, {
+			fields: [paymentSchedules.bookingId],
+			references: [bookings.id],
+		}),
+		receivedAmounts: many(receivedAmounts),
+		createdByUser: one(users, {
+			fields: [paymentSchedules.createdBy],
+			references: [users.id],
+			relationName: "paymentScheduleCreatedBy",
+		}),
+		updatedByUser: one(users, {
+			fields: [paymentSchedules.updatedBy],
+			references: [users.id],
+			relationName: "paymentScheduleUpdatedBy",
+		}),
+		deletedByUser: one(users, {
+			fields: [paymentSchedules.deletedBy],
+			references: [users.id],
+			relationName: "paymentScheduleDeletedBy",
+		}),
+	}),
+);
+
+export const expenseRelations = relations(expenses, ({ one, many }) => ({
+	organization: one(organizations, {
+		fields: [expenses.organizationId],
+		references: [organizations.id],
+	}),
+	assignments: many(expenseAssignments),
+	createdByUser: one(users, {
+		fields: [expenses.createdBy],
+		references: [users.id],
+		relationName: "expenseCreatedBy",
+	}),
+	updatedByUser: one(users, {
+		fields: [expenses.updatedBy],
+		references: [users.id],
+		relationName: "expenseUpdatedBy",
+	}),
+	deletedByUser: one(users, {
+		fields: [expenses.deletedBy],
+		references: [users.id],
+		relationName: "expenseDeletedBy",
+	}),
+}));
+
+export const expenseAssignmentRelations = relations(
+	expenseAssignments,
+	({ one }) => ({
+		expense: one(expenses, {
+			fields: [expenseAssignments.expenseId],
+			references: [expenses.id],
+		}),
+		booking: one(bookings, {
+			fields: [expenseAssignments.bookingId],
+			references: [bookings.id],
+		}),
+		shoot: one(shoots, {
+			fields: [expenseAssignments.shootId],
+			references: [shoots.id],
+		}),
+		crew: one(crews, {
+			fields: [expenseAssignments.crewId],
+			references: [crews.id],
+		}),
+	}),
+);
+
+export const invoiceRelations = relations(invoices, ({ one, many }) => ({
+	organization: one(organizations, {
+		fields: [invoices.organizationId],
+		references: [organizations.id],
+	}),
+	booking: one(bookings, {
+		fields: [invoices.bookingId],
+		references: [bookings.id],
+	}),
+	lineItems: many(invoiceLineItems),
+	createdByUser: one(users, {
+		fields: [invoices.createdBy],
+		references: [users.id],
+		relationName: "invoiceCreatedBy",
+	}),
+	updatedByUser: one(users, {
+		fields: [invoices.updatedBy],
+		references: [users.id],
+		relationName: "invoiceUpdatedBy",
+	}),
+	deletedByUser: one(users, {
+		fields: [invoices.deletedBy],
+		references: [users.id],
+		relationName: "invoiceDeletedBy",
+	}),
+}));
+
+export const invoiceLineItemRelations = relations(
+	invoiceLineItems,
+	({ one }) => ({
+		invoice: one(invoices, {
+			fields: [invoiceLineItems.invoiceId],
+			references: [invoices.id],
+		}),
+	}),
+);
+
+export const attachmentRelations = relations(attachments, ({ one }) => ({
+	organization: one(organizations, {
+		fields: [attachments.organizationId],
+		references: [organizations.id],
+	}),
+	uploadedByUser: one(users, {
+		fields: [attachments.uploadedBy],
+		references: [users.id],
+	}),
+	deletedByUser: one(users, {
+		fields: [attachments.deletedBy],
+		references: [users.id],
+		relationName: "attachmentDeletedBy",
+	}),
+}));
+
+// ----------------------------------------------------------------------------
 // Organization Relations (includes all studio domain tables)
 // ----------------------------------------------------------------------------
 
@@ -1123,6 +1671,11 @@ export const organizationRelations = relations(organizations, ({ many }) => ({
 	tasks: many(tasks),
 	deliverables: many(deliverables),
 	submissions: many(assignmentSubmissions),
+	receivedAmounts: many(receivedAmounts),
+	paymentSchedules: many(paymentSchedules),
+	expenses: many(expenses),
+	invoices: many(invoices),
+	attachments: many(attachments),
 }));
 
 // ============================================================================
@@ -1179,3 +1732,24 @@ export type NewSubmissionFile = typeof submissionFiles.$inferInsert;
 
 export type SubmissionFeedback = typeof submissionFeedback.$inferSelect;
 export type NewSubmissionFeedback = typeof submissionFeedback.$inferInsert;
+
+export type ReceivedAmount = typeof receivedAmounts.$inferSelect;
+export type NewReceivedAmount = typeof receivedAmounts.$inferInsert;
+
+export type PaymentSchedule = typeof paymentSchedules.$inferSelect;
+export type NewPaymentSchedule = typeof paymentSchedules.$inferInsert;
+
+export type Expense = typeof expenses.$inferSelect;
+export type NewExpense = typeof expenses.$inferInsert;
+
+export type ExpenseAssignment = typeof expenseAssignments.$inferSelect;
+export type NewExpenseAssignment = typeof expenseAssignments.$inferInsert;
+
+export type Invoice = typeof invoices.$inferSelect;
+export type NewInvoice = typeof invoices.$inferInsert;
+
+export type InvoiceLineItem = typeof invoiceLineItems.$inferSelect;
+export type NewInvoiceLineItem = typeof invoiceLineItems.$inferInsert;
+
+export type Attachment = typeof attachments.$inferSelect;
+export type NewAttachment = typeof attachments.$inferInsert;

@@ -57,6 +57,13 @@
       "when": 1766130426256,
       "tag": "0007_brief_epoch",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1766130683347,
+      "tag": "0008_chilly_mister_fear",
+      "breakpoints": true
     }
   ]
 }
