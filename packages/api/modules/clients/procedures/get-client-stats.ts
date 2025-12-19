@@ -45,10 +45,11 @@ export const getClientStats = studioProtectedProcedure
 				),
 			);
 
-		// New clients this month
-		const startOfMonth = new Date();
-		startOfMonth.setDate(1);
-		startOfMonth.setHours(0, 0, 0, 0);
+		// New clients this month (UTC to avoid server-local timezone drift)
+		const now = new Date();
+		const startOfMonth = new Date(
+			Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0),
+		);
 
 		const [newThisMonthResult] = await db
 			.select({ count: count().mapWith(Number) })
