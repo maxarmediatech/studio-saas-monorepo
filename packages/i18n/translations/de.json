@@ -810,5 +810,36 @@
 	"choosePlan": {
 		"title": "Wähle einen Plan",
 		"description": "Um weiterzumachen, wähle bitte einen Plan aus."
+	},
+	"hub": {
+		"title": "Willkommen zurück",
+		"subtitle": "Wähle eine Organisation oder entdecke Neuigkeiten",
+		"organizations": {
+			"title": "Deine Organisationen",
+			"createNew": "Neue Organisation erstellen",
+			"members": "{count} {count, plural, one {Mitglied} other {Mitglieder}}",
+			"noOrganizations": "Noch keine Organisationen"
+		},
+		"announcements": {
+			"title": "Neuigkeiten",
+			"viewAll": "Alle anzeigen",
+			"types": {
+				"feature": "Funktion",
+				"update": "Update",
+				"fix": "Fehlerbehebung"
+			}
+		},
+		"apps": {
+			"title": "Apps & Integrationen",
+			"comingSoon": "Demnächst",
+			"description": "Erweitere deinen Workspace mit leistungsstarken Apps"
+		},
+		"quickActions": {
+			"title": "Schnellaktionen",
+			"createOrg": "Neue Organisation",
+			"inviteTeam": "Team einladen",
+			"billing": "Abrechnung",
+			"settings": "Einstellungen"
+		}
 	}
 }

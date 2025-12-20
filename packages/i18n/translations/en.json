@@ -810,5 +810,36 @@
 	"choosePlan": {
 		"title": "Choose your plan",
 		"description": "To continue, please select a plan."
+	},
+	"hub": {
+		"title": "Welcome back",
+		"subtitle": "Select an organization or explore what's new",
+		"organizations": {
+			"title": "Your Organizations",
+			"createNew": "Create new organization",
+			"members": "{count} {count, plural, one {member} other {members}}",
+			"noOrganizations": "No organizations yet"
+		},
+		"announcements": {
+			"title": "What's New",
+			"viewAll": "View all",
+			"types": {
+				"feature": "Feature",
+				"update": "Update",
+				"fix": "Fix"
+			}
+		},
+		"apps": {
+			"title": "Apps & Integrations",
+			"comingSoon": "Coming Soon",
+			"description": "Extend your workspace with powerful apps"
+		},
+		"quickActions": {
+			"title": "Quick Actions",
+			"createOrg": "New Organization",
+			"inviteTeam": "Invite Team",
+			"billing": "Billing",
+			"settings": "Settings"
+		}
 	}
 }
