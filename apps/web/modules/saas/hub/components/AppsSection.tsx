@@ -34,7 +34,7 @@ export function AppsSection() {
 								</h3>
 								{isComingSoon && (
 									<span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 font-medium text-[10px] text-muted-foreground uppercase tracking-wide">
-										Soon
+										{t("hub.apps.comingSoon")}
 									</span>
 								)}
 							</div>

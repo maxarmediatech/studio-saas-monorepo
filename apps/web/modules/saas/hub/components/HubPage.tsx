@@ -59,23 +59,22 @@ export function HubPage({ userName, organizations }: HubPageProps) {
 							/>
 						))}
 					</div>
-				) : (
-					/* Empty State - Prominent CTA */
-					<div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed bg-muted/30 px-6 py-16 text-center">
-						<div className="mb-4 flex size-16 items-center justify-center rounded-2xl bg-primary/10">
-							<PlusIcon className="size-8 text-primary" />
-						</div>
-						<h3 className="font-semibold text-lg">
-							Create your first organization
-						</h3>
-						<p className="mt-1 max-w-sm text-muted-foreground text-sm">
-							Organizations help you collaborate with your team
-							and manage projects together.
-						</p>
-						{config.organizations.enableUsersToCreateOrganizations && (
-							<Button className="mt-6" asChild>
-								<Link href="/new-organization">
-									<PlusIcon className="size-4" />
+					) : (
+						/* Empty State - Prominent CTA */
+						<div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed bg-muted/30 px-6 py-16 text-center">
+							<div className="mb-4 flex size-16 items-center justify-center rounded-2xl bg-primary/10">
+								<PlusIcon className="size-8 text-primary" />
+							</div>
+							<h3 className="font-semibold text-lg">
+								{t("hub.organizations.emptyTitle")}
+							</h3>
+							<p className="mt-1 max-w-sm text-muted-foreground text-sm">
+								{t("hub.organizations.emptyDescription")}
+							</p>
+							{config.organizations.enableUsersToCreateOrganizations && (
+								<Button className="mt-6" asChild>
+									<Link href="/new-organization">
+										<PlusIcon className="size-4" />
 									{t("hub.organizations.createNew")}
 									<ArrowRightIcon className="size-4" />
 								</Link>
@@ -101,14 +100,6 @@ export function HubPage({ userName, organizations }: HubPageProps) {
 						<h2 className="font-medium text-sm text-muted-foreground uppercase tracking-wider">
 							{t("hub.announcements.title")}
 						</h2>
-						<Button
-							variant="link"
-							size="sm"
-							className="h-auto p-0 text-xs"
-						>
-							{t("hub.announcements.viewAll")}
-							<ArrowRightIcon className="size-3" />
-						</Button>
 					</div>
 					<AnnouncementsSection />
 				</aside>

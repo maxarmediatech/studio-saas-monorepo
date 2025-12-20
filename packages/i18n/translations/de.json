@@ -1,38 +1,38 @@
 {
 	"admin": {
 		"menu": {
-			"organizations": "Organisationen",
+			"organizations": "Studios",
 			"users": "Benutzer"
 		},
 		"organizations": {
-			"backToList": "Zurück zu Organisationen",
+			"backToList": "Zurück zu Studios",
 			"confirmDelete": {
 				"confirm": "Löschen",
-				"message": "Bist du sicher, dass du diese Organisation löschen möchtest? Diese Aktion kann nicht rückgängig gemacht werden.",
-				"title": "Organisation löschen"
+				"message": "Bist du sicher, dass du dieses Studio löschen möchtest? Diese Aktion kann nicht rückgängig gemacht werden.",
+				"title": "Studio löschen"
 			},
 			"create": "Erstellen",
 			"delete": "Löschen",
 			"deleteOrganization": {
-				"deleted": "Die Organisation wurde erfolgreich gelöscht!",
-				"deleting": "Löschung der Organisation...",
-				"notDeleted": "Organisation konnte nicht gelöscht werden. Bitte versuche es erneut."
+				"deleted": "Das Studio wurde erfolgreich gelöscht!",
+				"deleting": "Löschung des Studios...",
+				"notDeleted": "Studio konnte nicht gelöscht werden. Bitte versuche es erneut."
 			},
 			"edit": "bearbeiten",
 			"form": {
-				"createTitle": "Erstellen eine Organisation",
-				"name": "Name der Organisation",
+				"createTitle": "Erstelle ein Studio",
+				"name": "Studioname",
 				"notifications": {
-					"error": "Die Organisation konnte nicht gespeichert werden. Bitte versuche es später noch einmal.",
-					"success": "Die Organisation wurde erfolgreich gespeichert."
+					"error": "Das Studio konnte nicht gespeichert werden. Bitte versuche es später noch einmal.",
+					"success": "Das Studio wurde erfolgreich gespeichert."
 				},
 				"save": "Speichern",
-				"updateTitle": "Organisation bearbeiten"
+				"updateTitle": "Studio bearbeiten"
 			},
-			"loading": "Organisationen laden...",
+			"loading": "Studios laden...",
 			"membersCount": "{count} {count, plural, one {Mitglied} other {Mitglieder}}",
-			"search": "Suche nach einer Organisation...",
-			"title": "Verwalten von Organisationen"
+			"search": "Suche nach einem Studio...",
+			"title": "Studios verwalten"
 		},
 		"title": "Administration",
 		"users": {
@@ -73,7 +73,7 @@
 		"menu": {
 			"accountSettings": "Kontoeinstellungen",
 			"admin": "Administration",
-			"organizationSettings": "Organisationseinstellungen",
+			"organizationSettings": "Studioeinstellungen",
 			"start": "Start"
 		},
 		"userMenu": {
@@ -265,10 +265,10 @@
 			"subject": "Willkommen bei unserem Newsletter"
 		},
 		"organizationInvitation": {
-			"body": "Du wurdest eingeladen, der Organisation {organizationName} beizutreten. Klicke auf den Button unten oder kopiere den Link und füge ihn in den Browser deiner Wahl ein, um die Einladung anzunehmen und der Organisation beizutreten.",
-			"headline": "Einladung zur Organisation {organizationName}",
-			"join": "Tritt der Organisation bei",
-			"subject": "Du wurdest eingeladen, einer Organisation beizutreten"
+			"body": "Du wurdest eingeladen, dem Studio {organizationName} beizutreten. Klicke auf den Button unten oder kopiere den Link und füge ihn in den Browser deiner Wahl ein, um die Einladung anzunehmen und dem Studio beizutreten.",
+			"headline": "Einladung zum Studio {organizationName}",
+			"join": "Tritt dem Studio bei",
+			"subject": "Du wurdest eingeladen, einem Studio beizutreten"
 		}
 	},
 	"newsletter": {
@@ -302,33 +302,33 @@
 	},
 	"organizations": {
 		"createForm": {
-			"name": "Name der Organisation",
+			"name": "Studioname",
 			"notifications": {
-				"error": "Es tut uns leid, aber wir konnten deine Organisation nicht erstellen. Bitte versuche es später noch einmal.",
-				"success": "Deine Organisation wurde erstellt. Du kannst nun Mitglieder einladen."
+				"error": "Es tut uns leid, aber wir konnten dein Studio nicht erstellen. Bitte versuche es später noch einmal.",
+				"success": "Dein Studio wurde erstellt. Du kannst nun Mitglieder einladen."
 			},
-			"submit": "Organisation erstellen",
-			"subtitle": "Gib einen Namen für deine Organisation ein, um loszulegen. Du kannst den Namen später in den Organisationseinstellungen ändern.",
-			"title": "Erstelle eine Organisation"
+			"submit": "Studio erstellen",
+			"subtitle": "Gib einen Namen für dein Studio ein, um loszulegen. Du kannst den Namen später in den Studioeinstellungen ändern.",
+			"title": "Erstelle ein Studio"
 		},
 		"invitationAlert": {
-			"description": "Du bist eingeladen worden, einer Organisation beizutreten. Wenn du dich anmeldest oder registrierst, akzeptierst du automatisch die Einladung und trittst der Organisation bei.",
-			"title": "Einladung der Organisation annehmen"
+			"description": "Du bist eingeladen worden, einem Studio beizutreten. Wenn du dich anmeldest oder registrierst, akzeptierst du automatisch die Einladung und trittst dem Studio bei.",
+			"title": "Einladung zum Studio annehmen"
 		},
 		"invitationModal": {
 			"accept": "Annehmen",
 			"decline": "Ablehnen",
-			"description": "Du wurdest eingeladen, der Organisation {organizationName} beizutreten. Möchtest du die Einladung annehmen und der Organisation beitreten?",
-			"title": "Organisation beitreten"
+			"description": "Du wurdest eingeladen, dem Studio {organizationName} beizutreten. Möchtest du die Einladung annehmen und dem Studio beitreten?",
+			"title": "Studio beitreten"
 		},
 		"organizationSelect": {
-			"createNewOrganization": "Neue Organisation erstellen",
-			"organizations": "Organisationen",
+			"createNewOrganization": "Neues Studio erstellen",
+			"organizations": "Studios",
 			"personalAccount": "Persönliches Konto"
 		},
 		"organizationsGrid": {
-			"createNewOrganization": "Neue Organisation erstellen",
-			"title": "Deine Organisationen"
+			"createNewOrganization": "Neues Studio erstellen",
+			"title": "Deine Studios"
 		},
 		"roles": {
 			"admin": "Administration",
@@ -337,21 +337,21 @@
 		},
 		"settings": {
 			"changeName": {
-				"title": "Name der Organisation"
+				"title": "Studioname"
 			},
 			"deleteOrganization": {
-				"confirmation": "Bist du sicher, dass du deine Organisation löschen möchtest?",
-				"description": "Lösche deine Organisation dauerhaft. Sobald du deine Organisation gelöscht hast, gibt es kein Zurück mehr. Zur Bestätigung gib bitte unten dein Passwort ein:",
-				"submit": "Organisation löschen",
-				"title": "Organisation löschen"
+				"confirmation": "Bist du sicher, dass du dein Studio löschen möchtest?",
+				"description": "Lösche dein Studio dauerhaft. Sobald du dein Studio gelöscht hast, gibt es kein Zurück mehr. Zur Bestätigung gib bitte unten dein Passwort ein:",
+				"submit": "Studio löschen",
+				"title": "Studio löschen"
 			},
 			"logo": {
-				"description": "Lade ein Logo für deine Organisation hoch.",
-				"title": "Logo der Organisation"
+				"description": "Lade ein Logo für dein Studio hoch.",
+				"title": "Studio-Logo"
 			},
 			"members": {
 				"activeMembers": "Aktive Mitglieder",
-				"description": "Sieh dir alle aktiven Mitglieder und die ausstehenden Einladungen deiner Organisation an.",
+				"description": "Sieh dir alle aktiven Mitglieder und die ausstehenden Einladungen deines Studios an.",
 				"invitations": {
 					"empty": "Es wurden noch keine Mitglieder eingeladen.",
 					"expiresAt": "Läuft am {date} ab",
@@ -381,17 +381,17 @@
 					"submit": "Einladen",
 					"title": "Mitglied einladen"
 				},
-				"leaveOrganization": "Organisation verlassen",
+				"leaveOrganization": "Studio verlassen",
 				"notifications": {
 					"removeMember": {
 						"error": {
-							"description": "Das Mitglied konnte nicht aus deiner Organisation entfernt werden. Bitte versuche es erneut."
+							"description": "Das Mitglied konnte nicht aus deinem Studio entfernt werden. Bitte versuche es erneut."
 						},
 						"loading": {
-							"description": "Mitglied aus der Organisation entfernen..."
+							"description": "Mitglied aus dem Studio entfernen..."
 						},
 						"success": {
-							"description": "Das Mitglied wurde erfolgreich aus deiner Organisation entfernt."
+							"description": "Das Mitglied wurde erfolgreich aus deinem Studio entfernt."
 						}
 					},
 					"revokeInvitation": {
@@ -407,7 +407,7 @@
 					},
 					"updateMembership": {
 						"error": {
-							"description": "Die Mitgliedschaft in der Organisation konnte nicht aktualisiert werden. Bitte versuche es erneut."
+							"description": "Die Mitgliedschaft im Studio konnte nicht aktualisiert werden. Bitte versuche es erneut."
 						},
 						"loading": {
 							"description": "Aktualisierung der Mitgliedschaft..."
@@ -433,19 +433,19 @@
 				"title": "Mitglieder"
 			},
 			"notifications": {
-				"organizationDeleted": "Deine Organisation wurde gelöscht.",
-				"organizationNameNotUpdated": "Wir konnten den Namen deiner Organisation nicht aktualisieren. Bitte versuche es später noch einmal.",
-				"organizationNameUpdated": "Der Name deiner Organisation wurde aktualisiert.",
-				"organizationNotDeleted": "Wir konnten deine Organisation nicht löschen. Bitte versuche es später noch einmal."
+				"organizationDeleted": "Dein Studio wurde gelöscht.",
+				"organizationNameNotUpdated": "Wir konnten den Namen deines Studios nicht aktualisieren. Bitte versuche es später noch einmal.",
+				"organizationNameUpdated": "Der Name deines Studios wurde aktualisiert.",
+				"organizationNotDeleted": "Wir konnten dein Studio nicht löschen. Bitte versuche es später noch einmal."
 			},
-			"subtitle": "Verwalte die Einstellungen der Organisation.",
-			"title": "Organisation",
+			"subtitle": "Verwalte die Einstellungen deines Studios.",
+			"title": "Studio",
 			"dangerZone": {
 				"title": "Gefahrenzone"
 			}
 		},
 		"start": {
-			"subtitle": "Willkommen auf der Startseite dieser Organisation!"
+			"subtitle": "Willkommen auf der Startseite dieses Studios!"
 		}
 	},
 	"pricing": {
@@ -679,7 +679,7 @@
 				"billing": "Abrechnung",
 				"general": "Allgemein",
 				"members": "Mitglieder",
-				"title": "Organisation",
+				"title": "Studio",
 				"dangerZone": "Gefahrenzone"
 			}
 		},
@@ -813,12 +813,14 @@
 	},
 	"hub": {
 		"title": "Willkommen zurück",
-		"subtitle": "Wähle eine Organisation oder entdecke Neuigkeiten",
+		"subtitle": "Wähle ein Studio oder entdecke Neuigkeiten",
 		"organizations": {
-			"title": "Deine Organisationen",
-			"createNew": "Neue Organisation erstellen",
+			"title": "Deine Studios",
+			"createNew": "Neues Studio erstellen",
 			"members": "{count} {count, plural, one {Mitglied} other {Mitglieder}}",
-			"noOrganizations": "Noch keine Organisationen"
+			"noOrganizations": "Noch keine Studios",
+			"emptyTitle": "Erstelle dein erstes Studio",
+			"emptyDescription": "Studios helfen dir, mit deinem Team zusammenzuarbeiten und Projekte gemeinsam zu verwalten."
 		},
 		"announcements": {
 			"title": "Neuigkeiten",
@@ -827,6 +829,12 @@
 				"feature": "Funktion",
 				"update": "Update",
 				"fix": "Fehlerbehebung"
+			},
+			"relativeDate": {
+				"today": "Heute",
+				"yesterday": "Gestern",
+				"daysAgo": "vor {count, plural, one {# Tag} other {# Tagen}}",
+				"weeksAgo": "vor {count, plural, one {# Woche} other {# Wochen}}"
 			}
 		},
 		"apps": {
@@ -836,7 +844,7 @@
 		},
 		"quickActions": {
 			"title": "Schnellaktionen",
-			"createOrg": "Neue Organisation",
+			"createOrg": "Neues Studio",
 			"inviteTeam": "Team einladen",
 			"billing": "Abrechnung",
 			"settings": "Einstellungen"

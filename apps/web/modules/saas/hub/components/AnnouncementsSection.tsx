@@ -1,7 +1,7 @@
 "use client";
 
 import { SparklesIcon, WrenchIcon, ZapIcon } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { ANNOUNCEMENTS } from "../lib/constants";
 import type { AnnouncementType } from "../lib/types";
 
@@ -32,6 +32,7 @@ const typeConfig: Record<
 
 export function AnnouncementsSection() {
 	const t = useTranslations();
+	const locale = useLocale();
 
 	return (
 		<div className="divide-y rounded-xl border bg-card">
@@ -62,7 +63,7 @@ export function AnnouncementsSection() {
 										{announcement.title}
 									</h3>
 									<time className="shrink-0 text-muted-foreground/60 text-xs tabular-nums">
-										{formatRelativeDate(announcement.date)}
+										{formatRelativeDate(announcement.date, t, locale)}
 									</time>
 								</div>
 								<p className="mt-1 line-clamp-2 text-muted-foreground text-xs leading-relaxed">
@@ -77,19 +78,39 @@ export function AnnouncementsSection() {
 	);
 }
 
-function formatRelativeDate(dateString: string): string {
+type Translator = (key: string, values?: Record<string, unknown>) => string;
+
+function formatRelativeDate(
+	dateString: string,
+	t: Translator,
+	locale: string,
+): string {
 	const date = new Date(dateString);
 	const now = new Date();
 	const diffInDays = Math.floor(
 		(now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24),
 	);
 
-	if (diffInDays === 0) return "Today";
-	if (diffInDays === 1) return "Yesterday";
-	if (diffInDays < 7) return `${diffInDays}d ago`;
-	if (diffInDays < 30) return `${Math.floor(diffInDays / 7)}w ago`;
+	if (diffInDays < 0) {
+		return date.toLocaleDateString(locale, {
+			month: "short",
+			day: "numeric",
+		});
+	}
+	if (diffInDays === 0) return t("hub.announcements.relativeDate.today");
+	if (diffInDays === 1) return t("hub.announcements.relativeDate.yesterday");
+	if (diffInDays < 7) {
+		return t("hub.announcements.relativeDate.daysAgo", {
+			count: diffInDays,
+		});
+	}
+	if (diffInDays < 30) {
+		return t("hub.announcements.relativeDate.weeksAgo", {
+			count: Math.floor(diffInDays / 7),
+		});
+	}
 
-	return date.toLocaleDateString("en-US", {
+	return date.toLocaleDateString(locale, {
 		month: "short",
 		day: "numeric",
 	});
