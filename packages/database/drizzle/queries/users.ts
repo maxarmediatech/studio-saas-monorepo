@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import type { z } from "zod";
 import { db } from "../client";
-import { accounts, users } from "../schema/postgres";
+import { accounts, users } from "../schema";
 import type { UserUpdateSchema } from "../zod";
 
 export async function getUsers({
@@ -14,7 +14,9 @@ export async function getUsers({
 	query?: string;
 }) {
 	return await db.query.users.findMany({
-		where: (user, { like }) => like(user.name, `%${query}%`),
+		where: query
+			? (user, { like }) => like(user.name, `%${query}%`)
+			: undefined,
 		limit,
 		offset,
 	});
