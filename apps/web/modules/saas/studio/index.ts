@@ -1,0 +1,24 @@
+// Components
+export { ModulePanel } from "./components/ModulePanel";
+export { MobileNav } from "./components/MobileNav";
+export { StudioSidebar, useStudioSidebar } from "./components/StudioSidebar";
+export { StudioLayout } from "./components/StudioLayout";
+export { StudioLayoutClient } from "./components/StudioLayoutClient";
+
+// Types
+export type {
+	IconName,
+	ModuleId,
+	NavItem,
+	NavModule,
+	NavSection,
+	SidebarData,
+} from "./lib/types";
+
+// Utilities
+export { getIcon, iconRegistry } from "./lib/icons";
+export {
+	buildUrl,
+	findActiveModule,
+	getSidebarData,
+} from "./lib/navigation";

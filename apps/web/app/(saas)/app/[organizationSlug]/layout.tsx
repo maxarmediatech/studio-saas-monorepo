@@ -1,6 +1,7 @@
 import { config } from "@repo/config";
 import { getActiveOrganization } from "@saas/auth/lib/server";
 import { activeOrganizationQueryKey } from "@saas/organizations/lib/api";
+import { StudioLayoutClient } from "@saas/studio";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { getServerQueryClient } from "@shared/lib/server";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
@@ -41,7 +42,7 @@ export default async function OrganizationLayout({ children, params }: Props) {
 
 	return (
 		<HydrationBoundary state={dehydrate(queryClient)}>
-			{children}
+			<StudioLayoutClient>{children}</StudioLayoutClient>
 		</HydrationBoundary>
 	);
 }
