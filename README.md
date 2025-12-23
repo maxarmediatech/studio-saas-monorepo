@@ -22,6 +22,7 @@ pnpm dev
 
 | Document | Description |
 |----------|-------------|
+| [Setup Guide](./docs/SETUP.md) | Complete setup & deployment guide |
 | [Architecture](./docs/ARCHITECTURE.md) | System overview and package structure |
 | [ADRs](./docs/adr/README.md) | Architecture Decision Records |
 | [Contributing](./CONTRIBUTING.md) | Development guidelines |

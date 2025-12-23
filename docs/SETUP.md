@@ -1,0 +1,529 @@
+# Project Setup Guide
+
+Complete guide for setting up this project in a new environment, including all external service dependencies.
+
+## Table of Contents
+
+1. [Prerequisites](#prerequisites)
+2. [Environment Variables](#environment-variables)
+3. [Database Setup](#database-setup)
+4. [Authentication Setup](#authentication-setup)
+5. [Email Provider Setup](#email-provider-setup)
+6. [Payment Provider Setup](#payment-provider-setup)
+7. [Storage Setup](#storage-setup)
+8. [Analytics Setup](#analytics-setup)
+9. [Deployment Checklist](#deployment-checklist)
+10. [Troubleshooting](#troubleshooting)
+
+---
+
+## Prerequisites
+
+- **Node.js**: >= 20.x
+- **pnpm**: 10.23.0+ (`npm install -g pnpm`)
+- **PostgreSQL**: 14+ (local or hosted)
+- **Git**: For version control
+
+## Quick Start
+
+```bash
+# 1. Clone repository
+git clone <repository-url>
+cd studio-saas-monorepo
+
+# 2. Install dependencies
+pnpm install
+
+# 3. Create environment file
+cp .env.example .env.local
+
+# 4. Configure environment variables (see sections below)
+
+# 5. Run database migrations
+pnpm db:migrate
+
+# 6. Start development server
+pnpm dev
+```
+
+---
+
+## Environment Variables
+
+Create `.env.local` in the project root. Below is a complete reference:
+
+### Required Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `DATABASE_URL` | PostgreSQL connection string | `postgresql://user:pass@host:5432/db` |
+| `BETTER_AUTH_SECRET` | Auth session secret (32+ chars) | Generate with `openssl rand -base64 32` |
+| `NEXT_PUBLIC_SITE_URL` | Public URL of your app | `http://localhost:3000` or `https://app.example.com` |
+
+### Optional Variables by Category
+
+See sections below for setup instructions for each service.
+
+---
+
+## Database Setup
+
+### Option 1: Local PostgreSQL
+
+```bash
+# macOS with Homebrew
+brew install postgresql@14
+brew services start postgresql@14
+
+# Create database
+createdb studio_saas
+
+# Connection string
+DATABASE_URL="postgresql://localhost:5432/studio_saas"
+```
+
+### Option 2: PlanetScale (Serverless PostgreSQL)
+
+1. Create account at [planetscale.com](https://planetscale.com)
+2. Create a new database (select PostgreSQL)
+3. Get connection string from dashboard
+4. Use the connection string with `?sslmode=verify-full`
+
+```env
+DATABASE_URL="postgresql://user:password@region.pg.psdb.cloud:6432/db?sslmode=verify-full"
+```
+
+### Option 3: Supabase
+
+1. Create project at [supabase.com](https://supabase.com)
+2. Go to Settings > Database > Connection string
+3. Copy the URI connection string
+
+```env
+DATABASE_URL="postgresql://postgres:[PASSWORD]@db.[PROJECT].supabase.co:5432/postgres"
+```
+
+### Option 4: Neon
+
+1. Create account at [neon.tech](https://neon.tech)
+2. Create a new project
+3. Copy the connection string
+
+```env
+DATABASE_URL="postgresql://user:password@ep-xxx.region.aws.neon.tech/neondb?sslmode=require"
+```
+
+### Running Migrations
+
+```bash
+# Generate migrations from schema changes
+pnpm db:generate
+
+# Apply migrations to database
+pnpm db:migrate
+
+# Seed database (if applicable)
+pnpm db:seed
+```
+
+---
+
+## Authentication Setup
+
+### Generate Auth Secret
+
+```bash
+# Generate a secure secret
+openssl rand -base64 32
+```
+
+```env
+BETTER_AUTH_SECRET="your-generated-secret-here"
+```
+
+### Google OAuth (Optional)
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com)
+2. Create a new project or select existing
+3. Navigate to **APIs & Services > Credentials**
+4. Click **Create Credentials > OAuth 2.0 Client IDs**
+5. Configure consent screen if prompted
+6. Application type: **Web application**
+7. Add authorized redirect URIs:
+   - Development: `http://localhost:3000/api/auth/callback/google`
+   - Production: `https://yourdomain.com/api/auth/callback/google`
+
+```env
+GOOGLE_CLIENT_ID="your-client-id.apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET="GOCSPX-your-secret"
+```
+
+### GitHub OAuth (Optional)
+
+1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
+2. Click **New OAuth App**
+3. Fill in:
+   - Homepage URL: `http://localhost:3000` (or production URL)
+   - Authorization callback URL: `http://localhost:3000/api/auth/callback/github`
+
+```env
+GITHUB_CLIENT_ID="your-client-id"
+GITHUB_CLIENT_SECRET="your-client-secret"
+```
+
+---
+
+## Email Provider Setup
+
+Choose ONE provider from the options below.
+
+### Option 1: Resend (Recommended)
+
+1. Create account at [resend.com](https://resend.com)
+2. Verify your domain
+3. Create an API key
+
+```env
+RESEND_API_KEY="re_xxxxxxxxxxxx"
+```
+
+### Option 2: Plunk
+
+1. Create account at [useplunk.com](https://useplunk.com)
+2. Get API key from dashboard
+
+```env
+PLUNK_API_KEY="your-api-key"
+```
+
+### Option 3: Postmark
+
+1. Create account at [postmarkapp.com](https://postmarkapp.com)
+2. Create a server and get the API token
+
+```env
+POSTMARK_SERVER_TOKEN="your-server-token"
+```
+
+### Option 4: Mailgun
+
+1. Create account at [mailgun.com](https://mailgun.com)
+2. Add and verify your domain
+3. Get API key from dashboard
+
+```env
+MAILGUN_API_KEY="your-api-key"
+MAILGUN_DOMAIN="mg.yourdomain.com"
+```
+
+### Option 5: SMTP (Generic)
+
+```env
+MAIL_HOST="smtp.example.com"
+MAIL_PORT="587"
+MAIL_USER="your-username"
+MAIL_PASS="your-password"
+```
+
+---
+
+## Payment Provider Setup
+
+Choose ONE provider based on your needs.
+
+### Option 1: DodoPayments
+
+1. Create account at [dodopayments.com](https://dodopayments.com)
+2. Get API key from dashboard
+3. Set up webhook endpoint: `https://yourdomain.com/api/webhooks/dodo`
+
+```env
+DODO_PAYMENTS_API_KEY="your-api-key"
+DODO_PAYMENTS_WEBHOOK_SECRET="whsec_xxxx"
+```
+
+### Option 2: Stripe
+
+1. Create account at [stripe.com](https://stripe.com)
+2. Get API keys from Dashboard > Developers > API keys
+3. Set up webhook endpoint: `https://yourdomain.com/api/webhooks/stripe`
+4. Add events: `checkout.session.completed`, `customer.subscription.*`
+
+```env
+STRIPE_SECRET_KEY="sk_live_xxxx" # or sk_test_xxxx for testing
+STRIPE_WEBHOOK_SECRET="whsec_xxxx"
+```
+
+### Option 3: Polar
+
+1. Create account at [polar.sh](https://polar.sh)
+2. Get access token from settings
+3. Configure webhook
+
+```env
+POLAR_ACCESS_TOKEN="your-token"
+POLAR_WEBHOOK_SECRET="your-secret"
+```
+
+### Option 4: LemonSqueezy
+
+1. Create account at [lemonsqueezy.com](https://lemonsqueezy.com)
+2. Get API key from Settings > API
+3. Get Store ID from Settings > Stores
+
+```env
+LEMONSQUEEZY_API_KEY="your-api-key"
+LEMONSQUEEZY_WEBHOOK_SECRET="your-secret"
+LEMONSQUEEZY_STORE_ID="your-store-id"
+```
+
+### Option 5: Creem
+
+```env
+CREEM_API_KEY="your-api-key"
+CREEM_WEBHOOK_SECRET="your-secret"
+```
+
+### Product Price IDs
+
+After creating products in your payment provider, add their IDs:
+
+```env
+NEXT_PUBLIC_PRICE_ID_FREELANCER_MONTHLY="price_xxx"
+NEXT_PUBLIC_PRICE_ID_FREELANCER_YEARLY="price_xxx"
+NEXT_PUBLIC_PRICE_ID_STARTER_MONTHLY="price_xxx"
+NEXT_PUBLIC_PRICE_ID_STARTER_YEARLY="price_xxx"
+NEXT_PUBLIC_PRICE_ID_GROWTH_MONTHLY="price_xxx"
+NEXT_PUBLIC_PRICE_ID_GROWTH_YEARLY="price_xxx"
+```
+
+---
+
+## Storage Setup
+
+For file uploads (avatars, attachments, etc.)
+
+### S3-Compatible Storage
+
+Works with AWS S3, Cloudflare R2, MinIO, DigitalOcean Spaces, etc.
+
+```env
+S3_ACCESS_KEY_ID="your-access-key"
+S3_SECRET_ACCESS_KEY="your-secret-key"
+S3_ENDPOINT="https://s3.amazonaws.com"  # or your provider's endpoint
+S3_REGION="us-east-1"
+NEXT_PUBLIC_AVATARS_BUCKET_NAME="avatars"
+```
+
+#### Provider-Specific Endpoints
+
+| Provider | Endpoint |
+|----------|----------|
+| AWS S3 | `https://s3.{region}.amazonaws.com` |
+| Cloudflare R2 | `https://{account_id}.r2.cloudflarestorage.com` |
+| DigitalOcean Spaces | `https://{region}.digitaloceanspaces.com` |
+| MinIO | `http://localhost:9000` (self-hosted) |
+
+---
+
+## Analytics Setup
+
+Choose any combination of analytics providers.
+
+### Google Analytics
+
+1. Create property at [analytics.google.com](https://analytics.google.com)
+2. Get Measurement ID (starts with G-)
+
+```env
+NEXT_PUBLIC_GOOGLE_ANALYTICS_ID="G-XXXXXXXXXX"
+```
+
+### Mixpanel
+
+1. Create project at [mixpanel.com](https://mixpanel.com)
+2. Get project token from Settings
+
+```env
+NEXT_PUBLIC_MIXPANEL_TOKEN="your-token"
+```
+
+### Pirsch
+
+```env
+NEXT_PUBLIC_PIRSCH_CODE="your-code"
+```
+
+### Plausible
+
+```env
+NEXT_PUBLIC_PLAUSIBLE_URL="https://plausible.io"  # or self-hosted URL
+```
+
+---
+
+## AI Features Setup
+
+### OpenAI
+
+1. Create account at [platform.openai.com](https://platform.openai.com)
+2. Create API key
+
+```env
+OPENAI_API_KEY="sk-xxxx"
+```
+
+---
+
+## Deployment Checklist
+
+### Before Deploying
+
+- [ ] All required environment variables are set
+- [ ] Database is accessible from deployment environment
+- [ ] Database migrations have been run
+- [ ] `NEXT_PUBLIC_SITE_URL` matches your production domain
+- [ ] OAuth redirect URIs updated for production domain
+- [ ] Webhook URLs updated for production domain
+- [ ] SSL/TLS certificate is configured
+
+### Environment-Specific Changes
+
+| Setting | Development | Production |
+|---------|-------------|------------|
+| `NEXT_PUBLIC_SITE_URL` | `http://localhost:3000` | `https://app.yourdomain.com` |
+| `DATABASE_URL` | Local PostgreSQL | Production database |
+| OAuth Redirect URIs | `localhost:3000` | `app.yourdomain.com` |
+| Webhook URLs | Use ngrok/localtunnel | Production URLs |
+| Payment Keys | Test/Sandbox keys | Live keys |
+
+### Vercel Deployment
+
+1. Import repository in Vercel
+2. Add all environment variables in Project Settings > Environment Variables
+3. Deploy
+
+### Docker Deployment
+
+```bash
+# Build
+docker build -t studio-saas .
+
+# Run with env file
+docker run --env-file .env.local -p 3000:3000 studio-saas
+```
+
+---
+
+## Troubleshooting
+
+### Database Connection Issues
+
+```bash
+# Test connection
+psql $DATABASE_URL -c "SELECT 1"
+
+# Common issues:
+# - SSL required: Add ?sslmode=require to connection string
+# - IP not whitelisted: Add your IP to database firewall rules
+```
+
+### OAuth Not Working
+
+- Verify redirect URIs match exactly (including http vs https)
+- Check that client ID and secret are correct
+- Ensure OAuth consent screen is configured
+
+### Emails Not Sending
+
+- Verify API key is correct
+- Check domain verification status
+- Review provider's sending limits
+
+### Payments Not Processing
+
+- Ensure you're using correct keys (test vs live)
+- Verify webhook endpoint is accessible
+- Check webhook secret matches
+
+### Build Errors
+
+```bash
+# Skip env validation during build (useful for CI)
+SKIP_ENV_VALIDATION=true pnpm build
+```
+
+---
+
+## Environment Template
+
+Copy this to `.env.local` and fill in values:
+
+```env
+# ===================
+# REQUIRED
+# ===================
+DATABASE_URL="postgresql://user:password@localhost:5432/studio_saas"
+BETTER_AUTH_SECRET=""  # Generate: openssl rand -base64 32
+NEXT_PUBLIC_SITE_URL="http://localhost:3000"
+
+# ===================
+# AUTHENTICATION (Optional)
+# ===================
+GOOGLE_CLIENT_ID=""
+GOOGLE_CLIENT_SECRET=""
+
+# ===================
+# EMAIL (Choose one)
+# ===================
+RESEND_API_KEY=""
+# PLUNK_API_KEY=""
+# POSTMARK_SERVER_TOKEN=""
+# MAIL_HOST=""
+# MAIL_PORT=""
+# MAIL_USER=""
+# MAIL_PASS=""
+
+# ===================
+# PAYMENTS (Choose one)
+# ===================
+DODO_PAYMENTS_API_KEY=""
+DODO_PAYMENTS_WEBHOOK_SECRET=""
+# STRIPE_SECRET_KEY=""
+# STRIPE_WEBHOOK_SECRET=""
+
+# Product IDs
+NEXT_PUBLIC_PRICE_ID_FREELANCER_MONTHLY=""
+NEXT_PUBLIC_PRICE_ID_FREELANCER_YEARLY=""
+NEXT_PUBLIC_PRICE_ID_STARTER_MONTHLY=""
+NEXT_PUBLIC_PRICE_ID_STARTER_YEARLY=""
+NEXT_PUBLIC_PRICE_ID_GROWTH_MONTHLY=""
+NEXT_PUBLIC_PRICE_ID_GROWTH_YEARLY=""
+
+# ===================
+# STORAGE (Optional)
+# ===================
+S3_ACCESS_KEY_ID=""
+S3_SECRET_ACCESS_KEY=""
+S3_ENDPOINT=""
+S3_REGION=""
+NEXT_PUBLIC_AVATARS_BUCKET_NAME="avatars"
+
+# ===================
+# ANALYTICS (Optional)
+# ===================
+NEXT_PUBLIC_GOOGLE_ANALYTICS_ID=""
+
+# ===================
+# AI (Optional)
+# ===================
+OPENAI_API_KEY=""
+```
+
+---
+
+## Related Documentation
+
+- [Architecture Overview](./ARCHITECTURE.md)
+- [Contributing Guide](../CONTRIBUTING.md)
+- [ADRs](./adr/README.md)
