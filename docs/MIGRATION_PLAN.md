@@ -1,4 +1,4 @@
-# W-Tales to NebulaForge Migration Plan
+# W-Tales to Lumen Migration Plan
 
 > **Document Version**: 1.1  
 > **Created**: 2024-12-18  
@@ -11,7 +11,7 @@
 
 1. [Executive Summary](#executive-summary)
 2. [Source Application: W-Tales Studio](#source-application-w-tales-studio)
-3. [Target Template: NebulaForge Monorepo](#target-template-nebulaforge-monorepo)
+3. [Target Template: Lumen Monorepo](#target-template-lumen-monorepo)
 4. [Schema Review & Improvements](#schema-review--improvements)
 5. [Schema Comparison](#schema-comparison)
 6. [Final Unified Schema Plan](#final-unified-schema-plan)
@@ -27,16 +27,16 @@
 
 ## Executive Summary
 
-This document outlines the migration plan for porting **W-Tales Studio** (a photography/videography studio management application) to the **NebulaForge SaaS monorepo template**.
+This document outlines the migration plan for porting **W-Tales Studio** (a photography/videography studio management application) to the **Lumen SaaS monorepo template**.
 
 ### Goals
-- Leverage NebulaForge's mature SaaS infrastructure (auth, billing, monorepo structure)
+- Leverage Lumen's mature SaaS infrastructure (auth, billing, monorepo structure)
 - Preserve all W-Tales domain functionality (bookings, shoots, crews, deliverables, payments)
 - Apply schema improvements identified during review
 - Maintain clean separation of concerns via monorepo packages
 
 ### Key Metrics
-| Metric | W-Tales | NebulaForge | Final |
+| Metric | W-Tales | Lumen | Final |
 |--------|---------|-------------|-------|
 | Database Tables | 30+ | 8 | ~35 |
 | API Endpoints | ~50 | ~20 | ~70 |
@@ -141,10 +141,10 @@ w-tales/
 
 ---
 
-## Target Template: NebulaForge Monorepo
+## Target Template: Lumen Monorepo
 
 ### Overview
-**NebulaForge** is a production-ready SaaS starter template built as a PNPM monorepo with Turborepo orchestration. It provides authentication, organization management, payments, and a solid foundation for B2B SaaS applications.
+**Lumen** is a production-ready SaaS starter template built as a PNPM monorepo with Turborepo orchestration. It provides authentication, organization management, payments, and a solid foundation for B2B SaaS applications.
 
 ### Tech Stack
 | Layer | Technology |
@@ -375,18 +375,18 @@ export const bookingEvents = pgTable("booking_events", {
 
 ### Side-by-Side Analysis
 
-| Aspect | NebulaForge | W-Tales | Decision |
+| Aspect | Lumen | W-Tales | Decision |
 |--------|-------------|---------|----------|
 | **ID Strategy** | UUIDv7 (`varchar(255)`) | `text` for auth, `serial` for domain | Use UUIDv7 for all |
 | **Timestamp TZ** | No timezone | Mixed | Standardize: withTimezone |
-| **Auth Tables** | Full (with 2FA) | Basic | Keep NebulaForge |
+| **Auth Tables** | Full (with 2FA) | Basic | Keep Lumen |
 | **Org Tables** | organizations, members, invitations | Same + activityLogs | Merge |
-| **SaaS Billing** | purchases, webhookEvents | None | Keep NebulaForge |
+| **SaaS Billing** | purchases, webhookEvents | None | Keep Lumen |
 | **Domain Tables** | None | 25+ tables | Add with improvements |
 
 ### Tables Inventory
 
-#### Keep from NebulaForge (8 tables)
+#### Keep from Lumen (8 tables)
 ```
 ✅ users (enhanced)
 ✅ sessions
@@ -595,7 +595,7 @@ export const messageStatusEnum = pgEnum("message_status", [
   "sent", "delivered", "read", "failed"
 ]);
 
-// SaaS Billing (from NebulaForge)
+// SaaS Billing (from Lumen)
 export const purchaseTypeEnum = pgEnum("purchase_type", [
   "SUBSCRIPTION", "ONE_TIME"
 ]);
@@ -825,8 +825,8 @@ export const receivedAmounts = pgTable("received_amounts", {
 | Task | Description | Status |
 |------|-------------|--------|
 | 1.1 | Create enum definitions file | ⬜ |
-| 1.2 | Update auth tables (keep NebulaForge) | ⬜ |
-| 1.3 | Keep billing tables (NebulaForge) | ⬜ |
+| 1.2 | Update auth tables (keep Lumen) | ⬜ |
+| 1.3 | Keep billing tables (Lumen) | ⬜ |
 | 1.4 | Add configurations table | ⬜ |
 | 1.5 | Add clients table | ⬜ |
 | 1.6 | Add bookings + participants + events | ⬜ |
@@ -916,7 +916,7 @@ export const receivedAmounts = pgTable("received_amounts", {
 | 2 | ID Strategy for Domain | UUIDv7 / Serial | UUIDv7 (consistency) | ⬜ Pending |
 | 3 | Activity Logs | Enhanced / Simple | Enhanced (resource tracking) | ⬜ Pending |
 | 4 | Package Templates | Structured / Text | Defer (use text initially) | ⬜ Pending |
-| 5 | i18n | Keep / Remove | Keep (already in NebulaForge) | ⬜ Pending |
+| 5 | i18n | Keep / Remove | Keep (already in Lumen) | ⬜ Pending |
 | 6 | User Billing vs Org Billing | Both / Org Only | Org Only (B2B focus) | ⬜ Pending |
 
 ### Approved Decisions
@@ -941,7 +941,7 @@ export const receivedAmounts = pgTable("received_amounts", {
 
 ### Key Files
 - W-Tales Schema: `w-tales/src/lib/db/schema.ts`
-- NebulaForge Schema: `studio-saas-monorepo/packages/database/drizzle/schema/postgres.ts`
+- Lumen Schema: `studio-saas-monorepo/packages/database/drizzle/schema/postgres.ts`
 - W-Tales Auth: `w-tales/src/lib/auth/index.ts`
 - W-Tales Permissions: `w-tales/src/lib/auth/permission.ts`
 

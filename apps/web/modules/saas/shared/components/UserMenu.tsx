@@ -19,7 +19,6 @@ import {
 import { useSession } from "@saas/auth/hooks/use-session";
 import { UserAvatar } from "@shared/components/UserAvatar";
 import {
-	BookIcon,
 	HardDriveIcon,
 	HomeIcon,
 	LogOutIcon,
@@ -148,13 +147,6 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 						<SettingsIcon className="mr-2 size-4" />
 						{t("app.userMenu.accountSettings")}
 					</Link>
-				</DropdownMenuItem>
-
-				<DropdownMenuItem asChild>
-					<a href="https://nebulaforge.dev/docs/nextjs">
-						<BookIcon className="mr-2 size-4" />
-						{t("app.userMenu.documentation")}
-					</a>
 				</DropdownMenuItem>
 
 				<DropdownMenuItem asChild>

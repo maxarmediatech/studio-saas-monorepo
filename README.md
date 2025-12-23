@@ -57,7 +57,4 @@ pnpm db:generate  # Generate migrations
 pnpm db:migrate   # Apply migrations
 ```
 
-## Links
 
-- [NebulaForge Documentation](https://nebulaforge.dev/docs/nextjs)
-- [Demo](https://demo.nebulaforge.dev)

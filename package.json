@@ -1,5 +1,5 @@
 {
-	"name": "nebulaforge-nextjs",
+	"name": "lumen",
 	"private": true,
 	"scripts": {
 		"build": "dotenv -c -- turbo build",

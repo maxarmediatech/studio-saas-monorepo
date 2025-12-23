@@ -3,7 +3,7 @@
 > **Status**: Planning
 > **Created**: 2024-12-19
 > **Source**: W-Tales `/Users/rakesh/Developer/winter-arc/w-tales/src`
-> **Target**: NebulaForge `/Users/rakesh/Developer/agency/studio-saas-monorepo/apps/web`
+> **Target**: Lumen `/Users/rakesh/Developer/agency/studio-saas-monorepo/apps/web`
 
 ---
 
@@ -24,11 +24,11 @@
 
 ## Overview
 
-Phase 5 migrates the W-Tales frontend to the NebulaForge monorepo structure. The goal is to port all UI routes, components, hooks, and patterns while adapting them to use the new oRPC API layer created in Phase 4.
+Phase 5 migrates the W-Tales frontend to the Lumen monorepo structure. The goal is to port all UI routes, components, hooks, and patterns while adapting them to use the new oRPC API layer created in Phase 4.
 
 ### Key Changes from W-Tales
 
-| Aspect | W-Tales | NebulaForge |
+| Aspect | W-Tales | Lumen |
 |--------|---------|-------------|
 | API Layer | Next.js API routes + fetch | oRPC procedures + client |
 | Data Fetching | Custom hooks + fetch | oRPC client + React Query |
@@ -91,7 +91,7 @@ We'll migrate feature-by-feature rather than all-at-once:
 
 - **Don't**: Copy W-Tales code verbatim
 - **Do**: Adapt patterns to use oRPC client
-- **Do**: Follow NebulaForge conventions where they exist
+- **Do**: Follow Lumen conventions where they exist
 - **Do**: Improve patterns where W-Tales has issues
 
 ---
@@ -100,7 +100,7 @@ We'll migrate feature-by-feature rather than all-at-once:
 
 ### 1. Route Structure
 
-**NebulaForge Pattern** (URL-based org):
+**Lumen Pattern** (URL-based org):
 ```
 /app/[organizationSlug]/
 ├── dashboard/
@@ -117,7 +117,7 @@ We'll migrate feature-by-feature rather than all-at-once:
 └── ...
 ```
 
-**Decision**: Use NebulaForge's URL-based organization pattern. This is better for:
+**Decision**: Use Lumen's URL-based organization pattern. This is better for:
 - Multi-tab workflows (different orgs in different tabs)
 - Bookmarkable URLs
 - SSR with org context
@@ -135,7 +135,7 @@ export function useBookings() {
 }
 ```
 
-**NebulaForge Pattern** (oRPC):
+**Lumen Pattern** (oRPC):
 ```typescript
 // Using oRPC client
 import { useSuspenseQuery } from "@tanstack/react-query";
@@ -168,7 +168,7 @@ export function useCreateBooking() {
 }
 ```
 
-**NebulaForge Pattern**:
+**Lumen Pattern**:
 ```typescript
 export function useCreateBooking() {
   const utils = orpc.useUtils();
@@ -198,7 +198,7 @@ export function useBookingPermissions() {
 }
 ```
 
-**NebulaForge Pattern** (same, but with context):
+**Lumen Pattern** (same, but with context):
 ```typescript
 export function useBookingPermissions() {
   const { membership } = useStudioContext();
@@ -924,7 +924,7 @@ export function useBookings() {
   });
 }
 
-// After (NebulaForge)
+// After (Lumen)
 export function useBookings(filters: ListBookingsInput) {
   return useSuspenseQuery(
     orpc.bookings.list.queryOptions({ input: filters })
@@ -959,7 +959,7 @@ export function useCreateBooking() {
   });
 }
 
-// After (NebulaForge)
+// After (Lumen)
 export function useCreateBooking() {
   const utils = orpc.useUtils();
 
