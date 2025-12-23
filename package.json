@@ -1,5 +1,5 @@
 {
-	"name": "nebulaforge-nextjs",
+	"name": "lumen",
 	"private": true,
 	"scripts": {
 		"build": "dotenv -c -- turbo build",
@@ -21,9 +21,9 @@
 	"devDependencies": {
 		"@biomejs/biome": "2.3.10",
 		"@repo/tsconfig": "workspace:*",
-		"@types/node": "^24.10.1",
+		"@types/node": "^24.10.4",
 		"dotenv-cli": "^11.0.0",
-		"turbo": "^2.6.3",
+		"turbo": "^2.7.1",
 		"typescript": "5.9.3"
 	},
 	"pnpm": {

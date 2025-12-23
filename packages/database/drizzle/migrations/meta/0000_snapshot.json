@@ -1,5 +1,5 @@
 {
-  "id": "f0ec3f1a-2f81-46fc-9579-c395f826f948",
+  "id": "0d68c03c-dcc4-4c51-9d1e-8bb3048f83e5",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -1479,21 +1479,6 @@
           ],
           "columnsTo": [
             "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "booking_events_booking_id_organization_id_bookings_id_organization_id_fk": {
-          "name": "booking_events_booking_id_organization_id_bookings_id_organization_id_fk",
-          "tableFrom": "booking_events",
-          "tableTo": "bookings",
-          "columnsFrom": [
-            "booking_id",
-            "organization_id"
-          ],
-          "columnsTo": [
-            "id",
-            "organization_id"
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"

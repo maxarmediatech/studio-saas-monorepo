@@ -1,16 +1,13 @@
 import { config } from "@repo/config";
 import { createPurchasesHelper } from "@repo/payments/lib/helper";
-import { isOrganizationAdmin } from "@repo/auth/lib/helper";
 import {
 	getActiveOrganization,
 	getOrganizationList,
 	getSession,
 } from "@saas/auth/lib/server";
-import { InviteMemberForm } from "@saas/organizations/components/InviteMemberForm";
-import { OrganizationMembersBlock } from "@saas/organizations/components/OrganizationMembersBlock";
+import { HubPage } from "@saas/hub";
+import type { OrganizationWithStats } from "@saas/hub";
 import { orpcClient } from "@shared/lib/orpc-client";
-import { SettingsList } from "@saas/shared/components/SettingsList";
-import { SignOutButton } from "@saas/shared/components/SignOutButton";
 import { attemptAsync } from "es-toolkit";
 import { redirect } from "next/navigation";
 
@@ -25,211 +22,52 @@ export default async function AppHomePage() {
 		? await getOrganizationList()
 		: [];
 
-	const activeOrganizationFromList = config.organizations.enable
-		? organizations.find(
-				(org) => org.id === session?.session.activeOrganizationId,
-			) || organizations.at(0)
-		: undefined;
+	// Fetch detailed org data with members and plans
+	const organizationsWithStats: OrganizationWithStats[] = await Promise.all(
+		organizations.map(async (org) => {
+			// Get full organization with members
+			const fullOrg = org.slug
+				? await getActiveOrganization(org.slug)
+				: null;
 
-	const organizationId =
-		config.organizations.enable && activeOrganizationFromList
-			? activeOrganizationFromList.id
-			: undefined;
+			const members = fullOrg?.members ?? [];
+			const currentMember = members.find(
+				(m) => m.userId === session.user.id,
+			);
 
-	const fullOrganization =
-		config.organizations.enable && activeOrganizationFromList?.slug
-			? await getActiveOrganization(activeOrganizationFromList.slug)
-			: null;
+			// Get plan info if billing is enabled
+			let planName: string | null = null;
+			if (config.organizations.enableBilling) {
+				const [, purchasesData] = await attemptAsync(() =>
+					orpcClient.payments.listPurchases({
+						organizationId: org.id,
+					}),
+				);
+				if (purchasesData?.purchases) {
+					const { activePlan } = createPurchasesHelper(
+						purchasesData.purchases,
+					);
+					planName = activePlan?.id ?? null;
+				}
+			}
 
-	const organizationForDisplay = fullOrganization ?? activeOrganizationFromList;
-	const canManageMembers =
-		Array.isArray(fullOrganization?.members) &&
-		isOrganizationAdmin(fullOrganization, session?.user);
-
-	const billingEnabled =
-		(config.organizations.enable && config.organizations.enableBilling) ||
-		config.users.enableBilling;
-
-	let activePlan:
-		| ReturnType<typeof createPurchasesHelper>["activePlan"]
-		| null = null;
-
-	if (billingEnabled) {
-		const [purchaseError, purchasesData] = await attemptAsync(() =>
-			orpcClient.payments.listPurchases({
-				organizationId,
-			}),
-		);
-
-		const purchases = purchaseError ? [] : purchasesData?.purchases ?? [];
-		activePlan = createPurchasesHelper(purchases).activePlan;
-	}
+			return {
+				id: org.id,
+				name: org.name,
+				slug: org.slug,
+				logo: org.logo,
+				createdAt: org.createdAt,
+				memberCount: members.length,
+				role: (currentMember?.role as "owner" | "admin" | "member") ?? "member",
+				planName,
+			};
+		}),
+	);
 
 	return (
-		<div className="space-y-8">
-			<div>
-				<h1 className="text-2xl font-semibold tracking-tight">
-					Account overview
-				</h1>
-				<p className="text-muted-foreground">
-					A quick snapshot of your profile, organization, and current
-					plan.
-				</p>
-			</div>
-
-			<div className="grid gap-4 md:grid-cols-2">
-				<section className="rounded-lg border bg-card p-4">
-					<div className="text-sm font-medium text-muted-foreground">
-						Account details
-					</div>
-					<dl className="mt-3 space-y-2 text-sm">
-						<div className="flex justify-between gap-4">
-							<dt className="text-muted-foreground">Name</dt>
-							<dd className="font-medium">
-								{session.user.name ?? "Unknown"}
-							</dd>
-						</div>
-						<div className="flex justify-between gap-4">
-							<dt className="text-muted-foreground">Email</dt>
-							<dd className="font-medium break-all">
-								{session.user.email}
-							</dd>
-						</div>
-						<div className="flex justify-between gap-4">
-							<dt className="text-muted-foreground">User ID</dt>
-							<dd className="font-medium">
-								{session.user.id}
-							</dd>
-						</div>
-					</dl>
-				</section>
-
-				<section className="rounded-lg border bg-card p-4">
-					<div className="text-sm font-medium text-muted-foreground">
-						Organization
-					</div>
-					{config.organizations.enable ? (
-						<dl className="mt-3 space-y-2 text-sm">
-							<div className="flex justify-between gap-4">
-								<dt className="text-muted-foreground">
-									Name
-								</dt>
-								<dd className="font-medium flex gap-2 items-center">
-									{organizationForDisplay ? (
-										<a
-											className="text-primary hover:underline"
-											href={`/app/${organizationForDisplay.slug}`}
-										>
-											{organizationForDisplay.name}
-										</a>
-									) : (
-										"No organization"
-									)}
-								</dd>
-							</div>
-							<div className="flex justify-between gap-4">
-								<dt className="text-muted-foreground">
-									Slug
-								</dt>
-								<dd className="font-medium">
-									{organizationForDisplay?.slug ?? "—"}
-								</dd>
-							</div>
-							<div className="flex justify-between gap-4">
-								<dt className="text-muted-foreground">ID</dt>
-								<dd className="font-medium">
-									{organizationForDisplay?.id ?? "—"}
-								</dd>
-							</div>
-						</dl>
-					) : (
-						<p className="mt-3 text-sm text-muted-foreground">
-							Organizations are disabled for this workspace.
-						</p>
-					)}
-				</section>
-			</div>
-
-			<section className="rounded-lg border bg-card p-4">
-				<div className="text-sm font-medium text-muted-foreground">
-					Purchased plan
-				</div>
-				{billingEnabled ? (
-					<dl className="mt-3 space-y-2 text-sm">
-						<div className="flex justify-between gap-4">
-							<dt className="text-muted-foreground">Plan</dt>
-							<dd className="font-medium">
-								{activePlan?.id ?? "No active plan"}
-							</dd>
-						</div>
-						<div className="flex justify-between gap-4">
-							<dt className="text-muted-foreground">Status</dt>
-							<dd className="font-medium">
-								{activePlan?.status ?? "—"}
-							</dd>
-						</div>
-						<div className="flex justify-between gap-4">
-							<dt className="text-muted-foreground">
-								Billing cycle
-							</dt>
-							<dd className="font-medium">
-								{activePlan?.price
-									? "interval" in activePlan.price
-										? `${activePlan.price.interval}ly`
-										: "one-time"
-									: "—"}
-							</dd>
-						</div>
-						<div className="flex justify-between gap-4">
-							<dt className="text-muted-foreground">Price</dt>
-							<dd className="font-medium">
-								{activePlan?.price
-									? `${activePlan.price.amount} ${activePlan.price.currency}`
-									: "—"}
-							</dd>
-						</div>
-					</dl>
-				) : (
-					<p className="mt-3 text-sm text-muted-foreground">
-						Billing is currently disabled.
-					</p>
-				)}
-			</section>
-
-			<section className="rounded-lg border bg-card p-4 flex items-start justify-between gap-4">
-				<div>
-					<div className="text-sm font-medium text-muted-foreground">
-						Session
-					</div>
-					<p className="text-sm text-muted-foreground mt-1">
-						Sign out of your account.
-					</p>
-				</div>
-				<SignOutButton />
-			</section>
-
-			{config.organizations.enable && organizationForDisplay && (
-				<section className="space-y-4">
-					<div>
-						<h2 className="text-xl font-semibold tracking-tight">
-							Members
-						</h2>
-						<p className="text-muted-foreground">
-							Invite teammates and review current access.
-						</p>
-					</div>
-					<SettingsList>
-						{canManageMembers && (
-							<InviteMemberForm
-								organizationId={organizationForDisplay.id}
-							/>
-						)}
-						<OrganizationMembersBlock
-							organizationId={organizationForDisplay.id}
-						/>
-					</SettingsList>
-				</section>
-			)}
-		</div>
+		<HubPage
+			userName={session.user.name ?? "there"}
+			organizations={organizationsWithStats}
+		/>
 	);
 }

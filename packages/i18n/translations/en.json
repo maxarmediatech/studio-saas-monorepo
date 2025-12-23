@@ -1,38 +1,38 @@
 {
 	"admin": {
 		"menu": {
-			"organizations": "Organizations",
+			"organizations": "Studios",
 			"users": "Users"
 		},
 		"organizations": {
-			"backToList": "Back to organizations",
+			"backToList": "Back to studios",
 			"confirmDelete": {
 				"confirm": "Delete",
-				"message": "Are you sure you want to delete this organization? This action cannot be undone.",
-				"title": "Delete organization"
+				"message": "Are you sure you want to delete this studio? This action cannot be undone.",
+				"title": "Delete studio"
 			},
 			"create": "Create",
 			"delete": "Delete",
 			"deleteOrganization": {
-				"deleted": "Organization has been deleted successfully!",
-				"deleting": "Deleting organization...",
-				"notDeleted": "Organization could not be deleted. Please try again."
+				"deleted": "Studio has been deleted successfully!",
+				"deleting": "Deleting studio...",
+				"notDeleted": "Studio could not be deleted. Please try again."
 			},
 			"edit": "Edit",
 			"form": {
-				"createTitle": "Create an organization",
-				"name": "Organization name",
+				"createTitle": "Create a studio",
+				"name": "Studio name",
 				"notifications": {
-					"error": "Could not save the organization. Please try again later.",
-					"success": "Organization has been saved."
+					"error": "Could not save the studio. Please try again later.",
+					"success": "Studio has been saved."
 				},
 				"save": "Save",
-				"updateTitle": "Edit organization"
+				"updateTitle": "Edit studio"
 			},
-			"loading": "Loading organizations...",
+			"loading": "Loading studios...",
 			"membersCount": "{count} {count, plural, one {member} other {members}}",
-			"search": "Search for an organization...",
-			"title": "Manage organizations"
+			"search": "Search for a studio...",
+			"title": "Manage studios"
 		},
 		"title": "Administration",
 		"users": {
@@ -73,7 +73,7 @@
 		"menu": {
 			"accountSettings": "Account settings",
 			"admin": "Admin",
-			"organizationSettings": "Organization settings",
+			"organizationSettings": "Studio settings",
 			"start": "Start"
 		},
 		"userMenu": {
@@ -254,24 +254,24 @@
 			"subject": "Reset your password"
 		},
 		"magicLink": {
-			"body": "Hey,\nyou requested a login email from NebulaForge.\n\nClick the link below to login.",
+			"body": "Hey,\nyou requested a login email from Lumen.\n\nClick the link below to login.",
 			"login": "Login",
-			"subject": "Login to NebulaForge"
+			"subject": "Login to Lumen"
 		},
 		"newUser": {
-			"body": "Hey,\nthanks for signing up for NebulaForge.\n\nTo start using our app, please confirm your email address by clicking the link below.",
+			"body": "Hey,\nthanks for signing up for Lumen.\n\nTo start using our app, please confirm your email address by clicking the link below.",
 			"confirmEmail": "Confirm email",
 			"subject": "Confirm your email"
 		},
 		"newsletterSignup": {
-			"body": "Thank you for signing up for the NebulaForge newsletter. We will keep you updated with the latest news and updates.",
+			"body": "Thank you for signing up for the Lumen newsletter. We will keep you updated with the latest news and updates.",
 			"subject": "Welcome to our newsletter"
 		},
 		"organizationInvitation": {
-			"body": "You have been invited to join the organization {organizationName}. Click the button below or copy and paste the link into your browser of choice to accept the invitation and join the organization.",
-			"headline": "Join the organization {organizationName}",
-			"join": "Join the organization",
-			"subject": "You have been invited to join an organization"
+			"body": "You have been invited to join the studio {organizationName}. Click the button below or copy and paste the link into your browser of choice to accept the invitation and join the studio.",
+			"headline": "Join the studio {organizationName}",
+			"join": "Join the studio",
+			"subject": "You have been invited to join a studio"
 		}
 	},
 	"newsletter": {
@@ -286,7 +286,7 @@
 			}
 		},
 		"submit": "Subscribe",
-		"subtitle": "Be among the first to get access to NebulaForge for Next.js.",
+		"subtitle": "Be among the first to get access to Lumen.",
 		"title": "Get early access"
 	},
 	"onboarding": {
@@ -305,33 +305,33 @@
 	},
 	"organizations": {
 		"createForm": {
-			"name": "Organization name",
+			"name": "Studio name",
 			"notifications": {
-				"error": "We are sorry, but we were unable to create your organization. Please try again later.",
-				"success": "Your organization has been created. You can now invite members."
+				"error": "We are sorry, but we were unable to create your studio. Please try again later.",
+				"success": "Your studio has been created. You can now invite members."
 			},
-			"submit": "Create organization",
-			"subtitle": "Enter a name for your organization to get started. You can change the name later in the organization settings.",
-			"title": "Create an organization"
+			"submit": "Add studio",
+			"subtitle": "Enter a name for your studio to get started. You can change the name later in the studio settings.",
+			"title": "Add your studio"
 		},
 		"invitationAlert": {
-			"description": "You need to sign in or create an account to join the organization.",
-			"title": "You have been invited to join an organization."
+			"description": "You need to sign in or create an account to join the studio.",
+			"title": "You have been invited to join a studio."
 		},
 		"invitationModal": {
 			"accept": "Accept",
 			"decline": "Decline",
-			"description": "You have been invited to join the organization {organizationName}. Do you want to accept the invitation and join the organization?",
-			"title": "Join the organization"
+			"description": "You have been invited to join the studio {organizationName}. Do you want to accept the invitation and join the studio?",
+			"title": "Join the studio"
 		},
 		"organizationSelect": {
-			"createNewOrganization": "Create new organization",
-			"organizations": "Organizations",
+			"createNewOrganization": "Create new studio",
+			"organizations": "Studios",
 			"personalAccount": "Personal account"
 		},
 		"organizationsGrid": {
-			"createNewOrganization": "Create new organization",
-			"title": "Your organizations"
+			"createNewOrganization": "Create new studio",
+			"title": "Your studios"
 		},
 		"roles": {
 			"admin": "Admin",
@@ -340,21 +340,21 @@
 		},
 		"settings": {
 			"changeName": {
-				"title": "Organization name"
+				"title": "Studio name"
 			},
 			"deleteOrganization": {
-				"confirmation": "Are you sure you want to delete your organization?",
-				"description": "Permanently delete your organization. Once you delete your organization, there is no going back. To confirm, please enter your password below:",
-				"submit": "Delete organization",
-				"title": "Delete organization"
+				"confirmation": "Are you sure you want to delete your studio?",
+				"description": "Permanently delete your studio. Once you delete your studio, there is no going back. To confirm, please enter your password below:",
+				"submit": "Delete studio",
+				"title": "Delete studio"
 			},
 			"logo": {
-				"description": "Upload a logo for your organization.",
-				"title": "Organization logo"
+				"description": "Upload a logo for your studio.",
+				"title": "Studio logo"
 			},
 			"members": {
 				"activeMembers": "Active members",
-				"description": "See all active members and the pending invites of your organization.",
+				"description": "See all active members and the pending invites of your studio.",
 				"invitations": {
 					"empty": "You have not invited any members yet.",
 					"expiresAt": "Expires at {date}",
@@ -384,17 +384,17 @@
 					"submit": "Invite",
 					"title": "Invite member"
 				},
-				"leaveOrganization": "Leave organization",
+				"leaveOrganization": "Leave studio",
 				"notifications": {
 					"removeMember": {
 						"error": {
-							"description": "Could not remove the member from your organization. Please try again."
+							"description": "Could not remove the member from your studio. Please try again."
 						},
 						"loading": {
-							"description": "Removing member from organization..."
+							"description": "Removing member from studio..."
 						},
 						"success": {
-							"description": "The member has been successfully removed from your organization."
+							"description": "The member has been successfully removed from your studio."
 						}
 					},
 					"revokeInvitation": {
@@ -410,7 +410,7 @@
 					},
 					"updateMembership": {
 						"error": {
-							"description": "Could not update organization membership. Please try again."
+							"description": "Could not update studio membership. Please try again."
 						},
 						"loading": {
 							"description": "Updating membership..."
@@ -436,19 +436,19 @@
 				"title": "Members"
 			},
 			"notifications": {
-				"organizationDeleted": "Your organization has been deleted.",
-				"organizationNameNotUpdated": "We were unable to update your organization name. Please try again later.",
-				"organizationNameUpdated": "Your organization name has been updated.",
-				"organizationNotDeleted": "We were unable to delete your organization. Please try again later."
+				"organizationDeleted": "Your studio has been deleted.",
+				"organizationNameNotUpdated": "We were unable to update your studio name. Please try again later.",
+				"organizationNameUpdated": "Your studio name has been updated.",
+				"organizationNotDeleted": "We were unable to delete your studio. Please try again later."
 			},
-			"subtitle": "Manage the settings of the organization.",
-			"title": "Organization",
+			"subtitle": "Manage the settings of your studio.",
+			"title": "Studio",
 			"dangerZone": {
 				"title": "Danger zone"
 			}
 		},
 		"start": {
-			"subtitle": "Welcome to the start page of this organization!"
+			"subtitle": "Welcome to the start page of this studio!"
 		}
 	},
 	"pricing": {
@@ -682,7 +682,7 @@
 				"billing": "Billing",
 				"general": "General",
 				"members": "Members",
-				"title": "Organization",
+				"title": "Studio",
 				"dangerZone": "Danger zone"
 			}
 		},
@@ -810,5 +810,44 @@
 	"choosePlan": {
 		"title": "Choose your plan",
 		"description": "To continue, please select a plan."
+	},
+	"hub": {
+		"title": "Welcome back",
+		"subtitle": "Select a studio or explore what's new",
+		"organizations": {
+			"title": "Your Studios",
+			"createNew": "Create new studio",
+			"members": "{count} {count, plural, one {member} other {members}}",
+			"noOrganizations": "No studios yet",
+			"emptyTitle": "Create your first studio",
+			"emptyDescription": "Studios help you collaborate with your team and manage projects together."
+		},
+		"announcements": {
+			"title": "What's New",
+			"viewAll": "View all",
+			"types": {
+				"feature": "Feature",
+				"update": "Update",
+				"fix": "Fix"
+			},
+			"relativeDate": {
+				"today": "Today",
+				"yesterday": "Yesterday",
+				"daysAgo": "{count, plural, one {# day ago} other {# days ago}}",
+				"weeksAgo": "{count, plural, one {# week ago} other {# weeks ago}}"
+			}
+		},
+		"apps": {
+			"title": "Apps & Integrations",
+			"comingSoon": "Coming Soon",
+			"description": "Extend your workspace with powerful apps"
+		},
+		"quickActions": {
+			"title": "Quick Actions",
+			"createOrg": "New Studio",
+			"inviteTeam": "Invite Team",
+			"billing": "Billing",
+			"settings": "Settings"
+		}
 	}
 }
