@@ -6,7 +6,6 @@
 		"@repo/i18n": "workspace:*",
 		"@repo/logs": "workspace:*",
 		"next-intl": "4.6.1",
-		"nodemailer": "^7.0.12",
 		"react": "19.2.3",
 		"react-dom": "19.2.3",
 		"react-email": "^5.1.0",
@@ -17,7 +16,6 @@
 		"@repo/tsconfig": "workspace:*",
 		"@tailwindcss/line-clamp": "^0.4.4",
 		"@types/node": "24.10.1",
-		"@types/nodemailer": "^7.0.4",
 		"@types/react": "19.2.7"
 	},
 	"main": "./index.ts",

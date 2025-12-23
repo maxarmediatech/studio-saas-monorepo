@@ -173,11 +173,9 @@ GITHUB_CLIENT_SECRET="your-client-secret"
 
 ---
 
-## Email Provider Setup
+## Email Setup
 
-Choose ONE provider from the options below.
-
-### Option 1: Resend (Recommended)
+### Resend
 
 1. Create account at [resend.com](https://resend.com)
 2. Verify your domain
@@ -187,51 +185,11 @@ Choose ONE provider from the options below.
 RESEND_API_KEY="re_xxxxxxxxxxxx"
 ```
 
-### Option 2: Plunk
-
-1. Create account at [useplunk.com](https://useplunk.com)
-2. Get API key from dashboard
-
-```env
-PLUNK_API_KEY="your-api-key"
-```
-
-### Option 3: Postmark
-
-1. Create account at [postmarkapp.com](https://postmarkapp.com)
-2. Create a server and get the API token
-
-```env
-POSTMARK_SERVER_TOKEN="your-server-token"
-```
-
-### Option 4: Mailgun
-
-1. Create account at [mailgun.com](https://mailgun.com)
-2. Add and verify your domain
-3. Get API key from dashboard
-
-```env
-MAILGUN_API_KEY="your-api-key"
-MAILGUN_DOMAIN="mg.yourdomain.com"
-```
-
-### Option 5: SMTP (Generic)
-
-```env
-MAIL_HOST="smtp.example.com"
-MAIL_PORT="587"
-MAIL_USER="your-username"
-MAIL_PASS="your-password"
-```
-
 ---
 
 ## Payment Provider Setup
 
-Choose ONE provider based on your needs.
-
-### Option 1: DodoPayments
+### DodoPayments
 
 1. Create account at [dodopayments.com](https://dodopayments.com)
 2. Get API key from dashboard
@@ -240,48 +198,6 @@ Choose ONE provider based on your needs.
 ```env
 DODO_PAYMENTS_API_KEY="your-api-key"
 DODO_PAYMENTS_WEBHOOK_SECRET="whsec_xxxx"
-```
-
-### Option 2: Stripe
-
-1. Create account at [stripe.com](https://stripe.com)
-2. Get API keys from Dashboard > Developers > API keys
-3. Set up webhook endpoint: `https://yourdomain.com/api/webhooks/stripe`
-4. Add events: `checkout.session.completed`, `customer.subscription.*`
-
-```env
-STRIPE_SECRET_KEY="sk_live_xxxx" # or sk_test_xxxx for testing
-STRIPE_WEBHOOK_SECRET="whsec_xxxx"
-```
-
-### Option 3: Polar
-
-1. Create account at [polar.sh](https://polar.sh)
-2. Get access token from settings
-3. Configure webhook
-
-```env
-POLAR_ACCESS_TOKEN="your-token"
-POLAR_WEBHOOK_SECRET="your-secret"
-```
-
-### Option 4: LemonSqueezy
-
-1. Create account at [lemonsqueezy.com](https://lemonsqueezy.com)
-2. Get API key from Settings > API
-3. Get Store ID from Settings > Stores
-
-```env
-LEMONSQUEEZY_API_KEY="your-api-key"
-LEMONSQUEEZY_WEBHOOK_SECRET="your-secret"
-LEMONSQUEEZY_STORE_ID="your-store-id"
-```
-
-### Option 5: Creem
-
-```env
-CREEM_API_KEY="your-api-key"
-CREEM_WEBHOOK_SECRET="your-secret"
 ```
 
 ### Product Price IDs
@@ -474,23 +390,15 @@ GOOGLE_CLIENT_ID=""
 GOOGLE_CLIENT_SECRET=""
 
 # ===================
-# EMAIL (Choose one)
+# EMAIL
 # ===================
 RESEND_API_KEY=""
-# PLUNK_API_KEY=""
-# POSTMARK_SERVER_TOKEN=""
-# MAIL_HOST=""
-# MAIL_PORT=""
-# MAIL_USER=""
-# MAIL_PASS=""
 
 # ===================
-# PAYMENTS (Choose one)
+# PAYMENTS
 # ===================
 DODO_PAYMENTS_API_KEY=""
 DODO_PAYMENTS_WEBHOOK_SECRET=""
-# STRIPE_SECRET_KEY=""
-# STRIPE_WEBHOOK_SECRET=""
 
 # Product IDs
 NEXT_PUBLIC_PRICE_ID_FREELANCER_MONTHLY=""
