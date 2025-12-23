@@ -78,7 +78,10 @@ export function AnnouncementsSection() {
 	);
 }
 
-type Translator = (key: string, values?: Record<string, unknown>) => string;
+type Translator = (
+	key: string,
+	values?: Record<string, string | number | Date>,
+) => string;
 
 function formatRelativeDate(
 	dateString: string,
