@@ -263,10 +263,6 @@ export const bookingEvents = pgTable(
 			.notNull(),
 	},
 	(table) => [
-		foreignKey({
-			columns: [table.bookingId, table.organizationId],
-			foreignColumns: [bookings.id, bookings.organizationId],
-		}).onDelete("cascade"),
 		index("booking_events_booking_idx").on(table.bookingId),
 		index("booking_events_org_date_idx").on(
 			table.organizationId,
