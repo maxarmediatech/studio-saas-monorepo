@@ -1,5 +1,5 @@
 {
-  "id": "0d68c03c-dcc4-4c51-9d1e-8bb3048f83e5",
+  "id": "f6daca37-0cb9-4dae-b995-299a1c2cfdfa",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -672,6 +672,13 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false
+        },
+        "timezone": {
+          "name": "timezone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'UTC'"
         },
         "logo": {
           "name": "logo",
@@ -1366,7 +1373,7 @@
         },
         "event_date": {
           "name": "event_date",
-          "type": "date",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true
         },

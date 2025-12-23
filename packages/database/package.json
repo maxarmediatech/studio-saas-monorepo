@@ -25,6 +25,7 @@
 		"type-check": "tsc --noEmit",
 		"db:generate": "pnpm run generate",
 		"db:migrate": "pnpm run migrate",
+		"db:push": "pnpm run push",
 		"db:seed": "pnpm run seed"
 	},
 	"types": "./**/.tsx",
