@@ -1,13 +1,27 @@
 {
-  "version": "7",
-  "dialect": "postgresql",
-  "entries": [
-    {
-      "idx": 0,
-      "version": "7",
-      "when": 1766488041100,
-      "tag": "0000_medical_sentinel",
-      "breakpoints": true
-    }
-  ]
+	"version": "7",
+	"dialect": "postgresql",
+	"entries": [
+		{
+			"idx": 0,
+			"version": "7",
+			"when": 1766488041100,
+			"tag": "0000_medical_sentinel",
+			"breakpoints": true
+		},
+		{
+			"idx": 1,
+			"version": "7",
+			"when": 1766146289661,
+			"tag": "0001_dashing_abomination",
+			"breakpoints": true
+		},
+		{
+			"idx": 2,
+			"version": "7",
+			"when": 1766158628019,
+			"tag": "0002_slim_freak",
+			"breakpoints": true
+		}
+	]
 }

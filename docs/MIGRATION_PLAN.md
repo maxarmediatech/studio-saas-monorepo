@@ -1,9 +1,9 @@
 # W-Tales to Lumen Migration Plan
 
-> **Document Version**: 1.1  
+> **Document Version**: 1.2  
 > **Created**: 2024-12-18  
-> **Last Updated**: 2024-12-18  
-> **Status**: Planning Phase
+> **Last Updated**: 2024-12-19  
+> **Status**: Schema Complete (Phases 1-3 Done)
 
 ---
 
@@ -340,7 +340,8 @@ export const crewAvailability = pgTable("crew_availability", {
 ```typescript
 export const bookingEvents = pgTable("booking_events", {
   id: varchar("id", { length: 255 }).$defaultFn(() => uuidv7()).primaryKey(),
-  bookingId: varchar("booking_id", { length: 255 }).notNull().references(() => bookings.id),
+  bookingId: varchar("booking_id", { length: 255 }).notNull(),
+  organizationId: varchar("organization_id", { length: 255 }).notNull(),
   eventType: text("event_type").notNull(), // engagement, haldi, sangeet, wedding, reception
   eventDate: date("event_date").notNull(),
   venue: text("venue"),
@@ -351,23 +352,36 @@ export const bookingEvents = pgTable("booking_events", {
 });
 ```
 
+#### 13. DB Integrity Constraints
+**Purpose**: Enforce correctness at the database level (avoid invalid financial data and ambiguous associations).
+
+Added constraints in the current schema:
+- Amounts and quantities are non-negative/positive (expenses, received amounts, schedules, line items).
+- `paid_amount` cannot exceed `amount` / `total_amount`.
+- Invoice line item `amount` must equal `quantity * unit_price`.
+- Submission feedback rating constrained to 1–5 (or NULL).
+- Assignment submissions must be linked to exactly one of task or deliverable.
+- Expense assignments must target exactly one of booking, shoot, or crew.
+- Booking events enforce `(booking_id, organization_id)` consistency via composite FK.
+
 ### Summary Table
 
 | Issue | Severity | Effort | Status |
 |-------|----------|--------|--------|
-| Date/time as text | Critical | Medium | ⬜ Pending |
-| Timezone inconsistency | Critical | Low | ⬜ Pending |
-| Missing indexes | Critical | Low | ⬜ Pending |
-| Soft delete inconsistency | High | Medium | ⬜ Pending |
-| Missing audit fields | High | Medium | ⬜ Pending |
-| Payment method missing | High | Low | ⬜ Pending |
-| Booking financial cache | High | Medium | ⬜ Pending |
-| Text status → Enums | Medium | Medium | ⬜ Pending |
-| Missing reference numbers | Medium | Low | ⬜ Pending |
-| Shoot status missing | Medium | Low | ⬜ Pending |
-| Client duplicate prevention | Medium | Low | ⬜ Pending |
-| Crew availability | Low | High | ⬜ Pending |
-| Booking events | Low | Medium | ⬜ Pending |
+| Date/time as text | Critical | Medium | ✅ Done |
+| Timezone inconsistency | Critical | Low | ✅ Done |
+| Missing indexes | Critical | Low | ✅ Done |
+| Soft delete inconsistency | High | Medium | ✅ Done |
+| Missing audit fields | High | Medium | ✅ Done |
+| Payment method missing | High | Low | ✅ Done |
+| Booking financial cache | High | Medium | ✅ Done |
+| Text status → Enums | Medium | Medium | ✅ Done (hybrid) |
+| Missing reference numbers | Medium | Low | ✅ Done |
+| Shoot status missing | Medium | Low | ✅ Done |
+| Client duplicate prevention | Medium | Low | ✅ Done |
+| Crew availability | Low | High | ✅ Done |
+| Booking events | Low | Medium | ✅ Done |
+| DB integrity constraints | High | Medium | ✅ Done |
 
 ---
 
@@ -386,7 +400,7 @@ export const bookingEvents = pgTable("booking_events", {
 
 ### Tables Inventory
 
-#### Keep from Lumen (8 tables)
+#### Keep from Lumen (10 tables)
 ```
 ✅ users (enhanced)
 ✅ sessions
@@ -404,16 +418,16 @@ export const bookingEvents = pgTable("booking_events", {
 ```
 📦 configurations
 👥 clients
-📅 bookings, bookingParticipants, bookingEvents (new)
-📸 shoots, shootsAssignments
-👷 crews, crewAvailability (new), crewFeedbackSummary
-📋 tasks, tasksAssignments
-📦 deliverables, deliverablesAssignments
-📝 assignmentSubmissions, submissionFiles, submissionFeedback, assignmentActivities
-💰 receivedAmounts, paymentSchedules, expenses, expensesAssignments, invoices, invoiceLineItems
+📅 bookings, bookingParticipants, bookingEvents
+📸 shoots, shootAssignments
+👷 crews, crewAvailability, crewFeedbackSummary
+📋 tasks, taskAssignments
+📦 deliverables, deliverableAssignments
+📝 assignmentSubmissions, submissionFiles, submissionFeedback
+💰 receivedAmounts, paymentSchedules, expenses, expenseAssignments, invoices, invoiceLineItems
 📎 attachments
-🔔 notifications, activityLogs
-💬 conversations, whatsappMessages (optional)
+🔔 notifications, activityLogs (deferred)
+💬 conversations, whatsappMessages (deferred)
 ```
 
 ---
@@ -427,20 +441,8 @@ packages/database/drizzle/schema/
 ├── index.ts                    # Re-exports all
 ├── enums.ts                    # All pgEnum definitions
 ├── auth.ts                     # users, sessions, accounts, verifications, twoFactors
-├── organizations.ts            # organizations, members, invitations
-├── billing.ts                  # purchases, webhookEvents
-├── configurations.ts           # configurations
-├── clients.ts                  # clients
-├── bookings.ts                 # bookings, bookingParticipants, bookingEvents
-├── shoots.ts                   # shoots, shootsAssignments
-├── crews.ts                    # crews, crewAvailability, crewFeedbackSummary
-├── tasks.ts                    # tasks, tasksAssignments
-├── deliverables.ts             # deliverables, deliverablesAssignments
-├── submissions.ts              # assignmentSubmissions, submissionFiles, submissionFeedback
-├── finances.ts                 # receivedAmounts, paymentSchedules, expenses, invoices
-├── attachments.ts              # attachments
-├── notifications.ts            # notifications, activityLogs
-└── messaging.ts                # conversations, whatsappMessages (optional)
+├── core.ts                     # organizations, members, invitations, purchases, webhookEvents + core relations
+└── studio.ts                   # studio domain tables + all studio relations + organizationRelations
 ```
 
 ### Status Fields Strategy: Hybrid Approach
@@ -469,7 +471,7 @@ These are **display/organizational statuses** that owners can customize per orga
 
 | Field | Table | What Owners Can Do |
 |-------|-------|-------------------|
-| `status` | tasks | Rename "todo" to "backlog", add "on_hold" |
+| `status` | tasks | Rename "pending" to "backlog", add "on_hold" |
 | `priority` | tasks, deliverables | Add "critical", rename "high" to "important" |
 | `status` | deliverables | Customize delivery workflow labels |
 | `status` | crews | Add "on_vacation", "part_time" |
@@ -480,15 +482,15 @@ These are **display/organizational statuses** that owners can customize per orga
 **1. Domain tables store TEXT (not enum)**
 ```typescript
 // tasks table
-status: text("status").notNull().default("todo"),     // Validated against configurations
-priority: text("priority").notNull().default("medium"),
+status: text("status").notNull().default("pending"),     // Validated against configurations
+priority: text("priority").notNull().default("normal"),
 workflowStatus: workflowStatusEnum("workflow_status"), // This stays as enum (system-critical)
 ```
 
 **2. Configurations table defines valid values per organization**
 ```typescript
 // Each organization has their own set of valid statuses
-{ organizationId: "org_1", type: "task_status", key: "todo", label: "To Do", color: "#6B7280" }
+{ organizationId: "org_1", type: "task_status", key: "pending", label: "Pending", color: "#6B7280" }
 { organizationId: "org_1", type: "task_status", key: "in_progress", label: "In Progress", color: "#3B82F6" }
 { organizationId: "org_1", type: "task_status", key: "on_hold", label: "On Hold", color: "#F59E0B" } // Custom!
 ```
@@ -513,7 +515,7 @@ async function updateTaskStatus(taskId: string, newStatus: string, orgId: string
 **4. Default configurations seeded on organization creation**
 ```typescript
 const defaultTaskStatuses = [
-  { key: "todo", label: "To Do", color: "#6B7280", sortOrder: 1, isDefault: true, isSystem: true },
+  { key: "pending", label: "Pending", color: "#6B7280", sortOrder: 1, isDefault: true, isSystem: true },
   { key: "in_progress", label: "In Progress", color: "#3B82F6", sortOrder: 2, isSystem: true },
   { key: "in_review", label: "In Review", color: "#F59E0B", sortOrder: 3, isSystem: true },
   { key: "completed", label: "Completed", color: "#10B981", sortOrder: 4, isSystem: true },
@@ -611,8 +613,8 @@ export const configurations = pgTable("configurations", {
     .references(() => organizations.id, { onDelete: "cascade" }),
   
   type: configTypeEnum("type").notNull(),
-  key: varchar("key", { length: 100 }).notNull(),      // Internal key: "todo", "in_progress"
-  label: text("label").notNull(),                       // Display label: "To Do", "In Progress"
+  key: varchar("key", { length: 100 }).notNull(),      // Internal key: "pending", "in_progress"
+  label: text("label").notNull(),                       // Display label: "Pending", "In Progress"
   
   // UI Customization
   color: varchar("color", { length: 20 }),              // Hex color: "#3B82F6"
@@ -656,7 +658,7 @@ export const configurations = pgTable("configurations", {
 
 ### Key Table Definitions (Improved)
 
-#### bookings.ts
+#### studio.ts (bookings)
 ```typescript
 export const bookings = pgTable("bookings", {
   id: varchar("id", { length: 255 }).$defaultFn(() => uuidv7()).primaryKey(),
@@ -693,40 +695,42 @@ export const bookings = pgTable("bookings", {
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
   deletedBy: varchar("deleted_by", { length: 255 }).references(() => users.id),
 }, (table) => [
-  uniqueIndex("bookings_org_ref_idx").on(table.organizationId, table.referenceNumber),
+  uniqueIndex("bookings_id_org_idx").on(table.id, table.organizationId),
+  uniqueIndex("bookings_org_ref_idx")
+    .on(table.organizationId, table.referenceNumber)
+    .where(sql`deleted_at IS NULL`),
   index("bookings_org_status_idx").on(table.organizationId, table.status),
   index("bookings_org_created_idx").on(table.organizationId, table.createdAt),
 ]);
 ```
 
-#### shoots.ts
+#### studio.ts (shoots)
 ```typescript
 export const shoots = pgTable("shoots", {
   id: varchar("id", { length: 255 }).$defaultFn(() => uuidv7()).primaryKey(),
-  bookingId: varchar("booking_id", { length: 255 })
-    .notNull()
-    .references(() => bookings.id, { onDelete: "cascade" }),
   organizationId: varchar("organization_id", { length: 255 })
     .notNull()
     .references(() => organizations.id, { onDelete: "cascade" }),
+  bookingId: varchar("booking_id", { length: 255 })
+    .notNull()
+    .references(() => bookings.id, { onDelete: "cascade" }),
   
   // Details
-  title: text("title").notNull(),
+  name: text("name").notNull(),
+  shootType: text("shoot_type").notNull(),
   status: text("status").notNull().default("scheduled"), // TEXT - validated against configurations
   
   // Schedule (FIXED: proper types)
-  date: date("date"),
+  shootDate: date("shoot_date").notNull(),
   startTime: time("start_time"),
   endTime: time("end_time"),
-  reportingTime: time("reporting_time"),
-  durationMinutes: integer("duration_minutes"),
   
   // Location
-  location: jsonb("location"), // { name, address, lat, lng, notes }
+  venue: text("venue"),
+  venueAddress: text("venue_address"),
   
   // Additional
   notes: text("notes"),
-  additionalDetails: jsonb("additional_details"),
   
   // Audit
   createdBy: varchar("created_by", { length: 255 }).references(() => users.id),
@@ -734,42 +738,38 @@ export const shoots = pgTable("shoots", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 }, (table) => [
-  index("shoots_org_date_idx").on(table.organizationId, table.date),
   index("shoots_booking_idx").on(table.bookingId),
-  index("shoots_status_idx").on(table.organizationId, table.status),
+  index("shoots_organization_idx").on(table.organizationId),
+  index("shoots_date_idx").on(table.shootDate),
+  index("shoots_org_date_idx").on(table.organizationId, table.shootDate),
 ]);
 ```
 
-#### tasks.ts
+#### studio.ts (tasks)
 ```typescript
 export const tasks = pgTable("tasks", {
   id: varchar("id", { length: 255 }).$defaultFn(() => uuidv7()).primaryKey(),
-  bookingId: varchar("booking_id", { length: 255 })
-    .notNull()
-    .references(() => bookings.id, { onDelete: "cascade" }),
   organizationId: varchar("organization_id", { length: 255 })
     .notNull()
     .references(() => organizations.id, { onDelete: "cascade" }),
-  deliverableId: varchar("deliverable_id", { length: 255 })
-    .references(() => deliverables.id, { onDelete: "cascade" }),
+  bookingId: varchar("booking_id", { length: 255 })
+    .notNull()
+    .references(() => bookings.id, { onDelete: "cascade" }),
   
   // Details
-  description: text("description").notNull(),
-  status: text("status").notNull().default("todo"),           // TEXT - validated against configurations
-  priority: text("priority").notNull().default("medium"),     // TEXT - validated against configurations
-  workflowStatus: workflowStatusEnum("workflow_status"),      // ENUM - system-critical, not customizable
+  name: text("name").notNull(),
+  description: text("description"),
+  status: text("status").notNull().default("pending"),          // TEXT - validated against configurations
+  priority: text("priority").notNull().default("normal"),       // TEXT - validated against configurations
+  workflowStatus: workflowStatusEnum("workflow_status")         // ENUM - system-critical, not customizable
+    .default("not_started")
+    .notNull(),
   
   // Schedule (FIXED: proper types)
-  startDate: date("start_date"),
   dueDate: date("due_date"),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
   
-  // Approval
-  approvedSubmissionId: varchar("approved_submission_id", { length: 255 }),
-  approvedAt: timestamp("approved_at", { withTimezone: true }),
-  
-  // Status Tracking
-  lastStatusUpdateBy: varchar("last_status_update_by", { length: 255 }),
-  lastStatusUpdatedAt: timestamp("last_status_updated_at", { withTimezone: true }),
+  metadata: jsonb("metadata"),
   
   // Audit
   createdBy: varchar("created_by", { length: 255 }).references(() => users.id),
@@ -779,31 +779,30 @@ export const tasks = pgTable("tasks", {
 }, (table) => [
   index("tasks_org_status_idx").on(table.organizationId, table.status),
   index("tasks_booking_idx").on(table.bookingId),
-  index("tasks_deliverable_idx").on(table.deliverableId),
+  index("tasks_org_workflow_idx").on(table.organizationId, table.workflowStatus),
+  index("tasks_due_date_idx").on(table.dueDate),
 ]);
 ```
 
-#### finances.ts (receivedAmounts)
+#### studio.ts (receivedAmounts)
 ```typescript
 export const receivedAmounts = pgTable("received_amounts", {
   id: varchar("id", { length: 255 }).$defaultFn(() => uuidv7()).primaryKey(),
-  bookingId: varchar("booking_id", { length: 255 })
-    .notNull()
-    .references(() => bookings.id, { onDelete: "cascade" }),
   organizationId: varchar("organization_id", { length: 255 })
     .notNull()
     .references(() => organizations.id, { onDelete: "cascade" }),
-  invoiceId: varchar("invoice_id", { length: 255 })
-    .references(() => invoices.id, { onDelete: "set null" }),
+  bookingId: varchar("booking_id", { length: 255 })
+    .notNull()
+    .references(() => bookings.id, { onDelete: "cascade" }),
   paymentScheduleId: varchar("payment_schedule_id", { length: 255 })
     .references(() => paymentSchedules.id, { onDelete: "set null" }),
   
   // Payment Details
   amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
-  paymentMethod: paymentMethodEnum("payment_method"), // NEW
-  transactionReference: text("transaction_reference"), // NEW
-  description: text("description"),
-  paidOn: date("paid_on"),
+  paymentMethod: paymentMethodEnum("payment_method").notNull(),
+  transactionReference: text("transaction_reference"),
+  receivedDate: date("received_date").notNull(),
+  notes: text("notes"),
   
   // Audit
   createdBy: varchar("created_by", { length: 255 }).references(() => users.id),
@@ -811,7 +810,9 @@ export const receivedAmounts = pgTable("received_amounts", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 }, (table) => [
   index("received_amounts_booking_idx").on(table.bookingId),
-  index("received_amounts_org_date_idx").on(table.organizationId, table.paidOn),
+  index("received_amounts_org_idx").on(table.organizationId),
+  index("received_amounts_date_idx").on(table.receivedDate),
+  check("received_amounts_amount_positive", sql`amount > 0`),
 ]);
 ```
 
@@ -824,24 +825,24 @@ export const receivedAmounts = pgTable("received_amounts", {
 
 | Task | Description | Status |
 |------|-------------|--------|
-| 1.1 | Create enum definitions file | ⬜ |
-| 1.2 | Update auth tables (keep Lumen) | ⬜ |
-| 1.3 | Keep billing tables (Lumen) | ⬜ |
-| 1.4 | Add configurations table | ⬜ |
-| 1.5 | Add clients table | ⬜ |
-| 1.6 | Add bookings + participants + events | ⬜ |
-| 1.7 | Generate and test migration | ⬜ |
+| 1.1 | Create enum definitions file | ✅ |
+| 1.2 | Update auth tables (keep Lumen) | ✅ |
+| 1.3 | Keep billing tables (Lumen) | ✅ |
+| 1.4 | Add configurations table | ✅ |
+| 1.5 | Add clients table | ✅ |
+| 1.6 | Add bookings + participants + events | ✅ |
+| 1.7 | Generate and test migration | ✅ |
 
 ### Phase 2: Core Domain (Week 2)
 **Goal**: Add shoots, crews, tasks, deliverables
 
 | Task | Description | Status |
 |------|-------------|--------|
-| 2.1 | Add shoots + assignments | ⬜ |
-| 2.2 | Add crews + availability + feedback | ⬜ |
-| 2.3 | Add tasks + assignments | ⬜ |
-| 2.4 | Add deliverables + assignments | ⬜ |
-| 2.5 | Add submission workflow tables | ⬜ |
+| 2.1 | Add shoots + assignments | ✅ |
+| 2.2 | Add crews + availability + feedback | ✅ |
+| 2.3 | Add tasks + assignments | ✅ |
+| 2.4 | Add deliverables + assignments | ✅ |
+| 2.5 | Add submission workflow tables | ✅ |
 | 2.6 | Generate and test migration | ⬜ |
 
 ### Phase 3: Financial & Supporting (Week 3)
@@ -849,13 +850,13 @@ export const receivedAmounts = pgTable("received_amounts", {
 
 | Task | Description | Status |
 |------|-------------|--------|
-| 3.1 | Add receivedAmounts (with improvements) | ⬜ |
-| 3.2 | Add paymentSchedules | ⬜ |
-| 3.3 | Add expenses + assignments | ⬜ |
-| 3.4 | Add invoices + line items | ⬜ |
-| 3.5 | Add attachments | ⬜ |
-| 3.6 | Add notifications + activity logs | ⬜ |
-| 3.7 | Add messaging tables (optional) | ⬜ |
+| 3.1 | Add receivedAmounts (with improvements) | ✅ |
+| 3.2 | Add paymentSchedules | ✅ |
+| 3.3 | Add expenses + assignments | ✅ |
+| 3.4 | Add invoices + line items | ✅ |
+| 3.5 | Add attachments | ✅ |
+| 3.6 | Add notifications + activity logs | ⬜ Deferred |
+| 3.7 | Add messaging tables (optional) | ⬜ Deferred |
 | 3.8 | Generate and test migration | ⬜ |
 
 ### Phase 4: API Layer (Week 4-5)

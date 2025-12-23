@@ -1,0 +1,152 @@
+import {
+	and,
+	count,
+	eq,
+	gte,
+	isNull,
+	sql,
+	shoots,
+	shootAssignments,
+	bookings,
+	db,
+} from "@repo/database";
+import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { requirePermission } from "../../studio/lib/permissions";
+import {
+	listShootsInputSchema,
+	listShootsOutputSchema,
+} from "../../studio/schemas/shoot";
+import { createPaginationResponse } from "../../studio/schemas/common";
+
+export const listShoots = studioProtectedProcedure
+	.route({
+		method: "GET",
+		path: "/shoots",
+		tags: ["Shoots"],
+		summary: "List shoots",
+		description: "List all shoots for the organization with optional filters",
+	})
+	.input(listShootsInputSchema)
+	.output(listShootsOutputSchema)
+	.handler(async ({ input, context }) => {
+		requirePermission(context, "shoot", "list");
+
+		const {
+			bookingId,
+			status,
+			shootType,
+			dateFrom,
+			dateTo,
+			search,
+			sortBy,
+			sortDirection,
+			page,
+			limit,
+			includeDeleted,
+		} = input;
+		const offset = (page - 1) * limit;
+
+		// Build where conditions
+		const conditions = [eq(shoots.organizationId, context.organizationId)];
+
+		if (!includeDeleted) {
+			conditions.push(isNull(shoots.deletedAt));
+		}
+
+		if (bookingId) {
+			conditions.push(eq(shoots.bookingId, bookingId));
+		}
+
+		if (status) {
+			conditions.push(eq(shoots.status, status));
+		}
+
+		if (shootType) {
+			conditions.push(eq(shoots.shootType, shootType));
+		}
+
+		if (dateFrom) {
+			conditions.push(gte(shoots.shootDate, dateFrom));
+		}
+
+		if (dateTo) {
+			conditions.push(sql`${shoots.shootDate} <= ${dateTo}`);
+		}
+
+		if (search) {
+			conditions.push(
+				sql`(${shoots.name} ILIKE ${`%${search}%`} OR ${shoots.venue} ILIKE ${`%${search}%`})`,
+			);
+		}
+
+		// Get total count
+		const [countResult] = await db
+			.select({ count: count().mapWith(Number) })
+			.from(shoots)
+			.where(and(...conditions));
+
+		const total = countResult?.count ?? 0;
+
+		// Get shoots with sorting
+		const orderColumn =
+			sortBy === "name"
+				? shoots.name
+				: sortBy === "shootType"
+					? shoots.shootType
+					: sortBy === "status"
+						? shoots.status
+						: sortBy === "createdAt"
+							? shoots.createdAt
+							: shoots.shootDate;
+
+		// Get shoots with booking info
+		const data = await db
+			.select({
+				shoot: shoots,
+				bookingName: bookings.name,
+				bookingReferenceNumber: bookings.referenceNumber,
+			})
+			.from(shoots)
+			.innerJoin(bookings, eq(shoots.bookingId, bookings.id))
+			.where(and(...conditions))
+			.orderBy(sortDirection === "asc" ? sql`${orderColumn} ASC` : sql`${orderColumn} DESC`)
+			.limit(limit)
+			.offset(offset);
+
+		// Get assignment counts
+		const shootIds = data.map((d) => d.shoot.id);
+		let assignmentCounts: Record<string, number> = {};
+
+		if (shootIds.length > 0) {
+			const assignmentResults = await db
+				.select({
+					shootId: shootAssignments.shootId,
+					count: count().mapWith(Number),
+				})
+				.from(shootAssignments)
+				.where(
+					sql`${shootAssignments.shootId} IN (${sql.join(
+						shootIds.map((id) => sql`${id}`),
+						sql`, `,
+					)})`,
+				)
+				.groupBy(shootAssignments.shootId);
+
+			assignmentCounts = Object.fromEntries(
+				assignmentResults.map((r) => [r.shootId, r.count]),
+			);
+		}
+
+		return {
+			data: data.map(({ shoot, bookingName, bookingReferenceNumber }) => ({
+				...shoot,
+				createdAt: shoot.createdAt.toISOString(),
+				updatedAt: shoot.updatedAt.toISOString(),
+				deletedAt: shoot.deletedAt?.toISOString() ?? null,
+				assignmentsCount: assignmentCounts[shoot.id] ?? 0,
+				bookingName,
+				bookingReferenceNumber,
+			})),
+			pagination: createPaginationResponse(page, limit, total),
+		};
+	});

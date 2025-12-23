@@ -29,6 +29,7 @@ export const organizations = pgTable(
 			.primaryKey(),
 		name: text("name").notNull(),
 		slug: text("slug"),
+		timezone: text("timezone").default("UTC").notNull(),
 		logo: text("logo"),
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.defaultNow()

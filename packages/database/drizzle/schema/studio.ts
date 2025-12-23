@@ -250,7 +250,7 @@ export const bookingEvents = pgTable(
 			.references(() => organizations.id, { onDelete: "cascade" }),
 
 		eventType: text("event_type").notNull(),
-		eventDate: date("event_date").notNull(),
+		eventDate: timestamp("event_date", { withTimezone: true }).notNull(),
 		venue: text("venue"),
 		venueAddress: text("venue_address"),
 		notes: text("notes"),
