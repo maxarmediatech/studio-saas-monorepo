@@ -2,7 +2,7 @@ import { type AnyColumn, and, eq, sql } from "drizzle-orm";
 import { PgDialect } from "drizzle-orm/pg-core";
 import type { z } from "zod";
 import { db } from "../client";
-import { members, organizations } from "../schema/postgres";
+import { members, organizations } from "../schema";
 import type { OrganizationUpdateSchema } from "../zod";
 
 const pgDialect = new PgDialect();

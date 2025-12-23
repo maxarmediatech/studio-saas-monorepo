@@ -5,29 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1764053076400,
-      "tag": "0000_cheerful_baron_zemo",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1764091373501,
-      "tag": "0001_perpetual_killer_shrike",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1764093744300,
-      "tag": "0002_magenta_phalanx",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1764160204066,
-      "tag": "0003_blushing_gwen_stacy",
+      "when": 1766132752753,
+      "tag": "0000_massive_richard_fisk",
       "breakpoints": true
     }
   ]
