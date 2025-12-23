@@ -39,7 +39,7 @@ export const UserAvatar = ({
 	return (
 		<Avatar ref={ref} className={className}>
 			<AvatarImage src={avatarSrc} />
-			<AvatarFallback className="bg-secondary/10 text-secondary">
+			<AvatarFallback className="bg-primary text-primary-foreground">
 				{initials}
 			</AvatarFallback>
 		</Avatar>

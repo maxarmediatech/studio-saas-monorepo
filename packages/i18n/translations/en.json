@@ -310,9 +310,9 @@
 				"error": "We are sorry, but we were unable to create your studio. Please try again later.",
 				"success": "Your studio has been created. You can now invite members."
 			},
-			"submit": "Create studio",
+			"submit": "Add studio",
 			"subtitle": "Enter a name for your studio to get started. You can change the name later in the studio settings.",
-			"title": "Create a studio"
+			"title": "Add your studio"
 		},
 		"invitationAlert": {
 			"description": "You need to sign in or create an account to join the studio.",
