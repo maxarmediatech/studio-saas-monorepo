@@ -293,3 +293,77 @@ export type BookingStats = z.infer<typeof bookingStatsSchema>;
 export const getBookingStatsOutputSchema = createItemResponseSchema(bookingStatsSchema);
 
 export type GetBookingStatsOutput = z.infer<typeof getBookingStatsOutputSchema>;
+
+// ============================================================================
+// BOOKING PARTICIPANTS CRUD
+// ============================================================================
+
+/**
+ * List participants for a booking
+ */
+export const listParticipantsInputSchema = z.object({
+	bookingId: idSchema,
+});
+
+export type ListParticipantsInput = z.infer<typeof listParticipantsInputSchema>;
+
+export const participantWithClientSchema = bookingParticipantSchema.extend({
+	client: z.object({
+		id: idSchema,
+		name: z.string(),
+		email: z.string().nullable(),
+		phoneNumber: z.string().nullable(),
+	}),
+});
+
+export type ParticipantWithClient = z.infer<typeof participantWithClientSchema>;
+
+export const listParticipantsOutputSchema = z.object({
+	data: z.array(participantWithClientSchema),
+});
+
+export type ListParticipantsOutput = z.infer<typeof listParticipantsOutputSchema>;
+
+/**
+ * Add participant to a booking
+ */
+export const addParticipantInputSchema = z.object({
+	bookingId: idSchema,
+	clientId: idSchema,
+	role: z.string().min(1).max(100),
+});
+
+export type AddParticipantInput = z.infer<typeof addParticipantInputSchema>;
+
+export const addParticipantOutputSchema = mutationResponseSchema;
+
+export type AddParticipantOutput = z.infer<typeof addParticipantOutputSchema>;
+
+/**
+ * Update participant role
+ */
+export const updateParticipantInputSchema = z.object({
+	bookingId: idSchema,
+	participantId: idSchema,
+	role: z.string().min(1).max(100),
+});
+
+export type UpdateParticipantInput = z.infer<typeof updateParticipantInputSchema>;
+
+export const updateParticipantOutputSchema = mutationResponseSchema;
+
+export type UpdateParticipantOutput = z.infer<typeof updateParticipantOutputSchema>;
+
+/**
+ * Remove participant from a booking
+ */
+export const removeParticipantInputSchema = z.object({
+	bookingId: idSchema,
+	participantId: idSchema,
+});
+
+export type RemoveParticipantInput = z.infer<typeof removeParticipantInputSchema>;
+
+export const removeParticipantOutputSchema = mutationResponseSchema;
+
+export type RemoveParticipantOutput = z.infer<typeof removeParticipantOutputSchema>;
