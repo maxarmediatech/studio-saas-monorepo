@@ -18,6 +18,12 @@ export { StepIndicator, type StepStatus } from "./step-indicator";
 // Hooks
 export { useBookingForm } from "./use-booking-form";
 
+// Store (for page-based routing)
+export {
+	useBookingFormStore,
+	useBookingFormHydrated,
+} from "./store/use-booking-form-store";
+
 // Schema and types
 export {
 	bookingFormSchema,
