@@ -1,22 +1,54 @@
 "use client";
 
 import { Button } from "@repo/ui/components/button";
+import { Form } from "@repo/ui/components/form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
 	BookingFormLayout,
 	BookingFormNavigation,
 	BookingMobileStepper,
 	BookingStepperSidebar,
 	BOOKING_TABS,
+	TAB_FIELD_MAPPING,
+	bookingDeliverablesStepSchema,
+	bookingDetailsStepSchema,
+	bookingFormSchema,
+	bookingPaymentsStepSchema,
+	bookingShootsStepSchema,
 	type BookingTab,
+	type BookingFormValues,
+	defaultBookingValues,
 } from "@saas/studio/components/bookings";
 import {
 	useBookingFormHydrated,
 	useBookingFormStore,
 } from "@saas/studio/components/bookings/booking-form/store/use-booking-form-store";
+import { bookingsMutations, studioQueryKeys } from "@saas/studio/lib/api";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeftIcon, Loader2Icon } from "lucide-react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
-import { useMemo, type PropsWithChildren } from "react";
+import { useCallback, useEffect, useMemo, useRef, type PropsWithChildren } from "react";
+import { useForm, type Resolver } from "react-hook-form";
+import { toast } from "sonner";
+
+const BOOKING_FORM_HTML_ID = "booking-form";
+
+const resolverByStep: Record<BookingTab, Resolver<BookingFormValues>> = {
+	details: zodResolver(bookingDetailsStepSchema) as unknown as Resolver<
+		BookingFormValues
+	>,
+	shoots: zodResolver(bookingShootsStepSchema) as unknown as Resolver<
+		BookingFormValues
+	>,
+	payments: zodResolver(bookingPaymentsStepSchema) as unknown as Resolver<
+		BookingFormValues
+	>,
+	deliverables: zodResolver(bookingDeliverablesStepSchema) as unknown as Resolver<
+		BookingFormValues
+	>,
+	review: zodResolver(bookingFormSchema) as unknown as Resolver<BookingFormValues>,
+};
 
 export default function NewBookingLayout({ children }: PropsWithChildren) {
 	const router = useRouter();
@@ -24,7 +56,13 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 	const params = useParams<{ organizationSlug: string }>();
 	const organizationSlug = params.organizationSlug;
 
-	const { completedSteps } = useBookingFormStore();
+	const {
+		formData,
+		setFormData,
+		completedSteps,
+		setStepCompleted,
+		resetForm,
+	} = useBookingFormStore();
 	const hasHydrated = useBookingFormHydrated();
 
 	// Extract current step from URL path
@@ -37,30 +75,172 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 	const isFirstStep = currentIndex === 0;
 	const isLastStep = currentIndex === BOOKING_TABS.length - 1;
 
+	const currentStepRef = useRef<BookingTab>("details");
+	if (isValidStep) {
+		currentStepRef.current = currentStep;
+	}
+
+	const resolver = useCallback<Resolver<BookingFormValues>>(async (values, context, options) => {
+		const activeStep = currentStepRef.current;
+
+		const firstName = options.names?.[0];
+		if (!firstName) {
+			return resolverByStep[activeStep](values, context, options);
+		}
+
+		const rootField = String(firstName).split(".")[0] as keyof BookingFormValues;
+		const inferredStep = (Object.keys(TAB_FIELD_MAPPING) as BookingTab[]).find(
+			(step) => TAB_FIELD_MAPPING[step].includes(rootField),
+		);
+
+		return resolverByStep[inferredStep ?? activeStep](values, context, options);
+	}, []);
+
+	const form = useForm<BookingFormValues>({
+		resolver,
+		defaultValues: defaultBookingValues,
+		mode: "onChange",
+	});
+
+	const didInitFromStoreRef = useRef(false);
+	useEffect(() => {
+		if (!hasHydrated || didInitFromStoreRef.current) {
+			return;
+		}
+
+		form.reset(formData);
+		didInitFromStoreRef.current = true;
+	}, [form, formData, hasHydrated]);
+
+	const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+	useEffect(() => {
+		if (!hasHydrated || !didInitFromStoreRef.current) {
+			return;
+		}
+
+		const subscription = form.watch((data) => {
+			if (debounceTimerRef.current) {
+				clearTimeout(debounceTimerRef.current);
+			}
+
+			debounceTimerRef.current = setTimeout(() => {
+				setFormData(data as Partial<BookingFormValues>);
+			}, 300);
+		});
+
+		return () => {
+			subscription.unsubscribe();
+			if (debounceTimerRef.current) {
+				clearTimeout(debounceTimerRef.current);
+			}
+		};
+	}, [form, hasHydrated, setFormData]);
+
 	// Memoize Set creation to prevent unnecessary re-renders
 	const completedStepsSet = useMemo(
 		() => new Set<BookingTab>(completedSteps),
 		[completedSteps],
 	);
 
-	// Memoize static error object
-	const stepsWithErrors = useMemo<Record<BookingTab, boolean>>(
-		() => ({
-			details: false,
-			shoots: false,
-			payments: false,
-			deliverables: false,
-			review: false,
-		}),
-		[],
+	const getStepFieldError = useCallback(
+		(step: BookingTab) => {
+			const rootFieldsWithErrors = new Set(
+				Object.keys(form.formState.errors) as (keyof BookingFormValues)[],
+			);
+			return TAB_FIELD_MAPPING[step].some((field) =>
+				rootFieldsWithErrors.has(field),
+			);
+		},
+		[form.formState.errors],
 	);
+
+	const stepsWithErrors = useMemo<Record<BookingTab, boolean>>(() => {
+		return {
+			details: getStepFieldError("details"),
+			shoots: getStepFieldError("shoots"),
+			payments: getStepFieldError("payments"),
+			deliverables: getStepFieldError("deliverables"),
+			review: getStepFieldError("review"),
+		};
+	}, [getStepFieldError]);
+
+	const canNavigateToStep = useCallback(
+		(step: BookingTab) => {
+			const targetIndex = BOOKING_TABS.indexOf(step);
+			if (targetIndex === -1) {
+				return false;
+			}
+
+			if (!isValidStep) {
+				return false;
+			}
+
+			if (targetIndex < currentIndex) {
+				return true;
+			}
+
+			for (let i = 0; i < targetIndex; i += 1) {
+				const requiredStep = BOOKING_TABS[i];
+				if (!completedStepsSet.has(requiredStep)) {
+					return false;
+				}
+			}
+
+			return true;
+		},
+		[completedStepsSet, currentIndex, isValidStep],
+	);
+
+	useEffect(() => {
+		if (!hasHydrated || !isValidStep) {
+			return;
+		}
+
+		if (canNavigateToStep(currentStep)) {
+			return;
+		}
+
+		const firstIncompleteStep = BOOKING_TABS.find(
+			(step) => !completedStepsSet.has(step),
+		);
+
+		router.replace(
+			`/app/${organizationSlug}/bookings/new/${firstIncompleteStep ?? "details"}`,
+		);
+	}, [
+		canNavigateToStep,
+		completedStepsSet,
+		currentStep,
+		hasHydrated,
+		isValidStep,
+		organizationSlug,
+		router,
+	]);
 
 	// Navigation handlers
 	const handleStepClick = (step: BookingTab) => {
+		if (!canNavigateToStep(step)) {
+			return;
+		}
 		router.push(`/app/${organizationSlug}/bookings/new/${step}`);
 	};
 
-	const handleNext = () => {
+	const handleNext = async () => {
+		if (!isValidStep) {
+			return;
+		}
+
+		const fieldsToValidate = TAB_FIELD_MAPPING[currentStep];
+		const isCurrentStepValid = await form.trigger(fieldsToValidate, {
+			shouldFocus: true,
+		});
+
+		if (!isCurrentStepValid) {
+			return;
+		}
+
+		setStepCompleted(currentStep);
+
 		if (currentIndex < BOOKING_TABS.length - 1) {
 			const nextStep = BOOKING_TABS[currentIndex + 1];
 			router.push(`/app/${organizationSlug}/bookings/new/${nextStep}`);
@@ -78,8 +258,33 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 		router.push(`/app/${organizationSlug}/bookings`);
 	};
 
-	// Free navigation - all steps accessible
-	const canNavigateToStep = () => true;
+	const queryClient = useQueryClient();
+	const createMutation = useMutation({
+		...bookingsMutations.create(),
+		onSuccess: (data) => {
+			resetForm();
+			form.reset(defaultBookingValues);
+
+			toast.success("Booking created successfully", {
+				action: {
+					label: "View",
+					onClick: () =>
+						router.push(
+							`/app/${params.organizationSlug}/bookings/${data.data.id}`,
+						),
+				},
+			});
+
+			queryClient.invalidateQueries({
+				queryKey: studioQueryKeys.bookings.all,
+			});
+
+			router.push(`/app/${params.organizationSlug}/bookings`);
+		},
+		onError: (error) => {
+			toast.error(error.message || "Failed to create booking");
+		},
+	});
 
 	// Show loading state until hydrated to prevent hydration mismatch
 	if (!hasHydrated) {
@@ -96,7 +301,26 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 	}
 
 	return (
-		<div className="space-y-6">
+		<Form {...form}>
+			<form
+				id={BOOKING_FORM_HTML_ID}
+				onSubmit={form.handleSubmit((values) => {
+					if (!isLastStep) {
+						return;
+					}
+
+					createMutation.mutate({
+						name: values.name,
+						bookingType: values.bookingType,
+						packageType: values.packageType,
+						packageCost: values.packageCost,
+						note: values.note,
+						participants: values.participants,
+						events: values.events,
+					});
+				})}
+			>
+				<div className="space-y-6">
 			{/* Header */}
 			<div className="flex items-center gap-4">
 				<Button variant="ghost" size="icon" asChild>
@@ -139,11 +363,11 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 				footer={
 					<BookingFormNavigation
 						onPrevious={handlePrevious}
-						onNext={handleNext}
+						onNext={() => void handleNext()}
 						onCancel={handleCancel}
 						isFirstStep={isFirstStep}
 						isLastStep={isLastStep}
-						isPending={false}
+						isPending={createMutation.isPending}
 						isNavigating={false}
 						mode="create"
 					/>
@@ -151,6 +375,8 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 			>
 				{children}
 			</BookingFormLayout>
-		</div>
+				</div>
+			</form>
+		</Form>
 	);
 }

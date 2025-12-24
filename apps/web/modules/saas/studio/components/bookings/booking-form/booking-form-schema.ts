@@ -161,6 +161,29 @@ export const bookingFormSchema = z.object({
 
 export type BookingFormValues = z.input<typeof bookingFormSchema>;
 
+export const bookingDetailsStepSchema = bookingFormSchema.pick({
+	name: true,
+	bookingType: true,
+	packageType: true,
+	packageCost: true,
+	note: true,
+	participants: true,
+	events: true,
+});
+
+export const bookingShootsStepSchema = bookingFormSchema.pick({
+	shoots: true,
+});
+
+export const bookingPaymentsStepSchema = bookingFormSchema.pick({
+	payments: true,
+	paymentSchedules: true,
+});
+
+export const bookingDeliverablesStepSchema = bookingFormSchema.pick({
+	deliverables: true,
+});
+
 /**
  * Default form values
  */
@@ -195,10 +218,18 @@ export const BOOKING_TABS = [
 ] as const;
 export type BookingTab = (typeof BOOKING_TABS)[number];
 
+export const BOOKING_STEP_SCHEMAS: Record<BookingTab, z.ZodTypeAny> = {
+	details: bookingDetailsStepSchema,
+	shoots: bookingShootsStepSchema,
+	payments: bookingPaymentsStepSchema,
+	deliverables: bookingDeliverablesStepSchema,
+	review: bookingFormSchema,
+};
+
 /**
  * Mapping of tabs to their form fields (for error tracking)
  */
-export const TAB_FIELD_MAPPING: Record<BookingTab, string[]> = {
+export const TAB_FIELD_MAPPING: Record<BookingTab, (keyof BookingFormValues)[]> = {
 	details: [
 		"name",
 		"bookingType",

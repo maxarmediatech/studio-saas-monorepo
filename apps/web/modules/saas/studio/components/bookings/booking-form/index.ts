@@ -27,6 +27,11 @@ export {
 // Schema and types
 export {
 	bookingFormSchema,
+	bookingDetailsStepSchema,
+	bookingShootsStepSchema,
+	bookingPaymentsStepSchema,
+	bookingDeliverablesStepSchema,
+	BOOKING_STEP_SCHEMAS,
 	defaultBookingValues,
 	BOOKING_TABS,
 	TAB_LABELS,
