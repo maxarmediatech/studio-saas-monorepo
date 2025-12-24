@@ -5,6 +5,9 @@ export { StudioSidebar, useStudioSidebar } from "./components/StudioSidebar";
 export { StudioLayout } from "./components/StudioLayout";
 export { StudioLayoutClient } from "./components/StudioLayoutClient";
 
+// Bookings
+export { BookingsPageClient } from "./components/bookings";
+
 // Types
 export type {
 	IconName,
@@ -22,3 +25,16 @@ export {
 	findActiveModule,
 	getSidebarData,
 } from "./lib/navigation";
+
+// API Utilities
+export {
+	studioQueryKeys,
+	bookingsApi,
+	bookingsMutations,
+	clientsApi,
+	clientsMutations,
+	crewsApi,
+	crewsMutations,
+	shootsApi,
+	shootsMutations,
+} from "./lib/api";

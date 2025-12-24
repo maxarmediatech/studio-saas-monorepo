@@ -1,0 +1,1 @@
+export { BookingsPageClient } from "./BookingsPageClient";
