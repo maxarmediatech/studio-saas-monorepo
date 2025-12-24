@@ -1,6 +1,7 @@
 "use client";
 
 import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
+import { SheetProvider } from "@saas/shared/components/sheet-provider";
 import { StudioLayout } from "./StudioLayout";
 
 interface StudioLayoutClientProps {
@@ -15,12 +16,14 @@ export function StudioLayoutClient({ children }: StudioLayoutClientProps) {
 	}
 
 	return (
-		<StudioLayout
-			studioSlug={activeOrganization.slug ?? ""}
-			studioName={activeOrganization.name}
-			studioLogo={activeOrganization.logo}
-		>
-			{children}
-		</StudioLayout>
+		<SheetProvider>
+			<StudioLayout
+				studioSlug={activeOrganization.slug ?? ""}
+				studioName={activeOrganization.name}
+				studioLogo={activeOrganization.logo}
+			>
+				{children}
+			</StudioLayout>
+		</SheetProvider>
 	);
 }
