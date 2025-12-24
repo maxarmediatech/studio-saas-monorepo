@@ -1,17 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@repo/ui/components/table";
+import type { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Input } from "@repo/ui/components/input";
@@ -23,13 +16,6 @@ import {
 	SelectValue,
 } from "@repo/ui/components/select";
 import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from "@repo/ui/components/dropdown-menu";
-import {
 	AlertDialog,
 	AlertDialogAction,
 	AlertDialogCancel,
@@ -39,11 +25,7 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@repo/ui/components/alert-dialog";
-import { Skeleton } from "@repo/ui/components/skeleton";
 import {
-	ChevronLeftIcon,
-	ChevronRightIcon,
-	MoreHorizontalIcon,
 	PencilIcon,
 	TrashIcon,
 	EyeIcon,
@@ -53,6 +35,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { bookingsApi, bookingsMutations, studioQueryKeys } from "@saas/studio/lib/api";
+import {
+	DataTable,
+	DataTableRowActions,
+	type RowAction,
+} from "@saas/shared/components/data-table";
 import type { BookingListItem } from "@repo/api/modules/studio/schemas/booking";
 import type { BookingPhase } from "@repo/api/modules/studio/schemas/common";
 
@@ -81,6 +68,15 @@ const statusLabels: Record<BookingPhase, string> = {
 	delivery: "Delivery",
 	completed: "Completed",
 	cancelled: "Cancelled",
+};
+
+const formatMoney = (value: string) => {
+	const num = Number.parseFloat(value);
+	return new Intl.NumberFormat("en-IN", {
+		style: "currency",
+		currency: "INR",
+		minimumFractionDigits: 0,
+	}).format(num);
 };
 
 export function BookingsPageClient({
@@ -120,7 +116,6 @@ export function BookingsPageClient({
 			toast.success("Booking deleted successfully");
 			setDeleteDialogOpen(false);
 			setBookingToDelete(null);
-			// Invalidate bookings queries to refetch
 			queryClient.invalidateQueries({ queryKey: studioQueryKeys.bookings.all });
 		},
 		onError: (error) => {
@@ -132,7 +127,6 @@ export function BookingsPageClient({
 		const newFilters = { ...currentFilters, ...updates };
 		setCurrentFilters(newFilters);
 
-		// Update URL params
 		const params = new URLSearchParams();
 		if (newFilters.page > 1) {
 			params.set("page", String(newFilters.page));
@@ -163,20 +157,121 @@ export function BookingsPageClient({
 		});
 	};
 
-	const handlePageChange = (newPage: number) => {
-		updateFilters({ page: newPage });
+	const handlePaginationChange = (newPagination: typeof pagination) => {
+		updateFilters({ page: newPagination.page });
 	};
 
-	const formatMoney = (value: string) => {
-		const num = Number.parseFloat(value);
-		return new Intl.NumberFormat("en-IN", {
-			style: "currency",
-			currency: "INR",
-			minimumFractionDigits: 0,
-		}).format(num);
-	};
+	// Define row actions
+	const rowActions: RowAction<BookingListItem>[] = [
+		{
+			label: "View details",
+			icon: <EyeIcon className="h-4 w-4" />,
+			onClick: (row) => router.push(`/app/${organizationSlug}/bookings/${row.id}`),
+		},
+		{
+			label: "Edit",
+			icon: <PencilIcon className="h-4 w-4" />,
+			onClick: (row) => router.push(`/app/${organizationSlug}/bookings/${row.id}/edit`),
+		},
+		{
+			label: "Delete",
+			icon: <TrashIcon className="h-4 w-4" />,
+			variant: "destructive",
+			separator: true,
+			onClick: (row) => {
+				setBookingToDelete(row);
+				setDeleteDialogOpen(true);
+			},
+		},
+	];
 
-	const showLoading = isLoading || isFetching || isPending;
+	// Define columns
+	const columns: ColumnDef<BookingListItem>[] = useMemo(
+		() => [
+			{
+				accessorKey: "referenceNumber",
+				header: "Ref #",
+				cell: ({ row }) => (
+					<span className="font-mono text-sm">{row.original.referenceNumber}</span>
+				),
+			},
+			{
+				accessorKey: "name",
+				header: "Name",
+				cell: ({ row }) => (
+					<div>
+						<Link
+							href={`/app/${organizationSlug}/bookings/${row.original.id}`}
+							className="font-medium hover:underline"
+						>
+							{row.original.name}
+						</Link>
+						<p className="text-sm text-muted-foreground">
+							{row.original.bookingType}
+						</p>
+					</div>
+				),
+			},
+			{
+				accessorKey: "status",
+				header: "Status",
+				cell: ({ row }) => (
+					<Badge
+						variant="secondary"
+						className={statusColors[row.original.status as BookingPhase]}
+					>
+						{statusLabels[row.original.status as BookingPhase] ?? row.original.status}
+					</Badge>
+				),
+			},
+			{
+				accessorKey: "packageType",
+				header: "Package",
+			},
+			{
+				accessorKey: "packageCost",
+				header: () => <div className="text-right">Value</div>,
+				cell: ({ row }) => (
+					<div className="text-right font-medium">
+						{formatMoney(row.original.packageCost)}
+					</div>
+				),
+			},
+			{
+				accessorKey: "balance",
+				header: () => <div className="text-right">Balance</div>,
+				cell: ({ row }) => (
+					<div className="text-right">
+						<span
+							className={
+								Number.parseFloat(row.original.balance) > 0
+									? "text-amber-600 dark:text-amber-400"
+									: "text-green-600 dark:text-green-400"
+							}
+						>
+							{formatMoney(row.original.balance)}
+						</span>
+					</div>
+				),
+			},
+			{
+				accessorKey: "shootsCount",
+				header: () => <div className="text-center">Shoots</div>,
+				cell: ({ row }) => (
+					<div className="text-center">{row.original.shootsCount}</div>
+				),
+			},
+			{
+				id: "actions",
+				cell: ({ row }) => (
+					<DataTableRowActions row={row.original} actions={rowActions} />
+				),
+			},
+		],
+		[organizationSlug],
+	);
+
+	const showLoading = isFetching || isPending;
 
 	return (
 		<div className="space-y-4">
@@ -222,181 +317,25 @@ export function BookingsPageClient({
 			</div>
 
 			{/* Table */}
-			<div className="rounded-md border">
-				<Table>
-					<TableHeader>
-						<TableRow>
-							<TableHead className="w-24">Ref #</TableHead>
-							<TableHead>Name</TableHead>
-							<TableHead>Status</TableHead>
-							<TableHead>Package</TableHead>
-							<TableHead className="text-right">Value</TableHead>
-							<TableHead className="text-right">Balance</TableHead>
-							<TableHead className="w-20">Shoots</TableHead>
-							<TableHead className="w-12" />
-						</TableRow>
-					</TableHeader>
-					<TableBody>
-						{isLoading ? (
-							// Loading skeleton
-							Array.from({ length: 5 }).map((_, i) => (
-								<TableRow key={i}>
-									<TableCell><Skeleton className="h-4 w-16" /></TableCell>
-									<TableCell>
-										<div className="space-y-1">
-											<Skeleton className="h-4 w-48" />
-											<Skeleton className="h-3 w-32" />
-										</div>
-									</TableCell>
-									<TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
-									<TableCell><Skeleton className="h-4 w-24" /></TableCell>
-									<TableCell><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
-									<TableCell><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
-									<TableCell><Skeleton className="h-4 w-8 mx-auto" /></TableCell>
-									<TableCell><Skeleton className="h-8 w-8" /></TableCell>
-								</TableRow>
-							))
-						) : bookings.length === 0 ? (
-							<TableRow>
-								<TableCell colSpan={8} className="h-32 text-center">
-									<div className="flex flex-col items-center gap-2">
-										<p className="text-muted-foreground">No bookings found</p>
-										<Button variant="outline" size="sm" asChild>
-											<Link href={`/app/${organizationSlug}/bookings/new`}>
-												<PlusIcon className="mr-2 h-4 w-4" />
-												Create your first booking
-											</Link>
-										</Button>
-									</div>
-								</TableCell>
-							</TableRow>
-						) : (
-							bookings.map((booking) => (
-								<TableRow key={booking.id} className={showLoading ? "opacity-50" : ""}>
-									<TableCell className="font-mono text-sm">
-										{booking.referenceNumber}
-									</TableCell>
-									<TableCell>
-										<Link
-											href={`/app/${organizationSlug}/bookings/${booking.id}`}
-											className="font-medium hover:underline"
-										>
-											{booking.name}
-										</Link>
-										<p className="text-sm text-muted-foreground">
-											{booking.bookingType}
-										</p>
-									</TableCell>
-									<TableCell>
-										<Badge
-											variant="secondary"
-											className={statusColors[booking.status as BookingPhase]}
-										>
-											{statusLabels[booking.status as BookingPhase] ?? booking.status}
-										</Badge>
-									</TableCell>
-									<TableCell>{booking.packageType}</TableCell>
-									<TableCell className="text-right font-medium">
-										{formatMoney(booking.packageCost)}
-									</TableCell>
-									<TableCell className="text-right">
-										<span
-											className={
-												Number.parseFloat(booking.balance) > 0
-													? "text-amber-600 dark:text-amber-400"
-													: "text-green-600 dark:text-green-400"
-											}
-										>
-											{formatMoney(booking.balance)}
-										</span>
-									</TableCell>
-									<TableCell className="text-center">
-										{booking.shootsCount}
-									</TableCell>
-									<TableCell>
-										<DropdownMenu>
-											<DropdownMenuTrigger asChild>
-												<Button variant="ghost" size="icon">
-													<MoreHorizontalIcon className="h-4 w-4" />
-													<span className="sr-only">Actions</span>
-												</Button>
-											</DropdownMenuTrigger>
-											<DropdownMenuContent align="end">
-												<DropdownMenuItem asChild>
-													<Link href={`/app/${organizationSlug}/bookings/${booking.id}`}>
-														<EyeIcon className="mr-2 h-4 w-4" />
-														View details
-													</Link>
-												</DropdownMenuItem>
-												<DropdownMenuItem asChild>
-													<Link href={`/app/${organizationSlug}/bookings/${booking.id}/edit`}>
-														<PencilIcon className="mr-2 h-4 w-4" />
-														Edit
-													</Link>
-												</DropdownMenuItem>
-												<DropdownMenuSeparator />
-												<DropdownMenuItem
-													className="text-destructive"
-													onClick={() => {
-														setBookingToDelete(booking);
-														setDeleteDialogOpen(true);
-													}}
-												>
-													<TrashIcon className="mr-2 h-4 w-4" />
-													Delete
-												</DropdownMenuItem>
-											</DropdownMenuContent>
-										</DropdownMenu>
-									</TableCell>
-								</TableRow>
-							))
-						)}
-					</TableBody>
-				</Table>
-			</div>
-
-			{/* Pagination */}
-			{pagination.pageCount > 1 && (
-				<div className="flex items-center justify-between">
-					<p className="text-sm text-muted-foreground">
-						Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
-						{Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
-						{pagination.total} bookings
-					</p>
-
-					<div className="flex items-center gap-2">
-						<Button
-							variant="outline"
-							size="icon"
-							onClick={() => handlePageChange(pagination.page - 1)}
-							disabled={pagination.page <= 1 || showLoading}
-						>
-							{showLoading ? (
-								<Loader2Icon className="h-4 w-4 animate-spin" />
-							) : (
-								<ChevronLeftIcon className="h-4 w-4" />
-							)}
-						</Button>
-
-						<span className="text-sm">
-							Page {pagination.page} of {pagination.pageCount}
-						</span>
-
-						<Button
-							variant="outline"
-							size="icon"
-							onClick={() => handlePageChange(pagination.page + 1)}
-							disabled={pagination.page >= pagination.pageCount || showLoading}
-						>
-							{showLoading ? (
-								<Loader2Icon className="h-4 w-4 animate-spin" />
-							) : (
-								<ChevronRightIcon className="h-4 w-4" />
-							)}
+			<DataTable
+				columns={columns}
+				data={bookings}
+				isLoading={isLoading}
+				isFetching={showLoading}
+				pagination={pagination}
+				onPaginationChange={handlePaginationChange}
+				emptyState={
+					<div className="flex flex-col items-center gap-2">
+						<p className="text-muted-foreground">No bookings found</p>
+						<Button variant="outline" size="sm" asChild>
+							<Link href={`/app/${organizationSlug}/bookings/new`}>
+								<PlusIcon className="mr-2 h-4 w-4" />
+								Create your first booking
+							</Link>
 						</Button>
 					</div>
-				</div>
-			)}
+				}
+			/>
 
 			{/* Delete confirmation dialog */}
 			<AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
