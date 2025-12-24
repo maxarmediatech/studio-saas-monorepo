@@ -1,0 +1,86 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { ArrowLeftIcon } from "lucide-react";
+import Link from "next/link";
+import { Button } from "@repo/ui/components/button";
+import {
+	BookingForm,
+	defaultBookingValues,
+	type BookingFormValues,
+} from "@saas/studio/components/bookings";
+import { bookingsMutations, studioQueryKeys } from "@saas/studio/lib/api";
+
+type Props = {
+	params: Promise<{ organizationSlug: string }>;
+};
+
+export default function NewBookingPage({ params }: Props) {
+	const router = useRouter();
+	const queryClient = useQueryClient();
+
+	// We need to await params in Next.js 15+
+	const { organizationSlug } = use(params);
+
+	const createMutation = useMutation({
+		...bookingsMutations.create(),
+		onSuccess: (data) => {
+			toast.success("Booking created successfully", {
+				action: {
+					label: "View",
+					onClick: () =>
+						router.push(`/app/${organizationSlug}/bookings/${data.data.id}`),
+				},
+			});
+			queryClient.invalidateQueries({ queryKey: studioQueryKeys.bookings.all });
+			router.push(`/app/${organizationSlug}/bookings`);
+		},
+		onError: (error) => {
+			toast.error(error.message || "Failed to create booking");
+		},
+	});
+
+	const handleSubmit = (data: BookingFormValues) => {
+		createMutation.mutate({
+			name: data.name,
+			bookingType: data.bookingType,
+			packageType: data.packageType,
+			packageCost: data.packageCost,
+			note: data.note,
+			participants: data.participants,
+			events: data.events,
+		});
+	};
+
+	return (
+		<div className="space-y-6">
+			{/* Header */}
+			<div className="flex items-center gap-4">
+				<Button variant="ghost" size="icon" asChild>
+					<Link href={`/app/${organizationSlug}/bookings`}>
+						<ArrowLeftIcon className="h-4 w-4" />
+					</Link>
+				</Button>
+				<div>
+					<h1 className="text-2xl font-semibold tracking-tight">New Booking</h1>
+					<p className="text-muted-foreground">
+						Create a new booking for your studio
+					</p>
+				</div>
+			</div>
+
+			{/* Form */}
+			<BookingForm
+				defaultValues={defaultBookingValues}
+				onSubmit={handleSubmit}
+				isPending={createMutation.isPending}
+				mode="create"
+			/>
+		</div>
+	);
+}
+
+// React 19 use hook for awaiting promises
+import { use } from "react";

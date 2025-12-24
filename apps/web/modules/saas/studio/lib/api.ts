@@ -145,3 +145,32 @@ export const shootsMutations = {
 	update: () => orpc.shoots.update.mutationOptions(),
 	delete: () => orpc.shoots.delete.mutationOptions(),
 };
+
+// ============================================================================
+// CONFIGURATIONS QUERY OPTIONS
+// ============================================================================
+
+export const configurationsApi = {
+	listOptions: (input?: Parameters<typeof orpc.configurations.list.queryOptions>[0]["input"]) =>
+		orpc.configurations.list.queryOptions({ input: input ?? {} }),
+
+	getOptions: (id: string) =>
+		orpc.configurations.get.queryOptions({ input: { id } }),
+
+	// Convenience helpers for specific config types
+	bookingTypesOptions: () =>
+		orpc.configurations.list.queryOptions({ input: { type: "booking_type" } }),
+
+	packageTypesOptions: () =>
+		orpc.configurations.list.queryOptions({ input: { type: "package_type" } }),
+
+	relationTypesOptions: () =>
+		orpc.configurations.list.queryOptions({ input: { type: "relation_type" } }),
+};
+
+export const configurationsMutations = {
+	create: () => orpc.configurations.create.mutationOptions(),
+	update: () => orpc.configurations.update.mutationOptions(),
+	delete: () => orpc.configurations.delete.mutationOptions(),
+	seed: () => orpc.configurations.seed.mutationOptions(),
+};
