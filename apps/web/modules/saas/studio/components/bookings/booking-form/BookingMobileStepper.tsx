@@ -1,14 +1,16 @@
 "use client";
 
 import { cn } from "@repo/ui/lib/utils";
-import { CheckIcon, AlertCircleIcon } from "lucide-react";
+import { AlertCircleIcon, CheckIcon } from "lucide-react";
 import { type BookingTab, STEP_CONFIG } from "./booking-form-schema";
 
 interface BookingMobileStepperProps {
 	activeStep: BookingTab;
 	completedSteps: Set<BookingTab>;
 	stepsWithErrors: Record<BookingTab, boolean>;
-	onStepClick: (step: BookingTab) => void;
+	onStepClick: (step: BookingTab) => void | Promise<void>;
+	canNavigateToStep: (step: BookingTab) => boolean;
+	isNavigating?: boolean;
 	className?: string;
 }
 
@@ -21,6 +23,8 @@ export function BookingMobileStepper({
 	completedSteps,
 	stepsWithErrors,
 	onStepClick,
+	canNavigateToStep,
+	isNavigating = false,
 	className,
 }: BookingMobileStepperProps) {
 	const activeIndex = STEP_CONFIG.findIndex((s) => s.id === activeStep);
@@ -34,6 +38,8 @@ export function BookingMobileStepper({
 					const isCompleted = completedSteps.has(step.id);
 					const hasError = stepsWithErrors[step.id];
 					const isBeforeActive = index < activeIndex;
+					const isClickable =
+						!isNavigating && canNavigateToStep(step.id);
 
 					return (
 						<div
@@ -43,7 +49,8 @@ export function BookingMobileStepper({
 							{/* Step dot */}
 							<button
 								type="button"
-								onClick={() => onStepClick(step.id)}
+								onClick={() => void onStepClick(step.id)}
+								disabled={!isClickable}
 								className={cn(
 									"flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
 									"text-xs font-medium transition-colors",
@@ -53,11 +60,14 @@ export function BookingMobileStepper({
 									isCompleted &&
 										!hasError &&
 										"bg-green-500 text-white",
-									hasError && "bg-destructive text-destructive-foreground",
+									hasError &&
+										"bg-destructive text-destructive-foreground",
 									!isActive &&
 										!isCompleted &&
 										!hasError &&
-										"bg-muted text-muted-foreground"
+										"bg-muted text-muted-foreground",
+									!isClickable &&
+										"opacity-50 cursor-not-allowed",
 								)}
 								aria-current={isActive ? "step" : undefined}
 								aria-label={`${step.label}${hasError ? " (has errors)" : isCompleted ? " (completed)" : ""}`}
@@ -76,9 +86,10 @@ export function BookingMobileStepper({
 								<div
 									className={cn(
 										"flex-1 h-0.5 mx-2",
-										isBeforeActive || (isActive && isCompleted)
+										isBeforeActive ||
+											(isActive && isCompleted)
 											? "bg-green-500"
-											: "bg-border"
+											: "bg-border",
 									)}
 									aria-hidden="true"
 								/>

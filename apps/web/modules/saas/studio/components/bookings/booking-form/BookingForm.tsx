@@ -6,13 +6,13 @@ import { AlertCircleIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { BookingDeliverablesStep } from "./BookingDeliverablesStep";
 import { BookingDetailsStep } from "./BookingDetailsStep";
-import { BookingPaymentsStep } from "./BookingPaymentsStep";
-import { BookingShootsStep } from "./BookingShootsStep";
-import { BookingReviewStep } from "./BookingReviewStep";
 import { BookingFormLayout } from "./BookingFormLayout";
-import { BookingStepperSidebar } from "./BookingStepperSidebar";
-import { BookingMobileStepper } from "./BookingMobileStepper";
 import { BookingFormNavigation } from "./BookingFormNavigation";
+import { BookingMobileStepper } from "./BookingMobileStepper";
+import { BookingPaymentsStep } from "./BookingPaymentsStep";
+import { BookingReviewStep } from "./BookingReviewStep";
+import { BookingShootsStep } from "./BookingShootsStep";
+import { BookingStepperSidebar } from "./BookingStepperSidebar";
 import { type BookingFormValues, TAB_LABELS } from "./booking-form-schema";
 import { useBookingForm } from "./use-booking-form";
 
@@ -39,6 +39,8 @@ export function BookingForm({
 		goToPreviousTab,
 		isFirstTab,
 		isLastTab,
+		isNavigating,
+		canNavigateToTab,
 		errorTabs,
 		showErrorSummary,
 		tabsWithErrors,
@@ -74,6 +76,8 @@ export function BookingForm({
 							completedSteps={completedSteps}
 							stepsWithErrors={tabsWithErrors}
 							onStepClick={handleTabChange}
+							canNavigateToStep={canNavigateToTab}
+							isNavigating={isNavigating}
 						/>
 					}
 					mobileStepper={
@@ -82,6 +86,8 @@ export function BookingForm({
 							completedSteps={completedSteps}
 							stepsWithErrors={tabsWithErrors}
 							onStepClick={handleTabChange}
+							canNavigateToStep={canNavigateToTab}
+							isNavigating={isNavigating}
 						/>
 					}
 					footer={
@@ -92,6 +98,7 @@ export function BookingForm({
 							isFirstStep={isFirstTab}
 							isLastStep={isLastTab}
 							isPending={isPending}
+							isNavigating={isNavigating}
 							mode={mode}
 						/>
 					}
@@ -102,15 +109,17 @@ export function BookingForm({
 							<AlertCircleIcon className="h-4 w-4" />
 							<AlertTitle>Validation Errors</AlertTitle>
 							<AlertDescription>
-								Please fix the errors on the indicated steps before
-								submitting.
+								Please fix the errors on the indicated steps
+								before submitting.
 								<ul className="mt-2 list-disc pl-5">
 									{errorTabs.map((tab) => (
 										<li key={tab}>
 											<button
 												type="button"
 												className="text-primary underline capitalize"
-												onClick={() => handleTabChange(tab)}
+												onClick={() =>
+													handleTabChange(tab)
+												}
 											>
 												{TAB_LABELS[tab]} Step
 											</button>

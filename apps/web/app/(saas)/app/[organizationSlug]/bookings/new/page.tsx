@@ -11,6 +11,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeftIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Suspense, use } from "react";
 import { toast } from "sonner";
 
 type Props = {
@@ -77,16 +78,15 @@ export default function NewBookingPage({ params }: Props) {
 				</div>
 			</div>
 
-			{/* Form */}
-			<BookingForm
-				defaultValues={defaultBookingValues}
-				onSubmit={handleSubmit}
-				isPending={createMutation.isPending}
-				mode="create"
-			/>
+			{/* Form - Wrapped in Suspense for nuqs/useSearchParams compatibility */}
+			<Suspense fallback={<div className="animate-pulse h-96 bg-muted rounded-lg" />}>
+				<BookingForm
+					defaultValues={defaultBookingValues}
+					onSubmit={handleSubmit}
+					isPending={createMutation.isPending}
+					mode="create"
+				/>
+			</Suspense>
 		</div>
 	);
 }
-
-// React 19 use hook for awaiting promises
-import { use } from "react";

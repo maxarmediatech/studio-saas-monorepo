@@ -1,16 +1,15 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQueryState } from "nuqs";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
+import { type FieldPath, useForm } from "react-hook-form";
 import {
+	BOOKING_TABS,
 	type BookingFormValues,
 	type BookingTab,
-	BOOKING_TABS,
-	TAB_FIELD_MAPPING,
 	bookingFormSchema,
 	defaultBookingValues,
+	TAB_FIELD_MAPPING,
 } from "./booking-form-schema";
 
 interface UseBookingFormOptions {
@@ -30,20 +29,19 @@ export function useBookingForm({
 		mode: "onChange",
 	});
 
-	// URL-synced tab state
-	const [activeTab, setActiveTab] = useQueryState("tab", {
-		defaultValue: "details" as string,
-		parse: (value) =>
-			BOOKING_TABS.includes(value as BookingTab) ? value : "details",
-	});
+	// Keep tab state fully client-side to avoid route transitions/reloads on step changes.
+	const [activeTab, setActiveTab] = useState<BookingTab>("details");
+	const [isNavigating, setIsNavigating] = useState(false);
 
 	// Track which tabs have been completed (visited and moved on from)
 	const [completedSteps, setCompletedSteps] = useState<Set<BookingTab>>(
-		new Set()
+		new Set(),
 	);
 
 	// Track which tabs have errors
-	const [tabsWithErrors, setTabsWithErrors] = useState<Record<BookingTab, boolean>>({
+	const [tabsWithErrors, setTabsWithErrors] = useState<
+		Record<BookingTab, boolean>
+	>({
 		details: false,
 		shoots: false,
 		payments: false,
@@ -59,10 +57,12 @@ export function useBookingForm({
 				const hasError = errorFields.some((field) =>
 					TAB_FIELD_MAPPING[tab].some(
 						(tabField) =>
-							field === tabField || field.startsWith(`${tabField}.`),
+							field === tabField ||
+							field.startsWith(`${tabField}.`),
 					),
 				);
-				return { ...acc, [tab]: hasError };
+				acc[tab] = hasError;
+				return acc;
 			},
 			{} as Record<BookingTab, boolean>,
 		);
@@ -76,33 +76,97 @@ export function useBookingForm({
 			setActiveTab("details");
 			setCompletedSteps(new Set());
 		}
-	}, [form.formState.isSubmitSuccessful, form, mode, setActiveTab]);
+	}, [form.formState.isSubmitSuccessful, form, mode]);
 
-	const handleTabChange = useCallback(
-		(newTab: string) => {
-			if (BOOKING_TABS.includes(newTab as BookingTab)) {
-				setActiveTab(newTab);
+	const currentTabIndex = BOOKING_TABS.indexOf(activeTab);
+
+	const validateTab = useCallback(
+		async (tab: BookingTab) => {
+			const fields = TAB_FIELD_MAPPING[tab];
+			if (fields.length === 0) {
+				return true;
 			}
+
+			return form.trigger(fields as FieldPath<BookingFormValues>[], {
+				shouldFocus: true,
+			});
 		},
-		[setActiveTab],
+		[form],
 	);
 
-	const currentTabIndex = BOOKING_TABS.indexOf(activeTab as BookingTab);
+	const canNavigateToTab = useCallback(
+		(targetTab: BookingTab) => {
+			const targetIndex = BOOKING_TABS.indexOf(targetTab);
+			if (targetIndex === -1) {
+				return false;
+			}
+
+			// Always allow going back to any previous step.
+			if (targetIndex <= currentTabIndex) {
+				return true;
+			}
+
+			// Allow going to any already completed step.
+			if (completedSteps.has(targetTab)) {
+				return true;
+			}
+
+			// Allow moving forward by one step.
+			return targetIndex === currentTabIndex + 1;
+		},
+		[completedSteps, currentTabIndex],
+	);
+
+	const requestTabChange = useCallback(
+		async (newTab: BookingTab) => {
+			if (!canNavigateToTab(newTab)) {
+				return;
+			}
+
+			const targetIndex = BOOKING_TABS.indexOf(newTab);
+			if (targetIndex === -1) {
+				return;
+			}
+
+			// Backwards navigation never blocks.
+			if (targetIndex <= currentTabIndex) {
+				setActiveTab(newTab);
+				return;
+			}
+
+			// Forward navigation validates current step before advancing.
+			setIsNavigating(true);
+			try {
+				const currentStep = BOOKING_TABS[currentTabIndex];
+				const isValid = await validateTab(currentStep);
+				if (!isValid) {
+					return;
+				}
+
+				setCompletedSteps((prev) => {
+					const next = new Set(prev);
+					next.add(currentStep);
+					return next;
+				});
+				setActiveTab(newTab);
+			} finally {
+				setIsNavigating(false);
+			}
+		},
+		[canNavigateToTab, currentTabIndex, validateTab],
+	);
 
 	const goToNextTab = useCallback(() => {
 		if (currentTabIndex < BOOKING_TABS.length - 1) {
-			// Mark current step as completed when moving to next
-			const currentStep = BOOKING_TABS[currentTabIndex];
-			setCompletedSteps((prev) => new Set(Array.from(prev).concat(currentStep)));
-			handleTabChange(BOOKING_TABS[currentTabIndex + 1]);
+			void requestTabChange(BOOKING_TABS[currentTabIndex + 1]);
 		}
-	}, [currentTabIndex, handleTabChange]);
+	}, [currentTabIndex, requestTabChange]);
 
 	const goToPreviousTab = useCallback(() => {
 		if (currentTabIndex > 0) {
-			handleTabChange(BOOKING_TABS[currentTabIndex - 1]);
+			void requestTabChange(BOOKING_TABS[currentTabIndex - 1]);
 		}
-	}, [currentTabIndex, handleTabChange]);
+	}, [currentTabIndex, requestTabChange]);
 
 	const isFirstTab = currentTabIndex === 0;
 	const isLastTab = currentTabIndex === BOOKING_TABS.length - 1;
@@ -118,12 +182,14 @@ export function useBookingForm({
 
 	return {
 		form,
-		activeTab: activeTab as BookingTab,
-		handleTabChange,
+		activeTab,
+		handleTabChange: (tab: BookingTab) => void requestTabChange(tab),
 		goToNextTab,
 		goToPreviousTab,
 		isFirstTab,
 		isLastTab,
+		isNavigating,
+		canNavigateToTab,
 		errorTabs,
 		showErrorSummary,
 		tabsWithErrors,

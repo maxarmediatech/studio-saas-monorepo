@@ -51,20 +51,23 @@ export const studioQueryKeys = {
 
 export const bookingsApi = {
 	// List bookings
-	listOptions: (input?: Parameters<typeof orpc.bookings.list.queryOptions>[0]["input"]) =>
-		orpc.bookings.list.queryOptions({ input: input ?? {} }),
+	listOptions: (
+		input?: Parameters<typeof orpc.bookings.list.queryOptions>[0]["input"],
+	) => orpc.bookings.list.queryOptions({ input: input ?? {} }),
 
 	// List minimal bookings (for dropdowns)
-	listMinimalOptions: (input?: Parameters<typeof orpc.bookings.listMinimal.queryOptions>[0]["input"]) =>
-		orpc.bookings.listMinimal.queryOptions({ input: input ?? {} }),
+	listMinimalOptions: (
+		input?: Parameters<
+			typeof orpc.bookings.listMinimal.queryOptions
+		>[0]["input"],
+	) => orpc.bookings.listMinimal.queryOptions({ input: input ?? {} }),
 
 	// Get single booking
 	getOptions: (id: string) =>
 		orpc.bookings.get.queryOptions({ input: { id } }),
 
 	// Get booking stats
-	statsOptions: () =>
-		orpc.bookings.stats.queryOptions({ input: {} }),
+	statsOptions: () => orpc.bookings.stats.queryOptions({ input: {} }),
 
 	// List participants
 	listParticipantsOptions: (bookingId: string) =>
@@ -90,14 +93,14 @@ export const bookingsMutations = {
 // ============================================================================
 
 export const clientsApi = {
-	listOptions: (input?: Parameters<typeof orpc.clients.list.queryOptions>[0]["input"]) =>
-		orpc.clients.list.queryOptions({ input: input ?? {} }),
+	listOptions: (
+		input?: Parameters<typeof orpc.clients.list.queryOptions>[0]["input"],
+	) => orpc.clients.list.queryOptions({ input: input ?? {} }),
 
 	getOptions: (id: string) =>
 		orpc.clients.get.queryOptions({ input: { id } }),
 
-	statsOptions: () =>
-		orpc.clients.stats.queryOptions({ input: {} }),
+	statsOptions: () => orpc.clients.stats.queryOptions({ input: {} }),
 };
 
 export const clientsMutations = {
@@ -111,14 +114,17 @@ export const clientsMutations = {
 // ============================================================================
 
 export const crewsApi = {
-	listOptions: (input?: Parameters<typeof orpc.crews.list.queryOptions>[0]["input"]) =>
-		orpc.crews.list.queryOptions({ input: input ?? {} }),
+	listOptions: (
+		input?: Parameters<typeof orpc.crews.list.queryOptions>[0]["input"],
+	) => orpc.crews.list.queryOptions({ input: input ?? {} }),
 
-	getOptions: (id: string) =>
-		orpc.crews.get.queryOptions({ input: { id } }),
+	getOptions: (id: string) => orpc.crews.get.queryOptions({ input: { id } }),
 
-	availabilityOptions: (input: Parameters<typeof orpc.crews.availability.queryOptions>[0]["input"]) =>
-		orpc.crews.availability.queryOptions({ input }),
+	availabilityOptions: (
+		input: Parameters<
+			typeof orpc.crews.availability.queryOptions
+		>[0]["input"],
+	) => orpc.crews.availability.queryOptions({ input }),
 };
 
 export const crewsMutations = {
@@ -133,11 +139,11 @@ export const crewsMutations = {
 // ============================================================================
 
 export const shootsApi = {
-	listOptions: (input?: Parameters<typeof orpc.shoots.list.queryOptions>[0]["input"]) =>
-		orpc.shoots.list.queryOptions({ input: input ?? {} }),
+	listOptions: (
+		input?: Parameters<typeof orpc.shoots.list.queryOptions>[0]["input"],
+	) => orpc.shoots.list.queryOptions({ input: input ?? {} }),
 
-	getOptions: (id: string) =>
-		orpc.shoots.get.queryOptions({ input: { id } }),
+	getOptions: (id: string) => orpc.shoots.get.queryOptions({ input: { id } }),
 };
 
 export const shootsMutations = {
@@ -151,30 +157,35 @@ export const shootsMutations = {
 // ============================================================================
 
 export const configurationsApi = {
-	listOptions: (input?: Parameters<typeof orpc.configurations.list.queryOptions>[0]["input"]) =>
-		orpc.configurations.list.queryOptions({ input: input ?? {} }),
+	listOptions: (
+		input?: Parameters<
+			typeof orpc.configurations.list.queryOptions
+		>[0]["input"],
+	) => orpc.configurations.list.queryOptions({ input: input ?? {} }),
 
 	getOptions: (id: string) =>
 		orpc.configurations.get.queryOptions({ input: { id } }),
 
 	// Convenience helpers for specific config types
 	bookingTypesOptions: () =>
-		orpc.configurations.list.queryOptions({ input: { type: "booking_type" } }),
+		orpc.configurations.list.queryOptions({
+			input: { type: "booking_type" },
+		}),
 
 	packageTypesOptions: () =>
-		orpc.configurations.list.queryOptions({ input: { type: "package_type" } }),
+		orpc.configurations.list.queryOptions({
+			input: { type: "package_type" },
+		}),
 
 	relationTypesOptions: () =>
-		orpc.configurations.list.queryOptions({ input: { type: "relation_type" } }),
-
-	crewRolesOptions: () =>
-		orpc.configurations.list.queryOptions({ input: { type: "crew_role" } }),
+		orpc.configurations.list.queryOptions({
+			input: { type: "relation_type" },
+		}),
 
 	shootStatusOptions: () =>
-		orpc.configurations.list.queryOptions({ input: { type: "shoot_status" } }),
-
-	deliverableTypesOptions: () =>
-		orpc.configurations.list.queryOptions({ input: { type: "deliverable_type" } }),
+		orpc.configurations.list.queryOptions({
+			input: { type: "shoot_status" },
+		}),
 };
 
 export const configurationsMutations = {

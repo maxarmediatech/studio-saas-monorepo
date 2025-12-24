@@ -2,9 +2,9 @@
 
 import { Button } from "@repo/ui/components/button";
 import {
+	CheckIcon,
 	ChevronLeftIcon,
 	ChevronRightIcon,
-	CheckIcon,
 	Loader2Icon,
 } from "lucide-react";
 
@@ -15,6 +15,7 @@ interface BookingFormNavigationProps {
 	isFirstStep: boolean;
 	isLastStep: boolean;
 	isPending: boolean;
+	isNavigating?: boolean;
 	mode: "create" | "edit";
 }
 
@@ -29,6 +30,7 @@ export function BookingFormNavigation({
 	isFirstStep,
 	isLastStep,
 	isPending,
+	isNavigating = false,
 	mode,
 }: BookingFormNavigationProps) {
 	return (
@@ -39,7 +41,7 @@ export function BookingFormNavigation({
 					type="button"
 					variant="outline"
 					onClick={onPrevious}
-					disabled={isFirstStep}
+					disabled={isFirstStep || isNavigating}
 				>
 					<ChevronLeftIcon className="mr-2 h-4 w-4" />
 					Previous
@@ -48,26 +50,39 @@ export function BookingFormNavigation({
 
 			{/* Right side: Cancel, Next/Submit */}
 			<div className="flex items-center gap-3">
-				<Button type="button" variant="ghost" onClick={onCancel}>
+				<Button
+					type="button"
+					variant="ghost"
+					onClick={onCancel}
+					disabled={isNavigating}
+				>
 					Cancel
 				</Button>
 
 				{isLastStep ? (
-					<Button type="submit" disabled={isPending}>
+					<Button type="submit" disabled={isPending || isNavigating}>
 						{isPending ? (
 							<>
 								<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-								{mode === "create" ? "Creating..." : "Saving..."}
+								{mode === "create"
+									? "Creating..."
+									: "Saving..."}
 							</>
 						) : (
 							<>
 								<CheckIcon className="mr-2 h-4 w-4" />
-								{mode === "create" ? "Create Booking" : "Save Changes"}
+								{mode === "create"
+									? "Create Booking"
+									: "Save Changes"}
 							</>
 						)}
 					</Button>
 				) : (
-					<Button type="button" onClick={onNext}>
+					<Button
+						type="button"
+						onClick={onNext}
+						disabled={isNavigating}
+					>
 						Next
 						<ChevronRightIcon className="ml-2 h-4 w-4" />
 					</Button>

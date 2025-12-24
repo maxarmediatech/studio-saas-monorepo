@@ -1,12 +1,12 @@
-import { z } from "zod";
 import {
-	ClipboardListIcon,
 	CameraIcon,
-	WalletIcon,
-	PackageIcon,
 	CheckCircleIcon,
+	ClipboardListIcon,
 	type LucideIcon,
+	PackageIcon,
+	WalletIcon,
 } from "lucide-react";
+import { z } from "zod";
 
 /**
  * Decimal string validator for currency inputs
@@ -28,7 +28,12 @@ export const decimalStringSchema = z.string().transform((val, ctx) => {
  * Participant schema - links a client to the booking with a role
  */
 export const participantSchema = z.object({
-	clientId: z.string().min(1, "Client is required"),
+	clientId: z
+		.string()
+		.regex(
+			/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+			"Client is required",
+		),
 	role: z.string().min(1, "Role is required"),
 });
 
@@ -154,7 +159,7 @@ export const bookingFormSchema = z.object({
 	deliverables: z.array(deliverableSchema).optional(),
 });
 
-export type BookingFormValues = z.infer<typeof bookingFormSchema>;
+export type BookingFormValues = z.input<typeof bookingFormSchema>;
 
 /**
  * Default form values

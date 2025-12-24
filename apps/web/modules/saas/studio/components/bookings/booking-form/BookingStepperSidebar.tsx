@@ -1,15 +1,21 @@
 "use client";
 
-import { cn } from "@repo/ui/lib/utils";
 import { Progress } from "@repo/ui/components/progress";
+import { cn } from "@repo/ui/lib/utils";
+import {
+	type BookingTab,
+	STEP_CONFIG,
+	type StepConfig,
+} from "./booking-form-schema";
 import { StepIndicator, type StepStatus } from "./step-indicator";
-import { type BookingTab, type StepConfig, STEP_CONFIG } from "./booking-form-schema";
 
 interface BookingStepperSidebarProps {
 	activeStep: BookingTab;
 	completedSteps: Set<BookingTab>;
 	stepsWithErrors: Record<BookingTab, boolean>;
-	onStepClick: (step: BookingTab) => void;
+	onStepClick: (step: BookingTab) => void | Promise<void>;
+	canNavigateToStep: (step: BookingTab) => boolean;
+	isNavigating?: boolean;
 	className?: string;
 }
 
@@ -22,6 +28,8 @@ export function BookingStepperSidebar({
 	completedSteps,
 	stepsWithErrors,
 	onStepClick,
+	canNavigateToStep,
+	isNavigating = false,
 	className,
 }: BookingStepperSidebarProps) {
 	// Calculate progress percentage
@@ -65,8 +73,10 @@ export function BookingStepperSidebar({
 						step={step}
 						status={getStepStatus(step)}
 						stepNumber={index + 1}
-						onClick={() => onStepClick(step.id)}
-						isClickable={true}
+						onClick={() => void onStepClick(step.id)}
+						isClickable={
+							!isNavigating && canNavigateToStep(step.id)
+						}
 						showConnector={index < STEP_CONFIG.length - 1}
 					/>
 				))}

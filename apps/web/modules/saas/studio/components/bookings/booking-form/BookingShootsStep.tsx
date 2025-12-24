@@ -1,9 +1,13 @@
 "use client";
 
-import { useFieldArray, useFormContext, Controller } from "react-hook-form";
-import { useQuery } from "@tanstack/react-query";
+import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/components/card";
+import {
+	Card,
+	CardContent,
+	CardHeader,
+	CardTitle,
+} from "@repo/ui/components/card";
 import {
 	Field,
 	FieldError,
@@ -19,18 +23,21 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@repo/ui/components/select";
-import { Textarea } from "@repo/ui/components/textarea";
-import { Badge } from "@repo/ui/components/badge";
 import { Separator } from "@repo/ui/components/separator";
+import { Textarea } from "@repo/ui/components/textarea";
+import { crewsApi } from "@saas/studio/lib/api";
+import { MOCK_CREW_ROLES, MOCK_CREWS } from "@saas/studio/lib/mock-data";
+import { useQuery } from "@tanstack/react-query";
 import {
 	CameraIcon,
+	ClockIcon,
+	MapPinIcon,
 	PlusIcon,
 	TrashIcon,
 	UsersIcon,
-	MapPinIcon,
-	ClockIcon,
 } from "lucide-react";
-import { crewsApi, configurationsApi } from "@saas/studio/lib/api";
+import { useMemo } from "react";
+import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import {
 	type BookingFormValues,
 	SHOOT_TYPE_OPTIONS,
@@ -41,12 +48,29 @@ export function BookingShootsStep() {
 
 	// Fetch crews for assignment
 	const { data: crewsData } = useQuery(crewsApi.listOptions({ limit: 100 }));
-	const { data: crewRolesData } = useQuery(
-		configurationsApi.crewRolesOptions()
-	);
 
-	const crews = crewsData?.data ?? [];
-	const crewRoles = crewRolesData?.data ?? [];
+	// Use mock data as fallback when API returns empty
+	const crews = crewsData?.data?.length ? crewsData.data : MOCK_CREWS;
+	const crewRoles = useMemo(() => {
+		const derivedRoles = new Map<
+			string,
+			{ id: string; key: string; label: string }
+		>();
+
+		for (const crew of crews) {
+			const label = crew.role?.trim();
+			if (!label) {
+				continue;
+			}
+
+			const key = label.toLowerCase().replaceAll(/\s+/g, "_");
+			derivedRoles.set(key, { id: key, key, label });
+		}
+
+		return derivedRoles.size > 0
+			? Array.from(derivedRoles.values())
+			: MOCK_CREW_ROLES;
+	}, [crews]);
 
 	const {
 		fields: shoots,
@@ -81,7 +105,12 @@ export function BookingShootsStep() {
 						Schedule photo/video shoots for this booking
 					</p>
 				</div>
-				<Button type="button" variant="outline" size="sm" onClick={addNewShoot}>
+				<Button
+					type="button"
+					variant="outline"
+					size="sm"
+					onClick={addNewShoot}
+				>
 					<PlusIcon className="mr-2 h-4 w-4" />
 					Add Shoot
 				</Button>
@@ -92,8 +121,8 @@ export function BookingShootsStep() {
 					<div className="flex flex-col items-center justify-center py-12 text-center border border-dashed rounded-lg">
 						<CameraIcon className="h-12 w-12 text-muted-foreground/50 mb-4" />
 						<p className="text-sm text-muted-foreground mb-4">
-							No shoots scheduled yet. Click "Add Shoot" to schedule
-							photo/video sessions.
+							No shoots scheduled yet. Click "Add Shoot" to
+							schedule photo/video sessions.
 						</p>
 						<Button
 							type="button"
@@ -160,7 +189,9 @@ function ShootCard({
 			<CardHeader className="flex flex-row items-center justify-between pb-4">
 				<div className="flex items-center gap-2">
 					<CameraIcon className="h-5 w-5 text-muted-foreground" />
-					<CardTitle className="text-base">Shoot {shootIndex + 1}</CardTitle>
+					<CardTitle className="text-base">
+						Shoot {shootIndex + 1}
+					</CardTitle>
 				</div>
 				{canRemove && (
 					<Button
@@ -185,7 +216,9 @@ function ShootCard({
 							control={form.control}
 							render={({ field, fieldState }) => (
 								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>Shoot Name</FieldLabel>
+									<FieldLabel htmlFor={field.name}>
+										Shoot Name
+									</FieldLabel>
 									<Input
 										{...field}
 										id={field.name}
@@ -193,7 +226,9 @@ function ShootCard({
 										aria-invalid={fieldState.invalid}
 									/>
 									{fieldState.invalid && (
-										<FieldError errors={[fieldState.error]} />
+										<FieldError
+											errors={[fieldState.error]}
+										/>
 									)}
 								</Field>
 							)}
@@ -205,8 +240,13 @@ function ShootCard({
 							control={form.control}
 							render={({ field, fieldState }) => (
 								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>Shoot Type</FieldLabel>
-									<Select onValueChange={field.onChange} value={field.value}>
+									<FieldLabel htmlFor={field.name}>
+										Shoot Type
+									</FieldLabel>
+									<Select
+										onValueChange={field.onChange}
+										value={field.value}
+									>
 										<SelectTrigger
 											id={field.name}
 											aria-invalid={fieldState.invalid}
@@ -215,14 +255,19 @@ function ShootCard({
 										</SelectTrigger>
 										<SelectContent>
 											{SHOOT_TYPE_OPTIONS.map((type) => (
-												<SelectItem key={type.value} value={type.value}>
+												<SelectItem
+													key={type.value}
+													value={type.value}
+												>
 													{type.label}
 												</SelectItem>
 											))}
 										</SelectContent>
 									</Select>
 									{fieldState.invalid && (
-										<FieldError errors={[fieldState.error]} />
+										<FieldError
+											errors={[fieldState.error]}
+										/>
 									)}
 								</Field>
 							)}
@@ -234,7 +279,9 @@ function ShootCard({
 							control={form.control}
 							render={({ field, fieldState }) => (
 								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>Date</FieldLabel>
+									<FieldLabel htmlFor={field.name}>
+										Date
+									</FieldLabel>
 									<Input
 										{...field}
 										id={field.name}
@@ -242,7 +289,9 @@ function ShootCard({
 										aria-invalid={fieldState.invalid}
 									/>
 									{fieldState.invalid && (
-										<FieldError errors={[fieldState.error]} />
+										<FieldError
+											errors={[fieldState.error]}
+										/>
 									)}
 								</Field>
 							)}
@@ -268,7 +317,9 @@ function ShootCard({
 										aria-invalid={fieldState.invalid}
 									/>
 									{fieldState.invalid && (
-										<FieldError errors={[fieldState.error]} />
+										<FieldError
+											errors={[fieldState.error]}
+										/>
 									)}
 								</Field>
 							)}
@@ -280,7 +331,9 @@ function ShootCard({
 							control={form.control}
 							render={({ field, fieldState }) => (
 								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>End Time</FieldLabel>
+									<FieldLabel htmlFor={field.name}>
+										End Time
+									</FieldLabel>
 									<Input
 										{...field}
 										id={field.name}
@@ -288,7 +341,9 @@ function ShootCard({
 										aria-invalid={fieldState.invalid}
 									/>
 									{fieldState.invalid && (
-										<FieldError errors={[fieldState.error]} />
+										<FieldError
+											errors={[fieldState.error]}
+										/>
 									)}
 								</Field>
 							)}
@@ -311,7 +366,9 @@ function ShootCard({
 										aria-invalid={fieldState.invalid}
 									/>
 									{fieldState.invalid && (
-										<FieldError errors={[fieldState.error]} />
+										<FieldError
+											errors={[fieldState.error]}
+										/>
 									)}
 								</Field>
 							)}
@@ -323,7 +380,9 @@ function ShootCard({
 							control={form.control}
 							render={({ field, fieldState }) => (
 								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>Address</FieldLabel>
+									<FieldLabel htmlFor={field.name}>
+										Address
+									</FieldLabel>
 									<Input
 										{...field}
 										id={field.name}
@@ -331,7 +390,9 @@ function ShootCard({
 										aria-invalid={fieldState.invalid}
 									/>
 									{fieldState.invalid && (
-										<FieldError errors={[fieldState.error]} />
+										<FieldError
+											errors={[fieldState.error]}
+										/>
 									)}
 								</Field>
 							)}
@@ -344,7 +405,9 @@ function ShootCard({
 						control={form.control}
 						render={({ field, fieldState }) => (
 							<Field data-invalid={fieldState.invalid}>
-								<FieldLabel htmlFor={field.name}>Notes</FieldLabel>
+								<FieldLabel htmlFor={field.name}>
+									Notes
+								</FieldLabel>
 								<Textarea
 									{...field}
 									id={field.name}
@@ -367,7 +430,9 @@ function ShootCard({
 					<div className="flex items-center justify-between mb-4">
 						<div className="flex items-center gap-2">
 							<UsersIcon className="h-4 w-4 text-muted-foreground" />
-							<h4 className="text-sm font-medium">Crew Assignments</h4>
+							<h4 className="text-sm font-medium">
+								Crew Assignments
+							</h4>
 							{crewAssignments.length > 0 && (
 								<Badge variant="secondary" className="ml-2">
 									{crewAssignments.length} assigned
@@ -393,161 +458,247 @@ function ShootCard({
 
 					{crewAssignments.length === 0 ? (
 						<p className="text-sm text-muted-foreground text-center py-4 border border-dashed rounded-lg">
-							No crew assigned yet. Click "Assign Crew" to add team members.
+							No crew assigned yet. Click "Assign Crew" to add
+							team members.
 						</p>
 					) : (
 						<FieldGroup className="gap-3">
-							{crewAssignments.map((assignment, assignmentIndex) => (
-								<div
-									key={assignment.id}
-									className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg"
-								>
-									{/* Crew Member */}
-									<div className="flex-1">
-										<Controller
-											name={`shoots.${shootIndex}.crewAssignments.${assignmentIndex}.crewId`}
-											control={form.control}
-											render={({ field, fieldState }) => (
-												<Field data-invalid={fieldState.invalid}>
-													<FieldLabel
-														htmlFor={field.name}
-														className="text-xs"
+							{crewAssignments.map(
+								(assignment, assignmentIndex) => (
+									<div
+										key={assignment.id}
+										className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg"
+									>
+										{/* Crew Member */}
+										<div className="flex-1">
+											<Controller
+												name={`shoots.${shootIndex}.crewAssignments.${assignmentIndex}.crewId`}
+												control={form.control}
+												render={({
+													field,
+													fieldState,
+												}) => (
+													<Field
+														data-invalid={
+															fieldState.invalid
+														}
 													>
-														Crew Member
-													</FieldLabel>
-													<Select
-														onValueChange={field.onChange}
-														value={field.value}
-													>
-														<SelectTrigger
-															id={field.name}
-															aria-invalid={fieldState.invalid}
+														<FieldLabel
+															htmlFor={field.name}
+															className="text-xs"
 														>
-															<SelectValue placeholder="Select crew" />
-														</SelectTrigger>
-														<SelectContent>
-															{crews.length > 0 ? (
-																crews.map((crew) => (
-																	<SelectItem key={crew.id} value={crew.id}>
-																		<div className="flex flex-col">
-																			<span>{crew.name}</span>
-																			<span className="text-xs text-muted-foreground">
-																				{crew.role}
-																			</span>
-																		</div>
-																	</SelectItem>
-																))
-															) : (
-																<div className="p-2 text-sm text-muted-foreground text-center">
-																	No crew members found
-																</div>
-															)}
-														</SelectContent>
-													</Select>
-													{fieldState.invalid && (
-														<FieldError errors={[fieldState.error]} />
-													)}
-												</Field>
-											)}
-										/>
-									</div>
-
-									{/* Role */}
-									<div className="flex-1">
-										<Controller
-											name={`shoots.${shootIndex}.crewAssignments.${assignmentIndex}.role`}
-											control={form.control}
-											render={({ field, fieldState }) => (
-												<Field data-invalid={fieldState.invalid}>
-													<FieldLabel
-														htmlFor={field.name}
-														className="text-xs"
-													>
-														Role
-													</FieldLabel>
-													<Select
-														onValueChange={field.onChange}
-														value={field.value}
-													>
-														<SelectTrigger
-															id={field.name}
-															aria-invalid={fieldState.invalid}
+															Crew Member
+														</FieldLabel>
+														<Select
+															onValueChange={
+																field.onChange
+															}
+															value={field.value}
 														>
-															<SelectValue placeholder="Select role" />
-														</SelectTrigger>
-														<SelectContent>
-															{crewRoles.length > 0 ? (
-																crewRoles.map((role) => (
-																	<SelectItem key={role.id} value={role.key}>
-																		{role.label}
-																	</SelectItem>
-																))
-															) : (
-																<>
-																	<SelectItem value="lead_photographer">
-																		Lead Photographer
-																	</SelectItem>
-																	<SelectItem value="photographer">
-																		Photographer
-																	</SelectItem>
-																	<SelectItem value="lead_videographer">
-																		Lead Videographer
-																	</SelectItem>
-																	<SelectItem value="videographer">
-																		Videographer
-																	</SelectItem>
-																	<SelectItem value="drone_operator">
-																		Drone Operator
-																	</SelectItem>
-																	<SelectItem value="assistant">
-																		Assistant
-																	</SelectItem>
-																</>
-															)}
-														</SelectContent>
-													</Select>
-													{fieldState.invalid && (
-														<FieldError errors={[fieldState.error]} />
-													)}
-												</Field>
-											)}
-										/>
-									</div>
+															<SelectTrigger
+																id={field.name}
+																aria-invalid={
+																	fieldState.invalid
+																}
+															>
+																<SelectValue placeholder="Select crew" />
+															</SelectTrigger>
+															<SelectContent>
+																{crews.length >
+																0 ? (
+																	crews.map(
+																		(
+																			crew,
+																		) => (
+																			<SelectItem
+																				key={
+																					crew.id
+																				}
+																				value={
+																					crew.id
+																				}
+																			>
+																				<div className="flex flex-col">
+																					<span>
+																						{
+																							crew.name
+																						}
+																					</span>
+																					<span className="text-xs text-muted-foreground">
+																						{
+																							crew.role
+																						}
+																					</span>
+																				</div>
+																			</SelectItem>
+																		),
+																	)
+																) : (
+																	<div className="p-2 text-sm text-muted-foreground text-center">
+																		No crew
+																		members
+																		found
+																	</div>
+																)}
+															</SelectContent>
+														</Select>
+														{fieldState.invalid && (
+															<FieldError
+																errors={[
+																	fieldState.error,
+																]}
+															/>
+														)}
+													</Field>
+												)}
+											/>
+										</div>
 
-									{/* Is Lead Toggle */}
-									<div className="flex items-end pb-2">
-										<Controller
-											name={`shoots.${shootIndex}.crewAssignments.${assignmentIndex}.isLead`}
-											control={form.control}
-											render={({ field }) => (
-												<Button
-													type="button"
-													variant={field.value ? "default" : "outline"}
-													size="sm"
-													onClick={() => field.onChange(!field.value)}
-													className="h-9"
-												>
-													{field.value ? "Lead" : "Set Lead"}
-												</Button>
-											)}
-										/>
-									</div>
+										{/* Role */}
+										<div className="flex-1">
+											<Controller
+												name={`shoots.${shootIndex}.crewAssignments.${assignmentIndex}.role`}
+												control={form.control}
+												render={({
+													field,
+													fieldState,
+												}) => (
+													<Field
+														data-invalid={
+															fieldState.invalid
+														}
+													>
+														<FieldLabel
+															htmlFor={field.name}
+															className="text-xs"
+														>
+															Role
+														</FieldLabel>
+														<Select
+															onValueChange={
+																field.onChange
+															}
+															value={field.value}
+														>
+															<SelectTrigger
+																id={field.name}
+																aria-invalid={
+																	fieldState.invalid
+																}
+															>
+																<SelectValue placeholder="Select role" />
+															</SelectTrigger>
+															<SelectContent>
+																{crewRoles.length >
+																0 ? (
+																	crewRoles.map(
+																		(
+																			role,
+																		) => (
+																			<SelectItem
+																				key={
+																					role.id
+																				}
+																				value={
+																					role.key
+																				}
+																			>
+																				{
+																					role.label
+																				}
+																			</SelectItem>
+																		),
+																	)
+																) : (
+																	<>
+																		<SelectItem value="lead_photographer">
+																			Lead
+																			Photographer
+																		</SelectItem>
+																		<SelectItem value="photographer">
+																			Photographer
+																		</SelectItem>
+																		<SelectItem value="lead_videographer">
+																			Lead
+																			Videographer
+																		</SelectItem>
+																		<SelectItem value="videographer">
+																			Videographer
+																		</SelectItem>
+																		<SelectItem value="drone_operator">
+																			Drone
+																			Operator
+																		</SelectItem>
+																		<SelectItem value="assistant">
+																			Assistant
+																		</SelectItem>
+																	</>
+																)}
+															</SelectContent>
+														</Select>
+														{fieldState.invalid && (
+															<FieldError
+																errors={[
+																	fieldState.error,
+																]}
+															/>
+														)}
+													</Field>
+												)}
+											/>
+										</div>
 
-									{/* Remove */}
-									<div className="flex items-end pb-2">
-										<Button
-											type="button"
-											variant="ghost"
-											size="icon"
-											className="h-9 text-destructive hover:text-destructive hover:bg-destructive/10"
-											onClick={() => removeCrewAssignment(assignmentIndex)}
-										>
-											<TrashIcon className="h-4 w-4" />
-											<span className="sr-only">Remove crew assignment</span>
-										</Button>
+										{/* Is Lead Toggle */}
+										<div className="flex items-end pb-2">
+											<Controller
+												name={`shoots.${shootIndex}.crewAssignments.${assignmentIndex}.isLead`}
+												control={form.control}
+												render={({ field }) => (
+													<Button
+														type="button"
+														variant={
+															field.value
+																? "default"
+																: "outline"
+														}
+														size="sm"
+														onClick={() =>
+															field.onChange(
+																!field.value,
+															)
+														}
+														className="h-9"
+													>
+														{field.value
+															? "Lead"
+															: "Set Lead"}
+													</Button>
+												)}
+											/>
+										</div>
+
+										{/* Remove */}
+										<div className="flex items-end pb-2">
+											<Button
+												type="button"
+												variant="ghost"
+												size="icon"
+												className="h-9 text-destructive hover:text-destructive hover:bg-destructive/10"
+												onClick={() =>
+													removeCrewAssignment(
+														assignmentIndex,
+													)
+												}
+											>
+												<TrashIcon className="h-4 w-4" />
+												<span className="sr-only">
+													Remove crew assignment
+												</span>
+											</Button>
+										</div>
 									</div>
-								</div>
-							))}
+								),
+							)}
 						</FieldGroup>
 					)}
 				</div>

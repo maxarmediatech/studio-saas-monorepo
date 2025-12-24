@@ -12,7 +12,8 @@
 		"typecheck": "turbo typecheck",
 		"db:generate": "pnpm --filter @repo/database generate",
 		"db:migrate": "pnpm --filter @repo/database migrate",
-		"db:seed": "turbo db:seed"
+		"db:seed": "turbo db:seed",
+		"db:studio": "pnpm --filter @repo/database studio"
 	},
 	"engines": {
 		"node": ">=20"
