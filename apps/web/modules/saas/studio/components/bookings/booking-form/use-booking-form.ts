@@ -37,29 +37,36 @@ export function useBookingForm({
 			BOOKING_TABS.includes(value as BookingTab) ? value : "details",
 	});
 
-	// Track which tabs have errors
-	const [tabsWithErrors, setTabsWithErrors] = useState<Record<string, boolean>>(
-		{},
+	// Track which tabs have been completed (visited and moved on from)
+	const [completedSteps, setCompletedSteps] = useState<Set<BookingTab>>(
+		new Set()
 	);
+
+	// Track which tabs have errors
+	const [tabsWithErrors, setTabsWithErrors] = useState<Record<BookingTab, boolean>>({
+		details: false,
+		shoots: false,
+		payments: false,
+		deliverables: false,
+		review: false,
+	});
 
 	// Update error tracking when form errors change
 	useEffect(() => {
-		if (form.formState.errors) {
-			const errorFields = Object.keys(form.formState.errors);
-			const newTabsWithErrors = BOOKING_TABS.reduce(
-				(acc, tab) => {
-					const hasError = errorFields.some((field) =>
-						TAB_FIELD_MAPPING[tab].some(
-							(tabField) =>
-								field === tabField || field.startsWith(`${tabField}.`),
-						),
-					);
-					return { ...acc, [tab]: hasError };
-				},
-				{} as Record<string, boolean>,
-			);
-			setTabsWithErrors(newTabsWithErrors);
-		}
+		const errorFields = Object.keys(form.formState.errors);
+		const newTabsWithErrors = BOOKING_TABS.reduce(
+			(acc, tab) => {
+				const hasError = errorFields.some((field) =>
+					TAB_FIELD_MAPPING[tab].some(
+						(tabField) =>
+							field === tabField || field.startsWith(`${tabField}.`),
+					),
+				);
+				return { ...acc, [tab]: hasError };
+			},
+			{} as Record<BookingTab, boolean>,
+		);
+		setTabsWithErrors(newTabsWithErrors);
 	}, [form.formState.errors]);
 
 	// Reset form after successful submission (create mode only)
@@ -67,6 +74,7 @@ export function useBookingForm({
 		if (form.formState.isSubmitSuccessful && mode === "create") {
 			form.reset(defaultBookingValues);
 			setActiveTab("details");
+			setCompletedSteps(new Set());
 		}
 	}, [form.formState.isSubmitSuccessful, form, mode, setActiveTab]);
 
@@ -83,6 +91,9 @@ export function useBookingForm({
 
 	const goToNextTab = useCallback(() => {
 		if (currentTabIndex < BOOKING_TABS.length - 1) {
+			// Mark current step as completed when moving to next
+			const currentStep = BOOKING_TABS[currentTabIndex];
+			setCompletedSteps((prev) => new Set(Array.from(prev).concat(currentStep)));
 			handleTabChange(BOOKING_TABS[currentTabIndex + 1]);
 		}
 	}, [currentTabIndex, handleTabChange]);
@@ -116,6 +127,7 @@ export function useBookingForm({
 		errorTabs,
 		showErrorSummary,
 		tabsWithErrors,
+		completedSteps,
 		handleSubmit: form.handleSubmit(onSubmit),
 		TABS: BOOKING_TABS,
 	};

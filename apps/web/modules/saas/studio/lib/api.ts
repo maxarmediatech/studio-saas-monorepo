@@ -166,6 +166,15 @@ export const configurationsApi = {
 
 	relationTypesOptions: () =>
 		orpc.configurations.list.queryOptions({ input: { type: "relation_type" } }),
+
+	crewRolesOptions: () =>
+		orpc.configurations.list.queryOptions({ input: { type: "crew_role" } }),
+
+	shootStatusOptions: () =>
+		orpc.configurations.list.queryOptions({ input: { type: "shoot_status" } }),
+
+	deliverableTypesOptions: () =>
+		orpc.configurations.list.queryOptions({ input: { type: "deliverable_type" } }),
 };
 
 export const configurationsMutations = {

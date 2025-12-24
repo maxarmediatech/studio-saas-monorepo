@@ -1,16 +1,17 @@
 "use client";
 
-import { useFieldArray, useFormContext } from "react-hook-form";
+import { useFieldArray, useFormContext, Controller } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@repo/ui/components/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/components/card";
+import { Card } from "@repo/ui/components/card";
 import {
-	FormControl,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
-} from "@repo/ui/components/form";
+	Field,
+	FieldDescription,
+	FieldError,
+	FieldGroup,
+	FieldLabel,
+	FieldSet,
+} from "@repo/ui/components/field";
 import { Input } from "@repo/ui/components/input";
 import {
 	Select,
@@ -20,7 +21,8 @@ import {
 	SelectValue,
 } from "@repo/ui/components/select";
 import { Textarea } from "@repo/ui/components/textarea";
-import { PlusIcon, TrashIcon } from "lucide-react";
+import { Separator } from "@repo/ui/components/separator";
+import { PlusIcon, TrashIcon, UserPlusIcon } from "lucide-react";
 import { configurationsApi, clientsApi } from "@saas/studio/lib/api";
 import type { BookingFormValues } from "./booking-form-schema";
 
@@ -28,10 +30,18 @@ export function BookingDetailsStep() {
 	const form = useFormContext<BookingFormValues>();
 
 	// Fetch configurations
-	const { data: bookingTypesData } = useQuery(configurationsApi.bookingTypesOptions());
-	const { data: packageTypesData } = useQuery(configurationsApi.packageTypesOptions());
-	const { data: relationTypesData } = useQuery(configurationsApi.relationTypesOptions());
-	const { data: clientsData } = useQuery(clientsApi.listOptions({ limit: 100 }));
+	const { data: bookingTypesData } = useQuery(
+		configurationsApi.bookingTypesOptions()
+	);
+	const { data: packageTypesData } = useQuery(
+		configurationsApi.packageTypesOptions()
+	);
+	const { data: relationTypesData } = useQuery(
+		configurationsApi.relationTypesOptions()
+	);
+	const { data: clientsData } = useQuery(
+		clientsApi.listOptions({ limit: 100 })
+	);
 
 	const bookingTypes = bookingTypesData?.data ?? [];
 	const packageTypes = packageTypesData?.data ?? [];
@@ -52,8 +62,13 @@ export function BookingDetailsStep() {
 	// Filter package types by booking type if metadata specifies it
 	const filteredPackageTypes = packageTypes.filter((pkg) => {
 		if (!selectedBookingType) return true;
-		const bookingTypeMetadata = pkg.metadata as { bookingType?: string } | null;
-		return !bookingTypeMetadata?.bookingType || bookingTypeMetadata.bookingType === selectedBookingType;
+		const bookingTypeMetadata = pkg.metadata as {
+			bookingType?: string;
+		} | null;
+		return (
+			!bookingTypeMetadata?.bookingType ||
+			bookingTypeMetadata.bookingType === selectedBookingType
+		);
 	});
 
 	// Handle package selection - auto-fill cost
@@ -69,44 +84,55 @@ export function BookingDetailsStep() {
 	};
 
 	return (
-		<div className="space-y-6">
-			{/* Booking Details Card */}
-			<Card>
-				<CardHeader>
-					<CardTitle>Booking Details</CardTitle>
-				</CardHeader>
-				<CardContent className="space-y-4">
+		<div className="space-y-8">
+			{/* Booking Information Section */}
+			<section>
+				<h3 className="text-lg font-semibold mb-4">Booking Information</h3>
+				<FieldGroup>
 					<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
 						{/* Booking Name */}
 						<div className="md:col-span-2">
-							<FormField
-								control={form.control}
+							<Controller
 								name="name"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Booking Name</FormLabel>
-										<FormControl>
-											<Input {...field} placeholder="e.g. John & Jane Wedding" />
-										</FormControl>
-										<FormMessage />
-									</FormItem>
+								control={form.control}
+								render={({ field, fieldState }) => (
+									<Field data-invalid={fieldState.invalid}>
+										<FieldLabel htmlFor={field.name}>
+											Booking Name
+										</FieldLabel>
+										<Input
+											{...field}
+											id={field.name}
+											placeholder="e.g. John & Jane Wedding"
+											aria-invalid={fieldState.invalid}
+										/>
+										{fieldState.invalid && (
+											<FieldError errors={[fieldState.error]} />
+										)}
+									</Field>
 								)}
 							/>
 						</div>
 
 						{/* Booking Type */}
-						<FormField
-							control={form.control}
+						<Controller
 							name="bookingType"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Booking Type</FormLabel>
-									<Select onValueChange={field.onChange} value={field.value}>
-										<FormControl>
-											<SelectTrigger>
-												<SelectValue placeholder="Select type" />
-											</SelectTrigger>
-										</FormControl>
+							control={form.control}
+							render={({ field, fieldState }) => (
+								<Field data-invalid={fieldState.invalid}>
+									<FieldLabel htmlFor={field.name}>
+										Booking Type
+									</FieldLabel>
+									<Select
+										onValueChange={field.onChange}
+										value={field.value}
+									>
+										<SelectTrigger
+											id={field.name}
+											aria-invalid={fieldState.invalid}
+										>
+											<SelectValue placeholder="Select type" />
+										</SelectTrigger>
 										<SelectContent>
 											{bookingTypes.map((type) => (
 												<SelectItem key={type.id} value={type.key}>
@@ -115,28 +141,31 @@ export function BookingDetailsStep() {
 											))}
 										</SelectContent>
 									</Select>
-									<FormMessage />
-								</FormItem>
+									{fieldState.invalid && (
+										<FieldError errors={[fieldState.error]} />
+									)}
+								</Field>
 							)}
 						/>
 
 						{/* Package Type */}
-						<FormField
-							control={form.control}
+						<Controller
 							name="packageType"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Package</FormLabel>
+							control={form.control}
+							render={({ field, fieldState }) => (
+								<Field data-invalid={fieldState.invalid}>
+									<FieldLabel htmlFor={field.name}>Package</FieldLabel>
 									<Select
 										onValueChange={handlePackageChange}
 										value={field.value}
 										disabled={!selectedBookingType}
 									>
-										<FormControl>
-											<SelectTrigger>
-												<SelectValue placeholder="Select package" />
-											</SelectTrigger>
-										</FormControl>
+										<SelectTrigger
+											id={field.name}
+											aria-invalid={fieldState.invalid}
+										>
+											<SelectValue placeholder="Select package" />
+										</SelectTrigger>
 										<SelectContent>
 											{filteredPackageTypes.length > 0 ? (
 												filteredPackageTypes.map((pkg) => (
@@ -151,64 +180,95 @@ export function BookingDetailsStep() {
 											)}
 										</SelectContent>
 									</Select>
-									<FormMessage />
-								</FormItem>
+									{fieldState.invalid && (
+										<FieldError errors={[fieldState.error]} />
+									)}
+								</Field>
 							)}
 						/>
 
 						{/* Package Cost */}
-						<FormField
-							control={form.control}
+						<Controller
 							name="packageCost"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Package Cost</FormLabel>
-									<FormControl>
-										<div className="relative">
-											<span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-												₹
-											</span>
-											<Input
-												{...field}
-												className="pl-7"
-												placeholder="0.00"
-												disabled={!selectedBookingType}
-											/>
-										</div>
-									</FormControl>
-									<FormMessage />
-								</FormItem>
+							control={form.control}
+							render={({ field, fieldState }) => (
+								<Field data-invalid={fieldState.invalid}>
+									<FieldLabel htmlFor={field.name}>
+										Package Cost
+									</FieldLabel>
+									<div className="relative">
+										<span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+											₹
+										</span>
+										<Input
+											{...field}
+											id={field.name}
+											className="pl-7"
+											placeholder="0.00"
+											disabled={!selectedBookingType}
+											aria-invalid={fieldState.invalid}
+											onChange={(e) => {
+												// Allow only numbers and decimal point
+												const value = e.target.value.replace(
+													/[^0-9.]/g,
+													""
+												);
+												// Prevent multiple decimal points
+												const parts = value.split(".");
+												if (parts.length > 2) return;
+												// Limit to 2 decimal places
+												if (parts[1] && parts[1].length > 2) return;
+												field.onChange(value);
+											}}
+										/>
+									</div>
+									{fieldState.invalid && (
+										<FieldError errors={[fieldState.error]} />
+									)}
+								</Field>
 							)}
 						/>
 
 						{/* Notes */}
 						<div className="md:col-span-2 lg:col-span-4">
-							<FormField
-								control={form.control}
+							<Controller
 								name="note"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Notes</FormLabel>
-										<FormControl>
-											<Textarea
-												{...field}
-												placeholder="Add any booking specific notes or requests"
-												rows={2}
-											/>
-										</FormControl>
-										<FormMessage />
-									</FormItem>
+								control={form.control}
+								render={({ field, fieldState }) => (
+									<Field data-invalid={fieldState.invalid}>
+										<FieldLabel htmlFor={field.name}>Notes</FieldLabel>
+										<Textarea
+											{...field}
+											id={field.name}
+											placeholder="Add any booking specific notes or requests"
+											rows={2}
+											aria-invalid={fieldState.invalid}
+										/>
+										<FieldDescription>
+											Any special requirements or notes for this booking
+										</FieldDescription>
+										{fieldState.invalid && (
+											<FieldError errors={[fieldState.error]} />
+										)}
+									</Field>
 								)}
 							/>
 						</div>
 					</div>
-				</CardContent>
-			</Card>
+				</FieldGroup>
+			</section>
 
-			{/* Participants Card */}
-			<Card>
-				<CardHeader className="flex flex-row items-center justify-between">
-					<CardTitle>Participants</CardTitle>
+			<Separator />
+
+			{/* Participants Section */}
+			<section>
+				<div className="flex items-center justify-between mb-4">
+					<div>
+						<h3 className="text-lg font-semibold">Participants</h3>
+						<p className="text-sm text-muted-foreground">
+							Add clients associated with this booking
+						</p>
+					</div>
 					<Button
 						type="button"
 						variant="outline"
@@ -223,98 +283,137 @@ export function BookingDetailsStep() {
 						<PlusIcon className="mr-2 h-4 w-4" />
 						Add Participant
 					</Button>
-				</CardHeader>
-				<CardContent className="space-y-4">
+				</div>
+
+				<FieldSet>
 					{participants.length === 0 ? (
-						<p className="text-sm text-muted-foreground text-center py-4">
-							No participants added. Click "Add Participant" to add clients to this booking.
-						</p>
+						<div className="flex flex-col items-center justify-center py-8 text-center border border-dashed rounded-lg">
+							<UserPlusIcon className="h-12 w-12 text-muted-foreground/50 mb-4" />
+							<p className="text-sm text-muted-foreground">
+								No participants added. Click "Add Participant" to add
+								clients to this booking.
+							</p>
+						</div>
 					) : (
-						participants.map((field, index) => (
-							<Card key={field.id} className="p-4">
-								<div className="flex items-start gap-4">
-									<div className="flex-1 grid gap-4 md:grid-cols-2">
-										{/* Client Select */}
-										<FormField
-											control={form.control}
-											name={`participants.${index}.clientId`}
-											render={({ field }) => (
-												<FormItem>
-													<FormLabel>Client</FormLabel>
-													<Select
-														onValueChange={field.onChange}
-														value={field.value}
-													>
-														<FormControl>
-															<SelectTrigger>
+						<FieldGroup className="gap-3">
+							{participants.map((field, index) => (
+								<Card key={field.id} className="p-4">
+									<div className="flex items-start gap-4">
+										<div className="flex-1 grid gap-4 md:grid-cols-2">
+											{/* Client Select */}
+											<Controller
+												name={`participants.${index}.clientId`}
+												control={form.control}
+												render={({ field, fieldState }) => (
+													<Field data-invalid={fieldState.invalid}>
+														<FieldLabel htmlFor={field.name}>
+															Client
+														</FieldLabel>
+														<Select
+															onValueChange={field.onChange}
+															value={field.value}
+														>
+															<SelectTrigger
+																id={field.name}
+																aria-invalid={fieldState.invalid}
+															>
 																<SelectValue placeholder="Select client" />
 															</SelectTrigger>
-														</FormControl>
-														<SelectContent>
-															{clients.map((client) => (
-																<SelectItem key={client.id} value={client.id}>
-																	{client.name}
-																	{client.email && (
-																		<span className="text-muted-foreground ml-2">
-																			({client.email})
-																		</span>
-																	)}
-																</SelectItem>
-															))}
-														</SelectContent>
-													</Select>
-													<FormMessage />
-												</FormItem>
-											)}
-										/>
+															<SelectContent>
+																{clients.length > 0 ? (
+																	clients.map((client) => (
+																		<SelectItem
+																			key={client.id}
+																			value={client.id}
+																		>
+																			<div className="flex flex-col">
+																				<span>{client.name}</span>
+																				{client.phoneNumber && (
+																					<span className="text-xs text-muted-foreground">
+																						{client.phoneNumber}
+																					</span>
+																				)}
+																			</div>
+																		</SelectItem>
+																	))
+																) : (
+																	<div className="p-2 text-sm text-muted-foreground text-center">
+																		No clients found. Create one
+																		first.
+																	</div>
+																)}
+															</SelectContent>
+														</Select>
+														{fieldState.invalid && (
+															<FieldError
+																errors={[fieldState.error]}
+															/>
+														)}
+													</Field>
+												)}
+											/>
 
-										{/* Role Select */}
-										<FormField
-											control={form.control}
-											name={`participants.${index}.role`}
-											render={({ field }) => (
-												<FormItem>
-													<FormLabel>Role</FormLabel>
-													<Select
-														onValueChange={field.onChange}
-														value={field.value}
-													>
-														<FormControl>
-															<SelectTrigger>
+											{/* Role Select */}
+											<Controller
+												name={`participants.${index}.role`}
+												control={form.control}
+												render={({ field, fieldState }) => (
+													<Field data-invalid={fieldState.invalid}>
+														<FieldLabel htmlFor={field.name}>
+															Role
+														</FieldLabel>
+														<Select
+															onValueChange={field.onChange}
+															value={field.value}
+														>
+															<SelectTrigger
+																id={field.name}
+																aria-invalid={fieldState.invalid}
+															>
 																<SelectValue placeholder="Select role" />
 															</SelectTrigger>
-														</FormControl>
-														<SelectContent>
-															{relationTypes.map((type) => (
-																<SelectItem key={type.id} value={type.key}>
-																	{type.label}
-																</SelectItem>
-															))}
-														</SelectContent>
-													</Select>
-													<FormMessage />
-												</FormItem>
-											)}
-										/>
-									</div>
+															<SelectContent>
+																{relationTypes.map((type) => (
+																	<SelectItem
+																		key={type.id}
+																		value={type.key}
+																	>
+																		{type.label}
+																	</SelectItem>
+																))}
+															</SelectContent>
+														</Select>
+														{fieldState.invalid && (
+															<FieldError
+																errors={[fieldState.error]}
+															/>
+														)}
+													</Field>
+												)}
+											/>
+										</div>
 
-									{/* Remove Button */}
-									<Button
-										type="button"
-										variant="ghost"
-										size="icon"
-										className="mt-8"
-										onClick={() => removeParticipant(index)}
-										disabled={participants.length <= 1}
-									>
-										<TrashIcon className="h-4 w-4 text-destructive" />
-									</Button>
-								</div>
-							</Card>
-						))
+										{/* Remove Button */}
+										<Button
+											type="button"
+											variant="ghost"
+											size="icon"
+											className="mt-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+											onClick={() => removeParticipant(index)}
+											disabled={participants.length <= 1}
+										>
+											<TrashIcon className="h-4 w-4" />
+											<span className="sr-only">
+												Remove participant
+											</span>
+										</Button>
+									</div>
+								</Card>
+							))}
+						</FieldGroup>
 					)}
-				</CardContent>
-			</Card>
+				</FieldSet>
+			</section>
 		</div>
 	);
 }

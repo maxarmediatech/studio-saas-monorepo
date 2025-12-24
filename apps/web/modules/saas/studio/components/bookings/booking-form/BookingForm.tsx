@@ -1,15 +1,20 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { Form } from "@repo/ui/components/form";
-import { Button } from "@repo/ui/components/button";
 import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@repo/ui/components/tabs";
-import { AlertCircleIcon, Loader2Icon } from "lucide-react";
-import { useBookingForm } from "./use-booking-form";
+import { Form } from "@repo/ui/components/form";
+import { AlertCircleIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { BookingDeliverablesStep } from "./BookingDeliverablesStep";
 import { BookingDetailsStep } from "./BookingDetailsStep";
-import { BookingEventsStep } from "./BookingEventsStep";
-import { TAB_LABELS, type BookingFormValues } from "./booking-form-schema";
+import { BookingPaymentsStep } from "./BookingPaymentsStep";
+import { BookingShootsStep } from "./BookingShootsStep";
+import { BookingReviewStep } from "./BookingReviewStep";
+import { BookingFormLayout } from "./BookingFormLayout";
+import { BookingStepperSidebar } from "./BookingStepperSidebar";
+import { BookingMobileStepper } from "./BookingMobileStepper";
+import { BookingFormNavigation } from "./BookingFormNavigation";
+import { type BookingFormValues, TAB_LABELS } from "./booking-form-schema";
+import { useBookingForm } from "./use-booking-form";
 
 interface BookingFormProps {
 	defaultValues?: BookingFormValues;
@@ -36,95 +41,89 @@ export function BookingForm({
 		isLastTab,
 		errorTabs,
 		showErrorSummary,
+		tabsWithErrors,
+		completedSteps,
 		handleSubmit,
-		TABS,
 	} = useBookingForm({ defaultValues, onSubmit, mode });
+
+	// Render the current step content
+	const renderStepContent = () => {
+		switch (activeTab) {
+			case "details":
+				return <BookingDetailsStep />;
+			case "shoots":
+				return <BookingShootsStep />;
+			case "payments":
+				return <BookingPaymentsStep />;
+			case "deliverables":
+				return <BookingDeliverablesStep />;
+			case "review":
+				return <BookingReviewStep onNavigateToStep={handleTabChange} />;
+			default:
+				return null;
+		}
+	};
 
 	return (
 		<Form {...form}>
-			<form onSubmit={handleSubmit} className="space-y-6">
-				{/* Error Summary */}
-				{showErrorSummary && (
-					<Alert variant="destructive">
-						<AlertCircleIcon className="h-4 w-4" />
-						<AlertTitle>Validation Errors</AlertTitle>
-						<AlertDescription>
-							Please fix the errors on the indicated tabs before submitting.
-							<ul className="mt-2 list-disc pl-5">
-								{errorTabs.map((tab) => (
-									<li key={tab}>
-										<button
-											type="button"
-											className="text-primary underline capitalize"
-											onClick={() => handleTabChange(tab)}
-										>
-											{TAB_LABELS[tab]} Tab
-										</button>
-									</li>
-								))}
-							</ul>
-						</AlertDescription>
-					</Alert>
-				)}
+			<form onSubmit={handleSubmit}>
+				<BookingFormLayout
+					stepper={
+						<BookingStepperSidebar
+							activeStep={activeTab}
+							completedSteps={completedSteps}
+							stepsWithErrors={tabsWithErrors}
+							onStepClick={handleTabChange}
+						/>
+					}
+					mobileStepper={
+						<BookingMobileStepper
+							activeStep={activeTab}
+							completedSteps={completedSteps}
+							stepsWithErrors={tabsWithErrors}
+							onStepClick={handleTabChange}
+						/>
+					}
+					footer={
+						<BookingFormNavigation
+							onPrevious={goToPreviousTab}
+							onNext={goToNextTab}
+							onCancel={() => router.back()}
+							isFirstStep={isFirstTab}
+							isLastStep={isLastTab}
+							isPending={isPending}
+							mode={mode}
+						/>
+					}
+				>
+					{/* Error Summary */}
+					{showErrorSummary && (
+						<Alert variant="destructive" className="mb-6">
+							<AlertCircleIcon className="h-4 w-4" />
+							<AlertTitle>Validation Errors</AlertTitle>
+							<AlertDescription>
+								Please fix the errors on the indicated steps before
+								submitting.
+								<ul className="mt-2 list-disc pl-5">
+									{errorTabs.map((tab) => (
+										<li key={tab}>
+											<button
+												type="button"
+												className="text-primary underline capitalize"
+												onClick={() => handleTabChange(tab)}
+											>
+												{TAB_LABELS[tab]} Step
+											</button>
+										</li>
+									))}
+								</ul>
+							</AlertDescription>
+						</Alert>
+					)}
 
-				{/* Tabs */}
-				<Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-					<TabsList className="grid w-full grid-cols-2">
-						{TABS.map((tab) => (
-							<TabsTrigger
-								key={tab}
-								value={tab}
-								className="capitalize data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-							>
-								{TAB_LABELS[tab]}
-							</TabsTrigger>
-						))}
-					</TabsList>
-
-					<TabsContent value="details" className="space-y-4">
-						<BookingDetailsStep />
-					</TabsContent>
-
-					<TabsContent value="events" className="space-y-4">
-						<BookingEventsStep />
-					</TabsContent>
-				</Tabs>
-
-				{/* Navigation Buttons */}
-				<div className="flex items-center justify-between pt-6 border-t">
-					<div className="flex items-center gap-2">
-						<Button
-							type="button"
-							variant="outline"
-							onClick={goToPreviousTab}
-							disabled={isFirstTab}
-						>
-							Previous
-						</Button>
-						<Button
-							type="button"
-							variant="outline"
-							onClick={goToNextTab}
-							disabled={isLastTab}
-						>
-							Next
-						</Button>
-					</div>
-
-					<div className="flex items-center gap-2">
-						<Button
-							type="button"
-							variant="secondary"
-							onClick={() => router.back()}
-						>
-							Cancel
-						</Button>
-						<Button type="submit" disabled={isPending}>
-							{isPending && <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />}
-							{mode === "create" ? "Create Booking" : "Save Changes"}
-						</Button>
-					</div>
-				</div>
+					{/* Current Step Content */}
+					{renderStepContent()}
+				</BookingFormLayout>
 			</form>
 		</Form>
 	);

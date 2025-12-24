@@ -1,17 +1,17 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { ArrowLeftIcon } from "lucide-react";
-import Link from "next/link";
 import { Button } from "@repo/ui/components/button";
 import {
 	BookingForm,
-	defaultBookingValues,
 	type BookingFormValues,
+	defaultBookingValues,
 } from "@saas/studio/components/bookings";
 import { bookingsMutations, studioQueryKeys } from "@saas/studio/lib/api";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeftIcon } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 type Props = {
 	params: Promise<{ organizationSlug: string }>;
@@ -31,10 +31,14 @@ export default function NewBookingPage({ params }: Props) {
 				action: {
 					label: "View",
 					onClick: () =>
-						router.push(`/app/${organizationSlug}/bookings/${data.data.id}`),
+						router.push(
+							`/app/${organizationSlug}/bookings/${data.data.id}`,
+						),
 				},
 			});
-			queryClient.invalidateQueries({ queryKey: studioQueryKeys.bookings.all });
+			queryClient.invalidateQueries({
+				queryKey: studioQueryKeys.bookings.all,
+			});
 			router.push(`/app/${organizationSlug}/bookings`);
 		},
 		onError: (error) => {
@@ -64,7 +68,9 @@ export default function NewBookingPage({ params }: Props) {
 					</Link>
 				</Button>
 				<div>
-					<h1 className="text-2xl font-semibold tracking-tight">New Booking</h1>
+					<h1 className="text-2xl font-semibold tracking-tight">
+						New Booking
+					</h1>
 					<p className="text-muted-foreground">
 						Create a new booking for your studio
 					</p>
