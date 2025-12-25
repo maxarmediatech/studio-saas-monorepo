@@ -7,6 +7,7 @@ import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
+	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@repo/ui/components/dropdown-menu";
 import {
@@ -15,14 +16,16 @@ import {
 	TableCell,
 	TableRow,
 } from "@repo/ui/components/table";
+import { Badge } from "@repo/ui/components/badge";
 import { useSession } from "@saas/auth/hooks/use-session";
 import { useOrganizationMemberRoles } from "@saas/organizations/hooks/member-roles";
 import {
 	fullOrganizationQueryKey,
 	useFullOrganizationQuery,
 } from "@saas/organizations/lib/api";
+import { crewsApi, crewsMutations, studioQueryKeys } from "@saas/studio/lib/api";
 import { UserAvatar } from "@shared/components/UserAvatar";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
 	ColumnDef,
 	ColumnFiltersState,
@@ -36,11 +39,12 @@ import {
 	getSortedRowModel,
 	useReactTable,
 } from "@tanstack/react-table";
-import { LogOutIcon, MoreVerticalIcon, TrashIcon } from "lucide-react";
+import { LogOutIcon, MoreVerticalIcon, TrashIcon, UsersIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { OrganizationRoleSelect } from "./OrganizationRoleSelect";
+import { AddToCrewDialog } from "./AddToCrewDialog";
 
 export function OrganizationMembersList({
 	organizationId,
@@ -55,7 +59,35 @@ export function OrganizationMembersList({
 	const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 	const memberRoles = useOrganizationMemberRoles();
 
+	// Dialog state for adding member to crew
+	const [addToCrewDialogOpen, setAddToCrewDialogOpen] = useState(false);
+	const [selectedMemberForCrew, setSelectedMemberForCrew] = useState<{
+		memberId: string;
+		memberName: string;
+	} | null>(null);
+
+	// Fetch crews to check which members have crew profiles
+	const { data: crewsData } = useQuery({
+		...crewsApi.listOptions({ limit: 100 }),
+	});
+
+	// Get set of user IDs that have crew profiles
+	const userIdsWithCrewProfiles = new Set(
+		crewsData?.data?.filter((c) => c.userId).map((c) => c.userId) ?? [],
+	);
+
 	const userIsOrganizationAdmin = isOrganizationAdmin(organization, user);
+
+	const handleAddToCrew = (memberId: string, memberName: string) => {
+		setSelectedMemberForCrew({ memberId, memberName });
+		setAddToCrewDialogOpen(true);
+	};
+
+	const handleAddToCrewSuccess = () => {
+		setAddToCrewDialogOpen(false);
+		setSelectedMemberForCrew(null);
+		queryClient.invalidateQueries({ queryKey: studioQueryKeys.crews.all });
+	};
 
 	const updateMemberRole = async (
 		memberId: string,
@@ -124,8 +156,9 @@ export function OrganizationMembersList({
 			accessorKey: "user",
 			header: "",
 			accessorFn: (row) => row.user,
-			cell: ({ row }) =>
-				row.original.user ? (
+			cell: ({ row }) => {
+				const hasCrewProfile = userIdsWithCrewProfiles.has(row.original.userId);
+				return row.original.user ? (
 					<div className="flex items-center gap-2">
 						<UserAvatar
 							name={
@@ -135,20 +168,29 @@ export function OrganizationMembersList({
 							avatarUrl={row.original.user?.image}
 						/>
 						<div>
-							<strong className="block">
-								{row.original.user.name}
-							</strong>
+							<div className="flex items-center gap-2">
+								<strong className="block">
+									{row.original.user.name}
+								</strong>
+								{hasCrewProfile && (
+									<Badge variant="secondary" className="text-xs">
+										Crew
+									</Badge>
+								)}
+							</div>
 							<small className="text-foreground/60">
 								{row.original.user.email}
 							</small>
 						</div>
 					</div>
-				) : null,
+				) : null;
+			},
 		},
 		{
 			accessorKey: "actions",
 			header: "",
 			cell: ({ row }) => {
+				const hasCrewProfile = userIdsWithCrewProfiles.has(row.original.userId);
 				return (
 					<div className="flex flex-row justify-end gap-2">
 						{userIsOrganizationAdmin ? (
@@ -170,6 +212,22 @@ export function OrganizationMembersList({
 										</Button>
 									</DropdownMenuTrigger>
 									<DropdownMenuContent>
+										{!hasCrewProfile && (
+											<>
+												<DropdownMenuItem
+													onClick={() =>
+														handleAddToCrew(
+															row.original.id,
+															row.original.user?.name ?? "Member",
+														)
+													}
+												>
+													<UsersIcon className="mr-2 size-4" />
+													Add to Crew
+												</DropdownMenuItem>
+												<DropdownMenuSeparator />
+											</>
+										)}
 										{row.original.userId !== user?.id && (
 											<DropdownMenuItem
 												disabled={
@@ -242,37 +300,49 @@ export function OrganizationMembersList({
 	});
 
 	return (
-		<div className="rounded-md border">
-			<Table>
-				<TableBody>
-					{table.getRowModel().rows?.length ? (
-						table.getRowModel().rows.map((row) => (
-							<TableRow
-								key={row.id}
-								data-state={row.getIsSelected() && "selected"}
-							>
-								{row.getVisibleCells().map((cell) => (
-									<TableCell key={cell.id}>
-										{flexRender(
-											cell.column.columnDef.cell,
-											cell.getContext(),
-										)}
-									</TableCell>
-								))}
+		<>
+			<div className="rounded-md border">
+				<Table>
+					<TableBody>
+						{table.getRowModel().rows?.length ? (
+							table.getRowModel().rows.map((row) => (
+								<TableRow
+									key={row.id}
+									data-state={row.getIsSelected() && "selected"}
+								>
+									{row.getVisibleCells().map((cell) => (
+										<TableCell key={cell.id}>
+											{flexRender(
+												cell.column.columnDef.cell,
+												cell.getContext(),
+											)}
+										</TableCell>
+									))}
+								</TableRow>
+							))
+						) : (
+							<TableRow>
+								<TableCell
+									colSpan={columns.length}
+									className="h-24 text-center"
+								>
+									No results.
+								</TableCell>
 							</TableRow>
-						))
-					) : (
-						<TableRow>
-							<TableCell
-								colSpan={columns.length}
-								className="h-24 text-center"
-							>
-								No results.
-							</TableCell>
-						</TableRow>
-					)}
-				</TableBody>
-			</Table>
-		</div>
+						)}
+					</TableBody>
+				</Table>
+			</div>
+
+			{selectedMemberForCrew && (
+				<AddToCrewDialog
+					open={addToCrewDialogOpen}
+					onOpenChange={setAddToCrewDialogOpen}
+					memberId={selectedMemberForCrew.memberId}
+					memberName={selectedMemberForCrew.memberName}
+					onSuccess={handleAddToCrewSuccess}
+				/>
+			)}
+		</>
 	);
 }

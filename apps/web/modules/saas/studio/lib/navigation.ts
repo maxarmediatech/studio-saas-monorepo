@@ -61,7 +61,7 @@ export function getSidebarData(studioSlug: string): SidebarData {
 				},
 				{
 					label: "Team",
-					items: [{ title: "Crew", url: url("/crew"), icon: "users" }],
+					items: [{ title: "Crew", url: url("/crews"), icon: "users" }],
 				},
 			],
 		},
