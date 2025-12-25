@@ -146,6 +146,25 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 		},
 	});
 
+	// Quick submit from sidebar - validates full form
+	const handleQuickSubmit = async () => {
+		const isValid = await form.trigger();
+		if (!isValid) {
+			toast.error("Please fix validation errors before submitting");
+			return;
+		}
+
+		const values = form.getValues();
+		createMutation.mutate(buildCreateBookingInput(values));
+	};
+
+	// Reset form and go back to first step
+	const handleReset = () => {
+		resetForm();
+		form.reset(defaultBookingValues);
+		router.push(`/app/${wizard.organizationSlug}/bookings/new/details`);
+	};
+
 	// Show loading state until hydrated
 	if (!hasHydrated) {
 		return (
@@ -201,6 +220,9 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 								onStepClick={wizard.goToStep}
 								canNavigateToStep={wizard.canNavigateToStep}
 								isNavigating={false}
+								onSubmit={() => void handleQuickSubmit()}
+								onReset={handleReset}
+								isSubmitting={createMutation.isPending}
 							/>
 						}
 						mobileStepper={
