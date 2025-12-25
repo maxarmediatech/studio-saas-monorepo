@@ -25,8 +25,7 @@ import {
 } from "@repo/ui/components/select";
 import { Separator } from "@repo/ui/components/separator";
 import { Textarea } from "@repo/ui/components/textarea";
-import { crewsApi } from "@saas/studio/lib/api";
-import { MOCK_CREW_ROLES, MOCK_CREWS } from "@saas/studio/lib/mock-data";
+import { configurationsApi, crewsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import {
 	CameraIcon,
@@ -48,10 +47,22 @@ export function BookingShootsStep() {
 
 	// Fetch crews for assignment
 	const { data: crewsData } = useQuery(crewsApi.listOptions({ limit: 100 }));
+	// Fetch crew roles from configurations
+	const { data: crewRolesData } = useQuery(configurationsApi.crewRolesOptions());
 
-	// Use mock data as fallback when API returns empty
-	const crews = crewsData?.data?.length ? crewsData.data : MOCK_CREWS;
+	// Use real data from API
+	const crews = crewsData?.data ?? [];
 	const crewRoles = useMemo(() => {
+		// Use configured crew roles, or derive from crew data if not configured
+		if (crewRolesData?.data?.length) {
+			return crewRolesData.data.map((r) => ({
+				id: r.id,
+				key: r.key,
+				label: r.label,
+			}));
+		}
+
+		// Fallback: derive roles from existing crew members
 		const derivedRoles = new Map<
 			string,
 			{ id: string; key: string; label: string }
@@ -67,10 +78,8 @@ export function BookingShootsStep() {
 			derivedRoles.set(key, { id: key, key, label });
 		}
 
-		return derivedRoles.size > 0
-			? Array.from(derivedRoles.values())
-			: MOCK_CREW_ROLES;
-	}, [crews]);
+		return Array.from(derivedRoles.values());
+	}, [crews, crewRolesData]);
 
 	const {
 		fields: shoots,

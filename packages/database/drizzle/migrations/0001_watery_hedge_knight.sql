@@ -1,0 +1,1 @@
+ALTER TYPE "public"."config_type" ADD VALUE 'crew_role' BEFORE 'shoot_status';

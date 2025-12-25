@@ -21,11 +21,6 @@ import {
 import { Separator } from "@repo/ui/components/separator";
 import { Textarea } from "@repo/ui/components/textarea";
 import { clientsApi, configurationsApi } from "@saas/studio/lib/api";
-import {
-	MOCK_BOOKING_TYPES,
-	MOCK_PACKAGE_TYPES,
-	MOCK_RELATION_TYPES,
-} from "@saas/studio/lib/mock-data";
 import { useQuery } from "@tanstack/react-query";
 import { PlusIcon, TrashIcon, UserPlusIcon } from "lucide-react";
 import { useState } from "react";
@@ -54,16 +49,10 @@ export function BookingDetailsStep() {
 		clientsApi.listOptions({ limit: 100 }),
 	);
 
-	// Use mock data as fallback when API returns empty
-	const bookingTypes = bookingTypesData?.data?.length
-		? bookingTypesData.data
-		: MOCK_BOOKING_TYPES;
-	const packageTypes = packageTypesData?.data?.length
-		? packageTypesData.data
-		: MOCK_PACKAGE_TYPES;
-	const relationTypes = relationTypesData?.data?.length
-		? relationTypesData.data
-		: MOCK_RELATION_TYPES;
+	// Use real data from API
+	const bookingTypes = bookingTypesData?.data ?? [];
+	const packageTypes = packageTypesData?.data ?? [];
+	const relationTypes = relationTypesData?.data ?? [];
 	const clients = clientsData?.data ?? [];
 
 	const {

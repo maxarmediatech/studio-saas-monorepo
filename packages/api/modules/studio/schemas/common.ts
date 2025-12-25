@@ -312,6 +312,7 @@ export const configTypeSchema = z.enum([
 	"deliverable_status",
 	"deliverable_priority",
 	"crew_status",
+	"crew_role",
 	"shoot_status",
 	"booking_type",
 	"package_type",

@@ -1,6 +1,12 @@
 import { config } from "@repo/config";
 import {
 	db,
+	crews,
+	users,
+	members,
+	eq,
+	and,
+	isNull,
 	getInvitationById,
 	getOrganizationsByUserId,
 	getPurchasesByOrganizationId,
@@ -110,6 +116,80 @@ export const auth = betterAuth({
 						};
 					}
 					return { data: session };
+				},
+			},
+		},
+		member: {
+			create: {
+				after: async (member: typeof members.$inferSelect) => {
+					// Auto-create crew profile when member joins organization
+					try {
+						// Check if crew already exists for this user in this organization
+						const existingCrew = await db.query.crews.findFirst({
+							where: and(
+								eq(crews.organizationId, member.organizationId),
+								eq(crews.userId, member.userId),
+								isNull(crews.deletedAt),
+							),
+						});
+
+						if (existingCrew) {
+							logger.info("Crew profile already exists for member", {
+								memberId: member.id,
+								userId: member.userId,
+								organizationId: member.organizationId,
+								crewId: existingCrew.id,
+							});
+							return;
+						}
+
+						// Get user details
+						const user = await db.query.users.findFirst({
+							where: eq(users.id, member.userId),
+						});
+
+						if (!user) {
+							logger.warn("User not found for auto-crew creation", {
+								memberId: member.id,
+								userId: member.userId,
+							});
+							return;
+						}
+
+						// Create crew profile linked to user
+						const [created] = await db
+							.insert(crews)
+							.values({
+								organizationId: member.organizationId,
+								userId: user.id,
+								name: user.name,
+								email: user.email,
+								phoneNumber: null,
+								role: "member", // Default role, can be updated later
+								status: "active",
+								dailyRate: null,
+								metadata: { autoCreated: true },
+								createdBy: user.id,
+							})
+							.returning({ id: crews.id });
+
+						if (created) {
+							logger.info("Auto-created crew profile for new member", {
+								memberId: member.id,
+								userId: member.userId,
+								organizationId: member.organizationId,
+								crewId: created.id,
+							});
+						}
+					} catch (error) {
+						// Log error but don't fail the member creation
+						logger.error("Failed to auto-create crew profile", {
+							memberId: member.id,
+							userId: member.userId,
+							organizationId: member.organizationId,
+							error: error instanceof Error ? error.message : String(error),
+						});
+					}
 				},
 			},
 		},

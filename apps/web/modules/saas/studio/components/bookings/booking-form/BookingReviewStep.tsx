@@ -25,13 +25,6 @@ import {
 	ClockIcon,
 } from "lucide-react";
 import { configurationsApi, clientsApi, crewsApi } from "@saas/studio/lib/api";
-import {
-	MOCK_BOOKING_TYPES,
-	MOCK_PACKAGE_TYPES,
-	MOCK_RELATION_TYPES,
-	MOCK_CLIENTS,
-	MOCK_CREWS,
-} from "@saas/studio/lib/mock-data";
 import type { BookingFormValues, BookingTab } from "./booking-form-schema";
 import { SHOOT_TYPE_OPTIONS, DELIVERABLE_TYPE_OPTIONS, PAYMENT_METHOD_OPTIONS } from "./booking-form-schema";
 
@@ -66,18 +59,12 @@ export function BookingReviewStep({
 	);
 	const { data: crewsData } = useQuery(crewsApi.listOptions({ limit: 100 }));
 
-	// Use mock data as fallback when API returns empty
-	const bookingTypes = bookingTypesData?.data?.length
-		? bookingTypesData.data
-		: MOCK_BOOKING_TYPES;
-	const packageTypes = packageTypesData?.data?.length
-		? packageTypesData.data
-		: MOCK_PACKAGE_TYPES;
-	const relationTypes = relationTypesData?.data?.length
-		? relationTypesData.data
-		: MOCK_RELATION_TYPES;
-	const clients = clientsData?.data?.length ? clientsData.data : MOCK_CLIENTS;
-	const crews = crewsData?.data?.length ? crewsData.data : MOCK_CREWS;
+	// Use real data from API
+	const bookingTypes = bookingTypesData?.data ?? [];
+	const packageTypes = packageTypesData?.data ?? [];
+	const relationTypes = relationTypesData?.data ?? [];
+	const clients = clientsData?.data ?? [];
+	const crews = crewsData?.data ?? [];
 
 	// Helper functions
 	const formatCurrency = (amount: number | string) => {

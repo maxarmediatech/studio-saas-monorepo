@@ -122,8 +122,11 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 	const createMutation = useMutation({
 		...bookingsMutations.create(),
 		onSuccess: (data) => {
+			// Reset store and form
 			resetForm();
 			form.reset(defaultBookingValues);
+			// Reset the init ref so form can re-initialize if user comes back
+			didInitFromStoreRef.current = false;
 
 			toast.success("Booking created successfully", {
 				action: {
@@ -162,6 +165,7 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 	const handleReset = () => {
 		resetForm();
 		form.reset(defaultBookingValues);
+		didInitFromStoreRef.current = false;
 		router.push(`/app/${wizard.organizationSlug}/bookings/new/details`);
 	};
 

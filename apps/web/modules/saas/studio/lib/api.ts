@@ -186,6 +186,11 @@ export const configurationsApi = {
 		orpc.configurations.list.queryOptions({
 			input: { type: "shoot_status" },
 		}),
+
+	crewRolesOptions: () =>
+		orpc.configurations.list.queryOptions({
+			input: { type: "crew_role" },
+		}),
 };
 
 export const configurationsMutations = {

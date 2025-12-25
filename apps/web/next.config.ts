@@ -43,11 +43,6 @@ const nextConfig = {
 				permanent: true,
 			},
 			{
-				source: "/app/:organizationSlug/settings",
-				destination: "/app/:organizationSlug/settings/general",
-				permanent: true,
-			},
-			{
 				source: "/app/admin",
 				destination: "/app/admin/users",
 				permanent: true,
