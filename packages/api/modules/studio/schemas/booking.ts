@@ -18,6 +18,7 @@ import {
 	datetimeSchema,
 	moneySchema,
 	bookingPhaseSchema,
+	paymentMethodSchema,
 } from "./common";
 
 // ============================================================================
@@ -206,7 +207,74 @@ export type GetBookingOutput = z.infer<typeof getBookingOutputSchema>;
 // CREATE BOOKING
 // ============================================================================
 
+// Crew assignment for shoots
+const shootCrewAssignmentInputSchema = z.object({
+	crewId: idSchema,
+	role: z.string().min(1).max(100),
+	isLead: z.boolean().default(false),
+});
+
+export type ShootCrewAssignmentInput = z.infer<typeof shootCrewAssignmentInputSchema>;
+
+// Crew assignment for deliverables (no role field)
+const deliverableCrewAssignmentInputSchema = z.object({
+	crewId: idSchema,
+	isLead: z.boolean().default(false),
+});
+
+export type DeliverableCrewAssignmentInput = z.infer<typeof deliverableCrewAssignmentInputSchema>;
+
+// Shoot input with embedded crew assignments
+const shootInputSchema = z.object({
+	name: nameSchema,
+	shootType: z.string().min(1).max(100),
+	shootDate: z.string().min(1), // Date string YYYY-MM-DD
+	startTime: z.string().optional(),
+	endTime: z.string().optional(),
+	venue: z.string().max(255).optional(),
+	venueAddress: z.string().max(500).optional(),
+	notes: z.string().max(5000).optional(),
+	status: z.string().min(1).max(50).default("scheduled"),
+	crewAssignments: z.array(shootCrewAssignmentInputSchema).optional(),
+});
+
+export type ShootInput = z.infer<typeof shootInputSchema>;
+
+// Deliverable input with embedded crew assignments
+const deliverableInputSchema = z.object({
+	name: nameSchema,
+	deliverableType: z.string().min(1).max(100),
+	description: z.string().max(5000).optional(),
+	dueDate: z.string().optional(),
+	crewAssignments: z.array(deliverableCrewAssignmentInputSchema).optional(),
+});
+
+export type DeliverableInput = z.infer<typeof deliverableInputSchema>;
+
+// Received payment input
+const receivedPaymentInputSchema = z.object({
+	amount: moneySchema,
+	paymentMethod: paymentMethodSchema,
+	receivedDate: z.string().min(1), // Date string YYYY-MM-DD
+	transactionReference: z.string().max(100).optional(),
+	notes: z.string().max(10000).optional(),
+});
+
+export type ReceivedPaymentInput = z.infer<typeof receivedPaymentInputSchema>;
+
+// Payment schedule input
+const paymentScheduleInputSchema = z.object({
+	name: nameSchema,
+	amount: moneySchema,
+	dueDate: z.string().min(1), // Date string YYYY-MM-DD
+	notes: z.string().max(10000).optional(),
+	sortOrder: z.number().min(0).default(0),
+});
+
+export type PaymentScheduleInput = z.infer<typeof paymentScheduleInputSchema>;
+
 export const createBookingInputSchema = z.object({
+	// Core booking fields
 	name: nameSchema,
 	bookingType: z.string().min(1).max(100),
 	packageType: z.string().min(1).max(100),
@@ -214,6 +282,18 @@ export const createBookingInputSchema = z.object({
 	note: z.string().max(5000).optional(),
 	participants: z.array(bookingParticipantInputSchema).min(1),
 	events: z.array(bookingEventInputSchema).optional(),
+
+	// Shoots with crew assignments
+	shoots: z.array(shootInputSchema).optional(),
+
+	// Deliverables with crew assignments
+	deliverables: z.array(deliverableInputSchema).optional(),
+
+	// Received payments
+	receivedPayments: z.array(receivedPaymentInputSchema).optional(),
+
+	// Payment schedules
+	paymentSchedules: z.array(paymentScheduleInputSchema).optional(),
 });
 
 export type CreateBookingInput = z.infer<typeof createBookingInputSchema>;

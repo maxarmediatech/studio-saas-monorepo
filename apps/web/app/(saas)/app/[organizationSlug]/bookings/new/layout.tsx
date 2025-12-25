@@ -1,23 +1,23 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@repo/ui/components/button";
 import { Form } from "@repo/ui/components/form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import {
+	BOOKING_TABS,
 	BookingFormLayout,
 	BookingFormNavigation,
+	type BookingFormValues,
 	BookingMobileStepper,
 	BookingStepperSidebar,
-	BOOKING_TABS,
-	TAB_FIELD_MAPPING,
+	type BookingTab,
 	bookingDeliverablesStepSchema,
 	bookingDetailsStepSchema,
 	bookingFormSchema,
 	bookingPaymentsStepSchema,
 	bookingShootsStepSchema,
-	type BookingTab,
-	type BookingFormValues,
 	defaultBookingValues,
+	TAB_FIELD_MAPPING,
 } from "@saas/studio/components/bookings";
 import {
 	useBookingFormHydrated,
@@ -28,26 +28,34 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeftIcon, Loader2Icon } from "lucide-react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, type PropsWithChildren } from "react";
-import { useForm, type Resolver } from "react-hook-form";
+import {
+	type PropsWithChildren,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+} from "react";
+import { type Resolver, useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 const BOOKING_FORM_HTML_ID = "booking-form";
 
 const resolverByStep: Record<BookingTab, Resolver<BookingFormValues>> = {
-	details: zodResolver(bookingDetailsStepSchema) as unknown as Resolver<
-		BookingFormValues
-	>,
-	shoots: zodResolver(bookingShootsStepSchema) as unknown as Resolver<
-		BookingFormValues
-	>,
-	payments: zodResolver(bookingPaymentsStepSchema) as unknown as Resolver<
-		BookingFormValues
-	>,
-	deliverables: zodResolver(bookingDeliverablesStepSchema) as unknown as Resolver<
-		BookingFormValues
-	>,
-	review: zodResolver(bookingFormSchema) as unknown as Resolver<BookingFormValues>,
+	details: zodResolver(
+		bookingDetailsStepSchema,
+	) as unknown as Resolver<BookingFormValues>,
+	shoots: zodResolver(
+		bookingShootsStepSchema,
+	) as unknown as Resolver<BookingFormValues>,
+	payments: zodResolver(
+		bookingPaymentsStepSchema,
+	) as unknown as Resolver<BookingFormValues>,
+	deliverables: zodResolver(
+		bookingDeliverablesStepSchema,
+	) as unknown as Resolver<BookingFormValues>,
+	review: zodResolver(
+		bookingFormSchema,
+	) as unknown as Resolver<BookingFormValues>,
 };
 
 export default function NewBookingLayout({ children }: PropsWithChildren) {
@@ -80,21 +88,34 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 		currentStepRef.current = currentStep;
 	}
 
-	const resolver = useCallback<Resolver<BookingFormValues>>(async (values, context, options) => {
-		const activeStep = currentStepRef.current;
+	const resolver = useCallback<Resolver<BookingFormValues>>(
+		async (values, context, options) => {
+			const activeStep = currentStepRef.current;
 
-		const firstName = options.names?.[0];
-		if (!firstName) {
-			return resolverByStep[activeStep](values, context, options);
-		}
+			if (activeStep === "review") {
+				return resolverByStep.review(values, context, options);
+			}
 
-		const rootField = String(firstName).split(".")[0] as keyof BookingFormValues;
-		const inferredStep = (Object.keys(TAB_FIELD_MAPPING) as BookingTab[]).find(
-			(step) => TAB_FIELD_MAPPING[step].includes(rootField),
-		);
+			const firstName = options.names?.[0];
+			if (!firstName) {
+				return resolverByStep[activeStep](values, context, options);
+			}
 
-		return resolverByStep[inferredStep ?? activeStep](values, context, options);
-	}, []);
+			const rootField = String(firstName).split(
+				".",
+			)[0] as keyof BookingFormValues;
+			const inferredStep = (
+				Object.keys(TAB_FIELD_MAPPING) as BookingTab[]
+			).find((step) => TAB_FIELD_MAPPING[step].includes(rootField));
+
+			return resolverByStep[inferredStep ?? activeStep](
+				values,
+				context,
+				options,
+			);
+		},
+		[],
+	);
 
 	const form = useForm<BookingFormValues>({
 		resolver,
@@ -108,7 +129,7 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 			return;
 		}
 
-		form.reset(formData);
+		form.reset({ ...defaultBookingValues, ...formData });
 		didInitFromStoreRef.current = true;
 	}, [form, formData, hasHydrated]);
 
@@ -145,7 +166,9 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 	const getStepFieldError = useCallback(
 		(step: BookingTab) => {
 			const rootFieldsWithErrors = new Set(
-				Object.keys(form.formState.errors) as (keyof BookingFormValues)[],
+				Object.keys(
+					form.formState.errors,
+				) as (keyof BookingFormValues)[],
 			);
 			return TAB_FIELD_MAPPING[step].some((field) =>
 				rootFieldsWithErrors.has(field),
@@ -317,64 +340,107 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 						note: values.note,
 						participants: values.participants,
 						events: values.events,
+						// Include shoots with crew assignments
+						shoots: values.shoots?.map((shoot) => ({
+							name: shoot.name,
+							shootType: shoot.shootType,
+							shootDate: shoot.shootDate,
+							startTime: shoot.startTime,
+							endTime: shoot.endTime,
+							venue: shoot.venue,
+							venueAddress: shoot.venueAddress,
+							notes: shoot.notes,
+							crewAssignments: shoot.crewAssignments?.map((a) => ({
+								crewId: a.crewId,
+								role: a.role,
+								isLead: a.isLead ?? false,
+							})),
+						})),
+						// Include deliverables with crew assignments
+						deliverables: values.deliverables?.map((del) => ({
+							name: del.name,
+							deliverableType: del.deliverableType,
+							description: del.description,
+							dueDate: del.dueDate,
+							crewAssignments: del.crewAssignments?.map((a) => ({
+								crewId: a.crewId,
+								isLead: a.isLead ?? false,
+							})),
+						})),
+						// Include received payments
+						receivedPayments: values.payments?.map((p) => ({
+							amount: p.amount,
+							paymentMethod: p.paymentMethod,
+							receivedDate: p.receivedDate,
+							transactionReference: p.transactionReference,
+							notes: p.notes,
+						})),
+						// Include payment schedules
+						paymentSchedules: values.paymentSchedules?.map((s, idx) => ({
+							name: s.name,
+							amount: s.amount,
+							dueDate: s.dueDate,
+							notes: s.notes,
+							sortOrder: idx,
+						})),
 					});
 				})}
 			>
 				<div className="space-y-6">
-			{/* Header */}
-			<div className="flex items-center gap-4">
-				<Button variant="ghost" size="icon" asChild>
-					<Link href={`/app/${organizationSlug}/bookings`}>
-						<ArrowLeftIcon className="h-4 w-4" />
-					</Link>
-				</Button>
-				<div>
-					<h1 className="text-2xl font-semibold tracking-tight">
-						New Booking
-					</h1>
-					<p className="text-muted-foreground">
-						Create a new booking for your studio
-					</p>
-				</div>
-			</div>
+					{/* Header */}
+					<div className="flex items-center gap-4">
+						<Button variant="ghost" size="icon" asChild>
+							<Link href={`/app/${organizationSlug}/bookings`}>
+								<ArrowLeftIcon className="h-4 w-4" />
+							</Link>
+						</Button>
+						<div>
+							<h1 className="text-2xl font-semibold tracking-tight">
+								New Booking
+							</h1>
+							<p className="text-muted-foreground">
+								Create a new booking for your studio
+							</p>
+						</div>
+					</div>
 
-			{/* Form Layout */}
-			<BookingFormLayout
-				stepper={
-					<BookingStepperSidebar
-						activeStep={currentStep}
-						completedSteps={completedStepsSet}
-						stepsWithErrors={stepsWithErrors}
-						onStepClick={handleStepClick}
-						canNavigateToStep={canNavigateToStep}
-						isNavigating={false}
-					/>
-				}
-				mobileStepper={
-					<BookingMobileStepper
-						activeStep={currentStep}
-						completedSteps={completedStepsSet}
-						stepsWithErrors={stepsWithErrors}
-						onStepClick={handleStepClick}
-						canNavigateToStep={canNavigateToStep}
-						isNavigating={false}
-					/>
-				}
-				footer={
-					<BookingFormNavigation
-						onPrevious={handlePrevious}
-						onNext={() => void handleNext()}
-						onCancel={handleCancel}
-						isFirstStep={isFirstStep}
-						isLastStep={isLastStep}
-						isPending={createMutation.isPending}
-						isNavigating={false}
-						mode="create"
-					/>
-				}
-			>
-				{children}
-			</BookingFormLayout>
+					{/* Form Layout */}
+					<BookingFormLayout
+						stepper={
+							<BookingStepperSidebar
+								activeStep={currentStep}
+								completedSteps={completedStepsSet}
+								stepsWithErrors={stepsWithErrors}
+								onStepClick={handleStepClick}
+								canNavigateToStep={canNavigateToStep}
+								isNavigating={false}
+							/>
+						}
+						mobileStepper={
+							<BookingMobileStepper
+								activeStep={currentStep}
+								completedSteps={completedStepsSet}
+								stepsWithErrors={stepsWithErrors}
+								onStepClick={handleStepClick}
+								canNavigateToStep={canNavigateToStep}
+								isNavigating={false}
+							/>
+						}
+						footer={
+							<BookingFormNavigation
+								onPrevious={handlePrevious}
+								onNext={() => void handleNext()}
+								onCancel={handleCancel}
+								isFirstStep={isFirstStep}
+								isLastStep={isLastStep}
+								isPending={createMutation.isPending}
+								isNavigating={false}
+								mode="create"
+							/>
+						}
+					>
+						{children}
+					</BookingFormLayout>
 				</div>
 			</form>
 		</Form>

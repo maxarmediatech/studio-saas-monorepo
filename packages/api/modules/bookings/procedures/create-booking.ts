@@ -16,6 +16,12 @@ import {
 	createBookingInputSchema,
 	createBookingOutputSchema,
 } from "../../studio/schemas/booking";
+import {
+	validateCrewIds,
+	createShootsBatch,
+	createDeliverablesBatch,
+	createPaymentsBatch,
+} from "../helpers";
 
 /**
  * Generate a unique reference number for the booking
@@ -53,23 +59,72 @@ async function generateReferenceNumber(
 	return `${prefix}${String(nextNumber).padStart(4, "0")}`;
 }
 
+/**
+ * Collect all crew IDs from shoots and deliverables for validation
+ */
+function collectCrewIds(
+	shoots: { crewAssignments?: { crewId: string }[] }[] | undefined,
+	deliverables: { crewAssignments?: { crewId: string }[] }[] | undefined,
+): string[] {
+	const crewIds: string[] = [];
+
+	if (shoots) {
+		for (const shoot of shoots) {
+			if (shoot.crewAssignments) {
+				crewIds.push(
+					...shoot.crewAssignments
+						.filter((a) => a.crewId && a.crewId.length > 0)
+						.map((a) => a.crewId),
+				);
+			}
+		}
+	}
+
+	if (deliverables) {
+		for (const deliverable of deliverables) {
+			if (deliverable.crewAssignments) {
+				crewIds.push(
+					...deliverable.crewAssignments
+						.filter((a) => a.crewId && a.crewId.length > 0)
+						.map((a) => a.crewId),
+				);
+			}
+		}
+	}
+
+	return crewIds;
+}
+
 export const createBooking = studioProtectedProcedure
 	.route({
 		method: "POST",
 		path: "/bookings",
 		tags: ["Bookings"],
 		summary: "Create booking",
-		description: "Create a new booking with participants and optional events",
+		description:
+			"Create a new booking with participants, shoots, deliverables, and payments",
 	})
 	.input(createBookingInputSchema)
 	.output(createBookingOutputSchema)
 	.handler(async ({ input, context }) => {
 		requirePermission(context, "booking", "create");
 
-		const { name, bookingType, packageType, packageCost, note, participants, events } = input;
+		const {
+			name,
+			bookingType,
+			packageType,
+			packageCost,
+			note,
+			participants,
+			events,
+			shoots,
+			deliverables,
+			receivedPayments,
+			paymentSchedules,
+		} = input;
 
 		return await withTransaction(async (tx) => {
-			// Validate all client IDs exist and belong to organization
+			// 1. Validate all client IDs exist and belong to organization
 			const clientIds = participants.map((p) => p.clientId);
 			const existingClients = await tx.query.clients.findMany({
 				where: and(
@@ -92,10 +147,16 @@ export const createBooking = studioProtectedProcedure
 				});
 			}
 
-			// Generate reference number
+			// 2. Collect and validate all crew IDs (if any)
+			const allCrewIds = collectCrewIds(shoots, deliverables);
+			if (allCrewIds.length > 0) {
+				await validateCrewIds(tx, context.organizationId, allCrewIds);
+			}
+
+			// 3. Generate reference number
 			const referenceNumber = await generateReferenceNumber(tx, context.organizationId);
 
-			// Create booking
+			// 4. Create booking
 			const [created] = await tx
 				.insert(bookings)
 				.values({
@@ -119,7 +180,7 @@ export const createBooking = studioProtectedProcedure
 				});
 			}
 
-			// Create participants
+			// 5. Create participants
 			await tx.insert(bookingParticipants).values(
 				participants.map((p) => ({
 					bookingId: created.id,
@@ -128,7 +189,7 @@ export const createBooking = studioProtectedProcedure
 				})),
 			);
 
-			// Create events if provided
+			// 6. Create events if provided
 			if (events && events.length > 0) {
 				await tx.insert(bookingEvents).values(
 					events.map((e) => ({
@@ -140,6 +201,43 @@ export const createBooking = studioProtectedProcedure
 						venueAddress: e.venueAddress ?? null,
 						notes: e.notes ?? null,
 					})),
+				);
+			}
+
+			// 7. Create shoots with crew assignments
+			if (shoots && shoots.length > 0) {
+				await createShootsBatch(
+					tx,
+					context.organizationId,
+					created.id,
+					context.user.id,
+					shoots,
+				);
+			}
+
+			// 8. Create deliverables with crew assignments
+			if (deliverables && deliverables.length > 0) {
+				await createDeliverablesBatch(
+					tx,
+					context.organizationId,
+					created.id,
+					context.user.id,
+					deliverables,
+				);
+			}
+
+			// 9. Create payments and schedules
+			if (
+				(receivedPayments && receivedPayments.length > 0) ||
+				(paymentSchedules && paymentSchedules.length > 0)
+			) {
+				await createPaymentsBatch(
+					tx,
+					context.organizationId,
+					created.id,
+					context.user.id,
+					receivedPayments ?? [],
+					paymentSchedules ?? [],
 				);
 			}
 
