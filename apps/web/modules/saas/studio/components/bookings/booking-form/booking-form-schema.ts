@@ -237,7 +237,6 @@ export const TAB_FIELD_MAPPING: Record<BookingTab, (keyof BookingFormValues)[]> 
 		"packageCost",
 		"note",
 		"participants",
-		"events",
 	],
 	shoots: ["shoots"],
 	payments: ["payments", "paymentSchedules"],

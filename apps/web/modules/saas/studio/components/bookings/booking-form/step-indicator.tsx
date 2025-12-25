@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@repo/ui/lib/utils";
-import { CheckIcon, AlertCircleIcon } from "lucide-react";
+import { AlertCircleIcon, CheckIcon } from "lucide-react";
 import type { StepConfig } from "./booking-form-schema";
 
 export type StepStatus = "completed" | "current" | "upcoming" | "error";
@@ -37,7 +37,7 @@ export function StepIndicator({
 					"hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
 					status === "current" && "bg-primary/10",
 					status === "error" && "bg-destructive/5",
-					!isClickable && "cursor-default opacity-50"
+					!isClickable && "cursor-default opacity-50",
 				)}
 				aria-current={status === "current" ? "step" : undefined}
 			>
@@ -53,7 +53,7 @@ export function StepIndicator({
 						status === "upcoming" &&
 							"border-muted-foreground/30 bg-background text-muted-foreground",
 						status === "error" &&
-							"border-destructive bg-destructive/10 text-destructive"
+							"border-destructive bg-destructive/10 text-destructive",
 					)}
 				>
 					{status === "completed" ? (
@@ -73,7 +73,7 @@ export function StepIndicator({
 							status === "current" && "text-primary",
 							status === "completed" && "text-foreground",
 							status === "upcoming" && "text-muted-foreground",
-							status === "error" && "text-destructive"
+							status === "error" && "text-destructive",
 						)}
 					>
 						{step.label}
@@ -89,7 +89,7 @@ export function StepIndicator({
 				<div
 					className={cn(
 						"absolute left-[27px] top-[44px] h-4 w-0.5",
-						status === "completed" ? "bg-green-500" : "bg-border"
+						status === "completed" ? "bg-green-500" : "bg-border",
 					)}
 					aria-hidden="true"
 				/>
