@@ -11,11 +11,7 @@ import {
 	BookingMobileStepper,
 	BookingStepperSidebar,
 	type BookingTab,
-	bookingDeliverablesStepSchema,
-	bookingDetailsStepSchema,
 	bookingFormSchema,
-	bookingPaymentsStepSchema,
-	bookingShootsStepSchema,
 	defaultBookingValues,
 	TAB_FIELD_MAPPING,
 } from "@saas/studio/components/bookings";
@@ -40,23 +36,56 @@ import { toast } from "sonner";
 
 const BOOKING_FORM_HTML_ID = "booking-form";
 
-const resolverByStep: Record<BookingTab, Resolver<BookingFormValues>> = {
-	details: zodResolver(
-		bookingDetailsStepSchema,
-	) as unknown as Resolver<BookingFormValues>,
-	shoots: zodResolver(
-		bookingShootsStepSchema,
-	) as unknown as Resolver<BookingFormValues>,
-	payments: zodResolver(
-		bookingPaymentsStepSchema,
-	) as unknown as Resolver<BookingFormValues>,
-	deliverables: zodResolver(
-		bookingDeliverablesStepSchema,
-	) as unknown as Resolver<BookingFormValues>,
-	review: zodResolver(
-		bookingFormSchema,
-	) as unknown as Resolver<BookingFormValues>,
-};
+function buildCreateBookingInput(values: BookingFormValues) {
+	return {
+		name: values.name,
+		bookingType: values.bookingType,
+		packageType: values.packageType,
+		packageCost: values.packageCost,
+		note: values.note,
+		participants: values.participants,
+		events: values.events,
+		shoots: values.shoots?.map((shoot) => ({
+			name: shoot.name,
+			shootType: shoot.shootType,
+			shootDate: shoot.shootDate,
+			startTime: shoot.startTime,
+			endTime: shoot.endTime,
+			venue: shoot.venue,
+			venueAddress: shoot.venueAddress,
+			notes: shoot.notes,
+			crewAssignments: shoot.crewAssignments?.map((assignment) => ({
+				crewId: assignment.crewId,
+				role: assignment.role,
+				isLead: assignment.isLead ?? false,
+			})),
+		})),
+		deliverables: values.deliverables?.map((deliverable) => ({
+			name: deliverable.name,
+			deliverableType: deliverable.deliverableType,
+			description: deliverable.description,
+			dueDate: deliverable.dueDate,
+			crewAssignments: deliverable.crewAssignments?.map((assignment) => ({
+				crewId: assignment.crewId,
+				isLead: assignment.isLead ?? false,
+			})),
+		})),
+		receivedPayments: values.payments?.map((payment) => ({
+			amount: payment.amount,
+			paymentMethod: payment.paymentMethod,
+			receivedDate: payment.receivedDate,
+			transactionReference: payment.transactionReference,
+			notes: payment.notes,
+		})),
+		paymentSchedules: values.paymentSchedules?.map((schedule, idx) => ({
+			name: schedule.name,
+			amount: schedule.amount,
+			dueDate: schedule.dueDate,
+			notes: schedule.notes,
+			sortOrder: idx,
+		})),
+	};
+}
 
 export default function NewBookingLayout({ children }: PropsWithChildren) {
 	const router = useRouter();
@@ -83,42 +112,10 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 	const isFirstStep = currentIndex === 0;
 	const isLastStep = currentIndex === BOOKING_TABS.length - 1;
 
-	const currentStepRef = useRef<BookingTab>("details");
-	if (isValidStep) {
-		currentStepRef.current = currentStep;
-	}
-
-	const resolver = useCallback<Resolver<BookingFormValues>>(
-		async (values, context, options) => {
-			const activeStep = currentStepRef.current;
-
-			if (activeStep === "review") {
-				return resolverByStep.review(values, context, options);
-			}
-
-			const firstName = options.names?.[0];
-			if (!firstName) {
-				return resolverByStep[activeStep](values, context, options);
-			}
-
-			const rootField = String(firstName).split(
-				".",
-			)[0] as keyof BookingFormValues;
-			const inferredStep = (
-				Object.keys(TAB_FIELD_MAPPING) as BookingTab[]
-			).find((step) => TAB_FIELD_MAPPING[step].includes(rootField));
-
-			return resolverByStep[inferredStep ?? activeStep](
-				values,
-				context,
-				options,
-			);
-		},
-		[],
-	);
-
 	const form = useForm<BookingFormValues>({
-		resolver,
+		resolver: zodResolver(
+			bookingFormSchema,
+		) as unknown as Resolver<BookingFormValues>,
 		defaultValues: defaultBookingValues,
 		mode: "onChange",
 	});
@@ -332,58 +329,7 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 						return;
 					}
 
-					createMutation.mutate({
-						name: values.name,
-						bookingType: values.bookingType,
-						packageType: values.packageType,
-						packageCost: values.packageCost,
-						note: values.note,
-						participants: values.participants,
-						events: values.events,
-						// Include shoots with crew assignments
-						shoots: values.shoots?.map((shoot) => ({
-							name: shoot.name,
-							shootType: shoot.shootType,
-							shootDate: shoot.shootDate,
-							startTime: shoot.startTime,
-							endTime: shoot.endTime,
-							venue: shoot.venue,
-							venueAddress: shoot.venueAddress,
-							notes: shoot.notes,
-							crewAssignments: shoot.crewAssignments?.map((a) => ({
-								crewId: a.crewId,
-								role: a.role,
-								isLead: a.isLead ?? false,
-							})),
-						})),
-						// Include deliverables with crew assignments
-						deliverables: values.deliverables?.map((del) => ({
-							name: del.name,
-							deliverableType: del.deliverableType,
-							description: del.description,
-							dueDate: del.dueDate,
-							crewAssignments: del.crewAssignments?.map((a) => ({
-								crewId: a.crewId,
-								isLead: a.isLead ?? false,
-							})),
-						})),
-						// Include received payments
-						receivedPayments: values.payments?.map((p) => ({
-							amount: p.amount,
-							paymentMethod: p.paymentMethod,
-							receivedDate: p.receivedDate,
-							transactionReference: p.transactionReference,
-							notes: p.notes,
-						})),
-						// Include payment schedules
-						paymentSchedules: values.paymentSchedules?.map((s, idx) => ({
-							name: s.name,
-							amount: s.amount,
-							dueDate: s.dueDate,
-							notes: s.notes,
-							sortOrder: idx,
-						})),
-					});
+					createMutation.mutate(buildCreateBookingInput(values));
 				})}
 			>
 				<div className="space-y-6">
