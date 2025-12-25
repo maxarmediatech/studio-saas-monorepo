@@ -31,6 +31,10 @@ export function useBookingWizard({ form }: UseBookingWizardOptions) {
 	);
 	const completedSteps = useBookingFormStore((state) => state.completedSteps);
 
+	// Read formState.errors at top level to properly subscribe to changes
+	// (React Hook Form's formState is a Proxy - accessing in callbacks doesn't trigger re-renders)
+	const { errors } = form.formState;
+
 	// Extract current step from URL path
 	const pathSegments = pathname.split("/");
 	const currentStep = pathSegments[pathSegments.length - 1] as BookingTab;
@@ -51,15 +55,13 @@ export function useBookingWizard({ form }: UseBookingWizardOptions) {
 	const getStepFieldError = useCallback(
 		(step: BookingTab) => {
 			const rootFieldsWithErrors = new Set(
-				Object.keys(
-					form.formState.errors,
-				) as (keyof BookingFormValues)[],
+				Object.keys(errors) as (keyof BookingFormValues)[],
 			);
 			return TAB_FIELD_MAPPING[step].some((field) =>
 				rootFieldsWithErrors.has(field),
 			);
 		},
-		[form.formState.errors],
+		[errors],
 	);
 
 	// Get error status for all steps
