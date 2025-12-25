@@ -37,6 +37,8 @@ export {
 	TAB_FIELD_MAPPING,
 	TAB_LABELS,
 } from "./booking-form-schema";
+// Hooks
+export { useBookingWizard } from "./hooks/useBookingWizard";
 export { StepIndicator, type StepStatus } from "./step-indicator";
 // Store (for page-based routing)
 export {

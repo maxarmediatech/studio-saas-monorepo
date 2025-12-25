@@ -4,17 +4,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@repo/ui/components/button";
 import { Form } from "@repo/ui/components/form";
 import {
-	BOOKING_TABS,
 	BookingFormLayout,
 	BookingFormNavigation,
 	type BookingFormValues,
 	BookingMobileStepper,
 	BookingStepperSidebar,
-	type BookingTab,
 	bookingFormSchema,
 	defaultBookingValues,
-	TAB_FIELD_MAPPING,
 } from "@saas/studio/components/bookings";
+import { useBookingWizard } from "@saas/studio/components/bookings/booking-form/hooks/useBookingWizard";
 import {
 	useBookingFormHydrated,
 	useBookingFormStore,
@@ -23,14 +21,8 @@ import { bookingsMutations, studioQueryKeys } from "@saas/studio/lib/api";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeftIcon, Loader2Icon } from "lucide-react";
 import Link from "next/link";
-import { useParams, usePathname, useRouter } from "next/navigation";
-import {
-	type PropsWithChildren,
-	useCallback,
-	useEffect,
-	useMemo,
-	useRef,
-} from "react";
+import { useRouter } from "next/navigation";
+import { type PropsWithChildren, useEffect, useRef } from "react";
 import { type Resolver, useForm } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -89,28 +81,8 @@ function buildCreateBookingInput(values: BookingFormValues) {
 
 export default function NewBookingLayout({ children }: PropsWithChildren) {
 	const router = useRouter();
-	const pathname = usePathname();
-	const params = useParams<{ organizationSlug: string }>();
-	const organizationSlug = params.organizationSlug;
-
-	const {
-		formData,
-		setFormData,
-		completedSteps,
-		setStepCompleted,
-		resetForm,
-	} = useBookingFormStore();
+	const resetForm = useBookingFormStore((state) => state.resetForm);
 	const hasHydrated = useBookingFormHydrated();
-
-	// Extract current step from URL path
-	const pathSegments = pathname.split("/");
-	const currentStep = pathSegments[pathSegments.length - 1] as BookingTab;
-	const currentIndex = BOOKING_TABS.indexOf(currentStep);
-
-	// Determine if we're on a valid step
-	const isValidStep = BOOKING_TABS.includes(currentStep);
-	const isFirstStep = currentIndex === 0;
-	const isLastStep = currentIndex === BOOKING_TABS.length - 1;
 
 	const form = useForm<BookingFormValues>({
 		resolver: zodResolver(
@@ -120,163 +92,31 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 		mode: "onChange",
 	});
 
+	// Initialize form from store on hydration
 	const didInitFromStoreRef = useRef(false);
 	useEffect(() => {
 		if (!hasHydrated || didInitFromStoreRef.current) {
 			return;
 		}
-
-		form.reset({ ...defaultBookingValues, ...formData });
+		const storedFormData = useBookingFormStore.getState().formData;
+		form.reset({ ...defaultBookingValues, ...storedFormData });
 		didInitFromStoreRef.current = true;
-	}, [form, formData, hasHydrated]);
+	}, [form, hasHydrated]);
 
-	const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+	const wizard = useBookingWizard({ form });
+
+	// Redirect to first incomplete step if trying to access invalid step
 	useEffect(() => {
-		if (!hasHydrated || !didInitFromStoreRef.current) {
+		if (!hasHydrated || !wizard.isValidStep) {
 			return;
 		}
-
-		const subscription = form.watch((data) => {
-			if (debounceTimerRef.current) {
-				clearTimeout(debounceTimerRef.current);
-			}
-
-			debounceTimerRef.current = setTimeout(() => {
-				setFormData(data as Partial<BookingFormValues>);
-			}, 300);
-		});
-
-		return () => {
-			subscription.unsubscribe();
-			if (debounceTimerRef.current) {
-				clearTimeout(debounceTimerRef.current);
-			}
-		};
-	}, [form, hasHydrated, setFormData]);
-
-	// Memoize Set creation to prevent unnecessary re-renders
-	const completedStepsSet = useMemo(
-		() => new Set<BookingTab>(completedSteps),
-		[completedSteps],
-	);
-
-	const getStepFieldError = useCallback(
-		(step: BookingTab) => {
-			const rootFieldsWithErrors = new Set(
-				Object.keys(
-					form.formState.errors,
-				) as (keyof BookingFormValues)[],
+		if (!wizard.canNavigateToStep(wizard.currentStep)) {
+			const firstIncomplete = wizard.getFirstIncompleteStep();
+			router.replace(
+				`/app/${wizard.organizationSlug}/bookings/new/${firstIncomplete}`,
 			);
-			return TAB_FIELD_MAPPING[step].some((field) =>
-				rootFieldsWithErrors.has(field),
-			);
-		},
-		[form.formState.errors],
-	);
-
-	const stepsWithErrors = useMemo<Record<BookingTab, boolean>>(() => {
-		return {
-			details: getStepFieldError("details"),
-			shoots: getStepFieldError("shoots"),
-			payments: getStepFieldError("payments"),
-			deliverables: getStepFieldError("deliverables"),
-			review: getStepFieldError("review"),
-		};
-	}, [getStepFieldError]);
-
-	const canNavigateToStep = useCallback(
-		(step: BookingTab) => {
-			const targetIndex = BOOKING_TABS.indexOf(step);
-			if (targetIndex === -1) {
-				return false;
-			}
-
-			if (!isValidStep) {
-				return false;
-			}
-
-			if (targetIndex < currentIndex) {
-				return true;
-			}
-
-			for (let i = 0; i < targetIndex; i += 1) {
-				const requiredStep = BOOKING_TABS[i];
-				if (!completedStepsSet.has(requiredStep)) {
-					return false;
-				}
-			}
-
-			return true;
-		},
-		[completedStepsSet, currentIndex, isValidStep],
-	);
-
-	useEffect(() => {
-		if (!hasHydrated || !isValidStep) {
-			return;
 		}
-
-		if (canNavigateToStep(currentStep)) {
-			return;
-		}
-
-		const firstIncompleteStep = BOOKING_TABS.find(
-			(step) => !completedStepsSet.has(step),
-		);
-
-		router.replace(
-			`/app/${organizationSlug}/bookings/new/${firstIncompleteStep ?? "details"}`,
-		);
-	}, [
-		canNavigateToStep,
-		completedStepsSet,
-		currentStep,
-		hasHydrated,
-		isValidStep,
-		organizationSlug,
-		router,
-	]);
-
-	// Navigation handlers
-	const handleStepClick = (step: BookingTab) => {
-		if (!canNavigateToStep(step)) {
-			return;
-		}
-		router.push(`/app/${organizationSlug}/bookings/new/${step}`);
-	};
-
-	const handleNext = async () => {
-		if (!isValidStep) {
-			return;
-		}
-
-		const fieldsToValidate = TAB_FIELD_MAPPING[currentStep];
-		const isCurrentStepValid = await form.trigger(fieldsToValidate, {
-			shouldFocus: true,
-		});
-
-		if (!isCurrentStepValid) {
-			return;
-		}
-
-		setStepCompleted(currentStep);
-
-		if (currentIndex < BOOKING_TABS.length - 1) {
-			const nextStep = BOOKING_TABS[currentIndex + 1];
-			router.push(`/app/${organizationSlug}/bookings/new/${nextStep}`);
-		}
-	};
-
-	const handlePrevious = () => {
-		if (currentIndex > 0) {
-			const prevStep = BOOKING_TABS[currentIndex - 1];
-			router.push(`/app/${organizationSlug}/bookings/new/${prevStep}`);
-		}
-	};
-
-	const handleCancel = () => {
-		router.push(`/app/${organizationSlug}/bookings`);
-	};
+	}, [hasHydrated, router, wizard]);
 
 	const queryClient = useQueryClient();
 	const createMutation = useMutation({
@@ -290,7 +130,7 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 					label: "View",
 					onClick: () =>
 						router.push(
-							`/app/${params.organizationSlug}/bookings/${data.data.id}`,
+							`/app/${wizard.organizationSlug}/bookings/${data.data.id}`,
 						),
 				},
 			});
@@ -299,14 +139,14 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 				queryKey: studioQueryKeys.bookings.all,
 			});
 
-			router.push(`/app/${params.organizationSlug}/bookings`);
+			router.push(`/app/${wizard.organizationSlug}/bookings`);
 		},
 		onError: (error) => {
 			toast.error(error.message || "Failed to create booking");
 		},
 	});
 
-	// Show loading state until hydrated to prevent hydration mismatch
+	// Show loading state until hydrated
 	if (!hasHydrated) {
 		return (
 			<div className="flex items-center justify-center min-h-[60vh]">
@@ -315,8 +155,8 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 		);
 	}
 
-	// If not a valid step, just render children (will be handled by the page)
-	if (!isValidStep) {
+	// If not a valid step, just render children
+	if (!wizard.isValidStep) {
 		return <>{children}</>;
 	}
 
@@ -325,10 +165,9 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 			<form
 				id={BOOKING_FORM_HTML_ID}
 				onSubmit={form.handleSubmit((values) => {
-					if (!isLastStep) {
+					if (!wizard.isLastStep) {
 						return;
 					}
-
 					createMutation.mutate(buildCreateBookingInput(values));
 				})}
 			>
@@ -336,7 +175,9 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 					{/* Header */}
 					<div className="flex items-center gap-4">
 						<Button variant="ghost" size="icon" asChild>
-							<Link href={`/app/${organizationSlug}/bookings`}>
+							<Link
+								href={`/app/${wizard.organizationSlug}/bookings`}
+							>
 								<ArrowLeftIcon className="h-4 w-4" />
 							</Link>
 						</Button>
@@ -354,31 +195,31 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 					<BookingFormLayout
 						stepper={
 							<BookingStepperSidebar
-								activeStep={currentStep}
-								completedSteps={completedStepsSet}
-								stepsWithErrors={stepsWithErrors}
-								onStepClick={handleStepClick}
-								canNavigateToStep={canNavigateToStep}
+								activeStep={wizard.currentStep}
+								completedSteps={wizard.completedStepsSet}
+								stepsWithErrors={wizard.stepsWithErrors}
+								onStepClick={wizard.goToStep}
+								canNavigateToStep={wizard.canNavigateToStep}
 								isNavigating={false}
 							/>
 						}
 						mobileStepper={
 							<BookingMobileStepper
-								activeStep={currentStep}
-								completedSteps={completedStepsSet}
-								stepsWithErrors={stepsWithErrors}
-								onStepClick={handleStepClick}
-								canNavigateToStep={canNavigateToStep}
+								activeStep={wizard.currentStep}
+								completedSteps={wizard.completedStepsSet}
+								stepsWithErrors={wizard.stepsWithErrors}
+								onStepClick={wizard.goToStep}
+								canNavigateToStep={wizard.canNavigateToStep}
 								isNavigating={false}
 							/>
 						}
 						footer={
 							<BookingFormNavigation
-								onPrevious={handlePrevious}
-								onNext={() => void handleNext()}
-								onCancel={handleCancel}
-								isFirstStep={isFirstStep}
-								isLastStep={isLastStep}
+								onPrevious={wizard.previous}
+								onNext={() => void wizard.next()}
+								onCancel={wizard.cancel}
+								isFirstStep={wizard.isFirstStep}
+								isLastStep={wizard.isLastStep}
 								isPending={createMutation.isPending}
 								isNavigating={false}
 								mode="create"
