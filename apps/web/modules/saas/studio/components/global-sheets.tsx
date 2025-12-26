@@ -22,8 +22,8 @@ import { Suspense } from "react";
 // Clients
 import { ClientCreateSheet, ClientEditSheet } from "./clients/sheets";
 
-// Crews (to be added in Phase 2)
-// import { CrewCreateSheet, CrewEditSheet } from "./crews/sheets";
+// Crews
+import { CrewCreateSheet, CrewEditSheet } from "./crews/sheets";
 
 // Configurations (to be added in Phase 3)
 // import { ConfigurationCreateSheet, ConfigurationEditSheet } from "./configurations/sheets";
@@ -37,11 +37,11 @@ export function GlobalSheets() {
 				<ClientEditSheet />
 			</Suspense>
 
-			{/* Crews - Phase 2 */}
-			{/* <CrewCreateSheet />
+			{/* Crews */}
+			<CrewCreateSheet />
 			<Suspense fallback={null}>
 				<CrewEditSheet />
-			</Suspense> */}
+			</Suspense>
 
 			{/* Configurations - Phase 3 */}
 			{/* <ConfigurationCreateSheet />

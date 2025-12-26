@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@repo/ui/components/badge";
-import { Button } from "@repo/ui/components/button";
 import { Input } from "@repo/ui/components/input";
 import {
 	Select,
@@ -27,7 +26,6 @@ import {
 import {
 	PencilIcon,
 	TrashIcon,
-	PlusIcon,
 	SearchIcon,
 	Loader2Icon,
 	UserIcon,
@@ -40,7 +38,8 @@ import {
 	type RowAction,
 } from "@saas/shared/components/data-table";
 import type { Crew } from "@repo/api/modules/studio/schemas/crew";
-import { CrewFormDialog } from "./CrewFormDialog";
+import { useCrewParams } from "@saas/studio/hooks/params/use-crew-params";
+import { OpenCrewCreateSheet } from "./OpenCrewSheet";
 
 interface CrewsPageClientProps {
 	organizationSlug: string;
@@ -80,8 +79,9 @@ export function CrewsPageClient({
 	const [currentFilters, setCurrentFilters] = useState(initialFilters);
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [crewToDelete, setCrewToDelete] = useState<Crew | null>(null);
-	const [formDialogOpen, setFormDialogOpen] = useState(false);
-	const [editingCrew, setEditingCrew] = useState<Crew | null>(null);
+
+	// URL-based sheet params
+	const { openEdit } = useCrewParams();
 
 	// Build query input
 	const queryInput = {
@@ -156,20 +156,8 @@ export function CrewsPageClient({
 		updateFilters({ page: newPagination.page });
 	};
 
-	const handleOpenCreate = () => {
-		setEditingCrew(null);
-		setFormDialogOpen(true);
-	};
-
 	const handleOpenEdit = (crew: Crew) => {
-		setEditingCrew(crew);
-		setFormDialogOpen(true);
-	};
-
-	const handleFormSuccess = () => {
-		setFormDialogOpen(false);
-		setEditingCrew(null);
-		queryClient.invalidateQueries({ queryKey: studioQueryKeys.crews.all });
+		openEdit(crew.id);
 	};
 
 	// Define row actions
@@ -285,10 +273,7 @@ export function CrewsPageClient({
 				</Select>
 
 				<div className="ml-auto">
-					<Button onClick={handleOpenCreate}>
-						<PlusIcon className="mr-2 h-4 w-4" />
-						Add Crew Member
-					</Button>
+					<OpenCrewCreateSheet />
 				</div>
 			</div>
 
@@ -304,20 +289,9 @@ export function CrewsPageClient({
 					<div className="flex flex-col items-center gap-2">
 						<UserIcon className="h-12 w-12 text-muted-foreground/50" />
 						<p className="text-muted-foreground">No crew members found</p>
-						<Button variant="outline" size="sm" onClick={handleOpenCreate}>
-							<PlusIcon className="mr-2 h-4 w-4" />
-							Add your first crew member
-						</Button>
+						<OpenCrewCreateSheet variant="outline" size="sm" label="Add your first crew member" />
 					</div>
 				}
-			/>
-
-			{/* Create/Edit dialog */}
-			<CrewFormDialog
-				open={formDialogOpen}
-				onOpenChange={setFormDialogOpen}
-				crew={editingCrew}
-				onSuccess={handleFormSuccess}
 			/>
 
 			{/* Delete confirmation dialog */}

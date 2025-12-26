@@ -404,16 +404,16 @@ apps/web/modules/saas/studio/
 - [ ] Test: back button behavior
 - [ ] Test: deep linking (`?clientId=123`)
 
-### Phase 2: Crew Sheets ⬅️ NEXT
-- [ ] Create `use-crew-params.ts`
-- [ ] Create `CrewForm.tsx`
-- [ ] Create `CrewCreateSheet`, `CrewEditSheet`
-- [ ] Create `OpenCrewSheet`
-- [ ] Register in `GlobalSheets`
-- [ ] Update `CrewsPageClient`
-- [ ] Remove old `CrewFormDialog`
+### Phase 2: Crew Sheets ✅ DONE
+- [x] Create `use-crew-params.ts`
+- [x] Create `CrewForm.tsx`
+- [x] Create `CrewCreateSheet`, `CrewEditSheet`
+- [x] Create `OpenCrewSheet`
+- [x] Register in `GlobalSheets`
+- [x] Update `CrewsPageClient`
+- [x] Remove old `CrewFormDialog`
 
-### Phase 3: Configuration Sheets
+### Phase 3: Configuration Sheets ⬅️ NEXT
 - [ ] Create `use-configuration-params.ts` (generic approach)
 - [ ] Create `ConfigurationForm.tsx`
 - [ ] Create `ConfigurationCreateSheet`, `ConfigurationEditSheet`
