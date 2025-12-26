@@ -18,8 +18,9 @@ export default function BookingsLayout({ params, children }: Props) {
 	const isNewBooking = pathname.includes("/bookings/new");
 
 	return (
-		<>
+		<div className="flex flex-col flex-1">
 			<PageHeader
+				key="header"
 				title={isNewBooking ? "New Booking" : "Bookings"}
 				backButton={
 					isNewBooking ? (
@@ -41,7 +42,9 @@ export default function BookingsLayout({ params, children }: Props) {
 					) : undefined
 				}
 			/>
-			{children}
-		</>
+			<div key="content" className="flex-1">
+				{children}
+			</div>
+		</div>
 	);
 }
