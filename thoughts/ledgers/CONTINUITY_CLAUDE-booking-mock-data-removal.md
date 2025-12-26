@@ -1,5 +1,5 @@
 # Session: booking-mock-data-removal
-Updated: 2025-12-26T10:30:00Z
+Updated: 2025-12-26T07:36:57.383Z
 
 ## Goal
 Remove all mock data dependencies from the multi-page booking wizard. Done when:
@@ -51,6 +51,33 @@ All tasks have been completed successfully. The booking wizard now uses real API
 6. **Config/Route Fixes**
    - Removed `/app/:organizationSlug/settings` -> `/settings/general` redirect from `next.config.ts` so settings hub page is accessible
 
+### Session 3 (2025-12-26) - Layout Refactoring
+1. **Page-Level Header Pattern** - Replaced parent layout header with page-level PageHeader component
+   - Created `apps/web/modules/saas/studio/components/PageHeader.tsx`
+   - Props: `title`, `description?`, `actions?`, `backButton?`
+   - Uses negative margins (`-mx-6 -mt-6 lg:-mx-8 lg:-mt-8`) to span full width
+
+2. **StudioLayout Simplified** - `apps/web/modules/saas/studio/components/StudioLayout.tsx`
+   - Removed parent-level header entirely
+   - Content area renders children with padding, pages render their own headers
+
+3. **StudioSidebar Updates** - `apps/web/modules/saas/studio/components/StudioSidebar.tsx`
+   - Added UserMenu to icon rail footer (always visible)
+   - Organization switcher in second column header
+   - App Logo in icon rail header
+
+4. **Pages Updated to Use PageHeader:**
+   - `/bookings` - PageHeader with "New Booking" action button
+   - `/bookings/new` - PageHeader with back button
+   - `/clients` - PageHeader with title only
+   - `/crews` - PageHeader with title only
+   - `/settings` - PageHeader with title only
+   - Configuration sub-pages via `ConfigurationsPageClient` component
+
+5. **Commits:**
+   - `1672bf2` - refactor(layout): add seamless header and org switcher to sidebar
+   - `a7764f8` - refactor(layout): replace parent header with page-level PageHeader component
+
 ## Known Issues (Deferred)
 - **Form reset after booking creation**: After clicking "Create Booking" from sidebar, the form doesn't properly reset. Attempted fix with `didInitFromStoreRef.current = false` but needs more investigation. User wanted to defer.
 
@@ -58,6 +85,7 @@ All tasks have been completed successfully. The booking wizard now uses real API
 - Full CRUD approach: Built management UIs for all entities
 - Auto-crew creation: New org members automatically get crew profiles via better-auth hook
 - Hardcoded options kept: PAYMENT_METHOD_OPTIONS, PAYMENT_SCHEDULE_PRESETS, SHOOT_TYPE_OPTIONS, DELIVERABLE_TYPE_OPTIONS (in booking-form-schema.ts)
+- **Page-level headers**: Each page renders its own PageHeader component (not parent layout) for full flexibility per page
 
 ## Patterns Used
 - Server component prefetches with `queryClient.prefetchQuery()`
@@ -65,8 +93,12 @@ All tasks have been completed successfully. The booking wizard now uses real API
 - Reusable `ConfigurationsPageClient` component works with any config type
 - DataTable pattern with row actions for CRUD operations
 - Zustand with persist middleware for form draft state (`booking-form-draft` localStorage key)
+- **PageHeader pattern**: Reusable component with negative margins to span full width despite parent padding
 
 ## Working Set
 - Branch: `booking-crud`
-- Key files: `apps/web/app/(saas)/app/[organizationSlug]/bookings/new/layout.tsx`
+- Key files:
+  - `apps/web/modules/saas/studio/components/PageHeader.tsx`
+  - `apps/web/modules/saas/studio/components/StudioLayout.tsx`
+  - `apps/web/modules/saas/studio/components/StudioSidebar.tsx`
 - Form store: `apps/web/modules/saas/studio/components/bookings/booking-form/store/use-booking-form-store.ts`
