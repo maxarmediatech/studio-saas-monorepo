@@ -4,7 +4,6 @@ import { BookingsFilters, BookingsTableSkeleton } from "@saas/studio";
 import { BookingsTable } from "@saas/studio/components/bookings/index.server";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import Boundary from "@/modules/ui/components/internal/Boundary";
 
 type Props = {
 	params: Promise<{ organizationSlug: string }>;
@@ -41,26 +40,20 @@ export default async function BookingsPage({ params, searchParams }: Props) {
 
 	return (
 		<div className="space-y-4">
-			{/* Filters render instantly - client component */}
-			<Boundary hydration="client" label="Filters (instant)">
-				<BookingsFilters
-					organizationSlug={organizationSlug}
-					initialSearch={search}
-					initialStatus={status}
-				/>
-			</Boundary>
+			<BookingsFilters
+				organizationSlug={organizationSlug}
+				initialSearch={search}
+				initialStatus={status}
+			/>
 
-			{/* Table streams in - async server component */}
-			<Boundary rendering="dynamic" label="Table (streaming)">
-				<Suspense fallback={<BookingsTableSkeleton />}>
-					<BookingsTable
-						organizationSlug={organizationSlug}
-						page={page}
-						search={search}
-						status={status}
-					/>
-				</Suspense>
-			</Boundary>
+			<Suspense fallback={<BookingsTableSkeleton />}>
+				<BookingsTable
+					organizationSlug={organizationSlug}
+					page={page}
+					search={search}
+					status={status}
+				/>
+			</Suspense>
 		</div>
 	);
 }

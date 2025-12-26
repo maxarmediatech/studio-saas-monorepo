@@ -1,9 +1,6 @@
 import { getActiveOrganization } from "@saas/auth/lib/server";
-import {
-	BookingShootsStep,
-} from "@saas/studio/components/bookings";
+import { BookingShootsStep } from "@saas/studio/components/bookings";
 import { ConfigurationsProvider } from "@saas/studio/components/bookings/index.server";
-import Boundary from "@/modules/ui/components/internal/Boundary";
 import { notFound } from "next/navigation";
 
 type Props = {
@@ -19,10 +16,8 @@ export default async function ShootsPage({ params }: Props) {
 	}
 
 	return (
-		<Boundary cached label="Configurations (cached)">
-			<ConfigurationsProvider organizationId={organization.id}>
-				<BookingShootsStep />
-			</ConfigurationsProvider>
-		</Boundary>
+		<ConfigurationsProvider organizationId={organization.id}>
+			<BookingShootsStep />
+		</ConfigurationsProvider>
 	);
 }

@@ -1,6 +1,5 @@
 import { getActiveOrganization } from "@saas/auth/lib/server";
 import { ConfigurationsProvider } from "@saas/studio/components/bookings/index.server";
-import Boundary from "@/modules/ui/components/internal/Boundary";
 import { notFound } from "next/navigation";
 import { ReviewPageClient } from "./ReviewPageClient";
 
@@ -17,10 +16,8 @@ export default async function ReviewPage({ params }: Props) {
 	}
 
 	return (
-		<Boundary cached label="Configurations (cached)">
-			<ConfigurationsProvider organizationId={organization.id}>
-				<ReviewPageClient />
-			</ConfigurationsProvider>
-		</Boundary>
+		<ConfigurationsProvider organizationId={organization.id}>
+			<ReviewPageClient />
+		</ConfigurationsProvider>
 	);
 }

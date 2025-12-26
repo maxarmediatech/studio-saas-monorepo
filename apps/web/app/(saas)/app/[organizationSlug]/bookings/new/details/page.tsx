@@ -1,9 +1,6 @@
 import { getActiveOrganization } from "@saas/auth/lib/server";
-import {
-	BookingDetailsStep,
-} from "@saas/studio/components/bookings";
+import { BookingDetailsStep } from "@saas/studio/components/bookings";
 import { ConfigurationsProvider } from "@saas/studio/components/bookings/index.server";
-import Boundary from "@/modules/ui/components/internal/Boundary";
 import { notFound } from "next/navigation";
 
 type Props = {
@@ -19,10 +16,8 @@ export default async function DetailsPage({ params }: Props) {
 	}
 
 	return (
-		<Boundary cached label="Configurations (cached)">
-			<ConfigurationsProvider organizationId={organization.id}>
-				<BookingDetailsStep />
-			</ConfigurationsProvider>
-		</Boundary>
+		<ConfigurationsProvider organizationId={organization.id}>
+			<BookingDetailsStep />
+		</ConfigurationsProvider>
 	);
 }

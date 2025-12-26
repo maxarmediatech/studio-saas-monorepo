@@ -1,5 +1,5 @@
 # Session: nextjs16-patterns
-Updated: 2025-12-26T10:00:00.000Z
+Updated: 2025-12-26T10:52:21.874Z
 
 ## Goal
 Document Next.js 16 patterns from `next16-commerce` repo for reference when building studio-saas-monorepo.
@@ -295,12 +295,15 @@ When applying to studio-saas-monorepo:
   - [x] Analyzed next16-commerce patterns
   - [x] Created comparison
   - [x] Approved plan
-  - [x] Phase 1: Boundary visualization component
+  - [x] Phase 1: Boundary visualization component (removed after testing)
   - [x] Phase 2: Streaming with Suspense (bookings page pilot)
-- Now: [→] Document Phase 2 implementation
+  - [x] Phase 3: Cache components for bookings configurations
+  - [x] Fixed React key warning in client layouts (use explicit keys with loading.tsx)
+  - [x] Removed Boundary dev components (no longer needed)
+- Now: [→] Ready for next phase or production use
 - Next:
-  - [ ] Phase 3: Cache components (`'use cache'` + `cacheTag()`)
-  - [ ] Phase 4: Non-blocking auth (optional, most invasive)
+  - [ ] Phase 4: Expand cache components to other areas
+  - [ ] Phase 5: Non-blocking auth (optional, most invasive)
 
 ## Phase 2 Implementation Details
 
@@ -343,9 +346,114 @@ page.tsx (server)
 - Suspense boundary will show skeleton during data fetch
 - Boundary visualization shows client vs dynamic boundaries in dev mode
 
+## Phase 3 Implementation Details
+
+**Goal:** Add `'use cache'` directive to static/hybrid components that don't depend on dynamic APIs.
+
+**Files Created:**
+- `apps/web/modules/saas/studio/components/bookings/booking-form/cached/ConfigurationsProvider.tsx` - Cached server component for configuration data
+- `apps/web/modules/saas/studio/lib/cache-revalidation.ts` - Cache revalidation utilities
+- `apps/web/app/(saas)/app/[organizationSlug]/bookings/new/review/ReviewPageClient.tsx` - Client component extracted from page
+
+**Files Modified:**
+- `apps/web/app/(saas)/app/[organizationSlug]/bookings/new/details/page.tsx` - Wrapped with ConfigurationsProvider
+- `apps/web/app/(saas)/app/[organizationSlug]/bookings/new/shoots/page.tsx` - Wrapped with ConfigurationsProvider
+- `apps/web/app/(saas)/app/[organizationSlug]/bookings/new/review/page.tsx` - Refactored to server component with ConfigurationsProvider
+- `apps/web/modules/saas/studio/components/bookings/index.server.ts` - Added ConfigurationsProvider export
+
+**Architecture:**
+```tsx
+// ConfigurationsProvider.tsx
+export default async function ConfigurationsProvider({ organizationId, children }) {
+  'use cache';  // Cache this component's output
+  cacheTag(`configurations-${organizationId}`);  // Tag for revalidation
+
+  const queryClient = getServerQueryClient();
+
+  // Prefetch all configuration types in parallel
+  await Promise.all([
+    queryClient.prefetchQuery(configurationsApi.bookingTypesOptions()),
+    queryClient.prefetchQuery(configurationsApi.packageTypesOptions()),
+    queryClient.prefetchQuery(configurationsApi.relationTypesOptions()),
+    queryClient.prefetchQuery(configurationsApi.shootStatusOptions()),
+    queryClient.prefetchQuery(configurationsApi.crewRolesOptions()),
+  ]);
+
+  return (
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      {children}
+    </HydrationBoundary>
+  );
+}
+```
+
+**Usage Pattern:**
+```tsx
+// page.tsx (server component)
+export default async function DetailsPage({ params }: Props) {
+  const { organizationSlug } = await params;
+  const organization = await getActiveOrganization(organizationSlug);
+
+  return (
+    <Boundary cached label="Configurations (cached)">
+      <ConfigurationsProvider organizationId={organization.id}>
+        <BookingDetailsStep />  {/* Client component */}
+      </ConfigurationsProvider>
+    </Boundary>
+  );
+}
+```
+
+**Cache Invalidation:**
+```ts
+import { revalidateConfigurations } from "@saas/studio/lib/cache-revalidation";
+
+// After updating any configuration
+revalidateConfigurations(organizationId);
+```
+
+**Key Insights:**
+1. **Hybrid Pattern** - Server caches data, client queries use it via HydrationBoundary
+2. **Per-Organization Cache** - Cache keyed by organization ID for multi-tenant isolation
+3. **Parallel Prefetch** - All config types fetched in parallel for efficiency
+4. **Cache Tags** - Use `cacheTag()` for fine-grained revalidation
+5. **Next.js 16 API** - `revalidateTag(tag, { expire: 0 })` requires cache life config
+
+**Components That Use Configurations:**
+- ✓ BookingDetailsStep - booking types, package types, relation types
+- ✓ BookingShootsStep - crew roles
+- ✓ BookingReviewStep - booking types, package types, relation types
+- ✗ BookingPaymentsStep - No configuration queries
+- ✗ BookingDeliverablesStep - No configuration queries
+
+**Performance Benefits:**
+- Configuration queries are cached per organization
+- Data prefetched on server, hydrated instantly on client
+- No loading state for select dropdowns
+- Cache shared across all booking form pages
+- Invalidated only when configurations change
+
+**Cache Tags Used:**
+- `configurations-${organizationId}` - All configurations for an org
+- Can add per-type tags later: `booking-types-${organizationId}`, etc.
+
+## Lessons Learned
+
+**React Key Warning in Client Layouts:**
+When a client component layout (`"use client"` + `use(params)`) has `loading.tsx` in the same folder, Next.js can trigger "Each child should have a unique key" warning. Fix by adding explicit `key` props to direct children of wrapper divs:
+```tsx
+<div className="flex flex-col flex-1">
+  <PageHeader key="header" ... />
+  <div key="content">{children}</div>
+</div>
+```
+
 ## Open Questions
 
 - CONFIRMED: Studio app has `cacheComponents: true` in next.config.ts
 - CONFIRMED: Hybrid approach - TanStack Query stays for client, `'use cache'` for server
 - CONFIRMED: Boundary component works (integrated in Phase 2)
+- CONFIRMED: Cache Components working for configurations
+- CONFIRMED: React key warning fix works (explicit keys in client layouts)
 - UNCONFIRMED: Need to test actual streaming behavior in browser
+- UNCONFIRMED: Need to test cache invalidation when configurations are updated

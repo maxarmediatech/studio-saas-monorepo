@@ -5,10 +5,6 @@ import "@repo/ui/globals.css";
 import { cn } from "@repo/ui/lib/utils";
 import { ClientProviders } from "@shared/components/ClientProviders";
 import { ConsentProvider } from "@shared/components/ConsentProvider";
-import {
-	BoundaryProvider,
-	BoundaryToggle,
-} from "@/modules/ui/components/internal";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { Geist } from "next/font/google";
@@ -55,10 +51,7 @@ export default function RootLayout({ children }: PropsWithChildren) {
 				<NuqsAdapter>
 					<Suspense fallback={null}>
 						<ConsentWrapper>
-							<BoundaryProvider>
-								<ClientProviders>{children}</ClientProviders>
-								<BoundaryToggle />
-							</BoundaryProvider>
+							<ClientProviders>{children}</ClientProviders>
 						</ConsentWrapper>
 					</Suspense>
 				</NuqsAdapter>
