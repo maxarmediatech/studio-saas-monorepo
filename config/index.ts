@@ -101,6 +101,11 @@ export const config = {
 			// whether the marketing features should be enabled (otherwise all routes will be redirect to the saas part)
 			enabled: false,
 		},
+		// developer tools (only active in development mode)
+		devTools: {
+			// shows render boundaries (static/dynamic/hybrid) - useful for Next.js 16 cache debugging
+			enableBoundaryVisualization: true,
+		},
 	},
 	// Storage
 	storage: {

@@ -1,5 +1,5 @@
 # Session: nextjs16-patterns
-Updated: 2025-12-26T00:00:00Z
+Updated: 2025-12-26T10:00:00.000Z
 
 ## Goal
 Document Next.js 16 patterns from `next16-commerce` repo for reference when building studio-saas-monorepo.
@@ -271,8 +271,38 @@ When applying to studio-saas-monorepo:
 
 ---
 
+## Implementation Plan
+
+**Plan file:** `/Users/rakesh/.claude/plans/goofy-jumping-flute.md`
+
+**Approach:** Hybrid - keep TanStack Query for client-side, add `'use cache'` for server-only components.
+
+**Phases:**
+1. [x] Boundary visualization component (dev tool) - DONE
+2. [→] Streaming with Suspense (bookings page pilot)
+3. [ ] Cache components (`'use cache'` + `cacheTag()`)
+4. [ ] Non-blocking auth (optional, most invasive)
+
+**Key Decisions:**
+- Incremental rollout starting with bookings page
+- Keep TanStack Query for mutations/client cache
+- Add Boundary component for debugging
+
+---
+
+## State
+- Done:
+  - [x] Analyzed next16-commerce patterns
+  - [x] Created comparison
+  - [x] Approved plan
+  - [x] Phase 1: Boundary visualization component
+- Now: [→] Phase 2: Streaming with Suspense (bookings page pilot)
+- Next:
+  - [ ] Phase 3: Cache components (`'use cache'` + `cacheTag()`)
+  - [ ] Phase 4: Non-blocking auth (optional, most invasive)
+
 ## Open Questions
 
-- UNCONFIRMED: Does studio app need upgrade to Next.js 16 first?
-- UNCONFIRMED: Which studio components are candidates for `'use cache'`?
-- UNCONFIRMED: How to handle TanStack Query with cache components?
+- CONFIRMED: Studio app has `cacheComponents: true` in next.config.ts
+- CONFIRMED: Hybrid approach - TanStack Query stays for client, `'use cache'` for server
+- UNCONFIRMED: Test that Boundary component works with existing UI components
