@@ -25,8 +25,8 @@ import { ClientCreateSheet, ClientEditSheet } from "./clients/sheets";
 // Crews
 import { CrewCreateSheet, CrewEditSheet } from "./crews/sheets";
 
-// Configurations (to be added in Phase 3)
-// import { ConfigurationCreateSheet, ConfigurationEditSheet } from "./configurations/sheets";
+// Configurations
+import { ConfigurationCreateSheet, ConfigurationEditSheet } from "./configurations/sheets";
 
 export function GlobalSheets() {
 	return (
@@ -43,11 +43,11 @@ export function GlobalSheets() {
 				<CrewEditSheet />
 			</Suspense>
 
-			{/* Configurations - Phase 3 */}
-			{/* <ConfigurationCreateSheet />
+			{/* Configurations */}
+			<ConfigurationCreateSheet />
 			<Suspense fallback={null}>
 				<ConfigurationEditSheet />
-			</Suspense> */}
+			</Suspense>
 		</>
 	);
 }

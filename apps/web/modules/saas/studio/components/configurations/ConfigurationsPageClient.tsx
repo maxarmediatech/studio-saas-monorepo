@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@repo/ui/components/badge";
-import { Button } from "@repo/ui/components/button";
 import { Input } from "@repo/ui/components/input";
 import {
 	AlertDialog,
@@ -20,7 +19,6 @@ import {
 import {
 	PencilIcon,
 	TrashIcon,
-	PlusIcon,
 	SearchIcon,
 	Loader2Icon,
 	SettingsIcon,
@@ -34,7 +32,8 @@ import {
 	type RowAction,
 } from "@saas/shared/components/data-table";
 import type { Configuration } from "@repo/api/modules/studio/schemas/configuration";
-import { ConfigurationFormDialog } from "./ConfigurationFormDialog";
+import { useConfigurationParams } from "@saas/studio/hooks/params/use-configuration-params";
+import { OpenConfigurationCreateSheet } from "./OpenConfigurationSheet";
 import { PageHeader } from "../PageHeader";
 
 interface ConfigurationsPageClientProps {
@@ -65,8 +64,9 @@ export function ConfigurationsPageClient({
 	const [currentFilters, setCurrentFilters] = useState(initialFilters);
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [configToDelete, setConfigToDelete] = useState<Configuration | null>(null);
-	const [formDialogOpen, setFormDialogOpen] = useState(false);
-	const [editingConfig, setEditingConfig] = useState<Configuration | null>(null);
+
+	// URL-based sheet params
+	const { openEdit } = useConfigurationParams();
 
 	// Build query input
 	const queryInput = {
@@ -129,20 +129,8 @@ export function ConfigurationsPageClient({
 		updateFilters({ page: newPagination.page });
 	};
 
-	const handleOpenCreate = () => {
-		setEditingConfig(null);
-		setFormDialogOpen(true);
-	};
-
 	const handleOpenEdit = (config: Configuration) => {
-		setEditingConfig(config);
-		setFormDialogOpen(true);
-	};
-
-	const handleFormSuccess = () => {
-		setFormDialogOpen(false);
-		setEditingConfig(null);
-		queryClient.invalidateQueries({ queryKey: ["studio", "configurations"] });
+		openEdit(config.id, configType);
 	};
 
 	// Define row actions
@@ -261,10 +249,10 @@ export function ConfigurationsPageClient({
 					</div>
 
 					<div className="ml-auto">
-						<Button onClick={handleOpenCreate}>
-							<PlusIcon className="mr-2 h-4 w-4" />
-							Add {configTypeLabel}
-						</Button>
+						<OpenConfigurationCreateSheet
+							configurationType={configType}
+							label={`Add ${configTypeLabel}`}
+						/>
 					</div>
 				</div>
 
@@ -280,24 +268,16 @@ export function ConfigurationsPageClient({
 						<div className="flex flex-col items-center gap-2">
 							<SettingsIcon className="h-12 w-12 text-muted-foreground/50" />
 							<p className="text-muted-foreground">No {configTypeLabel.toLowerCase()}s found</p>
-							<Button variant="outline" size="sm" onClick={handleOpenCreate}>
-								<PlusIcon className="mr-2 h-4 w-4" />
-								Add your first {configTypeLabel.toLowerCase()}
-							</Button>
+							<OpenConfigurationCreateSheet
+								configurationType={configType}
+								variant="outline"
+								size="sm"
+								label={`Add your first ${configTypeLabel.toLowerCase()}`}
+							/>
 						</div>
 					}
 				/>
 			</div>
-
-			{/* Create/Edit dialog */}
-			<ConfigurationFormDialog
-				open={formDialogOpen}
-				onOpenChange={setFormDialogOpen}
-				configuration={editingConfig}
-				configType={configType}
-				configTypeLabel={configTypeLabel}
-				onSuccess={handleFormSuccess}
-			/>
 
 			{/* Delete confirmation dialog */}
 			<AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
