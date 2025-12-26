@@ -1,0 +1,53 @@
+"use client";
+
+/**
+ * GlobalSheets Registry
+ *
+ * All URL-based sheets are mounted here and controlled via query parameters.
+ * Sheets are always mounted but only visible when their corresponding param is set.
+ *
+ * Pattern:
+ * - Create sheets: open when `create{Entity}=true`
+ * - Edit sheets: open when `{entity}Id={id}` (wrapped in Suspense for data fetching)
+ *
+ * To add a new sheet:
+ * 1. Create the sheet component in the entity's sheets/ folder
+ * 2. Create a params hook in hooks/params/
+ * 3. Import and add the sheet here
+ * 4. Edit sheets should be wrapped in Suspense
+ */
+
+import { Suspense } from "react";
+
+// Clients
+import { ClientCreateSheet, ClientEditSheet } from "./clients/sheets";
+
+// Crews (to be added in Phase 2)
+// import { CrewCreateSheet, CrewEditSheet } from "./crews/sheets";
+
+// Configurations (to be added in Phase 3)
+// import { ConfigurationCreateSheet, ConfigurationEditSheet } from "./configurations/sheets";
+
+export function GlobalSheets() {
+	return (
+		<>
+			{/* Clients */}
+			<ClientCreateSheet />
+			<Suspense fallback={null}>
+				<ClientEditSheet />
+			</Suspense>
+
+			{/* Crews - Phase 2 */}
+			{/* <CrewCreateSheet />
+			<Suspense fallback={null}>
+				<CrewEditSheet />
+			</Suspense> */}
+
+			{/* Configurations - Phase 3 */}
+			{/* <ConfigurationCreateSheet />
+			<Suspense fallback={null}>
+				<ConfigurationEditSheet />
+			</Suspense> */}
+		</>
+	);
+}

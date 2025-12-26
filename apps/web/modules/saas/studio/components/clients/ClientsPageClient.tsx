@@ -4,7 +4,6 @@ import { useState, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button } from "@repo/ui/components/button";
 import { Input } from "@repo/ui/components/input";
 import {
 	AlertDialog,
@@ -19,7 +18,6 @@ import {
 import {
 	PencilIcon,
 	TrashIcon,
-	PlusIcon,
 	SearchIcon,
 	Loader2Icon,
 	UserIcon,
@@ -34,7 +32,8 @@ import {
 	type RowAction,
 } from "@saas/shared/components/data-table";
 import type { Client } from "@repo/api/modules/studio/schemas/client";
-import { ClientFormDialog } from "./ClientFormDialog";
+import { useClientParams } from "@saas/studio/hooks/params/use-client-params";
+import { OpenClientCreateSheet } from "./OpenClientSheet";
 
 interface ClientsPageClientProps {
 	organizationSlug: string;
@@ -56,8 +55,9 @@ export function ClientsPageClient({
 	const [currentFilters, setCurrentFilters] = useState(initialFilters);
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
-	const [formDialogOpen, setFormDialogOpen] = useState(false);
-	const [editingClient, setEditingClient] = useState<Client | null>(null);
+
+	// URL-based sheet params
+	const { openEdit } = useClientParams();
 
 	// Build query input
 	const queryInput = {
@@ -117,20 +117,8 @@ export function ClientsPageClient({
 		updateFilters({ page: newPagination.page });
 	};
 
-	const handleOpenCreate = () => {
-		setEditingClient(null);
-		setFormDialogOpen(true);
-	};
-
 	const handleOpenEdit = (client: Client) => {
-		setEditingClient(client);
-		setFormDialogOpen(true);
-	};
-
-	const handleFormSuccess = () => {
-		setFormDialogOpen(false);
-		setEditingClient(null);
-		queryClient.invalidateQueries({ queryKey: studioQueryKeys.clients.all });
+		openEdit(client.id);
 	};
 
 	// Define row actions
@@ -238,10 +226,7 @@ export function ClientsPageClient({
 				</div>
 
 				<div className="ml-auto">
-					<Button onClick={handleOpenCreate}>
-						<PlusIcon className="mr-2 h-4 w-4" />
-						Add Client
-					</Button>
+					<OpenClientCreateSheet />
 				</div>
 			</div>
 
@@ -257,20 +242,9 @@ export function ClientsPageClient({
 					<div className="flex flex-col items-center gap-2">
 						<UserIcon className="h-12 w-12 text-muted-foreground/50" />
 						<p className="text-muted-foreground">No clients found</p>
-						<Button variant="outline" size="sm" onClick={handleOpenCreate}>
-							<PlusIcon className="mr-2 h-4 w-4" />
-							Add your first client
-						</Button>
+						<OpenClientCreateSheet variant="outline" size="sm" label="Add your first client" />
 					</div>
 				}
-			/>
-
-			{/* Create/Edit dialog */}
-			<ClientFormDialog
-				open={formDialogOpen}
-				onOpenChange={setFormDialogOpen}
-				client={editingClient}
-				onSuccess={handleFormSuccess}
 			/>
 
 			{/* Delete confirmation dialog */}

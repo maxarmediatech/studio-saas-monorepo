@@ -2,6 +2,7 @@
 
 import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
 import { SheetProvider } from "@saas/shared/components/sheet-provider";
+import { GlobalSheets } from "./global-sheets";
 import { StudioLayout } from "./StudioLayout";
 
 interface StudioLayoutClientProps {
@@ -24,6 +25,7 @@ export function StudioLayoutClient({ children }: StudioLayoutClientProps) {
 			>
 				{children}
 			</StudioLayout>
+			<GlobalSheets />
 		</SheetProvider>
 	);
 }
