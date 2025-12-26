@@ -54,9 +54,11 @@ export function StudioLayout({
 				/>
 			</div>
 
-			<SidebarInset className="pb-20 md:pb-0">
+			<SidebarInset className="min-h-0 pb-20 md:pb-0">
 				{/* Main content - header is rendered by each page via PageHeader component */}
-				<div className="flex flex-1 flex-col p-6 lg:p-8">{children}</div>
+				<div className="flex min-h-0 flex-1 flex-col p-6 lg:p-8">
+					{children}
+				</div>
 			</SidebarInset>
 
 			{/* Mobile navigation */}

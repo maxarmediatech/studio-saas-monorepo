@@ -185,6 +185,7 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 		<Form {...form}>
 			<form
 				id={BOOKING_FORM_HTML_ID}
+				className="flex min-h-0 flex-1 flex-col"
 				onSubmit={form.handleSubmit((values) => {
 					if (!wizard.isLastStep) {
 						return;
@@ -192,8 +193,9 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 					createMutation.mutate(buildCreateBookingInput(values));
 				})}
 			>
-				<div className="space-y-6">
+				<div className="flex min-h-0 flex-1 flex-col">
 					<BookingFormLayout
+						className="flex-1 md:-mb-6 lg:-mb-8"
 						stepper={
 							<BookingStepperSidebar
 								activeStep={wizard.currentStep}

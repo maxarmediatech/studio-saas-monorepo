@@ -19,9 +19,10 @@ export default function BookingsLayout({ params, children }: Props) {
 	const isAtRoot = pathname === baseRoute;
 
 	return (
-		<div className="flex flex-col flex-1">
+		<div className="flex flex-col flex-1 min-h-0">
 			<PageHeader
 				key="header"
+				className="mb-0"
 				title={isAtRoot ? "Bookings" : "New Booking"}
 				actions={
 					isAtRoot ? (
@@ -34,7 +35,7 @@ export default function BookingsLayout({ params, children }: Props) {
 					) : undefined
 				}
 			/>
-			<div key="content" className="flex-1">
+			<div key="content" className="flex flex-1 min-h-0 flex-col">
 				{children}
 			</div>
 		</div>
