@@ -1,11 +1,11 @@
 "use client";
 
-import { use, type ReactNode } from "react";
-import { usePathname } from "next/navigation";
 import { Button } from "@repo/ui/components/button";
 import { PageHeader } from "@saas/studio";
-import { ArrowLeftIcon, PlusIcon } from "lucide-react";
+import { PlusIcon } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { type ReactNode, use } from "react";
 
 type Props = {
 	params: Promise<{ organizationSlug: string }>;
@@ -15,26 +15,18 @@ type Props = {
 export default function BookingsLayout({ params, children }: Props) {
 	const { organizationSlug } = use(params);
 	const pathname = usePathname();
-	const isNewBooking = pathname.includes("/bookings/new");
+	const baseRoute = `/app/${organizationSlug}/bookings`;
+	const isAtRoot = pathname === baseRoute;
 
 	return (
 		<div className="flex flex-col flex-1">
 			<PageHeader
 				key="header"
-				title={isNewBooking ? "New Booking" : "Bookings"}
-				backButton={
-					isNewBooking ? (
-						<Button variant="ghost" size="icon" asChild>
-							<Link href={`/app/${organizationSlug}/bookings`}>
-								<ArrowLeftIcon className="h-4 w-4" />
-							</Link>
-						</Button>
-					) : undefined
-				}
+				title={isAtRoot ? "Bookings" : "New Booking"}
 				actions={
-					!isNewBooking ? (
+					isAtRoot ? (
 						<Button asChild size="sm">
-							<Link href={`/app/${organizationSlug}/bookings/new`}>
+							<Link href={`${baseRoute}/new/details`}>
 								<PlusIcon className="mr-2 h-4 w-4" />
 								New Booking
 							</Link>

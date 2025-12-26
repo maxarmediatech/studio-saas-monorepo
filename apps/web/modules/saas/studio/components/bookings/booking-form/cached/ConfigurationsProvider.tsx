@@ -19,10 +19,10 @@
  * This will invalidate the cache and force a fresh fetch on the next request.
  */
 
-import { cacheTag } from "next/dist/server/use-cache/cache-tag";
 import { configurationsApi } from "@saas/studio/lib/api";
 import { getServerQueryClient } from "@shared/lib/server";
-import { HydrationBoundary, dehydrate } from "@tanstack/react-query";
+import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
+import { cacheTag } from "next/dist/server/use-cache/cache-tag";
 import type { ReactNode } from "react";
 
 interface ConfigurationsProviderProps {

@@ -1,28 +1,25 @@
 "use client";
 
+import { Button } from "@repo/ui/components/button";
 import { Separator } from "@repo/ui/components/separator";
 import { SidebarTrigger } from "@repo/ui/components/sidebar";
+import { ArrowLeftIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 
 interface PageHeaderProps {
 	title: string;
 	description?: string;
 	actions?: ReactNode;
-	backButton?: ReactNode;
 }
 
-export function PageHeader({
-	title,
-	description,
-	actions,
-	backButton,
-}: PageHeaderProps) {
+export function PageHeader({ title, description, actions }: PageHeaderProps) {
+	const router = useRouter();
+
 	return (
 		<header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b bg-background -mx-6 -mt-6 lg:-mx-8 lg:-mt-8 px-4 mb-6">
 			<div className="flex flex-1 items-center justify-between gap-2">
-				{/* Left side */}
 				<div className="flex items-center gap-2">
-					{/* Mobile sidebar trigger */}
 					<div className="flex items-center md:hidden">
 						<SidebarTrigger />
 						<Separator
@@ -31,10 +28,14 @@ export function PageHeader({
 						/>
 					</div>
 
-					{/* Back button (optional) */}
-					{backButton}
+					<Button
+						variant="ghost"
+						size="icon"
+						onClick={() => router.back()}
+					>
+						<ArrowLeftIcon className="h-4 w-4" />
+					</Button>
 
-					{/* Title */}
 					<div>
 						<h1 className="font-semibold text-base text-foreground">
 							{title}
@@ -46,11 +47,7 @@ export function PageHeader({
 						)}
 					</div>
 				</div>
-
-				{/* Right side - actions */}
-				{actions && (
-					<div className="flex items-center gap-2">{actions}</div>
-				)}
+				{actions && <div className="flex items-center gap-2">{actions}</div>}
 			</div>
 		</header>
 	);

@@ -47,6 +47,11 @@ const nextConfig = {
 				destination: "/app/admin/users",
 				permanent: true,
 			},
+			{
+				source: "/app/:organizationSlug/bookings/new",
+				destination: "/app/:organizationSlug/bookings/new/details",
+				permanent: false,
+			},
 		];
 	},
 };
