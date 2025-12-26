@@ -1,4 +1,11 @@
+// List page components - CLIENT
+
+export { BookingsFilters } from "./BookingsFilters";
 export { BookingsPageClient } from "./BookingsPageClient";
+export { BookingsTableClient } from "./BookingsTableClient";
+export { BookingsTableSkeleton } from "./BookingsTableSkeleton";
+
+// Form components - CLIENT
 export {
 	BOOKING_STEP_SCHEMAS,
 	BOOKING_TABS,

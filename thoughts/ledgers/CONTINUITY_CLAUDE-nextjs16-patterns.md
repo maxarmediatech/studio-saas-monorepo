@@ -296,13 +296,56 @@ When applying to studio-saas-monorepo:
   - [x] Created comparison
   - [x] Approved plan
   - [x] Phase 1: Boundary visualization component
-- Now: [→] Phase 2: Streaming with Suspense (bookings page pilot)
+  - [x] Phase 2: Streaming with Suspense (bookings page pilot)
+- Now: [→] Document Phase 2 implementation
 - Next:
   - [ ] Phase 3: Cache components (`'use cache'` + `cacheTag()`)
   - [ ] Phase 4: Non-blocking auth (optional, most invasive)
+
+## Phase 2 Implementation Details
+
+**Files Created:**
+- `apps/web/modules/saas/studio/components/bookings/BookingsFilters.tsx` - Client component for instant filters
+- `apps/web/modules/saas/studio/components/bookings/BookingsTable.tsx` - Async server component for table
+- `apps/web/modules/saas/studio/components/bookings/BookingsTableClient.tsx` - Client component for table interactivity
+- `apps/web/modules/saas/studio/components/bookings/BookingsTableSkeleton.tsx` - Skeleton fallback
+- `apps/web/modules/saas/studio/components/bookings/index.server.ts` - Server-only exports
+
+**Files Modified:**
+- `apps/web/app/(saas)/app/[organizationSlug]/bookings/page.tsx` - Refactored to use Suspense boundaries
+- `apps/web/modules/saas/studio/components/bookings/index.ts` - Removed server exports to prevent client bundling
+- `apps/web/modules/saas/studio/index.ts` - Updated exports
+
+**Architecture:**
+```
+page.tsx (server)
+  ├─ BookingsFilters (client) → Renders instantly
+  └─ Suspense fallback={BookingsTableSkeleton}
+       └─ BookingsTable (server async)
+            └─ HydrationBoundary
+                 └─ BookingsTableClient (client) → TanStack Query
+```
+
+**Key Decisions:**
+1. **Separate server/client exports** - Created `index.server.ts` to prevent server components from being bundled in client layouts
+2. **Hybrid approach** - Server prefetch + client TanStack Query for best of both worlds
+3. **Filters separate from table** - Filters render instantly, table streams in
+4. **Boundary visualization** - Added Boundary components for debugging stream behavior
+
+**Flow:**
+1. Page loads → Filters render instantly
+2. Table shows skeleton while data fetches
+3. Data prefetched on server, hydrated in client
+4. TanStack Query manages client-side cache + mutations
+
+**Testing:**
+- Build passes successfully
+- Suspense boundary will show skeleton during data fetch
+- Boundary visualization shows client vs dynamic boundaries in dev mode
 
 ## Open Questions
 
 - CONFIRMED: Studio app has `cacheComponents: true` in next.config.ts
 - CONFIRMED: Hybrid approach - TanStack Query stays for client, `'use cache'` for server
-- UNCONFIRMED: Test that Boundary component works with existing UI components
+- CONFIRMED: Boundary component works (integrated in Phase 2)
+- UNCONFIRMED: Need to test actual streaming behavior in browser
