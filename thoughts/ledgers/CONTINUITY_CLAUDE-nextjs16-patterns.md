@@ -1,5 +1,5 @@
 # Session: nextjs16-patterns
-Updated: 2025-12-26T10:52:21.874Z
+Updated: 2025-12-26T19:42:20.795Z
 
 ## Goal
 Document Next.js 16 patterns from `next16-commerce` repo for reference when building studio-saas-monorepo.
@@ -300,8 +300,13 @@ When applying to studio-saas-monorepo:
   - [x] Phase 3: Cache components for bookings configurations
   - [x] Fixed React key warning in client layouts (use explicit keys with loading.tsx)
   - [x] Removed Boundary dev components (no longer needed)
-- Now: [→] Ready for next phase or production use
+  - [x] URL-Based Sheets Migration - Phase 1: Client sheets (create/edit)
+  - [x] URL-Based Sheets Migration - Phase 2: Crew sheets (create/edit)
+  - [x] URL-Based Sheets Migration - Phase 3: Configuration sheets (create/edit)
+  - [x] URL-Based Sheets Migration - Phase 4: Entity sheets (shoots, payments, deliverables, tasks, expenses)
+- Now: [→] Ready for production use or next phase
 - Next:
+  - [ ] URL-Based Sheets - Phase 5: Booking quick-create integration (optional)
   - [ ] Phase 4: Expand cache components to other areas
   - [ ] Phase 5: Non-blocking auth (optional, most invasive)
 
@@ -457,3 +462,183 @@ When a client component layout (`"use client"` + `use(params)`) has `loading.tsx
 - CONFIRMED: React key warning fix works (explicit keys in client layouts)
 - UNCONFIRMED: Need to test actual streaming behavior in browser
 - UNCONFIRMED: Need to test cache invalidation when configurations are updated
+
+---
+
+## URL-Based Sheets Migration
+
+**Plan:** `thoughts/shared/plans/url-based-sheets-migration.md`
+
+**Pattern from w-tales:** Global sheets registry with URL params (NUQS) for state management.
+
+### Benefits
+- Deep linking: `?clientId=123` opens edit sheet
+- Back button closes sheet naturally
+- Bookmarkable create/edit states
+- Sheets accessible from anywhere via URL params
+
+### Architecture
+```
+StudioLayoutClient.tsx
+  └─ GlobalSheets (always mounted)
+       ├─ ClientCreateSheet (opens on ?createClient=true)
+       ├─ ClientEditSheet (opens on ?clientId=123)
+       ├─ CrewCreateSheet (opens on ?createCrew=true)
+       ├─ CrewEditSheet (opens on ?crewId=123)
+       ├─ ConfigurationCreateSheet (opens on ?createConfiguration=true&configurationType=booking_type)
+       └─ ConfigurationEditSheet (opens on ?configurationId=123&configurationType=booking_type)
+```
+
+### Files Created
+
+**Hooks (params):**
+- `hooks/params/use-client-params.ts` - clientId, createClient
+- `hooks/params/use-crew-params.ts` - crewId, createCrew
+- `hooks/params/use-configuration-params.ts` - configurationId, createConfiguration, configurationType (generic)
+
+**Client Sheets:**
+- `components/clients/ClientForm.tsx` - Extracted reusable form
+- `components/clients/sheets/ClientCreateSheet.tsx`
+- `components/clients/sheets/ClientEditSheet.tsx`
+- `components/clients/OpenClientSheet.tsx` - Trigger buttons
+
+**Crew Sheets:**
+- `components/crews/CrewForm.tsx`
+- `components/crews/sheets/CrewCreateSheet.tsx`
+- `components/crews/sheets/CrewEditSheet.tsx`
+- `components/crews/OpenCrewSheet.tsx`
+
+**Configuration Sheets:**
+- `components/configurations/ConfigurationForm.tsx`
+- `components/configurations/sheets/ConfigurationCreateSheet.tsx`
+- `components/configurations/sheets/ConfigurationEditSheet.tsx`
+- `components/configurations/OpenConfigurationSheet.tsx`
+
+### Key Pattern - Params Hook
+
+```typescript
+export function useClientParams(options?: Options) {
+  const [params, setParams] = useQueryStates(
+    { clientId: parseAsString, createClient: parseAsBoolean },
+    { history: "push", shallow: true, ...options }
+  );
+  return {
+    ...params, setParams,
+    openCreate: () => setParams({ createClient: true, clientId: null }),
+    openEdit: (id: string) => setParams({ clientId: id, createClient: null }),
+    close: () => setParams({ clientId: null, createClient: null }),
+  };
+}
+```
+
+### Commits
+- `ce09a10` feat(clients): migrate to URL-based sheets from dialogs
+- `828db6a` feat(crews): migrate to URL-based sheets from dialogs
+- `0b1f9e7` feat(configurations): migrate to URL-based sheets from dialogs
+
+### Deleted Files
+- `ClientFormDialog.tsx`
+- `CrewFormDialog.tsx`
+- `ConfigurationFormDialog.tsx`
+
+### Lessons Learned
+1. **ButtonProps not exported** - Use `type ButtonProps = ComponentProps<typeof Button>`
+2. **API response structure** - Edit sheets need `client?.data` not `client` directly
+3. **Generic params hook** - Configuration uses `configurationType` param to handle 10+ config types with one hook
+
+---
+
+## Phase 4: Entity Sheets Implementation
+
+**Completed:** 2025-12-27
+
+### Overview
+Created standalone list pages with URL-based create/edit sheets for 5 entities:
+- Shoots (`/shoots`)
+- Payments (`/payments`)
+- Deliverables (`/deliverables`)
+- Tasks (`/tasks`)
+- Expenses (`/expenses`)
+
+### Files Created (per entity pattern)
+
+**For each entity (Shoots, Payments, Deliverables, Tasks, Expenses):**
+
+```
+apps/web/
+├── app/(saas)/app/[organizationSlug]/{entity}/
+│   └── page.tsx                      # Server component with prefetch
+└── modules/saas/studio/
+    ├── components/{entity}/
+    │   ├── {Entity}PageClient.tsx    # Client component with DataTable
+    │   ├── {Entity}Form.tsx          # React Hook Form + Zod
+    │   ├── Open{Entity}Sheet.tsx     # Sheet trigger buttons
+    │   └── sheets/
+    │       ├── {Entity}CreateSheet.tsx
+    │       ├── {Entity}EditSheet.tsx
+    │       └── index.ts
+    └── hooks/params/
+        └── use-{entity}-params.ts    # nuqs URL state hook
+```
+
+### API Utilities Added (`api.ts`)
+
+```typescript
+// Query Keys
+studioQueryKeys.tasks
+studioQueryKeys.deliverables
+studioQueryKeys.payments.received
+studioQueryKeys.payments.schedules
+studioQueryKeys.expenses
+
+// APIs
+tasksApi.listOptions(), getOptions(), statsOptions()
+deliverablesApi.listOptions(), listMinimalOptions(), getOptions(), statsOptions()
+studioPaymentsApi.listReceivedOptions(), getReceivedOptions(), listSchedulesOptions()
+expensesApi.listOptions(), getOptions(), statsOptions()
+
+// Mutations
+tasksMutations.create(), update(), delete(), updateStatus(), assign(), unassign(), submit()
+deliverablesMutations.create(), update(), delete(), assign(), unassign(), convertToTask(), submit()
+studioPaymentsMutations.createReceived(), updateReceived(), deleteReceived()
+studioPaymentsMutations.createSchedule(), updateSchedule(), deleteSchedule(), convertSchedule()
+expensesMutations.create(), update(), delete()
+```
+
+### GlobalSheets Updated
+
+All 5 entity sheets registered with Suspense wrappers for edit sheets.
+
+### Entity-Specific Details
+
+**Shoots:**
+- Fields: bookingId (required), name, shootType (11 options), shootDate, startTime, endTime, venue, venueAddress, notes
+- shootType options: pre_wedding, wedding, engagement, mehendi, sangeet, haldi, portrait, maternity, baby_shoot, corporate, other
+
+**Payments:**
+- Uses `studioPayments` API (separate from Stripe payments)
+- Fields: bookingId (required), amount, paymentMethod, receivedDate, transactionReference, notes
+- paymentMethod options: cash, upi, bank_transfer, cheque, card, other
+
+**Deliverables:**
+- Fields: bookingId (required), name, deliverableType, description, dueDate, status, priority
+- deliverableType options: wedding_album, pre_wedding_album, photo_album, highlight_video, full_video, teaser, reel, edited_photos, raw_photos, raw_videos, drone_footage, frame, canvas, other
+
+**Tasks:**
+- Fields: bookingId (required), name, description, status, priority, dueDate
+- Status/priority from configuration types (task_status, task_priority)
+
+**Expenses:**
+- Fields: description (required), amount (required), expenseDate (required), category, billTo, paymentMethod, vendor, transactionReference, notes
+- billTo options: studio, client
+- NOT linked to bookings directly (standalone)
+
+### Key Patterns Used
+
+1. **Server prefetch** in page.tsx with `HydrationBoundary`
+2. **URL params** via nuqs for sheet state
+3. **TanStack Query** for all data fetching
+4. **Booking selector** - Most entities (except expenses) require booking selection
+5. **Money formatting** - INR currency with `Intl.NumberFormat("en-IN")`
+6. **Delete confirmation** - AlertDialog for all delete actions
+7. **Empty states** - Custom empty states with CTA buttons

@@ -413,16 +413,16 @@ apps/web/modules/saas/studio/
 - [x] Update `CrewsPageClient`
 - [x] Remove old `CrewFormDialog`
 
-### Phase 3: Configuration Sheets ⬅️ NEXT
-- [ ] Create `use-configuration-params.ts` (generic approach)
-- [ ] Create `ConfigurationForm.tsx`
-- [ ] Create `ConfigurationCreateSheet`, `ConfigurationEditSheet`
-- [ ] Create `OpenConfigurationSheet`
-- [ ] Register in `GlobalSheets`
-- [ ] Update `ConfigurationsPageClient`
-- [ ] Remove old `ConfigurationFormDialog`
+### Phase 3: Configuration Sheets ✅ DONE
+- [x] Create `use-configuration-params.ts` (generic approach)
+- [x] Create `ConfigurationForm.tsx`
+- [x] Create `ConfigurationCreateSheet`, `ConfigurationEditSheet`
+- [x] Create `OpenConfigurationSheet`
+- [x] Register in `GlobalSheets`
+- [x] Update `ConfigurationsPageClient`
+- [x] Remove old `ConfigurationFormDialog`
 
-### Phase 4: Future Entity Sheets (New)
+### Phase 4: Future Entity Sheets (New) ⬅️ NEXT
 - [ ] Shoot sheets (create/edit)
 - [ ] Payment sheets (create/edit)
 - [ ] Deliverable sheets (create/edit)

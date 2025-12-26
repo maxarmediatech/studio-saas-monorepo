@@ -19,11 +19,21 @@ export {
 	bookingsMutations,
 	clientsApi,
 	clientsMutations,
+	configurationsApi,
+	configurationsMutations,
 	crewsApi,
 	crewsMutations,
+	deliverablesApi,
+	deliverablesMutations,
+	expensesApi,
+	expensesMutations,
 	shootsApi,
 	shootsMutations,
+	studioPaymentsApi,
+	studioPaymentsMutations,
 	studioQueryKeys,
+	tasksApi,
+	tasksMutations,
 } from "./lib/api";
 
 // Utilities

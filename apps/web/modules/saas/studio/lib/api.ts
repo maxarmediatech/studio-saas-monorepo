@@ -43,6 +43,43 @@ export const studioQueryKeys = {
 			["studio", "shoots", "list", filters] as const,
 		detail: (id: string) => ["studio", "shoots", "detail", id] as const,
 	},
+	// Tasks
+	tasks: {
+		all: ["studio", "tasks"] as const,
+		list: (filters?: Record<string, unknown>) =>
+			["studio", "tasks", "list", filters] as const,
+		detail: (id: string) => ["studio", "tasks", "detail", id] as const,
+	},
+	// Deliverables
+	deliverables: {
+		all: ["studio", "deliverables"] as const,
+		list: (filters?: Record<string, unknown>) =>
+			["studio", "deliverables", "list", filters] as const,
+		detail: (id: string) => ["studio", "deliverables", "detail", id] as const,
+	},
+	// Payments (studio payments - received amounts)
+	payments: {
+		all: ["studio", "payments"] as const,
+		received: {
+			list: (filters?: Record<string, unknown>) =>
+				["studio", "payments", "received", "list", filters] as const,
+			detail: (id: string) =>
+				["studio", "payments", "received", "detail", id] as const,
+		},
+		schedules: {
+			list: (filters?: Record<string, unknown>) =>
+				["studio", "payments", "schedules", "list", filters] as const,
+			detail: (id: string) =>
+				["studio", "payments", "schedules", "detail", id] as const,
+		},
+	},
+	// Expenses
+	expenses: {
+		all: ["studio", "expenses"] as const,
+		list: (filters?: Record<string, unknown>) =>
+			["studio", "expenses", "list", filters] as const,
+		detail: (id: string) => ["studio", "expenses", "detail", id] as const,
+	},
 } as const;
 
 // ============================================================================
@@ -198,4 +235,132 @@ export const configurationsMutations = {
 	update: () => orpc.configurations.update.mutationOptions(),
 	delete: () => orpc.configurations.delete.mutationOptions(),
 	seed: () => orpc.configurations.seed.mutationOptions(),
+};
+
+// ============================================================================
+// TASKS QUERY OPTIONS
+// ============================================================================
+
+export const tasksApi = {
+	listOptions: (
+		input?: Parameters<typeof orpc.tasks.list.queryOptions>[0]["input"],
+	) => orpc.tasks.list.queryOptions({ input: input ?? {} }),
+
+	getOptions: (id: string) => orpc.tasks.get.queryOptions({ input: { id } }),
+
+	statsOptions: (
+		input?: Parameters<typeof orpc.tasks.stats.queryOptions>[0]["input"],
+	) => orpc.tasks.stats.queryOptions({ input: input ?? {} }),
+};
+
+export const tasksMutations = {
+	create: () => orpc.tasks.create.mutationOptions(),
+	update: () => orpc.tasks.update.mutationOptions(),
+	delete: () => orpc.tasks.delete.mutationOptions(),
+	updateStatus: () => orpc.tasks.updateStatus.mutationOptions(),
+	assign: () => orpc.tasks.assign.mutationOptions(),
+	unassign: () => orpc.tasks.unassign.mutationOptions(),
+	submit: () => orpc.tasks.submit.mutationOptions(),
+};
+
+// ============================================================================
+// DELIVERABLES QUERY OPTIONS
+// ============================================================================
+
+export const deliverablesApi = {
+	listOptions: (
+		input?: Parameters<typeof orpc.deliverables.list.queryOptions>[0]["input"],
+	) => orpc.deliverables.list.queryOptions({ input: input ?? {} }),
+
+	listMinimalOptions: (
+		input?: Parameters<
+			typeof orpc.deliverables.listMinimal.queryOptions
+		>[0]["input"],
+	) => orpc.deliverables.listMinimal.queryOptions({ input: input ?? {} }),
+
+	getOptions: (id: string) =>
+		orpc.deliverables.get.queryOptions({ input: { id } }),
+
+	statsOptions: (
+		input?: Parameters<typeof orpc.deliverables.stats.queryOptions>[0]["input"],
+	) => orpc.deliverables.stats.queryOptions({ input: input ?? {} }),
+};
+
+export const deliverablesMutations = {
+	create: () => orpc.deliverables.create.mutationOptions(),
+	update: () => orpc.deliverables.update.mutationOptions(),
+	delete: () => orpc.deliverables.delete.mutationOptions(),
+	assign: () => orpc.deliverables.assign.mutationOptions(),
+	unassign: () => orpc.deliverables.unassign.mutationOptions(),
+	convertToTask: () => orpc.deliverables.convertToTask.mutationOptions(),
+	submit: () => orpc.deliverables.submit.mutationOptions(),
+};
+
+// ============================================================================
+// STUDIO PAYMENTS QUERY OPTIONS (Received Amounts & Schedules)
+// ============================================================================
+
+export const studioPaymentsApi = {
+	// Received amounts
+	listReceivedOptions: (
+		input?: Parameters<
+			typeof orpc.studioPayments.listReceived.queryOptions
+		>[0]["input"],
+	) => orpc.studioPayments.listReceived.queryOptions({ input: input ?? {} }),
+
+	getReceivedOptions: (id: string) =>
+		orpc.studioPayments.getReceived.queryOptions({ input: { id } }),
+
+	// Payment schedules
+	listSchedulesOptions: (
+		input?: Parameters<
+			typeof orpc.studioPayments.listSchedules.queryOptions
+		>[0]["input"],
+	) => orpc.studioPayments.listSchedules.queryOptions({ input: input ?? {} }),
+
+	getScheduleOptions: (id: string) =>
+		orpc.studioPayments.getSchedule.queryOptions({ input: { id } }),
+
+	// Stats
+	statsOptions: (
+		input?: Parameters<
+			typeof orpc.studioPayments.stats.queryOptions
+		>[0]["input"],
+	) => orpc.studioPayments.stats.queryOptions({ input: input ?? {} }),
+};
+
+export const studioPaymentsMutations = {
+	// Received amounts
+	createReceived: () => orpc.studioPayments.createReceived.mutationOptions(),
+	updateReceived: () => orpc.studioPayments.updateReceived.mutationOptions(),
+	deleteReceived: () => orpc.studioPayments.deleteReceived.mutationOptions(),
+
+	// Payment schedules
+	createSchedule: () => orpc.studioPayments.createSchedule.mutationOptions(),
+	updateSchedule: () => orpc.studioPayments.updateSchedule.mutationOptions(),
+	deleteSchedule: () => orpc.studioPayments.deleteSchedule.mutationOptions(),
+	convertSchedule: () => orpc.studioPayments.convertSchedule.mutationOptions(),
+};
+
+// ============================================================================
+// EXPENSES QUERY OPTIONS
+// ============================================================================
+
+export const expensesApi = {
+	listOptions: (
+		input?: Parameters<typeof orpc.expenses.list.queryOptions>[0]["input"],
+	) => orpc.expenses.list.queryOptions({ input: input ?? {} }),
+
+	getOptions: (id: string) =>
+		orpc.expenses.get.queryOptions({ input: { id } }),
+
+	statsOptions: (
+		input?: Parameters<typeof orpc.expenses.stats.queryOptions>[0]["input"],
+	) => orpc.expenses.stats.queryOptions({ input: input ?? {} }),
+};
+
+export const expensesMutations = {
+	create: () => orpc.expenses.create.mutationOptions(),
+	update: () => orpc.expenses.update.mutationOptions(),
+	delete: () => orpc.expenses.delete.mutationOptions(),
 };

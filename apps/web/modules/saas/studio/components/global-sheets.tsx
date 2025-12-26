@@ -28,6 +28,21 @@ import { CrewCreateSheet, CrewEditSheet } from "./crews/sheets";
 // Configurations
 import { ConfigurationCreateSheet, ConfigurationEditSheet } from "./configurations/sheets";
 
+// Shoots
+import { ShootCreateSheet, ShootEditSheet } from "./shoots/sheets";
+
+// Payments
+import { PaymentCreateSheet, PaymentEditSheet } from "./payments/sheets";
+
+// Deliverables
+import { DeliverableCreateSheet, DeliverableEditSheet } from "./deliverables/sheets";
+
+// Tasks
+import { TaskCreateSheet, TaskEditSheet } from "./tasks/sheets";
+
+// Expenses
+import { ExpenseCreateSheet, ExpenseEditSheet } from "./expenses/sheets";
+
 export function GlobalSheets() {
 	return (
 		<>
@@ -47,6 +62,36 @@ export function GlobalSheets() {
 			<ConfigurationCreateSheet />
 			<Suspense fallback={null}>
 				<ConfigurationEditSheet />
+			</Suspense>
+
+			{/* Shoots */}
+			<ShootCreateSheet />
+			<Suspense fallback={null}>
+				<ShootEditSheet />
+			</Suspense>
+
+			{/* Payments */}
+			<PaymentCreateSheet />
+			<Suspense fallback={null}>
+				<PaymentEditSheet />
+			</Suspense>
+
+			{/* Deliverables */}
+			<DeliverableCreateSheet />
+			<Suspense fallback={null}>
+				<DeliverableEditSheet />
+			</Suspense>
+
+			{/* Tasks */}
+			<TaskCreateSheet />
+			<Suspense fallback={null}>
+				<TaskEditSheet />
+			</Suspense>
+
+			{/* Expenses */}
+			<ExpenseCreateSheet />
+			<Suspense fallback={null}>
+				<ExpenseEditSheet />
 			</Suspense>
 		</>
 	);
