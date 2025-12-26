@@ -1,7 +1,28 @@
+import { getActiveOrganization } from "@saas/auth/lib/server";
 import {
 	BookingDetailsStep,
 } from "@saas/studio/components/bookings";
+import { ConfigurationsProvider } from "@saas/studio/components/bookings/index.server";
+import Boundary from "@/modules/ui/components/internal/Boundary";
+import { notFound } from "next/navigation";
 
-export default function DetailsPage() {
-	return <BookingDetailsStep />;
+type Props = {
+	params: Promise<{ organizationSlug: string }>;
+};
+
+export default async function DetailsPage({ params }: Props) {
+	const { organizationSlug } = await params;
+	const organization = await getActiveOrganization(organizationSlug);
+
+	if (!organization) {
+		return notFound();
+	}
+
+	return (
+		<Boundary cached label="Configurations (cached)">
+			<ConfigurationsProvider organizationId={organization.id}>
+				<BookingDetailsStep />
+			</ConfigurationsProvider>
+		</Boundary>
+	);
 }

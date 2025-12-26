@@ -1,18 +1,26 @@
-"use client";
+import { getActiveOrganization } from "@saas/auth/lib/server";
+import { ConfigurationsProvider } from "@saas/studio/components/bookings/index.server";
+import Boundary from "@/modules/ui/components/internal/Boundary";
+import { notFound } from "next/navigation";
+import { ReviewPageClient } from "./ReviewPageClient";
 
-import {
-	BookingReviewStep,
-	type BookingTab,
-} from "@saas/studio/components/bookings";
-import { useParams, useRouter } from "next/navigation";
+type Props = {
+	params: Promise<{ organizationSlug: string }>;
+};
 
-export default function ReviewPage() {
-	const router = useRouter();
-	const params = useParams<{ organizationSlug: string }>();
+export default async function ReviewPage({ params }: Props) {
+	const { organizationSlug } = await params;
+	const organization = await getActiveOrganization(organizationSlug);
 
-	const handleNavigateToStep = (step: BookingTab) => {
-		router.push(`/app/${params.organizationSlug}/bookings/new/${step}`);
-	};
+	if (!organization) {
+		return notFound();
+	}
 
-	return <BookingReviewStep onNavigateToStep={handleNavigateToStep} />;
+	return (
+		<Boundary cached label="Configurations (cached)">
+			<ConfigurationsProvider organizationId={organization.id}>
+				<ReviewPageClient />
+			</ConfigurationsProvider>
+		</Boundary>
+	);
 }
