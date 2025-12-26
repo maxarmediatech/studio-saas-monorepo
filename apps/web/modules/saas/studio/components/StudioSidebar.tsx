@@ -1,5 +1,15 @@
 "use client";
 
+import { Button } from "@repo/ui/components/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuGroup,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@repo/ui/components/dropdown-menu";
 import {
 	Sidebar,
 	SidebarContent,
@@ -14,13 +24,97 @@ import {
 	useSidebar,
 } from "@repo/ui/components/sidebar";
 import { cn } from "@repo/ui/lib/utils";
+import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
+import { useOrganizationListQuery } from "@saas/organizations/lib/api";
 import { OrganizationLogo } from "@saas/organizations/components/OrganizationLogo";
+import { Logo } from "@shared/components/Logo";
+import { useRouter } from "@shared/hooks/router";
+import { clearCache } from "@shared/lib/cache";
+import { ChevronDown, PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { getIcon } from "../lib/icons";
 import { findActiveModule, getSidebarData } from "../lib/navigation";
 import type { ModuleId, NavItem, NavModule } from "../lib/types";
 import { ModulePanel } from "./ModulePanel";
+
+interface OrganizationSwitcherProps {
+	studioName: string;
+	studioLogo?: string | null;
+	isCollapsed: boolean;
+}
+
+function OrganizationSwitcher({
+	studioName,
+	studioLogo,
+	isCollapsed,
+}: OrganizationSwitcherProps) {
+	const router = useRouter();
+	const { setActiveOrganization } = useActiveOrganization();
+	const { data: allOrganizations } = useOrganizationListQuery();
+
+	return (
+		<DropdownMenu>
+			<div className="flex w-full items-center px-2 group-data-[collapsible=icon]:justify-center">
+				<DropdownMenuTrigger asChild>
+					<Button
+						variant="ghost"
+						className="flex h-auto items-center gap-3 p-0! hover:bg-transparent"
+					>
+						<OrganizationLogo
+							name={studioName}
+							logoUrl={studioLogo}
+							className="size-8 rounded-lg"
+						/>
+						{!isCollapsed && (
+							<>
+								<span className="font-semibold truncate max-w-[140px]">
+									{studioName}
+								</span>
+								<ChevronDown className="size-3 text-muted-foreground" />
+							</>
+						)}
+					</Button>
+				</DropdownMenuTrigger>
+			</div>
+			<DropdownMenuContent
+				className="min-w-60 rounded-lg"
+				side="bottom"
+				align="start"
+			>
+				<DropdownMenuLabel className="text-foreground/60 text-xs">
+					Switch organization
+				</DropdownMenuLabel>
+				{allOrganizations?.map((organization) => (
+					<DropdownMenuItem
+						key={organization.slug}
+						className="flex cursor-pointer items-center gap-2"
+						onClick={async () => {
+							await clearCache();
+							setActiveOrganization(organization.slug);
+						}}
+					>
+						<OrganizationLogo
+							className="size-6"
+							name={organization.name}
+							logoUrl={organization.logo}
+						/>
+						<span className="truncate">{organization.name}</span>
+					</DropdownMenuItem>
+				))}
+				<DropdownMenuSeparator />
+				<DropdownMenuGroup>
+					<DropdownMenuItem asChild className="cursor-pointer">
+						<Link href="/new-organization">
+							<PlusIcon className="mr-2 size-4" />
+							Create new organization
+						</Link>
+					</DropdownMenuItem>
+				</DropdownMenuGroup>
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
+}
 
 interface StudioSidebarProps {
 	studioSlug: string;
@@ -60,11 +154,7 @@ export function StudioSidebar({
 						<SidebarMenuItem>
 							<SidebarMenuButton size="lg" asChild className="md:h-8 md:p-0">
 								<Link href={`/app/${studioSlug}`}>
-									<OrganizationLogo
-										name={studioName}
-										logoUrl={studioLogo}
-										className="size-8 rounded-lg"
-									/>
+									<Logo withLabel={false} className="size-8" />
 								</Link>
 							</SidebarMenuButton>
 						</SidebarMenuItem>
@@ -151,14 +241,30 @@ export function StudioSidebar({
 
 			{/* Second column: Module panel (hidden on mobile, shown in drawer instead) */}
 			<Sidebar collapsible="none" className="hidden flex-1 md:flex">
-				<SidebarHeader className="h-14 gap-3.5 border-b px-4">
-					<div className="my-auto flex w-full items-center justify-between">
-						<div className="font-medium text-base text-foreground">
-							{activeModule.label}
-						</div>
-						<div className="hidden sm:block">
-							<SidebarTrigger />
-						</div>
+				<SidebarHeader
+					className={cn(
+						"flex h-14 border-b px-2",
+						isCollapsed
+							? "flex-row items-center justify-between gap-y-4 md:flex-col md:items-center md:justify-start"
+							: "flex-row items-center justify-between",
+					)}
+				>
+					<SidebarMenu>
+						<SidebarMenuItem>
+							<OrganizationSwitcher
+								studioName={studioName}
+								studioLogo={studioLogo}
+								isCollapsed={isCollapsed}
+							/>
+						</SidebarMenuItem>
+					</SidebarMenu>
+					<div
+						className={cn(
+							"flex items-center gap-2",
+							isCollapsed ? "flex-row md:flex-col-reverse" : "flex-row",
+						)}
+					>
+						<SidebarTrigger />
 					</div>
 				</SidebarHeader>
 
