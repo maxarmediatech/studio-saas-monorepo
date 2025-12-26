@@ -1,6 +1,7 @@
 // Components
 export { ModulePanel } from "./components/ModulePanel";
 export { MobileNav } from "./components/MobileNav";
+export { PageHeader } from "./components/PageHeader";
 export { StudioSidebar, useStudioSidebar } from "./components/StudioSidebar";
 export { StudioLayout } from "./components/StudioLayout";
 export { StudioLayoutClient } from "./components/StudioLayoutClient";

@@ -1,4 +1,5 @@
 import { getActiveOrganization } from "@saas/auth/lib/server";
+import { PageHeader } from "@saas/studio";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
@@ -59,14 +60,8 @@ export default async function SettingsPage({ params }: Props) {
 	}
 
 	return (
-		<div className="space-y-6">
-			<div>
-				<h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-				<p className="text-muted-foreground">
-					Configure your studio settings and customizations
-				</p>
-			</div>
-
+		<>
+			<PageHeader title="Settings" />
 			<div className="space-y-6">
 				<div>
 					<h2 className="text-lg font-medium mb-4">Configurations</h2>
@@ -111,6 +106,6 @@ export default async function SettingsPage({ params }: Props) {
 					</div>
 				</div>
 			</div>
-		</div>
+		</>
 	);
 }

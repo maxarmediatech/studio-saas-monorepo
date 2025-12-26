@@ -17,6 +17,7 @@ import {
 	useBookingFormHydrated,
 	useBookingFormStore,
 } from "@saas/studio/components/bookings/booking-form/store/use-booking-form-store";
+import { PageHeader } from "@saas/studio";
 import { bookingsMutations, studioQueryKeys } from "@saas/studio/lib/api";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeftIcon, Loader2Icon } from "lucide-react";
@@ -194,27 +195,17 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 					createMutation.mutate(buildCreateBookingInput(values));
 				})}
 			>
-				<div className="space-y-6">
-					{/* Header */}
-					<div className="flex items-center gap-4">
+				<PageHeader
+					title="New Booking"
+					backButton={
 						<Button variant="ghost" size="icon" asChild>
-							<Link
-								href={`/app/${wizard.organizationSlug}/bookings`}
-							>
+							<Link href={`/app/${wizard.organizationSlug}/bookings`}>
 								<ArrowLeftIcon className="h-4 w-4" />
 							</Link>
 						</Button>
-						<div>
-							<h1 className="text-2xl font-semibold tracking-tight">
-								New Booking
-							</h1>
-							<p className="text-muted-foreground">
-								Create a new booking for your studio
-							</p>
-						</div>
-					</div>
-
-					{/* Form Layout */}
+					}
+				/>
+				<div className="space-y-6">
 					<BookingFormLayout
 						stepper={
 							<BookingStepperSidebar

@@ -24,9 +24,10 @@ import {
 	useSidebar,
 } from "@repo/ui/components/sidebar";
 import { cn } from "@repo/ui/lib/utils";
+import { OrganizationLogo } from "@saas/organizations/components/OrganizationLogo";
 import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
 import { useOrganizationListQuery } from "@saas/organizations/lib/api";
-import { OrganizationLogo } from "@saas/organizations/components/OrganizationLogo";
+import { UserMenu } from "@saas/shared/components/UserMenu";
 import { Logo } from "@shared/components/Logo";
 import { useRouter } from "@shared/hooks/router";
 import { clearCache } from "@shared/lib/cache";
@@ -35,7 +36,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { getIcon } from "../lib/icons";
 import { findActiveModule, getSidebarData } from "../lib/navigation";
-import type { ModuleId, NavItem, NavModule } from "../lib/types";
+import type { ModuleId } from "../lib/types";
 import { ModulePanel } from "./ModulePanel";
 
 interface OrganizationSwitcherProps {
@@ -152,9 +153,16 @@ export function StudioSidebar({
 				<SidebarHeader className="h-14 border-b">
 					<SidebarMenu className="my-auto">
 						<SidebarMenuItem>
-							<SidebarMenuButton size="lg" asChild className="md:h-8 md:p-0">
+							<SidebarMenuButton
+								size="lg"
+								asChild
+								className="md:h-8 md:p-0"
+							>
 								<Link href={`/app/${studioSlug}`}>
-									<Logo withLabel={false} className="size-8" />
+									<Logo
+										withLabel={false}
+										className="size-8"
+									/>
 								</Link>
 							</SidebarMenuButton>
 						</SidebarMenuItem>
@@ -192,7 +200,9 @@ export function StudioSidebar({
 													onModuleChange(module.id);
 													setOpen(true);
 												}}
-												isActive={activeModuleId === module.id}
+												isActive={
+													activeModuleId === module.id
+												}
 												aria-label={module.label}
 												className="px-2.5 md:px-2"
 											>
@@ -207,32 +217,37 @@ export function StudioSidebar({
 					</SidebarGroup>
 				</SidebarContent>
 
-				{/* Footer with utilities (shown when collapsed) */}
-				<SidebarFooter className={cn(showFooter ? "flex" : "hidden")}>
+				{/* Footer: utilities (when collapsed) + user avatar (always) */}
+				<SidebarFooter>
 					<SidebarGroup className="p-0">
 						<SidebarGroupContent className="px-1.5 md:px-0">
 							<SidebarMenu>
-								{utilities.map((item) => {
-									const Icon = getIcon(item.icon);
-									return (
-										<SidebarMenuItem key={item.url}>
-											<SidebarMenuButton
-												asChild
-												tooltip={{
-													children: item.title,
-													hidden: isMobile,
-												}}
-												className="px-2.5 md:px-2"
-												aria-label={item.title}
-											>
-												<Link href={item.url}>
-													<Icon className="size-4" />
-													<span>{item.title}</span>
-												</Link>
-											</SidebarMenuButton>
-										</SidebarMenuItem>
-									);
-								})}
+								{/* Utilities shown when collapsed */}
+								{showFooter &&
+									utilities.map((item) => {
+										const Icon = getIcon(item.icon);
+										return (
+											<SidebarMenuItem key={item.url}>
+												<SidebarMenuButton
+													asChild
+													tooltip={{
+														children: item.title,
+														hidden: isMobile,
+													}}
+													className="px-2.5 md:px-2"
+													aria-label={item.title}
+												>
+													<Link href={item.url}>
+														<Icon className="size-4" />
+														<span>
+															{item.title}
+														</span>
+													</Link>
+												</SidebarMenuButton>
+											</SidebarMenuItem>
+										);
+									})}
+								<UserMenu />
 							</SidebarMenu>
 						</SidebarGroupContent>
 					</SidebarGroup>
@@ -261,7 +276,9 @@ export function StudioSidebar({
 					<div
 						className={cn(
 							"flex items-center gap-2",
-							isCollapsed ? "flex-row md:flex-col-reverse" : "flex-row",
+							isCollapsed
+								? "flex-row md:flex-col-reverse"
+								: "flex-row",
 						)}
 					>
 						<SidebarTrigger />
@@ -271,7 +288,10 @@ export function StudioSidebar({
 				<SidebarContent>
 					<SidebarGroup className="px-0">
 						<SidebarGroupContent>
-							<ModulePanel module={activeModule} utilities={utilities} />
+							<ModulePanel
+								module={activeModule}
+								utilities={utilities}
+							/>
 						</SidebarGroupContent>
 					</SidebarGroup>
 				</SidebarContent>

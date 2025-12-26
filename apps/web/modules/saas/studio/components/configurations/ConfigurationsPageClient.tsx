@@ -35,6 +35,7 @@ import {
 } from "@saas/shared/components/data-table";
 import type { Configuration } from "@repo/api/modules/studio/schemas/configuration";
 import { ConfigurationFormDialog } from "./ConfigurationFormDialog";
+import { PageHeader } from "../PageHeader";
 
 interface ConfigurationsPageClientProps {
 	organizationSlug: string;
@@ -243,14 +244,8 @@ export function ConfigurationsPageClient({
 	const showLoading = isFetching || isPending;
 
 	return (
-		<div className="space-y-6">
-			<div className="flex items-center justify-between">
-				<div>
-					<h1 className="text-2xl font-semibold tracking-tight">{pageTitle}</h1>
-					<p className="text-muted-foreground">{pageDescription}</p>
-				</div>
-			</div>
-
+		<>
+			<PageHeader title={pageTitle} />
 			<div className="space-y-4">
 				{/* Filters */}
 				<div className="flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -333,6 +328,6 @@ export function ConfigurationsPageClient({
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
-		</div>
+		</>
 	);
 }

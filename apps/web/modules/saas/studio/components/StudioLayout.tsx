@@ -1,12 +1,9 @@
 "use client";
 
-import { Separator } from "@repo/ui/components/separator";
 import {
 	SidebarInset,
 	SidebarProvider,
-	SidebarTrigger,
 } from "@repo/ui/components/sidebar";
-import { UserMenu } from "@saas/shared/components/UserMenu";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { findActiveModule, getSidebarData } from "../lib/navigation";
@@ -58,32 +55,7 @@ export function StudioLayout({
 			</div>
 
 			<SidebarInset className="pb-20 md:pb-0">
-				{/* Seamless header spanning full width */}
-				<header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b bg-background">
-					<div className="flex flex-1 items-center justify-between gap-2 px-4">
-						{/* Mobile: show sidebar trigger and module label */}
-						<div className="flex items-center gap-2 md:hidden">
-							<SidebarTrigger />
-							<Separator
-								orientation="vertical"
-								className="data-[orientation=vertical]:h-4"
-							/>
-							<span className="font-semibold text-base text-foreground">
-								{activeModule.label}
-							</span>
-						</div>
-
-						{/* Desktop: empty left side (breadcrumbs could go here) */}
-						<div className="hidden md:block" />
-
-						{/* Right side: User menu */}
-						<div className="hidden md:block">
-							<UserMenu />
-						</div>
-					</div>
-				</header>
-
-				{/* Main content */}
+				{/* Main content - header is rendered by each page via PageHeader component */}
 				<div className="flex flex-1 flex-col p-6 lg:p-8">{children}</div>
 			</SidebarInset>
 

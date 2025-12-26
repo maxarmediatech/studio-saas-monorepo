@@ -1,5 +1,6 @@
 import { getActiveOrganization } from "@saas/auth/lib/server";
 import { ClientsPageClient } from "@saas/studio/components/clients/ClientsPageClient";
+import { PageHeader } from "@saas/studio";
 import { clientsApi } from "@saas/studio/lib/api";
 import { getServerQueryClient } from "@shared/lib/server";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
@@ -48,24 +49,14 @@ export default async function ClientsPage({ params, searchParams }: Props) {
 
 	return (
 		<HydrationBoundary state={dehydrate(queryClient)}>
-			<div className="space-y-6">
-				<div className="flex items-center justify-between">
-					<div>
-						<h1 className="text-2xl font-semibold tracking-tight">Clients</h1>
-						<p className="text-muted-foreground">
-							Manage your clients and their contact information
-						</p>
-					</div>
-				</div>
-
-				<ClientsPageClient
-					organizationSlug={organizationSlug}
-					initialFilters={{
-						page: input.page,
-						search: input.search,
-					}}
-				/>
-			</div>
+			<PageHeader title="Clients" />
+			<ClientsPageClient
+				organizationSlug={organizationSlug}
+				initialFilters={{
+					page: input.page,
+					search: input.search,
+				}}
+			/>
 		</HydrationBoundary>
 	);
 }
