@@ -1,12 +1,9 @@
 import type { BookingPhase } from "@repo/api/modules/studio/schemas/common";
-import { Button } from "@repo/ui/components/button";
 import { getActiveOrganization } from "@saas/auth/lib/server";
-import { BookingsPageClient, PageHeader } from "@saas/studio";
+import { BookingsPageClient } from "@saas/studio";
 import { bookingsApi } from "@saas/studio/lib/api";
 import { getServerQueryClient } from "@shared/lib/server";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
-import { PlusIcon } from "lucide-react";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 type Props = {
@@ -54,17 +51,6 @@ export default async function BookingsPage({ params, searchParams }: Props) {
 
 	return (
 		<HydrationBoundary state={dehydrate(queryClient)}>
-			<PageHeader
-				title="Bookings"
-				actions={
-					<Button asChild size="sm">
-						<Link href={`/app/${organizationSlug}/bookings/new`}>
-							<PlusIcon className="mr-2 h-4 w-4" />
-							New Booking
-						</Link>
-					</Button>
-				}
-			/>
 			<BookingsPageClient
 				organizationSlug={organizationSlug}
 				initialFilters={{

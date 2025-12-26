@@ -1,7 +1,6 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Button } from "@repo/ui/components/button";
 import { Form } from "@repo/ui/components/form";
 import {
 	BookingFormLayout,
@@ -17,11 +16,9 @@ import {
 	useBookingFormHydrated,
 	useBookingFormStore,
 } from "@saas/studio/components/bookings/booking-form/store/use-booking-form-store";
-import { PageHeader } from "@saas/studio";
 import { bookingsMutations, studioQueryKeys } from "@saas/studio/lib/api";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeftIcon, Loader2Icon } from "lucide-react";
-import Link from "next/link";
+import { Loader2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type PropsWithChildren, useEffect, useRef } from "react";
 import { type Resolver, useForm } from "react-hook-form";
@@ -195,16 +192,6 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 					createMutation.mutate(buildCreateBookingInput(values));
 				})}
 			>
-				<PageHeader
-					title="New Booking"
-					backButton={
-						<Button variant="ghost" size="icon" asChild>
-							<Link href={`/app/${wizard.organizationSlug}/bookings`}>
-								<ArrowLeftIcon className="h-4 w-4" />
-							</Link>
-						</Button>
-					}
-				/>
 				<div className="space-y-6">
 					<BookingFormLayout
 						stepper={

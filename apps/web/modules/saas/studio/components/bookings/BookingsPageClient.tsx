@@ -305,15 +305,6 @@ export function BookingsPageClient({
 						<SelectItem value="cancelled">Cancelled</SelectItem>
 					</SelectContent>
 				</Select>
-
-				<div className="ml-auto">
-					<Button asChild>
-						<Link href={`/app/${organizationSlug}/bookings/new`}>
-							<PlusIcon className="mr-2 h-4 w-4" />
-							New Booking
-						</Link>
-					</Button>
-				</div>
 			</div>
 
 			{/* Table */}
