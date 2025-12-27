@@ -12,6 +12,87 @@ function normalizePath(path: string): string {
 }
 
 /**
+ * Flatten nav items including children (for nested navigation).
+ */
+function flattenNavItems(items: NavItemConfig[]): NavItemConfig[] {
+	return items.flatMap((item) => {
+		if (item.children && item.children.length > 0) {
+			return [item, ...flattenNavItems(item.children)];
+		}
+		return item;
+	});
+}
+
+/**
+ * Check if a module matches the current pathname.
+ * Matches if:
+ * 1. pathname starts with module's defaultPath
+ * 2. OR any section item matches the pathname
+ */
+function moduleMatchesPath(
+	module: NavModuleConfig,
+	pathname: string,
+	basePath: string,
+): boolean {
+	const normalizedPathname = normalizePath(pathname);
+	const normalizedBase = normalizePath(basePath);
+
+	// Home/base path: only first module (overview) matches
+	if (normalizedPathname === normalizedBase && module.id === "overview") {
+		return true;
+	}
+
+	// Check if pathname starts with module's defaultPath
+	const normalizedDefaultPath = normalizePath(module.defaultPath);
+	if (
+		normalizedPathname === normalizedDefaultPath ||
+		normalizedPathname.startsWith(`${normalizedDefaultPath}/`)
+	) {
+		return true;
+	}
+
+	// Check if any section item matches
+	return module.sections.some((section) =>
+		flattenNavItems(section.items).some((item) => {
+			const normalizedItemPath = normalizePath(item.path);
+			return (
+				normalizedPathname === normalizedItemPath ||
+				normalizedPathname.startsWith(`${normalizedItemPath}/`)
+			);
+		}),
+	);
+}
+
+/**
+ * Find the module that matches the current pathname.
+ * Returns null if no module matches (e.g., on utility pages like settings).
+ *
+ * Uses most-specific-match logic: modules with longer defaultPaths are
+ * checked first to avoid parent paths matching child routes.
+ */
+export function findModuleByPath(
+	pathname: string,
+	config: NavigationConfig,
+): NavModuleConfig | null {
+	// Determine base path from first module's defaultPath
+	const basePath =
+		config.modules[0]?.defaultPath.replace(/\/[^/]*$/, "") ?? "/app";
+
+	// Sort modules by defaultPath length descending (most specific first)
+	// This ensures /configurations/booking-types matches before /app/{slug}
+	const sortedModules = [...config.modules].sort(
+		(a, b) => b.defaultPath.length - a.defaultPath.length,
+	);
+
+	// Find module matching current path
+	const match = sortedModules.find((module) =>
+		moduleMatchesPath(module, pathname, basePath),
+	);
+
+	return match ?? null;
+}
+
+/**
  * Check if a pathname matches a nav item path.
  * - For base/home paths: exact match only (prevents false positives)
  * - For other paths: exact match OR nested route match
@@ -38,66 +119,6 @@ export function isItemActive(
 }
 
 /**
- * Get all nav items from a module (flattened from all sections).
- */
-function getModuleItems(navModule: NavModuleConfig): NavItemConfig[] {
-	return navModule.sections.flatMap((section) => section.items);
-}
-
-/**
- * Find which nav item (if any) matches the current pathname.
- * Returns the most specific match (longest path first).
- */
-function findActiveNavItem(
-	items: NavItemConfig[],
-	pathname: string,
-	basePath: string,
-): NavItemConfig | null {
-	// Sort by path length descending for most specific match first
-	const sortedItems = [...items].sort(
-		(a, b) => b.path.length - a.path.length,
-	);
-
-	for (const item of sortedItems) {
-		if (isItemActive(pathname, item.path, basePath)) {
-			return item;
-		}
-	}
-	return null;
-}
-
-/**
- * Find the module that contains a nav item matching the current pathname.
- * Returns null if no module matches (e.g., on utility pages like settings).
- */
-export function findModuleByPath(
-	pathname: string,
-	config: NavigationConfig,
-): NavModuleConfig | null {
-	// Determine base path from first module's defaultPath
-	const basePath =
-		config.modules[0]?.defaultPath.replace(/\/[^/]*$/, "") ?? "/app";
-
-	const normalizedPathname = normalizePath(pathname);
-	const normalizedBase = normalizePath(basePath);
-
-	// Home page belongs to first module
-	if (normalizedPathname === normalizedBase) {
-		return config.modules[0] ?? null;
-	}
-
-	// Find module by matching any of its items
-	for (const navModule of config.modules) {
-		const items = getModuleItems(navModule);
-		if (findActiveNavItem(items, pathname, basePath)) {
-			return navModule;
-		}
-	}
-
-	return null;
-}
-
-/**
  * Find the active module ID based on the current pathname.
  * Falls back to first module if no match found.
  */
@@ -106,5 +127,5 @@ export function findActiveModuleId(
 	config: NavigationConfig,
 ): string {
 	const navModule = findModuleByPath(pathname, config);
-	return navModule?.id ?? config.modules[0]?.id ?? "studio";
+	return navModule?.id ?? config.modules[0]?.id ?? "overview";
 }

@@ -9,24 +9,29 @@ import type {
 // ============================================================================
 
 export type IconName =
-	| "home"
-	| "layoutDashboard"
-	| "inbox"
-	| "calendarDays"
-	| "camera"
-	| "package"
-	| "listTodo"
-	| "banknote"
-	| "wallet"
-	| "users"
-	| "contact"
-	| "settings"
-	| "slidersHorizontal"
-	| "helpCircle"
-	| "clipboardCheck"
-	| "building";
+	| "Banknote"
+	| "CalendarDays"
+	| "Camera"
+	| "ClipboardCheck"
+	| "Contact2"
+	| "HelpCircle"
+	| "Home"
+	| "Inbox"
+	| "LayoutDashboard"
+	| "ListTodo"
+	| "Package"
+	| "Settings"
+	| "Settings2"
+	| "Users"
+	| "Wallet2";
 
 export type IconRegistry = Record<IconName, LucideIcon>;
+
+// ============================================================================
+// NAVIGATION INTENT
+// ============================================================================
+
+export type NavIntent = "primary" | "secondary" | "utility";
 
 // ============================================================================
 // PERMISSION TYPES
@@ -59,6 +64,7 @@ export interface NavItemConfig {
 	label: string;
 	path: string;
 	icon?: IconName;
+	intent?: NavIntent;
 	permission?: NavPermissionCheck;
 	children?: NavItemConfig[];
 }

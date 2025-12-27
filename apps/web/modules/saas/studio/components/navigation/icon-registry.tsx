@@ -3,11 +3,10 @@
 import type { LucideIcon } from "lucide-react";
 import {
 	Banknote,
-	Building,
 	CalendarDays,
 	Camera,
 	ClipboardCheck,
-	Contact,
+	Contact2,
 	HelpCircle,
 	Home,
 	Inbox,
@@ -15,29 +14,28 @@ import {
 	ListTodo,
 	Package,
 	Settings,
-	SlidersHorizontal,
+	Settings2,
 	Users,
-	Wallet,
+	Wallet2,
 } from "lucide-react";
 
-const registry: Record<string, LucideIcon> = {
-	home: Home,
-	layoutDashboard: LayoutDashboard,
-	inbox: Inbox,
-	calendarDays: CalendarDays,
-	camera: Camera,
-	package: Package,
-	listTodo: ListTodo,
-	banknote: Banknote,
-	wallet: Wallet,
-	users: Users,
-	contact: Contact,
-	settings: Settings,
-	slidersHorizontal: SlidersHorizontal,
-	helpCircle: HelpCircle,
-	clipboardCheck: ClipboardCheck,
-	building: Building,
-};
+const registry = {
+	Banknote,
+	CalendarDays,
+	Camera,
+	ClipboardCheck,
+	Contact2,
+	HelpCircle,
+	Home,
+	Inbox,
+	LayoutDashboard,
+	ListTodo,
+	Package,
+	Settings,
+	Settings2,
+	Users,
+	Wallet2,
+} satisfies Record<string, LucideIcon>;
 
 export function IconByName({
 	name,
@@ -47,7 +45,9 @@ export function IconByName({
 	className?: string;
 }) {
 	if (!name) return null;
-	const Icon = registry[name];
+	const Icon = registry[name as keyof typeof registry];
 	if (!Icon) return null;
 	return <Icon className={className} />;
 }
+
+export type IconName = keyof typeof registry;

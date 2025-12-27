@@ -1,9 +1,4 @@
-import type {
-	NavItemConfig,
-	NavModuleConfig,
-	NavSectionConfig,
-	NavigationConfig,
-} from "./types";
+import type { NavItemConfig, NavModuleConfig, NavigationConfig } from "./types";
 
 /**
  * Build the URL for a navigation item, prefixed with the studio base path
@@ -16,106 +11,102 @@ function buildUrl(studioSlug: string, path: string): string {
  * Get navigation configuration for a studio.
  * URLs are built dynamically based on the studio slug.
  * Permissions are defined for each item to enable RBAC filtering.
+ *
+ * Structure matches winter-arc/studio-saas pattern:
+ * - 6 modules as header tabs: Overview, Production, Operations, Finance, CRM, System
+ * - Each module has sections with items
+ * - Utilities (Settings) shown in sidebar footer
  */
 export function getNavigationConfig(studioSlug: string): NavigationConfig {
 	const url = (path: string) => buildUrl(studioSlug, path);
 
 	const modules: NavModuleConfig[] = [
 		{
-			id: "studio",
-			label: "Studio",
-			icon: "building",
-			defaultPath: url(""),
+			id: "overview",
+			label: "Overview",
+			icon: "LayoutDashboard",
+			defaultPath: url("/home"),
 			sections: [
 				{
-					id: "core",
+					id: "overview-core",
+					label: "Overview",
 					items: [
 						{
 							id: "home",
 							label: "Home",
-							path: url(""),
-							icon: "home",
-							// No permission - always visible
+							path: url("/home"),
+							icon: "Home",
+							intent: "primary",
 						},
 						{
 							id: "dashboard",
 							label: "Dashboard",
 							path: url("/dashboard"),
-							icon: "layoutDashboard",
+							icon: "LayoutDashboard",
+							intent: "primary",
 							permission: { any: [{ resource: "dashboard", action: "read" }] },
 						},
 					],
 				},
+			],
+		},
+		{
+			id: "production",
+			label: "Production",
+			icon: "Camera",
+			defaultPath: url("/bookings"),
+			sections: [
 				{
-					id: "operations",
-					label: "Operations",
+					id: "production-pipeline",
+					label: "Production",
 					items: [
 						{
 							id: "bookings",
 							label: "Bookings",
 							path: url("/bookings"),
-							icon: "calendarDays",
+							icon: "CalendarDays",
 							permission: { any: [{ resource: "booking", action: "list" }] },
 						},
 						{
 							id: "shoots",
 							label: "Shoots",
 							path: url("/shoots"),
-							icon: "camera",
+							icon: "Camera",
 							permission: { any: [{ resource: "shoot", action: "list" }] },
 						},
+					],
+				},
+			],
+		},
+		{
+			id: "operations",
+			label: "Operations",
+			icon: "ListTodo",
+			defaultPath: url("/deliverables"),
+			sections: [
+				{
+					id: "operations-core",
+					label: "Operations",
+					items: [
 						{
 							id: "deliverables",
 							label: "Deliverables",
 							path: url("/deliverables"),
-							icon: "package",
+							icon: "Package",
 							permission: { any: [{ resource: "deliverable", action: "list" }] },
 						},
 						{
 							id: "tasks",
 							label: "Tasks",
 							path: url("/tasks"),
-							icon: "listTodo",
+							icon: "ListTodo",
 							permission: { any: [{ resource: "task", action: "list" }] },
-						},
-					],
-				},
-				{
-					id: "finance",
-					label: "Finance",
-					items: [
-						{
-							id: "payments",
-							label: "Payments",
-							path: url("/payments"),
-							icon: "wallet",
-							permission: { any: [{ resource: "payment", action: "list" }] },
-						},
-						{
-							id: "expenses",
-							label: "Expenses",
-							path: url("/expenses"),
-							icon: "banknote",
-							permission: { any: [{ resource: "expense", action: "list" }] },
-						},
-					],
-				},
-				{
-					id: "people",
-					label: "People",
-					items: [
-						{
-							id: "clients",
-							label: "Clients",
-							path: url("/clients"),
-							icon: "contact",
-							permission: { any: [{ resource: "client", action: "list" }] },
 						},
 						{
 							id: "crew",
 							label: "Crew",
 							path: url("/crews"),
-							icon: "users",
+							icon: "Users",
 							permission: { any: [{ resource: "crew", action: "list" }] },
 						},
 					],
@@ -123,47 +114,69 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 			],
 		},
 		{
-			id: "configurations",
-			label: "Configurations",
-			icon: "slidersHorizontal",
-			defaultPath: url("/configurations/booking-types"),
+			id: "finance",
+			label: "Finance",
+			icon: "Wallet2",
+			defaultPath: url("/payments"),
 			sections: [
 				{
-					id: "configs",
-					label: "Configs",
+					id: "finance-core",
+					label: "Finance",
 					items: [
 						{
-							id: "booking-types",
-							label: "Booking Types",
-							path: url("/configurations/booking-types"),
-							icon: "calendarDays",
-							permission: {
-								any: [{ resource: "configuration", action: "list" }],
-							},
+							id: "payments",
+							label: "Payments",
+							path: url("/payments"),
+							icon: "Wallet2",
+							permission: { any: [{ resource: "payment", action: "list" }] },
 						},
 						{
-							id: "package-types",
-							label: "Package Types",
-							path: url("/configurations/package-types"),
-							icon: "package",
-							permission: {
-								any: [{ resource: "configuration", action: "list" }],
-							},
+							id: "expenses",
+							label: "Expenses",
+							path: url("/expenses"),
+							icon: "Banknote",
+							permission: { any: [{ resource: "expense", action: "list" }] },
 						},
+					],
+				},
+			],
+		},
+		{
+			id: "crm",
+			label: "CRM",
+			icon: "Contact2",
+			defaultPath: url("/clients"),
+			sections: [
+				{
+					id: "crm-core",
+					label: "CRM",
+					items: [
 						{
-							id: "relation-types",
-							label: "Relation Types",
-							path: url("/configurations/relation-types"),
-							icon: "contact",
-							permission: {
-								any: [{ resource: "configuration", action: "list" }],
-							},
+							id: "clients",
+							label: "Clients",
+							path: url("/clients"),
+							icon: "Contact2",
+							permission: { any: [{ resource: "client", action: "list" }] },
 						},
+					],
+				},
+			],
+		},
+		{
+			id: "system",
+			label: "System",
+			icon: "Settings2",
+			defaultPath: url("/configurations"),
+			sections: [
+				{
+					id: "system-core",
+					label: "System",
+					items: [
 						{
-							id: "crew-roles",
-							label: "Crew Roles",
-							path: url("/configurations/crew-roles"),
-							icon: "users",
+							id: "configurations",
+							label: "Configurations",
+							path: url("/configurations"),
+							icon: "Settings2",
 							permission: {
 								any: [{ resource: "configuration", action: "list" }],
 							},
@@ -179,8 +192,7 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 			id: "settings",
 			label: "Settings",
 			path: url("/settings"),
-			icon: "settings",
-			permission: { any: [{ resource: "settings", action: "read" }] },
+			icon: "Settings",
 		},
 	];
 

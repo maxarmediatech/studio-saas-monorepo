@@ -51,4 +51,5 @@ export type {
 export { findActiveModuleId, findModuleByPath, isItemActive } from "./lib/navigation/utils";
 
 // Icons
-export { getIcon, iconRegistry } from "./lib/icons";
+export { IconByName } from "./components/navigation/icon-registry";
+export type { IconName as RegistryIconName } from "./components/navigation/icon-registry";
