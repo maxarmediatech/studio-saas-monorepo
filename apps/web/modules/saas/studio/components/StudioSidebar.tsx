@@ -222,13 +222,24 @@ export function StudioSidebar({
 								{/* Module buttons */}
 								{modules.map((module) => {
 									const Icon = getIcon(module.icon);
-									// Show as active if this is the URL's module OR the currently displayed module
-									const isActive =
-										urlModuleId === module.id ||
+									// URL module = where you actually are
+									const isUrlModule = urlModuleId === module.id;
+									// Displayed module = what panel is showing
+									const isDisplayedModule =
 										displayedModuleId === module.id;
+									// Highlight if either URL module or displayed module
+									const isHighlighted =
+										isUrlModule || isDisplayedModule;
 
 									return (
-										<SidebarMenuItem key={module.id}>
+										<SidebarMenuItem
+											key={module.id}
+											className="relative"
+										>
+											{/* URL indicator - dot on the left side */}
+											{isUrlModule && (
+												<span className="absolute left-0 top-1/2 h-4 w-1 -translate-y-1/2 rounded-r-full bg-primary" />
+											)}
 											<SidebarMenuButton
 												tooltip={{
 													children: module.label,
@@ -238,12 +249,10 @@ export function StudioSidebar({
 													onModuleChange(module.id);
 													setOpen(true);
 												}}
-												isActive={isActive}
+												isActive={isHighlighted}
 												aria-label={module.label}
 												aria-current={
-													urlModuleId === module.id
-														? "true"
-														: undefined
+													isUrlModule ? "true" : undefined
 												}
 												className="px-2.5 md:px-2"
 											>

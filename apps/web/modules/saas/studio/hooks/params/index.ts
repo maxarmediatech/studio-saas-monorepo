@@ -5,4 +5,5 @@ export { useDeliverableParams } from "./use-deliverable-params";
 export { useExpenseParams } from "./use-expense-params";
 export { usePaymentParams } from "./use-payment-params";
 export { useShootParams } from "./use-shoot-params";
+export { useSidebarParams } from "./use-sidebar-params";
 export { useTaskParams } from "./use-task-params";

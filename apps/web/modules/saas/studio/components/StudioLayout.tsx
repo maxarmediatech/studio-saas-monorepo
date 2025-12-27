@@ -5,7 +5,8 @@ import {
 	SidebarProvider,
 } from "@repo/ui/components/sidebar";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useSidebarParams } from "../hooks/params";
 import { findActiveModuleId, getSidebarData } from "../lib/navigation";
 import type { ModuleId } from "../lib/types";
 import { MobileNav } from "./MobileNav";
@@ -25,6 +26,7 @@ export function StudioLayout({
 	children,
 }: StudioLayoutProps) {
 	const pathname = usePathname();
+	const { browseModule, setBrowseModule } = useSidebarParams();
 
 	// Memoize sidebar data to avoid recalculation
 	const { modules, utilities } = useMemo(
@@ -38,24 +40,27 @@ export function StudioLayout({
 		[modules, pathname, studioSlug],
 	);
 
-	// The module currently displayed in the sidebar panel
-	// This can differ from urlModuleId when user is "browsing" another module
-	const [displayedModuleId, setDisplayedModuleId] =
-		useState<ModuleId>(urlModuleId);
+	// The module displayed in the panel:
+	// - If browseModule is set (via URL param), show that
+	// - Otherwise, show the module that owns the current URL
+	const displayedModuleId = browseModule ?? urlModuleId;
 
-	// Mobile drawer state
+	// Mobile drawer state (kept local since it's UI-only)
 	const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
-	// Sync displayed module with URL when pathname changes
-	// This handles browser back/forward and direct navigation
-	useEffect(() => {
-		setDisplayedModuleId(urlModuleId);
-	}, [urlModuleId]);
-
-	// Handler for module icon clicks - allows browsing without navigation
-	const handleModuleChange = useCallback((moduleId: ModuleId) => {
-		setDisplayedModuleId(moduleId);
-	}, []);
+	// Handler for module icon clicks
+	const handleModuleChange = useCallback(
+		(moduleId: ModuleId) => {
+			// If clicking the module we're already on (by URL), clear browse state
+			// Otherwise, set browse state to the clicked module
+			if (moduleId === urlModuleId) {
+				setBrowseModule(null);
+			} else {
+				setBrowseModule(moduleId);
+			}
+		},
+		[urlModuleId, setBrowseModule],
+	);
 
 	return (
 		<SidebarProvider

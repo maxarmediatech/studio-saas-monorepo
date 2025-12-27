@@ -91,10 +91,12 @@ export function MobileNav({
 				<div className={cn("grid", getGridClass(modules.length))}>
 					{modules.map((module) => {
 						const Icon = getIcon(module.icon);
-						// Show as active if this is the URL's module OR the currently displayed module
-						const isActive =
-							urlModuleId === module.id ||
-							displayedModuleId === module.id;
+						// URL module = where you actually are
+						const isUrlModule = urlModuleId === module.id;
+						// Displayed module = what panel is showing
+						const isDisplayedModule = displayedModuleId === module.id;
+						// Highlight if either URL module or displayed module
+						const isHighlighted = isUrlModule || isDisplayedModule;
 
 						return (
 							<button
@@ -105,18 +107,18 @@ export function MobileNav({
 									onDrawerOpenChange(true);
 								}}
 								className={cn(
-									"flex flex-col items-center gap-1 py-2 text-xs",
-									isActive
+									"relative flex flex-col items-center gap-1 py-2 text-xs",
+									isHighlighted
 										? "text-foreground"
 										: "text-muted-foreground hover:text-foreground",
 								)}
 								aria-label={module.label}
-								aria-current={
-									urlModuleId === module.id
-										? "true"
-										: undefined
-								}
+								aria-current={isUrlModule ? "true" : undefined}
 							>
+								{/* URL indicator - dot on top */}
+								{isUrlModule && (
+									<span className="absolute top-1 left-1/2 h-1 w-4 -translate-x-1/2 rounded-full bg-primary" />
+								)}
 								<Icon className="size-5" />
 								<span className="truncate text-[10px]">
 									{module.label}
