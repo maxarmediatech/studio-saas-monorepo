@@ -17,7 +17,10 @@ interface NewActionSwitcherProps {
 	caps: HeaderCapabilities;
 }
 
-export function NewActionSwitcher({ studioSlug, caps }: NewActionSwitcherProps) {
+export function NewActionSwitcher({
+	studioSlug,
+	caps,
+}: NewActionSwitcherProps) {
 	const basePath = `/app/${studioSlug}`;
 
 	const hasAnyAction =
@@ -53,7 +56,9 @@ export function NewActionSwitcher({ studioSlug, caps }: NewActionSwitcherProps) 
 					>
 						<div className="flex items-center gap-2">
 							<Shield className="size-4 text-muted-foreground" />
-							<span className="text-sm font-medium">No actions available</span>
+							<span className="text-sm font-medium">
+								No actions available
+							</span>
 						</div>
 					</DropdownMenuItem>
 				) : (
@@ -79,7 +84,9 @@ export function NewActionSwitcher({ studioSlug, caps }: NewActionSwitcherProps) 
 
 						{caps.deliverableCreateOrUpdate && (
 							<DropdownMenuItem asChild>
-								<Link href={`${basePath}/deliverables?create=true`}>
+								<Link
+									href={`${basePath}/deliverables?create=true`}
+								>
 									New Deliverable
 								</Link>
 							</DropdownMenuItem>
@@ -93,7 +100,8 @@ export function NewActionSwitcher({ studioSlug, caps }: NewActionSwitcherProps) 
 							</DropdownMenuItem>
 						)}
 
-						{(caps.expenseCreateOrUpdate || caps.paymentCreateOrUpdate) && (
+						{(caps.expenseCreateOrUpdate ||
+							caps.paymentCreateOrUpdate) && (
 							<DropdownMenuSeparator />
 						)}
 
@@ -113,7 +121,8 @@ export function NewActionSwitcher({ studioSlug, caps }: NewActionSwitcherProps) 
 							</DropdownMenuItem>
 						)}
 
-						{(caps.crewCreateOrUpdate || caps.clientCreateOrUpdate) && (
+						{(caps.crewCreateOrUpdate ||
+							caps.clientCreateOrUpdate) && (
 							<DropdownMenuSeparator />
 						)}
 

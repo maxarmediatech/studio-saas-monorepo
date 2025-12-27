@@ -11,26 +11,25 @@ import { SiteHeader } from "./site-header";
 
 interface AppShellClientProps {
 	studioSlug: string;
+	studioName: string;
+	studioLogo?: string | null;
 	modules: NavModuleConfig[];
 	utilities: NavItemConfig[];
 	caps: HeaderCapabilities;
-	sidebarHeader?: React.ReactNode;
-	footerSlot?: React.ReactNode;
 	children: React.ReactNode;
 }
 
 /**
  * Client component that renders the shell layout.
  * Receives pre-filtered navigation from server component.
- * Matches the winter-arc/studio-saas pattern exactly.
  */
 export function AppShellClient({
 	studioSlug,
+	studioName,
+	studioLogo,
 	modules,
 	utilities,
 	caps,
-	sidebarHeader,
-	footerSlot,
 	children,
 }: AppShellClientProps) {
 	const pathname = usePathname();
@@ -57,6 +56,8 @@ export function AppShellClient({
 			<SidebarProvider className="flex flex-col">
 				<SiteHeader
 					studioSlug={studioSlug}
+					studioName={studioName}
+					studioLogo={studioLogo}
 					modules={modules}
 					activeModuleId={activeModuleId}
 					caps={caps}
@@ -67,8 +68,6 @@ export function AppShellClient({
 							<AppSidebar
 								activeModule={activeModule}
 								utilities={utilities}
-								headerSlot={sidebarHeader}
-								footerSlot={footerSlot}
 							/>
 							<SidebarInset>
 								<main className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
