@@ -16,7 +16,7 @@ import {
 	Users,
 	Wallet,
 } from "lucide-react";
-import type { IconName, IconRegistry } from "./types";
+import type { IconName, IconRegistry } from "./navigation/types";
 
 export const iconRegistry: IconRegistry = {
 	home: Home,

@@ -7,12 +7,9 @@ export {
 	BookingsTableClient,
 	BookingsTableSkeleton,
 } from "./components/bookings";
-export { MobileNav } from "./components/MobileNav";
-export { ModulePanel } from "./components/ModulePanel";
 export { PageHeader } from "./components/PageHeader";
-export { StudioLayout } from "./components/StudioLayout";
 export { StudioLayoutClient } from "./components/StudioLayoutClient";
-export { StudioSidebar } from "./components/StudioSidebar";
+
 // API Utilities
 export {
 	bookingsApi,
@@ -36,25 +33,19 @@ export {
 	tasksMutations,
 } from "./lib/api";
 
-// Utilities
-export { getIcon, iconRegistry } from "./lib/icons";
-export {
-	buildUrl,
-	findActiveModule,
-	findActiveModuleId,
-	findActiveNavItem,
-	findModuleByPathname,
-	getModuleItems,
-	getSidebarData,
-	isPathActive,
-	isUtilityPath,
-} from "./lib/navigation";
-// Types
+// Navigation
+export { getNavigationConfig } from "./lib/navigation/config";
+export { filterNavigationConfig } from "./lib/navigation/filter";
 export type {
 	IconName,
-	ModuleId,
-	NavItem,
-	NavModule,
-	NavSection,
-	SidebarData,
-} from "./lib/types";
+	NavItemConfig,
+	NavModuleConfig,
+	NavPermission,
+	NavPermissionCheck,
+	NavSectionConfig,
+	NavigationConfig,
+} from "./lib/navigation/types";
+export { findActiveModuleId, findModuleByPath, isItemActive } from "./lib/navigation/utils";
+
+// Icons
+export { getIcon, iconRegistry } from "./lib/icons";
