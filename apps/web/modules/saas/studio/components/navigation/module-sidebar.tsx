@@ -53,7 +53,6 @@ export function ModuleSidebar({ module, utilities }: ModuleSidebarProps) {
 
 			{utilities.length > 0 && (
 				<SidebarGroup className="gap-2">
-					<SidebarGroupLabel>Studio</SidebarGroupLabel>
 					<SidebarMenu>
 						{utilities.map((utility) => (
 							<SidebarMenuItem key={utility.id}>

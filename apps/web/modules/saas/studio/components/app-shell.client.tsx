@@ -11,8 +11,6 @@ import { SiteHeader } from "./site-header";
 
 interface AppShellClientProps {
 	studioSlug: string;
-	studioName: string;
-	studioLogo?: string | null;
 	modules: NavModuleConfig[];
 	utilities: NavItemConfig[];
 	caps: HeaderCapabilities;
@@ -28,8 +26,6 @@ interface AppShellClientProps {
  */
 export function AppShellClient({
 	studioSlug,
-	studioName,
-	studioLogo,
 	modules,
 	utilities,
 	caps,
@@ -61,8 +57,6 @@ export function AppShellClient({
 			<SidebarProvider className="flex flex-col">
 				<SiteHeader
 					studioSlug={studioSlug}
-					studioName={studioName}
-					studioLogo={studioLogo}
 					modules={modules}
 					activeModuleId={activeModuleId}
 					caps={caps}

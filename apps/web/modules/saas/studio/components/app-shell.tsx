@@ -1,10 +1,7 @@
 import type { ActiveOrganization, Session } from "@repo/auth";
 import { UserMenu } from "@saas/shared/components/UserMenu";
 import type { ReactNode } from "react";
-import {
-	getCapabilities,
-	selectHeaderCaps,
-} from "../lib/capability.server";
+import { getCapabilities, selectHeaderCaps } from "../lib/capability.server";
 import { getNavigationConfig } from "../lib/navigation/config";
 import { filterNavigationConfig } from "../lib/navigation/filter";
 import { AppShellClient } from "./app-shell.client";
@@ -45,8 +42,6 @@ export async function AppShell({
 	return (
 		<AppShellClient
 			studioSlug={activeOrganization.slug ?? ""}
-			studioName={activeOrganization.name}
-			studioLogo={activeOrganization.logo}
 			modules={filteredNavigation.modules}
 			utilities={filteredNavigation.utilities}
 			caps={caps}
