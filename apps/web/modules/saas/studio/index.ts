@@ -50,6 +50,10 @@ export type {
 } from "./lib/navigation/types";
 export { findActiveModuleId, findModuleByPath, isItemActive } from "./lib/navigation/utils";
 
+// Capabilities
+export { getCapabilities, selectHeaderCaps } from "./lib/capability.server";
+export type { HeaderCapabilities } from "./lib/capability.server";
+
 // Icons
 export { IconByName } from "./components/navigation/icon-registry";
 export type { IconName as RegistryIconName } from "./components/navigation/icon-registry";

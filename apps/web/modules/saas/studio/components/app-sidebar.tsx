@@ -1,6 +1,5 @@
 "use client";
 
-import type * as React from "react";
 import { Button } from "@repo/ui/components/button";
 import {
 	Sidebar,
@@ -10,6 +9,7 @@ import {
 	useSidebar,
 } from "@repo/ui/components/sidebar";
 import { PanelLeft } from "lucide-react";
+import type * as React from "react";
 import type { NavItemConfig, NavModuleConfig } from "../lib/navigation/types";
 import { ModuleSidebar } from "./navigation/module-sidebar";
 

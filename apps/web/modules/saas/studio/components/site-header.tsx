@@ -4,8 +4,10 @@ import Link from "next/link";
 import { SidebarTrigger } from "@repo/ui/components/sidebar";
 import { Separator } from "@repo/ui/components/separator";
 import { Logo } from "@shared/components/Logo";
+import type { HeaderCapabilities } from "../lib/capability.server";
 import type { NavModuleConfig } from "../lib/navigation/types";
 import { ModuleTabs } from "./navigation/module-tabs";
+import { NewActionSwitcher } from "./navigation/new-action-switcher";
 import { OrganizationSwitcher } from "./navigation/organization-switcher";
 
 interface SiteHeaderProps {
@@ -14,6 +16,7 @@ interface SiteHeaderProps {
 	studioLogo?: string | null;
 	modules: NavModuleConfig[];
 	activeModuleId: string;
+	caps: HeaderCapabilities;
 }
 
 export function SiteHeader({
@@ -22,8 +25,9 @@ export function SiteHeader({
 	studioLogo,
 	modules,
 	activeModuleId,
+	caps,
 }: SiteHeaderProps) {
-	const homePath = `/app/${studioSlug}`;
+	const homePath = `/app/${studioSlug}/home`;
 
 	return (
 		<header className="fixed top-0 z-50 w-full border-b bg-background">
@@ -52,6 +56,9 @@ export function SiteHeader({
 
 				{/* Spacer */}
 				<div className="flex-1" />
+
+				{/* New action button */}
+				<NewActionSwitcher studioSlug={studioSlug} caps={caps} />
 			</div>
 		</header>
 	);

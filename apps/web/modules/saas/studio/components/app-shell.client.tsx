@@ -1,8 +1,9 @@
 "use client";
 
+import { SidebarInset, SidebarProvider } from "@repo/ui/components/sidebar";
 import { usePathname } from "next/navigation";
 import * as React from "react";
-import { SidebarInset, SidebarProvider } from "@repo/ui/components/sidebar";
+import type { HeaderCapabilities } from "../lib/capability.server";
 import type { NavItemConfig, NavModuleConfig } from "../lib/navigation/types";
 import { findModuleByPath } from "../lib/navigation/utils";
 import { AppSidebar } from "./app-sidebar";
@@ -14,6 +15,7 @@ interface AppShellClientProps {
 	studioLogo?: string | null;
 	modules: NavModuleConfig[];
 	utilities: NavItemConfig[];
+	caps: HeaderCapabilities;
 	sidebarHeader?: React.ReactNode;
 	footerSlot?: React.ReactNode;
 	children: React.ReactNode;
@@ -30,6 +32,7 @@ export function AppShellClient({
 	studioLogo,
 	modules,
 	utilities,
+	caps,
 	sidebarHeader,
 	footerSlot,
 	children,
@@ -46,7 +49,8 @@ export function AppShellClient({
 
 	// Find active module based on current pathname
 	const activeModule = React.useMemo(
-		() => (hasModules ? findModuleByPath(pathname, navigationConfig) : null),
+		() =>
+			hasModules ? findModuleByPath(pathname, navigationConfig) : null,
 		[hasModules, pathname, navigationConfig],
 	);
 
@@ -61,6 +65,7 @@ export function AppShellClient({
 					studioLogo={studioLogo}
 					modules={modules}
 					activeModuleId={activeModuleId}
+					caps={caps}
 				/>
 				<div className="flex flex-1 pt-14">
 					{activeModule ? (

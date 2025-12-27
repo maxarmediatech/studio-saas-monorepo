@@ -1,6 +1,10 @@
-import type { ReactNode } from "react";
 import type { ActiveOrganization, Session } from "@repo/auth";
 import { UserMenu } from "@saas/shared/components/UserMenu";
+import type { ReactNode } from "react";
+import {
+	getCapabilities,
+	selectHeaderCaps,
+} from "../lib/capability.server";
 import { getNavigationConfig } from "../lib/navigation/config";
 import { filterNavigationConfig } from "../lib/navigation/filter";
 import { AppShellClient } from "./app-shell.client";
@@ -13,8 +17,8 @@ interface AppShellProps {
 }
 
 /**
- * Server component that filters navigation based on user role.
- * Matches the winter-arc/studio-saas pattern exactly.
+ * Server component that filters navigation and capabilities based on user role.
+ * Matches the winter-arc/studio-saas pattern.
  */
 export async function AppShell({
 	children,
@@ -29,7 +33,14 @@ export async function AppShell({
 
 	// Get and filter navigation based on role
 	const navigationConfig = getNavigationConfig(activeOrganization.slug ?? "");
-	const filteredNavigation = filterNavigationConfig(navigationConfig, userRole);
+	const filteredNavigation = filterNavigationConfig(
+		navigationConfig,
+		userRole,
+	);
+
+	// Get capabilities for header actions
+	const capabilities = getCapabilities(userRole);
+	const caps = selectHeaderCaps(capabilities);
 
 	return (
 		<AppShellClient
@@ -38,6 +49,7 @@ export async function AppShell({
 			studioLogo={activeOrganization.logo}
 			modules={filteredNavigation.modules}
 			utilities={filteredNavigation.utilities}
+			caps={caps}
 			sidebarHeader={
 				<OrganizationSwitcher
 					studioName={activeOrganization.name}
