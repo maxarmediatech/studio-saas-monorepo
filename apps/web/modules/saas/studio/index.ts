@@ -8,7 +8,10 @@ export {
 	BookingsTableSkeleton,
 } from "./components/bookings";
 export { PageHeader } from "./components/PageHeader";
-export { StudioLayoutClient } from "./components/StudioLayoutClient";
+
+// Layout - Server component pattern (like winter-arc)
+export { AppShell } from "./components/app-shell";
+export { AppShellClient } from "./components/app-shell.client";
 
 // API Utilities
 export {

@@ -3,9 +3,7 @@
 import { usePathname } from "next/navigation";
 import * as React from "react";
 import { SidebarInset, SidebarProvider } from "@repo/ui/components/sidebar";
-import { UserMenu } from "@saas/shared/components/UserMenu";
-import { getNavigationConfig } from "../lib/navigation/config";
-import { filterNavigationConfig } from "../lib/navigation/filter";
+import type { NavItemConfig, NavModuleConfig } from "../lib/navigation/types";
 import { findModuleByPath } from "../lib/navigation/utils";
 import { AppSidebar } from "./app-sidebar";
 import { SiteHeader } from "./site-header";
@@ -14,34 +12,45 @@ interface AppShellClientProps {
 	studioSlug: string;
 	studioName: string;
 	studioLogo?: string | null;
-	userRole: string;
+	modules: NavModuleConfig[];
+	utilities: NavItemConfig[];
+	sidebarHeader?: React.ReactNode;
+	footerSlot?: React.ReactNode;
 	children: React.ReactNode;
 }
 
+/**
+ * Client component that renders the shell layout.
+ * Receives pre-filtered navigation from server component.
+ * Matches the winter-arc/studio-saas pattern exactly.
+ */
 export function AppShellClient({
 	studioSlug,
 	studioName,
 	studioLogo,
-	userRole,
+	modules,
+	utilities,
+	sidebarHeader,
+	footerSlot,
 	children,
 }: AppShellClientProps) {
 	const pathname = usePathname();
 
-	// Get navigation config and filter based on user role
-	const navigation = React.useMemo(() => {
-		const config = getNavigationConfig(studioSlug);
-		return filterNavigationConfig(config, userRole);
-	}, [studioSlug, userRole]);
+	const hasModules = modules.length > 0;
 
-	const hasModules = navigation.modules.length > 0;
+	// Build navigation config for path matching
+	const navigationConfig = React.useMemo(
+		() => ({ modules, utilities }),
+		[modules, utilities],
+	);
 
 	// Find active module based on current pathname
 	const activeModule = React.useMemo(
-		() => (hasModules ? findModuleByPath(pathname, navigation) : null),
-		[hasModules, pathname, navigation],
+		() => (hasModules ? findModuleByPath(pathname, navigationConfig) : null),
+		[hasModules, pathname, navigationConfig],
 	);
 
-	const activeModuleId = activeModule?.id ?? navigation.modules[0]?.id ?? "";
+	const activeModuleId = activeModule?.id ?? modules[0]?.id ?? "";
 
 	return (
 		<div className="[--header-height:3.5rem]">
@@ -50,7 +59,7 @@ export function AppShellClient({
 					studioSlug={studioSlug}
 					studioName={studioName}
 					studioLogo={studioLogo}
-					modules={navigation.modules}
+					modules={modules}
 					activeModuleId={activeModuleId}
 				/>
 				<div className="flex flex-1 pt-14">
@@ -58,8 +67,9 @@ export function AppShellClient({
 						<>
 							<AppSidebar
 								activeModule={activeModule}
-								utilities={navigation.utilities}
-								footerSlot={<UserMenu />}
+								utilities={utilities}
+								headerSlot={sidebarHeader}
+								footerSlot={footerSlot}
 							/>
 							<SidebarInset>
 								<main className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
