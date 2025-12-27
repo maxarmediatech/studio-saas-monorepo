@@ -11,30 +11,42 @@ import { cn } from "@repo/ui/lib/utils";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { getIcon } from "../lib/icons";
+import { buildUrl, isPathActive } from "../lib/navigation";
 import type { NavItem, NavModule } from "../lib/types";
 
 interface ModulePanelProps {
 	className?: string;
+	studioSlug: string;
 	module: NavModule;
 	utilities: NavItem[];
 }
 
-export function ModulePanel({ className, module, utilities }: ModulePanelProps) {
+export function ModulePanel({
+	className,
+	studioSlug,
+	module,
+	utilities,
+}: ModulePanelProps) {
 	const pathname = usePathname();
+	const basePath = buildUrl(studioSlug, "");
 
 	return (
 		<div className={cn("space-y-4 px-4 py-3 text-sm", className)}>
 			{module.sections.map((section, index) => (
 				<div className="space-y-1" key={section.label ?? index}>
 					{section.label && (
-						<SidebarGroupLabel className="mb-1 px-2 text-muted-foreground text-xs font-medium tracking-wide">
+						<SidebarGroupLabel className="mb-1 px-2 text-xs font-medium tracking-wide text-muted-foreground">
 							{section.label}
 						</SidebarGroupLabel>
 					)}
 					<SidebarMenu>
 						{section.items.map((item) => {
 							const Icon = getIcon(item.icon);
-							const isActive = pathname === item.url || pathname.startsWith(`${item.url}/`);
+							const isActive = isPathActive(
+								pathname,
+								item.url,
+								basePath,
+							);
 
 							return (
 								<SidebarMenuItem
@@ -46,11 +58,18 @@ export function ModulePanel({ className, module, utilities }: ModulePanelProps) 
 										isActive={isActive}
 										className="px-2"
 									>
-										<Link href={item.url}>
+										<Link
+											href={item.url}
+											aria-current={
+												isActive ? "page" : undefined
+											}
+										>
 											<Icon className="size-4" />
 											<span>{item.title}</span>
 											{item.badge && (
-												<SidebarMenuBadge>{item.badge}</SidebarMenuBadge>
+												<SidebarMenuBadge>
+													{item.badge}
+												</SidebarMenuBadge>
 											)}
 										</Link>
 									</SidebarMenuButton>
@@ -66,7 +85,11 @@ export function ModulePanel({ className, module, utilities }: ModulePanelProps) 
 				<SidebarMenu className="text-sm">
 					{utilities.map((item) => {
 						const Icon = getIcon(item.icon);
-						const isActive = pathname === item.url || pathname.startsWith(`${item.url}/`);
+						const isActive = isPathActive(
+							pathname,
+							item.url,
+							basePath,
+						);
 
 						return (
 							<SidebarMenuItem key={item.url}>
@@ -75,7 +98,12 @@ export function ModulePanel({ className, module, utilities }: ModulePanelProps) 
 									isActive={isActive}
 									className="gap-2.5 px-2 text-muted-foreground hover:text-foreground"
 								>
-									<Link href={item.url}>
+									<Link
+										href={item.url}
+										aria-current={
+											isActive ? "page" : undefined
+										}
+									>
 										<Icon className="size-4" />
 										<span>{item.title}</span>
 									</Link>

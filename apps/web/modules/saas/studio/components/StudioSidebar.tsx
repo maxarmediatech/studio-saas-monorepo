@@ -29,14 +29,12 @@ import { useActiveOrganization } from "@saas/organizations/hooks/use-active-orga
 import { useOrganizationListQuery } from "@saas/organizations/lib/api";
 import { UserMenu } from "@saas/shared/components/UserMenu";
 import { Logo } from "@shared/components/Logo";
-import { useRouter } from "@shared/hooks/router";
 import { clearCache } from "@shared/lib/cache";
-import { ChevronDown, PlusIcon } from "lucide-react";
+import { ChevronDown, Loader2, PlusIcon } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { getIcon } from "../lib/icons";
-import { findActiveModule, getSidebarData } from "../lib/navigation";
-import type { ModuleId } from "../lib/types";
+import type { ModuleId, NavItem, NavModule } from "../lib/types";
 import { ModulePanel } from "./ModulePanel";
 
 interface OrganizationSwitcherProps {
@@ -50,9 +48,19 @@ function OrganizationSwitcher({
 	studioLogo,
 	isCollapsed,
 }: OrganizationSwitcherProps) {
-	const router = useRouter();
 	const { setActiveOrganization } = useActiveOrganization();
-	const { data: allOrganizations } = useOrganizationListQuery();
+	const { data: allOrganizations, isLoading } = useOrganizationListQuery();
+	const [switchingToSlug, setSwitchingToSlug] = useState<string | null>(null);
+
+	const handleOrgSwitch = async (slug: string) => {
+		setSwitchingToSlug(slug);
+		try {
+			await clearCache();
+			setActiveOrganization(slug);
+		} finally {
+			setSwitchingToSlug(null);
+		}
+	};
 
 	return (
 		<DropdownMenu>
@@ -69,7 +77,7 @@ function OrganizationSwitcher({
 						/>
 						{!isCollapsed && (
 							<>
-								<span className="font-semibold truncate max-w-[140px]">
+								<span className="max-w-[140px] truncate font-semibold">
 									{studioName}
 								</span>
 								<ChevronDown className="size-3 text-muted-foreground" />
@@ -86,23 +94,38 @@ function OrganizationSwitcher({
 				<DropdownMenuLabel className="text-foreground/60 text-xs">
 					Switch organization
 				</DropdownMenuLabel>
-				{allOrganizations?.map((organization) => (
-					<DropdownMenuItem
-						key={organization.slug}
-						className="flex cursor-pointer items-center gap-2"
-						onClick={async () => {
-							await clearCache();
-							setActiveOrganization(organization.slug);
-						}}
-					>
-						<OrganizationLogo
-							className="size-6"
-							name={organization.name}
-							logoUrl={organization.logo}
-						/>
-						<span className="truncate">{organization.name}</span>
+				{isLoading ? (
+					<DropdownMenuItem disabled>
+						<Loader2 className="mr-2 size-4 animate-spin" />
+						Loading...
 					</DropdownMenuItem>
-				))}
+				) : !allOrganizations?.length ? (
+					<DropdownMenuItem disabled>
+						No organizations found
+					</DropdownMenuItem>
+				) : (
+					allOrganizations.map((organization) => (
+						<DropdownMenuItem
+							key={organization.slug}
+							className="flex cursor-pointer items-center gap-2"
+							disabled={switchingToSlug === organization.slug}
+							onClick={() => handleOrgSwitch(organization.slug)}
+						>
+							{switchingToSlug === organization.slug ? (
+								<Loader2 className="size-6 animate-spin" />
+							) : (
+								<OrganizationLogo
+									className="size-6"
+									name={organization.name}
+									logoUrl={organization.logo}
+								/>
+							)}
+							<span className="max-w-[180px] truncate">
+								{organization.name}
+							</span>
+						</DropdownMenuItem>
+					))
+				)}
 				<DropdownMenuSeparator />
 				<DropdownMenuGroup>
 					<DropdownMenuItem asChild className="cursor-pointer">
@@ -121,7 +144,12 @@ interface StudioSidebarProps {
 	studioSlug: string;
 	studioName: string;
 	studioLogo?: string | null;
-	activeModuleId: ModuleId;
+	modules: NavModule[];
+	utilities: NavItem[];
+	/** The module that owns the current URL */
+	urlModuleId: ModuleId;
+	/** The module currently displayed in the panel (can differ when browsing) */
+	displayedModuleId: ModuleId;
 	onModuleChange: (moduleId: ModuleId) => void;
 }
 
@@ -129,16 +157,24 @@ export function StudioSidebar({
 	studioSlug,
 	studioName,
 	studioLogo,
-	activeModuleId,
+	modules,
+	utilities,
+	urlModuleId,
+	displayedModuleId,
 	onModuleChange,
 }: StudioSidebarProps) {
 	const { state, setOpen, isMobile } = useSidebar();
 	const isCollapsed = state === "collapsed";
 	const showFooter = isCollapsed || isMobile;
 
-	const { modules, utilities } = getSidebarData(studioSlug);
-	const activeModule =
-		modules.find((module) => module.id === activeModuleId) ?? modules[0];
+	// Get the module to display in the panel
+	const displayedModule =
+		modules.find((m) => m.id === displayedModuleId) ?? modules[0];
+
+	// Safety check - should never happen but handle gracefully
+	if (!displayedModule) {
+		return null;
+	}
 
 	return (
 		<Sidebar
@@ -159,10 +195,7 @@ export function StudioSidebar({
 								className="md:h-8 md:p-0"
 							>
 								<Link href={`/app/${studioSlug}`}>
-									<Logo
-										withLabel={false}
-										className="size-8"
-									/>
+									<Logo withLabel={false} className="size-8" />
 								</Link>
 							</SidebarMenuButton>
 						</SidebarMenuItem>
@@ -189,6 +222,11 @@ export function StudioSidebar({
 								{/* Module buttons */}
 								{modules.map((module) => {
 									const Icon = getIcon(module.icon);
+									// Show as active if this is the URL's module OR the currently displayed module
+									const isActive =
+										urlModuleId === module.id ||
+										displayedModuleId === module.id;
+
 									return (
 										<SidebarMenuItem key={module.id}>
 											<SidebarMenuButton
@@ -200,10 +238,13 @@ export function StudioSidebar({
 													onModuleChange(module.id);
 													setOpen(true);
 												}}
-												isActive={
-													activeModuleId === module.id
-												}
+												isActive={isActive}
 												aria-label={module.label}
+												aria-current={
+													urlModuleId === module.id
+														? "true"
+														: undefined
+												}
 												className="px-2.5 md:px-2"
 											>
 												<Icon className="size-4" />
@@ -239,9 +280,7 @@ export function StudioSidebar({
 												>
 													<Link href={item.url}>
 														<Icon className="size-4" />
-														<span>
-															{item.title}
-														</span>
+														<span>{item.title}</span>
 													</Link>
 												</SidebarMenuButton>
 											</SidebarMenuItem>
@@ -289,7 +328,8 @@ export function StudioSidebar({
 					<SidebarGroup className="px-0">
 						<SidebarGroupContent>
 							<ModulePanel
-								module={activeModule}
+								studioSlug={studioSlug}
+								module={displayedModule}
 								utilities={utilities}
 							/>
 						</SidebarGroupContent>
@@ -298,16 +338,4 @@ export function StudioSidebar({
 			</Sidebar>
 		</Sidebar>
 	);
-}
-
-// Hook to manage sidebar state with URL-based active module detection
-export function useStudioSidebar(studioSlug: string) {
-	const pathname = usePathname();
-	const { modules } = getSidebarData(studioSlug);
-	const initialModule = findActiveModule(modules, pathname, studioSlug);
-
-	return {
-		initialModule,
-		modules,
-	};
 }

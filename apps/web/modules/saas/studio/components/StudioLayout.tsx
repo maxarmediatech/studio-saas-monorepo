@@ -5,8 +5,8 @@ import {
 	SidebarProvider,
 } from "@repo/ui/components/sidebar";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
-import { findActiveModule, getSidebarData } from "../lib/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { findActiveModuleId, getSidebarData } from "../lib/navigation";
 import type { ModuleId } from "../lib/types";
 import { MobileNav } from "./MobileNav";
 import { StudioSidebar } from "./StudioSidebar";
@@ -25,12 +25,37 @@ export function StudioLayout({
 	children,
 }: StudioLayoutProps) {
 	const pathname = usePathname();
-	const { modules, utilities } = getSidebarData(studioSlug);
 
-	// Determine initial active module from URL
-	const initialModule = findActiveModule(modules, pathname, studioSlug);
-	const [activeModuleId, setActiveModuleId] = useState<ModuleId>(initialModule);
+	// Memoize sidebar data to avoid recalculation
+	const { modules, utilities } = useMemo(
+		() => getSidebarData(studioSlug),
+		[studioSlug],
+	);
+
+	// The module that owns the current URL (derived from pathname)
+	const urlModuleId = useMemo(
+		() => findActiveModuleId(modules, pathname, studioSlug),
+		[modules, pathname, studioSlug],
+	);
+
+	// The module currently displayed in the sidebar panel
+	// This can differ from urlModuleId when user is "browsing" another module
+	const [displayedModuleId, setDisplayedModuleId] =
+		useState<ModuleId>(urlModuleId);
+
+	// Mobile drawer state
 	const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+
+	// Sync displayed module with URL when pathname changes
+	// This handles browser back/forward and direct navigation
+	useEffect(() => {
+		setDisplayedModuleId(urlModuleId);
+	}, [urlModuleId]);
+
+	// Handler for module icon clicks - allows browsing without navigation
+	const handleModuleChange = useCallback((moduleId: ModuleId) => {
+		setDisplayedModuleId(moduleId);
+	}, []);
 
 	return (
 		<SidebarProvider
@@ -46,8 +71,11 @@ export function StudioLayout({
 					studioSlug={studioSlug}
 					studioName={studioName}
 					studioLogo={studioLogo}
-					activeModuleId={activeModuleId}
-					onModuleChange={setActiveModuleId}
+					modules={modules}
+					utilities={utilities}
+					urlModuleId={urlModuleId}
+					displayedModuleId={displayedModuleId}
+					onModuleChange={handleModuleChange}
 				/>
 			</div>
 
@@ -60,10 +88,12 @@ export function StudioLayout({
 
 			{/* Mobile navigation */}
 			<MobileNav
+				studioSlug={studioSlug}
 				modules={modules}
 				utilities={utilities}
-				activeModuleId={activeModuleId}
-				onModuleChange={setActiveModuleId}
+				urlModuleId={urlModuleId}
+				displayedModuleId={displayedModuleId}
+				onModuleChange={handleModuleChange}
 				isDrawerOpen={isMobileDrawerOpen}
 				onDrawerOpenChange={setIsMobileDrawerOpen}
 			/>

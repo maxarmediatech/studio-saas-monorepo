@@ -1,10 +1,122 @@
-import type { NavItem, NavModule, SidebarData } from "./types";
+import type { ModuleId, NavItem, NavModule, SidebarData } from "./types";
 
 /**
  * Build the URL for a navigation item, prefixed with the studio base path
  */
 export function buildUrl(studioSlug: string, path: string): string {
 	return `/app/${studioSlug}${path}`;
+}
+
+/**
+ * Normalize pathname by removing trailing slash for consistent comparison
+ */
+function normalizePath(path: string): string {
+	return path.replace(/\/$/, "") || "/";
+}
+
+/**
+ * Check if a pathname matches a nav item URL.
+ * - For base/home paths (e.g., /app/slug): exact match only
+ * - For other paths: exact match OR nested route match
+ */
+export function isPathActive(
+	pathname: string,
+	itemUrl: string,
+	basePath: string,
+): boolean {
+	const normalizedPathname = normalizePath(pathname);
+	const normalizedUrl = normalizePath(itemUrl);
+	const normalizedBase = normalizePath(basePath);
+
+	// Home/base path: exact match only to prevent collision with all routes
+	if (normalizedUrl === normalizedBase) {
+		return normalizedPathname === normalizedBase;
+	}
+
+	// Other paths: exact match OR is a nested route
+	return (
+		normalizedPathname === normalizedUrl ||
+		normalizedPathname.startsWith(`${normalizedUrl}/`)
+	);
+}
+
+/**
+ * Find which nav item (if any) matches the current pathname
+ */
+export function findActiveNavItem(
+	items: NavItem[],
+	pathname: string,
+	basePath: string,
+): NavItem | null {
+	// Sort by URL length descending for most specific match first
+	const sortedItems = [...items].sort((a, b) => b.url.length - a.url.length);
+
+	for (const item of sortedItems) {
+		if (isPathActive(pathname, item.url, basePath)) {
+			return item;
+		}
+	}
+	return null;
+}
+
+/**
+ * Get all nav items from a module (flattened from all sections)
+ */
+export function getModuleItems(module: NavModule): NavItem[] {
+	return module.sections.flatMap((section) => section.items);
+}
+
+/**
+ * Find the module that owns the current pathname.
+ * Returns null if no module matches (e.g., on settings page).
+ */
+export function findModuleByPathname(
+	modules: NavModule[],
+	pathname: string,
+	basePath: string,
+): NavModule | null {
+	const normalizedPathname = normalizePath(pathname);
+	const normalizedBase = normalizePath(basePath);
+
+	// Home page belongs to first module (studio)
+	if (normalizedPathname === normalizedBase) {
+		return modules[0] ?? null;
+	}
+
+	// Find module by matching any of its items
+	for (const module of modules) {
+		const items = getModuleItems(module);
+		if (findActiveNavItem(items, pathname, basePath)) {
+			return module;
+		}
+	}
+
+	return null;
+}
+
+/**
+ * Find the active module ID based on the current pathname.
+ * Falls back to first module if no match found.
+ */
+export function findActiveModuleId(
+	modules: NavModule[],
+	pathname: string,
+	studioSlug: string,
+): ModuleId {
+	const basePath = `/app/${studioSlug}`;
+	const module = findModuleByPathname(modules, pathname, basePath);
+	return module?.id ?? modules[0]?.id ?? "studio";
+}
+
+/**
+ * Check if the current pathname belongs to utilities (e.g., Settings)
+ */
+export function isUtilityPath(
+	utilities: NavItem[],
+	pathname: string,
+	basePath: string,
+): boolean {
+	return findActiveNavItem(utilities, pathname, basePath) !== null;
 }
 
 /**
@@ -126,34 +238,5 @@ export function getSidebarData(studioSlug: string): SidebarData {
 	return { modules, utilities };
 }
 
-/**
- * Find the active module based on the current pathname
- */
-export function findActiveModule(
-	modules: NavModule[],
-	pathname: string,
-	studioSlug: string,
-): ModuleId {
-	const basePath = `/app/${studioSlug}`;
-
-	// Check if we're on the home page
-	if (pathname === basePath || pathname === `${basePath}/`) {
-		return "studio";
-	}
-
-	// Find module by matching any of its section items
-	for (const module of modules) {
-		for (const section of module.sections) {
-			for (const item of section.items) {
-				if (pathname.startsWith(item.url) && item.url !== basePath) {
-					return module.id;
-				}
-			}
-		}
-	}
-
-	// Default to studio
-	return "studio";
-}
-
-type ModuleId = NavModule["id"];
+// Re-export for backwards compatibility during migration
+export const findActiveModule = findActiveModuleId;

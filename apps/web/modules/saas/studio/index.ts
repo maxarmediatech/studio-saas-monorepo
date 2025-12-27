@@ -12,7 +12,7 @@ export { ModulePanel } from "./components/ModulePanel";
 export { PageHeader } from "./components/PageHeader";
 export { StudioLayout } from "./components/StudioLayout";
 export { StudioLayoutClient } from "./components/StudioLayoutClient";
-export { StudioSidebar, useStudioSidebar } from "./components/StudioSidebar";
+export { StudioSidebar } from "./components/StudioSidebar";
 // API Utilities
 export {
 	bookingsApi,
@@ -41,7 +41,13 @@ export { getIcon, iconRegistry } from "./lib/icons";
 export {
 	buildUrl,
 	findActiveModule,
+	findActiveModuleId,
+	findActiveNavItem,
+	findModuleByPathname,
+	getModuleItems,
 	getSidebarData,
+	isPathActive,
+	isUtilityPath,
 } from "./lib/navigation";
 // Types
 export type {
