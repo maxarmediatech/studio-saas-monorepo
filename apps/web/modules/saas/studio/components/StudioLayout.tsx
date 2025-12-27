@@ -32,9 +32,6 @@ export function StudioLayout({
 	const [activeModuleId, setActiveModuleId] = useState<ModuleId>(initialModule);
 	const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
-	const activeModule =
-		modules.find((module) => module.id === activeModuleId) ?? modules[0];
-
 	return (
 		<SidebarProvider
 			style={

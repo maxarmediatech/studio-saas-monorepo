@@ -12,6 +12,7 @@ import {
 	ListTodo,
 	Package,
 	Settings,
+	SlidersHorizontal,
 	Users,
 	Wallet,
 } from "lucide-react";
@@ -30,6 +31,7 @@ export const iconRegistry: IconRegistry = {
 	users: Users,
 	contact: Contact,
 	settings: Settings,
+	slidersHorizontal: SlidersHorizontal,
 	helpCircle: HelpCircle,
 	clipboardCheck: ClipboardCheck,
 	building: Building,

@@ -1,5 +1,5 @@
 # Session: nextjs16-patterns
-Updated: 2025-12-26T19:42:20.795Z
+Updated: 2025-12-26T20:50:09.611Z
 
 ## Goal
 Document Next.js 16 patterns from `next16-commerce` repo for reference when building studio-saas-monorepo.

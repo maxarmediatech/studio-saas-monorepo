@@ -13,6 +13,7 @@ export type IconName =
 	| "users"
 	| "contact"
 	| "settings"
+	| "slidersHorizontal"
 	| "helpCircle"
 	| "clipboardCheck"
 	| "building";
@@ -31,11 +32,8 @@ export type NavSection = {
 };
 
 export type ModuleId =
-	| "overview"
-	| "clients"
-	| "production"
-	| "deliverables"
-	| "finance";
+	| "studio"
+	| "configurations";
 
 export type NavModule = {
 	id: ModuleId;

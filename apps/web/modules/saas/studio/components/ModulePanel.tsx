@@ -63,9 +63,6 @@ export function ModulePanel({ className, module, utilities }: ModulePanelProps) 
 
 			{/* Utilities section */}
 			<div className="border-t pt-3">
-				<SidebarGroupLabel className="mb-1 px-2 text-muted-foreground text-xs font-medium tracking-wide">
-					Studio
-				</SidebarGroupLabel>
 				<SidebarMenu className="text-sm">
 					{utilities.map((item) => {
 						const Icon = getIcon(item.icon);

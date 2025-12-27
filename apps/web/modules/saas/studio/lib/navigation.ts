@@ -1,4 +1,4 @@
-import type { NavModule, NavItem, SidebarData } from "./types";
+import type { NavItem, NavModule, SidebarData } from "./types";
 
 /**
  * Build the URL for a navigation item, prefixed with the studio base path
@@ -16,78 +16,103 @@ export function getSidebarData(studioSlug: string): SidebarData {
 
 	const modules: NavModule[] = [
 		{
-			id: "overview",
-			label: "Overview",
-			icon: "layoutDashboard",
+			id: "studio",
+			label: "Studio",
+			icon: "building",
 			sections: [
 				{
 					label: null,
-					items: [{ title: "Home", url: url(""), icon: "home" }],
+					items: [
+						{ title: "Home", url: url(""), icon: "home" },
+						{
+							title: "Dashboard",
+							url: url("/dashboard"),
+							icon: "layoutDashboard",
+						},
+					],
 				},
 				{
-					label: "Workspace",
+					label: "Operations",
 					items: [
-						{ title: "Dashboard", url: url("/dashboard"), icon: "layoutDashboard" },
-						{ title: "Inbox", url: url("/inbox"), icon: "inbox" },
+						{
+							title: "Bookings",
+							url: url("/bookings"),
+							icon: "calendarDays",
+						},
+						{
+							title: "Shoots",
+							url: url("/shoots"),
+							icon: "camera",
+						},
+
+						{
+							title: "Deliverables",
+							url: url("/deliverables"),
+							icon: "package",
+						},
+						{
+							title: "Tasks",
+							url: url("/tasks"),
+							icon: "listTodo",
+						},
+					],
+				},
+				{
+					label: "Finance",
+					items: [
+						{
+							title: "Payments",
+							url: url("/payments"),
+							icon: "wallet",
+						},
+						{
+							title: "Expenses",
+							url: url("/expenses"),
+							icon: "banknote",
+						},
+					],
+				},
+				{
+					label: "People",
+					items: [
+						{
+							title: "Clients",
+							url: url("/clients"),
+							icon: "contact",
+						},
+						{ title: "Crew", url: url("/crews"), icon: "users" },
 					],
 				},
 			],
 		},
 		{
-			id: "clients",
-			label: "Clients",
-			icon: "contact",
+			id: "configurations",
+			label: "Configurations",
+			icon: "slidersHorizontal",
 			sections: [
 				{
-					label: "CRM",
+					label: "Configs",
 					items: [
-						{ title: "Clients", url: url("/clients"), icon: "contact" },
-						{ title: "Bookings", url: url("/bookings"), icon: "calendarDays" },
-					],
-				},
-			],
-		},
-		{
-			id: "production",
-			label: "Production",
-			icon: "camera",
-			sections: [
-				{
-					label: "Pipeline",
-					items: [
-						{ title: "Shoots", url: url("/shoots"), icon: "camera" },
-						{ title: "Tasks", url: url("/tasks"), icon: "listTodo" },
-					],
-				},
-				{
-					label: "Team",
-					items: [{ title: "Crew", url: url("/crews"), icon: "users" }],
-				},
-			],
-		},
-		{
-			id: "deliverables",
-			label: "Deliverables",
-			icon: "package",
-			sections: [
-				{
-					label: "Galleries",
-					items: [
-						{ title: "All Galleries", url: url("/galleries"), icon: "package" },
-					],
-				},
-			],
-		},
-		{
-			id: "finance",
-			label: "Finance",
-			icon: "wallet",
-			sections: [
-				{
-					label: "Billing",
-					items: [
-						{ title: "Expenses", url: url("/expenses"), icon: "banknote" },
-						{ title: "Payments", url: url("/payments"), icon: "wallet" },
+						{
+							title: "Booking Types",
+							url: url("/configurations/booking-types"),
+							icon: "calendarDays",
+						},
+						{
+							title: "Package Types",
+							url: url("/configurations/package-types"),
+							icon: "package",
+						},
+						{
+							title: "Relation Types",
+							url: url("/configurations/relation-types"),
+							icon: "contact",
+						},
+						{
+							title: "Crew Roles",
+							url: url("/configurations/crew-roles"),
+							icon: "users",
+						},
 					],
 				},
 			],
@@ -113,7 +138,7 @@ export function findActiveModule(
 
 	// Check if we're on the home page
 	if (pathname === basePath || pathname === `${basePath}/`) {
-		return "overview";
+		return "studio";
 	}
 
 	// Find module by matching any of its section items
@@ -127,8 +152,8 @@ export function findActiveModule(
 		}
 	}
 
-	// Default to overview
-	return "overview";
+	// Default to studio
+	return "studio";
 }
 
 type ModuleId = NavModule["id"];
