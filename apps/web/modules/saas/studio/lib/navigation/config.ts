@@ -1,4 +1,9 @@
-import type { NavItemConfig, NavModuleConfig, NavigationConfig } from "./types";
+import type {
+	NavAreaConfig,
+	NavItemConfig,
+	NavModuleConfig,
+	NavigationConfig,
+} from "./types";
 
 /**
  * Build the URL for a navigation item, prefixed with the studio base path
@@ -196,5 +201,65 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 		},
 	];
 
-	return { modules, utilities };
+	// Settings areas (Dub-style separate sidebar panels)
+	const areas: Record<string, NavAreaConfig> = {
+		studioSettings: {
+			id: "studioSettings",
+			title: "Settings",
+			backHref: url("/home"), // Back to overview
+			direction: "right",
+			sections: [
+				{
+					id: "studio",
+					label: "Studio",
+					items: [
+						{
+							id: "general",
+							label: "General",
+							path: url("/settings"),
+							icon: "Settings2",
+						},
+						{
+							id: "members",
+							label: "Members",
+							path: url("/settings/members"),
+							icon: "Users",
+						},
+						{
+							id: "billing",
+							label: "Billing",
+							path: url("/settings/billing"),
+							icon: "CreditCard",
+						},
+					],
+				},
+				{
+					id: "account",
+					label: "Account",
+					items: [
+						{
+							id: "profile",
+							label: "Profile",
+							path: url("/settings/profile"),
+							icon: "User",
+						},
+						{
+							id: "security",
+							label: "Security",
+							path: url("/settings/security"),
+							icon: "Shield",
+						},
+						{
+							id: "notifications",
+							label: "Notifications",
+							path: url("/settings/notifications"),
+							icon: "Bell",
+						},
+					],
+				},
+			],
+		},
+	};
+
+	return { modules, utilities, areas };
 }

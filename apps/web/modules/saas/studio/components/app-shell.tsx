@@ -52,6 +52,7 @@ export async function AppShell({
 			studioLogo={activeOrganization.logo}
 			modules={filteredNavigation.modules}
 			utilities={filteredNavigation.utilities}
+			areas={filteredNavigation.areas}
 			railIcons={railIcons}
 			caps={caps}
 			userName={session.user.name ?? "User"}

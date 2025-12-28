@@ -34,6 +34,15 @@ Implement Dub-style two-column sidebar navigation with 64px rail + 240px panel.
   - [x] Phase 9: Update PageHeader to match Dub's PageContentHeader pattern
   - [x] Phase 10: Implement PageContent + PageWidthWrapper pattern (Dub style)
   - [x] Phase 11: Animate sidebar transitions like Dub
+  - [x] Phase 12: Settings Navigation (Dub-style areas)
+    - [x] Add NavAreaConfig type for sidebar areas
+    - [x] Add studioSettings area with Studio + Account sections
+    - [x] Add currentArea detection based on pathname
+    - [x] Update DubSidebar with Area component for slide animations
+    - [x] Create SettingsPanel component with back button
+    - [x] Add Settings gear icon in rail + org dropdown
+    - [x] Update MobileSidebar for areas support
+    - [x] Create settings route pages (members, billing, profile, security, notifications)
 - Now: [→] Complete - ready for final review
 - Next: Test in browser, commit changes
 
@@ -42,15 +51,27 @@ Implement Dub-style two-column sidebar navigation with 64px rail + 240px panel.
 - `apps/web/modules/saas/studio/components/navigation/sidebar-panel.tsx`
 - `apps/web/modules/saas/studio/components/navigation/dub-sidebar.tsx`
 - `apps/web/modules/saas/studio/components/navigation/mobile-sidebar.tsx`
+- `apps/web/modules/saas/studio/components/navigation/settings-panel.tsx` - Settings area panel with back button
 - `apps/web/modules/saas/studio/components/PageContent.tsx` - Page wrapper with header + content
 - `apps/web/modules/saas/studio/components/PageWidthWrapper.tsx` - Consistent padding/max-width
+- `apps/web/app/(saas)/app/[organizationSlug]/settings/members/page.tsx` - Members settings
+- `apps/web/app/(saas)/app/[organizationSlug]/settings/billing/page.tsx` - Billing settings
+- `apps/web/app/(saas)/app/[organizationSlug]/settings/profile/page.tsx` - Profile settings
+- `apps/web/app/(saas)/app/[organizationSlug]/settings/security/page.tsx` - Security settings
+- `apps/web/app/(saas)/app/[organizationSlug]/settings/notifications/page.tsx` - Notifications settings
 
 ## Files Modified
-- `apps/web/modules/saas/studio/lib/navigation/types.ts` - Added RailIconConfig
-- `apps/web/modules/saas/studio/components/app-shell.tsx` - Generate railIcons, pass user props
-- `apps/web/modules/saas/studio/components/app-shell.client.tsx` - Use DubSidebar, add mobile state
+- `apps/web/modules/saas/studio/lib/navigation/types.ts` - Added RailIconConfig, NavAreaConfig, updated NavigationConfig
+- `apps/web/modules/saas/studio/lib/navigation/config.ts` - Added studioSettings area
+- `apps/web/modules/saas/studio/components/app-shell.tsx` - Generate railIcons, pass user props, areas
+- `apps/web/modules/saas/studio/components/app-shell.client.tsx` - Use DubSidebar, currentArea detection, areas prop
+- `apps/web/modules/saas/studio/components/navigation/dub-sidebar.tsx` - Area component for slide animations
+- `apps/web/modules/saas/studio/components/navigation/sidebar-rail.tsx` - Settings gear icon + org dropdown
+- `apps/web/modules/saas/studio/components/navigation/mobile-sidebar.tsx` - Areas support
+- `apps/web/modules/saas/studio/components/navigation/icon-registry.tsx` - Added Bell, CreditCard, Shield, User icons
 - `apps/web/modules/saas/studio/components/site-header.tsx` - Simplified, removed org switcher
-- `apps/web/modules/saas/studio/components/PageHeader.tsx` - Refactored to match Dub's PageContentHeader (non-sticky, explicit backHref, headerContent support)
+- `apps/web/modules/saas/studio/components/PageHeader.tsx` - Refactored to match Dub's PageContentHeader
+- `apps/web/app/(saas)/app/[organizationSlug]/settings/page.tsx` - Now General settings page
 - `apps/web/app/(saas)/app/[organizationSlug]/bookings/layout.tsx` - Updated to use new PageHeader API
 
 ## Files Deleted
@@ -59,6 +80,6 @@ Implement Dub-style two-column sidebar navigation with 64px rail + 240px panel.
 - `apps/web/modules/saas/studio/components/navigation/module-sidebar.tsx`
 
 ## Working Set
-- Branch: `new-sidebar`
-- Plan: `/Users/rakesh/.claude/plans/playful-imagining-papert.md`
+- Branch: `dub-sidebar`
+- Plan: `/Users/rakesh/.claude/plans/buzzing-noodling-fiddle.md` (settings navigation)
 - Build cmd: `pnpm --filter web build`

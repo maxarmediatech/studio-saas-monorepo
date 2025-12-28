@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import * as React from "react";
 import type { HeaderCapabilities } from "../lib/capability.server";
 import type {
+	NavAreaConfig,
 	NavItemConfig,
 	NavModuleConfig,
 	RailIconConfig,
@@ -19,6 +20,7 @@ interface AppShellClientProps {
 	studioLogo?: string | null;
 	modules: NavModuleConfig[];
 	utilities: NavItemConfig[];
+	areas: Record<string, NavAreaConfig>;
 	railIcons: RailIconConfig[];
 	caps: HeaderCapabilities;
 	userName: string;
@@ -36,6 +38,7 @@ export function AppShellClient({
 	studioLogo,
 	modules,
 	utilities,
+	areas,
 	railIcons,
 	caps,
 	userName,
@@ -49,11 +52,20 @@ export function AppShellClient({
 
 	// Build navigation config for path matching
 	const navigationConfig = React.useMemo(
-		() => ({ modules, utilities }),
-		[modules, utilities],
+		() => ({ modules, utilities, areas }),
+		[modules, utilities, areas],
 	);
 
-	// Find active module based on current pathname
+	// Determine current area based on pathname (Dub-style)
+	// Settings routes show settings area, everything else shows default (modules)
+	const currentArea = React.useMemo(() => {
+		if (pathname.startsWith(`/app/${studioSlug}/settings`)) {
+			return "studioSettings";
+		}
+		return "default";
+	}, [pathname, studioSlug]);
+
+	// Find active module based on current pathname (for default area)
 	const activeModule = React.useMemo(
 		() =>
 			hasModules ? findModuleByPath(pathname, navigationConfig) : null,
@@ -67,10 +79,13 @@ export function AppShellClient({
 		setMobileOpen(false);
 	}, [pathname]);
 
+	// Show sidebar when we have modules or are in a special area (like settings)
+	const showSidebar = hasModules || currentArea !== "default";
+
 	return (
 		<div className="min-h-screen bg-neutral-200 md:grid md:grid-cols-[min-content_minmax(0,1fr)]">
 			{/* Desktop Sidebar */}
-			{activeModule && (
+			{showSidebar && (
 				<DubSidebar
 					studioSlug={studioSlug}
 					studioName={studioName}
@@ -79,6 +94,8 @@ export function AppShellClient({
 					activeModule={activeModule}
 					activeModuleId={activeModuleId}
 					utilities={utilities}
+					currentArea={currentArea}
+					areas={areas}
 					userName={userName}
 					userImage={userImage}
 				/>
@@ -100,7 +117,7 @@ export function AppShellClient({
 			</div>
 
 			{/* Mobile Sidebar */}
-			{activeModule && (
+			{showSidebar && (
 				<MobileSidebar
 					open={mobileOpen}
 					onOpenChange={setMobileOpen}
@@ -111,6 +128,8 @@ export function AppShellClient({
 					activeModule={activeModule}
 					activeModuleId={activeModuleId}
 					utilities={utilities}
+					currentArea={currentArea}
+					areas={areas}
 					pathname={pathname}
 				/>
 			)}

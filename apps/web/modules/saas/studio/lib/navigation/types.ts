@@ -10,10 +10,12 @@ import type {
 
 export type IconName =
 	| "Banknote"
+	| "Bell"
 	| "CalendarDays"
 	| "Camera"
 	| "ClipboardCheck"
 	| "Contact2"
+	| "CreditCard"
 	| "HelpCircle"
 	| "Home"
 	| "Inbox"
@@ -22,6 +24,8 @@ export type IconName =
 	| "Package"
 	| "Settings"
 	| "Settings2"
+	| "Shield"
+	| "User"
 	| "Users"
 	| "Wallet2";
 
@@ -94,7 +98,28 @@ export interface RailIconConfig {
 	defaultPath: string;
 }
 
+// ============================================================================
+// AREA CONFIG (for Dub-style settings areas)
+// ============================================================================
+
+/**
+ * Configuration for a sidebar area (like Dub's workspaceSettings).
+ * Areas are separate sidebar panels that slide in based on pathname.
+ */
+export interface NavAreaConfig {
+	id: string;
+	title: string;
+	backHref?: string; // If provided, show back button that navigates here
+	direction?: "left" | "right"; // Slide animation direction (default: right)
+	sections: NavSectionConfig[];
+}
+
+// ============================================================================
+// ROOT NAVIGATION CONFIG
+// ============================================================================
+
 export interface NavigationConfig {
 	modules: NavModuleConfig[];
 	utilities: NavItemConfig[];
+	areas: Record<string, NavAreaConfig>; // Named areas (e.g., "studioSettings")
 }

@@ -3,10 +3,12 @@
 import type { LucideIcon } from "lucide-react";
 import {
 	Banknote,
+	Bell,
 	CalendarDays,
 	Camera,
 	ClipboardCheck,
 	Contact2,
+	CreditCard,
 	HelpCircle,
 	Home,
 	Inbox,
@@ -15,16 +17,20 @@ import {
 	Package,
 	Settings,
 	Settings2,
+	Shield,
+	User,
 	Users,
 	Wallet2,
 } from "lucide-react";
 
 const registry = {
 	Banknote,
+	Bell,
 	CalendarDays,
 	Camera,
 	ClipboardCheck,
 	Contact2,
+	CreditCard,
 	HelpCircle,
 	Home,
 	Inbox,
@@ -33,6 +39,8 @@ const registry = {
 	Package,
 	Settings,
 	Settings2,
+	Shield,
+	User,
 	Users,
 	Wallet2,
 } satisfies Record<string, LucideIcon>;
