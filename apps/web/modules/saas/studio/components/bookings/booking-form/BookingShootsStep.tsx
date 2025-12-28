@@ -105,60 +105,65 @@ export function BookingShootsStep() {
 	};
 
 	return (
-		<div className="space-y-6">
-			{/* Header */}
-			<div className="flex items-center justify-between">
-				<div>
-					<h3 className="text-lg font-semibold">Shoots</h3>
-					<p className="text-sm text-muted-foreground">
-						Schedule photo/video shoots for this booking
-					</p>
-				</div>
-				<Button
-					type="button"
-					variant="outline"
-					size="sm"
-					onClick={addNewShoot}
-				>
-					<PlusIcon className="mr-2 h-4 w-4" />
-					Add Shoot
-				</Button>
-			</div>
-
-			<FieldSet>
-				{shoots.length === 0 ? (
-					<div className="flex flex-col items-center justify-center py-12 text-center border border-dashed rounded-lg">
-						<CameraIcon className="h-12 w-12 text-muted-foreground/50 mb-4" />
-						<p className="text-sm text-muted-foreground mb-4">
-							No shoots scheduled yet. Click "Add Shoot" to
-							schedule photo/video sessions.
+		<FieldGroup className="gap-6">
+			<Card>
+				<CardHeader className="flex flex-row items-center justify-between">
+					<div>
+						<CardTitle className="flex items-center gap-2">
+							<CameraIcon className="h-5 w-5" />
+							Shoots
+						</CardTitle>
+						<p className="text-sm text-muted-foreground mt-1">
+							Schedule photo/video shoots for this booking
 						</p>
-						<Button
-							type="button"
-							variant="outline"
-							size="sm"
-							onClick={addNewShoot}
-						>
-							<PlusIcon className="mr-2 h-4 w-4" />
-							Add Shoot
-						</Button>
 					</div>
-				) : (
-					<FieldGroup className="gap-6">
-						{shoots.map((shoot, shootIndex) => (
-							<ShootCard
-								key={shoot.id}
-								shootIndex={shootIndex}
-								crews={crews}
-								crewRoles={crewRoles}
-								onRemove={() => removeShoot(shootIndex)}
-								canRemove={shoots.length > 0}
-							/>
-						))}
-					</FieldGroup>
-				)}
-			</FieldSet>
-		</div>
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						onClick={addNewShoot}
+					>
+						<PlusIcon className="mr-2 h-4 w-4" />
+						Add Shoot
+					</Button>
+				</CardHeader>
+				<CardContent>
+					<FieldSet>
+						{shoots.length === 0 ? (
+							<div className="flex flex-col items-center justify-center py-12 text-center border border-dashed rounded-lg">
+								<CameraIcon className="h-12 w-12 text-muted-foreground/50 mb-4" />
+								<p className="text-sm text-muted-foreground mb-4">
+									No shoots scheduled yet. Click "Add Shoot" to
+									schedule photo/video sessions.
+								</p>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									onClick={addNewShoot}
+								>
+									<PlusIcon className="mr-2 h-4 w-4" />
+									Add Shoot
+								</Button>
+							</div>
+						) : (
+							<FieldGroup className="gap-6">
+								{shoots.map((shoot, shootIndex) => (
+									<ShootCard
+										key={shoot.id}
+										shootIndex={shootIndex}
+										crews={crews}
+										crewRoles={crewRoles}
+										onRemove={() => removeShoot(shootIndex)}
+										canRemove={shoots.length > 0}
+									/>
+								))}
+							</FieldGroup>
+						)}
+					</FieldSet>
+				</CardContent>
+			</Card>
+		</FieldGroup>
 	);
 }
 
