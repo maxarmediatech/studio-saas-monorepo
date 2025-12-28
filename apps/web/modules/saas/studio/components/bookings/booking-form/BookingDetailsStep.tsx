@@ -1,7 +1,12 @@
 "use client";
 
 import { Button } from "@repo/ui/components/button";
-import { Card } from "@repo/ui/components/card";
+import {
+	Card,
+	CardContent,
+	CardHeader,
+	CardTitle,
+} from "@repo/ui/components/card";
 import {
 	Field,
 	FieldDescription,
@@ -18,12 +23,11 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@repo/ui/components/select";
-import { Separator } from "@repo/ui/components/separator";
 import { Textarea } from "@repo/ui/components/textarea";
 import { clientsApi, configurationsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
-import { PlusIcon, TrashIcon, UserPlusIcon } from "lucide-react";
-import { useState } from "react";
+import { ClipboardListIcon, PlusIcon, TrashIcon, UserPlusIcon, UsersIcon } from "lucide-react";
+import { useMemo, useState } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import type { BookingFormValues } from "./booking-form-schema";
 import { CreateClientDialog } from "./create-client-dialog";
@@ -65,6 +69,16 @@ export function BookingDetailsStep() {
 	});
 
 	const selectedBookingType = form.watch("bookingType");
+	const watchedParticipants = form.watch("participants");
+
+	// Track which client IDs are already selected (for duplicate prevention)
+	const selectedClientIds = useMemo(() => {
+		return new Set(
+			watchedParticipants
+				?.map((p) => p.clientId)
+				.filter((id) => id && id.length > 0) ?? [],
+		);
+	}, [watchedParticipants]);
 
 	// Filter package types by booking type if metadata specifies it
 	const filteredPackageTypes = packageTypes.filter((pkg) => {
@@ -95,7 +109,7 @@ export function BookingDetailsStep() {
 	};
 
 	return (
-		<div className="space-y-8">
+		<FieldGroup className="gap-6">
 			<CreateClientDialog
 				open={createClientForParticipantIndex !== null}
 				onOpenChange={(open) => {
@@ -118,12 +132,16 @@ export function BookingDetailsStep() {
 			/>
 
 			{/* Booking Information Section */}
-			<section>
-				<h3 className="text-lg font-semibold mb-4">
-					Booking Information
-				</h3>
-				<FieldGroup>
-					<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+			<Card>
+				<CardHeader>
+					<CardTitle className="flex items-center gap-2">
+						<ClipboardListIcon className="h-5 w-5" />
+						Booking Information
+					</CardTitle>
+				</CardHeader>
+				<CardContent>
+					<FieldGroup>
+						<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
 						{/* Booking Name */}
 						<div className="md:col-span-2">
 							<Controller
@@ -319,18 +337,20 @@ export function BookingDetailsStep() {
 								)}
 							/>
 						</div>
-					</div>
-				</FieldGroup>
-			</section>
-
-			<Separator />
+						</div>
+					</FieldGroup>
+				</CardContent>
+			</Card>
 
 			{/* Participants Section */}
-			<section>
-				<div className="flex items-center justify-between mb-4">
+			<Card>
+				<CardHeader className="flex flex-row items-center justify-between">
 					<div>
-						<h3 className="text-lg font-semibold">Participants</h3>
-						<p className="text-sm text-muted-foreground">
+						<CardTitle className="flex items-center gap-2">
+							<UsersIcon className="h-5 w-5" />
+							Participants
+						</CardTitle>
+						<p className="text-sm text-muted-foreground mt-1">
 							Add clients associated with this booking
 						</p>
 					</div>
@@ -348,23 +368,37 @@ export function BookingDetailsStep() {
 						<PlusIcon className="mr-2 h-4 w-4" />
 						Add Participant
 					</Button>
-				</div>
-
-				<FieldSet>
-					{participants.length === 0 ? (
-						<div className="flex flex-col items-center justify-center py-8 text-center border border-dashed rounded-lg">
-							<UserPlusIcon className="h-12 w-12 text-muted-foreground/50 mb-4" />
-							<p className="text-sm text-muted-foreground">
-								No participants added. Click "Add Participant"
-								to add clients to this booking.
-							</p>
-						</div>
-					) : (
-						<FieldGroup className="gap-3">
-							{participants.map((field, index) => (
-								<Card key={field.id} className="p-4">
-									<div className="flex items-start gap-4">
-										<div className="flex-1 grid gap-4 md:grid-cols-2">
+				</CardHeader>
+				<CardContent>
+						<FieldSet>
+						{participants.length === 0 ? (
+							<div className="flex flex-col items-center justify-center py-12 text-center border border-dashed rounded-lg">
+								<UserPlusIcon className="h-12 w-12 text-muted-foreground/50 mb-4" />
+								<p className="text-sm text-muted-foreground mb-4">
+									No participants added yet. Click "Add Participant"
+									to add clients to this booking.
+								</p>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									onClick={() =>
+										appendParticipant({
+											clientId: "",
+											role: "",
+										})
+									}
+								>
+									<PlusIcon className="mr-2 h-4 w-4" />
+									Add Participant
+								</Button>
+							</div>
+						) : (
+							<FieldGroup className="gap-4">
+								{participants.map((field, index) => (
+									<Card key={field.id} className="p-4">
+										<div className="flex flex-col md:flex-row md:items-start gap-4">
+											<div className="flex-1 grid gap-4 grid-cols-1 md:grid-cols-2">
 											{/* Client Select */}
 											<Controller
 												name={`participants.${index}.clientId`}
@@ -403,31 +437,49 @@ export function BookingDetailsStep() {
 																	clients.map(
 																		(
 																			client,
-																		) => (
-																			<SelectItem
-																				key={
-																					client.id
-																				}
-																				value={
-																					client.id
-																				}
-																			>
-																				<div className="flex flex-col">
-																					<span>
-																						{
-																							client.name
-																						}
-																					</span>
-																					{client.phoneNumber && (
-																						<span className="text-xs text-muted-foreground">
+																		) => {
+																			// Disable if already selected by another participant
+																			const isAlreadySelected =
+																				selectedClientIds.has(
+																					client.id,
+																				) &&
+																				field.value !==
+																					client.id;
+																			return (
+																				<SelectItem
+																					key={
+																						client.id
+																					}
+																					value={
+																						client.id
+																					}
+																					disabled={
+																						isAlreadySelected
+																					}
+																				>
+																					<div className="flex flex-col">
+																						<span>
 																							{
-																								client.phoneNumber
+																								client.name
 																							}
+																							{isAlreadySelected && (
+																								<span className="ml-2 text-xs text-muted-foreground">
+																									(already
+																									added)
+																								</span>
+																							)}
 																						</span>
-																					)}
-																				</div>
-																			</SelectItem>
-																		),
+																						{client.phoneNumber && (
+																							<span className="text-xs text-muted-foreground">
+																								{
+																									client.phoneNumber
+																								}
+																							</span>
+																						)}
+																					</div>
+																				</SelectItem>
+																			);
+																		},
 																	)
 																) : (
 																	<div className="p-2 space-y-2 text-center">
@@ -529,31 +581,32 @@ export function BookingDetailsStep() {
 													</Field>
 												)}
 											/>
-										</div>
+											</div>
 
-										{/* Remove Button */}
-										<Button
-											type="button"
-											variant="ghost"
-											size="icon"
-											className="mt-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-											onClick={() =>
-												removeParticipant(index)
-											}
-											disabled={participants.length <= 1}
-										>
-											<TrashIcon className="h-4 w-4" />
-											<span className="sr-only">
-												Remove participant
-											</span>
-										</Button>
-									</div>
-								</Card>
-							))}
-						</FieldGroup>
-					)}
-				</FieldSet>
-			</section>
-		</div>
+											{/* Remove Button */}
+											<Button
+												type="button"
+												variant="ghost"
+												size="icon"
+												className="self-end md:self-auto md:mt-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+												onClick={() =>
+													removeParticipant(index)
+												}
+												disabled={participants.length <= 1}
+											>
+												<TrashIcon className="h-4 w-4" />
+												<span className="sr-only">
+													Remove participant
+												</span>
+											</Button>
+										</div>
+									</Card>
+								))}
+							</FieldGroup>
+						)}
+					</FieldSet>
+				</CardContent>
+			</Card>
+		</FieldGroup>
 	);
 }
