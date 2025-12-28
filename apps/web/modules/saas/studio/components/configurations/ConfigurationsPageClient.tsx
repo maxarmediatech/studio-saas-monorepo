@@ -34,7 +34,7 @@ import {
 import type { Configuration } from "@repo/api/modules/studio/schemas/configuration";
 import { useConfigurationParams } from "@saas/studio/hooks/params/use-configuration-params";
 import { OpenConfigurationCreateSheet } from "./OpenConfigurationSheet";
-import { PageHeader } from "../PageHeader";
+import { PageContent } from "../PageContent";
 
 interface ConfigurationsPageClientProps {
 	organizationSlug: string;
@@ -232,8 +232,7 @@ export function ConfigurationsPageClient({
 	const showLoading = isFetching || isPending;
 
 	return (
-		<>
-			<PageHeader title={pageTitle} />
+		<PageContent title={pageTitle}>
 			<div className="space-y-4">
 				{/* Filters */}
 				<div className="flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -308,6 +307,6 @@ export function ConfigurationsPageClient({
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
-		</>
+		</PageContent>
 	);
 }

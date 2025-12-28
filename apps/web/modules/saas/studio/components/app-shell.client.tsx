@@ -93,9 +93,9 @@ export function AppShellClient({
 					onMobileMenuClick={() => setMobileOpen(true)}
 				/>
 
-				{/* Content Card */}
-				<main className="flex-1 pt-14 md:rounded-xl md:bg-white md:pt-0">
-					<div className="p-6 lg:p-8">{children}</div>
+				{/* Content Card - no default padding, pages control their own layout */}
+				<main className="flex flex-1 flex-col pt-14 md:rounded-xl md:bg-white md:pt-0">
+					{children}
 				</main>
 			</div>
 

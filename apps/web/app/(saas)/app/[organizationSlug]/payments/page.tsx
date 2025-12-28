@@ -1,7 +1,7 @@
 import { getActiveOrganization } from "@saas/auth/lib/server";
 import { PaymentsPageClient } from "@saas/studio/components/payments/PaymentsPageClient";
 import { PaymentCreateSheet, PaymentEditSheet } from "@saas/studio/components/payments/sheets";
-import { PageHeader } from "@saas/studio";
+import { PageContent } from "@saas/studio";
 import { studioPaymentsApi } from "@saas/studio/lib/api";
 import { getServerQueryClient } from "@shared/lib/server";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
@@ -50,16 +50,17 @@ export default async function PaymentsPage({ params, searchParams }: Props) {
 
 	return (
 		<HydrationBoundary state={dehydrate(queryClient)}>
-			<PageHeader title="Payments" />
-			<PaymentsPageClient
-				organizationSlug={organizationSlug}
-				initialFilters={{
-					page: input.page,
-					search: input.search,
-				}}
-			/>
-			<PaymentCreateSheet />
-			<PaymentEditSheet />
+			<PageContent title="Payments">
+				<PaymentsPageClient
+					organizationSlug={organizationSlug}
+					initialFilters={{
+						page: input.page,
+						search: input.search,
+					}}
+				/>
+				<PaymentCreateSheet />
+				<PaymentEditSheet />
+			</PageContent>
 		</HydrationBoundary>
 	);
 }

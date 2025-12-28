@@ -32,6 +32,7 @@ Implement Dub-style two-column sidebar navigation with 64px rail + 240px panel.
   - [x] Phase 7: Dub styling pass - grid layout, gray bg, rounded containers
   - [x] Phase 8: Last mile - exact color/spacing parity with Dub
   - [x] Phase 9: Update PageHeader to match Dub's PageContentHeader pattern
+  - [x] Phase 10: Implement PageContent + PageWidthWrapper pattern (Dub style)
 - Now: [→] Complete - ready for final review
 - Next: Test in browser, commit changes
 
@@ -40,6 +41,8 @@ Implement Dub-style two-column sidebar navigation with 64px rail + 240px panel.
 - `apps/web/modules/saas/studio/components/navigation/sidebar-panel.tsx`
 - `apps/web/modules/saas/studio/components/navigation/dub-sidebar.tsx`
 - `apps/web/modules/saas/studio/components/navigation/mobile-sidebar.tsx`
+- `apps/web/modules/saas/studio/components/PageContent.tsx` - Page wrapper with header + content
+- `apps/web/modules/saas/studio/components/PageWidthWrapper.tsx` - Consistent padding/max-width
 
 ## Files Modified
 - `apps/web/modules/saas/studio/lib/navigation/types.ts` - Added RailIconConfig

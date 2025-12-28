@@ -1,6 +1,6 @@
 import { getActiveOrganization } from "@saas/auth/lib/server";
 import { TasksPageClient } from "@saas/studio/components/tasks/TasksPageClient";
-import { PageHeader } from "@saas/studio";
+import { PageContent } from "@saas/studio";
 import { tasksApi } from "@saas/studio/lib/api";
 import { getServerQueryClient } from "@shared/lib/server";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
@@ -49,14 +49,15 @@ export default async function TasksPage({ params, searchParams }: Props) {
 
 	return (
 		<HydrationBoundary state={dehydrate(queryClient)}>
-			<PageHeader title="Tasks" />
-			<TasksPageClient
-				organizationSlug={organizationSlug}
-				initialFilters={{
-					page: input.page,
-					search: input.search,
-				}}
-			/>
+			<PageContent title="Tasks">
+				<TasksPageClient
+					organizationSlug={organizationSlug}
+					initialFilters={{
+						page: input.page,
+						search: input.search,
+					}}
+				/>
+			</PageContent>
 		</HydrationBoundary>
 	);
 }

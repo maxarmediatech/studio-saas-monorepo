@@ -1,5 +1,5 @@
 import { getActiveOrganization } from "@saas/auth/lib/server";
-import { PageHeader } from "@saas/studio";
+import { PageContent } from "@saas/studio";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
@@ -60,8 +60,7 @@ export default async function SettingsPage({ params }: Props) {
 	}
 
 	return (
-		<>
-			<PageHeader title="Settings" />
+		<PageContent title="Settings">
 			<div className="space-y-6">
 				<div>
 					<h2 className="text-lg font-medium mb-4">Configurations</h2>
@@ -106,6 +105,6 @@ export default async function SettingsPage({ params }: Props) {
 					</div>
 				</div>
 			</div>
-		</>
+		</PageContent>
 	);
 }

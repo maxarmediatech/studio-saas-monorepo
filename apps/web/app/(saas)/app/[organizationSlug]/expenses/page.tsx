@@ -1,6 +1,6 @@
 import { getActiveOrganization } from "@saas/auth/lib/server";
 import { ExpensesPageClient } from "@saas/studio/components/expenses/ExpensesPageClient";
-import { PageHeader } from "@saas/studio";
+import { PageContent } from "@saas/studio";
 import { expensesApi } from "@saas/studio/lib/api";
 import { getServerQueryClient } from "@shared/lib/server";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
@@ -53,16 +53,17 @@ export default async function ExpensesPage({ params, searchParams }: Props) {
 
 	return (
 		<HydrationBoundary state={dehydrate(queryClient)}>
-			<PageHeader title="Expenses" />
-			<ExpensesPageClient
-				organizationSlug={organizationSlug}
-				initialFilters={{
-					page: input.page,
-					search: input.search,
-					category: input.category,
-					billTo: input.billTo,
-				}}
-			/>
+			<PageContent title="Expenses">
+				<ExpensesPageClient
+					organizationSlug={organizationSlug}
+					initialFilters={{
+						page: input.page,
+						search: input.search,
+						category: input.category,
+						billTo: input.billTo,
+					}}
+				/>
+			</PageContent>
 		</HydrationBoundary>
 	);
 }

@@ -1,6 +1,6 @@
 import { getActiveOrganization } from "@saas/auth/lib/server";
 import { DeliverablesPageClient } from "@saas/studio/components/deliverables/DeliverablesPageClient";
-import { PageHeader } from "@saas/studio";
+import { PageContent } from "@saas/studio";
 import { deliverablesApi } from "@saas/studio/lib/api";
 import { getServerQueryClient } from "@shared/lib/server";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
@@ -49,14 +49,15 @@ export default async function DeliverablesPage({ params, searchParams }: Props) 
 
 	return (
 		<HydrationBoundary state={dehydrate(queryClient)}>
-			<PageHeader title="Deliverables" />
-			<DeliverablesPageClient
-				organizationSlug={organizationSlug}
-				initialFilters={{
-					page: input.page,
-					search: input.search,
-				}}
-			/>
+			<PageContent title="Deliverables">
+				<DeliverablesPageClient
+					organizationSlug={organizationSlug}
+					initialFilters={{
+						page: input.page,
+						search: input.search,
+					}}
+				/>
+			</PageContent>
 		</HydrationBoundary>
 	);
 }

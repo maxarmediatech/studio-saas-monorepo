@@ -1,6 +1,6 @@
 import { getActiveOrganization } from "@saas/auth/lib/server";
 import { CrewsPageClient } from "@saas/studio/components/crews/CrewsPageClient";
-import { PageHeader } from "@saas/studio";
+import { PageContent } from "@saas/studio";
 import { crewsApi } from "@saas/studio/lib/api";
 import { getServerQueryClient } from "@shared/lib/server";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
@@ -53,16 +53,17 @@ export default async function CrewsPage({ params, searchParams }: Props) {
 
 	return (
 		<HydrationBoundary state={dehydrate(queryClient)}>
-			<PageHeader title="Team" />
-			<CrewsPageClient
-				organizationSlug={organizationSlug}
-				initialFilters={{
-					page: input.page,
-					search: input.search,
-					status: input.status,
-					role: input.role,
-				}}
-			/>
+			<PageContent title="Team">
+				<CrewsPageClient
+					organizationSlug={organizationSlug}
+					initialFilters={{
+						page: input.page,
+						search: input.search,
+						status: input.status,
+						role: input.role,
+					}}
+				/>
+			</PageContent>
 		</HydrationBoundary>
 	);
 }

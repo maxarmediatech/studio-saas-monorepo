@@ -7,7 +7,9 @@ export {
 	BookingsTableClient,
 	BookingsTableSkeleton,
 } from "./components/bookings";
+export { PageContent } from "./components/PageContent";
 export { PageHeader } from "./components/PageHeader";
+export { PageWidthWrapper } from "./components/PageWidthWrapper";
 
 // Layout - Server component pattern (like winter-arc)
 export { AppShell } from "./components/app-shell";

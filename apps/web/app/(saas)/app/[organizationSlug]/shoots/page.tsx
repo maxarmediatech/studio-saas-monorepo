@@ -1,5 +1,5 @@
 import { getActiveOrganization } from "@saas/auth/lib/server";
-import { PageHeader } from "@saas/studio";
+import { PageContent } from "@saas/studio";
 import { ShootsPageClient } from "@saas/studio/components/shoots/ShootsPageClient";
 import { shootsApi } from "@saas/studio/lib/api";
 import { getServerQueryClient } from "@shared/lib/server";
@@ -51,15 +51,16 @@ export default async function ShootsPage({ params, searchParams }: Props) {
 
 	return (
 		<HydrationBoundary state={dehydrate(queryClient)}>
-			<PageHeader title="Shoots" />
-			<ShootsPageClient
-				organizationSlug={organizationSlug}
-				initialFilters={{
-					page: input.page,
-					search: input.search,
-					bookingId: input.bookingId,
-				}}
-			/>
+			<PageContent title="Shoots">
+				<ShootsPageClient
+					organizationSlug={organizationSlug}
+					initialFilters={{
+						page: input.page,
+						search: input.search,
+						bookingId: input.bookingId,
+					}}
+				/>
+			</PageContent>
 		</HydrationBoundary>
 	);
 }
