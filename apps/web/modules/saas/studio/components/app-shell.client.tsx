@@ -86,7 +86,7 @@ export function AppShellClient({
 
 			{/* Main Content Area */}
 			<div className="flex min-h-screen flex-col bg-neutral-200 md:py-2 md:pr-2">
-				{/* Header - inside content card on desktop */}
+				{/* Header - mobile only */}
 				<SiteHeader
 					studioSlug={studioSlug}
 					caps={caps}
@@ -95,9 +95,7 @@ export function AppShellClient({
 
 				{/* Content Card */}
 				<main className="flex-1 pt-14 md:rounded-xl md:bg-white md:pt-0">
-					<div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
-						{children}
-					</div>
+					<div className="p-6 lg:p-8">{children}</div>
 				</main>
 			</div>
 

@@ -22,10 +22,10 @@ export function SiteHeader({
 	const homePath = `/app/${studioSlug}/home`;
 
 	return (
-		<header className="fixed top-0 right-0 left-0 z-30 bg-white md:static md:rounded-t-xl md:bg-transparent">
-			<div className="flex h-14 items-center justify-between border-b border-neutral-200 bg-white px-4 md:rounded-t-xl md:border-b-0">
+		<header className="fixed top-0 right-0 left-0 z-30 bg-white md:hidden">
+			<div className="flex h-14 items-center justify-between border-b border-neutral-200 bg-white px-4">
 				{/* Mobile: Menu trigger + Logo */}
-				<div className="flex items-center gap-2 md:hidden">
+				<div className="flex items-center gap-2">
 					<Button
 						variant="ghost"
 						size="icon"
@@ -40,10 +40,7 @@ export function SiteHeader({
 					</Link>
 				</div>
 
-				{/* Desktop: Empty left side (sidebar has the navigation) */}
-				<div className="hidden md:block" />
-
-				{/* Right side actions */}
+				{/* Right side actions - mobile only */}
 				<div className="flex items-center gap-2">
 					<NewActionSwitcher studioSlug={studioSlug} caps={caps} />
 					<UserMenu />
