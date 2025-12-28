@@ -30,7 +30,8 @@ Implement Dub-style two-column sidebar navigation with 64px rail + 240px panel.
   - [x] Phase 5: Create mobile-sidebar.tsx
   - [x] Phase 6: Delete old components (module-tabs.tsx, app-sidebar.tsx, module-sidebar.tsx)
   - [x] Phase 7: Dub styling pass - grid layout, gray bg, rounded containers
-- Now: [→] Ready for testing and commit
+  - [x] Phase 8: Last mile - exact color/spacing parity with Dub
+- Now: [→] Complete - ready for final review
 - Next: Test in browser, commit changes
 
 ## New Files Created

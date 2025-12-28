@@ -68,7 +68,7 @@ export function AppShellClient({
 	}, [pathname]);
 
 	return (
-		<div className="min-h-screen bg-neutral-100 md:grid md:grid-cols-[min-content_minmax(0,1fr)]">
+		<div className="min-h-screen bg-neutral-200 md:grid md:grid-cols-[min-content_minmax(0,1fr)]">
 			{/* Desktop Sidebar */}
 			{activeModule && (
 				<DubSidebar
@@ -85,7 +85,7 @@ export function AppShellClient({
 			)}
 
 			{/* Main Content Area */}
-			<div className="flex min-h-screen flex-col md:py-2 md:pr-2">
+			<div className="flex min-h-screen flex-col bg-neutral-200 md:py-2 md:pr-2">
 				{/* Header - inside content card on desktop */}
 				<SiteHeader
 					studioSlug={studioSlug}
