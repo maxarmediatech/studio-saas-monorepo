@@ -1,5 +1,5 @@
 # Session: sidebar-reorganization
-Updated: 2025-12-28T08:30:00.000Z
+Updated: 2025-12-28T08:17:12.816Z
 
 ## Goal
 Implement Dub-style two-column sidebar navigation with 64px rail + 240px panel.
@@ -31,6 +31,7 @@ Implement Dub-style two-column sidebar navigation with 64px rail + 240px panel.
   - [x] Phase 6: Delete old components (module-tabs.tsx, app-sidebar.tsx, module-sidebar.tsx)
   - [x] Phase 7: Dub styling pass - grid layout, gray bg, rounded containers
   - [x] Phase 8: Last mile - exact color/spacing parity with Dub
+  - [x] Phase 9: Update PageHeader to match Dub's PageContentHeader pattern
 - Now: [→] Complete - ready for final review
 - Next: Test in browser, commit changes
 
@@ -45,6 +46,8 @@ Implement Dub-style two-column sidebar navigation with 64px rail + 240px panel.
 - `apps/web/modules/saas/studio/components/app-shell.tsx` - Generate railIcons, pass user props
 - `apps/web/modules/saas/studio/components/app-shell.client.tsx` - Use DubSidebar, add mobile state
 - `apps/web/modules/saas/studio/components/site-header.tsx` - Simplified, removed org switcher
+- `apps/web/modules/saas/studio/components/PageHeader.tsx` - Refactored to match Dub's PageContentHeader (non-sticky, explicit backHref, headerContent support)
+- `apps/web/app/(saas)/app/[organizationSlug]/bookings/layout.tsx` - Updated to use new PageHeader API
 
 ## Files Deleted
 - `apps/web/modules/saas/studio/components/navigation/module-tabs.tsx`
