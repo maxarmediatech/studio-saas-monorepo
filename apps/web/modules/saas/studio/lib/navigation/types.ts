@@ -83,6 +83,17 @@ export interface NavModuleConfig {
 	sections: NavSectionConfig[];
 }
 
+// ============================================================================
+// RAIL ICON CONFIG (for Dub-style sidebar)
+// ============================================================================
+
+export interface RailIconConfig {
+	moduleId: string;
+	icon: IconName;
+	label: string; // Tooltip text
+	defaultPath: string;
+}
+
 export interface NavigationConfig {
 	modules: NavModuleConfig[];
 	utilities: NavItemConfig[];

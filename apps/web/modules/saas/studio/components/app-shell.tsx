@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { getCapabilities, selectHeaderCaps } from "../lib/capability.server";
 import { getNavigationConfig } from "../lib/navigation/config";
 import { filterNavigationConfig } from "../lib/navigation/filter";
+import type { RailIconConfig } from "../lib/navigation/types";
 import { AppShellClient } from "./app-shell.client";
 
 interface AppShellProps {
@@ -32,6 +33,14 @@ export async function AppShell({
 		userRole,
 	);
 
+	// Generate rail icons from filtered modules
+	const railIcons: RailIconConfig[] = filteredNavigation.modules.map((m) => ({
+		moduleId: m.id,
+		icon: m.icon,
+		label: m.label,
+		defaultPath: m.defaultPath,
+	}));
+
 	// Get capabilities for header actions
 	const capabilities = getCapabilities(userRole);
 	const caps = selectHeaderCaps(capabilities);
@@ -43,7 +52,10 @@ export async function AppShell({
 			studioLogo={activeOrganization.logo}
 			modules={filteredNavigation.modules}
 			utilities={filteredNavigation.utilities}
+			railIcons={railIcons}
 			caps={caps}
+			userName={session.user.name ?? "User"}
+			userImage={session.user.image}
 		>
 			{children}
 		</AppShellClient>

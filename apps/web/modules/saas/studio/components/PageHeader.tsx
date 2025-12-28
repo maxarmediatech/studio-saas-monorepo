@@ -1,8 +1,6 @@
 "use client";
 
 import { Button } from "@repo/ui/components/button";
-import { Separator } from "@repo/ui/components/separator";
-import { SidebarTrigger } from "@repo/ui/components/sidebar";
 import { cn } from "@repo/ui/lib/utils";
 import { ArrowLeftIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -32,14 +30,6 @@ export function PageHeader({
 		>
 			<div className="flex flex-1 items-center justify-between gap-2">
 				<div className="flex items-center gap-2">
-					<div className="flex items-center md:hidden">
-						<SidebarTrigger />
-						<Separator
-							orientation="vertical"
-							className="ml-2 mr-2 data-[orientation=vertical]:h-4"
-						/>
-					</div>
-
 					<Button
 						variant="ghost"
 						size="icon"

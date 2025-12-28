@@ -1,12 +1,16 @@
 "use client";
 
-import { SidebarInset, SidebarProvider } from "@repo/ui/components/sidebar";
 import { usePathname } from "next/navigation";
 import * as React from "react";
 import type { HeaderCapabilities } from "../lib/capability.server";
-import type { NavItemConfig, NavModuleConfig } from "../lib/navigation/types";
+import type {
+	NavItemConfig,
+	NavModuleConfig,
+	RailIconConfig,
+} from "../lib/navigation/types";
 import { findModuleByPath } from "../lib/navigation/utils";
-import { AppSidebar } from "./app-sidebar";
+import { DubSidebar } from "./navigation/dub-sidebar";
+import { MobileSidebar } from "./navigation/mobile-sidebar";
 import { SiteHeader } from "./site-header";
 
 interface AppShellClientProps {
@@ -15,7 +19,10 @@ interface AppShellClientProps {
 	studioLogo?: string | null;
 	modules: NavModuleConfig[];
 	utilities: NavItemConfig[];
+	railIcons: RailIconConfig[];
 	caps: HeaderCapabilities;
+	userName: string;
+	userImage?: string | null;
 	children: React.ReactNode;
 }
 
@@ -29,10 +36,14 @@ export function AppShellClient({
 	studioLogo,
 	modules,
 	utilities,
+	railIcons,
 	caps,
+	userName,
+	userImage,
 	children,
 }: AppShellClientProps) {
 	const pathname = usePathname();
+	const [mobileOpen, setMobileOpen] = React.useState(false);
 
 	const hasModules = modules.length > 0;
 
@@ -51,37 +62,57 @@ export function AppShellClient({
 
 	const activeModuleId = activeModule?.id ?? modules[0]?.id ?? "";
 
+	// Close mobile sidebar on navigation
+	React.useEffect(() => {
+		setMobileOpen(false);
+	}, [pathname]);
+
 	return (
-		<div className="[--header-height:3.5rem]">
-			<SidebarProvider className="flex flex-col">
-				<SiteHeader
+		<div className="min-h-screen bg-background">
+			{/* Desktop Sidebar */}
+			{activeModule && (
+				<DubSidebar
 					studioSlug={studioSlug}
 					studioName={studioName}
 					studioLogo={studioLogo}
-					modules={modules}
+					railIcons={railIcons}
+					activeModule={activeModule}
 					activeModuleId={activeModuleId}
-					caps={caps}
+					utilities={utilities}
+					userName={userName}
+					userImage={userImage}
 				/>
-				<div className="flex flex-1 pt-14">
-					{activeModule ? (
-						<>
-							<AppSidebar
-								activeModule={activeModule}
-								utilities={utilities}
-							/>
-							<SidebarInset>
-								<main className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
-									{children}
-								</main>
-							</SidebarInset>
-						</>
-					) : (
-						<main className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
-							{children}
-						</main>
-					)}
+			)}
+
+			{/* Header */}
+			<SiteHeader
+				studioSlug={studioSlug}
+				caps={caps}
+				onMobileMenuClick={() => setMobileOpen(true)}
+			/>
+
+			{/* Main Content */}
+			<main className="pt-14 md:pl-[304px]">
+				<div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
+					{children}
 				</div>
-			</SidebarProvider>
+			</main>
+
+			{/* Mobile Sidebar */}
+			{activeModule && (
+				<MobileSidebar
+					open={mobileOpen}
+					onOpenChange={setMobileOpen}
+					studioSlug={studioSlug}
+					studioName={studioName}
+					studioLogo={studioLogo}
+					railIcons={railIcons}
+					activeModule={activeModule}
+					activeModuleId={activeModuleId}
+					utilities={utilities}
+					pathname={pathname}
+				/>
+			)}
 		</div>
 	);
 }

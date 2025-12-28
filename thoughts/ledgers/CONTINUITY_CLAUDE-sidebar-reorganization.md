@@ -1,58 +1,54 @@
 # Session: sidebar-reorganization
-Updated: 2025-12-27T10:01:10.259Z
+Updated: 2025-12-28T12:00:00.000Z
 
 ## Goal
-Reorganize sidebar navigation to be more intuitive and reduce clicks to reach key items.
+Implement Dub-style two-column sidebar navigation with 64px rail + 240px panel.
 
 ## Constraints
-- Keep 2-level sidebar (icon rail + module panel)
-- Use existing icon registry
-- Maintain mobile navigation compatibility
+- Keep current routes unchanged (URLs stay the same)
+- Use primary color (orange/amber) for active states
+- Keep dropdown behavior for OrgSwitcher
+- Maintain mobile navigation compatibility via Sheet drawer
 
 ## Key Decisions
-- Single "Studio" module with building icon (consolidates home + bookings)
-- Removed Inbox and Review items (not needed now)
-- Configurations as separate module with slidersHorizontal icon
-- Moved config pages from /settings/* to /configurations/*
-- Settings shows in module panel footer (no "Studio" label)
-- People group (Clients, Crew) at bottom
+- Two-column sidebar: 64px rail + 240px panel = 304px total
+- Rail: Org logo, 6 module icons with tooltips, Help, User avatar
+- Panel: Active module's sections with scrollable nav items
+- Header: Simplified - only mobile menu trigger, New action, UserMenu
+- Active state: `bg-primary/10 text-primary`
+- Fixed positioning on desktop, Sheet drawer on mobile
 
 ## State
 - Done:
-  - [x] Consolidated to 2 modules (Studio, Configurations)
-  - [x] Added slidersHorizontal icon for Configurations
-  - [x] Moved config pages to /configurations/ URL path
-  - [x] Removed Inbox and Review items
-  - [x] Updated ModuleId types
-  - [x] Settings in footer without group label
-  - [x] Final structure: Home/Dashboard, Operations, Finance, People
-- Now: [→] Ready for commit
-- Next: Test in browser
+  - [x] Phase 1: Add RailIconConfig type to types.ts
+  - [x] Phase 2: Create sidebar-rail.tsx
+  - [x] Phase 2: Create sidebar-panel.tsx
+  - [x] Phase 2: Create dub-sidebar.tsx
+  - [x] Phase 3: Simplify site-header.tsx
+  - [x] Phase 4: Update app-shell.tsx and app-shell.client.tsx
+  - [x] Phase 5: Create mobile-sidebar.tsx
+  - [x] Phase 6: Delete old components (module-tabs.tsx, app-sidebar.tsx, module-sidebar.tsx)
+- Now: [→] Ready for testing and commit
+- Next: Test in browser, commit changes
 
-## Final Sidebar Structure
-
-**Studio (building icon):**
-- (no label): Home, Dashboard
-- Operations: Bookings, Shoots, Deliverables, Tasks
-- Finance: Payments, Expenses
-- People: Clients, Crew
-
-**Configurations (slidersHorizontal icon):**
-- Configs: Booking Types, Package Types, Relation Types, Crew Roles
-
-**Footer:** Settings
+## New Files Created
+- `apps/web/modules/saas/studio/components/navigation/sidebar-rail.tsx`
+- `apps/web/modules/saas/studio/components/navigation/sidebar-panel.tsx`
+- `apps/web/modules/saas/studio/components/navigation/dub-sidebar.tsx`
+- `apps/web/modules/saas/studio/components/navigation/mobile-sidebar.tsx`
 
 ## Files Modified
-- `apps/web/modules/saas/studio/lib/navigation.ts` - Module structure
-- `apps/web/modules/saas/studio/lib/types.ts` - ModuleId type
-- `apps/web/modules/saas/studio/lib/icons.ts` - Added slidersHorizontal
-- `apps/web/modules/saas/studio/components/ModulePanel.tsx` - Removed Studio label from Settings
-- `apps/web/modules/saas/studio/components/StudioSidebar.tsx` - Updated footer logic
-- `apps/web/modules/saas/studio/components/MobileNav.tsx` - Updated props
-- `apps/web/modules/saas/studio/components/StudioLayout.tsx` - Updated props
-- `apps/web/app/(saas)/app/[organizationSlug]/configurations/` - New location for config pages
+- `apps/web/modules/saas/studio/lib/navigation/types.ts` - Added RailIconConfig
+- `apps/web/modules/saas/studio/components/app-shell.tsx` - Generate railIcons, pass user props
+- `apps/web/modules/saas/studio/components/app-shell.client.tsx` - Use DubSidebar, add mobile state
+- `apps/web/modules/saas/studio/components/site-header.tsx` - Simplified, removed org switcher
+
+## Files Deleted
+- `apps/web/modules/saas/studio/components/navigation/module-tabs.tsx`
+- `apps/web/modules/saas/studio/components/app-sidebar.tsx`
+- `apps/web/modules/saas/studio/components/navigation/module-sidebar.tsx`
 
 ## Working Set
-- Branch: `booking-crud`
-- Key files: `apps/web/modules/saas/studio/lib/navigation.ts`
+- Branch: `new-sidebar`
+- Plan: `/Users/rakesh/.claude/plans/playful-imagining-papert.md`
 - Build cmd: `pnpm --filter web build`
