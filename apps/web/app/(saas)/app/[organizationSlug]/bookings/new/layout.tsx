@@ -1,6 +1,16 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@repo/ui/components/alert-dialog";
 import { Form } from "@repo/ui/components/form";
 import {
 	BookingFormLayout,
@@ -9,29 +19,45 @@ import {
 	BookingMobileStepper,
 	BookingStepperSidebar,
 	bookingFormSchema,
+	cleanupFormArrays,
 	defaultBookingValues,
+	formatDecimalForApi,
+	BookingFormRootError,
+	mapApiErrorToForm,
+	clearApiErrors,
+	TAB_LABELS,
 } from "@saas/studio/components/bookings";
 import { useBookingWizard } from "@saas/studio/components/bookings/booking-form/hooks/useBookingWizard";
 import {
 	useBookingFormHydrated,
 	useBookingFormStore,
+	useLastSavedAt,
 } from "@saas/studio/components/bookings/booking-form/store/use-booking-form-store";
 import { bookingsMutations, studioQueryKeys } from "@saas/studio/lib/api";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { type PropsWithChildren, useEffect, useRef } from "react";
+import {
+	type PropsWithChildren,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { type Resolver, useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 const BOOKING_FORM_HTML_ID = "booking-form";
 
-function buildCreateBookingInput(values: BookingFormValues) {
+function buildCreateBookingInput(rawValues: BookingFormValues) {
+	// Clean up empty array items before submission
+	const values = cleanupFormArrays(rawValues);
 	return {
 		name: values.name,
 		bookingType: values.bookingType,
 		packageType: values.packageType,
-		packageCost: values.packageCost,
+		packageCost: formatDecimalForApi(values.packageCost),
 		note: values.note,
 		participants: values.participants,
 		events: values.events,
@@ -61,7 +87,7 @@ function buildCreateBookingInput(values: BookingFormValues) {
 			})),
 		})),
 		receivedPayments: values.payments?.map((payment) => ({
-			amount: payment.amount,
+			amount: formatDecimalForApi(payment.amount),
 			paymentMethod: payment.paymentMethod,
 			receivedDate: payment.receivedDate,
 			transactionReference: payment.transactionReference,
@@ -69,7 +95,7 @@ function buildCreateBookingInput(values: BookingFormValues) {
 		})),
 		paymentSchedules: values.paymentSchedules?.map((schedule, idx) => ({
 			name: schedule.name,
-			amount: schedule.amount,
+			amount: formatDecimalForApi(schedule.amount),
 			dueDate: schedule.dueDate,
 			notes: schedule.notes,
 			sortOrder: idx,
@@ -80,7 +106,9 @@ function buildCreateBookingInput(values: BookingFormValues) {
 export default function NewBookingLayout({ children }: PropsWithChildren) {
 	const router = useRouter();
 	const resetForm = useBookingFormStore((state) => state.resetForm);
+	const revalidateSteps = useBookingFormStore((state) => state.revalidateSteps);
 	const hasHydrated = useBookingFormHydrated();
+	const lastSavedAt = useLastSavedAt();
 
 	const form = useForm<BookingFormValues>({
 		resolver: zodResolver(
@@ -90,7 +118,7 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 		mode: "onChange",
 	});
 
-	// Initialize form from store on hydration
+	// Initialize form from store on hydration and revalidate steps
 	const didInitFromStoreRef = useRef(false);
 	useEffect(() => {
 		if (!hasHydrated || didInitFromStoreRef.current) {
@@ -98,10 +126,47 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 		}
 		const storedFormData = useBookingFormStore.getState().formData;
 		form.reset({ ...defaultBookingValues, ...storedFormData });
+		// Re-validate completed steps to filter out stale ones
+		revalidateSteps();
 		didInitFromStoreRef.current = true;
-	}, [form, hasHydrated]);
+	}, [form, hasHydrated, revalidateSteps]);
 
 	const wizard = useBookingWizard({ form });
+
+	// Track if form has been modified (dirty state)
+	const isDirty = form.formState.isDirty;
+	const [showAbandonDialog, setShowAbandonDialog] = useState(false);
+
+	// Warn users when trying to leave with unsaved changes
+	useEffect(() => {
+		if (!hasHydrated || !isDirty) {
+			return;
+		}
+
+		const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+			e.preventDefault();
+			// Modern browsers ignore custom messages, but returnValue is required
+			e.returnValue = "";
+		};
+
+		window.addEventListener("beforeunload", handleBeforeUnload);
+		return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+	}, [hasHydrated, isDirty]);
+
+	// Handle cancel with confirmation
+	const handleCancelWithConfirmation = useCallback(() => {
+		if (isDirty) {
+			setShowAbandonDialog(true);
+		} else {
+			wizard.cancel();
+		}
+	}, [isDirty, wizard]);
+
+	const handleConfirmAbandon = useCallback(() => {
+		setShowAbandonDialog(false);
+		resetForm();
+		wizard.cancel();
+	}, [resetForm, wizard]);
 
 	// Redirect to first incomplete step if trying to access invalid step
 	useEffect(() => {
@@ -143,7 +208,16 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 			router.push(`/app/${wizard.organizationSlug}/bookings`);
 		},
 		onError: (error) => {
-			toast.error(error.message || "Failed to create booking");
+			// Map API error to form fields for better user feedback
+			const errorStep = mapApiErrorToForm(error, form.setError);
+
+			// Show toast with generic message
+			toast.error("Failed to create booking. Please check the form for errors.");
+
+			// Navigate to the step with the error if we identified one
+			if (errorStep && errorStep !== wizard.currentStep) {
+				router.push(`/app/${wizard.organizationSlug}/bookings/new/${errorStep}`);
+			}
 		},
 	});
 
@@ -154,6 +228,9 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 			toast.error("Please fix validation errors before submitting");
 			return;
 		}
+
+		// Clear previous API errors before submitting
+		clearApiErrors(form.clearErrors);
 
 		const values = form.getValues();
 		createMutation.mutate(buildCreateBookingInput(values));
@@ -190,12 +267,15 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 					if (!wizard.isLastStep) {
 						return;
 					}
+					// Clear previous API errors before submitting
+					clearApiErrors(form.clearErrors);
 					createMutation.mutate(buildCreateBookingInput(values));
 				})}
 			>
 				<div className="flex min-h-0 flex-1 flex-col">
 					<BookingFormLayout
 						className="flex-1 md:-mb-6 lg:-mb-8"
+						stepName={TAB_LABELS[wizard.currentStep]}
 						stepper={
 							<BookingStepperSidebar
 								activeStep={wizard.currentStep}
@@ -204,6 +284,8 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 								onStepClick={wizard.goToStep}
 								canNavigateToStep={wizard.canNavigateToStep}
 								isNavigating={false}
+								isSaving={wizard.isSaving}
+								lastSavedAt={lastSavedAt}
 								onSubmit={() => void handleQuickSubmit()}
 								onReset={handleReset}
 								isSubmitting={createMutation.isPending}
@@ -223,19 +305,48 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 							<BookingFormNavigation
 								onPrevious={wizard.previous}
 								onNext={() => void wizard.next()}
-								onCancel={wizard.cancel}
+								onSkip={wizard.skip}
+								onCancel={handleCancelWithConfirmation}
 								isFirstStep={wizard.isFirstStep}
 								isLastStep={wizard.isLastStep}
 								isPending={createMutation.isPending}
 								isNavigating={false}
+								canSkip={wizard.canSkipCurrentStep}
 								mode="create"
 							/>
 						}
 					>
+						{/* Show root-level API errors */}
+						<BookingFormRootError
+							message={form.formState.errors.root?.message}
+							onDismiss={() => form.clearErrors("root")}
+						/>
 						{children}
 					</BookingFormLayout>
 				</div>
 			</form>
+
+			{/* Abandon form confirmation dialog */}
+			<AlertDialog open={showAbandonDialog} onOpenChange={setShowAbandonDialog}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Discard changes?</AlertDialogTitle>
+						<AlertDialogDescription>
+							You have unsaved changes. Your draft will be saved, but if you
+							leave now any in-progress data may be lost.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Keep editing</AlertDialogCancel>
+						<AlertDialogAction
+							onClick={handleConfirmAbandon}
+							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+						>
+							Discard
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</Form>
 	);
 }

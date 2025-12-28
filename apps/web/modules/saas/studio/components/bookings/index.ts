@@ -28,11 +28,21 @@ export {
 	bookingFormSchema,
 	bookingPaymentsStepSchema,
 	bookingShootsStepSchema,
+	// Helpers
+	cleanupFormArrays,
 	defaultBookingValues,
+	formatDecimalForApi,
 	STEP_CONFIG,
 	TAB_FIELD_MAPPING,
 	TAB_LABELS,
 	useBookingFormHydrated,
 	// Store
 	useBookingFormStore,
+	// Error handling
+	BookingStepErrorBoundary,
+	BookingFormRootError,
+	mapApiErrorToForm,
+	clearApiErrors,
+	parseApiError,
+	type MappedError,
 } from "./booking-form";

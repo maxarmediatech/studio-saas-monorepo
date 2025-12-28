@@ -1,5 +1,4 @@
 // Step components
-
 export { BookingDeliverablesStep } from "./BookingDeliverablesStep";
 export { BookingDetailsStep } from "./BookingDetailsStep";
 // Layout components
@@ -10,6 +9,17 @@ export { BookingPaymentsStep } from "./BookingPaymentsStep";
 export { BookingReviewStep } from "./BookingReviewStep";
 export { BookingShootsStep } from "./BookingShootsStep";
 export { BookingStepperSidebar } from "./BookingStepperSidebar";
+// Error handling
+export {
+	BookingStepErrorBoundary,
+	BookingFormRootError,
+} from "./BookingStepErrorBoundary";
+export {
+	mapApiErrorToForm,
+	clearApiErrors,
+	parseApiError,
+	type MappedError,
+} from "./utils/map-api-errors";
 // Schema and types
 export {
 	BOOKING_STEP_SCHEMAS,
@@ -21,7 +31,9 @@ export {
 	bookingFormSchema,
 	bookingPaymentsStepSchema,
 	bookingShootsStepSchema,
+	cleanupFormArrays,
 	DELIVERABLE_TYPE_OPTIONS,
+	formatDecimalForApi,
 	type DeliverableFormValue,
 	defaultBookingValues,
 	type EventFormValue,

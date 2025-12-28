@@ -2,6 +2,7 @@
 
 import { cn } from "@repo/ui/lib/utils";
 import type { ReactNode } from "react";
+import { BookingStepErrorBoundary } from "./BookingStepErrorBoundary";
 
 interface BookingFormLayoutProps {
 	children: ReactNode;
@@ -9,6 +10,8 @@ interface BookingFormLayoutProps {
 	mobileStepper: ReactNode;
 	footer: ReactNode;
 	className?: string;
+	/** Name of the current step for error boundary display */
+	stepName?: string;
 }
 
 /**
@@ -23,6 +26,7 @@ export function BookingFormLayout({
 	mobileStepper,
 	footer,
 	className,
+	stepName = "Current",
 }: BookingFormLayoutProps) {
 	return (
 		<div
@@ -39,9 +43,11 @@ export function BookingFormLayout({
 				</div>
 
 				<div className="flex min-h-0 flex-1 flex-col">
-					{/* Form Content */}
+					{/* Form Content with Error Boundary */}
 					<div className="flex-1 overflow-y-auto px-4 py-4 lg:px-6 lg:py-6">
-						{children}
+						<BookingStepErrorBoundary stepName={stepName}>
+							{children}
+						</BookingStepErrorBoundary>
 					</div>
 
 					{/* Navigation Footer */}
