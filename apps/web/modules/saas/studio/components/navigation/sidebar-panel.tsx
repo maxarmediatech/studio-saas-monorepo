@@ -90,7 +90,7 @@ function NavItem({
 			className={cn(
 				"group flex h-8 items-center justify-between rounded-lg p-2 text-sm leading-none transition-[background-color,color,font-weight] duration-75",
 				isActive
-					? "bg-amber-100/50 font-medium text-amber-600 hover:bg-amber-100/80 active:bg-amber-100"
+					? "bg-blue-100/50 font-medium text-blue-600 hover:bg-blue-100/80 active:bg-blue-100"
 					: "text-neutral-700 hover:bg-black/5 active:bg-black/10"
 			)}
 		>
@@ -99,7 +99,7 @@ function NavItem({
 					name={item.icon}
 					className={cn(
 						"size-4 shrink-0",
-						isActive ? "text-amber-600" : "text-neutral-600"
+						isActive ? "text-blue-600" : "text-neutral-600"
 					)}
 				/>
 				<span className="truncate">{item.label}</span>
