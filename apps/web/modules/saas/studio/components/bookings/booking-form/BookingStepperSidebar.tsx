@@ -14,7 +14,7 @@ import {
 import { Button } from "@repo/ui/components/button";
 import { Progress } from "@repo/ui/components/progress";
 import { cn } from "@repo/ui/lib/utils";
-import { Loader2Icon, RotateCcwIcon } from "lucide-react";
+import { CheckIcon, Loader2Icon, RotateCcwIcon } from "lucide-react";
 import {
 	type BookingTab,
 	STEP_CONFIG,
@@ -30,6 +30,9 @@ interface BookingStepperSidebarProps {
 	canNavigateToStep: (step: BookingTab) => boolean;
 	isNavigating?: boolean;
 	className?: string;
+	// Draft state
+	isSaving?: boolean;
+	lastSavedAt?: number | null;
 	// Action button props
 	onSubmit?: () => void;
 	onReset?: () => void;
@@ -48,6 +51,8 @@ export function BookingStepperSidebar({
 	canNavigateToStep,
 	isNavigating = false,
 	className,
+	isSaving = false,
+	lastSavedAt,
 	onSubmit,
 	onReset,
 	isSubmitting = false,
@@ -87,9 +92,21 @@ export function BookingStepperSidebar({
 					<span className="font-medium">{progressPercentage}%</span>
 				</div>
 				<Progress value={progressPercentage} className="h-2" />
-				<p className="text-xs text-muted-foreground">
-					{completedCount} of {totalSteps} steps completed
-				</p>
+				<div className="flex items-center justify-between text-xs text-muted-foreground">
+					<span>{completedCount} of {totalSteps} steps completed</span>
+					{/* Draft save indicator */}
+					{isSaving ? (
+						<span className="flex items-center gap-1 text-muted-foreground">
+							<Loader2Icon className="h-3 w-3 animate-spin" />
+							Saving...
+						</span>
+					) : lastSavedAt ? (
+						<span className="flex items-center gap-1 text-muted-foreground">
+							<CheckIcon className="h-3 w-3" />
+							Draft saved
+						</span>
+					) : null}
+				</div>
 			</div>
 
 			{/* Step List */}
