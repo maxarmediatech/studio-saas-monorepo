@@ -583,12 +583,12 @@ export function BookingDetailsStep() {
 											/>
 											</div>
 
-											{/* Remove Button */}
+											{/* Remove Button - 44px touch target (WCAG 2.5.5) */}
 											<Button
 												type="button"
 												variant="ghost"
 												size="icon"
-												className="self-end md:self-auto md:mt-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+												className="self-end md:self-auto md:mt-8 min-h-11 min-w-11 text-destructive hover:text-destructive hover:bg-destructive/10"
 												onClick={() =>
 													removeParticipant(index)
 												}

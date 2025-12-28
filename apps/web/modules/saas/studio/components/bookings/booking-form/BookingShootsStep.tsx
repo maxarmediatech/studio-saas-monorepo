@@ -212,7 +212,7 @@ function ShootCard({
 						type="button"
 						variant="ghost"
 						size="icon"
-						className="text-destructive hover:text-destructive hover:bg-destructive/10"
+						className="min-h-11 min-w-11 text-destructive hover:text-destructive hover:bg-destructive/10"
 						onClick={onRemove}
 					>
 						<TrashIcon className="h-4 w-4" />
@@ -691,13 +691,13 @@ function ShootCard({
 											/>
 										</div>
 
-										{/* Remove */}
+										{/* Remove - 44px touch target (WCAG 2.5.5) */}
 										<div className="flex items-end pb-2">
 											<Button
 												type="button"
 												variant="ghost"
 												size="icon"
-												className="h-9 text-destructive hover:text-destructive hover:bg-destructive/10"
+												className="min-h-11 min-w-11 text-destructive hover:text-destructive hover:bg-destructive/10"
 												onClick={() =>
 													removeCrewAssignment(
 														assignmentIndex,

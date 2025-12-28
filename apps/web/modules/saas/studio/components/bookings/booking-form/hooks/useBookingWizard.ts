@@ -106,6 +106,9 @@ export function useBookingWizard({ form }: UseBookingWizardOptions) {
 	const [isSaving, setIsSaving] = useState(false);
 	const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+	// Track validation error message for screen reader announcements
+	const [validationErrorMessage, setValidationErrorMessage] = useState<string | null>(null);
+
 	// Save form data to store with visual indicator
 	const saveFormData = useCallback(() => {
 		setIsSaving(true);
@@ -196,12 +199,25 @@ export function useBookingWizard({ form }: UseBookingWizardOptions) {
 			return false;
 		}
 
+		// Clear any previous validation error message
+		setValidationErrorMessage(null);
+
 		const fieldsToValidate = TAB_FIELD_MAPPING[currentStep];
 		const isCurrentStepValid = await form.trigger(fieldsToValidate, {
 			shouldFocus: true,
 		});
 
 		if (!isCurrentStepValid) {
+			// Count errors for this step and announce to screen readers
+			const stepErrors = fieldsToValidate.filter(
+				(field) => form.formState.errors[field],
+			);
+			const errorCount = stepErrors.length;
+			const message =
+				errorCount === 1
+					? "1 validation error. Please fix the highlighted field."
+					: `${errorCount} validation errors. Please fix the highlighted fields.`;
+			setValidationErrorMessage(message);
 			return false;
 		}
 
@@ -276,6 +292,13 @@ export function useBookingWizard({ form }: UseBookingWizardOptions) {
 		);
 	}, [completedStepsSet]);
 
+	// Clear validation error when user starts fixing errors
+	useEffect(() => {
+		if (validationErrorMessage && Object.keys(errors).length === 0) {
+			setValidationErrorMessage(null);
+		}
+	}, [errors, validationErrorMessage]);
+
 	return {
 		// Current state
 		currentStep,
@@ -291,6 +314,9 @@ export function useBookingWizard({ form }: UseBookingWizardOptions) {
 
 		// Draft state
 		isSaving,
+
+		// Validation announcements (for screen readers)
+		validationErrorMessage,
 
 		// Navigation
 		canNavigateToStep,

@@ -145,24 +145,27 @@ export function BookingPaymentsStep() {
 						</div>
 					</div>
 
-					{isOverpaid && (
-						<Alert variant="destructive" className="mt-4">
-							<AlertCircleIcon className="h-4 w-4" />
-							<AlertDescription>
-								Total payments exceed the package cost by{" "}
-								{formatCurrency(Math.abs(balance))}.
-							</AlertDescription>
-						</Alert>
-					)}
+					{/* Payment status alerts - announced to screen readers */}
+					<div aria-live="polite" aria-atomic="true">
+						{isOverpaid && (
+							<Alert variant="destructive" className="mt-4" role="alert">
+								<AlertCircleIcon className="h-4 w-4" />
+								<AlertDescription>
+									Total payments exceed the package cost by{" "}
+									{formatCurrency(Math.abs(balance))}.
+								</AlertDescription>
+							</Alert>
+						)}
 
-					{isFullyPaid && !isOverpaid && (
-						<Alert className="mt-4 border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/30">
-							<CheckCircle2Icon className="h-4 w-4 text-green-600" />
-							<AlertDescription className="text-green-600 dark:text-green-400">
-								Payment complete! All dues have been received.
-							</AlertDescription>
-						</Alert>
-					)}
+						{isFullyPaid && !isOverpaid && (
+							<Alert className="mt-4 border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/30" role="status">
+								<CheckCircle2Icon className="h-4 w-4 text-green-600" />
+								<AlertDescription className="text-green-600 dark:text-green-400">
+									Payment complete! All dues have been received.
+								</AlertDescription>
+							</Alert>
+						)}
+					</div>
 				</CardContent>
 			</Card>
 
@@ -369,12 +372,12 @@ export function BookingPaymentsStep() {
 												/>
 											</div>
 
-											{/* Remove Button */}
+											{/* Remove Button - 44px touch target (WCAG 2.5.5) */}
 											<Button
 												type="button"
 												variant="ghost"
 												size="icon"
-												className="self-end md:self-auto md:mt-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+												className="self-end md:self-auto md:mt-8 min-h-11 min-w-11 text-destructive hover:text-destructive hover:bg-destructive/10"
 												onClick={() => removePayment(index)}
 											>
 												<TrashIcon className="h-4 w-4" />
@@ -570,12 +573,12 @@ export function BookingPaymentsStep() {
 												/>
 											</div>
 
-											{/* Remove Button */}
+											{/* Remove Button - 44px touch target (WCAG 2.5.5) */}
 											<Button
 												type="button"
 												variant="ghost"
 												size="icon"
-												className="self-end md:self-auto md:mt-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+												className="self-end md:self-auto md:mt-8 min-h-11 min-w-11 text-destructive hover:text-destructive hover:bg-destructive/10"
 												onClick={() => removeSchedule(index)}
 											>
 												<TrashIcon className="h-4 w-4" />

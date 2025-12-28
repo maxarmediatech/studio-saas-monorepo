@@ -12,6 +12,8 @@ interface BookingFormLayoutProps {
 	className?: string;
 	/** Name of the current step for error boundary display */
 	stepName?: string;
+	/** Validation error message to announce to screen readers */
+	validationErrorMessage?: string | null;
 }
 
 /**
@@ -27,6 +29,7 @@ export function BookingFormLayout({
 	footer,
 	className,
 	stepName = "Current",
+	validationErrorMessage,
 }: BookingFormLayoutProps) {
 	return (
 		<div
@@ -35,6 +38,16 @@ export function BookingFormLayout({
 				className,
 			)}
 		>
+			{/* Screen reader only validation error announcements */}
+			<div
+				role="status"
+				aria-live="assertive"
+				aria-atomic="true"
+				className="sr-only"
+			>
+				{validationErrorMessage}
+			</div>
+
 			{/* Form Content - Full width on mobile, left side on desktop */}
 			<main className="flex min-h-0 flex-1 flex-col">
 				{/* Mobile Stepper - Visible only on mobile */}

@@ -47,6 +47,8 @@ export function BookingFormNavigation({
 					variant="outline"
 					onClick={onPrevious}
 					disabled={isFirstStep || isNavigating}
+					// min-h-11 ensures 44px touch target on mobile (WCAG 2.5.5)
+					className="min-h-11"
 				>
 					<ChevronLeftIcon className="mr-2 h-4 w-4" />
 					Previous
@@ -60,6 +62,7 @@ export function BookingFormNavigation({
 					variant="ghost"
 					onClick={onCancel}
 					disabled={isNavigating}
+					className="min-h-11"
 				>
 					Cancel
 				</Button>
@@ -70,6 +73,7 @@ export function BookingFormNavigation({
 						variant="outline"
 						onClick={onSkip}
 						disabled={isNavigating}
+						className="min-h-11"
 					>
 						<SkipForwardIcon className="mr-2 h-4 w-4" />
 						Skip
@@ -77,7 +81,7 @@ export function BookingFormNavigation({
 				)}
 
 				{isLastStep ? (
-					<Button type="submit" disabled={isPending || isNavigating}>
+					<Button type="submit" disabled={isPending || isNavigating} className="min-h-11">
 						{isPending ? (
 							<>
 								<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
@@ -99,6 +103,7 @@ export function BookingFormNavigation({
 						type="button"
 						onClick={onNext}
 						disabled={isNavigating}
+						className="min-h-11"
 					>
 						Next
 						<ChevronRightIcon className="ml-2 h-4 w-4" />

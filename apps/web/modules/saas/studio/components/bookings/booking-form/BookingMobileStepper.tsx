@@ -54,7 +54,8 @@ export function BookingMobileStepper({
 								onClick={() => void onStepClick(step.id)}
 								disabled={!isClickable}
 								className={cn(
-									"flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+									// 44px touch target on mobile for accessibility (WCAG 2.5.5)
+									"flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
 									"text-xs font-medium transition-all duration-200",
 									"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
 									// Current: primary with ring

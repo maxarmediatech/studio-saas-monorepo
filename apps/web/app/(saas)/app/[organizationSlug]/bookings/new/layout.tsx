@@ -276,6 +276,7 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 					<BookingFormLayout
 						className="flex-1 md:-mb-6 lg:-mb-8"
 						stepName={TAB_LABELS[wizard.currentStep]}
+						validationErrorMessage={wizard.validationErrorMessage}
 						stepper={
 							<BookingStepperSidebar
 								activeStep={wizard.currentStep}
