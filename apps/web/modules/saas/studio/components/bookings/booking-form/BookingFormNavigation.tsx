@@ -6,16 +6,19 @@ import {
 	ChevronLeftIcon,
 	ChevronRightIcon,
 	Loader2Icon,
+	SkipForwardIcon,
 } from "lucide-react";
 
 interface BookingFormNavigationProps {
 	onPrevious: () => void;
 	onNext: () => void;
+	onSkip?: () => void;
 	onCancel: () => void;
 	isFirstStep: boolean;
 	isLastStep: boolean;
 	isPending: boolean;
 	isNavigating?: boolean;
+	canSkip?: boolean;
 	mode: "create" | "edit";
 }
 
@@ -26,11 +29,13 @@ interface BookingFormNavigationProps {
 export function BookingFormNavigation({
 	onPrevious,
 	onNext,
+	onSkip,
 	onCancel,
 	isFirstStep,
 	isLastStep,
 	isPending,
 	isNavigating = false,
+	canSkip = false,
 	mode,
 }: BookingFormNavigationProps) {
 	return (
@@ -48,7 +53,7 @@ export function BookingFormNavigation({
 				</Button>
 			</div>
 
-			{/* Right side: Cancel, Next/Submit */}
+			{/* Right side: Cancel, Skip, Next/Submit */}
 			<div className="flex items-center gap-3">
 				<Button
 					type="button"
@@ -58,6 +63,18 @@ export function BookingFormNavigation({
 				>
 					Cancel
 				</Button>
+
+				{canSkip && onSkip && !isLastStep && (
+					<Button
+						type="button"
+						variant="outline"
+						onClick={onSkip}
+						disabled={isNavigating}
+					>
+						<SkipForwardIcon className="mr-2 h-4 w-4" />
+						Skip
+					</Button>
+				)}
 
 				{isLastStep ? (
 					<Button type="submit" disabled={isPending || isNavigating}>

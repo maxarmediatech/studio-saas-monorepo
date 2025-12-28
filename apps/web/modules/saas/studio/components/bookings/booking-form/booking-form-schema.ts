@@ -9,20 +9,34 @@ import {
 import { z } from "zod";
 
 /**
- * Decimal string validator for currency inputs
+ * Decimal string validator for currency inputs.
+ * Validates that the string represents a valid decimal number.
+ * Does NOT transform the value - form stores raw string, transformation
+ * happens at submission time in buildCreateBookingInput.
  */
-export const decimalStringSchema = z.string().transform((val, ctx) => {
-	const cleaned = val.replace(/[^\d.]/g, "");
+export const decimalStringSchema = z
+	.string()
+	.min(1, "Amount is required")
+	.refine(
+		(val) => {
+			const cleaned = val.replace(/[^\d.]/g, "");
+			const parsed = Number.parseFloat(cleaned);
+			return !Number.isNaN(parsed) && parsed >= 0;
+		},
+		{ message: "Must be a valid positive number" },
+	);
+
+/**
+ * Format a decimal string for API submission (ensures 2 decimal places)
+ */
+export function formatDecimalForApi(value: string): string {
+	const cleaned = value.replace(/[^\d.]/g, "");
 	const parsed = Number.parseFloat(cleaned);
 	if (Number.isNaN(parsed)) {
-		ctx.addIssue({
-			code: z.ZodIssueCode.custom,
-			message: "Must be a valid number",
-		});
-		return z.NEVER;
+		return "0.00";
 	}
 	return parsed.toFixed(2);
-});
+}
 
 /**
  * Participant schema - links a client to the booking with a role
@@ -38,6 +52,22 @@ export const participantSchema = z.object({
 });
 
 export type ParticipantFormValue = z.infer<typeof participantSchema>;
+
+/**
+ * Participants array schema with duplicate prevention
+ */
+export const participantsArraySchema = z
+	.array(participantSchema)
+	.min(1, "At least one participant is required")
+	.refine(
+		(participants) => {
+			const clientIds = participants
+				.map((p) => p.clientId)
+				.filter((id) => id && id.length > 0);
+			return new Set(clientIds).size === clientIds.length;
+		},
+		{ message: "Each client can only be added once" },
+	);
 
 /**
  * Event schema - booking events (wedding day, mehendi, etc.)
@@ -141,9 +171,7 @@ export const bookingFormSchema = z.object({
 	packageType: z.string().min(1, "Package type is required"),
 	packageCost: decimalStringSchema,
 	note: z.string().optional(),
-	participants: z
-		.array(participantSchema)
-		.min(1, "At least one participant is required"),
+	participants: participantsArraySchema,
 
 	// Step 2: Events (legacy - keeping for backward compatibility)
 	events: z.array(eventSchema).optional(),
@@ -324,6 +352,8 @@ export interface StepConfig {
 	label: string;
 	description: string;
 	icon: LucideIcon;
+	/** Whether this step can be skipped (no required fields) */
+	optional: boolean;
 }
 
 export const STEP_CONFIG: StepConfig[] = [
@@ -332,29 +362,69 @@ export const STEP_CONFIG: StepConfig[] = [
 		label: "Details",
 		description: "Booking info & participants",
 		icon: ClipboardListIcon,
+		optional: false,
 	},
 	{
 		id: "shoots",
 		label: "Shoots",
 		description: "Schedule photo/video sessions",
 		icon: CameraIcon,
+		optional: true,
 	},
 	{
 		id: "payments",
 		label: "Payments",
 		description: "Record and plan payments",
 		icon: WalletIcon,
+		optional: true,
 	},
 	{
 		id: "deliverables",
 		label: "Deliverables",
 		description: "Define final outputs",
 		icon: PackageIcon,
+		optional: true,
 	},
 	{
 		id: "review",
 		label: "Review",
 		description: "Review & submit",
 		icon: CheckCircleIcon,
+		optional: false,
 	},
 ];
+
+/**
+ * Helper to check if a step is optional
+ */
+export function isStepOptional(step: BookingTab): boolean {
+	return STEP_CONFIG.find((s) => s.id === step)?.optional ?? false;
+}
+
+/**
+ * Clean up empty/incomplete array items before validation or submission.
+ * Removes items that are essentially empty (user added but didn't fill in).
+ */
+export function cleanupFormArrays(values: BookingFormValues): BookingFormValues {
+	return {
+		...values,
+		// Keep participants with valid clientId (required field)
+		participants: values.participants.filter(
+			(p) => p.clientId && p.clientId.length > 0,
+		),
+		// Keep shoots with name (required field)
+		shoots: values.shoots?.filter((s) => s.name && s.name.length > 0),
+		// Keep payments with amount (required field)
+		payments: values.payments?.filter(
+			(p) => p.amount && p.amount.length > 0 && p.amount !== "0" && p.amount !== "0.00",
+		),
+		// Keep payment schedules with name (required field)
+		paymentSchedules: values.paymentSchedules?.filter(
+			(p) => p.name && p.name.length > 0,
+		),
+		// Keep deliverables with name (required field)
+		deliverables: values.deliverables?.filter(
+			(d) => d.name && d.name.length > 0,
+		),
+	};
+}

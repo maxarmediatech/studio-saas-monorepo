@@ -106,22 +106,22 @@ export function BookingPaymentsStep() {
 					</CardTitle>
 				</CardHeader>
 				<CardContent>
-					<div className="grid gap-4 md:grid-cols-4">
+					<div className="grid gap-4 grid-cols-2 md:grid-cols-4">
 						<div className="p-4 bg-muted/50 rounded-lg">
 							<p className="text-sm text-muted-foreground">Package Cost</p>
-							<p className="text-2xl font-bold">
+							<p className="text-xl md:text-2xl font-bold">
 								{formatCurrency(parseFloat(packageCost) || 0)}
 							</p>
 						</div>
 						<div className="p-4 bg-green-50 dark:bg-green-950/30 rounded-lg">
 							<p className="text-sm text-muted-foreground">Total Received</p>
-							<p className="text-2xl font-bold text-green-600 dark:text-green-400">
+							<p className="text-xl md:text-2xl font-bold text-green-600 dark:text-green-400">
 								{formatCurrency(totalReceived)}
 							</p>
 						</div>
 						<div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
 							<p className="text-sm text-muted-foreground">Scheduled</p>
-							<p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+							<p className="text-xl md:text-2xl font-bold text-blue-600 dark:text-blue-400">
 								{formatCurrency(totalScheduled)}
 							</p>
 						</div>
@@ -134,7 +134,7 @@ export function BookingPaymentsStep() {
 						>
 							<p className="text-sm text-muted-foreground">Balance</p>
 							<p
-								className={`text-2xl font-bold ${
+								className={`text-xl md:text-2xl font-bold ${
 									isFullyPaid
 										? "text-green-600 dark:text-green-400"
 										: "text-amber-600 dark:text-amber-400"
@@ -199,19 +199,36 @@ export function BookingPaymentsStep() {
 				<CardContent>
 					<FieldSet>
 						{paymentFields.length === 0 ? (
-							<div className="flex flex-col items-center justify-center py-8 text-center border border-dashed rounded-lg">
+							<div className="flex flex-col items-center justify-center py-12 text-center border border-dashed rounded-lg">
 								<BanknoteIcon className="h-12 w-12 text-muted-foreground/50 mb-4" />
-								<p className="text-sm text-muted-foreground">
+								<p className="text-sm text-muted-foreground mb-4">
 									No payments recorded yet. Click "Add Payment" to record
 									received amounts.
 								</p>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									onClick={() =>
+										appendPayment({
+											amount: "",
+											paymentMethod: "upi",
+											receivedDate: new Date().toISOString().split("T")[0],
+											transactionReference: "",
+											notes: "",
+										})
+									}
+								>
+									<PlusIcon className="mr-2 h-4 w-4" />
+									Add Payment
+								</Button>
 							</div>
 						) : (
 							<FieldGroup className="gap-4">
 								{paymentFields.map((payment, index) => (
 									<Card key={payment.id} className="p-4">
-										<div className="flex items-start gap-4">
-											<div className="flex-1 grid gap-4 md:grid-cols-5">
+										<div className="flex flex-col md:flex-row md:items-start gap-4">
+											<div className="flex-1 grid gap-4 grid-cols-2 md:grid-cols-5">
 												{/* Amount */}
 												<Controller
 													name={`payments.${index}.amount`}
@@ -357,7 +374,7 @@ export function BookingPaymentsStep() {
 												type="button"
 												variant="ghost"
 												size="icon"
-												className="mt-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+												className="self-end md:self-auto md:mt-8 text-destructive hover:text-destructive hover:bg-destructive/10"
 												onClick={() => removePayment(index)}
 											>
 												<TrashIcon className="h-4 w-4" />
@@ -404,7 +421,7 @@ export function BookingPaymentsStep() {
 				<CardContent>
 					<FieldSet>
 						{scheduleFields.length === 0 ? (
-							<div className="flex flex-col items-center justify-center py-8 text-center border border-dashed rounded-lg">
+							<div className="flex flex-col items-center justify-center py-12 text-center border border-dashed rounded-lg">
 								<CalendarIcon className="h-12 w-12 text-muted-foreground/50 mb-4" />
 								<p className="text-sm text-muted-foreground mb-4">
 									No payment schedule set. Click "Add Milestone" to plan payment
@@ -437,8 +454,8 @@ export function BookingPaymentsStep() {
 							<FieldGroup className="gap-4">
 								{scheduleFields.map((schedule, index) => (
 									<Card key={schedule.id} className="p-4">
-										<div className="flex items-start gap-4">
-											<div className="flex-1 grid gap-4 md:grid-cols-4">
+										<div className="flex flex-col md:flex-row md:items-start gap-4">
+											<div className="flex-1 grid gap-4 grid-cols-2 md:grid-cols-4">
 												{/* Name */}
 												<Controller
 													name={`paymentSchedules.${index}.name`}
@@ -558,7 +575,7 @@ export function BookingPaymentsStep() {
 												type="button"
 												variant="ghost"
 												size="icon"
-												className="mt-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+												className="self-end md:self-auto md:mt-8 text-destructive hover:text-destructive hover:bg-destructive/10"
 												onClick={() => removeSchedule(index)}
 											>
 												<TrashIcon className="h-4 w-4" />

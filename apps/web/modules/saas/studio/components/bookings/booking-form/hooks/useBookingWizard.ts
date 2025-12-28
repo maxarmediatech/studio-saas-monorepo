@@ -1,13 +1,14 @@
 "use client";
 
 import { useParams, usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import {
 	BOOKING_TABS,
 	type BookingFormValues,
 	type BookingTab,
 	TAB_FIELD_MAPPING,
+	isStepOptional,
 } from "../booking-form-schema";
 import {
 	useBookingFormHydrated,
@@ -101,59 +102,81 @@ export function useBookingWizard({ form }: UseBookingWizardOptions) {
 		[completedStepsSet, currentIndex, isValidStep],
 	);
 
-	// Save form data to store
+	// Track saving state for UI indicator
+	const [isSaving, setIsSaving] = useState(false);
+	const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+	// Save form data to store with visual indicator
 	const saveFormData = useCallback(() => {
+		setIsSaving(true);
 		setFormData(form.getValues());
+
+		// Clear any existing timeout
+		if (saveTimeoutRef.current) {
+			clearTimeout(saveTimeoutRef.current);
+		}
+
+		// Show "saving" briefly then clear
+		saveTimeoutRef.current = setTimeout(() => {
+			setIsSaving(false);
+		}, 500);
 	}, [form, setFormData]);
 
-	const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+	// Cleanup timeout on unmount
+	useEffect(() => {
+		return () => {
+			if (saveTimeoutRef.current) {
+				clearTimeout(saveTimeoutRef.current);
+			}
+		};
+	}, []);
+
+	// Debounced auto-save on form changes (protects against refresh/data loss)
+	const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 	useEffect(() => {
 		if (!hasHydrated) {
 			return;
 		}
 
-		const subscription = form.watch((data) => {
-			if (autoSaveTimerRef.current) {
-				clearTimeout(autoSaveTimerRef.current);
+		const subscription = form.watch(() => {
+			// Clear any existing debounce timer
+			if (autoSaveTimeoutRef.current) {
+				clearTimeout(autoSaveTimeoutRef.current);
 			}
 
-			autoSaveTimerRef.current = setTimeout(() => {
-				setFormData(data as Partial<BookingFormValues>);
-			}, 300);
+			// Debounce auto-save by 2 seconds to avoid excessive writes
+			autoSaveTimeoutRef.current = setTimeout(() => {
+				saveFormData();
+			}, 2000);
 		});
 
 		return () => {
 			subscription.unsubscribe();
-			if (autoSaveTimerRef.current) {
-				clearTimeout(autoSaveTimerRef.current);
+			if (autoSaveTimeoutRef.current) {
+				clearTimeout(autoSaveTimeoutRef.current);
 			}
-
-			saveFormData();
 		};
-	}, [form, hasHydrated, saveFormData, setFormData]);
+	}, [form, hasHydrated, saveFormData]);
 
+	// Save on beforeunload/pagehide (emergency save)
 	useEffect(() => {
 		if (!hasHydrated) {
 			return;
 		}
 
-		const flush = () => {
-			if (autoSaveTimerRef.current) {
-				clearTimeout(autoSaveTimerRef.current);
-				autoSaveTimerRef.current = null;
-			}
-
-			saveFormData();
+		const emergencySave = () => {
+			// Synchronous save without visual indicator
+			setFormData(form.getValues());
 		};
 
-		window.addEventListener("beforeunload", flush);
-		window.addEventListener("pagehide", flush);
+		window.addEventListener("beforeunload", emergencySave);
+		window.addEventListener("pagehide", emergencySave);
 
 		return () => {
-			window.removeEventListener("beforeunload", flush);
-			window.removeEventListener("pagehide", flush);
+			window.removeEventListener("beforeunload", emergencySave);
+			window.removeEventListener("pagehide", emergencySave);
 		};
-	}, [hasHydrated, saveFormData]);
+	}, [form, hasHydrated, setFormData]);
 
 	// Navigate to a specific step
 	const goToStep = useCallback(
@@ -202,6 +225,35 @@ export function useBookingWizard({ form }: UseBookingWizardOptions) {
 		setStepCompleted,
 	]);
 
+	// Skip current step (only for optional steps)
+	const skip = useCallback(() => {
+		if (!isValidStep || !isStepOptional(currentStep)) {
+			return;
+		}
+
+		// Mark step as completed without validation
+		setStepCompleted(currentStep);
+		saveFormData();
+
+		if (currentIndex < BOOKING_TABS.length - 1) {
+			const nextStep = BOOKING_TABS[currentIndex + 1];
+			router.push(`/app/${organizationSlug}/bookings/new/${nextStep}`);
+		}
+	}, [
+		currentIndex,
+		currentStep,
+		isValidStep,
+		organizationSlug,
+		router,
+		saveFormData,
+		setStepCompleted,
+	]);
+
+	// Check if current step can be skipped
+	const canSkipCurrentStep = useMemo(() => {
+		return isValidStep && isStepOptional(currentStep);
+	}, [currentStep, isValidStep]);
+
 	// Navigate to previous step
 	const previous = useCallback(() => {
 		if (currentIndex > 0) {
@@ -235,11 +287,16 @@ export function useBookingWizard({ form }: UseBookingWizardOptions) {
 		// Step status
 		completedStepsSet,
 		stepsWithErrors,
+		canSkipCurrentStep,
+
+		// Draft state
+		isSaving,
 
 		// Navigation
 		canNavigateToStep,
 		goToStep,
 		next,
+		skip,
 		previous,
 		cancel,
 		getFirstIncompleteStep,
