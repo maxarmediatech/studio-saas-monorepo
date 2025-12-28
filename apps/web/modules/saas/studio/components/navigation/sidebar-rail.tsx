@@ -36,7 +36,7 @@ export function SidebarRail({
 	onUserClick,
 }: SidebarRailProps) {
 	return (
-		<div className="flex h-full w-16 flex-col items-center justify-between py-2">
+		<div className="flex h-full w-16 flex-col items-center justify-between">
 			{/* Top: App Logo + Org Switcher + Module Icons */}
 			<div className="flex flex-col items-center p-2">
 				{/* App Logo/Wordmark */}

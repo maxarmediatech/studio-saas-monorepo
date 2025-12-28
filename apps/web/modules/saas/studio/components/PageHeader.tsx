@@ -31,7 +31,7 @@ export function PageHeader({
 }: PageHeaderProps) {
 	return (
 		<div className={cn("border-b border-neutral-200", className)}>
-			<div className="flex h-12 items-center justify-between gap-4 sm:h-14">
+			<div className="flex h-12 items-center justify-between gap-4 sm:h-16">
 				<div className="flex min-w-0 items-center gap-2">
 					{backHref && (
 						<Link
