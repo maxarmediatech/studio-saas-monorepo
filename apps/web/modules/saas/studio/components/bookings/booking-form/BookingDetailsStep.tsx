@@ -24,12 +24,12 @@ import {
 	SelectValue,
 } from "@repo/ui/components/select";
 import { Textarea } from "@repo/ui/components/textarea";
-import { clientsApi, configurationsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { ClipboardListIcon, PlusIcon, TrashIcon, UserPlusIcon, UsersIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import type { BookingFormValues } from "./booking-form-schema";
+import { bookingFormQueries } from "./booking-form-queries";
 import { CreateClientDialog } from "./create-client-dialog";
 
 export function BookingDetailsStep() {
@@ -39,19 +39,11 @@ export function BookingDetailsStep() {
 		setCreateClientForParticipantIndex,
 	] = useState<number | null>(null);
 
-	// Fetch configurations
-	const { data: bookingTypesData } = useQuery(
-		configurationsApi.bookingTypesOptions(),
-	);
-	const { data: packageTypesData } = useQuery(
-		configurationsApi.packageTypesOptions(),
-	);
-	const { data: relationTypesData } = useQuery(
-		configurationsApi.relationTypesOptions(),
-	);
-	const { data: clientsData } = useQuery(
-		clientsApi.listOptions({ limit: 100 }),
-	);
+	// Fetch configurations using centralized query options
+	const { data: bookingTypesData } = useQuery(bookingFormQueries.bookingTypes());
+	const { data: packageTypesData } = useQuery(bookingFormQueries.packageTypes());
+	const { data: relationTypesData } = useQuery(bookingFormQueries.relationTypes());
+	const { data: clientsData } = useQuery(bookingFormQueries.clients());
 
 	// Use real data from API
 	const bookingTypes = bookingTypesData?.data ?? [];

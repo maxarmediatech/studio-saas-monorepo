@@ -57,3 +57,5 @@ export {
 	useBookingFormHydrated,
 	useBookingFormStore,
 } from "./store/use-booking-form-store";
+// Query options (centralized for consistency and deduplication)
+export { bookingFormQueries } from "./booking-form-queries";

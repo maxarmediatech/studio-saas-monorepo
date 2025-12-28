@@ -1,5 +1,5 @@
 # Session: booking-form-improvements
-Updated: 2025-12-28T18:03:55.059Z
+Updated: 2025-12-28T18:18:49.188Z
 
 ## Goal
 Fix shortcomings in booking multi-step form architecture. Done when critical UX issues resolved, styling consistent, and accessibility improved.
@@ -27,8 +27,9 @@ Fix shortcomings in booking multi-step form architecture. Done when critical UX 
   - [x] Phase 4: Styling Consistency - COMPLETED
   - [x] Phase 5: Error Handling - COMPLETED
   - [x] Phase 6: Accessibility - COMPLETED
-- Now: [→] Ready for Phase 7
-- Next: Phase 8
+  - [x] Phase 7: Performance - COMPLETED
+- Now: [→] Ready for Phase 8
+- Next: Final cleanup
 
 ## Phases Overview
 
@@ -63,9 +64,9 @@ Fix shortcomings in booking multi-step form architecture. Done when critical UX 
 - [x] 6.2 Increase mobile touch targets to 44px - All icon buttons now use `min-h-11 min-w-11`, nav buttons use `min-h-11`, mobile stepper circles use `h-11 w-11`
 - [x] 6.3 Add step validation error announcements - Added `validationErrorMessage` state in wizard hook, aria-live region in BookingFormLayout
 
-### Phase 7: Performance
-- [ ] 7.1 Optimize ReviewStep re-renders (stop full form.watch())
-- [ ] 7.2 Deduplicate query options
+### Phase 7: Performance (COMPLETED)
+- [x] 7.1 Optimize ReviewStep re-renders - Split into memoized section components using `useWatch` with specific field names instead of `form.watch()` on entire form
+- [x] 7.2 Deduplicate query options - Created `booking-form-queries.ts` with centralized query factories (`bookingFormQueries.clients()`, `.crews()`, etc.)
 
 ### Phase 8: Architecture Cleanup
 - [ ] 8.1 Remove legacy `events` field
@@ -82,6 +83,7 @@ Fix shortcomings in booking multi-step form architecture. Done when critical UX 
 ```
 apps/web/modules/saas/studio/components/bookings/booking-form/
 ├── booking-form-schema.ts          # Zod schemas, step config
+├── booking-form-queries.ts         # Centralized React Query options
 ├── store/use-booking-form-store.ts # Zustand persistence
 ├── hooks/useBookingWizard.ts       # Navigation, validation
 ├── utils/map-api-errors.ts         # API error to form field mapping
@@ -91,7 +93,7 @@ apps/web/modules/saas/studio/components/bookings/booking-form/
 ├── BookingShootsStep.tsx           # Step 2
 ├── BookingPaymentsStep.tsx         # Step 3
 ├── BookingDeliverablesStep.tsx     # Step 4
-├── BookingReviewStep.tsx           # Step 5
+├── BookingReviewStep.tsx           # Step 5 (optimized with memoized sections)
 ├── BookingFormNavigation.tsx       # Footer nav
 ├── BookingStepperSidebar.tsx       # Desktop stepper
 ├── BookingMobileStepper.tsx        # Mobile stepper
@@ -116,7 +118,7 @@ apps/web/app/(saas)/app/[organizationSlug]/bookings/new/
 | No abandonment warning | Critical | ✅ FIXED |
 | Dual state sync lag | High | ✅ FIXED |
 | No API error field mapping | High | ✅ FIXED |
-| ReviewStep re-renders | High | Pending (Phase 7) |
+| ReviewStep re-renders | High | ✅ FIXED |
 | Touch targets < 44px | High | ✅ FIXED |
 
 ## Working Set

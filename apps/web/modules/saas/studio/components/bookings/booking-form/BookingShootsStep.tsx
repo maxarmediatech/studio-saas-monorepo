@@ -25,7 +25,6 @@ import {
 } from "@repo/ui/components/select";
 import { Separator } from "@repo/ui/components/separator";
 import { Textarea } from "@repo/ui/components/textarea";
-import { configurationsApi, crewsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import {
 	CameraIcon,
@@ -41,14 +40,14 @@ import {
 	type BookingFormValues,
 	SHOOT_TYPE_OPTIONS,
 } from "./booking-form-schema";
+import { bookingFormQueries } from "./booking-form-queries";
 
 export function BookingShootsStep() {
 	const form = useFormContext<BookingFormValues>();
 
-	// Fetch crews for assignment
-	const { data: crewsData } = useQuery(crewsApi.listOptions({ limit: 100 }));
-	// Fetch crew roles from configurations
-	const { data: crewRolesData } = useQuery(configurationsApi.crewRolesOptions());
+	// Fetch crews and roles using centralized query options
+	const { data: crewsData } = useQuery(bookingFormQueries.crews());
+	const { data: crewRolesData } = useQuery(bookingFormQueries.crewRoles());
 
 	// Use real data from API
 	const crews = crewsData?.data ?? [];

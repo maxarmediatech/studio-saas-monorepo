@@ -29,17 +29,17 @@ import {
 	UsersIcon,
 	CalendarIcon,
 } from "lucide-react";
-import { crewsApi } from "@saas/studio/lib/api";
 import {
 	type BookingFormValues,
 	DELIVERABLE_TYPE_OPTIONS,
 } from "./booking-form-schema";
+import { bookingFormQueries } from "./booking-form-queries";
 
 export function BookingDeliverablesStep() {
 	const form = useFormContext<BookingFormValues>();
 
-	// Fetch crews for assignment
-	const { data: crewsData } = useQuery(crewsApi.listOptions({ limit: 100 }));
+	// Fetch crews using centralized query options
+	const { data: crewsData } = useQuery(bookingFormQueries.crews());
 	const crews = crewsData?.data ?? [];
 
 	const {
