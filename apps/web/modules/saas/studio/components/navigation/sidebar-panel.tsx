@@ -20,55 +20,55 @@ export function SidebarPanel({ module, utilities }: SidebarPanelProps) {
 	const pathname = usePathname();
 
 	return (
-		<div className="h-full overflow-hidden py-2 pr-2">
-			{/* Inner rounded container - Dub style */}
-			<div className="scrollbar-hide relative flex h-full w-60 flex-col overflow-y-auto overflow-x-hidden rounded-xl bg-neutral-100">
-				{/* Navigation Content - title is inside p-3 area for alignment */}
-				<div className="relative flex grow flex-col p-3 text-neutral-500">
-					{/* Module Title */}
-					<div className="mb-2 flex items-center gap-3 px-3 py-2">
-						<h2 className="text-lg font-semibold text-neutral-900">
-							{module.label}
-						</h2>
-					</div>
-
-					<div className="flex flex-col gap-8">
-						{module.sections.map((section) => (
-							<div key={section.id}>
-								{section.label && (
-									<div className="mb-2 pl-3 text-sm text-neutral-500">
-										{section.label}
-									</div>
-								)}
-								<nav className="flex flex-col gap-0.5">
-									{section.items.map((item) => (
-										<NavItem
-											key={item.id}
-											item={item}
-											isActive={isItemActive(pathname, item.path)}
-										/>
-									))}
-								</nav>
-							</div>
-						))}
-					</div>
+		<div className="scrollbar-hide relative flex h-full w-[calc(var(--sidebar-panel-width)-0.5rem)] flex-col overflow-y-auto overflow-x-hidden rounded-xl bg-neutral-100">
+			{/* Navigation Content - animate on module switch */}
+			<div
+				key={module.id}
+				className="relative flex grow animate-in fade-in slide-in-from-right-2 flex-col p-3 text-neutral-500 duration-200"
+			>
+				{/* Module Title */}
+				<div className="mb-2 flex items-center gap-3 px-3 py-2">
+					<h2 className="text-lg font-semibold text-neutral-900">
+						{module.label}
+					</h2>
 				</div>
 
-				{/* Footer: Utilities */}
-				{utilities.length > 0 && (
-					<div className="shrink-0 border-t border-neutral-200 p-3">
-						<nav className="flex flex-col gap-0.5">
-							{utilities.map((item) => (
-								<NavItem
-									key={item.id}
-									item={item}
-									isActive={isItemActive(pathname, item.path)}
-								/>
-							))}
-						</nav>
-					</div>
-				)}
+				<div className="flex flex-col gap-8">
+					{module.sections.map((section) => (
+						<div key={section.id}>
+							{section.label && (
+								<div className="mb-2 pl-3 text-sm text-neutral-500">
+									{section.label}
+								</div>
+							)}
+							<nav className="flex flex-col gap-0.5">
+								{section.items.map((item) => (
+									<NavItem
+										key={item.id}
+										item={item}
+										isActive={isItemActive(pathname, item.path)}
+									/>
+								))}
+							</nav>
+						</div>
+					))}
+				</div>
 			</div>
+
+			{/* Footer: Utilities */}
+			{utilities.length > 0 && (
+				<div className="shrink-0 border-t border-neutral-200 p-3">
+					<nav className="flex flex-col gap-0.5">
+						{utilities.map((item) => (
+							<NavItem
+								key={item.id}
+								item={item}
+								isActive={isItemActive(pathname, item.path)}
+							/>
+						))}
+					</nav>
+				</div>
+			)}
 		</div>
 	);
 }

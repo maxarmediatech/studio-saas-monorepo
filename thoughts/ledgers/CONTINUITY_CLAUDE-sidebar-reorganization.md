@@ -1,5 +1,5 @@
 # Session: sidebar-reorganization
-Updated: 2025-12-28T08:17:12.816Z
+Updated: 2025-12-28T08:55:07.699Z
 
 ## Goal
 Implement Dub-style two-column sidebar navigation with 64px rail + 240px panel.
@@ -33,6 +33,7 @@ Implement Dub-style two-column sidebar navigation with 64px rail + 240px panel.
   - [x] Phase 8: Last mile - exact color/spacing parity with Dub
   - [x] Phase 9: Update PageHeader to match Dub's PageContentHeader pattern
   - [x] Phase 10: Implement PageContent + PageWidthWrapper pattern (Dub style)
+  - [x] Phase 11: Animate sidebar transitions like Dub
 - Now: [→] Complete - ready for final review
 - Next: Test in browser, commit changes
 
