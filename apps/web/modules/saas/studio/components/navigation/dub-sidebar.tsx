@@ -34,7 +34,7 @@ export function DubSidebar({
 }: DubSidebarProps) {
 	return (
 		<TooltipProvider delayDuration={0}>
-			<aside className="fixed inset-y-0 left-0 z-40 hidden md:flex">
+			<aside className="sticky top-0 z-40 hidden h-screen md:flex">
 				<SidebarRail
 					studioSlug={studioSlug}
 					studioName={studioName}

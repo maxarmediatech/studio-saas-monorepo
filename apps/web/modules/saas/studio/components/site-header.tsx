@@ -22,8 +22,8 @@ export function SiteHeader({
 	const homePath = `/app/${studioSlug}/home`;
 
 	return (
-		<header className="fixed top-0 right-0 left-0 z-30 border-b bg-background md:left-[304px]">
-			<div className="flex h-14 items-center justify-between px-4">
+		<header className="fixed top-0 right-0 left-0 z-30 bg-white md:static md:rounded-t-xl md:bg-transparent">
+			<div className="flex h-14 items-center justify-between border-b border-neutral-200 bg-white px-4 md:rounded-t-xl md:border-b-0">
 				{/* Mobile: Menu trigger + Logo */}
 				<div className="flex items-center gap-2 md:hidden">
 					<Button

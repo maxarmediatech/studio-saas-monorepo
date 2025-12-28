@@ -28,7 +28,7 @@ interface AppShellClientProps {
 
 /**
  * Client component that renders the shell layout.
- * Receives pre-filtered navigation from server component.
+ * Dub-style: gray background with white rounded content card.
  */
 export function AppShellClient({
 	studioSlug,
@@ -68,7 +68,7 @@ export function AppShellClient({
 	}, [pathname]);
 
 	return (
-		<div className="min-h-screen bg-background">
+		<div className="min-h-screen bg-neutral-100 md:grid md:grid-cols-[min-content_minmax(0,1fr)]">
 			{/* Desktop Sidebar */}
 			{activeModule && (
 				<DubSidebar
@@ -84,19 +84,22 @@ export function AppShellClient({
 				/>
 			)}
 
-			{/* Header */}
-			<SiteHeader
-				studioSlug={studioSlug}
-				caps={caps}
-				onMobileMenuClick={() => setMobileOpen(true)}
-			/>
+			{/* Main Content Area */}
+			<div className="flex min-h-screen flex-col md:py-2 md:pr-2">
+				{/* Header - inside content card on desktop */}
+				<SiteHeader
+					studioSlug={studioSlug}
+					caps={caps}
+					onMobileMenuClick={() => setMobileOpen(true)}
+				/>
 
-			{/* Main Content */}
-			<main className="pt-14 md:pl-[304px]">
-				<div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
-					{children}
-				</div>
-			</main>
+				{/* Content Card */}
+				<main className="flex-1 pt-14 md:rounded-xl md:bg-white md:pt-0">
+					<div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
+						{children}
+					</div>
+				</main>
+			</div>
 
 			{/* Mobile Sidebar */}
 			{activeModule && (

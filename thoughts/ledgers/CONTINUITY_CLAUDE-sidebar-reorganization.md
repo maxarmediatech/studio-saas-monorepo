@@ -1,12 +1,12 @@
 # Session: sidebar-reorganization
-Updated: 2025-12-28T12:00:00.000Z
+Updated: 2025-12-28T08:30:00.000Z
 
 ## Goal
 Implement Dub-style two-column sidebar navigation with 64px rail + 240px panel.
 
 ## Constraints
 - Keep current routes unchanged (URLs stay the same)
-- Use primary color (orange/amber) for active states
+- Use amber color for active states (matching Dub's blue with our brand)
 - Keep dropdown behavior for OrgSwitcher
 - Maintain mobile navigation compatibility via Sheet drawer
 
@@ -15,8 +15,9 @@ Implement Dub-style two-column sidebar navigation with 64px rail + 240px panel.
 - Rail: Org logo, 6 module icons with tooltips, Help, User avatar
 - Panel: Active module's sections with scrollable nav items
 - Header: Simplified - only mobile menu trigger, New action, UserMenu
-- Active state: `bg-primary/10 text-primary`
-- Fixed positioning on desktop, Sheet drawer on mobile
+- **Layout: CSS Grid instead of fixed positioning (Dub style)**
+- **Background: Gray `bg-neutral-100` with white rounded content card**
+- **Active states: `bg-amber-100/50 text-amber-600` for nav items, `bg-white` for rail icons**
 
 ## State
 - Done:
@@ -28,6 +29,7 @@ Implement Dub-style two-column sidebar navigation with 64px rail + 240px panel.
   - [x] Phase 4: Update app-shell.tsx and app-shell.client.tsx
   - [x] Phase 5: Create mobile-sidebar.tsx
   - [x] Phase 6: Delete old components (module-tabs.tsx, app-sidebar.tsx, module-sidebar.tsx)
+  - [x] Phase 7: Dub styling pass - grid layout, gray bg, rounded containers
 - Now: [→] Ready for testing and commit
 - Next: Test in browser, commit changes
 
