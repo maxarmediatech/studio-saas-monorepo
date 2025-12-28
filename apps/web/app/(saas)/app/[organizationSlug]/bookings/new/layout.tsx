@@ -60,7 +60,6 @@ function buildCreateBookingInput(rawValues: BookingFormValues) {
 		packageCost: formatDecimalForApi(values.packageCost),
 		note: values.note,
 		participants: values.participants,
-		events: values.events,
 		shoots: values.shoots?.map((shoot) => ({
 			name: shoot.name,
 			shootType: shoot.shootType,
@@ -72,7 +71,7 @@ function buildCreateBookingInput(rawValues: BookingFormValues) {
 			notes: shoot.notes,
 			crewAssignments: shoot.crewAssignments?.map((assignment) => ({
 				crewId: assignment.crewId,
-				role: assignment.role,
+				role: assignment.role ?? "",
 				isLead: assignment.isLead ?? false,
 			})),
 		})),
@@ -83,6 +82,7 @@ function buildCreateBookingInput(rawValues: BookingFormValues) {
 			dueDate: deliverable.dueDate,
 			crewAssignments: deliverable.crewAssignments?.map((assignment) => ({
 				crewId: assignment.crewId,
+				role: assignment.role ?? "",
 				isLead: assignment.isLead ?? false,
 			})),
 		})),

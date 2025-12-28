@@ -1,5 +1,5 @@
 # Session: booking-form-improvements
-Updated: 2025-12-28T18:18:49.188Z
+Updated: 2025-12-29T00:00:00.000Z
 
 ## Goal
 Fix shortcomings in booking multi-step form architecture. Done when critical UX issues resolved, styling consistent, and accessibility improved.
@@ -28,8 +28,9 @@ Fix shortcomings in booking multi-step form architecture. Done when critical UX 
   - [x] Phase 5: Error Handling - COMPLETED
   - [x] Phase 6: Accessibility - COMPLETED
   - [x] Phase 7: Performance - COMPLETED
-- Now: [→] Ready for Phase 8
-- Next: Final cleanup
+  - [x] Phase 8: Architecture Cleanup - COMPLETED
+- Now: ALL PHASES COMPLETE
+- Next: Ready for commit and PR
 
 ## Phases Overview
 
@@ -68,24 +69,25 @@ Fix shortcomings in booking multi-step form architecture. Done when critical UX 
 - [x] 7.1 Optimize ReviewStep re-renders - Split into memoized section components using `useWatch` with specific field names instead of `form.watch()` on entire form
 - [x] 7.2 Deduplicate query options - Created `booking-form-queries.ts` with centralized query factories (`bookingFormQueries.clients()`, `.crews()`, etc.)
 
-### Phase 8: Architecture Cleanup
-- [ ] 8.1 Remove legacy `events` field
-- [ ] 8.2 Create route builder utility
-- [ ] 8.3 Align crew assignment schema
+### Phase 8: Architecture Cleanup (COMPLETED)
+- [x] 8.1 Remove legacy `events` field - Removed eventSchema, cleaned up from bookingFormSchema, defaultBookingValues, step schema, and buildCreateBookingInput
+- [x] 8.2 Create route builder utility - Added `bookingFormRoutes` object with list(), new(), step(), nextStep(), prevStep() methods
+- [x] 8.3 Align crew assignment schema - Extracted `crewAssignmentSchema` shared by shoots and deliverables, role now optional
 
 ## Decisions Made
 - **Skip optional steps:** Add explicit "Skip" button (not just allow clicking)
 - **Draft expiry:** Never expire - keep drafts indefinitely
 - **Events field:** Remove completely (no migration needed)
 - **Deliverable roles:** Not needed - keep simplified schema
+- **Crew assignment schema:** Unified with optional role field, consistent across shoots and deliverables
 
 ## Key Files
 ```
 apps/web/modules/saas/studio/components/bookings/booking-form/
-├── booking-form-schema.ts          # Zod schemas, step config
+├── booking-form-schema.ts          # Zod schemas, step config, route builder
 ├── booking-form-queries.ts         # Centralized React Query options
 ├── store/use-booking-form-store.ts # Zustand persistence
-├── hooks/useBookingWizard.ts       # Navigation, validation
+├── hooks/useBookingWizard.ts       # Navigation, validation (uses route builder)
 ├── utils/map-api-errors.ts         # API error to form field mapping
 ├── BookingFormLayout.tsx           # Layout wrapper with error boundary
 ├── BookingStepErrorBoundary.tsx    # Error boundary + root error display
@@ -120,9 +122,12 @@ apps/web/app/(saas)/app/[organizationSlug]/bookings/new/
 | No API error field mapping | High | ✅ FIXED |
 | ReviewStep re-renders | High | ✅ FIXED |
 | Touch targets < 44px | High | ✅ FIXED |
+| Legacy events field | Low | ✅ FIXED |
+| Hardcoded route strings | Low | ✅ FIXED |
+| Inconsistent crew schema | Low | ✅ FIXED |
 
 ## Working Set
-- Branch: `booking-form-improvements` (5 commits ahead of dub-sidebar)
+- Branch: `booking-form-improvements`
 - Key files: See Key Files section above
 - Test cmd: Manual testing in browser
 - Build cmd: `pnpm -F "*web*" run build`
@@ -133,3 +138,6 @@ apps/web/app/(saas)/app/[organizationSlug]/bookings/new/
 - c45ca57 fix(bookings): prevent duplicate participants and standardize styling
 - eabb4aa style(bookings): standardize shoots step Card and empty state patterns
 - 38f38b2 feat(bookings): add error boundary and API error mapping
+- 339e614 a11y(bookings): improve accessibility with WCAG 2.5.5 touch targets and screen reader support
+- 52db8a6 perf(bookings): optimize ReviewStep re-renders and centralize query options
+- (pending) refactor(bookings): remove legacy events field and add route builder utility

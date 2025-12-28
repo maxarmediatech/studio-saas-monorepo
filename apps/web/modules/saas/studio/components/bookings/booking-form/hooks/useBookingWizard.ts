@@ -8,6 +8,7 @@ import {
 	type BookingFormValues,
 	type BookingTab,
 	TAB_FIELD_MAPPING,
+	bookingFormRoutes,
 	isStepOptional,
 } from "../booking-form-schema";
 import {
@@ -188,7 +189,7 @@ export function useBookingWizard({ form }: UseBookingWizardOptions) {
 				return;
 			}
 			saveFormData();
-			router.push(`/app/${organizationSlug}/bookings/new/${step}`);
+			router.push(bookingFormRoutes.step(organizationSlug, step));
 		},
 		[canNavigateToStep, organizationSlug, router, saveFormData],
 	);
@@ -224,14 +225,13 @@ export function useBookingWizard({ form }: UseBookingWizardOptions) {
 		setStepCompleted(currentStep);
 		saveFormData();
 
-		if (currentIndex < BOOKING_TABS.length - 1) {
-			const nextStep = BOOKING_TABS[currentIndex + 1];
-			router.push(`/app/${organizationSlug}/bookings/new/${nextStep}`);
+		const nextRoute = bookingFormRoutes.nextStep(organizationSlug, currentStep);
+		if (nextRoute) {
+			router.push(nextRoute);
 		}
 
 		return true;
 	}, [
-		currentIndex,
 		currentStep,
 		form,
 		isValidStep,
@@ -251,12 +251,11 @@ export function useBookingWizard({ form }: UseBookingWizardOptions) {
 		setStepCompleted(currentStep);
 		saveFormData();
 
-		if (currentIndex < BOOKING_TABS.length - 1) {
-			const nextStep = BOOKING_TABS[currentIndex + 1];
-			router.push(`/app/${organizationSlug}/bookings/new/${nextStep}`);
+		const nextRoute = bookingFormRoutes.nextStep(organizationSlug, currentStep);
+		if (nextRoute) {
+			router.push(nextRoute);
 		}
 	}, [
-		currentIndex,
 		currentStep,
 		isValidStep,
 		organizationSlug,
@@ -272,16 +271,16 @@ export function useBookingWizard({ form }: UseBookingWizardOptions) {
 
 	// Navigate to previous step
 	const previous = useCallback(() => {
-		if (currentIndex > 0) {
+		const prevRoute = bookingFormRoutes.prevStep(organizationSlug, currentStep);
+		if (prevRoute) {
 			saveFormData();
-			const prevStep = BOOKING_TABS[currentIndex - 1];
-			router.push(`/app/${organizationSlug}/bookings/new/${prevStep}`);
+			router.push(prevRoute);
 		}
-	}, [currentIndex, organizationSlug, router, saveFormData]);
+	}, [currentStep, organizationSlug, router, saveFormData]);
 
 	// Cancel and go back to bookings list
 	const cancel = useCallback(() => {
-		router.push(`/app/${organizationSlug}/bookings`);
+		router.push(bookingFormRoutes.list(organizationSlug));
 	}, [organizationSlug, router]);
 
 	// Get the first incomplete step (for redirects)

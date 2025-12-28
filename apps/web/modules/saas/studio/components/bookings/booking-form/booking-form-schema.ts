@@ -70,17 +70,16 @@ export const participantsArraySchema = z
 	);
 
 /**
- * Event schema - booking events (wedding day, mehendi, etc.)
+ * Crew assignment schema - reusable for shoots and deliverables.
+ * Role is required for shoots (e.g., photographer, videographer) but optional for deliverables.
  */
-export const eventSchema = z.object({
-	eventType: z.string().min(1, "Event type is required"),
-	eventDate: z.string().min(1, "Event date is required"),
-	venue: z.string().optional(),
-	venueAddress: z.string().optional(),
-	notes: z.string().optional(),
+export const crewAssignmentSchema = z.object({
+	crewId: z.string().min(1, "Crew member is required"),
+	role: z.string().optional(),
+	isLead: z.boolean().default(false),
 });
 
-export type EventFormValue = z.infer<typeof eventSchema>;
+export type CrewAssignmentFormValue = z.infer<typeof crewAssignmentSchema>;
 
 /**
  * Shoot schema - photo/video shoots with crew assignments
@@ -94,16 +93,7 @@ export const shootSchema = z.object({
 	venue: z.string().optional(),
 	venueAddress: z.string().optional(),
 	notes: z.string().optional(),
-	// Crew assignments - array of crew IDs with their roles
-	crewAssignments: z
-		.array(
-			z.object({
-				crewId: z.string().min(1, "Crew member is required"),
-				role: z.string().min(1, "Role is required"),
-				isLead: z.boolean().default(false),
-			}),
-		)
-		.optional(),
+	crewAssignments: z.array(crewAssignmentSchema).optional(),
 });
 
 export type ShootFormValue = z.infer<typeof shootSchema>;
@@ -148,15 +138,7 @@ export const deliverableSchema = z.object({
 	deliverableType: z.string().min(1, "Deliverable type is required"),
 	description: z.string().optional(),
 	dueDate: z.string().optional(),
-	// Crew assignments for deliverables
-	crewAssignments: z
-		.array(
-			z.object({
-				crewId: z.string().min(1, "Crew member is required"),
-				isLead: z.boolean().default(false),
-			}),
-		)
-		.optional(),
+	crewAssignments: z.array(crewAssignmentSchema).optional(),
 });
 
 export type DeliverableFormValue = z.infer<typeof deliverableSchema>;
@@ -173,17 +155,14 @@ export const bookingFormSchema = z.object({
 	note: z.string().optional(),
 	participants: participantsArraySchema,
 
-	// Step 2: Events (legacy - keeping for backward compatibility)
-	events: z.array(eventSchema).optional(),
-
-	// Step 3: Shoots (new - replaces events for production workflow)
+	// Step 2: Shoots
 	shoots: z.array(shootSchema).optional(),
 
-	// Step 4: Payments
+	// Step 3: Payments
 	payments: z.array(paymentSchema).optional(),
 	paymentSchedules: z.array(paymentScheduleSchema).optional(),
 
-	// Step 5: Deliverables
+	// Step 4: Deliverables
 	deliverables: z.array(deliverableSchema).optional(),
 });
 
@@ -196,7 +175,6 @@ export const bookingDetailsStepSchema = bookingFormSchema.pick({
 	packageCost: true,
 	note: true,
 	participants: true,
-	events: true,
 });
 
 export const bookingShootsStepSchema = bookingFormSchema.pick({
@@ -227,7 +205,6 @@ export const defaultBookingValues: BookingFormValues = {
 			role: "",
 		},
 	],
-	events: [],
 	shoots: [],
 	payments: [],
 	paymentSchedules: [],
@@ -400,6 +377,40 @@ export const STEP_CONFIG: StepConfig[] = [
 export function isStepOptional(step: BookingTab): boolean {
 	return STEP_CONFIG.find((s) => s.id === step)?.optional ?? false;
 }
+
+/**
+ * Route builder for booking form navigation.
+ * Centralizes URL construction to avoid string interpolation duplication.
+ */
+export const bookingFormRoutes = {
+	/** Get the base bookings list route */
+	list: (organizationSlug: string) => `/app/${organizationSlug}/bookings`,
+
+	/** Get the new booking wizard base route */
+	new: (organizationSlug: string) => `/app/${organizationSlug}/bookings/new`,
+
+	/** Get a specific step route in the new booking wizard */
+	step: (organizationSlug: string, step: BookingTab) =>
+		`/app/${organizationSlug}/bookings/new/${step}`,
+
+	/** Get the next step route (returns undefined if already at last step) */
+	nextStep: (organizationSlug: string, currentStep: BookingTab) => {
+		const currentIndex = BOOKING_TABS.indexOf(currentStep);
+		if (currentIndex === -1 || currentIndex >= BOOKING_TABS.length - 1) {
+			return undefined;
+		}
+		return `/app/${organizationSlug}/bookings/new/${BOOKING_TABS[currentIndex + 1]}`;
+	},
+
+	/** Get the previous step route (returns undefined if already at first step) */
+	prevStep: (organizationSlug: string, currentStep: BookingTab) => {
+		const currentIndex = BOOKING_TABS.indexOf(currentStep);
+		if (currentIndex <= 0) {
+			return undefined;
+		}
+		return `/app/${organizationSlug}/bookings/new/${BOOKING_TABS[currentIndex - 1]}`;
+	},
+} as const;
 
 /**
  * Clean up empty/incomplete array items before validation or submission.
