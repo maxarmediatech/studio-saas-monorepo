@@ -40,10 +40,10 @@ export function PageContent({
 	const hasHeader = !!(title || controls || headerContent);
 
 	return (
-		<div className={cn("flex flex-1 flex-col", className)}>
-			{/* Header - spans full width, content inside has padding */}
+		<div className={cn("flex min-h-0 flex-1 flex-col", className)}>
+			{/* Header - fixed height, doesn't scroll */}
 			{hasHeader && (
-				<div className="border-b border-neutral-200">
+				<div className="shrink-0 border-b border-neutral-200">
 					<PageWidthWrapper>
 						<div className="flex h-12 items-center justify-between gap-4 sm:h-16">
 							<div className="flex min-w-0 items-center gap-2">
@@ -70,8 +70,13 @@ export function PageContent({
 				</div>
 			)}
 
-			{/* Content area with padding */}
-			<div className={cn("flex-1 pt-4 lg:pt-6", contentClassName)}>
+			{/* Content area - scrollable */}
+			<div
+				className={cn(
+					"min-h-0 flex-1 overflow-y-auto pt-4 lg:pt-6",
+					contentClassName,
+				)}
+			>
 				<PageWidthWrapper>{children}</PageWidthWrapper>
 			</div>
 		</div>

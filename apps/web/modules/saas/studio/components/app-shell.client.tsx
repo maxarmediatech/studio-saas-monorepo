@@ -102,7 +102,7 @@ export function AppShellClient({
 			)}
 
 			{/* Main Content Area */}
-			<div className="flex min-h-screen flex-col bg-neutral-200 md:py-2 md:pr-2">
+			<div className="flex h-screen flex-col bg-neutral-200 md:py-2 md:pr-2">
 				{/* Header - mobile only */}
 				<SiteHeader
 					studioSlug={studioSlug}
@@ -110,8 +110,8 @@ export function AppShellClient({
 					onMobileMenuClick={() => setMobileOpen(true)}
 				/>
 
-				{/* Content Card - no default padding, pages control their own layout */}
-				<main className="flex flex-1 flex-col pt-14 md:rounded-xl md:bg-white md:pt-0">
+				{/* Content Card - fixed height, pages handle their own scrolling */}
+				<main className="flex min-h-0 flex-1 flex-col overflow-hidden pt-14 md:rounded-xl md:bg-white md:pt-0">
 					{children}
 				</main>
 			</div>
