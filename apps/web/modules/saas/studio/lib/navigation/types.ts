@@ -20,6 +20,7 @@ export type IconName =
 	| "Home"
 	| "Inbox"
 	| "LayoutDashboard"
+	| "ListChecks"
 	| "ListTodo"
 	| "Package"
 	| "Settings"

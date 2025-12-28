@@ -27,43 +27,52 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 
 	const modules: NavModuleConfig[] = [
 		{
-			id: "overview",
-			label: "Overview",
+			id: "workspace",
+			label: "Workspace",
 			icon: "LayoutDashboard",
 			defaultPath: url("/home"),
 			sections: [
 				{
-					id: "overview-core",
-					label: "Overview",
+					id: "workspace-core",
 					items: [
 						{
 							id: "home",
 							label: "Home",
 							path: url("/home"),
 							icon: "Home",
-							intent: "primary",
 						},
 						{
 							id: "dashboard",
 							label: "Dashboard",
 							path: url("/dashboard"),
 							icon: "LayoutDashboard",
-							intent: "primary",
 							permission: { any: [{ resource: "dashboard", action: "read" }] },
+						},
+						{
+							id: "my-tasks",
+							label: "My Tasks",
+							path: url("/tasks"),
+							icon: "ListChecks",
+							permission: { any: [{ resource: "task", action: "list" }] },
 						},
 					],
 				},
+				// Future: Pinned Bookings section
+				// {
+				// 	id: "workspace-pinned",
+				// 	label: "Pinned",
+				// 	items: [],
+				// },
 			],
 		},
 		{
-			id: "production",
-			label: "Production",
+			id: "studio",
+			label: "Studio",
 			icon: "Camera",
 			defaultPath: url("/bookings"),
 			sections: [
 				{
-					id: "production-pipeline",
-					label: "Production",
+					id: "studio-bookings",
 					items: [
 						{
 							id: "bookings",
@@ -72,6 +81,12 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							icon: "CalendarDays",
 							permission: { any: [{ resource: "booking", action: "list" }] },
 						},
+					],
+				},
+				{
+					id: "studio-production",
+					label: "Production",
+					items: [
 						{
 							id: "shoots",
 							label: "Shoots",
@@ -79,20 +94,6 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							icon: "Camera",
 							permission: { any: [{ resource: "shoot", action: "list" }] },
 						},
-					],
-				},
-			],
-		},
-		{
-			id: "operations",
-			label: "Operations",
-			icon: "ListTodo",
-			defaultPath: url("/deliverables"),
-			sections: [
-				{
-					id: "operations-core",
-					label: "Operations",
-					items: [
 						{
 							id: "deliverables",
 							label: "Deliverables",
@@ -101,31 +102,16 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							permission: { any: [{ resource: "deliverable", action: "list" }] },
 						},
 						{
-							id: "tasks",
+							id: "all-tasks",
 							label: "Tasks",
-							path: url("/tasks"),
+							path: url("/tasks/all"),
 							icon: "ListTodo",
 							permission: { any: [{ resource: "task", action: "list" }] },
 						},
-						{
-							id: "crew",
-							label: "Crew",
-							path: url("/crews"),
-							icon: "Users",
-							permission: { any: [{ resource: "crew", action: "list" }] },
-						},
 					],
 				},
-			],
-		},
-		{
-			id: "finance",
-			label: "Finance",
-			icon: "Wallet2",
-			defaultPath: url("/payments"),
-			sections: [
 				{
-					id: "finance-core",
+					id: "studio-finance",
 					label: "Finance",
 					items: [
 						{
@@ -144,69 +130,61 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 						},
 					],
 				},
+				{
+					id: "studio-team",
+					label: "Team",
+					items: [
+						{
+							id: "crew",
+							label: "Crew",
+							path: url("/crews"),
+							icon: "Users",
+							permission: { any: [{ resource: "crew", action: "list" }] },
+						},
+					],
+				},
 			],
 		},
 		{
-			id: "crm",
-			label: "CRM",
+			id: "clients",
+			label: "Clients",
 			icon: "Contact2",
 			defaultPath: url("/clients"),
 			sections: [
 				{
-					id: "crm-core",
-					label: "CRM",
+					id: "clients-core",
 					items: [
 						{
 							id: "clients",
-							label: "Clients",
+							label: "All Clients",
 							path: url("/clients"),
 							icon: "Contact2",
 							permission: { any: [{ resource: "client", action: "list" }] },
 						},
 					],
 				},
-			],
-		},
-		{
-			id: "system",
-			label: "System",
-			icon: "Settings2",
-			defaultPath: url("/configurations"),
-			sections: [
-				{
-					id: "system-core",
-					label: "System",
-					items: [
-						{
-							id: "configurations",
-							label: "Configurations",
-							path: url("/configurations"),
-							icon: "Settings2",
-							permission: {
-								any: [{ resource: "configuration", action: "list" }],
-							},
-						},
-					],
-				},
+				// Future: CRM features
+				// {
+				// 	id: "clients-crm",
+				// 	label: "CRM",
+				// 	items: [
+				// 		{ id: "leads", label: "Leads", ... },
+				// 		{ id: "communications", label: "Communications", ... },
+				// 	],
+				// },
 			],
 		},
 	];
 
-	const utilities: NavItemConfig[] = [
-		{
-			id: "settings",
-			label: "Settings",
-			path: url("/settings"),
-			icon: "Settings",
-		},
-	];
+	// Utilities removed - Settings is now accessible via gear icon in rail + org dropdown
+	const utilities: NavItemConfig[] = [];
 
 	// Settings areas (Dub-style separate sidebar panels)
 	const areas: Record<string, NavAreaConfig> = {
 		studioSettings: {
 			id: "studioSettings",
 			title: "Settings",
-			backHref: url("/home"), // Back to overview
+			backHref: url("/home"),
 			direction: "right",
 			sections: [
 				{
@@ -230,6 +208,15 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							label: "Billing",
 							path: url("/settings/billing"),
 							icon: "CreditCard",
+						},
+						{
+							id: "configurations",
+							label: "Configurations",
+							path: url("/configurations"),
+							icon: "Settings",
+							permission: {
+								any: [{ resource: "configuration", action: "list" }],
+							},
 						},
 					],
 				},
