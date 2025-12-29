@@ -14,6 +14,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useConfigurationParams } from "@saas/studio/hooks/params/use-configuration-params";
 import { ConfigurationForm, type ConfigurationFormValues } from "../ConfigurationForm";
 import { configurationsMutations } from "@saas/studio/lib/api";
+import { orpc } from "@shared/lib/orpc-query-utils";
 
 const CONFIG_TYPE_LABELS: Record<string, string> = {
 	booking_type: "Booking Type",
@@ -39,7 +40,8 @@ export function ConfigurationCreateSheet() {
 		...configurationsMutations.create(),
 		onSuccess: () => {
 			toast.success(`${typeLabel} created successfully`);
-			queryClient.invalidateQueries({ queryKey: ["studio", "configurations"] });
+			// Invalidate all configuration queries (uses ORPC's key generator)
+			queryClient.invalidateQueries({ queryKey: orpc.configurations.key() });
 			close();
 		},
 		onError: (error) => {
