@@ -14,7 +14,7 @@ import {
 import { Button } from "@repo/ui/components/button";
 import { Progress } from "@repo/ui/components/progress";
 import { cn } from "@repo/ui/lib/utils";
-import { CheckIcon, Loader2Icon, RotateCcwIcon } from "lucide-react";
+import { CheckIcon, Loader2Icon } from "lucide-react";
 import {
 	type BookingTab,
 	STEP_CONFIG,
@@ -84,7 +84,7 @@ export function BookingStepperSidebar({
 	};
 
 	return (
-		<div className={cn("flex flex-col h-full", className)}>
+		<div className={cn("flex flex-col", className)}>
 			{/* Progress Header */}
 			<div className="space-y-2">
 				<div className="flex items-center justify-between text-sm">
@@ -93,7 +93,9 @@ export function BookingStepperSidebar({
 				</div>
 				<Progress value={progressPercentage} className="h-2" />
 				<div className="flex items-center justify-between text-xs text-muted-foreground">
-					<span>{completedCount} of {totalSteps} steps completed</span>
+					<span>
+						{completedCount} of {totalSteps} steps completed
+					</span>
 					{/* Draft save indicator */}
 					{isSaving ? (
 						<span className="flex items-center gap-1 text-muted-foreground">
@@ -110,7 +112,7 @@ export function BookingStepperSidebar({
 			</div>
 
 			{/* Step List */}
-			<nav aria-label="Booking form steps" className="mt-6 flex-1">
+			<nav aria-label="Booking form steps" className="mt-6">
 				{STEP_CONFIG.map((step, index) => (
 					<StepIndicator
 						key={step.id}
@@ -127,9 +129,9 @@ export function BookingStepperSidebar({
 				))}
 			</nav>
 
-			{/* Action Buttons */}
+			{/* Action Buttons - directly below steps */}
 			{(onSubmit || onReset) && (
-				<div className="pt-4 mt-4 border-t space-y-2">
+				<div className="mt-6 space-y-2">
 					{onSubmit && (
 						<Button
 							type="button"
@@ -140,10 +142,10 @@ export function BookingStepperSidebar({
 							{isSubmitting ? (
 								<>
 									<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-									Creating...
+									Submitting...
 								</>
 							) : (
-								"Create Booking"
+								"Submit"
 							)}
 						</Button>
 					)}
@@ -153,12 +155,11 @@ export function BookingStepperSidebar({
 							<AlertDialogTrigger asChild>
 								<Button
 									type="button"
-									variant="ghost"
+									variant="outline"
 									className="w-full text-muted-foreground"
 									disabled={isSubmitting}
 								>
-									<RotateCcwIcon className="mr-2 h-4 w-4" />
-									Reset Form
+									Reset
 								</Button>
 							</AlertDialogTrigger>
 							<AlertDialogContent>
@@ -173,9 +174,11 @@ export function BookingStepperSidebar({
 									</AlertDialogDescription>
 								</AlertDialogHeader>
 								<AlertDialogFooter>
-									<AlertDialogCancel>Cancel</AlertDialogCancel>
+									<AlertDialogCancel>
+										Cancel
+									</AlertDialogCancel>
 									<AlertDialogAction onClick={onReset}>
-										Reset Form
+										Reset
 									</AlertDialogAction>
 								</AlertDialogFooter>
 							</AlertDialogContent>
