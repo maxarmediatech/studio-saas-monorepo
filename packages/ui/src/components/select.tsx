@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import * as SelectPrimitive from "@radix-ui/react-select"
-import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react"
+import { CheckIcon, ChevronDownIcon, ChevronUpIcon, PlusIcon } from "lucide-react"
 
 import { cn } from "@repo/ui/lib/utils"
 
@@ -173,8 +173,48 @@ function SelectScrollDownButton({
   )
 }
 
+/**
+ * SelectAction - A clickable action item for select dropdowns (e.g., "Create New...")
+ * Place after SelectSeparator for best UX.
+ */
+function SelectAction({
+  className,
+  children,
+  icon: Icon = PlusIcon,
+  onClick,
+  ...props
+}: React.ComponentProps<"div"> & {
+  icon?: React.ComponentType<{ className?: string }>
+}) {
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      data-slot="select-action"
+      className={cn(
+        "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-hidden hover:bg-accent focus:bg-accent focus:text-accent-foreground",
+        className
+      )}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault()
+          onClick?.(e as unknown as React.MouseEvent<HTMLDivElement>)
+        }
+      }}
+      onClick={onClick}
+      {...props}
+    >
+      <span className="absolute left-2 flex size-3.5 items-center justify-center">
+        <Icon className="size-4" />
+      </span>
+      {children}
+    </div>
+  )
+}
+
 export {
   Select,
+  SelectAction,
   SelectContent,
   SelectGroup,
   SelectItem,
