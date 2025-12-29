@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import { config } from "@repo/config";
 import { getActiveOrganization, getSession } from "@saas/auth/lib/server";
 import { activeOrganizationQueryKey } from "@saas/organizations/lib/api";
@@ -10,6 +9,7 @@ import { getServerQueryClient } from "@shared/lib/server";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { notFound, redirect } from "next/navigation";
 import type { PropsWithChildren } from "react";
+import { Suspense } from "react";
 
 type Props = PropsWithChildren & {
 	params: Promise<{
@@ -53,10 +53,7 @@ export default async function OrganizationLayout({ children, params }: Props) {
 	return (
 		<HydrationBoundary state={dehydrate(queryClient)}>
 			<SheetProvider>
-				<AppShell
-					session={session}
-					activeOrganization={organization}
-				>
+				<AppShell session={session} activeOrganization={organization}>
 					{children}
 				</AppShell>
 				<Suspense fallback={null}>
