@@ -25,12 +25,16 @@ interface BookingFormLayoutProps {
 /**
  * Main layout wrapper for the booking form wizard
  *
- * Layout structure:
- * - Left: App sidebar (handled by parent)
- * - Center: Header + scrollable form content + fixed footer
- * - Right: Stepper sidebar (flush to edge)
+ * Layout structure (desktop):
+ * ┌─────────────────────────────────────────────────────────────┐
+ * │ Header (spans full width)                                    │
+ * ├─────────────────────────────────────────────┬───────────────┤
+ * │ Form Content (centered, scrollable)         │ Stepper       │
+ * │                                             │ Sidebar       │
+ * ├─────────────────────────────────────────────┤ (fixed)       │
+ * │ Footer (Previous/Next) - fixed bottom       │               │
+ * └─────────────────────────────────────────────┴───────────────┘
  *
- * Desktop (md+): 2-column layout - Form | Stepper
  * Mobile (<md): Single column with horizontal stepper
  */
 export function BookingFormLayout({
@@ -47,7 +51,7 @@ export function BookingFormLayout({
 	return (
 		<div
 			className={cn(
-				"flex h-full min-h-0 flex-1 flex-col md:flex-row",
+				"flex h-full min-h-0 flex-1 flex-col",
 				className,
 			)}
 		>
@@ -61,52 +65,55 @@ export function BookingFormLayout({
 				{validationErrorMessage}
 			</div>
 
-			{/* Main content area - grows to fill space between sidebars */}
-			<main className="flex min-h-0 flex-1 flex-col">
-				{/* Header - fixed at top, not scrollable */}
-				<header className="shrink-0 border-b bg-background">
-					<div className="mx-auto flex h-14 max-w-4xl items-center gap-2 px-4 sm:h-16 lg:px-6">
-						{backHref && (
-							<Link
-								href={backHref}
-								className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-							>
-								<ChevronLeft className="size-5" />
-								<span className="sr-only">Back to bookings</span>
-							</Link>
-						)}
-						<h1 className="text-lg font-semibold">{title}</h1>
-					</div>
-				</header>
-
-				{/* Mobile Stepper - Visible only on mobile */}
-				<div className="shrink-0 border-b bg-background px-4 py-3 md:hidden">
-					{mobileStepper}
+			{/* Header - spans full width, fixed at top */}
+			<header className="shrink-0 border-b bg-background">
+				<div className="flex h-14 items-center gap-2 px-4 sm:h-16 lg:px-6">
+					{backHref && (
+						<Link
+							href={backHref}
+							className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+						>
+							<ChevronLeft className="size-5" />
+							<span className="sr-only">Back to bookings</span>
+						</Link>
+					)}
+					<h1 className="text-lg font-semibold">{title}</h1>
 				</div>
+			</header>
 
-				{/* Scrollable content area */}
-				<div className="flex-1 overflow-y-auto">
-					<div className="mx-auto max-w-4xl px-4 py-6 lg:px-6">
-						<BookingStepErrorBoundary stepName={stepName}>
-							{children}
-						</BookingStepErrorBoundary>
+			{/* Mobile Stepper - Visible only on mobile */}
+			<div className="shrink-0 border-b bg-background px-4 py-3 md:hidden">
+				{mobileStepper}
+			</div>
+
+			{/* Main body - flex row on desktop */}
+			<div className="flex min-h-0 flex-1 flex-col md:flex-row">
+				{/* Content + Footer column */}
+				<main className="flex min-h-0 flex-1 flex-col">
+					{/* Scrollable content area */}
+					<div className="flex-1 overflow-y-auto">
+						<div className="mx-auto max-w-4xl px-4 py-6 lg:px-6">
+							<BookingStepErrorBoundary stepName={stepName}>
+								{children}
+							</BookingStepErrorBoundary>
+						</div>
 					</div>
-				</div>
 
-				{/* Navigation Footer - fixed at bottom, not scrollable */}
-				<footer className="shrink-0 border-t bg-background">
-					<div className="mx-auto max-w-4xl px-4 py-4 lg:px-6">
-						{footer}
+					{/* Navigation Footer - fixed at bottom, not scrollable */}
+					<footer className="shrink-0 border-t bg-background">
+						<div className="mx-auto max-w-4xl px-4 py-4 lg:px-6">
+							{footer}
+						</div>
+					</footer>
+				</main>
+
+				{/* Right Stepper Sidebar - flush to edge, no outer padding */}
+				<aside className="hidden shrink-0 flex-col border-l bg-muted/30 md:flex md:w-64 lg:w-72 xl:w-80">
+					<div className="flex-1 overflow-y-auto p-4 lg:p-6">
+						{stepper}
 					</div>
-				</footer>
-			</main>
-
-			{/* Right Stepper Sidebar - flush to edge, no outer padding */}
-			<aside className="hidden shrink-0 flex-col border-l bg-muted/30 md:flex md:w-64 lg:w-72 xl:w-80">
-				<div className="flex-1 overflow-y-auto p-4 lg:p-6">
-					{stepper}
-				</div>
-			</aside>
+				</aside>
+			</div>
 		</div>
 	);
 }
