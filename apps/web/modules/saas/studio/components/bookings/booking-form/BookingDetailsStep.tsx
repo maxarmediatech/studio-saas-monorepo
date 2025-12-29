@@ -22,13 +22,7 @@ import {
 	InputGroupText,
 	InputGroupTextarea,
 } from "@repo/ui/components/input-group";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@repo/ui/components/select";
+import { Combobox } from "@repo/ui/components/combobox";
 import { Separator } from "@repo/ui/components/separator";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -45,6 +39,7 @@ import {
 import { useMemo, useRef, useState } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import { toast } from "sonner";
+import { useConfigurationParams } from "@saas/studio/hooks/params/use-configuration-params";
 import { bookingFormQueries } from "./booking-form-queries";
 import type { BookingFormValues } from "./booking-form-schema";
 import { CreateClientDialog } from "./create-client-dialog";
@@ -58,6 +53,9 @@ export function BookingDetailsStep() {
 	const [isUploading, setIsUploading] = useState(false);
 	const [isDeleting, setIsDeleting] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
+
+	// URL-based configuration sheet params (for "Create New..." actions)
+	const { openCreate: openCreateConfiguration } = useConfigurationParams();
 
 	// Watch attachment field
 	const contractAttachment = form.watch("contractAttachment");
@@ -184,11 +182,14 @@ export function BookingDetailsStep() {
 		if (!contractAttachment) return;
 		setIsDeleting(true);
 		try {
-			await fetch("/api/uploads/file", {
+			const deleteRes = await fetch("/api/uploads/file", {
 				method: "DELETE",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ key: contractAttachment.key }),
 			});
+			if (!deleteRes.ok) {
+				throw new Error("Delete failed");
+			}
 			form.setValue("contractAttachment", null, { shouldValidate: true });
 			toast.success("Document removed");
 		} catch (error) {
@@ -278,29 +279,28 @@ export function BookingDetailsStep() {
 										<FieldLabel htmlFor={field.name}>
 											Booking Type
 										</FieldLabel>
-										<Select
-											onValueChange={field.onChange}
+										<Combobox
+											id={field.name}
+											options={bookingTypes.map(
+												(type) => ({
+													value: type.key,
+													label: type.label,
+												}),
+											)}
 											value={field.value}
-										>
-											<SelectTrigger
-												id={field.name}
-												aria-invalid={
-													fieldState.invalid
-												}
-											>
-												<SelectValue placeholder="Select type" />
-											</SelectTrigger>
-											<SelectContent>
-												{bookingTypes.map((type) => (
-													<SelectItem
-														key={type.id}
-														value={type.key}
-													>
-														{type.label}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
+											onValueChange={field.onChange}
+											placeholder="Select type..."
+											searchPlaceholder="Search types..."
+											emptyText="No booking types found."
+											aria-invalid={fieldState.invalid}
+											onCreate={{
+												label: "Add Booking Type...",
+												onClick: () =>
+													openCreateConfiguration(
+														"booking_type",
+													),
+											}}
+										/>
 										{fieldState.invalid && (
 											<FieldError
 												errors={[fieldState.error]}
@@ -322,39 +322,29 @@ export function BookingDetailsStep() {
 										<FieldLabel htmlFor={field.name}>
 											Package
 										</FieldLabel>
-										<Select
-											onValueChange={handlePackageChange}
+										<Combobox
+											id={field.name}
+											options={filteredPackageTypes.map(
+												(pkg) => ({
+													value: pkg.key,
+													label: pkg.label,
+												}),
+											)}
 											value={field.value}
+											onValueChange={handlePackageChange}
+											placeholder="Select package..."
+											searchPlaceholder="Search packages..."
+											emptyText="No packages found."
 											disabled={!selectedBookingType}
-										>
-											<SelectTrigger
-												id={field.name}
-												aria-invalid={
-													fieldState.invalid
-												}
-											>
-												<SelectValue placeholder="Select package" />
-											</SelectTrigger>
-											<SelectContent>
-												{filteredPackageTypes.length >
-												0 ? (
-													filteredPackageTypes.map(
-														(pkg) => (
-															<SelectItem
-																key={pkg.id}
-																value={pkg.key}
-															>
-																{pkg.label}
-															</SelectItem>
-														),
-													)
-												) : (
-													<div className="p-2 text-sm text-muted-foreground text-center">
-														No packages found
-													</div>
-												)}
-											</SelectContent>
-										</Select>
+											aria-invalid={fieldState.invalid}
+											onCreate={{
+												label: "Add Package...",
+												onClick: () =>
+													openCreateConfiguration(
+														"package_type",
+													),
+											}}
+										/>
 										{fieldState.invalid && (
 											<FieldError
 												errors={[fieldState.error]}
@@ -615,102 +605,50 @@ export function BookingDetailsStep() {
 															>
 																Client
 															</FieldLabel>
-															<Select
-																onValueChange={
-																	field.onChange
-																}
+															<Combobox
+																id={field.name}
+																options={clients.map(
+																	(client) => {
+																		const isAlreadySelected =
+																			selectedClientIds.has(
+																				client.id,
+																			) &&
+																			field.value !==
+																				client.id;
+																		return {
+																			value: client.id,
+																			label: isAlreadySelected
+																				? `${client.name} (already added)`
+																				: client.name,
+																			description:
+																				client.phoneNumber ??
+																				undefined,
+																			disabled:
+																				isAlreadySelected,
+																		};
+																	},
+																)}
 																value={
 																	field.value
 																}
-															>
-																<SelectTrigger
-																	id={
-																		field.name
-																	}
-																	aria-invalid={
-																		fieldState.invalid
-																	}
-																>
-																	<SelectValue placeholder="Select client" />
-																</SelectTrigger>
-																<SelectContent>
-																	{clients.length >
-																	0 ? (
-																		clients.map(
-																			(
-																				client,
-																			) => {
-																				// Disable if already selected by another participant
-																				const isAlreadySelected =
-																					selectedClientIds.has(
-																						client.id,
-																					) &&
-																					field.value !==
-																						client.id;
-																				return (
-																					<SelectItem
-																						key={
-																							client.id
-																						}
-																						value={
-																							client.id
-																						}
-																						disabled={
-																							isAlreadySelected
-																						}
-																					>
-																						<div className="flex flex-col">
-																							<span>
-																								{
-																									client.name
-																								}
-																								{isAlreadySelected && (
-																									<span className="ml-2 text-xs text-muted-foreground">
-																										(already
-																										added)
-																									</span>
-																								)}
-																							</span>
-																							{client.phoneNumber && (
-																								<span className="text-xs text-muted-foreground">
-																									{
-																										client.phoneNumber
-																									}
-																								</span>
-																							)}
-																						</div>
-																					</SelectItem>
-																				);
-																			},
-																		)
-																	) : (
-																		<div className="p-2 space-y-2 text-center">
-																			<p className="text-sm text-muted-foreground">
-																				No
-																				clients
-																				found
-																			</p>
-																			<Button
-																				type="button"
-																				variant="outline"
-																				size="sm"
-																				onClick={(
-																					e,
-																				) => {
-																					e.preventDefault();
-																					e.stopPropagation();
-																					setCreateClientForParticipantIndex(
-																						index,
-																					);
-																				}}
-																			>
-																				Create
-																				client
-																			</Button>
-																		</div>
-																	)}
-																</SelectContent>
-															</Select>
+																onValueChange={
+																	field.onChange
+																}
+																placeholder="Select client..."
+																searchPlaceholder="Search clients..."
+																emptyText="No clients found."
+																aria-invalid={
+																	fieldState.invalid
+																}
+																onCreate={{
+																	label: "Add Client...",
+																	onClick:
+																		() =>
+																			setCreateClientForParticipantIndex(
+																				index,
+																			),
+																}}
+															/>
 															{fieldState.invalid && (
 																<FieldError
 																	errors={[
@@ -742,45 +680,35 @@ export function BookingDetailsStep() {
 															>
 																Role
 															</FieldLabel>
-															<Select
-																onValueChange={
-																	field.onChange
-																}
+															<Combobox
+																id={field.name}
+																options={relationTypes.map(
+																	(type) => ({
+																		value: type.key,
+																		label: type.label,
+																	}),
+																)}
 																value={
 																	field.value
 																}
-															>
-																<SelectTrigger
-																	id={
-																		field.name
-																	}
-																	aria-invalid={
-																		fieldState.invalid
-																	}
-																>
-																	<SelectValue placeholder="Select role" />
-																</SelectTrigger>
-																<SelectContent>
-																	{relationTypes.map(
-																		(
-																			type,
-																		) => (
-																			<SelectItem
-																				key={
-																					type.id
-																				}
-																				value={
-																					type.key
-																				}
-																			>
-																				{
-																					type.label
-																				}
-																			</SelectItem>
-																		),
-																	)}
-																</SelectContent>
-															</Select>
+																onValueChange={
+																	field.onChange
+																}
+																placeholder="Select role..."
+																searchPlaceholder="Search roles..."
+																emptyText="No roles found."
+																aria-invalid={
+																	fieldState.invalid
+																}
+																onCreate={{
+																	label: "Add Role...",
+																	onClick:
+																		() =>
+																			openCreateConfiguration(
+																				"relation_type",
+																			),
+																}}
+															/>
 															{fieldState.invalid && (
 																<FieldError
 																	errors={[
