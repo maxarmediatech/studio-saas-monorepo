@@ -16,21 +16,23 @@ export default function BookingsLayout({ params, children }: Props) {
 	const { organizationSlug } = use(params);
 	const pathname = usePathname();
 	const baseRoute = `/app/${organizationSlug}/bookings`;
-	const isAtRoot = pathname === baseRoute;
+	const isNewBookingForm = pathname.startsWith(`${baseRoute}/new`);
+
+	// New booking form uses its own full-bleed layout
+	if (isNewBookingForm) {
+		return <>{children}</>;
+	}
 
 	return (
 		<PageContent
-			title={isAtRoot ? "Bookings" : "New Booking"}
-			backHref={isAtRoot ? undefined : baseRoute}
+			title="Bookings"
 			controls={
-				isAtRoot ? (
-					<Button asChild size="sm">
-						<Link href={`${baseRoute}/new/details`}>
-							<PlusIcon className="mr-2 h-4 w-4" />
-							New Booking
-						</Link>
-					</Button>
-				) : undefined
+				<Button asChild size="sm">
+					<Link href={`${baseRoute}/new/details`}>
+						<PlusIcon className="mr-2 h-4 w-4" />
+						New Booking
+					</Link>
+				</Button>
 			}
 		>
 			{children}

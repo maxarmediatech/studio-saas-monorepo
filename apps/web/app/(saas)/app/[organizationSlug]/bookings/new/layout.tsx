@@ -253,7 +253,7 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 	// Show loading state until hydrated
 	if (!hasHydrated) {
 		return (
-			<div className="flex items-center justify-center min-h-[60vh]">
+			<div className="flex h-full flex-1 items-center justify-center">
 				<Loader2Icon className="h-8 w-8 animate-spin text-muted-foreground" />
 			</div>
 		);
@@ -280,7 +280,8 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 			>
 				<div className="flex min-h-0 flex-1 flex-col">
 					<BookingFormLayout
-						className="flex-1 md:-mb-6 lg:-mb-8"
+						className="flex-1"
+						backHref={`/app/${wizard.organizationSlug}/bookings`}
 						stepName={TAB_LABELS[wizard.currentStep]}
 						validationErrorMessage={wizard.validationErrorMessage}
 						stepper={
