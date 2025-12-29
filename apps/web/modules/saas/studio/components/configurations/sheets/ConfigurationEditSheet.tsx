@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useConfigurationParams } from "@saas/studio/hooks/params/use-configuration-params";
 import { ConfigurationForm, type ConfigurationFormValues } from "../ConfigurationForm";
+import { PackageTypeForm, type PackageTypeFormValues } from "../PackageTypeForm";
 import { configurationsApi, configurationsMutations } from "@saas/studio/lib/api";
 
 const CONFIG_TYPE_LABELS: Record<string, string> = {
@@ -66,9 +67,33 @@ export function ConfigurationEditSheet() {
 		});
 	};
 
+	const handlePackageSubmit = async (data: PackageTypeFormValues) => {
+		if (!configurationId) return;
+
+		// Build metadata from package-specific fields
+		const metadata: Record<string, unknown> = {};
+		if (data.bookingType) metadata.bookingType = data.bookingType;
+		if (data.defaultCost) metadata.defaultCost = data.defaultCost;
+		if (data.defaultDeliverables && data.defaultDeliverables.length > 0) {
+			metadata.defaultDeliverables = data.defaultDeliverables;
+		}
+
+		await updateMutation.mutateAsync({
+			id: configurationId,
+			label: data.label,
+			description: data.description || null,
+			color: data.color || null,
+			sortOrder: data.sortOrder,
+			isDefault: data.isDefault,
+			metadata: Object.keys(metadata).length > 0 ? metadata : null,
+		});
+	};
+
+	const isPackageType = configurationType === "package_type";
+
 	return (
 		<Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
-			<SheetContent side="right" className="sm:max-w-lg">
+			<SheetContent side="right" className={isPackageType ? "sm:max-w-xl overflow-y-auto" : "sm:max-w-lg"}>
 				<SheetHeader className="flex flex-row items-center justify-between mb-6">
 					<div>
 						<SheetTitle className="text-xl">Edit {typeLabel}</SheetTitle>
@@ -93,6 +118,13 @@ export function ConfigurationEditSheet() {
 							<Skeleton className="h-10 w-full" />
 						</div>
 					</div>
+				) : isPackageType ? (
+					<PackageTypeForm
+						defaultValues={configuration?.data}
+						onSubmit={handlePackageSubmit}
+						mode="edit"
+						isPending={updateMutation.isPending}
+					/>
 				) : (
 					<ConfigurationForm
 						defaultValues={configuration?.data}
