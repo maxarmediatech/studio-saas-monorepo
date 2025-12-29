@@ -5,7 +5,6 @@ import {
 	SheetContent,
 	SheetHeader,
 	SheetTitle,
-	SheetDescription,
 } from "@repo/ui/components/sheet";
 import { Button } from "@repo/ui/components/button";
 import { Skeleton } from "@repo/ui/components/skeleton";
@@ -93,12 +92,9 @@ export function ConfigurationEditSheet() {
 
 	return (
 		<Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
-			<SheetContent side="right" className={isPackageType ? "sm:max-w-xl overflow-y-auto" : "sm:max-w-lg"}>
+			<SheetContent side="right" className={isPackageType ? "sm:max-w-xl overflow-y-auto" : "sm:max-w-md"}>
 				<SheetHeader className="flex flex-row items-center justify-between mb-6">
-					<div>
-						<SheetTitle className="text-xl">Edit {typeLabel}</SheetTitle>
-						<SheetDescription>Update the {typeLabel.toLowerCase()} details.</SheetDescription>
-					</div>
+					<SheetTitle className="text-xl">Edit {typeLabel}</SheetTitle>
 					<Button
 						size="icon"
 						variant="ghost"
@@ -108,31 +104,33 @@ export function ConfigurationEditSheet() {
 						<X className="h-4 w-4" />
 					</Button>
 				</SheetHeader>
-				{isLoading ? (
-					<div className="space-y-4">
-						<Skeleton className="h-10 w-full" />
-						<Skeleton className="h-10 w-full" />
-						<Skeleton className="h-20 w-full" />
-						<div className="grid grid-cols-2 gap-4">
+				<div className="px-4">
+					{isLoading ? (
+						<div className="space-y-4">
 							<Skeleton className="h-10 w-full" />
 							<Skeleton className="h-10 w-full" />
+							<Skeleton className="h-20 w-full" />
+							<div className="grid grid-cols-2 gap-4">
+								<Skeleton className="h-10 w-full" />
+								<Skeleton className="h-10 w-full" />
+							</div>
 						</div>
-					</div>
-				) : isPackageType ? (
-					<PackageTypeForm
-						defaultValues={configuration?.data}
-						onSubmit={handlePackageSubmit}
-						mode="edit"
-						isPending={updateMutation.isPending}
-					/>
-				) : (
-					<ConfigurationForm
-						defaultValues={configuration?.data}
-						onSubmit={handleSubmit}
-						mode="edit"
-						isPending={updateMutation.isPending}
-					/>
-				)}
+					) : isPackageType ? (
+						<PackageTypeForm
+							defaultValues={configuration?.data}
+							onSubmit={handlePackageSubmit}
+							mode="edit"
+							isPending={updateMutation.isPending}
+						/>
+					) : (
+						<ConfigurationForm
+							defaultValues={configuration?.data}
+							onSubmit={handleSubmit}
+							mode="edit"
+							isPending={updateMutation.isPending}
+						/>
+					)}
+				</div>
 			</SheetContent>
 		</Sheet>
 	);

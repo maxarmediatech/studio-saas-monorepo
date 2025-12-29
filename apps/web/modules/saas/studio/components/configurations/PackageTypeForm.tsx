@@ -6,448 +6,436 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery } from "@tanstack/react-query";
 import {
-	Form,
-	FormControl,
-	FormDescription,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
 } from "@repo/ui/components/form";
 import { Input } from "@repo/ui/components/input";
 import { Textarea } from "@repo/ui/components/textarea";
 import { Button } from "@repo/ui/components/button";
 import { Switch } from "@repo/ui/components/switch";
 import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@repo/ui/components/select";
 import { Card, CardContent } from "@repo/ui/components/card";
-import { Loader2Icon, PlusIcon, TrashIcon } from "lucide-react";
+import { PlusIcon, TrashIcon } from "lucide-react";
 import type { Configuration } from "@repo/api/modules/studio/schemas/configuration";
 import { configurationsApi } from "@saas/studio/lib/api";
 import { DELIVERABLE_TYPE_OPTIONS } from "../bookings/booking-form/booking-form-schema";
+import { CollapsibleSection } from "../ui/CollapsibleSection";
+import { FormActions } from "../ui/FormActions";
 
-// Schema for default deliverables in package metadata
 const defaultDeliverableSchema = z.object({
-	title: z.string().min(1, "Title is required"),
-	deliverableType: z.string().min(1, "Type is required"),
-	quantity: z.number().int().min(1, "Quantity must be at least 1"),
+  title: z.string().min(1, "Title is required"),
+  deliverableType: z.string().min(1, "Type is required"),
+  quantity: z.number().int().min(1, "Quantity must be at least 1"),
 });
 
 const packageTypeFormSchema = z.object({
-	key: z
-		.string()
-		.min(1, "Key is required")
-		.max(100)
-		.regex(
-			/^[a-z][a-z0-9_]*$/,
-			"Key must start with lowercase letter and contain only lowercase letters, numbers, and underscores"
-		),
-	label: z.string().min(1, "Label is required").max(255),
-	description: z.string().max(1000).optional().or(z.literal("")),
-	color: z
-		.string()
-		.regex(/^#[0-9A-Fa-f]{6}$/, "Must be a valid hex color")
-		.optional()
-		.or(z.literal("")),
-	sortOrder: z.number().int().min(0).optional(),
-	isDefault: z.boolean().optional(),
-	// Package-specific metadata fields
-	bookingType: z.string().optional(),
-	defaultCost: z.string().optional(),
-	defaultDeliverables: z.array(defaultDeliverableSchema).optional(),
+  key: z
+    .string()
+    .min(1, "Key is required")
+    .max(100)
+    .regex(
+      /^[a-z][a-z0-9_]*$/,
+      "Key must start with lowercase letter and contain only lowercase letters, numbers, and underscores"
+    ),
+  label: z.string().min(1, "Label is required").max(255),
+  description: z.string().max(1000).optional().or(z.literal("")),
+  color: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/, "Must be a valid hex color")
+    .optional()
+    .or(z.literal("")),
+  sortOrder: z.number().int().min(0).optional(),
+  isDefault: z.boolean().optional(),
+  bookingType: z.string().optional(),
+  defaultCost: z.string().optional(),
+  defaultDeliverables: z.array(defaultDeliverableSchema).optional(),
 });
 
 export type PackageTypeFormValues = z.infer<typeof packageTypeFormSchema>;
 
 interface PackageTypeFormProps {
-	defaultValues?: Configuration;
-	onSubmit: (data: PackageTypeFormValues) => Promise<void>;
-	mode: "create" | "edit";
-	isPending?: boolean;
+  defaultValues?: Configuration;
+  onSubmit: (data: PackageTypeFormValues) => Promise<void>;
+  mode: "create" | "edit";
+  isPending?: boolean;
 }
 
 export function PackageTypeForm({
-	defaultValues,
-	onSubmit,
-	mode,
-	isPending = false,
+  defaultValues,
+  onSubmit,
+  mode,
+  isPending = false,
 }: PackageTypeFormProps) {
-	// Fetch booking types for the dropdown
-	const { data: bookingTypesData } = useQuery(
-		configurationsApi.bookingTypesOptions()
-	);
-	const bookingTypes = bookingTypesData?.data ?? [];
+  const { data: bookingTypesData } = useQuery(
+    configurationsApi.bookingTypesOptions()
+  );
+  const bookingTypes = bookingTypesData?.data ?? [];
 
-	// Extract metadata from defaultValues
-	const metadata = defaultValues?.metadata as {
-		bookingType?: string;
-		defaultCost?: string;
-		defaultDeliverables?: Array<{
-			title: string;
-			deliverableType: string;
-			quantity: number;
-		}>;
-	} | null;
+  const metadata = defaultValues?.metadata as {
+    bookingType?: string;
+    defaultCost?: string;
+    defaultDeliverables?: Array<{
+      title: string;
+      deliverableType: string;
+      quantity: number;
+    }>;
+  } | null;
 
-	const form = useForm<PackageTypeFormValues>({
-		resolver: zodResolver(packageTypeFormSchema),
-		defaultValues: {
-			key: "",
-			label: "",
-			description: "",
-			color: "",
-			sortOrder: 0,
-			isDefault: false,
-			bookingType: "",
-			defaultCost: "",
-			defaultDeliverables: [],
-		},
-	});
+  const form = useForm<PackageTypeFormValues>({
+    resolver: zodResolver(packageTypeFormSchema),
+    defaultValues: {
+      key: "",
+      label: "",
+      description: "",
+      color: "",
+      sortOrder: 0,
+      isDefault: false,
+      bookingType: "",
+      defaultCost: "",
+      defaultDeliverables: [],
+    },
+  });
 
-	const { fields, append, remove } = useFieldArray({
-		control: form.control,
-		name: "defaultDeliverables",
-	});
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "defaultDeliverables",
+  });
 
-	// Reset form when defaultValues change (for edit mode)
-	useEffect(() => {
-		if (defaultValues) {
-			form.reset({
-				key: defaultValues.key,
-				label: defaultValues.label,
-				description: defaultValues.description ?? "",
-				color: defaultValues.color ?? "",
-				sortOrder: defaultValues.sortOrder,
-				isDefault: defaultValues.isDefault,
-				bookingType: metadata?.bookingType ?? "",
-				defaultCost: metadata?.defaultCost ?? "",
-				defaultDeliverables: metadata?.defaultDeliverables ?? [],
-			});
-		}
-	}, [defaultValues, form, metadata]);
+  useEffect(() => {
+    if (defaultValues) {
+      form.reset({
+        key: defaultValues.key,
+        label: defaultValues.label,
+        description: defaultValues.description ?? "",
+        color: defaultValues.color ?? "",
+        sortOrder: defaultValues.sortOrder,
+        isDefault: defaultValues.isDefault,
+        bookingType: metadata?.bookingType ?? "",
+        defaultCost: metadata?.defaultCost ?? "",
+        defaultDeliverables: metadata?.defaultDeliverables ?? [],
+      });
+    }
+  }, [defaultValues, form, metadata]);
 
-	const isSubmitting = form.formState.isSubmitting || isPending;
+  const isSubmitting = form.formState.isSubmitting || isPending;
 
-	const handleAddDeliverable = () => {
-		append({ title: "", deliverableType: "", quantity: 1 });
-	};
+  const handleAddDeliverable = () => {
+    append({ title: "", deliverableType: "", quantity: 1 });
+  };
 
-	return (
-		<Form {...form}>
-			<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-				{mode === "create" && (
-					<FormField
-						control={form.control}
-						name="key"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Key *</FormLabel>
-								<FormControl>
-									<Input placeholder="e.g., premium_wedding" {...field} />
-								</FormControl>
-								<FormDescription>
-									Unique identifier (lowercase, underscores allowed)
-								</FormDescription>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-				)}
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        {/* Essential Fields */}
+        {mode === "create" && (
+          <FormField
+            control={form.control}
+            name="key"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Key *</FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g., premium_wedding" {...field} />
+                </FormControl>
+                <FormDescription>
+                  Unique identifier (lowercase, underscores allowed)
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
-				<FormField
-					control={form.control}
-					name="label"
-					render={({ field }) => (
-						<FormItem>
-							<FormLabel>Label *</FormLabel>
-							<FormControl>
-								<Input placeholder="e.g., Premium Wedding Package" {...field} />
-							</FormControl>
-							<FormMessage />
-						</FormItem>
-					)}
-				/>
+        <FormField
+          control={form.control}
+          name="label"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Label *</FormLabel>
+              <FormControl>
+                <Input placeholder="e.g., Premium Wedding Package" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-				<FormField
-					control={form.control}
-					name="description"
-					render={({ field }) => (
-						<FormItem>
-							<FormLabel>Description</FormLabel>
-							<FormControl>
-								<Textarea
-									placeholder="Optional package description"
-									className="resize-none"
-									rows={2}
-									{...field}
-								/>
-							</FormControl>
-							<FormMessage />
-						</FormItem>
-					)}
-				/>
+        {/* Package Settings (Always Visible - Core Feature) */}
+        <div className="space-y-4 pt-2">
+          <h4 className="text-sm font-medium text-muted-foreground">Package Settings</h4>
 
-				<div className="grid grid-cols-2 gap-4">
-					<FormField
-						control={form.control}
-						name="color"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Color</FormLabel>
-								<FormControl>
-									<div className="flex gap-2">
-										<Input
-											type="color"
-											className="w-12 h-10 p-1 cursor-pointer"
-											value={field.value || "#6B7280"}
-											onChange={(e) => field.onChange(e.target.value)}
-										/>
-										<Input
-											placeholder="#6B7280"
-											{...field}
-											className="flex-1"
-										/>
-									</div>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="bookingType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Booking Type Filter</FormLabel>
+                  <Select
+                    value={field.value || "__all__"}
+                    onValueChange={(value) =>
+                      field.onChange(value === "__all__" ? "" : value)
+                    }
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All booking types" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="__all__">All booking types</SelectItem>
+                      {bookingTypes.map((type) => (
+                        <SelectItem key={type.key} value={type.key}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-					<FormField
-						control={form.control}
-						name="sortOrder"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Sort Order</FormLabel>
-								<FormControl>
-									<Input
-										type="number"
-										min={0}
-										placeholder="0"
-										{...field}
-										value={field.value ?? 0}
-										onChange={(e) =>
-											field.onChange(e.target.value ? Number(e.target.value) : 0)
-										}
-									/>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-				</div>
+            <FormField
+              control={form.control}
+              name="defaultCost"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Default Cost</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
-				{/* Package-specific fields */}
-				<div className="border-t pt-4 mt-4">
-					<h4 className="text-sm font-medium mb-3">Package Settings</h4>
+          {/* Default Deliverables */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-sm font-medium">Default Deliverables</h4>
+                <p className="text-xs text-muted-foreground">
+                  Auto-added when this package is selected
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAddDeliverable}
+              >
+                <PlusIcon className="h-4 w-4 mr-1" />
+                Add
+              </Button>
+            </div>
 
-					<div className="grid grid-cols-2 gap-4">
-						<FormField
-							control={form.control}
-							name="bookingType"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Booking Type Filter</FormLabel>
-									<Select
-										value={field.value || "__all__"}
-										onValueChange={(value) =>
-											field.onChange(value === "__all__" ? "" : value)
-										}
-									>
-										<FormControl>
-											<SelectTrigger>
-												<SelectValue placeholder="All booking types" />
-											</SelectTrigger>
-										</FormControl>
-										<SelectContent>
-											<SelectItem value="__all__">All booking types</SelectItem>
-											{bookingTypes.map((type) => (
-												<SelectItem key={type.key} value={type.key}>
-													{type.label}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-									<FormDescription>
-										Only show this package for specific booking type
-									</FormDescription>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
+            {fields.length === 0 ? (
+              <Card className="border-dashed">
+                <CardContent className="py-4 text-center text-sm text-muted-foreground">
+                  No default deliverables. Click "Add" to include deliverables
+                  with this package.
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-2">
+                {fields.map((field, index) => (
+                  <Card key={field.id}>
+                    <CardContent className="pt-3 pb-2">
+                      <div className="grid grid-cols-[1fr_1fr_70px_32px] gap-2 items-start">
+                        <FormField
+                          control={form.control}
+                          name={`defaultDeliverables.${index}.title`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormControl>
+                                <Input placeholder="Name" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
 
-						<FormField
-							control={form.control}
-							name="defaultCost"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Default Cost</FormLabel>
-									<FormControl>
-										<Input
-											type="number"
-											step="0.01"
-											min="0"
-											placeholder="0.00"
-											{...field}
-										/>
-									</FormControl>
-									<FormDescription>
-										Auto-fills package cost in booking
-									</FormDescription>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-					</div>
-				</div>
+                        <FormField
+                          control={form.control}
+                          name={`defaultDeliverables.${index}.deliverableType`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <Select
+                                value={field.value}
+                                onValueChange={field.onChange}
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Type" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {DELIVERABLE_TYPE_OPTIONS.map((type) => (
+                                    <SelectItem key={type.value} value={type.value}>
+                                      {type.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
 
-				{/* Default Deliverables */}
-				<div className="border-t pt-4 mt-4">
-					<div className="flex items-center justify-between mb-3">
-						<div>
-							<h4 className="text-sm font-medium">Default Deliverables</h4>
-							<p className="text-xs text-muted-foreground">
-								Auto-added when this package is selected
-							</p>
-						</div>
-						<Button
-							type="button"
-							variant="outline"
-							size="sm"
-							onClick={handleAddDeliverable}
-						>
-							<PlusIcon className="h-4 w-4 mr-1" />
-							Add
-						</Button>
-					</div>
+                        <FormField
+                          control={form.control}
+                          name={`defaultDeliverables.${index}.quantity`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  min={1}
+                                  placeholder="Qty"
+                                  {...field}
+                                  onChange={(e) =>
+                                    field.onChange(
+                                      e.target.value ? Number(e.target.value) : 1
+                                    )
+                                  }
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
 
-					{fields.length === 0 ? (
-						<Card className="border-dashed">
-							<CardContent className="py-4 text-center text-sm text-muted-foreground">
-								No default deliverables. Click "Add" to include deliverables
-								with this package.
-							</CardContent>
-						</Card>
-					) : (
-						<div className="space-y-3">
-							{fields.map((field, index) => (
-								<Card key={field.id}>
-									<CardContent className="pt-4 pb-3">
-										<div className="grid grid-cols-[1fr_1fr_80px_32px] gap-2 items-start">
-											<FormField
-												control={form.control}
-												name={`defaultDeliverables.${index}.title`}
-												render={({ field }) => (
-													<FormItem>
-														<FormControl>
-															<Input placeholder="Deliverable name" {...field} />
-														</FormControl>
-														<FormMessage />
-													</FormItem>
-												)}
-											/>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-10 w-10 text-muted-foreground hover:text-destructive"
+                          onClick={() => remove(index)}
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
 
-											<FormField
-												control={form.control}
-												name={`defaultDeliverables.${index}.deliverableType`}
-												render={({ field }) => (
-													<FormItem>
-														<Select
-															value={field.value}
-															onValueChange={field.onChange}
-														>
-															<FormControl>
-																<SelectTrigger>
-																	<SelectValue placeholder="Type" />
-																</SelectTrigger>
-															</FormControl>
-															<SelectContent>
-																{DELIVERABLE_TYPE_OPTIONS.map((type) => (
-																	<SelectItem key={type.value} value={type.value}>
-																		{type.label}
-																	</SelectItem>
-																))}
-															</SelectContent>
-														</Select>
-														<FormMessage />
-													</FormItem>
-												)}
-											/>
+        {/* Advanced Options (Collapsible) */}
+        <CollapsibleSection title="Advanced Options" defaultOpen={mode === "edit"}>
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Description</FormLabel>
+                <FormControl>
+                  <Textarea
+                    placeholder="Optional package description"
+                    className="resize-none"
+                    rows={2}
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-											<FormField
-												control={form.control}
-												name={`defaultDeliverables.${index}.quantity`}
-												render={({ field }) => (
-													<FormItem>
-														<FormControl>
-															<Input
-																type="number"
-																min={1}
-																placeholder="Qty"
-																{...field}
-																onChange={(e) =>
-																	field.onChange(
-																		e.target.value ? Number(e.target.value) : 1
-																	)
-																}
-															/>
-														</FormControl>
-														<FormMessage />
-													</FormItem>
-												)}
-											/>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="color"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Color</FormLabel>
+                  <FormControl>
+                    <div className="flex gap-2">
+                      <Input
+                        type="color"
+                        className="w-12 h-10 p-1 cursor-pointer"
+                        value={field.value || "#6B7280"}
+                        onChange={(e) => field.onChange(e.target.value)}
+                      />
+                      <Input
+                        placeholder="#6B7280"
+                        {...field}
+                        className="flex-1"
+                      />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-											<Button
-												type="button"
-												variant="ghost"
-												size="icon"
-												className="h-10 w-10 text-muted-foreground hover:text-destructive"
-												onClick={() => remove(index)}
-											>
-												<TrashIcon className="h-4 w-4" />
-											</Button>
-										</div>
-									</CardContent>
-								</Card>
-							))}
-						</div>
-					)}
-				</div>
+            <FormField
+              control={form.control}
+              name="sortOrder"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Sort Order</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min={0}
+                      placeholder="0"
+                      {...field}
+                      value={field.value ?? 0}
+                      onChange={(e) =>
+                        field.onChange(e.target.value ? Number(e.target.value) : 0)
+                      }
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
-				<FormField
-					control={form.control}
-					name="isDefault"
-					render={({ field }) => (
-						<FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
-							<div className="space-y-0.5">
-								<FormLabel>Default</FormLabel>
-								<FormDescription>Pre-select this package in forms</FormDescription>
-							</div>
-							<FormControl>
-								<Switch
-									checked={field.value}
-									onCheckedChange={field.onChange}
-								/>
-							</FormControl>
-						</FormItem>
-					)}
-				/>
+          <FormField
+            control={form.control}
+            name="isDefault"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                <div className="space-y-0.5">
+                  <FormLabel>Default</FormLabel>
+                  <FormDescription>Pre-select this package in forms</FormDescription>
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+        </CollapsibleSection>
 
-				<div className="flex justify-end pt-4">
-					<Button type="submit" disabled={isSubmitting}>
-						{isSubmitting && (
-							<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-						)}
-						{mode === "edit" ? "Save Changes" : "Create Package"}
-					</Button>
-				</div>
-			</form>
-		</Form>
-	);
+        <FormActions mode={mode} isSubmitting={isSubmitting} submitLabel={mode === "edit" ? "Save Changes" : "Create Package"} />
+      </form>
+    </Form>
+  );
 }

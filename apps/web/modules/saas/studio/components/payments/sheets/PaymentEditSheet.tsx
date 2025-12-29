@@ -56,7 +56,7 @@ export function PaymentEditSheet() {
 
 	return (
 		<Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
-			<SheetContent side="right" className="sm:max-w-lg">
+			<SheetContent side="right" className="sm:max-w-md">
 				<SheetHeader className="flex flex-row items-center justify-between mb-6">
 					<SheetTitle className="text-xl">Edit Payment</SheetTitle>
 					<Button
@@ -68,27 +68,29 @@ export function PaymentEditSheet() {
 						<X className="h-4 w-4" />
 					</Button>
 				</SheetHeader>
-				{isLoading ? (
-					<div className="space-y-4">
-						<Skeleton className="h-10 w-full" />
-						<div className="grid grid-cols-2 gap-4">
+				<div className="px-4">
+					{isLoading ? (
+						<div className="space-y-4">
 							<Skeleton className="h-10 w-full" />
-							<Skeleton className="h-10 w-full" />
+							<div className="grid grid-cols-2 gap-4">
+								<Skeleton className="h-10 w-full" />
+								<Skeleton className="h-10 w-full" />
+							</div>
+							<div className="grid grid-cols-2 gap-4">
+								<Skeleton className="h-10 w-full" />
+								<Skeleton className="h-10 w-full" />
+							</div>
+							<Skeleton className="h-24 w-full" />
 						</div>
-						<div className="grid grid-cols-2 gap-4">
-							<Skeleton className="h-10 w-full" />
-							<Skeleton className="h-10 w-full" />
-						</div>
-						<Skeleton className="h-24 w-full" />
-					</div>
-				) : (
-					<PaymentForm
-						defaultValues={payment?.data}
-						onSubmit={handleSubmit}
-						mode="edit"
-						isPending={updateMutation.isPending}
-					/>
-				)}
+					) : (
+						<PaymentForm
+							defaultValues={payment?.data}
+							onSubmit={handleSubmit}
+							mode="edit"
+							isPending={updateMutation.isPending}
+						/>
+					)}
+				</div>
 			</SheetContent>
 		</Sheet>
 	);

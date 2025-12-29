@@ -49,7 +49,7 @@ export function ShootCreateSheet() {
 
 	return (
 		<Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
-			<SheetContent side="right" className="sm:max-w-lg overflow-y-auto">
+			<SheetContent side="right" className="sm:max-w-md overflow-y-auto">
 				<SheetHeader className="flex flex-row items-center justify-between mb-6">
 					<SheetTitle className="text-xl">Add Shoot</SheetTitle>
 					<Button
@@ -61,11 +61,13 @@ export function ShootCreateSheet() {
 						<X className="h-4 w-4" />
 					</Button>
 				</SheetHeader>
-				<ShootForm
-					onSubmit={handleSubmit}
-					mode="create"
-					isPending={createMutation.isPending}
-				/>
+				<div className="px-4">
+					<ShootForm
+						onSubmit={handleSubmit}
+						mode="create"
+						isPending={createMutation.isPending}
+					/>
+				</div>
 			</SheetContent>
 		</Sheet>
 	);

@@ -5,7 +5,6 @@ import {
 	SheetContent,
 	SheetHeader,
 	SheetTitle,
-	SheetDescription,
 } from "@repo/ui/components/sheet";
 import { Button } from "@repo/ui/components/button";
 import { X } from "lucide-react";
@@ -91,12 +90,9 @@ export function ConfigurationCreateSheet() {
 
 	return (
 		<Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
-			<SheetContent side="right" className={isPackageType ? "sm:max-w-xl overflow-y-auto" : "sm:max-w-lg"}>
+			<SheetContent side="right" className={isPackageType ? "sm:max-w-xl overflow-y-auto" : "sm:max-w-md"}>
 				<SheetHeader className="flex flex-row items-center justify-between mb-6">
-					<div>
-						<SheetTitle className="text-xl">Add {typeLabel}</SheetTitle>
-						<SheetDescription>Create a new {typeLabel.toLowerCase()}.</SheetDescription>
-					</div>
+					<SheetTitle className="text-xl">Add {typeLabel}</SheetTitle>
 					<Button
 						size="icon"
 						variant="ghost"
@@ -106,19 +102,21 @@ export function ConfigurationCreateSheet() {
 						<X className="h-4 w-4" />
 					</Button>
 				</SheetHeader>
-				{isPackageType ? (
-					<PackageTypeForm
-						onSubmit={handlePackageSubmit}
-						mode="create"
-						isPending={createMutation.isPending}
-					/>
-				) : (
-					<ConfigurationForm
-						onSubmit={handleSubmit}
-						mode="create"
-						isPending={createMutation.isPending}
-					/>
-				)}
+				<div className="px-4">
+					{isPackageType ? (
+						<PackageTypeForm
+							onSubmit={handlePackageSubmit}
+							mode="create"
+							isPending={createMutation.isPending}
+						/>
+					) : (
+						<ConfigurationForm
+							onSubmit={handleSubmit}
+							mode="create"
+							isPending={createMutation.isPending}
+						/>
+					)}
+				</div>
 			</SheetContent>
 		</Sheet>
 	);

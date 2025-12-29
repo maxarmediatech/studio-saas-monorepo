@@ -49,7 +49,7 @@ export function ExpenseCreateSheet() {
 
 	return (
 		<Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
-			<SheetContent side="right" className="sm:max-w-lg">
+			<SheetContent side="right" className="sm:max-w-md">
 				<SheetHeader className="flex flex-row items-center justify-between mb-6">
 					<SheetTitle className="text-xl">Add Expense</SheetTitle>
 					<Button
@@ -61,11 +61,13 @@ export function ExpenseCreateSheet() {
 						<X className="h-4 w-4" />
 					</Button>
 				</SheetHeader>
-				<ExpenseForm
-					onSubmit={handleSubmit}
-					mode="create"
-					isPending={createMutation.isPending}
-				/>
+				<div className="px-4">
+					<ExpenseForm
+						onSubmit={handleSubmit}
+						mode="create"
+						isPending={createMutation.isPending}
+					/>
+				</div>
 			</SheetContent>
 		</Sheet>
 	);
