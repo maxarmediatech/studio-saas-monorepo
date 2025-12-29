@@ -15,16 +15,16 @@ import { Form } from "@repo/ui/components/form";
 import {
 	BookingFormLayout,
 	BookingFormNavigation,
+	BookingFormRootError,
 	type BookingFormValues,
 	BookingMobileStepper,
 	BookingStepperSidebar,
 	bookingFormSchema,
 	cleanupFormArrays,
+	clearApiErrors,
 	defaultBookingValues,
 	formatDecimalForApi,
-	BookingFormRootError,
 	mapApiErrorToForm,
-	clearApiErrors,
 	TAB_LABELS,
 } from "@saas/studio/components/bookings";
 import { useBookingWizard } from "@saas/studio/components/bookings/booking-form/hooks/useBookingWizard";
@@ -41,7 +41,6 @@ import {
 	type PropsWithChildren,
 	useCallback,
 	useEffect,
-	useMemo,
 	useRef,
 	useState,
 } from "react";
@@ -106,7 +105,9 @@ function buildCreateBookingInput(rawValues: BookingFormValues) {
 export default function NewBookingLayout({ children }: PropsWithChildren) {
 	const router = useRouter();
 	const resetForm = useBookingFormStore((state) => state.resetForm);
-	const revalidateSteps = useBookingFormStore((state) => state.revalidateSteps);
+	const revalidateSteps = useBookingFormStore(
+		(state) => state.revalidateSteps,
+	);
 	const hasHydrated = useBookingFormHydrated();
 	const lastSavedAt = useLastSavedAt();
 
@@ -150,7 +151,8 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 		};
 
 		window.addEventListener("beforeunload", handleBeforeUnload);
-		return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+		return () =>
+			window.removeEventListener("beforeunload", handleBeforeUnload);
 	}, [hasHydrated, isDirty]);
 
 	// Handle cancel with confirmation
@@ -212,11 +214,15 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 			const errorStep = mapApiErrorToForm(error, form.setError);
 
 			// Show toast with generic message
-			toast.error("Failed to create booking. Please check the form for errors.");
+			toast.error(
+				"Failed to create booking. Please check the form for errors.",
+			);
 
 			// Navigate to the step with the error if we identified one
 			if (errorStep && errorStep !== wizard.currentStep) {
-				router.push(`/app/${wizard.organizationSlug}/bookings/new/${errorStep}`);
+				router.push(
+					`/app/${wizard.organizationSlug}/bookings/new/${errorStep}`,
+				);
 			}
 		},
 	});
@@ -328,13 +334,17 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 			</form>
 
 			{/* Abandon form confirmation dialog */}
-			<AlertDialog open={showAbandonDialog} onOpenChange={setShowAbandonDialog}>
+			<AlertDialog
+				open={showAbandonDialog}
+				onOpenChange={setShowAbandonDialog}
+			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Discard changes?</AlertDialogTitle>
 						<AlertDialogDescription>
-							You have unsaved changes. Your draft will be saved, but if you
-							leave now any in-progress data may be lost.
+							You have unsaved changes. Your draft will be saved,
+							but if you leave now any in-progress data may be
+							lost.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>

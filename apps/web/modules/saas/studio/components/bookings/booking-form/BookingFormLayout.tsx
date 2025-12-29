@@ -71,7 +71,7 @@ export function BookingFormLayout({
 			</main>
 
 			{/* Stepper Sidebar - Hidden on mobile, right side on desktop */}
-			<aside className="hidden md:flex md:w-[240px] lg:w-[260px] shrink-0 flex-col border-l bg-muted/30">
+			<aside className="hidden md:flex md:w-60 lg:w-65 shrink-0 flex-col border-l bg-muted/30">
 				<div className="flex-1 overflow-y-auto p-4 lg:p-6">
 					{stepper}
 				</div>

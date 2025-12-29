@@ -40,7 +40,7 @@ export function NewActionSwitcher({
 					variant="outline"
 					role="combobox"
 					aria-label="Open quick create menu"
-					className="w-[100px] justify-between"
+					className="w-25 justify-between"
 				>
 					<Plus className="mr-1 size-4 shrink-0" />
 					<span>New</span>
@@ -48,7 +48,7 @@ export function NewActionSwitcher({
 				</Button>
 			</DropdownMenuTrigger>
 
-			<DropdownMenuContent align="end" className="w-[200px]">
+			<DropdownMenuContent align="end" className="w-50">
 				{!hasAnyAction ? (
 					<DropdownMenuItem
 						disabled

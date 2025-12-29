@@ -53,7 +53,7 @@ export function OrganizationSwitcher({
 						logoUrl={studioLogo}
 						className="size-7 rounded-md"
 					/>
-					<span className="max-w-[140px] truncate text-sm font-semibold">
+					<span className="max-w-35 truncate text-sm font-semibold">
 						{studioName}
 					</span>
 					<ChevronDown className="size-3 text-muted-foreground" />
@@ -91,7 +91,7 @@ export function OrganizationSwitcher({
 									logoUrl={organization.logo}
 								/>
 							)}
-							<span className="max-w-[180px] truncate">{organization.name}</span>
+							<span className="max-w-45 truncate">{organization.name}</span>
 						</DropdownMenuItem>
 					))
 				)}
