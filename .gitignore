@@ -45,3 +45,5 @@ dist/
 
 # Continuous Claude cache (local only)
 .claude/cache/
+.code/
+thoughts/
