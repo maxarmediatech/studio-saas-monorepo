@@ -9,6 +9,19 @@ import {
 import { z } from "zod";
 
 /**
+ * Uploaded attachment schema - flat metadata object for file uploads
+ */
+export const uploadedAttachmentSchema = z.object({
+	name: z.string(),
+	size: z.number(),
+	type: z.string(),
+	key: z.string(),
+	url: z.string(),
+});
+
+export type UploadedAttachment = z.infer<typeof uploadedAttachmentSchema>;
+
+/**
  * Decimal string validator for currency inputs.
  * Validates that the string represents a valid decimal number.
  * Does NOT transform the value - form stores raw string, transformation
@@ -153,6 +166,7 @@ export const bookingFormSchema = z.object({
 	packageType: z.string().min(1, "Package type is required"),
 	packageCost: decimalStringSchema,
 	note: z.string().optional(),
+	contractAttachment: uploadedAttachmentSchema.nullable().optional(),
 	participants: participantsArraySchema,
 
 	// Step 2: Shoots
@@ -174,6 +188,7 @@ export const bookingDetailsStepSchema = bookingFormSchema.pick({
 	packageType: true,
 	packageCost: true,
 	note: true,
+	contractAttachment: true,
 	participants: true,
 });
 
@@ -199,6 +214,7 @@ export const defaultBookingValues: BookingFormValues = {
 	packageType: "",
 	packageCost: "0.00",
 	note: "",
+	contractAttachment: null,
 	participants: [
 		{
 			clientId: "",
@@ -241,6 +257,7 @@ export const TAB_FIELD_MAPPING: Record<BookingTab, (keyof BookingFormValues)[]> 
 		"packageType",
 		"packageCost",
 		"note",
+		"contractAttachment",
 		"participants",
 	],
 	shoots: ["shoots"],
