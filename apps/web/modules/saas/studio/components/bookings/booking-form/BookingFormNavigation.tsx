@@ -13,7 +13,6 @@ interface BookingFormNavigationProps {
 	onPrevious: () => void;
 	onNext: () => void;
 	onSkip?: () => void;
-	onCancel: () => void;
 	isFirstStep: boolean;
 	isLastStep: boolean;
 	isPending: boolean;
@@ -30,7 +29,6 @@ export function BookingFormNavigation({
 	onPrevious,
 	onNext,
 	onSkip,
-	onCancel,
 	isFirstStep,
 	isLastStep,
 	isPending,
@@ -55,18 +53,8 @@ export function BookingFormNavigation({
 				</Button>
 			</div>
 
-			{/* Right side: Cancel, Skip, Next/Submit */}
+			{/* Right side: Skip, Next/Submit */}
 			<div className="flex items-center gap-3">
-				<Button
-					type="button"
-					variant="ghost"
-					onClick={onCancel}
-					disabled={isNavigating}
-					className="min-h-11"
-				>
-					Cancel
-				</Button>
-
 				{canSkip && onSkip && !isLastStep && (
 					<Button
 						type="button"

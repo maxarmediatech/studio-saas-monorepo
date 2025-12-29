@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@repo/ui/components/button";
 import { cn } from "@repo/ui/lib/utils";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
@@ -20,6 +21,8 @@ interface BookingFormLayoutProps {
 	backHref?: string;
 	/** Page title */
 	title?: string;
+	/** Cancel handler for the header button */
+	onCancel?: () => void;
 }
 
 /**
@@ -47,6 +50,7 @@ export function BookingFormLayout({
 	validationErrorMessage,
 	backHref,
 	title = "New Booking",
+	onCancel,
 }: BookingFormLayoutProps) {
 	return (
 		<div
@@ -67,17 +71,29 @@ export function BookingFormLayout({
 
 			{/* Header - spans full width, fixed at top */}
 			<header className="shrink-0 border-b bg-background">
-				<div className="flex h-14 items-center gap-2 px-4 sm:h-16 lg:px-6">
-					{backHref && (
-						<Link
-							href={backHref}
-							className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+				<div className="flex h-14 items-center justify-between px-4 sm:h-16 lg:px-6">
+					<div className="flex items-center gap-2">
+						{backHref && (
+							<Link
+								href={backHref}
+								className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+							>
+								<ChevronLeft className="size-5" />
+								<span className="sr-only">Back to bookings</span>
+							</Link>
+						)}
+						<h1 className="text-lg font-semibold">{title}</h1>
+					</div>
+					{onCancel && (
+						<Button
+							type="button"
+							variant="ghost"
+							onClick={onCancel}
+							className="text-muted-foreground"
 						>
-							<ChevronLeft className="size-5" />
-							<span className="sr-only">Back to bookings</span>
-						</Link>
+							Cancel
+						</Button>
 					)}
-					<h1 className="text-lg font-semibold">{title}</h1>
 				</div>
 			</header>
 

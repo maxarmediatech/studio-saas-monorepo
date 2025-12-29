@@ -284,6 +284,7 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 						backHref={`/app/${wizard.organizationSlug}/bookings`}
 						stepName={TAB_LABELS[wizard.currentStep]}
 						validationErrorMessage={wizard.validationErrorMessage}
+						onCancel={handleCancelWithConfirmation}
 						stepper={
 							<BookingStepperSidebar
 								activeStep={wizard.currentStep}
@@ -314,7 +315,6 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 								onPrevious={wizard.previous}
 								onNext={() => void wizard.next()}
 								onSkip={wizard.skip}
-								onCancel={handleCancelWithConfirmation}
 								isFirstStep={wizard.isFirstStep}
 								isLastStep={wizard.isLastStep}
 								isPending={createMutation.isPending}
