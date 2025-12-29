@@ -52,6 +52,10 @@ export async function createDeliverablesBatch(
 				deliverableType: deliverableInput.deliverableType,
 				description: deliverableInput.description ?? null,
 				dueDate: deliverableInput.dueDate ?? null,
+				// Package relationship fields
+				quantity: deliverableInput.quantity ?? 1,
+				cost: deliverableInput.cost ?? null,
+				isPackageIncluded: deliverableInput.isPackageIncluded ?? false,
 				status: "pending",
 				priority: "normal",
 				// Set workflow status to "assigned" if crew is assigned

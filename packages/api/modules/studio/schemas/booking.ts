@@ -247,6 +247,10 @@ const deliverableInputSchema = z.object({
 	description: z.string().max(5000).optional(),
 	dueDate: z.string().optional(),
 	crewAssignments: z.array(deliverableCrewAssignmentInputSchema).optional(),
+	// Package relationship fields
+	quantity: z.number().int().min(1).default(1),
+	cost: moneySchema.optional(), // Only for custom deliverables
+	isPackageIncluded: z.boolean().default(false),
 });
 
 export type DeliverableInput = z.infer<typeof deliverableInputSchema>;
