@@ -305,7 +305,7 @@ const ShootsSection = memo(function ShootsSection({
 	);
 });
 
-// Payments Section - watches: packageCost, payments, paymentSchedules
+// Payments Section - watches: packageCost, payments, paymentSchedules, deliverables
 const PaymentsSection = memo(function PaymentsSection({
 	onNavigateToStep,
 }: {
@@ -314,17 +314,27 @@ const PaymentsSection = memo(function PaymentsSection({
 	const packageCost = useWatch<BookingFormValues, "packageCost">({ name: "packageCost" });
 	const payments = useWatch<BookingFormValues, "payments">({ name: "payments" });
 	const paymentSchedules = useWatch<BookingFormValues, "paymentSchedules">({ name: "paymentSchedules" });
+	const deliverables = useWatch<BookingFormValues, "deliverables">({ name: "deliverables" });
 
-	const costNum = parseFloat(packageCost) || 0;
+	const packageCostNum = parseFloat(packageCost) || 0;
 	const paymentsList = payments ?? [];
 	const schedulesList = paymentSchedules ?? [];
+	const deliverablesList = deliverables ?? [];
+
+	// Calculate custom deliverables cost
+	const customDeliverablesCost = deliverablesList
+		.filter((d) => !d.isPackageIncluded)
+		.reduce((sum, d) => sum + (parseFloat(d.cost ?? "0") || 0), 0);
+
+	// Total booking cost = package + custom deliverables
+	const totalBookingCost = packageCostNum + customDeliverablesCost;
 
 	const totalReceived = paymentsList.reduce(
 		(sum, p) => sum + (parseFloat(p.amount) || 0),
 		0
 	);
 	const paymentPercentage =
-		costNum > 0 ? Math.min(100, Math.round((totalReceived / costNum) * 100)) : 0;
+		totalBookingCost > 0 ? Math.min(100, Math.round((totalReceived / totalBookingCost) * 100)) : 0;
 
 	return (
 		<Card>
@@ -343,7 +353,7 @@ const PaymentsSection = memo(function PaymentsSection({
 					<Progress value={paymentPercentage} className="h-2" />
 					<div className="flex justify-between text-xs text-muted-foreground">
 						<span>{formatCurrency(totalReceived)} received</span>
-						<span>{formatCurrency(costNum - totalReceived)} pending</span>
+						<span>{formatCurrency(totalBookingCost - totalReceived)} pending</span>
 					</div>
 				</div>
 
@@ -414,15 +424,26 @@ const PaymentsSection = memo(function PaymentsSection({
 	);
 });
 
-// Deliverables Section - watches: deliverables
+// Deliverables Section - watches: deliverables, packageCost
 const DeliverablesSection = memo(function DeliverablesSection({
 	onNavigateToStep,
 }: {
 	onNavigateToStep: (step: BookingTab) => void;
 }) {
 	const deliverables = useWatch<BookingFormValues, "deliverables">({ name: "deliverables" });
+	const packageCost = useWatch<BookingFormValues, "packageCost">({ name: "packageCost" });
 
 	const deliverablesList = deliverables ?? [];
+	const packageDeliverables = deliverablesList.filter((d) => d.isPackageIncluded);
+	const customDeliverables = deliverablesList.filter((d) => !d.isPackageIncluded);
+
+	// Calculate total custom deliverables cost
+	const customDeliverablesCost = customDeliverables.reduce(
+		(sum, d) => sum + (parseFloat(d.cost ?? "0") || 0),
+		0
+	);
+	const packageCostNum = parseFloat(packageCost) || 0;
+	const totalBookingCost = packageCostNum + customDeliverablesCost;
 
 	return (
 		<Card>
@@ -432,25 +453,106 @@ const DeliverablesSection = memo(function DeliverablesSection({
 				count={deliverablesList.length}
 				onEdit={() => onNavigateToStep("deliverables")}
 			/>
-			<CardContent>
+			<CardContent className="space-y-4">
 				{deliverablesList.length === 0 ? (
 					<p className="text-sm text-muted-foreground">No deliverables defined</p>
 				) : (
-					<div className="grid gap-2 md:grid-cols-2">
-						{deliverablesList.map((d, i) => (
-							<div key={i} className="p-3 bg-muted/50 rounded-lg">
-								<p className="font-medium">{d.name}</p>
-								<p className="text-sm text-muted-foreground">
-									{d.deliverableType ? getDeliverableType(d.deliverableType) : "—"}
+					<>
+						{/* Package Deliverables */}
+						{packageDeliverables.length > 0 && (
+							<div>
+								<p className="text-sm font-medium mb-2 flex items-center gap-2">
+									<Badge variant="default">Package</Badge>
+									{packageDeliverables.length} deliverable{packageDeliverables.length !== 1 && "s"}
 								</p>
-								{d.dueDate && (
-									<p className="text-xs text-muted-foreground mt-1">
-										Due: {formatDate(d.dueDate)}
-									</p>
-								)}
+								<div className="grid gap-2 md:grid-cols-2">
+									{packageDeliverables.map((d, i) => (
+										<div key={i} className="p-3 bg-primary/5 border-primary/20 border rounded-lg">
+											<div className="flex items-center justify-between">
+												<p className="font-medium">{d.name}</p>
+												{(d.quantity ?? 1) > 1 && (
+													<Badge variant="outline" className="text-xs">
+														x{d.quantity ?? 1}
+													</Badge>
+												)}
+											</div>
+											<p className="text-sm text-muted-foreground">
+												{d.deliverableType ? getDeliverableType(d.deliverableType) : "—"}
+											</p>
+											{d.dueDate && (
+												<p className="text-xs text-muted-foreground mt-1">
+													Due: {formatDate(d.dueDate)}
+												</p>
+											)}
+										</div>
+									))}
+								</div>
 							</div>
-						))}
-					</div>
+						)}
+
+						{/* Custom Deliverables */}
+						{customDeliverables.length > 0 && (
+							<div>
+								<p className="text-sm font-medium mb-2 flex items-center gap-2">
+									<Badge variant="secondary">Custom</Badge>
+									{customDeliverables.length} deliverable{customDeliverables.length !== 1 && "s"}
+								</p>
+								<div className="grid gap-2 md:grid-cols-2">
+									{customDeliverables.map((d, i) => (
+										<div key={i} className="p-3 bg-muted/50 rounded-lg">
+											<div className="flex items-center justify-between">
+												<p className="font-medium">{d.name}</p>
+												<div className="flex items-center gap-2">
+													{(d.quantity ?? 1) > 1 && (
+														<Badge variant="outline" className="text-xs">
+															x{d.quantity ?? 1}
+														</Badge>
+													)}
+													{d.cost && parseFloat(d.cost) > 0 && (
+														<span className="text-sm font-medium text-primary">
+															{formatCurrency(d.cost)}
+														</span>
+													)}
+												</div>
+											</div>
+											<p className="text-sm text-muted-foreground">
+												{d.deliverableType ? getDeliverableType(d.deliverableType) : "—"}
+											</p>
+											{d.dueDate && (
+												<p className="text-xs text-muted-foreground mt-1">
+													Due: {formatDate(d.dueDate)}
+												</p>
+											)}
+										</div>
+									))}
+								</div>
+							</div>
+						)}
+
+						{/* Cost Summary */}
+						{customDeliverablesCost > 0 && (
+							<>
+								<Separator />
+								<div className="flex flex-col gap-2 p-3 bg-muted/50 rounded-lg">
+									<div className="flex justify-between text-sm">
+										<span className="text-muted-foreground">Package Cost</span>
+										<span>{formatCurrency(packageCostNum)}</span>
+									</div>
+									<div className="flex justify-between text-sm">
+										<span className="text-muted-foreground">Custom Deliverables</span>
+										<span>{formatCurrency(customDeliverablesCost)}</span>
+									</div>
+									<Separator />
+									<div className="flex justify-between font-medium">
+										<span>Total Booking Cost</span>
+										<span className="text-primary text-lg">
+											{formatCurrency(totalBookingCost)}
+										</span>
+									</div>
+								</div>
+							</>
+						)}
+					</>
 				)}
 			</CardContent>
 		</Card>

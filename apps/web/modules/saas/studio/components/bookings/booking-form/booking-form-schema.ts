@@ -144,6 +144,23 @@ export const paymentScheduleSchema = z.object({
 export type PaymentScheduleFormValue = z.infer<typeof paymentScheduleSchema>;
 
 /**
+ * Optional decimal string validator for costs that can be left blank.
+ * Empty string is treated as "no cost" (distinct from zero).
+ */
+export const optionalDecimalStringSchema = z
+	.string()
+	.refine(
+		(val) => {
+			if (val === "" || val === undefined) return true; // Allow empty
+			const cleaned = val.replace(/[^\d.]/g, "");
+			const parsed = Number.parseFloat(cleaned);
+			return !Number.isNaN(parsed) && parsed >= 0;
+		},
+		{ message: "Must be a valid positive number" },
+	)
+	.optional();
+
+/**
  * Deliverable schema
  */
 export const deliverableSchema = z.object({
@@ -152,6 +169,10 @@ export const deliverableSchema = z.object({
 	description: z.string().optional(),
 	dueDate: z.string().optional(),
 	crewAssignments: z.array(crewAssignmentSchema).optional(),
+	// Package relationship fields
+	quantity: z.number().int().min(1).default(1),
+	cost: optionalDecimalStringSchema, // Only for custom deliverables (not package-included)
+	isPackageIncluded: z.boolean().default(false),
 });
 
 export type DeliverableFormValue = z.infer<typeof deliverableSchema>;

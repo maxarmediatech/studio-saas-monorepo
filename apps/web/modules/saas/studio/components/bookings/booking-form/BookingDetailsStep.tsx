@@ -113,16 +113,41 @@ export function BookingDetailsStep() {
 		);
 	});
 
-	// Handle package selection - auto-fill cost
+	// Handle package selection - auto-fill cost and deliverables
 	const handlePackageChange = (value: string) => {
 		form.setValue("packageType", value);
 		const selectedPackage = packageTypes.find((p) => p.key === value);
 		if (selectedPackage?.metadata) {
 			const metadata = selectedPackage.metadata as {
 				defaultCost?: string;
+				defaultDeliverables?: Array<{
+					title: string;
+					deliverableType: string;
+					quantity: number;
+				}>;
 			};
+
+			// Auto-fill package cost
 			if (metadata.defaultCost) {
 				form.setValue("packageCost", metadata.defaultCost);
+			}
+
+			// Auto-populate deliverables from package (replaces all existing per design decision)
+			if (metadata.defaultDeliverables && metadata.defaultDeliverables.length > 0) {
+				const packageDeliverables = metadata.defaultDeliverables.map((d) => ({
+					name: d.title,
+					deliverableType: d.deliverableType,
+					quantity: d.quantity,
+					isPackageIncluded: true,
+					description: "",
+					dueDate: "",
+					crewAssignments: [],
+				}));
+				form.setValue("deliverables", packageDeliverables, { shouldDirty: true });
+				toast.info(`${packageDeliverables.length} deliverables added from package`);
+			} else {
+				// Clear deliverables if package has none
+				form.setValue("deliverables", [], { shouldDirty: true });
 			}
 		}
 	};

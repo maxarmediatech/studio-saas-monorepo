@@ -58,8 +58,16 @@ export function BookingDeliverablesStep() {
 			description: "",
 			dueDate: "",
 			crewAssignments: [],
+			quantity: 1,
+			cost: "",
+			isPackageIncluded: false, // Custom deliverable
 		});
 	};
+
+	// Separate package and custom deliverables for display purposes
+	const watchedDeliverables = form.watch("deliverables") ?? [];
+	const packageDeliverables = watchedDeliverables.filter((d) => d.isPackageIncluded);
+	const customDeliverables = watchedDeliverables.filter((d) => !d.isPackageIncluded);
 
 	return (
 		<FieldGroup className="gap-6">
@@ -69,9 +77,16 @@ export function BookingDeliverablesStep() {
 						<CardTitle className="flex items-center gap-2">
 							<PackageIcon className="h-5 w-5" />
 							Deliverables
+							{packageDeliverables.length > 0 && (
+								<Badge variant="secondary" className="ml-1">
+									{packageDeliverables.length} from package
+								</Badge>
+							)}
 						</CardTitle>
 						<p className="text-sm text-muted-foreground mt-1">
-							Define what will be delivered to the client
+							{packageDeliverables.length > 0
+								? "Package deliverables are included. Add custom deliverables below."
+								: "Define what will be delivered to the client"}
 						</p>
 					</div>
 					<Button
@@ -81,7 +96,7 @@ export function BookingDeliverablesStep() {
 						onClick={addNewDeliverable}
 					>
 						<PlusIcon className="mr-2 h-4 w-4" />
-						Add Deliverable
+						Add Custom Deliverable
 					</Button>
 				</CardHeader>
 				<CardContent>
@@ -108,6 +123,9 @@ export function BookingDeliverablesStep() {
 													description: "",
 													dueDate: "",
 													crewAssignments: [],
+													quantity: 1,
+													cost: "",
+													isPackageIncluded: false,
 												})
 											}
 										>
@@ -119,14 +137,18 @@ export function BookingDeliverablesStep() {
 							</div>
 						) : (
 							<FieldGroup className="gap-6">
-								{deliverables.map((deliverable, index) => (
-									<DeliverableCard
-										key={deliverable.id}
-										deliverableIndex={index}
-										crews={crews}
-										onRemove={() => removeDeliverable(index)}
-									/>
-								))}
+								{deliverables.map((deliverable, index) => {
+									const watchedDeliverable = watchedDeliverables[index];
+									return (
+										<DeliverableCard
+											key={deliverable.id}
+											deliverableIndex={index}
+											crews={crews}
+											isPackageIncluded={watchedDeliverable?.isPackageIncluded ?? false}
+											onRemove={() => removeDeliverable(index)}
+										/>
+									);
+								})}
 							</FieldGroup>
 						)}
 					</FieldSet>
@@ -144,12 +166,14 @@ interface DeliverableCardProps {
 		role: string;
 		phoneNumber?: string | null;
 	}>;
+	isPackageIncluded: boolean;
 	onRemove: () => void;
 }
 
 function DeliverableCard({
 	deliverableIndex,
 	crews,
+	isPackageIncluded,
 	onRemove,
 }: DeliverableCardProps) {
 	const form = useFormContext<BookingFormValues>();
@@ -164,13 +188,18 @@ function DeliverableCard({
 	});
 
 	return (
-		<Card className="relative">
+		<Card className={isPackageIncluded ? "border-primary/30 bg-primary/5" : "relative"}>
 			<CardHeader className="flex flex-row items-center justify-between pb-4">
 				<div className="flex items-center gap-2">
 					<PackageIcon className="h-5 w-5 text-muted-foreground" />
 					<CardTitle className="text-base">
 						Deliverable {deliverableIndex + 1}
 					</CardTitle>
+					{isPackageIncluded && (
+						<Badge variant="default" className="ml-1">
+							Package
+						</Badge>
+					)}
 				</div>
 				<Button
 					type="button"
@@ -186,26 +215,29 @@ function DeliverableCard({
 			<CardContent className="space-y-6">
 				{/* Basic Info */}
 				<FieldGroup>
-					<div className="grid gap-4 md:grid-cols-3">
+					{/* Row 1: Name, Type, Quantity */}
+					<div className="grid gap-4 md:grid-cols-4">
 						{/* Deliverable Name */}
-						<Controller
-							name={`deliverables.${deliverableIndex}.name`}
-							control={form.control}
-							render={({ field, fieldState }) => (
-								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>Name</FieldLabel>
-									<Input
-										{...field}
-										id={field.name}
-										placeholder="e.g. Wedding Album"
-										aria-invalid={fieldState.invalid}
-									/>
-									{fieldState.invalid && (
-										<FieldError errors={[fieldState.error]} />
-									)}
-								</Field>
-							)}
-						/>
+						<div className="md:col-span-2">
+							<Controller
+								name={`deliverables.${deliverableIndex}.name`}
+								control={form.control}
+								render={({ field, fieldState }) => (
+									<Field data-invalid={fieldState.invalid}>
+										<FieldLabel htmlFor={field.name}>Name</FieldLabel>
+										<Input
+											{...field}
+											id={field.name}
+											placeholder="e.g. Wedding Album"
+											aria-invalid={fieldState.invalid}
+										/>
+										{fieldState.invalid && (
+											<FieldError errors={[fieldState.error]} />
+										)}
+									</Field>
+								)}
+							/>
+						</div>
 
 						{/* Deliverable Type */}
 						<Controller
@@ -236,6 +268,34 @@ function DeliverableCard({
 							)}
 						/>
 
+						{/* Quantity */}
+						<Controller
+							name={`deliverables.${deliverableIndex}.quantity`}
+							control={form.control}
+							render={({ field, fieldState }) => (
+								<Field data-invalid={fieldState.invalid}>
+									<FieldLabel htmlFor={field.name}>Qty</FieldLabel>
+									<Input
+										id={field.name}
+										name={field.name}
+										ref={field.ref}
+										onBlur={field.onBlur}
+										type="number"
+										min={1}
+										value={String(field.value ?? 1)}
+										onChange={(e) => field.onChange(Number(e.target.value) || 1)}
+										aria-invalid={fieldState.invalid}
+									/>
+									{fieldState.invalid && (
+										<FieldError errors={[fieldState.error]} />
+									)}
+								</Field>
+							)}
+						/>
+					</div>
+
+					{/* Row 2: Due Date and Cost (cost only for custom deliverables) */}
+					<div className="grid gap-4 md:grid-cols-3">
 						{/* Due Date */}
 						<Controller
 							name={`deliverables.${deliverableIndex}.dueDate`}
@@ -258,6 +318,55 @@ function DeliverableCard({
 								</Field>
 							)}
 						/>
+
+						{/* Cost - only for custom deliverables */}
+						{!isPackageIncluded && (
+							<Controller
+								name={`deliverables.${deliverableIndex}.cost`}
+								control={form.control}
+								render={({ field, fieldState }) => (
+									<Field data-invalid={fieldState.invalid}>
+										<FieldLabel htmlFor={field.name}>Cost</FieldLabel>
+										<div className="relative">
+											<span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+												₹
+											</span>
+											<Input
+												{...field}
+												id={field.name}
+												className="pl-7"
+												placeholder="0.00"
+												value={field.value ?? ""}
+												aria-invalid={fieldState.invalid}
+												onChange={(e) => {
+													const value = e.target.value.replace(/[^0-9.]/g, "");
+													const parts = value.split(".");
+													if (parts.length > 2) return;
+													if (parts[1] && parts[1].length > 2) return;
+													field.onChange(value);
+												}}
+											/>
+										</div>
+										<FieldDescription>
+											Additional cost for this deliverable
+										</FieldDescription>
+										{fieldState.invalid && (
+											<FieldError errors={[fieldState.error]} />
+										)}
+									</Field>
+								)}
+							/>
+						)}
+
+						{/* Show "Included" label for package deliverables */}
+						{isPackageIncluded && (
+							<Field>
+								<FieldLabel>Cost</FieldLabel>
+								<div className="flex items-center h-10 px-3 text-sm text-muted-foreground bg-muted/50 rounded-md border">
+									Included in package
+								</div>
+							</Field>
+						)}
 					</div>
 
 					{/* Description */}

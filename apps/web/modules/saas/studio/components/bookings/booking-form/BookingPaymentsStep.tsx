@@ -45,11 +45,19 @@ export function BookingPaymentsStep() {
 	const packageCost = form.watch("packageCost");
 	const payments = form.watch("payments") ?? [];
 	const paymentSchedules = form.watch("paymentSchedules") ?? [];
+	const deliverables = form.watch("deliverables") ?? [];
 
-	// Calculate totals
-	const { totalReceived, totalScheduled, balance, isOverpaid, isFullyPaid } =
+	// Calculate totals including custom deliverable costs
+	const { totalCost, totalReceived, totalScheduled, balance, isOverpaid, isFullyPaid } =
 		useMemo(() => {
-			const cost = parseFloat(packageCost) || 0;
+			const pkgCost = parseFloat(packageCost) || 0;
+			// Sum costs from custom (non-package) deliverables
+			const deliverableCosts = deliverables.reduce((sum, d) => {
+				if (d.isPackageIncluded) return sum; // Package deliverables have no additional cost
+				return sum + (parseFloat(d.cost ?? "") || 0);
+			}, 0);
+			const totalCostValue = pkgCost + deliverableCosts;
+
 			const received = payments.reduce(
 				(sum, p) => sum + (parseFloat(p.amount) || 0),
 				0,
@@ -58,16 +66,17 @@ export function BookingPaymentsStep() {
 				(sum, p) => sum + (parseFloat(p.amount) || 0),
 				0,
 			);
-			const remaining = cost - received;
+			const remaining = totalCostValue - received;
 
 			return {
+				totalCost: totalCostValue,
 				totalReceived: received,
 				totalScheduled: scheduled,
 				balance: remaining,
-				isOverpaid: received > cost,
-				isFullyPaid: received >= cost,
+				isOverpaid: received > totalCostValue,
+				isFullyPaid: received >= totalCostValue,
 			};
-		}, [packageCost, payments, paymentSchedules]);
+		}, [packageCost, payments, paymentSchedules, deliverables]);
 
 	const {
 		fields: paymentFields,
@@ -108,9 +117,9 @@ export function BookingPaymentsStep() {
 				<CardContent>
 					<div className="grid gap-4 grid-cols-2 md:grid-cols-4">
 						<div className="p-4 bg-muted/50 rounded-lg">
-							<p className="text-sm text-muted-foreground">Package Cost</p>
+							<p className="text-sm text-muted-foreground">Total Cost</p>
 							<p className="text-xl md:text-2xl font-bold">
-								{formatCurrency(parseFloat(packageCost) || 0)}
+								{formatCurrency(totalCost)}
 							</p>
 						</div>
 						<div className="p-4 bg-green-50 dark:bg-green-950/30 rounded-lg">
