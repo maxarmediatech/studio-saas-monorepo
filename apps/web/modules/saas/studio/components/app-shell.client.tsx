@@ -110,10 +110,20 @@ export function AppShellClient({
 					onMobileMenuClick={() => setMobileOpen(true)}
 				/>
 
-				{/* Content Card - fixed height, pages handle their own scrolling */}
-				<main className="flex min-h-0 flex-1 flex-col overflow-hidden pt-14 md:rounded-r-xl md:bg-white md:pt-0">
-					{children}
-				</main>
+				{/* Content Card wrapper - relative for corner positioning */}
+				<div className="relative flex min-h-0 flex-1 flex-col">
+					{/* Corner fills to blend with sidebar */}
+					{showSidebar && (
+						<>
+							<div className="absolute -left-2 top-0 z-0 hidden h-3 w-5 bg-neutral-100 md:block" />
+							<div className="absolute -left-2 bottom-0 z-0 hidden h-3 w-5 bg-neutral-100 md:block" />
+						</>
+					)}
+					{/* Content Card - fixed height, pages handle their own scrolling */}
+					<main className="z-10 flex min-h-0 flex-1 flex-col overflow-hidden pt-14 md:rounded-xl md:bg-white md:pt-0">
+						{children}
+					</main>
+				</div>
 			</div>
 
 			{/* Mobile Sidebar */}
