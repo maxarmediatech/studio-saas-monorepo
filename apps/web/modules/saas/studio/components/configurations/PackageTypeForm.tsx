@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -25,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@repo/ui/components/select";
+import { ScrollArea } from "@repo/ui/components/scroll-area";
 import { Card, CardContent } from "@repo/ui/components/card";
 import { PlusIcon, TrashIcon } from "lucide-react";
 import type { Configuration } from "@repo/api/modules/studio/schemas/configuration";
@@ -69,6 +70,7 @@ interface PackageTypeFormProps {
   onSubmit: (data: PackageTypeFormValues) => Promise<void>;
   mode: "create" | "edit";
   isPending?: boolean;
+  onScrollChange?: (isScrolled: boolean) => void;
 }
 
 export function PackageTypeForm({
@@ -76,6 +78,7 @@ export function PackageTypeForm({
   onSubmit,
   mode,
   isPending = false,
+  onScrollChange,
 }: PackageTypeFormProps) {
   const { data: bookingTypesData } = useQuery(
     configurationsApi.bookingTypesOptions()
@@ -134,9 +137,20 @@ export function PackageTypeForm({
     append({ title: "", deliverableType: "", quantity: 1 });
   };
 
+  const handleScroll = useCallback(
+    (event: React.UIEvent<HTMLDivElement>) => {
+      const target = event.target as HTMLDivElement;
+      const isScrolled = target.scrollTop > 0;
+      onScrollChange?.(isScrolled);
+    },
+    [onScrollChange]
+  );
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full min-h-0">
+        <ScrollArea className="flex-1 min-h-0" onScrollCapture={handleScroll}>
+          <div className="px-4 space-y-6 py-4">
         {/* Essential Fields */}
         {mode === "create" && (
           <FormField
@@ -433,8 +447,12 @@ export function PackageTypeForm({
             )}
           />
         </CollapsibleSection>
+          </div>
+        </ScrollArea>
 
-        <FormActions mode={mode} isSubmitting={isSubmitting} submitLabel={mode === "edit" ? "Save Changes" : "Create Package"} />
+        <div className="shrink-0 border-t p-4 bg-background">
+          <FormActions mode={mode} isSubmitting={isSubmitting} submitLabel={mode === "edit" ? "Save Changes" : "Create Package"} />
+        </div>
       </form>
     </Form>
   );

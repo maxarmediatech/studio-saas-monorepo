@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -16,6 +16,7 @@ import {
 import { Input } from "@repo/ui/components/input";
 import { Textarea } from "@repo/ui/components/textarea";
 import { Switch } from "@repo/ui/components/switch";
+import { ScrollArea } from "@repo/ui/components/scroll-area";
 import type { Configuration } from "@repo/api/modules/studio/schemas/configuration";
 import { CollapsibleSection } from "../ui/CollapsibleSection";
 import { FormActions } from "../ui/FormActions";
@@ -47,6 +48,7 @@ interface ConfigurationFormProps {
   onSubmit: (data: ConfigurationFormValues) => Promise<void>;
   mode: "create" | "edit";
   isPending?: boolean;
+  onScrollChange?: (isScrolled: boolean) => void;
 }
 
 export function ConfigurationForm({
@@ -54,6 +56,7 @@ export function ConfigurationForm({
   onSubmit,
   mode,
   isPending = false,
+  onScrollChange,
 }: ConfigurationFormProps) {
   const form = useForm<ConfigurationFormValues>({
     resolver: zodResolver(configurationFormSchema),
@@ -82,9 +85,20 @@ export function ConfigurationForm({
 
   const isSubmitting = form.formState.isSubmitting || isPending;
 
+  const handleScroll = useCallback(
+    (event: React.UIEvent<HTMLDivElement>) => {
+      const target = event.target as HTMLDivElement;
+      const isScrolled = target.scrollTop > 0;
+      onScrollChange?.(isScrolled);
+    },
+    [onScrollChange]
+  );
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full min-h-0">
+        <ScrollArea className="flex-1 min-h-0" onScrollCapture={handleScroll}>
+          <div className="px-4 space-y-6 py-4">
         {/* Essential Fields */}
         {mode === "create" && (
           <FormField
@@ -210,8 +224,12 @@ export function ConfigurationForm({
             )}
           />
         </CollapsibleSection>
+          </div>
+        </ScrollArea>
 
-        <FormActions mode={mode} isSubmitting={isSubmitting} />
+        <div className="shrink-0 border-t p-4 bg-background">
+          <FormActions mode={mode} isSubmitting={isSubmitting} />
+        </div>
       </form>
     </Form>
   );
