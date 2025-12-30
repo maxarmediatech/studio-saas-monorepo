@@ -1,19 +1,17 @@
 "use client";
 
 import { useEffect, useCallback } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@repo/ui/components/form";
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@repo/ui/components/field";
 import { Input } from "@repo/ui/components/input";
 import { Textarea } from "@repo/ui/components/textarea";
 import { Button } from "@repo/ui/components/button";
@@ -147,313 +145,320 @@ export function PackageTypeForm({
   );
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full min-h-0">
-        <ScrollArea className="flex-1 min-h-0" onScrollCapture={handleScroll}>
-          <div className="px-4 space-y-6 py-4">
-        {/* Essential Fields */}
-        {mode === "create" && (
-          <FormField
-            control={form.control}
-            name="key"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Key *</FormLabel>
-                <FormControl>
-                  <Input placeholder="e.g., premium_wedding" {...field} />
-                </FormControl>
-                <FormDescription>
-                  Unique identifier (lowercase, underscores allowed)
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
-
-        <FormField
-          control={form.control}
-          name="label"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Label *</FormLabel>
-              <FormControl>
-                <Input placeholder="e.g., Premium Wedding Package" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* Package Settings (Always Visible - Core Feature) */}
-        <div className="space-y-4 pt-2">
-          <h4 className="text-sm font-medium text-muted-foreground">Package Settings</h4>
-
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="bookingType"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Booking Type Filter</FormLabel>
-                  <Select
-                    value={field.value || "__all__"}
-                    onValueChange={(value) =>
-                      field.onChange(value === "__all__" ? "" : value)
-                    }
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="All booking types" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="__all__">All booking types</SelectItem>
-                      {bookingTypes.map((type) => (
-                        <SelectItem key={type.key} value={type.key}>
-                          {type.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="defaultCost"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Default Cost</FormLabel>
-                  <FormControl>
+    <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full min-h-0">
+      <ScrollArea className="flex-1 min-h-0" onScrollCapture={handleScroll}>
+        <div className="px-4 py-4">
+          <FieldGroup>
+            {/* Essential Fields */}
+            {mode === "create" && (
+              <Controller
+                name="key"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor={field.name}>Key *</FieldLabel>
                     <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="0.00"
                       {...field}
+                      id={field.name}
+                      placeholder="e.g., premium_wedding"
+                      aria-invalid={fieldState.invalid}
                     />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+                    <FieldDescription>
+                      Unique identifier (lowercase, underscores allowed)
+                    </FieldDescription>
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  </Field>
+                )}
+              />
+            )}
+
+            <Controller
+              name="label"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel htmlFor={field.name}>Label *</FieldLabel>
+                  <Input
+                    {...field}
+                    id={field.name}
+                    placeholder="e.g., Premium Wedding Package"
+                    aria-invalid={fieldState.invalid}
+                  />
+                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                </Field>
               )}
             />
-          </div>
 
-          {/* Default Deliverables */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="text-sm font-medium">Default Deliverables</h4>
-                <p className="text-xs text-muted-foreground">
-                  Auto-added when this package is selected
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleAddDeliverable}
-              >
-                <PlusIcon className="h-4 w-4 mr-1" />
-                Add
-              </Button>
-            </div>
+            {/* Package Settings (Always Visible - Core Feature) */}
+            <div className="space-y-4 pt-2">
+              <h4 className="text-sm font-medium text-muted-foreground">Package Settings</h4>
 
-            {fields.length === 0 ? (
-              <Card className="border-dashed">
-                <CardContent className="py-4 text-center text-sm text-muted-foreground">
-                  No default deliverables. Click "Add" to include deliverables
-                  with this package.
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-2">
-                {fields.map((field, index) => (
-                  <Card key={field.id}>
-                    <CardContent className="pt-3 pb-2">
-                      <div className="grid grid-cols-[1fr_1fr_70px_32px] gap-2 items-start">
-                        <FormField
-                          control={form.control}
-                          name={`defaultDeliverables.${index}.title`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormControl>
-                                <Input placeholder="Name" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name={`defaultDeliverables.${index}.deliverableType`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <Select
-                                value={field.value}
-                                onValueChange={field.onChange}
-                              >
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Type" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {DELIVERABLE_TYPE_OPTIONS.map((type) => (
-                                    <SelectItem key={type.value} value={type.value}>
-                                      {type.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name={`defaultDeliverables.${index}.quantity`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  min={1}
-                                  placeholder="Qty"
-                                  {...field}
-                                  onChange={(e) =>
-                                    field.onChange(
-                                      e.target.value ? Number(e.target.value) : 1
-                                    )
-                                  }
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-10 w-10 text-muted-foreground hover:text-destructive"
-                          onClick={() => remove(index)}
+              <FieldGroup>
+                <div className="grid grid-cols-2 gap-4">
+                  <Controller
+                    name="bookingType"
+                    control={form.control}
+                    render={({ field, fieldState }) => (
+                      <Field data-invalid={fieldState.invalid}>
+                        <FieldLabel htmlFor={field.name}>Booking Type Filter</FieldLabel>
+                        <Select
+                          value={field.value || "__all__"}
+                          onValueChange={(value) =>
+                            field.onChange(value === "__all__" ? "" : value)
+                          }
                         >
-                          <TrashIcon className="h-4 w-4" />
-                        </Button>
-                      </div>
+                          <SelectTrigger id={field.name} aria-invalid={fieldState.invalid}>
+                            <SelectValue placeholder="All booking types" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__all__">All booking types</SelectItem>
+                            {bookingTypes.map((type) => (
+                              <SelectItem key={type.key} value={type.key}>
+                                {type.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                      </Field>
+                    )}
+                  />
+
+                  <Controller
+                    name="defaultCost"
+                    control={form.control}
+                    render={({ field, fieldState }) => (
+                      <Field data-invalid={fieldState.invalid}>
+                        <FieldLabel htmlFor={field.name}>Default Cost</FieldLabel>
+                        <Input
+                          {...field}
+                          id={field.name}
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0.00"
+                          aria-invalid={fieldState.invalid}
+                        />
+                        {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                      </Field>
+                    )}
+                  />
+                </div>
+              </FieldGroup>
+
+              {/* Default Deliverables */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-medium">Default Deliverables</h4>
+                    <p className="text-xs text-muted-foreground">
+                      Auto-added when this package is selected
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddDeliverable}
+                  >
+                    <PlusIcon className="h-4 w-4 mr-1" />
+                    Add
+                  </Button>
+                </div>
+
+                {fields.length === 0 ? (
+                  <Card className="border-dashed">
+                    <CardContent className="py-4 text-center text-sm text-muted-foreground">
+                      No default deliverables. Click "Add" to include deliverables
+                      with this package.
                     </CardContent>
                   </Card>
-                ))}
+                ) : (
+                  <div className="space-y-2">
+                    {fields.map((fieldItem, index) => (
+                      <Card key={fieldItem.id}>
+                        <CardContent className="pt-3 pb-2">
+                          <div className="grid grid-cols-[1fr_1fr_70px_32px] gap-2 items-start">
+                            <Controller
+                              name={`defaultDeliverables.${index}.title`}
+                              control={form.control}
+                              render={({ field, fieldState }) => (
+                                <Field data-invalid={fieldState.invalid}>
+                                  <Input
+                                    {...field}
+                                    id={field.name}
+                                    placeholder="Name"
+                                    aria-invalid={fieldState.invalid}
+                                  />
+                                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                                </Field>
+                              )}
+                            />
+
+                            <Controller
+                              name={`defaultDeliverables.${index}.deliverableType`}
+                              control={form.control}
+                              render={({ field, fieldState }) => (
+                                <Field data-invalid={fieldState.invalid}>
+                                  <Select
+                                    value={field.value}
+                                    onValueChange={field.onChange}
+                                  >
+                                    <SelectTrigger id={field.name} aria-invalid={fieldState.invalid}>
+                                      <SelectValue placeholder="Type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {DELIVERABLE_TYPE_OPTIONS.map((type) => (
+                                        <SelectItem key={type.value} value={type.value}>
+                                          {type.label}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                                </Field>
+                              )}
+                            />
+
+                            <Controller
+                              name={`defaultDeliverables.${index}.quantity`}
+                              control={form.control}
+                              render={({ field, fieldState }) => (
+                                <Field data-invalid={fieldState.invalid}>
+                                  <Input
+                                    id={field.name}
+                                    type="number"
+                                    min={1}
+                                    placeholder="Qty"
+                                    value={field.value}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        e.target.value ? Number(e.target.value) : 1
+                                      )
+                                    }
+                                    aria-invalid={fieldState.invalid}
+                                  />
+                                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                                </Field>
+                              )}
+                            />
+
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-10 w-10 text-muted-foreground hover:text-destructive"
+                              onClick={() => remove(index)}
+                            >
+                              <TrashIcon className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        </div>
+            </div>
 
-        {/* Advanced Options (Collapsible) */}
-        <CollapsibleSection title="Advanced Options" defaultOpen={mode === "edit"}>
-          <FormField
-            control={form.control}
-            name="description"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Description</FormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="Optional package description"
-                    className="resize-none"
-                    rows={2}
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="color"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Color</FormLabel>
-                  <FormControl>
-                    <div className="flex gap-2">
-                      <Input
-                        type="color"
-                        className="w-12 h-10 p-1 cursor-pointer"
-                        value={field.value || "#6B7280"}
-                        onChange={(e) => field.onChange(e.target.value)}
-                      />
-                      <Input
-                        placeholder="#6B7280"
+            {/* Advanced Options (Collapsible) */}
+            <CollapsibleSection title="Advanced Options" defaultOpen={mode === "edit"}>
+              <FieldGroup>
+                <Controller
+                  name="description"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel htmlFor={field.name}>Description</FieldLabel>
+                      <Textarea
                         {...field}
-                        className="flex-1"
+                        id={field.name}
+                        placeholder="Optional package description"
+                        className="resize-none"
+                        rows={2}
+                        aria-invalid={fieldState.invalid}
                       />
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                    </Field>
+                  )}
+                />
 
-            <FormField
-              control={form.control}
-              name="sortOrder"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Sort Order</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      min={0}
-                      placeholder="0"
-                      {...field}
-                      value={field.value ?? 0}
-                      onChange={(e) =>
-                        field.onChange(e.target.value ? Number(e.target.value) : 0)
-                      }
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-
-          <FormField
-            control={form.control}
-            name="isDefault"
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
-                <div className="space-y-0.5">
-                  <FormLabel>Default</FormLabel>
-                  <FormDescription>Pre-select this package in forms</FormDescription>
-                </div>
-                <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
+                <div className="grid grid-cols-2 gap-4">
+                  <Controller
+                    name="color"
+                    control={form.control}
+                    render={({ field, fieldState }) => (
+                      <Field data-invalid={fieldState.invalid}>
+                        <FieldLabel htmlFor={field.name}>Color</FieldLabel>
+                        <div className="flex gap-2">
+                          <Input
+                            type="color"
+                            className="w-12 h-10 p-1 cursor-pointer"
+                            value={field.value || "#6B7280"}
+                            onChange={(e) => field.onChange(e.target.value)}
+                          />
+                          <Input
+                            {...field}
+                            id={field.name}
+                            placeholder="#6B7280"
+                            className="flex-1"
+                            aria-invalid={fieldState.invalid}
+                          />
+                        </div>
+                        {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                      </Field>
+                    )}
                   />
-                </FormControl>
-              </FormItem>
-            )}
-          />
-        </CollapsibleSection>
-          </div>
-        </ScrollArea>
 
-        <div className="shrink-0 border-t p-4 bg-background">
-          <FormActions mode={mode} isSubmitting={isSubmitting} submitLabel={mode === "edit" ? "Save Changes" : "Create Package"} />
+                  <Controller
+                    name="sortOrder"
+                    control={form.control}
+                    render={({ field, fieldState }) => (
+                      <Field data-invalid={fieldState.invalid}>
+                        <FieldLabel htmlFor={field.name}>Sort Order</FieldLabel>
+                        <Input
+                          id={field.name}
+                          type="number"
+                          min={0}
+                          placeholder="0"
+                          value={field.value ?? 0}
+                          onChange={(e) =>
+                            field.onChange(e.target.value ? Number(e.target.value) : 0)
+                          }
+                          aria-invalid={fieldState.invalid}
+                        />
+                        {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                      </Field>
+                    )}
+                  />
+                </div>
+
+                <Controller
+                  name="isDefault"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid} orientation="horizontal" className="rounded-lg border p-3">
+                      <div className="space-y-0.5">
+                        <FieldLabel htmlFor={field.name}>Default</FieldLabel>
+                        <FieldDescription>Pre-select this package in forms</FieldDescription>
+                      </div>
+                      <Switch
+                        id={field.name}
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </Field>
+                  )}
+                />
+              </FieldGroup>
+            </CollapsibleSection>
+          </FieldGroup>
         </div>
-      </form>
-    </Form>
+      </ScrollArea>
+
+      <div className="shrink-0 border-t p-4 bg-background">
+        <FormActions mode={mode} isSubmitting={isSubmitting} submitLabel={mode === "edit" ? "Save Changes" : "Create Package"} />
+      </div>
+    </form>
   );
 }

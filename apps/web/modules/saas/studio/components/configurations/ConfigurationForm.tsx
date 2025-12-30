@@ -1,18 +1,16 @@
 "use client";
 
 import { useEffect, useCallback } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@repo/ui/components/form";
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@repo/ui/components/field";
 import { Input } from "@repo/ui/components/input";
 import { Textarea } from "@repo/ui/components/textarea";
 import { Switch } from "@repo/ui/components/switch";
@@ -95,142 +93,148 @@ export function ConfigurationForm({
   );
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full min-h-0">
-        <ScrollArea className="flex-1 min-h-0" onScrollCapture={handleScroll}>
-          <div className="px-4 space-y-6 py-4">
-        {/* Essential Fields */}
-        {mode === "create" && (
-          <FormField
-            control={form.control}
-            name="key"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Key *</FormLabel>
-                <FormControl>
-                  <Input placeholder="e.g., wedding_premium" {...field} />
-                </FormControl>
-                <FormDescription>
-                  Unique identifier (lowercase, underscores allowed)
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
-
-        <FormField
-          control={form.control}
-          name="label"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Label *</FormLabel>
-              <FormControl>
-                <Input placeholder="Display name" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* Advanced Options (Collapsible) */}
-        <CollapsibleSection title="Advanced Options" defaultOpen={mode === "edit"}>
-          <FormField
-            control={form.control}
-            name="description"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Description</FormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="Optional description"
-                    className="resize-none"
-                    rows={2}
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="color"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Color</FormLabel>
-                  <FormControl>
-                    <div className="flex gap-2">
-                      <Input
-                        type="color"
-                        className="w-12 h-10 p-1 cursor-pointer"
-                        value={field.value || "#6B7280"}
-                        onChange={(e) => field.onChange(e.target.value)}
-                      />
-                      <Input
-                        placeholder="#6B7280"
-                        {...field}
-                        className="flex-1"
-                      />
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="sortOrder"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Sort Order</FormLabel>
-                  <FormControl>
+    <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full min-h-0">
+      <ScrollArea className="flex-1 min-h-0" onScrollCapture={handleScroll}>
+        <div className="px-4 py-4">
+          <FieldGroup>
+            {/* Essential Fields */}
+            {mode === "create" && (
+              <Controller
+                name="key"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor={field.name}>Key *</FieldLabel>
                     <Input
-                      type="number"
-                      min={0}
-                      placeholder="0"
                       {...field}
-                      value={field.value ?? 0}
-                      onChange={(e) =>
-                        field.onChange(e.target.value ? Number(e.target.value) : 0)
-                      }
+                      id={field.name}
+                      placeholder="e.g., wedding_premium"
+                      aria-invalid={fieldState.invalid}
                     />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+                    <FieldDescription>
+                      Unique identifier (lowercase, underscores allowed)
+                    </FieldDescription>
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  </Field>
+                )}
+              />
+            )}
+
+            <Controller
+              name="label"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel htmlFor={field.name}>Label *</FieldLabel>
+                  <Input
+                    {...field}
+                    id={field.name}
+                    placeholder="Display name"
+                    aria-invalid={fieldState.invalid}
+                  />
+                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                </Field>
               )}
             />
-          </div>
 
-          <FormField
-            control={form.control}
-            name="isDefault"
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
-                <div className="space-y-0.5">
-                  <FormLabel>Default</FormLabel>
-                  <FormDescription>Pre-select this option in forms</FormDescription>
-                </div>
-                <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
+            {/* Advanced Options (Collapsible) */}
+            <CollapsibleSection title="Advanced Options" defaultOpen={mode === "edit"}>
+              <FieldGroup>
+                <Controller
+                  name="description"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel htmlFor={field.name}>Description</FieldLabel>
+                      <Textarea
+                        {...field}
+                        id={field.name}
+                        placeholder="Optional description"
+                        className="resize-none"
+                        rows={2}
+                        aria-invalid={fieldState.invalid}
+                      />
+                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                    </Field>
+                  )}
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Controller
+                    name="color"
+                    control={form.control}
+                    render={({ field, fieldState }) => (
+                      <Field data-invalid={fieldState.invalid}>
+                        <FieldLabel htmlFor={field.name}>Color</FieldLabel>
+                        <div className="flex gap-2">
+                          <Input
+                            type="color"
+                            className="w-12 h-10 p-1 cursor-pointer"
+                            value={field.value || "#6B7280"}
+                            onChange={(e) => field.onChange(e.target.value)}
+                          />
+                          <Input
+                            {...field}
+                            id={field.name}
+                            placeholder="#6B7280"
+                            className="flex-1"
+                            aria-invalid={fieldState.invalid}
+                          />
+                        </div>
+                        {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                      </Field>
+                    )}
                   />
-                </FormControl>
-              </FormItem>
-            )}
-          />
-        </CollapsibleSection>
-          </div>
-        </ScrollArea>
 
-        <div className="shrink-0 border-t p-4 bg-background">
-          <FormActions mode={mode} isSubmitting={isSubmitting} />
+                  <Controller
+                    name="sortOrder"
+                    control={form.control}
+                    render={({ field, fieldState }) => (
+                      <Field data-invalid={fieldState.invalid}>
+                        <FieldLabel htmlFor={field.name}>Sort Order</FieldLabel>
+                        <Input
+                          id={field.name}
+                          type="number"
+                          min={0}
+                          placeholder="0"
+                          value={field.value ?? 0}
+                          onChange={(e) =>
+                            field.onChange(e.target.value ? Number(e.target.value) : 0)
+                          }
+                          aria-invalid={fieldState.invalid}
+                        />
+                        {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                      </Field>
+                    )}
+                  />
+                </div>
+
+                <Controller
+                  name="isDefault"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid} orientation="horizontal" className="rounded-lg border p-3">
+                      <div className="space-y-0.5">
+                        <FieldLabel htmlFor={field.name}>Default</FieldLabel>
+                        <FieldDescription>Pre-select this option in forms</FieldDescription>
+                      </div>
+                      <Switch
+                        id={field.name}
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </Field>
+                  )}
+                />
+              </FieldGroup>
+            </CollapsibleSection>
+          </FieldGroup>
         </div>
-      </form>
-    </Form>
+      </ScrollArea>
+
+      <div className="shrink-0 border-t p-4 bg-background">
+        <FormActions mode={mode} isSubmitting={isSubmitting} />
+      </div>
+    </form>
   );
 }

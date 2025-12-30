@@ -3,13 +3,11 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { Shoot } from "@repo/api/modules/studio/schemas/shoot";
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@repo/ui/components/form";
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@repo/ui/components/field";
 import { Input } from "@repo/ui/components/input";
 import {
   Select,
@@ -23,7 +21,7 @@ import { ScrollArea } from "@repo/ui/components/scroll-area";
 import { bookingsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useCallback } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { CollapsibleSection } from "../ui/CollapsibleSection";
 import { FormActions } from "../ui/FormActions";
@@ -122,27 +120,25 @@ export function ShootForm({
   );
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full min-h-0">
-        <ScrollArea className="flex-1 min-h-0" onScrollCapture={handleScroll}>
-          <div className="px-4 space-y-6 py-4">
+    <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full min-h-0">
+      <ScrollArea className="flex-1 min-h-0" onScrollCapture={handleScroll}>
+        <div className="px-4 py-4">
+          <FieldGroup>
             {/* Essential Fields */}
-            <FormField
-              control={form.control}
+            <Controller
               name="bookingId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Booking *</FormLabel>
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel htmlFor={field.name}>Booking *</FieldLabel>
                   <Select
                     onValueChange={field.onChange}
                     value={field.value}
                     disabled={mode === "edit" || isLoadingBookings}
                   >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select booking" />
-                      </SelectTrigger>
-                    </FormControl>
+                    <SelectTrigger id={field.name} aria-invalid={fieldState.invalid}>
+                      <SelectValue placeholder="Select booking" />
+                    </SelectTrigger>
                     <SelectContent>
                       {bookings.map((booking) => (
                         <SelectItem key={booking.id} value={booking.id}>
@@ -151,38 +147,39 @@ export function ShootForm({
                       ))}
                     </SelectContent>
                   </Select>
-                  <FormMessage />
-                </FormItem>
+                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                </Field>
               )}
             />
 
-            <FormField
-              control={form.control}
+            <Controller
               name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Name *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter shoot name" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel htmlFor={field.name}>Name *</FieldLabel>
+                  <Input
+                    {...field}
+                    id={field.name}
+                    placeholder="Enter shoot name"
+                    aria-invalid={fieldState.invalid}
+                  />
+                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                </Field>
               )}
             />
 
             <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
+              <Controller
                 name="shootType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Shoot Type *</FormLabel>
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor={field.name}>Shoot Type *</FieldLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                      </FormControl>
+                      <SelectTrigger id={field.name} aria-invalid={fieldState.invalid}>
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
                       <SelectContent>
                         {SHOOT_TYPES.map((type) => (
                           <SelectItem key={type.value} value={type.value}>
@@ -191,117 +188,131 @@ export function ShootForm({
                         ))}
                       </SelectContent>
                     </Select>
-                    <FormMessage />
-                  </FormItem>
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  </Field>
                 )}
               />
 
-              <FormField
-                control={form.control}
+              <Controller
                 name="shootDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Shoot Date *</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor={field.name}>Shoot Date *</FieldLabel>
+                    <Input
+                      {...field}
+                      id={field.name}
+                      type="date"
+                      aria-invalid={fieldState.invalid}
+                    />
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  </Field>
                 )}
               />
             </div>
 
             {/* Scheduling & Location (Collapsible) */}
             <CollapsibleSection title="Time & Location" defaultOpen={mode === "edit"}>
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
+              <FieldGroup>
+                <div className="grid grid-cols-2 gap-4">
+                  <Controller
+                    name="startTime"
+                    control={form.control}
+                    render={({ field, fieldState }) => (
+                      <Field data-invalid={fieldState.invalid}>
+                        <FieldLabel htmlFor={field.name}>Start Time</FieldLabel>
+                        <Input
+                          {...field}
+                          id={field.name}
+                          type="time"
+                          aria-invalid={fieldState.invalid}
+                        />
+                        {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                      </Field>
+                    )}
+                  />
+
+                  <Controller
+                    name="endTime"
+                    control={form.control}
+                    render={({ field, fieldState }) => (
+                      <Field data-invalid={fieldState.invalid}>
+                        <FieldLabel htmlFor={field.name}>End Time</FieldLabel>
+                        <Input
+                          {...field}
+                          id={field.name}
+                          type="time"
+                          aria-invalid={fieldState.invalid}
+                        />
+                        {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                      </Field>
+                    )}
+                  />
+                </div>
+
+                <Controller
+                  name="venue"
                   control={form.control}
-                  name="startTime"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Start Time</FormLabel>
-                      <FormControl>
-                        <Input type="time" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel htmlFor={field.name}>Venue</FieldLabel>
+                      <Input
+                        {...field}
+                        id={field.name}
+                        placeholder="Enter venue name"
+                        aria-invalid={fieldState.invalid}
+                      />
+                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                    </Field>
                   )}
                 />
 
-                <FormField
+                <Controller
+                  name="venueAddress"
                   control={form.control}
-                  name="endTime"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>End Time</FormLabel>
-                      <FormControl>
-                        <Input type="time" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <FormField
-                control={form.control}
-                name="venue"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Venue</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter venue name" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="venueAddress"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Venue Address</FormLabel>
-                    <FormControl>
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel htmlFor={field.name}>Venue Address</FieldLabel>
                       <Textarea
+                        {...field}
+                        id={field.name}
                         placeholder="Enter full address"
                         className="resize-none"
                         rows={2}
-                        {...field}
+                        aria-invalid={fieldState.invalid}
                       />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                    </Field>
+                  )}
+                />
 
-              <FormField
-                control={form.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Notes</FormLabel>
-                    <FormControl>
+                <Controller
+                  name="notes"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel htmlFor={field.name}>Notes</FieldLabel>
                       <Textarea
+                        {...field}
+                        id={field.name}
                         placeholder="Additional notes..."
                         className="resize-none"
                         rows={2}
-                        {...field}
+                        aria-invalid={fieldState.invalid}
                       />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                    </Field>
+                  )}
+                />
+              </FieldGroup>
             </CollapsibleSection>
-          </div>
-        </ScrollArea>
-
-        <div className="shrink-0 border-t p-4 bg-background">
-          <FormActions mode={mode} isSubmitting={isSubmitting} submitLabel={mode === "edit" ? "Save Changes" : "Add Shoot"} />
+          </FieldGroup>
         </div>
-      </form>
-    </Form>
+      </ScrollArea>
+
+      <div className="shrink-0 border-t p-4 bg-background">
+        <FormActions mode={mode} isSubmitting={isSubmitting} submitLabel={mode === "edit" ? "Save Changes" : "Add Shoot"} />
+      </div>
+    </form>
   );
 }

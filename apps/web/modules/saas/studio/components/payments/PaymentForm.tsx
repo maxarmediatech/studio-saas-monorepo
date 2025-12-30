@@ -1,18 +1,16 @@
 "use client";
 
 import { useEffect, useCallback } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@repo/ui/components/form";
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@repo/ui/components/field";
 import { Input } from "@repo/ui/components/input";
 import { Textarea } from "@repo/ui/components/textarea";
 import {
@@ -116,27 +114,25 @@ export function PaymentForm({
   );
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full min-h-0">
-        <ScrollArea className="flex-1 min-h-0" onScrollCapture={handleScroll}>
-          <div className="px-4 space-y-6 py-4">
+    <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full min-h-0">
+      <ScrollArea className="flex-1 min-h-0" onScrollCapture={handleScroll}>
+        <div className="px-4 py-4">
+          <FieldGroup>
             {/* Essential Fields */}
-            <FormField
-              control={form.control}
+            <Controller
               name="bookingId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Booking *</FormLabel>
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel htmlFor={field.name}>Booking *</FieldLabel>
                   <Select
                     onValueChange={field.onChange}
                     value={field.value}
                     disabled={mode === "edit"}
                   >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select booking" />
-                      </SelectTrigger>
-                    </FormControl>
+                    <SelectTrigger id={field.name} aria-invalid={fieldState.invalid}>
+                      <SelectValue placeholder="Select booking" />
+                    </SelectTrigger>
                     <SelectContent>
                       {bookingsLoading ? (
                         <SelectItem value="loading" disabled>
@@ -155,54 +151,52 @@ export function PaymentForm({
                       )}
                     </SelectContent>
                   </Select>
-                  <FormMessage />
-                </FormItem>
+                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                </Field>
               )}
             />
 
             <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
+              <Controller
                 name="amount"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Amount (INR) *</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                          Rs.
-                        </span>
-                        <Input
-                          placeholder="0.00"
-                          className="pl-10"
-                          {...field}
-                          onChange={(e) => {
-                            const value = e.target.value.replace(/[^0-9.]/g, "");
-                            const parts = value.split(".");
-                            if (parts.length > 2) return;
-                            if (parts[1] && parts[1].length > 2) return;
-                            field.onChange(value);
-                          }}
-                        />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor={field.name}>Amount (INR) *</FieldLabel>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                        Rs.
+                      </span>
+                      <Input
+                        {...field}
+                        id={field.name}
+                        placeholder="0.00"
+                        className="pl-10"
+                        aria-invalid={fieldState.invalid}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/[^0-9.]/g, "");
+                          const parts = value.split(".");
+                          if (parts.length > 2) return;
+                          if (parts[1] && parts[1].length > 2) return;
+                          field.onChange(value);
+                        }}
+                      />
+                    </div>
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  </Field>
                 )}
               />
 
-              <FormField
-                control={form.control}
+              <Controller
                 name="paymentMethod"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Payment Method *</FormLabel>
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor={field.name}>Payment Method *</FieldLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select method" />
-                        </SelectTrigger>
-                      </FormControl>
+                      <SelectTrigger id={field.name} aria-invalid={fieldState.invalid}>
+                        <SelectValue placeholder="Select method" />
+                      </SelectTrigger>
                       <SelectContent>
                         {PAYMENT_METHODS.map((method) => (
                           <SelectItem key={method.value} value={method.value}>
@@ -211,70 +205,78 @@ export function PaymentForm({
                         ))}
                       </SelectContent>
                     </Select>
-                    <FormMessage />
-                  </FormItem>
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  </Field>
                 )}
               />
             </div>
 
             {/* Additional Details (Collapsible) */}
             <CollapsibleSection title="Additional Details" defaultOpen={mode === "edit"}>
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="receivedDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Date Received *</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <FieldGroup>
+                <div className="grid grid-cols-2 gap-4">
+                  <Controller
+                    name="receivedDate"
+                    control={form.control}
+                    render={({ field, fieldState }) => (
+                      <Field data-invalid={fieldState.invalid}>
+                        <FieldLabel htmlFor={field.name}>Date Received *</FieldLabel>
+                        <Input
+                          {...field}
+                          id={field.name}
+                          type="date"
+                          aria-invalid={fieldState.invalid}
+                        />
+                        {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                      </Field>
+                    )}
+                  />
 
-                <FormField
-                  control={form.control}
-                  name="transactionReference"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Transaction Reference</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Transaction ID or reference" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+                  <Controller
+                    name="transactionReference"
+                    control={form.control}
+                    render={({ field, fieldState }) => (
+                      <Field data-invalid={fieldState.invalid}>
+                        <FieldLabel htmlFor={field.name}>Transaction Reference</FieldLabel>
+                        <Input
+                          {...field}
+                          id={field.name}
+                          placeholder="Transaction ID or reference"
+                          aria-invalid={fieldState.invalid}
+                        />
+                        {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                      </Field>
+                    )}
+                  />
+                </div>
 
-              <FormField
-                control={form.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Notes</FormLabel>
-                    <FormControl>
+                <Controller
+                  name="notes"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel htmlFor={field.name}>Notes</FieldLabel>
                       <Textarea
+                        {...field}
+                        id={field.name}
                         placeholder="Additional notes"
                         className="resize-none"
                         rows={2}
-                        {...field}
+                        aria-invalid={fieldState.invalid}
                       />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                    </Field>
+                  )}
+                />
+              </FieldGroup>
             </CollapsibleSection>
-          </div>
-        </ScrollArea>
-
-        <div className="shrink-0 border-t p-4 bg-background">
-          <FormActions mode={mode} isSubmitting={isSubmitting} submitLabel={mode === "edit" ? "Save Changes" : "Add Payment"} />
+          </FieldGroup>
         </div>
-      </form>
-    </Form>
+      </ScrollArea>
+
+      <div className="shrink-0 border-t p-4 bg-background">
+        <FormActions mode={mode} isSubmitting={isSubmitting} submitLabel={mode === "edit" ? "Save Changes" : "Add Payment"} />
+      </div>
+    </form>
   );
 }
