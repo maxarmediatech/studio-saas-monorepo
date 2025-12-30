@@ -4,6 +4,7 @@ import { activeOrganizationQueryKey } from "@saas/organizations/lib/api";
 import { SheetProvider } from "@saas/shared/components/sheet-provider";
 import { AppShell } from "@saas/studio/components/app-shell";
 import { GlobalSheets } from "@saas/studio/components/global-sheets";
+import { ClientCallbackProvider } from "@saas/studio/hooks/params/client-callback-context";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { getServerQueryClient } from "@shared/lib/server";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
@@ -52,14 +53,16 @@ export default async function OrganizationLayout({ children, params }: Props) {
 
 	return (
 		<HydrationBoundary state={dehydrate(queryClient)}>
-			<SheetProvider>
-				<AppShell session={session} activeOrganization={organization}>
-					{children}
-				</AppShell>
-				<Suspense fallback={null}>
-					<GlobalSheets />
-				</Suspense>
-			</SheetProvider>
+			<ClientCallbackProvider>
+				<SheetProvider>
+					<AppShell session={session} activeOrganization={organization}>
+						{children}
+					</AppShell>
+					<Suspense fallback={null}>
+						<GlobalSheets />
+					</Suspense>
+				</SheetProvider>
+			</ClientCallbackProvider>
 		</HydrationBoundary>
 	);
 }

@@ -36,29 +36,42 @@ import {
 	UsersIcon,
 	XIcon,
 } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import { toast } from "sonner";
 import { useConfigurationParams } from "@saas/studio/hooks/params/use-configuration-params";
+import { useClientParams } from "@saas/studio/hooks/params/use-client-params";
+import { useClientCallback } from "@saas/studio/hooks/params/client-callback-context";
 import { bookingFormQueries } from "./booking-form-queries";
 import type { BookingFormValues } from "./booking-form-schema";
-import { CreateClientDialog } from "./create-client-dialog";
 
 export function BookingDetailsStep() {
 	const form = useFormContext<BookingFormValues>();
-	const [
-		createClientForParticipantIndex,
-		setCreateClientForParticipantIndex,
-	] = useState<number | null>(null);
 	const [isUploading, setIsUploading] = useState(false);
 	const [isDeleting, setIsDeleting] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	// URL-based configuration sheet params (for "Create New..." actions)
 	const { openCreate: openCreateConfiguration } = useConfigurationParams();
+	const { openCreate: openCreateClient } = useClientParams();
+	const { registerCallback } = useClientCallback();
 
 	// Watch attachment field
 	const contractAttachment = form.watch("contractAttachment");
+
+	// Open client sheet with callback to auto-select the created client
+	const handleAddClient = useCallback(
+		(participantIndex: number) => {
+			registerCallback((clientId: string) => {
+				form.setValue(`participants.${participantIndex}.clientId`, clientId, {
+					shouldDirty: true,
+					shouldValidate: true,
+				});
+			});
+			openCreateClient();
+		},
+		[registerCallback, openCreateClient, form],
+	);
 
 	// Fetch configurations using centralized query options
 	const { data: bookingTypesData } = useQuery(
@@ -233,27 +246,6 @@ export function BookingDetailsStep() {
 
 	return (
 		<FieldGroup className="gap-6">
-			<CreateClientDialog
-				open={createClientForParticipantIndex !== null}
-				onOpenChange={(open) => {
-					if (!open) {
-						setCreateClientForParticipantIndex(null);
-					}
-				}}
-				onCreated={(clientId) => {
-					if (createClientForParticipantIndex === null) {
-						return;
-					}
-
-					form.setValue(
-						`participants.${createClientForParticipantIndex}.clientId`,
-						clientId,
-						{ shouldDirty: true, shouldValidate: true },
-					);
-					setCreateClientForParticipantIndex(null);
-				}}
-			/>
-
 			{/* Booking Information Section */}
 			<Card>
 				<CardHeader>
@@ -667,11 +659,8 @@ export function BookingDetailsStep() {
 																}
 																onCreate={{
 																	label: "Add Client...",
-																	onClick:
-																		() =>
-																			setCreateClientForParticipantIndex(
-																				index,
-																			),
+																	onClick: () =>
+																		handleAddClient(index),
 																}}
 															/>
 															{fieldState.invalid && (

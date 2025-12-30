@@ -44,6 +44,13 @@ export function ClientEditSheet() {
 	const handleSubmit = async (data: ClientFormValues) => {
 		if (!clientId) return;
 
+		// Build metadata object from form fields
+		const metadata: Record<string, string> = {};
+		if (data.location) metadata.location = data.location;
+		if (data.source) metadata.source = data.source;
+		if (data.socialHandle) metadata.socialHandle = data.socialHandle;
+		if (data.notes) metadata.notes = data.notes;
+
 		await updateMutation.mutateAsync({
 			id: clientId,
 			name: data.name,
@@ -51,6 +58,7 @@ export function ClientEditSheet() {
 			phoneNumber: data.phoneNumber || null,
 			alternatePhone: data.alternatePhone || null,
 			address: data.address || null,
+			metadata: Object.keys(metadata).length > 0 ? metadata : null,
 		});
 	};
 

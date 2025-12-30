@@ -14,9 +14,25 @@ import {
 } from "@repo/ui/components/form";
 import { Input } from "@repo/ui/components/input";
 import { Textarea } from "@repo/ui/components/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@repo/ui/components/select";
 import type { Client } from "@repo/api/modules/studio/schemas/client";
 import { CollapsibleSection } from "../ui/CollapsibleSection";
 import { FormActions } from "../ui/FormActions";
+
+const CLIENT_SOURCES = [
+  { value: "word_of_mouth", label: "Word of Mouth" },
+  { value: "instagram", label: "Instagram" },
+  { value: "google", label: "Google" },
+  { value: "referral", label: "Referral" },
+  { value: "website", label: "Website" },
+  { value: "other", label: "Other" },
+] as const;
 
 const clientFormSchema = z.object({
   name: z.string().min(1, "Name is required").max(255),
@@ -32,6 +48,11 @@ const clientFormSchema = z.object({
     .optional()
     .or(z.literal("")),
   address: z.string().max(1000).optional().or(z.literal("")),
+  // Metadata fields
+  location: z.string().max(255).optional().or(z.literal("")),
+  source: z.string().optional().or(z.literal("")),
+  socialHandle: z.string().max(255).optional().or(z.literal("")),
+  notes: z.string().max(2000).optional().or(z.literal("")),
 });
 
 export type ClientFormValues = z.infer<typeof clientFormSchema>;
@@ -49,6 +70,14 @@ export function ClientForm({
   mode,
   isPending = false,
 }: ClientFormProps) {
+  // Extract metadata fields from Client type
+  type ClientMetadata = {
+    location?: string;
+    source?: string;
+    socialHandle?: string;
+    notes?: string;
+  };
+
   const form = useForm<ClientFormValues>({
     resolver: zodResolver(clientFormSchema),
     defaultValues: {
@@ -57,17 +86,26 @@ export function ClientForm({
       phoneNumber: "",
       alternatePhone: "",
       address: "",
+      location: "",
+      source: "",
+      socialHandle: "",
+      notes: "",
     },
   });
 
   useEffect(() => {
     if (defaultValues) {
+      const metadata = (defaultValues.metadata ?? {}) as ClientMetadata;
       form.reset({
         name: defaultValues.name,
         email: defaultValues.email ?? "",
         phoneNumber: defaultValues.phoneNumber ?? "",
         alternatePhone: defaultValues.alternatePhone ?? "",
         address: defaultValues.address ?? "",
+        location: metadata.location ?? "",
+        source: metadata.source ?? "",
+        socialHandle: metadata.socialHandle ?? "",
+        notes: metadata.notes ?? "",
       });
     }
   }, [defaultValues, form]);
@@ -153,6 +191,83 @@ export function ClientForm({
                     placeholder="Enter full address"
                     className="resize-none"
                     rows={2}
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </CollapsibleSection>
+
+        {/* Additional Info (Collapsible) */}
+        <CollapsibleSection title="Additional Info" defaultOpen={mode === "edit"}>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="location"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Location / City</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g. Mumbai, Delhi" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="source"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>How did they find you?</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select source..." />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {CLIENT_SOURCES.map((source) => (
+                        <SelectItem key={source.value} value={source.value}>
+                          {source.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <FormField
+            control={form.control}
+            name="socialHandle"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Social Handle</FormLabel>
+                <FormControl>
+                  <Input placeholder="@instagram_handle" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="notes"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Notes</FormLabel>
+                <FormControl>
+                  <Textarea
+                    placeholder="Preferences, expectations, cultural considerations..."
+                    className="resize-none"
+                    rows={3}
                     {...field}
                   />
                 </FormControl>
