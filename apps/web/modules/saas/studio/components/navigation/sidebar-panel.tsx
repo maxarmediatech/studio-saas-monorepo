@@ -20,7 +20,7 @@ export function SidebarPanel({ module, utilities }: SidebarPanelProps) {
 	const pathname = usePathname();
 
 	return (
-		<div className="scrollbar-hide relative flex h-full w-[calc(var(--sidebar-panel-width)-0.5rem)] flex-col overflow-y-auto overflow-x-hidden rounded-xl bg-neutral-100">
+		<div className="scrollbar-hide relative flex h-full w-[var(--sidebar-panel-width)] flex-col overflow-y-auto overflow-x-hidden rounded-l-xl bg-neutral-100">
 			{/* Navigation Content - animate on module switch */}
 			<div
 				key={module.id}

@@ -111,7 +111,7 @@ export function AppShellClient({
 				/>
 
 				{/* Content Card - fixed height, pages handle their own scrolling */}
-				<main className="flex min-h-0 flex-1 flex-col overflow-hidden pt-14 md:rounded-xl md:bg-white md:pt-0">
+				<main className="flex min-h-0 flex-1 flex-col overflow-hidden pt-14 md:rounded-r-xl md:bg-white md:pt-0">
 					{children}
 				</main>
 			</div>

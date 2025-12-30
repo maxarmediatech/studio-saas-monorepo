@@ -107,7 +107,7 @@ export function DubSidebar({
 					/>
 					<div
 						className={cn(
-							"relative size-full overflow-hidden py-2 pr-2 transition-opacity duration-300",
+							"relative size-full overflow-hidden py-2 transition-opacity duration-300",
 							!showPanel && "opacity-0"
 						)}
 					>
