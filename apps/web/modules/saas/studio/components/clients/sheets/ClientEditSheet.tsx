@@ -6,9 +6,7 @@ import {
 	SheetHeader,
 	SheetTitle,
 } from "@repo/ui/components/sheet";
-import { Button } from "@repo/ui/components/button";
 import { Skeleton } from "@repo/ui/components/skeleton";
-import { X } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useClientParams } from "@saas/studio/hooks/params/use-client-params";
@@ -46,7 +44,7 @@ export function ClientEditSheet() {
 
 		// Build metadata object from form fields
 		const metadata: Record<string, string> = {};
-		if (data.location) metadata.location = data.location;
+		if (data.profession) metadata.profession = data.profession;
 		if (data.source) metadata.source = data.source;
 		if (data.socialHandle) metadata.socialHandle = data.socialHandle;
 		if (data.notes) metadata.notes = data.notes;
@@ -64,21 +62,13 @@ export function ClientEditSheet() {
 
 	return (
 		<Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
-			<SheetContent side="right" className="sm:max-w-md">
-				<SheetHeader className="flex flex-row items-center justify-between mb-6">
+			<SheetContent side="right" className="sm:max-w-md p-0 gap-0 flex flex-col">
+				<SheetHeader className="shrink-0 p-4 border-b">
 					<SheetTitle className="text-xl">Edit Client</SheetTitle>
-					<Button
-						size="icon"
-						variant="ghost"
-						onClick={close}
-						className="h-8 w-8"
-					>
-						<X className="h-4 w-4" />
-					</Button>
 				</SheetHeader>
-				<div className="px-4">
+				<div className="flex-1 min-h-0">
 					{isLoading ? (
-						<div className="space-y-4">
+						<div className="space-y-4 p-4">
 							<Skeleton className="h-10 w-full" />
 							<Skeleton className="h-10 w-full" />
 							<div className="grid grid-cols-2 gap-4">

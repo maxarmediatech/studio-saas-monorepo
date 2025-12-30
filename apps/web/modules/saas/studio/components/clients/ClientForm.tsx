@@ -14,24 +14,18 @@ import {
 } from "@repo/ui/components/form";
 import { Input } from "@repo/ui/components/input";
 import { Textarea } from "@repo/ui/components/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@repo/ui/components/select";
+import { Badge } from "@repo/ui/components/badge";
+import { ScrollArea } from "@repo/ui/components/scroll-area";
 import type { Client } from "@repo/api/modules/studio/schemas/client";
 import { CollapsibleSection } from "../ui/CollapsibleSection";
 import { FormActions } from "../ui/FormActions";
 
-const CLIENT_SOURCES = [
-  { value: "word_of_mouth", label: "Word of Mouth" },
-  { value: "instagram", label: "Instagram" },
-  { value: "google", label: "Google" },
-  { value: "referral", label: "Referral" },
-  { value: "website", label: "Website" },
-  { value: "other", label: "Other" },
+const SOURCE_SUGGESTIONS = [
+  "Word of Mouth",
+  "Instagram",
+  "Google",
+  "Referral",
+  "Website",
 ] as const;
 
 const clientFormSchema = z.object({
@@ -49,7 +43,7 @@ const clientFormSchema = z.object({
     .or(z.literal("")),
   address: z.string().max(1000).optional().or(z.literal("")),
   // Metadata fields
-  location: z.string().max(255).optional().or(z.literal("")),
+  profession: z.string().max(255).optional().or(z.literal("")),
   source: z.string().optional().or(z.literal("")),
   socialHandle: z.string().max(255).optional().or(z.literal("")),
   notes: z.string().max(2000).optional().or(z.literal("")),
@@ -72,7 +66,7 @@ export function ClientForm({
 }: ClientFormProps) {
   // Extract metadata fields from Client type
   type ClientMetadata = {
-    location?: string;
+    profession?: string;
     source?: string;
     socialHandle?: string;
     notes?: string;
@@ -86,7 +80,7 @@ export function ClientForm({
       phoneNumber: "",
       alternatePhone: "",
       address: "",
-      location: "",
+      profession: "",
       source: "",
       socialHandle: "",
       notes: "",
@@ -102,7 +96,7 @@ export function ClientForm({
         phoneNumber: defaultValues.phoneNumber ?? "",
         alternatePhone: defaultValues.alternatePhone ?? "",
         address: defaultValues.address ?? "",
-        location: metadata.location ?? "",
+        profession: metadata.profession ?? "",
         source: metadata.source ?? "",
         socialHandle: metadata.socialHandle ?? "",
         notes: metadata.notes ?? "",
@@ -114,51 +108,18 @@ export function ClientForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {/* Essential Fields */}
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Name *</FormLabel>
-              <FormControl>
-                <Input placeholder="Enter client name" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
-              <FormControl>
-                <Input
-                  type="email"
-                  placeholder="email@example.com"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* Advanced Options (Collapsible) */}
-        <CollapsibleSection title="Contact Details" defaultOpen={mode === "edit"}>
-          <div className="grid grid-cols-2 gap-4">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full min-h-0">
+        <ScrollArea className="flex-1 min-h-0">
+          <div className="px-4 space-y-6 pb-4">
+            {/* Essential Fields */}
             <FormField
               control={form.control}
-              name="phoneNumber"
+              name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Phone</FormLabel>
+                  <FormLabel>Name *</FormLabel>
                   <FormControl>
-                    <Input placeholder="+91 9876543210" {...field} />
+                    <Input placeholder="Enter client name" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -167,117 +128,160 @@ export function ClientForm({
 
             <FormField
               control={form.control}
-              name="alternatePhone"
+              name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Alternate Phone</FormLabel>
+                  <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input placeholder="+91 9876543210" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-
-          <FormField
-            control={form.control}
-            name="address"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Address</FormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="Enter full address"
-                    className="resize-none"
-                    rows={2}
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </CollapsibleSection>
-
-        {/* Additional Info (Collapsible) */}
-        <CollapsibleSection title="Additional Info" defaultOpen={mode === "edit"}>
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="location"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Location / City</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g. Mumbai, Delhi" {...field} />
+                    <Input
+                      type="email"
+                      placeholder="email@example.com"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="source"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>How did they find you?</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+            {/* Contact Details - Always visible */}
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="phoneNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone</FormLabel>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select source..." />
-                      </SelectTrigger>
+                      <Input placeholder="+91 9876543210" {...field} />
                     </FormControl>
-                    <SelectContent>
-                      {CLIENT_SOURCES.map((source) => (
-                        <SelectItem key={source.value} value={source.value}>
-                          {source.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="alternatePhone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Alternate Phone</FormLabel>
+                    <FormControl>
+                      <Input placeholder="+91 9876543210" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="address"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Address</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Enter full address"
+                      className="resize-none"
+                      rows={2}
+                      {...field}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
+            {/* Additional Info (Collapsible) - all fields full width */}
+            <CollapsibleSection title="Additional Info" defaultOpen={mode === "edit"}>
+              <FormField
+                control={form.control}
+                name="profession"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Profession</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. Software Engineer, Doctor" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="source"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>How did they find you?</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="e.g. Instagram, Friend's referral"
+                        {...field}
+                      />
+                    </FormControl>
+                    <div className="flex flex-wrap gap-1.5 pt-1.5">
+                      {SOURCE_SUGGESTIONS.map((suggestion) => (
+                        <Badge
+                          key={suggestion}
+                          variant="outline"
+                          className="cursor-pointer hover:bg-accent transition-colors text-xs"
+                          onClick={() => field.onChange(suggestion)}
+                        >
+                          {suggestion}
+                        </Badge>
+                      ))}
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="socialHandle"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Social Handle</FormLabel>
+                    <FormControl>
+                      <Input placeholder="@instagram_handle" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Notes</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Preferences, expectations, cultural considerations..."
+                        className="resize-none"
+                        rows={3}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CollapsibleSection>
           </div>
+        </ScrollArea>
 
-          <FormField
-            control={form.control}
-            name="socialHandle"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Social Handle</FormLabel>
-                <FormControl>
-                  <Input placeholder="@instagram_handle" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+        <div className="shrink-0 border-t p-4 bg-background">
+          <FormActions
+            mode={mode}
+            isSubmitting={isSubmitting}
+            submitLabel={mode === "edit" ? "Save Changes" : "Add Client"}
           />
-
-          <FormField
-            control={form.control}
-            name="notes"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Notes</FormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="Preferences, expectations, cultural considerations..."
-                    className="resize-none"
-                    rows={3}
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </CollapsibleSection>
-
-        <FormActions mode={mode} isSubmitting={isSubmitting} submitLabel={mode === "edit" ? "Save Changes" : "Add Client"} />
+        </div>
       </form>
     </Form>
   );
