@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import {
 	Sheet,
 	SheetContent,
 	SheetHeader,
 	SheetTitle,
 } from "@repo/ui/components/sheet";
+import { cn } from "@repo/ui/lib/utils";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useClientParams } from "@saas/studio/hooks/params/use-client-params";
@@ -18,6 +20,7 @@ export function ClientCreateSheet() {
 	const { executeCallback, clearCallback } = useClientCallback();
 	const isOpen = Boolean(createClient);
 	const queryClient = useQueryClient();
+	const [isScrolled, setIsScrolled] = useState(false);
 
 	const createMutation = useMutation({
 		...clientsMutations.create(),
@@ -60,7 +63,12 @@ export function ClientCreateSheet() {
 	return (
 		<Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
 			<SheetContent side="right" className="sm:max-w-md p-0 gap-0 flex flex-col">
-				<SheetHeader className="shrink-0 p-4 border-b">
+				<SheetHeader
+					className={cn(
+						"shrink-0 p-4 transition-shadow duration-200",
+						isScrolled && "shadow-[0_4px_12px_-4px_rgba(0,0,0,0.15)]"
+					)}
+				>
 					<SheetTitle className="text-xl">Add Client</SheetTitle>
 				</SheetHeader>
 				<div className="flex-1 min-h-0">
@@ -68,6 +76,7 @@ export function ClientCreateSheet() {
 						onSubmit={handleSubmit}
 						mode="create"
 						isPending={createMutation.isPending}
+						onScrollChange={setIsScrolled}
 					/>
 				</div>
 			</SheetContent>

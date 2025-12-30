@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
 	Sheet,
 	SheetContent,
@@ -7,6 +8,7 @@ import {
 	SheetTitle,
 } from "@repo/ui/components/sheet";
 import { Skeleton } from "@repo/ui/components/skeleton";
+import { cn } from "@repo/ui/lib/utils";
 import { toast } from "sonner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useClientParams } from "@saas/studio/hooks/params/use-client-params";
@@ -21,6 +23,7 @@ export function ClientEditSheet() {
 	const { clientId, close } = useClientParams();
 	const isOpen = Boolean(clientId);
 	const queryClient = useQueryClient();
+	const [isScrolled, setIsScrolled] = useState(false);
 
 	const { data: client, isLoading } = useQuery({
 		...clientsApi.getOptions(clientId!),
@@ -63,7 +66,12 @@ export function ClientEditSheet() {
 	return (
 		<Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
 			<SheetContent side="right" className="sm:max-w-md p-0 gap-0 flex flex-col">
-				<SheetHeader className="shrink-0 p-4 border-b">
+				<SheetHeader
+					className={cn(
+						"shrink-0 p-4 transition-shadow duration-200",
+						isScrolled && "shadow-[0_4px_12px_-4px_rgba(0,0,0,0.15)]"
+					)}
+				>
 					<SheetTitle className="text-xl">Edit Client</SheetTitle>
 				</SheetHeader>
 				<div className="flex-1 min-h-0">
@@ -83,6 +91,7 @@ export function ClientEditSheet() {
 							onSubmit={handleSubmit}
 							mode="edit"
 							isPending={updateMutation.isPending}
+							onScrollChange={setIsScrolled}
 						/>
 					)}
 				</div>

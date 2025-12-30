@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -56,6 +56,7 @@ interface ClientFormProps {
   onSubmit: (data: ClientFormValues) => Promise<void>;
   mode: "create" | "edit";
   isPending?: boolean;
+  onScrollChange?: (isScrolled: boolean) => void;
 }
 
 export function ClientForm({
@@ -63,6 +64,7 @@ export function ClientForm({
   onSubmit,
   mode,
   isPending = false,
+  onScrollChange,
 }: ClientFormProps) {
   // Extract metadata fields from Client type
   type ClientMetadata = {
@@ -106,11 +108,20 @@ export function ClientForm({
 
   const isSubmitting = form.formState.isSubmitting || isPending;
 
+  const handleScroll = useCallback(
+    (event: React.UIEvent<HTMLDivElement>) => {
+      const target = event.target as HTMLDivElement;
+      const isScrolled = target.scrollTop > 0;
+      onScrollChange?.(isScrolled);
+    },
+    [onScrollChange]
+  );
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full min-h-0">
-        <ScrollArea className="flex-1 min-h-0">
-          <div className="px-4 space-y-6 pb-4">
+        <ScrollArea className="flex-1 min-h-0" onScrollCapture={handleScroll}>
+          <div className="px-4 space-y-6 py-4">
             {/* Essential Fields */}
             <FormField
               control={form.control}

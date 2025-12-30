@@ -1,13 +1,14 @@
 "use client";
 
+import { useState, useCallback } from "react";
 import {
 	Sheet,
 	SheetContent,
 	SheetHeader,
 	SheetTitle,
 } from "@repo/ui/components/sheet";
-import { Button } from "@repo/ui/components/button";
-import { X } from "lucide-react";
+import { ScrollArea } from "@repo/ui/components/scroll-area";
+import { cn } from "@repo/ui/lib/utils";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { usePaymentParams } from "@saas/studio/hooks/params/use-payment-params";
@@ -18,6 +19,12 @@ export function PaymentCreateSheet() {
 	const { createPayment, close } = usePaymentParams();
 	const isOpen = Boolean(createPayment);
 	const queryClient = useQueryClient();
+	const [isScrolled, setIsScrolled] = useState(false);
+
+	const handleScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
+		const target = event.target as HTMLDivElement;
+		setIsScrolled(target.scrollTop > 0);
+	}, []);
 
 	const createMutation = useMutation({
 		...studioPaymentsMutations.createReceived(),
@@ -44,25 +51,24 @@ export function PaymentCreateSheet() {
 
 	return (
 		<Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
-			<SheetContent side="right" className="sm:max-w-md">
-				<SheetHeader className="flex flex-row items-center justify-between mb-6">
+			<SheetContent side="right" className="sm:max-w-md p-0 gap-0 flex flex-col">
+				<SheetHeader
+					className={cn(
+						"shrink-0 p-4 transition-shadow duration-200",
+						isScrolled && "shadow-[0_4px_12px_-4px_rgba(0,0,0,0.15)]"
+					)}
+				>
 					<SheetTitle className="text-xl">Record Payment</SheetTitle>
-					<Button
-						size="icon"
-						variant="ghost"
-						onClick={close}
-						className="h-8 w-8"
-					>
-						<X className="h-4 w-4" />
-					</Button>
 				</SheetHeader>
-				<div className="px-4">
-					<PaymentForm
-						onSubmit={handleSubmit}
-						mode="create"
-						isPending={createMutation.isPending}
-					/>
-				</div>
+				<ScrollArea className="flex-1 min-h-0" onScrollCapture={handleScroll}>
+					<div className="px-4 py-4">
+						<PaymentForm
+							onSubmit={handleSubmit}
+							mode="create"
+							isPending={createMutation.isPending}
+						/>
+					</div>
+				</ScrollArea>
 			</SheetContent>
 		</Sheet>
 	);
