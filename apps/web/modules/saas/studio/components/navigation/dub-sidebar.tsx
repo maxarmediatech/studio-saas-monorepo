@@ -12,6 +12,7 @@ import type {
 import { SidebarRail } from "./sidebar-rail";
 import { SidebarPanel } from "./sidebar-panel";
 import { SettingsPanel } from "./settings-panel";
+import { useSidebar } from "./sidebar-context";
 
 const SIDEBAR_WIDTH = 304;
 const SIDEBAR_RAIL_WIDTH = 64;
@@ -77,8 +78,12 @@ export function DubSidebar({
 	userName,
 	userImage,
 }: DubSidebarProps) {
-	// Show panel when we have an active module OR are in a special area
-	const showPanel = activeModule !== null || currentArea !== "default";
+	const { isPanelOpen } = useSidebar();
+
+	// Has content to show (module or special area)
+	const hasContent = activeModule !== null || currentArea !== "default";
+	// Show panel when: has content AND user hasn't manually collapsed it
+	const showPanel = hasContent && isPanelOpen;
 
 	return (
 		<TooltipProvider delayDuration={0}>
@@ -93,6 +98,8 @@ export function DubSidebar({
 						"--sidebar-panel-width": `${SIDEBAR_PANEL_WIDTH}px`,
 					} as CSSProperties
 				}
+				data-panel-state={isPanelOpen ? "expanded" : "collapsed"}
+				data-has-content={hasContent}
 			>
 				<nav className="grid size-full grid-cols-[var(--sidebar-rail-width)_1fr]">
 					<SidebarRail

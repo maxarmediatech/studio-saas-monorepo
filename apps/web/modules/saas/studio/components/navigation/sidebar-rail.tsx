@@ -20,6 +20,7 @@ import { OrganizationLogo } from "@saas/organizations/components/OrganizationLog
 import { UserAvatar } from "@shared/components/UserAvatar";
 import type { RailIconConfig } from "../../lib/navigation/types";
 import { IconByName } from "./icon-registry";
+import { SidebarTrigger } from "./sidebar-trigger";
 
 interface SidebarRailProps {
 	studioSlug: string;
@@ -121,8 +122,11 @@ export function SidebarRail({
 				</div>
 			</div>
 
-			{/* Bottom: Settings + Help + User */}
+			{/* Bottom: Collapse + Settings + Help + User */}
 			<div className="flex flex-col items-center gap-3 py-3">
+				{/* Panel Collapse/Expand */}
+				<SidebarTrigger className="size-11 text-neutral-600 hover:bg-black/5 active:bg-black/10" />
+
 				{/* Settings Icon */}
 				<Tooltip>
 					<TooltipTrigger asChild>

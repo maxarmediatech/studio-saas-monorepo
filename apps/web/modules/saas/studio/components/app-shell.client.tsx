@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import * as React from "react";
+import { cn } from "@repo/ui/lib/utils";
 import type { HeaderCapabilities } from "../lib/capability.server";
 import type {
 	NavAreaConfig,
@@ -12,6 +13,7 @@ import type {
 import { findModuleByPath } from "../lib/navigation/utils";
 import { DubSidebar } from "./navigation/dub-sidebar";
 import { MobileSidebar } from "./navigation/mobile-sidebar";
+import { SidebarProvider, useSidebar } from "./navigation/sidebar-context";
 import { SiteHeader } from "./site-header";
 
 interface AppShellClientProps {
@@ -32,7 +34,15 @@ interface AppShellClientProps {
  * Client component that renders the shell layout.
  * Dub-style: gray background with white rounded content card.
  */
-export function AppShellClient({
+export function AppShellClient(props: AppShellClientProps) {
+	return (
+		<SidebarProvider>
+			<AppShellContent {...props} />
+		</SidebarProvider>
+	);
+}
+
+function AppShellContent({
 	studioSlug,
 	studioName,
 	studioLogo,
@@ -47,6 +57,7 @@ export function AppShellClient({
 }: AppShellClientProps) {
 	const pathname = usePathname();
 	const [mobileOpen, setMobileOpen] = React.useState(false);
+	const { isPanelOpen } = useSidebar();
 
 	const hasModules = modules.length > 0;
 
@@ -82,6 +93,11 @@ export function AppShellClient({
 	// Show sidebar when we have modules or are in a special area (like settings)
 	const showSidebar = hasModules || currentArea !== "default";
 
+	// Has content in sidebar panel (module or special area)
+	const hasContent = activeModule !== null || currentArea !== "default";
+	// Show corner fills only when panel is actually visible
+	const showCornerFills = showSidebar && hasContent && isPanelOpen;
+
 	return (
 		<div className="min-h-screen bg-neutral-200 md:grid md:grid-cols-[min-content_minmax(0,1fr)]">
 			{/* Desktop Sidebar */}
@@ -112,13 +128,19 @@ export function AppShellClient({
 
 				{/* Content Card wrapper - relative for corner positioning */}
 				<div className="relative flex min-h-0 flex-1 flex-col">
-					{/* Corner fills to blend with sidebar */}
-					{showSidebar && (
-						<>
-							<div className="absolute -left-2 top-0 z-0 hidden h-3 w-5 bg-neutral-100 md:block" />
-							<div className="absolute -left-2 bottom-0 z-0 hidden h-3 w-5 bg-neutral-100 md:block" />
-						</>
-					)}
+					{/* Corner fills to blend with sidebar - only show when panel is expanded */}
+					<div
+						className={cn(
+							"absolute -left-2 top-0 z-0 hidden h-3 w-5 bg-neutral-100 transition-opacity duration-300 md:block",
+							showCornerFills ? "opacity-100" : "opacity-0"
+						)}
+					/>
+					<div
+						className={cn(
+							"absolute -left-2 bottom-0 z-0 hidden h-3 w-5 bg-neutral-100 transition-opacity duration-300 md:block",
+							showCornerFills ? "opacity-100" : "opacity-0"
+						)}
+					/>
 					{/* Content Card - fixed height, pages handle their own scrolling */}
 					<main className="z-10 flex min-h-0 flex-1 flex-col overflow-hidden pt-14 md:rounded-xl md:bg-white md:pt-0">
 						{children}
