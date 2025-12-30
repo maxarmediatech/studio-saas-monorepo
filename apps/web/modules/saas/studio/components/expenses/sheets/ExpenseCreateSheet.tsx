@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import {
 	Sheet,
 	SheetContent,
 	SheetHeader,
 	SheetTitle,
 } from "@repo/ui/components/sheet";
-import { ScrollArea } from "@repo/ui/components/scroll-area";
 import { cn } from "@repo/ui/lib/utils";
 import { useExpenseParams } from "@saas/studio/hooks/params/use-expense-params";
 import { expensesMutations, studioQueryKeys } from "@saas/studio/lib/api";
@@ -20,11 +19,6 @@ export function ExpenseCreateSheet() {
 	const isOpen = Boolean(createExpense);
 	const queryClient = useQueryClient();
 	const [isScrolled, setIsScrolled] = useState(false);
-
-	const handleScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
-		const target = event.target as HTMLDivElement;
-		setIsScrolled(target.scrollTop > 0);
-	}, []);
 
 	const createMutation = useMutation({
 		...expensesMutations.create(),
@@ -65,15 +59,14 @@ export function ExpenseCreateSheet() {
 				>
 					<SheetTitle className="text-xl">Add Expense</SheetTitle>
 				</SheetHeader>
-				<ScrollArea className="flex-1 min-h-0" onScrollCapture={handleScroll}>
-					<div className="px-4 py-4">
-						<ExpenseForm
-							onSubmit={handleSubmit}
-							mode="create"
-							isPending={createMutation.isPending}
-						/>
-					</div>
-				</ScrollArea>
+				<div className="flex-1 min-h-0">
+					<ExpenseForm
+						onSubmit={handleSubmit}
+						mode="create"
+						isPending={createMutation.isPending}
+						onScrollChange={setIsScrolled}
+					/>
+				</div>
 			</SheetContent>
 		</Sheet>
 	);

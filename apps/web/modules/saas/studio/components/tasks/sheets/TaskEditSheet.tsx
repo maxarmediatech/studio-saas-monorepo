@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import {
 	Sheet,
 	SheetContent,
 	SheetHeader,
 	SheetTitle,
 } from "@repo/ui/components/sheet";
-import { ScrollArea } from "@repo/ui/components/scroll-area";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
 import { toast } from "sonner";
@@ -25,11 +24,6 @@ export function TaskEditSheet() {
 	const isOpen = Boolean(taskId);
 	const queryClient = useQueryClient();
 	const [isScrolled, setIsScrolled] = useState(false);
-
-	const handleScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
-		const target = event.target as HTMLDivElement;
-		setIsScrolled(target.scrollTop > 0);
-	}, []);
 
 	const { data: task, isLoading } = useQuery({
 		...tasksApi.getOptions(taskId!),
@@ -72,29 +66,28 @@ export function TaskEditSheet() {
 				>
 					<SheetTitle className="text-xl">Edit Task</SheetTitle>
 				</SheetHeader>
-				<ScrollArea className="flex-1 min-h-0" onScrollCapture={handleScroll}>
-					<div className="px-4 py-4">
-						{isLoading ? (
-							<div className="space-y-4">
+				<div className="flex-1 min-h-0">
+					{isLoading ? (
+						<div className="space-y-4 px-4 py-4">
+							<Skeleton className="h-10 w-full" />
+							<Skeleton className="h-10 w-full" />
+							<Skeleton className="h-24 w-full" />
+							<div className="grid grid-cols-2 gap-4">
 								<Skeleton className="h-10 w-full" />
-								<Skeleton className="h-10 w-full" />
-								<Skeleton className="h-24 w-full" />
-								<div className="grid grid-cols-2 gap-4">
-									<Skeleton className="h-10 w-full" />
-									<Skeleton className="h-10 w-full" />
-								</div>
 								<Skeleton className="h-10 w-full" />
 							</div>
-						) : (
-							<TaskForm
-								defaultValues={task?.data}
-								onSubmit={handleSubmit}
-								mode="edit"
-								isPending={updateMutation.isPending}
-							/>
-						)}
-					</div>
-				</ScrollArea>
+							<Skeleton className="h-10 w-full" />
+						</div>
+					) : (
+						<TaskForm
+							defaultValues={task?.data}
+							onSubmit={handleSubmit}
+							mode="edit"
+							isPending={updateMutation.isPending}
+							onScrollChange={setIsScrolled}
+						/>
+					)}
+				</div>
 			</SheetContent>
 		</Sheet>
 	);

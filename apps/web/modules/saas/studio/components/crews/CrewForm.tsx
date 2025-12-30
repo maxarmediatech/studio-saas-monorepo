@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@repo/ui/components/select";
+import { ScrollArea } from "@repo/ui/components/scroll-area";
 import type { Crew } from "@repo/api/modules/studio/schemas/crew";
 import { CollapsibleSection } from "../ui/CollapsibleSection";
 import { FormActions } from "../ui/FormActions";
@@ -61,6 +62,7 @@ interface CrewFormProps {
   onSubmit: (data: CrewFormValues) => Promise<void>;
   mode: "create" | "edit";
   isPending?: boolean;
+  onScrollChange?: (isScrolled: boolean) => void;
 }
 
 export function CrewForm({
@@ -68,6 +70,7 @@ export function CrewForm({
   onSubmit,
   mode,
   isPending = false,
+  onScrollChange,
 }: CrewFormProps) {
   const form = useForm<CrewFormValues>({
     resolver: zodResolver(crewFormSchema),
@@ -96,64 +99,29 @@ export function CrewForm({
 
   const isSubmitting = form.formState.isSubmitting || isPending;
 
+  const handleScroll = useCallback(
+    (event: React.UIEvent<HTMLDivElement>) => {
+      const target = event.target as HTMLDivElement;
+      const isScrolled = target.scrollTop > 0;
+      onScrollChange?.(isScrolled);
+    },
+    [onScrollChange]
+  );
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {/* Essential Fields */}
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Name *</FormLabel>
-              <FormControl>
-                <Input placeholder="Enter name" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="role"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Role *</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select role" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {CREW_ROLES.map((role) => (
-                    <SelectItem key={role.value} value={role.value}>
-                      {role.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* Advanced Options (Collapsible) */}
-        <CollapsibleSection title="Contact & Details" defaultOpen={mode === "edit"}>
-          <div className="grid grid-cols-2 gap-4">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full min-h-0">
+        <ScrollArea className="flex-1 min-h-0" onScrollCapture={handleScroll}>
+          <div className="px-4 space-y-6 py-4">
+            {/* Essential Fields */}
             <FormField
               control={form.control}
-              name="email"
+              name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>Name *</FormLabel>
                   <FormControl>
-                    <Input
-                      type="email"
-                      placeholder="email@example.com"
-                      {...field}
-                    />
+                    <Input placeholder="Enter name" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -162,36 +130,20 @@ export function CrewForm({
 
             <FormField
               control={form.control}
-              name="phoneNumber"
+              name="role"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Phone</FormLabel>
-                  <FormControl>
-                    <Input placeholder="+91 9876543210" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="status"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Status *</FormLabel>
+                  <FormLabel>Role *</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select status" />
+                        <SelectValue placeholder="Select role" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {CREW_STATUSES.map((status) => (
-                        <SelectItem key={status.value} value={status.value}>
-                          {status.label}
+                      {CREW_ROLES.map((role) => (
+                        <SelectItem key={role.value} value={role.value}>
+                          {role.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -201,23 +153,89 @@ export function CrewForm({
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="dailyRate"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Daily Rate (INR)</FormLabel>
-                  <FormControl>
-                    <Input type="number" placeholder="5000" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-        </CollapsibleSection>
+            {/* Advanced Options (Collapsible) */}
+            <CollapsibleSection title="Contact & Details" defaultOpen={mode === "edit"}>
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="email"
+                          placeholder="email@example.com"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-        <FormActions mode={mode} isSubmitting={isSubmitting} submitLabel={mode === "edit" ? "Save Changes" : "Add Member"} />
+                <FormField
+                  control={form.control}
+                  name="phoneNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Phone</FormLabel>
+                      <FormControl>
+                        <Input placeholder="+91 9876543210" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Status *</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {CREW_STATUSES.map((status) => (
+                            <SelectItem key={status.value} value={status.value}>
+                              {status.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="dailyRate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Daily Rate (INR)</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="5000" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </CollapsibleSection>
+          </div>
+        </ScrollArea>
+
+        <div className="shrink-0 border-t p-4 bg-background">
+          <FormActions mode={mode} isSubmitting={isSubmitting} submitLabel={mode === "edit" ? "Save Changes" : "Add Member"} />
+        </div>
       </form>
     </Form>
   );

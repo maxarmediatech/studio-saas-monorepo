@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import {
 	Sheet,
 	SheetContent,
 	SheetHeader,
 	SheetTitle,
 } from "@repo/ui/components/sheet";
-import { ScrollArea } from "@repo/ui/components/scroll-area";
 import { cn } from "@repo/ui/lib/utils";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -20,11 +19,6 @@ export function PaymentCreateSheet() {
 	const isOpen = Boolean(createPayment);
 	const queryClient = useQueryClient();
 	const [isScrolled, setIsScrolled] = useState(false);
-
-	const handleScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
-		const target = event.target as HTMLDivElement;
-		setIsScrolled(target.scrollTop > 0);
-	}, []);
 
 	const createMutation = useMutation({
 		...studioPaymentsMutations.createReceived(),
@@ -60,15 +54,14 @@ export function PaymentCreateSheet() {
 				>
 					<SheetTitle className="text-xl">Record Payment</SheetTitle>
 				</SheetHeader>
-				<ScrollArea className="flex-1 min-h-0" onScrollCapture={handleScroll}>
-					<div className="px-4 py-4">
-						<PaymentForm
-							onSubmit={handleSubmit}
-							mode="create"
-							isPending={createMutation.isPending}
-						/>
-					</div>
-				</ScrollArea>
+				<div className="flex-1 min-h-0">
+					<PaymentForm
+						onSubmit={handleSubmit}
+						mode="create"
+						isPending={createMutation.isPending}
+						onScrollChange={setIsScrolled}
+					/>
+				</div>
 			</SheetContent>
 		</Sheet>
 	);
