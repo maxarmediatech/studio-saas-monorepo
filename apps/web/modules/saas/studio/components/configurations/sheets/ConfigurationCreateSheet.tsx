@@ -13,6 +13,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useConfigurationParams } from "@saas/studio/hooks/params/use-configuration-params";
 import { ConfigurationForm, type ConfigurationFormValues } from "../ConfigurationForm";
 import { PackageTypeForm, type PackageTypeFormValues } from "../PackageTypeForm";
+import { BookingTypeForm, type BookingTypeFormValues } from "../BookingTypeForm";
+import { RelationTypeForm, type RelationTypeFormValues } from "../RelationTypeForm";
 import { configurationsMutations } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 
@@ -119,11 +121,55 @@ export function ConfigurationCreateSheet() {
 		});
 	};
 
+	const handleBookingTypeSubmit = async (data: BookingTypeFormValues) => {
+		if (!configurationType) return;
+
+		// Build metadata from booking type-specific fields
+		const metadata: Record<string, unknown> = {};
+		if (data.applicableRoles && data.applicableRoles.length > 0) {
+			metadata.roles = data.applicableRoles;
+		}
+
+		await createMutation.mutateAsync({
+			type: "booking_type",
+			key: generateKeyFromLabel(data.label),
+			label: data.label,
+			description: data.description || undefined,
+			color: data.color || undefined,
+			sortOrder: data.sortOrder,
+			isDefault: data.isDefault,
+			metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
+		});
+	};
+
+	const handleRelationTypeSubmit = async (data: RelationTypeFormValues) => {
+		if (!configurationType) return;
+
+		// Build metadata from relation type-specific fields
+		const metadata: Record<string, unknown> = {};
+		if (data.applicableBookingTypes && data.applicableBookingTypes.length > 0) {
+			metadata.bookingTypes = data.applicableBookingTypes;
+		}
+
+		await createMutation.mutateAsync({
+			type: "relation_type",
+			key: generateKeyFromLabel(data.label),
+			label: data.label,
+			description: data.description || undefined,
+			color: data.color || undefined,
+			sortOrder: data.sortOrder,
+			isDefault: data.isDefault,
+			metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
+		});
+	};
+
 	const isPackageType = configurationType === "package_type";
+	const isBookingType = configurationType === "booking_type";
+	const isRelationType = configurationType === "relation_type";
 
 	return (
 		<Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
-			<SheetContent side="right" className={cn("p-0 gap-0 flex flex-col", isPackageType ? "sm:max-w-xl" : "sm:max-w-md")}>
+			<SheetContent side="right" className={cn("p-0 gap-0 flex flex-col", (isPackageType || isBookingType || isRelationType) ? "sm:max-w-xl" : "sm:max-w-md")}>
 				<SheetHeader
 					className={cn(
 						"shrink-0 p-4 transition-shadow duration-200",
@@ -133,7 +179,21 @@ export function ConfigurationCreateSheet() {
 					<SheetTitle className="text-xl">Add {typeLabel}</SheetTitle>
 				</SheetHeader>
 				<div className="flex-1 min-h-0">
-					{isPackageType ? (
+					{isRelationType ? (
+						<RelationTypeForm
+							onSubmit={handleRelationTypeSubmit}
+							mode="create"
+							isPending={createMutation.isPending}
+							onScrollChange={setIsScrolled}
+						/>
+					) : isBookingType ? (
+						<BookingTypeForm
+							onSubmit={handleBookingTypeSubmit}
+							mode="create"
+							isPending={createMutation.isPending}
+							onScrollChange={setIsScrolled}
+						/>
+					) : isPackageType ? (
 						<PackageTypeForm
 							onSubmit={handlePackageSubmit}
 							mode="create"

@@ -36,7 +36,7 @@ import {
 	UsersIcon,
 	XIcon,
 } from "lucide-react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import { toast } from "sonner";
 import { useConfigurationParams } from "@saas/studio/hooks/params/use-configuration-params";
@@ -125,6 +125,93 @@ export function BookingDetailsStep() {
 			bookingTypeMetadata.bookingType === selectedBookingType
 		);
 	});
+
+	// Filter relation types (roles) by bi-directional relationship
+	// A role appears if:
+	// 1. The booking type includes this role in metadata.roles, OR
+	// 2. The role includes this booking type in metadata.bookingTypes, OR
+	// 3. Neither has any configuration (backwards compatible)
+	const filteredRoleOptions = useMemo(() => {
+		if (!selectedBookingType) {
+			return relationTypes; // No booking type → show all roles
+		}
+
+		// Get booking type's configured roles
+		const bookingTypeConfig = bookingTypes.find(
+			(bt) => bt.key === selectedBookingType
+		);
+		const bookingTypeRoles = (bookingTypeConfig?.metadata as {
+			roles?: string[];
+		} | null)?.roles;
+
+		// Filter roles that match EITHER direction
+		return relationTypes.filter((role) => {
+			// Check if booking type includes this role
+			const bookingTypeAllowsRole = bookingTypeRoles?.includes(role.key);
+
+			// Check if role includes this booking type
+			const roleBookingTypes = (role.metadata as {
+				bookingTypes?: string[];
+			} | null)?.bookingTypes;
+			const roleAllowsBookingType = roleBookingTypes?.includes(selectedBookingType);
+
+			// If neither has configuration, show the role (backwards compatible)
+			const neitherConfigured = !bookingTypeRoles?.length && !roleBookingTypes?.length;
+
+			return bookingTypeAllowsRole || roleAllowsBookingType || neitherConfigured;
+		});
+	}, [selectedBookingType, bookingTypes, relationTypes]);
+
+	// Track previous booking type to detect changes
+	const prevBookingTypeRef = useRef<string | undefined>(undefined);
+
+	// Warn when booking type changes and existing participant roles become invalid
+	useEffect(() => {
+		// Skip initial render and when booking type is cleared
+		if (!selectedBookingType || prevBookingTypeRef.current === undefined) {
+			prevBookingTypeRef.current = selectedBookingType;
+			return;
+		}
+
+		// Only run when booking type actually changes
+		if (prevBookingTypeRef.current === selectedBookingType) {
+			return;
+		}
+		prevBookingTypeRef.current = selectedBookingType;
+
+		// Get booking type's configured roles
+		const bookingTypeConfig = bookingTypes.find(
+			(bt) => bt.key === selectedBookingType
+		);
+		const bookingTypeRoles = (bookingTypeConfig?.metadata as {
+			roles?: string[];
+		} | null)?.roles;
+
+		// Check if any existing participants have now-invalid roles (using bi-directional logic)
+		const invalidParticipants = watchedParticipants?.filter((p) => {
+			if (!p.role) return false;
+
+			// Find the role configuration
+			const roleConfig = relationTypes.find((rt) => rt.key === p.role);
+			const roleBookingTypes = (roleConfig?.metadata as {
+				bookingTypes?: string[];
+			} | null)?.bookingTypes;
+
+			// Check if role is allowed via either direction
+			const bookingTypeAllowsRole = bookingTypeRoles?.includes(p.role);
+			const roleAllowsBookingType = roleBookingTypes?.includes(selectedBookingType);
+			const neitherConfigured = !bookingTypeRoles?.length && !roleBookingTypes?.length;
+
+			// Role is INVALID if it's not allowed via any path
+			return !(bookingTypeAllowsRole || roleAllowsBookingType || neitherConfigured);
+		});
+
+		if (invalidParticipants && invalidParticipants.length > 0) {
+			toast.warning(
+				`${invalidParticipants.length} participant(s) have roles not applicable to this booking type. Please update their roles.`
+			);
+		}
+	}, [selectedBookingType, bookingTypes, relationTypes, watchedParticipants]);
 
 	// Handle package selection - auto-fill cost and deliverables
 	const handlePackageChange = (value: string) => {
@@ -696,12 +783,26 @@ export function BookingDetailsStep() {
 															</FieldLabel>
 															<Combobox
 																id={field.name}
-																options={relationTypes.map(
-																	(type) => ({
-																		value: type.key,
-																		label: type.label,
-																	}),
-																)}
+																options={(() => {
+																	const options: Array<{ value: string; label: string; disabled?: boolean }> = filteredRoleOptions.map(
+																		(type) => ({
+																			value: type.key,
+																			label: type.label,
+																		}),
+																	);
+																	// If current role exists but isn't in filtered list, add it as disabled
+																	if (field.value && !filteredRoleOptions.find(r => r.key === field.value)) {
+																		const roleConfig = relationTypes.find(r => r.key === field.value);
+																		if (roleConfig) {
+																			options.unshift({
+																				value: roleConfig.key,
+																				label: `${roleConfig.label} (not applicable)`,
+																				disabled: true,
+																			});
+																		}
+																	}
+																	return options;
+																})()}
 																value={
 																	field.value
 																}

@@ -14,6 +14,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useConfigurationParams } from "@saas/studio/hooks/params/use-configuration-params";
 import { ConfigurationForm, type ConfigurationFormValues } from "../ConfigurationForm";
 import { PackageTypeForm, type PackageTypeFormValues } from "../PackageTypeForm";
+import { BookingTypeForm, type BookingTypeFormValues } from "../BookingTypeForm";
+import { RelationTypeForm, type RelationTypeFormValues } from "../RelationTypeForm";
 import { configurationsApi, configurationsMutations } from "@saas/studio/lib/api";
 
 const CONFIG_TYPE_LABELS: Record<string, string> = {
@@ -89,11 +91,53 @@ export function ConfigurationEditSheet() {
 		});
 	};
 
+	const handleBookingTypeSubmit = async (data: BookingTypeFormValues) => {
+		if (!configurationId) return;
+
+		// Build metadata from booking type-specific fields
+		const metadata: Record<string, unknown> = {};
+		if (data.applicableRoles && data.applicableRoles.length > 0) {
+			metadata.roles = data.applicableRoles;
+		}
+
+		await updateMutation.mutateAsync({
+			id: configurationId,
+			label: data.label,
+			description: data.description || null,
+			color: data.color || null,
+			sortOrder: data.sortOrder,
+			isDefault: data.isDefault,
+			metadata: Object.keys(metadata).length > 0 ? metadata : null,
+		});
+	};
+
+	const handleRelationTypeSubmit = async (data: RelationTypeFormValues) => {
+		if (!configurationId) return;
+
+		// Build metadata from relation type-specific fields
+		const metadata: Record<string, unknown> = {};
+		if (data.applicableBookingTypes && data.applicableBookingTypes.length > 0) {
+			metadata.bookingTypes = data.applicableBookingTypes;
+		}
+
+		await updateMutation.mutateAsync({
+			id: configurationId,
+			label: data.label,
+			description: data.description || null,
+			color: data.color || null,
+			sortOrder: data.sortOrder,
+			isDefault: data.isDefault,
+			metadata: Object.keys(metadata).length > 0 ? metadata : null,
+		});
+	};
+
 	const isPackageType = configurationType === "package_type";
+	const isBookingType = configurationType === "booking_type";
+	const isRelationType = configurationType === "relation_type";
 
 	return (
 		<Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
-			<SheetContent side="right" className={cn("p-0 gap-0 flex flex-col", isPackageType ? "sm:max-w-xl" : "sm:max-w-md")}>
+			<SheetContent side="right" className={cn("p-0 gap-0 flex flex-col", (isPackageType || isBookingType || isRelationType) ? "sm:max-w-xl" : "sm:max-w-md")}>
 				<SheetHeader
 					className={cn(
 						"shrink-0 p-4 transition-shadow duration-200",
@@ -113,6 +157,22 @@ export function ConfigurationEditSheet() {
 								<Skeleton className="h-10 w-full" />
 							</div>
 						</div>
+					) : isRelationType ? (
+						<RelationTypeForm
+							defaultValues={configuration?.data}
+							onSubmit={handleRelationTypeSubmit}
+							mode="edit"
+							isPending={updateMutation.isPending}
+							onScrollChange={setIsScrolled}
+						/>
+					) : isBookingType ? (
+						<BookingTypeForm
+							defaultValues={configuration?.data}
+							onSubmit={handleBookingTypeSubmit}
+							mode="edit"
+							isPending={updateMutation.isPending}
+							onScrollChange={setIsScrolled}
+						/>
 					) : isPackageType ? (
 						<PackageTypeForm
 							defaultValues={configuration?.data}
