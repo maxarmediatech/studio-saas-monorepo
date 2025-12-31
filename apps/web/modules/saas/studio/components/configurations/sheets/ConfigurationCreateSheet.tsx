@@ -16,6 +16,38 @@ import { PackageTypeForm, type PackageTypeFormValues } from "../PackageTypeForm"
 import { configurationsMutations } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 
+/**
+ * Generates a URL-safe key from a label.
+ * - Converts to lowercase
+ * - Replaces spaces and special chars with underscores
+ * - Removes consecutive underscores
+ * - Ensures it starts with a letter
+ * - Truncates to 100 chars (backend limit)
+ */
+function generateKeyFromLabel(label: string): string {
+	let key = label
+		.toLowerCase()
+		.trim()
+		.replace(/[^a-z0-9]+/g, "_") // Replace non-alphanumeric with underscore
+		.replace(/^_+|_+$/g, "") // Remove leading/trailing underscores
+		.replace(/_+/g, "_"); // Collapse multiple underscores
+
+	// Ensure key starts with a letter (prepend 'cfg_' if it starts with a number or is empty)
+	if (!key || /^[0-9]/.test(key)) {
+		key = key ? `cfg_${key}` : "item";
+	}
+
+	// Truncate to 100 chars (backend limit)
+	if (key.length > 100) {
+		// Try to cut at last underscore for cleaner break, but keep at least 10 chars
+		const truncated = key.slice(0, 100);
+		const lastUnderscore = truncated.lastIndexOf("_");
+		key = lastUnderscore > 10 ? truncated.slice(0, lastUnderscore) : truncated;
+	}
+
+	return key;
+}
+
 const CONFIG_TYPE_LABELS: Record<string, string> = {
 	booking_type: "Booking Type",
 	package_type: "Package Type",
@@ -55,7 +87,7 @@ export function ConfigurationCreateSheet() {
 
 		await createMutation.mutateAsync({
 			type: configurationType as "booking_type" | "package_type" | "relation_type" | "crew_status" | "shoot_status" | "task_status" | "task_priority" | "deliverable_status" | "deliverable_priority" | "expense_category",
-			key: data.key,
+			key: generateKeyFromLabel(data.label),
 			label: data.label,
 			description: data.description || undefined,
 			color: data.color || undefined,
@@ -77,7 +109,7 @@ export function ConfigurationCreateSheet() {
 
 		await createMutation.mutateAsync({
 			type: "package_type",
-			key: data.key,
+			key: generateKeyFromLabel(data.label),
 			label: data.label,
 			description: data.description || undefined,
 			color: data.color || undefined,

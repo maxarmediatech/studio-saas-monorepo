@@ -20,15 +20,14 @@ import { CollapsibleSection } from "../ui/CollapsibleSection";
 import { FormActions } from "../ui/FormActions";
 
 const configurationFormSchema = z.object({
-  key: z
+  label: z
     .string()
-    .min(1, "Key is required")
-    .max(100)
-    .regex(
-      /^[a-z][a-z0-9_]*$/,
-      "Key must start with lowercase letter and contain only lowercase letters, numbers, and underscores"
+    .min(1, "Label is required")
+    .max(255)
+    .refine(
+      (val) => /[a-zA-Z0-9]/.test(val),
+      "Label must contain at least one letter or number"
     ),
-  label: z.string().min(1, "Label is required").max(255),
   description: z.string().max(1000).optional().or(z.literal("")),
   color: z
     .string()
@@ -59,7 +58,6 @@ export function ConfigurationForm({
   const form = useForm<ConfigurationFormValues>({
     resolver: zodResolver(configurationFormSchema),
     defaultValues: {
-      key: "",
       label: "",
       description: "",
       color: "",
@@ -71,7 +69,6 @@ export function ConfigurationForm({
   useEffect(() => {
     if (defaultValues) {
       form.reset({
-        key: defaultValues.key,
         label: defaultValues.label,
         description: defaultValues.description ?? "",
         color: defaultValues.color ?? "",
@@ -97,29 +94,6 @@ export function ConfigurationForm({
       <ScrollArea className="flex-1 min-h-0" onScrollCapture={handleScroll}>
         <div className="px-4 py-4">
           <FieldGroup>
-            {/* Essential Fields */}
-            {mode === "create" && (
-              <Controller
-                name="key"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor={field.name}>Key *</FieldLabel>
-                    <Input
-                      {...field}
-                      id={field.name}
-                      placeholder="e.g., wedding_premium"
-                      aria-invalid={fieldState.invalid}
-                    />
-                    <FieldDescription>
-                      Unique identifier (lowercase, underscores allowed)
-                    </FieldDescription>
-                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                  </Field>
-                )}
-              />
-            )}
-
             <Controller
               name="label"
               control={form.control}
