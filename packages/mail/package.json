@@ -1,15 +1,15 @@
 {
 	"dependencies": {
-		"@react-email/components": "^1.0.1",
-		"@react-email/render": "^2.0.0",
+		"@react-email/components": "^1.0.3",
+		"@react-email/render": "^2.0.1",
 		"@repo/config": "workspace:*",
 		"@repo/i18n": "workspace:*",
 		"@repo/logs": "workspace:*",
 		"next-intl": "4.6.1",
-		"nodemailer": "^7.0.11",
+		"nodemailer": "^7.0.12",
 		"react": "19.2.3",
 		"react-dom": "19.2.3",
-		"react-email": "^5.0.8",
+		"react-email": "^5.1.1",
 		"use-intl": "^4.6.1"
 	},
 	"devDependencies": {
