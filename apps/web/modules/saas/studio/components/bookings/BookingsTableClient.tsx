@@ -19,6 +19,7 @@ import {
 	DataTableRowActions,
 	type RowAction,
 } from "@saas/shared/components/data-table";
+import { useBookingsTable } from "@saas/studio/hooks/tables";
 import {
 	bookingsApi,
 	bookingsMutations,
@@ -35,16 +36,11 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 interface BookingsTableClientProps {
 	organizationSlug: string;
-	initialFilters: {
-		page: number;
-		search?: string;
-		status?: BookingPhase;
-	};
 }
 
 const statusColors: Record<BookingPhase, string> = {
@@ -81,35 +77,36 @@ const formatMoney = (value: string) => {
 
 export function BookingsTableClient({
 	organizationSlug,
-	initialFilters,
 }: BookingsTableClientProps) {
 	const router = useRouter();
 	const queryClient = useQueryClient();
-	const [isPending, startTransition] = useTransition();
 
-	const [currentPage, setCurrentPage] = useState(initialFilters.page);
+	// Use the bookings table hook for URL-synced state
+	const { filters, pagination, sorting, onPaginationChange } =
+		useBookingsTable();
+
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [bookingToDelete, setBookingToDelete] =
 		useState<BookingListItem | null>(null);
 
-	// Build query input
+	// Build query input from hook state
 	const queryInput = {
-		page: currentPage,
-		limit: 10,
-		search: initialFilters.search,
-		status: initialFilters.status,
-		sortBy: "createdAt",
-		sortDirection: "desc" as const,
+		page: pagination.page,
+		limit: pagination.limit,
+		search: filters.search ?? undefined,
+		status: filters.status ?? undefined,
+		sortBy: sorting.sortBy ?? "createdAt",
+		sortDirection: sorting.sortDirection,
 		includeDeleted: false,
 	};
 
 	// Fetch bookings with TanStack Query
 	const { data, isLoading, isFetching } = useQuery(
-		bookingsApi.listOptions(queryInput),
+		bookingsApi.listOptions(queryInput)
 	);
 
 	const bookings = data?.data ?? [];
-	const pagination = data?.pagination ?? {
+	const serverPagination = data?.pagination ?? {
 		page: 1,
 		limit: 10,
 		total: 0,
@@ -131,29 +128,6 @@ export function BookingsTableClient({
 			toast.error(error.message || "Failed to delete booking");
 		},
 	});
-
-	const handlePaginationChange = (newPagination: typeof pagination) => {
-		setCurrentPage(newPagination.page);
-
-		// Update URL with new page
-		const params = new URLSearchParams();
-		if (newPagination.page > 1) {
-			params.set("page", String(newPagination.page));
-		}
-		if (initialFilters.search) {
-			params.set("search", initialFilters.search);
-		}
-		if (initialFilters.status) {
-			params.set("status", initialFilters.status);
-		}
-
-		const queryString = params.toString();
-		const url = `/app/${organizationSlug}/bookings${queryString ? `?${queryString}` : ""}`;
-
-		startTransition(() => {
-			router.push(url, { scroll: false });
-		});
-	};
 
 	// Define row actions
 	const rowActions: RowAction<BookingListItem>[] = [
@@ -274,10 +248,8 @@ export function BookingsTableClient({
 				),
 			},
 		],
-		[organizationSlug],
+		[organizationSlug]
 	);
-
-	const showLoading = isFetching || isPending;
 
 	return (
 		<>
@@ -285,9 +257,9 @@ export function BookingsTableClient({
 				columns={columns}
 				data={bookings}
 				isLoading={isLoading}
-				isFetching={showLoading}
-				pagination={pagination}
-				onPaginationChange={handlePaginationChange}
+				isFetching={isFetching}
+				pagination={serverPagination}
+				onPaginationChange={onPaginationChange}
 				emptyState={
 					<div className="flex flex-col items-center gap-2">
 						<p className="text-muted-foreground">

@@ -1,4 +1,3 @@
-import type { BookingPhase } from "@repo/api/modules/studio/schemas/common";
 import { getActiveOrganization } from "@saas/auth/lib/server";
 import { BookingsFilters, BookingsTableSkeleton } from "@saas/studio";
 import { BookingsTable } from "@saas/studio/components/bookings/index.server";
@@ -7,11 +6,7 @@ import { Suspense } from "react";
 
 type Props = {
 	params: Promise<{ organizationSlug: string }>;
-	searchParams: Promise<{
-		page?: string;
-		search?: string;
-		status?: string;
-	}>;
+	searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
 export async function generateMetadata({ params }: Props) {
@@ -25,7 +20,6 @@ export async function generateMetadata({ params }: Props) {
 
 export default async function BookingsPage({ params, searchParams }: Props) {
 	const { organizationSlug } = await params;
-	const filters = await searchParams;
 
 	const organization = await getActiveOrganization(organizationSlug);
 
@@ -33,25 +27,14 @@ export default async function BookingsPage({ params, searchParams }: Props) {
 		return notFound();
 	}
 
-	// Parse filters
-	const page = filters.page ? Number.parseInt(filters.page, 10) : 1;
-	const search = filters.search;
-	const status = filters.status as BookingPhase | undefined;
-
 	return (
 		<div className="space-y-4">
-			<BookingsFilters
-				organizationSlug={organizationSlug}
-				initialSearch={search}
-				initialStatus={status}
-			/>
+			<BookingsFilters />
 
 			<Suspense fallback={<BookingsTableSkeleton />}>
 				<BookingsTable
 					organizationSlug={organizationSlug}
-					page={page}
-					search={search}
-					status={status}
+					searchParams={searchParams}
 				/>
 			</Suspense>
 		</div>

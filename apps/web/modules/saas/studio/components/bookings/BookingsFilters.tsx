@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import type { BookingPhase } from "@repo/api/modules/studio/schemas/common";
 import { Input } from "@repo/ui/components/input";
 import {
 	Select,
@@ -10,53 +9,26 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@repo/ui/components/select";
+import { useBookingsTable } from "@saas/studio/hooks/tables";
 import { SearchIcon } from "lucide-react";
-import type { BookingPhase } from "@repo/api/modules/studio/schemas/common";
+import { useState } from "react";
 
-interface BookingsFiltersProps {
-	organizationSlug: string;
-	initialSearch?: string;
-	initialStatus?: BookingPhase;
-}
+export function BookingsFilters() {
+	// Use the bookings table hook for URL-synced state
+	const { filters, setFilter, isFiltered } = useBookingsTable();
 
-export function BookingsFilters({
-	organizationSlug,
-	initialSearch,
-	initialStatus,
-}: BookingsFiltersProps) {
-	const router = useRouter();
-	const [isPending, startTransition] = useTransition();
+	// Local state for search input (immediate updates, debounced sync)
+	const [searchInput, setSearchInput] = useState(filters.search ?? "");
 
-	const [searchValue, setSearchValue] = useState(initialSearch ?? "");
-	const [currentStatus, setCurrentStatus] = useState<BookingPhase | "all">(
-		initialStatus ?? "all",
-	);
-
-	const updateFilters = (search?: string, status?: BookingPhase | "all") => {
-		const params = new URLSearchParams();
-		if (search) {
-			params.set("search", search);
-		}
-		if (status && status !== "all") {
-			params.set("status", status);
-		}
-
-		const queryString = params.toString();
-		const url = `/app/${organizationSlug}/bookings${queryString ? `?${queryString}` : ""}`;
-
-		startTransition(() => {
-			router.push(url, { scroll: false });
-		});
-	};
-
-	const handleSearch = () => {
-		updateFilters(searchValue || undefined, currentStatus);
+	const handleSearchChange = (value: string) => {
+		setSearchInput(value);
+		setFilter("search", value || null);
 	};
 
 	const handleStatusChange = (value: string) => {
-		const newStatus = value === "all" ? "all" : (value as BookingPhase);
-		setCurrentStatus(newStatus);
-		updateFilters(searchValue || undefined, newStatus);
+		const newStatus =
+			value === "all" ? null : (value as BookingPhase);
+		setFilter("status", newStatus);
 	};
 
 	return (
@@ -65,16 +37,17 @@ export function BookingsFilters({
 				<SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 				<Input
 					placeholder="Search bookings..."
-					value={searchValue}
-					onChange={(e) => setSearchValue(e.target.value)}
-					onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+					value={searchInput}
+					onChange={(e) => handleSearchChange(e.target.value)}
 					className="pl-9"
-					disabled={isPending}
 				/>
 			</div>
 
-			<Select value={currentStatus} onValueChange={handleStatusChange}>
-				<SelectTrigger className="w-40" disabled={isPending}>
+			<Select
+				value={filters.status ?? "all"}
+				onValueChange={handleStatusChange}
+			>
+				<SelectTrigger className="w-40">
 					<SelectValue placeholder="All statuses" />
 				</SelectTrigger>
 				<SelectContent>

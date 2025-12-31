@@ -1,0 +1,58 @@
+import {
+	createSearchParamsCache,
+	parseAsInteger,
+	parseAsString,
+	parseAsStringLiteral,
+} from "nuqs/server";
+
+/**
+ * Booking phases for filter validation
+ */
+const BOOKING_PHASES = [
+	"new",
+	"preparation",
+	"shooting",
+	"delivery",
+	"completed",
+	"cancelled",
+] as const;
+
+/**
+ * Server-side search params cache for bookings table.
+ * Use in server components to parse URL params before prefetching.
+ *
+ * @example
+ * ```tsx
+ * // In page.tsx (server component)
+ * export default async function BookingsPage({
+ *   searchParams,
+ * }: {
+ *   searchParams: Promise<Record<string, string | string[]>>;
+ * }) {
+ *   const params = await bookingSearchParamsCache.parse(searchParams);
+ *   // params.page, params.search, params.status, etc.
+ * }
+ * ```
+ */
+export const bookingSearchParamsCache = createSearchParamsCache({
+	// Pagination
+	page: parseAsInteger.withDefault(1),
+	limit: parseAsInteger.withDefault(10),
+
+	// Filters
+	search: parseAsString,
+	status: parseAsStringLiteral(BOOKING_PHASES),
+
+	// Sorting
+	sortBy: parseAsString.withDefault("createdAt"),
+	sortDirection: parseAsStringLiteral(["asc", "desc"] as const).withDefault(
+		"desc"
+	),
+});
+
+/**
+ * Type for parsed booking search params
+ */
+export type BookingSearchParams = ReturnType<
+	typeof bookingSearchParamsCache.parse
+>;

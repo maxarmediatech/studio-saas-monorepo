@@ -1,32 +1,31 @@
-import type { BookingPhase } from "@repo/api/modules/studio/schemas/common";
 import { bookingsApi } from "@saas/studio/lib/api";
+import { bookingSearchParamsCache } from "@saas/studio/lib/search-params";
 import { getServerQueryClient } from "@shared/lib/server";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { BookingsTableClient } from "./BookingsTableClient";
 
 interface BookingsTableProps {
 	organizationSlug: string;
-	page: number;
-	search?: string;
-	status?: BookingPhase;
+	searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 export async function BookingsTable({
 	organizationSlug,
-	page,
-	search,
-	status,
+	searchParams,
 }: BookingsTableProps) {
 	const queryClient = getServerQueryClient();
 
-	// Build query input
+	// Parse search params using the cache
+	const params = await bookingSearchParamsCache.parse(searchParams);
+
+	// Build query input from parsed params
 	const input = {
-		page,
-		limit: 10,
-		search,
-		status,
-		sortBy: "createdAt",
-		sortDirection: "desc" as const,
+		page: params.page,
+		limit: params.limit,
+		search: params.search ?? undefined,
+		status: params.status ?? undefined,
+		sortBy: params.sortBy,
+		sortDirection: params.sortDirection,
 		includeDeleted: false,
 	};
 
@@ -35,14 +34,7 @@ export async function BookingsTable({
 
 	return (
 		<HydrationBoundary state={dehydrate(queryClient)}>
-			<BookingsTableClient
-				organizationSlug={organizationSlug}
-				initialFilters={{
-					page,
-					search,
-					status,
-				}}
-			/>
+			<BookingsTableClient organizationSlug={organizationSlug} />
 		</HydrationBoundary>
 	);
 }
