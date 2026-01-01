@@ -1,0 +1,68 @@
+"use client";
+
+import { useState } from "react";
+import {
+	Sheet,
+	SheetContent,
+	SheetHeader,
+	SheetTitle,
+} from "@repo/ui/components/sheet";
+import { cn } from "@repo/ui/lib/utils";
+import { toast } from "sonner";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useCrewParams } from "@saas/studio/hooks/params/use-crew-params";
+import { CrewForm, type CrewFormValues } from "../CrewForm";
+import { crewsMutations, studioQueryKeys } from "@saas/studio/lib/api";
+
+export function CrewCreateSheet() {
+	const { createCrew, close } = useCrewParams();
+	const isOpen = Boolean(createCrew);
+	const queryClient = useQueryClient();
+	const [isScrolled, setIsScrolled] = useState(false);
+
+	const createMutation = useMutation({
+		...crewsMutations.create(),
+		onSuccess: () => {
+			toast.success("Crew member added successfully");
+			queryClient.invalidateQueries({ queryKey: studioQueryKeys.crews.all });
+			close();
+		},
+		onError: (error) => {
+			toast.error(error.message || "Failed to add crew member");
+		},
+	});
+
+	const handleSubmit = async (data: CrewFormValues) => {
+		await createMutation.mutateAsync({
+			name: data.name,
+			email: data.email || undefined,
+			phoneNumber: data.phoneNumber || undefined,
+			role: data.role,
+			status: data.status,
+			dailyRate: data.dailyRate || undefined,
+		});
+	};
+
+	return (
+		<Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
+			<SheetContent side="right" className="sm:max-w-md p-0 gap-0 flex flex-col">
+				<SheetHeader
+					className={cn(
+						"shrink-0 p-4 transition-shadow duration-200",
+						isScrolled && "shadow-[0_4px_12px_-4px_rgba(0,0,0,0.15)]"
+					)}
+				>
+					<SheetTitle className="text-xl">Add Crew Member</SheetTitle>
+				</SheetHeader>
+				<div className="flex-1 min-h-0">
+					<CrewForm
+						onSubmit={handleSubmit}
+						mode="create"
+						isPending={createMutation.isPending}
+						onScrollChange={setIsScrolled}
+					/>
+				</div>
+			</SheetContent>
+		</Sheet>
+	);
+}

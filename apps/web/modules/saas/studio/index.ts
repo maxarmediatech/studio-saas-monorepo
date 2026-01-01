@@ -1,24 +1,61 @@
 // Components
-export { ModulePanel } from "./components/ModulePanel";
-export { MobileNav } from "./components/MobileNav";
-export { StudioSidebar, useStudioSidebar } from "./components/StudioSidebar";
-export { StudioLayout } from "./components/StudioLayout";
-export { StudioLayoutClient } from "./components/StudioLayoutClient";
 
-// Types
+// Bookings
+export {
+	BookingsFilters,
+	BookingsPageClient,
+	BookingsTableClient,
+	BookingsTableSkeleton,
+} from "./components/bookings";
+export { PageContent } from "./components/PageContent";
+export { PageHeader } from "./components/PageHeader";
+export { PageWidthWrapper } from "./components/PageWidthWrapper";
+
+// Layout - Server component pattern (like winter-arc)
+export { AppShell } from "./components/app-shell";
+export { AppShellClient } from "./components/app-shell.client";
+
+// API Utilities
+export {
+	bookingsApi,
+	bookingsMutations,
+	clientsApi,
+	clientsMutations,
+	configurationsApi,
+	configurationsMutations,
+	crewsApi,
+	crewsMutations,
+	deliverablesApi,
+	deliverablesMutations,
+	expensesApi,
+	expensesMutations,
+	shootsApi,
+	shootsMutations,
+	studioPaymentsApi,
+	studioPaymentsMutations,
+	studioQueryKeys,
+	tasksApi,
+	tasksMutations,
+} from "./lib/api";
+
+// Navigation
+export { getNavigationConfig } from "./lib/navigation/config";
+export { filterNavigationConfig } from "./lib/navigation/filter";
 export type {
 	IconName,
-	ModuleId,
-	NavItem,
-	NavModule,
-	NavSection,
-	SidebarData,
-} from "./lib/types";
+	NavItemConfig,
+	NavModuleConfig,
+	NavPermission,
+	NavPermissionCheck,
+	NavSectionConfig,
+	NavigationConfig,
+} from "./lib/navigation/types";
+export { findActiveModuleId, findModuleByPath, isItemActive } from "./lib/navigation/utils";
 
-// Utilities
-export { getIcon, iconRegistry } from "./lib/icons";
-export {
-	buildUrl,
-	findActiveModule,
-	getSidebarData,
-} from "./lib/navigation";
+// Capabilities
+export { getCapabilities, selectHeaderCaps } from "./lib/capability.server";
+export type { HeaderCapabilities } from "./lib/capability.server";
+
+// Icons
+export { IconByName } from "./components/navigation/icon-registry";
+export type { IconName as RegistryIconName } from "./components/navigation/icon-registry";

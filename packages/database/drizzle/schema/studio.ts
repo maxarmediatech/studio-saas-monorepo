@@ -591,6 +591,11 @@ export const deliverables = pgTable(
 		description: text("description"),
 		deliverableType: text("deliverable_type").notNull(), // album, video, photos, etc.
 
+		// Package relationship fields
+		quantity: integer("quantity").default(1).notNull(),
+		cost: decimal("cost", { precision: 10, scale: 2 }), // nullable - only for custom deliverables
+		isPackageIncluded: boolean("is_package_included").default(false).notNull(),
+
 		// Status is TEXT - configurable via configurations table (config_type: deliverable_status)
 		status: text("status").default("pending").notNull(),
 		// Priority is TEXT - configurable via configurations table (config_type: deliverable_priority)

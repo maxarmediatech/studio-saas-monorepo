@@ -267,6 +267,16 @@ export const defaultConfigurations: Record<
 		{ key: "inactive", label: "Inactive", color: "#6B7280" },
 		{ key: "on_leave", label: "On Leave", color: "#F59E0B" },
 	],
+	crew_role: [
+		{ key: "lead_photographer", label: "Lead Photographer", isDefault: true },
+		{ key: "photographer", label: "Photographer" },
+		{ key: "lead_videographer", label: "Lead Videographer" },
+		{ key: "videographer", label: "Videographer" },
+		{ key: "drone_operator", label: "Drone Operator" },
+		{ key: "assistant", label: "Assistant" },
+		{ key: "editor", label: "Editor" },
+		{ key: "member", label: "Member" },
+	],
 	shoot_status: [
 		{ key: "scheduled", label: "Scheduled", color: "#3B82F6", isDefault: true },
 		{ key: "in_progress", label: "In Progress", color: "#F59E0B" },

@@ -14,3 +14,5 @@ globalThis.$orpcClient = createRouterClient(router, {
 		headers: await headers(),
 	}),
 }) as ApiRouterClient;
+
+export const orpcClient: ApiRouterClient = globalThis.$orpcClient;

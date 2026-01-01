@@ -48,6 +48,10 @@ export type Config = {
 		marketing: {
 			enabled: boolean;
 		};
+		devTools: {
+			// Shows render boundaries (static/dynamic/hybrid) in dev mode
+			enableBoundaryVisualization: boolean;
+		};
 	};
 	contactForm: {
 		enabled: boolean;

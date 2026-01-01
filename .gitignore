@@ -42,3 +42,8 @@ dist/
 # other 
 .react-email/
 .content-collections/
+
+# Continuous Claude cache (local only)
+.claude/cache/
+.code/
+thoughts/

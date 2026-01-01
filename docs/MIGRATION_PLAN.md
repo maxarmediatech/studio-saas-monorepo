@@ -1,9 +1,9 @@
 # W-Tales to Lumen Migration Plan
 
-> **Document Version**: 1.2  
-> **Created**: 2024-12-18  
-> **Last Updated**: 2024-12-19  
-> **Status**: Schema Complete (Phases 1-3 Done)
+> **Document Version**: 1.3
+> **Created**: 2024-12-18
+> **Last Updated**: 2024-12-24
+> **Status**: API ~80% Complete, Frontend Not Started
 
 ---
 
@@ -820,7 +820,7 @@ export const receivedAmounts = pgTable("received_amounts", {
 
 ## Migration Phases
 
-### Phase 1: Foundation (Week 1)
+### Phase 1: Foundation - ✅ COMPLETE
 **Goal**: Set up database schema and core infrastructure
 
 | Task | Description | Status |
@@ -833,7 +833,7 @@ export const receivedAmounts = pgTable("received_amounts", {
 | 1.6 | Add bookings + participants + events | ✅ |
 | 1.7 | Generate and test migration | ✅ |
 
-### Phase 2: Core Domain (Week 2)
+### Phase 2: Core Domain - ✅ COMPLETE
 **Goal**: Add shoots, crews, tasks, deliverables
 
 | Task | Description | Status |
@@ -843,9 +843,9 @@ export const receivedAmounts = pgTable("received_amounts", {
 | 2.3 | Add tasks + assignments | ✅ |
 | 2.4 | Add deliverables + assignments | ✅ |
 | 2.5 | Add submission workflow tables | ✅ |
-| 2.6 | Generate and test migration | ⬜ |
+| 2.6 | Generate and test migration | ✅ |
 
-### Phase 3: Financial & Supporting (Week 3)
+### Phase 3: Financial & Supporting - ✅ COMPLETE
 **Goal**: Add payments, expenses, attachments, notifications
 
 | Task | Description | Status |
@@ -857,44 +857,76 @@ export const receivedAmounts = pgTable("received_amounts", {
 | 3.5 | Add attachments | ✅ |
 | 3.6 | Add notifications + activity logs | ⬜ Deferred |
 | 3.7 | Add messaging tables (optional) | ⬜ Deferred |
-| 3.8 | Generate and test migration | ⬜ |
+| 3.8 | Generate and test migration | ✅ |
 
-### Phase 4: API Layer (Week 4-5)
+### Phase 4: API Layer - 🔄 ~80% COMPLETE
 **Goal**: Port API routes to oRPC
 
 | Task | Description | Status |
 |------|-------------|--------|
-| 4.1 | Create configurations API module | ⬜ |
-| 4.2 | Create clients API module | ⬜ |
-| 4.3 | Create bookings API module | ⬜ |
-| 4.4 | Create shoots API module | ⬜ |
-| 4.5 | Create crews API module | ⬜ |
-| 4.6 | Create tasks API module | ⬜ |
-| 4.7 | Create deliverables API module | ⬜ |
-| 4.8 | Create payments API module | ⬜ |
-| 4.9 | Create expenses API module | ⬜ |
+| 4.1 | Create configurations API module | ✅ |
+| 4.2 | Create clients API module | ✅ |
+| 4.3 | Create bookings API module | ✅ |
+| 4.4 | Create shoots API module | ✅ |
+| 4.5 | Create crews API module | ✅ |
+| 4.6 | Create tasks API module | ✅ |
+| 4.7 | Create deliverables API module | ✅ |
+| 4.8 | Create studioPayments API module | ✅ |
+| 4.9 | Create expenses API module | ✅ |
+| 4.10 | Create submissions API module | ✅ |
+| 4.11 | Create myAssignments API module | ✅ |
+| 4.12 | Create dashboard API module | ✅ |
+| 4.13 | Add booking participants CRUD | ✅ |
+| 4.14 | Add payment schedule conversion | ✅ |
+| 4.15 | Add shoot data management cards | ⬜ |
+| 4.16 | Add activity logging | ⬜ Deferred |
 
-### Phase 5: Frontend (Week 6-8)
+**Implemented API Routers (12):**
+- `configurationsRouter` - CRUD + seed
+- `clientsRouter` - CRUD + stats
+- `bookingsRouter` - CRUD + stats + status
+- `crewsRouter` - CRUD + availability
+- `shootsRouter` - CRUD + assignments
+- `tasksRouter` - CRUD + assignments + submit
+- `deliverablesRouter` - CRUD + assignments + submit
+- `studioPaymentsRouter` - received amounts + schedules
+- `expensesRouter` - CRUD + stats
+- `submissionsRouter` - list + claim + review
+- `myAssignmentsRouter` - crew self-service
+- `dashboardRouter` - KPIs + operations + actions
+
+### Phase 5: Frontend - ⬜ NOT STARTED
 **Goal**: Port UI components and routes
 
 | Task | Description | Status |
 |------|-------------|--------|
+| 5.0 | Create shared infrastructure | ⬜ |
 | 5.1 | Create route structure | ⬜ |
-| 5.2 | Port hooks (adapt to @repo/api) | ⬜ |
-| 5.3 | Port components | ⬜ |
-| 5.4 | Port dashboard & analytics | ⬜ |
-| 5.5 | Implement RBAC in UI | ⬜ |
+| 5.2 | Port data table components | ⬜ |
+| 5.3 | Port form field components | ⬜ |
+| 5.4 | Port hooks (adapt to oRPC) | ⬜ |
+| 5.5 | Port bookings pages | ⬜ |
+| 5.6 | Port clients pages | ⬜ |
+| 5.7 | Port crews pages | ⬜ |
+| 5.8 | Port shoots pages | ⬜ |
+| 5.9 | Port tasks pages | ⬜ |
+| 5.10 | Port deliverables pages | ⬜ |
+| 5.11 | Port payments pages | ⬜ |
+| 5.12 | Port expenses pages | ⬜ |
+| 5.13 | Port submissions pages | ⬜ |
+| 5.14 | Port dashboard | ⬜ |
+| 5.15 | Implement RBAC in UI | ⬜ |
 
-### Phase 6: Integrations (Week 9)
+### Phase 6: Integrations - 🔄 PARTIAL
 **Goal**: Port storage, email, messaging
 
 | Task | Description | Status |
 |------|-------------|--------|
-| 6.1 | Extend storage package for attachments | ⬜ |
-| 6.2 | Port email templates | ⬜ |
-| 6.3 | Port WhatsApp integration (optional) | ⬜ |
+| 6.1 | Storage package (S3) | ✅ Ready |
+| 6.2 | Email templates (6 templates) | ✅ Enhanced |
+| 6.3 | Port WhatsApp integration | ⬜ Deferred |
 
-### Phase 7: Testing & Polish (Week 10)
+### Phase 7: Testing & Polish - ⬜ NOT STARTED
 **Goal**: Ensure quality and completion
 
 | Task | Description | Status |
@@ -904,6 +936,121 @@ export const receivedAmounts = pgTable("received_amounts", {
 | 7.3 | Validate RBAC across roles | ⬜ |
 | 7.4 | Performance testing | ⬜ |
 | 7.5 | Final cleanup | ⬜ |
+
+---
+
+## Current Implementation Plan
+
+**Strategy:** Work on API gaps and Frontend in parallel
+**Priority:** Bookings first (most complex, core workflow)
+**WhatsApp:** Deferred for later
+
+### Track A: Complete API Gaps
+
+#### A1. Booking Participants CRUD
+- `POST /bookings/{id}/participants` - Add participant
+- `PUT /bookings/{id}/participants/{participantId}` - Update participant
+- `DELETE /bookings/{id}/participants/{participantId}` - Remove participant
+- `GET /bookings/{id}/participants` - List participants
+
+**Files to modify:**
+- `/packages/api/modules/bookings/procedures/` - Add participant procedures
+- `/packages/api/modules/studio/schemas/booking.ts` - Add participant schemas
+
+#### A2. Payment Schedule Conversion
+- `POST /studio-payments/schedules/{id}/convert` - Convert schedule to received payment
+
+**Files to modify:**
+- `/packages/api/modules/studio-payments/procedures/convert-schedule.ts`
+
+#### A3. Shoot Data Management Cards (Lower Priority)
+- Need to verify if data_cards table exists or needs to be added
+
+### Track B: Frontend Migration (Bookings First)
+
+#### B0. Shared Infrastructure (Prerequisites)
+```
+apps/web/modules/saas/studio/
+├── lib/
+│   ├── api-client.ts          # oRPC client setup
+│   └── query-keys.ts          # TanStack Query key factory
+├── hooks/
+│   ├── use-api-client.ts      # Hook to get typed API client
+│   └── use-data-table.ts      # Generic data table state hook
+├── components/
+│   ├── data-table/
+│   │   ├── DataTable.tsx
+│   │   ├── DataTablePagination.tsx
+│   │   ├── DataTableToolbar.tsx
+│   │   └── DataTableFacetedFilter.tsx
+│   ├── form/
+│   │   ├── TextField.tsx
+│   │   ├── SelectField.tsx
+│   │   ├── DateField.tsx
+│   │   ├── PriceField.tsx
+│   │   └── SubmitButton.tsx
+│   └── sheets/
+│       └── SheetProvider.tsx   # Global sheet context
+```
+
+#### B1. Bookings Module (Priority 1)
+
+**Pages:**
+```
+apps/web/app/[locale]/(saas)/studio/[organizationSlug]/
+├── bookings/
+│   ├── page.tsx               # Booking list
+│   └── [bookingId]/
+│       ├── page.tsx           # Booking detail (overview)
+│       ├── shoots/page.tsx
+│       ├── deliverables/page.tsx
+│       ├── tasks/page.tsx
+│       ├── payments/page.tsx
+│       ├── expenses/page.tsx
+│       └── participants/page.tsx
+```
+
+**Components:**
+```
+apps/web/modules/saas/studio/bookings/
+├── components/
+│   ├── BookingsTable.tsx
+│   ├── BookingColumns.tsx
+│   ├── BookingFilters.tsx
+│   ├── BookingForm.tsx
+│   ├── BookingSheet.tsx
+│   ├── BookingDetail.tsx
+│   ├── BookingTabs.tsx
+│   ├── BookingStatusBadge.tsx
+│   └── BookingPhaseStepper.tsx
+├── hooks/
+│   ├── use-bookings.ts
+│   ├── use-booking.ts
+│   ├── use-booking-mutation.ts
+│   └── use-booking-params.ts
+└── lib/
+    └── booking-columns.tsx
+```
+
+#### B2-B5. Other Modules (In Order)
+1. **Clients** - list + CRUD
+2. **Crews** - list + CRUD + availability
+3. **Shoots** - list + CRUD + assignments
+4. **Dashboard** - KPIs + analytics
+
+### Key Architecture Patterns
+
+1. **API Client:** oRPC client with TanStack Query
+2. **Forms:** React Hook Form + Zod + shadcn
+3. **Sheets:** Global sheet context for create/edit
+4. **URL State:** nuqs for filter/pagination
+5. **Tables:** TanStack Table with server-side pagination
+
+### W-Tales Reference Files
+
+**Pages:** `/app/(dashboard)/bookings/`, `/app/(dashboard)/clients/`, etc.
+**Hooks:** `/hooks/use-bookings.ts`, `/hooks/use-booking-mutation.ts`
+**Components:** `/components/data-table/`, `/components/form/`
 
 ---
 
@@ -937,14 +1084,14 @@ export const receivedAmounts = pgTable("received_amounts", {
 - [Next.js App Router](https://nextjs.org/docs/app)
 
 ### Repository Links
-- Source: `/Users/rakesh/Developer/winter-arc/w-tales`
-- Target: `/Users/rakesh/Developer/agency/studio-saas-monorepo`
+- Source: W-Tales MVP repository
+- Target: This repository (studio-saas-monorepo)
 
 ### Key Files
-- W-Tales Schema: `w-tales/src/lib/db/schema.ts`
-- Lumen Schema: `studio-saas-monorepo/packages/database/drizzle/schema/postgres.ts`
-- W-Tales Auth: `w-tales/src/lib/auth/index.ts`
-- W-Tales Permissions: `w-tales/src/lib/auth/permission.ts`
+- W-Tales Schema: `<w-tales>/src/lib/db/schema.ts`
+- Lumen Schema: `packages/database/drizzle/schema/studio.ts`
+- W-Tales Auth: `<w-tales>/src/lib/auth/index.ts`
+- W-Tales Permissions: `<w-tales>/src/lib/auth/permission.ts`
 
 ---
 
@@ -952,8 +1099,36 @@ export const receivedAmounts = pgTable("received_amounts", {
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.3 | 2024-12-24 | Full status audit: Phases 1-3 complete, Phase 4 ~80% complete, added implementation plan for API gaps and frontend migration |
+| 1.2 | 2024-12-19 | Schema completion updates |
 | 1.1 | 2024-12-18 | Added hybrid approach for status fields (enum + configurations); Updated table definitions to use TEXT for customizable statuses |
 | 1.0 | 2024-12-18 | Initial document created |
+
+---
+
+## Quick Reference
+
+### Overall Progress: ~45%
+
+| Phase | Status | Progress |
+|-------|--------|----------|
+| Database Schema | ✅ Complete | 100% |
+| API Layer | 🔄 In Progress | ~80% |
+| Frontend | ⬜ Not Started | 0% |
+| Integrations | 🔄 Partial | 40% |
+| Testing | ⬜ Not Started | 0% |
+
+### Next Actions
+1. [x] Add booking participants CRUD (API) - DONE
+2. [x] Add payment schedule conversion (API) - DONE
+3. [ ] Create shared frontend infrastructure
+4. [ ] Build bookings module (frontend)
+
+### Key Paths (relative to repo root)
+- **API Modules:** `packages/api/modules/`
+- **Studio Schemas:** `packages/api/modules/studio/schemas/`
+- **Database Schema:** `packages/database/drizzle/schema/`
+- **Frontend:** `apps/web/modules/saas/studio/`
 
 ---
 
