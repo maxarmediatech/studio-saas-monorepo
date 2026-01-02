@@ -1,7 +1,6 @@
 "use client";
 
 import type { BookingListItem } from "@repo/api/modules/studio/schemas/booking";
-import type { BookingPhase } from "@repo/api/modules/studio/schemas/common";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -12,14 +11,7 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@repo/ui/components/alert-dialog";
-import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipProvider,
-	TooltipTrigger,
-} from "@repo/ui/components/tooltip";
 import {
 	createSelectColumn,
 	DataTable,
@@ -42,7 +34,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
 	CalendarIcon,
-	CameraIcon,
 	EyeIcon,
 	Loader2Icon,
 	PackageIcon,
@@ -51,7 +42,6 @@ import {
 	TagIcon,
 	TextIcon,
 	TrashIcon,
-	UsersIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -61,29 +51,6 @@ import { toast } from "sonner";
 interface BookingsTableClientProps {
 	organizationSlug: string;
 }
-
-const statusColors: Record<BookingPhase, string> = {
-	new: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
-	preparation:
-		"bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
-	shooting:
-		"bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
-	delivery:
-		"bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400",
-	completed:
-		"bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-	cancelled:
-		"bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400",
-};
-
-const statusLabels: Record<BookingPhase, string> = {
-	new: "New",
-	preparation: "Preparation",
-	shooting: "Shooting",
-	delivery: "Delivery",
-	completed: "Completed",
-	cancelled: "Cancelled",
-};
 
 const formatMoney = (value: string) => {
 	const num = Number.parseFloat(value);
@@ -215,6 +182,8 @@ export function BookingsTableClient({
 	);
 
 	// Define columns with sortable headers and meta for filters
+	// Column order: select → ref → name → bookingType → packageType → packageCost → balance → createdAt → actions
+	// Pairs: (ref + name = identity), (packageCost + balance = financial), createdAt as trailing context
 	const columns: ColumnDef<BookingListItem>[] = useMemo(
 		() => [
 			createSelectColumn<BookingListItem>(),
@@ -298,38 +267,6 @@ export function BookingsTableClient({
 					minWidth: 120,
 				},
 				enableSorting: false,
-				enableHiding: true,
-			},
-			{
-				id: "status",
-				accessorKey: "status",
-				header: ({ column }) => (
-					<DataTableColumnHeader column={column} title="Status" />
-				),
-				cell: ({ row }) => (
-					<Badge
-						variant="secondary"
-						className={
-							statusColors[row.original.status as BookingPhase]
-						}
-					>
-						{statusLabels[row.original.status as BookingPhase] ??
-							row.original.status}
-					</Badge>
-				),
-				meta: {
-					label: "Status",
-					variant: "multiSelect" as const,
-					options: Object.entries(statusLabels).map(
-						([value, label]) => ({
-							value,
-							label,
-						}),
-					),
-					width: 100,
-					minWidth: 100,
-				},
-				enableSorting: true,
 				enableHiding: true,
 			},
 			{
