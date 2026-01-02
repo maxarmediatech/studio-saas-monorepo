@@ -274,7 +274,7 @@ export function BookingsTableClient({
 						label: config.label,
 					})),
 				},
-				enableSorting: true,
+				enableSorting: false,
 				enableHiding: true,
 			},
 			{
@@ -328,7 +328,7 @@ export function BookingsTableClient({
 						label: config.label,
 					})),
 				},
-				enableSorting: true,
+				enableSorting: false,
 				enableHiding: true,
 			},
 			{
