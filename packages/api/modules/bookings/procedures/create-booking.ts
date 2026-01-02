@@ -25,7 +25,8 @@ import {
 
 /**
  * Generate a unique reference number for the booking
- * Format: WB-YYYYMM-XXXX (e.g., WB-202412-0001)
+ * Format: BKNYYYYMMXXXX (e.g., BKN2024120001)
+ * Supports up to 9,999 bookings per month per studio
  */
 async function generateReferenceNumber(
 	tx: TransactionClient,
@@ -33,7 +34,7 @@ async function generateReferenceNumber(
 ): Promise<string> {
 	const now = new Date();
 	const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
-	const prefix = `WB-${yearMonth}-`;
+	const prefix = `BKN${yearMonth}`;
 
 	// Get the highest reference number for this month
 	const [lastBooking] = await tx
@@ -50,7 +51,9 @@ async function generateReferenceNumber(
 
 	let nextNumber = 1;
 	if (lastBooking?.referenceNumber) {
-		const lastNumber = parseInt(lastBooking.referenceNumber.split("-")[2], 10);
+		// Extract the last 4 digits (sequence number)
+		const lastNumberStr = lastBooking.referenceNumber.slice(-4);
+		const lastNumber = parseInt(lastNumberStr, 10);
 		if (!isNaN(lastNumber)) {
 			nextNumber = lastNumber + 1;
 		}
