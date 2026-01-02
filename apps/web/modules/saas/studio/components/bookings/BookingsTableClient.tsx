@@ -33,6 +33,7 @@ import { useBookingsTable } from "@saas/studio/hooks/tables";
 import {
 	bookingsApi,
 	bookingsMutations,
+	configurationsApi,
 	studioQueryKeys,
 } from "@saas/studio/lib/api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -127,6 +128,31 @@ export function BookingsTableClient({
 		bookingsApi.listOptions(queryInput),
 	);
 
+	// Fetch configurations for labels
+	const { data: bookingTypesData } = useQuery(
+		configurationsApi.bookingTypesOptions(),
+	);
+	const { data: packageTypesData } = useQuery(
+		configurationsApi.packageTypesOptions(),
+	);
+
+	// Create lookup maps for key -> label
+	const bookingTypeLabels = useMemo(() => {
+		const map = new Map<string, string>();
+		for (const config of bookingTypesData?.data ?? []) {
+			map.set(config.key, config.label);
+		}
+		return map;
+	}, [bookingTypesData]);
+
+	const packageTypeLabels = useMemo(() => {
+		const map = new Map<string, string>();
+		for (const config of packageTypesData?.data ?? []) {
+			map.set(config.key, config.label);
+		}
+		return map;
+	}, [packageTypesData]);
+
 	const bookings = data?.data ?? [];
 	const serverPagination = data?.pagination ?? {
 		page: 1,
@@ -211,17 +237,12 @@ export function BookingsTableClient({
 					<DataTableColumnHeader column={column} title="Name" />
 				),
 				cell: ({ row }) => (
-					<div>
-						<Link
-							href={`/app/${organizationSlug}/bookings/${row.original.id}`}
-							className="font-medium hover:underline"
-						>
-							{row.original.name}
-						</Link>
-						<p className="text-sm text-muted-foreground">
-							{row.original.bookingType}
-						</p>
-					</div>
+					<Link
+						href={`/app/${organizationSlug}/bookings/${row.original.id}`}
+						className="font-medium hover:underline"
+					>
+						{row.original.name}
+					</Link>
 				),
 				meta: {
 					label: "Name",
@@ -239,14 +260,19 @@ export function BookingsTableClient({
 					<DataTableColumnHeader column={column} title="Type" />
 				),
 				cell: ({ row }) => (
-					<span className="text-sm">{row.original.bookingType}</span>
+					<span className="text-sm">
+						{bookingTypeLabels.get(row.original.bookingType) ??
+							row.original.bookingType}
+					</span>
 				),
 				meta: {
 					label: "Booking Type",
 					variant: "multiSelect" as const,
 					icon: TagIcon,
-					// Options would be populated from configurations API
-					options: [],
+					options: (bookingTypesData?.data ?? []).map((config) => ({
+						value: config.key,
+						label: config.label,
+					})),
 				},
 				enableSorting: true,
 				enableHiding: true,
@@ -288,14 +314,19 @@ export function BookingsTableClient({
 					<DataTableColumnHeader column={column} title="Package" />
 				),
 				cell: ({ row }) => (
-					<span className="text-sm">{row.original.packageType}</span>
+					<span className="text-sm">
+						{packageTypeLabels.get(row.original.packageType) ??
+							row.original.packageType}
+					</span>
 				),
 				meta: {
 					label: "Package",
 					variant: "multiSelect" as const,
 					icon: PackageIcon,
-					// Options would be populated from configurations API
-					options: [],
+					options: (packageTypesData?.data ?? []).map((config) => ({
+						value: config.key,
+						label: config.label,
+					})),
 				},
 				enableSorting: true,
 				enableHiding: true,
@@ -495,7 +526,14 @@ export function BookingsTableClient({
 				enableHiding: false,
 			},
 		],
-		[organizationSlug, rowActions],
+		[
+			organizationSlug,
+			rowActions,
+			bookingTypeLabels,
+			packageTypeLabels,
+			bookingTypesData,
+			packageTypesData,
+		],
 	);
 
 	return (
