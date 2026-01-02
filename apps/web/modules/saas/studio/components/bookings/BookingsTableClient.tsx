@@ -25,6 +25,7 @@ import {
 	DataTableColumnHeader,
 	DataTableRowActions,
 	DataTableViewOptions,
+	SortProvider,
 	type RowAction,
 } from "@saas/shared/components/data-table";
 // Import types for column meta augmentation
@@ -542,31 +543,36 @@ export function BookingsTableClient({
 
 	return (
 		<>
-			<DataTable
-				columns={columns}
-				data={bookings}
-				isLoading={isLoading}
-				isFetching={isFetching}
-				pagination={serverPagination}
-				onPaginationChange={onPaginationChange}
-				sorting={sortingState}
-				onSortingChange={onSortingChange}
-				emptyState={
-					<div className="flex flex-col items-center gap-2">
-						<p className="text-muted-foreground">
-							No bookings found
-						</p>
-						<Button variant="outline" size="sm" asChild>
-							<Link
-								href={`/app/${organizationSlug}/bookings/new`}
-							>
-								<PlusIcon className="mr-2 h-4 w-4" />
-								Create your first booking
-							</Link>
-						</Button>
-					</div>
-				}
-			/>
+			<SortProvider
+				sortColumn={sorting.sortBy}
+				sortDirection={sorting.sortDirection}
+			>
+				<DataTable
+					columns={columns}
+					data={bookings}
+					isLoading={isLoading}
+					isFetching={isFetching}
+					pagination={serverPagination}
+					onPaginationChange={onPaginationChange}
+					sorting={sortingState}
+					onSortingChange={onSortingChange}
+					emptyState={
+						<div className="flex flex-col items-center gap-2">
+							<p className="text-muted-foreground">
+								No bookings found
+							</p>
+							<Button variant="outline" size="sm" asChild>
+								<Link
+									href={`/app/${organizationSlug}/bookings/new`}
+								>
+									<PlusIcon className="mr-2 h-4 w-4" />
+									Create your first booking
+								</Link>
+							</Button>
+						</div>
+					}
+				/>
+			</SortProvider>
 
 			{/* Delete confirmation dialog */}
 			<AlertDialog

@@ -1,6 +1,7 @@
 // Core table components
 export { DataTable, type DataTableProps } from "./DataTable";
 export { DataTableColumnHeader } from "./DataTableColumnHeader";
+export { SortProvider, useSortContext } from "./DataTableSortContext";
 // Filter components
 export {
 	DataTableDateFilter,

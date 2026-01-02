@@ -12,6 +12,7 @@ export {
 	createPaginationParsers,
 	createSearchParamsCache,
 	createSortingParsers,
+	getSortingStateParser,
 	paginationParsers,
 	parseAsArrayOf,
 	parseAsInteger,
