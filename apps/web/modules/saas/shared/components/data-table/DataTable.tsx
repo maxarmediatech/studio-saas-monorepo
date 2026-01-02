@@ -10,15 +10,18 @@ import {
 } from "@repo/ui/components/table";
 import {
 	type ColumnDef,
-	type SortingState,
-	type OnChangeFn,
 	flexRender,
 	getCoreRowModel,
 	getSortedRowModel,
+	type OnChangeFn,
+	type SortingState,
 	useReactTable,
 } from "@tanstack/react-table";
 import { useState } from "react";
-import { DataTablePagination, type PaginationState } from "./DataTablePagination";
+import {
+	DataTablePagination,
+	type PaginationState,
+} from "./DataTablePagination";
 import { DataTableSkeleton } from "./DataTableSkeleton";
 
 export interface DataTableProps<TData, TValue> {
@@ -87,7 +90,8 @@ export function DataTable<TData, TValue>({
 										{header.isPlaceholder
 											? null
 											: flexRender(
-													header.column.columnDef.header,
+													header.column.columnDef
+														.header,
 													header.getContext(),
 												)}
 									</TableHead>
@@ -97,12 +101,17 @@ export function DataTable<TData, TValue>({
 					</TableHeader>
 					<TableBody>
 						{showLoading ? (
-							<DataTableSkeleton columns={columns.length} rows={skeletonRows} />
+							<DataTableSkeleton
+								columns={columns.length}
+								rows={skeletonRows}
+							/>
 						) : table.getRowModel().rows?.length ? (
 							table.getRowModel().rows.map((row) => (
 								<TableRow
 									key={row.id}
-									data-state={row.getIsSelected() && "selected"}
+									data-state={
+										row.getIsSelected() && "selected"
+									}
 									className={isFetching ? "opacity-50" : ""}
 								>
 									{row.getVisibleCells().map((cell) => (
@@ -122,7 +131,9 @@ export function DataTable<TData, TValue>({
 									className="h-32 text-center"
 								>
 									{emptyState ?? (
-										<p className="text-muted-foreground">No results.</p>
+										<p className="text-muted-foreground">
+											No results.
+										</p>
 									)}
 								</TableCell>
 							</TableRow>

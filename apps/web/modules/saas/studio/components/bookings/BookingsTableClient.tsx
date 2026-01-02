@@ -16,9 +16,12 @@ import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import {
 	DataTable,
+	DataTableColumnHeader,
 	DataTableRowActions,
 	type RowAction,
 } from "@saas/shared/components/data-table";
+// Import types for column meta augmentation
+import "@saas/shared/components/data-table/types";
 import { useBookingsTable } from "@saas/studio/hooks/tables";
 import {
 	bookingsApi,
@@ -28,6 +31,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
+	CalendarIcon,
 	EyeIcon,
 	Loader2Icon,
 	PencilIcon,
@@ -82,8 +86,14 @@ export function BookingsTableClient({
 	const queryClient = useQueryClient();
 
 	// Use the bookings table hook for URL-synced state
-	const { filters, pagination, sorting, onPaginationChange } =
-		useBookingsTable();
+	const {
+		filters,
+		pagination,
+		sorting,
+		sortingState,
+		onSortingChange,
+		onPaginationChange,
+	} = useBookingsTable();
 
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [bookingToDelete, setBookingToDelete] =
@@ -102,7 +112,7 @@ export function BookingsTableClient({
 
 	// Fetch bookings with TanStack Query
 	const { data, isLoading, isFetching } = useQuery(
-		bookingsApi.listOptions(queryInput)
+		bookingsApi.listOptions(queryInput),
 	);
 
 	const bookings = data?.data ?? [];
@@ -130,46 +140,62 @@ export function BookingsTableClient({
 	});
 
 	// Define row actions
-	const rowActions: RowAction<BookingListItem>[] = [
-		{
-			label: "View details",
-			icon: <EyeIcon className="h-4 w-4" />,
-			onClick: (row) =>
-				router.push(`/app/${organizationSlug}/bookings/${row.id}`),
-		},
-		{
-			label: "Edit",
-			icon: <PencilIcon className="h-4 w-4" />,
-			onClick: (row) =>
-				router.push(`/app/${organizationSlug}/bookings/${row.id}/edit`),
-		},
-		{
-			label: "Delete",
-			icon: <TrashIcon className="h-4 w-4" />,
-			variant: "destructive",
-			separator: true,
-			onClick: (row) => {
-				setBookingToDelete(row);
-				setDeleteDialogOpen(true);
+	const rowActions: RowAction<BookingListItem>[] = useMemo(
+		() => [
+			{
+				label: "View details",
+				icon: <EyeIcon className="h-4 w-4" />,
+				onClick: (row) =>
+					router.push(`/app/${organizationSlug}/bookings/${row.id}`),
 			},
-		},
-	];
+			{
+				label: "Edit",
+				icon: <PencilIcon className="h-4 w-4" />,
+				onClick: (row) =>
+					router.push(
+						`/app/${organizationSlug}/bookings/${row.id}/edit`,
+					),
+			},
+			{
+				label: "Delete",
+				icon: <TrashIcon className="h-4 w-4" />,
+				variant: "destructive",
+				separator: true,
+				onClick: (row) => {
+					setBookingToDelete(row);
+					setDeleteDialogOpen(true);
+				},
+			},
+		],
+		[organizationSlug, router],
+	);
 
-	// Define columns
+	// Define columns with sortable headers and meta for filters
 	const columns: ColumnDef<BookingListItem>[] = useMemo(
 		() => [
 			{
+				id: "referenceNumber",
 				accessorKey: "referenceNumber",
-				header: "Ref #",
+				header: ({ column }) => (
+					<DataTableColumnHeader column={column} title="Ref #" />
+				),
 				cell: ({ row }) => (
 					<span className="font-mono text-sm">
 						{row.original.referenceNumber}
 					</span>
 				),
+				meta: {
+					label: "Reference",
+				},
+				enableSorting: true,
+				enableHiding: false,
 			},
 			{
+				id: "name",
 				accessorKey: "name",
-				header: "Name",
+				header: ({ column }) => (
+					<DataTableColumnHeader column={column} title="Name" />
+				),
 				cell: ({ row }) => (
 					<div>
 						<Link
@@ -183,10 +209,18 @@ export function BookingsTableClient({
 						</p>
 					</div>
 				),
+				meta: {
+					label: "Name",
+				},
+				enableSorting: true,
+				enableHiding: false,
 			},
 			{
+				id: "status",
 				accessorKey: "status",
-				header: "Status",
+				header: ({ column }) => (
+					<DataTableColumnHeader column={column} title="Status" />
+				),
 				cell: ({ row }) => (
 					<Badge
 						variant="secondary"
@@ -198,21 +232,47 @@ export function BookingsTableClient({
 							row.original.status}
 					</Badge>
 				),
+				meta: {
+					label: "Status",
+				},
+				enableSorting: true,
+				enableHiding: true,
 			},
 			{
+				id: "packageType",
 				accessorKey: "packageType",
-				header: "Package",
+				header: ({ column }) => (
+					<DataTableColumnHeader column={column} title="Package" />
+				),
+				meta: {
+					label: "Package",
+				},
+				enableSorting: true,
+				enableHiding: true,
 			},
 			{
+				id: "packageCost",
 				accessorKey: "packageCost",
-				header: () => <div className="text-right">Value</div>,
+				header: ({ column }) => (
+					<DataTableColumnHeader
+						column={column}
+						title="Value"
+						className="justify-end"
+					/>
+				),
 				cell: ({ row }) => (
 					<div className="text-right font-medium">
 						{formatMoney(row.original.packageCost)}
 					</div>
 				),
+				meta: {
+					label: "Value",
+				},
+				enableSorting: true,
+				enableHiding: true,
 			},
 			{
+				id: "balance",
 				accessorKey: "balance",
 				header: () => <div className="text-right">Balance</div>,
 				cell: ({ row }) => (
@@ -228,8 +288,39 @@ export function BookingsTableClient({
 						</span>
 					</div>
 				),
+				meta: {
+					label: "Balance",
+				},
+				enableSorting: false,
+				enableHiding: true,
 			},
 			{
+				id: "createdAt",
+				accessorKey: "createdAt",
+				header: ({ column }) => (
+					<DataTableColumnHeader column={column} title="Created" />
+				),
+				cell: ({ row }) => {
+					const date = new Date(row.original.createdAt);
+					return (
+						<span className="text-sm text-muted-foreground">
+							{date.toLocaleDateString("en-US", {
+								month: "short",
+								day: "numeric",
+								year: "numeric",
+							})}
+						</span>
+					);
+				},
+				meta: {
+					label: "Created",
+					icon: CalendarIcon,
+				},
+				enableSorting: true,
+				enableHiding: true,
+			},
+			{
+				id: "shootsCount",
 				accessorKey: "shootsCount",
 				header: () => <div className="text-center">Shoots</div>,
 				cell: ({ row }) => (
@@ -237,6 +328,11 @@ export function BookingsTableClient({
 						{row.original.shootsCount}
 					</div>
 				),
+				meta: {
+					label: "Shoots",
+				},
+				enableSorting: false,
+				enableHiding: true,
 			},
 			{
 				id: "actions",
@@ -246,9 +342,11 @@ export function BookingsTableClient({
 						actions={rowActions}
 					/>
 				),
+				enableSorting: false,
+				enableHiding: false,
 			},
 		],
-		[organizationSlug]
+		[organizationSlug, rowActions],
 	);
 
 	return (
@@ -260,6 +358,8 @@ export function BookingsTableClient({
 				isFetching={isFetching}
 				pagination={serverPagination}
 				onPaginationChange={onPaginationChange}
+				sorting={sortingState}
+				onSortingChange={onSortingChange}
 				emptyState={
 					<div className="flex flex-col items-center gap-2">
 						<p className="text-muted-foreground">

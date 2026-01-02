@@ -49,7 +49,9 @@ export function DataTableRowActions<TData>({
 			<DropdownMenuContent align="end">
 				{visibleActions.map((action, index) => (
 					<div key={action.label}>
-						{action.separator && index > 0 && <DropdownMenuSeparator />}
+						{action.separator && index > 0 && (
+							<DropdownMenuSeparator />
+						)}
 						<DropdownMenuItem
 							onClick={() => action.onClick(row)}
 							className={
@@ -58,7 +60,9 @@ export function DataTableRowActions<TData>({
 									: undefined
 							}
 						>
-							{action.icon && <span className="mr-2">{action.icon}</span>}
+							{action.icon && (
+								<span className="mr-2">{action.icon}</span>
+							)}
 							{action.label}
 						</DropdownMenuItem>
 					</div>
