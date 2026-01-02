@@ -1,28 +1,39 @@
 "use client";
 
 import {
-	Table,
 	TableBody,
 	TableCell,
 	TableHead,
 	TableHeader,
 	TableRow,
 } from "@repo/ui/components/table";
+import { cn } from "@repo/ui/lib/utils";
 import {
 	type ColumnDef,
 	flexRender,
 	getCoreRowModel,
 	getSortedRowModel,
 	type OnChangeFn,
+	type RowSelectionState,
 	type SortingState,
 	useReactTable,
 } from "@tanstack/react-table";
+import * as React from "react";
 import { useState } from "react";
+import { useTableScroll } from "@saas/shared/hooks/use-table-scroll";
 import {
 	DataTablePagination,
 	type PaginationState,
 } from "./DataTablePagination";
+import { DataTableHorizontalScroll } from "./DataTableHorizontalScroll";
 import { DataTableSkeleton } from "./DataTableSkeleton";
+
+export interface StickyColumnConfig {
+	/** Column ID */
+	id: string;
+	/** Width of the column in pixels */
+	width: number;
+}
 
 export interface DataTableProps<TData, TValue> {
 	columns: ColumnDef<TData, TValue>[];
@@ -38,10 +49,35 @@ export interface DataTableProps<TData, TValue> {
 	/** Server-side sorting */
 	sorting?: SortingState;
 	onSortingChange?: OnChangeFn<SortingState>;
+	/** Row selection state */
+	rowSelection?: RowSelectionState;
+	onRowSelectionChange?: OnChangeFn<RowSelectionState>;
+	/** Enable row selection */
+	enableRowSelection?: boolean;
 	/** Show row opacity when fetching/pending */
 	isFetching?: boolean;
 	/** Additional class for table container */
 	className?: string;
+	/** Custom row ID getter */
+	getRowId?: (row: TData) => string;
+	/** Configuration for left-pinned columns */
+	stickyLeftColumns?: StickyColumnConfig[];
+	/** Configuration for right-pinned columns */
+	stickyRightColumns?: StickyColumnConfig[];
+	/** Minimum table width (for horizontal scroll) */
+	minWidth?: number;
+	/** Column ID where horizontal scroll controls should appear */
+	scrollControlsColumnId?: string;
+	/** Column index to start scrolling from (columns before this are sticky) */
+	scrollStartColumn?: number;
+}
+
+interface ColumnMeta {
+	width?: number;
+	minWidth?: number;
+	maxWidth?: number;
+	headerClassName?: string;
+	cellClassName?: string;
 }
 
 export function DataTable<TData, TValue>({
@@ -54,14 +90,29 @@ export function DataTable<TData, TValue>({
 	onPaginationChange,
 	sorting: externalSorting,
 	onSortingChange,
+	rowSelection: externalRowSelection,
+	onRowSelectionChange,
+	enableRowSelection = false,
 	isFetching = false,
 	className,
+	getRowId,
+	stickyLeftColumns = [],
+	stickyRightColumns = [],
+	minWidth,
+	scrollControlsColumnId,
+	scrollStartColumn,
 }: DataTableProps<TData, TValue>) {
 	// Internal sorting state (used when no external sorting provided)
 	const [internalSorting, setInternalSorting] = useState<SortingState>([]);
+	// Internal row selection state (used when no external selection provided)
+	const [internalRowSelection, setInternalRowSelection] =
+		useState<RowSelectionState>({});
 
 	const sorting = externalSorting ?? internalSorting;
 	const setSorting = onSortingChange ?? setInternalSorting;
+
+	const rowSelection = externalRowSelection ?? internalRowSelection;
+	const setRowSelection = onRowSelectionChange ?? setInternalRowSelection;
 
 	const table = useReactTable({
 		data,
@@ -69,8 +120,11 @@ export function DataTable<TData, TValue>({
 		getCoreRowModel: getCoreRowModel(),
 		getSortedRowModel: getSortedRowModel(),
 		onSortingChange: setSorting,
+		onRowSelectionChange: setRowSelection,
+		getRowId,
 		state: {
 			sorting,
+			rowSelection,
 		},
 		// When using controlled sorting (external state), always set manualSorting
 		// to prevent TanStack Table from trying to sort data client-side
@@ -78,28 +132,197 @@ export function DataTable<TData, TValue>({
 		manualPagination: !!pagination,
 		// Enable multi-sort only if explicitly needed
 		enableMultiSort: false,
+		enableRowSelection,
 	});
 
 	const showLoading = isLoading && data.length === 0;
 
+	// Set up horizontal scroll controls
+	const hasSticky = stickyLeftColumns.length > 0 || stickyRightColumns.length > 0;
+	const defaultStartColumn = hasSticky ? stickyLeftColumns.length : 0;
+	const tableScroll = useTableScroll({
+		useColumnWidths: true,
+		startFromColumn: scrollStartColumn ?? defaultStartColumn,
+	});
+
+	// Build sticky position maps
+	const leftColumnIds = React.useMemo(
+		() => new Set(stickyLeftColumns.map((c) => c.id)),
+		[stickyLeftColumns],
+	);
+
+	const rightColumnIds = React.useMemo(
+		() => new Set(stickyRightColumns.map((c) => c.id)),
+		[stickyRightColumns],
+	);
+
+	// Calculate left positions for left-pinned columns
+	const leftPositions = React.useMemo(() => {
+		let position = 0;
+		const positions: Record<string, number> = {};
+
+		for (const col of stickyLeftColumns) {
+			positions[col.id] = position;
+			position += col.width;
+		}
+
+		return positions;
+	}, [stickyLeftColumns]);
+
+	// Calculate right positions for right-pinned columns
+	const rightPositions = React.useMemo(() => {
+		let position = 0;
+		const positions: Record<string, number> = {};
+
+		// Process from right to left
+		for (let i = stickyRightColumns.length - 1; i >= 0; i--) {
+			const col = stickyRightColumns[i];
+			if (col) {
+				positions[col.id] = position;
+				position += col.width;
+			}
+		}
+
+		return positions;
+	}, [stickyRightColumns]);
+
+	const getStickyStyle = React.useCallback(
+		(columnId: string, meta?: ColumnMeta): React.CSSProperties => {
+			const style: React.CSSProperties = {};
+
+			// Apply width from meta
+			if (meta?.width !== undefined) {
+				style.width = `${meta.width}px`;
+			}
+			if (meta?.minWidth !== undefined) {
+				style.minWidth = `${meta.minWidth}px`;
+			}
+			if (meta?.maxWidth !== undefined) {
+				style.maxWidth = `${meta.maxWidth}px`;
+			}
+
+			// Apply sticky positioning
+			const leftPos = leftPositions[columnId];
+			if (leftPos !== undefined) {
+				style.left = `${leftPos}px`;
+				style.position = "sticky";
+				style.zIndex = 10;
+			}
+
+			const rightPos = rightPositions[columnId];
+			if (rightPos !== undefined) {
+				style.right = `${rightPos}px`;
+				style.position = "sticky";
+				style.zIndex = 10;
+			}
+
+			return style;
+		},
+		[leftPositions, rightPositions],
+	);
+
+	const getStickyClassName = React.useCallback(
+		(columnId: string, isHeader: boolean, meta?: ColumnMeta): string => {
+			const isLeftSticky = leftColumnIds.has(columnId);
+			const isRightSticky = rightColumnIds.has(columnId);
+			const baseMetaClass = isHeader
+				? meta?.headerClassName
+				: meta?.cellClassName;
+
+			// Find position in sticky arrays for border logic
+			const leftIndex = stickyLeftColumns.findIndex((c) => c.id === columnId);
+			const isLastLeftSticky =
+				leftIndex >= 0 && leftIndex === stickyLeftColumns.length - 1;
+
+			const rightIndex = stickyRightColumns.findIndex((c) => c.id === columnId);
+			const isFirstRightSticky = rightIndex === 0;
+
+			return cn(
+				baseMetaClass,
+				(isLeftSticky || isRightSticky) && "bg-background",
+				// Add right border to last left-sticky column
+				isLastLeftSticky &&
+					"after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-border",
+				// Add left border and fade gradient to first right-sticky column
+				isFirstRightSticky && [
+					"before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border",
+					"after:absolute after:left-[-24px] after:top-0 after:bottom-0 after:w-6 after:bg-gradient-to-r after:from-transparent after:to-background after:pointer-events-none",
+				],
+			);
+		},
+		[leftColumnIds, rightColumnIds, stickyLeftColumns, stickyRightColumns],
+	);
+
 	return (
 		<div className={className}>
-			<div className="rounded-md border">
-				<Table>
-					<TableHeader>
+			<div
+				ref={tableScroll.containerRef}
+				className={cn(
+					"border-border bg-card overflow-hidden rounded-xl border",
+					hasSticky && "scrollbar-hide overflow-x-auto overscroll-x-none",
+				)}
+			>
+				<table
+					className={cn(
+						"w-full caption-bottom text-sm",
+						hasSticky && "relative",
+					)}
+					style={minWidth ? { minWidth: `${minWidth}px` } : undefined}
+				>
+					<TableHeader className="bg-muted/40">
 						{table.getHeaderGroups().map((headerGroup) => (
-							<TableRow key={headerGroup.id}>
-								{headerGroup.headers.map((header) => (
-									<TableHead key={header.id}>
-										{header.isPlaceholder
-											? null
-											: flexRender(
-													header.column.columnDef
-														.header,
+							<TableRow
+								key={headerGroup.id}
+								className="hover:bg-transparent border-b"
+							>
+								{headerGroup.headers.map((header) => {
+									const meta = header.column.columnDef.meta as
+										| ColumnMeta
+										| undefined;
+									const stickyStyle = getStickyStyle(header.column.id, meta);
+									const stickyClass = getStickyClassName(
+										header.column.id,
+										true,
+										meta,
+									);
+
+									// Check if this column should display scroll controls
+									const showScrollControls =
+										scrollControlsColumnId &&
+										header.column.id === scrollControlsColumnId;
+
+									return (
+										<TableHead
+											key={header.id}
+											className={cn(
+												"relative border-r border-border px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground last:border-r-0",
+												stickyClass,
+											)}
+											style={stickyStyle}
+										>
+											{header.isPlaceholder ? null : showScrollControls ? (
+												<div className="flex items-center justify-between gap-2">
+													{flexRender(
+														header.column.columnDef.header,
+														header.getContext(),
+													)}
+													<DataTableHorizontalScroll
+														canScrollLeft={tableScroll.canScrollLeft}
+														canScrollRight={tableScroll.canScrollRight}
+														onScrollLeft={() => tableScroll.scrollLeft()}
+														onScrollRight={() => tableScroll.scrollRight()}
+														className="hidden md:flex"
+													/>
+												</div>
+											) : (
+												flexRender(
+													header.column.columnDef.header,
 													header.getContext(),
-												)}
-									</TableHead>
-								))}
+												)
+											)}
+										</TableHead>
+									);
+								})}
 							</TableRow>
 						))}
 					</TableHeader>
@@ -113,37 +336,53 @@ export function DataTable<TData, TValue>({
 							table.getRowModel().rows.map((row) => (
 								<TableRow
 									key={row.id}
-									data-state={
-										row.getIsSelected() && "selected"
-									}
-									className={isFetching ? "opacity-50" : ""}
+									data-state={row.getIsSelected() && "selected"}
+									className={cn(
+										"border-border bg-background hover:bg-muted/50 border-b transition last:border-b-0",
+										isFetching && "opacity-50",
+									)}
 								>
-									{row.getVisibleCells().map((cell) => (
-										<TableCell key={cell.id}>
-											{flexRender(
-												cell.column.columnDef.cell,
-												cell.getContext(),
-											)}
-										</TableCell>
-									))}
+									{row.getVisibleCells().map((cell) => {
+										const meta = cell.column.columnDef.meta as
+											| ColumnMeta
+											| undefined;
+										const stickyStyle = getStickyStyle(cell.column.id, meta);
+										const stickyClass = getStickyClassName(
+											cell.column.id,
+											false,
+											meta,
+										);
+
+										return (
+											<TableCell
+												key={cell.id}
+												className={cn(
+													"relative border-r border-border px-3 py-3 text-sm text-foreground last:border-r-0",
+													stickyClass,
+												)}
+												style={stickyStyle}
+											>
+												{flexRender(
+													cell.column.columnDef.cell,
+													cell.getContext(),
+												)}
+											</TableCell>
+										);
+									})}
 								</TableRow>
 							))
 						) : (
 							<TableRow>
 								<TableCell
 									colSpan={columns.length}
-									className="h-32 text-center"
+									className="text-muted-foreground h-24 text-center text-sm"
 								>
-									{emptyState ?? (
-										<p className="text-muted-foreground">
-											No results.
-										</p>
-									)}
+									{emptyState ?? "No results."}
 								</TableCell>
 							</TableRow>
 						)}
 					</TableBody>
-				</Table>
+				</table>
 			</div>
 
 			{pagination && pagination.pageCount > 1 && (

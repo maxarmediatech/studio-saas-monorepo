@@ -1,6 +1,12 @@
 // Core table components
-export { DataTable, type DataTableProps } from "./DataTable";
+export {
+	DataTable,
+	type DataTableProps,
+	type StickyColumnConfig,
+} from "./DataTable";
 export { DataTableColumnHeader } from "./DataTableColumnHeader";
+export { DataTableHorizontalScroll } from "./DataTableHorizontalScroll";
+export { createSelectColumn } from "./DataTableSelectColumn";
 export { SortProvider, useSortContext } from "./DataTableSortContext";
 // Filter components
 export {

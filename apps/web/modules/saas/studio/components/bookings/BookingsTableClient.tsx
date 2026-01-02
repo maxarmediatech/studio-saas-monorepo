@@ -21,6 +21,7 @@ import {
 	TooltipTrigger,
 } from "@repo/ui/components/tooltip";
 import {
+	createSelectColumn,
 	DataTable,
 	DataTableColumnHeader,
 	DataTableRowActions,
@@ -216,6 +217,7 @@ export function BookingsTableClient({
 	// Define columns with sortable headers and meta for filters
 	const columns: ColumnDef<BookingListItem>[] = useMemo(
 		() => [
+			createSelectColumn<BookingListItem>(),
 			{
 				id: "referenceNumber",
 				accessorKey: "referenceNumber",
@@ -223,14 +225,22 @@ export function BookingsTableClient({
 					<DataTableColumnHeader column={column} title="Ref #" />
 				),
 				cell: ({ row }) => (
-					<span className="font-mono text-sm">
-						{row.original.referenceNumber}
-					</span>
+					<div className="flex flex-col">
+						<span className="font-mono text-sm font-medium text-foreground">
+							{row.original.referenceNumber}
+						</span>
+					</div>
 				),
 				meta: {
 					label: "Reference",
 					variant: "text" as const,
 					placeholder: "Search reference...",
+					width: 160,
+					minWidth: 160,
+					headerClassName:
+						"bg-background z-10 before:absolute before:right-0 before:top-0 before:bottom-0 before:w-px before:bg-border",
+					cellClassName:
+						"bg-background z-10 before:absolute before:right-0 before:top-0 before:bottom-0 before:w-px before:bg-border",
 				},
 				enableSorting: true,
 				enableHiding: false,
@@ -244,7 +254,7 @@ export function BookingsTableClient({
 				cell: ({ row }) => (
 					<Link
 						href={`/app/${organizationSlug}/bookings/${row.original.id}`}
-						className="font-medium hover:underline"
+						className="font-medium text-foreground hover:underline"
 					>
 						{row.original.name}
 					</Link>
@@ -254,6 +264,12 @@ export function BookingsTableClient({
 					variant: "text" as const,
 					placeholder: "Search names...",
 					icon: TextIcon,
+					width: 180,
+					minWidth: 180,
+					headerClassName:
+						"bg-background z-10 before:absolute before:right-0 before:top-0 before:bottom-0 before:w-px before:bg-border",
+					cellClassName:
+						"bg-background z-10 before:absolute before:right-0 before:top-0 before:bottom-0 before:w-px before:bg-border",
 				},
 				enableSorting: true,
 				enableHiding: false,
@@ -278,6 +294,8 @@ export function BookingsTableClient({
 						value: config.key,
 						label: config.label,
 					})),
+					width: 120,
+					minWidth: 120,
 				},
 				enableSorting: false,
 				enableHiding: true,
@@ -308,6 +326,8 @@ export function BookingsTableClient({
 							label,
 						}),
 					),
+					width: 100,
+					minWidth: 100,
 				},
 				enableSorting: true,
 				enableHiding: true,
@@ -332,6 +352,8 @@ export function BookingsTableClient({
 						value: config.key,
 						label: config.label,
 					})),
+					width: 160,
+					minWidth: 160,
 				},
 				enableSorting: false,
 				enableHiding: true,
@@ -347,12 +369,14 @@ export function BookingsTableClient({
 					/>
 				),
 				cell: ({ row }) => (
-					<div className="text-right font-medium tabular-nums">
+					<div className="text-right font-semibold tabular-nums">
 						{formatMoney(row.original.packageCost)}
 					</div>
 				),
 				meta: {
 					label: "Cost",
+					width: 120,
+					minWidth: 120,
 				},
 				enableSorting: true,
 				enableHiding: true,
@@ -360,9 +384,13 @@ export function BookingsTableClient({
 			{
 				id: "balance",
 				accessorKey: "balance",
-				header: () => <div className="text-right">Balance</div>,
+				header: () => (
+					<span className="text-foreground flex h-8 items-center justify-end text-xs font-semibold uppercase tracking-wide">
+						Balance
+					</span>
+				),
 				cell: ({ row }) => (
-					<div className="text-right">
+					<div className="text-right font-semibold tabular-nums">
 						<span
 							className={
 								Number.parseFloat(row.original.balance) > 0
@@ -376,6 +404,8 @@ export function BookingsTableClient({
 				),
 				meta: {
 					label: "Balance",
+					width: 120,
+					minWidth: 120,
 				},
 				enableSorting: false,
 				enableHiding: true,
@@ -393,7 +423,6 @@ export function BookingsTableClient({
 							{date.toLocaleDateString("en-US", {
 								month: "short",
 								day: "numeric",
-								year: "numeric",
 							})}
 						</span>
 					);
@@ -402,120 +431,10 @@ export function BookingsTableClient({
 					label: "Created",
 					variant: "dateRange" as const,
 					icon: CalendarIcon,
+					width: 100,
+					minWidth: 100,
 				},
 				enableSorting: true,
-				enableHiding: true,
-			},
-			{
-				id: "shootsCount",
-				accessorKey: "shootsCount",
-				header: ({ column }) => (
-					<DataTableColumnHeader column={column} title="Shoots" />
-				),
-				cell: ({ row }) => {
-					const count = row.original.shootsCount;
-					const hasShootDetails = count > 0;
-
-					return (
-						<div className="flex items-center gap-2">
-							<CameraIcon
-								className={`h-4 w-4 ${
-									hasShootDetails
-										? "text-primary"
-										: "text-muted-foreground"
-								}`}
-							/>
-							<span
-								className={`tabular-nums ${
-									hasShootDetails
-										? "font-medium"
-										: "text-muted-foreground"
-								}`}
-							>
-								{count > 0
-									? `${count} shoot${count > 1 ? "s" : ""}`
-									: "No shoots"}
-							</span>
-						</div>
-					);
-				},
-				meta: {
-					label: "Shoots",
-					icon: CameraIcon,
-				},
-				enableSorting: false,
-				enableHiding: true,
-			},
-			{
-				id: "participants",
-				accessorKey: "participants",
-				header: ({ column }) => (
-					<DataTableColumnHeader column={column} title="Clients" />
-				),
-				cell: ({ row }) => {
-					const participants = row.original.participants || [];
-
-					if (!participants.length) {
-						return (
-							<span className="text-muted-foreground">
-								No participants
-							</span>
-						);
-					}
-
-					// Show up to 2 badges inline
-					const MAX_VISIBLE = 2;
-					const visible = participants.slice(0, MAX_VISIBLE);
-					const hiddenCount = participants.length - visible.length;
-
-					return (
-						<div className="flex flex-wrap items-center gap-1">
-							{visible.map((participant) => (
-								<Badge
-									key={`${participant.client.id}-${participant.role}`}
-									variant="secondary"
-									className="capitalize"
-								>
-									{participant.client.name}
-								</Badge>
-							))}
-
-							{hiddenCount > 0 && (
-								<TooltipProvider>
-									<Tooltip>
-										<TooltipTrigger asChild>
-											<Badge variant="outline">
-												+{hiddenCount} more
-											</Badge>
-										</TooltipTrigger>
-										<TooltipContent side="top">
-											<div className="space-y-1">
-												{participants.map(
-													(participant) => (
-														<div
-															key={`tooltip-${participant.client.id}-${participant.role}`}
-															className="text-sm"
-														>
-															{
-																participant
-																	.client.name
-															}
-														</div>
-													),
-												)}
-											</div>
-										</TooltipContent>
-									</Tooltip>
-								</TooltipProvider>
-							)}
-						</div>
-					);
-				},
-				meta: {
-					label: "Clients",
-					icon: UsersIcon,
-				},
-				enableSorting: false,
 				enableHiding: true,
 			},
 			{
@@ -529,6 +448,14 @@ export function BookingsTableClient({
 				),
 				enableSorting: false,
 				enableHiding: false,
+				meta: {
+					width: 80,
+					minWidth: 80,
+					headerClassName:
+						"text-center md:sticky md:right-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border after:absolute after:left-[-24px] after:top-0 after:bottom-0 after:w-6 after:bg-gradient-to-r after:from-transparent after:to-background",
+					cellClassName:
+						"text-center md:sticky md:right-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border after:absolute after:left-[-24px] after:top-0 after:bottom-0 after:w-6 after:bg-gradient-to-r after:from-transparent after:to-background",
+				},
 			},
 		],
 		[
@@ -556,6 +483,19 @@ export function BookingsTableClient({
 					onPaginationChange={onPaginationChange}
 					sorting={sortingState}
 					onSortingChange={onSortingChange}
+					enableRowSelection
+					getRowId={(row) => row.id}
+					// Sticky columns configuration
+					stickyLeftColumns={[
+						{ id: "select", width: 56 },
+						{ id: "referenceNumber", width: 160 },
+						{ id: "name", width: 180 },
+					]}
+					stickyRightColumns={[{ id: "actions", width: 80 }]}
+					minWidth={1200}
+					// Place scroll controls in the last sticky left column
+					scrollControlsColumnId="name"
+					scrollStartColumn={3}
 					emptyState={
 						<div className="flex flex-col items-center gap-2">
 							<p className="text-muted-foreground">

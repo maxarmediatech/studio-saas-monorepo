@@ -46,6 +46,18 @@ declare module "@tanstack/react-table" {
 		unit?: string;
 		/** Icon to display in the filter button */
 		icon?: React.ComponentType<{ className?: string }>;
+
+		// Sticky column configuration
+		/** Fixed width for the column in pixels (used for sticky positioning) */
+		width?: number;
+		/** Minimum width for the column */
+		minWidth?: number;
+		/** Maximum width for the column */
+		maxWidth?: number;
+		/** Additional class name for the header cell */
+		headerClassName?: string;
+		/** Additional class name for the body cell */
+		cellClassName?: string;
 	}
 }
 
