@@ -44,7 +44,7 @@ export function useDataTable<
 	TFilters extends BaseFilterState = BaseFilterState,
 >(
 	filterParsers?: FilterParsers<TFilters>,
-	config?: UseDataTableConfig<TFilters>
+	config?: UseDataTableConfig<TFilters>,
 ): UseDataTableReturn<TFilters> {
 	const mergedConfig = { ...DEFAULT_CONFIG, ...config };
 
@@ -57,13 +57,13 @@ export function useDataTable<
 				? parseAsString.withDefault(mergedConfig.defaultSortBy)
 				: parseAsString,
 			sortDirection: parseAsString.withDefault(
-				mergedConfig.defaultSortDirection
+				mergedConfig.defaultSortDirection,
 			),
 		},
 		{
 			clearOnDefault: mergedConfig.clearOnDefault,
 			shallow: false,
-		}
+		},
 	);
 
 	// Filter state: search + entity-specific filters
@@ -77,7 +77,7 @@ export function useDataTable<
 			clearOnDefault: mergedConfig.clearOnDefault,
 			shallow: false,
 			throttleMs: 50,
-		}
+		},
 	);
 
 	// Debounced filter setter - resets page to 1
@@ -86,15 +86,17 @@ export function useDataTable<
 			void setFilterState(updates as Record<string, string | null>);
 			void setCoreState((prev) => ({ ...prev, page: 1 }));
 		},
-		mergedConfig.debounceMs
+		mergedConfig.debounceMs,
 	);
 
 	// Set a single filter value
 	const setFilter = useCallback(
 		<K extends keyof TFilters>(key: K, value: TFilters[K]) => {
-			debouncedSetFilters({ [key]: value } as unknown as Partial<TFilters>);
+			debouncedSetFilters({
+				[key]: value,
+			} as unknown as Partial<TFilters>);
 		},
-		[debouncedSetFilters]
+		[debouncedSetFilters],
 	);
 
 	// Set multiple filter values
@@ -102,7 +104,7 @@ export function useDataTable<
 		(filters: Partial<TFilters>) => {
 			debouncedSetFilters(filters);
 		},
-		[debouncedSetFilters]
+		[debouncedSetFilters],
 	);
 
 	// Set page (immediate, not debounced)
@@ -110,7 +112,7 @@ export function useDataTable<
 		(page: number) => {
 			void setCoreState((prev) => ({ ...prev, page }));
 		},
-		[setCoreState]
+		[setCoreState],
 	);
 
 	// Set limit (immediate, not debounced)
@@ -118,7 +120,7 @@ export function useDataTable<
 		(limit: number) => {
 			void setCoreState((prev) => ({ ...prev, limit, page: 1 }));
 		},
-		[setCoreState]
+		[setCoreState],
 	);
 
 	// Set sorting (immediate, not debounced)
@@ -130,15 +132,15 @@ export function useDataTable<
 				sortDirection,
 			}));
 		},
-		[setCoreState]
+		[setCoreState],
 	);
 
 	// Reset all filters to defaults
 	const resetFilters = useCallback(() => {
-		const resetValues = Object.keys({ search: null, ...filterParsers }).reduce(
-			(acc, key) => ({ ...acc, [key]: null }),
-			{}
-		);
+		const resetValues = Object.keys({
+			search: null,
+			...filterParsers,
+		}).reduce((acc, key) => ({ ...acc, [key]: null }), {});
 		void setFilterState(resetValues);
 		void setCoreState((prev) => ({ ...prev, page: 1 }));
 	}, [setFilterState, setCoreState, filterParsers]);
@@ -148,7 +150,7 @@ export function useDataTable<
 		(pagination: TablePaginationState) => {
 			setPage(pagination.page);
 		},
-		[setPage]
+		[setPage],
 	);
 
 	// Handler for TanStack Table sorting
@@ -176,29 +178,25 @@ export function useDataTable<
 			coreState.sortDirection,
 			setSorting,
 			mergedConfig.defaultSortDirection,
-		]
+		],
 	);
 
 	// TanStack Table compatible sorting state
 	const sortingState: SortingState = useMemo(() => {
-		if (!coreState.sortBy) return [];
-		return [
-			{ id: coreState.sortBy, desc: coreState.sortDirection === "desc" },
-		];
-	}, [coreState.sortBy, coreState.sortDirection]);
+		const sortBy = coreState.sortBy ?? mergedConfig.defaultSortBy;
+		if (!sortBy) return [];
+		return [{ id: sortBy, desc: coreState.sortDirection === "desc" }];
+	}, [coreState.sortBy, coreState.sortDirection, mergedConfig.defaultSortBy]);
 
 	// Derived: is any filter active?
 	const isFiltered = useMemo(() => {
-		return Object.values(filterState).some(
-			(v) => v != null && v !== ""
-		);
+		return Object.values(filterState).some((v) => v != null && v !== "");
 	}, [filterState]);
 
 	// Derived: count of active filters
 	const activeFilterCount = useMemo(() => {
-		return Object.values(filterState).filter(
-			(v) => v != null && v !== ""
-		).length;
+		return Object.values(filterState).filter((v) => v != null && v !== "")
+			.length;
 	}, [filterState]);
 
 	return {
@@ -210,7 +208,8 @@ export function useDataTable<
 		},
 		sorting: {
 			sortBy: coreState.sortBy ?? null,
-			sortDirection: (coreState.sortDirection as "asc" | "desc") ?? "desc",
+			sortDirection:
+				(coreState.sortDirection as "asc" | "desc") ?? "desc",
 		},
 
 		// Setters

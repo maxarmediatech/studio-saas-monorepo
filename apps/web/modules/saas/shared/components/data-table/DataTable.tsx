@@ -72,8 +72,12 @@ export function DataTable<TData, TValue>({
 		state: {
 			sorting,
 		},
-		manualSorting: !!onSortingChange,
+		// When using controlled sorting (external state), always set manualSorting
+		// to prevent TanStack Table from trying to sort data client-side
+		manualSorting: true,
 		manualPagination: !!pagination,
+		// Enable multi-sort only if explicitly needed
+		enableMultiSort: false,
 	});
 
 	const showLoading = isLoading && data.length === 0;
