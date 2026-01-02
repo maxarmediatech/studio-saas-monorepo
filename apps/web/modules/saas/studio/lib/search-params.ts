@@ -1,5 +1,6 @@
 import {
 	createSearchParamsCache,
+	parseAsArrayOf,
 	parseAsInteger,
 	parseAsString,
 	parseAsStringLiteral,
@@ -41,12 +42,12 @@ export const bookingSearchParamsCache = createSearchParamsCache({
 
 	// Filters
 	search: parseAsString,
-	status: parseAsStringLiteral(BOOKING_PHASES),
+	statuses: parseAsArrayOf(parseAsStringLiteral(BOOKING_PHASES)),
 
 	// Sorting
 	sortBy: parseAsString.withDefault("createdAt"),
 	sortDirection: parseAsStringLiteral(["asc", "desc"] as const).withDefault(
-		"desc"
+		"desc",
 	),
 });
 

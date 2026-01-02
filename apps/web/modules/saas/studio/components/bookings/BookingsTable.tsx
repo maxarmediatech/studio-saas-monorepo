@@ -23,7 +23,7 @@ export async function BookingsTable({
 		page: params.page,
 		limit: params.limit,
 		search: params.search ?? undefined,
-		status: params.status ?? undefined,
+		statuses: params.statuses ?? undefined,
 		sortBy: params.sortBy,
 		sortDirection: params.sortDirection,
 		includeDeleted: false,

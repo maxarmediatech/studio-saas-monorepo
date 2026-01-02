@@ -2,6 +2,7 @@ import {
 	and,
 	count,
 	eq,
+	inArray,
 	isNull,
 	sql,
 	bookings,
@@ -23,25 +24,38 @@ export const listBookings = studioProtectedProcedure
 		path: "/bookings",
 		tags: ["Bookings"],
 		summary: "List bookings",
-		description: "List all bookings for the organization with optional filters",
+		description:
+			"List all bookings for the organization with optional filters",
 	})
 	.input(listBookingsInputSchema)
 	.output(listBookingsOutputSchema)
 	.handler(async ({ input, context }) => {
 		requirePermission(context, "booking", "list");
 
-		const { status, bookingType, packageType, search, sortBy, sortDirection, page, limit, includeDeleted } = input;
+		const {
+			statuses,
+			bookingType,
+			packageType,
+			search,
+			sortBy,
+			sortDirection,
+			page,
+			limit,
+			includeDeleted,
+		} = input;
 		const offset = (page - 1) * limit;
 
 		// Build where conditions
-		const conditions = [eq(bookings.organizationId, context.organizationId)];
+		const conditions = [
+			eq(bookings.organizationId, context.organizationId),
+		];
 
 		if (!includeDeleted) {
 			conditions.push(isNull(bookings.deletedAt));
 		}
 
-		if (status) {
-			conditions.push(eq(bookings.status, status));
+		if (statuses && statuses.length > 0) {
+			conditions.push(inArray(bookings.status, statuses));
 		}
 
 		if (bookingType) {
@@ -83,7 +97,9 @@ export const listBookings = studioProtectedProcedure
 		const data = await db.query.bookings.findMany({
 			where: and(...conditions),
 			orderBy: (table, { asc, desc }) =>
-				sortDirection === "asc" ? [asc(orderColumn)] : [desc(orderColumn)],
+				sortDirection === "asc"
+					? [asc(orderColumn)]
+					: [desc(orderColumn)],
 			limit,
 			offset,
 		});
@@ -136,8 +152,8 @@ export const listBookings = studioProtectedProcedure
 
 		return {
 			data: data.map((booking) => {
-				const packageCost = parseFloat(booking.packageCost);
-				const totalReceived = parseFloat(booking.totalReceived);
+				const packageCost = Number.parseFloat(booking.packageCost);
+				const totalReceived = Number.parseFloat(booking.totalReceived);
 				const balance = (packageCost - totalReceived).toFixed(2);
 
 				return {

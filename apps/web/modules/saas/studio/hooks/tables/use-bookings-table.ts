@@ -1,7 +1,7 @@
 "use client";
 
 import type { BookingPhase } from "@repo/api/modules/studio/schemas/common";
-import { parseAsStringLiteral } from "nuqs";
+import { parseAsArrayOf, parseAsStringLiteral } from "nuqs";
 import { useDataTable } from "@/modules/saas/shared/hooks/use-data-table";
 
 /**
@@ -21,14 +21,14 @@ const BOOKING_PHASES = [
  */
 export interface BookingFilters {
 	search?: string | null;
-	status?: BookingPhase | null;
+	statuses?: BookingPhase[] | null;
 }
 
 /**
  * nuqs parsers for booking-specific filters
  */
 const bookingFilterParsers = {
-	status: parseAsStringLiteral(BOOKING_PHASES),
+	statuses: parseAsArrayOf(parseAsStringLiteral(BOOKING_PHASES)),
 };
 
 /**

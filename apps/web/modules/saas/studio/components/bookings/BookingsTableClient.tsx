@@ -104,7 +104,7 @@ export function BookingsTableClient({
 		page: pagination.page,
 		limit: pagination.limit,
 		search: filters.search ?? undefined,
-		status: filters.status ?? undefined,
+		statuses: filters.statuses ?? undefined,
 		sortBy: sorting.sortBy ?? "createdAt",
 		sortDirection: sorting.sortDirection,
 		includeDeleted: false,

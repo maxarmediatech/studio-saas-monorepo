@@ -77,7 +77,7 @@ export function BookingsFilters() {
 	const filterConfigs: ToolbarFilterConfig[] = useMemo(
 		() => [
 			{
-				id: "status",
+				id: "statuses",
 				label: "Status",
 				variant: "multiSelect",
 				options: STATUS_OPTIONS,
@@ -89,9 +89,9 @@ export function BookingsFilters() {
 	// Convert filters to toolbar format
 	const filterValues = useMemo(
 		() => ({
-			status: filters.status ? [filters.status] : [],
+			statuses: filters.statuses ?? [],
 		}),
-		[filters.status],
+		[filters.statuses],
 	);
 
 	// Handle filter changes
@@ -104,11 +104,11 @@ export function BookingsFilters() {
 			| null
 			| undefined,
 	) => {
-		if (filterId === "status") {
-			// For multiSelect, take the first value or null
-			const statusValue =
-				Array.isArray(value) && value.length > 0 ? value[0] : null;
-			setFilter("status", statusValue as typeof filters.status);
+		if (filterId === "statuses") {
+			// For multiSelect, pass the array directly or null if empty
+			const statusValues =
+				Array.isArray(value) && value.length > 0 ? value : null;
+			setFilter("statuses", statusValues as typeof filters.statuses);
 		}
 	};
 
