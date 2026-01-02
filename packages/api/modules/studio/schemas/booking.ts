@@ -6,19 +6,19 @@
 
 import { z } from "zod";
 import {
-	createListResponseSchema,
+	baseListFiltersSchema,
+	bookingPhaseSchema,
 	createItemResponseSchema,
+	createListResponseSchema,
 	createSortSchema,
+	datetimeSchema,
 	idSchema,
+	moneySchema,
 	mutationResponseSchema,
 	nameSchema,
 	paginationSchema,
-	searchSchema,
-	baseListFiltersSchema,
-	datetimeSchema,
-	moneySchema,
-	bookingPhaseSchema,
 	paymentMethodSchema,
+	searchSchema,
 } from "./common";
 
 // ============================================================================
@@ -134,6 +134,7 @@ export const listBookingsInputSchema = z
 		statuses: z.array(bookingPhaseSchema).optional(),
 		bookingType: z.string().optional(),
 		packageType: z.string().optional(),
+		createdAt: z.string().optional(), // comma-separated date range "from,to"
 	})
 	.merge(paginationSchema)
 	.merge(searchSchema)

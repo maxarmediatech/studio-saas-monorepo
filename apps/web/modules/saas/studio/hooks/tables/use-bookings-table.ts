@@ -1,7 +1,7 @@
 "use client";
 
 import type { BookingPhase } from "@repo/api/modules/studio/schemas/common";
-import { parseAsArrayOf, parseAsStringLiteral } from "nuqs";
+import { parseAsArrayOf, parseAsString, parseAsStringLiteral } from "nuqs";
 import { useDataTable } from "@/modules/saas/shared/hooks/use-data-table";
 
 /**
@@ -22,13 +22,20 @@ const BOOKING_PHASES = [
 export interface BookingFilters {
 	search?: string | null;
 	statuses?: BookingPhase[] | null;
+	bookingType?: string[] | null;
+	packageType?: string[] | null;
+	createdAt?: string[] | null; // Array of [from, to] dates in YYYY-MM-DD format
 }
 
 /**
  * nuqs parsers for booking-specific filters
+ * Using comma separator for array values to match w-tales pattern
  */
 const bookingFilterParsers = {
 	statuses: parseAsArrayOf(parseAsStringLiteral(BOOKING_PHASES)),
+	bookingType: parseAsArrayOf(parseAsString, ","),
+	packageType: parseAsArrayOf(parseAsString, ","),
+	createdAt: parseAsArrayOf(parseAsString, ","),
 };
 
 /**

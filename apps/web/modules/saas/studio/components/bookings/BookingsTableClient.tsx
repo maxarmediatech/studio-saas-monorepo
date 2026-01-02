@@ -113,11 +113,15 @@ export function BookingsTableClient({
 		useState<BookingListItem | null>(null);
 
 	// Build query input from hook state
+	// Convert array filters to comma-separated strings for API
 	const queryInput = {
 		page: pagination.page,
 		limit: pagination.limit,
 		search: filters.search ?? undefined,
 		statuses: filters.statuses ?? undefined,
+		bookingType: filters.bookingType?.join(",") ?? undefined,
+		packageType: filters.packageType?.join(",") ?? undefined,
+		createdAt: filters.createdAt?.join(",") ?? undefined,
 		sortBy: sorting.sortBy ?? "createdAt",
 		sortDirection: sorting.sortDirection,
 		includeDeleted: false,

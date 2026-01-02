@@ -1,15 +1,17 @@
 import {
 	and,
+	bookingParticipants,
+	bookings,
+	clients,
 	count,
+	db,
 	eq,
+	gte,
 	inArray,
 	isNull,
-	sql,
-	bookings,
-	bookingParticipants,
-	clients,
+	lte,
 	shoots,
-	db,
+	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
@@ -37,6 +39,7 @@ export const listBookings = studioProtectedProcedure
 			statuses,
 			bookingType,
 			packageType,
+			createdAt,
 			search,
 			sortBy,
 			sortDirection,
@@ -59,12 +62,50 @@ export const listBookings = studioProtectedProcedure
 			conditions.push(inArray(bookings.status, statuses));
 		}
 
+		// Multi-select filter: split comma-separated booking types
 		if (bookingType) {
-			conditions.push(eq(bookings.bookingType, bookingType));
+			const types = bookingType
+				.split(",")
+				.map((t) => t.trim())
+				.filter(Boolean);
+			if (types.length > 0) {
+				conditions.push(inArray(bookings.bookingType, types));
+			}
 		}
 
+		// Multi-select filter: split comma-separated package types
 		if (packageType) {
-			conditions.push(eq(bookings.packageType, packageType));
+			const types = packageType
+				.split(",")
+				.map((t) => t.trim())
+				.filter(Boolean);
+			if (types.length > 0) {
+				conditions.push(inArray(bookings.packageType, types));
+			}
+		}
+
+		// Date range filter: comma-separated "from,to" dates
+		if (createdAt) {
+			const parts = createdAt.split(",").map((d) => {
+				const trimmed = d.trim();
+				if (!trimmed) {
+					return null;
+				}
+				const date = new Date(trimmed);
+				return Number.isNaN(date.getTime()) ? null : date;
+			});
+
+			const fromDate = parts[0];
+			const toDate = parts[1];
+
+			if (fromDate) {
+				fromDate.setHours(0, 0, 0, 0);
+				conditions.push(gte(bookings.createdAt, fromDate));
+			}
+			if (toDate) {
+				toDate.setHours(23, 59, 59, 999);
+				conditions.push(lte(bookings.createdAt, toDate));
+			}
 		}
 
 		if (search) {
@@ -97,7 +138,7 @@ export const listBookings = studioProtectedProcedure
 
 		const data = await db.query.bookings.findMany({
 			where: and(...conditions),
-			orderBy: (table, { asc, desc }) =>
+			orderBy: (_table, { asc, desc }) =>
 				sortDirection === "asc"
 					? [asc(orderColumn)]
 					: [desc(orderColumn)],
@@ -107,7 +148,7 @@ export const listBookings = studioProtectedProcedure
 
 		// Get participant counts and data, and shoot counts
 		const bookingIds = data.map((b) => b.id);
-		let participantsByBooking: Record<
+		const participantsByBooking: Record<
 			string,
 			{ id: string; role: string; client: { id: string; name: string } }[]
 		> = {};
