@@ -18,26 +18,28 @@ export function createSelectColumn<TData>(): ColumnDef<TData> {
 	return {
 		id: "select",
 		header: ({ table }) => (
-			<Checkbox
-				checked={
-					table.getIsAllPageRowsSelected() ||
-					(table.getIsSomePageRowsSelected() && "indeterminate")
-				}
-				onCheckedChange={(value) =>
-					table.toggleAllPageRowsSelected(!!value)
-				}
-				aria-label="Select all"
-				className="translate-y-[2px]"
-			/>
+			<div className="flex items-center justify-center">
+				<Checkbox
+					checked={
+						table.getIsAllPageRowsSelected() ||
+						(table.getIsSomePageRowsSelected() && "indeterminate")
+					}
+					onCheckedChange={(value) =>
+						table.toggleAllPageRowsSelected(!!value)
+					}
+					aria-label="Select all"
+				/>
+			</div>
 		),
 		cell: ({ row }) => (
-			<Checkbox
-				checked={row.getIsSelected()}
-				onCheckedChange={(value) => row.toggleSelected(!!value)}
-				aria-label="Select row"
-				className="translate-y-[2px]"
-				onClick={(e) => e.stopPropagation()}
-			/>
+			<div className="flex items-center justify-center">
+				<Checkbox
+					checked={row.getIsSelected()}
+					onCheckedChange={(value) => row.toggleSelected(!!value)}
+					aria-label="Select row"
+					onClick={(e) => e.stopPropagation()}
+				/>
+			</div>
 		),
 		enableSorting: false,
 		enableHiding: false,
@@ -45,9 +47,9 @@ export function createSelectColumn<TData>(): ColumnDef<TData> {
 			width: 56,
 			minWidth: 56,
 			headerClassName:
-				"text-center bg-background z-10 before:absolute before:right-0 before:top-0 before:bottom-0 before:w-px before:bg-border",
+				"!px-0 bg-background z-10 before:absolute before:right-0 before:top-0 before:bottom-0 before:w-px before:bg-border",
 			cellClassName:
-				"text-center bg-background z-10 before:absolute before:right-0 before:top-0 before:bottom-0 before:w-px before:bg-border",
+				"!px-0 bg-background z-10 before:absolute before:right-0 before:top-0 before:bottom-0 before:w-px before:bg-border",
 		},
 	};
 }

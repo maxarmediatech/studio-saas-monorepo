@@ -449,12 +449,12 @@ export function BookingsTableClient({
 				enableSorting: false,
 				enableHiding: false,
 				meta: {
-					width: 80,
-					minWidth: 80,
+					width: 56,
+					minWidth: 56,
 					headerClassName:
-						"text-center md:sticky md:right-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border after:absolute after:left-[-24px] after:top-0 after:bottom-0 after:w-6 after:bg-gradient-to-r after:from-transparent after:to-background",
+						"!px-0 md:sticky md:right-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border after:absolute after:left-[-24px] after:top-0 after:bottom-0 after:w-6 after:bg-gradient-to-r after:from-transparent after:to-background",
 					cellClassName:
-						"text-center md:sticky md:right-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border after:absolute after:left-[-24px] after:top-0 after:bottom-0 after:w-6 after:bg-gradient-to-r after:from-transparent after:to-background",
+						"!px-0 md:sticky md:right-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border after:absolute after:left-[-24px] after:top-0 after:bottom-0 after:w-6 after:bg-gradient-to-r after:from-transparent after:to-background",
 				},
 			},
 		],
@@ -491,7 +491,7 @@ export function BookingsTableClient({
 						{ id: "referenceNumber", width: 160 },
 						{ id: "name", width: 180 },
 					]}
-					stickyRightColumns={[{ id: "actions", width: 80 }]}
+					stickyRightColumns={[{ id: "actions", width: 56 }]}
 					minWidth={1200}
 					// Place scroll controls in the last sticky left column
 					scrollControlsColumnId="name"

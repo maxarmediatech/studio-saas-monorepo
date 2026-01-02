@@ -39,13 +39,14 @@ export function DataTableRowActions<TData>({
 	}
 
 	return (
-		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
-				<Button variant="ghost" size="icon" className="h-8 w-8">
-					<MoreHorizontalIcon className="h-4 w-4" />
-					<span className="sr-only">Open menu</span>
-				</Button>
-			</DropdownMenuTrigger>
+		<div className="flex items-center justify-center">
+			<DropdownMenu>
+				<DropdownMenuTrigger asChild>
+					<Button variant="ghost" size="icon" className="h-8 w-8">
+						<MoreHorizontalIcon className="h-4 w-4" />
+						<span className="sr-only">Open menu</span>
+					</Button>
+				</DropdownMenuTrigger>
 			<DropdownMenuContent align="end">
 				{visibleActions.map((action, index) => (
 					<div key={action.label}>
@@ -68,6 +69,7 @@ export function DataTableRowActions<TData>({
 					</div>
 				))}
 			</DropdownMenuContent>
-		</DropdownMenu>
+			</DropdownMenu>
+		</div>
 	);
 }

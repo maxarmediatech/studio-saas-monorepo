@@ -43,51 +43,52 @@ export function DataTableViewOptions<TData>({
 	}
 
 	return (
-		<Popover>
-			<PopoverTrigger asChild>
-				<Button
-					aria-label="Toggle columns"
-					variant="outline"
-					size="sm"
-					className="hidden h-8 lg:flex"
-				>
-					<Settings2Icon className="mr-2 h-4 w-4" />
-					View
-				</Button>
-			</PopoverTrigger>
-			<PopoverContent align="end" className="w-44 p-0">
-				<Command>
-					<CommandInput placeholder="Search columns..." />
-					<CommandList>
-						<CommandEmpty>No columns found.</CommandEmpty>
-						<CommandGroup>
-							{columns.map((column) => (
-								<CommandItem
-									key={column.id}
-									onSelect={() =>
-										column.toggleVisibility(
-											!column.getIsVisible(),
-										)
-									}
-								>
-									<span className="truncate">
-										{column.columnDef.meta?.label ??
-											column.id}
-									</span>
-									<CheckIcon
-										className={cn(
-											"ml-auto h-4 w-4 shrink-0",
-											column.getIsVisible()
-												? "opacity-100"
-												: "opacity-0",
-										)}
-									/>
-								</CommandItem>
-							))}
-						</CommandGroup>
-					</CommandList>
-				</Command>
-			</PopoverContent>
-		</Popover>
+		<div className="flex items-center justify-center">
+			<Popover>
+				<PopoverTrigger asChild>
+					<Button
+						aria-label="Toggle columns"
+						variant="ghost"
+						size="icon"
+						className="h-8 w-8"
+					>
+						<Settings2Icon className="h-4 w-4" />
+					</Button>
+				</PopoverTrigger>
+				<PopoverContent align="end" className="w-44 p-0">
+					<Command>
+						<CommandInput placeholder="Search columns..." />
+						<CommandList>
+							<CommandEmpty>No columns found.</CommandEmpty>
+							<CommandGroup>
+								{columns.map((column) => (
+									<CommandItem
+										key={column.id}
+										onSelect={() =>
+											column.toggleVisibility(
+												!column.getIsVisible(),
+											)
+										}
+									>
+										<span className="truncate">
+											{column.columnDef.meta?.label ??
+												column.id}
+										</span>
+										<CheckIcon
+											className={cn(
+												"ml-auto h-4 w-4 shrink-0",
+												column.getIsVisible()
+													? "opacity-100"
+													: "opacity-0",
+											)}
+										/>
+									</CommandItem>
+								))}
+							</CommandGroup>
+						</CommandList>
+					</Command>
+				</PopoverContent>
+			</Popover>
+		</div>
 	);
 }
