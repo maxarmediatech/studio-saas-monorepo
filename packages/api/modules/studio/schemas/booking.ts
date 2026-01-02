@@ -143,10 +143,25 @@ export const listBookingsInputSchema = z
 export type ListBookingsInput = z.infer<typeof listBookingsInputSchema>;
 
 /**
+ * Participant summary for list view (minimal client info)
+ */
+export const participantSummarySchema = z.object({
+	id: idSchema,
+	role: z.string(),
+	client: z.object({
+		id: idSchema,
+		name: z.string(),
+	}),
+});
+
+export type ParticipantSummary = z.infer<typeof participantSummarySchema>;
+
+/**
  * Booking list item with summary info
  */
 export const bookingListItemSchema = bookingSchema.extend({
 	participantsCount: z.number(),
+	participants: z.array(participantSummarySchema),
 	shootsCount: z.number(),
 	balance: z.string(),
 });

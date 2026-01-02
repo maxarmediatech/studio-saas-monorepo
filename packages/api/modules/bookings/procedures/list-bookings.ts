@@ -7,6 +7,7 @@ import {
 	sql,
 	bookings,
 	bookingParticipants,
+	clients,
 	shoots,
 	db,
 } from "@repo/database";
@@ -104,29 +105,50 @@ export const listBookings = studioProtectedProcedure
 			offset,
 		});
 
-		// Get participant counts
+		// Get participant counts and data, and shoot counts
 		const bookingIds = data.map((b) => b.id);
-		let participantCounts: Record<string, number> = {};
+		let participantsByBooking: Record<
+			string,
+			{ id: string; role: string; client: { id: string; name: string } }[]
+		> = {};
 		let shootCounts: Record<string, number> = {};
 
 		if (bookingIds.length > 0) {
+			// Fetch participants with client data
 			const participantResults = await db
 				.select({
+					id: bookingParticipants.id,
 					bookingId: bookingParticipants.bookingId,
-					count: count().mapWith(Number),
+					role: bookingParticipants.role,
+					clientId: clients.id,
+					clientName: clients.name,
 				})
 				.from(bookingParticipants)
+				.innerJoin(
+					clients,
+					eq(bookingParticipants.clientId, clients.id),
+				)
 				.where(
 					sql`${bookingParticipants.bookingId} IN (${sql.join(
 						bookingIds.map((id) => sql`${id}`),
 						sql`, `,
 					)})`,
-				)
-				.groupBy(bookingParticipants.bookingId);
+				);
 
-			participantCounts = Object.fromEntries(
-				participantResults.map((r) => [r.bookingId, r.count]),
-			);
+			// Group participants by booking
+			for (const row of participantResults) {
+				if (!participantsByBooking[row.bookingId]) {
+					participantsByBooking[row.bookingId] = [];
+				}
+				participantsByBooking[row.bookingId].push({
+					id: row.id,
+					role: row.role,
+					client: {
+						id: row.clientId,
+						name: row.clientName,
+					},
+				});
+			}
 
 			const shootResults = await db
 				.select({
@@ -155,13 +177,15 @@ export const listBookings = studioProtectedProcedure
 				const packageCost = Number.parseFloat(booking.packageCost);
 				const totalReceived = Number.parseFloat(booking.totalReceived);
 				const balance = (packageCost - totalReceived).toFixed(2);
+				const participants = participantsByBooking[booking.id] ?? [];
 
 				return {
 					...booking,
 					createdAt: booking.createdAt.toISOString(),
 					updatedAt: booking.updatedAt.toISOString(),
 					deletedAt: booking.deletedAt?.toISOString() ?? null,
-					participantsCount: participantCounts[booking.id] ?? 0,
+					participantsCount: participants.length,
+					participants,
 					shootsCount: shootCounts[booking.id] ?? 0,
 					balance,
 				};

@@ -15,9 +15,16 @@ import {
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@repo/ui/components/tooltip";
+import {
 	DataTable,
 	DataTableColumnHeader,
 	DataTableRowActions,
+	DataTableViewOptions,
 	type RowAction,
 } from "@saas/shared/components/data-table";
 // Import types for column meta augmentation
@@ -32,11 +39,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
 	CalendarIcon,
+	CameraIcon,
 	EyeIcon,
 	Loader2Icon,
+	PackageIcon,
 	PencilIcon,
 	PlusIcon,
+	TagIcon,
+	TextIcon,
 	TrashIcon,
+	UsersIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -186,6 +198,8 @@ export function BookingsTableClient({
 				),
 				meta: {
 					label: "Reference",
+					variant: "text" as const,
+					placeholder: "Search reference...",
 				},
 				enableSorting: true,
 				enableHiding: false,
@@ -211,9 +225,31 @@ export function BookingsTableClient({
 				),
 				meta: {
 					label: "Name",
+					variant: "text" as const,
+					placeholder: "Search names...",
+					icon: TextIcon,
 				},
 				enableSorting: true,
 				enableHiding: false,
+			},
+			{
+				id: "bookingType",
+				accessorKey: "bookingType",
+				header: ({ column }) => (
+					<DataTableColumnHeader column={column} title="Type" />
+				),
+				cell: ({ row }) => (
+					<span className="text-sm">{row.original.bookingType}</span>
+				),
+				meta: {
+					label: "Booking Type",
+					variant: "multiSelect" as const,
+					icon: TagIcon,
+					// Options would be populated from configurations API
+					options: [],
+				},
+				enableSorting: true,
+				enableHiding: true,
 			},
 			{
 				id: "status",
@@ -234,6 +270,13 @@ export function BookingsTableClient({
 				),
 				meta: {
 					label: "Status",
+					variant: "multiSelect" as const,
+					options: Object.entries(statusLabels).map(
+						([value, label]) => ({
+							value,
+							label,
+						}),
+					),
 				},
 				enableSorting: true,
 				enableHiding: true,
@@ -244,8 +287,15 @@ export function BookingsTableClient({
 				header: ({ column }) => (
 					<DataTableColumnHeader column={column} title="Package" />
 				),
+				cell: ({ row }) => (
+					<span className="text-sm">{row.original.packageType}</span>
+				),
 				meta: {
 					label: "Package",
+					variant: "multiSelect" as const,
+					icon: PackageIcon,
+					// Options would be populated from configurations API
+					options: [],
 				},
 				enableSorting: true,
 				enableHiding: true,
@@ -256,17 +306,17 @@ export function BookingsTableClient({
 				header: ({ column }) => (
 					<DataTableColumnHeader
 						column={column}
-						title="Value"
+						title="Cost"
 						className="justify-end"
 					/>
 				),
 				cell: ({ row }) => (
-					<div className="text-right font-medium">
+					<div className="text-right font-medium tabular-nums">
 						{formatMoney(row.original.packageCost)}
 					</div>
 				),
 				meta: {
-					label: "Value",
+					label: "Cost",
 				},
 				enableSorting: true,
 				enableHiding: true,
@@ -314,6 +364,7 @@ export function BookingsTableClient({
 				},
 				meta: {
 					label: "Created",
+					variant: "dateRange" as const,
 					icon: CalendarIcon,
 				},
 				enableSorting: true,
@@ -322,20 +373,118 @@ export function BookingsTableClient({
 			{
 				id: "shootsCount",
 				accessorKey: "shootsCount",
-				header: () => <div className="text-center">Shoots</div>,
-				cell: ({ row }) => (
-					<div className="text-center">
-						{row.original.shootsCount}
-					</div>
+				header: ({ column }) => (
+					<DataTableColumnHeader column={column} title="Shoots" />
 				),
+				cell: ({ row }) => {
+					const count = row.original.shootsCount;
+					const hasShootDetails = count > 0;
+
+					return (
+						<div className="flex items-center gap-2">
+							<CameraIcon
+								className={`h-4 w-4 ${
+									hasShootDetails
+										? "text-primary"
+										: "text-muted-foreground"
+								}`}
+							/>
+							<span
+								className={`tabular-nums ${
+									hasShootDetails
+										? "font-medium"
+										: "text-muted-foreground"
+								}`}
+							>
+								{count > 0
+									? `${count} shoot${count > 1 ? "s" : ""}`
+									: "No shoots"}
+							</span>
+						</div>
+					);
+				},
 				meta: {
 					label: "Shoots",
+					icon: CameraIcon,
+				},
+				enableSorting: false,
+				enableHiding: true,
+			},
+			{
+				id: "participants",
+				accessorKey: "participants",
+				header: ({ column }) => (
+					<DataTableColumnHeader column={column} title="Clients" />
+				),
+				cell: ({ row }) => {
+					const participants = row.original.participants || [];
+
+					if (!participants.length) {
+						return (
+							<span className="text-muted-foreground">
+								No participants
+							</span>
+						);
+					}
+
+					// Show up to 2 badges inline
+					const MAX_VISIBLE = 2;
+					const visible = participants.slice(0, MAX_VISIBLE);
+					const hiddenCount = participants.length - visible.length;
+
+					return (
+						<div className="flex flex-wrap items-center gap-1">
+							{visible.map((participant) => (
+								<Badge
+									key={`${participant.client.id}-${participant.role}`}
+									variant="secondary"
+									className="capitalize"
+								>
+									{participant.client.name}
+								</Badge>
+							))}
+
+							{hiddenCount > 0 && (
+								<TooltipProvider>
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<Badge variant="outline">
+												+{hiddenCount} more
+											</Badge>
+										</TooltipTrigger>
+										<TooltipContent side="top">
+											<div className="space-y-1">
+												{participants.map(
+													(participant) => (
+														<div
+															key={`tooltip-${participant.client.id}-${participant.role}`}
+															className="text-sm"
+														>
+															{
+																participant
+																	.client.name
+															}
+														</div>
+													),
+												)}
+											</div>
+										</TooltipContent>
+									</Tooltip>
+								</TooltipProvider>
+							)}
+						</div>
+					);
+				},
+				meta: {
+					label: "Clients",
+					icon: UsersIcon,
 				},
 				enableSorting: false,
 				enableHiding: true,
 			},
 			{
 				id: "actions",
+				header: ({ table }) => <DataTableViewOptions table={table} />,
 				cell: ({ row }) => (
 					<DataTableRowActions
 						row={row.original}
