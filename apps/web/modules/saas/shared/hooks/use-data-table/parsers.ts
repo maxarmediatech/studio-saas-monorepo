@@ -1,6 +1,6 @@
+import type { SortingState } from "@tanstack/react-table";
 import { parseAsInteger, parseAsString, parseAsStringLiteral } from "nuqs";
 import { createParser } from "nuqs/server";
-import type { SortingState } from "@tanstack/react-table";
 import { z } from "zod";
 
 /**
@@ -33,7 +33,9 @@ export function getSortingStateParser(validColumnIds?: Set<string>) {
 				const parsed = JSON.parse(value);
 				const result = z.array(sortingItemSchema).safeParse(parsed);
 
-				if (!result.success) return null;
+				if (!result.success) {
+					return null;
+				}
 
 				// Validate column IDs if provided
 				if (
@@ -111,10 +113,10 @@ export function createSortingParsers(
 
 // Re-export nuqs utilities for entity hooks
 export {
+	parseAsArrayOf,
 	parseAsInteger,
 	parseAsString,
 	parseAsStringLiteral,
-	parseAsArrayOf,
 } from "nuqs";
 
 // Re-export server utilities for search params cache

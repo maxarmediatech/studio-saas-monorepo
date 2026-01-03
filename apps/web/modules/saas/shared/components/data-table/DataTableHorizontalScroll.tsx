@@ -36,7 +36,9 @@ export function DataTableHorizontalScroll({
 				<ArrowLeft
 					className={cn(
 						"h-3.5 w-3.5",
-						canScrollLeft ? "text-primary" : "text-muted-foreground",
+						canScrollLeft
+							? "text-primary"
+							: "text-muted-foreground",
 					)}
 				/>
 			</Button>
@@ -51,7 +53,9 @@ export function DataTableHorizontalScroll({
 				<ArrowRight
 					className={cn(
 						"h-3.5 w-3.5",
-						canScrollRight ? "text-primary" : "text-muted-foreground",
+						canScrollRight
+							? "text-primary"
+							: "text-muted-foreground",
 					)}
 				/>
 			</Button>

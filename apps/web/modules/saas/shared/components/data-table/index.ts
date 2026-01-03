@@ -5,21 +5,21 @@ export {
 	type StickyColumnConfig,
 } from "./DataTable";
 export { DataTableColumnHeader } from "./DataTableColumnHeader";
-export { DataTableHorizontalScroll } from "./DataTableHorizontalScroll";
-export { createSelectColumn } from "./DataTableSelectColumn";
-export { SortProvider, useSortContext } from "./DataTableSortContext";
 // Filter components
 export {
 	DataTableDateFilter,
 	type DateFilterValue,
 } from "./DataTableDateFilter";
 export { DataTableFacetedFilter } from "./DataTableFacetedFilter";
+export { DataTableHorizontalScroll } from "./DataTableHorizontalScroll";
 export {
 	DataTablePagination,
 	type PaginationState,
 } from "./DataTablePagination";
 export { DataTableRowActions, type RowAction } from "./DataTableRowActions";
+export { createSelectColumn } from "./DataTableSelectColumn";
 export { DataTableSkeleton } from "./DataTableSkeleton";
+export { SortProvider, useSortContext } from "./DataTableSortContext";
 export {
 	DataTableToolbar,
 	type ToolbarFilterConfig,

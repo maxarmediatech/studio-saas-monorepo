@@ -32,13 +32,19 @@ export function useTableScroll(options: UseTableScrollOptions = {}) {
 
 	const getColumnPositions = React.useCallback(() => {
 		const container = containerRef.current;
-		if (!container) return [];
+		if (!container) {
+			return [];
+		}
 
 		const table = container.querySelector("table");
-		if (!table) return [];
+		if (!table) {
+			return [];
+		}
 
 		const headerRow = table.querySelector("thead tr");
-		if (!headerRow) return [];
+		if (!headerRow) {
+			return [];
+		}
 
 		const columns = Array.from(headerRow.querySelectorAll("th"));
 		const positions: number[] = [];
@@ -54,11 +60,18 @@ export function useTableScroll(options: UseTableScrollOptions = {}) {
 
 	const syncColumnIndex = React.useCallback(() => {
 		const container = containerRef.current;
-		if (!container || !useColumnWidths || isScrollingProgrammatically.current)
+		if (
+			!container ||
+			!useColumnWidths ||
+			isScrollingProgrammatically.current
+		) {
 			return;
+		}
 
 		const allColumnPositions = getColumnPositions();
-		if (allColumnPositions.length === 0) return;
+		if (allColumnPositions.length === 0) {
+			return;
+		}
 
 		const currentScrollLeft = container.scrollLeft;
 		const maxScrollLeft = container.scrollWidth - container.clientWidth;
@@ -101,7 +114,9 @@ export function useTableScroll(options: UseTableScrollOptions = {}) {
 
 	const checkScrollability = React.useCallback(() => {
 		const container = containerRef.current;
-		if (!container) return;
+		if (!container) {
+			return;
+		}
 
 		const { scrollWidth, clientWidth } = container;
 		const isScrollableTable = scrollWidth > clientWidth;
@@ -115,7 +130,8 @@ export function useTableScroll(options: UseTableScrollOptions = {}) {
 			const newCanScrollLeft =
 				currentColumnIndex.current > startFromColumn ||
 				container.scrollLeft > 10;
-			const newCanScrollRight = currentColumnIndex.current < maxColumnIndex;
+			const newCanScrollRight =
+				currentColumnIndex.current < maxColumnIndex;
 
 			setIsScrollable(isScrollableTable);
 			setCanScrollLeft(newCanScrollLeft);
@@ -131,11 +147,15 @@ export function useTableScroll(options: UseTableScrollOptions = {}) {
 	const scrollLeft = React.useCallback(
 		(smooth = true) => {
 			const container = containerRef.current;
-			if (!container) return;
+			if (!container) {
+				return;
+			}
 
 			if (useColumnWidths) {
 				const allColumnPositions = getColumnPositions();
-				if (allColumnPositions.length === 0) return;
+				if (allColumnPositions.length === 0) {
+					return;
+				}
 
 				if (
 					currentColumnIndex.current <= startFromColumn &&
@@ -166,7 +186,8 @@ export function useTableScroll(options: UseTableScrollOptions = {}) {
 				currentColumnIndex.current = currentColumnIndex.current - 1;
 
 				const currentScrollLeft = container.scrollLeft;
-				const maxScrollLeft = container.scrollWidth - container.clientWidth;
+				const maxScrollLeft =
+					container.scrollWidth - container.clientWidth;
 
 				let targetScrollLeft: number;
 
@@ -178,10 +199,17 @@ export function useTableScroll(options: UseTableScrollOptions = {}) {
 						lastColumnStart + 150;
 					const lastColumnWidth = lastColumnEnd - lastColumnStart;
 
-					targetScrollLeft = Math.max(0, currentScrollLeft - lastColumnWidth);
+					targetScrollLeft = Math.max(
+						0,
+						currentScrollLeft - lastColumnWidth,
+					);
 				} else {
 					targetScrollLeft = 0;
-					for (let i = startFromColumn; i < currentColumnIndex.current; i++) {
+					for (
+						let i = startFromColumn;
+						i < currentColumnIndex.current;
+						i++
+					) {
 						const columnStart = allColumnPositions[i] ?? 0;
 						const columnEnd = allColumnPositions[i + 1] ?? 0;
 						const columnWidth = columnEnd - columnStart;
@@ -221,11 +249,15 @@ export function useTableScroll(options: UseTableScrollOptions = {}) {
 	const scrollRight = React.useCallback(
 		(smooth = true) => {
 			const container = containerRef.current;
-			if (!container) return;
+			if (!container) {
+				return;
+			}
 
 			if (useColumnWidths) {
 				const allColumnPositions = getColumnPositions();
-				if (allColumnPositions.length === 0) return;
+				if (allColumnPositions.length === 0) {
+					return;
+				}
 				const maxColumnIndex = allColumnPositions.length - 1;
 
 				if (currentColumnIndex.current >= maxColumnIndex) {
@@ -243,7 +275,11 @@ export function useTableScroll(options: UseTableScrollOptions = {}) {
 					});
 				} else {
 					let targetScrollLeft = 0;
-					for (let i = startFromColumn; i < currentColumnIndex.current; i++) {
+					for (
+						let i = startFromColumn;
+						i < currentColumnIndex.current;
+						i++
+					) {
 						const columnStart = allColumnPositions[i] ?? 0;
 						const columnEnd = allColumnPositions[i + 1] ?? 0;
 						targetScrollLeft += columnEnd - columnStart;
@@ -279,13 +315,17 @@ export function useTableScroll(options: UseTableScrollOptions = {}) {
 
 	React.useEffect(() => {
 		const container = containerRef.current;
-		if (!container) return;
+		if (!container) {
+			return;
+		}
 
 		currentColumnIndex.current = startFromColumn;
 		checkScrollability();
 
 		const handleScroll = () => {
-			if (isScrollingProgrammatically.current) return;
+			if (isScrollingProgrammatically.current) {
+				return;
+			}
 
 			if (scrollTimeoutRef.current !== undefined) {
 				window.clearTimeout(scrollTimeoutRef.current);

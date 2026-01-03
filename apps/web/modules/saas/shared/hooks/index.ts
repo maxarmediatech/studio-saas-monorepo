@@ -1,13 +1,12 @@
 // Data table hooks
 export * from "./use-data-table";
-
-// Table scroll and sticky column hooks
 export {
-	useTableScroll,
-	type UseTableScrollOptions,
-} from "./use-table-scroll";
-export {
-	useStickyColumns,
 	type StickyColumnConfig,
 	type UseStickyColumnsOptions,
+	useStickyColumns,
 } from "./use-sticky-columns";
+// Table scroll and sticky column hooks
+export {
+	type UseTableScrollOptions,
+	useTableScroll,
+} from "./use-table-scroll";

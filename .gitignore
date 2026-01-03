@@ -45,5 +45,7 @@ dist/
 
 # Continuous Claude cache (local only)
 .claude/cache/
+.claude/settings.local.json
+.claude/tsc-cache/
 .code/
 thoughts/

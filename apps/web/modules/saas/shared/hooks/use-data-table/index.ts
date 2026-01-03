@@ -1,13 +1,3 @@
-export { useDataTable } from "./use-data-table";
-export type {
-	BaseFilterState,
-	FilterParsers,
-	TablePaginationState,
-	TableSortingState,
-	UrlPaginationState,
-	UseDataTableConfig,
-	UseDataTableReturn,
-} from "./types";
 export {
 	createPaginationParsers,
 	createSearchParamsCache,
@@ -21,3 +11,13 @@ export {
 	searchParser,
 	sortingParsers,
 } from "./parsers";
+export type {
+	BaseFilterState,
+	FilterParsers,
+	TablePaginationState,
+	TableSortingState,
+	UrlPaginationState,
+	UseDataTableConfig,
+	UseDataTableReturn,
+} from "./types";
+export { useDataTable } from "./use-data-table";

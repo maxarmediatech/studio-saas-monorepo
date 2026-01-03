@@ -9,7 +9,7 @@
 		"check": "biome check",
 		"clean": "turbo clean",
 		"format": "biome format . --write",
-		"typecheck": "turbo typecheck",
+		"typecheck": "turbo type-check",
 		"db:generate": "pnpm --filter @repo/database generate",
 		"db:migrate": "pnpm --filter @repo/database migrate",
 		"db:seed": "turbo db:seed",

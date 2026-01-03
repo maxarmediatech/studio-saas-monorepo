@@ -34,7 +34,8 @@ export function useStickyColumns<TData>({
 		(id: string) =>
 			table
 				?.getAllLeafColumns()
-				.some((column) => column.id === id && column.getIsVisible()) ?? true,
+				.some((column) => column.id === id && column.getIsVisible()) ??
+			true,
 		[table],
 	);
 
@@ -114,7 +115,8 @@ export function useStickyColumns<TData>({
 
 			return cn(
 				baseClassName,
-				isLeftSticky && "sticky left-[var(--sticky-left)] z-10 bg-background",
+				isLeftSticky &&
+					"sticky left-[var(--sticky-left)] z-10 bg-background",
 				isRightSticky &&
 					"sticky right-[var(--sticky-right)] z-10 bg-background",
 			);

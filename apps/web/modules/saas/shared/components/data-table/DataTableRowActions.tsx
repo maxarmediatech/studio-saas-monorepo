@@ -47,28 +47,28 @@ export function DataTableRowActions<TData>({
 						<span className="sr-only">Open menu</span>
 					</Button>
 				</DropdownMenuTrigger>
-			<DropdownMenuContent align="end">
-				{visibleActions.map((action, index) => (
-					<div key={action.label}>
-						{action.separator && index > 0 && (
-							<DropdownMenuSeparator />
-						)}
-						<DropdownMenuItem
-							onClick={() => action.onClick(row)}
-							className={
-								action.variant === "destructive"
-									? "text-destructive focus:text-destructive"
-									: undefined
-							}
-						>
-							{action.icon && (
-								<span className="mr-2">{action.icon}</span>
+				<DropdownMenuContent align="end">
+					{visibleActions.map((action, index) => (
+						<div key={action.label}>
+							{action.separator && index > 0 && (
+								<DropdownMenuSeparator />
 							)}
-							{action.label}
-						</DropdownMenuItem>
-					</div>
-				))}
-			</DropdownMenuContent>
+							<DropdownMenuItem
+								onClick={() => action.onClick(row)}
+								className={
+									action.variant === "destructive"
+										? "text-destructive focus:text-destructive"
+										: undefined
+								}
+							>
+								{action.icon && (
+									<span className="mr-2">{action.icon}</span>
+								)}
+								{action.label}
+							</DropdownMenuItem>
+						</div>
+					))}
+				</DropdownMenuContent>
 			</DropdownMenu>
 		</div>
 	);

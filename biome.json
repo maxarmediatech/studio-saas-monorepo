@@ -45,12 +45,15 @@
 	},
 	"assist": { "actions": { "source": { "organizeImports": "on" } } },
 	"files": {
-		"includes": ["**", "!zod/index.ts", "!tailwind-animate.css"]
+		"includes": ["**", "!zod/index.ts", "!tailwind-animate.css", "!.claude"]
 	},
 	"javascript": {
 		"jsxRuntime": "reactClassic"
 	},
 	"css": {
+		"parser": {
+			"tailwindDirectives": true
+		},
 		"formatter": {
 			"enabled": false
 		},

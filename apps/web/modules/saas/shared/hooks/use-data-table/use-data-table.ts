@@ -1,14 +1,15 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import type { OnChangeFn, SortingState } from "@tanstack/react-table";
 import {
-	useQueryStates,
-	useQueryState,
 	parseAsInteger,
 	parseAsString,
+	useQueryState,
+	useQueryStates,
 } from "nuqs";
+import { useCallback, useMemo } from "react";
 import { useDebounceCallback } from "usehooks-ts";
-import type { OnChangeFn, SortingState } from "@tanstack/react-table";
+import { getSortingStateParser } from "./parsers";
 import type {
 	BaseFilterState,
 	FilterParsers,
@@ -16,7 +17,6 @@ import type {
 	UseDataTableConfig,
 	UseDataTableReturn,
 } from "./types";
-import { getSortingStateParser } from "./parsers";
 
 const DEFAULT_CONFIG = {
 	defaultLimit: 10,
@@ -162,10 +162,12 @@ export function useDataTable<
 
 	// Reset all filters to defaults
 	const resetFilters = useCallback(() => {
-		const resetValues = Object.keys({
-			search: null,
-			...filterParsers,
-		}).reduce((acc, key) => ({ ...acc, [key]: null }), {});
+		const resetValues: Record<string, null> = { search: null };
+		if (filterParsers) {
+			for (const key of Object.keys(filterParsers)) {
+				resetValues[key] = null;
+			}
+		}
 		void setFilterState(resetValues);
 		void setPaginationState((prev) => ({ ...prev, page: 1 }));
 	}, [setFilterState, setPaginationState, filterParsers]);

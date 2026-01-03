@@ -8,6 +8,7 @@ import {
 	TableRow,
 } from "@repo/ui/components/table";
 import { cn } from "@repo/ui/lib/utils";
+import { useTableScroll } from "@saas/shared/hooks/use-table-scroll";
 import {
 	type ColumnDef,
 	flexRender,
@@ -20,12 +21,11 @@ import {
 } from "@tanstack/react-table";
 import * as React from "react";
 import { useState } from "react";
-import { useTableScroll } from "@saas/shared/hooks/use-table-scroll";
+import { DataTableHorizontalScroll } from "./DataTableHorizontalScroll";
 import {
 	DataTablePagination,
 	type PaginationState,
 } from "./DataTablePagination";
-import { DataTableHorizontalScroll } from "./DataTableHorizontalScroll";
 import { DataTableSkeleton } from "./DataTableSkeleton";
 
 export interface StickyColumnConfig {
@@ -126,9 +126,9 @@ export function DataTable<TData, TValue>({
 			sorting,
 			rowSelection,
 		},
-		// When using controlled sorting (external state), always set manualSorting
-		// to prevent TanStack Table from trying to sort data client-side
-		manualSorting: true,
+		// Only enable manual sorting when external sorting is provided (server-side sorting).
+		// Otherwise, allow TanStack Table to sort client-side using getSortedRowModel.
+		manualSorting: Boolean(externalSorting),
 		manualPagination: !!pagination,
 		// Enable multi-sort only if explicitly needed
 		enableMultiSort: false,
@@ -138,7 +138,8 @@ export function DataTable<TData, TValue>({
 	const showLoading = isLoading && data.length === 0;
 
 	// Set up horizontal scroll controls
-	const hasSticky = stickyLeftColumns.length > 0 || stickyRightColumns.length > 0;
+	const hasSticky =
+		stickyLeftColumns.length > 0 || stickyRightColumns.length > 0;
 	const defaultStartColumn = hasSticky ? stickyLeftColumns.length : 0;
 	const tableScroll = useTableScroll({
 		useColumnWidths: true,
@@ -230,11 +231,15 @@ export function DataTable<TData, TValue>({
 				: meta?.cellClassName;
 
 			// Find position in sticky arrays for border logic
-			const leftIndex = stickyLeftColumns.findIndex((c) => c.id === columnId);
+			const leftIndex = stickyLeftColumns.findIndex(
+				(c) => c.id === columnId,
+			);
 			const isLastLeftSticky =
 				leftIndex >= 0 && leftIndex === stickyLeftColumns.length - 1;
 
-			const rightIndex = stickyRightColumns.findIndex((c) => c.id === columnId);
+			const rightIndex = stickyRightColumns.findIndex(
+				(c) => c.id === columnId,
+			);
 			const isFirstRightSticky = rightIndex === 0;
 
 			return cn(
@@ -259,7 +264,8 @@ export function DataTable<TData, TValue>({
 				ref={tableScroll.containerRef}
 				className={cn(
 					"border-border bg-card overflow-hidden rounded-xl border",
-					hasSticky && "scrollbar-hide overflow-x-auto overscroll-x-none",
+					hasSticky &&
+						"scrollbar-hide overflow-x-auto overscroll-x-none",
 				)}
 			>
 				<table
@@ -279,7 +285,10 @@ export function DataTable<TData, TValue>({
 									const meta = header.column.columnDef.meta as
 										| ColumnMeta
 										| undefined;
-									const stickyStyle = getStickyStyle(header.column.id, meta);
+									const stickyStyle = getStickyStyle(
+										header.column.id,
+										meta,
+									);
 									const stickyClass = getStickyClassName(
 										header.column.id,
 										true,
@@ -289,7 +298,8 @@ export function DataTable<TData, TValue>({
 									// Check if this column should display scroll controls
 									const showScrollControls =
 										scrollControlsColumnId &&
-										header.column.id === scrollControlsColumnId;
+										header.column.id ===
+											scrollControlsColumnId;
 
 									return (
 										<TableHead
@@ -303,20 +313,30 @@ export function DataTable<TData, TValue>({
 											{header.isPlaceholder ? null : showScrollControls ? (
 												<div className="flex items-center justify-between gap-2">
 													{flexRender(
-														header.column.columnDef.header,
+														header.column.columnDef
+															.header,
 														header.getContext(),
 													)}
 													<DataTableHorizontalScroll
-														canScrollLeft={tableScroll.canScrollLeft}
-														canScrollRight={tableScroll.canScrollRight}
-														onScrollLeft={() => tableScroll.scrollLeft()}
-														onScrollRight={() => tableScroll.scrollRight()}
+														canScrollLeft={
+															tableScroll.canScrollLeft
+														}
+														canScrollRight={
+															tableScroll.canScrollRight
+														}
+														onScrollLeft={() =>
+															tableScroll.scrollLeft()
+														}
+														onScrollRight={() =>
+															tableScroll.scrollRight()
+														}
 														className="hidden md:flex"
 													/>
 												</div>
 											) : (
 												flexRender(
-													header.column.columnDef.header,
+													header.column.columnDef
+														.header,
 													header.getContext(),
 												)
 											)}
@@ -336,17 +356,21 @@ export function DataTable<TData, TValue>({
 							table.getRowModel().rows.map((row) => (
 								<TableRow
 									key={row.id}
-									data-state={row.getIsSelected() && "selected"}
+									data-state={
+										row.getIsSelected() && "selected"
+									}
 									className={cn(
 										"border-border bg-background hover:bg-muted/50 border-b transition last:border-b-0",
 										isFetching && "opacity-50",
 									)}
 								>
 									{row.getVisibleCells().map((cell) => {
-										const meta = cell.column.columnDef.meta as
-											| ColumnMeta
-											| undefined;
-										const stickyStyle = getStickyStyle(cell.column.id, meta);
+										const meta = cell.column.columnDef
+											.meta as ColumnMeta | undefined;
+										const stickyStyle = getStickyStyle(
+											cell.column.id,
+											meta,
+										);
 										const stickyClass = getStickyClassName(
 											cell.column.id,
 											false,

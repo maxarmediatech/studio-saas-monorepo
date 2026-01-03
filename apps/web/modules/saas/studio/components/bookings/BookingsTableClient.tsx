@@ -18,8 +18,8 @@ import {
 	DataTableColumnHeader,
 	DataTableRowActions,
 	DataTableViewOptions,
-	SortProvider,
 	type RowAction,
+	SortProvider,
 } from "@saas/shared/components/data-table";
 // Import types for column meta augmentation
 import "@saas/shared/components/data-table/types";
@@ -204,8 +204,8 @@ export function BookingsTableClient({
 					label: "Reference",
 					variant: "text" as const,
 					placeholder: "Search reference...",
-					width: 160,
-					minWidth: 160,
+					width: 140,
+					minWidth: 140,
 					headerClassName:
 						"!border-r-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border",
 					cellClassName:
