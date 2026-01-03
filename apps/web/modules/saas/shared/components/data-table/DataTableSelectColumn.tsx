@@ -46,10 +46,8 @@ export function createSelectColumn<TData>(): ColumnDef<TData> {
 		meta: {
 			width: 56,
 			minWidth: 56,
-			headerClassName:
-				"!px-0 bg-background z-10 before:absolute before:right-0 before:top-0 before:bottom-0 before:w-px before:bg-border",
-			cellClassName:
-				"!px-0 bg-background z-10 before:absolute before:right-0 before:top-0 before:bottom-0 before:w-px before:bg-border",
+			headerClassName: "!px-0 !border-r-0 bg-background z-10",
+			cellClassName: "!px-0 !border-r-0 bg-background z-10",
 		},
 	};
 }

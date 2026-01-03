@@ -207,9 +207,9 @@ export function BookingsTableClient({
 					width: 160,
 					minWidth: 160,
 					headerClassName:
-						"bg-background z-10 before:absolute before:right-0 before:top-0 before:bottom-0 before:w-px before:bg-border",
+						"!border-r-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border",
 					cellClassName:
-						"bg-background z-10 before:absolute before:right-0 before:top-0 before:bottom-0 before:w-px before:bg-border",
+						"!border-r-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border",
 				},
 				enableSorting: true,
 				enableHiding: false,
@@ -236,9 +236,9 @@ export function BookingsTableClient({
 					width: 180,
 					minWidth: 180,
 					headerClassName:
-						"bg-background z-10 before:absolute before:right-0 before:top-0 before:bottom-0 before:w-px before:bg-border",
+						"!border-r-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-border",
 					cellClassName:
-						"bg-background z-10 before:absolute before:right-0 before:top-0 before:bottom-0 before:w-px before:bg-border",
+						"!border-r-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-border",
 				},
 				enableSorting: true,
 				enableHiding: false,
