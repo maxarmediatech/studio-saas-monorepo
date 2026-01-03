@@ -296,10 +296,12 @@ export function DataTable<TData, TValue>({
 									);
 
 									// Check if this column should display scroll controls
+									// Only show when table is actually scrollable
 									const showScrollControls =
 										scrollControlsColumnId &&
 										header.column.id ===
-											scrollControlsColumnId;
+											scrollControlsColumnId &&
+										tableScroll.isScrollable;
 
 									return (
 										<TableHead
