@@ -3,7 +3,10 @@ import type {
 	PaymentMethod,
 } from "@repo/api/modules/studio/schemas/common";
 import { expensesApi } from "@saas/studio/lib/api";
-import { expenseSearchParamsCache } from "@saas/studio/lib/search-params";
+import {
+	expenseSearchParamsCache,
+	getSortFromSearchParams,
+} from "@saas/studio/lib/search-params";
 import { getServerQueryClient } from "@shared/lib/server";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { ExpensesTableClient } from "./ExpensesTableClient";
@@ -22,17 +25,22 @@ export async function ExpensesTable({
 	// Parse search params using the cache
 	const params = await expenseSearchParamsCache.parse(searchParams);
 
+	const { sortBy, sortDirection } = getSortFromSearchParams(params.sort, {
+		sortBy: params.sortBy,
+		sortDirection: params.sortDirection,
+	});
+
 	// Build query input from parsed params
 	// Note: API expects single values for billTo, category, paymentMethod
 	const input = {
 		page: params.page,
 		limit: params.limit,
 		search: params.search ?? undefined,
-		category: params.category?.[0] ?? undefined,
-		billTo: params.billTo?.[0] as BillTo | undefined,
-		paymentMethod: params.paymentMethod?.[0] as PaymentMethod | undefined,
-		sortBy: params.sortBy,
-		sortDirection: params.sortDirection,
+		category: params.category ?? undefined,
+		billTo: params.billTo as BillTo[] | undefined,
+		paymentMethod: params.paymentMethod as PaymentMethod[] | undefined,
+		sortBy,
+		sortDirection,
 		includeDeleted: false,
 	};
 

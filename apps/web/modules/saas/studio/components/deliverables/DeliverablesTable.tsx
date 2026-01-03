@@ -1,5 +1,8 @@
 import { deliverablesApi } from "@saas/studio/lib/api";
-import { deliverableSearchParamsCache } from "@saas/studio/lib/search-params";
+import {
+	deliverableSearchParamsCache,
+	getSortFromSearchParams,
+} from "@saas/studio/lib/search-params";
 import { getServerQueryClient } from "@shared/lib/server";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { DeliverablesTableClient } from "./DeliverablesTableClient";
@@ -18,17 +21,22 @@ export async function DeliverablesTable({
 	// Parse search params using the cache
 	const params = await deliverableSearchParamsCache.parse(searchParams);
 
+	const { sortBy, sortDirection } = getSortFromSearchParams(params.sort, {
+		sortBy: params.sortBy,
+		sortDirection: params.sortDirection,
+	});
+
 	// Build query input from parsed params
 	// Note: API expects single values for deliverableType, status, priority
 	const input = {
 		page: params.page,
 		limit: params.limit,
 		search: params.search ?? undefined,
-		deliverableType: params.deliverableType?.[0] ?? undefined,
-		status: params.status?.[0] ?? undefined,
-		priority: params.priority?.[0] ?? undefined,
-		sortBy: params.sortBy,
-		sortDirection: params.sortDirection,
+		deliverableType: params.deliverableType ?? undefined,
+		status: params.status ?? undefined,
+		priority: params.priority ?? undefined,
+		sortBy,
+		sortDirection,
 		includeDeleted: false,
 	};
 

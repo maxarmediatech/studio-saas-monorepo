@@ -1,5 +1,8 @@
 import { clientsApi } from "@saas/studio/lib/api";
-import { clientSearchParamsCache } from "@saas/studio/lib/search-params";
+import {
+	clientSearchParamsCache,
+	getSortFromSearchParams,
+} from "@saas/studio/lib/search-params";
 import { getServerQueryClient } from "@shared/lib/server";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { ClientsTableClient } from "./ClientsTableClient";
@@ -14,13 +17,18 @@ export async function ClientsTable({ searchParams }: ClientsTableProps) {
 	// Parse search params using the cache
 	const params = await clientSearchParamsCache.parse(searchParams);
 
+	const { sortBy, sortDirection } = getSortFromSearchParams(params.sort, {
+		sortBy: params.sortBy,
+		sortDirection: params.sortDirection,
+	});
+
 	// Build query input from parsed params
 	const input = {
 		page: params.page,
 		limit: params.limit,
 		search: params.search ?? undefined,
-		sortBy: params.sortBy as "name" | "email" | "createdAt" | "updatedAt",
-		sortDirection: params.sortDirection,
+		sortBy: sortBy as "name" | "email" | "createdAt" | "updatedAt",
+		sortDirection,
 		includeDeleted: false,
 	};
 

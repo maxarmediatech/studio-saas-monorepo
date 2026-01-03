@@ -1,5 +1,8 @@
 import { configurationsApi, shootsApi } from "@saas/studio/lib/api";
-import { shootSearchParamsCache } from "@saas/studio/lib/search-params";
+import {
+	getSortFromSearchParams,
+	shootSearchParamsCache,
+} from "@saas/studio/lib/search-params";
 import { getServerQueryClient } from "@shared/lib/server";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { ShootsTableClient } from "./ShootsTableClient";
@@ -18,6 +21,11 @@ export async function ShootsTable({
 	// Parse search params using the cache
 	const params = await shootSearchParamsCache.parse(searchParams);
 
+	const { sortBy, sortDirection } = getSortFromSearchParams(params.sort, {
+		sortBy: params.sortBy,
+		sortDirection: params.sortDirection,
+	});
+
 	// Build query input from parsed params
 	// Convert array filters to comma-separated strings (same as client)
 	const input = {
@@ -28,13 +36,13 @@ export async function ShootsTable({
 		status: params.status?.join(",") ?? undefined,
 		dateFrom: params.shootDate?.[0] ?? undefined,
 		dateTo: params.shootDate?.[1] ?? undefined,
-		sortBy: params.sortBy as
+		sortBy: sortBy as
 			| "name"
 			| "shootDate"
 			| "shootType"
 			| "status"
 			| "createdAt",
-		sortDirection: params.sortDirection,
+		sortDirection,
 		includeDeleted: false,
 	};
 

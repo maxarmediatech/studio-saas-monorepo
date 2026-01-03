@@ -1,3 +1,4 @@
+import type { SortingState } from "@tanstack/react-table";
 import {
 	createSearchParamsCache,
 	parseAsArrayOf,
@@ -5,6 +6,31 @@ import {
 	parseAsString,
 	parseAsStringLiteral,
 } from "nuqs/server";
+import { getSortingStateParser } from "../../shared/hooks/use-data-table/sorting-state-parser";
+
+const sortStateParser = getSortingStateParser().withDefault([]);
+
+export function getSortFromSearchParams(
+	sort: SortingState | undefined,
+	fallback: {
+		sortBy: string;
+		sortDirection: string;
+	},
+): { sortBy: string; sortDirection: "asc" | "desc" } {
+	const firstSort = sort?.[0];
+	// Note: `?sort=[]` intentionally falls back to the legacy `sortBy/sortDirection` params.
+	if (firstSort?.id) {
+		return {
+			sortBy: firstSort.id,
+			sortDirection: firstSort.desc ? "desc" : "asc",
+		};
+	}
+
+	return {
+		sortBy: fallback.sortBy,
+		sortDirection: fallback.sortDirection === "asc" ? "asc" : "desc",
+	};
+}
 
 /**
  * Booking phases for filter validation
@@ -48,6 +74,7 @@ export const bookingSearchParamsCache = createSearchParamsCache({
 	createdAt: parseAsArrayOf(parseAsString, ","),
 
 	// Sorting
+	sort: sortStateParser,
 	sortBy: parseAsString.withDefault("createdAt"),
 	sortDirection: parseAsStringLiteral(["asc", "desc"] as const).withDefault(
 		"desc",
@@ -76,6 +103,7 @@ export const crewSearchParamsCache = createSearchParamsCache({
 	role: parseAsArrayOf(parseAsString, ","),
 
 	// Sorting
+	sort: sortStateParser,
 	sortBy: parseAsString.withDefault("name"),
 	sortDirection: parseAsStringLiteral(["asc", "desc"] as const).withDefault(
 		"asc",
@@ -102,6 +130,7 @@ export const taskSearchParamsCache = createSearchParamsCache({
 	priority: parseAsArrayOf(parseAsString, ","),
 
 	// Sorting
+	sort: sortStateParser,
 	sortBy: parseAsString.withDefault("dueDate"),
 	sortDirection: parseAsStringLiteral(["asc", "desc"] as const).withDefault(
 		"asc",
@@ -127,6 +156,7 @@ export const paymentSearchParamsCache = createSearchParamsCache({
 	paymentMethod: parseAsArrayOf(parseAsString, ","),
 
 	// Sorting
+	sort: sortStateParser,
 	sortBy: parseAsString.withDefault("receivedDate"),
 	sortDirection: parseAsStringLiteral(["asc", "desc"] as const).withDefault(
 		"desc",
@@ -156,6 +186,7 @@ export const expenseSearchParamsCache = createSearchParamsCache({
 	paymentMethod: parseAsArrayOf(parseAsString, ","),
 
 	// Sorting
+	sort: sortStateParser,
 	sortBy: parseAsString.withDefault("expenseDate"),
 	sortDirection: parseAsStringLiteral(["asc", "desc"] as const).withDefault(
 		"desc",
@@ -185,6 +216,7 @@ export const deliverableSearchParamsCache = createSearchParamsCache({
 	priority: parseAsArrayOf(parseAsString, ","),
 
 	// Sorting
+	sort: sortStateParser,
 	sortBy: parseAsString.withDefault("dueDate"),
 	sortDirection: parseAsStringLiteral(["asc", "desc"] as const).withDefault(
 		"asc",
@@ -214,6 +246,7 @@ export const shootSearchParamsCache = createSearchParamsCache({
 	shootDate: parseAsArrayOf(parseAsString, ","),
 
 	// Sorting
+	sort: sortStateParser,
 	sortBy: parseAsString.withDefault("shootDate"),
 	sortDirection: parseAsStringLiteral(["asc", "desc"] as const).withDefault(
 		"desc",
@@ -238,6 +271,7 @@ export const clientSearchParamsCache = createSearchParamsCache({
 	search: parseAsString,
 
 	// Sorting
+	sort: sortStateParser,
 	sortBy: parseAsString.withDefault("name"),
 	sortDirection: parseAsStringLiteral(["asc", "desc"] as const).withDefault(
 		"asc",

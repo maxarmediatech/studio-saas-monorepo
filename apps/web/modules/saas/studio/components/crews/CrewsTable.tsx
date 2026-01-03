@@ -1,5 +1,8 @@
 import { crewsApi } from "@saas/studio/lib/api";
-import { crewSearchParamsCache } from "@saas/studio/lib/search-params";
+import {
+	crewSearchParamsCache,
+	getSortFromSearchParams,
+} from "@saas/studio/lib/search-params";
 import { getServerQueryClient } from "@shared/lib/server";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { CrewsTableClient } from "./CrewsTableClient";
@@ -18,6 +21,11 @@ export async function CrewsTable({
 	// Parse search params using the cache
 	const params = await crewSearchParamsCache.parse(searchParams);
 
+	const { sortBy, sortDirection } = getSortFromSearchParams(params.sort, {
+		sortBy: params.sortBy,
+		sortDirection: params.sortDirection,
+	});
+
 	// Build query input from parsed params
 	// Convert array filters to comma-separated strings (same as client)
 	const input = {
@@ -26,8 +34,8 @@ export async function CrewsTable({
 		search: params.search ?? undefined,
 		status: params.status?.join(",") ?? undefined,
 		role: params.role?.join(",") ?? undefined,
-		sortBy: params.sortBy,
-		sortDirection: params.sortDirection,
+		sortBy,
+		sortDirection,
 		includeDeleted: false,
 	};
 

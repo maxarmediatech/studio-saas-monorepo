@@ -1,64 +1,7 @@
-import type { SortingState } from "@tanstack/react-table";
 import { parseAsInteger, parseAsString, parseAsStringLiteral } from "nuqs";
-import { createParser } from "nuqs/server";
-import { z } from "zod";
+import { getSortingStateParser } from "./sorting-state-parser";
 
-/**
- * Schema for validating sorting state items
- */
-const sortingItemSchema = z.object({
-	id: z.string(),
-	desc: z.boolean(),
-});
-
-/**
- * Creates a JSON-based parser for TanStack Table SortingState.
- * Stores sorting as JSON in URL: ?sort=[{"id":"createdAt","desc":true}]
- *
- * @param validColumnIds - Optional set of valid column IDs for validation
- * @returns nuqs parser for SortingState
- *
- * @example
- * ```ts
- * const [sorting, setSorting] = useQueryState(
- *   "sort",
- *   getSortingStateParser().withDefault([{ id: "createdAt", desc: true }])
- * );
- * ```
- */
-export function getSortingStateParser(validColumnIds?: Set<string>) {
-	return createParser<SortingState>({
-		parse: (value) => {
-			try {
-				const parsed = JSON.parse(value);
-				const result = z.array(sortingItemSchema).safeParse(parsed);
-
-				if (!result.success) {
-					return null;
-				}
-
-				// Validate column IDs if provided
-				if (
-					validColumnIds &&
-					result.data.some((item) => !validColumnIds.has(item.id))
-				) {
-					return null;
-				}
-
-				return result.data;
-			} catch {
-				return null;
-			}
-		},
-		serialize: (value) => JSON.stringify(value),
-		eq: (a, b) =>
-			a.length === b.length &&
-			a.every(
-				(item, index) =>
-					item.id === b[index]?.id && item.desc === b[index]?.desc,
-			),
-	});
-}
+export { getSortingStateParser };
 
 /**
  * Standard parsers for pagination URL params

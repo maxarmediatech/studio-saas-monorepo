@@ -1,5 +1,8 @@
 import { tasksApi } from "@saas/studio/lib/api";
-import { taskSearchParamsCache } from "@saas/studio/lib/search-params";
+import {
+	getSortFromSearchParams,
+	taskSearchParamsCache,
+} from "@saas/studio/lib/search-params";
 import { getServerQueryClient } from "@shared/lib/server";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { TasksTableClient } from "./TasksTableClient";
@@ -18,6 +21,11 @@ export async function TasksTable({
 	// Parse search params using the cache
 	const params = await taskSearchParamsCache.parse(searchParams);
 
+	const { sortBy, sortDirection } = getSortFromSearchParams(params.sort, {
+		sortBy: params.sortBy,
+		sortDirection: params.sortDirection,
+	});
+
 	// Build query input from parsed params
 	// Convert array filters to comma-separated strings (same as client)
 	const input = {
@@ -26,8 +34,8 @@ export async function TasksTable({
 		search: params.search ?? undefined,
 		status: params.status?.join(",") ?? undefined,
 		priority: params.priority?.join(",") ?? undefined,
-		sortBy: params.sortBy,
-		sortDirection: params.sortDirection,
+		sortBy,
+		sortDirection,
 		includeDeleted: false,
 	};
 
