@@ -26,7 +26,7 @@ export function ExpenseEditSheet() {
 	const [isScrolled, setIsScrolled] = useState(false);
 
 	const { data: expense, isLoading } = useQuery({
-		...expensesApi.getOptions(expenseId!),
+		...expensesApi.getOptions(expenseId ?? ""),
 		enabled: isOpen && !!expenseId,
 	});
 

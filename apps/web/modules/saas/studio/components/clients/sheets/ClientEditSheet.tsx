@@ -26,7 +26,7 @@ export function ClientEditSheet() {
 	const [isScrolled, setIsScrolled] = useState(false);
 
 	const { data: client, isLoading } = useQuery({
-		...clientsApi.getOptions(clientId!),
+		...clientsApi.getOptions(clientId ?? ""),
 		enabled: isOpen && !!clientId,
 	});
 

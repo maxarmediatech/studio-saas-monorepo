@@ -26,7 +26,7 @@ export function ShootEditSheet() {
 	const [isScrolled, setIsScrolled] = useState(false);
 
 	const { data: shoot, isLoading } = useQuery({
-		...shootsApi.getOptions(shootId!),
+		...shootsApi.getOptions(shootId ?? ""),
 		enabled: isOpen && !!shootId,
 	});
 

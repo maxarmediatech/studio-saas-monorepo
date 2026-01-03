@@ -56,7 +56,7 @@ export function ConfigurationsPageClient({
 	configType,
 	configTypeLabel,
 	pageTitle,
-	pageDescription,
+	pageDescription: _pageDescription,
 	initialFilters,
 }: ConfigurationsPageClientProps) {
 	const router = useRouter();

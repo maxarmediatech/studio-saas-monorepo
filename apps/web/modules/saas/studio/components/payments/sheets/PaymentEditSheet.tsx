@@ -26,7 +26,7 @@ export function PaymentEditSheet() {
 	const [isScrolled, setIsScrolled] = useState(false);
 
 	const { data: payment, isLoading } = useQuery({
-		...studioPaymentsApi.getReceivedOptions(paymentId!),
+		...studioPaymentsApi.getReceivedOptions(paymentId ?? ""),
 		enabled: isOpen && !!paymentId,
 	});
 

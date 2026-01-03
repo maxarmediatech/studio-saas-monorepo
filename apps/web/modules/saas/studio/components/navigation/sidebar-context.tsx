@@ -1,5 +1,6 @@
 "use client";
 
+import Cookies from "js-cookie";
 import {
 	createContext,
 	type PropsWithChildren,
@@ -47,14 +48,12 @@ function getInitialPanelState(): boolean {
 		return true;
 	}
 
-	const cookies = document.cookie.split(";");
-	for (const cookie of cookies) {
-		const [name, value] = cookie.trim().split("=");
-		if (name === SIDEBAR_COOKIE_NAME) {
-			return value === "true";
-		}
+	const value = Cookies.get(SIDEBAR_COOKIE_NAME);
+	if (!value) {
+		return true;
 	}
-	return true; // Default to open
+
+	return value === "true";
 }
 
 interface SidebarProviderProps extends PropsWithChildren {
@@ -89,7 +88,10 @@ export function SidebarProvider({
 			}
 
 			// Persist to cookie
-			document.cookie = `${SIDEBAR_COOKIE_NAME}=${open}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
+			Cookies.set(SIDEBAR_COOKIE_NAME, String(open), {
+				expires: SIDEBAR_COOKIE_MAX_AGE / (60 * 60 * 24),
+				path: "/",
+			});
 		},
 		[onOpenChange],
 	);

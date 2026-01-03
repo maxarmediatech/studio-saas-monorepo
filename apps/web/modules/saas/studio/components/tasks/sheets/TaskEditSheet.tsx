@@ -26,7 +26,7 @@ export function TaskEditSheet() {
 	const [isScrolled, setIsScrolled] = useState(false);
 
 	const { data: task, isLoading } = useQuery({
-		...tasksApi.getOptions(taskId!),
+		...tasksApi.getOptions(taskId ?? ""),
 		enabled: isOpen && !!taskId,
 	});
 

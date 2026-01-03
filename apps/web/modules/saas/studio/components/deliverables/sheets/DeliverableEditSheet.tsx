@@ -29,7 +29,7 @@ export function DeliverableEditSheet() {
 	const [isScrolled, setIsScrolled] = useState(false);
 
 	const { data: deliverable, isLoading } = useQuery({
-		...deliverablesApi.getOptions(deliverableId!),
+		...deliverablesApi.getOptions(deliverableId ?? ""),
 		enabled: isOpen && !!deliverableId,
 	});
 

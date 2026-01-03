@@ -58,7 +58,7 @@ export function ConfigurationEditSheet() {
 		: "";
 
 	const { data: configuration, isLoading } = useQuery({
-		...configurationsApi.getOptions(configurationId!),
+		...configurationsApi.getOptions(configurationId ?? ""),
 		enabled: isOpen && !!configurationId,
 	});
 

@@ -26,7 +26,7 @@ export function CrewEditSheet() {
 	const [isScrolled, setIsScrolled] = useState(false);
 
 	const { data: crew, isLoading } = useQuery({
-		...crewsApi.getOptions(crewId!),
+		...crewsApi.getOptions(crewId ?? ""),
 		enabled: isOpen && !!crewId,
 	});
 
