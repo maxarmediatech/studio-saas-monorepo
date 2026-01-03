@@ -1,17 +1,11 @@
 import { getActiveOrganization } from "@saas/auth/lib/server";
 import { PageContent } from "@saas/studio";
-import { TasksPageClient } from "@saas/studio/components/tasks/TasksPageClient";
-import { tasksApi } from "@saas/studio/lib/api";
-import { getServerQueryClient } from "@shared/lib/server";
-import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
+import { TasksTable } from "@saas/studio/components/tasks";
 import { notFound } from "next/navigation";
 
 type Props = {
 	params: Promise<{ organizationSlug: string }>;
-	searchParams: Promise<{
-		page?: string;
-		search?: string;
-	}>;
+	searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
 export async function generateMetadata({ params }: Props) {
@@ -25,7 +19,6 @@ export async function generateMetadata({ params }: Props) {
 
 export default async function TasksPage({ params, searchParams }: Props) {
 	const { organizationSlug } = await params;
-	const filters = await searchParams;
 
 	const organization = await getActiveOrganization(organizationSlug);
 
@@ -33,31 +26,12 @@ export default async function TasksPage({ params, searchParams }: Props) {
 		return notFound();
 	}
 
-	const queryClient = getServerQueryClient();
-
-	// Prefetch tasks data on server
-	const input = {
-		page: filters.page ? Number.parseInt(filters.page, 10) : 1,
-		limit: 10,
-		search: filters.search,
-		sortBy: "dueDate" as const,
-		sortDirection: "asc" as const,
-		includeDeleted: false,
-	};
-
-	await queryClient.prefetchQuery(tasksApi.listOptions(input));
-
 	return (
-		<HydrationBoundary state={dehydrate(queryClient)}>
-			<PageContent title="Tasks">
-				<TasksPageClient
-					organizationSlug={organizationSlug}
-					initialFilters={{
-						page: input.page,
-						search: input.search,
-					}}
-				/>
-			</PageContent>
-		</HydrationBoundary>
+		<PageContent title="Tasks">
+			<TasksTable
+				organizationSlug={organizationSlug}
+				searchParams={searchParams}
+			/>
+		</PageContent>
 	);
 }

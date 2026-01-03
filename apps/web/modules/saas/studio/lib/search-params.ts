@@ -86,3 +86,29 @@ export const crewSearchParamsCache = createSearchParamsCache({
  * Type for parsed crew search params
  */
 export type CrewSearchParams = ReturnType<typeof crewSearchParamsCache.parse>;
+
+/**
+ * Server-side search params cache for tasks table.
+ * Use in server components to parse URL params before prefetching.
+ */
+export const taskSearchParamsCache = createSearchParamsCache({
+	// Pagination
+	page: parseAsInteger.withDefault(1),
+	limit: parseAsInteger.withDefault(10),
+
+	// Filters
+	search: parseAsString,
+	status: parseAsArrayOf(parseAsString, ","),
+	priority: parseAsArrayOf(parseAsString, ","),
+
+	// Sorting
+	sortBy: parseAsString.withDefault("dueDate"),
+	sortDirection: parseAsStringLiteral(["asc", "desc"] as const).withDefault(
+		"asc",
+	),
+});
+
+/**
+ * Type for parsed task search params
+ */
+export type TaskSearchParams = ReturnType<typeof taskSearchParamsCache.parse>;
