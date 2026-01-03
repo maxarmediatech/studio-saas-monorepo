@@ -99,7 +99,7 @@ function AppShellContent({
 	const showCornerFills = showSidebar && hasContent && isPanelOpen;
 
 	return (
-		<div className="min-h-screen bg-neutral-200 md:grid md:grid-cols-[min-content_minmax(0,1fr)]">
+		<div className="h-screen overflow-hidden bg-neutral-200 md:grid md:grid-cols-[min-content_minmax(0,1fr)]">
 			{/* Desktop Sidebar */}
 			{showSidebar && (
 				<DubSidebar
