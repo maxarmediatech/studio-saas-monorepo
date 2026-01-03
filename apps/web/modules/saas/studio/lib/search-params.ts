@@ -224,3 +224,29 @@ export const shootSearchParamsCache = createSearchParamsCache({
  * Type for parsed shoot search params
  */
 export type ShootSearchParams = ReturnType<typeof shootSearchParamsCache.parse>;
+
+/**
+ * Server-side search params cache for clients table.
+ * Use in server components to parse URL params before prefetching.
+ */
+export const clientSearchParamsCache = createSearchParamsCache({
+	// Pagination
+	page: parseAsInteger.withDefault(1),
+	limit: parseAsInteger.withDefault(10),
+
+	// Filters
+	search: parseAsString,
+
+	// Sorting
+	sortBy: parseAsString.withDefault("name"),
+	sortDirection: parseAsStringLiteral(["asc", "desc"] as const).withDefault(
+		"asc",
+	),
+});
+
+/**
+ * Type for parsed client search params
+ */
+export type ClientSearchParams = ReturnType<
+	typeof clientSearchParamsCache.parse
+>;
