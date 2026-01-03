@@ -60,3 +60,29 @@ export const bookingSearchParamsCache = createSearchParamsCache({
 export type BookingSearchParams = ReturnType<
 	typeof bookingSearchParamsCache.parse
 >;
+
+/**
+ * Server-side search params cache for crews table.
+ * Use in server components to parse URL params before prefetching.
+ */
+export const crewSearchParamsCache = createSearchParamsCache({
+	// Pagination
+	page: parseAsInteger.withDefault(1),
+	limit: parseAsInteger.withDefault(10),
+
+	// Filters
+	search: parseAsString,
+	status: parseAsArrayOf(parseAsString, ","),
+	role: parseAsArrayOf(parseAsString, ","),
+
+	// Sorting
+	sortBy: parseAsString.withDefault("name"),
+	sortDirection: parseAsStringLiteral(["asc", "desc"] as const).withDefault(
+		"asc",
+	),
+});
+
+/**
+ * Type for parsed crew search params
+ */
+export type CrewSearchParams = ReturnType<typeof crewSearchParamsCache.parse>;
