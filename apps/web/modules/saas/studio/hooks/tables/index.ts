@@ -24,3 +24,9 @@ export {
 	type TaskFilters,
 	useTasksTable,
 } from "./use-tasks-table";
+export {
+	SHOOT_TYPE_OPTIONS,
+	SHOOT_TYPES,
+	type ShootFilters,
+	useShootsTable,
+} from "./use-shoots-table";

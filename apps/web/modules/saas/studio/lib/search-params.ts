@@ -197,3 +197,30 @@ export const deliverableSearchParamsCache = createSearchParamsCache({
 export type DeliverableSearchParams = ReturnType<
 	typeof deliverableSearchParamsCache.parse
 >;
+
+/**
+ * Server-side search params cache for shoots table.
+ * Use in server components to parse URL params before prefetching.
+ */
+export const shootSearchParamsCache = createSearchParamsCache({
+	// Pagination
+	page: parseAsInteger.withDefault(1),
+	limit: parseAsInteger.withDefault(10),
+
+	// Filters
+	search: parseAsString,
+	shootType: parseAsArrayOf(parseAsString, ","),
+	status: parseAsArrayOf(parseAsString, ","),
+	shootDate: parseAsArrayOf(parseAsString, ","),
+
+	// Sorting
+	sortBy: parseAsString.withDefault("shootDate"),
+	sortDirection: parseAsStringLiteral(["asc", "desc"] as const).withDefault(
+		"desc",
+	),
+});
+
+/**
+ * Type for parsed shoot search params
+ */
+export type ShootSearchParams = ReturnType<typeof shootSearchParamsCache.parse>;
