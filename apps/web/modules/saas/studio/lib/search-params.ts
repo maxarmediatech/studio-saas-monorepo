@@ -168,3 +168,32 @@ export const expenseSearchParamsCache = createSearchParamsCache({
 export type ExpenseSearchParams = ReturnType<
 	typeof expenseSearchParamsCache.parse
 >;
+
+/**
+ * Server-side search params cache for deliverables table.
+ * Use in server components to parse URL params before prefetching.
+ */
+export const deliverableSearchParamsCache = createSearchParamsCache({
+	// Pagination
+	page: parseAsInteger.withDefault(1),
+	limit: parseAsInteger.withDefault(10),
+
+	// Filters
+	search: parseAsString,
+	deliverableType: parseAsArrayOf(parseAsString, ","),
+	status: parseAsArrayOf(parseAsString, ","),
+	priority: parseAsArrayOf(parseAsString, ","),
+
+	// Sorting
+	sortBy: parseAsString.withDefault("dueDate"),
+	sortDirection: parseAsStringLiteral(["asc", "desc"] as const).withDefault(
+		"asc",
+	),
+});
+
+/**
+ * Type for parsed deliverable search params
+ */
+export type DeliverableSearchParams = ReturnType<
+	typeof deliverableSearchParamsCache.parse
+>;

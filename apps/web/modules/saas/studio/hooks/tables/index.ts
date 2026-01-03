@@ -1,9 +1,16 @@
 export { type BookingFilters, useBookingsTable } from "./use-bookings-table";
 export { type CrewFilters, useCrewsTable } from "./use-crews-table";
 export {
+	DELIVERABLE_PRIORITIES,
+	DELIVERABLE_STATUSES,
+	DELIVERABLE_TYPES,
+	type DeliverableFilters,
+	useDeliverablesTable,
+} from "./use-deliverables-table";
+export {
 	BILL_TO_OPTIONS,
-	PAYMENT_METHODS as EXPENSE_PAYMENT_METHODS,
 	type ExpenseFilters,
+	PAYMENT_METHODS as EXPENSE_PAYMENT_METHODS,
 	useExpensesTable,
 } from "./use-expenses-table";
 export {
