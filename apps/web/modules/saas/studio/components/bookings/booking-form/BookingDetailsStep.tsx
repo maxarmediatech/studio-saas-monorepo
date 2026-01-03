@@ -49,6 +49,7 @@ export function BookingDetailsStep() {
 	const form = useFormContext<BookingFormValues>();
 	const [isUploading, setIsUploading] = useState(false);
 	const [isDeleting, setIsDeleting] = useState(false);
+	const [isNameManuallyEdited, setIsNameManuallyEdited] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	// URL-based configuration sheet params (for "Create New..." actions)
@@ -239,6 +240,40 @@ export function BookingDetailsStep() {
 		}
 	}, [selectedBookingType, bookingTypes, relationTypes, watchedParticipants]);
 
+	// Generate booking name from participants and booking type
+	const generateBookingName = useCallback(() => {
+		if (isNameManuallyEdited) return; // Don't override manual edits
+
+		const clientNames = watchedParticipants
+			?.map((p) => clients.find((c) => c.id === p.clientId)?.name)
+			.filter((name): name is string => Boolean(name));
+
+		if (!clientNames?.length) return;
+
+		const bookingTypeLabel =
+			bookingTypes.find((bt) => bt.key === selectedBookingType)?.label ?? "";
+
+		// Format: "John Smith & Jane Doe Wedding"
+		const namesJoined = clientNames.join(" & ");
+		const generatedName = bookingTypeLabel
+			? `${namesJoined} ${bookingTypeLabel}`
+			: namesJoined;
+
+		form.setValue("name", generatedName, { shouldDirty: false });
+	}, [
+		watchedParticipants,
+		selectedBookingType,
+		clients,
+		bookingTypes,
+		isNameManuallyEdited,
+		form,
+	]);
+
+	// Trigger name generation when participants or booking type change
+	useEffect(() => {
+		generateBookingName();
+	}, [generateBookingName]);
+
 	// Handle package selection - auto-fill cost and deliverables
 	const handlePackageChange = (value: string) => {
 		form.setValue("packageType", value);
@@ -373,366 +408,115 @@ export function BookingDetailsStep() {
 	};
 
 	return (
-		<FieldGroup className="gap-6">
-			{/* Booking Information Section */}
-			<Card>
-				<CardHeader>
-					<CardTitle className="flex items-center gap-2">
-						<ClipboardListIcon className="h-5 w-5" />
-						Booking Detail
-					</CardTitle>
-					<p className="text-sm text-muted-foreground">
-						Enter the basic details for this booking
-					</p>
-				</CardHeader>
-				<CardContent>
-					<FieldGroup className="gap-4">
-						{/* Row 1: Booking Name (2/3) + Booking Type (1/3) */}
-						<div className="grid gap-4 md:grid-cols-3">
-							{/* Booking Name - wider to accommodate long names */}
-							<div className="md:col-span-2">
-								<Controller
-									name="name"
-									control={form.control}
-									render={({ field, fieldState }) => (
-										<Field
-											data-invalid={fieldState.invalid}
-										>
-											<FieldLabel htmlFor={field.name}>
-												Booking Name
-											</FieldLabel>
-											<Input
-												{...field}
-												id={field.name}
-												placeholder="e.g. John & Jane Wedding"
-												aria-invalid={
-													fieldState.invalid
-												}
-											/>
-											{fieldState.invalid && (
-												<FieldError
-													errors={[fieldState.error]}
-												/>
-											)}
-										</Field>
-									)}
+		<Card>
+			<CardHeader>
+				<CardTitle className="flex items-center gap-2">
+					<ClipboardListIcon className="h-5 w-5" />
+					Booking Details
+				</CardTitle>
+				<p className="text-sm text-muted-foreground">
+					Enter the details for this booking
+				</p>
+			</CardHeader>
+			<CardContent>
+				<FieldGroup className="gap-6">
+					{/* Section 1: Booking Type (context setter) */}
+					<Controller
+						name="bookingType"
+						control={form.control}
+						render={({ field, fieldState }) => (
+							<Field data-invalid={fieldState.invalid}>
+								<FieldLabel htmlFor={field.name}>
+									Booking Type
+								</FieldLabel>
+								<Combobox
+									id={field.name}
+									options={bookingTypes.map((type) => ({
+										value: type.key,
+										label: type.label,
+									}))}
+									value={field.value}
+									onValueChange={field.onChange}
+									placeholder="Select type..."
+									searchPlaceholder="Search types..."
+									emptyText="No booking types found."
+									aria-invalid={fieldState.invalid}
+									onCreate={{
+										label: "Add Booking Type...",
+										onClick: () =>
+											openCreateConfiguration(
+												"booking_type",
+											),
+									}}
 								/>
-							</div>
-
-							{/* Booking Type */}
-							<Controller
-								name="bookingType"
-								control={form.control}
-								render={({ field, fieldState }) => (
-									<Field data-invalid={fieldState.invalid}>
-										<FieldLabel htmlFor={field.name}>
-											Booking Type
-										</FieldLabel>
-										<Combobox
-											id={field.name}
-											options={bookingTypes.map(
-												(type) => ({
-													value: type.key,
-													label: type.label,
-												}),
-											)}
-											value={field.value}
-											onValueChange={field.onChange}
-											placeholder="Select type..."
-											searchPlaceholder="Search types..."
-											emptyText="No booking types found."
-											aria-invalid={fieldState.invalid}
-											onCreate={{
-												label: "Add Booking Type...",
-												onClick: () =>
-													openCreateConfiguration(
-														"booking_type",
-													),
-											}}
-										/>
-										{fieldState.invalid && (
-											<FieldError
-												errors={[fieldState.error]}
-											/>
-										)}
-									</Field>
+								{fieldState.invalid && (
+									<FieldError errors={[fieldState.error]} />
 								)}
-							/>
-						</div>
+							</Field>
+						)}
+					/>
 
-						{/* Row 2: Package Type + Package Cost */}
-						<div className="grid gap-4 md:grid-cols-2">
-							{/* Package Type */}
-							<Controller
-								name="packageType"
-								control={form.control}
-								render={({ field, fieldState }) => (
-									<Field data-invalid={fieldState.invalid}>
-										<FieldLabel htmlFor={field.name}>
-											Package
-										</FieldLabel>
-										<Combobox
-											id={field.name}
-											options={filteredPackageTypes.map(
-												(pkg) => ({
-													value: pkg.key,
-													label: pkg.label,
-												}),
-											)}
-											value={field.value}
-											onValueChange={handlePackageChange}
-											placeholder="Select package..."
-											searchPlaceholder="Search packages..."
-											emptyText="No packages found."
-											disabled={!selectedBookingType}
-											aria-invalid={fieldState.invalid}
-											onCreate={{
-												label: "Add Package...",
-												onClick: () =>
-													openCreateConfiguration(
-														"package_type",
-													),
-											}}
-										/>
-										{fieldState.invalid && (
-											<FieldError
-												errors={[fieldState.error]}
-											/>
-										)}
-									</Field>
-								)}
-							/>
+					<Separator />
 
-							{/* Package Cost */}
-							<Controller
-								name="packageCost"
-								control={form.control}
-								render={({ field, fieldState }) => (
-									<Field data-invalid={fieldState.invalid}>
-										<FieldLabel htmlFor={field.name}>
-											Package Cost
-										</FieldLabel>
-										<div className="relative">
-											<span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-												₹
-											</span>
-											<Input
-												{...field}
-												id={field.name}
-												className="pl-7"
-												placeholder="0.00"
-												disabled={!selectedBookingType}
-												aria-invalid={
-													fieldState.invalid
-												}
-												onChange={(e) => {
-													// Allow only numbers and decimal point
-													const value =
-														e.target.value.replace(
-															/[^0-9.]/g,
-															"",
-														);
-													// Prevent multiple decimal points
-													const parts =
-														value.split(".");
-													if (parts.length > 2) {
-														return;
-													}
-													// Limit to 2 decimal places
-													if (
-														parts[1] &&
-														parts[1].length > 2
-													) {
-														return;
-													}
-													field.onChange(value);
-												}}
-											/>
-										</div>
-										{fieldState.invalid && (
-											<FieldError
-												errors={[fieldState.error]}
-											/>
-										)}
-									</Field>
-								)}
-							/>
-						</div>
-
-						{/* Row 3: Notes with Contract Attachment */}
-						<Controller
-							name="note"
-							control={form.control}
-							render={({ field, fieldState }) => (
-								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>
-										Notes & Documents
-									</FieldLabel>
-									<InputGroup>
-										<InputGroupTextarea
-											{...field}
-											id={field.name}
-											placeholder="Add any booking specific notes or requests..."
-											rows={3}
-											aria-invalid={fieldState.invalid}
-										/>
-										<InputGroupAddon align="block-end">
-											{/* Hidden file input */}
-											<input
-												ref={fileInputRef}
-												type="file"
-												className="hidden"
-												accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-												onChange={(e) => {
-													const file =
-														e.target.files?.[0];
-													if (file) {
-														handleFileUpload(file);
-													}
-													e.target.value = "";
-												}}
-											/>
-
-											{/* Attachment button or uploaded file display */}
-											{isUploading ? (
-												<InputGroupText>
-													<Loader2Icon className="h-4 w-4 animate-spin" />
-													<span className="text-xs">
-														Uploading...
-													</span>
-												</InputGroupText>
-											) : contractAttachment ? (
-												<>
-													<InputGroupText className="gap-1.5">
-														<FileTextIcon className="h-4 w-4 text-primary" />
-														<span
-															className="max-w-[200px] truncate text-xs"
-															title={
-																contractAttachment.name
-															}
-														>
-															{
-																contractAttachment.name
-															}
-														</span>
-														<span className="text-xs text-muted-foreground">
-															(
-															{formatFileSize(
-																contractAttachment.size,
-															)}
-															)
-														</span>
-													</InputGroupText>
-													<InputGroupButton
-														variant="ghost"
-														size="icon-xs"
-														onClick={
-															handleFileRemove
-														}
-														disabled={isDeleting}
-														className="text-destructive hover:text-destructive"
-													>
-														{isDeleting ? (
-															<Loader2Icon className="h-3.5 w-3.5 animate-spin" />
-														) : (
-															<XIcon className="h-3.5 w-3.5" />
-														)}
-														<span className="sr-only">
-															Remove file
-														</span>
-													</InputGroupButton>
-												</>
-											) : (
-												<InputGroupButton
-													variant="ghost"
-													size="xs"
-													onClick={() =>
-														fileInputRef.current?.click()
-													}
-												>
-													<PaperclipIcon className="h-4 w-4" />
-													Attach Document
-												</InputGroupButton>
-											)}
-
-											<Separator
-												orientation="vertical"
-												className="!h-4 ml-auto"
-											/>
-
-											<InputGroupText className="text-xs text-muted-foreground">
-												PDF, DOC, or Image
-											</InputGroupText>
-										</InputGroupAddon>
-									</InputGroup>
-									{fieldState.invalid && (
-										<FieldError
-											errors={[fieldState.error]}
-										/>
-									)}
-								</Field>
-							)}
-						/>
-					</FieldGroup>
-				</CardContent>
-			</Card>
-
-			{/* Participants Section */}
-			<Card>
-				<CardHeader className="flex flex-row items-center justify-between">
+					{/* Section 2: Participants */}
 					<div>
-						<CardTitle className="flex items-center gap-2">
-							<UsersIcon className="h-5 w-5" />
-							Participants
-						</CardTitle>
-						<p className="text-sm text-muted-foreground mt-1">
-							Add clients associated with this booking
-						</p>
-					</div>
-					<Button
-						type="button"
-						variant="outline"
-						size="sm"
-						onClick={() =>
-							appendParticipant({
-								clientId: "",
-								role: "",
-							})
-						}
-					>
-						<PlusIcon className="mr-2 h-4 w-4" />
-						Add Participant
-					</Button>
-				</CardHeader>
-				<CardContent>
-					<FieldSet>
-						{participants.length === 0 ? (
-							<div className="flex flex-col items-center justify-center py-12 text-center border border-dashed rounded-lg">
-								<UserPlusIcon className="h-12 w-12 text-muted-foreground/50 mb-4" />
-								<p className="text-sm text-muted-foreground mb-4">
-									No participants added yet. Click "Add
-									Participant" to add clients to this booking.
+						<div className="flex items-center justify-between mb-4">
+							<div>
+								<h3 className="font-medium flex items-center gap-2">
+									<UsersIcon className="h-5 w-5" />
+									Participants
+								</h3>
+								<p className="text-sm text-muted-foreground mt-1">
+									Add clients associated with this booking
 								</p>
-								<Button
-									type="button"
-									variant="outline"
-									size="sm"
-									onClick={() =>
-										appendParticipant({
-											clientId: "",
-											role: "",
-										})
-									}
-								>
-									<PlusIcon className="mr-2 h-4 w-4" />
-									Add Participant
-								</Button>
 							</div>
-						) : (
-							<FieldGroup className="gap-4">
-								{participants.map((field, index) => (
-									<Card key={field.id} className="p-4">
-										<div className="flex flex-col md:flex-row md:items-start gap-4">
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								onClick={() =>
+									appendParticipant({
+										clientId: "",
+										role: "",
+									})
+								}
+							>
+								<PlusIcon className="mr-2 h-4 w-4" />
+								Add Participant
+							</Button>
+						</div>
+
+						<FieldSet>
+							{participants.length === 0 ? (
+								<div className="flex flex-col items-center justify-center py-12 text-center border border-dashed rounded-lg">
+									<UserPlusIcon className="h-12 w-12 text-muted-foreground/50 mb-4" />
+									<p className="text-sm text-muted-foreground mb-4">
+										No participants added yet. Click "Add
+										Participant" to add clients to this
+										booking.
+									</p>
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										onClick={() =>
+											appendParticipant({
+												clientId: "",
+												role: "",
+											})
+										}
+									>
+										<PlusIcon className="mr-2 h-4 w-4" />
+										Add Participant
+									</Button>
+								</div>
+							) : (
+								<FieldGroup className="gap-4">
+									{participants.map((field, index) => (
+										<div
+											key={field.id}
+											className="flex flex-col md:flex-row md:items-start gap-4 p-4 border rounded-lg bg-muted/30"
+										>
 											<div className="flex-1 grid gap-4 grid-cols-1 md:grid-cols-2">
 												{/* Client Select */}
 												<Controller
@@ -932,13 +716,257 @@ export function BookingDetailsStep() {
 												</span>
 											</Button>
 										</div>
-									</Card>
-								))}
-							</FieldGroup>
-						)}
-					</FieldSet>
-				</CardContent>
-			</Card>
-		</FieldGroup>
+									))}
+								</FieldGroup>
+							)}
+						</FieldSet>
+					</div>
+
+					<Separator />
+
+					{/* Section 3: Booking Details (Name, Package, Cost, Notes) */}
+					<FieldGroup className="gap-4">
+						{/* Row 1: Booking Name (auto-generated) + Package */}
+						<div className="grid gap-4 md:grid-cols-2">
+							{/* Booking Name - auto-generated from participants */}
+							<Controller
+								name="name"
+								control={form.control}
+								render={({ field, fieldState }) => (
+									<Field data-invalid={fieldState.invalid}>
+										<FieldLabel htmlFor={field.name}>
+											Booking Name
+										</FieldLabel>
+										<Input
+											{...field}
+											id={field.name}
+											placeholder="Auto-generated from participants..."
+											aria-invalid={fieldState.invalid}
+											onChange={(e) => {
+												setIsNameManuallyEdited(true);
+												field.onChange(e.target.value);
+											}}
+										/>
+										{fieldState.invalid && (
+											<FieldError
+												errors={[fieldState.error]}
+											/>
+										)}
+									</Field>
+								)}
+							/>
+
+							{/* Package Type */}
+							<Controller
+								name="packageType"
+								control={form.control}
+								render={({ field, fieldState }) => (
+									<Field data-invalid={fieldState.invalid}>
+										<FieldLabel htmlFor={field.name}>
+											Package
+										</FieldLabel>
+										<Combobox
+											id={field.name}
+											options={filteredPackageTypes.map(
+												(pkg) => ({
+													value: pkg.key,
+													label: pkg.label,
+												}),
+											)}
+											value={field.value}
+											onValueChange={handlePackageChange}
+											placeholder="Select package..."
+											searchPlaceholder="Search packages..."
+											emptyText="No packages found."
+											disabled={!selectedBookingType}
+											aria-invalid={fieldState.invalid}
+											onCreate={{
+												label: "Add Package...",
+												onClick: () =>
+													openCreateConfiguration(
+														"package_type",
+													),
+											}}
+										/>
+										{fieldState.invalid && (
+											<FieldError
+												errors={[fieldState.error]}
+											/>
+										)}
+									</Field>
+								)}
+							/>
+						</div>
+
+						{/* Row 2: Package Cost */}
+						<Controller
+							name="packageCost"
+							control={form.control}
+							render={({ field, fieldState }) => (
+								<Field data-invalid={fieldState.invalid}>
+									<FieldLabel htmlFor={field.name}>
+										Package Cost
+									</FieldLabel>
+									<div className="relative max-w-xs">
+										<span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+											₹
+										</span>
+										<Input
+											{...field}
+											id={field.name}
+											className="pl-7"
+											placeholder="0.00"
+											disabled={!selectedBookingType}
+											aria-invalid={fieldState.invalid}
+											onChange={(e) => {
+												// Allow only numbers and decimal point
+												const value =
+													e.target.value.replace(
+														/[^0-9.]/g,
+														"",
+													);
+												// Prevent multiple decimal points
+												const parts = value.split(".");
+												if (parts.length > 2) {
+													return;
+												}
+												// Limit to 2 decimal places
+												if (
+													parts[1] &&
+													parts[1].length > 2
+												) {
+													return;
+												}
+												field.onChange(value);
+											}}
+										/>
+									</div>
+									{fieldState.invalid && (
+										<FieldError
+											errors={[fieldState.error]}
+										/>
+									)}
+								</Field>
+							)}
+						/>
+
+						{/* Row 3: Notes with Contract Attachment */}
+						<Controller
+							name="note"
+							control={form.control}
+							render={({ field, fieldState }) => (
+								<Field data-invalid={fieldState.invalid}>
+									<FieldLabel htmlFor={field.name}>
+										Notes & Documents
+									</FieldLabel>
+									<InputGroup>
+										<InputGroupTextarea
+											{...field}
+											id={field.name}
+											placeholder="Add any booking specific notes or requests..."
+											rows={3}
+											aria-invalid={fieldState.invalid}
+										/>
+										<InputGroupAddon align="block-end">
+											{/* Hidden file input */}
+											<input
+												ref={fileInputRef}
+												type="file"
+												className="hidden"
+												accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+												onChange={(e) => {
+													const file =
+														e.target.files?.[0];
+													if (file) {
+														handleFileUpload(file);
+													}
+													e.target.value = "";
+												}}
+											/>
+
+											{/* Attachment button or uploaded file display */}
+											{isUploading ? (
+												<InputGroupText>
+													<Loader2Icon className="h-4 w-4 animate-spin" />
+													<span className="text-xs">
+														Uploading...
+													</span>
+												</InputGroupText>
+											) : contractAttachment ? (
+												<>
+													<InputGroupText className="gap-1.5">
+														<FileTextIcon className="h-4 w-4 text-primary" />
+														<span
+															className="max-w-[200px] truncate text-xs"
+															title={
+																contractAttachment.name
+															}
+														>
+															{
+																contractAttachment.name
+															}
+														</span>
+														<span className="text-xs text-muted-foreground">
+															(
+															{formatFileSize(
+																contractAttachment.size,
+															)}
+															)
+														</span>
+													</InputGroupText>
+													<InputGroupButton
+														variant="ghost"
+														size="icon-xs"
+														onClick={
+															handleFileRemove
+														}
+														disabled={isDeleting}
+														className="text-destructive hover:text-destructive"
+													>
+														{isDeleting ? (
+															<Loader2Icon className="h-3.5 w-3.5 animate-spin" />
+														) : (
+															<XIcon className="h-3.5 w-3.5" />
+														)}
+														<span className="sr-only">
+															Remove file
+														</span>
+													</InputGroupButton>
+												</>
+											) : (
+												<InputGroupButton
+													variant="ghost"
+													size="xs"
+													onClick={() =>
+														fileInputRef.current?.click()
+													}
+												>
+													<PaperclipIcon className="h-4 w-4" />
+													Attach Document
+												</InputGroupButton>
+											)}
+
+											<Separator
+												orientation="vertical"
+												className="!h-4 ml-auto"
+											/>
+
+											<InputGroupText className="text-xs text-muted-foreground">
+												PDF, DOC, or Image
+											</InputGroupText>
+										</InputGroupAddon>
+									</InputGroup>
+									{fieldState.invalid && (
+										<FieldError
+											errors={[fieldState.error]}
+										/>
+									)}
+								</Field>
+							)}
+						/>
+					</FieldGroup>
+				</FieldGroup>
+			</CardContent>
+		</Card>
 	);
 }
