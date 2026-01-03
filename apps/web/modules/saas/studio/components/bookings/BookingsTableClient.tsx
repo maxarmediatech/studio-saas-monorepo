@@ -23,6 +23,13 @@ import {
 } from "@saas/shared/components/data-table";
 // Import types for column meta augmentation
 import "@saas/shared/components/data-table/types";
+import { Badge } from "@repo/ui/components/badge";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@repo/ui/components/tooltip";
 import { useBookingsTable } from "@saas/studio/hooks/tables";
 import {
 	bookingsApi,
@@ -34,6 +41,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
 	CalendarIcon,
+	CameraIcon,
 	EyeIcon,
 	Loader2Icon,
 	PackageIcon,
@@ -42,6 +50,7 @@ import {
 	TagIcon,
 	TextIcon,
 	TrashIcon,
+	UsersIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -212,8 +221,8 @@ export function BookingsTableClient({
 					label: "Created",
 					variant: "dateRange" as const,
 					icon: CalendarIcon,
-					width: 160,
-					minWidth: 160,
+					width: 128,
+					minWidth: 128,
 					headerClassName:
 						"!border-r-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border",
 					cellClassName:
@@ -229,20 +238,36 @@ export function BookingsTableClient({
 					<DataTableColumnHeader column={column} title="Name" />
 				),
 				cell: ({ row }) => (
-					<Link
-						href={`/app/${organizationSlug}/bookings/${row.original.id}`}
-						className="font-medium text-foreground hover:underline"
-					>
-						{row.original.name}
-					</Link>
+					<div className="flex flex-col gap-0.5 leading-none">
+						<Link
+							href={`/app/${organizationSlug}/bookings/${row.original.id}`}
+							className="text-sm font-medium text-foreground hover:underline"
+						>
+							{row.original.name}
+						</Link>
+						<span className="text-xs text-muted-foreground">
+							{bookingTypeLabels.get(row.original.bookingType) ??
+								row.original.bookingType}
+						</span>
+					</div>
 				),
 				meta: {
 					label: "Name",
 					variant: "text" as const,
 					placeholder: "Search names...",
 					icon: TextIcon,
-					width: 180,
-					minWidth: 180,
+					filterColumnId: "bookingType",
+					filterVariant: "multiSelect" as const,
+					filterIcon: TagIcon,
+					filterLabel: "Booking Type",
+					filterOptions: (bookingTypesData?.data ?? []).map(
+						(config) => ({
+							value: config.key,
+							label: config.label,
+						}),
+					),
+					width: 192,
+					minWidth: 192,
 					headerClassName:
 						"!border-r-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-border",
 					cellClassName:
@@ -252,42 +277,21 @@ export function BookingsTableClient({
 				enableHiding: false,
 			},
 			{
-				id: "bookingType",
-				accessorKey: "bookingType",
-				header: ({ column }) => (
-					<DataTableColumnHeader column={column} title="Type" />
-				),
-				cell: ({ row }) => (
-					<span className="text-sm">
-						{bookingTypeLabels.get(row.original.bookingType) ??
-							row.original.bookingType}
-					</span>
-				),
-				meta: {
-					label: "Booking Type",
-					variant: "multiSelect" as const,
-					icon: TagIcon,
-					options: (bookingTypesData?.data ?? []).map((config) => ({
-						value: config.key,
-						label: config.label,
-					})),
-					width: 120,
-					minWidth: 120,
-				},
-				enableSorting: false,
-				enableHiding: true,
-			},
-			{
 				id: "packageType",
 				accessorKey: "packageType",
 				header: ({ column }) => (
 					<DataTableColumnHeader column={column} title="Package" />
 				),
 				cell: ({ row }) => (
-					<span className="text-sm">
-						{packageTypeLabels.get(row.original.packageType) ??
-							row.original.packageType}
-					</span>
+					<div className="flex flex-col gap-0.5 leading-none">
+						<span className="text-sm font-medium text-foreground">
+							{packageTypeLabels.get(row.original.packageType) ??
+								row.original.packageType}
+						</span>
+						<span className="text-xs text-muted-foreground tabular-nums">
+							{formatMoney(row.original.packageCost)}
+						</span>
+					</div>
 				),
 				meta: {
 					label: "Package",
@@ -297,42 +301,21 @@ export function BookingsTableClient({
 						value: config.key,
 						label: config.label,
 					})),
-					width: 160,
-					minWidth: 160,
+					width: 128,
+					minWidth: 128,
 				},
 				enableSorting: false,
 				enableHiding: true,
 			},
 			{
-				id: "packageCost",
-				accessorKey: "packageCost",
+				id: "balance",
+				accessorKey: "balance",
 				header: ({ column }) => (
 					<DataTableColumnHeader
 						column={column}
-						title="Cost"
+						title="Balance"
 						className="justify-end"
 					/>
-				),
-				cell: ({ row }) => (
-					<div className="text-right font-semibold tabular-nums">
-						{formatMoney(row.original.packageCost)}
-					</div>
-				),
-				meta: {
-					label: "Cost",
-					width: 120,
-					minWidth: 120,
-				},
-				enableSorting: true,
-				enableHiding: true,
-			},
-			{
-				id: "balance",
-				accessorKey: "balance",
-				header: () => (
-					<span className="text-foreground flex h-8 items-center justify-end text-xs font-semibold uppercase tracking-wide">
-						Balance
-					</span>
 				),
 				cell: ({ row }) => (
 					<div className="text-right font-semibold tabular-nums">
@@ -349,12 +332,111 @@ export function BookingsTableClient({
 				),
 				meta: {
 					label: "Balance",
-					width: 120,
-					minWidth: 120,
+					width: 96,
+					minWidth: 96,
 				},
 				enableSorting: false,
 				enableHiding: true,
 			},
+			{
+				id: "shoots",
+				accessorKey: "shootsCount",
+				header: ({ column }) => (
+					<DataTableColumnHeader column={column} title="Shoots" />
+				),
+				cell: ({ row }) => {
+					const count = row.original.shootsCount;
+					return (
+						<div className="flex items-center gap-2">
+							<CameraIcon className="h-4 w-4 text-muted-foreground" />
+							<span className="tabular-nums">
+								{count} {count === 1 ? "shoot" : "shoots"}
+							</span>
+						</div>
+					);
+				},
+				meta: {
+					label: "Shoots",
+					icon: CameraIcon,
+					width: 100,
+					minWidth: 100,
+				},
+				enableSorting: false,
+				enableHiding: true,
+			},
+			{
+				id: "participants",
+				accessorKey: "participants",
+				header: ({ column }) => (
+					<DataTableColumnHeader column={column} title="Clients" />
+				),
+				cell: ({ row }) => {
+					const participants = row.original.participants || [];
+
+					if (!participants.length) {
+						return (
+							<span className="text-muted-foreground">
+								No clients
+							</span>
+						);
+					}
+
+					const MAX_VISIBLE = 2;
+					const visible = participants.slice(0, MAX_VISIBLE);
+					const hiddenCount = participants.length - visible.length;
+
+					return (
+						<div className="flex flex-wrap items-center gap-1">
+							{visible.map((participant) => (
+								<Badge
+									key={participant.id}
+									variant="secondary"
+									className="capitalize"
+								>
+									{participant.client.name}
+								</Badge>
+							))}
+							{hiddenCount > 0 && (
+								<TooltipProvider>
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<Badge variant="outline">
+												+{hiddenCount} more
+											</Badge>
+										</TooltipTrigger>
+										<TooltipContent side="top">
+											<div className="space-y-1">
+												{participants.map(
+													(participant) => (
+														<div
+															key={participant.id}
+															className="text-sm"
+														>
+															{
+																participant
+																	.client.name
+															}
+														</div>
+													),
+												)}
+											</div>
+										</TooltipContent>
+									</Tooltip>
+								</TooltipProvider>
+							)}
+						</div>
+					);
+				},
+				meta: {
+					label: "Clients",
+					icon: UsersIcon,
+					width: 180,
+					minWidth: 180,
+				},
+				enableSorting: false,
+				enableHiding: true,
+			},
+
 			{
 				id: "actions",
 				header: ({ table }) => <DataTableViewOptions table={table} />,
@@ -367,8 +449,8 @@ export function BookingsTableClient({
 				enableSorting: false,
 				enableHiding: false,
 				meta: {
-					width: 56,
-					minWidth: 56,
+					width: 48,
+					minWidth: 48,
 					headerClassName:
 						"!px-0 md:sticky md:right-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border after:absolute after:left-[-24px] after:top-0 after:bottom-0 after:w-6 after:bg-gradient-to-r after:from-transparent after:to-background",
 					cellClassName:
@@ -405,11 +487,11 @@ export function BookingsTableClient({
 					getRowId={(row) => row.id}
 					// Sticky columns configuration
 					stickyLeftColumns={[
-						{ id: "select", width: 56 },
-						{ id: "createdAt", width: 160 },
-						{ id: "name", width: 180 },
+						{ id: "select", width: 48 },
+						{ id: "createdAt", width: 128 },
+						{ id: "name", width: 176 },
 					]}
-					stickyRightColumns={[{ id: "actions", width: 56 }]}
+					stickyRightColumns={[{ id: "actions", width: 48 }]}
 					minWidth={1200}
 					// Place scroll controls in the last sticky left column
 					scrollControlsColumnId="name"

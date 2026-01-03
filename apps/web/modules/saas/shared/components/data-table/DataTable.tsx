@@ -369,6 +369,7 @@ export function DataTable<TData, TValue>({
 									{row.getVisibleCells().map((cell) => {
 										const meta = cell.column.columnDef
 											.meta as ColumnMeta | undefined;
+
 										const stickyStyle = getStickyStyle(
 											cell.column.id,
 											meta,

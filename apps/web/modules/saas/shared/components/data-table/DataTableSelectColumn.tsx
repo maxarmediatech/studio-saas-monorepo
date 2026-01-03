@@ -44,8 +44,9 @@ export function createSelectColumn<TData>(): ColumnDef<TData> {
 		enableSorting: false,
 		enableHiding: false,
 		meta: {
-			width: 56,
-			minWidth: 56,
+			width: 48,
+			minWidth: 48,
+			maxWidth: 48,
 			headerClassName: "!px-0 !border-r-0 bg-background z-10",
 			cellClassName: "!px-0 !border-r-0 bg-background z-10",
 		},
