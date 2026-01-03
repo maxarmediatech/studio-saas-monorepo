@@ -25,19 +25,27 @@ export function validateExpenseAllocations(
 		return "none";
 	}
 
-	const hasPercentage = assignments.some((a) => a.allocationPercentage !== null && a.allocationPercentage !== undefined);
-	const hasAmount = assignments.some((a) => a.allocationAmount !== null && a.allocationAmount !== undefined);
+	const hasPercentage = assignments.some(
+		(a) =>
+			a.allocationPercentage !== null &&
+			a.allocationPercentage !== undefined,
+	);
+	const hasAmount = assignments.some(
+		(a) => a.allocationAmount !== null && a.allocationAmount !== undefined,
+	);
 
 	if (hasPercentage && hasAmount) {
 		throw new ORPCError("CONFLICT", {
-			message: "Use either allocation percentages or allocation amounts, not both",
+			message:
+				"Use either allocation percentages or allocation amounts, not both",
 		});
 	}
 
 	if (!hasPercentage && !hasAmount) {
 		if (assignments.length > 1) {
 			throw new ORPCError("CONFLICT", {
-				message: "Allocation is required when multiple assignments are provided",
+				message:
+					"Allocation is required when multiple assignments are provided",
 			});
 		}
 
@@ -48,15 +56,23 @@ export function validateExpenseAllocations(
 		let totalPercentage = 0;
 
 		for (const assignment of assignments) {
-			if (assignment.allocationAmount !== null && assignment.allocationAmount !== undefined) {
+			if (
+				assignment.allocationAmount !== null &&
+				assignment.allocationAmount !== undefined
+			) {
 				throw new ORPCError("CONFLICT", {
-					message: "Allocation amounts are not allowed when using percentages",
+					message:
+						"Allocation amounts are not allowed when using percentages",
 				});
 			}
 
-			if (assignment.allocationPercentage === null || assignment.allocationPercentage === undefined) {
+			if (
+				assignment.allocationPercentage === null ||
+				assignment.allocationPercentage === undefined
+			) {
 				throw new ORPCError("CONFLICT", {
-					message: "Allocation percentage is required for each assignment",
+					message:
+						"Allocation percentage is required for each assignment",
 				});
 			}
 
@@ -75,13 +91,20 @@ export function validateExpenseAllocations(
 	let totalAllocation = 0;
 
 	for (const assignment of assignments) {
-		if (assignment.allocationPercentage !== null && assignment.allocationPercentage !== undefined) {
+		if (
+			assignment.allocationPercentage !== null &&
+			assignment.allocationPercentage !== undefined
+		) {
 			throw new ORPCError("CONFLICT", {
-				message: "Allocation percentages are not allowed when using amounts",
+				message:
+					"Allocation percentages are not allowed when using amounts",
 			});
 		}
 
-		if (assignment.allocationAmount === null || assignment.allocationAmount === undefined) {
+		if (
+			assignment.allocationAmount === null ||
+			assignment.allocationAmount === undefined
+		) {
 			throw new ORPCError("CONFLICT", {
 				message: "Allocation amount is required for each assignment",
 			});
@@ -105,7 +128,9 @@ export function getAllocatedExpenseAmount(
 	mode: AllocationMode,
 ): number {
 	if (mode === "percentage") {
-		return (totalAmount * parseValue(assignment.allocationPercentage)) / 100;
+		return (
+			(totalAmount * parseValue(assignment.allocationPercentage)) / 100
+		);
 	}
 
 	if (mode === "amount") {

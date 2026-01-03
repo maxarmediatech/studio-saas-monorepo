@@ -1,5 +1,8 @@
 import { bookingsApi } from "@saas/studio/lib/api";
-import { bookingSearchParamsCache } from "@saas/studio/lib/search-params";
+import {
+	bookingSearchParamsCache,
+	getSortFromSearchParams,
+} from "@saas/studio/lib/search-params";
 import { getServerQueryClient } from "@shared/lib/server";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { BookingsTableClient } from "./BookingsTableClient";
@@ -18,14 +21,22 @@ export async function BookingsTable({
 	// Parse search params using the cache
 	const params = await bookingSearchParamsCache.parse(searchParams);
 
+	const { sortBy, sortDirection } = getSortFromSearchParams(params.sort, {
+		sortBy: params.sortBy,
+		sortDirection: params.sortDirection,
+	});
+
 	// Build query input from parsed params
 	const input = {
 		page: params.page,
 		limit: params.limit,
 		search: params.search ?? undefined,
-		status: params.status ?? undefined,
-		sortBy: params.sortBy,
-		sortDirection: params.sortDirection,
+		statuses: params.statuses ?? undefined,
+		bookingType: params.bookingType ?? undefined,
+		packageType: params.packageType ?? undefined,
+		createdAt: params.createdAt?.join(",") ?? undefined,
+		sortBy,
+		sortDirection,
 		includeDeleted: false,
 	};
 

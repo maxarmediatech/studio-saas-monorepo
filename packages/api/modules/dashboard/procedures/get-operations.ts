@@ -1,23 +1,22 @@
 import {
 	and,
-	eq,
-	isNull,
-	gte,
-	sql,
-	count,
 	asc,
-	shoots,
-	tasks,
-	deliverables,
 	bookings,
-	shootAssignments,
-	taskAssignments,
-	deliverableAssignments,
+	count,
 	crews,
 	db,
+	deliverableAssignments,
+	deliverables,
+	eq,
+	gte,
+	isNull,
+	shootAssignments,
+	shoots,
+	sql,
+	taskAssignments,
+	tasks,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { requirePermission } from "../../studio/lib/permissions";
 import {
 	addDays,
 	formatDateParts,
@@ -25,6 +24,7 @@ import {
 	getStartOfWeek,
 	normalizeTimeZone,
 } from "../../studio/lib/date-helpers";
+import { requirePermission } from "../../studio/lib/permissions";
 import {
 	getOperationsInputSchema,
 	getOperationsOutputSchema,
@@ -36,7 +36,8 @@ export const getOperations = studioProtectedProcedure
 		path: "/dashboard/operations",
 		tags: ["Dashboard"],
 		summary: "Get operations",
-		description: "Get operational data including upcoming shoots, pending tasks, and deliverables",
+		description:
+			"Get operational data including upcoming shoots, pending tasks, and deliverables",
 	})
 	.input(getOperationsInputSchema)
 	.output(getOperationsOutputSchema)
@@ -45,7 +46,9 @@ export const getOperations = studioProtectedProcedure
 
 		const { limit } = input;
 
-		const timeZone = normalizeTimeZone(context.membership.organization.timezone);
+		const timeZone = normalizeTimeZone(
+			context.membership.organization.timezone,
+		);
 		const nowParts = getDateParts(new Date(), timeZone);
 		const todayStr = formatDateParts(nowParts);
 		const startOfWeek = getStartOfWeek(nowParts);
@@ -156,7 +159,9 @@ export const getOperations = studioProtectedProcedure
 					.innerJoin(crews, eq(taskAssignments.crewId, crews.id))
 					.where(eq(taskAssignments.taskId, task.id));
 
-				const isOverdue = task.dueDate ? task.dueDate < todayStr : false;
+				const isOverdue = task.dueDate
+					? task.dueDate < todayStr
+					: false;
 
 				return {
 					id: task.id,
@@ -213,10 +218,20 @@ export const getOperations = studioProtectedProcedure
 						crewName: crews.name,
 					})
 					.from(deliverableAssignments)
-					.innerJoin(crews, eq(deliverableAssignments.crewId, crews.id))
-					.where(eq(deliverableAssignments.deliverableId, deliverable.id));
+					.innerJoin(
+						crews,
+						eq(deliverableAssignments.crewId, crews.id),
+					)
+					.where(
+						eq(
+							deliverableAssignments.deliverableId,
+							deliverable.id,
+						),
+					);
 
-				const isOverdue = deliverable.dueDate ? deliverable.dueDate < todayStr : false;
+				const isOverdue = deliverable.dueDate
+					? deliverable.dueDate < todayStr
+					: false;
 
 				return {
 					id: deliverable.id,

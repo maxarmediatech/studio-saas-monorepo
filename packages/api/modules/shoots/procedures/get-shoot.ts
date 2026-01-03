@@ -1,12 +1,12 @@
 import { ORPCError } from "@orpc/server";
 import {
 	and,
-	eq,
-	shoots,
-	shootAssignments,
 	bookings,
 	crews,
 	db,
+	eq,
+	shootAssignments,
+	shoots,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
@@ -21,7 +21,8 @@ export const getShoot = studioProtectedProcedure
 		path: "/shoots/{id}",
 		tags: ["Shoots"],
 		summary: "Get shoot",
-		description: "Get a single shoot by ID with assignments and booking info",
+		description:
+			"Get a single shoot by ID with assignments and booking info",
 	})
 	.input(getShootInputSchema)
 	.output(getShootOutputSchema)

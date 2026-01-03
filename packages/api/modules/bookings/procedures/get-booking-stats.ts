@@ -1,4 +1,4 @@
-import { and, count, eq, gte, isNull, sql, bookings, db } from "@repo/database";
+import { and, bookings, count, db, eq, gte, isNull, sql } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
@@ -55,9 +55,13 @@ export const getBookingStats = studioProtectedProcedure
 			.from(bookings)
 			.where(and(...baseConditions));
 
-		const totalRevenue = parseFloat(financials?.totalRevenue ?? "0");
-		const totalReceived = parseFloat(financials?.totalReceived ?? "0");
-		const totalExpenses = parseFloat(financials?.totalExpenses ?? "0");
+		const totalRevenue = Number.parseFloat(financials?.totalRevenue ?? "0");
+		const totalReceived = Number.parseFloat(
+			financials?.totalReceived ?? "0",
+		);
+		const totalExpenses = Number.parseFloat(
+			financials?.totalExpenses ?? "0",
+		);
 		const totalOutstanding = totalRevenue - totalReceived;
 
 		// New this month (UTC to avoid server-local timezone drift)
@@ -70,10 +74,7 @@ export const getBookingStats = studioProtectedProcedure
 			.select({ count: count().mapWith(Number) })
 			.from(bookings)
 			.where(
-				and(
-					...baseConditions,
-					gte(bookings.createdAt, startOfMonth),
-				),
+				and(...baseConditions, gte(bookings.createdAt, startOfMonth)),
 			);
 
 		return {

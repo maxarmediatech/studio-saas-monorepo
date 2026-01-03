@@ -2,17 +2,13 @@ import { getSession } from "@saas/auth/lib/server";
 import { PageContent } from "@saas/studio";
 import { redirect } from "next/navigation";
 
-type Props = {
-	params: Promise<{ organizationSlug: string }>;
-};
-
 export async function generateMetadata() {
 	return {
 		title: "Security Settings",
 	};
 }
 
-export default async function SecuritySettingsPage({ params }: Props) {
+export default async function SecuritySettingsPage() {
 	const session = await getSession();
 
 	if (!session) {
@@ -26,7 +22,8 @@ export default async function SecuritySettingsPage({ params }: Props) {
 					Security Settings
 				</h3>
 				<p className="mt-2 text-sm text-neutral-500">
-					Manage your password, two-factor authentication, and active sessions.
+					Manage your password, two-factor authentication, and active
+					sessions.
 				</p>
 				<p className="mt-4 text-sm text-neutral-400">Coming soon</p>
 			</div>

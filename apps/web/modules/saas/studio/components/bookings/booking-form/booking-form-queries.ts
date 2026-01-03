@@ -11,7 +11,7 @@
  * ```
  */
 
-import { clientsApi, crewsApi, configurationsApi } from "@saas/studio/lib/api";
+import { clientsApi, configurationsApi, crewsApi } from "@saas/studio/lib/api";
 
 /**
  * Default limit for dropdown lists in booking forms.

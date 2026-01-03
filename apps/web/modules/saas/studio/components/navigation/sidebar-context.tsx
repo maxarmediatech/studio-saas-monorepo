@@ -1,13 +1,14 @@
 "use client";
 
+import Cookies from "js-cookie";
 import {
 	createContext,
+	type PropsWithChildren,
 	useCallback,
 	useContext,
 	useEffect,
 	useMemo,
 	useState,
-	type PropsWithChildren,
 } from "react";
 
 const SIDEBAR_COOKIE_NAME = "sidebar_panel_state";
@@ -43,16 +44,16 @@ export function useSidebar() {
  * Get initial panel state from cookie (server-safe)
  */
 function getInitialPanelState(): boolean {
-	if (typeof document === "undefined") return true;
-
-	const cookies = document.cookie.split(";");
-	for (const cookie of cookies) {
-		const [name, value] = cookie.trim().split("=");
-		if (name === SIDEBAR_COOKIE_NAME) {
-			return value === "true";
-		}
+	if (typeof document === "undefined") {
+		return true;
 	}
-	return true; // Default to open
+
+	const value = Cookies.get(SIDEBAR_COOKIE_NAME);
+	if (!value) {
+		return true;
+	}
+
+	return value === "true";
 }
 
 interface SidebarProviderProps extends PropsWithChildren {
@@ -71,8 +72,8 @@ export function SidebarProvider({
 	children,
 }: SidebarProviderProps) {
 	// Internal state - initialized from cookie or default
-	const [_isPanelOpen, _setIsPanelOpen] = useState(() =>
-		defaultOpen ?? getInitialPanelState()
+	const [_isPanelOpen, _setIsPanelOpen] = useState(
+		() => defaultOpen ?? getInitialPanelState(),
 	);
 
 	// Support controlled and uncontrolled modes
@@ -87,9 +88,12 @@ export function SidebarProvider({
 			}
 
 			// Persist to cookie
-			document.cookie = `${SIDEBAR_COOKIE_NAME}=${open}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
+			Cookies.set(SIDEBAR_COOKIE_NAME, String(open), {
+				expires: SIDEBAR_COOKIE_MAX_AGE / (60 * 60 * 24),
+				path: "/",
+			});
 		},
-		[onOpenChange]
+		[onOpenChange],
 	);
 
 	const togglePanel = useCallback(() => {
@@ -121,7 +125,7 @@ export function SidebarProvider({
 			togglePanel,
 			panelState,
 		}),
-		[isPanelOpen, setPanelOpen, togglePanel, panelState]
+		[isPanelOpen, setPanelOpen, togglePanel, panelState],
 	);
 
 	return (

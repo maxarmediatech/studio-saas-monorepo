@@ -2,17 +2,13 @@ import { getSession } from "@saas/auth/lib/server";
 import { PageContent } from "@saas/studio";
 import { redirect } from "next/navigation";
 
-type Props = {
-	params: Promise<{ organizationSlug: string }>;
-};
-
 export async function generateMetadata() {
 	return {
 		title: "Notification Settings",
 	};
 }
 
-export default async function NotificationsSettingsPage({ params }: Props) {
+export default async function NotificationsSettingsPage() {
 	const session = await getSession();
 
 	if (!session) {
@@ -26,7 +22,8 @@ export default async function NotificationsSettingsPage({ params }: Props) {
 					Notification Settings
 				</h3>
 				<p className="mt-2 text-sm text-neutral-500">
-					Configure email notifications, push alerts, and in-app notifications.
+					Configure email notifications, push alerts, and in-app
+					notifications.
 				</p>
 				<p className="mt-4 text-sm text-neutral-400">Coming soon</p>
 			</div>

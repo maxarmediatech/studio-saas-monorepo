@@ -7,20 +7,20 @@
 
 import { z } from "zod";
 import {
-	createListResponseSchema,
+	baseListFiltersSchema,
 	createItemResponseSchema,
+	createListResponseSchema,
 	createSortSchema,
+	dateSchema,
 	idSchema,
+	moneySchema,
 	mutationResponseSchema,
 	nameSchema,
 	notesSchema,
 	paginationSchema,
-	searchSchema,
-	baseListFiltersSchema,
-	dateSchema,
-	moneySchema,
 	paymentMethodSchema,
 	paymentScheduleStatusSchema,
+	searchSchema,
 } from "./common";
 
 // ============================================================================
@@ -59,7 +59,9 @@ export const receivedAmountListItemSchema = receivedAmountSchema.extend({
 	scheduleName: z.string().nullable(),
 });
 
-export type ReceivedAmountListItem = z.infer<typeof receivedAmountListItemSchema>;
+export type ReceivedAmountListItem = z.infer<
+	typeof receivedAmountListItemSchema
+>;
 
 // ============================================================================
 // PAYMENT SCHEDULE SCHEMA
@@ -98,18 +100,27 @@ export const paymentScheduleListItemSchema = paymentScheduleSchema.extend({
 	bookingReferenceNumber: z.string(),
 });
 
-export type PaymentScheduleListItem = z.infer<typeof paymentScheduleListItemSchema>;
+export type PaymentScheduleListItem = z.infer<
+	typeof paymentScheduleListItemSchema
+>;
 
 // ============================================================================
 // LIST RECEIVED AMOUNTS
 // ============================================================================
 
-const receivedSortFields = ["receivedDate", "amount", "paymentMethod", "createdAt"] as const;
+const receivedSortFields = [
+	"receivedDate",
+	"amount",
+	"paymentMethod",
+	"createdAt",
+] as const;
 
 export const listReceivedInputSchema = z
 	.object({
 		bookingId: idSchema.optional(),
-		paymentMethod: paymentMethodSchema.optional(),
+		paymentMethod: z
+			.union([paymentMethodSchema, z.array(paymentMethodSchema)])
+			.optional(),
 		dateFrom: dateSchema.optional(),
 		dateTo: dateSchema.optional(),
 	})
@@ -120,7 +131,9 @@ export const listReceivedInputSchema = z
 
 export type ListReceivedInput = z.infer<typeof listReceivedInputSchema>;
 
-export const listReceivedOutputSchema = createListResponseSchema(receivedAmountListItemSchema);
+export const listReceivedOutputSchema = createListResponseSchema(
+	receivedAmountListItemSchema,
+);
 
 export type ListReceivedOutput = z.infer<typeof listReceivedOutputSchema>;
 
@@ -143,15 +156,19 @@ export const receivedAmountDetailSchema = receivedAmountSchema.extend({
 		name: z.string(),
 		referenceNumber: z.string(),
 	}),
-	schedule: z.object({
-		id: idSchema,
-		name: z.string(),
-	}).nullable(),
+	schedule: z
+		.object({
+			id: idSchema,
+			name: z.string(),
+		})
+		.nullable(),
 });
 
 export type ReceivedAmountDetail = z.infer<typeof receivedAmountDetailSchema>;
 
-export const getReceivedOutputSchema = createItemResponseSchema(receivedAmountDetailSchema);
+export const getReceivedOutputSchema = createItemResponseSchema(
+	receivedAmountDetailSchema,
+);
 
 export type GetReceivedOutput = z.infer<typeof getReceivedOutputSchema>;
 
@@ -212,7 +229,13 @@ export type DeleteReceivedOutput = z.infer<typeof deleteReceivedOutputSchema>;
 // LIST PAYMENT SCHEDULES
 // ============================================================================
 
-const scheduleSortFields = ["dueDate", "amount", "status", "sortOrder", "createdAt"] as const;
+const scheduleSortFields = [
+	"dueDate",
+	"amount",
+	"status",
+	"sortOrder",
+	"createdAt",
+] as const;
 
 export const listSchedulesInputSchema = z
 	.object({
@@ -228,7 +251,9 @@ export const listSchedulesInputSchema = z
 
 export type ListSchedulesInput = z.infer<typeof listSchedulesInputSchema>;
 
-export const listSchedulesOutputSchema = createListResponseSchema(paymentScheduleListItemSchema);
+export const listSchedulesOutputSchema = createListResponseSchema(
+	paymentScheduleListItemSchema,
+);
 
 export type ListSchedulesOutput = z.infer<typeof listSchedulesOutputSchema>;
 
@@ -251,17 +276,21 @@ export const paymentScheduleDetailSchema = paymentScheduleSchema.extend({
 		name: z.string(),
 		referenceNumber: z.string(),
 	}),
-	linkedPayments: z.array(z.object({
-		id: idSchema,
-		amount: z.string(),
-		receivedDate: z.string(),
-		paymentMethod: paymentMethodSchema,
-	})),
+	linkedPayments: z.array(
+		z.object({
+			id: idSchema,
+			amount: z.string(),
+			receivedDate: z.string(),
+			paymentMethod: paymentMethodSchema,
+		}),
+	),
 });
 
 export type PaymentScheduleDetail = z.infer<typeof paymentScheduleDetailSchema>;
 
-export const getScheduleOutputSchema = createItemResponseSchema(paymentScheduleDetailSchema);
+export const getScheduleOutputSchema = createItemResponseSchema(
+	paymentScheduleDetailSchema,
+);
 
 export type GetScheduleOutput = z.infer<typeof getScheduleOutputSchema>;
 
@@ -359,17 +388,20 @@ export const paymentStatsSchema = z.object({
 	receivedThisMonth: z.string(),
 	byPaymentMethod: z.record(z.string(), z.string()),
 	byScheduleStatus: z.record(z.string(), z.number()),
-	upcomingSchedules: z.array(z.object({
-		id: idSchema,
-		name: z.string(),
-		amount: z.string(),
-		dueDate: z.string(),
-		bookingName: z.string(),
-	})),
+	upcomingSchedules: z.array(
+		z.object({
+			id: idSchema,
+			name: z.string(),
+			amount: z.string(),
+			dueDate: z.string(),
+			bookingName: z.string(),
+		}),
+	),
 });
 
 export type PaymentStats = z.infer<typeof paymentStatsSchema>;
 
-export const getPaymentStatsOutputSchema = createItemResponseSchema(paymentStatsSchema);
+export const getPaymentStatsOutputSchema =
+	createItemResponseSchema(paymentStatsSchema);
 
 export type GetPaymentStatsOutput = z.infer<typeof getPaymentStatsOutputSchema>;

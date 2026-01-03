@@ -79,7 +79,9 @@ export function FormSelectField<
 							))}
 						</SelectContent>
 					</Select>
-					{description && <FormDescription>{description}</FormDescription>}
+					{description && (
+						<FormDescription>{description}</FormDescription>
+					)}
 					<FormMessage />
 				</FormItem>
 			)}

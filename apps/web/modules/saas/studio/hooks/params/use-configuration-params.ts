@@ -37,7 +37,7 @@ const subscribers = new Set<() => void>();
 // Cached snapshot to ensure referential stability
 let cachedSnapshot: ConfigurationParams = emptyParams;
 let isInitialized = false;
-let popstateListenerCount = 0;
+let _popstateListenerCount = 0;
 
 const POPSTATE_HANDLER_KEY = "__studioConfigurationPopstateHandler";
 const POPSTATE_COUNT_KEY = "__studioConfigurationPopstateCount";
@@ -84,7 +84,7 @@ function addPopstateListener() {
 	}
 	const nextCount = globalCount + 1;
 	setGlobalCount(nextCount);
-	popstateListenerCount = nextCount;
+	_popstateListenerCount = nextCount;
 }
 
 function removePopstateListener() {
@@ -98,7 +98,7 @@ function removePopstateListener() {
 		setPopstateHandler(undefined);
 	}
 	setGlobalCount(nextCount);
-	popstateListenerCount = nextCount;
+	_popstateListenerCount = nextCount;
 }
 
 function notifySubscribers() {
@@ -128,7 +128,8 @@ function syncFromURL() {
 	// Only update if values actually changed
 	if (
 		cachedSnapshot.configurationId !== newSnapshot.configurationId ||
-		cachedSnapshot.createConfiguration !== newSnapshot.createConfiguration ||
+		cachedSnapshot.createConfiguration !==
+			newSnapshot.createConfiguration ||
 		cachedSnapshot.configurationType !== newSnapshot.configurationType
 	) {
 		cachedSnapshot = newSnapshot;
@@ -225,7 +226,11 @@ function updateURL(
 }
 
 export function useConfigurationParams() {
-	const params = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+	const params = useSyncExternalStore(
+		subscribe,
+		getSnapshot,
+		getServerSnapshot,
+	);
 
 	// Sync on mount to handle SSR -> client hydration with URL params
 	useEffect(() => {

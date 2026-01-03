@@ -19,7 +19,7 @@ interface StepIndicatorProps {
 export function StepIndicator({
 	step,
 	status,
-	stepNumber,
+	stepNumber: _stepNumber,
 	onClick,
 	isClickable = true,
 	showConnector = true,

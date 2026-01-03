@@ -56,7 +56,9 @@ export function FormTextField<
 							autoComplete={autoComplete}
 						/>
 					</FormControl>
-					{description && <FormDescription>{description}</FormDescription>}
+					{description && (
+						<FormDescription>{description}</FormDescription>
+					)}
 					<FormMessage />
 				</FormItem>
 			)}

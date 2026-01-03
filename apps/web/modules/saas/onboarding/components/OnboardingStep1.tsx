@@ -19,8 +19,8 @@ import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 import type { SubmitHandler } from "react-hook-form";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 import { toast } from "sonner";
+import { z } from "zod";
 
 const formSchema = z.object({
 	name: z.string(),

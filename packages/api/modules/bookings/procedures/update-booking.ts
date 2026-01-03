@@ -1,5 +1,5 @@
 import { ORPCError } from "@orpc/server";
-import { and, eq, bookings, db } from "@repo/database";
+import { and, bookings, db, eq } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
@@ -42,11 +42,21 @@ export const updateBooking = studioProtectedProcedure
 			updatedBy: context.user.id,
 		};
 
-		if (name !== undefined) updates.name = name;
-		if (bookingType !== undefined) updates.bookingType = bookingType;
-		if (packageType !== undefined) updates.packageType = packageType;
-		if (packageCost !== undefined) updates.packageCost = packageCost;
-		if (note !== undefined) updates.note = note;
+		if (name !== undefined) {
+			updates.name = name;
+		}
+		if (bookingType !== undefined) {
+			updates.bookingType = bookingType;
+		}
+		if (packageType !== undefined) {
+			updates.packageType = packageType;
+		}
+		if (packageCost !== undefined) {
+			updates.packageCost = packageCost;
+		}
+		if (note !== undefined) {
+			updates.note = note;
+		}
 
 		await db.update(bookings).set(updates).where(eq(bookings.id, id));
 

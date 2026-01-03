@@ -55,7 +55,8 @@ export const studioQueryKeys = {
 		all: ["studio", "deliverables"] as const,
 		list: (filters?: Record<string, unknown>) =>
 			["studio", "deliverables", "list", filters] as const,
-		detail: (id: string) => ["studio", "deliverables", "detail", id] as const,
+		detail: (id: string) =>
+			["studio", "deliverables", "detail", id] as const,
 	},
 	// Payments (studio payments - received amounts)
 	payments: {
@@ -269,7 +270,9 @@ export const tasksMutations = {
 
 export const deliverablesApi = {
 	listOptions: (
-		input?: Parameters<typeof orpc.deliverables.list.queryOptions>[0]["input"],
+		input?: Parameters<
+			typeof orpc.deliverables.list.queryOptions
+		>[0]["input"],
 	) => orpc.deliverables.list.queryOptions({ input: input ?? {} }),
 
 	listMinimalOptions: (
@@ -282,7 +285,9 @@ export const deliverablesApi = {
 		orpc.deliverables.get.queryOptions({ input: { id } }),
 
 	statsOptions: (
-		input?: Parameters<typeof orpc.deliverables.stats.queryOptions>[0]["input"],
+		input?: Parameters<
+			typeof orpc.deliverables.stats.queryOptions
+		>[0]["input"],
 	) => orpc.deliverables.stats.queryOptions({ input: input ?? {} }),
 };
 
@@ -339,7 +344,8 @@ export const studioPaymentsMutations = {
 	createSchedule: () => orpc.studioPayments.createSchedule.mutationOptions(),
 	updateSchedule: () => orpc.studioPayments.updateSchedule.mutationOptions(),
 	deleteSchedule: () => orpc.studioPayments.deleteSchedule.mutationOptions(),
-	convertSchedule: () => orpc.studioPayments.convertSchedule.mutationOptions(),
+	convertSchedule: () =>
+		orpc.studioPayments.convertSchedule.mutationOptions(),
 };
 
 // ============================================================================

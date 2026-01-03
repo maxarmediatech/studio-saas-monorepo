@@ -1,5 +1,5 @@
 import { ORPCError } from "@orpc/server";
-import { and, eq, isNull, members, users, crews, db } from "@repo/database";
+import { and, crews, db, eq, isNull, members, users } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
@@ -13,7 +13,8 @@ export const createCrewFromMember = studioProtectedProcedure
 		path: "/crews/from-member",
 		tags: ["Crews"],
 		summary: "Create crew from member",
-		description: "Create a crew profile linked to an organization member's user account",
+		description:
+			"Create a crew profile linked to an organization member's user account",
 	})
 	.input(createCrewFromMemberInputSchema)
 	.output(createCrewFromMemberOutputSchema)

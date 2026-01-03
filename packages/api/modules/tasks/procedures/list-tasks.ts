@@ -1,22 +1,23 @@
 import {
 	and,
+	bookings,
 	count,
+	db,
 	eq,
 	gte,
+	inArray,
 	isNull,
 	sql,
-	tasks,
 	taskAssignments,
-	bookings,
-	db,
+	tasks,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
+import { createPaginationResponse } from "../../studio/schemas/common";
 import {
 	listTasksInputSchema,
 	listTasksOutputSchema,
 } from "../../studio/schemas/task";
-import { createPaginationResponse } from "../../studio/schemas/common";
 
 export const listTasks = studioProtectedProcedure
 	.route({
@@ -24,7 +25,8 @@ export const listTasks = studioProtectedProcedure
 		path: "/tasks",
 		tags: ["Tasks"],
 		summary: "List tasks",
-		description: "List all tasks for the organization with optional filters",
+		description:
+			"List all tasks for the organization with optional filters",
 	})
 	.input(listTasksInputSchema)
 	.output(listTasksOutputSchema)
@@ -48,6 +50,22 @@ export const listTasks = studioProtectedProcedure
 		} = input;
 		const offset = (page - 1) * limit;
 
+		const normalizeMultiValue = (
+			value: string | string[] | null | undefined,
+		): string[] | null => {
+			if (!value) {
+				return null;
+			}
+
+			const raw = Array.isArray(value) ? value : [value];
+			const parts = raw
+				.flatMap((v) => v.split(","))
+				.map((v) => v.trim())
+				.filter(Boolean);
+
+			return parts.length > 0 ? parts : null;
+		};
+
 		// Build where conditions
 		const conditions = [eq(tasks.organizationId, context.organizationId)];
 
@@ -59,12 +77,14 @@ export const listTasks = studioProtectedProcedure
 			conditions.push(eq(tasks.bookingId, bookingId));
 		}
 
-		if (status) {
-			conditions.push(eq(tasks.status, status));
+		const statuses = normalizeMultiValue(status);
+		if (statuses) {
+			conditions.push(inArray(tasks.status, statuses));
 		}
 
-		if (priority) {
-			conditions.push(eq(tasks.priority, priority));
+		const priorities = normalizeMultiValue(priority);
+		if (priorities) {
+			conditions.push(inArray(tasks.priority, priorities));
 		}
 
 		if (workflowStatus) {
@@ -142,7 +162,11 @@ export const listTasks = studioProtectedProcedure
 			.from(tasks)
 			.innerJoin(bookings, eq(tasks.bookingId, bookings.id))
 			.where(and(...conditions))
-			.orderBy(sortDirection === "asc" ? sql`${orderColumn} ASC` : sql`${orderColumn} DESC`)
+			.orderBy(
+				sortDirection === "asc"
+					? sql`${orderColumn} ASC`
+					: sql`${orderColumn} DESC`,
+			)
 			.limit(limit)
 			.offset(offset);
 

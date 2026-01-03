@@ -210,7 +210,8 @@ export function PricingTable({
 											price.trialPeriodDays && (
 												<div className="mt-4 flex items-center justify-start font-medium text-primary text-sm opacity-80">
 													<BadgePercentIcon className="mr-2 size-4" />
-													{price.trialPeriodDays} day free trial
+													{price.trialPeriodDays} day
+													free trial
 												</div>
 											)}
 									</div>

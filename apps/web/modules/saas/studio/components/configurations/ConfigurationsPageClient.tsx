@@ -1,11 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
-import { useRouter } from "next/navigation";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { ColumnDef } from "@tanstack/react-table";
-import { Badge } from "@repo/ui/components/badge";
-import { Input } from "@repo/ui/components/input";
+import type { Configuration } from "@repo/api/modules/studio/schemas/configuration";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -16,25 +11,33 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@repo/ui/components/alert-dialog";
-import {
-	PencilIcon,
-	TrashIcon,
-	SearchIcon,
-	Loader2Icon,
-	SettingsIcon,
-	CheckIcon,
-} from "lucide-react";
-import { toast } from "sonner";
-import { configurationsApi, configurationsMutations } from "@saas/studio/lib/api";
+import { Badge } from "@repo/ui/components/badge";
+import { Input } from "@repo/ui/components/input";
 import {
 	DataTable,
 	DataTableRowActions,
 	type RowAction,
 } from "@saas/shared/components/data-table";
-import type { Configuration } from "@repo/api/modules/studio/schemas/configuration";
 import { useConfigurationParams } from "@saas/studio/hooks/params/use-configuration-params";
-import { OpenConfigurationCreateSheet } from "./OpenConfigurationSheet";
+import {
+	configurationsApi,
+	configurationsMutations,
+} from "@saas/studio/lib/api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { ColumnDef } from "@tanstack/react-table";
+import {
+	CheckIcon,
+	Loader2Icon,
+	PencilIcon,
+	SearchIcon,
+	SettingsIcon,
+	TrashIcon,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useMemo, useState, useTransition } from "react";
+import { toast } from "sonner";
 import { PageContent } from "../PageContent";
+import { OpenConfigurationCreateSheet } from "./OpenConfigurationSheet";
 
 interface ConfigurationsPageClientProps {
 	organizationSlug: string;
@@ -53,7 +56,7 @@ export function ConfigurationsPageClient({
 	configType,
 	configTypeLabel,
 	pageTitle,
-	pageDescription,
+	pageDescription: _pageDescription,
 	initialFilters,
 }: ConfigurationsPageClientProps) {
 	const router = useRouter();
@@ -63,7 +66,9 @@ export function ConfigurationsPageClient({
 	const [searchValue, setSearchValue] = useState(initialFilters.search ?? "");
 	const [currentFilters, setCurrentFilters] = useState(initialFilters);
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-	const [configToDelete, setConfigToDelete] = useState<Configuration | null>(null);
+	const [configToDelete, setConfigToDelete] = useState<Configuration | null>(
+		null,
+	);
 
 	// URL-based sheet params
 	const { openEdit } = useConfigurationParams();
@@ -80,11 +85,16 @@ export function ConfigurationsPageClient({
 
 	// Fetch configurations with TanStack Query
 	const { data, isLoading, isFetching } = useQuery(
-		configurationsApi.listOptions(queryInput)
+		configurationsApi.listOptions(queryInput),
 	);
 
 	const configurations = data?.data ?? [];
-	const pagination = data?.pagination ?? { page: 1, limit: 50, total: 0, pageCount: 0 };
+	const pagination = data?.pagination ?? {
+		page: 1,
+		limit: 50,
+		total: 0,
+		pageCount: 0,
+	};
 
 	// Delete mutation
 	const deleteMutation = useMutation({
@@ -93,10 +103,15 @@ export function ConfigurationsPageClient({
 			toast.success(`${configTypeLabel} deleted successfully`);
 			setDeleteDialogOpen(false);
 			setConfigToDelete(null);
-			queryClient.invalidateQueries({ queryKey: ["studio", "configurations"] });
+			queryClient.invalidateQueries({
+				queryKey: ["studio", "configurations"],
+			});
 		},
 		onError: (error) => {
-			toast.error(error.message || `Failed to delete ${configTypeLabel.toLowerCase()}`);
+			toast.error(
+				error.message ||
+					`Failed to delete ${configTypeLabel.toLowerCase()}`,
+			);
 		},
 	});
 
@@ -213,7 +228,11 @@ export function ConfigurationsPageClient({
 				header: () => <div className="text-center">Type</div>,
 				cell: ({ row }) => (
 					<div className="flex justify-center">
-						<Badge variant={row.original.isSystem ? "secondary" : "outline"}>
+						<Badge
+							variant={
+								row.original.isSystem ? "secondary" : "outline"
+							}
+						>
 							{row.original.isSystem ? "System" : "Custom"}
 						</Badge>
 					</div>
@@ -222,7 +241,10 @@ export function ConfigurationsPageClient({
 			{
 				id: "actions",
 				cell: ({ row }) => (
-					<DataTableRowActions row={row.original} actions={rowActions} />
+					<DataTableRowActions
+						row={row.original}
+						actions={rowActions}
+					/>
 				),
 			},
 		],
@@ -242,7 +264,9 @@ export function ConfigurationsPageClient({
 							placeholder={`Search ${configTypeLabel.toLowerCase()}s...`}
 							value={searchValue}
 							onChange={(e) => setSearchValue(e.target.value)}
-							onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+							onKeyDown={(e) =>
+								e.key === "Enter" && handleSearch()
+							}
 							className="pl-9"
 						/>
 					</div>
@@ -266,7 +290,9 @@ export function ConfigurationsPageClient({
 					emptyState={
 						<div className="flex flex-col items-center gap-2">
 							<SettingsIcon className="h-12 w-12 text-muted-foreground/50" />
-							<p className="text-muted-foreground">No {configTypeLabel.toLowerCase()}s found</p>
+							<p className="text-muted-foreground">
+								No {configTypeLabel.toLowerCase()}s found
+							</p>
 							<OpenConfigurationCreateSheet
 								configurationType={configType}
 								variant="outline"
@@ -279,13 +305,19 @@ export function ConfigurationsPageClient({
 			</div>
 
 			{/* Delete confirmation dialog */}
-			<AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+			<AlertDialog
+				open={deleteDialogOpen}
+				onOpenChange={setDeleteDialogOpen}
+			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Delete {configTypeLabel.toLowerCase()}?</AlertDialogTitle>
+						<AlertDialogTitle>
+							Delete {configTypeLabel.toLowerCase()}?
+						</AlertDialogTitle>
 						<AlertDialogDescription>
-							This will permanently delete "{configToDelete?.label}". This action cannot
-							be undone.
+							This will permanently delete "
+							{configToDelete?.label}". This action cannot be
+							undone.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
@@ -293,7 +325,9 @@ export function ConfigurationsPageClient({
 						<AlertDialogAction
 							onClick={() => {
 								if (configToDelete) {
-									deleteMutation.mutate({ id: configToDelete.id });
+									deleteMutation.mutate({
+										id: configToDelete.id,
+									});
 								}
 							}}
 							disabled={deleteMutation.isPending}

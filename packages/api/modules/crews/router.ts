@@ -1,10 +1,10 @@
-import { listCrews } from "./procedures/list-crews";
-import { getCrew } from "./procedures/get-crew";
 import { createCrew } from "./procedures/create-crew";
-import { updateCrew } from "./procedures/update-crew";
-import { deleteCrew } from "./procedures/delete-crew";
-import { getCrewAvailability } from "./procedures/get-crew-availability";
 import { createCrewFromMember } from "./procedures/create-crew-from-member";
+import { deleteCrew } from "./procedures/delete-crew";
+import { getCrew } from "./procedures/get-crew";
+import { getCrewAvailability } from "./procedures/get-crew-availability";
+import { listCrews } from "./procedures/list-crews";
+import { updateCrew } from "./procedures/update-crew";
 
 export const crewsRouter = {
 	list: listCrews,

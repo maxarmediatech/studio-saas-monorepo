@@ -54,9 +54,13 @@ export function IconByName({
 	name?: string;
 	className?: string;
 }) {
-	if (!name) return null;
+	if (!name) {
+		return null;
+	}
 	const Icon = registry[name as keyof typeof registry];
-	if (!Icon) return null;
+	if (!Icon) {
+		return null;
+	}
 	return <Icon className={className} />;
 }
 

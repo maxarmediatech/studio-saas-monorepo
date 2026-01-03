@@ -154,7 +154,10 @@ export const bookings = pgTable(
 
 		bookingType: text("booking_type").notNull(),
 		packageType: text("package_type").notNull(),
-		packageCost: decimal("package_cost", { precision: 12, scale: 2 }).notNull(),
+		packageCost: decimal("package_cost", {
+			precision: 12,
+			scale: 2,
+		}).notNull(),
 
 		status: bookingPhaseEnum("status").notNull().default("new"),
 
@@ -352,7 +355,10 @@ export const crewAvailability = pgTable(
 			.notNull(),
 	},
 	(table) => [
-		uniqueIndex("crew_availability_crew_date_idx").on(table.crewId, table.date),
+		uniqueIndex("crew_availability_crew_date_idx").on(
+			table.crewId,
+			table.date,
+		),
 		index("crew_availability_date_idx").on(table.date),
 	],
 );
@@ -564,7 +570,10 @@ export const taskAssignments = pgTable(
 			.notNull(),
 	},
 	(table) => [
-		uniqueIndex("task_assignments_task_crew_idx").on(table.taskId, table.crewId),
+		uniqueIndex("task_assignments_task_crew_idx").on(
+			table.taskId,
+			table.crewId,
+		),
 		index("task_assignments_crew_idx").on(table.crewId),
 	],
 );
@@ -594,7 +603,9 @@ export const deliverables = pgTable(
 		// Package relationship fields
 		quantity: integer("quantity").default(1).notNull(),
 		cost: decimal("cost", { precision: 10, scale: 2 }), // nullable - only for custom deliverables
-		isPackageIncluded: boolean("is_package_included").default(false).notNull(),
+		isPackageIncluded: boolean("is_package_included")
+			.default(false)
+			.notNull(),
 
 		// Status is TEXT - configurable via configurations table (config_type: deliverable_status)
 		status: text("status").default("pending").notNull(),
@@ -635,7 +646,10 @@ export const deliverables = pgTable(
 	(table) => [
 		index("deliverables_organization_idx").on(table.organizationId),
 		index("deliverables_booking_idx").on(table.bookingId),
-		index("deliverables_org_status_idx").on(table.organizationId, table.status),
+		index("deliverables_org_status_idx").on(
+			table.organizationId,
+			table.status,
+		),
 		index("deliverables_org_workflow_idx").on(
 			table.organizationId,
 			table.workflowStatus,
@@ -744,7 +758,9 @@ export const submissionFiles = pgTable(
 			.primaryKey(),
 		submissionId: varchar("submission_id", { length: 255 })
 			.notNull()
-			.references(() => assignmentSubmissions.id, { onDelete: "cascade" }),
+			.references(() => assignmentSubmissions.id, {
+				onDelete: "cascade",
+			}),
 
 		fileName: text("file_name").notNull(),
 		fileUrl: text("file_url").notNull(),
@@ -755,7 +771,9 @@ export const submissionFiles = pgTable(
 			.defaultNow()
 			.notNull(),
 	},
-	(table) => [index("submission_files_submission_idx").on(table.submissionId)],
+	(table) => [
+		index("submission_files_submission_idx").on(table.submissionId),
+	],
 );
 
 export const submissionFeedback = pgTable(
@@ -766,7 +784,9 @@ export const submissionFeedback = pgTable(
 			.primaryKey(),
 		submissionId: varchar("submission_id", { length: 255 })
 			.notNull()
-			.references(() => assignmentSubmissions.id, { onDelete: "cascade" }),
+			.references(() => assignmentSubmissions.id, {
+				onDelete: "cascade",
+			}),
 
 		feedbackBy: varchar("feedback_by", { length: 255 })
 			.notNull()
@@ -814,10 +834,9 @@ export const receivedAmounts = pgTable(
 		notes: text("notes"),
 
 		// Link to payment schedule if this fulfills a scheduled payment
-		paymentScheduleId: varchar("payment_schedule_id", { length: 255 }).references(
-			() => paymentSchedules.id,
-			{ onDelete: "set null" },
-		),
+		paymentScheduleId: varchar("payment_schedule_id", {
+			length: 255,
+		}).references(() => paymentSchedules.id, { onDelete: "set null" }),
 
 		createdBy: varchar("created_by", { length: 255 }).references(
 			() => users.id,
@@ -845,10 +864,7 @@ export const receivedAmounts = pgTable(
 		index("received_amounts_booking_idx").on(table.bookingId),
 		index("received_amounts_date_idx").on(table.receivedDate),
 		index("received_amounts_schedule_idx").on(table.paymentScheduleId),
-		check(
-			"received_amounts_amount_positive",
-			sql`amount > 0`,
-		),
+		check("received_amounts_amount_positive", sql`amount > 0`),
 	],
 );
 
@@ -874,7 +890,9 @@ export const paymentSchedules = pgTable(
 		amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
 		dueDate: date("due_date").notNull(),
 
-		status: paymentScheduleStatusEnum("status").default("pending").notNull(),
+		status: paymentScheduleStatusEnum("status")
+			.default("pending")
+			.notNull(),
 
 		paidAmount: decimal("paid_amount", { precision: 12, scale: 2 })
 			.default("0")
@@ -910,10 +928,7 @@ export const paymentSchedules = pgTable(
 		index("payment_schedules_booking_idx").on(table.bookingId),
 		index("payment_schedules_due_date_idx").on(table.dueDate),
 		index("payment_schedules_status_idx").on(table.status),
-		check(
-			"payment_schedules_amount_positive",
-			sql`amount > 0`,
-		),
+		check("payment_schedules_amount_positive", sql`amount > 0`),
 		check(
 			"payment_schedules_paid_amount_range",
 			sql`paid_amount >= 0 AND paid_amount <= amount`,
@@ -976,13 +991,13 @@ export const expenses = pgTable(
 	(table) => [
 		index("expenses_org_idx").on(table.organizationId),
 		index("expenses_date_idx").on(table.expenseDate),
-		index("expenses_org_date_idx").on(table.organizationId, table.expenseDate),
+		index("expenses_org_date_idx").on(
+			table.organizationId,
+			table.expenseDate,
+		),
 		index("expenses_category_idx").on(table.category),
 		index("expenses_bill_to_idx").on(table.billTo),
-		check(
-			"expenses_amount_positive",
-			sql`amount > 0`,
-		),
+		check("expenses_amount_positive", sql`amount > 0`),
 	],
 );
 
@@ -1001,9 +1016,12 @@ export const expenseAssignments = pgTable(
 			() => bookings.id,
 			{ onDelete: "cascade" },
 		),
-		shootId: varchar("shoot_id", { length: 255 }).references(() => shoots.id, {
-			onDelete: "cascade",
-		}),
+		shootId: varchar("shoot_id", { length: 255 }).references(
+			() => shoots.id,
+			{
+				onDelete: "cascade",
+			},
+		),
 		crewId: varchar("crew_id", { length: 255 }).references(() => crews.id, {
 			onDelete: "cascade",
 		}),
@@ -1013,7 +1031,10 @@ export const expenseAssignments = pgTable(
 			precision: 5,
 			scale: 2,
 		}),
-		allocationAmount: decimal("allocation_amount", { precision: 12, scale: 2 }),
+		allocationAmount: decimal("allocation_amount", {
+			precision: 12,
+			scale: 2,
+		}),
 
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.defaultNow()
@@ -1150,10 +1171,7 @@ export const invoiceLineItems = pgTable(
 	},
 	(table) => [
 		index("invoice_line_items_invoice_idx").on(table.invoiceId),
-		check(
-			"invoice_line_items_quantity_positive",
-			sql`quantity > 0`,
-		),
+		check("invoice_line_items_quantity_positive", sql`quantity > 0`),
 		check(
 			"invoice_line_items_unit_price_non_negative",
 			sql`unit_price >= 0`,
@@ -1440,52 +1458,58 @@ export const taskRelations = relations(tasks, ({ one, many }) => ({
 	}),
 }));
 
-export const taskAssignmentRelations = relations(taskAssignments, ({ one }) => ({
-	task: one(tasks, {
-		fields: [taskAssignments.taskId],
-		references: [tasks.id],
+export const taskAssignmentRelations = relations(
+	taskAssignments,
+	({ one }) => ({
+		task: one(tasks, {
+			fields: [taskAssignments.taskId],
+			references: [tasks.id],
+		}),
+		crew: one(crews, {
+			fields: [taskAssignments.crewId],
+			references: [crews.id],
+		}),
+		assignedByUser: one(users, {
+			fields: [taskAssignments.assignedBy],
+			references: [users.id],
+		}),
 	}),
-	crew: one(crews, {
-		fields: [taskAssignments.crewId],
-		references: [crews.id],
-	}),
-	assignedByUser: one(users, {
-		fields: [taskAssignments.assignedBy],
-		references: [users.id],
-	}),
-}));
+);
 
 // ----------------------------------------------------------------------------
 // Deliverable Relations
 // ----------------------------------------------------------------------------
 
-export const deliverableRelations = relations(deliverables, ({ one, many }) => ({
-	organization: one(organizations, {
-		fields: [deliverables.organizationId],
-		references: [organizations.id],
+export const deliverableRelations = relations(
+	deliverables,
+	({ one, many }) => ({
+		organization: one(organizations, {
+			fields: [deliverables.organizationId],
+			references: [organizations.id],
+		}),
+		booking: one(bookings, {
+			fields: [deliverables.bookingId],
+			references: [bookings.id],
+		}),
+		assignments: many(deliverableAssignments),
+		submissions: many(assignmentSubmissions),
+		createdByUser: one(users, {
+			fields: [deliverables.createdBy],
+			references: [users.id],
+			relationName: "deliverableCreatedBy",
+		}),
+		updatedByUser: one(users, {
+			fields: [deliverables.updatedBy],
+			references: [users.id],
+			relationName: "deliverableUpdatedBy",
+		}),
+		deletedByUser: one(users, {
+			fields: [deliverables.deletedBy],
+			references: [users.id],
+			relationName: "deliverableDeletedBy",
+		}),
 	}),
-	booking: one(bookings, {
-		fields: [deliverables.bookingId],
-		references: [bookings.id],
-	}),
-	assignments: many(deliverableAssignments),
-	submissions: many(assignmentSubmissions),
-	createdByUser: one(users, {
-		fields: [deliverables.createdBy],
-		references: [users.id],
-		relationName: "deliverableCreatedBy",
-	}),
-	updatedByUser: one(users, {
-		fields: [deliverables.updatedBy],
-		references: [users.id],
-		relationName: "deliverableUpdatedBy",
-	}),
-	deletedByUser: one(users, {
-		fields: [deliverables.deletedBy],
-		references: [users.id],
-		relationName: "deliverableDeletedBy",
-	}),
-}));
+);
 
 export const deliverableAssignmentRelations = relations(
 	deliverableAssignments,
@@ -1537,12 +1561,15 @@ export const assignmentSubmissionRelations = relations(
 	}),
 );
 
-export const submissionFileRelations = relations(submissionFiles, ({ one }) => ({
-	submission: one(assignmentSubmissions, {
-		fields: [submissionFiles.submissionId],
-		references: [assignmentSubmissions.id],
+export const submissionFileRelations = relations(
+	submissionFiles,
+	({ one }) => ({
+		submission: one(assignmentSubmissions, {
+			fields: [submissionFiles.submissionId],
+			references: [assignmentSubmissions.id],
+		}),
 	}),
-}));
+);
 
 export const submissionFeedbackRelations = relations(
 	submissionFeedback,
@@ -1562,35 +1589,38 @@ export const submissionFeedbackRelations = relations(
 // Financial Relations
 // ----------------------------------------------------------------------------
 
-export const receivedAmountRelations = relations(receivedAmounts, ({ one }) => ({
-	organization: one(organizations, {
-		fields: [receivedAmounts.organizationId],
-		references: [organizations.id],
+export const receivedAmountRelations = relations(
+	receivedAmounts,
+	({ one }) => ({
+		organization: one(organizations, {
+			fields: [receivedAmounts.organizationId],
+			references: [organizations.id],
+		}),
+		booking: one(bookings, {
+			fields: [receivedAmounts.bookingId],
+			references: [bookings.id],
+		}),
+		paymentSchedule: one(paymentSchedules, {
+			fields: [receivedAmounts.paymentScheduleId],
+			references: [paymentSchedules.id],
+		}),
+		createdByUser: one(users, {
+			fields: [receivedAmounts.createdBy],
+			references: [users.id],
+			relationName: "receivedAmountCreatedBy",
+		}),
+		updatedByUser: one(users, {
+			fields: [receivedAmounts.updatedBy],
+			references: [users.id],
+			relationName: "receivedAmountUpdatedBy",
+		}),
+		deletedByUser: one(users, {
+			fields: [receivedAmounts.deletedBy],
+			references: [users.id],
+			relationName: "receivedAmountDeletedBy",
+		}),
 	}),
-	booking: one(bookings, {
-		fields: [receivedAmounts.bookingId],
-		references: [bookings.id],
-	}),
-	paymentSchedule: one(paymentSchedules, {
-		fields: [receivedAmounts.paymentScheduleId],
-		references: [paymentSchedules.id],
-	}),
-	createdByUser: one(users, {
-		fields: [receivedAmounts.createdBy],
-		references: [users.id],
-		relationName: "receivedAmountCreatedBy",
-	}),
-	updatedByUser: one(users, {
-		fields: [receivedAmounts.updatedBy],
-		references: [users.id],
-		relationName: "receivedAmountUpdatedBy",
-	}),
-	deletedByUser: one(users, {
-		fields: [receivedAmounts.deletedBy],
-		references: [users.id],
-		relationName: "receivedAmountDeletedBy",
-	}),
-}));
+);
 
 export const paymentScheduleRelations = relations(
 	paymentSchedules,
@@ -1787,7 +1817,8 @@ export type Deliverable = typeof deliverables.$inferSelect;
 export type NewDeliverable = typeof deliverables.$inferInsert;
 
 export type DeliverableAssignment = typeof deliverableAssignments.$inferSelect;
-export type NewDeliverableAssignment = typeof deliverableAssignments.$inferInsert;
+export type NewDeliverableAssignment =
+	typeof deliverableAssignments.$inferInsert;
 
 export type AssignmentSubmission = typeof assignmentSubmissions.$inferSelect;
 export type NewAssignmentSubmission = typeof assignmentSubmissions.$inferInsert;

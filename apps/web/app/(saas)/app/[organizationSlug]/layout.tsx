@@ -55,7 +55,10 @@ export default async function OrganizationLayout({ children, params }: Props) {
 		<HydrationBoundary state={dehydrate(queryClient)}>
 			<ClientCallbackProvider>
 				<SheetProvider>
-					<AppShell session={session} activeOrganization={organization}>
+					<AppShell
+						session={session}
+						activeOrganization={organization}
+					>
 						{children}
 					</AppShell>
 					<Suspense fallback={null}>

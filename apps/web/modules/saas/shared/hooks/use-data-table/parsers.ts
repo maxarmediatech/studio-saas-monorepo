@@ -1,8 +1,7 @@
-import {
-	parseAsInteger,
-	parseAsString,
-	parseAsStringLiteral,
-} from "nuqs";
+import { parseAsInteger, parseAsString, parseAsStringLiteral } from "nuqs";
+import { getSortingStateParser } from "./sorting-state-parser";
+
+export { getSortingStateParser };
 
 /**
  * Standard parsers for pagination URL params
@@ -18,7 +17,7 @@ export const paginationParsers = {
 export const sortingParsers = {
 	sortBy: parseAsString,
 	sortDirection: parseAsStringLiteral(["asc", "desc"] as const).withDefault(
-		"desc"
+		"desc",
 	),
 };
 
@@ -30,7 +29,7 @@ export const searchParser = parseAsString;
 /**
  * Create pagination parsers with custom default limit
  */
-export function createPaginationParsers(defaultLimit: number = 10) {
+export function createPaginationParsers(defaultLimit = 10) {
 	return {
 		page: parseAsInteger.withDefault(1),
 		limit: parseAsInteger.withDefault(defaultLimit),
@@ -42,25 +41,25 @@ export function createPaginationParsers(defaultLimit: number = 10) {
  */
 export function createSortingParsers(
 	defaultSortBy?: string,
-	defaultSortDirection: "asc" | "desc" = "desc"
+	defaultSortDirection: "asc" | "desc" = "desc",
 ) {
 	return {
 		sortBy: defaultSortBy
 			? parseAsString.withDefault(defaultSortBy)
 			: parseAsString,
-		sortDirection:
-			parseAsStringLiteral(["asc", "desc"] as const).withDefault(
-				defaultSortDirection
-			),
+		sortDirection: parseAsStringLiteral([
+			"asc",
+			"desc",
+		] as const).withDefault(defaultSortDirection),
 	};
 }
 
 // Re-export nuqs utilities for entity hooks
 export {
+	parseAsArrayOf,
 	parseAsInteger,
 	parseAsString,
 	parseAsStringLiteral,
-	parseAsArrayOf,
 } from "nuqs";
 
 // Re-export server utilities for search params cache

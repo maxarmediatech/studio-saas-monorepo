@@ -1,4 +1,15 @@
-import { and, count, eq, gte, isNull, clients, bookings, bookingParticipants, db, sql } from "@repo/database";
+import {
+	and,
+	bookingParticipants,
+	bookings,
+	clients,
+	count,
+	db,
+	eq,
+	gte,
+	isNull,
+	sql,
+} from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
@@ -32,9 +43,16 @@ export const getClientStats = studioProtectedProcedure
 
 		// Active clients (with at least one non-deleted booking via participants)
 		const [activeResult] = await db
-			.select({ count: sql<number>`count(distinct ${clients.id})`.mapWith(Number) })
+			.select({
+				count: sql<number>`count(distinct ${clients.id})`.mapWith(
+					Number,
+				),
+			})
 			.from(clients)
-			.innerJoin(bookingParticipants, eq(clients.id, bookingParticipants.clientId))
+			.innerJoin(
+				bookingParticipants,
+				eq(clients.id, bookingParticipants.clientId),
+			)
 			.innerJoin(bookings, eq(bookingParticipants.bookingId, bookings.id))
 			.where(
 				and(
@@ -64,9 +82,16 @@ export const getClientStats = studioProtectedProcedure
 
 		// Clients with active bookings (status not completed/cancelled)
 		const [clientsWithActiveResult] = await db
-			.select({ count: sql<number>`count(distinct ${clients.id})`.mapWith(Number) })
+			.select({
+				count: sql<number>`count(distinct ${clients.id})`.mapWith(
+					Number,
+				),
+			})
 			.from(clients)
-			.innerJoin(bookingParticipants, eq(clients.id, bookingParticipants.clientId))
+			.innerJoin(
+				bookingParticipants,
+				eq(clients.id, bookingParticipants.clientId),
+			)
 			.innerJoin(bookings, eq(bookingParticipants.bookingId, bookings.id))
 			.where(
 				and(

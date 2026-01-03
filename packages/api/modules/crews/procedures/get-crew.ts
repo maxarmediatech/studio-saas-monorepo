@@ -1,17 +1,17 @@
 import { ORPCError } from "@orpc/server";
 import {
 	and,
+	crews,
+	db,
+	deliverableAssignments,
+	deliverables,
 	eq,
 	isNull,
-	sql,
-	crews,
-	shoots,
-	tasks,
-	deliverables,
 	shootAssignments,
+	shoots,
+	sql,
 	taskAssignments,
-	deliverableAssignments,
-	db,
+	tasks,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
@@ -26,7 +26,8 @@ export const getCrew = studioProtectedProcedure
 		path: "/crews/{id}",
 		tags: ["Crews"],
 		summary: "Get crew",
-		description: "Get a single crew member by ID with assignment statistics",
+		description:
+			"Get a single crew member by ID with assignment statistics",
 	})
 	.input(getCrewInputSchema)
 	.output(getCrewOutputSchema)
@@ -52,7 +53,9 @@ export const getCrew = studioProtectedProcedure
 		// Active shoot assignments (shoots not deleted and status not completed/cancelled)
 		const [activeShootsResult] = await db
 			.select({
-				count: sql<number>`count(distinct ${shootAssignments.shootId})`.mapWith(Number),
+				count: sql<number>`count(distinct ${shootAssignments.shootId})`.mapWith(
+					Number,
+				),
 			})
 			.from(shootAssignments)
 			.innerJoin(shoots, eq(shootAssignments.shootId, shoots.id))
@@ -68,7 +71,9 @@ export const getCrew = studioProtectedProcedure
 		// Active task assignments (tasks not deleted and workflow not approved)
 		const [activeTasksResult] = await db
 			.select({
-				count: sql<number>`count(distinct ${taskAssignments.taskId})`.mapWith(Number),
+				count: sql<number>`count(distinct ${taskAssignments.taskId})`.mapWith(
+					Number,
+				),
 			})
 			.from(taskAssignments)
 			.innerJoin(tasks, eq(taskAssignments.taskId, tasks.id))
@@ -84,10 +89,15 @@ export const getCrew = studioProtectedProcedure
 		// Active deliverable assignments (deliverables not deleted and workflow not approved)
 		const [activeDeliverablesResult] = await db
 			.select({
-				count: sql<number>`count(distinct ${deliverableAssignments.deliverableId})`.mapWith(Number),
+				count: sql<number>`count(distinct ${deliverableAssignments.deliverableId})`.mapWith(
+					Number,
+				),
 			})
 			.from(deliverableAssignments)
-			.innerJoin(deliverables, eq(deliverableAssignments.deliverableId, deliverables.id))
+			.innerJoin(
+				deliverables,
+				eq(deliverableAssignments.deliverableId, deliverables.id),
+			)
 			.where(
 				and(
 					eq(deliverableAssignments.crewId, id),
@@ -100,7 +110,9 @@ export const getCrew = studioProtectedProcedure
 		// Total completed assignments (tasks + deliverables with approved workflow)
 		const [completedTasksResult] = await db
 			.select({
-				count: sql<number>`count(distinct ${taskAssignments.taskId})`.mapWith(Number),
+				count: sql<number>`count(distinct ${taskAssignments.taskId})`.mapWith(
+					Number,
+				),
 			})
 			.from(taskAssignments)
 			.innerJoin(tasks, eq(taskAssignments.taskId, tasks.id))
@@ -115,10 +127,15 @@ export const getCrew = studioProtectedProcedure
 
 		const [completedDeliverablesResult] = await db
 			.select({
-				count: sql<number>`count(distinct ${deliverableAssignments.deliverableId})`.mapWith(Number),
+				count: sql<number>`count(distinct ${deliverableAssignments.deliverableId})`.mapWith(
+					Number,
+				),
 			})
 			.from(deliverableAssignments)
-			.innerJoin(deliverables, eq(deliverableAssignments.deliverableId, deliverables.id))
+			.innerJoin(
+				deliverables,
+				eq(deliverableAssignments.deliverableId, deliverables.id),
+			)
 			.where(
 				and(
 					eq(deliverableAssignments.crewId, id),
@@ -137,9 +154,11 @@ export const getCrew = studioProtectedProcedure
 				deletedAt: crew.deletedAt?.toISOString() ?? null,
 				activeShootAssignments: activeShootsResult?.count ?? 0,
 				activeTaskAssignments: activeTasksResult?.count ?? 0,
-				activeDeliverableAssignments: activeDeliverablesResult?.count ?? 0,
+				activeDeliverableAssignments:
+					activeDeliverablesResult?.count ?? 0,
 				totalCompletedAssignments:
-					(completedTasksResult?.count ?? 0) + (completedDeliverablesResult?.count ?? 0),
+					(completedTasksResult?.count ?? 0) +
+					(completedDeliverablesResult?.count ?? 0),
 			},
 		};
 	});

@@ -32,9 +32,10 @@ export async function getOrganizations({
 		limit,
 		offset,
 		extras: {
-			membersCount: countRelation(organizations.id, members.organizationId).as(
-				"membersCount",
-			),
+			membersCount: countRelation(
+				organizations.id,
+				members.organizationId,
+			).as("membersCount"),
 		},
 	});
 }
@@ -93,9 +94,10 @@ export async function getOrganizationWithPurchasesAndMembersCount(
 			purchases: true,
 		},
 		extras: {
-			membersCount: countRelation(organizations.id, members.organizationId).as(
-				"membersCount",
-			),
+			membersCount: countRelation(
+				organizations.id,
+				members.organizationId,
+			).as("membersCount"),
 		},
 	});
 }

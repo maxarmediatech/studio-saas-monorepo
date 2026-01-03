@@ -1,18 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
-import { useRouter } from "next/navigation";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { ColumnDef } from "@tanstack/react-table";
-import { Badge } from "@repo/ui/components/badge";
-import { Input } from "@repo/ui/components/input";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@repo/ui/components/select";
+import type { Crew } from "@repo/api/modules/studio/schemas/crew";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -23,22 +11,38 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@repo/ui/components/alert-dialog";
+import { Badge } from "@repo/ui/components/badge";
+import { Input } from "@repo/ui/components/input";
 import {
-	PencilIcon,
-	TrashIcon,
-	SearchIcon,
-	Loader2Icon,
-	UserIcon,
-} from "lucide-react";
-import { toast } from "sonner";
-import { crewsApi, crewsMutations, studioQueryKeys } from "@saas/studio/lib/api";
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@repo/ui/components/select";
 import {
 	DataTable,
 	DataTableRowActions,
 	type RowAction,
 } from "@saas/shared/components/data-table";
-import type { Crew } from "@repo/api/modules/studio/schemas/crew";
 import { useCrewParams } from "@saas/studio/hooks/params/use-crew-params";
+import {
+	crewsApi,
+	crewsMutations,
+	studioQueryKeys,
+} from "@saas/studio/lib/api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { ColumnDef } from "@tanstack/react-table";
+import {
+	Loader2Icon,
+	PencilIcon,
+	SearchIcon,
+	TrashIcon,
+	UserIcon,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useMemo, useState, useTransition } from "react";
+import { toast } from "sonner";
 import { OpenCrewCreateSheet } from "./OpenCrewSheet";
 
 interface CrewsPageClientProps {
@@ -53,12 +57,16 @@ interface CrewsPageClientProps {
 
 const statusColors: Record<string, string> = {
 	active: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-	inactive: "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400",
-	unavailable: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+	inactive:
+		"bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400",
+	unavailable:
+		"bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
 };
 
 const formatMoney = (value: string | null) => {
-	if (!value) return "-";
+	if (!value) {
+		return "-";
+	}
 	const num = Number.parseFloat(value);
 	return new Intl.NumberFormat("en-IN", {
 		style: "currency",
@@ -96,10 +104,17 @@ export function CrewsPageClient({
 	};
 
 	// Fetch crews with TanStack Query
-	const { data, isLoading, isFetching } = useQuery(crewsApi.listOptions(queryInput));
+	const { data, isLoading, isFetching } = useQuery(
+		crewsApi.listOptions(queryInput),
+	);
 
 	const crews = data?.data ?? [];
-	const pagination = data?.pagination ?? { page: 1, limit: 10, total: 0, pageCount: 0 };
+	const pagination = data?.pagination ?? {
+		page: 1,
+		limit: 10,
+		total: 0,
+		pageCount: 0,
+	};
 
 	// Delete mutation
 	const deleteMutation = useMutation({
@@ -108,7 +123,9 @@ export function CrewsPageClient({
 			toast.success("Crew member deleted successfully");
 			setDeleteDialogOpen(false);
 			setCrewToDelete(null);
-			queryClient.invalidateQueries({ queryKey: studioQueryKeys.crews.all });
+			queryClient.invalidateQueries({
+				queryKey: studioQueryKeys.crews.all,
+			});
 		},
 		onError: (error) => {
 			toast.error(error.message || "Failed to delete crew member");
@@ -193,7 +210,9 @@ export function CrewsPageClient({
 						<div>
 							<p className="font-medium">{row.original.name}</p>
 							{row.original.email && (
-								<p className="text-sm text-muted-foreground">{row.original.email}</p>
+								<p className="text-sm text-muted-foreground">
+									{row.original.email}
+								</p>
 							)}
 						</div>
 					</div>
@@ -203,7 +222,9 @@ export function CrewsPageClient({
 				accessorKey: "role",
 				header: "Role",
 				cell: ({ row }) => (
-					<span className="capitalize">{row.original.role.replace(/_/g, " ")}</span>
+					<span className="capitalize">
+						{row.original.role.replace(/_/g, " ")}
+					</span>
 				),
 			},
 			{
@@ -217,7 +238,10 @@ export function CrewsPageClient({
 				cell: ({ row }) => (
 					<Badge
 						variant="secondary"
-						className={statusColors[row.original.status] ?? statusColors.active}
+						className={
+							statusColors[row.original.status] ??
+							statusColors.active
+						}
 					>
 						{row.original.status}
 					</Badge>
@@ -227,13 +251,18 @@ export function CrewsPageClient({
 				accessorKey: "dailyRate",
 				header: () => <div className="text-right">Daily Rate</div>,
 				cell: ({ row }) => (
-					<div className="text-right">{formatMoney(row.original.dailyRate)}</div>
+					<div className="text-right">
+						{formatMoney(row.original.dailyRate)}
+					</div>
 				),
 			},
 			{
 				id: "actions",
 				cell: ({ row }) => (
-					<DataTableRowActions row={row.original} actions={rowActions} />
+					<DataTableRowActions
+						row={row.original}
+						actions={rowActions}
+					/>
 				),
 			},
 		],
@@ -288,20 +317,29 @@ export function CrewsPageClient({
 				emptyState={
 					<div className="flex flex-col items-center gap-2">
 						<UserIcon className="h-12 w-12 text-muted-foreground/50" />
-						<p className="text-muted-foreground">No crew members found</p>
-						<OpenCrewCreateSheet variant="outline" size="sm" label="Add your first crew member" />
+						<p className="text-muted-foreground">
+							No crew members found
+						</p>
+						<OpenCrewCreateSheet
+							variant="outline"
+							size="sm"
+							label="Add your first crew member"
+						/>
 					</div>
 				}
 			/>
 
 			{/* Delete confirmation dialog */}
-			<AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+			<AlertDialog
+				open={deleteDialogOpen}
+				onOpenChange={setDeleteDialogOpen}
+			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Delete crew member?</AlertDialogTitle>
 						<AlertDialogDescription>
-							This will permanently delete "{crewToDelete?.name}". This action cannot
-							be undone.
+							This will permanently delete "{crewToDelete?.name}".
+							This action cannot be undone.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
@@ -309,7 +347,9 @@ export function CrewsPageClient({
 						<AlertDialogAction
 							onClick={() => {
 								if (crewToDelete) {
-									deleteMutation.mutate({ id: crewToDelete.id });
+									deleteMutation.mutate({
+										id: crewToDelete.id,
+									});
 								}
 							}}
 							disabled={deleteMutation.isPending}

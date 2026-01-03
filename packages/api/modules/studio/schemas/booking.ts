@@ -6,19 +6,19 @@
 
 import { z } from "zod";
 import {
-	createListResponseSchema,
+	baseListFiltersSchema,
+	bookingPhaseSchema,
 	createItemResponseSchema,
+	createListResponseSchema,
 	createSortSchema,
+	datetimeSchema,
 	idSchema,
+	moneySchema,
 	mutationResponseSchema,
 	nameSchema,
 	paginationSchema,
-	searchSchema,
-	baseListFiltersSchema,
-	datetimeSchema,
-	moneySchema,
-	bookingPhaseSchema,
 	paymentMethodSchema,
+	searchSchema,
 } from "./common";
 
 // ============================================================================
@@ -41,7 +41,9 @@ export const bookingParticipantInputSchema = z.object({
 	role: z.string().min(1).max(100),
 });
 
-export type BookingParticipantInput = z.infer<typeof bookingParticipantInputSchema>;
+export type BookingParticipantInput = z.infer<
+	typeof bookingParticipantInputSchema
+>;
 
 // ============================================================================
 // BOOKING EVENT SCHEMA
@@ -118,13 +120,21 @@ export type BookingMinimal = z.infer<typeof bookingMinimalSchema>;
 // LIST BOOKINGS
 // ============================================================================
 
-const bookingSortFields = ["name", "referenceNumber", "status", "packageCost", "createdAt", "updatedAt"] as const;
+const bookingSortFields = [
+	"name",
+	"referenceNumber",
+	"status",
+	"packageCost",
+	"createdAt",
+	"updatedAt",
+] as const;
 
 export const listBookingsInputSchema = z
 	.object({
-		status: bookingPhaseSchema.optional(),
-		bookingType: z.string().optional(),
-		packageType: z.string().optional(),
+		statuses: z.array(bookingPhaseSchema).optional(),
+		bookingType: z.union([z.string(), z.array(z.string())]).optional(),
+		packageType: z.union([z.string(), z.array(z.string())]).optional(),
+		createdAt: z.string().optional(), // comma-separated date range "from,to"
 	})
 	.merge(paginationSchema)
 	.merge(searchSchema)
@@ -134,17 +144,34 @@ export const listBookingsInputSchema = z
 export type ListBookingsInput = z.infer<typeof listBookingsInputSchema>;
 
 /**
+ * Participant summary for list view (minimal client info)
+ */
+export const participantSummarySchema = z.object({
+	id: idSchema,
+	role: z.string(),
+	client: z.object({
+		id: idSchema,
+		name: z.string(),
+	}),
+});
+
+export type ParticipantSummary = z.infer<typeof participantSummarySchema>;
+
+/**
  * Booking list item with summary info
  */
 export const bookingListItemSchema = bookingSchema.extend({
 	participantsCount: z.number(),
+	participants: z.array(participantSummarySchema),
 	shootsCount: z.number(),
 	balance: z.string(),
 });
 
 export type BookingListItem = z.infer<typeof bookingListItemSchema>;
 
-export const listBookingsOutputSchema = createListResponseSchema(bookingListItemSchema);
+export const listBookingsOutputSchema = createListResponseSchema(
+	bookingListItemSchema,
+);
 
 export type ListBookingsOutput = z.infer<typeof listBookingsOutputSchema>;
 
@@ -158,13 +185,17 @@ export const listBookingsMinimalInputSchema = z
 	})
 	.merge(searchSchema);
 
-export type ListBookingsMinimalInput = z.infer<typeof listBookingsMinimalInputSchema>;
+export type ListBookingsMinimalInput = z.infer<
+	typeof listBookingsMinimalInputSchema
+>;
 
 export const listBookingsMinimalOutputSchema = z.object({
 	data: z.array(bookingMinimalSchema),
 });
 
-export type ListBookingsMinimalOutput = z.infer<typeof listBookingsMinimalOutputSchema>;
+export type ListBookingsMinimalOutput = z.infer<
+	typeof listBookingsMinimalOutputSchema
+>;
 
 // ============================================================================
 // GET BOOKING
@@ -199,7 +230,8 @@ export const bookingDetailSchema = bookingSchema.extend({
 
 export type BookingDetail = z.infer<typeof bookingDetailSchema>;
 
-export const getBookingOutputSchema = createItemResponseSchema(bookingDetailSchema);
+export const getBookingOutputSchema =
+	createItemResponseSchema(bookingDetailSchema);
 
 export type GetBookingOutput = z.infer<typeof getBookingOutputSchema>;
 
@@ -214,7 +246,9 @@ const shootCrewAssignmentInputSchema = z.object({
 	isLead: z.boolean().default(false),
 });
 
-export type ShootCrewAssignmentInput = z.infer<typeof shootCrewAssignmentInputSchema>;
+export type ShootCrewAssignmentInput = z.infer<
+	typeof shootCrewAssignmentInputSchema
+>;
 
 // Crew assignment for deliverables (no role field)
 const deliverableCrewAssignmentInputSchema = z.object({
@@ -222,7 +256,9 @@ const deliverableCrewAssignmentInputSchema = z.object({
 	isLead: z.boolean().default(false),
 });
 
-export type DeliverableCrewAssignmentInput = z.infer<typeof deliverableCrewAssignmentInputSchema>;
+export type DeliverableCrewAssignmentInput = z.infer<
+	typeof deliverableCrewAssignmentInputSchema
+>;
 
 // Shoot input with embedded crew assignments
 const shootInputSchema = z.object({
@@ -348,11 +384,15 @@ export const updateBookingStatusInputSchema = z.object({
 	status: bookingPhaseSchema,
 });
 
-export type UpdateBookingStatusInput = z.infer<typeof updateBookingStatusInputSchema>;
+export type UpdateBookingStatusInput = z.infer<
+	typeof updateBookingStatusInputSchema
+>;
 
 export const updateBookingStatusOutputSchema = mutationResponseSchema;
 
-export type UpdateBookingStatusOutput = z.infer<typeof updateBookingStatusOutputSchema>;
+export type UpdateBookingStatusOutput = z.infer<
+	typeof updateBookingStatusOutputSchema
+>;
 
 // ============================================================================
 // BOOKING STATS
@@ -374,7 +414,8 @@ export const bookingStatsSchema = z.object({
 
 export type BookingStats = z.infer<typeof bookingStatsSchema>;
 
-export const getBookingStatsOutputSchema = createItemResponseSchema(bookingStatsSchema);
+export const getBookingStatsOutputSchema =
+	createItemResponseSchema(bookingStatsSchema);
 
 export type GetBookingStatsOutput = z.infer<typeof getBookingStatsOutputSchema>;
 
@@ -406,7 +447,9 @@ export const listParticipantsOutputSchema = z.object({
 	data: z.array(participantWithClientSchema),
 });
 
-export type ListParticipantsOutput = z.infer<typeof listParticipantsOutputSchema>;
+export type ListParticipantsOutput = z.infer<
+	typeof listParticipantsOutputSchema
+>;
 
 /**
  * Add participant to a booking
@@ -432,11 +475,15 @@ export const updateParticipantInputSchema = z.object({
 	role: z.string().min(1).max(100),
 });
 
-export type UpdateParticipantInput = z.infer<typeof updateParticipantInputSchema>;
+export type UpdateParticipantInput = z.infer<
+	typeof updateParticipantInputSchema
+>;
 
 export const updateParticipantOutputSchema = mutationResponseSchema;
 
-export type UpdateParticipantOutput = z.infer<typeof updateParticipantOutputSchema>;
+export type UpdateParticipantOutput = z.infer<
+	typeof updateParticipantOutputSchema
+>;
 
 /**
  * Remove participant from a booking
@@ -446,8 +493,12 @@ export const removeParticipantInputSchema = z.object({
 	participantId: idSchema,
 });
 
-export type RemoveParticipantInput = z.infer<typeof removeParticipantInputSchema>;
+export type RemoveParticipantInput = z.infer<
+	typeof removeParticipantInputSchema
+>;
 
 export const removeParticipantOutputSchema = mutationResponseSchema;
 
-export type RemoveParticipantOutput = z.infer<typeof removeParticipantOutputSchema>;
+export type RemoveParticipantOutput = z.infer<
+	typeof removeParticipantOutputSchema
+>;

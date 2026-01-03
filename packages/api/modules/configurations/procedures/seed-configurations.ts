@@ -1,14 +1,14 @@
-import { and, eq, configurations, db } from "@repo/database";
+import { and, configurations, eq } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import { withTransaction } from "../../studio/lib/transactions";
+import type { ConfigType } from "../../studio/schemas/common";
 import {
+	type DefaultConfigItem,
 	defaultConfigurations,
 	seedConfigurationsInputSchema,
 	seedConfigurationsOutputSchema,
-	type DefaultConfigItem,
 } from "../../studio/schemas/configuration";
-import type { ConfigType } from "../../studio/schemas/common";
 
 export const seedConfigurations = studioProtectedProcedure
 	.route({
@@ -24,7 +24,8 @@ export const seedConfigurations = studioProtectedProcedure
 	.handler(async ({ input, context }) => {
 		requirePermission(context, "configuration", "create");
 
-		const typesToSeed = input.types ?? (Object.keys(defaultConfigurations) as ConfigType[]);
+		const typesToSeed =
+			input.types ?? (Object.keys(defaultConfigurations) as ConfigType[]);
 
 		return await withTransaction(async (tx) => {
 			let seededCount = 0;
@@ -34,7 +35,10 @@ export const seedConfigurations = studioProtectedProcedure
 				// Check if this type already has configurations
 				const existing = await tx.query.configurations.findFirst({
 					where: and(
-						eq(configurations.organizationId, context.organizationId),
+						eq(
+							configurations.organizationId,
+							context.organizationId,
+						),
 						eq(configurations.type, configType),
 					),
 				});
@@ -50,19 +54,21 @@ export const seedConfigurations = studioProtectedProcedure
 				}
 
 				// Insert default configurations for this type
-				const valuesToInsert = defaults.map((item: DefaultConfigItem, index: number) => ({
-					organizationId: context.organizationId,
-					type: configType,
-					key: item.key,
-					label: item.label,
-					description: item.description ?? null,
-					color: item.color ?? null,
-					icon: item.icon ?? null,
-					sortOrder: index,
-					isDefault: item.isDefault ?? false,
-					isSystem: false,
-					metadata: null,
-				}));
+				const valuesToInsert = defaults.map(
+					(item: DefaultConfigItem, index: number) => ({
+						organizationId: context.organizationId,
+						type: configType,
+						key: item.key,
+						label: item.label,
+						description: item.description ?? null,
+						color: item.color ?? null,
+						icon: item.icon ?? null,
+						sortOrder: index,
+						isDefault: item.isDefault ?? false,
+						isSystem: false,
+						metadata: null,
+					}),
+				);
 
 				await tx.insert(configurations).values(valuesToInsert);
 

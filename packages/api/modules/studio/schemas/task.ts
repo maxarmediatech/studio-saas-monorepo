@@ -6,17 +6,17 @@
 
 import { z } from "zod";
 import {
-	createListResponseSchema,
+	baseListFiltersSchema,
 	createItemResponseSchema,
+	createListResponseSchema,
 	createSortSchema,
+	dateSchema,
+	descriptionSchema,
 	idSchema,
 	mutationResponseSchema,
 	nameSchema,
-	descriptionSchema,
 	paginationSchema,
 	searchSchema,
-	baseListFiltersSchema,
-	dateSchema,
 	workflowStatusSchema,
 } from "./common";
 
@@ -43,7 +43,9 @@ export const taskAssignmentWithCrewSchema = taskAssignmentSchema.extend({
 	}),
 });
 
-export type TaskAssignmentWithCrew = z.infer<typeof taskAssignmentWithCrewSchema>;
+export type TaskAssignmentWithCrew = z.infer<
+	typeof taskAssignmentWithCrewSchema
+>;
 
 // ============================================================================
 // TASK SCHEMA
@@ -93,13 +95,20 @@ export type TaskMinimal = z.infer<typeof taskMinimalSchema>;
 // LIST TASKS
 // ============================================================================
 
-const taskSortFields = ["name", "dueDate", "status", "priority", "workflowStatus", "createdAt"] as const;
+const taskSortFields = [
+	"name",
+	"dueDate",
+	"status",
+	"priority",
+	"workflowStatus",
+	"createdAt",
+] as const;
 
 export const listTasksInputSchema = z
 	.object({
 		bookingId: idSchema.optional(),
-		status: z.string().optional(),
-		priority: z.string().optional(),
+		status: z.union([z.string(), z.array(z.string())]).optional(),
+		priority: z.union([z.string(), z.array(z.string())]).optional(),
 		workflowStatus: workflowStatusSchema.optional(),
 		dueDateFrom: dateSchema.optional(),
 		dueDateTo: dateSchema.optional(),
@@ -123,7 +132,8 @@ export const taskListItemSchema = taskSchema.extend({
 
 export type TaskListItem = z.infer<typeof taskListItemSchema>;
 
-export const listTasksOutputSchema = createListResponseSchema(taskListItemSchema);
+export const listTasksOutputSchema =
+	createListResponseSchema(taskListItemSchema);
 
 export type ListTasksOutput = z.infer<typeof listTasksOutputSchema>;
 
@@ -231,7 +241,8 @@ export const taskStatsSchema = z.object({
 
 export type TaskStats = z.infer<typeof taskStatsSchema>;
 
-export const getTaskStatsOutputSchema = createItemResponseSchema(taskStatsSchema);
+export const getTaskStatsOutputSchema =
+	createItemResponseSchema(taskStatsSchema);
 
 export type GetTaskStatsOutput = z.infer<typeof getTaskStatsOutputSchema>;
 
@@ -248,7 +259,9 @@ export type AssignCrewToTaskInput = z.infer<typeof assignCrewToTaskInputSchema>;
 
 export const assignCrewToTaskOutputSchema = mutationResponseSchema;
 
-export type AssignCrewToTaskOutput = z.infer<typeof assignCrewToTaskOutputSchema>;
+export type AssignCrewToTaskOutput = z.infer<
+	typeof assignCrewToTaskOutputSchema
+>;
 
 // ============================================================================
 // UNASSIGN CREW
@@ -259,11 +272,15 @@ export const unassignCrewFromTaskInputSchema = z.object({
 	crewId: idSchema,
 });
 
-export type UnassignCrewFromTaskInput = z.infer<typeof unassignCrewFromTaskInputSchema>;
+export type UnassignCrewFromTaskInput = z.infer<
+	typeof unassignCrewFromTaskInputSchema
+>;
 
 export const unassignCrewFromTaskOutputSchema = mutationResponseSchema;
 
-export type UnassignCrewFromTaskOutput = z.infer<typeof unassignCrewFromTaskOutputSchema>;
+export type UnassignCrewFromTaskOutput = z.infer<
+	typeof unassignCrewFromTaskOutputSchema
+>;
 
 // ============================================================================
 // UPDATE TASK STATUS
@@ -278,7 +295,9 @@ export type UpdateTaskStatusInput = z.infer<typeof updateTaskStatusInputSchema>;
 
 export const updateTaskStatusOutputSchema = mutationResponseSchema;
 
-export type UpdateTaskStatusOutput = z.infer<typeof updateTaskStatusOutputSchema>;
+export type UpdateTaskStatusOutput = z.infer<
+	typeof updateTaskStatusOutputSchema
+>;
 
 // ============================================================================
 // SUBMIT TASK

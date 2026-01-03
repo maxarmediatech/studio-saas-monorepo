@@ -1,19 +1,19 @@
 import {
 	and,
-	eq,
-	isNull,
-	gte,
-	sql,
-	count,
 	asc,
-	desc,
-	ne,
-	tasks,
-	bookings,
-	taskAssignments,
 	assignmentSubmissions,
+	bookings,
+	count,
 	crews,
 	db,
+	desc,
+	eq,
+	gte,
+	isNull,
+	ne,
+	sql,
+	taskAssignments,
+	tasks,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { createPaginationResponse } from "../../studio/schemas/common";
@@ -51,7 +51,10 @@ export const getMyTasks = studioProtectedProcedure
 		const offset = (page - 1) * limit;
 
 		// Get crew ID for current user
-		const crewId = await getMyCrewId(context.user.id, context.organizationId);
+		const crewId = await getMyCrewId(
+			context.user.id,
+			context.organizationId,
+		);
 
 		const today = new Date();
 		today.setHours(0, 0, 0, 0);
@@ -98,18 +101,22 @@ export const getMyTasks = studioProtectedProcedure
 			workflowStatus: tasks.workflowStatus,
 			createdAt: tasks.createdAt,
 		};
-		const sortColumn = sortColumnMap[sortBy as keyof typeof sortColumnMap] ?? tasks.dueDate;
+		const sortColumn =
+			sortColumnMap[sortBy as keyof typeof sortColumnMap] ??
+			tasks.dueDate;
 
 		// Handle null due dates (put them at the end when sorting ascending)
-		let orderBy;
-		if (sortBy === "dueDate") {
-			orderBy =
-				sortDirection === "asc"
-					? [sql`CASE WHEN ${tasks.dueDate} IS NULL THEN 1 ELSE 0 END`, asc(sortColumn)]
-					: [desc(sortColumn)];
-		} else {
-			orderBy = sortDirection === "asc" ? [asc(sortColumn)] : [desc(sortColumn)];
-		}
+		const orderBy =
+			sortBy === "dueDate" && sortDirection === "asc"
+				? [
+						sql`CASE WHEN ${tasks.dueDate} IS NULL THEN 1 ELSE 0 END`,
+						asc(sortColumn),
+					]
+				: [
+						sortDirection === "asc"
+							? asc(sortColumn)
+							: desc(sortColumn),
+					];
 
 		// Get assignments with task info
 		const assignmentsList = await db
@@ -155,19 +162,20 @@ export const getMyTasks = studioProtectedProcedure
 				});
 
 				// Get latest submission by this crew member
-				const latestSubmission = await db.query.assignmentSubmissions.findFirst({
-					where: and(
-						eq(assignmentSubmissions.taskId, assignment.taskId),
-						eq(assignmentSubmissions.submittedBy, crewId),
-					),
-					orderBy: [desc(assignmentSubmissions.submittedAt)],
-					columns: {
-						id: true,
-						status: true,
-						submittedAt: true,
-						reviewNote: true,
-					},
-				});
+				const latestSubmission =
+					await db.query.assignmentSubmissions.findFirst({
+						where: and(
+							eq(assignmentSubmissions.taskId, assignment.taskId),
+							eq(assignmentSubmissions.submittedBy, crewId),
+						),
+						orderBy: [desc(assignmentSubmissions.submittedAt)],
+						columns: {
+							id: true,
+							status: true,
+							submittedAt: true,
+							reviewNote: true,
+						},
+					});
 
 				// Get other crew on this task
 				const otherCrew = await db
@@ -208,7 +216,9 @@ export const getMyTasks = studioProtectedProcedure
 						? {
 								id: latestSubmission.id,
 								status: latestSubmission.status,
-								submittedAt: latestSubmission.submittedAt?.toISOString() ?? null,
+								submittedAt:
+									latestSubmission.submittedAt?.toISOString() ??
+									null,
 								reviewNote: latestSubmission.reviewNote,
 							}
 						: null,

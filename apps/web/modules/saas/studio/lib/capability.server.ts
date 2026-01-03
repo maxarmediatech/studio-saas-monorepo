@@ -3,11 +3,7 @@ import { roleHasPermission } from "@repo/api/modules/studio/lib/roles";
 /**
  * Check if a role has any of the specified actions for a resource.
  */
-function any(
-	role: string,
-	resource: string,
-	actions: string[],
-): boolean {
+function any(role: string, resource: string, actions: string[]): boolean {
 	return actions.some((action) =>
 		roleHasPermission(role, resource as never, action as never),
 	);
@@ -36,7 +32,10 @@ export function getCapabilities(userRole: string): HeaderCapabilities {
 	return {
 		bookingCreateOrUpdate: any(userRole, "booking", ["create", "update"]),
 		shootCreateOrUpdate: any(userRole, "shoot", ["create", "update"]),
-		deliverableCreateOrUpdate: any(userRole, "deliverable", ["create", "update"]),
+		deliverableCreateOrUpdate: any(userRole, "deliverable", [
+			"create",
+			"update",
+		]),
 		taskCreateOrUpdate: any(userRole, "task", ["create", "update"]),
 		expenseCreateOrUpdate: any(userRole, "expense", ["create", "update"]),
 		paymentCreateOrUpdate: any(userRole, "payment", ["create", "update"]),

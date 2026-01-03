@@ -1,5 +1,5 @@
 import { ORPCError } from "@orpc/server";
-import { and, eq, isNull, ne, or, clients, db } from "@repo/database";
+import { and, clients, db, eq, isNull, ne, or } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
@@ -20,7 +20,15 @@ export const updateClient = studioProtectedProcedure
 	.handler(async ({ input, context }) => {
 		requirePermission(context, "client", "update");
 
-		const { id, name, email, phoneNumber, alternatePhone, address, metadata } = input;
+		const {
+			id,
+			name,
+			email,
+			phoneNumber,
+			alternatePhone,
+			address,
+			metadata,
+		} = input;
 
 		// Verify client exists and belongs to organization
 		const existing = await db.query.clients.findFirst({
@@ -81,7 +89,8 @@ export const updateClient = studioProtectedProcedure
 		if (name !== undefined) updates.name = name;
 		if (email !== undefined) updates.email = email;
 		if (phoneNumber !== undefined) updates.phoneNumber = phoneNumber;
-		if (alternatePhone !== undefined) updates.alternatePhone = alternatePhone;
+		if (alternatePhone !== undefined)
+			updates.alternatePhone = alternatePhone;
 		if (address !== undefined) updates.address = address;
 		if (metadata !== undefined) updates.metadata = metadata;
 

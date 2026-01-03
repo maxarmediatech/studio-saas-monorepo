@@ -1,14 +1,14 @@
 import {
 	and,
+	crewAvailability,
+	crews,
+	db,
 	eq,
 	gte,
 	isNull,
-	sql,
-	crews,
-	crewAvailability,
-	shoots,
 	shootAssignments,
-	db,
+	shoots,
+	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
@@ -39,24 +39,22 @@ export const getCrewAvailability = studioProtectedProcedure
 		];
 
 		// Get target crews
-		let targetCrews;
-		if (crewIds && crewIds.length > 0) {
-			targetCrews = await db.query.crews.findMany({
-				where: and(
-					...crewConditions,
-					sql`${crews.id} IN (${sql.join(
-						crewIds.map((id) => sql`${id}`),
-						sql`, `,
-					)})`,
-				),
-				columns: { id: true, name: true },
-			});
-		} else {
-			targetCrews = await db.query.crews.findMany({
-				where: and(...crewConditions),
-				columns: { id: true, name: true },
-			});
-		}
+		const targetCrews =
+			crewIds && crewIds.length > 0
+				? await db.query.crews.findMany({
+						where: and(
+							...crewConditions,
+							sql`${crews.id} IN (${sql.join(
+								crewIds.map((id) => sql`${id}`),
+								sql`, `,
+							)})`,
+						),
+						columns: { id: true, name: true },
+					})
+				: await db.query.crews.findMany({
+						where: and(...crewConditions),
+						columns: { id: true, name: true },
+					});
 
 		if (targetCrews.length === 0) {
 			return { data: [] };
@@ -104,7 +102,10 @@ export const getCrewAvailability = studioProtectedProcedure
 			);
 
 		// Build availability map per crew
-		const availabilityMap = new Map<string, Map<string, { isAvailable: boolean; reason: string | null }>>();
+		const availabilityMap = new Map<
+			string,
+			Map<string, { isAvailable: boolean; reason: string | null }>
+		>();
 		for (const record of availabilityRecords) {
 			if (!availabilityMap.has(record.crewId)) {
 				availabilityMap.set(record.crewId, new Map());

@@ -6,17 +6,17 @@
 
 import { z } from "zod";
 import {
-	createListResponseSchema,
+	baseListFiltersSchema,
 	createItemResponseSchema,
+	createListResponseSchema,
 	createSortSchema,
+	emailSchema,
 	idSchema,
 	mutationResponseSchema,
 	nameSchema,
-	emailSchema,
-	phoneSchema,
 	paginationSchema,
+	phoneSchema,
 	searchSchema,
-	baseListFiltersSchema,
 } from "./common";
 
 // ============================================================================
@@ -96,7 +96,8 @@ export const clientDetailSchema = clientSchema.extend({
 
 export type ClientDetail = z.infer<typeof clientDetailSchema>;
 
-export const getClientOutputSchema = createItemResponseSchema(clientDetailSchema);
+export const getClientOutputSchema =
+	createItemResponseSchema(clientDetailSchema);
 
 export type GetClientOutput = z.infer<typeof getClientOutputSchema>;
 
@@ -170,6 +171,7 @@ export const clientStatsSchema = z.object({
 
 export type ClientStats = z.infer<typeof clientStatsSchema>;
 
-export const getClientStatsOutputSchema = createItemResponseSchema(clientStatsSchema);
+export const getClientStatsOutputSchema =
+	createItemResponseSchema(clientStatsSchema);
 
 export type GetClientStatsOutput = z.infer<typeof getClientStatsOutputSchema>;

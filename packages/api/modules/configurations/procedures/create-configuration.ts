@@ -1,5 +1,5 @@
 import { ORPCError } from "@orpc/server";
-import { and, eq, configurations, db } from "@repo/database";
+import { and, configurations, eq } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import { withTransaction } from "../../studio/lib/transactions";
@@ -21,8 +21,17 @@ export const createConfiguration = studioProtectedProcedure
 	.handler(async ({ input, context }) => {
 		requirePermission(context, "configuration", "create");
 
-		const { type, key, label, description, color, icon, sortOrder, isDefault, metadata } =
-			input;
+		const {
+			type,
+			key,
+			label,
+			description,
+			color,
+			icon,
+			sortOrder,
+			isDefault,
+			metadata,
+		} = input;
 
 		return await withTransaction(async (tx) => {
 			// Check for duplicate key within same type
@@ -47,7 +56,10 @@ export const createConfiguration = studioProtectedProcedure
 					.set({ isDefault: false, updatedAt: new Date() })
 					.where(
 						and(
-							eq(configurations.organizationId, context.organizationId),
+							eq(
+								configurations.organizationId,
+								context.organizationId,
+							),
 							eq(configurations.type, type),
 							eq(configurations.isDefault, true),
 						),
@@ -59,7 +71,10 @@ export const createConfiguration = studioProtectedProcedure
 			if (finalSortOrder === undefined) {
 				const lastConfig = await tx.query.configurations.findFirst({
 					where: and(
-						eq(configurations.organizationId, context.organizationId),
+						eq(
+							configurations.organizationId,
+							context.organizationId,
+						),
 						eq(configurations.type, type),
 					),
 					orderBy: (table, { desc }) => [desc(table.sortOrder)],

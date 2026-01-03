@@ -36,9 +36,8 @@ export function ActiveOrganizationProvider({
 
 	const activeOrganizationSlug =
 		routeOrganizationSlug ||
-		organizations?.find(
-			(org) => org.id === session?.activeOrganizationId,
-		)?.slug ||
+		organizations?.find((org) => org.id === session?.activeOrganizationId)
+			?.slug ||
 		organizations?.[0]?.slug ||
 		"";
 	const hasActiveOrganizationSlug = activeOrganizationSlug.length > 0;
@@ -108,7 +107,10 @@ export function ActiveOrganizationProvider({
 	);
 
 	useEffect(() => {
-		if (!loaded && (activeOrganization !== undefined || !hasActiveOrganizationSlug)) {
+		if (
+			!loaded &&
+			(activeOrganization !== undefined || !hasActiveOrganizationSlug)
+		) {
 			setLoaded(true);
 		}
 	}, [activeOrganization, hasActiveOrganizationSlug, loaded]);

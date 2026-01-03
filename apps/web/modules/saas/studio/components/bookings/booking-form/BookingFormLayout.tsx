@@ -53,21 +53,15 @@ export function BookingFormLayout({
 	onCancel,
 }: BookingFormLayoutProps) {
 	return (
-		<div
-			className={cn(
-				"flex h-full min-h-0 flex-1 flex-col",
-				className,
-			)}
-		>
+		<div className={cn("flex h-full min-h-0 flex-1 flex-col", className)}>
 			{/* Screen reader only validation error announcements */}
-			<div
-				role="status"
+			<output
 				aria-live="assertive"
 				aria-atomic="true"
 				className="sr-only"
 			>
 				{validationErrorMessage}
-			</div>
+			</output>
 
 			{/* Header - spans full width, fixed at top */}
 			<header className="shrink-0 border-b bg-background">
@@ -79,7 +73,9 @@ export function BookingFormLayout({
 								className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
 							>
 								<ChevronLeft className="size-5" />
-								<span className="sr-only">Back to bookings</span>
+								<span className="sr-only">
+									Back to bookings
+								</span>
 							</Link>
 						)}
 						<h1 className="text-lg font-semibold">{title}</h1>

@@ -1,8 +1,8 @@
 "use client";
 
+import { cn } from "@repo/ui/lib/utils";
 import { usePathname } from "next/navigation";
 import * as React from "react";
-import { cn } from "@repo/ui/lib/utils";
 import type { HeaderCapabilities } from "../lib/capability.server";
 import type {
 	NavAreaConfig,
@@ -132,13 +132,13 @@ function AppShellContent({
 					<div
 						className={cn(
 							"absolute -left-2 top-0 z-0 hidden h-3 w-5 bg-neutral-100 transition-opacity duration-300 md:block",
-							showCornerFills ? "opacity-100" : "opacity-0"
+							showCornerFills ? "opacity-100" : "opacity-0",
 						)}
 					/>
 					<div
 						className={cn(
 							"absolute -left-2 bottom-0 z-0 hidden h-3 w-5 bg-neutral-100 transition-opacity duration-300 md:block",
-							showCornerFills ? "opacity-100" : "opacity-0"
+							showCornerFills ? "opacity-100" : "opacity-0",
 						)}
 					/>
 					{/* Content Card - fixed height, pages handle their own scrolling */}

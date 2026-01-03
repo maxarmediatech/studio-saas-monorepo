@@ -4,6 +4,6 @@
  * Re-exports all utilities from the studio lib modules.
  */
 
-export * from "./roles";
 export * from "./permissions";
+export * from "./roles";
 export * from "./transactions";

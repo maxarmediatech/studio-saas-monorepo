@@ -1,11 +1,11 @@
-import { and, count, eq, ilike, configurations, db } from "@repo/database";
+import { and, configurations, count, db, eq, ilike } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
+import { createPaginationResponse } from "../../studio/schemas/common";
 import {
 	listConfigurationsInputSchema,
 	listConfigurationsOutputSchema,
 } from "../../studio/schemas/configuration";
-import { createPaginationResponse } from "../../studio/schemas/common";
 
 export const listConfigurations = studioProtectedProcedure
 	.route({
@@ -13,7 +13,8 @@ export const listConfigurations = studioProtectedProcedure
 		path: "/configurations",
 		tags: ["Configurations"],
 		summary: "List configurations",
-		description: "List all configurations for the organization, optionally filtered by type",
+		description:
+			"List all configurations for the organization, optionally filtered by type",
 	})
 	.input(listConfigurationsInputSchema)
 	.output(listConfigurationsOutputSchema)
@@ -24,7 +25,9 @@ export const listConfigurations = studioProtectedProcedure
 		const offset = (page - 1) * limit;
 
 		// Build where conditions
-		const conditions = [eq(configurations.organizationId, context.organizationId)];
+		const conditions = [
+			eq(configurations.organizationId, context.organizationId),
+		];
 
 		if (type) {
 			conditions.push(eq(configurations.type, type));
@@ -53,7 +56,9 @@ export const listConfigurations = studioProtectedProcedure
 		const data = await db.query.configurations.findMany({
 			where: and(...conditions),
 			orderBy: (table, { asc, desc }) =>
-				sortDirection === "asc" ? [asc(orderColumn)] : [desc(orderColumn)],
+				sortDirection === "asc"
+					? [asc(orderColumn)]
+					: [desc(orderColumn)],
 			limit,
 			offset,
 		});

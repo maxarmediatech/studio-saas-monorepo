@@ -1,32 +1,32 @@
 import {
 	and,
-	eq,
-	isNull,
-	gte,
-	sql,
-	count,
 	asc,
-	shoots,
-	tasks,
-	deliverables,
-	bookings,
-	shootAssignments,
-	taskAssignments,
-	deliverableAssignments,
 	assignmentSubmissions,
+	bookings,
+	count,
 	db,
+	deliverableAssignments,
+	deliverables,
+	eq,
+	gte,
+	isNull,
+	shootAssignments,
+	shoots,
+	sql,
+	taskAssignments,
+	tasks,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import {
-	listMyAssignmentsInputSchema,
-	listMyAssignmentsOutputSchema,
-} from "../../studio/schemas/my-assignments";
 import {
 	addDays,
 	formatDateParts,
 	getDateParts,
 	normalizeTimeZone,
 } from "../../studio/lib/date-helpers";
+import {
+	listMyAssignmentsInputSchema,
+	listMyAssignmentsOutputSchema,
+} from "../../studio/schemas/my-assignments";
 import { getMyCrewId } from "../lib/get-my-crew";
 
 export const listMyAssignments = studioProtectedProcedure
@@ -35,7 +35,8 @@ export const listMyAssignments = studioProtectedProcedure
 		path: "/me/assignments",
 		tags: ["My Assignments"],
 		summary: "List my assignments",
-		description: "Get overview of all assignments for the current crew member",
+		description:
+			"Get overview of all assignments for the current crew member",
 	})
 	.input(listMyAssignmentsInputSchema)
 	.output(listMyAssignmentsOutputSchema)
@@ -44,9 +45,14 @@ export const listMyAssignments = studioProtectedProcedure
 		const { includeCompleted } = input;
 
 		// Get crew ID for current user
-		const crewId = await getMyCrewId(context.user.id, context.organizationId);
+		const crewId = await getMyCrewId(
+			context.user.id,
+			context.organizationId,
+		);
 
-		const timeZone = normalizeTimeZone(context.membership.organization.timezone);
+		const timeZone = normalizeTimeZone(
+			context.membership.organization.timezone,
+		);
 		const nowParts = getDateParts(new Date(), timeZone);
 		const todayStr = formatDateParts(nowParts);
 
@@ -87,13 +93,18 @@ export const listMyAssignments = studioProtectedProcedure
 			isNull(deliverables.deletedAt),
 		];
 		if (!includeCompleted) {
-			deliverableConditions.push(sql`${deliverables.workflowStatus} != 'approved'`);
+			deliverableConditions.push(
+				sql`${deliverables.workflowStatus} != 'approved'`,
+			);
 		}
 
 		const [activeDeliverablesResult] = await db
 			.select({ count: count() })
 			.from(deliverableAssignments)
-			.innerJoin(deliverables, eq(deliverableAssignments.deliverableId, deliverables.id))
+			.innerJoin(
+				deliverables,
+				eq(deliverableAssignments.deliverableId, deliverables.id),
+			)
 			.where(and(...deliverableConditions));
 
 		// Count pending submissions by this crew member
@@ -102,7 +113,10 @@ export const listMyAssignments = studioProtectedProcedure
 			.from(assignmentSubmissions)
 			.where(
 				and(
-					eq(assignmentSubmissions.organizationId, context.organizationId),
+					eq(
+						assignmentSubmissions.organizationId,
+						context.organizationId,
+					),
 					eq(assignmentSubmissions.submittedBy, crewId),
 					sql`${assignmentSubmissions.status} IN ('submitted', 'in_review')`,
 				),
@@ -126,7 +140,10 @@ export const listMyAssignments = studioProtectedProcedure
 		const [overdueDeliverablesResult] = await db
 			.select({ count: count() })
 			.from(deliverableAssignments)
-			.innerJoin(deliverables, eq(deliverableAssignments.deliverableId, deliverables.id))
+			.innerJoin(
+				deliverables,
+				eq(deliverableAssignments.deliverableId, deliverables.id),
+			)
 			.where(
 				and(
 					eq(deliverableAssignments.crewId, crewId),
@@ -138,7 +155,8 @@ export const listMyAssignments = studioProtectedProcedure
 			);
 
 		const overdueItems =
-			(overdueTasksResult?.count ?? 0) + (overdueDeliverablesResult?.count ?? 0);
+			(overdueTasksResult?.count ?? 0) +
+			(overdueDeliverablesResult?.count ?? 0);
 
 		// Get next shoot
 		const nextShootAssignment = await db
@@ -213,14 +231,14 @@ export const listMyAssignments = studioProtectedProcedure
 					columns: { name: true },
 				});
 
-					return {
-						id: task.taskId,
-						name: task.name,
-						dueDate: task.dueDate,
-						isOverdue: task.dueDate ? task.dueDate < todayStr : false,
-						workflowStatus: task.workflowStatus,
-						bookingName: booking?.name ?? "Unknown",
-					};
+				return {
+					id: task.taskId,
+					name: task.name,
+					dueDate: task.dueDate,
+					isOverdue: task.dueDate ? task.dueDate < todayStr : false,
+					workflowStatus: task.workflowStatus,
+					bookingName: booking?.name ?? "Unknown",
+				};
 			}),
 		);
 
@@ -234,7 +252,10 @@ export const listMyAssignments = studioProtectedProcedure
 				bookingId: deliverables.bookingId,
 			})
 			.from(deliverableAssignments)
-			.innerJoin(deliverables, eq(deliverableAssignments.deliverableId, deliverables.id))
+			.innerJoin(
+				deliverables,
+				eq(deliverableAssignments.deliverableId, deliverables.id),
+			)
 			.where(
 				and(
 					eq(deliverableAssignments.crewId, crewId),
@@ -254,14 +275,16 @@ export const listMyAssignments = studioProtectedProcedure
 					columns: { name: true },
 				});
 
-					return {
-						id: deliverable.deliverableId,
-						name: deliverable.name,
-						dueDate: deliverable.dueDate,
-						isOverdue: deliverable.dueDate ? deliverable.dueDate < todayStr : false,
-						workflowStatus: deliverable.workflowStatus,
-						bookingName: booking?.name ?? "Unknown",
-					};
+				return {
+					id: deliverable.deliverableId,
+					name: deliverable.name,
+					dueDate: deliverable.dueDate,
+					isOverdue: deliverable.dueDate
+						? deliverable.dueDate < todayStr
+						: false,
+					workflowStatus: deliverable.workflowStatus,
+					bookingName: booking?.name ?? "Unknown",
+				};
 			}),
 		);
 

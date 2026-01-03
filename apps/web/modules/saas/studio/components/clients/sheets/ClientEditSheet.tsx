@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
 	Sheet,
 	SheetContent,
@@ -9,15 +8,16 @@ import {
 } from "@repo/ui/components/sheet";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
-import { toast } from "sonner";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useClientParams } from "@saas/studio/hooks/params/use-client-params";
-import { ClientForm, type ClientFormValues } from "../ClientForm";
 import {
 	clientsApi,
 	clientsMutations,
 	studioQueryKeys,
 } from "@saas/studio/lib/api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { toast } from "sonner";
+import { ClientForm, type ClientFormValues } from "../ClientForm";
 
 export function ClientEditSheet() {
 	const { clientId, close } = useClientParams();
@@ -26,7 +26,7 @@ export function ClientEditSheet() {
 	const [isScrolled, setIsScrolled] = useState(false);
 
 	const { data: client, isLoading } = useQuery({
-		...clientsApi.getOptions(clientId!),
+		...clientsApi.getOptions(clientId ?? ""),
 		enabled: isOpen && !!clientId,
 	});
 
@@ -34,7 +34,9 @@ export function ClientEditSheet() {
 		...clientsMutations.update(),
 		onSuccess: () => {
 			toast.success("Client updated successfully");
-			queryClient.invalidateQueries({ queryKey: studioQueryKeys.clients.all });
+			queryClient.invalidateQueries({
+				queryKey: studioQueryKeys.clients.all,
+			});
 			close();
 		},
 		onError: (error) => {
@@ -43,14 +45,24 @@ export function ClientEditSheet() {
 	});
 
 	const handleSubmit = async (data: ClientFormValues) => {
-		if (!clientId) return;
+		if (!clientId) {
+			return;
+		}
 
 		// Build metadata object from form fields
 		const metadata: Record<string, string> = {};
-		if (data.profession) metadata.profession = data.profession;
-		if (data.source) metadata.source = data.source;
-		if (data.socialHandle) metadata.socialHandle = data.socialHandle;
-		if (data.notes) metadata.notes = data.notes;
+		if (data.profession) {
+			metadata.profession = data.profession;
+		}
+		if (data.source) {
+			metadata.source = data.source;
+		}
+		if (data.socialHandle) {
+			metadata.socialHandle = data.socialHandle;
+		}
+		if (data.notes) {
+			metadata.notes = data.notes;
+		}
 
 		await updateMutation.mutateAsync({
 			id: clientId,
@@ -65,11 +77,15 @@ export function ClientEditSheet() {
 
 	return (
 		<Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
-			<SheetContent side="right" className="sm:max-w-md p-0 gap-0 flex flex-col">
+			<SheetContent
+				side="right"
+				className="sm:max-w-md p-0 gap-0 flex flex-col"
+			>
 				<SheetHeader
 					className={cn(
 						"shrink-0 p-4 transition-shadow duration-200",
-						isScrolled && "shadow-[0_4px_12px_-4px_rgba(0,0,0,0.15)]"
+						isScrolled &&
+							"shadow-[0_4px_12px_-4px_rgba(0,0,0,0.15)]",
 					)}
 				>
 					<SheetTitle className="text-xl">Edit Client</SheetTitle>

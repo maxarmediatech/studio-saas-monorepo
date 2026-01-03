@@ -1,5 +1,14 @@
 import { ORPCError } from "@orpc/server";
-import { and, eq, isNull, asc, bookings, bookingParticipants, clients, db } from "@repo/database";
+import {
+	and,
+	asc,
+	bookingParticipants,
+	bookings,
+	clients,
+	db,
+	eq,
+	isNull,
+} from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
@@ -13,7 +22,8 @@ export const listParticipants = studioProtectedProcedure
 		path: "/bookings/{bookingId}/participants",
 		tags: ["Bookings", "Participants"],
 		summary: "List booking participants",
-		description: "Get all participants for a specific booking with client details",
+		description:
+			"Get all participants for a specific booking with client details",
 	})
 	.input(listParticipantsInputSchema)
 	.output(listParticipantsOutputSchema)

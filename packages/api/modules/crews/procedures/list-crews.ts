@@ -1,11 +1,20 @@
-import { and, count, eq, ilike, isNull, crews, db } from "@repo/database";
+import {
+	and,
+	count,
+	crews,
+	db,
+	eq,
+	ilike,
+	inArray,
+	isNull,
+} from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
+import { createPaginationResponse } from "../../studio/schemas/common";
 import {
 	listCrewsInputSchema,
 	listCrewsOutputSchema,
 } from "../../studio/schemas/crew";
-import { createPaginationResponse } from "../../studio/schemas/common";
 
 export const listCrews = studioProtectedProcedure
 	.route({
@@ -13,15 +22,41 @@ export const listCrews = studioProtectedProcedure
 		path: "/crews",
 		tags: ["Crews"],
 		summary: "List crews",
-		description: "List all crew members for the organization with optional filters",
+		description:
+			"List all crew members for the organization with optional filters",
 	})
 	.input(listCrewsInputSchema)
 	.output(listCrewsOutputSchema)
 	.handler(async ({ input, context }) => {
 		requirePermission(context, "crew", "list");
 
-		const { role, status, search, sortBy, sortDirection, page, limit, includeDeleted } = input;
+		const {
+			role,
+			status,
+			search,
+			sortBy,
+			sortDirection,
+			page,
+			limit,
+			includeDeleted,
+		} = input;
 		const offset = (page - 1) * limit;
+
+		const normalizeMultiValue = (
+			value: string | string[] | null | undefined,
+		): string[] | null => {
+			if (!value) {
+				return null;
+			}
+
+			const raw = Array.isArray(value) ? value : [value];
+			const parts = raw
+				.flatMap((v) => v.split(","))
+				.map((v) => v.trim())
+				.filter(Boolean);
+
+			return parts.length > 0 ? parts : null;
+		};
 
 		// Build where conditions
 		const conditions = [eq(crews.organizationId, context.organizationId)];
@@ -30,12 +65,14 @@ export const listCrews = studioProtectedProcedure
 			conditions.push(isNull(crews.deletedAt));
 		}
 
-		if (role) {
-			conditions.push(eq(crews.role, role));
+		const roles = normalizeMultiValue(role);
+		if (roles) {
+			conditions.push(inArray(crews.role, roles));
 		}
 
-		if (status) {
-			conditions.push(eq(crews.status, status));
+		const statuses = normalizeMultiValue(status);
+		if (statuses) {
+			conditions.push(inArray(crews.status, statuses));
 		}
 
 		if (search) {
@@ -65,7 +102,9 @@ export const listCrews = studioProtectedProcedure
 		const data = await db.query.crews.findMany({
 			where: and(...conditions),
 			orderBy: (table, { asc, desc }) =>
-				sortDirection === "asc" ? [asc(orderColumn)] : [desc(orderColumn)],
+				sortDirection === "asc"
+					? [asc(orderColumn)]
+					: [desc(orderColumn)],
 			limit,
 			offset,
 		});

@@ -36,11 +36,11 @@ import {
 } from "lucide-react";
 import { useMemo } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
+import { bookingFormQueries } from "./booking-form-queries";
 import {
 	type BookingFormValues,
 	SHOOT_TYPE_OPTIONS,
 } from "./booking-form-schema";
-import { bookingFormQueries } from "./booking-form-queries";
 
 export function BookingShootsStep() {
 	const form = useFormContext<BookingFormValues>();
@@ -132,8 +132,8 @@ export function BookingShootsStep() {
 							<div className="flex flex-col items-center justify-center py-12 text-center border border-dashed rounded-lg">
 								<CameraIcon className="h-12 w-12 text-muted-foreground/50 mb-4" />
 								<p className="text-sm text-muted-foreground mb-4">
-									No shoots scheduled yet. Click "Add Shoot" to
-									schedule photo/video sessions.
+									No shoots scheduled yet. Click "Add Shoot"
+									to schedule photo/video sessions.
 								</p>
 								<Button
 									type="button"

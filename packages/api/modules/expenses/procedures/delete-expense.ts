@@ -1,13 +1,13 @@
 import { ORPCError } from "@orpc/server";
 import {
 	and,
-	eq,
-	isNull,
-	sql,
-	expenses,
-	expenseAssignments,
 	bookings,
 	db,
+	eq,
+	expenseAssignments,
+	expenses,
+	isNull,
+	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
@@ -46,7 +46,7 @@ export const deleteExpense = studioProtectedProcedure
 			});
 		}
 
-		const amount = parseFloat(expense.amount);
+		const amount = Number.parseFloat(expense.amount);
 
 		// Get booking assignments to update totals
 		const assignments = await db
@@ -81,9 +81,13 @@ export const deleteExpense = studioProtectedProcedure
 				if (!assignment.bookingId) continue;
 
 				const allocated = assignment.allocationAmount
-					? parseFloat(assignment.allocationAmount)
+					? Number.parseFloat(assignment.allocationAmount)
 					: assignment.allocationPercentage
-						? (amount * parseFloat(assignment.allocationPercentage)) / 100
+						? (amount *
+								Number.parseFloat(
+									assignment.allocationPercentage,
+								)) /
+							100
 						: amount;
 
 				await tx

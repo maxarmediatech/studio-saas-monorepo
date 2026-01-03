@@ -1,5 +1,5 @@
 import { ORPCError } from "@orpc/server";
-import { and, eq, isNull, ne, crews, db } from "@repo/database";
+import { and, crews, db, eq, isNull, ne } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
@@ -20,7 +20,16 @@ export const updateCrew = studioProtectedProcedure
 	.handler(async ({ input, context }) => {
 		requirePermission(context, "crew", "update");
 
-		const { id, name, email, phoneNumber, role, status, dailyRate, metadata } = input;
+		const {
+			id,
+			name,
+			email,
+			phoneNumber,
+			role,
+			status,
+			dailyRate,
+			metadata,
+		} = input;
 
 		// Verify crew exists and belongs to organization
 		const existing = await db.query.crews.findFirst({

@@ -1,18 +1,18 @@
 import {
 	and,
-	eq,
-	isNull,
-	gte,
-	sql,
-	count,
 	asc,
-	desc,
-	ne,
-	shoots,
 	bookings,
-	shootAssignments,
+	count,
 	crews,
 	db,
+	desc,
+	eq,
+	gte,
+	isNull,
+	ne,
+	shootAssignments,
+	shoots,
+	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { createPaginationResponse } from "../../studio/schemas/common";
@@ -48,7 +48,10 @@ export const getMyShoots = studioProtectedProcedure
 		const offset = (page - 1) * limit;
 
 		// Get crew ID for current user
-		const crewId = await getMyCrewId(context.user.id, context.organizationId);
+		const crewId = await getMyCrewId(
+			context.user.id,
+			context.organizationId,
+		);
 
 		const today = new Date();
 		today.setHours(0, 0, 0, 0);
@@ -87,8 +90,11 @@ export const getMyShoots = studioProtectedProcedure
 			shootDate: shoots.shootDate,
 			createdAt: shoots.createdAt,
 		};
-		const sortColumn = sortColumnMap[sortBy as keyof typeof sortColumnMap] ?? shoots.shootDate;
-		const orderBy = sortDirection === "asc" ? asc(sortColumn) : desc(sortColumn);
+		const sortColumn =
+			sortColumnMap[sortBy as keyof typeof sortColumnMap] ??
+			shoots.shootDate;
+		const orderBy =
+			sortDirection === "asc" ? asc(sortColumn) : desc(sortColumn);
 
 		// Get assignments with shoot info
 		const assignmentsList = await db

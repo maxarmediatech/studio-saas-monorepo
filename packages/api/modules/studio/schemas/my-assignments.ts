@@ -7,14 +7,14 @@
 
 import { z } from "zod";
 import {
-	createListResponseSchema,
+	bookingPhaseSchema,
 	createItemResponseSchema,
+	createListResponseSchema,
 	createSortSchema,
+	dateSchema,
 	idSchema,
 	paginationSchema,
-	dateSchema,
 	workflowStatusSchema,
-	bookingPhaseSchema,
 } from "./common";
 
 // ============================================================================
@@ -41,7 +41,9 @@ export const listMyAssignmentsInputSchema = z.object({
 	includeCompleted: z.boolean().default(false),
 });
 
-export type ListMyAssignmentsInput = z.infer<typeof listMyAssignmentsInputSchema>;
+export type ListMyAssignmentsInput = z.infer<
+	typeof listMyAssignmentsInputSchema
+>;
 
 /**
  * Assignment summary counts
@@ -95,9 +97,13 @@ export const myAssignmentsOverviewSchema = z.object({
 
 export type MyAssignmentsOverview = z.infer<typeof myAssignmentsOverviewSchema>;
 
-export const listMyAssignmentsOutputSchema = createItemResponseSchema(myAssignmentsOverviewSchema);
+export const listMyAssignmentsOutputSchema = createItemResponseSchema(
+	myAssignmentsOverviewSchema,
+);
 
-export type ListMyAssignmentsOutput = z.infer<typeof listMyAssignmentsOutputSchema>;
+export type ListMyAssignmentsOutput = z.infer<
+	typeof listMyAssignmentsOutputSchema
+>;
 
 // ============================================================================
 // GET MY SHOOTS
@@ -146,7 +152,8 @@ export const myShootItemSchema = z.object({
 
 export type MyShootItem = z.infer<typeof myShootItemSchema>;
 
-export const getMyShootsOutputSchema = createListResponseSchema(myShootItemSchema);
+export const getMyShootsOutputSchema =
+	createListResponseSchema(myShootItemSchema);
 
 export type GetMyShootsOutput = z.infer<typeof getMyShootsOutputSchema>;
 
@@ -154,7 +161,12 @@ export type GetMyShootsOutput = z.infer<typeof getMyShootsOutputSchema>;
 // GET MY TASKS
 // ============================================================================
 
-const myTaskSortFields = ["dueDate", "priority", "workflowStatus", "createdAt"] as const;
+const myTaskSortFields = [
+	"dueDate",
+	"priority",
+	"workflowStatus",
+	"createdAt",
+] as const;
 
 export const getMyTasksInputSchema = z
 	.object({
@@ -205,7 +217,8 @@ export const myTaskItemSchema = z.object({
 
 export type MyTaskItem = z.infer<typeof myTaskItemSchema>;
 
-export const getMyTasksOutputSchema = createListResponseSchema(myTaskItemSchema);
+export const getMyTasksOutputSchema =
+	createListResponseSchema(myTaskItemSchema);
 
 export type GetMyTasksOutput = z.infer<typeof getMyTasksOutputSchema>;
 
@@ -213,7 +226,12 @@ export type GetMyTasksOutput = z.infer<typeof getMyTasksOutputSchema>;
 // GET MY DELIVERABLES
 // ============================================================================
 
-const myDeliverableSortFields = ["dueDate", "priority", "workflowStatus", "createdAt"] as const;
+const myDeliverableSortFields = [
+	"dueDate",
+	"priority",
+	"workflowStatus",
+	"createdAt",
+] as const;
 
 export const getMyDeliverablesInputSchema = z
 	.object({
@@ -228,7 +246,9 @@ export const getMyDeliverablesInputSchema = z
 	.merge(paginationSchema)
 	.merge(createSortSchema(myDeliverableSortFields, "dueDate"));
 
-export type GetMyDeliverablesInput = z.infer<typeof getMyDeliverablesInputSchema>;
+export type GetMyDeliverablesInput = z.infer<
+	typeof getMyDeliverablesInputSchema
+>;
 
 /**
  * My deliverable assignment item
@@ -266,6 +286,10 @@ export const myDeliverableItemSchema = z.object({
 
 export type MyDeliverableItem = z.infer<typeof myDeliverableItemSchema>;
 
-export const getMyDeliverablesOutputSchema = createListResponseSchema(myDeliverableItemSchema);
+export const getMyDeliverablesOutputSchema = createListResponseSchema(
+	myDeliverableItemSchema,
+);
 
-export type GetMyDeliverablesOutput = z.infer<typeof getMyDeliverablesOutputSchema>;
+export type GetMyDeliverablesOutput = z.infer<
+	typeof getMyDeliverablesOutputSchema
+>;

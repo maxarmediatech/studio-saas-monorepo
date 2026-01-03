@@ -7,6 +7,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@repo/ui/components/card";
+import { Combobox } from "@repo/ui/components/combobox";
 import {
 	Field,
 	FieldError,
@@ -22,8 +23,10 @@ import {
 	InputGroupText,
 	InputGroupTextarea,
 } from "@repo/ui/components/input-group";
-import { Combobox } from "@repo/ui/components/combobox";
 import { Separator } from "@repo/ui/components/separator";
+import { useClientCallback } from "@saas/studio/hooks/params/client-callback-context";
+import { useClientParams } from "@saas/studio/hooks/params/use-client-params";
+import { useConfigurationParams } from "@saas/studio/hooks/params/use-configuration-params";
 import { useQuery } from "@tanstack/react-query";
 import {
 	ClipboardListIcon,
@@ -39,9 +42,6 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import { toast } from "sonner";
-import { useConfigurationParams } from "@saas/studio/hooks/params/use-configuration-params";
-import { useClientParams } from "@saas/studio/hooks/params/use-client-params";
-import { useClientCallback } from "@saas/studio/hooks/params/client-callback-context";
 import { bookingFormQueries } from "./booking-form-queries";
 import type { BookingFormValues } from "./booking-form-schema";
 
@@ -63,10 +63,14 @@ export function BookingDetailsStep() {
 	const handleAddClient = useCallback(
 		(participantIndex: number) => {
 			registerCallback((clientId: string) => {
-				form.setValue(`participants.${participantIndex}.clientId`, clientId, {
-					shouldDirty: true,
-					shouldValidate: true,
-				});
+				form.setValue(
+					`participants.${participantIndex}.clientId`,
+					clientId,
+					{
+						shouldDirty: true,
+						shouldValidate: true,
+					},
+				);
 			});
 			openCreateClient();
 		},
@@ -138,11 +142,13 @@ export function BookingDetailsStep() {
 
 		// Get booking type's configured roles
 		const bookingTypeConfig = bookingTypes.find(
-			(bt) => bt.key === selectedBookingType
+			(bt) => bt.key === selectedBookingType,
 		);
-		const bookingTypeRoles = (bookingTypeConfig?.metadata as {
-			roles?: string[];
-		} | null)?.roles;
+		const bookingTypeRoles = (
+			bookingTypeConfig?.metadata as {
+				roles?: string[];
+			} | null
+		)?.roles;
 
 		// Filter roles that match EITHER direction
 		return relationTypes.filter((role) => {
@@ -150,15 +156,23 @@ export function BookingDetailsStep() {
 			const bookingTypeAllowsRole = bookingTypeRoles?.includes(role.key);
 
 			// Check if role includes this booking type
-			const roleBookingTypes = (role.metadata as {
-				bookingTypes?: string[];
-			} | null)?.bookingTypes;
-			const roleAllowsBookingType = roleBookingTypes?.includes(selectedBookingType);
+			const roleBookingTypes = (
+				role.metadata as {
+					bookingTypes?: string[];
+				} | null
+			)?.bookingTypes;
+			const roleAllowsBookingType =
+				roleBookingTypes?.includes(selectedBookingType);
 
 			// If neither has configuration, show the role (backwards compatible)
-			const neitherConfigured = !bookingTypeRoles?.length && !roleBookingTypes?.length;
+			const neitherConfigured =
+				!bookingTypeRoles?.length && !roleBookingTypes?.length;
 
-			return bookingTypeAllowsRole || roleAllowsBookingType || neitherConfigured;
+			return (
+				bookingTypeAllowsRole ||
+				roleAllowsBookingType ||
+				neitherConfigured
+			);
 		});
 	}, [selectedBookingType, bookingTypes, relationTypes]);
 
@@ -181,34 +195,46 @@ export function BookingDetailsStep() {
 
 		// Get booking type's configured roles
 		const bookingTypeConfig = bookingTypes.find(
-			(bt) => bt.key === selectedBookingType
+			(bt) => bt.key === selectedBookingType,
 		);
-		const bookingTypeRoles = (bookingTypeConfig?.metadata as {
-			roles?: string[];
-		} | null)?.roles;
+		const bookingTypeRoles = (
+			bookingTypeConfig?.metadata as {
+				roles?: string[];
+			} | null
+		)?.roles;
 
 		// Check if any existing participants have now-invalid roles (using bi-directional logic)
 		const invalidParticipants = watchedParticipants?.filter((p) => {
-			if (!p.role) return false;
+			if (!p.role) {
+				return false;
+			}
 
 			// Find the role configuration
 			const roleConfig = relationTypes.find((rt) => rt.key === p.role);
-			const roleBookingTypes = (roleConfig?.metadata as {
-				bookingTypes?: string[];
-			} | null)?.bookingTypes;
+			const roleBookingTypes = (
+				roleConfig?.metadata as {
+					bookingTypes?: string[];
+				} | null
+			)?.bookingTypes;
 
 			// Check if role is allowed via either direction
 			const bookingTypeAllowsRole = bookingTypeRoles?.includes(p.role);
-			const roleAllowsBookingType = roleBookingTypes?.includes(selectedBookingType);
-			const neitherConfigured = !bookingTypeRoles?.length && !roleBookingTypes?.length;
+			const roleAllowsBookingType =
+				roleBookingTypes?.includes(selectedBookingType);
+			const neitherConfigured =
+				!bookingTypeRoles?.length && !roleBookingTypes?.length;
 
 			// Role is INVALID if it's not allowed via any path
-			return !(bookingTypeAllowsRole || roleAllowsBookingType || neitherConfigured);
+			return !(
+				bookingTypeAllowsRole ||
+				roleAllowsBookingType ||
+				neitherConfigured
+			);
 		});
 
 		if (invalidParticipants && invalidParticipants.length > 0) {
 			toast.warning(
-				`${invalidParticipants.length} participant(s) have roles not applicable to this booking type. Please update their roles.`
+				`${invalidParticipants.length} participant(s) have roles not applicable to this booking type. Please update their roles.`,
 			);
 		}
 	}, [selectedBookingType, bookingTypes, relationTypes, watchedParticipants]);
@@ -233,18 +259,27 @@ export function BookingDetailsStep() {
 			}
 
 			// Auto-populate deliverables from package (replaces all existing per design decision)
-			if (metadata.defaultDeliverables && metadata.defaultDeliverables.length > 0) {
-				const packageDeliverables = metadata.defaultDeliverables.map((d) => ({
-					name: d.title,
-					deliverableType: d.deliverableType,
-					quantity: d.quantity,
-					isPackageIncluded: true,
-					description: "",
-					dueDate: "",
-					crewAssignments: [],
-				}));
-				form.setValue("deliverables", packageDeliverables, { shouldDirty: true });
-				toast.info(`${packageDeliverables.length} deliverables added from package`);
+			if (
+				metadata.defaultDeliverables &&
+				metadata.defaultDeliverables.length > 0
+			) {
+				const packageDeliverables = metadata.defaultDeliverables.map(
+					(d) => ({
+						name: d.title,
+						deliverableType: d.deliverableType,
+						quantity: d.quantity,
+						isPackageIncluded: true,
+						description: "",
+						dueDate: "",
+						crewAssignments: [],
+					}),
+				);
+				form.setValue("deliverables", packageDeliverables, {
+					shouldDirty: true,
+				});
+				toast.info(
+					`${packageDeliverables.length} deliverables added from package`,
+				);
 			} else {
 				// Clear deliverables if package has none
 				form.setValue("deliverables", [], { shouldDirty: true });
@@ -295,7 +330,7 @@ export function BookingDetailsStep() {
 			} else {
 				throw new Error("Upload failed");
 			}
-		} catch (error) {
+		} catch (_error) {
 			toast.error("Failed to upload file");
 		} finally {
 			setIsUploading(false);
@@ -304,7 +339,9 @@ export function BookingDetailsStep() {
 
 	// Handle file removal
 	const handleFileRemove = async () => {
-		if (!contractAttachment) return;
+		if (!contractAttachment) {
+			return;
+		}
 		setIsDeleting(true);
 		try {
 			const deleteRes = await fetch("/api/uploads/file", {
@@ -317,7 +354,7 @@ export function BookingDetailsStep() {
 			}
 			form.setValue("contractAttachment", null, { shouldValidate: true });
 			toast.success("Document removed");
-		} catch (error) {
+		} catch (_error) {
 			toast.error("Failed to remove file");
 		} finally {
 			setIsDeleting(false);
@@ -326,8 +363,12 @@ export function BookingDetailsStep() {
 
 	// Format file size for display
 	const formatFileSize = (bytes: number) => {
-		if (bytes < 1024) return `${bytes} B`;
-		if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+		if (bytes < 1024) {
+			return `${bytes} B`;
+		}
+		if (bytes < 1024 * 1024) {
+			return `${(bytes / 1024).toFixed(1)} KB`;
+		}
 		return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 	};
 
@@ -351,27 +392,31 @@ export function BookingDetailsStep() {
 							{/* Booking Name - wider to accommodate long names */}
 							<div className="md:col-span-2">
 								<Controller
-								name="name"
-								control={form.control}
-								render={({ field, fieldState }) => (
-									<Field data-invalid={fieldState.invalid}>
-										<FieldLabel htmlFor={field.name}>
-											Booking Name
-										</FieldLabel>
-										<Input
-											{...field}
-											id={field.name}
-											placeholder="e.g. John & Jane Wedding"
-											aria-invalid={fieldState.invalid}
-										/>
-										{fieldState.invalid && (
-											<FieldError
-												errors={[fieldState.error]}
+									name="name"
+									control={form.control}
+									render={({ field, fieldState }) => (
+										<Field
+											data-invalid={fieldState.invalid}
+										>
+											<FieldLabel htmlFor={field.name}>
+												Booking Name
+											</FieldLabel>
+											<Input
+												{...field}
+												id={field.name}
+												placeholder="e.g. John & Jane Wedding"
+												aria-invalid={
+													fieldState.invalid
+												}
 											/>
-										)}
-									</Field>
-								)}
-							/>
+											{fieldState.invalid && (
+												<FieldError
+													errors={[fieldState.error]}
+												/>
+											)}
+										</Field>
+									)}
+								/>
 							</div>
 
 							{/* Booking Type */}
@@ -712,7 +757,9 @@ export function BookingDetailsStep() {
 															<Combobox
 																id={field.name}
 																options={clients.map(
-																	(client) => {
+																	(
+																		client,
+																	) => {
 																		const isAlreadySelected =
 																			selectedClientIds.has(
 																				client.id,
@@ -746,8 +793,11 @@ export function BookingDetailsStep() {
 																}
 																onCreate={{
 																	label: "Add Client...",
-																	onClick: () =>
-																		handleAddClient(index),
+																	onClick:
+																		() =>
+																			handleAddClient(
+																				index,
+																			),
 																}}
 															/>
 															{fieldState.invalid && (
@@ -784,21 +834,48 @@ export function BookingDetailsStep() {
 															<Combobox
 																id={field.name}
 																options={(() => {
-																	const options: Array<{ value: string; label: string; disabled?: boolean }> = filteredRoleOptions.map(
-																		(type) => ({
-																			value: type.key,
-																			label: type.label,
-																		}),
-																	);
+																	const options: Array<{
+																		value: string;
+																		label: string;
+																		disabled?: boolean;
+																	}> =
+																		filteredRoleOptions.map(
+																			(
+																				type,
+																			) => ({
+																				value: type.key,
+																				label: type.label,
+																			}),
+																		);
 																	// If current role exists but isn't in filtered list, add it as disabled
-																	if (field.value && !filteredRoleOptions.find(r => r.key === field.value)) {
-																		const roleConfig = relationTypes.find(r => r.key === field.value);
-																		if (roleConfig) {
-																			options.unshift({
-																				value: roleConfig.key,
-																				label: `${roleConfig.label} (not applicable)`,
-																				disabled: true,
-																			});
+																	if (
+																		field.value &&
+																		!filteredRoleOptions.find(
+																			(
+																				r,
+																			) =>
+																				r.key ===
+																				field.value,
+																		)
+																	) {
+																		const roleConfig =
+																			relationTypes.find(
+																				(
+																					r,
+																				) =>
+																					r.key ===
+																					field.value,
+																			);
+																		if (
+																			roleConfig
+																		) {
+																			options.unshift(
+																				{
+																					value: roleConfig.key,
+																					label: `${roleConfig.label} (not applicable)`,
+																					disabled: true,
+																				},
+																			);
 																		}
 																	}
 																	return options;

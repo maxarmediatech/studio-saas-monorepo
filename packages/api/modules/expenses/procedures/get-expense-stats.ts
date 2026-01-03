@@ -1,13 +1,13 @@
 import {
 	and,
 	count,
+	db,
 	eq,
+	expenseAssignments,
+	expenses,
 	gte,
 	isNull,
 	sql,
-	expenses,
-	expenseAssignments,
-	db,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
@@ -66,7 +66,9 @@ export const getExpenseStats = studioProtectedProcedure
 
 		const { bookingId, dateFrom, dateTo } = input;
 
-		const timeZone = normalizeTimeZone(context.membership.organization.timezone);
+		const timeZone = normalizeTimeZone(
+			context.membership.organization.timezone,
+		);
 		const nowParts = getDateParts(new Date(), timeZone);
 		const startOfMonth = `${nowParts.year}-${nowParts.month}-01`;
 
@@ -128,12 +130,16 @@ export const getExpenseStats = studioProtectedProcedure
 
 		const totalExpenses = totalResult?.sum ?? "0";
 		const expenseCount = totalResult?.count ?? 0;
-		const averageExpense = expenseCount > 0
-			? (parseFloat(totalExpenses) / expenseCount).toFixed(2)
-			: "0";
+		const averageExpense =
+			expenseCount > 0
+				? (Number.parseFloat(totalExpenses) / expenseCount).toFixed(2)
+				: "0";
 
 		// Expenses this month
-		const thisMonthConditions = [...baseConditions, gte(expenses.expenseDate, startOfMonth)];
+		const thisMonthConditions = [
+			...baseConditions,
+			gte(expenses.expenseDate, startOfMonth),
+		];
 		const [thisMonthResult] = await db
 			.select({ sum: sql<string>`COALESCE(SUM(${expenses.amount}), 0)` })
 			.from(expenses)

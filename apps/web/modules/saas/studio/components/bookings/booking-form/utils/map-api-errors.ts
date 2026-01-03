@@ -6,7 +6,7 @@
  * appropriate form errors for user feedback.
  */
 
-import type { UseFormSetError, FieldPath } from "react-hook-form";
+import type { FieldPath, UseFormSetError } from "react-hook-form";
 import type { BookingFormValues, BookingTab } from "../booking-form-schema";
 
 /**
@@ -30,23 +30,26 @@ interface ErrorMapping {
 	messageTemplate: (ids: string) => string;
 }
 
-const ERROR_FIELD_MAPPINGS: Record<keyof typeof ERROR_PATTERNS, ErrorMapping> = {
-	clientNotFound: {
-		field: "participants",
-		step: "details",
-		messageTemplate: (ids) => `One or more selected clients no longer exist: ${ids}. Please remove them and select valid clients.`,
-	},
-	crewNotFound: {
-		field: "shoots", // Could also be deliverables, but we'll set a root error for crew
-		step: "shoots",
-		messageTemplate: (ids) => `One or more selected crew members no longer exist: ${ids}. Please update crew assignments.`,
-	},
-	validationError: {
-		field: "root" as FieldPath<BookingFormValues>, // Generic root error
-		step: "review",
-		messageTemplate: (msg) => msg,
-	},
-};
+const ERROR_FIELD_MAPPINGS: Record<keyof typeof ERROR_PATTERNS, ErrorMapping> =
+	{
+		clientNotFound: {
+			field: "participants",
+			step: "details",
+			messageTemplate: (ids) =>
+				`One or more selected clients no longer exist: ${ids}. Please remove them and select valid clients.`,
+		},
+		crewNotFound: {
+			field: "shoots", // Could also be deliverables, but we'll set a root error for crew
+			step: "shoots",
+			messageTemplate: (ids) =>
+				`One or more selected crew members no longer exist: ${ids}. Please update crew assignments.`,
+		},
+		validationError: {
+			field: "root" as FieldPath<BookingFormValues>, // Generic root error
+			step: "review",
+			messageTemplate: (msg) => msg,
+		},
+	};
 
 /**
  * Result of mapping an API error
@@ -63,13 +66,16 @@ export interface MappedError {
 export function parseApiError(error: unknown): MappedError | null {
 	// Extract error message from various error shapes
 	const message = extractErrorMessage(error);
-	if (!message) return null;
+	if (!message) {
+		return null;
+	}
 
 	// Try to match known error patterns
 	for (const [patternKey, pattern] of Object.entries(ERROR_PATTERNS)) {
 		const match = message.match(pattern);
 		if (match) {
-			const mapping = ERROR_FIELD_MAPPINGS[patternKey as keyof typeof ERROR_PATTERNS];
+			const mapping =
+				ERROR_FIELD_MAPPINGS[patternKey as keyof typeof ERROR_PATTERNS];
 			const extractedValue = match[1] || "";
 			return {
 				field: mapping.field,
@@ -91,7 +97,9 @@ export function parseApiError(error: unknown): MappedError | null {
  * Extract error message from various error shapes (Error, ORPCError, object, string)
  */
 function extractErrorMessage(error: unknown): string | null {
-	if (!error) return null;
+	if (!error) {
+		return null;
+	}
 
 	// String error
 	if (typeof error === "string") {
@@ -130,7 +138,9 @@ export function mapApiErrorToForm(
 
 	if (!mapped) {
 		// Fallback for unknown errors
-		setError("root", { message: "An unexpected error occurred. Please try again." });
+		setError("root", {
+			message: "An unexpected error occurred. Please try again.",
+		});
 		return null;
 	}
 

@@ -45,12 +45,21 @@
 	},
 	"assist": { "actions": { "source": { "organizeImports": "on" } } },
 	"files": {
-		"includes": ["**", "!zod/index.ts", "!tailwind-animate.css"]
+		"includes": [
+			"**",
+			"!zod/index.ts",
+			"!tailwind-animate.css",
+			"!.claude",
+			"!**/apps/web/app_legacy/globals.css"
+		]
 	},
 	"javascript": {
 		"jsxRuntime": "reactClassic"
 	},
 	"css": {
+		"parser": {
+			"tailwindDirectives": true
+		},
 		"formatter": {
 			"enabled": false
 		},

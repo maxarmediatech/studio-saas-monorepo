@@ -217,7 +217,11 @@ function updateURL(
 }
 
 export function useClientParams() {
-	const params = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+	const params = useSyncExternalStore(
+		subscribe,
+		getSnapshot,
+		getServerSnapshot,
+	);
 
 	// Sync on mount to handle SSR -> client hydration with URL params
 	useEffect(() => {

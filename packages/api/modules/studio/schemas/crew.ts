@@ -6,19 +6,19 @@
 
 import { z } from "zod";
 import {
-	createListResponseSchema,
+	baseListFiltersSchema,
 	createItemResponseSchema,
+	createListResponseSchema,
 	createSortSchema,
+	dateSchema,
+	emailSchema,
 	idSchema,
+	moneySchema,
 	mutationResponseSchema,
 	nameSchema,
-	emailSchema,
-	phoneSchema,
 	paginationSchema,
+	phoneSchema,
 	searchSchema,
-	baseListFiltersSchema,
-	dateSchema,
-	moneySchema,
 } from "./common";
 
 // ============================================================================
@@ -65,12 +65,18 @@ export type CrewMinimal = z.infer<typeof crewMinimalSchema>;
 // LIST CREWS
 // ============================================================================
 
-const crewSortFields = ["name", "role", "status", "createdAt", "updatedAt"] as const;
+const crewSortFields = [
+	"name",
+	"role",
+	"status",
+	"createdAt",
+	"updatedAt",
+] as const;
 
 export const listCrewsInputSchema = z
 	.object({
-		role: z.string().optional(),
-		status: z.string().optional(),
+		role: z.union([z.string(), z.array(z.string())]).optional(),
+		status: z.union([z.string(), z.array(z.string())]).optional(),
 	})
 	.merge(paginationSchema)
 	.merge(searchSchema)
@@ -185,7 +191,9 @@ export const getCrewAvailabilityInputSchema = z.object({
 	endDate: dateSchema,
 });
 
-export type GetCrewAvailabilityInput = z.infer<typeof getCrewAvailabilityInputSchema>;
+export type GetCrewAvailabilityInput = z.infer<
+	typeof getCrewAvailabilityInputSchema
+>;
 
 export const getCrewAvailabilityOutputSchema = z.object({
 	data: z.array(
@@ -204,7 +212,9 @@ export const getCrewAvailabilityOutputSchema = z.object({
 	),
 });
 
-export type GetCrewAvailabilityOutput = z.infer<typeof getCrewAvailabilityOutputSchema>;
+export type GetCrewAvailabilityOutput = z.infer<
+	typeof getCrewAvailabilityOutputSchema
+>;
 
 // ============================================================================
 // CREATE CREW FROM MEMBER
@@ -216,8 +226,12 @@ export const createCrewFromMemberInputSchema = z.object({
 	dailyRate: moneySchema.optional(),
 });
 
-export type CreateCrewFromMemberInput = z.infer<typeof createCrewFromMemberInputSchema>;
+export type CreateCrewFromMemberInput = z.infer<
+	typeof createCrewFromMemberInputSchema
+>;
 
 export const createCrewFromMemberOutputSchema = mutationResponseSchema;
 
-export type CreateCrewFromMemberOutput = z.infer<typeof createCrewFromMemberOutputSchema>;
+export type CreateCrewFromMemberOutput = z.infer<
+	typeof createCrewFromMemberOutputSchema
+>;

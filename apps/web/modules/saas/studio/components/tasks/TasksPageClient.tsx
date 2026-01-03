@@ -1,11 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
-import { useRouter } from "next/navigation";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { ColumnDef } from "@tanstack/react-table";
-import { Input } from "@repo/ui/components/input";
-import { Badge } from "@repo/ui/components/badge";
+import type { TaskListItem } from "@repo/api/modules/studio/schemas/task";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -16,25 +11,34 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@repo/ui/components/alert-dialog";
-import {
-	PencilIcon,
-	TrashIcon,
-	SearchIcon,
-	Loader2Icon,
-	ListTodoIcon,
-	CalendarIcon,
-	BookOpenIcon,
-	UsersIcon,
-} from "lucide-react";
-import { toast } from "sonner";
-import { tasksApi, tasksMutations, studioQueryKeys } from "@saas/studio/lib/api";
+import { Badge } from "@repo/ui/components/badge";
+import { Input } from "@repo/ui/components/input";
 import {
 	DataTable,
 	DataTableRowActions,
 	type RowAction,
 } from "@saas/shared/components/data-table";
-import type { TaskListItem } from "@repo/api/modules/studio/schemas/task";
 import { useTaskParams } from "@saas/studio/hooks/params/use-task-params";
+import {
+	studioQueryKeys,
+	tasksApi,
+	tasksMutations,
+} from "@saas/studio/lib/api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { ColumnDef } from "@tanstack/react-table";
+import {
+	BookOpenIcon,
+	CalendarIcon,
+	ListTodoIcon,
+	Loader2Icon,
+	PencilIcon,
+	SearchIcon,
+	TrashIcon,
+	UsersIcon,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useMemo, useState, useTransition } from "react";
+import { toast } from "sonner";
 import { OpenTaskCreateSheet } from "./OpenTaskSheet";
 
 interface TasksPageClientProps {
@@ -51,7 +55,11 @@ function getPriorityBadge(priority: string) {
 		case "high":
 			return <Badge variant="destructive">{priority}</Badge>;
 		case "medium":
-			return <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">{priority}</Badge>;
+			return (
+				<Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">
+					{priority}
+				</Badge>
+			);
 		case "low":
 			return <Badge variant="secondary">{priority}</Badge>;
 		default:
@@ -63,9 +71,17 @@ function getStatusBadge(status: string) {
 	const statusLower = status.toLowerCase();
 	switch (statusLower) {
 		case "completed":
-			return <Badge className="bg-green-500/10 text-green-600 border-green-500/20">{status}</Badge>;
+			return (
+				<Badge className="bg-green-500/10 text-green-600 border-green-500/20">
+					{status}
+				</Badge>
+			);
 		case "in_progress":
-			return <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20">{status.replace("_", " ")}</Badge>;
+			return (
+				<Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20">
+					{status.replace("_", " ")}
+				</Badge>
+			);
 		case "pending":
 			return <Badge variant="secondary">{status}</Badge>;
 		case "cancelled":
@@ -76,7 +92,9 @@ function getStatusBadge(status: string) {
 }
 
 function formatDate(dateString: string | null): string {
-	if (!dateString) return "-";
+	if (!dateString) {
+		return "-";
+	}
 	const date = new Date(dateString);
 	return date.toLocaleDateString("en-US", {
 		month: "short",
@@ -86,7 +104,9 @@ function formatDate(dateString: string | null): string {
 }
 
 function isOverdue(dateString: string | null): boolean {
-	if (!dateString) return false;
+	if (!dateString) {
+		return false;
+	}
 	const dueDate = new Date(dateString);
 	const today = new Date();
 	today.setHours(0, 0, 0, 0);
@@ -120,10 +140,17 @@ export function TasksPageClient({
 	};
 
 	// Fetch tasks with TanStack Query
-	const { data, isLoading, isFetching } = useQuery(tasksApi.listOptions(queryInput));
+	const { data, isLoading, isFetching } = useQuery(
+		tasksApi.listOptions(queryInput),
+	);
 
 	const tasks = data?.data ?? [];
-	const pagination = data?.pagination ?? { page: 1, limit: 10, total: 0, pageCount: 0 };
+	const pagination = data?.pagination ?? {
+		page: 1,
+		limit: 10,
+		total: 0,
+		pageCount: 0,
+	};
 
 	// Delete mutation
 	const deleteMutation = useMutation({
@@ -132,7 +159,9 @@ export function TasksPageClient({
 			toast.success("Task deleted successfully");
 			setDeleteDialogOpen(false);
 			setTaskToDelete(null);
-			queryClient.invalidateQueries({ queryKey: studioQueryKeys.tasks.all });
+			queryClient.invalidateQueries({
+				queryKey: studioQueryKeys.tasks.all,
+			});
 		},
 		onError: (error) => {
 			toast.error(error.message || "Failed to delete task");
@@ -214,7 +243,9 @@ export function TasksPageClient({
 					<div className="flex items-center gap-2">
 						<BookOpenIcon className="h-4 w-4 text-muted-foreground" />
 						<div>
-							<p className="font-medium">{row.original.bookingName}</p>
+							<p className="font-medium">
+								{row.original.bookingName}
+							</p>
 							<p className="text-xs text-muted-foreground">
 								{row.original.bookingReferenceNumber}
 							</p>
@@ -240,8 +271,16 @@ export function TasksPageClient({
 					const overdue = isOverdue(dueDate);
 					return (
 						<div className="flex items-center gap-2">
-							<CalendarIcon className={`h-4 w-4 ${overdue ? "text-destructive" : "text-muted-foreground"}`} />
-							<span className={overdue ? "text-destructive font-medium" : ""}>
+							<CalendarIcon
+								className={`h-4 w-4 ${overdue ? "text-destructive" : "text-muted-foreground"}`}
+							/>
+							<span
+								className={
+									overdue
+										? "text-destructive font-medium"
+										: ""
+								}
+							>
 								{formatDate(dueDate)}
 							</span>
 						</div>
@@ -261,7 +300,10 @@ export function TasksPageClient({
 			{
 				id: "actions",
 				cell: ({ row }) => (
-					<DataTableRowActions row={row.original} actions={rowActions} />
+					<DataTableRowActions
+						row={row.original}
+						actions={rowActions}
+					/>
 				),
 			},
 		],
@@ -302,19 +344,26 @@ export function TasksPageClient({
 					<div className="flex flex-col items-center gap-2">
 						<ListTodoIcon className="h-12 w-12 text-muted-foreground/50" />
 						<p className="text-muted-foreground">No tasks found</p>
-						<OpenTaskCreateSheet variant="outline" size="sm" label="Add your first task" />
+						<OpenTaskCreateSheet
+							variant="outline"
+							size="sm"
+							label="Add your first task"
+						/>
 					</div>
 				}
 			/>
 
 			{/* Delete confirmation dialog */}
-			<AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+			<AlertDialog
+				open={deleteDialogOpen}
+				onOpenChange={setDeleteDialogOpen}
+			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Delete task?</AlertDialogTitle>
 						<AlertDialogDescription>
-							This will permanently delete "{taskToDelete?.name}". This action cannot
-							be undone.
+							This will permanently delete "{taskToDelete?.name}".
+							This action cannot be undone.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
@@ -322,7 +371,9 @@ export function TasksPageClient({
 						<AlertDialogAction
 							onClick={() => {
 								if (taskToDelete) {
-									deleteMutation.mutate({ id: taskToDelete.id });
+									deleteMutation.mutate({
+										id: taskToDelete.id,
+									});
 								}
 							}}
 							disabled={deleteMutation.isPending}

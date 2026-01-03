@@ -1,9 +1,6 @@
 import { ORPCError } from "@orpc/client";
 import { type Config, config } from "@repo/config";
-import {
-	getOrganizationById,
-	getOrganizationMembership,
-} from "@repo/database";
+import { getOrganizationById, getOrganizationMembership } from "@repo/database";
 import { logger } from "@repo/logs";
 import {
 	createCheckoutLink as createCheckoutLinkFn,

@@ -190,14 +190,14 @@ export default async function OrganizationPage({ params }: Props) {
 					<p className="text-muted-foreground">
 						Invite teammates and review current access.
 					</p>
-					</div>
-					<SettingsList>
-						{canManageMembers && (
-							<InviteMemberForm
-								organizationId={activeOrganization.id}
-							/>
-						)}
-						<OrganizationMembersBlock
+				</div>
+				<SettingsList>
+					{canManageMembers && (
+						<InviteMemberForm
+							organizationId={activeOrganization.id}
+						/>
+					)}
+					<OrganizationMembersBlock
 						organizationId={activeOrganization.id}
 					/>
 				</SettingsList>

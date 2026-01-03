@@ -5,8 +5,8 @@ import {
 	getOrganizationList,
 	getSession,
 } from "@saas/auth/lib/server";
-import { HubPage } from "@saas/hub";
 import type { OrganizationWithStats } from "@saas/hub";
+import { HubPage } from "@saas/hub";
 import { orpcClient } from "@shared/lib/orpc-client";
 import { attemptAsync } from "es-toolkit";
 import { redirect } from "next/navigation";
@@ -58,7 +58,9 @@ export default async function AppHomePage() {
 				logo: org.logo,
 				createdAt: org.createdAt,
 				memberCount: members.length,
-				role: (currentMember?.role as "owner" | "admin" | "member") ?? "member",
+				role:
+					(currentMember?.role as "owner" | "admin" | "member") ??
+					"member",
 				planName,
 			};
 		}),

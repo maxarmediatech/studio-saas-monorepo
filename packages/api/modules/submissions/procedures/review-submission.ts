@@ -1,11 +1,11 @@
 import { ORPCError } from "@orpc/server";
 import {
 	and,
-	eq,
 	assignmentSubmissions,
-	tasks,
-	deliverables,
 	db,
+	deliverables,
+	eq,
+	tasks,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
@@ -20,7 +20,8 @@ export const reviewSubmission = studioProtectedProcedure
 		path: "/submissions/{id}/review",
 		tags: ["Submissions"],
 		summary: "Review submission",
-		description: "Submit a review decision (approve, request revision, or reject)",
+		description:
+			"Submit a review decision (approve, request revision, or reject)",
 	})
 	.input(reviewSubmissionInputSchema)
 	.output(reviewSubmissionOutputSchema)
@@ -33,7 +34,10 @@ export const reviewSubmission = studioProtectedProcedure
 		const submission = await db.query.assignmentSubmissions.findFirst({
 			where: and(
 				eq(assignmentSubmissions.id, id),
-				eq(assignmentSubmissions.organizationId, context.organizationId),
+				eq(
+					assignmentSubmissions.organizationId,
+					context.organizationId,
+				),
 			),
 		});
 
@@ -56,7 +60,10 @@ export const reviewSubmission = studioProtectedProcedure
 			});
 		}
 
-		if (submission.reviewedBy && submission.reviewedBy !== context.user.id) {
+		if (
+			submission.reviewedBy &&
+			submission.reviewedBy !== context.user.id
+		) {
 			throw new ORPCError("CONFLICT", {
 				message: "Submission is already being reviewed by another user",
 			});

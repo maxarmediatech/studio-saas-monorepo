@@ -22,7 +22,10 @@ export async function generateMetadata({ params }: Props) {
 	};
 }
 
-export default async function RelationTypesPage({ params, searchParams }: Props) {
+export default async function RelationTypesPage({
+	params,
+	searchParams,
+}: Props) {
 	const { organizationSlug } = await params;
 	const filters = await searchParams;
 

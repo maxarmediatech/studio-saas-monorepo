@@ -1,10 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
-import { useRouter } from "next/navigation";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { ColumnDef } from "@tanstack/react-table";
-import { Input } from "@repo/ui/components/input";
+import type { Client } from "@repo/api/modules/studio/schemas/client";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -15,24 +11,32 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@repo/ui/components/alert-dialog";
-import {
-	PencilIcon,
-	TrashIcon,
-	SearchIcon,
-	Loader2Icon,
-	UserIcon,
-	MailIcon,
-	PhoneIcon,
-} from "lucide-react";
-import { toast } from "sonner";
-import { clientsApi, clientsMutations, studioQueryKeys } from "@saas/studio/lib/api";
+import { Input } from "@repo/ui/components/input";
 import {
 	DataTable,
 	DataTableRowActions,
 	type RowAction,
 } from "@saas/shared/components/data-table";
-import type { Client } from "@repo/api/modules/studio/schemas/client";
 import { useClientParams } from "@saas/studio/hooks/params/use-client-params";
+import {
+	clientsApi,
+	clientsMutations,
+	studioQueryKeys,
+} from "@saas/studio/lib/api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { ColumnDef } from "@tanstack/react-table";
+import {
+	Loader2Icon,
+	MailIcon,
+	PencilIcon,
+	PhoneIcon,
+	SearchIcon,
+	TrashIcon,
+	UserIcon,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useMemo, useState, useTransition } from "react";
+import { toast } from "sonner";
 import { OpenClientCreateSheet } from "./OpenClientSheet";
 
 interface ClientsPageClientProps {
@@ -70,10 +74,17 @@ export function ClientsPageClient({
 	};
 
 	// Fetch clients with TanStack Query
-	const { data, isLoading, isFetching } = useQuery(clientsApi.listOptions(queryInput));
+	const { data, isLoading, isFetching } = useQuery(
+		clientsApi.listOptions(queryInput),
+	);
 
 	const clients = data?.data ?? [];
-	const pagination = data?.pagination ?? { page: 1, limit: 10, total: 0, pageCount: 0 };
+	const pagination = data?.pagination ?? {
+		page: 1,
+		limit: 10,
+		total: 0,
+		pageCount: 0,
+	};
 
 	// Delete mutation
 	const deleteMutation = useMutation({
@@ -82,7 +93,9 @@ export function ClientsPageClient({
 			toast.success("Client deleted successfully");
 			setDeleteDialogOpen(false);
 			setClientToDelete(null);
-			queryClient.invalidateQueries({ queryKey: studioQueryKeys.clients.all });
+			queryClient.invalidateQueries({
+				queryKey: studioQueryKeys.clients.all,
+			});
 		},
 		onError: (error) => {
 			toast.error(error.message || "Failed to delete client");
@@ -201,7 +214,10 @@ export function ClientsPageClient({
 			{
 				id: "actions",
 				cell: ({ row }) => (
-					<DataTableRowActions row={row.original} actions={rowActions} />
+					<DataTableRowActions
+						row={row.original}
+						actions={rowActions}
+					/>
 				),
 			},
 		],
@@ -241,20 +257,29 @@ export function ClientsPageClient({
 				emptyState={
 					<div className="flex flex-col items-center gap-2">
 						<UserIcon className="h-12 w-12 text-muted-foreground/50" />
-						<p className="text-muted-foreground">No clients found</p>
-						<OpenClientCreateSheet variant="outline" size="sm" label="Add your first client" />
+						<p className="text-muted-foreground">
+							No clients found
+						</p>
+						<OpenClientCreateSheet
+							variant="outline"
+							size="sm"
+							label="Add your first client"
+						/>
 					</div>
 				}
 			/>
 
 			{/* Delete confirmation dialog */}
-			<AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+			<AlertDialog
+				open={deleteDialogOpen}
+				onOpenChange={setDeleteDialogOpen}
+			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Delete client?</AlertDialogTitle>
 						<AlertDialogDescription>
-							This will permanently delete "{clientToDelete?.name}". This action cannot
-							be undone.
+							This will permanently delete "{clientToDelete?.name}
+							". This action cannot be undone.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
@@ -262,7 +287,9 @@ export function ClientsPageClient({
 						<AlertDialogAction
 							onClick={() => {
 								if (clientToDelete) {
-									deleteMutation.mutate({ id: clientToDelete.id });
+									deleteMutation.mutate({
+										id: clientToDelete.id,
+									});
 								}
 							}}
 							disabled={deleteMutation.isPending}

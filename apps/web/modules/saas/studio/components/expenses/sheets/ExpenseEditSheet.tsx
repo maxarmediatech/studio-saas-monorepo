@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
 	Sheet,
 	SheetContent,
@@ -16,6 +15,7 @@ import {
 	studioQueryKeys,
 } from "@saas/studio/lib/api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { toast } from "sonner";
 import { ExpenseForm, type ExpenseFormValues } from "../ExpenseForm";
 
@@ -26,7 +26,7 @@ export function ExpenseEditSheet() {
 	const [isScrolled, setIsScrolled] = useState(false);
 
 	const { data: expense, isLoading } = useQuery({
-		...expensesApi.getOptions(expenseId!),
+		...expensesApi.getOptions(expenseId ?? ""),
 		enabled: isOpen && !!expenseId,
 	});
 
@@ -65,11 +65,15 @@ export function ExpenseEditSheet() {
 
 	return (
 		<Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
-			<SheetContent side="right" className="sm:max-w-md p-0 gap-0 flex flex-col">
+			<SheetContent
+				side="right"
+				className="sm:max-w-md p-0 gap-0 flex flex-col"
+			>
 				<SheetHeader
 					className={cn(
 						"shrink-0 p-4 transition-shadow duration-200",
-						isScrolled && "shadow-[0_4px_12px_-4px_rgba(0,0,0,0.15)]"
+						isScrolled &&
+							"shadow-[0_4px_12px_-4px_rgba(0,0,0,0.15)]",
 					)}
 				>
 					<SheetTitle className="text-xl">Edit Expense</SheetTitle>

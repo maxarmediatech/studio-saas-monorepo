@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@repo/ui/components/button";
 import {
 	Command,
@@ -25,6 +24,7 @@ import {
 } from "@repo/ui/components/popover";
 import { cn } from "@repo/ui/lib/utils";
 import { CheckIcon, ChevronsUpDownIcon, Loader2Icon } from "lucide-react";
+import { useState } from "react";
 import type { Control, FieldPath, FieldValues } from "react-hook-form";
 
 export interface ComboboxOption {
@@ -91,8 +91,11 @@ export function FormComboboxField<
 									)}
 								>
 									{field.value
-										? options.find((option) => option.value === field.value)
-												?.label
+										? options.find(
+												(option) =>
+													option.value ===
+													field.value,
+											)?.label
 										: placeholder}
 									{isLoading ? (
 										<Loader2Icon className="ml-2 h-4 w-4 shrink-0 animate-spin" />
@@ -116,14 +119,17 @@ export function FormComboboxField<
 												key={option.value}
 												value={option.label}
 												onSelect={() => {
-													field.onChange(option.value);
+													field.onChange(
+														option.value,
+													);
 													setOpen(false);
 												}}
 											>
 												<CheckIcon
 													className={cn(
 														"mr-2 h-4 w-4",
-														field.value === option.value
+														field.value ===
+															option.value
 															? "opacity-100"
 															: "opacity-0",
 													)}
@@ -143,7 +149,9 @@ export function FormComboboxField<
 							</Command>
 						</PopoverContent>
 					</Popover>
-					{description && <FormDescription>{description}</FormDescription>}
+					{description && (
+						<FormDescription>{description}</FormDescription>
+					)}
 					<FormMessage />
 				</FormItem>
 			)}

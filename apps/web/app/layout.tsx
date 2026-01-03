@@ -6,8 +6,8 @@ import { cn } from "@repo/ui/lib/utils";
 import { ClientProviders } from "@shared/components/ClientProviders";
 import { ConsentProvider } from "@shared/components/ConsentProvider";
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import { Geist } from "next/font/google";
+import { cookies } from "next/headers";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { type PropsWithChildren, Suspense } from "react";
 

@@ -7,10 +7,10 @@ import {
 	SheetTitle,
 } from "@repo/ui/components/sheet";
 import { cn } from "@repo/ui/lib/utils";
-import Link from "next/link";
-import { ChevronLeft, ExternalLink, Settings } from "lucide-react";
-import { Logo } from "@shared/components/Logo";
 import { OrganizationLogo } from "@saas/organizations/components/OrganizationLogo";
+import { Logo } from "@shared/components/Logo";
+import { ChevronLeft, ExternalLink, Settings } from "lucide-react";
+import Link from "next/link";
 import type {
 	NavAreaConfig,
 	NavItemConfig,
@@ -34,7 +34,7 @@ interface MobileSidebarProps {
 	pathname: string;
 }
 
-const isSettingsPath = (pathname: string, studioSlug: string) =>
+const _isSettingsPath = (pathname: string, studioSlug: string) =>
 	pathname.startsWith(`/app/${studioSlug}/settings`);
 
 function isItemActive(pathname: string, itemPath: string): boolean {
@@ -59,7 +59,10 @@ export function MobileSidebar({
 	const settingsArea = areas.studioSettings;
 	return (
 		<Sheet open={open} onOpenChange={onOpenChange}>
-			<SheetContent side="left" className="flex w-80 flex-col bg-neutral-200 p-0">
+			<SheetContent
+				side="left"
+				className="flex w-80 flex-col bg-neutral-200 p-0"
+			>
 				{/* Header with App Logo + Org */}
 				<SheetHeader className="border-b border-neutral-300 bg-neutral-200 px-4 py-3">
 					<SheetTitle className="flex items-center gap-3">
@@ -70,7 +73,9 @@ export function MobileSidebar({
 								logoUrl={studioLogo}
 								className="size-6 rounded-full"
 							/>
-							<span className="text-sm font-medium text-neutral-700">{studioName}</span>
+							<span className="text-sm font-medium text-neutral-700">
+								{studioName}
+							</span>
 						</div>
 					</SheetTitle>
 				</SheetHeader>
@@ -78,7 +83,8 @@ export function MobileSidebar({
 				{/* Module Tabs */}
 				<div className="flex gap-1 overflow-x-auto bg-neutral-200 px-3 py-2">
 					{railIcons.map((item) => {
-						const isActive = item.moduleId === activeModuleId && !isSettingsArea;
+						const isActive =
+							item.moduleId === activeModuleId && !isSettingsArea;
 						return (
 							<Link
 								key={item.moduleId}
@@ -87,10 +93,13 @@ export function MobileSidebar({
 									"flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors duration-150",
 									isActive
 										? "bg-white font-medium text-neutral-900"
-										: "text-neutral-600 hover:bg-black/5 active:bg-black/10"
+										: "text-neutral-600 hover:bg-black/5 active:bg-black/10",
 								)}
 							>
-								<IconByName name={item.icon} className="size-4" />
+								<IconByName
+									name={item.icon}
+									className="size-4"
+								/>
 								<span>{item.label}</span>
 							</Link>
 						);
@@ -102,7 +111,7 @@ export function MobileSidebar({
 							"flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors duration-150",
 							isSettingsArea
 								? "bg-white font-medium text-neutral-900"
-								: "text-neutral-600 hover:bg-black/5 active:bg-black/10"
+								: "text-neutral-600 hover:bg-black/5 active:bg-black/10",
 						)}
 					>
 						<Settings className="size-4" />
@@ -117,11 +126,17 @@ export function MobileSidebar({
 							<>
 								{/* Settings Header with back button */}
 								<Link
-									href={settingsArea.backHref ?? `/app/${studioSlug}/home`}
+									href={
+										settingsArea.backHref ??
+										`/app/${studioSlug}/home`
+									}
 									className="group mb-2 flex items-center gap-3 px-2 py-2"
 								>
 									<div className="flex size-6 items-center justify-center rounded-lg bg-neutral-200 text-neutral-600 transition-[transform,background-color] duration-150 group-hover:-translate-x-0.5 group-hover:bg-neutral-300">
-										<ChevronLeft className="size-3" strokeWidth={2.5} />
+										<ChevronLeft
+											className="size-3"
+											strokeWidth={2.5}
+										/>
 									</div>
 									<span className="text-lg font-semibold text-neutral-900">
 										{settingsArea.title}
@@ -142,7 +157,10 @@ export function MobileSidebar({
 													<MobileNavItem
 														key={item.id}
 														item={item}
-														isActive={isItemActive(pathname, item.path)}
+														isActive={isItemActive(
+															pathname,
+															item.path,
+														)}
 													/>
 												))}
 											</nav>
@@ -173,7 +191,10 @@ export function MobileSidebar({
 													<MobileNavItem
 														key={item.id}
 														item={item}
-														isActive={isItemActive(pathname, item.path)}
+														isActive={isItemActive(
+															pathname,
+															item.path,
+														)}
 													/>
 												))}
 											</nav>
@@ -189,7 +210,10 @@ export function MobileSidebar({
 												<MobileNavItem
 													key={item.id}
 													item={item}
-													isActive={isItemActive(pathname, item.path)}
+													isActive={isItemActive(
+														pathname,
+														item.path,
+													)}
 												/>
 											))}
 										</nav>
@@ -222,7 +246,7 @@ function MobileNavItem({
 				"group flex h-8 items-center justify-between rounded-lg p-2 text-sm leading-none transition-[background-color,color,font-weight] duration-75",
 				isActive
 					? "bg-blue-100/50 font-medium text-blue-600 hover:bg-blue-100/80 active:bg-blue-100"
-					: "text-neutral-700 hover:bg-black/5 active:bg-black/10"
+					: "text-neutral-700 hover:bg-black/5 active:bg-black/10",
 			)}
 		>
 			<span className="flex items-center gap-2.5">
@@ -230,7 +254,7 @@ function MobileNavItem({
 					name={item.icon}
 					className={cn(
 						"size-4 shrink-0",
-						isActive ? "text-blue-600" : "text-neutral-600"
+						isActive ? "text-blue-600" : "text-neutral-600",
 					)}
 				/>
 				<span className="truncate">{item.label}</span>

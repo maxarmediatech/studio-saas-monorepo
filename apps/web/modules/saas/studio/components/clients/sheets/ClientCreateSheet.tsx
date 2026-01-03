@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
 	Sheet,
 	SheetContent,
@@ -8,12 +7,13 @@ import {
 	SheetTitle,
 } from "@repo/ui/components/sheet";
 import { cn } from "@repo/ui/lib/utils";
-import { toast } from "sonner";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useClientParams } from "@saas/studio/hooks/params/use-client-params";
 import { useClientCallback } from "@saas/studio/hooks/params/client-callback-context";
-import { ClientForm, type ClientFormValues } from "../ClientForm";
+import { useClientParams } from "@saas/studio/hooks/params/use-client-params";
 import { clientsMutations, studioQueryKeys } from "@saas/studio/lib/api";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { toast } from "sonner";
+import { ClientForm, type ClientFormValues } from "../ClientForm";
 
 export function ClientCreateSheet() {
 	const { createClient, close } = useClientParams();
@@ -26,7 +26,9 @@ export function ClientCreateSheet() {
 		...clientsMutations.create(),
 		onSuccess: (data) => {
 			toast.success("Client added successfully");
-			queryClient.invalidateQueries({ queryKey: studioQueryKeys.clients.all });
+			queryClient.invalidateQueries({
+				queryKey: studioQueryKeys.clients.all,
+			});
 			// Execute callback if one was registered (e.g., from booking form)
 			executeCallback(data.data.id);
 			close();
@@ -45,10 +47,18 @@ export function ClientCreateSheet() {
 	const handleSubmit = async (data: ClientFormValues) => {
 		// Build metadata object from form fields
 		const metadata: Record<string, string> = {};
-		if (data.profession) metadata.profession = data.profession;
-		if (data.source) metadata.source = data.source;
-		if (data.socialHandle) metadata.socialHandle = data.socialHandle;
-		if (data.notes) metadata.notes = data.notes;
+		if (data.profession) {
+			metadata.profession = data.profession;
+		}
+		if (data.source) {
+			metadata.source = data.source;
+		}
+		if (data.socialHandle) {
+			metadata.socialHandle = data.socialHandle;
+		}
+		if (data.notes) {
+			metadata.notes = data.notes;
+		}
 
 		await createMutation.mutateAsync({
 			name: data.name,
@@ -62,11 +72,15 @@ export function ClientCreateSheet() {
 
 	return (
 		<Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-			<SheetContent side="right" className="sm:max-w-md p-0 gap-0 flex flex-col">
+			<SheetContent
+				side="right"
+				className="sm:max-w-md p-0 gap-0 flex flex-col"
+			>
 				<SheetHeader
 					className={cn(
 						"shrink-0 p-4 transition-shadow duration-200",
-						isScrolled && "shadow-[0_4px_12px_-4px_rgba(0,0,0,0.15)]"
+						isScrolled &&
+							"shadow-[0_4px_12px_-4px_rgba(0,0,0,0.15)]",
 					)}
 				>
 					<SheetTitle className="text-xl">Add Client</SheetTitle>

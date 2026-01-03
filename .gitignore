@@ -39,11 +39,16 @@ dist/
 # typescript
 *.tsbuildinfo
 
+# Biome can't parse Tailwind v4 directives used here
+apps/web/app_legacy/globals.css
+
 # other 
 .react-email/
 .content-collections/
 
 # Continuous Claude cache (local only)
 .claude/cache/
+.claude/settings.local.json
+.claude/tsc-cache/
 .code/
 thoughts/

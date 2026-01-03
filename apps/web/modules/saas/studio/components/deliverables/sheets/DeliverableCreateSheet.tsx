@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
 	Sheet,
 	SheetContent,
@@ -8,11 +7,15 @@ import {
 	SheetTitle,
 } from "@repo/ui/components/sheet";
 import { cn } from "@repo/ui/lib/utils";
-import { toast } from "sonner";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useDeliverableParams } from "@saas/studio/hooks/params/use-deliverable-params";
-import { DeliverableForm, type DeliverableFormValues } from "../DeliverableForm";
 import { deliverablesMutations, studioQueryKeys } from "@saas/studio/lib/api";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { toast } from "sonner";
+import {
+	DeliverableForm,
+	type DeliverableFormValues,
+} from "../DeliverableForm";
 
 export function DeliverableCreateSheet() {
 	const { createDeliverable, close } = useDeliverableParams();
@@ -24,7 +27,9 @@ export function DeliverableCreateSheet() {
 		...deliverablesMutations.create(),
 		onSuccess: () => {
 			toast.success("Deliverable added successfully");
-			queryClient.invalidateQueries({ queryKey: studioQueryKeys.deliverables.all });
+			queryClient.invalidateQueries({
+				queryKey: studioQueryKeys.deliverables.all,
+			});
 			close();
 		},
 		onError: (error) => {
@@ -46,11 +51,15 @@ export function DeliverableCreateSheet() {
 
 	return (
 		<Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
-			<SheetContent side="right" className="sm:max-w-md p-0 gap-0 flex flex-col">
+			<SheetContent
+				side="right"
+				className="sm:max-w-md p-0 gap-0 flex flex-col"
+			>
 				<SheetHeader
 					className={cn(
 						"shrink-0 p-4 transition-shadow duration-200",
-						isScrolled && "shadow-[0_4px_12px_-4px_rgba(0,0,0,0.15)]"
+						isScrolled &&
+							"shadow-[0_4px_12px_-4px_rgba(0,0,0,0.15)]",
 					)}
 				>
 					<SheetTitle className="text-xl">Add Deliverable</SheetTitle>

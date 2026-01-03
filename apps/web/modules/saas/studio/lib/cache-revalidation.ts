@@ -45,7 +45,12 @@ export function revalidateConfigurations(organizationId: string): void {
  */
 export function revalidateConfigurationType(
 	organizationId: string,
-	type: "booking_type" | "package_type" | "relation_type" | "crew_role" | "shoot_status",
+	type:
+		| "booking_type"
+		| "package_type"
+		| "relation_type"
+		| "crew_role"
+		| "shoot_status",
 ): void {
 	revalidateTag(`${type}s-${organizationId}`, { expire: 0 });
 	// Also revalidate the general configurations cache

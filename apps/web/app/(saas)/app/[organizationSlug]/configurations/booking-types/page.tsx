@@ -22,7 +22,10 @@ export async function generateMetadata({ params }: Props) {
 	};
 }
 
-export default async function BookingTypesPage({ params, searchParams }: Props) {
+export default async function BookingTypesPage({
+	params,
+	searchParams,
+}: Props) {
 	const { organizationSlug } = await params;
 	const filters = await searchParams;
 

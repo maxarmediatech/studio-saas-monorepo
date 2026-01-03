@@ -1,13 +1,13 @@
 import { ORPCError } from "@orpc/server";
 import {
 	and,
-	eq,
-	isNull,
-	sql,
-	receivedAmounts,
-	paymentSchedules,
 	bookings,
 	db,
+	eq,
+	isNull,
+	paymentSchedules,
+	receivedAmounts,
+	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../../orpc/procedures";
 import { requirePermission } from "../../../studio/lib/permissions";
@@ -114,8 +114,10 @@ export const createReceived = studioProtectedProcedure
 				});
 
 				if (schedule) {
-					const newPaidAmount = parseFloat(schedule.paidAmount) + parseFloat(amount);
-					const scheduleAmount = parseFloat(schedule.amount);
+					const newPaidAmount =
+						Number.parseFloat(schedule.paidAmount) +
+						Number.parseFloat(amount);
+					const scheduleAmount = Number.parseFloat(schedule.amount);
 
 					let newStatus = schedule.status;
 					if (newPaidAmount >= scheduleAmount) {
@@ -128,7 +130,10 @@ export const createReceived = studioProtectedProcedure
 						.update(paymentSchedules)
 						.set({
 							paidAmount: newPaidAmount.toFixed(2),
-							paidAt: newStatus === "completed" ? new Date() : schedule.paidAt,
+							paidAt:
+								newStatus === "completed"
+									? new Date()
+									: schedule.paidAt,
 							status: newStatus,
 							updatedAt: new Date(),
 							updatedBy: context.user.id,

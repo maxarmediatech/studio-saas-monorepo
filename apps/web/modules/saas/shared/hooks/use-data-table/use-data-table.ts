@@ -1,9 +1,15 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
-import { useQueryStates, parseAsInteger, parseAsString } from "nuqs";
-import { useDebounceCallback } from "usehooks-ts";
 import type { OnChangeFn, SortingState } from "@tanstack/react-table";
+import {
+	parseAsInteger,
+	parseAsString,
+	useQueryState,
+	useQueryStates,
+} from "nuqs";
+import { useCallback, useMemo } from "react";
+import { useDebounceCallback } from "usehooks-ts";
+import { getSortingStateParser } from "./parsers";
 import type {
 	BaseFilterState,
 	FilterParsers,
@@ -24,8 +30,8 @@ const DEFAULT_CONFIG = {
  *
  * Features:
  * - URL-synced pagination, sorting, and filtering via nuqs
+ * - JSON-based sorting state for proper TanStack Table integration
  * - Debounced filter updates (300ms default)
- * - TanStack Table compatible sorting state
  * - Type-safe generics for entity-specific filters
  *
  * @example
@@ -44,26 +50,42 @@ export function useDataTable<
 	TFilters extends BaseFilterState = BaseFilterState,
 >(
 	filterParsers?: FilterParsers<TFilters>,
-	config?: UseDataTableConfig<TFilters>
+	config?: UseDataTableConfig<TFilters>,
 ): UseDataTableReturn<TFilters> {
 	const mergedConfig = { ...DEFAULT_CONFIG, ...config };
 
-	// Core state: pagination and sorting
-	const [coreState, setCoreState] = useQueryStates(
+	// Default sorting state for TanStack Table
+	const defaultSortingState: SortingState = mergedConfig.defaultSortBy
+		? [
+				{
+					id: mergedConfig.defaultSortBy,
+					desc: mergedConfig.defaultSortDirection === "desc",
+				},
+			]
+		: [];
+
+	// Pagination state
+	const [paginationState, setPaginationState] = useQueryStates(
 		{
 			page: parseAsInteger.withDefault(1),
 			limit: parseAsInteger.withDefault(mergedConfig.defaultLimit),
-			sortBy: mergedConfig.defaultSortBy
-				? parseAsString.withDefault(mergedConfig.defaultSortBy)
-				: parseAsString,
-			sortDirection: parseAsString.withDefault(
-				mergedConfig.defaultSortDirection
-			),
 		},
 		{
 			clearOnDefault: mergedConfig.clearOnDefault,
 			shallow: false,
-		}
+		},
+	);
+
+	// Sorting state - JSON-based for direct TanStack Table compatibility
+	// URL format: ?sort=[{"id":"createdAt","desc":true}]
+	const [sortingState, setSortingState] = useQueryState(
+		"sort",
+		getSortingStateParser()
+			.withOptions({
+				clearOnDefault: mergedConfig.clearOnDefault,
+				shallow: false,
+			})
+			.withDefault(defaultSortingState),
 	);
 
 	// Filter state: search + entity-specific filters
@@ -77,24 +99,26 @@ export function useDataTable<
 			clearOnDefault: mergedConfig.clearOnDefault,
 			shallow: false,
 			throttleMs: 50,
-		}
+		},
 	);
 
 	// Debounced filter setter - resets page to 1
 	const debouncedSetFilters = useDebounceCallback(
 		(updates: Partial<TFilters>) => {
 			void setFilterState(updates as Record<string, string | null>);
-			void setCoreState((prev) => ({ ...prev, page: 1 }));
+			void setPaginationState((prev) => ({ ...prev, page: 1 }));
 		},
-		mergedConfig.debounceMs
+		mergedConfig.debounceMs,
 	);
 
 	// Set a single filter value
 	const setFilter = useCallback(
 		<K extends keyof TFilters>(key: K, value: TFilters[K]) => {
-			debouncedSetFilters({ [key]: value } as unknown as Partial<TFilters>);
+			debouncedSetFilters({
+				[key]: value,
+			} as unknown as Partial<TFilters>);
 		},
-		[debouncedSetFilters]
+		[debouncedSetFilters],
 	);
 
 	// Set multiple filter values
@@ -102,116 +126,98 @@ export function useDataTable<
 		(filters: Partial<TFilters>) => {
 			debouncedSetFilters(filters);
 		},
-		[debouncedSetFilters]
+		[debouncedSetFilters],
 	);
 
 	// Set page (immediate, not debounced)
 	const setPage = useCallback(
 		(page: number) => {
-			void setCoreState((prev) => ({ ...prev, page }));
+			void setPaginationState((prev) => ({ ...prev, page }));
 		},
-		[setCoreState]
+		[setPaginationState],
 	);
 
 	// Set limit (immediate, not debounced)
 	const setLimit = useCallback(
 		(limit: number) => {
-			void setCoreState((prev) => ({ ...prev, limit, page: 1 }));
+			void setPaginationState((prev) => ({ ...prev, limit, page: 1 }));
 		},
-		[setCoreState]
+		[setPaginationState],
 	);
 
 	// Set sorting (immediate, not debounced)
+	// Accepts column ID and direction, converts to SortingState
 	const setSorting = useCallback(
 		(sortBy: string | null, sortDirection: "asc" | "desc") => {
-			void setCoreState((prev) => ({
-				...prev,
-				sortBy: sortBy ?? null,
-				sortDirection,
-			}));
+			if (sortBy) {
+				void setSortingState([
+					{ id: sortBy, desc: sortDirection === "desc" },
+				]);
+			} else {
+				void setSortingState(defaultSortingState);
+			}
 		},
-		[setCoreState]
+		[setSortingState, defaultSortingState],
 	);
 
 	// Reset all filters to defaults
 	const resetFilters = useCallback(() => {
-		const resetValues = Object.keys({ search: null, ...filterParsers }).reduce(
-			(acc, key) => ({ ...acc, [key]: null }),
-			{}
-		);
+		const resetValues: Record<string, null> = { search: null };
+		if (filterParsers) {
+			for (const key of Object.keys(filterParsers)) {
+				resetValues[key] = null;
+			}
+		}
 		void setFilterState(resetValues);
-		void setCoreState((prev) => ({ ...prev, page: 1 }));
-	}, [setFilterState, setCoreState, filterParsers]);
+		void setPaginationState((prev) => ({ ...prev, page: 1 }));
+	}, [setFilterState, setPaginationState, filterParsers]);
 
 	// Handler for DataTablePagination component
 	const onPaginationChange = useCallback(
 		(pagination: TablePaginationState) => {
 			setPage(pagination.page);
 		},
-		[setPage]
+		[setPage],
 	);
 
-	// Handler for TanStack Table sorting
+	// Handler for TanStack Table sorting - directly updates URL state
 	const onSortingChange: OnChangeFn<SortingState> = useCallback(
 		(updater) => {
-			const current = coreState.sortBy
-				? [
-						{
-							id: coreState.sortBy,
-							desc: coreState.sortDirection === "desc",
-						},
-					]
-				: [];
 			const newState =
-				typeof updater === "function" ? updater(current) : updater;
-
-			if (newState.length > 0) {
-				setSorting(newState[0].id, newState[0].desc ? "desc" : "asc");
-			} else {
-				setSorting(null, mergedConfig.defaultSortDirection);
-			}
+				typeof updater === "function" ? updater(sortingState) : updater;
+			void setSortingState(newState);
 		},
-		[
-			coreState.sortBy,
-			coreState.sortDirection,
-			setSorting,
-			mergedConfig.defaultSortDirection,
-		]
+		[sortingState, setSortingState],
 	);
 
-	// TanStack Table compatible sorting state
-	const sortingState: SortingState = useMemo(() => {
-		if (!coreState.sortBy) return [];
-		return [
-			{ id: coreState.sortBy, desc: coreState.sortDirection === "desc" },
-		];
-	}, [coreState.sortBy, coreState.sortDirection]);
+	// Derived: current sort column and direction (for API calls)
+	const sorting = useMemo(() => {
+		const firstSort = sortingState[0];
+		return {
+			sortBy: firstSort?.id ?? null,
+			sortDirection: (firstSort?.desc ? "desc" : "asc") as "asc" | "desc",
+		};
+	}, [sortingState]);
 
 	// Derived: is any filter active?
 	const isFiltered = useMemo(() => {
-		return Object.values(filterState).some(
-			(v) => v != null && v !== ""
-		);
+		return Object.values(filterState).some((v) => v != null && v !== "");
 	}, [filterState]);
 
 	// Derived: count of active filters
 	const activeFilterCount = useMemo(() => {
-		return Object.values(filterState).filter(
-			(v) => v != null && v !== ""
-		).length;
+		return Object.values(filterState).filter((v) => v != null && v !== "")
+			.length;
 	}, [filterState]);
 
 	return {
 		// State
 		filters: filterState as TFilters,
 		pagination: {
-			page: coreState.page,
-			limit: coreState.limit,
+			page: paginationState.page,
+			limit: paginationState.limit,
 		},
-		sorting: {
-			sortBy: coreState.sortBy ?? null,
-			sortDirection: (coreState.sortDirection as "asc" | "desc") ?? "desc",
-		},
+		sorting,
 
 		// Setters
 		setFilter,
@@ -228,6 +234,6 @@ export function useDataTable<
 		// TanStack Table integration
 		onPaginationChange,
 		onSortingChange,
-		sortingState,
+		sortingState, // Direct SortingState from URL - pass to useReactTable
 	};
 }

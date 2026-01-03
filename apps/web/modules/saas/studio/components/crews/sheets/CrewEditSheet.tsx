@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
 	Sheet,
 	SheetContent,
@@ -9,11 +8,16 @@ import {
 } from "@repo/ui/components/sheet";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
-import { toast } from "sonner";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCrewParams } from "@saas/studio/hooks/params/use-crew-params";
+import {
+	crewsApi,
+	crewsMutations,
+	studioQueryKeys,
+} from "@saas/studio/lib/api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { toast } from "sonner";
 import { CrewForm, type CrewFormValues } from "../CrewForm";
-import { crewsApi, crewsMutations, studioQueryKeys } from "@saas/studio/lib/api";
 
 export function CrewEditSheet() {
 	const { crewId, close } = useCrewParams();
@@ -22,7 +26,7 @@ export function CrewEditSheet() {
 	const [isScrolled, setIsScrolled] = useState(false);
 
 	const { data: crew, isLoading } = useQuery({
-		...crewsApi.getOptions(crewId!),
+		...crewsApi.getOptions(crewId ?? ""),
 		enabled: isOpen && !!crewId,
 	});
 
@@ -30,7 +34,9 @@ export function CrewEditSheet() {
 		...crewsMutations.update(),
 		onSuccess: () => {
 			toast.success("Crew member updated successfully");
-			queryClient.invalidateQueries({ queryKey: studioQueryKeys.crews.all });
+			queryClient.invalidateQueries({
+				queryKey: studioQueryKeys.crews.all,
+			});
 			close();
 		},
 		onError: (error) => {
@@ -39,7 +45,9 @@ export function CrewEditSheet() {
 	});
 
 	const handleSubmit = async (data: CrewFormValues) => {
-		if (!crewId) return;
+		if (!crewId) {
+			return;
+		}
 
 		await updateMutation.mutateAsync({
 			id: crewId,
@@ -54,14 +62,20 @@ export function CrewEditSheet() {
 
 	return (
 		<Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
-			<SheetContent side="right" className="sm:max-w-md p-0 gap-0 flex flex-col">
+			<SheetContent
+				side="right"
+				className="sm:max-w-md p-0 gap-0 flex flex-col"
+			>
 				<SheetHeader
 					className={cn(
 						"shrink-0 p-4 transition-shadow duration-200",
-						isScrolled && "shadow-[0_4px_12px_-4px_rgba(0,0,0,0.15)]"
+						isScrolled &&
+							"shadow-[0_4px_12px_-4px_rgba(0,0,0,0.15)]",
 					)}
 				>
-					<SheetTitle className="text-xl">Edit Crew Member</SheetTitle>
+					<SheetTitle className="text-xl">
+						Edit Crew Member
+					</SheetTitle>
 				</SheetHeader>
 				<div className="flex-1 min-h-0">
 					{isLoading ? (

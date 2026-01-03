@@ -1,9 +1,9 @@
 "use client";
 
+import { cn } from "@repo/ui/lib/utils";
+import { ChevronLeft, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronLeft, ExternalLink } from "lucide-react";
-import { cn } from "@repo/ui/lib/utils";
 import type { NavAreaConfig, NavItemConfig } from "../../lib/navigation/types";
 import { IconByName } from "./icon-registry";
 
@@ -31,7 +31,7 @@ export function SettingsPanel({ area }: SettingsPanelProps) {
 						<div
 							className={cn(
 								"flex size-6 items-center justify-center rounded-lg bg-neutral-200 text-neutral-600",
-								"transition-[transform,background-color,color] duration-150 group-hover:-translate-x-0.5 group-hover:bg-neutral-300"
+								"transition-[transform,background-color,color] duration-150 group-hover:-translate-x-0.5 group-hover:bg-neutral-300",
 							)}
 						>
 							<ChevronLeft className="size-3" strokeWidth={2.5} />
@@ -92,7 +92,7 @@ function NavItem({
 				"group flex h-8 items-center justify-between rounded-lg p-2 text-sm leading-none transition-[background-color,color,font-weight] duration-75",
 				isActive
 					? "bg-blue-100/50 font-medium text-blue-600 hover:bg-blue-100/80 active:bg-blue-100"
-					: "text-neutral-700 hover:bg-black/5 active:bg-black/10"
+					: "text-neutral-700 hover:bg-black/5 active:bg-black/10",
 			)}
 		>
 			<span className="flex items-center gap-2.5">
@@ -100,7 +100,7 @@ function NavItem({
 					name={item.icon}
 					className={cn(
 						"size-4 shrink-0",
-						isActive ? "text-blue-600" : "text-neutral-600"
+						isActive ? "text-blue-600" : "text-neutral-600",
 					)}
 				/>
 				<span className="truncate">{item.label}</span>

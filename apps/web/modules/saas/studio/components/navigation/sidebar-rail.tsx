@@ -1,12 +1,5 @@
 "use client";
 
-import Link from "next/link";
-import { HelpCircle, Settings } from "lucide-react";
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipTrigger,
-} from "@repo/ui/components/tooltip";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -14,10 +7,17 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@repo/ui/components/dropdown-menu";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@repo/ui/components/tooltip";
 import { cn } from "@repo/ui/lib/utils";
-import { Logo } from "@shared/components/Logo";
 import { OrganizationLogo } from "@saas/organizations/components/OrganizationLogo";
+import { Logo } from "@shared/components/Logo";
 import { UserAvatar } from "@shared/components/UserAvatar";
+import { HelpCircle, Settings } from "lucide-react";
+import Link from "next/link";
 import type { RailIconConfig } from "../../lib/navigation/types";
 import { IconByName } from "./icon-registry";
 import { SidebarTrigger } from "./sidebar-trigger";
@@ -77,9 +77,15 @@ export function SidebarRail({
 								/>
 							</button>
 						</DropdownMenuTrigger>
-						<DropdownMenuContent side="right" align="start" sideOffset={8}>
+						<DropdownMenuContent
+							side="right"
+							align="start"
+							sideOffset={8}
+						>
 							<div className="px-2 py-1.5">
-								<p className="text-sm font-medium">{studioName}</p>
+								<p className="text-sm font-medium">
+									{studioName}
+								</p>
 							</div>
 							<DropdownMenuSeparator />
 							<DropdownMenuItem asChild>
@@ -97,7 +103,8 @@ export function SidebarRail({
 					{/* Module Icons */}
 					{railIcons.map((item) => {
 						const isActive =
-							item.moduleId === activeModuleId && !isSettingsActive;
+							item.moduleId === activeModuleId &&
+							!isSettingsActive;
 						return (
 							<Tooltip key={item.moduleId}>
 								<TooltipTrigger asChild>
@@ -107,10 +114,13 @@ export function SidebarRail({
 											"relative flex size-11 items-center justify-center rounded-lg outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-black/50",
 											isActive
 												? "bg-white text-neutral-900"
-												: "text-neutral-600 hover:bg-black/5 active:bg-black/10"
+												: "text-neutral-600 hover:bg-black/5 active:bg-black/10",
 										)}
 									>
-										<IconByName name={item.icon} className="size-5" />
+										<IconByName
+											name={item.icon}
+											className="size-5"
+										/>
 									</Link>
 								</TooltipTrigger>
 								<TooltipContent side="right" sideOffset={8}>
@@ -136,7 +146,7 @@ export function SidebarRail({
 								"flex size-11 items-center justify-center rounded-lg outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-black/50",
 								isSettingsActive
 									? "bg-white text-neutral-900"
-									: "text-neutral-600 hover:bg-black/5 active:bg-black/10"
+									: "text-neutral-600 hover:bg-black/5 active:bg-black/10",
 							)}
 						>
 							<Settings className="size-5" />

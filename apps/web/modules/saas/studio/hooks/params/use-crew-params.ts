@@ -1,8 +1,8 @@
 import {
+	type Options,
 	parseAsBoolean,
 	parseAsString,
 	useQueryStates,
-	type Options,
 } from "nuqs";
 
 export function useCrewParams(options?: Options) {
@@ -15,7 +15,7 @@ export function useCrewParams(options?: Options) {
 			history: "push",
 			shallow: true,
 			...options,
-		}
+		},
 	);
 
 	return {

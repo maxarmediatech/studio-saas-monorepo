@@ -6,7 +6,7 @@
  */
 
 import { ORPCError } from "@orpc/server";
-import { and, eq, isNull, sql, crews } from "@repo/database";
+import { and, crews, eq, isNull, sql } from "@repo/database";
 import type { TransactionClient } from "../../studio/lib/transactions";
 
 /**
@@ -44,7 +44,9 @@ export async function validateCrewIds(
 	});
 
 	const existingCrewIds = new Set(existingCrews.map((c) => c.id));
-	const missingCrewIds = uniqueCrewIds.filter((id) => !existingCrewIds.has(id));
+	const missingCrewIds = uniqueCrewIds.filter(
+		(id) => !existingCrewIds.has(id),
+	);
 
 	if (missingCrewIds.length > 0) {
 		throw new ORPCError("BAD_REQUEST", {

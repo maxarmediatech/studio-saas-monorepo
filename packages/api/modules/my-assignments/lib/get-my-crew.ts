@@ -1,5 +1,5 @@
 import { ORPCError } from "@orpc/server";
-import { and, eq, isNull, crews, db } from "@repo/database";
+import { and, crews, db, eq, isNull } from "@repo/database";
 
 /**
  * Get the crew record for the current user in the organization.
@@ -20,7 +20,8 @@ export async function getMyCrewId(
 
 	if (!crew) {
 		throw new ORPCError("NOT_FOUND", {
-			message: "You are not registered as a crew member in this organization",
+			message:
+				"You are not registered as a crew member in this organization",
 		});
 	}
 

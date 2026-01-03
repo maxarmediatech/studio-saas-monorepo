@@ -151,7 +151,9 @@ export const optionalDecimalStringSchema = z
 	.string()
 	.refine(
 		(val) => {
-			if (val === "" || val === undefined) return true; // Allow empty
+			if (val === "" || val === undefined) {
+				return true; // Allow empty
+			}
 			const cleaned = val.replace(/[^\d.]/g, "");
 			const parsed = Number.parseFloat(cleaned);
 			return !Number.isNaN(parsed) && parsed >= 0;
@@ -271,7 +273,10 @@ export const BOOKING_STEP_SCHEMAS: Record<BookingTab, z.ZodTypeAny> = {
 /**
  * Mapping of tabs to their form fields (for error tracking)
  */
-export const TAB_FIELD_MAPPING: Record<BookingTab, (keyof BookingFormValues)[]> = {
+export const TAB_FIELD_MAPPING: Record<
+	BookingTab,
+	(keyof BookingFormValues)[]
+> = {
 	details: [
 		"name",
 		"bookingType",
@@ -454,7 +459,9 @@ export const bookingFormRoutes = {
  * Clean up empty/incomplete array items before validation or submission.
  * Removes items that are essentially empty (user added but didn't fill in).
  */
-export function cleanupFormArrays(values: BookingFormValues): BookingFormValues {
+export function cleanupFormArrays(
+	values: BookingFormValues,
+): BookingFormValues {
 	return {
 		...values,
 		// Keep participants with valid clientId (required field)
@@ -465,7 +472,11 @@ export function cleanupFormArrays(values: BookingFormValues): BookingFormValues 
 		shoots: values.shoots?.filter((s) => s.name && s.name.length > 0),
 		// Keep payments with amount (required field)
 		payments: values.payments?.filter(
-			(p) => p.amount && p.amount.length > 0 && p.amount !== "0" && p.amount !== "0.00",
+			(p) =>
+				p.amount &&
+				p.amount.length > 0 &&
+				p.amount !== "0" &&
+				p.amount !== "0.00",
 		),
 		// Keep payment schedules with name (required field)
 		paymentSchedules: values.paymentSchedules?.filter(

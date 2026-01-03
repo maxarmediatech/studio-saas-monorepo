@@ -1,23 +1,23 @@
 import {
 	and,
-	eq,
-	isNull,
-	gte,
-	sql,
-	count,
 	bookings,
-	shoots,
-	deliverables,
-	paymentSchedules,
+	count,
 	db,
+	deliverables,
+	eq,
+	gte,
+	isNull,
+	paymentSchedules,
+	shoots,
+	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { requirePermission } from "../../studio/lib/permissions";
 import {
 	formatDateParts,
 	getDateParts,
 	normalizeTimeZone,
 } from "../../studio/lib/date-helpers";
+import { requirePermission } from "../../studio/lib/permissions";
 import {
 	getKpisInputSchema,
 	getKpisOutputSchema,
@@ -38,7 +38,9 @@ export const getKpis = studioProtectedProcedure
 
 		const { dateRange } = input;
 
-		const timeZone = normalizeTimeZone(context.membership.organization.timezone);
+		const timeZone = normalizeTimeZone(
+			context.membership.organization.timezone,
+		);
 		const nowParts = getDateParts(new Date(), timeZone);
 		const todayStr = formatDateParts(nowParts);
 		const startOfMonthStr = `${nowParts.year}-${nowParts.month}-01`;
@@ -50,10 +52,16 @@ export const getKpis = studioProtectedProcedure
 
 		// Calculate previous period for comparison
 		const periodLength = rangeEndDate.getTime() - rangeStartDate.getTime();
-		const previousPeriodStart = new Date(rangeStartDate.getTime() - periodLength);
+		const previousPeriodStart = new Date(
+			rangeStartDate.getTime() - periodLength,
+		);
 		const previousPeriodEnd = new Date(rangeStartDate.getTime() - 1);
-		const previousPeriodStartStr = previousPeriodStart.toISOString().split("T")[0];
-		const previousPeriodEndStr = previousPeriodEnd.toISOString().split("T")[0];
+		const previousPeriodStartStr = previousPeriodStart
+			.toISOString()
+			.split("T")[0];
+		const previousPeriodEndStr = previousPeriodEnd
+			.toISOString()
+			.split("T")[0];
 
 		// Current period revenue
 		const [currentPeriodTotals] = await db
@@ -109,9 +117,15 @@ export const getKpis = studioProtectedProcedure
 				),
 			);
 
-		const totalRevenue = parseFloat(allTimeTotals?.totalRevenue ?? "0");
-		const totalReceived = parseFloat(allTimeTotals?.totalReceived ?? "0");
-		const totalExpenses = parseFloat(allTimeTotals?.totalExpenses ?? "0");
+		const totalRevenue = Number.parseFloat(
+			allTimeTotals?.totalRevenue ?? "0",
+		);
+		const totalReceived = Number.parseFloat(
+			allTimeTotals?.totalReceived ?? "0",
+		);
+		const totalExpenses = Number.parseFloat(
+			allTimeTotals?.totalExpenses ?? "0",
+		);
 		const totalPending = totalRevenue - totalReceived;
 
 		// Booking counts
@@ -187,40 +201,41 @@ export const getKpis = studioProtectedProcedure
 			);
 
 		// Calculate metrics
-		const currentRevenue = parseFloat(currentPeriodTotals?.totalRevenue ?? "0");
-		const previousRevenue = parseFloat(previousPeriodTotals?.totalRevenue ?? "0");
-		const revenueGrowth = previousRevenue > 0
-			? ((currentRevenue - previousRevenue) / previousRevenue) * 100
-			: 0;
+		const currentRevenue = Number.parseFloat(
+			currentPeriodTotals?.totalRevenue ?? "0",
+		);
+		const previousRevenue = Number.parseFloat(
+			previousPeriodTotals?.totalRevenue ?? "0",
+		);
+		const revenueGrowth =
+			previousRevenue > 0
+				? ((currentRevenue - previousRevenue) / previousRevenue) * 100
+				: 0;
 
 		const totalBookings = totalBookingsResult?.count ?? 0;
 		const completedBookings = completedBookingsResult?.count ?? 0;
-		const averageBookingValue = totalBookings > 0
-			? totalRevenue / totalBookings
-			: 0;
+		const averageBookingValue =
+			totalBookings > 0 ? totalRevenue / totalBookings : 0;
 
-		const collectionRate = totalRevenue > 0
-			? (totalReceived / totalRevenue) * 100
-			: 0;
+		const collectionRate =
+			totalRevenue > 0 ? (totalReceived / totalRevenue) * 100 : 0;
 
-		const profitMargin = totalReceived > 0
-			? ((totalReceived - totalExpenses) / totalReceived) * 100
-			: 0;
+		const profitMargin =
+			totalReceived > 0
+				? ((totalReceived - totalExpenses) / totalReceived) * 100
+				: 0;
 
-		const conversionRate = totalBookings > 0
-			? (completedBookings / totalBookings) * 100
-			: 0;
+		const conversionRate =
+			totalBookings > 0 ? (completedBookings / totalBookings) * 100 : 0;
 
 		const totalShoots = totalShootsResult?.count ?? 0;
-		const averageShootsPerBooking = totalBookings > 0
-			? totalShoots / totalBookings
-			: 0;
+		const averageShootsPerBooking =
+			totalBookings > 0 ? totalShoots / totalBookings : 0;
 
 		const totalCompleted = deliverableStats?.totalCompleted ?? 0;
 		const onTimeCompleted = deliverableStats?.onTimeCompleted ?? 0;
-		const onTimeDeliveryRate = totalCompleted > 0
-			? (onTimeCompleted / totalCompleted) * 100
-			: 100;
+		const onTimeDeliveryRate =
+			totalCompleted > 0 ? (onTimeCompleted / totalCompleted) * 100 : 100;
 
 		return {
 			data: {
@@ -242,7 +257,8 @@ export const getKpis = studioProtectedProcedure
 				conversionRate: Math.round(conversionRate * 100) / 100,
 
 				totalShoots,
-				averageShootsPerBooking: Math.round(averageShootsPerBooking * 100) / 100,
+				averageShootsPerBooking:
+					Math.round(averageShootsPerBooking * 100) / 100,
 				onTimeDeliveryRate: Math.round(onTimeDeliveryRate * 100) / 100,
 			},
 		};

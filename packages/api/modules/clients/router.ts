@@ -1,9 +1,9 @@
-import { listClients } from "./procedures/list-clients";
-import { getClient } from "./procedures/get-client";
 import { createClient } from "./procedures/create-client";
-import { updateClient } from "./procedures/update-client";
 import { deleteClient } from "./procedures/delete-client";
+import { getClient } from "./procedures/get-client";
 import { getClientStats } from "./procedures/get-client-stats";
+import { listClients } from "./procedures/list-clients";
+import { updateClient } from "./procedures/update-client";
 
 export const clientsRouter = {
 	list: listClients,

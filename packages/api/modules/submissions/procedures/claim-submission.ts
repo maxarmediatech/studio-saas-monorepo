@@ -1,10 +1,5 @@
 import { ORPCError } from "@orpc/server";
-import {
-	and,
-	eq,
-	assignmentSubmissions,
-	db,
-} from "@repo/database";
+import { and, assignmentSubmissions, db, eq } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
@@ -31,7 +26,10 @@ export const claimSubmission = studioProtectedProcedure
 		const submission = await db.query.assignmentSubmissions.findFirst({
 			where: and(
 				eq(assignmentSubmissions.id, id),
-				eq(assignmentSubmissions.organizationId, context.organizationId),
+				eq(
+					assignmentSubmissions.organizationId,
+					context.organizationId,
+				),
 			),
 		});
 
@@ -52,14 +50,20 @@ export const claimSubmission = studioProtectedProcedure
 			});
 		}
 
-		if (submission.status === "in_review" && submission.reviewedBy === context.user.id) {
+		if (
+			submission.status === "in_review" &&
+			submission.reviewedBy === context.user.id
+		) {
 			return {
 				data: { id },
 				message: "Submission is already claimed",
 			};
 		}
 
-		if (submission.status !== "submitted" && submission.status !== "in_review") {
+		if (
+			submission.status !== "submitted" &&
+			submission.status !== "in_review"
+		) {
 			throw new ORPCError("BAD_REQUEST", {
 				message: "Only submitted work can be claimed for review",
 			});

@@ -26,7 +26,8 @@ export default async function ConfigurationsPage({ params }: Props) {
 	const configItems = [
 		{
 			title: "Booking Types",
-			description: "Manage the types of bookings available in your studio",
+			description:
+				"Manage the types of bookings available in your studio",
 			href: `/app/${organizationSlug}/configurations/booking-types`,
 		},
 		{

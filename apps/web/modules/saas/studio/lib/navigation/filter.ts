@@ -1,9 +1,9 @@
 import { roleHasPermission } from "@repo/api/modules/studio/lib/roles";
 import type {
 	NavItemConfig,
+	NavigationConfig,
 	NavModuleConfig,
 	NavPermissionCheck,
-	NavigationConfig,
 } from "./types";
 
 /**
@@ -16,14 +16,18 @@ function hasPermission(
 	permission: NavPermissionCheck | undefined,
 	userRole: string,
 ): boolean {
-	if (!permission) return true;
+	if (!permission) {
+		return true;
+	}
 
 	// Check "any" permissions (OR logic)
 	if (permission.any && permission.any.length > 0) {
 		const hasAny = permission.any.some(({ resource, action }) =>
 			roleHasPermission(userRole, resource, action),
 		);
-		if (hasAny) return true;
+		if (hasAny) {
+			return true;
+		}
 	}
 
 	// Check "all" permissions (AND logic)
@@ -31,7 +35,9 @@ function hasPermission(
 		const hasAll = permission.all.every(({ resource, action }) =>
 			roleHasPermission(userRole, resource, action),
 		);
-		if (hasAll) return true;
+		if (hasAll) {
+			return true;
+		}
 	}
 
 	// If neither any nor all passed, deny
@@ -54,7 +60,9 @@ function filterNavItems(
 
 	for (const item of items) {
 		const allowed = hasPermission(item.permission, userRole);
-		if (!allowed) continue;
+		if (!allowed) {
+			continue;
+		}
 
 		// Recursively filter children if present
 		const children = item.children
@@ -74,10 +82,14 @@ function filterNavItems(
 function firstItemPath(navModule: NavModuleConfig): string | undefined {
 	for (const section of navModule.sections) {
 		for (const item of section.items) {
-			if (item.path) return item.path;
+			if (item.path) {
+				return item.path;
+			}
 			if (item.children && item.children.length > 0) {
 				const childPath = item.children[0]?.path;
-				if (childPath) return childPath;
+				if (childPath) {
+					return childPath;
+				}
 			}
 		}
 	}
@@ -101,13 +113,17 @@ export function filterNavigationConfig(
 
 		for (const section of navModule.sections) {
 			const items = filterNavItems(section.items, userRole);
-			if (items.length === 0) continue;
+			if (items.length === 0) {
+				continue;
+			}
 
 			sections.push({ ...section, items });
 		}
 
 		// Skip empty modules
-		if (sections.length === 0) continue;
+		if (sections.length === 0) {
+			continue;
+		}
 
 		const filteredModule: NavModuleConfig = {
 			...navModule,

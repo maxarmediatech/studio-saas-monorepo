@@ -1,24 +1,25 @@
 import {
 	and,
+	asc,
 	count,
+	db,
+	desc,
 	eq,
+	expenseAssignments,
+	expenses,
 	gte,
 	ilike,
+	inArray,
 	isNull,
 	sql,
-	desc,
-	asc,
-	expenses,
-	expenseAssignments,
-	db,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import { createPaginationResponse } from "../../studio/schemas/common";
 import {
+	type ExpenseListItem,
 	listExpensesInputSchema,
 	listExpensesOutputSchema,
-	type ExpenseListItem,
 } from "../../studio/schemas/expense";
 
 export const listExpenses = studioProtectedProcedure
@@ -54,22 +55,39 @@ export const listExpenses = studioProtectedProcedure
 		const offset = (page - 1) * limit;
 
 		// Build conditions
-		const conditions = [eq(expenses.organizationId, context.organizationId)];
+		const conditions = [
+			eq(expenses.organizationId, context.organizationId),
+		];
 
 		if (!includeDeleted) {
 			conditions.push(isNull(expenses.deletedAt));
 		}
 
-		if (category) {
-			conditions.push(eq(expenses.category, category));
+		const categories = Array.isArray(category)
+			? category
+			: category
+				? [category]
+				: null;
+		if (categories && categories.length > 0) {
+			conditions.push(inArray(expenses.category, categories));
 		}
 
-		if (billTo) {
-			conditions.push(eq(expenses.billTo, billTo));
+		const billToValues = Array.isArray(billTo)
+			? billTo
+			: billTo
+				? [billTo]
+				: null;
+		if (billToValues && billToValues.length > 0) {
+			conditions.push(inArray(expenses.billTo, billToValues));
 		}
 
-		if (paymentMethod) {
-			conditions.push(eq(expenses.paymentMethod, paymentMethod));
+		const paymentMethods = Array.isArray(paymentMethod)
+			? paymentMethod
+			: paymentMethod
+				? [paymentMethod]
+				: null;
+		if (paymentMethods && paymentMethods.length > 0) {
+			conditions.push(inArray(expenses.paymentMethod, paymentMethods));
 		}
 
 		if (dateFrom) {
@@ -93,9 +111,15 @@ export const listExpenses = studioProtectedProcedure
 				.from(expenseAssignments)
 				.where(
 					and(
-						bookingId ? eq(expenseAssignments.bookingId, bookingId) : undefined,
-						shootId ? eq(expenseAssignments.shootId, shootId) : undefined,
-						crewId ? eq(expenseAssignments.crewId, crewId) : undefined,
+						bookingId
+							? eq(expenseAssignments.bookingId, bookingId)
+							: undefined,
+						shootId
+							? eq(expenseAssignments.shootId, shootId)
+							: undefined,
+						crewId
+							? eq(expenseAssignments.crewId, crewId)
+							: undefined,
 					),
 				);
 
@@ -119,7 +143,9 @@ export const listExpenses = studioProtectedProcedure
 			vendor: expenses.vendor,
 			createdAt: expenses.createdAt,
 		};
-		const sortColumn = sortColumnMap[sortBy as keyof typeof sortColumnMap] ?? expenses.expenseDate;
+		const sortColumn =
+			sortColumnMap[sortBy as keyof typeof sortColumnMap] ??
+			expenses.expenseDate;
 
 		const orderFn = sortDirection === "asc" ? asc : desc;
 

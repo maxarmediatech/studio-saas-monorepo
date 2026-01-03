@@ -100,7 +100,9 @@ export default async function ProtectedAppLayout({
 	return (
 		<HydrationBoundary state={dehydrate(queryClient)}>
 			<ActiveOrganizationProvider>
-				<ConfirmationAlertProvider>{children}</ConfirmationAlertProvider>
+				<ConfirmationAlertProvider>
+					{children}
+				</ConfirmationAlertProvider>
 			</ActiveOrganizationProvider>
 		</HydrationBoundary>
 	);

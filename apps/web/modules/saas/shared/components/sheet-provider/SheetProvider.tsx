@@ -1,19 +1,19 @@
 "use client";
 
 import {
-	createContext,
-	useCallback,
-	useContext,
-	useState,
-	type ReactNode,
-} from "react";
-import {
 	Sheet,
 	SheetContent,
 	SheetDescription,
 	SheetHeader,
 	SheetTitle,
 } from "@repo/ui/components/sheet";
+import {
+	createContext,
+	type ReactNode,
+	useCallback,
+	useContext,
+	useState,
+} from "react";
 
 export type SheetSize = "sm" | "md" | "lg" | "xl" | "full";
 
@@ -90,7 +90,9 @@ export function SheetProvider({ children }: SheetProviderProps) {
 						<SheetHeader>
 							<SheetTitle>{config.title}</SheetTitle>
 							{config.description && (
-								<SheetDescription>{config.description}</SheetDescription>
+								<SheetDescription>
+									{config.description}
+								</SheetDescription>
 							)}
 						</SheetHeader>
 						<div className="flex-1 overflow-y-auto px-4 pb-4">

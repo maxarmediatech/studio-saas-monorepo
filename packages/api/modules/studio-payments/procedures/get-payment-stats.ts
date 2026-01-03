@@ -1,14 +1,14 @@
 import {
 	and,
+	bookings,
 	count,
+	db,
 	eq,
 	gte,
 	isNull,
-	sql,
-	receivedAmounts,
 	paymentSchedules,
-	bookings,
-	db,
+	receivedAmounts,
+	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
@@ -67,7 +67,9 @@ export const getPaymentStats = studioProtectedProcedure
 
 		const { bookingId } = input;
 
-		const timeZone = normalizeTimeZone(context.membership.organization.timezone);
+		const timeZone = normalizeTimeZone(
+			context.membership.organization.timezone,
+		);
 		const nowParts = getDateParts(new Date(), timeZone);
 		const today = `${nowParts.year}-${nowParts.month}-${nowParts.day}`;
 		const startOfMonth = `${nowParts.year}-${nowParts.month}-01`;
@@ -90,13 +92,17 @@ export const getPaymentStats = studioProtectedProcedure
 
 		// Total received
 		const [totalReceivedResult] = await db
-			.select({ sum: sql<string>`COALESCE(SUM(${receivedAmounts.amount}), 0)` })
+			.select({
+				sum: sql<string>`COALESCE(SUM(${receivedAmounts.amount}), 0)`,
+			})
 			.from(receivedAmounts)
 			.where(and(...receivedConditions));
 
 		// Total scheduled
 		const [totalScheduledResult] = await db
-			.select({ sum: sql<string>`COALESCE(SUM(${paymentSchedules.amount}), 0)` })
+			.select({
+				sum: sql<string>`COALESCE(SUM(${paymentSchedules.amount}), 0)`,
+			})
 			.from(paymentSchedules)
 			.where(and(...scheduleConditions));
 
@@ -129,7 +135,9 @@ export const getPaymentStats = studioProtectedProcedure
 
 		// Received this month
 		const [receivedThisMonthResult] = await db
-			.select({ sum: sql<string>`COALESCE(SUM(${receivedAmounts.amount}), 0)` })
+			.select({
+				sum: sql<string>`COALESCE(SUM(${receivedAmounts.amount}), 0)`,
+			})
 			.from(receivedAmounts)
 			.where(
 				and(

@@ -1,11 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
-import { useRouter } from "next/navigation";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { ColumnDef } from "@tanstack/react-table";
-import { Input } from "@repo/ui/components/input";
-import { Badge } from "@repo/ui/components/badge";
+import type { ReceivedAmountListItem } from "@repo/api/modules/studio/schemas/payment";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -16,28 +11,33 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@repo/ui/components/alert-dialog";
-import {
-	PencilIcon,
-	TrashIcon,
-	SearchIcon,
-	Loader2Icon,
-	BanknoteIcon,
-	CalendarIcon,
-	HashIcon,
-} from "lucide-react";
-import { toast } from "sonner";
-import {
-	studioPaymentsApi,
-	studioPaymentsMutations,
-	studioQueryKeys,
-} from "@saas/studio/lib/api";
+import { Badge } from "@repo/ui/components/badge";
+import { Input } from "@repo/ui/components/input";
 import {
 	DataTable,
 	DataTableRowActions,
 	type RowAction,
 } from "@saas/shared/components/data-table";
-import type { ReceivedAmountListItem } from "@repo/api/modules/studio/schemas/payment";
 import { usePaymentParams } from "@saas/studio/hooks/params/use-payment-params";
+import {
+	studioPaymentsApi,
+	studioPaymentsMutations,
+	studioQueryKeys,
+} from "@saas/studio/lib/api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { ColumnDef } from "@tanstack/react-table";
+import {
+	BanknoteIcon,
+	CalendarIcon,
+	HashIcon,
+	Loader2Icon,
+	PencilIcon,
+	SearchIcon,
+	TrashIcon,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useMemo, useState, useTransition } from "react";
+import { toast } from "sonner";
 import { OpenPaymentCreateSheet } from "./OpenPaymentSheet";
 
 const formatMoney = (value: string) => {
@@ -115,7 +115,7 @@ export function PaymentsPageClient({
 
 	// Fetch payments with TanStack Query
 	const { data, isLoading, isFetching } = useQuery(
-		studioPaymentsApi.listReceivedOptions(queryInput)
+		studioPaymentsApi.listReceivedOptions(queryInput),
 	);
 
 	const payments = data?.data ?? [];
@@ -133,7 +133,9 @@ export function PaymentsPageClient({
 			toast.success("Payment deleted successfully");
 			setDeleteDialogOpen(false);
 			setPaymentToDelete(null);
-			queryClient.invalidateQueries({ queryKey: studioQueryKeys.payments.all });
+			queryClient.invalidateQueries({
+				queryKey: studioQueryKeys.payments.all,
+			});
 		},
 		onError: (error) => {
 			toast.error(error.message || "Failed to delete payment");
@@ -203,7 +205,9 @@ export function PaymentsPageClient({
 							<BanknoteIcon className="h-4 w-4 text-muted-foreground" />
 						</div>
 						<div>
-							<p className="font-medium">{row.original.bookingName}</p>
+							<p className="font-medium">
+								{row.original.bookingName}
+							</p>
 							<p className="text-xs text-muted-foreground">
 								{row.original.bookingReferenceNumber}
 							</p>
@@ -224,7 +228,11 @@ export function PaymentsPageClient({
 				accessorKey: "paymentMethod",
 				header: "Method",
 				cell: ({ row }) => (
-					<Badge variant={PAYMENT_METHOD_VARIANTS[row.original.paymentMethod]}>
+					<Badge
+						variant={
+							PAYMENT_METHOD_VARIANTS[row.original.paymentMethod]
+						}
+					>
 						{PAYMENT_METHOD_LABELS[row.original.paymentMethod]}
 					</Badge>
 				),
@@ -257,11 +265,14 @@ export function PaymentsPageClient({
 			{
 				id: "actions",
 				cell: ({ row }) => (
-					<DataTableRowActions row={row.original} actions={rowActions} />
+					<DataTableRowActions
+						row={row.original}
+						actions={rowActions}
+					/>
 				),
 			},
 		],
-		[]
+		[],
 	);
 
 	const showLoading = isFetching || isPending;
@@ -297,7 +308,9 @@ export function PaymentsPageClient({
 				emptyState={
 					<div className="flex flex-col items-center gap-2">
 						<BanknoteIcon className="h-12 w-12 text-muted-foreground/50" />
-						<p className="text-muted-foreground">No payments recorded</p>
+						<p className="text-muted-foreground">
+							No payments recorded
+						</p>
 						<OpenPaymentCreateSheet
 							variant="outline"
 							size="sm"
@@ -308,14 +321,19 @@ export function PaymentsPageClient({
 			/>
 
 			{/* Delete confirmation dialog */}
-			<AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+			<AlertDialog
+				open={deleteDialogOpen}
+				onOpenChange={setDeleteDialogOpen}
+			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Delete payment?</AlertDialogTitle>
 						<AlertDialogDescription>
 							This will permanently delete the payment of{" "}
-							{paymentToDelete && formatMoney(paymentToDelete.amount)} for "
-							{paymentToDelete?.bookingName}". This action cannot be undone.
+							{paymentToDelete &&
+								formatMoney(paymentToDelete.amount)}{" "}
+							for "{paymentToDelete?.bookingName}". This action
+							cannot be undone.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
@@ -323,7 +341,9 @@ export function PaymentsPageClient({
 						<AlertDialogAction
 							onClick={() => {
 								if (paymentToDelete) {
-									deleteMutation.mutate({ id: paymentToDelete.id });
+									deleteMutation.mutate({
+										id: paymentToDelete.id,
+									});
 								}
 							}}
 							disabled={deleteMutation.isPending}

@@ -1,15 +1,15 @@
 import { ORPCError } from "@orpc/server";
 import {
 	and,
-	eq,
-	isNull,
-	sql,
-	expenses,
-	expenseAssignments,
 	bookings,
-	shoots,
 	crews,
 	db,
+	eq,
+	expenseAssignments,
+	expenses,
+	isNull,
+	shoots,
+	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
@@ -49,7 +49,7 @@ export const createExpense = studioProtectedProcedure
 			assignments,
 		} = input;
 
-		const amountValue = parseFloat(amount);
+		const amountValue = Number.parseFloat(amount);
 		const allocationMode =
 			assignments && assignments.length > 0
 				? validateExpenseAllocations(assignments, amountValue)
@@ -147,7 +147,9 @@ export const createExpense = studioProtectedProcedure
 				);
 
 				// Update booking total expenses if assigned to bookings
-				const bookingAssignments = assignments.filter((a) => a.bookingId);
+				const bookingAssignments = assignments.filter(
+					(a) => a.bookingId,
+				);
 				for (const assignment of bookingAssignments) {
 					const allocatedAmount = getAllocatedExpenseAmount(
 						amountValue,
