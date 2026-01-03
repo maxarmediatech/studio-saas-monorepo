@@ -1,21 +1,11 @@
 import { getActiveOrganization } from "@saas/auth/lib/server";
 import { PageContent } from "@saas/studio";
-import { PaymentsPageClient } from "@saas/studio/components/payments/PaymentsPageClient";
-import {
-	PaymentCreateSheet,
-	PaymentEditSheet,
-} from "@saas/studio/components/payments/sheets";
-import { studioPaymentsApi } from "@saas/studio/lib/api";
-import { getServerQueryClient } from "@shared/lib/server";
-import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
+import { PaymentsTable } from "@saas/studio/components/payments";
 import { notFound } from "next/navigation";
 
 type Props = {
 	params: Promise<{ organizationSlug: string }>;
-	searchParams: Promise<{
-		page?: string;
-		search?: string;
-	}>;
+	searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
 export async function generateMetadata({ params }: Props) {
@@ -29,7 +19,6 @@ export async function generateMetadata({ params }: Props) {
 
 export default async function PaymentsPage({ params, searchParams }: Props) {
 	const { organizationSlug } = await params;
-	const filters = await searchParams;
 
 	const organization = await getActiveOrganization(organizationSlug);
 
@@ -37,35 +26,12 @@ export default async function PaymentsPage({ params, searchParams }: Props) {
 		return notFound();
 	}
 
-	const queryClient = getServerQueryClient();
-
-	// Prefetch payments data on server
-	const input = {
-		page: filters.page ? Number.parseInt(filters.page, 10) : 1,
-		limit: 10,
-		search: filters.search,
-		sortBy: "receivedDate" as const,
-		sortDirection: "desc" as const,
-		includeDeleted: false,
-	};
-
-	await queryClient.prefetchQuery(
-		studioPaymentsApi.listReceivedOptions(input),
-	);
-
 	return (
-		<HydrationBoundary state={dehydrate(queryClient)}>
-			<PageContent title="Payments">
-				<PaymentsPageClient
-					organizationSlug={organizationSlug}
-					initialFilters={{
-						page: input.page,
-						search: input.search,
-					}}
-				/>
-				<PaymentCreateSheet />
-				<PaymentEditSheet />
-			</PageContent>
-		</HydrationBoundary>
+		<PageContent title="Payments">
+			<PaymentsTable
+				organizationSlug={organizationSlug}
+				searchParams={searchParams}
+			/>
+		</PageContent>
 	);
 }

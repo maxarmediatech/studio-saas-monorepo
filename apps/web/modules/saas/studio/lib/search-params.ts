@@ -112,3 +112,30 @@ export const taskSearchParamsCache = createSearchParamsCache({
  * Type for parsed task search params
  */
 export type TaskSearchParams = ReturnType<typeof taskSearchParamsCache.parse>;
+
+/**
+ * Server-side search params cache for payments table.
+ * Use in server components to parse URL params before prefetching.
+ */
+export const paymentSearchParamsCache = createSearchParamsCache({
+	// Pagination
+	page: parseAsInteger.withDefault(1),
+	limit: parseAsInteger.withDefault(10),
+
+	// Filters
+	search: parseAsString,
+	paymentMethod: parseAsArrayOf(parseAsString, ","),
+
+	// Sorting
+	sortBy: parseAsString.withDefault("receivedDate"),
+	sortDirection: parseAsStringLiteral(["asc", "desc"] as const).withDefault(
+		"desc",
+	),
+});
+
+/**
+ * Type for parsed payment search params
+ */
+export type PaymentSearchParams = ReturnType<
+	typeof paymentSearchParamsCache.parse
+>;
