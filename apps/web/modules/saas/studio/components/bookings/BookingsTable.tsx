@@ -19,11 +19,15 @@ export async function BookingsTable({
 	const params = await bookingSearchParamsCache.parse(searchParams);
 
 	// Build query input from parsed params
+	// Convert array filters to comma-separated strings (same as client)
 	const input = {
 		page: params.page,
 		limit: params.limit,
 		search: params.search ?? undefined,
 		statuses: params.statuses ?? undefined,
+		bookingType: params.bookingType?.join(",") ?? undefined,
+		packageType: params.packageType?.join(",") ?? undefined,
+		createdAt: params.createdAt?.join(",") ?? undefined,
 		sortBy: params.sortBy,
 		sortDirection: params.sortDirection,
 		includeDeleted: false,

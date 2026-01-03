@@ -1,26 +1,30 @@
 import { ORPCError } from "@orpc/server";
 import {
 	and,
+	bookingEvents,
+	bookingParticipants,
+	bookings,
+	clients,
 	eq,
+	inArray,
 	isNull,
 	sql,
-	bookings,
-	bookingParticipants,
-	bookingEvents,
-	clients,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
-import { withTransaction, type TransactionClient } from "../../studio/lib/transactions";
+import {
+	type TransactionClient,
+	withTransaction,
+} from "../../studio/lib/transactions";
 import {
 	createBookingInputSchema,
 	createBookingOutputSchema,
 } from "../../studio/schemas/booking";
 import {
-	validateCrewIds,
-	createShootsBatch,
 	createDeliverablesBatch,
 	createPaymentsBatch,
+	createShootsBatch,
+	validateCrewIds,
 } from "../helpers";
 
 /**
@@ -43,7 +47,7 @@ async function generateReferenceNumber(
 		.where(
 			and(
 				eq(bookings.organizationId, organizationId),
-				sql`${bookings.referenceNumber} LIKE ${prefix + "%"}`,
+				sql`${bookings.referenceNumber} LIKE ${`${prefix}%`}`,
 			),
 		)
 		.orderBy(sql`${bookings.referenceNumber} DESC`)
@@ -53,10 +57,17 @@ async function generateReferenceNumber(
 	if (lastBooking?.referenceNumber) {
 		// Extract the last 4 digits (sequence number)
 		const lastNumberStr = lastBooking.referenceNumber.slice(-4);
-		const lastNumber = parseInt(lastNumberStr, 10);
-		if (!isNaN(lastNumber)) {
+		const lastNumber = Number.parseInt(lastNumberStr, 10);
+		if (!Number.isNaN(lastNumber)) {
 			nextNumber = lastNumber + 1;
 		}
+	}
+
+	if (nextNumber > 9999) {
+		throw new ORPCError("CONFLICT", {
+			message:
+				"Monthly booking reference limit reached (max 9,999 per organization)",
+		});
 	}
 
 	return `${prefix}${String(nextNumber).padStart(4, "0")}`;
@@ -133,16 +144,15 @@ export const createBooking = studioProtectedProcedure
 				where: and(
 					eq(clients.organizationId, context.organizationId),
 					isNull(clients.deletedAt),
-					sql`${clients.id} IN (${sql.join(
-						clientIds.map((id) => sql`${id}`),
-						sql`, `,
-					)})`,
+					inArray(clients.id, clientIds),
 				),
 				columns: { id: true },
 			});
 
 			const existingClientIds = new Set(existingClients.map((c) => c.id));
-			const missingClientIds = clientIds.filter((id) => !existingClientIds.has(id));
+			const missingClientIds = clientIds.filter(
+				(id) => !existingClientIds.has(id),
+			);
 
 			if (missingClientIds.length > 0) {
 				throw new ORPCError("BAD_REQUEST", {
@@ -157,7 +167,10 @@ export const createBooking = studioProtectedProcedure
 			}
 
 			// 3. Generate reference number
-			const referenceNumber = await generateReferenceNumber(tx, context.organizationId);
+			const referenceNumber = await generateReferenceNumber(
+				tx,
+				context.organizationId,
+			);
 
 			// 4. Create booking
 			const [created] = await tx

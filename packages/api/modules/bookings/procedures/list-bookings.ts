@@ -85,25 +85,45 @@ export const listBookings = studioProtectedProcedure
 		}
 
 		// Date range filter: comma-separated "from,to" dates
+		// Parse YYYY-MM-DD explicitly and apply UTC day boundaries for deterministic filtering.
 		if (createdAt) {
-			const parts = createdAt.split(",").map((d) => {
-				const trimmed = d.trim();
+			const parseDate = (dateStr: string): Date | null => {
+				const trimmed = dateStr.trim();
 				if (!trimmed) {
 					return null;
 				}
+
+				// Parse YYYY-MM-DD format explicitly to avoid timezone issues
+				const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+				if (match) {
+					const year = Number.parseInt(match[1] ?? "", 10);
+					const month = Number.parseInt(match[2] ?? "", 10);
+					const day = Number.parseInt(match[3] ?? "", 10);
+					if (
+						Number.isNaN(year) ||
+						Number.isNaN(month) ||
+						Number.isNaN(day)
+					) {
+						return null;
+					}
+					return new Date(Date.UTC(year, month - 1, day));
+				}
+
+				// Fallback for other formats
 				const date = new Date(trimmed);
 				return Number.isNaN(date.getTime()) ? null : date;
-			});
+			};
 
-			const fromDate = parts[0];
-			const toDate = parts[1];
+			const parts = createdAt.split(",");
+			const fromDate = parseDate(parts[0] ?? "");
+			const toDate = parseDate(parts[1] ?? "");
 
 			if (fromDate) {
-				fromDate.setHours(0, 0, 0, 0);
+				fromDate.setUTCHours(0, 0, 0, 0);
 				conditions.push(gte(bookings.createdAt, fromDate));
 			}
 			if (toDate) {
-				toDate.setHours(23, 59, 59, 999);
+				toDate.setUTCHours(23, 59, 59, 999);
 				conditions.push(lte(bookings.createdAt, toDate));
 			}
 		}
@@ -169,12 +189,7 @@ export const listBookings = studioProtectedProcedure
 					clients,
 					eq(bookingParticipants.clientId, clients.id),
 				)
-				.where(
-					sql`${bookingParticipants.bookingId} IN (${sql.join(
-						bookingIds.map((id) => sql`${id}`),
-						sql`, `,
-					)})`,
-				);
+				.where(inArray(bookingParticipants.bookingId, bookingIds));
 
 			// Group participants by booking
 			for (const row of participantResults) {
@@ -199,10 +214,7 @@ export const listBookings = studioProtectedProcedure
 				.from(shoots)
 				.where(
 					and(
-						sql`${shoots.bookingId} IN (${sql.join(
-							bookingIds.map((id) => sql`${id}`),
-							sql`, `,
-						)})`,
+						inArray(shoots.bookingId, bookingIds),
 						isNull(shoots.deletedAt),
 					),
 				)
