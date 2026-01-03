@@ -13,6 +13,7 @@ import {
 	configurationsApi,
 	configurationsMutations,
 } from "@saas/studio/lib/api";
+import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -66,8 +67,9 @@ export function ConfigurationEditSheet() {
 		...configurationsMutations.update(),
 		onSuccess: () => {
 			toast.success(`${typeLabel} updated successfully`);
+			// Use ORPC's key generator to match the booking form's query keys
 			queryClient.invalidateQueries({
-				queryKey: ["studio", "configurations"],
+				queryKey: orpc.configurations.key(),
 			});
 			close();
 		},

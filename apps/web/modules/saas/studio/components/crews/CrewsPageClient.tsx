@@ -26,11 +26,8 @@ import {
 	type RowAction,
 } from "@saas/shared/components/data-table";
 import { useCrewParams } from "@saas/studio/hooks/params/use-crew-params";
-import {
-	crewsApi,
-	crewsMutations,
-	studioQueryKeys,
-} from "@saas/studio/lib/api";
+import { crewsApi, crewsMutations } from "@saas/studio/lib/api";
+import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
@@ -124,7 +121,7 @@ export function CrewsPageClient({
 			setDeleteDialogOpen(false);
 			setCrewToDelete(null);
 			queryClient.invalidateQueries({
-				queryKey: studioQueryKeys.crews.all,
+				queryKey: orpc.crews.key(),
 			});
 		},
 		onError: (error) => {
