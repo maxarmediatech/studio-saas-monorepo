@@ -139,3 +139,32 @@ export const paymentSearchParamsCache = createSearchParamsCache({
 export type PaymentSearchParams = ReturnType<
 	typeof paymentSearchParamsCache.parse
 >;
+
+/**
+ * Server-side search params cache for expenses table.
+ * Use in server components to parse URL params before prefetching.
+ */
+export const expenseSearchParamsCache = createSearchParamsCache({
+	// Pagination
+	page: parseAsInteger.withDefault(1),
+	limit: parseAsInteger.withDefault(10),
+
+	// Filters
+	search: parseAsString,
+	category: parseAsArrayOf(parseAsString, ","),
+	billTo: parseAsArrayOf(parseAsString, ","),
+	paymentMethod: parseAsArrayOf(parseAsString, ","),
+
+	// Sorting
+	sortBy: parseAsString.withDefault("expenseDate"),
+	sortDirection: parseAsStringLiteral(["asc", "desc"] as const).withDefault(
+		"desc",
+	),
+});
+
+/**
+ * Type for parsed expense search params
+ */
+export type ExpenseSearchParams = ReturnType<
+	typeof expenseSearchParamsCache.parse
+>;
