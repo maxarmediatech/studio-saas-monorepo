@@ -4,8 +4,8 @@ import { Skeleton } from "@repo/ui/components/skeleton";
 import {
 	getPasskeyClient,
 	hasPasskeySupport,
-	useUserPasskeysQuery,
 	userPasskeyQueryKey,
+	useUserPasskeysQuery,
 } from "@saas/auth/lib/api";
 import { SettingsItem } from "@saas/shared/components/SettingsItem";
 import { useQueryClient } from "@tanstack/react-query";
@@ -25,7 +25,9 @@ export function PasskeysBlock() {
 		return (
 			<SettingsItem
 				title={t("settings.account.security.passkeys.title")}
-				description={t("settings.account.security.passkeys.description")}
+				description={t(
+					"settings.account.security.passkeys.description",
+				)}
 			>
 				<p className="text-sm text-foreground/60">
 					Passkeys are not available in this build.

@@ -1,13 +1,13 @@
 import { ORPCError } from "@orpc/server";
 import {
 	and,
-	eq,
-	isNull,
-	sql,
-	receivedAmounts,
-	paymentSchedules,
 	bookings,
 	db,
+	eq,
+	isNull,
+	paymentSchedules,
+	receivedAmounts,
+	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../../orpc/procedures";
 import { requirePermission } from "../../../studio/lib/permissions";
@@ -46,7 +46,7 @@ export const deleteReceived = studioProtectedProcedure
 			});
 		}
 
-		const amount = parseFloat(received.amount);
+		const amount = Number.parseFloat(received.amount);
 
 		// Use transaction to soft delete and update booking totals
 		return await db.transaction(async (tx) => {
@@ -75,7 +75,10 @@ export const deleteReceived = studioProtectedProcedure
 				const schedule = await tx.query.paymentSchedules.findFirst({
 					where: and(
 						eq(paymentSchedules.id, received.paymentScheduleId),
-						eq(paymentSchedules.organizationId, context.organizationId),
+						eq(
+							paymentSchedules.organizationId,
+							context.organizationId,
+						),
 						isNull(paymentSchedules.deletedAt),
 					),
 				});
@@ -93,13 +96,16 @@ export const deleteReceived = studioProtectedProcedure
 					.from(receivedAmounts)
 					.where(
 						and(
-							eq(receivedAmounts.paymentScheduleId, received.paymentScheduleId),
+							eq(
+								receivedAmounts.paymentScheduleId,
+								received.paymentScheduleId,
+							),
 							isNull(receivedAmounts.deletedAt),
 						),
 					);
 
-				const totalPaid = parseFloat(paidResult?.sum ?? "0");
-				const scheduleAmount = parseFloat(schedule.amount);
+				const totalPaid = Number.parseFloat(paidResult?.sum ?? "0");
+				const scheduleAmount = Number.parseFloat(schedule.amount);
 
 				if (totalPaid > scheduleAmount) {
 					throw new ORPCError("CONFLICT", {
@@ -114,7 +120,10 @@ export const deleteReceived = studioProtectedProcedure
 						: totalPaid > 0
 							? "partial"
 							: "pending";
-				const paidAt = status === "completed" ? schedule.paidAt ?? new Date() : null;
+				const paidAt =
+					status === "completed"
+						? (schedule.paidAt ?? new Date())
+						: null;
 
 				await tx
 					.update(paymentSchedules)

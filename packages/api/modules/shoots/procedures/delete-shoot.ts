@@ -1,5 +1,5 @@
 import { ORPCError } from "@orpc/server";
-import { and, eq, shoots, db } from "@repo/database";
+import { and, db, eq, shoots } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import {

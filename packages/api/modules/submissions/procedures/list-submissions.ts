@@ -1,19 +1,19 @@
 import {
 	and,
-	eq,
-	sql,
-	count,
-	desc,
 	asc,
+	assignmentSubmissions,
+	bookings,
+	count,
+	crews,
+	db,
+	deliverables,
+	desc,
+	eq,
 	ilike,
 	or,
-	assignmentSubmissions,
+	sql,
 	tasks,
-	deliverables,
-	bookings,
-	crews,
 	users,
-	db,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
@@ -46,7 +46,7 @@ export const listSubmissions = studioProtectedProcedure
 			reviewedBy,
 			taskId,
 			deliverableId,
-		bookingId,
+			bookingId,
 			entityType,
 			pendingReviewOnly,
 			search,
@@ -55,7 +55,9 @@ export const listSubmissions = studioProtectedProcedure
 		const offset = (page - 1) * limit;
 
 		// Build where conditions
-		const conditions = [eq(assignmentSubmissions.organizationId, context.organizationId)];
+		const conditions = [
+			eq(assignmentSubmissions.organizationId, context.organizationId),
+		];
 
 		if (status) {
 			conditions.push(eq(assignmentSubmissions.status, status));
@@ -80,13 +82,17 @@ export const listSubmissions = studioProtectedProcedure
 		}
 
 		if (deliverableId) {
-			conditions.push(eq(assignmentSubmissions.deliverableId, deliverableId));
+			conditions.push(
+				eq(assignmentSubmissions.deliverableId, deliverableId),
+			);
 		}
 
 		if (entityType === "task") {
 			conditions.push(sql`${assignmentSubmissions.taskId} IS NOT NULL`);
 		} else if (entityType === "deliverable") {
-			conditions.push(sql`${assignmentSubmissions.deliverableId} IS NOT NULL`);
+			conditions.push(
+				sql`${assignmentSubmissions.deliverableId} IS NOT NULL`,
+			);
 		}
 
 		if (bookingId) {
@@ -114,8 +120,11 @@ export const listSubmissions = studioProtectedProcedure
 			status: assignmentSubmissions.status,
 			createdAt: assignmentSubmissions.createdAt,
 		};
-		const sortColumn = sortColumnMap[sortBy as keyof typeof sortColumnMap] ?? assignmentSubmissions.submittedAt;
-		const orderBy = sortDirection === "asc" ? asc(sortColumn) : desc(sortColumn);
+		const sortColumn =
+			sortColumnMap[sortBy as keyof typeof sortColumnMap] ??
+			assignmentSubmissions.submittedAt;
+		const orderBy =
+			sortDirection === "asc" ? asc(sortColumn) : desc(sortColumn);
 
 		// Get submissions
 		const submissionsList = await db
@@ -144,10 +153,16 @@ export const listSubmissions = studioProtectedProcedure
 			})
 			.from(assignmentSubmissions)
 			.leftJoin(tasks, eq(assignmentSubmissions.taskId, tasks.id))
-			.leftJoin(deliverables, eq(assignmentSubmissions.deliverableId, deliverables.id))
+			.leftJoin(
+				deliverables,
+				eq(assignmentSubmissions.deliverableId, deliverables.id),
+			)
 			.leftJoin(
 				bookings,
-				or(eq(tasks.bookingId, bookings.id), eq(deliverables.bookingId, bookings.id)),
+				or(
+					eq(tasks.bookingId, bookings.id),
+					eq(deliverables.bookingId, bookings.id),
+				),
 			)
 			.leftJoin(crews, eq(assignmentSubmissions.submittedBy, crews.id))
 			.leftJoin(users, eq(assignmentSubmissions.reviewedBy, users.id))
@@ -161,10 +176,16 @@ export const listSubmissions = studioProtectedProcedure
 			.select({ count: count() })
 			.from(assignmentSubmissions)
 			.leftJoin(tasks, eq(assignmentSubmissions.taskId, tasks.id))
-			.leftJoin(deliverables, eq(assignmentSubmissions.deliverableId, deliverables.id))
+			.leftJoin(
+				deliverables,
+				eq(assignmentSubmissions.deliverableId, deliverables.id),
+			)
 			.leftJoin(
 				bookings,
-				or(eq(tasks.bookingId, bookings.id), eq(deliverables.bookingId, bookings.id)),
+				or(
+					eq(tasks.bookingId, bookings.id),
+					eq(deliverables.bookingId, bookings.id),
+				),
 			)
 			.leftJoin(crews, eq(assignmentSubmissions.submittedBy, crews.id))
 			.where(and(...conditions));
@@ -175,7 +196,8 @@ export const listSubmissions = studioProtectedProcedure
 			const entityType: "task" | "deliverable" = submission.taskId
 				? "task"
 				: "deliverable";
-			const entityId = submission.taskId ?? submission.deliverableId ?? "";
+			const entityId =
+				submission.taskId ?? submission.deliverableId ?? "";
 
 			return {
 				id: submission.id,
@@ -195,7 +217,13 @@ export const listSubmissions = studioProtectedProcedure
 				entityId,
 				entityName: submission.entityName ?? "Unknown",
 				entityWorkflowStatus: (submission.entityWorkflowStatus ??
-					"not_started") as "not_started" | "assigned" | "submitted" | "in_review" | "revision_requested" | "approved",
+					"not_started") as
+					| "not_started"
+					| "assigned"
+					| "submitted"
+					| "in_review"
+					| "revision_requested"
+					| "approved",
 				bookingId: submission.bookingId ?? "",
 				bookingName: submission.bookingName ?? "Unknown",
 				bookingReferenceNumber: submission.bookingReferenceNumber ?? "",

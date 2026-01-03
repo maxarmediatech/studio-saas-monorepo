@@ -1,6 +1,6 @@
 import { getActiveOrganization } from "@saas/auth/lib/server";
-import { ClientsPageClient } from "@saas/studio/components/clients/ClientsPageClient";
 import { PageContent } from "@saas/studio";
+import { ClientsPageClient } from "@saas/studio/components/clients/ClientsPageClient";
 import { clientsApi } from "@saas/studio/lib/api";
 import { getServerQueryClient } from "@shared/lib/server";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";

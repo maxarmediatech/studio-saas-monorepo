@@ -1,4 +1,4 @@
-import { and, count, eq, gte, isNull, sql, tasks, db } from "@repo/database";
+import { and, count, db, eq, gte, isNull, sql, tasks } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
@@ -117,7 +117,9 @@ export const getTaskStats = studioProtectedProcedure
 		}
 
 		// Overdue tasks (dueDate < today and not completed)
-		const timeZone = normalizeTimeZone(context.membership.organization.timezone);
+		const timeZone = normalizeTimeZone(
+			context.membership.organization.timezone,
+		);
 		const nowParts = getDateParts(new Date(), timeZone);
 		const today = `${nowParts.year}-${nowParts.month}-${nowParts.day}`;
 
@@ -137,10 +139,7 @@ export const getTaskStats = studioProtectedProcedure
 			.select({ count: count().mapWith(Number) })
 			.from(tasks)
 			.where(
-				and(
-					...baseConditions,
-					eq(tasks.workflowStatus, "approved"),
-				),
+				and(...baseConditions, eq(tasks.workflowStatus, "approved")),
 			);
 
 		// Tasks created this month (org timezone)
@@ -152,7 +151,10 @@ export const getTaskStats = studioProtectedProcedure
 			.where(
 				and(
 					...baseConditions,
-					gte(sql`DATE(${tasks.createdAt} AT TIME ZONE ${timeZone})`, startOfMonth),
+					gte(
+						sql`DATE(${tasks.createdAt} AT TIME ZONE ${timeZone})`,
+						startOfMonth,
+					),
 				),
 			);
 

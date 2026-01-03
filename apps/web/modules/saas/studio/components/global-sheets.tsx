@@ -21,27 +21,26 @@ import { Suspense } from "react";
 
 // Clients
 import { ClientCreateSheet, ClientEditSheet } from "./clients/sheets";
-
+// Configurations
+import {
+	ConfigurationCreateSheet,
+	ConfigurationEditSheet,
+} from "./configurations/sheets";
 // Crews
 import { CrewCreateSheet, CrewEditSheet } from "./crews/sheets";
-
-// Configurations
-import { ConfigurationCreateSheet, ConfigurationEditSheet } from "./configurations/sheets";
-
-// Shoots
-import { ShootCreateSheet, ShootEditSheet } from "./shoots/sheets";
-
-// Payments
-import { PaymentCreateSheet, PaymentEditSheet } from "./payments/sheets";
-
 // Deliverables
-import { DeliverableCreateSheet, DeliverableEditSheet } from "./deliverables/sheets";
-
-// Tasks
-import { TaskCreateSheet, TaskEditSheet } from "./tasks/sheets";
-
+import {
+	DeliverableCreateSheet,
+	DeliverableEditSheet,
+} from "./deliverables/sheets";
 // Expenses
 import { ExpenseCreateSheet, ExpenseEditSheet } from "./expenses/sheets";
+// Payments
+import { PaymentCreateSheet, PaymentEditSheet } from "./payments/sheets";
+// Shoots
+import { ShootCreateSheet, ShootEditSheet } from "./shoots/sheets";
+// Tasks
+import { TaskCreateSheet, TaskEditSheet } from "./tasks/sheets";
 
 export function GlobalSheets() {
 	return (

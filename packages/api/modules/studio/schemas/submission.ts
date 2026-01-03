@@ -6,8 +6,8 @@
 
 import { z } from "zod";
 import {
-	createListResponseSchema,
 	createItemResponseSchema,
+	createListResponseSchema,
 	createSortSchema,
 	idSchema,
 	mutationResponseSchema,
@@ -113,7 +113,9 @@ export const submissionListItemSchema = submissionSchema.extend({
 
 export type SubmissionListItem = z.infer<typeof submissionListItemSchema>;
 
-export const listSubmissionsOutputSchema = createListResponseSchema(submissionListItemSchema);
+export const listSubmissionsOutputSchema = createListResponseSchema(
+	submissionListItemSchema,
+);
 
 export type ListSubmissionsOutput = z.infer<typeof listSubmissionsOutputSchema>;
 
@@ -170,7 +172,9 @@ export const submissionDetailSchema = submissionSchema.extend({
 
 export type SubmissionDetail = z.infer<typeof submissionDetailSchema>;
 
-export const getSubmissionOutputSchema = createItemResponseSchema(submissionDetailSchema);
+export const getSubmissionOutputSchema = createItemResponseSchema(
+	submissionDetailSchema,
+);
 
 export type GetSubmissionOutput = z.infer<typeof getSubmissionOutputSchema>;
 
@@ -202,4 +206,6 @@ export type ReviewSubmissionInput = z.infer<typeof reviewSubmissionInputSchema>;
 
 export const reviewSubmissionOutputSchema = mutationResponseSchema;
 
-export type ReviewSubmissionOutput = z.infer<typeof reviewSubmissionOutputSchema>;
+export type ReviewSubmissionOutput = z.infer<
+	typeof reviewSubmissionOutputSchema
+>;

@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
 	Sheet,
 	SheetContent,
@@ -8,15 +7,28 @@ import {
 	SheetTitle,
 } from "@repo/ui/components/sheet";
 import { cn } from "@repo/ui/lib/utils";
-import { toast } from "sonner";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useConfigurationParams } from "@saas/studio/hooks/params/use-configuration-params";
-import { ConfigurationForm, type ConfigurationFormValues } from "../ConfigurationForm";
-import { PackageTypeForm, type PackageTypeFormValues } from "../PackageTypeForm";
-import { BookingTypeForm, type BookingTypeFormValues } from "../BookingTypeForm";
-import { RelationTypeForm, type RelationTypeFormValues } from "../RelationTypeForm";
 import { configurationsMutations } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { toast } from "sonner";
+import {
+	BookingTypeForm,
+	type BookingTypeFormValues,
+} from "../BookingTypeForm";
+import {
+	ConfigurationForm,
+	type ConfigurationFormValues,
+} from "../ConfigurationForm";
+import {
+	PackageTypeForm,
+	type PackageTypeFormValues,
+} from "../PackageTypeForm";
+import {
+	RelationTypeForm,
+	type RelationTypeFormValues,
+} from "../RelationTypeForm";
 
 /**
  * Generates a URL-safe key from a label.
@@ -44,7 +56,10 @@ function generateKeyFromLabel(label: string): string {
 		// Try to cut at last underscore for cleaner break, but keep at least 10 chars
 		const truncated = key.slice(0, 100);
 		const lastUnderscore = truncated.lastIndexOf("_");
-		key = lastUnderscore > 10 ? truncated.slice(0, lastUnderscore) : truncated;
+		key =
+			lastUnderscore > 10
+				? truncated.slice(0, lastUnderscore)
+				: truncated;
 	}
 
 	return key;
@@ -64,31 +79,50 @@ const CONFIG_TYPE_LABELS: Record<string, string> = {
 };
 
 export function ConfigurationCreateSheet() {
-	const { createConfiguration, configurationType, close } = useConfigurationParams();
+	const { createConfiguration, configurationType, close } =
+		useConfigurationParams();
 	const isOpen = Boolean(createConfiguration) && Boolean(configurationType);
 	const queryClient = useQueryClient();
 	const [isScrolled, setIsScrolled] = useState(false);
 
-	const typeLabel = configurationType ? CONFIG_TYPE_LABELS[configurationType] ?? configurationType : "";
+	const typeLabel = configurationType
+		? (CONFIG_TYPE_LABELS[configurationType] ?? configurationType)
+		: "";
 
 	const createMutation = useMutation({
 		...configurationsMutations.create(),
 		onSuccess: () => {
 			toast.success(`${typeLabel} created successfully`);
 			// Invalidate all configuration queries (uses ORPC's key generator)
-			queryClient.invalidateQueries({ queryKey: orpc.configurations.key() });
+			queryClient.invalidateQueries({
+				queryKey: orpc.configurations.key(),
+			});
 			close();
 		},
 		onError: (error) => {
-			toast.error(error.message || `Failed to create ${typeLabel.toLowerCase()}`);
+			toast.error(
+				error.message || `Failed to create ${typeLabel.toLowerCase()}`,
+			);
 		},
 	});
 
 	const handleSubmit = async (data: ConfigurationFormValues) => {
-		if (!configurationType) return;
+		if (!configurationType) {
+			return;
+		}
 
 		await createMutation.mutateAsync({
-			type: configurationType as "booking_type" | "package_type" | "relation_type" | "crew_status" | "shoot_status" | "task_status" | "task_priority" | "deliverable_status" | "deliverable_priority" | "expense_category",
+			type: configurationType as
+				| "booking_type"
+				| "package_type"
+				| "relation_type"
+				| "crew_status"
+				| "shoot_status"
+				| "task_status"
+				| "task_priority"
+				| "deliverable_status"
+				| "deliverable_priority"
+				| "expense_category",
 			key: generateKeyFromLabel(data.label),
 			label: data.label,
 			description: data.description || undefined,
@@ -99,12 +133,18 @@ export function ConfigurationCreateSheet() {
 	};
 
 	const handlePackageSubmit = async (data: PackageTypeFormValues) => {
-		if (!configurationType) return;
+		if (!configurationType) {
+			return;
+		}
 
 		// Build metadata from package-specific fields
 		const metadata: Record<string, unknown> = {};
-		if (data.bookingType) metadata.bookingType = data.bookingType;
-		if (data.defaultCost) metadata.defaultCost = data.defaultCost;
+		if (data.bookingType) {
+			metadata.bookingType = data.bookingType;
+		}
+		if (data.defaultCost) {
+			metadata.defaultCost = data.defaultCost;
+		}
 		if (data.defaultDeliverables && data.defaultDeliverables.length > 0) {
 			metadata.defaultDeliverables = data.defaultDeliverables;
 		}
@@ -122,7 +162,9 @@ export function ConfigurationCreateSheet() {
 	};
 
 	const handleBookingTypeSubmit = async (data: BookingTypeFormValues) => {
-		if (!configurationType) return;
+		if (!configurationType) {
+			return;
+		}
 
 		// Build metadata from booking type-specific fields
 		const metadata: Record<string, unknown> = {};
@@ -143,11 +185,16 @@ export function ConfigurationCreateSheet() {
 	};
 
 	const handleRelationTypeSubmit = async (data: RelationTypeFormValues) => {
-		if (!configurationType) return;
+		if (!configurationType) {
+			return;
+		}
 
 		// Build metadata from relation type-specific fields
 		const metadata: Record<string, unknown> = {};
-		if (data.applicableBookingTypes && data.applicableBookingTypes.length > 0) {
+		if (
+			data.applicableBookingTypes &&
+			data.applicableBookingTypes.length > 0
+		) {
 			metadata.bookingTypes = data.applicableBookingTypes;
 		}
 
@@ -169,11 +216,20 @@ export function ConfigurationCreateSheet() {
 
 	return (
 		<Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
-			<SheetContent side="right" className={cn("p-0 gap-0 flex flex-col", (isPackageType || isBookingType || isRelationType) ? "sm:max-w-xl" : "sm:max-w-md")}>
+			<SheetContent
+				side="right"
+				className={cn(
+					"p-0 gap-0 flex flex-col",
+					isPackageType || isBookingType || isRelationType
+						? "sm:max-w-xl"
+						: "sm:max-w-md",
+				)}
+			>
 				<SheetHeader
 					className={cn(
 						"shrink-0 p-4 transition-shadow duration-200",
-						isScrolled && "shadow-[0_4px_12px_-4px_rgba(0,0,0,0.15)]"
+						isScrolled &&
+							"shadow-[0_4px_12px_-4px_rgba(0,0,0,0.15)]",
 					)}
 				>
 					<SheetTitle className="text-xl">Add {typeLabel}</SheetTitle>

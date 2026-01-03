@@ -1,8 +1,5 @@
+import type { AnyAction, Resource } from "@repo/api/modules/studio/lib/roles";
 import type { LucideIcon } from "lucide-react";
-import type {
-	AnyAction,
-	Resource,
-} from "@repo/api/modules/studio/lib/roles";
 
 // ============================================================================
 // ICON TYPES

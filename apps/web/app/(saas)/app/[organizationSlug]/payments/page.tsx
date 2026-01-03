@@ -1,7 +1,10 @@
 import { getActiveOrganization } from "@saas/auth/lib/server";
-import { PaymentsPageClient } from "@saas/studio/components/payments/PaymentsPageClient";
-import { PaymentCreateSheet, PaymentEditSheet } from "@saas/studio/components/payments/sheets";
 import { PageContent } from "@saas/studio";
+import { PaymentsPageClient } from "@saas/studio/components/payments/PaymentsPageClient";
+import {
+	PaymentCreateSheet,
+	PaymentEditSheet,
+} from "@saas/studio/components/payments/sheets";
 import { studioPaymentsApi } from "@saas/studio/lib/api";
 import { getServerQueryClient } from "@shared/lib/server";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
@@ -46,7 +49,9 @@ export default async function PaymentsPage({ params, searchParams }: Props) {
 		includeDeleted: false,
 	};
 
-	await queryClient.prefetchQuery(studioPaymentsApi.listReceivedOptions(input));
+	await queryClient.prefetchQuery(
+		studioPaymentsApi.listReceivedOptions(input),
+	);
 
 	return (
 		<HydrationBoundary state={dehydrate(queryClient)}>

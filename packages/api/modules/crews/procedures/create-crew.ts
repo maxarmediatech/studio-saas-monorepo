@@ -1,5 +1,5 @@
 import { ORPCError } from "@orpc/server";
-import { and, eq, isNull, crews, db } from "@repo/database";
+import { and, crews, db, eq, isNull } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
@@ -20,7 +20,8 @@ export const createCrew = studioProtectedProcedure
 	.handler(async ({ input, context }) => {
 		requirePermission(context, "crew", "create");
 
-		const { name, email, phoneNumber, role, status, dailyRate, metadata } = input;
+		const { name, email, phoneNumber, role, status, dailyRate, metadata } =
+			input;
 
 		// Check for duplicate phone within organization
 		if (phoneNumber) {

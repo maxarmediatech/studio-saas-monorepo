@@ -1,12 +1,12 @@
 import { ORPCError } from "@orpc/server";
 import {
 	and,
-	eq,
-	tasks,
-	taskAssignments,
 	bookings,
 	crews,
 	db,
+	eq,
+	taskAssignments,
+	tasks,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
@@ -21,7 +21,8 @@ export const getTask = studioProtectedProcedure
 		path: "/tasks/{id}",
 		tags: ["Tasks"],
 		summary: "Get task",
-		description: "Get a single task by ID with assignments and booking info",
+		description:
+			"Get a single task by ID with assignments and booking info",
 	})
 	.input(getTaskInputSchema)
 	.output(getTaskOutputSchema)

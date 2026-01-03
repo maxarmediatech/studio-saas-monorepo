@@ -1,13 +1,13 @@
 import { ORPCError } from "@orpc/server";
 import {
 	and,
-	eq,
-	isNull,
-	sql,
-	paymentSchedules,
-	receivedAmounts,
 	bookings,
 	db,
+	eq,
+	isNull,
+	paymentSchedules,
+	receivedAmounts,
+	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../../orpc/procedures";
 import { requirePermission } from "../../../studio/lib/permissions";
@@ -22,14 +22,21 @@ export const convertSchedule = studioProtectedProcedure
 		path: "/studio-payments/schedules/{scheduleId}/convert",
 		tags: ["Studio Payments"],
 		summary: "Convert schedule to received",
-		description: "Mark a payment schedule as paid by creating a received payment record",
+		description:
+			"Mark a payment schedule as paid by creating a received payment record",
 	})
 	.input(convertScheduleInputSchema)
 	.output(convertScheduleOutputSchema)
 	.handler(async ({ input, context }) => {
 		requirePermission(context, "payment", "create");
 
-		const { scheduleId, paymentMethod, transactionReference, receivedDate, notes } = input;
+		const {
+			scheduleId,
+			paymentMethod,
+			transactionReference,
+			receivedDate,
+			notes,
+		} = input;
 
 		// Use transaction for atomicity
 		return await db.transaction(async (tx) => {
@@ -68,8 +75,8 @@ export const convertSchedule = studioProtectedProcedure
 			}
 
 			// Calculate remaining amount to pay
-			const scheduleAmount = parseFloat(schedule.amount);
-			const paidAmount = parseFloat(schedule.paidAmount);
+			const scheduleAmount = Number.parseFloat(schedule.amount);
+			const paidAmount = Number.parseFloat(schedule.paidAmount);
 			const remainingAmount = scheduleAmount - paidAmount;
 
 			if (remainingAmount <= 0) {
@@ -79,7 +86,8 @@ export const convertSchedule = studioProtectedProcedure
 			}
 
 			// Use current date if not provided
-			const actualReceivedDate = receivedDate ?? new Date().toISOString().split("T")[0];
+			const actualReceivedDate =
+				receivedDate ?? new Date().toISOString().split("T")[0];
 
 			// Create received amount for the remaining balance
 			const [created] = await tx

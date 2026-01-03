@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
 	Sheet,
 	SheetContent,
@@ -9,15 +8,19 @@ import {
 } from "@repo/ui/components/sheet";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
-import { toast } from "sonner";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDeliverableParams } from "@saas/studio/hooks/params/use-deliverable-params";
-import { DeliverableForm, type DeliverableFormValues } from "../DeliverableForm";
 import {
 	deliverablesApi,
 	deliverablesMutations,
 	studioQueryKeys,
 } from "@saas/studio/lib/api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { toast } from "sonner";
+import {
+	DeliverableForm,
+	type DeliverableFormValues,
+} from "../DeliverableForm";
 
 export function DeliverableEditSheet() {
 	const { deliverableId, close } = useDeliverableParams();
@@ -34,7 +37,9 @@ export function DeliverableEditSheet() {
 		...deliverablesMutations.update(),
 		onSuccess: () => {
 			toast.success("Deliverable updated successfully");
-			queryClient.invalidateQueries({ queryKey: studioQueryKeys.deliverables.all });
+			queryClient.invalidateQueries({
+				queryKey: studioQueryKeys.deliverables.all,
+			});
 			close();
 		},
 		onError: (error) => {
@@ -43,7 +48,9 @@ export function DeliverableEditSheet() {
 	});
 
 	const handleSubmit = async (data: DeliverableFormValues) => {
-		if (!deliverableId) return;
+		if (!deliverableId) {
+			return;
+		}
 
 		await updateMutation.mutateAsync({
 			id: deliverableId,
@@ -58,14 +65,20 @@ export function DeliverableEditSheet() {
 
 	return (
 		<Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
-			<SheetContent side="right" className="sm:max-w-md p-0 gap-0 flex flex-col">
+			<SheetContent
+				side="right"
+				className="sm:max-w-md p-0 gap-0 flex flex-col"
+			>
 				<SheetHeader
 					className={cn(
 						"shrink-0 p-4 transition-shadow duration-200",
-						isScrolled && "shadow-[0_4px_12px_-4px_rgba(0,0,0,0.15)]"
+						isScrolled &&
+							"shadow-[0_4px_12px_-4px_rgba(0,0,0,0.15)]",
 					)}
 				>
-					<SheetTitle className="text-xl">Edit Deliverable</SheetTitle>
+					<SheetTitle className="text-xl">
+						Edit Deliverable
+					</SheetTitle>
 				</SheetHeader>
 				<div className="flex-1 min-h-0">
 					{isLoading ? (

@@ -1,4 +1,13 @@
-import { and, count, eq, gte, isNull, sql, deliverables, db } from "@repo/database";
+import {
+	and,
+	count,
+	db,
+	deliverables,
+	eq,
+	gte,
+	isNull,
+	sql,
+} from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
@@ -132,7 +141,9 @@ export const getDeliverableStats = studioProtectedProcedure
 		}
 
 		// Overdue deliverables (dueDate < today and not approved)
-		const timeZone = normalizeTimeZone(context.membership.organization.timezone);
+		const timeZone = normalizeTimeZone(
+			context.membership.organization.timezone,
+		);
 		const nowParts = getDateParts(new Date(), timeZone);
 		const today = `${nowParts.year}-${nowParts.month}-${nowParts.day}`;
 
@@ -167,7 +178,10 @@ export const getDeliverableStats = studioProtectedProcedure
 			.where(
 				and(
 					...baseConditions,
-					gte(sql`DATE(${deliverables.createdAt} AT TIME ZONE ${timeZone})`, startOfMonth),
+					gte(
+						sql`DATE(${deliverables.createdAt} AT TIME ZONE ${timeZone})`,
+						startOfMonth,
+					),
 				),
 			);
 

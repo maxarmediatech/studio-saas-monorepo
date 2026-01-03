@@ -1,5 +1,5 @@
 import { ORPCError } from "@orpc/server";
-import { and, eq, configurations, db } from "@repo/database";
+import { and, configurations, db, eq } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
@@ -13,7 +13,8 @@ export const deleteConfiguration = studioProtectedProcedure
 		path: "/configurations/{id}",
 		tags: ["Configurations"],
 		summary: "Delete configuration",
-		description: "Delete a configuration item (system configurations cannot be deleted)",
+		description:
+			"Delete a configuration item (system configurations cannot be deleted)",
 	})
 	.input(deleteConfigurationInputSchema)
 	.output(deleteConfigurationOutputSchema)

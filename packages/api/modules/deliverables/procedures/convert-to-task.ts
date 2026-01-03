@@ -1,13 +1,13 @@
 import { ORPCError } from "@orpc/server";
 import {
 	and,
+	db,
+	deliverableAssignments,
+	deliverables,
 	eq,
 	isNull,
-	deliverables,
-	deliverableAssignments,
-	tasks,
 	taskAssignments,
-	db,
+	tasks,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
@@ -22,7 +22,8 @@ export const convertDeliverableToTask = studioProtectedProcedure
 		path: "/deliverables/{deliverableId}/convert-to-task",
 		tags: ["Deliverables"],
 		summary: "Convert deliverable to task",
-		description: "Create a task from a deliverable, optionally copying assignments",
+		description:
+			"Create a task from a deliverable, optionally copying assignments",
 	})
 	.input(convertDeliverableToTaskInputSchema)
 	.output(convertDeliverableToTaskOutputSchema)
@@ -30,7 +31,13 @@ export const convertDeliverableToTask = studioProtectedProcedure
 		requirePermission(context, "deliverable", "update");
 		requirePermission(context, "task", "create");
 
-		const { deliverableId, taskName, taskDescription, taskPriority, taskDueDate } = input;
+		const {
+			deliverableId,
+			taskName,
+			taskDescription,
+			taskPriority,
+			taskDueDate,
+		} = input;
 
 		// Verify deliverable exists and belongs to organization
 		const deliverable = await db.query.deliverables.findFirst({
@@ -56,7 +63,8 @@ export const convertDeliverableToTask = studioProtectedProcedure
 					organizationId: context.organizationId,
 					bookingId: deliverable.bookingId,
 					name: taskName ?? `Task: ${deliverable.name}`,
-					description: taskDescription ?? deliverable.description ?? null,
+					description:
+						taskDescription ?? deliverable.description ?? null,
 					status: "pending",
 					priority: taskPriority ?? deliverable.priority,
 					workflowStatus: "not_started",
@@ -109,7 +117,8 @@ export const convertDeliverableToTask = studioProtectedProcedure
 				.update(deliverables)
 				.set({
 					metadata: {
-						...(deliverable.metadata as Record<string, unknown> ?? {}),
+						...((deliverable.metadata as Record<string, unknown>) ??
+							{}),
 						convertedToTaskId: createdTask.id,
 						convertedAt: new Date().toISOString(),
 					},

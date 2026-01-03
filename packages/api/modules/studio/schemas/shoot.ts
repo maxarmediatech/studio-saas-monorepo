@@ -6,16 +6,16 @@
 
 import { z } from "zod";
 import {
-	createListResponseSchema,
+	baseListFiltersSchema,
 	createItemResponseSchema,
+	createListResponseSchema,
 	createSortSchema,
+	dateSchema,
 	idSchema,
 	mutationResponseSchema,
 	nameSchema,
 	paginationSchema,
 	searchSchema,
-	baseListFiltersSchema,
-	dateSchema,
 	timeSchema,
 } from "./common";
 
@@ -44,7 +44,9 @@ export const shootAssignmentWithCrewSchema = shootAssignmentSchema.extend({
 	}),
 });
 
-export type ShootAssignmentWithCrew = z.infer<typeof shootAssignmentWithCrewSchema>;
+export type ShootAssignmentWithCrew = z.infer<
+	typeof shootAssignmentWithCrewSchema
+>;
 
 // ============================================================================
 // SHOOT SCHEMA
@@ -94,7 +96,13 @@ export type ShootMinimal = z.infer<typeof shootMinimalSchema>;
 // LIST SHOOTS
 // ============================================================================
 
-const shootSortFields = ["name", "shootDate", "shootType", "status", "createdAt"] as const;
+const shootSortFields = [
+	"name",
+	"shootDate",
+	"shootType",
+	"status",
+	"createdAt",
+] as const;
 
 export const listShootsInputSchema = z
 	.object({
@@ -122,7 +130,8 @@ export const shootListItemSchema = shootSchema.extend({
 
 export type ShootListItem = z.infer<typeof shootListItemSchema>;
 
-export const listShootsOutputSchema = createListResponseSchema(shootListItemSchema);
+export const listShootsOutputSchema =
+	createListResponseSchema(shootListItemSchema);
 
 export type ListShootsOutput = z.infer<typeof listShootsOutputSchema>;
 
@@ -137,13 +146,17 @@ export const listShootsMinimalInputSchema = z
 	})
 	.merge(searchSchema);
 
-export type ListShootsMinimalInput = z.infer<typeof listShootsMinimalInputSchema>;
+export type ListShootsMinimalInput = z.infer<
+	typeof listShootsMinimalInputSchema
+>;
 
 export const listShootsMinimalOutputSchema = z.object({
 	data: z.array(shootMinimalSchema),
 });
 
-export type ListShootsMinimalOutput = z.infer<typeof listShootsMinimalOutputSchema>;
+export type ListShootsMinimalOutput = z.infer<
+	typeof listShootsMinimalOutputSchema
+>;
 
 // ============================================================================
 // GET SHOOT
@@ -253,7 +266,8 @@ export const shootStatsSchema = z.object({
 
 export type ShootStats = z.infer<typeof shootStatsSchema>;
 
-export const getShootStatsOutputSchema = createItemResponseSchema(shootStatsSchema);
+export const getShootStatsOutputSchema =
+	createItemResponseSchema(shootStatsSchema);
 
 export type GetShootStatsOutput = z.infer<typeof getShootStatsOutputSchema>;
 

@@ -1,25 +1,25 @@
 import {
 	and,
+	asc,
+	bookings,
 	count,
+	db,
+	deliverableAssignments,
+	deliverables,
+	desc,
 	eq,
 	gte,
 	ilike,
 	isNull,
 	sql,
-	desc,
-	asc,
-	deliverables,
-	deliverableAssignments,
-	bookings,
-	db,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import { createPaginationResponse } from "../../studio/schemas/common";
 import {
+	type DeliverableListItem,
 	listDeliverablesInputSchema,
 	listDeliverablesOutputSchema,
-	type DeliverableListItem,
 } from "../../studio/schemas/deliverable";
 
 export const listDeliverables = studioProtectedProcedure
@@ -28,7 +28,8 @@ export const listDeliverables = studioProtectedProcedure
 		path: "/deliverables",
 		tags: ["Deliverables"],
 		summary: "List deliverables",
-		description: "List deliverables with filtering, sorting, and pagination",
+		description:
+			"List deliverables with filtering, sorting, and pagination",
 	})
 	.input(listDeliverablesInputSchema)
 	.output(listDeliverablesOutputSchema)
@@ -55,7 +56,9 @@ export const listDeliverables = studioProtectedProcedure
 		const offset = (page - 1) * limit;
 
 		// Build conditions
-		const conditions = [eq(deliverables.organizationId, context.organizationId)];
+		const conditions = [
+			eq(deliverables.organizationId, context.organizationId),
+		];
 
 		if (!includeDeleted) {
 			conditions.push(isNull(deliverables.deletedAt));
@@ -100,7 +103,9 @@ export const listDeliverables = studioProtectedProcedure
 				.from(deliverableAssignments)
 				.where(eq(deliverableAssignments.crewId, crewId));
 
-			conditions.push(sql`${deliverables.id} IN ${assignedDeliverableIds}`);
+			conditions.push(
+				sql`${deliverables.id} IN ${assignedDeliverableIds}`,
+			);
 		}
 
 		// Get total count
@@ -121,7 +126,9 @@ export const listDeliverables = studioProtectedProcedure
 			deliverableType: deliverables.deliverableType,
 			createdAt: deliverables.createdAt,
 		};
-		const sortColumn = sortColumnMap[sortBy as keyof typeof sortColumnMap] ?? deliverables.dueDate;
+		const sortColumn =
+			sortColumnMap[sortBy as keyof typeof sortColumnMap] ??
+			deliverables.dueDate;
 
 		const orderFn = sortDirection === "asc" ? asc : desc;
 

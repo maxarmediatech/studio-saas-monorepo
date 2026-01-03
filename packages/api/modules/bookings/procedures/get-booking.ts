@@ -1,17 +1,17 @@
 import { ORPCError } from "@orpc/server";
 import {
 	and,
+	bookingEvents,
+	bookingParticipants,
+	bookings,
+	clients,
 	count,
+	db,
+	deliverables,
 	eq,
 	isNull,
-	bookings,
-	bookingParticipants,
-	bookingEvents,
 	shoots,
 	tasks,
-	deliverables,
-	clients,
-	db,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
@@ -109,8 +109,8 @@ export const getBooking = studioProtectedProcedure
 				),
 			);
 
-		const packageCost = parseFloat(booking.packageCost);
-		const totalReceived = parseFloat(booking.totalReceived);
+		const packageCost = Number.parseFloat(booking.packageCost);
+		const totalReceived = Number.parseFloat(booking.totalReceived);
 		const balance = (packageCost - totalReceived).toFixed(2);
 
 		return {

@@ -23,8 +23,8 @@ import {
 	ArrowRightIcon,
 	EyeIcon,
 	EyeOffIcon,
-	MailboxIcon,
 	Loader2Icon,
+	MailboxIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";

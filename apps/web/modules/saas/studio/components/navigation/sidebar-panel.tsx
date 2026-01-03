@@ -1,10 +1,13 @@
 "use client";
 
+import { cn } from "@repo/ui/lib/utils";
+import { ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ExternalLink } from "lucide-react";
-import { cn } from "@repo/ui/lib/utils";
-import type { NavItemConfig, NavModuleConfig } from "../../lib/navigation/types";
+import type {
+	NavItemConfig,
+	NavModuleConfig,
+} from "../../lib/navigation/types";
 import { IconByName } from "./icon-registry";
 
 interface SidebarPanelProps {
@@ -46,7 +49,10 @@ export function SidebarPanel({ module, utilities }: SidebarPanelProps) {
 									<NavItem
 										key={item.id}
 										item={item}
-										isActive={isItemActive(pathname, item.path)}
+										isActive={isItemActive(
+											pathname,
+											item.path,
+										)}
 									/>
 								))}
 							</nav>
@@ -91,7 +97,7 @@ function NavItem({
 				"group flex h-8 items-center justify-between rounded-lg p-2 text-sm leading-none transition-[background-color,color,font-weight] duration-75",
 				isActive
 					? "bg-blue-100/50 font-medium text-blue-600 hover:bg-blue-100/80 active:bg-blue-100"
-					: "text-neutral-700 hover:bg-black/5 active:bg-black/10"
+					: "text-neutral-700 hover:bg-black/5 active:bg-black/10",
 			)}
 		>
 			<span className="flex items-center gap-2.5">
@@ -99,7 +105,7 @@ function NavItem({
 					name={item.icon}
 					className={cn(
 						"size-4 shrink-0",
-						isActive ? "text-blue-600" : "text-neutral-600"
+						isActive ? "text-blue-600" : "text-neutral-600",
 					)}
 				/>
 				<span className="truncate">{item.label}</span>

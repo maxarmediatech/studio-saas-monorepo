@@ -1,13 +1,13 @@
 import { ORPCError } from "@orpc/server";
 import {
 	and,
+	bookingParticipants,
+	bookings,
+	clients,
+	db,
 	eq,
 	isNull,
 	sql,
-	clients,
-	bookings,
-	bookingParticipants,
-	db,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";

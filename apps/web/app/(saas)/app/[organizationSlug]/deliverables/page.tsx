@@ -1,6 +1,6 @@
 import { getActiveOrganization } from "@saas/auth/lib/server";
-import { DeliverablesPageClient } from "@saas/studio/components/deliverables/DeliverablesPageClient";
 import { PageContent } from "@saas/studio";
+import { DeliverablesPageClient } from "@saas/studio/components/deliverables/DeliverablesPageClient";
 import { deliverablesApi } from "@saas/studio/lib/api";
 import { getServerQueryClient } from "@shared/lib/server";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
@@ -23,7 +23,10 @@ export async function generateMetadata({ params }: Props) {
 	};
 }
 
-export default async function DeliverablesPage({ params, searchParams }: Props) {
+export default async function DeliverablesPage({
+	params,
+	searchParams,
+}: Props) {
 	const { organizationSlug } = await params;
 	const filters = await searchParams;
 

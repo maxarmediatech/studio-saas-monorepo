@@ -114,7 +114,7 @@ export function BookingsFilters() {
 			},
 			{
 				id: "createdAt",
-				label: "Created",
+				label: "Date",
 				variant: "dateRange",
 				icon: CalendarIcon,
 			},

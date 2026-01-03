@@ -1,5 +1,5 @@
 import { ORPCError } from "@orpc/server";
-import { and, eq, tasks, db } from "@repo/database";
+import { and, db, eq, tasks } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
@@ -20,15 +20,8 @@ export const updateTask = studioProtectedProcedure
 	.handler(async ({ input, context }) => {
 		requirePermission(context, "task", "update");
 
-		const {
-			id,
-			name,
-			description,
-			status,
-			priority,
-			dueDate,
-			metadata,
-		} = input;
+		const { id, name, description, status, priority, dueDate, metadata } =
+			input;
 
 		// Verify task exists and belongs to organization
 		const existing = await db.query.tasks.findFirst({

@@ -1,4 +1,4 @@
-import { and, count, eq, gte, isNull, sql, shoots, db } from "@repo/database";
+import { and, count, db, eq, gte, isNull, shoots, sql } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
@@ -86,7 +86,9 @@ export const getShootStats = studioProtectedProcedure
 			byStatus[row.status] = row.count;
 		}
 
-		const timeZone = normalizeTimeZone(context.membership.organization.timezone);
+		const timeZone = normalizeTimeZone(
+			context.membership.organization.timezone,
+		);
 		const nowParts = getDateParts(new Date(), timeZone);
 		const today = `${nowParts.year}-${nowParts.month}-${nowParts.day}`;
 		const [upcomingResult] = await db
@@ -104,12 +106,7 @@ export const getShootStats = studioProtectedProcedure
 		const [completedResult] = await db
 			.select({ count: count().mapWith(Number) })
 			.from(shoots)
-			.where(
-				and(
-					...baseConditions,
-					eq(shoots.status, "completed"),
-				),
-			);
+			.where(and(...baseConditions, eq(shoots.status, "completed")));
 
 		// Shoots this month (org timezone)
 		const startOfMonth = `${nowParts.year}-${nowParts.month}-01`;
@@ -117,12 +114,7 @@ export const getShootStats = studioProtectedProcedure
 		const [thisMonthResult] = await db
 			.select({ count: count().mapWith(Number) })
 			.from(shoots)
-			.where(
-				and(
-					...baseConditions,
-					gte(shoots.shootDate, startOfMonth),
-				),
-			);
+			.where(and(...baseConditions, gte(shoots.shootDate, startOfMonth)));
 
 		return {
 			data: {

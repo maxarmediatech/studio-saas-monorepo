@@ -6,11 +6,10 @@
 
 import { z } from "zod";
 import {
-	createItemResponseSchema,
-	idSchema,
-	dateRangeSchema,
-	dateSchema,
 	bookingPhaseSchema,
+	createItemResponseSchema,
+	dateRangeSchema,
+	idSchema,
 	workflowStatusSchema,
 } from "./common";
 
@@ -107,7 +106,8 @@ export const dashboardDataSchema = z.object({
 
 export type DashboardData = z.infer<typeof dashboardDataSchema>;
 
-export const getDashboardOutputSchema = createItemResponseSchema(dashboardDataSchema);
+export const getDashboardOutputSchema =
+	createItemResponseSchema(dashboardDataSchema);
 
 export type GetDashboardOutput = z.infer<typeof getDashboardOutputSchema>;
 
@@ -235,7 +235,9 @@ export const pendingDeliverableItemSchema = z.object({
 	),
 });
 
-export type PendingDeliverableItem = z.infer<typeof pendingDeliverableItemSchema>;
+export type PendingDeliverableItem = z.infer<
+	typeof pendingDeliverableItemSchema
+>;
 
 /**
  * Operations data schema
@@ -251,7 +253,8 @@ export const operationsDataSchema = z.object({
 
 export type OperationsData = z.infer<typeof operationsDataSchema>;
 
-export const getOperationsOutputSchema = createItemResponseSchema(operationsDataSchema);
+export const getOperationsOutputSchema =
+	createItemResponseSchema(operationsDataSchema);
 
 export type GetOperationsOutput = z.infer<typeof getOperationsOutputSchema>;
 
@@ -287,7 +290,14 @@ export const quickActionItemSchema = z.object({
 	title: z.string(),
 	description: z.string(),
 	priority: z.enum(["high", "medium", "low"]),
-	entityType: z.enum(["booking", "shoot", "task", "deliverable", "payment", "submission"]),
+	entityType: z.enum([
+		"booking",
+		"shoot",
+		"task",
+		"deliverable",
+		"payment",
+		"submission",
+	]),
 	entityId: idSchema,
 	bookingId: idSchema.optional(),
 	dueDate: z.string().nullable(),
@@ -303,6 +313,8 @@ export const quickActionsDataSchema = z.object({
 
 export type QuickActionsData = z.infer<typeof quickActionsDataSchema>;
 
-export const getQuickActionsOutputSchema = createItemResponseSchema(quickActionsDataSchema);
+export const getQuickActionsOutputSchema = createItemResponseSchema(
+	quickActionsDataSchema,
+);
 
 export type GetQuickActionsOutput = z.infer<typeof getQuickActionsOutputSchema>;

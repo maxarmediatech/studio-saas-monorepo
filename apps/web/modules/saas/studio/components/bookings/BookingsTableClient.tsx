@@ -182,37 +182,46 @@ export function BookingsTableClient({
 	);
 
 	// Define columns with sortable headers and meta for filters
-	// Column order: select → ref → name → bookingType → packageType → packageCost → balance → createdAt → actions
-	// Pairs: (ref + name = identity), (packageCost + balance = financial), createdAt as trailing context
+	// Column order: select → createdAt → name → bookingType → packageType → packageCost → balance → actions
 	const columns: ColumnDef<BookingListItem>[] = useMemo(
 		() => [
 			createSelectColumn<BookingListItem>(),
 			{
-				id: "referenceNumber",
-				accessorKey: "referenceNumber",
+				id: "createdAt",
+				accessorKey: "createdAt",
 				header: ({ column }) => (
-					<DataTableColumnHeader column={column} title="Ref #" />
+					<DataTableColumnHeader column={column} title="Date" />
 				),
-				cell: ({ row }) => (
-					<div className="flex flex-col">
-						<span className="font-mono text-sm font-medium text-foreground">
-							{row.original.referenceNumber}
-						</span>
-					</div>
-				),
+				cell: ({ row }) => {
+					const date = new Date(row.original.createdAt);
+					return (
+						<div className="flex flex-col gap-0.5 leading-none">
+							<span className="text-sm font-medium text-foreground">
+								{date.toLocaleDateString("en-US", {
+									month: "short",
+									day: "numeric",
+									year: "numeric",
+								})}
+							</span>
+							<span className="font-mono text-xs text-muted-foreground">
+								{row.original.referenceNumber}
+							</span>
+						</div>
+					);
+				},
 				meta: {
-					label: "Reference",
-					variant: "text" as const,
-					placeholder: "Search reference...",
-					width: 140,
-					minWidth: 140,
+					label: "Created",
+					variant: "dateRange" as const,
+					icon: CalendarIcon,
+					width: 160,
+					minWidth: 160,
 					headerClassName:
 						"!border-r-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border",
 					cellClassName:
 						"!border-r-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border",
 				},
 				enableSorting: true,
-				enableHiding: false,
+				enableHiding: true,
 			},
 			{
 				id: "name",
@@ -348,33 +357,6 @@ export function BookingsTableClient({
 				enableHiding: true,
 			},
 			{
-				id: "createdAt",
-				accessorKey: "createdAt",
-				header: ({ column }) => (
-					<DataTableColumnHeader column={column} title="Created" />
-				),
-				cell: ({ row }) => {
-					const date = new Date(row.original.createdAt);
-					return (
-						<span className="text-sm text-muted-foreground">
-							{date.toLocaleDateString("en-US", {
-								month: "short",
-								day: "numeric",
-							})}
-						</span>
-					);
-				},
-				meta: {
-					label: "Created",
-					variant: "dateRange" as const,
-					icon: CalendarIcon,
-					width: 100,
-					minWidth: 100,
-				},
-				enableSorting: true,
-				enableHiding: true,
-			},
-			{
 				id: "actions",
 				header: ({ table }) => <DataTableViewOptions table={table} />,
 				cell: ({ row }) => (
@@ -425,7 +407,7 @@ export function BookingsTableClient({
 					// Sticky columns configuration
 					stickyLeftColumns={[
 						{ id: "select", width: 56 },
-						{ id: "referenceNumber", width: 160 },
+						{ id: "createdAt", width: 160 },
 						{ id: "name", width: 180 },
 					]}
 					stickyRightColumns={[{ id: "actions", width: 56 }]}

@@ -1,5 +1,15 @@
 import { ORPCError } from "@orpc/server";
-import { and, eq, isNull, sql, deliverables, deliverableAssignments, assignmentSubmissions, crews, db } from "@repo/database";
+import {
+	and,
+	assignmentSubmissions,
+	crews,
+	db,
+	deliverableAssignments,
+	deliverables,
+	eq,
+	isNull,
+	sql,
+} from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
@@ -67,17 +77,19 @@ export const submitDeliverable = studioProtectedProcedure
 		}
 
 		// Check for existing active submission (submitted or in_review)
-		const existingSubmission = await db.query.assignmentSubmissions.findFirst({
-			where: and(
-				eq(assignmentSubmissions.deliverableId, deliverableId),
-				eq(assignmentSubmissions.submittedBy, crew.id),
-				sql`${assignmentSubmissions.status} IN ('submitted', 'in_review')`,
-			),
-		});
+		const existingSubmission =
+			await db.query.assignmentSubmissions.findFirst({
+				where: and(
+					eq(assignmentSubmissions.deliverableId, deliverableId),
+					eq(assignmentSubmissions.submittedBy, crew.id),
+					sql`${assignmentSubmissions.status} IN ('submitted', 'in_review')`,
+				),
+			});
 
 		if (existingSubmission) {
 			throw new ORPCError("CONFLICT", {
-				message: "You already have a pending submission for this deliverable",
+				message:
+					"You already have a pending submission for this deliverable",
 			});
 		}
 

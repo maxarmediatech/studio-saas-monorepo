@@ -1,20 +1,20 @@
 import { ORPCError } from "@orpc/server";
 import {
 	and,
-	eq,
-	isNull,
-	deliverables,
-	deliverableAssignments,
 	bookings,
 	crews,
 	db,
+	deliverableAssignments,
+	deliverables,
+	eq,
+	isNull,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
+	type DeliverableAssignmentWithCrew,
 	getDeliverableInputSchema,
 	getDeliverableOutputSchema,
-	type DeliverableAssignmentWithCrew,
 } from "../../studio/schemas/deliverable";
 
 export const getDeliverable = studioProtectedProcedure
@@ -92,20 +92,22 @@ export const getDeliverable = studioProtectedProcedure
 			.innerJoin(crews, eq(deliverableAssignments.crewId, crews.id))
 			.where(eq(deliverableAssignments.deliverableId, id));
 
-		const assignments: DeliverableAssignmentWithCrew[] = assignmentRows.map((row) => ({
-			id: row.id,
-			deliverableId: row.deliverableId,
-			crewId: row.crewId,
-			isLead: row.isLead,
-			assignedBy: row.assignedBy,
-			createdAt: row.createdAt.toISOString(),
-			crew: {
-				id: row.crewId,
-				name: row.crewName,
-				role: row.crewRole,
-				phoneNumber: row.crewPhone,
-			},
-		}));
+		const assignments: DeliverableAssignmentWithCrew[] = assignmentRows.map(
+			(row) => ({
+				id: row.id,
+				deliverableId: row.deliverableId,
+				crewId: row.crewId,
+				isLead: row.isLead,
+				assignedBy: row.assignedBy,
+				createdAt: row.createdAt.toISOString(),
+				crew: {
+					id: row.crewId,
+					name: row.crewName,
+					role: row.crewRole,
+					phoneNumber: row.crewPhone,
+				},
+			}),
+		);
 
 		return {
 			data: {
@@ -120,7 +122,10 @@ export const getDeliverable = studioProtectedProcedure
 				workflowStatus: deliverable.workflowStatus,
 				dueDate: deliverable.dueDate,
 				deliveredAt: deliverable.deliveredAt?.toISOString() ?? null,
-				metadata: deliverable.metadata as Record<string, unknown> | null,
+				metadata: deliverable.metadata as Record<
+					string,
+					unknown
+				> | null,
 				createdBy: deliverable.createdBy,
 				updatedBy: deliverable.updatedBy,
 				createdAt: deliverable.createdAt.toISOString(),

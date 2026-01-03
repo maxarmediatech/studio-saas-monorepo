@@ -1,13 +1,13 @@
 import { ORPCError } from "@orpc/server";
 import {
 	and,
-	eq,
-	isNull,
-	sql,
-	expenses,
-	expenseAssignments,
 	bookings,
 	db,
+	eq,
+	expenseAssignments,
+	expenses,
+	isNull,
+	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
@@ -51,9 +51,12 @@ export const updateExpense = studioProtectedProcedure
 		}
 
 		// Check if amount is changing
-		const amountChanged = updates.amount !== undefined && updates.amount !== expense.amount;
-		const oldAmount = parseFloat(expense.amount);
-		const newAmount = updates.amount ? parseFloat(updates.amount) : oldAmount;
+		const amountChanged =
+			updates.amount !== undefined && updates.amount !== expense.amount;
+		const oldAmount = Number.parseFloat(expense.amount);
+		const newAmount = updates.amount
+			? Number.parseFloat(updates.amount)
+			: oldAmount;
 
 		// Build update object
 		const updateData: Record<string, unknown> = {
@@ -107,7 +110,8 @@ export const updateExpense = studioProtectedProcedure
 				const assignments = await tx
 					.select({
 						bookingId: expenseAssignments.bookingId,
-						allocationPercentage: expenseAssignments.allocationPercentage,
+						allocationPercentage:
+							expenseAssignments.allocationPercentage,
 						allocationAmount: expenseAssignments.allocationAmount,
 					})
 					.from(expenseAssignments)
@@ -124,7 +128,9 @@ export const updateExpense = studioProtectedProcedure
 					.set(updateData)
 					.where(eq(expenses.id, id));
 
-				const bookingAssignments = assignments.filter((assignment) => assignment.bookingId);
+				const bookingAssignments = assignments.filter(
+					(assignment) => assignment.bookingId,
+				);
 
 				// Update each booking's total expenses
 				for (const assignment of bookingAssignments) {
@@ -164,10 +170,7 @@ export const updateExpense = studioProtectedProcedure
 		}
 
 		// Simple update without amount change
-		await db
-			.update(expenses)
-			.set(updateData)
-			.where(eq(expenses.id, id));
+		await db.update(expenses).set(updateData).where(eq(expenses.id, id));
 
 		return {
 			data: { id },

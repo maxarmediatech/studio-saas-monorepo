@@ -1,5 +1,5 @@
 import { ORPCError } from "@orpc/server";
-import { and, eq, configurations, db } from "@repo/database";
+import { and, configurations, eq } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import { withTransaction } from "../../studio/lib/transactions";
@@ -21,7 +21,16 @@ export const updateConfiguration = studioProtectedProcedure
 	.handler(async ({ input, context }) => {
 		requirePermission(context, "configuration", "update");
 
-		const { id, label, description, color, icon, sortOrder, isDefault, metadata } = input;
+		const {
+			id,
+			label,
+			description,
+			color,
+			icon,
+			sortOrder,
+			isDefault,
+			metadata,
+		} = input;
 
 		return await withTransaction(async (tx) => {
 			// Verify configuration exists and belongs to organization
@@ -63,7 +72,10 @@ export const updateConfiguration = studioProtectedProcedure
 					.set({ isDefault: false, updatedAt: new Date() })
 					.where(
 						and(
-							eq(configurations.organizationId, context.organizationId),
+							eq(
+								configurations.organizationId,
+								context.organizationId,
+							),
 							eq(configurations.type, existing.type),
 							eq(configurations.isDefault, true),
 						),
@@ -83,7 +95,10 @@ export const updateConfiguration = studioProtectedProcedure
 			if (isDefault !== undefined) updates.isDefault = isDefault;
 			if (metadata !== undefined) updates.metadata = metadata;
 
-			await tx.update(configurations).set(updates).where(eq(configurations.id, id));
+			await tx
+				.update(configurations)
+				.set(updates)
+				.where(eq(configurations.id, id));
 
 			return {
 				data: { id },

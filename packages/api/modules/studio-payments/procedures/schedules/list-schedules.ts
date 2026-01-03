@@ -1,16 +1,16 @@
 import {
 	and,
+	asc,
+	bookings,
 	count,
+	db,
+	desc,
 	eq,
 	gte,
 	ilike,
 	isNull,
-	sql,
-	desc,
-	asc,
 	paymentSchedules,
-	bookings,
-	db,
+	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../../orpc/procedures";
 import { requirePermission } from "../../../studio/lib/permissions";
@@ -27,7 +27,8 @@ export const listSchedules = studioProtectedProcedure
 		path: "/studio-payments/schedules",
 		tags: ["Studio Payments"],
 		summary: "List payment schedules",
-		description: "List payment schedules with filtering, sorting, and pagination",
+		description:
+			"List payment schedules with filtering, sorting, and pagination",
 	})
 	.input(listSchedulesInputSchema)
 	.output(listSchedulesOutputSchema)
@@ -50,7 +51,9 @@ export const listSchedules = studioProtectedProcedure
 		const offset = (page - 1) * limit;
 
 		// Build conditions
-		const conditions = [eq(paymentSchedules.organizationId, context.organizationId)];
+		const conditions = [
+			eq(paymentSchedules.organizationId, context.organizationId),
+		];
 
 		if (!includeDeleted) {
 			conditions.push(isNull(paymentSchedules.deletedAt));
@@ -95,7 +98,9 @@ export const listSchedules = studioProtectedProcedure
 			sortOrder: paymentSchedules.sortOrder,
 			createdAt: paymentSchedules.createdAt,
 		};
-		const sortColumn = sortColumnMap[sortBy as keyof typeof sortColumnMap] ?? paymentSchedules.dueDate;
+		const sortColumn =
+			sortColumnMap[sortBy as keyof typeof sortColumnMap] ??
+			paymentSchedules.dueDate;
 
 		const orderFn = sortDirection === "asc" ? asc : desc;
 

@@ -1,10 +1,7 @@
 "use client";
 
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
-import { z } from "zod";
-import { toast } from "sonner";
+import { Button } from "@repo/ui/components/button";
 import {
 	Dialog,
 	DialogContent,
@@ -22,7 +19,6 @@ import {
 	FormMessage,
 } from "@repo/ui/components/form";
 import { Input } from "@repo/ui/components/input";
-import { Button } from "@repo/ui/components/button";
 import {
 	Select,
 	SelectContent,
@@ -30,8 +26,12 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@repo/ui/components/select";
-import { Loader2Icon } from "lucide-react";
 import { crewsMutations } from "@saas/studio/lib/api";
+import { useMutation } from "@tanstack/react-query";
+import { Loader2Icon } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import { z } from "zod";
 
 const addToCrewSchema = z.object({
 	role: z.string().min(1, "Role is required"),
@@ -101,20 +101,26 @@ export function AddToCrewDialog({
 				<DialogHeader>
 					<DialogTitle>Add to Crew</DialogTitle>
 					<DialogDescription>
-						Create a crew profile for <strong>{memberName}</strong>. This allows
-						them to be assigned to shoots and tasks.
+						Create a crew profile for <strong>{memberName}</strong>.
+						This allows them to be assigned to shoots and tasks.
 					</DialogDescription>
 				</DialogHeader>
 
 				<Form {...form}>
-					<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+					<form
+						onSubmit={form.handleSubmit(onSubmit)}
+						className="space-y-4"
+					>
 						<FormField
 							control={form.control}
 							name="role"
 							render={({ field }) => (
 								<FormItem>
 									<FormLabel>Role *</FormLabel>
-									<Select onValueChange={field.onChange} value={field.value}>
+									<Select
+										onValueChange={field.onChange}
+										value={field.value}
+									>
 										<FormControl>
 											<SelectTrigger>
 												<SelectValue placeholder="Select role" />
@@ -122,7 +128,10 @@ export function AddToCrewDialog({
 										</FormControl>
 										<SelectContent>
 											{CREW_ROLES.map((role) => (
-												<SelectItem key={role.value} value={role.value}>
+												<SelectItem
+													key={role.value}
+													value={role.value}
+												>
 													{role.label}
 												</SelectItem>
 											))}
@@ -140,7 +149,11 @@ export function AddToCrewDialog({
 								<FormItem>
 									<FormLabel>Daily Rate (INR)</FormLabel>
 									<FormControl>
-										<Input type="number" placeholder="5000" {...field} />
+										<Input
+											type="number"
+											placeholder="5000"
+											{...field}
+										/>
 									</FormControl>
 									<FormMessage />
 								</FormItem>
@@ -156,7 +169,10 @@ export function AddToCrewDialog({
 							>
 								Cancel
 							</Button>
-							<Button type="submit" disabled={createFromMemberMutation.isPending}>
+							<Button
+								type="submit"
+								disabled={createFromMemberMutation.isPending}
+							>
 								{createFromMemberMutation.isPending && (
 									<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
 								)}

@@ -1,17 +1,17 @@
 import {
 	and,
+	asc,
+	bookings,
 	count,
+	db,
+	desc,
 	eq,
 	gte,
 	ilike,
 	isNull,
-	sql,
-	desc,
-	asc,
-	receivedAmounts,
 	paymentSchedules,
-	bookings,
-	db,
+	receivedAmounts,
+	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../../orpc/procedures";
 import { requirePermission } from "../../../studio/lib/permissions";
@@ -28,7 +28,8 @@ export const listReceived = studioProtectedProcedure
 		path: "/studio-payments/received",
 		tags: ["Studio Payments"],
 		summary: "List received payments",
-		description: "List received payments with filtering, sorting, and pagination",
+		description:
+			"List received payments with filtering, sorting, and pagination",
 	})
 	.input(listReceivedInputSchema)
 	.output(listReceivedOutputSchema)
@@ -51,7 +52,9 @@ export const listReceived = studioProtectedProcedure
 		const offset = (page - 1) * limit;
 
 		// Build conditions
-		const conditions = [eq(receivedAmounts.organizationId, context.organizationId)];
+		const conditions = [
+			eq(receivedAmounts.organizationId, context.organizationId),
+		];
 
 		if (!includeDeleted) {
 			conditions.push(isNull(receivedAmounts.deletedAt));
@@ -95,7 +98,9 @@ export const listReceived = studioProtectedProcedure
 			paymentMethod: receivedAmounts.paymentMethod,
 			createdAt: receivedAmounts.createdAt,
 		};
-		const sortColumn = sortColumnMap[sortBy as keyof typeof sortColumnMap] ?? receivedAmounts.receivedDate;
+		const sortColumn =
+			sortColumnMap[sortBy as keyof typeof sortColumnMap] ??
+			receivedAmounts.receivedDate;
 
 		const orderFn = sortDirection === "asc" ? asc : desc;
 
@@ -147,7 +152,9 @@ export const listReceived = studioProtectedProcedure
 					)})`,
 				);
 
-			scheduleNames = Object.fromEntries(schedules.map((s) => [s.id, s.name]));
+			scheduleNames = Object.fromEntries(
+				schedules.map((s) => [s.id, s.name]),
+			);
 		}
 
 		// Format response
@@ -169,7 +176,9 @@ export const listReceived = studioProtectedProcedure
 			deletedBy: row.deletedBy,
 			bookingName: row.bookingName,
 			bookingReferenceNumber: row.bookingReferenceNumber,
-			scheduleName: row.paymentScheduleId ? scheduleNames[row.paymentScheduleId] ?? null : null,
+			scheduleName: row.paymentScheduleId
+				? (scheduleNames[row.paymentScheduleId] ?? null)
+				: null,
 		}));
 
 		return {

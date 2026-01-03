@@ -6,19 +6,19 @@
 
 import { z } from "zod";
 import {
-	createListResponseSchema,
+	baseListFiltersSchema,
+	billToSchema,
 	createItemResponseSchema,
+	createListResponseSchema,
 	createSortSchema,
+	dateSchema,
 	idSchema,
+	moneySchema,
 	mutationResponseSchema,
 	notesSchema,
 	paginationSchema,
-	searchSchema,
-	baseListFiltersSchema,
-	dateSchema,
-	moneySchema,
 	paymentMethodSchema,
-	billToSchema,
+	searchSchema,
 } from "./common";
 
 // ============================================================================
@@ -38,14 +38,17 @@ export const expenseAssignmentSchema = z.object({
 
 export type ExpenseAssignment = z.infer<typeof expenseAssignmentSchema>;
 
-export const expenseAssignmentWithDetailsSchema = expenseAssignmentSchema.extend({
-	bookingName: z.string().nullable(),
-	bookingReferenceNumber: z.string().nullable(),
-	shootName: z.string().nullable(),
-	crewName: z.string().nullable(),
-});
+export const expenseAssignmentWithDetailsSchema =
+	expenseAssignmentSchema.extend({
+		bookingName: z.string().nullable(),
+		bookingReferenceNumber: z.string().nullable(),
+		shootName: z.string().nullable(),
+		crewName: z.string().nullable(),
+	});
 
-export type ExpenseAssignmentWithDetails = z.infer<typeof expenseAssignmentWithDetailsSchema>;
+export type ExpenseAssignmentWithDetails = z.infer<
+	typeof expenseAssignmentWithDetailsSchema
+>;
 
 // ============================================================================
 // EXPENSE SCHEMA
@@ -90,7 +93,14 @@ export type ExpenseListItem = z.infer<typeof expenseListItemSchema>;
 // LIST EXPENSES
 // ============================================================================
 
-const expenseSortFields = ["expenseDate", "amount", "category", "billTo", "vendor", "createdAt"] as const;
+const expenseSortFields = [
+	"expenseDate",
+	"amount",
+	"category",
+	"billTo",
+	"vendor",
+	"createdAt",
+] as const;
 
 export const listExpensesInputSchema = z
 	.object({
@@ -110,7 +120,9 @@ export const listExpensesInputSchema = z
 
 export type ListExpensesInput = z.infer<typeof listExpensesInputSchema>;
 
-export const listExpensesOutputSchema = createListResponseSchema(expenseListItemSchema);
+export const listExpensesOutputSchema = createListResponseSchema(
+	expenseListItemSchema,
+);
 
 export type ListExpensesOutput = z.infer<typeof listExpensesOutputSchema>;
 
@@ -133,7 +145,8 @@ export const expenseDetailSchema = expenseSchema.extend({
 
 export type ExpenseDetail = z.infer<typeof expenseDetailSchema>;
 
-export const getExpenseOutputSchema = createItemResponseSchema(expenseDetailSchema);
+export const getExpenseOutputSchema =
+	createItemResponseSchema(expenseDetailSchema);
 
 export type GetExpenseOutput = z.infer<typeof getExpenseOutputSchema>;
 
@@ -141,20 +154,30 @@ export type GetExpenseOutput = z.infer<typeof getExpenseOutputSchema>;
 // CREATE EXPENSE
 // ============================================================================
 
-export const expenseAssignmentInputSchema = z.object({
-	bookingId: idSchema.optional(),
-	shootId: idSchema.optional(),
-	crewId: idSchema.optional(),
-	allocationPercentage: z.string().regex(/^\d+(\.\d{1,2})?$/).optional(),
-	allocationAmount: moneySchema.optional(),
-}).refine(
-	(data) => {
-		// Exactly one target must be specified
-		const targets = [data.bookingId, data.shootId, data.crewId].filter(Boolean);
-		return targets.length === 1;
-	},
-	{ message: "Exactly one of bookingId, shootId, or crewId must be specified" }
-);
+export const expenseAssignmentInputSchema = z
+	.object({
+		bookingId: idSchema.optional(),
+		shootId: idSchema.optional(),
+		crewId: idSchema.optional(),
+		allocationPercentage: z
+			.string()
+			.regex(/^\d+(\.\d{1,2})?$/)
+			.optional(),
+		allocationAmount: moneySchema.optional(),
+	})
+	.refine(
+		(data) => {
+			// Exactly one target must be specified
+			const targets = [data.bookingId, data.shootId, data.crewId].filter(
+				Boolean,
+			);
+			return targets.length === 1;
+		},
+		{
+			message:
+				"Exactly one of bookingId, shootId, or crewId must be specified",
+		},
+	);
 
 export const createExpenseInputSchema = z.object({
 	description: z.string().min(1).max(500),
@@ -238,6 +261,7 @@ export const expenseStatsSchema = z.object({
 
 export type ExpenseStats = z.infer<typeof expenseStatsSchema>;
 
-export const getExpenseStatsOutputSchema = createItemResponseSchema(expenseStatsSchema);
+export const getExpenseStatsOutputSchema =
+	createItemResponseSchema(expenseStatsSchema);
 
 export type GetExpenseStatsOutput = z.infer<typeof getExpenseStatsOutputSchema>;

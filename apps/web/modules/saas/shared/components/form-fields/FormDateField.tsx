@@ -1,6 +1,5 @@
 "use client";
 
-import { format } from "date-fns";
 import { Button } from "@repo/ui/components/button";
 import { Calendar } from "@repo/ui/components/calendar";
 import {
@@ -17,6 +16,7 @@ import {
 	PopoverTrigger,
 } from "@repo/ui/components/popover";
 import { cn } from "@repo/ui/lib/utils";
+import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import type { Control, FieldPath, FieldValues } from "react-hook-form";
 
@@ -74,7 +74,10 @@ export function FormDateField<
 								>
 									<CalendarIcon className="mr-2 h-4 w-4" />
 									{field.value ? (
-										format(new Date(field.value), dateFormat)
+										format(
+											new Date(field.value),
+											dateFormat,
+										)
 									) : (
 										<span>{placeholder}</span>
 									)}
@@ -84,19 +87,29 @@ export function FormDateField<
 						<PopoverContent className="w-auto p-0" align="start">
 							<Calendar
 								mode="single"
-								selected={field.value ? new Date(field.value) : undefined}
+								selected={
+									field.value
+										? new Date(field.value)
+										: undefined
+								}
 								onSelect={(date) => {
 									field.onChange(date?.toISOString());
 								}}
 								disabled={(date) => {
-									if (minDate && date < minDate) return true;
-									if (maxDate && date > maxDate) return true;
+									if (minDate && date < minDate) {
+										return true;
+									}
+									if (maxDate && date > maxDate) {
+										return true;
+									}
 									return false;
 								}}
 							/>
 						</PopoverContent>
 					</Popover>
-					{description && <FormDescription>{description}</FormDescription>}
+					{description && (
+						<FormDescription>{description}</FormDescription>
+					)}
 					<FormMessage />
 				</FormItem>
 			)}

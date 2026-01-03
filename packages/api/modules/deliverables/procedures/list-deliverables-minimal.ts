@@ -1,19 +1,19 @@
 import {
 	and,
 	count,
+	db,
+	deliverables,
 	eq,
 	ilike,
 	isNull,
-	deliverables,
-	db,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import { createPaginationResponse } from "../../studio/schemas/common";
 import {
+	type DeliverableMinimal,
 	listDeliverablesMinimalInputSchema,
 	listDeliverablesMinimalOutputSchema,
-	type DeliverableMinimal,
 } from "../../studio/schemas/deliverable";
 
 export const listDeliverablesMinimal = studioProtectedProcedure
@@ -22,7 +22,8 @@ export const listDeliverablesMinimal = studioProtectedProcedure
 		path: "/deliverables/minimal",
 		tags: ["Deliverables"],
 		summary: "List deliverables (minimal)",
-		description: "Lightweight list of deliverables for dropdowns and references",
+		description:
+			"Lightweight list of deliverables for dropdowns and references",
 	})
 	.input(listDeliverablesMinimalInputSchema)
 	.output(listDeliverablesMinimalOutputSchema)

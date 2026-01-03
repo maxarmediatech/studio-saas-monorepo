@@ -63,7 +63,11 @@ export function AnnouncementsSection() {
 										{announcement.title}
 									</h3>
 									<time className="shrink-0 text-muted-foreground/60 text-xs tabular-nums">
-										{formatRelativeDate(announcement.date, t, locale)}
+										{formatRelativeDate(
+											announcement.date,
+											t,
+											locale,
+										)}
 									</time>
 								</div>
 								<p className="mt-1 line-clamp-2 text-muted-foreground text-xs leading-relaxed">
@@ -100,8 +104,12 @@ function formatRelativeDate(
 			day: "numeric",
 		});
 	}
-	if (diffInDays === 0) return t("hub.announcements.relativeDate.today");
-	if (diffInDays === 1) return t("hub.announcements.relativeDate.yesterday");
+	if (diffInDays === 0) {
+		return t("hub.announcements.relativeDate.today");
+	}
+	if (diffInDays === 1) {
+		return t("hub.announcements.relativeDate.yesterday");
+	}
 	if (diffInDays < 7) {
 		return t("hub.announcements.relativeDate.daysAgo", {
 			count: diffInDays,

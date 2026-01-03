@@ -141,7 +141,10 @@ export const datetimeSchema = z
 		/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?(Z|[+-]\d{2}:\d{2})$/,
 		"Invalid datetime format",
 	)
-	.refine((value) => !Number.isNaN(Date.parse(value)), "Invalid datetime value");
+	.refine(
+		(value) => !Number.isNaN(Date.parse(value)),
+		"Invalid datetime value",
+	);
 
 /**
  * Date range schema with validation
@@ -193,7 +196,9 @@ export function createSortSchema<T extends readonly string[]>(
 	defaultField: T[number] = "createdAt" as T[number],
 ) {
 	return z.object({
-		sortBy: z.enum(allowedFields as unknown as [string, ...string[]]).default(defaultField),
+		sortBy: z
+			.enum(allowedFields as unknown as [string, ...string[]])
+			.default(defaultField),
 		sortDirection: sortDirectionSchema,
 	});
 }
@@ -351,7 +356,7 @@ export const emailSchema = z.string().email();
  */
 export const phoneSchema = z
 	.string()
-	.regex(/^(\+91[\-\s]?)?[0]?(91)?[6789]\d{9}$|^\+?[1-9]\d{1,14}$/)
+	.regex(/^(\+91[-\s]?)?[0]?(91)?[6789]\d{9}$|^\+?[1-9]\d{1,14}$/)
 	.optional();
 
 /**

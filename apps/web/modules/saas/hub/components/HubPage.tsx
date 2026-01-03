@@ -40,7 +40,8 @@ export function HubPage({ userName, organizations }: HubPageProps) {
 						{t("hub.organizations.title")}
 					</h2>
 					{hasOrganizations &&
-						config.organizations.enableUsersToCreateOrganizations && (
+						config.organizations
+							.enableUsersToCreateOrganizations && (
 							<Button variant="ghost" size="sm" asChild>
 								<Link href="/new-organization">
 									<PlusIcon className="size-4" />
@@ -59,22 +60,23 @@ export function HubPage({ userName, organizations }: HubPageProps) {
 							/>
 						))}
 					</div>
-					) : (
-						/* Empty State - Prominent CTA */
-						<div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed bg-muted/30 px-6 py-16 text-center">
-							<div className="mb-4 flex size-16 items-center justify-center rounded-2xl bg-primary/10">
-								<PlusIcon className="size-8 text-primary" />
-							</div>
-							<h3 className="font-semibold text-lg">
-								{t("hub.organizations.emptyTitle")}
-							</h3>
-							<p className="mt-1 max-w-sm text-muted-foreground text-sm">
-								{t("hub.organizations.emptyDescription")}
-							</p>
-							{config.organizations.enableUsersToCreateOrganizations && (
-								<Button className="mt-6" asChild>
-									<Link href="/new-organization">
-										<PlusIcon className="size-4" />
+				) : (
+					/* Empty State - Prominent CTA */
+					<div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed bg-muted/30 px-6 py-16 text-center">
+						<div className="mb-4 flex size-16 items-center justify-center rounded-2xl bg-primary/10">
+							<PlusIcon className="size-8 text-primary" />
+						</div>
+						<h3 className="font-semibold text-lg">
+							{t("hub.organizations.emptyTitle")}
+						</h3>
+						<p className="mt-1 max-w-sm text-muted-foreground text-sm">
+							{t("hub.organizations.emptyDescription")}
+						</p>
+						{config.organizations
+							.enableUsersToCreateOrganizations && (
+							<Button className="mt-6" asChild>
+								<Link href="/new-organization">
+									<PlusIcon className="size-4" />
 									{t("hub.organizations.createNew")}
 									<ArrowRightIcon className="size-4" />
 								</Link>

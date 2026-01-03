@@ -2,6 +2,7 @@
 import type { OrganizationMemberRole } from "@repo/auth";
 import { authClient } from "@repo/auth/client";
 import { isOrganizationAdmin } from "@repo/auth/lib/helper";
+import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import {
 	DropdownMenu,
@@ -16,16 +17,15 @@ import {
 	TableCell,
 	TableRow,
 } from "@repo/ui/components/table";
-import { Badge } from "@repo/ui/components/badge";
 import { useSession } from "@saas/auth/hooks/use-session";
 import { useOrganizationMemberRoles } from "@saas/organizations/hooks/member-roles";
 import {
 	fullOrganizationQueryKey,
 	useFullOrganizationQuery,
 } from "@saas/organizations/lib/api";
-import { crewsApi, crewsMutations, studioQueryKeys } from "@saas/studio/lib/api";
+import { crewsApi, studioQueryKeys } from "@saas/studio/lib/api";
 import { UserAvatar } from "@shared/components/UserAvatar";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
 	ColumnDef,
 	ColumnFiltersState,
@@ -39,12 +39,17 @@ import {
 	getSortedRowModel,
 	useReactTable,
 } from "@tanstack/react-table";
-import { LogOutIcon, MoreVerticalIcon, TrashIcon, UsersIcon } from "lucide-react";
+import {
+	LogOutIcon,
+	MoreVerticalIcon,
+	TrashIcon,
+	UsersIcon,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
-import { OrganizationRoleSelect } from "./OrganizationRoleSelect";
 import { AddToCrewDialog } from "./AddToCrewDialog";
+import { OrganizationRoleSelect } from "./OrganizationRoleSelect";
 
 export function OrganizationMembersList({
 	organizationId,
@@ -157,7 +162,9 @@ export function OrganizationMembersList({
 			header: "",
 			accessorFn: (row) => row.user,
 			cell: ({ row }) => {
-				const hasCrewProfile = userIdsWithCrewProfiles.has(row.original.userId);
+				const hasCrewProfile = userIdsWithCrewProfiles.has(
+					row.original.userId,
+				);
 				return row.original.user ? (
 					<div className="flex items-center gap-2">
 						<UserAvatar
@@ -173,7 +180,10 @@ export function OrganizationMembersList({
 									{row.original.user.name}
 								</strong>
 								{hasCrewProfile && (
-									<Badge variant="secondary" className="text-xs">
+									<Badge
+										variant="secondary"
+										className="text-xs"
+									>
 										Crew
 									</Badge>
 								)}
@@ -190,7 +200,9 @@ export function OrganizationMembersList({
 			accessorKey: "actions",
 			header: "",
 			cell: ({ row }) => {
-				const hasCrewProfile = userIdsWithCrewProfiles.has(row.original.userId);
+				const hasCrewProfile = userIdsWithCrewProfiles.has(
+					row.original.userId,
+				);
 				return (
 					<div className="flex flex-row justify-end gap-2">
 						{userIsOrganizationAdmin ? (
@@ -218,7 +230,9 @@ export function OrganizationMembersList({
 													onClick={() =>
 														handleAddToCrew(
 															row.original.id,
-															row.original.user?.name ?? "Member",
+															row.original.user
+																?.name ??
+																"Member",
 														)
 													}
 												>
@@ -308,7 +322,9 @@ export function OrganizationMembersList({
 							table.getRowModel().rows.map((row) => (
 								<TableRow
 									key={row.id}
-									data-state={row.getIsSelected() && "selected"}
+									data-state={
+										row.getIsSelected() && "selected"
+									}
 								>
 									{row.getVisibleCells().map((cell) => (
 										<TableCell key={cell.id}>

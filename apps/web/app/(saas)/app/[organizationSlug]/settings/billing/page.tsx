@@ -30,7 +30,8 @@ export default async function BillingSettingsPage({ params }: Props) {
 					Billing Settings
 				</h3>
 				<p className="mt-2 text-sm text-neutral-500">
-					Manage your subscription, payment methods, and billing history.
+					Manage your subscription, payment methods, and billing
+					history.
 				</p>
 				<p className="mt-4 text-sm text-neutral-400">Coming soon</p>
 			</div>

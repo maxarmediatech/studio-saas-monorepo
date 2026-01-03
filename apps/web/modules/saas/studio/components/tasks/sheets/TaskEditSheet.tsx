@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
 	Sheet,
 	SheetContent,
@@ -9,15 +8,16 @@ import {
 } from "@repo/ui/components/sheet";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
-import { toast } from "sonner";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTaskParams } from "@saas/studio/hooks/params/use-task-params";
-import { TaskForm, type TaskFormValues } from "../TaskForm";
 import {
+	studioQueryKeys,
 	tasksApi,
 	tasksMutations,
-	studioQueryKeys,
 } from "@saas/studio/lib/api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { toast } from "sonner";
+import { TaskForm, type TaskFormValues } from "../TaskForm";
 
 export function TaskEditSheet() {
 	const { taskId, close } = useTaskParams();
@@ -34,7 +34,9 @@ export function TaskEditSheet() {
 		...tasksMutations.update(),
 		onSuccess: () => {
 			toast.success("Task updated successfully");
-			queryClient.invalidateQueries({ queryKey: studioQueryKeys.tasks.all });
+			queryClient.invalidateQueries({
+				queryKey: studioQueryKeys.tasks.all,
+			});
 			close();
 		},
 		onError: (error) => {
@@ -43,7 +45,9 @@ export function TaskEditSheet() {
 	});
 
 	const handleSubmit = async (data: TaskFormValues) => {
-		if (!taskId) return;
+		if (!taskId) {
+			return;
+		}
 
 		await updateMutation.mutateAsync({
 			id: taskId,
@@ -57,11 +61,15 @@ export function TaskEditSheet() {
 
 	return (
 		<Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
-			<SheetContent side="right" className="sm:max-w-md p-0 gap-0 flex flex-col">
+			<SheetContent
+				side="right"
+				className="sm:max-w-md p-0 gap-0 flex flex-col"
+			>
 				<SheetHeader
 					className={cn(
 						"shrink-0 p-4 transition-shadow duration-200",
-						isScrolled && "shadow-[0_4px_12px_-4px_rgba(0,0,0,0.15)]"
+						isScrolled &&
+							"shadow-[0_4px_12px_-4px_rgba(0,0,0,0.15)]",
 					)}
 				>
 					<SheetTitle className="text-xl">Edit Task</SheetTitle>

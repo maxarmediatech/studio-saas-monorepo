@@ -19,7 +19,8 @@ export default async function NewOrganizationPage({ searchParams }: Props) {
 	if (
 		!config.organizations.enable ||
 		(!config.organizations.enableUsersToCreateOrganizations &&
-			(!config.organizations.requireOrganization || organizations.length > 0))
+			(!config.organizations.requireOrganization ||
+				organizations.length > 0))
 	) {
 		redirect("/app");
 	}

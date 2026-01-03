@@ -62,10 +62,14 @@ export function PageContent({
 								)}
 							</div>
 							{controls && (
-								<div className="flex items-center gap-2">{controls}</div>
+								<div className="flex items-center gap-2">
+									{controls}
+								</div>
 							)}
 						</div>
-						{headerContent && <div className="pb-3">{headerContent}</div>}
+						{headerContent && (
+							<div className="pb-3">{headerContent}</div>
+						)}
 					</PageWidthWrapper>
 				</div>
 			)}

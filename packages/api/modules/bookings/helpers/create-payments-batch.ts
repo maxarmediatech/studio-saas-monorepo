@@ -5,9 +5,18 @@
  * Also updates the booking's totalReceived field.
  */
 
-import { receivedAmounts, paymentSchedules, bookings, eq, sql } from "@repo/database";
+import {
+	bookings,
+	eq,
+	paymentSchedules,
+	receivedAmounts,
+	sql,
+} from "@repo/database";
 import type { TransactionClient } from "../../studio/lib/transactions";
-import type { ReceivedPaymentInput, PaymentScheduleInput } from "../../studio/schemas/booking";
+import type {
+	PaymentScheduleInput,
+	ReceivedPaymentInput,
+} from "../../studio/schemas/booking";
 
 export interface CreatePaymentsBatchResult {
 	receivedIds: string[];

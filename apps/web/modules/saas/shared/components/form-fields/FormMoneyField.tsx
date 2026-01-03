@@ -62,7 +62,10 @@ export function FormMoneyField<
 								className={cn("pl-7")}
 								onChange={(e) => {
 									// Allow only numbers and decimal point
-									const value = e.target.value.replace(/[^0-9.]/g, "");
+									const value = e.target.value.replace(
+										/[^0-9.]/g,
+										"",
+									);
 									// Prevent multiple decimal points
 									const parts = value.split(".");
 									if (parts.length > 2) {
@@ -77,7 +80,9 @@ export function FormMoneyField<
 							/>
 						</div>
 					</FormControl>
-					{description && <FormDescription>{description}</FormDescription>}
+					{description && (
+						<FormDescription>{description}</FormDescription>
+					)}
 					<FormMessage />
 				</FormItem>
 			)}

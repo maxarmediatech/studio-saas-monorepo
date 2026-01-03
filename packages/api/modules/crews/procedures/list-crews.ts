@@ -1,11 +1,11 @@
-import { and, count, eq, ilike, isNull, crews, db } from "@repo/database";
+import { and, count, crews, db, eq, ilike, isNull } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
+import { createPaginationResponse } from "../../studio/schemas/common";
 import {
 	listCrewsInputSchema,
 	listCrewsOutputSchema,
 } from "../../studio/schemas/crew";
-import { createPaginationResponse } from "../../studio/schemas/common";
 
 export const listCrews = studioProtectedProcedure
 	.route({
@@ -13,14 +13,24 @@ export const listCrews = studioProtectedProcedure
 		path: "/crews",
 		tags: ["Crews"],
 		summary: "List crews",
-		description: "List all crew members for the organization with optional filters",
+		description:
+			"List all crew members for the organization with optional filters",
 	})
 	.input(listCrewsInputSchema)
 	.output(listCrewsOutputSchema)
 	.handler(async ({ input, context }) => {
 		requirePermission(context, "crew", "list");
 
-		const { role, status, search, sortBy, sortDirection, page, limit, includeDeleted } = input;
+		const {
+			role,
+			status,
+			search,
+			sortBy,
+			sortDirection,
+			page,
+			limit,
+			includeDeleted,
+		} = input;
 		const offset = (page - 1) * limit;
 
 		// Build where conditions
@@ -65,7 +75,9 @@ export const listCrews = studioProtectedProcedure
 		const data = await db.query.crews.findMany({
 			where: and(...conditions),
 			orderBy: (table, { asc, desc }) =>
-				sortDirection === "asc" ? [asc(orderColumn)] : [desc(orderColumn)],
+				sortDirection === "asc"
+					? [asc(orderColumn)]
+					: [desc(orderColumn)],
 			limit,
 			offset,
 		});

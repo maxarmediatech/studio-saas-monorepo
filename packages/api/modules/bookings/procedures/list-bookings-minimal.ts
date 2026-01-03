@@ -1,4 +1,4 @@
-import { and, eq, isNull, sql, bookings, db } from "@repo/database";
+import { and, bookings, db, eq, isNull, sql } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
@@ -12,7 +12,8 @@ export const listBookingsMinimal = studioProtectedProcedure
 		path: "/bookings/minimal",
 		tags: ["Bookings"],
 		summary: "List bookings (minimal)",
-		description: "Lightweight list of bookings for dropdowns and references",
+		description:
+			"Lightweight list of bookings for dropdowns and references",
 	})
 	.input(listBookingsMinimalInputSchema)
 	.output(listBookingsMinimalOutputSchema)

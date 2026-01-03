@@ -2,12 +2,12 @@
 
 import {
 	createContext,
+	type PropsWithChildren,
 	useCallback,
 	useContext,
 	useEffect,
 	useMemo,
 	useState,
-	type PropsWithChildren,
 } from "react";
 
 const SIDEBAR_COOKIE_NAME = "sidebar_panel_state";
@@ -43,7 +43,9 @@ export function useSidebar() {
  * Get initial panel state from cookie (server-safe)
  */
 function getInitialPanelState(): boolean {
-	if (typeof document === "undefined") return true;
+	if (typeof document === "undefined") {
+		return true;
+	}
 
 	const cookies = document.cookie.split(";");
 	for (const cookie of cookies) {
@@ -71,8 +73,8 @@ export function SidebarProvider({
 	children,
 }: SidebarProviderProps) {
 	// Internal state - initialized from cookie or default
-	const [_isPanelOpen, _setIsPanelOpen] = useState(() =>
-		defaultOpen ?? getInitialPanelState()
+	const [_isPanelOpen, _setIsPanelOpen] = useState(
+		() => defaultOpen ?? getInitialPanelState(),
 	);
 
 	// Support controlled and uncontrolled modes
@@ -89,7 +91,7 @@ export function SidebarProvider({
 			// Persist to cookie
 			document.cookie = `${SIDEBAR_COOKIE_NAME}=${open}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
 		},
-		[onOpenChange]
+		[onOpenChange],
 	);
 
 	const togglePanel = useCallback(() => {
@@ -121,7 +123,7 @@ export function SidebarProvider({
 			togglePanel,
 			panelState,
 		}),
-		[isPanelOpen, setPanelOpen, togglePanel, panelState]
+		[isPanelOpen, setPanelOpen, togglePanel, panelState],
 	);
 
 	return (

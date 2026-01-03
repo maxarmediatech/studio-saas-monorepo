@@ -1,5 +1,13 @@
 import { ORPCError } from "@orpc/server";
-import { and, eq, isNull, count, bookings, bookingParticipants, db } from "@repo/database";
+import {
+	and,
+	bookingParticipants,
+	bookings,
+	count,
+	db,
+	eq,
+	isNull,
+} from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
@@ -13,7 +21,8 @@ export const removeParticipant = studioProtectedProcedure
 		path: "/bookings/{bookingId}/participants/{participantId}",
 		tags: ["Bookings", "Participants"],
 		summary: "Remove participant from booking",
-		description: "Remove a participant from a booking. Requires at least one participant to remain.",
+		description:
+			"Remove a participant from a booking. Requires at least one participant to remain.",
 	})
 	.input(removeParticipantInputSchema)
 	.output(removeParticipantOutputSchema)
@@ -65,7 +74,8 @@ export const removeParticipant = studioProtectedProcedure
 
 		if (participantCount && participantCount.count <= 1) {
 			throw new ORPCError("BAD_REQUEST", {
-				message: "Cannot remove the last participant. A booking must have at least one participant.",
+				message:
+					"Cannot remove the last participant. A booking must have at least one participant.",
 			});
 		}
 

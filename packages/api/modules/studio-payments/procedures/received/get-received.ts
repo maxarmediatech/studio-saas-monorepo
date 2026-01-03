@@ -1,12 +1,12 @@
 import { ORPCError } from "@orpc/server";
 import {
 	and,
-	eq,
-	isNull,
-	receivedAmounts,
-	paymentSchedules,
 	bookings,
 	db,
+	eq,
+	isNull,
+	paymentSchedules,
+	receivedAmounts,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../../orpc/procedures";
 import { requirePermission } from "../../../studio/lib/permissions";
@@ -21,7 +21,8 @@ export const getReceived = studioProtectedProcedure
 		path: "/studio-payments/received/{id}",
 		tags: ["Studio Payments"],
 		summary: "Get received payment",
-		description: "Get detailed information about a specific received payment",
+		description:
+			"Get detailed information about a specific received payment",
 	})
 	.input(getReceivedInputSchema)
 	.output(getReceivedOutputSchema)

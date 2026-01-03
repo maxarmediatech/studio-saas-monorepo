@@ -1,21 +1,21 @@
 import { ORPCError } from "@orpc/server";
 import {
 	and,
-	eq,
-	isNull,
-	expenses,
-	expenseAssignments,
 	bookings,
-	shoots,
 	crews,
 	db,
+	eq,
+	expenseAssignments,
+	expenses,
+	isNull,
+	shoots,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
+	type ExpenseAssignmentWithDetails,
 	getExpenseInputSchema,
 	getExpenseOutputSchema,
-	type ExpenseAssignmentWithDetails,
 } from "../../studio/schemas/expense";
 
 export const getExpense = studioProtectedProcedure
@@ -64,11 +64,20 @@ export const getExpense = studioProtectedProcedure
 			.where(eq(expenseAssignments.expenseId, id));
 
 		// Fetch related entity names
-		const bookingIds = assignmentRows.filter((a) => a.bookingId).map((a) => a.bookingId as string);
-		const shootIds = assignmentRows.filter((a) => a.shootId).map((a) => a.shootId as string);
-		const crewIds = assignmentRows.filter((a) => a.crewId).map((a) => a.crewId as string);
+		const bookingIds = assignmentRows
+			.filter((a) => a.bookingId)
+			.map((a) => a.bookingId as string);
+		const shootIds = assignmentRows
+			.filter((a) => a.shootId)
+			.map((a) => a.shootId as string);
+		const crewIds = assignmentRows
+			.filter((a) => a.crewId)
+			.map((a) => a.crewId as string);
 
-		let bookingMap: Record<string, { name: string; referenceNumber: string }> = {};
+		let bookingMap: Record<
+			string,
+			{ name: string; referenceNumber: string }
+		> = {};
 		let shootMap: Record<string, string> = {};
 		let crewMap: Record<string, string> = {};
 
@@ -88,7 +97,10 @@ export const getExpense = studioProtectedProcedure
 				);
 
 			bookingMap = Object.fromEntries(
-				bookingRows.map((b) => [b.id, { name: b.name, referenceNumber: b.referenceNumber }]),
+				bookingRows.map((b) => [
+					b.id,
+					{ name: b.name, referenceNumber: b.referenceNumber },
+				]),
 			);
 		}
 
@@ -126,23 +138,29 @@ export const getExpense = studioProtectedProcedure
 			crewMap = Object.fromEntries(crewRows.map((c) => [c.id, c.name]));
 		}
 
-		const assignments: ExpenseAssignmentWithDetails[] = assignmentRows.map((row) => {
-			const booking = row.bookingId ? bookingMap[row.bookingId] : null;
-			return {
-				id: row.id,
-				expenseId: row.expenseId,
-				bookingId: row.bookingId,
-				shootId: row.shootId,
-				crewId: row.crewId,
-				allocationPercentage: row.allocationPercentage,
-				allocationAmount: row.allocationAmount,
-				createdAt: row.createdAt.toISOString(),
-				bookingName: booking?.name ?? null,
-				bookingReferenceNumber: booking?.referenceNumber ?? null,
-				shootName: row.shootId ? shootMap[row.shootId] ?? null : null,
-				crewName: row.crewId ? crewMap[row.crewId] ?? null : null,
-			};
-		});
+		const assignments: ExpenseAssignmentWithDetails[] = assignmentRows.map(
+			(row) => {
+				const booking = row.bookingId
+					? bookingMap[row.bookingId]
+					: null;
+				return {
+					id: row.id,
+					expenseId: row.expenseId,
+					bookingId: row.bookingId,
+					shootId: row.shootId,
+					crewId: row.crewId,
+					allocationPercentage: row.allocationPercentage,
+					allocationAmount: row.allocationAmount,
+					createdAt: row.createdAt.toISOString(),
+					bookingName: booking?.name ?? null,
+					bookingReferenceNumber: booking?.referenceNumber ?? null,
+					shootName: row.shootId
+						? (shootMap[row.shootId] ?? null)
+						: null,
+					crewName: row.crewId ? (crewMap[row.crewId] ?? null) : null,
+				};
+			},
+		);
 
 		return {
 			data: {

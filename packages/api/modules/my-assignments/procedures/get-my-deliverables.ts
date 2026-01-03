@@ -1,19 +1,19 @@
 import {
 	and,
-	eq,
-	isNull,
-	gte,
-	sql,
-	count,
 	asc,
-	desc,
-	ne,
-	deliverables,
-	bookings,
-	deliverableAssignments,
 	assignmentSubmissions,
+	bookings,
+	count,
 	crews,
 	db,
+	deliverableAssignments,
+	deliverables,
+	desc,
+	eq,
+	gte,
+	isNull,
+	ne,
+	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { createPaginationResponse } from "../../studio/schemas/common";
@@ -51,7 +51,10 @@ export const getMyDeliverables = studioProtectedProcedure
 		const offset = (page - 1) * limit;
 
 		// Get crew ID for current user
-		const crewId = await getMyCrewId(context.user.id, context.organizationId);
+		const crewId = await getMyCrewId(
+			context.user.id,
+			context.organizationId,
+		);
 
 		const today = new Date();
 		today.setHours(0, 0, 0, 0);
@@ -98,18 +101,22 @@ export const getMyDeliverables = studioProtectedProcedure
 			workflowStatus: deliverables.workflowStatus,
 			createdAt: deliverables.createdAt,
 		};
-		const sortColumn = sortColumnMap[sortBy as keyof typeof sortColumnMap] ?? deliverables.dueDate;
+		const sortColumn =
+			sortColumnMap[sortBy as keyof typeof sortColumnMap] ??
+			deliverables.dueDate;
 
 		// Handle null due dates (put them at the end when sorting ascending)
-		let orderBy;
-		if (sortBy === "dueDate") {
-			orderBy =
-				sortDirection === "asc"
-					? [sql`CASE WHEN ${deliverables.dueDate} IS NULL THEN 1 ELSE 0 END`, asc(sortColumn)]
-					: [desc(sortColumn)];
-		} else {
-			orderBy = sortDirection === "asc" ? [asc(sortColumn)] : [desc(sortColumn)];
-		}
+		const orderBy =
+			sortBy === "dueDate" && sortDirection === "asc"
+				? [
+						sql`CASE WHEN ${deliverables.dueDate} IS NULL THEN 1 ELSE 0 END`,
+						asc(sortColumn),
+					]
+				: [
+						sortDirection === "asc"
+							? asc(sortColumn)
+							: desc(sortColumn),
+					];
 
 		// Get assignments with deliverable info
 		const assignmentsList = await db
@@ -127,7 +134,10 @@ export const getMyDeliverables = studioProtectedProcedure
 				bookingId: deliverables.bookingId,
 			})
 			.from(deliverableAssignments)
-			.innerJoin(deliverables, eq(deliverableAssignments.deliverableId, deliverables.id))
+			.innerJoin(
+				deliverables,
+				eq(deliverableAssignments.deliverableId, deliverables.id),
+			)
 			.where(and(...conditions))
 			.orderBy(...orderBy)
 			.limit(limit)
@@ -137,7 +147,10 @@ export const getMyDeliverables = studioProtectedProcedure
 		const [countResult] = await db
 			.select({ count: count() })
 			.from(deliverableAssignments)
-			.innerJoin(deliverables, eq(deliverableAssignments.deliverableId, deliverables.id))
+			.innerJoin(
+				deliverables,
+				eq(deliverableAssignments.deliverableId, deliverables.id),
+			)
 			.where(and(...conditions));
 
 		const total = countResult?.count ?? 0;
@@ -157,19 +170,23 @@ export const getMyDeliverables = studioProtectedProcedure
 				});
 
 				// Get latest submission by this crew member
-				const latestSubmission = await db.query.assignmentSubmissions.findFirst({
-					where: and(
-						eq(assignmentSubmissions.deliverableId, assignment.deliverableId),
-						eq(assignmentSubmissions.submittedBy, crewId),
-					),
-					orderBy: [desc(assignmentSubmissions.submittedAt)],
-					columns: {
-						id: true,
-						status: true,
-						submittedAt: true,
-						reviewNote: true,
-					},
-				});
+				const latestSubmission =
+					await db.query.assignmentSubmissions.findFirst({
+						where: and(
+							eq(
+								assignmentSubmissions.deliverableId,
+								assignment.deliverableId,
+							),
+							eq(assignmentSubmissions.submittedBy, crewId),
+						),
+						orderBy: [desc(assignmentSubmissions.submittedAt)],
+						columns: {
+							id: true,
+							status: true,
+							submittedAt: true,
+							reviewNote: true,
+						},
+					});
 
 				// Get other crew on this deliverable
 				const otherCrew = await db
@@ -178,10 +195,16 @@ export const getMyDeliverables = studioProtectedProcedure
 						name: crews.name,
 					})
 					.from(deliverableAssignments)
-					.innerJoin(crews, eq(deliverableAssignments.crewId, crews.id))
+					.innerJoin(
+						crews,
+						eq(deliverableAssignments.crewId, crews.id),
+					)
 					.where(
 						and(
-							eq(deliverableAssignments.deliverableId, assignment.deliverableId),
+							eq(
+								deliverableAssignments.deliverableId,
+								assignment.deliverableId,
+							),
 							ne(deliverableAssignments.crewId, crewId),
 						),
 					);
@@ -212,7 +235,9 @@ export const getMyDeliverables = studioProtectedProcedure
 						? {
 								id: latestSubmission.id,
 								status: latestSubmission.status,
-								submittedAt: latestSubmission.submittedAt?.toISOString() ?? null,
+								submittedAt:
+									latestSubmission.submittedAt?.toISOString() ??
+									null,
 								reviewNote: latestSubmission.reviewNote,
 							}
 						: null,

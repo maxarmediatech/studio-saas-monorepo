@@ -1,17 +1,17 @@
 import { config } from "@repo/config";
 import {
-	db,
-	crews,
-	users,
-	members,
-	eq,
 	and,
-	isNull,
+	crews,
+	db,
+	eq,
 	getInvitationById,
 	getOrganizationsByUserId,
 	getPurchasesByOrganizationId,
 	getPurchasesByUserId,
 	getUserByEmail,
+	isNull,
+	type members,
+	users,
 } from "@repo/database";
 import type { Locale } from "@repo/i18n";
 import { logger } from "@repo/logs";
@@ -58,8 +58,7 @@ const getLocaleFromRequest = (request?: RequestLike) => {
 	const cookieHeader =
 		request?.request instanceof Request
 			? request.request.headers.get("cookie")
-			: typeof request?.headers === "object" &&
-					request?.headers !== null
+			: typeof request?.headers === "object" && request?.headers !== null
 				? typeof (request.headers as Headers).get === "function"
 					? (request.headers as Headers).get("cookie")
 					: (request.headers as { cookie?: string }).cookie
@@ -134,12 +133,15 @@ export const auth = betterAuth({
 						});
 
 						if (existingCrew) {
-							logger.info("Crew profile already exists for member", {
-								memberId: member.id,
-								userId: member.userId,
-								organizationId: member.organizationId,
-								crewId: existingCrew.id,
-							});
+							logger.info(
+								"Crew profile already exists for member",
+								{
+									memberId: member.id,
+									userId: member.userId,
+									organizationId: member.organizationId,
+									crewId: existingCrew.id,
+								},
+							);
 							return;
 						}
 
@@ -149,10 +151,13 @@ export const auth = betterAuth({
 						});
 
 						if (!user) {
-							logger.warn("User not found for auto-crew creation", {
-								memberId: member.id,
-								userId: member.userId,
-							});
+							logger.warn(
+								"User not found for auto-crew creation",
+								{
+									memberId: member.id,
+									userId: member.userId,
+								},
+							);
 							return;
 						}
 
@@ -174,12 +179,15 @@ export const auth = betterAuth({
 							.returning({ id: crews.id });
 
 						if (created) {
-							logger.info("Auto-created crew profile for new member", {
-								memberId: member.id,
-								userId: member.userId,
-								organizationId: member.organizationId,
-								crewId: created.id,
-							});
+							logger.info(
+								"Auto-created crew profile for new member",
+								{
+									memberId: member.id,
+									userId: member.userId,
+									organizationId: member.organizationId,
+									crewId: created.id,
+								},
+							);
 						}
 					} catch (error) {
 						// Log error but don't fail the member creation
@@ -187,7 +195,10 @@ export const auth = betterAuth({
 							memberId: member.id,
 							userId: member.userId,
 							organizationId: member.organizationId,
-							error: error instanceof Error ? error.message : String(error),
+							error:
+								error instanceof Error
+									? error.message
+									: String(error),
 						});
 					}
 				},

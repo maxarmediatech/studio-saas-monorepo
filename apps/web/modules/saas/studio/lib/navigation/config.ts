@@ -1,8 +1,8 @@
 import type {
 	NavAreaConfig,
 	NavItemConfig,
-	NavModuleConfig,
 	NavigationConfig,
+	NavModuleConfig,
 } from "./types";
 
 /**
@@ -46,14 +46,20 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							label: "Dashboard",
 							path: url("/dashboard"),
 							icon: "LayoutDashboard",
-							permission: { any: [{ resource: "dashboard", action: "read" }] },
+							permission: {
+								any: [
+									{ resource: "dashboard", action: "read" },
+								],
+							},
 						},
 						{
 							id: "my-tasks",
 							label: "My Tasks",
 							path: url("/tasks"),
 							icon: "ListChecks",
-							permission: { any: [{ resource: "task", action: "list" }] },
+							permission: {
+								any: [{ resource: "task", action: "list" }],
+							},
 						},
 					],
 				},
@@ -79,7 +85,9 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							label: "Bookings",
 							path: url("/bookings"),
 							icon: "CalendarDays",
-							permission: { any: [{ resource: "booking", action: "list" }] },
+							permission: {
+								any: [{ resource: "booking", action: "list" }],
+							},
 						},
 					],
 				},
@@ -92,21 +100,29 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							label: "Shoots",
 							path: url("/shoots"),
 							icon: "Camera",
-							permission: { any: [{ resource: "shoot", action: "list" }] },
+							permission: {
+								any: [{ resource: "shoot", action: "list" }],
+							},
 						},
 						{
 							id: "deliverables",
 							label: "Deliverables",
 							path: url("/deliverables"),
 							icon: "Package",
-							permission: { any: [{ resource: "deliverable", action: "list" }] },
+							permission: {
+								any: [
+									{ resource: "deliverable", action: "list" },
+								],
+							},
 						},
 						{
 							id: "all-tasks",
 							label: "Tasks",
 							path: url("/tasks/all"),
 							icon: "ListTodo",
-							permission: { any: [{ resource: "task", action: "list" }] },
+							permission: {
+								any: [{ resource: "task", action: "list" }],
+							},
 						},
 					],
 				},
@@ -119,14 +135,18 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							label: "Payments",
 							path: url("/payments"),
 							icon: "Wallet2",
-							permission: { any: [{ resource: "payment", action: "list" }] },
+							permission: {
+								any: [{ resource: "payment", action: "list" }],
+							},
 						},
 						{
 							id: "expenses",
 							label: "Expenses",
 							path: url("/expenses"),
 							icon: "Banknote",
-							permission: { any: [{ resource: "expense", action: "list" }] },
+							permission: {
+								any: [{ resource: "expense", action: "list" }],
+							},
 						},
 					],
 				},
@@ -139,7 +159,9 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							label: "Crew",
 							path: url("/crews"),
 							icon: "Users",
-							permission: { any: [{ resource: "crew", action: "list" }] },
+							permission: {
+								any: [{ resource: "crew", action: "list" }],
+							},
 						},
 					],
 				},
@@ -159,7 +181,9 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							label: "All Clients",
 							path: url("/clients"),
 							icon: "Contact2",
-							permission: { any: [{ resource: "client", action: "list" }] },
+							permission: {
+								any: [{ resource: "client", action: "list" }],
+							},
 						},
 					],
 				},
@@ -215,7 +239,12 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							path: url("/configurations"),
 							icon: "Settings",
 							permission: {
-								any: [{ resource: "configuration", action: "list" }],
+								any: [
+									{
+										resource: "configuration",
+										action: "list",
+									},
+								],
 							},
 						},
 					],

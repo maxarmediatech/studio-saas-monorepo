@@ -1,5 +1,15 @@
 import { ORPCError } from "@orpc/server";
-import { and, eq, isNull, sql, tasks, taskAssignments, assignmentSubmissions, crews, db } from "@repo/database";
+import {
+	and,
+	assignmentSubmissions,
+	crews,
+	db,
+	eq,
+	isNull,
+	sql,
+	taskAssignments,
+	tasks,
+} from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
@@ -67,13 +77,14 @@ export const submitTask = studioProtectedProcedure
 		}
 
 		// Check for existing active submission
-		const existingSubmission = await db.query.assignmentSubmissions.findFirst({
-			where: and(
-				eq(assignmentSubmissions.taskId, taskId),
-				eq(assignmentSubmissions.submittedBy, crew.id),
-				sql`${assignmentSubmissions.status} IN ('submitted', 'in_review')`,
-			),
-		});
+		const existingSubmission =
+			await db.query.assignmentSubmissions.findFirst({
+				where: and(
+					eq(assignmentSubmissions.taskId, taskId),
+					eq(assignmentSubmissions.submittedBy, crew.id),
+					sql`${assignmentSubmissions.status} IN ('submitted', 'in_review')`,
+				),
+			});
 
 		if (existingSubmission) {
 			throw new ORPCError("CONFLICT", {

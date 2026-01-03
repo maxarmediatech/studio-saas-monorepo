@@ -1,22 +1,22 @@
 import {
 	and,
+	bookings,
 	count,
+	db,
 	eq,
 	gte,
 	isNull,
 	sql,
-	tasks,
 	taskAssignments,
-	bookings,
-	db,
+	tasks,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
+import { createPaginationResponse } from "../../studio/schemas/common";
 import {
 	listTasksInputSchema,
 	listTasksOutputSchema,
 } from "../../studio/schemas/task";
-import { createPaginationResponse } from "../../studio/schemas/common";
 
 export const listTasks = studioProtectedProcedure
 	.route({
@@ -24,7 +24,8 @@ export const listTasks = studioProtectedProcedure
 		path: "/tasks",
 		tags: ["Tasks"],
 		summary: "List tasks",
-		description: "List all tasks for the organization with optional filters",
+		description:
+			"List all tasks for the organization with optional filters",
 	})
 	.input(listTasksInputSchema)
 	.output(listTasksOutputSchema)
@@ -142,7 +143,11 @@ export const listTasks = studioProtectedProcedure
 			.from(tasks)
 			.innerJoin(bookings, eq(tasks.bookingId, bookings.id))
 			.where(and(...conditions))
-			.orderBy(sortDirection === "asc" ? sql`${orderColumn} ASC` : sql`${orderColumn} DESC`)
+			.orderBy(
+				sortDirection === "asc"
+					? sql`${orderColumn} ASC`
+					: sql`${orderColumn} DESC`,
+			)
 			.limit(limit)
 			.offset(offset);
 

@@ -4,7 +4,7 @@
  * Creates multiple shoots with their crew assignments within a transaction.
  */
 
-import { shoots, shootAssignments } from "@repo/database";
+import { shootAssignments, shoots } from "@repo/database";
 import type { TransactionClient } from "../../studio/lib/transactions";
 import type { ShootInput } from "../../studio/schemas/booking";
 

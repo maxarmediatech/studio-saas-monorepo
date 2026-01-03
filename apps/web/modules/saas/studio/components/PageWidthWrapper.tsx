@@ -10,9 +10,17 @@ interface PageWidthWrapperProps {
  * Wrapper that provides consistent horizontal padding and max-width.
  * Use this inside PageContent to wrap content that needs standard margins.
  */
-export function PageWidthWrapper({ className, children }: PageWidthWrapperProps) {
+export function PageWidthWrapper({
+	className,
+	children,
+}: PageWidthWrapperProps) {
 	return (
-		<div className={cn("mx-auto w-full max-w-screen-xl px-4 lg:px-6", className)}>
+		<div
+			className={cn(
+				"mx-auto w-full max-w-screen-xl px-4 lg:px-6",
+				className,
+			)}
+		>
 			{children}
 		</div>
 	);

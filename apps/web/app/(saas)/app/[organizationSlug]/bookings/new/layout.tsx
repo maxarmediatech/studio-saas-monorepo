@@ -80,7 +80,9 @@ function buildCreateBookingInput(rawValues: BookingFormValues) {
 			description: deliverable.description,
 			dueDate: deliverable.dueDate,
 			quantity: deliverable.quantity ?? 1,
-			cost: deliverable.cost ? formatDecimalForApi(deliverable.cost) : undefined,
+			cost: deliverable.cost
+				? formatDecimalForApi(deliverable.cost)
+				: undefined,
 			isPackageIncluded: deliverable.isPackageIncluded ?? false,
 			crewAssignments: deliverable.crewAssignments?.map((assignment) => ({
 				crewId: assignment.crewId,

@@ -1,5 +1,13 @@
 import { ORPCError } from "@orpc/server";
-import { and, eq, isNull, bookings, bookingParticipants, clients, db } from "@repo/database";
+import {
+	and,
+	bookingParticipants,
+	bookings,
+	clients,
+	db,
+	eq,
+	isNull,
+} from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
@@ -13,7 +21,8 @@ export const addParticipant = studioProtectedProcedure
 		path: "/bookings/{bookingId}/participants",
 		tags: ["Bookings", "Participants"],
 		summary: "Add participant to booking",
-		description: "Add a client as a participant to a booking with a specific role",
+		description:
+			"Add a client as a participant to a booking with a specific role",
 	})
 	.input(addParticipantInputSchema)
 	.output(addParticipantOutputSchema)
@@ -55,14 +64,15 @@ export const addParticipant = studioProtectedProcedure
 		}
 
 		// Check if this client+role combination already exists for this booking
-		const existingParticipant = await db.query.bookingParticipants.findFirst({
-			where: and(
-				eq(bookingParticipants.bookingId, bookingId),
-				eq(bookingParticipants.clientId, clientId),
-				eq(bookingParticipants.role, role),
-			),
-			columns: { id: true },
-		});
+		const existingParticipant =
+			await db.query.bookingParticipants.findFirst({
+				where: and(
+					eq(bookingParticipants.bookingId, bookingId),
+					eq(bookingParticipants.clientId, clientId),
+					eq(bookingParticipants.role, role),
+				),
+				columns: { id: true },
+			});
 
 		if (existingParticipant) {
 			throw new ORPCError("CONFLICT", {

@@ -39,8 +39,12 @@ export default async function GeneralSettingsPage({ params }: Props) {
 							className="size-16 rounded-lg"
 						/>
 						<div>
-							<p className="font-medium text-neutral-900">{organization.name}</p>
-							<p className="text-sm text-neutral-500">/{organization.slug}</p>
+							<p className="font-medium text-neutral-900">
+								{organization.name}
+							</p>
+							<p className="text-sm text-neutral-500">
+								/{organization.slug}
+							</p>
 						</div>
 					</div>
 				</div>

@@ -3,10 +3,9 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import {
+	BOOKING_STEP_SCHEMAS,
 	type BookingFormValues,
 	type BookingTab,
-	BOOKING_STEP_SCHEMAS,
-	BOOKING_TABS,
 	defaultBookingValues,
 	isStepOptional,
 } from "../booking-form-schema";

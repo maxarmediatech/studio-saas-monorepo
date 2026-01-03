@@ -10,7 +10,7 @@ import { toast } from "sonner";
 export function SetPasswordForm() {
 	const t = useTranslations();
 	const { user } = useSession();
-	const [submitting, setSubmitting] = useState(false);
+	const [_submitting, setSubmitting] = useState(false);
 
 	const onSubmit = async () => {
 		if (!user) {

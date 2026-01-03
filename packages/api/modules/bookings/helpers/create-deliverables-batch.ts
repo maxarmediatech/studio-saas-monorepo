@@ -4,7 +4,7 @@
  * Creates multiple deliverables with their crew assignments within a transaction.
  */
 
-import { deliverables, deliverableAssignments } from "@repo/database";
+import { deliverableAssignments, deliverables } from "@repo/database";
 import type { TransactionClient } from "../../studio/lib/transactions";
 import type { DeliverableInput } from "../../studio/schemas/booking";
 
@@ -40,7 +40,8 @@ export async function createDeliverablesBatch(
 		const crewAssignments = deliverableInput.crewAssignments?.filter(
 			(a) => a.crewId && a.crewId.length > 0,
 		);
-		const hasCrewAssignments = crewAssignments && crewAssignments.length > 0;
+		const hasCrewAssignments =
+			crewAssignments && crewAssignments.length > 0;
 
 		// Insert deliverable
 		const [createdDeliverable] = await tx

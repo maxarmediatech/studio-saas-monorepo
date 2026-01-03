@@ -1,27 +1,27 @@
 import {
 	and,
-	eq,
-	isNull,
-	gte,
-	sql,
 	asc,
-	shoots,
-	tasks,
-	deliverables,
-	bookings,
-	paymentSchedules,
 	assignmentSubmissions,
-	shootAssignments,
+	bookings,
 	db,
+	deliverables,
+	eq,
+	gte,
+	isNull,
+	paymentSchedules,
+	shootAssignments,
+	shoots,
+	sql,
+	tasks,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { requirePermission } from "../../studio/lib/permissions";
 import {
 	addDays,
 	formatDateParts,
 	getDateParts,
 	normalizeTimeZone,
 } from "../../studio/lib/date-helpers";
+import { requirePermission } from "../../studio/lib/permissions";
 import {
 	getQuickActionsInputSchema,
 	getQuickActionsOutputSchema,
@@ -43,7 +43,9 @@ export const getQuickActions = studioProtectedProcedure
 
 		const { limit } = input;
 
-		const timeZone = normalizeTimeZone(context.membership.organization.timezone);
+		const timeZone = normalizeTimeZone(
+			context.membership.organization.timezone,
+		);
 		const nowParts = getDateParts(new Date(), timeZone);
 		const todayStr = formatDateParts(nowParts);
 
@@ -78,7 +80,9 @@ export const getQuickActions = studioProtectedProcedure
 				columns: { name: true },
 			});
 
-			const outstanding = parseFloat(payment.amount) - parseFloat(payment.paidAmount ?? "0");
+			const outstanding =
+				Number.parseFloat(payment.amount) -
+				Number.parseFloat(payment.paidAmount ?? "0");
 
 			actions.push({
 				type: "overdue_payment",
@@ -179,7 +183,10 @@ export const getQuickActions = studioProtectedProcedure
 			.from(assignmentSubmissions)
 			.where(
 				and(
-					eq(assignmentSubmissions.organizationId, context.organizationId),
+					eq(
+						assignmentSubmissions.organizationId,
+						context.organizationId,
+					),
 					sql`${assignmentSubmissions.status} IN ('submitted', 'in_review')`,
 				),
 			)
@@ -266,7 +273,10 @@ export const getQuickActions = studioProtectedProcedure
 			}
 
 			// Stop if we have enough
-			if (actions.filter((a) => a.type === "upcoming_shoot_unassigned").length >= limit) {
+			if (
+				actions.filter((a) => a.type === "upcoming_shoot_unassigned")
+					.length >= limit
+			) {
 				break;
 			}
 		}
@@ -274,18 +284,25 @@ export const getQuickActions = studioProtectedProcedure
 		// Sort actions by priority and date
 		actions.sort((a, b) => {
 			const priorityOrder = { high: 0, medium: 1, low: 2 };
-			const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
+			const priorityDiff =
+				priorityOrder[a.priority] - priorityOrder[b.priority];
 			if (priorityDiff !== 0) return priorityDiff;
 
 			// Then by due date (nulls last)
 			if (a.dueDate && b.dueDate) {
-				return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+				return (
+					new Date(a.dueDate).getTime() -
+					new Date(b.dueDate).getTime()
+				);
 			}
 			if (a.dueDate) return -1;
 			if (b.dueDate) return 1;
 
 			// Finally by creation date
-			return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+			return (
+				new Date(a.createdAt).getTime() -
+				new Date(b.createdAt).getTime()
+			);
 		});
 
 		const totalCount = actions.length;

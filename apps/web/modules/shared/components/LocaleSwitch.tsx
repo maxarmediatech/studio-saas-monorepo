@@ -13,12 +13,14 @@ import {
 } from "@repo/ui/components/dropdown-menu";
 import { LanguagesIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 
 const { locales, defaultLocale, localeCookieName } = config.i18n;
 
 function getLocaleFromCookie(): string {
-	if (typeof document === "undefined") return defaultLocale;
+	if (typeof document === "undefined") {
+		return defaultLocale;
+	}
 	const match = document.cookie.match(
 		new RegExp(`(^| )${localeCookieName}=([^;]+)`),
 	);

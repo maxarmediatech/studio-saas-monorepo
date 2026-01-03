@@ -1,9 +1,9 @@
 "use client";
 
-import { Menu } from "lucide-react";
 import { Button } from "@repo/ui/components/button";
 import { UserMenu } from "@saas/shared/components/UserMenu";
 import { Logo } from "@shared/components/Logo";
+import { Menu } from "lucide-react";
 import Link from "next/link";
 import type { HeaderCapabilities } from "../lib/capability.server";
 import { NewActionSwitcher } from "./navigation/new-action-switcher";

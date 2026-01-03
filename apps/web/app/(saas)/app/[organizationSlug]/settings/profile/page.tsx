@@ -2,17 +2,13 @@ import { getSession } from "@saas/auth/lib/server";
 import { PageContent } from "@saas/studio";
 import { redirect } from "next/navigation";
 
-type Props = {
-	params: Promise<{ organizationSlug: string }>;
-};
-
 export async function generateMetadata() {
 	return {
 		title: "Profile Settings",
 	};
 }
 
-export default async function ProfileSettingsPage({ params }: Props) {
+export default async function ProfileSettingsPage() {
 	const session = await getSession();
 
 	if (!session) {

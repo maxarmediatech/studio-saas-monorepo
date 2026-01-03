@@ -2,7 +2,12 @@
 
 import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
 import { Button } from "@repo/ui/components/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/components/card";
+import {
+	Card,
+	CardContent,
+	CardHeader,
+	CardTitle,
+} from "@repo/ui/components/card";
 import { AlertTriangleIcon, RefreshCwIcon } from "lucide-react";
 import { Component, type ErrorInfo, type ReactNode } from "react";
 
@@ -34,7 +39,11 @@ export class BookingStepErrorBoundary extends Component<Props, State> {
 
 	componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
 		// Log error for debugging
-		console.error(`[BookingForm] Error in ${this.props.stepName} step:`, error, errorInfo);
+		console.error(
+			`[BookingForm] Error in ${this.props.stepName} step:`,
+			error,
+			errorInfo,
+		);
 
 		// Call optional error callback
 		this.props.onError?.(error, errorInfo);
@@ -59,21 +68,26 @@ export class BookingStepErrorBoundary extends Component<Props, State> {
 							<AlertTriangleIcon className="size-4" />
 							<AlertTitle>Something went wrong</AlertTitle>
 							<AlertDescription>
-								An error occurred while loading this step. Your draft has been
-								saved. Please try again or contact support if the problem
-								persists.
+								An error occurred while loading this step. Your
+								draft has been saved. Please try again or
+								contact support if the problem persists.
 							</AlertDescription>
 						</Alert>
 
-						{process.env.NODE_ENV === "development" && this.state.error && (
-							<div className="rounded-md bg-muted p-3">
-								<p className="font-mono text-xs text-muted-foreground">
-									{this.state.error.message}
-								</p>
-							</div>
-						)}
+						{process.env.NODE_ENV === "development" &&
+							this.state.error && (
+								<div className="rounded-md bg-muted p-3">
+									<p className="font-mono text-xs text-muted-foreground">
+										{this.state.error.message}
+									</p>
+								</div>
+							)}
 
-						<Button onClick={this.handleRetry} variant="outline" size="sm">
+						<Button
+							onClick={this.handleRetry}
+							variant="outline"
+							size="sm"
+						>
 							<RefreshCwIcon className="mr-2 size-4" />
 							Try Again
 						</Button>
@@ -97,7 +111,9 @@ export function BookingFormRootError({
 	message: string | undefined;
 	onDismiss?: () => void;
 }) {
-	if (!message) return null;
+	if (!message) {
+		return null;
+	}
 
 	return (
 		<Alert variant="destructive" className="mb-4">

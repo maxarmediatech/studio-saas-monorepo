@@ -1,5 +1,5 @@
 import { getUserLocale } from "@i18n/lib/locale-cookie";
-import { locales, defaultLocale } from "@i18n/routing";
+import { defaultLocale, locales } from "@i18n/routing";
 import { getMessagesForLocale } from "@repo/i18n";
 import { getRequestConfig } from "next-intl/server";
 

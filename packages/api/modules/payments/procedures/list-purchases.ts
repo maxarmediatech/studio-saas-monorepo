@@ -17,37 +17,37 @@ export const listPurchases = protectedProcedure
 		description:
 			"Get all purchases of the current user or the provided organization",
 	})
-		.input(
-			z.object({
-				organizationId: z.string().optional(),
-			}),
-		)
-		.handler(async ({ input: { organizationId }, context: { user } }) => {
-			if (organizationId) {
-				const membership = await getOrganizationMembership(
-					organizationId,
-					user.id,
-				);
+	.input(
+		z.object({
+			organizationId: z.string().optional(),
+		}),
+	)
+	.handler(async ({ input: { organizationId }, context: { user } }) => {
+		if (organizationId) {
+			const membership = await getOrganizationMembership(
+				organizationId,
+				user.id,
+			);
 
-				if (!membership) {
-					throw new ORPCError("FORBIDDEN");
-				}
-
-				const purchases =
-					await getPurchasesByOrganizationId(organizationId);
-
-				return { purchases };
-			}
-
-			if (
-				config.organizations.enable &&
-				config.organizations.enableBilling &&
-				!config.users.enableBilling
-			) {
+			if (!membership) {
 				throw new ORPCError("FORBIDDEN");
 			}
 
-			const purchases = await getPurchasesByUserId(user.id);
+			const purchases =
+				await getPurchasesByOrganizationId(organizationId);
 
 			return { purchases };
-		});
+		}
+
+		if (
+			config.organizations.enable &&
+			config.organizations.enableBilling &&
+			!config.users.enableBilling
+		) {
+			throw new ORPCError("FORBIDDEN");
+		}
+
+		const purchases = await getPurchasesByUserId(user.id);
+
+		return { purchases };
+	});

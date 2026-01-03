@@ -1,12 +1,12 @@
 import { ORPCError } from "@orpc/server";
 import {
 	and,
-	eq,
-	isNull,
-	deliverables,
-	deliverableAssignments,
 	crews,
 	db,
+	deliverableAssignments,
+	deliverables,
+	eq,
+	isNull,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
@@ -61,12 +61,13 @@ export const assignCrewToDeliverable = studioProtectedProcedure
 		}
 
 		// Check if already assigned
-		const existingAssignment = await db.query.deliverableAssignments.findFirst({
-			where: and(
-				eq(deliverableAssignments.deliverableId, deliverableId),
-				eq(deliverableAssignments.crewId, crewId),
-			),
-		});
+		const existingAssignment =
+			await db.query.deliverableAssignments.findFirst({
+				where: and(
+					eq(deliverableAssignments.deliverableId, deliverableId),
+					eq(deliverableAssignments.crewId, crewId),
+				),
+			});
 
 		if (existingAssignment) {
 			throw new ORPCError("CONFLICT", {

@@ -1,11 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
-import { useRouter } from "next/navigation";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { ColumnDef } from "@tanstack/react-table";
-import { Input } from "@repo/ui/components/input";
-import { Badge } from "@repo/ui/components/badge";
+import type { DeliverableListItem } from "@repo/api/modules/studio/schemas/deliverable";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -16,24 +11,33 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@repo/ui/components/alert-dialog";
-import {
-	PencilIcon,
-	TrashIcon,
-	SearchIcon,
-	Loader2Icon,
-	PackageIcon,
-	CalendarIcon,
-	UsersIcon,
-} from "lucide-react";
-import { toast } from "sonner";
-import { deliverablesApi, deliverablesMutations, studioQueryKeys } from "@saas/studio/lib/api";
+import { Badge } from "@repo/ui/components/badge";
+import { Input } from "@repo/ui/components/input";
 import {
 	DataTable,
 	DataTableRowActions,
 	type RowAction,
 } from "@saas/shared/components/data-table";
-import type { DeliverableListItem } from "@repo/api/modules/studio/schemas/deliverable";
 import { useDeliverableParams } from "@saas/studio/hooks/params/use-deliverable-params";
+import {
+	deliverablesApi,
+	deliverablesMutations,
+	studioQueryKeys,
+} from "@saas/studio/lib/api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { ColumnDef } from "@tanstack/react-table";
+import {
+	CalendarIcon,
+	Loader2Icon,
+	PackageIcon,
+	PencilIcon,
+	SearchIcon,
+	TrashIcon,
+	UsersIcon,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useMemo, useState, useTransition } from "react";
+import { toast } from "sonner";
 import { OpenDeliverableCreateSheet } from "./OpenDeliverableSheet";
 
 const DELIVERABLE_TYPE_LABELS: Record<string, string> = {
@@ -54,7 +58,9 @@ const DELIVERABLE_TYPE_LABELS: Record<string, string> = {
 };
 
 function formatDate(dateString: string | null): string {
-	if (!dateString) return "-";
+	if (!dateString) {
+		return "-";
+	}
 	const date = new Date(dateString);
 	return date.toLocaleDateString("en-IN", {
 		day: "2-digit",
@@ -63,11 +69,19 @@ function formatDate(dateString: string | null): string {
 	});
 }
 
-function getStatusVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
+function getStatusVariant(
+	status: string,
+): "default" | "secondary" | "destructive" | "outline" {
 	const statusLower = status.toLowerCase();
-	if (statusLower === "completed" || statusLower === "delivered") return "default";
-	if (statusLower === "pending" || statusLower === "draft") return "secondary";
-	if (statusLower === "overdue" || statusLower === "cancelled") return "destructive";
+	if (statusLower === "completed" || statusLower === "delivered") {
+		return "default";
+	}
+	if (statusLower === "pending" || statusLower === "draft") {
+		return "secondary";
+	}
+	if (statusLower === "overdue" || statusLower === "cancelled") {
+		return "destructive";
+	}
 	return "outline";
 }
 
@@ -90,7 +104,8 @@ export function DeliverablesPageClient({
 	const [searchValue, setSearchValue] = useState(initialFilters.search ?? "");
 	const [currentFilters, setCurrentFilters] = useState(initialFilters);
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-	const [deliverableToDelete, setDeliverableToDelete] = useState<DeliverableListItem | null>(null);
+	const [deliverableToDelete, setDeliverableToDelete] =
+		useState<DeliverableListItem | null>(null);
 
 	// URL-based sheet params
 	const { openEdit } = useDeliverableParams();
@@ -106,10 +121,17 @@ export function DeliverablesPageClient({
 	};
 
 	// Fetch deliverables with TanStack Query
-	const { data, isLoading, isFetching } = useQuery(deliverablesApi.listOptions(queryInput));
+	const { data, isLoading, isFetching } = useQuery(
+		deliverablesApi.listOptions(queryInput),
+	);
 
 	const deliverables = data?.data ?? [];
-	const pagination = data?.pagination ?? { page: 1, limit: 10, total: 0, pageCount: 0 };
+	const pagination = data?.pagination ?? {
+		page: 1,
+		limit: 10,
+		total: 0,
+		pageCount: 0,
+	};
 
 	// Delete mutation
 	const deleteMutation = useMutation({
@@ -118,7 +140,9 @@ export function DeliverablesPageClient({
 			toast.success("Deliverable deleted successfully");
 			setDeleteDialogOpen(false);
 			setDeliverableToDelete(null);
-			queryClient.invalidateQueries({ queryKey: studioQueryKeys.deliverables.all });
+			queryClient.invalidateQueries({
+				queryKey: studioQueryKeys.deliverables.all,
+			});
 		},
 		onError: (error) => {
 			toast.error(error.message || "Failed to delete deliverable");
@@ -190,7 +214,9 @@ export function DeliverablesPageClient({
 						<div>
 							<p className="font-medium">{row.original.name}</p>
 							<p className="text-sm text-muted-foreground">
-								{DELIVERABLE_TYPE_LABELS[row.original.deliverableType] ?? row.original.deliverableType}
+								{DELIVERABLE_TYPE_LABELS[
+									row.original.deliverableType
+								] ?? row.original.deliverableType}
 							</p>
 						</div>
 					</div>
@@ -201,8 +227,12 @@ export function DeliverablesPageClient({
 				header: "Booking",
 				cell: ({ row }) => (
 					<div>
-						<p className="font-medium">{row.original.bookingName}</p>
-						<p className="text-sm text-muted-foreground">{row.original.bookingReferenceNumber}</p>
+						<p className="font-medium">
+							{row.original.bookingName}
+						</p>
+						<p className="text-sm text-muted-foreground">
+							{row.original.bookingReferenceNumber}
+						</p>
 					</div>
 				),
 			},
@@ -211,7 +241,9 @@ export function DeliverablesPageClient({
 				header: "Type",
 				cell: ({ row }) => (
 					<Badge variant="outline">
-						{DELIVERABLE_TYPE_LABELS[row.original.deliverableType] ?? row.original.deliverableType}
+						{DELIVERABLE_TYPE_LABELS[
+							row.original.deliverableType
+						] ?? row.original.deliverableType}
 					</Badge>
 				),
 			},
@@ -253,7 +285,10 @@ export function DeliverablesPageClient({
 			{
 				id: "actions",
 				cell: ({ row }) => (
-					<DataTableRowActions row={row.original} actions={rowActions} />
+					<DataTableRowActions
+						row={row.original}
+						actions={rowActions}
+					/>
 				),
 			},
 		],
@@ -293,20 +328,30 @@ export function DeliverablesPageClient({
 				emptyState={
 					<div className="flex flex-col items-center gap-2">
 						<PackageIcon className="h-12 w-12 text-muted-foreground/50" />
-						<p className="text-muted-foreground">No deliverables found</p>
-						<OpenDeliverableCreateSheet variant="outline" size="sm" label="Add your first deliverable" />
+						<p className="text-muted-foreground">
+							No deliverables found
+						</p>
+						<OpenDeliverableCreateSheet
+							variant="outline"
+							size="sm"
+							label="Add your first deliverable"
+						/>
 					</div>
 				}
 			/>
 
 			{/* Delete confirmation dialog */}
-			<AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+			<AlertDialog
+				open={deleteDialogOpen}
+				onOpenChange={setDeleteDialogOpen}
+			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Delete deliverable?</AlertDialogTitle>
 						<AlertDialogDescription>
-							This will permanently delete "{deliverableToDelete?.name}". This action cannot
-							be undone.
+							This will permanently delete "
+							{deliverableToDelete?.name}". This action cannot be
+							undone.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
@@ -314,7 +359,9 @@ export function DeliverablesPageClient({
 						<AlertDialogAction
 							onClick={() => {
 								if (deliverableToDelete) {
-									deleteMutation.mutate({ id: deliverableToDelete.id });
+									deleteMutation.mutate({
+										id: deliverableToDelete.id,
+									});
 								}
 							}}
 							disabled={deleteMutation.isPending}

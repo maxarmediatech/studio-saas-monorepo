@@ -1,18 +1,18 @@
 import { ORPCError } from "@orpc/server";
 import {
 	and,
-	eq,
-	ne,
-	isNull,
-	desc,
 	assignmentSubmissions,
-	submissionFiles,
-	tasks,
-	deliverables,
 	bookings,
 	crews,
-	users,
 	db,
+	deliverables,
+	desc,
+	eq,
+	isNull,
+	ne,
+	submissionFiles,
+	tasks,
+	users,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { hasPermission } from "../../studio/lib/permissions";
@@ -27,7 +27,8 @@ export const getSubmission = studioProtectedProcedure
 		path: "/submissions/{id}",
 		tags: ["Submissions"],
 		summary: "Get submission",
-		description: "Get detailed submission information including files and history",
+		description:
+			"Get detailed submission information including files and history",
 	})
 	.input(getSubmissionInputSchema)
 	.output(getSubmissionOutputSchema)
@@ -38,7 +39,10 @@ export const getSubmission = studioProtectedProcedure
 		const submission = await db.query.assignmentSubmissions.findFirst({
 			where: and(
 				eq(assignmentSubmissions.id, id),
-				eq(assignmentSubmissions.organizationId, context.organizationId),
+				eq(
+					assignmentSubmissions.organizationId,
+					context.organizationId,
+				),
 			),
 		});
 
@@ -174,23 +178,30 @@ export const getSubmission = studioProtectedProcedure
 		});
 
 		// Get previous submissions for the same entity
-		const previousSubmissions = await db.query.assignmentSubmissions.findMany({
-			where: and(
-				eq(assignmentSubmissions.organizationId, context.organizationId),
-				submission.taskId
-					? eq(assignmentSubmissions.taskId, submission.taskId)
-					: eq(assignmentSubmissions.deliverableId, submission.deliverableId!),
-				ne(assignmentSubmissions.id, id),
-			),
-			orderBy: [desc(assignmentSubmissions.submittedAt)],
-			columns: {
-				id: true,
-				status: true,
-				submittedAt: true,
-				reviewedAt: true,
-				reviewNote: true,
-			},
-		});
+		const previousSubmissions =
+			await db.query.assignmentSubmissions.findMany({
+				where: and(
+					eq(
+						assignmentSubmissions.organizationId,
+						context.organizationId,
+					),
+					submission.taskId
+						? eq(assignmentSubmissions.taskId, submission.taskId)
+						: eq(
+								assignmentSubmissions.deliverableId,
+								submission.deliverableId!,
+							),
+					ne(assignmentSubmissions.id, id),
+				),
+				orderBy: [desc(assignmentSubmissions.submittedAt)],
+				columns: {
+					id: true,
+					status: true,
+					submittedAt: true,
+					reviewedAt: true,
+					reviewNote: true,
+				},
+			});
 
 		return {
 			data: {
@@ -212,7 +223,13 @@ export const getSubmission = studioProtectedProcedure
 				entityName,
 				entityDescription,
 				entityDueDate,
-				entityWorkflowStatus: entityWorkflowStatus as "not_started" | "assigned" | "submitted" | "in_review" | "revision_requested" | "approved",
+				entityWorkflowStatus: entityWorkflowStatus as
+					| "not_started"
+					| "assigned"
+					| "submitted"
+					| "in_review"
+					| "revision_requested"
+					| "approved",
 				booking: {
 					id: booking.id,
 					name: booking.name,

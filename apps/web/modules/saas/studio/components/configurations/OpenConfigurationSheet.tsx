@@ -1,13 +1,14 @@
 "use client";
 
 import { Button } from "@repo/ui/components/button";
-import { PlusIcon, PencilIcon } from "lucide-react";
 import { useConfigurationParams } from "@saas/studio/hooks/params/use-configuration-params";
+import { PencilIcon, PlusIcon } from "lucide-react";
 import type { ComponentProps } from "react";
 
 type ButtonProps = ComponentProps<typeof Button>;
 
-interface OpenConfigurationCreateSheetProps extends Omit<ButtonProps, "onClick"> {
+interface OpenConfigurationCreateSheetProps
+	extends Omit<ButtonProps, "onClick"> {
 	configurationType: string;
 	label?: string;
 	showIcon?: boolean;
@@ -30,7 +31,8 @@ export function OpenConfigurationCreateSheet({
 	);
 }
 
-interface OpenConfigurationEditSheetProps extends Omit<ButtonProps, "onClick" | "children"> {
+interface OpenConfigurationEditSheetProps
+	extends Omit<ButtonProps, "onClick" | "children"> {
 	configurationId: string;
 	configurationType: string;
 }

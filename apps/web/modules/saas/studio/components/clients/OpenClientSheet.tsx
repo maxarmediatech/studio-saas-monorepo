@@ -1,8 +1,8 @@
 "use client";
 
 import { Button } from "@repo/ui/components/button";
-import { PlusIcon, PencilIcon } from "lucide-react";
 import { useClientParams } from "@saas/studio/hooks/params/use-client-params";
+import { PencilIcon, PlusIcon } from "lucide-react";
 import type { ComponentProps } from "react";
 
 type ButtonProps = ComponentProps<typeof Button>;

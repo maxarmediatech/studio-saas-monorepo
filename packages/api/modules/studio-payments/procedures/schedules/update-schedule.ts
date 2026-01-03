@@ -1,5 +1,5 @@
 import { ORPCError } from "@orpc/server";
-import { and, eq, isNull, paymentSchedules, db } from "@repo/database";
+import { and, db, eq, isNull, paymentSchedules } from "@repo/database";
 import { studioProtectedProcedure } from "../../../../orpc/procedures";
 import { requirePermission } from "../../../studio/lib/permissions";
 import {
@@ -48,12 +48,13 @@ export const updateSchedule = studioProtectedProcedure
 		}
 
 		if (updates.amount !== undefined) {
-			const newAmount = parseFloat(updates.amount);
-			const paidAmount = parseFloat(schedule.paidAmount);
+			const newAmount = Number.parseFloat(updates.amount);
+			const paidAmount = Number.parseFloat(schedule.paidAmount);
 
 			if (newAmount < paidAmount) {
 				throw new ORPCError("CONFLICT", {
-					message: "Schedule amount cannot be less than amount already paid",
+					message:
+						"Schedule amount cannot be less than amount already paid",
 				});
 			}
 

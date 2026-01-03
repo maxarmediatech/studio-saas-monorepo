@@ -6,17 +6,17 @@
 
 import { z } from "zod";
 import {
-	createListResponseSchema,
+	baseListFiltersSchema,
 	createItemResponseSchema,
+	createListResponseSchema,
 	createSortSchema,
+	dateSchema,
+	descriptionSchema,
 	idSchema,
 	mutationResponseSchema,
 	nameSchema,
-	descriptionSchema,
 	paginationSchema,
 	searchSchema,
-	baseListFiltersSchema,
-	dateSchema,
 	workflowStatusSchema,
 } from "./common";
 
@@ -35,16 +35,19 @@ export const deliverableAssignmentSchema = z.object({
 
 export type DeliverableAssignment = z.infer<typeof deliverableAssignmentSchema>;
 
-export const deliverableAssignmentWithCrewSchema = deliverableAssignmentSchema.extend({
-	crew: z.object({
-		id: idSchema,
-		name: z.string(),
-		role: z.string(),
-		phoneNumber: z.string().nullable(),
-	}),
-});
+export const deliverableAssignmentWithCrewSchema =
+	deliverableAssignmentSchema.extend({
+		crew: z.object({
+			id: idSchema,
+			name: z.string(),
+			role: z.string(),
+			phoneNumber: z.string().nullable(),
+		}),
+	});
 
-export type DeliverableAssignmentWithCrew = z.infer<typeof deliverableAssignmentWithCrewSchema>;
+export type DeliverableAssignmentWithCrew = z.infer<
+	typeof deliverableAssignmentWithCrewSchema
+>;
 
 // ============================================================================
 // DELIVERABLE SCHEMA
@@ -96,7 +99,15 @@ export type DeliverableMinimal = z.infer<typeof deliverableMinimalSchema>;
 // LIST DELIVERABLES
 // ============================================================================
 
-const deliverableSortFields = ["name", "dueDate", "status", "priority", "workflowStatus", "deliverableType", "createdAt"] as const;
+const deliverableSortFields = [
+	"name",
+	"dueDate",
+	"status",
+	"priority",
+	"workflowStatus",
+	"deliverableType",
+	"createdAt",
+] as const;
 
 export const listDeliverablesInputSchema = z
 	.object({
@@ -127,9 +138,13 @@ export const deliverableListItemSchema = deliverableSchema.extend({
 
 export type DeliverableListItem = z.infer<typeof deliverableListItemSchema>;
 
-export const listDeliverablesOutputSchema = createListResponseSchema(deliverableListItemSchema);
+export const listDeliverablesOutputSchema = createListResponseSchema(
+	deliverableListItemSchema,
+);
 
-export type ListDeliverablesOutput = z.infer<typeof listDeliverablesOutputSchema>;
+export type ListDeliverablesOutput = z.infer<
+	typeof listDeliverablesOutputSchema
+>;
 
 // ============================================================================
 // LIST DELIVERABLES MINIMAL
@@ -143,11 +158,17 @@ export const listDeliverablesMinimalInputSchema = z
 	.merge(paginationSchema)
 	.merge(searchSchema);
 
-export type ListDeliverablesMinimalInput = z.infer<typeof listDeliverablesMinimalInputSchema>;
+export type ListDeliverablesMinimalInput = z.infer<
+	typeof listDeliverablesMinimalInputSchema
+>;
 
-export const listDeliverablesMinimalOutputSchema = createListResponseSchema(deliverableMinimalSchema);
+export const listDeliverablesMinimalOutputSchema = createListResponseSchema(
+	deliverableMinimalSchema,
+);
 
-export type ListDeliverablesMinimalOutput = z.infer<typeof listDeliverablesMinimalOutputSchema>;
+export type ListDeliverablesMinimalOutput = z.infer<
+	typeof listDeliverablesMinimalOutputSchema
+>;
 
 // ============================================================================
 // GET DELIVERABLE
@@ -173,7 +194,9 @@ export const deliverableDetailSchema = deliverableSchema.extend({
 
 export type DeliverableDetail = z.infer<typeof deliverableDetailSchema>;
 
-export const getDeliverableOutputSchema = createItemResponseSchema(deliverableDetailSchema);
+export const getDeliverableOutputSchema = createItemResponseSchema(
+	deliverableDetailSchema,
+);
 
 export type GetDeliverableOutput = z.infer<typeof getDeliverableOutputSchema>;
 
@@ -192,11 +215,15 @@ export const createDeliverableInputSchema = z.object({
 	metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
-export type CreateDeliverableInput = z.infer<typeof createDeliverableInputSchema>;
+export type CreateDeliverableInput = z.infer<
+	typeof createDeliverableInputSchema
+>;
 
 export const createDeliverableOutputSchema = mutationResponseSchema;
 
-export type CreateDeliverableOutput = z.infer<typeof createDeliverableOutputSchema>;
+export type CreateDeliverableOutput = z.infer<
+	typeof createDeliverableOutputSchema
+>;
 
 // ============================================================================
 // UPDATE DELIVERABLE
@@ -213,11 +240,15 @@ export const updateDeliverableInputSchema = z.object({
 	metadata: z.record(z.string(), z.unknown()).optional().nullable(),
 });
 
-export type UpdateDeliverableInput = z.infer<typeof updateDeliverableInputSchema>;
+export type UpdateDeliverableInput = z.infer<
+	typeof updateDeliverableInputSchema
+>;
 
 export const updateDeliverableOutputSchema = mutationResponseSchema;
 
-export type UpdateDeliverableOutput = z.infer<typeof updateDeliverableOutputSchema>;
+export type UpdateDeliverableOutput = z.infer<
+	typeof updateDeliverableOutputSchema
+>;
 
 // ============================================================================
 // DELETE DELIVERABLE
@@ -227,11 +258,15 @@ export const deleteDeliverableInputSchema = z.object({
 	id: idSchema,
 });
 
-export type DeleteDeliverableInput = z.infer<typeof deleteDeliverableInputSchema>;
+export type DeleteDeliverableInput = z.infer<
+	typeof deleteDeliverableInputSchema
+>;
 
 export const deleteDeliverableOutputSchema = mutationResponseSchema;
 
-export type DeleteDeliverableOutput = z.infer<typeof deleteDeliverableOutputSchema>;
+export type DeleteDeliverableOutput = z.infer<
+	typeof deleteDeliverableOutputSchema
+>;
 
 // ============================================================================
 // DELIVERABLE STATS
@@ -241,7 +276,9 @@ export const getDeliverableStatsInputSchema = z.object({
 	bookingId: idSchema.optional(),
 });
 
-export type GetDeliverableStatsInput = z.infer<typeof getDeliverableStatsInputSchema>;
+export type GetDeliverableStatsInput = z.infer<
+	typeof getDeliverableStatsInputSchema
+>;
 
 export const deliverableStatsSchema = z.object({
 	totalDeliverables: z.number(),
@@ -256,9 +293,13 @@ export const deliverableStatsSchema = z.object({
 
 export type DeliverableStats = z.infer<typeof deliverableStatsSchema>;
 
-export const getDeliverableStatsOutputSchema = createItemResponseSchema(deliverableStatsSchema);
+export const getDeliverableStatsOutputSchema = createItemResponseSchema(
+	deliverableStatsSchema,
+);
 
-export type GetDeliverableStatsOutput = z.infer<typeof getDeliverableStatsOutputSchema>;
+export type GetDeliverableStatsOutput = z.infer<
+	typeof getDeliverableStatsOutputSchema
+>;
 
 // ============================================================================
 // ASSIGN CREW
@@ -270,11 +311,15 @@ export const assignCrewToDeliverableInputSchema = z.object({
 	isLead: z.boolean().optional(),
 });
 
-export type AssignCrewToDeliverableInput = z.infer<typeof assignCrewToDeliverableInputSchema>;
+export type AssignCrewToDeliverableInput = z.infer<
+	typeof assignCrewToDeliverableInputSchema
+>;
 
 export const assignCrewToDeliverableOutputSchema = mutationResponseSchema;
 
-export type AssignCrewToDeliverableOutput = z.infer<typeof assignCrewToDeliverableOutputSchema>;
+export type AssignCrewToDeliverableOutput = z.infer<
+	typeof assignCrewToDeliverableOutputSchema
+>;
 
 // ============================================================================
 // UNASSIGN CREW
@@ -285,11 +330,15 @@ export const unassignCrewFromDeliverableInputSchema = z.object({
 	crewId: idSchema,
 });
 
-export type UnassignCrewFromDeliverableInput = z.infer<typeof unassignCrewFromDeliverableInputSchema>;
+export type UnassignCrewFromDeliverableInput = z.infer<
+	typeof unassignCrewFromDeliverableInputSchema
+>;
 
 export const unassignCrewFromDeliverableOutputSchema = mutationResponseSchema;
 
-export type UnassignCrewFromDeliverableOutput = z.infer<typeof unassignCrewFromDeliverableOutputSchema>;
+export type UnassignCrewFromDeliverableOutput = z.infer<
+	typeof unassignCrewFromDeliverableOutputSchema
+>;
 
 // ============================================================================
 // CONVERT TO TASK
@@ -303,7 +352,9 @@ export const convertDeliverableToTaskInputSchema = z.object({
 	taskDueDate: dateSchema.optional(),
 });
 
-export type ConvertDeliverableToTaskInput = z.infer<typeof convertDeliverableToTaskInputSchema>;
+export type ConvertDeliverableToTaskInput = z.infer<
+	typeof convertDeliverableToTaskInputSchema
+>;
 
 export const convertDeliverableToTaskOutputSchema = z.object({
 	data: z.object({
@@ -313,7 +364,9 @@ export const convertDeliverableToTaskOutputSchema = z.object({
 	message: z.string(),
 });
 
-export type ConvertDeliverableToTaskOutput = z.infer<typeof convertDeliverableToTaskOutputSchema>;
+export type ConvertDeliverableToTaskOutput = z.infer<
+	typeof convertDeliverableToTaskOutputSchema
+>;
 
 // ============================================================================
 // SUBMIT DELIVERABLE
@@ -324,8 +377,12 @@ export const submitDeliverableInputSchema = z.object({
 	submissionNote: z.string().max(5000).optional(),
 });
 
-export type SubmitDeliverableInput = z.infer<typeof submitDeliverableInputSchema>;
+export type SubmitDeliverableInput = z.infer<
+	typeof submitDeliverableInputSchema
+>;
 
 export const submitDeliverableOutputSchema = mutationResponseSchema;
 
-export type SubmitDeliverableOutput = z.infer<typeof submitDeliverableOutputSchema>;
+export type SubmitDeliverableOutput = z.infer<
+	typeof submitDeliverableOutputSchema
+>;

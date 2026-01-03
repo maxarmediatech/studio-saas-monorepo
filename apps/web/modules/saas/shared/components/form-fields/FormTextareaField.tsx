@@ -54,7 +54,9 @@ export function FormTextareaField<
 							value={field.value ?? ""}
 						/>
 					</FormControl>
-					{description && <FormDescription>{description}</FormDescription>}
+					{description && (
+						<FormDescription>{description}</FormDescription>
+					)}
 					<FormMessage />
 				</FormItem>
 			)}

@@ -52,7 +52,8 @@ export const studioProtectedProcedure = protectedProcedure.use(
 
 		if (!organizationId) {
 			throw new ORPCError("FORBIDDEN", {
-				message: "No active organization. Please select an organization.",
+				message:
+					"No active organization. Please select an organization.",
 			});
 		}
 

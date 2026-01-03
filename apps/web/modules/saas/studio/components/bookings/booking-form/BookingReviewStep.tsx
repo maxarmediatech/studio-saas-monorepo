@@ -1,9 +1,6 @@
 "use client";
 
-import { memo } from "react";
-import { useWatch } from "react-hook-form";
-import { useQuery } from "@tanstack/react-query";
-import { cn } from "@repo/ui/lib/utils";
+import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import {
 	Card,
@@ -12,29 +9,37 @@ import {
 	CardTitle,
 } from "@repo/ui/components/card";
 import { Progress } from "@repo/ui/components/progress";
-import { Badge } from "@repo/ui/components/badge";
 import { Separator } from "@repo/ui/components/separator";
+import { cn } from "@repo/ui/lib/utils";
+import { useQuery } from "@tanstack/react-query";
 import {
-	UsersIcon,
-	CameraIcon,
-	PackageIcon,
-	WalletIcon,
 	CalendarIcon,
+	CameraIcon,
 	ClipboardListIcon,
-	PencilIcon,
-	MapPinIcon,
 	ClockIcon,
+	MapPinIcon,
+	PackageIcon,
+	PencilIcon,
+	UsersIcon,
+	WalletIcon,
 } from "lucide-react";
-import type { BookingFormValues, BookingTab } from "./booking-form-schema";
-import { SHOOT_TYPE_OPTIONS, DELIVERABLE_TYPE_OPTIONS, PAYMENT_METHOD_OPTIONS } from "./booking-form-schema";
+import { memo } from "react";
+import { useWatch } from "react-hook-form";
 import { bookingFormQueries } from "./booking-form-queries";
+import type { BookingFormValues, BookingTab } from "./booking-form-schema";
+import {
+	DELIVERABLE_TYPE_OPTIONS,
+	PAYMENT_METHOD_OPTIONS,
+	SHOOT_TYPE_OPTIONS,
+} from "./booking-form-schema";
 
 // ============================================================================
 // Shared utilities and types
 // ============================================================================
 
 const formatCurrency = (amount: number | string) => {
-	const num = typeof amount === "string" ? parseFloat(amount) || 0 : amount;
+	const num =
+		typeof amount === "string" ? Number.parseFloat(amount) || 0 : amount;
 	return new Intl.NumberFormat("en-IN", {
 		style: "currency",
 		currency: "INR",
@@ -43,7 +48,9 @@ const formatCurrency = (amount: number | string) => {
 };
 
 const formatDate = (dateString: string) => {
-	if (!dateString) return "—";
+	if (!dateString) {
+		return "—";
+	}
 	return new Date(dateString).toLocaleDateString("en-IN", {
 		weekday: "short",
 		day: "numeric",
@@ -103,13 +110,23 @@ const BookingDetailsSection = memo(function BookingDetailsSection({
 	onNavigateToStep: (step: BookingTab) => void;
 }) {
 	const name = useWatch<BookingFormValues, "name">({ name: "name" });
-	const bookingType = useWatch<BookingFormValues, "bookingType">({ name: "bookingType" });
-	const packageType = useWatch<BookingFormValues, "packageType">({ name: "packageType" });
-	const packageCost = useWatch<BookingFormValues, "packageCost">({ name: "packageCost" });
+	const bookingType = useWatch<BookingFormValues, "bookingType">({
+		name: "bookingType",
+	});
+	const packageType = useWatch<BookingFormValues, "packageType">({
+		name: "packageType",
+	});
+	const packageCost = useWatch<BookingFormValues, "packageCost">({
+		name: "packageCost",
+	});
 	const note = useWatch<BookingFormValues, "note">({ name: "note" });
 
-	const { data: bookingTypesData } = useQuery(bookingFormQueries.bookingTypes());
-	const { data: packageTypesData } = useQuery(bookingFormQueries.packageTypes());
+	const { data: bookingTypesData } = useQuery(
+		bookingFormQueries.bookingTypes(),
+	);
+	const { data: packageTypesData } = useQuery(
+		bookingFormQueries.packageTypes(),
+	);
 
 	const getBookingType = (key: string) => {
 		return bookingTypesData?.data?.find((t) => t.key === key)?.label ?? key;
@@ -119,7 +136,7 @@ const BookingDetailsSection = memo(function BookingDetailsSection({
 		return packageTypesData?.data?.find((t) => t.key === key)?.label ?? key;
 	};
 
-	const costNum = parseFloat(packageCost) || 0;
+	const costNum = Number.parseFloat(packageCost) || 0;
 
 	return (
 		<Card>
@@ -181,17 +198,26 @@ const ParticipantsSection = memo(function ParticipantsSection({
 }: {
 	onNavigateToStep: (step: BookingTab) => void;
 }) {
-	const participants = useWatch<BookingFormValues, "participants">({ name: "participants" });
+	const participants = useWatch<BookingFormValues, "participants">({
+		name: "participants",
+	});
 
-	const { data: relationTypesData } = useQuery(bookingFormQueries.relationTypes());
+	const { data: relationTypesData } = useQuery(
+		bookingFormQueries.relationTypes(),
+	);
 	const { data: clientsData } = useQuery(bookingFormQueries.clients());
 
 	const getClientName = (clientId: string) => {
-		return clientsData?.data?.find((c) => c.id === clientId)?.name ?? "Unknown Client";
+		return (
+			clientsData?.data?.find((c) => c.id === clientId)?.name ??
+			"Unknown Client"
+		);
 	};
 
 	const getRelationType = (key: string) => {
-		return relationTypesData?.data?.find((t) => t.key === key)?.label ?? key;
+		return (
+			relationTypesData?.data?.find((t) => t.key === key)?.label ?? key
+		);
 	};
 
 	return (
@@ -204,16 +230,23 @@ const ParticipantsSection = memo(function ParticipantsSection({
 			/>
 			<CardContent>
 				{participants.length === 0 ? (
-					<p className="text-sm text-muted-foreground">No participants added</p>
+					<p className="text-sm text-muted-foreground">
+						No participants added
+					</p>
 				) : (
 					<ul className="space-y-2">
 						{participants.map((p, i) => (
 							<li key={i} className="flex items-center gap-2">
 								<span className="font-medium">
-									{p.clientId ? getClientName(p.clientId) : "—"}
+									{p.clientId
+										? getClientName(p.clientId)
+										: "—"}
 								</span>
 								{p.role && (
-									<Badge variant="secondary" className="text-xs">
+									<Badge
+										variant="secondary"
+										className="text-xs"
+									>
 										{getRelationType(p.role)}
 									</Badge>
 								)}
@@ -237,7 +270,10 @@ const ShootsSection = memo(function ShootsSection({
 	const { data: crewsData } = useQuery(bookingFormQueries.crews());
 
 	const getCrewName = (crewId: string) => {
-		return crewsData?.data?.find((c) => c.id === crewId)?.name ?? "Unknown Crew";
+		return (
+			crewsData?.data?.find((c) => c.id === crewId)?.name ??
+			"Unknown Crew"
+		);
 	};
 
 	const shootsList = shoots ?? [];
@@ -252,19 +288,28 @@ const ShootsSection = memo(function ShootsSection({
 			/>
 			<CardContent>
 				{shootsList.length === 0 ? (
-					<p className="text-sm text-muted-foreground">No shoots scheduled</p>
+					<p className="text-sm text-muted-foreground">
+						No shoots scheduled
+					</p>
 				) : (
 					<div className="space-y-4">
 						{shootsList.map((shoot, i) => (
 							<div key={i} className="p-3 bg-muted/50 rounded-lg">
 								<div className="flex items-start justify-between">
 									<div>
-										<p className="font-medium">{shoot.name || `Shoot ${i + 1}`}</p>
+										<p className="font-medium">
+											{shoot.name || `Shoot ${i + 1}`}
+										</p>
 										<p className="text-sm text-muted-foreground">
-											{shoot.shootType ? getShootType(shoot.shootType) : "—"}
+											{shoot.shootType
+												? getShootType(shoot.shootType)
+												: "—"}
 										</p>
 									</div>
-									<Badge variant="outline" className="text-xs">
+									<Badge
+										variant="outline"
+										className="text-xs"
+									>
 										<CalendarIcon className="h-3 w-3 mr-1" />
 										{formatDate(shoot.shootDate)}
 									</Badge>
@@ -275,7 +320,8 @@ const ShootsSection = memo(function ShootsSection({
 											<span className="flex items-center gap-1">
 												<ClockIcon className="h-3 w-3" />
 												{shoot.startTime}
-												{shoot.endTime && ` - ${shoot.endTime}`}
+												{shoot.endTime &&
+													` - ${shoot.endTime}`}
 											</span>
 										)}
 										{shoot.venue && (
@@ -288,12 +334,22 @@ const ShootsSection = memo(function ShootsSection({
 								)}
 								{(shoot.crewAssignments?.length ?? 0) > 0 && (
 									<div className="mt-2 flex flex-wrap gap-1">
-										{shoot.crewAssignments?.map((crew, j) => (
-											<Badge key={j} variant="secondary" className="text-xs">
-												{crew.crewId ? getCrewName(crew.crewId) : "—"}
-												{crew.isLead && " (Lead)"}
-											</Badge>
-										))}
+										{shoot.crewAssignments?.map(
+											(crew, j) => (
+												<Badge
+													key={j}
+													variant="secondary"
+													className="text-xs"
+												>
+													{crew.crewId
+														? getCrewName(
+																crew.crewId,
+															)
+														: "—"}
+													{crew.isLead && " (Lead)"}
+												</Badge>
+											),
+										)}
 									</div>
 								)}
 							</div>
@@ -311,12 +367,20 @@ const PaymentsSection = memo(function PaymentsSection({
 }: {
 	onNavigateToStep: (step: BookingTab) => void;
 }) {
-	const packageCost = useWatch<BookingFormValues, "packageCost">({ name: "packageCost" });
-	const payments = useWatch<BookingFormValues, "payments">({ name: "payments" });
-	const paymentSchedules = useWatch<BookingFormValues, "paymentSchedules">({ name: "paymentSchedules" });
-	const deliverables = useWatch<BookingFormValues, "deliverables">({ name: "deliverables" });
+	const packageCost = useWatch<BookingFormValues, "packageCost">({
+		name: "packageCost",
+	});
+	const payments = useWatch<BookingFormValues, "payments">({
+		name: "payments",
+	});
+	const paymentSchedules = useWatch<BookingFormValues, "paymentSchedules">({
+		name: "paymentSchedules",
+	});
+	const deliverables = useWatch<BookingFormValues, "deliverables">({
+		name: "deliverables",
+	});
 
-	const packageCostNum = parseFloat(packageCost) || 0;
+	const packageCostNum = Number.parseFloat(packageCost) || 0;
 	const paymentsList = payments ?? [];
 	const schedulesList = paymentSchedules ?? [];
 	const deliverablesList = deliverables ?? [];
@@ -324,17 +388,22 @@ const PaymentsSection = memo(function PaymentsSection({
 	// Calculate custom deliverables cost
 	const customDeliverablesCost = deliverablesList
 		.filter((d) => !d.isPackageIncluded)
-		.reduce((sum, d) => sum + (parseFloat(d.cost ?? "0") || 0), 0);
+		.reduce((sum, d) => sum + (Number.parseFloat(d.cost ?? "0") || 0), 0);
 
 	// Total booking cost = package + custom deliverables
 	const totalBookingCost = packageCostNum + customDeliverablesCost;
 
 	const totalReceived = paymentsList.reduce(
-		(sum, p) => sum + (parseFloat(p.amount) || 0),
-		0
+		(sum, p) => sum + (Number.parseFloat(p.amount) || 0),
+		0,
 	);
 	const paymentPercentage =
-		totalBookingCost > 0 ? Math.min(100, Math.round((totalReceived / totalBookingCost) * 100)) : 0;
+		totalBookingCost > 0
+			? Math.min(
+					100,
+					Math.round((totalReceived / totalBookingCost) * 100),
+				)
+			: 0;
 
 	return (
 		<Card>
@@ -347,13 +416,20 @@ const PaymentsSection = memo(function PaymentsSection({
 				{/* Payment Progress */}
 				<div className="space-y-2">
 					<div className="flex items-center justify-between text-sm">
-						<span className="text-muted-foreground">Payment Progress</span>
-						<span className="font-medium">{paymentPercentage}%</span>
+						<span className="text-muted-foreground">
+							Payment Progress
+						</span>
+						<span className="font-medium">
+							{paymentPercentage}%
+						</span>
 					</div>
 					<Progress value={paymentPercentage} className="h-2" />
 					<div className="flex justify-between text-xs text-muted-foreground">
 						<span>{formatCurrency(totalReceived)} received</span>
-						<span>{formatCurrency(totalBookingCost - totalReceived)} pending</span>
+						<span>
+							{formatCurrency(totalBookingCost - totalReceived)}{" "}
+							pending
+						</span>
 					</div>
 				</div>
 
@@ -365,7 +441,9 @@ const PaymentsSection = memo(function PaymentsSection({
 						Payments Received ({paymentsList.length})
 					</p>
 					{paymentsList.length === 0 ? (
-						<p className="text-sm text-muted-foreground">No payments recorded</p>
+						<p className="text-sm text-muted-foreground">
+							No payments recorded
+						</p>
 					) : (
 						<ul className="space-y-2">
 							{paymentsList.map((payment, i) => (
@@ -378,7 +456,10 @@ const PaymentsSection = memo(function PaymentsSection({
 											{formatCurrency(payment.amount)}
 										</span>
 										<span className="text-muted-foreground ml-2">
-											via {getPaymentMethod(payment.paymentMethod)}
+											via{" "}
+											{getPaymentMethod(
+												payment.paymentMethod,
+											)}
 										</span>
 									</div>
 									<span className="text-muted-foreground">
@@ -405,9 +486,13 @@ const PaymentsSection = memo(function PaymentsSection({
 										className="flex items-center justify-between text-sm p-2 bg-muted/50 rounded"
 									>
 										<div>
-											<span className="font-medium">{schedule.name}</span>
+											<span className="font-medium">
+												{schedule.name}
+											</span>
 											<span className="text-muted-foreground ml-2">
-												{formatCurrency(schedule.amount)}
+												{formatCurrency(
+													schedule.amount,
+												)}
 											</span>
 										</div>
 										<span className="text-muted-foreground">
@@ -430,19 +515,27 @@ const DeliverablesSection = memo(function DeliverablesSection({
 }: {
 	onNavigateToStep: (step: BookingTab) => void;
 }) {
-	const deliverables = useWatch<BookingFormValues, "deliverables">({ name: "deliverables" });
-	const packageCost = useWatch<BookingFormValues, "packageCost">({ name: "packageCost" });
+	const deliverables = useWatch<BookingFormValues, "deliverables">({
+		name: "deliverables",
+	});
+	const packageCost = useWatch<BookingFormValues, "packageCost">({
+		name: "packageCost",
+	});
 
 	const deliverablesList = deliverables ?? [];
-	const packageDeliverables = deliverablesList.filter((d) => d.isPackageIncluded);
-	const customDeliverables = deliverablesList.filter((d) => !d.isPackageIncluded);
+	const packageDeliverables = deliverablesList.filter(
+		(d) => d.isPackageIncluded,
+	);
+	const customDeliverables = deliverablesList.filter(
+		(d) => !d.isPackageIncluded,
+	);
 
 	// Calculate total custom deliverables cost
 	const customDeliverablesCost = customDeliverables.reduce(
-		(sum, d) => sum + (parseFloat(d.cost ?? "0") || 0),
-		0
+		(sum, d) => sum + (Number.parseFloat(d.cost ?? "0") || 0),
+		0,
 	);
-	const packageCostNum = parseFloat(packageCost) || 0;
+	const packageCostNum = Number.parseFloat(packageCost) || 0;
 	const totalBookingCost = packageCostNum + customDeliverablesCost;
 
 	return (
@@ -455,7 +548,9 @@ const DeliverablesSection = memo(function DeliverablesSection({
 			/>
 			<CardContent className="space-y-4">
 				{deliverablesList.length === 0 ? (
-					<p className="text-sm text-muted-foreground">No deliverables defined</p>
+					<p className="text-sm text-muted-foreground">
+						No deliverables defined
+					</p>
 				) : (
 					<>
 						{/* Package Deliverables */}
@@ -463,21 +558,34 @@ const DeliverablesSection = memo(function DeliverablesSection({
 							<div>
 								<p className="text-sm font-medium mb-2 flex items-center gap-2">
 									<Badge variant="default">Package</Badge>
-									{packageDeliverables.length} deliverable{packageDeliverables.length !== 1 && "s"}
+									{packageDeliverables.length} deliverable
+									{packageDeliverables.length !== 1 && "s"}
 								</p>
 								<div className="grid gap-2 md:grid-cols-2">
 									{packageDeliverables.map((d, i) => (
-										<div key={i} className="p-3 bg-primary/5 border-primary/20 border rounded-lg">
+										<div
+											key={i}
+											className="p-3 bg-primary/5 border-primary/20 border rounded-lg"
+										>
 											<div className="flex items-center justify-between">
-												<p className="font-medium">{d.name}</p>
+												<p className="font-medium">
+													{d.name}
+												</p>
 												{(d.quantity ?? 1) > 1 && (
-													<Badge variant="outline" className="text-xs">
+													<Badge
+														variant="outline"
+														className="text-xs"
+													>
 														x{d.quantity ?? 1}
 													</Badge>
 												)}
 											</div>
 											<p className="text-sm text-muted-foreground">
-												{d.deliverableType ? getDeliverableType(d.deliverableType) : "—"}
+												{d.deliverableType
+													? getDeliverableType(
+															d.deliverableType,
+														)
+													: "—"}
 											</p>
 											{d.dueDate && (
 												<p className="text-xs text-muted-foreground mt-1">
@@ -495,28 +603,46 @@ const DeliverablesSection = memo(function DeliverablesSection({
 							<div>
 								<p className="text-sm font-medium mb-2 flex items-center gap-2">
 									<Badge variant="secondary">Custom</Badge>
-									{customDeliverables.length} deliverable{customDeliverables.length !== 1 && "s"}
+									{customDeliverables.length} deliverable
+									{customDeliverables.length !== 1 && "s"}
 								</p>
 								<div className="grid gap-2 md:grid-cols-2">
 									{customDeliverables.map((d, i) => (
-										<div key={i} className="p-3 bg-muted/50 rounded-lg">
+										<div
+											key={i}
+											className="p-3 bg-muted/50 rounded-lg"
+										>
 											<div className="flex items-center justify-between">
-												<p className="font-medium">{d.name}</p>
+												<p className="font-medium">
+													{d.name}
+												</p>
 												<div className="flex items-center gap-2">
 													{(d.quantity ?? 1) > 1 && (
-														<Badge variant="outline" className="text-xs">
+														<Badge
+															variant="outline"
+															className="text-xs"
+														>
 															x{d.quantity ?? 1}
 														</Badge>
 													)}
-													{d.cost && parseFloat(d.cost) > 0 && (
-														<span className="text-sm font-medium text-primary">
-															{formatCurrency(d.cost)}
-														</span>
-													)}
+													{d.cost &&
+														Number.parseFloat(
+															d.cost,
+														) > 0 && (
+															<span className="text-sm font-medium text-primary">
+																{formatCurrency(
+																	d.cost,
+																)}
+															</span>
+														)}
 												</div>
 											</div>
 											<p className="text-sm text-muted-foreground">
-												{d.deliverableType ? getDeliverableType(d.deliverableType) : "—"}
+												{d.deliverableType
+													? getDeliverableType(
+															d.deliverableType,
+														)
+													: "—"}
 											</p>
 											{d.dueDate && (
 												<p className="text-xs text-muted-foreground mt-1">
@@ -535,12 +661,22 @@ const DeliverablesSection = memo(function DeliverablesSection({
 								<Separator />
 								<div className="flex flex-col gap-2 p-3 bg-muted/50 rounded-lg">
 									<div className="flex justify-between text-sm">
-										<span className="text-muted-foreground">Package Cost</span>
-										<span>{formatCurrency(packageCostNum)}</span>
+										<span className="text-muted-foreground">
+											Package Cost
+										</span>
+										<span>
+											{formatCurrency(packageCostNum)}
+										</span>
 									</div>
 									<div className="flex justify-between text-sm">
-										<span className="text-muted-foreground">Custom Deliverables</span>
-										<span>{formatCurrency(customDeliverablesCost)}</span>
+										<span className="text-muted-foreground">
+											Custom Deliverables
+										</span>
+										<span>
+											{formatCurrency(
+												customDeliverablesCost,
+											)}
+										</span>
 									</div>
 									<Separator />
 									<div className="flex justify-between font-medium">

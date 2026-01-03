@@ -7,9 +7,9 @@ import {
 	BOOKING_TABS,
 	type BookingFormValues,
 	type BookingTab,
-	TAB_FIELD_MAPPING,
 	bookingFormRoutes,
 	isStepOptional,
+	TAB_FIELD_MAPPING,
 } from "../booking-form-schema";
 import {
 	useBookingFormHydrated,
@@ -108,7 +108,9 @@ export function useBookingWizard({ form }: UseBookingWizardOptions) {
 	const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
 	// Track validation error message for screen reader announcements
-	const [validationErrorMessage, setValidationErrorMessage] = useState<string | null>(null);
+	const [validationErrorMessage, setValidationErrorMessage] = useState<
+		string | null
+	>(null);
 
 	// Save form data to store with visual indicator
 	const saveFormData = useCallback(() => {
@@ -225,7 +227,10 @@ export function useBookingWizard({ form }: UseBookingWizardOptions) {
 		setStepCompleted(currentStep);
 		saveFormData();
 
-		const nextRoute = bookingFormRoutes.nextStep(organizationSlug, currentStep);
+		const nextRoute = bookingFormRoutes.nextStep(
+			organizationSlug,
+			currentStep,
+		);
 		if (nextRoute) {
 			router.push(nextRoute);
 		}
@@ -251,7 +256,10 @@ export function useBookingWizard({ form }: UseBookingWizardOptions) {
 		setStepCompleted(currentStep);
 		saveFormData();
 
-		const nextRoute = bookingFormRoutes.nextStep(organizationSlug, currentStep);
+		const nextRoute = bookingFormRoutes.nextStep(
+			organizationSlug,
+			currentStep,
+		);
 		if (nextRoute) {
 			router.push(nextRoute);
 		}
@@ -271,7 +279,10 @@ export function useBookingWizard({ form }: UseBookingWizardOptions) {
 
 	// Navigate to previous step
 	const previous = useCallback(() => {
-		const prevRoute = bookingFormRoutes.prevStep(organizationSlug, currentStep);
+		const prevRoute = bookingFormRoutes.prevStep(
+			organizationSlug,
+			currentStep,
+		);
 		if (prevRoute) {
 			saveFormData();
 			router.push(prevRoute);

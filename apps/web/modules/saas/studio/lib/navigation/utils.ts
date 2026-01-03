@@ -1,8 +1,4 @@
-import type {
-	NavItemConfig,
-	NavModuleConfig,
-	NavigationConfig,
-} from "./types";
+import type { NavItemConfig, NavigationConfig, NavModuleConfig } from "./types";
 
 /**
  * Normalize pathname by removing trailing slash for consistent comparison.

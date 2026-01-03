@@ -1,18 +1,18 @@
 "use client";
 
-import type { CSSProperties, PropsWithChildren } from "react";
 import { TooltipProvider } from "@repo/ui/components/tooltip";
 import { cn } from "@repo/ui/lib/utils";
+import type { CSSProperties, PropsWithChildren } from "react";
 import type {
 	NavAreaConfig,
 	NavItemConfig,
 	NavModuleConfig,
 	RailIconConfig,
 } from "../../lib/navigation/types";
-import { SidebarRail } from "./sidebar-rail";
-import { SidebarPanel } from "./sidebar-panel";
 import { SettingsPanel } from "./settings-panel";
 import { useSidebar } from "./sidebar-context";
+import { SidebarPanel } from "./sidebar-panel";
+import { SidebarRail } from "./sidebar-rail";
 
 const SIDEBAR_WIDTH = 304;
 const SIDEBAR_RAIL_WIDTH = 64;
@@ -54,8 +54,8 @@ function Area({
 							"pointer-events-none absolute opacity-0",
 							direction === "left"
 								? "-translate-x-full"
-								: "translate-x-full"
-						)
+								: "translate-x-full",
+						),
 			)}
 			aria-hidden={!visible}
 			inert={!visible ? true : undefined}
@@ -89,7 +89,7 @@ export function DubSidebar({
 		<TooltipProvider delayDuration={0}>
 			<aside
 				className={cn(
-					"sticky top-0 z-40 hidden h-screen w-[var(--sidebar-width)] transition-[width] duration-300 md:block"
+					"sticky top-0 z-40 hidden h-screen w-[var(--sidebar-width)] transition-[width] duration-300 md:block",
 				)}
 				style={
 					{
@@ -115,20 +115,28 @@ export function DubSidebar({
 					<div
 						className={cn(
 							"relative size-full overflow-hidden py-2 transition-opacity duration-300",
-							!showPanel && "opacity-0"
+							!showPanel && "opacity-0",
 						)}
 					>
 						{/* Default Area: Module navigation */}
-						<Area visible={currentArea === "default"} direction="left">
+						<Area
+							visible={currentArea === "default"}
+							direction="left"
+						>
 							{activeModule && (
-								<SidebarPanel module={activeModule} utilities={utilities} />
+								<SidebarPanel
+									module={activeModule}
+									utilities={utilities}
+								/>
 							)}
 						</Area>
 
 						{/* Settings Area */}
 						<Area
 							visible={currentArea === "studioSettings"}
-							direction={areas.studioSettings?.direction ?? "right"}
+							direction={
+								areas.studioSettings?.direction ?? "right"
+							}
 						>
 							{areas.studioSettings && (
 								<SettingsPanel area={areas.studioSettings} />

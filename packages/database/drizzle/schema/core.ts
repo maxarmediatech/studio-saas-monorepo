@@ -8,12 +8,7 @@ import {
 	varchar,
 } from "drizzle-orm/pg-core";
 import { v7 as uuidv7 } from "uuid";
-import {
-	accounts,
-	sessions,
-	twoFactors,
-	users,
-} from "./auth";
+import { accounts, sessions, twoFactors, users } from "./auth";
 import { purchaseTypeEnum } from "./enums";
 
 // ============================================================================

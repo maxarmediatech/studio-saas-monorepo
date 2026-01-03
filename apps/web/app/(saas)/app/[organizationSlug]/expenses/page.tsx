@@ -1,6 +1,6 @@
 import { getActiveOrganization } from "@saas/auth/lib/server";
-import { ExpensesPageClient } from "@saas/studio/components/expenses/ExpensesPageClient";
 import { PageContent } from "@saas/studio";
+import { ExpensesPageClient } from "@saas/studio/components/expenses/ExpensesPageClient";
 import { expensesApi } from "@saas/studio/lib/api";
 import { getServerQueryClient } from "@shared/lib/server";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";

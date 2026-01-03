@@ -1,1 +1,1 @@
-export { useBookingsTable, type BookingFilters } from "./use-bookings-table";
+export { type BookingFilters, useBookingsTable } from "./use-bookings-table";

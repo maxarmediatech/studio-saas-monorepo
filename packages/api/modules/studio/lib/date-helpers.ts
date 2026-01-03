@@ -49,13 +49,17 @@ export function getDateParts(date: Date, timeZone: string) {
 
 	const weekdayKey = weekday?.slice(0, 3).toLowerCase();
 	const weekdayIndex = weekdayKey
-		? WEEKDAY_INDEX[weekdayKey] ?? date.getUTCDay()
+		? (WEEKDAY_INDEX[weekdayKey] ?? date.getUTCDay())
 		: date.getUTCDay();
 
 	return { year, month, day, weekdayIndex };
 }
 
-export function formatDateParts(parts: { year: string; month: string; day: string }) {
+export function formatDateParts(parts: {
+	year: string;
+	month: string;
+	day: string;
+}) {
 	return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
@@ -71,7 +75,11 @@ export function getStartOfWeek(
 	weekStartsOn = 0,
 ) {
 	const base = new Date(
-		Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day)),
+		Date.UTC(
+			Number(parts.year),
+			Number(parts.month) - 1,
+			Number(parts.day),
+		),
 	);
 	const diff = (parts.weekdayIndex - weekStartsOn + 7) % 7;
 	base.setUTCDate(base.getUTCDate() - diff);

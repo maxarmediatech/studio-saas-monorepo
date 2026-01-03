@@ -73,7 +73,9 @@ export function OrganizationSwitcher({
 						Loading...
 					</DropdownMenuItem>
 				) : !allOrganizations?.length ? (
-					<DropdownMenuItem disabled>No organizations found</DropdownMenuItem>
+					<DropdownMenuItem disabled>
+						No organizations found
+					</DropdownMenuItem>
 				) : (
 					allOrganizations.map((organization) => (
 						<DropdownMenuItem
@@ -91,7 +93,9 @@ export function OrganizationSwitcher({
 									logoUrl={organization.logo}
 								/>
 							)}
-							<span className="max-w-45 truncate">{organization.name}</span>
+							<span className="max-w-45 truncate">
+								{organization.name}
+							</span>
 						</DropdownMenuItem>
 					))
 				)}

@@ -1,21 +1,20 @@
 import {
 	and,
-	eq,
-	isNull,
-	gte,
-	sql,
-	count,
-	desc,
-	bookings,
-	shoots,
-	tasks,
-	deliverables,
 	assignmentSubmissions,
-	shootAssignments,
+	bookings,
+	count,
 	db,
+	deliverables,
+	desc,
+	eq,
+	gte,
+	isNull,
+	shootAssignments,
+	shoots,
+	sql,
+	tasks,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { requirePermission } from "../../studio/lib/permissions";
 import {
 	addDays,
 	formatDateParts,
@@ -23,6 +22,7 @@ import {
 	getStartOfWeek,
 	normalizeTimeZone,
 } from "../../studio/lib/date-helpers";
+import { requirePermission } from "../../studio/lib/permissions";
 import {
 	getDashboardInputSchema,
 	getDashboardOutputSchema,
@@ -34,7 +34,8 @@ export const getDashboard = studioProtectedProcedure
 		path: "/dashboard",
 		tags: ["Dashboard"],
 		summary: "Get dashboard",
-		description: "Get comprehensive dashboard data including financial, booking, and operational summaries",
+		description:
+			"Get comprehensive dashboard data including financial, booking, and operational summaries",
 	})
 	.input(getDashboardInputSchema)
 	.output(getDashboardOutputSchema)
@@ -44,7 +45,9 @@ export const getDashboard = studioProtectedProcedure
 		const { dateRange } = input;
 
 		// Calculate date boundaries in org timezone
-		const timeZone = normalizeTimeZone(context.membership.organization.timezone);
+		const timeZone = normalizeTimeZone(
+			context.membership.organization.timezone,
+		);
 		const nowParts = getDateParts(new Date(), timeZone);
 		const today = formatDateParts(nowParts);
 		const startOfMonth = `${nowParts.year}-${nowParts.month}-01`;
@@ -59,7 +62,10 @@ export const getDashboard = studioProtectedProcedure
 			? [
 					eq(bookings.organizationId, context.organizationId),
 					isNull(bookings.deletedAt),
-					gte(sql`DATE(${bookings.createdAt} AT TIME ZONE ${timeZone})`, rangeStart),
+					gte(
+						sql`DATE(${bookings.createdAt} AT TIME ZONE ${timeZone})`,
+						rangeStart,
+					),
 					sql`DATE(${bookings.createdAt} AT TIME ZONE ${timeZone}) <= ${rangeEnd}`,
 				]
 			: [
@@ -75,12 +81,19 @@ export const getDashboard = studioProtectedProcedure
 			.from(bookings)
 			.where(and(...bookingRangeConditions));
 
-		const totalRevenue = parseFloat(bookingTotals?.totalRevenue ?? "0");
-		const totalReceived = parseFloat(bookingTotals?.totalReceived ?? "0");
-		const totalExpenses = parseFloat(bookingTotals?.totalExpenses ?? "0");
+		const totalRevenue = Number.parseFloat(
+			bookingTotals?.totalRevenue ?? "0",
+		);
+		const totalReceived = Number.parseFloat(
+			bookingTotals?.totalReceived ?? "0",
+		);
+		const totalExpenses = Number.parseFloat(
+			bookingTotals?.totalExpenses ?? "0",
+		);
 		const totalPending = totalRevenue - totalReceived;
 		const netProfit = totalReceived - totalExpenses;
-		const collectionRate = totalRevenue > 0 ? (totalReceived / totalRevenue) * 100 : 0;
+		const collectionRate =
+			totalRevenue > 0 ? (totalReceived / totalRevenue) * 100 : 0;
 
 		// Booking summary by phase
 		const bookingsByPhase = await db
@@ -218,7 +231,10 @@ export const getDashboard = studioProtectedProcedure
 			.from(assignmentSubmissions)
 			.where(
 				and(
-					eq(assignmentSubmissions.organizationId, context.organizationId),
+					eq(
+						assignmentSubmissions.organizationId,
+						context.organizationId,
+					),
 					sql`${assignmentSubmissions.status} IN ('submitted', 'in_review')`,
 				),
 			);
@@ -299,7 +315,15 @@ export const getDashboard = studioProtectedProcedure
 				},
 				bookings: {
 					total: totalBookings,
-					byPhase: byPhase as Record<"new" | "preparation" | "shooting" | "delivery" | "completed" | "cancelled", number>,
+					byPhase: byPhase as Record<
+						| "new"
+						| "preparation"
+						| "shooting"
+						| "delivery"
+						| "completed"
+						| "cancelled",
+						number
+					>,
 					newThisMonth: newThisMonthResult?.count ?? 0,
 					completedThisMonth: completedThisMonthResult?.count ?? 0,
 				},

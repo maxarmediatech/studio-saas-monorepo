@@ -1,4 +1,4 @@
-import { and, count, eq, ilike, isNull, clients, db } from "@repo/database";
+import { and, clients, count, db, eq, ilike, isNull } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
@@ -13,14 +13,16 @@ export const listClients = studioProtectedProcedure
 		path: "/clients",
 		tags: ["Clients"],
 		summary: "List clients",
-		description: "List all clients for the organization with optional filters",
+		description:
+			"List all clients for the organization with optional filters",
 	})
 	.input(listClientsInputSchema)
 	.output(listClientsOutputSchema)
 	.handler(async ({ input, context }) => {
 		requirePermission(context, "client", "list");
 
-		const { search, sortBy, sortDirection, page, limit, includeDeleted } = input;
+		const { search, sortBy, sortDirection, page, limit, includeDeleted } =
+			input;
 		const offset = (page - 1) * limit;
 
 		// Build where conditions
@@ -31,9 +33,7 @@ export const listClients = studioProtectedProcedure
 		}
 
 		if (search) {
-			conditions.push(
-				ilike(clients.name, `%${search}%`),
-			);
+			conditions.push(ilike(clients.name, `%${search}%`));
 		}
 
 		// Get total count
@@ -57,7 +57,9 @@ export const listClients = studioProtectedProcedure
 		const data = await db.query.clients.findMany({
 			where: and(...conditions),
 			orderBy: (table, { asc, desc }) =>
-				sortDirection === "asc" ? [asc(orderColumn)] : [desc(orderColumn)],
+				sortDirection === "asc"
+					? [asc(orderColumn)]
+					: [desc(orderColumn)],
 			limit,
 			offset,
 		});

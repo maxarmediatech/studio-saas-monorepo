@@ -51,7 +51,9 @@ export const listConfigurationsInputSchema = z
 	.object({
 		type: configTypeSchema.optional(),
 		search: z.string().max(100).optional(),
-		sortBy: z.enum(["label", "sortOrder", "createdAt"]).default("sortOrder"),
+		sortBy: z
+			.enum(["label", "sortOrder", "createdAt"])
+			.default("sortOrder"),
 		sortDirection: sortDirectionSchema,
 	})
 	.merge(paginationSchema);
@@ -113,7 +115,10 @@ export const createConfigurationInputSchema = z.object({
 	description: z.string().max(1000).optional(),
 	color: z
 		.string()
-		.regex(/^#[0-9A-Fa-f]{6}$/, "Color must be a valid hex color (e.g., #FF5733)")
+		.regex(
+			/^#[0-9A-Fa-f]{6}$/,
+			"Color must be a valid hex color (e.g., #FF5733)",
+		)
 		.optional(),
 	icon: z.string().max(50).optional(),
 	sortOrder: z.number().int().min(0).optional(),
@@ -268,7 +273,11 @@ export const defaultConfigurations: Record<
 		{ key: "on_leave", label: "On Leave", color: "#F59E0B" },
 	],
 	crew_role: [
-		{ key: "lead_photographer", label: "Lead Photographer", isDefault: true },
+		{
+			key: "lead_photographer",
+			label: "Lead Photographer",
+			isDefault: true,
+		},
 		{ key: "photographer", label: "Photographer" },
 		{ key: "lead_videographer", label: "Lead Videographer" },
 		{ key: "videographer", label: "Videographer" },
@@ -278,7 +287,12 @@ export const defaultConfigurations: Record<
 		{ key: "member", label: "Member" },
 	],
 	shoot_status: [
-		{ key: "scheduled", label: "Scheduled", color: "#3B82F6", isDefault: true },
+		{
+			key: "scheduled",
+			label: "Scheduled",
+			color: "#3B82F6",
+			isDefault: true,
+		},
 		{ key: "in_progress", label: "In Progress", color: "#F59E0B" },
 		{ key: "completed", label: "Completed", color: "#10B981" },
 		{ key: "cancelled", label: "Cancelled", color: "#EF4444" },
