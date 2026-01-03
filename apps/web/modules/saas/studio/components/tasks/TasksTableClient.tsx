@@ -170,13 +170,12 @@ export function TasksTableClient({
 	const { openEdit } = useTaskParams();
 
 	// Build query input from hook state
-	// Convert array filters to comma-separated strings for API
 	const queryInput = {
 		page: pagination.page,
 		limit: pagination.limit,
 		search: filters.search ?? undefined,
-		status: filters.status?.join(",") ?? undefined,
-		priority: filters.priority?.join(",") ?? undefined,
+		status: filters.status ?? undefined,
+		priority: filters.priority ?? undefined,
 		sortBy: sorting.sortBy ?? "dueDate",
 		sortDirection: sorting.sortDirection,
 		includeDeleted: false,

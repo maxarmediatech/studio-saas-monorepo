@@ -10,6 +10,7 @@ import {
 	eq,
 	gte,
 	ilike,
+	inArray,
 	isNull,
 	sql,
 } from "@repo/database";
@@ -68,16 +69,33 @@ export const listDeliverables = studioProtectedProcedure
 			conditions.push(eq(deliverables.bookingId, bookingId));
 		}
 
-		if (deliverableType) {
-			conditions.push(eq(deliverables.deliverableType, deliverableType));
+		const deliverableTypes = Array.isArray(deliverableType)
+			? deliverableType
+			: deliverableType
+				? [deliverableType]
+				: null;
+		if (deliverableTypes && deliverableTypes.length > 0) {
+			conditions.push(
+				inArray(deliverables.deliverableType, deliverableTypes),
+			);
 		}
 
-		if (status) {
-			conditions.push(eq(deliverables.status, status));
+		const statuses = Array.isArray(status)
+			? status
+			: status
+				? [status]
+				: null;
+		if (statuses && statuses.length > 0) {
+			conditions.push(inArray(deliverables.status, statuses));
 		}
 
-		if (priority) {
-			conditions.push(eq(deliverables.priority, priority));
+		const priorities = Array.isArray(priority)
+			? priority
+			: priority
+				? [priority]
+				: null;
+		if (priorities && priorities.length > 0) {
+			conditions.push(inArray(deliverables.priority, priorities));
 		}
 
 		if (workflowStatus) {

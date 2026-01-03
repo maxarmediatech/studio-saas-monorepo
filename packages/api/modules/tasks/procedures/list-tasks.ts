@@ -5,6 +5,7 @@ import {
 	db,
 	eq,
 	gte,
+	inArray,
 	isNull,
 	sql,
 	taskAssignments,
@@ -49,6 +50,22 @@ export const listTasks = studioProtectedProcedure
 		} = input;
 		const offset = (page - 1) * limit;
 
+		const normalizeMultiValue = (
+			value: string | string[] | null | undefined,
+		): string[] | null => {
+			if (!value) {
+				return null;
+			}
+
+			const raw = Array.isArray(value) ? value : [value];
+			const parts = raw
+				.flatMap((v) => v.split(","))
+				.map((v) => v.trim())
+				.filter(Boolean);
+
+			return parts.length > 0 ? parts : null;
+		};
+
 		// Build where conditions
 		const conditions = [eq(tasks.organizationId, context.organizationId)];
 
@@ -60,12 +77,14 @@ export const listTasks = studioProtectedProcedure
 			conditions.push(eq(tasks.bookingId, bookingId));
 		}
 
-		if (status) {
-			conditions.push(eq(tasks.status, status));
+		const statuses = normalizeMultiValue(status);
+		if (statuses) {
+			conditions.push(inArray(tasks.status, statuses));
 		}
 
-		if (priority) {
-			conditions.push(eq(tasks.priority, priority));
+		const priorities = normalizeMultiValue(priority);
+		if (priorities) {
+			conditions.push(inArray(tasks.priority, priorities));
 		}
 
 		if (workflowStatus) {

@@ -118,7 +118,9 @@ const receivedSortFields = [
 export const listReceivedInputSchema = z
 	.object({
 		bookingId: idSchema.optional(),
-		paymentMethod: paymentMethodSchema.optional(),
+		paymentMethod: z
+			.union([paymentMethodSchema, z.array(paymentMethodSchema)])
+			.optional(),
 		dateFrom: dateSchema.optional(),
 		dateTo: dateSchema.optional(),
 	})

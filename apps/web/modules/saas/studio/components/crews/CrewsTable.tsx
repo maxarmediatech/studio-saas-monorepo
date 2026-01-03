@@ -27,13 +27,12 @@ export async function CrewsTable({
 	});
 
 	// Build query input from parsed params
-	// Convert array filters to comma-separated strings (same as client)
 	const input = {
 		page: params.page,
 		limit: params.limit,
 		search: params.search ?? undefined,
-		status: params.status?.join(",") ?? undefined,
-		role: params.role?.join(",") ?? undefined,
+		status: params.status ?? undefined,
+		role: params.role ?? undefined,
 		sortBy,
 		sortDirection,
 		includeDeleted: false,

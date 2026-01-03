@@ -8,6 +8,7 @@ import {
 	eq,
 	gte,
 	ilike,
+	inArray,
 	isNull,
 	paymentSchedules,
 	receivedAmounts,
@@ -64,8 +65,16 @@ export const listReceived = studioProtectedProcedure
 			conditions.push(eq(receivedAmounts.bookingId, bookingId));
 		}
 
-		if (paymentMethod) {
-			conditions.push(eq(receivedAmounts.paymentMethod, paymentMethod));
+		const paymentMethods = Array.isArray(paymentMethod)
+			? paymentMethod
+			: paymentMethod
+				? [paymentMethod]
+				: null;
+
+		if (paymentMethods && paymentMethods.length > 0) {
+			conditions.push(
+				inArray(receivedAmounts.paymentMethod, paymentMethods),
+			);
 		}
 
 		if (dateFrom) {

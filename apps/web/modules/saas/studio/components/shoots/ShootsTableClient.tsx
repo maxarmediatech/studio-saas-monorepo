@@ -160,8 +160,8 @@ export function ShootsTableClient({
 		page: pagination.page,
 		limit: pagination.limit,
 		search: filters.search ?? undefined,
-		shootType: filters.shootType?.join(",") ?? undefined,
-		status: filters.status?.join(",") ?? undefined,
+		shootType: filters.shootType ?? undefined,
+		status: filters.status ?? undefined,
 		dateFrom: filters.shootDate?.[0] ?? undefined,
 		dateTo: filters.shootDate?.[1] ?? undefined,
 		sortBy: (sorting.sortBy ?? "shootDate") as

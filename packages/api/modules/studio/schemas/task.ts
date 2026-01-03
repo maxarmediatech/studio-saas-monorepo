@@ -107,8 +107,8 @@ const taskSortFields = [
 export const listTasksInputSchema = z
 	.object({
 		bookingId: idSchema.optional(),
-		status: z.string().optional(),
-		priority: z.string().optional(),
+		status: z.union([z.string(), z.array(z.string())]).optional(),
+		priority: z.union([z.string(), z.array(z.string())]).optional(),
 		workflowStatus: workflowStatusSchema.optional(),
 		dueDateFrom: dateSchema.optional(),
 		dueDateTo: dateSchema.optional(),

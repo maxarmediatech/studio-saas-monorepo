@@ -49,6 +49,22 @@ export const listBookings = studioProtectedProcedure
 		} = input;
 		const offset = (page - 1) * limit;
 
+		const normalizeMultiValue = (
+			value: string | string[] | null | undefined,
+		): string[] | null => {
+			if (!value) {
+				return null;
+			}
+
+			const raw = Array.isArray(value) ? value : [value];
+			const parts = raw
+				.flatMap((v) => v.split(","))
+				.map((v) => v.trim())
+				.filter(Boolean);
+
+			return parts.length > 0 ? parts : null;
+		};
+
 		// Build where conditions
 		const conditions = [
 			eq(bookings.organizationId, context.organizationId),
@@ -62,26 +78,14 @@ export const listBookings = studioProtectedProcedure
 			conditions.push(inArray(bookings.status, statuses));
 		}
 
-		// Multi-select filter: split comma-separated booking types
-		if (bookingType) {
-			const types = bookingType
-				.split(",")
-				.map((t) => t.trim())
-				.filter(Boolean);
-			if (types.length > 0) {
-				conditions.push(inArray(bookings.bookingType, types));
-			}
+		const bookingTypes = normalizeMultiValue(bookingType);
+		if (bookingTypes) {
+			conditions.push(inArray(bookings.bookingType, bookingTypes));
 		}
 
-		// Multi-select filter: split comma-separated package types
-		if (packageType) {
-			const types = packageType
-				.split(",")
-				.map((t) => t.trim())
-				.filter(Boolean);
-			if (types.length > 0) {
-				conditions.push(inArray(bookings.packageType, types));
-			}
+		const packageTypes = normalizeMultiValue(packageType);
+		if (packageTypes) {
+			conditions.push(inArray(bookings.packageType, packageTypes));
 		}
 
 		// Date range filter: comma-separated "from,to" dates

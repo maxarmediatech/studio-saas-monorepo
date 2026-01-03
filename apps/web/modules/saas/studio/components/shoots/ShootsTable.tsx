@@ -27,13 +27,12 @@ export async function ShootsTable({
 	});
 
 	// Build query input from parsed params
-	// Convert array filters to comma-separated strings (same as client)
 	const input = {
 		page: params.page,
 		limit: params.limit,
 		search: params.search ?? undefined,
-		shootType: params.shootType?.join(",") ?? undefined,
-		status: params.status?.join(",") ?? undefined,
+		shootType: params.shootType ?? undefined,
+		status: params.status ?? undefined,
 		dateFrom: params.shootDate?.[0] ?? undefined,
 		dateTo: params.shootDate?.[1] ?? undefined,
 		sortBy: sortBy as

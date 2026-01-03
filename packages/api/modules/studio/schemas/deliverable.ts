@@ -112,9 +112,9 @@ const deliverableSortFields = [
 export const listDeliverablesInputSchema = z
 	.object({
 		bookingId: idSchema.optional(),
-		deliverableType: z.string().optional(),
-		status: z.string().optional(),
-		priority: z.string().optional(),
+		deliverableType: z.union([z.string(), z.array(z.string())]).optional(),
+		status: z.union([z.string(), z.array(z.string())]).optional(),
+		priority: z.union([z.string(), z.array(z.string())]).optional(),
 		workflowStatus: workflowStatusSchema.optional(),
 		dueDateFrom: dateSchema.optional(),
 		dueDateTo: dateSchema.optional(),

@@ -5,6 +5,7 @@ import {
 	db,
 	eq,
 	gte,
+	inArray,
 	isNull,
 	shootAssignments,
 	shoots,
@@ -47,6 +48,22 @@ export const listShoots = studioProtectedProcedure
 		} = input;
 		const offset = (page - 1) * limit;
 
+		const normalizeMultiValue = (
+			value: string | string[] | null | undefined,
+		): string[] | null => {
+			if (!value) {
+				return null;
+			}
+
+			const raw = Array.isArray(value) ? value : [value];
+			const parts = raw
+				.flatMap((v) => v.split(","))
+				.map((v) => v.trim())
+				.filter(Boolean);
+
+			return parts.length > 0 ? parts : null;
+		};
+
 		// Build where conditions
 		const conditions = [eq(shoots.organizationId, context.organizationId)];
 
@@ -58,12 +75,14 @@ export const listShoots = studioProtectedProcedure
 			conditions.push(eq(shoots.bookingId, bookingId));
 		}
 
-		if (status) {
-			conditions.push(eq(shoots.status, status));
+		const statuses = normalizeMultiValue(status);
+		if (statuses) {
+			conditions.push(inArray(shoots.status, statuses));
 		}
 
-		if (shootType) {
-			conditions.push(eq(shoots.shootType, shootType));
+		const shootTypes = normalizeMultiValue(shootType);
+		if (shootTypes) {
+			conditions.push(inArray(shoots.shootType, shootTypes));
 		}
 
 		if (dateFrom) {

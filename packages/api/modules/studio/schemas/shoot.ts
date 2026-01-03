@@ -107,8 +107,8 @@ const shootSortFields = [
 export const listShootsInputSchema = z
 	.object({
 		bookingId: idSchema.optional(),
-		status: z.string().optional(),
-		shootType: z.string().optional(),
+		status: z.union([z.string(), z.array(z.string())]).optional(),
+		shootType: z.union([z.string(), z.array(z.string())]).optional(),
 		dateFrom: dateSchema.optional(),
 		dateTo: dateSchema.optional(),
 	})

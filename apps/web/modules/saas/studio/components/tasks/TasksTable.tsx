@@ -27,13 +27,12 @@ export async function TasksTable({
 	});
 
 	// Build query input from parsed params
-	// Convert array filters to comma-separated strings (same as client)
 	const input = {
 		page: params.page,
 		limit: params.limit,
 		search: params.search ?? undefined,
-		status: params.status?.join(",") ?? undefined,
-		priority: params.priority?.join(",") ?? undefined,
+		status: params.status ?? undefined,
+		priority: params.priority ?? undefined,
 		sortBy,
 		sortDirection,
 		includeDeleted: false,

@@ -130,7 +130,7 @@ export function PaymentsTableClient({
 		page: pagination.page,
 		limit: pagination.limit,
 		search: filters.search ?? undefined,
-		paymentMethod: filters.paymentMethod?.[0] as PaymentMethod | undefined,
+		paymentMethod: filters.paymentMethod as PaymentMethod[] | undefined,
 		sortBy: sorting.sortBy ?? "receivedDate",
 		sortDirection: sorting.sortDirection,
 		includeDeleted: false,

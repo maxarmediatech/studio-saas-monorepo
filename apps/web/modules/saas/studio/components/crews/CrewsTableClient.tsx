@@ -111,13 +111,12 @@ export function CrewsTableClient({
 	const { openEdit } = useCrewParams();
 
 	// Build query input from hook state
-	// Convert array filters to comma-separated strings for API
 	const queryInput = {
 		page: pagination.page,
 		limit: pagination.limit,
 		search: filters.search ?? undefined,
-		status: filters.status?.join(",") ?? undefined,
-		role: filters.role?.join(",") ?? undefined,
+		status: filters.status ?? undefined,
+		role: filters.role ?? undefined,
 		sortBy: sorting.sortBy ?? "name",
 		sortDirection: sorting.sortDirection,
 		includeDeleted: false,

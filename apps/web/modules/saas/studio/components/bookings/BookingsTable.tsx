@@ -27,14 +27,13 @@ export async function BookingsTable({
 	});
 
 	// Build query input from parsed params
-	// Convert array filters to comma-separated strings (same as client)
 	const input = {
 		page: params.page,
 		limit: params.limit,
 		search: params.search ?? undefined,
 		statuses: params.statuses ?? undefined,
-		bookingType: params.bookingType?.join(",") ?? undefined,
-		packageType: params.packageType?.join(",") ?? undefined,
+		bookingType: params.bookingType ?? undefined,
+		packageType: params.packageType ?? undefined,
 		createdAt: params.createdAt?.join(",") ?? undefined,
 		sortBy,
 		sortDirection,

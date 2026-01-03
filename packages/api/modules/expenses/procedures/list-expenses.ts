@@ -9,6 +9,7 @@ import {
 	expenses,
 	gte,
 	ilike,
+	inArray,
 	isNull,
 	sql,
 } from "@repo/database";
@@ -62,16 +63,31 @@ export const listExpenses = studioProtectedProcedure
 			conditions.push(isNull(expenses.deletedAt));
 		}
 
-		if (category) {
-			conditions.push(eq(expenses.category, category));
+		const categories = Array.isArray(category)
+			? category
+			: category
+				? [category]
+				: null;
+		if (categories && categories.length > 0) {
+			conditions.push(inArray(expenses.category, categories));
 		}
 
-		if (billTo) {
-			conditions.push(eq(expenses.billTo, billTo));
+		const billToValues = Array.isArray(billTo)
+			? billTo
+			: billTo
+				? [billTo]
+				: null;
+		if (billToValues && billToValues.length > 0) {
+			conditions.push(inArray(expenses.billTo, billToValues));
 		}
 
-		if (paymentMethod) {
-			conditions.push(eq(expenses.paymentMethod, paymentMethod));
+		const paymentMethods = Array.isArray(paymentMethod)
+			? paymentMethod
+			: paymentMethod
+				? [paymentMethod]
+				: null;
+		if (paymentMethods && paymentMethods.length > 0) {
+			conditions.push(inArray(expenses.paymentMethod, paymentMethods));
 		}
 
 		if (dateFrom) {
