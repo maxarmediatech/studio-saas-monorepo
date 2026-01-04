@@ -967,13 +967,13 @@ export function BookingDetailsStep() {
 								render={({ field, fieldState }) => (
 									<Field data-invalid={fieldState.invalid}>
 										<FieldLabel htmlFor={field.name}>
-											Notes & Documents
+											Requests or References
 										</FieldLabel>
 										<InputGroup>
 											<InputGroupTextarea
 												{...field}
 												id={field.name}
-												placeholder="Add any booking specific notes or requests..."
+												placeholder="Add any booking specific requests or references..."
 												rows={3}
 												aria-invalid={
 													fieldState.invalid
