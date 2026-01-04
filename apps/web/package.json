@@ -119,7 +119,7 @@
 		"dev": "next dev",
 		"e2e": "pnpm exec playwright test --ui",
 		"e2e:ci": "pnpm exec playwright install && pnpm exec playwright test",
-		"lint": "next lint",
+		"lint": "biome lint .",
 		"shadcn-ui": "pnpm dlx shadcn@latest",
 		"start": "next start",
 		"type-check": "tsc --noEmit"
