@@ -1,18 +1,16 @@
 "use client";
 
 import { Button } from "@repo/ui/components/button";
-import {
-	Card,
-	CardContent,
-	CardHeader,
-	CardTitle,
-} from "@repo/ui/components/card";
 import { Combobox } from "@repo/ui/components/combobox";
 import {
 	Field,
+	FieldContent,
+	FieldDescription,
 	FieldError,
 	FieldGroup,
 	FieldLabel,
+	FieldLegend,
+	FieldSeparator,
 	FieldSet,
 } from "@repo/ui/components/field";
 import { Input } from "@repo/ui/components/input";
@@ -29,7 +27,6 @@ import { useClientParams } from "@saas/studio/hooks/params/use-client-params";
 import { useConfigurationParams } from "@saas/studio/hooks/params/use-configuration-params";
 import { useQuery } from "@tanstack/react-query";
 import {
-	ClipboardListIcon,
 	FileTextIcon,
 	Loader2Icon,
 	PaperclipIcon,
@@ -251,7 +248,8 @@ export function BookingDetailsStep() {
 		if (!clientNames?.length) return;
 
 		const bookingTypeLabel =
-			bookingTypes.find((bt) => bt.key === selectedBookingType)?.label ?? "";
+			bookingTypes.find((bt) => bt.key === selectedBookingType)?.label ??
+			"";
 
 		// Format: "John Smith & Jane Doe Wedding"
 		const namesJoined = clientNames.join(" & ");
@@ -408,27 +406,31 @@ export function BookingDetailsStep() {
 	};
 
 	return (
-		<Card>
-			<CardHeader>
-				<CardTitle className="flex items-center gap-2">
-					<ClipboardListIcon className="h-5 w-5" />
-					Booking Details
-				</CardTitle>
-				<p className="text-sm text-muted-foreground">
-					Enter the details for this booking
-				</p>
-			</CardHeader>
-			<CardContent>
-				<FieldGroup className="gap-6">
-					{/* Section 1: Booking Type (context setter) */}
-					<Controller
-						name="bookingType"
-						control={form.control}
-						render={({ field, fieldState }) => (
-							<Field data-invalid={fieldState.invalid}>
+		<FieldSet>
+			<FieldLegend>Booking Details</FieldLegend>
+			<FieldDescription>
+				Enter the details for this booking
+			</FieldDescription>
+			<FieldSeparator />
+			<FieldGroup>
+				{/* Section 1: Booking Type (context setter) */}
+				<Controller
+					name="bookingType"
+					control={form.control}
+					render={({ field, fieldState }) => (
+						<Field
+							orientation="responsive"
+							data-invalid={fieldState.invalid}
+						>
+							<FieldContent>
 								<FieldLabel htmlFor={field.name}>
 									Booking Type
 								</FieldLabel>
+								<FieldDescription>
+									Select the type of booking session
+								</FieldDescription>
+							</FieldContent>
+							<div className="w-full sm:min-w-[300px]">
 								<Combobox
 									id={field.name}
 									options={bookingTypes.map((type) => ({
@@ -452,353 +454,459 @@ export function BookingDetailsStep() {
 								{fieldState.invalid && (
 									<FieldError errors={[fieldState.error]} />
 								)}
-							</Field>
-						)}
-					/>
-
-					<Separator />
-
-					{/* Section 2: Participants */}
-					<div>
-						<div className="flex items-center justify-between mb-4">
-							<div>
-								<h3 className="font-medium flex items-center gap-2">
-									<UsersIcon className="h-5 w-5" />
-									Participants
-								</h3>
-								<p className="text-sm text-muted-foreground mt-1">
-									Add clients associated with this booking
-								</p>
 							</div>
-							<Button
-								type="button"
-								variant="outline"
-								size="sm"
-								onClick={() =>
-									appendParticipant({
-										clientId: "",
-										role: "",
-									})
-								}
-							>
-								<PlusIcon className="mr-2 h-4 w-4" />
-								Add Participant
-							</Button>
-						</div>
+						</Field>
+					)}
+				/>
 
-						<FieldSet>
-							{participants.length === 0 ? (
-								<div className="flex flex-col items-center justify-center py-12 text-center border border-dashed rounded-lg">
-									<UserPlusIcon className="h-12 w-12 text-muted-foreground/50 mb-4" />
-									<p className="text-sm text-muted-foreground mb-4">
-										No participants added yet. Click "Add
-										Participant" to add clients to this
-										booking.
-									</p>
+				<FieldSeparator />
+
+				{/* Section 2: Participants */}
+				<Field orientation="responsive">
+					<FieldContent>
+						<FieldLabel className="flex items-center gap-2">
+							<UsersIcon className="h-4 w-4" />
+							Participants
+						</FieldLabel>
+						<FieldDescription>
+							Add clients associated with this booking
+						</FieldDescription>
+					</FieldContent>
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						onClick={() =>
+							appendParticipant({
+								clientId: "",
+								role: "",
+							})
+						}
+					>
+						<PlusIcon className="mr-1.5 h-3.5 w-3.5" />
+						Add Participant
+					</Button>
+				</Field>
+				<FieldSet>
+					{participants.length === 0 ? (
+						<div className="flex items-center gap-3 py-6 px-4 border border-dashed rounded-lg">
+							<UserPlusIcon className="h-8 w-8 text-muted-foreground/50 shrink-0" />
+							<div className="text-left">
+								<p className="text-sm text-muted-foreground">
+									No participants added yet
+								</p>
+								<Button
+									type="button"
+									variant="link"
+									size="sm"
+									className="h-auto p-0"
+									onClick={() =>
+										appendParticipant({
+											clientId: "",
+											role: "",
+										})
+									}
+								>
+									Add first participant
+								</Button>
+							</div>
+						</div>
+					) : (
+						<FieldGroup className="gap-2">
+							{participants.map((field, index) => (
+								<div
+									key={field.id}
+									className="grid grid-cols-[1fr_1fr_auto] items-start gap-2 p-2 border rounded-md bg-muted/20"
+								>
+									{/* Client Select - Label only on first row */}
+									<Controller
+										name={`participants.${index}.clientId`}
+										control={form.control}
+										render={({ field, fieldState }) =>
+											index === 0 ? (
+												<Field
+													data-invalid={
+														fieldState.invalid
+													}
+												>
+													<FieldLabel
+														htmlFor={field.name}
+													>
+														Client
+													</FieldLabel>
+													<Combobox
+														id={field.name}
+														options={clients.map(
+															(client) => {
+																const isAlreadySelected =
+																	selectedClientIds.has(
+																		client.id,
+																	) &&
+																	field.value !==
+																		client.id;
+																return {
+																	value: client.id,
+																	label: isAlreadySelected
+																		? `${client.name} (already added)`
+																		: client.name,
+																	description:
+																		client.phoneNumber ??
+																		undefined,
+																	disabled:
+																		isAlreadySelected,
+																};
+															},
+														)}
+														value={field.value}
+														onValueChange={
+															field.onChange
+														}
+														placeholder="Select client..."
+														searchPlaceholder="Search clients..."
+														emptyText="No clients found."
+														aria-invalid={
+															fieldState.invalid
+														}
+														onCreate={{
+															label: "Add Client...",
+															onClick: () =>
+																handleAddClient(
+																	index,
+																),
+														}}
+													/>
+													{fieldState.invalid && (
+														<FieldError
+															errors={[
+																fieldState.error,
+															]}
+														/>
+													)}
+												</Field>
+											) : (
+												<div>
+													<Combobox
+														id={field.name}
+														aria-label="Client"
+														options={clients.map(
+															(client) => {
+																const isAlreadySelected =
+																	selectedClientIds.has(
+																		client.id,
+																	) &&
+																	field.value !==
+																		client.id;
+																return {
+																	value: client.id,
+																	label: isAlreadySelected
+																		? `${client.name} (already added)`
+																		: client.name,
+																	description:
+																		client.phoneNumber ??
+																		undefined,
+																	disabled:
+																		isAlreadySelected,
+																};
+															},
+														)}
+														value={field.value}
+														onValueChange={
+															field.onChange
+														}
+														placeholder="Select client..."
+														searchPlaceholder="Search clients..."
+														emptyText="No clients found."
+														aria-invalid={
+															fieldState.invalid
+														}
+														onCreate={{
+															label: "Add Client...",
+															onClick: () =>
+																handleAddClient(
+																	index,
+																),
+														}}
+													/>
+													{fieldState.invalid && (
+														<FieldError
+															errors={[
+																fieldState.error,
+															]}
+														/>
+													)}
+												</div>
+											)
+										}
+									/>
+
+									{/* Role Select - Label only on first row */}
+									<Controller
+										name={`participants.${index}.role`}
+										control={form.control}
+										render={({ field, fieldState }) =>
+											index === 0 ? (
+												<Field
+													data-invalid={
+														fieldState.invalid
+													}
+												>
+													<FieldLabel
+														htmlFor={field.name}
+													>
+														Role
+													</FieldLabel>
+													<Combobox
+														id={field.name}
+														options={(() => {
+															const options: Array<{
+																value: string;
+																label: string;
+																disabled?: boolean;
+															}> =
+																filteredRoleOptions.map(
+																	(type) => ({
+																		value: type.key,
+																		label: type.label,
+																	}),
+																);
+															if (
+																field.value &&
+																!filteredRoleOptions.find(
+																	(r) =>
+																		r.key ===
+																		field.value,
+																)
+															) {
+																const roleConfig =
+																	relationTypes.find(
+																		(r) =>
+																			r.key ===
+																			field.value,
+																	);
+																if (
+																	roleConfig
+																) {
+																	options.unshift(
+																		{
+																			value: roleConfig.key,
+																			label: `${roleConfig.label} (not applicable)`,
+																			disabled: true,
+																		},
+																	);
+																}
+															}
+															return options;
+														})()}
+														value={field.value}
+														onValueChange={
+															field.onChange
+														}
+														placeholder="Select role..."
+														searchPlaceholder="Search roles..."
+														emptyText="No roles found."
+														aria-invalid={
+															fieldState.invalid
+														}
+														onCreate={{
+															label: "Add Role...",
+															onClick: () =>
+																openCreateConfiguration(
+																	"relation_type",
+																),
+														}}
+													/>
+													{fieldState.invalid && (
+														<FieldError
+															errors={[
+																fieldState.error,
+															]}
+														/>
+													)}
+												</Field>
+											) : (
+												<div>
+													<Combobox
+														id={field.name}
+														aria-label="Role"
+														options={(() => {
+															const options: Array<{
+																value: string;
+																label: string;
+																disabled?: boolean;
+															}> =
+																filteredRoleOptions.map(
+																	(type) => ({
+																		value: type.key,
+																		label: type.label,
+																	}),
+																);
+															if (
+																field.value &&
+																!filteredRoleOptions.find(
+																	(r) =>
+																		r.key ===
+																		field.value,
+																)
+															) {
+																const roleConfig =
+																	relationTypes.find(
+																		(r) =>
+																			r.key ===
+																			field.value,
+																	);
+																if (
+																	roleConfig
+																) {
+																	options.unshift(
+																		{
+																			value: roleConfig.key,
+																			label: `${roleConfig.label} (not applicable)`,
+																			disabled: true,
+																		},
+																	);
+																}
+															}
+															return options;
+														})()}
+														value={field.value}
+														onValueChange={
+															field.onChange
+														}
+														placeholder="Select role..."
+														searchPlaceholder="Search roles..."
+														emptyText="No roles found."
+														aria-invalid={
+															fieldState.invalid
+														}
+														onCreate={{
+															label: "Add Role...",
+															onClick: () =>
+																openCreateConfiguration(
+																	"relation_type",
+																),
+														}}
+													/>
+													{fieldState.invalid && (
+														<FieldError
+															errors={[
+																fieldState.error,
+															]}
+														/>
+													)}
+												</div>
+											)
+										}
+									/>
+
+									{/* Remove Button */}
 									<Button
 										type="button"
-										variant="outline"
-										size="sm"
-										onClick={() =>
-											appendParticipant({
-												clientId: "",
-												role: "",
-											})
-										}
+										variant="ghost"
+										size="icon"
+										className={`min-h-9 min-w-9 text-destructive hover:text-destructive hover:bg-destructive/10 ${index === 0 ? "mt-7" : ""}`}
+										onClick={() => removeParticipant(index)}
+										disabled={participants.length <= 1}
 									>
-										<PlusIcon className="mr-2 h-4 w-4" />
-										Add Participant
+										<TrashIcon className="h-4 w-4" />
+										<span className="sr-only">
+											Remove participant
+										</span>
 									</Button>
 								</div>
-							) : (
-								<FieldGroup className="gap-4">
-									{participants.map((field, index) => (
-										<div
-											key={field.id}
-											className="flex flex-col md:flex-row md:items-start gap-4 p-4 border rounded-lg bg-muted/30"
-										>
-											<div className="flex-1 grid gap-4 grid-cols-1 md:grid-cols-2">
-												{/* Client Select */}
-												<Controller
-													name={`participants.${index}.clientId`}
-													control={form.control}
-													render={({
-														field,
-														fieldState,
-													}) => (
-														<Field
-															data-invalid={
-																fieldState.invalid
-															}
-														>
-															<FieldLabel
-																htmlFor={
-																	field.name
-																}
-															>
-																Client
-															</FieldLabel>
-															<Combobox
-																id={field.name}
-																options={clients.map(
-																	(
-																		client,
-																	) => {
-																		const isAlreadySelected =
-																			selectedClientIds.has(
-																				client.id,
-																			) &&
-																			field.value !==
-																				client.id;
-																		return {
-																			value: client.id,
-																			label: isAlreadySelected
-																				? `${client.name} (already added)`
-																				: client.name,
-																			description:
-																				client.phoneNumber ??
-																				undefined,
-																			disabled:
-																				isAlreadySelected,
-																		};
-																	},
-																)}
-																value={
-																	field.value
-																}
-																onValueChange={
-																	field.onChange
-																}
-																placeholder="Select client..."
-																searchPlaceholder="Search clients..."
-																emptyText="No clients found."
-																aria-invalid={
-																	fieldState.invalid
-																}
-																onCreate={{
-																	label: "Add Client...",
-																	onClick:
-																		() =>
-																			handleAddClient(
-																				index,
-																			),
-																}}
-															/>
-															{fieldState.invalid && (
-																<FieldError
-																	errors={[
-																		fieldState.error,
-																	]}
-																/>
-															)}
-														</Field>
-													)}
-												/>
+							))}
+						</FieldGroup>
+					)}
+				</FieldSet>
 
-												{/* Role Select */}
-												<Controller
-													name={`participants.${index}.role`}
-													control={form.control}
-													render={({
-														field,
-														fieldState,
-													}) => (
-														<Field
-															data-invalid={
-																fieldState.invalid
-															}
-														>
-															<FieldLabel
-																htmlFor={
-																	field.name
-																}
-															>
-																Role
-															</FieldLabel>
-															<Combobox
-																id={field.name}
-																options={(() => {
-																	const options: Array<{
-																		value: string;
-																		label: string;
-																		disabled?: boolean;
-																	}> =
-																		filteredRoleOptions.map(
-																			(
-																				type,
-																			) => ({
-																				value: type.key,
-																				label: type.label,
-																			}),
-																		);
-																	// If current role exists but isn't in filtered list, add it as disabled
-																	if (
-																		field.value &&
-																		!filteredRoleOptions.find(
-																			(
-																				r,
-																			) =>
-																				r.key ===
-																				field.value,
-																		)
-																	) {
-																		const roleConfig =
-																			relationTypes.find(
-																				(
-																					r,
-																				) =>
-																					r.key ===
-																					field.value,
-																			);
-																		if (
-																			roleConfig
-																		) {
-																			options.unshift(
-																				{
-																					value: roleConfig.key,
-																					label: `${roleConfig.label} (not applicable)`,
-																					disabled: true,
-																				},
-																			);
-																		}
-																	}
-																	return options;
-																})()}
-																value={
-																	field.value
-																}
-																onValueChange={
-																	field.onChange
-																}
-																placeholder="Select role..."
-																searchPlaceholder="Search roles..."
-																emptyText="No roles found."
-																aria-invalid={
-																	fieldState.invalid
-																}
-																onCreate={{
-																	label: "Add Role...",
-																	onClick:
-																		() =>
-																			openCreateConfiguration(
-																				"relation_type",
-																			),
-																}}
-															/>
-															{fieldState.invalid && (
-																<FieldError
-																	errors={[
-																		fieldState.error,
-																	]}
-																/>
-															)}
-														</Field>
-													)}
-												/>
-											</div>
+				<FieldSeparator />
 
-											{/* Remove Button - 44px touch target (WCAG 2.5.5) */}
-											<Button
-												type="button"
-												variant="ghost"
-												size="icon"
-												className="self-end md:self-auto md:mt-8 min-h-11 min-w-11 text-destructive hover:text-destructive hover:bg-destructive/10"
-												onClick={() =>
-													removeParticipant(index)
-												}
-												disabled={
-													participants.length <= 1
-												}
-											>
-												<TrashIcon className="h-4 w-4" />
-												<span className="sr-only">
-													Remove participant
-												</span>
-											</Button>
-										</div>
-									))}
-								</FieldGroup>
+				{/* Section 3: Booking Info */}
+				<Field orientation="responsive">
+					<FieldContent>
+						<FieldLabel className="flex items-center gap-2">
+							<FileTextIcon className="h-4 w-4" />
+							Booking Info
+						</FieldLabel>
+						<FieldDescription>
+							Name, package, and notes for this booking
+						</FieldDescription>
+					</FieldContent>
+				</Field>
+				<FieldGroup className="gap-3">
+					{/* Row 1: Booking Name (auto-generated) + Package */}
+					<div className="grid gap-3 md:grid-cols-2">
+						{/* Booking Name - auto-generated from participants */}
+						<Controller
+							name="name"
+							control={form.control}
+							render={({ field, fieldState }) => (
+								<Field data-invalid={fieldState.invalid}>
+									<FieldLabel htmlFor={field.name}>
+										Booking Name
+									</FieldLabel>
+									<Input
+										{...field}
+										id={field.name}
+										placeholder="Auto-generated from participants..."
+										aria-invalid={fieldState.invalid}
+										onChange={(e) => {
+											setIsNameManuallyEdited(true);
+											field.onChange(e.target.value);
+										}}
+									/>
+									{fieldState.invalid && (
+										<FieldError
+											errors={[fieldState.error]}
+										/>
+									)}
+								</Field>
 							)}
-						</FieldSet>
+						/>
+
+						{/* Package Type */}
+						<Controller
+							name="packageType"
+							control={form.control}
+							render={({ field, fieldState }) => (
+								<Field data-invalid={fieldState.invalid}>
+									<FieldLabel htmlFor={field.name}>
+										Package
+									</FieldLabel>
+									<Combobox
+										id={field.name}
+										options={filteredPackageTypes.map(
+											(pkg) => ({
+												value: pkg.key,
+												label: pkg.label,
+											}),
+										)}
+										value={field.value}
+										onValueChange={handlePackageChange}
+										placeholder="Select package..."
+										searchPlaceholder="Search packages..."
+										emptyText="No packages found."
+										disabled={!selectedBookingType}
+										aria-invalid={fieldState.invalid}
+										onCreate={{
+											label: "Add Package...",
+											onClick: () =>
+												openCreateConfiguration(
+													"package_type",
+												),
+										}}
+									/>
+									{fieldState.invalid && (
+										<FieldError
+											errors={[fieldState.error]}
+										/>
+									)}
+								</Field>
+							)}
+						/>
 					</div>
 
-					<Separator />
-
-					{/* Section 3: Booking Details (Name, Package, Cost, Notes) */}
-					<FieldGroup className="gap-4">
-						{/* Row 1: Booking Name (auto-generated) + Package */}
-						<div className="grid gap-4 md:grid-cols-2">
-							{/* Booking Name - auto-generated from participants */}
-							<Controller
-								name="name"
-								control={form.control}
-								render={({ field, fieldState }) => (
-									<Field data-invalid={fieldState.invalid}>
-										<FieldLabel htmlFor={field.name}>
-											Booking Name
-										</FieldLabel>
-										<Input
-											{...field}
-											id={field.name}
-											placeholder="Auto-generated from participants..."
-											aria-invalid={fieldState.invalid}
-											onChange={(e) => {
-												setIsNameManuallyEdited(true);
-												field.onChange(e.target.value);
-											}}
-										/>
-										{fieldState.invalid && (
-											<FieldError
-												errors={[fieldState.error]}
-											/>
-										)}
-									</Field>
-								)}
-							/>
-
-							{/* Package Type */}
-							<Controller
-								name="packageType"
-								control={form.control}
-								render={({ field, fieldState }) => (
-									<Field data-invalid={fieldState.invalid}>
-										<FieldLabel htmlFor={field.name}>
-											Package
-										</FieldLabel>
-										<Combobox
-											id={field.name}
-											options={filteredPackageTypes.map(
-												(pkg) => ({
-													value: pkg.key,
-													label: pkg.label,
-												}),
-											)}
-											value={field.value}
-											onValueChange={handlePackageChange}
-											placeholder="Select package..."
-											searchPlaceholder="Search packages..."
-											emptyText="No packages found."
-											disabled={!selectedBookingType}
-											aria-invalid={fieldState.invalid}
-											onCreate={{
-												label: "Add Package...",
-												onClick: () =>
-													openCreateConfiguration(
-														"package_type",
-													),
-											}}
-										/>
-										{fieldState.invalid && (
-											<FieldError
-												errors={[fieldState.error]}
-											/>
-										)}
-									</Field>
-								)}
-							/>
-						</div>
-
-						{/* Row 2: Package Cost */}
+					{/* Row 2: Package Cost (in grid for consistency) */}
+					<div className="grid gap-3 md:grid-cols-2">
 						<Controller
 							name="packageCost"
 							control={form.control}
@@ -807,7 +915,7 @@ export function BookingDetailsStep() {
 									<FieldLabel htmlFor={field.name}>
 										Package Cost
 									</FieldLabel>
-									<div className="relative max-w-xs">
+									<div className="relative">
 										<span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
 											₹
 										</span>
@@ -849,124 +957,122 @@ export function BookingDetailsStep() {
 								</Field>
 							)}
 						/>
+						{/* Empty cell for grid alignment */}
+						<div />
+					</div>
 
-						{/* Row 3: Notes with Contract Attachment */}
-						<Controller
-							name="note"
-							control={form.control}
-							render={({ field, fieldState }) => (
-								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>
-										Notes & Documents
-									</FieldLabel>
-									<InputGroup>
-										<InputGroupTextarea
-											{...field}
-											id={field.name}
-											placeholder="Add any booking specific notes or requests..."
-											rows={3}
-											aria-invalid={fieldState.invalid}
+					{/* Row 3: Notes with Contract Attachment */}
+					<Controller
+						name="note"
+						control={form.control}
+						render={({ field, fieldState }) => (
+							<Field data-invalid={fieldState.invalid}>
+								<FieldLabel htmlFor={field.name}>
+									Notes & Documents
+								</FieldLabel>
+								<InputGroup>
+									<InputGroupTextarea
+										{...field}
+										id={field.name}
+										placeholder="Add any booking specific notes or requests..."
+										rows={3}
+										aria-invalid={fieldState.invalid}
+									/>
+									<InputGroupAddon align="block-end">
+										{/* Hidden file input */}
+										<input
+											ref={fileInputRef}
+											type="file"
+											className="hidden"
+											accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+											onChange={(e) => {
+												const file =
+													e.target.files?.[0];
+												if (file) {
+													handleFileUpload(file);
+												}
+												e.target.value = "";
+											}}
 										/>
-										<InputGroupAddon align="block-end">
-											{/* Hidden file input */}
-											<input
-												ref={fileInputRef}
-												type="file"
-												className="hidden"
-												accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-												onChange={(e) => {
-													const file =
-														e.target.files?.[0];
-													if (file) {
-														handleFileUpload(file);
-													}
-													e.target.value = "";
-												}}
-											/>
 
-											{/* Attachment button or uploaded file display */}
-											{isUploading ? (
-												<InputGroupText>
-													<Loader2Icon className="h-4 w-4 animate-spin" />
-													<span className="text-xs">
-														Uploading...
+										{/* Attachment button or uploaded file display */}
+										{isUploading ? (
+											<InputGroupText>
+												<Loader2Icon className="h-4 w-4 animate-spin" />
+												<span className="text-xs">
+													Uploading...
+												</span>
+											</InputGroupText>
+										) : contractAttachment ? (
+											<>
+												<InputGroupText className="gap-1.5">
+													<FileTextIcon className="h-4 w-4 text-primary" />
+													<span
+														className="max-w-[200px] truncate text-xs"
+														title={
+															contractAttachment.name
+														}
+													>
+														{
+															contractAttachment.name
+														}
+													</span>
+													<span className="text-xs text-muted-foreground">
+														(
+														{formatFileSize(
+															contractAttachment.size,
+														)}
+														)
 													</span>
 												</InputGroupText>
-											) : contractAttachment ? (
-												<>
-													<InputGroupText className="gap-1.5">
-														<FileTextIcon className="h-4 w-4 text-primary" />
-														<span
-															className="max-w-[200px] truncate text-xs"
-															title={
-																contractAttachment.name
-															}
-														>
-															{
-																contractAttachment.name
-															}
-														</span>
-														<span className="text-xs text-muted-foreground">
-															(
-															{formatFileSize(
-																contractAttachment.size,
-															)}
-															)
-														</span>
-													</InputGroupText>
-													<InputGroupButton
-														variant="ghost"
-														size="icon-xs"
-														onClick={
-															handleFileRemove
-														}
-														disabled={isDeleting}
-														className="text-destructive hover:text-destructive"
-													>
-														{isDeleting ? (
-															<Loader2Icon className="h-3.5 w-3.5 animate-spin" />
-														) : (
-															<XIcon className="h-3.5 w-3.5" />
-														)}
-														<span className="sr-only">
-															Remove file
-														</span>
-													</InputGroupButton>
-												</>
-											) : (
 												<InputGroupButton
 													variant="ghost"
-													size="xs"
-													onClick={() =>
-														fileInputRef.current?.click()
-													}
+													size="icon-xs"
+													onClick={handleFileRemove}
+													disabled={isDeleting}
+													className="text-destructive hover:text-destructive"
 												>
-													<PaperclipIcon className="h-4 w-4" />
-													Attach Document
+													{isDeleting ? (
+														<Loader2Icon className="h-3.5 w-3.5 animate-spin" />
+													) : (
+														<XIcon className="h-3.5 w-3.5" />
+													)}
+													<span className="sr-only">
+														Remove file
+													</span>
 												</InputGroupButton>
-											)}
+											</>
+										) : (
+											<InputGroupButton
+												variant="ghost"
+												size="xs"
+												onClick={() =>
+													fileInputRef.current?.click()
+												}
+											>
+												<PaperclipIcon className="h-4 w-4" />
+												Attach Document
+											</InputGroupButton>
+										)}
 
-											<Separator
-												orientation="vertical"
-												className="!h-4 ml-auto"
-											/>
-
-											<InputGroupText className="text-xs text-muted-foreground">
-												PDF, DOC, or Image
-											</InputGroupText>
-										</InputGroupAddon>
-									</InputGroup>
-									{fieldState.invalid && (
-										<FieldError
-											errors={[fieldState.error]}
+										<Separator
+											orientation="vertical"
+											className="!h-4 ml-auto"
 										/>
-									)}
-								</Field>
-							)}
-						/>
-					</FieldGroup>
+
+										<InputGroupText className="text-xs text-muted-foreground">
+											PDF, DOC, or Image
+										</InputGroupText>
+									</InputGroupAddon>
+								</InputGroup>
+								{fieldState.invalid && (
+									<FieldError errors={[fieldState.error]} />
+								)}
+							</Field>
+						)}
+					/>
 				</FieldGroup>
-			</CardContent>
-		</Card>
+			</FieldGroup>
+		</FieldSet>
 	);
 }
