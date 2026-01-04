@@ -79,25 +79,6 @@ export function BookingDetailsStep() {
 	const relationTypes = relationTypesData?.data ?? [];
 	const clients = clientsData?.data ?? [];
 
-	// Open client sheet with callback to auto-select the created client
-	const handleAddClient = useCallback(
-		(participantIndex: number) => {
-			registerCallback((clientId: string) => {
-				form.setValue(
-					`participants.${participantIndex}.clientId`,
-					clientId,
-					{
-						shouldDirty: true,
-						shouldValidate: true,
-					},
-				);
-				void refetchClients();
-			});
-			openCreateClient();
-		},
-		[registerCallback, openCreateClient, form, refetchClients],
-	);
-
 	const {
 		fields: participants,
 		append: appendParticipant,
@@ -135,6 +116,71 @@ export function BookingDetailsStep() {
 			role: "",
 		});
 	}, [appendParticipant, form]);
+
+	const handleCreateNewClient = useCallback(
+		(preferredIndex?: number) => {
+			registerCallback((clientId: string) => {
+				void refetchClients();
+
+				const currentParticipants =
+					form.getValues("participants") ?? [];
+				if (
+					typeof preferredIndex === "number" &&
+					currentParticipants[preferredIndex] &&
+					!currentParticipants[preferredIndex]?.clientId
+				) {
+					form.setValue(
+						`participants.${preferredIndex}.clientId`,
+						clientId,
+						{
+							shouldDirty: true,
+							shouldValidate: true,
+						},
+					);
+					form.setFocus(
+						`participants.${preferredIndex}.role` as never,
+					);
+					return;
+				}
+
+				const firstEmptyClientIndex = currentParticipants.findIndex(
+					(participant) => !participant?.clientId,
+				);
+
+				if (firstEmptyClientIndex !== -1) {
+					form.setValue(
+						`participants.${firstEmptyClientIndex}.clientId`,
+						clientId,
+						{
+							shouldDirty: true,
+							shouldValidate: true,
+						},
+					);
+					form.setFocus(
+						`participants.${firstEmptyClientIndex}.role` as never,
+					);
+					return;
+				}
+
+				appendParticipant({
+					clientId,
+					role: "",
+				});
+				form.setFocus(
+					`participants.${currentParticipants.length}.role` as never,
+				);
+			});
+
+			openCreateClient();
+		},
+		[
+			appendParticipant,
+			form,
+			openCreateClient,
+			refetchClients,
+			registerCallback,
+		],
+	);
 
 	// Track which client IDs are already selected (for duplicate prevention)
 	const selectedClientIds = useMemo(() => {
@@ -521,12 +567,12 @@ export function BookingDetailsStep() {
 							</div>
 							<Button
 								type="button"
-								variant="outline"
+								variant="secondary"
 								size="sm"
-								onClick={handleAddParticipant}
+								onClick={() => handleCreateNewClient()}
 							>
 								<PlusIcon className="mr-1.5 h-3.5 w-3.5" />
-								Add Client
+								Add new client
 							</Button>
 						</Field>
 						<FieldSet>
@@ -612,9 +658,9 @@ export function BookingDetailsStep() {
 																fieldState.invalid
 															}
 															onCreate={{
-																label: "Add Client...",
+																label: "Add new client",
 																onClick: () =>
-																	handleAddClient(
+																	handleCreateNewClient(
 																		index,
 																	),
 															}}
@@ -743,6 +789,18 @@ export function BookingDetailsStep() {
 											</Button>
 										</div>
 									))}
+									<div className=" px-3 pb-2">
+										<Button
+											type="button"
+											variant="outline"
+											size="sm"
+											className="w-full justify-center border-dashed"
+											onClick={handleAddParticipant}
+										>
+											<PlusIcon className="mr-2 h-4 w-4" />
+											Add Client to the booking
+										</Button>
+									</div>
 								</div>
 							)}
 						</FieldSet>
@@ -777,8 +835,12 @@ export function BookingDetailsStep() {
 											placeholder="Booking name..."
 											aria-invalid={fieldState.invalid}
 											onChange={(e) => {
-												setIsNameManuallyEdited(true);
-												field.onChange(e.target.value);
+												const nextValue =
+													e.target.value;
+												setIsNameManuallyEdited(
+													Boolean(nextValue.trim()),
+												);
+												field.onChange(nextValue);
 											}}
 										/>
 										{fieldState.invalid && (
