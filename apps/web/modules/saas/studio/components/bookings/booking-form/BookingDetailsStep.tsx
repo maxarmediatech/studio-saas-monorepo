@@ -12,6 +12,7 @@ import {
 	FieldLegend,
 	FieldSeparator,
 	FieldSet,
+	FieldTitle,
 } from "@repo/ui/components/field";
 import { Input } from "@repo/ui/components/input";
 import {
@@ -239,13 +240,18 @@ export function BookingDetailsStep() {
 
 	// Generate booking name from participants and booking type
 	const generateBookingName = useCallback(() => {
-		if (isNameManuallyEdited) return; // Don't override manual edits
+		if (isNameManuallyEdited) {
+			// Don't override manual edits
+			return;
+		}
 
 		const clientNames = watchedParticipants
 			?.map((p) => clients.find((c) => c.id === p.clientId)?.name)
 			.filter((name): name is string => Boolean(name));
 
-		if (!clientNames?.length) return;
+		if (!clientNames?.length) {
+			return;
+		}
 
 		const bookingTypeLabel =
 			bookingTypes.find((bt) => bt.key === selectedBookingType)?.label ??
@@ -414,26 +420,26 @@ export function BookingDetailsStep() {
 			<FieldSeparator />
 			<FieldGroup>
 				{/* Section 1: Booking Type (context setter) */}
-				<Controller
-					name="bookingType"
-					control={form.control}
-					render={({ field, fieldState }) => (
-						<Field
-							orientation="responsive"
-							data-invalid={fieldState.invalid}
-						>
-							<FieldContent>
-								<FieldLabel htmlFor={field.name}>
-									Booking Type
-								</FieldLabel>
-								<FieldDescription>
-									Select the type of booking session
-								</FieldDescription>
-							</FieldContent>
-							<div className="w-full sm:min-w-[300px]">
-								<Combobox
-									id={field.name}
-									options={bookingTypes.map((type) => ({
+					<Controller
+						name="bookingType"
+						control={form.control}
+						render={({ field, fieldState }) => (
+							<Field
+								orientation="responsive"
+								data-invalid={fieldState.invalid}
+							>
+								<div className="flex flex-1 flex-col gap-1.5 leading-snug">
+									<FieldLabel htmlFor={field.name}>
+										Booking Type
+									</FieldLabel>
+									<FieldDescription>
+										Select the type of booking session
+									</FieldDescription>
+								</div>
+								<div className="w-full sm:min-w-[300px]">
+									<Combobox
+										id={field.name}
+										options={bookingTypes.map((type) => ({
 										value: type.key,
 										label: type.label,
 									}))}
@@ -463,15 +469,15 @@ export function BookingDetailsStep() {
 
 				{/* Section 2: Participants */}
 				<Field orientation="responsive">
-					<FieldContent>
-						<FieldLabel className="flex items-center gap-2">
+					<div className="flex flex-1 flex-col gap-1.5 leading-snug">
+						<FieldTitle className="flex items-center gap-2">
 							<UsersIcon className="h-4 w-4" />
 							Participants
-						</FieldLabel>
+						</FieldTitle>
 						<FieldDescription>
 							Add clients associated with this booking
 						</FieldDescription>
-					</FieldContent>
+					</div>
 					<Button
 						type="button"
 						variant="outline"
@@ -820,49 +826,51 @@ export function BookingDetailsStep() {
 
 				<FieldSeparator />
 
-				{/* Section 3: Booking Info */}
-				<Field orientation="responsive">
-					<FieldContent>
-						<FieldLabel className="flex items-center gap-2">
-							<FileTextIcon className="h-4 w-4" />
-							Booking Info
-						</FieldLabel>
-						<FieldDescription>
-							Name, package, and notes for this booking
-						</FieldDescription>
-					</FieldContent>
-				</Field>
-				<FieldGroup className="gap-3">
-					{/* Row 1: Booking Name (auto-generated) + Package */}
-					<div className="grid gap-3 md:grid-cols-2">
-						{/* Booking Name - auto-generated from participants */}
-						<Controller
-							name="name"
-							control={form.control}
-							render={({ field, fieldState }) => (
-								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>
-										Booking Name
-									</FieldLabel>
+				{/* Section 3: Booking Name */}
+					<Controller
+						name="name"
+						control={form.control}
+						render={({ field, fieldState }) => (
+							<Field
+								orientation="responsive"
+								data-invalid={fieldState.invalid}
+							>
+								<div className="flex flex-1 flex-col gap-1.5 leading-snug">
+									<FieldLabel
+										htmlFor={field.name}
+										className="sr-only"
+									>
+									Booking Name
+								</FieldLabel>
+								<FieldTitle className="flex max-w-full items-center gap-2 truncate">
+									<FileTextIcon className="h-4 w-4 shrink-0" />
+									{field.value?.trim() || "Booking Name"}
+								</FieldTitle>
+									<FieldDescription>
+										Auto-generated from participants (editable)
+									</FieldDescription>
+								</div>
+								<div className="w-full sm:min-w-[300px]">
 									<Input
 										{...field}
 										id={field.name}
-										placeholder="Auto-generated from participants..."
-										aria-invalid={fieldState.invalid}
-										onChange={(e) => {
-											setIsNameManuallyEdited(true);
-											field.onChange(e.target.value);
-										}}
-									/>
-									{fieldState.invalid && (
-										<FieldError
-											errors={[fieldState.error]}
-										/>
-									)}
-								</Field>
-							)}
-						/>
-
+									placeholder="Auto-generated from participants..."
+									aria-invalid={fieldState.invalid}
+									onChange={(e) => {
+										setIsNameManuallyEdited(true);
+										field.onChange(e.target.value);
+									}}
+								/>
+								{fieldState.invalid && (
+									<FieldError errors={[fieldState.error]} />
+								)}
+							</div>
+						</Field>
+					)}
+				/>
+				<FieldGroup className="gap-3">
+					{/* Row 1: Package + Cost */}
+					<div className="grid gap-3 md:grid-cols-2">
 						{/* Package Type */}
 						<Controller
 							name="packageType"
@@ -903,10 +911,6 @@ export function BookingDetailsStep() {
 								</Field>
 							)}
 						/>
-					</div>
-
-					{/* Row 2: Package Cost (in grid for consistency) */}
-					<div className="grid gap-3 md:grid-cols-2">
 						<Controller
 							name="packageCost"
 							control={form.control}
@@ -957,8 +961,6 @@ export function BookingDetailsStep() {
 								</Field>
 							)}
 						/>
-						{/* Empty cell for grid alignment */}
-						<div />
 					</div>
 
 					{/* Row 3: Notes with Contract Attachment */}
