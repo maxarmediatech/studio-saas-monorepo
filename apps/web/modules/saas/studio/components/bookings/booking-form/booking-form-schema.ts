@@ -231,24 +231,28 @@ export const bookingDeliverablesStepSchema = bookingFormSchema.pick({
 /**
  * Default form values
  */
-export const defaultBookingValues: BookingFormValues = {
-	name: "",
-	bookingType: "",
-	packageType: "",
-	packageCost: "0.00",
-	note: "",
-	contractAttachment: null,
-	participants: [
-		{
-			clientId: "",
-			role: "",
-		},
-	],
-	shoots: [],
-	payments: [],
-	paymentSchedules: [],
-	deliverables: [],
-};
+export function createDefaultBookingValues(): BookingFormValues {
+	return {
+		name: "",
+		bookingType: "",
+		packageType: "",
+		packageCost: "0.00",
+		note: "",
+		contractAttachment: null,
+		participants: [
+			{
+				clientId: "",
+				role: "",
+			},
+		],
+		shoots: [],
+		payments: [],
+		paymentSchedules: [],
+		deliverables: [],
+	};
+}
+
+export const defaultBookingValues: BookingFormValues = createDefaultBookingValues();
 
 /**
  * Tab configuration for multi-step wizard

@@ -2,7 +2,7 @@
 
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { UseFormReturn } from "react-hook-form";
+import type { FieldErrors, UseFormReturn } from "react-hook-form";
 import {
 	BOOKING_TABS,
 	type BookingFormValues,
@@ -90,9 +90,12 @@ export function useBookingWizard({ form }: UseBookingWizardOptions) {
 				return true;
 			}
 
-			// For forward navigation, check all previous steps are completed
+			// For forward navigation, require completion of non-optional previous steps
 			for (let i = 0; i < targetIndex; i += 1) {
 				const requiredStep = BOOKING_TABS[i];
+				if (isStepOptional(requiredStep)) {
+					continue;
+				}
 				if (!completedStepsSet.has(requiredStep)) {
 					return false;
 				}
@@ -195,6 +198,69 @@ export function useBookingWizard({ form }: UseBookingWizardOptions) {
 		},
 		[canNavigateToStep, organizationSlug, router, saveFormData],
 	);
+
+	const getFirstStepWithErrors = useCallback(
+		(formErrors: FieldErrors<BookingFormValues>): BookingTab | undefined => {
+			const rootFieldsWithErrors = new Set(
+				Object.keys(formErrors) as (keyof BookingFormValues)[],
+			);
+
+			return BOOKING_TABS.find((step) => {
+				return TAB_FIELD_MAPPING[step].some((field) =>
+					rootFieldsWithErrors.has(field),
+				);
+			});
+		},
+		[],
+	);
+
+	// Validate full form and navigate to review
+	const goToReview = useCallback(async () => {
+		if (!isValidStep) {
+			return false;
+		}
+
+		// Clear any previous validation error message
+		setValidationErrorMessage(null);
+
+		const fieldsToValidate = BOOKING_TABS.flatMap((step) => TAB_FIELD_MAPPING[step]);
+		const isFormValid = await form.trigger(fieldsToValidate, {
+			shouldFocus: true,
+		});
+
+		if (!isFormValid) {
+			setValidationErrorMessage(
+				"Validation errors. Please fix the highlighted fields.",
+			);
+
+			const firstErrorStep = getFirstStepWithErrors(form.formState.errors);
+			if (firstErrorStep && firstErrorStep !== currentStep) {
+				router.push(bookingFormRoutes.step(organizationSlug, firstErrorStep));
+			}
+			return false;
+		}
+
+		// Consider optional steps "done" when jumping to review
+		for (const step of BOOKING_TABS) {
+			if (step !== "review") {
+				setStepCompleted(step);
+			}
+		}
+
+		saveFormData();
+		router.push(bookingFormRoutes.step(organizationSlug, "review"));
+
+		return true;
+	}, [
+		currentStep,
+		form,
+		getFirstStepWithErrors,
+		isValidStep,
+		organizationSlug,
+		router,
+		saveFormData,
+		setStepCompleted,
+	]);
 
 	// Navigate to next step (with validation)
 	const next = useCallback(async () => {
@@ -328,13 +394,14 @@ export function useBookingWizard({ form }: UseBookingWizardOptions) {
 		// Validation announcements (for screen readers)
 		validationErrorMessage,
 
-		// Navigation
-		canNavigateToStep,
-		goToStep,
-		next,
-		skip,
-		previous,
-		cancel,
+			// Navigation
+			canNavigateToStep,
+			goToStep,
+			goToReview,
+			next,
+			skip,
+			previous,
+			cancel,
 		getFirstIncompleteStep,
 
 		// Helpers

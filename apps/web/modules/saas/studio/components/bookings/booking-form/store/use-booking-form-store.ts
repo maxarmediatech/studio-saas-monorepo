@@ -6,7 +6,7 @@ import {
 	BOOKING_STEP_SCHEMAS,
 	type BookingFormValues,
 	type BookingTab,
-	defaultBookingValues,
+	createDefaultBookingValues,
 	isStepOptional,
 } from "../booking-form-schema";
 
@@ -67,7 +67,7 @@ interface BookingFormStore {
 export const useBookingFormStore = create<BookingFormStore>()(
 	persist(
 		(set) => ({
-			formData: defaultBookingValues,
+			formData: createDefaultBookingValues(),
 			completedSteps: [],
 			_hasHydrated: false,
 			_lastSavedAt: null,
@@ -87,7 +87,7 @@ export const useBookingFormStore = create<BookingFormStore>()(
 
 			resetForm: () =>
 				set({
-					formData: defaultBookingValues,
+					formData: createDefaultBookingValues(),
 					completedSteps: [],
 					_lastSavedAt: null,
 				}),

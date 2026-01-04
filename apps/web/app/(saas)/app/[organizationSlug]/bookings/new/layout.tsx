@@ -22,7 +22,7 @@ import {
 	bookingFormSchema,
 	cleanupFormArrays,
 	clearApiErrors,
-	defaultBookingValues,
+	createDefaultBookingValues,
 	formatDecimalForApi,
 	mapApiErrorToForm,
 	TAB_LABELS,
@@ -114,12 +114,14 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 	);
 	const hasHydrated = useBookingFormHydrated();
 	const lastSavedAt = useLastSavedAt();
+	const [isFormInitialized, setIsFormInitialized] = useState(false);
+	const [formResetKey, setFormResetKey] = useState(0);
 
 	const form = useForm<BookingFormValues>({
 		resolver: zodResolver(
 			bookingFormSchema,
 		) as unknown as Resolver<BookingFormValues>,
-		defaultValues: defaultBookingValues,
+		defaultValues: createDefaultBookingValues(),
 		mode: "onChange",
 	});
 
@@ -130,10 +132,11 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 			return;
 		}
 		const storedFormData = useBookingFormStore.getState().formData;
-		form.reset({ ...defaultBookingValues, ...storedFormData });
+		form.reset({ ...createDefaultBookingValues(), ...storedFormData });
 		// Re-validate completed steps to filter out stale ones
 		revalidateSteps();
 		didInitFromStoreRef.current = true;
+		setIsFormInitialized(true);
 	}, [form, hasHydrated, revalidateSteps]);
 
 	const wizard = useBookingWizard({ form });
@@ -193,9 +196,11 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 		onSuccess: (data) => {
 			// Reset store and form
 			resetForm();
-			form.reset(defaultBookingValues);
+			form.reset(createDefaultBookingValues());
+			setFormResetKey((key) => key + 1);
 			// Reset the init ref so form can re-initialize if user comes back
 			didInitFromStoreRef.current = false;
+			setIsFormInitialized(true);
 
 			toast.success("Booking created successfully", {
 				action: {
@@ -233,7 +238,7 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 
 	// Quick submit from sidebar - validates full form
 	const handleQuickSubmit = async () => {
-		const isValid = await form.trigger();
+		const isValid = await form.trigger(undefined, { shouldFocus: true });
 		if (!isValid) {
 			toast.error("Please fix validation errors before submitting");
 			return;
@@ -246,16 +251,27 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 		createMutation.mutate(buildCreateBookingInput(values));
 	};
 
+	// Go to review step from sidebar
+	const handleGoToReview = async () => {
+		const didNavigate = await wizard.goToReview();
+		if (!didNavigate) {
+			toast.error("Please fix validation errors before reviewing");
+		}
+	};
+
 	// Reset form and go back to first step
 	const handleReset = () => {
 		resetForm();
-		form.reset(defaultBookingValues);
-		didInitFromStoreRef.current = false;
+		form.reset(createDefaultBookingValues());
+		setFormResetKey((key) => key + 1);
+		// Store and form are already in sync after reset.
+		didInitFromStoreRef.current = true;
+		setIsFormInitialized(true);
 		router.push(`/app/${wizard.organizationSlug}/bookings/new/details`);
 	};
 
 	// Show loading state until hydrated
-	if (!hasHydrated) {
+	if (!hasHydrated || !isFormInitialized) {
 		return (
 			<div className="flex h-full flex-1 items-center justify-center">
 				<Loader2Icon className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -282,7 +298,10 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 					createMutation.mutate(buildCreateBookingInput(values));
 				})}
 			>
-				<div className="flex min-h-0 flex-1 flex-col">
+				<div
+					key={formResetKey}
+					className="flex min-h-0 flex-1 flex-col"
+				>
 					<BookingFormLayout
 						className="flex-1"
 						backHref={`/app/${wizard.organizationSlug}/bookings`}
@@ -294,12 +313,28 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 								activeStep={wizard.currentStep}
 								completedSteps={wizard.completedStepsSet}
 								stepsWithErrors={wizard.stepsWithErrors}
-								onStepClick={wizard.goToStep}
+								onStepClick={(step) => {
+									if (step === "review") {
+										return handleGoToReview();
+									}
+									return wizard.goToStep(step);
+								}}
 								canNavigateToStep={wizard.canNavigateToStep}
 								isNavigating={false}
 								isSaving={wizard.isSaving}
 								lastSavedAt={lastSavedAt}
-								onSubmit={() => void handleQuickSubmit()}
+								primaryActionLabel={
+									wizard.currentStep === "review"
+										? "Submit"
+										: "Review & Submit"
+								}
+								onPrimaryAction={() => {
+									if (wizard.currentStep === "review") {
+										void handleQuickSubmit();
+										return;
+									}
+									void handleGoToReview();
+								}}
 								onReset={handleReset}
 								isSubmitting={createMutation.isPending}
 							/>
@@ -309,7 +344,12 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 								activeStep={wizard.currentStep}
 								completedSteps={wizard.completedStepsSet}
 								stepsWithErrors={wizard.stepsWithErrors}
-								onStepClick={wizard.goToStep}
+								onStepClick={(step) => {
+									if (step === "review") {
+										return handleGoToReview();
+									}
+									return wizard.goToStep(step);
+								}}
 								canNavigateToStep={wizard.canNavigateToStep}
 								isNavigating={false}
 							/>
