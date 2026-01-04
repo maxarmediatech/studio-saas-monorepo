@@ -46,6 +46,8 @@ export interface ComboboxProps {
 		label: string;
 		onClick: () => void;
 	};
+	/** Where to render the create action (default: bottom) */
+	onCreatePosition?: "top" | "bottom";
 	/** Additional class name for trigger button */
 	className?: string;
 	/** ID for form association */
@@ -63,6 +65,7 @@ function Combobox({
 	emptyText = "No results found.",
 	disabled = false,
 	onCreate,
+	onCreatePosition = "bottom",
 	className,
 	id,
 	"aria-invalid": ariaInvalid,
@@ -103,6 +106,22 @@ function Combobox({
 					<CommandInput placeholder={searchPlaceholder} />
 					<CommandList>
 						<CommandEmpty>{emptyText}</CommandEmpty>
+						{onCreate && onCreatePosition === "top" && (
+							<>
+								<CommandGroup>
+									<CommandItem
+										onSelect={() => {
+											onCreate.onClick();
+											setOpen(false);
+										}}
+									>
+										<PlusIcon className="mr-2 size-4" />
+										{onCreate.label}
+									</CommandItem>
+								</CommandGroup>
+								<CommandSeparator />
+							</>
+						)}
 						<CommandGroup>
 							{options.map((option) => (
 								<CommandItem
@@ -137,7 +156,7 @@ function Combobox({
 								</CommandItem>
 							))}
 						</CommandGroup>
-						{onCreate && (
+						{onCreate && onCreatePosition !== "top" && (
 							<>
 								<CommandSeparator />
 								<CommandGroup>
