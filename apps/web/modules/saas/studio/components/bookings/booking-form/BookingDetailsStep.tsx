@@ -789,7 +789,7 @@ export function BookingDetailsStep() {
 											</Button>
 										</div>
 									))}
-									<div className=" px-3 pb-2">
+									<div className=" pl-4 pr-13 pb-2 pt-1">
 										<Button
 											type="button"
 											variant="outline"
@@ -798,7 +798,7 @@ export function BookingDetailsStep() {
 											onClick={handleAddParticipant}
 										>
 											<PlusIcon className="mr-2 h-4 w-4" />
-											Add Client to the booking
+											Add another client to the booking
 										</Button>
 									</div>
 								</div>
