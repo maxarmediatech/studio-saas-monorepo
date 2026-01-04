@@ -224,14 +224,14 @@ const ParticipantsSection = memo(function ParticipantsSection({
 		<Card>
 			<SectionHeader
 				icon={<UsersIcon className="h-4 w-4" />}
-				title="Participants"
+				title="Clients"
 				count={participants.length}
 				onEdit={() => onNavigateToStep("details")}
 			/>
 			<CardContent>
 				{participants.length === 0 ? (
 					<p className="text-sm text-muted-foreground">
-						No participants added
+						No clients added
 					</p>
 				) : (
 					<ul className="space-y-2">

@@ -71,7 +71,7 @@ export type ParticipantFormValue = z.infer<typeof participantSchema>;
  */
 export const participantsArraySchema = z
 	.array(participantSchema)
-	.min(1, "At least one participant is required")
+	.min(1, "At least one client is required")
 	.refine(
 		(participants) => {
 			const clientIds = participants
@@ -380,7 +380,7 @@ export const STEP_CONFIG: StepConfig[] = [
 	{
 		id: "details",
 		label: "Details",
-		description: "Booking info & participants",
+		description: "Booking info & clients",
 		icon: ClipboardListIcon,
 		optional: false,
 	},
