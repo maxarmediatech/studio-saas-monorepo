@@ -59,6 +59,26 @@ export function BookingDetailsStep() {
 	// Watch attachment field
 	const contractAttachment = form.watch("contractAttachment");
 
+	// Fetch configurations using centralized query options
+	const { data: bookingTypesData } = useQuery(
+		bookingFormQueries.bookingTypes(),
+	);
+	const { data: packageTypesData } = useQuery(
+		bookingFormQueries.packageTypes(),
+	);
+	const { data: relationTypesData } = useQuery(
+		bookingFormQueries.relationTypes(),
+	);
+	const { data: clientsData, refetch: refetchClients } = useQuery(
+		bookingFormQueries.clients(),
+	);
+
+	// Use real data from API
+	const bookingTypes = bookingTypesData?.data ?? [];
+	const packageTypes = packageTypesData?.data ?? [];
+	const relationTypes = relationTypesData?.data ?? [];
+	const clients = clientsData?.data ?? [];
+
 	// Open client sheet with callback to auto-select the created client
 	const handleAddClient = useCallback(
 		(participantIndex: number) => {
@@ -71,29 +91,12 @@ export function BookingDetailsStep() {
 						shouldValidate: true,
 					},
 				);
+				void refetchClients();
 			});
 			openCreateClient();
 		},
-		[registerCallback, openCreateClient, form],
+		[registerCallback, openCreateClient, form, refetchClients],
 	);
-
-	// Fetch configurations using centralized query options
-	const { data: bookingTypesData } = useQuery(
-		bookingFormQueries.bookingTypes(),
-	);
-	const { data: packageTypesData } = useQuery(
-		bookingFormQueries.packageTypes(),
-	);
-	const { data: relationTypesData } = useQuery(
-		bookingFormQueries.relationTypes(),
-	);
-	const { data: clientsData } = useQuery(bookingFormQueries.clients());
-
-	// Use real data from API
-	const bookingTypes = bookingTypesData?.data ?? [];
-	const packageTypes = packageTypesData?.data ?? [];
-	const relationTypes = relationTypesData?.data ?? [];
-	const clients = clientsData?.data ?? [];
 
 	const {
 		fields: participants,
@@ -757,10 +760,7 @@ export function BookingDetailsStep() {
 								>
 									<div className="flex-1">
 										<FieldContent>
-											<FieldLabel
-												htmlFor={field.name}
-												className="sr-only"
-											>
+											<FieldLabel htmlFor={field.name}>
 												Booking Name
 											</FieldLabel>
 
