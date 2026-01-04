@@ -420,26 +420,28 @@ export function BookingDetailsStep() {
 			<FieldSeparator />
 			<FieldGroup>
 				{/* Section 1: Booking Type (context setter) */}
-					<Controller
-						name="bookingType"
-						control={form.control}
-						render={({ field, fieldState }) => (
-							<Field
-								orientation="responsive"
-								data-invalid={fieldState.invalid}
-							>
-								<div className="flex flex-1 flex-col gap-1.5 leading-snug">
+				<Controller
+					name="bookingType"
+					control={form.control}
+					render={({ field, fieldState }) => (
+						<Field
+							orientation="responsive"
+							data-invalid={fieldState.invalid}
+						>
+							<div className="flex-1">
+								<FieldContent>
 									<FieldLabel htmlFor={field.name}>
 										Booking Type
 									</FieldLabel>
 									<FieldDescription>
 										Select the type of booking session
 									</FieldDescription>
-								</div>
-								<div className="w-full sm:min-w-[300px]">
-									<Combobox
-										id={field.name}
-										options={bookingTypes.map((type) => ({
+								</FieldContent>
+							</div>
+							<div className="w-full sm:min-w-[300px]">
+								<Combobox
+									id={field.name}
+									options={bookingTypes.map((type) => ({
 										value: type.key,
 										label: type.label,
 									}))}
@@ -469,14 +471,16 @@ export function BookingDetailsStep() {
 
 				{/* Section 2: Participants */}
 				<Field orientation="responsive">
-					<div className="flex flex-1 flex-col gap-1.5 leading-snug">
-						<FieldTitle className="flex items-center gap-2">
-							<UsersIcon className="h-4 w-4" />
-							Participants
-						</FieldTitle>
-						<FieldDescription>
-							Add clients associated with this booking
-						</FieldDescription>
+					<div className="flex-1">
+						<FieldContent>
+							<FieldTitle className="flex items-center gap-2">
+								<UsersIcon className="h-4 w-4" />
+								Participants
+							</FieldTitle>
+							<FieldDescription>
+								Add clients associated with this booking
+							</FieldDescription>
+						</FieldContent>
 					</div>
 					<Button
 						type="button"
@@ -827,33 +831,36 @@ export function BookingDetailsStep() {
 				<FieldSeparator />
 
 				{/* Section 3: Booking Name */}
-					<Controller
-						name="name"
-						control={form.control}
-						render={({ field, fieldState }) => (
-							<Field
-								orientation="responsive"
-								data-invalid={fieldState.invalid}
-							>
-								<div className="flex flex-1 flex-col gap-1.5 leading-snug">
+				<Controller
+					name="name"
+					control={form.control}
+					render={({ field, fieldState }) => (
+						<Field
+							orientation="responsive"
+							data-invalid={fieldState.invalid}
+						>
+							<div className="flex-1">
+								<FieldContent>
 									<FieldLabel
 										htmlFor={field.name}
 										className="sr-only"
 									>
-									Booking Name
-								</FieldLabel>
-								<FieldTitle className="flex max-w-full items-center gap-2 truncate">
-									<FileTextIcon className="h-4 w-4 shrink-0" />
-									{field.value?.trim() || "Booking Name"}
-								</FieldTitle>
+										Booking Name
+									</FieldLabel>
+									<FieldTitle className="flex max-w-full items-center gap-2 truncate">
+										<FileTextIcon className="h-4 w-4 shrink-0" />
+										{field.value?.trim() || "Booking Name"}
+									</FieldTitle>
 									<FieldDescription>
-										Auto-generated from participants (editable)
+										Auto-generated from participants
+										(editable)
 									</FieldDescription>
-								</div>
-								<div className="w-full sm:min-w-[300px]">
-									<Input
-										{...field}
-										id={field.name}
+								</FieldContent>
+							</div>
+							<div className="w-full sm:min-w-[300px]">
+								<Input
+									{...field}
+									id={field.name}
 									placeholder="Auto-generated from participants..."
 									aria-invalid={fieldState.invalid}
 									onChange={(e) => {
