@@ -323,6 +323,7 @@ export const configTypeSchema = z.enum([
 	"package_type",
 	"relation_type",
 	"expense_category",
+	"event_type",
 ]);
 
 export type ConfigType = z.infer<typeof configTypeSchema>;

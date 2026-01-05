@@ -36,6 +36,12 @@ export default async function ConfigurationsPage({ params }: Props) {
 			href: `/app/${organizationSlug}/configurations/package-types`,
 		},
 		{
+			title: "Event Types",
+			description:
+				"Configure event types for shoots (e.g., Wedding, Reception, Haldi)",
+			href: `/app/${organizationSlug}/configurations/event-types`,
+		},
+		{
 			title: "Relation Types",
 			description: "Define client and contact relationship types",
 			href: `/app/${organizationSlug}/configurations/relation-types`,

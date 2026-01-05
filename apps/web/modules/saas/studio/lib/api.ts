@@ -229,6 +229,11 @@ export const configurationsApi = {
 		orpc.configurations.list.queryOptions({
 			input: { type: "crew_role" },
 		}),
+
+	eventTypesOptions: () =>
+		orpc.configurations.list.queryOptions({
+			input: { type: "event_type" },
+		}),
 };
 
 export const configurationsMutations = {

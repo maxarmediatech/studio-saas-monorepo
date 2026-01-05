@@ -328,4 +328,18 @@ export const defaultConfigurations: Record<
 		{ key: "props", label: "Props", color: "#6366F1" },
 		{ key: "other", label: "Other", color: "#6B7280", isDefault: true },
 	],
+	event_type: [
+		{ key: "wedding", label: "Wedding", isDefault: true },
+		{ key: "reception", label: "Reception" },
+		{ key: "engagement", label: "Engagement" },
+		{ key: "pre_wedding", label: "Pre-Wedding" },
+		{ key: "haldi", label: "Haldi" },
+		{ key: "mehendi", label: "Mehendi" },
+		{ key: "sangeet", label: "Sangeet" },
+		{ key: "portrait", label: "Portrait" },
+		{ key: "maternity", label: "Maternity" },
+		{ key: "baby_shoot", label: "Baby Shoot" },
+		{ key: "corporate", label: "Corporate Event" },
+		{ key: "other", label: "Other" },
+	],
 };
