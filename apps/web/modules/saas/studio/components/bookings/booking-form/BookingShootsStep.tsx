@@ -23,6 +23,7 @@ import {
 } from "@repo/ui/components/select";
 import { Textarea } from "@repo/ui/components/textarea";
 import { TimePicker } from "@repo/ui/components/time-picker";
+import { useConfigurationParams } from "@saas/studio/hooks/params/use-configuration-params";
 import { useQuery } from "@tanstack/react-query";
 import {
 	CameraIcon,
@@ -50,6 +51,9 @@ export function BookingShootsStep() {
 	// Watch booking type to filter event types
 	const selectedBookingType = form.watch("bookingType");
 
+	// Watch all shoots to track selected event types across shoots
+	const allShoots = form.watch("shoots");
+
 	// Compute filtered event types based on booking type
 	const filteredEventTypes = useMemo((): ComboboxOption[] => {
 		const allEventTypes = eventTypesData?.data ?? [];
@@ -76,6 +80,28 @@ export function BookingShootsStep() {
 	// Only fall back to free-text input when loaded AND no event types exist
 	const hasConfiguredEventTypes =
 		eventTypesLoading || filteredEventTypes.length > 0;
+
+	// Get available event types for a specific shoot, excluding types already selected in other shoots
+	const getAvailableEventTypes = (shootIndex: number): ComboboxOption[] => {
+		if (!allShoots) {
+			return filteredEventTypes;
+		}
+
+		const currentValue = allShoots[shootIndex]?.shootType;
+		const selectedByOtherShoots = allShoots
+			.filter((_, idx) => idx !== shootIndex)
+			.map((s) => s.shootType)
+			.filter(Boolean);
+
+		return filteredEventTypes.filter((et) => {
+			// Always keep the current shoot's selection visible
+			if (et.value === currentValue) {
+				return true;
+			}
+			// Exclude types already selected in other shoots
+			return !selectedByOtherShoots.includes(et.value);
+		});
+	};
 
 	// Use real data from API
 	const crews = crewsData?.data ?? [];
@@ -118,14 +144,25 @@ export function BookingShootsStep() {
 	});
 
 	const addNewShoot = () => {
-		appendShoot({
-			shootType: "",
-			shootDate: "",
-			startTime: "",
-			location: "",
-			notes: "",
-			crewAssignments: [],
-		});
+		const newIndex = shoots.length; // Index of the new shoot
+		appendShoot(
+			{
+				shootType: "",
+				shootDate: "",
+				startTime: "",
+				location: "",
+				notes: "",
+				crewAssignments: [],
+			},
+			{ shouldFocus: false },
+		);
+		// Focus the event type field after React renders the new shoot
+		setTimeout(() => {
+			const eventTypeField = document.getElementById(
+				`shoots.${newIndex}.shootType`,
+			);
+			eventTypeField?.focus();
+		}, 0);
 	};
 
 	return (
@@ -164,7 +201,9 @@ export function BookingShootsStep() {
 										shootIndex={shootIndex}
 										crews={crews}
 										crewRoles={crewRoles}
-										eventTypeOptions={filteredEventTypes}
+										eventTypeOptions={getAvailableEventTypes(
+											shootIndex,
+										)}
 										hasConfiguredEventTypes={
 											hasConfiguredEventTypes
 										}
@@ -222,6 +261,7 @@ function ShootSection({
 }: ShootSectionProps) {
 	const form = useFormContext<BookingFormValues>();
 	const [showNotes, setShowNotes] = useState(false);
+	const { openCreate } = useConfigurationParams();
 
 	const {
 		fields: crewAssignments,
@@ -292,6 +332,13 @@ function ShootSection({
 												aria-invalid={
 													fieldState.invalid
 												}
+												onCreate={{
+													label: "Add event type",
+													onClick: () =>
+														openCreate(
+															"event_type",
+														),
+												}}
 											/>
 										) : (
 											<Input
@@ -452,8 +499,6 @@ function ShootSection({
 
 				{/* Crew Assignments */}
 				<FieldSet>
-					{/* Section header */}
-
 					{crewAssignments.length === 0 ? (
 						<div className="flex items-center gap-3 py-4 px-4 border border-dashed rounded-lg">
 							<UserPlusIcon className="h-6 w-6 text-muted-foreground/50 shrink-0" />
