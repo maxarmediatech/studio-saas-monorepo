@@ -195,12 +195,12 @@ export const bookingFormSchema = z.object({
 	contractAttachment: uploadedAttachmentSchema.nullable().optional(),
 	participants: participantsArraySchema,
 
-	// Step 2: Shoots
-	shoots: z.array(shootSchema).optional(),
-
-	// Step 3: Payments
+	// Step 2: Payments
 	payments: z.array(paymentSchema).optional(),
 	paymentSchedules: z.array(paymentScheduleSchema).optional(),
+
+	// Step 3: Shoots
+	shoots: z.array(shootSchema).optional(),
 
 	// Step 4: Deliverables
 	deliverables: z.array(deliverableSchema).optional(),
@@ -263,8 +263,8 @@ export const defaultBookingValues: BookingFormValues =
  */
 export const BOOKING_TABS = [
 	"details",
-	"shoots",
 	"payments",
+	"shoots",
 	"deliverables",
 	"review",
 ] as const;
@@ -393,17 +393,17 @@ export const STEP_CONFIG: StepConfig[] = [
 		optional: false,
 	},
 	{
-		id: "shoots",
-		label: "Shoots",
-		description: "Schedule photo/video sessions",
-		icon: CameraIcon,
-		optional: true,
-	},
-	{
 		id: "payments",
 		label: "Payments",
 		description: "Record and plan payments",
 		icon: WalletIcon,
+		optional: true,
+	},
+	{
+		id: "shoots",
+		label: "Shoots",
+		description: "Schedule photo/video sessions",
+		icon: CameraIcon,
 		optional: true,
 	},
 	{
