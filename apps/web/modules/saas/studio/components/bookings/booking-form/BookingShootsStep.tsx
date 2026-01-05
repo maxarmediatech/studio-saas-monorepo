@@ -1,11 +1,8 @@
 "use client";
 
-import {
-	AutocompleteInput,
-	type AutocompleteSuggestion,
-} from "@repo/ui/components/autocomplete-input";
 import { Button } from "@repo/ui/components/button";
 import { Card, CardContent } from "@repo/ui/components/card";
+import { Combobox, type ComboboxOption } from "@repo/ui/components/combobox";
 import { DatePicker } from "@repo/ui/components/date-picker";
 import {
 	Field,
@@ -16,6 +13,7 @@ import {
 	FieldLegend,
 	FieldSet,
 } from "@repo/ui/components/field";
+import { Input } from "@repo/ui/components/input";
 import {
 	Select,
 	SelectContent,
@@ -37,49 +35,47 @@ import {
 import { useMemo, useState } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import { bookingFormQueries } from "./booking-form-queries";
-import {
-	type BookingFormValues,
-	SHOOT_TYPE_OPTIONS,
-} from "./booking-form-schema";
+import type { BookingFormValues } from "./booking-form-schema";
 
 export function BookingShootsStep() {
 	const form = useFormContext<BookingFormValues>();
 
-	// Fetch crews and roles using centralized query options
+	// Fetch crews, roles, and event types using centralized query options
 	const { data: crewsData } = useQuery(bookingFormQueries.crews());
 	const { data: crewRolesData } = useQuery(bookingFormQueries.crewRoles());
-	const { data: bookingTypesData } = useQuery(
-		bookingFormQueries.bookingTypes(),
+	const { data: eventTypesData, isPending: eventTypesLoading } = useQuery(
+		bookingFormQueries.eventTypes(),
 	);
 
-	// Watch booking type to filter shoot type suggestions
+	// Watch booking type to filter event types
 	const selectedBookingType = form.watch("bookingType");
 
-	// Compute shoot type suggestions based on booking type metadata
-	const shootTypeSuggestions = useMemo((): AutocompleteSuggestion[] => {
-		const bookingTypeConfig = bookingTypesData?.data?.find(
-			(bt) => bt.key === selectedBookingType,
-		);
-		const configuredSuggestions = (
-			bookingTypeConfig?.metadata as {
-				suggestedShootTypes?: string[];
-			} | null
-		)?.suggestedShootTypes;
+	// Compute filtered event types based on booking type
+	const filteredEventTypes = useMemo((): ComboboxOption[] => {
+		const allEventTypes = eventTypesData?.data ?? [];
 
-		// If booking type has configured suggestions, use those
-		if (configuredSuggestions?.length) {
-			return configuredSuggestions.map((st) => ({
-				value: st,
-				label: st,
-			}));
-		}
+		// Filter event types that apply to the selected booking type
+		const applicable = allEventTypes.filter((et) => {
+			const metadata = et.metadata as { bookingTypes?: string[] } | null;
+			// If no booking types specified, available for all
+			if (!metadata?.bookingTypes?.length) {
+				return true;
+			}
+			// Otherwise, must include selected booking type
+			return metadata.bookingTypes.includes(selectedBookingType);
+		});
 
-		// Fallback to static SHOOT_TYPE_OPTIONS
-		return SHOOT_TYPE_OPTIONS.map((opt) => ({
-			value: opt.label, // Use label as value for free-text display
-			label: opt.label,
+		return applicable.map((et) => ({
+			value: et.key, // Store key (consistent with other configs like booking_type)
+			label: et.label,
 		}));
-	}, [selectedBookingType, bookingTypesData]);
+	}, [eventTypesData, selectedBookingType]);
+
+	// Determine if we should use Combobox or free-text input
+	// Show combobox while loading OR when we have configured event types
+	// Only fall back to free-text input when loaded AND no event types exist
+	const hasConfiguredEventTypes =
+		eventTypesLoading || filteredEventTypes.length > 0;
 
 	// Use real data from API
 	const crews = crewsData?.data ?? [];
@@ -168,9 +164,11 @@ export function BookingShootsStep() {
 										shootIndex={shootIndex}
 										crews={crews}
 										crewRoles={crewRoles}
-										shootTypeSuggestions={
-											shootTypeSuggestions
+										eventTypeOptions={filteredEventTypes}
+										hasConfiguredEventTypes={
+											hasConfiguredEventTypes
 										}
+										eventTypesLoading={eventTypesLoading}
 										onRemove={() => removeShoot(shootIndex)}
 										canRemove={shoots.length > 0}
 									/>
@@ -205,7 +203,9 @@ interface ShootSectionProps {
 		phoneNumber?: string | null;
 	}>;
 	crewRoles: Array<{ id: string; key: string; label: string }>;
-	shootTypeSuggestions: AutocompleteSuggestion[];
+	eventTypeOptions: ComboboxOption[];
+	hasConfiguredEventTypes: boolean;
+	eventTypesLoading: boolean;
 	onRemove: () => void;
 	canRemove: boolean;
 }
@@ -214,7 +214,9 @@ function ShootSection({
 	shootIndex,
 	crews,
 	crewRoles,
-	shootTypeSuggestions,
+	eventTypeOptions,
+	hasConfiguredEventTypes,
+	eventTypesLoading,
 	onRemove,
 	canRemove,
 }: ShootSectionProps) {
@@ -273,14 +275,39 @@ function ShootSection({
 										<FieldLabel htmlFor={field.name}>
 											Event Type
 										</FieldLabel>
-										<AutocompleteInput
-											id={field.name}
-											value={field.value ?? ""}
-											onChange={field.onChange}
-											suggestions={shootTypeSuggestions}
-											placeholder="e.g. Wedding, Haldi, Reception..."
-											aria-invalid={fieldState.invalid}
-										/>
+										{hasConfiguredEventTypes ? (
+											<Combobox
+												id={field.name}
+												value={field.value ?? ""}
+												onValueChange={field.onChange}
+												options={eventTypeOptions}
+												placeholder={
+													eventTypesLoading
+														? "Loading..."
+														: "Select event type..."
+												}
+												searchPlaceholder="Search events..."
+												emptyText="No matching event types"
+												disabled={eventTypesLoading}
+												aria-invalid={
+													fieldState.invalid
+												}
+											/>
+										) : (
+											<Input
+												id={field.name}
+												value={field.value ?? ""}
+												onChange={(e) =>
+													field.onChange(
+														e.target.value,
+													)
+												}
+												placeholder="e.g. Wedding, Haldi, Reception..."
+												aria-invalid={
+													fieldState.invalid
+												}
+											/>
+										)}
 										{fieldState.invalid && (
 											<FieldError
 												errors={[fieldState.error]}

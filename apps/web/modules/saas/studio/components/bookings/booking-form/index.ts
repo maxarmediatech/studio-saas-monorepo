@@ -40,7 +40,6 @@ export {
 	type ParticipantFormValue,
 	type PaymentFormValue,
 	type PaymentScheduleFormValue,
-	SHOOT_TYPE_OPTIONS,
 	type ShootFormValue,
 	STEP_CONFIG,
 	type StepConfig,

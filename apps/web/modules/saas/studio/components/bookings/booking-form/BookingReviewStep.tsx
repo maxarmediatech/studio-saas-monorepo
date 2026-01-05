@@ -30,7 +30,6 @@ import type { BookingFormValues, BookingTab } from "./booking-form-schema";
 import {
 	DELIVERABLE_TYPE_OPTIONS,
 	PAYMENT_METHOD_OPTIONS,
-	SHOOT_TYPE_OPTIONS,
 } from "./booking-form-schema";
 
 // ============================================================================
@@ -57,10 +56,6 @@ const formatDate = (dateString: string) => {
 		month: "short",
 		year: "numeric",
 	});
-};
-
-const getShootType = (key: string) => {
-	return SHOOT_TYPE_OPTIONS.find((t) => t.value === key)?.label ?? key;
 };
 
 const getDeliverableType = (key: string) => {
@@ -268,12 +263,17 @@ const ShootsSection = memo(function ShootsSection({
 	const shoots = useWatch<BookingFormValues, "shoots">({ name: "shoots" });
 
 	const { data: crewsData } = useQuery(bookingFormQueries.crews());
+	const { data: eventTypesData } = useQuery(bookingFormQueries.eventTypes());
 
 	const getCrewName = (crewId: string) => {
 		return (
 			crewsData?.data?.find((c) => c.id === crewId)?.name ??
 			"Unknown Crew"
 		);
+	};
+
+	const getEventType = (key: string) => {
+		return eventTypesData?.data?.find((t) => t.key === key)?.label ?? key;
 	};
 
 	const shootsList = shoots ?? [];
@@ -298,7 +298,7 @@ const ShootsSection = memo(function ShootsSection({
 								<div className="flex items-start justify-between">
 									<p className="font-medium">
 										{shoot.shootType
-											? getShootType(shoot.shootType)
+											? getEventType(shoot.shootType)
 											: `Shoot ${i + 1}`}
 									</p>
 									<Badge

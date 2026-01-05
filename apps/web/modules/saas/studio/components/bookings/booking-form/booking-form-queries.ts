@@ -38,4 +38,5 @@ export const bookingFormQueries = {
 	packageTypes: () => configurationsApi.packageTypesOptions(),
 	relationTypes: () => configurationsApi.relationTypesOptions(),
 	crewRoles: () => configurationsApi.crewRolesOptions(),
+	eventTypes: () => configurationsApi.eventTypesOptions(),
 } as const;
