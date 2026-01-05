@@ -296,16 +296,11 @@ const ShootsSection = memo(function ShootsSection({
 						{shootsList.map((shoot, i) => (
 							<div key={i} className="p-3 bg-muted/50 rounded-lg">
 								<div className="flex items-start justify-between">
-									<div>
-										<p className="font-medium">
-											{shoot.name || `Shoot ${i + 1}`}
-										</p>
-										<p className="text-sm text-muted-foreground">
-											{shoot.shootType
-												? getShootType(shoot.shootType)
-												: "—"}
-										</p>
-									</div>
+									<p className="font-medium">
+										{shoot.shootType
+											? getShootType(shoot.shootType)
+											: `Shoot ${i + 1}`}
+									</p>
 									<Badge
 										variant="outline"
 										className="text-xs"
@@ -314,20 +309,18 @@ const ShootsSection = memo(function ShootsSection({
 										{formatDate(shoot.shootDate)}
 									</Badge>
 								</div>
-								{(shoot.startTime || shoot.venue) && (
+								{(shoot.startTime || shoot.location) && (
 									<div className="mt-2 flex flex-wrap gap-3 text-sm text-muted-foreground">
 										{shoot.startTime && (
 											<span className="flex items-center gap-1">
 												<ClockIcon className="h-3 w-3" />
 												{shoot.startTime}
-												{shoot.endTime &&
-													` - ${shoot.endTime}`}
 											</span>
 										)}
-										{shoot.venue && (
+										{shoot.location && (
 											<span className="flex items-center gap-1">
 												<MapPinIcon className="h-3 w-3" />
-												{shoot.venue}
+												{shoot.location}
 											</span>
 										)}
 									</div>

@@ -60,13 +60,16 @@ function buildCreateBookingInput(rawValues: BookingFormValues) {
 		note: values.note,
 		participants: values.participants,
 		shoots: values.shoots?.map((shoot) => ({
-			name: shoot.name,
+			// API requires name - use shootType as the name
+			name: shoot.shootType,
 			shootType: shoot.shootType,
 			shootDate: shoot.shootDate,
 			startTime: shoot.startTime,
-			endTime: shoot.endTime,
-			venue: shoot.venue,
-			venueAddress: shoot.venueAddress,
+			// endTime removed from form (Indian weddings have flexible end times)
+			endTime: undefined,
+			// location field maps to venueAddress (supports up to 500 chars for links/addresses)
+			venue: undefined,
+			venueAddress: shoot.location,
 			notes: shoot.notes,
 			crewAssignments: shoot.crewAssignments?.map((assignment) => ({
 				crewId: assignment.crewId,

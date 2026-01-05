@@ -96,15 +96,18 @@ export type CrewAssignmentFormValue = z.infer<typeof crewAssignmentSchema>;
 
 /**
  * Shoot schema - photo/video shoots with crew assignments
+ *
+ * Simplified schema:
+ * - shootType serves as both identifier and type (no separate name field)
+ * - endTime removed (Indian weddings have flexible end times)
+ * - venue + venueAddress merged into single location field
  */
 export const shootSchema = z.object({
-	name: z.string().min(1, "Shoot name is required"),
-	shootType: z.string().min(1, "Shoot type is required"),
+	shootType: z.string().min(1, "Event type is required"),
 	shootDate: z.string().min(1, "Shoot date is required"),
 	startTime: z.string().optional(),
-	endTime: z.string().optional(),
-	venue: z.string().optional(),
-	venueAddress: z.string().optional(),
+	// Max 500 to match API venueAddress field constraint
+	location: z.string().max(500, "Location is too long (max 500 characters)").optional(),
 	notes: z.string().optional(),
 	crewAssignments: z.array(crewAssignmentSchema).optional(),
 });
@@ -252,7 +255,8 @@ export function createDefaultBookingValues(): BookingFormValues {
 	};
 }
 
-export const defaultBookingValues: BookingFormValues = createDefaultBookingValues();
+export const defaultBookingValues: BookingFormValues =
+	createDefaultBookingValues();
 
 /**
  * Tab configuration for multi-step wizard
@@ -472,8 +476,10 @@ export function cleanupFormArrays(
 		participants: values.participants.filter(
 			(p) => p.clientId && p.clientId.length > 0,
 		),
-		// Keep shoots with name (required field)
-		shoots: values.shoots?.filter((s) => s.name && s.name.length > 0),
+		// Keep shoots with shootType (required field - serves as identifier)
+		shoots: values.shoots?.filter(
+			(s) => s.shootType && s.shootType.length > 0,
+		),
 		// Keep payments with amount (required field)
 		payments: values.payments?.filter(
 			(p) =>

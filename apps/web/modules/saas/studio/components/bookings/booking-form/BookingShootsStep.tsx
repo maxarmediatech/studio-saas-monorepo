@@ -1,5 +1,9 @@
 "use client";
 
+import {
+	AutocompleteInput,
+	type AutocompleteSuggestion,
+} from "@repo/ui/components/autocomplete-input";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Card, CardContent } from "@repo/ui/components/card";
@@ -26,13 +30,15 @@ import { Textarea } from "@repo/ui/components/textarea";
 import { useQuery } from "@tanstack/react-query";
 import {
 	CameraIcon,
+	ChevronDownIcon,
+	ChevronUpIcon,
 	MapPinIcon,
 	PlusIcon,
 	TrashIcon,
 	UserPlusIcon,
 	UsersIcon,
 } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import { bookingFormQueries } from "./booking-form-queries";
 import {
@@ -46,6 +52,38 @@ export function BookingShootsStep() {
 	// Fetch crews and roles using centralized query options
 	const { data: crewsData } = useQuery(bookingFormQueries.crews());
 	const { data: crewRolesData } = useQuery(bookingFormQueries.crewRoles());
+	const { data: bookingTypesData } = useQuery(
+		bookingFormQueries.bookingTypes(),
+	);
+
+	// Watch booking type to filter shoot type suggestions
+	const selectedBookingType = form.watch("bookingType");
+
+	// Compute shoot type suggestions based on booking type metadata
+	const shootTypeSuggestions = useMemo((): AutocompleteSuggestion[] => {
+		const bookingTypeConfig = bookingTypesData?.data?.find(
+			(bt) => bt.key === selectedBookingType,
+		);
+		const configuredSuggestions = (
+			bookingTypeConfig?.metadata as {
+				suggestedShootTypes?: string[];
+			} | null
+		)?.suggestedShootTypes;
+
+		// If booking type has configured suggestions, use those
+		if (configuredSuggestions?.length) {
+			return configuredSuggestions.map((st) => ({
+				value: st,
+				label: st,
+			}));
+		}
+
+		// Fallback to static SHOOT_TYPE_OPTIONS
+		return SHOOT_TYPE_OPTIONS.map((opt) => ({
+			value: opt.label, // Use label as value for free-text display
+			label: opt.label,
+		}));
+	}, [selectedBookingType, bookingTypesData]);
 
 	// Use real data from API
 	const crews = crewsData?.data ?? [];
@@ -89,13 +127,10 @@ export function BookingShootsStep() {
 
 	const addNewShoot = () => {
 		appendShoot({
-			name: "",
 			shootType: "",
 			shootDate: "",
 			startTime: "",
-			endTime: "",
-			venue: "",
-			venueAddress: "",
+			location: "",
 			notes: "",
 			crewAssignments: [],
 		});
@@ -162,6 +197,9 @@ export function BookingShootsStep() {
 										shootIndex={shootIndex}
 										crews={crews}
 										crewRoles={crewRoles}
+										shootTypeSuggestions={
+											shootTypeSuggestions
+										}
 										onRemove={() => removeShoot(shootIndex)}
 										canRemove={shoots.length > 0}
 									/>
@@ -196,6 +234,7 @@ interface ShootSectionProps {
 		phoneNumber?: string | null;
 	}>;
 	crewRoles: Array<{ id: string; key: string; label: string }>;
+	shootTypeSuggestions: AutocompleteSuggestion[];
 	onRemove: () => void;
 	canRemove: boolean;
 }
@@ -204,10 +243,12 @@ function ShootSection({
 	shootIndex,
 	crews,
 	crewRoles,
+	shootTypeSuggestions,
 	onRemove,
 	canRemove,
 }: ShootSectionProps) {
 	const form = useFormContext<BookingFormValues>();
+	const [showNotes, setShowNotes] = useState(false);
 
 	const {
 		fields: crewAssignments,
@@ -217,6 +258,9 @@ function ShootSection({
 		control: form.control,
 		name: `shoots.${shootIndex}.crewAssignments`,
 	});
+
+	// Check if notes has content to auto-expand
+	const notesValue = form.watch(`shoots.${shootIndex}.notes`);
 
 	return (
 		<div className="overflow-hidden rounded-lg border bg-muted/10">
@@ -246,74 +290,32 @@ function ShootSection({
 			<div className="p-4 space-y-4">
 				{/* Basic Info */}
 				<FieldGroup className="gap-3">
-					{/* Row 1: Name + Type */}
-					<div className="grid gap-3 md:grid-cols-[1.5fr_1fr]">
-						{/* Shoot Name */}
-						<Controller
-							name={`shoots.${shootIndex}.name`}
-							control={form.control}
-							render={({ field, fieldState }) => (
-								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>
-										Shoot Name
-									</FieldLabel>
-									<Input
-										{...field}
-										id={field.name}
-										placeholder="e.g. Wedding Day Photography"
-										aria-invalid={fieldState.invalid}
-									/>
-									{fieldState.invalid && (
-										<FieldError
-											errors={[fieldState.error]}
-										/>
-									)}
-								</Field>
-							)}
-						/>
+					{/* Row 1: Shoot Type (full width, autocomplete) */}
+					<Controller
+						name={`shoots.${shootIndex}.shootType`}
+						control={form.control}
+						render={({ field, fieldState }) => (
+							<Field data-invalid={fieldState.invalid}>
+								<FieldLabel htmlFor={field.name}>
+									Event Type
+								</FieldLabel>
+								<AutocompleteInput
+									id={field.name}
+									value={field.value ?? ""}
+									onChange={field.onChange}
+									suggestions={shootTypeSuggestions}
+									placeholder="e.g. Wedding, Haldi, Reception..."
+									aria-invalid={fieldState.invalid}
+								/>
+								{fieldState.invalid && (
+									<FieldError errors={[fieldState.error]} />
+								)}
+							</Field>
+						)}
+					/>
 
-						{/* Shoot Type */}
-						<Controller
-							name={`shoots.${shootIndex}.shootType`}
-							control={form.control}
-							render={({ field, fieldState }) => (
-								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>
-										Type
-									</FieldLabel>
-									<Select
-										onValueChange={field.onChange}
-										value={field.value}
-									>
-										<SelectTrigger
-											id={field.name}
-											aria-invalid={fieldState.invalid}
-										>
-											<SelectValue placeholder="Select type" />
-										</SelectTrigger>
-										<SelectContent>
-											{SHOOT_TYPE_OPTIONS.map((type) => (
-												<SelectItem
-													key={type.value}
-													value={type.value}
-												>
-													{type.label}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-									{fieldState.invalid && (
-										<FieldError
-											errors={[fieldState.error]}
-										/>
-									)}
-								</Field>
-							)}
-						/>
-					</div>
-
-					{/* Row 2: Date + Time */}
-					<div className="grid gap-3 md:grid-cols-3">
+					{/* Row 2: Date + Start Time (2 columns) */}
+					<div className="grid gap-3 md:grid-cols-2">
 						{/* Shoot Date */}
 						<Controller
 							name={`shoots.${shootIndex}.shootDate`}
@@ -361,98 +363,24 @@ function ShootSection({
 								</Field>
 							)}
 						/>
-
-						{/* End Time */}
-						<Controller
-							name={`shoots.${shootIndex}.endTime`}
-							control={form.control}
-							render={({ field, fieldState }) => (
-								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>
-										End Time
-									</FieldLabel>
-									<Input
-										{...field}
-										id={field.name}
-										type="time"
-										aria-invalid={fieldState.invalid}
-									/>
-									{fieldState.invalid && (
-										<FieldError
-											errors={[fieldState.error]}
-										/>
-									)}
-								</Field>
-							)}
-						/>
 					</div>
 
-					{/* Row 3: Location */}
-					<div className="grid gap-3 md:grid-cols-2">
-						{/* Venue */}
-						<Controller
-							name={`shoots.${shootIndex}.venue`}
-							control={form.control}
-							render={({ field, fieldState }) => (
-								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>
-										<MapPinIcon className="h-3.5 w-3.5 inline mr-1" />
-										Venue
-									</FieldLabel>
-									<Input
-										{...field}
-										id={field.name}
-										placeholder="e.g. Grand Ballroom"
-										aria-invalid={fieldState.invalid}
-									/>
-									{fieldState.invalid && (
-										<FieldError
-											errors={[fieldState.error]}
-										/>
-									)}
-								</Field>
-							)}
-						/>
-
-						{/* Venue Address */}
-						<Controller
-							name={`shoots.${shootIndex}.venueAddress`}
-							control={form.control}
-							render={({ field, fieldState }) => (
-								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>
-										Address
-									</FieldLabel>
-									<Input
-										{...field}
-										id={field.name}
-										placeholder="Full address"
-										aria-invalid={fieldState.invalid}
-									/>
-									{fieldState.invalid && (
-										<FieldError
-											errors={[fieldState.error]}
-										/>
-									)}
-								</Field>
-							)}
-						/>
-					</div>
-
-					{/* Row 4: Notes */}
+					{/* Row 3: Location (single textarea) */}
 					<Controller
-						name={`shoots.${shootIndex}.notes`}
+						name={`shoots.${shootIndex}.location`}
 						control={form.control}
 						render={({ field, fieldState }) => (
 							<Field data-invalid={fieldState.invalid}>
 								<FieldLabel htmlFor={field.name}>
-									Notes
+									<MapPinIcon className="h-3.5 w-3.5 inline mr-1" />
+									Location
 								</FieldLabel>
 								<Textarea
 									{...field}
 									id={field.name}
-									placeholder="Any special instructions for this shoot"
+									placeholder="e.g. Grand Ballroom, Hotel Taj, 123 Main Street, Mumbai"
 									rows={2}
+									maxLength={500}
 									aria-invalid={fieldState.invalid}
 								/>
 								{fieldState.invalid && (
@@ -461,6 +389,64 @@ function ShootSection({
 							</Field>
 						)}
 					/>
+
+					{/* Row 4: Collapsible Notes */}
+					{(showNotes || notesValue) && (
+						<Controller
+							name={`shoots.${shootIndex}.notes`}
+							control={form.control}
+							render={({ field, fieldState }) => (
+								<Field data-invalid={fieldState.invalid}>
+									<div className="flex items-center justify-between">
+										<FieldLabel htmlFor={field.name}>
+											Notes
+										</FieldLabel>
+										{/* Hide button - only when expanded manually and empty */}
+										{showNotes && !notesValue && (
+											<Button
+												type="button"
+												variant="ghost"
+												size="sm"
+												className="h-auto py-0 px-1 text-muted-foreground"
+												onClick={() =>
+													setShowNotes(false)
+												}
+											>
+												<ChevronUpIcon className="mr-1 h-3.5 w-3.5" />
+												Hide
+											</Button>
+										)}
+									</div>
+									<Textarea
+										{...field}
+										id={field.name}
+										placeholder="Any special instructions for this shoot"
+										rows={2}
+										aria-invalid={fieldState.invalid}
+									/>
+									{fieldState.invalid && (
+										<FieldError
+											errors={[fieldState.error]}
+										/>
+									)}
+								</Field>
+							)}
+						/>
+					)}
+
+					{/* Add Notes button (when notes hidden) */}
+					{!showNotes && !notesValue && (
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							className="w-fit text-muted-foreground"
+							onClick={() => setShowNotes(true)}
+						>
+							<ChevronDownIcon className="mr-1.5 h-3.5 w-3.5" />
+							Add notes
+						</Button>
+					)}
 				</FieldGroup>
 
 				{/* Crew Assignments */}
