@@ -4,22 +4,18 @@ import {
 	AutocompleteInput,
 	type AutocompleteSuggestion,
 } from "@repo/ui/components/autocomplete-input";
-import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Card, CardContent } from "@repo/ui/components/card";
+import { DatePicker } from "@repo/ui/components/date-picker";
 import {
 	Field,
-	FieldContent,
 	FieldDescription,
 	FieldError,
 	FieldGroup,
 	FieldLabel,
 	FieldLegend,
 	FieldSet,
-	FieldTitle,
 } from "@repo/ui/components/field";
-import { DatePicker } from "@repo/ui/components/date-picker";
-import { TimePicker } from "@repo/ui/components/time-picker";
 import {
 	Select,
 	SelectContent,
@@ -28,16 +24,15 @@ import {
 	SelectValue,
 } from "@repo/ui/components/select";
 import { Textarea } from "@repo/ui/components/textarea";
+import { TimePicker } from "@repo/ui/components/time-picker";
 import { useQuery } from "@tanstack/react-query";
 import {
 	CameraIcon,
 	ChevronDownIcon,
 	ChevronUpIcon,
-	MapPinIcon,
 	PlusIcon,
 	TrashIcon,
 	UserPlusIcon,
-	UsersIcon,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
@@ -145,32 +140,7 @@ export function BookingShootsStep() {
 					<FieldDescription>
 						Schedule photo/video shoots for this booking
 					</FieldDescription>
-					{/* <FieldSeparator /> */}
 					<FieldGroup>
-						{/* Section header with Add button */}
-						{/* <Field orientation="responsive">
-							<div className="flex-1">
-								<FieldContent>
-									<FieldTitle className="flex items-center gap-2">
-										<CameraIcon className="h-4 w-4" />
-										Shoot Sessions
-									</FieldTitle>
-									<FieldDescription>
-										Add and configure photo/video sessions
-									</FieldDescription>
-								</FieldContent>
-							</div>
-							<Button
-								type="button"
-								variant="secondary"
-								size="sm"
-								onClick={addNewShoot}
-							>
-								<PlusIcon className="mr-1.5 h-3.5 w-3.5" />
-								Add shoot
-							</Button>
-						</Field> */}
-
 						{/* Shoots list */}
 						{shoots.length === 0 ? (
 							<div className="flex items-center gap-3 py-6 px-4 border border-dashed rounded-lg">
@@ -291,33 +261,37 @@ function ShootSection({
 			<div className="p-4 space-y-4">
 				{/* Basic Info */}
 				<FieldGroup className="gap-3">
-					{/* Row 1: Shoot Type (full width, autocomplete) */}
-					<Controller
-						name={`shoots.${shootIndex}.shootType`}
-						control={form.control}
-						render={({ field, fieldState }) => (
-							<Field data-invalid={fieldState.invalid}>
-								<FieldLabel htmlFor={field.name}>
-									Event Type
-								</FieldLabel>
-								<AutocompleteInput
-									id={field.name}
-									value={field.value ?? ""}
-									onChange={field.onChange}
-									suggestions={shootTypeSuggestions}
-									placeholder="e.g. Wedding, Haldi, Reception..."
-									aria-invalid={fieldState.invalid}
-								/>
-								{fieldState.invalid && (
-									<FieldError errors={[fieldState.error]} />
+					{/* Row 1: Event Type + Date + Start Time (2:1:1 ratio) */}
+					<div className="grid gap-3 grid-cols-1 md:grid-cols-4">
+						{/* Event Type - spans 2 columns on md+ */}
+						<div className="md:col-span-2">
+							<Controller
+								name={`shoots.${shootIndex}.shootType`}
+								control={form.control}
+								render={({ field, fieldState }) => (
+									<Field data-invalid={fieldState.invalid}>
+										<FieldLabel htmlFor={field.name}>
+											Event Type
+										</FieldLabel>
+										<AutocompleteInput
+											id={field.name}
+											value={field.value ?? ""}
+											onChange={field.onChange}
+											suggestions={shootTypeSuggestions}
+											placeholder="e.g. Wedding, Haldi, Reception..."
+											aria-invalid={fieldState.invalid}
+										/>
+										{fieldState.invalid && (
+											<FieldError
+												errors={[fieldState.error]}
+											/>
+										)}
+									</Field>
 								)}
-							</Field>
-						)}
-					/>
+							/>
+						</div>
 
-					{/* Row 2: Date + Start Time (2 columns) */}
-					<div className="grid gap-3 md:grid-cols-2">
-						{/* Shoot Date */}
+						{/* Date - 1 column */}
 						<Controller
 							name={`shoots.${shootIndex}.shootDate`}
 							control={form.control}
@@ -341,7 +315,7 @@ function ShootSection({
 							)}
 						/>
 
-						{/* Start Time */}
+						{/* Start Time - 1 column */}
 						<Controller
 							name={`shoots.${shootIndex}.startTime`}
 							control={form.control}
@@ -373,7 +347,6 @@ function ShootSection({
 						render={({ field, fieldState }) => (
 							<Field data-invalid={fieldState.invalid}>
 								<FieldLabel htmlFor={field.name}>
-									<MapPinIcon className="h-3.5 w-3.5 inline mr-1" />
 									Location
 								</FieldLabel>
 								<Textarea
@@ -453,39 +426,6 @@ function ShootSection({
 				{/* Crew Assignments */}
 				<FieldSet>
 					{/* Section header */}
-					<Field orientation="responsive">
-						<div className="flex-1">
-							<FieldContent>
-								<FieldTitle className="flex items-center gap-2">
-									<UsersIcon className="h-4 w-4" />
-									Crew
-									{crewAssignments.length > 0 && (
-										<Badge variant="secondary">
-											{crewAssignments.length}
-										</Badge>
-									)}
-								</FieldTitle>
-								<FieldDescription>
-									Assign team members to this shoot
-								</FieldDescription>
-							</FieldContent>
-						</div>
-						<Button
-							type="button"
-							variant="outline"
-							size="sm"
-							onClick={() =>
-								appendCrewAssignment({
-									crewId: "",
-									role: "",
-									isLead: false,
-								})
-							}
-						>
-							<PlusIcon className="mr-1.5 h-3.5 w-3.5" />
-							Assign crew
-						</Button>
-					</Field>
 
 					{crewAssignments.length === 0 ? (
 						<div className="flex items-center gap-3 py-4 px-4 border border-dashed rounded-lg">
