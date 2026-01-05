@@ -39,9 +39,25 @@ import { toast } from "sonner";
 import { PageContent } from "../PageContent";
 import { OpenConfigurationCreateSheet } from "./OpenConfigurationSheet";
 
+type ConfigType =
+	| "booking_type"
+	| "package_type"
+	| "relation_type"
+	| "crew_role"
+	| "event_type";
+
+// Map config type keys to their plural route slugs
+const CONFIG_TYPE_ROUTES: Record<ConfigType, string> = {
+	booking_type: "booking-types",
+	package_type: "package-types",
+	relation_type: "relation-types",
+	crew_role: "crew-roles",
+	event_type: "event-types",
+};
+
 interface ConfigurationsPageClientProps {
 	organizationSlug: string;
-	configType: string;
+	configType: ConfigType;
 	configTypeLabel: string;
 	pageTitle: string;
 	pageDescription: string;
@@ -75,7 +91,7 @@ export function ConfigurationsPageClient({
 
 	// Build query input
 	const queryInput = {
-		type: configType as "booking_type" | "package_type" | "relation_type",
+		type: configType,
 		page: currentFilters.page,
 		limit: 50,
 		search: currentFilters.search,
@@ -128,7 +144,8 @@ export function ConfigurationsPageClient({
 		}
 
 		const queryString = params.toString();
-		const basePath = `/app/${organizationSlug}/settings/${configType.replace(/_/g, "-")}`;
+		const routeSlug = CONFIG_TYPE_ROUTES[configType];
+		const basePath = `/app/${organizationSlug}/configurations/${routeSlug}`;
 		const url = `${basePath}${queryString ? `?${queryString}` : ""}`;
 
 		startTransition(() => {

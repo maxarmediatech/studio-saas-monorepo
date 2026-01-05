@@ -18,7 +18,7 @@ import { Switch } from "@repo/ui/components/switch";
 import { Textarea } from "@repo/ui/components/textarea";
 import { configurationsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { CollapsibleSection } from "../ui/CollapsibleSection";
