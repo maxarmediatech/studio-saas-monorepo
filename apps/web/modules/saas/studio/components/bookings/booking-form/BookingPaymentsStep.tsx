@@ -195,37 +195,33 @@ export function BookingPaymentsStep() {
 									</FieldDescription>
 								</FieldContent>
 							</div>
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								onClick={() => addNewPayment()}
+							>
+								<PlusIcon className="mr-2 h-4 w-4" />
+								Add Payment
+							</Button>
 						</Field>
 						{paymentFields.length === 0 ? (
-							<div className="flex items-center gap-3 py-6 px-4 border border-dashed rounded-lg">
-								<BanknoteIcon className="h-8 w-8 text-muted-foreground/50 shrink-0" />
-								<div className="text-left flex-1">
-									<p className="text-sm text-muted-foreground mb-2">
-										No payments recorded yet
-									</p>
-									<div className="flex flex-wrap gap-2">
-										<Button
-											type="button"
-											variant="outline"
-											size="sm"
-											onClick={() =>
-												addNewPayment("Advance Payment")
-											}
-										>
-											<PlusIcon className="mr-1 h-3 w-3" />
-											Advance Payment
-										</Button>
-										<Button
-											type="button"
-											variant="ghost"
-											size="sm"
-											onClick={() => addNewPayment()}
-										>
-											<PlusIcon className="mr-1 h-3 w-3" />
-											Other
-										</Button>
-									</div>
-								</div>
+							<div className="flex flex-col items-center gap-3 py-8 px-4 border border-dashed rounded-lg text-center">
+								<BanknoteIcon className="h-10 w-10 text-muted-foreground/40" />
+								<p className="text-sm text-muted-foreground">
+									No payments recorded yet
+								</p>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									onClick={() =>
+										addNewPayment("Advance Payment")
+									}
+								>
+									<PlusIcon className="mr-1 h-3 w-3" />
+									Advance Payment
+								</Button>
 							</div>
 						) : (
 							<div className="space-y-3">
@@ -264,19 +260,25 @@ export function BookingPaymentsStep() {
 									</FieldDescription>
 								</FieldContent>
 							</div>
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								onClick={() => addNewSchedule()}
+							>
+								<PlusIcon className="mr-2 h-4 w-4" />
+								Add Milestone
+							</Button>
 						</Field>
 						{scheduleFields.length === 0 ? (
-							<div className="flex items-center gap-3 py-6 px-4 border border-dashed rounded-lg">
-								<CalendarIcon className="h-8 w-8 text-muted-foreground/50 shrink-0" />
-								<div className="text-left flex-1">
-									<p className="text-sm text-muted-foreground mb-2">
-										No payment schedule set
-									</p>
-									<div className="flex flex-wrap gap-2">
-										{PAYMENT_SCHEDULE_PRESETS.slice(
-											1,
-											4,
-										).map((preset) => (
+							<div className="flex flex-col items-center gap-3 py-8 px-4 border border-dashed rounded-lg text-center">
+								<CalendarIcon className="h-10 w-10 text-muted-foreground/40" />
+								<p className="text-sm text-muted-foreground">
+									No payment schedule set
+								</p>
+								<div className="flex flex-wrap justify-center gap-2">
+									{PAYMENT_SCHEDULE_PRESETS.slice(1, 4).map(
+										(preset) => (
 											<Button
 												key={preset.value}
 												type="button"
@@ -289,8 +291,8 @@ export function BookingPaymentsStep() {
 												<PlusIcon className="mr-1 h-3 w-3" />
 												{preset.label}
 											</Button>
-										))}
-									</div>
+										),
+									)}
 								</div>
 							</div>
 						) : (
