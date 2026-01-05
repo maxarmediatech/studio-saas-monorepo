@@ -16,6 +16,7 @@ import {
 	FieldLabel,
 	FieldSet,
 } from "@repo/ui/components/field";
+import { DatePicker } from "@repo/ui/components/date-picker";
 import { Input } from "@repo/ui/components/input";
 import {
 	Select,
@@ -355,10 +356,10 @@ function DeliverableCard({
 										<CalendarIcon className="h-3.5 w-3.5 inline mr-1" />
 										Due Date
 									</FieldLabel>
-									<Input
-										{...field}
+									<DatePicker
+										value={field.value}
+										onValueChange={field.onChange}
 										id={field.name}
-										type="date"
 										aria-invalid={fieldState.invalid}
 									/>
 									{fieldState.invalid && (

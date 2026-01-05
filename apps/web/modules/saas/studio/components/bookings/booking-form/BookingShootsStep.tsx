@@ -18,7 +18,8 @@ import {
 	FieldSet,
 	FieldTitle,
 } from "@repo/ui/components/field";
-import { Input } from "@repo/ui/components/input";
+import { DatePicker } from "@repo/ui/components/date-picker";
+import { TimePicker } from "@repo/ui/components/time-picker";
 import {
 	Select,
 	SelectContent,
@@ -325,10 +326,10 @@ function ShootSection({
 									<FieldLabel htmlFor={field.name}>
 										Date
 									</FieldLabel>
-									<Input
-										{...field}
+									<DatePicker
+										value={field.value}
+										onValueChange={field.onChange}
 										id={field.name}
-										type="date"
 										aria-invalid={fieldState.invalid}
 									/>
 									{fieldState.invalid && (
@@ -349,10 +350,10 @@ function ShootSection({
 									<FieldLabel htmlFor={field.name}>
 										Start Time
 									</FieldLabel>
-									<Input
-										{...field}
+									<TimePicker
+										value={field.value}
+										onValueChange={field.onChange}
 										id={field.name}
-										type="time"
 										aria-invalid={fieldState.invalid}
 									/>
 									{fieldState.invalid && (

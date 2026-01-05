@@ -8,7 +8,9 @@ import {
 	FieldGroup,
 	FieldLabel,
 } from "@repo/ui/components/field";
+import { DatePicker } from "@repo/ui/components/date-picker";
 import { Input } from "@repo/ui/components/input";
+import { TimePicker } from "@repo/ui/components/time-picker";
 import { ScrollArea } from "@repo/ui/components/scroll-area";
 import {
 	Select,
@@ -245,10 +247,10 @@ export function ShootForm({
 										<FieldLabel htmlFor={field.name}>
 											Shoot Date *
 										</FieldLabel>
-										<Input
-											{...field}
+										<DatePicker
+											value={field.value}
+											onValueChange={field.onChange}
 											id={field.name}
-											type="date"
 											aria-invalid={fieldState.invalid}
 										/>
 										{fieldState.invalid && (
@@ -282,10 +284,12 @@ export function ShootForm({
 												>
 													Start Time
 												</FieldLabel>
-												<Input
-													{...field}
+												<TimePicker
+													value={field.value}
+													onValueChange={
+														field.onChange
+													}
 													id={field.name}
-													type="time"
 													aria-invalid={
 														fieldState.invalid
 													}
@@ -315,10 +319,12 @@ export function ShootForm({
 												>
 													End Time
 												</FieldLabel>
-												<Input
-													{...field}
+												<TimePicker
+													value={field.value}
+													onValueChange={
+														field.onChange
+													}
 													id={field.name}
-													type="time"
 													aria-invalid={
 														fieldState.invalid
 													}

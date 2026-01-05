@@ -15,6 +15,7 @@ import {
 	FieldLabel,
 	FieldSet,
 } from "@repo/ui/components/field";
+import { DatePicker } from "@repo/ui/components/date-picker";
 import { Input } from "@repo/ui/components/input";
 import {
 	Select,
@@ -437,10 +438,10 @@ export function BookingPaymentsStep() {
 															>
 																Date
 															</FieldLabel>
-															<Input
-																{...field}
+															<DatePicker
+																value={field.value}
+																onValueChange={field.onChange}
 																id={field.name}
-																type="date"
 																aria-invalid={
 																	fieldState.invalid
 																}
@@ -783,10 +784,10 @@ export function BookingPaymentsStep() {
 															>
 																Due Date
 															</FieldLabel>
-															<Input
-																{...field}
+															<DatePicker
+																value={field.value}
+																onValueChange={field.onChange}
 																id={field.name}
-																type="date"
 																aria-invalid={
 																	fieldState.invalid
 																}

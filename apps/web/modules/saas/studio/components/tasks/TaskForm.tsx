@@ -8,6 +8,7 @@ import {
 	FieldGroup,
 	FieldLabel,
 } from "@repo/ui/components/field";
+import { DatePicker } from "@repo/ui/components/date-picker";
 import { Input } from "@repo/ui/components/input";
 import { ScrollArea } from "@repo/ui/components/scroll-area";
 import {
@@ -331,10 +332,10 @@ export function TaskForm({
 											<FieldLabel htmlFor={field.name}>
 												Due Date
 											</FieldLabel>
-											<Input
-												{...field}
+											<DatePicker
+												value={field.value}
+												onValueChange={field.onChange}
 												id={field.name}
-												type="date"
 												aria-invalid={
 													fieldState.invalid
 												}
