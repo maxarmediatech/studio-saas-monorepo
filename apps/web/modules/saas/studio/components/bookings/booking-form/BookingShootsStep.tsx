@@ -24,7 +24,7 @@ import {
 	ChevronUpIcon,
 	PlusIcon,
 	TrashIcon,
-	XIcon,
+	UsersIcon,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
@@ -506,31 +506,42 @@ function ShootSection({
 					)}
 				</FieldGroup>
 
-				{/* Crew Assignments - Row-based table with rates */}
+				{/* Crew Assignments - Table layout matching Clients pattern */}
 				<Field>
 					<FieldLabel>Crew Assignments</FieldLabel>
 					{crewAssignmentFields.length === 0 ? (
-						<div className="flex flex-col items-center justify-center gap-3 p-3 border border-dashed rounded-lg bg-muted/5">
-							<p className="text-sm text-muted-foreground text-center">
-								No crew assigned yet
-							</p>
-							<Button
-								type="button"
-								variant="outline"
-								size="sm"
-								onClick={addCrewAssignment}
-							>
-								<PlusIcon className="mr-2 h-4 w-4" />
-								Add crew member
-							</Button>
+						<div className="flex items-center gap-3 py-6 px-4 border border-dashed rounded-lg">
+							<UsersIcon className="h-8 w-8 text-muted-foreground/50 shrink-0" />
+							<div className="text-left">
+								<p className="text-sm text-muted-foreground">
+									No crew assigned yet
+								</p>
+								<Button
+									type="button"
+									variant="link"
+									size="sm"
+									className="h-auto p-0"
+									onClick={addCrewAssignment}
+								>
+									Add first crew member
+								</Button>
+							</div>
 						</div>
 					) : (
-						<div className="space-y-2">
+						<div className="overflow-hidden rounded-lg border bg-muted/10">
+							{/* Column Headers */}
+							<div className="grid grid-cols-[2fr_1fr_2.25rem] gap-2 border-b px-3 py-2 text-sm font-medium text-muted-foreground">
+								<div>Crew</div>
+								<div>Rate</div>
+								<div aria-hidden />
+							</div>
+
+							{/* Data Rows */}
 							{crewAssignmentFields.map(
 								(assignmentField, assignmentIndex) => (
 									<div
 										key={assignmentField.id}
-										className="grid grid-cols-[1fr_auto_auto] md:grid-cols-[2fr_1fr_auto] gap-2 items-start"
+										className={`grid grid-cols-[2fr_1fr_2.25rem] items-start gap-2 px-3 py-3 ${assignmentIndex > 0 ? "border-t" : ""}`}
 									>
 										{/* Crew Combobox */}
 										<Controller
@@ -576,7 +587,6 @@ function ShootSection({
 														)
 													}
 													placeholder="Rate"
-													className="w-24 md:w-32"
 													aria-invalid={
 														fieldState.invalid
 													}
@@ -589,33 +599,35 @@ function ShootSection({
 											type="button"
 											variant="ghost"
 											size="icon"
-											className="h-9 w-9 text-muted-foreground hover:text-destructive"
+											className="min-h-9 min-w-9 self-center text-destructive hover:text-destructive hover:bg-destructive/10"
 											onClick={() =>
 												removeCrewAssignment(
 													assignmentIndex,
 												)
 											}
 										>
-											<XIcon className="h-4 w-4" />
+											<TrashIcon className="h-4 w-4" />
 											<span className="sr-only">
-												Remove assignment
+												Remove crew
 											</span>
 										</Button>
 									</div>
 								),
 							)}
 
-							{/* Add another crew button */}
-							<Button
-								type="button"
-								variant="ghost"
-								size="sm"
-								className="w-fit text-muted-foreground mt-1"
-								onClick={addCrewAssignment}
-							>
-								<PlusIcon className="mr-1.5 h-3.5 w-3.5" />
-								Add crew member
-							</Button>
+							{/* Add Button Footer */}
+							<div className="px-3 pb-2 pt-1">
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									className="w-full justify-center border-dashed"
+									onClick={addCrewAssignment}
+								>
+									<PlusIcon className="mr-2 h-4 w-4" />
+									Add another crew member
+								</Button>
+							</div>
 						</div>
 					)}
 				</Field>
