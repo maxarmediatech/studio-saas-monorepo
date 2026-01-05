@@ -3,12 +3,7 @@
 import { Avatar, AvatarFallback } from "@repo/ui/components/avatar";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
-import {
-	Card,
-	CardContent,
-	CardHeader,
-	CardTitle,
-} from "@repo/ui/components/card";
+import { Card, CardContent } from "@repo/ui/components/card";
 import { DatePicker } from "@repo/ui/components/date-picker";
 import {
 	Field,
@@ -16,7 +11,10 @@ import {
 	FieldError,
 	FieldGroup,
 	FieldLabel,
+	FieldLegend,
+	FieldSeparator,
 	FieldSet,
+	FieldTitle,
 } from "@repo/ui/components/field";
 import { Input } from "@repo/ui/components/input";
 import { MultiSelectCombobox } from "@repo/ui/components/multi-select-combobox";
@@ -100,52 +98,42 @@ export function BookingDeliverablesStep() {
 	const packageDeliverables = watchedDeliverables.filter(
 		(d) => d.isPackageIncluded,
 	);
-	const _customDeliverables = watchedDeliverables.filter(
-		(d) => !d.isPackageIncluded,
-	);
 
 	return (
-		<FieldGroup className="gap-6">
-			<Card>
-				<CardHeader className="flex flex-row items-center justify-between">
-					<div>
-						<CardTitle className="flex items-center gap-2">
-							<PackageIcon className="h-5 w-5" />
-							Deliverables
-							{packageDeliverables.length > 0 && (
-								<Badge variant="secondary" className="ml-1">
-									{packageDeliverables.length} from package
-								</Badge>
-							)}
-						</CardTitle>
-						<p className="text-sm text-muted-foreground mt-1">
-							{packageDeliverables.length > 0
-								? "Package deliverables are included. Add custom deliverables below."
-								: "Define what will be delivered to the client"}
-						</p>
-					</div>
-					<Button
-						type="button"
-						variant="outline"
-						size="sm"
-						onClick={addNewDeliverable}
-					>
-						<PlusIcon className="mr-2 h-4 w-4" />
-						Add Custom Deliverable
-					</Button>
-				</CardHeader>
-				<CardContent>
-					<FieldSet>
+		<Card className="shadow-none">
+			<CardContent>
+				<FieldSet>
+					<FieldGroup>
+						<Field orientation="responsive">
+							<div className="flex-1">
+								<FieldLegend>Deliverables</FieldLegend>
+								<FieldDescription>
+									{packageDeliverables.length > 0
+										? "Package deliverables are included. Add custom deliverables below."
+										: "Define what will be delivered to the client"}
+								</FieldDescription>
+							</div>
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								onClick={addNewDeliverable}
+							>
+								<PlusIcon className="mr-2 h-4 w-4" />
+								Add Custom Deliverable
+							</Button>
+						</Field>
+					</FieldGroup>
+					<FieldSeparator />
+					<FieldGroup className="gap-4">
 						{deliverables.length === 0 ? (
-							<div className="flex flex-col items-center justify-center py-12 text-center border border-dashed rounded-lg">
-								<PackageIcon className="h-12 w-12 text-muted-foreground/50 mb-4" />
-								<p className="text-sm text-muted-foreground mb-4">
-									No deliverables added yet. Click "Add
-									Deliverable" to define what will be
-									delivered.
+							<div className="flex flex-col items-center justify-center gap-3 py-8 px-4 border border-dashed rounded-lg">
+								<PackageIcon className="h-10 w-10 text-muted-foreground/30" />
+								<p className="text-sm text-muted-foreground text-center">
+									No deliverables added yet
 								</p>
 								{/* Quick add common deliverables */}
-								<div className="flex flex-wrap gap-2 justify-center max-w-md">
+								<div className="flex flex-wrap gap-2 justify-center">
 									{DELIVERABLE_TYPE_OPTIONS.slice(0, 4).map(
 										(type) => (
 											<Button
@@ -175,7 +163,7 @@ export function BookingDeliverablesStep() {
 								</div>
 							</div>
 						) : (
-							<FieldGroup className="gap-6">
+							<FieldGroup className="gap-4">
 								{deliverables.map((deliverable, index) => {
 									const watchedDeliverable =
 										watchedDeliverables[index];
@@ -196,10 +184,10 @@ export function BookingDeliverablesStep() {
 								})}
 							</FieldGroup>
 						)}
-					</FieldSet>
-				</CardContent>
-			</Card>
-		</FieldGroup>
+					</FieldGroup>
+				</FieldSet>
+			</CardContent>
+		</Card>
 	);
 }
 
@@ -239,37 +227,35 @@ function DeliverableCard({
 		form.watch(`deliverables.${deliverableIndex}.crewAssignments`) ?? [];
 
 	return (
-		<Card
-			className={
+		<div
+			className={`overflow-hidden rounded-lg border ${
 				isPackageIncluded
 					? "border-primary/30 bg-primary/5"
-					: "relative"
-			}
+					: "bg-muted/10"
+			}`}
 		>
-			<CardHeader className="flex flex-row items-center justify-between pb-4">
+			<div className="flex items-center justify-between gap-2 border-b bg-muted/20 px-4 py-3">
 				<div className="flex items-center gap-2">
-					<PackageIcon className="h-5 w-5 text-muted-foreground" />
-					<CardTitle className="text-base">
+					<PackageIcon className="h-4 w-4 text-muted-foreground" />
+					<span className="text-sm font-medium">
 						Deliverable {deliverableIndex + 1}
-					</CardTitle>
+					</span>
 					{isPackageIncluded && (
-						<Badge variant="default" className="ml-1">
-							Package
-						</Badge>
+						<Badge variant="default">Package</Badge>
 					)}
 				</div>
 				<Button
 					type="button"
 					variant="ghost"
 					size="icon"
-					className="min-h-11 min-w-11 text-destructive hover:text-destructive hover:bg-destructive/10"
+					className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
 					onClick={onRemove}
 				>
 					<TrashIcon className="h-4 w-4" />
 					<span className="sr-only">Remove deliverable</span>
 				</Button>
-			</CardHeader>
-			<CardContent className="space-y-6">
+			</div>
+			<div className="p-4 space-y-4">
 				{/* Basic Info */}
 				<FieldGroup>
 					{/* Row 1: Name, Type, Quantity */}
@@ -499,17 +485,17 @@ function DeliverableCard({
 				</FieldGroup>
 
 				{/* Crew Assignments - Multi-select chips */}
-				<div className="border-t pt-4">
-					<div className="flex items-center gap-2 mb-3">
-						<UsersIcon className="h-4 w-4 text-muted-foreground" />
-						<h4 className="text-sm font-medium">Assigned Team</h4>
+				<FieldSeparator />
+				<Field>
+					<FieldTitle className="flex items-center gap-2">
+						<UsersIcon className="h-4 w-4" />
+						Assigned Team
 						{crewAssignments.length > 0 && (
-							<Badge variant="secondary" className="ml-1">
+							<Badge variant="secondary">
 								{crewAssignments.length} assigned
 							</Badge>
 						)}
-					</div>
-
+					</FieldTitle>
 					<Controller
 						name={`deliverables.${deliverableIndex}.crewAssignments`}
 						control={form.control}
@@ -584,8 +570,8 @@ function DeliverableCard({
 							);
 						}}
 					/>
-				</div>
-			</CardContent>
-		</Card>
+				</Field>
+			</div>
+		</div>
 	);
 }
