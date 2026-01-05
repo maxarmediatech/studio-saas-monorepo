@@ -833,6 +833,9 @@ export const receivedAmounts = pgTable(
 		receivedDate: date("received_date").notNull(),
 		notes: text("notes"),
 
+		// Proof of payment attachment metadata (name, size, type, key, url)
+		proofAttachment: jsonb("proof_attachment"),
+
 		// Link to payment schedule if this fulfills a scheduled payment
 		paymentScheduleId: varchar("payment_schedule_id", {
 			length: 255,

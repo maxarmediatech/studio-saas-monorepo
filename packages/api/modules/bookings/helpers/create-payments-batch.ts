@@ -84,6 +84,7 @@ export async function createPaymentsBatch(
 					receivedDate: payment.receivedDate,
 					transactionReference: payment.transactionReference ?? null,
 					notes: payment.notes ?? null,
+					proofAttachment: payment.proofAttachment ?? null,
 					paymentScheduleId: null, // Not linking to schedules during creation
 					createdBy: userId,
 					updatedBy: userId,

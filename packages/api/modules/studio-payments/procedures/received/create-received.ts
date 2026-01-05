@@ -36,6 +36,7 @@ export const createReceived = studioProtectedProcedure
 			transactionReference,
 			receivedDate,
 			notes,
+			proofAttachment,
 			paymentScheduleId,
 		} = input;
 
@@ -85,6 +86,7 @@ export const createReceived = studioProtectedProcedure
 					transactionReference: transactionReference ?? null,
 					receivedDate,
 					notes: notes ?? null,
+					proofAttachment: proofAttachment ?? null,
 					paymentScheduleId: paymentScheduleId ?? null,
 					createdBy: context.user.id,
 					updatedBy: context.user.id,

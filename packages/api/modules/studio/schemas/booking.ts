@@ -19,6 +19,7 @@ import {
 	paginationSchema,
 	paymentMethodSchema,
 	searchSchema,
+	uploadedAttachmentSchema,
 } from "./common";
 
 // ============================================================================
@@ -298,6 +299,7 @@ const receivedPaymentInputSchema = z.object({
 	receivedDate: z.string().min(1), // Date string YYYY-MM-DD
 	transactionReference: z.string().max(100).optional(),
 	notes: z.string().max(10000).optional(),
+	proofAttachment: uploadedAttachmentSchema.nullable().optional(),
 });
 
 export type ReceivedPaymentInput = z.infer<typeof receivedPaymentInputSchema>;

@@ -42,6 +42,7 @@ export const getReceived = studioProtectedProcedure
 				transactionReference: receivedAmounts.transactionReference,
 				receivedDate: receivedAmounts.receivedDate,
 				notes: receivedAmounts.notes,
+				proofAttachment: receivedAmounts.proofAttachment,
 				paymentScheduleId: receivedAmounts.paymentScheduleId,
 				createdBy: receivedAmounts.createdBy,
 				updatedBy: receivedAmounts.updatedBy,
@@ -98,6 +99,13 @@ export const getReceived = studioProtectedProcedure
 				transactionReference: received.transactionReference,
 				receivedDate: received.receivedDate,
 				notes: received.notes,
+				proofAttachment: received.proofAttachment as {
+					name: string;
+					size: number;
+					type: string;
+					key: string;
+					url: string;
+				} | null,
 				paymentScheduleId: received.paymentScheduleId,
 				createdBy: received.createdBy,
 				updatedBy: received.updatedBy,

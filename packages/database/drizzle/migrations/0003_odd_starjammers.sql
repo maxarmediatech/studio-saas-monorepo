@@ -1,0 +1,1 @@
+ALTER TABLE "received_amounts" ADD COLUMN "proof_attachment" jsonb;

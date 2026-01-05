@@ -21,6 +21,7 @@ import {
 	paymentMethodSchema,
 	paymentScheduleStatusSchema,
 	searchSchema,
+	uploadedAttachmentSchema,
 } from "./common";
 
 // ============================================================================
@@ -39,6 +40,7 @@ export const receivedAmountSchema = z.object({
 	transactionReference: z.string().nullable(),
 	receivedDate: z.string(),
 	notes: z.string().nullable(),
+	proofAttachment: uploadedAttachmentSchema.nullable(),
 	paymentScheduleId: idSchema.nullable(),
 	createdBy: idSchema.nullable(),
 	updatedBy: idSchema.nullable(),
@@ -183,6 +185,7 @@ export const createReceivedInputSchema = z.object({
 	transactionReference: z.string().max(100).optional(),
 	receivedDate: dateSchema,
 	notes: notesSchema,
+	proofAttachment: uploadedAttachmentSchema.nullable().optional(),
 	paymentScheduleId: idSchema.optional(),
 });
 
@@ -203,6 +206,7 @@ export const updateReceivedInputSchema = z.object({
 	transactionReference: z.string().max(100).optional().nullable(),
 	receivedDate: dateSchema.optional(),
 	notes: notesSchema.nullable(),
+	proofAttachment: uploadedAttachmentSchema.nullable().optional(),
 });
 
 export type UpdateReceivedInput = z.infer<typeof updateReceivedInputSchema>;

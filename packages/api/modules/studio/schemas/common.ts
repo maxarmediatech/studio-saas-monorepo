@@ -365,6 +365,24 @@ export const phoneSchema = z
 export const urlSchema = z.string().url().optional();
 
 // ============================================================================
+// ATTACHMENT SCHEMA
+// ============================================================================
+
+/**
+ * Uploaded attachment metadata schema
+ * Matches the frontend uploadedAttachmentSchema structure
+ */
+export const uploadedAttachmentSchema = z.object({
+	name: z.string(),
+	size: z.number(),
+	type: z.string(),
+	key: z.string(),
+	url: z.string(),
+});
+
+export type UploadedAttachment = z.infer<typeof uploadedAttachmentSchema>;
+
+// ============================================================================
 // RESPONSE WRAPPERS
 // ============================================================================
 

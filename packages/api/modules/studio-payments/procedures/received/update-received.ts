@@ -80,6 +80,10 @@ export const updateReceived = studioProtectedProcedure
 			updateData.notes = updates.notes;
 		}
 
+		if (updates.proofAttachment !== undefined) {
+			updateData.proofAttachment = updates.proofAttachment;
+		}
+
 		// Use transaction if amount changed
 		if (amountChanged) {
 			return await db.transaction(async (tx) => {
