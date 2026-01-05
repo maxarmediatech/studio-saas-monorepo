@@ -176,22 +176,20 @@ export function BookingShootsStep() {
 					<FieldGroup>
 						{/* Shoots list */}
 						{shoots.length === 0 ? (
-							<div className="flex items-center gap-3 py-6 px-4 border border-dashed rounded-lg">
-								<CameraIcon className="h-8 w-8 text-muted-foreground/50 shrink-0" />
-								<div className="text-left">
-									<p className="text-sm text-muted-foreground">
-										No shoots scheduled yet
-									</p>
-									<Button
-										type="button"
-										variant="link"
-										size="sm"
-										className="h-auto p-0"
-										onClick={addNewShoot}
-									>
-										Add first shoot
-									</Button>
-								</div>
+							<div className="flex flex-col items-center justify-center gap-3 py-8 px-4 border border-dashed rounded-lg">
+								<CameraIcon className="h-10 w-10 text-muted-foreground/30" />
+								<p className="text-sm text-muted-foreground text-center">
+									No shoots scheduled yet
+								</p>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									onClick={addNewShoot}
+								>
+									<PlusIcon className="mr-2 h-4 w-4" />
+									Add first shoot
+								</Button>
 							</div>
 						) : (
 							<FieldGroup className="gap-4">
@@ -500,28 +498,26 @@ function ShootSection({
 				{/* Crew Assignments */}
 				<FieldSet>
 					{crewAssignments.length === 0 ? (
-						<div className="flex items-center gap-3 py-4 px-4 border border-dashed rounded-lg">
-							<UserPlusIcon className="h-6 w-6 text-muted-foreground/50 shrink-0" />
-							<div className="text-left">
-								<p className="text-sm text-muted-foreground">
-									No crew assigned
-								</p>
-								<Button
-									type="button"
-									variant="link"
-									size="sm"
-									className="h-auto p-0"
-									onClick={() =>
-										appendCrewAssignment({
-											crewId: "",
-											role: "",
-											isLead: false,
-										})
-									}
-								>
-									Assign first crew member
-								</Button>
-							</div>
+						<div className="flex flex-col items-center justify-center gap-2 py-6 px-4 border border-dashed rounded-lg">
+							<UserPlusIcon className="h-8 w-8 text-muted-foreground/30" />
+							<p className="text-sm text-muted-foreground text-center">
+								No crew assigned
+							</p>
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								onClick={() =>
+									appendCrewAssignment({
+										crewId: "",
+										role: "",
+										isLead: false,
+									})
+								}
+							>
+								<PlusIcon className="mr-2 h-4 w-4" />
+								Assign crew member
+							</Button>
 						</div>
 					) : (
 						<div className="overflow-hidden rounded-lg border bg-muted/10">
