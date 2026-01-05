@@ -130,6 +130,7 @@ export const paymentSchema = z.object({
 	receivedDate: z.string().min(1, "Payment date is required"),
 	transactionReference: z.string().optional(),
 	notes: z.string().optional(),
+	proofAttachment: uploadedAttachmentSchema.nullable().optional(),
 });
 
 export type PaymentFormValue = z.infer<typeof paymentSchema>;
