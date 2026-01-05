@@ -1,0 +1,1 @@
+ALTER TABLE "shoot_assignments" ADD COLUMN "rate" numeric(10, 2);

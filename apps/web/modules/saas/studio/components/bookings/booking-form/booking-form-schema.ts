@@ -83,12 +83,13 @@ export const participantsArraySchema = z
 	);
 
 /**
- * Crew assignment schema - simplified to just crewId.
+ * Crew assignment schema with per-shoot rate.
  * Role is auto-filled from crew profile on backend.
- * Lead designation removed (not needed for current workflow).
+ * Rate defaults to crew.dailyRate when selected, can be customized.
  */
 export const crewAssignmentSchema = z.object({
 	crewId: z.string().min(1, "Crew member is required"),
+	rate: z.string().optional(), // Per-shoot rate (decimal string for currency input)
 });
 
 export type CrewAssignmentFormValue = z.infer<typeof crewAssignmentSchema>;

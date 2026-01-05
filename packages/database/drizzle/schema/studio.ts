@@ -461,6 +461,7 @@ export const shootAssignments = pgTable(
 
 		role: text("role").notNull(), // lead_photographer, assistant, etc.
 		isLead: boolean("is_lead").default(false).notNull(),
+		rate: decimal("rate", { precision: 10, scale: 2 }), // per-shoot rate (nullable, defaults to crew.dailyRate)
 
 		assignedBy: varchar("assigned_by", { length: 255 }).references(
 			() => users.id,

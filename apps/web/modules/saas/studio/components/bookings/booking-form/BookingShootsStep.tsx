@@ -1,7 +1,5 @@
 "use client";
 
-import { Avatar, AvatarFallback } from "@repo/ui/components/avatar";
-import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Card, CardContent } from "@repo/ui/components/card";
 import { Combobox, type ComboboxOption } from "@repo/ui/components/combobox";
@@ -16,7 +14,6 @@ import {
 	FieldSet,
 } from "@repo/ui/components/field";
 import { Input } from "@repo/ui/components/input";
-import { MultiSelectCombobox } from "@repo/ui/components/multi-select-combobox";
 import { Textarea } from "@repo/ui/components/textarea";
 import { TimePicker } from "@repo/ui/components/time-picker";
 import { useConfigurationParams } from "@saas/studio/hooks/params/use-configuration-params";
@@ -33,18 +30,6 @@ import { useMemo, useState } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import { bookingFormQueries } from "./booking-form-queries";
 import type { BookingFormValues } from "./booking-form-schema";
-
-/**
- * Get initials from a name (e.g., "John Smith" -> "JS")
- */
-function getInitials(name: string): string {
-	return name
-		.split(" ")
-		.map((part) => part[0])
-		.join("")
-		.toUpperCase()
-		.slice(0, 2);
-}
 
 export function BookingShootsStep() {
 	const form = useFormContext<BookingFormValues>();
@@ -216,21 +201,14 @@ interface ShootSectionProps {
 		name: string;
 		role: string;
 		phoneNumber?: string | null;
+		dailyRate?: string | null;
+		userId?: string | null;
 	}>;
 	eventTypeOptions: ComboboxOption[];
 	hasConfiguredEventTypes: boolean;
 	eventTypesLoading: boolean;
 	onRemove: () => void;
 	canRemove: boolean;
-}
-
-/**
- * Crew option type for multi-select
- */
-interface CrewOption {
-	value: string;
-	label: string;
-	role: string;
 }
 
 function ShootSection({
@@ -249,16 +227,62 @@ function ShootSection({
 	// Check if notes has content to auto-expand
 	const notesValue = form.watch(`shoots.${shootIndex}.notes`);
 
-	// Transform crews to multi-select options
-	const crewOptions: CrewOption[] = useMemo(
-		() =>
-			crews.map((crew) => ({
-				value: crew.id,
-				label: crew.name,
-				role: crew.role ?? "",
-			})),
+	// useFieldArray for crew assignments
+	const {
+		fields: crewAssignmentFields,
+		append: appendCrewAssignment,
+		remove: removeCrewAssignment,
+	} = useFieldArray({
+		control: form.control,
+		name: `shoots.${shootIndex}.crewAssignments`,
+	});
+
+	// Watch current crew assignments to filter available crews
+	const currentAssignments =
+		form.watch(`shoots.${shootIndex}.crewAssignments`) ?? [];
+	const selectedCrewIds = currentAssignments.map((a) => a.crewId);
+
+	// Create a map for quick crew lookup
+	const crewMap = useMemo(
+		() => new Map(crews.map((c) => [c.id, c])),
 		[crews],
 	);
+
+	// Get available crews (not already assigned to this shoot)
+	const getAvailableCrews = (currentCrewId?: string): ComboboxOption[] => {
+		return crews
+			.filter((crew) => {
+				// Always include current selection
+				if (crew.id === currentCrewId) return true;
+				// Exclude already assigned crews
+				return !selectedCrewIds.includes(crew.id);
+			})
+			.map((crew) => ({
+				value: crew.id,
+				label: `${crew.name}${crew.role ? ` (${crew.role})` : ""}`,
+			}));
+	};
+
+	// Handle crew selection - auto-populate rate from dailyRate
+	const handleCrewSelect = (assignmentIndex: number, crewId: string) => {
+		const crew = crewMap.get(crewId);
+		form.setValue(
+			`shoots.${shootIndex}.crewAssignments.${assignmentIndex}.crewId`,
+			crewId,
+		);
+		// Auto-populate rate from crew's dailyRate
+		if (crew?.dailyRate) {
+			form.setValue(
+				`shoots.${shootIndex}.crewAssignments.${assignmentIndex}.rate`,
+				crew.dailyRate,
+			);
+		}
+	};
+
+	// Add new crew assignment row
+	const addCrewAssignment = () => {
+		appendCrewAssignment({ crewId: "", rate: "" });
+	};
 
 	return (
 		<div className="overflow-hidden rounded-lg border bg-muted/10">
@@ -482,84 +506,119 @@ function ShootSection({
 					)}
 				</FieldGroup>
 
-				{/* Crew Assignments - Multi-select chips */}
-				<Controller
-					name={`shoots.${shootIndex}.crewAssignments`}
-					control={form.control}
-					render={({ field }) => {
-						// Extract current crew IDs from assignments
-						const selectedIds = (field.value ?? []).map(
-							(a) => a.crewId,
-						);
+				{/* Crew Assignments - Row-based table with rates */}
+				<Field>
+					<FieldLabel>Crew Assignments</FieldLabel>
+					{crewAssignmentFields.length === 0 ? (
+						<div className="flex flex-col items-center justify-center gap-3 p-3 border border-dashed rounded-lg bg-muted/5">
+							<p className="text-sm text-muted-foreground text-center">
+								No crew assigned yet
+							</p>
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								onClick={addCrewAssignment}
+							>
+								<PlusIcon className="mr-2 h-4 w-4" />
+								Add crew member
+							</Button>
+						</div>
+					) : (
+						<div className="space-y-2">
+							{crewAssignmentFields.map(
+								(assignmentField, assignmentIndex) => (
+									<div
+										key={assignmentField.id}
+										className="grid grid-cols-[1fr_auto_auto] md:grid-cols-[2fr_1fr_auto] gap-2 items-start"
+									>
+										{/* Crew Combobox */}
+										<Controller
+											name={`shoots.${shootIndex}.crewAssignments.${assignmentIndex}.crewId`}
+											control={form.control}
+											render={({
+												field,
+												fieldState,
+											}) => (
+												<Combobox
+													value={field.value ?? ""}
+													onValueChange={(value) =>
+														handleCrewSelect(
+															assignmentIndex,
+															value,
+														)
+													}
+													options={getAvailableCrews(
+														field.value,
+													)}
+													placeholder="Select crew..."
+													searchPlaceholder="Search crew..."
+													emptyText="No crew found"
+													aria-invalid={
+														fieldState.invalid
+													}
+												/>
+											)}
+										/>
 
-						return (
-							<Field>
-								<FieldLabel>Crew Assignments</FieldLabel>
-								<MultiSelectCombobox
-									options={crewOptions}
-									value={selectedIds}
-									onValueChange={(ids) => {
-										// Convert IDs back to assignment objects
-										field.onChange(
-											ids.map((id) => ({ crewId: id })),
-										);
-									}}
-									placeholder="Select crew members..."
-									searchPlaceholder="Search crew..."
-									emptyText="No crew members found"
-									renderOption={(option) => (
-										<div className="flex items-center gap-2">
-											<Avatar className="h-6 w-6">
-												<AvatarFallback className="text-[10px]">
-													{getInitials(option.label)}
-												</AvatarFallback>
-											</Avatar>
-											<span>{option.label}</span>
-											{option.role && (
-												<span className="text-muted-foreground text-sm">
-													({option.role})
-												</span>
+										{/* Rate Input */}
+										<Controller
+											name={`shoots.${shootIndex}.crewAssignments.${assignmentIndex}.rate`}
+											control={form.control}
+											render={({ field, fieldState }) => (
+												<Input
+													type="number"
+													step="0.01"
+													value={field.value ?? ""}
+													onChange={(e) =>
+														field.onChange(
+															e.target.value,
+														)
+													}
+													placeholder="Rate"
+													className="w-24 md:w-32"
+													aria-invalid={
+														fieldState.invalid
+													}
+												/>
 											)}
-										</div>
-									)}
-									renderSelectedItem={(option, onRemove) => (
-										<Badge
-											variant="secondary"
-											className="flex items-center gap-1.5 pr-1"
+										/>
+
+										{/* Remove Button */}
+										<Button
+											type="button"
+											variant="ghost"
+											size="icon"
+											className="h-9 w-9 text-muted-foreground hover:text-destructive"
+											onClick={() =>
+												removeCrewAssignment(
+													assignmentIndex,
+												)
+											}
 										>
-											<Avatar className="h-4 w-4">
-												<AvatarFallback className="text-[8px]">
-													{getInitials(option.label)}
-												</AvatarFallback>
-											</Avatar>
-											<span className="truncate">
-												{option.label}
+											<XIcon className="h-4 w-4" />
+											<span className="sr-only">
+												Remove assignment
 											</span>
-											{option.role && (
-												<span className="text-muted-foreground text-xs">
-													({option.role})
-												</span>
-											)}
-											<button
-												type="button"
-												onClick={(e) => {
-													e.stopPropagation();
-													onRemove();
-												}}
-												className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
-											>
-												<XIcon className="size-3" />
-												<span className="sr-only">
-													Remove {option.label}
-												</span>
-											</button>
-										</Badge>
-									)}
-								/>
-							</Field>
-						);
-					}}
-				/>
+										</Button>
+									</div>
+								),
+							)}
+
+							{/* Add another crew button */}
+							<Button
+								type="button"
+								variant="ghost"
+								size="sm"
+								className="w-fit text-muted-foreground mt-1"
+								onClick={addCrewAssignment}
+							>
+								<PlusIcon className="mr-1.5 h-3.5 w-3.5" />
+								Add crew member
+							</Button>
+						</div>
+					)}
+				</Field>
 			</div>
 		</div>
 	);

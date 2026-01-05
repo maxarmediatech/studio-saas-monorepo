@@ -86,17 +86,25 @@ export async function createShootsBatch(
 			}
 
 			await tx.insert(shootAssignments).values(
-				crewAssignments.map((assignment) => ({
-					shootId: createdShoot.id,
-					crewId: assignment.crewId,
-					// Use provided role, or fetch from crew profile, or default to "Crew"
-					role:
-						assignment.role ??
-						crewRoleMap.get(assignment.crewId) ??
-						"Crew",
-					isLead: assignment.isLead ?? false,
-					assignedBy: userId,
-				})),
+				crewAssignments.map((assignment) => {
+					const trimmedRate = assignment.rate?.trim();
+
+					return {
+						shootId: createdShoot.id,
+						crewId: assignment.crewId,
+						// Use provided role, or fetch from crew profile, or default to "Crew"
+						role:
+							assignment.role ??
+							crewRoleMap.get(assignment.crewId) ??
+							"Crew",
+						isLead: assignment.isLead ?? false,
+						rate:
+							trimmedRate && /^\d+(\.\d{1,2})?$/.test(trimmedRate)
+								? trimmedRate
+								: null, // Per-shoot rate (null if not specified/invalid)
+						assignedBy: userId,
+					};
+				}),
 			);
 		}
 	}

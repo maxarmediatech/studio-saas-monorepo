@@ -245,6 +245,14 @@ const shootCrewAssignmentInputSchema = z.object({
 	crewId: idSchema,
 	role: z.string().min(1).max(100).optional(), // Auto-filled from crew profile
 	isLead: z.boolean().default(false).optional(), // Kept for backward compat, not used in UI
+	rate: z.preprocess((value) => {
+		if (typeof value !== "string") {
+			return value;
+		}
+
+		const trimmed = value.trim();
+		return trimmed === "" ? undefined : trimmed;
+	}, moneySchema.optional()), // Per-shoot rate (decimal as string), "" → undefined
 });
 
 export type ShootCrewAssignmentInput = z.infer<

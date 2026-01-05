@@ -339,6 +339,14 @@ const ShootsSection = memo(function ShootsSection({
 																crew.crewId,
 															)
 														: "—"}
+													{crew.rate && (
+														<span className="ml-1 text-muted-foreground">
+															₹
+															{Number(
+																crew.rate,
+															).toLocaleString()}
+														</span>
+													)}
 												</Badge>
 											),
 										)}

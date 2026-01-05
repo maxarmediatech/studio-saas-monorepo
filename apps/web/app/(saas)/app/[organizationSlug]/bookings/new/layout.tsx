@@ -74,6 +74,7 @@ function buildCreateBookingInput(rawValues: BookingFormValues) {
 			// Role is auto-filled from crew profile by API
 			crewAssignments: shoot.crewAssignments?.map((assignment) => ({
 				crewId: assignment.crewId,
+				rate: assignment.rate || undefined, // Per-shoot rate (optional)
 			})),
 		})),
 		deliverables: values.deliverables?.map((deliverable) => ({
