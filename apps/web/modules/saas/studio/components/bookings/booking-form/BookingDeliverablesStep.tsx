@@ -1,5 +1,6 @@
 "use client";
 
+import { Avatar, AvatarFallback } from "@repo/ui/components/avatar";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import {
@@ -8,6 +9,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@repo/ui/components/card";
+import { DatePicker } from "@repo/ui/components/date-picker";
 import {
 	Field,
 	FieldDescription,
@@ -16,8 +18,8 @@ import {
 	FieldLabel,
 	FieldSet,
 } from "@repo/ui/components/field";
-import { DatePicker } from "@repo/ui/components/date-picker";
 import { Input } from "@repo/ui/components/input";
+import { MultiSelectCombobox } from "@repo/ui/components/multi-select-combobox";
 import {
 	Select,
 	SelectContent,
@@ -33,13 +35,36 @@ import {
 	PlusIcon,
 	TrashIcon,
 	UsersIcon,
+	XIcon,
 } from "lucide-react";
+import { useMemo } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import { bookingFormQueries } from "./booking-form-queries";
 import {
 	type BookingFormValues,
 	DELIVERABLE_TYPE_OPTIONS,
 } from "./booking-form-schema";
+
+/**
+ * Get initials from a name (e.g., "John Smith" -> "JS")
+ */
+function getInitials(name: string): string {
+	return name
+		.split(" ")
+		.map((part) => part[0])
+		.join("")
+		.toUpperCase()
+		.slice(0, 2);
+}
+
+/**
+ * Crew option type for multi-select
+ */
+interface CrewOption {
+	value: string;
+	label: string;
+	role: string;
+}
 
 export function BookingDeliverablesStep() {
 	const form = useFormContext<BookingFormValues>();
@@ -198,14 +223,20 @@ function DeliverableCard({
 }: DeliverableCardProps) {
 	const form = useFormContext<BookingFormValues>();
 
-	const {
-		fields: crewAssignments,
-		append: appendCrewAssignment,
-		remove: removeCrewAssignment,
-	} = useFieldArray({
-		control: form.control,
-		name: `deliverables.${deliverableIndex}.crewAssignments`,
-	});
+	// Transform crews to multi-select options
+	const crewOptions: CrewOption[] = useMemo(
+		() =>
+			crews.map((crew) => ({
+				value: crew.id,
+				label: crew.name,
+				role: crew.role ?? "",
+			})),
+		[crews],
+	);
+
+	// Watch crew assignments for badge count
+	const crewAssignments =
+		form.watch(`deliverables.${deliverableIndex}.crewAssignments`) ?? [];
 
 	return (
 		<Card
@@ -467,187 +498,92 @@ function DeliverableCard({
 					/>
 				</FieldGroup>
 
-				{/* Crew Assignments */}
+				{/* Crew Assignments - Multi-select chips */}
 				<div className="border-t pt-4">
-					<div className="flex items-center justify-between mb-4">
-						<div className="flex items-center gap-2">
-							<UsersIcon className="h-4 w-4 text-muted-foreground" />
-							<h4 className="text-sm font-medium">
-								Assigned Team
-							</h4>
-							{crewAssignments.length > 0 && (
-								<Badge variant="secondary" className="ml-2">
-									{crewAssignments.length} assigned
-								</Badge>
-							)}
-						</div>
-						<Button
-							type="button"
-							variant="outline"
-							size="sm"
-							onClick={() =>
-								appendCrewAssignment({
-									crewId: "",
-									isLead: false,
-								})
-							}
-						>
-							<PlusIcon className="mr-2 h-4 w-4" />
-							Assign Team Member
-						</Button>
+					<div className="flex items-center gap-2 mb-3">
+						<UsersIcon className="h-4 w-4 text-muted-foreground" />
+						<h4 className="text-sm font-medium">Assigned Team</h4>
+						{crewAssignments.length > 0 && (
+							<Badge variant="secondary" className="ml-1">
+								{crewAssignments.length} assigned
+							</Badge>
+						)}
 					</div>
 
-					{crewAssignments.length === 0 ? (
-						<p className="text-sm text-muted-foreground text-center py-4 border border-dashed rounded-lg">
-							No team assigned yet. Click "Assign Team Member" to
-							add editors, designers, etc.
-						</p>
-					) : (
-						<FieldGroup className="gap-3">
-							{crewAssignments.map(
-								(assignment, assignmentIndex) => (
-									<div
-										key={assignment.id}
-										className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg"
-									>
-										{/* Crew Member */}
-										<div className="flex-1">
-											<Controller
-												name={`deliverables.${deliverableIndex}.crewAssignments.${assignmentIndex}.crewId`}
-												control={form.control}
-												render={({
-													field,
-													fieldState,
-												}) => (
-													<Field
-														data-invalid={
-															fieldState.invalid
-														}
-													>
-														<FieldLabel
-															htmlFor={field.name}
-															className="text-xs"
-														>
-															Team Member
-														</FieldLabel>
-														<Select
-															onValueChange={
-																field.onChange
-															}
-															value={field.value}
-														>
-															<SelectTrigger
-																id={field.name}
-																aria-invalid={
-																	fieldState.invalid
-																}
-															>
-																<SelectValue placeholder="Select team member" />
-															</SelectTrigger>
-															<SelectContent>
-																{crews.length >
-																0 ? (
-																	crews.map(
-																		(
-																			crew,
-																		) => (
-																			<SelectItem
-																				key={
-																					crew.id
-																				}
-																				value={
-																					crew.id
-																				}
-																			>
-																				<div className="flex flex-col">
-																					<span>
-																						{
-																							crew.name
-																						}
-																					</span>
-																					<span className="text-xs text-muted-foreground">
-																						{
-																							crew.role
-																						}
-																					</span>
-																				</div>
-																			</SelectItem>
-																		),
-																	)
-																) : (
-																	<div className="p-2 text-sm text-muted-foreground text-center">
-																		No team
-																		members
-																		found
-																	</div>
-																)}
-															</SelectContent>
-														</Select>
-														{fieldState.invalid && (
-															<FieldError
-																errors={[
-																	fieldState.error,
-																]}
-															/>
-														)}
-													</Field>
-												)}
-											/>
-										</div>
+					<Controller
+						name={`deliverables.${deliverableIndex}.crewAssignments`}
+						control={form.control}
+						render={({ field }) => {
+							// Extract current crew IDs from assignments
+							const selectedIds = (field.value ?? []).map(
+								(a) => a.crewId,
+							);
 
-										{/* Is Lead Toggle */}
-										<div className="flex items-end pb-2">
-											<Controller
-												name={`deliverables.${deliverableIndex}.crewAssignments.${assignmentIndex}.isLead`}
-												control={form.control}
-												render={({ field }) => (
-													<Button
-														type="button"
-														variant={
-															field.value
-																? "default"
-																: "outline"
-														}
-														size="sm"
-														onClick={() =>
-															field.onChange(
-																!field.value,
-															)
-														}
-														className="h-9"
-													>
-														{field.value
-															? "Lead"
-															: "Set Lead"}
-													</Button>
-												)}
-											/>
-										</div>
-
-										{/* Remove - 44px touch target (WCAG 2.5.5) */}
-										<div className="flex items-end pb-2">
-											<Button
-												type="button"
-												variant="ghost"
-												size="icon"
-												className="min-h-11 min-w-11 text-destructive hover:text-destructive hover:bg-destructive/10"
-												onClick={() =>
-													removeCrewAssignment(
-														assignmentIndex,
-													)
-												}
-											>
-												<TrashIcon className="h-4 w-4" />
-												<span className="sr-only">
-													Remove assignment
+							return (
+								<MultiSelectCombobox
+									options={crewOptions}
+									value={selectedIds}
+									onValueChange={(ids) => {
+										// Convert IDs back to assignment objects
+										field.onChange(
+											ids.map((id) => ({ crewId: id })),
+										);
+									}}
+									placeholder="Select team members..."
+									searchPlaceholder="Search team..."
+									emptyText="No team members found"
+									renderOption={(option) => (
+										<div className="flex items-center gap-2">
+											<Avatar className="h-6 w-6">
+												<AvatarFallback className="text-[10px]">
+													{getInitials(option.label)}
+												</AvatarFallback>
+											</Avatar>
+											<span>{option.label}</span>
+											{option.role && (
+												<span className="text-muted-foreground text-sm">
+													({option.role})
 												</span>
-											</Button>
+											)}
 										</div>
-									</div>
-								),
-							)}
-						</FieldGroup>
-					)}
+									)}
+									renderSelectedItem={(option, onRemove) => (
+										<Badge
+											variant="secondary"
+											className="flex items-center gap-1.5 pr-1"
+										>
+											<Avatar className="h-4 w-4">
+												<AvatarFallback className="text-[8px]">
+													{getInitials(option.label)}
+												</AvatarFallback>
+											</Avatar>
+											<span className="truncate">
+												{option.label}
+											</span>
+											{option.role && (
+												<span className="text-muted-foreground text-xs">
+													({option.role})
+												</span>
+											)}
+											<button
+												type="button"
+												onClick={(e) => {
+													e.stopPropagation();
+													onRemove();
+												}}
+												className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
+											>
+												<XIcon className="size-3" />
+												<span className="sr-only">
+													Remove {option.label}
+												</span>
+											</button>
+										</Badge>
+									)}
+								/>
+							);
+						}}
+					/>
 				</div>
 			</CardContent>
 		</Card>

@@ -83,13 +83,12 @@ export const participantsArraySchema = z
 	);
 
 /**
- * Crew assignment schema - reusable for shoots and deliverables.
- * Role is required for shoots (e.g., photographer, videographer) but optional for deliverables.
+ * Crew assignment schema - simplified to just crewId.
+ * Role is auto-filled from crew profile on backend.
+ * Lead designation removed (not needed for current workflow).
  */
 export const crewAssignmentSchema = z.object({
 	crewId: z.string().min(1, "Crew member is required"),
-	role: z.string().optional(),
-	isLead: z.boolean().default(false),
 });
 
 export type CrewAssignmentFormValue = z.infer<typeof crewAssignmentSchema>;

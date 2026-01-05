@@ -339,7 +339,6 @@ const ShootsSection = memo(function ShootsSection({
 																crew.crewId,
 															)
 														: "—"}
-													{crew.isLead && " (Lead)"}
 												</Badge>
 											),
 										)}

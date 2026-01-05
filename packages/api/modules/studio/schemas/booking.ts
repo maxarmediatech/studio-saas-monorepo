@@ -240,21 +240,21 @@ export type GetBookingOutput = z.infer<typeof getBookingOutputSchema>;
 // CREATE BOOKING
 // ============================================================================
 
-// Crew assignment for shoots
+// Crew assignment for shoots - role is auto-filled from crew profile if not provided
 const shootCrewAssignmentInputSchema = z.object({
 	crewId: idSchema,
-	role: z.string().min(1).max(100),
-	isLead: z.boolean().default(false),
+	role: z.string().min(1).max(100).optional(), // Auto-filled from crew profile
+	isLead: z.boolean().default(false).optional(), // Kept for backward compat, not used in UI
 });
 
 export type ShootCrewAssignmentInput = z.infer<
 	typeof shootCrewAssignmentInputSchema
 >;
 
-// Crew assignment for deliverables (no role field)
+// Crew assignment for deliverables - simplified to just crewId
 const deliverableCrewAssignmentInputSchema = z.object({
 	crewId: idSchema,
-	isLead: z.boolean().default(false),
+	isLead: z.boolean().default(false).optional(), // Kept for backward compat, not used in UI
 });
 
 export type DeliverableCrewAssignmentInput = z.infer<

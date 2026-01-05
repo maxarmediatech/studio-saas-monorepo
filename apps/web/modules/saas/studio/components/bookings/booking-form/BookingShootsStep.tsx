@@ -1,5 +1,7 @@
 "use client";
 
+import { Avatar, AvatarFallback } from "@repo/ui/components/avatar";
+import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Card, CardContent } from "@repo/ui/components/card";
 import { Combobox, type ComboboxOption } from "@repo/ui/components/combobox";
@@ -14,13 +16,7 @@ import {
 	FieldSet,
 } from "@repo/ui/components/field";
 import { Input } from "@repo/ui/components/input";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@repo/ui/components/select";
+import { MultiSelectCombobox } from "@repo/ui/components/multi-select-combobox";
 import { Textarea } from "@repo/ui/components/textarea";
 import { TimePicker } from "@repo/ui/components/time-picker";
 import { useConfigurationParams } from "@saas/studio/hooks/params/use-configuration-params";
@@ -31,19 +27,30 @@ import {
 	ChevronUpIcon,
 	PlusIcon,
 	TrashIcon,
-	UserPlusIcon,
+	XIcon,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import { bookingFormQueries } from "./booking-form-queries";
 import type { BookingFormValues } from "./booking-form-schema";
 
+/**
+ * Get initials from a name (e.g., "John Smith" -> "JS")
+ */
+function getInitials(name: string): string {
+	return name
+		.split(" ")
+		.map((part) => part[0])
+		.join("")
+		.toUpperCase()
+		.slice(0, 2);
+}
+
 export function BookingShootsStep() {
 	const form = useFormContext<BookingFormValues>();
 
-	// Fetch crews, roles, and event types using centralized query options
+	// Fetch crews and event types using centralized query options
 	const { data: crewsData } = useQuery(bookingFormQueries.crews());
-	const { data: crewRolesData } = useQuery(bookingFormQueries.crewRoles());
 	const { data: eventTypesData, isPending: eventTypesLoading } = useQuery(
 		bookingFormQueries.eventTypes(),
 	);
@@ -105,34 +112,6 @@ export function BookingShootsStep() {
 
 	// Use real data from API
 	const crews = crewsData?.data ?? [];
-	const crewRoles = useMemo(() => {
-		// Use configured crew roles, or derive from crew data if not configured
-		if (crewRolesData?.data?.length) {
-			return crewRolesData.data.map((r) => ({
-				id: r.id,
-				key: r.key,
-				label: r.label,
-			}));
-		}
-
-		// Fallback: derive roles from existing crew members
-		const derivedRoles = new Map<
-			string,
-			{ id: string; key: string; label: string }
-		>();
-
-		for (const crew of crews) {
-			const label = crew.role?.trim();
-			if (!label) {
-				continue;
-			}
-
-			const key = label.toLowerCase().replaceAll(/\s+/g, "_");
-			derivedRoles.set(key, { id: key, key, label });
-		}
-
-		return Array.from(derivedRoles.values());
-	}, [crews, crewRolesData]);
 
 	const {
 		fields: shoots,
@@ -198,7 +177,6 @@ export function BookingShootsStep() {
 										key={shoot.id}
 										shootIndex={shootIndex}
 										crews={crews}
-										crewRoles={crewRoles}
 										eventTypeOptions={getAvailableEventTypes(
 											shootIndex,
 										)}
@@ -239,7 +217,6 @@ interface ShootSectionProps {
 		role: string;
 		phoneNumber?: string | null;
 	}>;
-	crewRoles: Array<{ id: string; key: string; label: string }>;
 	eventTypeOptions: ComboboxOption[];
 	hasConfiguredEventTypes: boolean;
 	eventTypesLoading: boolean;
@@ -247,10 +224,18 @@ interface ShootSectionProps {
 	canRemove: boolean;
 }
 
+/**
+ * Crew option type for multi-select
+ */
+interface CrewOption {
+	value: string;
+	label: string;
+	role: string;
+}
+
 function ShootSection({
 	shootIndex,
 	crews,
-	crewRoles,
 	eventTypeOptions,
 	hasConfiguredEventTypes,
 	eventTypesLoading,
@@ -261,17 +246,19 @@ function ShootSection({
 	const [showNotes, setShowNotes] = useState(false);
 	const { openCreate } = useConfigurationParams();
 
-	const {
-		fields: crewAssignments,
-		append: appendCrewAssignment,
-		remove: removeCrewAssignment,
-	} = useFieldArray({
-		control: form.control,
-		name: `shoots.${shootIndex}.crewAssignments`,
-	});
-
 	// Check if notes has content to auto-expand
 	const notesValue = form.watch(`shoots.${shootIndex}.notes`);
+
+	// Transform crews to multi-select options
+	const crewOptions: CrewOption[] = useMemo(
+		() =>
+			crews.map((crew) => ({
+				value: crew.id,
+				label: crew.name,
+				role: crew.role ?? "",
+			})),
+		[crews],
+	);
 
 	return (
 		<div className="overflow-hidden rounded-lg border bg-muted/10">
@@ -495,282 +482,84 @@ function ShootSection({
 					)}
 				</FieldGroup>
 
-				{/* Crew Assignments */}
-				<FieldSet>
-					{crewAssignments.length === 0 ? (
-						<div className="flex flex-col items-center justify-center gap-2 py-6 px-4 border border-dashed rounded-lg">
-							<UserPlusIcon className="h-8 w-8 text-muted-foreground/30" />
-							<p className="text-sm text-muted-foreground text-center">
-								No crew assigned
-							</p>
-							<Button
-								type="button"
-								variant="outline"
-								size="sm"
-								onClick={() =>
-									appendCrewAssignment({
-										crewId: "",
-										role: "",
-										isLead: false,
-									})
-								}
-							>
-								<PlusIcon className="mr-2 h-4 w-4" />
-								Assign crew member
-							</Button>
-						</div>
-					) : (
-						<div className="overflow-hidden rounded-lg border bg-muted/10">
-							{/* Header row */}
-							<div className="grid grid-cols-[1fr_1fr_4.5rem_2.25rem] gap-2 border-b px-3 py-2 text-sm font-medium text-muted-foreground">
-								<div>Crew Member</div>
-								<div>Role</div>
-								<div>Lead</div>
-								<div aria-hidden />
-							</div>
+				{/* Crew Assignments - Multi-select chips */}
+				<Controller
+					name={`shoots.${shootIndex}.crewAssignments`}
+					control={form.control}
+					render={({ field }) => {
+						// Extract current crew IDs from assignments
+						const selectedIds = (field.value ?? []).map(
+							(a) => a.crewId,
+						);
 
-							{/* Data rows */}
-							{crewAssignments.map(
-								(assignment, assignmentIndex) => (
-									<div
-										key={assignment.id}
-										className={`grid grid-cols-[1fr_1fr_4.5rem_2.25rem] items-start gap-2 px-3 py-3 ${assignmentIndex > 0 ? "border-t" : ""}`}
-									>
-										{/* Crew Member */}
-										<Controller
-											name={`shoots.${shootIndex}.crewAssignments.${assignmentIndex}.crewId`}
-											control={form.control}
-											render={({ field, fieldState }) => (
-												<Field
-													data-invalid={
-														fieldState.invalid
-													}
-												>
-													<FieldLabel
-														htmlFor={field.name}
-														className="sr-only"
-													>
-														Crew Member
-													</FieldLabel>
-													<Select
-														onValueChange={
-															field.onChange
-														}
-														value={field.value}
-													>
-														<SelectTrigger
-															id={field.name}
-															aria-invalid={
-																fieldState.invalid
-															}
-														>
-															<SelectValue placeholder="Select crew" />
-														</SelectTrigger>
-														<SelectContent>
-															{crews.length >
-															0 ? (
-																crews.map(
-																	(crew) => (
-																		<SelectItem
-																			key={
-																				crew.id
-																			}
-																			value={
-																				crew.id
-																			}
-																		>
-																			<div className="flex flex-col">
-																				<span>
-																					{
-																						crew.name
-																					}
-																				</span>
-																				<span className="text-xs text-muted-foreground">
-																					{
-																						crew.role
-																					}
-																				</span>
-																			</div>
-																		</SelectItem>
-																	),
-																)
-															) : (
-																<div className="p-2 text-sm text-muted-foreground text-center">
-																	No crew
-																	members
-																	found
-																</div>
-															)}
-														</SelectContent>
-													</Select>
-													{fieldState.invalid && (
-														<FieldError
-															errors={[
-																fieldState.error,
-															]}
-														/>
-													)}
-												</Field>
+						return (
+							<Field>
+								<FieldLabel>Crew Assignments</FieldLabel>
+								<MultiSelectCombobox
+									options={crewOptions}
+									value={selectedIds}
+									onValueChange={(ids) => {
+										// Convert IDs back to assignment objects
+										field.onChange(
+											ids.map((id) => ({ crewId: id })),
+										);
+									}}
+									placeholder="Select crew members..."
+									searchPlaceholder="Search crew..."
+									emptyText="No crew members found"
+									renderOption={(option) => (
+										<div className="flex items-center gap-2">
+											<Avatar className="h-6 w-6">
+												<AvatarFallback className="text-[10px]">
+													{getInitials(option.label)}
+												</AvatarFallback>
+											</Avatar>
+											<span>{option.label}</span>
+											{option.role && (
+												<span className="text-muted-foreground text-sm">
+													({option.role})
+												</span>
 											)}
-										/>
-
-										{/* Role */}
-										<Controller
-											name={`shoots.${shootIndex}.crewAssignments.${assignmentIndex}.role`}
-											control={form.control}
-											render={({ field, fieldState }) => (
-												<Field
-													data-invalid={
-														fieldState.invalid
-													}
-												>
-													<FieldLabel
-														htmlFor={field.name}
-														className="sr-only"
-													>
-														Role
-													</FieldLabel>
-													<Select
-														onValueChange={
-															field.onChange
-														}
-														value={field.value}
-													>
-														<SelectTrigger
-															id={field.name}
-															aria-invalid={
-																fieldState.invalid
-															}
-														>
-															<SelectValue placeholder="Select role" />
-														</SelectTrigger>
-														<SelectContent>
-															{crewRoles.length >
-															0 ? (
-																crewRoles.map(
-																	(role) => (
-																		<SelectItem
-																			key={
-																				role.id
-																			}
-																			value={
-																				role.key
-																			}
-																		>
-																			{
-																				role.label
-																			}
-																		</SelectItem>
-																	),
-																)
-															) : (
-																<>
-																	<SelectItem value="lead_photographer">
-																		Lead
-																		Photographer
-																	</SelectItem>
-																	<SelectItem value="photographer">
-																		Photographer
-																	</SelectItem>
-																	<SelectItem value="lead_videographer">
-																		Lead
-																		Videographer
-																	</SelectItem>
-																	<SelectItem value="videographer">
-																		Videographer
-																	</SelectItem>
-																	<SelectItem value="drone_operator">
-																		Drone
-																		Operator
-																	</SelectItem>
-																	<SelectItem value="assistant">
-																		Assistant
-																	</SelectItem>
-																</>
-															)}
-														</SelectContent>
-													</Select>
-													{fieldState.invalid && (
-														<FieldError
-															errors={[
-																fieldState.error,
-															]}
-														/>
-													)}
-												</Field>
-											)}
-										/>
-
-										{/* Is Lead Toggle */}
-										<Controller
-											name={`shoots.${shootIndex}.crewAssignments.${assignmentIndex}.isLead`}
-											control={form.control}
-											render={({ field }) => (
-												<Button
-													type="button"
-													variant={
-														field.value
-															? "default"
-															: "outline"
-													}
-													size="sm"
-													onClick={() =>
-														field.onChange(
-															!field.value,
-														)
-													}
-													className="h-9 w-full"
-												>
-													{field.value
-														? "Lead"
-														: "Set"}
-												</Button>
-											)}
-										/>
-
-										{/* Remove */}
-										<Button
-											type="button"
-											variant="ghost"
-											size="icon"
-											className="h-9 w-9 self-center text-destructive hover:text-destructive hover:bg-destructive/10"
-											onClick={() =>
-												removeCrewAssignment(
-													assignmentIndex,
-												)
-											}
+										</div>
+									)}
+									renderSelectedItem={(option, onRemove) => (
+										<Badge
+											variant="secondary"
+											className="flex items-center gap-1.5 pr-1"
 										>
-											<TrashIcon className="h-4 w-4" />
-											<span className="sr-only">
-												Remove crew assignment
+											<Avatar className="h-4 w-4">
+												<AvatarFallback className="text-[8px]">
+													{getInitials(option.label)}
+												</AvatarFallback>
+											</Avatar>
+											<span className="truncate">
+												{option.label}
 											</span>
-										</Button>
-									</div>
-								),
-							)}
-
-							{/* Add another row */}
-							<div className="px-3 pb-2 pt-1">
-								<Button
-									type="button"
-									variant="outline"
-									size="sm"
-									className="w-full justify-center border-dashed"
-									onClick={() =>
-										appendCrewAssignment({
-											crewId: "",
-											role: "",
-											isLead: false,
-										})
-									}
-								>
-									<PlusIcon className="mr-2 h-4 w-4" />
-									Add another crew member
-								</Button>
-							</div>
-						</div>
-					)}
-				</FieldSet>
+											{option.role && (
+												<span className="text-muted-foreground text-xs">
+													({option.role})
+												</span>
+											)}
+											<button
+												type="button"
+												onClick={(e) => {
+													e.stopPropagation();
+													onRemove();
+												}}
+												className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
+											>
+												<XIcon className="size-3" />
+												<span className="sr-only">
+													Remove {option.label}
+												</span>
+											</button>
+										</Badge>
+									)}
+								/>
+							</Field>
+						);
+					}}
+				/>
 			</div>
 		</div>
 	);

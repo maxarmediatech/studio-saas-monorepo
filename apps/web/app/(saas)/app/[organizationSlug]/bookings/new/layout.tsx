@@ -71,10 +71,9 @@ function buildCreateBookingInput(rawValues: BookingFormValues) {
 			venue: undefined,
 			venueAddress: shoot.location,
 			notes: shoot.notes,
+			// Role is auto-filled from crew profile by API
 			crewAssignments: shoot.crewAssignments?.map((assignment) => ({
 				crewId: assignment.crewId,
-				role: assignment.role ?? "",
-				isLead: assignment.isLead ?? false,
 			})),
 		})),
 		deliverables: values.deliverables?.map((deliverable) => ({
@@ -87,9 +86,9 @@ function buildCreateBookingInput(rawValues: BookingFormValues) {
 				? formatDecimalForApi(deliverable.cost)
 				: undefined,
 			isPackageIncluded: deliverable.isPackageIncluded ?? false,
+			// Simplified to just crewId
 			crewAssignments: deliverable.crewAssignments?.map((assignment) => ({
 				crewId: assignment.crewId,
-				isLead: assignment.isLead ?? false,
 			})),
 		})),
 		receivedPayments: values.payments?.map((payment) => ({
