@@ -290,14 +290,14 @@ function ShootsSection({ onEdit, shoots }: ShootsSectionProps) {
 						Edit
 					</Button>
 				</div>
-				<AccordionContent className="px-4 pb-4 pt-0">
-					<div className="border-t pt-4">
+				<AccordionContent className="pb-4 pt-0">
+					<div className="pl-14 pr-20 pt-3">
 						{shootsList.length === 0 ? (
 							<p className="text-sm text-muted-foreground">
 								No shoots scheduled
 							</p>
 						) : (
-							<div className="space-y-3">
+							<div className="space-y-2">
 								{shootsList.map((shoot, i) => (
 									<div
 										key={i}
@@ -420,8 +420,8 @@ function DeliverablesSection({
 						Edit
 					</Button>
 				</div>
-				<AccordionContent className="px-4 pb-4 pt-0">
-					<div className="border-t pt-4">
+				<AccordionContent className="pb-4 pt-0">
+					<div className="pl-14 pr-20 pt-3">
 						{deliverablesList.length === 0 ? (
 							<p className="text-sm text-muted-foreground">
 								No deliverables defined
@@ -538,8 +538,8 @@ function PaymentsSection({
 						Edit
 					</Button>
 				</div>
-				<AccordionContent className="px-4 pb-4 pt-0">
-					<div className="border-t pt-4 space-y-4">
+				<AccordionContent className="pb-4 pt-0">
+					<div className="pl-14 pr-20 pt-3 space-y-4">
 						{/* Progress bar */}
 						<div className="space-y-2">
 							<div className="flex justify-between text-sm">
@@ -568,9 +568,9 @@ function PaymentsSection({
 						{/* Payment list */}
 						{(payments ?? []).length > 0 && (
 							<div className="space-y-2">
-								<p className="text-sm font-medium">
+								<FieldLabel className="text-xs">
 									Payments Received ({payments?.length})
-								</p>
+								</FieldLabel>
 								{payments?.map((p, i) => (
 									<div
 										key={i}
@@ -598,10 +598,9 @@ function PaymentsSection({
 						{/* Scheduled payments */}
 						{(paymentSchedules ?? []).length > 0 && (
 							<div className="space-y-2">
-								<p className="text-sm font-medium">
-									Scheduled Milestones (
-									{paymentSchedules?.length})
-								</p>
+								<FieldLabel className="text-xs">
+									Scheduled Milestones ({paymentSchedules?.length})
+								</FieldLabel>
 								{paymentSchedules?.map((s, i) => (
 									<div
 										key={i}
