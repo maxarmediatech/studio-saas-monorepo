@@ -171,7 +171,7 @@ export const optionalDecimalStringSchema = z
  */
 export const deliverableSchema = z.object({
 	name: z.string().min(1, "Deliverable name is required"),
-	deliverableType: z.string().min(1, "Deliverable type is required"),
+	deliverableType: z.string().optional(),
 	description: z.string().optional(),
 	dueDate: z.string().optional(),
 	crewAssignments: z.array(crewAssignmentSchema).optional(),

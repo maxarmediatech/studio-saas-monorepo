@@ -27,10 +27,7 @@ import { memo } from "react";
 import { useWatch } from "react-hook-form";
 import { bookingFormQueries } from "./booking-form-queries";
 import type { BookingFormValues, BookingTab } from "./booking-form-schema";
-import {
-	DELIVERABLE_TYPE_OPTIONS,
-	PAYMENT_METHOD_OPTIONS,
-} from "./booking-form-schema";
+import { PAYMENT_METHOD_OPTIONS } from "./booking-form-schema";
 
 // ============================================================================
 // Shared utilities and types
@@ -56,10 +53,6 @@ const formatDate = (dateString: string) => {
 		month: "short",
 		year: "numeric",
 	});
-};
-
-const getDeliverableType = (key: string) => {
-	return DELIVERABLE_TYPE_OPTIONS.find((t) => t.value === key)?.label ?? key;
 };
 
 const getPaymentMethod = (key: string) => {
@@ -580,18 +573,6 @@ const DeliverablesSection = memo(function DeliverablesSection({
 													</Badge>
 												)}
 											</div>
-											<p className="text-sm text-muted-foreground">
-												{d.deliverableType
-													? getDeliverableType(
-															d.deliverableType,
-														)
-													: "—"}
-											</p>
-											{d.dueDate && (
-												<p className="text-xs text-muted-foreground mt-1">
-													Due: {formatDate(d.dueDate)}
-												</p>
-											)}
 										</div>
 									))}
 								</div>
@@ -637,18 +618,6 @@ const DeliverablesSection = memo(function DeliverablesSection({
 														)}
 												</div>
 											</div>
-											<p className="text-sm text-muted-foreground">
-												{d.deliverableType
-													? getDeliverableType(
-															d.deliverableType,
-														)
-													: "—"}
-											</p>
-											{d.dueDate && (
-												<p className="text-xs text-muted-foreground mt-1">
-													Due: {formatDate(d.dueDate)}
-												</p>
-											)}
 										</div>
 									))}
 								</div>

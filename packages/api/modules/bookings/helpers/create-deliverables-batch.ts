@@ -50,7 +50,7 @@ export async function createDeliverablesBatch(
 				organizationId,
 				bookingId,
 				name: deliverableInput.name,
-				deliverableType: deliverableInput.deliverableType,
+				deliverableType: deliverableInput.deliverableType || "other",
 				description: deliverableInput.description ?? null,
 				dueDate: deliverableInput.dueDate ?? null,
 				// Package relationship fields

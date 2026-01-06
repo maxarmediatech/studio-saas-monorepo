@@ -288,7 +288,7 @@ export type ShootInput = z.infer<typeof shootInputSchema>;
 // Deliverable input with embedded crew assignments
 const deliverableInputSchema = z.object({
 	name: nameSchema,
-	deliverableType: z.string().min(1).max(100),
+	deliverableType: z.string().max(100).optional(),
 	description: z.string().max(5000).optional(),
 	dueDate: z.string().optional(),
 	crewAssignments: z.array(deliverableCrewAssignmentInputSchema).optional(),

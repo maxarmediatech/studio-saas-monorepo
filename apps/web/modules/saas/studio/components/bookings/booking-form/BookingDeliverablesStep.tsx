@@ -4,7 +4,6 @@ import { Avatar, AvatarFallback } from "@repo/ui/components/avatar";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Card, CardContent } from "@repo/ui/components/card";
-import { DatePicker } from "@repo/ui/components/date-picker";
 import {
 	Field,
 	FieldDescription,
@@ -14,34 +13,23 @@ import {
 	FieldLegend,
 	FieldSeparator,
 	FieldSet,
-	FieldTitle,
 } from "@repo/ui/components/field";
 import { Input } from "@repo/ui/components/input";
 import { MultiSelectCombobox } from "@repo/ui/components/multi-select-combobox";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@repo/ui/components/select";
 import { Textarea } from "@repo/ui/components/textarea";
 import { useQuery } from "@tanstack/react-query";
 import {
-	CalendarIcon,
+	ChevronDownIcon,
+	ChevronUpIcon,
 	PackageIcon,
 	PlusIcon,
 	TrashIcon,
-	UsersIcon,
 	XIcon,
 } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import { bookingFormQueries } from "./booking-form-queries";
-import {
-	type BookingFormValues,
-	DELIVERABLE_TYPE_OPTIONS,
-} from "./booking-form-schema";
+import type { BookingFormValues } from "./booking-form-schema";
 
 /**
  * Get initials from a name (e.g., "John Smith" -> "JS")
@@ -80,9 +68,9 @@ export function BookingDeliverablesStep() {
 		name: "deliverables",
 	});
 
-	const addNewDeliverable = () => {
+	const addNewDeliverable = (name = "") => {
 		appendDeliverable({
-			name: "",
+			name,
 			deliverableType: "",
 			description: "",
 			dueDate: "",
@@ -117,7 +105,7 @@ export function BookingDeliverablesStep() {
 								type="button"
 								variant="outline"
 								size="sm"
-								onClick={addNewDeliverable}
+								onClick={() => addNewDeliverable()}
 							>
 								<PlusIcon className="mr-2 h-4 w-4" />
 								Add Custom Deliverable
@@ -134,32 +122,23 @@ export function BookingDeliverablesStep() {
 								</p>
 								{/* Quick add common deliverables */}
 								<div className="flex flex-wrap gap-2 justify-center">
-									{DELIVERABLE_TYPE_OPTIONS.slice(0, 4).map(
-										(type) => (
-											<Button
-												key={type.value}
-												type="button"
-												variant="outline"
-												size="sm"
-												onClick={() =>
-													appendDeliverable({
-														name: type.label,
-														deliverableType:
-															type.value,
-														description: "",
-														dueDate: "",
-														crewAssignments: [],
-														quantity: 1,
-														cost: "",
-														isPackageIncluded: false,
-													})
-												}
-											>
-												<PlusIcon className="mr-1 h-3 w-3" />
-												{type.label}
-											</Button>
-										),
-									)}
+									{[
+										"Wedding Album",
+										"Highlight Video",
+										"Edited Photos",
+										"Full Video",
+									].map((name) => (
+										<Button
+											key={name}
+											type="button"
+											variant="outline"
+											size="sm"
+											onClick={() => addNewDeliverable(name)}
+										>
+											<PlusIcon className="mr-1 h-3 w-3" />
+											{name}
+										</Button>
+									))}
 								</div>
 							</div>
 						) : (
@@ -182,6 +161,17 @@ export function BookingDeliverablesStep() {
 										/>
 									);
 								})}
+								{/* Add another deliverable button */}
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									className="w-full justify-center border-dashed"
+									onClick={() => addNewDeliverable()}
+								>
+									<PlusIcon className="mr-2 h-4 w-4" />
+									Add another deliverable
+								</Button>
 							</FieldGroup>
 						)}
 					</FieldGroup>
@@ -210,6 +200,7 @@ function DeliverableCard({
 	onRemove,
 }: DeliverableCardProps) {
 	const form = useFormContext<BookingFormValues>();
+	const [showDetails, setShowDetails] = useState(false);
 
 	// Transform crews to multi-select options
 	const crewOptions: CrewOption[] = useMemo(
@@ -225,6 +216,10 @@ function DeliverableCard({
 	// Watch crew assignments for badge count
 	const crewAssignments =
 		form.watch(`deliverables.${deliverableIndex}.crewAssignments`) ?? [];
+
+	// Watch notes for collapsible logic
+	const notesValue =
+		form.watch(`deliverables.${deliverableIndex}.description`) ?? "";
 
 	return (
 		<div
@@ -258,7 +253,7 @@ function DeliverableCard({
 			<div className="p-4 space-y-4">
 				{/* Basic Info */}
 				<FieldGroup>
-					{/* Row 1: Name, Type, Quantity */}
+					{/* Row 1: Name, Qty, Cost */}
 					<div className="grid gap-4 md:grid-cols-4">
 						{/* Deliverable Name */}
 						<div className="md:col-span-2">
@@ -285,47 +280,6 @@ function DeliverableCard({
 								)}
 							/>
 						</div>
-
-						{/* Deliverable Type */}
-						<Controller
-							name={`deliverables.${deliverableIndex}.deliverableType`}
-							control={form.control}
-							render={({ field, fieldState }) => (
-								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>
-										Type
-									</FieldLabel>
-									<Select
-										onValueChange={field.onChange}
-										value={field.value}
-									>
-										<SelectTrigger
-											id={field.name}
-											aria-invalid={fieldState.invalid}
-										>
-											<SelectValue placeholder="Select type" />
-										</SelectTrigger>
-										<SelectContent>
-											{DELIVERABLE_TYPE_OPTIONS.map(
-												(type) => (
-													<SelectItem
-														key={type.value}
-														value={type.value}
-													>
-														{type.label}
-													</SelectItem>
-												),
-											)}
-										</SelectContent>
-									</Select>
-									{fieldState.invalid && (
-										<FieldError
-											errors={[fieldState.error]}
-										/>
-									)}
-								</Field>
-							)}
-						/>
 
 						{/* Quantity */}
 						<Controller
@@ -359,37 +313,9 @@ function DeliverableCard({
 								</Field>
 							)}
 						/>
-					</div>
-
-					{/* Row 2: Due Date and Cost (cost only for custom deliverables) */}
-					<div className="grid gap-4 md:grid-cols-3">
-						{/* Due Date */}
-						<Controller
-							name={`deliverables.${deliverableIndex}.dueDate`}
-							control={form.control}
-							render={({ field, fieldState }) => (
-								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>
-										<CalendarIcon className="h-3.5 w-3.5 inline mr-1" />
-										Due Date
-									</FieldLabel>
-									<DatePicker
-										value={field.value}
-										onValueChange={field.onChange}
-										id={field.name}
-										aria-invalid={fieldState.invalid}
-									/>
-									{fieldState.invalid && (
-										<FieldError
-											errors={[fieldState.error]}
-										/>
-									)}
-								</Field>
-							)}
-						/>
 
 						{/* Cost - only for custom deliverables */}
-						{!isPackageIncluded && (
+						{!isPackageIncluded ? (
 							<Controller
 								name={`deliverables.${deliverableIndex}.cost`}
 								control={form.control}
@@ -432,9 +358,6 @@ function DeliverableCard({
 												}}
 											/>
 										</div>
-										<FieldDescription>
-											Additional cost for this deliverable
-										</FieldDescription>
 										{fieldState.invalid && (
 											<FieldError
 												errors={[fieldState.error]}
@@ -443,134 +366,174 @@ function DeliverableCard({
 									</Field>
 								)}
 							/>
-						)}
-
-						{/* Show "Included" label for package deliverables */}
-						{isPackageIncluded && (
+						) : (
 							<Field>
 								<FieldLabel>Cost</FieldLabel>
 								<div className="flex items-center h-10 px-3 text-sm text-muted-foreground bg-muted/50 rounded-md border">
-									Included in package
+									Included
 								</div>
 							</Field>
 						)}
 					</div>
 
-					{/* Description */}
-					<Controller
-						name={`deliverables.${deliverableIndex}.description`}
-						control={form.control}
-						render={({ field, fieldState }) => (
-							<Field data-invalid={fieldState.invalid}>
-								<FieldLabel htmlFor={field.name}>
-									Description
-								</FieldLabel>
-								<Textarea
-									{...field}
-									id={field.name}
-									placeholder="Details about this deliverable (specifications, requirements, etc.)"
-									rows={2}
-									aria-invalid={fieldState.invalid}
-								/>
-								<FieldDescription>
-									Include any specific requirements or
-									specifications
-								</FieldDescription>
-								{fieldState.invalid && (
-									<FieldError errors={[fieldState.error]} />
-								)}
-							</Field>
-						)}
-					/>
-				</FieldGroup>
-
-				{/* Crew Assignments - Multi-select chips */}
-				<FieldSeparator />
-				<Field>
-					<FieldTitle className="flex items-center gap-2">
-						<UsersIcon className="h-4 w-4" />
-						Assigned Team
-						{crewAssignments.length > 0 && (
-							<Badge variant="secondary">
-								{crewAssignments.length} assigned
-							</Badge>
-						)}
-					</FieldTitle>
-					<Controller
-						name={`deliverables.${deliverableIndex}.crewAssignments`}
-						control={form.control}
-						render={({ field }) => {
-							// Extract current crew IDs from assignments
-							const selectedIds = (field.value ?? []).map(
-								(a) => a.crewId,
-							);
-
-							return (
-								<MultiSelectCombobox
-									options={crewOptions}
-									value={selectedIds}
-									onValueChange={(ids) => {
-										// Convert IDs back to assignment objects
-										field.onChange(
-											ids.map((id) => ({ crewId: id })),
-										);
-									}}
-									placeholder="Select team members..."
-									searchPlaceholder="Search team..."
-									emptyText="No team members found"
-									renderOption={(option) => (
-										<div className="flex items-center gap-2">
-											<Avatar className="h-6 w-6">
-												<AvatarFallback className="text-[10px]">
-													{getInitials(option.label)}
-												</AvatarFallback>
-											</Avatar>
-											<span>{option.label}</span>
-											{option.role && (
-												<span className="text-muted-foreground text-sm">
-													({option.role})
-												</span>
-											)}
+					{/* Collapsible Details Section (Notes + Assigned Team) */}
+					{(showDetails ||
+						notesValue ||
+						crewAssignments.length > 0) && (
+						<>
+							{/* Notes */}
+							<Controller
+								name={`deliverables.${deliverableIndex}.description`}
+								control={form.control}
+								render={({ field, fieldState }) => (
+									<Field data-invalid={fieldState.invalid}>
+										<div className="flex items-center justify-between">
+											<FieldLabel htmlFor={field.name}>
+												Notes
+											</FieldLabel>
+											{/* Hide button - only when expanded manually and empty */}
+											{showDetails &&
+												!notesValue &&
+												crewAssignments.length === 0 && (
+													<Button
+														type="button"
+														variant="ghost"
+														size="sm"
+														className="h-auto py-0 px-1 text-muted-foreground"
+														onClick={() =>
+															setShowDetails(false)
+														}
+													>
+														<ChevronUpIcon className="mr-1 h-3.5 w-3.5" />
+														Hide
+													</Button>
+												)}
 										</div>
-									)}
-									renderSelectedItem={(option, onRemove) => (
-										<Badge
-											variant="secondary"
-											className="flex items-center gap-1.5 pr-1"
-										>
-											<Avatar className="h-4 w-4">
-												<AvatarFallback className="text-[8px]">
-													{getInitials(option.label)}
-												</AvatarFallback>
-											</Avatar>
-											<span className="truncate">
-												{option.label}
-											</span>
-											{option.role && (
-												<span className="text-muted-foreground text-xs">
-													({option.role})
-												</span>
-											)}
-											<button
-												type="button"
-												onClick={(e) => {
-													e.stopPropagation();
-													onRemove();
+										<Textarea
+											{...field}
+											id={field.name}
+											placeholder="Details about this deliverable (specifications, requirements, etc.)"
+											rows={2}
+											aria-invalid={fieldState.invalid}
+										/>
+										{fieldState.invalid && (
+											<FieldError
+												errors={[fieldState.error]}
+											/>
+										)}
+									</Field>
+								)}
+							/>
+
+							{/* Assigned Team */}
+							<Controller
+								name={`deliverables.${deliverableIndex}.crewAssignments`}
+								control={form.control}
+								render={({ field }) => {
+									const selectedIds = (
+										field.value ?? []
+									).map((a) => a.crewId);
+
+									return (
+										<Field>
+											<FieldLabel>
+												Assigned Team
+											</FieldLabel>
+											<MultiSelectCombobox
+												options={crewOptions}
+												value={selectedIds}
+												onValueChange={(ids) => {
+													field.onChange(
+														ids.map((id) => ({
+															crewId: id,
+														})),
+													);
 												}}
-												className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
-											>
-												<XIcon className="size-3" />
-												<span className="sr-only">
-													Remove {option.label}
-												</span>
-											</button>
-										</Badge>
-									)}
-								/>
-							);
-						}}
-					/>
-				</Field>
+												placeholder="Select team members..."
+												searchPlaceholder="Search team..."
+												emptyText="No team members found"
+												renderOption={(option) => (
+													<div className="flex items-center gap-2">
+														<Avatar className="h-6 w-6">
+															<AvatarFallback className="text-[10px]">
+																{getInitials(
+																	option.label,
+																)}
+															</AvatarFallback>
+														</Avatar>
+														<span>
+															{option.label}
+														</span>
+														{option.role && (
+															<span className="text-muted-foreground text-sm">
+																({option.role})
+															</span>
+														)}
+													</div>
+												)}
+												renderSelectedItem={(
+													option,
+													onRemove,
+												) => (
+													<Badge
+														variant="secondary"
+														className="flex items-center gap-1.5 pr-1"
+													>
+														<Avatar className="h-4 w-4">
+															<AvatarFallback className="text-[8px]">
+																{getInitials(
+																	option.label,
+																)}
+															</AvatarFallback>
+														</Avatar>
+														<span className="truncate">
+															{option.label}
+														</span>
+														{option.role && (
+															<span className="text-muted-foreground text-xs">
+																({option.role})
+															</span>
+														)}
+														<button
+															type="button"
+															onClick={(e) => {
+																e.stopPropagation();
+																onRemove();
+															}}
+															className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
+														>
+															<XIcon className="size-3" />
+															<span className="sr-only">
+																Remove{" "}
+																{option.label}
+															</span>
+														</button>
+													</Badge>
+												)}
+											/>
+										</Field>
+									);
+								}}
+							/>
+						</>
+					)}
+
+					{/* Add details button - only when collapsed and empty */}
+					{!showDetails &&
+						!notesValue &&
+						crewAssignments.length === 0 && (
+							<Button
+								type="button"
+								variant="ghost"
+								size="sm"
+								className="w-fit text-muted-foreground"
+								onClick={() => setShowDetails(true)}
+							>
+								<ChevronDownIcon className="mr-1.5 h-3.5 w-3.5" />
+								Additional details
+							</Button>
+						)}
+				</FieldGroup>
 			</div>
 		</div>
 	);
