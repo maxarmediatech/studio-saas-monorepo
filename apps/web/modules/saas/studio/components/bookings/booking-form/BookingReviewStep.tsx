@@ -13,8 +13,8 @@ import { Button } from "@repo/ui/components/button";
 import { Card, CardContent } from "@repo/ui/components/card";
 import {
 	FieldDescription,
+	FieldLabel,
 	FieldLegend,
-	FieldSeparator,
 } from "@repo/ui/components/field";
 import { Progress } from "@repo/ui/components/progress";
 import { cn } from "@repo/ui/lib/utils";
@@ -28,7 +28,6 @@ import {
 	MapPinIcon,
 	PackageIcon,
 	PencilIcon,
-	UsersIcon,
 	WalletIcon,
 } from "lucide-react";
 import { useMemo } from "react";
@@ -154,36 +153,34 @@ function BookingDetailsSection({
 						Edit
 					</Button>
 				</div>
-				<AccordionContent className="px-4 pb-4 pt-0">
+				<AccordionContent className="pb-4 pt-0">
 					{/* Booking details grid */}
-					<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 border-t pt-4">
+					<div className="pl-14 pr-20 grid gap-4 grid-cols-1 sm:grid-cols-2 pt-3">
 						<div>
-							<p className="text-xs text-muted-foreground uppercase tracking-wide">
+							<FieldLabel className="text-xs">
 								Booking Name
-							</p>
-							<p className="font-medium">{name || "—"}</p>
+							</FieldLabel>
+							<p className="text-sm font-medium mt-1">{name || "—"}</p>
 						</div>
 						<div>
-							<p className="text-xs text-muted-foreground uppercase tracking-wide">
-								Type
-							</p>
-							<p className="font-medium">
-								{bookingType ? getBookingType(bookingType) : "—"}
-							</p>
-						</div>
-						<div>
-							<p className="text-xs text-muted-foreground uppercase tracking-wide">
-								Package
-							</p>
-							<p className="font-medium">
-								{packageType ? getPackageType(packageType) : "—"}
+							<FieldLabel className="text-xs">Type</FieldLabel>
+							<p className="text-sm font-medium mt-1">
+								{bookingType
+									? getBookingType(bookingType)
+									: "—"}
 							</p>
 						</div>
 						<div>
-							<p className="text-xs text-muted-foreground uppercase tracking-wide">
-								Package Cost
+							<FieldLabel className="text-xs">Package</FieldLabel>
+							<p className="text-sm font-medium mt-1">
+								{packageType
+									? getPackageType(packageType)
+									: "—"}
 							</p>
-							<p className="text-lg font-semibold">
+						</div>
+						<div>
+							<FieldLabel className="text-xs">Package Cost</FieldLabel>
+							<p className="text-sm font-medium mt-1">
 								{formatCurrency(packageCost)}
 							</p>
 						</div>
@@ -191,17 +188,17 @@ function BookingDetailsSection({
 
 					{/* Notes (optional) */}
 					{note && (
-						<div className="mt-3 pt-3 border-t">
-							<p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
-								Notes
+						<div className="mt-4 pl-14 pr-20">
+							<FieldLabel className="text-xs mb-1">Notes</FieldLabel>
+							<p className="text-sm text-muted-foreground">
+								{note}
 							</p>
-							<p className="text-sm text-muted-foreground">{note}</p>
 						</div>
 					)}
 
 					{/* Clients section */}
-					<div className="mt-4 pt-4 border-t">
-						<p className="text-sm font-medium mb-3">Clients</p>
+					<div className="mt-4 pl-14 pr-20">
+						<FieldLabel className="text-xs mb-2">Clients</FieldLabel>
 						{!participants || participants.length === 0 ? (
 							<p className="text-sm text-muted-foreground">
 								No clients added
@@ -228,7 +225,9 @@ function BookingDetailsSection({
 												</span>
 												{p.role && (
 													<span className="text-xs text-muted-foreground">
-														{getRelationType(p.role)}
+														{getRelationType(
+															p.role,
+														)}
 													</span>
 												)}
 											</div>
@@ -307,7 +306,9 @@ function ShootsSection({ onEdit, shoots }: ShootsSectionProps) {
 										<div className="flex items-start justify-between gap-2">
 											<span className="font-medium">
 												{shoot.shootType
-													? getEventType(shoot.shootType)
+													? getEventType(
+															shoot.shootType,
+														)
 													: `Shoot ${i + 1}`}
 											</span>
 											<span className="text-sm text-muted-foreground flex items-center gap-1">
@@ -315,7 +316,8 @@ function ShootsSection({ onEdit, shoots }: ShootsSectionProps) {
 												{formatDate(shoot.shootDate)}
 											</span>
 										</div>
-										{(shoot.startTime || shoot.location) && (
+										{(shoot.startTime ||
+											shoot.location) && (
 											<div className="mt-2 flex flex-wrap gap-3 text-sm text-muted-foreground">
 												{shoot.startTime && (
 													<span className="flex items-center gap-1">
@@ -331,24 +333,32 @@ function ShootsSection({ onEdit, shoots }: ShootsSectionProps) {
 												)}
 											</div>
 										)}
-										{(shoot.crewAssignments?.length ?? 0) > 0 && (
+										{(shoot.crewAssignments?.length ?? 0) >
+											0 && (
 											<div className="mt-2 flex flex-wrap gap-1">
-												{shoot.crewAssignments?.map((crew, j) => (
-													<Badge
-														key={j}
-														variant="secondary"
-														className="text-xs"
-													>
-														{crew.crewId
-															? getCrewName(crew.crewId)
-															: "—"}
-														{crew.rate && (
-															<span className="ml-1 text-muted-foreground">
-																₹{Number(crew.rate).toLocaleString()}
-															</span>
-														)}
-													</Badge>
-												))}
+												{shoot.crewAssignments?.map(
+													(crew, j) => (
+														<Badge
+															key={j}
+															variant="secondary"
+															className="text-xs"
+														>
+															{crew.crewId
+																? getCrewName(
+																		crew.crewId,
+																	)
+																: "—"}
+															{crew.rate && (
+																<span className="ml-1 text-muted-foreground">
+																	₹
+																	{Number(
+																		crew.rate,
+																	).toLocaleString()}
+																</span>
+															)}
+														</Badge>
+													),
+												)}
 											</div>
 										)}
 									</div>
@@ -429,14 +439,22 @@ function DeliverablesSection({
 										)}
 									>
 										<div className="flex items-center gap-2">
-											<span className="text-sm font-medium">{d.name}</span>
+											<span className="text-sm font-medium">
+												{d.name}
+											</span>
 											{(d.quantity ?? 1) > 1 && (
-												<Badge variant="outline" className="text-xs">
+												<Badge
+													variant="outline"
+													className="text-xs"
+												>
 													×{d.quantity}
 												</Badge>
 											)}
 											{d.isPackageIncluded && (
-												<Badge variant="secondary" className="text-xs">
+												<Badge
+													variant="secondary"
+													className="text-xs"
+												>
 													Package
 												</Badge>
 											)}
@@ -525,14 +543,24 @@ function PaymentsSection({
 						{/* Progress bar */}
 						<div className="space-y-2">
 							<div className="flex justify-between text-sm">
-								<span className="text-muted-foreground">Progress</span>
-								<span className="font-medium">{paymentPercentage}%</span>
+								<span className="text-muted-foreground">
+									Progress
+								</span>
+								<span className="font-medium">
+									{paymentPercentage}%
+								</span>
 							</div>
-							<Progress value={paymentPercentage} className="h-2" />
+							<Progress
+								value={paymentPercentage}
+								className="h-2"
+							/>
 							<div className="flex justify-between text-xs text-muted-foreground">
-								<span>{formatCurrency(totalReceived)} received</span>
 								<span>
-									{formatCurrency(totalCost - totalReceived)} remaining
+									{formatCurrency(totalReceived)} received
+								</span>
+								<span>
+									{formatCurrency(totalCost - totalReceived)}{" "}
+									remaining
 								</span>
 							</div>
 						</div>
@@ -553,7 +581,10 @@ function PaymentsSection({
 												{formatCurrency(p.amount)}
 											</span>
 											<span className="text-muted-foreground ml-2">
-												via {getPaymentMethod(p.paymentMethod)}
+												via{" "}
+												{getPaymentMethod(
+													p.paymentMethod,
+												)}
 											</span>
 										</div>
 										<span className="text-muted-foreground">
@@ -568,7 +599,8 @@ function PaymentsSection({
 						{(paymentSchedules ?? []).length > 0 && (
 							<div className="space-y-2">
 								<p className="text-sm font-medium">
-									Scheduled Milestones ({paymentSchedules?.length})
+									Scheduled Milestones (
+									{paymentSchedules?.length})
 								</p>
 								{paymentSchedules?.map((s, i) => (
 									<div
@@ -613,7 +645,8 @@ export function BookingReviewStep({
 
 	// Compute validation warnings
 	const warnings = useMemo(() => {
-		const result: Array<{ id: string; message: string; step: BookingTab }> = [];
+		const result: Array<{ id: string; message: string; step: BookingTab }> =
+			[];
 		if (!formValues.name?.trim()) {
 			result.push({
 				id: "name",
@@ -643,7 +676,12 @@ export function BookingReviewStep({
 			});
 		}
 		return result;
-	}, [formValues.name, formValues.participants, formValues.bookingType, formValues.packageType]);
+	}, [
+		formValues.name,
+		formValues.participants,
+		formValues.bookingType,
+		formValues.packageType,
+	]);
 
 	return (
 		<Card className={cn("shadow-none", className)}>
@@ -664,13 +702,17 @@ export function BookingReviewStep({
 										key={w.id}
 										className="flex items-center justify-between"
 									>
-										<span className="text-sm">{w.message}</span>
+										<span className="text-sm">
+											{w.message}
+										</span>
 										<Button
 											type="button"
 											variant="link"
 											size="sm"
 											className="h-auto p-0 text-destructive-foreground underline"
-											onClick={() => onNavigateToStep(w.step)}
+											onClick={() =>
+												onNavigateToStep(w.step)
+											}
 										>
 											Fix
 										</Button>
@@ -680,8 +722,6 @@ export function BookingReviewStep({
 						</AlertDescription>
 					</Alert>
 				)}
-
-				<FieldSeparator />
 
 				{/* Accordion sections - pass watched values as props */}
 				<Accordion
