@@ -11,7 +11,11 @@ import { Avatar, AvatarFallback } from "@repo/ui/components/avatar";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Card, CardContent } from "@repo/ui/components/card";
-import { FieldLegend, FieldSeparator } from "@repo/ui/components/field";
+import {
+	FieldDescription,
+	FieldLegend,
+	FieldSeparator,
+} from "@repo/ui/components/field";
 import { Progress } from "@repo/ui/components/progress";
 import { cn } from "@repo/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -159,26 +163,27 @@ const DetailsSection = memo(function DetailsSection({
 		<AccordionItem value="details" className="border-none">
 			<div className="overflow-hidden rounded-lg border bg-muted/10">
 				<div className="flex items-center px-4 py-3">
-					<AccordionTrigger className="flex-1 p-0 hover:no-underline">
-						<div className="flex items-center gap-3">
-							<ClipboardListIcon className="h-4 w-4 text-muted-foreground shrink-0" />
-							<div className="flex flex-col items-start gap-0.5">
-								<span className="text-sm font-medium">
-									Booking Details
-								</span>
-								<span className="text-xs text-muted-foreground">
-									{isComplete
-										? `${getPackageType(packageType)} • ${formatCurrency(packageCost)}`
-										: "Incomplete"}
-								</span>
-							</div>
+					<AccordionTrigger
+						chevronPosition="start"
+						className="flex-1 p-0 hover:no-underline"
+					>
+						<div className="flex flex-col items-start gap-0.5">
+							<span className="flex items-center gap-2 text-sm font-medium">
+								<ClipboardListIcon className="h-4 w-4 text-muted-foreground" />
+								Booking Details
+							</span>
+							<span className="text-xs text-muted-foreground">
+								{isComplete
+									? `${getPackageType(packageType)} • ${formatCurrency(packageCost)}`
+									: "Incomplete"}
+							</span>
 						</div>
 					</AccordionTrigger>
 					<Button
 						type="button"
 						variant="ghost"
 						size="sm"
-						className="h-7 ml-2"
+						className="h-7 ml-auto"
 						onClick={onEdit}
 					>
 						<PencilIcon className="h-3 w-3 mr-1" />
@@ -266,24 +271,25 @@ const ClientsSection = memo(function ClientsSection({
 		<AccordionItem value="clients" className="border-none">
 			<div className="overflow-hidden rounded-lg border bg-muted/10">
 				<div className="flex items-center px-4 py-3">
-					<AccordionTrigger className="flex-1 p-0 hover:no-underline">
-						<div className="flex items-center gap-3">
-							<UsersIcon className="h-4 w-4 text-muted-foreground shrink-0" />
-							<div className="flex flex-col items-start gap-0.5">
-								<span className="text-sm font-medium">
-									Clients ({participants?.length ?? 0})
-								</span>
-								<span className="text-xs text-muted-foreground">
-									{clientNames || "No clients added"}
-								</span>
-							</div>
+					<AccordionTrigger
+						chevronPosition="start"
+						className="flex-1 p-0 hover:no-underline"
+					>
+						<div className="flex flex-col items-start gap-0.5">
+							<span className="flex items-center gap-2 text-sm font-medium">
+								<UsersIcon className="h-4 w-4 text-muted-foreground" />
+								Clients ({participants?.length ?? 0})
+							</span>
+							<span className="text-xs text-muted-foreground">
+								{clientNames || "No clients added"}
+							</span>
 						</div>
 					</AccordionTrigger>
 					<Button
 						type="button"
 						variant="ghost"
 						size="sm"
-						className="h-7 ml-2"
+						className="h-7 ml-auto"
 						onClick={onEdit}
 					>
 						<PencilIcon className="h-3 w-3 mr-1" />
@@ -356,26 +362,27 @@ const ShootsSection = memo(function ShootsSection({
 		<AccordionItem value="shoots" className="border-none">
 			<div className="overflow-hidden rounded-lg border bg-muted/10">
 				<div className="flex items-center px-4 py-3">
-					<AccordionTrigger className="flex-1 p-0 hover:no-underline">
-						<div className="flex items-center gap-3">
-							<CameraIcon className="h-4 w-4 text-muted-foreground shrink-0" />
-							<div className="flex flex-col items-start gap-0.5">
-								<span className="text-sm font-medium">
-									Shoots ({shootsList.length})
-								</span>
-								<span className="text-xs text-muted-foreground">
-									{shootsList.length === 0
-										? "No shoots scheduled"
-										: `${shootsList.length} shoot${shootsList.length !== 1 ? "s" : ""} scheduled`}
-								</span>
-							</div>
+					<AccordionTrigger
+						chevronPosition="start"
+						className="flex-1 p-0 hover:no-underline"
+					>
+						<div className="flex flex-col items-start gap-0.5">
+							<span className="flex items-center gap-2 text-sm font-medium">
+								<CameraIcon className="h-4 w-4 text-muted-foreground" />
+								Shoots ({shootsList.length})
+							</span>
+							<span className="text-xs text-muted-foreground">
+								{shootsList.length === 0
+									? "No shoots scheduled"
+									: `${shootsList.length} shoot${shootsList.length !== 1 ? "s" : ""} scheduled`}
+							</span>
 						</div>
 					</AccordionTrigger>
 					<Button
 						type="button"
 						variant="ghost"
 						size="sm"
-						className="h-7 ml-2"
+						className="h-7 ml-auto"
 						onClick={onEdit}
 					>
 						<PencilIcon className="h-3 w-3 mr-1" />
@@ -485,26 +492,27 @@ const DeliverablesSection = memo(function DeliverablesSection({
 		<AccordionItem value="deliverables" className="border-none">
 			<div className="overflow-hidden rounded-lg border bg-muted/10">
 				<div className="flex items-center px-4 py-3">
-					<AccordionTrigger className="flex-1 p-0 hover:no-underline">
-						<div className="flex items-center gap-3">
-							<PackageIcon className="h-4 w-4 text-muted-foreground shrink-0" />
-							<div className="flex flex-col items-start gap-0.5">
-								<span className="text-sm font-medium">
-									Deliverables ({deliverablesList.length})
-								</span>
-								<span className="text-xs text-muted-foreground">
-									{deliverablesList.length === 0
-										? "No deliverables defined"
-										: `${packageCount} package, ${customCount} custom`}
-								</span>
-							</div>
+					<AccordionTrigger
+						chevronPosition="start"
+						className="flex-1 p-0 hover:no-underline"
+					>
+						<div className="flex flex-col items-start gap-0.5">
+							<span className="flex items-center gap-2 text-sm font-medium">
+								<PackageIcon className="h-4 w-4 text-muted-foreground" />
+								Deliverables ({deliverablesList.length})
+							</span>
+							<span className="text-xs text-muted-foreground">
+								{deliverablesList.length === 0
+									? "No deliverables defined"
+									: `${packageCount} package, ${customCount} custom`}
+							</span>
 						</div>
 					</AccordionTrigger>
 					<Button
 						type="button"
 						variant="ghost"
 						size="sm"
-						className="h-7 ml-2"
+						className="h-7 ml-auto"
 						onClick={onEdit}
 					>
 						<PencilIcon className="h-3 w-3 mr-1" />
@@ -606,25 +614,26 @@ const PaymentsSection = memo(function PaymentsSection({
 		<AccordionItem value="payments" className="border-none">
 			<div className="overflow-hidden rounded-lg border bg-muted/10">
 				<div className="flex items-center px-4 py-3">
-					<AccordionTrigger className="flex-1 p-0 hover:no-underline">
-						<div className="flex items-center gap-3">
-							<WalletIcon className="h-4 w-4 text-muted-foreground shrink-0" />
-							<div className="flex flex-col items-start gap-0.5">
-								<span className="text-sm font-medium">
-									Payments ({(payments ?? []).length})
-								</span>
-								<span className="text-xs text-muted-foreground">
-									{paymentPercentage}% paid •{" "}
-									{(paymentSchedules ?? []).length} scheduled
-								</span>
-							</div>
+					<AccordionTrigger
+						chevronPosition="start"
+						className="flex-1 p-0 hover:no-underline"
+					>
+						<div className="flex flex-col items-start gap-0.5">
+							<span className="flex items-center gap-2 text-sm font-medium">
+								<WalletIcon className="h-4 w-4 text-muted-foreground" />
+								Payments ({(payments ?? []).length})
+							</span>
+							<span className="text-xs text-muted-foreground">
+								{paymentPercentage}% paid •{" "}
+								{(paymentSchedules ?? []).length} scheduled
+							</span>
 						</div>
 					</AccordionTrigger>
 					<Button
 						type="button"
 						variant="ghost"
 						size="sm"
-						className="h-7 ml-2"
+						className="h-7 ml-auto"
 						onClick={onEdit}
 					>
 						<PencilIcon className="h-3 w-3 mr-1" />
@@ -736,6 +745,9 @@ export function BookingReviewStep({
 		<Card className={cn("shadow-none", className)}>
 			<CardContent className="p-6 space-y-4">
 				<FieldLegend>Review Booking</FieldLegend>
+				<FieldDescription>
+					Review your booking details before submission
+				</FieldDescription>
 
 				{/* Validation warnings */}
 				{warnings.length > 0 && (
@@ -775,7 +787,7 @@ export function BookingReviewStep({
 				<Accordion
 					type="multiple"
 					defaultValue={["details", "clients"]}
-					className="space-y-3"
+					className="mt-2 space-y-3"
 				>
 					<DetailsSection
 						onEdit={() => onNavigateToStep("details")}
