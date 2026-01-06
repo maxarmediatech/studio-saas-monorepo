@@ -128,11 +128,12 @@ function useValidationWarnings(): ValidationWarning[] {
 // Section Components
 // ============================================================================
 
-const DetailsSection = memo(function DetailsSection({
+const BookingDetailsSection = memo(function BookingDetailsSection({
 	onEdit,
 }: {
 	onEdit: () => void;
 }) {
+	// Details watches
 	const name = useWatch<BookingFormValues, "name">({ name: "name" });
 	const bookingType = useWatch<BookingFormValues, "bookingType">({
 		name: "bookingType",
@@ -145,19 +146,39 @@ const DetailsSection = memo(function DetailsSection({
 	});
 	const note = useWatch<BookingFormValues, "note">({ name: "note" });
 
+	// Clients watches
+	const participants = useWatch<BookingFormValues, "participants">({
+		name: "participants",
+	});
+
+	// Queries for both sections
 	const { data: bookingTypesData } = useQuery(
 		bookingFormQueries.bookingTypes(),
 	);
 	const { data: packageTypesData } = useQuery(
 		bookingFormQueries.packageTypes(),
 	);
+	const { data: clientsData } = useQuery(bookingFormQueries.clients());
+	const { data: relationTypesData } = useQuery(
+		bookingFormQueries.relationTypes(),
+	);
 
+	// Lookup helpers
 	const getBookingType = (key: string) =>
 		bookingTypesData?.data?.find((t) => t.key === key)?.label ?? key;
 	const getPackageType = (key: string) =>
 		packageTypesData?.data?.find((t) => t.key === key)?.label ?? key;
+	const getClientName = (clientId: string) =>
+		clientsData?.data?.find((c) => c.id === clientId)?.name ?? "Unknown";
+	const getRelationType = (key: string) =>
+		relationTypesData?.data?.find((t) => t.key === key)?.label ?? key;
 
+	// Combined subtitle: "Wedding • ₹50,000 • 2 clients"
+	const clientCount = participants?.length ?? 0;
 	const isComplete = name && packageType;
+	const subtitle = isComplete
+		? `${getPackageType(packageType)} • ${formatCurrency(packageCost)} • ${clientCount} client${clientCount !== 1 ? "s" : ""}`
+		: "Incomplete";
 
 	return (
 		<AccordionItem value="details" className="border-none">
@@ -173,9 +194,7 @@ const DetailsSection = memo(function DetailsSection({
 								Booking Details
 							</span>
 							<span className="text-xs text-muted-foreground">
-								{isComplete
-									? `${getPackageType(packageType)} • ${formatCurrency(packageCost)}`
-									: "Incomplete"}
+								{subtitle}
 							</span>
 						</div>
 					</AccordionTrigger>
@@ -191,6 +210,7 @@ const DetailsSection = memo(function DetailsSection({
 					</Button>
 				</div>
 				<AccordionContent className="px-4 pb-4 pt-0">
+					{/* Booking details grid */}
 					<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 border-t pt-4">
 						<div>
 							<p className="text-xs text-muted-foreground uppercase tracking-wide">
@@ -227,6 +247,8 @@ const DetailsSection = memo(function DetailsSection({
 							</p>
 						</div>
 					</div>
+
+					{/* Notes (optional) */}
 					{note && (
 						<div className="mt-3 pt-3 border-t">
 							<p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
@@ -237,67 +259,10 @@ const DetailsSection = memo(function DetailsSection({
 							</p>
 						</div>
 					)}
-				</AccordionContent>
-			</div>
-		</AccordionItem>
-	);
-});
 
-const ClientsSection = memo(function ClientsSection({
-	onEdit,
-}: {
-	onEdit: () => void;
-}) {
-	const participants = useWatch<BookingFormValues, "participants">({
-		name: "participants",
-	});
-
-	const { data: clientsData } = useQuery(bookingFormQueries.clients());
-	const { data: relationTypesData } = useQuery(
-		bookingFormQueries.relationTypes(),
-	);
-
-	const getClientName = (clientId: string) =>
-		clientsData?.data?.find((c) => c.id === clientId)?.name ?? "Unknown";
-	const getRelationType = (key: string) =>
-		relationTypesData?.data?.find((t) => t.key === key)?.label ?? key;
-
-	const clientNames = (participants ?? [])
-		.map((p) => (p.clientId ? getClientName(p.clientId) : null))
-		.filter(Boolean)
-		.join(", ");
-
-	return (
-		<AccordionItem value="clients" className="border-none">
-			<div className="overflow-hidden rounded-lg border bg-muted/10">
-				<div className="flex items-center px-4 py-3">
-					<AccordionTrigger
-						chevronPosition="start"
-						className="flex-1 p-0 hover:no-underline"
-					>
-						<div className="flex flex-col items-start gap-0.5">
-							<span className="flex items-center gap-2 text-sm font-medium">
-								<UsersIcon className="h-4 w-4 text-muted-foreground" />
-								Clients ({participants?.length ?? 0})
-							</span>
-							<span className="text-xs text-muted-foreground">
-								{clientNames || "No clients added"}
-							</span>
-						</div>
-					</AccordionTrigger>
-					<Button
-						type="button"
-						variant="ghost"
-						size="sm"
-						className="h-7 ml-auto"
-						onClick={onEdit}
-					>
-						<PencilIcon className="h-3 w-3 mr-1" />
-						Edit
-					</Button>
-				</div>
-				<AccordionContent className="px-4 pb-4 pt-0">
-					<div className="border-t pt-4">
+					{/* Clients section */}
+					<div className="mt-4 pt-4 border-t">
+						<p className="text-sm font-medium mb-3">Clients</p>
 						{!participants || participants.length === 0 ? (
 							<p className="text-sm text-muted-foreground">
 								No clients added
@@ -305,7 +270,7 @@ const ClientsSection = memo(function ClientsSection({
 						) : (
 							<div className="flex flex-wrap gap-2">
 								{participants.map((p, i) => {
-									const name = p.clientId
+									const clientName = p.clientId
 										? getClientName(p.clientId)
 										: "—";
 									return (
@@ -315,12 +280,12 @@ const ClientsSection = memo(function ClientsSection({
 										>
 											<Avatar className="h-7 w-7">
 												<AvatarFallback className="text-xs">
-													{getInitials(name)}
+													{getInitials(clientName)}
 												</AvatarFallback>
 											</Avatar>
 											<div className="flex flex-col">
 												<span className="text-sm font-medium">
-													{name}
+													{clientName}
 												</span>
 												{p.role && (
 													<span className="text-xs text-muted-foreground">
@@ -786,13 +751,10 @@ export function BookingReviewStep({
 				{/* Accordion sections */}
 				<Accordion
 					type="multiple"
-					defaultValue={["details", "clients"]}
+					defaultValue={["details"]}
 					className="mt-2 space-y-3"
 				>
-					<DetailsSection
-						onEdit={() => onNavigateToStep("details")}
-					/>
-					<ClientsSection
+					<BookingDetailsSection
 						onEdit={() => onNavigateToStep("details")}
 					/>
 					<PaymentsSection
