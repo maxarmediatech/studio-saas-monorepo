@@ -339,7 +339,11 @@ export function BookingDetailsStep() {
 			? `${namesJoined} ${bookingTypeLabel}`
 			: namesJoined;
 
-		form.setValue("name", generatedName, { shouldDirty: false });
+		// Only update if name actually changed (prevents infinite loop from watch reference changes)
+		const currentName = form.getValues("name");
+		if (generatedName !== currentName) {
+			form.setValue("name", generatedName, { shouldDirty: false });
+		}
 	}, [
 		watchedParticipants,
 		selectedBookingType,

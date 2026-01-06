@@ -31,8 +31,8 @@ import {
 	UsersIcon,
 	WalletIcon,
 } from "lucide-react";
-import { memo, useMemo } from "react";
-import { useFormContext, useWatch } from "react-hook-form";
+import { useMemo } from "react";
+import { useFormContext } from "react-hook-form";
 import { bookingFormQueries } from "./booking-form-queries";
 import type { BookingFormValues, BookingTab } from "./booking-form-schema";
 import { PAYMENT_METHOD_OPTIONS } from "./booking-form-schema";
@@ -74,84 +74,29 @@ const getInitials = (name: string): string => {
 };
 
 // ============================================================================
-// Validation Warnings
+// Section Components (receive data as props)
 // ============================================================================
 
-interface ValidationWarning {
-	id: string;
-	message: string;
-	step: BookingTab;
-}
-
-function useValidationWarnings(): ValidationWarning[] {
-	const { control } = useFormContext<BookingFormValues>();
-	const [name, participants, bookingType, packageType] = useWatch({
-		control,
-		name: ["name", "participants", "bookingType", "packageType"],
-	});
-
-	return useMemo(() => {
-		const warnings: ValidationWarning[] = [];
-		if (!name?.trim()) {
-			warnings.push({
-				id: "name",
-				message: "Booking name is required",
-				step: "details",
-			});
-		}
-		if (!participants || participants.length === 0) {
-			warnings.push({
-				id: "clients",
-				message: "At least one client is required",
-				step: "details",
-			});
-		}
-		if (!bookingType) {
-			warnings.push({
-				id: "type",
-				message: "Booking type is required",
-				step: "details",
-			});
-		}
-		if (!packageType) {
-			warnings.push({
-				id: "package",
-				message: "Package is required",
-				step: "details",
-			});
-		}
-		return warnings;
-	}, [name, participants, bookingType, packageType]);
-}
-
-// ============================================================================
-// Section Components
-// ============================================================================
-
-const BookingDetailsSection = memo(function BookingDetailsSection({
-	onEdit,
-}: {
+interface BookingDetailsSectionProps {
 	onEdit: () => void;
-}) {
-	// Details watches
-	const name = useWatch<BookingFormValues, "name">({ name: "name" });
-	const bookingType = useWatch<BookingFormValues, "bookingType">({
-		name: "bookingType",
-	});
-	const packageType = useWatch<BookingFormValues, "packageType">({
-		name: "packageType",
-	});
-	const packageCost = useWatch<BookingFormValues, "packageCost">({
-		name: "packageCost",
-	});
-	const note = useWatch<BookingFormValues, "note">({ name: "note" });
+	name: string;
+	bookingType: string;
+	packageType: string;
+	packageCost: string;
+	note?: string;
+	participants: BookingFormValues["participants"];
+}
 
-	// Clients watches
-	const participants = useWatch<BookingFormValues, "participants">({
-		name: "participants",
-	});
-
-	// Queries for both sections
+function BookingDetailsSection({
+	onEdit,
+	name,
+	bookingType,
+	packageType,
+	packageCost,
+	note,
+	participants,
+}: BookingDetailsSectionProps) {
+	// Queries for lookups
 	const { data: bookingTypesData } = useQuery(
 		bookingFormQueries.bookingTypes(),
 	);
@@ -173,7 +118,7 @@ const BookingDetailsSection = memo(function BookingDetailsSection({
 	const getRelationType = (key: string) =>
 		relationTypesData?.data?.find((t) => t.key === key)?.label ?? key;
 
-	// Combined subtitle: "Wedding • ₹50,000 • 2 clients"
+	// Combined subtitle
 	const clientCount = participants?.length ?? 0;
 	const isComplete = name && packageType;
 	const subtitle = isComplete
@@ -223,9 +168,7 @@ const BookingDetailsSection = memo(function BookingDetailsSection({
 								Type
 							</p>
 							<p className="font-medium">
-								{bookingType
-									? getBookingType(bookingType)
-									: "—"}
+								{bookingType ? getBookingType(bookingType) : "—"}
 							</p>
 						</div>
 						<div>
@@ -233,9 +176,7 @@ const BookingDetailsSection = memo(function BookingDetailsSection({
 								Package
 							</p>
 							<p className="font-medium">
-								{packageType
-									? getPackageType(packageType)
-									: "—"}
+								{packageType ? getPackageType(packageType) : "—"}
 							</p>
 						</div>
 						<div>
@@ -254,9 +195,7 @@ const BookingDetailsSection = memo(function BookingDetailsSection({
 							<p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
 								Notes
 							</p>
-							<p className="text-sm text-muted-foreground">
-								{note}
-							</p>
+							<p className="text-sm text-muted-foreground">{note}</p>
 						</div>
 					)}
 
@@ -289,9 +228,7 @@ const BookingDetailsSection = memo(function BookingDetailsSection({
 												</span>
 												{p.role && (
 													<span className="text-xs text-muted-foreground">
-														{getRelationType(
-															p.role,
-														)}
+														{getRelationType(p.role)}
 													</span>
 												)}
 											</div>
@@ -305,14 +242,14 @@ const BookingDetailsSection = memo(function BookingDetailsSection({
 			</div>
 		</AccordionItem>
 	);
-});
+}
 
-const ShootsSection = memo(function ShootsSection({
-	onEdit,
-}: {
+interface ShootsSectionProps {
 	onEdit: () => void;
-}) {
-	const shoots = useWatch<BookingFormValues, "shoots">({ name: "shoots" });
+	shoots: BookingFormValues["shoots"];
+}
+
+function ShootsSection({ onEdit, shoots }: ShootsSectionProps) {
 	const { data: crewsData } = useQuery(bookingFormQueries.crews());
 	const { data: eventTypesData } = useQuery(bookingFormQueries.eventTypes());
 
@@ -370,9 +307,7 @@ const ShootsSection = memo(function ShootsSection({
 										<div className="flex items-start justify-between gap-2">
 											<span className="font-medium">
 												{shoot.shootType
-													? getEventType(
-															shoot.shootType,
-														)
+													? getEventType(shoot.shootType)
 													: `Shoot ${i + 1}`}
 											</span>
 											<span className="text-sm text-muted-foreground flex items-center gap-1">
@@ -380,8 +315,7 @@ const ShootsSection = memo(function ShootsSection({
 												{formatDate(shoot.shootDate)}
 											</span>
 										</div>
-										{(shoot.startTime ||
-											shoot.location) && (
+										{(shoot.startTime || shoot.location) && (
 											<div className="mt-2 flex flex-wrap gap-3 text-sm text-muted-foreground">
 												{shoot.startTime && (
 													<span className="flex items-center gap-1">
@@ -397,32 +331,24 @@ const ShootsSection = memo(function ShootsSection({
 												)}
 											</div>
 										)}
-										{(shoot.crewAssignments?.length ?? 0) >
-											0 && (
+										{(shoot.crewAssignments?.length ?? 0) > 0 && (
 											<div className="mt-2 flex flex-wrap gap-1">
-												{shoot.crewAssignments?.map(
-													(crew, j) => (
-														<Badge
-															key={j}
-															variant="secondary"
-															className="text-xs"
-														>
-															{crew.crewId
-																? getCrewName(
-																		crew.crewId,
-																	)
-																: "—"}
-															{crew.rate && (
-																<span className="ml-1 text-muted-foreground">
-																	₹
-																	{Number(
-																		crew.rate,
-																	).toLocaleString()}
-																</span>
-															)}
-														</Badge>
-													),
-												)}
+												{shoot.crewAssignments?.map((crew, j) => (
+													<Badge
+														key={j}
+														variant="secondary"
+														className="text-xs"
+													>
+														{crew.crewId
+															? getCrewName(crew.crewId)
+															: "—"}
+														{crew.rate && (
+															<span className="ml-1 text-muted-foreground">
+																₹{Number(crew.rate).toLocaleString()}
+															</span>
+														)}
+													</Badge>
+												))}
 											</div>
 										)}
 									</div>
@@ -434,17 +360,17 @@ const ShootsSection = memo(function ShootsSection({
 			</div>
 		</AccordionItem>
 	);
-});
+}
 
-const DeliverablesSection = memo(function DeliverablesSection({
-	onEdit,
-}: {
+interface DeliverablesSectionProps {
 	onEdit: () => void;
-}) {
-	const deliverables = useWatch<BookingFormValues, "deliverables">({
-		name: "deliverables",
-	});
+	deliverables: BookingFormValues["deliverables"];
+}
 
+function DeliverablesSection({
+	onEdit,
+	deliverables,
+}: DeliverablesSectionProps) {
 	const deliverablesList = deliverables ?? [];
 	const packageCount = deliverablesList.filter(
 		(d) => d.isPackageIncluded,
@@ -503,22 +429,14 @@ const DeliverablesSection = memo(function DeliverablesSection({
 										)}
 									>
 										<div className="flex items-center gap-2">
-											<span className="text-sm font-medium">
-												{d.name}
-											</span>
+											<span className="text-sm font-medium">{d.name}</span>
 											{(d.quantity ?? 1) > 1 && (
-												<Badge
-													variant="outline"
-													className="text-xs"
-												>
+												<Badge variant="outline" className="text-xs">
 													×{d.quantity}
 												</Badge>
 											)}
 											{d.isPackageIncluded && (
-												<Badge
-													variant="secondary"
-													className="text-xs"
-												>
+												<Badge variant="secondary" className="text-xs">
 													Package
 												</Badge>
 											)}
@@ -537,26 +455,23 @@ const DeliverablesSection = memo(function DeliverablesSection({
 			</div>
 		</AccordionItem>
 	);
-});
+}
 
-const PaymentsSection = memo(function PaymentsSection({
-	onEdit,
-}: {
+interface PaymentsSectionProps {
 	onEdit: () => void;
-}) {
-	const packageCost = useWatch<BookingFormValues, "packageCost">({
-		name: "packageCost",
-	});
-	const payments = useWatch<BookingFormValues, "payments">({
-		name: "payments",
-	});
-	const paymentSchedules = useWatch<BookingFormValues, "paymentSchedules">({
-		name: "paymentSchedules",
-	});
-	const deliverables = useWatch<BookingFormValues, "deliverables">({
-		name: "deliverables",
-	});
+	packageCost: string;
+	payments: BookingFormValues["payments"];
+	paymentSchedules: BookingFormValues["paymentSchedules"];
+	deliverables: BookingFormValues["deliverables"];
+}
 
+function PaymentsSection({
+	onEdit,
+	packageCost,
+	payments,
+	paymentSchedules,
+	deliverables,
+}: PaymentsSectionProps) {
 	const packageCostNum = Number.parseFloat(packageCost) || 0;
 	const customDeliverablesCost = (deliverables ?? [])
 		.filter((d) => !d.isPackageIncluded)
@@ -610,24 +525,14 @@ const PaymentsSection = memo(function PaymentsSection({
 						{/* Progress bar */}
 						<div className="space-y-2">
 							<div className="flex justify-between text-sm">
-								<span className="text-muted-foreground">
-									Progress
-								</span>
-								<span className="font-medium">
-									{paymentPercentage}%
-								</span>
+								<span className="text-muted-foreground">Progress</span>
+								<span className="font-medium">{paymentPercentage}%</span>
 							</div>
-							<Progress
-								value={paymentPercentage}
-								className="h-2"
-							/>
+							<Progress value={paymentPercentage} className="h-2" />
 							<div className="flex justify-between text-xs text-muted-foreground">
+								<span>{formatCurrency(totalReceived)} received</span>
 								<span>
-									{formatCurrency(totalReceived)} received
-								</span>
-								<span>
-									{formatCurrency(totalCost - totalReceived)}{" "}
-									remaining
+									{formatCurrency(totalCost - totalReceived)} remaining
 								</span>
 							</div>
 						</div>
@@ -648,10 +553,7 @@ const PaymentsSection = memo(function PaymentsSection({
 												{formatCurrency(p.amount)}
 											</span>
 											<span className="text-muted-foreground ml-2">
-												via{" "}
-												{getPaymentMethod(
-													p.paymentMethod,
-												)}
+												via {getPaymentMethod(p.paymentMethod)}
 											</span>
 										</div>
 										<span className="text-muted-foreground">
@@ -666,8 +568,7 @@ const PaymentsSection = memo(function PaymentsSection({
 						{(paymentSchedules ?? []).length > 0 && (
 							<div className="space-y-2">
 								<p className="text-sm font-medium">
-									Scheduled Milestones (
-									{paymentSchedules?.length})
+									Scheduled Milestones ({paymentSchedules?.length})
 								</p>
 								{paymentSchedules?.map((s, i) => (
 									<div
@@ -689,7 +590,7 @@ const PaymentsSection = memo(function PaymentsSection({
 			</div>
 		</AccordionItem>
 	);
-});
+}
 
 // ============================================================================
 // Main Component
@@ -704,7 +605,45 @@ export function BookingReviewStep({
 	onNavigateToStep,
 	className,
 }: BookingReviewStepProps) {
-	const warnings = useValidationWarnings();
+	// Get form and watch ALL values at this level
+	const form = useFormContext<BookingFormValues>();
+
+	// Watch all form values - this triggers re-render on ANY form change
+	const formValues = form.watch();
+
+	// Compute validation warnings
+	const warnings = useMemo(() => {
+		const result: Array<{ id: string; message: string; step: BookingTab }> = [];
+		if (!formValues.name?.trim()) {
+			result.push({
+				id: "name",
+				message: "Booking name is required",
+				step: "details",
+			});
+		}
+		if (!formValues.participants || formValues.participants.length === 0) {
+			result.push({
+				id: "clients",
+				message: "At least one client is required",
+				step: "details",
+			});
+		}
+		if (!formValues.bookingType) {
+			result.push({
+				id: "type",
+				message: "Booking type is required",
+				step: "details",
+			});
+		}
+		if (!formValues.packageType) {
+			result.push({
+				id: "package",
+				message: "Package is required",
+				step: "details",
+			});
+		}
+		return result;
+	}, [formValues.name, formValues.participants, formValues.bookingType, formValues.packageType]);
 
 	return (
 		<Card className={cn("shadow-none", className)}>
@@ -725,17 +664,13 @@ export function BookingReviewStep({
 										key={w.id}
 										className="flex items-center justify-between"
 									>
-										<span className="text-sm">
-											{w.message}
-										</span>
+										<span className="text-sm">{w.message}</span>
 										<Button
 											type="button"
 											variant="link"
 											size="sm"
 											className="h-auto p-0 text-destructive-foreground underline"
-											onClick={() =>
-												onNavigateToStep(w.step)
-											}
+											onClick={() => onNavigateToStep(w.step)}
 										>
 											Fix
 										</Button>
@@ -748,7 +683,7 @@ export function BookingReviewStep({
 
 				<FieldSeparator />
 
-				{/* Accordion sections */}
+				{/* Accordion sections - pass watched values as props */}
 				<Accordion
 					type="multiple"
 					defaultValue={["details"]}
@@ -756,13 +691,27 @@ export function BookingReviewStep({
 				>
 					<BookingDetailsSection
 						onEdit={() => onNavigateToStep("details")}
+						name={formValues.name}
+						bookingType={formValues.bookingType}
+						packageType={formValues.packageType}
+						packageCost={formValues.packageCost}
+						note={formValues.note}
+						participants={formValues.participants}
 					/>
 					<PaymentsSection
 						onEdit={() => onNavigateToStep("payments")}
+						packageCost={formValues.packageCost}
+						payments={formValues.payments}
+						paymentSchedules={formValues.paymentSchedules}
+						deliverables={formValues.deliverables}
 					/>
-					<ShootsSection onEdit={() => onNavigateToStep("shoots")} />
+					<ShootsSection
+						onEdit={() => onNavigateToStep("shoots")}
+						shoots={formValues.shoots}
+					/>
 					<DeliverablesSection
 						onEdit={() => onNavigateToStep("deliverables")}
+						deliverables={formValues.deliverables}
 					/>
 				</Accordion>
 			</CardContent>

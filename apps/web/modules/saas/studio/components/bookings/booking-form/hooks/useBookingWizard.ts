@@ -189,14 +189,16 @@ export function useBookingWizard({ form }: UseBookingWizardOptions) {
 
 	// Navigate to a specific step
 	const goToStep = useCallback(
-		(step: BookingTab) => {
+		async (step: BookingTab) => {
 			if (!canNavigateToStep(step)) {
 				return;
 			}
+			// Trigger validation of current step to sync form values (like next() does)
+			await form.trigger(TAB_FIELD_MAPPING[currentStep]);
 			saveFormData();
 			router.push(bookingFormRoutes.step(organizationSlug, step));
 		},
-		[canNavigateToStep, organizationSlug, router, saveFormData],
+		[canNavigateToStep, currentStep, form, organizationSlug, router, saveFormData],
 	);
 
 	const getFirstStepWithErrors = useCallback(
