@@ -7,8 +7,9 @@ import {
 	SheetTitle,
 } from "@repo/ui/components/sheet";
 import { cn } from "@repo/ui/lib/utils";
+import { orpc } from "@shared/lib/orpc-query-utils";
 import { useTaskParams } from "@saas/studio/hooks/params/use-task-params";
-import { studioQueryKeys, tasksMutations } from "@saas/studio/lib/api";
+import { tasksMutations } from "@saas/studio/lib/api";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -25,7 +26,7 @@ export function TaskCreateSheet() {
 		onSuccess: () => {
 			toast.success("Task added successfully");
 			queryClient.invalidateQueries({
-				queryKey: studioQueryKeys.tasks.all,
+				queryKey: orpc.tasks.key(),
 			});
 			close();
 		},

@@ -24,13 +24,10 @@ import {
 } from "@saas/shared/components/data-table";
 // Import types for column meta augmentation
 import "@saas/shared/components/data-table/types";
+import { orpc } from "@shared/lib/orpc-query-utils";
 import { useTaskParams } from "@saas/studio/hooks/params/use-task-params";
 import { useTasksTable } from "@saas/studio/hooks/tables";
-import {
-	studioQueryKeys,
-	tasksApi,
-	tasksMutations,
-} from "@saas/studio/lib/api";
+import { tasksApi, tasksMutations } from "@saas/studio/lib/api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
@@ -203,7 +200,7 @@ export function TasksTableClient({
 			setDeleteDialogOpen(false);
 			setTaskToDelete(null);
 			queryClient.invalidateQueries({
-				queryKey: studioQueryKeys.tasks.all,
+				queryKey: orpc.tasks.key(),
 			});
 		},
 		onError: (error) => {

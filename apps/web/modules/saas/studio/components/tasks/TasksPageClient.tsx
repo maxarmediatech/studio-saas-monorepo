@@ -18,12 +18,9 @@ import {
 	DataTableRowActions,
 	type RowAction,
 } from "@saas/shared/components/data-table";
+import { orpc } from "@shared/lib/orpc-query-utils";
 import { useTaskParams } from "@saas/studio/hooks/params/use-task-params";
-import {
-	studioQueryKeys,
-	tasksApi,
-	tasksMutations,
-} from "@saas/studio/lib/api";
+import { tasksApi, tasksMutations } from "@saas/studio/lib/api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
@@ -160,7 +157,7 @@ export function TasksPageClient({
 			setDeleteDialogOpen(false);
 			setTaskToDelete(null);
 			queryClient.invalidateQueries({
-				queryKey: studioQueryKeys.tasks.all,
+				queryKey: orpc.tasks.key(),
 			});
 		},
 		onError: (error) => {

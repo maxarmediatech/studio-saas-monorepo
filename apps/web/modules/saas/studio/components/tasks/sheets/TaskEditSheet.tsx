@@ -8,12 +8,9 @@ import {
 } from "@repo/ui/components/sheet";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
+import { orpc } from "@shared/lib/orpc-query-utils";
 import { useTaskParams } from "@saas/studio/hooks/params/use-task-params";
-import {
-	studioQueryKeys,
-	tasksApi,
-	tasksMutations,
-} from "@saas/studio/lib/api";
+import { tasksApi, tasksMutations } from "@saas/studio/lib/api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -35,7 +32,7 @@ export function TaskEditSheet() {
 		onSuccess: () => {
 			toast.success("Task updated successfully");
 			queryClient.invalidateQueries({
-				queryKey: studioQueryKeys.tasks.all,
+				queryKey: orpc.tasks.key(),
 			});
 			close();
 		},
