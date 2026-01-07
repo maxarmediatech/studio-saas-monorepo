@@ -28,6 +28,7 @@ import {
 } from "@saas/shared/components/data-table";
 // Import types for column meta augmentation
 import "@saas/shared/components/data-table/types";
+import { formatMoney } from "@saas/shared/lib";
 import { useExpenseParams } from "@saas/studio/hooks/params/use-expense-params";
 import { useExpensesTable } from "@saas/studio/hooks/tables";
 import {
@@ -91,15 +92,6 @@ const billToOptions = [
 	{ value: "studio", label: "Studio" },
 	{ value: "client", label: "Client" },
 ];
-
-const formatMoney = (value: string) => {
-	const num = Number.parseFloat(value);
-	return new Intl.NumberFormat("en-IN", {
-		style: "currency",
-		currency: "INR",
-		minimumFractionDigits: 0,
-	}).format(num);
-};
 
 const formatDate = (dateStr: string) => {
 	return new Date(dateStr).toLocaleDateString("en-IN", {

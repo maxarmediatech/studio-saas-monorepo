@@ -27,6 +27,7 @@ import {
 	DataTableRowActions,
 	type RowAction,
 } from "@saas/shared/components/data-table";
+import { formatMoney } from "@saas/shared/lib";
 import {
 	bookingsApi,
 	bookingsMutations,
@@ -77,15 +78,6 @@ const statusLabels: Record<BookingPhase, string> = {
 	delivery: "Delivery",
 	completed: "Completed",
 	cancelled: "Cancelled",
-};
-
-const formatMoney = (value: string) => {
-	const num = Number.parseFloat(value);
-	return new Intl.NumberFormat("en-IN", {
-		style: "currency",
-		currency: "INR",
-		minimumFractionDigits: 0,
-	}).format(num);
 };
 
 export function BookingsPageClient({

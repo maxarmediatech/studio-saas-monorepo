@@ -24,6 +24,7 @@ import {
 } from "@saas/shared/components/data-table";
 // Import types for column meta augmentation
 import "@saas/shared/components/data-table/types";
+import { formatMoney } from "@saas/shared/lib";
 import { useCrewParams } from "@saas/studio/hooks/params/use-crew-params";
 import { useCrewsTable } from "@saas/studio/hooks/tables";
 import { crewsApi, crewsMutations } from "@saas/studio/lib/api";
@@ -70,18 +71,6 @@ const roleOptions = [
 	{ value: "coordinator", label: "Coordinator" },
 	{ value: "other", label: "Other" },
 ];
-
-const formatMoney = (value: string | null) => {
-	if (!value) {
-		return "-";
-	}
-	const num = Number.parseFloat(value);
-	return new Intl.NumberFormat("en-IN", {
-		style: "currency",
-		currency: "INR",
-		minimumFractionDigits: 0,
-	}).format(num);
-};
 
 export function CrewsTableClient({
 	organizationSlug: _organizationSlug,
@@ -290,7 +279,7 @@ export function CrewsTableClient({
 				),
 				cell: ({ row }) => (
 					<div className="text-right font-semibold tabular-nums">
-						{formatMoney(row.original.dailyRate)}
+						{row.original.dailyRate ? formatMoney(row.original.dailyRate) : "-"}
 					</div>
 				),
 				meta: {

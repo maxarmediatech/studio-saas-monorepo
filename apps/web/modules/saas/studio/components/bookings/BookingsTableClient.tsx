@@ -30,6 +30,8 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@repo/ui/components/tooltip";
+import { formatMoney } from "@saas/shared/lib";
+import { useBookingParams } from "@saas/studio/hooks/params";
 import { useBookingsTable } from "@saas/studio/hooks/tables";
 import {
 	bookingsApi,
@@ -61,20 +63,12 @@ interface BookingsTableClientProps {
 	organizationSlug: string;
 }
 
-const formatMoney = (value: string) => {
-	const num = Number.parseFloat(value);
-	return new Intl.NumberFormat("en-IN", {
-		style: "currency",
-		currency: "INR",
-		minimumFractionDigits: 0,
-	}).format(num);
-};
-
 export function BookingsTableClient({
 	organizationSlug,
 }: BookingsTableClientProps) {
 	const router = useRouter();
 	const queryClient = useQueryClient();
+	const { openView } = useBookingParams();
 
 	// Use the bookings table hook for URL-synced state
 	const {
@@ -164,8 +158,7 @@ export function BookingsTableClient({
 			{
 				label: "View details",
 				icon: <EyeIcon className="h-4 w-4" />,
-				onClick: (row) =>
-					router.push(`/app/${organizationSlug}/bookings/${row.id}`),
+				onClick: (row) => openView(row.id),
 			},
 			{
 				label: "Edit",
@@ -186,7 +179,7 @@ export function BookingsTableClient({
 				},
 			},
 		],
-		[organizationSlug, router],
+		[openView, organizationSlug, router],
 	);
 
 	// Define columns with sortable headers and meta for filters

@@ -25,6 +25,7 @@ import {
 	DataTableRowActions,
 	type RowAction,
 } from "@saas/shared/components/data-table";
+import { formatMoney } from "@saas/shared/lib";
 import { useCrewParams } from "@saas/studio/hooks/params/use-crew-params";
 import { crewsApi, crewsMutations } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
@@ -58,18 +59,6 @@ const statusColors: Record<string, string> = {
 		"bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400",
 	unavailable:
 		"bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
-};
-
-const formatMoney = (value: string | null) => {
-	if (!value) {
-		return "-";
-	}
-	const num = Number.parseFloat(value);
-	return new Intl.NumberFormat("en-IN", {
-		style: "currency",
-		currency: "INR",
-		minimumFractionDigits: 0,
-	}).format(num);
 };
 
 export function CrewsPageClient({
@@ -249,7 +238,7 @@ export function CrewsPageClient({
 				header: () => <div className="text-right">Daily Rate</div>,
 				cell: ({ row }) => (
 					<div className="text-right">
-						{formatMoney(row.original.dailyRate)}
+						{row.original.dailyRate ? formatMoney(row.original.dailyRate) : "-"}
 					</div>
 				),
 			},
