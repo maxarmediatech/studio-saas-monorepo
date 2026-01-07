@@ -5,6 +5,7 @@
  * Also updates the booking's totalReceived field.
  */
 
+import { ORPCError } from "@orpc/server";
 import {
 	bookings,
 	eq,
@@ -69,6 +70,20 @@ export async function createPaymentsBatch(
 			.returning({ id: paymentSchedules.id });
 
 		scheduleIds.push(...createdSchedules.map((s) => s.id));
+	}
+
+	// Security: Validate all proof attachment keys belong to this organization (prevents IDOR)
+	const expectedPrefix = `orgs/${organizationId}/`;
+	for (const payment of receivedPayments) {
+		if (
+			payment.proofAttachment?.key &&
+			!payment.proofAttachment.key.startsWith(expectedPrefix)
+		) {
+			throw new ORPCError("FORBIDDEN", {
+				message:
+					"Invalid payment proof: file does not belong to this organization",
+			});
+		}
 	}
 
 	// Create received payments (batch insert)

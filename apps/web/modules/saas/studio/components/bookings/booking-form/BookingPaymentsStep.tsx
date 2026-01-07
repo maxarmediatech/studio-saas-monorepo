@@ -360,7 +360,8 @@ function PaymentRow({ index, onRemove }: PaymentRowProps) {
 				body: JSON.stringify({
 					fileName: file.name,
 					fileType: file.type,
-					context: "payment-proofs",
+					fileSize: file.size,
+					context: "payments",
 				}),
 			});
 

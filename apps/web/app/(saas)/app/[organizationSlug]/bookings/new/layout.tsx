@@ -59,12 +59,13 @@ function buildCreateBookingInput(rawValues: BookingFormValues) {
 		packageCost: formatDecimalForApi(values.packageCost),
 		note: values.note,
 		participants: values.participants,
+		contractAttachment: values.contractAttachment ?? null,
 		shoots: values.shoots?.map((shoot) => ({
 			// API requires name - use shootType as the name
 			name: shoot.shootType,
 			shootType: shoot.shootType,
 			shootDate: shoot.shootDate,
-			startTime: shoot.startTime,
+			startTime: shoot.startTime || undefined,
 			// endTime removed from form (Indian weddings have flexible end times)
 			endTime: undefined,
 			// location field maps to venueAddress (supports up to 500 chars for links/addresses)
@@ -81,7 +82,7 @@ function buildCreateBookingInput(rawValues: BookingFormValues) {
 			name: deliverable.name,
 			deliverableType: deliverable.deliverableType,
 			description: deliverable.description,
-			dueDate: deliverable.dueDate,
+			dueDate: deliverable.dueDate || undefined,
 			quantity: deliverable.quantity ?? 1,
 			cost: deliverable.cost
 				? formatDecimalForApi(deliverable.cost)
@@ -98,6 +99,7 @@ function buildCreateBookingInput(rawValues: BookingFormValues) {
 			receivedDate: payment.receivedDate,
 			transactionReference: payment.transactionReference,
 			notes: payment.notes,
+			proofAttachment: payment.proofAttachment ?? null,
 		})),
 		paymentSchedules: values.paymentSchedules?.map((schedule, idx) => ({
 			name: schedule.name,

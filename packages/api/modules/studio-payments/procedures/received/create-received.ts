@@ -73,6 +73,17 @@ export const createReceived = studioProtectedProcedure
 			}
 		}
 
+		// Security: Validate S3 key belongs to this organization (prevents IDOR)
+		if (proofAttachment?.key) {
+			const expectedPrefix = `orgs/${context.organizationId}/`;
+			if (!proofAttachment.key.startsWith(expectedPrefix)) {
+				throw new ORPCError("FORBIDDEN", {
+					message:
+						"Invalid payment proof: file does not belong to this organization",
+				});
+			}
+		}
+
 		// Use transaction to create received amount and update booking totals
 		return await db.transaction(async (tx) => {
 			// Create received amount

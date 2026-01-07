@@ -333,6 +333,9 @@ export const createBookingInputSchema = z.object({
 	participants: z.array(bookingParticipantInputSchema).min(1),
 	events: z.array(bookingEventInputSchema).optional(),
 
+	// Contract attachment (stored in polymorphic attachments table)
+	contractAttachment: uploadedAttachmentSchema.nullable().optional(),
+
 	// Shoots with crew assignments
 	shoots: z.array(shootInputSchema).optional(),
 

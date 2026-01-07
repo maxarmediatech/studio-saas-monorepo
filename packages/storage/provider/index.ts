@@ -1,1 +1,1 @@
-export * from "./s3";
+export { deleteObject, getSignedUploadUrl, getSignedUrl } from "./s3";

@@ -112,6 +112,7 @@ export const config = {
 		// define the name of the buckets for the different types of files
 		bucketNames: {
 			avatars: process.env.NEXT_PUBLIC_AVATARS_BUCKET_NAME ?? "avatars",
+			uploads: process.env.UPLOADS_BUCKET_NAME ?? "uploads",
 		},
 	},
 	contactForm: {

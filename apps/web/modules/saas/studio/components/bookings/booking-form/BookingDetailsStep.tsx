@@ -416,6 +416,7 @@ export function BookingDetailsStep() {
 				body: JSON.stringify({
 					fileName: file.name,
 					fileType: file.type,
+					fileSize: file.size,
 					context: "contracts",
 				}),
 			});
