@@ -1,5 +1,4 @@
 import { getActiveOrganization } from "@saas/auth/lib/server";
-import { PageContent } from "@saas/studio";
 import { TasksTable } from "@saas/studio/components/tasks";
 import { notFound } from "next/navigation";
 
@@ -27,11 +26,9 @@ export default async function TasksPage({ params, searchParams }: Props) {
 	}
 
 	return (
-		<PageContent title="Tasks">
-			<TasksTable
-				organizationSlug={organizationSlug}
-				searchParams={searchParams}
-			/>
-		</PageContent>
+		<TasksTable
+			organizationSlug={organizationSlug}
+			searchParams={searchParams}
+		/>
 	);
 }

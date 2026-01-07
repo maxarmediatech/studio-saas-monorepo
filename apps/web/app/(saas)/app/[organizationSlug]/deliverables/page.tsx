@@ -1,5 +1,4 @@
 import { getActiveOrganization } from "@saas/auth/lib/server";
-import { PageContent } from "@saas/studio";
 import { DeliverablesTable } from "@saas/studio/components/deliverables";
 import { notFound } from "next/navigation";
 
@@ -30,11 +29,9 @@ export default async function DeliverablesPage({
 	}
 
 	return (
-		<PageContent title="Deliverables">
-			<DeliverablesTable
-				organizationSlug={organizationSlug}
-				searchParams={searchParams}
-			/>
-		</PageContent>
+		<DeliverablesTable
+			organizationSlug={organizationSlug}
+			searchParams={searchParams}
+		/>
 	);
 }

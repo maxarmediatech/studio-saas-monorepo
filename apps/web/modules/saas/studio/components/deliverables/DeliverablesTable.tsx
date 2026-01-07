@@ -27,7 +27,6 @@ export async function DeliverablesTable({
 	});
 
 	// Build query input from parsed params
-	// Note: API expects single values for deliverableType, status, priority
 	const input = {
 		page: params.page,
 		limit: params.limit,

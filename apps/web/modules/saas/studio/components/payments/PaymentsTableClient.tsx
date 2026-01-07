@@ -44,6 +44,7 @@ import {
 	PencilIcon,
 	TrashIcon,
 } from "lucide-react";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { OpenPaymentCreateSheet } from "./OpenPaymentSheet";
@@ -92,7 +93,7 @@ const formatDate = (dateStr: string) => {
 };
 
 export function PaymentsTableClient({
-	organizationSlug: _organizationSlug,
+	organizationSlug,
 }: PaymentsTableClientProps) {
 	const queryClient = useQueryClient();
 
@@ -194,7 +195,10 @@ export function PaymentsTableClient({
 					<DataTableColumnHeader column={column} title="Booking" />
 				),
 				cell: ({ row }) => (
-					<div className="flex items-center gap-3">
+					<Link
+						href={`/app/${organizationSlug}/bookings/${row.original.bookingId}`}
+						className="flex items-center gap-3 hover:underline"
+					>
 						<div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
 							<BanknoteIcon className="h-4 w-4 text-muted-foreground" />
 						</div>
@@ -206,7 +210,7 @@ export function PaymentsTableClient({
 								{row.original.bookingReferenceNumber}
 							</p>
 						</div>
-					</div>
+					</Link>
 				),
 				meta: {
 					label: "Booking",
@@ -371,7 +375,6 @@ export function PaymentsTableClient({
 						}
 						className="flex-1"
 					/>
-					<OpenPaymentCreateSheet />
 				</div>
 
 				{/* Table with sort context */}

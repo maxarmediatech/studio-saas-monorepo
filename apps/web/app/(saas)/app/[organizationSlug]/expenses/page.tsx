@@ -1,5 +1,4 @@
 import { getActiveOrganization } from "@saas/auth/lib/server";
-import { PageContent } from "@saas/studio";
 import { ExpensesTable } from "@saas/studio/components/expenses";
 import { notFound } from "next/navigation";
 
@@ -27,11 +26,9 @@ export default async function ExpensesPage({ params, searchParams }: Props) {
 	}
 
 	return (
-		<PageContent title="Expenses">
-			<ExpensesTable
-				organizationSlug={organizationSlug}
-				searchParams={searchParams}
-			/>
-		</PageContent>
+		<ExpensesTable
+			organizationSlug={organizationSlug}
+			searchParams={searchParams}
+		/>
 	);
 }

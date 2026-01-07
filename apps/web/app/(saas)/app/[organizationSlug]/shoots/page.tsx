@@ -1,5 +1,4 @@
 import { getActiveOrganization } from "@saas/auth/lib/server";
-import { PageContent } from "@saas/studio";
 import { ShootsTable } from "@saas/studio/components/shoots";
 import { notFound } from "next/navigation";
 
@@ -27,11 +26,9 @@ export default async function ShootsPage({ params, searchParams }: Props) {
 	}
 
 	return (
-		<PageContent title="Shoots">
-			<ShootsTable
-				organizationSlug={organizationSlug}
-				searchParams={searchParams}
-			/>
-		</PageContent>
+		<ShootsTable
+			organizationSlug={organizationSlug}
+			searchParams={searchParams}
+		/>
 	);
 }

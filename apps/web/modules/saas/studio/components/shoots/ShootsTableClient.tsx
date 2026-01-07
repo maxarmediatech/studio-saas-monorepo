@@ -499,7 +499,6 @@ export function ShootsTableClient({
 						}
 						className="flex-1"
 					/>
-					<OpenShootCreateSheet />
 				</div>
 
 				{/* Table with sort context */}

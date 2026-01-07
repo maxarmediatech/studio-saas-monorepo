@@ -77,9 +77,9 @@ const deliverableFilterParsers = {
  *   page: pagination.page,
  *   limit: pagination.limit,
  *   search: filters.search ?? undefined,
- *   deliverableType: filters.deliverableType?.[0] ?? undefined,
- *   status: filters.status?.[0] ?? undefined,
- *   priority: filters.priority?.[0] ?? undefined,
+ *   deliverableType: filters.deliverableType ?? undefined,
+ *   status: filters.status ?? undefined,
+ *   priority: filters.priority ?? undefined,
  *   sortBy: sorting.sortBy ?? "dueDate",
  *   sortDirection: sorting.sortDirection,
  * }));

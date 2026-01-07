@@ -1,5 +1,4 @@
 import { getActiveOrganization } from "@saas/auth/lib/server";
-import { PageContent } from "@saas/studio";
 import { PaymentsTable } from "@saas/studio/components/payments";
 import { notFound } from "next/navigation";
 
@@ -27,11 +26,9 @@ export default async function PaymentsPage({ params, searchParams }: Props) {
 	}
 
 	return (
-		<PageContent title="Payments">
-			<PaymentsTable
-				organizationSlug={organizationSlug}
-				searchParams={searchParams}
-			/>
-		</PageContent>
+		<PaymentsTable
+			organizationSlug={organizationSlug}
+			searchParams={searchParams}
+		/>
 	);
 }

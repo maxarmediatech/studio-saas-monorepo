@@ -429,7 +429,6 @@ export function ExpensesTableClient({
 						}
 						className="flex-1"
 					/>
-					<OpenExpenseCreateSheet />
 				</div>
 
 				{/* Table with sort context */}

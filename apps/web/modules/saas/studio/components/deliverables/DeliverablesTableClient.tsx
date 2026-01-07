@@ -170,7 +170,6 @@ export function DeliverablesTableClient({
 	const { openEdit } = useDeliverableParams();
 
 	// Build query input from hook state
-	// Note: API expects single values for deliverableType, status, priority
 	const queryInput = {
 		page: pagination.page,
 		limit: pagination.limit,
@@ -519,7 +518,6 @@ export function DeliverablesTableClient({
 						}
 						className="flex-1"
 					/>
-					<OpenDeliverableCreateSheet />
 				</div>
 
 				{/* Table with sort context */}
