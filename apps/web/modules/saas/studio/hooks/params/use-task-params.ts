@@ -1,28 +1,34 @@
-import {
-	type Options,
-	parseAsBoolean,
-	parseAsString,
-	useQueryStates,
-} from "nuqs";
+"use client";
 
-export function useTaskParams(options?: Options) {
-	const [params, setParams] = useQueryStates(
-		{
-			taskId: parseAsString,
-			createTask: parseAsBoolean,
-		},
-		{
-			history: "push",
-			shallow: true,
-			...options,
-		},
-	);
+import { createSheetParams } from "./create-sheet-params";
+
+const useSheetParams = createSheetParams({
+	namespace: "task",
+	idParam: "taskId",
+	createParam: "createTask",
+});
+
+/**
+ * URL-based task sheet params using History API.
+ * No Next.js router re-renders, browser back button closes sheets.
+ */
+export function useTaskParams() {
+	const { entityId, createMode, setParams, ...methods } = useSheetParams();
 
 	return {
-		...params,
-		setParams,
-		openCreate: () => setParams({ createTask: true, taskId: null }),
-		openEdit: (id: string) => setParams({ taskId: id, createTask: null }),
-		close: () => setParams({ taskId: null, createTask: null }),
+		// Aliased params for backward compatibility
+		taskId: entityId,
+		createTask: createMode,
+		// Aliased setParams to accept entity-specific keys
+		setParams: (params: {
+			taskId?: string | null;
+			createTask?: boolean | null;
+		}) =>
+			setParams({
+				entityId: params.taskId,
+				createMode: params.createTask,
+			}),
+		// Methods pass through unchanged
+		...methods,
 	};
 }

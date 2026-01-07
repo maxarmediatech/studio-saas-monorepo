@@ -144,6 +144,11 @@ function subscribe(callback: () => void) {
 
 	return () => {
 		subscribers.delete(callback);
+		// Reset state when all subscribers unmount to prevent stale data on remount
+		if (subscribers.size === 0) {
+			isInitialized = false;
+			cachedSnapshot = emptyParams;
+		}
 		if (typeof window !== "undefined") {
 			removePopstateListener();
 		}

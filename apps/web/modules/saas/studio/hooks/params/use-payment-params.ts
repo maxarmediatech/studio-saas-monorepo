@@ -1,29 +1,34 @@
-import {
-	type Options,
-	parseAsBoolean,
-	parseAsString,
-	useQueryStates,
-} from "nuqs";
+"use client";
 
-export function usePaymentParams(options?: Options) {
-	const [params, setParams] = useQueryStates(
-		{
-			paymentId: parseAsString,
-			createPayment: parseAsBoolean,
-		},
-		{
-			history: "push",
-			shallow: true,
-			...options,
-		},
-	);
+import { createSheetParams } from "./create-sheet-params";
+
+const useSheetParams = createSheetParams({
+	namespace: "payment",
+	idParam: "paymentId",
+	createParam: "createPayment",
+});
+
+/**
+ * URL-based payment sheet params using History API.
+ * No Next.js router re-renders, browser back button closes sheets.
+ */
+export function usePaymentParams() {
+	const { entityId, createMode, setParams, ...methods } = useSheetParams();
 
 	return {
-		...params,
-		setParams,
-		openCreate: () => setParams({ createPayment: true, paymentId: null }),
-		openEdit: (id: string) =>
-			setParams({ paymentId: id, createPayment: null }),
-		close: () => setParams({ paymentId: null, createPayment: null }),
+		// Aliased params for backward compatibility
+		paymentId: entityId,
+		createPayment: createMode,
+		// Aliased setParams to accept entity-specific keys
+		setParams: (params: {
+			paymentId?: string | null;
+			createPayment?: boolean | null;
+		}) =>
+			setParams({
+				entityId: params.paymentId,
+				createMode: params.createPayment,
+			}),
+		// Methods pass through unchanged
+		...methods,
 	};
 }
