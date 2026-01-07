@@ -7,6 +7,7 @@ import {
 	SheetTitle,
 } from "@repo/ui/components/sheet";
 import { cn } from "@repo/ui/lib/utils";
+import { useBookingParams } from "@saas/studio/hooks/params";
 import { usePaymentParams } from "@saas/studio/hooks/params/use-payment-params";
 import { studioPaymentsMutations, studioQueryKeys } from "@saas/studio/lib/api";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -16,6 +17,7 @@ import { PaymentForm, type PaymentFormValues } from "../PaymentForm";
 
 export function PaymentCreateSheet() {
 	const { createPayment, close } = usePaymentParams();
+	const { bookingId } = useBookingParams();
 	const isOpen = Boolean(createPayment);
 	const queryClient = useQueryClient();
 	const [isScrolled, setIsScrolled] = useState(false);
@@ -66,6 +68,7 @@ export function PaymentCreateSheet() {
 						mode="create"
 						isPending={createMutation.isPending}
 						onScrollChange={setIsScrolled}
+						defaultBookingId={bookingId ?? undefined}
 					/>
 				</div>
 			</SheetContent>

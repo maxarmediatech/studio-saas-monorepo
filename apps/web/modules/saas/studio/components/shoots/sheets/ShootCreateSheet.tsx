@@ -7,6 +7,7 @@ import {
 	SheetTitle,
 } from "@repo/ui/components/sheet";
 import { cn } from "@repo/ui/lib/utils";
+import { useBookingParams } from "@saas/studio/hooks/params";
 import { useShootParams } from "@saas/studio/hooks/params/use-shoot-params";
 import { shootsMutations, studioQueryKeys } from "@saas/studio/lib/api";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -16,6 +17,7 @@ import { ShootForm, type ShootFormValues } from "../ShootForm";
 
 export function ShootCreateSheet() {
 	const { createShoot, close } = useShootParams();
+	const { bookingId } = useBookingParams();
 	const isOpen = Boolean(createShoot);
 	const queryClient = useQueryClient();
 	const [isScrolled, setIsScrolled] = useState(false);
@@ -69,6 +71,7 @@ export function ShootCreateSheet() {
 						mode="create"
 						isPending={createMutation.isPending}
 						onScrollChange={setIsScrolled}
+						defaultBookingId={bookingId ?? undefined}
 					/>
 				</div>
 			</SheetContent>

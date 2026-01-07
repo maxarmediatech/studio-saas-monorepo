@@ -59,6 +59,7 @@ export type PaymentFormValues = z.infer<typeof paymentFormSchema>;
 
 interface PaymentFormProps {
 	defaultValues?: ReceivedAmountDetail;
+	defaultBookingId?: string;
 	onSubmit: (data: PaymentFormValues) => Promise<void>;
 	mode: "create" | "edit";
 	isPending?: boolean;
@@ -67,6 +68,7 @@ interface PaymentFormProps {
 
 export function PaymentForm({
 	defaultValues,
+	defaultBookingId,
 	onSubmit,
 	mode,
 	isPending = false,
@@ -75,7 +77,7 @@ export function PaymentForm({
 	const form = useForm<PaymentFormValues>({
 		resolver: zodResolver(paymentFormSchema),
 		defaultValues: {
-			bookingId: "",
+			bookingId: defaultBookingId ?? "",
 			amount: "",
 			paymentMethod: "upi",
 			receivedDate: new Date().toISOString().split("T")[0],

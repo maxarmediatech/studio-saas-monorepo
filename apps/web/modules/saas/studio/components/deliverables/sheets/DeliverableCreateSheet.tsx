@@ -7,6 +7,7 @@ import {
 	SheetTitle,
 } from "@repo/ui/components/sheet";
 import { cn } from "@repo/ui/lib/utils";
+import { useBookingParams } from "@saas/studio/hooks/params";
 import { useDeliverableParams } from "@saas/studio/hooks/params/use-deliverable-params";
 import { deliverablesMutations, studioQueryKeys } from "@saas/studio/lib/api";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -19,6 +20,7 @@ import {
 
 export function DeliverableCreateSheet() {
 	const { createDeliverable, close } = useDeliverableParams();
+	const { bookingId } = useBookingParams();
 	const isOpen = Boolean(createDeliverable);
 	const queryClient = useQueryClient();
 	const [isScrolled, setIsScrolled] = useState(false);
@@ -70,6 +72,7 @@ export function DeliverableCreateSheet() {
 						mode="create"
 						isPending={createMutation.isPending}
 						onScrollChange={setIsScrolled}
+						defaultBookingId={bookingId ?? undefined}
 					/>
 				</div>
 			</SheetContent>

@@ -58,6 +58,7 @@ export type DeliverableFormValues = z.infer<typeof deliverableFormSchema>;
 
 interface DeliverableFormProps {
 	defaultValues?: DeliverableDetail;
+	defaultBookingId?: string;
 	onSubmit: (data: DeliverableFormValues) => Promise<void>;
 	mode: "create" | "edit";
 	isPending?: boolean;
@@ -66,6 +67,7 @@ interface DeliverableFormProps {
 
 export function DeliverableForm({
 	defaultValues,
+	defaultBookingId,
 	onSubmit,
 	mode,
 	isPending = false,
@@ -74,7 +76,7 @@ export function DeliverableForm({
 	const form = useForm<DeliverableFormValues>({
 		resolver: zodResolver(deliverableFormSchema),
 		defaultValues: {
-			bookingId: "",
+			bookingId: defaultBookingId ?? "",
 			name: "",
 			deliverableType: "",
 			description: "",
