@@ -1,4 +1,7 @@
 import { getActiveOrganization } from "@saas/auth/lib/server";
+import { bookingsApi } from "@saas/studio/lib/api";
+import { getServerQueryClient } from "@shared/lib/server";
+import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { notFound } from "next/navigation";
 import { BookingDetailPageClient } from "./BookingDetailPageClient";
 
@@ -24,10 +27,16 @@ export default async function BookingDetailPage({ params }: Props) {
 		return notFound();
 	}
 
+	// Prefetch booking data on the server
+	const queryClient = getServerQueryClient();
+	await queryClient.prefetchQuery(bookingsApi.getOptions(bookingId));
+
 	return (
-		<BookingDetailPageClient
-			organizationSlug={organizationSlug}
-			bookingId={bookingId}
-		/>
+		<HydrationBoundary state={dehydrate(queryClient)}>
+			<BookingDetailPageClient
+				organizationSlug={organizationSlug}
+				bookingId={bookingId}
+			/>
+		</HydrationBoundary>
 	);
 }
