@@ -68,10 +68,10 @@ export const bookingSearchParamsCache = createSearchParamsCache({
 
 	// Filters
 	search: parseAsString,
-	statuses: parseAsArrayOf(parseAsStringLiteral(BOOKING_PHASES)),
-	bookingType: parseAsArrayOf(parseAsString, ","),
-	packageType: parseAsArrayOf(parseAsString, ","),
-	createdAt: parseAsArrayOf(parseAsString, ","),
+	statuses: parseAsArrayOf(parseAsStringLiteral(BOOKING_PHASES)).withDefault([]),
+	bookingType: parseAsArrayOf(parseAsString, ",").withDefault([]),
+	packageType: parseAsArrayOf(parseAsString, ",").withDefault([]),
+	createdAt: parseAsArrayOf(parseAsString, ",").withDefault([]),
 
 	// Sorting
 	sort: sortStateParser,
@@ -99,8 +99,8 @@ export const crewSearchParamsCache = createSearchParamsCache({
 
 	// Filters
 	search: parseAsString,
-	status: parseAsArrayOf(parseAsString, ","),
-	role: parseAsArrayOf(parseAsString, ","),
+	status: parseAsArrayOf(parseAsString, ",").withDefault([]),
+	role: parseAsArrayOf(parseAsString, ",").withDefault([]),
 
 	// Sorting
 	sort: sortStateParser,
@@ -126,8 +126,8 @@ export const taskSearchParamsCache = createSearchParamsCache({
 
 	// Filters
 	search: parseAsString,
-	status: parseAsArrayOf(parseAsString, ","),
-	priority: parseAsArrayOf(parseAsString, ","),
+	status: parseAsArrayOf(parseAsString, ",").withDefault([]),
+	priority: parseAsArrayOf(parseAsString, ",").withDefault([]),
 
 	// Sorting
 	sort: sortStateParser,
@@ -153,7 +153,7 @@ export const paymentSearchParamsCache = createSearchParamsCache({
 
 	// Filters
 	search: parseAsString,
-	paymentMethod: parseAsArrayOf(parseAsString, ","),
+	paymentMethod: parseAsArrayOf(parseAsString, ",").withDefault([]),
 
 	// Sorting
 	sort: sortStateParser,
@@ -181,9 +181,9 @@ export const expenseSearchParamsCache = createSearchParamsCache({
 
 	// Filters
 	search: parseAsString,
-	category: parseAsArrayOf(parseAsString, ","),
-	billTo: parseAsArrayOf(parseAsString, ","),
-	paymentMethod: parseAsArrayOf(parseAsString, ","),
+	category: parseAsArrayOf(parseAsString, ",").withDefault([]),
+	billTo: parseAsArrayOf(parseAsString, ",").withDefault([]),
+	paymentMethod: parseAsArrayOf(parseAsString, ",").withDefault([]),
 
 	// Sorting
 	sort: sortStateParser,
@@ -211,9 +211,9 @@ export const deliverableSearchParamsCache = createSearchParamsCache({
 
 	// Filters
 	search: parseAsString,
-	deliverableType: parseAsArrayOf(parseAsString, ","),
-	status: parseAsArrayOf(parseAsString, ","),
-	priority: parseAsArrayOf(parseAsString, ","),
+	deliverableType: parseAsArrayOf(parseAsString, ",").withDefault([]),
+	status: parseAsArrayOf(parseAsString, ",").withDefault([]),
+	priority: parseAsArrayOf(parseAsString, ",").withDefault([]),
 
 	// Sorting
 	sort: sortStateParser,
@@ -241,9 +241,9 @@ export const shootSearchParamsCache = createSearchParamsCache({
 
 	// Filters
 	search: parseAsString,
-	shootType: parseAsArrayOf(parseAsString, ","),
-	status: parseAsArrayOf(parseAsString, ","),
-	shootDate: parseAsArrayOf(parseAsString, ","),
+	shootType: parseAsArrayOf(parseAsString, ",").withDefault([]),
+	status: parseAsArrayOf(parseAsString, ",").withDefault([]),
+	shootDate: parseAsArrayOf(parseAsString, ",").withDefault([]),
 
 	// Sorting
 	sort: sortStateParser,

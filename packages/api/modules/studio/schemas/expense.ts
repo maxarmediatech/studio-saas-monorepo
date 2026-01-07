@@ -104,11 +104,11 @@ const expenseSortFields = [
 
 export const listExpensesInputSchema = z
 	.object({
-		category: z.union([z.string(), z.array(z.string())]).optional(),
-		billTo: z.union([billToSchema, z.array(billToSchema)]).optional(),
+		category: z.union([z.string(), z.array(z.string())]).nullish(),
+		billTo: z.union([billToSchema, z.array(billToSchema)]).nullish(),
 		paymentMethod: z
 			.union([paymentMethodSchema, z.array(paymentMethodSchema)])
-			.optional(),
+			.nullish(),
 		dateFrom: dateSchema.optional(),
 		dateTo: dateSchema.optional(),
 		bookingId: idSchema.optional(),

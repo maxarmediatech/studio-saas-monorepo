@@ -133,8 +133,8 @@ const bookingSortFields = [
 export const listBookingsInputSchema = z
 	.object({
 		statuses: z.array(bookingPhaseSchema).optional(),
-		bookingType: z.union([z.string(), z.array(z.string())]).optional(),
-		packageType: z.union([z.string(), z.array(z.string())]).optional(),
+		bookingType: z.union([z.string(), z.array(z.string())]).nullish(),
+		packageType: z.union([z.string(), z.array(z.string())]).nullish(),
 		createdAt: z.string().optional(), // comma-separated date range "from,to"
 	})
 	.merge(paginationSchema)

@@ -122,7 +122,7 @@ export const listReceivedInputSchema = z
 		bookingId: idSchema.optional(),
 		paymentMethod: z
 			.union([paymentMethodSchema, z.array(paymentMethodSchema)])
-			.optional(),
+			.nullish(),
 		dateFrom: dateSchema.optional(),
 		dateTo: dateSchema.optional(),
 	})
