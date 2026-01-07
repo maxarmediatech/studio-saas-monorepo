@@ -244,7 +244,9 @@ const scheduleSortFields = [
 export const listSchedulesInputSchema = z
 	.object({
 		bookingId: idSchema.optional(),
-		status: paymentScheduleStatusSchema.optional(),
+		status: z
+			.union([paymentScheduleStatusSchema, z.array(paymentScheduleStatusSchema)])
+			.nullish(),
 		dueDateFrom: dateSchema.optional(),
 		dueDateTo: dateSchema.optional(),
 	})

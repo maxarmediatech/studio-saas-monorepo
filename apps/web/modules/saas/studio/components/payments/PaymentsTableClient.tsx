@@ -158,17 +158,13 @@ export function PaymentsTableClient({
 		},
 	});
 
-	const handleOpenEdit = (payment: ReceivedAmountListItem) => {
-		openEdit(payment.id);
-	};
-
-	// Define row actions
+	// Define row actions (inline handlers to avoid stale closure issues)
 	const rowActions: RowAction<ReceivedAmountListItem>[] = useMemo(
 		() => [
 			{
 				label: "Edit",
 				icon: <PencilIcon className="h-4 w-4" />,
-				onClick: handleOpenEdit,
+				onClick: (row) => openEdit(row.id),
 			},
 			{
 				label: "Delete",
@@ -181,7 +177,7 @@ export function PaymentsTableClient({
 				},
 			},
 		],
-		[],
+		[openEdit],
 	);
 
 	// Define columns with sortable headers and meta for filters

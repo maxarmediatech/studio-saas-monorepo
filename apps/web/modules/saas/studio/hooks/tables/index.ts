@@ -20,6 +20,11 @@ export {
 	usePaymentsTable,
 } from "./use-payments-table";
 export {
+	SCHEDULE_STATUSES,
+	type ScheduleFilters,
+	useSchedulesTable,
+} from "./use-schedules-table";
+export {
 	SHOOT_TYPE_OPTIONS,
 	SHOOT_TYPES,
 	type ShootFilters,

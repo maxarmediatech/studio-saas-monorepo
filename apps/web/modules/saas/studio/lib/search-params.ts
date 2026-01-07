@@ -171,6 +171,47 @@ export type PaymentSearchParams = ReturnType<
 >;
 
 /**
+ * Payment schedule status values for filter validation
+ */
+const PAYMENT_SCHEDULE_STATUSES = [
+	"pending",
+	"partial",
+	"completed",
+	"overdue",
+	"cancelled",
+] as const;
+
+/**
+ * Server-side search params cache for scheduled payments table.
+ * Use in server components to parse URL params before prefetching.
+ */
+export const scheduleSearchParamsCache = createSearchParamsCache({
+	// Pagination
+	page: parseAsInteger.withDefault(1),
+	limit: parseAsInteger.withDefault(10),
+
+	// Filters
+	search: parseAsString,
+	status: parseAsArrayOf(
+		parseAsStringLiteral(PAYMENT_SCHEDULE_STATUSES),
+	).withDefault([]),
+
+	// Sorting - default to dueDate ascending (upcoming first)
+	sort: sortStateParser,
+	sortBy: parseAsString.withDefault("dueDate"),
+	sortDirection: parseAsStringLiteral(["asc", "desc"] as const).withDefault(
+		"asc",
+	),
+});
+
+/**
+ * Type for parsed schedule search params
+ */
+export type ScheduleSearchParams = ReturnType<
+	typeof scheduleSearchParamsCache.parse
+>;
+
+/**
  * Server-side search params cache for expenses table.
  * Use in server components to parse URL params before prefetching.
  */

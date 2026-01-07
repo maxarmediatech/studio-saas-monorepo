@@ -52,15 +52,6 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 								],
 							},
 						},
-						{
-							id: "my-tasks",
-							label: "My Tasks",
-							path: url("/tasks"),
-							icon: "ListChecks",
-							permission: {
-								any: [{ resource: "task", action: "list" }],
-							},
-						},
 					],
 				},
 				// Future: Pinned Bookings section
@@ -116,9 +107,9 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							},
 						},
 						{
-							id: "all-tasks",
+							id: "tasks",
 							label: "Tasks",
-							path: url("/tasks/all"),
+							path: url("/tasks"),
 							icon: "ListTodo",
 							permission: {
 								any: [{ resource: "task", action: "list" }],
@@ -135,6 +126,15 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							label: "Payments",
 							path: url("/payments"),
 							icon: "Wallet2",
+							permission: {
+								any: [{ resource: "payment", action: "list" }],
+							},
+						},
+						{
+							id: "scheduled-payments",
+							label: "Scheduled",
+							path: url("/scheduled-payments"),
+							icon: "CreditCard",
 							permission: {
 								any: [{ resource: "payment", action: "list" }],
 							},
