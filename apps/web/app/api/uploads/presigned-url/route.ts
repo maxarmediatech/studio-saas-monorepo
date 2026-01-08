@@ -1,4 +1,4 @@
-import { randomUUID } from "crypto";
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { auth } from "@repo/auth";
 import { config } from "@repo/config";

@@ -39,7 +39,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
 	CalendarIcon,
-	CreditCardIcon,
 	Loader2Icon,
 	PencilIcon,
 	ReceiptIcon,
