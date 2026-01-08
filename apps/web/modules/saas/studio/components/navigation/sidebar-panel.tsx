@@ -2,13 +2,14 @@
 
 import {
 	Collapsible,
-	CollapsibleContent,
 	CollapsibleTrigger,
 } from "@repo/ui/components/collapsible";
 import { cn } from "@repo/ui/lib/utils";
+import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown, ChevronRight, ExternalLink, Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import type {
 	NavItemConfig,
 	NavModuleConfig,
@@ -26,6 +27,7 @@ function isItemActive(pathname: string, itemPath: string): boolean {
 
 export function SidebarPanel({ module, utilities }: SidebarPanelProps) {
 	const pathname = usePathname();
+	const [setupOpen, setSetupOpen] = useState(false);
 
 	// Split sections: primary nav vs setup/configuration
 	const primarySections = module.sections.filter(
@@ -77,36 +79,91 @@ export function SidebarPanel({ module, utilities }: SidebarPanelProps) {
 
 				{/* Setup Section - collapsible with motion */}
 				{setupSection && setupSection.items.length > 0 && (
-					<Collapsible defaultOpen={false} className="group/setup">
+					<Collapsible
+						open={setupOpen}
+						onOpenChange={setSetupOpen}
+						className="group/setup"
+					>
 						<div className="rounded-lg bg-neutral-200/40 p-2">
 							{/* Collapsed trigger - shows "Setup" label */}
-							<CollapsibleTrigger className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-neutral-600 transition-colors hover:bg-neutral-200/50 group-data-[state=open]/setup:hidden">
+							<CollapsibleTrigger
+								className={cn(
+									"flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-neutral-600 transition-colors hover:bg-neutral-200/50",
+									setupOpen && "hidden",
+								)}
+							>
 								<Settings className="size-4 text-neutral-500" />
-								<span className="font-medium">
-									{setupSection.label}
-								</span>
+								<span className="font-medium">Configuration</span>
 								<ChevronRight className="ml-auto size-4 text-neutral-400" />
 							</CollapsibleTrigger>
 
-							{/* Content - nav items with grid animation */}
-							<CollapsibleContent className="grid transition-all duration-200 ease-out data-[state=closed]:grid-rows-[0fr] data-[state=open]:grid-rows-[1fr]">
-								<nav className="relative flex flex-col gap-0.5 overflow-hidden pr-6">
-									{/* Minimal corner chevron to collapse */}
-									<CollapsibleTrigger className="absolute right-0 top-0 p-1 text-neutral-400 transition-colors hover:text-neutral-600">
-										<ChevronDown className="size-4" />
-									</CollapsibleTrigger>
-									{setupSection.items.map((item) => (
-										<NavItem
-											key={item.id}
-											item={item}
-											isActive={isItemActive(
-												pathname,
-												item.path,
-											)}
-										/>
-									))}
-								</nav>
-							</CollapsibleContent>
+							{/* Content - nav items with framer-motion */}
+							<AnimatePresence initial={false}>
+								{setupOpen && (
+									<motion.nav
+										initial={{ height: 0, opacity: 0 }}
+										animate={{
+											height: "auto",
+											opacity: 1,
+											transition: {
+												height: {
+													type: "spring",
+													stiffness: 500,
+													damping: 40,
+													mass: 1,
+												},
+												opacity: { duration: 0.2 },
+											},
+										}}
+										exit={{
+											height: 0,
+											opacity: 0,
+											transition: {
+												height: {
+													type: "spring",
+													stiffness: 500,
+													damping: 40,
+													mass: 1,
+												},
+												opacity: { duration: 0.15 },
+											},
+										}}
+										className="relative flex flex-col gap-0.5 overflow-hidden pr-6"
+									>
+										{/* Minimal corner chevron to collapse */}
+										<CollapsibleTrigger className="absolute right-0 top-0 p-1 text-neutral-400 transition-colors hover:text-neutral-600">
+											<ChevronDown className="size-4" />
+										</CollapsibleTrigger>
+										{setupSection.items.map((item, i) => (
+											<motion.div
+												key={item.id}
+												initial={{ opacity: 0, x: -8 }}
+												animate={{
+													opacity: 1,
+													x: 0,
+													transition: {
+														delay: i * 0.03,
+														duration: 0.2,
+														ease: [0.25, 0.1, 0.25, 1],
+													},
+												}}
+												exit={{
+													opacity: 0,
+													transition: { duration: 0.1 },
+												}}
+											>
+												<NavItem
+													item={item}
+													isActive={isItemActive(
+														pathname,
+														item.path,
+													)}
+												/>
+											</motion.div>
+										))}
+									</motion.nav>
+								)}
+							</AnimatePresence>
 						</div>
 					</Collapsible>
 				)}
