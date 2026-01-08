@@ -1,6 +1,5 @@
 "use client";
 
-import { config } from "@repo/config";
 import {
 	Avatar,
 	AvatarFallback,
@@ -39,7 +38,7 @@ export const OrganizationLogo = ({
 			logoUrl
 				? logoUrl.startsWith("http")
 					? logoUrl
-					: `/image-proxy/${config.storage.bucketNames.uploads}/${logoUrl}`
+					: `/api/files/proxy/${logoUrl}`
 				: undefined,
 		[logoUrl],
 	);

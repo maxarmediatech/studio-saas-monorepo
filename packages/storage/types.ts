@@ -28,3 +28,16 @@ export type DeleteObjectHandler = (
 		bucket: string;
 	},
 ) => Promise<void>;
+
+export type GetObjectResult = {
+	body: ReadableStream<Uint8Array>;
+	contentType: string | undefined;
+	contentLength: number | undefined;
+};
+
+export type GetObjectHandler = (
+	path: string,
+	options: {
+		bucket: string;
+	},
+) => Promise<GetObjectResult | null>;

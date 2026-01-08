@@ -1,4 +1,3 @@
-import { config } from "@repo/config";
 import {
 	Avatar,
 	AvatarFallback,
@@ -31,7 +30,7 @@ export const UserAvatar = ({
 			avatarUrl
 				? avatarUrl.startsWith("http")
 					? avatarUrl
-					: `/image-proxy/${config.storage.bucketNames.uploads}/${avatarUrl}`
+					: `/api/files/proxy/${avatarUrl}`
 				: undefined,
 		[avatarUrl],
 	);

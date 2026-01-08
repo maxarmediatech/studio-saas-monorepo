@@ -8,6 +8,7 @@ import { getSignedUrl as getS3SignedUrl } from "@aws-sdk/s3-request-presigner";
 import { logger } from "@repo/logs";
 import type {
 	DeleteObjectHandler,
+	GetObjectHandler,
 	GetSignedUploadUrlHandler,
 	GetSignedUrlHander,
 } from "../../types";
@@ -102,5 +103,40 @@ export const deleteObject: DeleteObjectHandler = async (path, { bucket }) => {
 	} catch (e) {
 		logger.error(e);
 		throw new Error("Could not delete object");
+	}
+};
+
+export const getObject: GetObjectHandler = async (path, { bucket }) => {
+	const s3Client = getS3Client();
+	try {
+		const response = await s3Client.send(
+			new GetObjectCommand({
+				Bucket: bucket,
+				Key: path,
+			}),
+		);
+
+		if (!response.Body) {
+			return null;
+		}
+
+		// Convert SDK stream to web ReadableStream
+		const webStream = response.Body.transformToWebStream();
+
+		return {
+			body: webStream,
+			contentType: response.ContentType,
+			contentLength: response.ContentLength,
+		};
+	} catch (e) {
+		// Check if it's a "not found" error
+		if (
+			e instanceof Error &&
+			(e.name === "NoSuchKey" || e.name === "NotFound")
+		) {
+			return null;
+		}
+		logger.error(e);
+		throw new Error("Could not get object");
 	}
 };
