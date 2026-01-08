@@ -325,3 +325,30 @@ export const clientSearchParamsCache = createSearchParamsCache({
 export type ClientSearchParams = ReturnType<
 	typeof clientSearchParamsCache.parse
 >;
+
+/**
+ * Server-side search params cache for configurations table.
+ * Use in server components to parse URL params before prefetching.
+ */
+export const configurationSearchParamsCache = createSearchParamsCache({
+	// Pagination
+	page: parseAsInteger.withDefault(1),
+	limit: parseAsInteger.withDefault(50),
+
+	// Filters
+	search: parseAsString,
+
+	// Sorting - configurations always sort by sortOrder asc by default
+	sort: sortStateParser,
+	sortBy: parseAsString.withDefault("sortOrder"),
+	sortDirection: parseAsStringLiteral(["asc", "desc"] as const).withDefault(
+		"asc",
+	),
+});
+
+/**
+ * Type for parsed configuration search params
+ */
+export type ConfigurationSearchParams = ReturnType<
+	typeof configurationSearchParamsCache.parse
+>;

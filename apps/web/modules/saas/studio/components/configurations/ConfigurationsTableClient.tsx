@@ -12,14 +12,19 @@ import {
 	AlertDialogTitle,
 } from "@repo/ui/components/alert-dialog";
 import { Badge } from "@repo/ui/components/badge";
-import { Input } from "@repo/ui/components/input";
 import {
 	DataTable,
 	DataTableColumnHeader,
 	DataTableRowActions,
+	DataTableViewOptions,
 	type RowAction,
+	SortProvider,
 } from "@saas/shared/components/data-table";
 import { useConfigurationParams } from "@saas/studio/hooks/params/use-configuration-params";
+import {
+	type ConfigType,
+	useConfigurationsTable,
+} from "@saas/studio/hooks/tables";
 import {
 	configurationsApi,
 	configurationsMutations,
@@ -30,58 +35,39 @@ import {
 	CheckIcon,
 	Loader2Icon,
 	PencilIcon,
-	SearchIcon,
 	SettingsIcon,
 	TrashIcon,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { PageContent } from "../PageContent";
 import { OpenConfigurationCreateSheet } from "./OpenConfigurationSheet";
 
-type ConfigType =
-	| "booking_type"
-	| "package_type"
-	| "relation_type"
-	| "crew_role"
-	| "event_type";
-
-// Map config type keys to their plural route slugs
-const CONFIG_TYPE_ROUTES: Record<ConfigType, string> = {
-	booking_type: "booking-types",
-	package_type: "package-types",
-	relation_type: "relation-types",
-	crew_role: "crew-roles",
-	event_type: "event-types",
-};
-
-interface ConfigurationsPageClientProps {
-	organizationSlug: string;
+interface ConfigurationsTableClientProps {
 	configType: ConfigType;
+	/** Singular label (e.g., "Booking Type") */
 	configTypeLabel: string;
-	pageTitle: string;
-	pageDescription: string;
-	initialFilters: {
-		page: number;
-		search?: string;
-	};
+	/** Plural label (e.g., "Booking Types") */
+	configTypeLabelPlural: string;
 }
 
-export function ConfigurationsPageClient({
-	organizationSlug,
+export function ConfigurationsTableClient({
 	configType,
 	configTypeLabel,
-	pageTitle,
-	pageDescription: _pageDescription,
-	initialFilters,
-}: ConfigurationsPageClientProps) {
-	const router = useRouter();
+	configTypeLabelPlural,
+}: ConfigurationsTableClientProps) {
 	const queryClient = useQueryClient();
-	const [isPending, startTransition] = useTransition();
 
-	const [searchValue, setSearchValue] = useState(initialFilters.search ?? "");
-	const [currentFilters, setCurrentFilters] = useState(initialFilters);
+	// Use the configurations table hook for URL-synced state
+	const {
+		filters,
+		pagination,
+		sorting,
+		sortingState,
+		onSortingChange,
+		onPaginationChange,
+		onLimitChange,
+	} = useConfigurationsTable();
+
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [configToDelete, setConfigToDelete] = useState<Configuration | null>(
 		null,
@@ -90,14 +76,17 @@ export function ConfigurationsPageClient({
 	// URL-based sheet params
 	const { openEdit } = useConfigurationParams();
 
-	// Build query input
+	// Build query input from hook state
 	const queryInput = {
 		type: configType,
-		page: currentFilters.page,
-		limit: 50,
-		search: currentFilters.search,
-		sortBy: "sortOrder" as const,
-		sortDirection: "asc" as const,
+		page: pagination.page,
+		limit: pagination.limit,
+		search: filters.search ?? undefined,
+		sortBy: (sorting.sortBy ?? "sortOrder") as
+			| "sortOrder"
+			| "label"
+			| "createdAt",
+		sortDirection: sorting.sortDirection,
 	};
 
 	// Fetch configurations with TanStack Query
@@ -106,7 +95,7 @@ export function ConfigurationsPageClient({
 	);
 
 	const configurations = data?.data ?? [];
-	const pagination = data?.pagination ?? {
+	const serverPagination = data?.pagination ?? {
 		page: 1,
 		limit: 50,
 		total: 0,
@@ -132,69 +121,45 @@ export function ConfigurationsPageClient({
 		},
 	});
 
-	const updateFilters = (updates: Partial<typeof currentFilters>) => {
-		const newFilters = { ...currentFilters, ...updates };
-		setCurrentFilters(newFilters);
-
-		const params = new URLSearchParams();
-		if (newFilters.page > 1) {
-			params.set("page", String(newFilters.page));
-		}
-		if (newFilters.search) {
-			params.set("search", newFilters.search);
-		}
-
-		const queryString = params.toString();
-		const routeSlug = CONFIG_TYPE_ROUTES[configType];
-		const basePath = `/app/${organizationSlug}/configurations/${routeSlug}`;
-		const url = `${basePath}${queryString ? `?${queryString}` : ""}`;
-
-		startTransition(() => {
-			router.push(url, { scroll: false });
-		});
-	};
-
-	const handleSearch = () => {
-		updateFilters({ search: searchValue || undefined, page: 1 });
-	};
-
-	const handlePaginationChange = (newPagination: typeof pagination) => {
-		updateFilters({ page: newPagination.page });
-	};
-
 	const handleOpenEdit = (config: Configuration) => {
 		openEdit(config.id, configType);
 	};
 
 	// Define row actions
-	const rowActions: RowAction<Configuration>[] = [
-		{
-			label: "Edit",
-			icon: <PencilIcon className="h-4 w-4" />,
-			onClick: handleOpenEdit,
-		},
-		{
-			label: "Delete",
-			icon: <TrashIcon className="h-4 w-4" />,
-			variant: "destructive",
-			separator: true,
-			onClick: (row) => {
-				if (row.isSystem) {
-					toast.error("Cannot delete system configurations");
-					return;
-				}
-				setConfigToDelete(row);
-				setDeleteDialogOpen(true);
+	const rowActions: RowAction<Configuration>[] = useMemo(
+		() => [
+			{
+				label: "Edit",
+				icon: <PencilIcon className="h-4 w-4" />,
+				onClick: handleOpenEdit,
 			},
-		},
-	];
+			{
+				label: "Delete",
+				icon: <TrashIcon className="h-4 w-4" />,
+				variant: "destructive",
+				separator: true,
+				onClick: (row) => {
+					if (row.isSystem) {
+						toast.error("Cannot delete system configurations");
+						return;
+					}
+					setConfigToDelete(row);
+					setDeleteDialogOpen(true);
+				},
+			},
+		],
+		[],
+	);
 
 	// Define columns
 	const columns: ColumnDef<Configuration>[] = useMemo(
 		() => [
 			{
+				id: "label",
 				accessorKey: "label",
-				header: "Label",
+				header: ({ column }) => (
+					<DataTableColumnHeader column={column} title="Label" />
+				),
 				cell: ({ row }) => (
 					<div className="flex items-center gap-3">
 						{row.original.color && (
@@ -211,31 +176,65 @@ export function ConfigurationsPageClient({
 						</div>
 					</div>
 				),
+				meta: {
+					label: "Label",
+					width: 220,
+					minWidth: 220,
+				},
+				enableSorting: true,
+				enableHiding: false,
 			},
 			{
+				id: "description",
 				accessorKey: "description",
-				header: "Description",
+				header: ({ column }) => (
+					<DataTableColumnHeader column={column} title="Description" />
+				),
 				cell: ({ row }) => (
 					<span className="text-muted-foreground truncate max-w-[250px] block">
 						{row.original.description || "-"}
 					</span>
 				),
+				meta: {
+					label: "Description",
+					width: 250,
+					minWidth: 200,
+				},
+				enableSorting: false,
+				enableHiding: true,
 			},
 			{
+				id: "sortOrder",
 				accessorKey: "sortOrder",
 				header: ({ column }) => (
-					<DataTableColumnHeader column={column} title="Order" className="justify-center" />
+					<DataTableColumnHeader
+						column={column}
+						title="Order"
+						className="justify-center"
+					/>
 				),
 				cell: ({ row }) => (
 					<div className="text-center font-mono text-sm">
 						{row.original.sortOrder}
 					</div>
 				),
+				meta: {
+					label: "Order",
+					width: 80,
+					minWidth: 80,
+				},
+				enableSorting: true,
+				enableHiding: true,
 			},
 			{
+				id: "isDefault",
 				accessorKey: "isDefault",
 				header: ({ column }) => (
-					<DataTableColumnHeader column={column} title="Default" className="justify-center" />
+					<DataTableColumnHeader
+						column={column}
+						title="Default"
+						className="justify-center"
+					/>
 				),
 				cell: ({ row }) => (
 					<div className="flex justify-center">
@@ -244,11 +243,23 @@ export function ConfigurationsPageClient({
 						)}
 					</div>
 				),
+				meta: {
+					label: "Default",
+					width: 80,
+					minWidth: 80,
+				},
+				enableSorting: false,
+				enableHiding: true,
 			},
 			{
+				id: "isSystem",
 				accessorKey: "isSystem",
 				header: ({ column }) => (
-					<DataTableColumnHeader column={column} title="Type" className="justify-center" />
+					<DataTableColumnHeader
+						column={column}
+						title="Type"
+						className="justify-center"
+					/>
 				),
 				cell: ({ row }) => (
 					<div className="flex justify-center">
@@ -261,61 +272,56 @@ export function ConfigurationsPageClient({
 						</Badge>
 					</div>
 				),
+				meta: {
+					label: "Type",
+					width: 100,
+					minWidth: 100,
+				},
+				enableSorting: false,
+				enableHiding: true,
 			},
 			{
 				id: "actions",
+				header: ({ table }) => <DataTableViewOptions table={table} />,
 				cell: ({ row }) => (
 					<DataTableRowActions
 						row={row.original}
 						actions={rowActions}
 					/>
 				),
+				enableSorting: false,
+				enableHiding: false,
+				meta: {
+					width: 56,
+					minWidth: 56,
+				},
 			},
 		],
-		[],
+		[rowActions],
 	);
 
-	const showLoading = isFetching || isPending;
-
 	return (
-		<PageContent title={pageTitle}>
-			<div className="space-y-4">
-				{/* Filters */}
-				<div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-					<div className="relative flex-1 max-w-sm">
-						<SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-						<Input
-							placeholder={`Search ${configTypeLabel.toLowerCase()}s...`}
-							value={searchValue}
-							onChange={(e) => setSearchValue(e.target.value)}
-							onKeyDown={(e) =>
-								e.key === "Enter" && handleSearch()
-							}
-							className="pl-9"
-						/>
-					</div>
-
-					<div className="ml-auto">
-						<OpenConfigurationCreateSheet
-							configurationType={configType}
-							label={`Add ${configTypeLabel}`}
-						/>
-					</div>
-				</div>
-
-				{/* Table */}
+		<>
+			{/* Table with sort context */}
+			<SortProvider
+				sortColumn={sorting.sortBy}
+				sortDirection={sorting.sortDirection}
+			>
 				<DataTable
 					columns={columns}
 					data={configurations}
 					isLoading={isLoading}
-					isFetching={showLoading}
-					pagination={pagination}
-					onPaginationChange={handlePaginationChange}
+					isFetching={isFetching}
+					pagination={serverPagination}
+					onPaginationChange={onPaginationChange}
+					onLimitChange={onLimitChange}
+					sorting={sortingState}
+					onSortingChange={onSortingChange}
 					emptyState={
 						<div className="flex flex-col items-center gap-2">
 							<SettingsIcon className="h-12 w-12 text-muted-foreground/50" />
 							<p className="text-muted-foreground">
-								No {configTypeLabel.toLowerCase()}s found
+								No {configTypeLabelPlural.toLowerCase()} found
 							</p>
 							<OpenConfigurationCreateSheet
 								configurationType={configType}
@@ -326,7 +332,7 @@ export function ConfigurationsPageClient({
 						</div>
 					}
 				/>
-			</div>
+			</SortProvider>
 
 			{/* Delete confirmation dialog */}
 			<AlertDialog
@@ -365,6 +371,6 @@ export function ConfigurationsPageClient({
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
-		</PageContent>
+		</>
 	);
 }

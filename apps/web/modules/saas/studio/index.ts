@@ -21,6 +21,14 @@ export {
 	CrewsTableClient,
 	CrewsTableSkeleton,
 } from "./components/crews";
+// Configurations
+export {
+	ConfigurationsFilters,
+	ConfigurationsTableClient,
+	ConfigurationsTableSkeleton,
+	OpenConfigurationCreateSheet,
+	OpenConfigurationEditSheet,
+} from "./components/configurations";
 // Deliverables
 export {
 	DeliverablesFilters,

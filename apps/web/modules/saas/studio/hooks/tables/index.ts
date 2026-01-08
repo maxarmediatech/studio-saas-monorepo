@@ -36,3 +36,8 @@ export {
 	type TaskFilters,
 	useTasksTable,
 } from "./use-tasks-table";
+export {
+	type ConfigType,
+	type ConfigurationFilters,
+	useConfigurationsTable,
+} from "./use-configurations-table";
