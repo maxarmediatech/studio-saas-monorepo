@@ -1,7 +1,12 @@
 "use client";
 
+import {
+	Collapsible,
+	CollapsibleContent,
+	CollapsibleTrigger,
+} from "@repo/ui/components/collapsible";
 import { cn } from "@repo/ui/lib/utils";
-import { ExternalLink } from "lucide-react";
+import { ChevronDown, ChevronRight, ExternalLink, Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type {
@@ -22,6 +27,12 @@ function isItemActive(pathname: string, itemPath: string): boolean {
 export function SidebarPanel({ module, utilities }: SidebarPanelProps) {
 	const pathname = usePathname();
 
+	// Split sections: primary nav vs setup/configuration
+	const primarySections = module.sections.filter(
+		(s) => s.id !== "studio-setup",
+	);
+	const setupSection = module.sections.find((s) => s.id === "studio-setup");
+
 	return (
 		<div className="scrollbar-hide relative flex h-full w-[var(--sidebar-panel-width)] flex-col overflow-y-auto overflow-x-hidden rounded-l-xl bg-neutral-100">
 			{/* Navigation Content - animate on module switch */}
@@ -36,8 +47,9 @@ export function SidebarPanel({ module, utilities }: SidebarPanelProps) {
 					</h2>
 				</div>
 
+				{/* Primary Sections */}
 				<div className="flex flex-col gap-8">
-					{module.sections.map((section) => (
+					{primarySections.map((section) => (
 						<div key={section.id}>
 							{section.label && (
 								<div className="mb-2 pl-3 text-sm text-neutral-500">
@@ -59,6 +71,47 @@ export function SidebarPanel({ module, utilities }: SidebarPanelProps) {
 						</div>
 					))}
 				</div>
+
+				{/* Flex spacer - pushes setup section to bottom */}
+				<div className="min-h-6 flex-1" />
+
+				{/* Setup Section - collapsible with motion */}
+				{setupSection && setupSection.items.length > 0 && (
+					<Collapsible defaultOpen={false} className="group/setup">
+						<div className="rounded-lg bg-neutral-200/40 p-2">
+							{/* Collapsed trigger - shows "Setup" label */}
+							<CollapsibleTrigger className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-neutral-600 transition-colors hover:bg-neutral-200/50 group-data-[state=open]/setup:hidden">
+								<Settings className="size-4 text-neutral-500" />
+								<span className="font-medium">
+									{setupSection.label}
+								</span>
+								<ChevronRight className="ml-auto size-4 text-neutral-400" />
+							</CollapsibleTrigger>
+
+							{/* Expanded trigger - minimal header for collapsing */}
+							<CollapsibleTrigger className="mb-1 flex w-full items-center gap-2 rounded-md px-2 py-1 text-sm text-neutral-500 transition-colors hover:bg-neutral-200/50 group-data-[state=closed]/setup:hidden">
+								<Settings className="size-4" />
+								<ChevronDown className="ml-auto size-4" />
+							</CollapsibleTrigger>
+
+							{/* Content - nav items with grid animation */}
+							<CollapsibleContent className="grid transition-all duration-200 ease-out data-[state=closed]:grid-rows-[0fr] data-[state=open]:grid-rows-[1fr]">
+								<nav className="flex flex-col gap-0.5 overflow-hidden">
+									{setupSection.items.map((item) => (
+										<NavItem
+											key={item.id}
+											item={item}
+											isActive={isItemActive(
+												pathname,
+												item.path,
+											)}
+										/>
+									))}
+								</nav>
+							</CollapsibleContent>
+						</div>
+					</Collapsible>
+				)}
 			</div>
 
 			{/* Footer: Utilities */}
@@ -113,6 +166,41 @@ function NavItem({
 			{isExternal && (
 				<ExternalLink className="size-3.5 text-neutral-500 transition-transform duration-75 group-hover:-translate-y-px group-hover:translate-x-px" />
 			)}
+		</Link>
+	);
+}
+
+/**
+ * SetupNavItem - Muted variant for configuration/setup items
+ * Smaller text, neutral colors, less visual prominence than primary NavItem
+ */
+function SetupNavItem({
+	item,
+	isActive,
+}: {
+	item: NavItemConfig;
+	isActive: boolean;
+}) {
+	return (
+		<Link
+			href={item.path}
+			className={cn(
+				"group flex h-7 items-center rounded-md px-2 text-xs transition-colors",
+				isActive
+					? "bg-neutral-200/50 font-medium text-neutral-700"
+					: "text-neutral-500 hover:bg-neutral-200/30 hover:text-neutral-600",
+			)}
+		>
+			<span className="flex items-center gap-2">
+				<IconByName
+					name={item.icon}
+					className={cn(
+						"size-3.5 shrink-0",
+						isActive ? "text-neutral-600" : "text-neutral-400",
+					)}
+				/>
+				<span className="truncate">{item.label}</span>
+			</span>
 		</Link>
 	);
 }
