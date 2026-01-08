@@ -1,5 +1,2 @@
-import { createAvatarUploadUrl } from "./procedures/create-avatar-upload-url";
-
-export const usersRouter = {
-	avatarUploadUrl: createAvatarUploadUrl,
-};
+// Users router - avatar upload moved to /api/uploads/presigned-url
+export const usersRouter = {};

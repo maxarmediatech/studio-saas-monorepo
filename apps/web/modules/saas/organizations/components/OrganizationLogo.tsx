@@ -39,7 +39,7 @@ export const OrganizationLogo = ({
 			logoUrl
 				? logoUrl.startsWith("http")
 					? logoUrl
-					: `/image-proxy/${config.storage.bucketNames.avatars}/${logoUrl}`
+					: `/image-proxy/${config.storage.bucketNames.uploads}/${logoUrl}`
 				: undefined,
 		[logoUrl],
 	);

@@ -31,7 +31,7 @@ export const UserAvatar = ({
 			avatarUrl
 				? avatarUrl.startsWith("http")
 					? avatarUrl
-					: `/image-proxy/${config.storage.bucketNames.avatars}/${avatarUrl}`
+					: `/image-proxy/${config.storage.bucketNames.uploads}/${avatarUrl}`
 				: undefined,
 		[avatarUrl],
 	);
