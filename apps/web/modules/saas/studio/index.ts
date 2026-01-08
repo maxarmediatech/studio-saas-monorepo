@@ -10,6 +10,33 @@ export {
 	BookingsTableClient,
 	BookingsTableSkeleton,
 } from "./components/bookings";
+// Clients
+export {
+	ClientsFilters,
+	ClientsTableClient,
+	ClientsTableSkeleton,
+} from "./components/clients";
+// Crews
+export {
+	CrewsFilters,
+	CrewsPageClient,
+	CrewsTableClient,
+	CrewsTableSkeleton,
+} from "./components/crews";
+// Deliverables
+export {
+	DeliverablesFilters,
+	DeliverablesPageClient,
+	DeliverablesTableClient,
+	DeliverablesTableSkeleton,
+} from "./components/deliverables";
+// Shoots
+export {
+	ShootsFilters,
+	ShootsPageClient,
+	ShootsTableClient,
+	ShootsTableSkeleton,
+} from "./components/shoots";
 export type { IconName as RegistryIconName } from "./components/navigation/icon-registry";
 // Icons
 export { IconByName } from "./components/navigation/icon-registry";

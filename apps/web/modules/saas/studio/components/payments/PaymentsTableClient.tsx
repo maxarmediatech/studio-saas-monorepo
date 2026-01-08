@@ -18,7 +18,6 @@ import {
 	DataTable,
 	DataTableColumnHeader,
 	DataTableRowActions,
-	DataTableToolbar,
 	DataTableViewOptions,
 	type RowAction,
 	SortProvider,
@@ -38,7 +37,6 @@ import type { ColumnDef } from "@tanstack/react-table";
 import {
 	BanknoteIcon,
 	CalendarIcon,
-	CreditCardIcon,
 	HashIcon,
 	Loader2Icon,
 	PencilIcon,
@@ -75,15 +73,6 @@ const PAYMENT_METHOD_VARIANTS: Record<
 	other: "outline",
 };
 
-const paymentMethodOptions = [
-	{ value: "cash", label: "Cash" },
-	{ value: "upi", label: "UPI" },
-	{ value: "bank_transfer", label: "Bank Transfer" },
-	{ value: "cheque", label: "Cheque" },
-	{ value: "card", label: "Card" },
-	{ value: "other", label: "Other" },
-];
-
 const formatDate = (dateStr: string) => {
 	return new Date(dateStr).toLocaleDateString("en-IN", {
 		day: "numeric",
@@ -103,9 +92,6 @@ export function PaymentsTableClient({
 		pagination,
 		sorting,
 		sortingState,
-		setFilter,
-		resetFilters,
-		isFiltered,
 		onSortingChange,
 		onPaginationChange,
 	} = usePaymentsTable();
@@ -257,9 +243,6 @@ export function PaymentsTableClient({
 				),
 				meta: {
 					label: "Method",
-					variant: "multiSelect" as const,
-					icon: CreditCardIcon,
-					options: paymentMethodOptions,
 					width: 140,
 					minWidth: 140,
 				},
@@ -340,45 +323,12 @@ export function PaymentsTableClient({
 
 	return (
 		<>
-			<div className="space-y-4">
-				{/* Toolbar with filters */}
-				<div className="flex items-center justify-between gap-4">
-					<DataTableToolbar
-						filters={[
-							{
-								id: "paymentMethod",
-								label: "Method",
-								variant: "multiSelect",
-								options: paymentMethodOptions,
-								icon: CreditCardIcon,
-							},
-						]}
-						filterValues={{
-							paymentMethod: filters.paymentMethod ?? [],
-						}}
-						onFilterChange={(id, value) => {
-							if (id === "paymentMethod") {
-								setFilter("paymentMethod", value as string[]);
-							}
-						}}
-						onResetFilters={resetFilters}
-						isFiltered={isFiltered}
-						showSearch
-						searchValue={filters.search ?? ""}
-						searchPlaceholder="Search payments..."
-						onSearchChange={(value) =>
-							setFilter("search", value || null)
-						}
-						className="flex-1"
-					/>
-				</div>
-
-				{/* Table with sort context */}
-				<SortProvider
-					sortColumn={sorting.sortBy}
-					sortDirection={sorting.sortDirection}
-				>
-					<DataTable
+			{/* Table with sort context */}
+			<SortProvider
+				sortColumn={sorting.sortBy}
+				sortDirection={sorting.sortDirection}
+			>
+				<DataTable
 						columns={columns}
 						data={payments}
 						isLoading={isLoading}
@@ -412,9 +362,8 @@ export function PaymentsTableClient({
 								/>
 							</div>
 						}
-					/>
-				</SortProvider>
-			</div>
+				/>
+			</SortProvider>
 
 			{/* Delete confirmation dialog */}
 			<AlertDialog

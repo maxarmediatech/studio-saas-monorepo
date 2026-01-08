@@ -16,7 +16,6 @@ import {
 	DataTable,
 	DataTableColumnHeader,
 	DataTableRowActions,
-	DataTableToolbar,
 	DataTableViewOptions,
 	type RowAction,
 	SortProvider,
@@ -53,9 +52,6 @@ export function ClientsTableClient() {
 		pagination,
 		sorting,
 		sortingState,
-		setFilter,
-		resetFilters,
-		isFiltered,
 		onSortingChange,
 		onPaginationChange,
 	} = useClientsTable();
@@ -296,68 +292,47 @@ export function ClientsTableClient() {
 
 	return (
 		<>
-			<div className="space-y-4">
-				{/* Toolbar with search */}
-				<div className="flex items-center justify-between gap-4">
-					<DataTableToolbar
-						filters={[]}
-						filterValues={{}}
-						onFilterChange={() => {}}
-						onResetFilters={resetFilters}
-						isFiltered={isFiltered}
-						showSearch
-						searchValue={filters.search ?? ""}
-						searchPlaceholder="Search clients..."
-						onSearchChange={(value) =>
-							setFilter("search", value || null)
-						}
-						className="flex-1"
-					/>
-					<OpenClientCreateSheet />
-				</div>
-
-				{/* Table with sort context */}
-				<SortProvider
-					sortColumn={sorting.sortBy}
-					sortDirection={sorting.sortDirection}
-				>
-					<DataTable
-						columns={columns}
-						data={clients}
-						isLoading={isLoading}
-						isFetching={isFetching}
-						pagination={serverPagination}
-						onPaginationChange={onPaginationChange}
-						sorting={sortingState}
-						onSortingChange={onSortingChange}
-						enableRowSelection
-						getRowId={(row) => row.id}
-						// Sticky columns configuration
-						stickyLeftColumns={[
-							{ id: "select", width: 56 },
-							{ id: "name", width: 220 },
-						]}
-						stickyRightColumns={[{ id: "actions", width: 56 }]}
-						minWidth={1000}
-						// Place scroll controls in the last sticky left column
-						scrollControlsColumnId="name"
-						scrollStartColumn={2}
-						emptyState={
-							<div className="flex flex-col items-center gap-2">
-								<UserIcon className="h-12 w-12 text-muted-foreground/50" />
-								<p className="text-muted-foreground">
-									No clients found
-								</p>
-								<OpenClientCreateSheet
-									variant="outline"
-									size="sm"
-									label="Add your first client"
-								/>
-							</div>
-						}
-					/>
-				</SortProvider>
-			</div>
+			{/* Table with sort context */}
+			<SortProvider
+				sortColumn={sorting.sortBy}
+				sortDirection={sorting.sortDirection}
+			>
+				<DataTable
+					columns={columns}
+					data={clients}
+					isLoading={isLoading}
+					isFetching={isFetching}
+					pagination={serverPagination}
+					onPaginationChange={onPaginationChange}
+					sorting={sortingState}
+					onSortingChange={onSortingChange}
+					enableRowSelection
+					getRowId={(row) => row.id}
+					// Sticky columns configuration
+					stickyLeftColumns={[
+						{ id: "select", width: 56 },
+						{ id: "name", width: 220 },
+					]}
+					stickyRightColumns={[{ id: "actions", width: 56 }]}
+					minWidth={1000}
+					// Place scroll controls in the last sticky left column
+					scrollControlsColumnId="name"
+					scrollStartColumn={2}
+					emptyState={
+						<div className="flex flex-col items-center gap-2">
+							<UserIcon className="h-12 w-12 text-muted-foreground/50" />
+							<p className="text-muted-foreground">
+								No clients found
+							</p>
+							<OpenClientCreateSheet
+								variant="outline"
+								size="sm"
+								label="Add your first client"
+							/>
+						</div>
+					}
+				/>
+			</SortProvider>
 
 			{/* Delete confirmation dialog */}
 			<AlertDialog

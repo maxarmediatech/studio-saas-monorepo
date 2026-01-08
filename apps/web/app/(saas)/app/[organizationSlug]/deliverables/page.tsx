@@ -1,6 +1,8 @@
 import { getActiveOrganization } from "@saas/auth/lib/server";
-import { DeliverablesTable } from "@saas/studio/components/deliverables";
+import { DeliverablesFilters, DeliverablesTableSkeleton } from "@saas/studio";
+import { DeliverablesTable } from "@saas/studio/components/deliverables/index.server";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
 type Props = {
 	params: Promise<{ organizationSlug: string }>;
@@ -16,10 +18,7 @@ export async function generateMetadata({ params }: Props) {
 	};
 }
 
-export default async function DeliverablesPage({
-	params,
-	searchParams,
-}: Props) {
+export default async function DeliverablesPage({ params, searchParams }: Props) {
 	const { organizationSlug } = await params;
 
 	const organization = await getActiveOrganization(organizationSlug);
@@ -29,9 +28,15 @@ export default async function DeliverablesPage({
 	}
 
 	return (
-		<DeliverablesTable
-			organizationSlug={organizationSlug}
-			searchParams={searchParams}
-		/>
+		<div className="space-y-4">
+			<DeliverablesFilters />
+
+			<Suspense fallback={<DeliverablesTableSkeleton />}>
+				<DeliverablesTable
+					organizationSlug={organizationSlug}
+					searchParams={searchParams}
+				/>
+			</Suspense>
+		</div>
 	);
 }

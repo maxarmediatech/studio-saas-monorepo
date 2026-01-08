@@ -2,17 +2,13 @@
 
 import { PageContent } from "@saas/studio";
 import { OpenScheduleCreateSheet } from "@saas/studio/components/schedules/OpenScheduleSheet";
-import { type ReactNode, use } from "react";
+import type { ReactNode } from "react";
 
 type Props = {
-	params: Promise<{ organizationSlug: string }>;
 	children: ReactNode;
 };
 
-export default function ScheduledPaymentsLayout({ params, children }: Props) {
-	// Unwrap params promise (required by Next.js, slug available via context)
-	use(params);
-
+export default function ScheduledPaymentsLayout({ children }: Props) {
 	return (
 		<PageContent
 			title="Scheduled Payments"

@@ -21,7 +21,6 @@ import {
 	DataTable,
 	DataTableColumnHeader,
 	DataTableRowActions,
-	DataTableToolbar,
 	DataTableViewOptions,
 	type RowAction,
 	SortProvider,
@@ -47,7 +46,6 @@ import {
 	StoreIcon,
 	TagIcon,
 	TrashIcon,
-	UserIcon,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -79,20 +77,6 @@ const PAYMENT_METHOD_VARIANTS: Record<
 	other: "outline",
 };
 
-const paymentMethodOptions = [
-	{ value: "cash", label: "Cash" },
-	{ value: "upi", label: "UPI" },
-	{ value: "bank_transfer", label: "Bank Transfer" },
-	{ value: "cheque", label: "Cheque" },
-	{ value: "card", label: "Card" },
-	{ value: "other", label: "Other" },
-];
-
-const billToOptions = [
-	{ value: "studio", label: "Studio" },
-	{ value: "client", label: "Client" },
-];
-
 const formatDate = (dateStr: string) => {
 	return new Date(dateStr).toLocaleDateString("en-IN", {
 		day: "numeric",
@@ -112,9 +96,6 @@ export function ExpensesTableClient({
 		pagination,
 		sorting,
 		sortingState,
-		setFilter,
-		resetFilters,
-		isFiltered,
 		onSortingChange,
 		onPaginationChange,
 	} = useExpensesTable();
@@ -321,9 +302,6 @@ export function ExpensesTableClient({
 				),
 				meta: {
 					label: "Bill To",
-					variant: "multiSelect" as const,
-					icon: UserIcon,
-					options: billToOptions,
 					width: 100,
 					minWidth: 100,
 				},
@@ -352,9 +330,6 @@ export function ExpensesTableClient({
 					),
 				meta: {
 					label: "Payment",
-					variant: "multiSelect" as const,
-					icon: CreditCardIcon,
-					options: paymentMethodOptions,
 					width: 140,
 					minWidth: 140,
 				},
@@ -388,91 +363,47 @@ export function ExpensesTableClient({
 
 	return (
 		<>
-			<div className="space-y-4">
-				{/* Toolbar with filters */}
-				<div className="flex items-center justify-between gap-4">
-					<DataTableToolbar
-						filters={[
-							{
-								id: "billTo",
-								label: "Bill To",
-								variant: "multiSelect",
-								options: billToOptions,
-								icon: UserIcon,
-							},
-							{
-								id: "paymentMethod",
-								label: "Payment",
-								variant: "multiSelect",
-								options: paymentMethodOptions,
-								icon: CreditCardIcon,
-							},
-						]}
-						filterValues={{
-							billTo: filters.billTo ?? [],
-							paymentMethod: filters.paymentMethod ?? [],
-						}}
-						onFilterChange={(id, value) => {
-							if (id === "billTo") {
-								setFilter("billTo", value as string[]);
-							} else if (id === "paymentMethod") {
-								setFilter("paymentMethod", value as string[]);
-							}
-						}}
-						onResetFilters={resetFilters}
-						isFiltered={isFiltered}
-						showSearch
-						searchValue={filters.search ?? ""}
-						searchPlaceholder="Search expenses..."
-						onSearchChange={(value) =>
-							setFilter("search", value || null)
-						}
-						className="flex-1"
-					/>
-				</div>
-
-				{/* Table with sort context */}
-				<SortProvider
-					sortColumn={sorting.sortBy}
-					sortDirection={sorting.sortDirection}
-				>
-					<DataTable
-						columns={columns}
-						data={expenses}
-						isLoading={isLoading}
-						isFetching={isFetching}
-						pagination={serverPagination}
-						onPaginationChange={onPaginationChange}
-						sorting={sortingState}
-						onSortingChange={onSortingChange}
-						enableRowSelection
-						getRowId={(row) => row.id}
-						// Sticky columns configuration
-						stickyLeftColumns={[
-							{ id: "select", width: 56 },
-							{ id: "description", width: 260 },
-						]}
-						stickyRightColumns={[{ id: "actions", width: 56 }]}
-						minWidth={1000}
-						// Place scroll controls in the last sticky left column
-						scrollControlsColumnId="description"
-						scrollStartColumn={2}
-						emptyState={
-							<div className="flex flex-col items-center gap-2">
-								<ReceiptIcon className="h-12 w-12 text-muted-foreground/50" />
-								<p className="text-muted-foreground">
-									No expenses found
-								</p>
-								<OpenExpenseCreateSheet
-									variant="outline"
-									size="sm"
-									label="Add your first expense"
-								/>
-							</div>
-						}
-					/>
-				</SortProvider>
-			</div>
+			{/* Table with sort context */}
+			<SortProvider
+				sortColumn={sorting.sortBy}
+				sortDirection={sorting.sortDirection}
+			>
+				<DataTable
+					columns={columns}
+					data={expenses}
+					isLoading={isLoading}
+					isFetching={isFetching}
+					pagination={serverPagination}
+					onPaginationChange={onPaginationChange}
+					sorting={sortingState}
+					onSortingChange={onSortingChange}
+					enableRowSelection
+					getRowId={(row) => row.id}
+					// Sticky columns configuration
+					stickyLeftColumns={[
+						{ id: "select", width: 56 },
+						{ id: "description", width: 260 },
+					]}
+					stickyRightColumns={[{ id: "actions", width: 56 }]}
+					minWidth={1000}
+					// Place scroll controls in the last sticky left column
+					scrollControlsColumnId="description"
+					scrollStartColumn={2}
+					emptyState={
+						<div className="flex flex-col items-center gap-2">
+							<ReceiptIcon className="h-12 w-12 text-muted-foreground/50" />
+							<p className="text-muted-foreground">
+								No expenses found
+							</p>
+							<OpenExpenseCreateSheet
+								variant="outline"
+								size="sm"
+								label="Add your first expense"
+							/>
+						</div>
+					}
+				/>
+			</SortProvider>
 
 			{/* Delete confirmation dialog */}
 			<AlertDialog

@@ -2,19 +2,18 @@
 
 import { PageContent } from "@saas/studio";
 import { OpenTaskCreateSheet } from "@saas/studio/components/tasks/OpenTaskSheet";
-import { type ReactNode, use } from "react";
+import type { ReactNode } from "react";
 
 type Props = {
-	params: Promise<{ organizationSlug: string }>;
 	children: ReactNode;
 };
 
-export default function TasksLayout({ params, children }: Props) {
-	// Unwrap params promise (required by Next.js, slug available via context)
-	use(params);
-
+export default function TasksLayout({ children }: Props) {
 	return (
-		<PageContent title="Tasks" controls={<OpenTaskCreateSheet size="sm" />}>
+		<PageContent
+			title="Tasks"
+			controls={<OpenTaskCreateSheet size="sm" />}
+		>
 			{children}
 		</PageContent>
 	);

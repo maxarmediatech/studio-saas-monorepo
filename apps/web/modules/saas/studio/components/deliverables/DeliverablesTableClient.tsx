@@ -17,7 +17,6 @@ import {
 	DataTable,
 	DataTableColumnHeader,
 	DataTableRowActions,
-	DataTableToolbar,
 	DataTableViewOptions,
 	type RowAction,
 	SortProvider,
@@ -25,12 +24,7 @@ import {
 // Import types for column meta augmentation
 import "@saas/shared/components/data-table/types";
 import { useDeliverableParams } from "@saas/studio/hooks/params/use-deliverable-params";
-import {
-	DELIVERABLE_PRIORITIES,
-	DELIVERABLE_STATUSES,
-	DELIVERABLE_TYPES,
-	useDeliverablesTable,
-} from "@saas/studio/hooks/tables";
+import { useDeliverablesTable } from "@saas/studio/hooks/tables";
 import {
 	deliverablesApi,
 	deliverablesMutations,
@@ -47,7 +41,6 @@ import {
 	Loader2Icon,
 	PackageIcon,
 	PencilIcon,
-	TagIcon,
 	TrashIcon,
 	TruckIcon,
 	UsersIcon,
@@ -128,22 +121,6 @@ const formatDate = (dateStr: string | null) => {
 	});
 };
 
-// Filter options
-const deliverableTypeOptions = DELIVERABLE_TYPES.map((type) => ({
-	value: type,
-	label: DELIVERABLE_TYPE_LABELS[type] ?? type,
-}));
-
-const statusOptions = DELIVERABLE_STATUSES.map((status) => ({
-	value: status,
-	label: STATUS_LABELS[status] ?? status,
-}));
-
-const priorityOptions = DELIVERABLE_PRIORITIES.map((priority) => ({
-	value: priority,
-	label: PRIORITY_LABELS[priority] ?? priority,
-}));
-
 export function DeliverablesTableClient({
 	organizationSlug,
 }: DeliverablesTableClientProps) {
@@ -155,9 +132,6 @@ export function DeliverablesTableClient({
 		pagination,
 		sorting,
 		sortingState,
-		setFilter,
-		resetFilters,
-		isFiltered,
 		onSortingChange,
 		onPaginationChange,
 	} = useDeliverablesTable();
@@ -317,9 +291,6 @@ export function DeliverablesTableClient({
 				),
 				meta: {
 					label: "Type",
-					variant: "multiSelect" as const,
-					icon: TagIcon,
-					options: deliverableTypeOptions,
 					width: 140,
 					minWidth: 140,
 				},
@@ -382,9 +353,6 @@ export function DeliverablesTableClient({
 				},
 				meta: {
 					label: "Status",
-					variant: "multiSelect" as const,
-					icon: CircleIcon,
-					options: statusOptions,
 					width: 130,
 					minWidth: 130,
 				},
@@ -409,9 +377,6 @@ export function DeliverablesTableClient({
 				},
 				meta: {
 					label: "Priority",
-					variant: "multiSelect" as const,
-					icon: AlertCircleIcon,
-					options: priorityOptions,
 					width: 100,
 					minWidth: 100,
 				},
@@ -467,101 +432,47 @@ export function DeliverablesTableClient({
 
 	return (
 		<>
-			<div className="space-y-4">
-				{/* Toolbar with filters */}
-				<div className="flex items-center justify-between gap-4">
-					<DataTableToolbar
-						filters={[
-							{
-								id: "deliverableType",
-								label: "Type",
-								variant: "multiSelect",
-								options: deliverableTypeOptions,
-								icon: TagIcon,
-							},
-							{
-								id: "status",
-								label: "Status",
-								variant: "multiSelect",
-								options: statusOptions,
-								icon: CircleIcon,
-							},
-							{
-								id: "priority",
-								label: "Priority",
-								variant: "multiSelect",
-								options: priorityOptions,
-								icon: AlertCircleIcon,
-							},
-						]}
-						filterValues={{
-							deliverableType: filters.deliverableType ?? [],
-							status: filters.status ?? [],
-							priority: filters.priority ?? [],
-						}}
-						onFilterChange={(id, value) => {
-							if (id === "deliverableType") {
-								setFilter("deliverableType", value as string[]);
-							} else if (id === "status") {
-								setFilter("status", value as string[]);
-							} else if (id === "priority") {
-								setFilter("priority", value as string[]);
-							}
-						}}
-						onResetFilters={resetFilters}
-						isFiltered={isFiltered}
-						showSearch
-						searchValue={filters.search ?? ""}
-						searchPlaceholder="Search deliverables..."
-						onSearchChange={(value) =>
-							setFilter("search", value || null)
-						}
-						className="flex-1"
-					/>
-				</div>
-
-				{/* Table with sort context */}
-				<SortProvider
-					sortColumn={sorting.sortBy}
-					sortDirection={sorting.sortDirection}
-				>
-					<DataTable
-						columns={columns}
-						data={deliverables}
-						isLoading={isLoading}
-						isFetching={isFetching}
-						pagination={serverPagination}
-						onPaginationChange={onPaginationChange}
-						sorting={sortingState}
-						onSortingChange={onSortingChange}
-						enableRowSelection
-						getRowId={(row) => row.id}
-						// Sticky columns configuration
-						stickyLeftColumns={[
-							{ id: "select", width: 56 },
-							{ id: "name", width: 240 },
-						]}
-						stickyRightColumns={[{ id: "actions", width: 56 }]}
-						minWidth={1200}
-						// Place scroll controls in the last sticky left column
-						scrollControlsColumnId="name"
-						scrollStartColumn={2}
-						emptyState={
-							<div className="flex flex-col items-center gap-2">
-								<PackageIcon className="h-12 w-12 text-muted-foreground/50" />
-								<p className="text-muted-foreground">
-									No deliverables found
-								</p>
-								<OpenDeliverableCreateSheet
-									variant="outline"
-									size="sm"
-									label="Add your first deliverable"
-								/>
-							</div>
-						}
-					/>
-				</SortProvider>
-			</div>
+			{/* Table with sort context */}
+			<SortProvider
+				sortColumn={sorting.sortBy}
+				sortDirection={sorting.sortDirection}
+			>
+				<DataTable
+					columns={columns}
+					data={deliverables}
+					isLoading={isLoading}
+					isFetching={isFetching}
+					pagination={serverPagination}
+					onPaginationChange={onPaginationChange}
+					sorting={sortingState}
+					onSortingChange={onSortingChange}
+					enableRowSelection
+					getRowId={(row) => row.id}
+					// Sticky columns configuration
+					stickyLeftColumns={[
+						{ id: "select", width: 56 },
+						{ id: "name", width: 240 },
+					]}
+					stickyRightColumns={[{ id: "actions", width: 56 }]}
+					minWidth={1200}
+					// Place scroll controls in the last sticky left column
+					scrollControlsColumnId="name"
+					scrollStartColumn={2}
+					emptyState={
+						<div className="flex flex-col items-center gap-2">
+							<PackageIcon className="h-12 w-12 text-muted-foreground/50" />
+							<p className="text-muted-foreground">
+								No deliverables found
+							</p>
+							<OpenDeliverableCreateSheet
+								variant="outline"
+								size="sm"
+								label="Add your first deliverable"
+							/>
+						</div>
+					}
+				/>
+			</SortProvider>
 
 			{/* Delete confirmation dialog */}
 			<AlertDialog
