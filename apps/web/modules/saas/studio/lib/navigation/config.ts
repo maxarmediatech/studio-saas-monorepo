@@ -241,37 +241,22 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 						},
 					],
 				},
-			],
-		},
-		{
-			id: "clients",
-			label: "Clients",
-			icon: "Contact2",
-			defaultPath: url("/clients"),
-			sections: [
 				{
-					id: "clients-core",
+					id: "studio-crm",
+					label: "CRM",
 					items: [
 						{
 							id: "clients",
-							label: "All Clients",
+							label: "Clients",
 							path: url("/clients"),
 							icon: "Contact2",
 							permission: {
 								any: [{ resource: "client", action: "list" }],
 							},
 						},
+						// Future: Leads, Communications
 					],
 				},
-				// Future: CRM features
-				// {
-				// 	id: "clients-crm",
-				// 	label: "CRM",
-				// 	items: [
-				// 		{ id: "leads", label: "Leads", ... },
-				// 		{ id: "communications", label: "Communications", ... },
-				// 	],
-				// },
 			],
 		},
 	];
