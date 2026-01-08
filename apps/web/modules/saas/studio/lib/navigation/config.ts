@@ -165,6 +165,82 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 						},
 					],
 				},
+				{
+					id: "studio-setup",
+					label: "Setup",
+					items: [
+						{
+							id: "booking-types",
+							label: "Booking Types",
+							path: url("/configurations/booking-types"),
+							icon: "Tag",
+							permission: {
+								any: [
+									{
+										resource: "configuration",
+										action: "list",
+									},
+								],
+							},
+						},
+						{
+							id: "package-types",
+							label: "Package Types",
+							path: url("/configurations/package-types"),
+							icon: "Package",
+							permission: {
+								any: [
+									{
+										resource: "configuration",
+										action: "list",
+									},
+								],
+							},
+						},
+						{
+							id: "event-types",
+							label: "Event Types",
+							path: url("/configurations/event-types"),
+							icon: "Sparkles",
+							permission: {
+								any: [
+									{
+										resource: "configuration",
+										action: "list",
+									},
+								],
+							},
+						},
+						{
+							id: "relation-types",
+							label: "Relation Types",
+							path: url("/configurations/relation-types"),
+							icon: "Link2",
+							permission: {
+								any: [
+									{
+										resource: "configuration",
+										action: "list",
+									},
+								],
+							},
+						},
+						{
+							id: "crew-roles",
+							label: "Crew Roles",
+							path: url("/configurations/crew-roles"),
+							icon: "UserCog",
+							permission: {
+								any: [
+									{
+										resource: "configuration",
+										action: "list",
+									},
+								],
+							},
+						},
+					],
+				},
 			],
 		},
 		{
@@ -232,20 +308,6 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							label: "Billing",
 							path: url("/settings/billing"),
 							icon: "CreditCard",
-						},
-						{
-							id: "configurations",
-							label: "Configurations",
-							path: url("/configurations"),
-							icon: "Settings",
-							permission: {
-								any: [
-									{
-										resource: "configuration",
-										action: "list",
-									},
-								],
-							},
 						},
 					],
 				},

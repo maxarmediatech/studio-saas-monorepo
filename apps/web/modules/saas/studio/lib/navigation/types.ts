@@ -17,13 +17,17 @@ export type IconName =
 	| "Home"
 	| "Inbox"
 	| "LayoutDashboard"
+	| "Link2"
 	| "ListChecks"
 	| "ListTodo"
 	| "Package"
 	| "Settings"
 	| "Settings2"
 	| "Shield"
+	| "Sparkles"
+	| "Tag"
 	| "User"
+	| "UserCog"
 	| "Users"
 	| "Wallet2";
 
