@@ -1,7 +1,6 @@
 // List page components - CLIENT
 
 export { BookingsFilters } from "./BookingsFilters";
-export { BookingsPageClient } from "./BookingsPageClient";
 export { BookingsTableClient } from "./BookingsTableClient";
 export { BookingsTableSkeleton } from "./BookingsTableSkeleton";
 

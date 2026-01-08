@@ -6,7 +6,6 @@ export { AppShellClient } from "./components/app-shell.client";
 // Bookings
 export {
 	BookingsFilters,
-	BookingsPageClient,
 	BookingsTableClient,
 	BookingsTableSkeleton,
 } from "./components/bookings";
@@ -19,7 +18,6 @@ export {
 // Crews
 export {
 	CrewsFilters,
-	CrewsPageClient,
 	CrewsTableClient,
 	CrewsTableSkeleton,
 } from "./components/crews";
