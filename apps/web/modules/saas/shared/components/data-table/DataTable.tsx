@@ -263,7 +263,7 @@ export function DataTable<TData, TValue>({
 			<div
 				ref={tableScroll.containerRef}
 				className={cn(
-					"border-border bg-card overflow-hidden rounded-xl border",
+					"border-border bg-card overflow-hidden rounded-lg border",
 					hasSticky &&
 						"scrollbar-hide overflow-x-auto overscroll-x-none",
 				)}
