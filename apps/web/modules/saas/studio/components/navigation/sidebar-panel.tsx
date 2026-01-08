@@ -9,7 +9,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown, ChevronRight, ExternalLink, Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type {
 	NavItemConfig,
 	NavModuleConfig,
@@ -34,6 +34,18 @@ export function SidebarPanel({ module, utilities }: SidebarPanelProps) {
 		(s) => s.id !== "studio-setup",
 	);
 	const setupSection = module.sections.find((s) => s.id === "studio-setup");
+
+	// Check if any setup item is currently active
+	const isSetupActive =
+		setupSection?.items.some((item) => isItemActive(pathname, item.path)) ??
+		false;
+
+	// Auto-expand configuration section when a setup item is active
+	useEffect(() => {
+		if (isSetupActive) {
+			setSetupOpen(true);
+		}
+	}, [isSetupActive]);
 
 	return (
 		<div className="scrollbar-hide relative flex h-full w-[var(--sidebar-panel-width)] flex-col overflow-y-auto overflow-x-hidden rounded-l-xl bg-neutral-100">
@@ -85,16 +97,33 @@ export function SidebarPanel({ module, utilities }: SidebarPanelProps) {
 						className="group/setup"
 					>
 						<div className="rounded-lg bg-neutral-200/40 p-2">
-							{/* Collapsed trigger - shows "Setup" label */}
+							{/* Collapsed trigger - shows "Configuration" label with active state */}
 							<CollapsibleTrigger
 								className={cn(
-									"flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-neutral-600 transition-colors hover:bg-neutral-200/50",
+									"flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
 									setupOpen && "hidden",
+									isSetupActive
+										? "bg-blue-100/50 font-medium text-blue-600"
+										: "text-neutral-600 hover:bg-neutral-200/50",
 								)}
 							>
-								<Settings className="size-4 text-neutral-500" />
+								<Settings
+									className={cn(
+										"size-4",
+										isSetupActive
+											? "text-blue-600"
+											: "text-neutral-500",
+									)}
+								/>
 								<span className="font-medium">Configuration</span>
-								<ChevronRight className="ml-auto size-4 text-neutral-400" />
+								<ChevronRight
+									className={cn(
+										"ml-auto size-4",
+										isSetupActive
+											? "text-blue-400"
+											: "text-neutral-400",
+									)}
+								/>
 							</CollapsibleTrigger>
 
 							{/* Content - nav items with framer-motion */}
@@ -224,4 +253,3 @@ function NavItem({
 		</Link>
 	);
 }
-
