@@ -88,15 +88,13 @@ export function SidebarPanel({ module, utilities }: SidebarPanelProps) {
 								<ChevronRight className="ml-auto size-4 text-neutral-400" />
 							</CollapsibleTrigger>
 
-							{/* Expanded trigger - minimal header for collapsing */}
-							<CollapsibleTrigger className="mb-1 flex w-full items-center gap-2 rounded-md px-2 py-1 text-sm text-neutral-500 transition-colors hover:bg-neutral-200/50 group-data-[state=closed]/setup:hidden">
-								<Settings className="size-4" />
-								<ChevronDown className="ml-auto size-4" />
-							</CollapsibleTrigger>
-
 							{/* Content - nav items with grid animation */}
 							<CollapsibleContent className="grid transition-all duration-200 ease-out data-[state=closed]:grid-rows-[0fr] data-[state=open]:grid-rows-[1fr]">
-								<nav className="flex flex-col gap-0.5 overflow-hidden">
+								<nav className="relative flex flex-col gap-0.5 overflow-hidden pr-6">
+									{/* Minimal corner chevron to collapse */}
+									<CollapsibleTrigger className="absolute right-0 top-0 p-1 text-neutral-400 transition-colors hover:text-neutral-600">
+										<ChevronDown className="size-4" />
+									</CollapsibleTrigger>
 									{setupSection.items.map((item) => (
 										<NavItem
 											key={item.id}
@@ -170,37 +168,3 @@ function NavItem({
 	);
 }
 
-/**
- * SetupNavItem - Muted variant for configuration/setup items
- * Smaller text, neutral colors, less visual prominence than primary NavItem
- */
-function SetupNavItem({
-	item,
-	isActive,
-}: {
-	item: NavItemConfig;
-	isActive: boolean;
-}) {
-	return (
-		<Link
-			href={item.path}
-			className={cn(
-				"group flex h-7 items-center rounded-md px-2 text-xs transition-colors",
-				isActive
-					? "bg-neutral-200/50 font-medium text-neutral-700"
-					: "text-neutral-500 hover:bg-neutral-200/30 hover:text-neutral-600",
-			)}
-		>
-			<span className="flex items-center gap-2">
-				<IconByName
-					name={item.icon}
-					className={cn(
-						"size-3.5 shrink-0",
-						isActive ? "text-neutral-600" : "text-neutral-400",
-					)}
-				/>
-				<span className="truncate">{item.label}</span>
-			</span>
-		</Link>
-	);
-}
