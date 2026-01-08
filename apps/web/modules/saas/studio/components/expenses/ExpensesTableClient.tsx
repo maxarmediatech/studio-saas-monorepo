@@ -98,6 +98,7 @@ export function ExpensesTableClient({
 		sortingState,
 		onSortingChange,
 		onPaginationChange,
+		onLimitChange,
 	} = useExpensesTable();
 
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -375,6 +376,7 @@ export function ExpensesTableClient({
 					isFetching={isFetching}
 					pagination={serverPagination}
 					onPaginationChange={onPaginationChange}
+					onLimitChange={onLimitChange}
 					sorting={sortingState}
 					onSortingChange={onSortingChange}
 					enableRowSelection

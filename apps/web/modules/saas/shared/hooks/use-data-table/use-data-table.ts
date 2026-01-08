@@ -180,6 +180,14 @@ export function useDataTable<
 		[setPage],
 	);
 
+	// Handler for DataTablePagination limit change
+	const onLimitChange = useCallback(
+		(limit: number) => {
+			setLimit(limit);
+		},
+		[setLimit],
+	);
+
 	// Handler for TanStack Table sorting - directly updates URL state
 	const onSortingChange: OnChangeFn<SortingState> = useCallback(
 		(updater) => {
@@ -233,6 +241,7 @@ export function useDataTable<
 
 		// TanStack Table integration
 		onPaginationChange,
+		onLimitChange,
 		onSortingChange,
 		sortingState, // Direct SortingState from URL - pass to useReactTable
 	};

@@ -134,6 +134,7 @@ export function DeliverablesTableClient({
 		sortingState,
 		onSortingChange,
 		onPaginationChange,
+		onLimitChange,
 	} = useDeliverablesTable();
 
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -444,6 +445,7 @@ export function DeliverablesTableClient({
 					isFetching={isFetching}
 					pagination={serverPagination}
 					onPaginationChange={onPaginationChange}
+					onLimitChange={onLimitChange}
 					sorting={sortingState}
 					onSortingChange={onSortingChange}
 					enableRowSelection

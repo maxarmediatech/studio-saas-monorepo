@@ -87,6 +87,8 @@ export interface UseDataTableReturn<TFilters extends BaseFilterState> {
 	// === TanStack Table Integration ===
 	/** Handler for DataTablePagination component */
 	onPaginationChange: (pagination: TablePaginationState) => void;
+	/** Handler for DataTablePagination limit change */
+	onLimitChange: (limit: number) => void;
 	/** Handler for TanStack Table sorting */
 	onSortingChange: OnChangeFn<SortingState>;
 	/** TanStack Table compatible sorting state */

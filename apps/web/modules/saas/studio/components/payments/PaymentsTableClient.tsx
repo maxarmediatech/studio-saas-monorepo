@@ -94,6 +94,7 @@ export function PaymentsTableClient({
 		sortingState,
 		onSortingChange,
 		onPaginationChange,
+		onLimitChange,
 	} = usePaymentsTable();
 
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -335,6 +336,7 @@ export function PaymentsTableClient({
 						isFetching={isFetching}
 						pagination={serverPagination}
 						onPaginationChange={onPaginationChange}
+						onLimitChange={onLimitChange}
 						sorting={sortingState}
 						onSortingChange={onSortingChange}
 						enableRowSelection

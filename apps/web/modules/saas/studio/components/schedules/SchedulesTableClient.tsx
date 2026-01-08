@@ -125,6 +125,7 @@ export function SchedulesTableClient({
 		isFiltered,
 		onSortingChange,
 		onPaginationChange,
+		onLimitChange,
 	} = useSchedulesTable();
 
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -469,6 +470,7 @@ export function SchedulesTableClient({
 						isFetching={isFetching}
 						pagination={serverPagination}
 						onPaginationChange={onPaginationChange}
+						onLimitChange={onLimitChange}
 						sorting={sortingState}
 						onSortingChange={onSortingChange}
 						enableRowSelection

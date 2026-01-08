@@ -78,6 +78,7 @@ export function BookingsTableClient({
 		sortingState,
 		onSortingChange,
 		onPaginationChange,
+		onLimitChange,
 	} = useBookingsTable();
 
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -474,6 +475,7 @@ export function BookingsTableClient({
 					isFetching={isFetching}
 					pagination={serverPagination}
 					onPaginationChange={onPaginationChange}
+					onLimitChange={onLimitChange}
 					sorting={sortingState}
 					onSortingChange={onSortingChange}
 					enableRowSelection

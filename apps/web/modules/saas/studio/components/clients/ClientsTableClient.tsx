@@ -54,6 +54,7 @@ export function ClientsTableClient() {
 		sortingState,
 		onSortingChange,
 		onPaginationChange,
+		onLimitChange,
 	} = useClientsTable();
 
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -304,6 +305,7 @@ export function ClientsTableClient() {
 					isFetching={isFetching}
 					pagination={serverPagination}
 					onPaginationChange={onPaginationChange}
+					onLimitChange={onLimitChange}
 					sorting={sortingState}
 					onSortingChange={onSortingChange}
 					enableRowSelection

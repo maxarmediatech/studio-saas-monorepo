@@ -84,6 +84,7 @@ export function CrewsTableClient({
 		sortingState,
 		onSortingChange,
 		onPaginationChange,
+		onLimitChange,
 	} = useCrewsTable();
 
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -325,6 +326,7 @@ export function CrewsTableClient({
 					isFetching={isFetching}
 					pagination={serverPagination}
 					onPaginationChange={onPaginationChange}
+					onLimitChange={onLimitChange}
 					sorting={sortingState}
 					onSortingChange={onSortingChange}
 					enableRowSelection

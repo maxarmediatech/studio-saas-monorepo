@@ -155,6 +155,7 @@ export function TasksTableClient({
 		sortingState,
 		onSortingChange,
 		onPaginationChange,
+		onLimitChange,
 	} = useTasksTable();
 
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -434,6 +435,7 @@ export function TasksTableClient({
 					isFetching={isFetching}
 					pagination={serverPagination}
 					onPaginationChange={onPaginationChange}
+					onLimitChange={onLimitChange}
 					sorting={sortingState}
 					onSortingChange={onSortingChange}
 					enableRowSelection

@@ -46,6 +46,7 @@ export interface DataTableProps<TData, TValue> {
 	/** Server-side pagination */
 	pagination?: PaginationState;
 	onPaginationChange?: (pagination: PaginationState) => void;
+	onLimitChange?: (limit: number) => void;
 	/** Server-side sorting */
 	sorting?: SortingState;
 	onSortingChange?: OnChangeFn<SortingState>;
@@ -88,6 +89,7 @@ export function DataTable<TData, TValue>({
 	emptyState,
 	pagination,
 	onPaginationChange,
+	onLimitChange,
 	sorting: externalSorting,
 	onSortingChange,
 	rowSelection: externalRowSelection,
@@ -412,10 +414,11 @@ export function DataTable<TData, TValue>({
 				</table>
 			</div>
 
-			{pagination && pagination.pageCount > 1 && (
+			{pagination && (
 				<DataTablePagination
 					pagination={pagination}
 					onPaginationChange={onPaginationChange}
+					onLimitChange={onLimitChange}
 					isLoading={isFetching}
 				/>
 			)}

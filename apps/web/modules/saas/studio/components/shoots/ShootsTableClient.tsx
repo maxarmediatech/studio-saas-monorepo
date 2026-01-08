@@ -110,6 +110,7 @@ export function ShootsTableClient({
 		sortingState,
 		onSortingChange,
 		onPaginationChange,
+		onLimitChange,
 	} = useShootsTable();
 
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -466,6 +467,7 @@ export function ShootsTableClient({
 					isFetching={isFetching}
 					pagination={serverPagination}
 					onPaginationChange={onPaginationChange}
+					onLimitChange={onLimitChange}
 					sorting={sortingState}
 					onSortingChange={onSortingChange}
 					enableRowSelection
