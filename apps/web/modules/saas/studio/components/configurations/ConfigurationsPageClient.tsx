@@ -15,6 +15,7 @@ import { Badge } from "@repo/ui/components/badge";
 import { Input } from "@repo/ui/components/input";
 import {
 	DataTable,
+	DataTableColumnHeader,
 	DataTableRowActions,
 	type RowAction,
 } from "@saas/shared/components/data-table";
@@ -222,7 +223,9 @@ export function ConfigurationsPageClient({
 			},
 			{
 				accessorKey: "sortOrder",
-				header: () => <div className="text-center">Order</div>,
+				header: ({ column }) => (
+					<DataTableColumnHeader column={column} title="Order" className="justify-center" />
+				),
 				cell: ({ row }) => (
 					<div className="text-center font-mono text-sm">
 						{row.original.sortOrder}
@@ -231,7 +234,9 @@ export function ConfigurationsPageClient({
 			},
 			{
 				accessorKey: "isDefault",
-				header: () => <div className="text-center">Default</div>,
+				header: ({ column }) => (
+					<DataTableColumnHeader column={column} title="Default" className="justify-center" />
+				),
 				cell: ({ row }) => (
 					<div className="flex justify-center">
 						{row.original.isDefault && (
@@ -242,7 +247,9 @@ export function ConfigurationsPageClient({
 			},
 			{
 				accessorKey: "isSystem",
-				header: () => <div className="text-center">Type</div>,
+				header: ({ column }) => (
+					<DataTableColumnHeader column={column} title="Type" className="justify-center" />
+				),
 				cell: ({ row }) => (
 					<div className="flex justify-center">
 						<Badge

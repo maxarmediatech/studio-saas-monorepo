@@ -352,10 +352,8 @@ export function ShootsTableClient({
 			{
 				id: "venue",
 				accessorKey: "venue",
-				header: () => (
-					<span className="text-foreground flex h-8 items-center text-xs font-semibold uppercase tracking-wide">
-						Venue
-					</span>
+				header: ({ column }) => (
+					<DataTableColumnHeader column={column} title="Venue" />
 				),
 				cell: ({ row }) => (
 					<div className="flex items-center gap-2 max-w-[180px]">
@@ -409,10 +407,8 @@ export function ShootsTableClient({
 			{
 				id: "assignmentsCount",
 				accessorKey: "assignmentsCount",
-				header: () => (
-					<span className="text-foreground flex h-8 items-center text-xs font-semibold uppercase tracking-wide">
-						Crew
-					</span>
+				header: ({ column }) => (
+					<DataTableColumnHeader column={column} title="Crew" />
 				),
 				cell: ({ row }) => (
 					<div className="flex items-center gap-2">

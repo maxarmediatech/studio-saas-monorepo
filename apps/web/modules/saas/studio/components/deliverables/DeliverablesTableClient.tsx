@@ -387,10 +387,8 @@ export function DeliverablesTableClient({
 			{
 				id: "assignmentsCount",
 				accessorKey: "assignmentsCount",
-				header: () => (
-					<span className="text-foreground flex h-8 items-center text-xs font-semibold uppercase tracking-wide">
-						Crew
-					</span>
+				header: ({ column }) => (
+					<DataTableColumnHeader column={column} title="Crew" />
 				),
 				cell: ({ row }) => (
 					<div className="flex items-center gap-2">
