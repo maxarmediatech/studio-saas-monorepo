@@ -246,7 +246,6 @@ export function DataTable<TData, TValue>({
 
 			return cn(
 				baseMetaClass,
-				(isLeftSticky || isRightSticky) && "bg-background",
 				// Add right border to last left-sticky column
 				isLastLeftSticky &&
 					"after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-border",
@@ -277,7 +276,7 @@ export function DataTable<TData, TValue>({
 					)}
 					style={minWidth ? { minWidth: `${minWidth}px` } : undefined}
 				>
-					<TableHeader className="bg-muted/40">
+					<TableHeader>
 						{table.getHeaderGroups().map((headerGroup) => (
 							<TableRow
 								key={headerGroup.id}
@@ -309,7 +308,7 @@ export function DataTable<TData, TValue>({
 										<TableHead
 											key={header.id}
 											className={cn(
-												"relative border-r border-border px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground last:border-r-0",
+												"relative border-r border-border px-3 py-2 text-left text-sm font-semibold text-foreground last:border-r-0",
 												stickyClass,
 											)}
 											style={stickyStyle}

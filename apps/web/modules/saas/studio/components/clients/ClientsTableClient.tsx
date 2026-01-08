@@ -194,10 +194,8 @@ export function ClientsTableClient() {
 			{
 				id: "phoneNumber",
 				accessorKey: "phoneNumber",
-				header: () => (
-					<span className="text-foreground flex h-8 items-center text-xs font-semibold uppercase tracking-wide">
-						Phone
-					</span>
+				header: ({ column }) => (
+					<DataTableColumnHeader column={column} title="Phone" />
 				),
 				cell: ({ row }) => (
 					<div className="flex items-center gap-2">
@@ -222,10 +220,8 @@ export function ClientsTableClient() {
 			{
 				id: "address",
 				accessorKey: "address",
-				header: () => (
-					<span className="text-foreground flex h-8 items-center text-xs font-semibold uppercase tracking-wide">
-						Address
-					</span>
+				header: ({ column }) => (
+					<DataTableColumnHeader column={column} title="Address" />
 				),
 				cell: ({ row }) => (
 					<span className="text-muted-foreground truncate max-w-[200px] block">

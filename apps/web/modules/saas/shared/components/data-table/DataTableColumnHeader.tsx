@@ -60,7 +60,7 @@ export function DataTableColumnHeader<TData, TValue>({
 				variant="ghost"
 				size="sm"
 				className={cn(
-					"-ml-3 h-8 data-[state=open]:bg-accent",
+					"-ml-3 h-8 text-sm font-semibold data-[state=open]:bg-accent",
 					className,
 				)}
 				onClick={() => column.toggleSorting(currentDirection === "asc")}
@@ -84,7 +84,7 @@ export function DataTableColumnHeader<TData, TValue>({
 					<Button
 						variant="ghost"
 						size="sm"
-						className="-ml-3 h-8 data-[state=open]:bg-accent"
+						className="-ml-3 h-8 text-sm font-semibold data-[state=open]:bg-accent"
 					>
 						<span>{title}</span>
 						{currentDirection === "desc" ? (
