@@ -147,6 +147,7 @@ export function BookingDetailPageClient({
 			header={
 				<BookingDetailHeader
 					backHref={backHref}
+					referenceNumber={bookingData.referenceNumber}
 					onEdit={() => console.log("Edit booking")}
 					onDuplicate={() => console.log("Duplicate booking")}
 					onDelete={() => console.log("Delete booking")}
