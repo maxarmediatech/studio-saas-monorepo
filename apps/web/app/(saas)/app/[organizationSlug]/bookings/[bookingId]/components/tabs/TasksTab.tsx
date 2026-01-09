@@ -22,6 +22,7 @@ import {
 	PencilIcon,
 	PlusIcon,
 } from "lucide-react";
+import { getStatusVariant, getPriorityVariant } from "../utils";
 
 // ============================================================================
 // Types
@@ -37,38 +38,6 @@ type TaskPriority = "high" | "medium" | "low";
 // ============================================================================
 // Utilities
 // ============================================================================
-
-function getStatusVariant(
-	status: string,
-): "default" | "secondary" | "destructive" | "outline" {
-	switch (status) {
-		case "todo":
-			return "secondary";
-		case "in_progress":
-			return "default";
-		case "completed":
-			return "outline";
-		case "cancelled":
-			return "destructive";
-		default:
-			return "default";
-	}
-}
-
-function getPriorityVariant(
-	priority: string,
-): "default" | "secondary" | "destructive" | "outline" {
-	switch (priority) {
-		case "high":
-			return "destructive";
-		case "medium":
-			return "secondary";
-		case "low":
-			return "outline";
-		default:
-			return "default";
-	}
-}
 
 function getDueDateGroup(dueDate: string | null | undefined): string {
 	if (!dueDate) return "no-date";

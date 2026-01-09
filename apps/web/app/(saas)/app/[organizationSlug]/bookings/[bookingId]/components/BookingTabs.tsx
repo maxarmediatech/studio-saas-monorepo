@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { useEffect, useRef, useState } from "react";
-import { formatCurrency } from "./utils";
+import { formatPackageType } from "./utils";
 
 // Import tab components
 import { DeliverablesTab } from "./tabs/DeliverablesTab";
@@ -58,18 +58,6 @@ const TABS = [
 	{ id: "tasks", label: "Tasks", icon: CheckSquare },
 	{ id: "finances", label: "Finances", icon: IndianRupee },
 ] as const;
-
-// ============================================================================
-// Utilities
-// ============================================================================
-
-function formatPackageType(type: string | null | undefined): string {
-	if (!type) return "—";
-	return type
-		.split("_")
-		.map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-		.join(" ");
-}
 
 // ============================================================================
 // Main Component
@@ -127,9 +115,9 @@ export function BookingTabs({ bookingId, booking }: BookingTabsProps) {
 							)}
 							{booking.bookingType && (
 								<>
-									Booking Type:{" "}
+								Booking Type:{" "}
 									<span className="font-medium text-foreground">
-										{formatPackageType(booking.bookingType)}
+										{formatPackageType(booking.bookingType, { fallback: "—" })}
 									</span>
 								</>
 							)}

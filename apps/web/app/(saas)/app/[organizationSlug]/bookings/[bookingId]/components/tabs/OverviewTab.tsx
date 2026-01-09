@@ -13,7 +13,7 @@ import {
 	Phone,
 	User,
 } from "lucide-react";
-import { formatCurrency } from "../utils";
+import { formatCurrency, formatPackageType } from "../utils";
 
 // ============================================================================
 // Types
@@ -43,14 +43,23 @@ interface OverviewTabProps {
 interface MilestoneProps {
 	label: string;
 	isComplete: boolean;
-	isActive?: boolean;
+}
+
+interface ShootData {
+	id: string;
+	status: string;
+}
+
+interface DeliverableData {
+	id: string;
+	status: string;
 }
 
 // ============================================================================
 // Sub-Components
 // ============================================================================
 
-function Milestone({ label, isComplete, isActive }: MilestoneProps) {
+function Milestone({ label, isComplete }: MilestoneProps) {
 	return (
 		<div className="flex flex-col gap-3 w-full">
 			<div className="flex items-center gap-2 min-h-[20px]">
@@ -76,45 +85,22 @@ function Milestone({ label, isComplete, isActive }: MilestoneProps) {
 	);
 }
 
-// Format package type key to readable label (e.g., "wedding_package" -> "Wedding Package")
-function formatPackageType(key: string | null | undefined): string {
-	if (!key) return "Standard";
-	return key
-		.split("_")
-		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-		.join(" ");
-}
-
 function MilestoneTracker({
-	bookingId,
 	packageCost,
 	packageType,
 	totalReceived,
+	shoots,
+	deliverables,
 }: {
-	bookingId: string;
 	packageCost: string;
 	packageType?: string | null;
 	totalReceived: string;
+	shoots: ShootData[];
+	deliverables: DeliverableData[];
 }) {
-	// Fetch shoots data
-	const { data: shootsData } = useQuery({
-		...shootsApi.listOptions({ bookingId, limit: 100 }),
-		enabled: !!bookingId,
-	});
-
-	// Fetch deliverables data
-	const { data: deliverablesData } = useQuery({
-		...deliverablesApi.listOptions({ bookingId, limit: 100 }),
-		enabled: !!bookingId,
-	});
-
-	const shoots = shootsData?.data ?? [];
-	const deliverables = deliverablesData?.data ?? [];
-
 	const packageCostNum = Number.parseFloat(packageCost) || 0;
 	const totalReceivedNum = Number.parseFloat(totalReceived) || 0;
 
-	// Calculate milestone states
 	const hasAdvancePayment = totalReceivedNum > 0;
 	const shootsCompleted =
 		shoots.length > 0 && shoots.every((s) => s.status === "completed");
@@ -123,18 +109,8 @@ function MilestoneTracker({
 		deliverables.every((d) => d.status === "completed");
 	const isFullyPaid = totalReceivedNum >= packageCostNum && packageCostNum > 0;
 
-	// Determine active milestone (first incomplete)
-	const milestones = [
-		hasAdvancePayment,
-		shootsCompleted,
-		deliverablesCompleted,
-		isFullyPaid,
-	];
-	const activeIndex = milestones.findIndex((m) => !m);
-
 	return (
 		<div className="overflow-hidden rounded-xl border bg-background">
-			{/* Top Gray Bar */}
 			<div className="bg-muted/60 px-6 py-4 flex flex-wrap items-center justify-between gap-4 text-xs border-b">
 				<div className="flex items-center gap-2 text-muted-foreground">
 					<span>Package Type</span>
@@ -150,29 +126,12 @@ function MilestoneTracker({
 				</div>
 			</div>
 
-			{/* Stepper Content */}
 			<div className="p-8">
 				<div className="grid grid-cols-1 md:grid-cols-4 gap-4 w-full">
-					<Milestone
-						label="Advance Payment"
-						isComplete={hasAdvancePayment}
-						isActive={activeIndex === 0}
-					/>
-					<Milestone
-						label="Shoot Completed"
-						isComplete={shootsCompleted}
-						isActive={activeIndex === 1}
-					/>
-					<Milestone
-						label="Deliverables Complete"
-						isComplete={deliverablesCompleted}
-						isActive={activeIndex === 2}
-					/>
-					<Milestone
-						label="Payment Completed"
-						isComplete={isFullyPaid}
-						isActive={activeIndex === 3}
-					/>
+					<Milestone label="Advance Payment" isComplete={hasAdvancePayment} />
+					<Milestone label="Shoot Completed" isComplete={shootsCompleted} />
+					<Milestone label="Deliverables Complete" isComplete={deliverablesCompleted} />
+					<Milestone label="Payment Completed" isComplete={isFullyPaid} />
 				</div>
 			</div>
 		</div>
@@ -245,36 +204,20 @@ function ClientsSection({
 }
 
 function QuickStats({
-	bookingId,
 	packageCost,
-	totalReceived,
 	balance,
+	shoots,
+	deliverables,
 }: {
-	bookingId: string;
 	packageCost: string;
-	totalReceived: string;
 	balance: string;
+	shoots: ShootData[];
+	deliverables: DeliverableData[];
 }) {
-	// Fetch shoots
-	const { data: shootsData } = useQuery({
-		...shootsApi.listOptions({ bookingId, limit: 100 }),
-		enabled: !!bookingId,
-	});
-
-	// Fetch deliverables
-	const { data: deliverablesData } = useQuery({
-		...deliverablesApi.listOptions({ bookingId, limit: 100 }),
-		enabled: !!bookingId,
-	});
-
-	const shoots = shootsData?.data ?? [];
-	const deliverables = deliverablesData?.data ?? [];
-
 	const shootsCompleted = shoots.filter((s) => s.status === "completed").length;
 	const deliverablesCompleted = deliverables.filter(
 		(d) => d.status === "completed",
 	).length;
-
 	const balanceNum = Number.parseFloat(balance) || 0;
 
 	return (
@@ -311,7 +254,10 @@ function QuickStats({
 					<div className="space-y-1">
 						<p className="text-xs text-muted-foreground">Balance</p>
 						<p
-							className={`text-lg font-semibold ${balanceNum > 0 ? "text-amber-600" : "text-green-600"}`}
+							className={cn(
+								"text-lg font-semibold",
+								balanceNum > 0 ? "text-amber-600" : "text-green-600",
+							)}
 						>
 							{formatCurrency(balance)}
 						</p>
@@ -344,28 +290,40 @@ function NotesSection({ note }: { note?: string | null }) {
 // ============================================================================
 
 export function OverviewTab({ bookingId, booking }: OverviewTabProps) {
+	// Single data fetch for shoots and deliverables - shared across sub-components
+	const { data: shootsData } = useQuery({
+		...shootsApi.listOptions({ bookingId, limit: 100 }),
+		enabled: !!bookingId,
+	});
+
+	const { data: deliverablesData } = useQuery({
+		...deliverablesApi.listOptions({ bookingId, limit: 100 }),
+		enabled: !!bookingId,
+	});
+
+	const shoots = shootsData?.data ?? [];
+	const deliverables = deliverablesData?.data ?? [];
+
 	return (
 		<div className="space-y-6">
-			{/* Milestone Progress Tracker */}
 			<MilestoneTracker
-				bookingId={bookingId}
 				packageCost={booking.packageCost}
 				packageType={booking.packageType}
 				totalReceived={booking.totalReceived}
+				shoots={shoots}
+				deliverables={deliverables}
 			/>
 
-			{/* Two-column layout for stats and clients */}
 			<div className="grid md:grid-cols-2 gap-6">
 				<QuickStats
-					bookingId={bookingId}
 					packageCost={booking.packageCost}
-					totalReceived={booking.totalReceived}
 					balance={booking.balance}
+					shoots={shoots}
+					deliverables={deliverables}
 				/>
 				<ClientsSection participants={booking.participants} />
 			</div>
 
-			{/* Notes */}
 			<NotesSection note={booking.note} />
 		</div>
 	);
