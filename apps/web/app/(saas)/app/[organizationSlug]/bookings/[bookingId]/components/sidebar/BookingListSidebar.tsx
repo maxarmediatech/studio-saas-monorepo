@@ -52,8 +52,8 @@ export function BookingListSidebar({
 
 	return (
 		<div className="flex h-full flex-col">
-			<div className="shrink-0 p-3 border-b">
-				<div className="relative">
+			<div className="flex h-12 shrink-0 items-center border-b px-3 sm:h-16">
+				<div className="relative w-full">
 					<SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 					<Input
 						type="text"

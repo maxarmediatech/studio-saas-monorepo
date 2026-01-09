@@ -16,8 +16,8 @@ export function BookingDetailLayout({
 }: BookingDetailLayoutProps) {
 	return (
 		<div className={cn("flex h-full min-h-0 flex-1 flex-col", className)}>
-			<header className="shrink-0 border-b bg-background">
-				<div className="px-4 py-3 sm:px-6 lg:px-8">{header}</div>
+			<header className="flex h-12 shrink-0 items-center border-b bg-background px-4 sm:h-16 sm:px-6 lg:px-8">
+				{header}
 			</header>
 
 			<main className="flex min-h-0 flex-1 flex-col">
