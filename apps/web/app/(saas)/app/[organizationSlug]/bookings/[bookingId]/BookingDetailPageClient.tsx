@@ -8,16 +8,15 @@ import { AlertCircleIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import {
+	BookingDetailContent,
 	BookingDetailHeader,
+	BookingHeader,
 	BookingDetailLayout,
 	BookingNoteCard,
 	ClientCard,
 	ContactInfoCard,
-	DeliverablesCard,
 	EventVenueCard,
-	PaymentSummaryCard,
 	QuickStatsCard,
-	ShootsCard,
 } from "./components";
 
 // ============================================================================
@@ -97,14 +96,10 @@ export function BookingDetailPageClient({
 
 	// Loading state
 	if (isLoading) {
+		const backHref = `/app/${organizationSlug}/bookings`;
 		return (
 			<BookingDetailLayout
-				header={
-					<div className="flex items-center gap-3">
-						<Skeleton className="h-5 w-5" />
-						<Skeleton className="h-6 w-48" />
-					</div>
-				}
+				header={<BookingDetailHeader backHref={backHref} />}
 				sidebar={
 					<div className="space-y-4">
 						<Skeleton className="h-24 w-full" />
@@ -126,11 +121,7 @@ export function BookingDetailPageClient({
 	if (isError || !bookingData) {
 		return (
 			<BookingDetailLayout
-				header={
-					<div className="flex items-center gap-3">
-						<span className="text-lg font-semibold">Booking</span>
-					</div>
-				}
+				header={<BookingDetailHeader backHref={backHref} />}
 				sidebar={<div />}
 			>
 				<div className="flex flex-col items-center gap-4 py-12 text-center">
@@ -155,10 +146,6 @@ export function BookingDetailPageClient({
 		<BookingDetailLayout
 			header={
 				<BookingDetailHeader
-					name={bookingData.name}
-					referenceNumber={bookingData.referenceNumber}
-					status={status}
-					balance={bookingData.balance}
 					backHref={backHref}
 					onEdit={() => console.log("Edit booking")}
 					onDuplicate={() => console.log("Duplicate booking")}
@@ -201,10 +188,17 @@ export function BookingDetailPageClient({
 				</>
 			}
 		>
-			{/* Main Content: Shoots -> Deliverables -> Payments */}
-			<ShootsCard bookingId={bookingId} />
-			<DeliverablesCard bookingId={bookingId} />
-			<PaymentSummaryCard
+			<BookingHeader
+				name={bookingData.name}
+				referenceNumber={bookingData.referenceNumber}
+				status={status}
+				createdAt={bookingData.createdAt}
+				clientName={primaryClient?.name}
+				isPaid={Number.parseFloat(bookingData.balance) <= 0}
+			/>
+
+			{/* Main Content: Unified card with Shoots, Deliverables, Payments */}
+			<BookingDetailContent
 				bookingId={bookingId}
 				packageCost={bookingData.packageCost}
 				totalReceived={bookingData.totalReceived}
