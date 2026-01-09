@@ -2,26 +2,16 @@
 
 import { Button } from "@repo/ui/components/button";
 import { Skeleton } from "@repo/ui/components/skeleton";
-import { bookingsApi, bookingsMutations } from "@saas/studio/lib/api";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { bookingsApi } from "@saas/studio/lib/api";
+import { useQuery } from "@tanstack/react-query";
 import { AlertCircleIcon } from "lucide-react";
-import { toast } from "sonner";
 
 import {
 	BookingDetailContent,
 	BookingDetailHeader,
-	BookingHeader,
 	BookingDetailLayout,
-	BookingNoteCard,
-	ClientCard,
-	ContactInfoCard,
-	EventVenueCard,
-	QuickStatsCard,
+	BookingHeader,
 } from "./components";
-
-// ============================================================================
-// Types
-// ============================================================================
 
 interface BookingDetailPageClientProps {
 	organizationSlug: string;
@@ -36,17 +26,10 @@ type BookingPhase =
 	| "completed"
 	| "cancelled";
 
-// ============================================================================
-// Main Component
-// ============================================================================
-
 export function BookingDetailPageClient({
 	organizationSlug,
 	bookingId,
 }: BookingDetailPageClientProps) {
-	const queryClient = useQueryClient();
-
-	// Fetch booking data
 	const {
 		data: booking,
 		isLoading,
@@ -57,62 +40,20 @@ export function BookingDetailPageClient({
 		enabled: !!bookingId,
 	});
 
-	// Update status mutation
-	const updateStatusMutation = useMutation({
-		...bookingsMutations.updateStatus(),
-		onSuccess: () => {
-			queryClient.invalidateQueries({
-				queryKey: bookingsApi.getOptions(bookingId).queryKey,
-			});
-			toast.success("Booking status updated");
-		},
-		onError: (error) => {
-			toast.error("Failed to update status", {
-				description: error.message,
-			});
-		},
-	});
-
 	const bookingData = booking?.data;
 	const status = (bookingData?.status || "new") as BookingPhase;
 	const backHref = `/app/${organizationSlug}/bookings`;
 
-	// Get clients from participants
-	const primaryParticipant = bookingData?.participants?.[0];
-	const primaryClient = primaryParticipant?.client;
 	const clientNames =
 		bookingData?.participants
 			?.map((p) => p.client?.name)
 			.filter((name): name is string => !!name) ?? [];
 
-	// Handlers
-	const handlePhaseChange = async (newPhase: BookingPhase) => {
-		await updateStatusMutation.mutateAsync({
-			id: bookingId,
-			status: newPhase,
-		});
-	};
-
-	const handleEditNote = () => {
-		// TODO: Open note edit dialog/sheet
-		console.log("Edit note");
-	};
-
-	// Loading state
 	if (isLoading) {
-		const backHref = `/app/${organizationSlug}/bookings`;
 		return (
 			<BookingDetailLayout
 				header={<BookingDetailHeader backHref={backHref} />}
-				sidebar={
-					<div className="space-y-4">
-						<Skeleton className="h-24 w-full" />
-						<Skeleton className="h-32 w-full" />
-						<Skeleton className="h-24 w-full" />
-					</div>
-				}
 			>
-				{/* Status Stepper skeleton */}
 				<Skeleton className="h-28 w-full rounded-xl" />
 				<Skeleton className="h-48 w-full" />
 				<Skeleton className="h-48 w-full" />
@@ -121,12 +62,10 @@ export function BookingDetailPageClient({
 		);
 	}
 
-	// Error state
 	if (isError || !bookingData) {
 		return (
 			<BookingDetailLayout
 				header={<BookingDetailHeader backHref={backHref} />}
-				sidebar={<div />}
 			>
 				<div className="flex flex-col items-center gap-4 py-12 text-center">
 					<AlertCircleIcon className="h-12 w-12 text-destructive/50" />
@@ -135,7 +74,8 @@ export function BookingDetailPageClient({
 							Failed to load booking
 						</p>
 						<p className="text-sm text-muted-foreground">
-							The booking may have been deleted or you may not have access.
+							The booking may have been deleted or you may not
+							have access.
 						</p>
 					</div>
 					<Button variant="outline" onClick={() => refetch()}>
@@ -157,41 +97,6 @@ export function BookingDetailPageClient({
 					onDelete={() => console.log("Delete booking")}
 				/>
 			}
-			sidebar={
-				<>
-					{/* Booking Note - prominent position */}
-					<BookingNoteCard
-						note={bookingData.note}
-						onEdit={handleEditNote}
-					/>
-
-					{/* Primary Client */}
-					<ClientCard
-						participants={bookingData.participants ?? []}
-						organizationSlug={organizationSlug}
-					/>
-
-					{/* Event Venue */}
-					<EventVenueCard events={bookingData.events ?? []} />
-
-					{/* Contact Info */}
-					{primaryClient && (
-						<ContactInfoCard
-							email={primaryClient.email}
-							phone={primaryClient.phoneNumber}
-						/>
-					)}
-
-					{/* Quick Stats */}
-					<QuickStatsCard
-						createdAt={bookingData.createdAt}
-						bookingType={bookingData.bookingType}
-						packageType={bookingData.packageType}
-						shootsCount={bookingData.shootsCount ?? 0}
-						deliverablesCount={bookingData.deliverablesCount ?? 0}
-					/>
-				</>
-			}
 		>
 			<BookingHeader
 				name={bookingData.name}
@@ -203,7 +108,6 @@ export function BookingDetailPageClient({
 				isPaid={Number.parseFloat(bookingData.balance) <= 0}
 			/>
 
-			{/* Main Content: Unified card with Shoots, Deliverables, Payments */}
 			<BookingDetailContent
 				bookingId={bookingId}
 				packageCost={bookingData.packageCost}

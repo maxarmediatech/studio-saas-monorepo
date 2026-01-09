@@ -13,11 +13,5 @@ export { ShootsCard } from "./ShootsCard";
 export { DeliverablesCard } from "./DeliverablesCard";
 export { PaymentSummaryCard } from "./PaymentSummaryCard";
 
-// Sidebar Cards
-export {
-	BookingNoteCard,
-	ClientCard,
-	ContactInfoCard,
-	EventVenueCard,
-	QuickStatsCard,
-} from "./sidebar";
+// Sidebar
+export { BookingListSidebar } from "./sidebar";
