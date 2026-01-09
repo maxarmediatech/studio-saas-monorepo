@@ -29,6 +29,7 @@ import {
 	PlusIcon,
 	WalletIcon,
 } from "lucide-react";
+import { formatCurrency } from "./utils";
 
 // ============================================================================
 // Types
@@ -78,16 +79,6 @@ const paymentMethodLabels: Record<PaymentMethod, string> = {
 // ============================================================================
 // Utilities
 // ============================================================================
-
-const formatCurrency = (amount: number | string) => {
-	const num =
-		typeof amount === "string" ? Number.parseFloat(amount) || 0 : amount;
-	return new Intl.NumberFormat("en-IN", {
-		style: "currency",
-		currency: "INR",
-		maximumFractionDigits: 0,
-	}).format(num);
-};
 
 const getStatusVariant = (
 	status: string,

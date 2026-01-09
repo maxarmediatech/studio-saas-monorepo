@@ -2,6 +2,7 @@ import { Badge } from "@repo/ui/components/badge";
 import { cn } from "@repo/ui/lib/utils";
 import { format } from "date-fns";
 import { CheckCircle2, Loader2 } from "lucide-react";
+import { formatCurrency } from "./utils";
 
 interface BookingHeaderProps {
 	name: string;
@@ -20,16 +21,6 @@ function formatPackageType(key: string | null | undefined): string {
 		.split("_")
 		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
 		.join(" ");
-}
-
-// Format currency in Indian Rupees
-function formatCurrency(amount: string | undefined): string {
-	const num = Number.parseFloat(amount || "0");
-	return new Intl.NumberFormat("en-IN", {
-		style: "currency",
-		currency: "INR",
-		maximumFractionDigits: 0,
-	}).format(num);
 }
 
 export function BookingHeader({

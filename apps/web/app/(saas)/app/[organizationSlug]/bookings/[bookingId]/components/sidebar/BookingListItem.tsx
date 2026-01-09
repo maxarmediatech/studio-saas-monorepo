@@ -27,6 +27,7 @@ export function BookingListItem({
 
 	return (
 		<Link
+			prefetch={true}
 			href={`/app/${organizationSlug}/bookings/${booking.id}`}
 			onMouseEnter={prefetchBooking}
 			onFocus={prefetchBooking}
@@ -39,7 +40,7 @@ export function BookingListItem({
 			<div className="flex flex-col gap-1">
 				<span
 					className={cn(
-						"text-sm font-medium truncate",
+						"text-sm font-medium text-wrap",
 						isSelected ? "text-foreground" : "text-foreground/90",
 					)}
 				>
