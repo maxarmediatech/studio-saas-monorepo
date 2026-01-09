@@ -21,6 +21,7 @@ import Link from "next/link";
 
 interface BookingDetailHeaderProps {
 	backHref: string;
+	referenceNumber?: string;
 	onEdit?: () => void;
 	onDuplicate?: () => void;
 	onArchive?: () => void;
@@ -34,6 +35,7 @@ interface BookingDetailHeaderProps {
  */
 export function BookingDetailHeader({
 	backHref,
+	referenceNumber,
 	onEdit,
 	onDuplicate,
 	onArchive,
@@ -42,15 +44,21 @@ export function BookingDetailHeader({
 }: BookingDetailHeaderProps) {
 	return (
 		<div className={cn("flex items-center justify-between gap-4", className)}>
-			{/* Left: Back button */}
-			<div className="flex items-center gap-3 min-w-0">
+			{/* Left: Breadcrumb navigation */}
+			<div className="flex items-center gap-2 min-w-0">
 				<Link
 					href={backHref}
-					className="flex items-center gap-2 rounded-lg py-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground shrink-0"
+					className="flex items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground shrink-0"
 				>
 					<ChevronLeftIcon className="h-4 w-4" />
-					<span>Back to bookings</span>
+					<span className="text-sm font-medium">Bookings</span>
 				</Link>
+				{referenceNumber && (
+					<>
+						<span className="text-muted-foreground/60">/</span>
+						<h1 className="text-sm font-semibold truncate">{referenceNumber}</h1>
+					</>
+				)}
 			</div>
 
 			{/* Right: Actions */}
