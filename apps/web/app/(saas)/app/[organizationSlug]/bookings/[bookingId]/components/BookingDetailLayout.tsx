@@ -1,5 +1,6 @@
 "use client";
 
+import { ScrollArea } from "@repo/ui/components/scroll-area";
 import { cn } from "@repo/ui/lib/utils";
 import type { ReactNode } from "react";
 
@@ -21,11 +22,11 @@ export function BookingDetailLayout({
 			</header>
 
 			<main className="flex min-h-0 flex-1 flex-col">
-				<div className="flex-1 overflow-y-auto">
+				<ScrollArea className="flex-1 min-h-0">
 					<div className="mx-auto max-w-4xl px-4 py-6 lg:px-6">
 						<div className="space-y-6">{children}</div>
 					</div>
-				</div>
+				</ScrollArea>
 			</main>
 		</div>
 	);
