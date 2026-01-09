@@ -77,9 +77,13 @@ export function BookingDetailPageClient({
 	const status = (bookingData?.status || "new") as BookingPhase;
 	const backHref = `/app/${organizationSlug}/bookings`;
 
-	// Get primary client for contact info
+	// Get clients from participants
 	const primaryParticipant = bookingData?.participants?.[0];
 	const primaryClient = primaryParticipant?.client;
+	const clientNames =
+		bookingData?.participants
+			?.map((p) => p.client?.name)
+			.filter((name): name is string => !!name) ?? [];
 
 	// Handlers
 	const handlePhaseChange = async (newPhase: BookingPhase) => {
@@ -191,10 +195,11 @@ export function BookingDetailPageClient({
 		>
 			<BookingHeader
 				name={bookingData.name}
-				referenceNumber={bookingData.referenceNumber}
 				status={status}
 				createdAt={bookingData.createdAt}
-				clientName={primaryClient?.name}
+				clientNames={clientNames}
+				packageType={bookingData.packageType}
+				packageCost={bookingData.packageCost}
 				isPaid={Number.parseFloat(bookingData.balance) <= 0}
 			/>
 
