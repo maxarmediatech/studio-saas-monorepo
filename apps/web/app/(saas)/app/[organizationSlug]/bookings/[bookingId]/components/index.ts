@@ -5,7 +5,10 @@ export { BookingDetailLayout } from "./BookingDetailLayout";
 export { BookingDetailHeader } from "./BookingDetailHeader";
 export { BookingHeader } from "./BookingHeader";
 
-// Main Content - Unified Card
+// Main Content - Tabbed Interface
+export { BookingTabs } from "./BookingTabs";
+
+// Main Content - Unified Card (legacy)
 export { BookingDetailContent } from "./BookingDetailContent";
 
 // Sidebar
