@@ -294,6 +294,12 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							path: url("/settings/billing"),
 							icon: "CreditCard",
 						},
+						{
+							id: "danger-zone",
+							label: "Danger Zone",
+							path: url("/settings/danger-zone"),
+							icon: "AlertTriangle",
+						},
 					],
 				},
 				{

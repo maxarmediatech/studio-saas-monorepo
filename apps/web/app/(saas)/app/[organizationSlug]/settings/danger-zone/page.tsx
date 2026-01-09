@@ -1,5 +1,6 @@
 import { DeleteOrganizationForm } from "@saas/organizations/components/DeleteOrganizationForm";
 import { SettingsList } from "@saas/shared/components/SettingsList";
+import { PageContent } from "@saas/studio";
 import { getTranslations } from "next-intl/server";
 
 export async function generateMetadata() {
@@ -10,10 +11,14 @@ export async function generateMetadata() {
 	};
 }
 
-export default function OrganizationSettingsPage() {
+export default async function OrganizationSettingsPage() {
+	const t = await getTranslations();
+
 	return (
-		<SettingsList>
-			<DeleteOrganizationForm />
-		</SettingsList>
+		<PageContent title={t("organizations.settings.dangerZone.title")}>
+			<SettingsList>
+				<DeleteOrganizationForm />
+			</SettingsList>
+		</PageContent>
 	);
 }
