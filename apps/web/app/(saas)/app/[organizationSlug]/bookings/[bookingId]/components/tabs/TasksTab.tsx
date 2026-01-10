@@ -2,7 +2,12 @@
 
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/components/card";
+import {
+	Card,
+	CardContent,
+	CardHeader,
+	CardTitle,
+} from "@repo/ui/components/card";
 import { Progress } from "@repo/ui/components/progress";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { useTaskParams } from "@saas/studio/hooks/params";
@@ -26,7 +31,7 @@ interface TasksTabProps {
 	bookingId: string;
 }
 
-type TaskStatus = "todo" | "in_progress" | "completed" | "cancelled";
+type TaskStatus = "pending" | "in_progress" | "completed" | "cancelled";
 
 // Task type for internal use
 type Task = {
@@ -43,7 +48,12 @@ type Task = {
 // ============================================================================
 
 function groupTasksByStatus(tasks: Task[]) {
-	const order: TaskStatus[] = ["in_progress", "todo", "completed", "cancelled"];
+	const order: TaskStatus[] = [
+		"in_progress",
+		"pending",
+		"completed",
+		"cancelled",
+	];
 	const grouped = new Map<string, Task[]>();
 
 	for (const status of order) {
@@ -55,7 +65,7 @@ function groupTasksByStatus(tasks: Task[]) {
 		if (grouped.has(status)) {
 			grouped.get(status)?.push(task);
 		} else {
-			grouped.get("todo")?.push(task);
+			grouped.get("pending")?.push(task);
 		}
 	}
 
@@ -182,7 +192,11 @@ function TasksList({
 					</h4>
 					<div className="space-y-2">
 						{items.map((task) => (
-							<TaskCard key={task.id} task={task} onEdit={onEdit} />
+							<TaskCard
+								key={task.id}
+								task={task}
+								onEdit={onEdit}
+							/>
 						))}
 					</div>
 				</div>
@@ -263,7 +277,10 @@ export function TasksTab({ bookingId }: TasksTabProps) {
 				{tasksList.length > 0 && (
 					<CardContent className="pt-0 pb-4">
 						<div className="space-y-2">
-							<Progress value={progressPercentage} className="h-2" />
+							<Progress
+								value={progressPercentage}
+								className="h-2"
+							/>
 							<p className="text-xs text-muted-foreground">
 								{completedCount} of {tasksList.length} completed
 							</p>

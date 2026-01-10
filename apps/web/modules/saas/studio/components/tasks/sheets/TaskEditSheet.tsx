@@ -27,40 +27,77 @@ export function TaskEditSheet() {
 		enabled: isOpen && !!taskId,
 	});
 
-	const updateMutation = useMutation({
-		...tasksMutations.update(),
-		onSuccess: () => {
-			toast.success("Task updated successfully");
-			queryClient.invalidateQueries({
-				queryKey: orpc.tasks.key(),
-			});
-			close();
-		},
-		onError: (error) => {
-			toast.error(error.message || "Failed to update task");
-		},
-	});
+	const updateMutation = useMutation(tasksMutations.update());
+	const assignMutation = useMutation(tasksMutations.assign());
+	const unassignMutation = useMutation(tasksMutations.unassign());
 
 	const handleSubmit = async (data: TaskFormValues) => {
-		if (!taskId) {
-			return;
-		}
+		if (!taskId) return;
 
-		await updateMutation.mutateAsync({
-			id: taskId,
-			name: data.name,
-			description: data.description || null,
-			status: data.status || undefined,
-			priority: data.priority || undefined,
-			dueDate: data.dueDate || null,
-		});
+		try {
+			await updateMutation.mutateAsync({
+				id: taskId,
+				name: data.name,
+				description: data.description || null,
+				status: data.status || undefined,
+				priority: data.priority || undefined,
+				dueDate: data.dueDate || null,
+			});
+
+			const newAssignments = data.crewAssignments ?? [];
+			const existingAssignments = task?.data?.assignments ?? [];
+
+			const newCrewIds = new Set(newAssignments.map((a) => a.crewId));
+			const existingCrewIds = new Set(
+				existingAssignments.map((a) => a.crewId),
+			);
+
+			const toRemove = existingAssignments.filter(
+				(a) => !newCrewIds.has(a.crewId),
+			);
+			const toAdd = newAssignments.filter(
+				(a) => !existingCrewIds.has(a.crewId),
+			);
+
+			await Promise.all([
+				...toRemove.map((a) =>
+					unassignMutation.mutateAsync({
+						taskId,
+						crewId: a.crewId,
+					}),
+				),
+				...toAdd.map((a) =>
+					assignMutation.mutateAsync({
+						taskId,
+						crewId: a.crewId,
+					}),
+				),
+			]);
+
+			await queryClient.invalidateQueries({
+				queryKey: orpc.tasks.key(),
+			});
+			toast.success("Task updated successfully");
+			close();
+		} catch (error) {
+			const message =
+				error instanceof Error
+					? error.message
+					: "Failed to update task";
+			toast.error(message);
+		}
 	};
+
+	const isPending =
+		updateMutation.isPending ||
+		assignMutation.isPending ||
+		unassignMutation.isPending;
 
 	return (
 		<Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
 			<SheetContent
 				side="right"
-				className="sm:max-w-md p-0 gap-0 flex flex-col"
+				className="sm:max-w-xl p-0 gap-0 flex flex-col"
 			>
 				<SheetHeader
 					className={cn(
@@ -76,19 +113,21 @@ export function TaskEditSheet() {
 						<div className="space-y-4 px-4 py-4">
 							<Skeleton className="h-10 w-full" />
 							<Skeleton className="h-10 w-full" />
-							<Skeleton className="h-24 w-full" />
 							<div className="grid grid-cols-2 gap-4">
 								<Skeleton className="h-10 w-full" />
 								<Skeleton className="h-10 w-full" />
 							</div>
 							<Skeleton className="h-10 w-full" />
+							<Skeleton className="h-10 w-full" />
 						</div>
 					) : (
 						<TaskForm
 							defaultValues={task?.data}
+							existingAssignments={task?.data?.assignments}
+							booking={task?.data?.booking}
 							onSubmit={handleSubmit}
 							mode="edit"
-							isPending={updateMutation.isPending}
+							isPending={isPending}
 							onScrollChange={setIsScrolled}
 						/>
 					)}

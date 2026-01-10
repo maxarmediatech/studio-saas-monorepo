@@ -16,7 +16,7 @@ const TASK_STATUSES = [
 /**
  * Task priorities for filter options
  */
-const TASK_PRIORITIES = ["high", "medium", "low"] as const;
+const TASK_PRIORITIES = ["high", "medium", "normal", "low"] as const;
 
 /**
  * Filter state for tasks table
