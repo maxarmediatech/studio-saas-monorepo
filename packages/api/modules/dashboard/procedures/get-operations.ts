@@ -187,7 +187,6 @@ export const getOperations = studioProtectedProcedure
 				name: deliverables.name,
 				bookingId: deliverables.bookingId,
 				dueDate: deliverables.dueDate,
-				priority: deliverables.priority,
 				workflowStatus: deliverables.workflowStatus,
 			})
 			.from(deliverables)
@@ -239,7 +238,6 @@ export const getOperations = studioProtectedProcedure
 					bookingId: deliverable.bookingId,
 					bookingName: booking?.name ?? "Unknown",
 					dueDate: deliverable.dueDate,
-					priority: deliverable.priority,
 					workflowStatus: deliverable.workflowStatus,
 					isOverdue,
 					assignedCrew: assignments.map((a) => ({

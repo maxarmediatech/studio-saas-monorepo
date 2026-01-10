@@ -599,7 +599,6 @@ export const deliverables = pgTable(
 
 		name: text("name").notNull(),
 		description: text("description"),
-		deliverableType: text("deliverable_type").notNull(), // album, video, photos, etc.
 
 		// Package relationship fields
 		quantity: integer("quantity").default(1).notNull(),
@@ -610,8 +609,6 @@ export const deliverables = pgTable(
 
 		// Status is TEXT - configurable via configurations table (config_type: deliverable_status)
 		status: text("status").default("pending").notNull(),
-		// Priority is TEXT - configurable via configurations table (config_type: deliverable_priority)
-		priority: text("priority").default("normal").notNull(),
 
 		// Workflow status is ENUM - system-defined, cannot be customized
 		workflowStatus: workflowStatusEnum("workflow_status")

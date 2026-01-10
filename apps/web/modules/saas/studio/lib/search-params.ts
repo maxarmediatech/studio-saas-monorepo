@@ -68,7 +68,9 @@ export const bookingSearchParamsCache = createSearchParamsCache({
 
 	// Filters
 	search: parseAsString,
-	statuses: parseAsArrayOf(parseAsStringLiteral(BOOKING_PHASES)).withDefault([]),
+	statuses: parseAsArrayOf(parseAsStringLiteral(BOOKING_PHASES)).withDefault(
+		[],
+	),
 	bookingType: parseAsArrayOf(parseAsString, ",").withDefault([]),
 	packageType: parseAsArrayOf(parseAsString, ",").withDefault([]),
 	createdAt: parseAsArrayOf(parseAsString, ",").withDefault([]),
@@ -252,9 +254,7 @@ export const deliverableSearchParamsCache = createSearchParamsCache({
 
 	// Filters
 	search: parseAsString,
-	deliverableType: parseAsArrayOf(parseAsString, ",").withDefault([]),
 	status: parseAsArrayOf(parseAsString, ",").withDefault([]),
-	priority: parseAsArrayOf(parseAsString, ",").withDefault([]),
 
 	// Sorting
 	sort: sortStateParser,

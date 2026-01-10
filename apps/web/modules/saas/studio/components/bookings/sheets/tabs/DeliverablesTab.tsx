@@ -13,8 +13,15 @@ interface DeliverablesTabProps {
 	bookingId: string;
 }
 
-export const DeliverablesTab = memo(function DeliverablesTab({ bookingId }: DeliverablesTabProps) {
-	const { data: deliverables, isLoading, isError, refetch } = useQuery({
+export const DeliverablesTab = memo(function DeliverablesTab({
+	bookingId,
+}: DeliverablesTabProps) {
+	const {
+		data: deliverables,
+		isLoading,
+		isError,
+		refetch,
+	} = useQuery({
 		...deliverablesApi.listOptions({ bookingId, limit: 50 }),
 		enabled: !!bookingId,
 	});
@@ -41,8 +48,14 @@ export const DeliverablesTab = memo(function DeliverablesTab({ bookingId }: Deli
 				</div>
 				<div className="flex flex-col items-center gap-2 py-8 text-center">
 					<AlertCircleIcon className="h-10 w-10 text-destructive/50" />
-					<p className="text-sm text-destructive">Failed to load deliverables</p>
-					<Button variant="outline" size="sm" onClick={() => refetch()}>
+					<p className="text-sm text-destructive">
+						Failed to load deliverables
+					</p>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => refetch()}
+					>
 						Try again
 					</Button>
 				</div>
@@ -76,10 +89,7 @@ export const DeliverablesTab = memo(function DeliverablesTab({ bookingId }: Deli
 
 			<div className="space-y-3">
 				{items.map((deliverable) => (
-					<div
-						key={deliverable.id}
-						className="p-4 border rounded-lg"
-					>
+					<div key={deliverable.id} className="p-4 border rounded-lg">
 						<div className="space-y-2">
 							<div className="flex items-start gap-2">
 								<h4 className="font-medium">
@@ -88,15 +98,6 @@ export const DeliverablesTab = memo(function DeliverablesTab({ bookingId }: Deli
 							</div>
 
 							<div className="flex items-center gap-2 flex-wrap">
-								{deliverable.deliverableType && (
-									<Badge
-										variant="outline"
-										className="text-xs"
-									>
-										{deliverable.deliverableType}
-									</Badge>
-								)}
-
 								<Badge
 									variant={getStatusVariant(
 										deliverable.status,
@@ -105,17 +106,6 @@ export const DeliverablesTab = memo(function DeliverablesTab({ bookingId }: Deli
 								>
 									{deliverable.status}
 								</Badge>
-
-								{deliverable.priority && (
-									<Badge
-										variant={getPriorityVariant(
-											deliverable.priority,
-										)}
-										className="text-xs"
-									>
-										{deliverable.priority}
-									</Badge>
-								)}
 
 								{deliverable.dueDate && (
 									<div className="flex items-center gap-1 text-xs text-muted-foreground">

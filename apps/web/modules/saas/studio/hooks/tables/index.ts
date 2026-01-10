@@ -2,9 +2,7 @@ export { type BookingFilters, useBookingsTable } from "./use-bookings-table";
 export { type ClientFilters, useClientsTable } from "./use-clients-table";
 export { type CrewFilters, useCrewsTable } from "./use-crews-table";
 export {
-	DELIVERABLE_PRIORITIES,
 	DELIVERABLE_STATUSES,
-	DELIVERABLE_TYPES,
 	type DeliverableFilters,
 	useDeliverablesTable,
 } from "./use-deliverables-table";

@@ -51,16 +51,16 @@ export const updateDeliverable = studioProtectedProcedure
 			updateData.description = updates.description;
 		}
 
-		if (updates.deliverableType !== undefined) {
-			updateData.deliverableType = updates.deliverableType;
+		if (updates.quantity !== undefined) {
+			updateData.quantity = updates.quantity;
+		}
+
+		if (updates.cost !== undefined) {
+			updateData.cost = updates.cost;
 		}
 
 		if (updates.status !== undefined) {
 			updateData.status = updates.status;
-		}
-
-		if (updates.priority !== undefined) {
-			updateData.priority = updates.priority;
 		}
 
 		if (updates.dueDate !== undefined) {

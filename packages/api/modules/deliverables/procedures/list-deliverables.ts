@@ -42,9 +42,7 @@ export const listDeliverables = studioProtectedProcedure
 			limit,
 			search,
 			bookingId,
-			deliverableType,
 			status,
-			priority,
 			workflowStatus,
 			dueDateFrom,
 			dueDateTo,
@@ -69,17 +67,6 @@ export const listDeliverables = studioProtectedProcedure
 			conditions.push(eq(deliverables.bookingId, bookingId));
 		}
 
-		const deliverableTypes = Array.isArray(deliverableType)
-			? deliverableType
-			: deliverableType
-				? [deliverableType]
-				: null;
-		if (deliverableTypes && deliverableTypes.length > 0) {
-			conditions.push(
-				inArray(deliverables.deliverableType, deliverableTypes),
-			);
-		}
-
 		const statuses = Array.isArray(status)
 			? status
 			: status
@@ -87,15 +74,6 @@ export const listDeliverables = studioProtectedProcedure
 				: null;
 		if (statuses && statuses.length > 0) {
 			conditions.push(inArray(deliverables.status, statuses));
-		}
-
-		const priorities = Array.isArray(priority)
-			? priority
-			: priority
-				? [priority]
-				: null;
-		if (priorities && priorities.length > 0) {
-			conditions.push(inArray(deliverables.priority, priorities));
 		}
 
 		if (workflowStatus) {
@@ -139,9 +117,7 @@ export const listDeliverables = studioProtectedProcedure
 			name: deliverables.name,
 			dueDate: deliverables.dueDate,
 			status: deliverables.status,
-			priority: deliverables.priority,
 			workflowStatus: deliverables.workflowStatus,
-			deliverableType: deliverables.deliverableType,
 			createdAt: deliverables.createdAt,
 		};
 		const sortColumn =
@@ -158,9 +134,10 @@ export const listDeliverables = studioProtectedProcedure
 				bookingId: deliverables.bookingId,
 				name: deliverables.name,
 				description: deliverables.description,
-				deliverableType: deliverables.deliverableType,
+				quantity: deliverables.quantity,
+				cost: deliverables.cost,
+				isPackageIncluded: deliverables.isPackageIncluded,
 				status: deliverables.status,
-				priority: deliverables.priority,
 				workflowStatus: deliverables.workflowStatus,
 				dueDate: deliverables.dueDate,
 				deliveredAt: deliverables.deliveredAt,
@@ -212,9 +189,10 @@ export const listDeliverables = studioProtectedProcedure
 			bookingId: row.bookingId,
 			name: row.name,
 			description: row.description,
-			deliverableType: row.deliverableType,
+			quantity: row.quantity,
+			cost: row.cost,
+			isPackageIncluded: row.isPackageIncluded,
 			status: row.status,
-			priority: row.priority,
 			workflowStatus: row.workflowStatus,
 			dueDate: row.dueDate,
 			deliveredAt: row.deliveredAt?.toISOString() ?? null,

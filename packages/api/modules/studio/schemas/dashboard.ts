@@ -224,7 +224,6 @@ export const pendingDeliverableItemSchema = z.object({
 	bookingId: idSchema,
 	bookingName: z.string(),
 	dueDate: z.string().nullable(),
-	priority: z.string(),
 	workflowStatus: workflowStatusSchema,
 	isOverdue: z.boolean(),
 	assignedCrew: z.array(

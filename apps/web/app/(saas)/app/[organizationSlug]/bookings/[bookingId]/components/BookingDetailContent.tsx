@@ -389,15 +389,6 @@ function DeliverablesSection({ bookingId }: DeliverablesSectionProps) {
 									</h4>
 
 									<div className="flex items-center gap-1.5 flex-wrap">
-										{deliverable.deliverableType && (
-											<Badge
-												variant="outline"
-												className="text-xs"
-											>
-												{deliverable.deliverableType}
-											</Badge>
-										)}
-
 										<Badge
 											variant={getStatusVariant(
 												deliverable.status,
@@ -409,17 +400,6 @@ function DeliverablesSection({ bookingId }: DeliverablesSectionProps) {
 												" ",
 											)}
 										</Badge>
-
-										{deliverable.priority && (
-											<Badge
-												variant={getPriorityVariant(
-													deliverable.priority,
-												)}
-												className="text-xs capitalize"
-											>
-												{deliverable.priority}
-											</Badge>
-										)}
 									</div>
 
 									{deliverable.dueDate && (

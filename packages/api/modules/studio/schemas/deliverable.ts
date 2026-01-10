@@ -13,6 +13,7 @@ import {
 	dateSchema,
 	descriptionSchema,
 	idSchema,
+	moneySchema,
 	mutationResponseSchema,
 	nameSchema,
 	paginationSchema,
@@ -62,9 +63,11 @@ export const deliverableSchema = z.object({
 	bookingId: idSchema,
 	name: z.string(),
 	description: z.string().nullable(),
-	deliverableType: z.string(),
+	// Package relationship fields
+	quantity: z.number().int().min(1),
+	cost: moneySchema.nullable(),
+	isPackageIncluded: z.boolean(),
 	status: z.string(),
-	priority: z.string(),
 	workflowStatus: workflowStatusSchema,
 	dueDate: z.string().nullable(),
 	deliveredAt: z.string().nullable(),
@@ -85,9 +88,7 @@ export type Deliverable = z.infer<typeof deliverableSchema>;
 export const deliverableMinimalSchema = z.object({
 	id: idSchema,
 	name: z.string(),
-	deliverableType: z.string(),
 	status: z.string(),
-	priority: z.string(),
 	workflowStatus: workflowStatusSchema,
 	dueDate: z.string().nullable(),
 	bookingId: idSchema,
@@ -103,18 +104,14 @@ const deliverableSortFields = [
 	"name",
 	"dueDate",
 	"status",
-	"priority",
 	"workflowStatus",
-	"deliverableType",
 	"createdAt",
 ] as const;
 
 export const listDeliverablesInputSchema = z
 	.object({
 		bookingId: idSchema.optional(),
-		deliverableType: z.union([z.string(), z.array(z.string())]).nullish(),
 		status: z.union([z.string(), z.array(z.string())]).nullish(),
-		priority: z.union([z.string(), z.array(z.string())]).nullish(),
 		workflowStatus: workflowStatusSchema.optional(),
 		dueDateFrom: dateSchema.optional(),
 		dueDateTo: dateSchema.optional(),
@@ -208,9 +205,9 @@ export const createDeliverableInputSchema = z.object({
 	bookingId: idSchema,
 	name: nameSchema,
 	description: descriptionSchema,
-	deliverableType: z.string().min(1).max(100),
+	quantity: z.number().int().min(1).optional(),
+	cost: moneySchema.optional(),
 	status: z.string().min(1).max(50).optional(),
-	priority: z.string().min(1).max(50).optional(),
 	dueDate: dateSchema.optional(),
 	metadata: z.record(z.string(), z.unknown()).optional(),
 });
@@ -233,9 +230,9 @@ export const updateDeliverableInputSchema = z.object({
 	id: idSchema,
 	name: nameSchema.optional(),
 	description: descriptionSchema.nullable(),
-	deliverableType: z.string().min(1).max(100).optional(),
+	quantity: z.number().int().min(1).optional(),
+	cost: moneySchema.optional().nullable(),
 	status: z.string().min(1).max(50).optional(),
-	priority: z.string().min(1).max(50).optional(),
 	dueDate: dateSchema.optional().nullable(),
 	metadata: z.record(z.string(), z.unknown()).optional().nullable(),
 });
@@ -282,9 +279,7 @@ export type GetDeliverableStatsInput = z.infer<
 
 export const deliverableStatsSchema = z.object({
 	totalDeliverables: z.number(),
-	byType: z.record(z.string(), z.number()),
 	byStatus: z.record(z.string(), z.number()),
-	byPriority: z.record(z.string(), z.number()),
 	byWorkflowStatus: z.record(z.string(), z.number()),
 	overdueDeliverables: z.number(),
 	deliveredDeliverables: z.number(),

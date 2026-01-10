@@ -42,7 +42,6 @@ export const getMyDeliverables = studioProtectedProcedure
 			dueDateFrom,
 			dueDateTo,
 			status,
-			priority,
 			workflowStatus,
 			bookingId,
 			includeCompleted,
@@ -78,10 +77,6 @@ export const getMyDeliverables = studioProtectedProcedure
 			conditions.push(eq(deliverables.status, status));
 		}
 
-		if (priority) {
-			conditions.push(eq(deliverables.priority, priority));
-		}
-
 		if (workflowStatus) {
 			conditions.push(eq(deliverables.workflowStatus, workflowStatus));
 		}
@@ -97,7 +92,6 @@ export const getMyDeliverables = studioProtectedProcedure
 		// Sorting
 		const sortColumnMap = {
 			dueDate: deliverables.dueDate,
-			priority: deliverables.priority,
 			workflowStatus: deliverables.workflowStatus,
 			createdAt: deliverables.createdAt,
 		};
@@ -126,9 +120,7 @@ export const getMyDeliverables = studioProtectedProcedure
 				deliverableId: deliverables.id,
 				name: deliverables.name,
 				description: deliverables.description,
-				deliverableType: deliverables.deliverableType,
 				status: deliverables.status,
-				priority: deliverables.priority,
 				workflowStatus: deliverables.workflowStatus,
 				dueDate: deliverables.dueDate,
 				bookingId: deliverables.bookingId,
@@ -218,9 +210,7 @@ export const getMyDeliverables = studioProtectedProcedure
 					deliverableId: assignment.deliverableId,
 					name: assignment.name,
 					description: assignment.description,
-					deliverableType: assignment.deliverableType,
 					status: assignment.status,
-					priority: assignment.priority,
 					workflowStatus: assignment.workflowStatus,
 					dueDate: assignment.dueDate,
 					isOverdue,

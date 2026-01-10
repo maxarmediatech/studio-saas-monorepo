@@ -66,12 +66,11 @@ export const convertDeliverableToTask = studioProtectedProcedure
 					description:
 						taskDescription ?? deliverable.description ?? null,
 					status: "pending",
-					priority: taskPriority ?? deliverable.priority,
+					priority: taskPriority ?? "normal",
 					workflowStatus: "not_started",
 					dueDate: taskDueDate ?? deliverable.dueDate ?? null,
 					metadata: {
 						convertedFromDeliverableId: deliverableId,
-						originalDeliverableType: deliverable.deliverableType,
 					},
 					createdBy: context.user.id,
 					updatedBy: context.user.id,

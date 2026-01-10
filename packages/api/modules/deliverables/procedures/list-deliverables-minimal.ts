@@ -64,9 +64,7 @@ export const listDeliverablesMinimal = studioProtectedProcedure
 			.select({
 				id: deliverables.id,
 				name: deliverables.name,
-				deliverableType: deliverables.deliverableType,
 				status: deliverables.status,
-				priority: deliverables.priority,
 				workflowStatus: deliverables.workflowStatus,
 				dueDate: deliverables.dueDate,
 				bookingId: deliverables.bookingId,
@@ -80,9 +78,7 @@ export const listDeliverablesMinimal = studioProtectedProcedure
 		const data: DeliverableMinimal[] = rows.map((row) => ({
 			id: row.id,
 			name: row.name,
-			deliverableType: row.deliverableType,
 			status: row.status,
-			priority: row.priority,
 			workflowStatus: row.workflowStatus,
 			dueDate: row.dueDate,
 			bookingId: row.bookingId,

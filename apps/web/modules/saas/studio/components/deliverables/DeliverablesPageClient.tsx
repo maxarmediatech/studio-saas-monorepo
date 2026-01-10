@@ -40,23 +40,6 @@ import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { OpenDeliverableCreateSheet } from "./OpenDeliverableSheet";
 
-const DELIVERABLE_TYPE_LABELS: Record<string, string> = {
-	wedding_album: "Wedding Album",
-	pre_wedding_album: "Pre-Wedding Album",
-	photo_album: "Photo Album",
-	highlight_video: "Highlight Video",
-	full_video: "Full Video",
-	teaser: "Teaser",
-	reel: "Reel",
-	edited_photos: "Edited Photos",
-	raw_photos: "Raw Photos",
-	raw_videos: "Raw Videos",
-	drone_footage: "Drone Footage",
-	frame: "Frame",
-	canvas: "Canvas",
-	other: "Other",
-};
-
 function formatDate(dateString: string | null): string {
 	if (!dateString) {
 		return "-";
@@ -213,11 +196,11 @@ export function DeliverablesPageClient({
 						</div>
 						<div>
 							<p className="font-medium">{row.original.name}</p>
-							<p className="text-sm text-muted-foreground">
-								{DELIVERABLE_TYPE_LABELS[
-									row.original.deliverableType
-								] ?? row.original.deliverableType}
-							</p>
+							{row.original.description && (
+								<p className="text-sm text-muted-foreground line-clamp-1">
+									{row.original.description}
+								</p>
+							)}
 						</div>
 					</div>
 				),
@@ -234,17 +217,6 @@ export function DeliverablesPageClient({
 							{row.original.bookingReferenceNumber}
 						</p>
 					</div>
-				),
-			},
-			{
-				accessorKey: "deliverableType",
-				header: "Type",
-				cell: ({ row }) => (
-					<Badge variant="outline">
-						{DELIVERABLE_TYPE_LABELS[
-							row.original.deliverableType
-						] ?? row.original.deliverableType}
-					</Badge>
 				),
 			},
 			{

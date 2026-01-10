@@ -228,7 +228,6 @@ export type GetMyTasksOutput = z.infer<typeof getMyTasksOutputSchema>;
 
 const myDeliverableSortFields = [
 	"dueDate",
-	"priority",
 	"workflowStatus",
 	"createdAt",
 ] as const;
@@ -238,7 +237,6 @@ export const getMyDeliverablesInputSchema = z
 		dueDateFrom: dateSchema.optional(),
 		dueDateTo: dateSchema.optional(),
 		status: z.string().optional(),
-		priority: z.string().optional(),
 		workflowStatus: workflowStatusSchema.optional(),
 		bookingId: idSchema.optional(),
 		includeCompleted: z.boolean().default(false),
@@ -258,9 +256,7 @@ export const myDeliverableItemSchema = z.object({
 	deliverableId: idSchema,
 	name: z.string(),
 	description: z.string().nullable(),
-	deliverableType: z.string(),
 	status: z.string(),
-	priority: z.string(),
 	workflowStatus: workflowStatusSchema,
 	dueDate: z.string().nullable(),
 	isOverdue: z.boolean(),

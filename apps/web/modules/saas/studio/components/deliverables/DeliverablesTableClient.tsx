@@ -54,23 +54,6 @@ interface DeliverablesTableClientProps {
 	organizationSlug: string;
 }
 
-const DELIVERABLE_TYPE_LABELS: Record<string, string> = {
-	wedding_album: "Wedding Album",
-	pre_wedding_album: "Pre-Wedding Album",
-	photo_album: "Photo Album",
-	highlight_video: "Highlight Video",
-	full_video: "Full Video",
-	teaser: "Teaser",
-	reel: "Reel",
-	edited_photos: "Edited Photos",
-	raw_photos: "Raw Photos",
-	raw_videos: "Raw Videos",
-	drone_footage: "Drone Footage",
-	frame: "Frame",
-	canvas: "Canvas",
-	other: "Other",
-};
-
 const STATUS_LABELS: Record<string, string> = {
 	pending: "Pending",
 	in_progress: "In Progress",
@@ -93,21 +76,6 @@ const STATUS_ICONS: Record<string, React.ElementType> = {
 	in_progress: ClockIcon,
 	completed: CheckCircleIcon,
 	delivered: TruckIcon,
-};
-
-const PRIORITY_LABELS: Record<string, string> = {
-	low: "Low",
-	medium: "Medium",
-	high: "High",
-};
-
-const PRIORITY_VARIANTS: Record<
-	string,
-	"default" | "secondary" | "outline" | "destructive"
-> = {
-	low: "outline",
-	medium: "secondary",
-	high: "destructive",
 };
 
 const formatDate = (dateStr: string | null) => {
@@ -149,9 +117,7 @@ export function DeliverablesTableClient({
 		page: pagination.page,
 		limit: pagination.limit,
 		search: filters.search ?? undefined,
-		deliverableType: filters.deliverableType ?? undefined,
 		status: filters.status ?? undefined,
-		priority: filters.priority ?? undefined,
 		sortBy: sorting.sortBy ?? "dueDate",
 		sortDirection: sorting.sortDirection,
 		includeDeleted: false,
@@ -227,14 +193,7 @@ export function DeliverablesTableClient({
 						<div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
 							<PackageIcon className="h-4 w-4 text-muted-foreground" />
 						</div>
-						<div>
-							<p className="font-medium">{row.original.name}</p>
-							<p className="text-xs text-muted-foreground">
-								{DELIVERABLE_TYPE_LABELS[
-									row.original.deliverableType
-								] ?? row.original.deliverableType}
-							</p>
-						</div>
+						<p className="font-medium">{row.original.name}</p>
 					</div>
 				),
 				meta: {
@@ -275,27 +234,6 @@ export function DeliverablesTableClient({
 					minWidth: 180,
 				},
 				enableSorting: false,
-				enableHiding: true,
-			},
-			{
-				id: "deliverableType",
-				accessorKey: "deliverableType",
-				header: ({ column }) => (
-					<DataTableColumnHeader column={column} title="Type" />
-				),
-				cell: ({ row }) => (
-					<Badge variant="outline">
-						{DELIVERABLE_TYPE_LABELS[
-							row.original.deliverableType
-						] ?? row.original.deliverableType}
-					</Badge>
-				),
-				meta: {
-					label: "Type",
-					width: 140,
-					minWidth: 140,
-				},
-				enableSorting: true,
 				enableHiding: true,
 			},
 			{
@@ -356,30 +294,6 @@ export function DeliverablesTableClient({
 					label: "Status",
 					width: 130,
 					minWidth: 130,
-				},
-				enableSorting: true,
-				enableHiding: true,
-			},
-			{
-				id: "priority",
-				accessorKey: "priority",
-				header: ({ column }) => (
-					<DataTableColumnHeader column={column} title="Priority" />
-				),
-				cell: ({ row }) => {
-					const priority = row.original.priority;
-					return (
-						<Badge
-							variant={PRIORITY_VARIANTS[priority] ?? "outline"}
-						>
-							{PRIORITY_LABELS[priority] ?? priority}
-						</Badge>
-					);
-				},
-				meta: {
-					label: "Priority",
-					width: 100,
-					minWidth: 100,
 				},
 				enableSorting: true,
 				enableHiding: true,
