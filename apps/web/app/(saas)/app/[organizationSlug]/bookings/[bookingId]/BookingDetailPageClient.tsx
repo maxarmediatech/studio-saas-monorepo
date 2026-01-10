@@ -9,7 +9,7 @@ import { AlertCircleIcon } from "lucide-react";
 import {
 	BookingDetailHeader,
 	BookingDetailLayout,
-	BookingTabs,
+	BookingScrollSpy,
 } from "./components";
 
 interface BookingDetailPageClientProps {
@@ -82,8 +82,9 @@ export function BookingDetailPageClient({
 					onDelete={() => console.log("Delete booking")}
 				/>
 			}
+			rawContent
 		>
-			<BookingTabs
+			<BookingScrollSpy
 				bookingId={bookingId}
 				booking={{
 					name: bookingData.name,

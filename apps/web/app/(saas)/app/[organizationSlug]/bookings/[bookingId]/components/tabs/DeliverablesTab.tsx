@@ -5,12 +5,6 @@ import { Button } from "@repo/ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/components/card";
 import { Progress } from "@repo/ui/components/progress";
 import { Skeleton } from "@repo/ui/components/skeleton";
-import {
-	CustomTabsContent,
-	CustomTabsList,
-	CustomTabsTrigger,
-	Tabs,
-} from "@repo/ui/components/tabs";
 import { useDeliverableParams } from "@saas/studio/hooks/params";
 import { deliverablesApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
@@ -60,10 +54,6 @@ const statusOrder: DeliverableStatus[] = [
 	"completed",
 	"cancelled",
 ];
-
-function isDelivered(status: string): boolean {
-	return status === "completed";
-}
 
 function groupByStatus(deliverables: Deliverable[]): Map<string, Deliverable[]> {
 	const grouped = new Map<string, Deliverable[]>();
@@ -166,13 +156,11 @@ function DeliverablesList({
 	onEdit,
 	onCreate,
 	emptyMessage,
-	showStatusGroups,
 }: {
 	deliverables: Deliverable[];
 	onEdit: (id: string) => void;
 	onCreate: () => void;
 	emptyMessage: string;
-	showStatusGroups?: boolean;
 }) {
 	if (deliverables.length === 0) {
 		return (
@@ -187,31 +175,22 @@ function DeliverablesList({
 		);
 	}
 
-	if (showStatusGroups) {
-		const grouped = groupByStatus(deliverables);
-
-		return (
-			<div className="space-y-6">
-				{Array.from(grouped.entries()).map(([status, items]) => (
-					<div key={status} className="space-y-3">
-						<h4 className="text-sm font-medium text-muted-foreground capitalize">
-							{status.replace("_", " ")} ({items.length})
-						</h4>
-						<div className="space-y-2">
-							{items.map((d) => (
-								<DeliverableCard key={d.id} deliverable={d} onEdit={onEdit} />
-							))}
-						</div>
-					</div>
-				))}
-			</div>
-		);
-	}
+	// Group by status
+	const grouped = groupByStatus(deliverables);
 
 	return (
-		<div className="space-y-2">
-			{deliverables.map((d) => (
-				<DeliverableCard key={d.id} deliverable={d} onEdit={onEdit} />
+		<div className="space-y-6">
+			{Array.from(grouped.entries()).map(([status, items]) => (
+				<div key={status} className="space-y-3">
+					<h4 className="text-sm font-medium text-muted-foreground capitalize">
+						{status.replace("_", " ")} ({items.length})
+					</h4>
+					<div className="space-y-2">
+						{items.map((d) => (
+							<DeliverableCard key={d.id} deliverable={d} onEdit={onEdit} />
+						))}
+					</div>
+				</div>
 			))}
 		</div>
 	);
@@ -235,8 +214,6 @@ export function DeliverablesTab({ bookingId }: DeliverablesTabProps) {
 	});
 
 	const items = deliverables?.data ?? [];
-	const pendingItems = items.filter((d) => !isDelivered(d.status));
-	const deliveredItems = items.filter((d) => isDelivered(d.status));
 
 	const completedCount = items.filter((d) => d.status === "completed").length;
 	const progressPercentage =
@@ -299,36 +276,13 @@ export function DeliverablesTab({ bookingId }: DeliverablesTabProps) {
 				)}
 			</Card>
 
-			{/* Sub-tabs */}
-			<Tabs defaultValue="pending" className="space-y-4">
-				<CustomTabsList>
-					<CustomTabsTrigger value="pending">
-						Pending ({pendingItems.length})
-					</CustomTabsTrigger>
-					<CustomTabsTrigger value="delivered">
-						Delivered ({deliveredItems.length})
-					</CustomTabsTrigger>
-				</CustomTabsList>
-
-				<CustomTabsContent value="pending">
-					<DeliverablesList
-						deliverables={pendingItems}
-						onEdit={openEdit}
-						onCreate={openCreate}
-						emptyMessage="No pending deliverables"
-						showStatusGroups
-					/>
-				</CustomTabsContent>
-
-				<CustomTabsContent value="delivered">
-					<DeliverablesList
-						deliverables={deliveredItems}
-						onEdit={openEdit}
-						onCreate={openCreate}
-						emptyMessage="No delivered items yet"
-					/>
-				</CustomTabsContent>
-			</Tabs>
+			{/* All Deliverables List (grouped by status) */}
+			<DeliverablesList
+				deliverables={items}
+				onEdit={openEdit}
+				onCreate={openCreate}
+				emptyMessage="No deliverables"
+			/>
 		</div>
 	);
 }

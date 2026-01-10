@@ -3,14 +3,7 @@
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/components/card";
-import { Progress } from "@repo/ui/components/progress";
 import { Skeleton } from "@repo/ui/components/skeleton";
-import {
-	CustomTabsContent,
-	CustomTabsList,
-	CustomTabsTrigger,
-	Tabs,
-} from "@repo/ui/components/tabs";
 import { cn } from "@repo/ui/lib/utils";
 import {
 	useExpenseParams,
@@ -249,7 +242,7 @@ function ReceivedPaymentsList({ bookingId }: { bookingId: string }) {
 
 	if (paymentsList.length === 0) {
 		return (
-			<div className="flex flex-col items-center gap-2 py-8 text-center">
+			<div className="flex flex-col items-center gap-2 py-6 text-center">
 				<WalletIcon className="h-8 w-8 text-muted-foreground/50" />
 				<p className="text-sm text-muted-foreground">No payments recorded</p>
 				<Button variant="outline" size="sm" onClick={() => openCreate()}>
@@ -355,7 +348,7 @@ function UpcomingPaymentsList({ bookingId }: { bookingId: string }) {
 
 	if (schedulesList.length === 0) {
 		return (
-			<div className="flex flex-col items-center gap-2 py-8 text-center">
+			<div className="flex flex-col items-center gap-2 py-6 text-center">
 				<CalendarIcon className="h-8 w-8 text-muted-foreground/50" />
 				<p className="text-sm text-muted-foreground">
 					No upcoming payments scheduled
@@ -450,7 +443,7 @@ function ExpensesList({ bookingId }: { bookingId: string }) {
 
 	if (expensesList.length === 0) {
 		return (
-			<div className="flex flex-col items-center gap-2 py-8 text-center">
+			<div className="flex flex-col items-center gap-2 py-6 text-center">
 				<ReceiptIcon className="h-8 w-8 text-muted-foreground/50" />
 				<p className="text-sm text-muted-foreground">No expenses recorded</p>
 				<Button variant="outline" size="sm" onClick={() => openCreate()}>
@@ -531,7 +524,7 @@ export function FinancesTab({
 		) ?? 0;
 
 	return (
-		<div className="space-y-6">
+		<div className="space-y-8">
 			{/* Key Metrics */}
 			<KeyMetrics
 				packageCost={packageCost}
@@ -567,35 +560,32 @@ export function FinancesTab({
 				</Button>
 			</div>
 
-			{/* Sub-tabs for different finance sections */}
-			<Tabs defaultValue="received" className="space-y-4">
-				<CustomTabsList>
-					<CustomTabsTrigger value="received">
-						<IndianRupee className="h-3.5 w-3.5 mr-1.5" />
-						Received
-					</CustomTabsTrigger>
-					<CustomTabsTrigger value="upcoming">
-						<CalendarIcon className="h-3.5 w-3.5 mr-1.5" />
-						Upcoming
-					</CustomTabsTrigger>
-					<CustomTabsTrigger value="expenses">
-						<ReceiptIcon className="h-3.5 w-3.5 mr-1.5" />
-						Expenses
-					</CustomTabsTrigger>
-				</CustomTabsList>
+			{/* Received Payments Section */}
+			<div className="space-y-4">
+				<h4 className="text-base font-semibold flex items-center gap-2">
+					<IndianRupee className="h-4 w-4" />
+					Received Payments
+				</h4>
+				<ReceivedPaymentsList bookingId={bookingId} />
+			</div>
 
-				<CustomTabsContent value="received">
-					<ReceivedPaymentsList bookingId={bookingId} />
-				</CustomTabsContent>
+			{/* Scheduled Payments Section */}
+			<div className="space-y-4">
+				<h4 className="text-base font-semibold flex items-center gap-2">
+					<CalendarIcon className="h-4 w-4" />
+					Scheduled Payments
+				</h4>
+				<UpcomingPaymentsList bookingId={bookingId} />
+			</div>
 
-				<CustomTabsContent value="upcoming">
-					<UpcomingPaymentsList bookingId={bookingId} />
-				</CustomTabsContent>
-
-				<CustomTabsContent value="expenses">
-					<ExpensesList bookingId={bookingId} />
-				</CustomTabsContent>
-			</Tabs>
+			{/* Expenses Section */}
+			<div className="space-y-4">
+				<h4 className="text-base font-semibold flex items-center gap-2">
+					<ReceiptIcon className="h-4 w-4" />
+					Expenses
+				</h4>
+				<ExpensesList bookingId={bookingId} />
+			</div>
 		</div>
 	);
 }

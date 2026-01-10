@@ -5,12 +5,6 @@ import { Button } from "@repo/ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/components/card";
 import { Progress } from "@repo/ui/components/progress";
 import { Skeleton } from "@repo/ui/components/skeleton";
-import {
-	CustomTabsContent,
-	CustomTabsList,
-	CustomTabsTrigger,
-	Tabs,
-} from "@repo/ui/components/tabs";
 import { useShootParams } from "@saas/studio/hooks/params";
 import { shootsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
@@ -65,15 +59,6 @@ function groupShootsByDate(shoots: Shoot[]) {
 	return grouped;
 }
 
-function isShootUpcoming(shoot: Shoot) {
-	if (shoot.status === "completed" || shoot.status === "cancelled") {
-		return false;
-	}
-	if (!shoot.shootDate) return true; // No date = upcoming
-	const date = new Date(shoot.shootDate);
-	return !isPast(date) || isToday(date);
-}
-
 // ============================================================================
 // Sub-Components
 // ============================================================================
@@ -94,6 +79,9 @@ function ShootCard({
 			? `${format(new Date(`2000-01-01T${shoot.startTime}`), "h:mm a")} - ${format(new Date(`2000-01-01T${shoot.endTime}`), "h:mm a")}`
 			: null;
 
+	const isCompleted = shoot.status === "completed";
+	const isCancelled = shoot.status === "cancelled";
+
 	return (
 		<div className="flex items-center justify-between rounded-lg border bg-background p-3 hover:bg-muted/50 transition-colors">
 			<div className="flex-1 space-y-1 min-w-0">
@@ -101,7 +89,10 @@ function ShootCard({
 					<h4 className="font-medium truncate">
 						{shoot.shootType || shoot.name || "Unnamed Shoot"}
 					</h4>
-					<Badge variant="outline" className="capitalize text-xs">
+					<Badge 
+						variant={isCompleted ? "default" : isCancelled ? "destructive" : "outline"} 
+						className="capitalize text-xs"
+					>
 						{shoot.status.replace("_", " ")}
 					</Badge>
 				</div>
@@ -206,8 +197,6 @@ export function ShootsTab({ bookingId }: ShootsTabProps) {
 	});
 
 	const shootsList = shoots?.data ?? [];
-	const upcomingShoots = shootsList.filter(isShootUpcoming);
-	const completedShoots = shootsList.filter((s) => !isShootUpcoming(s));
 
 	const completedCount = shootsList.filter(
 		(s) => s.status === "completed",
@@ -272,35 +261,13 @@ export function ShootsTab({ bookingId }: ShootsTabProps) {
 				)}
 			</Card>
 
-			{/* Sub-tabs for Upcoming/Completed */}
-			<Tabs defaultValue="upcoming" className="space-y-4">
-				<CustomTabsList>
-					<CustomTabsTrigger value="upcoming">
-						Upcoming ({upcomingShoots.length})
-					</CustomTabsTrigger>
-					<CustomTabsTrigger value="completed">
-						Completed ({completedShoots.length})
-					</CustomTabsTrigger>
-				</CustomTabsList>
-
-				<CustomTabsContent value="upcoming">
-					<ShootsList
-						shoots={upcomingShoots}
-						onEdit={openEdit}
-						onCreate={openCreate}
-						emptyMessage="No upcoming shoots scheduled"
-					/>
-				</CustomTabsContent>
-
-				<CustomTabsContent value="completed">
-					<ShootsList
-						shoots={completedShoots}
-						onEdit={openEdit}
-						onCreate={openCreate}
-						emptyMessage="No completed shoots yet"
-					/>
-				</CustomTabsContent>
-			</Tabs>
+			{/* All Shoots List (grouped by date) */}
+			<ShootsList
+				shoots={shootsList}
+				onEdit={openEdit}
+				onCreate={openCreate}
+				emptyMessage="No shoots scheduled"
+			/>
 		</div>
 	);
 }

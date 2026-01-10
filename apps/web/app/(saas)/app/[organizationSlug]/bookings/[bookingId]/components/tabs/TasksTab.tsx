@@ -5,16 +5,10 @@ import { Button } from "@repo/ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/components/card";
 import { Progress } from "@repo/ui/components/progress";
 import { Skeleton } from "@repo/ui/components/skeleton";
-import {
-	CustomTabsContent,
-	CustomTabsList,
-	CustomTabsTrigger,
-	Tabs,
-} from "@repo/ui/components/tabs";
 import { useTaskParams } from "@saas/studio/hooks/params";
 import { tasksApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
-import { format, isToday, isTomorrow, isThisWeek, isPast } from "date-fns";
+import { format, isToday, isPast } from "date-fns";
 import {
 	AlertCircleIcon,
 	CalendarIcon,
@@ -33,21 +27,6 @@ interface TasksTabProps {
 }
 
 type TaskStatus = "todo" | "in_progress" | "completed" | "cancelled";
-type TaskPriority = "high" | "medium" | "low";
-
-// ============================================================================
-// Utilities
-// ============================================================================
-
-function getDueDateGroup(dueDate: string | null | undefined): string {
-	if (!dueDate) return "no-date";
-	const date = new Date(dueDate);
-	if (isPast(date) && !isToday(date)) return "overdue";
-	if (isToday(date)) return "today";
-	if (isTomorrow(date)) return "tomorrow";
-	if (isThisWeek(date)) return "this-week";
-	return "upcoming";
-}
 
 // Task type for internal use
 type Task = {
@@ -58,6 +37,10 @@ type Task = {
 	priority?: string | null;
 	dueDate?: string | null;
 };
+
+// ============================================================================
+// Utilities
+// ============================================================================
 
 function groupTasksByStatus(tasks: Task[]) {
 	const order: TaskStatus[] = ["in_progress", "todo", "completed", "cancelled"];
@@ -86,71 +69,6 @@ function groupTasksByStatus(tasks: Task[]) {
 	return grouped;
 }
 
-function groupTasksByPriority(tasks: Task[]) {
-	const order: TaskPriority[] = ["high", "medium", "low"];
-	const grouped = new Map<string, Task[]>();
-
-	for (const priority of order) {
-		grouped.set(priority, []);
-	}
-	grouped.set("none", []);
-
-	for (const task of tasks) {
-		const priority = (task.priority as TaskPriority) || "none";
-		if (grouped.has(priority)) {
-			grouped.get(priority)?.push(task);
-		} else {
-			grouped.get("none")?.push(task);
-		}
-	}
-
-	// Remove empty groups
-	for (const [key, value] of grouped.entries()) {
-		if (value.length === 0) {
-			grouped.delete(key);
-		}
-	}
-
-	return grouped;
-}
-
-function groupTasksByDueDate(tasks: Task[]) {
-	const order = ["overdue", "today", "tomorrow", "this-week", "upcoming", "no-date", "completed"];
-	const grouped = new Map<string, Task[]>();
-
-	for (const key of order) {
-		grouped.set(key, []);
-	}
-
-	for (const task of tasks) {
-		if (task.status === "completed") {
-			grouped.get("completed")?.push(task);
-		} else {
-			const group = getDueDateGroup(task.dueDate);
-			grouped.get(group)?.push(task);
-		}
-	}
-
-	// Remove empty groups
-	for (const [key, value] of grouped.entries()) {
-		if (value.length === 0) {
-			grouped.delete(key);
-		}
-	}
-
-	return grouped;
-}
-
-const dueDateLabels: Record<string, string> = {
-	overdue: "Overdue",
-	today: "Today",
-	tomorrow: "Tomorrow",
-	"this-week": "This Week",
-	upcoming: "Upcoming",
-	"no-date": "No Due Date",
-	completed: "Completed",
-};
-
 // ============================================================================
 // Sub-Components
 // ============================================================================
@@ -159,14 +77,7 @@ function TaskCard({
 	task,
 	onEdit,
 }: {
-	task: {
-		id: string;
-		name: string;
-		description?: string | null;
-		status: string;
-		priority?: string | null;
-		dueDate?: string | null;
-	};
+	task: Task;
 	onEdit: (id: string) => void;
 }) {
 	const isOverdue =
@@ -240,20 +151,11 @@ function TasksList({
 	onEdit,
 	onCreate,
 	emptyMessage,
-	groupBy,
 }: {
-	tasks: Array<{
-		id: string;
-		name: string;
-		description?: string | null;
-		status: string;
-		priority?: string | null;
-		dueDate?: string | null;
-	}>;
+	tasks: Task[];
 	onEdit: (id: string) => void;
 	onCreate: () => void;
 	emptyMessage: string;
-	groupBy?: "status" | "priority" | "dueDate";
 }) {
 	if (tasks.length === 0) {
 		return (
@@ -268,73 +170,22 @@ function TasksList({
 		);
 	}
 
-	if (groupBy === "status") {
-		const grouped = groupTasksByStatus(tasks);
-		return (
-			<div className="space-y-6">
-				{Array.from(grouped.entries()).map(([status, items]) => (
-					<div key={status} className="space-y-3">
-						<h4 className="text-sm font-medium text-muted-foreground capitalize">
-							{status.replace("_", " ")} ({items.length})
-						</h4>
-						<div className="space-y-2">
-							{items.map((task) => (
-								<TaskCard key={task.id} task={task} onEdit={onEdit} />
-							))}
-						</div>
-					</div>
-				))}
-			</div>
-		);
-	}
+	// Group by status
+	const grouped = groupTasksByStatus(tasks);
 
-	if (groupBy === "priority") {
-		const grouped = groupTasksByPriority(tasks);
-		return (
-			<div className="space-y-6">
-				{Array.from(grouped.entries()).map(([priority, items]) => (
-					<div key={priority} className="space-y-3">
-						<h4 className="text-sm font-medium text-muted-foreground capitalize">
-							{priority === "none" ? "No Priority" : priority} ({items.length})
-						</h4>
-						<div className="space-y-2">
-							{items.map((task) => (
-								<TaskCard key={task.id} task={task} onEdit={onEdit} />
-							))}
-						</div>
-					</div>
-				))}
-			</div>
-		);
-	}
-
-	if (groupBy === "dueDate") {
-		const grouped = groupTasksByDueDate(tasks);
-		return (
-			<div className="space-y-6">
-				{Array.from(grouped.entries()).map(([key, items]) => (
-					<div key={key} className="space-y-3">
-						<h4
-							className={`text-sm font-medium ${key === "overdue" ? "text-destructive" : "text-muted-foreground"}`}
-						>
-							{dueDateLabels[key] || key} ({items.length})
-						</h4>
-						<div className="space-y-2">
-							{items.map((task) => (
-								<TaskCard key={task.id} task={task} onEdit={onEdit} />
-							))}
-						</div>
-					</div>
-				))}
-			</div>
-		);
-	}
-
-	// Default: flat list
 	return (
-		<div className="space-y-2">
-			{tasks.map((task) => (
-				<TaskCard key={task.id} task={task} onEdit={onEdit} />
+		<div className="space-y-6">
+			{Array.from(grouped.entries()).map(([status, items]) => (
+				<div key={status} className="space-y-3">
+					<h4 className="text-sm font-medium text-muted-foreground capitalize">
+						{status.replace("_", " ")} ({items.length})
+					</h4>
+					<div className="space-y-2">
+						{items.map((task) => (
+							<TaskCard key={task.id} task={task} onEdit={onEdit} />
+						))}
+					</div>
+				</div>
 			))}
 		</div>
 	);
@@ -421,54 +272,13 @@ export function TasksTab({ bookingId }: TasksTabProps) {
 				)}
 			</Card>
 
-			{/* Sub-tabs for different views */}
-			<Tabs defaultValue="all" className="space-y-4">
-				<CustomTabsList>
-					<CustomTabsTrigger value="all">All</CustomTabsTrigger>
-					<CustomTabsTrigger value="by-status">By Status</CustomTabsTrigger>
-					<CustomTabsTrigger value="by-priority">By Priority</CustomTabsTrigger>
-					<CustomTabsTrigger value="by-due-date">By Due Date</CustomTabsTrigger>
-				</CustomTabsList>
-
-				<CustomTabsContent value="all">
-					<TasksList
-						tasks={tasksList}
-						onEdit={openEdit}
-						onCreate={openCreate}
-						emptyMessage="No tasks created"
-					/>
-				</CustomTabsContent>
-
-				<CustomTabsContent value="by-status">
-					<TasksList
-						tasks={tasksList}
-						onEdit={openEdit}
-						onCreate={openCreate}
-						emptyMessage="No tasks created"
-						groupBy="status"
-					/>
-				</CustomTabsContent>
-
-				<CustomTabsContent value="by-priority">
-					<TasksList
-						tasks={tasksList}
-						onEdit={openEdit}
-						onCreate={openCreate}
-						emptyMessage="No tasks created"
-						groupBy="priority"
-					/>
-				</CustomTabsContent>
-
-				<CustomTabsContent value="by-due-date">
-					<TasksList
-						tasks={tasksList}
-						onEdit={openEdit}
-						onCreate={openCreate}
-						emptyMessage="No tasks created"
-						groupBy="dueDate"
-					/>
-				</CustomTabsContent>
-			</Tabs>
+			{/* All Tasks List (grouped by status) */}
+			<TasksList
+				tasks={tasksList}
+				onEdit={openEdit}
+				onCreate={openCreate}
+				emptyMessage="No tasks created"
+			/>
 		</div>
 	);
 }

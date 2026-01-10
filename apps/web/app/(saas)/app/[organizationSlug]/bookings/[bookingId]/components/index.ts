@@ -5,7 +5,10 @@ export { BookingDetailLayout } from "./BookingDetailLayout";
 export { BookingDetailHeader } from "./BookingDetailHeader";
 export { BookingHeader } from "./BookingHeader";
 
-// Main Content - Tabbed Interface
+// Main Content - ScrollSpy Interface (new)
+export { BookingScrollSpy } from "./BookingScrollSpy";
+
+// Main Content - Tabbed Interface (deprecated)
 export { BookingTabs } from "./BookingTabs";
 
 // Main Content - Unified Card (legacy)
