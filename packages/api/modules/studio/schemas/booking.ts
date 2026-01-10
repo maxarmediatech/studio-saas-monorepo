@@ -227,6 +227,7 @@ export const bookingDetailSchema = bookingSchema.extend({
 	tasksCount: z.number(),
 	deliverablesCount: z.number(),
 	balance: z.string(),
+	contractAttachment: uploadedAttachmentSchema.nullable(),
 });
 
 export type BookingDetail = z.infer<typeof bookingDetailSchema>;
@@ -366,6 +367,7 @@ export const updateBookingInputSchema = z.object({
 	packageType: z.string().min(1).max(100).optional(),
 	packageCost: moneySchema.optional(),
 	note: z.string().max(5000).optional().nullable(),
+	contractAttachment: uploadedAttachmentSchema.nullable().optional(),
 });
 
 export type UpdateBookingInput = z.infer<typeof updateBookingInputSchema>;

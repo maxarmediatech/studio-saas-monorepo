@@ -31,7 +31,10 @@ import {
 	TooltipTrigger,
 } from "@repo/ui/components/tooltip";
 import { formatMoney } from "@saas/shared/lib";
-import { useBookingParams } from "@saas/studio/hooks/params";
+import {
+	useBookingEditParams,
+	useBookingParams,
+} from "@saas/studio/hooks/params";
 import { useBookingsTable } from "@saas/studio/hooks/tables";
 import {
 	bookingsApi,
@@ -55,7 +58,6 @@ import {
 	UsersIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -66,9 +68,9 @@ interface BookingsTableClientProps {
 export function BookingsTableClient({
 	organizationSlug,
 }: BookingsTableClientProps) {
-	const router = useRouter();
 	const queryClient = useQueryClient();
 	const { openView } = useBookingParams();
+	const { openEdit } = useBookingEditParams();
 
 	// Use the bookings table hook for URL-synced state
 	const {
@@ -164,10 +166,7 @@ export function BookingsTableClient({
 			{
 				label: "Edit",
 				icon: <PencilIcon className="h-4 w-4" />,
-				onClick: (row) =>
-					router.push(
-						`/app/${organizationSlug}/bookings/${row.id}/edit`,
-					),
+				onClick: (row) => openEdit(row.id),
 			},
 			{
 				label: "Delete",
@@ -180,7 +179,7 @@ export function BookingsTableClient({
 				},
 			},
 		],
-		[openView, organizationSlug, router],
+		[openView, openEdit],
 	);
 
 	// Define columns with sortable headers and meta for filters

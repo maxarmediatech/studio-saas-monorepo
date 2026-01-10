@@ -1,4 +1,5 @@
 export { useBookingParams } from "./use-booking-params";
+export { useBookingEditParams } from "./use-booking-edit-params";
 export { createSheetParams } from "./create-sheet-params";
 export type {
 	SheetParamsConfig,

@@ -17,14 +17,23 @@ import {
 } from "@repo/ui/components/tabs";
 import { cn } from "@repo/ui/lib/utils";
 import { formatMoney } from "@saas/shared/lib";
-import { useBookingParams } from "@saas/studio/hooks/params";
+import {
+	useBookingEditParams,
+	useBookingParams,
+} from "@saas/studio/hooks/params";
 import { bookingsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
-import { AlertCircleIcon } from "lucide-react";
+import { AlertCircleIcon, PencilIcon } from "lucide-react";
 import { useState } from "react";
 import { DeliverablesTab, OverviewTab, PaymentsTab, ShootsTab } from "./tabs";
 
-type BookingStatus = 'new' | 'preparation' | 'shooting' | 'delivery' | 'completed' | 'cancelled';
+type BookingStatus =
+	| "new"
+	| "preparation"
+	| "shooting"
+	| "delivery"
+	| "completed"
+	| "cancelled";
 
 const statusColors: Record<BookingStatus, { bg: string; text: string }> = {
 	new: { bg: "bg-yellow-100", text: "text-yellow-800" },
@@ -37,10 +46,16 @@ const statusColors: Record<BookingStatus, { bg: string; text: string }> = {
 
 export function BookingDetailSheet() {
 	const { bookingId, close } = useBookingParams();
+	const { openEdit } = useBookingEditParams();
 	const isOpen = Boolean(bookingId);
 	const [isScrolled, setIsScrolled] = useState(false);
 
-	const { data: booking, isLoading, isError, refetch } = useQuery({
+	const {
+		data: booking,
+		isLoading,
+		isError,
+		refetch,
+	} = useQuery({
 		...bookingsApi.getOptions(bookingId ?? ""),
 		enabled: isOpen && !!bookingId,
 	});
@@ -83,9 +98,23 @@ export function BookingDetailSheet() {
 						</>
 					) : (
 						<>
-							<SheetTitle className="text-2xl font-semibold">
-								{bookingData?.name}
-							</SheetTitle>
+							<div className="flex items-center justify-between">
+								<SheetTitle className="text-2xl font-semibold">
+									{bookingData?.name}
+								</SheetTitle>
+								<Button
+									variant="ghost"
+									size="icon"
+									onClick={() => {
+										if (bookingId) {
+											close();
+											openEdit(bookingId);
+										}
+									}}
+								>
+									<PencilIcon className="h-4 w-4" />
+								</Button>
+							</div>
 							<div className="flex items-center gap-2 text-sm text-muted-foreground">
 								<span className="font-mono">
 									{bookingData?.referenceNumber}
@@ -141,8 +170,14 @@ export function BookingDetailSheet() {
 					) : isError ? (
 						<div className="flex flex-col items-center gap-2 py-8 px-6 text-center">
 							<AlertCircleIcon className="h-10 w-10 text-destructive/50" />
-							<p className="text-sm text-destructive">Failed to load booking</p>
-							<Button variant="outline" size="sm" onClick={() => refetch()}>
+							<p className="text-sm text-destructive">
+								Failed to load booking
+							</p>
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => refetch()}
+							>
 								Try again
 							</Button>
 						</div>

@@ -20,7 +20,7 @@
 import { Suspense } from "react";
 
 // Bookings
-import { BookingDetailSheet } from "./bookings/sheets";
+import { BookingDetailSheet, BookingEditSheet } from "./bookings/sheets";
 // Clients
 import { ClientCreateSheet, ClientEditSheet } from "./clients/sheets";
 // Configurations
@@ -50,6 +50,9 @@ export function GlobalSheets() {
 			{/* Bookings - View Detail */}
 			<Suspense fallback={null}>
 				<BookingDetailSheet />
+			</Suspense>
+			<Suspense fallback={null}>
+				<BookingEditSheet />
 			</Suspense>
 
 			{/* Clients */}

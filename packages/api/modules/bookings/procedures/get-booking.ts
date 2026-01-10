@@ -1,6 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import {
 	and,
+	attachments,
 	bookingEvents,
 	bookingParticipants,
 	bookings,
@@ -109,6 +110,25 @@ export const getBooking = studioProtectedProcedure
 				),
 			);
 
+		const contractAttachmentRow = await db.query.attachments.findFirst({
+			where: and(
+				eq(attachments.entityType, "booking"),
+				eq(attachments.entityId, id),
+				eq(attachments.description, "contract"),
+				isNull(attachments.deletedAt),
+			),
+		});
+
+		const contractAttachment = contractAttachmentRow
+			? {
+					name: contractAttachmentRow.fileName,
+					size: contractAttachmentRow.fileSize ?? 0,
+					type: contractAttachmentRow.mimeType ?? "",
+					key: contractAttachmentRow.fileUrl,
+					url: contractAttachmentRow.fileUrl,
+				}
+			: null;
+
 		const packageCost = Number.parseFloat(booking.packageCost);
 		const totalReceived = Number.parseFloat(booking.totalReceived);
 		const balance = (packageCost - totalReceived).toFixed(2);
@@ -134,6 +154,7 @@ export const getBooking = studioProtectedProcedure
 				tasksCount: tasksCountResult?.count ?? 0,
 				deliverablesCount: deliverablesCountResult?.count ?? 0,
 				balance,
+				contractAttachment,
 			},
 		};
 	});
