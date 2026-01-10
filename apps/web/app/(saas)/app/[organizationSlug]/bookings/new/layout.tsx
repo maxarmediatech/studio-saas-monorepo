@@ -80,7 +80,6 @@ function buildCreateBookingInput(rawValues: BookingFormValues) {
 		})),
 		deliverables: values.deliverables?.map((deliverable) => ({
 			name: deliverable.name,
-			deliverableType: deliverable.deliverableType,
 			description: deliverable.description,
 			dueDate: deliverable.dueDate || undefined,
 			quantity: deliverable.quantity ?? 1,

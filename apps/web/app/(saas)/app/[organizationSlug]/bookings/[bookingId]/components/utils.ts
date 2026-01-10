@@ -24,7 +24,10 @@ export function formatPackageType(
 	if (!type) return options?.fallback ?? "Standard";
 	return type
 		.split("_")
-		.map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+		.map(
+			(word) =>
+				word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
+		)
 		.join(" ");
 }
 
@@ -51,7 +54,7 @@ export function getStatusVariant(
 }
 
 /**
- * Get badge variant for priority values
+ * Get badge variant for priority values (used by tasks)
  */
 export function getPriorityVariant(
 	priority: string,

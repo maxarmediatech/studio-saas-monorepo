@@ -2,7 +2,12 @@
 
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/components/card";
+import {
+	Card,
+	CardContent,
+	CardHeader,
+	CardTitle,
+} from "@repo/ui/components/card";
 import { Progress } from "@repo/ui/components/progress";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { useDeliverableParams } from "@saas/studio/hooks/params";
@@ -16,7 +21,7 @@ import {
 	PencilIcon,
 	PlusIcon,
 } from "lucide-react";
-import { getStatusVariant, getPriorityVariant } from "../utils";
+import { getStatusVariant } from "../utils";
 
 // ============================================================================
 // Types
@@ -36,9 +41,7 @@ type DeliverableStatus =
 type Deliverable = {
 	id: string;
 	name: string;
-	deliverableType?: string | null;
 	status: string;
-	priority?: string | null;
 	dueDate?: string | null;
 	description?: string | null;
 };
@@ -55,7 +58,9 @@ const statusOrder: DeliverableStatus[] = [
 	"cancelled",
 ];
 
-function groupByStatus(deliverables: Deliverable[]): Map<string, Deliverable[]> {
+function groupByStatus(
+	deliverables: Deliverable[],
+): Map<string, Deliverable[]> {
 	const grouped = new Map<string, Deliverable[]>();
 
 	for (const status of statusOrder) {
@@ -98,35 +103,22 @@ function DeliverableCard({
 			<div className="flex-1 space-y-1.5 min-w-0">
 				<h4 className="font-medium truncate">{deliverable.name}</h4>
 
-				<div className="flex items-center gap-1.5 flex-wrap">
-					{deliverable.deliverableType && (
-						<Badge variant="outline" className="text-xs">
-							{deliverable.deliverableType}
-						</Badge>
-					)}
-
-					<Badge
-						variant={getStatusVariant(deliverable.status)}
-						className="text-xs capitalize"
-					>
-						{deliverable.status.replace("_", " ")}
-					</Badge>
-
-					{deliverable.priority && (
-						<Badge
-							variant={getPriorityVariant(deliverable.priority)}
-							className="text-xs capitalize"
-						>
-							{deliverable.priority}
-						</Badge>
-					)}
-				</div>
+				<Badge
+					variant={getStatusVariant(deliverable.status)}
+					className="text-xs capitalize"
+				>
+					{deliverable.status.replace("_", " ")}
+				</Badge>
 
 				{deliverable.dueDate && (
 					<div className="flex items-center gap-1 text-xs text-muted-foreground">
 						<CalendarIcon className="h-3 w-3" />
 						<span>
-							Due: {format(new Date(deliverable.dueDate), "MMM d, yyyy")}
+							Due:{" "}
+							{format(
+								new Date(deliverable.dueDate),
+								"MMM d, yyyy",
+							)}
 						</span>
 					</div>
 				)}
@@ -187,7 +179,11 @@ function DeliverablesList({
 					</h4>
 					<div className="space-y-2">
 						{items.map((d) => (
-							<DeliverableCard key={d.id} deliverable={d} onEdit={onEdit} />
+							<DeliverableCard
+								key={d.id}
+								deliverable={d}
+								onEdit={onEdit}
+							/>
 						))}
 					</div>
 				</div>
@@ -233,7 +229,9 @@ export function DeliverablesTab({ bookingId }: DeliverablesTabProps) {
 		return (
 			<div className="flex flex-col items-center gap-2 py-8 text-center">
 				<AlertCircleIcon className="h-8 w-8 text-destructive/50" />
-				<p className="text-sm text-destructive">Failed to load deliverables</p>
+				<p className="text-sm text-destructive">
+					Failed to load deliverables
+				</p>
 				<Button variant="outline" size="sm" onClick={() => refetch()}>
 					Try again
 				</Button>
@@ -267,7 +265,10 @@ export function DeliverablesTab({ bookingId }: DeliverablesTabProps) {
 				{items.length > 0 && (
 					<CardContent className="pt-0 pb-4">
 						<div className="space-y-2">
-							<Progress value={progressPercentage} className="h-2" />
+							<Progress
+								value={progressPercentage}
+								className="h-2"
+							/>
 							<p className="text-xs text-muted-foreground">
 								{completedCount} of {items.length} delivered
 							</p>

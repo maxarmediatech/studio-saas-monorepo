@@ -31,7 +31,6 @@ export {
 	type CrewAssignmentFormValue,
 	cleanupFormArrays,
 	createDefaultBookingValues,
-	DELIVERABLE_TYPE_OPTIONS,
 	type DeliverableFormValue,
 	defaultBookingValues,
 	formatDecimalForApi,

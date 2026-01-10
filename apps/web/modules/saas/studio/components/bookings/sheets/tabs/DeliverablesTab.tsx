@@ -139,28 +139,13 @@ function getStatusVariant(
 ): "default" | "secondary" | "destructive" | "outline" {
 	switch (status) {
 		case "pending":
-			return "secondary"; // Yellow
+			return "secondary";
 		case "in_progress":
-			return "default"; // Blue
-		case "completed":
-			return "outline"; // Green (using outline as closest match)
-		case "cancelled":
-			return "secondary"; // Gray
-		default:
 			return "default";
-	}
-}
-
-function getPriorityVariant(
-	priority: string,
-): "default" | "secondary" | "destructive" | "outline" {
-	switch (priority) {
-		case "high":
-			return "destructive"; // Red
-		case "medium":
-			return "secondary"; // Yellow
-		case "low":
-			return "outline"; // Gray
+		case "completed":
+			return "outline";
+		case "cancelled":
+			return "secondary";
 		default:
 			return "default";
 	}

@@ -71,7 +71,6 @@ export function BookingDeliverablesStep() {
 	const addNewDeliverable = (name = "") => {
 		appendDeliverable({
 			name,
-			deliverableType: "",
 			description: "",
 			dueDate: "",
 			crewAssignments: [],
@@ -133,7 +132,9 @@ export function BookingDeliverablesStep() {
 											type="button"
 											variant="outline"
 											size="sm"
-											onClick={() => addNewDeliverable(name)}
+											onClick={() =>
+												addNewDeliverable(name)
+											}
 										>
 											<PlusIcon className="mr-1 h-3 w-3" />
 											{name}
@@ -394,14 +395,17 @@ function DeliverableCard({
 											{/* Hide button - only when expanded manually and empty */}
 											{showDetails &&
 												!notesValue &&
-												crewAssignments.length === 0 && (
+												crewAssignments.length ===
+													0 && (
 													<Button
 														type="button"
 														variant="ghost"
 														size="sm"
 														className="h-auto py-0 px-1 text-muted-foreground"
 														onClick={() =>
-															setShowDetails(false)
+															setShowDetails(
+																false,
+															)
 														}
 													>
 														<ChevronUpIcon className="mr-1 h-3.5 w-3.5" />
@@ -430,9 +434,9 @@ function DeliverableCard({
 								name={`deliverables.${deliverableIndex}.crewAssignments`}
 								control={form.control}
 								render={({ field }) => {
-									const selectedIds = (
-										field.value ?? []
-									).map((a) => a.crewId);
+									const selectedIds = (field.value ?? []).map(
+										(a) => a.crewId,
+									);
 
 									return (
 										<Field>

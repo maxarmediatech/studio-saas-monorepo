@@ -107,7 +107,10 @@ export const shootSchema = z.object({
 	shootDate: z.string().min(1, "Shoot date is required"),
 	startTime: z.string().optional(),
 	// Max 500 to match API venueAddress field constraint
-	location: z.string().max(500, "Location is too long (max 500 characters)").optional(),
+	location: z
+		.string()
+		.max(500, "Location is too long (max 500 characters)")
+		.optional(),
 	notes: z.string().optional(),
 	crewAssignments: z.array(crewAssignmentSchema).optional(),
 });
@@ -171,7 +174,6 @@ export const optionalDecimalStringSchema = z
  */
 export const deliverableSchema = z.object({
 	name: z.string().min(1, "Deliverable name is required"),
-	deliverableType: z.string().optional(),
 	description: z.string().optional(),
 	dueDate: z.string().optional(),
 	crewAssignments: z.array(crewAssignmentSchema).optional(),
@@ -327,26 +329,6 @@ export const SHOOT_TYPE_OPTIONS = [
 	{ value: "maternity", label: "Maternity" },
 	{ value: "baby_shoot", label: "Baby Shoot" },
 	{ value: "corporate", label: "Corporate" },
-	{ value: "other", label: "Other" },
-] as const;
-
-/**
- * Common deliverable types
- */
-export const DELIVERABLE_TYPE_OPTIONS = [
-	{ value: "wedding_album", label: "Wedding Album" },
-	{ value: "pre_wedding_album", label: "Pre-Wedding Album" },
-	{ value: "photo_album", label: "Photo Album" },
-	{ value: "highlight_video", label: "Highlight Video" },
-	{ value: "full_video", label: "Full Video" },
-	{ value: "teaser", label: "Teaser" },
-	{ value: "reel", label: "Reel" },
-	{ value: "edited_photos", label: "Edited Photos" },
-	{ value: "raw_photos", label: "Raw Photos" },
-	{ value: "raw_videos", label: "Raw Videos" },
-	{ value: "drone_footage", label: "Drone Footage" },
-	{ value: "frame", label: "Frame" },
-	{ value: "canvas", label: "Canvas" },
 	{ value: "other", label: "Other" },
 ] as const;
 

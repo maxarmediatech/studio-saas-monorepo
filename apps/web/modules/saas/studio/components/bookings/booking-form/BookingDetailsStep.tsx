@@ -367,7 +367,6 @@ export function BookingDetailsStep() {
 				defaultCost?: string;
 				defaultDeliverables?: Array<{
 					title: string;
-					deliverableType: string;
 					quantity: number;
 				}>;
 			};
@@ -385,7 +384,6 @@ export function BookingDetailsStep() {
 				const packageDeliverables = metadata.defaultDeliverables.map(
 					(d) => ({
 						name: d.title,
-						deliverableType: d.deliverableType,
 						quantity: d.quantity,
 						isPackageIncluded: true,
 						description: "",

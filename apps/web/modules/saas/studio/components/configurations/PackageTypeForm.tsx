@@ -28,13 +28,11 @@ import { PlusIcon, TrashIcon } from "lucide-react";
 import { useCallback, useEffect } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
-import { DELIVERABLE_TYPE_OPTIONS } from "../bookings/booking-form/booking-form-schema";
 import { CollapsibleSection } from "../ui/CollapsibleSection";
 import { FormActions } from "../ui/FormActions";
 
 const defaultDeliverableSchema = z.object({
 	title: z.string().min(1, "Title is required"),
-	deliverableType: z.string().min(1, "Type is required"),
 	quantity: z.number().int().min(1, "Quantity must be at least 1"),
 });
 
@@ -87,7 +85,6 @@ export function PackageTypeForm({
 		defaultCost?: string;
 		defaultDeliverables?: Array<{
 			title: string;
-			deliverableType: string;
 			quantity: number;
 		}>;
 	} | null;
@@ -129,7 +126,7 @@ export function PackageTypeForm({
 	const isSubmitting = form.formState.isSubmitting || isPending;
 
 	const handleAddDeliverable = () => {
-		append({ title: "", deliverableType: "", quantity: 1 });
+		append({ title: "", quantity: 1 });
 	};
 
 	const handleScroll = useCallback(
@@ -322,7 +319,7 @@ export function PackageTypeForm({
 										{fields.map((fieldItem, index) => (
 											<Card key={fieldItem.id}>
 												<CardContent className="pt-3 pb-2">
-													<div className="grid grid-cols-[1fr_1fr_70px_32px] gap-2 items-start">
+													<div className="grid grid-cols-[1fr_70px_32px] gap-2 items-start">
 														<Controller
 															name={`defaultDeliverables.${index}.title`}
 															control={
@@ -347,70 +344,6 @@ export function PackageTypeForm({
 																			fieldState.invalid
 																		}
 																	/>
-																	{fieldState.invalid && (
-																		<FieldError
-																			errors={[
-																				fieldState.error,
-																			]}
-																		/>
-																	)}
-																</Field>
-															)}
-														/>
-
-														<Controller
-															name={`defaultDeliverables.${index}.deliverableType`}
-															control={
-																form.control
-															}
-															render={({
-																field,
-																fieldState,
-															}) => (
-																<Field
-																	data-invalid={
-																		fieldState.invalid
-																	}
-																>
-																	<Select
-																		value={
-																			field.value
-																		}
-																		onValueChange={
-																			field.onChange
-																		}
-																	>
-																		<SelectTrigger
-																			id={
-																				field.name
-																			}
-																			aria-invalid={
-																				fieldState.invalid
-																			}
-																		>
-																			<SelectValue placeholder="Type" />
-																		</SelectTrigger>
-																		<SelectContent>
-																			{DELIVERABLE_TYPE_OPTIONS.map(
-																				(
-																					type,
-																				) => (
-																					<SelectItem
-																						key={
-																							type.value
-																						}
-																						value={
-																							type.value
-																						}
-																					>
-																						{
-																							type.label
-																						}
-																					</SelectItem>
-																				),
-																			)}
-																		</SelectContent>
-																	</Select>
 																	{fieldState.invalid && (
 																		<FieldError
 																			errors={[
