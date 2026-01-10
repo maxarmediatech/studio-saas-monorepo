@@ -7,9 +7,10 @@ import {
 	SheetTitle,
 } from "@repo/ui/components/sheet";
 import { cn } from "@repo/ui/lib/utils";
+import { orpc } from "@shared/lib/orpc-query-utils";
 import { useBookingParams } from "@saas/studio/hooks/params";
 import { useShootParams } from "@saas/studio/hooks/params/use-shoot-params";
-import { shootsMutations, studioQueryKeys } from "@saas/studio/lib/api";
+import { shootsMutations } from "@saas/studio/lib/api";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -22,39 +23,61 @@ export function ShootCreateSheet() {
 	const queryClient = useQueryClient();
 	const [isScrolled, setIsScrolled] = useState(false);
 
-	const createMutation = useMutation({
-		...shootsMutations.create(),
-		onSuccess: () => {
-			toast.success("Shoot added successfully");
-			queryClient.invalidateQueries({
-				queryKey: studioQueryKeys.shoots.all,
-			});
-			close();
-		},
-		onError: (error) => {
-			toast.error(error.message || "Failed to add shoot");
-		},
-	});
+	const createMutation = useMutation(shootsMutations.create());
+	const assignCrewMutation = useMutation(shootsMutations.assignCrew());
 
 	const handleSubmit = async (data: ShootFormValues) => {
-		await createMutation.mutateAsync({
-			bookingId: data.bookingId,
-			name: data.name,
-			shootType: data.shootType,
-			shootDate: data.shootDate,
-			startTime: data.startTime || undefined,
-			endTime: data.endTime || undefined,
-			venue: data.venue || undefined,
-			venueAddress: data.venueAddress || undefined,
-			notes: data.notes || undefined,
-		});
+		try {
+			const result = await createMutation.mutateAsync({
+				bookingId: data.bookingId,
+				name: data.shootType,
+				shootType: data.shootType,
+				shootDate: data.shootDate,
+				startTime: data.startTime || undefined,
+				endTime: undefined,
+				venue: undefined,
+				venueAddress: data.location || undefined,
+				notes: data.notes || undefined,
+			});
+
+			const crewAssignments = data.crewAssignments ?? [];
+			if (crewAssignments.length > 0 && result.data?.id) {
+				const shootId = result.data.id;
+				await Promise.all(
+					crewAssignments
+						.filter((a) => a.crewId)
+						.map((assignment) =>
+							assignCrewMutation.mutateAsync({
+								shootId,
+								crewId: assignment.crewId,
+								rate: assignment.rate || undefined,
+							}),
+						),
+				);
+			}
+
+			await queryClient.invalidateQueries({
+				queryKey: orpc.shoots.key(),
+			});
+			await queryClient.invalidateQueries({
+				queryKey: orpc.bookings.key(),
+			});
+			toast.success("Shoot added successfully");
+			close();
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : "Failed to add shoot";
+			toast.error(message);
+		}
 	};
+
+	const isPending = createMutation.isPending || assignCrewMutation.isPending;
 
 	return (
 		<Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
 			<SheetContent
 				side="right"
-				className="sm:max-w-md p-0 gap-0 flex flex-col"
+				className="sm:max-w-xl p-0 gap-0 flex flex-col"
 			>
 				<SheetHeader
 					className={cn(
@@ -69,7 +92,7 @@ export function ShootCreateSheet() {
 					<ShootForm
 						onSubmit={handleSubmit}
 						mode="create"
-						isPending={createMutation.isPending}
+						isPending={isPending}
 						onScrollChange={setIsScrolled}
 						defaultBookingId={bookingId ?? undefined}
 					/>

@@ -69,6 +69,7 @@ export const getShoot = studioProtectedProcedure
 				crewId: shootAssignments.crewId,
 				role: shootAssignments.role,
 				isLead: shootAssignments.isLead,
+				rate: shootAssignments.rate,
 				assignedBy: shootAssignments.assignedBy,
 				createdAt: shootAssignments.createdAt,
 				crew: {
@@ -90,6 +91,7 @@ export const getShoot = studioProtectedProcedure
 				deletedAt: shoot.deletedAt?.toISOString() ?? null,
 				assignments: assignments.map((a) => ({
 					...a,
+					rate: a.rate,
 					createdAt: a.createdAt.toISOString(),
 				})),
 				booking,

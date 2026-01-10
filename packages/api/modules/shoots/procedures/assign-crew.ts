@@ -28,7 +28,7 @@ export const assignCrew = studioProtectedProcedure
 	.handler(async ({ input, context }) => {
 		requirePermission(context, "shoot", "assign");
 
-		const { shootId, crewId, role, isLead } = input;
+		const { shootId, crewId, role, isLead, rate } = input;
 
 		// Verify shoot exists and belongs to organization
 		const shoot = await db.query.shoots.findFirst({
@@ -74,14 +74,16 @@ export const assignCrew = studioProtectedProcedure
 			});
 		}
 
-		// Create assignment
+		const assignmentRole = role || crew.role || "Crew";
+
 		const [created] = await db
 			.insert(shootAssignments)
 			.values({
 				shootId,
 				crewId,
-				role,
+				role: assignmentRole,
 				isLead: isLead ?? false,
+				rate: rate ?? null,
 				assignedBy: context.user.id,
 			})
 			.returning({ id: shootAssignments.id });

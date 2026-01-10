@@ -188,6 +188,8 @@ export const shootsMutations = {
 	create: () => orpc.shoots.create.mutationOptions(),
 	update: () => orpc.shoots.update.mutationOptions(),
 	delete: () => orpc.shoots.delete.mutationOptions(),
+	assignCrew: () => orpc.shoots.assign.mutationOptions(),
+	unassignCrew: () => orpc.shoots.unassign.mutationOptions(),
 };
 
 // ============================================================================
