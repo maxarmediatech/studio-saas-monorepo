@@ -24,7 +24,7 @@ import {
 // Import types for column meta augmentation
 import "@saas/shared/components/data-table/types";
 import { useShootParams } from "@saas/studio/hooks/params/use-shoot-params";
-import { SHOOT_TYPE_OPTIONS, useShootsTable } from "@saas/studio/hooks/tables";
+import { useShootsTable } from "@saas/studio/hooks/tables";
 import {
 	configurationsApi,
 	shootsApi,
@@ -38,15 +38,11 @@ import {
 	CameraIcon,
 	CheckCircleIcon,
 	CircleIcon,
-	ClockIcon,
 	Loader2Icon,
-	MapPinIcon,
 	PauseCircleIcon,
 	PencilIcon,
 	PlayCircleIcon,
-	TagIcon,
 	TrashIcon,
-	UsersIcon,
 	XCircleIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -239,24 +235,13 @@ export function ShootsTableClient({
 				cell: ({ row }) => {
 					const date = new Date(row.original.shootDate);
 					return (
-						<div className="flex flex-col gap-0.5 leading-none">
-							<span className="text-sm font-medium text-foreground">
-								{date.toLocaleDateString("en-IN", {
-									day: "numeric",
-									month: "short",
-									year: "numeric",
-								})}
-							</span>
-							{(row.original.startTime ||
-								row.original.endTime) && (
-								<span className="flex items-center gap-1 text-xs text-muted-foreground">
-									<ClockIcon className="h-3 w-3" />
-									{row.original.startTime || "--:--"}
-									{row.original.endTime &&
-										` - ${row.original.endTime}`}
-								</span>
-							)}
-						</div>
+						<span className="text-muted-foreground">
+							{date.toLocaleDateString("en-US", {
+								month: "short",
+								day: "numeric",
+								year: "numeric",
+							})}
+						</span>
 					);
 				},
 				meta: {
@@ -274,28 +259,29 @@ export function ShootsTableClient({
 				enableHiding: true,
 			},
 			{
-				id: "name",
-				accessorKey: "name",
+				id: "eventBooking",
+				accessorKey: "shootType",
 				header: ({ column }) => (
-					<DataTableColumnHeader column={column} title="Name" />
+					<DataTableColumnHeader column={column} title="Shoot" />
 				),
 				cell: ({ row }) => (
-					<div className="flex items-center gap-3">
-						<div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
-							<CameraIcon className="h-4 w-4 text-muted-foreground" />
-						</div>
-						<div>
-							<p className="font-medium">{row.original.name}</p>
-							<p className="text-xs text-muted-foreground">
-								{row.original.bookingReferenceNumber}
-							</p>
-						</div>
+					<div className="flex items-center gap-2">
+						<span className="font-medium text-foreground">
+							{formatShootType(row.original.shootType)}
+						</span>
+						<span className="text-muted-foreground">·</span>
+						<Link
+							href={`/app/${organizationSlug}/bookings/${row.original.bookingId}`}
+							className="text-muted-foreground hover:underline hover:text-foreground transition-colors"
+						>
+							{row.original.bookingName}
+						</Link>
 					</div>
 				),
 				meta: {
-					label: "Name",
-					width: 220,
-					minWidth: 220,
+					label: "Shoot",
+					width: 300,
+					minWidth: 250,
 					// Last left-sticky column - add right border
 					headerClassName:
 						"!border-r-0 bg-gray-100 z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[0.5px] before:bg-table-border-subtle after:absolute after:right-0 after:top-0 after:bottom-0 after:w-[0.5px] after:bg-table-border-subtle",
@@ -306,73 +292,52 @@ export function ShootsTableClient({
 				enableHiding: false,
 			},
 			{
-				id: "booking",
-				accessorKey: "bookingName",
+				id: "time",
+				accessorKey: "startTime",
 				header: ({ column }) => (
-					<DataTableColumnHeader column={column} title="Booking" />
+					<DataTableColumnHeader column={column} title="Time" />
 				),
-				cell: ({ row }) => (
-					<Link
-						href={`/app/${organizationSlug}/bookings/${row.original.bookingId}`}
-						className="font-medium text-foreground hover:underline"
-					>
-						{row.original.bookingName}
-					</Link>
-				),
+				cell: ({ row }) => {
+					if (!row.original.startTime) {
+						return <span className="text-muted-foreground">—</span>;
+					}
+					return (
+						<span className="text-muted-foreground tabular-nums">
+							{row.original.startTime}
+							{row.original.endTime &&
+								` - ${row.original.endTime}`}
+						</span>
+					);
+				},
 				meta: {
-					label: "Booking",
-					width: 180,
-					minWidth: 180,
+					label: "Time",
+					width: 120,
+					minWidth: 100,
 				},
 				enableSorting: false,
-				enableHiding: true,
-			},
-			{
-				id: "shootType",
-				accessorKey: "shootType",
-				header: ({ column }) => (
-					<DataTableColumnHeader column={column} title="Type" />
-				),
-				cell: ({ row }) => (
-					<Badge variant="secondary">
-						{formatShootType(row.original.shootType)}
-					</Badge>
-				),
-				meta: {
-					label: "Type",
-					variant: "multiSelect" as const,
-					icon: TagIcon,
-					options: SHOOT_TYPE_OPTIONS,
-					width: 130,
-					minWidth: 130,
-				},
-				enableSorting: true,
 				enableHiding: true,
 			},
 			{
 				id: "venue",
 				accessorKey: "venue",
 				header: ({ column }) => (
-					<DataTableColumnHeader column={column} title="Venue" />
+					<DataTableColumnHeader column={column} title="Location" />
 				),
-				cell: ({ row }) => (
-					<div className="flex items-center gap-2 max-w-[180px]">
-						{row.original.venue ? (
-							<>
-								<MapPinIcon className="h-4 w-4 text-muted-foreground shrink-0" />
-								<span className="truncate">
-									{row.original.venue}
-								</span>
-							</>
-						) : (
-							<span className="text-muted-foreground">-</span>
-						)}
-					</div>
-				),
+				cell: ({ row }) =>
+					row.original.venue ? (
+						<span
+							className="truncate max-w-[200px] block"
+							title={row.original.venue}
+						>
+							{row.original.venue}
+						</span>
+					) : (
+						<span className="text-muted-foreground">—</span>
+					),
 				meta: {
-					label: "Venue",
-					width: 180,
-					minWidth: 180,
+					label: "Location",
+					width: 200,
+					minWidth: 140,
 				},
 				enableSorting: false,
 				enableHiding: true,
@@ -411,15 +376,14 @@ export function ShootsTableClient({
 					<DataTableColumnHeader column={column} title="Crew" />
 				),
 				cell: ({ row }) => (
-					<div className="flex items-center gap-2">
-						<UsersIcon className="h-4 w-4 text-muted-foreground" />
-						<span>{row.original.assignmentsCount}</span>
-					</div>
+					<span className="tabular-nums">
+						{row.original.assignmentsCount}
+					</span>
 				),
 				meta: {
 					label: "Crew",
-					width: 80,
-					minWidth: 80,
+					width: 70,
+					minWidth: 70,
 				},
 				enableSorting: false,
 				enableHiding: true,
@@ -436,8 +400,8 @@ export function ShootsTableClient({
 				enableSorting: false,
 				enableHiding: false,
 				meta: {
-					width: 56,
-					minWidth: 56,
+					width: 48,
+					minWidth: 48,
 					// First right-sticky column - add left border + fade
 					headerClassName:
 						"!px-0 md:sticky md:right-0 bg-gray-100 z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[0.5px] before:bg-table-border-subtle after:absolute after:left-[-24px] after:top-0 after:bottom-0 after:w-6 after:bg-gradient-to-r after:from-transparent after:to-gray-100",
@@ -470,14 +434,14 @@ export function ShootsTableClient({
 					getRowId={(row) => row.id}
 					// Sticky columns configuration
 					stickyLeftColumns={[
-						{ id: "select", width: 56 },
+						{ id: "select", width: 48 },
 						{ id: "shootDate", width: 140 },
-						{ id: "name", width: 220 },
+						{ id: "eventBooking", width: 300 },
 					]}
-					stickyRightColumns={[{ id: "actions", width: 56 }]}
-					minWidth={1200}
+					stickyRightColumns={[{ id: "actions", width: 48 }]}
+					minWidth={1400}
 					// Place scroll controls in the last sticky left column
-					scrollControlsColumnId="name"
+					scrollControlsColumnId="eventBooking"
 					scrollStartColumn={3}
 					emptyState={
 						<div className="flex flex-col items-center gap-2">
