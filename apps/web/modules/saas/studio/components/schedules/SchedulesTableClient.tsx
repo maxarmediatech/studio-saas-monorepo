@@ -25,21 +25,24 @@ import {
 } from "@saas/shared/components/data-table";
 // Import types for column meta augmentation
 import "@saas/shared/components/data-table/types";
+import { cn } from "@repo/ui/lib/utils";
 import { formatMoney } from "@saas/shared/lib";
 import { useScheduleParams } from "@saas/studio/hooks/params/use-schedule-params";
-import { SCHEDULE_STATUSES, useSchedulesTable } from "@saas/studio/hooks/tables";
+import {
+	SCHEDULE_STATUSES,
+	useSchedulesTable,
+} from "@saas/studio/hooks/tables";
 import {
 	studioPaymentsApi,
 	studioPaymentsMutations,
 	studioQueryKeys,
 } from "@saas/studio/lib/api";
-import { cn } from "@repo/ui/lib/utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
 	AlertTriangleIcon,
-	CalendarIcon,
 	CalendarClockIcon,
+	CalendarIcon,
 	CheckCircle2Icon,
 	CircleDashedIcon,
 	Loader2Icon,
@@ -210,25 +213,15 @@ export function SchedulesTableClient({
 				cell: ({ row }) => (
 					<Link
 						href={`/app/${organizationSlug}/bookings/${row.original.bookingId}`}
-						className="flex items-center gap-3 hover:underline"
+						className="text-muted-foreground hover:underline hover:text-foreground transition-colors"
 					>
-						<div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
-							<CalendarClockIcon className="h-4 w-4 text-muted-foreground" />
-						</div>
-						<div>
-							<p className="font-medium">
-								{row.original.bookingName}
-							</p>
-							<p className="text-xs text-muted-foreground">
-								{row.original.bookingReferenceNumber}
-							</p>
-						</div>
+						{row.original.bookingName}
 					</Link>
 				),
 				meta: {
 					label: "Booking",
-					width: 240,
-					minWidth: 240,
+					width: 200,
+					minWidth: 150,
 					// Last left-sticky column - add right border
 					headerClassName:
 						"!border-r-0 bg-gray-100 z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[0.5px] before:bg-table-border-subtle after:absolute after:right-0 after:top-0 after:bottom-0 after:w-[0.5px] after:bg-table-border-subtle",
@@ -267,29 +260,22 @@ export function SchedulesTableClient({
 						row.original.status,
 					);
 					return (
-						<div
-							className={cn(
-								"flex items-center gap-2",
-								overdueCheck && "text-destructive",
-							)}
+						<span
+							className={
+								overdueCheck
+									? "text-destructive font-medium"
+									: "text-muted-foreground"
+							}
 						>
-							<CalendarIcon
-								className={cn(
-									"h-4 w-4",
-									overdueCheck
-										? "text-destructive"
-										: "text-muted-foreground",
-								)}
-							/>
-							<span>{formatDate(row.original.dueDate)}</span>
-						</div>
+							{formatDate(row.original.dueDate)}
+						</span>
 					);
 				},
 				meta: {
 					label: "Due Date",
 					icon: CalendarIcon,
-					width: 130,
-					minWidth: 130,
+					width: 140,
+					minWidth: 120,
 				},
 				enableSorting: true,
 				enableHiding: true,
@@ -409,18 +395,18 @@ export function SchedulesTableClient({
 				),
 				enableSorting: false,
 				enableHiding: false,
-					meta: {
-						width: 56,
-						minWidth: 56,
-						// First right-sticky column - add left border + fade
-						headerClassName:
-							"!px-0 md:sticky md:right-0 bg-gray-100 z-10",
-						cellClassName:
-							"!px-0 md:sticky md:right-0 bg-table-surface group-hover:bg-table-row-selected group-data-[state=selected]:bg-table-row-selected z-10",
-					},
+				meta: {
+					width: 48,
+					minWidth: 48,
+					// First right-sticky column - add left border + fade
+					headerClassName:
+						"!px-0 md:sticky md:right-0 bg-gray-100 z-10",
+					cellClassName:
+						"!px-0 md:sticky md:right-0 bg-table-surface group-hover:bg-table-row-selected group-data-[state=selected]:bg-table-row-selected z-10",
 				},
+			},
 		],
-		[rowActions, organizationSlug],
+		[organizationSlug, rowActions],
 	);
 
 	return (
@@ -477,11 +463,11 @@ export function SchedulesTableClient({
 						getRowId={(row) => row.id}
 						// Sticky columns configuration
 						stickyLeftColumns={[
-							{ id: "select", width: 56 },
-							{ id: "booking", width: 240 },
+							{ id: "select", width: 48 },
+							{ id: "booking", width: 200 },
 						]}
-						stickyRightColumns={[{ id: "actions", width: 56 }]}
-						minWidth={1050}
+						stickyRightColumns={[{ id: "actions", width: 48 }]}
+						minWidth={1000}
 						// Place scroll controls in the last sticky left column
 						scrollControlsColumnId="booking"
 						scrollStartColumn={2}
