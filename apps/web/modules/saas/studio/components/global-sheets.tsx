@@ -39,6 +39,8 @@ import {
 import { ExpenseCreateSheet, ExpenseEditSheet } from "./expenses/sheets";
 // Payments
 import { PaymentCreateSheet, PaymentEditSheet } from "./payments/sheets";
+// Schedules (Payment Schedules)
+import { ScheduleCreateSheet, ScheduleEditSheet } from "./schedules/sheets";
 // Shoots
 import { ShootCreateSheet, ShootEditSheet } from "./shoots/sheets";
 // Tasks
@@ -83,6 +85,12 @@ export function GlobalSheets() {
 			<PaymentCreateSheet />
 			<Suspense fallback={null}>
 				<PaymentEditSheet />
+			</Suspense>
+
+			{/* Schedules (Payment Schedules) */}
+			<ScheduleCreateSheet />
+			<Suspense fallback={null}>
+				<ScheduleEditSheet />
 			</Suspense>
 
 			{/* Deliverables */}

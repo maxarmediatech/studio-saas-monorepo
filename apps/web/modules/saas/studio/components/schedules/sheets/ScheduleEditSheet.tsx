@@ -12,8 +12,8 @@ import { useScheduleParams } from "@saas/studio/hooks/params/use-schedule-params
 import {
 	studioPaymentsApi,
 	studioPaymentsMutations,
-	studioQueryKeys,
 } from "@saas/studio/lib/api";
+import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -30,39 +30,46 @@ export function ScheduleEditSheet() {
 		enabled: isOpen && !!scheduleId,
 	});
 
-	const updateMutation = useMutation({
-		...studioPaymentsMutations.updateSchedule(),
-		onSuccess: () => {
-			toast.success("Payment schedule updated successfully");
-			queryClient.invalidateQueries({
-				queryKey: studioQueryKeys.payments.all,
-			});
-			close();
-		},
-		onError: (error) => {
-			toast.error(error.message || "Failed to update payment schedule");
-		},
-	});
+	const updateMutation = useMutation(
+		studioPaymentsMutations.updateSchedule(),
+	);
 
 	const handleSubmit = async (data: ScheduleFormValues) => {
 		if (!scheduleId) {
 			return;
 		}
 
-		await updateMutation.mutateAsync({
-			id: scheduleId,
-			name: data.name,
-			amount: data.amount,
-			dueDate: data.dueDate,
-			notes: data.notes || null,
-		});
+		try {
+			await updateMutation.mutateAsync({
+				id: scheduleId,
+				name: data.name,
+				amount: data.amount,
+				dueDate: data.dueDate,
+				notes: data.notes || null,
+			});
+
+			await queryClient.invalidateQueries({
+				queryKey: orpc.studioPayments.key(),
+			});
+			await queryClient.invalidateQueries({
+				queryKey: orpc.bookings.key(),
+			});
+			toast.success("Payment schedule updated successfully");
+			close();
+		} catch (error) {
+			const message =
+				error instanceof Error
+					? error.message
+					: "Failed to update payment schedule";
+			toast.error(message);
+		}
 	};
 
 	return (
 		<Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
 			<SheetContent
 				side="right"
-				className="sm:max-w-md p-0 gap-0 flex flex-col"
+				className="sm:max-w-xl p-0 gap-0 flex flex-col"
 			>
 				<SheetHeader
 					className={cn(
@@ -71,7 +78,9 @@ export function ScheduleEditSheet() {
 							"shadow-[0_4px_12px_-4px_rgba(0,0,0,0.15)]",
 					)}
 				>
-					<SheetTitle className="text-xl">Edit Payment Schedule</SheetTitle>
+					<SheetTitle className="text-xl">
+						Edit Payment Schedule
+					</SheetTitle>
 				</SheetHeader>
 				<div className="flex-1 min-h-0">
 					{isLoading ? (
@@ -82,11 +91,12 @@ export function ScheduleEditSheet() {
 								<Skeleton className="h-10 w-full" />
 								<Skeleton className="h-10 w-full" />
 							</div>
-							<Skeleton className="h-24 w-full" />
+							<Skeleton className="h-10 w-full" />
 						</div>
 					) : (
 						<ScheduleForm
 							defaultValues={schedule?.data}
+							booking={schedule?.data?.booking}
 							onSubmit={handleSubmit}
 							mode="edit"
 							isPending={updateMutation.isPending}

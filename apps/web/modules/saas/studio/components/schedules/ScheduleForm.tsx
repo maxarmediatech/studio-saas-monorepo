@@ -2,29 +2,24 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { PaymentScheduleDetail } from "@repo/api/modules/studio/schemas/payment";
+import { Button } from "@repo/ui/components/button";
+import { Combobox, type ComboboxOption } from "@repo/ui/components/combobox";
+import { DatePicker } from "@repo/ui/components/date-picker";
 import {
 	Field,
 	FieldError,
 	FieldGroup,
 	FieldLabel,
 } from "@repo/ui/components/field";
-import { DatePicker } from "@repo/ui/components/date-picker";
 import { Input } from "@repo/ui/components/input";
 import { ScrollArea } from "@repo/ui/components/scroll-area";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@repo/ui/components/select";
 import { Textarea } from "@repo/ui/components/textarea";
 import { bookingsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useEffect } from "react";
+import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
-import { CollapsibleSection } from "../ui/CollapsibleSection";
 import { FormActions } from "../ui/FormActions";
 
 const scheduleFormSchema = z.object({
@@ -40,9 +35,16 @@ const scheduleFormSchema = z.object({
 
 export type ScheduleFormValues = z.infer<typeof scheduleFormSchema>;
 
+interface BookingInfo {
+	id: string;
+	name: string;
+	referenceNumber: string;
+}
+
 interface ScheduleFormProps {
 	defaultValues?: PaymentScheduleDetail;
 	defaultBookingId?: string;
+	booking?: BookingInfo;
 	onSubmit: (data: ScheduleFormValues) => Promise<void>;
 	mode: "create" | "edit";
 	isPending?: boolean;
@@ -52,11 +54,20 @@ interface ScheduleFormProps {
 export function ScheduleForm({
 	defaultValues,
 	defaultBookingId,
+	booking,
 	onSubmit,
 	mode,
 	isPending = false,
 	onScrollChange,
 }: ScheduleFormProps) {
+	const [showNotes, setShowNotes] = useState(false);
+
+	const { data: bookingsData, isLoading: isLoadingBookings } = useQuery({
+		...bookingsApi.listMinimalOptions({}),
+		enabled: mode === "create",
+	});
+	const bookings = bookingsData?.data ?? [];
+
 	const form = useForm<ScheduleFormValues>({
 		resolver: zodResolver(scheduleFormSchema),
 		defaultValues: {
@@ -68,12 +79,6 @@ export function ScheduleForm({
 		},
 	});
 
-	const { data: bookingsData, isLoading: bookingsLoading } = useQuery(
-		bookingsApi.listMinimalOptions({}),
-	);
-
-	const bookings = bookingsData?.data ?? [];
-
 	useEffect(() => {
 		if (defaultValues) {
 			form.reset({
@@ -83,10 +88,31 @@ export function ScheduleForm({
 				dueDate: defaultValues.dueDate,
 				notes: defaultValues.notes ?? "",
 			});
+
+			if (defaultValues.notes) {
+				setShowNotes(true);
+			}
 		}
 	}, [defaultValues, form]);
 
 	const isSubmitting = form.formState.isSubmitting || isPending;
+	const notesValue = form.watch("notes");
+
+	const bookingOptions = useMemo((): ComboboxOption[] => {
+		const options = bookings.map((b) => ({
+			value: b.id,
+			label: `${b.name} (${b.referenceNumber})`,
+		}));
+
+		if (booking && !options.some((o) => o.value === booking.id)) {
+			options.unshift({
+				value: booking.id,
+				label: `${booking.name} (${booking.referenceNumber})`,
+			});
+		}
+
+		return options;
+	}, [bookings, booking]);
 
 	const handleScroll = useCallback(
 		(event: React.UIEvent<HTMLDivElement>) => {
@@ -108,57 +134,31 @@ export function ScheduleForm({
 			>
 				<div className="px-4 py-4">
 					<FieldGroup>
-						{/* Booking Selection */}
 						<Controller
 							name="bookingId"
 							control={form.control}
 							render={({ field, fieldState }) => (
 								<Field data-invalid={fieldState.invalid}>
 									<FieldLabel htmlFor={field.name}>
-										Booking *
+										Booking {mode === "create" && "*"}
 									</FieldLabel>
-									<Select
-										onValueChange={field.onChange}
+									<Combobox
+										id={field.name}
 										value={field.value}
-										disabled={mode === "edit"}
-									>
-										<SelectTrigger
-											id={field.name}
-											aria-invalid={fieldState.invalid}
-										>
-											<SelectValue placeholder="Select booking" />
-										</SelectTrigger>
-										<SelectContent>
-											{bookingsLoading ? (
-												<SelectItem
-													value="loading"
-													disabled
-												>
-													Loading bookings...
-												</SelectItem>
-											) : bookings.length === 0 ? (
-												<SelectItem
-													value="none"
-													disabled
-												>
-													No bookings found
-												</SelectItem>
-											) : (
-												bookings.map((booking) => (
-													<SelectItem
-														key={booking.id}
-														value={booking.id}
-													>
-														{booking.name} (
-														{
-															booking.referenceNumber
-														}
-														)
-													</SelectItem>
-												))
-											)}
-										</SelectContent>
-									</Select>
+										onValueChange={field.onChange}
+										options={bookingOptions}
+										placeholder={
+											isLoadingBookings
+												? "Loading..."
+												: "Select booking..."
+										}
+										searchPlaceholder="Search bookings..."
+										emptyText="No bookings found"
+										disabled={
+											mode === "edit" || isLoadingBookings
+										}
+										aria-invalid={fieldState.invalid}
+									/>
 									{fieldState.invalid && (
 										<FieldError
 											errors={[fieldState.error]}
@@ -168,7 +168,6 @@ export function ScheduleForm({
 							)}
 						/>
 
-						{/* Schedule Name */}
 						<Controller
 							name="name"
 							control={form.control}
@@ -192,7 +191,6 @@ export function ScheduleForm({
 							)}
 						/>
 
-						{/* Amount and Due Date */}
 						<div className="grid grid-cols-2 gap-4">
 							<Controller
 								name="amount"
@@ -200,17 +198,17 @@ export function ScheduleForm({
 								render={({ field, fieldState }) => (
 									<Field data-invalid={fieldState.invalid}>
 										<FieldLabel htmlFor={field.name}>
-											Amount (INR) *
+											Amount *
 										</FieldLabel>
 										<div className="relative">
 											<span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-												Rs.
+												₹
 											</span>
 											<Input
 												{...field}
 												id={field.name}
 												placeholder="0.00"
-												className="pl-10"
+												className="pl-7"
 												aria-invalid={
 													fieldState.invalid
 												}
@@ -268,42 +266,61 @@ export function ScheduleForm({
 							/>
 						</div>
 
-						{/* Additional Details (Collapsible) */}
-						<CollapsibleSection
-							title="Additional Details"
-							defaultOpen={mode === "edit"}
-						>
-							<FieldGroup>
-								<Controller
-									name="notes"
-									control={form.control}
-									render={({ field, fieldState }) => (
-										<Field
-											data-invalid={fieldState.invalid}
-										>
+						{(showNotes || notesValue) && (
+							<Controller
+								name="notes"
+								control={form.control}
+								render={({ field, fieldState }) => (
+									<Field data-invalid={fieldState.invalid}>
+										<div className="flex items-center justify-between">
 											<FieldLabel htmlFor={field.name}>
 												Notes
 											</FieldLabel>
-											<Textarea
-												{...field}
-												id={field.name}
-												placeholder="Additional notes about this payment schedule"
-												className="resize-none"
-												rows={3}
-												aria-invalid={
-													fieldState.invalid
-												}
-											/>
-											{fieldState.invalid && (
-												<FieldError
-													errors={[fieldState.error]}
-												/>
+											{showNotes && !notesValue && (
+												<Button
+													type="button"
+													variant="ghost"
+													size="sm"
+													className="h-auto py-0 px-1 text-muted-foreground"
+													onClick={() =>
+														setShowNotes(false)
+													}
+												>
+													<ChevronUpIcon className="mr-1 h-3.5 w-3.5" />
+													Hide
+												</Button>
 											)}
-										</Field>
-									)}
-								/>
-							</FieldGroup>
-						</CollapsibleSection>
+										</div>
+										<Textarea
+											{...field}
+											id={field.name}
+											placeholder="Additional notes about this payment schedule"
+											className="resize-none"
+											rows={2}
+											aria-invalid={fieldState.invalid}
+										/>
+										{fieldState.invalid && (
+											<FieldError
+												errors={[fieldState.error]}
+											/>
+										)}
+									</Field>
+								)}
+							/>
+						)}
+
+						{!showNotes && !notesValue && (
+							<Button
+								type="button"
+								variant="ghost"
+								size="sm"
+								className="w-fit text-muted-foreground"
+								onClick={() => setShowNotes(true)}
+							>
+								<ChevronDownIcon className="mr-1.5 h-3.5 w-3.5" />
+								Add notes
+							</Button>
+						)}
 					</FieldGroup>
 				</div>
 			</ScrollArea>
