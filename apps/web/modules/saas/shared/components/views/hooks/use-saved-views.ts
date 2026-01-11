@@ -1,8 +1,9 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { orpc } from "@shared/lib/orpc-query-utils";
 import { savedViewsApi, savedViewsMutations } from "@saas/studio/lib/api";
+import { orpc } from "@shared/lib/orpc-query-utils";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
 import type { SavedViewEntityType } from "../types";
 
 interface UseSavedViewsOptions {
@@ -12,9 +13,11 @@ interface UseSavedViewsOptions {
 export function useSavedViews({ entityType }: UseSavedViewsOptions) {
 	const queryClient = useQueryClient();
 
-	const { data: views = [], isLoading } = useQuery(
+	const { data, isLoading } = useQuery(
 		savedViewsApi.listOptions({ entityType }),
 	);
+
+	const views = data?.data ?? [];
 
 	const invalidateViews = () => {
 		queryClient.invalidateQueries({ queryKey: orpc.savedViews.key() });
@@ -40,6 +43,13 @@ export function useSavedViews({ entityType }: UseSavedViewsOptions) {
 		onSuccess: invalidateViews,
 	});
 
+	const toggleFavorite = useCallback(
+		(viewId: string) => {
+			toggleFavoriteMutation.mutate({ viewId });
+		},
+		[toggleFavoriteMutation],
+	);
+
 	return {
 		views,
 		isLoading,
@@ -47,7 +57,7 @@ export function useSavedViews({ entityType }: UseSavedViewsOptions) {
 		createView: createMutation.mutateAsync,
 		updateView: updateMutation.mutateAsync,
 		deleteView: deleteMutation.mutateAsync,
-		toggleFavorite: toggleFavoriteMutation.mutateAsync,
+		toggleFavorite,
 
 		isCreating: createMutation.isPending,
 		isUpdating: updateMutation.isPending,

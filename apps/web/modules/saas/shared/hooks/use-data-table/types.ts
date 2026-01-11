@@ -1,4 +1,9 @@
-import type { OnChangeFn, SortingState } from "@tanstack/react-table";
+import type { SavedViewEntityType } from "@saas/shared/components/views/types";
+import type {
+	OnChangeFn,
+	SortingState,
+	VisibilityState,
+} from "@tanstack/react-table";
 
 /**
  * Pagination state compatible with existing DataTablePagination component
@@ -102,3 +107,56 @@ export interface UseDataTableReturn<TFilters extends BaseFilterState> {
 export type FilterParsers<TFilters extends BaseFilterState> = {
 	[K in keyof Omit<TFilters, "search">]?: unknown;
 };
+
+// ============================================================================
+// Saved Views Integration Types
+// ============================================================================
+
+/**
+ * State that can be saved to a view
+ */
+export interface ViewState<TFilters extends BaseFilterState> {
+	filters: Partial<TFilters>;
+	sorting: SortingState;
+	columnVisibility?: VisibilityState;
+}
+
+/**
+ * Extended configuration for useDataTable with saved views support
+ */
+export interface UseDataTableWithViewsConfig<TFilters extends BaseFilterState>
+	extends UseDataTableConfig<TFilters> {
+	/** Entity type for saved views (enables view features when provided) */
+	entityType?: SavedViewEntityType;
+}
+
+/**
+ * Extended return value with saved views support
+ */
+export interface UseDataTableWithViewsReturn<TFilters extends BaseFilterState>
+	extends UseDataTableReturn<TFilters> {
+	// === View State ===
+	/** Current active view ID (from URL) */
+	activeViewId: string | null;
+
+	// === View Actions ===
+	/** Apply a saved view's state to the table */
+	applyView: (view: {
+		id: string;
+		filters: Record<string, unknown>;
+		sorting: Array<{ id: string; desc: boolean }> | null;
+		columnVisibility: Record<string, boolean> | null;
+	}) => void;
+	/** Clear active view and reset to defaults */
+	clearView: () => void;
+	/** Get current table state for saving as a view */
+	getCurrentViewState: () => ViewState<TFilters>;
+
+	// === Column Visibility ===
+	/** Current column visibility state */
+	columnVisibility: VisibilityState;
+	/** Set column visibility */
+	setColumnVisibility: (visibility: VisibilityState) => void;
+	/** Handler for TanStack Table column visibility */
+	onColumnVisibilityChange: OnChangeFn<VisibilityState>;
+}

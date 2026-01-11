@@ -26,15 +26,24 @@ export const systemViewDefinitions: Record<
 			name: "Active",
 			description: "In-progress bookings",
 			icon: "Clock",
-			filters: { status: ["new", "in_progress", "shooting"] },
+			filters: {
+				statuses: ["new", "preparation", "shooting", "delivery"],
+			},
 			sortOrder: 1,
 		},
 		{
 			name: "Completed",
 			description: "Finished bookings",
 			icon: "CheckCircle",
-			filters: { status: ["completed"] },
+			filters: { statuses: ["completed"] },
 			sortOrder: 2,
+		},
+		{
+			name: "Cancelled",
+			description: "Cancelled bookings",
+			icon: "XCircle",
+			filters: { statuses: ["cancelled"] },
+			sortOrder: 3,
 		},
 	],
 	task: [

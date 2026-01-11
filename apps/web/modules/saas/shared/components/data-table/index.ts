@@ -25,6 +25,7 @@ export {
 	type ToolbarFilterConfig,
 	type ToolbarFilterValues,
 } from "./DataTableToolbar";
+export { DataTableToolbarWithViews } from "./DataTableToolbarWithViews";
 export { DataTableViewOptions } from "./DataTableViewOptions";
 
 // Types

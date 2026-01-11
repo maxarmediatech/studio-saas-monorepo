@@ -1,13 +1,17 @@
 "use client";
 
-import type { OnChangeFn, SortingState } from "@tanstack/react-table";
+import type {
+	OnChangeFn,
+	SortingState,
+	VisibilityState,
+} from "@tanstack/react-table";
 import {
 	parseAsInteger,
 	parseAsString,
 	useQueryState,
 	useQueryStates,
 } from "nuqs";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useDebounceCallback } from "usehooks-ts";
 import { getSortingStateParser } from "./parsers";
 import type {
@@ -16,6 +20,9 @@ import type {
 	TablePaginationState,
 	UseDataTableConfig,
 	UseDataTableReturn,
+	UseDataTableWithViewsConfig,
+	UseDataTableWithViewsReturn,
+	ViewState,
 } from "./types";
 
 const DEFAULT_CONFIG = {
@@ -219,30 +226,113 @@ export function useDataTable<
 	}, [filterState]);
 
 	return {
-		// State
 		filters: filterState as TFilters,
 		pagination: {
 			page: paginationState.page,
 			limit: paginationState.limit,
 		},
 		sorting,
-
-		// Setters
 		setFilter,
 		setFilters,
 		setPage,
 		setLimit,
 		setSorting,
 		resetFilters,
-
-		// Derived
 		isFiltered,
 		activeFilterCount,
-
-		// TanStack Table integration
 		onPaginationChange,
 		onLimitChange,
 		onSortingChange,
-		sortingState, // Direct SortingState from URL - pass to useReactTable
+		sortingState,
+	};
+}
+
+export function useDataTableWithViews<
+	TFilters extends BaseFilterState = BaseFilterState,
+>(
+	filterParsers?: FilterParsers<TFilters>,
+	config?: UseDataTableWithViewsConfig<TFilters>,
+): UseDataTableWithViewsReturn<TFilters> {
+	const baseTable = useDataTable(filterParsers, config);
+
+	const [viewId, setViewId] = useQueryState("viewId", parseAsString);
+
+	const [columnVisibility, setColumnVisibilityState] =
+		useState<VisibilityState>({});
+
+	const applyView = useCallback(
+		(view: {
+			id: string;
+			filters: Record<string, unknown>;
+			sorting: Array<{ id: string; desc: boolean }> | null;
+			columnVisibility: Record<string, boolean> | null;
+		}) => {
+			void setViewId(view.id);
+
+			const filterKeys = filterParsers ? Object.keys(filterParsers) : [];
+			const newFilters: Record<string, unknown> = {};
+
+			for (const key of filterKeys) {
+				newFilters[key] = view.filters[key] ?? null;
+			}
+			if ("search" in view.filters) {
+				newFilters.search = view.filters.search;
+			}
+
+			baseTable.setFilters(newFilters as Partial<TFilters>);
+
+			if (view.sorting && view.sorting.length > 0) {
+				const firstSort = view.sorting[0];
+				baseTable.setSorting(
+					firstSort.id,
+					firstSort.desc ? "desc" : "asc",
+				);
+			}
+
+			if (view.columnVisibility) {
+				setColumnVisibilityState(view.columnVisibility);
+			}
+		},
+		[setViewId, filterParsers, baseTable],
+	);
+
+	const clearView = useCallback(() => {
+		void setViewId(null);
+		baseTable.resetFilters();
+		setColumnVisibilityState({});
+	}, [setViewId, baseTable]);
+
+	const getCurrentViewState = useCallback((): ViewState<TFilters> => {
+		return {
+			filters: baseTable.filters,
+			sorting: baseTable.sortingState,
+			columnVisibility,
+		};
+	}, [baseTable.filters, baseTable.sortingState, columnVisibility]);
+
+	const setColumnVisibility = useCallback((visibility: VisibilityState) => {
+		setColumnVisibilityState(visibility);
+	}, []);
+
+	const onColumnVisibilityChange: OnChangeFn<VisibilityState> = useCallback(
+		(updater) => {
+			const newState =
+				typeof updater === "function"
+					? updater(columnVisibility)
+					: updater;
+			setColumnVisibilityState(newState);
+		},
+		[columnVisibility],
+	);
+
+	return {
+		...baseTable,
+		activeViewId: viewId,
+		applyView,
+		clearView,
+		getCurrentViewState,
+		columnVisibility,
+		setColumnVisibility,
+		onColumnVisibilityChange,
 	};
 }

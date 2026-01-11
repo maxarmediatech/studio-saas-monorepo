@@ -1,5 +1,11 @@
 export { type BookingFilters, useBookingsTable } from "./use-bookings-table";
+export { useBookingsTableWithViews } from "./use-bookings-table-with-views";
 export { type ClientFilters, useClientsTable } from "./use-clients-table";
+export {
+	type ConfigType,
+	type ConfigurationFilters,
+	useConfigurationsTable,
+} from "./use-configurations-table";
 export { type CrewFilters, useCrewsTable } from "./use-crews-table";
 export {
 	DELIVERABLE_STATUSES,
@@ -34,8 +40,3 @@ export {
 	type TaskFilters,
 	useTasksTable,
 } from "./use-tasks-table";
-export {
-	type ConfigType,
-	type ConfigurationFilters,
-	useConfigurationsTable,
-} from "./use-configurations-table";
