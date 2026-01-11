@@ -41,11 +41,7 @@ function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
 	return (
 		<tbody
 			data-slot="table-body"
-			className={cn(
-				"bg-table-surface",
-				"[&_tr:last-child]:border-0",
-				className,
-			)}
+			className={cn("[&_tr:last-child]:border-0", className)}
 			{...props}
 		/>
 	);
@@ -76,7 +72,7 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
 				"h-11",
 				"border-b-[0.5px] border-table-border-subtle",
 				"transition-colors",
-				"hover:bg-table-layer-transparent-hover",
+				"hover:bg-table-row-selected",
 				"data-[state=selected]:bg-table-row-selected",
 				"data-[state=selected]:hover:bg-table-row-selected-hover",
 				className,
@@ -119,6 +115,10 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
 				"align-middle",
 				"text-[0.8125rem]",
 				"whitespace-nowrap",
+				"bg-table-surface",
+				"group-hover:bg-table-row-selected",
+				"group-data-[state=selected]:bg-table-row-selected",
+				"group-data-[state=selected]:group-hover:bg-table-row-selected-hover",
 				"border-r-[0.5px] border-table-border-subtle",
 				"last:border-r-0",
 				"[&:has([role=checkbox])]:pr-0",
