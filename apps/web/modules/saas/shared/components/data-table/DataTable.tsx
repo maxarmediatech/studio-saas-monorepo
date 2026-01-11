@@ -227,6 +227,26 @@ export function DataTable<TData, TValue>({
 		[leftPositions, rightPositions],
 	);
 
+	const rightStickyDividerTargetId = React.useMemo(() => {
+		if (stickyRightColumns.length === 0) {
+			return null;
+		}
+
+		const visibleLeafColumnIds = table
+			.getVisibleLeafColumns()
+			.map((c) => c.id);
+
+		for (const stickyColumn of stickyRightColumns) {
+			const stickyId = stickyColumn.id;
+			const idx = visibleLeafColumnIds.indexOf(stickyId);
+			if (idx > 0) {
+				return visibleLeafColumnIds[idx - 1] ?? null;
+			}
+		}
+
+		return null;
+	}, [table, stickyRightColumns]);
+
 	const getStickyClassName = React.useCallback(
 		(columnId: string, isHeader: boolean, meta?: ColumnMeta): string => {
 			const isLeftSticky = leftColumnIds.has(columnId);
@@ -236,13 +256,12 @@ export function DataTable<TData, TValue>({
 				? meta?.headerClassName
 				: meta?.cellClassName;
 
-			const rightIndex = stickyRightColumns.findIndex(
-				(c) => c.id === columnId,
-			);
+			const rightIndex = stickyRightColumns.findIndex((c) => c.id === columnId);
 			const isFirstRightSticky = rightIndex === 0;
 
 			return cn(
 				baseMetaClass,
+				rightStickyDividerTargetId === columnId && "!border-r-0",
 				isSticky &&
 					!isHeader &&
 					"bg-table-surface group-hover:bg-table-row-selected group-data-[state=selected]:bg-table-row-selected group-data-[state=selected]:hover:bg-table-row-selected-hover",
@@ -250,7 +269,12 @@ export function DataTable<TData, TValue>({
 					"before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[0.5px] before:bg-table-border-subtle",
 			);
 		},
-		[leftColumnIds, rightColumnIds, stickyRightColumns],
+		[
+			leftColumnIds,
+			rightColumnIds,
+			stickyRightColumns,
+			rightStickyDividerTargetId,
+		],
 	);
 
 	return (

@@ -399,16 +399,16 @@ export function ShootsTableClient({
 				),
 				enableSorting: false,
 				enableHiding: false,
-				meta: {
-					width: 48,
-					minWidth: 48,
-					// First right-sticky column - add left border + fade
-					headerClassName:
-						"!px-0 md:sticky md:right-0 bg-gray-100 z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[0.5px] before:bg-table-border-subtle",
-					cellClassName:
-						"!px-0 md:sticky md:right-0 bg-table-surface group-hover:bg-table-row-selected group-data-[state=selected]:bg-table-row-selected z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[0.5px] before:bg-table-border-subtle",
+					meta: {
+						width: 48,
+						minWidth: 48,
+						// First right-sticky column - add left border + fade
+						headerClassName:
+							"!px-0 md:sticky md:right-0 bg-gray-100 z-10",
+						cellClassName:
+							"!px-0 md:sticky md:right-0 bg-table-surface group-hover:bg-table-row-selected group-data-[state=selected]:bg-table-row-selected z-10",
+					},
 				},
-			},
 		],
 		[organizationSlug, rowActions, statusLabels, statusOptions],
 	);
