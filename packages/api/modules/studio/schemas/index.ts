@@ -17,4 +17,5 @@ export * from "./my-assignments";
 export * from "./payment";
 export * from "./shoot";
 export * from "./submission";
+export * from "./saved-view";
 export * from "./task";

@@ -383,3 +383,20 @@ export const expensesMutations = {
 	update: () => orpc.expenses.update.mutationOptions(),
 	delete: () => orpc.expenses.delete.mutationOptions(),
 };
+
+// ============================================================================
+// SAVED VIEWS QUERY OPTIONS
+// ============================================================================
+
+export const savedViewsApi = {
+	listOptions: (
+		input: Parameters<typeof orpc.savedViews.list.queryOptions>[0]["input"],
+	) => orpc.savedViews.list.queryOptions({ input }),
+};
+
+export const savedViewsMutations = {
+	create: () => orpc.savedViews.create.mutationOptions(),
+	update: () => orpc.savedViews.update.mutationOptions(),
+	delete: () => orpc.savedViews.delete.mutationOptions(),
+	toggleFavorite: () => orpc.savedViews.toggleFavorite.mutationOptions(),
+};

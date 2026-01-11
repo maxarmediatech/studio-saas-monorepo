@@ -11,6 +11,7 @@ import { expensesRouter } from "../modules/expenses/router";
 import { myAssignmentsRouter } from "../modules/my-assignments/router";
 import { newsletterRouter } from "../modules/newsletter/router";
 import { organizationsRouter } from "../modules/organizations/router";
+import { savedViewsRouter } from "../modules/saved-views/router";
 import { paymentsRouter } from "../modules/payments/router";
 import { shootsRouter } from "../modules/shoots/router";
 import { studioPaymentsRouter } from "../modules/studio-payments/router";
@@ -45,6 +46,7 @@ export const router = publicProcedure
 		dashboard: dashboardRouter,
 		submissions: submissionsRouter,
 		myAssignments: myAssignmentsRouter,
+		savedViews: savedViewsRouter,
 	});
 
 export type ApiRouterClient = RouterClient<typeof router>;

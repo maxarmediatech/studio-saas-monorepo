@@ -1751,6 +1751,116 @@ export const attachmentRelations = relations(attachments, ({ one }) => ({
 	}),
 }));
 
+// ============================================================================
+// SAVED VIEWS TABLE
+// User-customizable views with filters, sorting, and column visibility
+// ============================================================================
+
+export const savedViews = pgTable(
+	"saved_views",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 })
+			.notNull()
+			.references(() => organizations.id, { onDelete: "cascade" }),
+		createdBy: varchar("created_by", { length: 255 }).references(
+			() => users.id,
+			{ onDelete: "set null" },
+		),
+
+		entityType: varchar("entity_type", { length: 50 }).notNull(),
+		name: text("name").notNull(),
+		description: text("description"),
+		icon: varchar("icon", { length: 50 }),
+		color: varchar("color", { length: 20 }),
+
+		filters: jsonb("filters").default({}).notNull(),
+		displayFilters: jsonb("display_filters"),
+		columnVisibility: jsonb("column_visibility"),
+		sorting: jsonb("sorting"),
+
+		isSystem: boolean("is_system").default(false).notNull(),
+		isDefault: boolean("is_default").default(false).notNull(),
+		isPublic: boolean("is_public").default(false).notNull(),
+		sortOrder: integer("sort_order").default(0).notNull(),
+
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		index("saved_views_org_idx").on(table.organizationId),
+		index("saved_views_org_entity_idx").on(
+			table.organizationId,
+			table.entityType,
+		),
+		index("saved_views_created_by_idx").on(table.createdBy),
+		uniqueIndex("saved_views_org_entity_name_idx").on(
+			table.organizationId,
+			table.entityType,
+			table.name,
+		),
+	],
+);
+
+export const savedViewFavorites = pgTable(
+	"saved_view_favorites",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		savedViewId: varchar("saved_view_id", { length: 255 })
+			.notNull()
+			.references(() => savedViews.id, { onDelete: "cascade" }),
+		userId: varchar("user_id", { length: 255 })
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		uniqueIndex("saved_view_favorites_view_user_idx").on(
+			table.savedViewId,
+			table.userId,
+		),
+		index("saved_view_favorites_user_idx").on(table.userId),
+	],
+);
+
+export const savedViewRelations = relations(savedViews, ({ one, many }) => ({
+	organization: one(organizations, {
+		fields: [savedViews.organizationId],
+		references: [organizations.id],
+	}),
+	createdByUser: one(users, {
+		fields: [savedViews.createdBy],
+		references: [users.id],
+		relationName: "savedViewCreatedBy",
+	}),
+	favorites: many(savedViewFavorites),
+}));
+
+export const savedViewFavoriteRelations = relations(
+	savedViewFavorites,
+	({ one }) => ({
+		savedView: one(savedViews, {
+			fields: [savedViewFavorites.savedViewId],
+			references: [savedViews.id],
+		}),
+		user: one(users, {
+			fields: [savedViewFavorites.userId],
+			references: [users.id],
+		}),
+	}),
+);
+
 // ----------------------------------------------------------------------------
 // Organization Relations (includes all studio domain tables)
 // ----------------------------------------------------------------------------
@@ -1772,6 +1882,7 @@ export const organizationRelations = relations(organizations, ({ many }) => ({
 	expenses: many(expenses),
 	invoices: many(invoices),
 	attachments: many(attachments),
+	savedViews: many(savedViews),
 }));
 
 // ============================================================================
@@ -1850,3 +1961,9 @@ export type NewInvoiceLineItem = typeof invoiceLineItems.$inferInsert;
 
 export type Attachment = typeof attachments.$inferSelect;
 export type NewAttachment = typeof attachments.$inferInsert;
+
+export type SavedView = typeof savedViews.$inferSelect;
+export type NewSavedView = typeof savedViews.$inferInsert;
+
+export type SavedViewFavorite = typeof savedViewFavorites.$inferSelect;
+export type NewSavedViewFavorite = typeof savedViewFavorites.$inferInsert;
