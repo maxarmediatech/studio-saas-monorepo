@@ -249,7 +249,9 @@ export function DataTable<TData, TValue>({
 
 			return cn(
 				baseMetaClass,
-				isSticky && !isHeader && "bg-table-surface",
+				isSticky &&
+					!isHeader &&
+					"bg-table-surface group-data-[state=selected]:bg-table-row-selected group-data-[state=selected]:hover:bg-table-row-selected-hover",
 				isLastLeftSticky &&
 					"after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-border",
 				isFirstRightSticky && [

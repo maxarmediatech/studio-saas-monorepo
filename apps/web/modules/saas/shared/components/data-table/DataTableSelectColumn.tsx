@@ -48,7 +48,8 @@ export function createSelectColumn<TData>(): ColumnDef<TData> {
 			minWidth: 48,
 			maxWidth: 48,
 			headerClassName: "!px-0 !border-r-0 bg-gray-100 z-10",
-			cellClassName: "!px-0 !border-r-0 bg-table-surface z-10",
+			cellClassName:
+				"!px-0 !border-r-0 bg-table-surface group-data-[state=selected]:bg-table-row-selected z-10",
 		},
 	};
 }

@@ -219,7 +219,7 @@ export function BookingsTableClient({
 					headerClassName:
 						"!border-r-0 bg-gray-100 z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border",
 					cellClassName:
-						"!border-r-0 bg-table-surface z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border",
+						"!border-r-0 bg-table-surface group-data-[state=selected]:bg-table-row-selected z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border",
 				},
 				enableSorting: true,
 				enableHiding: true,
@@ -264,7 +264,7 @@ export function BookingsTableClient({
 					headerClassName:
 						"!border-r-0 bg-gray-100 z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-border",
 					cellClassName:
-						"!border-r-0 bg-table-surface z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-border",
+						"!border-r-0 bg-table-surface group-data-[state=selected]:bg-table-row-selected z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-border",
 				},
 				enableSorting: true,
 				enableHiding: false,
@@ -447,7 +447,7 @@ export function BookingsTableClient({
 					headerClassName:
 						"!px-0 md:sticky md:right-0 bg-gray-100 z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border after:absolute after:left-[-24px] after:top-0 after:bottom-0 after:w-6 after:bg-gradient-to-r after:from-transparent after:to-gray-100",
 					cellClassName:
-						"!px-0 md:sticky md:right-0 bg-table-surface z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border after:absolute after:left-[-24px] after:top-0 after:bottom-0 after:w-6 after:bg-gradient-to-r after:from-transparent after:to-table-surface",
+						"!px-0 md:sticky md:right-0 bg-table-surface group-data-[state=selected]:bg-table-row-selected z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border after:absolute after:left-[-24px] after:top-0 after:bottom-0 after:w-6 after:bg-gradient-to-r after:from-transparent after:to-table-surface group-data-[state=selected]:after:to-table-row-selected",
 				},
 			},
 		],
