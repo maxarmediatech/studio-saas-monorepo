@@ -171,24 +171,14 @@ export function CrewsTableClient({
 					<DataTableColumnHeader column={column} title="Name" />
 				),
 				cell: ({ row }) => (
-					<div className="flex items-center gap-3">
-						<div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
-							<UserIcon className="h-4 w-4 text-muted-foreground" />
-						</div>
-						<div>
-							<p className="font-medium">{row.original.name}</p>
-							{row.original.email && (
-								<p className="text-sm text-muted-foreground">
-									{row.original.email}
-								</p>
-							)}
-						</div>
-					</div>
+					<span className="font-medium text-foreground">
+						{row.original.name}
+					</span>
 				),
 				meta: {
 					label: "Name",
-					width: 240,
-					minWidth: 240,
+					width: 200,
+					minWidth: 150,
 					// Last left-sticky column - add right border
 					headerClassName:
 						"!border-r-0 bg-gray-100 z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[0.5px] before:bg-table-border-subtle after:absolute after:right-0 after:top-0 after:bottom-0 after:w-[0.5px] after:bg-table-border-subtle",
@@ -276,7 +266,9 @@ export function CrewsTableClient({
 				),
 				cell: ({ row }) => (
 					<div className="text-right font-semibold tabular-nums">
-						{row.original.dailyRate ? formatMoney(row.original.dailyRate) : "-"}
+						{row.original.dailyRate
+							? formatMoney(row.original.dailyRate)
+							: "-"}
 					</div>
 				),
 				meta: {
@@ -298,16 +290,16 @@ export function CrewsTableClient({
 				),
 				enableSorting: false,
 				enableHiding: false,
-					meta: {
-						width: 56,
-						minWidth: 56,
-						// First right-sticky column - add left border + fade
-						headerClassName:
-							"!px-0 md:sticky md:right-0 bg-gray-100 z-10",
-						cellClassName:
-							"!px-0 md:sticky md:right-0 bg-table-surface group-hover:bg-table-row-selected group-data-[state=selected]:bg-table-row-selected z-10",
-					},
+				meta: {
+					width: 48,
+					minWidth: 48,
+					// First right-sticky column - add left border + fade
+					headerClassName:
+						"!px-0 md:sticky md:right-0 bg-gray-100 z-10",
+					cellClassName:
+						"!px-0 md:sticky md:right-0 bg-table-surface group-hover:bg-table-row-selected group-data-[state=selected]:bg-table-row-selected z-10",
 				},
+			},
 		],
 		[rowActions],
 	);
@@ -333,11 +325,11 @@ export function CrewsTableClient({
 					getRowId={(row) => row.id}
 					// Sticky columns configuration
 					stickyLeftColumns={[
-						{ id: "select", width: 56 },
-						{ id: "name", width: 240 },
+						{ id: "select", width: 48 },
+						{ id: "name", width: 200 },
 					]}
-					stickyRightColumns={[{ id: "actions", width: 56 }]}
-					minWidth={900}
+					stickyRightColumns={[{ id: "actions", width: 48 }]}
+					minWidth={850}
 					// Place scroll controls in the last sticky left column
 					scrollControlsColumnId="name"
 					scrollStartColumn={2}
