@@ -23,9 +23,11 @@ import {
 } from "@saas/shared/components/data-table";
 // Import types for column meta augmentation
 import "@saas/shared/components/data-table/types";
+import { formatMoney } from "@saas/shared/lib";
 import { useDeliverableParams } from "@saas/studio/hooks/params/use-deliverable-params";
 import { useDeliverablesTable } from "@saas/studio/hooks/tables";
 import {
+	configurationsApi,
 	deliverablesApi,
 	deliverablesMutations,
 	studioQueryKeys,
@@ -33,7 +35,6 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-	AlertCircleIcon,
 	CalendarIcon,
 	CheckCircleIcon,
 	CircleIcon,
@@ -43,7 +44,6 @@ import {
 	PencilIcon,
 	TrashIcon,
 	TruckIcon,
-	UsersIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -136,6 +136,19 @@ export function DeliverablesTableClient({
 		pageCount: 0,
 	};
 
+	// Fetch configurations for labels
+	const { data: packageTypesData } = useQuery(
+		configurationsApi.packageTypesOptions(),
+	);
+
+	const packageTypeLabels = useMemo(() => {
+		const map = new Map<string, string>();
+		for (const config of packageTypesData?.data ?? []) {
+			map.set(config.key, config.label);
+		}
+		return map;
+	}, [packageTypesData]);
+
 	// Delete mutation
 	const deleteMutation = useMutation({
 		...deliverablesMutations.delete(),
@@ -189,17 +202,14 @@ export function DeliverablesTableClient({
 					<DataTableColumnHeader column={column} title="Name" />
 				),
 				cell: ({ row }) => (
-					<div className="flex items-center gap-3">
-						<div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
-							<PackageIcon className="h-4 w-4 text-muted-foreground" />
-						</div>
-						<p className="font-medium">{row.original.name}</p>
-					</div>
+					<span className="font-medium text-foreground">
+						{row.original.name}
+					</span>
 				),
 				meta: {
 					label: "Name",
 					width: 240,
-					minWidth: 240,
+					minWidth: 200,
 					// Last left-sticky column - add right border
 					headerClassName:
 						"!border-r-0 bg-gray-100 z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[0.5px] before:bg-table-border-subtle after:absolute after:right-0 after:top-0 after:bottom-0 after:w-[0.5px] after:bg-table-border-subtle",
@@ -216,22 +226,17 @@ export function DeliverablesTableClient({
 					<DataTableColumnHeader column={column} title="Booking" />
 				),
 				cell: ({ row }) => (
-					<div>
-						<Link
-							href={`/app/${organizationSlug}/bookings/${row.original.bookingId}`}
-							className="font-medium text-foreground hover:underline"
-						>
-							{row.original.bookingName}
-						</Link>
-						<p className="text-xs text-muted-foreground">
-							{row.original.bookingReferenceNumber}
-						</p>
-					</div>
+					<Link
+						href={`/app/${organizationSlug}/bookings/${row.original.bookingId}`}
+						className="text-muted-foreground hover:underline hover:text-foreground transition-colors"
+					>
+						{row.original.bookingName}
+					</Link>
 				),
 				meta: {
 					label: "Booking",
-					width: 180,
-					minWidth: 180,
+					width: 200,
+					minWidth: 150,
 				},
 				enableSorting: false,
 				enableHiding: true,
@@ -250,26 +255,27 @@ export function DeliverablesTableClient({
 						row.original.status !== "completed" &&
 						row.original.status !== "delivered";
 
+					if (!dueDate) {
+						return <span className="text-muted-foreground">—</span>;
+					}
+
 					return (
-						<div className="flex items-center gap-2">
-							{isOverdue ? (
-								<AlertCircleIcon className="h-4 w-4 text-destructive" />
-							) : (
-								<CalendarIcon className="h-4 w-4 text-muted-foreground" />
-							)}
-							<span
-								className={isOverdue ? "text-destructive" : ""}
-							>
-								{formatDate(dueDate)}
-							</span>
-						</div>
+						<span
+							className={
+								isOverdue
+									? "text-destructive font-medium"
+									: "text-muted-foreground"
+							}
+						>
+							{formatDate(dueDate)}
+						</span>
 					);
 				},
 				meta: {
 					label: "Due Date",
 					icon: CalendarIcon,
-					width: 130,
-					minWidth: 130,
+					width: 140,
+					minWidth: 120,
 				},
 				enableSorting: true,
 				enableHiding: true,
@@ -292,8 +298,8 @@ export function DeliverablesTableClient({
 				},
 				meta: {
 					label: "Status",
-					width: 130,
-					minWidth: 130,
+					width: 140,
+					minWidth: 140,
 				},
 				enableSorting: true,
 				enableHiding: true,
@@ -305,10 +311,9 @@ export function DeliverablesTableClient({
 					<DataTableColumnHeader column={column} title="Crew" />
 				),
 				cell: ({ row }) => (
-					<div className="flex items-center gap-2">
-						<UsersIcon className="h-4 w-4 text-muted-foreground" />
-						<span>{row.original.assignmentsCount}</span>
-					</div>
+					<span className="tabular-nums">
+						{row.original.assignmentsCount}
+					</span>
 				),
 				meta: {
 					label: "Crew",
@@ -316,6 +321,56 @@ export function DeliverablesTableClient({
 					minWidth: 80,
 				},
 				enableSorting: false,
+				enableHiding: true,
+			},
+			{
+				id: "packageType",
+				accessorKey: "bookingPackageType",
+				header: ({ column }) => (
+					<DataTableColumnHeader
+						column={column}
+						title="Package Type"
+					/>
+				),
+				cell: ({ row }) => (
+					<span className="capitalize">
+						{packageTypeLabels.get(
+							row.original.bookingPackageType,
+						) ?? row.original.bookingPackageType}
+					</span>
+				),
+				meta: {
+					label: "Package Type",
+					width: 140,
+					minWidth: 120,
+				},
+				enableSorting: false,
+				enableHiding: true,
+			},
+			{
+				id: "cost",
+				accessorKey: "cost",
+				header: ({ column }) => (
+					<DataTableColumnHeader column={column} title="Cost" />
+				),
+				cell: ({ row }) => {
+					if (row.original.isPackageIncluded) {
+						return <Badge variant="secondary">Included</Badge>;
+					}
+					return (
+						<span>
+							{row.original.cost
+								? formatMoney(row.original.cost)
+								: "—"}
+						</span>
+					);
+				},
+				meta: {
+					label: "Cost",
+					width: 100,
+					minWidth: 100,
+				},
+				enableSorting: true,
 				enableHiding: true,
 			},
 			{
@@ -330,8 +385,8 @@ export function DeliverablesTableClient({
 				enableSorting: false,
 				enableHiding: false,
 				meta: {
-					width: 56,
-					minWidth: 56,
+					width: 48,
+					minWidth: 48,
 					// First right-sticky column - add left border + fade
 					headerClassName:
 						"!px-0 md:sticky md:right-0 bg-gray-100 z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[0.5px] before:bg-table-border-subtle after:absolute after:left-[-24px] after:top-0 after:bottom-0 after:w-6 after:bg-gradient-to-r after:from-transparent after:to-gray-100",
@@ -364,10 +419,10 @@ export function DeliverablesTableClient({
 					getRowId={(row) => row.id}
 					// Sticky columns configuration
 					stickyLeftColumns={[
-						{ id: "select", width: 56 },
+						{ id: "select", width: 48 },
 						{ id: "name", width: 240 },
 					]}
-					stickyRightColumns={[{ id: "actions", width: 56 }]}
+					stickyRightColumns={[{ id: "actions", width: 48 }]}
 					minWidth={1200}
 					// Place scroll controls in the last sticky left column
 					scrollControlsColumnId="name"

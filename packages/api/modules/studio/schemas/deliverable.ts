@@ -131,6 +131,7 @@ export const deliverableListItemSchema = deliverableSchema.extend({
 	assignmentsCount: z.number(),
 	bookingName: z.string(),
 	bookingReferenceNumber: z.string(),
+	bookingPackageType: z.string(),
 });
 
 export type DeliverableListItem = z.infer<typeof deliverableListItemSchema>;

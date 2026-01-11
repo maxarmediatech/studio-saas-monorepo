@@ -150,6 +150,7 @@ export const listDeliverables = studioProtectedProcedure
 				deletedBy: deliverables.deletedBy,
 				bookingName: bookings.name,
 				bookingReferenceNumber: bookings.referenceNumber,
+				bookingPackageType: bookings.packageType,
 			})
 			.from(deliverables)
 			.innerJoin(bookings, eq(deliverables.bookingId, bookings.id))
@@ -206,6 +207,7 @@ export const listDeliverables = studioProtectedProcedure
 			assignmentsCount: assignmentCounts[row.id] ?? 0,
 			bookingName: row.bookingName,
 			bookingReferenceNumber: row.bookingReferenceNumber,
+			bookingPackageType: row.bookingPackageType,
 		}));
 
 		return {
