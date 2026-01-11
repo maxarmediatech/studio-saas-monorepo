@@ -1,6 +1,5 @@
 "use client";
 
-import { Button } from "@repo/ui/components/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -11,10 +10,11 @@ import {
 import { cn } from "@repo/ui/lib/utils";
 import type { Column } from "@tanstack/react-table";
 import {
-	ArrowDownIcon,
-	ArrowUpIcon,
-	ChevronsUpDownIcon,
-	EyeOffIcon,
+	ArrowDownWideNarrow,
+	ArrowUpNarrowWide,
+	ChevronDown,
+	EyeOff,
+	X,
 } from "lucide-react";
 import { useSortContext } from "./DataTableSortContext";
 
@@ -22,106 +22,167 @@ interface DataTableColumnHeaderProps<TData, TValue>
 	extends React.HTMLAttributes<HTMLDivElement> {
 	column: Column<TData, TValue>;
 	title: string;
-	/** If true, shows just a clickable header without dropdown */
+	icon?: React.ReactNode;
 	simple?: boolean;
 }
 
 export function DataTableColumnHeader<TData, TValue>({
 	column,
 	title,
+	icon,
 	simple = false,
 	className,
 }: DataTableColumnHeaderProps<TData, TValue>) {
-	// Try to get sort state from context (URL state)
 	const sortContext = useSortContext();
 
 	if (!column.getCanSort()) {
-		return <div className={cn(className)}>{title}</div>;
+		return (
+			<div
+				className={cn(
+					"flex items-center gap-1.5 text-[0.8125rem] text-muted-foreground",
+					className,
+				)}
+			>
+				{icon && (
+					<span className="h-4 w-4 text-muted-foreground/60">
+						{icon}
+					</span>
+				)}
+				<span>{title}</span>
+			</div>
+		);
 	}
 
-	// Use context (URL state) if available, otherwise fall back to TanStack Table state
 	const columnId = column.id;
 	let currentDirection: "asc" | "desc" | false;
 
 	if (sortContext) {
-		// Context available - use URL state directly
 		currentDirection =
 			sortContext.sortColumn === columnId
 				? sortContext.sortDirection
 				: false;
 	} else {
-		// Fall back to TanStack Table state
 		currentDirection = column.getIsSorted();
 	}
 
+	const isSorted = currentDirection !== false;
+
 	if (simple) {
 		return (
-			<Button
-				variant="ghost"
-				size="sm"
+			<button
+				type="button"
 				className={cn(
-					"-ml-3 h-8 text-sm font-semibold data-[state=open]:bg-accent",
+					"flex w-full items-center justify-between gap-1.5",
+					"py-2 text-[0.8125rem]",
+					"text-muted-foreground hover:text-foreground",
+					"cursor-pointer outline-none transition-colors",
 					className,
 				)}
 				onClick={() => column.toggleSorting(currentDirection === "asc")}
 			>
-				<span>{title}</span>
-				{currentDirection === "desc" ? (
-					<ArrowDownIcon className="ml-2 h-4 w-4" />
-				) : currentDirection === "asc" ? (
-					<ArrowUpIcon className="ml-2 h-4 w-4" />
-				) : (
-					<ChevronsUpDownIcon className="ml-2 h-4 w-4" />
-				)}
-			</Button>
+				<div className="flex items-center gap-1.5">
+					{icon && (
+						<span className="h-4 w-4 text-muted-foreground/60">
+							{icon}
+						</span>
+					)}
+					<span>{title}</span>
+				</div>
+				<div className="ml-2 flex items-center">
+					{isSorted && (
+						<span className="flex h-3.5 w-3.5 items-center justify-center">
+							{currentDirection === "asc" ? (
+								<ArrowDownWideNarrow className="h-3 w-3" />
+							) : (
+								<ArrowUpNarrowWide className="h-3 w-3" />
+							)}
+						</span>
+					)}
+					<ChevronDown className="h-3 w-3" aria-hidden="true" />
+				</div>
+			</button>
 		);
 	}
 
 	return (
-		<div className={cn("flex items-center space-x-2", className)}>
-			<DropdownMenu>
-				<DropdownMenuTrigger asChild>
-					<Button
-						variant="ghost"
-						size="sm"
-						className="-ml-3 h-8 text-sm font-semibold data-[state=open]:bg-accent"
-					>
-						<span>{title}</span>
-						{currentDirection === "desc" ? (
-							<ArrowDownIcon className="ml-2 h-4 w-4" />
-						) : currentDirection === "asc" ? (
-							<ArrowUpIcon className="ml-2 h-4 w-4" />
-						) : (
-							<ChevronsUpDownIcon className="ml-2 h-4 w-4" />
-						)}
-					</Button>
-				</DropdownMenuTrigger>
-				<DropdownMenuContent align="start">
-					<DropdownMenuItem
-						onClick={() => column.toggleSorting(false)}
-					>
-						<ArrowUpIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
-						Asc
-					</DropdownMenuItem>
-					<DropdownMenuItem
-						onClick={() => column.toggleSorting(true)}
-					>
-						<ArrowDownIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
-						Desc
-					</DropdownMenuItem>
-					{column.getCanHide() && (
-						<>
-							<DropdownMenuSeparator />
-							<DropdownMenuItem
-								onClick={() => column.toggleVisibility(false)}
-							>
-								<EyeOffIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
-								Hide
-							</DropdownMenuItem>
-						</>
+		<DropdownMenu>
+			<DropdownMenuTrigger asChild>
+				<button
+					type="button"
+					className={cn(
+						"flex w-full items-center justify-between gap-1.5",
+						"py-2 text-[0.8125rem]",
+						"text-muted-foreground hover:text-foreground",
+						"cursor-pointer outline-none transition-colors",
+						"data-[state=open]:text-foreground",
+						className,
 					)}
-				</DropdownMenuContent>
-			</DropdownMenu>
-		</div>
+				>
+					<div className="flex items-center gap-1.5">
+						{icon && (
+							<span className="h-4 w-4 text-muted-foreground/60">
+								{icon}
+							</span>
+						)}
+						<span>{title}</span>
+					</div>
+					<div className="ml-2 flex items-center">
+						{isSorted && (
+							<span className="flex h-3.5 w-3.5 items-center justify-center">
+								{currentDirection === "asc" ? (
+									<ArrowDownWideNarrow className="h-3 w-3" />
+								) : (
+									<ArrowUpNarrowWide className="h-3 w-3" />
+								)}
+							</span>
+						)}
+						<ChevronDown className="h-3 w-3" aria-hidden="true" />
+					</div>
+				</button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="start" className="min-w-[160px]">
+				<DropdownMenuItem
+					onClick={() => column.toggleSorting(false)}
+					className={cn(
+						"flex items-center gap-2 text-[0.8125rem]",
+						currentDirection === "asc" && "text-foreground",
+					)}
+				>
+					<ArrowDownWideNarrow className="h-3.5 w-3.5 stroke-[1.5]" />
+					<span>Sort Ascending</span>
+				</DropdownMenuItem>
+				<DropdownMenuItem
+					onClick={() => column.toggleSorting(true)}
+					className={cn(
+						"flex items-center gap-2 text-[0.8125rem]",
+						currentDirection === "desc" && "text-foreground",
+					)}
+				>
+					<ArrowUpNarrowWide className="h-3.5 w-3.5 stroke-[1.5]" />
+					<span>Sort Descending</span>
+				</DropdownMenuItem>
+				{isSorted && (
+					<DropdownMenuItem
+						onClick={() => column.clearSorting()}
+						className="flex items-center gap-2 text-[0.8125rem]"
+					>
+						<X className="h-3.5 w-3.5 stroke-[1.5]" />
+						<span>Clear Sorting</span>
+					</DropdownMenuItem>
+				)}
+				{column.getCanHide() && (
+					<>
+						<DropdownMenuSeparator />
+						<DropdownMenuItem
+							onClick={() => column.toggleVisibility(false)}
+							className="flex items-center gap-2 text-[0.8125rem]"
+						>
+							<EyeOff className="h-3.5 w-3.5 stroke-[1.5]" />
+							<span>Hide Column</span>
+						</DropdownMenuItem>
+					</>
+				)}
+			</DropdownMenuContent>
+		</DropdownMenu>
 	);
 }

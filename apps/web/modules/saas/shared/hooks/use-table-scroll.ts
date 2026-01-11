@@ -3,12 +3,10 @@
 import * as React from "react";
 
 export interface UseTableScrollOptions {
-	/** Amount to scroll in pixels (when not using column widths) */
 	scrollAmount?: number;
-	/** Snap to column boundaries instead of fixed scroll amount */
 	useColumnWidths?: boolean;
-	/** Column index to start scrolling from (columns before this are sticky) */
 	startFromColumn?: number;
+	enableStickyShadows?: boolean;
 }
 
 /**
@@ -20,6 +18,7 @@ export function useTableScroll(options: UseTableScrollOptions = {}) {
 		scrollAmount = 120,
 		useColumnWidths = false,
 		startFromColumn = 0,
+		enableStickyShadows = false,
 	} = options;
 
 	const containerRef = React.useRef<HTMLDivElement | null>(null);
@@ -29,6 +28,33 @@ export function useTableScroll(options: UseTableScrollOptions = {}) {
 	const currentColumnIndex = React.useRef(startFromColumn);
 	const isScrollingProgrammatically = React.useRef(false);
 	const scrollTimeoutRef = React.useRef<number | undefined>(undefined);
+	const isScrolledRef = React.useRef(false);
+
+	const updateStickyShadows = React.useCallback(() => {
+		if (!enableStickyShadows) return;
+
+		const container = containerRef.current;
+		if (!container) return;
+
+		const scrollLeftVal = container.scrollLeft;
+		const shouldShowShadow = scrollLeftVal > 0;
+
+		if (shouldShowShadow !== isScrolledRef.current) {
+			const stickyColumns = container.querySelectorAll(
+				"table thead th:first-child, table tbody td:first-child",
+			);
+
+			const columnShadow = "8px 0 22px -4px rgba(0, 0, 0, 0.08)";
+
+			stickyColumns.forEach((col) => {
+				(col as HTMLElement).style.boxShadow = shouldShowShadow
+					? columnShadow
+					: "none";
+			});
+
+			isScrolledRef.current = shouldShowShadow;
+		}
+	}, [enableStickyShadows]);
 
 	const getColumnPositions = React.useCallback(() => {
 		const container = containerRef.current;
@@ -323,6 +349,8 @@ export function useTableScroll(options: UseTableScrollOptions = {}) {
 		checkScrollability();
 
 		const handleScroll = () => {
+			updateStickyShadows();
+
 			if (isScrollingProgrammatically.current) {
 				return;
 			}
@@ -364,7 +392,7 @@ export function useTableScroll(options: UseTableScrollOptions = {}) {
 				window.clearTimeout(scrollTimeoutRef.current);
 			}
 		};
-	}, [checkScrollability, startFromColumn]);
+	}, [checkScrollability, startFromColumn, updateStickyShadows]);
 
 	return {
 		containerRef,
