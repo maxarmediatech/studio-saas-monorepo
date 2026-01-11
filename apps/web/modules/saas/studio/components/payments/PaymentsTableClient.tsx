@@ -37,7 +37,6 @@ import type { ColumnDef } from "@tanstack/react-table";
 import {
 	BanknoteIcon,
 	CalendarIcon,
-	HashIcon,
 	Loader2Icon,
 	PencilIcon,
 	TrashIcon,
@@ -180,25 +179,15 @@ export function PaymentsTableClient({
 				cell: ({ row }) => (
 					<Link
 						href={`/app/${organizationSlug}/bookings/${row.original.bookingId}`}
-						className="flex items-center gap-3 hover:underline"
+						className="text-muted-foreground hover:underline hover:text-foreground transition-colors"
 					>
-						<div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
-							<BanknoteIcon className="h-4 w-4 text-muted-foreground" />
-						</div>
-						<div>
-							<p className="font-medium">
-								{row.original.bookingName}
-							</p>
-							<p className="text-xs text-muted-foreground">
-								{row.original.bookingReferenceNumber}
-							</p>
-						</div>
+						{row.original.bookingName}
 					</Link>
 				),
 				meta: {
 					label: "Booking",
-					width: 240,
-					minWidth: 240,
+					width: 200,
+					minWidth: 150,
 					// Last left-sticky column - add right border
 					headerClassName:
 						"!border-r-0 bg-gray-100 z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[0.5px] before:bg-table-border-subtle after:absolute after:right-0 after:top-0 after:bottom-0 after:w-[0.5px] after:bg-table-border-subtle",
@@ -257,16 +246,15 @@ export function PaymentsTableClient({
 					<DataTableColumnHeader column={column} title="Date" />
 				),
 				cell: ({ row }) => (
-					<div className="flex items-center gap-2">
-						<CalendarIcon className="h-4 w-4 text-muted-foreground" />
-						<span>{formatDate(row.original.receivedDate)}</span>
-					</div>
+					<span className="text-muted-foreground">
+						{formatDate(row.original.receivedDate)}
+					</span>
 				),
 				meta: {
 					label: "Date",
 					icon: CalendarIcon,
-					width: 130,
-					minWidth: 130,
+					width: 140,
+					minWidth: 120,
 				},
 				enableSorting: true,
 				enableHiding: true,
@@ -279,20 +267,16 @@ export function PaymentsTableClient({
 				),
 				cell: ({ row }) =>
 					row.original.transactionReference ? (
-						<div className="flex items-center gap-2">
-							<HashIcon className="h-3 w-3 text-muted-foreground" />
-							<span className="text-sm font-mono">
-								{row.original.transactionReference}
-							</span>
-						</div>
+						<span className="font-mono text-muted-foreground">
+							{row.original.transactionReference}
+						</span>
 					) : (
-						<span className="text-muted-foreground">-</span>
+						<span className="text-muted-foreground">—</span>
 					),
 				meta: {
 					label: "Reference",
-					icon: HashIcon,
 					width: 150,
-					minWidth: 150,
+					minWidth: 120,
 				},
 				enableSorting: false,
 				enableHiding: true,
@@ -308,18 +292,18 @@ export function PaymentsTableClient({
 				),
 				enableSorting: false,
 				enableHiding: false,
-					meta: {
-						width: 56,
-						minWidth: 56,
-						// First right-sticky column - add left border + fade
-						headerClassName:
-							"!px-0 md:sticky md:right-0 bg-gray-100 z-10",
-						cellClassName:
-							"!px-0 md:sticky md:right-0 bg-table-surface group-hover:bg-table-row-selected group-data-[state=selected]:bg-table-row-selected z-10",
-					},
+				meta: {
+					width: 48,
+					minWidth: 48,
+					// First right-sticky column - add left border + fade
+					headerClassName:
+						"!px-0 md:sticky md:right-0 bg-gray-100 z-10",
+					cellClassName:
+						"!px-0 md:sticky md:right-0 bg-table-surface group-hover:bg-table-row-selected group-data-[state=selected]:bg-table-row-selected z-10",
 				},
+			},
 		],
-		[rowActions],
+		[organizationSlug, rowActions],
 	);
 
 	return (
@@ -330,40 +314,40 @@ export function PaymentsTableClient({
 				sortDirection={sorting.sortDirection}
 			>
 				<DataTable
-						columns={columns}
-						data={payments}
-						isLoading={isLoading}
-						isFetching={isFetching}
-						pagination={serverPagination}
-						onPaginationChange={onPaginationChange}
-						onLimitChange={onLimitChange}
-						sorting={sortingState}
-						onSortingChange={onSortingChange}
-						enableRowSelection
-						getRowId={(row) => row.id}
-						// Sticky columns configuration
-						stickyLeftColumns={[
-							{ id: "select", width: 56 },
-							{ id: "booking", width: 240 },
-						]}
-						stickyRightColumns={[{ id: "actions", width: 56 }]}
-						minWidth={950}
-						// Place scroll controls in the last sticky left column
-						scrollControlsColumnId="booking"
-						scrollStartColumn={2}
-						emptyState={
-							<div className="flex flex-col items-center gap-2">
-								<BanknoteIcon className="h-12 w-12 text-muted-foreground/50" />
-								<p className="text-muted-foreground">
-									No payments recorded
-								</p>
-								<OpenPaymentCreateSheet
-									variant="outline"
-									size="sm"
-									label="Record your first payment"
-								/>
-							</div>
-						}
+					columns={columns}
+					data={payments}
+					isLoading={isLoading}
+					isFetching={isFetching}
+					pagination={serverPagination}
+					onPaginationChange={onPaginationChange}
+					onLimitChange={onLimitChange}
+					sorting={sortingState}
+					onSortingChange={onSortingChange}
+					enableRowSelection
+					getRowId={(row) => row.id}
+					// Sticky columns configuration
+					stickyLeftColumns={[
+						{ id: "select", width: 48 },
+						{ id: "booking", width: 200 },
+					]}
+					stickyRightColumns={[{ id: "actions", width: 48 }]}
+					minWidth={900}
+					// Place scroll controls in the last sticky left column
+					scrollControlsColumnId="booking"
+					scrollStartColumn={2}
+					emptyState={
+						<div className="flex flex-col items-center gap-2">
+							<BanknoteIcon className="h-12 w-12 text-muted-foreground/50" />
+							<p className="text-muted-foreground">
+								No payments recorded
+							</p>
+							<OpenPaymentCreateSheet
+								variant="outline"
+								size="sm"
+								label="Record your first payment"
+							/>
+						</div>
+					}
 				/>
 			</SortProvider>
 
