@@ -236,12 +236,6 @@ export function DataTable<TData, TValue>({
 				? meta?.headerClassName
 				: meta?.cellClassName;
 
-			const leftIndex = stickyLeftColumns.findIndex(
-				(c) => c.id === columnId,
-			);
-			const isLastLeftSticky =
-				leftIndex >= 0 && leftIndex === stickyLeftColumns.length - 1;
-
 			const rightIndex = stickyRightColumns.findIndex(
 				(c) => c.id === columnId,
 			);
@@ -251,17 +245,15 @@ export function DataTable<TData, TValue>({
 				baseMetaClass,
 				isSticky &&
 					!isHeader &&
-					"bg-table-surface group-data-[state=selected]:bg-table-row-selected group-data-[state=selected]:hover:bg-table-row-selected-hover",
-				isLastLeftSticky &&
-					"after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-border",
+					"bg-table-surface group-hover:bg-table-row-selected group-data-[state=selected]:bg-table-row-selected group-data-[state=selected]:hover:bg-table-row-selected-hover",
 				isFirstRightSticky && [
-					"before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border",
+					"before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[0.5px] before:bg-table-border-subtle",
 					"after:absolute after:left-[-24px] after:top-0 after:bottom-0 after:w-6 after:bg-gradient-to-r after:from-transparent after:pointer-events-none",
 					isHeader ? "after:to-gray-100" : "after:to-table-surface",
 				],
 			);
 		},
-		[leftColumnIds, rightColumnIds, stickyLeftColumns, stickyRightColumns],
+		[leftColumnIds, rightColumnIds, stickyRightColumns],
 	);
 
 	return (
