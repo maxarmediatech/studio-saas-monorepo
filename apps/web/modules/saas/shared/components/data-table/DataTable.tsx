@@ -246,11 +246,8 @@ export function DataTable<TData, TValue>({
 				isSticky &&
 					!isHeader &&
 					"bg-table-surface group-hover:bg-table-row-selected group-data-[state=selected]:bg-table-row-selected group-data-[state=selected]:hover:bg-table-row-selected-hover",
-				isFirstRightSticky && [
+				isFirstRightSticky &&
 					"before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[0.5px] before:bg-table-border-subtle",
-					"after:absolute after:left-[-24px] after:top-0 after:bottom-0 after:w-6 after:bg-gradient-to-r after:from-transparent after:pointer-events-none",
-					isHeader ? "after:to-gray-100" : "after:to-table-surface",
-				],
 			);
 		},
 		[leftColumnIds, rightColumnIds, stickyRightColumns],
