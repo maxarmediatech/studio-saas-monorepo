@@ -147,9 +147,7 @@ export const createExpense = studioProtectedProcedure
 				);
 
 				// Update booking total expenses if assigned to bookings
-				const bookingAssignments = assignments.filter(
-					(a) => a.bookingId,
-				);
+				const bookingAssignments = assignments.filter((a) => a.bookingId);
 				for (const assignment of bookingAssignments) {
 					const allocatedAmount = getAllocatedExpenseAmount(
 						amountValue,

@@ -181,6 +181,12 @@ export const shootsApi = {
 		input?: Parameters<typeof orpc.shoots.list.queryOptions>[0]["input"],
 	) => orpc.shoots.list.queryOptions({ input: input ?? {} }),
 
+	listMinimalOptions: (
+		input?: Parameters<
+			typeof orpc.shoots.listMinimal.queryOptions
+		>[0]["input"],
+	) => orpc.shoots.listMinimal.queryOptions({ input: input ?? {} }),
+
 	getOptions: (id: string) => orpc.shoots.get.queryOptions({ input: { id } }),
 };
 

@@ -54,7 +54,7 @@ const ALLOWED_MIME_TYPES: Record<UploadContext, string[]> = {
 		"application/zip",
 	],
 	shoots: ["image/jpeg", "image/png", "image/webp", "video/mp4"],
-	receipts: ["application/pdf", "image/jpeg", "image/png"],
+	receipts: ["application/pdf", "image/jpeg", "image/png", "image/webp"],
 	documents: [
 		"application/pdf",
 		"application/msword",
