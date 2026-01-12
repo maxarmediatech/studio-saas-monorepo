@@ -167,17 +167,46 @@ export function DataTableToolbarWithViews<TData>({
 			color?: string;
 			isPublic: boolean;
 		}) => {
-			await createView({
+			const filters = getCurrentFilters();
+			const sorting = getCurrentSorting();
+			const columnVisibility = getCurrentColumnVisibility();
+
+			const result = await createView({
 				entityType,
 				name: formData.name,
 				description: formData.description,
 				icon: formData.icon,
 				color: formData.color,
 				isPublic: formData.isPublic,
-				filters: getCurrentFilters(),
-				sorting: getCurrentSorting(),
-				columnVisibility: getCurrentColumnVisibility(),
+				filters,
+				sorting,
+				columnVisibility,
 			});
+
+			const newView: SavedView = {
+				id: result.data.id,
+				organizationId: "",
+				createdBy: null,
+				entityType,
+				name: formData.name,
+				description: formData.description ?? null,
+				icon: formData.icon ?? null,
+				color: formData.color ?? null,
+				filters,
+				displayFilters: null,
+				columnVisibility,
+				sorting,
+				isSystem: false,
+				isDefault: false,
+				isPublic: formData.isPublic,
+				sortOrder: 100,
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				isFavorite: false,
+				createdByUser: null,
+			};
+
+			onViewSelect(newView);
 			setSaveDialogOpen(false);
 		},
 		[
@@ -186,6 +215,7 @@ export function DataTableToolbarWithViews<TData>({
 			getCurrentFilters,
 			getCurrentSorting,
 			getCurrentColumnVisibility,
+			onViewSelect,
 		],
 	);
 

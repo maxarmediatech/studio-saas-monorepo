@@ -1,5 +1,7 @@
 "use client";
 
+import { Button } from "@repo/ui/components/button";
+import { Checkbox } from "@repo/ui/components/checkbox";
 import {
 	Dialog,
 	DialogContent,
@@ -8,10 +10,8 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@repo/ui/components/dialog";
-import { Button } from "@repo/ui/components/button";
 import { Input } from "@repo/ui/components/input";
 import { Label } from "@repo/ui/components/label";
-import { Checkbox } from "@repo/ui/components/checkbox";
 import {
 	Select,
 	SelectContent,
@@ -124,13 +124,38 @@ export function SaveViewDialog({
 				<div className="space-y-4 py-4">
 					<div className="space-y-2">
 						<Label htmlFor="name">Name</Label>
-						<Input
-							id="name"
-							placeholder="My view"
-							value={name}
-							onChange={(e) => setName(e.target.value)}
-							disabled={isLoading}
-						/>
+						<div className="flex gap-2">
+							<Select
+								value={icon}
+								onValueChange={setIcon}
+								disabled={isLoading}
+							>
+								<SelectTrigger className="w-[100px]">
+									<SelectValue placeholder="Icon" />
+								</SelectTrigger>
+								<SelectContent>
+									{ICONS.map((item) => (
+										<SelectItem
+											key={item.name}
+											value={item.name}
+										>
+											<div className="flex items-center gap-2">
+												<item.icon className="size-4 text-muted-foreground" />
+												{/* <span>{item.name}</span> */}
+											</div>
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+							<Input
+								id="name"
+								placeholder="My view"
+								value={name}
+								onChange={(e) => setName(e.target.value)}
+								disabled={isLoading}
+								className="flex-1"
+							/>
+						</div>
 					</div>
 
 					<div className="space-y-2">
@@ -142,34 +167,6 @@ export function SaveViewDialog({
 							onChange={(e) => setDescription(e.target.value)}
 							disabled={isLoading}
 						/>
-					</div>
-
-					<div className="grid grid-cols-2 gap-4">
-						<div className="space-y-2">
-							<Label>Icon</Label>
-							<Select
-								value={icon}
-								onValueChange={setIcon}
-								disabled={isLoading}
-							>
-								<SelectTrigger>
-									<SelectValue placeholder="Select icon" />
-								</SelectTrigger>
-								<SelectContent>
-									{ICONS.map((item) => (
-										<SelectItem
-											key={item.name}
-											value={item.name}
-										>
-											<div className="flex items-center gap-2">
-												<item.icon className="size-4 text-muted-foreground" />
-												<span>{item.name}</span>
-											</div>
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						</div>
 					</div>
 
 					<div className="space-y-2">
