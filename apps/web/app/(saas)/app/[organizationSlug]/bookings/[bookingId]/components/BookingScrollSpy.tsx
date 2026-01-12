@@ -107,7 +107,7 @@ export function BookingScrollSpy({
 
 					<ScrollSpyViewport
 						ref={setScrollContainer}
-						className="flex-1 min-h-0 overflow-y-auto -mx-6 2xl:border-x 2xl:border-b 2xl:border-border/50 2xl:bg-muted/5 2xl:rounded-b-lg"
+						className="flex-1 min-h-0 overflow-y-auto vertical-scrollbar scrollbar-sm -mx-6 2xl:border-x 2xl:border-b 2xl:border-border/50 2xl:bg-muted/5 2xl:rounded-b-lg"
 					>
 						<div className="px-6 py-6 space-y-16 pb-32">
 							<ScrollSpySection value="overview">
