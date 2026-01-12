@@ -1,5 +1,6 @@
 "use client";
 
+import { Badge } from "@repo/ui/components/badge";
 import {
 	ScrollSpy,
 	ScrollSpyLink,
@@ -7,6 +8,9 @@ import {
 	ScrollSpySection,
 	ScrollSpyViewport,
 } from "@repo/ui/components/scroll-spy";
+import { cn } from "@repo/ui/lib/utils";
+import { deliverablesApi, shootsApi } from "@saas/studio/lib/api";
+import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
 	Calendar,
@@ -17,10 +21,6 @@ import {
 	Package,
 } from "lucide-react";
 import * as React from "react";
-import { Badge } from "@repo/ui/components/badge";
-import { cn } from "@repo/ui/lib/utils";
-import { deliverablesApi, shootsApi } from "@saas/studio/lib/api";
-import { useQuery } from "@tanstack/react-query";
 import { DeliverablesTab } from "./tabs/DeliverablesTab";
 import { FinancesTab } from "./tabs/FinancesTab";
 import { OverviewTab } from "./tabs/OverviewTab";
@@ -107,7 +107,7 @@ export function BookingScrollSpy({
 				>
 					<div className="flex-shrink-0 -mx-6">
 						<div className="2xl:border-x bg-card overflow-hidden">
-							<div className="px-6 py-5 border-b">
+							<div className="px-6 py-8 border-b">
 								<div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
 									<div className="space-y-1.5">
 										<div className="flex items-center gap-3">
