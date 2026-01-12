@@ -8,14 +8,25 @@ import {
 	ScrollSpyViewport,
 } from "@repo/ui/components/scroll-spy";
 import { format } from "date-fns";
-import { Camera, CheckSquare, IndianRupee, Info, Package } from "lucide-react";
+import {
+	Calendar,
+	Camera,
+	CheckSquare,
+	IndianRupee,
+	Info,
+	Package,
+} from "lucide-react";
 import * as React from "react";
+import { Badge } from "@repo/ui/components/badge";
+import { cn } from "@repo/ui/lib/utils";
+import { deliverablesApi, shootsApi } from "@saas/studio/lib/api";
+import { useQuery } from "@tanstack/react-query";
 import { DeliverablesTab } from "./tabs/DeliverablesTab";
 import { FinancesTab } from "./tabs/FinancesTab";
 import { OverviewTab } from "./tabs/OverviewTab";
 import { ShootsTab } from "./tabs/ShootsTab";
 import { TasksTab } from "./tabs/TasksTab";
-import { formatPackageType } from "./utils";
+import { formatCurrency, formatPackageType, getStatusVariant } from "./utils";
 
 interface BookingScrollSpyProps {
 	bookingId: string;
@@ -50,6 +61,41 @@ export function BookingScrollSpy({
 	const [scrollContainer, setScrollContainer] =
 		React.useState<HTMLDivElement | null>(null);
 
+	const { data: shootsData } = useQuery({
+		...shootsApi.listOptions({ bookingId, limit: 100 }),
+		enabled: !!bookingId,
+	});
+
+	const { data: deliverablesData } = useQuery({
+		...deliverablesApi.listOptions({ bookingId, limit: 100 }),
+		enabled: !!bookingId,
+	});
+
+	const shoots = shootsData?.data ?? [];
+	const deliverables = deliverablesData?.data ?? [];
+
+	const packageCostNum = Number.parseFloat(booking.packageCost) || 0;
+	const totalReceivedNum = Number.parseFloat(booking.totalReceived) || 0;
+	const balanceNum = Number.parseFloat(booking.balance) || 0;
+
+	const hasAdvancePayment = totalReceivedNum > 0;
+	const shootsCompleted =
+		shoots.length > 0 && shoots.every((s) => s.status === "completed");
+	const deliverablesCompleted =
+		deliverables.length > 0 &&
+		deliverables.every((d) => d.status === "completed");
+	const isFullyPaid =
+		totalReceivedNum >= packageCostNum && packageCostNum > 0;
+
+	const milestones = [
+		{ label: "Deposit", active: hasAdvancePayment },
+		{ label: "Shoots", active: shootsCompleted },
+		{ label: "Delivery", active: deliverablesCompleted },
+		{ label: "Paid", active: isFullyPaid },
+	];
+
+	const completedMilestones = milestones.filter((m) => m.active).length;
+
 	return (
 		<div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
 			<div className="mx-auto w-full max-w-4xl flex flex-1 flex-col min-h-0 px-6">
@@ -59,40 +105,150 @@ export function BookingScrollSpy({
 					scrollContainer={scrollContainer}
 					className="flex flex-1 flex-col min-h-0"
 				>
-					<div className="flex-shrink-0 pt-6 pb-4 space-y-3">
-						<h2 className="text-2xl font-bold tracking-tight">
-							{booking.name}
-						</h2>
-						<p className="text-xs text-muted-foreground">
-							{booking.createdAt && (
-								<>
-									Booked on{" "}
-									<span className="font-medium text-foreground">
-										{format(
-											new Date(booking.createdAt),
-											"MMM d, yyyy",
-										)}
+					<div className="flex-shrink-0 pt-6 -mx-6">
+						<div className="border-x border-t rounded-t-xl bg-card overflow-hidden">
+							<div className="px-6 py-5 border-b">
+								<div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+									<div className="space-y-1.5">
+										<div className="flex items-center gap-3">
+											<h2 className="text-2xl font-bold tracking-tight">
+												{booking.name}
+											</h2>
+											<Badge
+												variant={getStatusVariant(
+													booking.status,
+												)}
+											>
+												{booking.status}
+											</Badge>
+										</div>
+										<div className="flex items-center gap-4 text-sm text-muted-foreground">
+											{booking.createdAt && (
+												<div className="flex items-center gap-1.5">
+													<Calendar className="h-3.5 w-3.5" />
+													<span>
+														{format(
+															new Date(
+																booking.createdAt,
+															),
+															"MMM d, yyyy",
+														)}
+													</span>
+												</div>
+											)}
+											{booking.bookingType && (
+												<div className="flex items-center gap-1.5">
+													<Package className="h-3.5 w-3.5" />
+													<span>
+														{formatPackageType(
+															booking.bookingType,
+														)}
+													</span>
+												</div>
+											)}
+										</div>
+									</div>
+								</div>
+							</div>
+
+							<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x bg-muted/10">
+								<div className="p-4 flex flex-col justify-center">
+									<span className="text-xs font-medium text-muted-foreground mb-1">
+										Package Cost
 									</span>
-								</>
-							)}
-							{booking.createdAt && booking.bookingType && (
-								<span className="mx-2">·</span>
-							)}
-							{booking.bookingType && (
-								<>
-									Booking Type:{" "}
-									<span className="font-medium text-foreground">
-										{formatPackageType(
-											booking.bookingType,
-											{ fallback: "—" },
-										)}
+									<div className="flex items-baseline gap-2">
+										<span className="text-lg font-semibold">
+											{formatCurrency(
+												booking.packageCost,
+											)}
+										</span>
+									</div>
+									<span className="text-[10px] text-muted-foreground truncate">
+										{formatPackageType(booking.packageType)}
 									</span>
-								</>
-							)}
-						</p>
+								</div>
+
+								<div className="p-4 flex flex-col justify-center">
+									<span className="text-xs font-medium text-muted-foreground mb-1">
+										Received
+									</span>
+									<div className="flex items-baseline gap-2">
+										<span className="text-lg font-semibold text-emerald-600 dark:text-emerald-500">
+											{formatCurrency(
+												booking.totalReceived,
+											)}
+										</span>
+									</div>
+									<div className="w-full bg-muted/50 rounded-full h-1 mt-2 overflow-hidden">
+										<div
+											className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+											style={{
+												width: `${Math.min(
+													(totalReceivedNum /
+														(packageCostNum || 1)) *
+														100,
+													100,
+												)}%`,
+											}}
+										/>
+									</div>
+								</div>
+
+								<div className="p-4 flex flex-col justify-center">
+									<span className="text-xs font-medium text-muted-foreground mb-1">
+										Balance
+									</span>
+									<div className="flex items-baseline gap-2">
+										<span
+											className={cn(
+												"text-lg font-semibold",
+												balanceNum > 0
+													? "text-amber-600 dark:text-amber-500"
+													: "text-muted-foreground",
+											)}
+										>
+											{formatCurrency(booking.balance)}
+										</span>
+									</div>
+									<span className="text-[10px] text-muted-foreground">
+										{balanceNum > 0
+											? "Payment pending"
+											: "Fully paid"}
+									</span>
+								</div>
+
+								<div className="p-4 flex flex-col justify-center">
+									<div className="flex justify-between items-center mb-2">
+										<span className="text-xs font-medium text-muted-foreground">
+											Progress
+										</span>
+										<span className="text-[10px] font-medium bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+											{completedMilestones}/4
+										</span>
+									</div>
+									<div className="flex gap-1 h-1.5 mb-1.5">
+										{milestones.map((m) => (
+											<div
+												key={m.label}
+												className={cn(
+													"flex-1 rounded-full transition-colors",
+													m.active
+														? "bg-primary"
+														: "bg-muted-foreground/20",
+												)}
+											/>
+										))}
+									</div>
+									<div className="flex justify-between text-[10px] text-muted-foreground">
+										<span>Start</span>
+										<span>Finish</span>
+									</div>
+								</div>
+							</div>
+						</div>
 					</div>
 
-					<ScrollSpyNav className="flex-shrink-0 border-y 2xl:border 2xl:rounded-t-lg bg-muted/30 -mx-6 px-6">
+					<ScrollSpyNav className="flex-shrink-0 border-x border-y bg-muted/30 -mx-6 px-6">
 						{SECTIONS.map((section) => (
 							<ScrollSpyLink
 								key={section.id}
@@ -107,7 +263,7 @@ export function BookingScrollSpy({
 
 					<ScrollSpyViewport
 						ref={setScrollContainer}
-						className="flex-1 min-h-0 overflow-y-auto vertical-scrollbar scrollbar-sm -mx-6 2xl:border-x 2xl:border-b 2xl:border-border/50 2xl:bg-muted/5 2xl:rounded-b-lg"
+						className="flex-1 min-h-0 overflow-y-auto vertical-scrollbar scrollbar-sm -mx-6 border-x border-b rounded-b-xl"
 					>
 						<div className="px-6 py-6 space-y-16 pb-32">
 							<ScrollSpySection value="overview">
