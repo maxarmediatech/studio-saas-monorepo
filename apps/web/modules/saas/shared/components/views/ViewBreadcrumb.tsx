@@ -16,6 +16,7 @@ import {
 	ChevronDownIcon,
 	ChevronRightIcon,
 	LayersIcon,
+	Loader2Icon,
 	MoreHorizontalIcon,
 	PencilIcon,
 	PlusIcon,
@@ -60,6 +61,8 @@ export function ViewBreadcrumb({
 		return defaultView;
 	}, [views, activeViewId, defaultView]);
 
+	const isViewLoading = activeViewId && !displayedView;
+
 	const effectiveViewId = activeViewId ?? defaultView?.id ?? null;
 
 	const { systemViews, userViews, favoriteViews } = useMemo(() => {
@@ -94,18 +97,26 @@ export function ViewBreadcrumb({
 						)}
 						disabled={isLoading || disabled}
 					>
-						{displayedView?.icon && (
-							<DynamicIcon
-								name={displayedView.icon}
-								className="size-4"
-								style={
-									displayedView.color
-										? { color: displayedView.color }
-										: undefined
-								}
-							/>
+						{isViewLoading ? (
+							<Loader2Icon className="size-4 animate-spin text-muted-foreground" />
+						) : (
+							displayedView?.icon && (
+								<DynamicIcon
+									name={displayedView.icon}
+									className="size-4"
+									style={
+										displayedView.color
+											? { color: displayedView.color }
+											: undefined
+									}
+								/>
+							)
 						)}
-						<span>{displayedView?.name ?? "All"}</span>
+						<span>
+							{isViewLoading
+								? "Loading..."
+								: (displayedView?.name ?? "All")}
+						</span>
 						<ChevronDownIcon className="size-3.5 text-muted-foreground" />
 					</Button>
 				</DropdownMenuTrigger>
