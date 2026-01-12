@@ -105,8 +105,8 @@ export function BookingScrollSpy({
 					scrollContainer={scrollContainer}
 					className="flex flex-1 flex-col min-h-0"
 				>
-					<div className="flex-shrink-0 pt-6 -mx-6">
-						<div className="border-x border-t rounded-t-xl bg-card overflow-hidden">
+					<div className="flex-shrink-0 -mx-6">
+						<div className="2xl:border-x bg-card overflow-hidden">
 							<div className="px-6 py-5 border-b">
 								<div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
 									<div className="space-y-1.5">
@@ -248,7 +248,7 @@ export function BookingScrollSpy({
 						</div>
 					</div>
 
-					<ScrollSpyNav className="flex-shrink-0 border-x border-y bg-muted/30 -mx-6 px-6">
+					<ScrollSpyNav className="flex-shrink-0 border-y 2xl:border-x bg-muted/30 -mx-6 px-6">
 						{SECTIONS.map((section) => (
 							<ScrollSpyLink
 								key={section.id}
@@ -263,7 +263,7 @@ export function BookingScrollSpy({
 
 					<ScrollSpyViewport
 						ref={setScrollContainer}
-						className="flex-1 min-h-0 overflow-y-auto vertical-scrollbar scrollbar-sm -mx-6 border-x border-b rounded-b-xl"
+						className="flex-1 min-h-0 overflow-y-auto vertical-scrollbar scrollbar-sm -mx-6 2xl:border-x 2xl:border-b 2xl:rounded-b-xl"
 					>
 						<div className="px-6 py-6 space-y-16 pb-32">
 							<ScrollSpySection value="overview">
