@@ -7,12 +7,13 @@ import { FilterChip } from "./filter-chip";
 interface CollapsibleFilterBarProps {
 	filters: Array<{
 		id: string;
-		label: string;
-		value: string | string[];
+		field: string;
+		operator?: string;
+		valueText: string;
 		icon?: React.ComponentType<{ className?: string }>;
 	}>;
 	onRemoveFilter: (id: string) => void;
-	onEditFilter?: (id: string) => void;
+	onClickFilter?: (id: string) => void;
 	onAddFilter: () => void;
 	onClearAll?: () => void;
 }
@@ -20,7 +21,7 @@ interface CollapsibleFilterBarProps {
 export function CollapsibleFilterBar({
 	filters,
 	onRemoveFilter,
-	onEditFilter,
+	onClickFilter,
 	onAddFilter,
 	onClearAll,
 }: CollapsibleFilterBarProps) {
@@ -30,11 +31,12 @@ export function CollapsibleFilterBar({
 				<FilterChip
 					key={filter.id}
 					id={filter.id}
-					label={filter.label}
-					value={filter.value}
+					field={filter.field}
+					operator={filter.operator}
+					valueText={filter.valueText}
 					icon={filter.icon}
 					onRemove={onRemoveFilter}
-					onEdit={onEditFilter}
+					onClick={onClickFilter}
 				/>
 			))}
 
