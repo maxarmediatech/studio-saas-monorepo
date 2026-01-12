@@ -149,12 +149,6 @@ export function DataTableToolbarWithViews<TData>({
 		);
 	}, [isFilterRowVisible]);
 
-	useEffect(() => {
-		if (isFiltered && !isFilterRowVisible) {
-			setIsFilterRowVisible(true);
-		}
-	}, [isFiltered, isFilterRowVisible]);
-
 	const handleToggleFilterRow = useCallback(() => {
 		setIsFilterRowVisible((prev) => !prev);
 	}, []);
