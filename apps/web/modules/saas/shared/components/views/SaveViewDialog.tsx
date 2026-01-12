@@ -130,7 +130,7 @@ export function SaveViewDialog({
 								onValueChange={setIcon}
 								disabled={isLoading}
 							>
-								<SelectTrigger className="w-20 shrink-0">
+								<SelectTrigger className="w-18 shrink-0">
 									<SelectValue placeholder="Icon" />
 								</SelectTrigger>
 								<SelectContent className="min-w-0">
