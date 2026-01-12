@@ -3,17 +3,13 @@
 import { Input } from "@repo/ui/components/input";
 import { cn } from "@repo/ui/lib/utils";
 import type {
-	LayoutType,
 	SavedView,
 	SavedViewEntityType,
 } from "@saas/shared/components/views";
 import {
-	LayoutSwitcher,
 	SaveViewDialog,
-	useOpenViews,
 	useSavedViews,
-	ViewSelector,
-	ViewTabsBar,
+	ViewBreadcrumb,
 } from "@saas/shared/components/views";
 import type { Table } from "@tanstack/react-table";
 import { SearchIcon } from "lucide-react";
@@ -56,9 +52,6 @@ interface DataTableToolbarWithViewsProps<TData>
 	searchPlaceholder?: string;
 	onSearchChange?: (value: string) => void;
 	showViewOptions?: boolean;
-	layout?: LayoutType;
-	onLayoutChange?: (layout: LayoutType) => void;
-	availableLayouts?: LayoutType[];
 }
 
 export function DataTableToolbarWithViews<TData>({
@@ -79,9 +72,6 @@ export function DataTableToolbarWithViews<TData>({
 	searchPlaceholder = "Search...",
 	onSearchChange,
 	showViewOptions = true,
-	layout = "table",
-	onLayoutChange,
-	availableLayouts,
 	children,
 	className,
 	...props
@@ -105,12 +95,6 @@ export function DataTableToolbarWithViews<TData>({
 		isCreating,
 		isUpdating,
 	} = useSavedViews({ entityType });
-
-	const {
-		openIds: openViewIds,
-		openView,
-		closeView,
-	} = useOpenViews({ entityType });
 
 	const activeView = useMemo(
 		() => views.find((v) => v.id === activeViewId),
@@ -307,36 +291,20 @@ export function DataTableToolbarWithViews<TData>({
 			<div
 				role="toolbar"
 				aria-orientation="horizontal"
-				className={cn("flex w-full flex-col gap-4", className)}
+				className={cn("flex w-full flex-col gap-3", className)}
 				{...props}
 			>
-				<ViewTabsBar
-					views={views}
-					openViewIds={openViewIds}
-					activeViewId={activeViewId}
-					onViewSelect={(view) => {
-						openView(view.id);
-						onViewSelect(view);
-					}}
-					onCloseTab={closeView}
-					onCreateView={() => setSaveDialogOpen(true)}
-					allTabLabel="All Bookings"
-				/>
+				<div className="flex w-full items-center justify-between gap-4">
+					<ViewBreadcrumb
+						views={views}
+						activeViewId={activeViewId}
+						onViewSelect={onViewSelect}
+						onCreateView={() => setSaveDialogOpen(true)}
+						onToggleFavorite={toggleFavorite}
+						isLoading={isLoading}
+					/>
 
-				<div className="flex w-full items-center justify-between gap-2 px-1">
-					<div className="flex flex-1 flex-wrap items-center gap-2">
-						<ViewSelector
-							views={views}
-							activeViewId={activeViewId}
-							onViewSelect={(view) => {
-								openView(view.id);
-								onViewSelect(view);
-							}}
-							onCreateView={() => setSaveDialogOpen(true)}
-							onToggleFavorite={toggleFavorite}
-							isLoading={isLoading}
-						/>
-
+					<div className="flex items-center gap-2">
 						{showSearch && onSearchChange && (
 							<div className="relative">
 								<SearchIcon className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -356,20 +324,12 @@ export function DataTableToolbarWithViews<TData>({
 								onToggle={handleToggleFilterRow}
 							/>
 						)}
-					</div>
 
-					<div className="flex items-center gap-2">
-						{children}
-						{onLayoutChange && (
-							<LayoutSwitcher
-								value={layout}
-								onChange={onLayoutChange}
-								availableLayouts={availableLayouts}
-							/>
-						)}
 						{showViewOptions && table && (
 							<DataTableViewOptions table={table} />
 						)}
+
+						{children}
 					</div>
 				</div>
 
