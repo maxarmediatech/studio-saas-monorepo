@@ -1,12 +1,11 @@
 "use client";
 
-import {
-	DataTableToolbar,
-	type ToolbarFilterConfig,
-} from "@saas/shared/components/data-table";
-import { useExpensesTable } from "@saas/studio/hooks/tables";
+import type { ToolbarFilterConfig } from "@saas/shared/components/data-table";
+import { DataTableToolbarWithViews } from "@saas/shared/components/data-table";
+import type { SavedView } from "@saas/shared/components/views";
+import { useExpensesTableWithViews } from "@saas/studio/hooks/tables";
 import { CreditCardIcon, UserIcon } from "lucide-react";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 const paymentMethodOptions = [
 	{ value: "cash", label: "Cash" },
@@ -23,10 +22,17 @@ const billToOptions = [
 ];
 
 export function ExpensesFilters() {
-	// Use the expenses table hook for URL-synced state
-	const { filters, setFilter, resetFilters, isFiltered } = useExpensesTable();
+	const {
+		filters,
+		setFilter,
+		resetFilters,
+		isFiltered,
+		activeViewId,
+		applyView,
+		sortingState,
+		columnVisibility,
+	} = useExpensesTableWithViews();
 
-	// Define filter configurations
 	const filterConfigs: ToolbarFilterConfig[] = useMemo(
 		() => [
 			{
@@ -47,7 +53,6 @@ export function ExpensesFilters() {
 		[],
 	);
 
-	// Convert filters to toolbar format
 	const filterValues = useMemo(
 		() => ({
 			billTo: filters.billTo ?? [],
@@ -56,34 +61,63 @@ export function ExpensesFilters() {
 		[filters.billTo, filters.paymentMethod],
 	);
 
-	// Handle filter changes
-	const handleFilterChange = (
-		filterId: string,
-		value:
-			| string
-			| string[]
-			| { from?: string; to?: string }
-			| null
-			| undefined,
-	) => {
-		if (filterId === "billTo") {
-			const values =
-				Array.isArray(value) && value.length > 0 ? value : null;
-			setFilter("billTo", values);
-		} else if (filterId === "paymentMethod") {
-			const values =
-				Array.isArray(value) && value.length > 0 ? value : null;
-			setFilter("paymentMethod", values);
-		}
-	};
+	const handleFilterChange = useCallback(
+		(
+			filterId: string,
+			value:
+				| string
+				| string[]
+				| { from?: string; to?: string }
+				| null
+				| undefined,
+		) => {
+			if (filterId === "billTo") {
+				const values =
+					Array.isArray(value) && value.length > 0 ? value : null;
+				setFilter("billTo", values);
+			} else if (filterId === "paymentMethod") {
+				const values =
+					Array.isArray(value) && value.length > 0 ? value : null;
+				setFilter("paymentMethod", values);
+			}
+		},
+		[setFilter],
+	);
 
-	// Handle search changes
-	const handleSearchChange = (value: string) => {
-		setFilter("search", value || null);
-	};
+	const handleSearchChange = useCallback(
+		(value: string) => {
+			setFilter("search", value || null);
+		},
+		[setFilter],
+	);
+
+	const handleViewSelect = useCallback(
+		(view: SavedView) => {
+			applyView(view);
+		},
+		[applyView],
+	);
+
+	const getCurrentFilters = useCallback(() => {
+		return filters as Record<string, unknown>;
+	}, [filters]);
+
+	const getCurrentSorting = useCallback(() => {
+		return sortingState;
+	}, [sortingState]);
+
+	const getCurrentColumnVisibility = useCallback(() => {
+		return columnVisibility;
+	}, [columnVisibility]);
 
 	return (
-		<DataTableToolbar
+		<DataTableToolbarWithViews
+			entityType="expense"
+			activeViewId={activeViewId}
+			onViewSelect={handleViewSelect}
+			getCurrentFilters={getCurrentFilters}
+			getCurrentSorting={getCurrentSorting}
+			getCurrentColumnVisibility={getCurrentColumnVisibility}
 			filters={filterConfigs}
 			filterValues={filterValues}
 			onFilterChange={handleFilterChange}

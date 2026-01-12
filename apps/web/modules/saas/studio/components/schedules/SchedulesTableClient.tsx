@@ -18,11 +18,12 @@ import {
 	DataTable,
 	DataTableColumnHeader,
 	DataTableRowActions,
-	DataTableToolbar,
+	DataTableToolbarWithViews,
 	DataTableViewOptions,
 	type RowAction,
 	SortProvider,
 } from "@saas/shared/components/data-table";
+import type { SavedView } from "@saas/shared/components/views";
 // Import types for column meta augmentation
 import "@saas/shared/components/data-table/types";
 import { cn } from "@repo/ui/lib/utils";
@@ -30,7 +31,7 @@ import { formatMoney } from "@saas/shared/lib";
 import { useScheduleParams } from "@saas/studio/hooks/params/use-schedule-params";
 import {
 	SCHEDULE_STATUSES,
-	useSchedulesTable,
+	useSchedulesTableWithViews,
 } from "@saas/studio/hooks/tables";
 import {
 	studioPaymentsApi,
@@ -117,7 +118,6 @@ export function SchedulesTableClient({
 }: SchedulesTableClientProps) {
 	const queryClient = useQueryClient();
 
-	// Use the schedules table hook for URL-synced state
 	const {
 		filters,
 		pagination,
@@ -126,10 +126,13 @@ export function SchedulesTableClient({
 		setFilter,
 		resetFilters,
 		isFiltered,
+		activeViewId,
+		applyView,
+		columnVisibility,
 		onSortingChange,
 		onPaginationChange,
 		onLimitChange,
-	} = useSchedulesTable();
+	} = useSchedulesTableWithViews();
 
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [scheduleToDelete, setScheduleToDelete] =
@@ -412,37 +415,52 @@ export function SchedulesTableClient({
 	return (
 		<>
 			<div className="space-y-4">
-				{/* Toolbar with filters */}
-				<div className="flex items-center justify-between gap-4">
-					<DataTableToolbar
-						filters={[
-							{
-								id: "status",
-								label: "Status",
-								variant: "multiSelect",
-								options: statusOptions,
-								icon: CircleDashedIcon,
-							},
-						]}
-						filterValues={{
-							status: filters.status ?? [],
-						}}
-						onFilterChange={(id, value) => {
-							if (id === "status") {
-								setFilter("status", value as string[]);
-							}
-						}}
-						onResetFilters={resetFilters}
-						isFiltered={isFiltered}
-						showSearch
-						searchValue={filters.search ?? ""}
-						searchPlaceholder="Search schedules..."
-						onSearchChange={(value) =>
-							setFilter("search", value || null)
+				<DataTableToolbarWithViews
+					entityType="schedule"
+					activeViewId={activeViewId}
+					onViewSelect={(view: SavedView) => applyView(view)}
+					getCurrentFilters={() => filters as Record<string, unknown>}
+					getCurrentSorting={() => sortingState}
+					getCurrentColumnVisibility={() => columnVisibility}
+					filters={[
+						{
+							id: "status",
+							label: "Status",
+							variant: "multiSelect",
+							options: statusOptions,
+							icon: CircleDashedIcon,
+						},
+					]}
+					filterValues={{
+						status: filters.status ?? [],
+					}}
+					onFilterChange={(
+						id: string,
+						value:
+							| string
+							| string[]
+							| { from?: string; to?: string }
+							| null
+							| undefined,
+					) => {
+						if (id === "status") {
+							const values =
+								Array.isArray(value) && value.length > 0
+									? value
+									: null;
+							setFilter("status", values);
 						}
-						className="flex-1"
-					/>
-				</div>
+					}}
+					onResetFilters={resetFilters}
+					isFiltered={isFiltered}
+					showSearch
+					searchValue={filters.search ?? ""}
+					searchPlaceholder="Search schedules..."
+					onSearchChange={(value: string) =>
+						setFilter("search", value || null)
+					}
+					showViewOptions={false}
+				/>
 
 				{/* Table with sort context */}
 				<SortProvider

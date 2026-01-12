@@ -1,16 +1,17 @@
 "use client";
 
+import type { ToolbarFilterConfig } from "@saas/shared/components/data-table";
+import { DataTableToolbarWithViews } from "@saas/shared/components/data-table";
+import type { SavedView } from "@saas/shared/components/views";
 import {
-	DataTableToolbar,
-	type ToolbarFilterConfig,
-} from "@saas/shared/components/data-table";
-import { SHOOT_TYPE_OPTIONS, useShootsTable } from "@saas/studio/hooks/tables";
+	SHOOT_TYPE_OPTIONS,
+	useShootsTableWithViews,
+} from "@saas/studio/hooks/tables";
 import { configurationsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarIcon, CircleIcon, TagIcon } from "lucide-react";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
-// Default status labels (fallback if configuration not loaded)
 const DEFAULT_STATUS_LABELS: Record<string, string> = {
 	scheduled: "Scheduled",
 	confirmed: "Confirmed",
@@ -21,15 +22,21 @@ const DEFAULT_STATUS_LABELS: Record<string, string> = {
 };
 
 export function ShootsFilters() {
-	// Use the shoots table hook for URL-synced state
-	const { filters, setFilter, resetFilters, isFiltered } = useShootsTable();
+	const {
+		filters,
+		setFilter,
+		resetFilters,
+		isFiltered,
+		activeViewId,
+		applyView,
+		sortingState,
+		columnVisibility,
+	} = useShootsTableWithViews();
 
-	// Fetch shoot status configurations for filter options
 	const { data: shootStatusData } = useQuery(
 		configurationsApi.shootStatusOptions(),
 	);
 
-	// Build status options from configurations
 	const statusOptions = useMemo(() => {
 		if (shootStatusData?.data && shootStatusData.data.length > 0) {
 			return shootStatusData.data.map((config) => ({
@@ -37,14 +44,12 @@ export function ShootsFilters() {
 				label: config.label,
 			}));
 		}
-		// Fallback to default statuses
 		return Object.entries(DEFAULT_STATUS_LABELS).map(([key, label]) => ({
 			value: key,
 			label,
 		}));
 	}, [shootStatusData]);
 
-	// Define filter configurations
 	const filterConfigs: ToolbarFilterConfig[] = useMemo(
 		() => [
 			{
@@ -71,12 +76,10 @@ export function ShootsFilters() {
 		[statusOptions],
 	);
 
-	// Convert filters to toolbar format
 	const filterValues = useMemo(
 		() => ({
 			shootType: filters.shootType ?? [],
 			status: filters.status ?? [],
-			// Convert array [from, to] to { from, to } object for dateRange filter
 			shootDate:
 				filters.shootDate && filters.shootDate.length > 0
 					? {
@@ -88,45 +91,77 @@ export function ShootsFilters() {
 		[filters.shootType, filters.status, filters.shootDate],
 	);
 
-	// Handle filter changes
-	const handleFilterChange = (
-		filterId: string,
-		value:
-			| string
-			| string[]
-			| { from?: string; to?: string }
-			| null
-			| undefined,
-	) => {
-		if (filterId === "shootType") {
-			const values =
-				Array.isArray(value) && value.length > 0 ? value : null;
-			setFilter("shootType", values);
-		} else if (filterId === "status") {
-			const values =
-				Array.isArray(value) && value.length > 0 ? value : null;
-			setFilter("status", values);
-		} else if (filterId === "shootDate") {
-			// DataTableDateFilter returns { from?: string, to?: string } or null
-			if (value && typeof value === "object" && !Array.isArray(value)) {
-				const dateRange = value as { from?: string; to?: string };
-				const dates = [dateRange.from, dateRange.to].filter(
-					(d): d is string => !!d,
-				);
-				setFilter("shootDate", dates.length > 0 ? dates : null);
-			} else {
-				setFilter("shootDate", null);
+	const handleFilterChange = useCallback(
+		(
+			filterId: string,
+			value:
+				| string
+				| string[]
+				| { from?: string; to?: string }
+				| null
+				| undefined,
+		) => {
+			if (filterId === "shootType") {
+				const values =
+					Array.isArray(value) && value.length > 0 ? value : null;
+				setFilter("shootType", values);
+			} else if (filterId === "status") {
+				const values =
+					Array.isArray(value) && value.length > 0 ? value : null;
+				setFilter("status", values);
+			} else if (filterId === "shootDate") {
+				if (
+					value &&
+					typeof value === "object" &&
+					!Array.isArray(value)
+				) {
+					const dateRange = value as { from?: string; to?: string };
+					const dates = [dateRange.from, dateRange.to].filter(
+						(d): d is string => !!d,
+					);
+					setFilter("shootDate", dates.length > 0 ? dates : null);
+				} else {
+					setFilter("shootDate", null);
+				}
 			}
-		}
-	};
+		},
+		[setFilter],
+	);
 
-	// Handle search changes
-	const handleSearchChange = (value: string) => {
-		setFilter("search", value || null);
-	};
+	const handleSearchChange = useCallback(
+		(value: string) => {
+			setFilter("search", value || null);
+		},
+		[setFilter],
+	);
+
+	const handleViewSelect = useCallback(
+		(view: SavedView) => {
+			applyView(view);
+		},
+		[applyView],
+	);
+
+	const getCurrentFilters = useCallback(() => {
+		return filters as Record<string, unknown>;
+	}, [filters]);
+
+	const getCurrentSorting = useCallback(() => {
+		return sortingState;
+	}, [sortingState]);
+
+	const getCurrentColumnVisibility = useCallback(() => {
+		return columnVisibility;
+	}, [columnVisibility]);
 
 	return (
-		<DataTableToolbar
+		<DataTableToolbarWithViews
+			entityType="shoot"
+			activeViewId={activeViewId}
+			onViewSelect={handleViewSelect}
+			getCurrentFilters={getCurrentFilters}
+			getCurrentSorting={getCurrentSorting}
+			getCurrentColumnVisibility={getCurrentColumnVisibility}
 			filters={filterConfigs}
 			filterValues={filterValues}
 			onFilterChange={handleFilterChange}

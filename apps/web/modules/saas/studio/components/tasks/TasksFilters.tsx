@@ -1,10 +1,9 @@
 "use client";
 
-import {
-	DataTableToolbar,
-	type ToolbarFilterConfig,
-} from "@saas/shared/components/data-table";
-import { useTasksTable } from "@saas/studio/hooks/tables";
+import type { ToolbarFilterConfig } from "@saas/shared/components/data-table";
+import { DataTableToolbarWithViews } from "@saas/shared/components/data-table";
+import type { SavedView } from "@saas/shared/components/views";
+import { useTasksTableWithViews } from "@saas/studio/hooks/tables";
 import {
 	AlertTriangleIcon,
 	CheckCircle2Icon,
@@ -12,11 +11,8 @@ import {
 	PlayCircleIcon,
 	XCircleIcon,
 } from "lucide-react";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
-/**
- * Status options for the task status filter.
- */
 const STATUS_OPTIONS = [
 	{
 		label: "Pending",
@@ -48,29 +44,24 @@ const STATUS_OPTIONS = [
 	},
 ];
 
-/**
- * Priority options for the task priority filter.
- */
 const PRIORITY_OPTIONS = [
-	{
-		label: "High",
-		value: "high",
-	},
-	{
-		label: "Medium",
-		value: "medium",
-	},
-	{
-		label: "Low",
-		value: "low",
-	},
+	{ label: "High", value: "high" },
+	{ label: "Medium", value: "medium" },
+	{ label: "Low", value: "low" },
 ];
 
 export function TasksFilters() {
-	// Use the tasks table hook for URL-synced state
-	const { filters, setFilter, resetFilters, isFiltered } = useTasksTable();
+	const {
+		filters,
+		setFilter,
+		resetFilters,
+		isFiltered,
+		activeViewId,
+		applyView,
+		sortingState,
+		columnVisibility,
+	} = useTasksTableWithViews();
 
-	// Define filter configurations
 	const filterConfigs: ToolbarFilterConfig[] = useMemo(
 		() => [
 			{
@@ -90,7 +81,6 @@ export function TasksFilters() {
 		[],
 	);
 
-	// Convert filters to toolbar format
 	const filterValues = useMemo(
 		() => ({
 			status: filters.status ?? [],
@@ -99,34 +89,66 @@ export function TasksFilters() {
 		[filters.status, filters.priority],
 	);
 
-	// Handle filter changes
-	const handleFilterChange = (
-		filterId: string,
-		value:
-			| string
-			| string[]
-			| { from?: string; to?: string }
-			| null
-			| undefined,
-	) => {
-		if (filterId === "status") {
-			const statusValues =
-				Array.isArray(value) && value.length > 0 ? value : null;
-			setFilter("status", statusValues as typeof filters.status);
-		} else if (filterId === "priority") {
-			const priorityValues =
-				Array.isArray(value) && value.length > 0 ? value : null;
-			setFilter("priority", priorityValues as typeof filters.priority);
-		}
-	};
+	const handleFilterChange = useCallback(
+		(
+			filterId: string,
+			value:
+				| string
+				| string[]
+				| { from?: string; to?: string }
+				| null
+				| undefined,
+		) => {
+			if (filterId === "status") {
+				const statusValues =
+					Array.isArray(value) && value.length > 0 ? value : null;
+				setFilter("status", statusValues as typeof filters.status);
+			} else if (filterId === "priority") {
+				const priorityValues =
+					Array.isArray(value) && value.length > 0 ? value : null;
+				setFilter(
+					"priority",
+					priorityValues as typeof filters.priority,
+				);
+			}
+		},
+		[setFilter, filters.status, filters.priority],
+	);
 
-	// Handle search changes
-	const handleSearchChange = (value: string) => {
-		setFilter("search", value || null);
-	};
+	const handleSearchChange = useCallback(
+		(value: string) => {
+			setFilter("search", value || null);
+		},
+		[setFilter],
+	);
+
+	const handleViewSelect = useCallback(
+		(view: SavedView) => {
+			applyView(view);
+		},
+		[applyView],
+	);
+
+	const getCurrentFilters = useCallback(() => {
+		return filters as Record<string, unknown>;
+	}, [filters]);
+
+	const getCurrentSorting = useCallback(() => {
+		return sortingState;
+	}, [sortingState]);
+
+	const getCurrentColumnVisibility = useCallback(() => {
+		return columnVisibility;
+	}, [columnVisibility]);
 
 	return (
-		<DataTableToolbar
+		<DataTableToolbarWithViews
+			entityType="task"
+			activeViewId={activeViewId}
+			onViewSelect={handleViewSelect}
+			getCurrentFilters={getCurrentFilters}
+			getCurrentSorting={getCurrentSorting}
+			getCurrentColumnVisibility={getCurrentColumnVisibility}
 			filters={filterConfigs}
 			filterValues={filterValues}
 			onFilterChange={handleFilterChange}

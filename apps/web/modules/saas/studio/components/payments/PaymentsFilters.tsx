@@ -1,16 +1,12 @@
 "use client";
 
-import {
-	DataTableToolbar,
-	type ToolbarFilterConfig,
-} from "@saas/shared/components/data-table";
-import { usePaymentsTable } from "@saas/studio/hooks/tables";
+import type { ToolbarFilterConfig } from "@saas/shared/components/data-table";
+import { DataTableToolbarWithViews } from "@saas/shared/components/data-table";
+import type { SavedView } from "@saas/shared/components/views";
+import { usePaymentsTableWithViews } from "@saas/studio/hooks/tables";
 import { CreditCardIcon } from "lucide-react";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
-/**
- * Payment method options for the payment method filter.
- */
 const PAYMENT_METHOD_OPTIONS = [
 	{ value: "cash", label: "Cash" },
 	{ value: "upi", label: "UPI" },
@@ -21,10 +17,17 @@ const PAYMENT_METHOD_OPTIONS = [
 ];
 
 export function PaymentsFilters() {
-	// Use the payments table hook for URL-synced state
-	const { filters, setFilter, resetFilters, isFiltered } = usePaymentsTable();
+	const {
+		filters,
+		setFilter,
+		resetFilters,
+		isFiltered,
+		activeViewId,
+		applyView,
+		sortingState,
+		columnVisibility,
+	} = usePaymentsTableWithViews();
 
-	// Define filter configurations
 	const filterConfigs: ToolbarFilterConfig[] = useMemo(
 		() => [
 			{
@@ -38,7 +41,6 @@ export function PaymentsFilters() {
 		[],
 	);
 
-	// Convert filters to toolbar format
 	const filterValues = useMemo(
 		() => ({
 			paymentMethod: filters.paymentMethod ?? [],
@@ -46,25 +48,59 @@ export function PaymentsFilters() {
 		[filters.paymentMethod],
 	);
 
-	// Handle filter changes
-	const handleFilterChange = (
-		filterId: string,
-		value: string | string[] | { from?: string; to?: string } | null | undefined,
-	) => {
-		if (filterId === "paymentMethod") {
-			const values =
-				Array.isArray(value) && value.length > 0 ? value : null;
-			setFilter("paymentMethod", values);
-		}
-	};
+	const handleFilterChange = useCallback(
+		(
+			filterId: string,
+			value:
+				| string
+				| string[]
+				| { from?: string; to?: string }
+				| null
+				| undefined,
+		) => {
+			if (filterId === "paymentMethod") {
+				const values =
+					Array.isArray(value) && value.length > 0 ? value : null;
+				setFilter("paymentMethod", values);
+			}
+		},
+		[setFilter],
+	);
 
-	// Handle search changes
-	const handleSearchChange = (value: string) => {
-		setFilter("search", value || null);
-	};
+	const handleSearchChange = useCallback(
+		(value: string) => {
+			setFilter("search", value || null);
+		},
+		[setFilter],
+	);
+
+	const handleViewSelect = useCallback(
+		(view: SavedView) => {
+			applyView(view);
+		},
+		[applyView],
+	);
+
+	const getCurrentFilters = useCallback(() => {
+		return filters as Record<string, unknown>;
+	}, [filters]);
+
+	const getCurrentSorting = useCallback(() => {
+		return sortingState;
+	}, [sortingState]);
+
+	const getCurrentColumnVisibility = useCallback(() => {
+		return columnVisibility;
+	}, [columnVisibility]);
 
 	return (
-		<DataTableToolbar
+		<DataTableToolbarWithViews
+			entityType="payment"
+			activeViewId={activeViewId}
+			onViewSelect={handleViewSelect}
+			getCurrentFilters={getCurrentFilters}
+			getCurrentSorting={getCurrentSorting}
+			getCurrentColumnVisibility={getCurrentColumnVisibility}
 			filters={filterConfigs}
 			filterValues={filterValues}
 			onFilterChange={handleFilterChange}

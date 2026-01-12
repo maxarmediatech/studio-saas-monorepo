@@ -1,12 +1,11 @@
 "use client";
 
-import {
-	DataTableToolbar,
-	type ToolbarFilterConfig,
-} from "@saas/shared/components/data-table";
-import { useCrewsTable } from "@saas/studio/hooks/tables";
+import type { ToolbarFilterConfig } from "@saas/shared/components/data-table";
+import { DataTableToolbarWithViews } from "@saas/shared/components/data-table";
+import type { SavedView } from "@saas/shared/components/views";
+import { useCrewsTableWithViews } from "@saas/studio/hooks/tables";
 import { BriefcaseIcon, UserIcon } from "lucide-react";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 const statusOptions = [
 	{ value: "active", label: "Active" },
@@ -25,10 +24,17 @@ const roleOptions = [
 ];
 
 export function CrewsFilters() {
-	// Use the crews table hook for URL-synced state
-	const { filters, setFilter, resetFilters, isFiltered } = useCrewsTable();
+	const {
+		filters,
+		setFilter,
+		resetFilters,
+		isFiltered,
+		activeViewId,
+		applyView,
+		sortingState,
+		columnVisibility,
+	} = useCrewsTableWithViews();
 
-	// Define filter configurations
 	const filterConfigs: ToolbarFilterConfig[] = useMemo(
 		() => [
 			{
@@ -49,7 +55,6 @@ export function CrewsFilters() {
 		[],
 	);
 
-	// Convert filters to toolbar format
 	const filterValues = useMemo(
 		() => ({
 			status: filters.status ?? [],
@@ -58,32 +63,63 @@ export function CrewsFilters() {
 		[filters.status, filters.role],
 	);
 
-	// Handle filter changes
-	const handleFilterChange = (
-		filterId: string,
-		value:
-			| string
-			| string[]
-			| { from?: string; to?: string }
-			| null
-			| undefined,
-	) => {
-		if (filterId === "status") {
-			const values = Array.isArray(value) && value.length > 0 ? value : null;
-			setFilter("status", values);
-		} else if (filterId === "role") {
-			const values = Array.isArray(value) && value.length > 0 ? value : null;
-			setFilter("role", values);
-		}
-	};
+	const handleFilterChange = useCallback(
+		(
+			filterId: string,
+			value:
+				| string
+				| string[]
+				| { from?: string; to?: string }
+				| null
+				| undefined,
+		) => {
+			if (filterId === "status") {
+				const values =
+					Array.isArray(value) && value.length > 0 ? value : null;
+				setFilter("status", values);
+			} else if (filterId === "role") {
+				const values =
+					Array.isArray(value) && value.length > 0 ? value : null;
+				setFilter("role", values);
+			}
+		},
+		[setFilter],
+	);
 
-	// Handle search changes
-	const handleSearchChange = (value: string) => {
-		setFilter("search", value || null);
-	};
+	const handleSearchChange = useCallback(
+		(value: string) => {
+			setFilter("search", value || null);
+		},
+		[setFilter],
+	);
+
+	const handleViewSelect = useCallback(
+		(view: SavedView) => {
+			applyView(view);
+		},
+		[applyView],
+	);
+
+	const getCurrentFilters = useCallback(() => {
+		return filters as Record<string, unknown>;
+	}, [filters]);
+
+	const getCurrentSorting = useCallback(() => {
+		return sortingState;
+	}, [sortingState]);
+
+	const getCurrentColumnVisibility = useCallback(() => {
+		return columnVisibility;
+	}, [columnVisibility]);
 
 	return (
-		<DataTableToolbar
+		<DataTableToolbarWithViews
+			entityType="crew"
+			activeViewId={activeViewId}
+			onViewSelect={handleViewSelect}
+			getCurrentFilters={getCurrentFilters}
+			getCurrentSorting={getCurrentSorting}
+			getCurrentColumnVisibility={getCurrentColumnVisibility}
 			filters={filterConfigs}
 			filterValues={filterValues}
 			onFilterChange={handleFilterChange}
