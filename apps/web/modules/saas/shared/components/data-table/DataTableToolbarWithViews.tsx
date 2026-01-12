@@ -10,8 +10,10 @@ import type {
 import {
 	LayoutSwitcher,
 	SaveViewDialog,
+	useOpenViews,
 	useSavedViews,
 	ViewSelector,
+	ViewTabsBar,
 } from "@saas/shared/components/views";
 import type { Table } from "@tanstack/react-table";
 import { SearchIcon } from "lucide-react";
@@ -103,6 +105,12 @@ export function DataTableToolbarWithViews<TData>({
 		isCreating,
 		isUpdating,
 	} = useSavedViews({ entityType });
+
+	const {
+		openIds: openViewIds,
+		openView,
+		closeView,
+	} = useOpenViews({ entityType });
 
 	const activeView = useMemo(
 		() => views.find((v) => v.id === activeViewId),
@@ -305,15 +313,31 @@ export function DataTableToolbarWithViews<TData>({
 			<div
 				role="toolbar"
 				aria-orientation="horizontal"
-				className={cn("flex w-full flex-col gap-3", className)}
+				className={cn("flex w-full flex-col gap-4", className)}
 				{...props}
 			>
-				<div className="flex w-full items-center justify-between gap-2 p-1">
+				<ViewTabsBar
+					views={views}
+					openViewIds={openViewIds}
+					activeViewId={activeViewId}
+					onViewSelect={(view) => {
+						openView(view.id);
+						onViewSelect(view);
+					}}
+					onCloseTab={closeView}
+					onCreateView={() => setSaveDialogOpen(true)}
+					allTabLabel="All Bookings"
+				/>
+
+				<div className="flex w-full items-center justify-between gap-2 px-1">
 					<div className="flex flex-1 flex-wrap items-center gap-2">
 						<ViewSelector
 							views={views}
 							activeViewId={activeViewId}
-							onViewSelect={onViewSelect}
+							onViewSelect={(view) => {
+								openView(view.id);
+								onViewSelect(view);
+							}}
 							onCreateView={() => setSaveDialogOpen(true)}
 							onToggleFavorite={toggleFavorite}
 							isLoading={isLoading}

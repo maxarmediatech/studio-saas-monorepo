@@ -8,7 +8,9 @@ export {
 	type SaveViewDialogProps,
 } from "./SaveViewDialog";
 export { ViewSelector } from "./ViewSelector";
+export { ViewTabsBar } from "./ViewTabsBar";
 
+export { useOpenViews } from "./hooks/use-open-views";
 export { useSavedViews } from "./hooks/use-saved-views";
 
 export type {
