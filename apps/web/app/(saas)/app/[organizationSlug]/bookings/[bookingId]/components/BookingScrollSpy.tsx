@@ -8,6 +8,8 @@ import {
 	ScrollSpyViewport,
 } from "@repo/ui/components/scroll-spy";
 import { cn } from "@repo/ui/lib/utils";
+import { shootsApi } from "@saas/studio/lib/api";
+import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
 	Calendar,
@@ -58,8 +60,15 @@ export function BookingScrollSpy({
 	const [scrollContainer, setScrollContainer] =
 		React.useState<HTMLDivElement | null>(null);
 
-	const packageCostNum = Number.parseFloat(booking.packageCost) || 0;
-	const totalReceivedNum = Number.parseFloat(booking.totalReceived) || 0;
+	const { data: shootsData } = useQuery({
+		...shootsApi.listOptions({ bookingId, limit: 100 }),
+		enabled: !!bookingId,
+	});
+
+	const shoots = shootsData?.data ?? [];
+	const shootsCompleted = shoots.filter(
+		(s) => s.status === "completed",
+	).length;
 	const balanceNum = Number.parseFloat(booking.balance) || 0;
 
 	return (
@@ -73,114 +82,73 @@ export function BookingScrollSpy({
 				>
 					<div className="flex-shrink-0 -mx-6">
 						<div className="2xl:border-x bg-card overflow-hidden">
-							<div className="px-6 py-8 border-b">
-								<div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-									<div className="space-y-1.5">
-										<div className="flex items-center gap-3">
-											<h2 className="text-2xl font-bold tracking-tight">
-												{booking.name}
-											</h2>
-											{/* <Badge
-												variant={getStatusVariant(
-													booking.status,
+							<div className="px-6 pt-5 pb-6 border-b">
+								<h2 className="text-2xl font-bold tracking-tight mb-1.5">
+									{booking.name}
+								</h2>
+								<div className="flex items-center flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+									{booking.createdAt && (
+										<div className="flex items-center gap-1.5">
+											<Calendar className="h-3.5 w-3.5" />
+											<span>
+												{format(
+													new Date(booking.createdAt),
+													"MMM d, yyyy",
 												)}
-											>
-												{booking.status}
-											</Badge> */}
+											</span>
 										</div>
-										<div className="flex items-center gap-4 text-sm text-muted-foreground">
-											{booking.createdAt && (
-												<div className="flex items-center gap-1.5">
-													<Calendar className="h-3.5 w-3.5" />
-													<span>
-														{format(
-															new Date(
-																booking.createdAt,
-															),
-															"MMM d, yyyy",
-														)}
-													</span>
-												</div>
+									)}
+									{booking.bookingType && (
+										<span>
+											{formatPackageType(
+												booking.bookingType,
 											)}
-											{booking.bookingType && (
-												<div className="flex items-center gap-1.5">
-													<Package className="h-3.5 w-3.5" />
-													<span>
-														{formatPackageType(
-															booking.bookingType,
-														)}
-													</span>
-												</div>
+										</span>
+									)}
+									{booking.packageType && (
+										<span>
+											{formatPackageType(
+												booking.packageType,
 											)}
-										</div>
-									</div>
+										</span>
+									)}
 								</div>
 							</div>
 
-							<div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x bg-muted/10 px-6">
-								<div className="py-4 pr-4 flex flex-col justify-center">
-									<span className="text-xs font-medium text-muted-foreground mb-1">
-										Package Cost
+							<div className="grid grid-cols-3 divide-x bg-muted/10 px-6">
+								<div className="pt-3 pb-4 pr-4">
+									<span className="text-xs font-medium text-muted-foreground">
+										Package
 									</span>
-									<div className="flex items-baseline gap-2">
-										<span className="text-lg font-semibold">
-											{formatCurrency(
-												booking.packageCost,
-											)}
-										</span>
-									</div>
-									<span className="text-[10px] text-muted-foreground truncate">
-										{formatPackageType(booking.packageType)}
-									</span>
+									<p className="text-lg font-semibold leading-tight">
+										{formatCurrency(booking.packageCost)}
+									</p>
 								</div>
-
-								<div className="py-4 px-4 flex flex-col justify-center">
-									<span className="text-xs font-medium text-muted-foreground mb-1">
+								<div className="pt-3 pb-4 px-4">
+									<span className="text-xs font-medium text-muted-foreground">
 										Received
 									</span>
-									<div className="flex items-baseline gap-2">
-										<span className="text-lg font-semibold text-emerald-600 dark:text-emerald-500">
-											{formatCurrency(
-												booking.totalReceived,
-											)}
-										</span>
-									</div>
-									<div className="w-full bg-muted/50 rounded-full h-1 mt-2 overflow-hidden">
-										<div
-											className="bg-emerald-500 h-full rounded-full transition-all duration-500"
-											style={{
-												width: `${Math.min(
-													(totalReceivedNum /
-														(packageCostNum || 1)) *
-														100,
-													100,
-												)}%`,
-											}}
-										/>
-									</div>
+									<p
+										className={cn(
+											"text-lg font-semibold leading-tight",
+											balanceNum > 0
+												? "text-emerald-600"
+												: "text-foreground",
+										)}
+									>
+										{formatCurrency(booking.totalReceived)}
+									</p>
 								</div>
-
-								<div className="py-4 pl-4 flex flex-col justify-center">
-									<span className="text-xs font-medium text-muted-foreground mb-1">
-										Balance
+								<div className="pt-3 pb-4 pl-4">
+									<span className="text-xs font-medium text-muted-foreground">
+										Shoots
 									</span>
-									<div className="flex items-baseline gap-2">
-										<span
-											className={cn(
-												"text-lg font-semibold",
-												balanceNum > 0
-													? "text-amber-600 dark:text-amber-500"
-													: "text-muted-foreground",
-											)}
-										>
-											{formatCurrency(booking.balance)}
+									<p className="text-lg font-semibold leading-tight">
+										{shootsCompleted}/{shoots.length}
+										<span className="text-sm font-normal text-muted-foreground ml-1">
+											completed
 										</span>
-									</div>
-									<span className="text-[10px] text-muted-foreground">
-										{balanceNum > 0
-											? "Payment pending"
-											: "Fully paid"}
-									</span>
+									</p>
 								</div>
 							</div>
 						</div>
