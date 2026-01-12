@@ -40,7 +40,7 @@ export function DataTableFilterRow({
 				id={id}
 				aria-label="Filters"
 				className={cn(
-					"flex items-center gap-4 border-b bg-muted/30 px-4 py-2",
+					"flex items-center gap-4 rounded-lg border border-border/50 bg-muted/30 px-4 py-3",
 					"animate-in slide-in-from-top-1 duration-150",
 					className,
 				)}

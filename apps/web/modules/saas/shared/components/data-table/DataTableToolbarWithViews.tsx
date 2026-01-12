@@ -21,13 +21,13 @@ import {
 	type DateFilterValue,
 } from "./DataTableDateFilter";
 import { DataTableFacetedFilter } from "./DataTableFacetedFilter";
-import { DataTableFilterRow } from "./data-table-filter-row";
-import { DataTableFilterToggle } from "./data-table-filter-toggle";
 import type {
 	ToolbarFilterConfig,
 	ToolbarFilterValues,
 } from "./DataTableToolbar";
 import { DataTableViewOptions } from "./DataTableViewOptions";
+import { DataTableFilterRow } from "./data-table-filter-row";
+import { DataTableFilterToggle } from "./data-table-filter-toggle";
 import { normalizeForCompare } from "./filter-row-utils";
 
 const FILTER_ROW_STORAGE_KEY = "datatable-filter-row-visible";
@@ -305,7 +305,7 @@ export function DataTableToolbarWithViews<TData>({
 			<div
 				role="toolbar"
 				aria-orientation="horizontal"
-				className={cn("flex w-full flex-col gap-0", className)}
+				className={cn("flex w-full flex-col gap-3", className)}
 				{...props}
 			>
 				<div className="flex w-full items-center justify-between gap-2 p-1">
