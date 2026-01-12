@@ -130,19 +130,16 @@ export function SaveViewDialog({
 								onValueChange={setIcon}
 								disabled={isLoading}
 							>
-								<SelectTrigger className="w-[100px]">
+								<SelectTrigger className="w-20 shrink-0">
 									<SelectValue placeholder="Icon" />
 								</SelectTrigger>
-								<SelectContent>
+								<SelectContent className="min-w-0">
 									{ICONS.map((item) => (
 										<SelectItem
 											key={item.name}
 											value={item.name}
 										>
-											<div className="flex items-center gap-2">
-												<item.icon className="size-4 text-muted-foreground" />
-												{/* <span>{item.name}</span> */}
-											</div>
+											<item.icon className="size-4" />
 										</SelectItem>
 									))}
 								</SelectContent>
