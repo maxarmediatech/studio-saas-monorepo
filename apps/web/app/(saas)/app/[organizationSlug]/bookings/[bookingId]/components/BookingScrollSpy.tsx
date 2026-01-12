@@ -1,8 +1,5 @@
 "use client";
 
-import * as React from "react";
-import { format } from "date-fns";
-import { Camera, CheckSquare, IndianRupee, Info, Package } from "lucide-react";
 import {
 	ScrollSpy,
 	ScrollSpyLink,
@@ -10,13 +7,15 @@ import {
 	ScrollSpySection,
 	ScrollSpyViewport,
 } from "@repo/ui/components/scroll-spy";
-import { formatPackageType } from "./utils";
-
+import { format } from "date-fns";
+import { Camera, CheckSquare, IndianRupee, Info, Package } from "lucide-react";
+import * as React from "react";
 import { DeliverablesTab } from "./tabs/DeliverablesTab";
 import { FinancesTab } from "./tabs/FinancesTab";
 import { OverviewTab } from "./tabs/OverviewTab";
 import { ShootsTab } from "./tabs/ShootsTab";
 import { TasksTab } from "./tabs/TasksTab";
+import { formatPackageType } from "./utils";
 
 interface BookingScrollSpyProps {
 	bookingId: string;
@@ -93,7 +92,7 @@ export function BookingScrollSpy({
 						</p>
 					</div>
 
-					<ScrollSpyNav className="flex-shrink-0 border-y bg-muted/30 -mx-6 px-6">
+					<ScrollSpyNav className="flex-shrink-0 border-y 2xl:border 2xl:rounded-t-lg bg-muted/30 -mx-6 px-6">
 						{SECTIONS.map((section) => (
 							<ScrollSpyLink
 								key={section.id}
@@ -108,7 +107,7 @@ export function BookingScrollSpy({
 
 					<ScrollSpyViewport
 						ref={setScrollContainer}
-						className="flex-1 min-h-0 overflow-y-auto -mx-6 border-x border-b border-border/50 bg-muted/5 rounded-b-lg"
+						className="flex-1 min-h-0 overflow-y-auto -mx-6 2xl:border-x 2xl:border-b 2xl:border-border/50 2xl:bg-muted/5 2xl:rounded-b-lg"
 					>
 						<div className="px-6 py-6 space-y-16 pb-32">
 							<ScrollSpySection value="overview">
