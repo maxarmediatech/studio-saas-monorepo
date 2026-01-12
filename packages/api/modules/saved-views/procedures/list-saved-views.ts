@@ -12,7 +12,6 @@ import {
 	listSavedViewsInputSchema,
 	listSavedViewsOutputSchema,
 } from "../../studio/schemas/saved-view";
-import { systemViewDefinitions } from "../system-views";
 
 export const listSavedViews = studioProtectedProcedure
 	.route({
@@ -20,8 +19,7 @@ export const listSavedViews = studioProtectedProcedure
 		path: "/saved-views",
 		tags: ["Saved Views"],
 		summary: "List saved views",
-		description:
-			"List all saved views for an entity type (system + public + user's private)",
+		description: "List all user-created saved views for an entity type",
 	})
 	.input(listSavedViewsInputSchema)
 	.output(listSavedViewsOutputSchema)
@@ -32,44 +30,12 @@ export const listSavedViews = studioProtectedProcedure
 		const { organizationId } = context;
 		const userId = context.user.id;
 
-		const existingViews = await db.query.savedViews.findMany({
-			where: and(
-				eq(savedViews.organizationId, organizationId),
-				eq(savedViews.entityType, entityType),
-			),
-		});
-
-		if (existingViews.length === 0) {
-			const systemDefs = systemViewDefinitions[entityType] || [];
-			if (systemDefs.length > 0) {
-				const systemViewsToInsert = systemDefs.map((def) => ({
-					organizationId,
-					createdBy: null,
-					entityType,
-					name: def.name,
-					description: def.description,
-					icon: def.icon,
-					color: null,
-					filters: def.filters,
-					displayFilters: null,
-					columnVisibility: null,
-					sorting: null,
-					isSystem: true,
-					isDefault: def.isDefault ?? false,
-					isPublic: true,
-					sortOrder: def.sortOrder,
-				}));
-
-				await db.insert(savedViews).values(systemViewsToInsert);
-			}
-		}
-
 		const views = await db.query.savedViews.findMany({
 			where: and(
 				eq(savedViews.organizationId, organizationId),
 				eq(savedViews.entityType, entityType),
+				eq(savedViews.isSystem, false),
 				or(
-					eq(savedViews.isSystem, true),
 					eq(savedViews.isPublic, true),
 					eq(savedViews.createdBy, userId),
 				),
@@ -115,7 +81,7 @@ export const listSavedViews = studioProtectedProcedure
 					id: string;
 					desc: boolean;
 				}> | null,
-				isSystem: view.isSystem,
+				isSystem: false,
 				isDefault: view.isDefault,
 				isPublic: view.isPublic,
 				sortOrder: view.sortOrder,

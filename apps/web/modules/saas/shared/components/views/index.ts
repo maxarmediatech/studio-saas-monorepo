@@ -7,6 +7,13 @@ export {
 	type SaveViewFormData,
 	type SaveViewDialogProps,
 } from "./SaveViewDialog";
+export {
+	getSystemView,
+	getSystemViews,
+	isSystemViewId,
+	SYSTEM_VIEWS,
+	type SystemView,
+} from "./system-views";
 export { ViewBreadcrumb } from "./ViewBreadcrumb";
 export { ViewSelector } from "./ViewSelector";
 

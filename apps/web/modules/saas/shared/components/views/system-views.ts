@@ -1,6 +1,7 @@
-import type { SavedViewEntityType } from "../studio/schemas/saved-view";
+import type { SavedViewEntityType } from "./types";
 
-export interface SystemViewDefinition {
+export interface SystemView {
+	id: string;
 	name: string;
 	description: string;
 	icon: string;
@@ -9,12 +10,10 @@ export interface SystemViewDefinition {
 	sortOrder: number;
 }
 
-export const systemViewDefinitions: Record<
-	SavedViewEntityType,
-	SystemViewDefinition[]
-> = {
+export const SYSTEM_VIEWS: Record<SavedViewEntityType, SystemView[]> = {
 	booking: [
 		{
+			id: "all",
 			name: "All Bookings",
 			description: "View all bookings",
 			icon: "List",
@@ -23,6 +22,7 @@ export const systemViewDefinitions: Record<
 			sortOrder: 0,
 		},
 		{
+			id: "active",
 			name: "Active",
 			description: "In-progress bookings",
 			icon: "Clock",
@@ -32,6 +32,7 @@ export const systemViewDefinitions: Record<
 			sortOrder: 1,
 		},
 		{
+			id: "completed",
 			name: "Completed",
 			description: "Finished bookings",
 			icon: "CheckCircle",
@@ -39,6 +40,7 @@ export const systemViewDefinitions: Record<
 			sortOrder: 2,
 		},
 		{
+			id: "cancelled",
 			name: "Cancelled",
 			description: "Cancelled bookings",
 			icon: "XCircle",
@@ -48,6 +50,7 @@ export const systemViewDefinitions: Record<
 	],
 	task: [
 		{
+			id: "all",
 			name: "All Tasks",
 			description: "View all tasks",
 			icon: "List",
@@ -56,6 +59,7 @@ export const systemViewDefinitions: Record<
 			sortOrder: 0,
 		},
 		{
+			id: "my-tasks",
 			name: "My Tasks",
 			description: "Tasks assigned to me",
 			icon: "User",
@@ -63,6 +67,7 @@ export const systemViewDefinitions: Record<
 			sortOrder: 1,
 		},
 		{
+			id: "pending",
 			name: "Pending",
 			description: "Tasks not yet started",
 			icon: "Clock",
@@ -70,6 +75,7 @@ export const systemViewDefinitions: Record<
 			sortOrder: 2,
 		},
 		{
+			id: "in-progress",
 			name: "In Progress",
 			description: "Tasks currently being worked on",
 			icon: "Loader",
@@ -77,6 +83,7 @@ export const systemViewDefinitions: Record<
 			sortOrder: 3,
 		},
 		{
+			id: "overdue",
 			name: "Overdue",
 			description: "Tasks past their due date",
 			icon: "AlertCircle",
@@ -86,6 +93,7 @@ export const systemViewDefinitions: Record<
 	],
 	shoot: [
 		{
+			id: "all",
 			name: "All Shoots",
 			description: "View all shoots",
 			icon: "List",
@@ -94,6 +102,7 @@ export const systemViewDefinitions: Record<
 			sortOrder: 0,
 		},
 		{
+			id: "upcoming",
 			name: "Upcoming",
 			description: "Scheduled for the future",
 			icon: "Calendar",
@@ -101,6 +110,7 @@ export const systemViewDefinitions: Record<
 			sortOrder: 1,
 		},
 		{
+			id: "today",
 			name: "Today",
 			description: "Shoots happening today",
 			icon: "Sun",
@@ -108,6 +118,7 @@ export const systemViewDefinitions: Record<
 			sortOrder: 2,
 		},
 		{
+			id: "my-shoots",
 			name: "My Shoots",
 			description: "Shoots I'm assigned to",
 			icon: "User",
@@ -117,6 +128,7 @@ export const systemViewDefinitions: Record<
 	],
 	deliverable: [
 		{
+			id: "all",
 			name: "All Deliverables",
 			description: "View all deliverables",
 			icon: "List",
@@ -125,6 +137,7 @@ export const systemViewDefinitions: Record<
 			sortOrder: 0,
 		},
 		{
+			id: "pending",
 			name: "Pending",
 			description: "Not yet started",
 			icon: "Clock",
@@ -132,6 +145,7 @@ export const systemViewDefinitions: Record<
 			sortOrder: 1,
 		},
 		{
+			id: "in-progress",
 			name: "In Progress",
 			description: "Currently being worked on",
 			icon: "Loader",
@@ -139,6 +153,7 @@ export const systemViewDefinitions: Record<
 			sortOrder: 2,
 		},
 		{
+			id: "ready-for-review",
 			name: "Ready for Review",
 			description: "Awaiting client review",
 			icon: "Eye",
@@ -148,6 +163,7 @@ export const systemViewDefinitions: Record<
 	],
 	payment: [
 		{
+			id: "all",
 			name: "All Payments",
 			description: "View all received payments",
 			icon: "List",
@@ -156,6 +172,7 @@ export const systemViewDefinitions: Record<
 			sortOrder: 0,
 		},
 		{
+			id: "this-month",
 			name: "This Month",
 			description: "Payments received this month",
 			icon: "Calendar",
@@ -165,6 +182,7 @@ export const systemViewDefinitions: Record<
 	],
 	schedule: [
 		{
+			id: "all",
 			name: "All Schedules",
 			description: "View all payment schedules",
 			icon: "List",
@@ -173,6 +191,7 @@ export const systemViewDefinitions: Record<
 			sortOrder: 0,
 		},
 		{
+			id: "pending",
 			name: "Pending",
 			description: "Payments not yet received",
 			icon: "Clock",
@@ -180,6 +199,7 @@ export const systemViewDefinitions: Record<
 			sortOrder: 1,
 		},
 		{
+			id: "overdue",
 			name: "Overdue",
 			description: "Past due date",
 			icon: "AlertCircle",
@@ -189,6 +209,7 @@ export const systemViewDefinitions: Record<
 	],
 	expense: [
 		{
+			id: "all",
 			name: "All Expenses",
 			description: "View all expenses",
 			icon: "List",
@@ -197,6 +218,7 @@ export const systemViewDefinitions: Record<
 			sortOrder: 0,
 		},
 		{
+			id: "studio",
 			name: "Studio Expenses",
 			description: "Billed to studio",
 			icon: "Building",
@@ -204,6 +226,7 @@ export const systemViewDefinitions: Record<
 			sortOrder: 1,
 		},
 		{
+			id: "client",
 			name: "Client Expenses",
 			description: "Billed to client",
 			icon: "User",
@@ -213,6 +236,7 @@ export const systemViewDefinitions: Record<
 	],
 	crew: [
 		{
+			id: "all",
 			name: "All Crew",
 			description: "View all crew members",
 			icon: "List",
@@ -221,6 +245,7 @@ export const systemViewDefinitions: Record<
 			sortOrder: 0,
 		},
 		{
+			id: "active",
 			name: "Active",
 			description: "Currently active crew",
 			icon: "UserCheck",
@@ -230,6 +255,7 @@ export const systemViewDefinitions: Record<
 	],
 	client: [
 		{
+			id: "all",
 			name: "All Clients",
 			description: "View all clients",
 			icon: "List",
@@ -238,6 +264,7 @@ export const systemViewDefinitions: Record<
 			sortOrder: 0,
 		},
 		{
+			id: "recent",
 			name: "Recent",
 			description: "Recently added clients",
 			icon: "Clock",
@@ -247,6 +274,7 @@ export const systemViewDefinitions: Record<
 	],
 	invoice: [
 		{
+			id: "all",
 			name: "All Invoices",
 			description: "View all invoices",
 			icon: "List",
@@ -255,6 +283,7 @@ export const systemViewDefinitions: Record<
 			sortOrder: 0,
 		},
 		{
+			id: "draft",
 			name: "Draft",
 			description: "Unpublished invoices",
 			icon: "FileEdit",
@@ -262,6 +291,7 @@ export const systemViewDefinitions: Record<
 			sortOrder: 1,
 		},
 		{
+			id: "sent",
 			name: "Sent",
 			description: "Sent to clients",
 			icon: "Send",
@@ -269,6 +299,7 @@ export const systemViewDefinitions: Record<
 			sortOrder: 2,
 		},
 		{
+			id: "paid",
 			name: "Paid",
 			description: "Fully paid invoices",
 			icon: "CheckCircle",
@@ -277,3 +308,27 @@ export const systemViewDefinitions: Record<
 		},
 	],
 };
+
+export function getSystemViews(entityType: SavedViewEntityType): SystemView[] {
+	return SYSTEM_VIEWS[entityType] || [];
+}
+
+export function getSystemView(
+	entityType: SavedViewEntityType,
+	viewId: string,
+): SystemView | undefined {
+	return SYSTEM_VIEWS[entityType]?.find((v) => v.id === viewId);
+}
+
+export function isSystemViewId(viewId: string | null): boolean {
+	if (!viewId) return false;
+	const uuidRegex =
+		/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+	return !uuidRegex.test(viewId);
+}
+
+export function getDefaultSystemView(
+	entityType: SavedViewEntityType,
+): SystemView | undefined {
+	return SYSTEM_VIEWS[entityType]?.find((v) => v.isDefault);
+}

@@ -44,10 +44,19 @@ export function ViewBreadcrumb({
 }: ViewBreadcrumbProps) {
 	const [open, setOpen] = useState(false);
 
-	const activeView = useMemo(
-		() => views.find((v) => v.id === activeViewId),
-		[views, activeViewId],
+	const defaultView = useMemo(
+		() => views.find((v) => v.isDefault),
+		[views],
 	);
+
+	const displayedView = useMemo(() => {
+		if (activeViewId) {
+			return views.find((v) => v.id === activeViewId);
+		}
+		return defaultView;
+	}, [views, activeViewId, defaultView]);
+
+	const effectiveViewId = activeViewId ?? defaultView?.id ?? null;
 
 	const { systemViews, userViews, favoriteViews } = useMemo(() => {
 		const system = views.filter((v) => v.isSystem);
@@ -81,18 +90,18 @@ export function ViewBreadcrumb({
 						)}
 						disabled={isLoading || disabled}
 					>
-						{activeView?.icon && (
+						{displayedView?.icon && (
 							<DynamicIcon
-								name={activeView.icon}
+								name={displayedView.icon}
 								className="size-4"
 								style={
-									activeView.color
-										? { color: activeView.color }
+									displayedView.color
+										? { color: displayedView.color }
 										: undefined
 								}
 							/>
 						)}
-						<span>{activeView?.name ?? "All"}</span>
+						<span>{displayedView?.name ?? "All"}</span>
 						<ChevronDownIcon className="size-3.5 text-muted-foreground" />
 					</Button>
 				</DropdownMenuTrigger>
@@ -112,7 +121,7 @@ export function ViewBreadcrumb({
 									<ViewMenuItem
 										key={view.id}
 										view={view}
-										isActive={view.id === activeViewId}
+										isActive={view.id === effectiveViewId}
 										onSelect={() => {
 											onViewSelect(view);
 											setOpen(false);
@@ -135,7 +144,7 @@ export function ViewBreadcrumb({
 							<ViewMenuItem
 								key={view.id}
 								view={view}
-								isActive={view.id === activeViewId}
+								isActive={view.id === effectiveViewId}
 								onSelect={() => {
 									onViewSelect(view);
 									setOpen(false);
@@ -158,7 +167,7 @@ export function ViewBreadcrumb({
 									<ViewMenuItem
 										key={view.id}
 										view={view}
-										isActive={view.id === activeViewId}
+										isActive={view.id === effectiveViewId}
 										onSelect={() => {
 											onViewSelect(view);
 											setOpen(false);

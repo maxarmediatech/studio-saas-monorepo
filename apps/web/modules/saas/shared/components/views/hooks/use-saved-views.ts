@@ -3,8 +3,9 @@
 import { savedViewsApi, savedViewsMutations } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback } from "react";
-import type { SavedViewEntityType } from "../types";
+import { useCallback, useMemo } from "react";
+import { getSystemViews } from "../system-views";
+import type { SavedView, SavedViewEntityType } from "../types";
 
 interface UseSavedViewsOptions {
 	entityType: SavedViewEntityType;
@@ -17,7 +18,36 @@ export function useSavedViews({ entityType }: UseSavedViewsOptions) {
 		savedViewsApi.listOptions({ entityType }),
 	);
 
-	const views = data?.data ?? [];
+	const userViews = data?.data ?? [];
+
+	const views = useMemo((): SavedView[] => {
+		const systemViewDefs = getSystemViews(entityType);
+
+		const systemViews: SavedView[] = systemViewDefs.map((def) => ({
+			id: def.id,
+			organizationId: "",
+			createdBy: null,
+			entityType,
+			name: def.name,
+			description: def.description,
+			icon: def.icon,
+			color: null,
+			filters: def.filters,
+			displayFilters: null,
+			columnVisibility: null,
+			sorting: null,
+			isSystem: true,
+			isDefault: def.isDefault ?? false,
+			isPublic: true,
+			sortOrder: def.sortOrder,
+			createdAt: "",
+			updatedAt: "",
+			isFavorite: false,
+			createdByUser: null,
+		}));
+
+		return [...systemViews, ...userViews];
+	}, [entityType, userViews]);
 
 	const invalidateViews = () => {
 		queryClient.invalidateQueries({ queryKey: orpc.savedViews.key() });
@@ -52,6 +82,7 @@ export function useSavedViews({ entityType }: UseSavedViewsOptions) {
 
 	return {
 		views,
+		userViews,
 		isLoading,
 
 		createView: createMutation.mutateAsync,
