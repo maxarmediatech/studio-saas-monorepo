@@ -1,5 +1,15 @@
 "use client";
 
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@repo/ui/components/alert-dialog";
 import { Input } from "@repo/ui/components/input";
 import { cn } from "@repo/ui/lib/utils";
 import type {
@@ -78,6 +88,8 @@ export function DataTableToolbarWithViews<TData>({
 }: DataTableToolbarWithViewsProps<TData>) {
 	const [localSearchValue, setLocalSearchValue] = useState(searchValue);
 	const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+	const [editingView, setEditingView] = useState<SavedView | null>(null);
+	const [deletingViewId, setDeletingViewId] = useState<string | null>(null);
 	const [isFilterRowVisible, setIsFilterRowVisible] = useState(() => {
 		if (typeof window === "undefined") {
 			return false;
@@ -91,9 +103,11 @@ export function DataTableToolbarWithViews<TData>({
 		isLoading,
 		createView,
 		updateView,
+		deleteView,
 		toggleFavorite,
 		isCreating,
 		isUpdating,
+		isDeleting,
 	} = useSavedViews({ entityType });
 
 	const activeView = useMemo(
@@ -194,6 +208,28 @@ export function DataTableToolbarWithViews<TData>({
 		getCurrentSorting,
 		getCurrentColumnVisibility,
 	]);
+
+	const handleEditView = useCallback(
+		async (formData: {
+			name: string;
+			description?: string;
+			icon?: string;
+			color?: string;
+			isPublic: boolean;
+		}) => {
+			if (!editingView) return;
+			await updateView({
+				id: editingView.id,
+				name: formData.name,
+				description: formData.description,
+				icon: formData.icon,
+				color: formData.color,
+				isPublic: formData.isPublic,
+			});
+			setEditingView(null);
+		},
+		[editingView, updateView],
+	);
 
 	const renderFilterControl = useCallback(
 		(filter: ToolbarFilterConfig) => {
@@ -301,6 +337,8 @@ export function DataTableToolbarWithViews<TData>({
 						onViewSelect={onViewSelect}
 						onCreateView={() => setSaveDialogOpen(true)}
 						onToggleFavorite={toggleFavorite}
+						onEditView={setEditingView}
+						onDeleteView={setDeletingViewId}
 						isLoading={isLoading}
 					/>
 
@@ -351,11 +389,59 @@ export function DataTableToolbarWithViews<TData>({
 			</div>
 
 			<SaveViewDialog
-				open={saveDialogOpen}
-				onOpenChange={setSaveDialogOpen}
-				onSave={handleCreateView}
-				isLoading={isCreating}
+				open={saveDialogOpen || !!editingView}
+				onOpenChange={(open) => {
+					if (!open) {
+						setSaveDialogOpen(false);
+						setEditingView(null);
+					}
+				}}
+				onSave={editingView ? handleEditView : handleCreateView}
+				initialData={
+					editingView
+						? {
+								name: editingView.name,
+								description:
+									editingView.description ?? undefined,
+								icon: editingView.icon ?? undefined,
+								color: editingView.color ?? undefined,
+								isPublic: editingView.isPublic,
+							}
+						: undefined
+				}
+				isLoading={editingView ? isUpdating : isCreating}
 			/>
+
+			<AlertDialog
+				open={!!deletingViewId}
+				onOpenChange={(open) => !open && setDeletingViewId(null)}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Delete View</AlertDialogTitle>
+						<AlertDialogDescription>
+							Are you sure you want to delete "
+							{views.find((v) => v.id === deletingViewId)?.name}"?
+							This action cannot be undone.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction
+							onClick={async () => {
+								if (deletingViewId) {
+									await deleteView({ id: deletingViewId });
+									setDeletingViewId(null);
+								}
+							}}
+							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+							disabled={isDeleting}
+						>
+							{isDeleting ? "Deleting..." : "Delete"}
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</>
 	);
 }

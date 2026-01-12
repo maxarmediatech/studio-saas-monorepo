@@ -16,8 +16,11 @@ import {
 	ChevronDownIcon,
 	ChevronRightIcon,
 	LayersIcon,
+	MoreHorizontalIcon,
+	PencilIcon,
 	PlusIcon,
 	StarIcon,
+	Trash2Icon,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { DynamicIcon } from "./DynamicIcon";
@@ -29,6 +32,8 @@ interface ViewBreadcrumbProps {
 	onViewSelect: (view: SavedView) => void;
 	onCreateView: () => void;
 	onToggleFavorite: (viewId: string) => void;
+	onEditView?: (view: SavedView) => void;
+	onDeleteView?: (viewId: string) => void;
 	isLoading?: boolean;
 	disabled?: boolean;
 }
@@ -39,15 +44,14 @@ export function ViewBreadcrumb({
 	onViewSelect,
 	onCreateView,
 	onToggleFavorite,
+	onEditView,
+	onDeleteView,
 	isLoading,
 	disabled,
 }: ViewBreadcrumbProps) {
 	const [open, setOpen] = useState(false);
 
-	const defaultView = useMemo(
-		() => views.find((v) => v.isDefault),
-		[views],
-	);
+	const defaultView = useMemo(() => views.find((v) => v.isDefault), [views]);
 
 	const displayedView = useMemo(() => {
 		if (activeViewId) {
@@ -129,6 +133,22 @@ export function ViewBreadcrumb({
 										onToggleFavorite={() =>
 											onToggleFavorite(view.id)
 										}
+										onEdit={
+											onEditView
+												? () => {
+														onEditView(view);
+														setOpen(false);
+													}
+												: undefined
+										}
+										onDelete={
+											onDeleteView
+												? () => {
+														onDeleteView(view.id);
+														setOpen(false);
+													}
+												: undefined
+										}
 									/>
 								))}
 							</DropdownMenuGroup>
@@ -175,6 +195,22 @@ export function ViewBreadcrumb({
 										onToggleFavorite={() =>
 											onToggleFavorite(view.id)
 										}
+										onEdit={
+											onEditView
+												? () => {
+														onEditView(view);
+														setOpen(false);
+													}
+												: undefined
+										}
+										onDelete={
+											onDeleteView
+												? () => {
+														onDeleteView(view.id);
+														setOpen(false);
+													}
+												: undefined
+										}
 									/>
 								))}
 							</DropdownMenuGroup>
@@ -203,6 +239,8 @@ interface ViewMenuItemProps {
 	isActive: boolean;
 	onSelect: () => void;
 	onToggleFavorite: () => void;
+	onEdit?: () => void;
+	onDelete?: () => void;
 }
 
 function ViewMenuItem({
@@ -210,10 +248,22 @@ function ViewMenuItem({
 	isActive,
 	onSelect,
 	onToggleFavorite,
+	onEdit,
+	onDelete,
 }: ViewMenuItemProps) {
+	const [contextMenuOpen, setContextMenuOpen] = useState(false);
+
+	const showContextMenu = !view.isSystem && (onEdit || onDelete);
+
 	return (
 		<DropdownMenuItem
-			onSelect={onSelect}
+			onSelect={(e) => {
+				if (contextMenuOpen) {
+					e.preventDefault();
+					return;
+				}
+				onSelect();
+			}}
 			className="group flex items-center justify-between gap-2"
 		>
 			<div className="flex items-center gap-2">
@@ -230,25 +280,81 @@ function ViewMenuItem({
 			</div>
 			<div className="flex items-center gap-1">
 				{isActive && <CheckIcon className="size-4 text-primary" />}
-				{!view.isSystem && (
-					<button
-						type="button"
-						onClick={(e) => {
-							e.stopPropagation();
-							onToggleFavorite();
-						}}
-						className={cn(
-							"rounded p-0.5 hover:bg-muted",
-							view.isFavorite
-								? "text-yellow-500"
-								: "text-muted-foreground opacity-0 group-hover:opacity-100",
-						)}
+				{showContextMenu && (
+					<DropdownMenu
+						open={contextMenuOpen}
+						onOpenChange={setContextMenuOpen}
 					>
-						<StarIcon
-							className="size-3.5"
-							fill={view.isFavorite ? "currentColor" : "none"}
-						/>
-					</button>
+						<DropdownMenuTrigger asChild>
+							<button
+								type="button"
+								onClick={(e) => {
+									e.stopPropagation();
+								}}
+								className={cn(
+									"rounded p-0.5 hover:bg-muted text-muted-foreground",
+									"opacity-0 group-hover:opacity-100",
+									contextMenuOpen && "opacity-100",
+								)}
+							>
+								<MoreHorizontalIcon className="size-4" />
+							</button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent
+							align="end"
+							side="right"
+							className="w-40"
+							onClick={(e) => e.stopPropagation()}
+						>
+							<DropdownMenuItem
+								onSelect={(e) => {
+									e.stopPropagation();
+									onToggleFavorite();
+									setContextMenuOpen(false);
+								}}
+								className="gap-2"
+							>
+								<StarIcon
+									className={cn(
+										"size-4",
+										view.isFavorite &&
+											"fill-yellow-500 text-yellow-500",
+									)}
+								/>
+								<span>
+									{view.isFavorite
+										? "Remove from favorites"
+										: "Add to favorites"}
+								</span>
+							</DropdownMenuItem>
+							{onEdit && (
+								<DropdownMenuItem
+									onSelect={(e) => {
+										e.stopPropagation();
+										onEdit();
+										setContextMenuOpen(false);
+									}}
+									className="gap-2"
+								>
+									<PencilIcon className="size-4" />
+									<span>Edit</span>
+								</DropdownMenuItem>
+							)}
+							{onDelete && (
+								<DropdownMenuItem
+									onSelect={(e) => {
+										e.stopPropagation();
+										onDelete();
+										setContextMenuOpen(false);
+									}}
+									className="gap-2 text-destructive focus:text-destructive"
+								>
+									<Trash2Icon className="size-4" />
+									<span>Delete</span>
+								</DropdownMenuItem>
+							)}
+						</DropdownMenuContent>
+					</DropdownMenu>
 				)}
 			</div>
 		</DropdownMenuItem>
