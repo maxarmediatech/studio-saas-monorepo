@@ -1,6 +1,5 @@
 "use client";
 
-import { Button } from "@repo/ui/components/button";
 import {
 	Tooltip,
 	TooltipContent,
@@ -23,6 +22,8 @@ export function DataTableFilterToggle({
 	onToggle,
 	disabled,
 }: DataTableFilterToggleProps) {
+	const isActive = isOpen || hasActiveFilters;
+
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
 			if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "f") {
@@ -38,12 +39,16 @@ export function DataTableFilterToggle({
 	return (
 		<Tooltip>
 			<TooltipTrigger asChild>
-				<Button
-					variant="outline"
-					size="sm"
+				<button
+					type="button"
 					className={cn(
-						"h-8 w-8 p-0",
-						(isOpen || hasActiveFilters) && "border-foreground/50",
+						"inline-flex h-8 w-8 items-center justify-center rounded-md border bg-background transition-colors",
+						"hover:bg-accent hover:text-accent-foreground",
+						"focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+						"disabled:pointer-events-none disabled:opacity-50",
+						isActive
+							? "border-[1.6px] border-neutral-800 text-neutral-900"
+							: "border-input text-muted-foreground",
 					)}
 					onClick={onToggle}
 					disabled={disabled}
@@ -59,7 +64,7 @@ export function DataTableFilterToggle({
 					{hasActiveFilters && (
 						<span className="sr-only">Filters active</span>
 					)}
-				</Button>
+				</button>
 			</TooltipTrigger>
 			<TooltipContent side="bottom" sideOffset={8}>
 				<span>{isOpen ? "Hide filters" : "Show filters"}</span>
