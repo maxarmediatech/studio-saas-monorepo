@@ -115,15 +115,19 @@ export function DataTableToolbarWithViews<TData>({
 		[views, activeViewId],
 	);
 
+	const currentFilters = getCurrentFilters();
+	const currentSorting = getCurrentSorting();
+	const currentColumnVisibility = getCurrentColumnVisibility();
+
 	const hasViewChanges = useMemo(() => {
 		if (!activeView) {
 			return false;
 		}
 
 		const currentState = normalizeForCompare({
-			filters: getCurrentFilters(),
-			sorting: getCurrentSorting(),
-			columnVisibility: getCurrentColumnVisibility(),
+			filters: currentFilters,
+			sorting: currentSorting,
+			columnVisibility: currentColumnVisibility,
 		});
 
 		const viewState = normalizeForCompare({
@@ -133,12 +137,7 @@ export function DataTableToolbarWithViews<TData>({
 		});
 
 		return currentState !== viewState;
-	}, [
-		activeView,
-		getCurrentFilters,
-		getCurrentSorting,
-		getCurrentColumnVisibility,
-	]);
+	}, [activeView, currentFilters, currentSorting, currentColumnVisibility]);
 
 	useEffect(() => {
 		localStorage.setItem(
@@ -377,7 +376,9 @@ export function DataTableToolbarWithViews<TData>({
 					onClearAll={onResetFilters}
 					onSaveView={() => setSaveDialogOpen(true)}
 					onUpdateView={handleUpdateView}
-					showSaveView={isFiltered && !activeViewId}
+					showSaveView={
+						isFiltered && (!activeViewId || activeView?.isSystem)
+					}
 					showUpdateView={
 						hasViewChanges &&
 						!!activeViewId &&
