@@ -82,37 +82,50 @@ export function BookingScrollSpy({
 				>
 					<div className="flex-shrink-0 -mx-6">
 						<div className="2xl:border-x bg-card overflow-hidden">
-							<div className="px-6 pt-5 pb-6 border-b">
-								<h2 className="text-2xl font-bold tracking-tight mb-1.5">
-									{booking.name}
-								</h2>
-								<div className="flex items-center flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-									{booking.createdAt && (
-										<div className="flex items-center gap-1.5">
-											<Calendar className="h-3.5 w-3.5" />
-											<span>
+							<div className="px-6 pt-4 pb-6 border-b">
+								{/* Date at top-right corner */}
+								{booking.createdAt && (
+									<div className="flex justify-end mb-3">
+										<div className="flex items-center gap-1.5 text-xs">
+											<Calendar className="h-3 w-3 text-muted-foreground" />
+											<span className="text-muted-foreground">
+												Booked on
+											</span>
+											<span className="font-semibold text-foreground">
 												{format(
 													new Date(booking.createdAt),
 													"MMM d, yyyy",
 												)}
 											</span>
 										</div>
-									)}
-									{booking.bookingType && (
-										<span>
-											{formatPackageType(
-												booking.bookingType,
-											)}
-										</span>
-									)}
-									{booking.packageType && (
-										<span>
-											{formatPackageType(
-												booking.packageType,
-											)}
-										</span>
-									)}
-								</div>
+									</div>
+								)}
+
+								{/* Title */}
+								<h2 className="text-2xl font-bold tracking-tight mb-1.5">
+									{booking.name}
+								</h2>
+
+								{/* Package type info */}
+								{(booking.bookingType ||
+									booking.packageType) && (
+									<div className="flex items-center flex-wrap gap-x-3 text-sm text-muted-foreground">
+										{booking.bookingType && (
+											<span>
+												{formatPackageType(
+													booking.bookingType,
+												)}
+											</span>
+										)}
+										{booking.packageType && (
+											<span>
+												{formatPackageType(
+													booking.packageType,
+												)}
+											</span>
+										)}
+									</div>
+								)}
 							</div>
 
 							<div className="grid grid-cols-3 divide-x bg-muted/10 px-6">
