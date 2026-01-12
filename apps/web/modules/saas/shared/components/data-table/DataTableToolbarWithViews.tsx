@@ -461,8 +461,19 @@ export function DataTableToolbarWithViews<TData>({
 						<AlertDialogAction
 							onClick={async () => {
 								if (deletingViewId) {
+									const wasActiveView =
+										deletingViewId === activeViewId;
 									await deleteView({ id: deletingViewId });
 									setDeletingViewId(null);
+
+									if (wasActiveView) {
+										const defaultView = views.find(
+											(v) => v.isDefault,
+										);
+										if (defaultView) {
+											onViewSelect(defaultView);
+										}
+									}
 								}
 							}}
 							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"

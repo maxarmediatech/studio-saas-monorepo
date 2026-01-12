@@ -61,7 +61,7 @@ export function ViewBreadcrumb({
 		return defaultView;
 	}, [views, activeViewId, defaultView]);
 
-	const isViewLoading = activeViewId && !displayedView;
+	const isViewLoading = activeViewId && !displayedView && isLoading;
 
 	const effectiveViewId = activeViewId ?? defaultView?.id ?? null;
 
