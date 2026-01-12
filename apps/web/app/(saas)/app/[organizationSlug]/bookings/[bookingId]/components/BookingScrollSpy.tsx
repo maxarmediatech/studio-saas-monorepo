@@ -128,22 +128,31 @@ export function BookingScrollSpy({
 								)}
 							</div>
 
-							<div className="grid grid-cols-3 divide-x bg-muted/10 px-6">
-								<div className="pt-3 pb-4 pr-4">
-									<span className="text-xs font-medium text-muted-foreground">
-										Package
-									</span>
-									<p className="text-lg font-semibold leading-tight">
+							<div className="grid grid-cols-3 gap-4 p-4 bg-muted/5">
+								{/* Package Cost */}
+								<div className="bg-card rounded-lg border p-4">
+									<div className="flex items-center justify-between mb-2">
+										<span className="text-xs font-medium text-muted-foreground">
+											Package
+										</span>
+										<IndianRupee className="h-4 w-4 text-muted-foreground/50" />
+									</div>
+									<p className="text-lg font-semibold">
 										{formatCurrency(booking.packageCost)}
 									</p>
 								</div>
-								<div className="pt-3 pb-4 px-4">
-									<span className="text-xs font-medium text-muted-foreground">
-										Received
-									</span>
+
+								{/* Amount Received */}
+								<div className="bg-card rounded-lg border p-4">
+									<div className="flex items-center justify-between mb-2">
+										<span className="text-xs font-medium text-muted-foreground">
+											Received
+										</span>
+										<IndianRupee className="h-4 w-4 text-muted-foreground/50" />
+									</div>
 									<p
 										className={cn(
-											"text-lg font-semibold leading-tight",
+											"text-lg font-semibold",
 											balanceNum > 0
 												? "text-emerald-600"
 												: "text-foreground",
@@ -152,11 +161,16 @@ export function BookingScrollSpy({
 										{formatCurrency(booking.totalReceived)}
 									</p>
 								</div>
-								<div className="pt-3 pb-4 pl-4">
-									<span className="text-xs font-medium text-muted-foreground">
-										Shoots
-									</span>
-									<p className="text-lg font-semibold leading-tight">
+
+								{/* Shoots */}
+								<div className="bg-card rounded-lg border p-4">
+									<div className="flex items-center justify-between mb-2">
+										<span className="text-xs font-medium text-muted-foreground">
+											Shoots
+										</span>
+										<Camera className="h-4 w-4 text-muted-foreground/50" />
+									</div>
+									<p className="text-lg font-semibold">
 										{shootsCompleted}/{shoots.length}
 										<span className="text-sm font-normal text-muted-foreground ml-1">
 											completed
