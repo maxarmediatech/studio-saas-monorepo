@@ -1,6 +1,5 @@
 "use client";
 
-import { Badge } from "@repo/ui/components/badge";
 import {
 	ScrollSpy,
 	ScrollSpyLink,
@@ -9,8 +8,6 @@ import {
 	ScrollSpyViewport,
 } from "@repo/ui/components/scroll-spy";
 import { cn } from "@repo/ui/lib/utils";
-import { deliverablesApi, shootsApi } from "@saas/studio/lib/api";
-import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
 	Calendar,
@@ -26,7 +23,7 @@ import { FinancesTab } from "./tabs/FinancesTab";
 import { OverviewTab } from "./tabs/OverviewTab";
 import { ShootsTab } from "./tabs/ShootsTab";
 import { TasksTab } from "./tabs/TasksTab";
-import { formatCurrency, formatPackageType, getStatusVariant } from "./utils";
+import { formatCurrency, formatPackageType } from "./utils";
 
 interface BookingScrollSpyProps {
 	bookingId: string;
@@ -61,40 +58,9 @@ export function BookingScrollSpy({
 	const [scrollContainer, setScrollContainer] =
 		React.useState<HTMLDivElement | null>(null);
 
-	const { data: shootsData } = useQuery({
-		...shootsApi.listOptions({ bookingId, limit: 100 }),
-		enabled: !!bookingId,
-	});
-
-	const { data: deliverablesData } = useQuery({
-		...deliverablesApi.listOptions({ bookingId, limit: 100 }),
-		enabled: !!bookingId,
-	});
-
-	const shoots = shootsData?.data ?? [];
-	const deliverables = deliverablesData?.data ?? [];
-
 	const packageCostNum = Number.parseFloat(booking.packageCost) || 0;
 	const totalReceivedNum = Number.parseFloat(booking.totalReceived) || 0;
 	const balanceNum = Number.parseFloat(booking.balance) || 0;
-
-	const hasAdvancePayment = totalReceivedNum > 0;
-	const shootsCompleted =
-		shoots.length > 0 && shoots.every((s) => s.status === "completed");
-	const deliverablesCompleted =
-		deliverables.length > 0 &&
-		deliverables.every((d) => d.status === "completed");
-	const isFullyPaid =
-		totalReceivedNum >= packageCostNum && packageCostNum > 0;
-
-	const milestones = [
-		{ label: "Deposit", active: hasAdvancePayment },
-		{ label: "Shoots", active: shootsCompleted },
-		{ label: "Delivery", active: deliverablesCompleted },
-		{ label: "Paid", active: isFullyPaid },
-	];
-
-	const completedMilestones = milestones.filter((m) => m.active).length;
 
 	return (
 		<div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
@@ -114,13 +80,13 @@ export function BookingScrollSpy({
 											<h2 className="text-2xl font-bold tracking-tight">
 												{booking.name}
 											</h2>
-											<Badge
+											{/* <Badge
 												variant={getStatusVariant(
 													booking.status,
 												)}
 											>
 												{booking.status}
-											</Badge>
+											</Badge> */}
 										</div>
 										<div className="flex items-center gap-4 text-sm text-muted-foreground">
 											{booking.createdAt && (
@@ -151,8 +117,8 @@ export function BookingScrollSpy({
 								</div>
 							</div>
 
-							<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x bg-muted/10">
-								<div className="p-4 flex flex-col justify-center">
+							<div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x bg-muted/10 px-6">
+								<div className="py-4 pr-4 flex flex-col justify-center">
 									<span className="text-xs font-medium text-muted-foreground mb-1">
 										Package Cost
 									</span>
@@ -168,7 +134,7 @@ export function BookingScrollSpy({
 									</span>
 								</div>
 
-								<div className="p-4 flex flex-col justify-center">
+								<div className="py-4 px-4 flex flex-col justify-center">
 									<span className="text-xs font-medium text-muted-foreground mb-1">
 										Received
 									</span>
@@ -194,7 +160,7 @@ export function BookingScrollSpy({
 									</div>
 								</div>
 
-								<div className="p-4 flex flex-col justify-center">
+								<div className="py-4 pl-4 flex flex-col justify-center">
 									<span className="text-xs font-medium text-muted-foreground mb-1">
 										Balance
 									</span>
@@ -215,34 +181,6 @@ export function BookingScrollSpy({
 											? "Payment pending"
 											: "Fully paid"}
 									</span>
-								</div>
-
-								<div className="p-4 flex flex-col justify-center">
-									<div className="flex justify-between items-center mb-2">
-										<span className="text-xs font-medium text-muted-foreground">
-											Progress
-										</span>
-										<span className="text-[10px] font-medium bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
-											{completedMilestones}/4
-										</span>
-									</div>
-									<div className="flex gap-1 h-1.5 mb-1.5">
-										{milestones.map((m) => (
-											<div
-												key={m.label}
-												className={cn(
-													"flex-1 rounded-full transition-colors",
-													m.active
-														? "bg-primary"
-														: "bg-muted-foreground/20",
-												)}
-											/>
-										))}
-									</div>
-									<div className="flex justify-between text-[10px] text-muted-foreground">
-										<span>Start</span>
-										<span>Finish</span>
-									</div>
 								</div>
 							</div>
 						</div>
