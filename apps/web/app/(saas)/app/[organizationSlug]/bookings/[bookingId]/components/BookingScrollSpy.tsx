@@ -222,14 +222,8 @@ export function BookingScrollSpy({
 						ref={setScrollContainer}
 						className="flex-1 min-h-0 overflow-y-auto vertical-scrollbar scrollbar-sm -mx-6 2xl:border-x 2xl:border-b 2xl:rounded-b-xl"
 					>
-						<div className="px-6 py-6 space-y-16 pb-32">
+						<div className="pl-6 pr-3 py-6 space-y-16 pb-32 ">
 							<ScrollSpySection value="shoots">
-								<h3 className="font-bold text-2xl mb-2">
-									Shoots
-								</h3>
-								<p className="text-muted-foreground mb-6">
-									All scheduled photo/video sessions.
-								</p>
 								<ShootsTab bookingId={bookingId} />
 							</ScrollSpySection>
 

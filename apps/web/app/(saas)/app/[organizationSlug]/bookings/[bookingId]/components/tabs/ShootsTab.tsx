@@ -58,7 +58,7 @@ function ShootRow({
 		<button
 			type="button"
 			onClick={() => onEdit(shoot.id)}
-			className="w-full flex items-center justify-between gap-4 py-3 px-3 -mx-3 rounded-lg hover:bg-muted/50 transition-colors text-left group"
+			className="w-full flex items-center justify-between gap-4 py-3 px-3 rounded-lg hover:bg-muted/50 transition-colors text-left group"
 		>
 			<div className="flex-1 min-w-0 space-y-1">
 				<div className="font-medium truncate">
@@ -146,8 +146,18 @@ export function ShootsTab({ bookingId }: ShootsTabProps) {
 
 	return (
 		<div className="space-y-6">
-			<div className="flex justify-end">
-				<Button size="sm" onClick={() => openCreate()}>
+			<div className="flex justify-between items-center">
+				<div>
+					<h3 className="font-bold text-2xl mb-2">Shoots</h3>
+					<p className="text-muted-foreground mb-6">
+						All scheduled photo/video sessions.
+					</p>
+				</div>
+				<Button
+					variant="outline"
+					size="sm"
+					onClick={() => openCreate()}
+				>
 					<PlusIcon className="h-4 w-4 mr-1.5" />
 					Add Shoot
 				</Button>
