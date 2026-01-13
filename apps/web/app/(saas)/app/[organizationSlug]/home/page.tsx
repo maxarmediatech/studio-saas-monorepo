@@ -1,4 +1,5 @@
 import { getActiveOrganization, getSession } from "@saas/auth/lib/server";
+import { RecentVisitsWidget } from "@saas/studio/components/recent-visits/recent-visits-widget";
 import { notFound } from "next/navigation";
 
 type Props = {
@@ -67,14 +68,7 @@ export default async function HomePage({ params }: Props) {
 					</p>
 				</section>
 
-				<section className="rounded-lg border bg-card p-4">
-					<div className="text-sm font-medium text-muted-foreground">
-						Recent Activity
-					</div>
-					<p className="mt-2 text-sm text-muted-foreground">
-						Coming soon...
-					</p>
-				</section>
+				<RecentVisitsWidget organizationSlug={organizationSlug} />
 			</div>
 		</div>
 	);

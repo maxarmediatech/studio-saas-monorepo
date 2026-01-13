@@ -11,6 +11,7 @@
 		"format": "biome format . --write",
 		"typecheck": "turbo type-check",
 		"db:generate": "pnpm --filter @repo/database generate",
+		"db:baseline": "pnpm --filter @repo/database baseline",
 		"db:migrate": "pnpm --filter @repo/database migrate",
 		"db:seed": "turbo db:seed",
 		"db:studio": "pnpm --filter @repo/database studio"

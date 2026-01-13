@@ -2,6 +2,7 @@
 
 import { Button } from "@repo/ui/components/button";
 import { Skeleton } from "@repo/ui/components/skeleton";
+import { useTrackVisit } from "@saas/studio/hooks/tracking";
 import { bookingsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { AlertCircleIcon } from "lucide-react";
@@ -29,6 +30,12 @@ export function BookingDetailPageClient({
 	} = useQuery({
 		...bookingsApi.getOptions(bookingId),
 		enabled: !!bookingId,
+	});
+
+	useTrackVisit({
+		entityType: "booking",
+		entityId: bookingId,
+		enabled: !!bookingId && !isLoading && !isError,
 	});
 
 	const bookingData = booking?.data;

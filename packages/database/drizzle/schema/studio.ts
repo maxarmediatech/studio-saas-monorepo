@@ -1231,9 +1231,65 @@ export const attachments = pgTable(
 );
 
 // ============================================================================
+// RECENT VISITS TABLE
+// Tracks user's recently visited entities for quick access
+// ============================================================================
+
+export const recentVisits = pgTable(
+	"recent_visits",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 })
+			.notNull()
+			.references(() => organizations.id, { onDelete: "cascade" }),
+		userId: varchar("user_id", { length: 255 })
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+
+		entityType: varchar("entity_type", { length: 50 }).notNull(),
+		entityId: varchar("entity_id", { length: 255 }).notNull(),
+
+		visitedAt: timestamp("visited_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		// Unique constraint for upsert
+		uniqueIndex("recent_visits_user_org_entity_idx").on(
+			table.organizationId,
+			table.userId,
+			table.entityType,
+			table.entityId,
+		),
+		// Query index for listing recents
+		index("recent_visits_user_org_visited_idx").on(
+			table.organizationId,
+			table.userId,
+			table.visitedAt,
+		),
+	],
+);
+
+// ============================================================================
 // RELATIONS
 // All studio domain relations defined here
 // ============================================================================
+
+export const recentVisitsRelations = relations(recentVisits, ({ one }) => ({
+	organization: one(organizations, {
+		fields: [recentVisits.organizationId],
+		references: [organizations.id],
+	}),
+	user: one(users, {
+		fields: [recentVisits.userId],
+		references: [users.id],
+	}),
+}));
 
 export const configurationsRelations = relations(configurations, ({ one }) => ({
 	organization: one(organizations, {

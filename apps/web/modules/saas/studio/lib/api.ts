@@ -400,3 +400,15 @@ export const savedViewsMutations = {
 	delete: () => orpc.savedViews.delete.mutationOptions(),
 	toggleFavorite: () => orpc.savedViews.toggleFavorite.mutationOptions(),
 };
+
+export const recentVisitsApi = {
+	listOptions: (
+		input?: Parameters<
+			typeof orpc.recentVisits.list.queryOptions
+		>[0]["input"],
+	) => orpc.recentVisits.list.queryOptions({ input: input ?? {} }),
+};
+
+export const recentVisitsMutations = {
+	track: () => orpc.recentVisits.track.mutationOptions(),
+};
