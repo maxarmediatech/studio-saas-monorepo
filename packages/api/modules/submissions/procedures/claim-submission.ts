@@ -1,6 +1,7 @@
 import { ORPCError } from "@orpc/server";
-import { and, assignmentSubmissions, db, eq } from "@repo/database";
+import { and, assignmentSubmissions, db, deliverables, eq, tasks } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { trackStatusChange } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	claimSubmissionInputSchema,
@@ -69,6 +70,33 @@ export const claimSubmission = studioProtectedProcedure
 			});
 		}
 
+		// Get parent entity name for activity tracking
+		let parentEntityName = "Unknown";
+		let parentEntityType: "task" | "deliverable" | undefined;
+		let parentEntityId: string | undefined;
+
+		if (submission.taskId) {
+			const task = await db.query.tasks.findFirst({
+				where: eq(tasks.id, submission.taskId),
+				columns: { id: true, name: true },
+			});
+			if (task) {
+				parentEntityName = task.name;
+				parentEntityType = "task";
+				parentEntityId = task.id;
+			}
+		} else if (submission.deliverableId) {
+			const deliverable = await db.query.deliverables.findFirst({
+				where: eq(deliverables.id, submission.deliverableId),
+				columns: { id: true, name: true },
+			});
+			if (deliverable) {
+				parentEntityName = deliverable.name;
+				parentEntityType = "deliverable";
+				parentEntityId = deliverable.id;
+			}
+		}
+
 		// Claim the submission
 		await db
 			.update(assignmentSubmissions)
@@ -78,6 +106,18 @@ export const claimSubmission = studioProtectedProcedure
 				updatedAt: new Date(),
 			})
 			.where(eq(assignmentSubmissions.id, id));
+
+		// Track activity (non-blocking)
+		trackStatusChange(context, {
+			entityType: "submission",
+			entityId: id,
+			entityName: parentEntityName,
+			oldStatus: submission.status,
+			newStatus: "in_review",
+			parentEntityType,
+			parentEntityId,
+			parentEntityName,
+		}).catch(console.error);
 
 		return {
 			data: { id },

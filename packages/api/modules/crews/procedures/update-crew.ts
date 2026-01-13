@@ -1,6 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { and, crews, db, eq, isNull, ne } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { detectChanges, trackFieldChanges } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	updateCrewInputSchema,
@@ -78,6 +79,24 @@ export const updateCrew = studioProtectedProcedure
 		if (metadata !== undefined) updates.metadata = metadata;
 
 		await db.update(crews).set(updates).where(eq(crews.id, id));
+
+		// Track activity (non-blocking)
+		const changes = detectChanges(existing, input, [
+			"name",
+			"email",
+			"phoneNumber",
+			"role",
+			"status",
+			"dailyRate",
+		]);
+		if (changes.length > 0) {
+			trackFieldChanges(context, {
+				entityType: "crew",
+				entityId: id,
+				entityName: existing.name,
+				changes,
+			}).catch(console.error);
+		}
 
 		return {
 			data: { id },

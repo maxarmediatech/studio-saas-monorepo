@@ -9,6 +9,7 @@ import {
 	isNull,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { trackAssignment } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	assignCrewToDeliverableInputSchema,
@@ -103,6 +104,18 @@ export const assignCrewToDeliverable = studioProtectedProcedure
 				})
 				.where(eq(deliverables.id, deliverableId));
 		}
+
+		// Track activity (non-blocking)
+		trackAssignment(context, {
+			entityType: "deliverable_assignment",
+			entityId: created.id,
+			entityName: crew.name,
+			action: "assigned",
+			parentEntityType: "deliverable",
+			parentEntityId: deliverable.id,
+			parentEntityName: deliverable.name,
+			metadata: { crewId: crew.id, crewName: crew.name, isLead: isLead ?? false },
+		}).catch(console.error);
 
 		return {
 			data: { id: created.id },

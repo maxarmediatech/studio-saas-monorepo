@@ -12,6 +12,7 @@ import {
 	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { trackActivity } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	type TransactionClient,
@@ -282,6 +283,22 @@ export const createBooking = studioProtectedProcedure
 					uploadedBy: context.user.id,
 				});
 			}
+
+			// Track activity (inside transaction to get name)
+			trackActivity(
+				{ organizationId: context.organizationId, user: context.user },
+				{
+					entityType: "booking",
+					entityId: created.id,
+					entityName: name,
+					action: "created",
+					metadata: {
+						referenceNumber,
+						packageType,
+						packageCost,
+					},
+				},
+			).catch(console.error);
 
 			return {
 				data: { id: created.id },

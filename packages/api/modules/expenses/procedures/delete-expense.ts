@@ -10,6 +10,7 @@ import {
 	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { formatAmount, trackActivity } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	deleteExpenseInputSchema,
@@ -99,6 +100,14 @@ export const deleteExpense = studioProtectedProcedure
 					})
 					.where(eq(bookings.id, assignment.bookingId));
 			}
+
+			// Track activity (non-blocking)
+			trackActivity(context, {
+				entityType: "expense",
+				entityId: id,
+				entityName: `${formatAmount(expense.amount)} - ${expense.description}`,
+				action: "deleted",
+			}).catch(console.error);
 
 			return {
 				data: { id },

@@ -2044,11 +2044,100 @@ export const organizationRelations = relations(organizations, ({ many }) => ({
 	invoices: many(invoices),
 	attachments: many(attachments),
 	savedViews: many(savedViews),
+	activities: many(activities),
+}));
+
+// ============================================================================
+// ACTIVITIES TABLE
+// Organization-wide activity tracking for audit and feed display
+// ============================================================================
+
+export const activities = pgTable(
+	"activities",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 })
+			.notNull()
+			.references(() => organizations.id, { onDelete: "cascade" }),
+
+		// Who performed the action
+		actorId: varchar("actor_id", { length: 255 }).notNull(),
+		actorType: varchar("actor_type", { length: 20 }).notNull(), // 'user' | 'crew' | 'system'
+		actorName: text("actor_name").notNull(), // Denormalized for display
+
+		// What entity was affected
+		entityType: varchar("entity_type", { length: 50 }).notNull(),
+		entityId: varchar("entity_id", { length: 255 }).notNull(),
+		entityName: text("entity_name").notNull(), // Denormalized: "Smith Wedding"
+
+		// Parent context (for nested entities like tasks belonging to bookings)
+		parentEntityType: varchar("parent_entity_type", { length: 50 }),
+		parentEntityId: varchar("parent_entity_id", { length: 255 }),
+		parentEntityName: text("parent_entity_name"),
+
+		// What happened
+		action: varchar("action", { length: 50 }).notNull(),
+
+		// What changed (for updates)
+		field: varchar("field", { length: 50 }),
+		oldValue: text("old_value"),
+		newValue: text("new_value"),
+		oldIdentifier: varchar("old_identifier", { length: 255 }), // UUID for relations
+		newIdentifier: varchar("new_identifier", { length: 255 }),
+
+		// Grouping & metadata
+		epoch: decimal("epoch", { precision: 20, scale: 6 }), // Groups related activities
+		metadata: jsonb("metadata"),
+
+		// Timestamp only - activities are immutable, no updatedAt/deletedAt
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		// Primary query: recent activities for an organization
+		index("activities_org_created_idx").on(
+			table.organizationId,
+			table.createdAt,
+		),
+		// Query by entity: activity history for a specific entity
+		index("activities_entity_idx").on(
+			table.entityType,
+			table.entityId,
+			table.createdAt,
+		),
+		// Query by actor: what has a user/crew done
+		index("activities_actor_idx").on(
+			table.actorId,
+			table.actorType,
+			table.createdAt,
+		),
+		// Query by parent: activities for a booking's children
+		index("activities_parent_idx").on(
+			table.parentEntityType,
+			table.parentEntityId,
+			table.createdAt,
+		),
+		// Filter by action type
+		index("activities_org_action_idx").on(table.organizationId, table.action),
+	],
+);
+
+export const activityRelations = relations(activities, ({ one }) => ({
+	organization: one(organizations, {
+		fields: [activities.organizationId],
+		references: [organizations.id],
+	}),
 }));
 
 // ============================================================================
 // TYPE EXPORTS
 // ============================================================================
+
+export type Activity = typeof activities.$inferSelect;
+export type NewActivity = typeof activities.$inferInsert;
 
 export type Configuration = typeof configurations.$inferSelect;
 export type NewConfiguration = typeof configurations.$inferInsert;

@@ -1,6 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { and, clients, db, eq, isNull, ne, or } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { detectChanges, trackFieldChanges } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	updateClientInputSchema,
@@ -95,6 +96,22 @@ export const updateClient = studioProtectedProcedure
 		if (metadata !== undefined) updates.metadata = metadata;
 
 		await db.update(clients).set(updates).where(eq(clients.id, id));
+
+		// Track activity (non-blocking)
+		const changes = detectChanges(existing, input, [
+			"name",
+			"email",
+			"phoneNumber",
+			"address",
+		]);
+		if (changes.length > 0) {
+			trackFieldChanges(context, {
+				entityType: "client",
+				entityId: id,
+				entityName: existing.name,
+				changes,
+			}).catch(console.error);
+		}
 
 		return {
 			data: { id },

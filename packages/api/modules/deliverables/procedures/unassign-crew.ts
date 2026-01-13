@@ -2,6 +2,7 @@ import { ORPCError } from "@orpc/server";
 import {
 	and,
 	count,
+	crews,
 	db,
 	deliverableAssignments,
 	deliverables,
@@ -9,6 +10,7 @@ import {
 	isNull,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { trackAssignment } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	unassignCrewFromDeliverableInputSchema,
@@ -59,10 +61,30 @@ export const unassignCrewFromDeliverable = studioProtectedProcedure
 			});
 		}
 
+		// Get crew info for activity tracking
+		const crew = await db.query.crews.findFirst({
+			where: eq(crews.id, crewId),
+			columns: { id: true, name: true },
+		});
+
 		// Delete the assignment
 		await db
 			.delete(deliverableAssignments)
 			.where(eq(deliverableAssignments.id, assignment.id));
+
+		// Track activity (non-blocking)
+		if (crew) {
+			trackAssignment(context, {
+				entityType: "deliverable_assignment",
+				entityId: assignment.id,
+				entityName: crew.name,
+				action: "unassigned",
+				parentEntityType: "deliverable",
+				parentEntityId: deliverable.id,
+				parentEntityName: deliverable.name,
+				metadata: { crewId: crew.id, crewName: crew.name },
+			}).catch(console.error);
+		}
 
 		// Check if there are any remaining assignments
 		const [remainingCount] = await db

@@ -1,6 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { and, bookings, db, eq, isNull, shoots } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { trackActivity } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	createShootInputSchema,
@@ -72,6 +73,21 @@ export const createShoot = studioProtectedProcedure
 				message: "Failed to create shoot",
 			});
 		}
+
+		// Track activity (non-blocking)
+		trackActivity(
+			{ organizationId: context.organizationId, user: context.user },
+			{
+				entityType: "shoot",
+				entityId: created.id,
+				entityName: name,
+				action: "created",
+				parentEntityType: "booking",
+				parentEntityId: bookingId,
+				parentEntityName: booking.name,
+				metadata: { shootType, shootDate },
+			},
+		).catch(console.error);
 
 		return {
 			data: { id: created.id },

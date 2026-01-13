@@ -432,3 +432,13 @@ export const stickiesMutations = {
 	update: () => orpc.stickies.update.mutationOptions(),
 	delete: () => orpc.stickies.delete.mutationOptions(),
 };
+
+// ============================================================================
+// ACTIVITIES QUERY OPTIONS
+// ============================================================================
+
+export const activitiesApi = {
+	listOptions: (
+		input?: Parameters<typeof orpc.activities.list.queryOptions>[0]["input"],
+	) => orpc.activities.list.queryOptions({ input: input ?? {} }),
+};

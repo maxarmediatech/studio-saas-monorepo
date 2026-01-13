@@ -11,6 +11,7 @@ import {
 	tasks,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { trackActivity } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	submitTaskInputSchema,
@@ -120,6 +121,18 @@ export const submitTask = studioProtectedProcedure
 				updatedBy: context.user.id,
 			})
 			.where(eq(tasks.id, taskId));
+
+		// Track activity (non-blocking)
+		trackActivity(context, {
+			entityType: "submission",
+			entityId: created.id,
+			entityName: task.name,
+			action: "submitted",
+			parentEntityType: "task",
+			parentEntityId: task.id,
+			parentEntityName: task.name,
+			metadata: { crewId: crew.id, crewName: crew.name },
+		}).catch(console.error);
 
 		return {
 			data: { id: created.id },

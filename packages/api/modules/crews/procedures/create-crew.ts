@@ -1,6 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { and, crews, db, eq, isNull } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { trackActivity } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	createCrewInputSchema,
@@ -61,6 +62,15 @@ export const createCrew = studioProtectedProcedure
 				message: "Failed to create crew member",
 			});
 		}
+
+		// Track activity (non-blocking)
+		trackActivity(context, {
+			entityType: "crew",
+			entityId: created.id,
+			entityName: name,
+			action: "created",
+			metadata: { role },
+		}).catch(console.error);
 
 		return {
 			data: { id: created.id },

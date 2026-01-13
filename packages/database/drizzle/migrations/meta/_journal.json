@@ -22,6 +22,13 @@
       "when": 1768312639075,
       "tag": "0002_green_purple_man",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1768319271374,
+      "tag": "0003_pale_saracen",
+      "breakpoints": true
     }
   ]
 }

@@ -12,6 +12,7 @@ import {
 	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { formatAmount, trackActivity } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	createExpenseInputSchema,
@@ -165,6 +166,15 @@ export const createExpense = studioProtectedProcedure
 						.where(eq(bookings.id, assignment.bookingId!));
 				}
 
+				// Track activity (non-blocking)
+				trackActivity(context, {
+					entityType: "expense",
+					entityId: created.id,
+					entityName: `${formatAmount(amount)} - ${description}`,
+					action: "created",
+					metadata: { amount, category, vendor },
+				}).catch(console.error);
+
 				return {
 					data: { id: created.id },
 					message: "Expense created successfully",
@@ -197,6 +207,15 @@ export const createExpense = studioProtectedProcedure
 				message: "Failed to create expense",
 			});
 		}
+
+		// Track activity (non-blocking)
+		trackActivity(context, {
+			entityType: "expense",
+			entityId: created.id,
+			entityName: `${formatAmount(amount)} - ${description}`,
+			action: "created",
+			metadata: { amount, category, vendor },
+		}).catch(console.error);
 
 		return {
 			data: { id: created.id },

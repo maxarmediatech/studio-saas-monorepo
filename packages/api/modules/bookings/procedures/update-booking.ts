@@ -1,6 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { and, attachments, bookings, db, eq, isNull } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { detectChanges, trackFieldChanges } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	updateBookingInputSchema,
@@ -65,6 +66,25 @@ export const updateBooking = studioProtectedProcedure
 		}
 
 		await db.update(bookings).set(updates).where(eq(bookings.id, id));
+
+		// Track field changes (non-blocking)
+		const changes = detectChanges(
+			existing,
+			{ name, bookingType, packageType, packageCost, note },
+			["name", "bookingType", "packageType", "packageCost", "note"],
+		);
+
+		if (changes.length > 0) {
+			trackFieldChanges(
+				{ organizationId: context.organizationId, user: context.user },
+				{
+					entityType: "booking",
+					entityId: id,
+					entityName: name ?? existing.name,
+					changes,
+				},
+			).catch(console.error);
+		}
 
 		if (contractAttachment !== undefined) {
 			await db

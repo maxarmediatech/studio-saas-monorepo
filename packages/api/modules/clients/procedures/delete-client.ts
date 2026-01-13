@@ -1,6 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { and, clients, db, eq } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { trackActivity } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	deleteClientInputSchema,
@@ -53,6 +54,14 @@ export const deleteClient = studioProtectedProcedure
 				updatedBy: context.user.id,
 			})
 			.where(eq(clients.id, id));
+
+		// Track activity (non-blocking)
+		trackActivity(context, {
+			entityType: "client",
+			entityId: id,
+			entityName: existing.name,
+			action: "deleted",
+		}).catch(console.error);
 
 		return {
 			data: { id },

@@ -9,6 +9,7 @@ import {
 	shoots,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { trackAssignment } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	assignCrewInputSchema,
@@ -93,6 +94,18 @@ export const assignCrew = studioProtectedProcedure
 				message: "Failed to assign crew",
 			});
 		}
+
+		// Track activity (non-blocking)
+		trackAssignment(context, {
+			entityType: "shoot_assignment",
+			entityId: created.id,
+			entityName: crew.name,
+			action: "assigned",
+			parentEntityType: "shoot",
+			parentEntityId: shoot.id,
+			parentEntityName: shoot.name,
+			metadata: { crewId: crew.id, crewName: crew.name, role: assignmentRole },
+		}).catch(console.error);
 
 		return {
 			data: { id: created.id },

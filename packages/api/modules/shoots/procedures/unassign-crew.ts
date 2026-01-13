@@ -1,6 +1,7 @@
 import { ORPCError } from "@orpc/server";
-import { and, db, eq, isNull, shootAssignments, shoots } from "@repo/database";
+import { and, crews, db, eq, isNull, shootAssignments, shoots } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { trackAssignment } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	unassignCrewInputSchema,
@@ -37,7 +38,7 @@ export const unassignCrew = studioProtectedProcedure
 			});
 		}
 
-		// Find the assignment
+		// Find the assignment with crew info
 		const assignment = await db.query.shootAssignments.findFirst({
 			where: and(
 				eq(shootAssignments.shootId, shootId),
@@ -51,10 +52,30 @@ export const unassignCrew = studioProtectedProcedure
 			});
 		}
 
+		// Get crew info for activity tracking
+		const crew = await db.query.crews.findFirst({
+			where: eq(crews.id, crewId),
+			columns: { id: true, name: true },
+		});
+
 		// Delete assignment
 		await db
 			.delete(shootAssignments)
 			.where(eq(shootAssignments.id, assignment.id));
+
+		// Track activity (non-blocking)
+		if (crew) {
+			trackAssignment(context, {
+				entityType: "shoot_assignment",
+				entityId: assignment.id,
+				entityName: crew.name,
+				action: "unassigned",
+				parentEntityType: "shoot",
+				parentEntityId: shoot.id,
+				parentEntityName: shoot.name,
+				metadata: { crewId: crew.id, crewName: crew.name },
+			}).catch(console.error);
+		}
 
 		return {
 			data: { id: assignment.id },

@@ -1,6 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { and, bookings, db, deliverables, eq, isNull } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { trackActivity } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	createDeliverableInputSchema,
@@ -71,6 +72,20 @@ export const createDeliverable = studioProtectedProcedure
 				message: "Failed to create deliverable",
 			});
 		}
+
+		// Track activity (non-blocking)
+		trackActivity(
+			{ organizationId: context.organizationId, user: context.user },
+			{
+				entityType: "deliverable",
+				entityId: created.id,
+				entityName: name,
+				action: "created",
+				parentEntityType: "booking",
+				parentEntityId: bookingId,
+				parentEntityName: booking.name,
+			},
+		).catch(console.error);
 
 		return {
 			data: { id: created.id },

@@ -10,6 +10,7 @@ import {
 	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { detectChanges, formatAmount, trackFieldChanges } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	updateExpenseInputSchema,
@@ -162,6 +163,34 @@ export const updateExpense = studioProtectedProcedure
 					}
 				}
 
+				// Track activity (non-blocking)
+				const changes = detectChanges(expense, updates, [
+					"description",
+					"amount",
+					"category",
+					"vendor",
+					"billTo",
+				]);
+				if (changes.length > 0) {
+					// Format amount changes for readability
+					const formattedChanges = changes.map((c) => {
+						if (c.field === "amount") {
+							return {
+								...c,
+								oldValue: c.oldValue ? formatAmount(c.oldValue) : null,
+								newValue: c.newValue ? formatAmount(c.newValue) : null,
+							};
+						}
+						return c;
+					});
+					trackFieldChanges(context, {
+						entityType: "expense",
+						entityId: id,
+						entityName: expense.description,
+						changes: formattedChanges,
+					}).catch(console.error);
+				}
+
 				return {
 					data: { id },
 					message: "Expense updated successfully",
@@ -171,6 +200,34 @@ export const updateExpense = studioProtectedProcedure
 
 		// Simple update without amount change
 		await db.update(expenses).set(updateData).where(eq(expenses.id, id));
+
+		// Track activity (non-blocking)
+		const changes = detectChanges(expense, updates, [
+			"description",
+			"amount",
+			"category",
+			"vendor",
+			"billTo",
+		]);
+		if (changes.length > 0) {
+			// Format amount changes for readability
+			const formattedChanges = changes.map((c) => {
+				if (c.field === "amount") {
+					return {
+						...c,
+						oldValue: c.oldValue ? formatAmount(c.oldValue) : null,
+						newValue: c.newValue ? formatAmount(c.newValue) : null,
+					};
+				}
+				return c;
+			});
+			trackFieldChanges(context, {
+				entityType: "expense",
+				entityId: id,
+				entityName: expense.description,
+				changes: formattedChanges,
+			}).catch(console.error);
+		}
 
 		return {
 			data: { id },
