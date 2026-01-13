@@ -1,6 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { and, db, eq, shoots } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { trackActivity } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	deleteShootInputSchema,
@@ -53,6 +54,17 @@ export const deleteShoot = studioProtectedProcedure
 				updatedBy: context.user.id,
 			})
 			.where(eq(shoots.id, id));
+
+		// Track activity (non-blocking)
+		trackActivity(
+			{ organizationId: context.organizationId, user: context.user },
+			{
+				entityType: "shoot",
+				entityId: id,
+				entityName: existing.name,
+				action: "deleted",
+			},
+		).catch(console.error);
 
 		return {
 			data: { id },

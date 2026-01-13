@@ -1,6 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { and, db, deliverables, eq, isNull } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { trackActivity } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	deleteDeliverableInputSchema,
@@ -47,6 +48,17 @@ export const deleteDeliverable = studioProtectedProcedure
 				updatedBy: context.user.id,
 			})
 			.where(eq(deliverables.id, id));
+
+		// Track activity (non-blocking)
+		trackActivity(
+			{ organizationId: context.organizationId, user: context.user },
+			{
+				entityType: "deliverable",
+				entityId: id,
+				entityName: deliverable.name,
+				action: "deleted",
+			},
+		).catch(console.error);
 
 		return {
 			data: { id },

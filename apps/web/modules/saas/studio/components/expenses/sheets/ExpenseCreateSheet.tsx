@@ -61,6 +61,9 @@ export function ExpenseCreateSheet() {
 			await queryClient.invalidateQueries({
 				queryKey: orpc.bookings.key(),
 			});
+			await queryClient.invalidateQueries({
+				queryKey: orpc.activities.key(),
+			});
 			toast.success("Expense added successfully");
 			close();
 		} catch (error) {

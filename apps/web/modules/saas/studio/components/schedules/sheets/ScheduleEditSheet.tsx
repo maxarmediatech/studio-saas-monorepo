@@ -54,6 +54,9 @@ export function ScheduleEditSheet() {
 			await queryClient.invalidateQueries({
 				queryKey: orpc.bookings.key(),
 			});
+			await queryClient.invalidateQueries({
+				queryKey: orpc.activities.key(),
+			});
 			toast.success("Payment schedule updated successfully");
 			close();
 		} catch (error) {

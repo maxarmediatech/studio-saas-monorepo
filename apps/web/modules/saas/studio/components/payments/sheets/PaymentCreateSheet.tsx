@@ -44,6 +44,10 @@ export function PaymentCreateSheet() {
 			await queryClient.invalidateQueries({
 				queryKey: orpc.bookings.key(),
 			});
+			// Invalidate activities feed to show new payment activity
+			await queryClient.invalidateQueries({
+				queryKey: orpc.activities.key(),
+			});
 			toast.success("Payment recorded successfully");
 			close();
 		} catch (error) {

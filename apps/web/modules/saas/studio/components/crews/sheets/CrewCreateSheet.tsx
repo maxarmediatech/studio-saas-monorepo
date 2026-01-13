@@ -29,6 +29,9 @@ export function CrewCreateSheet() {
 			queryClient.invalidateQueries({
 				queryKey: orpc.crews.key(),
 			});
+			queryClient.invalidateQueries({
+				queryKey: orpc.activities.key(),
+			});
 			close();
 		},
 		onError: (error) => {

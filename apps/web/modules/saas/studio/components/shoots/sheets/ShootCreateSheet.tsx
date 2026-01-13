@@ -62,6 +62,9 @@ export function ShootCreateSheet() {
 			await queryClient.invalidateQueries({
 				queryKey: orpc.bookings.key(),
 			});
+			await queryClient.invalidateQueries({
+				queryKey: orpc.activities.key(),
+			});
 			toast.success("Shoot added successfully");
 			close();
 		} catch (error) {

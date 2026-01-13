@@ -31,6 +31,7 @@ import {
 	shootsMutations,
 	studioQueryKeys,
 } from "@saas/studio/lib/api";
+import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
@@ -189,6 +190,9 @@ export function ShootsTableClient({
 			setShootToDelete(null);
 			queryClient.invalidateQueries({
 				queryKey: studioQueryKeys.shoots.all,
+			});
+			queryClient.invalidateQueries({
+				queryKey: orpc.activities.key(),
 			});
 		},
 		onError: (error) => {

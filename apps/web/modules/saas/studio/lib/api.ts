@@ -81,6 +81,10 @@ export const studioQueryKeys = {
 			["studio", "expenses", "list", filters] as const,
 		detail: (id: string) => ["studio", "expenses", "detail", id] as const,
 	},
+	// Activities (for cache invalidation on mutations)
+	activities: {
+		all: ["studio", "activities"] as const,
+	},
 } as const;
 
 // ============================================================================

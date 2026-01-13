@@ -32,6 +32,7 @@ import {
 	deliverablesMutations,
 	studioQueryKeys,
 } from "@saas/studio/lib/api";
+import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
@@ -158,6 +159,9 @@ export function DeliverablesTableClient({
 			setDeliverableToDelete(null);
 			queryClient.invalidateQueries({
 				queryKey: studioQueryKeys.deliverables.all,
+			});
+			queryClient.invalidateQueries({
+				queryKey: orpc.activities.key(),
 			});
 		},
 		onError: (error) => {

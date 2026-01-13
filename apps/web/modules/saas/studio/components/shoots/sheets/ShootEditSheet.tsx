@@ -126,6 +126,9 @@ export function ShootEditSheet() {
 			await queryClient.invalidateQueries({
 				queryKey: orpc.bookings.key(),
 			});
+			await queryClient.invalidateQueries({
+				queryKey: orpc.activities.key(),
+			});
 			toast.success("Shoot updated successfully");
 			close();
 		} catch (error) {

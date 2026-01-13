@@ -225,9 +225,14 @@ export function ActivityFeedWidget({
 				? { limit: 15, entityTypes: PAYMENT_ENTITY_TYPES }
 				: { limit: 15, entityType: filter };
 
-	const { data, isLoading, error } = useQuery(
-		activitiesApi.listOptions(queryParams),
-	);
+	const { data, isLoading, error } = useQuery({
+		...activitiesApi.listOptions(queryParams),
+		// Refetch every 30s for near-real-time updates without WebSockets
+		// Also refetch when window regains focus (user comes back to tab)
+		refetchInterval: 30_000,
+		refetchOnWindowFocus: true,
+		staleTime: 10_000, // Consider data stale after 10s
+	});
 
 	// No client-side filtering needed - server handles it
 	const activities = data?.data ?? [];

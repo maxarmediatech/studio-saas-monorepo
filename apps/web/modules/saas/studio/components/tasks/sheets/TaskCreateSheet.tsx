@@ -58,6 +58,9 @@ export function TaskCreateSheet() {
 			await queryClient.invalidateQueries({
 				queryKey: orpc.bookings.key(),
 			});
+			await queryClient.invalidateQueries({
+				queryKey: orpc.activities.key(),
+			});
 			toast.success("Task added successfully");
 			close();
 		} catch (error) {

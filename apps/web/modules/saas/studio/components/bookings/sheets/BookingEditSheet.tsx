@@ -37,6 +37,9 @@ export function BookingEditSheet() {
 			queryClient.invalidateQueries({
 				queryKey: orpc.bookings.key(),
 			});
+			queryClient.invalidateQueries({
+				queryKey: orpc.activities.key(),
+			});
 			close();
 		},
 		onError: (error) => {

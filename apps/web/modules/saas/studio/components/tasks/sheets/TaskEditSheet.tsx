@@ -77,6 +77,9 @@ export function TaskEditSheet() {
 			await queryClient.invalidateQueries({
 				queryKey: orpc.tasks.key(),
 			});
+			await queryClient.invalidateQueries({
+				queryKey: orpc.activities.key(),
+			});
 			toast.success("Task updated successfully");
 			close();
 		} catch (error) {

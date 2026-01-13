@@ -35,6 +35,9 @@ export function ClientEditSheet() {
 			queryClient.invalidateQueries({
 				queryKey: orpc.clients.key(),
 			});
+			queryClient.invalidateQueries({
+				queryKey: orpc.activities.key(),
+			});
 			close();
 		},
 		onError: (error) => {

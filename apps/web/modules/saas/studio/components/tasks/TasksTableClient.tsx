@@ -195,6 +195,9 @@ export function TasksTableClient({ organizationSlug }: TasksTableClientProps) {
 			queryClient.invalidateQueries({
 				queryKey: orpc.tasks.key(),
 			});
+			queryClient.invalidateQueries({
+				queryKey: orpc.activities.key(),
+			});
 		},
 		onError: (error) => {
 			toast.error(error.message || "Failed to delete task");

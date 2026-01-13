@@ -10,6 +10,7 @@ import {
 	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../../orpc/procedures";
+import { formatAmount, trackActivity } from "../../../activities/lib";
 import { requirePermission } from "../../../studio/lib/permissions";
 import {
 	deleteReceivedInputSchema,
@@ -45,6 +46,12 @@ export const deleteReceived = studioProtectedProcedure
 				message: "Received payment not found",
 			});
 		}
+
+		// Fetch booking for activity tracking
+		const booking = await db.query.bookings.findFirst({
+			where: eq(bookings.id, received.bookingId),
+			columns: { name: true },
+		});
 
 		const amount = Number.parseFloat(received.amount);
 
@@ -136,6 +143,21 @@ export const deleteReceived = studioProtectedProcedure
 					})
 					.where(eq(paymentSchedules.id, schedule.id));
 			}
+
+			// Track activity (non-blocking)
+			trackActivity(
+				{ organizationId: context.organizationId, user: context.user },
+				{
+					entityType: "received_amount",
+					entityId: id,
+					entityName: `${formatAmount(received.amount)} via ${received.paymentMethod}`,
+					action: "deleted",
+					parentEntityType: "booking",
+					parentEntityId: received.bookingId,
+					parentEntityName: booking?.name ?? "Unknown Booking",
+					metadata: { amount: received.amount, paymentMethod: received.paymentMethod },
+				},
+			).catch(console.error);
 
 			return {
 				data: { id },

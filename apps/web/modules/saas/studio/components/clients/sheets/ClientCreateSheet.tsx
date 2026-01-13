@@ -31,6 +31,9 @@ export function ClientCreateSheet() {
 			queryClient.invalidateQueries({
 				queryKey: orpc.clients.key(),
 			});
+			queryClient.invalidateQueries({
+				queryKey: orpc.activities.key(),
+			});
 			// Execute callback if one was registered (e.g., from booking form)
 			executeCallback(data.data.id);
 			close();
