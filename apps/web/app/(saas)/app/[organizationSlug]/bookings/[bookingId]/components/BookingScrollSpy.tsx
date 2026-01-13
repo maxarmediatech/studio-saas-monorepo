@@ -16,13 +16,11 @@ import {
 	Camera,
 	CheckSquare,
 	IndianRupee,
-	Info,
 	Package,
 } from "lucide-react";
 import * as React from "react";
 import { DeliverablesTab } from "./tabs/DeliverablesTab";
 import { FinancesTab } from "./tabs/FinancesTab";
-import { OverviewTab } from "./tabs/OverviewTab";
 import { ShootsTab } from "./tabs/ShootsTab";
 import { TasksTab } from "./tabs/TasksTab";
 import { formatCurrency, formatPackageType } from "./utils";
@@ -46,7 +44,6 @@ interface BookingScrollSpyProps {
 }
 
 const SECTIONS = [
-	{ id: "overview", label: "Overview", icon: Info },
 	{ id: "shoots", label: "Shoots", icon: Camera },
 	{ id: "deliverables", label: "Deliverables", icon: Package },
 	{ id: "tasks", label: "Tasks", icon: CheckSquare },
@@ -225,19 +222,6 @@ export function BookingScrollSpy({
 						className="flex-1 min-h-0 overflow-y-auto vertical-scrollbar scrollbar-sm -mx-6 2xl:border-x 2xl:border-b 2xl:rounded-b-xl"
 					>
 						<div className="px-6 py-6 space-y-16 pb-32">
-							<ScrollSpySection value="overview">
-								<h3 className="font-bold text-2xl mb-2">
-									Overview
-								</h3>
-								<p className="text-muted-foreground mb-6">
-									Booking summary and milestone progress.
-								</p>
-								<OverviewTab
-									bookingId={bookingId}
-									booking={booking}
-								/>
-							</ScrollSpySection>
-
 							<ScrollSpySection value="shoots">
 								<h3 className="font-bold text-2xl mb-2">
 									Shoots

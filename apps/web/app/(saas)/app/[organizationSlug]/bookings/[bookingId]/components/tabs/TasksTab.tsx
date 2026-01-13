@@ -2,38 +2,24 @@
 
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
-import {
-	Card,
-	CardContent,
-	CardHeader,
-	CardTitle,
-} from "@repo/ui/components/card";
-import { Progress } from "@repo/ui/components/progress";
 import { Skeleton } from "@repo/ui/components/skeleton";
+import { cn } from "@repo/ui/lib/utils";
 import { useTaskParams } from "@saas/studio/hooks/params";
 import { tasksApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
-import { format, isToday, isPast } from "date-fns";
+import { format, isPast, isToday } from "date-fns";
 import {
 	AlertCircleIcon,
 	CalendarIcon,
-	CheckSquare,
-	PencilIcon,
+	CheckSquareIcon,
 	PlusIcon,
 } from "lucide-react";
-import { getStatusVariant, getPriorityVariant } from "../utils";
-
-// ============================================================================
-// Types
-// ============================================================================
+import { getPriorityVariant, getStatusVariant } from "../utils";
 
 interface TasksTabProps {
 	bookingId: string;
 }
 
-type TaskStatus = "pending" | "in_progress" | "completed" | "cancelled";
-
-// Task type for internal use
 type Task = {
 	id: string;
 	name: string;
@@ -43,47 +29,9 @@ type Task = {
 	dueDate?: string | null;
 };
 
-// ============================================================================
-// Utilities
-// ============================================================================
+const statusOrder = ["in_progress", "pending", "completed", "cancelled"];
 
-function groupTasksByStatus(tasks: Task[]) {
-	const order: TaskStatus[] = [
-		"in_progress",
-		"pending",
-		"completed",
-		"cancelled",
-	];
-	const grouped = new Map<string, Task[]>();
-
-	for (const status of order) {
-		grouped.set(status, []);
-	}
-
-	for (const task of tasks) {
-		const status = task.status as TaskStatus;
-		if (grouped.has(status)) {
-			grouped.get(status)?.push(task);
-		} else {
-			grouped.get("pending")?.push(task);
-		}
-	}
-
-	// Remove empty groups
-	for (const [key, value] of grouped.entries()) {
-		if (value.length === 0) {
-			grouped.delete(key);
-		}
-	}
-
-	return grouped;
-}
-
-// ============================================================================
-// Sub-Components
-// ============================================================================
-
-function TaskCard({
+function TaskRow({
 	task,
 	onEdit,
 }: {
@@ -94,120 +42,60 @@ function TaskCard({
 		task.dueDate &&
 		isPast(new Date(task.dueDate)) &&
 		!isToday(new Date(task.dueDate)) &&
-		task.status !== "completed";
+		task.status !== "completed" &&
+		task.status !== "cancelled";
+
+	const isCompleted = task.status === "completed";
 
 	return (
-		<div className="flex items-start justify-between gap-3 rounded-lg border bg-background p-3 hover:bg-muted/50 transition-colors">
-			<div className="flex-1 space-y-1.5 min-w-0">
-				<h4 className="font-medium truncate">{task.name}</h4>
-
-				<div className="flex items-center gap-1.5 flex-wrap">
-					<Badge
-						variant={getStatusVariant(task.status)}
-						className="text-xs capitalize"
-					>
-						{task.status.replace("_", " ")}
-					</Badge>
-
-					{task.priority && (
+		<button
+			type="button"
+			onClick={() => onEdit(task.id)}
+			className="w-full flex items-center justify-between gap-4 py-3 px-3 -mx-3 rounded-lg hover:bg-muted/50 transition-colors text-left"
+		>
+			<div className="flex-1 min-w-0 space-y-1">
+				<div
+					className={cn(
+						"font-medium truncate",
+						isCompleted && "text-muted-foreground line-through",
+					)}
+				>
+					{task.name}
+				</div>
+				<div className="flex items-center gap-2 text-xs">
+					{task.dueDate && (
+						<span
+							className={cn(
+								"flex items-center gap-1",
+								isOverdue
+									? "text-red-600"
+									: "text-muted-foreground",
+							)}
+						>
+							<CalendarIcon className="h-3 w-3" />
+							{isOverdue && "Overdue: "}
+							{format(new Date(task.dueDate), "MMM d")}
+						</span>
+					)}
+					{task.priority && task.priority !== "medium" && (
 						<Badge
 							variant={getPriorityVariant(task.priority)}
-							className="text-xs capitalize"
+							className="text-[10px] h-5 capitalize"
 						>
 							{task.priority}
 						</Badge>
 					)}
-
-					{isOverdue && (
-						<Badge variant="destructive" className="text-xs">
-							Overdue
-						</Badge>
-					)}
 				</div>
-
-				{task.dueDate && (
-					<div
-						className={`flex items-center gap-1 text-xs ${isOverdue ? "text-destructive" : "text-muted-foreground"}`}
-					>
-						<CalendarIcon className="h-3 w-3" />
-						<span>
-							Due: {format(new Date(task.dueDate), "MMM d, yyyy")}
-						</span>
-					</div>
-				)}
-
-				{task.description && (
-					<p className="text-xs text-muted-foreground line-clamp-1">
-						{task.description}
-					</p>
-				)}
 			</div>
-
-			<Button
-				variant="ghost"
-				size="icon"
-				className="h-8 w-8 shrink-0"
-				onClick={() => onEdit(task.id)}
-				aria-label={`Edit ${task.name}`}
+			<Badge
+				variant={getStatusVariant(task.status)}
+				className="shrink-0 capitalize text-xs"
 			>
-				<PencilIcon className="h-3.5 w-3.5" />
-			</Button>
-		</div>
+				{task.status.replace("_", " ")}
+			</Badge>
+		</button>
 	);
 }
-
-function TasksList({
-	tasks,
-	onEdit,
-	onCreate,
-	emptyMessage,
-}: {
-	tasks: Task[];
-	onEdit: (id: string) => void;
-	onCreate: () => void;
-	emptyMessage: string;
-}) {
-	if (tasks.length === 0) {
-		return (
-			<div className="flex flex-col items-center gap-2 py-8 text-center">
-				<CheckSquare className="h-8 w-8 text-muted-foreground/50" />
-				<p className="text-sm text-muted-foreground">{emptyMessage}</p>
-				<Button variant="outline" size="sm" onClick={onCreate}>
-					<PlusIcon className="h-4 w-4 mr-2" />
-					Add Task
-				</Button>
-			</div>
-		);
-	}
-
-	// Group by status
-	const grouped = groupTasksByStatus(tasks);
-
-	return (
-		<div className="space-y-6">
-			{Array.from(grouped.entries()).map(([status, items]) => (
-				<div key={status} className="space-y-3">
-					<h4 className="text-sm font-medium text-muted-foreground capitalize">
-						{status.replace("_", " ")} ({items.length})
-					</h4>
-					<div className="space-y-2">
-						{items.map((task) => (
-							<TaskCard
-								key={task.id}
-								task={task}
-								onEdit={onEdit}
-							/>
-						))}
-					</div>
-				</div>
-			))}
-		</div>
-	);
-}
-
-// ============================================================================
-// Main Component
-// ============================================================================
 
 export function TasksTab({ bookingId }: TasksTabProps) {
 	const { openCreate, openEdit } = useTaskParams();
@@ -223,27 +111,41 @@ export function TasksTab({ bookingId }: TasksTabProps) {
 	});
 
 	const tasksList = tasks?.data ?? [];
-	const completedCount = tasksList.filter(
-		(t) => t.status === "completed",
-	).length;
-	const progressPercentage =
-		tasksList.length > 0 ? (completedCount / tasksList.length) * 100 : 0;
+
+	const grouped = new Map<string, Task[]>();
+	for (const status of statusOrder) {
+		grouped.set(status, []);
+	}
+	for (const task of tasksList) {
+		if (grouped.has(task.status)) {
+			grouped.get(task.status)?.push(task);
+		} else {
+			grouped.get("pending")?.push(task);
+		}
+	}
+	for (const [key, value] of grouped.entries()) {
+		if (value.length === 0) grouped.delete(key);
+	}
 
 	if (isLoading) {
 		return (
-			<div className="space-y-4">
-				<Skeleton className="h-24 w-full" />
-				<Skeleton className="h-16 w-full" />
-				<Skeleton className="h-16 w-full" />
+			<div className="space-y-3">
+				<div className="flex justify-end">
+					<Skeleton className="h-9 w-24" />
+				</div>
+				<Skeleton className="h-12 w-full" />
+				<Skeleton className="h-12 w-full" />
 			</div>
 		);
 	}
 
 	if (isError) {
 		return (
-			<div className="flex flex-col items-center gap-2 py-8 text-center">
-				<AlertCircleIcon className="h-8 w-8 text-destructive/50" />
-				<p className="text-sm text-destructive">Failed to load tasks</p>
+			<div className="flex flex-col items-center gap-3 py-12 text-center">
+				<AlertCircleIcon className="h-8 w-8 text-muted-foreground/50" />
+				<p className="text-sm text-muted-foreground">
+					Failed to load tasks
+				</p>
 				<Button variant="outline" size="sm" onClick={() => refetch()}>
 					Try again
 				</Button>
@@ -253,49 +155,38 @@ export function TasksTab({ bookingId }: TasksTabProps) {
 
 	return (
 		<div className="space-y-6">
-			{/* Progress Card */}
-			<Card>
-				<CardHeader className="pb-3">
-					<div className="flex items-center justify-between">
-						<CardTitle className="text-base flex items-center gap-2">
-							<CheckSquare className="h-4 w-4" />
-							Tasks
-							<Badge variant="secondary" className="text-xs">
-								{tasksList.length}
-							</Badge>
-						</CardTitle>
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={() => openCreate()}
-						>
-							<PlusIcon className="h-4 w-4 mr-1" />
-							Add Task
-						</Button>
-					</div>
-				</CardHeader>
-				{tasksList.length > 0 && (
-					<CardContent className="pt-0 pb-4">
-						<div className="space-y-2">
-							<Progress
-								value={progressPercentage}
-								className="h-2"
-							/>
-							<p className="text-xs text-muted-foreground">
-								{completedCount} of {tasksList.length} completed
-							</p>
-						</div>
-					</CardContent>
-				)}
-			</Card>
+			<div className="flex justify-end">
+				<Button size="sm" onClick={() => openCreate()}>
+					<PlusIcon className="h-4 w-4 mr-1.5" />
+					Add Task
+				</Button>
+			</div>
 
-			{/* All Tasks List (grouped by status) */}
-			<TasksList
-				tasks={tasksList}
-				onEdit={openEdit}
-				onCreate={openCreate}
-				emptyMessage="No tasks created"
-			/>
+			{tasksList.length === 0 ? (
+				<div className="flex flex-col items-center gap-2 py-12 text-center">
+					<CheckSquareIcon className="h-8 w-8 text-muted-foreground/30" />
+					<p className="text-sm text-muted-foreground">No tasks</p>
+				</div>
+			) : (
+				<div className="space-y-6">
+					{Array.from(grouped.entries()).map(([status, group]) => (
+						<div key={status}>
+							<div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+								{status.replace("_", " ")} ({group.length})
+							</div>
+							<div className="divide-y">
+								{group.map((task) => (
+									<TaskRow
+										key={task.id}
+										task={task}
+										onEdit={openEdit}
+									/>
+								))}
+							</div>
+						</div>
+					))}
+				</div>
+			)}
 		</div>
 	);
 }
