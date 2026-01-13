@@ -70,13 +70,27 @@ export const updateCrew = studioProtectedProcedure
 			updatedBy: context.user.id,
 		};
 
-		if (name !== undefined) updates.name = name;
-		if (email !== undefined) updates.email = email;
-		if (phoneNumber !== undefined) updates.phoneNumber = phoneNumber;
-		if (role !== undefined) updates.role = role;
-		if (status !== undefined) updates.status = status;
-		if (dailyRate !== undefined) updates.dailyRate = dailyRate;
-		if (metadata !== undefined) updates.metadata = metadata;
+		if (name !== undefined) {
+			updates.name = name;
+		}
+		if (email !== undefined) {
+			updates.email = email;
+		}
+		if (phoneNumber !== undefined) {
+			updates.phoneNumber = phoneNumber;
+		}
+		if (role !== undefined) {
+			updates.role = role;
+		}
+		if (status !== undefined) {
+			updates.status = status;
+		}
+		if (dailyRate !== undefined) {
+			updates.dailyRate = dailyRate;
+		}
+		if (metadata !== undefined) {
+			updates.metadata = metadata;
+		}
 
 		await db.update(crews).set(updates).where(eq(crews.id, id));
 
@@ -93,7 +107,7 @@ export const updateCrew = studioProtectedProcedure
 			trackFieldChanges(context, {
 				entityType: "crew",
 				entityId: id,
-				entityName: existing.name,
+				entityName: input.name ?? existing.name,
 				changes,
 			}).catch(console.error);
 		}

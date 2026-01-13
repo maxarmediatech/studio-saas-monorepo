@@ -104,8 +104,11 @@ function getActivityMessage(activity: {
 	oldValue?: string | null;
 	newValue?: string | null;
 	parentEntityName?: string | null;
+	metadata?: unknown;
 }): string {
 	const { action, entityType, entityName, field, oldValue, newValue, parentEntityName } = activity;
+	// Safely access metadata as Record<string, unknown>
+	const metadata = activity.metadata as Record<string, unknown> | null | undefined;
 
 	// Format entity type for display
 	const entityTypeLabel = entityType.replace(/_/g, " ");
@@ -122,10 +125,14 @@ function getActivityMessage(activity: {
 				return `updated ${field} on "${entityName}"`;
 			}
 			return `updated "${entityName}"`;
-		case "assigned":
-			return `assigned crew to "${entityName}"`;
-		case "unassigned":
-			return `removed crew from "${entityName}"`;
+		case "assigned": {
+			const crewName = (metadata?.crewName as string) || "crew";
+			return `assigned ${crewName} to "${entityName}"`;
+		}
+		case "unassigned": {
+			const crewName = (metadata?.crewName as string) || "crew";
+			return `removed ${crewName} from "${entityName}"`;
+		}
 		case "payment_received":
 			return `recorded ${entityName}${parentEntityName ? ` for ${parentEntityName}` : ""}`;
 		case "approved":
@@ -147,7 +154,7 @@ function getEntityLink(
 	parentEntityType?: string | null,
 	parentEntityId?: string | null,
 ): string {
-	// For nested entities, link to parent
+	// For nested entities, link to parent booking
 	if (parentEntityType === "booking" && parentEntityId) {
 		return `/app/${organizationSlug}/bookings/${parentEntityId}`;
 	}
@@ -157,10 +164,44 @@ function getEntityLink(
 			return `/app/${organizationSlug}/bookings/${entityId}`;
 		case "shoot":
 			return `/app/${organizationSlug}/shoots/${entityId}`;
+		case "shoot_assignment":
+			// entityId is assignment record, parentEntityId is the shoot
+			return parentEntityId
+				? `/app/${organizationSlug}/shoots/${parentEntityId}`
+				: "#";
 		case "task":
 			return `/app/${organizationSlug}/tasks/${entityId}`;
+		case "task_assignment":
+			// entityId is assignment record, parentEntityId is the task
+			return parentEntityId
+				? `/app/${organizationSlug}/tasks/${parentEntityId}`
+				: "#";
 		case "deliverable":
 			return `/app/${organizationSlug}/deliverables/${entityId}`;
+		case "deliverable_assignment":
+			// entityId is assignment record, parentEntityId is the deliverable
+			return parentEntityId
+				? `/app/${organizationSlug}/deliverables/${parentEntityId}`
+				: "#";
+		case "expense":
+			return `/app/${organizationSlug}/expenses/${entityId}`;
+		case "crew":
+			return `/app/${organizationSlug}/crews/${entityId}`;
+		case "client":
+			return `/app/${organizationSlug}/clients/${entityId}`;
+		case "received_amount":
+		case "payment_schedule":
+			// Link to parent booking's payments tab if available
+			if (parentEntityId) {
+				return `/app/${organizationSlug}/bookings/${parentEntityId}`;
+			}
+			return "#";
+		case "submission":
+			// Submissions link to parent deliverable/task
+			if (parentEntityId) {
+				return `/app/${organizationSlug}/${parentEntityType}s/${parentEntityId}`;
+			}
+			return "#";
 		default:
 			return "#";
 	}
@@ -171,21 +212,25 @@ export function ActivityFeedWidget({
 }: ActivityFeedWidgetProps) {
 	const [filter, setFilter] = useState<FilterKey>("all");
 
-	const { data, isLoading } = useQuery(
-		activitiesApi.listOptions({ limit: 15 }),
+	// Build API query options with server-side filtering
+	// "payment" filter uses entityTypes array to include both received_amount and payment_schedule
+	const PAYMENT_ENTITY_TYPES: Array<"received_amount" | "payment_schedule"> = [
+		"received_amount",
+		"payment_schedule",
+	];
+	const queryParams =
+		filter === "all"
+			? { limit: 15 }
+			: filter === "payment"
+				? { limit: 15, entityTypes: PAYMENT_ENTITY_TYPES }
+				: { limit: 15, entityType: filter };
+
+	const { data, isLoading, error } = useQuery(
+		activitiesApi.listOptions(queryParams),
 	);
 
-	const allActivities = data?.data ?? [];
-	const activities =
-		filter === "all"
-			? allActivities
-			: filter === "payment"
-				? allActivities.filter(
-						(a) =>
-							a.entityType === "received_amount" ||
-							a.entityType === "payment_schedule",
-					)
-				: allActivities.filter((a) => a.entityType === filter);
+	// No client-side filtering needed - server handles it
+	const activities = data?.data ?? [];
 
 	const activeFilterLabel =
 		FILTERS.find((f) => f.key === filter)?.label ?? "All";
@@ -213,6 +258,25 @@ export function ActivityFeedWidget({
 							<Skeleton className="h-3 w-16" />
 						</div>
 					))}
+				</div>
+			</div>
+		);
+	}
+
+	if (error) {
+		return (
+			<div className="py-4">
+				<div className="flex items-center justify-between mb-2">
+					<div className="text-sm font-semibold text-muted-foreground">
+						Recent Activity
+					</div>
+				</div>
+				<div className="min-h-[300px] flex flex-col items-center justify-center">
+					<ActivityIcon className="size-12 text-red-300/50 mb-3" />
+					<p className="text-sm text-red-500">Failed to load activities</p>
+					<p className="text-xs text-muted-foreground mt-1">
+						Please try again later
+					</p>
 				</div>
 			</div>
 		);
@@ -261,51 +325,49 @@ export function ActivityFeedWidget({
 						</p>
 					</div>
 				) : (
-					<>
-						{activities.map((activity) => {
-							const link = getEntityLink(
-								organizationSlug,
-								activity.entityType,
-								activity.entityId,
-								activity.parentEntityType,
-								activity.parentEntityId,
-							);
-							const entityIcon = getEntityIcon(activity.entityType);
-							const actionIcon = getActionIcon(activity.action);
-							const message = getActivityMessage(activity);
+					activities.map((activity) => {
+						const link = getEntityLink(
+							organizationSlug,
+							activity.entityType,
+							activity.entityId,
+							activity.parentEntityType,
+							activity.parentEntityId,
+						);
+						const entityIcon = getEntityIcon(activity.entityType);
+						const actionIcon = getActionIcon(activity.action);
+						const message = getActivityMessage(activity);
 
-							return (
-								<Link
-									key={activity.id}
-									href={link}
-									className="group flex w-full items-start gap-3 py-3 text-sm border-b border-border/50 hover:bg-muted/50 transition-colors"
-								>
-									<div className="flex-shrink-0 relative">
-										<div className="grid place-items-center rounded-sm bg-muted size-8 text-muted-foreground">
-											{entityIcon}
-										</div>
-										<div className="absolute -bottom-1 -right-1 bg-background rounded-full p-0.5">
-											{actionIcon}
-										</div>
+						return (
+							<Link
+								key={activity.id}
+								href={link}
+								className="group flex w-full items-start gap-3 py-3 text-sm border-b border-border/50 hover:bg-muted/50 transition-colors"
+							>
+								<div className="flex-shrink-0 relative">
+									<div className="grid place-items-center rounded-sm bg-muted size-8 text-muted-foreground">
+										{entityIcon}
 									</div>
-									<div className="flex-1 min-w-0">
-										<div className="font-medium text-xs text-muted-foreground">
-											{activity.actorName}
-										</div>
-										<div className="text-sm truncate">
-											{message}
-										</div>
+									<div className="absolute -bottom-1 -right-1 bg-background rounded-full p-0.5">
+										{actionIcon}
 									</div>
-									<div className="flex-shrink-0 font-medium text-xs text-muted-foreground whitespace-nowrap">
-										{formatDistanceToNow(
-											new Date(activity.createdAt),
-											{ addSuffix: false },
-										)}
+								</div>
+								<div className="flex-1 min-w-0">
+									<div className="font-medium text-xs text-muted-foreground">
+										{activity.actorName}
 									</div>
-								</Link>
-							);
-						})}
-					</>
+									<div className="text-sm truncate">
+										{message}
+									</div>
+								</div>
+								<div className="flex-shrink-0 font-medium text-xs text-muted-foreground whitespace-nowrap">
+									{formatDistanceToNow(
+										new Date(activity.createdAt),
+										{ addSuffix: false },
+									)}
+								</div>
+							</Link>
+						);
+					})
 				)}
 			</div>
 		</div>

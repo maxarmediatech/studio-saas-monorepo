@@ -8,6 +8,7 @@ import {
 	paymentSchedules,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../../orpc/procedures";
+import { formatAmount, trackActivity } from "../../../activities/lib";
 import { requirePermission } from "../../../studio/lib/permissions";
 import {
 	createScheduleInputSchema,
@@ -67,6 +68,18 @@ export const createSchedule = studioProtectedProcedure
 				message: "Failed to create payment schedule",
 			});
 		}
+
+		// Track activity (non-blocking)
+		trackActivity(context, {
+			entityType: "payment_schedule",
+			entityId: created.id,
+			entityName: `${name} (${formatAmount(amount)})`,
+			action: "created",
+			parentEntityType: "booking",
+			parentEntityId: bookingId,
+			parentEntityName: booking.name,
+			metadata: { amount, dueDate },
+		}).catch(console.error);
 
 		return {
 			data: { id: created.id },

@@ -135,7 +135,9 @@ export const updateExpense = studioProtectedProcedure
 
 				// Update each booking's total expenses
 				for (const assignment of bookingAssignments) {
-					if (!assignment.bookingId) continue;
+					if (!assignment.bookingId) {
+						continue;
+					}
 
 					const oldAllocated = getAllocatedExpenseAmount(
 						oldAmount,

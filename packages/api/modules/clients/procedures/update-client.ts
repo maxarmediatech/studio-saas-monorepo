@@ -87,13 +87,24 @@ export const updateClient = studioProtectedProcedure
 			updatedBy: context.user.id,
 		};
 
-		if (name !== undefined) updates.name = name;
-		if (email !== undefined) updates.email = email;
-		if (phoneNumber !== undefined) updates.phoneNumber = phoneNumber;
-		if (alternatePhone !== undefined)
+		if (name !== undefined) {
+			updates.name = name;
+		}
+		if (email !== undefined) {
+			updates.email = email;
+		}
+		if (phoneNumber !== undefined) {
+			updates.phoneNumber = phoneNumber;
+		}
+		if (alternatePhone !== undefined) {
 			updates.alternatePhone = alternatePhone;
-		if (address !== undefined) updates.address = address;
-		if (metadata !== undefined) updates.metadata = metadata;
+		}
+		if (address !== undefined) {
+			updates.address = address;
+		}
+		if (metadata !== undefined) {
+			updates.metadata = metadata;
+		}
 
 		await db.update(clients).set(updates).where(eq(clients.id, id));
 
@@ -108,7 +119,7 @@ export const updateClient = studioProtectedProcedure
 			trackFieldChanges(context, {
 				entityType: "client",
 				entityId: id,
-				entityName: existing.name,
+				entityName: input.name ?? existing.name,
 				changes,
 			}).catch(console.error);
 		}

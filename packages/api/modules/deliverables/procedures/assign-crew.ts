@@ -106,10 +106,11 @@ export const assignCrewToDeliverable = studioProtectedProcedure
 		}
 
 		// Track activity (non-blocking)
+		// entityName = target of assignment (deliverable), crewName in metadata
 		trackAssignment(context, {
 			entityType: "deliverable_assignment",
 			entityId: created.id,
-			entityName: crew.name,
+			entityName: deliverable.name,
 			action: "assigned",
 			parentEntityType: "deliverable",
 			parentEntityId: deliverable.id,

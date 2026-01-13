@@ -64,11 +64,12 @@ export const unassignCrew = studioProtectedProcedure
 			.where(eq(shootAssignments.id, assignment.id));
 
 		// Track activity (non-blocking)
+		// entityName = target of assignment (shoot), crewName in metadata
 		if (crew) {
 			trackAssignment(context, {
 				entityType: "shoot_assignment",
 				entityId: assignment.id,
-				entityName: crew.name,
+				entityName: shoot.name,
 				action: "unassigned",
 				parentEntityType: "shoot",
 				parentEntityId: shoot.id,

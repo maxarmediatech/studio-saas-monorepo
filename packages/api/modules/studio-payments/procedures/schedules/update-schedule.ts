@@ -1,6 +1,13 @@
 import { ORPCError } from "@orpc/server";
-import { and, db, eq, isNull, paymentSchedules } from "@repo/database";
+import { and, bookings, db, eq, isNull, paymentSchedules } from "@repo/database";
 import { studioProtectedProcedure } from "../../../../orpc/procedures";
+import {
+	detectChanges,
+	formatAmount,
+	formatDate,
+	trackFieldChanges,
+	trackStatusChange,
+} from "../../../activities/lib";
 import { requirePermission } from "../../../studio/lib/permissions";
 import {
 	updateScheduleInputSchema,
@@ -90,6 +97,72 @@ export const updateSchedule = studioProtectedProcedure
 			.update(paymentSchedules)
 			.set(updateData)
 			.where(eq(paymentSchedules.id, id));
+
+		// Fetch booking for activity context
+		const booking = await db.query.bookings.findFirst({
+			where: eq(bookings.id, schedule.bookingId),
+			columns: { name: true },
+		});
+
+		const entityName = `${updates.name ?? schedule.name} (${formatAmount(updates.amount ?? schedule.amount)})`;
+
+		// Track status change if it occurred (non-blocking)
+		if (updateData.status && updateData.status !== schedule.status) {
+			trackStatusChange(context, {
+				entityType: "payment_schedule",
+				entityId: id,
+				entityName,
+				oldStatus: schedule.status,
+				newStatus: updateData.status as string,
+				parentEntityType: "booking",
+				parentEntityId: schedule.bookingId,
+				parentEntityName: booking?.name ?? "Unknown Booking",
+			}).catch(console.error);
+		}
+
+		// Track field changes (non-blocking)
+		const changes = detectChanges(
+			{
+				name: schedule.name,
+				amount: schedule.amount,
+				dueDate: schedule.dueDate,
+				notes: schedule.notes,
+			},
+			{
+				name: updates.name,
+				amount: updates.amount,
+				dueDate: updates.dueDate,
+				notes: updates.notes,
+			},
+			["name", "amount", "dueDate", "notes"],
+		).map((c) => ({
+			...c,
+			// Format values for display
+			oldValue:
+				c.field === "amount" && c.oldValue
+					? formatAmount(c.oldValue)
+					: c.field === "dueDate" && c.oldValue
+						? formatDate(c.oldValue)
+						: c.oldValue,
+			newValue:
+				c.field === "amount" && c.newValue
+					? formatAmount(c.newValue)
+					: c.field === "dueDate" && c.newValue
+						? formatDate(c.newValue)
+						: c.newValue,
+		}));
+
+		if (changes.length > 0) {
+			trackFieldChanges(context, {
+				entityType: "payment_schedule",
+				entityId: id,
+				entityName,
+				parentEntityType: "booking",
+				parentEntityId: schedule.bookingId,
+				parentEntityName: booking?.name ?? "Unknown Booking",
+				changes,
+			}).catch(console.error);
+		}
 
 		return {
 			data: { id },

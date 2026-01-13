@@ -79,7 +79,9 @@ export const deleteExpense = studioProtectedProcedure
 
 			// Update each booking's total expenses
 			for (const assignment of assignments) {
-				if (!assignment.bookingId) continue;
+				if (!assignment.bookingId) {
+					continue;
+				}
 
 				const allocated = assignment.allocationAmount
 					? Number.parseFloat(assignment.allocationAmount)

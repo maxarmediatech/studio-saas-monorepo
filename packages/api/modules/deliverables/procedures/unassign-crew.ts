@@ -73,11 +73,12 @@ export const unassignCrewFromDeliverable = studioProtectedProcedure
 			.where(eq(deliverableAssignments.id, assignment.id));
 
 		// Track activity (non-blocking)
+		// entityName = target of assignment (deliverable), crewName in metadata
 		if (crew) {
 			trackAssignment(context, {
 				entityType: "deliverable_assignment",
 				entityId: assignment.id,
-				entityName: crew.name,
+				entityName: deliverable.name,
 				action: "unassigned",
 				parentEntityType: "deliverable",
 				parentEntityId: deliverable.id,

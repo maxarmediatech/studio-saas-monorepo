@@ -148,7 +148,10 @@ export const createExpense = studioProtectedProcedure
 				);
 
 				// Update booking total expenses if assigned to bookings
-				const bookingAssignments = assignments.filter((a) => a.bookingId);
+				// Type predicate narrows bookingId to string (not undefined/null)
+				const bookingAssignments = assignments.filter(
+					(a): a is typeof a & { bookingId: string } => !!a.bookingId,
+				);
 				for (const assignment of bookingAssignments) {
 					const allocatedAmount = getAllocatedExpenseAmount(
 						amountValue,
@@ -163,7 +166,7 @@ export const createExpense = studioProtectedProcedure
 							updatedAt: new Date(),
 							updatedBy: context.user.id,
 						})
-						.where(eq(bookings.id, assignment.bookingId!));
+						.where(eq(bookings.id, assignment.bookingId));
 				}
 
 				// Track activity (non-blocking)

@@ -63,15 +63,33 @@ export const updateShoot = studioProtectedProcedure
 			updatedBy: context.user.id,
 		};
 
-		if (name !== undefined) updates.name = name;
-		if (shootType !== undefined) updates.shootType = shootType;
-		if (shootDate !== undefined) updates.shootDate = shootDate;
-		if (startTime !== undefined) updates.startTime = startTime;
-		if (endTime !== undefined) updates.endTime = endTime;
-		if (venue !== undefined) updates.venue = venue;
-		if (venueAddress !== undefined) updates.venueAddress = venueAddress;
-		if (notes !== undefined) updates.notes = notes;
-		if (status !== undefined) updates.status = status;
+		if (name !== undefined) {
+			updates.name = name;
+		}
+		if (shootType !== undefined) {
+			updates.shootType = shootType;
+		}
+		if (shootDate !== undefined) {
+			updates.shootDate = shootDate;
+		}
+		if (startTime !== undefined) {
+			updates.startTime = startTime;
+		}
+		if (endTime !== undefined) {
+			updates.endTime = endTime;
+		}
+		if (venue !== undefined) {
+			updates.venue = venue;
+		}
+		if (venueAddress !== undefined) {
+			updates.venueAddress = venueAddress;
+		}
+		if (notes !== undefined) {
+			updates.notes = notes;
+		}
+		if (status !== undefined) {
+			updates.status = status;
+		}
 
 		await db.update(shoots).set(updates).where(eq(shoots.id, id));
 

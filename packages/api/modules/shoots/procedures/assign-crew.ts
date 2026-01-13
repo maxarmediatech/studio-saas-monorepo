@@ -96,10 +96,11 @@ export const assignCrew = studioProtectedProcedure
 		}
 
 		// Track activity (non-blocking)
+		// entityName = target of assignment (shoot), crewName in metadata
 		trackAssignment(context, {
 			entityType: "shoot_assignment",
 			entityId: created.id,
-			entityName: crew.name,
+			entityName: shoot.name,
 			action: "assigned",
 			parentEntityType: "shoot",
 			parentEntityId: shoot.id,

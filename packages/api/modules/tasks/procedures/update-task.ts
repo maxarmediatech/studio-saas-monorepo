@@ -53,12 +53,24 @@ export const updateTask = studioProtectedProcedure
 			updatedBy: context.user.id,
 		};
 
-		if (name !== undefined) updates.name = name;
-		if (description !== undefined) updates.description = description;
-		if (status !== undefined) updates.status = status;
-		if (priority !== undefined) updates.priority = priority;
-		if (dueDate !== undefined) updates.dueDate = dueDate;
-		if (metadata !== undefined) updates.metadata = metadata;
+		if (name !== undefined) {
+			updates.name = name;
+		}
+		if (description !== undefined) {
+			updates.description = description;
+		}
+		if (status !== undefined) {
+			updates.status = status;
+		}
+		if (priority !== undefined) {
+			updates.priority = priority;
+		}
+		if (dueDate !== undefined) {
+			updates.dueDate = dueDate;
+		}
+		if (metadata !== undefined) {
+			updates.metadata = metadata;
+		}
 
 		await db.update(tasks).set(updates).where(eq(tasks.id, id));
 

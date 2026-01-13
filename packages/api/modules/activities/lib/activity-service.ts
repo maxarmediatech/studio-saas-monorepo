@@ -7,81 +7,91 @@ import { activities, db } from "@repo/database";
 /**
  * Entity types that can be tracked in the activity system.
  * Corresponds to database tables in the studio domain.
+ *
+ * Note: ENTITY_TYPES array is the source of truth - EntityType is derived from it.
  */
-export type EntityType =
-	| "booking"
-	| "booking_participant"
-	| "booking_event"
-	| "shoot"
-	| "shoot_assignment"
-	| "task"
-	| "task_assignment"
-	| "deliverable"
-	| "deliverable_assignment"
-	| "submission"
-	| "crew"
-	| "received_amount"
-	| "payment_schedule"
-	| "expense"
-	| "invoice"
-	| "client"
-	| "member"
-	| "configuration";
+export const ENTITY_TYPES = [
+	"booking",
+	"booking_participant",
+	"booking_event",
+	"shoot",
+	"shoot_assignment",
+	"task",
+	"task_assignment",
+	"deliverable",
+	"deliverable_assignment",
+	"submission",
+	"crew",
+	"received_amount",
+	"payment_schedule",
+	"expense",
+	"invoice",
+	"client",
+	"member",
+	"configuration",
+] as const;
+
+export type EntityType = (typeof ENTITY_TYPES)[number];
 
 /**
  * Action types for activity tracking.
  * Covers CRUD operations, status changes, assignments, and domain-specific actions.
+ *
+ * Note: ACTION_TYPES array is the source of truth - ActionType is derived from it.
  */
-export type ActionType =
+export const ACTION_TYPES = [
 	// CRUD
-	| "created"
-	| "updated"
-	| "deleted"
+	"created",
+	"updated",
+	"deleted",
 	// Status changes
-	| "status_changed"
-	| "workflow_changed"
+	"status_changed",
+	"workflow_changed",
 	// Assignments
-	| "assigned"
-	| "unassigned"
-	| "lead_changed"
+	"assigned",
+	"unassigned",
+	"lead_changed",
 	// Submissions
-	| "submitted"
-	| "approved"
-	| "rejected"
-	| "revision_requested"
+	"submitted",
+	"approved",
+	"rejected",
+	"revision_requested",
 	// Payments
-	| "payment_received"
-	| "linked_to_schedule"
-	| "unlinked_from_schedule"
-	| "marked_paid"
-	| "marked_partial"
+	"payment_received",
+	"linked_to_schedule",
+	"unlinked_from_schedule",
+	"marked_paid",
+	"marked_partial",
 	// Invoices
-	| "invoice_sent"
-	| "cancelled"
+	"invoice_sent",
+	"cancelled",
 	// Participants
-	| "participant_added"
-	| "participant_removed"
-	| "role_changed"
+	"participant_added",
+	"participant_removed",
+	"role_changed",
 	// Events
-	| "event_created"
-	| "event_updated"
-	| "event_deleted"
+	"event_created",
+	"event_updated",
+	"event_deleted",
 	// Files
-	| "file_uploaded"
-	| "feedback_added"
+	"file_uploaded",
+	"feedback_added",
 	// Crew
-	| "marked_available"
-	| "marked_unavailable"
+	"marked_available",
+	"marked_unavailable",
 	// Configuration
-	| "option_created"
-	| "option_updated"
-	| "default_changed"
-	| "option_deleted"
+	"option_created",
+	"option_updated",
+	"default_changed",
+	"option_deleted",
 	// Members
-	| "member_added"
-	| "member_removed"
+	"member_added",
+	"member_removed",
 	// Conversions
-	| "converted_to_task";
+	"converted_to_task",
+] as const;
+
+export type ActionType = (typeof ACTION_TYPES)[number];
 
 /**
  * Actor types - who performed the action
@@ -209,7 +219,7 @@ export async function trackActivity(
 		organizationId: context.organizationId,
 		actorId: context.user.id,
 		actorType: "user",
-		actorName: context.user.name,
+		actorName: context.user.name || "Unknown User",
 		...input,
 	});
 }
@@ -269,7 +279,7 @@ export async function trackFieldChanges(
 				organizationId: context.organizationId,
 				actorId: context.user.id,
 				actorType: "user",
-				actorName: context.user.name,
+				actorName: context.user.name || "Unknown User",
 				entityType: input.entityType,
 				entityId: input.entityId,
 				entityName: input.entityName,
@@ -326,7 +336,7 @@ export async function trackStatusChange(
 		organizationId: context.organizationId,
 		actorId: context.user.id,
 		actorType: "user",
-		actorName: context.user.name,
+		actorName: context.user.name || "Unknown User",
 		entityType: input.entityType,
 		entityId: input.entityId,
 		entityName: input.entityName,
@@ -375,7 +385,7 @@ export async function trackAssignment(
 		organizationId: context.organizationId,
 		actorId: context.user.id,
 		actorType: "user",
-		actorName: context.user.name,
+		actorName: context.user.name || "Unknown User",
 		entityType: input.entityType,
 		entityId: input.entityId,
 		entityName: input.entityName,
