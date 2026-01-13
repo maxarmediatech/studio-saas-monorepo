@@ -56,7 +56,7 @@ function PaymentRow({
 		<button
 			type="button"
 			onClick={onEdit}
-			className="w-full flex items-center justify-between gap-4 py-3 px-3 -mx-3 rounded-lg hover:bg-muted/50 transition-colors text-left"
+			className="w-full flex items-center justify-between gap-4 py-3 px-3 rounded-lg hover:bg-muted/50 transition-colors text-left"
 		>
 			<div className="flex-1 min-w-0 space-y-0.5">
 				<div className="flex items-center gap-2">
@@ -91,7 +91,7 @@ function ScheduleRow({
 		<button
 			type="button"
 			onClick={onEdit}
-			className="w-full flex items-center justify-between gap-4 py-3 px-3 -mx-3 rounded-lg hover:bg-muted/50 transition-colors text-left"
+			className="w-full flex items-center justify-between gap-4 py-3 px-3 rounded-lg hover:bg-muted/50 transition-colors text-left"
 		>
 			<div className="flex-1 min-w-0 space-y-0.5">
 				<span className="font-medium">{formatCurrency(amount)}</span>
@@ -121,7 +121,7 @@ function ExpenseRow({
 		<button
 			type="button"
 			onClick={onEdit}
-			className="w-full flex items-center justify-between gap-4 py-3 px-3 -mx-3 rounded-lg hover:bg-muted/50 transition-colors text-left"
+			className="w-full flex items-center justify-between gap-4 py-3 px-3 rounded-lg hover:bg-muted/50 transition-colors text-left"
 		>
 			<div className="flex-1 min-w-0 space-y-0.5">
 				<div className="flex items-center gap-2">
@@ -351,6 +351,12 @@ export function FinancesTab({
 
 	return (
 		<div className="space-y-8">
+			<div>
+				<h3 className="font-bold text-2xl mb-2">Finances</h3>
+				<p className="text-muted-foreground mb-6">
+					Payments, expenses, and financial summary.
+				</p>
+			</div>
 			<div className="flex items-center justify-between py-3 border-b">
 				<div className="space-y-0.5">
 					<div className="text-sm text-muted-foreground">

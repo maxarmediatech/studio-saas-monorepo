@@ -228,33 +228,14 @@ export function BookingScrollSpy({
 							</ScrollSpySection>
 
 							<ScrollSpySection value="deliverables">
-								<h3 className="font-bold text-2xl mb-2">
-									Deliverables
-								</h3>
-								<p className="text-muted-foreground mb-6">
-									Photos, videos, and other deliverable items.
-								</p>
 								<DeliverablesTab bookingId={bookingId} />
 							</ScrollSpySection>
 
 							<ScrollSpySection value="tasks">
-								<h3 className="font-bold text-2xl mb-2">
-									Tasks
-								</h3>
-								<p className="text-muted-foreground mb-6">
-									To-do items and action items for this
-									booking.
-								</p>
 								<TasksTab bookingId={bookingId} />
 							</ScrollSpySection>
 
 							<ScrollSpySection value="finances">
-								<h3 className="font-bold text-2xl mb-2">
-									Finances
-								</h3>
-								<p className="text-muted-foreground mb-6">
-									Payments, expenses, and financial summary.
-								</p>
 								<FinancesTab
 									bookingId={bookingId}
 									packageCost={booking.packageCost}
