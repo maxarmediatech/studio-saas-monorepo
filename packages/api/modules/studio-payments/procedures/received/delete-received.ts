@@ -47,9 +47,12 @@ export const deleteReceived = studioProtectedProcedure
 			});
 		}
 
-		// Fetch booking for activity tracking
+		// Fetch booking for activity tracking (org-scoped for safety)
 		const booking = await db.query.bookings.findFirst({
-			where: eq(bookings.id, received.bookingId),
+			where: and(
+				eq(bookings.id, received.bookingId),
+				eq(bookings.organizationId, context.organizationId),
+			),
 			columns: { name: true },
 		});
 

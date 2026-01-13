@@ -38,9 +38,12 @@ export const deleteSchedule = studioProtectedProcedure
 			});
 		}
 
-		// Fetch booking for activity context
+		// Fetch booking for activity context (org-scoped for safety)
 		const booking = await db.query.bookings.findFirst({
-			where: eq(bookings.id, schedule.bookingId),
+			where: and(
+				eq(bookings.id, schedule.bookingId),
+				eq(bookings.organizationId, context.organizationId),
+			),
 			columns: { name: true },
 		});
 
