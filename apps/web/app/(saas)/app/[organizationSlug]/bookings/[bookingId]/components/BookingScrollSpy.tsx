@@ -236,12 +236,7 @@ export function BookingScrollSpy({
 							</ScrollSpySection>
 
 							<ScrollSpySection value="finances">
-								<FinancesTab
-									bookingId={bookingId}
-									packageCost={booking.packageCost}
-									totalReceived={booking.totalReceived}
-									balance={booking.balance}
-								/>
+								<FinancesTab bookingId={bookingId} />
 							</ScrollSpySection>
 						</div>
 					</ScrollSpyViewport>
