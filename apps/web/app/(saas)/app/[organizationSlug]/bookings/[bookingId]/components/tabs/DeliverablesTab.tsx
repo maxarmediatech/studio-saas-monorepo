@@ -1,7 +1,12 @@
 "use client";
 
-import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@repo/ui/components/dropdown-menu";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
 import { useDeliverableParams } from "@saas/studio/hooks/params";
@@ -10,11 +15,10 @@ import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
 	AlertCircleIcon,
-	CalendarIcon,
+	MoreVertical,
 	PackageIcon,
 	PlusIcon,
 } from "lucide-react";
-import { getStatusVariant } from "../utils";
 
 interface DeliverablesTabProps {
 	bookingId: string;
@@ -36,6 +40,18 @@ const statusOrder = [
 	"cancelled",
 ];
 
+const STATUS_STYLES: Record<string, string> = {
+	pending: "text-gray-600 bg-gray-50 ring-gray-500/10",
+	in_progress: "text-blue-700 bg-blue-50 ring-blue-600/20",
+	in_revision: "text-yellow-800 bg-yellow-50 ring-yellow-600/20",
+	completed: "text-green-700 bg-green-50 ring-green-600/20",
+	cancelled: "text-red-700 bg-red-50 ring-red-600/20",
+};
+
+function getStatusStyle(status: string) {
+	return STATUS_STYLES[status] || "text-gray-600 bg-gray-50 ring-gray-500/10";
+}
+
 function DeliverableRow({
 	deliverable,
 	onEdit,
@@ -44,36 +60,91 @@ function DeliverableRow({
 	onEdit: (id: string) => void;
 }) {
 	const isCompleted = deliverable.status === "completed";
+	const dateStr = deliverable.dueDate
+		? format(new Date(deliverable.dueDate), "MMM d, yyyy")
+		: null;
 
 	return (
-		<button
-			type="button"
-			onClick={() => onEdit(deliverable.id)}
-			className="w-full flex items-center justify-between gap-4 py-3 px-3 rounded-lg hover:bg-muted/50 transition-colors text-left"
-		>
-			<div className="flex-1 min-w-0 space-y-1">
-				<div
-					className={cn(
-						"font-medium truncate",
-						isCompleted && "text-muted-foreground line-through",
-					)}
-				>
-					{deliverable.name}
+		<li className="flex items-center justify-between gap-x-6 py-5">
+			<div className="min-w-0">
+				<div className="flex items-start gap-x-3">
+					<p
+						className={cn(
+							"text-sm/6 font-semibold text-foreground",
+							isCompleted && "line-through text-muted-foreground",
+						)}
+					>
+						{deliverable.name}
+					</p>
+					<p
+						className={cn(
+							"mt-0.5 rounded-md px-1.5 py-0.5 text-xs font-medium capitalize whitespace-nowrap ring-1 ring-inset",
+							getStatusStyle(deliverable.status),
+						)}
+					>
+						{deliverable.status.replace("_", " ")}
+					</p>
 				</div>
-				{deliverable.dueDate && (
-					<div className="flex items-center gap-1 text-xs text-muted-foreground">
-						<CalendarIcon className="h-3 w-3" />
-						Due {format(new Date(deliverable.dueDate), "MMM d")}
+				{dateStr && (
+					<div className="mt-1 flex items-center gap-x-2 text-xs/5 text-muted-foreground">
+						<p className="whitespace-nowrap">Due {dateStr}</p>
 					</div>
 				)}
 			</div>
-			<Badge
-				variant={getStatusVariant(deliverable.status)}
-				className="shrink-0 capitalize text-xs"
-			>
-				{deliverable.status.replace("_", " ")}
-			</Badge>
-		</button>
+			<div className="flex flex-none items-center gap-x-4">
+				<div className="flex -space-x-1">
+					<img
+						alt="Assignee"
+						src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
+						className="size-6 rounded-full bg-gray-50 ring-2 ring-background"
+					/>
+					<img
+						alt="Assignee"
+						src="https://images.unsplash.com/photo-1519244703995-f4e0f30006d5?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
+						className="size-6 rounded-full bg-gray-50 ring-2 ring-background"
+					/>
+					<img
+						alt="Assignee"
+						src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
+						className="size-6 rounded-full bg-gray-50 ring-2 ring-background"
+					/>
+				</div>
+				<Button
+					variant="outline"
+					size="sm"
+					className="hidden sm:block"
+					onClick={() => onEdit(deliverable.id)}
+				>
+					Details
+				</Button>
+				<DropdownMenu>
+					<DropdownMenuTrigger asChild>
+						<Button
+							variant="ghost"
+							size="icon"
+							className="-m-2.5 block p-2.5 text-muted-foreground hover:text-foreground"
+						>
+							<span className="sr-only">Open options</span>
+							<MoreVertical className="size-5" />
+						</Button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="end">
+						<DropdownMenuItem
+							onClick={() => onEdit(deliverable.id)}
+						>
+							Edit
+						</DropdownMenuItem>
+						<DropdownMenuItem
+							onClick={() =>
+								console.log("Delete", deliverable.id)
+							}
+						>
+							Delete
+						</DropdownMenuItem>
+					</DropdownMenuContent>
+				</DropdownMenu>
+			</div>
+		</li>
 	);
 }
 
@@ -92,20 +163,13 @@ export function DeliverablesTab({ bookingId }: DeliverablesTabProps) {
 
 	const items = deliverables?.data ?? [];
 
-	const grouped = new Map<string, Deliverable[]>();
-	for (const status of statusOrder) {
-		grouped.set(status, []);
-	}
-	for (const item of items) {
-		if (grouped.has(item.status)) {
-			grouped.get(item.status)?.push(item);
-		} else {
-			grouped.get("pending")?.push(item);
-		}
-	}
-	for (const [key, value] of grouped.entries()) {
-		if (value.length === 0) grouped.delete(key);
-	}
+	const sortedItems = [...items].sort((a, b) => {
+		const indexA = statusOrder.indexOf(a.status);
+		const indexB = statusOrder.indexOf(b.status);
+		const safeIndexA = indexA === -1 ? 999 : indexA;
+		const safeIndexB = indexB === -1 ? 999 : indexB;
+		return safeIndexA - safeIndexB;
+	});
 
 	if (isLoading) {
 		return (
@@ -160,24 +224,15 @@ export function DeliverablesTab({ bookingId }: DeliverablesTabProps) {
 					</p>
 				</div>
 			) : (
-				<div className="space-y-6">
-					{Array.from(grouped.entries()).map(([status, group]) => (
-						<div key={status}>
-							<div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-								{status.replace("_", " ")} ({group.length})
-							</div>
-							<div className="divide-y">
-								{group.map((item) => (
-									<DeliverableRow
-										key={item.id}
-										deliverable={item}
-										onEdit={openEdit}
-									/>
-								))}
-							</div>
-						</div>
+				<ul className="border-t divide-y divide-border">
+					{sortedItems.map((item) => (
+						<DeliverableRow
+							key={item.id}
+							deliverable={item}
+							onEdit={openEdit}
+						/>
 					))}
-				</div>
+				</ul>
 			)}
 		</div>
 	);

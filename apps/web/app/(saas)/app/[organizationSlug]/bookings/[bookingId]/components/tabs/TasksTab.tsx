@@ -1,20 +1,24 @@
 "use client";
 
-import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@repo/ui/components/dropdown-menu";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
 import { useTaskParams } from "@saas/studio/hooks/params";
 import { tasksApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
-import { format, isPast, isToday } from "date-fns";
+
 import {
 	AlertCircleIcon,
-	CalendarIcon,
 	CheckSquareIcon,
+	MoreVertical,
 	PlusIcon,
 } from "lucide-react";
-import { getPriorityVariant, getStatusVariant } from "../utils";
 
 interface TasksTabProps {
 	bookingId: string;
@@ -31,70 +35,15 @@ type Task = {
 
 const statusOrder = ["in_progress", "pending", "completed", "cancelled"];
 
-function TaskRow({
-	task,
-	onEdit,
-}: {
-	task: Task;
-	onEdit: (id: string) => void;
-}) {
-	const isOverdue =
-		task.dueDate &&
-		isPast(new Date(task.dueDate)) &&
-		!isToday(new Date(task.dueDate)) &&
-		task.status !== "completed" &&
-		task.status !== "cancelled";
+const STATUS_STYLES: Record<string, string> = {
+	pending: "text-gray-600 bg-gray-50 ring-gray-500/10",
+	in_progress: "text-blue-700 bg-blue-50 ring-blue-600/20",
+	completed: "text-green-700 bg-green-50 ring-green-600/20",
+	cancelled: "text-red-700 bg-red-50 ring-red-600/20",
+};
 
-	const isCompleted = task.status === "completed";
-
-	return (
-		<button
-			type="button"
-			onClick={() => onEdit(task.id)}
-			className="w-full flex items-center justify-between gap-4 py-3 px-3 rounded-lg hover:bg-muted/50 transition-colors text-left"
-		>
-			<div className="flex-1 min-w-0 space-y-1">
-				<div
-					className={cn(
-						"font-medium truncate",
-						isCompleted && "text-muted-foreground line-through",
-					)}
-				>
-					{task.name}
-				</div>
-				<div className="flex items-center gap-2 text-xs">
-					{task.dueDate && (
-						<span
-							className={cn(
-								"flex items-center gap-1",
-								isOverdue
-									? "text-red-600"
-									: "text-muted-foreground",
-							)}
-						>
-							<CalendarIcon className="h-3 w-3" />
-							{isOverdue && "Overdue: "}
-							{format(new Date(task.dueDate), "MMM d")}
-						</span>
-					)}
-					{task.priority && task.priority !== "medium" && (
-						<Badge
-							variant={getPriorityVariant(task.priority)}
-							className="text-[10px] h-5 capitalize"
-						>
-							{task.priority}
-						</Badge>
-					)}
-				</div>
-			</div>
-			<Badge
-				variant={getStatusVariant(task.status)}
-				className="shrink-0 capitalize text-xs"
-			>
-				{task.status.replace("_", " ")}
-			</Badge>
-		</button>
-	);
+function getStatusStyle(status: string) {
+	return STATUS_STYLES[status] || "text-gray-600 bg-gray-50 ring-gray-500/10";
 }
 
 export function TasksTab({ bookingId }: TasksTabProps) {
@@ -112,20 +61,13 @@ export function TasksTab({ bookingId }: TasksTabProps) {
 
 	const tasksList = tasks?.data ?? [];
 
-	const grouped = new Map<string, Task[]>();
-	for (const status of statusOrder) {
-		grouped.set(status, []);
-	}
-	for (const task of tasksList) {
-		if (grouped.has(task.status)) {
-			grouped.get(task.status)?.push(task);
-		} else {
-			grouped.get("pending")?.push(task);
-		}
-	}
-	for (const [key, value] of grouped.entries()) {
-		if (value.length === 0) grouped.delete(key);
-	}
+	const sortedTasks = [...tasksList].sort((a, b) => {
+		const indexA = statusOrder.indexOf(a.status);
+		const indexB = statusOrder.indexOf(b.status);
+		const safeIndexA = indexA === -1 ? 999 : indexA;
+		const safeIndexB = indexB === -1 ? 999 : indexB;
+		return safeIndexA - safeIndexB;
+	});
 
 	if (isLoading) {
 		return (
@@ -178,24 +120,100 @@ export function TasksTab({ bookingId }: TasksTabProps) {
 					<p className="text-sm text-muted-foreground">No tasks</p>
 				</div>
 			) : (
-				<div className="space-y-6">
-					{Array.from(grouped.entries()).map(([status, group]) => (
-						<div key={status}>
-							<div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-								{status.replace("_", " ")} ({group.length})
-							</div>
-							<div className="divide-y">
-								{group.map((task) => (
-									<TaskRow
-										key={task.id}
-										task={task}
-										onEdit={openEdit}
-									/>
-								))}
-							</div>
-						</div>
-					))}
-				</div>
+				<ul className="border-t divide-y divide-border">
+					{sortedTasks.map((task) => {
+						const isCompleted = task.status === "completed";
+
+						return (
+							<li
+								key={task.id}
+								className="flex items-center justify-between gap-x-6 py-5"
+							>
+								<div className="flex-1 min-w-0">
+									<div className="flex items-start gap-x-3">
+										<p
+											className={cn(
+												"text-sm/6 font-semibold text-foreground",
+												isCompleted &&
+													"line-through text-muted-foreground",
+											)}
+										>
+											{task.name}
+										</p>
+										<p
+											className={cn(
+												"mt-0.5 rounded-md px-1.5 py-0.5 text-xs font-medium capitalize whitespace-nowrap ring-1 ring-inset",
+												getStatusStyle(task.status),
+											)}
+										>
+											{task.status.replace("_", " ")}
+										</p>
+									</div>
+								</div>
+								<div className="flex flex-none items-center gap-x-4">
+									<div className="flex -space-x-1">
+										<img
+											alt="Assignee"
+											src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
+											className="size-6 rounded-full bg-gray-50 ring-2 ring-background"
+										/>
+										<img
+											alt="Assignee"
+											src="https://images.unsplash.com/photo-1519244703995-f4e0f30006d5?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
+											className="size-6 rounded-full bg-gray-50 ring-2 ring-background"
+										/>
+										<img
+											alt="Assignee"
+											src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
+											className="size-6 rounded-full bg-gray-50 ring-2 ring-background"
+										/>
+									</div>
+									<Button
+										variant="outline"
+										size="sm"
+										className="hidden sm:block"
+										onClick={() => openEdit(task.id)}
+									>
+										Details
+									</Button>
+									<DropdownMenu>
+										<DropdownMenuTrigger asChild>
+											<Button
+												variant="ghost"
+												size="icon"
+												className="-m-2.5 block p-2.5 text-muted-foreground hover:text-foreground"
+											>
+												<span className="sr-only">
+													Open options
+												</span>
+												<MoreVertical className="size-5" />
+											</Button>
+										</DropdownMenuTrigger>
+										<DropdownMenuContent align="end">
+											<DropdownMenuItem
+												onClick={() =>
+													openEdit(task.id)
+												}
+											>
+												Edit
+											</DropdownMenuItem>
+											<DropdownMenuItem
+												onClick={() =>
+													console.log(
+														"Delete",
+														task.id,
+													)
+												}
+											>
+												Delete
+											</DropdownMenuItem>
+										</DropdownMenuContent>
+									</DropdownMenu>
+								</div>
+							</li>
+						);
+					})}
+				</ul>
 			)}
 		</div>
 	);
