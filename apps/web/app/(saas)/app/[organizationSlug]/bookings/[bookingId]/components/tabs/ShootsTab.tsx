@@ -1,7 +1,12 @@
 "use client";
 
-import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@repo/ui/components/dropdown-menu";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
 import { useShootParams } from "@saas/studio/hooks/params";
@@ -11,8 +16,7 @@ import { format } from "date-fns";
 import {
 	AlertCircleIcon,
 	CameraIcon,
-	ClockIcon,
-	MapPinIcon,
+	MoreVertical,
 	PlusIcon,
 } from "lucide-react";
 
@@ -31,15 +35,17 @@ type Shoot = {
 	status: string;
 };
 
+const STATUS_STYLES: Record<string, string> = {
+	scheduled: "text-gray-600 bg-gray-50 ring-gray-500/10",
+	confirmed: "text-blue-700 bg-blue-50 ring-blue-600/20",
+	in_progress: "text-indigo-700 bg-indigo-50 ring-indigo-600/20",
+	completed: "text-green-700 bg-green-50 ring-green-600/20",
+	cancelled: "text-red-700 bg-red-50 ring-red-600/20",
+	postponed: "text-yellow-800 bg-yellow-50 ring-yellow-600/20",
+};
+
 function getStatusStyle(status: string) {
-	switch (status) {
-		case "completed":
-			return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400";
-		case "cancelled":
-			return "bg-red-500/10 text-red-700 dark:text-red-400";
-		default:
-			return "bg-muted text-muted-foreground";
-	}
+	return STATUS_STYLES[status] || "text-gray-600 bg-gray-50 ring-gray-500/10";
 }
 
 function ShootRow({
@@ -49,46 +55,86 @@ function ShootRow({
 	shoot: Shoot;
 	onEdit: (id: string) => void;
 }) {
-	const timeRange =
+	const dateStr = shoot.shootDate
+		? format(new Date(shoot.shootDate), "MMM d, yyyy")
+		: "Date TBD";
+
+	const timeStr =
 		shoot.startTime && shoot.endTime
-			? `${format(new Date(`2000-01-01T${shoot.startTime}`), "h:mm a")} – ${format(new Date(`2000-01-01T${shoot.endTime}`), "h:mm a")}`
-			: null;
+			? `${format(new Date(`2000-01-01T${shoot.startTime}`), "h:mm a")} - ${format(new Date(`2000-01-01T${shoot.endTime}`), "h:mm a")}`
+			: "Time TBD";
+
+	const venueStr = shoot.venue || "Venue TBD";
 
 	return (
-		<button
-			type="button"
-			onClick={() => onEdit(shoot.id)}
-			className="w-full flex items-center justify-between gap-4 py-3 px-3 rounded-lg hover:bg-muted/50 transition-colors text-left group"
-		>
-			<div className="flex-1 min-w-0 space-y-1">
-				<div className="font-medium truncate">
-					{shoot.shootType || shoot.name || "Unnamed Shoot"}
+		<li className="flex items-center justify-between gap-x-6 py-5">
+			<div className="min-w-0">
+				<div className="flex items-start gap-x-3">
+					<p className="text-sm/6 font-semibold text-foreground">
+						{shoot.name || shoot.shootType || "Unnamed Shoot"}
+					</p>
+					<p
+						className={cn(
+							"mt-0.5 rounded-md px-1.5 py-0.5 text-xs font-medium capitalize whitespace-nowrap ring-1 ring-inset",
+							getStatusStyle(shoot.status),
+						)}
+					>
+						{shoot.status.replace("_", " ")}
+					</p>
 				</div>
-				<div className="flex items-center gap-3 text-sm text-muted-foreground">
-					{timeRange && (
-						<span className="flex items-center gap-1">
-							<ClockIcon className="h-3.5 w-3.5" />
-							{timeRange}
-						</span>
-					)}
-					{shoot.venue && (
-						<span className="flex items-center gap-1 truncate">
-							<MapPinIcon className="h-3.5 w-3.5 shrink-0" />
-							<span className="truncate">{shoot.venue}</span>
-						</span>
-					)}
+				<div className="mt-1 flex items-center gap-x-2 text-xs/5 text-muted-foreground">
+					<p className="whitespace-nowrap">{dateStr}</p>
+					<svg
+						viewBox="0 0 2 2"
+						className="size-0.5 fill-current"
+						aria-hidden="true"
+					>
+						<circle cx={1} cy={1} r={1} />
+					</svg>
+					<p className="whitespace-nowrap">{timeStr}</p>
+					<svg
+						viewBox="0 0 2 2"
+						className="size-0.5 fill-current"
+						aria-hidden="true"
+					>
+						<circle cx={1} cy={1} r={1} />
+					</svg>
+					<p className="truncate">{venueStr}</p>
 				</div>
 			</div>
-			<Badge
-				variant="secondary"
-				className={cn(
-					"shrink-0 capitalize text-xs font-medium",
-					getStatusStyle(shoot.status),
-				)}
-			>
-				{shoot.status.replace("_", " ")}
-			</Badge>
-		</button>
+			<div className="flex flex-none items-center gap-x-4">
+				<Button
+					variant="outline"
+					size="sm"
+					className="hidden sm:block"
+					onClick={() => onEdit(shoot.id)}
+				>
+					Details
+				</Button>
+				<DropdownMenu>
+					<DropdownMenuTrigger asChild>
+						<Button
+							variant="ghost"
+							size="icon"
+							className="-m-2.5 block p-2.5 text-muted-foreground hover:text-foreground"
+						>
+							<span className="sr-only">Open options</span>
+							<MoreVertical className="size-5" />
+						</Button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="end">
+						<DropdownMenuItem onClick={() => onEdit(shoot.id)}>
+							Edit
+						</DropdownMenuItem>
+						<DropdownMenuItem
+							onClick={() => console.log("Delete", shoot.id)}
+						>
+							Delete
+						</DropdownMenuItem>
+					</DropdownMenuContent>
+				</DropdownMenu>
+			</div>
+		</li>
 	);
 }
 
@@ -106,17 +152,6 @@ export function ShootsTab({ bookingId }: ShootsTabProps) {
 	});
 
 	const shootsList = shoots?.data ?? [];
-
-	const grouped = new Map<string, Shoot[]>();
-	for (const shoot of shootsList) {
-		const dateKey = shoot.shootDate
-			? format(new Date(shoot.shootDate), "yyyy-MM-dd")
-			: "unscheduled";
-		if (!grouped.has(dateKey)) {
-			grouped.set(dateKey, []);
-		}
-		grouped.get(dateKey)?.push(shoot);
-	}
 
 	if (isLoading) {
 		return (
@@ -171,31 +206,15 @@ export function ShootsTab({ bookingId }: ShootsTabProps) {
 					</p>
 				</div>
 			) : (
-				<div className="space-y-6">
-					{Array.from(grouped.entries()).map(
-						([dateKey, dateGroup]) => (
-							<div key={dateKey}>
-								<div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-									{dateKey === "unscheduled"
-										? "Unscheduled"
-										: format(
-												new Date(dateKey),
-												"EEEE, MMM d",
-											)}
-								</div>
-								<div className="divide-y">
-									{dateGroup.map((shoot) => (
-										<ShootRow
-											key={shoot.id}
-											shoot={shoot}
-											onEdit={openEdit}
-										/>
-									))}
-								</div>
-							</div>
-						),
-					)}
-				</div>
+				<ul className="border-t divide-y divide-border">
+					{shootsList.map((shoot) => (
+						<ShootRow
+							key={shoot.id}
+							shoot={shoot}
+							onEdit={openEdit}
+						/>
+					))}
+				</ul>
 			)}
 		</div>
 	);
