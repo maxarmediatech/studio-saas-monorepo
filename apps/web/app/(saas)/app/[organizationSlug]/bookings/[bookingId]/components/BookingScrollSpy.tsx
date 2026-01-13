@@ -146,7 +146,7 @@ export function BookingScrollSpy({
 								)}
 							</div>
 
-							<div className="px-6 py-3">
+							<div className="px-6 pt-3 pb-6">
 								<div className="grid grid-cols-3 gap-1  bg-muted/60  p-1 rounded-xl">
 									{/* Package Cost */}
 									<div className="bg-card rounded-lg border p-3">
