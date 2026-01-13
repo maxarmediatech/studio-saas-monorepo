@@ -1,6 +1,6 @@
 CREATE TYPE "public"."bill_to" AS ENUM('studio', 'client');--> statement-breakpoint
 CREATE TYPE "public"."booking_phase" AS ENUM('new', 'preparation', 'shooting', 'delivery', 'completed', 'cancelled');--> statement-breakpoint
-CREATE TYPE "public"."config_type" AS ENUM('task_status', 'task_priority', 'deliverable_status', 'deliverable_priority', 'crew_status', 'shoot_status', 'booking_type', 'package_type', 'relation_type', 'expense_category');--> statement-breakpoint
+CREATE TYPE "public"."config_type" AS ENUM('task_status', 'task_priority', 'deliverable_status', 'deliverable_priority', 'crew_status', 'crew_role', 'shoot_status', 'booking_type', 'package_type', 'relation_type', 'expense_category', 'event_type');--> statement-breakpoint
 CREATE TYPE "public"."conversation_status" AS ENUM('active', 'archived', 'blocked');--> statement-breakpoint
 CREATE TYPE "public"."invoice_status" AS ENUM('draft', 'sent', 'paid', 'partial', 'overdue', 'cancelled');--> statement-breakpoint
 CREATE TYPE "public"."message_direction" AS ENUM('inbound', 'outbound');--> statement-breakpoint
@@ -300,9 +300,10 @@ CREATE TABLE "deliverables" (
 	"booking_id" varchar(255) NOT NULL,
 	"name" text NOT NULL,
 	"description" text,
-	"deliverable_type" text NOT NULL,
+	"quantity" integer DEFAULT 1 NOT NULL,
+	"cost" numeric(10, 2),
+	"is_package_included" boolean DEFAULT false NOT NULL,
 	"status" text DEFAULT 'pending' NOT NULL,
-	"priority" text DEFAULT 'normal' NOT NULL,
 	"workflow_status" "workflow_status" DEFAULT 'not_started' NOT NULL,
 	"due_date" date,
 	"delivered_at" timestamp with time zone,
@@ -423,6 +424,7 @@ CREATE TABLE "received_amounts" (
 	"transaction_reference" varchar(100),
 	"received_date" date NOT NULL,
 	"notes" text,
+	"proof_attachment" jsonb,
 	"payment_schedule_id" varchar(255),
 	"created_by" varchar(255),
 	"updated_by" varchar(255),
@@ -433,12 +435,51 @@ CREATE TABLE "received_amounts" (
 	CONSTRAINT "received_amounts_amount_positive" CHECK (amount > 0)
 );
 --> statement-breakpoint
+CREATE TABLE "recent_visits" (
+	"id" varchar(255) PRIMARY KEY NOT NULL,
+	"organization_id" varchar(255) NOT NULL,
+	"user_id" varchar(255) NOT NULL,
+	"entity_type" varchar(50) NOT NULL,
+	"entity_id" varchar(255) NOT NULL,
+	"visited_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "saved_view_favorites" (
+	"id" varchar(255) PRIMARY KEY NOT NULL,
+	"saved_view_id" varchar(255) NOT NULL,
+	"user_id" varchar(255) NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "saved_views" (
+	"id" varchar(255) PRIMARY KEY NOT NULL,
+	"organization_id" varchar(255) NOT NULL,
+	"created_by" varchar(255),
+	"entity_type" varchar(50) NOT NULL,
+	"name" text NOT NULL,
+	"description" text,
+	"icon" varchar(50),
+	"color" varchar(20),
+	"filters" jsonb DEFAULT '{}'::jsonb NOT NULL,
+	"display_filters" jsonb,
+	"column_visibility" jsonb,
+	"sorting" jsonb,
+	"is_system" boolean DEFAULT false NOT NULL,
+	"is_default" boolean DEFAULT false NOT NULL,
+	"is_public" boolean DEFAULT false NOT NULL,
+	"sort_order" integer DEFAULT 0 NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "shoot_assignments" (
 	"id" varchar(255) PRIMARY KEY NOT NULL,
 	"shoot_id" varchar(255) NOT NULL,
 	"crew_id" varchar(255) NOT NULL,
 	"role" text NOT NULL,
 	"is_lead" boolean DEFAULT false NOT NULL,
+	"rate" numeric(10, 2),
 	"assigned_by" varchar(255),
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -582,6 +623,12 @@ ALTER TABLE "received_amounts" ADD CONSTRAINT "received_amounts_payment_schedule
 ALTER TABLE "received_amounts" ADD CONSTRAINT "received_amounts_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "received_amounts" ADD CONSTRAINT "received_amounts_updated_by_users_id_fk" FOREIGN KEY ("updated_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "received_amounts" ADD CONSTRAINT "received_amounts_deleted_by_users_id_fk" FOREIGN KEY ("deleted_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "recent_visits" ADD CONSTRAINT "recent_visits_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "recent_visits" ADD CONSTRAINT "recent_visits_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "saved_view_favorites" ADD CONSTRAINT "saved_view_favorites_saved_view_id_saved_views_id_fk" FOREIGN KEY ("saved_view_id") REFERENCES "public"."saved_views"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "saved_view_favorites" ADD CONSTRAINT "saved_view_favorites_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "saved_views" ADD CONSTRAINT "saved_views_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "saved_views" ADD CONSTRAINT "saved_views_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "shoot_assignments" ADD CONSTRAINT "shoot_assignments_shoot_id_shoots_id_fk" FOREIGN KEY ("shoot_id") REFERENCES "public"."shoots"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "shoot_assignments" ADD CONSTRAINT "shoot_assignments_crew_id_crews_id_fk" FOREIGN KEY ("crew_id") REFERENCES "public"."crews"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "shoot_assignments" ADD CONSTRAINT "shoot_assignments_assigned_by_users_id_fk" FOREIGN KEY ("assigned_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
@@ -664,6 +711,14 @@ CREATE INDEX "received_amounts_org_idx" ON "received_amounts" USING btree ("orga
 CREATE INDEX "received_amounts_booking_idx" ON "received_amounts" USING btree ("booking_id");--> statement-breakpoint
 CREATE INDEX "received_amounts_date_idx" ON "received_amounts" USING btree ("received_date");--> statement-breakpoint
 CREATE INDEX "received_amounts_schedule_idx" ON "received_amounts" USING btree ("payment_schedule_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "recent_visits_user_org_entity_idx" ON "recent_visits" USING btree ("organization_id","user_id","entity_type","entity_id");--> statement-breakpoint
+CREATE INDEX "recent_visits_user_org_visited_idx" ON "recent_visits" USING btree ("organization_id","user_id","visited_at");--> statement-breakpoint
+CREATE UNIQUE INDEX "saved_view_favorites_view_user_idx" ON "saved_view_favorites" USING btree ("saved_view_id","user_id");--> statement-breakpoint
+CREATE INDEX "saved_view_favorites_user_idx" ON "saved_view_favorites" USING btree ("user_id");--> statement-breakpoint
+CREATE INDEX "saved_views_org_idx" ON "saved_views" USING btree ("organization_id");--> statement-breakpoint
+CREATE INDEX "saved_views_org_entity_idx" ON "saved_views" USING btree ("organization_id","entity_type");--> statement-breakpoint
+CREATE INDEX "saved_views_created_by_idx" ON "saved_views" USING btree ("created_by");--> statement-breakpoint
+CREATE UNIQUE INDEX "saved_views_org_entity_name_idx" ON "saved_views" USING btree ("organization_id","entity_type","name");--> statement-breakpoint
 CREATE UNIQUE INDEX "shoot_assignments_shoot_crew_idx" ON "shoot_assignments" USING btree ("shoot_id","crew_id");--> statement-breakpoint
 CREATE INDEX "shoot_assignments_crew_idx" ON "shoot_assignments" USING btree ("crew_id");--> statement-breakpoint
 CREATE INDEX "shoots_organization_idx" ON "shoots" USING btree ("organization_id");--> statement-breakpoint
