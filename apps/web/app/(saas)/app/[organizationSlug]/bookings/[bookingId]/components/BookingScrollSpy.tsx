@@ -85,13 +85,12 @@ export function BookingScrollSpy({
 					<div className="flex-shrink-0 -mx-6">
 						<div className="2xl:border-x bg-card overflow-hidden">
 							<div className="px-6 pt-4 pb-6 ">
-								{/* Date at top-right corner */}
 								{booking.createdAt && (
 									<div className="flex justify-end mb-3">
 										<div className="flex items-center gap-1.5 text-xs">
 											<Calendar className="h-3 w-3 text-muted-foreground" />
 											<span className="text-muted-foreground">
-												Booked on
+												Booking date
 											</span>
 											<span className="font-semibold text-foreground">
 												{format(
@@ -103,7 +102,6 @@ export function BookingScrollSpy({
 									</div>
 								)}
 
-								{/* Title */}
 								<h2 className="text-2xl font-bold tracking-tight mb-1.5">
 									{booking.name}
 								</h2>
@@ -113,34 +111,37 @@ export function BookingScrollSpy({
 									<div className="flex items-center flex-wrap gap-x-3 text-sm text-muted-foreground">
 										{booking.bookingType && (
 											<span>
-												<span className="text-muted-foreground/60">
-													Type:
+												<span className="text-muted-foreground text-xs">
+													Booking type
 												</span>{" "}
-												{formatPackageType(
-													booking.bookingType,
-												)}
+												<span className="font-semibold text-foreground">
+													{formatPackageType(
+														booking.bookingType,
+													)}
+												</span>
 											</span>
 										)}
 										{booking.packageType && (
 											<span>
-												<span className="text-muted-foreground/60">
-													Package:
+												<span className="text-muted-foreground text-xs">
+													Package type
 												</span>{" "}
-												{formatPackageType(
-													booking.packageType,
-												)}
+												<span className="font-semibold text-foreground">
+													{formatPackageType(
+														booking.packageType,
+													)}
+												</span>
 											</span>
 										)}
 									</div>
 								)}
 								{clients.length > 0 && (
 									<div className="flex justify-end text-sm text-muted-foreground mt-3">
-										<span className="text-muted-foreground/60">
-											Clients:
-										</span>{" "}
-										{clients
-											.map((client) => client.name)
-											.join(" / ")}
+										<span className="font-semibold text-foreground/90">
+											{clients
+												.map((client) => client.name)
+												.join(" / ")}
+										</span>
 									</div>
 								)}
 							</div>
