@@ -53,10 +53,14 @@ function getEntityIcon(entityType: string) {
 		case "booking":
 			return <CalendarIcon className="size-4" />;
 		case "shoot":
+		case "shoot_assignment":
 			return <CameraIcon className="size-4" />;
 		case "task":
+		case "task_assignment":
 			return <CheckSquareIcon className="size-4" />;
 		case "deliverable":
+		case "deliverable_assignment":
+		case "submission":
 			return <PackageIcon className="size-4" />;
 		case "received_amount":
 		case "payment_schedule":
@@ -213,17 +217,20 @@ export function ActivityFeedWidget({
 	const [filter, setFilter] = useState<FilterKey>("all");
 
 	// Build API query options with server-side filtering
-	// "payment" filter uses entityTypes array to include both received_amount and payment_schedule
-	const PAYMENT_ENTITY_TYPES: Array<"received_amount" | "payment_schedule"> = [
-		"received_amount",
-		"payment_schedule",
-	];
+	// Each filter includes related entity types (e.g., "task" includes "task_assignment")
+	// Using 'as const' to preserve literal types for API type safety
+	const FILTER_ENTITY_TYPES = {
+		shoot: ["shoot", "shoot_assignment"],
+		task: ["task", "task_assignment"],
+		deliverable: ["deliverable", "deliverable_assignment", "submission"],
+		payment: ["received_amount", "payment_schedule"],
+	} as const;
 	const queryParams =
 		filter === "all"
 			? { limit: 15 }
-			: filter === "payment"
-				? { limit: 15, entityTypes: PAYMENT_ENTITY_TYPES }
-				: { limit: 15, entityType: filter };
+			: filter === "booking"
+				? { limit: 15, entityType: filter }
+				: { limit: 15, entityTypes: [...FILTER_ENTITY_TYPES[filter]] };
 
 	const { data, isLoading, error } = useQuery({
 		...activitiesApi.listOptions(queryParams),

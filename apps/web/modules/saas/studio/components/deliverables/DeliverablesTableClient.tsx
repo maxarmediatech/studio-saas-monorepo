@@ -158,7 +158,7 @@ export function DeliverablesTableClient({
 			setDeleteDialogOpen(false);
 			setDeliverableToDelete(null);
 			queryClient.invalidateQueries({
-				queryKey: studioQueryKeys.deliverables.all,
+				queryKey: orpc.deliverables.key(),
 			});
 			queryClient.invalidateQueries({
 				queryKey: orpc.activities.key(),

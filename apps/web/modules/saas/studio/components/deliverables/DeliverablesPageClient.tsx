@@ -19,11 +19,8 @@ import {
 	type RowAction,
 } from "@saas/shared/components/data-table";
 import { useDeliverableParams } from "@saas/studio/hooks/params/use-deliverable-params";
-import {
-	deliverablesApi,
-	deliverablesMutations,
-	studioQueryKeys,
-} from "@saas/studio/lib/api";
+import { deliverablesApi, deliverablesMutations } from "@saas/studio/lib/api";
+import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
@@ -124,7 +121,10 @@ export function DeliverablesPageClient({
 			setDeleteDialogOpen(false);
 			setDeliverableToDelete(null);
 			queryClient.invalidateQueries({
-				queryKey: studioQueryKeys.deliverables.all,
+				queryKey: orpc.deliverables.key(),
+			});
+			queryClient.invalidateQueries({
+				queryKey: orpc.activities.key(),
 			});
 		},
 		onError: (error) => {

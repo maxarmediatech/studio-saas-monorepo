@@ -18,11 +18,8 @@ import {
 	type RowAction,
 } from "@saas/shared/components/data-table";
 import { useClientParams } from "@saas/studio/hooks/params/use-client-params";
-import {
-	clientsApi,
-	clientsMutations,
-	studioQueryKeys,
-} from "@saas/studio/lib/api";
+import { clientsApi, clientsMutations } from "@saas/studio/lib/api";
+import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
@@ -94,7 +91,10 @@ export function ClientsPageClient({
 			setDeleteDialogOpen(false);
 			setClientToDelete(null);
 			queryClient.invalidateQueries({
-				queryKey: studioQueryKeys.clients.all,
+				queryKey: orpc.clients.key(),
+			});
+			queryClient.invalidateQueries({
+				queryKey: orpc.activities.key(),
 			});
 		},
 		onError: (error) => {

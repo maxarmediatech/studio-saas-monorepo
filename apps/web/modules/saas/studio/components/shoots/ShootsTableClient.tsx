@@ -189,7 +189,7 @@ export function ShootsTableClient({
 			setDeleteDialogOpen(false);
 			setShootToDelete(null);
 			queryClient.invalidateQueries({
-				queryKey: studioQueryKeys.shoots.all,
+				queryKey: orpc.shoots.key(),
 			});
 			queryClient.invalidateQueries({
 				queryKey: orpc.activities.key(),

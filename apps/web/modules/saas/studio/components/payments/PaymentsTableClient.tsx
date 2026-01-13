@@ -137,7 +137,7 @@ export function PaymentsTableClient({
 			setDeleteDialogOpen(false);
 			setPaymentToDelete(null);
 			queryClient.invalidateQueries({
-				queryKey: studioQueryKeys.payments.all,
+				queryKey: orpc.payments.key(),
 			});
 			queryClient.invalidateQueries({
 				queryKey: orpc.activities.key(),
