@@ -35,5 +35,18 @@
 		"editor.defaultFormatter": "biomejs.biome"
 	},
 	"prettier.enable": false,
-	"eslint.enable": false
+	"eslint.enable": false,
+
+	"files.watcherExclude": {
+		"**/node_modules/**": true,
+		"**/.next/**": true,
+		"**/.turbo/**": true,
+		"**/dist/**": true,
+		"**/*.tsbuildinfo": true
+	},
+	"search.exclude": {
+		"**/node_modules": true,
+		"**/.next": true,
+		"**/dist": true
+	}
 }
