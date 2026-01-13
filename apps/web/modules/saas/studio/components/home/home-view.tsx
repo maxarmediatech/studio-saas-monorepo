@@ -2,6 +2,7 @@
 
 import { RecentVisitsWidget } from "@saas/studio/components/recent-visits/recent-visits-widget";
 import { UserGreeting } from "./user-greeting";
+import { QuickLinksWidget } from "./widgets/quick-links";
 import { QuickstartGuide } from "./widgets/quickstart-guide";
 
 interface HomeViewProps {
@@ -15,6 +16,7 @@ export function HomeView({ organizationSlug, userName }: HomeViewProps) {
 			<UserGreeting userName={userName} />
 			<div className="flex flex-col gap-7">
 				<QuickstartGuide organizationSlug={organizationSlug} />
+				<QuickLinksWidget />
 				<RecentVisitsWidget organizationSlug={organizationSlug} />
 			</div>
 		</div>

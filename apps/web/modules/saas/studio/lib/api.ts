@@ -412,3 +412,13 @@ export const recentVisitsApi = {
 export const recentVisitsMutations = {
 	track: () => orpc.recentVisits.track.mutationOptions(),
 };
+
+export const quickLinksApi = {
+	listOptions: () => orpc.quickLinks.list.queryOptions({ input: {} }),
+};
+
+export const quickLinksMutations = {
+	create: () => orpc.quickLinks.create.mutationOptions(),
+	update: () => orpc.quickLinks.update.mutationOptions(),
+	delete: () => orpc.quickLinks.delete.mutationOptions(),
+};

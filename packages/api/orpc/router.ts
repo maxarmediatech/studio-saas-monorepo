@@ -12,6 +12,7 @@ import { myAssignmentsRouter } from "../modules/my-assignments/router";
 import { newsletterRouter } from "../modules/newsletter/router";
 import { organizationsRouter } from "../modules/organizations/router";
 import { paymentsRouter } from "../modules/payments/router";
+import { quickLinksRouter } from "../modules/quick-links/router";
 import { recentVisitsRouter } from "../modules/recent-visits/router";
 import { savedViewsRouter } from "../modules/saved-views/router";
 import { shootsRouter } from "../modules/shoots/router";
@@ -49,6 +50,7 @@ export const router = publicProcedure
 		myAssignments: myAssignmentsRouter,
 		savedViews: savedViewsRouter,
 		recentVisits: recentVisitsRouter,
+		quickLinks: quickLinksRouter,
 	});
 
 export type ApiRouterClient = RouterClient<typeof router>;

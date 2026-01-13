@@ -1276,9 +1276,63 @@ export const recentVisits = pgTable(
 );
 
 // ============================================================================
+// QUICK LINKS TABLE
+// Personal bookmarked URLs for quick access on home page
+// ============================================================================
+
+export const quickLinks = pgTable(
+	"quick_links",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 })
+			.notNull()
+			.references(() => organizations.id, { onDelete: "cascade" }),
+		userId: varchar("user_id", { length: 255 })
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+
+		title: varchar("title", { length: 255 }),
+		url: text("url").notNull(),
+		metadata: jsonb("metadata"),
+		sortOrder: integer("sort_order").default(0).notNull(),
+
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		index("quick_links_org_user_idx").on(
+			table.organizationId,
+			table.userId,
+		),
+		index("quick_links_org_user_sort_idx").on(
+			table.organizationId,
+			table.userId,
+			table.sortOrder,
+		),
+	],
+);
+
+// ============================================================================
 // RELATIONS
 // All studio domain relations defined here
 // ============================================================================
+
+export const quickLinksRelations = relations(quickLinks, ({ one }) => ({
+	organization: one(organizations, {
+		fields: [quickLinks.organizationId],
+		references: [organizations.id],
+	}),
+	user: one(users, {
+		fields: [quickLinks.userId],
+		references: [users.id],
+	}),
+}));
 
 export const recentVisitsRelations = relations(recentVisits, ({ one }) => ({
 	organization: one(organizations, {
