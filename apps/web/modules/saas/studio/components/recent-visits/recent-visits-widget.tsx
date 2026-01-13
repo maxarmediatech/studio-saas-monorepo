@@ -1,49 +1,61 @@
 "use client";
 
+import { Button } from "@repo/ui/components/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@repo/ui/components/dropdown-menu";
+import { Skeleton } from "@repo/ui/components/skeleton";
+import { recentVisitsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import {
 	CalendarIcon,
 	CameraIcon,
 	CheckSquareIcon,
+	ChevronDownIcon,
 	HistoryIcon,
 	PackageIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { Badge } from "@repo/ui/components/badge";
-import {
-	Card,
-	CardContent,
-	CardHeader,
-	CardTitle,
-} from "@repo/ui/components/card";
-import { Skeleton } from "@repo/ui/components/skeleton";
-import { recentVisitsApi } from "@saas/studio/lib/api";
+import { useState } from "react";
 
 interface RecentVisitsWidgetProps {
 	organizationSlug: string;
 }
 
-const getEntityIcon = (type: string) => {
+type FilterKey = "all" | "booking" | "shoot" | "task" | "deliverable";
+
+const FILTERS: { key: FilterKey; label: string }[] = [
+	{ key: "all", label: "All" },
+	{ key: "booking", label: "Bookings" },
+	{ key: "shoot", label: "Shoots" },
+	{ key: "task", label: "Tasks" },
+	{ key: "deliverable", label: "Deliverables" },
+];
+
+function getEntityIcon(type: string) {
 	switch (type) {
 		case "booking":
-			return <CalendarIcon className="h-4 w-4" />;
+			return <CalendarIcon className="size-4 text-muted-foreground" />;
 		case "shoot":
-			return <CameraIcon className="h-4 w-4" />;
+			return <CameraIcon className="size-4 text-muted-foreground" />;
 		case "task":
-			return <CheckSquareIcon className="h-4 w-4" />;
+			return <CheckSquareIcon className="size-4 text-muted-foreground" />;
 		case "deliverable":
-			return <PackageIcon className="h-4 w-4" />;
+			return <PackageIcon className="size-4 text-muted-foreground" />;
 		default:
-			return <HistoryIcon className="h-4 w-4" />;
+			return <HistoryIcon className="size-4 text-muted-foreground" />;
 	}
-};
+}
 
-const getEntityRoute = (
+function getEntityRoute(
 	organizationSlug: string,
 	type: string,
 	entityId: string,
-) => {
+) {
 	switch (type) {
 		case "booking":
 			return `/app/${organizationSlug}/bookings/${entityId}`;
@@ -56,65 +68,93 @@ const getEntityRoute = (
 		default:
 			return "#";
 	}
-};
+}
 
 export function RecentVisitsWidget({
 	organizationSlug,
 }: RecentVisitsWidgetProps) {
+	const [filter, setFilter] = useState<FilterKey>("all");
+
 	const { data, isLoading } = useQuery(
-		recentVisitsApi.listOptions({ limit: 5 }),
+		recentVisitsApi.listOptions({ limit: 10 }),
 	);
 
-	const visits = data?.data ?? [];
+	const allVisits = data?.data ?? [];
+	const visits =
+		filter === "all"
+			? allVisits
+			: allVisits.filter((v) => v.entityType === filter);
+
+	const activeFilterLabel =
+		FILTERS.find((f) => f.key === filter)?.label ?? "All";
 
 	if (isLoading) {
 		return (
-			<Card className="h-full">
-				<CardHeader className="pb-3">
-					<CardTitle className="flex items-center gap-2 text-base font-medium">
-						<HistoryIcon className="h-4 w-4 text-muted-foreground" />
-						Recent Items
-					</CardTitle>
-				</CardHeader>
-				<CardContent className="space-y-4">
+			<div className="py-4">
+				<div className="flex items-center justify-between mb-2">
+					<div className="text-sm font-semibold text-muted-foreground">
+						Recents
+					</div>
+					<Skeleton className="h-7 w-16" />
+				</div>
+				<div className="min-h-[250px] flex flex-col">
 					{Array.from({ length: 5 }).map((_, i) => (
-						<div key={i} className="flex items-center gap-3">
-							<Skeleton className="h-8 w-8 rounded-md" />
-							<div className="space-y-1">
-								<Skeleton className="h-4 w-32" />
-								<Skeleton className="h-3 w-20" />
-							</div>
+						<div
+							key={i}
+							className="flex items-center gap-3 py-3 border-b border-border/50"
+						>
+							<Skeleton className="size-8 rounded-sm" />
+							<Skeleton className="h-4 w-20" />
+							<Skeleton className="h-4 w-40" />
+							<Skeleton className="h-3 w-16 ml-auto" />
 						</div>
 					))}
-				</CardContent>
-			</Card>
+				</div>
+			</div>
 		);
 	}
 
 	return (
-		<Card className="h-full">
-			<CardHeader className="flex flex-row items-center justify-between pb-3">
-				<CardTitle className="flex items-center gap-2 text-base font-medium">
-					<HistoryIcon className="h-4 w-4 text-muted-foreground" />
-					Recent Items
-				</CardTitle>
-				{visits.length > 0 && (
-					<Link
-						href="#"
-						className="text-xs text-muted-foreground hover:text-foreground hover:underline"
-					>
-						View all
-					</Link>
-				)}
-			</CardHeader>
-			<CardContent>
+		<div className="py-4">
+			<div className="flex items-center justify-between mb-2">
+				<div className="text-sm font-semibold text-muted-foreground">
+					Recents
+				</div>
+				<DropdownMenu>
+					<DropdownMenuTrigger asChild>
+						<Button
+							variant="outline"
+							size="sm"
+							className="h-7 px-2 text-xs font-medium gap-1"
+						>
+							{activeFilterLabel}
+							<ChevronDownIcon className="size-3 text-muted-foreground" />
+						</Button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="end">
+						{FILTERS.map((f) => (
+							<DropdownMenuItem
+								key={f.key}
+								onClick={() => setFilter(f.key)}
+								className="text-xs font-medium"
+							>
+								{f.label}
+							</DropdownMenuItem>
+						))}
+					</DropdownMenuContent>
+				</DropdownMenu>
+			</div>
+
+			<div className="min-h-[250px] flex flex-col">
 				{visits.length === 0 ? (
-					<div className="flex h-[200px] flex-col items-center justify-center gap-2 text-center text-muted-foreground">
-						<HistoryIcon className="h-8 w-8 opacity-20" />
-						<p className="text-sm">No recently visited items</p>
+					<div className="flex flex-col items-center justify-center py-16 text-center">
+						<HistoryIcon className="size-12 text-muted-foreground/20 mb-3" />
+						<p className="text-sm text-muted-foreground">
+							No recent items
+						</p>
 					</div>
 				) : (
-					<div className="space-y-4">
+					<>
 						{visits.map((visit) => {
 							const route = getEntityRoute(
 								organizationSlug,
@@ -127,61 +167,48 @@ export function RecentVisitsWidget({
 								<Link
 									key={visit.id}
 									href={route}
-									className="group flex items-center justify-between gap-3 rounded-md transition-colors hover:bg-muted/50 p-2 -mx-2"
+									className="group flex w-full items-center justify-between gap-3 py-3 text-sm border-b border-border/50 hover:bg-muted/50 transition-colors"
 								>
 									<div className="flex items-center gap-3 overflow-hidden">
-										<div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border bg-background text-muted-foreground group-hover:text-foreground transition-colors">
+										<div className="flex-shrink-0 grid place-items-center rounded-sm bg-muted size-8">
 											{icon}
 										</div>
-										<div className="min-w-0 flex-1">
-											<div className="flex items-center gap-2">
-												<p className="truncate text-sm font-medium text-foreground">
-													{visit.entityData?.name ??
-														"Unknown Item"}
-												</p>
-												{visit.entityData?.status && (
-													<Badge
-														variant="outline"
-														className="text-[10px] h-4 px-1 py-0"
-													>
-														{
-															visit.entityData
-																.status
-														}
-													</Badge>
-												)}
+										{visit.entityData?.referenceNumber && (
+											<div className="font-medium text-muted-foreground text-sm whitespace-nowrap">
+												{
+													visit.entityData
+														.referenceNumber
+												}
 											</div>
-											<p className="truncate text-xs text-muted-foreground">
-												<span className="capitalize">
-													{visit.entityType}
-												</span>
-												{visit.entityData
-													?.referenceNumber && (
-													<>
-														{" • "}
-														<span className="font-mono">
-															{
-																visit.entityData
-																	.referenceNumber
-															}
-														</span>
-													</>
-												)}
-											</p>
-										</div>
+										)}
+										<span className="truncate text-sm">
+											{visit.entityData?.name ??
+												"Unknown Item"}
+										</span>
 									</div>
-									<div className="shrink-0 text-xs text-muted-foreground whitespace-nowrap">
+									<div className="flex-shrink-0 font-medium text-xs text-muted-foreground">
 										{formatDistanceToNow(
 											new Date(visit.visitedAt),
-											{ addSuffix: true },
+											{ addSuffix: false },
 										)}
 									</div>
 								</Link>
 							);
 						})}
-					</div>
+					</>
 				)}
-			</CardContent>
-		</Card>
+			</div>
+
+			{visits.length > 0 && (
+				<div className="flex justify-center py-2">
+					<Link
+						href={`/app/${organizationSlug}/recents`}
+						className="text-sm text-primary hover:underline"
+					>
+						Show all
+					</Link>
+				</div>
+			)}
+		</div>
 	);
 }

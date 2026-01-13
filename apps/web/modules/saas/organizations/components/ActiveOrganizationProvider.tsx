@@ -99,7 +99,7 @@ export function ActiveOrganizationProvider({
 			};
 		});
 
-		router.push(`/app/${newActiveOrganization.slug}`);
+		router.push(`/app/${newActiveOrganization.slug}/home`);
 	};
 
 	const [loaded, setLoaded] = useState(
