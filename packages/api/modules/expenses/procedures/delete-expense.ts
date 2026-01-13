@@ -10,7 +10,7 @@ import {
 	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { formatAmount, trackActivity } from "../../activities/lib";
+import { formatAmount, safeTrackActivity } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	deleteExpenseInputSchema,
@@ -49,14 +49,16 @@ export const deleteExpense = studioProtectedProcedure
 
 		const amount = Number.parseFloat(expense.amount);
 
-		// Get booking assignments to update totals
+		// Get booking assignments to update totals (also get booking name for activity context)
 		const assignments = await db
 			.select({
 				bookingId: expenseAssignments.bookingId,
+				bookingName: bookings.name,
 				allocationPercentage: expenseAssignments.allocationPercentage,
 				allocationAmount: expenseAssignments.allocationAmount,
 			})
 			.from(expenseAssignments)
+			.leftJoin(bookings, eq(expenseAssignments.bookingId, bookings.id))
 			.where(
 				and(
 					eq(expenseAssignments.expenseId, id),
@@ -103,13 +105,22 @@ export const deleteExpense = studioProtectedProcedure
 					.where(eq(bookings.id, assignment.bookingId));
 			}
 
-			// Track activity (non-blocking)
-			trackActivity(context, {
+			// Track activity (non-blocking) - use first booking as parent context if available
+			const firstBooking = assignments.find(
+				(a): a is typeof a & { bookingId: string; bookingName: string } =>
+					a.bookingId !== null && a.bookingName !== null,
+			);
+			await safeTrackActivity(context, {
 				entityType: "expense",
 				entityId: id,
 				entityName: `${formatAmount(expense.amount)} - ${expense.description}`,
 				action: "deleted",
-			}).catch(console.error);
+				...(firstBooking && {
+					parentEntityType: "booking" as const,
+					parentEntityId: firstBooking.bookingId,
+					parentEntityName: firstBooking.bookingName,
+				}),
+			});
 
 			return {
 				data: { id },

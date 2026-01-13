@@ -1,7 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { and, db, eq, shoots } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { trackActivity } from "../../activities/lib";
+import { safeTrackActivity } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	deleteShootInputSchema,
@@ -23,12 +23,17 @@ export const deleteShoot = studioProtectedProcedure
 
 		const { id } = input;
 
-		// Verify shoot exists and belongs to organization
+		// Verify shoot exists and belongs to organization (include booking for activity context)
 		const existing = await db.query.shoots.findFirst({
 			where: and(
 				eq(shoots.id, id),
 				eq(shoots.organizationId, context.organizationId),
 			),
+			with: {
+				booking: {
+					columns: { id: true, name: true },
+				},
+			},
 		});
 
 		if (!existing) {
@@ -56,15 +61,18 @@ export const deleteShoot = studioProtectedProcedure
 			.where(eq(shoots.id, id));
 
 		// Track activity (non-blocking)
-		trackActivity(
+		await safeTrackActivity(
 			{ organizationId: context.organizationId, user: context.user },
 			{
 				entityType: "shoot",
 				entityId: id,
 				entityName: existing.name,
 				action: "deleted",
+				parentEntityType: "booking",
+				parentEntityId: existing.bookingId,
+				parentEntityName: existing.booking.name,
 			},
-		).catch(console.error);
+		);
 
 		return {
 			data: { id },

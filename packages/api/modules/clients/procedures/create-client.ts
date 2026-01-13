@@ -1,7 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { and, clients, db, eq, isNull, or } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { trackActivity } from "../../activities/lib";
+import { safeTrackActivity } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	createClientInputSchema,
@@ -79,12 +79,12 @@ export const createClient = studioProtectedProcedure
 		}
 
 		// Track activity (non-blocking)
-		trackActivity(context, {
+		await safeTrackActivity(context, {
 			entityType: "client",
 			entityId: created.id,
 			entityName: name,
 			action: "created",
-		}).catch(console.error);
+		});
 
 		return {
 			data: { id: created.id },

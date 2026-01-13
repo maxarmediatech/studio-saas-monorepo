@@ -1,7 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { and, bookings, db, eq } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { trackStatusChange } from "../../activities/lib";
+import { safeTrackStatusChange } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	updateBookingStatusInputSchema,
@@ -63,7 +63,7 @@ export const updateBookingStatus = studioProtectedProcedure
 			.where(eq(bookings.id, id));
 
 		// Track activity (non-blocking)
-		trackStatusChange(
+		await safeTrackStatusChange(
 			{ organizationId: context.organizationId, user: context.user },
 			{
 				entityType: "booking",
@@ -72,7 +72,7 @@ export const updateBookingStatus = studioProtectedProcedure
 				oldStatus: existing.status,
 				newStatus: status,
 			},
-		).catch(console.error);
+		);
 
 		return {
 			data: { id },

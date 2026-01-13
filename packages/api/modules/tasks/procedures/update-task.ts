@@ -3,8 +3,8 @@ import { and, db, eq, tasks } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import {
 	detectChanges,
-	trackFieldChanges,
-	trackStatusChange,
+	safeTrackFieldChanges,
+	safeTrackStatusChange,
 } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
@@ -76,7 +76,7 @@ export const updateTask = studioProtectedProcedure
 
 		// Track status change separately (non-blocking)
 		if (status !== undefined && status !== existing.status) {
-			trackStatusChange(
+			await safeTrackStatusChange(
 				{ organizationId: context.organizationId, user: context.user },
 				{
 					entityType: "task",
@@ -88,7 +88,7 @@ export const updateTask = studioProtectedProcedure
 					parentEntityId: existing.bookingId,
 					parentEntityName: existing.booking.name,
 				},
-			).catch(console.error);
+			);
 		}
 
 		// Track other field changes (non-blocking)
@@ -99,7 +99,7 @@ export const updateTask = studioProtectedProcedure
 		);
 
 		if (changes.length > 0) {
-			trackFieldChanges(
+			await safeTrackFieldChanges(
 				{ organizationId: context.organizationId, user: context.user },
 				{
 					entityType: "task",
@@ -110,7 +110,7 @@ export const updateTask = studioProtectedProcedure
 					parentEntityName: existing.booking.name,
 					changes,
 				},
-			).catch(console.error);
+			);
 		}
 
 		return {

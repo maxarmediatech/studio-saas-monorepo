@@ -1,7 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { and, attachments, bookings, db, eq, isNull } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { detectChanges, trackFieldChanges } from "../../activities/lib";
+import { detectChanges, safeTrackFieldChanges } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	updateBookingInputSchema,
@@ -75,7 +75,7 @@ export const updateBooking = studioProtectedProcedure
 		);
 
 		if (changes.length > 0) {
-			trackFieldChanges(
+			await safeTrackFieldChanges(
 				{ organizationId: context.organizationId, user: context.user },
 				{
 					entityType: "booking",
@@ -83,7 +83,7 @@ export const updateBooking = studioProtectedProcedure
 					entityName: name ?? existing.name,
 					changes,
 				},
-			).catch(console.error);
+			);
 		}
 
 		if (contractAttachment !== undefined) {

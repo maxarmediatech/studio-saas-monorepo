@@ -10,7 +10,7 @@ import {
 	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../../orpc/procedures";
-import { formatAmount, trackActivity } from "../../../activities/lib";
+import { formatAmount, safeTrackActivity } from "../../../activities/lib";
 import { requirePermission } from "../../../studio/lib/permissions";
 import {
 	convertScheduleInputSchema,
@@ -142,7 +142,7 @@ export const convertSchedule = studioProtectedProcedure
 				.where(eq(bookings.id, schedule.bookingId));
 
 			// Track activity (non-blocking) - schedule marked as paid
-			trackActivity(context, {
+			await safeTrackActivity(context, {
 				entityType: "payment_schedule",
 				entityId: scheduleId,
 				entityName: `${schedule.name} (${formatAmount(schedule.amount)})`,
@@ -154,7 +154,7 @@ export const convertSchedule = studioProtectedProcedure
 					paidAmount: remainingAmount.toFixed(2),
 					receivedId: created.id,
 				},
-			}).catch(console.error);
+			});
 
 			return {
 				data: {

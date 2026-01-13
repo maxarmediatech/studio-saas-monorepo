@@ -1,7 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { and, clients, db, eq, isNull, ne, or } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { detectChanges, trackFieldChanges } from "../../activities/lib";
+import { detectChanges, safeTrackFieldChanges } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	updateClientInputSchema,
@@ -116,12 +116,12 @@ export const updateClient = studioProtectedProcedure
 			"address",
 		]);
 		if (changes.length > 0) {
-			trackFieldChanges(context, {
+			await safeTrackFieldChanges(context, {
 				entityType: "client",
 				entityId: id,
 				entityName: input.name ?? existing.name,
 				changes,
-			}).catch(console.error);
+			});
 		}
 
 		return {

@@ -1,7 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { and, bookings, db, deliverables, eq, isNull } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { trackActivity } from "../../activities/lib";
+import { safeTrackActivity } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	createDeliverableInputSchema,
@@ -74,7 +74,7 @@ export const createDeliverable = studioProtectedProcedure
 		}
 
 		// Track activity (non-blocking)
-		trackActivity(
+		await safeTrackActivity(
 			{ organizationId: context.organizationId, user: context.user },
 			{
 				entityType: "deliverable",
@@ -85,7 +85,7 @@ export const createDeliverable = studioProtectedProcedure
 				parentEntityId: bookingId,
 				parentEntityName: booking.name,
 			},
-		).catch(console.error);
+		);
 
 		return {
 			data: { id: created.id },

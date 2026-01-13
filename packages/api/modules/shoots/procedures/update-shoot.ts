@@ -3,8 +3,8 @@ import { and, db, eq, shoots } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import {
 	detectChanges,
-	trackFieldChanges,
-	trackStatusChange,
+	safeTrackFieldChanges,
+	safeTrackStatusChange,
 } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
@@ -95,7 +95,7 @@ export const updateShoot = studioProtectedProcedure
 
 		// Track status change separately (non-blocking)
 		if (status !== undefined && status !== existing.status) {
-			trackStatusChange(
+			await safeTrackStatusChange(
 				{ organizationId: context.organizationId, user: context.user },
 				{
 					entityType: "shoot",
@@ -107,7 +107,7 @@ export const updateShoot = studioProtectedProcedure
 					parentEntityId: existing.bookingId,
 					parentEntityName: existing.booking.name,
 				},
-			).catch(console.error);
+			);
 		}
 
 		// Track other field changes (non-blocking)
@@ -118,7 +118,7 @@ export const updateShoot = studioProtectedProcedure
 		);
 
 		if (changes.length > 0) {
-			trackFieldChanges(
+			await safeTrackFieldChanges(
 				{ organizationId: context.organizationId, user: context.user },
 				{
 					entityType: "shoot",
@@ -129,7 +129,7 @@ export const updateShoot = studioProtectedProcedure
 					parentEntityName: existing.booking.name,
 					changes,
 				},
-			).catch(console.error);
+			);
 		}
 
 		return {

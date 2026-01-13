@@ -1,7 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { and, crews, db, eq, isNull } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { trackActivity } from "../../activities/lib";
+import { safeTrackActivity } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	createCrewInputSchema,
@@ -64,13 +64,13 @@ export const createCrew = studioProtectedProcedure
 		}
 
 		// Track activity (non-blocking)
-		trackActivity(context, {
+		await safeTrackActivity(context, {
 			entityType: "crew",
 			entityId: created.id,
 			entityName: name,
 			action: "created",
 			metadata: { role },
-		}).catch(console.error);
+		});
 
 		return {
 			data: { id: created.id },

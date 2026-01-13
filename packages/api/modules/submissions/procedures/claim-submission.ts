@@ -1,7 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { and, assignmentSubmissions, db, deliverables, eq, tasks } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { trackStatusChange } from "../../activities/lib";
+import { safeTrackStatusChange } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	claimSubmissionInputSchema,
@@ -108,7 +108,7 @@ export const claimSubmission = studioProtectedProcedure
 			.where(eq(assignmentSubmissions.id, id));
 
 		// Track activity (non-blocking)
-		trackStatusChange(context, {
+		await safeTrackStatusChange(context, {
 			entityType: "submission",
 			entityId: id,
 			entityName: parentEntityName,
@@ -117,7 +117,7 @@ export const claimSubmission = studioProtectedProcedure
 			parentEntityType,
 			parentEntityId,
 			parentEntityName,
-		}).catch(console.error);
+		});
 
 		return {
 			data: { id },

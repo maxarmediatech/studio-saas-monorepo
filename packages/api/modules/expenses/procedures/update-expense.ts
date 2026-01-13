@@ -10,7 +10,7 @@ import {
 	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { detectChanges, formatAmount, trackFieldChanges } from "../../activities/lib";
+import { detectChanges, formatAmount, safeTrackFieldChanges } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	updateExpenseInputSchema,
@@ -185,12 +185,12 @@ export const updateExpense = studioProtectedProcedure
 						}
 						return c;
 					});
-					trackFieldChanges(context, {
+					await safeTrackFieldChanges(context, {
 						entityType: "expense",
 						entityId: id,
 						entityName: expense.description,
 						changes: formattedChanges,
-					}).catch(console.error);
+					});
 				}
 
 				return {
@@ -223,12 +223,12 @@ export const updateExpense = studioProtectedProcedure
 				}
 				return c;
 			});
-			trackFieldChanges(context, {
+			await safeTrackFieldChanges(context, {
 				entityType: "expense",
 				entityId: id,
 				entityName: expense.description,
 				changes: formattedChanges,
-			}).catch(console.error);
+			});
 		}
 
 		return {

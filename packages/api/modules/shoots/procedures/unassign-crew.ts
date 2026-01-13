@@ -1,7 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { and, crews, db, eq, isNull, shootAssignments, shoots } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { trackAssignment } from "../../activities/lib";
+import { safeTrackAssignment } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	unassignCrewInputSchema,
@@ -66,7 +66,7 @@ export const unassignCrew = studioProtectedProcedure
 		// Track activity (non-blocking)
 		// entityName = target of assignment (shoot), crewName in metadata
 		if (crew) {
-			trackAssignment(context, {
+			await safeTrackAssignment(context, {
 				entityType: "shoot_assignment",
 				entityId: assignment.id,
 				entityName: shoot.name,
@@ -75,7 +75,7 @@ export const unassignCrew = studioProtectedProcedure
 				parentEntityId: shoot.id,
 				parentEntityName: shoot.name,
 				metadata: { crewId: crew.id, crewName: crew.name },
-			}).catch(console.error);
+			});
 		}
 
 		return {

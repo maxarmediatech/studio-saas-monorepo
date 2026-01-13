@@ -10,7 +10,7 @@ import {
 	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../../orpc/procedures";
-import { formatAmount, trackActivity } from "../../../activities/lib";
+import { formatAmount, safeTrackActivity } from "../../../activities/lib";
 import { requirePermission } from "../../../studio/lib/permissions";
 import {
 	deleteReceivedInputSchema,
@@ -145,7 +145,7 @@ export const deleteReceived = studioProtectedProcedure
 			}
 
 			// Track activity (non-blocking)
-			trackActivity(
+			await safeTrackActivity(
 				{ organizationId: context.organizationId, user: context.user },
 				{
 					entityType: "received_amount",
@@ -157,7 +157,7 @@ export const deleteReceived = studioProtectedProcedure
 					parentEntityName: booking?.name ?? "Unknown Booking",
 					metadata: { amount: received.amount, paymentMethod: received.paymentMethod },
 				},
-			).catch(console.error);
+			);
 
 			return {
 				data: { id },

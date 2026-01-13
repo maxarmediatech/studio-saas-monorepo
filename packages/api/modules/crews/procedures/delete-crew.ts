@@ -1,7 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { and, crews, db, eq } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { trackActivity } from "../../activities/lib";
+import { safeTrackActivity } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	deleteCrewInputSchema,
@@ -56,12 +56,12 @@ export const deleteCrew = studioProtectedProcedure
 			.where(eq(crews.id, id));
 
 		// Track activity (non-blocking)
-		trackActivity(context, {
+		await safeTrackActivity(context, {
 			entityType: "crew",
 			entityId: id,
 			entityName: existing.name,
 			action: "deleted",
-		}).catch(console.error);
+		});
 
 		return {
 			data: { id },

@@ -8,7 +8,7 @@ import {
 	tasks,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { trackActivity, type ActionType } from "../../activities/lib";
+import { safeTrackActivity, type ActionType } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	reviewSubmissionInputSchema,
@@ -163,7 +163,7 @@ export const reviewSubmission = studioProtectedProcedure
 			request_revision: "revision_requested",
 			reject: "rejected",
 		};
-		trackActivity(context, {
+		await safeTrackActivity(context, {
 			entityType: "submission",
 			entityId: id,
 			entityName: parentEntityName,
@@ -172,7 +172,7 @@ export const reviewSubmission = studioProtectedProcedure
 			parentEntityId,
 			parentEntityName,
 			metadata: reviewNote ? { reviewNote } : undefined,
-		}).catch(console.error);
+		});
 
 		const messages = {
 			approve: "Submission approved",

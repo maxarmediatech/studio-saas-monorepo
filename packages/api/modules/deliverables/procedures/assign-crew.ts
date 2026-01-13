@@ -9,7 +9,7 @@ import {
 	isNull,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { trackAssignment } from "../../activities/lib";
+import { safeTrackAssignment } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	assignCrewToDeliverableInputSchema,
@@ -107,7 +107,7 @@ export const assignCrewToDeliverable = studioProtectedProcedure
 
 		// Track activity (non-blocking)
 		// entityName = target of assignment (deliverable), crewName in metadata
-		trackAssignment(context, {
+		await safeTrackAssignment(context, {
 			entityType: "deliverable_assignment",
 			entityId: created.id,
 			entityName: deliverable.name,
@@ -116,7 +116,7 @@ export const assignCrewToDeliverable = studioProtectedProcedure
 			parentEntityId: deliverable.id,
 			parentEntityName: deliverable.name,
 			metadata: { crewId: crew.id, crewName: crew.name, isLead: isLead ?? false },
-		}).catch(console.error);
+		});
 
 		return {
 			data: { id: created.id },

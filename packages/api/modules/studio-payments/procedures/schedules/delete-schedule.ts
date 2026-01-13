@@ -1,7 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { and, bookings, db, eq, isNull, paymentSchedules } from "@repo/database";
 import { studioProtectedProcedure } from "../../../../orpc/procedures";
-import { formatAmount, trackActivity } from "../../../activities/lib";
+import { formatAmount, safeTrackActivity } from "../../../activities/lib";
 import { requirePermission } from "../../../studio/lib/permissions";
 import {
 	deleteScheduleInputSchema,
@@ -56,7 +56,7 @@ export const deleteSchedule = studioProtectedProcedure
 			.where(eq(paymentSchedules.id, id));
 
 		// Track activity (non-blocking)
-		trackActivity(context, {
+		await safeTrackActivity(context, {
 			entityType: "payment_schedule",
 			entityId: id,
 			entityName: `${schedule.name} (${formatAmount(schedule.amount)})`,
@@ -64,7 +64,7 @@ export const deleteSchedule = studioProtectedProcedure
 			parentEntityType: "booking",
 			parentEntityId: schedule.bookingId,
 			parentEntityName: booking?.name ?? "Unknown Booking",
-		}).catch(console.error);
+		});
 
 		return {
 			data: { id },

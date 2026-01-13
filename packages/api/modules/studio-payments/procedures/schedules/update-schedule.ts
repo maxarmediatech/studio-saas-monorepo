@@ -5,8 +5,8 @@ import {
 	detectChanges,
 	formatAmount,
 	formatDate,
-	trackFieldChanges,
-	trackStatusChange,
+	safeTrackFieldChanges,
+	safeTrackStatusChange,
 } from "../../../activities/lib";
 import { requirePermission } from "../../../studio/lib/permissions";
 import {
@@ -108,7 +108,7 @@ export const updateSchedule = studioProtectedProcedure
 
 		// Track status change if it occurred (non-blocking)
 		if (updateData.status && updateData.status !== schedule.status) {
-			trackStatusChange(context, {
+			await safeTrackStatusChange(context, {
 				entityType: "payment_schedule",
 				entityId: id,
 				entityName,
@@ -117,7 +117,7 @@ export const updateSchedule = studioProtectedProcedure
 				parentEntityType: "booking",
 				parentEntityId: schedule.bookingId,
 				parentEntityName: booking?.name ?? "Unknown Booking",
-			}).catch(console.error);
+			});
 		}
 
 		// Track field changes (non-blocking)
@@ -153,7 +153,7 @@ export const updateSchedule = studioProtectedProcedure
 		}));
 
 		if (changes.length > 0) {
-			trackFieldChanges(context, {
+			await safeTrackFieldChanges(context, {
 				entityType: "payment_schedule",
 				entityId: id,
 				entityName,
@@ -161,7 +161,7 @@ export const updateSchedule = studioProtectedProcedure
 				parentEntityId: schedule.bookingId,
 				parentEntityName: booking?.name ?? "Unknown Booking",
 				changes,
-			}).catch(console.error);
+			});
 		}
 
 		return {

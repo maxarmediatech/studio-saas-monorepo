@@ -225,6 +225,36 @@ export async function trackActivity(
 }
 
 /**
+ * Safe version of trackActivity that catches errors.
+ * Use this instead of trackActivity(...).catch(console.error) for Vercel compatibility.
+ *
+ * On Vercel serverless, fire-and-forget promises may never complete after the response
+ * is returned. This wrapper awaits the activity write while ensuring failures don't
+ * break the main mutation.
+ *
+ * @example
+ * ```ts
+ * // After your core DB writes:
+ * await safeTrackActivity(context, {
+ *   entityType: "booking",
+ *   entityId: booking.id,
+ *   entityName: booking.name,
+ *   action: "created",
+ * });
+ * ```
+ */
+export async function safeTrackActivity(
+	context: ActivityContext,
+	input: TrackActivityInput,
+): Promise<void> {
+	try {
+		await trackActivity(context, input);
+	} catch (e) {
+		console.error("Activity tracking failed:", e);
+	}
+}
+
+/**
  * Track multiple field changes for an entity update.
  * Creates one activity per changed field for granular tracking.
  *
@@ -395,6 +425,55 @@ export async function trackAssignment(
 		action: input.action,
 		metadata: input.metadata,
 	});
+}
+
+// ============================================================================
+// SAFE WRAPPERS (for Vercel serverless compatibility)
+// ============================================================================
+
+/**
+ * Safe version of trackFieldChanges that catches errors.
+ * Use this instead of trackFieldChanges(...).catch(console.error) for Vercel compatibility.
+ */
+export async function safeTrackFieldChanges(
+	context: ActivityContext,
+	input: Parameters<typeof trackFieldChanges>[1],
+): Promise<void> {
+	try {
+		await trackFieldChanges(context, input);
+	} catch (e) {
+		console.error("Activity tracking (field changes) failed:", e);
+	}
+}
+
+/**
+ * Safe version of trackStatusChange that catches errors.
+ * Use this instead of trackStatusChange(...).catch(console.error) for Vercel compatibility.
+ */
+export async function safeTrackStatusChange(
+	context: ActivityContext,
+	input: Parameters<typeof trackStatusChange>[1],
+): Promise<void> {
+	try {
+		await trackStatusChange(context, input);
+	} catch (e) {
+		console.error("Activity tracking (status change) failed:", e);
+	}
+}
+
+/**
+ * Safe version of trackAssignment that catches errors.
+ * Use this instead of trackAssignment(...).catch(console.error) for Vercel compatibility.
+ */
+export async function safeTrackAssignment(
+	context: ActivityContext,
+	input: Parameters<typeof trackAssignment>[1],
+): Promise<void> {
+	try {
+		await trackAssignment(context, input);
+	} catch (e) {
+		console.error("Activity tracking (assignment) failed:", e);
+	}
 }
 
 // ============================================================================

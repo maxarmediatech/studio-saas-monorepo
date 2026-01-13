@@ -1,7 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { and, db, deliverables, eq, isNull } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { trackActivity } from "../../activities/lib";
+import { safeTrackActivity } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	deleteDeliverableInputSchema,
@@ -23,13 +23,18 @@ export const deleteDeliverable = studioProtectedProcedure
 
 		const { id } = input;
 
-		// Verify deliverable exists and belongs to organization
+		// Verify deliverable exists and belongs to organization (include booking for activity context)
 		const deliverable = await db.query.deliverables.findFirst({
 			where: and(
 				eq(deliverables.id, id),
 				eq(deliverables.organizationId, context.organizationId),
 				isNull(deliverables.deletedAt),
 			),
+			with: {
+				booking: {
+					columns: { id: true, name: true },
+				},
+			},
 		});
 
 		if (!deliverable) {
@@ -50,15 +55,18 @@ export const deleteDeliverable = studioProtectedProcedure
 			.where(eq(deliverables.id, id));
 
 		// Track activity (non-blocking)
-		trackActivity(
+		await safeTrackActivity(
 			{ organizationId: context.organizationId, user: context.user },
 			{
 				entityType: "deliverable",
 				entityId: id,
 				entityName: deliverable.name,
 				action: "deleted",
+				parentEntityType: "booking",
+				parentEntityId: deliverable.bookingId,
+				parentEntityName: deliverable.booking.name,
 			},
-		).catch(console.error);
+		);
 
 		return {
 			data: { id },

@@ -11,7 +11,7 @@ import {
 	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { trackActivity } from "../../activities/lib";
+import { safeTrackActivity } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	submitDeliverableInputSchema,
@@ -124,7 +124,7 @@ export const submitDeliverable = studioProtectedProcedure
 			.where(eq(deliverables.id, deliverableId));
 
 		// Track activity (non-blocking)
-		trackActivity(context, {
+		await safeTrackActivity(context, {
 			entityType: "submission",
 			entityId: created.id,
 			entityName: deliverable.name,
@@ -133,7 +133,7 @@ export const submitDeliverable = studioProtectedProcedure
 			parentEntityId: deliverable.id,
 			parentEntityName: deliverable.name,
 			metadata: { crewId: crew.id, crewName: crew.name },
-		}).catch(console.error);
+		});
 
 		return {
 			data: { id: created.id },

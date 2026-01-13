@@ -1,7 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { and, bookings, db, eq, isNull, tasks } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { trackActivity } from "../../activities/lib";
+import { safeTrackActivity } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	createTaskInputSchema,
@@ -69,7 +69,7 @@ export const createTask = studioProtectedProcedure
 		}
 
 		// Track activity (non-blocking)
-		trackActivity(
+		await safeTrackActivity(
 			{ organizationId: context.organizationId, user: context.user },
 			{
 				entityType: "task",
@@ -81,7 +81,7 @@ export const createTask = studioProtectedProcedure
 				parentEntityName: booking.name,
 				metadata: { priority: priority ?? "normal" },
 			},
-		).catch(console.error);
+		);
 
 		return {
 			data: { id: created.id },

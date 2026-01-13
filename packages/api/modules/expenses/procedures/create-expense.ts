@@ -12,7 +12,7 @@ import {
 	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { formatAmount, trackActivity } from "../../activities/lib";
+import { formatAmount, safeTrackActivity } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	createExpenseInputSchema,
@@ -170,13 +170,13 @@ export const createExpense = studioProtectedProcedure
 				}
 
 				// Track activity (non-blocking)
-				trackActivity(context, {
+				await safeTrackActivity(context, {
 					entityType: "expense",
 					entityId: created.id,
 					entityName: `${formatAmount(amount)} - ${description}`,
 					action: "created",
 					metadata: { amount, category, vendor },
-				}).catch(console.error);
+				});
 
 				return {
 					data: { id: created.id },
@@ -212,13 +212,13 @@ export const createExpense = studioProtectedProcedure
 		}
 
 		// Track activity (non-blocking)
-		trackActivity(context, {
+		await safeTrackActivity(context, {
 			entityType: "expense",
 			entityId: created.id,
 			entityName: `${formatAmount(amount)} - ${description}`,
 			action: "created",
 			metadata: { amount, category, vendor },
-		}).catch(console.error);
+		});
 
 		return {
 			data: { id: created.id },

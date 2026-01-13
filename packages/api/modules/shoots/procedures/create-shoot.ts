@@ -1,7 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { and, bookings, db, eq, isNull, shoots } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { trackActivity } from "../../activities/lib";
+import { safeTrackActivity } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	createShootInputSchema,
@@ -75,7 +75,7 @@ export const createShoot = studioProtectedProcedure
 		}
 
 		// Track activity (non-blocking)
-		trackActivity(
+		await safeTrackActivity(
 			{ organizationId: context.organizationId, user: context.user },
 			{
 				entityType: "shoot",
@@ -87,7 +87,7 @@ export const createShoot = studioProtectedProcedure
 				parentEntityName: booking.name,
 				metadata: { shootType, shootDate },
 			},
-		).catch(console.error);
+		);
 
 		return {
 			data: { id: created.id },

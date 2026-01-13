@@ -9,7 +9,7 @@ import {
 	tasks,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { trackAssignment } from "../../activities/lib";
+import { safeTrackAssignment } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	assignCrewToTaskInputSchema,
@@ -105,7 +105,7 @@ export const assignCrewToTask = studioProtectedProcedure
 
 		// Track activity (non-blocking)
 		// entityName = target of assignment (task), crewName in metadata
-		trackAssignment(context, {
+		await safeTrackAssignment(context, {
 			entityType: "task_assignment",
 			entityId: created.id,
 			entityName: task.name,
@@ -114,7 +114,7 @@ export const assignCrewToTask = studioProtectedProcedure
 			parentEntityId: task.id,
 			parentEntityName: task.name,
 			metadata: { crewId: crew.id, crewName: crew.name },
-		}).catch(console.error);
+		});
 
 		return {
 			data: { id: created.id },
