@@ -40,8 +40,8 @@ import {
 	bookingsApi,
 	bookingsMutations,
 	configurationsApi,
-	studioQueryKeys,
 } from "@saas/studio/lib/api";
+import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
@@ -147,7 +147,10 @@ export function BookingsTableClient({
 			setDeleteDialogOpen(false);
 			setBookingToDelete(null);
 			queryClient.invalidateQueries({
-				queryKey: studioQueryKeys.bookings.all,
+				queryKey: orpc.bookings.key(),
+			});
+			queryClient.invalidateQueries({
+				queryKey: orpc.activities.key(),
 			});
 		},
 		onError: (error) => {

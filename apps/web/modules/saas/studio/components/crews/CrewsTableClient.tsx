@@ -128,6 +128,9 @@ export function CrewsTableClient({
 			queryClient.invalidateQueries({
 				queryKey: orpc.crews.key(),
 			});
+			queryClient.invalidateQueries({
+				queryKey: orpc.activities.key(),
+			});
 		},
 		onError: (error) => {
 			toast.error(error.message || "Failed to delete crew member");

@@ -27,8 +27,8 @@ import { useClientsTable } from "@saas/studio/hooks/tables";
 import {
 	clientsApi,
 	clientsMutations,
-	studioQueryKeys,
 } from "@saas/studio/lib/api";
+import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Loader2Icon, PencilIcon, TrashIcon, UserIcon } from "lucide-react";
@@ -91,7 +91,10 @@ export function ClientsTableClient() {
 			setDeleteDialogOpen(false);
 			setClientToDelete(null);
 			queryClient.invalidateQueries({
-				queryKey: studioQueryKeys.clients.all,
+				queryKey: orpc.clients.key(),
+			});
+			queryClient.invalidateQueries({
+				queryKey: orpc.activities.key(),
 			});
 		},
 		onError: (error) => {
