@@ -15,6 +15,13 @@
       "when": 1768310078833,
       "tag": "0001_useful_moon_knight",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1768312639075,
+      "tag": "0002_green_purple_man",
+      "breakpoints": true
     }
   ]
 }

@@ -4,6 +4,7 @@ import { RecentVisitsWidget } from "@saas/studio/components/recent-visits/recent
 import { UserGreeting } from "./user-greeting";
 import { QuickLinksWidget } from "./widgets/quick-links";
 import { QuickstartGuide } from "./widgets/quickstart-guide";
+import { StickiesWidget } from "./widgets/stickies";
 
 interface HomeViewProps {
 	organizationSlug: string;
@@ -17,6 +18,7 @@ export function HomeView({ organizationSlug, userName }: HomeViewProps) {
 			<div className="flex flex-col gap-7">
 				<QuickstartGuide organizationSlug={organizationSlug} />
 				<QuickLinksWidget />
+				<StickiesWidget />
 				<RecentVisitsWidget organizationSlug={organizationSlug} />
 			</div>
 		</div>

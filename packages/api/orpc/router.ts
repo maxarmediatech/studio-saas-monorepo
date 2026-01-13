@@ -16,6 +16,7 @@ import { quickLinksRouter } from "../modules/quick-links/router";
 import { recentVisitsRouter } from "../modules/recent-visits/router";
 import { savedViewsRouter } from "../modules/saved-views/router";
 import { shootsRouter } from "../modules/shoots/router";
+import { stickiesRouter } from "../modules/stickies/router";
 import { studioPaymentsRouter } from "../modules/studio-payments/router";
 import { submissionsRouter } from "../modules/submissions/router";
 import { tasksRouter } from "../modules/tasks/router";
@@ -51,6 +52,7 @@ export const router = publicProcedure
 		savedViews: savedViewsRouter,
 		recentVisits: recentVisitsRouter,
 		quickLinks: quickLinksRouter,
+		stickies: stickiesRouter,
 	});
 
 export type ApiRouterClient = RouterClient<typeof router>;

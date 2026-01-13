@@ -422,3 +422,13 @@ export const quickLinksMutations = {
 	update: () => orpc.quickLinks.update.mutationOptions(),
 	delete: () => orpc.quickLinks.delete.mutationOptions(),
 };
+
+export const stickiesApi = {
+	listOptions: () => orpc.stickies.list.queryOptions({ input: {} }),
+};
+
+export const stickiesMutations = {
+	create: () => orpc.stickies.create.mutationOptions(),
+	update: () => orpc.stickies.update.mutationOptions(),
+	delete: () => orpc.stickies.delete.mutationOptions(),
+};

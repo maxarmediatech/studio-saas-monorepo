@@ -1319,9 +1319,60 @@ export const quickLinks = pgTable(
 );
 
 // ============================================================================
+// STICKIES
+// Personal notes/reminders for users
+// ============================================================================
+
+export const stickies = pgTable(
+	"stickies",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 })
+			.notNull()
+			.references(() => organizations.id, { onDelete: "cascade" }),
+		userId: varchar("user_id", { length: 255 })
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+
+		title: varchar("title", { length: 255 }),
+		content: text("content"),
+		color: varchar("color", { length: 50 }).default("yellow").notNull(),
+		sortOrder: integer("sort_order").default(0).notNull(),
+
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		index("stickies_org_user_idx").on(table.organizationId, table.userId),
+		index("stickies_org_user_sort_idx").on(
+			table.organizationId,
+			table.userId,
+			table.sortOrder,
+		),
+	],
+);
+
+// ============================================================================
 // RELATIONS
 // All studio domain relations defined here
 // ============================================================================
+
+export const stickiesRelations = relations(stickies, ({ one }) => ({
+	organization: one(organizations, {
+		fields: [stickies.organizationId],
+		references: [organizations.id],
+	}),
+	user: one(users, {
+		fields: [stickies.userId],
+		references: [users.id],
+	}),
+}));
 
 export const quickLinksRelations = relations(quickLinks, ({ one }) => ({
 	organization: one(organizations, {
