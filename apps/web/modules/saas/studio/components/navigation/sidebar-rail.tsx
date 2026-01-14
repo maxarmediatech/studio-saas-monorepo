@@ -45,24 +45,6 @@ export function SidebarRail({
 					</Link>
 				</div>
 
-				{/* Search */}
-				<Tooltip>
-					<TooltipTrigger asChild>
-						<button
-							type="button"
-							onClick={onSearchOpen}
-							className="flex size-11 items-center justify-center rounded-lg text-neutral-600 outline-none transition-colors duration-150 hover:bg-black/5 active:bg-black/10 focus-visible:ring-2 focus-visible:ring-black/50"
-							aria-label="Search"
-							title="Search (⌘K)"
-						>
-							<SearchIcon className="size-5" />
-						</button>
-					</TooltipTrigger>
-					<TooltipContent side="right" sideOffset={8}>
-						Search
-					</TooltipContent>
-				</Tooltip>
-
 				{/* Module Icons */}
 				<div className="flex flex-col items-center gap-3">
 					{railIcons.map((item) => {
@@ -93,6 +75,24 @@ export function SidebarRail({
 							</Tooltip>
 						);
 					})}
+
+					{/* Search */}
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<button
+								type="button"
+								onClick={onSearchOpen}
+								className="flex size-11 items-center justify-center rounded-lg text-neutral-600 outline-none transition-colors duration-150 hover:bg-black/5 active:bg-black/10 focus-visible:ring-2 focus-visible:ring-black/50"
+								aria-label="Search"
+								title="Search (⌘K)"
+							>
+								<SearchIcon className="size-5" />
+							</button>
+						</TooltipTrigger>
+						<TooltipContent side="right" sideOffset={8}>
+							Search
+						</TooltipContent>
+					</Tooltip>
 				</div>
 			</div>
 
