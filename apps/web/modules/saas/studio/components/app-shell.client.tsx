@@ -17,6 +17,8 @@ import { SidebarProvider, useSidebar } from "./navigation/sidebar-context";
 import { SearchCommandModal } from "./search";
 import { SiteHeader } from "./site-header";
 
+const LAST_ACTIVE_MODULE_KEY = "studio_last_active_module";
+
 interface AppShellClientProps {
 	studioSlug: string;
 	studioName: string;
@@ -64,6 +66,13 @@ function AppShellContent({
 		[modules, utilities, areas],
 	);
 
+	const [fallbackModuleId, setFallbackModuleId] = React.useState<
+		string | null
+	>(() => {
+		if (typeof window === "undefined") return null;
+		return window.sessionStorage.getItem(LAST_ACTIVE_MODULE_KEY);
+	});
+
 	const currentArea = React.useMemo(() => {
 		if (pathname.startsWith(`/app/${studioSlug}/settings`)) {
 			return "studioSettings";
@@ -71,11 +80,32 @@ function AppShellContent({
 		return "default";
 	}, [pathname, studioSlug]);
 
-	const activeModule = React.useMemo(
+	const matchedModule = React.useMemo(
 		() =>
 			hasModules ? findModuleByPath(pathname, navigationConfig) : null,
 		[hasModules, pathname, navigationConfig],
 	);
+
+	React.useEffect(() => {
+		if (typeof window === "undefined" || !matchedModule?.id) return;
+		window.sessionStorage.setItem(LAST_ACTIVE_MODULE_KEY, matchedModule.id);
+		setFallbackModuleId(matchedModule.id);
+	}, [matchedModule?.id]);
+
+	const isSearchRoute = pathname.startsWith(
+		`/app/${studioSlug}/search`,
+	);
+
+	const activeModule = React.useMemo(() => {
+		if (matchedModule) return matchedModule;
+		if (!isSearchRoute) return null;
+
+		return (
+			modules.find((module) => module.id === fallbackModuleId) ??
+			modules[0] ??
+			null
+		);
+	}, [matchedModule, isSearchRoute, modules, fallbackModuleId]);
 
 	const activeModuleId = activeModule?.id ?? modules[0]?.id ?? "";
 

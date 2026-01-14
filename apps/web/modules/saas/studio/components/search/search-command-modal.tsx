@@ -1,5 +1,6 @@
 "use client";
 
+import { ScrollArea, ScrollBar } from "@repo/ui/components/scroll-area";
 import { cn } from "@repo/ui/lib/utils";
 import { orpcClient } from "@shared/lib/orpc-client";
 import { Loader2, SearchIcon, XIcon } from "lucide-react";
@@ -39,6 +40,7 @@ export function SearchCommandModal({
 	const organizationSlug = params?.organizationSlug ?? "";
 
 	const inputRef = useRef<HTMLInputElement>(null);
+	const resultsRef = useRef<HTMLDivElement>(null);
 
 	const [query, setQuery] = useState("");
 	const [activeTab, setActiveTab] = useState<SearchEntityType>("all");
@@ -134,6 +136,19 @@ export function SearchCommandModal({
 		setSelectedIndex(0);
 	}, [activeTab]);
 
+	useEffect(() => {
+		const container = resultsRef.current;
+		if (!container) return;
+
+		const target = container.querySelector<HTMLElement>(
+			`[data-search-index="${selectedIndex}"]`,
+		);
+
+		if (target) {
+			target.scrollIntoView({ block: "nearest" });
+		}
+	}, [selectedIndex, results, activeTab]);
+
 	const handleNavigate = useCallback(
 		(entityType: keyof SearchResults, id: string) => {
 			const config = ENTITY_DISPLAY_CONFIG[entityType];
@@ -224,46 +239,49 @@ export function SearchCommandModal({
 					)}
 				</div>
 
-				<div className="flex items-center gap-1 overflow-x-auto border-b border-neutral-100 px-4 py-2">
-					{SEARCH_TABS.map((tab) => {
-						const count =
-							tab.id === "all"
-								? totalCount
-								: getEntityCount(results, tab.id);
-						const isActive = activeTab === tab.id;
-						const showCount = hasQuery && count > 0;
+				<ScrollArea className="border-b border-neutral-100">
+					<div className="flex w-max items-center gap-1 px-4 py-2">
+						{SEARCH_TABS.map((tab) => {
+							const count =
+								tab.id === "all"
+									? totalCount
+									: getEntityCount(results, tab.id);
+							const isActive = activeTab === tab.id;
+							const showCount = hasQuery && count > 0;
 
-						return (
-							<button
-								key={tab.id}
-								type="button"
-								onClick={() => setActiveTab(tab.id)}
-								className={cn(
-									"flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-sm font-medium transition-colors",
-									isActive
-										? "bg-neutral-100 text-neutral-900"
-										: "text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700",
-								)}
-							>
-								{tab.label}
-								{showCount && (
-									<span
-										className={cn(
-											"text-xs",
-											isActive
-												? "text-neutral-600"
-												: "text-neutral-400",
-										)}
-									>
-										{count}
-									</span>
-								)}
-							</button>
-						);
-					})}
-				</div>
+							return (
+								<button
+									key={tab.id}
+									type="button"
+									onClick={() => setActiveTab(tab.id)}
+									className={cn(
+										"flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-sm font-medium transition-colors",
+										isActive
+											? "bg-neutral-100 text-neutral-900"
+											: "text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700",
+									)}
+								>
+									{tab.label}
+									{showCount && (
+										<span
+											className={cn(
+												"text-xs",
+												isActive
+													? "text-neutral-600"
+													: "text-neutral-400",
+											)}
+										>
+											{count}
+										</span>
+									)}
+								</button>
+							);
+						})}
+					</div>
+					<ScrollBar orientation="horizontal" />
+				</ScrollArea>
 
-				<div className="flex-1 overflow-y-auto">
+				<div className="flex-1 overflow-y-auto" ref={resultsRef}>
 					<Link
 						href={`/app/${organizationSlug}/search${query ? `?q=${encodeURIComponent(query)}` : ""}`}
 						onClick={onClose}
@@ -312,6 +330,7 @@ export function SearchCommandModal({
 													item.id,
 												)
 											}
+											data-search-index={currentIndex}
 											className={cn(
 												"flex w-full items-center gap-3 rounded-md px-2 py-2 text-left transition-colors",
 												isSelected

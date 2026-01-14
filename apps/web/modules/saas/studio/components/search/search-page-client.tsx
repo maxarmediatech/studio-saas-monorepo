@@ -1,5 +1,6 @@
 "use client";
 
+import { ScrollArea, ScrollBar } from "@repo/ui/components/scroll-area";
 import { cn } from "@repo/ui/lib/utils";
 import { orpcClient } from "@shared/lib/orpc-client";
 import { Loader2, SearchIcon, XIcon } from "lucide-react";
@@ -31,6 +32,7 @@ interface SearchPageClientProps {
 export function SearchPageClient({ organizationSlug }: SearchPageClientProps) {
 	const router = useRouter();
 	const inputRef = useRef<HTMLInputElement>(null);
+	const resultsRef = useRef<HTMLDivElement>(null);
 
 	// URL state for search query
 	const [query, setQuery] = useQueryState(
@@ -123,6 +125,20 @@ export function SearchPageClient({ organizationSlug }: SearchPageClientProps) {
 	useEffect(() => {
 		setSelectedIndex(0);
 	}, [activeTab]);
+
+	// Keep the selected item in view when navigating with the keyboard
+	useEffect(() => {
+		const container = resultsRef.current;
+		if (!container) return;
+
+		const target = container.querySelector<HTMLElement>(
+			`[data-search-index="${selectedIndex}"]`,
+		);
+
+		if (target) {
+			target.scrollIntoView({ block: "nearest" });
+		}
+	}, [selectedIndex, results, activeTab]);
 
 	// Handle item navigation
 	const handleNavigate = useCallback(
@@ -231,48 +247,51 @@ export function SearchPageClient({ organizationSlug }: SearchPageClientProps) {
 				</div>
 
 				{/* Tabs */}
-				<div className="flex items-center gap-1 overflow-x-auto px-4 pb-2">
-					{SEARCH_TABS.map((tab) => {
-						const count =
-							tab.id === "all"
-								? totalCount
-								: getEntityCount(results, tab.id);
-						const isActive = activeTab === tab.id;
-						const showCount = hasQuery && count > 0;
+				<ScrollArea>
+					<div className="flex w-max items-center gap-1 px-4 pb-2">
+						{SEARCH_TABS.map((tab) => {
+							const count =
+								tab.id === "all"
+									? totalCount
+									: getEntityCount(results, tab.id);
+							const isActive = activeTab === tab.id;
+							const showCount = hasQuery && count > 0;
 
-						return (
-							<button
-								key={tab.id}
-								type="button"
-								onClick={() => setActiveTab(tab.id)}
-								className={cn(
-									"flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
-									isActive
-										? "bg-blue-100 text-blue-700"
-										: "text-neutral-600 hover:bg-neutral-100",
-								)}
-							>
-								{tab.label}
-								{showCount && (
-									<span
-										className={cn(
-											"ml-0.5 text-xs",
-											isActive
-												? "text-blue-600"
-												: "text-neutral-400",
-										)}
-									>
-										{count}
-									</span>
-								)}
-							</button>
-						);
-					})}
-				</div>
+							return (
+								<button
+									key={tab.id}
+									type="button"
+									onClick={() => setActiveTab(tab.id)}
+									className={cn(
+										"flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
+										isActive
+											? "bg-blue-100 text-blue-700"
+											: "text-neutral-600 hover:bg-neutral-100",
+									)}
+								>
+									{tab.label}
+									{showCount && (
+										<span
+											className={cn(
+												"ml-0.5 text-xs",
+												isActive
+													? "text-blue-600"
+													: "text-neutral-400",
+											)}
+										>
+											{count}
+										</span>
+									)}
+								</button>
+							);
+						})}
+					</div>
+					<ScrollBar orientation="horizontal" />
+				</ScrollArea>
 			</div>
 
 			{/* Results Area */}
-			<div className="flex-1 overflow-y-auto">
+			<div className="flex-1 overflow-y-auto" ref={resultsRef}>
 				{/* Search prompt */}
 				{!hasQuery && (
 					<div className="p-8 text-center text-neutral-500">
@@ -343,6 +362,9 @@ export function SearchPageClient({ organizationSlug }: SearchPageClientProps) {
 															entityType,
 															item.id,
 														)
+													}
+													data-search-index={
+														currentIndex
 													}
 													className={cn(
 														"flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors",
