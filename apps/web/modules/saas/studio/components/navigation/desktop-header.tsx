@@ -1,42 +1,42 @@
 "use client";
 
 import { UserMenu } from "@saas/shared/components/UserMenu";
-import type { HeaderCapabilities } from "../../lib/capability.server";
+import { BellIcon, HelpCircleIcon } from "lucide-react";
 import { HeaderSearchInput } from "../search";
-import { NewActionSwitcher } from "./new-action-switcher";
 import { OrganizationSwitcher } from "./organization-switcher";
 
 interface DesktopHeaderProps {
-	studioSlug: string;
 	studioName: string;
 	studioLogo?: string | null;
-	caps: HeaderCapabilities;
 }
 
-export function DesktopHeader({
-	studioSlug,
-	studioName,
-	studioLogo,
-	caps,
-}: DesktopHeaderProps) {
+export function DesktopHeader({ studioName, studioLogo }: DesktopHeaderProps) {
 	return (
-		<header className="hidden h-14 shrink-0 items-center justify-between border-b border-neutral-200 bg-white px-4 md:flex">
-			{/* Left: Organization Switcher */}
-			<div className="flex min-w-[200px] items-center">
+		<header className="hidden h-11 shrink-0 items-center justify-between px-4 md:flex">
+			<div className="flex min-w-[180px] items-center">
 				<OrganizationSwitcher
 					studioName={studioName}
 					studioLogo={studioLogo}
 				/>
 			</div>
 
-			{/* Center: Search Input */}
 			<div className="flex flex-1 items-center justify-center px-4">
-				<HeaderSearchInput className="w-full max-w-lg" />
+				<HeaderSearchInput className="w-full max-w-md" />
 			</div>
 
-			{/* Right: Actions */}
-			<div className="flex min-w-[200px] items-center justify-end gap-2">
-				<NewActionSwitcher studioSlug={studioSlug} caps={caps} />
+			<div className="flex min-w-[180px] items-center justify-end gap-1">
+				<button
+					type="button"
+					className="flex size-8 items-center justify-center rounded-md text-neutral-500 transition-colors hover:bg-neutral-300/50 hover:text-neutral-700"
+				>
+					<HelpCircleIcon className="size-[18px]" />
+				</button>
+				<button
+					type="button"
+					className="flex size-8 items-center justify-center rounded-md text-neutral-500 transition-colors hover:bg-neutral-300/50 hover:text-neutral-700"
+				>
+					<BellIcon className="size-[18px]" />
+				</button>
 				<UserMenu />
 			</div>
 		</header>
