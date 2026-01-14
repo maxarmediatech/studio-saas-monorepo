@@ -65,40 +65,42 @@ export function SidebarPanel({
 	}, [isSetupActive]);
 
 	return (
-		<div className="scrollbar-hide relative flex h-full w-[var(--sidebar-panel-width)] flex-col overflow-y-auto overflow-x-hidden rounded-l-xl bg-neutral-100">
+		<div className="relative flex h-screen w-[var(--sidebar-panel-width)] flex-col overflow-hidden rounded-l-xl bg-neutral-100">
 			{/* Navigation Content - animate on module switch */}
 			<div
 				key={module.id}
-				className="relative flex grow animate-in fade-in slide-in-from-right-2 flex-col p-3 text-neutral-500 duration-200"
+				className="relative flex min-h-0 flex-1 animate-in fade-in slide-in-from-right-2 flex-col text-neutral-500 duration-200"
 			>
-				{/* Module Title */}
-				<div className="mb-2 flex items-center gap-3 px-3 py-2">
-					<h2 className="text-lg font-semibold text-neutral-900">
-						{module.label}
-					</h2>
-					<div className="ml-auto flex items-center gap-2">
-						<button
-							type="button"
-							onClick={onSearchOpen}
-							className="inline-flex size-7 items-center justify-center rounded-md text-neutral-500 transition-colors hover:bg-neutral-200 hover:text-neutral-700"
-							aria-label="Search"
-							title="Search (⌘K)"
-						>
-							<SearchIcon className="size-4" />
-						</button>
+				{/* Header */}
+				<div className="shrink-0 p-3">
+					<div className="mb-2 flex items-center gap-3 px-3 py-2">
+						<h2 className="text-lg font-semibold text-neutral-900">
+							{module.label}
+						</h2>
+						<div className="ml-auto flex items-center gap-2">
+							<button
+								type="button"
+								onClick={onSearchOpen}
+								className="inline-flex size-7 items-center justify-center rounded-md text-neutral-500 transition-colors hover:bg-neutral-200 hover:text-neutral-700"
+								aria-label="Search"
+								title="Search (⌘K)"
+							>
+								<SearchIcon className="size-4" />
+							</button>
+						</div>
+					</div>
+
+					<div>
+						<NewActionSwitcher
+							studioSlug={studioSlug}
+							caps={caps}
+							variant="sidebar"
+						/>
 					</div>
 				</div>
 
-				<div className="mb-3">
-					<NewActionSwitcher
-						studioSlug={studioSlug}
-						caps={caps}
-						variant="sidebar"
-					/>
-				</div>
-
 				{/* Primary Sections */}
-				<div className="flex flex-col gap-8">
+				<div className="scrollbar-hide flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-3 pb-3">
 					{primarySections.map((section) => (
 						<div key={section.id}>
 							{section.label && (
@@ -122,143 +124,163 @@ export function SidebarPanel({
 					))}
 				</div>
 
-				{/* Flex spacer - pushes setup section to bottom */}
-				<div className="min-h-6 flex-1" />
-
-				{/* Setup Section - collapsible with motion */}
-				{setupSection && setupSection.items.length > 0 && (
-					<Collapsible
-						open={setupOpen}
-						onOpenChange={setSetupOpen}
-						className="group/setup"
-					>
-						<div
-							className={cn(
-								"rounded-lg p-2",
-								setupOpen && "bg-neutral-200/50",
-							)}
-						>
-							{/* Collapsed trigger - shows "Configuration" label with active state */}
-							<CollapsibleTrigger
-								className={cn(
-									"flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
-									setupOpen && "hidden",
-									isSetupActive
-										? "bg-blue-100/50 font-medium text-blue-600"
-										: "text-neutral-600 hover:bg-neutral-200/50",
-								)}
+				{/* Setup + Utilities pinned to bottom */}
+				{(setupSection && setupSection.items.length > 0) ||
+				utilities.length > 0 ? (
+					<div className="shrink-0 px-3 pb-3 pt-1">
+						{setupSection && setupSection.items.length > 0 && (
+							<Collapsible
+								open={setupOpen}
+								onOpenChange={setSetupOpen}
+								className="group/setup"
 							>
-								<Settings
+								<div
 									className={cn(
-										"size-4",
-										isSetupActive
-											? "text-blue-600"
-											: "text-neutral-500",
+										"rounded-lg p-2",
+										setupOpen && "bg-neutral-200/50",
 									)}
-								/>
-								<span className="font-medium">
-									Configuration
-								</span>
-								<ChevronRight
-									className={cn(
-										"ml-auto size-4",
-										isSetupActive
-											? "text-blue-400"
-											: "text-neutral-400",
-									)}
-								/>
-							</CollapsibleTrigger>
-
-							{/* Content - nav items with framer-motion */}
-							<AnimatePresence initial={false}>
-								{setupOpen && (
-									<motion.nav
-										initial={{ height: 0, opacity: 0 }}
-										animate={{
-											height: "auto",
-											opacity: 1,
-											transition: {
-												height: {
-													type: "spring",
-													stiffness: 500,
-													damping: 40,
-													mass: 1,
-												},
-												opacity: { duration: 0.2 },
-											},
-										}}
-										exit={{
-											height: 0,
-											opacity: 0,
-											transition: {
-												height: {
-													type: "spring",
-													stiffness: 500,
-													damping: 40,
-													mass: 1,
-												},
-												opacity: { duration: 0.15 },
-											},
-										}}
-										className="relative flex flex-col gap-0.5 overflow-hidden pr-6"
+								>
+									{/* Collapsed trigger - shows "Configuration" label with active state */}
+									<CollapsibleTrigger
+										className={cn(
+											"flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
+											setupOpen && "hidden",
+											isSetupActive
+												? "bg-blue-100/50 font-medium text-blue-600"
+												: "text-neutral-600 hover:bg-neutral-200/50",
+										)}
 									>
-										{/* Minimal corner chevron to collapse */}
-										<CollapsibleTrigger className="absolute right-0 top-0 p-1 text-neutral-400 transition-colors hover:text-neutral-600">
-											<ChevronDown className="size-4" />
-										</CollapsibleTrigger>
-										{setupSection.items.map((item, i) => (
-											<motion.div
-												key={item.id}
-												initial={{ opacity: 0, x: -8 }}
+										<Settings
+											className={cn(
+												"size-4",
+												isSetupActive
+													? "text-blue-600"
+													: "text-neutral-500",
+											)}
+										/>
+										<span className="font-medium">
+											Configuration
+										</span>
+										<ChevronRight
+											className={cn(
+												"ml-auto size-4",
+												isSetupActive
+													? "text-blue-400"
+													: "text-neutral-400",
+											)}
+										/>
+									</CollapsibleTrigger>
+
+									{/* Content - nav items with framer-motion */}
+									<AnimatePresence initial={false}>
+										{setupOpen && (
+											<motion.nav
+												initial={{
+													height: 0,
+													opacity: 0,
+												}}
 												animate={{
+													height: "auto",
 													opacity: 1,
-													x: 0,
 													transition: {
-														delay: i * 0.03,
-														duration: 0.2,
-														ease: [
-															0.25, 0.1, 0.25, 1,
-														],
+														height: {
+															type: "spring",
+															stiffness: 500,
+															damping: 40,
+															mass: 1,
+														},
+														opacity: {
+															duration: 0.2,
+														},
 													},
 												}}
 												exit={{
+													height: 0,
 													opacity: 0,
 													transition: {
-														duration: 0.1,
+														height: {
+															type: "spring",
+															stiffness: 500,
+															damping: 40,
+															mass: 1,
+														},
+														opacity: { duration: 0.15 },
 													},
 												}}
+												className="scrollbar-hide relative flex max-h-[40vh] flex-col gap-0.5 overflow-y-auto pr-6"
 											>
-												<NavItem
-													item={item}
-													isActive={isItemActive(
-														pathname,
-														item.path,
-													)}
-												/>
-											</motion.div>
-										))}
-									</motion.nav>
-								)}
-							</AnimatePresence>
-						</div>
-					</Collapsible>
-				)}
-			</div>
+												{/* Minimal corner chevron to collapse */}
+												<CollapsibleTrigger className="absolute right-0 top-0 p-1 text-neutral-400 transition-colors hover:text-neutral-600">
+													<ChevronDown className="size-4" />
+												</CollapsibleTrigger>
+												{setupSection.items.map(
+													(item, i) => (
+														<motion.div
+															key={item.id}
+															initial={{
+																opacity: 0,
+																x: -8,
+															}}
+															animate={{
+																opacity: 1,
+																x: 0,
+																transition: {
+																	delay:
+																		i * 0.03,
+																	duration:
+																		0.2,
+																	ease: [
+																		0.25,
+																		0.1,
+																		0.25,
+																		1,
+																	],
+																},
+															}}
+															exit={{
+																opacity: 0,
+																transition: {
+																	duration: 0.1,
+																},
+															}}
+														>
+															<NavItem
+																item={item}
+																isActive={isItemActive(
+																	pathname,
+																	item.path,
+																)}
+															/>
+														</motion.div>
+													),
+												)}
+											</motion.nav>
+										)}
+									</AnimatePresence>
+								</div>
+							</Collapsible>
+						)}
 
-			{/* Footer: Utilities */}
-			{utilities.length > 0 && (
-				<div className="shrink-0 border-t border-neutral-200 p-3">
-					<nav className="flex flex-col gap-0.5">
-						{utilities.map((item) => (
-							<NavItem
-								key={item.id}
-								item={item}
-								isActive={isItemActive(pathname, item.path)}
-							/>
-						))}
-					</nav>
-				</div>
-			)}
+						{/* Footer: Utilities */}
+						{utilities.length > 0 && (
+							<div className="mt-3 border-t border-neutral-200 pt-3">
+								<nav className="flex flex-col gap-0.5">
+									{utilities.map((item) => (
+										<NavItem
+											key={item.id}
+											item={item}
+											isActive={isItemActive(
+												pathname,
+												item.path,
+											)}
+										/>
+									))}
+								</nav>
+							</div>
+						)}
+					</div>
+				) : null}
+			</div>
 		</div>
 	);
 }

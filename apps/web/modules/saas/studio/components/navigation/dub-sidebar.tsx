@@ -3,13 +3,13 @@
 import { TooltipProvider } from "@repo/ui/components/tooltip";
 import { cn } from "@repo/ui/lib/utils";
 import type { CSSProperties, PropsWithChildren } from "react";
+import type { HeaderCapabilities } from "../../lib/capability.server";
 import type {
 	NavAreaConfig,
 	NavItemConfig,
 	NavModuleConfig,
 	RailIconConfig,
 } from "../../lib/navigation/types";
-import type { HeaderCapabilities } from "../../lib/capability.server";
 import { SettingsPanel } from "./settings-panel";
 import { useSidebar } from "./sidebar-context";
 import { SidebarPanel } from "./sidebar-panel";
@@ -92,13 +92,13 @@ export function DubSidebar({
 
 	return (
 		<TooltipProvider delayDuration={0}>
-				<aside
-					className={cn(
-						"sticky top-0 z-40 hidden h-full w-[var(--sidebar-width)] transition-[width] duration-300 md:block",
-					)}
-					style={
-						{
-							"--sidebar-width": `${showPanel ? SIDEBAR_WIDTH : SIDEBAR_RAIL_WIDTH}px`,
+			<aside
+				className={cn(
+					"sticky top-0 z-40 hidden h-screen w-[var(--sidebar-width)] transition-[width] duration-300 md:block",
+				)}
+				style={
+					{
+						"--sidebar-width": `${showPanel ? SIDEBAR_WIDTH : SIDEBAR_RAIL_WIDTH}px`,
 						"--sidebar-rail-width": `${SIDEBAR_RAIL_WIDTH}px`,
 						"--sidebar-panel-width": `${SIDEBAR_PANEL_WIDTH}px`,
 					} as CSSProperties
