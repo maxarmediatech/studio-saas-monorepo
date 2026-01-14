@@ -19,7 +19,6 @@ import type {
 	NavItemConfig,
 	NavModuleConfig,
 } from "../../lib/navigation/types";
-import { SidebarSearchInput } from "../search";
 import { IconByName } from "./icon-registry";
 
 interface SidebarPanelProps {
@@ -65,11 +64,6 @@ export function SidebarPanel({ module, utilities }: SidebarPanelProps) {
 					<h2 className="text-lg font-semibold text-neutral-900">
 						{module.label}
 					</h2>
-				</div>
-
-				{/* Search Input */}
-				<div className="mb-4 px-1">
-					<SidebarSearchInput />
 				</div>
 
 				{/* Primary Sections */}

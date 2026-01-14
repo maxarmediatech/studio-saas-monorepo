@@ -182,7 +182,9 @@ export function SearchPageClient({ organizationSlug }: SearchPageClientProps) {
 		}
 
 		const items = results[activeTab];
-		if (!items || items.length === 0) return [];
+		if (!items || items.length === 0) {
+			return [];
+		}
 		return [{ entityType: activeTab, items }];
 	}, [results, activeTab]);
 
@@ -195,7 +197,7 @@ export function SearchPageClient({ organizationSlug }: SearchPageClientProps) {
 	let flatIndex = 0;
 
 	return (
-		<div
+		<search
 			className="flex h-full flex-col bg-white"
 			onKeyDown={handleKeyDown}
 		>
@@ -411,6 +413,6 @@ export function SearchPageClient({ organizationSlug }: SearchPageClientProps) {
 					</div>
 				</div>
 			</div>
-		</div>
+		</search>
 	);
 }

@@ -11,6 +11,7 @@ import type {
 	RailIconConfig,
 } from "../lib/navigation/types";
 import { findModuleByPath } from "../lib/navigation/utils";
+import { DesktopHeader } from "./navigation/desktop-header";
 import { DubSidebar } from "./navigation/dub-sidebar";
 import { MobileSidebar } from "./navigation/mobile-sidebar";
 import { SidebarProvider, useSidebar } from "./navigation/sidebar-context";
@@ -30,10 +31,6 @@ interface AppShellClientProps {
 	children: React.ReactNode;
 }
 
-/**
- * Client component that renders the shell layout.
- * Dub-style: gray background with white rounded content card.
- */
 export function AppShellClient(props: AppShellClientProps) {
 	return (
 		<SidebarProvider>
@@ -61,14 +58,11 @@ function AppShellContent({
 
 	const hasModules = modules.length > 0;
 
-	// Build navigation config for path matching
 	const navigationConfig = React.useMemo(
 		() => ({ modules, utilities, areas }),
 		[modules, utilities, areas],
 	);
 
-	// Determine current area based on pathname (Dub-style)
-	// Settings routes show settings area, everything else shows default (modules)
 	const currentArea = React.useMemo(() => {
 		if (pathname.startsWith(`/app/${studioSlug}/settings`)) {
 			return "studioSettings";
@@ -76,7 +70,6 @@ function AppShellContent({
 		return "default";
 	}, [pathname, studioSlug]);
 
-	// Find active module based on current pathname (for default area)
 	const activeModule = React.useMemo(
 		() =>
 			hasModules ? findModuleByPath(pathname, navigationConfig) : null,
@@ -85,66 +78,71 @@ function AppShellContent({
 
 	const activeModuleId = activeModule?.id ?? modules[0]?.id ?? "";
 
-	// Close mobile sidebar on navigation
 	React.useEffect(() => {
 		setMobileOpen(false);
 	}, [pathname]);
 
-	// Show sidebar when we have modules or are in a special area (like settings)
 	const showSidebar = hasModules || currentArea !== "default";
-
-	// Has content in sidebar panel (module or special area)
 	const hasContent = activeModule !== null || currentArea !== "default";
-	// Show corner fills only when panel is actually visible
 	const showCornerFills = showSidebar && hasContent && isPanelOpen;
 
 	return (
-		<div className="h-screen overflow-hidden bg-neutral-200 md:grid md:grid-cols-[min-content_minmax(0,1fr)]">
-			{/* Desktop Sidebar */}
-			{showSidebar && (
-				<DubSidebar
-					studioSlug={studioSlug}
-					studioName={studioName}
-					studioLogo={studioLogo}
-					railIcons={railIcons}
-					activeModule={activeModule}
-					activeModuleId={activeModuleId}
-					utilities={utilities}
-					currentArea={currentArea}
-					areas={areas}
-					userName={userName}
-					userImage={userImage}
-				/>
-			)}
+		<div className="flex h-screen flex-col overflow-hidden bg-neutral-200">
+			{/* Desktop Header - full width at top */}
+			<DesktopHeader
+				studioSlug={studioSlug}
+				studioName={studioName}
+				studioLogo={studioLogo}
+				caps={caps}
+			/>
 
-			{/* Main Content Area */}
-			<div className="flex h-screen flex-col bg-neutral-200 md:py-2 md:pr-2">
-				{/* Header - mobile only */}
-				<SiteHeader
-					studioSlug={studioSlug}
-					caps={caps}
-					onMobileMenuClick={() => setMobileOpen(true)}
-				/>
+			{/* Mobile Header */}
+			<SiteHeader
+				studioSlug={studioSlug}
+				caps={caps}
+				onMobileMenuClick={() => setMobileOpen(true)}
+			/>
 
-				{/* Content Card wrapper - relative for corner positioning */}
-				<div className="relative flex min-h-0 flex-1 flex-col">
-					{/* Corner fills to blend with sidebar - only show when panel is expanded */}
-					<div
-						className={cn(
-							"absolute -left-2 top-0 z-0 hidden h-3 w-5 bg-neutral-100 transition-opacity duration-300 md:block",
-							showCornerFills ? "opacity-100" : "opacity-0",
-						)}
+			{/* Main Layout: Sidebar + Content */}
+			<div className="flex min-h-0 flex-1 md:grid md:grid-cols-[min-content_minmax(0,1fr)]">
+				{/* Desktop Sidebar */}
+				{showSidebar && (
+					<DubSidebar
+						studioSlug={studioSlug}
+						studioName={studioName}
+						studioLogo={studioLogo}
+						railIcons={railIcons}
+						activeModule={activeModule}
+						activeModuleId={activeModuleId}
+						utilities={utilities}
+						currentArea={currentArea}
+						areas={areas}
+						userName={userName}
+						userImage={userImage}
 					/>
-					<div
-						className={cn(
-							"absolute -left-2 bottom-0 z-0 hidden h-3 w-5 bg-neutral-100 transition-opacity duration-300 md:block",
-							showCornerFills ? "opacity-100" : "opacity-0",
-						)}
-					/>
-					{/* Content Card - fixed height, pages handle their own scrolling */}
-					<main className="z-10 flex min-h-0 flex-1 flex-col overflow-hidden pt-14 md:rounded-xl md:bg-white md:pt-0">
-						{children}
-					</main>
+				)}
+
+				{/* Content Area */}
+				<div className="flex min-h-0 flex-1 flex-col bg-neutral-200 md:py-2 md:pr-2">
+					<div className="relative flex min-h-0 flex-1 flex-col">
+						{/* Corner fills */}
+						<div
+							className={cn(
+								"absolute -left-2 top-0 z-0 hidden h-3 w-5 bg-neutral-100 transition-opacity duration-300 md:block",
+								showCornerFills ? "opacity-100" : "opacity-0",
+							)}
+						/>
+						<div
+							className={cn(
+								"absolute -left-2 bottom-0 z-0 hidden h-3 w-5 bg-neutral-100 transition-opacity duration-300 md:block",
+								showCornerFills ? "opacity-100" : "opacity-0",
+							)}
+						/>
+						{/* Content Card */}
+						<main className="z-10 flex min-h-0 flex-1 flex-col overflow-hidden pt-14 md:rounded-xl md:bg-white md:pt-0">
+							{children}
+						</main>
+					</div>
 				</div>
 			</div>
 

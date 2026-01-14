@@ -1,4 +1,4 @@
 export * from "./config";
+export { HeaderSearchInput } from "./header-search-input";
 export { SearchPageClient } from "./search-page-client";
-export { SidebarSearchInput } from "./sidebar-search-input";
 export * from "./types";
