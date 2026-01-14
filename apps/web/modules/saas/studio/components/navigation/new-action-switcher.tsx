@@ -10,7 +10,6 @@ import {
 } from "@repo/ui/components/dropdown-menu";
 import { ChevronsUpDown, Plus, Shield, SquarePlus } from "lucide-react";
 import Link from "next/link";
-import type { HeaderCapabilities } from "../../lib/capability.server";
 import { useClientParams } from "../../hooks/params/use-client-params";
 import { useCrewParams } from "../../hooks/params/use-crew-params";
 import { useDeliverableParams } from "../../hooks/params/use-deliverable-params";
@@ -18,6 +17,7 @@ import { useExpenseParams } from "../../hooks/params/use-expense-params";
 import { usePaymentParams } from "../../hooks/params/use-payment-params";
 import { useShootParams } from "../../hooks/params/use-shoot-params";
 import { useTaskParams } from "../../hooks/params/use-task-params";
+import type { HeaderCapabilities } from "../../lib/capability.server";
 
 interface NewActionSwitcherProps {
 	studioSlug: string;
@@ -54,35 +54,35 @@ export function NewActionSwitcher({
 
 	return (
 		<DropdownMenu>
-				<DropdownMenuTrigger asChild>
-					<Button
-						variant="outline"
-						role={isSidebar ? undefined : "combobox"}
-						aria-label="Open quick create menu"
-						className={
-							isSidebar
-								? "h-8 w-full justify-start gap-2.5 rounded-lg !py-2 !pl-[7px] !pr-2 text-sm font-normal text-neutral-700 hover:bg-black/5 active:bg-black/10"
-								: "w-25 justify-between"
-						}
-					>
-						{isSidebar ? (
-							<SquarePlus className="size-4 shrink-0 text-neutral-600" />
-						) : (
-							<Plus className="mr-1 size-4 shrink-0" />
-						)}
-						<span>{isSidebar ? "Add New Item" : "New"}</span>
-						{!isSidebar && (
-							<ChevronsUpDown className="ml-auto size-4 shrink-0 opacity-50" />
-						)}
-					</Button>
-				</DropdownMenuTrigger>
-
-				<DropdownMenuContent
-					side={isSidebar ? "right" : "bottom"}
-					align={isSidebar ? "start" : "end"}
-					sideOffset={isSidebar ? 8 : 4}
-					className="w-50"
+			<DropdownMenuTrigger asChild>
+				<Button
+					variant="outline"
+					role={isSidebar ? undefined : "combobox"}
+					aria-label="Open quick create menu"
+					className={
+						isSidebar
+							? "h-8 w-full justify-start gap-2.5 rounded-lg py-2! pl-1.75! pr-2! text-sm font-normal text-neutral-700 hover:bg-black/5 active:bg-black/10"
+							: "w-25 justify-between"
+					}
 				>
+					{isSidebar ? (
+						<SquarePlus className="size-4 shrink-0 text-neutral-600" />
+					) : (
+						<Plus className="mr-1 size-4 shrink-0" />
+					)}
+					<span>{isSidebar ? "Add New Item" : "New"}</span>
+					{!isSidebar && (
+						<ChevronsUpDown className="ml-auto size-4 shrink-0 opacity-50" />
+					)}
+				</Button>
+			</DropdownMenuTrigger>
+
+			<DropdownMenuContent
+				side={isSidebar ? "right" : "bottom"}
+				align={isSidebar ? "start" : "end"}
+				sideOffset={isSidebar ? 8 : 4}
+				className="w-50"
+			>
 				{!hasAnyAction ? (
 					<DropdownMenuItem
 						disabled
