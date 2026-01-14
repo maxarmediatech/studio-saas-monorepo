@@ -6,9 +6,9 @@ import {
 	TooltipTrigger,
 } from "@repo/ui/components/tooltip";
 import { cn } from "@repo/ui/lib/utils";
+import { UserMenu } from "@saas/shared/components/UserMenu";
 import { Logo } from "@shared/components/Logo";
-import { UserAvatar } from "@shared/components/UserAvatar";
-import { HelpCircle, Settings } from "lucide-react";
+import { HelpCircle, SearchIcon, Settings } from "lucide-react";
 import Link from "next/link";
 import type { RailIconConfig } from "../../lib/navigation/types";
 import { IconByName } from "./icon-registry";
@@ -19,9 +19,7 @@ interface SidebarRailProps {
 	railIcons: RailIconConfig[];
 	activeModuleId: string;
 	currentArea: string;
-	userName: string;
-	userImage?: string | null;
-	onUserClick?: () => void;
+	onSearchOpen?: () => void;
 }
 
 export function SidebarRail({
@@ -29,9 +27,7 @@ export function SidebarRail({
 	railIcons,
 	activeModuleId,
 	currentArea,
-	userName,
-	userImage,
-	onUserClick,
+	onSearchOpen,
 }: SidebarRailProps) {
 	const isSettingsActive = currentArea === "studioSettings";
 
@@ -48,6 +44,24 @@ export function SidebarRail({
 						<Logo withLabel={false} className="h-5" />
 					</Link>
 				</div>
+
+				{/* Search */}
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<button
+							type="button"
+							onClick={onSearchOpen}
+							className="flex size-11 items-center justify-center rounded-lg text-neutral-600 outline-none transition-colors duration-150 hover:bg-black/5 active:bg-black/10 focus-visible:ring-2 focus-visible:ring-black/50"
+							aria-label="Search"
+							title="Search (⌘K)"
+						>
+							<SearchIcon className="size-5" />
+						</button>
+					</TooltipTrigger>
+					<TooltipContent side="right" sideOffset={8}>
+						Search
+					</TooltipContent>
+				</Tooltip>
 
 				{/* Module Icons */}
 				<div className="flex flex-col items-center gap-3">
@@ -125,20 +139,15 @@ export function SidebarRail({
 				{/* User Avatar */}
 				<Tooltip>
 					<TooltipTrigger asChild>
-						<button
-							type="button"
-							onClick={onUserClick}
-							className="flex size-11 items-center justify-center rounded-lg outline-none transition-colors duration-150 hover:bg-black/5 active:bg-black/10 focus-visible:ring-2 focus-visible:ring-black/50"
-						>
-							<UserAvatar
-								name={userName}
-								avatarUrl={userImage}
-								className="size-7"
+						<div className="flex size-11 items-center justify-center">
+							<UserMenu
+								triggerClassName="flex size-11 items-center justify-center rounded-lg hover:bg-black/5 active:bg-black/10 focus-visible:ring-2 focus-visible:ring-black/50"
+								avatarClassName="size-7"
 							/>
-						</button>
+						</div>
 					</TooltipTrigger>
 					<TooltipContent side="right" sideOffset={8}>
-						{userName}
+						Account
 					</TooltipContent>
 				</Tooltip>
 			</div>

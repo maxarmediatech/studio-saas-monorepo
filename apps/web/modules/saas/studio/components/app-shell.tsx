@@ -50,13 +50,12 @@ export async function AppShell({
 			studioSlug={activeOrganization.slug ?? ""}
 			studioName={activeOrganization.name}
 			studioLogo={activeOrganization.logo}
+			organizationId={activeOrganization.id}
 			modules={filteredNavigation.modules}
 			utilities={filteredNavigation.utilities}
 			areas={filteredNavigation.areas}
 			railIcons={railIcons}
 			caps={caps}
-			userName={session.user.name ?? "User"}
-			userImage={session.user.image}
 		>
 			{children}
 		</AppShellClient>

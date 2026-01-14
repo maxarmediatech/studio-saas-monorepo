@@ -5,12 +5,14 @@ import {
 	CollapsibleTrigger,
 } from "@repo/ui/components/collapsible";
 import { cn } from "@repo/ui/lib/utils";
+import { usePlanData } from "@saas/payments/hooks/plan-data";
+import { useOrganizationPurchases } from "@saas/payments/hooks/purchases";
 import { AnimatePresence, motion } from "framer-motion";
 import {
+	BadgeCheck,
 	ChevronDown,
 	ChevronRight,
 	ExternalLink,
-	SearchIcon,
 	Settings,
 } from "lucide-react";
 import Link from "next/link";
@@ -28,10 +30,10 @@ import { OrganizationSwitcher } from "./organization-switcher";
 interface SidebarPanelProps {
 	module: NavModuleConfig;
 	utilities: NavItemConfig[];
-	onSearchOpen?: () => void;
 	studioSlug: string;
 	studioName: string;
 	studioLogo?: string | null;
+	organizationId: string;
 	caps: HeaderCapabilities;
 }
 
@@ -42,14 +44,19 @@ function isItemActive(pathname: string, itemPath: string): boolean {
 export function SidebarPanel({
 	module,
 	utilities,
-	onSearchOpen,
 	studioSlug,
 	studioName,
 	studioLogo,
+	organizationId,
 	caps,
 }: SidebarPanelProps) {
 	const pathname = usePathname();
 	const [setupOpen, setSetupOpen] = useState(false);
+	const { planData } = usePlanData();
+	const { activePlan } = useOrganizationPurchases(organizationId);
+	const activePlanTitle =
+		planData[activePlan?.id as keyof typeof planData]?.title;
+	const planLabel = activePlanTitle ?? "Free";
 
 	// Split sections: primary nav vs setup/configuration
 	const primarySections = module.sections.filter(
@@ -83,18 +90,13 @@ export function SidebarPanel({
 							studioName={studioName}
 							studioLogo={studioLogo}
 							variant="panel"
+							subLabel={
+								<span className="inline-flex items-center gap-1">
+									<BadgeCheck className="size-3" />
+									{planLabel}
+								</span>
+							}
 						/>
-						<div className="ml-auto flex items-center">
-							<button
-								type="button"
-								onClick={onSearchOpen}
-								className="inline-flex size-8 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-black/5 hover:text-neutral-700 active:bg-black/10"
-								aria-label="Search"
-								title="Search (⌘K)"
-							>
-								<SearchIcon className="size-4" />
-							</button>
-						</div>
 					</div>
 
 					<div>

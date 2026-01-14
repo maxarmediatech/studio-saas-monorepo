@@ -23,6 +23,7 @@ interface DubSidebarProps {
 	studioSlug: string;
 	studioName: string;
 	studioLogo?: string | null;
+	organizationId: string;
 	railIcons: RailIconConfig[];
 	activeModule: NavModuleConfig | null;
 	activeModuleId: string;
@@ -30,8 +31,6 @@ interface DubSidebarProps {
 	currentArea: string; // "default" | "studioSettings"
 	areas: Record<string, NavAreaConfig>;
 	caps: HeaderCapabilities;
-	userName: string;
-	userImage?: string | null;
 	onSearchOpen?: () => void;
 }
 
@@ -72,6 +71,7 @@ export function DubSidebar({
 	studioSlug,
 	studioName,
 	studioLogo,
+	organizationId,
 	railIcons,
 	activeModule,
 	activeModuleId,
@@ -79,8 +79,6 @@ export function DubSidebar({
 	currentArea,
 	areas,
 	caps,
-	userName,
-	userImage,
 	onSearchOpen,
 }: DubSidebarProps) {
 	const { isPanelOpen } = useSidebar();
@@ -112,8 +110,7 @@ export function DubSidebar({
 						railIcons={railIcons}
 						activeModuleId={activeModuleId}
 						currentArea={currentArea}
-						userName={userName}
-						userImage={userImage}
+						onSearchOpen={onSearchOpen}
 					/>
 					<div
 						className={cn(
@@ -130,10 +127,10 @@ export function DubSidebar({
 								<SidebarPanel
 									module={activeModule}
 									utilities={utilities}
-									onSearchOpen={onSearchOpen}
 									studioSlug={studioSlug}
 									studioName={studioName}
 									studioLogo={studioLogo}
+									organizationId={organizationId}
 									caps={caps}
 								/>
 							)}

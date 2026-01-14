@@ -23,13 +23,12 @@ interface AppShellClientProps {
 	studioSlug: string;
 	studioName: string;
 	studioLogo?: string | null;
+	organizationId: string;
 	modules: NavModuleConfig[];
 	utilities: NavItemConfig[];
 	areas: Record<string, NavAreaConfig>;
 	railIcons: RailIconConfig[];
 	caps: HeaderCapabilities;
-	userName: string;
-	userImage?: string | null;
 	children: React.ReactNode;
 }
 
@@ -45,13 +44,12 @@ function AppShellContent({
 	studioSlug,
 	studioName,
 	studioLogo,
+	organizationId,
 	modules,
 	utilities,
 	areas,
 	railIcons,
 	caps,
-	userName,
-	userImage,
 	children,
 }: AppShellClientProps) {
 	const pathname = usePathname();
@@ -160,6 +158,7 @@ function AppShellContent({
 							studioSlug={studioSlug}
 							studioName={studioName}
 							studioLogo={studioLogo}
+							organizationId={organizationId}
 							railIcons={railIcons}
 							activeModule={activeModule}
 							activeModuleId={activeModuleId}
@@ -167,8 +166,6 @@ function AppShellContent({
 							currentArea={currentArea}
 							areas={areas}
 							caps={caps}
-							userName={userName}
-							userImage={userImage}
 							onSearchOpen={openSearch}
 						/>
 				)}

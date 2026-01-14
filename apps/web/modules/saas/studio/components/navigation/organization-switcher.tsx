@@ -17,23 +17,29 @@ import { useOrganizationListQuery } from "@saas/organizations/lib/api";
 import { clearCache } from "@shared/lib/cache";
 import { ChevronDown, Loader2, PlusIcon } from "lucide-react";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { useState } from "react";
 
 interface OrganizationSwitcherProps {
 	studioName: string;
 	studioLogo?: string | null;
 	variant?: "header" | "panel";
+	subLabel?: ReactNode;
 }
 
 export function OrganizationSwitcher({
 	studioName,
 	studioLogo,
 	variant = "header",
+	subLabel,
 }: OrganizationSwitcherProps) {
 	const { setActiveOrganization } = useActiveOrganization();
 	const { data: allOrganizations, isLoading } = useOrganizationListQuery();
 	const [switchingToSlug, setSwitchingToSlug] = useState<string | null>(null);
 	const isPanel = variant === "panel";
+	const workspaceCount = allOrganizations?.length ?? 1;
+	const fallbackLabel = `${workspaceCount} workspace${workspaceCount === 1 ? "" : "s"}`;
+	const panelSubLabel = subLabel ?? (isLoading ? "Loading..." : fallbackLabel);
 
 	const handleOrgSwitch = async (slug: string) => {
 		setSwitchingToSlug(slug);
@@ -53,7 +59,7 @@ export function OrganizationSwitcher({
 					className={cn(
 						"flex h-auto items-center gap-2 px-2 py-1.5 hover:bg-accent",
 						isPanel &&
-							"h-8 flex-1 justify-start gap-2.5 rounded-lg px-2 py-0 text-sm hover:bg-black/5 active:bg-black/10 has-[>svg]:px-2",
+							"flex-1 items-center justify-start gap-2.5 rounded-lg px-2 py-1 hover:bg-black/5 active:bg-black/10 has-[>svg]:px-2",
 					)}
 				>
 					<OrganizationLogo
@@ -61,16 +67,23 @@ export function OrganizationSwitcher({
 						logoUrl={studioLogo}
 						className={cn(
 							"size-7 rounded-md",
-							isPanel && "size-5 rounded-full",
+							isPanel && "size-8 rounded-lg",
 						)}
 					/>
-					<span
-						className={cn(
-							"max-w-35 truncate text-sm font-medium",
-							isPanel && "text-neutral-900",
+					<span className="flex min-w-0 flex-col items-start leading-tight">
+						<span
+							className={cn(
+								"max-w-35 truncate text-sm font-medium",
+								isPanel && "text-neutral-900",
+							)}
+						>
+							{studioName}
+						</span>
+						{isPanel && (
+							<span className="text-xs text-neutral-500">
+								{panelSubLabel}
+							</span>
 						)}
-					>
-						{studioName}
 					</span>
 					<ChevronDown
 						className={cn(
