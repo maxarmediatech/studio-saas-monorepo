@@ -8,7 +8,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@repo/ui/components/dropdown-menu";
-import { ChevronsUpDown, Plus, Shield } from "lucide-react";
+import { Shield, SquarePlus } from "lucide-react";
 import Link from "next/link";
 import type { HeaderCapabilities } from "../../lib/capability.server";
 
@@ -38,17 +38,20 @@ export function NewActionSwitcher({
 			<DropdownMenuTrigger asChild>
 				<Button
 					variant="outline"
-					role="combobox"
 					aria-label="Open quick create menu"
-					className="w-25 justify-between"
+					className="h-8 w-full justify-start gap-2.5 rounded-lg py-2! pl-[7px]! pr-2! text-sm font-normal text-neutral-700 hover:bg-black/5 active:bg-black/10"
 				>
-					<Plus className="mr-1 size-4 shrink-0" />
-					<span>New</span>
-					<ChevronsUpDown className="ml-auto size-4 shrink-0 opacity-50" />
+					<SquarePlus className="size-4 shrink-0 text-neutral-600" />
+					<span>Add New Item </span>
 				</Button>
 			</DropdownMenuTrigger>
 
-			<DropdownMenuContent align="end" className="w-50">
+			<DropdownMenuContent
+				side="right"
+				align="start"
+				sideOffset={8}
+				className="w-50"
+			>
 				{!hasAnyAction ? (
 					<DropdownMenuItem
 						disabled

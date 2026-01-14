@@ -11,7 +11,6 @@ import type {
 	RailIconConfig,
 } from "../lib/navigation/types";
 import { findModuleByPath } from "../lib/navigation/utils";
-// import { DesktopHeader } from "./navigation/desktop-header";
 import { DubSidebar } from "./navigation/dub-sidebar";
 import { MobileSidebar } from "./navigation/mobile-sidebar";
 import { SidebarProvider, useSidebar } from "./navigation/sidebar-context";
@@ -115,9 +114,6 @@ function AppShellContent({
 
 	return (
 		<div className="flex h-screen flex-col overflow-hidden bg-neutral-200">
-			{/* Desktop Header - full width at top */}
-			{/* <DesktopHeader studioName={studioName} studioLogo={studioLogo} /> */}
-
 			{/* Mobile Header */}
 			<SiteHeader
 				studioSlug={studioSlug}
@@ -129,7 +125,7 @@ function AppShellContent({
 			{/* Main Layout: Sidebar + Content */}
 			<div className="flex min-h-0 flex-1 md:grid md:grid-cols-[min-content_minmax(0,1fr)]">
 				{/* Desktop Sidebar */}
-					{showSidebar && (
+				{showSidebar && (
 						<DubSidebar
 							studioSlug={studioSlug}
 							studioName={studioName}
@@ -140,11 +136,12 @@ function AppShellContent({
 							utilities={utilities}
 							currentArea={currentArea}
 							areas={areas}
+							caps={caps}
 							userName={userName}
 							userImage={userImage}
 							onSearchOpen={openSearch}
 						/>
-					)}
+				)}
 
 				{/* Content Area */}
 				<div className="flex min-h-0 flex-1 flex-col bg-neutral-200 md:py-2 md:pr-2">

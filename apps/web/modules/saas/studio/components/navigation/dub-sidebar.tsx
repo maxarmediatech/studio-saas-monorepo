@@ -9,6 +9,7 @@ import type {
 	NavModuleConfig,
 	RailIconConfig,
 } from "../../lib/navigation/types";
+import type { HeaderCapabilities } from "../../lib/capability.server";
 import { SettingsPanel } from "./settings-panel";
 import { useSidebar } from "./sidebar-context";
 import { SidebarPanel } from "./sidebar-panel";
@@ -28,6 +29,7 @@ interface DubSidebarProps {
 	utilities: NavItemConfig[];
 	currentArea: string; // "default" | "studioSettings"
 	areas: Record<string, NavAreaConfig>;
+	caps: HeaderCapabilities;
 	userName: string;
 	userImage?: string | null;
 	onSearchOpen?: () => void;
@@ -76,6 +78,7 @@ export function DubSidebar({
 	utilities,
 	currentArea,
 	areas,
+	caps,
 	userName,
 	userImage,
 	onSearchOpen,
@@ -130,6 +133,8 @@ export function DubSidebar({
 									module={activeModule}
 									utilities={utilities}
 									onSearchOpen={onSearchOpen}
+									studioSlug={studioSlug}
+									caps={caps}
 								/>
 							)}
 						</Area>

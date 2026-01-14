@@ -20,12 +20,16 @@ import type {
 	NavItemConfig,
 	NavModuleConfig,
 } from "../../lib/navigation/types";
+import type { HeaderCapabilities } from "../../lib/capability.server";
 import { IconByName } from "./icon-registry";
+import { NewActionSwitcher } from "./new-action-switcher";
 
 interface SidebarPanelProps {
 	module: NavModuleConfig;
 	utilities: NavItemConfig[];
 	onSearchOpen?: () => void;
+	studioSlug: string;
+	caps: HeaderCapabilities;
 }
 
 function isItemActive(pathname: string, itemPath: string): boolean {
@@ -36,6 +40,8 @@ export function SidebarPanel({
 	module,
 	utilities,
 	onSearchOpen,
+	studioSlug,
+	caps,
 }: SidebarPanelProps) {
 	const pathname = usePathname();
 	const [setupOpen, setSetupOpen] = useState(false);
@@ -81,6 +87,10 @@ export function SidebarPanel({
 							<SearchIcon className="size-4" />
 						</button>
 					</div>
+				</div>
+
+				<div className="mb-3">
+					<NewActionSwitcher studioSlug={studioSlug} caps={caps} />
 				</div>
 
 				{/* Primary Sections */}
