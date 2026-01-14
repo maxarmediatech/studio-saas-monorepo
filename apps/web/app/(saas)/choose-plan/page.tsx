@@ -29,9 +29,7 @@ export default async function ChoosePlanPage() {
 			) || organizationList.at(0);
 
 		if (!organization) {
-			redirect(
-				`/new-organization?redirectTo=${encodeURIComponent("/choose-plan")}`,
-			);
+			redirect(`/new-organization?redirectTo=${encodeURIComponent("/app")}`);
 		}
 
 		organizationId = organization?.id;

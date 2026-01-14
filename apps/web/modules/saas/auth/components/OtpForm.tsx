@@ -20,6 +20,7 @@ import {
 	InputOTPSlot,
 } from "@repo/ui/components/input-otp";
 import { useAuthErrorMessages } from "@saas/auth/hooks/errors-messages";
+import { setActiveOrganizationSlugCookie } from "@saas/organizations/lib/active-organization-cookie";
 import { useRouter } from "@shared/hooks/router";
 import { AlertTriangleIcon, ArrowLeftIcon } from "lucide-react";
 import Link from "next/link";
@@ -47,6 +48,30 @@ export function OtpForm() {
 		? `/organization-invitation/${invitationId}`
 		: (redirectTo ?? config.auth.redirectAfterSignIn);
 
+	const resolveRedirectPath = async (path: string) => {
+		if (path !== "/app" && path !== "/app/") {
+			return path;
+		}
+
+		try {
+			const { data, error } = await authClient.organization.list();
+
+			if (error) {
+				throw error;
+			}
+
+			const organization = data?.[0];
+			if (!organization?.slug) {
+				return path;
+			}
+
+			setActiveOrganizationSlugCookie(organization.slug);
+			return `/app/${organization.slug}/home`;
+		} catch {
+			return path;
+		}
+	};
+
 	const form = useForm<FormValues>({
 		resolver: zodResolver(formSchema),
 		defaultValues: {
@@ -64,7 +89,7 @@ export function OtpForm() {
 				throw error;
 			}
 
-			router.replace(redirectPath);
+			router.replace(await resolveRedirectPath(redirectPath));
 		} catch (e) {
 			form.setError("root", {
 				message: getAuthErrorMessage(

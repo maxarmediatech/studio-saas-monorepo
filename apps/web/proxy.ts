@@ -24,6 +24,21 @@ export default async function middleware(req: NextRequest) {
 			);
 		}
 
+		if (pathname === "/app" || pathname === "/app/") {
+			const activeOrganizationSlug = req.cookies.get(
+				"activeOrganizationSlug",
+			)?.value;
+
+			if (activeOrganizationSlug) {
+				return NextResponse.redirect(
+					new URL(
+						`/app/${activeOrganizationSlug}/home`,
+						origin,
+					),
+				);
+			}
+		}
+
 		return NextResponse.next();
 	}
 

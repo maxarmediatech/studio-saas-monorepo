@@ -27,7 +27,7 @@ export default async function NewOrganizationPage({ searchParams }: Props) {
 
 	return (
 		<AuthWrapper>
-			<CreateOrganizationForm redirectTo={redirectTo ?? "/choose-plan"} />
+			<CreateOrganizationForm redirectTo={redirectTo ?? "/app"} />
 		</AuthWrapper>
 	);
 }

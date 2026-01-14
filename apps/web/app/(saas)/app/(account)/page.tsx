@@ -1,14 +1,5 @@
 import { config } from "@repo/config";
-import { createPurchasesHelper } from "@repo/payments/lib/helper";
-import {
-	getActiveOrganization,
-	getOrganizationList,
-	getSession,
-} from "@saas/auth/lib/server";
-import type { OrganizationWithStats } from "@saas/hub";
-import { HubPage } from "@saas/hub";
-import { orpcClient } from "@shared/lib/orpc-client";
-import { attemptAsync } from "es-toolkit";
+import { getOrganizationList, getSession } from "@saas/auth/lib/server";
 import { redirect } from "next/navigation";
 
 export default async function AppHomePage() {
@@ -18,58 +9,21 @@ export default async function AppHomePage() {
 		redirect("/auth/login");
 	}
 
-	const organizations = config.organizations.enable
-		? await getOrganizationList()
-		: [];
+	if (!config.organizations.enable) {
+		redirect("/");
+	}
 
-	// Fetch detailed org data with members and plans
-	const organizationsWithStats: OrganizationWithStats[] = await Promise.all(
-		organizations.map(async (org) => {
-			// Get full organization with members
-			const fullOrg = org.slug
-				? await getActiveOrganization(org.slug)
-				: null;
+	const organizations = await getOrganizationList();
+	const activeOrganization =
+		organizations.find(
+			(org) => org.id === session.session.activeOrganizationId,
+		) || organizations.at(0);
 
-			const members = fullOrg?.members ?? [];
-			const currentMember = members.find(
-				(m) => m.userId === session.user.id,
-			);
+	if (!activeOrganization?.slug) {
+		redirect(
+			`/new-organization?redirectTo=${encodeURIComponent("/app")}`,
+		);
+	}
 
-			// Get plan info if billing is enabled
-			let planName: string | null = null;
-			if (config.organizations.enableBilling) {
-				const [, purchasesData] = await attemptAsync(() =>
-					orpcClient.payments.listPurchases({
-						organizationId: org.id,
-					}),
-				);
-				if (purchasesData?.purchases) {
-					const { activePlan } = createPurchasesHelper(
-						purchasesData.purchases,
-					);
-					planName = activePlan?.id ?? null;
-				}
-			}
-
-			return {
-				id: org.id,
-				name: org.name,
-				slug: org.slug,
-				logo: org.logo,
-				createdAt: org.createdAt,
-				memberCount: members.length,
-				role:
-					(currentMember?.role as "owner" | "admin" | "member") ??
-					"member",
-				planName,
-			};
-		}),
-	);
-
-	return (
-		<HubPage
-			userName={session.user.name ?? "there"}
-			organizations={organizationsWithStats}
-		/>
-	);
+	redirect(`/app/${activeOrganization.slug}/home`);
 }
