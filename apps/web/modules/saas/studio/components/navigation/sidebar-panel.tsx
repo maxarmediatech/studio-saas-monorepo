@@ -6,7 +6,12 @@ import {
 } from "@repo/ui/components/collapsible";
 import { cn } from "@repo/ui/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, ChevronRight, ExternalLink, Settings } from "lucide-react";
+import {
+	ChevronDown,
+	ChevronRight,
+	ExternalLink,
+	Settings,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -14,6 +19,7 @@ import type {
 	NavItemConfig,
 	NavModuleConfig,
 } from "../../lib/navigation/types";
+import { SidebarSearchInput } from "../search";
 import { IconByName } from "./icon-registry";
 
 interface SidebarPanelProps {
@@ -59,6 +65,11 @@ export function SidebarPanel({ module, utilities }: SidebarPanelProps) {
 					<h2 className="text-lg font-semibold text-neutral-900">
 						{module.label}
 					</h2>
+				</div>
+
+				{/* Search Input */}
+				<div className="mb-4 px-1">
+					<SidebarSearchInput />
 				</div>
 
 				{/* Primary Sections */}
@@ -115,7 +126,9 @@ export function SidebarPanel({ module, utilities }: SidebarPanelProps) {
 											: "text-neutral-500",
 									)}
 								/>
-								<span className="font-medium">Configuration</span>
+								<span className="font-medium">
+									Configuration
+								</span>
 								<ChevronRight
 									className={cn(
 										"ml-auto size-4",
@@ -173,12 +186,16 @@ export function SidebarPanel({ module, utilities }: SidebarPanelProps) {
 													transition: {
 														delay: i * 0.03,
 														duration: 0.2,
-														ease: [0.25, 0.1, 0.25, 1],
+														ease: [
+															0.25, 0.1, 0.25, 1,
+														],
 													},
 												}}
 												exit={{
 													opacity: 0,
-													transition: { duration: 0.1 },
+													transition: {
+														duration: 0.1,
+													},
 												}}
 											>
 												<NavItem
