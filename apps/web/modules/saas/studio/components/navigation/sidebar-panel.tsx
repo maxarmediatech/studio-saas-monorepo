@@ -23,12 +23,15 @@ import type {
 } from "../../lib/navigation/types";
 import { IconByName } from "./icon-registry";
 import { NewActionSwitcher } from "./new-action-switcher";
+import { OrganizationSwitcher } from "./organization-switcher";
 
 interface SidebarPanelProps {
 	module: NavModuleConfig;
 	utilities: NavItemConfig[];
 	onSearchOpen?: () => void;
 	studioSlug: string;
+	studioName: string;
+	studioLogo?: string | null;
 	caps: HeaderCapabilities;
 }
 
@@ -41,6 +44,8 @@ export function SidebarPanel({
 	utilities,
 	onSearchOpen,
 	studioSlug,
+	studioName,
+	studioLogo,
 	caps,
 }: SidebarPanelProps) {
 	const pathname = usePathname();
@@ -73,15 +78,17 @@ export function SidebarPanel({
 			>
 				{/* Header */}
 				<div className="shrink-0 p-3">
-					<div className="mb-2 flex items-center gap-3 px-3 py-2">
-						<h2 className="text-lg font-semibold text-neutral-900">
-							{module.label}
-						</h2>
-						<div className="ml-auto flex items-center gap-2">
+					<div className="mb-2 flex items-center gap-2">
+						<OrganizationSwitcher
+							studioName={studioName}
+							studioLogo={studioLogo}
+							variant="panel"
+						/>
+						<div className="ml-auto flex items-center">
 							<button
 								type="button"
 								onClick={onSearchOpen}
-								className="inline-flex size-7 items-center justify-center rounded-md text-neutral-500 transition-colors hover:bg-neutral-200 hover:text-neutral-700"
+								className="inline-flex size-8 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-black/5 hover:text-neutral-700 active:bg-black/10"
 								aria-label="Search"
 								title="Search (⌘K)"
 							>

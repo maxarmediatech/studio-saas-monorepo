@@ -70,7 +70,7 @@ export function NewActionSwitcher({
 					) : (
 						<Plus className="mr-1 size-4 shrink-0" />
 					)}
-					<span>{isSidebar ? "Add New Item" : "New"}</span>
+					<span>{isSidebar ? "New Item" : "New"}</span>
 					{!isSidebar && (
 						<ChevronsUpDown className="ml-auto size-4 shrink-0 opacity-50" />
 					)}

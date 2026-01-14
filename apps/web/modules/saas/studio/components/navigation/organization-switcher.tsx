@@ -10,6 +10,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@repo/ui/components/dropdown-menu";
+import { cn } from "@repo/ui/lib/utils";
 import { OrganizationLogo } from "@saas/organizations/components/OrganizationLogo";
 import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
 import { useOrganizationListQuery } from "@saas/organizations/lib/api";
@@ -21,15 +22,18 @@ import { useState } from "react";
 interface OrganizationSwitcherProps {
 	studioName: string;
 	studioLogo?: string | null;
+	variant?: "header" | "panel";
 }
 
 export function OrganizationSwitcher({
 	studioName,
 	studioLogo,
+	variant = "header",
 }: OrganizationSwitcherProps) {
 	const { setActiveOrganization } = useActiveOrganization();
 	const { data: allOrganizations, isLoading } = useOrganizationListQuery();
 	const [switchingToSlug, setSwitchingToSlug] = useState<string | null>(null);
+	const isPanel = variant === "panel";
 
 	const handleOrgSwitch = async (slug: string) => {
 		setSwitchingToSlug(slug);
@@ -46,17 +50,34 @@ export function OrganizationSwitcher({
 			<DropdownMenuTrigger asChild>
 				<Button
 					variant="ghost"
-					className="flex h-auto items-center gap-2 px-2 py-1.5 hover:bg-accent"
+					className={cn(
+						"flex h-auto items-center gap-2 px-2 py-1.5 hover:bg-accent",
+						isPanel &&
+							"h-8 flex-1 justify-start gap-2.5 rounded-lg px-2 py-0 text-sm hover:bg-black/5 active:bg-black/10 has-[>svg]:px-2",
+					)}
 				>
 					<OrganizationLogo
 						name={studioName}
 						logoUrl={studioLogo}
-						className="size-7 rounded-md"
+						className={cn(
+							"size-7 rounded-md",
+							isPanel && "size-5 rounded-full",
+						)}
 					/>
-					<span className="max-w-35 truncate text-sm font-semibold">
+					<span
+						className={cn(
+							"max-w-35 truncate text-sm font-medium",
+							isPanel && "text-neutral-900",
+						)}
+					>
 						{studioName}
 					</span>
-					<ChevronDown className="size-3 text-muted-foreground" />
+					<ChevronDown
+						className={cn(
+							"size-3 text-muted-foreground",
+							isPanel && "size-3.5 text-neutral-500",
+						)}
+					/>
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent

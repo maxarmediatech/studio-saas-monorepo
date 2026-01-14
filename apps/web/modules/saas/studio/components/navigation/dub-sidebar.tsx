@@ -109,8 +109,6 @@ export function DubSidebar({
 				<nav className="grid size-full grid-cols-[var(--sidebar-rail-width)_1fr]">
 					<SidebarRail
 						studioSlug={studioSlug}
-						studioName={studioName}
-						studioLogo={studioLogo}
 						railIcons={railIcons}
 						activeModuleId={activeModuleId}
 						currentArea={currentArea}
@@ -134,6 +132,8 @@ export function DubSidebar({
 									utilities={utilities}
 									onSearchOpen={onSearchOpen}
 									studioSlug={studioSlug}
+									studioName={studioName}
+									studioLogo={studioLogo}
 									caps={caps}
 								/>
 							)}
