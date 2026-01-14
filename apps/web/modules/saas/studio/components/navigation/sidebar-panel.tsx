@@ -16,11 +16,11 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import type { HeaderCapabilities } from "../../lib/capability.server";
 import type {
 	NavItemConfig,
 	NavModuleConfig,
 } from "../../lib/navigation/types";
-import type { HeaderCapabilities } from "../../lib/capability.server";
 import { IconByName } from "./icon-registry";
 import { NewActionSwitcher } from "./new-action-switcher";
 
@@ -132,7 +132,12 @@ export function SidebarPanel({
 						onOpenChange={setSetupOpen}
 						className="group/setup"
 					>
-						<div className="rounded-lg bg-neutral-200/40 p-2">
+						<div
+							className={cn(
+								"rounded-lg p-2",
+								setupOpen && "bg-neutral-200/50",
+							)}
+						>
 							{/* Collapsed trigger - shows "Configuration" label with active state */}
 							<CollapsibleTrigger
 								className={cn(

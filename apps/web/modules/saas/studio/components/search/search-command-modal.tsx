@@ -145,7 +145,7 @@ export function SearchCommandModal({
 		);
 
 		if (target) {
-			target.scrollIntoView({ block: "nearest" });
+			target.scrollIntoView({ block: "nearest", behavior: "smooth" });
 		}
 	}, [selectedIndex, results, activeTab]);
 

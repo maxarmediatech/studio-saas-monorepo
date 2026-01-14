@@ -136,7 +136,7 @@ export function SearchPageClient({ organizationSlug }: SearchPageClientProps) {
 		);
 
 		if (target) {
-			target.scrollIntoView({ block: "nearest" });
+			target.scrollIntoView({ block: "nearest", behavior: "smooth" });
 		}
 	}, [selectedIndex, results, activeTab]);
 
@@ -220,30 +220,32 @@ export function SearchPageClient({ organizationSlug }: SearchPageClientProps) {
 			{/* Search Header */}
 			<div className="border-b border-neutral-200 bg-white">
 				{/* Search Input */}
-				<div className="flex items-center gap-3 px-4 py-3">
-					<SearchIcon className="size-5 shrink-0 text-neutral-400" />
-					<input
-						ref={inputRef}
-						type="text"
-						value={query}
-						onChange={(e) => setQuery(e.target.value)}
-						placeholder="Search bookings, clients, crew, shoots..."
-						className="flex-1 bg-transparent text-base outline-none placeholder:text-neutral-400"
-						autoComplete="off"
-						spellCheck={false}
-					/>
-					{query && (
-						<button
-							type="button"
-							onClick={handleClear}
-							className="rounded p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600"
-						>
-							<XIcon className="size-4" />
-						</button>
-					)}
-					{isLoading && (
-						<Loader2 className="size-4 animate-spin text-neutral-400" />
-					)}
+				<div className="px-4 py-2.5">
+					<div className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2">
+						<SearchIcon className="size-4 shrink-0 text-neutral-400" />
+						<input
+							ref={inputRef}
+							type="text"
+							value={query}
+							onChange={(e) => setQuery(e.target.value)}
+							placeholder="Search bookings, clients, crew, shoots..."
+							className="flex-1 bg-transparent text-sm outline-none placeholder:text-neutral-400"
+							autoComplete="off"
+							spellCheck={false}
+						/>
+						{query && (
+							<button
+								type="button"
+								onClick={handleClear}
+								className="rounded p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600"
+							>
+								<XIcon className="size-4" />
+							</button>
+						)}
+						{isLoading && (
+							<Loader2 className="size-4 animate-spin text-neutral-400" />
+						)}
+					</div>
 				</div>
 
 				{/* Tabs */}
@@ -263,7 +265,7 @@ export function SearchPageClient({ organizationSlug }: SearchPageClientProps) {
 									type="button"
 									onClick={() => setActiveTab(tab.id)}
 									className={cn(
-										"flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
+										"flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
 										isActive
 											? "bg-blue-100 text-blue-700"
 											: "text-neutral-600 hover:bg-neutral-100",
@@ -273,7 +275,7 @@ export function SearchPageClient({ organizationSlug }: SearchPageClientProps) {
 									{showCount && (
 										<span
 											className={cn(
-												"ml-0.5 text-xs",
+												"ml-0.5 text-[11px]",
 												isActive
 													? "text-blue-600"
 													: "text-neutral-400",
@@ -291,12 +293,15 @@ export function SearchPageClient({ organizationSlug }: SearchPageClientProps) {
 			</div>
 
 			{/* Results Area */}
-			<div className="flex-1 overflow-y-auto" ref={resultsRef}>
+			<div
+				className="flex-1 overflow-y-auto scroll-smooth bg-neutral-50/40"
+				ref={resultsRef}
+			>
 				{/* Search prompt */}
 				{!hasQuery && (
 					<div className="p-8 text-center text-neutral-500">
-						<SearchIcon className="mx-auto mb-3 size-12 text-neutral-300" />
-						<p className="text-lg font-medium">
+						<SearchIcon className="mx-auto mb-3 size-10 text-neutral-300" />
+						<p className="text-base font-medium">
 							Search across your workspace
 						</p>
 						<p className="mt-1 text-sm">
@@ -318,7 +323,7 @@ export function SearchPageClient({ organizationSlug }: SearchPageClientProps) {
 				{/* No results */}
 				{hasQuery && !isLoading && !hasResults && (
 					<div className="p-8 text-center text-neutral-500">
-						<p className="text-lg font-medium">No results found</p>
+						<p className="text-base font-medium">No results found</p>
 						<p className="mt-1 text-sm">
 							Try a different search term or check another
 							category
@@ -328,22 +333,25 @@ export function SearchPageClient({ organizationSlug }: SearchPageClientProps) {
 
 				{/* Results */}
 				{hasQuery && !isLoading && hasResults && (
-					<div className="divide-y divide-neutral-100">
+					<div className="space-y-4 px-4 py-4">
 						{visibleResults.map(({ entityType, items }) => {
 							const config = ENTITY_DISPLAY_CONFIG[entityType];
 							const Icon = config.icon;
 
 							return (
-								<div key={entityType} className="py-2">
+								<div
+									key={entityType}
+									className="overflow-hidden rounded-lg border border-neutral-200 bg-white"
+								>
 									{/* Section header - only show in "all" tab */}
 									{activeTab === "all" && (
-										<div className="px-4 py-2 text-xs font-medium uppercase tracking-wider text-neutral-400">
+										<div className="bg-neutral-50 px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
 											{config.label}
 										</div>
 									)}
 
 									{/* Items */}
-									<div>
+									<div className="divide-y divide-neutral-100">
 										{items.map((item) => {
 											const currentIndex = flatIndex++;
 											const isSelected =
@@ -367,7 +375,7 @@ export function SearchPageClient({ organizationSlug }: SearchPageClientProps) {
 														currentIndex
 													}
 													className={cn(
-														"flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors",
+														"flex w-full items-center gap-3 px-4 py-2 text-left text-sm transition-colors",
 														isSelected
 															? "bg-blue-50"
 															: "hover:bg-neutral-50",
@@ -375,13 +383,13 @@ export function SearchPageClient({ organizationSlug }: SearchPageClientProps) {
 												>
 													<div
 														className={cn(
-															"flex size-8 shrink-0 items-center justify-center rounded",
+															"flex size-7 shrink-0 items-center justify-center rounded",
 															config.bgColor,
 														)}
 													>
 														<Icon
 															className={cn(
-																"size-4",
+																"size-3.5",
 																config.color,
 															)}
 														/>
@@ -389,7 +397,7 @@ export function SearchPageClient({ organizationSlug }: SearchPageClientProps) {
 													<div className="min-w-0 flex-1">
 														<div className="flex items-center gap-2">
 															{subtext && (
-																<span className="shrink-0 text-xs font-medium text-neutral-400">
+																<span className="shrink-0 text-[11px] font-medium text-neutral-400">
 																	{subtext}
 																</span>
 															)}
