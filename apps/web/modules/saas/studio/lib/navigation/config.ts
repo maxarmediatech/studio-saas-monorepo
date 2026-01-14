@@ -54,6 +54,22 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 						},
 					],
 				},
+				{
+					id: "workspace-crm",
+					label: "CRM",
+					items: [
+						{
+							id: "clients",
+							label: "Clients",
+							path: url("/clients"),
+							icon: "Contact2",
+							permission: {
+								any: [{ resource: "client", action: "list" }],
+							},
+						},
+						// Future: Leads, Communications
+					],
+				},
 				// Future: Pinned Bookings section
 				// {
 				// 	id: "workspace-pinned",
@@ -239,22 +255,6 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 								],
 							},
 						},
-					],
-				},
-				{
-					id: "studio-crm",
-					label: "CRM",
-					items: [
-						{
-							id: "clients",
-							label: "Clients",
-							path: url("/clients"),
-							icon: "Contact2",
-							permission: {
-								any: [{ resource: "client", action: "list" }],
-							},
-						},
-						// Future: Leads, Communications
 					],
 				},
 			],
