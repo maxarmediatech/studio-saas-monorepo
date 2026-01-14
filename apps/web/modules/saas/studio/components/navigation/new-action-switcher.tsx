@@ -8,7 +8,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@repo/ui/components/dropdown-menu";
-import { Shield, SquarePlus } from "lucide-react";
+import { ChevronsUpDown, Plus, Shield, SquarePlus } from "lucide-react";
 import Link from "next/link";
 import type { HeaderCapabilities } from "../../lib/capability.server";
 import { useClientParams } from "../../hooks/params/use-client-params";
@@ -22,13 +22,16 @@ import { useTaskParams } from "../../hooks/params/use-task-params";
 interface NewActionSwitcherProps {
 	studioSlug: string;
 	caps: HeaderCapabilities;
+	variant?: "header" | "sidebar";
 }
 
 export function NewActionSwitcher({
 	studioSlug,
 	caps,
+	variant = "header",
 }: NewActionSwitcherProps) {
 	const basePath = `/app/${studioSlug}`;
+	const isSidebar = variant === "sidebar";
 
 	// Sheet param hooks for opening create sheets without navigation
 	const { openCreate: openShootCreate } = useShootParams();
@@ -51,23 +54,35 @@ export function NewActionSwitcher({
 
 	return (
 		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
-				<Button
-					variant="outline"
-					aria-label="Open quick create menu"
-					className="h-8 w-full justify-start gap-2.5 rounded-lg py-2! pl-[7px]! pr-2! text-sm font-normal text-neutral-700 hover:bg-black/5 active:bg-black/10"
-				>
-					<SquarePlus className="size-4 shrink-0 text-neutral-600" />
-					<span>Add New Item </span>
-				</Button>
-			</DropdownMenuTrigger>
+				<DropdownMenuTrigger asChild>
+					<Button
+						variant="outline"
+						role={isSidebar ? undefined : "combobox"}
+						aria-label="Open quick create menu"
+						className={
+							isSidebar
+								? "h-8 w-full justify-start gap-2.5 rounded-lg !py-2 !pl-[7px] !pr-2 text-sm font-normal text-neutral-700 hover:bg-black/5 active:bg-black/10"
+								: "w-25 justify-between"
+						}
+					>
+						{isSidebar ? (
+							<SquarePlus className="size-4 shrink-0 text-neutral-600" />
+						) : (
+							<Plus className="mr-1 size-4 shrink-0" />
+						)}
+						<span>{isSidebar ? "Add New Item" : "New"}</span>
+						{!isSidebar && (
+							<ChevronsUpDown className="ml-auto size-4 shrink-0 opacity-50" />
+						)}
+					</Button>
+				</DropdownMenuTrigger>
 
-			<DropdownMenuContent
-				side="right"
-				align="start"
-				sideOffset={8}
-				className="w-50"
-			>
+				<DropdownMenuContent
+					side={isSidebar ? "right" : "bottom"}
+					align={isSidebar ? "start" : "end"}
+					sideOffset={isSidebar ? 8 : 4}
+					className="w-50"
+				>
 				{!hasAnyAction ? (
 					<DropdownMenuItem
 						disabled

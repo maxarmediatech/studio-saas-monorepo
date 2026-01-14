@@ -90,7 +90,11 @@ export function SidebarPanel({
 				</div>
 
 				<div className="mb-3">
-					<NewActionSwitcher studioSlug={studioSlug} caps={caps} />
+					<NewActionSwitcher
+						studioSlug={studioSlug}
+						caps={caps}
+						variant="sidebar"
+					/>
 				</div>
 
 				{/* Primary Sections */}
