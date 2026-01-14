@@ -11,7 +11,7 @@ import type {
 	RailIconConfig,
 } from "../lib/navigation/types";
 import { findModuleByPath } from "../lib/navigation/utils";
-import { DesktopHeader } from "./navigation/desktop-header";
+// import { DesktopHeader } from "./navigation/desktop-header";
 import { DubSidebar } from "./navigation/dub-sidebar";
 import { MobileSidebar } from "./navigation/mobile-sidebar";
 import { SidebarProvider, useSidebar } from "./navigation/sidebar-context";
@@ -71,7 +71,8 @@ function AppShellContent({
 	}, [pathname, studioSlug]);
 
 	const activeModule = React.useMemo(
-		() => (hasModules ? findModuleByPath(pathname, navigationConfig) : null),
+		() =>
+			hasModules ? findModuleByPath(pathname, navigationConfig) : null,
 		[hasModules, pathname, navigationConfig],
 	);
 
@@ -88,7 +89,7 @@ function AppShellContent({
 	return (
 		<div className="flex h-screen flex-col overflow-hidden bg-neutral-200">
 			{/* Desktop Header - full width at top */}
-			<DesktopHeader studioName={studioName} studioLogo={studioLogo} />
+			{/* <DesktopHeader studioName={studioName} studioLogo={studioLogo} /> */}
 
 			{/* Mobile Header */}
 			<SiteHeader

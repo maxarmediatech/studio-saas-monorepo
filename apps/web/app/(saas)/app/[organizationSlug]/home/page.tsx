@@ -18,8 +18,11 @@ export async function generateMetadata({ params }: Props) {
 export default async function HomePage({ params }: Props) {
 	const { organizationSlug } = await params;
 
-	const session = await getSession();
-	const activeOrganization = await getActiveOrganization(organizationSlug);
+	// Parallel fetch to avoid waterfall
+	const [session, activeOrganization] = await Promise.all([
+		getSession(),
+		getActiveOrganization(organizationSlug),
+	]);
 
 	if (!activeOrganization) {
 		return notFound();
