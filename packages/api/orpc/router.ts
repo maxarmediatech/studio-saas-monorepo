@@ -9,6 +9,7 @@ import { crewsRouter } from "../modules/crews/router";
 import { dashboardRouter } from "../modules/dashboard/router";
 import { deliverablesRouter } from "../modules/deliverables/router";
 import { expensesRouter } from "../modules/expenses/router";
+import { globalSearchRouter } from "../modules/global-search/router";
 import { myAssignmentsRouter } from "../modules/my-assignments/router";
 import { newsletterRouter } from "../modules/newsletter/router";
 import { organizationsRouter } from "../modules/organizations/router";
@@ -45,6 +46,7 @@ export const router = publicProcedure
 		deliverables: deliverablesRouter,
 		studioPayments: studioPaymentsRouter,
 		expenses: expensesRouter,
+		globalSearch: globalSearchRouter,
 
 		// Support routers
 		dashboard: dashboardRouter,

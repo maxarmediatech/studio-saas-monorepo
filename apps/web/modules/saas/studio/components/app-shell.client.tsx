@@ -1,6 +1,8 @@
 "use client";
 
+import { GlobalSearchProvider } from "@repo/ui/components/global-search";
 import { cn } from "@repo/ui/lib/utils";
+import { GlobalSearchWrapper } from "@saas/shared/components/global-search";
 import { usePathname } from "next/navigation";
 import * as React from "react";
 import type { HeaderCapabilities } from "../lib/capability.server";
@@ -37,7 +39,10 @@ interface AppShellClientProps {
 export function AppShellClient(props: AppShellClientProps) {
 	return (
 		<SidebarProvider>
-			<AppShellContent {...props} />
+			<GlobalSearchProvider>
+				<AppShellContent {...props} />
+				<GlobalSearchWrapper />
+			</GlobalSearchProvider>
 		</SidebarProvider>
 	);
 }
