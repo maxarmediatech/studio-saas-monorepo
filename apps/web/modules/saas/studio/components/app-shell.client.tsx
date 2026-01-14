@@ -82,53 +82,53 @@ function AppShellContent({
 		setMobileOpen(false);
 	}, [pathname]);
 
-	const showSidebar = hasModules || currentArea !== "default";
-	const hasContent = activeModule !== null || currentArea !== "default";
-	const showCornerFills = showSidebar && hasContent && isPanelOpen;
+		const showSidebar = hasModules || currentArea !== "default";
+		const hasContent = activeModule !== null || currentArea !== "default";
+		const showCornerFills = showSidebar && hasContent && isPanelOpen;
 
-	return (
-		<div className="flex h-screen flex-col overflow-hidden bg-neutral-200">
-			{/* Desktop Header - full width at top */}
-			<DesktopHeader
-				studioSlug={studioSlug}
-				studioName={studioName}
-				studioLogo={studioLogo}
-				caps={caps}
-			/>
+		return (
+			<div className="flex h-screen flex-col overflow-hidden bg-neutral-200">
+				{/* Desktop Header - full width at top */}
+				<DesktopHeader
+					studioSlug={studioSlug}
+					studioName={studioName}
+					studioLogo={studioLogo}
+					caps={caps}
+				/>
 
-			{/* Mobile Header */}
-			<SiteHeader
-				studioSlug={studioSlug}
-				caps={caps}
-				onMobileMenuClick={() => setMobileOpen(true)}
-			/>
+				{/* Mobile Header */}
+				<SiteHeader
+					studioSlug={studioSlug}
+					caps={caps}
+					onMobileMenuClick={() => setMobileOpen(true)}
+				/>
 
-			{/* Main Layout: Sidebar + Content */}
-			<div className="flex min-h-0 flex-1 md:grid md:grid-cols-[min-content_minmax(0,1fr)]">
-				{/* Desktop Sidebar */}
-				{showSidebar && (
-					<DubSidebar
-						studioSlug={studioSlug}
-						studioName={studioName}
-						studioLogo={studioLogo}
-						railIcons={railIcons}
-						activeModule={activeModule}
-						activeModuleId={activeModuleId}
-						utilities={utilities}
-						currentArea={currentArea}
-						areas={areas}
-						userName={userName}
-						userImage={userImage}
-					/>
-				)}
+				{/* Main Layout: Sidebar + Content */}
+				<div className="flex min-h-0 flex-1 md:grid md:grid-cols-[min-content_minmax(0,1fr)]">
+					{/* Desktop Sidebar */}
+					{showSidebar && (
+						<DubSidebar
+							studioSlug={studioSlug}
+							studioName={studioName}
+							studioLogo={studioLogo}
+							railIcons={railIcons}
+							activeModule={activeModule}
+							activeModuleId={activeModuleId}
+							utilities={utilities}
+							currentArea={currentArea}
+							areas={areas}
+							userName={userName}
+							userImage={userImage}
+						/>
+					)}
 
-				{/* Content Area */}
-				<div className="flex min-h-0 flex-1 flex-col bg-neutral-200 md:py-2 md:pr-2">
-					<div className="relative flex min-h-0 flex-1 flex-col">
-						{/* Corner fills */}
-						<div
-							className={cn(
-								"absolute -left-2 top-0 z-0 hidden h-3 w-5 bg-neutral-100 transition-opacity duration-300 md:block",
+					{/* Content Area */}
+					<div className="flex min-h-0 flex-1 flex-col bg-neutral-200 md:py-2 md:pr-2">
+						<div className="relative flex min-h-0 flex-1 flex-col">
+							{/* Corner fills */}
+							<div
+								className={cn(
+									"absolute -left-2 top-0 z-0 hidden h-3 w-5 bg-neutral-100 transition-opacity duration-300 md:block",
 								showCornerFills ? "opacity-100" : "opacity-0",
 							)}
 						/>

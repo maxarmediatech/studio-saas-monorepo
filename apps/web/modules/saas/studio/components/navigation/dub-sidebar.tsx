@@ -87,13 +87,13 @@ export function DubSidebar({
 
 	return (
 		<TooltipProvider delayDuration={0}>
-			<aside
-				className={cn(
-					"sticky top-0 z-40 hidden h-screen w-[var(--sidebar-width)] transition-[width] duration-300 md:block",
-				)}
-				style={
-					{
-						"--sidebar-width": `${showPanel ? SIDEBAR_WIDTH : SIDEBAR_RAIL_WIDTH}px`,
+				<aside
+					className={cn(
+						"sticky top-0 z-40 hidden h-full w-[var(--sidebar-width)] transition-[width] duration-300 md:block",
+					)}
+					style={
+						{
+							"--sidebar-width": `${showPanel ? SIDEBAR_WIDTH : SIDEBAR_RAIL_WIDTH}px`,
 						"--sidebar-rail-width": `${SIDEBAR_RAIL_WIDTH}px`,
 						"--sidebar-panel-width": `${SIDEBAR_PANEL_WIDTH}px`,
 					} as CSSProperties
