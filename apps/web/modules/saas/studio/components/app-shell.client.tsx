@@ -15,6 +15,7 @@ import { findModuleByPath } from "../lib/navigation/utils";
 import { DubSidebar } from "./navigation/dub-sidebar";
 import { MobileSidebar } from "./navigation/mobile-sidebar";
 import { SidebarProvider, useSidebar } from "./navigation/sidebar-context";
+import { SearchCommandModal } from "./search";
 import { SiteHeader } from "./site-header";
 
 interface AppShellClientProps {
@@ -54,6 +55,7 @@ function AppShellContent({
 }: AppShellClientProps) {
 	const pathname = usePathname();
 	const [mobileOpen, setMobileOpen] = React.useState(false);
+	const [isSearchOpen, setIsSearchOpen] = React.useState(false);
 	const { isPanelOpen } = useSidebar();
 
 	const hasModules = modules.length > 0;
@@ -78,9 +80,34 @@ function AppShellContent({
 
 	const activeModuleId = activeModule?.id ?? modules[0]?.id ?? "";
 
+	const openSearch = React.useCallback(() => setIsSearchOpen(true), []);
+	const closeSearch = React.useCallback(() => setIsSearchOpen(false), []);
+
 	React.useEffect(() => {
 		setMobileOpen(false);
 	}, [pathname]);
+
+	React.useEffect(() => {
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (
+				(event.metaKey || event.ctrlKey) &&
+				event.key.toLowerCase() === "k"
+			) {
+				const target = event.target as HTMLElement | null;
+				const isTyping =
+					target?.closest("input, textarea") ||
+					target?.getAttribute("contenteditable") === "true";
+
+				if (isTyping) return;
+
+				event.preventDefault();
+				openSearch();
+			}
+		};
+
+		document.addEventListener("keydown", handleKeyDown);
+		return () => document.removeEventListener("keydown", handleKeyDown);
+	}, [openSearch]);
 
 	const showSidebar = hasModules || currentArea !== "default";
 	const hasContent = activeModule !== null || currentArea !== "default";
@@ -96,26 +123,28 @@ function AppShellContent({
 				studioSlug={studioSlug}
 				caps={caps}
 				onMobileMenuClick={() => setMobileOpen(true)}
+				onSearchOpen={openSearch}
 			/>
 
 			{/* Main Layout: Sidebar + Content */}
 			<div className="flex min-h-0 flex-1 md:grid md:grid-cols-[min-content_minmax(0,1fr)]">
 				{/* Desktop Sidebar */}
-				{showSidebar && (
-					<DubSidebar
-						studioSlug={studioSlug}
-						studioName={studioName}
-						studioLogo={studioLogo}
-						railIcons={railIcons}
-						activeModule={activeModule}
-						activeModuleId={activeModuleId}
-						utilities={utilities}
-						currentArea={currentArea}
-						areas={areas}
-						userName={userName}
-						userImage={userImage}
-					/>
-				)}
+					{showSidebar && (
+						<DubSidebar
+							studioSlug={studioSlug}
+							studioName={studioName}
+							studioLogo={studioLogo}
+							railIcons={railIcons}
+							activeModule={activeModule}
+							activeModuleId={activeModuleId}
+							utilities={utilities}
+							currentArea={currentArea}
+							areas={areas}
+							userName={userName}
+							userImage={userImage}
+							onSearchOpen={openSearch}
+						/>
+					)}
 
 				{/* Content Area */}
 				<div className="flex min-h-0 flex-1 flex-col bg-neutral-200 md:py-2 md:pr-2">
@@ -158,6 +187,7 @@ function AppShellContent({
 					pathname={pathname}
 				/>
 			)}
+			<SearchCommandModal isOpen={isSearchOpen} onClose={closeSearch} />
 		</div>
 	);
 }

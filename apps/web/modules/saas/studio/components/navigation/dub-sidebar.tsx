@@ -30,6 +30,7 @@ interface DubSidebarProps {
 	areas: Record<string, NavAreaConfig>;
 	userName: string;
 	userImage?: string | null;
+	onSearchOpen?: () => void;
 }
 
 /**
@@ -77,6 +78,7 @@ export function DubSidebar({
 	areas,
 	userName,
 	userImage,
+	onSearchOpen,
 }: DubSidebarProps) {
 	const { isPanelOpen } = useSidebar();
 
@@ -127,6 +129,7 @@ export function DubSidebar({
 								<SidebarPanel
 									module={activeModule}
 									utilities={utilities}
+									onSearchOpen={onSearchOpen}
 								/>
 							)}
 						</Area>

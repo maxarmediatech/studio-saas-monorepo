@@ -10,6 +10,7 @@ import {
 	ChevronDown,
 	ChevronRight,
 	ExternalLink,
+	SearchIcon,
 	Settings,
 } from "lucide-react";
 import Link from "next/link";
@@ -24,13 +25,18 @@ import { IconByName } from "./icon-registry";
 interface SidebarPanelProps {
 	module: NavModuleConfig;
 	utilities: NavItemConfig[];
+	onSearchOpen?: () => void;
 }
 
 function isItemActive(pathname: string, itemPath: string): boolean {
 	return pathname === itemPath || pathname.startsWith(`${itemPath}/`);
 }
 
-export function SidebarPanel({ module, utilities }: SidebarPanelProps) {
+export function SidebarPanel({
+	module,
+	utilities,
+	onSearchOpen,
+}: SidebarPanelProps) {
 	const pathname = usePathname();
 	const [setupOpen, setSetupOpen] = useState(false);
 
@@ -64,6 +70,17 @@ export function SidebarPanel({ module, utilities }: SidebarPanelProps) {
 					<h2 className="text-lg font-semibold text-neutral-900">
 						{module.label}
 					</h2>
+					<div className="ml-auto flex items-center gap-2">
+						<button
+							type="button"
+							onClick={onSearchOpen}
+							className="inline-flex size-7 items-center justify-center rounded-md text-neutral-500 transition-colors hover:bg-neutral-200 hover:text-neutral-700"
+							aria-label="Search"
+							title="Search (⌘K)"
+						>
+							<SearchIcon className="size-4" />
+						</button>
+					</div>
 				</div>
 
 				{/* Primary Sections */}
