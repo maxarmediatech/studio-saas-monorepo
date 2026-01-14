@@ -11,6 +11,13 @@ import {
 import { Shield, SquarePlus } from "lucide-react";
 import Link from "next/link";
 import type { HeaderCapabilities } from "../../lib/capability.server";
+import { useClientParams } from "../../hooks/params/use-client-params";
+import { useCrewParams } from "../../hooks/params/use-crew-params";
+import { useDeliverableParams } from "../../hooks/params/use-deliverable-params";
+import { useExpenseParams } from "../../hooks/params/use-expense-params";
+import { usePaymentParams } from "../../hooks/params/use-payment-params";
+import { useShootParams } from "../../hooks/params/use-shoot-params";
+import { useTaskParams } from "../../hooks/params/use-task-params";
 
 interface NewActionSwitcherProps {
 	studioSlug: string;
@@ -22,6 +29,15 @@ export function NewActionSwitcher({
 	caps,
 }: NewActionSwitcherProps) {
 	const basePath = `/app/${studioSlug}`;
+
+	// Sheet param hooks for opening create sheets without navigation
+	const { openCreate: openShootCreate } = useShootParams();
+	const { openCreate: openDeliverableCreate } = useDeliverableParams();
+	const { openCreate: openTaskCreate } = useTaskParams();
+	const { openCreate: openPaymentCreate } = usePaymentParams();
+	const { openCreate: openExpenseCreate } = useExpenseParams();
+	const { openCreate: openClientCreate } = useClientParams();
+	const { openCreate: openCrewCreate } = useCrewParams();
 
 	const hasAnyAction =
 		caps.bookingCreateOrUpdate ||
@@ -78,28 +94,20 @@ export function NewActionSwitcher({
 						)}
 
 						{caps.shootCreateOrUpdate && (
-							<DropdownMenuItem asChild>
-								<Link href={`${basePath}/shoots?create=true`}>
-									New Shoot
-								</Link>
+							<DropdownMenuItem onSelect={openShootCreate}>
+								New Shoot
 							</DropdownMenuItem>
 						)}
 
 						{caps.deliverableCreateOrUpdate && (
-							<DropdownMenuItem asChild>
-								<Link
-									href={`${basePath}/deliverables?create=true`}
-								>
-									New Deliverable
-								</Link>
+							<DropdownMenuItem onSelect={openDeliverableCreate}>
+								New Deliverable
 							</DropdownMenuItem>
 						)}
 
 						{caps.taskCreateOrUpdate && (
-							<DropdownMenuItem asChild>
-								<Link href={`${basePath}/tasks?create=true`}>
-									New Task
-								</Link>
+							<DropdownMenuItem onSelect={openTaskCreate}>
+								New Task
 							</DropdownMenuItem>
 						)}
 
@@ -109,18 +117,14 @@ export function NewActionSwitcher({
 						)}
 
 						{caps.paymentCreateOrUpdate && (
-							<DropdownMenuItem asChild>
-								<Link href={`${basePath}/payments?create=true`}>
-									New Payment
-								</Link>
+							<DropdownMenuItem onSelect={openPaymentCreate}>
+								New Payment
 							</DropdownMenuItem>
 						)}
 
 						{caps.expenseCreateOrUpdate && (
-							<DropdownMenuItem asChild>
-								<Link href={`${basePath}/expenses?create=true`}>
-									New Expense
-								</Link>
+							<DropdownMenuItem onSelect={openExpenseCreate}>
+								New Expense
 							</DropdownMenuItem>
 						)}
 
@@ -130,18 +134,14 @@ export function NewActionSwitcher({
 						)}
 
 						{caps.clientCreateOrUpdate && (
-							<DropdownMenuItem asChild>
-								<Link href={`${basePath}/clients?create=true`}>
-									New Client
-								</Link>
+							<DropdownMenuItem onSelect={openClientCreate}>
+								New Client
 							</DropdownMenuItem>
 						)}
 
 						{caps.crewCreateOrUpdate && (
-							<DropdownMenuItem asChild>
-								<Link href={`${basePath}/crews?create=true`}>
-									New Crew
-								</Link>
+							<DropdownMenuItem onSelect={openCrewCreate}>
+								New Crew
 							</DropdownMenuItem>
 						)}
 					</>
