@@ -1,6 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { and, db, eq, tasks } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { safeNotifySubscribers } from "../../notifications/lib/notification-service";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	updateTaskStatusInputSchema,
@@ -51,6 +52,19 @@ export const updateTaskStatus = studioProtectedProcedure
 				updatedBy: context.user.id,
 			})
 			.where(eq(tasks.id, id));
+
+		await safeNotifySubscribers({
+			organizationId: context.organizationId,
+			entityType: "task",
+			entityId: id,
+			entityName: existing.name,
+			type: "status_changed",
+			title: `Task status updated: ${existing.name}`,
+			body: `${existing.status} -> ${status}`,
+			actorId: context.user.id,
+			actorName: context.user.name,
+			excludeUserId: context.user.id,
+		});
 
 		return {
 			data: { id },

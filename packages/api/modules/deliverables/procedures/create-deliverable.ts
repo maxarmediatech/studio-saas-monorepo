@@ -2,6 +2,7 @@ import { ORPCError } from "@orpc/server";
 import { and, bookings, db, deliverables, eq, isNull } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { safeTrackActivity } from "../../activities/lib";
+import { safeAutoSubscribe } from "../../notifications/lib/notification-service";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	createDeliverableInputSchema,
@@ -86,6 +87,13 @@ export const createDeliverable = studioProtectedProcedure
 				parentEntityName: booking.name,
 			},
 		);
+
+		await safeAutoSubscribe({
+			organizationId: context.organizationId,
+			userId: context.user.id,
+			entityType: "deliverable",
+			entityId: created.id,
+		});
 
 		return {
 			data: { id: created.id },

@@ -2,6 +2,7 @@ import { ORPCError } from "@orpc/server";
 import { and, bookings, db, eq, isNull, shoots } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { safeTrackActivity } from "../../activities/lib";
+import { safeAutoSubscribe } from "../../notifications/lib/notification-service";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	createShootInputSchema,
@@ -88,6 +89,13 @@ export const createShoot = studioProtectedProcedure
 				metadata: { shootType, shootDate },
 			},
 		);
+
+		await safeAutoSubscribe({
+			organizationId: context.organizationId,
+			userId: context.user.id,
+			entityType: "shoot",
+			entityId: created.id,
+		});
 
 		return {
 			data: { id: created.id },

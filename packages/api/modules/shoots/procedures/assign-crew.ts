@@ -10,6 +10,10 @@ import {
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { safeTrackAssignment } from "../../activities/lib";
+import {
+	safeAutoSubscribe,
+	safeNotifySubscribers,
+} from "../../notifications/lib/notification-service";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	assignCrewInputSchema,
@@ -106,6 +110,28 @@ export const assignCrew = studioProtectedProcedure
 			parentEntityId: shoot.id,
 			parentEntityName: shoot.name,
 			metadata: { crewId: crew.id, crewName: crew.name, role: assignmentRole },
+		});
+
+		if (crew.userId) {
+			await safeAutoSubscribe({
+				organizationId: context.organizationId,
+				userId: crew.userId,
+				entityType: "shoot",
+				entityId: shoot.id,
+			});
+		}
+
+		await safeNotifySubscribers({
+			organizationId: context.organizationId,
+			entityType: "shoot",
+			entityId: shoot.id,
+			entityName: shoot.name,
+			type: "assigned",
+			title: `Shoot assigned: ${shoot.name}`,
+			body: `Assigned to ${crew.name}`,
+			actorId: context.user.id,
+			actorName: context.user.name,
+			excludeUserId: context.user.id,
 		});
 
 		return {

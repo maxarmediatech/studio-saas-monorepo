@@ -6,6 +6,7 @@ import {
 	safeTrackFieldChanges,
 	safeTrackStatusChange,
 } from "../../activities/lib";
+import { safeNotifySubscribers } from "../../notifications/lib/notification-service";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	updateShootInputSchema,
@@ -108,6 +109,19 @@ export const updateShoot = studioProtectedProcedure
 					parentEntityName: existing.booking.name,
 				},
 			);
+
+			await safeNotifySubscribers({
+				organizationId: context.organizationId,
+				entityType: "shoot",
+				entityId: id,
+				entityName: name ?? existing.name,
+				type: "status_changed",
+				title: `Shoot status updated: ${name ?? existing.name}`,
+				body: `${existing.status} -> ${status}`,
+				actorId: context.user.id,
+				actorName: context.user.name,
+				excludeUserId: context.user.id,
+			});
 		}
 
 		// Track other field changes (non-blocking)

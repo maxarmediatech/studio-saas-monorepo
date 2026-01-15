@@ -6,6 +6,7 @@ import {
 	safeTrackFieldChanges,
 	safeTrackStatusChange,
 } from "../../activities/lib";
+import { safeNotifySubscribers } from "../../notifications/lib/notification-service";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	updateDeliverableInputSchema,
@@ -102,6 +103,19 @@ export const updateDeliverable = studioProtectedProcedure
 					parentEntityName: existing.booking.name,
 				},
 			);
+
+			await safeNotifySubscribers({
+				organizationId: context.organizationId,
+				entityType: "deliverable",
+				entityId: id,
+				entityName: updates.name ?? existing.name,
+				type: "status_changed",
+				title: `Deliverable status updated: ${updates.name ?? existing.name}`,
+				body: `${existing.status} -> ${updates.status}`,
+				actorId: context.user.id,
+				actorName: context.user.name,
+				excludeUserId: context.user.id,
+			});
 		}
 
 		// Track other field changes (non-blocking)

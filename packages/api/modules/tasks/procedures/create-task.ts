@@ -2,6 +2,7 @@ import { ORPCError } from "@orpc/server";
 import { and, bookings, db, eq, isNull, tasks } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { safeTrackActivity } from "../../activities/lib";
+import { safeAutoSubscribe } from "../../notifications/lib/notification-service";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	createTaskInputSchema,
@@ -82,6 +83,13 @@ export const createTask = studioProtectedProcedure
 				metadata: { priority: priority ?? "normal" },
 			},
 		);
+
+		await safeAutoSubscribe({
+			organizationId: context.organizationId,
+			userId: context.user.id,
+			entityType: "task",
+			entityId: created.id,
+		});
 
 		return {
 			data: { id: created.id },
