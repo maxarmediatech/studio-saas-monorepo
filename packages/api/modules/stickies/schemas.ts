@@ -25,7 +25,9 @@ export const stickySchema = z.object({
 	updatedAt: z.string(),
 });
 
-export const listStickiesInputSchema = z.object({});
+export const listStickiesInputSchema = z.object({
+	limit: z.number().min(1).max(100).optional(),
+});
 
 export const listStickiesOutputSchema = z.object({
 	data: z.array(stickySchema),

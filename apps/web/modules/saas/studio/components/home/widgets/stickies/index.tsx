@@ -7,7 +7,6 @@ import { PlusIcon, StickyNoteIcon } from "lucide-react";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { getRandomStickyColor, type StickyColor } from "./constants";
-import { StickiesMasonry, StickiesMasonryItem } from "./stickies-masonry";
 import { type StickyData, StickyNote } from "./sticky-note";
 
 interface Sticky {
@@ -27,10 +26,14 @@ interface StickiesResponse {
 	data: Sticky[];
 }
 
+const HOME_STICKIES_LIMIT = 3;
+
 export function StickiesWidget() {
 	const [focusStickyId, setFocusStickyId] = useState<string | null>(null);
 
-	const listQueryOptions = stickiesApi.listOptions();
+	const listQueryOptions = stickiesApi.listOptions({
+		limit: HOME_STICKIES_LIMIT,
+	});
 	const LIST_QUERY_KEY = listQueryOptions.queryKey;
 	const { data, isLoading } = useQuery({
 		...listQueryOptions,
@@ -48,7 +51,9 @@ export function StickiesWidget() {
 				LIST_QUERY_KEY,
 				(old: StickiesResponse | undefined) => {
 					const oldData = old?.data ?? [];
-					return { data: [response, ...oldData] };
+					return {
+						data: [response, ...oldData].slice(0, HOME_STICKIES_LIMIT),
+					};
 				},
 			);
 			setFocusStickyId(response.id);
@@ -184,21 +189,19 @@ export function StickiesWidget() {
 		return (
 			<div className="py-4">
 				<div className="flex items-center justify-between mb-4">
-					<div className="text-sm font-semibold text-muted-foreground">
-						Stickies
-					</div>
-					<Skeleton className="h-5 w-20 rounded" />
+				<div className="text-sm font-semibold text-muted-foreground">
+					Stickies
 				</div>
-				<StickiesMasonry>
-					{Array.from({ length: 6 }).map((_, i) => (
-						<StickiesMasonryItem key={i}>
-							<Skeleton className="h-48 rounded-lg" />
-						</StickiesMasonryItem>
-					))}
-				</StickiesMasonry>
+				<Skeleton className="h-5 w-20 rounded" />
 			</div>
-		);
-	}
+			<div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+				{Array.from({ length: 6 }).map((_, i) => (
+					<Skeleton key={i} className="h-48 rounded-lg" />
+				))}
+			</div>
+		</div>
+	);
+}
 
 	const hasStickies = stickies.length > 0;
 
@@ -230,33 +233,30 @@ export function StickiesWidget() {
 					</p>
 				</div>
 			) : (
-				<StickiesMasonry className="max-h-[600px] overflow-y-auto scrollbar-thin pr-1">
+				<div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
 					{stickies.map((sticky) => (
-						<StickiesMasonryItem key={sticky.id}>
-							<StickyNote
-								sticky={{
-									id: sticky.id,
-									content: sticky.content,
-									descriptionHtml: sticky.descriptionHtml,
-									color: sticky.color as StickyColor,
-								}}
-								autoFocus={sticky.id === focusStickyId}
-								onAutoFocus={() => {
-									setFocusStickyId(null);
-								}}
-								onUpdate={(data) =>
-									handleUpdate(sticky.id, data)
-								}
-								onDelete={() => handleDelete(sticky.id)}
-								isDeleting={
-									deleteMutation.isPending &&
-									deleteMutation.variables?.id === sticky.id
-								}
-								showToolbar
-							/>
-						</StickiesMasonryItem>
+						<StickyNote
+							key={sticky.id}
+							sticky={{
+								id: sticky.id,
+								content: sticky.content,
+								descriptionHtml: sticky.descriptionHtml,
+								color: sticky.color as StickyColor,
+							}}
+							autoFocus={sticky.id === focusStickyId}
+							onAutoFocus={() => {
+								setFocusStickyId(null);
+							}}
+							onUpdate={(data) => handleUpdate(sticky.id, data)}
+							onDelete={() => handleDelete(sticky.id)}
+							isDeleting={
+								deleteMutation.isPending &&
+								deleteMutation.variables?.id === sticky.id
+							}
+							showToolbar
+						/>
 					))}
-				</StickiesMasonry>
+				</div>
 			)}
 		</div>
 	);

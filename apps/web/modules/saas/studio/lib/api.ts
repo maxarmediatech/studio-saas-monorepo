@@ -442,7 +442,9 @@ export const quickLinksMutations = {
 };
 
 export const stickiesApi = {
-	listOptions: () => orpc.stickies.list.queryOptions({ input: {} }),
+	listOptions: (
+		input?: Parameters<typeof orpc.stickies.list.queryOptions>[0]["input"],
+	) => orpc.stickies.list.queryOptions({ input: input ?? {} }),
 };
 
 export const stickiesMutations = {

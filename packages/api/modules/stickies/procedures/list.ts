@@ -1,4 +1,4 @@
-import { and, asc, db, eq, stickies } from "@repo/database";
+import { and, db, desc, eq, stickies } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import {
 	listStickiesInputSchema,
@@ -16,11 +16,12 @@ export const listStickies = studioProtectedProcedure
 	})
 	.input(listStickiesInputSchema)
 	.output(listStickiesOutputSchema)
-	.handler(async ({ context }) => {
+	.handler(async ({ context, input }) => {
 		const { organizationId, user } = context;
 		const userId = user.id;
+		const { limit } = input;
 
-		const items = await db
+		const query = db
 			.select()
 			.from(stickies)
 			.where(
@@ -29,7 +30,9 @@ export const listStickies = studioProtectedProcedure
 					eq(stickies.userId, userId),
 				),
 			)
-			.orderBy(asc(stickies.sortOrder), asc(stickies.createdAt));
+			.orderBy(desc(stickies.createdAt), desc(stickies.id));
+
+		const items = limit ? await query.limit(limit) : await query;
 
 		const data = items.map((item) => ({
 			id: item.id,
