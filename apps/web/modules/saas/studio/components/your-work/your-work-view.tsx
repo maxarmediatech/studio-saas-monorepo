@@ -1,26 +1,26 @@
 "use client";
 
-import type { YourWorkView } from "@repo/api/modules/studio/schemas/your-work";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@repo/ui/components/select";
+import type { YourWorkEntityType } from "@repo/api/modules/studio/schemas/your-work";
 import { Tabs, TabsList, TabsTrigger } from "@repo/ui/components/tabs";
 import { yourWorkApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
-import { YourWorkTable } from "./your-work-table";
+import { YourWorkGroupedList } from "./your-work-grouped-list";
+
+type EntityTypeFilter = "all" | YourWorkEntityType;
+
+const ENTITY_TABS = [
+	{ value: "all", label: "All" },
+	{ value: "shoot", label: "Shoots" },
+	{ value: "task", label: "Tasks" },
+	{ value: "deliverable", label: "Deliverables" },
+] as const;
 
 interface YourWorkViewProps {
 	organizationSlug: string;
 	initialFilters: {
-		view: YourWorkView;
-		entityType: "all" | "task" | "deliverable" | "shoot";
-		page: number;
+		entityType: EntityTypeFilter;
 	};
 }
 
@@ -34,42 +34,29 @@ export function YourWorkView({
 
 	const queryInput = useMemo(
 		() => ({
-			view: filters.view,
 			entityType: filters.entityType,
-			page: filters.page,
-			limit: 10,
+			page: 1,
+			limit: 50,
 		}),
-		[filters],
+		[filters.entityType],
 	);
 
-	const { data, isLoading, isFetching } = useQuery(
-		yourWorkApi.listOptions(queryInput),
+	const assignedQuery = useQuery(
+		yourWorkApi.listOptions({ ...queryInput, view: "assigned" }),
+	);
+	const createdQuery = useQuery(
+		yourWorkApi.listOptions({ ...queryInput, view: "created" }),
+	);
+	const subscribedQuery = useQuery(
+		yourWorkApi.listOptions({ ...queryInput, view: "subscribed" }),
 	);
 
-	const pagination = data?.pagination ?? {
-		page: filters.page,
-		limit: 10,
-		total: 0,
-		pageCount: 0,
-	};
-
-	const updateFilters = (
-		updates: Partial<YourWorkViewProps["initialFilters"]>,
-	) => {
-		const nextFilters = { ...filters, ...updates };
-		setFilters(nextFilters);
-
+	const updateEntityType = (nextEntityType: EntityTypeFilter) => {
+		setFilters({ entityType: nextEntityType });
 		const params = new URLSearchParams();
-		if (nextFilters.view !== "assigned") {
-			params.set("view", nextFilters.view);
+		if (nextEntityType !== "all") {
+			params.set("entityType", nextEntityType);
 		}
-		if (nextFilters.entityType !== "all") {
-			params.set("entityType", nextFilters.entityType);
-		}
-		if (nextFilters.page > 1) {
-			params.set("page", String(nextFilters.page));
-		}
-
 		const queryString = params.toString();
 		const url = `/app/${organizationSlug}/your-work${queryString ? `?${queryString}` : ""}`;
 
@@ -79,55 +66,43 @@ export function YourWorkView({
 	};
 
 	return (
-		<div className="flex flex-col gap-4">
-			<div className="flex flex-wrap items-center justify-between gap-3">
-				<Tabs
-					value={filters.view}
-					onValueChange={(value) =>
-						updateFilters({
-							view: value as YourWorkView,
-							page: 1,
-						})
-					}
-					className="w-full md:w-auto"
-				>
-					<TabsList>
-						<TabsTrigger value="assigned">Assigned</TabsTrigger>
-						<TabsTrigger value="created">Created</TabsTrigger>
-						<TabsTrigger value="subscribed">Watching</TabsTrigger>
-					</TabsList>
-				</Tabs>
+		<div className="flex flex-col gap-6">
+			<Tabs
+				value={filters.entityType}
+				onValueChange={(value) => updateEntityType(value as EntityTypeFilter)}
+			>
+				<TabsList>
+					{ENTITY_TABS.map((tab) => (
+						<TabsTrigger key={tab.value} value={tab.value}>
+							{tab.label}
+						</TabsTrigger>
+					))}
+				</TabsList>
+			</Tabs>
 
-				<Select
-					value={filters.entityType}
-					onValueChange={(value) =>
-						updateFilters({
-							entityType: value as YourWorkViewProps["initialFilters"]["entityType"],
-							page: 1,
-						})
-					}
-				>
-					<SelectTrigger className="w-40">
-						<SelectValue placeholder="All types" />
-					</SelectTrigger>
-					<SelectContent>
-						<SelectItem value="all">All types</SelectItem>
-						<SelectItem value="task">Tasks</SelectItem>
-						<SelectItem value="deliverable">Deliverables</SelectItem>
-						<SelectItem value="shoot">Shoots</SelectItem>
-					</SelectContent>
-				</Select>
-			</div>
-
-			<YourWorkTable
+			<YourWorkGroupedList
 				organizationSlug={organizationSlug}
-				data={data?.data ?? []}
-				isLoading={isLoading}
-				isFetching={isFetching || isPending}
-				pagination={pagination}
-				onPaginationChange={(next) =>
-					updateFilters({ page: next.page })
-				}
+				entityType={filters.entityType}
+				groups={[
+					{
+						id: "assigned",
+						title: "Assigned",
+						items: assignedQuery.data?.data ?? [],
+						isLoading: assignedQuery.isLoading || isPending,
+					},
+					{
+						id: "created",
+						title: "Created",
+						items: createdQuery.data?.data ?? [],
+						isLoading: createdQuery.isLoading || isPending,
+					},
+					{
+						id: "subscribed",
+						title: "Watching",
+						items: subscribedQuery.data?.data ?? [],
+						isLoading: subscribedQuery.isLoading || isPending,
+					},
+				]}
 			/>
 		</div>
 	);
