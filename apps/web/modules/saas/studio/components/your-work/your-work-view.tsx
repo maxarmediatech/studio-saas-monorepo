@@ -17,6 +17,12 @@ const ENTITY_TABS = [
 	{ value: "deliverable", label: "Deliverables" },
 ] as const;
 
+const queryDefaults = {
+	staleTime: 60_000,
+	gcTime: 5 * 60_000,
+	refetchOnWindowFocus: false,
+};
+
 interface YourWorkViewProps {
 	organizationSlug: string;
 	initialFilters: {
@@ -42,13 +48,22 @@ export function YourWorkView({
 	);
 
 	const assignedQuery = useQuery(
-		yourWorkApi.listOptions({ ...queryInput, view: "assigned" }),
+		{
+			...yourWorkApi.listOptions({ ...queryInput, view: "assigned" }),
+			...queryDefaults,
+		},
 	);
 	const createdQuery = useQuery(
-		yourWorkApi.listOptions({ ...queryInput, view: "created" }),
+		{
+			...yourWorkApi.listOptions({ ...queryInput, view: "created" }),
+			...queryDefaults,
+		},
 	);
 	const subscribedQuery = useQuery(
-		yourWorkApi.listOptions({ ...queryInput, view: "subscribed" }),
+		{
+			...yourWorkApi.listOptions({ ...queryInput, view: "subscribed" }),
+			...queryDefaults,
+		},
 	);
 
 	const updateEntityType = (nextEntityType: EntityTypeFilter) => {
