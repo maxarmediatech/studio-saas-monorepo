@@ -103,6 +103,19 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 					label: "Production",
 					items: [
 						{
+							id: "your-work",
+							label: "Your Work",
+							path: url("/your-work"),
+							icon: "ListChecks",
+							permission: {
+								any: [
+									{ resource: "task", action: "list" },
+									{ resource: "deliverable", action: "list" },
+									{ resource: "shoot", action: "list" },
+								],
+							},
+						},
+						{
 							id: "shoots",
 							label: "Shoots",
 							path: url("/shoots"),

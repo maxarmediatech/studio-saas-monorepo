@@ -6,6 +6,7 @@ import { Logo } from "@shared/components/Logo";
 import { Menu, SearchIcon } from "lucide-react";
 import Link from "next/link";
 import type { HeaderCapabilities } from "../lib/capability.server";
+import { NotificationBell } from "./notifications";
 import { NewActionSwitcher } from "./navigation/new-action-switcher";
 
 interface SiteHeaderProps {
@@ -53,6 +54,7 @@ export function SiteHeader({
 					>
 						<SearchIcon className="size-5" />
 					</Button>
+					<NotificationBell />
 					<NewActionSwitcher studioSlug={studioSlug} caps={caps} />
 					<UserMenu />
 				</div>

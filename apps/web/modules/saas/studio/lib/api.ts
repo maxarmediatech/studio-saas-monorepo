@@ -85,6 +85,20 @@ export const studioQueryKeys = {
 	activities: {
 		all: ["studio", "activities"] as const,
 	},
+	// Your Work
+	yourWork: {
+		all: ["studio", "your-work"] as const,
+		list: (filters?: Record<string, unknown>) =>
+			["studio", "your-work", "list", filters] as const,
+	},
+	// Notifications
+	notifications: {
+		all: ["studio", "notifications"] as const,
+		list: (filters?: Record<string, unknown>) =>
+			["studio", "notifications", "list", filters] as const,
+		unreadCount: () =>
+			["studio", "notifications", "unread-count"] as const,
+	},
 } as const;
 
 // ============================================================================
@@ -445,4 +459,38 @@ export const activitiesApi = {
 	listOptions: (
 		input?: Parameters<typeof orpc.activities.list.queryOptions>[0]["input"],
 	) => orpc.activities.list.queryOptions({ input: input ?? {} }),
+};
+
+// ============================================================================
+// YOUR WORK QUERY OPTIONS
+// ============================================================================
+
+export const yourWorkApi = {
+	listOptions: (
+		input: Parameters<typeof orpc.yourWork.list.queryOptions>[0]["input"],
+	) => orpc.yourWork.list.queryOptions({ input }),
+};
+
+export const yourWorkMutations = {
+	subscribe: () => orpc.yourWork.subscribe.mutationOptions(),
+	unsubscribe: () => orpc.yourWork.unsubscribe.mutationOptions(),
+};
+
+// ============================================================================
+// NOTIFICATIONS QUERY OPTIONS
+// ============================================================================
+
+export const notificationsApi = {
+	listOptions: (
+		input: Parameters<
+			typeof orpc.notifications.list.queryOptions
+		>[0]["input"],
+	) => orpc.notifications.list.queryOptions({ input }),
+	unreadCountOptions: () =>
+		orpc.notifications.unreadCount.queryOptions(),
+};
+
+export const notificationsMutations = {
+	markRead: () => orpc.notifications.markRead.mutationOptions(),
+	markAllRead: () => orpc.notifications.markAllRead.mutationOptions(),
 };

@@ -11,6 +11,7 @@ import { Logo } from "@shared/components/Logo";
 import { HelpCircle, SearchIcon, Settings } from "lucide-react";
 import Link from "next/link";
 import type { RailIconConfig } from "../../lib/navigation/types";
+import { NotificationBell } from "../notifications";
 import { IconByName } from "./icon-registry";
 import { SidebarTrigger } from "./sidebar-trigger";
 
@@ -91,6 +92,17 @@ export function SidebarRail({
 						</TooltipTrigger>
 						<TooltipContent side="right" sideOffset={8}>
 							Search
+						</TooltipContent>
+					</Tooltip>
+
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<div>
+								<NotificationBell buttonClassName="size-11 text-neutral-600 hover:bg-black/5 active:bg-black/10" />
+							</div>
+						</TooltipTrigger>
+						<TooltipContent side="right" sideOffset={8}>
+							Notifications
 						</TooltipContent>
 					</Tooltip>
 				</div>
