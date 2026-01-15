@@ -2,21 +2,24 @@ import { z } from "zod";
 
 export const stickyColorSchema = z.enum([
 	"yellow",
-	"blue",
-	"green",
-	"pink",
-	"purple",
-	"orange",
 	"gray",
+	"peach",
+	"pink",
+	"orange",
+	"green",
+	"light-blue",
+	"dark-blue",
+	"purple",
 ]);
 
 export const stickySchema = z.object({
 	id: z.string(),
 	organizationId: z.string(),
 	userId: z.string(),
-	title: z.string().nullable(),
+	title: z.string().max(255).nullable(),
 	content: z.string().nullable(),
-	color: z.string(),
+	descriptionHtml: z.string().nullable(),
+	color: stickyColorSchema,
 	sortOrder: z.number(),
 	createdAt: z.string(),
 	updatedAt: z.string(),
@@ -31,6 +34,7 @@ export const listStickiesOutputSchema = z.object({
 export const createStickyInputSchema = z.object({
 	title: z.string().optional(),
 	content: z.string().optional(),
+	descriptionHtml: z.string().optional(),
 	color: stickyColorSchema.optional().default("yellow"),
 });
 
@@ -40,6 +44,7 @@ export const updateStickyInputSchema = z.object({
 	id: z.string().min(1),
 	title: z.string().optional(),
 	content: z.string().optional(),
+	descriptionHtml: z.string().optional(),
 	color: stickyColorSchema.optional(),
 });
 

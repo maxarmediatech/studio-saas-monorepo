@@ -63,6 +63,18 @@
   
   --table-row-selected: oklch(0.98 0 0);
   --table-row-selected-hover: oklch(0.96 0 0);
+
+  /* ===== Sticky Note Colors (Light Mode) ===== */
+  /* Plane-style pastel colors for sticky notes */
+  --sticky-gray: #d6d6d8;
+  --sticky-peach: #ffd5d7;
+  --sticky-pink: #fdd4e3;
+  --sticky-orange: #ffe3cd;
+  --sticky-green: #c3f0de;
+  --sticky-light-blue: #c5eff9;
+  --sticky-dark-blue: #c9dafb;
+  --sticky-purple: #e3d8fd;
+  --sticky-yellow: #fff3c4;
 }
 
 .dark {
@@ -112,6 +124,16 @@
   --scrollbar-thumb-active: oklch(1 0 0 / 30%);
   --table-row-selected: oklch(0.22 0 0);
   --table-row-selected-hover: oklch(0.26 0 0);
+
+  --sticky-gray: #404144;
+  --sticky-peach: #593032;
+  --sticky-pink: #562e3d;
+  --sticky-orange: #583e2a;
+  --sticky-green: #1d4a3b;
+  --sticky-light-blue: #1f495c;
+  --sticky-dark-blue: #223558;
+  --sticky-purple: #3d325a;
+  --sticky-yellow: #4a4528;
 }
 
 @theme inline {
@@ -170,6 +192,16 @@
   --text-13: 0.8125rem;
   --spacing-11: 2.75rem;
   --spacing-page-x: 0.75rem;
+
+  --color-sticky-gray: var(--sticky-gray);
+  --color-sticky-peach: var(--sticky-peach);
+  --color-sticky-pink: var(--sticky-pink);
+  --color-sticky-orange: var(--sticky-orange);
+  --color-sticky-green: var(--sticky-green);
+  --color-sticky-light-blue: var(--sticky-light-blue);
+  --color-sticky-dark-blue: var(--sticky-dark-blue);
+  --color-sticky-purple: var(--sticky-purple);
+  --color-sticky-yellow: var(--sticky-yellow);
 }
 
 @layer base {

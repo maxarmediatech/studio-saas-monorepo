@@ -1,23 +1,56 @@
 export const STICKY_COLORS = {
-	yellow: {
-		bg: "bg-yellow-100",
-		border: "border-yellow-200",
-		name: "Yellow",
+	gray: {
+		key: "gray",
+		label: "Gray",
+		backgroundColor: "var(--sticky-gray)",
 	},
-	blue: { bg: "bg-blue-100", border: "border-blue-200", name: "Blue" },
-	green: { bg: "bg-green-100", border: "border-green-200", name: "Green" },
-	pink: { bg: "bg-pink-100", border: "border-pink-200", name: "Pink" },
-	purple: {
-		bg: "bg-purple-100",
-		border: "border-purple-200",
-		name: "Purple",
+	peach: {
+		key: "peach",
+		label: "Peach",
+		backgroundColor: "var(--sticky-peach)",
+	},
+	pink: {
+		key: "pink",
+		label: "Pink",
+		backgroundColor: "var(--sticky-pink)",
 	},
 	orange: {
-		bg: "bg-orange-100",
-		border: "border-orange-200",
-		name: "Orange",
+		key: "orange",
+		label: "Orange",
+		backgroundColor: "var(--sticky-orange)",
 	},
-	gray: { bg: "bg-gray-100", border: "border-gray-200", name: "Gray" },
+	green: {
+		key: "green",
+		label: "Green",
+		backgroundColor: "var(--sticky-green)",
+	},
+	"light-blue": {
+		key: "light-blue",
+		label: "Light Blue",
+		backgroundColor: "var(--sticky-light-blue)",
+	},
+	"dark-blue": {
+		key: "dark-blue",
+		label: "Dark Blue",
+		backgroundColor: "var(--sticky-dark-blue)",
+	},
+	purple: {
+		key: "purple",
+		label: "Purple",
+		backgroundColor: "var(--sticky-purple)",
+	},
+	yellow: {
+		key: "yellow",
+		label: "Yellow",
+		backgroundColor: "var(--sticky-yellow)",
+	},
 } as const;
 
 export type StickyColor = keyof typeof STICKY_COLORS;
+
+export const STICKY_COLORS_LIST = Object.values(STICKY_COLORS);
+
+export function getRandomStickyColor(): StickyColor {
+	const colors = Object.keys(STICKY_COLORS) as StickyColor[];
+	return colors[Math.floor(Math.random() * colors.length)];
+}

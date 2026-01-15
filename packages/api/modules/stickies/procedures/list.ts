@@ -1,6 +1,10 @@
 import { and, asc, db, eq, stickies } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { listStickiesInputSchema, listStickiesOutputSchema } from "../schemas";
+import {
+	listStickiesInputSchema,
+	listStickiesOutputSchema,
+	type StickyColor,
+} from "../schemas";
 
 export const listStickies = studioProtectedProcedure
 	.route({
@@ -33,7 +37,8 @@ export const listStickies = studioProtectedProcedure
 			userId: item.userId,
 			title: item.title,
 			content: item.content,
-			color: item.color,
+			descriptionHtml: item.descriptionHtml,
+			color: item.color as StickyColor,
 			sortOrder: item.sortOrder,
 			createdAt: item.createdAt.toISOString(),
 			updatedAt: item.updatedAt.toISOString(),

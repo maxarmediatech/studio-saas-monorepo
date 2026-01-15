@@ -1,7 +1,11 @@
 import { ORPCError } from "@orpc/server";
 import { and, db, eq, stickies } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { updateStickyInputSchema, updateStickyOutputSchema } from "../schemas";
+import {
+	type StickyColor,
+	updateStickyInputSchema,
+	updateStickyOutputSchema,
+} from "../schemas";
 
 export const updateSticky = studioProtectedProcedure
 	.route({
@@ -51,6 +55,10 @@ export const updateSticky = studioProtectedProcedure
 			updates.color = input.color;
 		}
 
+		if (input.descriptionHtml !== undefined) {
+			updates.descriptionHtml = input.descriptionHtml || null;
+		}
+
 		const [sticky] = await db
 			.update(stickies)
 			.set(updates)
@@ -63,7 +71,8 @@ export const updateSticky = studioProtectedProcedure
 			userId: sticky.userId,
 			title: sticky.title,
 			content: sticky.content,
-			color: sticky.color,
+			descriptionHtml: sticky.descriptionHtml,
+			color: sticky.color as StickyColor,
 			sortOrder: sticky.sortOrder,
 			createdAt: sticky.createdAt.toISOString(),
 			updatedAt: sticky.updatedAt.toISOString(),
