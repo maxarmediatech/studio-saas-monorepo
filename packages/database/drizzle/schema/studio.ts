@@ -1319,6 +1319,135 @@ export const quickLinks = pgTable(
 );
 
 // ============================================================================
+// SUBSCRIPTIONS TABLE
+// Tracks which users are watching entities (tasks, deliverables, shoots, etc.)
+// ============================================================================
+
+export const subscriptions = pgTable(
+	"subscriptions",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 })
+			.notNull()
+			.references(() => organizations.id, { onDelete: "cascade" }),
+		userId: varchar("user_id", { length: 255 })
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+
+		entityType: varchar("entity_type", { length: 50 }).notNull(),
+		entityId: varchar("entity_id", { length: 255 }).notNull(),
+
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		deletedAt: timestamp("deleted_at", { withTimezone: true }),
+	},
+	(table) => [
+		uniqueIndex("subscriptions_user_entity_unique").on(
+			table.organizationId,
+			table.userId,
+			table.entityType,
+			table.entityId,
+		).where(sql`deleted_at IS NULL`),
+		index("subscriptions_org_user_idx").on(
+			table.organizationId,
+			table.userId,
+		),
+		index("subscriptions_entity_idx").on(
+			table.entityType,
+			table.entityId,
+		),
+	],
+);
+
+export const subscriptionsRelations = relations(
+	subscriptions,
+	({ one }) => ({
+		organization: one(organizations, {
+			fields: [subscriptions.organizationId],
+			references: [organizations.id],
+		}),
+		user: one(users, {
+			fields: [subscriptions.userId],
+			references: [users.id],
+		}),
+	}),
+);
+
+// ============================================================================
+// NOTIFICATIONS TABLE
+// In-app notifications for subscribed entities
+// ============================================================================
+
+export const notifications = pgTable(
+	"notifications",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 })
+			.notNull()
+			.references(() => organizations.id, { onDelete: "cascade" }),
+		userId: varchar("user_id", { length: 255 })
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+
+		entityType: varchar("entity_type", { length: 50 }).notNull(),
+		entityId: varchar("entity_id", { length: 255 }).notNull(),
+		entityName: text("entity_name").notNull(),
+
+		type: varchar("type", { length: 50 }).notNull(),
+		title: text("title").notNull(),
+		body: text("body"),
+
+		actorId: varchar("actor_id", { length: 255 }).references(
+			() => users.id,
+			{ onDelete: "set null" },
+		),
+		actorName: text("actor_name"),
+
+		readAt: timestamp("read_at", { withTimezone: true }),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		index("notifications_user_org_idx").on(
+			table.organizationId,
+			table.userId,
+			table.createdAt,
+		),
+		index("notifications_user_unread_idx")
+			.on(table.organizationId, table.userId)
+			.where(sql`read_at IS NULL`),
+		index("notifications_entity_idx").on(
+			table.entityType,
+			table.entityId,
+		),
+	],
+);
+
+export const notificationsRelations = relations(
+	notifications,
+	({ one }) => ({
+		organization: one(organizations, {
+			fields: [notifications.organizationId],
+			references: [organizations.id],
+		}),
+		user: one(users, {
+			fields: [notifications.userId],
+			references: [users.id],
+		}),
+		actor: one(users, {
+			fields: [notifications.actorId],
+			references: [users.id],
+		}),
+	}),
+);
+
+// ============================================================================
 // STICKIES
 // Personal notes/reminders for users
 // ============================================================================
@@ -1338,6 +1467,7 @@ export const stickies = pgTable(
 
 		title: varchar("title", { length: 255 }),
 		content: text("content"),
+		descriptionHtml: text("description_html"),
 		color: varchar("color", { length: 50 }).default("yellow").notNull(),
 		sortOrder: integer("sort_order").default(0).notNull(),
 
@@ -2121,7 +2251,10 @@ export const activities = pgTable(
 			table.createdAt,
 		),
 		// Filter by action type
-		index("activities_org_action_idx").on(table.organizationId, table.action),
+		index("activities_org_action_idx").on(
+			table.organizationId,
+			table.action,
+		),
 	],
 );
 
@@ -2217,3 +2350,9 @@ export type NewSavedView = typeof savedViews.$inferInsert;
 
 export type SavedViewFavorite = typeof savedViewFavorites.$inferSelect;
 export type NewSavedViewFavorite = typeof savedViewFavorites.$inferInsert;
+
+export type Subscription = typeof subscriptions.$inferSelect;
+export type NewSubscription = typeof subscriptions.$inferInsert;
+
+export type Notification = typeof notifications.$inferSelect;
+export type NewNotification = typeof notifications.$inferInsert;
