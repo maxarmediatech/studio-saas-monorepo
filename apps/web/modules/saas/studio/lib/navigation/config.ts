@@ -52,6 +52,19 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 								],
 							},
 						},
+						{
+							id: "your-work",
+							label: "Your Work",
+							path: url("/your-work"),
+							icon: "ListChecks",
+							permission: {
+								any: [
+									{ resource: "task", action: "list" },
+									{ resource: "deliverable", action: "list" },
+									{ resource: "shoot", action: "list" },
+								],
+							},
+						},
 					],
 				},
 				{
@@ -102,19 +115,6 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 					id: "studio-production",
 					label: "Production",
 					items: [
-						{
-							id: "your-work",
-							label: "Your Work",
-							path: url("/your-work"),
-							icon: "ListChecks",
-							permission: {
-								any: [
-									{ resource: "task", action: "list" },
-									{ resource: "deliverable", action: "list" },
-									{ resource: "shoot", action: "list" },
-								],
-							},
-						},
 						{
 							id: "shoots",
 							label: "Shoots",

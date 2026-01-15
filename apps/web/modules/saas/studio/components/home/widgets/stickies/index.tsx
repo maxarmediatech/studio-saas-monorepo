@@ -2,7 +2,6 @@
 
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { stickiesApi, stickiesMutations } from "@saas/studio/lib/api";
-import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PlusIcon, StickyNoteIcon } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
@@ -13,17 +12,20 @@ import { type StickyData, StickyNote } from "./sticky-note";
 
 interface Sticky {
 	id: string;
+	organizationId: string;
+	userId: string;
 	title: string | null;
 	content: string | null;
 	descriptionHtml: string | null;
-	color: string;
+	color: StickyColor;
+	sortOrder: number;
+	createdAt: string;
+	updatedAt: string;
 }
 
 interface StickiesResponse {
 	data: Sticky[];
 }
-
-const LIST_QUERY_KEY = orpc.stickies.list.key({});
 
 export function StickiesWidget() {
 	const [isCreating, setIsCreating] = useState(false);
@@ -32,7 +34,9 @@ export function StickiesWidget() {
 	);
 	const createSubmittedRef = useRef(false);
 
-	const { data, isLoading } = useQuery(stickiesApi.listOptions());
+	const listQueryOptions = stickiesApi.listOptions();
+	const LIST_QUERY_KEY = listQueryOptions.queryKey;
+	const { data, isLoading } = useQuery(listQueryOptions);
 	const stickies = (data as unknown as StickiesResponse)?.data ?? [];
 
 	const queryClient = useQueryClient();
@@ -79,14 +83,25 @@ export function StickiesWidget() {
 			);
 			return { previousData };
 		},
+		onSuccess: (response) => {
+			queryClient.setQueryData(
+				LIST_QUERY_KEY,
+				(old: StickiesResponse | undefined) => {
+					if (!old) return old;
+					return {
+						...old,
+						data: old.data.map((s) =>
+							s.id === response.id ? { ...s, ...response } : s,
+						),
+					};
+				},
+			);
+		},
 		onError: (_err, _variables, context) => {
 			if (context?.previousData) {
 				queryClient.setQueryData(LIST_QUERY_KEY, context.previousData);
 			}
 			toast.error("Failed to update sticky");
-		},
-		onSettled: () => {
-			queryClient.invalidateQueries({ queryKey: LIST_QUERY_KEY });
 		},
 	});
 
@@ -117,9 +132,6 @@ export function StickiesWidget() {
 			}
 			toast.error("Failed to delete sticky");
 		},
-		onSettled: () => {
-			queryClient.invalidateQueries({ queryKey: LIST_QUERY_KEY });
-		},
 	});
 
 	const handleCreate = useCallback(() => {
@@ -134,7 +146,15 @@ export function StickiesWidget() {
 				return;
 			}
 
-			const content = data.content?.trim() ?? "";
+			if (data.color !== undefined) {
+				setNewStickyColor(data.color);
+			}
+
+			if (data.content === undefined) {
+				return;
+			}
+
+			const content = (data.content ?? "").trim();
 			if (!content) {
 				setIsCreating(false);
 				setNewStickyColor(null);
@@ -144,10 +164,10 @@ export function StickiesWidget() {
 			createSubmittedRef.current = true;
 			createMutation.mutate({
 				content,
-				color: data.color,
+				color: data.color ?? newStickyColor ?? undefined,
 			});
 		},
-		[createMutation],
+		[createMutation, newStickyColor],
 	);
 
 	const handleUpdate = useCallback(

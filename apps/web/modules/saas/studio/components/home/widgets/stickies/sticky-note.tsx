@@ -43,10 +43,14 @@ export function StickyNote({
 
 	const colorConfig = STICKY_COLORS[sticky.color] || STICKY_COLORS.yellow;
 
+	// Only sync from props when NOT focused - prevents clobbering mid-typing
 	useEffect(() => {
-		setLocalContent(sticky.content || "");
-		lastSavedContentRef.current = sticky.content || "";
-	}, [sticky.content]);
+		if (isFocused) return;
+
+		const next = sticky.content ?? "";
+		setLocalContent(next);
+		lastSavedContentRef.current = next;
+	}, [sticky.content, isFocused]);
 
 	const flushPendingUpdate = useCallback(() => {
 		if (debounceRef.current) {
