@@ -19,7 +19,7 @@ export function HomeView({ organizationSlug, userName }: HomeViewProps) {
 			<div className="flex flex-col gap-7">
 				<QuickstartGuide organizationSlug={organizationSlug} />
 				<QuickLinksWidget />
-				<StickiesWidget />
+				<StickiesWidget organizationSlug={organizationSlug} />
 				<ActivityFeedWidget organizationSlug={organizationSlug} />
 				<RecentVisitsWidget organizationSlug={organizationSlug} />
 			</div>

@@ -4,6 +4,7 @@ import { Skeleton } from "@repo/ui/components/skeleton";
 import { stickiesApi, stickiesMutations } from "@saas/studio/lib/api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PlusIcon, StickyNoteIcon } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { getRandomStickyColor, type StickyColor } from "./constants";
@@ -28,7 +29,60 @@ interface StickiesResponse {
 
 const HOME_STICKIES_LIMIT = 3;
 
-export function StickiesWidget() {
+interface StickiesWidgetProps {
+	organizationSlug: string;
+}
+
+const hasStickiesKey = (value: unknown): boolean => {
+	if (typeof value === "string") {
+		return value.includes("stickies");
+	}
+	if (Array.isArray(value)) {
+		return value.some(hasStickiesKey);
+	}
+	return false;
+};
+
+const isStickiesListQuery = (queryKey: readonly unknown[]): boolean =>
+	queryKey.some(hasStickiesKey);
+
+const findLimit = (value: unknown): number | undefined => {
+	if (!value || typeof value !== "object") {
+		return undefined;
+	}
+	if (Array.isArray(value)) {
+		for (const item of value) {
+			const limit = findLimit(item);
+			if (limit !== undefined) {
+				return limit;
+			}
+		}
+		return undefined;
+	}
+	const record = value as Record<string, unknown>;
+	if (typeof record.limit === "number") {
+		return record.limit;
+	}
+	if (record.input && typeof record.input === "object") {
+		const input = record.input as Record<string, unknown>;
+		if (typeof input.limit === "number") {
+			return input.limit;
+		}
+	}
+	return undefined;
+};
+
+const getQueryLimit = (queryKey: readonly unknown[]): number | undefined => {
+	for (const part of queryKey) {
+		const limit = findLimit(part);
+		if (limit !== undefined) {
+			return limit;
+		}
+	}
+	return undefined;
+};
+
+export function StickiesWidget({ organizationSlug }: StickiesWidgetProps) {
 	const [focusStickyId, setFocusStickyId] = useState<string | null>(null);
 
 	const listQueryOptions = stickiesApi.listOptions({
@@ -43,19 +97,38 @@ export function StickiesWidget() {
 	const stickies = (data as unknown as StickiesResponse)?.data ?? [];
 
 	const queryClient = useQueryClient();
+	const updateStickiesCaches = useCallback(
+		(
+			updater: (
+				old: StickiesResponse | undefined,
+				limit: number | undefined,
+			) => StickiesResponse | undefined,
+		) => {
+			const queries = queryClient.getQueryCache().findAll({
+				predicate: ({ queryKey }) => isStickiesListQuery(queryKey),
+			});
+			for (const query of queries) {
+				queryClient.setQueryData(query.queryKey, (oldData) =>
+					updater(
+						oldData as StickiesResponse | undefined,
+						getQueryLimit(query.queryKey),
+					),
+				);
+			}
+		},
+		[queryClient],
+	);
 
 	const createMutation = useMutation({
 		...stickiesMutations.create(),
 		onSuccess: (response) => {
-			queryClient.setQueryData(
-				LIST_QUERY_KEY,
-				(old: StickiesResponse | undefined) => {
-					const oldData = old?.data ?? [];
-					return {
-						data: [response, ...oldData].slice(0, HOME_STICKIES_LIMIT),
-					};
-				},
-			);
+			updateStickiesCaches((old, limit) => {
+				const oldData = old?.data ?? [];
+				const next = [response, ...oldData];
+				const nextData =
+					typeof limit === "number" ? next.slice(0, limit) : next;
+				return { data: nextData };
+			});
 			setFocusStickyId(response.id);
 		},
 		onError: () => {
@@ -97,20 +170,17 @@ export function StickiesWidget() {
 			return { previousData };
 		},
 		onSuccess: (response) => {
-			queryClient.setQueryData(
-				LIST_QUERY_KEY,
-				(old: StickiesResponse | undefined) => {
-					if (!old) {
-						return old;
-					}
-					return {
-						...old,
-						data: old.data.map((s) =>
-							s.id === response.id ? { ...s, ...response } : s,
-						),
-					};
-				},
-			);
+			updateStickiesCaches((old) => {
+				if (!old) {
+					return old;
+				}
+				return {
+					...old,
+					data: old.data.map((s) =>
+						s.id === response.id ? { ...s, ...response } : s,
+					),
+				};
+			});
 		},
 		onError: (_err, _variables, context) => {
 			if (context?.previousData) {
@@ -140,7 +210,16 @@ export function StickiesWidget() {
 			);
 			return { previousData };
 		},
-		onSuccess: () => {
+		onSuccess: (_response, variables) => {
+			updateStickiesCaches((old) => {
+				if (!old) {
+					return old;
+				}
+				return {
+					...old,
+					data: old.data.filter((s) => s.id !== variables.id),
+				};
+			});
 			toast.success("Sticky deleted");
 		},
 		onError: (_err, _variables, context) => {
@@ -258,6 +337,15 @@ export function StickiesWidget() {
 					))}
 				</div>
 			)}
+
+			<div className="flex justify-end mt-3">
+				<Link
+					href={`/app/${organizationSlug}/stickies`}
+					className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+				>
+					Show all
+				</Link>
+			</div>
 		</div>
 	);
 }
