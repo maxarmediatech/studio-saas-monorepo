@@ -5,11 +5,8 @@ import {
 	CollapsibleTrigger,
 } from "@repo/ui/components/collapsible";
 import { cn } from "@repo/ui/lib/utils";
-import { usePlanData } from "@saas/payments/hooks/plan-data";
-import { useOrganizationPurchases } from "@saas/payments/hooks/purchases";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-	BadgeCheck,
 	ChevronDown,
 	ChevronRight,
 	ExternalLink,
@@ -25,6 +22,7 @@ import type {
 } from "../../lib/navigation/types";
 import { IconByName } from "./icon-registry";
 import { NewActionSwitcher } from "./new-action-switcher";
+import { NotificationBell } from "../notifications";
 import { OrganizationSwitcher } from "./organization-switcher";
 
 interface SidebarPanelProps {
@@ -52,11 +50,6 @@ export function SidebarPanel({
 }: SidebarPanelProps) {
 	const pathname = usePathname();
 	const [setupOpen, setSetupOpen] = useState(false);
-	const { planData } = usePlanData();
-	const { activePlan } = useOrganizationPurchases(organizationId);
-	const activePlanTitle =
-		planData[activePlan?.id as keyof typeof planData]?.title;
-	const planLabel = activePlanTitle ?? "Free";
 
 	// Split sections: primary nav vs setup/configuration
 	const primarySections = module.sections.filter(
@@ -89,13 +82,13 @@ export function SidebarPanel({
 						<OrganizationSwitcher
 							studioName={studioName}
 							studioLogo={studioLogo}
+							studioSlug={studioSlug}
+							organizationId={organizationId}
 							variant="panel"
-							subLabel={
-								<span className="inline-flex items-center gap-1">
-									<BadgeCheck className="size-3" />
-									{planLabel}
-								</span>
-							}
+						/>
+						<NotificationBell
+							buttonClassName="ml-auto size-8 text-neutral-600 hover:bg-black/5"
+							align="start"
 						/>
 					</div>
 
