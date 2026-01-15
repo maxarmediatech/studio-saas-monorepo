@@ -11,6 +11,7 @@ import { deliverablesRouter } from "../modules/deliverables/router";
 import { expensesRouter } from "../modules/expenses/router";
 import { globalSearchRouter } from "../modules/global-search/router";
 import { myAssignmentsRouter } from "../modules/my-assignments/router";
+import { notificationsRouter } from "../modules/notifications/router";
 import { newsletterRouter } from "../modules/newsletter/router";
 import { organizationsRouter } from "../modules/organizations/router";
 import { paymentsRouter } from "../modules/payments/router";
@@ -23,6 +24,7 @@ import { studioPaymentsRouter } from "../modules/studio-payments/router";
 import { submissionsRouter } from "../modules/submissions/router";
 import { tasksRouter } from "../modules/tasks/router";
 import { usersRouter } from "../modules/users/router";
+import { yourWorkRouter } from "../modules/your-work/router";
 import { publicProcedure } from "./procedures";
 
 export const router = publicProcedure
@@ -52,11 +54,13 @@ export const router = publicProcedure
 		dashboard: dashboardRouter,
 		submissions: submissionsRouter,
 		myAssignments: myAssignmentsRouter,
+		yourWork: yourWorkRouter,
 		savedViews: savedViewsRouter,
 		recentVisits: recentVisitsRouter,
 		quickLinks: quickLinksRouter,
 		stickies: stickiesRouter,
 		activities: activitiesRouter,
+		notifications: notificationsRouter,
 	});
 
 export type ApiRouterClient = RouterClient<typeof router>;
