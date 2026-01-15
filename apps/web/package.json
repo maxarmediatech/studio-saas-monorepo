@@ -78,6 +78,7 @@
 		"react-dom": "19.2.3",
 		"react-dropzone": "^14.3.8",
 		"react-hook-form": "^7.69.0",
+		"react-masonry-component": "^6.3.0",
 		"react-qr-code": "^2.0.17",
 		"react-resizable-panels": "^3.0.6",
 		"recharts": "3.6.0",

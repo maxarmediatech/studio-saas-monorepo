@@ -4,7 +4,7 @@ import { Skeleton } from "@repo/ui/components/skeleton";
 import { stickiesApi, stickiesMutations } from "@saas/studio/lib/api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PlusIcon, StickyNoteIcon } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { getRandomStickyColor, type StickyColor } from "./constants";
 import { StickiesMasonry, StickiesMasonryItem } from "./stickies-masonry";
@@ -28,30 +28,33 @@ interface StickiesResponse {
 }
 
 export function StickiesWidget() {
-	const [isCreating, setIsCreating] = useState(false);
-	const [newStickyColor, setNewStickyColor] = useState<StickyColor | null>(
-		null,
-	);
-	const createSubmittedRef = useRef(false);
+	const [focusStickyId, setFocusStickyId] = useState<string | null>(null);
 
 	const listQueryOptions = stickiesApi.listOptions();
 	const LIST_QUERY_KEY = listQueryOptions.queryKey;
-	const { data, isLoading } = useQuery(listQueryOptions);
+	const { data, isLoading } = useQuery({
+		...listQueryOptions,
+		staleTime: Number.POSITIVE_INFINITY,
+		refetchOnWindowFocus: false,
+	});
 	const stickies = (data as unknown as StickiesResponse)?.data ?? [];
 
 	const queryClient = useQueryClient();
 
 	const createMutation = useMutation({
 		...stickiesMutations.create(),
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: LIST_QUERY_KEY });
-			setIsCreating(false);
-			setNewStickyColor(null);
-			createSubmittedRef.current = false;
+		onSuccess: (response) => {
+			queryClient.setQueryData(
+				LIST_QUERY_KEY,
+				(old: StickiesResponse | undefined) => {
+					const oldData = old?.data ?? [];
+					return { data: [response, ...oldData] };
+				},
+			);
+			setFocusStickyId(response.id);
 		},
 		onError: () => {
 			toast.error("Failed to create sticky");
-			createSubmittedRef.current = false;
 		},
 	});
 
@@ -61,14 +64,19 @@ export function StickiesWidget() {
 			await queryClient.cancelQueries({ queryKey: LIST_QUERY_KEY });
 			const previousData = queryClient.getQueryData(LIST_QUERY_KEY);
 
+			// Also update TanStack Query cache
 			queryClient.setQueryData(
 				LIST_QUERY_KEY,
 				(old: StickiesResponse | undefined) => {
-					if (!old) return old;
+					if (!old) {
+						return old;
+					}
 					return {
 						...old,
 						data: old.data.map((s) => {
-							if (s.id !== variables.id) return s;
+							if (s.id !== variables.id) {
+								return s;
+							}
 							const updated = { ...s };
 							if (variables.content !== undefined) {
 								updated.content = variables.content ?? null;
@@ -87,7 +95,9 @@ export function StickiesWidget() {
 			queryClient.setQueryData(
 				LIST_QUERY_KEY,
 				(old: StickiesResponse | undefined) => {
-					if (!old) return old;
+					if (!old) {
+						return old;
+					}
 					return {
 						...old,
 						data: old.data.map((s) =>
@@ -114,7 +124,9 @@ export function StickiesWidget() {
 			queryClient.setQueryData(
 				LIST_QUERY_KEY,
 				(old: StickiesResponse | undefined) => {
-					if (!old) return old;
+					if (!old) {
+						return old;
+					}
 					return {
 						...old,
 						data: old.data.filter((s) => s.id !== variables.id),
@@ -135,40 +147,11 @@ export function StickiesWidget() {
 	});
 
 	const handleCreate = useCallback(() => {
-		setNewStickyColor(getRandomStickyColor());
-		setIsCreating(true);
-		createSubmittedRef.current = false;
-	}, []);
-
-	const handleCreateSubmit = useCallback(
-		(data: Partial<StickyData>) => {
-			if (createMutation.isPending || createSubmittedRef.current) {
-				return;
-			}
-
-			if (data.color !== undefined) {
-				setNewStickyColor(data.color);
-			}
-
-			if (data.content === undefined) {
-				return;
-			}
-
-			const content = (data.content ?? "").trim();
-			if (!content) {
-				setIsCreating(false);
-				setNewStickyColor(null);
-				return;
-			}
-
-			createSubmittedRef.current = true;
-			createMutation.mutate({
-				content,
-				color: data.color ?? newStickyColor ?? undefined,
-			});
-		},
-		[createMutation, newStickyColor],
-	);
+		createMutation.mutate({
+			content: "",
+			color: getRandomStickyColor(),
+		});
+	}, [createMutation]);
 
 	const handleUpdate = useCallback(
 		(id: string, data: Partial<StickyData>) => {
@@ -217,7 +200,7 @@ export function StickiesWidget() {
 		);
 	}
 
-	const hasStickies = stickies.length > 0 || isCreating;
+	const hasStickies = stickies.length > 0;
 
 	return (
 		<div className="py-4">
@@ -228,7 +211,7 @@ export function StickiesWidget() {
 				<button
 					type="button"
 					onClick={handleCreate}
-					disabled={isCreating || createMutation.isPending}
+					disabled={createMutation.isPending}
 					className="flex items-center gap-1 text-sm font-medium text-primary hover:text-primary/80 transition-colors disabled:opacity-50"
 				>
 					<PlusIcon className="size-4" />
@@ -248,22 +231,6 @@ export function StickiesWidget() {
 				</div>
 			) : (
 				<StickiesMasonry className="max-h-[600px] overflow-y-auto scrollbar-thin pr-1">
-					{isCreating && newStickyColor && (
-						<StickiesMasonryItem>
-							<StickyNote
-								sticky={{
-									color: newStickyColor,
-									content: "",
-								}}
-								onUpdate={handleCreateSubmit}
-								onClose={() => {
-									setIsCreating(false);
-									setNewStickyColor(null);
-								}}
-								showToolbar
-							/>
-						</StickiesMasonryItem>
-					)}
 					{stickies.map((sticky) => (
 						<StickiesMasonryItem key={sticky.id}>
 							<StickyNote
@@ -272,6 +239,10 @@ export function StickiesWidget() {
 									content: sticky.content,
 									descriptionHtml: sticky.descriptionHtml,
 									color: sticky.color as StickyColor,
+								}}
+								autoFocus={sticky.id === focusStickyId}
+								onAutoFocus={() => {
+									setFocusStickyId(null);
 								}}
 								onUpdate={(data) =>
 									handleUpdate(sticky.id, data)
