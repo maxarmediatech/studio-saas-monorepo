@@ -383,58 +383,6 @@ export const listYourWork = studioProtectedProcedure
 				.filter((row) => row.entityType === "shoot")
 				.map((row) => row.entityId);
 
-			const [assignedTaskIds, assignedDeliverableIds, assignedShootIds] =
-				await Promise.all([
-					crewId && taskIds.length > 0
-						? db
-								.select({ taskId: taskAssignments.taskId })
-								.from(taskAssignments)
-								.where(
-									and(
-										eq(taskAssignments.crewId, crewId),
-										inArray(taskAssignments.taskId, taskIds),
-									),
-								)
-						: [],
-					crewId && deliverableIds.length > 0
-						? db
-								.select({
-									deliverableId: deliverableAssignments.deliverableId,
-								})
-								.from(deliverableAssignments)
-								.where(
-									and(
-										eq(deliverableAssignments.crewId, crewId),
-										inArray(
-											deliverableAssignments.deliverableId,
-											deliverableIds,
-										),
-									),
-								)
-						: [],
-					crewId && shootIds.length > 0
-						? db
-								.select({ shootId: shootAssignments.shootId })
-								.from(shootAssignments)
-								.where(
-									and(
-										eq(shootAssignments.crewId, crewId),
-										inArray(shootAssignments.shootId, shootIds),
-									),
-								)
-						: [],
-				]);
-
-			const assignedTaskSet = new Set(
-				assignedTaskIds.map((row) => row.taskId),
-			);
-			const assignedDeliverableSet = new Set(
-				assignedDeliverableIds.map((row) => row.deliverableId),
-			);
-			const assignedShootSet = new Set(
-				assignedShootIds.map((row) => row.shootId),
-			);
-
 			const [taskRows, deliverableRows, shootRows] = await Promise.all([
 				includeTasks && taskIds.length > 0
 					? db
@@ -445,7 +393,6 @@ export const listYourWork = studioProtectedProcedure
 								dueDate: tasks.dueDate,
 								bookingId: tasks.bookingId,
 								bookingName: bookings.name,
-								createdBy: tasks.createdBy,
 							})
 							.from(tasks)
 							.innerJoin(bookings, eq(tasks.bookingId, bookings.id))
@@ -466,7 +413,6 @@ export const listYourWork = studioProtectedProcedure
 								dueDate: deliverables.dueDate,
 								bookingId: deliverables.bookingId,
 								bookingName: bookings.name,
-								createdBy: deliverables.createdBy,
 							})
 							.from(deliverables)
 							.innerJoin(
@@ -490,7 +436,6 @@ export const listYourWork = studioProtectedProcedure
 								shootDate: shoots.shootDate,
 								bookingId: shoots.bookingId,
 								bookingName: bookings.name,
-								createdBy: shoots.createdBy,
 							})
 							.from(shoots)
 							.innerJoin(
@@ -508,9 +453,6 @@ export const listYourWork = studioProtectedProcedure
 			]);
 
 			for (const row of taskRows) {
-				if (row.createdBy === userId || assignedTaskSet.has(row.id)) {
-					continue;
-				}
 				items.push({
 					id: buildItemId("task", row.id),
 					entityType: "task",
@@ -524,12 +466,6 @@ export const listYourWork = studioProtectedProcedure
 				});
 			}
 			for (const row of deliverableRows) {
-				if (
-					row.createdBy === userId ||
-					assignedDeliverableSet.has(row.id)
-				) {
-					continue;
-				}
 				items.push({
 					id: buildItemId("deliverable", row.id),
 					entityType: "deliverable",
@@ -543,9 +479,6 @@ export const listYourWork = studioProtectedProcedure
 				});
 			}
 			for (const row of shootRows) {
-				if (row.createdBy === userId || assignedShootSet.has(row.id)) {
-					continue;
-				}
 				items.push({
 					id: buildItemId("shoot", row.id),
 					entityType: "shoot",
