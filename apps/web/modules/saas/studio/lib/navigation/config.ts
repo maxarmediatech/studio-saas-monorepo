@@ -29,7 +29,7 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 		{
 			id: "workspace",
 			label: "Workspace",
-			icon: "LayoutDashboard",
+			icon: "Home",
 			defaultPath: url("/home"),
 			sections: [
 				{
@@ -106,7 +106,7 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 		{
 			id: "studio",
 			label: "Studio",
-			icon: "Camera",
+			icon: "Store",
 			defaultPath: url("/bookings"),
 			sections: [
 				{
