@@ -32,6 +32,8 @@ import { useState } from "react";
 
 interface ActivityFeedWidgetProps {
 	organizationSlug: string;
+	limit?: number;
+	title?: string;
 }
 
 type FilterKey = "all" | "booking" | "shoot" | "task" | "deliverable" | "payment";
@@ -213,6 +215,8 @@ function getEntityLink(
 
 export function ActivityFeedWidget({
 	organizationSlug,
+	limit = 15,
+	title = "Recent Activity",
 }: ActivityFeedWidgetProps) {
 	const [filter, setFilter] = useState<FilterKey>("all");
 
@@ -227,10 +231,10 @@ export function ActivityFeedWidget({
 	} as const;
 	const queryParams =
 		filter === "all"
-			? { limit: 15 }
+			? { limit }
 			: filter === "booking"
-				? { limit: 15, entityType: filter }
-				: { limit: 15, entityTypes: [...FILTER_ENTITY_TYPES[filter]] };
+				? { limit, entityType: filter }
+				: { limit, entityTypes: [...FILTER_ENTITY_TYPES[filter]] };
 
 	const { data, isLoading, error } = useQuery({
 		...activitiesApi.listOptions(queryParams),
@@ -252,7 +256,7 @@ export function ActivityFeedWidget({
 			<div className="py-4">
 				<div className="flex items-center justify-between mb-2">
 					<div className="text-sm font-semibold text-muted-foreground">
-						Recent Activity
+						{title}
 					</div>
 					<Skeleton className="h-7 w-16" />
 				</div>
@@ -280,7 +284,7 @@ export function ActivityFeedWidget({
 			<div className="py-4">
 				<div className="flex items-center justify-between mb-2">
 					<div className="text-sm font-semibold text-muted-foreground">
-						Recent Activity
+						{title}
 					</div>
 				</div>
 				<div className="min-h-[300px] flex flex-col items-center justify-center">
@@ -297,10 +301,10 @@ export function ActivityFeedWidget({
 	return (
 		<div className="py-4">
 			<div className="flex items-center justify-between mb-2">
-				<div className="text-sm font-semibold text-muted-foreground">
-					Recent Activity
-				</div>
-				<DropdownMenu>
+					<div className="text-sm font-semibold text-muted-foreground">
+						{title}
+					</div>
+					<DropdownMenu>
 					<DropdownMenuTrigger asChild>
 						<Button
 							variant="outline"

@@ -2,6 +2,7 @@
 
 import type { LucideIcon } from "lucide-react";
 import {
+	Activity,
 	AlertTriangle,
 	Banknote,
 	Bell,
@@ -31,6 +32,7 @@ import {
 } from "lucide-react";
 
 const registry = {
+	Activity,
 	AlertTriangle,
 	Banknote,
 	Bell,

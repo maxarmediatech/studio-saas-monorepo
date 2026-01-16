@@ -3,6 +3,8 @@
 // Layout - Server component pattern (like winter-arc)
 export { AppShell } from "./components/app-shell";
 export { AppShellClient } from "./components/app-shell.client";
+// Activities
+export { ActivitiesPageClient } from "./components/activities";
 // Bookings
 export {
 	BookingsFilters,

@@ -71,6 +71,12 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							path: url("/stickies"),
 							icon: "StickyNoteIcon",
 						},
+						{
+							id: "activities",
+							label: "Activities",
+							path: url("/activities"),
+							icon: "Activity",
+						},
 					],
 				},
 				{
