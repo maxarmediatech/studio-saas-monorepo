@@ -3,6 +3,7 @@ import { and, db, desc, eq, inArray, isNull, lte, or } from "@repo/database";
 import {
 	waAccounts,
 	waContacts,
+	waMedia,
 	waMessages,
 	waOutbox,
 } from "@repo/whatsapp-db";
@@ -24,11 +25,13 @@ const fetchOutboxBatch = async () => {
 			message: waMessages,
 			account: waAccounts,
 			contact: waContacts,
+			media: waMedia,
 		})
 		.from(waOutbox)
 		.innerJoin(waMessages, eq(waOutbox.messageId, waMessages.id))
 		.innerJoin(waAccounts, eq(waOutbox.accountId, waAccounts.id))
 		.innerJoin(waContacts, eq(waMessages.contactId, waContacts.id))
+		.leftJoin(waMedia, eq(waMessages.mediaId, waMedia.id))
 		.where(
 			and(
 				inArray(waOutbox.status, ["pending", "failed"]),
@@ -107,11 +110,16 @@ const markOutboxFailure = async (params: {
 		.where(eq(waMessages.id, params.messageId));
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null;
+}
+
 const processOutboxItem = async (item: {
 	outbox: typeof waOutbox.$inferSelect;
 	message: typeof waMessages.$inferSelect;
 	account: typeof waAccounts.$inferSelect;
 	contact: typeof waContacts.$inferSelect;
+	media: typeof waMedia.$inferSelect | null;
 }) => {
 	const attempts = (item.outbox.attempts ?? 0) + 1;
 	const maxAttempts = item.outbox.maxAttempts ?? 3;
@@ -139,17 +147,6 @@ const processOutboxItem = async (item: {
 		return;
 	}
 
-	if (item.message.type !== "text" || !item.message.textBody) {
-		await markOutboxFailure({
-			outboxId: item.outbox.id,
-			messageId: item.message.id,
-			attempts,
-			maxAttempts,
-			errorMessage: "Only text messages are supported in outbox worker",
-		});
-		return;
-	}
-
 	const provider = new CloudApiProvider({
 		accessToken: item.account.accessToken,
 		phoneNumberId: item.account.phoneNumberId,
@@ -167,9 +164,189 @@ const processOutboxItem = async (item: {
 		return;
 	}
 
-	const result = await provider.messaging.sendText({
+	const messageType = item.message.type;
+
+	if (messageType === "text") {
+		if (!item.message.textBody) {
+			await markOutboxFailure({
+				outboxId: item.outbox.id,
+				messageId: item.message.id,
+				attempts,
+				maxAttempts,
+				errorMessage: "Missing text body",
+			});
+			return;
+		}
+
+		const result = await provider.messaging.sendText({
+			to: recipient,
+			text: item.message.textBody,
+		});
+
+		if (!result.success) {
+			await markOutboxFailure({
+				outboxId: item.outbox.id,
+				messageId: item.message.id,
+				attempts,
+				maxAttempts,
+				errorMessage: result.error?.message ?? "Failed to send message",
+			});
+			return;
+		}
+
+		await markOutboxSuccess({
+			outboxId: item.outbox.id,
+			messageId: item.message.id,
+			providerMessageId: result.providerMessageId,
+		});
+		return;
+	}
+
+	if (messageType === "template") {
+		if (!item.message.templateName) {
+			await markOutboxFailure({
+				outboxId: item.outbox.id,
+				messageId: item.message.id,
+				attempts,
+				maxAttempts,
+				errorMessage: "Missing template name",
+			});
+			return;
+		}
+
+		if (!provider.messaging.sendTemplate) {
+			await markOutboxFailure({
+				outboxId: item.outbox.id,
+				messageId: item.message.id,
+				attempts,
+				maxAttempts,
+				errorMessage: "Provider does not support template sending",
+			});
+			return;
+		}
+
+		const templateParams = item.message.templateParams;
+		if (!isRecord(templateParams)) {
+			await markOutboxFailure({
+				outboxId: item.outbox.id,
+				messageId: item.message.id,
+				attempts,
+				maxAttempts,
+				errorMessage: "Missing template parameters",
+			});
+			return;
+		}
+
+		const languageValue = templateParams.language;
+		const language = typeof languageValue === "string" ? languageValue : null;
+		if (!language) {
+			await markOutboxFailure({
+				outboxId: item.outbox.id,
+				messageId: item.message.id,
+				attempts,
+				maxAttempts,
+				errorMessage: "Missing template language",
+			});
+			return;
+		}
+
+		const componentsValue = templateParams.components;
+		const components = Array.isArray(componentsValue)
+			? componentsValue
+					.filter(isRecord)
+					.map((component) => {
+						const componentType = component.type;
+						if (typeof componentType !== "string" || !componentType) {
+							return null;
+						}
+
+						const parametersValue = component.parameters;
+						const parameters = Array.isArray(parametersValue)
+							? parametersValue.filter(isRecord)
+							: undefined;
+
+						const next: {
+							type: string;
+							parameters?: Array<Record<string, unknown>>;
+						} = { type: componentType };
+
+						if (parameters) {
+							next.parameters = parameters;
+						}
+
+						return next;
+					})
+					.filter(
+						(component): component is {
+							type: string;
+							parameters?: Array<Record<string, unknown>>;
+						} => component !== null,
+					)
+			: [];
+
+		const result = await provider.messaging.sendTemplate({
+			to: recipient,
+			templateName: item.message.templateName,
+			language,
+			components,
+		});
+
+		if (!result.success) {
+			await markOutboxFailure({
+				outboxId: item.outbox.id,
+				messageId: item.message.id,
+				attempts,
+				maxAttempts,
+				errorMessage: result.error?.message ?? "Failed to send message",
+			});
+			return;
+		}
+
+		await markOutboxSuccess({
+			outboxId: item.outbox.id,
+			messageId: item.message.id,
+			providerMessageId: result.providerMessageId,
+		});
+		return;
+	}
+
+	const mediaType =
+		messageType === "image" ||
+		messageType === "video" ||
+		messageType === "audio" ||
+		messageType === "document" ||
+		messageType === "sticker"
+			? messageType
+			: null;
+
+	if (!mediaType) {
+		await markOutboxFailure({
+			outboxId: item.outbox.id,
+			messageId: item.message.id,
+			attempts,
+			maxAttempts,
+			errorMessage: `Unsupported message type: ${messageType}`,
+		});
+		return;
+	}
+
+	const mediaUrl = item.media?.storageUrl;
+	if (typeof mediaUrl !== "string" || !mediaUrl) {
+		await markOutboxFailure({
+			outboxId: item.outbox.id,
+			messageId: item.message.id,
+			attempts,
+			maxAttempts,
+			errorMessage: "Missing media URL",
+		});
+		return;
+	}
+
+	const result = await provider.messaging.sendMedia({
 		to: recipient,
-		text: item.message.textBody,
+		mediaUrl,
+		mediaType,
+		caption: item.message.caption ?? undefined,
 	});
 
 	if (!result.success) {

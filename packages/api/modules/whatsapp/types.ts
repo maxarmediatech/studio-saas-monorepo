@@ -33,6 +33,182 @@ export const sendTextOutputSchema = z.object({
 	message: z.string(),
 });
 
+const waMediaTypeSchema = z.enum([
+	"image",
+	"video",
+	"audio",
+	"document",
+	"sticker",
+]);
+
+export const sendMediaInputSchema = z
+	.object({
+		accountId: z.string(),
+		to: z.string(),
+		mediaType: waMediaTypeSchema,
+		mediaUrl: z.string().url(),
+		mimeType: z.string().min(1),
+		caption: z.string().min(1).optional(),
+		fileName: z.string().min(1).optional(),
+	})
+	.refine(
+		(data) =>
+			!data.caption ||
+			data.mediaType === "image" ||
+			data.mediaType === "video" ||
+			data.mediaType === "document",
+		{ message: "caption is only supported for image, video, or document" },
+	);
+
+export const sendMediaOutputSchema = z.object({
+	data: z.object({ messageId: z.string(), outboxId: z.string() }),
+	message: z.string(),
+});
+
+const waTemplateComponentSchema = z.object({
+	type: z.string().min(1),
+	parameters: z.array(z.record(z.string(), z.unknown())).optional(),
+	subType: z.string().optional(),
+	index: z.number().int().nonnegative().optional(),
+});
+
+export const sendTemplateInputSchema = z.object({
+	accountId: z.string(),
+	to: z.string(),
+	templateName: z.string().min(1),
+	language: z.string().min(1),
+	components: z.array(waTemplateComponentSchema).optional(),
+});
+
+export const sendTemplateOutputSchema = z.object({
+	data: z.object({ messageId: z.string(), outboxId: z.string() }),
+	message: z.string(),
+});
+
+export const listConversationsInputSchema = z.object({
+	limit: z.number().min(1).max(100).default(20),
+	cursor: z.string().optional(),
+	accountId: z.string().optional(),
+	status: z.enum(["open", "closed", "archived"]).optional(),
+	search: z.string().min(1).max(100).optional(),
+});
+
+export const conversationItemSchema = z.object({
+	id: z.string(),
+	accountId: z.string(),
+	contactId: z.string(),
+	status: z.enum(["open", "closed", "archived"]),
+	unreadCount: z.number(),
+	lastMessageId: z.string().nullable(),
+	lastMessageAt: z.date().nullable(),
+	lastMessagePreview: z.string().nullable(),
+	createdAt: z.date(),
+	updatedAt: z.date(),
+	contact: z.object({
+		id: z.string(),
+		waId: z.string(),
+		phoneNumber: z.string(),
+		pushName: z.string().nullable(),
+		name: z.string().nullable(),
+		lastMessageAt: z.date().nullable(),
+	}),
+});
+
+export const listConversationsOutputSchema = z.object({
+	data: z.array(conversationItemSchema),
+	nextCursor: z.string().nullable(),
+});
+
+export const listMessagesInputSchema = z.object({
+	conversationId: z.string(),
+	limit: z.number().min(1).max(100).default(50),
+	cursor: z.string().optional(),
+	direction: z.enum(["inbound", "outbound"]).optional(),
+});
+
+export const messageItemSchema = z.object({
+	id: z.string(),
+	conversationId: z.string(),
+	contactId: z.string(),
+	accountId: z.string(),
+	direction: z.enum(["inbound", "outbound"]),
+	type: z.enum([
+		"text",
+		"image",
+		"video",
+		"audio",
+		"document",
+		"sticker",
+		"location",
+		"contact",
+		"template",
+		"interactive",
+	]),
+	textBody: z.string().nullable(),
+	caption: z.string().nullable(),
+	media: z
+		.object({
+			id: z.string(),
+			storageUrl: z.string().nullable(),
+			mimeType: z.string(),
+			fileName: z.string().nullable(),
+		})
+		.nullable(),
+	templateName: z.string().nullable(),
+	templateParams: z.unknown().nullable(),
+	status: z.enum(["pending", "queued", "sent", "delivered", "read", "failed"]),
+	statusUpdatedAt: z.date().nullable(),
+	providerMessageId: z.string().nullable(),
+	providerTimestamp: z.date().nullable(),
+	errorCode: z.string().nullable(),
+	errorMessage: z.string().nullable(),
+	createdAt: z.date(),
+});
+
+export const listMessagesOutputSchema = z.object({
+	data: z.array(messageItemSchema),
+	nextCursor: z.string().nullable(),
+});
+
+export const getConversationInputSchema = z.object({
+	conversationId: z.string(),
+});
+
+export const getConversationOutputSchema = z.object({
+	data: conversationItemSchema,
+});
+
+export const markConversationReadInputSchema = z.object({
+	conversationId: z.string(),
+});
+
+export const markConversationReadOutputSchema = z.object({
+	data: z.object({ id: z.string() }),
+	message: z.string(),
+});
+
+export const listContactsInputSchema = z.object({
+	limit: z.number().min(1).max(100).default(50),
+	cursor: z.string().optional(),
+	search: z.string().min(1).max(100).optional(),
+});
+
+export const contactItemSchema = z.object({
+	id: z.string(),
+	waId: z.string(),
+	phoneNumber: z.string(),
+	pushName: z.string().nullable(),
+	name: z.string().nullable(),
+	lastMessageAt: z.date().nullable(),
+	createdAt: z.date(),
+	updatedAt: z.date(),
+});
+
+export const listContactsOutputSchema = z.object({
+	data: z.array(contactItemSchema),
+	nextCursor: z.string().nullable(),
+});
+
 export const webhookInputSchema = z.object({
 	token: z.string(),
 	payload: z.unknown(),
