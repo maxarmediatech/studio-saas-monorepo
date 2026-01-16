@@ -52,11 +52,17 @@ The goal of the WhatsApp module within the Studio SaaS platform is to build full
 ## Status Tracker
 | Feature | Status |
 | --- | --- |
-| Dual Provider Support (Cloud API + Baileys) | In Progress |
-| Webhook Handling & Dispatching | In Progress |
-| External REST API | In Progress |
-| Outbox Worker / Message Delivery | In Progress |
+| Cloud API Provider (sendText, sendMedia, sendTemplate, markRead) | Done |
+| Webhook Handling & Dispatching (verify + event ingestion) | Done |
+| Outbox Worker / Message Delivery | Done |
+| Database Schema (accounts, contacts, conversations, messages, events, outbox, campaigns, bot-flows) | Done |
+| API Procedures (connect-baileys, connect-cloud-api, send-text) | Done |
+| Multi-tenant Isolation (organizationId on all tables) | Done |
+| Idempotency via wa_events table | Done |
+| Baileys Provider (QR + session management) | Planned |
 | Real-time Unified Inbox | Planned |
+| Templates + Media Send (API layer) | Planned |
+| Inbound Inbox APIs (list conversations/messages) | Planned |
 | Full Media Support | Planned |
 | Canned Responses | Planned |
 | WhatsApp Call handling & notifications | Planned |
@@ -64,18 +70,24 @@ The goal of the WhatsApp module within the Studio SaaS platform is to build full
 | Visual Flow Builder | Planned |
 | AI-powered Conversations | Planned |
 | Bulk Campaigns | Planned |
-| Contact Management & Segmentation | In Progress |
-| Multi-tenant Isolation | In Progress |
+| Contact Management & Segmentation | Planned |
 | RBAC (Admin/Manager/Agent/Staff) | Planned |
 | Template Management (Meta sync) | Planned |
 | Analytics Dashboard | Planned |
 
 ## Phase 1 Priorities
 The "most important" priorities focused on establishing a production-ready foundation:
-- **Core Connectivity**: Stable implementation of both Cloud API and Baileys providers.
-- **Real-time Inbox**: Two-way messaging (Text & Media) with WebSocket synchronization.
-- **Template Management**: Full support for syncing and sending Meta-approved templates.
-- **Webhook Reliability**: Durable webhook processing and event dispatching.
-- **SaaS Foundation**: Strict organization isolation and multi-tenant data safety.
-- **Contact Sync**: Basic contact management and synchronization with WhatsApp IDs.
-- **Basic Analytics**: Tracking of delivery status (Sent, Delivered, Read) and basic volume metrics.
+- [x] **Core Connectivity**: Cloud API provider implemented (Baileys planned).
+- [x] **Webhook Reliability**: Durable webhook processing with idempotency via wa_events table.
+- [x] **SaaS Foundation**: Strict organization isolation with organizationId on all tables.
+- [x] **Outbox Worker**: Queued message delivery with retry logic.
+- [ ] **Real-time Inbox**: Two-way messaging (Text & Media) with WebSocket synchronization.
+- [ ] **Template Management**: Full support for syncing and sending Meta-approved templates.
+- [ ] **Contact Sync**: Basic contact management and synchronization with WhatsApp IDs.
+- [ ] **Basic Analytics**: Tracking of delivery status (Sent, Delivered, Read) and basic volume metrics.
+
+## Next Implementation Chunks
+1. **Templates + Media Send** - Add sendTemplate and sendMedia to API layer
+2. **Inbound Inbox APIs** - List conversations, messages, contacts
+3. **Baileys Bridge** - QR code flow, session persistence, reconnection
+4. **Real-time Updates** - WebSocket events for new messages and status changes
