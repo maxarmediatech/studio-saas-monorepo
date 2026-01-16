@@ -84,7 +84,7 @@ export function BookingDetailHeader({
 	className,
 }: BookingDetailHeaderProps) {
 	return (
-		<div className={cn("flex items-center justify-between gap-4", className)}>
+		<div className={cn("flex w-full items-center justify-between gap-4", className)}>
 			{/* Left: Breadcrumb navigation */}
 			<div className="flex items-center gap-2 min-w-0">
 				<Link
@@ -104,7 +104,6 @@ export function BookingDetailHeader({
 
 			{/* Right: Actions */}
 			<div className="flex items-center gap-2 shrink-0">
-				<BookingListToggle />
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
 						<Button variant="ghost" size="sm" className="h-8 w-8 p-0">
@@ -148,6 +147,7 @@ export function BookingDetailHeader({
 						)}
 					</DropdownMenuContent>
 				</DropdownMenu>
+				<BookingListToggle />
 			</div>
 		</div>
 	);
