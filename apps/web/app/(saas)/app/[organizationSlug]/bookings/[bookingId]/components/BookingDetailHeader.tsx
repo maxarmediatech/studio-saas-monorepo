@@ -8,16 +8,57 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@repo/ui/components/dropdown-menu";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@repo/ui/components/tooltip";
 import { cn } from "@repo/ui/lib/utils";
 import {
 	ArchiveIcon,
 	ChevronLeftIcon,
 	CopyIcon,
+	ListIcon,
 	MoreHorizontalIcon,
 	PencilIcon,
 	Trash2Icon,
 } from "lucide-react";
+import { useBookingSidebarSafe } from "./sidebar/booking-sidebar-context";
 import Link from "next/link";
+
+/**
+ * Toggle button for the booking list sidebar
+ * Uses safe hook to gracefully handle cases outside provider
+ */
+function BookingListToggle() {
+	const sidebar = useBookingSidebarSafe();
+	if (!sidebar) return null;
+
+	return (
+		<Tooltip>
+			<TooltipTrigger asChild>
+				<Button
+					variant="ghost"
+					size="sm"
+					className={cn(
+						"hidden h-8 w-8 p-0 md:flex",
+						sidebar.isExpanded && "bg-accent",
+					)}
+					onClick={sidebar.toggleSidebar}
+				>
+					<ListIcon className="h-4 w-4" />
+					<span className="sr-only">Toggle booking list</span>
+				</Button>
+			</TooltipTrigger>
+			<TooltipContent side="bottom">
+				<span>Booking list</span>
+				<kbd className="ml-2 rounded border bg-muted px-1.5 py-0.5 text-[10px] font-medium">
+					⌘]
+				</kbd>
+			</TooltipContent>
+		</Tooltip>
+	);
+}
 
 interface BookingDetailHeaderProps {
 	backHref: string;
@@ -63,6 +104,7 @@ export function BookingDetailHeader({
 
 			{/* Right: Actions */}
 			<div className="flex items-center gap-2 shrink-0">
+				<BookingListToggle />
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
 						<Button variant="ghost" size="sm" className="h-8 w-8 p-0">
