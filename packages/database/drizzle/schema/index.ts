@@ -10,3 +10,7 @@ export * from "./enums";
 // Studio domain tables (configurations, clients, bookings)
 // Also includes organizationRelations and studio relations
 export * from "./studio";
+
+// WhatsApp tables (re-exported from @repo/whatsapp-db for db.query.* access)
+// The source of truth is @repo/whatsapp-db - this is just a convenience re-export
+export * from "@repo/whatsapp-db";

@@ -1,0 +1,37 @@
+{
+	"dependencies": {
+		"@repo/config": "workspace:*",
+		"drizzle-orm": "^0.45.1",
+		"drizzle-zod": "0.8.3",
+		"pg": "^8.16.0",
+		"uuid": "^13.0.0",
+		"zod": "^4.2.1"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.3.10",
+		"@repo/tsconfig": "workspace:*",
+		"@types/node": "24.10.4",
+		"@types/pg": "^8.15.5",
+		"dotenv-cli": "^11.0.0",
+		"drizzle-kit": "^0.31.8",
+		"tsx": "^4.21.0"
+	},
+	"main": "./index.ts",
+	"name": "@repo/whatsapp-db",
+	"scripts": {
+		"generate": "dotenv -c -e ../../.env -- drizzle-kit generate --config=drizzle.config.ts",
+		"baseline": "dotenv -c -e ../../.env -- tsx drizzle/baseline.ts",
+		"migrate": "dotenv -c -e ../../.env -- drizzle-kit migrate --config=drizzle.config.ts",
+		"push": "dotenv -c -e ../../.env -- drizzle-kit push --config=drizzle.config.ts",
+		"studio": "dotenv -c -e ../../.env -- drizzle-kit studio --config=drizzle.config.ts",
+		"seed": "dotenv -c -e ../../.env -- tsx drizzle/seed.ts",
+		"type-check": "tsc --noEmit",
+		"db:generate": "pnpm run generate",
+		"db:baseline": "pnpm run baseline",
+		"db:migrate": "pnpm run migrate",
+		"db:push": "pnpm run push",
+		"db:seed": "pnpm run seed"
+	},
+	"types": "./**/.tsx",
+	"version": "0.0.0"
+}
