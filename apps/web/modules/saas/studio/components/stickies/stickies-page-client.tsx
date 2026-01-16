@@ -153,6 +153,10 @@ export function StickiesPageClient() {
 							if (variables.content !== undefined) {
 								updated.content = variables.content ?? null;
 							}
+							if (variables.descriptionHtml !== undefined) {
+								updated.descriptionHtml =
+									variables.descriptionHtml ?? null;
+							}
 							if (variables.color !== undefined) {
 								updated.color = variables.color;
 							}
@@ -236,11 +240,15 @@ export function StickiesPageClient() {
 			const payload: {
 				id: string;
 				content?: string;
+				descriptionHtml?: string;
 				color?: StickyColor;
 			} = { id };
 
 			if (data.content !== undefined) {
 				payload.content = data.content ?? "";
+			}
+			if (data.descriptionHtml !== undefined) {
+				payload.descriptionHtml = data.descriptionHtml ?? "";
 			}
 			if (data.color !== undefined) {
 				payload.color = data.color;

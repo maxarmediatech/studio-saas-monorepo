@@ -12,13 +12,14 @@ import {
 } from "@repo/ui/components/tooltip";
 import { cn } from "@repo/ui/lib/utils";
 import { PaletteIcon, TrashIcon } from "lucide-react";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { STICKY_COLORS_LIST, type StickyColor } from "./constants";
 
 interface StickyToolbarProps {
 	color: StickyColor;
 	onColorChange: (color: StickyColor) => void;
 	onDelete: () => void;
+	formatToolbar?: ReactNode;
 	className?: string;
 }
 
@@ -26,14 +27,14 @@ export function StickyToolbar({
 	color,
 	onColorChange,
 	onDelete,
+	formatToolbar,
 	className,
 }: StickyToolbarProps) {
 	const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
 
 	return (
-		<div
-			className={cn("flex items-center justify-between h-10", className)}
-		>
+		<div className={cn("flex items-center gap-3 h-10 w-full", className)}>
+			{/* Color Picker */}
 			<Popover
 				open={isColorPickerOpen}
 				onOpenChange={setIsColorPickerOpen}
@@ -97,6 +98,13 @@ export function StickyToolbar({
 				</PopoverContent>
 			</Popover>
 
+			{/* Format Toolbar (Bold, Italic, Todo) */}
+			{formatToolbar}
+
+			{/* Spacer to push delete to the right */}
+			<div className="flex-1" />
+
+			{/* Delete Button */}
 			<Tooltip>
 				<TooltipTrigger asChild>
 					<button

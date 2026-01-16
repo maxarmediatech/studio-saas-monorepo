@@ -5,6 +5,8 @@ import { Minimize2Icon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { STICKY_COLORS, type StickyColor } from "./constants";
 import { StickyDeleteModal } from "./sticky-delete-modal";
+import { StickyEditor, type StickyEditorRef } from "./sticky-editor";
+import { StickyFormatToolbar } from "./sticky-format-toolbar";
 import { StickyToolbar } from "./sticky-toolbar";
 import { useStickiesMasonryLayout } from "./stickies-masonry";
 
@@ -29,6 +31,28 @@ interface StickyNoteProps {
 	className?: string;
 }
 
+/**
+ * Converts plain text content to HTML for the editor.
+ * Used for migrating existing stickies that only have `content` (plain text).
+ */
+function migrateToHtml(sticky: StickyData): string {
+	// If we already have HTML content, use it
+	if (sticky.descriptionHtml) {
+		return sticky.descriptionHtml;
+	}
+
+	// If we have plain text content, wrap each line in a paragraph
+	if (sticky.content) {
+		return sticky.content
+			.split("\n")
+			.map((line) => `<p>${line || "<br>"}</p>`)
+			.join("");
+	}
+
+	// Empty sticky
+	return "";
+}
+
 export function StickyNote({
 	sticky,
 	onUpdate,
@@ -43,46 +67,45 @@ export function StickyNote({
 }: StickyNoteProps) {
 	const [isFocused, setIsFocused] = useState(false);
 	const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-	const [localContent, setLocalContent] = useState(sticky.content || "");
-	const cardRef = useRef<HTMLDivElement>(null);
-	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	const [localHtml, setLocalHtml] = useState(() => migrateToHtml(sticky));
+	const cardRef = useRef<HTMLFieldSetElement>(null);
+	const editorRef = useRef<StickyEditorRef>(null);
 	const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-	const lastSavedContentRef = useRef(sticky.content || "");
+	const lastSavedHtmlRef = useRef(localHtml);
 	const didAutoFocusRef = useRef(false);
 	const requestMasonryLayout = useStickiesMasonryLayout();
 
 	const colorConfig = STICKY_COLORS[sticky.color] || STICKY_COLORS.yellow;
 
-	// Sync from props, but only skip if we have UNSAVED local changes while focused
-	// This fixes the bug where server updates were blocked entirely during editing
+	// Sync from props when server confirms updates
 	useEffect(() => {
-		const next = sticky.content ?? "";
-		const hasUnsavedChanges = localContent !== lastSavedContentRef.current;
+		const hasUnsavedChanges = localHtml !== lastSavedHtmlRef.current;
 
 		// Only skip sync if we're focused AND have unsaved changes
-		// This allows server confirmations to sync while blocking overwrites of in-flight edits
 		if (isFocused && hasUnsavedChanges) {
 			return;
 		}
 
-		setLocalContent(next);
-		lastSavedContentRef.current = next;
-	}, [sticky.content]); // Note: removed isFocused and localContent from deps to avoid loops
+		// Re-migrate in case content changed but descriptionHtml didn't
+		const migrated = migrateToHtml(sticky);
+		setLocalHtml(migrated);
+		lastSavedHtmlRef.current = migrated;
+	}, [sticky.descriptionHtml, sticky.content]);
 
 	const flushPendingUpdate = useCallback(() => {
 		if (debounceRef.current) {
 			clearTimeout(debounceRef.current);
 			debounceRef.current = null;
 		}
-		if (localContent !== lastSavedContentRef.current) {
-			lastSavedContentRef.current = localContent;
-			onUpdate({ content: localContent });
+		if (localHtml !== lastSavedHtmlRef.current) {
+			lastSavedHtmlRef.current = localHtml;
+			onUpdate({ descriptionHtml: localHtml });
 		}
-	}, [localContent, onUpdate]);
+	}, [localHtml, onUpdate]);
 
-	const handleContentChange = useCallback(
-		(value: string) => {
-			setLocalContent(value);
+	const handleHtmlChange = useCallback(
+		(html: string) => {
+			setLocalHtml(html);
 
 			if (!autoSave) {
 				return;
@@ -94,14 +117,14 @@ export function StickyNote({
 
 			debounceRef.current = setTimeout(() => {
 				debounceRef.current = null;
-				lastSavedContentRef.current = value;
-				onUpdate({ content: value });
+				lastSavedHtmlRef.current = html;
+				onUpdate({ descriptionHtml: html });
 			}, 500);
 		},
 		[autoSave, onUpdate],
 	);
 
-	const handleBlur = useCallback(() => {
+	const handleEditorBlur = useCallback(() => {
 		flushPendingUpdate();
 	}, [flushPendingUpdate]);
 
@@ -125,18 +148,7 @@ export function StickyNote({
 		onDelete?.();
 	}, [onDelete]);
 
-	const adjustTextareaHeight = useCallback(() => {
-		const textarea = textareaRef.current;
-		if (textarea) {
-			textarea.style.height = "auto";
-			textarea.style.height = `${textarea.scrollHeight}px`;
-		}
-	}, []);
-
-	useEffect(() => {
-		adjustTextareaHeight();
-	}, [localContent, adjustTextareaHeight]);
-
+	// Handle autoFocus
 	useEffect(() => {
 		if (!autoFocus) {
 			return;
@@ -146,18 +158,13 @@ export function StickyNote({
 		}
 		didAutoFocusRef.current = true;
 
-		const textarea = textareaRef.current;
-		if (!textarea) {
-			return;
-		}
-
 		requestAnimationFrame(() => {
-			textarea.focus();
-			textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+			editorRef.current?.focus();
 			onAutoFocus?.();
 		});
 	}, [autoFocus, onAutoFocus]);
 
+	// Trigger masonry layout on resize
 	useEffect(() => {
 		const element = cardRef.current;
 		if (!element) {
@@ -213,35 +220,30 @@ export function StickyNote({
 				)}
 
 				<div className={cn("flex-1", onClose ? "-mt-2" : "")}>
-					<textarea
-						ref={textareaRef}
-						value={localContent}
-						onChange={(e) => handleContentChange(e.target.value)}
-						onBlur={handleBlur}
-						placeholder="Click to type here..."
-						className={cn(
-							"w-full min-h-[180px] max-h-[400px] resize-none bg-transparent p-4 text-sm",
-							"placeholder:text-foreground/40 focus:outline-none",
-							"overflow-y-auto scrollbar-thin",
-						)}
-						rows={1}
+					<StickyEditor
+						ref={editorRef}
+						content={localHtml}
+						onChange={handleHtmlChange}
+						onFocus={() => setIsFocused(true)}
+						onBlur={handleEditorBlur}
+						autoFocus={autoFocus && !didAutoFocusRef.current}
 					/>
 				</div>
 
 				{showToolbar && (
-					<div
-						className={cn(
-							"px-4 pb-3 transition-all duration-200 ease-out origin-top",
-							isFocused
-								? "opacity-100"
-								: "opacity-0 group-hover/sticky:opacity-100",
-						)}
-					>
-						<StickyToolbar
-							color={sticky.color}
-							onColorChange={handleColorChange}
-							onDelete={() => setIsDeleteModalOpen(true)}
-						/>
+					<div className="px-4 pb-3 mt-auto">
+						<div className="flex items-center gap-4">
+							<StickyToolbar
+								color={sticky.color}
+								onColorChange={handleColorChange}
+								onDelete={() => setIsDeleteModalOpen(true)}
+								formatToolbar={
+									<StickyFormatToolbar
+										editor={editorRef.current?.editor ?? null}
+									/>
+								}
+							/>
+						</div>
 					</div>
 				)}
 			</fieldset>

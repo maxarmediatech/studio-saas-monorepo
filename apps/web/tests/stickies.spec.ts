@@ -24,22 +24,26 @@ test.describe("stickies", () => {
 		await addStickyButton.click();
 
 		const content = `E2E sticky ${Date.now()}`;
-		const draftTextarea = page.getByPlaceholder("Click to type here...");
-		await expect(draftTextarea).toBeVisible();
-		await draftTextarea.fill(content);
+		const draftEditor = page
+			.locator(".sticky-editor .ProseMirror")
+			.first();
+		await expect(draftEditor).toBeVisible();
+		await draftEditor.fill(content);
 
 		await page.getByText("Stickies").click();
 
-		const savedTextarea = page.getByDisplayValue(content);
-		await expect(savedTextarea).toBeVisible();
+		const savedEditor = page
+			.locator(".sticky-editor .ProseMirror")
+			.filter({ hasText: content })
+			.first();
+		await expect(savedEditor).toBeVisible();
 
-		await savedTextarea.click();
-		await expect(savedTextarea).toBeFocused();
-		await savedTextarea.type(" updated");
+		await savedEditor.click();
+		await expect(savedEditor).toBeFocused();
+		await savedEditor.type(" updated");
 		await page.waitForTimeout(700);
 
-		await expect(savedTextarea).toBeFocused();
-		await expect(savedTextarea).toHaveValue(`${content} updated`);
+		await expect(savedEditor).toBeFocused();
+		await expect(savedEditor).toContainText(`${content} updated`);
 	});
 });
-
