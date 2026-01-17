@@ -4,6 +4,7 @@ import { activeOrganizationQueryKey } from "@saas/organizations/lib/api";
 import { SheetProvider } from "@saas/shared/components/sheet-provider";
 import { AppShell } from "@saas/studio/components/app-shell";
 import { GlobalSheets } from "@saas/studio/components/global-sheets";
+import { StickiesActionBar } from "@saas/studio/components/stickies/stickies-action-bar";
 import { ClientCallbackProvider } from "@saas/studio/hooks/params/client-callback-context";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { getServerQueryClient } from "@shared/lib/server";
@@ -63,6 +64,9 @@ export default async function OrganizationLayout({ children, params }: Props) {
 					</AppShell>
 					<Suspense fallback={null}>
 						<GlobalSheets />
+					</Suspense>
+					<Suspense fallback={null}>
+						<StickiesActionBar organizationSlug={organizationSlug} />
 					</Suspense>
 				</SheetProvider>
 			</ClientCallbackProvider>

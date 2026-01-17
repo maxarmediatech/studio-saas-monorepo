@@ -37,11 +37,27 @@ const hasStickiesKey = (value: unknown): boolean => {
 	if (Array.isArray(value)) {
 		return value.some(hasStickiesKey);
 	}
+	if (value && typeof value === "object") {
+		return Object.values(value).some(hasStickiesKey);
+	}
+	return false;
+};
+
+const hasRecentKey = (value: unknown): boolean => {
+	if (typeof value === "string") {
+		return value.includes("recent");
+	}
+	if (Array.isArray(value)) {
+		return value.some(hasRecentKey);
+	}
+	if (value && typeof value === "object") {
+		return Object.values(value).some(hasRecentKey);
+	}
 	return false;
 };
 
 const isStickiesListQuery = (queryKey: readonly unknown[]): boolean =>
-	queryKey.some(hasStickiesKey);
+	queryKey.some(hasStickiesKey) && !queryKey.some(hasRecentKey);
 
 const findLimit = (value: unknown): number | undefined => {
 	if (!value || typeof value !== "object") {
