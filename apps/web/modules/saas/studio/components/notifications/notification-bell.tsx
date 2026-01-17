@@ -91,7 +91,7 @@ export function NotificationBell({
 					<Button
 						variant="ghost"
 						size="sm"
-						onClick={() => markAllMutation.mutate()}
+						onClick={() => markAllMutation.mutate(undefined)}
 						disabled={
 							markAllMutation.isPending || unreadCount === 0
 						}

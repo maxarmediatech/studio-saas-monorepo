@@ -2,7 +2,8 @@
 	"name": "lumen",
 	"private": true,
 	"scripts": {
-		"build": "dotenv -c -- turbo build",
+		"build": "dotenv -c -- turbo build --filter=@repo/web...",
+		"build:all": "dotenv -c -- turbo build",
 		"dev": "dotenv -c -- turbo dev --concurrency 15 --filter=!@repo/whatsapp-bridge --filter=!@repo/whatsapp-db --filter=!@repo/whatsapp-core --filter=!@repo/whatsapp-providers --filter=!@repo/whatsapp-worker",
 		"start": "dotenv -c -- turbo start",
 		"lint": "biome lint . ",

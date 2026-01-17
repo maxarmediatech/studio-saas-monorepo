@@ -6,6 +6,7 @@ import type { LucideIcon } from "lucide-react";
 // ============================================================================
 
 export type IconName =
+	| "Activity"
 	| "AlertTriangle"
 	| "Banknote"
 	| "Bell"
@@ -26,6 +27,8 @@ export type IconName =
 	| "Settings2"
 	| "Shield"
 	| "Sparkles"
+	| "StickyNoteIcon"
+	| "Store"
 	| "Tag"
 	| "User"
 	| "UserCog"

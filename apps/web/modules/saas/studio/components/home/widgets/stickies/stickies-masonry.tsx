@@ -19,6 +19,9 @@ interface StickiesMasonryProps {
 	className?: string;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const MasonryComponent = Masonry as any;
+
 type RequestLayout = () => void;
 
 const StickiesMasonryLayoutContext = createContext<RequestLayout | null>(null);
@@ -118,7 +121,7 @@ export function StickiesMasonry({ children, className }: StickiesMasonryProps) {
 	};
 
 	const normalizedChildren = Children.toArray(children).filter(
-		(child) => child !== null && child !== false && child !== true,
+		(child) => child != null && typeof child !== "boolean",
 	);
 
 	useEffect(() => {
@@ -127,9 +130,8 @@ export function StickiesMasonry({ children, className }: StickiesMasonryProps) {
 
 	return (
 		<div ref={containerRef} className={cn("w-full", className)}>
-			{/* @ts-expect-error - react-masonry-component types are incomplete */}
 			<StickiesMasonryLayoutContext.Provider value={requestLayout}>
-				<Masonry
+				<MasonryComponent
 					ref={masonryRef}
 					options={masonryOptions}
 					enableResizableChildren
@@ -150,7 +152,7 @@ export function StickiesMasonry({ children, className }: StickiesMasonryProps) {
 							</div>
 						);
 					})}
-				</Masonry>
+				</MasonryComponent>
 			</StickiesMasonryLayoutContext.Provider>
 		</div>
 	);
