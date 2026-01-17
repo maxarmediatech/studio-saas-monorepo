@@ -75,13 +75,7 @@ export function FinancesTab({ bookingId }: FinancesTabProps) {
 
 	if (isLoading) {
 		return (
-			<div className="space-y-6">
-				<div>
-					<h3 className="font-bold text-2xl mb-2">Finances</h3>
-					<p className="text-muted-foreground">
-						Payments, expenses, and financial summary.
-					</p>
-				</div>
+			<div className="space-y-3">
 				<Skeleton className="h-12 w-full" />
 				<Skeleton className="h-24 w-full" />
 			</div>
@@ -125,17 +119,7 @@ export function FinancesTab({ bookingId }: FinancesTabProps) {
 	] as const;
 
 	return (
-		<div className="space-y-6">
-			<div className="flex justify-between items-center">
-				<div>
-					<h3 className="font-bold text-2xl mb-2">Finances</h3>
-					<p className="text-muted-foreground">
-						Payments, expenses, and financial summary.
-					</p>
-				</div>
-			</div>
-
-			<div className="border-t border-border">
+		<div className="border-t border-border">
 				<table className="w-full text-left">
 					<thead className="sr-only">
 						<tr>
@@ -381,7 +365,6 @@ export function FinancesTab({ bookingId }: FinancesTabProps) {
 						))}
 					</tbody>
 				</table>
-			</div>
 		</div>
 	);
 }

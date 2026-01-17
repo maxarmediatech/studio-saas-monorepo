@@ -13,7 +13,7 @@ import { BookingMetaPanel } from "./meta";
 import {
 	// AssetsTab,
 	DeliverablesTab,
-	FinancesTab,
+	// FinancesTab, // Moved to OverviewTabEnhanced
 	OverviewTabEnhanced,
 	ShootsTab,
 	// TasksTab, // Moved to OverviewTabEnhanced
@@ -105,7 +105,7 @@ export function BookingDetailTabs({
 									<TabsTrigger value="overview">Overview</TabsTrigger>
 									<TabsTrigger value="sessions">Shoots</TabsTrigger>
 									<TabsTrigger value="deliverables">Deliverables</TabsTrigger>
-									<TabsTrigger value="finances">Finances</TabsTrigger>
+									{/* <TabsTrigger value="finances">Finances</TabsTrigger> */}
 									{/* <TabsTrigger value="assets">Assets</TabsTrigger> */}
 								</TabsList>
 
@@ -132,9 +132,9 @@ export function BookingDetailTabs({
 									<DeliverablesTab bookingId={bookingId} />
 								</TabsContent>
 
-								<TabsContent value="finances" className="pt-2">
+								{/* <TabsContent value="finances" className="pt-2">
 									<FinancesTab bookingId={bookingId} />
-								</TabsContent>
+								</TabsContent> */}
 
 								{/* <TabsContent value="assets" className="pt-2">
 									<AssetsTab bookingId={bookingId} />

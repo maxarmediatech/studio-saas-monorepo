@@ -14,6 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
 import { CheckCircle2Icon } from "lucide-react";
 import { formatCurrency, getStatusVariant } from "../utils";
+import { FinancesTab } from "./FinancesTab";
 import { TasksTab } from "./TasksTab";
 
 interface OverviewTabEnhancedProps {
@@ -315,10 +316,7 @@ export function OverviewTabEnhanced({
 				deliverablesTotal={deliverables.length}
 			/>
 			<TasksTab bookingId={bookingId} />
-			<CoverageScopeCard />
-			<ExpectedOutcomesCard />
-			<KeyPrioritiesCard />
-			<UpcomingShootsCard shoots={shoots} />
+			<FinancesTab bookingId={bookingId} />
 		</div>
 	);
 }
