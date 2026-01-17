@@ -16,7 +16,7 @@ import {
 	FinancesTab,
 	OverviewTabEnhanced,
 	ShootsTab,
-	TasksTab,
+	// TasksTab, // Moved to OverviewTabEnhanced
 } from "./tabs";
 
 type Participant = {
@@ -105,7 +105,6 @@ export function BookingDetailTabs({
 									<TabsTrigger value="overview">Overview</TabsTrigger>
 									<TabsTrigger value="sessions">Shoots</TabsTrigger>
 									<TabsTrigger value="deliverables">Deliverables</TabsTrigger>
-									<TabsTrigger value="tasks">Tasks</TabsTrigger>
 									<TabsTrigger value="finances">Finances</TabsTrigger>
 									{/* <TabsTrigger value="assets">Assets</TabsTrigger> */}
 								</TabsList>
@@ -131,10 +130,6 @@ export function BookingDetailTabs({
 
 								<TabsContent value="deliverables" className="pt-2">
 									<DeliverablesTab bookingId={bookingId} />
-								</TabsContent>
-
-								<TabsContent value="tasks" className="pt-2">
-									<TasksTab bookingId={bookingId} />
 								</TabsContent>
 
 								<TabsContent value="finances" className="pt-2">

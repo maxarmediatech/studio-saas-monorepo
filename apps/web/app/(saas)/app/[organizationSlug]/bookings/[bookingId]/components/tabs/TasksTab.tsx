@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@repo/ui/components/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@repo/ui/components/card";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -96,13 +97,13 @@ export function TasksTab({ bookingId }: TasksTabProps) {
 	}
 
 	return (
-		<div className="space-y-6">
-			<div className="flex justify-between items-center">
-				<div>
-					<h3 className="font-bold text-2xl mb-2">Tasks</h3>
-					<p className="text-muted-foreground mb-6">
+		<Card className="shadow-none rounded-lg">
+			<CardHeader className="flex flex-row items-center justify-between space-y-0">
+				<div className="space-y-1">
+					<CardTitle className="text-base">Tasks</CardTitle>
+					<CardDescription>
 						To-do items and action items for this booking.
-					</p>
+					</CardDescription>
 				</div>
 				<Button
 					variant="outline"
@@ -112,15 +113,15 @@ export function TasksTab({ bookingId }: TasksTabProps) {
 					<PlusIcon className="h-4 w-4 mr-1.5" />
 					Add Task
 				</Button>
-			</div>
-
-			{tasksList.length === 0 ? (
-				<div className="flex flex-col items-center gap-2 py-12 text-center">
-					<CheckSquareIcon className="h-8 w-8 text-muted-foreground/30" />
-					<p className="text-sm text-muted-foreground">No tasks</p>
-				</div>
-			) : (
-				<ul className="border-t divide-y divide-border">
+			</CardHeader>
+			<CardContent>
+				{tasksList.length === 0 ? (
+					<div className="flex flex-col items-center gap-2 py-8 text-center">
+						<CheckSquareIcon className="h-8 w-8 text-muted-foreground/30" />
+						<p className="text-sm text-muted-foreground">No tasks</p>
+					</div>
+				) : (
+					<ul className="divide-y divide-border">
 					{sortedTasks.map((task) => {
 						const isCompleted = task.status === "completed";
 
@@ -214,7 +215,8 @@ export function TasksTab({ bookingId }: TasksTabProps) {
 						);
 					})}
 				</ul>
-			)}
-		</div>
+				)}
+			</CardContent>
+		</Card>
 	);
 }
