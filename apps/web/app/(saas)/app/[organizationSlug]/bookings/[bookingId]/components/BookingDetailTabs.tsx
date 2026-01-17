@@ -11,7 +11,7 @@ import { BookingDetailScrollArea } from "./booking-detail-scroll-area";
 import { BookingHeroSection } from "./BookingHeroSection";
 import { BookingMetaPanel } from "./meta";
 import {
-	AssetsTab,
+	// AssetsTab,
 	DeliverablesTab,
 	FinancesTab,
 	OverviewTabEnhanced,
@@ -26,6 +26,13 @@ type Participant = {
 		email?: string | null;
 		phone?: string | null;
 	} | null;
+};
+
+type Attachment = {
+	name: string;
+	size: number;
+	type: string;
+	url: string;
 };
 
 interface BookingDetailTabsProps {
@@ -51,6 +58,7 @@ interface BookingDetailTabsProps {
 		leadSource?: string | null;
 		coordinator?: string | null;
 		participants?: Participant[];
+		contractAttachment?: Attachment | null;
 	};
 	onMessageClients?: () => void;
 	onShareBrief?: () => void;
@@ -99,7 +107,7 @@ export function BookingDetailTabs({
 									<TabsTrigger value="deliverables">Deliverables</TabsTrigger>
 									<TabsTrigger value="tasks">Tasks</TabsTrigger>
 									<TabsTrigger value="finances">Finances</TabsTrigger>
-									<TabsTrigger value="assets">Assets</TabsTrigger>
+									{/* <TabsTrigger value="assets">Assets</TabsTrigger> */}
 								</TabsList>
 
 								<TabsContent value="overview" className="pt-2">
@@ -135,9 +143,9 @@ export function BookingDetailTabs({
 									<FinancesTab bookingId={bookingId} />
 								</TabsContent>
 
-								<TabsContent value="assets" className="pt-2">
+								{/* <TabsContent value="assets" className="pt-2">
 									<AssetsTab bookingId={bookingId} />
-								</TabsContent>
+								</TabsContent> */}
 							</Tabs>
 						</div>
 
@@ -149,6 +157,7 @@ export function BookingDetailTabs({
 								coordinator: booking.coordinator,
 								participants: booking.participants,
 								note: booking.note,
+								contractAttachment: booking.contractAttachment,
 							}}
 						/>
 					</BookingDetailResponsiveGrid>

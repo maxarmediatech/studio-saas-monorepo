@@ -105,6 +105,7 @@ export function BookingDetailPageClient({
 					note: bookingData.note,
 					participants: bookingData.participants,
 					createdAt: bookingData.createdAt,
+					contractAttachment: bookingData.contractAttachment,
 				}}
 				onMessageClients={() => console.log("Message clients")}
 				onShareBrief={() => console.log("Share brief")}

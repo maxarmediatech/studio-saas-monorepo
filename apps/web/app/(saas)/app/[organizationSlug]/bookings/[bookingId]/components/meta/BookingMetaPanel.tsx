@@ -1,10 +1,10 @@
 "use client";
 
 import { format, parseISO } from "date-fns";
+import { AttachmentsCard } from "./AttachmentsCard";
 import { BookingSignalsCard } from "./BookingSignalsCard";
 import { ClientsCard } from "./ClientsCard";
 import { NotesCard } from "./NotesCard";
-import { QuickLinksCard } from "./QuickLinksCard";
 
 type Participant = {
 	client?: {
@@ -15,6 +15,13 @@ type Participant = {
 	} | null;
 };
 
+type Attachment = {
+	name: string;
+	size: number;
+	type: string;
+	url: string;
+};
+
 type BookingMetaPanelProps = {
 	booking: {
 		createdAt?: string | Date | null;
@@ -22,6 +29,7 @@ type BookingMetaPanelProps = {
 		coordinator?: string | null;
 		participants?: Participant[];
 		note?: string | null;
+		contractAttachment?: Attachment | null;
 	};
 };
 
@@ -45,7 +53,7 @@ export function BookingMetaPanel({ booking }: BookingMetaPanelProps) {
 		<aside className="hidden lg:block space-y-6">
 			<NotesCard note={booking.note} />
 			<ClientsCard clients={clients} />
-			<QuickLinksCard />
+			<AttachmentsCard contractAttachment={booking.contractAttachment} />
 			<BookingSignalsCard
 				leadSource={booking.leadSource}
 				coordinator={booking.coordinator}
