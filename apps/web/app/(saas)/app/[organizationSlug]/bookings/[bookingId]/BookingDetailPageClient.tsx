@@ -107,9 +107,6 @@ export function BookingDetailPageClient({
 					createdAt: bookingData.createdAt,
 					contractAttachment: bookingData.contractAttachment,
 				}}
-				onMessageClients={() => console.log("Message clients")}
-				onShareBrief={() => console.log("Share brief")}
-				onAddTask={() => console.log("Add task")}
 			/>
 		</BookingDetailLayout>
 	);

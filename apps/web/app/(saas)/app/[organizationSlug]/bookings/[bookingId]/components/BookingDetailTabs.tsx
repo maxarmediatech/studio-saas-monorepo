@@ -6,6 +6,12 @@ import {
 	TabsList,
 	TabsTrigger,
 } from "@repo/ui/components/tabs";
+import {
+	useBookingParams,
+	useDeliverableParams,
+	useShootParams,
+	useTaskParams,
+} from "@saas/studio/hooks/params";
 import { BookingDetailResponsiveGrid } from "./booking-detail-responsive-grid";
 import { BookingDetailScrollArea } from "./booking-detail-scroll-area";
 import { BookingHeroSection } from "./BookingHeroSection";
@@ -61,18 +67,17 @@ interface BookingDetailTabsProps {
 		participants?: Participant[];
 		contractAttachment?: Attachment | null;
 	};
-	onMessageClients?: () => void;
-	onShareBrief?: () => void;
-	onAddTask?: () => void;
 }
 
 export function BookingDetailTabs({
 	bookingId,
 	booking,
-	onMessageClients,
-	onShareBrief,
-	onAddTask,
 }: BookingDetailTabsProps) {
+	const { openEdit: openEditBooking } = useBookingParams();
+	const { openCreate: openCreateShoot } = useShootParams();
+	const { openCreate: openCreateDeliverable } = useDeliverableParams();
+	const { openCreate: openCreateTask } = useTaskParams();
+
 	return (
 		<BookingDetailScrollArea>
 			<div className="mx-auto w-full max-w-6xl px-4 py-6 lg:px-8">
@@ -92,10 +97,12 @@ export function BookingDetailTabs({
 							venue: booking.venue,
 							city: booking.city,
 							createdAt: booking.createdAt,
+							participants: booking.participants,
 						}}
-						onMessageClients={onMessageClients}
-						onShareBrief={onShareBrief}
-						onAddTask={onAddTask}
+						onEdit={() => openEditBooking(bookingId)}
+						onAddShoot={openCreateShoot}
+						onAddDeliverable={openCreateDeliverable}
+						onAddTask={openCreateTask}
 					/>
 
 					{/* Main content + Meta sidebar */}

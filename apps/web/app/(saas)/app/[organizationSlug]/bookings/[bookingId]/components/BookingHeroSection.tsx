@@ -3,12 +3,27 @@
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { format, parseISO } from "date-fns";
-import { CalendarIcon, MapPinIcon } from "lucide-react";
+import {
+	AlertCircleIcon,
+	CalendarIcon,
+	MapPinIcon,
+	PencilIcon,
+	PhoneIcon,
+} from "lucide-react";
 import {
 	formatPackageType,
 	getPriorityVariant,
 	getStatusVariant,
 } from "./utils";
+
+type Participant = {
+	client?: {
+		id: string;
+		name: string;
+		email?: string | null;
+		phone?: string | null;
+	} | null;
+};
 
 type BookingHeroSectionProps = {
 	booking: {
@@ -24,16 +39,19 @@ type BookingHeroSectionProps = {
 		venue?: string | null;
 		city?: string | null;
 		createdAt?: string | Date | null;
+		participants?: Participant[];
 	};
-	onMessageClients?: () => void;
-	onShareBrief?: () => void;
+	onEdit?: () => void;
+	onAddShoot?: () => void;
+	onAddDeliverable?: () => void;
 	onAddTask?: () => void;
 };
 
 export function BookingHeroSection({
 	booking,
-	onMessageClients,
-	onShareBrief,
+	onEdit,
+	onAddShoot,
+	onAddDeliverable,
 	onAddTask,
 }: BookingHeroSectionProps) {
 	const statusLabel =
@@ -72,29 +90,48 @@ export function BookingHeroSection({
 	}
 	const subtitle = subtitleParts.join(" - ");
 
-	const hasActions = onMessageClients || onShareBrief || onAddTask;
+	const hasActions = onAddShoot || onAddDeliverable || onAddTask;
+
+	// Get client contact info for phone tags
+	const clients =
+		booking.participants
+			?.map((p) => p.client)
+			.filter((c): c is NonNullable<typeof c> => c != null) ?? [];
+	const clientsWithPhone = clients.filter((c) => c.phone);
+	const clientsWithoutPhone = clients.filter((c) => !c.phone);
 
 	return (
 		<section className="rounded-lg border bg-background p-6">
 			<div className="space-y-4">
-				{/* Badges + Booked on */}
-				<div className="flex flex-wrap items-center gap-2">
-					<Badge
-						variant={getStatusVariant(booking.status)}
-						className="capitalize"
-					>
-						{statusLabel}
-					</Badge>
-					<Badge
-						variant={getPriorityVariant(priority)}
-						className="capitalize"
-					>
-						{priority}
-					</Badge>
-					{bookedOnFormatted && (
-						<span className="text-xs text-muted-foreground">
-							Booked on {bookedOnFormatted}
-						</span>
+				{/* Top row: Badges + Edit button */}
+				<div className="flex items-start justify-between gap-4">
+					{/* Badges + Booked on */}
+					<div className="flex flex-wrap items-center gap-2">
+						<Badge
+							variant={getStatusVariant(booking.status)}
+							className="capitalize"
+						>
+							{statusLabel}
+						</Badge>
+						<Badge
+							variant={getPriorityVariant(priority)}
+							className="capitalize"
+						>
+							{priority}
+						</Badge>
+						{bookedOnFormatted && (
+							<span className="text-xs text-muted-foreground">
+								Booked on {bookedOnFormatted}
+							</span>
+						)}
+					</div>
+
+					{/* Edit button */}
+					{onEdit && (
+						<Button variant="outline" size="sm" onClick={onEdit}>
+							<PencilIcon className="h-4 w-4 mr-1.5" />
+							Edit
+						</Button>
 					)}
 				</div>
 
@@ -123,17 +160,41 @@ export function BookingHeroSection({
 					)}
 				</div>
 
+				{/* Client phone tags */}
+				{clients.length > 0 && (
+					<div className="flex flex-wrap gap-2">
+						{clientsWithPhone.map((client) => (
+							<Badge key={client.id} variant="secondary" asChild>
+								<a href={`tel:${client.phone}`} className="gap-1.5">
+									<PhoneIcon className="h-3 w-3" />
+									{client.phone}
+								</a>
+							</Badge>
+						))}
+						{clientsWithoutPhone.map((client) => (
+							<Badge
+								key={client.id}
+								variant="outline"
+								className="gap-1.5 border-amber-200 bg-amber-50 text-amber-700"
+							>
+								<AlertCircleIcon className="h-3 w-3" />
+								{client.name} - No phone
+							</Badge>
+						))}
+					</div>
+				)}
+
 				{/* Action buttons at bottom */}
 				{hasActions && (
 					<div className="flex flex-wrap items-center gap-2 pt-2">
-						{onMessageClients && (
-							<Button size="sm" onClick={onMessageClients}>
-								Message clients
+						{onAddShoot && (
+							<Button size="sm" onClick={onAddShoot}>
+								Add shoot
 							</Button>
 						)}
-						{onShareBrief && (
-							<Button size="sm" variant="outline" onClick={onShareBrief}>
-								Share brief
+						{onAddDeliverable && (
+							<Button size="sm" variant="outline" onClick={onAddDeliverable}>
+								Add deliverable
 							</Button>
 						)}
 						{onAddTask && (
