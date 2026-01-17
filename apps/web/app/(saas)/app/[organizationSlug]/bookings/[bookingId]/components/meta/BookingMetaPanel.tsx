@@ -3,8 +3,8 @@
 import { format, parseISO } from "date-fns";
 import { BacklogCard } from "./BacklogCard";
 import { BookingSignalsCard } from "./BookingSignalsCard";
+import { NotesCard } from "./NotesCard";
 import { QuickLinksCard } from "./QuickLinksCard";
-import { TimeCard } from "./TimeCard";
 
 type Participant = {
 	client?: { id: string; name: string; email?: string | null } | null;
@@ -16,11 +16,11 @@ type BookingMetaPanelProps = {
 		bookingType?: string | null;
 		packageType?: string | null;
 		priority?: string;
-		eventDate?: string | Date | null;
 		createdAt?: string | Date | null;
 		leadSource?: string | null;
 		coordinator?: string | null;
 		participants?: Participant[];
+		note?: string | null;
 	};
 };
 
@@ -47,10 +47,7 @@ export function BookingMetaPanel({ booking }: BookingMetaPanelProps) {
 
 	return (
 		<aside className="hidden lg:block space-y-6">
-			<TimeCard
-				eventDate={booking.eventDate}
-				bookingDate={booking.createdAt}
-			/>
+			<NotesCard note={booking.note} />
 			<BacklogCard
 				status={booking.status}
 				bookingType={booking.bookingType}

@@ -14,11 +14,9 @@ import {
 	AssetsTab,
 	DeliverablesTab,
 	FinancesTab,
-	NotesTab,
 	OverviewTabEnhanced,
 	ShootsTab,
 	TasksTab,
-	WorkstreamTab,
 } from "./tabs";
 
 type Participant = {
@@ -101,7 +99,6 @@ export function BookingDetailTabs({
 									<TabsTrigger value="deliverables">Deliverables</TabsTrigger>
 									<TabsTrigger value="tasks">Tasks</TabsTrigger>
 									<TabsTrigger value="finances">Finances</TabsTrigger>
-									<TabsTrigger value="notes">Notes</TabsTrigger>
 									<TabsTrigger value="assets">Assets</TabsTrigger>
 								</TabsList>
 
@@ -138,10 +135,6 @@ export function BookingDetailTabs({
 									<FinancesTab bookingId={bookingId} />
 								</TabsContent>
 
-								<TabsContent value="notes" className="pt-2">
-									<NotesTab bookingId={bookingId} note={booking.note} />
-								</TabsContent>
-
 								<TabsContent value="assets" className="pt-2">
 									<AssetsTab bookingId={bookingId} />
 								</TabsContent>
@@ -155,11 +148,11 @@ export function BookingDetailTabs({
 								bookingType: booking.bookingType,
 								packageType: booking.packageType,
 								priority: booking.priority,
-								eventDate: booking.eventDate,
 								createdAt: booking.createdAt,
 								leadSource: booking.leadSource,
 								coordinator: booking.coordinator,
 								participants: booking.participants,
+								note: booking.note,
 							}}
 						/>
 					</BookingDetailResponsiveGrid>
