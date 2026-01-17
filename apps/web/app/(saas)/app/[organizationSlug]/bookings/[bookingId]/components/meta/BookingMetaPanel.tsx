@@ -1,21 +1,22 @@
 "use client";
 
 import { format, parseISO } from "date-fns";
-import { BacklogCard } from "./BacklogCard";
 import { BookingSignalsCard } from "./BookingSignalsCard";
+import { ClientsCard } from "./ClientsCard";
 import { NotesCard } from "./NotesCard";
 import { QuickLinksCard } from "./QuickLinksCard";
 
 type Participant = {
-	client?: { id: string; name: string; email?: string | null } | null;
+	client?: {
+		id: string;
+		name: string;
+		email?: string | null;
+		phone?: string | null;
+	} | null;
 };
 
 type BookingMetaPanelProps = {
 	booking: {
-		status: string;
-		bookingType?: string | null;
-		packageType?: string | null;
-		priority?: string;
 		createdAt?: string | Date | null;
 		leadSource?: string | null;
 		coordinator?: string | null;
@@ -25,15 +26,10 @@ type BookingMetaPanelProps = {
 };
 
 export function BookingMetaPanel({ booking }: BookingMetaPanelProps) {
-	// Derive PIC from first participant (if available)
-	const pic = booking.participants?.[0]?.client
-		? { name: booking.participants[0].client.name }
-		: null;
-
-	// Derive support from second participant (if available)
-	const support = booking.participants?.[1]?.client
-		? { name: booking.participants[1].client.name }
-		: null;
+	// Extract clients from participants
+	const clients = (booking.participants ?? [])
+		.map((p) => p.client)
+		.filter((c): c is NonNullable<typeof c> => c !== null && c !== undefined);
 
 	// Format contract date from createdAt
 	const contractDate = booking.createdAt
@@ -48,14 +44,7 @@ export function BookingMetaPanel({ booking }: BookingMetaPanelProps) {
 	return (
 		<aside className="hidden lg:block space-y-6">
 			<NotesCard note={booking.note} />
-			<BacklogCard
-				status={booking.status}
-				bookingType={booking.bookingType}
-				packageType={booking.packageType}
-				priority={booking.priority}
-				pic={pic}
-				support={support}
-			/>
+			<ClientsCard clients={clients} />
 			<QuickLinksCard />
 			<BookingSignalsCard
 				leadSource={booking.leadSource}

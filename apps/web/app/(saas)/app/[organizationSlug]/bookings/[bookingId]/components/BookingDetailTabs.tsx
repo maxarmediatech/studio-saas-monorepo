@@ -144,10 +144,6 @@ export function BookingDetailTabs({
 						{/* Right: Meta sidebar */}
 						<BookingMetaPanel
 							booking={{
-								status: booking.status,
-								bookingType: booking.bookingType,
-								packageType: booking.packageType,
-								priority: booking.priority,
 								createdAt: booking.createdAt,
 								leadSource: booking.leadSource,
 								coordinator: booking.coordinator,
