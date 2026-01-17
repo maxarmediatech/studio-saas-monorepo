@@ -9,11 +9,11 @@ import {
 	CardTitle,
 } from "@repo/ui/components/card";
 import { Progress } from "@repo/ui/components/progress";
-import { shootsApi } from "@saas/studio/lib/api";
+import { deliverablesApi, shootsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
 import { CheckCircle2Icon } from "lucide-react";
-import { formatCurrency, formatPackageType, getStatusVariant } from "../utils";
+import { formatCurrency, getStatusVariant } from "../utils";
 
 interface OverviewTabEnhancedProps {
 	bookingId: string;
@@ -21,9 +21,7 @@ interface OverviewTabEnhancedProps {
 		name: string;
 		status: string;
 		packageCost: string;
-		packageType?: string | null;
 		totalReceived: string;
-		balance: string;
 		note?: string | null;
 		guestCount?: number | null;
 		participants?: Array<{
@@ -77,13 +75,14 @@ const defaultPriorities = {
 function BookingSummaryCard({
 	booking,
 	shootsCount,
+	deliverablesTotal,
 }: {
 	booking: OverviewTabEnhancedProps["booking"];
 	shootsCount: number;
+	deliverablesTotal: number;
 }) {
 	const packageCostNum = Number.parseFloat(booking.packageCost) || 0;
 	const totalReceivedNum = Number.parseFloat(booking.totalReceived) || 0;
-	const balanceNum = Number.parseFloat(booking.balance) || 0;
 
 	const receivedProgress =
 		packageCostNum > 0
@@ -94,22 +93,18 @@ function BookingSummaryCard({
 		{
 			label: "Package value",
 			value: formatCurrency(booking.packageCost),
-			helper: formatPackageType(booking.packageType),
 		},
 		{
 			label: "Collected",
 			value: formatCurrency(booking.totalReceived),
-			helper: `${receivedProgress}% collected`,
-		},
-		{
-			label: "Balance",
-			value: formatCurrency(booking.balance),
-			helper: balanceNum > 0 ? "Outstanding" : "Fully paid",
 		},
 		{
 			label: booking.guestCount ? "Guests" : "Shoots",
 			value: booking.guestCount?.toString() || shootsCount.toString(),
-			helper: booking.guestCount ? "Estimated count" : "Scheduled",
+		},
+		{
+			label: "Deliverables",
+			value: deliverablesTotal.toString(),
 		},
 	];
 
@@ -130,7 +125,6 @@ function BookingSummaryCard({
 						>
 							<p className="text-xs text-muted-foreground">{stat.label}</p>
 							<p className="mt-1 text-lg font-semibold">{stat.value}</p>
-							<p className="text-xs text-muted-foreground">{stat.helper}</p>
 						</div>
 					))}
 				</div>
@@ -304,11 +298,21 @@ export function OverviewTabEnhanced({
 		enabled: !!bookingId,
 	});
 
+	const { data: deliverablesData } = useQuery({
+		...deliverablesApi.listOptions({ bookingId, limit: 100 }),
+		enabled: !!bookingId,
+	});
+
 	const shoots = shootsData?.data ?? [];
+	const deliverables = deliverablesData?.data ?? [];
 
 	return (
 		<div className="space-y-6">
-			<BookingSummaryCard booking={booking} shootsCount={shoots.length} />
+			<BookingSummaryCard
+				booking={booking}
+				shootsCount={shoots.length}
+				deliverablesTotal={deliverables.length}
+			/>
 			<CoverageScopeCard />
 			<ExpectedOutcomesCard />
 			<KeyPrioritiesCard />
