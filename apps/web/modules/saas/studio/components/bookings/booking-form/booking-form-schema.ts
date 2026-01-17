@@ -71,7 +71,7 @@ export type ParticipantFormValue = z.infer<typeof participantSchema>;
  */
 export const participantsArraySchema = z
 	.array(participantSchema)
-	.min(1, "At least one participant is required")
+	.min(1, "At least one client is required")
 	.refine(
 		(participants) => {
 			const clientIds = participants
@@ -83,28 +83,34 @@ export const participantsArraySchema = z
 	);
 
 /**
- * Crew assignment schema - reusable for shoots and deliverables.
- * Role is required for shoots (e.g., photographer, videographer) but optional for deliverables.
+ * Crew assignment schema with per-shoot rate.
+ * Role is auto-filled from crew profile on backend.
+ * Rate defaults to crew.dailyRate when selected, can be customized.
  */
 export const crewAssignmentSchema = z.object({
 	crewId: z.string().min(1, "Crew member is required"),
-	role: z.string().optional(),
-	isLead: z.boolean().default(false),
+	rate: z.string().optional(), // Per-shoot rate (decimal string for currency input)
 });
 
 export type CrewAssignmentFormValue = z.infer<typeof crewAssignmentSchema>;
 
 /**
  * Shoot schema - photo/video shoots with crew assignments
+ *
+ * Simplified schema:
+ * - shootType serves as both identifier and type (no separate name field)
+ * - endTime removed (Indian weddings have flexible end times)
+ * - venue + venueAddress merged into single location field
  */
 export const shootSchema = z.object({
-	name: z.string().min(1, "Shoot name is required"),
-	shootType: z.string().min(1, "Shoot type is required"),
+	shootType: z.string().min(1, "Event type is required"),
 	shootDate: z.string().min(1, "Shoot date is required"),
 	startTime: z.string().optional(),
-	endTime: z.string().optional(),
-	venue: z.string().optional(),
-	venueAddress: z.string().optional(),
+	// Max 500 to match API venueAddress field constraint
+	location: z
+		.string()
+		.max(500, "Location is too long (max 500 characters)")
+		.optional(),
 	notes: z.string().optional(),
 	crewAssignments: z.array(crewAssignmentSchema).optional(),
 });
@@ -127,6 +133,7 @@ export const paymentSchema = z.object({
 	receivedDate: z.string().min(1, "Payment date is required"),
 	transactionReference: z.string().optional(),
 	notes: z.string().optional(),
+	proofAttachment: uploadedAttachmentSchema.nullable().optional(),
 });
 
 export type PaymentFormValue = z.infer<typeof paymentSchema>;
@@ -167,7 +174,6 @@ export const optionalDecimalStringSchema = z
  */
 export const deliverableSchema = z.object({
 	name: z.string().min(1, "Deliverable name is required"),
-	deliverableType: z.string().min(1, "Deliverable type is required"),
 	description: z.string().optional(),
 	dueDate: z.string().optional(),
 	crewAssignments: z.array(crewAssignmentSchema).optional(),
@@ -192,12 +198,12 @@ export const bookingFormSchema = z.object({
 	contractAttachment: uploadedAttachmentSchema.nullable().optional(),
 	participants: participantsArraySchema,
 
-	// Step 2: Shoots
-	shoots: z.array(shootSchema).optional(),
-
-	// Step 3: Payments
+	// Step 2: Payments
 	payments: z.array(paymentSchema).optional(),
 	paymentSchedules: z.array(paymentScheduleSchema).optional(),
+
+	// Step 3: Shoots
+	shoots: z.array(shootSchema).optional(),
 
 	// Step 4: Deliverables
 	deliverables: z.array(deliverableSchema).optional(),
@@ -231,32 +237,37 @@ export const bookingDeliverablesStepSchema = bookingFormSchema.pick({
 /**
  * Default form values
  */
-export const defaultBookingValues: BookingFormValues = {
-	name: "",
-	bookingType: "",
-	packageType: "",
-	packageCost: "0.00",
-	note: "",
-	contractAttachment: null,
-	participants: [
-		{
-			clientId: "",
-			role: "",
-		},
-	],
-	shoots: [],
-	payments: [],
-	paymentSchedules: [],
-	deliverables: [],
-};
+export function createDefaultBookingValues(): BookingFormValues {
+	return {
+		name: "",
+		bookingType: "",
+		packageType: "",
+		packageCost: "0.00",
+		note: "",
+		contractAttachment: null,
+		participants: [
+			{
+				clientId: "",
+				role: "",
+			},
+		],
+		shoots: [],
+		payments: [],
+		paymentSchedules: [],
+		deliverables: [],
+	};
+}
+
+export const defaultBookingValues: BookingFormValues =
+	createDefaultBookingValues();
 
 /**
  * Tab configuration for multi-step wizard
  */
 export const BOOKING_TABS = [
 	"details",
-	"shoots",
 	"payments",
+	"shoots",
 	"deliverables",
 	"review",
 ] as const;
@@ -322,26 +333,6 @@ export const SHOOT_TYPE_OPTIONS = [
 ] as const;
 
 /**
- * Common deliverable types
- */
-export const DELIVERABLE_TYPE_OPTIONS = [
-	{ value: "wedding_album", label: "Wedding Album" },
-	{ value: "pre_wedding_album", label: "Pre-Wedding Album" },
-	{ value: "photo_album", label: "Photo Album" },
-	{ value: "highlight_video", label: "Highlight Video" },
-	{ value: "full_video", label: "Full Video" },
-	{ value: "teaser", label: "Teaser" },
-	{ value: "reel", label: "Reel" },
-	{ value: "edited_photos", label: "Edited Photos" },
-	{ value: "raw_photos", label: "Raw Photos" },
-	{ value: "raw_videos", label: "Raw Videos" },
-	{ value: "drone_footage", label: "Drone Footage" },
-	{ value: "frame", label: "Frame" },
-	{ value: "canvas", label: "Canvas" },
-	{ value: "other", label: "Other" },
-] as const;
-
-/**
  * Payment method options
  */
 export const PAYMENT_METHOD_OPTIONS = [
@@ -380,22 +371,22 @@ export const STEP_CONFIG: StepConfig[] = [
 	{
 		id: "details",
 		label: "Details",
-		description: "Booking info & participants",
+		description: "Booking info & clients",
 		icon: ClipboardListIcon,
 		optional: false,
-	},
-	{
-		id: "shoots",
-		label: "Shoots",
-		description: "Schedule photo/video sessions",
-		icon: CameraIcon,
-		optional: true,
 	},
 	{
 		id: "payments",
 		label: "Payments",
 		description: "Record and plan payments",
 		icon: WalletIcon,
+		optional: true,
+	},
+	{
+		id: "shoots",
+		label: "Shoots",
+		description: "Schedule photo/video sessions",
+		icon: CameraIcon,
 		optional: true,
 	},
 	{
@@ -468,8 +459,10 @@ export function cleanupFormArrays(
 		participants: values.participants.filter(
 			(p) => p.clientId && p.clientId.length > 0,
 		),
-		// Keep shoots with name (required field)
-		shoots: values.shoots?.filter((s) => s.name && s.name.length > 0),
+		// Keep shoots with shootType (required field - serves as identifier)
+		shoots: values.shoots?.filter(
+			(s) => s.shootType && s.shootType.length > 0,
+		),
 		// Keep payments with amount (required field)
 		payments: values.payments?.filter(
 			(p) =>

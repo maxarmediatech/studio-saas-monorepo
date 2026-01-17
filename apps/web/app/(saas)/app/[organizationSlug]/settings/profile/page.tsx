@@ -1,14 +1,24 @@
+import { config } from "@repo/config";
 import { getSession } from "@saas/auth/lib/server";
+import { ChangeEmailForm } from "@saas/settings/components/ChangeEmailForm";
+import { ChangeNameForm } from "@saas/settings/components/ChangeNameForm";
+import { UserAvatarForm } from "@saas/settings/components/UserAvatarForm";
+import { UserLanguageForm } from "@saas/settings/components/UserLanguageForm";
+import { SettingsList } from "@saas/shared/components/SettingsList";
 import { PageContent } from "@saas/studio";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 
 export async function generateMetadata() {
+	const t = await getTranslations();
+
 	return {
-		title: "Profile Settings",
+		title: t("settings.account.title"),
 	};
 }
 
 export default async function ProfileSettingsPage() {
+	const t = await getTranslations();
 	const session = await getSession();
 
 	if (!session) {
@@ -16,16 +26,13 @@ export default async function ProfileSettingsPage() {
 	}
 
 	return (
-		<PageContent title="Profile">
-			<div className="rounded-lg border border-neutral-200 bg-neutral-50 p-8 text-center">
-				<h3 className="text-lg font-medium text-neutral-900">
-					Profile Settings
-				</h3>
-				<p className="mt-2 text-sm text-neutral-500">
-					Update your personal information, avatar, and preferences.
-				</p>
-				<p className="mt-4 text-sm text-neutral-400">Coming soon</p>
-			</div>
+		<PageContent title={t("settings.account.profile.title")}>
+			<SettingsList>
+				<UserAvatarForm />
+				{config.i18n.enabled && <UserLanguageForm />}
+				<ChangeNameForm />
+				<ChangeEmailForm />
+			</SettingsList>
 		</PageContent>
 	);
 }

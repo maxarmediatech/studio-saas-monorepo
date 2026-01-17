@@ -17,7 +17,6 @@ import {
 	DataTable,
 	DataTableColumnHeader,
 	DataTableRowActions,
-	DataTableToolbar,
 	DataTableViewOptions,
 	type RowAction,
 	SortProvider,
@@ -26,16 +25,12 @@ import {
 import "@saas/shared/components/data-table/types";
 import { useTaskParams } from "@saas/studio/hooks/params/use-task-params";
 import { useTasksTable } from "@saas/studio/hooks/tables";
-import {
-	studioQueryKeys,
-	tasksApi,
-	tasksMutations,
-} from "@saas/studio/lib/api";
+import { tasksApi, tasksMutations } from "@saas/studio/lib/api";
+import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
 	AlertTriangleIcon,
-	BookOpenIcon,
 	CalendarIcon,
 	CheckCircle2Icon,
 	CircleIcon,
@@ -44,9 +39,9 @@ import {
 	PencilIcon,
 	PlayCircleIcon,
 	TrashIcon,
-	UsersIcon,
 	XCircleIcon,
 } from "lucide-react";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { OpenTaskCreateSheet } from "./OpenTaskSheet";
@@ -145,9 +140,7 @@ function isOverdue(dateString: string | null, status: string): boolean {
 	return dueDate < today;
 }
 
-export function TasksTableClient({
-	organizationSlug: _organizationSlug,
-}: TasksTableClientProps) {
+export function TasksTableClient({ organizationSlug }: TasksTableClientProps) {
 	const queryClient = useQueryClient();
 
 	// Use the tasks table hook for URL-synced state
@@ -156,11 +149,9 @@ export function TasksTableClient({
 		pagination,
 		sorting,
 		sortingState,
-		setFilter,
-		resetFilters,
-		isFiltered,
 		onSortingChange,
 		onPaginationChange,
+		onLimitChange,
 	} = useTasksTable();
 
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -202,7 +193,10 @@ export function TasksTableClient({
 			setDeleteDialogOpen(false);
 			setTaskToDelete(null);
 			queryClient.invalidateQueries({
-				queryKey: studioQueryKeys.tasks.all,
+				queryKey: orpc.tasks.key(),
+			});
+			queryClient.invalidateQueries({
+				queryKey: orpc.activities.key(),
 			});
 		},
 		onError: (error) => {
@@ -247,29 +241,19 @@ export function TasksTableClient({
 					<DataTableColumnHeader column={column} title="Name" />
 				),
 				cell: ({ row }) => (
-					<div className="flex items-center gap-3">
-						<div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
-							<ListTodoIcon className="h-4 w-4 text-muted-foreground" />
-						</div>
-						<div>
-							<p className="font-medium">{row.original.name}</p>
-							{row.original.description && (
-								<p className="text-sm text-muted-foreground line-clamp-1 max-w-[200px]">
-									{row.original.description}
-								</p>
-							)}
-						</div>
-					</div>
+					<span className="font-medium text-foreground">
+						{row.original.name}
+					</span>
 				),
 				meta: {
 					label: "Name",
-					width: 280,
-					minWidth: 280,
+					width: 240,
+					minWidth: 200,
 					// Last left-sticky column - add right border
 					headerClassName:
-						"!border-r-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-border",
+						"!border-r-0 bg-gray-100 z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[0.5px] before:bg-table-border-subtle after:absolute after:right-0 after:top-0 after:bottom-0 after:w-[0.5px] after:bg-table-border-subtle",
 					cellClassName:
-						"!border-r-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-border",
+						"!border-r-0 bg-table-surface group-hover:bg-table-row-selected group-data-[state=selected]:bg-table-row-selected z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[0.5px] before:bg-table-border-subtle after:absolute after:right-0 after:top-0 after:bottom-0 after:w-[0.5px] after:bg-table-border-subtle",
 				},
 				enableSorting: true,
 				enableHiding: false,
@@ -281,23 +265,17 @@ export function TasksTableClient({
 					<DataTableColumnHeader column={column} title="Booking" />
 				),
 				cell: ({ row }) => (
-					<div className="flex items-center gap-2">
-						<BookOpenIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-						<div className="min-w-0">
-							<p className="font-medium truncate">
-								{row.original.bookingName}
-							</p>
-							<p className="text-xs text-muted-foreground">
-								{row.original.bookingReferenceNumber}
-							</p>
-						</div>
-					</div>
+					<Link
+						href={`/app/${organizationSlug}/bookings/${row.original.bookingId}`}
+						className="text-muted-foreground hover:underline hover:text-foreground transition-colors"
+					>
+						{row.original.bookingName}
+					</Link>
 				),
 				meta: {
 					label: "Booking",
-					icon: BookOpenIcon,
-					width: 180,
-					minWidth: 180,
+					width: 200,
+					minWidth: 150,
 				},
 				enableSorting: false,
 				enableHiding: true,
@@ -347,28 +325,28 @@ export function TasksTableClient({
 				cell: ({ row }) => {
 					const dueDate = row.original.dueDate;
 					const overdue = isOverdue(dueDate, row.original.status);
+
+					if (!dueDate) {
+						return <span className="text-muted-foreground">—</span>;
+					}
+
 					return (
-						<div className="flex items-center gap-2">
-							<CalendarIcon
-								className={`h-4 w-4 ${overdue ? "text-destructive" : "text-muted-foreground"}`}
-							/>
-							<span
-								className={
-									overdue
-										? "text-destructive font-medium"
-										: ""
-								}
-							>
-								{formatDate(dueDate)}
-							</span>
-						</div>
+						<span
+							className={
+								overdue
+									? "text-destructive font-medium"
+									: "text-muted-foreground"
+							}
+						>
+							{formatDate(dueDate)}
+						</span>
 					);
 				},
 				meta: {
 					label: "Due Date",
 					icon: CalendarIcon,
-					width: 130,
-					minWidth: 130,
+					width: 140,
+					minWidth: 120,
 				},
 				enableSorting: true,
 				enableHiding: true,
@@ -377,23 +355,17 @@ export function TasksTableClient({
 				id: "assignmentsCount",
 				accessorKey: "assignmentsCount",
 				header: ({ column }) => (
-					<DataTableColumnHeader
-						column={column}
-						title="Assignees"
-						className="justify-center"
-					/>
+					<DataTableColumnHeader column={column} title="Crew" />
 				),
 				cell: ({ row }) => (
-					<div className="flex items-center justify-center gap-2">
-						<UsersIcon className="h-4 w-4 text-muted-foreground" />
-						<span>{row.original.assignmentsCount}</span>
-					</div>
+					<span className="tabular-nums">
+						{row.original.assignmentsCount}
+					</span>
 				),
 				meta: {
-					label: "Assignees",
-					icon: UsersIcon,
-					width: 100,
-					minWidth: 100,
+					label: "Crew",
+					width: 70,
+					minWidth: 70,
 				},
 				enableSorting: false,
 				enableHiding: true,
@@ -410,107 +382,63 @@ export function TasksTableClient({
 				enableSorting: false,
 				enableHiding: false,
 				meta: {
-					width: 56,
-					minWidth: 56,
+					width: 48,
+					minWidth: 48,
 					// First right-sticky column - add left border + fade
 					headerClassName:
-						"!px-0 md:sticky md:right-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border after:absolute after:left-[-24px] after:top-0 after:bottom-0 after:w-6 after:bg-gradient-to-r after:from-transparent after:to-background",
+						"!px-0 md:sticky md:right-0 bg-gray-100 z-10",
 					cellClassName:
-						"!px-0 md:sticky md:right-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border after:absolute after:left-[-24px] after:top-0 after:bottom-0 after:w-6 after:bg-gradient-to-r after:from-transparent after:to-background",
+						"!px-0 md:sticky md:right-0 bg-table-surface group-hover:bg-table-row-selected group-data-[state=selected]:bg-table-row-selected z-10",
 				},
 			},
 		],
-		[rowActions],
+		[organizationSlug, rowActions],
 	);
 
 	return (
 		<>
-			<div className="space-y-4">
-				{/* Toolbar with filters */}
-				<div className="flex items-center justify-between gap-4">
-					<DataTableToolbar
-						filters={[
-							{
-								id: "status",
-								label: "Status",
-								variant: "multiSelect",
-								options: statusOptions,
-								icon: CircleIcon,
-							},
-							{
-								id: "priority",
-								label: "Priority",
-								variant: "multiSelect",
-								options: priorityOptions,
-								icon: AlertTriangleIcon,
-							},
-						]}
-						filterValues={{
-							status: filters.status ?? [],
-							priority: filters.priority ?? [],
-						}}
-						onFilterChange={(id, value) => {
-							if (id === "status") {
-								setFilter("status", value as string[]);
-							} else if (id === "priority") {
-								setFilter("priority", value as string[]);
-							}
-						}}
-						onResetFilters={resetFilters}
-						isFiltered={isFiltered}
-						showSearch
-						searchValue={filters.search ?? ""}
-						searchPlaceholder="Search tasks..."
-						onSearchChange={(value) =>
-							setFilter("search", value || null)
-						}
-						className="flex-1"
-					/>
-					<OpenTaskCreateSheet />
-				</div>
-
-				{/* Table with sort context */}
-				<SortProvider
-					sortColumn={sorting.sortBy}
-					sortDirection={sorting.sortDirection}
-				>
-					<DataTable
-						columns={columns}
-						data={tasks}
-						isLoading={isLoading}
-						isFetching={isFetching}
-						pagination={serverPagination}
-						onPaginationChange={onPaginationChange}
-						sorting={sortingState}
-						onSortingChange={onSortingChange}
-						enableRowSelection
-						getRowId={(row) => row.id}
-						// Sticky columns configuration
-						stickyLeftColumns={[
-							{ id: "select", width: 56 },
-							{ id: "name", width: 280 },
-						]}
-						stickyRightColumns={[{ id: "actions", width: 56 }]}
-						minWidth={1100}
-						// Place scroll controls in the last sticky left column
-						scrollControlsColumnId="name"
-						scrollStartColumn={2}
-						emptyState={
-							<div className="flex flex-col items-center gap-2">
-								<ListTodoIcon className="h-12 w-12 text-muted-foreground/50" />
-								<p className="text-muted-foreground">
-									No tasks found
-								</p>
-								<OpenTaskCreateSheet
-									variant="outline"
-									size="sm"
-									label="Add your first task"
-								/>
-							</div>
-						}
-					/>
-				</SortProvider>
-			</div>
+			{/* Table with sort context */}
+			<SortProvider
+				sortColumn={sorting.sortBy}
+				sortDirection={sorting.sortDirection}
+			>
+				<DataTable
+					columns={columns}
+					data={tasks}
+					isLoading={isLoading}
+					isFetching={isFetching}
+					pagination={serverPagination}
+					onPaginationChange={onPaginationChange}
+					onLimitChange={onLimitChange}
+					sorting={sortingState}
+					onSortingChange={onSortingChange}
+					enableRowSelection
+					getRowId={(row) => row.id}
+					// Sticky columns configuration
+					stickyLeftColumns={[
+						{ id: "select", width: 48 },
+						{ id: "name", width: 240 },
+					]}
+					stickyRightColumns={[{ id: "actions", width: 48 }]}
+					minWidth={1000}
+					// Place scroll controls in the last sticky left column
+					scrollControlsColumnId="name"
+					scrollStartColumn={2}
+					emptyState={
+						<div className="flex flex-col items-center gap-2">
+							<ListTodoIcon className="h-12 w-12 text-muted-foreground/50" />
+							<p className="text-muted-foreground">
+								No tasks found
+							</p>
+							<OpenTaskCreateSheet
+								variant="outline"
+								size="sm"
+								label="Add your first task"
+							/>
+						</div>
+					}
+				/>
+			</SortProvider>
 
 			{/* Delete confirmation dialog */}
 			<AlertDialog

@@ -1,6 +1,7 @@
 import { ORPCError } from "@orpc/server";
-import { and, db, eq, isNull, paymentSchedules } from "@repo/database";
+import { and, bookings, db, eq, isNull, paymentSchedules } from "@repo/database";
 import { studioProtectedProcedure } from "../../../../orpc/procedures";
+import { formatAmount, safeTrackActivity } from "../../../activities/lib";
 import { requirePermission } from "../../../studio/lib/permissions";
 import {
 	deleteScheduleInputSchema,
@@ -37,6 +38,15 @@ export const deleteSchedule = studioProtectedProcedure
 			});
 		}
 
+		// Fetch booking for activity context (org-scoped for safety)
+		const booking = await db.query.bookings.findFirst({
+			where: and(
+				eq(bookings.id, schedule.bookingId),
+				eq(bookings.organizationId, context.organizationId),
+			),
+			columns: { name: true },
+		});
+
 		// Soft delete
 		await db
 			.update(paymentSchedules)
@@ -47,6 +57,17 @@ export const deleteSchedule = studioProtectedProcedure
 				updatedBy: context.user.id,
 			})
 			.where(eq(paymentSchedules.id, id));
+
+		// Track activity (non-blocking)
+		await safeTrackActivity(context, {
+			entityType: "payment_schedule",
+			entityId: id,
+			entityName: `${schedule.name} (${formatAmount(schedule.amount)})`,
+			action: "deleted",
+			parentEntityType: "booking",
+			parentEntityId: schedule.bookingId,
+			parentEntityName: booking?.name ?? "Unknown Booking",
+		});
 
 		return {
 			data: { id },

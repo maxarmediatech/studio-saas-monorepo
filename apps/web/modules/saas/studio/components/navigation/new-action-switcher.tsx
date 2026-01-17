@@ -8,20 +8,39 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@repo/ui/components/dropdown-menu";
-import { ChevronsUpDown, Plus, Shield } from "lucide-react";
+import { ChevronsUpDown, Plus, Shield, SquarePlus } from "lucide-react";
 import Link from "next/link";
+import { useClientParams } from "../../hooks/params/use-client-params";
+import { useCrewParams } from "../../hooks/params/use-crew-params";
+import { useDeliverableParams } from "../../hooks/params/use-deliverable-params";
+import { useExpenseParams } from "../../hooks/params/use-expense-params";
+import { usePaymentParams } from "../../hooks/params/use-payment-params";
+import { useShootParams } from "../../hooks/params/use-shoot-params";
+import { useTaskParams } from "../../hooks/params/use-task-params";
 import type { HeaderCapabilities } from "../../lib/capability.server";
 
 interface NewActionSwitcherProps {
 	studioSlug: string;
 	caps: HeaderCapabilities;
+	variant?: "header" | "sidebar";
 }
 
 export function NewActionSwitcher({
 	studioSlug,
 	caps,
+	variant = "header",
 }: NewActionSwitcherProps) {
 	const basePath = `/app/${studioSlug}`;
+	const isSidebar = variant === "sidebar";
+
+	// Sheet param hooks for opening create sheets without navigation
+	const { openCreate: openShootCreate } = useShootParams();
+	const { openCreate: openDeliverableCreate } = useDeliverableParams();
+	const { openCreate: openTaskCreate } = useTaskParams();
+	const { openCreate: openPaymentCreate } = usePaymentParams();
+	const { openCreate: openExpenseCreate } = useExpenseParams();
+	const { openCreate: openClientCreate } = useClientParams();
+	const { openCreate: openCrewCreate } = useCrewParams();
 
 	const hasAnyAction =
 		caps.bookingCreateOrUpdate ||
@@ -38,17 +57,32 @@ export function NewActionSwitcher({
 			<DropdownMenuTrigger asChild>
 				<Button
 					variant="outline"
-					role="combobox"
+					role={isSidebar ? undefined : "combobox"}
 					aria-label="Open quick create menu"
-					className="w-25 justify-between"
+					className={
+						isSidebar
+							? "h-8 w-full justify-start gap-2.5 rounded-lg py-2! pl-1.75! pr-2! text-sm font-normal text-neutral-700 hover:bg-black/5 active:bg-black/10"
+							: "w-25 justify-between"
+					}
 				>
-					<Plus className="mr-1 size-4 shrink-0" />
-					<span>New</span>
-					<ChevronsUpDown className="ml-auto size-4 shrink-0 opacity-50" />
+					{isSidebar ? (
+						<SquarePlus className="size-4 shrink-0 text-neutral-600" />
+					) : (
+						<Plus className="mr-1 size-4 shrink-0" />
+					)}
+					<span>{isSidebar ? "New Item" : "New"}</span>
+					{!isSidebar && (
+						<ChevronsUpDown className="ml-auto size-4 shrink-0 opacity-50" />
+					)}
 				</Button>
 			</DropdownMenuTrigger>
 
-			<DropdownMenuContent align="end" className="w-50">
+			<DropdownMenuContent
+				side={isSidebar ? "right" : "bottom"}
+				align={isSidebar ? "start" : "end"}
+				sideOffset={isSidebar ? 8 : 4}
+				className="w-50"
+			>
 				{!hasAnyAction ? (
 					<DropdownMenuItem
 						disabled
@@ -75,28 +109,20 @@ export function NewActionSwitcher({
 						)}
 
 						{caps.shootCreateOrUpdate && (
-							<DropdownMenuItem asChild>
-								<Link href={`${basePath}/shoots?create=true`}>
-									New Shoot
-								</Link>
+							<DropdownMenuItem onSelect={openShootCreate}>
+								New Shoot
 							</DropdownMenuItem>
 						)}
 
 						{caps.deliverableCreateOrUpdate && (
-							<DropdownMenuItem asChild>
-								<Link
-									href={`${basePath}/deliverables?create=true`}
-								>
-									New Deliverable
-								</Link>
+							<DropdownMenuItem onSelect={openDeliverableCreate}>
+								New Deliverable
 							</DropdownMenuItem>
 						)}
 
 						{caps.taskCreateOrUpdate && (
-							<DropdownMenuItem asChild>
-								<Link href={`${basePath}/tasks?create=true`}>
-									New Task
-								</Link>
+							<DropdownMenuItem onSelect={openTaskCreate}>
+								New Task
 							</DropdownMenuItem>
 						)}
 
@@ -106,18 +132,14 @@ export function NewActionSwitcher({
 						)}
 
 						{caps.paymentCreateOrUpdate && (
-							<DropdownMenuItem asChild>
-								<Link href={`${basePath}/payments?create=true`}>
-									New Payment
-								</Link>
+							<DropdownMenuItem onSelect={openPaymentCreate}>
+								New Payment
 							</DropdownMenuItem>
 						)}
 
 						{caps.expenseCreateOrUpdate && (
-							<DropdownMenuItem asChild>
-								<Link href={`${basePath}/expenses?create=true`}>
-									New Expense
-								</Link>
+							<DropdownMenuItem onSelect={openExpenseCreate}>
+								New Expense
 							</DropdownMenuItem>
 						)}
 
@@ -127,18 +149,14 @@ export function NewActionSwitcher({
 						)}
 
 						{caps.clientCreateOrUpdate && (
-							<DropdownMenuItem asChild>
-								<Link href={`${basePath}/clients?create=true`}>
-									New Client
-								</Link>
+							<DropdownMenuItem onSelect={openClientCreate}>
+								New Client
 							</DropdownMenuItem>
 						)}
 
 						{caps.crewCreateOrUpdate && (
-							<DropdownMenuItem asChild>
-								<Link href={`${basePath}/crews?create=true`}>
-									New Crew
-								</Link>
+							<DropdownMenuItem onSelect={openCrewCreate}>
+								New Crew
 							</DropdownMenuItem>
 						)}
 					</>

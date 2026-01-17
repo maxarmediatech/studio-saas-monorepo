@@ -17,6 +17,7 @@ import { useParams } from "next/navigation";
 import nProgress from "nprogress";
 import { type ReactNode, useEffect, useState } from "react";
 import { ActiveOrganizationContext } from "../lib/active-organization-context";
+import { setActiveOrganizationSlugCookie } from "../lib/active-organization-cookie";
 
 export function ActiveOrganizationProvider({
 	children,
@@ -77,6 +78,7 @@ export function ActiveOrganizationProvider({
 			return;
 		}
 
+		setActiveOrganizationSlugCookie(newActiveOrganization.slug);
 		await refetchActiveOrganization();
 
 		if (config.organizations.enableBilling) {
@@ -99,7 +101,7 @@ export function ActiveOrganizationProvider({
 			};
 		});
 
-		router.push(`/app/${newActiveOrganization.slug}`);
+		router.push(`/app/${newActiveOrganization.slug}/home`);
 	};
 
 	const [loaded, setLoaded] = useState(
@@ -114,6 +116,17 @@ export function ActiveOrganizationProvider({
 			setLoaded(true);
 		}
 	}, [activeOrganization, hasActiveOrganizationSlug, loaded]);
+
+	useEffect(() => {
+		if (activeOrganization?.slug) {
+			setActiveOrganizationSlugCookie(activeOrganization.slug);
+			return;
+		}
+
+		if (loaded) {
+			setActiveOrganizationSlugCookie(null);
+		}
+	}, [activeOrganization?.slug, loaded]);
 
 	const activeOrganizationUserRole = activeOrganization?.members.find(
 		(member) => member.userId === session?.userId,

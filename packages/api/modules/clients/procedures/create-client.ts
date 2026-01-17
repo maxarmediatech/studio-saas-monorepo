@@ -1,6 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { and, clients, db, eq, isNull, or } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { safeTrackActivity } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	createClientInputSchema,
@@ -76,6 +77,14 @@ export const createClient = studioProtectedProcedure
 				message: "Failed to create client",
 			});
 		}
+
+		// Track activity (non-blocking)
+		await safeTrackActivity(context, {
+			entityType: "client",
+			entityId: created.id,
+			entityName: name,
+			action: "created",
+		});
 
 		return {
 			data: { id: created.id },

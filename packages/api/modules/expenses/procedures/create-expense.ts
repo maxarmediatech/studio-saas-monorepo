@@ -12,6 +12,7 @@ import {
 	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { formatAmount, safeTrackActivity } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	createExpenseInputSchema,
@@ -147,8 +148,9 @@ export const createExpense = studioProtectedProcedure
 				);
 
 				// Update booking total expenses if assigned to bookings
+				// Type predicate narrows bookingId to string (not undefined/null)
 				const bookingAssignments = assignments.filter(
-					(a) => a.bookingId,
+					(a): a is typeof a & { bookingId: string } => !!a.bookingId,
 				);
 				for (const assignment of bookingAssignments) {
 					const allocatedAmount = getAllocatedExpenseAmount(
@@ -164,8 +166,17 @@ export const createExpense = studioProtectedProcedure
 							updatedAt: new Date(),
 							updatedBy: context.user.id,
 						})
-						.where(eq(bookings.id, assignment.bookingId!));
+						.where(eq(bookings.id, assignment.bookingId));
 				}
+
+				// Track activity (non-blocking)
+				await safeTrackActivity(context, {
+					entityType: "expense",
+					entityId: created.id,
+					entityName: `${formatAmount(amount)} - ${description}`,
+					action: "created",
+					metadata: { amount, category, vendor },
+				});
 
 				return {
 					data: { id: created.id },
@@ -199,6 +210,15 @@ export const createExpense = studioProtectedProcedure
 				message: "Failed to create expense",
 			});
 		}
+
+		// Track activity (non-blocking)
+		await safeTrackActivity(context, {
+			entityType: "expense",
+			entityId: created.id,
+			entityName: `${formatAmount(amount)} - ${description}`,
+			action: "created",
+			metadata: { amount, category, vendor },
+		});
 
 		return {
 			data: { id: created.id },

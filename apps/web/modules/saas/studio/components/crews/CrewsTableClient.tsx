@@ -17,20 +17,17 @@ import {
 	DataTable,
 	DataTableColumnHeader,
 	DataTableRowActions,
-	DataTableToolbar,
 	DataTableViewOptions,
 	type RowAction,
 	SortProvider,
 } from "@saas/shared/components/data-table";
 // Import types for column meta augmentation
 import "@saas/shared/components/data-table/types";
+import { formatMoney } from "@saas/shared/lib";
 import { useCrewParams } from "@saas/studio/hooks/params/use-crew-params";
 import { useCrewsTable } from "@saas/studio/hooks/tables";
-import {
-	crewsApi,
-	crewsMutations,
-	studioQueryKeys,
-} from "@saas/studio/lib/api";
+import { crewsApi, crewsMutations } from "@saas/studio/lib/api";
+import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
@@ -74,18 +71,6 @@ const roleOptions = [
 	{ value: "other", label: "Other" },
 ];
 
-const formatMoney = (value: string | null) => {
-	if (!value) {
-		return "-";
-	}
-	const num = Number.parseFloat(value);
-	return new Intl.NumberFormat("en-IN", {
-		style: "currency",
-		currency: "INR",
-		minimumFractionDigits: 0,
-	}).format(num);
-};
-
 export function CrewsTableClient({
 	organizationSlug: _organizationSlug,
 }: CrewsTableClientProps) {
@@ -97,11 +82,9 @@ export function CrewsTableClient({
 		pagination,
 		sorting,
 		sortingState,
-		setFilter,
-		resetFilters,
-		isFiltered,
 		onSortingChange,
 		onPaginationChange,
+		onLimitChange,
 	} = useCrewsTable();
 
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -143,7 +126,10 @@ export function CrewsTableClient({
 			setDeleteDialogOpen(false);
 			setCrewToDelete(null);
 			queryClient.invalidateQueries({
-				queryKey: studioQueryKeys.crews.all,
+				queryKey: orpc.crews.key(),
+			});
+			queryClient.invalidateQueries({
+				queryKey: orpc.activities.key(),
 			});
 		},
 		onError: (error) => {
@@ -188,29 +174,19 @@ export function CrewsTableClient({
 					<DataTableColumnHeader column={column} title="Name" />
 				),
 				cell: ({ row }) => (
-					<div className="flex items-center gap-3">
-						<div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
-							<UserIcon className="h-4 w-4 text-muted-foreground" />
-						</div>
-						<div>
-							<p className="font-medium">{row.original.name}</p>
-							{row.original.email && (
-								<p className="text-sm text-muted-foreground">
-									{row.original.email}
-								</p>
-							)}
-						</div>
-					</div>
+					<span className="font-medium text-foreground">
+						{row.original.name}
+					</span>
 				),
 				meta: {
 					label: "Name",
-					width: 240,
-					minWidth: 240,
+					width: 200,
+					minWidth: 150,
 					// Last left-sticky column - add right border
 					headerClassName:
-						"!border-r-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-border",
+						"!border-r-0 bg-gray-100 z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[0.5px] before:bg-table-border-subtle after:absolute after:right-0 after:top-0 after:bottom-0 after:w-[0.5px] after:bg-table-border-subtle",
 					cellClassName:
-						"!border-r-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-border",
+						"!border-r-0 bg-table-surface group-hover:bg-table-row-selected group-data-[state=selected]:bg-table-row-selected z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[0.5px] before:bg-table-border-subtle after:absolute after:right-0 after:top-0 after:bottom-0 after:w-[0.5px] after:bg-table-border-subtle",
 				},
 				enableSorting: true,
 				enableHiding: false,
@@ -293,7 +269,9 @@ export function CrewsTableClient({
 				),
 				cell: ({ row }) => (
 					<div className="text-right font-semibold tabular-nums">
-						{formatMoney(row.original.dailyRate)}
+						{row.original.dailyRate
+							? formatMoney(row.original.dailyRate)
+							: "-"}
 					</div>
 				),
 				meta: {
@@ -316,13 +294,13 @@ export function CrewsTableClient({
 				enableSorting: false,
 				enableHiding: false,
 				meta: {
-					width: 56,
-					minWidth: 56,
+					width: 48,
+					minWidth: 48,
 					// First right-sticky column - add left border + fade
 					headerClassName:
-						"!px-0 md:sticky md:right-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border after:absolute after:left-[-24px] after:top-0 after:bottom-0 after:w-6 after:bg-gradient-to-r after:from-transparent after:to-background",
+						"!px-0 md:sticky md:right-0 bg-gray-100 z-10",
 					cellClassName:
-						"!px-0 md:sticky md:right-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border after:absolute after:left-[-24px] after:top-0 after:bottom-0 after:w-6 after:bg-gradient-to-r after:from-transparent after:to-background",
+						"!px-0 md:sticky md:right-0 bg-table-surface group-hover:bg-table-row-selected group-data-[state=selected]:bg-table-row-selected z-10",
 				},
 			},
 		],
@@ -331,92 +309,48 @@ export function CrewsTableClient({
 
 	return (
 		<>
-			<div className="space-y-4">
-				{/* Toolbar with filters */}
-				<div className="flex items-center justify-between gap-4">
-					<DataTableToolbar
-						filters={[
-							{
-								id: "status",
-								label: "Status",
-								variant: "multiSelect",
-								options: statusOptions,
-								icon: UserIcon,
-							},
-							{
-								id: "role",
-								label: "Role",
-								variant: "multiSelect",
-								options: roleOptions,
-								icon: BriefcaseIcon,
-							},
-						]}
-						filterValues={{
-							status: filters.status ?? [],
-							role: filters.role ?? [],
-						}}
-						onFilterChange={(id, value) => {
-							if (id === "status") {
-								setFilter("status", value as string[]);
-							} else if (id === "role") {
-								setFilter("role", value as string[]);
-							}
-						}}
-						onResetFilters={resetFilters}
-						isFiltered={isFiltered}
-						showSearch
-						searchValue={filters.search ?? ""}
-						searchPlaceholder="Search crew members..."
-						onSearchChange={(value) =>
-							setFilter("search", value || null)
-						}
-						className="flex-1"
-					/>
-					<OpenCrewCreateSheet />
-				</div>
-
-				{/* Table with sort context */}
-				<SortProvider
-					sortColumn={sorting.sortBy}
-					sortDirection={sorting.sortDirection}
-				>
-					<DataTable
-						columns={columns}
-						data={crews}
-						isLoading={isLoading}
-						isFetching={isFetching}
-						pagination={serverPagination}
-						onPaginationChange={onPaginationChange}
-						sorting={sortingState}
-						onSortingChange={onSortingChange}
-						enableRowSelection
-						getRowId={(row) => row.id}
-						// Sticky columns configuration
-						stickyLeftColumns={[
-							{ id: "select", width: 56 },
-							{ id: "name", width: 240 },
-						]}
-						stickyRightColumns={[{ id: "actions", width: 56 }]}
-						minWidth={900}
-						// Place scroll controls in the last sticky left column
-						scrollControlsColumnId="name"
-						scrollStartColumn={2}
-						emptyState={
-							<div className="flex flex-col items-center gap-2">
-								<UserIcon className="h-12 w-12 text-muted-foreground/50" />
-								<p className="text-muted-foreground">
-									No crew members found
-								</p>
-								<OpenCrewCreateSheet
-									variant="outline"
-									size="sm"
-									label="Add your first crew member"
-								/>
-							</div>
-						}
-					/>
-				</SortProvider>
-			</div>
+			{/* Table with sort context */}
+			<SortProvider
+				sortColumn={sorting.sortBy}
+				sortDirection={sorting.sortDirection}
+			>
+				<DataTable
+					columns={columns}
+					data={crews}
+					isLoading={isLoading}
+					isFetching={isFetching}
+					pagination={serverPagination}
+					onPaginationChange={onPaginationChange}
+					onLimitChange={onLimitChange}
+					sorting={sortingState}
+					onSortingChange={onSortingChange}
+					enableRowSelection
+					getRowId={(row) => row.id}
+					// Sticky columns configuration
+					stickyLeftColumns={[
+						{ id: "select", width: 48 },
+						{ id: "name", width: 200 },
+					]}
+					stickyRightColumns={[{ id: "actions", width: 48 }]}
+					minWidth={850}
+					// Place scroll controls in the last sticky left column
+					scrollControlsColumnId="name"
+					scrollStartColumn={2}
+					emptyState={
+						<div className="flex flex-col items-center gap-2">
+							<UserIcon className="h-12 w-12 text-muted-foreground/50" />
+							<p className="text-muted-foreground">
+								No crew members found
+							</p>
+							<OpenCrewCreateSheet
+								variant="outline"
+								size="sm"
+								label="Add your first crew member"
+							/>
+						</div>
+					}
+				/>
+			</SortProvider>
 
 			{/* Delete confirmation dialog */}
 			<AlertDialog

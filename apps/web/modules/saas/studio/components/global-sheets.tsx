@@ -19,6 +19,8 @@
 
 import { Suspense } from "react";
 
+// Bookings
+import { BookingDetailSheet, BookingEditSheet } from "./bookings/sheets";
 // Clients
 import { ClientCreateSheet, ClientEditSheet } from "./clients/sheets";
 // Configurations
@@ -37,6 +39,8 @@ import {
 import { ExpenseCreateSheet, ExpenseEditSheet } from "./expenses/sheets";
 // Payments
 import { PaymentCreateSheet, PaymentEditSheet } from "./payments/sheets";
+// Schedules (Payment Schedules)
+import { ScheduleCreateSheet, ScheduleEditSheet } from "./schedules/sheets";
 // Shoots
 import { ShootCreateSheet, ShootEditSheet } from "./shoots/sheets";
 // Tasks
@@ -45,6 +49,14 @@ import { TaskCreateSheet, TaskEditSheet } from "./tasks/sheets";
 export function GlobalSheets() {
 	return (
 		<>
+			{/* Bookings - View Detail */}
+			<Suspense fallback={null}>
+				<BookingDetailSheet />
+			</Suspense>
+			<Suspense fallback={null}>
+				<BookingEditSheet />
+			</Suspense>
+
 			{/* Clients */}
 			<ClientCreateSheet />
 			<Suspense fallback={null}>
@@ -73,6 +85,12 @@ export function GlobalSheets() {
 			<PaymentCreateSheet />
 			<Suspense fallback={null}>
 				<PaymentEditSheet />
+			</Suspense>
+
+			{/* Schedules (Payment Schedules) */}
+			<ScheduleCreateSheet />
+			<Suspense fallback={null}>
+				<ScheduleEditSheet />
 			</Suspense>
 
 			{/* Deliverables */}

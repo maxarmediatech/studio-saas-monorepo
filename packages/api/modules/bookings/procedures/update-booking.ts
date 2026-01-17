@@ -1,6 +1,7 @@
 import { ORPCError } from "@orpc/server";
-import { and, bookings, db, eq } from "@repo/database";
+import { and, attachments, bookings, db, eq, isNull } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { detectChanges, safeTrackFieldChanges } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	updateBookingInputSchema,
@@ -20,9 +21,16 @@ export const updateBooking = studioProtectedProcedure
 	.handler(async ({ input, context }) => {
 		requirePermission(context, "booking", "update");
 
-		const { id, name, bookingType, packageType, packageCost, note } = input;
+		const {
+			id,
+			name,
+			bookingType,
+			packageType,
+			packageCost,
+			note,
+			contractAttachment,
+		} = input;
 
-		// Verify booking exists and belongs to organization
 		const existing = await db.query.bookings.findFirst({
 			where: and(
 				eq(bookings.id, id),
@@ -36,7 +44,6 @@ export const updateBooking = studioProtectedProcedure
 			});
 		}
 
-		// Build update object
 		const updates: Partial<typeof bookings.$inferInsert> = {
 			updatedAt: new Date(),
 			updatedBy: context.user.id,
@@ -59,6 +66,64 @@ export const updateBooking = studioProtectedProcedure
 		}
 
 		await db.update(bookings).set(updates).where(eq(bookings.id, id));
+
+		// Track field changes (non-blocking)
+		const changes = detectChanges(
+			existing,
+			{ name, bookingType, packageType, packageCost, note },
+			["name", "bookingType", "packageType", "packageCost", "note"],
+		);
+
+		if (changes.length > 0) {
+			await safeTrackFieldChanges(
+				{ organizationId: context.organizationId, user: context.user },
+				{
+					entityType: "booking",
+					entityId: id,
+					entityName: name ?? existing.name,
+					changes,
+				},
+			);
+		}
+
+		if (contractAttachment !== undefined) {
+			await db
+				.update(attachments)
+				.set({
+					deletedAt: new Date(),
+					deletedBy: context.user.id,
+				})
+				.where(
+					and(
+						eq(attachments.entityType, "booking"),
+						eq(attachments.entityId, id),
+						eq(attachments.description, "contract"),
+						isNull(attachments.deletedAt),
+					),
+				);
+
+			if (contractAttachment !== null) {
+				const expectedPrefix = `orgs/${context.organizationId}/`;
+				if (!contractAttachment.key.startsWith(expectedPrefix)) {
+					throw new ORPCError("FORBIDDEN", {
+						message:
+							"Invalid attachment: file does not belong to this organization",
+					});
+				}
+
+				await db.insert(attachments).values({
+					organizationId: context.organizationId,
+					entityType: "booking",
+					entityId: id,
+					fileName: contractAttachment.name,
+					fileUrl: contractAttachment.key,
+					fileSize: contractAttachment.size,
+					mimeType: contractAttachment.type,
+					description: "contract",
+					uploadedBy: context.user.id,
+				});
+			}
+		}
 
 		return {
 			data: { id },

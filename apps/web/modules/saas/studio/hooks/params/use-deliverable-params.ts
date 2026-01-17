@@ -1,31 +1,34 @@
-import {
-	type Options,
-	parseAsBoolean,
-	parseAsString,
-	useQueryStates,
-} from "nuqs";
+"use client";
 
-export function useDeliverableParams(options?: Options) {
-	const [params, setParams] = useQueryStates(
-		{
-			deliverableId: parseAsString,
-			createDeliverable: parseAsBoolean,
-		},
-		{
-			history: "push",
-			shallow: true,
-			...options,
-		},
-	);
+import { createSheetParams } from "./create-sheet-params";
+
+const useSheetParams = createSheetParams({
+	namespace: "deliverable",
+	idParam: "deliverableId",
+	createParam: "createDeliverable",
+});
+
+/**
+ * URL-based deliverable sheet params using History API.
+ * No Next.js router re-renders, browser back button closes sheets.
+ */
+export function useDeliverableParams() {
+	const { entityId, createMode, setParams, ...methods } = useSheetParams();
 
 	return {
-		...params,
-		setParams,
-		openCreate: () =>
-			setParams({ createDeliverable: true, deliverableId: null }),
-		openEdit: (id: string) =>
-			setParams({ deliverableId: id, createDeliverable: null }),
-		close: () =>
-			setParams({ deliverableId: null, createDeliverable: null }),
+		// Aliased params for backward compatibility
+		deliverableId: entityId,
+		createDeliverable: createMode,
+		// Aliased setParams to accept entity-specific keys
+		setParams: (params: {
+			deliverableId?: string | null;
+			createDeliverable?: boolean | null;
+		}) =>
+			setParams({
+				entityId: params.deliverableId,
+				createMode: params.createDeliverable,
+			}),
+		// Methods pass through unchanged
+		...methods,
 	};
 }

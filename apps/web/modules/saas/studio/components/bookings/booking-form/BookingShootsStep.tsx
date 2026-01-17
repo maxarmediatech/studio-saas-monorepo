@@ -1,84 +1,102 @@
 "use client";
 
-import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
-import {
-	Card,
-	CardContent,
-	CardHeader,
-	CardTitle,
-} from "@repo/ui/components/card";
+import { Card, CardContent } from "@repo/ui/components/card";
+import { Combobox, type ComboboxOption } from "@repo/ui/components/combobox";
+import { DatePicker } from "@repo/ui/components/date-picker";
 import {
 	Field,
+	FieldDescription,
 	FieldError,
 	FieldGroup,
 	FieldLabel,
+	FieldLegend,
 	FieldSet,
 } from "@repo/ui/components/field";
 import { Input } from "@repo/ui/components/input";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@repo/ui/components/select";
-import { Separator } from "@repo/ui/components/separator";
 import { Textarea } from "@repo/ui/components/textarea";
+import { TimePicker } from "@repo/ui/components/time-picker";
+import { useConfigurationParams } from "@saas/studio/hooks/params/use-configuration-params";
 import { useQuery } from "@tanstack/react-query";
 import {
 	CameraIcon,
-	ClockIcon,
-	MapPinIcon,
+	ChevronDownIcon,
+	ChevronUpIcon,
 	PlusIcon,
 	TrashIcon,
 	UsersIcon,
 } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import { bookingFormQueries } from "./booking-form-queries";
-import {
-	type BookingFormValues,
-	SHOOT_TYPE_OPTIONS,
-} from "./booking-form-schema";
+import type { BookingFormValues } from "./booking-form-schema";
 
 export function BookingShootsStep() {
 	const form = useFormContext<BookingFormValues>();
 
-	// Fetch crews and roles using centralized query options
+	// Fetch crews and event types using centralized query options
 	const { data: crewsData } = useQuery(bookingFormQueries.crews());
-	const { data: crewRolesData } = useQuery(bookingFormQueries.crewRoles());
+	const { data: eventTypesData, isPending: eventTypesLoading } = useQuery(
+		bookingFormQueries.eventTypes(),
+	);
+
+	// Watch booking type to filter event types
+	const selectedBookingType = form.watch("bookingType");
+
+	// Watch all shoots to track selected event types across shoots
+	const allShoots = form.watch("shoots");
+
+	// Compute filtered event types based on booking type
+	const filteredEventTypes = useMemo((): ComboboxOption[] => {
+		const allEventTypes = eventTypesData?.data ?? [];
+
+		// Filter event types that apply to the selected booking type
+		const applicable = allEventTypes.filter((et) => {
+			const metadata = et.metadata as { bookingTypes?: string[] } | null;
+			// If no booking types specified, available for all
+			if (!metadata?.bookingTypes?.length) {
+				return true;
+			}
+			// Otherwise, must include selected booking type
+			return metadata.bookingTypes.includes(selectedBookingType);
+		});
+
+		return applicable.map((et) => ({
+			value: et.key, // Store key (consistent with other configs like booking_type)
+			label: et.label,
+		}));
+	}, [eventTypesData, selectedBookingType]);
+
+	// Determine if we should use Combobox or free-text input
+	// Show combobox while loading OR when we have configured event types
+	// Only fall back to free-text input when loaded AND no event types exist
+	const hasConfiguredEventTypes =
+		eventTypesLoading || filteredEventTypes.length > 0;
+
+	// Get available event types for a specific shoot, excluding types already selected in other shoots
+	const getAvailableEventTypes = (shootIndex: number): ComboboxOption[] => {
+		if (!allShoots) {
+			return filteredEventTypes;
+		}
+
+		const currentValue = allShoots[shootIndex]?.shootType;
+		const selectedByOtherShoots = allShoots
+			.filter((_, idx) => idx !== shootIndex)
+			.map((s) => s.shootType)
+			.filter(Boolean);
+
+		return filteredEventTypes.filter((et) => {
+			// Always keep the current shoot's selection visible
+			if (et.value === currentValue) {
+				return true;
+			}
+			// Exclude types already selected in other shoots
+			return !selectedByOtherShoots.includes(et.value);
+		});
+	};
 
 	// Use real data from API
 	const crews = crewsData?.data ?? [];
-	const crewRoles = useMemo(() => {
-		// Use configured crew roles, or derive from crew data if not configured
-		if (crewRolesData?.data?.length) {
-			return crewRolesData.data.map((r) => ({
-				id: r.id,
-				key: r.key,
-				label: r.label,
-			}));
-		}
-
-		// Fallback: derive roles from existing crew members
-		const derivedRoles = new Map<
-			string,
-			{ id: string; key: string; label: string }
-		>();
-
-		for (const crew of crews) {
-			const label = crew.role?.trim();
-			if (!label) {
-				continue;
-			}
-
-			const key = label.toLowerCase().replaceAll(/\s+/g, "_");
-			derivedRoles.set(key, { id: key, key, label });
-		}
-
-		return Array.from(derivedRoles.values());
-	}, [crews, crewRolesData]);
 
 	const {
 		fields: shoots,
@@ -90,50 +108,42 @@ export function BookingShootsStep() {
 	});
 
 	const addNewShoot = () => {
-		appendShoot({
-			name: "",
-			shootType: "",
-			shootDate: "",
-			startTime: "",
-			endTime: "",
-			venue: "",
-			venueAddress: "",
-			notes: "",
-			crewAssignments: [],
-		});
+		const newIndex = shoots.length; // Index of the new shoot
+		appendShoot(
+			{
+				shootType: "",
+				shootDate: "",
+				startTime: "",
+				location: "",
+				notes: "",
+				crewAssignments: [],
+			},
+			{ shouldFocus: false },
+		);
+		// Focus the event type field after React renders the new shoot
+		setTimeout(() => {
+			const eventTypeField = document.getElementById(
+				`shoots.${newIndex}.shootType`,
+			);
+			eventTypeField?.focus();
+		}, 0);
 	};
 
 	return (
-		<FieldGroup className="gap-6">
-			<Card>
-				<CardHeader className="flex flex-row items-center justify-between">
-					<div>
-						<CardTitle className="flex items-center gap-2">
-							<CameraIcon className="h-5 w-5" />
-							Shoots
-						</CardTitle>
-						<p className="text-sm text-muted-foreground mt-1">
-							Schedule photo/video shoots for this booking
-						</p>
-					</div>
-					<Button
-						type="button"
-						variant="outline"
-						size="sm"
-						onClick={addNewShoot}
-					>
-						<PlusIcon className="mr-2 h-4 w-4" />
-						Add Shoot
-					</Button>
-				</CardHeader>
-				<CardContent>
-					<FieldSet>
+		<Card className="shadow-none">
+			<CardContent>
+				<FieldSet>
+					<FieldLegend>Shoots</FieldLegend>
+					<FieldDescription>
+						Schedule photo/video shoots for this booking
+					</FieldDescription>
+					<FieldGroup>
+						{/* Shoots list */}
 						{shoots.length === 0 ? (
-							<div className="flex flex-col items-center justify-center py-12 text-center border border-dashed rounded-lg">
-								<CameraIcon className="h-12 w-12 text-muted-foreground/50 mb-4" />
-								<p className="text-sm text-muted-foreground mb-4">
-									No shoots scheduled yet. Click "Add Shoot"
-									to schedule photo/video sessions.
+							<div className="flex flex-col items-center justify-center gap-3 py-8 px-4 border border-dashed rounded-lg">
+								<CameraIcon className="h-10 w-10 text-muted-foreground/30" />
+								<p className="text-sm text-muted-foreground text-center">
+									No shoots scheduled yet
 								</p>
 								<Button
 									type="button"
@@ -142,54 +152,84 @@ export function BookingShootsStep() {
 									onClick={addNewShoot}
 								>
 									<PlusIcon className="mr-2 h-4 w-4" />
-									Add Shoot
+									Add first shoot
 								</Button>
 							</div>
 						) : (
-							<FieldGroup className="gap-6">
+							<FieldGroup className="gap-4">
 								{shoots.map((shoot, shootIndex) => (
-									<ShootCard
+									<ShootSection
 										key={shoot.id}
 										shootIndex={shootIndex}
 										crews={crews}
-										crewRoles={crewRoles}
+										eventTypeOptions={getAvailableEventTypes(
+											shootIndex,
+										)}
+										hasConfiguredEventTypes={
+											hasConfiguredEventTypes
+										}
+										eventTypesLoading={eventTypesLoading}
 										onRemove={() => removeShoot(shootIndex)}
 										canRemove={shoots.length > 0}
 									/>
 								))}
+
+								{/* Add another shoot button */}
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									className="w-full justify-center border-dashed"
+									onClick={addNewShoot}
+								>
+									<PlusIcon className="mr-2 h-4 w-4" />
+									Add another shoot
+								</Button>
 							</FieldGroup>
 						)}
-					</FieldSet>
-				</CardContent>
-			</Card>
-		</FieldGroup>
+					</FieldGroup>
+				</FieldSet>
+			</CardContent>
+		</Card>
 	);
 }
 
-interface ShootCardProps {
+interface ShootSectionProps {
 	shootIndex: number;
 	crews: Array<{
 		id: string;
 		name: string;
 		role: string;
 		phoneNumber?: string | null;
+		dailyRate?: string | null;
+		userId?: string | null;
 	}>;
-	crewRoles: Array<{ id: string; key: string; label: string }>;
+	eventTypeOptions: ComboboxOption[];
+	hasConfiguredEventTypes: boolean;
+	eventTypesLoading: boolean;
 	onRemove: () => void;
 	canRemove: boolean;
 }
 
-function ShootCard({
+function ShootSection({
 	shootIndex,
 	crews,
-	crewRoles,
+	eventTypeOptions,
+	hasConfiguredEventTypes,
+	eventTypesLoading,
 	onRemove,
 	canRemove,
-}: ShootCardProps) {
+}: ShootSectionProps) {
 	const form = useFormContext<BookingFormValues>();
+	const [showNotes, setShowNotes] = useState(false);
+	const { openCreate } = useConfigurationParams();
 
+	// Check if notes has content to auto-expand
+	const notesValue = form.watch(`shoots.${shootIndex}.notes`);
+
+	// useFieldArray for crew assignments
 	const {
-		fields: crewAssignments,
+		fields: crewAssignmentFields,
 		append: appendCrewAssignment,
 		remove: removeCrewAssignment,
 	} = useFieldArray({
@@ -197,96 +237,144 @@ function ShootCard({
 		name: `shoots.${shootIndex}.crewAssignments`,
 	});
 
+	// Watch current crew assignments to filter available crews
+	const currentAssignments =
+		form.watch(`shoots.${shootIndex}.crewAssignments`) ?? [];
+	const selectedCrewIds = currentAssignments.map((a) => a.crewId);
+
+	// Create a map for quick crew lookup
+	const crewMap = useMemo(
+		() => new Map(crews.map((c) => [c.id, c])),
+		[crews],
+	);
+
+	// Get available crews (not already assigned to this shoot)
+	const getAvailableCrews = (currentCrewId?: string): ComboboxOption[] => {
+		return crews
+			.filter((crew) => {
+				// Always include current selection
+				if (crew.id === currentCrewId) return true;
+				// Exclude already assigned crews
+				return !selectedCrewIds.includes(crew.id);
+			})
+			.map((crew) => ({
+				value: crew.id,
+				label: `${crew.name}${crew.role ? ` (${crew.role})` : ""}`,
+			}));
+	};
+
+	// Handle crew selection - auto-populate rate from dailyRate
+	const handleCrewSelect = (assignmentIndex: number, crewId: string) => {
+		const crew = crewMap.get(crewId);
+		form.setValue(
+			`shoots.${shootIndex}.crewAssignments.${assignmentIndex}.crewId`,
+			crewId,
+		);
+		// Auto-populate rate from crew's dailyRate
+		if (crew?.dailyRate) {
+			form.setValue(
+				`shoots.${shootIndex}.crewAssignments.${assignmentIndex}.rate`,
+				crew.dailyRate,
+			);
+		}
+	};
+
+	// Add new crew assignment row
+	const addCrewAssignment = () => {
+		appendCrewAssignment({ crewId: "", rate: "" });
+	};
+
 	return (
-		<Card>
-			<CardHeader className="flex flex-row items-center justify-between pb-4">
+		<div className="overflow-hidden rounded-lg border bg-muted/10">
+			{/* Header row */}
+			<div className="flex items-center justify-between gap-2 border-b bg-muted/20 px-4 py-3">
 				<div className="flex items-center gap-2">
-					<CameraIcon className="h-5 w-5 text-muted-foreground" />
-					<CardTitle className="text-base">
+					<CameraIcon className="h-4 w-4 text-muted-foreground" />
+					<span className="text-sm font-medium">
 						Shoot {shootIndex + 1}
-					</CardTitle>
+					</span>
 				</div>
 				{canRemove && (
 					<Button
 						type="button"
 						variant="ghost"
 						size="icon"
-						className="min-h-11 min-w-11 text-destructive hover:text-destructive hover:bg-destructive/10"
+						className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
 						onClick={onRemove}
 					>
 						<TrashIcon className="h-4 w-4" />
 						<span className="sr-only">Remove shoot</span>
 					</Button>
 				)}
-			</CardHeader>
-			<CardContent className="space-y-6">
+			</div>
+
+			{/* Content */}
+			<div className="p-4 space-y-4">
 				{/* Basic Info */}
-				<FieldGroup>
-					<div className="grid gap-4 md:grid-cols-3">
-						{/* Shoot Name */}
-						<Controller
-							name={`shoots.${shootIndex}.name`}
-							control={form.control}
-							render={({ field, fieldState }) => (
-								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>
-										Shoot Name
-									</FieldLabel>
-									<Input
-										{...field}
-										id={field.name}
-										placeholder="e.g. Wedding Day Photography"
-										aria-invalid={fieldState.invalid}
-									/>
-									{fieldState.invalid && (
-										<FieldError
-											errors={[fieldState.error]}
-										/>
-									)}
-								</Field>
-							)}
-						/>
+				<FieldGroup className="gap-3">
+					{/* Row 1: Event Type + Date + Start Time (2:1:1 ratio) */}
+					<div className="grid gap-3 grid-cols-1 md:grid-cols-4">
+						{/* Event Type - spans 2 columns on md+ */}
+						<div className="md:col-span-2">
+							<Controller
+								name={`shoots.${shootIndex}.shootType`}
+								control={form.control}
+								render={({ field, fieldState }) => (
+									<Field data-invalid={fieldState.invalid}>
+										<FieldLabel htmlFor={field.name}>
+											Event Type
+										</FieldLabel>
+										{hasConfiguredEventTypes ? (
+											<Combobox
+												id={field.name}
+												value={field.value ?? ""}
+												onValueChange={field.onChange}
+												options={eventTypeOptions}
+												placeholder={
+													eventTypesLoading
+														? "Loading..."
+														: "Select event type..."
+												}
+												searchPlaceholder="Search events..."
+												emptyText="No matching event types"
+												disabled={eventTypesLoading}
+												aria-invalid={
+													fieldState.invalid
+												}
+												onCreate={{
+													label: "Add event type",
+													onClick: () =>
+														openCreate(
+															"event_type",
+														),
+												}}
+											/>
+										) : (
+											<Input
+												id={field.name}
+												value={field.value ?? ""}
+												onChange={(e) =>
+													field.onChange(
+														e.target.value,
+													)
+												}
+												placeholder="e.g. Wedding, Haldi, Reception..."
+												aria-invalid={
+													fieldState.invalid
+												}
+											/>
+										)}
+										{fieldState.invalid && (
+											<FieldError
+												errors={[fieldState.error]}
+											/>
+										)}
+									</Field>
+								)}
+							/>
+						</div>
 
-						{/* Shoot Type */}
-						<Controller
-							name={`shoots.${shootIndex}.shootType`}
-							control={form.control}
-							render={({ field, fieldState }) => (
-								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>
-										Shoot Type
-									</FieldLabel>
-									<Select
-										onValueChange={field.onChange}
-										value={field.value}
-									>
-										<SelectTrigger
-											id={field.name}
-											aria-invalid={fieldState.invalid}
-										>
-											<SelectValue placeholder="Select type" />
-										</SelectTrigger>
-										<SelectContent>
-											{SHOOT_TYPE_OPTIONS.map((type) => (
-												<SelectItem
-													key={type.value}
-													value={type.value}
-												>
-													{type.label}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-									{fieldState.invalid && (
-										<FieldError
-											errors={[fieldState.error]}
-										/>
-									)}
-								</Field>
-							)}
-						/>
-
-						{/* Shoot Date */}
+						{/* Date - 1 column */}
 						<Controller
 							name={`shoots.${shootIndex}.shootDate`}
 							control={form.control}
@@ -295,10 +383,10 @@ function ShootCard({
 									<FieldLabel htmlFor={field.name}>
 										Date
 									</FieldLabel>
-									<Input
-										{...field}
+									<DatePicker
+										value={field.value}
+										onValueChange={field.onChange}
 										id={field.name}
-										type="date"
 										aria-invalid={fieldState.invalid}
 									/>
 									{fieldState.invalid && (
@@ -309,97 +397,20 @@ function ShootCard({
 								</Field>
 							)}
 						/>
-					</div>
 
-					{/* Time and Location */}
-					<div className="grid gap-4 md:grid-cols-4">
-						{/* Start Time */}
+						{/* Start Time - 1 column */}
 						<Controller
 							name={`shoots.${shootIndex}.startTime`}
 							control={form.control}
 							render={({ field, fieldState }) => (
 								<Field data-invalid={fieldState.invalid}>
 									<FieldLabel htmlFor={field.name}>
-										<ClockIcon className="h-3.5 w-3.5 inline mr-1" />
 										Start Time
 									</FieldLabel>
-									<Input
-										{...field}
+									<TimePicker
+										value={field.value}
+										onValueChange={field.onChange}
 										id={field.name}
-										type="time"
-										aria-invalid={fieldState.invalid}
-									/>
-									{fieldState.invalid && (
-										<FieldError
-											errors={[fieldState.error]}
-										/>
-									)}
-								</Field>
-							)}
-						/>
-
-						{/* End Time */}
-						<Controller
-							name={`shoots.${shootIndex}.endTime`}
-							control={form.control}
-							render={({ field, fieldState }) => (
-								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>
-										End Time
-									</FieldLabel>
-									<Input
-										{...field}
-										id={field.name}
-										type="time"
-										aria-invalid={fieldState.invalid}
-									/>
-									{fieldState.invalid && (
-										<FieldError
-											errors={[fieldState.error]}
-										/>
-									)}
-								</Field>
-							)}
-						/>
-
-						{/* Venue */}
-						<Controller
-							name={`shoots.${shootIndex}.venue`}
-							control={form.control}
-							render={({ field, fieldState }) => (
-								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>
-										<MapPinIcon className="h-3.5 w-3.5 inline mr-1" />
-										Venue
-									</FieldLabel>
-									<Input
-										{...field}
-										id={field.name}
-										placeholder="e.g. Grand Ballroom"
-										aria-invalid={fieldState.invalid}
-									/>
-									{fieldState.invalid && (
-										<FieldError
-											errors={[fieldState.error]}
-										/>
-									)}
-								</Field>
-							)}
-						/>
-
-						{/* Venue Address */}
-						<Controller
-							name={`shoots.${shootIndex}.venueAddress`}
-							control={form.control}
-							render={({ field, fieldState }) => (
-								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>
-										Address
-									</FieldLabel>
-									<Input
-										{...field}
-										id={field.name}
-										placeholder="Full address"
 										aria-invalid={fieldState.invalid}
 									/>
 									{fieldState.invalid && (
@@ -412,20 +423,21 @@ function ShootCard({
 						/>
 					</div>
 
-					{/* Notes */}
+					{/* Row 3: Location (single textarea) */}
 					<Controller
-						name={`shoots.${shootIndex}.notes`}
+						name={`shoots.${shootIndex}.location`}
 						control={form.control}
 						render={({ field, fieldState }) => (
 							<Field data-invalid={fieldState.invalid}>
 								<FieldLabel htmlFor={field.name}>
-									Notes
+									Location
 								</FieldLabel>
 								<Textarea
 									{...field}
 									id={field.name}
-									placeholder="Any special instructions for this shoot"
+									placeholder="e.g. Grand Ballroom, Hotel Taj, 123 Main Street, Mumbai"
 									rows={2}
+									maxLength={500}
 									aria-invalid={fieldState.invalid}
 								/>
 								{fieldState.invalid && (
@@ -434,288 +446,192 @@ function ShootCard({
 							</Field>
 						)}
 					/>
-				</FieldGroup>
 
-				<Separator />
-
-				{/* Crew Assignments */}
-				<div>
-					<div className="flex items-center justify-between mb-4">
-						<div className="flex items-center gap-2">
-							<UsersIcon className="h-4 w-4 text-muted-foreground" />
-							<h4 className="text-sm font-medium">
-								Crew Assignments
-							</h4>
-							{crewAssignments.length > 0 && (
-								<Badge variant="secondary" className="ml-2">
-									{crewAssignments.length} assigned
-								</Badge>
-							)}
-						</div>
-						<Button
-							type="button"
-							variant="outline"
-							size="sm"
-							onClick={() =>
-								appendCrewAssignment({
-									crewId: "",
-									role: "",
-									isLead: false,
-								})
-							}
-						>
-							<PlusIcon className="mr-2 h-4 w-4" />
-							Assign Crew
-						</Button>
-					</div>
-
-					{crewAssignments.length === 0 ? (
-						<p className="text-sm text-muted-foreground text-center py-4 border border-dashed rounded-lg">
-							No crew assigned yet. Click "Assign Crew" to add
-							team members.
-						</p>
-					) : (
-						<FieldGroup className="gap-3">
-							{crewAssignments.map(
-								(assignment, assignmentIndex) => (
-									<div
-										key={assignment.id}
-										className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg"
-									>
-										{/* Crew Member */}
-										<div className="flex-1">
-											<Controller
-												name={`shoots.${shootIndex}.crewAssignments.${assignmentIndex}.crewId`}
-												control={form.control}
-												render={({
-													field,
-													fieldState,
-												}) => (
-													<Field
-														data-invalid={
-															fieldState.invalid
-														}
-													>
-														<FieldLabel
-															htmlFor={field.name}
-															className="text-xs"
-														>
-															Crew Member
-														</FieldLabel>
-														<Select
-															onValueChange={
-																field.onChange
-															}
-															value={field.value}
-														>
-															<SelectTrigger
-																id={field.name}
-																aria-invalid={
-																	fieldState.invalid
-																}
-															>
-																<SelectValue placeholder="Select crew" />
-															</SelectTrigger>
-															<SelectContent>
-																{crews.length >
-																0 ? (
-																	crews.map(
-																		(
-																			crew,
-																		) => (
-																			<SelectItem
-																				key={
-																					crew.id
-																				}
-																				value={
-																					crew.id
-																				}
-																			>
-																				<div className="flex flex-col">
-																					<span>
-																						{
-																							crew.name
-																						}
-																					</span>
-																					<span className="text-xs text-muted-foreground">
-																						{
-																							crew.role
-																						}
-																					</span>
-																				</div>
-																			</SelectItem>
-																		),
-																	)
-																) : (
-																	<div className="p-2 text-sm text-muted-foreground text-center">
-																		No crew
-																		members
-																		found
-																	</div>
-																)}
-															</SelectContent>
-														</Select>
-														{fieldState.invalid && (
-															<FieldError
-																errors={[
-																	fieldState.error,
-																]}
-															/>
-														)}
-													</Field>
-												)}
-											/>
-										</div>
-
-										{/* Role */}
-										<div className="flex-1">
-											<Controller
-												name={`shoots.${shootIndex}.crewAssignments.${assignmentIndex}.role`}
-												control={form.control}
-												render={({
-													field,
-													fieldState,
-												}) => (
-													<Field
-														data-invalid={
-															fieldState.invalid
-														}
-													>
-														<FieldLabel
-															htmlFor={field.name}
-															className="text-xs"
-														>
-															Role
-														</FieldLabel>
-														<Select
-															onValueChange={
-																field.onChange
-															}
-															value={field.value}
-														>
-															<SelectTrigger
-																id={field.name}
-																aria-invalid={
-																	fieldState.invalid
-																}
-															>
-																<SelectValue placeholder="Select role" />
-															</SelectTrigger>
-															<SelectContent>
-																{crewRoles.length >
-																0 ? (
-																	crewRoles.map(
-																		(
-																			role,
-																		) => (
-																			<SelectItem
-																				key={
-																					role.id
-																				}
-																				value={
-																					role.key
-																				}
-																			>
-																				{
-																					role.label
-																				}
-																			</SelectItem>
-																		),
-																	)
-																) : (
-																	<>
-																		<SelectItem value="lead_photographer">
-																			Lead
-																			Photographer
-																		</SelectItem>
-																		<SelectItem value="photographer">
-																			Photographer
-																		</SelectItem>
-																		<SelectItem value="lead_videographer">
-																			Lead
-																			Videographer
-																		</SelectItem>
-																		<SelectItem value="videographer">
-																			Videographer
-																		</SelectItem>
-																		<SelectItem value="drone_operator">
-																			Drone
-																			Operator
-																		</SelectItem>
-																		<SelectItem value="assistant">
-																			Assistant
-																		</SelectItem>
-																	</>
-																)}
-															</SelectContent>
-														</Select>
-														{fieldState.invalid && (
-															<FieldError
-																errors={[
-																	fieldState.error,
-																]}
-															/>
-														)}
-													</Field>
-												)}
-											/>
-										</div>
-
-										{/* Is Lead Toggle */}
-										<div className="flex items-end pb-2">
-											<Controller
-												name={`shoots.${shootIndex}.crewAssignments.${assignmentIndex}.isLead`}
-												control={form.control}
-												render={({ field }) => (
-													<Button
-														type="button"
-														variant={
-															field.value
-																? "default"
-																: "outline"
-														}
-														size="sm"
-														onClick={() =>
-															field.onChange(
-																!field.value,
-															)
-														}
-														className="h-9"
-													>
-														{field.value
-															? "Lead"
-															: "Set Lead"}
-													</Button>
-												)}
-											/>
-										</div>
-
-										{/* Remove - 44px touch target (WCAG 2.5.5) */}
-										<div className="flex items-end pb-2">
+					{/* Row 4: Collapsible Notes */}
+					{(showNotes || notesValue) && (
+						<Controller
+							name={`shoots.${shootIndex}.notes`}
+							control={form.control}
+							render={({ field, fieldState }) => (
+								<Field data-invalid={fieldState.invalid}>
+									<div className="flex items-center justify-between">
+										<FieldLabel htmlFor={field.name}>
+											Notes
+										</FieldLabel>
+										{/* Hide button - only when expanded manually and empty */}
+										{showNotes && !notesValue && (
 											<Button
 												type="button"
 												variant="ghost"
-												size="icon"
-												className="min-h-11 min-w-11 text-destructive hover:text-destructive hover:bg-destructive/10"
+												size="sm"
+												className="h-auto py-0 px-1 text-muted-foreground"
 												onClick={() =>
-													removeCrewAssignment(
-														assignmentIndex,
-													)
+													setShowNotes(false)
 												}
 											>
-												<TrashIcon className="h-4 w-4" />
-												<span className="sr-only">
-													Remove crew assignment
-												</span>
+												<ChevronUpIcon className="mr-1 h-3.5 w-3.5" />
+												Hide
 											</Button>
-										</div>
+										)}
+									</div>
+									<Textarea
+										{...field}
+										id={field.name}
+										placeholder="Any special instructions for this shoot"
+										rows={2}
+										aria-invalid={fieldState.invalid}
+									/>
+									{fieldState.invalid && (
+										<FieldError
+											errors={[fieldState.error]}
+										/>
+									)}
+								</Field>
+							)}
+						/>
+					)}
+
+					{/* Add Notes button (when notes hidden) */}
+					{!showNotes && !notesValue && (
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							className="w-fit text-muted-foreground"
+							onClick={() => setShowNotes(true)}
+						>
+							<ChevronDownIcon className="mr-1.5 h-3.5 w-3.5" />
+							Add notes
+						</Button>
+					)}
+				</FieldGroup>
+
+				{/* Crew Assignments - Table layout matching Clients pattern */}
+				<Field>
+					<FieldLabel>Crew Assignments</FieldLabel>
+					{crewAssignmentFields.length === 0 ? (
+						<div className="flex items-center gap-3 py-6 px-4 border border-dashed rounded-lg">
+							<UsersIcon className="h-8 w-8 text-muted-foreground/50 shrink-0" />
+							<div className="text-left">
+								<p className="text-sm text-muted-foreground">
+									No crew assigned yet
+								</p>
+								<Button
+									type="button"
+									variant="link"
+									size="sm"
+									className="h-auto p-0"
+									onClick={addCrewAssignment}
+								>
+									Add first crew member
+								</Button>
+							</div>
+						</div>
+					) : (
+						<div className="overflow-hidden rounded-lg border bg-muted/10">
+							{/* Column Headers */}
+							<div className="grid grid-cols-[2fr_1fr_2.25rem] gap-2 border-b px-3 py-2 text-sm font-medium text-muted-foreground">
+								<div>Crew</div>
+								<div>Rate</div>
+								<div aria-hidden />
+							</div>
+
+							{/* Data Rows */}
+							{crewAssignmentFields.map(
+								(assignmentField, assignmentIndex) => (
+									<div
+										key={assignmentField.id}
+										className={`grid grid-cols-[2fr_1fr_2.25rem] items-start gap-2 px-3 py-3 ${assignmentIndex > 0 ? "border-t" : ""}`}
+									>
+										{/* Crew Combobox */}
+										<Controller
+											name={`shoots.${shootIndex}.crewAssignments.${assignmentIndex}.crewId`}
+											control={form.control}
+											render={({
+												field,
+												fieldState,
+											}) => (
+												<Combobox
+													value={field.value ?? ""}
+													onValueChange={(value) =>
+														handleCrewSelect(
+															assignmentIndex,
+															value,
+														)
+													}
+													options={getAvailableCrews(
+														field.value,
+													)}
+													placeholder="Select crew..."
+													searchPlaceholder="Search crew..."
+													emptyText="No crew found"
+													aria-invalid={
+														fieldState.invalid
+													}
+												/>
+											)}
+										/>
+
+										{/* Rate Input */}
+										<Controller
+											name={`shoots.${shootIndex}.crewAssignments.${assignmentIndex}.rate`}
+											control={form.control}
+											render={({ field, fieldState }) => (
+												<Input
+													type="number"
+													step="0.01"
+													value={field.value ?? ""}
+													onChange={(e) =>
+														field.onChange(
+															e.target.value,
+														)
+													}
+													placeholder="Rate"
+													aria-invalid={
+														fieldState.invalid
+													}
+												/>
+											)}
+										/>
+
+										{/* Remove Button */}
+										<Button
+											type="button"
+											variant="ghost"
+											size="icon"
+											className="min-h-9 min-w-9 self-center text-destructive hover:text-destructive hover:bg-destructive/10"
+											onClick={() =>
+												removeCrewAssignment(
+													assignmentIndex,
+												)
+											}
+										>
+											<TrashIcon className="h-4 w-4" />
+											<span className="sr-only">
+												Remove crew
+											</span>
+										</Button>
 									</div>
 								),
 							)}
-						</FieldGroup>
+
+							{/* Add Button Footer */}
+							<div className="px-3 pb-2 pt-1">
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									className="w-full justify-center border-dashed"
+									onClick={addCrewAssignment}
+								>
+									<PlusIcon className="mr-2 h-4 w-4" />
+									Add another crew member
+								</Button>
+							</div>
+						</div>
 					)}
-				</div>
-			</CardContent>
-		</Card>
+				</Field>
+			</div>
+		</div>
 	);
 }

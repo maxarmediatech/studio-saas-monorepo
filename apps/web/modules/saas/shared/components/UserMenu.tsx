@@ -16,6 +16,7 @@ import {
 	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
 } from "@repo/ui/components/dropdown-menu";
+import { cn } from "@repo/ui/lib/utils";
 import { useSession } from "@saas/auth/hooks/use-session";
 import { UserAvatar } from "@shared/components/UserAvatar";
 import {
@@ -32,7 +33,15 @@ import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
 import { useState } from "react";
 
-export function UserMenu({ showUserName }: { showUserName?: boolean }) {
+export function UserMenu({
+	showUserName,
+	triggerClassName,
+	avatarClassName,
+}: {
+	showUserName?: boolean;
+	triggerClassName?: string;
+	avatarClassName?: string;
+}) {
 	const t = useTranslations();
 	const { user } = useSession();
 	const { setTheme: setCurrentTheme, theme: currentTheme } = useTheme();
@@ -80,12 +89,16 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 			<DropdownMenuTrigger asChild>
 				<button
 					type="button"
-					className="cursor-pointer"
+					className={cn("cursor-pointer", triggerClassName)}
 					// className="flex cursor-pointer w-full items-center justify-between gap-2 rounded-lg outline-hidden focus-visible:ring-2 focus-visible:ring-primary md:w-[100%+1rem] md:px-2 md:py-1.5 md:hover:bg-primary/5"
 					aria-label="User menu"
 				>
 					<span className="flex items-center gap-2">
-						<UserAvatar name={name ?? ""} avatarUrl={image} />
+						<UserAvatar
+							name={name ?? ""}
+							avatarUrl={image}
+							className={avatarClassName}
+						/>
 						{showUserName && (
 							<span className="text-left leading-tight">
 								<span className="font-medium text-sm">

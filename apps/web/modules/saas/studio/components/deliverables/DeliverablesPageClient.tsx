@@ -19,11 +19,8 @@ import {
 	type RowAction,
 } from "@saas/shared/components/data-table";
 import { useDeliverableParams } from "@saas/studio/hooks/params/use-deliverable-params";
-import {
-	deliverablesApi,
-	deliverablesMutations,
-	studioQueryKeys,
-} from "@saas/studio/lib/api";
+import { deliverablesApi, deliverablesMutations } from "@saas/studio/lib/api";
+import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
@@ -39,23 +36,6 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { OpenDeliverableCreateSheet } from "./OpenDeliverableSheet";
-
-const DELIVERABLE_TYPE_LABELS: Record<string, string> = {
-	wedding_album: "Wedding Album",
-	pre_wedding_album: "Pre-Wedding Album",
-	photo_album: "Photo Album",
-	highlight_video: "Highlight Video",
-	full_video: "Full Video",
-	teaser: "Teaser",
-	reel: "Reel",
-	edited_photos: "Edited Photos",
-	raw_photos: "Raw Photos",
-	raw_videos: "Raw Videos",
-	drone_footage: "Drone Footage",
-	frame: "Frame",
-	canvas: "Canvas",
-	other: "Other",
-};
 
 function formatDate(dateString: string | null): string {
 	if (!dateString) {
@@ -141,7 +121,10 @@ export function DeliverablesPageClient({
 			setDeleteDialogOpen(false);
 			setDeliverableToDelete(null);
 			queryClient.invalidateQueries({
-				queryKey: studioQueryKeys.deliverables.all,
+				queryKey: orpc.deliverables.key(),
+			});
+			queryClient.invalidateQueries({
+				queryKey: orpc.activities.key(),
 			});
 		},
 		onError: (error) => {
@@ -213,11 +196,11 @@ export function DeliverablesPageClient({
 						</div>
 						<div>
 							<p className="font-medium">{row.original.name}</p>
-							<p className="text-sm text-muted-foreground">
-								{DELIVERABLE_TYPE_LABELS[
-									row.original.deliverableType
-								] ?? row.original.deliverableType}
-							</p>
+							{row.original.description && (
+								<p className="text-sm text-muted-foreground line-clamp-1">
+									{row.original.description}
+								</p>
+							)}
 						</div>
 					</div>
 				),
@@ -234,17 +217,6 @@ export function DeliverablesPageClient({
 							{row.original.bookingReferenceNumber}
 						</p>
 					</div>
-				),
-			},
-			{
-				accessorKey: "deliverableType",
-				header: "Type",
-				cell: ({ row }) => (
-					<Badge variant="outline">
-						{DELIVERABLE_TYPE_LABELS[
-							row.original.deliverableType
-						] ?? row.original.deliverableType}
-					</Badge>
 				),
 			},
 			{

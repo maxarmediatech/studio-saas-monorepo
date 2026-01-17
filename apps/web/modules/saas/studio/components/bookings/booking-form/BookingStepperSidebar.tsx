@@ -33,8 +33,9 @@ interface BookingStepperSidebarProps {
 	// Draft state
 	isSaving?: boolean;
 	lastSavedAt?: number | null;
-	// Action button props
-	onSubmit?: () => void;
+	// Primary action button props
+	primaryActionLabel?: string;
+	onPrimaryAction?: () => void;
 	onReset?: () => void;
 	isSubmitting?: boolean;
 }
@@ -53,7 +54,8 @@ export function BookingStepperSidebar({
 	className,
 	isSaving = false,
 	lastSavedAt,
-	onSubmit,
+	primaryActionLabel,
+	onPrimaryAction,
 	onReset,
 	isSubmitting = false,
 }: BookingStepperSidebarProps) {
@@ -130,13 +132,13 @@ export function BookingStepperSidebar({
 			</nav>
 
 			{/* Action Buttons - directly below steps */}
-			{(onSubmit || onReset) && (
+			{(onPrimaryAction || onReset) && (
 				<div className="mt-6 space-y-2">
-					{onSubmit && (
+					{onPrimaryAction && (
 						<Button
 							type="button"
 							className="w-full"
-							onClick={onSubmit}
+							onClick={onPrimaryAction}
 							disabled={isSubmitting}
 						>
 							{isSubmitting ? (
@@ -145,7 +147,7 @@ export function BookingStepperSidebar({
 									Submitting...
 								</>
 							) : (
-								"Submit"
+								primaryActionLabel ?? "Submit"
 							)}
 						</Button>
 					)}

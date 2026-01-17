@@ -3,21 +3,24 @@
 import { Button } from "@repo/ui/components/button";
 import { UserMenu } from "@saas/shared/components/UserMenu";
 import { Logo } from "@shared/components/Logo";
-import { Menu } from "lucide-react";
+import { Menu, SearchIcon } from "lucide-react";
 import Link from "next/link";
 import type { HeaderCapabilities } from "../lib/capability.server";
+import { NotificationBell } from "./notifications";
 import { NewActionSwitcher } from "./navigation/new-action-switcher";
 
 interface SiteHeaderProps {
 	studioSlug: string;
 	caps: HeaderCapabilities;
 	onMobileMenuClick?: () => void;
+	onSearchOpen?: () => void;
 }
 
 export function SiteHeader({
 	studioSlug,
 	caps,
 	onMobileMenuClick,
+	onSearchOpen,
 }: SiteHeaderProps) {
 	const homePath = `/app/${studioSlug}/home`;
 
@@ -42,6 +45,16 @@ export function SiteHeader({
 
 				{/* Right side actions - mobile only */}
 				<div className="flex items-center gap-2">
+					<Button
+						variant="ghost"
+						size="icon"
+						onClick={onSearchOpen}
+						className="size-9"
+						aria-label="Search"
+					>
+						<SearchIcon className="size-5" />
+					</Button>
+					<NotificationBell />
 					<NewActionSwitcher studioSlug={studioSlug} caps={caps} />
 					<UserMenu />
 				</div>

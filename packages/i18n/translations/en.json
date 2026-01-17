@@ -445,6 +445,9 @@
 			"title": "Studio",
 			"dangerZone": {
 				"title": "Danger zone"
+			},
+			"general": {
+				"title": "General"
 			}
 		},
 		"start": {
@@ -501,6 +504,9 @@
 	},
 	"settings": {
 		"account": {
+			"profile": {
+				"title": "Profile"
+			},
 			"avatar": {
 				"description": "To change your avatar click the picture in this block and select a file from your computer to upload.",
 				"notifications": {

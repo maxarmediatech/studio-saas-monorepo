@@ -1,4 +1,5 @@
 import {
+	DeleteObjectCommand,
 	GetObjectCommand,
 	PutObjectCommand,
 	S3Client,
@@ -6,6 +7,8 @@ import {
 import { getSignedUrl as getS3SignedUrl } from "@aws-sdk/s3-request-presigner";
 import { logger } from "@repo/logs";
 import type {
+	DeleteObjectHandler,
+	GetObjectHandler,
 	GetSignedUploadUrlHandler,
 	GetSignedUrlHander,
 } from "../../types";
@@ -49,7 +52,7 @@ const getS3Client = () => {
 
 export const getSignedUploadUrl: GetSignedUploadUrlHandler = async (
 	path,
-	{ bucket },
+	{ bucket, contentType, expiresIn = 60 },
 ) => {
 	const s3Client = getS3Client();
 	try {
@@ -58,10 +61,10 @@ export const getSignedUploadUrl: GetSignedUploadUrlHandler = async (
 			new PutObjectCommand({
 				Bucket: bucket,
 				Key: path,
-				ContentType: "image/jpeg",
+				ContentType: contentType || "application/octet-stream",
 			}),
 			{
-				expiresIn: 60,
+				expiresIn,
 			},
 		);
 	} catch (e) {
@@ -85,5 +88,55 @@ export const getSignedUrl: GetSignedUrlHander = async (
 	} catch (e) {
 		logger.error(e);
 		throw new Error("Could not get signed url");
+	}
+};
+
+export const deleteObject: DeleteObjectHandler = async (path, { bucket }) => {
+	const s3Client = getS3Client();
+	try {
+		await s3Client.send(
+			new DeleteObjectCommand({
+				Bucket: bucket,
+				Key: path,
+			}),
+		);
+	} catch (e) {
+		logger.error(e);
+		throw new Error("Could not delete object");
+	}
+};
+
+export const getObject: GetObjectHandler = async (path, { bucket }) => {
+	const s3Client = getS3Client();
+	try {
+		const response = await s3Client.send(
+			new GetObjectCommand({
+				Bucket: bucket,
+				Key: path,
+			}),
+		);
+
+		if (!response.Body) {
+			return null;
+		}
+
+		// Convert SDK stream to web ReadableStream
+		const webStream = response.Body.transformToWebStream();
+
+		return {
+			body: webStream,
+			contentType: response.ContentType,
+			contentLength: response.ContentLength,
+		};
+	} catch (e) {
+		// Check if it's a "not found" error
+		if (
+			e instanceof Error &&
+			(e.name === "NoSuchKey" || e.name === "NotFound")
+		) {
+			return null;
+		}
+		logger.error(e);
+		throw new Error("Could not get object");
 	}
 };

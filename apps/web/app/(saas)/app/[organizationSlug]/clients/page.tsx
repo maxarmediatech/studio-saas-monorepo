@@ -1,7 +1,8 @@
 import { getActiveOrganization } from "@saas/auth/lib/server";
-import { PageContent } from "@saas/studio";
-import { ClientsTable } from "@saas/studio/components/clients";
+import { ClientsFilters, ClientsTableSkeleton } from "@saas/studio";
+import { ClientsTable } from "@saas/studio/components/clients/index.server";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
 type Props = {
 	params: Promise<{ organizationSlug: string }>;
@@ -27,8 +28,15 @@ export default async function ClientsPage({ params, searchParams }: Props) {
 	}
 
 	return (
-		<PageContent title="Clients">
-			<ClientsTable searchParams={searchParams} />
-		</PageContent>
+		<div className="space-y-4">
+			<ClientsFilters />
+
+			<Suspense fallback={<ClientsTableSkeleton />}>
+				<ClientsTable
+					organizationSlug={organizationSlug}
+					searchParams={searchParams}
+				/>
+			</Suspense>
+		</div>
 	);
 }

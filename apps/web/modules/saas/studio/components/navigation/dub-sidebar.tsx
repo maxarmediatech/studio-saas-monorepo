@@ -3,6 +3,7 @@
 import { TooltipProvider } from "@repo/ui/components/tooltip";
 import { cn } from "@repo/ui/lib/utils";
 import type { CSSProperties, PropsWithChildren } from "react";
+import type { HeaderCapabilities } from "../../lib/capability.server";
 import type {
 	NavAreaConfig,
 	NavItemConfig,
@@ -22,14 +23,15 @@ interface DubSidebarProps {
 	studioSlug: string;
 	studioName: string;
 	studioLogo?: string | null;
+	organizationId: string;
 	railIcons: RailIconConfig[];
 	activeModule: NavModuleConfig | null;
 	activeModuleId: string;
 	utilities: NavItemConfig[];
 	currentArea: string; // "default" | "studioSettings"
 	areas: Record<string, NavAreaConfig>;
-	userName: string;
-	userImage?: string | null;
+	caps: HeaderCapabilities;
+	onSearchOpen?: () => void;
 }
 
 /**
@@ -69,14 +71,15 @@ export function DubSidebar({
 	studioSlug,
 	studioName,
 	studioLogo,
+	organizationId,
 	railIcons,
 	activeModule,
 	activeModuleId,
 	utilities,
 	currentArea,
 	areas,
-	userName,
-	userImage,
+	caps,
+	onSearchOpen,
 }: DubSidebarProps) {
 	const { isPanelOpen } = useSidebar();
 
@@ -104,13 +107,10 @@ export function DubSidebar({
 				<nav className="grid size-full grid-cols-[var(--sidebar-rail-width)_1fr]">
 					<SidebarRail
 						studioSlug={studioSlug}
-						studioName={studioName}
-						studioLogo={studioLogo}
 						railIcons={railIcons}
 						activeModuleId={activeModuleId}
 						currentArea={currentArea}
-						userName={userName}
-						userImage={userImage}
+						onSearchOpen={onSearchOpen}
 					/>
 					<div
 						className={cn(
@@ -127,6 +127,11 @@ export function DubSidebar({
 								<SidebarPanel
 									module={activeModule}
 									utilities={utilities}
+									studioSlug={studioSlug}
+									studioName={studioName}
+									studioLogo={studioLogo}
+									organizationId={organizationId}
+									caps={caps}
 								/>
 							)}
 						</Area>

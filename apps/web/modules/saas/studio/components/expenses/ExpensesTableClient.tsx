@@ -21,32 +21,29 @@ import {
 	DataTable,
 	DataTableColumnHeader,
 	DataTableRowActions,
-	DataTableToolbar,
 	DataTableViewOptions,
 	type RowAction,
 	SortProvider,
 } from "@saas/shared/components/data-table";
 // Import types for column meta augmentation
 import "@saas/shared/components/data-table/types";
+import { formatMoney } from "@saas/shared/lib";
 import { useExpenseParams } from "@saas/studio/hooks/params/use-expense-params";
 import { useExpensesTable } from "@saas/studio/hooks/tables";
 import {
 	expensesApi,
 	expensesMutations,
-	studioQueryKeys,
 } from "@saas/studio/lib/api";
+import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
 	CalendarIcon,
-	CreditCardIcon,
 	Loader2Icon,
 	PencilIcon,
 	ReceiptIcon,
-	StoreIcon,
 	TagIcon,
 	TrashIcon,
-	UserIcon,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -78,29 +75,6 @@ const PAYMENT_METHOD_VARIANTS: Record<
 	other: "outline",
 };
 
-const paymentMethodOptions = [
-	{ value: "cash", label: "Cash" },
-	{ value: "upi", label: "UPI" },
-	{ value: "bank_transfer", label: "Bank Transfer" },
-	{ value: "cheque", label: "Cheque" },
-	{ value: "card", label: "Card" },
-	{ value: "other", label: "Other" },
-];
-
-const billToOptions = [
-	{ value: "studio", label: "Studio" },
-	{ value: "client", label: "Client" },
-];
-
-const formatMoney = (value: string) => {
-	const num = Number.parseFloat(value);
-	return new Intl.NumberFormat("en-IN", {
-		style: "currency",
-		currency: "INR",
-		minimumFractionDigits: 0,
-	}).format(num);
-};
-
 const formatDate = (dateStr: string) => {
 	return new Date(dateStr).toLocaleDateString("en-IN", {
 		day: "numeric",
@@ -120,11 +94,9 @@ export function ExpensesTableClient({
 		pagination,
 		sorting,
 		sortingState,
-		setFilter,
-		resetFilters,
-		isFiltered,
 		onSortingChange,
 		onPaginationChange,
+		onLimitChange,
 	} = useExpensesTable();
 
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -169,7 +141,10 @@ export function ExpensesTableClient({
 			setDeleteDialogOpen(false);
 			setExpenseToDelete(null);
 			queryClient.invalidateQueries({
-				queryKey: studioQueryKeys.expenses.all,
+				queryKey: orpc.expenses.key(),
+			});
+			queryClient.invalidateQueries({
+				queryKey: orpc.activities.key(),
 			});
 		},
 		onError: (error) => {
@@ -217,32 +192,19 @@ export function ExpensesTableClient({
 					/>
 				),
 				cell: ({ row }) => (
-					<div className="flex items-center gap-3">
-						<div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
-							<ReceiptIcon className="h-4 w-4 text-muted-foreground" />
-						</div>
-						<div>
-							<p className="font-medium">
-								{row.original.description}
-							</p>
-							{row.original.vendor && (
-								<p className="text-xs text-muted-foreground flex items-center gap-1">
-									<StoreIcon className="h-3 w-3" />
-									{row.original.vendor}
-								</p>
-							)}
-						</div>
-					</div>
+					<span className="font-medium text-foreground">
+						{row.original.description}
+					</span>
 				),
 				meta: {
 					label: "Description",
-					width: 260,
-					minWidth: 260,
+					width: 240,
+					minWidth: 200,
 					// Last left-sticky column - add right border
 					headerClassName:
-						"!border-r-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-border",
+						"!border-r-0 bg-gray-100 z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[0.5px] before:bg-table-border-subtle after:absolute after:right-0 after:top-0 after:bottom-0 after:w-[0.5px] after:bg-table-border-subtle",
 					cellClassName:
-						"!border-r-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-border",
+						"!border-r-0 bg-table-surface group-hover:bg-table-row-selected group-data-[state=selected]:bg-table-row-selected z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[0.5px] before:bg-table-border-subtle after:absolute after:right-0 after:top-0 after:bottom-0 after:w-[0.5px] after:bg-table-border-subtle",
 				},
 				enableSorting: false,
 				enableHiding: false,
@@ -296,16 +258,15 @@ export function ExpensesTableClient({
 					<DataTableColumnHeader column={column} title="Date" />
 				),
 				cell: ({ row }) => (
-					<div className="flex items-center gap-2">
-						<CalendarIcon className="h-4 w-4 text-muted-foreground" />
-						<span>{formatDate(row.original.expenseDate)}</span>
-					</div>
+					<span className="text-muted-foreground">
+						{formatDate(row.original.expenseDate)}
+					</span>
 				),
 				meta: {
 					label: "Date",
 					icon: CalendarIcon,
-					width: 130,
-					minWidth: 130,
+					width: 140,
+					minWidth: 120,
 				},
 				enableSorting: true,
 				enableHiding: true,
@@ -329,9 +290,6 @@ export function ExpensesTableClient({
 				),
 				meta: {
 					label: "Bill To",
-					variant: "multiSelect" as const,
-					icon: UserIcon,
-					options: billToOptions,
 					width: 100,
 					minWidth: 100,
 				},
@@ -360,9 +318,6 @@ export function ExpensesTableClient({
 					),
 				meta: {
 					label: "Payment",
-					variant: "multiSelect" as const,
-					icon: CreditCardIcon,
-					options: paymentMethodOptions,
 					width: 140,
 					minWidth: 140,
 				},
@@ -381,13 +336,13 @@ export function ExpensesTableClient({
 				enableSorting: false,
 				enableHiding: false,
 				meta: {
-					width: 56,
-					minWidth: 56,
+					width: 48,
+					minWidth: 48,
 					// First right-sticky column - add left border + fade
 					headerClassName:
-						"!px-0 md:sticky md:right-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border after:absolute after:left-[-24px] after:top-0 after:bottom-0 after:w-6 after:bg-gradient-to-r after:from-transparent after:to-background",
+						"!px-0 md:sticky md:right-0 bg-gray-100 z-10",
 					cellClassName:
-						"!px-0 md:sticky md:right-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border after:absolute after:left-[-24px] after:top-0 after:bottom-0 after:w-6 after:bg-gradient-to-r after:from-transparent after:to-background",
+						"!px-0 md:sticky md:right-0 bg-table-surface group-hover:bg-table-row-selected group-data-[state=selected]:bg-table-row-selected z-10",
 				},
 			},
 		],
@@ -396,92 +351,48 @@ export function ExpensesTableClient({
 
 	return (
 		<>
-			<div className="space-y-4">
-				{/* Toolbar with filters */}
-				<div className="flex items-center justify-between gap-4">
-					<DataTableToolbar
-						filters={[
-							{
-								id: "billTo",
-								label: "Bill To",
-								variant: "multiSelect",
-								options: billToOptions,
-								icon: UserIcon,
-							},
-							{
-								id: "paymentMethod",
-								label: "Payment",
-								variant: "multiSelect",
-								options: paymentMethodOptions,
-								icon: CreditCardIcon,
-							},
-						]}
-						filterValues={{
-							billTo: filters.billTo ?? [],
-							paymentMethod: filters.paymentMethod ?? [],
-						}}
-						onFilterChange={(id, value) => {
-							if (id === "billTo") {
-								setFilter("billTo", value as string[]);
-							} else if (id === "paymentMethod") {
-								setFilter("paymentMethod", value as string[]);
-							}
-						}}
-						onResetFilters={resetFilters}
-						isFiltered={isFiltered}
-						showSearch
-						searchValue={filters.search ?? ""}
-						searchPlaceholder="Search expenses..."
-						onSearchChange={(value) =>
-							setFilter("search", value || null)
-						}
-						className="flex-1"
-					/>
-					<OpenExpenseCreateSheet />
-				</div>
-
-				{/* Table with sort context */}
-				<SortProvider
-					sortColumn={sorting.sortBy}
-					sortDirection={sorting.sortDirection}
-				>
-					<DataTable
-						columns={columns}
-						data={expenses}
-						isLoading={isLoading}
-						isFetching={isFetching}
-						pagination={serverPagination}
-						onPaginationChange={onPaginationChange}
-						sorting={sortingState}
-						onSortingChange={onSortingChange}
-						enableRowSelection
-						getRowId={(row) => row.id}
-						// Sticky columns configuration
-						stickyLeftColumns={[
-							{ id: "select", width: 56 },
-							{ id: "description", width: 260 },
-						]}
-						stickyRightColumns={[{ id: "actions", width: 56 }]}
-						minWidth={1000}
-						// Place scroll controls in the last sticky left column
-						scrollControlsColumnId="description"
-						scrollStartColumn={2}
-						emptyState={
-							<div className="flex flex-col items-center gap-2">
-								<ReceiptIcon className="h-12 w-12 text-muted-foreground/50" />
-								<p className="text-muted-foreground">
-									No expenses found
-								</p>
-								<OpenExpenseCreateSheet
-									variant="outline"
-									size="sm"
-									label="Add your first expense"
-								/>
-							</div>
-						}
-					/>
-				</SortProvider>
-			</div>
+			{/* Table with sort context */}
+			<SortProvider
+				sortColumn={sorting.sortBy}
+				sortDirection={sorting.sortDirection}
+			>
+				<DataTable
+					columns={columns}
+					data={expenses}
+					isLoading={isLoading}
+					isFetching={isFetching}
+					pagination={serverPagination}
+					onPaginationChange={onPaginationChange}
+					onLimitChange={onLimitChange}
+					sorting={sortingState}
+					onSortingChange={onSortingChange}
+					enableRowSelection
+					getRowId={(row) => row.id}
+					// Sticky columns configuration
+					stickyLeftColumns={[
+						{ id: "select", width: 48 },
+						{ id: "description", width: 240 },
+					]}
+					stickyRightColumns={[{ id: "actions", width: 48 }]}
+					minWidth={950}
+					// Place scroll controls in the last sticky left column
+					scrollControlsColumnId="description"
+					scrollStartColumn={2}
+					emptyState={
+						<div className="flex flex-col items-center gap-2">
+							<ReceiptIcon className="h-12 w-12 text-muted-foreground/50" />
+							<p className="text-muted-foreground">
+								No expenses found
+							</p>
+							<OpenExpenseCreateSheet
+								variant="outline"
+								size="sm"
+								label="Add your first expense"
+							/>
+						</div>
+					}
+				/>
+			</SortProvider>
 
 			{/* Delete confirmation dialog */}
 			<AlertDialog

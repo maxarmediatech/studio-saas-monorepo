@@ -16,6 +16,7 @@ import { Input } from "@repo/ui/components/input";
 import { useAuthErrorMessages } from "@saas/auth/hooks/errors-messages";
 import { sessionQueryKey } from "@saas/auth/lib/api";
 import { OrganizationInvitationAlert } from "@saas/organizations/components/OrganizationInvitationAlert";
+import { setActiveOrganizationSlugCookie } from "@saas/organizations/lib/active-organization-cookie";
 import { useRouter } from "@shared/hooks/router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -82,11 +83,37 @@ export function LoginForm() {
 		? `/organization-invitation/${invitationId}`
 		: (redirectTo ?? config.auth.redirectAfterSignIn);
 
+	const resolveRedirectPath = async (path: string) => {
+		if (path !== "/app" && path !== "/app/") {
+			return path;
+		}
+
+		try {
+			const { data, error } = await authClient.organization.list();
+
+			if (error) {
+				throw error;
+			}
+
+			const organization = data?.[0];
+			if (!organization?.slug) {
+				return path;
+			}
+
+			setActiveOrganizationSlugCookie(organization.slug);
+			return `/app/${organization.slug}/home`;
+		} catch {
+			return path;
+		}
+	};
+
 	useEffect(() => {
 		if (sessionLoaded && user) {
-			router.replace(redirectPath);
+			void (async () => {
+				router.replace(await resolveRedirectPath(redirectPath));
+			})();
 		}
-	}, [user, sessionLoaded]);
+	}, [user, sessionLoaded, redirectPath, router]);
 
 	const onSubmit: SubmitHandler<FormValues> = async (values) => {
 		try {
@@ -113,7 +140,7 @@ export function LoginForm() {
 					queryKey: sessionQueryKey,
 				});
 
-				router.replace(redirectPath);
+				router.replace(await resolveRedirectPath(redirectPath));
 			} else {
 				const { error } = await authClient.signIn.magicLink({
 					...values,

@@ -21,6 +21,7 @@ import {
 	paymentMethodSchema,
 	paymentScheduleStatusSchema,
 	searchSchema,
+	uploadedAttachmentSchema,
 } from "./common";
 
 // ============================================================================
@@ -39,6 +40,7 @@ export const receivedAmountSchema = z.object({
 	transactionReference: z.string().nullable(),
 	receivedDate: z.string(),
 	notes: z.string().nullable(),
+	proofAttachment: uploadedAttachmentSchema.nullable(),
 	paymentScheduleId: idSchema.nullable(),
 	createdBy: idSchema.nullable(),
 	updatedBy: idSchema.nullable(),
@@ -120,7 +122,7 @@ export const listReceivedInputSchema = z
 		bookingId: idSchema.optional(),
 		paymentMethod: z
 			.union([paymentMethodSchema, z.array(paymentMethodSchema)])
-			.optional(),
+			.nullish(),
 		dateFrom: dateSchema.optional(),
 		dateTo: dateSchema.optional(),
 	})
@@ -183,6 +185,7 @@ export const createReceivedInputSchema = z.object({
 	transactionReference: z.string().max(100).optional(),
 	receivedDate: dateSchema,
 	notes: notesSchema,
+	proofAttachment: uploadedAttachmentSchema.nullable().optional(),
 	paymentScheduleId: idSchema.optional(),
 });
 
@@ -203,6 +206,7 @@ export const updateReceivedInputSchema = z.object({
 	transactionReference: z.string().max(100).optional().nullable(),
 	receivedDate: dateSchema.optional(),
 	notes: notesSchema.nullable(),
+	proofAttachment: uploadedAttachmentSchema.nullable().optional(),
 });
 
 export type UpdateReceivedInput = z.infer<typeof updateReceivedInputSchema>;
@@ -240,7 +244,9 @@ const scheduleSortFields = [
 export const listSchedulesInputSchema = z
 	.object({
 		bookingId: idSchema.optional(),
-		status: paymentScheduleStatusSchema.optional(),
+		status: z
+			.union([paymentScheduleStatusSchema, z.array(paymentScheduleStatusSchema)])
+			.nullish(),
 		dueDateFrom: dateSchema.optional(),
 		dueDateTo: dateSchema.optional(),
 	})

@@ -16,6 +16,7 @@
 		"@radix-ui/react-collapsible": "^1.1.12",
 		"@radix-ui/react-context-menu": "^2.2.16",
 		"@radix-ui/react-dialog": "^1.1.15",
+		"@radix-ui/react-direction": "^1.1.1",
 		"@radix-ui/react-dropdown-menu": "^2.1.16",
 		"@radix-ui/react-hover-card": "^1.1.15",
 		"@radix-ui/react-label": "^2.1.8",
@@ -70,6 +71,8 @@
 		"./postcss.config": "./postcss.config.mjs",
 		"./lib/*": "./src/lib/*.ts",
 		"./components/*": "./src/components/*.tsx",
-		"./hooks/*": "./src/hooks/*.ts"
+		"./components/global-search": "./src/components/global-search/index.ts",
+		"./hooks/*": "./src/hooks/*.ts",
+		"./lib/utils/*": "./src/lib/utils/*.ts"
 	}
 }

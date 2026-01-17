@@ -17,9 +17,14 @@ export default function BookingsLayout({ params, children }: Props) {
 	const pathname = usePathname();
 	const baseRoute = `/app/${organizationSlug}/bookings`;
 	const isNewBookingForm = pathname.startsWith(`${baseRoute}/new`);
+	// Check if this is a booking detail page (has a bookingId segment after /bookings/)
+	const isDetailPage =
+		pathname !== baseRoute &&
+		!isNewBookingForm &&
+		pathname.startsWith(`${baseRoute}/`);
 
-	// New booking form uses its own full-bleed layout
-	if (isNewBookingForm) {
+	// New booking form and detail pages use their own full-bleed layout
+	if (isNewBookingForm || isDetailPage) {
 		return <>{children}</>;
 	}
 

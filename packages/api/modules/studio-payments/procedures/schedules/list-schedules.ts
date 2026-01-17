@@ -8,6 +8,7 @@ import {
 	eq,
 	gte,
 	ilike,
+	inArray,
 	isNull,
 	paymentSchedules,
 	sql,
@@ -64,7 +65,11 @@ export const listSchedules = studioProtectedProcedure
 		}
 
 		if (status) {
-			conditions.push(eq(paymentSchedules.status, status));
+			if (Array.isArray(status) && status.length > 0) {
+				conditions.push(inArray(paymentSchedules.status, status));
+			} else if (!Array.isArray(status)) {
+				conditions.push(eq(paymentSchedules.status, status));
+			}
 		}
 
 		if (dueDateFrom) {

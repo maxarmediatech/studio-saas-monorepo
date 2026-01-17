@@ -119,6 +119,7 @@ export const configTypeEnum = pgEnum("config_type", [
 	"package_type",
 	"relation_type",
 	"expense_category",
+	"event_type",
 ]);
 
 // ----------------------------------------------------------------------------

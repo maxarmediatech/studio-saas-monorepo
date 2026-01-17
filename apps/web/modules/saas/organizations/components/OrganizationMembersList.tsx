@@ -23,8 +23,9 @@ import {
 	fullOrganizationQueryKey,
 	useFullOrganizationQuery,
 } from "@saas/organizations/lib/api";
-import { crewsApi, studioQueryKeys } from "@saas/studio/lib/api";
+import { crewsApi } from "@saas/studio/lib/api";
 import { UserAvatar } from "@shared/components/UserAvatar";
+import { orpc } from "@shared/lib/orpc-query-utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
 	ColumnDef,
@@ -91,7 +92,7 @@ export function OrganizationMembersList({
 	const handleAddToCrewSuccess = () => {
 		setAddToCrewDialogOpen(false);
 		setSelectedMemberForCrew(null);
-		queryClient.invalidateQueries({ queryKey: studioQueryKeys.crews.all });
+		queryClient.invalidateQueries({ queryKey: orpc.crews.key() });
 	};
 
 	const updateMemberRole = async (

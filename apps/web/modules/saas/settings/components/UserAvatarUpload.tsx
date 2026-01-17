@@ -1,15 +1,11 @@
 "use client";
 
 import { authClient } from "@repo/auth/client";
-import { config } from "@repo/config";
 import { useSession } from "@saas/auth/hooks/use-session";
 import { Spinner } from "@shared/components/Spinner";
 import { UserAvatar } from "@shared/components/UserAvatar";
-import { orpc } from "@shared/lib/orpc-query-utils";
-import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { useDropzone } from "react-dropzone";
-import { v4 as uuid } from "uuid";
 import { CropImageDialog } from "./CropImageDialog";
 
 export function UserAvatarUpload({
@@ -23,10 +19,6 @@ export function UserAvatarUpload({
 	const [uploading, setUploading] = useState(false);
 	const [cropDialogOpen, setCropDialogOpen] = useState(false);
 	const [image, setImage] = useState<File | null>(null);
-
-	const getSignedUploadUrlMutation = useMutation(
-		orpc.users.avatarUploadUrl.mutationOptions(),
-	);
 
 	const { getRootProps, getInputProps } = useDropzone({
 		onDrop: (acceptedFiles) => {
@@ -43,6 +35,7 @@ export function UserAvatarUpload({
 	if (!user) {
 		return null;
 	}
+
 	const onCrop = async (croppedImageData: Blob | null) => {
 		if (!croppedImageData) {
 			return;
@@ -50,14 +43,27 @@ export function UserAvatarUpload({
 
 		setUploading(true);
 		try {
-			const path = `${user.id}-${uuid()}.png`;
-			const { signedUploadUrl } =
-				await getSignedUploadUrlMutation.mutateAsync({
-					path,
-					bucket: config.storage.bucketNames.avatars,
-				});
+			// Get presigned URL from unified API
+			const presignedRes = await fetch("/api/uploads/presigned-url", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					fileName: "avatar.png",
+					fileType: "image/png",
+					fileSize: croppedImageData.size,
+					context: "avatars",
+				}),
+			});
 
-			const response = await fetch(signedUploadUrl, {
+			if (!presignedRes.ok) {
+				const error = await presignedRes.json();
+				throw new Error(error.message || "Failed to get upload URL");
+			}
+
+			const { url, key } = await presignedRes.json();
+
+			// Upload directly to R2
+			const uploadRes = await fetch(url, {
 				method: "PUT",
 				body: croppedImageData,
 				headers: {
@@ -65,12 +71,13 @@ export function UserAvatarUpload({
 				},
 			});
 
-			if (!response.ok) {
+			if (!uploadRes.ok) {
 				throw new Error("Failed to upload image");
 			}
 
+			// Update user profile with storage key
 			const { error } = await authClient.updateUser({
-				image: path,
+				image: key,
 			});
 
 			if (error) {
@@ -78,7 +85,6 @@ export function UserAvatarUpload({
 			}
 
 			await reloadSession();
-
 			onSuccess();
 		} catch {
 			onError();

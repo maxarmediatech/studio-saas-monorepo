@@ -45,9 +45,7 @@ export default async function ProtectedAppLayout({
 		config.organizations.requireOrganization &&
 		!organizationId
 	) {
-		redirect(
-			`/new-organization?redirectTo=${encodeURIComponent("/choose-plan")}`,
-		);
+		redirect(`/new-organization?redirectTo=${encodeURIComponent("/app")}`);
 	}
 
 	const billingEnabled =
@@ -61,7 +59,7 @@ export default async function ProtectedAppLayout({
 			!organizationId
 		) {
 			redirect(
-				`/new-organization?redirectTo=${encodeURIComponent("/choose-plan")}`,
+				`/new-organization?redirectTo=${encodeURIComponent("/app")}`,
 			);
 		}
 

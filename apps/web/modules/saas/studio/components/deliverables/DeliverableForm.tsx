@@ -2,6 +2,11 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { DeliverableDetail } from "@repo/api/modules/studio/schemas/deliverable";
+import { Avatar, AvatarFallback } from "@repo/ui/components/avatar";
+import { Badge } from "@repo/ui/components/badge";
+import { Button } from "@repo/ui/components/button";
+import { Combobox, type ComboboxOption } from "@repo/ui/components/combobox";
+import { DatePicker } from "@repo/ui/components/date-picker";
 import {
 	Field,
 	FieldError,
@@ -9,6 +14,7 @@ import {
 	FieldLabel,
 } from "@repo/ui/components/field";
 import { Input } from "@repo/ui/components/input";
+import { MultiSelectCombobox } from "@repo/ui/components/multi-select-combobox";
 import { ScrollArea } from "@repo/ui/components/scroll-area";
 import {
 	Select,
@@ -18,92 +24,155 @@ import {
 	SelectValue,
 } from "@repo/ui/components/select";
 import { Textarea } from "@repo/ui/components/textarea";
-import { bookingsApi } from "@saas/studio/lib/api";
+import { bookingsApi, crewsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useEffect } from "react";
+import { ChevronDownIcon, ChevronUpIcon, XIcon } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
-import { CollapsibleSection } from "../ui/CollapsibleSection";
 import { FormActions } from "../ui/FormActions";
 
-const DELIVERABLE_TYPES = [
-	{ value: "wedding_album", label: "Wedding Album" },
-	{ value: "pre_wedding_album", label: "Pre-Wedding Album" },
-	{ value: "photo_album", label: "Photo Album" },
-	{ value: "highlight_video", label: "Highlight Video" },
-	{ value: "full_video", label: "Full Video" },
-	{ value: "teaser", label: "Teaser" },
-	{ value: "reel", label: "Reel" },
-	{ value: "edited_photos", label: "Edited Photos" },
-	{ value: "raw_photos", label: "Raw Photos" },
-	{ value: "raw_videos", label: "Raw Videos" },
-	{ value: "drone_footage", label: "Drone Footage" },
-	{ value: "frame", label: "Frame" },
-	{ value: "canvas", label: "Canvas" },
-	{ value: "other", label: "Other" },
-] as const;
+function getInitials(name: string): string {
+	return name
+		.split(" ")
+		.map((part) => part[0])
+		.join("")
+		.toUpperCase()
+		.slice(0, 2);
+}
+
+const crewAssignmentSchema = z.object({
+	crewId: z.string().min(1, "Crew member is required"),
+});
 
 const deliverableFormSchema = z.object({
 	bookingId: z.string().min(1, "Booking is required"),
 	name: z.string().min(1, "Name is required").max(255),
-	deliverableType: z.string().min(1, "Type is required"),
-	description: z.string().max(5000).optional().or(z.literal("")),
+	quantity: z.number().int().min(1).default(1),
+	cost: z.string().optional().or(z.literal("")),
 	dueDate: z.string().optional().or(z.literal("")),
-	status: z.string().max(50).optional().or(z.literal("")),
-	priority: z.string().max(50).optional().or(z.literal("")),
+	status: z.string().optional().default("pending"),
+	description: z.string().max(5000).optional().or(z.literal("")),
+	crewAssignments: z.array(crewAssignmentSchema).optional(),
 });
 
-export type DeliverableFormValues = z.infer<typeof deliverableFormSchema>;
+export type DeliverableFormValues = z.input<typeof deliverableFormSchema>;
+
+interface BookingInfo {
+	id: string;
+	name: string;
+	referenceNumber: string;
+}
 
 interface DeliverableFormProps {
 	defaultValues?: DeliverableDetail;
+	defaultBookingId?: string;
+	booking?: BookingInfo;
+	existingAssignments?: Array<{
+		crewId: string;
+		crew: { id: string; name: string; role: string };
+	}>;
 	onSubmit: (data: DeliverableFormValues) => Promise<void>;
 	mode: "create" | "edit";
 	isPending?: boolean;
 	onScrollChange?: (isScrolled: boolean) => void;
 }
 
+interface CrewOption {
+	value: string;
+	label: string;
+	role: string;
+}
+
 export function DeliverableForm({
 	defaultValues,
+	defaultBookingId,
+	booking,
+	existingAssignments,
 	onSubmit,
 	mode,
 	isPending = false,
 	onScrollChange,
 }: DeliverableFormProps) {
+	const [showDetails, setShowDetails] = useState(false);
+
 	const form = useForm<DeliverableFormValues>({
 		resolver: zodResolver(deliverableFormSchema),
 		defaultValues: {
-			bookingId: "",
+			bookingId: defaultBookingId ?? "",
 			name: "",
-			deliverableType: "",
-			description: "",
+			quantity: 1,
+			cost: "",
 			dueDate: "",
-			status: "",
-			priority: "",
+			status: "pending",
+			description: "",
+			crewAssignments: [],
 		},
 	});
 
-	const { data: bookingsData, isLoading: isLoadingBookings } = useQuery(
-		bookingsApi.listMinimalOptions({}),
+	const { data: bookingsData, isLoading: isLoadingBookings } = useQuery({
+		...bookingsApi.listMinimalOptions({}),
+		enabled: mode === "create",
+	});
+	const bookings = bookingsData?.data ?? [];
+
+	const { data: crewsData } = useQuery(crewsApi.listOptions({}));
+	const crews = crewsData?.data ?? [];
+
+	const crewOptions: CrewOption[] = useMemo(
+		() =>
+			crews.map((crew) => ({
+				value: crew.id,
+				label: crew.name,
+				role: crew.role ?? "",
+			})),
+		[crews],
 	);
 
-	const bookings = bookingsData?.data ?? [];
+	const bookingOptions = useMemo((): ComboboxOption[] => {
+		const options = bookings.map((b) => ({
+			value: b.id,
+			label: `${b.name} (${b.referenceNumber})`,
+		}));
+
+		if (booking && !options.some((o) => o.value === booking.id)) {
+			options.unshift({
+				value: booking.id,
+				label: `${booking.name} (${booking.referenceNumber})`,
+			});
+		}
+
+		return options;
+	}, [bookings, booking]);
 
 	useEffect(() => {
 		if (defaultValues) {
+			const assignments =
+				existingAssignments?.map((a) => ({
+					crewId: a.crewId,
+				})) ?? [];
+
 			form.reset({
 				bookingId: defaultValues.bookingId,
 				name: defaultValues.name,
-				deliverableType: defaultValues.deliverableType,
+				quantity: defaultValues.quantity ?? 1,
+				cost: defaultValues.cost ?? "",
+				dueDate: defaultValues.dueDate ?? "",
+				status: defaultValues.status ?? "pending",
 				description: defaultValues.description ?? "",
-				dueDate: defaultValues.dueDate?.split("T")[0] ?? "",
-				status: defaultValues.status ?? "",
-				priority: defaultValues.priority ?? "",
+				crewAssignments: assignments,
 			});
+
+			if (defaultValues.description || assignments.length > 0) {
+				setShowDetails(true);
+			}
 		}
-	}, [defaultValues, form]);
+	}, [defaultValues, existingAssignments, form]);
 
 	const isSubmitting = form.formState.isSubmitting || isPending;
+
+	const descriptionValue = form.watch("description");
+	const crewAssignments = form.watch("crewAssignments") ?? [];
 
 	const handleScroll = useCallback(
 		(event: React.UIEvent<HTMLDivElement>) => {
@@ -125,65 +194,29 @@ export function DeliverableForm({
 			>
 				<div className="px-4 py-4">
 					<FieldGroup>
-						{/* Essential Fields */}
 						<Controller
 							name="bookingId"
 							control={form.control}
 							render={({ field, fieldState }) => (
 								<Field data-invalid={fieldState.invalid}>
 									<FieldLabel htmlFor={field.name}>
-										Booking *
+										Booking {mode === "create" && "*"}
 									</FieldLabel>
-									<Select
-										onValueChange={field.onChange}
-										value={field.value}
-										disabled={mode === "edit"}
-									>
-										<SelectTrigger
-											id={field.name}
-											aria-invalid={fieldState.invalid}
-										>
-											<SelectValue
-												placeholder={
-													isLoadingBookings
-														? "Loading..."
-														: "Select a booking"
-												}
-											/>
-										</SelectTrigger>
-										<SelectContent>
-											{bookings.map((booking) => (
-												<SelectItem
-													key={booking.id}
-													value={booking.id}
-												>
-													{booking.name} (
-													{booking.referenceNumber})
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-									{fieldState.invalid && (
-										<FieldError
-											errors={[fieldState.error]}
-										/>
-									)}
-								</Field>
-							)}
-						/>
-
-						<Controller
-							name="name"
-							control={form.control}
-							render={({ field, fieldState }) => (
-								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>
-										Name *
-									</FieldLabel>
-									<Input
-										{...field}
+									<Combobox
 										id={field.name}
-										placeholder="Enter deliverable name"
+										value={field.value}
+										onValueChange={field.onChange}
+										options={bookingOptions}
+										placeholder={
+											isLoadingBookings
+												? "Loading..."
+												: "Select booking..."
+										}
+										searchPlaceholder="Search bookings..."
+										emptyText="No bookings found"
+										disabled={
+											mode === "edit" || isLoadingBookings
+										}
 										aria-invalid={fieldState.invalid}
 									/>
 									{fieldState.invalid && (
@@ -195,50 +228,193 @@ export function DeliverableForm({
 							)}
 						/>
 
-						<Controller
-							name="deliverableType"
-							control={form.control}
-							render={({ field, fieldState }) => (
-								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>
-										Type *
-									</FieldLabel>
-									<Select
-										onValueChange={field.onChange}
-										value={field.value}
-									>
-										<SelectTrigger
-											id={field.name}
-											aria-invalid={fieldState.invalid}
+						<div className="grid gap-4 md:grid-cols-4">
+							<div className="md:col-span-2">
+								<Controller
+									name="name"
+									control={form.control}
+									render={({ field, fieldState }) => (
+										<Field
+											data-invalid={fieldState.invalid}
 										>
-											<SelectValue placeholder="Select type" />
-										</SelectTrigger>
-										<SelectContent>
-											{DELIVERABLE_TYPES.map((type) => (
-												<SelectItem
-													key={type.value}
-													value={type.value}
-												>
-													{type.label}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-									{fieldState.invalid && (
-										<FieldError
-											errors={[fieldState.error]}
-										/>
+											<FieldLabel htmlFor={field.name}>
+												Name *
+											</FieldLabel>
+											<Input
+												{...field}
+												id={field.name}
+												placeholder="e.g. Wedding Album"
+												aria-invalid={
+													fieldState.invalid
+												}
+											/>
+											{fieldState.invalid && (
+												<FieldError
+													errors={[fieldState.error]}
+												/>
+											)}
+										</Field>
 									)}
-								</Field>
-							)}
-						/>
+								/>
+							</div>
 
-						{/* Additional Details (Collapsible) */}
-						<CollapsibleSection
-							title="Additional Details"
-							defaultOpen={mode === "edit"}
-						>
-							<FieldGroup>
+							<Controller
+								name="quantity"
+								control={form.control}
+								render={({ field, fieldState }) => (
+									<Field data-invalid={fieldState.invalid}>
+										<FieldLabel htmlFor={field.name}>
+											Qty
+										</FieldLabel>
+										<Input
+											id={field.name}
+											name={field.name}
+											ref={field.ref}
+											onBlur={field.onBlur}
+											type="number"
+											min={1}
+											value={String(field.value ?? 1)}
+											onChange={(e) =>
+												field.onChange(
+													Number(e.target.value) || 1,
+												)
+											}
+											aria-invalid={fieldState.invalid}
+										/>
+										{fieldState.invalid && (
+											<FieldError
+												errors={[fieldState.error]}
+											/>
+										)}
+									</Field>
+								)}
+							/>
+
+							<Controller
+								name="cost"
+								control={form.control}
+								render={({ field, fieldState }) => (
+									<Field data-invalid={fieldState.invalid}>
+										<FieldLabel htmlFor={field.name}>
+											Cost
+										</FieldLabel>
+										<div className="relative">
+											<span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+												₹
+											</span>
+											<Input
+												{...field}
+												id={field.name}
+												className="pl-7"
+												placeholder="0.00"
+												value={field.value ?? ""}
+												aria-invalid={
+													fieldState.invalid
+												}
+												onChange={(e) => {
+													const value =
+														e.target.value.replace(
+															/[^0-9.]/g,
+															"",
+														);
+													const parts =
+														value.split(".");
+													if (parts.length > 2) {
+														return;
+													}
+													if (
+														parts[1] &&
+														parts[1].length > 2
+													) {
+														return;
+													}
+													field.onChange(value);
+												}}
+											/>
+										</div>
+										{fieldState.invalid && (
+											<FieldError
+												errors={[fieldState.error]}
+											/>
+										)}
+									</Field>
+								)}
+							/>
+						</div>
+
+						<div className="grid gap-4 md:grid-cols-2">
+							<Controller
+								name="dueDate"
+								control={form.control}
+								render={({ field, fieldState }) => (
+									<Field data-invalid={fieldState.invalid}>
+										<FieldLabel htmlFor={field.name}>
+											Due Date
+										</FieldLabel>
+										<DatePicker
+											id={field.name}
+											value={field.value || undefined}
+											onValueChange={field.onChange}
+											aria-invalid={fieldState.invalid}
+										/>
+										{fieldState.invalid && (
+											<FieldError
+												errors={[fieldState.error]}
+											/>
+										)}
+									</Field>
+								)}
+							/>
+
+							<Controller
+								name="status"
+								control={form.control}
+								render={({ field, fieldState }) => (
+									<Field data-invalid={fieldState.invalid}>
+										<FieldLabel htmlFor={field.name}>
+											Status
+										</FieldLabel>
+										<Select
+											onValueChange={field.onChange}
+											value={field.value}
+										>
+											<SelectTrigger
+												id={field.name}
+												aria-invalid={
+													fieldState.invalid
+												}
+											>
+												<SelectValue placeholder="Select status" />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="pending">
+													Pending
+												</SelectItem>
+												<SelectItem value="in_progress">
+													In Progress
+												</SelectItem>
+												<SelectItem value="completed">
+													Completed
+												</SelectItem>
+												<SelectItem value="delivered">
+													Delivered
+												</SelectItem>
+											</SelectContent>
+										</Select>
+										{fieldState.invalid && (
+											<FieldError
+												errors={[fieldState.error]}
+											/>
+										)}
+									</Field>
+								)}
+							/>
+						</div>
+
+						{(showDetails ||
+							descriptionValue ||
+							crewAssignments.length > 0) && (
+							<>
 								<Controller
 									name="description"
 									control={form.control}
@@ -246,14 +422,36 @@ export function DeliverableForm({
 										<Field
 											data-invalid={fieldState.invalid}
 										>
-											<FieldLabel htmlFor={field.name}>
-												Description
-											</FieldLabel>
+											<div className="flex items-center justify-between">
+												<FieldLabel
+													htmlFor={field.name}
+												>
+													Notes
+												</FieldLabel>
+												{showDetails &&
+													!descriptionValue &&
+													crewAssignments.length ===
+														0 && (
+														<Button
+															type="button"
+															variant="ghost"
+															size="sm"
+															className="h-auto py-0 px-1 text-muted-foreground"
+															onClick={() =>
+																setShowDetails(
+																	false,
+																)
+															}
+														>
+															<ChevronUpIcon className="mr-1 h-3.5 w-3.5" />
+															Hide
+														</Button>
+													)}
+											</div>
 											<Textarea
 												{...field}
 												id={field.name}
-												placeholder="Enter description"
-												className="resize-none"
+												placeholder="Details about this deliverable (specifications, requirements, etc.)"
 												rows={2}
 												aria-invalid={
 													fieldState.invalid
@@ -269,140 +467,123 @@ export function DeliverableForm({
 								/>
 
 								<Controller
-									name="dueDate"
+									name="crewAssignments"
 									control={form.control}
-									render={({ field, fieldState }) => (
-										<Field
-											data-invalid={fieldState.invalid}
-										>
-											<FieldLabel htmlFor={field.name}>
-												Due Date
-											</FieldLabel>
-											<Input
-												{...field}
-												id={field.name}
-												type="date"
-												aria-invalid={
-													fieldState.invalid
-												}
-											/>
-											{fieldState.invalid && (
-												<FieldError
-													errors={[fieldState.error]}
+									render={({ field }) => {
+										const selectedIds = (
+											field.value ?? []
+										).map((a) => a.crewId);
+
+										return (
+											<Field>
+												<FieldLabel>
+													Assigned Team
+												</FieldLabel>
+												<MultiSelectCombobox
+													options={crewOptions}
+													value={selectedIds}
+													onValueChange={(ids) => {
+														field.onChange(
+															ids.map((id) => ({
+																crewId: id,
+															})),
+														);
+													}}
+													placeholder="Select team members..."
+													searchPlaceholder="Search team..."
+													emptyText="No team members found"
+													renderOption={(option) => (
+														<div className="flex items-center gap-2">
+															<Avatar className="h-6 w-6">
+																<AvatarFallback className="text-[10px]">
+																	{getInitials(
+																		option.label,
+																	)}
+																</AvatarFallback>
+															</Avatar>
+															<span>
+																{option.label}
+															</span>
+															{option.role && (
+																<span className="text-muted-foreground text-sm">
+																	(
+																	{
+																		option.role
+																	}
+																	)
+																</span>
+															)}
+														</div>
+													)}
+													renderSelectedItem={(
+														option,
+														onRemove,
+													) => (
+														<Badge
+															variant="secondary"
+															className="flex items-center gap-1.5 pr-1"
+														>
+															<Avatar className="h-4 w-4">
+																<AvatarFallback className="text-[8px]">
+																	{getInitials(
+																		option.label,
+																	)}
+																</AvatarFallback>
+															</Avatar>
+															<span className="truncate">
+																{option.label}
+															</span>
+															{option.role && (
+																<span className="text-muted-foreground text-xs">
+																	(
+																	{
+																		option.role
+																	}
+																	)
+																</span>
+															)}
+															<button
+																type="button"
+																onClick={(
+																	e,
+																) => {
+																	e.stopPropagation();
+																	onRemove();
+																}}
+																className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
+															>
+																<XIcon className="size-3" />
+																<span className="sr-only">
+																	Remove{" "}
+																	{
+																		option.label
+																	}
+																</span>
+															</button>
+														</Badge>
+													)}
 												/>
-											)}
-										</Field>
-									)}
+											</Field>
+										);
+									}}
 								/>
+							</>
+						)}
 
-								<div className="grid grid-cols-2 gap-4">
-									<Controller
-										name="status"
-										control={form.control}
-										render={({ field, fieldState }) => (
-											<Field
-												data-invalid={
-													fieldState.invalid
-												}
-											>
-												<FieldLabel
-													htmlFor={field.name}
-												>
-													Status
-												</FieldLabel>
-												<Select
-													onValueChange={
-														field.onChange
-													}
-													value={field.value}
-												>
-													<SelectTrigger
-														id={field.name}
-														aria-invalid={
-															fieldState.invalid
-														}
-													>
-														<SelectValue placeholder="Select status" />
-													</SelectTrigger>
-													<SelectContent>
-														<SelectItem value="pending">
-															Pending
-														</SelectItem>
-														<SelectItem value="in_progress">
-															In Progress
-														</SelectItem>
-														<SelectItem value="completed">
-															Completed
-														</SelectItem>
-														<SelectItem value="delivered">
-															Delivered
-														</SelectItem>
-													</SelectContent>
-												</Select>
-												{fieldState.invalid && (
-													<FieldError
-														errors={[
-															fieldState.error,
-														]}
-													/>
-												)}
-											</Field>
-										)}
-									/>
-
-									<Controller
-										name="priority"
-										control={form.control}
-										render={({ field, fieldState }) => (
-											<Field
-												data-invalid={
-													fieldState.invalid
-												}
-											>
-												<FieldLabel
-													htmlFor={field.name}
-												>
-													Priority
-												</FieldLabel>
-												<Select
-													onValueChange={
-														field.onChange
-													}
-													value={field.value}
-												>
-													<SelectTrigger
-														id={field.name}
-														aria-invalid={
-															fieldState.invalid
-														}
-													>
-														<SelectValue placeholder="Select priority" />
-													</SelectTrigger>
-													<SelectContent>
-														<SelectItem value="low">
-															Low
-														</SelectItem>
-														<SelectItem value="medium">
-															Medium
-														</SelectItem>
-														<SelectItem value="high">
-															High
-														</SelectItem>
-													</SelectContent>
-												</Select>
-												{fieldState.invalid && (
-													<FieldError
-														errors={[
-															fieldState.error,
-														]}
-													/>
-												)}
-											</Field>
-										)}
-									/>
-								</div>
-							</FieldGroup>
-						</CollapsibleSection>
+						{!showDetails &&
+							!descriptionValue &&
+							crewAssignments.length === 0 && (
+								<Button
+									type="button"
+									variant="ghost"
+									size="sm"
+									className="w-fit text-muted-foreground"
+									onClick={() => setShowDetails(true)}
+								>
+									<ChevronDownIcon className="mr-1.5 h-3.5 w-3.5" />
+									Additional details
+								</Button>
+							)}
 					</FieldGroup>
 				</div>
 			</ScrollArea>

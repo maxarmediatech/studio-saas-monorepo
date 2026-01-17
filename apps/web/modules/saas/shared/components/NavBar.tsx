@@ -28,13 +28,14 @@ export function NavBar() {
 	const basePath = activeOrganization
 		? `/app/${activeOrganization.slug}`
 		: "/app";
+	const homePath = activeOrganization ? `${basePath}/home` : basePath;
 
 	const menuItems = [
 		{
 			label: t("app.menu.start"),
-			href: basePath,
+			href: homePath,
 			icon: HomeIcon,
-			isActive: pathname === basePath,
+			isActive: pathname === homePath || pathname === basePath,
 		},
 		...(activeOrganization && !config.organizations.hideOrganization
 			? [
@@ -84,7 +85,7 @@ export function NavBar() {
 								useSidebarLayout,
 						})}
 					>
-						<Link href="/app" className="block">
+						<Link href={homePath} className="block">
 							<Logo />
 						</Link>
 

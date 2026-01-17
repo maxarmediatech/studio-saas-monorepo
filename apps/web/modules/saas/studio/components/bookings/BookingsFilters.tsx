@@ -1,19 +1,14 @@
 "use client";
 
-import {
-	DataTableToolbar,
-	type ToolbarFilterConfig,
-} from "@saas/shared/components/data-table";
-import { useBookingsTable } from "@saas/studio/hooks/tables";
+import type { ToolbarFilterConfig } from "@saas/shared/components/data-table";
+import { DataTableToolbarWithViews } from "@saas/shared/components/data-table";
+import type { SavedView } from "@saas/shared/components/views";
+import { useBookingsTableWithViews } from "@saas/studio/hooks/tables";
 import { configurationsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarIcon, CircleIcon, PackageIcon, TagIcon } from "lucide-react";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
-/**
- * Status options for the booking status filter.
- * These are static since booking phases are system-defined.
- */
 const STATUS_OPTIONS = [
 	{
 		label: "New",
@@ -72,10 +67,17 @@ const STATUS_OPTIONS = [
 ];
 
 export function BookingsFilters() {
-	// Use the bookings table hook for URL-synced state
-	const { filters, setFilter, resetFilters, isFiltered } = useBookingsTable();
+	const {
+		filters,
+		setFilter,
+		resetFilters,
+		isFiltered,
+		activeViewId,
+		applyView,
+		sortingState,
+		columnVisibility,
+	} = useBookingsTableWithViews();
 
-	// Fetch configurations for dynamic filter options
 	const { data: bookingTypesData } = useQuery(
 		configurationsApi.bookingTypesOptions(),
 	);
@@ -83,7 +85,6 @@ export function BookingsFilters() {
 		configurationsApi.packageTypesOptions(),
 	);
 
-	// Define filter configurations
 	const filterConfigs: ToolbarFilterConfig[] = useMemo(
 		() => [
 			{
@@ -122,13 +123,11 @@ export function BookingsFilters() {
 		[bookingTypesData, packageTypesData],
 	);
 
-	// Convert filters to toolbar format
 	const filterValues = useMemo(
 		() => ({
 			statuses: filters.statuses ?? [],
 			bookingType: filters.bookingType ?? [],
 			packageType: filters.packageType ?? [],
-			// Convert array [from, to] to { from, to } object for dateRange filter
 			createdAt:
 				filters.createdAt && filters.createdAt.length > 0
 					? {
@@ -145,49 +144,81 @@ export function BookingsFilters() {
 		],
 	);
 
-	// Handle filter changes
-	const handleFilterChange = (
-		filterId: string,
-		value:
-			| string
-			| string[]
-			| { from?: string; to?: string }
-			| null
-			| undefined,
-	) => {
-		if (filterId === "statuses") {
-			const statusValues =
-				Array.isArray(value) && value.length > 0 ? value : null;
-			setFilter("statuses", statusValues as typeof filters.statuses);
-		} else if (filterId === "bookingType") {
-			const values =
-				Array.isArray(value) && value.length > 0 ? value : null;
-			setFilter("bookingType", values);
-		} else if (filterId === "packageType") {
-			const values =
-				Array.isArray(value) && value.length > 0 ? value : null;
-			setFilter("packageType", values);
-		} else if (filterId === "createdAt") {
-			// DataTableDateFilter returns { from?: string, to?: string } or null
-			if (value && typeof value === "object" && !Array.isArray(value)) {
-				const dateRange = value as { from?: string; to?: string };
-				const dates = [dateRange.from, dateRange.to].filter(
-					(d): d is string => !!d,
-				);
-				setFilter("createdAt", dates.length > 0 ? dates : null);
-			} else {
-				setFilter("createdAt", null);
+	const handleFilterChange = useCallback(
+		(
+			filterId: string,
+			value:
+				| string
+				| string[]
+				| { from?: string; to?: string }
+				| null
+				| undefined,
+		) => {
+			if (filterId === "statuses") {
+				const statusValues =
+					Array.isArray(value) && value.length > 0 ? value : null;
+				setFilter("statuses", statusValues as typeof filters.statuses);
+			} else if (filterId === "bookingType") {
+				const values =
+					Array.isArray(value) && value.length > 0 ? value : null;
+				setFilter("bookingType", values);
+			} else if (filterId === "packageType") {
+				const values =
+					Array.isArray(value) && value.length > 0 ? value : null;
+				setFilter("packageType", values);
+			} else if (filterId === "createdAt") {
+				if (
+					value &&
+					typeof value === "object" &&
+					!Array.isArray(value)
+				) {
+					const dateRange = value as { from?: string; to?: string };
+					const dates = [dateRange.from, dateRange.to].filter(
+						(d): d is string => !!d,
+					);
+					setFilter("createdAt", dates.length > 0 ? dates : null);
+				} else {
+					setFilter("createdAt", null);
+				}
 			}
-		}
-	};
+		},
+		[setFilter, filters.statuses],
+	);
 
-	// Handle search changes
-	const handleSearchChange = (value: string) => {
-		setFilter("search", value || null);
-	};
+	const handleSearchChange = useCallback(
+		(value: string) => {
+			setFilter("search", value || null);
+		},
+		[setFilter],
+	);
+
+	const handleViewSelect = useCallback(
+		(view: SavedView) => {
+			applyView(view);
+		},
+		[applyView],
+	);
+
+	const getCurrentFilters = useCallback(() => {
+		return filters as Record<string, unknown>;
+	}, [filters]);
+
+	const getCurrentSorting = useCallback(() => {
+		return sortingState;
+	}, [sortingState]);
+
+	const getCurrentColumnVisibility = useCallback(() => {
+		return columnVisibility;
+	}, [columnVisibility]);
 
 	return (
-		<DataTableToolbar
+		<DataTableToolbarWithViews
+			entityType="booking"
+			activeViewId={activeViewId}
+			onViewSelect={handleViewSelect}
+			getCurrentFilters={getCurrentFilters}
+			getCurrentSorting={getCurrentSorting}
+			getCurrentColumnVisibility={getCurrentColumnVisibility}
 			filters={filterConfigs}
 			filterValues={filterValues}
 			onFilterChange={handleFilterChange}

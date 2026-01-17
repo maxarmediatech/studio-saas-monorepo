@@ -5,6 +5,7 @@ import "@repo/ui/globals.css";
 import { cn } from "@repo/ui/lib/utils";
 import { ClientProviders } from "@shared/components/ClientProviders";
 import { ConsentProvider } from "@shared/components/ConsentProvider";
+import { FullPageLoader } from "@shared/components/LogoSpinner";
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import { cookies } from "next/headers";
@@ -49,7 +50,7 @@ export default function RootLayout({ children }: PropsWithChildren) {
 				)}
 			>
 				<NuqsAdapter>
-					<Suspense fallback={null}>
+					<Suspense fallback={<FullPageLoader />}>
 						<ConsentWrapper>
 							<ClientProviders>{children}</ClientProviders>
 						</ConsentWrapper>

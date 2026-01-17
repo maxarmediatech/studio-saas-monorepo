@@ -1,6 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { and, crews, db, eq, isNull, ne } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { detectChanges, safeTrackFieldChanges } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	updateCrewInputSchema,
@@ -69,15 +70,47 @@ export const updateCrew = studioProtectedProcedure
 			updatedBy: context.user.id,
 		};
 
-		if (name !== undefined) updates.name = name;
-		if (email !== undefined) updates.email = email;
-		if (phoneNumber !== undefined) updates.phoneNumber = phoneNumber;
-		if (role !== undefined) updates.role = role;
-		if (status !== undefined) updates.status = status;
-		if (dailyRate !== undefined) updates.dailyRate = dailyRate;
-		if (metadata !== undefined) updates.metadata = metadata;
+		if (name !== undefined) {
+			updates.name = name;
+		}
+		if (email !== undefined) {
+			updates.email = email;
+		}
+		if (phoneNumber !== undefined) {
+			updates.phoneNumber = phoneNumber;
+		}
+		if (role !== undefined) {
+			updates.role = role;
+		}
+		if (status !== undefined) {
+			updates.status = status;
+		}
+		if (dailyRate !== undefined) {
+			updates.dailyRate = dailyRate;
+		}
+		if (metadata !== undefined) {
+			updates.metadata = metadata;
+		}
 
 		await db.update(crews).set(updates).where(eq(crews.id, id));
+
+		// Track activity (non-blocking)
+		const changes = detectChanges(existing, input, [
+			"name",
+			"email",
+			"phoneNumber",
+			"role",
+			"status",
+			"dailyRate",
+		]);
+		if (changes.length > 0) {
+			await safeTrackFieldChanges(context, {
+				entityType: "crew",
+				entityId: id,
+				entityName: input.name ?? existing.name,
+				changes,
+			});
+		}
 
 		return {
 			data: { id },

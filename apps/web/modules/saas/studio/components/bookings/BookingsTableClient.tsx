@@ -30,13 +30,18 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@repo/ui/components/tooltip";
+import { formatMoney } from "@saas/shared/lib";
+import {
+	useBookingEditParams,
+	useBookingParams,
+} from "@saas/studio/hooks/params";
 import { useBookingsTable } from "@saas/studio/hooks/tables";
 import {
 	bookingsApi,
 	bookingsMutations,
 	configurationsApi,
-	studioQueryKeys,
 } from "@saas/studio/lib/api";
+import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
@@ -53,7 +58,6 @@ import {
 	UsersIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -61,20 +65,12 @@ interface BookingsTableClientProps {
 	organizationSlug: string;
 }
 
-const formatMoney = (value: string) => {
-	const num = Number.parseFloat(value);
-	return new Intl.NumberFormat("en-IN", {
-		style: "currency",
-		currency: "INR",
-		minimumFractionDigits: 0,
-	}).format(num);
-};
-
 export function BookingsTableClient({
 	organizationSlug,
 }: BookingsTableClientProps) {
-	const router = useRouter();
 	const queryClient = useQueryClient();
+	const { openView } = useBookingParams();
+	const { openEdit } = useBookingEditParams();
 
 	// Use the bookings table hook for URL-synced state
 	const {
@@ -84,6 +80,7 @@ export function BookingsTableClient({
 		sortingState,
 		onSortingChange,
 		onPaginationChange,
+		onLimitChange,
 	} = useBookingsTable();
 
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -150,7 +147,10 @@ export function BookingsTableClient({
 			setDeleteDialogOpen(false);
 			setBookingToDelete(null);
 			queryClient.invalidateQueries({
-				queryKey: studioQueryKeys.bookings.all,
+				queryKey: orpc.bookings.key(),
+			});
+			queryClient.invalidateQueries({
+				queryKey: orpc.activities.key(),
 			});
 		},
 		onError: (error) => {
@@ -164,16 +164,12 @@ export function BookingsTableClient({
 			{
 				label: "View details",
 				icon: <EyeIcon className="h-4 w-4" />,
-				onClick: (row) =>
-					router.push(`/app/${organizationSlug}/bookings/${row.id}`),
+				onClick: (row) => openView(row.id),
 			},
 			{
 				label: "Edit",
 				icon: <PencilIcon className="h-4 w-4" />,
-				onClick: (row) =>
-					router.push(
-						`/app/${organizationSlug}/bookings/${row.id}/edit`,
-					),
+				onClick: (row) => openEdit(row.id),
 			},
 			{
 				label: "Delete",
@@ -186,49 +182,33 @@ export function BookingsTableClient({
 				},
 			},
 		],
-		[organizationSlug, router],
+		[openView, openEdit],
 	);
 
-	// Define columns with sortable headers and meta for filters
-	// Column order: select → createdAt → name → bookingType → packageType → packageCost → balance → actions
 	const columns: ColumnDef<BookingListItem>[] = useMemo(
 		() => [
 			createSelectColumn<BookingListItem>(),
 			{
-				id: "createdAt",
-				accessorKey: "createdAt",
+				id: "referenceNumber",
+				accessorKey: "referenceNumber",
 				header: ({ column }) => (
-					<DataTableColumnHeader column={column} title="Date" />
+					<DataTableColumnHeader column={column} title="ID" />
 				),
-				cell: ({ row }) => {
-					const date = new Date(row.original.createdAt);
-					return (
-						<div className="flex flex-col gap-0.5 leading-none">
-							<span className="text-sm font-medium text-foreground">
-								{date.toLocaleDateString("en-US", {
-									month: "short",
-									day: "numeric",
-									year: "numeric",
-								})}
-							</span>
-							<span className="font-mono text-xs text-muted-foreground">
-								{row.original.referenceNumber}
-							</span>
-						</div>
-					);
-				},
+				cell: ({ row }) => (
+					<span className="font-mono text-muted-foreground">
+						{row.original.referenceNumber}
+					</span>
+				),
 				meta: {
-					label: "Created",
-					variant: "dateRange" as const,
-					icon: CalendarIcon,
-					width: 128,
-					minWidth: 128,
+					label: "ID",
+					width: 120,
+					minWidth: 120,
 					headerClassName:
-						"!border-r-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border",
+						"!border-r-0 bg-gray-100 z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[0.5px] before:bg-table-border-subtle",
 					cellClassName:
-						"!border-r-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border",
+						"!border-r-0 bg-table-surface group-hover:bg-table-row-selected group-data-[state=selected]:bg-table-row-selected z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[0.5px] before:bg-table-border-subtle",
 				},
-				enableSorting: true,
+				enableSorting: false,
 				enableHiding: true,
 			},
 			{
@@ -238,43 +218,53 @@ export function BookingsTableClient({
 					<DataTableColumnHeader column={column} title="Name" />
 				),
 				cell: ({ row }) => (
-					<div className="flex flex-col gap-0.5 leading-none">
-						<Link
-							href={`/app/${organizationSlug}/bookings/${row.original.id}`}
-							className="text-sm font-medium text-foreground hover:underline"
-						>
-							{row.original.name}
-						</Link>
-						<span className="text-xs text-muted-foreground">
-							{bookingTypeLabels.get(row.original.bookingType) ??
-								row.original.bookingType}
-						</span>
-					</div>
+					<Link
+						href={`/app/${organizationSlug}/bookings/${row.original.id}`}
+						className="font-medium text-foreground hover:underline"
+					>
+						{row.original.name}
+					</Link>
 				),
 				meta: {
 					label: "Name",
 					variant: "text" as const,
 					placeholder: "Search names...",
 					icon: TextIcon,
-					filterColumnId: "bookingType",
-					filterVariant: "multiSelect" as const,
-					filterIcon: TagIcon,
-					filterLabel: "Booking Type",
-					filterOptions: (bookingTypesData?.data ?? []).map(
-						(config) => ({
-							value: config.key,
-							label: config.label,
-						}),
-					),
-					width: 192,
-					minWidth: 192,
+					width: 240,
+					minWidth: 200,
 					headerClassName:
-						"!border-r-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-border",
+						"!border-r-0 bg-gray-100 z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[0.5px] before:bg-table-border-subtle after:absolute after:right-0 after:top-0 after:bottom-0 after:w-[0.5px] after:bg-table-border-subtle",
 					cellClassName:
-						"!border-r-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-border",
+						"!border-r-0 bg-table-surface group-hover:bg-table-row-selected group-data-[state=selected]:bg-table-row-selected z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[0.5px] before:bg-table-border-subtle after:absolute after:right-0 after:top-0 after:bottom-0 after:w-[0.5px] after:bg-table-border-subtle",
 				},
 				enableSorting: true,
 				enableHiding: false,
+			},
+			{
+				id: "bookingType",
+				accessorKey: "bookingType",
+				header: ({ column }) => (
+					<DataTableColumnHeader column={column} title="Type" />
+				),
+				cell: ({ row }) => (
+					<span className="text-muted-foreground">
+						{bookingTypeLabels.get(row.original.bookingType) ??
+							row.original.bookingType}
+					</span>
+				),
+				meta: {
+					label: "Booking Type",
+					variant: "multiSelect" as const,
+					icon: TagIcon,
+					options: (bookingTypesData?.data ?? []).map((config) => ({
+						value: config.key,
+						label: config.label,
+					})),
+					width: 100,
+					minWidth: 100,
+				},
+				enableSorting: false,
+				enableHiding: true,
 			},
 			{
 				id: "packageType",
@@ -283,15 +273,10 @@ export function BookingsTableClient({
 					<DataTableColumnHeader column={column} title="Package" />
 				),
 				cell: ({ row }) => (
-					<div className="flex flex-col gap-0.5 leading-none">
-						<span className="text-sm font-medium text-foreground">
-							{packageTypeLabels.get(row.original.packageType) ??
-								row.original.packageType}
-						</span>
-						<span className="text-xs text-muted-foreground tabular-nums">
-							{formatMoney(row.original.packageCost)}
-						</span>
-					</div>
+					<span>
+						{packageTypeLabels.get(row.original.packageType) ??
+							row.original.packageType}
+					</span>
 				),
 				meta: {
 					label: "Package",
@@ -301,8 +286,31 @@ export function BookingsTableClient({
 						value: config.key,
 						label: config.label,
 					})),
-					width: 128,
-					minWidth: 128,
+					width: 160,
+					minWidth: 140,
+				},
+				enableSorting: false,
+				enableHiding: true,
+			},
+			{
+				id: "packageCost",
+				accessorKey: "packageCost",
+				header: ({ column }) => (
+					<DataTableColumnHeader
+						column={column}
+						title="Cost"
+						className="justify-end"
+					/>
+				),
+				cell: ({ row }) => (
+					<span className="tabular-nums text-right block">
+						{formatMoney(row.original.packageCost)}
+					</span>
+				),
+				meta: {
+					label: "Package Cost",
+					width: 100,
+					minWidth: 100,
 				},
 				enableSorting: false,
 				enableHiding: true,
@@ -318,22 +326,20 @@ export function BookingsTableClient({
 					/>
 				),
 				cell: ({ row }) => (
-					<div className="text-right font-semibold tabular-nums">
-						<span
-							className={
-								Number.parseFloat(row.original.balance) > 0
-									? "text-amber-600 dark:text-amber-400"
-									: "text-green-600 dark:text-green-400"
-							}
-						>
-							{formatMoney(row.original.balance)}
-						</span>
-					</div>
+					<span
+						className={`tabular-nums text-right block font-medium ${
+							Number.parseFloat(row.original.balance) > 0
+								? "text-amber-600 dark:text-amber-400"
+								: "text-green-600 dark:text-green-400"
+						}`}
+					>
+						{formatMoney(row.original.balance)}
+					</span>
 				),
 				meta: {
 					label: "Balance",
-					width: 96,
-					minWidth: 96,
+					width: 100,
+					minWidth: 100,
 				},
 				enableSorting: false,
 				enableHiding: true,
@@ -344,22 +350,16 @@ export function BookingsTableClient({
 				header: ({ column }) => (
 					<DataTableColumnHeader column={column} title="Shoots" />
 				),
-				cell: ({ row }) => {
-					const count = row.original.shootsCount;
-					return (
-						<div className="flex items-center gap-2">
-							<CameraIcon className="h-4 w-4 text-muted-foreground" />
-							<span className="tabular-nums">
-								{count} {count === 1 ? "shoot" : "shoots"}
-							</span>
-						</div>
-					);
-				},
+				cell: ({ row }) => (
+					<span className="tabular-nums">
+						{row.original.shootsCount}
+					</span>
+				),
 				meta: {
 					label: "Shoots",
 					icon: CameraIcon,
-					width: 100,
-					minWidth: 100,
+					width: 80,
+					minWidth: 80,
 				},
 				enableSorting: false,
 				enableHiding: true,
@@ -374,11 +374,7 @@ export function BookingsTableClient({
 					const participants = row.original.participants || [];
 
 					if (!participants.length) {
-						return (
-							<span className="text-muted-foreground">
-								No clients
-							</span>
-						);
+						return <span className="text-muted-foreground">—</span>;
 					}
 
 					const MAX_VISIBLE = 2;
@@ -386,7 +382,7 @@ export function BookingsTableClient({
 					const hiddenCount = participants.length - visible.length;
 
 					return (
-						<div className="flex flex-wrap items-center gap-1">
+						<div className="flex items-center gap-1">
 							{visible.map((participant) => (
 								<Badge
 									key={participant.id}
@@ -401,7 +397,7 @@ export function BookingsTableClient({
 									<Tooltip>
 										<TooltipTrigger asChild>
 											<Badge variant="outline">
-												+{hiddenCount} more
+												+{hiddenCount}
 											</Badge>
 										</TooltipTrigger>
 										<TooltipContent side="top">
@@ -430,13 +426,40 @@ export function BookingsTableClient({
 				meta: {
 					label: "Clients",
 					icon: UsersIcon,
-					width: 180,
-					minWidth: 180,
+					width: 160,
+					minWidth: 140,
 				},
 				enableSorting: false,
 				enableHiding: true,
 			},
-
+			{
+				id: "createdAt",
+				accessorKey: "createdAt",
+				header: ({ column }) => (
+					<DataTableColumnHeader column={column} title="Created" />
+				),
+				cell: ({ row }) => {
+					const date = new Date(row.original.createdAt);
+					return (
+						<span className="text-muted-foreground">
+							{date.toLocaleDateString("en-US", {
+								month: "short",
+								day: "numeric",
+								year: "numeric",
+							})}
+						</span>
+					);
+				},
+				meta: {
+					label: "Created",
+					variant: "dateRange" as const,
+					icon: CalendarIcon,
+					width: 110,
+					minWidth: 110,
+				},
+				enableSorting: true,
+				enableHiding: true,
+			},
 			{
 				id: "actions",
 				header: ({ table }) => <DataTableViewOptions table={table} />,
@@ -448,16 +471,16 @@ export function BookingsTableClient({
 				),
 				enableSorting: false,
 				enableHiding: false,
-				meta: {
-					width: 48,
-					minWidth: 48,
-					headerClassName:
-						"!px-0 md:sticky md:right-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border after:absolute after:left-[-24px] after:top-0 after:bottom-0 after:w-6 after:bg-gradient-to-r after:from-transparent after:to-background",
-					cellClassName:
-						"!px-0 md:sticky md:right-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border after:absolute after:left-[-24px] after:top-0 after:bottom-0 after:w-6 after:bg-gradient-to-r after:from-transparent after:to-background",
+					meta: {
+						width: 48,
+						minWidth: 48,
+						headerClassName:
+							"!px-0 md:sticky md:right-0 bg-gray-100 z-10",
+						cellClassName:
+							"!px-0 md:sticky md:right-0 bg-table-surface group-hover:bg-table-row-selected group-data-[state=selected]:bg-table-row-selected z-10",
+					},
 				},
-			},
-		],
+			],
 		[
 			organizationSlug,
 			rowActions,
@@ -481,19 +504,18 @@ export function BookingsTableClient({
 					isFetching={isFetching}
 					pagination={serverPagination}
 					onPaginationChange={onPaginationChange}
+					onLimitChange={onLimitChange}
 					sorting={sortingState}
 					onSortingChange={onSortingChange}
 					enableRowSelection
 					getRowId={(row) => row.id}
-					// Sticky columns configuration
 					stickyLeftColumns={[
 						{ id: "select", width: 48 },
-						{ id: "createdAt", width: 128 },
-						{ id: "name", width: 176 },
+						{ id: "referenceNumber", width: 120 },
+						{ id: "name", width: 240 },
 					]}
 					stickyRightColumns={[{ id: "actions", width: 48 }]}
-					minWidth={1200}
-					// Place scroll controls in the last sticky left column
+					minWidth={1400}
 					scrollControlsColumnId="name"
 					scrollStartColumn={3}
 					emptyState={

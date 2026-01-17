@@ -18,12 +18,10 @@ import {
 	DataTableRowActions,
 	type RowAction,
 } from "@saas/shared/components/data-table";
+import { formatMoney } from "@saas/shared/lib";
 import { useExpenseParams } from "@saas/studio/hooks/params/use-expense-params";
-import {
-	expensesApi,
-	expensesMutations,
-	studioQueryKeys,
-} from "@saas/studio/lib/api";
+import { expensesApi, expensesMutations } from "@saas/studio/lib/api";
+import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
@@ -49,15 +47,6 @@ interface ExpensesPageClientProps {
 		billTo?: string;
 	};
 }
-
-const formatMoney = (value: string) => {
-	const num = Number.parseFloat(value);
-	return new Intl.NumberFormat("en-IN", {
-		style: "currency",
-		currency: "INR",
-		minimumFractionDigits: 0,
-	}).format(num);
-};
 
 const formatDate = (dateString: string) => {
 	return new Date(dateString).toLocaleDateString("en-IN", {
@@ -126,7 +115,10 @@ export function ExpensesPageClient({
 			setDeleteDialogOpen(false);
 			setExpenseToDelete(null);
 			queryClient.invalidateQueries({
-				queryKey: studioQueryKeys.expenses.all,
+				queryKey: orpc.expenses.key(),
+			});
+			queryClient.invalidateQueries({
+				queryKey: orpc.activities.key(),
 			});
 		},
 		onError: (error) => {

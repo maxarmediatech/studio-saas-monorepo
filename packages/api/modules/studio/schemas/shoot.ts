@@ -12,6 +12,7 @@ import {
 	createSortSchema,
 	dateSchema,
 	idSchema,
+	moneySchema,
 	mutationResponseSchema,
 	nameSchema,
 	paginationSchema,
@@ -29,6 +30,7 @@ export const shootAssignmentSchema = z.object({
 	crewId: idSchema,
 	role: z.string(),
 	isLead: z.boolean(),
+	rate: moneySchema.nullable(),
 	assignedBy: idSchema.nullable(),
 	createdAt: z.string(),
 });
@@ -107,8 +109,8 @@ const shootSortFields = [
 export const listShootsInputSchema = z
 	.object({
 		bookingId: idSchema.optional(),
-		status: z.union([z.string(), z.array(z.string())]).optional(),
-		shootType: z.union([z.string(), z.array(z.string())]).optional(),
+		status: z.union([z.string(), z.array(z.string())]).nullish(),
+		shootType: z.union([z.string(), z.array(z.string())]).nullish(),
 		dateFrom: dateSchema.optional(),
 		dateTo: dateSchema.optional(),
 	})
@@ -278,8 +280,9 @@ export type GetShootStatsOutput = z.infer<typeof getShootStatsOutputSchema>;
 export const assignCrewInputSchema = z.object({
 	shootId: idSchema,
 	crewId: idSchema,
-	role: z.string().min(1).max(100),
+	role: z.string().min(1).max(100).optional(),
 	isLead: z.boolean().optional(),
+	rate: moneySchema.optional(),
 });
 
 export type AssignCrewInput = z.infer<typeof assignCrewInputSchema>;

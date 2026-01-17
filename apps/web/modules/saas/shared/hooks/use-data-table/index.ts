@@ -19,5 +19,8 @@ export type {
 	UrlPaginationState,
 	UseDataTableConfig,
 	UseDataTableReturn,
+	UseDataTableWithViewsConfig,
+	UseDataTableWithViewsReturn,
+	ViewState,
 } from "./types";
-export { useDataTable } from "./use-data-table";
+export { useDataTable, useDataTableWithViews } from "./use-data-table";

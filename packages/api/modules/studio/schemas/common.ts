@@ -323,6 +323,7 @@ export const configTypeSchema = z.enum([
 	"package_type",
 	"relation_type",
 	"expense_category",
+	"event_type",
 ]);
 
 export type ConfigType = z.infer<typeof configTypeSchema>;
@@ -363,6 +364,24 @@ export const phoneSchema = z
  * URL field
  */
 export const urlSchema = z.string().url().optional();
+
+// ============================================================================
+// ATTACHMENT SCHEMA
+// ============================================================================
+
+/**
+ * Uploaded attachment metadata schema
+ * Matches the frontend uploadedAttachmentSchema structure
+ */
+export const uploadedAttachmentSchema = z.object({
+	name: z.string(),
+	size: z.number(),
+	type: z.string(),
+	key: z.string(),
+	url: z.string(),
+});
+
+export type UploadedAttachment = z.infer<typeof uploadedAttachmentSchema>;
 
 // ============================================================================
 // RESPONSE WRAPPERS

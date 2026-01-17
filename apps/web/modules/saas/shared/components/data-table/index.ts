@@ -1,11 +1,9 @@
-// Core table components
 export {
 	DataTable,
 	type DataTableProps,
 	type StickyColumnConfig,
 } from "./DataTable";
 export { DataTableColumnHeader } from "./DataTableColumnHeader";
-// Filter components
 export {
 	DataTableDateFilter,
 	type DateFilterValue,
@@ -25,7 +23,18 @@ export {
 	type ToolbarFilterConfig,
 	type ToolbarFilterValues,
 } from "./DataTableToolbar";
+export { DataTableToolbarWithViews } from "./DataTableToolbarWithViews";
 export { DataTableViewOptions } from "./DataTableViewOptions";
 
-// Types
+export { DataTableAddFilterMenu } from "./data-table-add-filter-menu";
+export { DataTableFilterRow } from "./data-table-filter-row";
+export { DataTableFilterToggle } from "./data-table-filter-toggle";
+export {
+	buildActiveChips,
+	formatFilterChip,
+	isFilterActive,
+	normalizeForCompare,
+	type FilterChipModel,
+} from "./filter-row-utils";
+
 export type { FilterOption, FilterVariant } from "./types";

@@ -1,6 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { and, db, eq, tasks } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { safeTrackActivity } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	deleteTaskInputSchema,
@@ -22,12 +23,17 @@ export const deleteTask = studioProtectedProcedure
 
 		const { id } = input;
 
-		// Verify task exists and belongs to organization
+		// Verify task exists and belongs to organization (include booking for activity context)
 		const existing = await db.query.tasks.findFirst({
 			where: and(
 				eq(tasks.id, id),
 				eq(tasks.organizationId, context.organizationId),
 			),
+			with: {
+				booking: {
+					columns: { id: true, name: true },
+				},
+			},
 		});
 
 		if (!existing) {
@@ -53,6 +59,20 @@ export const deleteTask = studioProtectedProcedure
 				updatedBy: context.user.id,
 			})
 			.where(eq(tasks.id, id));
+
+		// Track activity (non-blocking)
+		await safeTrackActivity(
+			{ organizationId: context.organizationId, user: context.user },
+			{
+				entityType: "task",
+				entityId: id,
+				entityName: existing.name,
+				action: "deleted",
+				parentEntityType: "booking",
+				parentEntityId: existing.bookingId,
+				parentEntityName: existing.booking.name,
+			},
+		);
 
 		return {
 			data: { id },

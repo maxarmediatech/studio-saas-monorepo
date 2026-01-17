@@ -4,7 +4,7 @@
  * Creates multiple shoots with their crew assignments within a transaction.
  */
 
-import { shootAssignments, shoots } from "@repo/database";
+import { crews, inArray, shootAssignments, shoots } from "@repo/database";
 import type { TransactionClient } from "../../studio/lib/transactions";
 import type { ShootInput } from "../../studio/schemas/booking";
 
@@ -67,14 +67,44 @@ export async function createShootsBatch(
 		);
 
 		if (crewAssignments && crewAssignments.length > 0) {
+			// Get crew roles for assignments that don't have a role specified
+			const crewIdsNeedingRole = crewAssignments
+				.filter((a) => !a.role)
+				.map((a) => a.crewId);
+
+			let crewRoleMap = new Map<string, string>();
+
+			if (crewIdsNeedingRole.length > 0) {
+				const crewData = await tx
+					.select({ id: crews.id, role: crews.role })
+					.from(crews)
+					.where(inArray(crews.id, crewIdsNeedingRole));
+
+				crewRoleMap = new Map(
+					crewData.map((c) => [c.id, c.role ?? "Crew"]),
+				);
+			}
+
 			await tx.insert(shootAssignments).values(
-				crewAssignments.map((assignment) => ({
-					shootId: createdShoot.id,
-					crewId: assignment.crewId,
-					role: assignment.role,
-					isLead: assignment.isLead ?? false,
-					assignedBy: userId,
-				})),
+				crewAssignments.map((assignment) => {
+					const trimmedRate = assignment.rate?.trim();
+
+					return {
+						shootId: createdShoot.id,
+						crewId: assignment.crewId,
+						// Use provided role, or fetch from crew profile, or default to "Crew"
+						role:
+							assignment.role ??
+							crewRoleMap.get(assignment.crewId) ??
+							"Crew",
+						isLead: assignment.isLead ?? false,
+						rate:
+							trimmedRate && /^\d+(\.\d{1,2})?$/.test(trimmedRate)
+								? trimmedRate
+								: null, // Per-shoot rate (null if not specified/invalid)
+						assignedBy: userId,
+					};
+				}),
 			);
 		}
 	}

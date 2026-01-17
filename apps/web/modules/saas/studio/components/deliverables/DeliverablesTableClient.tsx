@@ -17,29 +17,25 @@ import {
 	DataTable,
 	DataTableColumnHeader,
 	DataTableRowActions,
-	DataTableToolbar,
 	DataTableViewOptions,
 	type RowAction,
 	SortProvider,
 } from "@saas/shared/components/data-table";
 // Import types for column meta augmentation
 import "@saas/shared/components/data-table/types";
+import { formatMoney } from "@saas/shared/lib";
 import { useDeliverableParams } from "@saas/studio/hooks/params/use-deliverable-params";
+import { useDeliverablesTable } from "@saas/studio/hooks/tables";
 import {
-	DELIVERABLE_PRIORITIES,
-	DELIVERABLE_STATUSES,
-	DELIVERABLE_TYPES,
-	useDeliverablesTable,
-} from "@saas/studio/hooks/tables";
-import {
+	configurationsApi,
 	deliverablesApi,
 	deliverablesMutations,
 	studioQueryKeys,
 } from "@saas/studio/lib/api";
+import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-	AlertCircleIcon,
 	CalendarIcon,
 	CheckCircleIcon,
 	CircleIcon,
@@ -47,10 +43,8 @@ import {
 	Loader2Icon,
 	PackageIcon,
 	PencilIcon,
-	TagIcon,
 	TrashIcon,
 	TruckIcon,
-	UsersIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -60,23 +54,6 @@ import { OpenDeliverableCreateSheet } from "./OpenDeliverableSheet";
 interface DeliverablesTableClientProps {
 	organizationSlug: string;
 }
-
-const DELIVERABLE_TYPE_LABELS: Record<string, string> = {
-	wedding_album: "Wedding Album",
-	pre_wedding_album: "Pre-Wedding Album",
-	photo_album: "Photo Album",
-	highlight_video: "Highlight Video",
-	full_video: "Full Video",
-	teaser: "Teaser",
-	reel: "Reel",
-	edited_photos: "Edited Photos",
-	raw_photos: "Raw Photos",
-	raw_videos: "Raw Videos",
-	drone_footage: "Drone Footage",
-	frame: "Frame",
-	canvas: "Canvas",
-	other: "Other",
-};
 
 const STATUS_LABELS: Record<string, string> = {
 	pending: "Pending",
@@ -102,21 +79,6 @@ const STATUS_ICONS: Record<string, React.ElementType> = {
 	delivered: TruckIcon,
 };
 
-const PRIORITY_LABELS: Record<string, string> = {
-	low: "Low",
-	medium: "Medium",
-	high: "High",
-};
-
-const PRIORITY_VARIANTS: Record<
-	string,
-	"default" | "secondary" | "outline" | "destructive"
-> = {
-	low: "outline",
-	medium: "secondary",
-	high: "destructive",
-};
-
 const formatDate = (dateStr: string | null) => {
 	if (!dateStr) {
 		return "-";
@@ -127,22 +89,6 @@ const formatDate = (dateStr: string | null) => {
 		year: "numeric",
 	});
 };
-
-// Filter options
-const deliverableTypeOptions = DELIVERABLE_TYPES.map((type) => ({
-	value: type,
-	label: DELIVERABLE_TYPE_LABELS[type] ?? type,
-}));
-
-const statusOptions = DELIVERABLE_STATUSES.map((status) => ({
-	value: status,
-	label: STATUS_LABELS[status] ?? status,
-}));
-
-const priorityOptions = DELIVERABLE_PRIORITIES.map((priority) => ({
-	value: priority,
-	label: PRIORITY_LABELS[priority] ?? priority,
-}));
 
 export function DeliverablesTableClient({
 	organizationSlug,
@@ -155,11 +101,9 @@ export function DeliverablesTableClient({
 		pagination,
 		sorting,
 		sortingState,
-		setFilter,
-		resetFilters,
-		isFiltered,
 		onSortingChange,
 		onPaginationChange,
+		onLimitChange,
 	} = useDeliverablesTable();
 
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -170,14 +114,11 @@ export function DeliverablesTableClient({
 	const { openEdit } = useDeliverableParams();
 
 	// Build query input from hook state
-	// Note: API expects single values for deliverableType, status, priority
 	const queryInput = {
 		page: pagination.page,
 		limit: pagination.limit,
 		search: filters.search ?? undefined,
-		deliverableType: filters.deliverableType ?? undefined,
 		status: filters.status ?? undefined,
-		priority: filters.priority ?? undefined,
 		sortBy: sorting.sortBy ?? "dueDate",
 		sortDirection: sorting.sortDirection,
 		includeDeleted: false,
@@ -196,6 +137,19 @@ export function DeliverablesTableClient({
 		pageCount: 0,
 	};
 
+	// Fetch configurations for labels
+	const { data: packageTypesData } = useQuery(
+		configurationsApi.packageTypesOptions(),
+	);
+
+	const packageTypeLabels = useMemo(() => {
+		const map = new Map<string, string>();
+		for (const config of packageTypesData?.data ?? []) {
+			map.set(config.key, config.label);
+		}
+		return map;
+	}, [packageTypesData]);
+
 	// Delete mutation
 	const deleteMutation = useMutation({
 		...deliverablesMutations.delete(),
@@ -204,7 +158,10 @@ export function DeliverablesTableClient({
 			setDeleteDialogOpen(false);
 			setDeliverableToDelete(null);
 			queryClient.invalidateQueries({
-				queryKey: studioQueryKeys.deliverables.all,
+				queryKey: orpc.deliverables.key(),
+			});
+			queryClient.invalidateQueries({
+				queryKey: orpc.activities.key(),
 			});
 		},
 		onError: (error) => {
@@ -249,29 +206,19 @@ export function DeliverablesTableClient({
 					<DataTableColumnHeader column={column} title="Name" />
 				),
 				cell: ({ row }) => (
-					<div className="flex items-center gap-3">
-						<div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
-							<PackageIcon className="h-4 w-4 text-muted-foreground" />
-						</div>
-						<div>
-							<p className="font-medium">{row.original.name}</p>
-							<p className="text-xs text-muted-foreground">
-								{DELIVERABLE_TYPE_LABELS[
-									row.original.deliverableType
-								] ?? row.original.deliverableType}
-							</p>
-						</div>
-					</div>
+					<span className="font-medium text-foreground">
+						{row.original.name}
+					</span>
 				),
 				meta: {
 					label: "Name",
 					width: 240,
-					minWidth: 240,
+					minWidth: 200,
 					// Last left-sticky column - add right border
 					headerClassName:
-						"!border-r-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-border",
+						"!border-r-0 bg-gray-100 z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[0.5px] before:bg-table-border-subtle after:absolute after:right-0 after:top-0 after:bottom-0 after:w-[0.5px] after:bg-table-border-subtle",
 					cellClassName:
-						"!border-r-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-border",
+						"!border-r-0 bg-table-surface group-hover:bg-table-row-selected group-data-[state=selected]:bg-table-row-selected z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[0.5px] before:bg-table-border-subtle after:absolute after:right-0 after:top-0 after:bottom-0 after:w-[0.5px] after:bg-table-border-subtle",
 				},
 				enableSorting: true,
 				enableHiding: false,
@@ -283,48 +230,19 @@ export function DeliverablesTableClient({
 					<DataTableColumnHeader column={column} title="Booking" />
 				),
 				cell: ({ row }) => (
-					<div>
-						<Link
-							href={`/app/${organizationSlug}/bookings/${row.original.bookingId}`}
-							className="font-medium text-foreground hover:underline"
-						>
-							{row.original.bookingName}
-						</Link>
-						<p className="text-xs text-muted-foreground">
-							{row.original.bookingReferenceNumber}
-						</p>
-					</div>
+					<Link
+						href={`/app/${organizationSlug}/bookings/${row.original.bookingId}`}
+						className="text-muted-foreground hover:underline hover:text-foreground transition-colors"
+					>
+						{row.original.bookingName}
+					</Link>
 				),
 				meta: {
 					label: "Booking",
-					width: 180,
-					minWidth: 180,
+					width: 200,
+					minWidth: 150,
 				},
 				enableSorting: false,
-				enableHiding: true,
-			},
-			{
-				id: "deliverableType",
-				accessorKey: "deliverableType",
-				header: ({ column }) => (
-					<DataTableColumnHeader column={column} title="Type" />
-				),
-				cell: ({ row }) => (
-					<Badge variant="outline">
-						{DELIVERABLE_TYPE_LABELS[
-							row.original.deliverableType
-						] ?? row.original.deliverableType}
-					</Badge>
-				),
-				meta: {
-					label: "Type",
-					variant: "multiSelect" as const,
-					icon: TagIcon,
-					options: deliverableTypeOptions,
-					width: 140,
-					minWidth: 140,
-				},
-				enableSorting: true,
 				enableHiding: true,
 			},
 			{
@@ -341,26 +259,27 @@ export function DeliverablesTableClient({
 						row.original.status !== "completed" &&
 						row.original.status !== "delivered";
 
+					if (!dueDate) {
+						return <span className="text-muted-foreground">—</span>;
+					}
+
 					return (
-						<div className="flex items-center gap-2">
-							{isOverdue ? (
-								<AlertCircleIcon className="h-4 w-4 text-destructive" />
-							) : (
-								<CalendarIcon className="h-4 w-4 text-muted-foreground" />
-							)}
-							<span
-								className={isOverdue ? "text-destructive" : ""}
-							>
-								{formatDate(dueDate)}
-							</span>
-						</div>
+						<span
+							className={
+								isOverdue
+									? "text-destructive font-medium"
+									: "text-muted-foreground"
+							}
+						>
+							{formatDate(dueDate)}
+						</span>
 					);
 				},
 				meta: {
 					label: "Due Date",
 					icon: CalendarIcon,
-					width: 130,
-					minWidth: 130,
+					width: 140,
+					minWidth: 120,
 				},
 				enableSorting: true,
 				enableHiding: true,
@@ -383,38 +302,8 @@ export function DeliverablesTableClient({
 				},
 				meta: {
 					label: "Status",
-					variant: "multiSelect" as const,
-					icon: CircleIcon,
-					options: statusOptions,
-					width: 130,
-					minWidth: 130,
-				},
-				enableSorting: true,
-				enableHiding: true,
-			},
-			{
-				id: "priority",
-				accessorKey: "priority",
-				header: ({ column }) => (
-					<DataTableColumnHeader column={column} title="Priority" />
-				),
-				cell: ({ row }) => {
-					const priority = row.original.priority;
-					return (
-						<Badge
-							variant={PRIORITY_VARIANTS[priority] ?? "outline"}
-						>
-							{PRIORITY_LABELS[priority] ?? priority}
-						</Badge>
-					);
-				},
-				meta: {
-					label: "Priority",
-					variant: "multiSelect" as const,
-					icon: AlertCircleIcon,
-					options: priorityOptions,
-					width: 100,
-					minWidth: 100,
+					width: 140,
+					minWidth: 140,
 				},
 				enableSorting: true,
 				enableHiding: true,
@@ -422,16 +311,13 @@ export function DeliverablesTableClient({
 			{
 				id: "assignmentsCount",
 				accessorKey: "assignmentsCount",
-				header: () => (
-					<span className="text-foreground flex h-8 items-center text-xs font-semibold uppercase tracking-wide">
-						Crew
-					</span>
+				header: ({ column }) => (
+					<DataTableColumnHeader column={column} title="Crew" />
 				),
 				cell: ({ row }) => (
-					<div className="flex items-center gap-2">
-						<UsersIcon className="h-4 w-4 text-muted-foreground" />
-						<span>{row.original.assignmentsCount}</span>
-					</div>
+					<span className="tabular-nums">
+						{row.original.assignmentsCount}
+					</span>
 				),
 				meta: {
 					label: "Crew",
@@ -439,6 +325,56 @@ export function DeliverablesTableClient({
 					minWidth: 80,
 				},
 				enableSorting: false,
+				enableHiding: true,
+			},
+			{
+				id: "packageType",
+				accessorKey: "bookingPackageType",
+				header: ({ column }) => (
+					<DataTableColumnHeader
+						column={column}
+						title="Package Type"
+					/>
+				),
+				cell: ({ row }) => (
+					<span className="capitalize">
+						{packageTypeLabels.get(
+							row.original.bookingPackageType,
+						) ?? row.original.bookingPackageType}
+					</span>
+				),
+				meta: {
+					label: "Package Type",
+					width: 140,
+					minWidth: 120,
+				},
+				enableSorting: false,
+				enableHiding: true,
+			},
+			{
+				id: "cost",
+				accessorKey: "cost",
+				header: ({ column }) => (
+					<DataTableColumnHeader column={column} title="Cost" />
+				),
+				cell: ({ row }) => {
+					if (row.original.isPackageIncluded) {
+						return <Badge variant="secondary">Included</Badge>;
+					}
+					return (
+						<span>
+							{row.original.cost
+								? formatMoney(row.original.cost)
+								: "—"}
+						</span>
+					);
+				},
+				meta: {
+					label: "Cost",
+					width: 100,
+					minWidth: 100,
+				},
+				enableSorting: true,
 				enableHiding: true,
 			},
 			{
@@ -452,118 +388,64 @@ export function DeliverablesTableClient({
 				),
 				enableSorting: false,
 				enableHiding: false,
-				meta: {
-					width: 56,
-					minWidth: 56,
-					// First right-sticky column - add left border + fade
-					headerClassName:
-						"!px-0 md:sticky md:right-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border after:absolute after:left-[-24px] after:top-0 after:bottom-0 after:w-6 after:bg-gradient-to-r after:from-transparent after:to-background",
-					cellClassName:
-						"!px-0 md:sticky md:right-0 bg-background z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border after:absolute after:left-[-24px] after:top-0 after:bottom-0 after:w-6 after:bg-gradient-to-r after:from-transparent after:to-background",
+					meta: {
+						width: 48,
+						minWidth: 48,
+						// First right-sticky column - add left border + fade
+						headerClassName:
+							"!px-0 md:sticky md:right-0 bg-gray-100 z-10",
+						cellClassName:
+							"!px-0 md:sticky md:right-0 bg-table-surface group-hover:bg-table-row-selected group-data-[state=selected]:bg-table-row-selected z-10",
+					},
 				},
-			},
 		],
 		[organizationSlug, rowActions],
 	);
 
 	return (
 		<>
-			<div className="space-y-4">
-				{/* Toolbar with filters */}
-				<div className="flex items-center justify-between gap-4">
-					<DataTableToolbar
-						filters={[
-							{
-								id: "deliverableType",
-								label: "Type",
-								variant: "multiSelect",
-								options: deliverableTypeOptions,
-								icon: TagIcon,
-							},
-							{
-								id: "status",
-								label: "Status",
-								variant: "multiSelect",
-								options: statusOptions,
-								icon: CircleIcon,
-							},
-							{
-								id: "priority",
-								label: "Priority",
-								variant: "multiSelect",
-								options: priorityOptions,
-								icon: AlertCircleIcon,
-							},
-						]}
-						filterValues={{
-							deliverableType: filters.deliverableType ?? [],
-							status: filters.status ?? [],
-							priority: filters.priority ?? [],
-						}}
-						onFilterChange={(id, value) => {
-							if (id === "deliverableType") {
-								setFilter("deliverableType", value as string[]);
-							} else if (id === "status") {
-								setFilter("status", value as string[]);
-							} else if (id === "priority") {
-								setFilter("priority", value as string[]);
-							}
-						}}
-						onResetFilters={resetFilters}
-						isFiltered={isFiltered}
-						showSearch
-						searchValue={filters.search ?? ""}
-						searchPlaceholder="Search deliverables..."
-						onSearchChange={(value) =>
-							setFilter("search", value || null)
-						}
-						className="flex-1"
-					/>
-					<OpenDeliverableCreateSheet />
-				</div>
-
-				{/* Table with sort context */}
-				<SortProvider
-					sortColumn={sorting.sortBy}
-					sortDirection={sorting.sortDirection}
-				>
-					<DataTable
-						columns={columns}
-						data={deliverables}
-						isLoading={isLoading}
-						isFetching={isFetching}
-						pagination={serverPagination}
-						onPaginationChange={onPaginationChange}
-						sorting={sortingState}
-						onSortingChange={onSortingChange}
-						enableRowSelection
-						getRowId={(row) => row.id}
-						// Sticky columns configuration
-						stickyLeftColumns={[
-							{ id: "select", width: 56 },
-							{ id: "name", width: 240 },
-						]}
-						stickyRightColumns={[{ id: "actions", width: 56 }]}
-						minWidth={1200}
-						// Place scroll controls in the last sticky left column
-						scrollControlsColumnId="name"
-						scrollStartColumn={2}
-						emptyState={
-							<div className="flex flex-col items-center gap-2">
-								<PackageIcon className="h-12 w-12 text-muted-foreground/50" />
-								<p className="text-muted-foreground">
-									No deliverables found
-								</p>
-								<OpenDeliverableCreateSheet
-									variant="outline"
-									size="sm"
-									label="Add your first deliverable"
-								/>
-							</div>
-						}
-					/>
-				</SortProvider>
-			</div>
+			{/* Table with sort context */}
+			<SortProvider
+				sortColumn={sorting.sortBy}
+				sortDirection={sorting.sortDirection}
+			>
+				<DataTable
+					columns={columns}
+					data={deliverables}
+					isLoading={isLoading}
+					isFetching={isFetching}
+					pagination={serverPagination}
+					onPaginationChange={onPaginationChange}
+					onLimitChange={onLimitChange}
+					sorting={sortingState}
+					onSortingChange={onSortingChange}
+					enableRowSelection
+					getRowId={(row) => row.id}
+					// Sticky columns configuration
+					stickyLeftColumns={[
+						{ id: "select", width: 48 },
+						{ id: "name", width: 240 },
+					]}
+					stickyRightColumns={[{ id: "actions", width: 48 }]}
+					minWidth={1200}
+					// Place scroll controls in the last sticky left column
+					scrollControlsColumnId="name"
+					scrollStartColumn={2}
+					emptyState={
+						<div className="flex flex-col items-center gap-2">
+							<PackageIcon className="h-12 w-12 text-muted-foreground/50" />
+							<p className="text-muted-foreground">
+								No deliverables found
+							</p>
+							<OpenDeliverableCreateSheet
+								variant="outline"
+								size="sm"
+								label="Add your first deliverable"
+							/>
+						</div>
+					}
+				/>
+			</SortProvider>
 
 			{/* Delete confirmation dialog */}
 			<AlertDialog

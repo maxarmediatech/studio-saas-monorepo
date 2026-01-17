@@ -13,6 +13,7 @@ import {
 	configurationsApi,
 	configurationsMutations,
 } from "@saas/studio/lib/api";
+import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -24,6 +25,7 @@ import {
 	ConfigurationForm,
 	type ConfigurationFormValues,
 } from "../ConfigurationForm";
+import { EventTypeForm, type EventTypeFormValues } from "../EventTypeForm";
 import {
 	PackageTypeForm,
 	type PackageTypeFormValues,
@@ -37,6 +39,7 @@ const CONFIG_TYPE_LABELS: Record<string, string> = {
 	booking_type: "Booking Type",
 	package_type: "Package Type",
 	relation_type: "Relation Type",
+	event_type: "Event Type",
 	shoot_status: "Shoot Status",
 	crew_role: "Crew Role",
 	task_status: "Task Status",
@@ -66,8 +69,9 @@ export function ConfigurationEditSheet() {
 		...configurationsMutations.update(),
 		onSuccess: () => {
 			toast.success(`${typeLabel} updated successfully`);
+			// Use ORPC's key generator to match the booking form's query keys
 			queryClient.invalidateQueries({
-				queryKey: ["studio", "configurations"],
+				queryKey: orpc.configurations.key(),
 			});
 			close();
 		},
@@ -168,9 +172,35 @@ export function ConfigurationEditSheet() {
 		});
 	};
 
+	const handleEventTypeSubmit = async (data: EventTypeFormValues) => {
+		if (!configurationId) {
+			return;
+		}
+
+		// Build metadata from event type-specific fields
+		const metadata: Record<string, unknown> = {};
+		if (
+			data.applicableBookingTypes &&
+			data.applicableBookingTypes.length > 0
+		) {
+			metadata.bookingTypes = data.applicableBookingTypes;
+		}
+
+		await updateMutation.mutateAsync({
+			id: configurationId,
+			label: data.label,
+			description: data.description || null,
+			color: data.color || null,
+			sortOrder: data.sortOrder,
+			isDefault: data.isDefault,
+			metadata: Object.keys(metadata).length > 0 ? metadata : null,
+		});
+	};
+
 	const isPackageType = configurationType === "package_type";
 	const isBookingType = configurationType === "booking_type";
 	const isRelationType = configurationType === "relation_type";
+	const isEventType = configurationType === "event_type";
 
 	return (
 		<Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
@@ -178,7 +208,10 @@ export function ConfigurationEditSheet() {
 				side="right"
 				className={cn(
 					"p-0 gap-0 flex flex-col",
-					isPackageType || isBookingType || isRelationType
+					isPackageType ||
+						isBookingType ||
+						isRelationType ||
+						isEventType
 						? "sm:max-w-xl"
 						: "sm:max-w-md",
 				)}
@@ -205,6 +238,14 @@ export function ConfigurationEditSheet() {
 								<Skeleton className="h-10 w-full" />
 							</div>
 						</div>
+					) : isEventType ? (
+						<EventTypeForm
+							defaultValues={configuration?.data}
+							onSubmit={handleEventTypeSubmit}
+							mode="edit"
+							isPending={updateMutation.isPending}
+							onScrollChange={setIsScrolled}
+						/>
 					) : isRelationType ? (
 						<RelationTypeForm
 							defaultValues={configuration?.data}

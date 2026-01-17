@@ -1,32 +1,59 @@
-import { getSession } from "@saas/auth/lib/server";
+import { config } from "@repo/config";
+import { userAccountQueryKey } from "@saas/auth/lib/api";
+import { getSession, getUserAccounts } from "@saas/auth/lib/server";
+import { ActiveSessionsBlock } from "@saas/settings/components/ActiveSessionsBlock";
+import { ChangePasswordForm } from "@saas/settings/components/ChangePassword";
+import { ConnectedAccountsBlock } from "@saas/settings/components/ConnectedAccountsBlock";
+import { PasskeysBlock } from "@saas/settings/components/PasskeysBlock";
+import { SetPasswordForm } from "@saas/settings/components/SetPassword";
+import { SettingsList } from "@saas/shared/components/SettingsList";
 import { PageContent } from "@saas/studio";
+import { getServerQueryClient } from "@shared/lib/server";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 
 export async function generateMetadata() {
+	const t = await getTranslations();
+
 	return {
-		title: "Security Settings",
+		title: t("settings.account.security.title"),
 	};
 }
 
 export default async function SecuritySettingsPage() {
+	const t = await getTranslations();
 	const session = await getSession();
 
 	if (!session) {
 		redirect("/auth/login");
 	}
 
+	const userAccounts = await getUserAccounts();
+
+	const userHasPassword = userAccounts?.some(
+		(account) => account.providerId === "credential",
+	);
+
+	const queryClient = getServerQueryClient();
+
+	await queryClient.prefetchQuery({
+		queryKey: userAccountQueryKey,
+		queryFn: () => getUserAccounts(),
+	});
+
 	return (
-		<PageContent title="Security">
-			<div className="rounded-lg border border-neutral-200 bg-neutral-50 p-8 text-center">
-				<h3 className="text-lg font-medium text-neutral-900">
-					Security Settings
-				</h3>
-				<p className="mt-2 text-sm text-neutral-500">
-					Manage your password, two-factor authentication, and active
-					sessions.
-				</p>
-				<p className="mt-4 text-sm text-neutral-400">Coming soon</p>
-			</div>
+		<PageContent title={t("settings.account.security.title")}>
+			<SettingsList>
+				{config.auth.enablePasswordLogin &&
+					(userHasPassword ? (
+						<ChangePasswordForm />
+					) : (
+						<SetPasswordForm />
+					))}
+				{config.auth.enableSocialLogin && <ConnectedAccountsBlock />}
+				{config.auth.enablePasskeys && <PasskeysBlock />}
+				<ActiveSessionsBlock />
+			</SettingsList>
 		</PageContent>
 	);
 }

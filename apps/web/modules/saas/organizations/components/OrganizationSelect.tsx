@@ -14,6 +14,7 @@ import {
 import { useSession } from "@saas/auth/hooks/use-session";
 import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
 import { useOrganizationListQuery } from "@saas/organizations/lib/api";
+import { setActiveOrganizationSlugCookie } from "@saas/organizations/lib/active-organization-cookie";
 import { ActivePlanBadge } from "@saas/payments/components/ActivePlanBadge";
 import { UserAvatar } from "@shared/components/UserAvatar";
 import { useRouter } from "@shared/hooks/router";
@@ -84,6 +85,7 @@ export function OrganzationSelect({ className }: { className?: string }) {
 								value={activeOrganization?.id ?? user.id}
 								onValueChange={async (value: string) => {
 									if (value === user.id) {
+										setActiveOrganizationSlugCookie(null);
 										await clearCache();
 										router.replace("/app");
 									}

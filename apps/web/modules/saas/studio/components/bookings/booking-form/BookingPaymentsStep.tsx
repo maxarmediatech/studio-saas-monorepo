@@ -1,21 +1,28 @@
 "use client";
 
-import { Alert, AlertDescription } from "@repo/ui/components/alert";
 import { Button } from "@repo/ui/components/button";
-import {
-	Card,
-	CardContent,
-	CardHeader,
-	CardTitle,
-} from "@repo/ui/components/card";
+import { Card, CardContent } from "@repo/ui/components/card";
+import { DatePicker } from "@repo/ui/components/date-picker";
 import {
 	Field,
+	FieldContent,
+	FieldDescription,
 	FieldError,
 	FieldGroup,
 	FieldLabel,
+	FieldLegend,
+	FieldSeparator,
 	FieldSet,
+	FieldTitle,
 } from "@repo/ui/components/field";
 import { Input } from "@repo/ui/components/input";
+import {
+	InputGroup,
+	InputGroupAddon,
+	InputGroupButton,
+	InputGroupText,
+	InputGroupTextarea,
+} from "@repo/ui/components/input-group";
 import {
 	Select,
 	SelectContent,
@@ -23,17 +30,23 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@repo/ui/components/select";
+import { Separator } from "@repo/ui/components/separator";
 import {
-	AlertCircleIcon,
 	BanknoteIcon,
 	CalendarIcon,
-	CheckCircle2Icon,
+	ChevronDownIcon,
+	ChevronUpIcon,
+	FileTextIcon,
+	Loader2Icon,
+	PaperclipIcon,
 	PlusIcon,
 	TrashIcon,
 	WalletIcon,
+	XIcon,
 } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
+import { toast } from "sonner";
 import {
 	type BookingFormValues,
 	PAYMENT_METHOD_OPTIONS,
@@ -113,493 +126,158 @@ export function BookingPaymentsStep() {
 		}).format(amount);
 	};
 
+	const addNewPayment = (presetNotes?: string) => {
+		appendPayment({
+			amount: "",
+			paymentMethod: "upi",
+			receivedDate: new Date().toISOString().split("T")[0],
+			transactionReference: "",
+			notes: presetNotes ?? "",
+			proofAttachment: null,
+		});
+	};
+
+	const addNewSchedule = (presetLabel?: string) => {
+		appendSchedule({
+			name: presetLabel ?? "",
+			amount: "",
+			dueDate: "",
+			notes: "",
+		});
+	};
+
 	return (
-		<FieldGroup className="gap-6">
-			{/* Payment Summary */}
-			<Card>
-				<CardHeader>
-					<CardTitle className="flex items-center gap-2">
-						<WalletIcon className="h-5 w-5" />
-						Payment Summary
-					</CardTitle>
-				</CardHeader>
-				<CardContent>
-					<div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-						<div className="p-4 bg-muted/50 rounded-lg">
-							<p className="text-sm text-muted-foreground">
-								Total Cost
-							</p>
-							<p className="text-xl md:text-2xl font-bold">
-								{formatCurrency(totalCost)}
-							</p>
-						</div>
-						<div className="p-4 bg-green-50 dark:bg-green-950/30 rounded-lg">
-							<p className="text-sm text-muted-foreground">
-								Total Received
-							</p>
-							<p className="text-xl md:text-2xl font-bold text-green-600 dark:text-green-400">
-								{formatCurrency(totalReceived)}
-							</p>
-						</div>
-						<div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
-							<p className="text-sm text-muted-foreground">
-								Scheduled
-							</p>
-							<p className="text-xl md:text-2xl font-bold text-blue-600 dark:text-blue-400">
-								{formatCurrency(totalScheduled)}
-							</p>
-						</div>
-						<div
-							className={`p-4 rounded-lg ${
-								isFullyPaid
-									? "bg-green-50 dark:bg-green-950/30"
-									: "bg-amber-50 dark:bg-amber-950/30"
-							}`}
-						>
-							<p className="text-sm text-muted-foreground">
-								Balance
-							</p>
-							<p
-								className={`text-xl md:text-2xl font-bold ${
-									isFullyPaid
-										? "text-green-600 dark:text-green-400"
-										: "text-amber-600 dark:text-amber-400"
-								}`}
-							>
-								{formatCurrency(Math.max(0, balance))}
-							</p>
-						</div>
-					</div>
+		<Card className="shadow-none">
+			<CardContent>
+				<FieldSet>
+					<FieldGroup>
+						{/* Payment Summary */}
+						<Field orientation="responsive">
+							<div className="flex-1">
+								<FieldLegend className="flex items-center gap-2">
+									<WalletIcon className="h-4 w-4" />
+									Payment Summary
+								</FieldLegend>
+								<FieldDescription>
+									Track payment progress against total booking
+									cost
+								</FieldDescription>
+							</div>
+							<div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm text-right">
+								<div className="text-muted-foreground">
+									Total
+								</div>
+								<div className="font-medium">
+									{formatCurrency(totalCost)}
+								</div>
+								<div className="text-muted-foreground">
+									Received
+								</div>
+								<div className="font-medium text-green-600 dark:text-green-400">
+									{formatCurrency(totalReceived)}
+								</div>
+							</div>
+						</Field>
 
-					{/* Payment status alerts - announced to screen readers */}
-					<div aria-live="polite" aria-atomic="true">
-						{isOverpaid && (
-							<Alert
-								variant="destructive"
-								className="mt-4"
-								role="alert"
-							>
-								<AlertCircleIcon className="h-4 w-4" />
-								<AlertDescription>
-									Total payments exceed the package cost by{" "}
-									{formatCurrency(Math.abs(balance))}.
-								</AlertDescription>
-							</Alert>
-						)}
+						<FieldSeparator />
 
-						{isFullyPaid && !isOverpaid && (
-							<Alert
-								className="mt-4 border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/30"
-								role="status"
+						{/* Received sub-section */}
+						<Field orientation="responsive">
+							<div className="flex-1">
+								<FieldContent>
+									<FieldTitle className="flex items-center gap-2">
+										<BanknoteIcon className="h-4 w-4" />
+										Received
+									</FieldTitle>
+									<FieldDescription>
+										Payments already collected from the
+										client
+									</FieldDescription>
+								</FieldContent>
+							</div>
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								onClick={() => addNewPayment()}
 							>
-								<CheckCircle2Icon className="h-4 w-4 text-green-600" />
-								<AlertDescription className="text-green-600 dark:text-green-400">
-									Payment complete! All dues have been
-									received.
-								</AlertDescription>
-							</Alert>
-						)}
-					</div>
-				</CardContent>
-			</Card>
-
-			{/* Received Payments */}
-			<Card>
-				<CardHeader className="flex flex-row items-center justify-between">
-					<div>
-						<CardTitle className="flex items-center gap-2">
-							<BanknoteIcon className="h-5 w-5" />
-							Received Payments
-						</CardTitle>
-						<p className="text-sm text-muted-foreground mt-1">
-							Record payments already received from the client
-						</p>
-					</div>
-					<Button
-						type="button"
-						variant="outline"
-						size="sm"
-						onClick={() =>
-							appendPayment({
-								amount: "",
-								paymentMethod: "upi",
-								receivedDate: new Date()
-									.toISOString()
-									.split("T")[0],
-								transactionReference: "",
-								notes: "",
-							})
-						}
-					>
-						<PlusIcon className="mr-2 h-4 w-4" />
-						Add Payment
-					</Button>
-				</CardHeader>
-				<CardContent>
-					<FieldSet>
+								<PlusIcon className="mr-2 h-4 w-4" />
+								Add Payment
+							</Button>
+						</Field>
 						{paymentFields.length === 0 ? (
-							<div className="flex flex-col items-center justify-center py-12 text-center border border-dashed rounded-lg">
-								<BanknoteIcon className="h-12 w-12 text-muted-foreground/50 mb-4" />
-								<p className="text-sm text-muted-foreground mb-4">
-									No payments recorded yet. Click "Add
-									Payment" to record received amounts.
+							<div className="flex flex-col items-center gap-3 py-8 px-4 border border-dashed rounded-lg text-center">
+								<BanknoteIcon className="h-10 w-10 text-muted-foreground/40" />
+								<p className="text-sm text-muted-foreground">
+									No payments recorded yet
 								</p>
 								<Button
 									type="button"
 									variant="outline"
 									size="sm"
 									onClick={() =>
-										appendPayment({
-											amount: "",
-											paymentMethod: "upi",
-											receivedDate: new Date()
-												.toISOString()
-												.split("T")[0],
-											transactionReference: "",
-											notes: "",
-										})
+										addNewPayment("Advance Payment")
 									}
 								>
-									<PlusIcon className="mr-2 h-4 w-4" />
-									Add Payment
+									<PlusIcon className="mr-1 h-3 w-3" />
+									Advance Payment
 								</Button>
 							</div>
 						) : (
-							<FieldGroup className="gap-4">
+							<div className="space-y-3">
 								{paymentFields.map((payment, index) => (
-									<Card key={payment.id} className="p-4">
-										<div className="flex flex-col md:flex-row md:items-start gap-4">
-											<div className="flex-1 grid gap-4 grid-cols-2 md:grid-cols-5">
-												{/* Amount */}
-												<Controller
-													name={`payments.${index}.amount`}
-													control={form.control}
-													render={({
-														field,
-														fieldState,
-													}) => (
-														<Field
-															data-invalid={
-																fieldState.invalid
-															}
-														>
-															<FieldLabel
-																htmlFor={
-																	field.name
-																}
-															>
-																Amount
-															</FieldLabel>
-															<div className="relative">
-																<span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-																	₹
-																</span>
-																<Input
-																	{...field}
-																	id={
-																		field.name
-																	}
-																	className="pl-7"
-																	placeholder="0.00"
-																	aria-invalid={
-																		fieldState.invalid
-																	}
-																	onChange={(
-																		e,
-																	) => {
-																		const value =
-																			e.target.value.replace(
-																				/[^0-9.]/g,
-																				"",
-																			);
-																		const parts =
-																			value.split(
-																				".",
-																			);
-																		if (
-																			parts.length >
-																			2
-																		) {
-																			return;
-																		}
-																		if (
-																			parts[1] &&
-																			parts[1]
-																				.length >
-																				2
-																		) {
-																			return;
-																		}
-																		field.onChange(
-																			value,
-																		);
-																	}}
-																/>
-															</div>
-															{fieldState.invalid && (
-																<FieldError
-																	errors={[
-																		fieldState.error,
-																	]}
-																/>
-															)}
-														</Field>
-													)}
-												/>
-
-												{/* Payment Method */}
-												<Controller
-													name={`payments.${index}.paymentMethod`}
-													control={form.control}
-													render={({
-														field,
-														fieldState,
-													}) => (
-														<Field
-															data-invalid={
-																fieldState.invalid
-															}
-														>
-															<FieldLabel
-																htmlFor={
-																	field.name
-																}
-															>
-																Method
-															</FieldLabel>
-															<Select
-																onValueChange={
-																	field.onChange
-																}
-																value={
-																	field.value
-																}
-															>
-																<SelectTrigger
-																	id={
-																		field.name
-																	}
-																	aria-invalid={
-																		fieldState.invalid
-																	}
-																>
-																	<SelectValue placeholder="Select" />
-																</SelectTrigger>
-																<SelectContent>
-																	{PAYMENT_METHOD_OPTIONS.map(
-																		(
-																			method,
-																		) => (
-																			<SelectItem
-																				key={
-																					method.value
-																				}
-																				value={
-																					method.value
-																				}
-																			>
-																				{
-																					method.label
-																				}
-																			</SelectItem>
-																		),
-																	)}
-																</SelectContent>
-															</Select>
-															{fieldState.invalid && (
-																<FieldError
-																	errors={[
-																		fieldState.error,
-																	]}
-																/>
-															)}
-														</Field>
-													)}
-												/>
-
-												{/* Received Date */}
-												<Controller
-													name={`payments.${index}.receivedDate`}
-													control={form.control}
-													render={({
-														field,
-														fieldState,
-													}) => (
-														<Field
-															data-invalid={
-																fieldState.invalid
-															}
-														>
-															<FieldLabel
-																htmlFor={
-																	field.name
-																}
-															>
-																Date
-															</FieldLabel>
-															<Input
-																{...field}
-																id={field.name}
-																type="date"
-																aria-invalid={
-																	fieldState.invalid
-																}
-															/>
-															{fieldState.invalid && (
-																<FieldError
-																	errors={[
-																		fieldState.error,
-																	]}
-																/>
-															)}
-														</Field>
-													)}
-												/>
-
-												{/* Transaction Reference */}
-												<Controller
-													name={`payments.${index}.transactionReference`}
-													control={form.control}
-													render={({
-														field,
-														fieldState,
-													}) => (
-														<Field
-															data-invalid={
-																fieldState.invalid
-															}
-														>
-															<FieldLabel
-																htmlFor={
-																	field.name
-																}
-															>
-																Reference
-															</FieldLabel>
-															<Input
-																{...field}
-																id={field.name}
-																placeholder="Transaction ID"
-																aria-invalid={
-																	fieldState.invalid
-																}
-															/>
-															{fieldState.invalid && (
-																<FieldError
-																	errors={[
-																		fieldState.error,
-																	]}
-																/>
-															)}
-														</Field>
-													)}
-												/>
-
-												{/* Notes */}
-												<Controller
-													name={`payments.${index}.notes`}
-													control={form.control}
-													render={({
-														field,
-														fieldState,
-													}) => (
-														<Field
-															data-invalid={
-																fieldState.invalid
-															}
-														>
-															<FieldLabel
-																htmlFor={
-																	field.name
-																}
-															>
-																Notes
-															</FieldLabel>
-															<Input
-																{...field}
-																id={field.name}
-																placeholder="Optional notes"
-																aria-invalid={
-																	fieldState.invalid
-																}
-															/>
-															{fieldState.invalid && (
-																<FieldError
-																	errors={[
-																		fieldState.error,
-																	]}
-																/>
-															)}
-														</Field>
-													)}
-												/>
-											</div>
-
-											{/* Remove Button - 44px touch target (WCAG 2.5.5) */}
-											<Button
-												type="button"
-												variant="ghost"
-												size="icon"
-												className="self-end md:self-auto md:mt-8 min-h-11 min-w-11 text-destructive hover:text-destructive hover:bg-destructive/10"
-												onClick={() =>
-													removePayment(index)
-												}
-											>
-												<TrashIcon className="h-4 w-4" />
-												<span className="sr-only">
-													Remove payment
-												</span>
-											</Button>
-										</div>
-									</Card>
+									<PaymentRow
+										key={payment.id}
+										index={index}
+										onRemove={() => removePayment(index)}
+									/>
 								))}
-							</FieldGroup>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									className="w-full justify-center border-dashed"
+									onClick={() => addNewPayment()}
+								>
+									<PlusIcon className="mr-2 h-4 w-4" />
+									Add another payment
+								</Button>
+							</div>
 						)}
-					</FieldSet>
-				</CardContent>
-			</Card>
 
-			{/* Payment Schedule */}
-			<Card>
-				<CardHeader className="flex flex-row items-center justify-between">
-					<div>
-						<CardTitle className="flex items-center gap-2">
-							<CalendarIcon className="h-5 w-5" />
-							Payment Schedule
-						</CardTitle>
-						<p className="text-sm text-muted-foreground mt-1">
-							Plan upcoming payment milestones
-						</p>
-					</div>
-					<Button
-						type="button"
-						variant="outline"
-						size="sm"
-						onClick={() =>
-							appendSchedule({
-								name: "",
-								amount: "",
-								dueDate: "",
-								notes: "",
-							})
-						}
-					>
-						<PlusIcon className="mr-2 h-4 w-4" />
-						Add Milestone
-					</Button>
-				</CardHeader>
-				<CardContent>
-					<FieldSet>
+						<FieldSeparator />
+
+						{/* Scheduled sub-section */}
+						<Field orientation="responsive">
+							<div className="flex-1">
+								<FieldContent>
+									<FieldTitle className="flex items-center gap-2">
+										<CalendarIcon className="h-4 w-4" />
+										Scheduled
+									</FieldTitle>
+									<FieldDescription>
+										Upcoming payment milestones
+									</FieldDescription>
+								</FieldContent>
+							</div>
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								onClick={() => addNewSchedule()}
+							>
+								<PlusIcon className="mr-2 h-4 w-4" />
+								Add Milestone
+							</Button>
+						</Field>
 						{scheduleFields.length === 0 ? (
-							<div className="flex flex-col items-center justify-center py-12 text-center border border-dashed rounded-lg">
-								<CalendarIcon className="h-12 w-12 text-muted-foreground/50 mb-4" />
-								<p className="text-sm text-muted-foreground mb-4">
-									No payment schedule set. Click "Add
-									Milestone" to plan payment dates.
+							<div className="flex flex-col items-center gap-3 py-8 px-4 border border-dashed rounded-lg text-center">
+								<CalendarIcon className="h-10 w-10 text-muted-foreground/40" />
+								<p className="text-sm text-muted-foreground">
+									No payment schedule set
 								</p>
-								{/* Quick add presets */}
-								<div className="flex flex-wrap gap-2 justify-center">
-									{PAYMENT_SCHEDULE_PRESETS.slice(0, 3).map(
+								<div className="flex flex-wrap justify-center gap-2">
+									{PAYMENT_SCHEDULE_PRESETS.slice(1, 4).map(
 										(preset) => (
 											<Button
 												key={preset.value}
@@ -607,12 +285,7 @@ export function BookingPaymentsStep() {
 												variant="outline"
 												size="sm"
 												onClick={() =>
-													appendSchedule({
-														name: preset.label,
-														amount: "",
-														dueDate: "",
-														notes: "",
-													})
+													addNewSchedule(preset.label)
 												}
 											>
 												<PlusIcon className="mr-1 h-3 w-3" />
@@ -623,248 +296,567 @@ export function BookingPaymentsStep() {
 								</div>
 							</div>
 						) : (
-							<FieldGroup className="gap-4">
+							<div className="space-y-3">
 								{scheduleFields.map((schedule, index) => (
-									<Card key={schedule.id} className="p-4">
-										<div className="flex flex-col md:flex-row md:items-start gap-4">
-											<div className="flex-1 grid gap-4 grid-cols-2 md:grid-cols-4">
-												{/* Name */}
-												<Controller
-													name={`paymentSchedules.${index}.name`}
-													control={form.control}
-													render={({
-														field,
-														fieldState,
-													}) => (
-														<Field
-															data-invalid={
-																fieldState.invalid
-															}
-														>
-															<FieldLabel
-																htmlFor={
-																	field.name
-																}
-															>
-																Payment Name
-															</FieldLabel>
-															<Input
-																{...field}
-																id={field.name}
-																placeholder="e.g. Advance Payment"
-																list={`schedule-presets-${index}`}
-																aria-invalid={
-																	fieldState.invalid
-																}
-															/>
-															<datalist
-																id={`schedule-presets-${index}`}
-															>
-																{PAYMENT_SCHEDULE_PRESETS.map(
-																	(
-																		preset,
-																	) => (
-																		<option
-																			key={
-																				preset.value
-																			}
-																			value={
-																				preset.label
-																			}
-																		/>
-																	),
-																)}
-															</datalist>
-															{fieldState.invalid && (
-																<FieldError
-																	errors={[
-																		fieldState.error,
-																	]}
-																/>
-															)}
-														</Field>
-													)}
-												/>
-
-												{/* Amount */}
-												<Controller
-													name={`paymentSchedules.${index}.amount`}
-													control={form.control}
-													render={({
-														field,
-														fieldState,
-													}) => (
-														<Field
-															data-invalid={
-																fieldState.invalid
-															}
-														>
-															<FieldLabel
-																htmlFor={
-																	field.name
-																}
-															>
-																Amount
-															</FieldLabel>
-															<div className="relative">
-																<span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-																	₹
-																</span>
-																<Input
-																	{...field}
-																	id={
-																		field.name
-																	}
-																	className="pl-7"
-																	placeholder="0.00"
-																	aria-invalid={
-																		fieldState.invalid
-																	}
-																	onChange={(
-																		e,
-																	) => {
-																		const value =
-																			e.target.value.replace(
-																				/[^0-9.]/g,
-																				"",
-																			);
-																		const parts =
-																			value.split(
-																				".",
-																			);
-																		if (
-																			parts.length >
-																			2
-																		) {
-																			return;
-																		}
-																		if (
-																			parts[1] &&
-																			parts[1]
-																				.length >
-																				2
-																		) {
-																			return;
-																		}
-																		field.onChange(
-																			value,
-																		);
-																	}}
-																/>
-															</div>
-															{fieldState.invalid && (
-																<FieldError
-																	errors={[
-																		fieldState.error,
-																	]}
-																/>
-															)}
-														</Field>
-													)}
-												/>
-
-												{/* Due Date */}
-												<Controller
-													name={`paymentSchedules.${index}.dueDate`}
-													control={form.control}
-													render={({
-														field,
-														fieldState,
-													}) => (
-														<Field
-															data-invalid={
-																fieldState.invalid
-															}
-														>
-															<FieldLabel
-																htmlFor={
-																	field.name
-																}
-															>
-																Due Date
-															</FieldLabel>
-															<Input
-																{...field}
-																id={field.name}
-																type="date"
-																aria-invalid={
-																	fieldState.invalid
-																}
-															/>
-															{fieldState.invalid && (
-																<FieldError
-																	errors={[
-																		fieldState.error,
-																	]}
-																/>
-															)}
-														</Field>
-													)}
-												/>
-
-												{/* Notes */}
-												<Controller
-													name={`paymentSchedules.${index}.notes`}
-													control={form.control}
-													render={({
-														field,
-														fieldState,
-													}) => (
-														<Field
-															data-invalid={
-																fieldState.invalid
-															}
-														>
-															<FieldLabel
-																htmlFor={
-																	field.name
-																}
-															>
-																Notes
-															</FieldLabel>
-															<Input
-																{...field}
-																id={field.name}
-																placeholder="Optional notes"
-																aria-invalid={
-																	fieldState.invalid
-																}
-															/>
-															{fieldState.invalid && (
-																<FieldError
-																	errors={[
-																		fieldState.error,
-																	]}
-																/>
-															)}
-														</Field>
-													)}
-												/>
-											</div>
-
-											{/* Remove Button - 44px touch target (WCAG 2.5.5) */}
-											<Button
-												type="button"
-												variant="ghost"
-												size="icon"
-												className="self-end md:self-auto md:mt-8 min-h-11 min-w-11 text-destructive hover:text-destructive hover:bg-destructive/10"
-												onClick={() =>
-													removeSchedule(index)
-												}
-											>
-												<TrashIcon className="h-4 w-4" />
-												<span className="sr-only">
-													Remove schedule
-												</span>
-											</Button>
-										</div>
-									</Card>
+									<ScheduleRow
+										key={schedule.id}
+										index={index}
+										onRemove={() => removeSchedule(index)}
+									/>
 								))}
-							</FieldGroup>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									className="w-full justify-center border-dashed"
+									onClick={() => addNewSchedule()}
+								>
+									<PlusIcon className="mr-2 h-4 w-4" />
+									Add another milestone
+								</Button>
+							</div>
 						)}
-					</FieldSet>
-				</CardContent>
-			</Card>
-		</FieldGroup>
+					</FieldGroup>
+				</FieldSet>
+			</CardContent>
+		</Card>
+	);
+}
+
+interface PaymentRowProps {
+	index: number;
+	onRemove: () => void;
+}
+
+function PaymentRow({ index, onRemove }: PaymentRowProps) {
+	const form = useFormContext<BookingFormValues>();
+	const [isUploading, setIsUploading] = useState(false);
+	const [isDeleting, setIsDeleting] = useState(false);
+	const fileInputRef = useRef<HTMLInputElement>(null);
+
+	// Watch values to determine if there's content
+	const referenceValue = form.watch(`payments.${index}.transactionReference`);
+	const notesValue = form.watch(`payments.${index}.notes`);
+	const proofAttachment = form.watch(`payments.${index}.proofAttachment`);
+	const hasDetails = Boolean(referenceValue || notesValue || proofAttachment);
+
+	// Track expanded state - starts expanded if has content
+	const [isExpanded, setIsExpanded] = useState(hasDetails);
+
+	// Format file size for display
+	const formatFileSize = (bytes: number) => {
+		if (bytes < 1024) return `${bytes} B`;
+		if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+		return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+	};
+
+	// Handle file upload
+	const handleFileUpload = async (file: File) => {
+		setIsUploading(true);
+		try {
+			const presignedUrlRes = await fetch("/api/uploads/presigned-url", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					fileName: file.name,
+					fileType: file.type,
+					fileSize: file.size,
+					context: "payments",
+				}),
+			});
+
+			if (!presignedUrlRes.ok) throw new Error("Failed to get upload URL");
+
+			const { url, key } = await presignedUrlRes.json();
+
+			const uploadRes = await fetch(url, {
+				method: "PUT",
+				body: file,
+				headers: { "Content-Type": file.type },
+			});
+
+			if (uploadRes.ok) {
+				const finalUrl = url.split("?")[0];
+				form.setValue(
+					`payments.${index}.proofAttachment`,
+					{ name: file.name, size: file.size, type: file.type, key, url: finalUrl },
+					{ shouldValidate: true },
+				);
+				toast.success("Proof uploaded");
+			} else {
+				throw new Error("Upload failed");
+			}
+		} catch (_error) {
+			toast.error("Failed to upload file");
+		} finally {
+			setIsUploading(false);
+		}
+	};
+
+	// Handle file removal
+	const handleFileRemove = async () => {
+		if (!proofAttachment) return;
+		setIsDeleting(true);
+		try {
+			const deleteRes = await fetch("/api/uploads/file", {
+				method: "DELETE",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ key: proofAttachment.key }),
+			});
+			if (!deleteRes.ok) throw new Error("Delete failed");
+			form.setValue(`payments.${index}.proofAttachment`, null, { shouldValidate: true });
+			toast.success("Proof removed");
+		} catch (_error) {
+			toast.error("Failed to remove file");
+		} finally {
+			setIsDeleting(false);
+		}
+	};
+
+	return (
+		<div className="overflow-hidden rounded-lg border bg-muted/10">
+			{/* Header row */}
+			<div className="flex items-center justify-between gap-2 border-b bg-muted/20 px-4 py-3">
+				<div className="flex items-center gap-2">
+					<BanknoteIcon className="h-4 w-4 text-muted-foreground" />
+					<span className="text-sm font-medium">
+						Payment {index + 1}
+					</span>
+				</div>
+				<Button
+					type="button"
+					variant="ghost"
+					size="icon"
+					className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+					onClick={onRemove}
+				>
+					<TrashIcon className="h-4 w-4" />
+					<span className="sr-only">Remove payment</span>
+				</Button>
+			</div>
+
+			{/* Content */}
+			<div className="p-4 space-y-3">
+				{/* Row 1: Amount, Method, Date */}
+				<div className="grid gap-3 grid-cols-2 md:grid-cols-3">
+					{/* Amount */}
+					<Controller
+						name={`payments.${index}.amount`}
+						control={form.control}
+						render={({ field, fieldState }) => (
+							<Field data-invalid={fieldState.invalid}>
+								<FieldLabel htmlFor={field.name}>
+									Amount
+								</FieldLabel>
+								<div className="relative">
+									<span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+										₹
+									</span>
+									<Input
+										{...field}
+										id={field.name}
+										className="pl-7"
+										placeholder="0.00"
+										aria-invalid={fieldState.invalid}
+										onChange={(e) => {
+											const value =
+												e.target.value.replace(
+													/[^0-9.]/g,
+													"",
+												);
+											const parts = value.split(".");
+											if (parts.length > 2) return;
+											if (parts[1] && parts[1].length > 2) return;
+											field.onChange(value);
+										}}
+									/>
+								</div>
+								{fieldState.invalid && (
+									<FieldError errors={[fieldState.error]} />
+								)}
+							</Field>
+						)}
+					/>
+
+					{/* Payment Method */}
+					<Controller
+						name={`payments.${index}.paymentMethod`}
+						control={form.control}
+						render={({ field, fieldState }) => (
+							<Field data-invalid={fieldState.invalid}>
+								<FieldLabel htmlFor={field.name}>
+									Method
+								</FieldLabel>
+								<Select
+									onValueChange={field.onChange}
+									value={field.value}
+								>
+									<SelectTrigger
+										id={field.name}
+										aria-invalid={fieldState.invalid}
+									>
+										<SelectValue placeholder="Select" />
+									</SelectTrigger>
+									<SelectContent>
+										{PAYMENT_METHOD_OPTIONS.map(
+											(method) => (
+												<SelectItem
+													key={method.value}
+													value={method.value}
+												>
+													{method.label}
+												</SelectItem>
+											),
+										)}
+									</SelectContent>
+								</Select>
+								{fieldState.invalid && (
+									<FieldError errors={[fieldState.error]} />
+								)}
+							</Field>
+						)}
+					/>
+
+					{/* Received Date */}
+					<Controller
+						name={`payments.${index}.receivedDate`}
+						control={form.control}
+						render={({ field, fieldState }) => (
+							<Field data-invalid={fieldState.invalid}>
+								<FieldLabel htmlFor={field.name}>
+									Date
+								</FieldLabel>
+								<DatePicker
+									value={field.value}
+									onValueChange={field.onChange}
+									id={field.name}
+									aria-invalid={fieldState.invalid}
+								/>
+								{fieldState.invalid && (
+									<FieldError errors={[fieldState.error]} />
+								)}
+							</Field>
+						)}
+					/>
+				</div>
+
+				{/* Collapsible Details Section */}
+				{isExpanded && (
+					<Field>
+						<div className="flex items-center justify-between">
+							<FieldLabel
+								htmlFor={`payments.${index}.notes`}
+								className="text-muted-foreground"
+							>
+								Reference
+							</FieldLabel>
+							<Button
+								type="button"
+								variant="ghost"
+								size="sm"
+								className="h-auto py-0 px-1 text-muted-foreground"
+								onClick={() => setIsExpanded(false)}
+							>
+								<ChevronUpIcon className="mr-1 h-3.5 w-3.5" />
+								Hide
+							</Button>
+						</div>
+						<InputGroup>
+							<Controller
+								name={`payments.${index}.notes`}
+								control={form.control}
+								render={({ field }) => (
+									<InputGroupTextarea
+										{...field}
+										id={`payments.${index}.notes`}
+										placeholder="Transaction ID, notes..."
+										rows={2}
+									/>
+								)}
+							/>
+							<InputGroupAddon align="block-end">
+								{/* Hidden file input */}
+								<input
+									ref={fileInputRef}
+									type="file"
+									className="hidden"
+									accept=".pdf,.jpg,.jpeg,.png,.webp"
+									onChange={(e) => {
+										const file = e.target.files?.[0];
+										if (file) handleFileUpload(file);
+										e.target.value = "";
+									}}
+								/>
+
+								{/* Attachment button or uploaded file display */}
+								{isUploading ? (
+									<InputGroupText>
+										<Loader2Icon className="h-4 w-4 animate-spin" />
+										<span className="text-xs">Uploading...</span>
+									</InputGroupText>
+								) : proofAttachment ? (
+									<>
+										<InputGroupText className="gap-1.5">
+											<FileTextIcon className="h-4 w-4 text-primary" />
+											<span
+												className="max-w-[150px] truncate text-xs"
+												title={proofAttachment.name}
+											>
+												{proofAttachment.name}
+											</span>
+											<span className="text-xs text-muted-foreground">
+												({formatFileSize(proofAttachment.size)})
+											</span>
+										</InputGroupText>
+										<InputGroupButton
+											variant="ghost"
+											size="icon-xs"
+											onClick={handleFileRemove}
+											disabled={isDeleting}
+											className="text-destructive hover:text-destructive"
+										>
+											{isDeleting ? (
+												<Loader2Icon className="h-3.5 w-3.5 animate-spin" />
+											) : (
+												<XIcon className="h-3.5 w-3.5" />
+											)}
+											<span className="sr-only">Remove proof</span>
+										</InputGroupButton>
+									</>
+								) : (
+									<InputGroupButton
+										variant="ghost"
+										size="xs"
+										onClick={() => fileInputRef.current?.click()}
+									>
+										<PaperclipIcon className="h-4 w-4" />
+										Attach Proof
+									</InputGroupButton>
+								)}
+
+								<Separator orientation="vertical" className="!h-4 ml-auto" />
+
+								<InputGroupText className="text-xs text-muted-foreground">
+									PDF or Image
+								</InputGroupText>
+							</InputGroupAddon>
+						</InputGroup>
+					</Field>
+				)}
+
+				{/* Add Details button (when details hidden) */}
+				{!isExpanded && (
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						className="w-fit text-muted-foreground"
+						onClick={() => setIsExpanded(true)}
+					>
+						<ChevronDownIcon className="mr-1.5 h-3.5 w-3.5" />
+						Add reference
+					</Button>
+				)}
+			</div>
+		</div>
+	);
+}
+
+interface ScheduleRowProps {
+	index: number;
+	onRemove: () => void;
+}
+
+function ScheduleRow({ index, onRemove }: ScheduleRowProps) {
+	const form = useFormContext<BookingFormValues>();
+
+	// Watch notes to determine if there's content
+	const notesValue = form.watch(`paymentSchedules.${index}.notes`);
+
+	// Track expanded state - starts expanded if has content
+	const [isExpanded, setIsExpanded] = useState(Boolean(notesValue));
+
+	return (
+		<div className="overflow-hidden rounded-lg border bg-muted/10">
+			{/* Header row */}
+			<div className="flex items-center justify-between gap-2 border-b bg-muted/20 px-4 py-3">
+				<div className="flex items-center gap-2">
+					<CalendarIcon className="h-4 w-4 text-muted-foreground" />
+					<span className="text-sm font-medium">
+						Milestone {index + 1}
+					</span>
+				</div>
+				<Button
+					type="button"
+					variant="ghost"
+					size="icon"
+					className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+					onClick={onRemove}
+				>
+					<TrashIcon className="h-4 w-4" />
+					<span className="sr-only">Remove milestone</span>
+				</Button>
+			</div>
+
+			{/* Content */}
+			<div className="p-4 space-y-3">
+				{/* Row 1: Name, Amount, Due Date */}
+				<div className="grid gap-3 grid-cols-2 md:grid-cols-3">
+					{/* Name */}
+					<Controller
+						name={`paymentSchedules.${index}.name`}
+						control={form.control}
+						render={({ field, fieldState }) => (
+							<Field data-invalid={fieldState.invalid}>
+								<FieldLabel htmlFor={field.name}>
+									Payment Name
+								</FieldLabel>
+								<Input
+									{...field}
+									id={field.name}
+									placeholder="e.g. Advance Payment"
+									list={`schedule-presets-${index}`}
+									aria-invalid={fieldState.invalid}
+								/>
+								<datalist id={`schedule-presets-${index}`}>
+									{PAYMENT_SCHEDULE_PRESETS.map((preset) => (
+										<option
+											key={preset.value}
+											value={preset.label}
+										/>
+									))}
+								</datalist>
+								{fieldState.invalid && (
+									<FieldError errors={[fieldState.error]} />
+								)}
+							</Field>
+						)}
+					/>
+
+					{/* Amount */}
+					<Controller
+						name={`paymentSchedules.${index}.amount`}
+						control={form.control}
+						render={({ field, fieldState }) => (
+							<Field data-invalid={fieldState.invalid}>
+								<FieldLabel htmlFor={field.name}>
+									Amount
+								</FieldLabel>
+								<div className="relative">
+									<span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+										₹
+									</span>
+									<Input
+										{...field}
+										id={field.name}
+										className="pl-7"
+										placeholder="0.00"
+										aria-invalid={fieldState.invalid}
+										onChange={(e) => {
+											const value =
+												e.target.value.replace(
+													/[^0-9.]/g,
+													"",
+												);
+											const parts = value.split(".");
+											if (parts.length > 2) {
+												return;
+											}
+											if (
+												parts[1] &&
+												parts[1].length > 2
+											) {
+												return;
+											}
+											field.onChange(value);
+										}}
+									/>
+								</div>
+								{fieldState.invalid && (
+									<FieldError errors={[fieldState.error]} />
+								)}
+							</Field>
+						)}
+					/>
+
+					{/* Due Date */}
+					<Controller
+						name={`paymentSchedules.${index}.dueDate`}
+						control={form.control}
+						render={({ field, fieldState }) => (
+							<Field data-invalid={fieldState.invalid}>
+								<FieldLabel htmlFor={field.name}>
+									Due Date
+								</FieldLabel>
+								<DatePicker
+									value={field.value}
+									onValueChange={field.onChange}
+									id={field.name}
+									aria-invalid={fieldState.invalid}
+								/>
+								{fieldState.invalid && (
+									<FieldError errors={[fieldState.error]} />
+								)}
+							</Field>
+						)}
+					/>
+				</div>
+
+				{/* Collapsible Notes Section */}
+				{isExpanded && (
+					<Controller
+						name={`paymentSchedules.${index}.notes`}
+						control={form.control}
+						render={({ field, fieldState }) => (
+							<Field data-invalid={fieldState.invalid}>
+								<div className="flex items-center justify-between">
+									<FieldLabel
+										htmlFor={field.name}
+										className="text-muted-foreground"
+									>
+										Notes
+									</FieldLabel>
+									<Button
+										type="button"
+										variant="ghost"
+										size="sm"
+										className="h-auto py-0 px-1 text-muted-foreground"
+										onClick={() => setIsExpanded(false)}
+									>
+										<ChevronUpIcon className="mr-1 h-3.5 w-3.5" />
+										Hide
+									</Button>
+								</div>
+								<InputGroup>
+									<InputGroupTextarea
+										{...field}
+										id={field.name}
+										placeholder="Add notes about this milestone..."
+										rows={2}
+									/>
+								</InputGroup>
+								{fieldState.invalid && (
+									<FieldError errors={[fieldState.error]} />
+								)}
+							</Field>
+						)}
+					/>
+				)}
+
+				{/* Add Notes button (when notes hidden) */}
+				{!isExpanded && (
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						className="w-fit text-muted-foreground"
+						onClick={() => setIsExpanded(true)}
+					>
+						<ChevronDownIcon className="mr-1.5 h-3.5 w-3.5" />
+						Add notes
+					</Button>
+				)}
+			</div>
+		</div>
 	);
 }

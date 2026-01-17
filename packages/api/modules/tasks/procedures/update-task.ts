@@ -1,6 +1,12 @@
 import { ORPCError } from "@orpc/server";
 import { and, db, eq, tasks } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import {
+	detectChanges,
+	safeTrackFieldChanges,
+	safeTrackStatusChange,
+} from "../../activities/lib";
+import { safeNotifySubscribers } from "../../notifications/lib/notification-service";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	updateTaskInputSchema,
@@ -29,6 +35,11 @@ export const updateTask = studioProtectedProcedure
 				eq(tasks.id, id),
 				eq(tasks.organizationId, context.organizationId),
 			),
+			with: {
+				booking: {
+					columns: { id: true, name: true },
+				},
+			},
 		});
 
 		if (!existing) {
@@ -43,14 +54,78 @@ export const updateTask = studioProtectedProcedure
 			updatedBy: context.user.id,
 		};
 
-		if (name !== undefined) updates.name = name;
-		if (description !== undefined) updates.description = description;
-		if (status !== undefined) updates.status = status;
-		if (priority !== undefined) updates.priority = priority;
-		if (dueDate !== undefined) updates.dueDate = dueDate;
-		if (metadata !== undefined) updates.metadata = metadata;
+		if (name !== undefined) {
+			updates.name = name;
+		}
+		if (description !== undefined) {
+			updates.description = description;
+		}
+		if (status !== undefined) {
+			updates.status = status;
+		}
+		if (priority !== undefined) {
+			updates.priority = priority;
+		}
+		if (dueDate !== undefined) {
+			updates.dueDate = dueDate;
+		}
+		if (metadata !== undefined) {
+			updates.metadata = metadata;
+		}
 
 		await db.update(tasks).set(updates).where(eq(tasks.id, id));
+
+		// Track status change separately (non-blocking)
+		if (status !== undefined && status !== existing.status) {
+			await safeTrackStatusChange(
+				{ organizationId: context.organizationId, user: context.user },
+				{
+					entityType: "task",
+					entityId: id,
+					entityName: name ?? existing.name,
+					oldStatus: existing.status,
+					newStatus: status,
+					parentEntityType: "booking",
+					parentEntityId: existing.bookingId,
+					parentEntityName: existing.booking.name,
+				},
+			);
+
+			await safeNotifySubscribers({
+				organizationId: context.organizationId,
+				entityType: "task",
+				entityId: id,
+				entityName: name ?? existing.name,
+				type: "status_changed",
+				title: `Task status updated: ${name ?? existing.name}`,
+				body: `${existing.status} -> ${status}`,
+				actorId: context.user.id,
+				actorName: context.user.name,
+				excludeUserId: context.user.id,
+			});
+		}
+
+		// Track other field changes (non-blocking)
+		const changes = detectChanges(
+			existing,
+			{ name, description, priority, dueDate },
+			["name", "description", "priority", "dueDate"],
+		);
+
+		if (changes.length > 0) {
+			await safeTrackFieldChanges(
+				{ organizationId: context.organizationId, user: context.user },
+				{
+					entityType: "task",
+					entityId: id,
+					entityName: name ?? existing.name,
+					parentEntityType: "booking",
+					parentEntityId: existing.bookingId,
+					parentEntityName: existing.booking.name,
+					changes,
+				},
+			);
+		}
 
 		return {
 			data: { id },

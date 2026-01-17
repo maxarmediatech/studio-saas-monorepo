@@ -1,6 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { and, clients, db, eq, isNull, ne, or } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { detectChanges, safeTrackFieldChanges } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	updateClientInputSchema,
@@ -86,15 +87,42 @@ export const updateClient = studioProtectedProcedure
 			updatedBy: context.user.id,
 		};
 
-		if (name !== undefined) updates.name = name;
-		if (email !== undefined) updates.email = email;
-		if (phoneNumber !== undefined) updates.phoneNumber = phoneNumber;
-		if (alternatePhone !== undefined)
+		if (name !== undefined) {
+			updates.name = name;
+		}
+		if (email !== undefined) {
+			updates.email = email;
+		}
+		if (phoneNumber !== undefined) {
+			updates.phoneNumber = phoneNumber;
+		}
+		if (alternatePhone !== undefined) {
 			updates.alternatePhone = alternatePhone;
-		if (address !== undefined) updates.address = address;
-		if (metadata !== undefined) updates.metadata = metadata;
+		}
+		if (address !== undefined) {
+			updates.address = address;
+		}
+		if (metadata !== undefined) {
+			updates.metadata = metadata;
+		}
 
 		await db.update(clients).set(updates).where(eq(clients.id, id));
+
+		// Track activity (non-blocking)
+		const changes = detectChanges(existing, input, [
+			"name",
+			"email",
+			"phoneNumber",
+			"address",
+		]);
+		if (changes.length > 0) {
+			await safeTrackFieldChanges(context, {
+				entityType: "client",
+				entityId: id,
+				entityName: input.name ?? existing.name,
+				changes,
+			});
+		}
 
 		return {
 			data: { id },

@@ -2,8 +2,9 @@
 	"name": "lumen",
 	"private": true,
 	"scripts": {
-		"build": "dotenv -c -- turbo build",
-		"dev": "dotenv -c -- turbo dev --concurrency 15",
+		"build": "dotenv -c -- turbo build --filter=@repo/web...",
+		"build:all": "dotenv -c -- turbo build",
+		"dev": "dotenv -c -- turbo dev --concurrency 15 --filter=!@repo/whatsapp-bridge --filter=!@repo/whatsapp-db --filter=!@repo/whatsapp-core --filter=!@repo/whatsapp-providers --filter=!@repo/whatsapp-worker",
 		"start": "dotenv -c -- turbo start",
 		"lint": "biome lint . ",
 		"check": "biome check",
@@ -11,7 +12,9 @@
 		"format": "biome format . --write",
 		"typecheck": "turbo type-check",
 		"db:generate": "pnpm --filter @repo/database generate",
+		"db:baseline": "pnpm --filter @repo/database baseline",
 		"db:migrate": "pnpm --filter @repo/database migrate",
+		"db:push": "pnpm --filter @repo/database push",
 		"db:seed": "turbo db:seed",
 		"db:studio": "pnpm --filter @repo/database studio"
 	},

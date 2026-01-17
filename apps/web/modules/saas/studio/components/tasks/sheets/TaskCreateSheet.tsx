@@ -7,8 +7,10 @@ import {
 	SheetTitle,
 } from "@repo/ui/components/sheet";
 import { cn } from "@repo/ui/lib/utils";
+import { orpc } from "@shared/lib/orpc-query-utils";
+import { useBookingParams } from "@saas/studio/hooks/params";
 import { useTaskParams } from "@saas/studio/hooks/params/use-task-params";
-import { studioQueryKeys, tasksMutations } from "@saas/studio/lib/api";
+import { tasksMutations } from "@saas/studio/lib/api";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -16,40 +18,65 @@ import { TaskForm, type TaskFormValues } from "../TaskForm";
 
 export function TaskCreateSheet() {
 	const { createTask, close } = useTaskParams();
+	const { bookingId } = useBookingParams();
 	const isOpen = Boolean(createTask);
 	const queryClient = useQueryClient();
 	const [isScrolled, setIsScrolled] = useState(false);
 
-	const createMutation = useMutation({
-		...tasksMutations.create(),
-		onSuccess: () => {
-			toast.success("Task added successfully");
-			queryClient.invalidateQueries({
-				queryKey: studioQueryKeys.tasks.all,
-			});
-			close();
-		},
-		onError: (error) => {
-			toast.error(error.message || "Failed to add task");
-		},
-	});
+	const createMutation = useMutation(tasksMutations.create());
+	const assignMutation = useMutation(tasksMutations.assign());
 
 	const handleSubmit = async (data: TaskFormValues) => {
-		await createMutation.mutateAsync({
-			bookingId: data.bookingId,
-			name: data.name,
-			description: data.description || undefined,
-			status: data.status || undefined,
-			priority: data.priority || undefined,
-			dueDate: data.dueDate || undefined,
-		});
+		try {
+			const result = await createMutation.mutateAsync({
+				bookingId: data.bookingId,
+				name: data.name,
+				description: data.description || undefined,
+				status: data.status || undefined,
+				priority: data.priority || undefined,
+				dueDate: data.dueDate || undefined,
+			});
+
+			const crewAssignments = data.crewAssignments ?? [];
+			if (crewAssignments.length > 0 && result.data?.id) {
+				const taskId = result.data.id;
+				await Promise.all(
+					crewAssignments
+						.filter((a) => a.crewId)
+						.map((assignment) =>
+							assignMutation.mutateAsync({
+								taskId,
+								crewId: assignment.crewId,
+							}),
+						),
+				);
+			}
+
+			await queryClient.invalidateQueries({
+				queryKey: orpc.tasks.key(),
+			});
+			await queryClient.invalidateQueries({
+				queryKey: orpc.bookings.key(),
+			});
+			await queryClient.invalidateQueries({
+				queryKey: orpc.activities.key(),
+			});
+			toast.success("Task added successfully");
+			close();
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : "Failed to add task";
+			toast.error(message);
+		}
 	};
+
+	const isPending = createMutation.isPending || assignMutation.isPending;
 
 	return (
 		<Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
 			<SheetContent
 				side="right"
-				className="sm:max-w-md p-0 gap-0 flex flex-col"
+				className="sm:max-w-xl p-0 gap-0 flex flex-col"
 			>
 				<SheetHeader
 					className={cn(
@@ -64,8 +91,9 @@ export function TaskCreateSheet() {
 					<TaskForm
 						onSubmit={handleSubmit}
 						mode="create"
-						isPending={createMutation.isPending}
+						isPending={isPending}
 						onScrollChange={setIsScrolled}
+						defaultBookingId={bookingId ?? undefined}
 					/>
 				</div>
 			</SheetContent>

@@ -10,6 +10,7 @@ import {
 	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../../orpc/procedures";
+import { formatAmount, safeTrackActivity } from "../../../activities/lib";
 import { requirePermission } from "../../../studio/lib/permissions";
 import {
 	convertScheduleInputSchema,
@@ -124,6 +125,12 @@ export const convertSchedule = studioProtectedProcedure
 				})
 				.where(eq(paymentSchedules.id, scheduleId));
 
+			// Fetch booking for activity context
+			const booking = await tx.query.bookings.findFirst({
+				where: eq(bookings.id, schedule.bookingId),
+				columns: { name: true },
+			});
+
 			// Update booking total received
 			await tx
 				.update(bookings)
@@ -133,6 +140,21 @@ export const convertSchedule = studioProtectedProcedure
 					updatedBy: context.user.id,
 				})
 				.where(eq(bookings.id, schedule.bookingId));
+
+			// Track activity (non-blocking) - schedule marked as paid
+			await safeTrackActivity(context, {
+				entityType: "payment_schedule",
+				entityId: scheduleId,
+				entityName: `${schedule.name} (${formatAmount(schedule.amount)})`,
+				action: "marked_paid",
+				parentEntityType: "booking",
+				parentEntityId: schedule.bookingId,
+				parentEntityName: booking?.name ?? "Unknown Booking",
+				metadata: {
+					paidAmount: remainingAmount.toFixed(2),
+					receivedId: created.id,
+				},
+			});
 
 			return {
 				data: {

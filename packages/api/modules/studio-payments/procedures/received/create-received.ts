@@ -10,6 +10,7 @@ import {
 	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../../orpc/procedures";
+import { formatAmount, safeTrackActivity } from "../../../activities/lib";
 import { requirePermission } from "../../../studio/lib/permissions";
 import {
 	createReceivedInputSchema,
@@ -36,6 +37,7 @@ export const createReceived = studioProtectedProcedure
 			transactionReference,
 			receivedDate,
 			notes,
+			proofAttachment,
 			paymentScheduleId,
 		} = input;
 
@@ -72,6 +74,17 @@ export const createReceived = studioProtectedProcedure
 			}
 		}
 
+		// Security: Validate S3 key belongs to this organization (prevents IDOR)
+		if (proofAttachment?.key) {
+			const expectedPrefix = `orgs/${context.organizationId}/`;
+			if (!proofAttachment.key.startsWith(expectedPrefix)) {
+				throw new ORPCError("FORBIDDEN", {
+					message:
+						"Invalid payment proof: file does not belong to this organization",
+				});
+			}
+		}
+
 		// Use transaction to create received amount and update booking totals
 		return await db.transaction(async (tx) => {
 			// Create received amount
@@ -85,6 +98,7 @@ export const createReceived = studioProtectedProcedure
 					transactionReference: transactionReference ?? null,
 					receivedDate,
 					notes: notes ?? null,
+					proofAttachment: proofAttachment ?? null,
 					paymentScheduleId: paymentScheduleId ?? null,
 					createdBy: context.user.id,
 					updatedBy: context.user.id,
@@ -141,6 +155,21 @@ export const createReceived = studioProtectedProcedure
 						.where(eq(paymentSchedules.id, paymentScheduleId));
 				}
 			}
+
+			// Track activity (non-blocking, outside transaction)
+			await safeTrackActivity(
+				{ organizationId: context.organizationId, user: context.user },
+				{
+					entityType: "received_amount",
+					entityId: created.id,
+					entityName: `${formatAmount(amount)} via ${paymentMethod}`,
+					action: "payment_received",
+					parentEntityType: "booking",
+					parentEntityId: bookingId,
+					parentEntityName: booking.name,
+					metadata: { amount, paymentMethod },
+				},
+			);
 
 			return {
 				data: { id: created.id },

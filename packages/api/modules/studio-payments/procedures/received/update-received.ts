@@ -80,6 +80,21 @@ export const updateReceived = studioProtectedProcedure
 			updateData.notes = updates.notes;
 		}
 
+		// Security: Validate S3 key belongs to this organization (prevents IDOR)
+		if (updates.proofAttachment?.key) {
+			const expectedPrefix = `orgs/${context.organizationId}/`;
+			if (!updates.proofAttachment.key.startsWith(expectedPrefix)) {
+				throw new ORPCError("FORBIDDEN", {
+					message:
+						"Invalid payment proof: file does not belong to this organization",
+				});
+			}
+		}
+
+		if (updates.proofAttachment !== undefined) {
+			updateData.proofAttachment = updates.proofAttachment;
+		}
+
 		// Use transaction if amount changed
 		if (amountChanged) {
 			return await db.transaction(async (tx) => {

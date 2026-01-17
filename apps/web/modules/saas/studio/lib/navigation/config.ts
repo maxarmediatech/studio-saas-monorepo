@@ -29,7 +29,7 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 		{
 			id: "workspace",
 			label: "Workspace",
-			icon: "LayoutDashboard",
+			icon: "Home",
 			defaultPath: url("/home"),
 			sections: [
 				{
@@ -53,14 +53,46 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							},
 						},
 						{
-							id: "my-tasks",
-							label: "My Tasks",
-							path: url("/tasks"),
+							id: "your-work",
+							label: "Your Work",
+							path: url("/your-work"),
 							icon: "ListChecks",
 							permission: {
-								any: [{ resource: "task", action: "list" }],
+								any: [
+									{ resource: "task", action: "list" },
+									{ resource: "deliverable", action: "list" },
+									{ resource: "shoot", action: "list" },
+								],
 							},
 						},
+						{
+							id: "stickies",
+							label: "Stickies",
+							path: url("/stickies"),
+							icon: "StickyNoteIcon",
+						},
+						{
+							id: "activities",
+							label: "Activities",
+							path: url("/activities"),
+							icon: "Activity",
+						},
+					],
+				},
+				{
+					id: "workspace-crm",
+					label: "CRM",
+					items: [
+						{
+							id: "clients",
+							label: "Clients",
+							path: url("/clients"),
+							icon: "Contact2",
+							permission: {
+								any: [{ resource: "client", action: "list" }],
+							},
+						},
+						// Future: Leads, Communications
 					],
 				},
 				// Future: Pinned Bookings section
@@ -74,7 +106,7 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 		{
 			id: "studio",
 			label: "Studio",
-			icon: "Camera",
+			icon: "Store",
 			defaultPath: url("/bookings"),
 			sections: [
 				{
@@ -116,9 +148,9 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							},
 						},
 						{
-							id: "all-tasks",
+							id: "tasks",
 							label: "Tasks",
-							path: url("/tasks/all"),
+							path: url("/tasks"),
 							icon: "ListTodo",
 							permission: {
 								any: [{ resource: "task", action: "list" }],
@@ -135,6 +167,15 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							label: "Payments",
 							path: url("/payments"),
 							icon: "Wallet2",
+							permission: {
+								any: [{ resource: "payment", action: "list" }],
+							},
+						},
+						{
+							id: "scheduled-payments",
+							label: "Scheduled",
+							path: url("/scheduled-payments"),
+							icon: "CreditCard",
 							permission: {
 								any: [{ resource: "payment", action: "list" }],
 							},
@@ -165,37 +206,82 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 						},
 					],
 				},
-			],
-		},
-		{
-			id: "clients",
-			label: "Clients",
-			icon: "Contact2",
-			defaultPath: url("/clients"),
-			sections: [
 				{
-					id: "clients-core",
+					id: "studio-setup",
+					label: "Setup",
 					items: [
 						{
-							id: "clients",
-							label: "All Clients",
-							path: url("/clients"),
-							icon: "Contact2",
+							id: "booking-types",
+							label: "Booking Types",
+							path: url("/configurations/booking-types"),
+							icon: "Tag",
 							permission: {
-								any: [{ resource: "client", action: "list" }],
+								any: [
+									{
+										resource: "configuration",
+										action: "list",
+									},
+								],
+							},
+						},
+						{
+							id: "package-types",
+							label: "Package Types",
+							path: url("/configurations/package-types"),
+							icon: "Package",
+							permission: {
+								any: [
+									{
+										resource: "configuration",
+										action: "list",
+									},
+								],
+							},
+						},
+						{
+							id: "event-types",
+							label: "Event Types",
+							path: url("/configurations/event-types"),
+							icon: "Sparkles",
+							permission: {
+								any: [
+									{
+										resource: "configuration",
+										action: "list",
+									},
+								],
+							},
+						},
+						{
+							id: "relation-types",
+							label: "Relation Types",
+							path: url("/configurations/relation-types"),
+							icon: "Link2",
+							permission: {
+								any: [
+									{
+										resource: "configuration",
+										action: "list",
+									},
+								],
+							},
+						},
+						{
+							id: "crew-roles",
+							label: "Crew Roles",
+							path: url("/configurations/crew-roles"),
+							icon: "UserCog",
+							permission: {
+								any: [
+									{
+										resource: "configuration",
+										action: "list",
+									},
+								],
 							},
 						},
 					],
 				},
-				// Future: CRM features
-				// {
-				// 	id: "clients-crm",
-				// 	label: "CRM",
-				// 	items: [
-				// 		{ id: "leads", label: "Leads", ... },
-				// 		{ id: "communications", label: "Communications", ... },
-				// 	],
-				// },
 			],
 		},
 	];
@@ -234,18 +320,10 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							icon: "CreditCard",
 						},
 						{
-							id: "configurations",
-							label: "Configurations",
-							path: url("/configurations"),
-							icon: "Settings",
-							permission: {
-								any: [
-									{
-										resource: "configuration",
-										action: "list",
-									},
-								],
-							},
+							id: "danger-zone",
+							label: "Danger Zone",
+							path: url("/settings/danger-zone"),
+							icon: "AlertTriangle",
 						},
 					],
 				},

@@ -80,21 +80,6 @@ export const getDeliverableStats = studioProtectedProcedure
 			.from(deliverables)
 			.where(and(...baseConditions));
 
-		// Deliverables by type
-		const typeCounts = await db
-			.select({
-				deliverableType: deliverables.deliverableType,
-				count: count().mapWith(Number),
-			})
-			.from(deliverables)
-			.where(and(...baseConditions))
-			.groupBy(deliverables.deliverableType);
-
-		const byType: Record<string, number> = {};
-		for (const row of typeCounts) {
-			byType[row.deliverableType] = row.count;
-		}
-
 		// Deliverables by status
 		const statusCounts = await db
 			.select({
@@ -108,21 +93,6 @@ export const getDeliverableStats = studioProtectedProcedure
 		const byStatus: Record<string, number> = {};
 		for (const row of statusCounts) {
 			byStatus[row.status] = row.count;
-		}
-
-		// Deliverables by priority
-		const priorityCounts = await db
-			.select({
-				priority: deliverables.priority,
-				count: count().mapWith(Number),
-			})
-			.from(deliverables)
-			.where(and(...baseConditions))
-			.groupBy(deliverables.priority);
-
-		const byPriority: Record<string, number> = {};
-		for (const row of priorityCounts) {
-			byPriority[row.priority] = row.count;
 		}
 
 		// Deliverables by workflow status
@@ -188,9 +158,7 @@ export const getDeliverableStats = studioProtectedProcedure
 		return {
 			data: {
 				totalDeliverables: totalResult?.count ?? 0,
-				byType,
 				byStatus,
-				byPriority,
 				byWorkflowStatus,
 				overdueDeliverables: overdueResult?.count ?? 0,
 				deliveredDeliverables: deliveredResult?.count ?? 0,

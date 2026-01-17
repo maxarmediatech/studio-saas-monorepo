@@ -5,6 +5,7 @@
  * Also updates the booking's totalReceived field.
  */
 
+import { ORPCError } from "@orpc/server";
 import {
 	bookings,
 	eq,
@@ -71,6 +72,20 @@ export async function createPaymentsBatch(
 		scheduleIds.push(...createdSchedules.map((s) => s.id));
 	}
 
+	// Security: Validate all proof attachment keys belong to this organization (prevents IDOR)
+	const expectedPrefix = `orgs/${organizationId}/`;
+	for (const payment of receivedPayments) {
+		if (
+			payment.proofAttachment?.key &&
+			!payment.proofAttachment.key.startsWith(expectedPrefix)
+		) {
+			throw new ORPCError("FORBIDDEN", {
+				message:
+					"Invalid payment proof: file does not belong to this organization",
+			});
+		}
+	}
+
 	// Create received payments (batch insert)
 	if (receivedPayments.length > 0) {
 		const createdReceived = await tx
@@ -84,6 +99,7 @@ export async function createPaymentsBatch(
 					receivedDate: payment.receivedDate,
 					transactionReference: payment.transactionReference ?? null,
 					notes: payment.notes ?? null,
+					proofAttachment: payment.proofAttachment ?? null,
 					paymentScheduleId: null, // Not linking to schedules during creation
 					createdBy: userId,
 					updatedBy: userId,

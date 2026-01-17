@@ -35,7 +35,7 @@ export type Config = {
 	};
 	storage: {
 		bucketNames: {
-			avatars: string;
+			uploads: string;
 		};
 	};
 	ui: {

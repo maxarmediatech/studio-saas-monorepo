@@ -1,0 +1,14 @@
+{
+	"devDependencies": {
+		"@biomejs/biome": "2.3.10",
+		"@repo/tsconfig": "workspace:*",
+		"@types/node": "24.10.4"
+	},
+	"main": "./index.ts",
+	"name": "@repo/whatsapp-core",
+	"scripts": {
+		"type-check": "tsc --noEmit"
+	},
+	"types": "./**/.tsx",
+	"version": "0.0.0"
+}

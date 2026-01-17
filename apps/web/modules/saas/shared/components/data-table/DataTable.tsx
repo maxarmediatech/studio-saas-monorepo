@@ -46,6 +46,7 @@ export interface DataTableProps<TData, TValue> {
 	/** Server-side pagination */
 	pagination?: PaginationState;
 	onPaginationChange?: (pagination: PaginationState) => void;
+	onLimitChange?: (limit: number) => void;
 	/** Server-side sorting */
 	sorting?: SortingState;
 	onSortingChange?: OnChangeFn<SortingState>;
@@ -88,6 +89,7 @@ export function DataTable<TData, TValue>({
 	emptyState,
 	pagination,
 	onPaginationChange,
+	onLimitChange,
 	sorting: externalSorting,
 	onSortingChange,
 	rowSelection: externalRowSelection,
@@ -144,6 +146,7 @@ export function DataTable<TData, TValue>({
 	const tableScroll = useTableScroll({
 		useColumnWidths: true,
 		startFromColumn: scrollStartColumn ?? defaultStartColumn,
+		enableStickyShadows: hasSticky,
 	});
 
 	// Build sticky position maps
@@ -188,10 +191,13 @@ export function DataTable<TData, TValue>({
 	}, [stickyRightColumns]);
 
 	const getStickyStyle = React.useCallback(
-		(columnId: string, meta?: ColumnMeta): React.CSSProperties => {
+		(
+			columnId: string,
+			meta?: ColumnMeta,
+			isHeader = false,
+		): React.CSSProperties => {
 			const style: React.CSSProperties = {};
 
-			// Apply width from meta
 			if (meta?.width !== undefined) {
 				style.width = `${meta.width}px`;
 			}
@@ -202,19 +208,18 @@ export function DataTable<TData, TValue>({
 				style.maxWidth = `${meta.maxWidth}px`;
 			}
 
-			// Apply sticky positioning
 			const leftPos = leftPositions[columnId];
 			if (leftPos !== undefined) {
 				style.left = `${leftPos}px`;
 				style.position = "sticky";
-				style.zIndex = 10;
+				style.zIndex = isHeader ? 15 : 10;
 			}
 
 			const rightPos = rightPositions[columnId];
 			if (rightPos !== undefined) {
 				style.right = `${rightPos}px`;
 				style.position = "sticky";
-				style.zIndex = 10;
+				style.zIndex = isHeader ? 15 : 10;
 			}
 
 			return style;
@@ -222,40 +227,54 @@ export function DataTable<TData, TValue>({
 		[leftPositions, rightPositions],
 	);
 
+	const rightStickyDividerTargetId = React.useMemo(() => {
+		if (stickyRightColumns.length === 0) {
+			return null;
+		}
+
+		const visibleLeafColumnIds = table
+			.getVisibleLeafColumns()
+			.map((c) => c.id);
+
+		for (const stickyColumn of stickyRightColumns) {
+			const stickyId = stickyColumn.id;
+			const idx = visibleLeafColumnIds.indexOf(stickyId);
+			if (idx > 0) {
+				return visibleLeafColumnIds[idx - 1] ?? null;
+			}
+		}
+
+		return null;
+	}, [table, stickyRightColumns]);
+
 	const getStickyClassName = React.useCallback(
 		(columnId: string, isHeader: boolean, meta?: ColumnMeta): string => {
 			const isLeftSticky = leftColumnIds.has(columnId);
 			const isRightSticky = rightColumnIds.has(columnId);
+			const isSticky = isLeftSticky || isRightSticky;
 			const baseMetaClass = isHeader
 				? meta?.headerClassName
 				: meta?.cellClassName;
 
-			// Find position in sticky arrays for border logic
-			const leftIndex = stickyLeftColumns.findIndex(
-				(c) => c.id === columnId,
-			);
-			const isLastLeftSticky =
-				leftIndex >= 0 && leftIndex === stickyLeftColumns.length - 1;
-
-			const rightIndex = stickyRightColumns.findIndex(
-				(c) => c.id === columnId,
-			);
+			const rightIndex = stickyRightColumns.findIndex((c) => c.id === columnId);
 			const isFirstRightSticky = rightIndex === 0;
 
 			return cn(
 				baseMetaClass,
-				(isLeftSticky || isRightSticky) && "bg-background",
-				// Add right border to last left-sticky column
-				isLastLeftSticky &&
-					"after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-border",
-				// Add left border and fade gradient to first right-sticky column
-				isFirstRightSticky && [
-					"before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-border",
-					"after:absolute after:left-[-24px] after:top-0 after:bottom-0 after:w-6 after:bg-gradient-to-r after:from-transparent after:to-background after:pointer-events-none",
-				],
+				rightStickyDividerTargetId === columnId && "!border-r-0",
+				isSticky &&
+					!isHeader &&
+					"bg-table-surface group-hover:bg-table-row-selected group-data-[state=selected]:bg-table-row-selected group-data-[state=selected]:hover:bg-table-row-selected-hover",
+				isFirstRightSticky &&
+					"before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[0.5px] before:bg-table-border-subtle",
 			);
 		},
-		[leftColumnIds, rightColumnIds, stickyLeftColumns, stickyRightColumns],
+		[
+			leftColumnIds,
+			rightColumnIds,
+			stickyRightColumns,
+			rightStickyDividerTargetId,
+		],
 	);
 
 	return (
@@ -263,23 +282,23 @@ export function DataTable<TData, TValue>({
 			<div
 				ref={tableScroll.containerRef}
 				className={cn(
-					"border-border bg-card overflow-hidden rounded-xl border",
+					"border-table-border-subtle bg-card overflow-hidden rounded-lg border",
 					hasSticky &&
-						"scrollbar-hide overflow-x-auto overscroll-x-none",
+						"vertical-scrollbar horizontal-scrollbar scrollbar-md overflow-x-auto overscroll-x-none",
 				)}
 			>
 				<table
 					className={cn(
-						"w-full caption-bottom text-sm",
+						"w-full caption-bottom text-[0.8125rem]",
 						hasSticky && "relative",
 					)}
 					style={minWidth ? { minWidth: `${minWidth}px` } : undefined}
 				>
-					<TableHeader className="bg-muted/40">
+					<TableHeader>
 						{table.getHeaderGroups().map((headerGroup) => (
 							<TableRow
 								key={headerGroup.id}
-								className="hover:bg-transparent border-b"
+								className="hover:bg-transparent"
 							>
 								{headerGroup.headers.map((header) => {
 									const meta = header.column.columnDef.meta as
@@ -288,6 +307,7 @@ export function DataTable<TData, TValue>({
 									const stickyStyle = getStickyStyle(
 										header.column.id,
 										meta,
+										true,
 									);
 									const stickyClass = getStickyClassName(
 										header.column.id,
@@ -307,7 +327,7 @@ export function DataTable<TData, TValue>({
 										<TableHead
 											key={header.id}
 											className={cn(
-												"relative border-r border-border px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground last:border-r-0",
+												"relative",
 												stickyClass,
 											)}
 											style={stickyStyle}
@@ -362,7 +382,7 @@ export function DataTable<TData, TValue>({
 										row.getIsSelected() && "selected"
 									}
 									className={cn(
-										"border-border bg-background hover:bg-muted/50 border-b transition last:border-b-0",
+										"last:border-b-0",
 										isFetching && "opacity-50",
 									)}
 								>
@@ -384,7 +404,7 @@ export function DataTable<TData, TValue>({
 											<TableCell
 												key={cell.id}
 												className={cn(
-													"relative border-r border-border px-3 py-3 text-sm text-foreground last:border-r-0",
+													"relative",
 													stickyClass,
 												)}
 												style={stickyStyle}
@@ -402,7 +422,7 @@ export function DataTable<TData, TValue>({
 							<TableRow>
 								<TableCell
 									colSpan={columns.length}
-									className="text-muted-foreground h-24 text-center text-sm"
+									className="text-muted-foreground h-24 text-center"
 								>
 									{emptyState ?? "No results."}
 								</TableCell>
@@ -412,10 +432,11 @@ export function DataTable<TData, TValue>({
 				</table>
 			</div>
 
-			{pagination && pagination.pageCount > 1 && (
+			{pagination && (
 				<DataTablePagination
 					pagination={pagination}
 					onPaginationChange={onPaginationChange}
+					onLimitChange={onLimitChange}
 					isLoading={isFetching}
 				/>
 			)}

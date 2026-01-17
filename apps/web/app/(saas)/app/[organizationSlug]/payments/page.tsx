@@ -1,7 +1,11 @@
 import { getActiveOrganization } from "@saas/auth/lib/server";
-import { PageContent } from "@saas/studio";
-import { PaymentsTable } from "@saas/studio/components/payments";
+import {
+	PaymentsFilters,
+	PaymentsTableSkeleton,
+} from "@saas/studio/components/payments";
+import { PaymentsTable } from "@saas/studio/components/payments/index.server";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
 type Props = {
 	params: Promise<{ organizationSlug: string }>;
@@ -27,11 +31,15 @@ export default async function PaymentsPage({ params, searchParams }: Props) {
 	}
 
 	return (
-		<PageContent title="Payments">
-			<PaymentsTable
-				organizationSlug={organizationSlug}
-				searchParams={searchParams}
-			/>
-		</PageContent>
+		<div className="space-y-4">
+			<PaymentsFilters />
+
+			<Suspense fallback={<PaymentsTableSkeleton />}>
+				<PaymentsTable
+					organizationSlug={organizationSlug}
+					searchParams={searchParams}
+				/>
+			</Suspense>
+		</div>
 	);
 }

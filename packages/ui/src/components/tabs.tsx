@@ -62,4 +62,66 @@ function TabsContent({
 	);
 }
 
-export { Tabs, TabsList, TabsTrigger, TabsContent };
+// ============================================================================
+// Custom Tabs Variants (underline style)
+// ============================================================================
+
+const CustomTabsList = React.forwardRef<
+	React.ElementRef<typeof TabsPrimitive.List>,
+	React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
+>(({ className, ...props }, ref) => (
+	<TabsPrimitive.List
+		ref={ref}
+		className={cn(
+			"flex -mb-px items-center justify-start space-x-6 border-b border-border",
+			className,
+		)}
+		{...props}
+	/>
+));
+CustomTabsList.displayName = "CustomTabsList";
+
+const CustomTabsTrigger = React.forwardRef<
+	React.ElementRef<typeof TabsPrimitive.Trigger>,
+	React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
+>(({ className, ...props }, ref) => (
+	<TabsPrimitive.Trigger
+		ref={ref}
+		className={cn(
+			"group flex items-center whitespace-nowrap border-b-2 border-transparent px-1 py-3 text-sm font-medium cursor-pointer",
+			"text-muted-foreground hover:border-muted-foreground/50 hover:text-foreground",
+			"data-[state=active]:border-primary data-[state=active]:text-primary",
+			"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+			"disabled:pointer-events-none disabled:opacity-50",
+			"transition-colors",
+			className,
+		)}
+		{...props}
+	/>
+));
+CustomTabsTrigger.displayName = "CustomTabsTrigger";
+
+const CustomTabsContent = React.forwardRef<
+	React.ElementRef<typeof TabsPrimitive.Content>,
+	React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
+>(({ className, ...props }, ref) => (
+	<TabsPrimitive.Content
+		ref={ref}
+		className={cn(
+			"mt-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+			className,
+		)}
+		{...props}
+	/>
+));
+CustomTabsContent.displayName = "CustomTabsContent";
+
+export {
+	Tabs,
+	TabsList,
+	TabsTrigger,
+	TabsContent,
+	CustomTabsList,
+	CustomTabsTrigger,
+	CustomTabsContent,
+};

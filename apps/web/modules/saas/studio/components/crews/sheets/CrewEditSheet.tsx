@@ -9,11 +9,8 @@ import {
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
 import { useCrewParams } from "@saas/studio/hooks/params/use-crew-params";
-import {
-	crewsApi,
-	crewsMutations,
-	studioQueryKeys,
-} from "@saas/studio/lib/api";
+import { crewsApi, crewsMutations } from "@saas/studio/lib/api";
+import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -34,8 +31,12 @@ export function CrewEditSheet() {
 		...crewsMutations.update(),
 		onSuccess: () => {
 			toast.success("Crew member updated successfully");
+			// Use ORPC's key generator to match the booking form's query keys
 			queryClient.invalidateQueries({
-				queryKey: studioQueryKeys.crews.all,
+				queryKey: orpc.crews.key(),
+			});
+			queryClient.invalidateQueries({
+				queryKey: orpc.activities.key(),
 			});
 			close();
 		},

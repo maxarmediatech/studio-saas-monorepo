@@ -1,16 +1,12 @@
 import { getActiveOrganization } from "@saas/auth/lib/server";
-import { ConfigurationsPageClient } from "@saas/studio/components/configurations/ConfigurationsPageClient";
-import { configurationsApi } from "@saas/studio/lib/api";
-import { getServerQueryClient } from "@shared/lib/server";
-import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
+import { ConfigurationsFilters, ConfigurationsTableSkeleton } from "@saas/studio";
+import { ConfigurationsTable } from "@saas/studio/components/configurations/index.server";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
 type Props = {
 	params: Promise<{ organizationSlug: string }>;
-	searchParams: Promise<{
-		page?: string;
-		search?: string;
-	}>;
+	searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
 export async function generateMetadata({ params }: Props) {
@@ -22,12 +18,8 @@ export async function generateMetadata({ params }: Props) {
 	};
 }
 
-export default async function BookingTypesPage({
-	params,
-	searchParams,
-}: Props) {
+export default async function BookingTypesPage({ params, searchParams }: Props) {
 	const { organizationSlug } = await params;
-	const filters = await searchParams;
 
 	const organization = await getActiveOrganization(organizationSlug);
 
@@ -35,32 +27,18 @@ export default async function BookingTypesPage({
 		return notFound();
 	}
 
-	const queryClient = getServerQueryClient();
-
-	const input = {
-		type: "booking_type" as const,
-		page: filters.page ? Number.parseInt(filters.page, 10) : 1,
-		limit: 50,
-		search: filters.search,
-		sortBy: "sortOrder" as const,
-		sortDirection: "asc" as const,
-	};
-
-	await queryClient.prefetchQuery(configurationsApi.listOptions(input));
-
 	return (
-		<HydrationBoundary state={dehydrate(queryClient)}>
-			<ConfigurationsPageClient
-				organizationSlug={organizationSlug}
-				configType="booking_type"
-				configTypeLabel="Booking Type"
-				pageTitle="Booking Types"
-				pageDescription="Configure the types of bookings your studio offers"
-				initialFilters={{
-					page: input.page,
-					search: input.search,
-				}}
-			/>
-		</HydrationBoundary>
+		<div className="space-y-4">
+			<ConfigurationsFilters configTypeLabelPlural="Booking Types" />
+
+			<Suspense fallback={<ConfigurationsTableSkeleton />}>
+				<ConfigurationsTable
+					configType="booking_type"
+					configTypeLabel="Booking Type"
+					configTypeLabelPlural="Booking Types"
+					searchParams={searchParams}
+				/>
+			</Suspense>
+		</div>
 	);
 }

@@ -3,13 +3,48 @@
 // Layout - Server component pattern (like winter-arc)
 export { AppShell } from "./components/app-shell";
 export { AppShellClient } from "./components/app-shell.client";
+// Activities
+export { ActivitiesPageClient } from "./components/activities";
 // Bookings
 export {
 	BookingsFilters,
-	BookingsPageClient,
 	BookingsTableClient,
 	BookingsTableSkeleton,
 } from "./components/bookings";
+// Clients
+export {
+	ClientsFilters,
+	ClientsTableClient,
+	ClientsTableSkeleton,
+} from "./components/clients";
+// Crews
+export {
+	CrewsFilters,
+	CrewsTableClient,
+	CrewsTableSkeleton,
+} from "./components/crews";
+// Configurations
+export {
+	ConfigurationsFilters,
+	ConfigurationsTableClient,
+	ConfigurationsTableSkeleton,
+	OpenConfigurationCreateSheet,
+	OpenConfigurationEditSheet,
+} from "./components/configurations";
+// Deliverables
+export {
+	DeliverablesFilters,
+	DeliverablesPageClient,
+	DeliverablesTableClient,
+	DeliverablesTableSkeleton,
+} from "./components/deliverables";
+// Shoots
+export {
+	ShootsFilters,
+	ShootsPageClient,
+	ShootsTableClient,
+	ShootsTableSkeleton,
+} from "./components/shoots";
 export type { IconName as RegistryIconName } from "./components/navigation/icon-registry";
 // Icons
 export { IconByName } from "./components/navigation/icon-registry";

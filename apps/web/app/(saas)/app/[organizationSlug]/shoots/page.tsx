@@ -1,7 +1,8 @@
 import { getActiveOrganization } from "@saas/auth/lib/server";
-import { PageContent } from "@saas/studio";
-import { ShootsTable } from "@saas/studio/components/shoots";
+import { ShootsFilters, ShootsTableSkeleton } from "@saas/studio";
+import { ShootsTable } from "@saas/studio/components/shoots/index.server";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
 type Props = {
 	params: Promise<{ organizationSlug: string }>;
@@ -27,11 +28,15 @@ export default async function ShootsPage({ params, searchParams }: Props) {
 	}
 
 	return (
-		<PageContent title="Shoots">
-			<ShootsTable
-				organizationSlug={organizationSlug}
-				searchParams={searchParams}
-			/>
-		</PageContent>
+		<div className="space-y-4">
+			<ShootsFilters />
+
+			<Suspense fallback={<ShootsTableSkeleton />}>
+				<ShootsTable
+					organizationSlug={organizationSlug}
+					searchParams={searchParams}
+				/>
+			</Suspense>
+		</div>
 	);
 }

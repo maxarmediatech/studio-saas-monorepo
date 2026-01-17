@@ -461,6 +461,7 @@ export const shootAssignments = pgTable(
 
 		role: text("role").notNull(), // lead_photographer, assistant, etc.
 		isLead: boolean("is_lead").default(false).notNull(),
+		rate: decimal("rate", { precision: 10, scale: 2 }), // per-shoot rate (nullable, defaults to crew.dailyRate)
 
 		assignedBy: varchar("assigned_by", { length: 255 }).references(
 			() => users.id,
@@ -598,7 +599,6 @@ export const deliverables = pgTable(
 
 		name: text("name").notNull(),
 		description: text("description"),
-		deliverableType: text("deliverable_type").notNull(), // album, video, photos, etc.
 
 		// Package relationship fields
 		quantity: integer("quantity").default(1).notNull(),
@@ -609,8 +609,6 @@ export const deliverables = pgTable(
 
 		// Status is TEXT - configurable via configurations table (config_type: deliverable_status)
 		status: text("status").default("pending").notNull(),
-		// Priority is TEXT - configurable via configurations table (config_type: deliverable_priority)
-		priority: text("priority").default("normal").notNull(),
 
 		// Workflow status is ENUM - system-defined, cannot be customized
 		workflowStatus: workflowStatusEnum("workflow_status")
@@ -832,6 +830,9 @@ export const receivedAmounts = pgTable(
 
 		receivedDate: date("received_date").notNull(),
 		notes: text("notes"),
+
+		// Proof of payment attachment metadata (name, size, type, key, url)
+		proofAttachment: jsonb("proof_attachment"),
 
 		// Link to payment schedule if this fulfills a scheduled payment
 		paymentScheduleId: varchar("payment_schedule_id", {
@@ -1230,9 +1231,300 @@ export const attachments = pgTable(
 );
 
 // ============================================================================
+// RECENT VISITS TABLE
+// Tracks user's recently visited entities for quick access
+// ============================================================================
+
+export const recentVisits = pgTable(
+	"recent_visits",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 })
+			.notNull()
+			.references(() => organizations.id, { onDelete: "cascade" }),
+		userId: varchar("user_id", { length: 255 })
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+
+		entityType: varchar("entity_type", { length: 50 }).notNull(),
+		entityId: varchar("entity_id", { length: 255 }).notNull(),
+
+		visitedAt: timestamp("visited_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		// Unique constraint for upsert
+		uniqueIndex("recent_visits_user_org_entity_idx").on(
+			table.organizationId,
+			table.userId,
+			table.entityType,
+			table.entityId,
+		),
+		// Query index for listing recents
+		index("recent_visits_user_org_visited_idx").on(
+			table.organizationId,
+			table.userId,
+			table.visitedAt,
+		),
+	],
+);
+
+// ============================================================================
+// QUICK LINKS TABLE
+// Personal bookmarked URLs for quick access on home page
+// ============================================================================
+
+export const quickLinks = pgTable(
+	"quick_links",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 })
+			.notNull()
+			.references(() => organizations.id, { onDelete: "cascade" }),
+		userId: varchar("user_id", { length: 255 })
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+
+		title: varchar("title", { length: 255 }),
+		url: text("url").notNull(),
+		metadata: jsonb("metadata"),
+		sortOrder: integer("sort_order").default(0).notNull(),
+
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		index("quick_links_org_user_idx").on(
+			table.organizationId,
+			table.userId,
+		),
+		index("quick_links_org_user_sort_idx").on(
+			table.organizationId,
+			table.userId,
+			table.sortOrder,
+		),
+	],
+);
+
+// ============================================================================
+// SUBSCRIPTIONS TABLE
+// Tracks which users are watching entities (tasks, deliverables, shoots, etc.)
+// ============================================================================
+
+export const subscriptions = pgTable(
+	"subscriptions",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 })
+			.notNull()
+			.references(() => organizations.id, { onDelete: "cascade" }),
+		userId: varchar("user_id", { length: 255 })
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+
+		entityType: varchar("entity_type", { length: 50 }).notNull(),
+		entityId: varchar("entity_id", { length: 255 }).notNull(),
+
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		deletedAt: timestamp("deleted_at", { withTimezone: true }),
+	},
+	(table) => [
+		uniqueIndex("subscriptions_user_entity_unique").on(
+			table.organizationId,
+			table.userId,
+			table.entityType,
+			table.entityId,
+		).where(sql`deleted_at IS NULL`),
+		index("subscriptions_org_user_idx").on(
+			table.organizationId,
+			table.userId,
+		),
+		index("subscriptions_entity_idx").on(
+			table.entityType,
+			table.entityId,
+		),
+	],
+);
+
+export const subscriptionsRelations = relations(
+	subscriptions,
+	({ one }) => ({
+		organization: one(organizations, {
+			fields: [subscriptions.organizationId],
+			references: [organizations.id],
+		}),
+		user: one(users, {
+			fields: [subscriptions.userId],
+			references: [users.id],
+		}),
+	}),
+);
+
+// ============================================================================
+// NOTIFICATIONS TABLE
+// In-app notifications for subscribed entities
+// ============================================================================
+
+export const notifications = pgTable(
+	"notifications",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 })
+			.notNull()
+			.references(() => organizations.id, { onDelete: "cascade" }),
+		userId: varchar("user_id", { length: 255 })
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+
+		entityType: varchar("entity_type", { length: 50 }).notNull(),
+		entityId: varchar("entity_id", { length: 255 }).notNull(),
+		entityName: text("entity_name").notNull(),
+
+		type: varchar("type", { length: 50 }).notNull(),
+		title: text("title").notNull(),
+		body: text("body"),
+
+		actorId: varchar("actor_id", { length: 255 }).references(
+			() => users.id,
+			{ onDelete: "set null" },
+		),
+		actorName: text("actor_name"),
+
+		readAt: timestamp("read_at", { withTimezone: true }),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		index("notifications_user_org_idx").on(
+			table.organizationId,
+			table.userId,
+			table.createdAt,
+		),
+		index("notifications_user_unread_idx")
+			.on(table.organizationId, table.userId)
+			.where(sql`read_at IS NULL`),
+		index("notifications_entity_idx").on(
+			table.entityType,
+			table.entityId,
+		),
+	],
+);
+
+export const notificationsRelations = relations(
+	notifications,
+	({ one }) => ({
+		organization: one(organizations, {
+			fields: [notifications.organizationId],
+			references: [organizations.id],
+		}),
+		user: one(users, {
+			fields: [notifications.userId],
+			references: [users.id],
+		}),
+		actor: one(users, {
+			fields: [notifications.actorId],
+			references: [users.id],
+		}),
+	}),
+);
+
+// ============================================================================
+// STICKIES
+// Personal notes/reminders for users
+// ============================================================================
+
+export const stickies = pgTable(
+	"stickies",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 })
+			.notNull()
+			.references(() => organizations.id, { onDelete: "cascade" }),
+		userId: varchar("user_id", { length: 255 })
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+
+		title: varchar("title", { length: 255 }),
+		content: text("content"),
+		descriptionHtml: text("description_html"),
+		color: varchar("color", { length: 50 }).default("yellow").notNull(),
+		sortOrder: integer("sort_order").default(0).notNull(),
+
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		index("stickies_org_user_idx").on(table.organizationId, table.userId),
+		index("stickies_org_user_sort_idx").on(
+			table.organizationId,
+			table.userId,
+			table.sortOrder,
+		),
+	],
+);
+
+// ============================================================================
 // RELATIONS
 // All studio domain relations defined here
 // ============================================================================
+
+export const stickiesRelations = relations(stickies, ({ one }) => ({
+	organization: one(organizations, {
+		fields: [stickies.organizationId],
+		references: [organizations.id],
+	}),
+	user: one(users, {
+		fields: [stickies.userId],
+		references: [users.id],
+	}),
+}));
+
+export const quickLinksRelations = relations(quickLinks, ({ one }) => ({
+	organization: one(organizations, {
+		fields: [quickLinks.organizationId],
+		references: [organizations.id],
+	}),
+	user: one(users, {
+		fields: [quickLinks.userId],
+		references: [users.id],
+	}),
+}));
+
+export const recentVisitsRelations = relations(recentVisits, ({ one }) => ({
+	organization: one(organizations, {
+		fields: [recentVisits.organizationId],
+		references: [organizations.id],
+	}),
+	user: one(users, {
+		fields: [recentVisits.userId],
+		references: [users.id],
+	}),
+}));
 
 export const configurationsRelations = relations(configurations, ({ one }) => ({
 	organization: one(organizations, {
@@ -1750,6 +2042,116 @@ export const attachmentRelations = relations(attachments, ({ one }) => ({
 	}),
 }));
 
+// ============================================================================
+// SAVED VIEWS TABLE
+// User-customizable views with filters, sorting, and column visibility
+// ============================================================================
+
+export const savedViews = pgTable(
+	"saved_views",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 })
+			.notNull()
+			.references(() => organizations.id, { onDelete: "cascade" }),
+		createdBy: varchar("created_by", { length: 255 }).references(
+			() => users.id,
+			{ onDelete: "set null" },
+		),
+
+		entityType: varchar("entity_type", { length: 50 }).notNull(),
+		name: text("name").notNull(),
+		description: text("description"),
+		icon: varchar("icon", { length: 50 }),
+		color: varchar("color", { length: 20 }),
+
+		filters: jsonb("filters").default({}).notNull(),
+		displayFilters: jsonb("display_filters"),
+		columnVisibility: jsonb("column_visibility"),
+		sorting: jsonb("sorting"),
+
+		isSystem: boolean("is_system").default(false).notNull(),
+		isDefault: boolean("is_default").default(false).notNull(),
+		isPublic: boolean("is_public").default(false).notNull(),
+		sortOrder: integer("sort_order").default(0).notNull(),
+
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		index("saved_views_org_idx").on(table.organizationId),
+		index("saved_views_org_entity_idx").on(
+			table.organizationId,
+			table.entityType,
+		),
+		index("saved_views_created_by_idx").on(table.createdBy),
+		uniqueIndex("saved_views_org_entity_name_idx").on(
+			table.organizationId,
+			table.entityType,
+			table.name,
+		),
+	],
+);
+
+export const savedViewFavorites = pgTable(
+	"saved_view_favorites",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		savedViewId: varchar("saved_view_id", { length: 255 })
+			.notNull()
+			.references(() => savedViews.id, { onDelete: "cascade" }),
+		userId: varchar("user_id", { length: 255 })
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		uniqueIndex("saved_view_favorites_view_user_idx").on(
+			table.savedViewId,
+			table.userId,
+		),
+		index("saved_view_favorites_user_idx").on(table.userId),
+	],
+);
+
+export const savedViewRelations = relations(savedViews, ({ one, many }) => ({
+	organization: one(organizations, {
+		fields: [savedViews.organizationId],
+		references: [organizations.id],
+	}),
+	createdByUser: one(users, {
+		fields: [savedViews.createdBy],
+		references: [users.id],
+		relationName: "savedViewCreatedBy",
+	}),
+	favorites: many(savedViewFavorites),
+}));
+
+export const savedViewFavoriteRelations = relations(
+	savedViewFavorites,
+	({ one }) => ({
+		savedView: one(savedViews, {
+			fields: [savedViewFavorites.savedViewId],
+			references: [savedViews.id],
+		}),
+		user: one(users, {
+			fields: [savedViewFavorites.userId],
+			references: [users.id],
+		}),
+	}),
+);
+
 // ----------------------------------------------------------------------------
 // Organization Relations (includes all studio domain tables)
 // ----------------------------------------------------------------------------
@@ -1771,11 +2173,104 @@ export const organizationRelations = relations(organizations, ({ many }) => ({
 	expenses: many(expenses),
 	invoices: many(invoices),
 	attachments: many(attachments),
+	savedViews: many(savedViews),
+	activities: many(activities),
+}));
+
+// ============================================================================
+// ACTIVITIES TABLE
+// Organization-wide activity tracking for audit and feed display
+// ============================================================================
+
+export const activities = pgTable(
+	"activities",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 })
+			.notNull()
+			.references(() => organizations.id, { onDelete: "cascade" }),
+
+		// Who performed the action
+		actorId: varchar("actor_id", { length: 255 }).notNull(),
+		actorType: varchar("actor_type", { length: 20 }).notNull(), // 'user' | 'crew' | 'system'
+		actorName: text("actor_name").notNull(), // Denormalized for display
+
+		// What entity was affected
+		entityType: varchar("entity_type", { length: 50 }).notNull(),
+		entityId: varchar("entity_id", { length: 255 }).notNull(),
+		entityName: text("entity_name").notNull(), // Denormalized: "Smith Wedding"
+
+		// Parent context (for nested entities like tasks belonging to bookings)
+		parentEntityType: varchar("parent_entity_type", { length: 50 }),
+		parentEntityId: varchar("parent_entity_id", { length: 255 }),
+		parentEntityName: text("parent_entity_name"),
+
+		// What happened
+		action: varchar("action", { length: 50 }).notNull(),
+
+		// What changed (for updates)
+		field: varchar("field", { length: 50 }),
+		oldValue: text("old_value"),
+		newValue: text("new_value"),
+		oldIdentifier: varchar("old_identifier", { length: 255 }), // UUID for relations
+		newIdentifier: varchar("new_identifier", { length: 255 }),
+
+		// Grouping & metadata
+		epoch: decimal("epoch", { precision: 20, scale: 6 }), // Groups related activities
+		metadata: jsonb("metadata"),
+
+		// Timestamp only - activities are immutable, no updatedAt/deletedAt
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		// Primary query: recent activities for an organization
+		index("activities_org_created_idx").on(
+			table.organizationId,
+			table.createdAt,
+		),
+		// Query by entity: activity history for a specific entity
+		index("activities_entity_idx").on(
+			table.entityType,
+			table.entityId,
+			table.createdAt,
+		),
+		// Query by actor: what has a user/crew done
+		index("activities_actor_idx").on(
+			table.actorId,
+			table.actorType,
+			table.createdAt,
+		),
+		// Query by parent: activities for a booking's children
+		index("activities_parent_idx").on(
+			table.parentEntityType,
+			table.parentEntityId,
+			table.createdAt,
+		),
+		// Filter by action type
+		index("activities_org_action_idx").on(
+			table.organizationId,
+			table.action,
+		),
+	],
+);
+
+export const activityRelations = relations(activities, ({ one }) => ({
+	organization: one(organizations, {
+		fields: [activities.organizationId],
+		references: [organizations.id],
+	}),
 }));
 
 // ============================================================================
 // TYPE EXPORTS
 // ============================================================================
+
+export type Activity = typeof activities.$inferSelect;
+export type NewActivity = typeof activities.$inferInsert;
 
 export type Configuration = typeof configurations.$inferSelect;
 export type NewConfiguration = typeof configurations.$inferInsert;
@@ -1849,3 +2344,15 @@ export type NewInvoiceLineItem = typeof invoiceLineItems.$inferInsert;
 
 export type Attachment = typeof attachments.$inferSelect;
 export type NewAttachment = typeof attachments.$inferInsert;
+
+export type SavedView = typeof savedViews.$inferSelect;
+export type NewSavedView = typeof savedViews.$inferInsert;
+
+export type SavedViewFavorite = typeof savedViewFavorites.$inferSelect;
+export type NewSavedViewFavorite = typeof savedViewFavorites.$inferInsert;
+
+export type Subscription = typeof subscriptions.$inferSelect;
+export type NewSubscription = typeof subscriptions.$inferInsert;
+
+export type Notification = typeof notifications.$inferSelect;
+export type NewNotification = typeof notifications.$inferInsert;

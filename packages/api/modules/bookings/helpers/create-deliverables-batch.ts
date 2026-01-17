@@ -50,7 +50,6 @@ export async function createDeliverablesBatch(
 				organizationId,
 				bookingId,
 				name: deliverableInput.name,
-				deliverableType: deliverableInput.deliverableType,
 				description: deliverableInput.description ?? null,
 				dueDate: deliverableInput.dueDate ?? null,
 				// Package relationship fields
@@ -58,7 +57,6 @@ export async function createDeliverablesBatch(
 				cost: deliverableInput.cost ?? null,
 				isPackageIncluded: deliverableInput.isPackageIncluded ?? false,
 				status: "pending",
-				priority: "normal",
 				// Set workflow status to "assigned" if crew is assigned
 				workflowStatus: hasCrewAssignments ? "assigned" : "not_started",
 				createdBy: userId,

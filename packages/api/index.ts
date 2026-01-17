@@ -10,6 +10,10 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger as honoLogger } from "hono/logger";
 import { mergeOpenApiSchemas } from "./lib/openapi-schema";
+import {
+	handleCloudWebhook,
+	verifyCloudWebhook,
+} from "./modules/whatsapp/webhook-handler";
 import { openApiHandler, rpcHandler } from "./orpc/handler";
 import { router } from "./orpc/router";
 
@@ -75,6 +79,17 @@ export const app = new Hono()
 			theme: "saturn",
 			url: "/api/openapi",
 		}),
+	)
+	.get("/webhooks/whatsapp/:token", (c) =>
+		verifyCloudWebhook({
+			token: c.req.param("token"),
+			mode: c.req.query("hub.mode"),
+			verifyToken: c.req.query("hub.verify_token"),
+			challenge: c.req.query("hub.challenge"),
+		}),
+	)
+	.post("/webhooks/whatsapp/:token", (c) =>
+		handleCloudWebhook(c.req.raw, c.req.param("token")),
 	)
 	// Payments webhook handler
 	.post("/webhooks/payments", (c) => paymentsWebhookHandler(c.req.raw))

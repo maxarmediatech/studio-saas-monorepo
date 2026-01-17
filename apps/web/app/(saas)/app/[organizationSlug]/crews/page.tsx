@@ -1,7 +1,8 @@
 import { getActiveOrganization } from "@saas/auth/lib/server";
-import { PageContent } from "@saas/studio";
-import { CrewsTable } from "@saas/studio/components/crews";
+import { CrewsFilters, CrewsTableSkeleton } from "@saas/studio";
+import { CrewsTable } from "@saas/studio/components/crews/index.server";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
 type Props = {
 	params: Promise<{ organizationSlug: string }>;
@@ -27,11 +28,15 @@ export default async function CrewsPage({ params, searchParams }: Props) {
 	}
 
 	return (
-		<PageContent title="Team">
-			<CrewsTable
-				organizationSlug={organizationSlug}
-				searchParams={searchParams}
-			/>
-		</PageContent>
+		<div className="space-y-4">
+			<CrewsFilters />
+
+			<Suspense fallback={<CrewsTableSkeleton />}>
+				<CrewsTable
+					organizationSlug={organizationSlug}
+					searchParams={searchParams}
+				/>
+			</Suspense>
+		</div>
 	);
 }

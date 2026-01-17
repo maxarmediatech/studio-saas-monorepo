@@ -27,14 +27,11 @@ export async function DeliverablesTable({
 	});
 
 	// Build query input from parsed params
-	// Note: API expects single values for deliverableType, status, priority
 	const input = {
 		page: params.page,
 		limit: params.limit,
 		search: params.search ?? undefined,
-		deliverableType: params.deliverableType ?? undefined,
 		status: params.status ?? undefined,
-		priority: params.priority ?? undefined,
 		sortBy,
 		sortDirection,
 		includeDeleted: false,

@@ -6,6 +6,8 @@ import type { LucideIcon } from "lucide-react";
 // ============================================================================
 
 export type IconName =
+	| "Activity"
+	| "AlertTriangle"
 	| "Banknote"
 	| "Bell"
 	| "CalendarDays"
@@ -17,13 +19,19 @@ export type IconName =
 	| "Home"
 	| "Inbox"
 	| "LayoutDashboard"
+	| "Link2"
 	| "ListChecks"
 	| "ListTodo"
 	| "Package"
 	| "Settings"
 	| "Settings2"
 	| "Shield"
+	| "Sparkles"
+	| "StickyNoteIcon"
+	| "Store"
+	| "Tag"
 	| "User"
+	| "UserCog"
 	| "Users"
 	| "Wallet2";
 

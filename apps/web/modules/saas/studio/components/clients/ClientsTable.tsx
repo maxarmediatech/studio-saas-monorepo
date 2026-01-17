@@ -8,10 +8,14 @@ import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { ClientsTableClient } from "./ClientsTableClient";
 
 interface ClientsTableProps {
+	organizationSlug: string;
 	searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export async function ClientsTable({ searchParams }: ClientsTableProps) {
+export async function ClientsTable({
+	organizationSlug,
+	searchParams,
+}: ClientsTableProps) {
 	const queryClient = getServerQueryClient();
 
 	// Parse search params using the cache

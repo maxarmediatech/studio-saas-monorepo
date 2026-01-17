@@ -9,6 +9,11 @@ import {
 	shoots,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { safeTrackAssignment } from "../../activities/lib";
+import {
+	safeAutoSubscribe,
+	safeNotifySubscribers,
+} from "../../notifications/lib/notification-service";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	assignCrewInputSchema,
@@ -28,7 +33,7 @@ export const assignCrew = studioProtectedProcedure
 	.handler(async ({ input, context }) => {
 		requirePermission(context, "shoot", "assign");
 
-		const { shootId, crewId, role, isLead } = input;
+		const { shootId, crewId, role, isLead, rate } = input;
 
 		// Verify shoot exists and belongs to organization
 		const shoot = await db.query.shoots.findFirst({
@@ -74,14 +79,16 @@ export const assignCrew = studioProtectedProcedure
 			});
 		}
 
-		// Create assignment
+		const assignmentRole = role || crew.role || "Crew";
+
 		const [created] = await db
 			.insert(shootAssignments)
 			.values({
 				shootId,
 				crewId,
-				role,
+				role: assignmentRole,
 				isLead: isLead ?? false,
+				rate: rate ?? null,
 				assignedBy: context.user.id,
 			})
 			.returning({ id: shootAssignments.id });
@@ -91,6 +98,41 @@ export const assignCrew = studioProtectedProcedure
 				message: "Failed to assign crew",
 			});
 		}
+
+		// Track activity (non-blocking)
+		// entityName = target of assignment (shoot), crewName in metadata
+		await safeTrackAssignment(context, {
+			entityType: "shoot_assignment",
+			entityId: created.id,
+			entityName: shoot.name,
+			action: "assigned",
+			parentEntityType: "shoot",
+			parentEntityId: shoot.id,
+			parentEntityName: shoot.name,
+			metadata: { crewId: crew.id, crewName: crew.name, role: assignmentRole },
+		});
+
+		if (crew.userId) {
+			await safeAutoSubscribe({
+				organizationId: context.organizationId,
+				userId: crew.userId,
+				entityType: "shoot",
+				entityId: shoot.id,
+			});
+		}
+
+		await safeNotifySubscribers({
+			organizationId: context.organizationId,
+			entityType: "shoot",
+			entityId: shoot.id,
+			entityName: shoot.name,
+			type: "assigned",
+			title: `Shoot assigned: ${shoot.name}`,
+			body: `Assigned to ${crew.name}`,
+			actorId: context.user.id,
+			actorName: context.user.name,
+			excludeUserId: context.user.id,
+		});
 
 		return {
 			data: { id: created.id },

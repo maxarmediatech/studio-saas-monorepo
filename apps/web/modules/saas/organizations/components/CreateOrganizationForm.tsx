@@ -66,7 +66,12 @@ export function CreateOrganizationForm({
 				queryKey: organizationListQueryKey,
 			});
 
-			router.replace(redirectTo ?? "/choose-plan");
+			const nextPath = redirectTo ?? "/app";
+			router.replace(
+				nextPath === "/app"
+					? `/app/${newOrganization.slug}/home`
+					: nextPath,
+			);
 		} catch {
 			toast.error(t("organizations.createForm.notifications.error"));
 		}

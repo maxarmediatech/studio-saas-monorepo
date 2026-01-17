@@ -1,7 +1,11 @@
 import { getActiveOrganization } from "@saas/auth/lib/server";
-import { PageContent } from "@saas/studio";
-import { ExpensesTable } from "@saas/studio/components/expenses";
+import {
+	ExpensesFilters,
+	ExpensesTableSkeleton,
+} from "@saas/studio/components/expenses";
+import { ExpensesTable } from "@saas/studio/components/expenses/index.server";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
 type Props = {
 	params: Promise<{ organizationSlug: string }>;
@@ -27,11 +31,15 @@ export default async function ExpensesPage({ params, searchParams }: Props) {
 	}
 
 	return (
-		<PageContent title="Expenses">
-			<ExpensesTable
-				organizationSlug={organizationSlug}
-				searchParams={searchParams}
-			/>
-		</PageContent>
+		<div className="space-y-4">
+			<ExpensesFilters />
+
+			<Suspense fallback={<ExpensesTableSkeleton />}>
+				<ExpensesTable
+					organizationSlug={organizationSlug}
+					searchParams={searchParams}
+				/>
+			</Suspense>
+		</div>
 	);
 }

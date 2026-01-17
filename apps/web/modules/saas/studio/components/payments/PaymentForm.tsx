@@ -2,6 +2,9 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { ReceivedAmountDetail } from "@repo/api/modules/studio/schemas/payment";
+import { Button } from "@repo/ui/components/button";
+import { Combobox, type ComboboxOption } from "@repo/ui/components/combobox";
+import { DatePicker } from "@repo/ui/components/date-picker";
 import {
 	Field,
 	FieldError,
@@ -20,11 +23,15 @@ import {
 import { Textarea } from "@repo/ui/components/textarea";
 import { bookingsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useEffect } from "react";
+import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
-import { CollapsibleSection } from "../ui/CollapsibleSection";
 import { FormActions } from "../ui/FormActions";
+
+// ============================================================================
+// Constants
+// ============================================================================
 
 const PAYMENT_METHODS = [
 	{ value: "cash", label: "Cash" },
@@ -34,6 +41,10 @@ const PAYMENT_METHODS = [
 	{ value: "card", label: "Card" },
 	{ value: "other", label: "Other" },
 ] as const;
+
+// ============================================================================
+// Schema
+// ============================================================================
 
 const paymentFormSchema = z.object({
 	bookingId: z.string().min(1, "Booking is required"),
@@ -56,25 +67,60 @@ const paymentFormSchema = z.object({
 
 export type PaymentFormValues = z.infer<typeof paymentFormSchema>;
 
+// ============================================================================
+// Types
+// ============================================================================
+
+interface BookingInfo {
+	id: string;
+	name: string;
+	referenceNumber: string;
+}
+
 interface PaymentFormProps {
 	defaultValues?: ReceivedAmountDetail;
+	defaultBookingId?: string;
+	/** Booking info for edit mode (read-only display) */
+	booking?: BookingInfo;
 	onSubmit: (data: PaymentFormValues) => Promise<void>;
 	mode: "create" | "edit";
 	isPending?: boolean;
 	onScrollChange?: (isScrolled: boolean) => void;
 }
 
+// ============================================================================
+// Component
+// ============================================================================
+
 export function PaymentForm({
 	defaultValues,
+	defaultBookingId,
+	booking,
 	onSubmit,
 	mode,
 	isPending = false,
 	onScrollChange,
 }: PaymentFormProps) {
+	const [showDetails, setShowDetails] = useState(false);
+
+	// ========================================================================
+	// Data Fetching
+	// ========================================================================
+
+	const { data: bookingsData, isLoading: isLoadingBookings } = useQuery({
+		...bookingsApi.listMinimalOptions({}),
+		enabled: mode === "create",
+	});
+	const bookings = bookingsData?.data ?? [];
+
+	// ========================================================================
+	// Form Setup
+	// ========================================================================
+
 	const form = useForm<PaymentFormValues>({
 		resolver: zodResolver(paymentFormSchema),
 		defaultValues: {
-			bookingId: "",
+			bookingId: defaultBookingId ?? "",
 			amount: "",
 			paymentMethod: "upi",
 			receivedDate: new Date().toISOString().split("T")[0],
@@ -83,12 +129,7 @@ export function PaymentForm({
 		},
 	});
 
-	const { data: bookingsData, isLoading: bookingsLoading } = useQuery(
-		bookingsApi.listMinimalOptions({}),
-	);
-
-	const bookings = bookingsData?.data ?? [];
-
+	// Reset form when defaultValues change (edit mode)
 	useEffect(() => {
 		if (defaultValues) {
 			form.reset({
@@ -99,10 +140,42 @@ export function PaymentForm({
 				transactionReference: defaultValues.transactionReference ?? "",
 				notes: defaultValues.notes ?? "",
 			});
+
+			// Auto-expand details if there's content
+			if (defaultValues.transactionReference || defaultValues.notes) {
+				setShowDetails(true);
+			}
 		}
 	}, [defaultValues, form]);
 
+	// ========================================================================
+	// Computed Values
+	// ========================================================================
+
 	const isSubmitting = form.formState.isSubmitting || isPending;
+	const transactionRef = form.watch("transactionReference");
+	const notesValue = form.watch("notes");
+
+	const bookingOptions = useMemo((): ComboboxOption[] => {
+		const options = bookings.map((b) => ({
+			value: b.id,
+			label: `${b.name} (${b.referenceNumber})`,
+		}));
+
+		// Include current booking in edit mode even if not in list
+		if (booking && !options.some((o) => o.value === booking.id)) {
+			options.unshift({
+				value: booking.id,
+				label: `${booking.name} (${booking.referenceNumber})`,
+			});
+		}
+
+		return options;
+	}, [bookings, booking]);
+
+	// ========================================================================
+	// Handlers
+	// ========================================================================
 
 	const handleScroll = useCallback(
 		(event: React.UIEvent<HTMLDivElement>) => {
@@ -112,6 +185,10 @@ export function PaymentForm({
 		},
 		[onScrollChange],
 	);
+
+	// ========================================================================
+	// Render
+	// ========================================================================
 
 	return (
 		<form
@@ -124,57 +201,32 @@ export function PaymentForm({
 			>
 				<div className="px-4 py-4">
 					<FieldGroup>
-						{/* Essential Fields */}
+						{/* Booking - Searchable Combobox */}
 						<Controller
 							name="bookingId"
 							control={form.control}
 							render={({ field, fieldState }) => (
 								<Field data-invalid={fieldState.invalid}>
 									<FieldLabel htmlFor={field.name}>
-										Booking *
+										Booking {mode === "create" && "*"}
 									</FieldLabel>
-									<Select
-										onValueChange={field.onChange}
+									<Combobox
+										id={field.name}
 										value={field.value}
-										disabled={mode === "edit"}
-									>
-										<SelectTrigger
-											id={field.name}
-											aria-invalid={fieldState.invalid}
-										>
-											<SelectValue placeholder="Select booking" />
-										</SelectTrigger>
-										<SelectContent>
-											{bookingsLoading ? (
-												<SelectItem
-													value="loading"
-													disabled
-												>
-													Loading bookings...
-												</SelectItem>
-											) : bookings.length === 0 ? (
-												<SelectItem
-													value="none"
-													disabled
-												>
-													No bookings found
-												</SelectItem>
-											) : (
-												bookings.map((booking) => (
-													<SelectItem
-														key={booking.id}
-														value={booking.id}
-													>
-														{booking.name} (
-														{
-															booking.referenceNumber
-														}
-														)
-													</SelectItem>
-												))
-											)}
-										</SelectContent>
-									</Select>
+										onValueChange={field.onChange}
+										options={bookingOptions}
+										placeholder={
+											isLoadingBookings
+												? "Loading..."
+												: "Select booking..."
+										}
+										searchPlaceholder="Search bookings..."
+										emptyText="No bookings found"
+										disabled={
+											mode === "edit" || isLoadingBookings
+										}
+										aria-invalid={fieldState.invalid}
+									/>
 									{fieldState.invalid && (
 										<FieldError
 											errors={[fieldState.error]}
@@ -184,24 +236,25 @@ export function PaymentForm({
 							)}
 						/>
 
-						<div className="grid grid-cols-2 gap-4">
+						{/* Amount, Payment Method, Date - Main row */}
+						<div className="grid grid-cols-3 gap-4">
 							<Controller
 								name="amount"
 								control={form.control}
 								render={({ field, fieldState }) => (
 									<Field data-invalid={fieldState.invalid}>
 										<FieldLabel htmlFor={field.name}>
-											Amount (INR) *
+											Amount *
 										</FieldLabel>
 										<div className="relative">
 											<span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-												Rs.
+												₹
 											</span>
 											<Input
 												{...field}
 												id={field.name}
 												placeholder="0.00"
-												className="pl-10"
+												className="pl-7"
 												aria-invalid={
 													fieldState.invalid
 												}
@@ -241,7 +294,7 @@ export function PaymentForm({
 								render={({ field, fieldState }) => (
 									<Field data-invalid={fieldState.invalid}>
 										<FieldLabel htmlFor={field.name}>
-											Payment Method *
+											Method *
 										</FieldLabel>
 										<Select
 											onValueChange={field.onChange}
@@ -276,81 +329,82 @@ export function PaymentForm({
 									</Field>
 								)}
 							/>
+
+							<Controller
+								name="receivedDate"
+								control={form.control}
+								render={({ field, fieldState }) => (
+									<Field data-invalid={fieldState.invalid}>
+										<FieldLabel htmlFor={field.name}>
+											Date *
+										</FieldLabel>
+										<DatePicker
+											value={field.value}
+											onValueChange={field.onChange}
+											id={field.name}
+											aria-invalid={fieldState.invalid}
+										/>
+										{fieldState.invalid && (
+											<FieldError
+												errors={[fieldState.error]}
+											/>
+										)}
+									</Field>
+								)}
+							/>
 						</div>
 
 						{/* Additional Details (Collapsible) */}
-						<CollapsibleSection
-							title="Additional Details"
-							defaultOpen={mode === "edit"}
-						>
-							<FieldGroup>
-								<div className="grid grid-cols-2 gap-4">
-									<Controller
-										name="receivedDate"
-										control={form.control}
-										render={({ field, fieldState }) => (
-											<Field
-												data-invalid={
-													fieldState.invalid
-												}
-											>
-												<FieldLabel
-													htmlFor={field.name}
-												>
-													Date Received *
-												</FieldLabel>
-												<Input
-													{...field}
-													id={field.name}
-													type="date"
-													aria-invalid={
-														fieldState.invalid
-													}
-												/>
-												{fieldState.invalid && (
-													<FieldError
-														errors={[
-															fieldState.error,
-														]}
-													/>
-												)}
-											</Field>
-										)}
-									/>
-
-									<Controller
-										name="transactionReference"
-										control={form.control}
-										render={({ field, fieldState }) => (
-											<Field
-												data-invalid={
-													fieldState.invalid
-												}
-											>
+						{(showDetails || transactionRef || notesValue) && (
+							<>
+								<Controller
+									name="transactionReference"
+									control={form.control}
+									render={({ field, fieldState }) => (
+										<Field
+											data-invalid={fieldState.invalid}
+										>
+											<div className="flex items-center justify-between">
 												<FieldLabel
 													htmlFor={field.name}
 												>
 													Transaction Reference
 												</FieldLabel>
-												<Input
-													{...field}
-													id={field.name}
-													placeholder="Transaction ID or reference"
-													aria-invalid={
-														fieldState.invalid
-													}
+												{showDetails &&
+													!transactionRef &&
+													!notesValue && (
+														<Button
+															type="button"
+															variant="ghost"
+															size="sm"
+															className="h-auto py-0 px-1 text-muted-foreground"
+															onClick={() =>
+																setShowDetails(
+																	false,
+																)
+															}
+														>
+															<ChevronUpIcon className="mr-1 h-3.5 w-3.5" />
+															Hide
+														</Button>
+													)}
+											</div>
+											<Input
+												{...field}
+												id={field.name}
+												placeholder="Transaction ID or reference number"
+												aria-invalid={
+													fieldState.invalid
+												}
+											/>
+											{fieldState.invalid && (
+												<FieldError
+													errors={[fieldState.error]}
 												/>
-												{fieldState.invalid && (
-													<FieldError
-														errors={[
-															fieldState.error,
-														]}
-													/>
-												)}
-											</Field>
-										)}
-									/>
-								</div>
+											)}
+										</Field>
+									)}
+								/>
 
 								<Controller
 									name="notes"
@@ -365,7 +419,7 @@ export function PaymentForm({
 											<Textarea
 												{...field}
 												id={field.name}
-												placeholder="Additional notes"
+												placeholder="Additional notes about this payment"
 												className="resize-none"
 												rows={2}
 												aria-invalid={
@@ -380,8 +434,21 @@ export function PaymentForm({
 										</Field>
 									)}
 								/>
-							</FieldGroup>
-						</CollapsibleSection>
+							</>
+						)}
+
+						{!showDetails && !transactionRef && !notesValue && (
+							<Button
+								type="button"
+								variant="ghost"
+								size="sm"
+								className="w-fit text-muted-foreground"
+								onClick={() => setShowDetails(true)}
+							>
+								<ChevronDownIcon className="mr-1.5 h-3.5 w-3.5" />
+								Additional details
+							</Button>
+						)}
 					</FieldGroup>
 				</div>
 			</ScrollArea>
@@ -391,7 +458,7 @@ export function PaymentForm({
 					mode={mode}
 					isSubmitting={isSubmitting}
 					submitLabel={
-						mode === "edit" ? "Save Changes" : "Add Payment"
+						mode === "edit" ? "Save Changes" : "Record Payment"
 					}
 				/>
 			</div>

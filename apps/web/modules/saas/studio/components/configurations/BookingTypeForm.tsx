@@ -168,8 +168,8 @@ export function BookingTypeForm({
 									Applicable Roles
 								</h4>
 								<p className="text-xs text-muted-foreground">
-									Select which participant roles are valid for
-									this booking type
+									Select which client roles are valid for this
+									booking type
 								</p>
 							</div>
 

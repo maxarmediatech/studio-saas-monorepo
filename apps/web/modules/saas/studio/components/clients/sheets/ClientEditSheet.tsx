@@ -9,11 +9,8 @@ import {
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
 import { useClientParams } from "@saas/studio/hooks/params/use-client-params";
-import {
-	clientsApi,
-	clientsMutations,
-	studioQueryKeys,
-} from "@saas/studio/lib/api";
+import { clientsApi, clientsMutations } from "@saas/studio/lib/api";
+import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -34,8 +31,12 @@ export function ClientEditSheet() {
 		...clientsMutations.update(),
 		onSuccess: () => {
 			toast.success("Client updated successfully");
+			// Use ORPC's key generator to match the booking form's query keys
 			queryClient.invalidateQueries({
-				queryKey: studioQueryKeys.clients.all,
+				queryKey: orpc.clients.key(),
+			});
+			queryClient.invalidateQueries({
+				queryKey: orpc.activities.key(),
 			});
 			close();
 		},

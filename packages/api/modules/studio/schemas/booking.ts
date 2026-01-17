@@ -19,6 +19,7 @@ import {
 	paginationSchema,
 	paymentMethodSchema,
 	searchSchema,
+	uploadedAttachmentSchema,
 } from "./common";
 
 // ============================================================================
@@ -132,8 +133,8 @@ const bookingSortFields = [
 export const listBookingsInputSchema = z
 	.object({
 		statuses: z.array(bookingPhaseSchema).optional(),
-		bookingType: z.union([z.string(), z.array(z.string())]).optional(),
-		packageType: z.union([z.string(), z.array(z.string())]).optional(),
+		bookingType: z.union([z.string(), z.array(z.string())]).nullish(),
+		packageType: z.union([z.string(), z.array(z.string())]).nullish(),
 		createdAt: z.string().optional(), // comma-separated date range "from,to"
 	})
 	.merge(paginationSchema)
@@ -226,6 +227,7 @@ export const bookingDetailSchema = bookingSchema.extend({
 	tasksCount: z.number(),
 	deliverablesCount: z.number(),
 	balance: z.string(),
+	contractAttachment: uploadedAttachmentSchema.nullable(),
 });
 
 export type BookingDetail = z.infer<typeof bookingDetailSchema>;
@@ -239,21 +241,29 @@ export type GetBookingOutput = z.infer<typeof getBookingOutputSchema>;
 // CREATE BOOKING
 // ============================================================================
 
-// Crew assignment for shoots
+// Crew assignment for shoots - role is auto-filled from crew profile if not provided
 const shootCrewAssignmentInputSchema = z.object({
 	crewId: idSchema,
-	role: z.string().min(1).max(100),
-	isLead: z.boolean().default(false),
+	role: z.string().min(1).max(100).optional(), // Auto-filled from crew profile
+	isLead: z.boolean().default(false).optional(), // Kept for backward compat, not used in UI
+	rate: z.preprocess((value) => {
+		if (typeof value !== "string") {
+			return value;
+		}
+
+		const trimmed = value.trim();
+		return trimmed === "" ? undefined : trimmed;
+	}, moneySchema.optional()), // Per-shoot rate (decimal as string), "" → undefined
 });
 
 export type ShootCrewAssignmentInput = z.infer<
 	typeof shootCrewAssignmentInputSchema
 >;
 
-// Crew assignment for deliverables (no role field)
+// Crew assignment for deliverables - simplified to just crewId
 const deliverableCrewAssignmentInputSchema = z.object({
 	crewId: idSchema,
-	isLead: z.boolean().default(false),
+	isLead: z.boolean().default(false).optional(), // Kept for backward compat, not used in UI
 });
 
 export type DeliverableCrewAssignmentInput = z.infer<
@@ -279,7 +289,6 @@ export type ShootInput = z.infer<typeof shootInputSchema>;
 // Deliverable input with embedded crew assignments
 const deliverableInputSchema = z.object({
 	name: nameSchema,
-	deliverableType: z.string().min(1).max(100),
 	description: z.string().max(5000).optional(),
 	dueDate: z.string().optional(),
 	crewAssignments: z.array(deliverableCrewAssignmentInputSchema).optional(),
@@ -298,6 +307,7 @@ const receivedPaymentInputSchema = z.object({
 	receivedDate: z.string().min(1), // Date string YYYY-MM-DD
 	transactionReference: z.string().max(100).optional(),
 	notes: z.string().max(10000).optional(),
+	proofAttachment: uploadedAttachmentSchema.nullable().optional(),
 });
 
 export type ReceivedPaymentInput = z.infer<typeof receivedPaymentInputSchema>;
@@ -322,6 +332,9 @@ export const createBookingInputSchema = z.object({
 	note: z.string().max(5000).optional(),
 	participants: z.array(bookingParticipantInputSchema).min(1),
 	events: z.array(bookingEventInputSchema).optional(),
+
+	// Contract attachment (stored in polymorphic attachments table)
+	contractAttachment: uploadedAttachmentSchema.nullable().optional(),
 
 	// Shoots with crew assignments
 	shoots: z.array(shootInputSchema).optional(),
@@ -353,6 +366,7 @@ export const updateBookingInputSchema = z.object({
 	packageType: z.string().min(1).max(100).optional(),
 	packageCost: moneySchema.optional(),
 	note: z.string().max(5000).optional().nullable(),
+	contractAttachment: uploadedAttachmentSchema.nullable().optional(),
 });
 
 export type UpdateBookingInput = z.infer<typeof updateBookingInputSchema>;
@@ -501,4 +515,50 @@ export const removeParticipantOutputSchema = mutationResponseSchema;
 
 export type RemoveParticipantOutput = z.infer<
 	typeof removeParticipantOutputSchema
+>;
+
+// ============================================================================
+// LIST BOOKING CREWS (Aggregated from shoots, tasks, deliverables)
+// ============================================================================
+
+/**
+ * List all crew members assigned to a booking
+ */
+export const listBookingCrewsInputSchema = z.object({
+	bookingId: idSchema,
+});
+
+export type ListBookingCrewsInput = z.infer<typeof listBookingCrewsInputSchema>;
+
+/**
+ * Assignment source info - where is this crew assigned
+ */
+export const crewAssignmentSourceSchema = z.object({
+	type: z.enum(["shoot", "task", "deliverable"]),
+	id: idSchema,
+	name: z.string(),
+});
+
+export type CrewAssignmentSource = z.infer<typeof crewAssignmentSourceSchema>;
+
+/**
+ * Crew member with their assignment sources
+ */
+export const bookingCrewMemberSchema = z.object({
+	id: idSchema,
+	name: z.string(),
+	role: z.string(),
+	phoneNumber: z.string().nullable(),
+	email: z.string().nullable(),
+	assignments: z.array(crewAssignmentSourceSchema),
+});
+
+export type BookingCrewMember = z.infer<typeof bookingCrewMemberSchema>;
+
+export const listBookingCrewsOutputSchema = z.object({
+	data: z.array(bookingCrewMemberSchema),
+});
+
+export type ListBookingCrewsOutput = z.infer<
+	typeof listBookingCrewsOutputSchema
 >;

@@ -9,7 +9,8 @@ import {
 import { cn } from "@repo/ui/lib/utils";
 import { useClientCallback } from "@saas/studio/hooks/params/client-callback-context";
 import { useClientParams } from "@saas/studio/hooks/params/use-client-params";
-import { clientsMutations, studioQueryKeys } from "@saas/studio/lib/api";
+import { clientsMutations } from "@saas/studio/lib/api";
+import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -26,8 +27,12 @@ export function ClientCreateSheet() {
 		...clientsMutations.create(),
 		onSuccess: (data) => {
 			toast.success("Client added successfully");
+			// Use ORPC's key generator to match the booking form's query keys
 			queryClient.invalidateQueries({
-				queryKey: studioQueryKeys.clients.all,
+				queryKey: orpc.clients.key(),
+			});
+			queryClient.invalidateQueries({
+				queryKey: orpc.activities.key(),
 			});
 			// Execute callback if one was registered (e.g., from booking form)
 			executeCallback(data.data.id);

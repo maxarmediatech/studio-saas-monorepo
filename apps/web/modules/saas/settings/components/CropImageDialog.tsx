@@ -1,5 +1,7 @@
 "use client";
 
+import "./cropper.css";
+
 import { Button } from "@repo/ui/components/button";
 import {
 	Dialog,

@@ -1,0 +1,168 @@
+"use client";
+
+import type {
+	YourWorkEntityType,
+	YourWorkItem,
+} from "@repo/api/modules/studio/schemas/your-work";
+import { Badge } from "@repo/ui/components/badge";
+import { Camera, ListTodoIcon, Package } from "lucide-react";
+import Link from "next/link";
+import { SubscribeButton } from "./subscribe-button";
+
+interface YourWorkGroup {
+	id: "assigned" | "created" | "subscribed";
+	title: string;
+	items: YourWorkItem[];
+	isLoading: boolean;
+}
+
+interface YourWorkGroupedListProps {
+	organizationSlug: string;
+	entityType: "all" | YourWorkEntityType;
+	groups: YourWorkGroup[];
+}
+
+function formatDate(dateString: string | null): string {
+	if (!dateString) {
+		return "-";
+	}
+	const date = new Date(dateString);
+	return date.toLocaleDateString("en-US", {
+		month: "short",
+		day: "numeric",
+		year: "numeric",
+	});
+}
+
+function getEntityLink(organizationSlug: string, item: YourWorkItem) {
+	switch (item.entityType) {
+		case "task":
+			return `/app/${organizationSlug}/tasks?taskId=${item.entityId}`;
+		case "deliverable":
+			return `/app/${organizationSlug}/deliverables?deliverableId=${item.entityId}`;
+		case "shoot":
+			return `/app/${organizationSlug}/shoots?shootId=${item.entityId}`;
+		default:
+			return `/app/${organizationSlug}/home`;
+	}
+}
+
+function getEntityLabel(entityType: YourWorkItem["entityType"]) {
+	switch (entityType) {
+		case "task":
+			return "Task";
+		case "deliverable":
+			return "Deliverable";
+		case "shoot":
+			return "Shoot";
+		default:
+			return "Item";
+	}
+}
+
+function getEntityIcon(entityType: YourWorkItem["entityType"]) {
+	switch (entityType) {
+		case "task":
+			return <ListTodoIcon className="size-3.5" />;
+		case "deliverable":
+			return <Package className="size-3.5" />;
+		case "shoot":
+			return <Camera className="size-3.5" />;
+		default:
+			return null;
+	}
+}
+
+function getStatusBadge(status: string | null) {
+	if (!status) {
+		return <Badge variant="outline">-</Badge>;
+	}
+	return <Badge variant="secondary">{status}</Badge>;
+}
+
+function GroupRow({
+	organizationSlug,
+	item,
+	showEntityType,
+}: {
+	organizationSlug: string;
+	item: YourWorkItem;
+	showEntityType: boolean;
+}) {
+	return (
+		<div className="flex flex-col gap-2 px-4 py-3 md:flex-row md:items-center md:justify-between">
+			<div className="flex min-w-0 flex-wrap items-center gap-3">
+				{showEntityType ? (
+					<span className="inline-flex items-center gap-1 rounded-full bg-neutral-100 px-2 py-1 text-xs text-neutral-600">
+						{getEntityIcon(item.entityType)}
+						{getEntityLabel(item.entityType)}
+					</span>
+				) : null}
+				<Link
+					href={getEntityLink(organizationSlug, item)}
+					className="truncate text-sm font-medium text-neutral-900 hover:underline"
+				>
+					{item.name}
+				</Link>
+				<span className="truncate text-sm text-neutral-500">
+					{item.bookingName ?? "-"}
+				</span>
+			</div>
+			<div className="flex flex-wrap items-center gap-3 text-sm text-neutral-600">
+				{getStatusBadge(item.status)}
+				<span>{formatDate(item.date)}</span>
+				<SubscribeButton
+					entityType={item.entityType}
+					entityId={item.entityId}
+					isSubscribed={item.isSubscribed}
+				/>
+			</div>
+		</div>
+	);
+}
+
+export function YourWorkGroupedList({
+	organizationSlug,
+	entityType,
+	groups,
+}: YourWorkGroupedListProps) {
+	const showEntityType = entityType === "all";
+
+	return (
+		<div className="flex flex-col gap-5">
+			{groups.map((group) => (
+				<div
+					key={group.id}
+					className="overflow-hidden rounded-lg border border-neutral-200 bg-white"
+				>
+					<div className="flex items-center gap-2 bg-neutral-50 px-4 py-2 text-sm font-medium text-neutral-700">
+						<span>{group.title}</span>
+						<span className="text-xs text-neutral-500">
+							{group.items.length}
+						</span>
+					</div>
+					<div className="divide-y divide-neutral-100">
+						{group.isLoading ? (
+							<div className="px-4 py-6 text-sm text-neutral-500">
+								Loading {group.title.toLowerCase()} items...
+							</div>
+						) : group.items.length === 0 ? (
+							<div className="px-4 py-6 text-sm text-neutral-500">
+								No {group.title.toLowerCase()} items.
+							</div>
+						) : (
+							group.items.map((item) => (
+								<GroupRow
+									key={item.id}
+									organizationSlug={organizationSlug}
+									item={item}
+									showEntityType={showEntityType}
+								/>
+							))
+						)}
+					</div>
+				</div>
+			))}
+		</div>
+	);
+}

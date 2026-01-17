@@ -1,6 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import {
 	and,
+	attachments,
 	bookingEvents,
 	bookingParticipants,
 	bookings,
@@ -11,6 +12,7 @@ import {
 	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { safeTrackActivity } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	type TransactionClient,
@@ -131,6 +133,7 @@ export const createBooking = studioProtectedProcedure
 			note,
 			participants,
 			events,
+			contractAttachment,
 			shoots,
 			deliverables,
 			receivedPayments,
@@ -256,6 +259,46 @@ export const createBooking = studioProtectedProcedure
 					paymentSchedules ?? [],
 				);
 			}
+
+			// 10. Create contract attachment if provided
+			if (contractAttachment) {
+				// Security: Validate S3 key belongs to this organization (prevents IDOR)
+				const expectedPrefix = `orgs/${context.organizationId}/`;
+				if (!contractAttachment.key.startsWith(expectedPrefix)) {
+					throw new ORPCError("FORBIDDEN", {
+						message:
+							"Invalid attachment: file does not belong to this organization",
+					});
+				}
+
+				await tx.insert(attachments).values({
+					organizationId: context.organizationId,
+					entityType: "booking",
+					entityId: created.id,
+					fileName: contractAttachment.name,
+					fileUrl: contractAttachment.key, // Store S3 key, not signed URL
+					fileSize: contractAttachment.size,
+					mimeType: contractAttachment.type,
+					description: "contract",
+					uploadedBy: context.user.id,
+				});
+			}
+
+			// Track activity (inside transaction to get name)
+			await safeTrackActivity(
+				{ organizationId: context.organizationId, user: context.user },
+				{
+					entityType: "booking",
+					entityId: created.id,
+					entityName: name,
+					action: "created",
+					metadata: {
+						referenceNumber,
+						packageType,
+						packageCost,
+					},
+				},
+			);
 
 			return {
 				data: { id: created.id },

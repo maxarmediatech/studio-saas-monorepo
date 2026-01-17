@@ -9,6 +9,7 @@ import {
 	expenses,
 	isNull,
 	shoots,
+	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
@@ -78,7 +79,10 @@ export const getExpense = studioProtectedProcedure
 			string,
 			{ name: string; referenceNumber: string }
 		> = {};
-		let shootMap: Record<string, string> = {};
+		let shootMap: Record<
+			string,
+			{ name: string | null; bookingId: string | null }
+		> = {};
 		let crewMap: Record<string, string> = {};
 
 		if (bookingIds.length > 0) {
@@ -109,6 +113,7 @@ export const getExpense = studioProtectedProcedure
 				.select({
 					id: shoots.id,
 					name: shoots.name,
+					bookingId: shoots.bookingId,
 				})
 				.from(shoots)
 				.where(
@@ -118,7 +123,40 @@ export const getExpense = studioProtectedProcedure
 					),
 				);
 
-			shootMap = Object.fromEntries(shootRows.map((s) => [s.id, s.name]));
+			shootMap = Object.fromEntries(
+				shootRows.map((s) => [
+					s.id,
+					{ name: s.name, bookingId: s.bookingId },
+				]),
+			);
+
+			const missingBookingIds = shootRows
+				.map((s) => s.bookingId)
+				.filter((id): id is string => id !== null && !bookingMap[id]);
+
+			if (missingBookingIds.length > 0) {
+				const additionalBookings = await db
+					.select({
+						id: bookings.id,
+						name: bookings.name,
+						referenceNumber: bookings.referenceNumber,
+					})
+					.from(bookings)
+					.where(
+						and(
+							sql`${bookings.id} IN ${missingBookingIds}`,
+							eq(bookings.organizationId, context.organizationId),
+							isNull(bookings.deletedAt),
+						),
+					);
+
+				for (const b of additionalBookings) {
+					bookingMap[b.id] = {
+						name: b.name,
+						referenceNumber: b.referenceNumber,
+					};
+				}
+			}
 		}
 
 		if (crewIds.length > 0) {
@@ -140,13 +178,18 @@ export const getExpense = studioProtectedProcedure
 
 		const assignments: ExpenseAssignmentWithDetails[] = assignmentRows.map(
 			(row) => {
-				const booking = row.bookingId
-					? bookingMap[row.bookingId]
+				const shootData = row.shootId ? shootMap[row.shootId] : null;
+				const shootName = shootData?.name ?? null;
+				const shootBookingId = shootData?.bookingId ?? null;
+				const bookingIdForRow = row.bookingId ?? shootBookingId;
+				const booking = bookingIdForRow
+					? bookingMap[bookingIdForRow]
 					: null;
+
 				return {
 					id: row.id,
 					expenseId: row.expenseId,
-					bookingId: row.bookingId,
+					bookingId: bookingIdForRow,
 					shootId: row.shootId,
 					crewId: row.crewId,
 					allocationPercentage: row.allocationPercentage,
@@ -154,9 +197,7 @@ export const getExpense = studioProtectedProcedure
 					createdAt: row.createdAt.toISOString(),
 					bookingName: booking?.name ?? null,
 					bookingReferenceNumber: booking?.referenceNumber ?? null,
-					shootName: row.shootId
-						? (shootMap[row.shootId] ?? null)
-						: null,
+					shootName: shootName,
 					crewName: row.crewId ? (crewMap[row.crewId] ?? null) : null,
 				};
 			},

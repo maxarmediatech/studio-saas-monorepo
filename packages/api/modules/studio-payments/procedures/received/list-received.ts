@@ -124,6 +124,7 @@ export const listReceived = studioProtectedProcedure
 				transactionReference: receivedAmounts.transactionReference,
 				receivedDate: receivedAmounts.receivedDate,
 				notes: receivedAmounts.notes,
+				proofAttachment: receivedAmounts.proofAttachment,
 				paymentScheduleId: receivedAmounts.paymentScheduleId,
 				createdBy: receivedAmounts.createdBy,
 				updatedBy: receivedAmounts.updatedBy,
@@ -176,6 +177,13 @@ export const listReceived = studioProtectedProcedure
 			transactionReference: row.transactionReference,
 			receivedDate: row.receivedDate,
 			notes: row.notes,
+			proofAttachment: row.proofAttachment as {
+				name: string;
+				size: number;
+				type: string;
+				key: string;
+				url: string;
+			} | null,
 			paymentScheduleId: row.paymentScheduleId,
 			createdBy: row.createdBy,
 			updatedBy: row.updatedBy,

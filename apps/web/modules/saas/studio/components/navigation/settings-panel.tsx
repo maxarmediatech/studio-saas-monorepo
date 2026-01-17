@@ -12,7 +12,12 @@ interface SettingsPanelProps {
 }
 
 function isItemActive(pathname: string, itemPath: string): boolean {
-	// Exact match or starts with path followed by /
+	// For base settings path (e.g., /app/{slug}/settings), use exact match only
+	// to prevent highlighting when on child routes like /settings/danger-zone
+	if (itemPath.endsWith("/settings")) {
+		return pathname === itemPath;
+	}
+	// For other paths: exact match or starts with path followed by /
 	return pathname === itemPath || pathname.startsWith(`${itemPath}/`);
 }
 

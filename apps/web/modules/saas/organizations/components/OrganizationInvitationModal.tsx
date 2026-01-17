@@ -3,6 +3,8 @@
 import { authClient } from "@repo/auth/client";
 import { Button } from "@repo/ui/components/button";
 import { OrganizationLogo } from "@saas/organizations/components/OrganizationLogo";
+import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
+import { setActiveOrganizationSlugCookie } from "@saas/organizations/lib/active-organization-cookie";
 import { organizationListQueryKey } from "@saas/organizations/lib/api";
 import { useRouter } from "@shared/hooks/router";
 import { useQueryClient } from "@tanstack/react-query";
@@ -23,6 +25,7 @@ export function OrganizationInvitationModal({
 }) {
 	const t = useTranslations();
 	const router = useRouter();
+	const { activeOrganization } = useActiveOrganization();
 	const queryClient = useQueryClient();
 	const [submitting, setSubmitting] = useState<false | "accept" | "reject">(
 		false,
@@ -45,7 +48,8 @@ export function OrganizationInvitationModal({
 					queryKey: organizationListQueryKey,
 				});
 
-				router.replace(`/app/${organizationSlug}`);
+				setActiveOrganizationSlugCookie(organizationSlug);
+				router.replace(`/app/${organizationSlug}/home`);
 			} else {
 				const { error } =
 					await authClient.organization.rejectInvitation({
@@ -56,7 +60,13 @@ export function OrganizationInvitationModal({
 					throw error;
 				}
 
-				router.replace("/app");
+				if (activeOrganization?.slug) {
+					setActiveOrganizationSlugCookie(activeOrganization.slug);
+					router.replace(`/app/${activeOrganization.slug}/home`);
+				} else {
+					setActiveOrganizationSlugCookie(null);
+					router.replace("/app");
+				}
 			}
 		} catch {
 			// TODO: handle error

@@ -26,12 +26,8 @@ import {
 	type RowAction,
 } from "@saas/shared/components/data-table";
 import { useShootParams } from "@saas/studio/hooks/params/use-shoot-params";
-import {
-	bookingsApi,
-	shootsApi,
-	shootsMutations,
-	studioQueryKeys,
-} from "@saas/studio/lib/api";
+import { bookingsApi, shootsApi, shootsMutations } from "@saas/studio/lib/api";
+import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
@@ -135,7 +131,10 @@ export function ShootsPageClient({
 			setDeleteDialogOpen(false);
 			setShootToDelete(null);
 			queryClient.invalidateQueries({
-				queryKey: studioQueryKeys.shoots.all,
+				queryKey: orpc.shoots.key(),
+			});
+			queryClient.invalidateQueries({
+				queryKey: orpc.activities.key(),
 			});
 		},
 		onError: (error) => {

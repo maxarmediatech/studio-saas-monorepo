@@ -1,0 +1,1 @@
+ALTER TABLE "stickies" ADD COLUMN "description_html" text;

@@ -81,6 +81,24 @@ export const studioQueryKeys = {
 			["studio", "expenses", "list", filters] as const,
 		detail: (id: string) => ["studio", "expenses", "detail", id] as const,
 	},
+	// Activities (for cache invalidation on mutations)
+	activities: {
+		all: ["studio", "activities"] as const,
+	},
+	// Your Work
+	yourWork: {
+		all: ["studio", "your-work"] as const,
+		list: (filters?: Record<string, unknown>) =>
+			["studio", "your-work", "list", filters] as const,
+	},
+	// Notifications
+	notifications: {
+		all: ["studio", "notifications"] as const,
+		list: (filters?: Record<string, unknown>) =>
+			["studio", "notifications", "list", filters] as const,
+		unreadCount: () =>
+			["studio", "notifications", "unread-count"] as const,
+	},
 } as const;
 
 // ============================================================================
@@ -110,6 +128,10 @@ export const bookingsApi = {
 	// List participants
 	listParticipantsOptions: (bookingId: string) =>
 		orpc.bookings.listParticipants.queryOptions({ input: { bookingId } }),
+
+	// List crews (aggregated from shoots, tasks, deliverables)
+	listCrewsOptions: (bookingId: string) =>
+		orpc.bookings.listCrews.queryOptions({ input: { bookingId } }),
 };
 
 // ============================================================================
@@ -181,6 +203,12 @@ export const shootsApi = {
 		input?: Parameters<typeof orpc.shoots.list.queryOptions>[0]["input"],
 	) => orpc.shoots.list.queryOptions({ input: input ?? {} }),
 
+	listMinimalOptions: (
+		input?: Parameters<
+			typeof orpc.shoots.listMinimal.queryOptions
+		>[0]["input"],
+	) => orpc.shoots.listMinimal.queryOptions({ input: input ?? {} }),
+
 	getOptions: (id: string) => orpc.shoots.get.queryOptions({ input: { id } }),
 };
 
@@ -188,6 +216,8 @@ export const shootsMutations = {
 	create: () => orpc.shoots.create.mutationOptions(),
 	update: () => orpc.shoots.update.mutationOptions(),
 	delete: () => orpc.shoots.delete.mutationOptions(),
+	assignCrew: () => orpc.shoots.assign.mutationOptions(),
+	unassignCrew: () => orpc.shoots.unassign.mutationOptions(),
 };
 
 // ============================================================================
@@ -228,6 +258,11 @@ export const configurationsApi = {
 	crewRolesOptions: () =>
 		orpc.configurations.list.queryOptions({
 			input: { type: "crew_role" },
+		}),
+
+	eventTypesOptions: () =>
+		orpc.configurations.list.queryOptions({
+			input: { type: "event_type" },
 		}),
 };
 
@@ -369,4 +404,99 @@ export const expensesMutations = {
 	create: () => orpc.expenses.create.mutationOptions(),
 	update: () => orpc.expenses.update.mutationOptions(),
 	delete: () => orpc.expenses.delete.mutationOptions(),
+};
+
+// ============================================================================
+// SAVED VIEWS QUERY OPTIONS
+// ============================================================================
+
+export const savedViewsApi = {
+	listOptions: (
+		input: Parameters<typeof orpc.savedViews.list.queryOptions>[0]["input"],
+	) => orpc.savedViews.list.queryOptions({ input }),
+};
+
+export const savedViewsMutations = {
+	create: () => orpc.savedViews.create.mutationOptions(),
+	update: () => orpc.savedViews.update.mutationOptions(),
+	delete: () => orpc.savedViews.delete.mutationOptions(),
+	toggleFavorite: () => orpc.savedViews.toggleFavorite.mutationOptions(),
+};
+
+export const recentVisitsApi = {
+	listOptions: (
+		input?: Parameters<
+			typeof orpc.recentVisits.list.queryOptions
+		>[0]["input"],
+	) => orpc.recentVisits.list.queryOptions({ input: input ?? {} }),
+};
+
+export const recentVisitsMutations = {
+	track: () => orpc.recentVisits.track.mutationOptions(),
+};
+
+export const quickLinksApi = {
+	listOptions: () => orpc.quickLinks.list.queryOptions({ input: {} }),
+};
+
+export const quickLinksMutations = {
+	create: () => orpc.quickLinks.create.mutationOptions(),
+	update: () => orpc.quickLinks.update.mutationOptions(),
+	delete: () => orpc.quickLinks.delete.mutationOptions(),
+};
+
+export const stickiesApi = {
+	listOptions: (
+		input?: Parameters<typeof orpc.stickies.list.queryOptions>[0]["input"],
+	) => orpc.stickies.list.queryOptions({ input: input ?? {} }),
+};
+
+export const stickiesMutations = {
+	create: () => orpc.stickies.create.mutationOptions(),
+	update: () => orpc.stickies.update.mutationOptions(),
+	delete: () => orpc.stickies.delete.mutationOptions(),
+};
+
+// ============================================================================
+// ACTIVITIES QUERY OPTIONS
+// ============================================================================
+
+export const activitiesApi = {
+	listOptions: (
+		input?: Parameters<typeof orpc.activities.list.queryOptions>[0]["input"],
+	) => orpc.activities.list.queryOptions({ input: input ?? {} }),
+};
+
+// ============================================================================
+// YOUR WORK QUERY OPTIONS
+// ============================================================================
+
+export const yourWorkApi = {
+	listOptions: (
+		input: Parameters<typeof orpc.yourWork.list.queryOptions>[0]["input"],
+	) => orpc.yourWork.list.queryOptions({ input }),
+};
+
+export const yourWorkMutations = {
+	subscribe: () => orpc.yourWork.subscribe.mutationOptions(),
+	unsubscribe: () => orpc.yourWork.unsubscribe.mutationOptions(),
+};
+
+// ============================================================================
+// NOTIFICATIONS QUERY OPTIONS
+// ============================================================================
+
+export const notificationsApi = {
+	listOptions: (
+		input: Parameters<
+			typeof orpc.notifications.list.queryOptions
+		>[0]["input"],
+	) => orpc.notifications.list.queryOptions({ input }),
+	unreadCountOptions: () =>
+		orpc.notifications.unreadCount.queryOptions(),
+};
+
+export const notificationsMutations = {
+	markRead: () => orpc.notifications.markRead.mutationOptions(),
+	markAllRead: () => orpc.notifications.markAllRead.mutationOptions(),
 };

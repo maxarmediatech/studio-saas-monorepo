@@ -1,18 +1,26 @@
 "use client";
 
+import {
+	Accordion,
+	AccordionContent,
+	AccordionItem,
+	AccordionTrigger,
+} from "@repo/ui/components/accordion";
+import { Alert, AlertDescription } from "@repo/ui/components/alert";
+import { Avatar, AvatarFallback } from "@repo/ui/components/avatar";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
+import { Card, CardContent } from "@repo/ui/components/card";
 import {
-	Card,
-	CardContent,
-	CardHeader,
-	CardTitle,
-} from "@repo/ui/components/card";
+	FieldDescription,
+	FieldLabel,
+	FieldLegend,
+} from "@repo/ui/components/field";
 import { Progress } from "@repo/ui/components/progress";
-import { Separator } from "@repo/ui/components/separator";
 import { cn } from "@repo/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import {
+	AlertCircleIcon,
 	CalendarIcon,
 	CameraIcon,
 	ClipboardListIcon,
@@ -20,21 +28,16 @@ import {
 	MapPinIcon,
 	PackageIcon,
 	PencilIcon,
-	UsersIcon,
 	WalletIcon,
 } from "lucide-react";
-import { memo } from "react";
-import { useWatch } from "react-hook-form";
+import { useMemo } from "react";
+import { useFormContext } from "react-hook-form";
 import { bookingFormQueries } from "./booking-form-queries";
 import type { BookingFormValues, BookingTab } from "./booking-form-schema";
-import {
-	DELIVERABLE_TYPE_OPTIONS,
-	PAYMENT_METHOD_OPTIONS,
-	SHOOT_TYPE_OPTIONS,
-} from "./booking-form-schema";
+import { PAYMENT_METHOD_OPTIONS } from "./booking-form-schema";
 
 // ============================================================================
-// Shared utilities and types
+// Utilities
 // ============================================================================
 
 const formatCurrency = (amount: number | string) => {
@@ -52,648 +55,573 @@ const formatDate = (dateString: string) => {
 		return "—";
 	}
 	return new Date(dateString).toLocaleDateString("en-IN", {
-		weekday: "short",
 		day: "numeric",
 		month: "short",
 		year: "numeric",
 	});
 };
 
-const getShootType = (key: string) => {
-	return SHOOT_TYPE_OPTIONS.find((t) => t.value === key)?.label ?? key;
-};
-
-const getDeliverableType = (key: string) => {
-	return DELIVERABLE_TYPE_OPTIONS.find((t) => t.value === key)?.label ?? key;
-};
-
-const getPaymentMethod = (key: string) => {
-	return PAYMENT_METHOD_OPTIONS.find((t) => t.value === key)?.label ?? key;
+const getInitials = (name: string): string => {
+	if (!name) {
+		return "?";
+	}
+	const words = name.trim().split(/\s+/);
+	if (words.length === 1) {
+		return words[0].substring(0, 2).toUpperCase();
+	}
+	return (words[0][0] + words[words.length - 1][0]).toUpperCase();
 };
 
 // ============================================================================
-// Memoized Section Components - each only re-renders when its data changes
+// Section Components (receive data as props)
 // ============================================================================
 
-interface SectionHeaderProps {
-	icon: React.ReactNode;
-	title: string;
-	count?: number;
+interface BookingDetailsSectionProps {
 	onEdit: () => void;
+	name: string;
+	bookingType: string;
+	packageType: string;
+	packageCost: string;
+	note?: string;
+	participants: BookingFormValues["participants"];
 }
 
-const SectionHeader = memo(function SectionHeader({
-	icon,
-	title,
-	count,
+function BookingDetailsSection({
 	onEdit,
-}: SectionHeaderProps) {
-	return (
-		<CardHeader className="flex flex-row items-center justify-between pb-3">
-			<CardTitle className="text-base flex items-center gap-2">
-				{icon}
-				{title}
-				{count !== undefined && ` (${count})`}
-			</CardTitle>
-			<Button type="button" variant="ghost" size="sm" onClick={onEdit}>
-				<PencilIcon className="h-3 w-3 mr-1" />
-				Edit
-			</Button>
-		</CardHeader>
-	);
-});
-
-// Booking Details Section - watches: name, bookingType, packageType, packageCost, note
-const BookingDetailsSection = memo(function BookingDetailsSection({
-	onNavigateToStep,
-}: {
-	onNavigateToStep: (step: BookingTab) => void;
-}) {
-	const name = useWatch<BookingFormValues, "name">({ name: "name" });
-	const bookingType = useWatch<BookingFormValues, "bookingType">({
-		name: "bookingType",
-	});
-	const packageType = useWatch<BookingFormValues, "packageType">({
-		name: "packageType",
-	});
-	const packageCost = useWatch<BookingFormValues, "packageCost">({
-		name: "packageCost",
-	});
-	const note = useWatch<BookingFormValues, "note">({ name: "note" });
-
+	name,
+	bookingType,
+	packageType,
+	packageCost,
+	note,
+	participants,
+}: BookingDetailsSectionProps) {
+	// Queries for lookups
 	const { data: bookingTypesData } = useQuery(
 		bookingFormQueries.bookingTypes(),
 	);
 	const { data: packageTypesData } = useQuery(
 		bookingFormQueries.packageTypes(),
 	);
-
-	const getBookingType = (key: string) => {
-		return bookingTypesData?.data?.find((t) => t.key === key)?.label ?? key;
-	};
-
-	const getPackageType = (key: string) => {
-		return packageTypesData?.data?.find((t) => t.key === key)?.label ?? key;
-	};
-
-	const costNum = Number.parseFloat(packageCost) || 0;
-
-	return (
-		<Card>
-			<SectionHeader
-				icon={<ClipboardListIcon className="h-4 w-4" />}
-				title="Booking Details"
-				onEdit={() => onNavigateToStep("details")}
-			/>
-			<CardContent className="space-y-4">
-				<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-					<div>
-						<p className="text-xs text-muted-foreground uppercase tracking-wide">
-							Booking Name
-						</p>
-						<p className="font-medium">{name || "—"}</p>
-					</div>
-					<div>
-						<p className="text-xs text-muted-foreground uppercase tracking-wide">
-							Type
-						</p>
-						<p className="font-medium">
-							{bookingType ? getBookingType(bookingType) : "—"}
-						</p>
-					</div>
-					<div>
-						<p className="text-xs text-muted-foreground uppercase tracking-wide">
-							Package
-						</p>
-						<p className="font-medium">
-							{packageType ? getPackageType(packageType) : "—"}
-						</p>
-					</div>
-					<div>
-						<p className="text-xs text-muted-foreground uppercase tracking-wide">
-							Package Cost
-						</p>
-						<p className="text-xl font-bold text-primary">
-							{formatCurrency(costNum)}
-						</p>
-					</div>
-				</div>
-
-				{note && (
-					<div>
-						<p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
-							Notes
-						</p>
-						<p className="text-sm text-muted-foreground">{note}</p>
-					</div>
-				)}
-			</CardContent>
-		</Card>
-	);
-});
-
-// Participants Section - watches: participants
-const ParticipantsSection = memo(function ParticipantsSection({
-	onNavigateToStep,
-}: {
-	onNavigateToStep: (step: BookingTab) => void;
-}) {
-	const participants = useWatch<BookingFormValues, "participants">({
-		name: "participants",
-	});
-
+	const { data: clientsData } = useQuery(bookingFormQueries.clients());
 	const { data: relationTypesData } = useQuery(
 		bookingFormQueries.relationTypes(),
 	);
-	const { data: clientsData } = useQuery(bookingFormQueries.clients());
 
-	const getClientName = (clientId: string) => {
-		return (
-			clientsData?.data?.find((c) => c.id === clientId)?.name ??
-			"Unknown Client"
-		);
-	};
+	// Lookup helpers
+	const getBookingType = (key: string) =>
+		bookingTypesData?.data?.find((t) => t.key === key)?.label ?? key;
+	const getPackageType = (key: string) =>
+		packageTypesData?.data?.find((t) => t.key === key)?.label ?? key;
+	const getClientName = (clientId: string) =>
+		clientsData?.data?.find((c) => c.id === clientId)?.name ?? "Unknown";
+	const getRelationType = (key: string) =>
+		relationTypesData?.data?.find((t) => t.key === key)?.label ?? key;
 
-	const getRelationType = (key: string) => {
-		return (
-			relationTypesData?.data?.find((t) => t.key === key)?.label ?? key
-		);
-	};
+	// Combined subtitle
+	const clientCount = participants?.length ?? 0;
+	const isComplete = name && packageType;
+	const subtitle = isComplete
+		? `${getPackageType(packageType)} • ${formatCurrency(packageCost)} • ${clientCount} client${clientCount !== 1 ? "s" : ""}`
+		: "Incomplete";
 
 	return (
-		<Card>
-			<SectionHeader
-				icon={<UsersIcon className="h-4 w-4" />}
-				title="Participants"
-				count={participants.length}
-				onEdit={() => onNavigateToStep("details")}
-			/>
-			<CardContent>
-				{participants.length === 0 ? (
-					<p className="text-sm text-muted-foreground">
-						No participants added
-					</p>
-				) : (
-					<ul className="space-y-2">
-						{participants.map((p, i) => (
-							<li key={i} className="flex items-center gap-2">
-								<span className="font-medium">
-									{p.clientId
+		<AccordionItem value="details" className="border-none">
+			<div className="overflow-hidden rounded-lg border bg-muted/10">
+				<div className="flex items-center px-4 py-3">
+					<AccordionTrigger
+						chevronPosition="start"
+						className="flex-1 p-0 hover:no-underline"
+					>
+						<div className="flex flex-col items-start gap-0.5">
+							<span className="flex items-center gap-2 text-sm font-medium">
+								<ClipboardListIcon className="h-4 w-4 text-muted-foreground" />
+								Booking Details
+							</span>
+							<span className="text-xs text-muted-foreground">
+								{subtitle}
+							</span>
+						</div>
+					</AccordionTrigger>
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						className="h-7 ml-auto"
+						onClick={onEdit}
+					>
+						<PencilIcon className="h-3 w-3 mr-1" />
+						Edit
+					</Button>
+				</div>
+				<AccordionContent className="pb-4 pt-0">
+					{/* Booking details grid */}
+					<div className="pl-14 pr-20 grid gap-4 grid-cols-1 sm:grid-cols-2 pt-3">
+						<div>
+							<FieldLabel className="text-xs">
+								Booking Name
+							</FieldLabel>
+							<p className="text-sm font-medium mt-1">{name || "—"}</p>
+						</div>
+						<div>
+							<FieldLabel className="text-xs">Type</FieldLabel>
+							<p className="text-sm font-medium mt-1">
+								{bookingType
+									? getBookingType(bookingType)
+									: "—"}
+							</p>
+						</div>
+						<div>
+							<FieldLabel className="text-xs">Package</FieldLabel>
+							<p className="text-sm font-medium mt-1">
+								{packageType
+									? getPackageType(packageType)
+									: "—"}
+							</p>
+						</div>
+						<div>
+							<FieldLabel className="text-xs">Package Cost</FieldLabel>
+							<p className="text-sm font-medium mt-1">
+								{formatCurrency(packageCost)}
+							</p>
+						</div>
+					</div>
+
+					{/* Notes (optional) */}
+					{note && (
+						<div className="mt-4 pl-14 pr-20">
+							<FieldLabel className="text-xs mb-1">Notes</FieldLabel>
+							<p className="text-sm text-muted-foreground">
+								{note}
+							</p>
+						</div>
+					)}
+
+					{/* Clients section */}
+					<div className="mt-4 pl-14 pr-20">
+						<FieldLabel className="text-xs mb-2">Clients</FieldLabel>
+						{!participants || participants.length === 0 ? (
+							<p className="text-sm text-muted-foreground">
+								No clients added
+							</p>
+						) : (
+							<div className="flex flex-wrap gap-2">
+								{participants.map((p, i) => {
+									const clientName = p.clientId
 										? getClientName(p.clientId)
-										: "—"}
-								</span>
-								{p.role && (
-									<Badge
-										variant="secondary"
-										className="text-xs"
-									>
-										{getRelationType(p.role)}
-									</Badge>
-								)}
-							</li>
-						))}
-					</ul>
-				)}
-			</CardContent>
-		</Card>
+										: "—";
+									return (
+										<div
+											key={i}
+											className="flex items-center gap-2 rounded-lg border bg-background px-3 py-2"
+										>
+											<Avatar className="h-7 w-7">
+												<AvatarFallback className="text-xs">
+													{getInitials(clientName)}
+												</AvatarFallback>
+											</Avatar>
+											<div className="flex flex-col">
+												<span className="text-sm font-medium">
+													{clientName}
+												</span>
+												{p.role && (
+													<span className="text-xs text-muted-foreground">
+														{getRelationType(
+															p.role,
+														)}
+													</span>
+												)}
+											</div>
+										</div>
+									);
+								})}
+							</div>
+						)}
+					</div>
+				</AccordionContent>
+			</div>
+		</AccordionItem>
 	);
-});
+}
 
-// Shoots Section - watches: shoots
-const ShootsSection = memo(function ShootsSection({
-	onNavigateToStep,
-}: {
-	onNavigateToStep: (step: BookingTab) => void;
-}) {
-	const shoots = useWatch<BookingFormValues, "shoots">({ name: "shoots" });
+interface ShootsSectionProps {
+	onEdit: () => void;
+	shoots: BookingFormValues["shoots"];
+}
 
+function ShootsSection({ onEdit, shoots }: ShootsSectionProps) {
 	const { data: crewsData } = useQuery(bookingFormQueries.crews());
+	const { data: eventTypesData } = useQuery(bookingFormQueries.eventTypes());
 
-	const getCrewName = (crewId: string) => {
-		return (
-			crewsData?.data?.find((c) => c.id === crewId)?.name ??
-			"Unknown Crew"
-		);
-	};
+	const getCrewName = (crewId: string) =>
+		crewsData?.data?.find((c) => c.id === crewId)?.name ?? "Unknown";
+	const getEventType = (key: string) =>
+		eventTypesData?.data?.find((t) => t.key === key)?.label ?? key;
 
 	const shootsList = shoots ?? [];
 
 	return (
-		<Card>
-			<SectionHeader
-				icon={<CameraIcon className="h-4 w-4" />}
-				title="Shoots"
-				count={shootsList.length}
-				onEdit={() => onNavigateToStep("shoots")}
-			/>
-			<CardContent>
-				{shootsList.length === 0 ? (
-					<p className="text-sm text-muted-foreground">
-						No shoots scheduled
-					</p>
-				) : (
-					<div className="space-y-4">
-						{shootsList.map((shoot, i) => (
-							<div key={i} className="p-3 bg-muted/50 rounded-lg">
-								<div className="flex items-start justify-between">
-									<div>
-										<p className="font-medium">
-											{shoot.name || `Shoot ${i + 1}`}
-										</p>
-										<p className="text-sm text-muted-foreground">
-											{shoot.shootType
-												? getShootType(shoot.shootType)
-												: "—"}
-										</p>
-									</div>
-									<Badge
-										variant="outline"
-										className="text-xs"
+		<AccordionItem value="shoots" className="border-none">
+			<div className="overflow-hidden rounded-lg border bg-muted/10">
+				<div className="flex items-center px-4 py-3">
+					<AccordionTrigger
+						chevronPosition="start"
+						className="flex-1 p-0 hover:no-underline"
+					>
+						<div className="flex flex-col items-start gap-0.5">
+							<span className="flex items-center gap-2 text-sm font-medium">
+								<CameraIcon className="h-4 w-4 text-muted-foreground" />
+								Shoots ({shootsList.length})
+							</span>
+							<span className="text-xs text-muted-foreground">
+								{shootsList.length === 0
+									? "No shoots scheduled"
+									: `${shootsList.length} shoot${shootsList.length !== 1 ? "s" : ""} scheduled`}
+							</span>
+						</div>
+					</AccordionTrigger>
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						className="h-7 ml-auto"
+						onClick={onEdit}
+					>
+						<PencilIcon className="h-3 w-3 mr-1" />
+						Edit
+					</Button>
+				</div>
+				<AccordionContent className="pb-4 pt-0">
+					<div className="pl-14 pr-20 pt-3">
+						{shootsList.length === 0 ? (
+							<p className="text-sm text-muted-foreground">
+								No shoots scheduled
+							</p>
+						) : (
+							<div className="space-y-2">
+								{shootsList.map((shoot, i) => (
+									<div
+										key={i}
+										className="rounded-lg border bg-background p-3"
 									>
-										<CalendarIcon className="h-3 w-3 mr-1" />
-										{formatDate(shoot.shootDate)}
-									</Badge>
-								</div>
-								{(shoot.startTime || shoot.venue) && (
-									<div className="mt-2 flex flex-wrap gap-3 text-sm text-muted-foreground">
-										{shoot.startTime && (
-											<span className="flex items-center gap-1">
-												<ClockIcon className="h-3 w-3" />
-												{shoot.startTime}
-												{shoot.endTime &&
-													` - ${shoot.endTime}`}
+										<div className="flex items-start justify-between gap-2">
+											<span className="font-medium">
+												{shoot.shootType
+													? getEventType(
+															shoot.shootType,
+														)
+													: `Shoot ${i + 1}`}
 											</span>
+											<span className="text-sm text-muted-foreground flex items-center gap-1">
+												<CalendarIcon className="h-3 w-3" />
+												{formatDate(shoot.shootDate)}
+											</span>
+										</div>
+										{(shoot.startTime ||
+											shoot.location) && (
+											<div className="mt-2 flex flex-wrap gap-3 text-sm text-muted-foreground">
+												{shoot.startTime && (
+													<span className="flex items-center gap-1">
+														<ClockIcon className="h-3 w-3" />
+														{shoot.startTime}
+													</span>
+												)}
+												{shoot.location && (
+													<span className="flex items-center gap-1">
+														<MapPinIcon className="h-3 w-3" />
+														{shoot.location}
+													</span>
+												)}
+											</div>
 										)}
-										{shoot.venue && (
-											<span className="flex items-center gap-1">
-												<MapPinIcon className="h-3 w-3" />
-												{shoot.venue}
-											</span>
+										{(shoot.crewAssignments?.length ?? 0) >
+											0 && (
+											<div className="mt-2 flex flex-wrap gap-1">
+												{shoot.crewAssignments?.map(
+													(crew, j) => (
+														<Badge
+															key={j}
+															variant="secondary"
+															className="text-xs"
+														>
+															{crew.crewId
+																? getCrewName(
+																		crew.crewId,
+																	)
+																: "—"}
+															{crew.rate && (
+																<span className="ml-1 text-muted-foreground">
+																	₹
+																	{Number(
+																		crew.rate,
+																	).toLocaleString()}
+																</span>
+															)}
+														</Badge>
+													),
+												)}
+											</div>
 										)}
 									</div>
-								)}
-								{(shoot.crewAssignments?.length ?? 0) > 0 && (
-									<div className="mt-2 flex flex-wrap gap-1">
-										{shoot.crewAssignments?.map(
-											(crew, j) => (
+								))}
+							</div>
+						)}
+					</div>
+				</AccordionContent>
+			</div>
+		</AccordionItem>
+	);
+}
+
+interface DeliverablesSectionProps {
+	onEdit: () => void;
+	deliverables: BookingFormValues["deliverables"];
+}
+
+function DeliverablesSection({
+	onEdit,
+	deliverables,
+}: DeliverablesSectionProps) {
+	const deliverablesList = deliverables ?? [];
+	const packageCount = deliverablesList.filter(
+		(d) => d.isPackageIncluded,
+	).length;
+	const customCount = deliverablesList.filter(
+		(d) => !d.isPackageIncluded,
+	).length;
+
+	return (
+		<AccordionItem value="deliverables" className="border-none">
+			<div className="overflow-hidden rounded-lg border bg-muted/10">
+				<div className="flex items-center px-4 py-3">
+					<AccordionTrigger
+						chevronPosition="start"
+						className="flex-1 p-0 hover:no-underline"
+					>
+						<div className="flex flex-col items-start gap-0.5">
+							<span className="flex items-center gap-2 text-sm font-medium">
+								<PackageIcon className="h-4 w-4 text-muted-foreground" />
+								Deliverables ({deliverablesList.length})
+							</span>
+							<span className="text-xs text-muted-foreground">
+								{deliverablesList.length === 0
+									? "No deliverables defined"
+									: `${packageCount} package, ${customCount} custom`}
+							</span>
+						</div>
+					</AccordionTrigger>
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						className="h-7 ml-auto"
+						onClick={onEdit}
+					>
+						<PencilIcon className="h-3 w-3 mr-1" />
+						Edit
+					</Button>
+				</div>
+				<AccordionContent className="pb-4 pt-0">
+					<div className="pl-14 pr-20 pt-3">
+						{deliverablesList.length === 0 ? (
+							<p className="text-sm text-muted-foreground">
+								No deliverables defined
+							</p>
+						) : (
+							<div className="space-y-2">
+								{deliverablesList.map((d, i) => (
+									<div
+										key={i}
+										className={cn(
+											"flex items-center justify-between rounded-lg border px-3 py-2",
+											d.isPackageIncluded
+												? "bg-background"
+												: "bg-muted/30",
+										)}
+									>
+										<div className="flex items-center gap-2">
+											<span className="text-sm font-medium">
+												{d.name}
+											</span>
+											{(d.quantity ?? 1) > 1 && (
 												<Badge
-													key={j}
+													variant="outline"
+													className="text-xs"
+												>
+													×{d.quantity}
+												</Badge>
+											)}
+											{d.isPackageIncluded && (
+												<Badge
 													variant="secondary"
 													className="text-xs"
 												>
-													{crew.crewId
-														? getCrewName(
-																crew.crewId,
-															)
-														: "—"}
-													{crew.isLead && " (Lead)"}
+													Package
 												</Badge>
-											),
+											)}
+										</div>
+										{!d.isPackageIncluded && d.cost && (
+											<span className="text-sm font-medium">
+												{formatCurrency(d.cost)}
+											</span>
 										)}
 									</div>
-								)}
+								))}
 							</div>
-						))}
+						)}
 					</div>
-				)}
-			</CardContent>
-		</Card>
+				</AccordionContent>
+			</div>
+		</AccordionItem>
 	);
-});
+}
 
-// Payments Section - watches: packageCost, payments, paymentSchedules, deliverables
-const PaymentsSection = memo(function PaymentsSection({
-	onNavigateToStep,
-}: {
-	onNavigateToStep: (step: BookingTab) => void;
-}) {
-	const packageCost = useWatch<BookingFormValues, "packageCost">({
-		name: "packageCost",
-	});
-	const payments = useWatch<BookingFormValues, "payments">({
-		name: "payments",
-	});
-	const paymentSchedules = useWatch<BookingFormValues, "paymentSchedules">({
-		name: "paymentSchedules",
-	});
-	const deliverables = useWatch<BookingFormValues, "deliverables">({
-		name: "deliverables",
-	});
+interface PaymentsSectionProps {
+	onEdit: () => void;
+	packageCost: string;
+	payments: BookingFormValues["payments"];
+	paymentSchedules: BookingFormValues["paymentSchedules"];
+	deliverables: BookingFormValues["deliverables"];
+}
 
+function PaymentsSection({
+	onEdit,
+	packageCost,
+	payments,
+	paymentSchedules,
+	deliverables,
+}: PaymentsSectionProps) {
 	const packageCostNum = Number.parseFloat(packageCost) || 0;
-	const paymentsList = payments ?? [];
-	const schedulesList = paymentSchedules ?? [];
-	const deliverablesList = deliverables ?? [];
-
-	// Calculate custom deliverables cost
-	const customDeliverablesCost = deliverablesList
+	const customDeliverablesCost = (deliverables ?? [])
 		.filter((d) => !d.isPackageIncluded)
 		.reduce((sum, d) => sum + (Number.parseFloat(d.cost ?? "0") || 0), 0);
+	const totalCost = packageCostNum + customDeliverablesCost;
 
-	// Total booking cost = package + custom deliverables
-	const totalBookingCost = packageCostNum + customDeliverablesCost;
-
-	const totalReceived = paymentsList.reduce(
+	const totalReceived = (payments ?? []).reduce(
 		(sum, p) => sum + (Number.parseFloat(p.amount) || 0),
 		0,
 	);
 	const paymentPercentage =
-		totalBookingCost > 0
-			? Math.min(
-					100,
-					Math.round((totalReceived / totalBookingCost) * 100),
-				)
+		totalCost > 0
+			? Math.min(100, Math.round((totalReceived / totalCost) * 100))
 			: 0;
 
+	const getPaymentMethod = (key: string) =>
+		PAYMENT_METHOD_OPTIONS.find((t) => t.value === key)?.label ?? key;
+
 	return (
-		<Card>
-			<SectionHeader
-				icon={<WalletIcon className="h-4 w-4" />}
-				title="Payments"
-				onEdit={() => onNavigateToStep("payments")}
-			/>
-			<CardContent className="space-y-4">
-				{/* Payment Progress */}
-				<div className="space-y-2">
-					<div className="flex items-center justify-between text-sm">
-						<span className="text-muted-foreground">
-							Payment Progress
-						</span>
-						<span className="font-medium">
-							{paymentPercentage}%
-						</span>
-					</div>
-					<Progress value={paymentPercentage} className="h-2" />
-					<div className="flex justify-between text-xs text-muted-foreground">
-						<span>{formatCurrency(totalReceived)} received</span>
-						<span>
-							{formatCurrency(totalBookingCost - totalReceived)}{" "}
-							pending
-						</span>
-					</div>
+		<AccordionItem value="payments" className="border-none">
+			<div className="overflow-hidden rounded-lg border bg-muted/10">
+				<div className="flex items-center px-4 py-3">
+					<AccordionTrigger
+						chevronPosition="start"
+						className="flex-1 p-0 hover:no-underline"
+					>
+						<div className="flex flex-col items-start gap-0.5">
+							<span className="flex items-center gap-2 text-sm font-medium">
+								<WalletIcon className="h-4 w-4 text-muted-foreground" />
+								Payments ({(payments ?? []).length})
+							</span>
+							<span className="text-xs text-muted-foreground">
+								{paymentPercentage}% paid •{" "}
+								{(paymentSchedules ?? []).length} scheduled
+							</span>
+						</div>
+					</AccordionTrigger>
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						className="h-7 ml-auto"
+						onClick={onEdit}
+					>
+						<PencilIcon className="h-3 w-3 mr-1" />
+						Edit
+					</Button>
 				</div>
+				<AccordionContent className="pb-4 pt-0">
+					<div className="pl-14 pr-20 pt-3 space-y-4">
+						{/* Progress bar */}
+						<div className="space-y-2">
+							<div className="flex justify-between text-sm">
+								<span className="text-muted-foreground">
+									Progress
+								</span>
+								<span className="font-medium">
+									{paymentPercentage}%
+								</span>
+							</div>
+							<Progress
+								value={paymentPercentage}
+								className="h-2"
+							/>
+							<div className="flex justify-between text-xs text-muted-foreground">
+								<span>
+									{formatCurrency(totalReceived)} received
+								</span>
+								<span>
+									{formatCurrency(totalCost - totalReceived)}{" "}
+									remaining
+								</span>
+							</div>
+						</div>
 
-				<Separator />
-
-				{/* Payments Received */}
-				<div>
-					<p className="text-sm font-medium mb-2">
-						Payments Received ({paymentsList.length})
-					</p>
-					{paymentsList.length === 0 ? (
-						<p className="text-sm text-muted-foreground">
-							No payments recorded
-						</p>
-					) : (
-						<ul className="space-y-2">
-							{paymentsList.map((payment, i) => (
-								<li
-									key={i}
-									className="flex items-center justify-between text-sm p-2 bg-muted/50 rounded"
-								>
-									<div>
-										<span className="font-medium">
-											{formatCurrency(payment.amount)}
-										</span>
-										<span className="text-muted-foreground ml-2">
-											via{" "}
-											{getPaymentMethod(
-												payment.paymentMethod,
-											)}
-										</span>
-									</div>
-									<span className="text-muted-foreground">
-										{formatDate(payment.receivedDate)}
-									</span>
-								</li>
-							))}
-						</ul>
-					)}
-				</div>
-
-				{/* Payment Schedule */}
-				{schedulesList.length > 0 && (
-					<>
-						<Separator />
-						<div>
-							<p className="text-sm font-medium mb-2">
-								Upcoming Payments ({schedulesList.length})
-							</p>
-							<ul className="space-y-2">
-								{schedulesList.map((schedule, i) => (
-									<li
+						{/* Payment list */}
+						{(payments ?? []).length > 0 && (
+							<div className="space-y-2">
+								<FieldLabel className="text-xs">
+									Payments Received ({payments?.length})
+								</FieldLabel>
+								{payments?.map((p, i) => (
+									<div
 										key={i}
-										className="flex items-center justify-between text-sm p-2 bg-muted/50 rounded"
+										className="flex items-center justify-between rounded-lg border bg-background px-3 py-2 text-sm"
 									>
 										<div>
 											<span className="font-medium">
-												{schedule.name}
+												{formatCurrency(p.amount)}
 											</span>
 											<span className="text-muted-foreground ml-2">
-												{formatCurrency(
-													schedule.amount,
+												via{" "}
+												{getPaymentMethod(
+													p.paymentMethod,
 												)}
 											</span>
 										</div>
 										<span className="text-muted-foreground">
-											Due: {formatDate(schedule.dueDate)}
+											{formatDate(p.receivedDate)}
 										</span>
-									</li>
+									</div>
 								))}
-							</ul>
-						</div>
-					</>
-				)}
-			</CardContent>
-		</Card>
-	);
-});
-
-// Deliverables Section - watches: deliverables, packageCost
-const DeliverablesSection = memo(function DeliverablesSection({
-	onNavigateToStep,
-}: {
-	onNavigateToStep: (step: BookingTab) => void;
-}) {
-	const deliverables = useWatch<BookingFormValues, "deliverables">({
-		name: "deliverables",
-	});
-	const packageCost = useWatch<BookingFormValues, "packageCost">({
-		name: "packageCost",
-	});
-
-	const deliverablesList = deliverables ?? [];
-	const packageDeliverables = deliverablesList.filter(
-		(d) => d.isPackageIncluded,
-	);
-	const customDeliverables = deliverablesList.filter(
-		(d) => !d.isPackageIncluded,
-	);
-
-	// Calculate total custom deliverables cost
-	const customDeliverablesCost = customDeliverables.reduce(
-		(sum, d) => sum + (Number.parseFloat(d.cost ?? "0") || 0),
-		0,
-	);
-	const packageCostNum = Number.parseFloat(packageCost) || 0;
-	const totalBookingCost = packageCostNum + customDeliverablesCost;
-
-	return (
-		<Card>
-			<SectionHeader
-				icon={<PackageIcon className="h-4 w-4" />}
-				title="Deliverables"
-				count={deliverablesList.length}
-				onEdit={() => onNavigateToStep("deliverables")}
-			/>
-			<CardContent className="space-y-4">
-				{deliverablesList.length === 0 ? (
-					<p className="text-sm text-muted-foreground">
-						No deliverables defined
-					</p>
-				) : (
-					<>
-						{/* Package Deliverables */}
-						{packageDeliverables.length > 0 && (
-							<div>
-								<p className="text-sm font-medium mb-2 flex items-center gap-2">
-									<Badge variant="default">Package</Badge>
-									{packageDeliverables.length} deliverable
-									{packageDeliverables.length !== 1 && "s"}
-								</p>
-								<div className="grid gap-2 md:grid-cols-2">
-									{packageDeliverables.map((d, i) => (
-										<div
-											key={i}
-											className="p-3 bg-primary/5 border-primary/20 border rounded-lg"
-										>
-											<div className="flex items-center justify-between">
-												<p className="font-medium">
-													{d.name}
-												</p>
-												{(d.quantity ?? 1) > 1 && (
-													<Badge
-														variant="outline"
-														className="text-xs"
-													>
-														x{d.quantity ?? 1}
-													</Badge>
-												)}
-											</div>
-											<p className="text-sm text-muted-foreground">
-												{d.deliverableType
-													? getDeliverableType(
-															d.deliverableType,
-														)
-													: "—"}
-											</p>
-											{d.dueDate && (
-												<p className="text-xs text-muted-foreground mt-1">
-													Due: {formatDate(d.dueDate)}
-												</p>
-											)}
-										</div>
-									))}
-								</div>
 							</div>
 						)}
 
-						{/* Custom Deliverables */}
-						{customDeliverables.length > 0 && (
-							<div>
-								<p className="text-sm font-medium mb-2 flex items-center gap-2">
-									<Badge variant="secondary">Custom</Badge>
-									{customDeliverables.length} deliverable
-									{customDeliverables.length !== 1 && "s"}
-								</p>
-								<div className="grid gap-2 md:grid-cols-2">
-									{customDeliverables.map((d, i) => (
-										<div
-											key={i}
-											className="p-3 bg-muted/50 rounded-lg"
-										>
-											<div className="flex items-center justify-between">
-												<p className="font-medium">
-													{d.name}
-												</p>
-												<div className="flex items-center gap-2">
-													{(d.quantity ?? 1) > 1 && (
-														<Badge
-															variant="outline"
-															className="text-xs"
-														>
-															x{d.quantity ?? 1}
-														</Badge>
-													)}
-													{d.cost &&
-														Number.parseFloat(
-															d.cost,
-														) > 0 && (
-															<span className="text-sm font-medium text-primary">
-																{formatCurrency(
-																	d.cost,
-																)}
-															</span>
-														)}
-												</div>
-											</div>
-											<p className="text-sm text-muted-foreground">
-												{d.deliverableType
-													? getDeliverableType(
-															d.deliverableType,
-														)
-													: "—"}
-											</p>
-											{d.dueDate && (
-												<p className="text-xs text-muted-foreground mt-1">
-													Due: {formatDate(d.dueDate)}
-												</p>
-											)}
-										</div>
-									))}
-								</div>
+						{/* Scheduled payments */}
+						{(paymentSchedules ?? []).length > 0 && (
+							<div className="space-y-2">
+								<FieldLabel className="text-xs">
+									Scheduled Milestones ({paymentSchedules?.length})
+								</FieldLabel>
+								{paymentSchedules?.map((s, i) => (
+									<div
+										key={i}
+										className="flex items-center justify-between rounded-lg border border-dashed bg-muted/30 px-3 py-2 text-sm"
+									>
+										<span className="font-medium">
+											{formatCurrency(s.amount)}
+										</span>
+										<span className="text-muted-foreground">
+											Due {formatDate(s.dueDate)}
+										</span>
+									</div>
+								))}
 							</div>
 						)}
-
-						{/* Cost Summary */}
-						{customDeliverablesCost > 0 && (
-							<>
-								<Separator />
-								<div className="flex flex-col gap-2 p-3 bg-muted/50 rounded-lg">
-									<div className="flex justify-between text-sm">
-										<span className="text-muted-foreground">
-											Package Cost
-										</span>
-										<span>
-											{formatCurrency(packageCostNum)}
-										</span>
-									</div>
-									<div className="flex justify-between text-sm">
-										<span className="text-muted-foreground">
-											Custom Deliverables
-										</span>
-										<span>
-											{formatCurrency(
-												customDeliverablesCost,
-											)}
-										</span>
-									</div>
-									<Separator />
-									<div className="flex justify-between font-medium">
-										<span>Total Booking Cost</span>
-										<span className="text-primary text-lg">
-											{formatCurrency(totalBookingCost)}
-										</span>
-									</div>
-								</div>
-							</>
-						)}
-					</>
-				)}
-			</CardContent>
-		</Card>
+					</div>
+				</AccordionContent>
+			</div>
+		</AccordionItem>
 	);
-});
+}
 
 // ============================================================================
 // Main Component
@@ -704,32 +632,128 @@ interface BookingReviewStepProps {
 	className?: string;
 }
 
-/**
- * Review step - shows full booking summary with edit buttons
- * Allows users to review all data before submission
- *
- * Optimized: Each section only re-renders when its specific data changes,
- * not when any form field changes (uses useWatch with specific field names).
- */
 export function BookingReviewStep({
 	onNavigateToStep,
 	className,
 }: BookingReviewStepProps) {
-	return (
-		<div className={cn("space-y-6", className)}>
-			{/* Header */}
-			<div>
-				<h3 className="text-lg font-semibold">Review Your Booking</h3>
-				<p className="text-sm text-muted-foreground">
-					Please review all details before creating the booking
-				</p>
-			</div>
+	// Get form and watch ALL values at this level
+	const form = useFormContext<BookingFormValues>();
 
-			<BookingDetailsSection onNavigateToStep={onNavigateToStep} />
-			<ParticipantsSection onNavigateToStep={onNavigateToStep} />
-			<ShootsSection onNavigateToStep={onNavigateToStep} />
-			<PaymentsSection onNavigateToStep={onNavigateToStep} />
-			<DeliverablesSection onNavigateToStep={onNavigateToStep} />
-		</div>
+	// Watch all form values - this triggers re-render on ANY form change
+	const formValues = form.watch();
+
+	// Compute validation warnings
+	const warnings = useMemo(() => {
+		const result: Array<{ id: string; message: string; step: BookingTab }> =
+			[];
+		if (!formValues.name?.trim()) {
+			result.push({
+				id: "name",
+				message: "Booking name is required",
+				step: "details",
+			});
+		}
+		if (!formValues.participants || formValues.participants.length === 0) {
+			result.push({
+				id: "clients",
+				message: "At least one client is required",
+				step: "details",
+			});
+		}
+		if (!formValues.bookingType) {
+			result.push({
+				id: "type",
+				message: "Booking type is required",
+				step: "details",
+			});
+		}
+		if (!formValues.packageType) {
+			result.push({
+				id: "package",
+				message: "Package is required",
+				step: "details",
+			});
+		}
+		return result;
+	}, [
+		formValues.name,
+		formValues.participants,
+		formValues.bookingType,
+		formValues.packageType,
+	]);
+
+	return (
+		<Card className={cn("shadow-none", className)}>
+			<CardContent className="p-6 space-y-4">
+				<FieldLegend>Review Booking</FieldLegend>
+				<FieldDescription>
+					Review your booking details before submission
+				</FieldDescription>
+
+				{/* Validation warnings */}
+				{warnings.length > 0 && (
+					<Alert variant="destructive">
+						<AlertCircleIcon className="h-4 w-4" />
+						<AlertDescription>
+							<ul className="space-y-1">
+								{warnings.map((w) => (
+									<li
+										key={w.id}
+										className="flex items-center justify-between"
+									>
+										<span className="text-sm">
+											{w.message}
+										</span>
+										<Button
+											type="button"
+											variant="link"
+											size="sm"
+											className="h-auto p-0 text-destructive-foreground underline"
+											onClick={() =>
+												onNavigateToStep(w.step)
+											}
+										>
+											Fix
+										</Button>
+									</li>
+								))}
+							</ul>
+						</AlertDescription>
+					</Alert>
+				)}
+
+				{/* Accordion sections - pass watched values as props */}
+				<Accordion
+					type="multiple"
+					defaultValue={["details"]}
+					className="mt-2 space-y-3"
+				>
+					<BookingDetailsSection
+						onEdit={() => onNavigateToStep("details")}
+						name={formValues.name}
+						bookingType={formValues.bookingType}
+						packageType={formValues.packageType}
+						packageCost={formValues.packageCost}
+						note={formValues.note}
+						participants={formValues.participants}
+					/>
+					<PaymentsSection
+						onEdit={() => onNavigateToStep("payments")}
+						packageCost={formValues.packageCost}
+						payments={formValues.payments}
+						paymentSchedules={formValues.paymentSchedules}
+						deliverables={formValues.deliverables}
+					/>
+					<ShootsSection
+						onEdit={() => onNavigateToStep("shoots")}
+						shoots={formValues.shoots}
+					/>
+					<DeliverablesSection
+						onEdit={() => onNavigateToStep("deliverables")}
+						deliverables={formValues.deliverables}
+					/>
+				</Accordion>
+			</CardContent>
+		</Card>
 	);
 }

@@ -8,6 +8,7 @@ import {
 	tasks,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { safeTrackActivity, type ActionType } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	reviewSubmissionInputSchema,
@@ -127,6 +128,50 @@ export const reviewSubmission = studioProtectedProcedure
 					})
 					.where(eq(deliverables.id, submission.deliverableId));
 			}
+		});
+
+		// Get parent entity name for activity tracking
+		let parentEntityName = "Unknown";
+		let parentEntityType: "task" | "deliverable" | undefined;
+		let parentEntityId: string | undefined;
+
+		if (submission.taskId) {
+			const task = await db.query.tasks.findFirst({
+				where: eq(tasks.id, submission.taskId),
+				columns: { id: true, name: true },
+			});
+			if (task) {
+				parentEntityName = task.name;
+				parentEntityType = "task";
+				parentEntityId = task.id;
+			}
+		} else if (submission.deliverableId) {
+			const deliverable = await db.query.deliverables.findFirst({
+				where: eq(deliverables.id, submission.deliverableId),
+				columns: { id: true, name: true },
+			});
+			if (deliverable) {
+				parentEntityName = deliverable.name;
+				parentEntityType = "deliverable";
+				parentEntityId = deliverable.id;
+			}
+		}
+
+		// Track activity (non-blocking)
+		const actionMap: Record<typeof decision, ActionType> = {
+			approve: "approved",
+			request_revision: "revision_requested",
+			reject: "rejected",
+		};
+		await safeTrackActivity(context, {
+			entityType: "submission",
+			entityId: id,
+			entityName: parentEntityName,
+			action: actionMap[decision],
+			parentEntityType,
+			parentEntityId,
+			parentEntityName,
+			metadata: reviewNote ? { reviewNote } : undefined,
 		});
 
 		const messages = {

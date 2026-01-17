@@ -1,6 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { and, bookings, db, eq } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { safeTrackStatusChange } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	updateBookingStatusInputSchema,
@@ -43,6 +44,14 @@ export const updateBookingStatus = studioProtectedProcedure
 			});
 		}
 
+		// Skip if no change
+		if (existing.status === status) {
+			return {
+				data: { id },
+				message: "No status change needed",
+			};
+		}
+
 		// Update status
 		await db
 			.update(bookings)
@@ -52,6 +61,18 @@ export const updateBookingStatus = studioProtectedProcedure
 				updatedBy: context.user.id,
 			})
 			.where(eq(bookings.id, id));
+
+		// Track activity (non-blocking)
+		await safeTrackStatusChange(
+			{ organizationId: context.organizationId, user: context.user },
+			{
+				entityType: "booking",
+				entityId: id,
+				entityName: existing.name,
+				oldStatus: existing.status,
+				newStatus: status,
+			},
+		);
 
 		return {
 			data: { id },

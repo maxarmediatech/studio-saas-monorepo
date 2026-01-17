@@ -1,30 +1,34 @@
-import {
-	type Options,
-	parseAsBoolean,
-	parseAsString,
-	useQueryStates,
-} from "nuqs";
+"use client";
 
-export function useExpenseParams(options?: Options) {
-	const [params, setParams] = useQueryStates(
-		{
-			expenseId: parseAsString,
-			createExpense: parseAsBoolean,
-		},
-		{
-			history: "push",
-			shallow: true,
-			...options,
-		},
-	);
+import { createSheetParams } from "./create-sheet-params";
+
+const useSheetParams = createSheetParams({
+	namespace: "expense",
+	idParam: "expenseId",
+	createParam: "createExpense",
+});
+
+/**
+ * URL-based expense sheet params using History API.
+ * No Next.js router re-renders, browser back button closes sheets.
+ */
+export function useExpenseParams() {
+	const { entityId, createMode, setParams, ...methods } = useSheetParams();
 
 	return {
-		...params,
-		setParams,
-		// Convenience methods
-		openCreate: () => setParams({ createExpense: true, expenseId: null }),
-		openEdit: (id: string) =>
-			setParams({ expenseId: id, createExpense: null }),
-		close: () => setParams({ expenseId: null, createExpense: null }),
+		// Aliased params for backward compatibility
+		expenseId: entityId,
+		createExpense: createMode,
+		// Aliased setParams to accept entity-specific keys
+		setParams: (params: {
+			expenseId?: string | null;
+			createExpense?: boolean | null;
+		}) =>
+			setParams({
+				entityId: params.expenseId,
+				createMode: params.createExpense,
+			}),
+		// Methods pass through unchanged
+		...methods,
 	};
 }

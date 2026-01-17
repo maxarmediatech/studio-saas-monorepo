@@ -75,8 +75,8 @@ const crewSortFields = [
 
 export const listCrewsInputSchema = z
 	.object({
-		role: z.union([z.string(), z.array(z.string())]).optional(),
-		status: z.union([z.string(), z.array(z.string())]).optional(),
+		role: z.union([z.string(), z.array(z.string())]).nullish(),
+		status: z.union([z.string(), z.array(z.string())]).nullish(),
 	})
 	.merge(paginationSchema)
 	.merge(searchSchema)

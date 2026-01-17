@@ -7,8 +7,10 @@ import {
 	SheetTitle,
 } from "@repo/ui/components/sheet";
 import { cn } from "@repo/ui/lib/utils";
+import { orpc } from "@shared/lib/orpc-query-utils";
+import { useBookingParams } from "@saas/studio/hooks/params";
 import { useDeliverableParams } from "@saas/studio/hooks/params/use-deliverable-params";
-import { deliverablesMutations, studioQueryKeys } from "@saas/studio/lib/api";
+import { deliverablesMutations } from "@saas/studio/lib/api";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -19,41 +21,68 @@ import {
 
 export function DeliverableCreateSheet() {
 	const { createDeliverable, close } = useDeliverableParams();
+	const { bookingId } = useBookingParams();
 	const isOpen = Boolean(createDeliverable);
 	const queryClient = useQueryClient();
 	const [isScrolled, setIsScrolled] = useState(false);
 
-	const createMutation = useMutation({
-		...deliverablesMutations.create(),
-		onSuccess: () => {
-			toast.success("Deliverable added successfully");
-			queryClient.invalidateQueries({
-				queryKey: studioQueryKeys.deliverables.all,
-			});
-			close();
-		},
-		onError: (error) => {
-			toast.error(error.message || "Failed to add deliverable");
-		},
-	});
+	const createMutation = useMutation(deliverablesMutations.create());
+	const assignCrewMutation = useMutation(deliverablesMutations.assign());
 
 	const handleSubmit = async (data: DeliverableFormValues) => {
-		await createMutation.mutateAsync({
-			bookingId: data.bookingId,
-			name: data.name,
-			deliverableType: data.deliverableType,
-			description: data.description || undefined,
-			dueDate: data.dueDate || undefined,
-			status: data.status || undefined,
-			priority: data.priority || undefined,
-		});
+		try {
+			const result = await createMutation.mutateAsync({
+				bookingId: data.bookingId,
+				name: data.name,
+				description: data.description || undefined,
+				quantity: data.quantity,
+				cost: data.cost || undefined,
+				dueDate: data.dueDate || undefined,
+				status: data.status || undefined,
+			});
+
+			const crewAssignments = data.crewAssignments ?? [];
+			if (crewAssignments.length > 0 && result.data?.id) {
+				const deliverableId = result.data.id;
+				await Promise.all(
+					crewAssignments
+						.filter((a) => a.crewId)
+						.map((assignment) =>
+							assignCrewMutation.mutateAsync({
+								deliverableId,
+								crewId: assignment.crewId,
+							}),
+						),
+				);
+			}
+
+			await queryClient.invalidateQueries({
+				queryKey: orpc.deliverables.key(),
+			});
+			await queryClient.invalidateQueries({
+				queryKey: orpc.bookings.key(),
+			});
+			await queryClient.invalidateQueries({
+				queryKey: orpc.activities.key(),
+			});
+			toast.success("Deliverable added successfully");
+			close();
+		} catch (error) {
+			const message =
+				error instanceof Error
+					? error.message
+					: "Failed to add deliverable";
+			toast.error(message);
+		}
 	};
+
+	const isPending = createMutation.isPending || assignCrewMutation.isPending;
 
 	return (
 		<Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
 			<SheetContent
 				side="right"
-				className="sm:max-w-md p-0 gap-0 flex flex-col"
+				className="sm:max-w-xl p-0 gap-0 flex flex-col"
 			>
 				<SheetHeader
 					className={cn(
@@ -68,8 +97,9 @@ export function DeliverableCreateSheet() {
 					<DeliverableForm
 						onSubmit={handleSubmit}
 						mode="create"
-						isPending={createMutation.isPending}
+						isPending={isPending}
 						onScrollChange={setIsScrolled}
+						defaultBookingId={bookingId ?? undefined}
 					/>
 				</div>
 			</SheetContent>

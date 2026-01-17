@@ -232,6 +232,66 @@ export const auth = betterAuth({
 
 				await updateSeatsInOrganizationSubscription(organizationId);
 			}
+
+			const sessionCookieHeader = ctx.context.responseHeaders?.get(
+				"set-cookie",
+			);
+			const sessionTokenName =
+				ctx.context.authCookies.sessionToken.name;
+
+			if (!sessionCookieHeader?.includes(sessionTokenName)) {
+				return;
+			}
+
+			const session =
+				ctx.context.newSession?.session ?? ctx.context.session?.session;
+			const userId = session?.userId;
+			const activeOrganizationId = session?.activeOrganizationId;
+
+			if (!userId || !config.organizations.enable) {
+				ctx.setCookie(
+					"activeOrganizationSlug",
+					"",
+					{
+						...ctx.context.authCookies.sessionToken.options,
+						httpOnly: false,
+						maxAge: 0,
+					},
+				);
+				return;
+			}
+
+			const memberships = await getOrganizationsByUserId(userId);
+			const activeMembership = activeOrganizationId
+				? memberships.find(
+						(member) =>
+							member.organizationId === activeOrganizationId,
+					)
+				: memberships[0];
+			const activeOrganizationSlug =
+				activeMembership?.organization?.slug;
+
+			if (!activeOrganizationSlug) {
+				ctx.setCookie(
+					"activeOrganizationSlug",
+					"",
+					{
+						...ctx.context.authCookies.sessionToken.options,
+						httpOnly: false,
+						maxAge: 0,
+					},
+				);
+				return;
+			}
+
+			ctx.setCookie(
+				"activeOrganizationSlug",
+				activeOrganizationSlug,
+				{
+					...ctx.context.authCookies.sessionToken.options,
+					httpOnly: false,
+				},
+			);
 		}),
 		before: createAuthMiddleware(async (ctx) => {
 			if (

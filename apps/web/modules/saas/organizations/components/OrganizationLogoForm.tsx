@@ -1,18 +1,15 @@
 "use client";
 
 import { authClient } from "@repo/auth/client";
-import { config } from "@repo/config";
 import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
 import { organizationListQueryKey } from "@saas/organizations/lib/api";
 import { SettingsItem } from "@saas/shared/components/SettingsItem";
 import { Spinner } from "@shared/components/Spinner";
-import { orpc } from "@shared/lib/orpc-query-utils";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
-import { v4 as uuid } from "uuid";
 import { CropImageDialog } from "../../settings/components/CropImageDialog";
 import { OrganizationLogo } from "./OrganizationLogo";
 
@@ -24,9 +21,6 @@ export function OrganizationLogoForm() {
 	const { activeOrganization, refetchActiveOrganization } =
 		useActiveOrganization();
 	const queryClient = useQueryClient();
-	const getSignedUploadUrlMutation = useMutation(
-		orpc.organizations.createLogoUploadUrl.mutationOptions(),
-	);
 
 	const { getRootProps, getInputProps } = useDropzone({
 		onDrop: (acceptedFiles) => {
@@ -51,14 +45,27 @@ export function OrganizationLogoForm() {
 
 		setUploading(true);
 		try {
-			const path = `${activeOrganization.id}-${uuid()}.png`;
-			const { signedUploadUrl } =
-				await getSignedUploadUrlMutation.mutateAsync({
-					path,
-					bucket: config.storage.bucketNames.avatars,
-				});
+			// Get presigned URL from unified API
+			const presignedRes = await fetch("/api/uploads/presigned-url", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					fileName: "logo.png",
+					fileType: "image/png",
+					fileSize: croppedImageData.size,
+					context: "org-logos",
+				}),
+			});
 
-			const response = await fetch(signedUploadUrl, {
+			if (!presignedRes.ok) {
+				const error = await presignedRes.json();
+				throw new Error(error.message || "Failed to get upload URL");
+			}
+
+			const { url, key } = await presignedRes.json();
+
+			// Upload directly to R2
+			const uploadRes = await fetch(url, {
 				method: "PUT",
 				body: croppedImageData,
 				headers: {
@@ -66,14 +73,15 @@ export function OrganizationLogoForm() {
 				},
 			});
 
-			if (!response.ok) {
+			if (!uploadRes.ok) {
 				throw new Error("Failed to upload image");
 			}
 
+			// Update organization with storage key
 			const { error } = await authClient.organization.update({
 				organizationId: activeOrganization.id,
 				data: {
-					logo: path,
+					logo: key,
 				},
 			});
 
@@ -82,7 +90,6 @@ export function OrganizationLogoForm() {
 			}
 
 			toast.success(t("settings.account.avatar.notifications.success"));
-
 			refetchActiveOrganization();
 			queryClient.invalidateQueries({
 				queryKey: organizationListQueryKey,

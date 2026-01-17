@@ -1,6 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { and, bookings, db, eq } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { safeTrackActivity } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	deleteBookingInputSchema,
@@ -53,6 +54,17 @@ export const deleteBooking = studioProtectedProcedure
 				updatedBy: context.user.id,
 			})
 			.where(eq(bookings.id, id));
+
+		// Track activity (non-blocking)
+		await safeTrackActivity(
+			{ organizationId: context.organizationId, user: context.user },
+			{
+				entityType: "booking",
+				entityId: id,
+				entityName: existing.name,
+				action: "deleted",
+			},
+		);
 
 		return {
 			data: { id },

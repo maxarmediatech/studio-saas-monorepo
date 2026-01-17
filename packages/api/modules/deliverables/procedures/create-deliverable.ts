@@ -1,6 +1,8 @@
 import { ORPCError } from "@orpc/server";
 import { and, bookings, db, deliverables, eq, isNull } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { safeTrackActivity } from "../../activities/lib";
+import { safeAutoSubscribe } from "../../notifications/lib/notification-service";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	createDeliverableInputSchema,
@@ -24,9 +26,9 @@ export const createDeliverable = studioProtectedProcedure
 			bookingId,
 			name,
 			description,
-			deliverableType,
+			quantity,
+			cost,
 			status,
-			priority,
 			dueDate,
 			metadata,
 		} = input;
@@ -54,9 +56,10 @@ export const createDeliverable = studioProtectedProcedure
 				bookingId,
 				name,
 				description: description ?? null,
-				deliverableType,
+				quantity: quantity ?? 1,
+				cost: cost ?? null,
+				isPackageIncluded: false,
 				status: status ?? "pending",
-				priority: priority ?? "normal",
 				workflowStatus: "not_started",
 				dueDate: dueDate ?? null,
 				metadata: metadata ?? null,
@@ -70,6 +73,27 @@ export const createDeliverable = studioProtectedProcedure
 				message: "Failed to create deliverable",
 			});
 		}
+
+		// Track activity (non-blocking)
+		await safeTrackActivity(
+			{ organizationId: context.organizationId, user: context.user },
+			{
+				entityType: "deliverable",
+				entityId: created.id,
+				entityName: name,
+				action: "created",
+				parentEntityType: "booking",
+				parentEntityId: bookingId,
+				parentEntityName: booking.name,
+			},
+		);
+
+		await safeAutoSubscribe({
+			organizationId: context.organizationId,
+			userId: context.user.id,
+			entityType: "deliverable",
+			entityId: created.id,
+		});
 
 		return {
 			data: { id: created.id },
