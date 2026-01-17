@@ -24,20 +24,17 @@ import {
 	StickyNoteIcon,
 	XIcon,
 } from "lucide-react";
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useOutsideClickDetector } from "../../hooks/use-outside-click-detector";
 import {
 	getRandomStickyColor,
-	STICKY_COLORS,
 	type StickyColor,
 } from "../home/widgets/stickies/constants";
 import {
 	type StickyData,
 	StickyNote,
 } from "../home/widgets/stickies/sticky-note";
-import { StickiesMasonry } from "../home/widgets/stickies/stickies-masonry";
 
 interface Sticky {
 	id: string;
@@ -125,9 +122,25 @@ const getStickySearchText = (sticky: Sticky): string =>
 		sticky.descriptionHtml,
 	)}`.toLowerCase();
 
+const isStickyBlank = (sticky: Sticky): boolean => {
+	const text = `${sticky.title ?? ""} ${sticky.content ?? ""} ${stripHtml(
+		sticky.descriptionHtml,
+	)}`.trim();
+	return text.length === 0;
+};
+
+const isStickyDraftBlank = (sticky: StickyData | null): boolean => {
+	if (!sticky) {
+		return false;
+	}
+	const text = `${sticky.content ?? ""} ${stripHtml(
+		sticky.descriptionHtml,
+	)}`.trim();
+	return text.length === 0;
+};
+
 interface StickiesModalProps {
 	open: boolean;
-	organizationSlug: string;
 	onOpenChange: (open: boolean) => void;
 	onCreate: () => Promise<Sticky | null>;
 	onUpdate: (id: string, data: Partial<StickyData>) => void;
@@ -139,7 +152,6 @@ interface StickiesModalProps {
 
 function StickiesModal({
 	open,
-	organizationSlug,
 	onOpenChange,
 	onCreate,
 	onUpdate,
@@ -149,7 +161,9 @@ function StickiesModal({
 	deletingId,
 }: StickiesModalProps) {
 	const [searchQuery, setSearchQuery] = useState("");
+	const [isSearchOpen, setIsSearchOpen] = useState(false);
 	const [focusStickyId, setFocusStickyId] = useState<string | null>(null);
+	const searchInputRef = useRef<HTMLInputElement>(null);
 
 	const listQueryOptions = stickiesApi.listOptions();
 	const { data, isLoading } = useQuery({
@@ -175,11 +189,26 @@ function StickiesModal({
 		if (!open) {
 			setSearchQuery("");
 			setFocusStickyId(null);
+			setIsSearchOpen(false);
 		}
 	}, [open]);
 
+	useEffect(() => {
+		if (isSearchOpen) {
+			searchInputRef.current?.focus();
+		}
+	}, [isSearchOpen]);
+
+	const hasStickies = filteredStickies.length > 0;
+	const showSearchEmptyState = normalizedQuery.length > 0 && !hasStickies;
+	const hasBlankSticky = stickies.some(isStickyBlank);
+
 	const handleCreate = useCallback(async () => {
 		try {
+			if (hasBlankSticky) {
+				toast.error("Finish the current sticky before creating another.");
+				return;
+			}
 			const created = await onCreate();
 			if (created?.id) {
 				setFocusStickyId(created.id);
@@ -187,16 +216,16 @@ function StickiesModal({
 		} catch {
 			// Errors are handled by the create mutation toast.
 		}
-	}, [onCreate]);
-
-	const hasStickies = filteredStickies.length > 0;
-	const showSearchEmptyState = normalizedQuery.length > 0 && !hasStickies;
+	}, [hasBlankSticky, onCreate]);
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="max-w-5xl gap-6">
-				<div className="flex flex-col gap-4">
-					<div className="flex flex-wrap items-center justify-between gap-3">
+			<DialogContent
+				showCloseButton={false}
+				className="w-[88vw] max-w-[88vw] sm:max-w-[88vw] h-[80vh] p-0"
+			>
+				<div className="flex h-full min-h-0 flex-col">
+					<div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 px-6 py-4">
 						<div className="flex items-center gap-2">
 							<StickyNoteIcon className="size-5 text-muted-foreground" />
 							<DialogTitle className="text-lg font-semibold">
@@ -204,34 +233,62 @@ function StickiesModal({
 							</DialogTitle>
 						</div>
 						<div className="flex flex-wrap items-center gap-2">
-							<InputGroup className="w-full min-w-[220px] max-w-xs">
-								<InputGroupAddon>
-									<SearchIcon className="size-4" />
-								</InputGroupAddon>
-								<InputGroupInput
-									placeholder="Search stickies"
-									value={searchQuery}
-									onChange={(event) =>
-										setSearchQuery(event.target.value)
-									}
-								/>
-							</InputGroup>
+							{isSearchOpen ? (
+								<InputGroup className="w-[220px]">
+									<InputGroupAddon>
+										<SearchIcon className="size-4" />
+									</InputGroupAddon>
+									<InputGroupInput
+										ref={searchInputRef}
+										placeholder="Search stickies"
+										value={searchQuery}
+										onChange={(event) =>
+											setSearchQuery(event.target.value)
+										}
+										onBlur={() => {
+											if (!searchQuery.trim()) {
+												setIsSearchOpen(false);
+											}
+										}}
+									/>
+								</InputGroup>
+							) : (
+								<Button
+									variant="outline"
+									size="icon"
+									className="h-8 w-8"
+									onClick={() => setIsSearchOpen(true)}
+								>
+									<SearchIcon className="size-4 text-muted-foreground" />
+									<span className="sr-only">Search stickies</span>
+								</Button>
+							)}
 							<Button
-								variant="outline"
+								variant="ghost"
 								size="sm"
+								className="text-primary"
 								onClick={handleCreate}
 								disabled={isCreating}
 							>
 								<PlusIcon className="size-4" />
 								Add sticky
 								{isCreating && (
-									<span className="ml-2 size-4 border-2 border-t-transparent border-foreground rounded-full animate-spin" />
+									<span className="ml-2 size-4 border-2 border-t-transparent border-primary rounded-full animate-spin" />
 								)}
+							</Button>
+							<Button
+								variant="ghost"
+								size="icon"
+								className="h-8 w-8"
+								onClick={() => onOpenChange(false)}
+							>
+								<XIcon className="size-4 text-muted-foreground" />
+								<span className="sr-only">Close</span>
 							</Button>
 						</div>
 					</div>
 
-					<ScrollArea className="h-[60vh] pr-4">
+					<ScrollArea className="flex-1 min-h-0 px-6 py-5">
 						{isLoading ? (
 							<div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
 								{Array.from({ length: 6 }).map((_, index) => (
@@ -239,7 +296,7 @@ function StickiesModal({
 								))}
 							</div>
 						) : hasStickies ? (
-							<StickiesMasonry>
+							<div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 								{filteredStickies.map((sticky) => (
 									<StickyNote
 										key={sticky.id}
@@ -261,7 +318,7 @@ function StickiesModal({
 										showToolbar
 									/>
 								))}
-							</StickiesMasonry>
+							</div>
 						) : (
 							<div className="flex flex-col items-center justify-center rounded-xl bg-muted/30 py-12">
 								<StickyNoteIcon className="mb-3 size-10 text-muted-foreground/30" />
@@ -273,16 +330,6 @@ function StickiesModal({
 							</div>
 						)}
 					</ScrollArea>
-
-					<div className="flex justify-end">
-						<Link
-							href={`/app/${organizationSlug}/stickies`}
-							className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-							onClick={() => onOpenChange(false)}
-						>
-							Show all
-						</Link>
-					</div>
 				</div>
 			</DialogContent>
 		</Dialog>
@@ -331,6 +378,18 @@ export function StickiesActionBar({ organizationSlug }: StickiesActionBarProps) 
 		},
 		[queryClient],
 	);
+
+	const hasBlankStickyInCache = useCallback(() => {
+		const queries = queryClient.getQueryCache().findAll({
+			predicate: ({ queryKey }) => isStickiesListQuery(queryKey),
+		});
+		return queries.some((query) => {
+			const data = queryClient.getQueryData(
+				query.queryKey,
+			) as StickiesResponse | undefined;
+			return data?.data?.some(isStickyBlank) ?? false;
+		});
+	}, [queryClient]);
 
 	// Create mutation
 	const createMutation = useMutation({
@@ -498,6 +557,14 @@ export function StickiesActionBar({ organizationSlug }: StickiesActionBarProps) 
 	}, []);
 
 	const handleCreateNew = useCallback(() => {
+		if (
+			(showNewSticky && isStickyDraftBlank(newStickyData)) ||
+			hasBlankStickyInCache()
+		) {
+			toast.error("Finish the current sticky before creating another.");
+			return;
+		}
+
 		const color = getRandomStickyColor();
 		setNewStickyData({
 			content: "",
@@ -511,7 +578,12 @@ export function StickiesActionBar({ organizationSlug }: StickiesActionBarProps) 
 			content: "",
 			color,
 		});
-	}, [createMutation]);
+	}, [
+		createMutation,
+		hasBlankStickyInCache,
+		newStickyData,
+		showNewSticky,
+	]);
 
 	const handleCreateFromModal = useCallback(async () => {
 		const color = getRandomStickyColor();
@@ -682,7 +754,6 @@ export function StickiesActionBar({ organizationSlug }: StickiesActionBarProps) 
 
 			<StickiesModal
 				open={isAllStickiesOpen}
-				organizationSlug={organizationSlug}
 				onOpenChange={setIsAllStickiesOpen}
 				onCreate={handleCreateFromModal}
 				onUpdate={handleUpdateSticky}
