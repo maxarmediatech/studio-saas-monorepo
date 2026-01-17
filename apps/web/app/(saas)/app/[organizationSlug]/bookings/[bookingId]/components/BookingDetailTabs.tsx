@@ -9,6 +9,8 @@ import {
 import {
 	useBookingParams,
 	useDeliverableParams,
+	useExpenseParams,
+	usePaymentParams,
 	useShootParams,
 	useTaskParams,
 } from "@saas/studio/hooks/params";
@@ -77,6 +79,8 @@ export function BookingDetailTabs({
 	const { openCreate: openCreateShoot } = useShootParams();
 	const { openCreate: openCreateDeliverable } = useDeliverableParams();
 	const { openCreate: openCreateTask } = useTaskParams();
+	const { openCreate: openCreatePayment } = usePaymentParams();
+	const { openCreate: openCreateExpense } = useExpenseParams();
 
 	return (
 		<BookingDetailScrollArea>
@@ -103,6 +107,8 @@ export function BookingDetailTabs({
 						onAddShoot={openCreateShoot}
 						onAddDeliverable={openCreateDeliverable}
 						onAddTask={openCreateTask}
+						onAddPayment={openCreatePayment}
+						onAddExpense={openCreateExpense}
 					/>
 
 					{/* Main content + Meta sidebar */}

@@ -9,6 +9,7 @@ import {
 	MapPinIcon,
 	PencilIcon,
 	PhoneIcon,
+	PlusIcon,
 } from "lucide-react";
 import {
 	formatPackageType,
@@ -45,6 +46,8 @@ type BookingHeroSectionProps = {
 	onAddShoot?: () => void;
 	onAddDeliverable?: () => void;
 	onAddTask?: () => void;
+	onAddPayment?: () => void;
+	onAddExpense?: () => void;
 };
 
 export function BookingHeroSection({
@@ -53,6 +56,8 @@ export function BookingHeroSection({
 	onAddShoot,
 	onAddDeliverable,
 	onAddTask,
+	onAddPayment,
+	onAddExpense,
 }: BookingHeroSectionProps) {
 	const statusLabel =
 		booking.statusLabel || booking.status.replace("_", " ");
@@ -90,7 +95,12 @@ export function BookingHeroSection({
 	}
 	const subtitle = subtitleParts.join(" - ");
 
-	const hasActions = onAddShoot || onAddDeliverable || onAddTask;
+	const hasActions =
+		onAddShoot ||
+		onAddDeliverable ||
+		onAddTask ||
+		onAddPayment ||
+		onAddExpense;
 
 	// Get client contact info for phone tags
 	const clients =
@@ -189,17 +199,32 @@ export function BookingHeroSection({
 					<div className="flex flex-wrap items-center gap-2 pt-2">
 						{onAddShoot && (
 							<Button size="sm" onClick={onAddShoot}>
+								<PlusIcon className="h-3.5 w-3.5 mr-1.5" />
 								Add shoot
 							</Button>
 						)}
 						{onAddDeliverable && (
 							<Button size="sm" variant="outline" onClick={onAddDeliverable}>
+								<PlusIcon className="h-3.5 w-3.5 mr-1.5" />
 								Add deliverable
 							</Button>
 						)}
 						{onAddTask && (
 							<Button size="sm" variant="outline" onClick={onAddTask}>
+								<PlusIcon className="h-3.5 w-3.5 mr-1.5" />
 								Add task
+							</Button>
+						)}
+						{onAddPayment && (
+							<Button size="sm" variant="outline" onClick={onAddPayment}>
+								<PlusIcon className="h-3.5 w-3.5 mr-1.5" />
+								Add payment
+							</Button>
+						)}
+						{onAddExpense && (
+							<Button size="sm" variant="outline" onClick={onAddExpense}>
+								<PlusIcon className="h-3.5 w-3.5 mr-1.5" />
+								Add expense
 							</Button>
 						)}
 					</div>
