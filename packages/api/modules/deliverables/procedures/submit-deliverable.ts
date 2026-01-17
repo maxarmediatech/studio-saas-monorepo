@@ -8,6 +8,7 @@ import {
 	deliverables,
 	eq,
 	isNull,
+	submissionFiles,
 	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
@@ -31,7 +32,7 @@ export const submitDeliverable = studioProtectedProcedure
 	.handler(async ({ input, context }) => {
 		requirePermission(context, "deliverable", "submit");
 
-		const { deliverableId, submissionNote } = input;
+		const { deliverableId, submissionNote, files } = input;
 
 		// Verify deliverable exists and belongs to organization
 		const deliverable = await db.query.deliverables.findFirst({
@@ -94,34 +95,48 @@ export const submitDeliverable = studioProtectedProcedure
 			});
 		}
 
-		// Create submission
-		const [created] = await db
-			.insert(assignmentSubmissions)
-			.values({
-				organizationId: context.organizationId,
-				deliverableId,
-				submittedBy: crew.id,
-				status: "submitted",
-				submissionNote: submissionNote ?? null,
-				submittedAt: new Date(),
-			})
-			.returning({ id: assignmentSubmissions.id });
+		const created = await db.transaction(async (tx) => {
+			const [submission] = await tx
+				.insert(assignmentSubmissions)
+				.values({
+					organizationId: context.organizationId,
+					deliverableId,
+					submittedBy: crew.id,
+					status: "submitted",
+					submissionNote: submissionNote ?? null,
+					submittedAt: new Date(),
+				})
+				.returning({ id: assignmentSubmissions.id });
 
-		if (!created) {
-			throw new ORPCError("INTERNAL_SERVER_ERROR", {
-				message: "Failed to create submission",
-			});
-		}
+			if (!submission) {
+				throw new ORPCError("INTERNAL_SERVER_ERROR", {
+					message: "Failed to create submission",
+				});
+			}
 
-		// Update deliverable workflow status
-		await db
-			.update(deliverables)
-			.set({
-				workflowStatus: "submitted",
-				updatedAt: new Date(),
-				updatedBy: context.user.id,
-			})
-			.where(eq(deliverables.id, deliverableId));
+			if (files?.length) {
+				await tx.insert(submissionFiles).values(
+					files.map((file) => ({
+						submissionId: submission.id,
+						fileName: file.name,
+						fileUrl: file.key,
+						fileSize: file.size,
+						mimeType: file.type,
+					})),
+				);
+			}
+
+			await tx
+				.update(deliverables)
+				.set({
+					workflowStatus: "submitted",
+					updatedAt: new Date(),
+					updatedBy: context.user.id,
+				})
+				.where(eq(deliverables.id, deliverableId));
+
+			return submission;
+		});
 
 		// Track activity (non-blocking)
 		await safeTrackActivity(context, {

@@ -5,9 +5,12 @@ import type {
 	YourWorkItem,
 } from "@repo/api/modules/studio/schemas/your-work";
 import { Badge } from "@repo/ui/components/badge";
+import { Button } from "@repo/ui/components/button";
 import { Camera, ListTodoIcon, Package } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 import { SubscribeButton } from "./subscribe-button";
+import { SubmitForReviewDialog } from "./submit-for-review-dialog";
 
 interface YourWorkGroup {
 	id: "assigned" | "created" | "subscribed";
@@ -84,11 +87,30 @@ function GroupRow({
 	organizationSlug,
 	item,
 	showEntityType,
+	groupId,
+	onSubmitForReview,
 }: {
 	organizationSlug: string;
 	item: YourWorkItem;
 	showEntityType: boolean;
+	groupId: YourWorkGroup["id"];
+	onSubmitForReview: (item: YourWorkItem) => void;
 }) {
+	const isSubmittableEntity =
+		item.entityType === "task" || item.entityType === "deliverable";
+	const submitBlocked =
+		item.workflowStatus === "submitted" ||
+		item.workflowStatus === "in_review" ||
+		item.workflowStatus === "approved";
+	const showSubmitAction = groupId === "assigned" && isSubmittableEntity;
+	const submitLabel = submitBlocked
+		? item.workflowStatus === "in_review"
+			? "In review"
+			: item.workflowStatus === "approved"
+				? "Approved"
+				: "Submitted"
+		: "Submit for review";
+
 	return (
 		<div className="flex flex-col gap-2 px-4 py-3 md:flex-row md:items-center md:justify-between">
 			<div className="flex min-w-0 flex-wrap items-center gap-3">
@@ -111,6 +133,17 @@ function GroupRow({
 			<div className="flex flex-wrap items-center gap-3 text-sm text-neutral-600">
 				{getStatusBadge(item.status)}
 				<span>{formatDate(item.date)}</span>
+				{showSubmitAction ? (
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						disabled={submitBlocked}
+						onClick={() => onSubmitForReview(item)}
+					>
+						{submitLabel}
+					</Button>
+				) : null}
 				<SubscribeButton
 					entityType={item.entityType}
 					entityId={item.entityId}
@@ -127,6 +160,13 @@ export function YourWorkGroupedList({
 	groups,
 }: YourWorkGroupedListProps) {
 	const showEntityType = entityType === "all";
+	const [activeItem, setActiveItem] = useState<YourWorkItem | null>(null);
+
+	const handleDialogOpenChange = (open: boolean) => {
+		if (!open) {
+			setActiveItem(null);
+		}
+	};
 
 	return (
 		<div className="flex flex-col gap-5">
@@ -157,12 +197,19 @@ export function YourWorkGroupedList({
 									organizationSlug={organizationSlug}
 									item={item}
 									showEntityType={showEntityType}
+									groupId={group.id}
+									onSubmitForReview={setActiveItem}
 								/>
 							))
 						)}
 					</div>
 				</div>
 			))}
+			<SubmitForReviewDialog
+				item={activeItem}
+				isOpen={Boolean(activeItem)}
+				onOpenChange={handleDialogOpenChange}
+			/>
 		</div>
 	);
 }

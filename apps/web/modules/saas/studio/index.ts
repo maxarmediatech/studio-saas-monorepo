@@ -70,6 +70,8 @@ export {
 	studioPaymentsApi,
 	studioPaymentsMutations,
 	studioQueryKeys,
+	submissionsApi,
+	submissionsMutations,
 	tasksApi,
 	tasksMutations,
 } from "./lib/api";

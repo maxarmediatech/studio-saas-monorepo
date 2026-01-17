@@ -6,6 +6,7 @@ import {
 	db,
 	eq,
 	isNull,
+	submissionFiles,
 	sql,
 	taskAssignments,
 	tasks,
@@ -31,7 +32,7 @@ export const submitTask = studioProtectedProcedure
 	.handler(async ({ input, context }) => {
 		requirePermission(context, "task", "submit");
 
-		const { taskId, submissionNote } = input;
+		const { taskId, submissionNote, files } = input;
 
 		// Verify task exists and belongs to organization
 		const task = await db.query.tasks.findFirst({
@@ -93,34 +94,48 @@ export const submitTask = studioProtectedProcedure
 			});
 		}
 
-		// Create submission
-		const [created] = await db
-			.insert(assignmentSubmissions)
-			.values({
-				organizationId: context.organizationId,
-				taskId,
-				submittedBy: crew.id,
-				status: "submitted",
-				submissionNote: submissionNote ?? null,
-				submittedAt: new Date(),
-			})
-			.returning({ id: assignmentSubmissions.id });
+		const created = await db.transaction(async (tx) => {
+			const [submission] = await tx
+				.insert(assignmentSubmissions)
+				.values({
+					organizationId: context.organizationId,
+					taskId,
+					submittedBy: crew.id,
+					status: "submitted",
+					submissionNote: submissionNote ?? null,
+					submittedAt: new Date(),
+				})
+				.returning({ id: assignmentSubmissions.id });
 
-		if (!created) {
-			throw new ORPCError("INTERNAL_SERVER_ERROR", {
-				message: "Failed to create submission",
-			});
-		}
+			if (!submission) {
+				throw new ORPCError("INTERNAL_SERVER_ERROR", {
+					message: "Failed to create submission",
+				});
+			}
 
-		// Update task workflow status
-		await db
-			.update(tasks)
-			.set({
-				workflowStatus: "submitted",
-				updatedAt: new Date(),
-				updatedBy: context.user.id,
-			})
-			.where(eq(tasks.id, taskId));
+			if (files?.length) {
+				await tx.insert(submissionFiles).values(
+					files.map((file) => ({
+						submissionId: submission.id,
+						fileName: file.name,
+						fileUrl: file.key,
+						fileSize: file.size,
+						mimeType: file.type,
+					})),
+				);
+			}
+
+			await tx
+				.update(tasks)
+				.set({
+					workflowStatus: "submitted",
+					updatedAt: new Date(),
+					updatedBy: context.user.id,
+				})
+				.where(eq(tasks.id, taskId));
+
+			return submission;
+		});
 
 		// Track activity (non-blocking)
 		await safeTrackActivity(context, {

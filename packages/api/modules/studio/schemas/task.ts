@@ -17,6 +17,7 @@ import {
 	nameSchema,
 	paginationSchema,
 	searchSchema,
+	uploadedAttachmentSchema,
 	workflowStatusSchema,
 } from "./common";
 
@@ -306,6 +307,7 @@ export type UpdateTaskStatusOutput = z.infer<
 export const submitTaskInputSchema = z.object({
 	taskId: idSchema,
 	submissionNote: z.string().max(5000).optional(),
+	files: z.array(uploadedAttachmentSchema).optional(),
 });
 
 export type SubmitTaskInput = z.infer<typeof submitTaskInputSchema>;
