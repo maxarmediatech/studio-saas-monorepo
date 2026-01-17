@@ -103,7 +103,7 @@ export function BookingDetailTabs({
 							<Tabs defaultValue="overview" className="space-y-4">
 								<TabsList className="w-full justify-start gap-1 overflow-x-auto">
 									<TabsTrigger value="overview">Overview</TabsTrigger>
-									<TabsTrigger value="sessions">Sessions</TabsTrigger>
+									<TabsTrigger value="sessions">Shoots</TabsTrigger>
 									<TabsTrigger value="deliverables">Deliverables</TabsTrigger>
 									<TabsTrigger value="tasks">Tasks</TabsTrigger>
 									<TabsTrigger value="finances">Finances</TabsTrigger>

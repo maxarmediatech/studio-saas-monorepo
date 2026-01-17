@@ -225,19 +225,19 @@ function KeyPrioritiesCard() {
 	);
 }
 
-function UpcomingSessionsCard({ shoots }: { shoots: ShootData[] }) {
+function UpcomingShootsCard({ shoots }: { shoots: ShootData[] }) {
 	if (shoots.length === 0) {
 		return (
 			<Card className="shadow-none rounded-lg">
 				<CardHeader>
-					<CardTitle className="text-base">Upcoming sessions</CardTitle>
+					<CardTitle className="text-base">Upcoming shoots</CardTitle>
 					<CardDescription>
-						Session plan and readiness status.
+						Shoot plan and readiness status.
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<p className="text-sm text-muted-foreground">
-						No sessions scheduled yet.
+						No shoots scheduled yet.
 					</p>
 				</CardContent>
 			</Card>
@@ -247,8 +247,8 @@ function UpcomingSessionsCard({ shoots }: { shoots: ShootData[] }) {
 	return (
 		<Card className="shadow-none rounded-lg">
 			<CardHeader>
-				<CardTitle className="text-base">Upcoming sessions</CardTitle>
-				<CardDescription>Session plan and readiness status.</CardDescription>
+				<CardTitle className="text-base">Upcoming shoots</CardTitle>
+				<CardDescription>Shoot plan and readiness status.</CardDescription>
 			</CardHeader>
 			<CardContent className="space-y-3">
 				{shoots.slice(0, 5).map((session) => {
@@ -316,7 +316,7 @@ export function OverviewTabEnhanced({
 			<CoverageScopeCard />
 			<ExpectedOutcomesCard />
 			<KeyPrioritiesCard />
-			<UpcomingSessionsCard shoots={shoots} />
+			<UpcomingShootsCard shoots={shoots} />
 		</div>
 	);
 }
