@@ -1,5 +1,9 @@
+export { AssetsTab } from "./AssetsTab";
 export { DeliverablesTab } from "./DeliverablesTab";
 export { FinancesTab } from "./FinancesTab";
+export { NotesTab } from "./NotesTab";
 export { OverviewTab } from "./OverviewTab";
+export { OverviewTabEnhanced } from "./OverviewTabEnhanced";
 export { ShootsTab } from "./ShootsTab";
 export { TasksTab } from "./TasksTab";
+export { WorkstreamTab } from "./WorkstreamTab";

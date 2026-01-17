@@ -10,7 +10,7 @@ import { AlertCircleIcon } from "lucide-react";
 import {
 	BookingDetailHeader,
 	BookingDetailLayout,
-	BookingScrollSpy,
+	BookingDetailTabs,
 } from "./components";
 
 interface BookingDetailPageClientProps {
@@ -91,9 +91,10 @@ export function BookingDetailPageClient({
 			}
 			rawContent
 		>
-			<BookingScrollSpy
+			<BookingDetailTabs
 				bookingId={bookingId}
 				booking={{
+					referenceNumber: bookingData.referenceNumber,
 					name: bookingData.name,
 					status: bookingData.status,
 					bookingType: bookingData.bookingType,
@@ -105,6 +106,9 @@ export function BookingDetailPageClient({
 					participants: bookingData.participants,
 					createdAt: bookingData.createdAt,
 				}}
+				onMessageClients={() => console.log("Message clients")}
+				onShareBrief={() => console.log("Share brief")}
+				onAddTask={() => console.log("Add task")}
 			/>
 		</BookingDetailLayout>
 	);
