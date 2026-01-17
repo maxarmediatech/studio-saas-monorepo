@@ -23,6 +23,7 @@ type BookingHeroSectionProps = {
 		eventTime?: string | null;
 		venue?: string | null;
 		city?: string | null;
+		createdAt?: string | Date | null;
 	};
 	onMessageClients?: () => void;
 	onShareBrief?: () => void;
@@ -48,72 +49,83 @@ export function BookingHeroSection({
 			)
 		: null;
 
+	const bookedOnFormatted = booking.createdAt
+		? format(
+				typeof booking.createdAt === "string"
+					? parseISO(booking.createdAt)
+					: booking.createdAt,
+				"MMM d, yyyy",
+			)
+		: null;
+
 	const locationStr = [booking.venue, booking.city]
 		.filter(Boolean)
 		.join(", ");
+
+	// Build subtitle: "{Package} package - {BookingType} coverage" or just one if the other is missing
+	const subtitleParts: string[] = [];
+	if (booking.packageType) {
+		subtitleParts.push(`${formatPackageType(booking.packageType)} package`);
+	}
+	if (booking.bookingType) {
+		subtitleParts.push(`${formatPackageType(booking.bookingType)} coverage`);
+	}
+	const subtitle = subtitleParts.join(" - ");
 
 	const hasActions = onMessageClients || onShareBrief || onAddTask;
 
 	return (
 		<section className="rounded-lg border bg-background p-6">
-			<div className="flex flex-wrap items-start justify-between gap-4">
-				{/* Left: Badges + Title + Meta */}
-				<div className="space-y-3">
-					{/* Badges */}
-					<div className="flex flex-wrap items-center gap-2">
-						<Badge
-							variant={getStatusVariant(booking.status)}
-							className="capitalize"
-						>
-							{statusLabel}
-						</Badge>
-						<Badge
-							variant={getPriorityVariant(priority)}
-							className="capitalize"
-						>
-							{priority}
-						</Badge>
-						{booking.bookingType && (
-							<Badge variant="outline" className="capitalize">
-								{formatPackageType(booking.bookingType)}
-							</Badge>
-						)}
-					</div>
-
-					{/* Title and Package */}
-					<div>
-						<h2 className="text-2xl font-semibold">{booking.name}</h2>
-						{booking.packageType && (
-							<p className="text-sm text-muted-foreground">
-								{formatPackageType(booking.packageType)} package
-							</p>
-						)}
-					</div>
-
-					{/* Meta info */}
-					<div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-						{booking.referenceNumber && (
-							<span>Ref {booking.referenceNumber}</span>
-						)}
-						{locationStr && (
-							<span className="flex items-center gap-1">
-								<MapPinIcon className="h-3.5 w-3.5" />
-								{locationStr}
-							</span>
-						)}
-						{eventDateFormatted && (
-							<span className="flex items-center gap-1">
-								<CalendarIcon className="h-3.5 w-3.5" />
-								{eventDateFormatted}
-								{booking.eventTime && ` - ${booking.eventTime}`}
-							</span>
-						)}
-					</div>
+			<div className="space-y-4">
+				{/* Badges + Booked on */}
+				<div className="flex flex-wrap items-center gap-2">
+					<Badge
+						variant={getStatusVariant(booking.status)}
+						className="capitalize"
+					>
+						{statusLabel}
+					</Badge>
+					<Badge
+						variant={getPriorityVariant(priority)}
+						className="capitalize"
+					>
+						{priority}
+					</Badge>
+					{bookedOnFormatted && (
+						<span className="text-xs text-muted-foreground">
+							Booked on {bookedOnFormatted}
+						</span>
+					)}
 				</div>
 
-				{/* Right: Action buttons */}
+				{/* Title and Package/Type */}
+				<div>
+					<h2 className="text-2xl font-semibold">{booking.name}</h2>
+					{subtitle && (
+						<p className="text-sm text-muted-foreground">{subtitle}</p>
+					)}
+				</div>
+
+				{/* Meta info */}
+				<div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+					{locationStr && (
+						<span className="flex items-center gap-1">
+							<MapPinIcon className="h-3.5 w-3.5" />
+							{locationStr}
+						</span>
+					)}
+					{eventDateFormatted && (
+						<span className="flex items-center gap-1">
+							<CalendarIcon className="h-3.5 w-3.5" />
+							{eventDateFormatted}
+							{booking.eventTime && ` - ${booking.eventTime}`}
+						</span>
+					)}
+				</div>
+
+				{/* Action buttons at bottom */}
 				{hasActions && (
-					<div className="flex flex-wrap items-center gap-2">
+					<div className="flex flex-wrap items-center gap-2 pt-2">
 						{onMessageClients && (
 							<Button size="sm" onClick={onMessageClients}>
 								Message clients

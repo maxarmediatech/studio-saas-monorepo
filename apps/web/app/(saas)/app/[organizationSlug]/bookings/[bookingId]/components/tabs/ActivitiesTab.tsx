@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/components/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@repo/ui/components/card";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { activitiesApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
@@ -175,11 +175,11 @@ export function ActivitiesTab({ bookingId }: ActivitiesTabProps) {
 	if (isLoading) {
 		return (
 			<Card className="shadow-none rounded-lg">
-				<CardHeader className="pb-3">
-					<CardTitle className="text-base font-medium flex items-center gap-2">
-						<ActivityIcon className="size-4 text-muted-foreground" />
-						Activity
-					</CardTitle>
+				<CardHeader>
+					<CardTitle className="text-base">Activity</CardTitle>
+					<CardDescription>
+						Recent changes and updates to this booking.
+					</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<div className="space-y-4">
@@ -205,11 +205,11 @@ export function ActivitiesTab({ bookingId }: ActivitiesTabProps) {
 	if (error) {
 		return (
 			<Card className="shadow-none rounded-lg">
-				<CardHeader className="pb-3">
-					<CardTitle className="text-base font-medium flex items-center gap-2">
-						<ActivityIcon className="size-4 text-muted-foreground" />
-						Activity
-					</CardTitle>
+				<CardHeader>
+					<CardTitle className="text-base">Activity</CardTitle>
+					<CardDescription>
+						Recent changes and updates to this booking.
+					</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<div className="flex flex-col items-center justify-center py-12 text-center">
@@ -226,16 +226,11 @@ export function ActivitiesTab({ bookingId }: ActivitiesTabProps) {
 
 	return (
 		<Card className="shadow-none rounded-lg">
-			<CardHeader className="pb-3">
-				<CardTitle className="text-base font-medium flex items-center gap-2">
-					<ActivityIcon className="size-4 text-muted-foreground" />
-					Activity
-					{activities.length > 0 && (
-						<span className="text-xs font-normal text-muted-foreground">
-							({activities.length})
-						</span>
-					)}
-				</CardTitle>
+			<CardHeader>
+				<CardTitle className="text-base">Activity</CardTitle>
+				<CardDescription>
+					Recent changes and updates to this booking.
+				</CardDescription>
 			</CardHeader>
 			<CardContent>
 				{activities.length === 0 ? (

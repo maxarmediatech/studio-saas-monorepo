@@ -91,6 +91,7 @@ export function BookingDetailTabs({
 							eventTime: booking.eventTime,
 							venue: booking.venue,
 							city: booking.city,
+							createdAt: booking.createdAt,
 						}}
 						onMessageClients={onMessageClients}
 						onShareBrief={onShareBrief}
