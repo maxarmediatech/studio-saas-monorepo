@@ -636,119 +636,136 @@ export function StickiesActionBar({ organizationSlug }: StickiesActionBarProps) 
 	}, []);
 
 	const previewSticky = showNewSticky ? newStickyData : null;
+	const isDockVisible = isExpanded || showPreview || isAllStickiesOpen;
 
 	return (
-		<div ref={containerRef} className="fixed bottom-6 right-6 z-50">
-			<div className="relative flex flex-col items-end">
-				{/* Sticky Preview */}
+		<div ref={containerRef} className="fixed bottom-4 right-4 z-50">
+			<div className="group relative h-16 w-16">
 				<div
 					className={cn(
-						"absolute bottom-16 right-0 z-20 w-[290px]",
-						"transition-all duration-300 ease-in-out",
-						showPreview
-							? "translate-y-0 opacity-100"
-							: "translate-y-4 opacity-0 pointer-events-none",
+						"absolute bottom-0 right-0 transition-all duration-200 ease-out",
+						isDockVisible
+							? "opacity-100 scale-100 pointer-events-auto"
+							: "opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto",
 					)}
 				>
-					{previewSticky && (
-						<StickyNote
-							sticky={previewSticky}
-							onUpdate={(data) => {
-								if (previewSticky.id) {
-									handleUpdateSticky(previewSticky.id, data);
-								}
-							}}
-							onDelete={
-								previewSticky.id
-									? () => handleDeleteSticky(previewSticky.id!)
-									: undefined
-							}
-							onClose={handleClosePreview}
-							isDeleting={
-								deleteMutation.isPending &&
-								deleteMutation.variables?.id === previewSticky.id
-							}
-							showToolbar
-							autoFocus={showNewSticky}
-							className="shadow-xl"
-						/>
-					)}
-				</div>
+					<div className="relative flex flex-col items-end">
+						{/* Sticky Preview */}
+						<div
+							className={cn(
+								"absolute bottom-12 right-0 z-20 w-[290px]",
+								"transition-all duration-300 ease-in-out",
+								showPreview
+									? "translate-y-0 opacity-100"
+									: "translate-y-4 opacity-0 pointer-events-none",
+							)}
+						>
+							{previewSticky && (
+								<StickyNote
+									sticky={previewSticky}
+									onUpdate={(data) => {
+										if (previewSticky.id) {
+											handleUpdateSticky(previewSticky.id, data);
+										}
+									}}
+									onDelete={
+										previewSticky.id
+											? () =>
+													handleDeleteSticky(previewSticky.id!)
+											: undefined
+									}
+									onClose={handleClosePreview}
+									isDeleting={
+										deleteMutation.isPending &&
+										deleteMutation.variables?.id === previewSticky.id
+									}
+									showToolbar
+									autoFocus={showNewSticky}
+									className="shadow-xl"
+								/>
+							)}
+						</div>
 
-				<div className="flex flex-col items-center rounded-full border border-border/60 bg-background/90 p-1 shadow-lg backdrop-blur">
-					{/* Menu Items (expand upward) */}
-					<div
-						className={cn(
-							"flex flex-col gap-2",
-							"transition-all duration-300 ease-in-out origin-bottom",
-							isExpanded
-								? "scale-y-100 opacity-100"
-								: "scale-y-0 opacity-0 h-0 overflow-hidden",
-						)}
-					>
-						{/* All Stickies Button */}
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									variant="outline"
-									size="icon"
-									className="h-10 w-10 rounded-full shadow-md bg-background"
-									onClick={handleOpenAllStickies}
-								>
-									<ListIcon className="h-5 w-5" />
-									<span className="sr-only">All stickies</span>
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent side="left" sideOffset={10}>
-								<span className="text-xs font-medium">All stickies</span>
-							</TooltipContent>
-						</Tooltip>
+						<div className="flex flex-col items-center rounded-full border border-border/50 bg-background/70 p-1 shadow-md backdrop-blur">
+							{/* Menu Items (expand upward) */}
+							<div
+								className={cn(
+									"flex flex-col gap-2",
+									"transition-all duration-300 ease-in-out origin-bottom",
+									isExpanded
+										? "scale-y-100 opacity-100"
+										: "scale-y-0 opacity-0 h-0 overflow-hidden",
+								)}
+							>
+								{/* All Stickies Button */}
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<Button
+											variant="outline"
+											size="icon"
+											className="h-9 w-9 rounded-full shadow-sm bg-background"
+											onClick={handleOpenAllStickies}
+										>
+											<ListIcon className="h-4 w-4" />
+											<span className="sr-only">All stickies</span>
+										</Button>
+									</TooltipTrigger>
+									<TooltipContent side="left" sideOffset={10}>
+										<span className="text-xs font-medium">
+											All stickies
+										</span>
+									</TooltipContent>
+								</Tooltip>
 
-					{/* Create New Button */}
-					<Tooltip>
-						<TooltipTrigger asChild>
-								<Button
-									variant="outline"
-									size="icon"
-									className="h-10 w-10 rounded-full shadow-md bg-background"
-									onClick={handleCreateNew}
-									disabled={createMutation.isPending}
-								>
-									{createMutation.isPending ? (
-										<span className="size-4 border-2 border-t-transparent border-foreground rounded-full animate-spin" />
-									) : (
-										<PlusIcon className="h-5 w-5" />
-									)}
-									<span className="sr-only">Create new sticky</span>
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent side="left" sideOffset={10}>
-								<span className="text-xs font-medium">Add sticky</span>
-							</TooltipContent>
-						</Tooltip>
+								{/* Create New Button */}
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<Button
+											variant="outline"
+											size="icon"
+											className="h-9 w-9 rounded-full shadow-sm bg-background"
+											onClick={handleCreateNew}
+											disabled={createMutation.isPending}
+										>
+											{createMutation.isPending ? (
+												<span className="size-4 border-2 border-t-transparent border-foreground rounded-full animate-spin" />
+											) : (
+												<PlusIcon className="h-4 w-4" />
+											)}
+											<span className="sr-only">
+												Create new sticky
+											</span>
+										</Button>
+									</TooltipTrigger>
+									<TooltipContent side="left" sideOffset={10}>
+										<span className="text-xs font-medium">Add sticky</span>
+									</TooltipContent>
+								</Tooltip>
+							</div>
+
+							{/* Main Toggle Button */}
+							<Button
+								variant="ghost"
+								size="icon"
+								className={cn(
+									"h-9 w-9 rounded-full border border-border/60 bg-background/80 text-foreground/70 shadow-sm",
+									"transition-colors hover:bg-background",
+								)}
+								onClick={handleToggle}
+							>
+								{isExpanded ? (
+									<XIcon className="h-4 w-4" />
+								) : (
+									<StickyNoteIcon className="h-4 w-4" />
+								)}
+								<span className="sr-only">
+									{isExpanded
+										? "Close stickies menu"
+										: "Open stickies menu"}
+								</span>
+							</Button>
+						</div>
 					</div>
-
-					{/* Main Toggle Button */}
-					<Button
-						variant="default"
-						size="icon"
-						className={cn(
-							"h-12 w-12 rounded-full shadow-lg",
-							"transition-transform duration-300",
-						)}
-						onClick={handleToggle}
-					>
-						{isExpanded ? (
-							<XIcon className="h-5 w-5" />
-						) : (
-							<StickyNoteIcon className="h-5 w-5" />
-						)}
-						<span className="sr-only">
-							{isExpanded
-								? "Close stickies menu"
-								: "Open stickies menu"}
-						</span>
-					</Button>
 				</div>
 			</div>
 
