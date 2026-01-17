@@ -11,6 +11,7 @@ import { BookingDetailScrollArea } from "./booking-detail-scroll-area";
 import { BookingHeroSection } from "./BookingHeroSection";
 import { BookingMetaPanel } from "./meta";
 import {
+	ActivitiesTab,
 	// AssetsTab,
 	DeliverablesTab,
 	// FinancesTab, // Moved to OverviewTabEnhanced
@@ -105,6 +106,7 @@ export function BookingDetailTabs({
 									<TabsTrigger value="overview">Overview</TabsTrigger>
 									<TabsTrigger value="sessions">Shoots</TabsTrigger>
 									<TabsTrigger value="deliverables">Deliverables</TabsTrigger>
+									<TabsTrigger value="activities">Activity</TabsTrigger>
 									{/* <TabsTrigger value="finances">Finances</TabsTrigger> */}
 									{/* <TabsTrigger value="assets">Assets</TabsTrigger> */}
 								</TabsList>
@@ -130,6 +132,10 @@ export function BookingDetailTabs({
 
 								<TabsContent value="deliverables" className="pt-2">
 									<DeliverablesTab bookingId={bookingId} />
+								</TabsContent>
+
+								<TabsContent value="activities" className="pt-2">
+									<ActivitiesTab bookingId={bookingId} />
 								</TabsContent>
 
 								{/* <TabsContent value="finances" className="pt-2">

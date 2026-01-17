@@ -1,3 +1,4 @@
+export { ActivitiesTab } from "./ActivitiesTab";
 export { AssetsTab } from "./AssetsTab";
 export { DeliverablesTab } from "./DeliverablesTab";
 export { FinancesTab } from "./FinancesTab";
