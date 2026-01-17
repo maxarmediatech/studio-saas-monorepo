@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@repo/ui/components/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@repo/ui/components/card";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -197,13 +198,13 @@ export function ShootsTab({ bookingId }: ShootsTabProps) {
 	}
 
 	return (
-		<div className="space-y-6">
-			<div className="flex justify-between items-center">
-				<div>
-					<h3 className="font-bold text-2xl mb-2">Shoots</h3>
-					<p className="text-muted-foreground mb-6">
+		<Card className="shadow-none rounded-lg">
+			<CardHeader className="flex flex-row items-center justify-between space-y-0">
+				<div className="space-y-1">
+					<CardTitle className="text-base">Shoots</CardTitle>
+					<CardDescription>
 						All scheduled photo/video sessions.
-					</p>
+					</CardDescription>
 				</div>
 				<Button
 					variant="outline"
@@ -213,26 +214,27 @@ export function ShootsTab({ bookingId }: ShootsTabProps) {
 					<PlusIcon className="h-4 w-4 mr-1.5" />
 					Add Shoot
 				</Button>
-			</div>
-
-			{shootsList.length === 0 ? (
-				<div className="flex flex-col items-center gap-2 py-12 text-center">
-					<CameraIcon className="h-8 w-8 text-muted-foreground/30" />
-					<p className="text-sm text-muted-foreground">
-						No shoots scheduled
-					</p>
-				</div>
-			) : (
-				<ul className="border-t divide-y divide-border">
-					{shootsList.map((shoot) => (
-						<ShootRow
-							key={shoot.id}
-							shoot={shoot}
-							onEdit={openEdit}
-						/>
-					))}
-				</ul>
-			)}
-		</div>
+			</CardHeader>
+			<CardContent>
+				{shootsList.length === 0 ? (
+					<div className="flex flex-col items-center gap-2 py-8 text-center">
+						<CameraIcon className="h-8 w-8 text-muted-foreground/30" />
+						<p className="text-sm text-muted-foreground">
+							No shoots scheduled
+						</p>
+					</div>
+				) : (
+					<ul className="divide-y divide-border">
+						{shootsList.map((shoot) => (
+							<ShootRow
+								key={shoot.id}
+								shoot={shoot}
+								onEdit={openEdit}
+							/>
+						))}
+					</ul>
+				)}
+			</CardContent>
+		</Card>
 	);
 }

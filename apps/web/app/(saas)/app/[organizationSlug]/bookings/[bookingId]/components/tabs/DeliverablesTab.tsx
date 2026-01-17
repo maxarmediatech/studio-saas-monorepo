@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@repo/ui/components/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@repo/ui/components/card";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -198,13 +199,13 @@ export function DeliverablesTab({ bookingId }: DeliverablesTabProps) {
 	}
 
 	return (
-		<div className="space-y-6">
-			<div className="flex justify-between items-center">
-				<div>
-					<h3 className="font-bold text-2xl mb-2">Deliverables</h3>
-					<p className="text-muted-foreground mb-6">
+		<Card className="shadow-none rounded-lg">
+			<CardHeader className="flex flex-row items-center justify-between space-y-0">
+				<div className="space-y-1">
+					<CardTitle className="text-base">Deliverables</CardTitle>
+					<CardDescription>
 						Photos, videos, and other deliverable items.
-					</p>
+					</CardDescription>
 				</div>
 				<Button
 					variant="outline"
@@ -214,26 +215,27 @@ export function DeliverablesTab({ bookingId }: DeliverablesTabProps) {
 					<PlusIcon className="h-4 w-4 mr-1.5" />
 					Add Deliverable
 				</Button>
-			</div>
-
-			{items.length === 0 ? (
-				<div className="flex flex-col items-center gap-2 py-12 text-center">
-					<PackageIcon className="h-8 w-8 text-muted-foreground/30" />
-					<p className="text-sm text-muted-foreground">
-						No deliverables
-					</p>
-				</div>
-			) : (
-				<ul className="border-t divide-y divide-border">
-					{sortedItems.map((item) => (
-						<DeliverableRow
-							key={item.id}
-							deliverable={item}
-							onEdit={openEdit}
-						/>
-					))}
-				</ul>
-			)}
-		</div>
+			</CardHeader>
+			<CardContent>
+				{items.length === 0 ? (
+					<div className="flex flex-col items-center gap-2 py-8 text-center">
+						<PackageIcon className="h-8 w-8 text-muted-foreground/30" />
+						<p className="text-sm text-muted-foreground">
+							No deliverables
+						</p>
+					</div>
+				) : (
+					<ul className="divide-y divide-border">
+						{sortedItems.map((item) => (
+							<DeliverableRow
+								key={item.id}
+								deliverable={item}
+								onEdit={openEdit}
+							/>
+						))}
+					</ul>
+				)}
+			</CardContent>
+		</Card>
 	);
 }
