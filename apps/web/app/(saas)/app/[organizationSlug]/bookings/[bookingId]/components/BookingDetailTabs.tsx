@@ -151,10 +151,8 @@ export function BookingDetailTabs({
 
 						{/* Right: Meta sidebar */}
 						<BookingMetaPanel
+							bookingId={bookingId}
 							booking={{
-								createdAt: booking.createdAt,
-								leadSource: booking.leadSource,
-								coordinator: booking.coordinator,
 								participants: booking.participants,
 								note: booking.note,
 								contractAttachment: booking.contractAttachment,

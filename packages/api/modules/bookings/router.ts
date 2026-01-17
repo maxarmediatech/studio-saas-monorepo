@@ -5,6 +5,7 @@ import { getBooking } from "./procedures/get-booking";
 import { getBookingStats } from "./procedures/get-booking-stats";
 import { listBookings } from "./procedures/list-bookings";
 import { listBookingsMinimal } from "./procedures/list-bookings-minimal";
+import { listBookingCrews } from "./procedures/list-crews";
 import { listParticipants } from "./procedures/list-participants";
 import { removeParticipant } from "./procedures/remove-participant";
 import { updateBooking } from "./procedures/update-booking";
@@ -25,4 +26,6 @@ export const bookingsRouter = {
 	addParticipant: addParticipant,
 	updateParticipant: updateParticipant,
 	removeParticipant: removeParticipant,
+	// Crews (aggregated from shoots, tasks, deliverables)
+	listCrews: listBookingCrews,
 };

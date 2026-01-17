@@ -516,3 +516,49 @@ export const removeParticipantOutputSchema = mutationResponseSchema;
 export type RemoveParticipantOutput = z.infer<
 	typeof removeParticipantOutputSchema
 >;
+
+// ============================================================================
+// LIST BOOKING CREWS (Aggregated from shoots, tasks, deliverables)
+// ============================================================================
+
+/**
+ * List all crew members assigned to a booking
+ */
+export const listBookingCrewsInputSchema = z.object({
+	bookingId: idSchema,
+});
+
+export type ListBookingCrewsInput = z.infer<typeof listBookingCrewsInputSchema>;
+
+/**
+ * Assignment source info - where is this crew assigned
+ */
+export const crewAssignmentSourceSchema = z.object({
+	type: z.enum(["shoot", "task", "deliverable"]),
+	id: idSchema,
+	name: z.string(),
+});
+
+export type CrewAssignmentSource = z.infer<typeof crewAssignmentSourceSchema>;
+
+/**
+ * Crew member with their assignment sources
+ */
+export const bookingCrewMemberSchema = z.object({
+	id: idSchema,
+	name: z.string(),
+	role: z.string(),
+	phoneNumber: z.string().nullable(),
+	email: z.string().nullable(),
+	assignments: z.array(crewAssignmentSourceSchema),
+});
+
+export type BookingCrewMember = z.infer<typeof bookingCrewMemberSchema>;
+
+export const listBookingCrewsOutputSchema = z.object({
+	data: z.array(bookingCrewMemberSchema),
+});
+
+export type ListBookingCrewsOutput = z.infer<
+	typeof listBookingCrewsOutputSchema
+>;

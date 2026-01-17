@@ -128,6 +128,10 @@ export const bookingsApi = {
 	// List participants
 	listParticipantsOptions: (bookingId: string) =>
 		orpc.bookings.listParticipants.queryOptions({ input: { bookingId } }),
+
+	// List crews (aggregated from shoots, tasks, deliverables)
+	listCrewsOptions: (bookingId: string) =>
+		orpc.bookings.listCrews.queryOptions({ input: { bookingId } }),
 };
 
 // ============================================================================
