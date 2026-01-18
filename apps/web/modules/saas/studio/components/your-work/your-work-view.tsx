@@ -2,13 +2,17 @@
 
 import type { YourWorkEntityType } from "@repo/api/modules/studio/schemas/your-work";
 import { Tabs, TabsList, TabsTrigger } from "@repo/ui/components/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@repo/ui/components/toggle-group";
 import { yourWorkApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
+import { LayoutGrid, LayoutList } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { YourWorkGroupedList } from "./your-work-grouped-list";
+import { YourWorkTable } from "./your-work-table";
 
 type EntityTypeFilter = "all" | YourWorkEntityType;
+type ViewMode = "grouped" | "table";
 
 const ENTITY_TABS = [
 	{ value: "all", label: "All" },
@@ -27,6 +31,7 @@ interface YourWorkViewProps {
 	organizationSlug: string;
 	initialFilters: {
 		entityType: EntityTypeFilter;
+		view: ViewMode;
 	};
 }
 
@@ -67,10 +72,13 @@ export function YourWorkView({
 	);
 
 	const updateEntityType = (nextEntityType: EntityTypeFilter) => {
-		setFilters({ entityType: nextEntityType });
+		setFilters((current) => ({ ...current, entityType: nextEntityType }));
 		const params = new URLSearchParams();
 		if (nextEntityType !== "all") {
 			params.set("entityType", nextEntityType);
+		}
+		if (filters.view !== "grouped") {
+			params.set("view", filters.view);
 		}
 		const queryString = params.toString();
 		const url = `/app/${organizationSlug}/your-work${queryString ? `?${queryString}` : ""}`;
@@ -80,45 +88,140 @@ export function YourWorkView({
 		});
 	};
 
+	const updateView = (nextView: ViewMode) => {
+		setFilters((current) => ({ ...current, view: nextView }));
+		const params = new URLSearchParams();
+		if (filters.entityType !== "all") {
+			params.set("entityType", filters.entityType);
+		}
+		if (nextView !== "grouped") {
+			params.set("view", nextView);
+		}
+		const queryString = params.toString();
+		const url = `/app/${organizationSlug}/your-work${queryString ? `?${queryString}` : ""}`;
+
+		startTransition(() => {
+			router.push(url, { scroll: false });
+		});
+	};
+
+	const groupedItems = useMemo(
+		() => ({
+			assigned: assignedQuery.data?.data ?? [],
+			created: createdQuery.data?.data ?? [],
+			subscribed: subscribedQuery.data?.data ?? [],
+		}),
+		[assignedQuery.data?.data, createdQuery.data?.data, subscribedQuery.data?.data],
+	);
+
+	const tableItems = useMemo(
+		() => {
+			const entries = [
+				{ items: groupedItems.assigned, label: "Assigned" },
+				{ items: groupedItems.created, label: "Created" },
+				{ items: groupedItems.subscribed, label: "Watching" },
+			];
+
+			return entries.flatMap(({ items, label }) =>
+				items.map((item) => ({
+					...item,
+					groupLabel: label,
+					rowKey: `${item.id}:${label}`,
+				})),
+			);
+		},
+		[groupedItems],
+	);
+
 	return (
 		<div className="flex flex-col gap-6">
-			<Tabs
-				value={filters.entityType}
-				onValueChange={(value) => updateEntityType(value as EntityTypeFilter)}
-			>
-				<TabsList>
-					{ENTITY_TABS.map((tab) => (
-						<TabsTrigger key={tab.value} value={tab.value}>
-							{tab.label}
-						</TabsTrigger>
-					))}
-				</TabsList>
-			</Tabs>
+			<div className="flex flex-wrap items-center justify-between gap-3">
+				<Tabs
+					value={filters.entityType}
+					onValueChange={(value) =>
+						updateEntityType(value as EntityTypeFilter)
+					}
+				>
+					<TabsList>
+						{ENTITY_TABS.map((tab) => (
+							<TabsTrigger key={tab.value} value={tab.value}>
+								{tab.label}
+							</TabsTrigger>
+						))}
+					</TabsList>
+				</Tabs>
+				<ToggleGroup
+					type="single"
+					value={filters.view}
+					onValueChange={(value) => {
+						if (value) {
+							updateView(value as ViewMode);
+						}
+					}}
+					variant="outline"
+					size="sm"
+					className="gap-1"
+				>
+					<ToggleGroupItem
+						value="grouped"
+						aria-label="Grouped view"
+						className="size-8 p-0"
+					>
+						<LayoutGrid className="size-4" />
+					</ToggleGroupItem>
+					<ToggleGroupItem
+						value="table"
+						aria-label="Table view"
+						className="size-8 p-0"
+					>
+						<LayoutList className="size-4" />
+					</ToggleGroupItem>
+				</ToggleGroup>
+			</div>
 
-			<YourWorkGroupedList
-				organizationSlug={organizationSlug}
-				entityType={filters.entityType}
-				groups={[
-					{
-						id: "assigned",
-						title: "Assigned",
-						items: assignedQuery.data?.data ?? [],
-						isLoading: assignedQuery.isLoading || isPending,
-					},
-					{
-						id: "created",
-						title: "Created",
-						items: createdQuery.data?.data ?? [],
-						isLoading: createdQuery.isLoading || isPending,
-					},
-					{
-						id: "subscribed",
-						title: "Watching",
-						items: subscribedQuery.data?.data ?? [],
-						isLoading: subscribedQuery.isLoading || isPending,
-					},
-				]}
-			/>
+			{filters.view === "grouped" ? (
+				<YourWorkGroupedList
+					organizationSlug={organizationSlug}
+					entityType={filters.entityType}
+					groups={[
+						{
+							id: "assigned",
+							title: "Assigned",
+							items: groupedItems.assigned,
+							isLoading: assignedQuery.isLoading || isPending,
+						},
+						{
+							id: "created",
+							title: "Created",
+							items: groupedItems.created,
+							isLoading: createdQuery.isLoading || isPending,
+						},
+						{
+							id: "subscribed",
+							title: "Watching",
+							items: groupedItems.subscribed,
+							isLoading: subscribedQuery.isLoading || isPending,
+						},
+					]}
+				/>
+			) : (
+				<YourWorkTable
+					organizationSlug={organizationSlug}
+					data={tableItems}
+					isLoading={
+						assignedQuery.isLoading ||
+						createdQuery.isLoading ||
+						subscribedQuery.isLoading ||
+						isPending
+					}
+					isFetching={
+						assignedQuery.isFetching ||
+						createdQuery.isFetching ||
+						subscribedQuery.isFetching
+					}
+					showGroup
+				/>
+			)}
 		</div>
 	);
 }
