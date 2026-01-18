@@ -17,7 +17,7 @@ export const getBookingStats = studioProtectedProcedure
 	.input(getBookingStatsInputSchema)
 	.output(getBookingStatsOutputSchema)
 	.handler(async ({ input: _input, context }) => {
-		requirePermission(context, "booking", "list");
+		await requirePermission(context, "booking", "list");
 
 		const baseConditions = [
 			eq(bookings.organizationId, context.organizationId),

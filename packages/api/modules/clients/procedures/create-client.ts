@@ -19,7 +19,7 @@ export const createClient = studioProtectedProcedure
 	.input(createClientInputSchema)
 	.output(createClientOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "client", "create");
+		await requirePermission(context, "client", "create");
 
 		const { name, email, phoneNumber, alternatePhone, address, metadata } =
 			input;

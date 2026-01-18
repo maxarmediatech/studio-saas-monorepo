@@ -29,7 +29,7 @@ export const updateDeliverableAssignmentStatus = studioProtectedProcedure
 	.input(updateDeliverableAssignmentStatusInputSchema)
 	.output(updateDeliverableAssignmentStatusOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "deliverable", "submit");
+		await requirePermission(context, "deliverable", "submit");
 
 		const { id, status, note } = input;
 

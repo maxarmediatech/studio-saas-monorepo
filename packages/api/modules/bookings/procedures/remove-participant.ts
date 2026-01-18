@@ -27,7 +27,7 @@ export const removeParticipant = studioProtectedProcedure
 	.input(removeParticipantInputSchema)
 	.output(removeParticipantOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "booking", "update");
+		await requirePermission(context, "booking", "update");
 
 		const { bookingId, participantId } = input;
 

@@ -34,7 +34,7 @@ export const listSchedules = studioProtectedProcedure
 	.input(listSchedulesInputSchema)
 	.output(listSchedulesOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "payment", "list");
+		await requirePermission(context, "payment", "list");
 
 		const {
 			page,

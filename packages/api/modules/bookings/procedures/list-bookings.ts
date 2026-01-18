@@ -33,7 +33,7 @@ export const listBookings = studioProtectedProcedure
 	.input(listBookingsInputSchema)
 	.output(listBookingsOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "booking", "list");
+		await requirePermission(context, "booking", "list");
 
 		const {
 			statuses,

@@ -24,7 +24,7 @@ export const updateShoot = studioProtectedProcedure
 	.input(updateShootInputSchema)
 	.output(updateShootOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "shoot", "update");
+		await requirePermission(context, "shoot", "update");
 
 		const {
 			id,

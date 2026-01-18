@@ -61,7 +61,7 @@ export const getDeliverableStats = studioProtectedProcedure
 	.input(getDeliverableStatsInputSchema)
 	.output(getDeliverableStatsOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "deliverable", "list");
+		await requirePermission(context, "deliverable", "list");
 
 		const { bookingId } = input;
 

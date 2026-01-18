@@ -17,7 +17,13 @@ import {
 } from "drizzle-orm/pg-core";
 import { v7 as uuidv7 } from "uuid";
 import { users } from "./auth";
-import { invitations, members, organizations, purchases } from "./core";
+import {
+	invitations,
+	members,
+	organizationRoles,
+	organizations,
+	purchases,
+} from "./core";
 import {
 	billToEnum,
 	bookingPhaseEnum,
@@ -1346,36 +1352,32 @@ export const subscriptions = pgTable(
 		deletedAt: timestamp("deleted_at", { withTimezone: true }),
 	},
 	(table) => [
-		uniqueIndex("subscriptions_user_entity_unique").on(
-			table.organizationId,
-			table.userId,
-			table.entityType,
-			table.entityId,
-		).where(sql`deleted_at IS NULL`),
+		uniqueIndex("subscriptions_user_entity_unique")
+			.on(
+				table.organizationId,
+				table.userId,
+				table.entityType,
+				table.entityId,
+			)
+			.where(sql`deleted_at IS NULL`),
 		index("subscriptions_org_user_idx").on(
 			table.organizationId,
 			table.userId,
 		),
-		index("subscriptions_entity_idx").on(
-			table.entityType,
-			table.entityId,
-		),
+		index("subscriptions_entity_idx").on(table.entityType, table.entityId),
 	],
 );
 
-export const subscriptionsRelations = relations(
-	subscriptions,
-	({ one }) => ({
-		organization: one(organizations, {
-			fields: [subscriptions.organizationId],
-			references: [organizations.id],
-		}),
-		user: one(users, {
-			fields: [subscriptions.userId],
-			references: [users.id],
-		}),
+export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
+	organization: one(organizations, {
+		fields: [subscriptions.organizationId],
+		references: [organizations.id],
 	}),
-);
+	user: one(users, {
+		fields: [subscriptions.userId],
+		references: [users.id],
+	}),
+}));
 
 // ============================================================================
 // NOTIFICATIONS TABLE
@@ -1423,30 +1425,24 @@ export const notifications = pgTable(
 		index("notifications_user_unread_idx")
 			.on(table.organizationId, table.userId)
 			.where(sql`read_at IS NULL`),
-		index("notifications_entity_idx").on(
-			table.entityType,
-			table.entityId,
-		),
+		index("notifications_entity_idx").on(table.entityType, table.entityId),
 	],
 );
 
-export const notificationsRelations = relations(
-	notifications,
-	({ one }) => ({
-		organization: one(organizations, {
-			fields: [notifications.organizationId],
-			references: [organizations.id],
-		}),
-		user: one(users, {
-			fields: [notifications.userId],
-			references: [users.id],
-		}),
-		actor: one(users, {
-			fields: [notifications.actorId],
-			references: [users.id],
-		}),
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+	organization: one(organizations, {
+		fields: [notifications.organizationId],
+		references: [organizations.id],
 	}),
-);
+	user: one(users, {
+		fields: [notifications.userId],
+		references: [users.id],
+	}),
+	actor: one(users, {
+		fields: [notifications.actorId],
+		references: [users.id],
+	}),
+}));
 
 // ============================================================================
 // STICKIES
@@ -2161,6 +2157,7 @@ export const organizationRelations = relations(organizations, ({ many }) => ({
 	members: many(members),
 	invitations: many(invitations),
 	purchases: many(purchases),
+	organizationRoles: many(organizationRoles),
 	configurations: many(configurations),
 	clients: many(clients),
 	bookings: many(bookings),

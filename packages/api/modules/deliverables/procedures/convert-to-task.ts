@@ -28,8 +28,8 @@ export const convertDeliverableToTask = studioProtectedProcedure
 	.input(convertDeliverableToTaskInputSchema)
 	.output(convertDeliverableToTaskOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "deliverable", "update");
-		requirePermission(context, "task", "create");
+		await requirePermission(context, "deliverable", "update");
+		await requirePermission(context, "task", "create");
 
 		const {
 			deliverableId,

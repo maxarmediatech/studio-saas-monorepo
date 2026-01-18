@@ -19,7 +19,7 @@ export const deleteConfiguration = studioProtectedProcedure
 	.input(deleteConfigurationInputSchema)
 	.output(deleteConfigurationOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "configuration", "delete");
+		await requirePermission(context, "configuration", "delete");
 
 		const { id } = input;
 

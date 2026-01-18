@@ -24,7 +24,7 @@ export const updateDeliverable = studioProtectedProcedure
 	.input(updateDeliverableInputSchema)
 	.output(updateDeliverableOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "deliverable", "update");
+		await requirePermission(context, "deliverable", "update");
 
 		const { id, ...updates } = input;
 

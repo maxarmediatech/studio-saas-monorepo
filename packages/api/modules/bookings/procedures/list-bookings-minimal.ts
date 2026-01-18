@@ -18,7 +18,7 @@ export const listBookingsMinimal = studioProtectedProcedure
 	.input(listBookingsMinimalInputSchema)
 	.output(listBookingsMinimalOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "booking", "list");
+		await requirePermission(context, "booking", "list");
 
 		const { status, search } = input;
 

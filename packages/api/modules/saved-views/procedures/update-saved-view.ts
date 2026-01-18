@@ -19,7 +19,7 @@ export const updateSavedView = studioProtectedProcedure
 	.input(updateSavedViewInputSchema)
 	.output(updateSavedViewOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "booking", "update");
+		await requirePermission(context, "booking", "update");
 
 		const { organizationId } = context;
 		const userId = context.user.id;

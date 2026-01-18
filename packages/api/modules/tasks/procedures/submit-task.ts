@@ -30,7 +30,7 @@ export const submitTask = studioProtectedProcedure
 	.input(submitTaskInputSchema)
 	.output(submitTaskOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "task", "submit");
+		await requirePermission(context, "task", "submit");
 
 		const { taskId, submissionNote, submissionLinks, files } = input;
 

@@ -1,4 +1,4 @@
-import { roleHasPermission } from "@repo/api/modules/studio/lib/roles";
+import { checkStaticRolePermission } from "@repo/auth/lib/permissions";
 import type {
 	NavItemConfig,
 	NavigationConfig,
@@ -6,12 +6,6 @@ import type {
 	NavPermissionCheck,
 } from "./types";
 
-/**
- * Check if a user with the given role has the required permission.
- * - If no permission is defined, the item is always visible.
- * - If `any` is defined, user needs at least ONE of those permissions.
- * - If `all` is defined, user needs ALL of those permissions.
- */
 function hasPermission(
 	permission: NavPermissionCheck | undefined,
 	userRole: string,
@@ -20,28 +14,32 @@ function hasPermission(
 		return true;
 	}
 
-	// Check "any" permissions (OR logic)
 	if (permission.any && permission.any.length > 0) {
 		const hasAny = permission.any.some(({ resource, action }) =>
-			roleHasPermission(userRole, resource, action),
+			checkStaticRolePermission(
+				userRole,
+				resource as never,
+				action as never,
+			),
 		);
 		if (hasAny) {
 			return true;
 		}
 	}
 
-	// Check "all" permissions (AND logic)
 	if (permission.all && permission.all.length > 0) {
 		const hasAll = permission.all.every(({ resource, action }) =>
-			roleHasPermission(userRole, resource, action),
+			checkStaticRolePermission(
+				userRole,
+				resource as never,
+				action as never,
+			),
 		);
 		if (hasAll) {
 			return true;
 		}
 	}
 
-	// If neither any nor all passed, deny
-	// (handles case where both are defined but neither matched)
 	if (permission.any || permission.all) {
 		return false;
 	}
@@ -49,9 +47,6 @@ function hasPermission(
 	return true;
 }
 
-/**
- * Recursively filter nav items based on user role permissions.
- */
 function filterNavItems(
 	items: NavItemConfig[],
 	userRole: string,
@@ -64,7 +59,6 @@ function filterNavItems(
 			continue;
 		}
 
-		// Recursively filter children if present
 		const children = item.children
 			? filterNavItems(item.children, userRole)
 			: undefined;
@@ -75,10 +69,6 @@ function filterNavItems(
 	return filtered;
 }
 
-/**
- * Find the first available item path in a module.
- * Used to calculate the defaultPath after filtering.
- */
 function firstItemPath(navModule: NavModuleConfig): string | undefined {
 	for (const section of navModule.sections) {
 		for (const item of section.items) {
@@ -96,12 +86,6 @@ function firstItemPath(navModule: NavModuleConfig): string | undefined {
 	return undefined;
 }
 
-/**
- * Filter navigation configuration based on user role.
- * Removes items the user doesn't have permission to see.
- * Removes empty sections and modules.
- * Recalculates defaultPath for modules based on remaining items.
- */
 export function filterNavigationConfig(
 	config: NavigationConfig,
 	userRole: string,
@@ -120,7 +104,6 @@ export function filterNavigationConfig(
 			sections.push({ ...section, items });
 		}
 
-		// Skip empty modules
 		if (sections.length === 0) {
 			continue;
 		}
@@ -130,7 +113,6 @@ export function filterNavigationConfig(
 			sections,
 		};
 
-		// Recalculate defaultPath to first available item
 		const fallbackPath = firstItemPath(filteredModule);
 		if (fallbackPath) {
 			filteredModule.defaultPath = fallbackPath;

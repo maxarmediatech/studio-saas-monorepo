@@ -18,7 +18,7 @@ export const deleteSavedView = studioProtectedProcedure
 	.input(deleteSavedViewInputSchema)
 	.output(deleteSavedViewOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "booking", "delete");
+		await requirePermission(context, "booking", "delete");
 
 		const { organizationId } = context;
 		const userId = context.user.id;

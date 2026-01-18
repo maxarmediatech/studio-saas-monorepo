@@ -28,7 +28,7 @@ export const listDeliverablesMinimal = studioProtectedProcedure
 	.input(listDeliverablesMinimalInputSchema)
 	.output(listDeliverablesMinimalOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "deliverable", "list");
+		await requirePermission(context, "deliverable", "list");
 
 		const { page, limit, search, bookingId, workflowStatus } = input;
 		const offset = (page - 1) * limit;

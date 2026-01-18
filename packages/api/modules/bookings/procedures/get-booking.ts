@@ -32,7 +32,7 @@ export const getBooking = studioProtectedProcedure
 	.input(getBookingInputSchema)
 	.output(getBookingOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "booking", "read");
+		await requirePermission(context, "booking", "read");
 
 		const { id } = input;
 

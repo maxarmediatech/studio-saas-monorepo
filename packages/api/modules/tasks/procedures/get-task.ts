@@ -27,7 +27,7 @@ export const getTask = studioProtectedProcedure
 	.input(getTaskInputSchema)
 	.output(getTaskOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "task", "read");
+		await requirePermission(context, "task", "read");
 
 		const { id } = input;
 

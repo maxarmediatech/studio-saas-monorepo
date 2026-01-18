@@ -52,7 +52,7 @@ export const getSubmission = studioProtectedProcedure
 			});
 		}
 
-		const canReview = hasPermission(context, "review", "list");
+		const canReview = await hasPermission(context, "review", "list");
 		if (!canReview) {
 			const crew = await db.query.crews.findFirst({
 				where: and(

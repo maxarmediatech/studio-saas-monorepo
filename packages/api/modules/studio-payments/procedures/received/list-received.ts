@@ -35,7 +35,7 @@ export const listReceived = studioProtectedProcedure
 	.input(listReceivedInputSchema)
 	.output(listReceivedOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "payment", "list");
+		await requirePermission(context, "payment", "list");
 
 		const {
 			page,

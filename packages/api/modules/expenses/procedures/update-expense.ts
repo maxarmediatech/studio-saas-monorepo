@@ -32,7 +32,7 @@ export const updateExpense = studioProtectedProcedure
 	.input(updateExpenseInputSchema)
 	.output(updateExpenseOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "expense", "update");
+		await requirePermission(context, "expense", "update");
 
 		const { id, ...updates } = input;
 

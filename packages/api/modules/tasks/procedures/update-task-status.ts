@@ -19,7 +19,7 @@ export const updateTaskStatus = studioProtectedProcedure
 	.input(updateTaskStatusInputSchema)
 	.output(updateTaskStatusOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "task", "update");
+		await requirePermission(context, "task", "update");
 
 		const { id, status } = input;
 

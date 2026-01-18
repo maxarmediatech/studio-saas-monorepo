@@ -52,7 +52,7 @@ export const getTaskStats = studioProtectedProcedure
 	.input(getTaskStatsInputSchema)
 	.output(getTaskStatsOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "task", "list");
+		await requirePermission(context, "task", "list");
 
 		const { bookingId } = input;
 

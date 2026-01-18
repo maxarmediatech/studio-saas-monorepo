@@ -27,7 +27,7 @@ export const getClient = studioProtectedProcedure
 	.input(getClientInputSchema)
 	.output(getClientOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "client", "read");
+		await requirePermission(context, "client", "read");
 
 		const { id } = input;
 

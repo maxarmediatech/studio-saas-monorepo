@@ -64,6 +64,13 @@
       "when": 1768735952633,
       "tag": "0008_wakeful_wolfpack",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1768767517098,
+      "tag": "0009_pale_starfox",
+      "breakpoints": true
     }
   ]
 }

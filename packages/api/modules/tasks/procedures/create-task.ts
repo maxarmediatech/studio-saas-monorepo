@@ -20,7 +20,7 @@ export const createTask = studioProtectedProcedure
 	.input(createTaskInputSchema)
 	.output(createTaskOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "task", "create");
+		await requirePermission(context, "task", "create");
 
 		const {
 			bookingId,

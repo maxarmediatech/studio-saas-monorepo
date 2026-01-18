@@ -1,18 +1,15 @@
-import { roleHasPermission } from "@repo/api/modules/studio/lib/roles";
+import {
+	type AnyAction,
+	checkStaticRolePermission,
+	type Resource,
+} from "@repo/auth/lib/permissions";
 
-/**
- * Check if a role has any of the specified actions for a resource.
- */
-function any(role: string, resource: string, actions: string[]): boolean {
+function any(role: string, resource: Resource, actions: AnyAction[]): boolean {
 	return actions.some((action) =>
-		roleHasPermission(role, resource as never, action as never),
+		checkStaticRolePermission(role, resource, action),
 	);
 }
 
-/**
- * Capabilities for header actions (New button dropdown).
- * Determines what the user can create based on their role.
- */
 export interface HeaderCapabilities {
 	bookingCreateOrUpdate: boolean;
 	shootCreateOrUpdate: boolean;
@@ -24,10 +21,6 @@ export interface HeaderCapabilities {
 	clientCreateOrUpdate: boolean;
 }
 
-/**
- * Get capabilities for a user based on their role.
- * Used to determine which "New" actions are available in the header.
- */
 export function getCapabilities(userRole: string): HeaderCapabilities {
 	return {
 		bookingCreateOrUpdate: any(userRole, "booking", ["create", "update"]),
@@ -44,10 +37,6 @@ export function getCapabilities(userRole: string): HeaderCapabilities {
 	};
 }
 
-/**
- * Select only the capabilities needed for the header.
- * Keeps the serialized props small.
- */
 export function selectHeaderCaps(caps: HeaderCapabilities): HeaderCapabilities {
 	return {
 		bookingCreateOrUpdate: caps.bookingCreateOrUpdate,

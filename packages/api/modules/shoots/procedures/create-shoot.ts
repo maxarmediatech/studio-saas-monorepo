@@ -20,7 +20,7 @@ export const createShoot = studioProtectedProcedure
 	.input(createShootInputSchema)
 	.output(createShootOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "shoot", "create");
+		await requirePermission(context, "shoot", "create");
 
 		const {
 			bookingId,

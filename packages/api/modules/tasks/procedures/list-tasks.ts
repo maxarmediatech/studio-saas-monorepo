@@ -31,7 +31,7 @@ export const listTasks = studioProtectedProcedure
 	.input(listTasksInputSchema)
 	.output(listTasksOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "task", "list");
+		await requirePermission(context, "task", "list");
 
 		const {
 			bookingId,

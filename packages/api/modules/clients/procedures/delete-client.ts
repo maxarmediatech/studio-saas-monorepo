@@ -19,7 +19,7 @@ export const deleteClient = studioProtectedProcedure
 	.input(deleteClientInputSchema)
 	.output(deleteClientOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "client", "delete");
+		await requirePermission(context, "client", "delete");
 
 		const { id } = input;
 

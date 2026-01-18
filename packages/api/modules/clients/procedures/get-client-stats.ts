@@ -28,7 +28,7 @@ export const getClientStats = studioProtectedProcedure
 	.input(getClientStatsInputSchema)
 	.output(getClientStatsOutputSchema)
 	.handler(async ({ input: _input, context }) => {
-		requirePermission(context, "client", "list");
+		await requirePermission(context, "client", "list");
 
 		// Total clients (non-deleted)
 		const [totalResult] = await db

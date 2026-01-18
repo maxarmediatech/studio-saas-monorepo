@@ -52,7 +52,7 @@ export const getShootStats = studioProtectedProcedure
 	.input(getShootStatsInputSchema)
 	.output(getShootStatsOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "shoot", "list");
+		await requirePermission(context, "shoot", "list");
 
 		const { bookingId } = input;
 

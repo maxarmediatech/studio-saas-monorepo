@@ -63,7 +63,7 @@ export const getPaymentStats = studioProtectedProcedure
 	.input(getPaymentStatsInputSchema)
 	.output(getPaymentStatsOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "payment", "list");
+		await requirePermission(context, "payment", "list");
 
 		const { bookingId } = input;
 

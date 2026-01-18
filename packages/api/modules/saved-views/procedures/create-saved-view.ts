@@ -17,7 +17,7 @@ export const createSavedView = studioProtectedProcedure
 	.input(createSavedViewInputSchema)
 	.output(createSavedViewOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "booking", "create");
+		await requirePermission(context, "booking", "create");
 
 		const { organizationId } = context;
 		const userId = context.user.id;

@@ -29,7 +29,7 @@ export const convertSchedule = studioProtectedProcedure
 	.input(convertScheduleInputSchema)
 	.output(convertScheduleOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "payment", "create");
+		await requirePermission(context, "payment", "create");
 
 		const {
 			scheduleId,

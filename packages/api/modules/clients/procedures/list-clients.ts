@@ -19,7 +19,7 @@ export const listClients = studioProtectedProcedure
 	.input(listClientsInputSchema)
 	.output(listClientsOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "client", "list");
+		await requirePermission(context, "client", "list");
 
 		const { search, sortBy, sortDirection, page, limit, includeDeleted } =
 			input;

@@ -27,7 +27,7 @@ export const getReceived = studioProtectedProcedure
 	.input(getReceivedInputSchema)
 	.output(getReceivedOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "payment", "read");
+		await requirePermission(context, "payment", "read");
 
 		const { id } = input;
 

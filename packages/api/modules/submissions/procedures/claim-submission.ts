@@ -19,7 +19,7 @@ export const claimSubmission = studioProtectedProcedure
 	.input(claimSubmissionInputSchema)
 	.output(claimSubmissionOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "review", "claim");
+		await requirePermission(context, "review", "claim");
 
 		const { id } = input;
 

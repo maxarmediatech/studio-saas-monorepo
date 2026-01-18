@@ -28,7 +28,7 @@ export const listCrews = studioProtectedProcedure
 	.input(listCrewsInputSchema)
 	.output(listCrewsOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "crew", "list");
+		await requirePermission(context, "crew", "list");
 
 		const {
 			role,

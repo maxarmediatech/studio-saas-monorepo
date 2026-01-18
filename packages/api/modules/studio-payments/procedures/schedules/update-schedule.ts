@@ -25,7 +25,7 @@ export const updateSchedule = studioProtectedProcedure
 	.input(updateScheduleInputSchema)
 	.output(updateScheduleOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "payment", "update");
+		await requirePermission(context, "payment", "update");
 
 		const { id, ...updates } = input;
 

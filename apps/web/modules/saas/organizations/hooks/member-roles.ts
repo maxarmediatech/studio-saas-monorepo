@@ -5,8 +5,14 @@ export function useOrganizationMemberRoles() {
 	const t = useTranslations();
 
 	return {
-		member: t("organizations.roles.member"),
 		owner: t("organizations.roles.owner"),
 		admin: t("organizations.roles.admin"),
+		manager: t("organizations.roles.manager"),
+		post_production_manager: t(
+			"organizations.roles.post_production_manager",
+		),
+		hr: t("organizations.roles.hr"),
+		member: t("organizations.roles.member"),
+		crew: t("organizations.roles.crew"),
 	} satisfies Record<OrganizationMemberRole, string>;
 }

@@ -1,28 +1,9 @@
-/**
- * RBAC Permission Helpers for Studio Domain
- *
- * This module provides permission checking utilities for studio domain procedures.
- *
- * USAGE:
- * - Use `requirePermission()` in every mutation procedure (throws on denied)
- * - Use `hasPermission()` for conditional logic without throwing
- */
-
 import { ORPCError } from "@orpc/server";
-import {
-	type AnyAction,
-	type AppRole,
-	type Resource,
-	roleHasPermission,
-	roles,
-} from "./roles";
-
-// ============================================================================
-// CONTEXT TYPE
-// The context shape expected from studioProtectedProcedure
-// ============================================================================
+import { auth } from "@repo/auth";
+import type { Action, AnyAction, Resource } from "@repo/auth/lib/permissions";
 
 export interface StudioContext {
+	headers: Headers;
 	organizationId: string;
 	membership: {
 		id: string;
@@ -46,72 +27,44 @@ export interface StudioContext {
 	};
 }
 
-// ============================================================================
-// PERMISSION HELPERS
-// ============================================================================
-
-/**
- * Check if the current user has permission to perform an action on a resource.
- * Does NOT throw - returns boolean.
- *
- * @example
- * if (hasPermission(context, "booking", "delete")) {
- *   // Show delete button
- * }
- */
-export function hasPermission(
-	context: Pick<StudioContext, "membership">,
-	resource: Resource,
-	action: AnyAction,
-): boolean {
-	return roleHasPermission(context.membership.role, resource, action);
+export async function hasPermission<R extends Resource>(
+	context: Pick<StudioContext, "headers">,
+	resource: R,
+	action: Action<R>,
+): Promise<boolean> {
+	const result = await auth.api.hasPermission({
+		headers: context.headers,
+		body: {
+			permission: { [resource]: [action] },
+		},
+	});
+	return !!result?.success;
 }
 
-/**
- * Require permission to perform an action on a resource.
- * Throws FORBIDDEN if permission is denied.
- *
- * MUST be called at the start of every mutation procedure.
- *
- * @example
- * export const createBooking = studioProtectedProcedure
- *   .input(createBookingSchema)
- *   .handler(async ({ input, context }) => {
- *     requirePermission(context, "booking", "create");
- *     // ... rest of handler
- *   });
- */
-export function requirePermission(
-	context: Pick<StudioContext, "membership">,
-	resource: Resource,
-	action: AnyAction,
-): void {
-	if (!hasPermission(context, resource, action)) {
+export async function requirePermission<R extends Resource>(
+	context: Pick<StudioContext, "headers">,
+	resource: R,
+	action: Action<R>,
+): Promise<void> {
+	const allowed = await hasPermission(context, resource, action);
+	if (!allowed) {
 		throw new ORPCError("FORBIDDEN", {
 			message: `Permission denied: cannot ${action} ${resource}`,
 		});
 	}
 }
 
-/**
- * Require one of multiple permissions (OR logic).
- * Throws FORBIDDEN if none of the permissions are granted.
- *
- * @example
- * requireAnyPermission(context, [
- *   { resource: "task", action: "review" },
- *   { resource: "deliverable", action: "review" },
- * ]);
- */
-export function requireAnyPermission(
-	context: Pick<StudioContext, "membership">,
+export async function requireAnyPermission(
+	context: Pick<StudioContext, "headers">,
 	permissions: Array<{ resource: Resource; action: AnyAction }>,
-): void {
-	const hasAny = permissions.some(({ resource, action }) =>
-		hasPermission(context, resource, action),
+): Promise<void> {
+	const results = await Promise.all(
+		permissions.map(({ resource, action }) =>
+			hasPermission(context, resource, action as Action<typeof resource>),
+		),
 	);
 
-	if (!hasAny) {
+	if (!results.some(Boolean)) {
 		const permStr = permissions
 			.map(({ resource, action }) => `${action} ${resource}`)
 			.join(" or ");
@@ -121,49 +74,17 @@ export function requireAnyPermission(
 	}
 }
 
-/**
- * Require all of multiple permissions (AND logic).
- * Throws FORBIDDEN if any permission is denied.
- *
- * @example
- * requireAllPermissions(context, [
- *   { resource: "booking", action: "read" },
- *   { resource: "shoot", action: "assign" },
- * ]);
- */
-export function requireAllPermissions(
-	context: Pick<StudioContext, "membership">,
+export async function requireAllPermissions(
+	context: Pick<StudioContext, "headers">,
 	permissions: Array<{ resource: Resource; action: AnyAction }>,
-): void {
+): Promise<void> {
 	for (const { resource, action } of permissions) {
-		requirePermission(context, resource, action);
+		await requirePermission(
+			context,
+			resource,
+			action as Action<typeof resource>,
+		);
 	}
 }
 
-/**
- * Get all permissions for the current user's role.
- * Useful for sending to the client for UI permission checks.
- *
- * @example
- * return {
- *   data: booking,
- *   permissions: getPermissionsForRole(context.membership.role),
- * };
- */
-export function getPermissionsForRole(role: string): Record<string, string[]> {
-	const rolePermissions = roles[role as AppRole];
-
-	if (!rolePermissions) {
-		return {};
-	}
-
-	// Convert readonly arrays to mutable for JSON serialization
-	const result: Record<string, string[]> = {};
-	for (const [resource, actions] of Object.entries(rolePermissions)) {
-		if (actions) {
-			result[resource] = [...(actions as readonly string[])];
-		}
-	}
-
-	return result;
-}
+export type { Action, AnyAction, Resource } from "@repo/auth/lib/permissions";

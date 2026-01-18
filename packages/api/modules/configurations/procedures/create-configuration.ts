@@ -19,7 +19,7 @@ export const createConfiguration = studioProtectedProcedure
 	.input(createConfigurationInputSchema)
 	.output(createConfigurationOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "configuration", "create");
+		await requirePermission(context, "configuration", "create");
 
 		const {
 			type,

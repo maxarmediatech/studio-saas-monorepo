@@ -19,7 +19,7 @@ export const deleteTask = studioProtectedProcedure
 	.input(deleteTaskInputSchema)
 	.output(deleteTaskOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "task", "delete");
+		await requirePermission(context, "task", "delete");
 
 		const { id } = input;
 

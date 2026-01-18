@@ -19,7 +19,7 @@ export const deleteShoot = studioProtectedProcedure
 	.input(deleteShootInputSchema)
 	.output(deleteShootOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "shoot", "delete");
+		await requirePermission(context, "shoot", "delete");
 
 		const { id } = input;
 

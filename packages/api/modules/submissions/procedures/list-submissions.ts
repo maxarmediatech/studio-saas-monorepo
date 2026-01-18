@@ -34,7 +34,7 @@ export const listSubmissions = studioProtectedProcedure
 	.input(listSubmissionsInputSchema)
 	.output(listSubmissionsOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "review", "list");
+		await requirePermission(context, "review", "list");
 
 		const {
 			page,

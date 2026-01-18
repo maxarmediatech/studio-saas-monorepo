@@ -19,7 +19,7 @@ export const updateConfiguration = studioProtectedProcedure
 	.input(updateConfigurationInputSchema)
 	.output(updateConfigurationOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "configuration", "update");
+		await requirePermission(context, "configuration", "update");
 
 		const {
 			id,

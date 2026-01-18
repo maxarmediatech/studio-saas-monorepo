@@ -30,7 +30,7 @@ export const submitDeliverable = studioProtectedProcedure
 	.input(submitDeliverableInputSchema)
 	.output(submitDeliverableOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "deliverable", "submit");
+		await requirePermission(context, "deliverable", "submit");
 
 		const { deliverableId, submissionNote, submissionLinks, files } = input;
 

@@ -62,7 +62,7 @@ export const getExpenseStats = studioProtectedProcedure
 	.input(getExpenseStatsInputSchema)
 	.output(getExpenseStatsOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "expense", "list");
+		await requirePermission(context, "expense", "list");
 
 		const { bookingId, dateFrom, dateTo } = input;
 

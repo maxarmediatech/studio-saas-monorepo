@@ -35,7 +35,7 @@ export const listDeliverables = studioProtectedProcedure
 	.input(listDeliverablesInputSchema)
 	.output(listDeliverablesOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "deliverable", "list");
+		await requirePermission(context, "deliverable", "list");
 
 		const {
 			page,

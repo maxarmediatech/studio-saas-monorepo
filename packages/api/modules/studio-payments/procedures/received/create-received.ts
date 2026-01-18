@@ -28,7 +28,7 @@ export const createReceived = studioProtectedProcedure
 	.input(createReceivedInputSchema)
 	.output(createReceivedOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "payment", "create");
+		await requirePermission(context, "payment", "create");
 
 		const {
 			bookingId,

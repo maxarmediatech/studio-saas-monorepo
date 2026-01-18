@@ -19,7 +19,7 @@ export const unassignCrew = studioProtectedProcedure
 	.input(unassignCrewInputSchema)
 	.output(unassignCrewOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "shoot", "assign");
+		await requirePermission(context, "shoot", "assign");
 
 		const { shootId, crewId } = input;
 

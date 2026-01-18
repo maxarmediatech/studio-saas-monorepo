@@ -24,7 +24,7 @@ export const listSavedViews = studioProtectedProcedure
 	.input(listSavedViewsInputSchema)
 	.output(listSavedViewsOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "booking", "list");
+		await requirePermission(context, "booking", "list");
 
 		const { entityType } = input;
 		const { organizationId } = context;

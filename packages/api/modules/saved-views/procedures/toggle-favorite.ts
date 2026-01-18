@@ -18,7 +18,7 @@ export const toggleFavorite = studioProtectedProcedure
 	.input(toggleFavoriteInputSchema)
 	.output(toggleFavoriteOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "booking", "list");
+		await requirePermission(context, "booking", "list");
 
 		const { organizationId } = context;
 		const userId = context.user.id;

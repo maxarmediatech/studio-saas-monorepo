@@ -19,7 +19,7 @@ export const updateClient = studioProtectedProcedure
 	.input(updateClientInputSchema)
 	.output(updateClientOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "client", "update");
+		await requirePermission(context, "client", "update");
 
 		const {
 			id,

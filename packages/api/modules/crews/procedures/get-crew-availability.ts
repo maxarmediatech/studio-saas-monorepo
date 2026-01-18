@@ -28,7 +28,7 @@ export const getCrewAvailability = studioProtectedProcedure
 	.input(getCrewAvailabilityInputSchema)
 	.output(getCrewAvailabilityOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "crew", "list");
+		await requirePermission(context, "crew", "list");
 
 		const { crewIds, startDate, endDate } = input;
 

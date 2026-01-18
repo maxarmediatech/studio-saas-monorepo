@@ -33,7 +33,7 @@ export const listExpenses = studioProtectedProcedure
 	.input(listExpensesInputSchema)
 	.output(listExpensesOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "expense", "list");
+		await requirePermission(context, "expense", "list");
 
 		const {
 			page,

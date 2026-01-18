@@ -28,7 +28,7 @@ export const deleteExpense = studioProtectedProcedure
 	.input(deleteExpenseInputSchema)
 	.output(deleteExpenseOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "expense", "delete");
+		await requirePermission(context, "expense", "delete");
 
 		const { id } = input;
 

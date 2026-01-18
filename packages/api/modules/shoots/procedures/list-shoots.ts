@@ -31,7 +31,7 @@ export const listShoots = studioProtectedProcedure
 	.input(listShootsInputSchema)
 	.output(listShootsOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "shoot", "list");
+		await requirePermission(context, "shoot", "list");
 
 		const {
 			bookingId,

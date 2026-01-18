@@ -19,7 +19,7 @@ export const listConfigurations = studioProtectedProcedure
 	.input(listConfigurationsInputSchema)
 	.output(listConfigurationsOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "configuration", "list");
+		await requirePermission(context, "configuration", "list");
 
 		const { type, search, sortBy, sortDirection, page, limit } = input;
 		const offset = (page - 1) * limit;

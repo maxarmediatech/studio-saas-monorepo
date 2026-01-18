@@ -334,9 +334,13 @@
 			"title": "Your studios"
 		},
 		"roles": {
+			"owner": "Owner",
 			"admin": "Admin",
+			"manager": "Manager",
+			"post_production_manager": "Post-Production Manager",
+			"hr": "HR",
 			"member": "Member",
-			"owner": "Owner"
+			"crew": "Crew"
 		},
 		"settings": {
 			"changeName": {

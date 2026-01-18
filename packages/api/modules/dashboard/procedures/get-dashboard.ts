@@ -40,7 +40,7 @@ export const getDashboard = studioProtectedProcedure
 	.input(getDashboardInputSchema)
 	.output(getDashboardOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "booking", "read");
+		await requirePermission(context, "booking", "read");
 
 		const { dateRange } = input;
 

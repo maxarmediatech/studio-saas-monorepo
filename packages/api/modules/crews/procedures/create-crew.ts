@@ -19,7 +19,7 @@ export const createCrew = studioProtectedProcedure
 	.input(createCrewInputSchema)
 	.output(createCrewOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "crew", "create");
+		await requirePermission(context, "crew", "create");
 
 		const { name, email, phoneNumber, role, status, dailyRate, metadata } =
 			input;

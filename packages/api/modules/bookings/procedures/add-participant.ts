@@ -27,7 +27,7 @@ export const addParticipant = studioProtectedProcedure
 	.input(addParticipantInputSchema)
 	.output(addParticipantOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "booking", "update");
+		await requirePermission(context, "booking", "update");
 
 		const { bookingId, clientId, role } = input;
 

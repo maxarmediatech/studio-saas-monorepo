@@ -31,7 +31,7 @@ export const assignCrewToTask = studioProtectedProcedure
 	.input(assignCrewToTaskInputSchema)
 	.output(assignCrewToTaskOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "task", "assign");
+		await requirePermission(context, "task", "assign");
 
 		const { taskId, crewId } = input;
 

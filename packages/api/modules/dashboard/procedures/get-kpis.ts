@@ -34,7 +34,7 @@ export const getKpis = studioProtectedProcedure
 	.input(getKpisInputSchema)
 	.output(getKpisOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "booking", "read");
+		await requirePermission(context, "booking", "read");
 
 		const { dateRange } = input;
 

@@ -22,7 +22,7 @@ export const seedConfigurations = studioProtectedProcedure
 	.input(seedConfigurationsInputSchema)
 	.output(seedConfigurationsOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "configuration", "create");
+		await requirePermission(context, "configuration", "create");
 
 		const typesToSeed =
 			input.types ?? (Object.keys(defaultConfigurations) as ConfigType[]);

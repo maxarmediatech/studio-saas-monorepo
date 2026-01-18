@@ -39,7 +39,7 @@ export const getQuickActions = studioProtectedProcedure
 	.input(getQuickActionsInputSchema)
 	.output(getQuickActionsOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "booking", "read");
+		await requirePermission(context, "booking", "read");
 
 		const { limit } = input;
 

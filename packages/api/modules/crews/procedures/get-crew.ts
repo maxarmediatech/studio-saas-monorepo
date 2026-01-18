@@ -32,7 +32,7 @@ export const getCrew = studioProtectedProcedure
 	.input(getCrewInputSchema)
 	.output(getCrewOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "crew", "read");
+		await requirePermission(context, "crew", "read");
 
 		const { id } = input;
 

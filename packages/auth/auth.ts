@@ -31,6 +31,7 @@ import {
 } from "better-auth/plugins";
 import { parse as parseCookies } from "cookie";
 import { updateSeatsInOrganizationSubscription } from "./lib/organization";
+import { ac, appRoles } from "./lib/permissions";
 import { invitationOnlyPlugin } from "./plugins/invitation-only";
 
 type RequestLike =
@@ -233,11 +234,9 @@ export const auth = betterAuth({
 				await updateSeatsInOrganizationSubscription(organizationId);
 			}
 
-			const sessionCookieHeader = ctx.context.responseHeaders?.get(
-				"set-cookie",
-			);
-			const sessionTokenName =
-				ctx.context.authCookies.sessionToken.name;
+			const sessionCookieHeader =
+				ctx.context.responseHeaders?.get("set-cookie");
+			const sessionTokenName = ctx.context.authCookies.sessionToken.name;
 
 			if (!sessionCookieHeader?.includes(sessionTokenName)) {
 				return;
@@ -249,15 +248,11 @@ export const auth = betterAuth({
 			const activeOrganizationId = session?.activeOrganizationId;
 
 			if (!userId || !config.organizations.enable) {
-				ctx.setCookie(
-					"activeOrganizationSlug",
-					"",
-					{
-						...ctx.context.authCookies.sessionToken.options,
-						httpOnly: false,
-						maxAge: 0,
-					},
-				);
+				ctx.setCookie("activeOrganizationSlug", "", {
+					...ctx.context.authCookies.sessionToken.options,
+					httpOnly: false,
+					maxAge: 0,
+				});
 				return;
 			}
 
@@ -268,30 +263,21 @@ export const auth = betterAuth({
 							member.organizationId === activeOrganizationId,
 					)
 				: memberships[0];
-			const activeOrganizationSlug =
-				activeMembership?.organization?.slug;
+			const activeOrganizationSlug = activeMembership?.organization?.slug;
 
 			if (!activeOrganizationSlug) {
-				ctx.setCookie(
-					"activeOrganizationSlug",
-					"",
-					{
-						...ctx.context.authCookies.sessionToken.options,
-						httpOnly: false,
-						maxAge: 0,
-					},
-				);
+				ctx.setCookie("activeOrganizationSlug", "", {
+					...ctx.context.authCookies.sessionToken.options,
+					httpOnly: false,
+					maxAge: 0,
+				});
 				return;
 			}
 
-			ctx.setCookie(
-				"activeOrganizationSlug",
-				activeOrganizationSlug,
-				{
-					...ctx.context.authCookies.sessionToken.options,
-					httpOnly: false,
-				},
-			);
+			ctx.setCookie("activeOrganizationSlug", activeOrganizationSlug, {
+				...ctx.context.authCookies.sessionToken.options,
+				httpOnly: false,
+			});
 		}),
 		before: createAuthMiddleware(async (ctx) => {
 			if (
@@ -425,6 +411,27 @@ export const auth = betterAuth({
 			},
 		}),
 		organization({
+			ac,
+			roles: appRoles,
+			dynamicAccessControl: {
+				enabled: true,
+				maximumRolesPerOrganization: 20,
+			},
+			schema: {
+				organizationRole: {
+					additionalFields: {
+						description: {
+							type: "string",
+							required: false,
+						},
+						color: {
+							type: "string",
+							required: false,
+							defaultValue: "#6366f1",
+						},
+					},
+				},
+			},
 			sendInvitationEmail: async (
 				{ email, id, organization },
 				request,

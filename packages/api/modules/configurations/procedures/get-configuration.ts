@@ -18,7 +18,7 @@ export const getConfiguration = studioProtectedProcedure
 	.input(getConfigurationInputSchema)
 	.output(getConfigurationOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "configuration", "read");
+		await requirePermission(context, "configuration", "read");
 
 		const config = await db.query.configurations.findFirst({
 			where: and(

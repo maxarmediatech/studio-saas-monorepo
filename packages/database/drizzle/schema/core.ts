@@ -1,6 +1,7 @@
 import { relations } from "drizzle-orm";
 import {
 	boolean,
+	index,
 	pgTable,
 	text,
 	timestamp,
@@ -79,6 +80,36 @@ export const invitations = pgTable("invitations", {
 		.references(() => users.id, { onDelete: "cascade" }),
 });
 
+/**
+ * Organization Roles table for Better Auth Dynamic Access Control
+ * Stores custom roles created by organizations at runtime
+ */
+export const organizationRoles = pgTable(
+	"organization_roles",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		organizationId: text("organization_id")
+			.notNull()
+			.references(() => organizations.id, { onDelete: "cascade" }),
+		role: text("role").notNull(),
+		permission: text("permission").notNull(),
+		description: text("description"),
+		color: text("color").default("#6366f1"),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.$onUpdate(() => new Date()),
+	},
+	(table) => [
+		index("organization_roles_org_id_idx").on(table.organizationId),
+		index("organization_roles_role_idx").on(table.role),
+	],
+);
+
 // ============================================================================
 // BILLING TABLES
 // SaaS subscription and payment management
@@ -144,9 +175,6 @@ export const userRelations = relations(users, ({ many }) => ({
 	purchases: many(purchases),
 }));
 
-/**
- * Member relations
- */
 export const memberRelations = relations(members, ({ one }) => ({
 	organization: one(organizations, {
 		fields: [members.organizationId],
@@ -158,9 +186,17 @@ export const memberRelations = relations(members, ({ one }) => ({
 	}),
 }));
 
-/**
- * Invitation relations
- */
+export const purchaseRelations = relations(purchases, ({ one }) => ({
+	organization: one(organizations, {
+		fields: [purchases.organizationId],
+		references: [organizations.id],
+	}),
+	user: one(users, {
+		fields: [purchases.userId],
+		references: [users.id],
+	}),
+}));
+
 export const invitationRelations = relations(invitations, ({ one }) => ({
 	organization: one(organizations, {
 		fields: [invitations.organizationId],
@@ -172,16 +208,12 @@ export const invitationRelations = relations(invitations, ({ one }) => ({
 	}),
 }));
 
-/**
- * Purchase relations
- */
-export const purchaseRelations = relations(purchases, ({ one }) => ({
-	organization: one(organizations, {
-		fields: [purchases.organizationId],
-		references: [organizations.id],
+export const organizationRoleRelations = relations(
+	organizationRoles,
+	({ one }) => ({
+		organization: one(organizations, {
+			fields: [organizationRoles.organizationId],
+			references: [organizations.id],
+		}),
 	}),
-	user: one(users, {
-		fields: [purchases.userId],
-		references: [users.id],
-	}),
-}));
+);

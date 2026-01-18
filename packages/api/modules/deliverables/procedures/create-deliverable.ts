@@ -20,7 +20,7 @@ export const createDeliverable = studioProtectedProcedure
 	.input(createDeliverableInputSchema)
 	.output(createDeliverableOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "deliverable", "create");
+		await requirePermission(context, "deliverable", "create");
 
 		const {
 			bookingId,

@@ -42,7 +42,7 @@ export const getOperations = studioProtectedProcedure
 	.input(getOperationsInputSchema)
 	.output(getOperationsOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "booking", "read");
+		await requirePermission(context, "booking", "read");
 
 		const { limit } = input;
 

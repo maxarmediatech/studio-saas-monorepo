@@ -19,7 +19,7 @@ export const updateBooking = studioProtectedProcedure
 	.input(updateBookingInputSchema)
 	.output(updateBookingOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "booking", "update");
+		await requirePermission(context, "booking", "update");
 
 		const {
 			id,

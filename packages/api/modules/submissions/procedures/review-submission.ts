@@ -27,7 +27,7 @@ export const reviewSubmission = studioProtectedProcedure
 	.input(reviewSubmissionInputSchema)
 	.output(reviewSubmissionOutputSchema)
 	.handler(async ({ input, context }) => {
-		requirePermission(context, "review", "review");
+		await requirePermission(context, "review", "review");
 
 		const { id, decision, reviewNote } = input;
 
