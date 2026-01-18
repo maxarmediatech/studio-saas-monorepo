@@ -17,6 +17,7 @@ import {
 	nameSchema,
 	paginationSchema,
 	searchSchema,
+	uploadedAttachmentSchema,
 	workflowStatusSchema,
 } from "./common";
 
@@ -300,12 +301,34 @@ export type UpdateTaskStatusOutput = z.infer<
 >;
 
 // ============================================================================
+// UPDATE TASK ASSIGNMENT STATUS (ASSIGNEE)
+// ============================================================================
+
+export const updateTaskAssignmentStatusInputSchema = z.object({
+	id: idSchema,
+	status: z.enum(["blocked"]),
+	note: z.string().max(5000).optional(),
+});
+
+export type UpdateTaskAssignmentStatusInput = z.infer<
+	typeof updateTaskAssignmentStatusInputSchema
+>;
+
+export const updateTaskAssignmentStatusOutputSchema = mutationResponseSchema;
+
+export type UpdateTaskAssignmentStatusOutput = z.infer<
+	typeof updateTaskAssignmentStatusOutputSchema
+>;
+
+// ============================================================================
 // SUBMIT TASK
 // ============================================================================
 
 export const submitTaskInputSchema = z.object({
 	taskId: idSchema,
 	submissionNote: z.string().max(5000).optional(),
+	submissionLinks: z.array(z.string().url()).optional(),
+	files: z.array(uploadedAttachmentSchema).optional(),
 });
 
 export type SubmitTaskInput = z.infer<typeof submitTaskInputSchema>;

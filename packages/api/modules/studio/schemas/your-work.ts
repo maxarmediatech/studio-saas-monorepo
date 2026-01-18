@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { paginationResponseSchema, paginationSchema } from "./common";
+import {
+	paginationResponseSchema,
+	paginationSchema,
+	workflowStatusSchema,
+} from "./common";
 
 // ============================================================================
 // YOUR WORK SCHEMAS
@@ -30,6 +34,7 @@ export const yourWorkItemSchema = z.object({
 	entityId: z.string(),
 	name: z.string(),
 	status: z.string().nullable(),
+	workflowStatus: workflowStatusSchema.nullable(),
 	date: z.string().nullable(),
 	bookingId: z.string().nullable(),
 	bookingName: z.string().nullable(),

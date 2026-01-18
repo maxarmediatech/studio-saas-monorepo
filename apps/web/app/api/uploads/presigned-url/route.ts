@@ -12,6 +12,7 @@ const UPLOAD_CONTEXTS = {
 	contracts: "contracts",
 	payments: "payments",
 	deliverables: "deliverables",
+	submissions: "submissions",
 	shoots: "shoots",
 	receipts: "receipts",
 	documents: "documents",
@@ -35,6 +36,7 @@ const MAX_FILE_SIZES: Record<UploadContext, number> = {
 	receipts: 5 * 1024 * 1024, // 5MB
 	documents: 25 * 1024 * 1024, // 25MB
 	deliverables: 100 * 1024 * 1024, // 100MB (TBD)
+	submissions: 100 * 1024 * 1024, // 100MB (TBD)
 	shoots: 100 * 1024 * 1024, // 100MB (TBD)
 	avatars: 2 * 1024 * 1024, // 2MB
 	"org-logos": 2 * 1024 * 1024, // 2MB
@@ -47,6 +49,13 @@ const ALLOWED_MIME_TYPES: Record<UploadContext, string[]> = {
 	contracts: ["application/pdf", "image/jpeg", "image/png", "image/webp"],
 	payments: ["application/pdf", "image/jpeg", "image/png", "image/webp"],
 	deliverables: [
+		"application/pdf",
+		"image/jpeg",
+		"image/png",
+		"video/mp4",
+		"application/zip",
+	],
+	submissions: [
 		"application/pdf",
 		"image/jpeg",
 		"image/png",
@@ -97,6 +106,7 @@ const presignedUrlInputSchema = z.object({
 		"contracts",
 		"payments",
 		"deliverables",
+		"submissions",
 		"shoots",
 		"receipts",
 		"documents",

@@ -99,6 +99,14 @@ export const studioQueryKeys = {
 		unreadCount: () =>
 			["studio", "notifications", "unread-count"] as const,
 	},
+	// Submissions (review queue)
+	submissions: {
+		all: ["studio", "submissions"] as const,
+		list: (filters?: Record<string, unknown>) =>
+			["studio", "submissions", "list", filters] as const,
+		detail: (id: string) =>
+			["studio", "submissions", "detail", id] as const,
+	},
 } as const;
 
 // ============================================================================
@@ -294,6 +302,8 @@ export const tasksMutations = {
 	update: () => orpc.tasks.update.mutationOptions(),
 	delete: () => orpc.tasks.delete.mutationOptions(),
 	updateStatus: () => orpc.tasks.updateStatus.mutationOptions(),
+	updateAssignmentStatus: () =>
+		orpc.tasks.updateAssignmentStatus.mutationOptions(),
 	assign: () => orpc.tasks.assign.mutationOptions(),
 	unassign: () => orpc.tasks.unassign.mutationOptions(),
 	submit: () => orpc.tasks.submit.mutationOptions(),
@@ -333,7 +343,29 @@ export const deliverablesMutations = {
 	assign: () => orpc.deliverables.assign.mutationOptions(),
 	unassign: () => orpc.deliverables.unassign.mutationOptions(),
 	convertToTask: () => orpc.deliverables.convertToTask.mutationOptions(),
+	updateAssignmentStatus: () =>
+		orpc.deliverables.updateAssignmentStatus.mutationOptions(),
 	submit: () => orpc.deliverables.submit.mutationOptions(),
+};
+
+// ============================================================================
+// SUBMISSIONS QUERY OPTIONS
+// ============================================================================
+
+export const submissionsApi = {
+	listOptions: (
+		input?: Parameters<
+			typeof orpc.submissions.list.queryOptions
+		>[0]["input"],
+	) => orpc.submissions.list.queryOptions({ input: input ?? {} }),
+
+	getOptions: (id: string) =>
+		orpc.submissions.get.queryOptions({ input: { id } }),
+};
+
+export const submissionsMutations = {
+	claim: () => orpc.submissions.claim.mutationOptions(),
+	review: () => orpc.submissions.review.mutationOptions(),
 };
 
 // ============================================================================

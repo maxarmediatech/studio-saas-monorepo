@@ -7,6 +7,7 @@ import { listTasks } from "./procedures/list-tasks";
 import { submitTask } from "./procedures/submit-task";
 import { unassignCrewFromTask } from "./procedures/unassign-crew";
 import { updateTask } from "./procedures/update-task";
+import { updateTaskAssignmentStatus } from "./procedures/update-task-assignment-status";
 import { updateTaskStatus } from "./procedures/update-task-status";
 
 export const tasksRouter = {
@@ -19,5 +20,6 @@ export const tasksRouter = {
 	assign: assignCrewToTask,
 	unassign: unassignCrewFromTask,
 	updateStatus: updateTaskStatus,
+	updateAssignmentStatus: updateTaskAssignmentStatus,
 	submit: submitTask,
 };

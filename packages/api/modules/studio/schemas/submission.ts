@@ -58,6 +58,7 @@ export const submissionSchema = z.object({
 	submittedBy: idSchema,
 	status: submissionStatusSchema,
 	submissionNote: z.string().nullable(),
+	submissionLinks: z.array(z.string().url()).nullable(),
 	submittedAt: z.string().nullable(),
 	reviewedBy: idSchema.nullable(),
 	reviewedAt: z.string().nullable(),

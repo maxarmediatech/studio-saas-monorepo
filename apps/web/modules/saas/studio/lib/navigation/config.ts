@@ -66,6 +66,17 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							},
 						},
 						{
+							id: "reviews",
+							label: "Review Queue",
+							path: url("/reviews"),
+							icon: "Inbox",
+							permission: {
+								any: [
+									{ resource: "review", action: "list" },
+								],
+							},
+						},
+						{
 							id: "stickies",
 							label: "Stickies",
 							path: url("/stickies"),
