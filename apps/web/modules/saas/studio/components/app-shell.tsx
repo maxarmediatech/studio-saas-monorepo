@@ -1,4 +1,9 @@
 import type { ActiveOrganization, Session } from "@repo/auth";
+import {
+	type CustomRolePermissions,
+	isStaticRole,
+} from "@repo/auth/lib/permissions";
+import { db } from "@repo/database";
 import type { ReactNode } from "react";
 import { getCapabilities, selectHeaderCaps } from "../lib/capability.server";
 import { getNavigationConfig } from "../lib/navigation/config";
@@ -12,28 +17,52 @@ interface AppShellProps {
 	activeOrganization: ActiveOrganization;
 }
 
-/**
- * Server component that filters navigation and capabilities based on user role.
- */
+async function getCustomRolePermissions(
+	organizationId: string,
+	role: string,
+): Promise<CustomRolePermissions | undefined> {
+	if (isStaticRole(role)) {
+		return undefined;
+	}
+
+	const customRole = await db.query.organizationRoles.findFirst({
+		where: (roles, { and, eq }) =>
+			and(eq(roles.organizationId, organizationId), eq(roles.role, role)),
+	});
+
+	if (!customRole) {
+		return undefined;
+	}
+
+	try {
+		return JSON.parse(customRole.permission) as CustomRolePermissions;
+	} catch {
+		return undefined;
+	}
+}
+
 export async function AppShell({
 	children,
 	session,
 	activeOrganization,
 }: AppShellProps) {
-	// Get user's role from organization membership
 	const userMembership = activeOrganization.members.find(
 		(member) => member.userId === session.user.id,
 	);
 	const userRole = userMembership?.role ?? "member";
 
-	// Get and filter navigation based on role
+	const customRolePermissions = await getCustomRolePermissions(
+		activeOrganization.id,
+		userRole,
+	);
+
 	const navigationConfig = getNavigationConfig(activeOrganization.slug ?? "");
 	const filteredNavigation = filterNavigationConfig(
 		navigationConfig,
 		userRole,
+		customRolePermissions,
 	);
 
-	// Generate rail icons from filtered modules
 	const railIcons: RailIconConfig[] = filteredNavigation.modules.map((m) => ({
 		moduleId: m.id,
 		icon: m.icon,
@@ -41,8 +70,7 @@ export async function AppShell({
 		defaultPath: m.defaultPath,
 	}));
 
-	// Get capabilities for header actions
-	const capabilities = getCapabilities(userRole);
+	const capabilities = getCapabilities(userRole, customRolePermissions);
 	const caps = selectHeaderCaps(capabilities);
 
 	return (

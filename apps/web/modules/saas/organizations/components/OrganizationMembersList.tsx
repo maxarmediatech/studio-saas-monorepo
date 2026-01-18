@@ -1,5 +1,4 @@
 "use client";
-import type { OrganizationMemberRole } from "@repo/auth";
 import { authClient } from "@repo/auth/client";
 import { isOrganizationAdmin } from "@repo/auth/lib/helper";
 import { Badge } from "@repo/ui/components/badge";
@@ -18,7 +17,6 @@ import {
 	TableRow,
 } from "@repo/ui/components/table";
 import { useSession } from "@saas/auth/hooks/use-session";
-import { useOrganizationMemberRoles } from "@saas/organizations/hooks/member-roles";
 import {
 	fullOrganizationQueryKey,
 	useFullOrganizationQuery,
@@ -63,7 +61,7 @@ export function OrganizationMembersList({
 	const { data: organization } = useFullOrganizationQuery(organizationId);
 	const [sorting, setSorting] = useState<SortingState>([]);
 	const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-	const memberRoles = useOrganizationMemberRoles();
+	const { getRoleLabel } = useAllRoles();
 
 	// Dialog state for adding member to crew
 	const [addToCrewDialogOpen, setAddToCrewDialogOpen] = useState(false);
@@ -95,10 +93,7 @@ export function OrganizationMembersList({
 		queryClient.invalidateQueries({ queryKey: orpc.crews.key() });
 	};
 
-	const updateMemberRole = async (
-		memberId: string,
-		role: OrganizationMemberRole,
-	) => {
+	const updateMemberRole = async (memberId: string, role: string) => {
 		toast.promise(
 			async () => {
 				await authClient.organization.updateMemberRole({
@@ -284,12 +279,7 @@ export function OrganizationMembersList({
 							</>
 						) : (
 							<span className="font-medium text-foreground/60 text-sm">
-								{
-									memberRoles[
-										row.original
-											.role as keyof typeof memberRoles
-									]
-								}
+								{getRoleLabel(row.original.role)}
 							</span>
 						)}
 					</div>

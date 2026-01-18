@@ -1,4 +1,7 @@
-import { checkStaticRolePermission } from "@repo/auth/lib/permissions";
+import {
+	type CustomRolePermissions,
+	checkRolePermission,
+} from "@repo/auth/lib/permissions";
 import type {
 	NavItemConfig,
 	NavigationConfig,
@@ -9,6 +12,7 @@ import type {
 function hasPermission(
 	permission: NavPermissionCheck | undefined,
 	userRole: string,
+	customRolePermissions?: CustomRolePermissions,
 ): boolean {
 	if (!permission) {
 		return true;
@@ -16,10 +20,11 @@ function hasPermission(
 
 	if (permission.any && permission.any.length > 0) {
 		const hasAny = permission.any.some(({ resource, action }) =>
-			checkStaticRolePermission(
+			checkRolePermission(
 				userRole,
 				resource as never,
 				action as never,
+				customRolePermissions,
 			),
 		);
 		if (hasAny) {
@@ -29,10 +34,11 @@ function hasPermission(
 
 	if (permission.all && permission.all.length > 0) {
 		const hasAll = permission.all.every(({ resource, action }) =>
-			checkStaticRolePermission(
+			checkRolePermission(
 				userRole,
 				resource as never,
 				action as never,
+				customRolePermissions,
 			),
 		);
 		if (hasAll) {
@@ -50,17 +56,22 @@ function hasPermission(
 function filterNavItems(
 	items: NavItemConfig[],
 	userRole: string,
+	customRolePermissions?: CustomRolePermissions,
 ): NavItemConfig[] {
 	const filtered: NavItemConfig[] = [];
 
 	for (const item of items) {
-		const allowed = hasPermission(item.permission, userRole);
+		const allowed = hasPermission(
+			item.permission,
+			userRole,
+			customRolePermissions,
+		);
 		if (!allowed) {
 			continue;
 		}
 
 		const children = item.children
-			? filterNavItems(item.children, userRole)
+			? filterNavItems(item.children, userRole, customRolePermissions)
 			: undefined;
 
 		filtered.push({ ...item, children });
@@ -89,6 +100,7 @@ function firstItemPath(navModule: NavModuleConfig): string | undefined {
 export function filterNavigationConfig(
 	config: NavigationConfig,
 	userRole: string,
+	customRolePermissions?: CustomRolePermissions,
 ): NavigationConfig {
 	const modules: NavModuleConfig[] = [];
 
@@ -96,7 +108,11 @@ export function filterNavigationConfig(
 		const sections: NavModuleConfig["sections"] = [];
 
 		for (const section of navModule.sections) {
-			const items = filterNavItems(section.items, userRole);
+			const items = filterNavItems(
+				section.items,
+				userRole,
+				customRolePermissions,
+			);
 			if (items.length === 0) {
 				continue;
 			}
@@ -121,7 +137,11 @@ export function filterNavigationConfig(
 		modules.push(filteredModule);
 	}
 
-	const utilities = filterNavItems(config.utilities, userRole);
+	const utilities = filterNavItems(
+		config.utilities,
+		userRole,
+		customRolePermissions,
+	);
 
 	return {
 		...config,

@@ -336,3 +336,24 @@ export function checkStaticRolePermission(
 
 	return resourceActions.includes(action);
 }
+
+export type CustomRolePermissions = Record<string, string[]>;
+
+export function checkRolePermission(
+	role: string,
+	resource: Resource,
+	action: AnyAction,
+	customRolePermissions?: CustomRolePermissions,
+): boolean {
+	if (isStaticRole(role)) {
+		return checkStaticRolePermission(role, resource, action);
+	}
+
+	if (customRolePermissions) {
+		const resourceActions = customRolePermissions[resource];
+		if (!resourceActions) return false;
+		return resourceActions.includes(action);
+	}
+
+	return false;
+}

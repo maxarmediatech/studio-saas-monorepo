@@ -1,12 +1,18 @@
 import {
 	type AnyAction,
-	checkStaticRolePermission,
+	type CustomRolePermissions,
+	checkRolePermission,
 	type Resource,
 } from "@repo/auth/lib/permissions";
 
-function any(role: string, resource: Resource, actions: AnyAction[]): boolean {
+function any(
+	role: string,
+	resource: Resource,
+	actions: AnyAction[],
+	customRolePermissions?: CustomRolePermissions,
+): boolean {
 	return actions.some((action) =>
-		checkStaticRolePermission(role, resource, action),
+		checkRolePermission(role, resource, action, customRolePermissions),
 	);
 }
 
@@ -21,19 +27,59 @@ export interface HeaderCapabilities {
 	clientCreateOrUpdate: boolean;
 }
 
-export function getCapabilities(userRole: string): HeaderCapabilities {
+export function getCapabilities(
+	userRole: string,
+	customRolePermissions?: CustomRolePermissions,
+): HeaderCapabilities {
 	return {
-		bookingCreateOrUpdate: any(userRole, "booking", ["create", "update"]),
-		shootCreateOrUpdate: any(userRole, "shoot", ["create", "update"]),
-		deliverableCreateOrUpdate: any(userRole, "deliverable", [
-			"create",
-			"update",
-		]),
-		taskCreateOrUpdate: any(userRole, "task", ["create", "update"]),
-		expenseCreateOrUpdate: any(userRole, "expense", ["create", "update"]),
-		paymentCreateOrUpdate: any(userRole, "payment", ["create", "update"]),
-		crewCreateOrUpdate: any(userRole, "crew", ["create", "update"]),
-		clientCreateOrUpdate: any(userRole, "client", ["create", "update"]),
+		bookingCreateOrUpdate: any(
+			userRole,
+			"booking",
+			["create", "update"],
+			customRolePermissions,
+		),
+		shootCreateOrUpdate: any(
+			userRole,
+			"shoot",
+			["create", "update"],
+			customRolePermissions,
+		),
+		deliverableCreateOrUpdate: any(
+			userRole,
+			"deliverable",
+			["create", "update"],
+			customRolePermissions,
+		),
+		taskCreateOrUpdate: any(
+			userRole,
+			"task",
+			["create", "update"],
+			customRolePermissions,
+		),
+		expenseCreateOrUpdate: any(
+			userRole,
+			"expense",
+			["create", "update"],
+			customRolePermissions,
+		),
+		paymentCreateOrUpdate: any(
+			userRole,
+			"payment",
+			["create", "update"],
+			customRolePermissions,
+		),
+		crewCreateOrUpdate: any(
+			userRole,
+			"crew",
+			["create", "update"],
+			customRolePermissions,
+		),
+		clientCreateOrUpdate: any(
+			userRole,
+			"client",
+			["create", "update"],
+			customRolePermissions,
+		),
 	};
 }
 
