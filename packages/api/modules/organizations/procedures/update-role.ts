@@ -1,8 +1,20 @@
 import { ORPCError } from "@orpc/client";
-import { and, db, eq, ne, organizationRoles } from "@repo/database";
+import { isStaticRole } from "@repo/auth/lib/permissions";
+import {
+	and,
+	db,
+	eq,
+	invitations,
+	members,
+	ne,
+	organizationRoles,
+} from "@repo/database";
 import { z } from "zod";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { requirePermission } from "../../studio/lib/permissions";
+import {
+	requireOrganizationAdmin,
+	requirePermission,
+} from "../../studio/lib/permissions";
 
 const permissionSchema = z.record(z.string(), z.array(z.string()));
 
@@ -45,6 +57,7 @@ export const updateRole = studioProtectedProcedure
 		}),
 	)
 	.handler(async ({ input, context }) => {
+		requireOrganizationAdmin(context);
 		await requirePermission(context, "settings", "update");
 
 		const existingRole = await db.query.organizationRoles.findFirst({
@@ -61,6 +74,12 @@ export const updateRole = studioProtectedProcedure
 		}
 
 		if (input.role && input.role !== existingRole.role) {
+			if (isStaticRole(input.role)) {
+				throw new ORPCError("BAD_REQUEST", {
+					message: "Role name is reserved for a system role",
+				});
+			}
+
 			const duplicateName = await db.query.organizationRoles.findFirst({
 				where: and(
 					eq(
@@ -80,6 +99,8 @@ export const updateRole = studioProtectedProcedure
 		}
 
 		const updateData: Partial<typeof organizationRoles.$inferInsert> = {};
+		const shouldRenameRole =
+			input.role !== undefined && input.role !== existingRole.role;
 
 		if (input.role !== undefined) updateData.role = input.role;
 		if (input.permission !== undefined)
@@ -88,11 +109,44 @@ export const updateRole = studioProtectedProcedure
 			updateData.description = input.description;
 		if (input.color !== undefined) updateData.color = input.color;
 
-		const [updated] = await db
-			.update(organizationRoles)
-			.set(updateData)
-			.where(eq(organizationRoles.id, input.roleId))
-			.returning();
+		const updated = await db.transaction(async (tx) => {
+			const [updatedRole] = await tx
+				.update(organizationRoles)
+				.set(updateData)
+				.where(eq(organizationRoles.id, input.roleId))
+				.returning();
+
+			if (!updatedRole) {
+				return null;
+			}
+
+			if (shouldRenameRole && input.role) {
+				await tx
+					.update(members)
+					.set({ role: input.role })
+					.where(
+						and(
+							eq(members.organizationId, context.organizationId),
+							eq(members.role, existingRole.role),
+						),
+					);
+
+				await tx
+					.update(invitations)
+					.set({ role: input.role })
+					.where(
+						and(
+							eq(
+								invitations.organizationId,
+								context.organizationId,
+							),
+							eq(invitations.role, existingRole.role),
+						),
+					);
+			}
+
+			return updatedRole;
+		});
 
 		if (!updated) {
 			throw new ORPCError("INTERNAL_SERVER_ERROR", {

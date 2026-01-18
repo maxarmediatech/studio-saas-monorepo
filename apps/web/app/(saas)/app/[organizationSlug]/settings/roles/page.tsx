@@ -27,6 +27,9 @@ export default async function RolesSettingsPage({ params }: Props) {
 	}
 
 	const isAdmin = isOrganizationAdmin(organization, session?.user);
+	if (!isAdmin) {
+		return notFound();
+	}
 
 	return (
 		<PageContent title="Roles">

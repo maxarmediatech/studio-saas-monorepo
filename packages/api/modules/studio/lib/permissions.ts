@@ -54,6 +54,16 @@ export async function requirePermission<R extends Resource>(
 	}
 }
 
+export function requireOrganizationAdmin(
+	context: Pick<StudioContext, "membership">,
+): void {
+	if (!["owner", "admin"].includes(context.membership.role)) {
+		throw new ORPCError("FORBIDDEN", {
+			message: "Only organization owners and admins can manage roles",
+		});
+	}
+}
+
 export async function requireAnyPermission(
 	context: Pick<StudioContext, "headers">,
 	permissions: Array<{ resource: Resource; action: AnyAction }>,

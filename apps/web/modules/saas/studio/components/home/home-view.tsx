@@ -1,6 +1,5 @@
 "use client";
 
-import { ActivityFeedWidget } from "@saas/studio/components/activity-feed";
 import { RecentVisitsWidget } from "@saas/studio/components/recent-visits/recent-visits-widget";
 import { UserGreeting } from "./user-greeting";
 import { QuickLinksWidget } from "./widgets/quick-links";
@@ -20,7 +19,6 @@ export function HomeView({ organizationSlug, userName }: HomeViewProps) {
 				<QuickstartGuide organizationSlug={organizationSlug} />
 				<QuickLinksWidget />
 				<StickiesWidget organizationSlug={organizationSlug} />
-				<ActivityFeedWidget organizationSlug={organizationSlug} />
 				<RecentVisitsWidget organizationSlug={organizationSlug} />
 			</div>
 		</div>

@@ -22,11 +22,14 @@ const STATIC_ROLE_KEYS = [
 	"crew",
 ] as const;
 
-export function useAllRoles() {
+export function useAllRoles(options?: { enabled?: boolean }) {
 	const t = useTranslations();
 
 	const { data: customRoles, isLoading } = useQuery(
-		orpc.organizations.roles.list.queryOptions({}),
+		{
+			...orpc.organizations.roles.list.queryOptions({}),
+			enabled: options?.enabled ?? true,
+		},
 	);
 
 	const staticRoles: RoleOption[] = STATIC_ROLE_KEYS.map((key) => ({

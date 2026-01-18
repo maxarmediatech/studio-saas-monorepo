@@ -1,8 +1,12 @@
 import { ORPCError } from "@orpc/client";
+import { isStaticRole } from "@repo/auth/lib/permissions";
 import { and, db, eq, organizationRoles } from "@repo/database";
 import { z } from "zod";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { requirePermission } from "../../studio/lib/permissions";
+import {
+	requireOrganizationAdmin,
+	requirePermission,
+} from "../../studio/lib/permissions";
 
 const permissionSchema = z.record(z.string(), z.array(z.string()));
 
@@ -43,7 +47,14 @@ export const createRole = studioProtectedProcedure
 		}),
 	)
 	.handler(async ({ input, context }) => {
+		requireOrganizationAdmin(context);
 		await requirePermission(context, "settings", "update");
+
+		if (isStaticRole(input.role)) {
+			throw new ORPCError("BAD_REQUEST", {
+				message: "Role name is reserved for a system role",
+			});
+		}
 
 		const existingRole = await db.query.organizationRoles.findFirst({
 			where: and(

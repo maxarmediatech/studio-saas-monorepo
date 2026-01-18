@@ -2,7 +2,10 @@ import { ORPCError } from "@orpc/client";
 import { and, db, eq, members, organizationRoles } from "@repo/database";
 import { z } from "zod";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { requirePermission } from "../../studio/lib/permissions";
+import {
+	requireOrganizationAdmin,
+	requirePermission,
+} from "../../studio/lib/permissions";
 
 export const deleteRole = studioProtectedProcedure
 	.route({
@@ -19,6 +22,7 @@ export const deleteRole = studioProtectedProcedure
 	)
 	.output(z.object({ success: z.boolean() }))
 	.handler(async ({ input, context }) => {
+		requireOrganizationAdmin(context);
 		await requirePermission(context, "settings", "update");
 
 		const existingRole = await db.query.organizationRoles.findFirst({

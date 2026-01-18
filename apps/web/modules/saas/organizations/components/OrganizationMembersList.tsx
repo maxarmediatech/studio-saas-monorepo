@@ -17,6 +17,7 @@ import {
 	TableRow,
 } from "@repo/ui/components/table";
 import { useSession } from "@saas/auth/hooks/use-session";
+import { useAllRoles } from "@saas/organizations/hooks/use-all-roles";
 import {
 	fullOrganizationQueryKey,
 	useFullOrganizationQuery,
@@ -61,7 +62,10 @@ export function OrganizationMembersList({
 	const { data: organization } = useFullOrganizationQuery(organizationId);
 	const [sorting, setSorting] = useState<SortingState>([]);
 	const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-	const { getRoleLabel } = useAllRoles();
+	const userIsOrganizationAdmin = isOrganizationAdmin(organization, user);
+	const { getRoleLabel } = useAllRoles({
+		enabled: userIsOrganizationAdmin,
+	});
 
 	// Dialog state for adding member to crew
 	const [addToCrewDialogOpen, setAddToCrewDialogOpen] = useState(false);
@@ -79,8 +83,6 @@ export function OrganizationMembersList({
 	const userIdsWithCrewProfiles = new Set(
 		crewsData?.data?.filter((c) => c.userId).map((c) => c.userId) ?? [],
 	);
-
-	const userIsOrganizationAdmin = isOrganizationAdmin(organization, user);
 
 	const handleAddToCrew = (memberId: string, memberName: string) => {
 		setSelectedMemberForCrew({ memberId, memberName });

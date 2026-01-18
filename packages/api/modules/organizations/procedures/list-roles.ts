@@ -1,6 +1,7 @@
 import { db, eq, organizationRoles } from "@repo/database";
 import { z } from "zod";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { requireOrganizationAdmin } from "../../studio/lib/permissions";
 
 export const listRoles = studioProtectedProcedure
 	.route({
@@ -24,6 +25,7 @@ export const listRoles = studioProtectedProcedure
 		),
 	)
 	.handler(async ({ context }) => {
+		requireOrganizationAdmin(context);
 		const roles = await db.query.organizationRoles.findMany({
 			where: eq(organizationRoles.organizationId, context.organizationId),
 			orderBy: (roles, { asc }) => [asc(roles.role)],
