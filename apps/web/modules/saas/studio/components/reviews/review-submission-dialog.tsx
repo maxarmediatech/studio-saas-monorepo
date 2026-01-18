@@ -32,7 +32,7 @@ import { z } from "zod";
 
 const reviewSchema = z.object({
 	decision: z.enum(["approve", "request_revision", "reject"], {
-		required_error: "Select a review action.",
+		message: "Select a review action.",
 	}),
 	reviewNote: z.string().max(5000).optional(),
 });

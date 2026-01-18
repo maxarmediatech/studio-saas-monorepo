@@ -82,7 +82,7 @@ export function ReviewQueueView() {
 			assignedToMe,
 			user?.id,
 		],
-		queryFn: async ({ pageParam = 1 }) =>
+		queryFn: async ({ pageParam }) =>
 			orpcClient.submissions.list({
 				page: pageParam,
 				limit: PAGE_SIZE,
@@ -105,6 +105,7 @@ export function ReviewQueueView() {
 			lastPage.pagination.page < lastPage.pagination.pageCount
 				? lastPage.pagination.page + 1
 				: undefined,
+		initialPageParam: 1,
 		enabled: !assignedToMe || Boolean(user?.id),
 	});
 
