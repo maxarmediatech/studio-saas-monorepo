@@ -109,7 +109,7 @@ function GroupRow({
 			: item.workflowStatus === "approved"
 				? "Approved"
 				: "Submitted"
-		: "Submit for review";
+		: "Update status";
 
 	return (
 		<div className="flex flex-col gap-2 px-4 py-3 md:flex-row md:items-center md:justify-between">

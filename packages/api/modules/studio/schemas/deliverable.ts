@@ -250,6 +250,27 @@ export type UpdateDeliverableOutput = z.infer<
 >;
 
 // ============================================================================
+// UPDATE DELIVERABLE ASSIGNMENT STATUS (ASSIGNEE)
+// ============================================================================
+
+export const updateDeliverableAssignmentStatusInputSchema = z.object({
+	id: idSchema,
+	status: z.enum(["blocked"]),
+	note: z.string().max(5000).optional(),
+});
+
+export type UpdateDeliverableAssignmentStatusInput = z.infer<
+	typeof updateDeliverableAssignmentStatusInputSchema
+>;
+
+export const updateDeliverableAssignmentStatusOutputSchema =
+	mutationResponseSchema;
+
+export type UpdateDeliverableAssignmentStatusOutput = z.infer<
+	typeof updateDeliverableAssignmentStatusOutputSchema
+>;
+
+// ============================================================================
 // DELETE DELIVERABLE
 // ============================================================================
 

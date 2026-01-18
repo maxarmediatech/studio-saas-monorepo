@@ -301,6 +301,26 @@ export type UpdateTaskStatusOutput = z.infer<
 >;
 
 // ============================================================================
+// UPDATE TASK ASSIGNMENT STATUS (ASSIGNEE)
+// ============================================================================
+
+export const updateTaskAssignmentStatusInputSchema = z.object({
+	id: idSchema,
+	status: z.enum(["blocked"]),
+	note: z.string().max(5000).optional(),
+});
+
+export type UpdateTaskAssignmentStatusInput = z.infer<
+	typeof updateTaskAssignmentStatusInputSchema
+>;
+
+export const updateTaskAssignmentStatusOutputSchema = mutationResponseSchema;
+
+export type UpdateTaskAssignmentStatusOutput = z.infer<
+	typeof updateTaskAssignmentStatusOutputSchema
+>;
+
+// ============================================================================
 // SUBMIT TASK
 // ============================================================================
 

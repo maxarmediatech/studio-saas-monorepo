@@ -22,6 +22,13 @@ import {
 	FormMessage,
 } from "@repo/ui/components/form";
 import { Input } from "@repo/ui/components/input";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@repo/ui/components/select";
 import { Textarea } from "@repo/ui/components/textarea";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { orpcClient } from "@shared/lib/orpc-client";
@@ -33,6 +40,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 const submissionSchema = z.object({
+	status: z.enum(["ready_for_review", "blocked"]),
 	submissionNote: z.string().max(5000).optional(),
 	submissionLinks: z
 		.array(
@@ -94,10 +102,14 @@ export function SubmitForReviewDialog({
 	const form = useForm<SubmissionFormValues>({
 		resolver: zodResolver(submissionSchema),
 		defaultValues: {
+			status: "ready_for_review",
 			submissionNote: "",
 			submissionLinks: [],
 		},
 	});
+
+	const selectedStatus = form.watch("status");
+	const isReadyForReview = selectedStatus === "ready_for_review";
 
 	const { fields, append, remove } = useFieldArray({
 		control: form.control,
@@ -143,6 +155,22 @@ export function SubmitForReviewDialog({
 				throw new Error("No submission target selected");
 			}
 
+			if (values.status === "blocked") {
+				const note = values.submissionNote?.trim() || undefined;
+				if (item.entityType === "task") {
+					return orpcClient.tasks.updateAssignmentStatus({
+						id: item.entityId,
+						status: "blocked",
+						note,
+					});
+				}
+				return orpcClient.deliverables.updateAssignmentStatus({
+					id: item.entityId,
+					status: "blocked",
+					note,
+				});
+			}
+
 			const submissionLinks = values.submissionLinks
 				?.map((link) => link.value?.trim())
 				.filter((link): link is string => Boolean(link));
@@ -168,10 +196,15 @@ export function SubmitForReviewDialog({
 				...payload,
 			});
 		},
-		onSuccess: () => {
-			toast.success("Submission sent for review");
+		onSuccess: (_data, variables) => {
+			if (variables.status === "blocked") {
+				toast.success("Status updated");
+			} else {
+				toast.success("Submission sent for review");
+			}
 			queryClient.invalidateQueries({ queryKey: orpc.yourWork.key() });
 			queryClient.invalidateQueries({ queryKey: orpc.submissions.key() });
+			queryClient.invalidateQueries({ queryKey: orpc.activities.key() });
 			if (item?.entityType === "task") {
 				queryClient.invalidateQueries({ queryKey: orpc.tasks.key() });
 			}
@@ -288,9 +321,9 @@ export function SubmitForReviewDialog({
 
 	const dialogTitle = useMemo(() => {
 		if (!item) {
-			return "Submit for review";
+			return "Update status";
 		}
-		return `Submit ${getEntityLabel(item.entityType)} for review`;
+		return `Update ${getEntityLabel(item.entityType)} status`;
 	}, [item]);
 
 	if (!item) {
@@ -318,13 +351,50 @@ export function SubmitForReviewDialog({
 					>
 						<FormField
 							control={form.control}
+							name="status"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>Status update</FormLabel>
+									<Select
+										onValueChange={field.onChange}
+										value={field.value}
+									>
+										<FormControl>
+											<SelectTrigger>
+												<SelectValue placeholder="Select a status" />
+											</SelectTrigger>
+										</FormControl>
+										<SelectContent>
+											<SelectItem value="ready_for_review">
+												Ready for review
+											</SelectItem>
+											<SelectItem value="blocked">
+												Blocked
+											</SelectItem>
+										</SelectContent>
+									</Select>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+
+						<FormField
+							control={form.control}
 							name="submissionNote"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel>Submission note</FormLabel>
+									<FormLabel>
+										{isReadyForReview
+											? "Submission note"
+											: "Blocker details"}
+									</FormLabel>
 									<FormControl>
 										<Textarea
-											placeholder="Share context or a link to proof of work..."
+											placeholder={
+												isReadyForReview
+													? "Share context or a link to proof of work..."
+													: "Explain what is blocking this assignment..."
+											}
 											className="min-h-[120px]"
 											{...field}
 										/>
@@ -334,131 +404,135 @@ export function SubmitForReviewDialog({
 							)}
 						/>
 
-						<div className="space-y-3">
-							<div className="flex items-center justify-between">
-								<FormLabel className="text-sm font-medium">
-									Submission links
-								</FormLabel>
-								<Button
-									type="button"
-									variant="outline"
-									size="sm"
-									onClick={handleAddLink}
-								>
-									<Link2 className="mr-2 h-4 w-4" />
-									Add link
-								</Button>
-							</div>
-							{fields.length === 0 ? (
-								<p className="text-xs text-muted-foreground">
-									No links added.
-								</p>
-							) : (
-								<div className="space-y-2">
-									{fields.map((linkField, index) => (
-										<FormField
-											key={linkField.id}
-											control={form.control}
-											name={`submissionLinks.${index}.value`}
-											render={({ field }) => (
-												<FormItem>
-													<div className="flex items-center gap-2">
-														<FormControl>
-															<Input
-																placeholder="https://drive.google.com/..."
-																{...field}
-															/>
-														</FormControl>
-														<Button
-															type="button"
-															variant="outline"
-															size="icon"
-															onClick={() => remove(index)}
-														>
-															<X className="h-4 w-4" />
-														</Button>
-													</div>
-													<FormMessage />
-												</FormItem>
-											)}
-										/>
-									))}
+						{isReadyForReview && (
+							<div className="space-y-3">
+								<div className="flex items-center justify-between">
+									<FormLabel className="text-sm font-medium">
+										Submission links
+									</FormLabel>
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										onClick={handleAddLink}
+									>
+										<Link2 className="mr-2 h-4 w-4" />
+										Add link
+									</Button>
 								</div>
-							)}
-						</div>
-
-						<div className="space-y-3">
-							<div className="flex items-center justify-between">
-								<FormLabel className="text-sm font-medium">
-									Attachments
-								</FormLabel>
-								<Button
-									type="button"
-									variant="outline"
-									size="sm"
-									onClick={() => fileInputRef.current?.click()}
-									disabled={isUploading}
-								>
-									{isUploading ? (
-										<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-									) : (
-										<Paperclip className="mr-2 h-4 w-4" />
-									)}
-									Upload files
-								</Button>
-								<input
-									ref={fileInputRef}
-									type="file"
-									multiple
-									className="hidden"
-									onChange={handleFileInput}
-								/>
-							</div>
-
-							{attachments.length === 0 ? (
-								<p className="text-xs text-muted-foreground">
-									No files uploaded.
-								</p>
-							) : (
-								<div className="space-y-2">
-									{attachments.map((attachment) => (
-										<div
-											key={attachment.key}
-											className="flex items-center justify-between rounded-md border border-border p-2"
-										>
-											<div className="flex min-w-0 items-center gap-2">
-												<FileText className="h-4 w-4 text-muted-foreground" />
-												<div className="min-w-0">
-													<p className="truncate text-sm font-medium">
-														{attachment.name}
-													</p>
-													<p className="text-xs text-muted-foreground">
-														{formatFileSize(attachment.size)}
-													</p>
-												</div>
-											</div>
-											<Button
-												type="button"
-												variant="ghost"
-												size="icon"
-												onClick={() =>
-													handleRemoveAttachment(attachment)
-												}
-												disabled={
-													deletingKey === attachment.key
-												}
-											>
-												{deletingKey === attachment.key ? (
-													<Loader2 className="h-4 w-4 animate-spin" />
-												) : (
-													<Trash2 className="h-4 w-4" />
+								{fields.length === 0 ? (
+									<p className="text-xs text-muted-foreground">
+										No links added.
+									</p>
+								) : (
+									<div className="space-y-2">
+										{fields.map((linkField, index) => (
+											<FormField
+												key={linkField.id}
+												control={form.control}
+												name={`submissionLinks.${index}.value`}
+												render={({ field }) => (
+													<FormItem>
+														<div className="flex items-center gap-2">
+															<FormControl>
+																<Input
+																	placeholder="https://drive.google.com/..."
+																	{...field}
+																/>
+															</FormControl>
+															<Button
+																type="button"
+																variant="outline"
+																size="icon"
+																onClick={() => remove(index)}
+															>
+																<X className="h-4 w-4" />
+															</Button>
+														</div>
+														<FormMessage />
+													</FormItem>
 												)}
-											</Button>
-										</div>
-									))}
+											/>
+										))}
+									</div>
+								)}
+							</div>
+						)}
+
+						{isReadyForReview && (
+							<div className="space-y-3">
+								<div className="flex items-center justify-between">
+									<FormLabel className="text-sm font-medium">
+										Attachments
+									</FormLabel>
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										onClick={() => fileInputRef.current?.click()}
+										disabled={isUploading}
+									>
+										{isUploading ? (
+											<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+										) : (
+											<Paperclip className="mr-2 h-4 w-4" />
+										)}
+										Upload files
+									</Button>
+									<input
+										ref={fileInputRef}
+										type="file"
+										multiple
+										className="hidden"
+										onChange={handleFileInput}
+									/>
 								</div>
-							)}
-						</div>
+
+								{attachments.length === 0 ? (
+									<p className="text-xs text-muted-foreground">
+										No files uploaded.
+									</p>
+								) : (
+									<div className="space-y-2">
+										{attachments.map((attachment) => (
+											<div
+												key={attachment.key}
+												className="flex items-center justify-between rounded-md border border-border p-2"
+											>
+												<div className="flex min-w-0 items-center gap-2">
+													<FileText className="h-4 w-4 text-muted-foreground" />
+													<div className="min-w-0">
+														<p className="truncate text-sm font-medium">
+															{attachment.name}
+														</p>
+														<p className="text-xs text-muted-foreground">
+															{formatFileSize(attachment.size)}
+														</p>
+													</div>
+												</div>
+												<Button
+													type="button"
+													variant="ghost"
+													size="icon"
+													onClick={() =>
+														handleRemoveAttachment(attachment)
+													}
+													disabled={
+														deletingKey === attachment.key
+													}
+												>
+													{deletingKey === attachment.key ? (
+														<Loader2 className="h-4 w-4 animate-spin" />
+													) : (
+														<Trash2 className="h-4 w-4" />
+													)}
+												</Button>
+											</div>
+										))}
+									</div>
+								)}
+							</div>
+						)}
 
 						<DialogFooter className="gap-2">
 							<Button
@@ -472,7 +546,11 @@ export function SubmitForReviewDialog({
 								type="submit"
 								disabled={isSubmitting || isUploading}
 							>
-								{isSubmitting ? "Submitting..." : "Submit"}
+								{isSubmitting
+									? "Updating..."
+									: selectedStatus === "blocked"
+										? "Mark as blocked"
+										: "Submit for review"}
 							</Button>
 						</DialogFooter>
 					</form>

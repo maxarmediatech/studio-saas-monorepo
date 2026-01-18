@@ -115,6 +115,7 @@ function getActivityMessage(activity: {
 	const { action, entityType, entityName, field, oldValue, newValue, parentEntityName } = activity;
 	// Safely access metadata as Record<string, unknown>
 	const metadata = activity.metadata as Record<string, unknown> | null | undefined;
+	const note = typeof metadata?.note === "string" ? metadata.note : null;
 
 	// Format entity type for display
 	const entityTypeLabel = entityType.replace(/_/g, " ");
@@ -125,7 +126,9 @@ function getActivityMessage(activity: {
 		case "deleted":
 			return `deleted ${entityTypeLabel} "${entityName}"`;
 		case "status_changed":
-			return `changed ${entityName} status from "${oldValue}" to "${newValue}"`;
+			return note
+				? `changed ${entityName} status from "${oldValue}" to "${newValue}" — ${note}`
+				: `changed ${entityName} status from "${oldValue}" to "${newValue}"`;
 		case "updated":
 			if (field) {
 				return `updated ${field} on "${entityName}"`;

@@ -302,6 +302,8 @@ export const tasksMutations = {
 	update: () => orpc.tasks.update.mutationOptions(),
 	delete: () => orpc.tasks.delete.mutationOptions(),
 	updateStatus: () => orpc.tasks.updateStatus.mutationOptions(),
+	updateAssignmentStatus: () =>
+		orpc.tasks.updateAssignmentStatus.mutationOptions(),
 	assign: () => orpc.tasks.assign.mutationOptions(),
 	unassign: () => orpc.tasks.unassign.mutationOptions(),
 	submit: () => orpc.tasks.submit.mutationOptions(),
@@ -341,6 +343,8 @@ export const deliverablesMutations = {
 	assign: () => orpc.deliverables.assign.mutationOptions(),
 	unassign: () => orpc.deliverables.unassign.mutationOptions(),
 	convertToTask: () => orpc.deliverables.convertToTask.mutationOptions(),
+	updateAssignmentStatus: () =>
+		orpc.deliverables.updateAssignmentStatus.mutationOptions(),
 	submit: () => orpc.deliverables.submit.mutationOptions(),
 };
 

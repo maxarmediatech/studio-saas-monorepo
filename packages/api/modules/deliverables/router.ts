@@ -9,6 +9,7 @@ import { listDeliverablesMinimal } from "./procedures/list-deliverables-minimal"
 import { submitDeliverable } from "./procedures/submit-deliverable";
 import { unassignCrewFromDeliverable } from "./procedures/unassign-crew";
 import { updateDeliverable } from "./procedures/update-deliverable";
+import { updateDeliverableAssignmentStatus } from "./procedures/update-deliverable-assignment-status";
 
 export const deliverablesRouter = {
 	list: listDeliverables,
@@ -21,5 +22,6 @@ export const deliverablesRouter = {
 	assign: assignCrewToDeliverable,
 	unassign: unassignCrewFromDeliverable,
 	convertToTask: convertDeliverableToTask,
+	updateAssignmentStatus: updateDeliverableAssignmentStatus,
 	submit: submitDeliverable,
 };
