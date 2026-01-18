@@ -1,10 +1,10 @@
 // Components
 
-// Layout - Server component pattern (like winter-arc)
-export { AppShell } from "./components/app-shell";
-export { AppShellClient } from "./components/app-shell.client";
 // Activities
 export { ActivitiesPageClient } from "./components/activities";
+// Layout - AppShell is a server component, import directly from "./components/app-shell"
+// Do NOT export here to avoid client bundle contamination
+export { AppShellClient } from "./components/app-shell.client";
 // Bookings
 export {
 	BookingsFilters,
@@ -17,12 +17,6 @@ export {
 	ClientsTableClient,
 	ClientsTableSkeleton,
 } from "./components/clients";
-// Crews
-export {
-	CrewsFilters,
-	CrewsTableClient,
-	CrewsTableSkeleton,
-} from "./components/crews";
 // Configurations
 export {
 	ConfigurationsFilters,
@@ -31,6 +25,12 @@ export {
 	OpenConfigurationCreateSheet,
 	OpenConfigurationEditSheet,
 } from "./components/configurations";
+// Crews
+export {
+	CrewsFilters,
+	CrewsTableClient,
+	CrewsTableSkeleton,
+} from "./components/crews";
 // Deliverables
 export {
 	DeliverablesFilters,
@@ -38,6 +38,12 @@ export {
 	DeliverablesTableClient,
 	DeliverablesTableSkeleton,
 } from "./components/deliverables";
+export type { IconName as RegistryIconName } from "./components/navigation/icon-registry";
+// Icons
+export { IconByName } from "./components/navigation/icon-registry";
+export { PageContent } from "./components/PageContent";
+export { PageHeader } from "./components/PageHeader";
+export { PageWidthWrapper } from "./components/PageWidthWrapper";
 // Shoots
 export {
 	ShootsFilters,
@@ -45,12 +51,6 @@ export {
 	ShootsTableClient,
 	ShootsTableSkeleton,
 } from "./components/shoots";
-export type { IconName as RegistryIconName } from "./components/navigation/icon-registry";
-// Icons
-export { IconByName } from "./components/navigation/icon-registry";
-export { PageContent } from "./components/PageContent";
-export { PageHeader } from "./components/PageHeader";
-export { PageWidthWrapper } from "./components/PageWidthWrapper";
 // API Utilities
 export {
 	bookingsApi,

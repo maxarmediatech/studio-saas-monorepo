@@ -1,11 +1,7 @@
 import type { ActiveOrganization, Session } from "@repo/auth";
-import {
-	type CustomRolePermissions,
-	isStaticRole,
-} from "@repo/auth/lib/permissions";
-import { db } from "@repo/database";
 import type { ReactNode } from "react";
 import { getCapabilities, selectHeaderCaps } from "../lib/capability.server";
+import { getCustomRolePermissions } from "../lib/get-custom-role-permissions.server";
 import { getNavigationConfig } from "../lib/navigation/config";
 import { filterNavigationConfig } from "../lib/navigation/filter";
 import type { RailIconConfig } from "../lib/navigation/types";
@@ -15,30 +11,6 @@ interface AppShellProps {
 	children: ReactNode;
 	session: Session;
 	activeOrganization: ActiveOrganization;
-}
-
-async function getCustomRolePermissions(
-	organizationId: string,
-	role: string,
-): Promise<CustomRolePermissions | undefined> {
-	if (isStaticRole(role)) {
-		return undefined;
-	}
-
-	const customRole = await db.query.organizationRoles.findFirst({
-		where: (roles, { and, eq }) =>
-			and(eq(roles.organizationId, organizationId), eq(roles.role, role)),
-	});
-
-	if (!customRole) {
-		return undefined;
-	}
-
-	try {
-		return JSON.parse(customRole.permission) as CustomRolePermissions;
-	} catch {
-		return undefined;
-	}
 }
 
 export async function AppShell({
