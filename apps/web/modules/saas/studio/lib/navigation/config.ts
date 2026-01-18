@@ -71,9 +71,7 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							path: url("/reviews"),
 							icon: "Inbox",
 							permission: {
-								any: [
-									{ resource: "review", action: "list" },
-								],
+								any: [{ resource: "review", action: "list" }],
 							},
 						},
 						{
@@ -323,6 +321,12 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							label: "Members",
 							path: url("/settings/members"),
 							icon: "Users",
+						},
+						{
+							id: "roles",
+							label: "Roles",
+							path: url("/settings/roles"),
+							icon: "Shield",
 						},
 						{
 							id: "billing",

@@ -1,6 +1,15 @@
+import { createRole } from "./procedures/create-role";
+import { deleteRole } from "./procedures/delete-role";
 import { generateOrganizationSlug } from "./procedures/generate-organization-slug";
+import { listRoles } from "./procedures/list-roles";
+import { updateRole } from "./procedures/update-role";
 
-// Logo upload moved to /api/uploads/presigned-url
 export const organizationsRouter = {
 	generateSlug: generateOrganizationSlug,
+	roles: {
+		list: listRoles,
+		create: createRole,
+		update: updateRole,
+		delete: deleteRole,
+	},
 };
