@@ -238,7 +238,7 @@ export function SubmitForReviewDialog({
 							fileName: file.name,
 							fileType: file.type,
 							fileSize: file.size,
-							context: "deliverables",
+							context: "submissions",
 						}),
 					},
 				);
