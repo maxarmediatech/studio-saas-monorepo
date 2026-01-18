@@ -4,6 +4,7 @@ import { parseAsBoolean, parseAsStringEnum, useQueryState } from "nuqs";
 
 const assignmentTypes = ["all", "task", "deliverable"] as const;
 const statuses = [
+	"all",
 	"ready_for_review",
 	"changes_requested",
 	"approved",
@@ -18,9 +19,7 @@ export function useReviewQueueParams() {
 
 	const [status, setStatus] = useQueryState(
 		"status",
-		parseAsStringEnum(Array.from(statuses)).withDefault(
-			"ready_for_review",
-		),
+		parseAsStringEnum(Array.from(statuses)).withDefault("all"),
 	);
 
 	const [assignedToMe, setAssignedToMe] = useQueryState(

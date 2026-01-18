@@ -27,12 +27,14 @@ const ASSIGNMENT_TYPE_OPTIONS: {
 
 const STATUS_FILTER_OPTIONS: {
 	id:
+		| "all"
 		| "ready_for_review"
 		| "changes_requested"
 		| "approved"
 		| "rejected";
 	label: string;
 }[] = [
+	{ id: "all", label: "All" },
 	{ id: "ready_for_review", label: "Ready for Review" },
 	{ id: "changes_requested", label: "Changes Requested" },
 	{ id: "approved", label: "Approved" },
@@ -54,6 +56,8 @@ export function ReviewQueueView() {
 
 	const statusFilter = useMemo(() => {
 		switch (status) {
+			case "all":
+				return { status: undefined, pendingReviewOnly: false };
 			case "ready_for_review":
 				return { status: undefined, pendingReviewOnly: true };
 			case "changes_requested":
@@ -112,18 +116,19 @@ export function ReviewQueueView() {
 	const totalSubmissions =
 		submissionsQuery.data?.pages[0]?.pagination.total ?? 0;
 
+	const statusLabel =
+		STATUS_FILTER_OPTIONS.find((option) => option.id === status)?.label ??
+		"All";
+
 	const headerDescription = submissionsQuery.isLoading
 		? "Loading submissions..."
-		: `${totalSubmissions} submission(s) found`;
+		: status === "all"
+			? `Showing ${totalSubmissions} submissions`
+			: `Showing ${totalSubmissions} ${statusLabel.toLowerCase()}`;
 
 	return (
 		<PageContent
 			title="Review Queue"
-			controls={
-				<span className="text-sm text-muted-foreground">
-					{headerDescription}
-				</span>
-			}
 		>
 			<div className="grid grid-cols-1 gap-10 lg:grid-cols-[260px_1fr]">
 				<aside className="flex flex-col gap-4">
@@ -160,13 +165,20 @@ export function ReviewQueueView() {
 				</aside>
 
 				<main className="space-y-6">
-					<div className="flex items-center justify-end gap-2">
-						<Switch
-							id="assigned-to-me"
-							checked={assignedToMe ?? false}
-							onCheckedChange={setAssignedToMe}
-						/>
-						<Label htmlFor="assigned-to-me">Assigned to me</Label>
+					<div className="flex items-center justify-between gap-4">
+						<span className="text-sm text-muted-foreground">
+							{headerDescription}
+						</span>
+						<div className="flex items-center justify-end gap-2">
+							<Switch
+								id="assigned-to-me"
+								checked={assignedToMe ?? false}
+								onCheckedChange={setAssignedToMe}
+							/>
+							<Label htmlFor="assigned-to-me">
+								Assigned to me
+							</Label>
+						</div>
 					</div>
 
 					<div className="flex flex-wrap gap-2 border-b pb-4">
