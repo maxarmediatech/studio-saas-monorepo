@@ -136,6 +136,7 @@ export const listSubmissions = studioProtectedProcedure
 				submittedBy: assignmentSubmissions.submittedBy,
 				status: assignmentSubmissions.status,
 				submissionNote: assignmentSubmissions.submissionNote,
+				submissionLinks: assignmentSubmissions.submissionLinks,
 				submittedAt: assignmentSubmissions.submittedAt,
 				reviewedBy: assignmentSubmissions.reviewedBy,
 				reviewedAt: assignmentSubmissions.reviewedAt,
@@ -198,6 +199,11 @@ export const listSubmissions = studioProtectedProcedure
 				: "deliverable";
 			const entityId =
 				submission.taskId ?? submission.deliverableId ?? "";
+			const submissionLinks = Array.isArray(submission.submissionLinks)
+				? submission.submissionLinks.filter(
+						(link): link is string => typeof link === "string",
+					)
+				: null;
 
 			return {
 				id: submission.id,
@@ -207,6 +213,7 @@ export const listSubmissions = studioProtectedProcedure
 				submittedBy: submission.submittedBy,
 				status: submission.status,
 				submissionNote: submission.submissionNote,
+				submissionLinks,
 				submittedAt: submission.submittedAt?.toISOString() ?? null,
 				reviewedBy: submission.reviewedBy,
 				reviewedAt: submission.reviewedAt?.toISOString() ?? null,

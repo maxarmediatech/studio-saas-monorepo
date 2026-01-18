@@ -81,6 +81,7 @@ export function ReviewSubmissionDialog({
 			toast.success("Review submitted");
 			queryClient.invalidateQueries({ queryKey: orpc.submissions.key() });
 			queryClient.invalidateQueries({ queryKey: orpc.activities.key() });
+			queryClient.invalidateQueries({ queryKey: orpc.yourWork.key() });
 			form.reset();
 			onOpenChange(false);
 		},
@@ -106,6 +107,10 @@ export function ReviewSubmissionDialog({
 	};
 
 	const fileList = useMemo(() => submission?.files ?? [], [submission?.files]);
+	const linkList = useMemo(
+		() => submission?.submissionLinks ?? [],
+		[submission?.submissionLinks],
+	);
 
 	const handleFileOpen = async (fileId: string) => {
 		setLoadingFileId(fileId);
@@ -178,6 +183,25 @@ export function ReviewSubmissionDialog({
 						{submission.submissionNote && (
 							<div className="rounded-lg border border-border bg-muted/40 p-3 text-sm text-foreground/80">
 								{submission.submissionNote}
+							</div>
+						)}
+
+						{linkList.length > 0 && (
+							<div className="space-y-2">
+								<p className="text-sm font-medium">Links</p>
+								<div className="space-y-2">
+									{linkList.map((link) => (
+										<a
+											key={link}
+											href={link}
+											target="_blank"
+											rel="noreferrer"
+											className="block truncate text-sm text-primary hover:underline"
+										>
+											{link}
+										</a>
+									))}
+								</div>
 							</div>
 						)}
 

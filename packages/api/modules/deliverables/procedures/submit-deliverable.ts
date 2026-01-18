@@ -32,7 +32,7 @@ export const submitDeliverable = studioProtectedProcedure
 	.handler(async ({ input, context }) => {
 		requirePermission(context, "deliverable", "submit");
 
-		const { deliverableId, submissionNote, files } = input;
+		const { deliverableId, submissionNote, submissionLinks, files } = input;
 
 		// Verify deliverable exists and belongs to organization
 		const deliverable = await db.query.deliverables.findFirst({
@@ -104,6 +104,9 @@ export const submitDeliverable = studioProtectedProcedure
 					submittedBy: crew.id,
 					status: "submitted",
 					submissionNote: submissionNote ?? null,
+					submissionLinks: submissionLinks?.length
+						? submissionLinks
+						: null,
 					submittedAt: new Date(),
 				})
 				.returning({ id: assignmentSubmissions.id });

@@ -719,6 +719,7 @@ export const assignmentSubmissions = pgTable(
 		status: submissionStatusEnum("status").default("draft").notNull(),
 
 		submissionNote: text("submission_note"),
+		submissionLinks: jsonb("submission_links"),
 		submittedAt: timestamp("submitted_at", { withTimezone: true }),
 
 		reviewedBy: varchar("reviewed_by", { length: 255 }).references(

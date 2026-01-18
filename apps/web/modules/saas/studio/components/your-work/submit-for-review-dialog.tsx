@@ -26,14 +26,23 @@ import { Textarea } from "@repo/ui/components/textarea";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { orpcClient } from "@shared/lib/orpc-client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { FileText, Loader2, Paperclip, Trash2 } from "lucide-react";
+import { FileText, Link2, Loader2, Paperclip, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useFieldArray, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
 const submissionSchema = z.object({
 	submissionNote: z.string().max(5000).optional(),
+	submissionLinks: z
+		.array(
+			z.object({
+				value: z
+					.union([z.string().url(), z.literal("")])
+					.optional(),
+			}),
+		)
+		.optional(),
 });
 
 type SubmissionFormValues = z.infer<typeof submissionSchema>;
@@ -45,6 +54,8 @@ type SubmissionAttachment = {
 	key: string;
 	url: string;
 };
+
+type SubmissionLinkField = `submissionLinks.${number}.value`;
 
 interface SubmitForReviewDialogProps {
 	item: YourWorkItem | null;
@@ -84,8 +95,39 @@ export function SubmitForReviewDialog({
 		resolver: zodResolver(submissionSchema),
 		defaultValues: {
 			submissionNote: "",
+			submissionLinks: [],
 		},
 	});
+
+	const { fields, append, remove } = useFieldArray({
+		control: form.control,
+		name: "submissionLinks",
+	});
+
+	const handleAddLink = async () => {
+		const links = form.getValues("submissionLinks") ?? [];
+		const firstEmptyIndex = links.findIndex(
+			(link) => !link.value?.trim(),
+		);
+
+		if (firstEmptyIndex !== -1) {
+			form.setError(
+				`submissionLinks.${firstEmptyIndex}.value` as SubmissionLinkField,
+				{
+					type: "manual",
+					message: "Add a link before adding another.",
+				},
+			);
+			return;
+		}
+
+		const isValid = await form.trigger("submissionLinks");
+		if (!isValid) {
+			return;
+		}
+
+		append({ value: "" });
+	};
 
 	useEffect(() => {
 		if (!isOpen) {
@@ -101,8 +143,16 @@ export function SubmitForReviewDialog({
 				throw new Error("No submission target selected");
 			}
 
+			const submissionLinks = values.submissionLinks
+				?.map((link) => link.value?.trim())
+				.filter((link): link is string => Boolean(link));
+
 			const payload = {
 				submissionNote: values.submissionNote?.trim() || undefined,
+				submissionLinks:
+					submissionLinks && submissionLinks.length > 0
+						? submissionLinks
+						: undefined,
 				files: attachments.length > 0 ? attachments : undefined,
 			};
 
@@ -283,6 +333,59 @@ export function SubmitForReviewDialog({
 								</FormItem>
 							)}
 						/>
+
+						<div className="space-y-3">
+							<div className="flex items-center justify-between">
+								<FormLabel className="text-sm font-medium">
+									Submission links
+								</FormLabel>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									onClick={handleAddLink}
+								>
+									<Link2 className="mr-2 h-4 w-4" />
+									Add link
+								</Button>
+							</div>
+							{fields.length === 0 ? (
+								<p className="text-xs text-muted-foreground">
+									No links added.
+								</p>
+							) : (
+								<div className="space-y-2">
+									{fields.map((linkField, index) => (
+										<FormField
+											key={linkField.id}
+											control={form.control}
+											name={`submissionLinks.${index}.value`}
+											render={({ field }) => (
+												<FormItem>
+													<div className="flex items-center gap-2">
+														<FormControl>
+															<Input
+																placeholder="https://drive.google.com/..."
+																{...field}
+															/>
+														</FormControl>
+														<Button
+															type="button"
+															variant="outline"
+															size="icon"
+															onClick={() => remove(index)}
+														>
+															<X className="h-4 w-4" />
+														</Button>
+													</div>
+													<FormMessage />
+												</FormItem>
+											)}
+										/>
+									))}
+								</div>
+							)}
+						</div>
 
 						<div className="space-y-3">
 							<div className="flex items-center justify-between">

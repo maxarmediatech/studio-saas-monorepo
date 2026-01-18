@@ -32,7 +32,7 @@ export const submitTask = studioProtectedProcedure
 	.handler(async ({ input, context }) => {
 		requirePermission(context, "task", "submit");
 
-		const { taskId, submissionNote, files } = input;
+		const { taskId, submissionNote, submissionLinks, files } = input;
 
 		// Verify task exists and belongs to organization
 		const task = await db.query.tasks.findFirst({
@@ -103,6 +103,9 @@ export const submitTask = studioProtectedProcedure
 					submittedBy: crew.id,
 					status: "submitted",
 					submissionNote: submissionNote ?? null,
+					submissionLinks: submissionLinks?.length
+						? submissionLinks
+						: null,
 					submittedAt: new Date(),
 				})
 				.returning({ id: assignmentSubmissions.id });

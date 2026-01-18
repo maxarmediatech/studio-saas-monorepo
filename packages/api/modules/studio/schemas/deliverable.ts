@@ -372,6 +372,7 @@ export type ConvertDeliverableToTaskOutput = z.infer<
 export const submitDeliverableInputSchema = z.object({
 	deliverableId: idSchema,
 	submissionNote: z.string().max(5000).optional(),
+	submissionLinks: z.array(z.string().url()).optional(),
 	files: z.array(uploadedAttachmentSchema).optional(),
 });
 

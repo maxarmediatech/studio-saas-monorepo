@@ -177,6 +177,12 @@ export const getSubmission = studioProtectedProcedure
 			orderBy: [desc(submissionFiles.createdAt)],
 		});
 
+		const submissionLinks = Array.isArray(submission.submissionLinks)
+			? submission.submissionLinks.filter(
+					(link): link is string => typeof link === "string",
+				)
+			: null;
+
 		// Get previous submissions for the same entity
 		const previousSubmissions =
 			await db.query.assignmentSubmissions.findMany({
@@ -212,6 +218,7 @@ export const getSubmission = studioProtectedProcedure
 				submittedBy: submission.submittedBy,
 				status: submission.status,
 				submissionNote: submission.submissionNote,
+				submissionLinks,
 				submittedAt: submission.submittedAt?.toISOString() ?? null,
 				reviewedBy: submission.reviewedBy,
 				reviewedAt: submission.reviewedAt?.toISOString() ?? null,
