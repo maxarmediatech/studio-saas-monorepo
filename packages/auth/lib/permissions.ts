@@ -68,6 +68,7 @@ export type AnyAction =
 	| "claim";
 
 const ORGANIZATION_ADMIN_ROLES = ["owner", "admin"] as const;
+const SYSTEM_ROLE_KEYS = ["owner", "admin", "member"] as const;
 
 export function normalizeRoles(
 	value: string | string[] | null | undefined,
@@ -352,11 +353,7 @@ export const crew = ac.newRole({
 export const appRoles = {
 	owner,
 	admin,
-	manager,
-	post_production_manager,
-	hr,
 	member,
-	crew,
 };
 
 export type AppRole = keyof typeof appRoles;
@@ -378,44 +375,58 @@ export const staticRolesList = [
 		canDelete: false,
 	},
 	{
+		key: "member" as const,
+		label: "Member",
+		description: "Limited access, can view and submit work",
+		isSystem: true,
+		canDelete: false,
+	},
+] as const;
+
+export const editableRoleMeta = [
+	{
 		key: "manager" as const,
 		label: "Manager",
 		description: "Manage shoots, tasks, and deliverables",
-		isSystem: false,
-		canDelete: false,
 	},
 	{
 		key: "post_production_manager" as const,
 		label: "Post-Production Manager",
 		description: "Focus on tasks and deliverables workflow",
-		isSystem: false,
-		canDelete: false,
 	},
 	{
 		key: "hr" as const,
 		label: "HR",
 		description: "Manage crew, expenses, and payments",
-		isSystem: false,
-		canDelete: false,
-	},
-	{
-		key: "member" as const,
-		label: "Member",
-		description: "Limited access, can view and submit work",
-		isSystem: false,
-		canDelete: false,
 	},
 	{
 		key: "crew" as const,
 		label: "Crew",
 		description: "External crew, submit assigned work only",
-		isSystem: false,
-		canDelete: false,
+	},
+] as const;
+
+export const defaultEditableRoles = [
+	{
+		...editableRoleMeta[0],
+		permissions: manager.statements,
+	},
+	{
+		...editableRoleMeta[1],
+		permissions: post_production_manager.statements,
+	},
+	{
+		...editableRoleMeta[2],
+		permissions: hr.statements,
+	},
+	{
+		...editableRoleMeta[3],
+		permissions: crew.statements,
 	},
 ] as const;
 
 export function isStaticRole(role: string): role is AppRole {
-	return role in appRoles;
+	return SYSTEM_ROLE_KEYS.includes(role as AppRole);
 }
 
 export function getPermissionMatrix(): Array<{

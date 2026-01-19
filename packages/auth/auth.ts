@@ -31,6 +31,7 @@ import {
 } from "better-auth/plugins";
 import { parse as parseCookies } from "cookie";
 import { updateSeatsInOrganizationSubscription } from "./lib/organization";
+import { ensureDefaultOrganizationRoles } from "./lib/organization-roles";
 import { ac, appRoles, serializeRoles } from "./lib/permissions";
 import { invitationOnlyPlugin } from "./plugins/invitation-only";
 
@@ -418,6 +419,9 @@ export const auth = betterAuth({
 				maximumRolesPerOrganization: 20,
 			},
 			organizationHooks: {
+				afterCreateOrganization: async ({ organization }) => {
+					await ensureDefaultOrganizationRoles(organization.id);
+				},
 				beforeAddMember: async ({ member }) => ({
 					data: {
 						...member,

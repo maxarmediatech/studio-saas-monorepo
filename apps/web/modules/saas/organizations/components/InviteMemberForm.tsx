@@ -2,7 +2,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { authClient } from "@repo/auth/client";
-import type { AppRole } from "@repo/auth/lib/permissions";
 import { Button } from "@repo/ui/components/button";
 import {
 	Form,
@@ -34,6 +33,9 @@ export function InviteMemberForm({
 }: {
 	organizationId: string;
 }) {
+	type InviteRoleInput = Parameters<
+		typeof authClient.organization.inviteMember
+	>[0]["role"];
 	const t = useTranslations();
 	const queryClient = useQueryClient();
 
@@ -47,7 +49,7 @@ export function InviteMemberForm({
 
 	const onSubmit: SubmitHandler<FormValues> = async (values) => {
 		try {
-			const roleInput = values.role as unknown as AppRole[];
+			const roleInput = values.role as InviteRoleInput;
 			const { error } = await authClient.organization.inviteMember({
 				...values,
 				role: roleInput,

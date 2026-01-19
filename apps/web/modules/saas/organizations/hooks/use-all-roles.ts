@@ -1,5 +1,6 @@
 "use client";
 
+import { editableRoleMeta } from "@repo/auth/lib/permissions";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
@@ -12,15 +13,10 @@ export interface RoleOption {
 	color?: string;
 }
 
-const STATIC_ROLE_KEYS = [
-	"owner",
-	"admin",
-	"manager",
-	"post_production_manager",
-	"hr",
-	"member",
-	"crew",
-] as const;
+const STATIC_ROLE_KEYS = ["owner", "admin", "member"] as const;
+const EDITABLE_ROLE_KEYS = new Map(
+	editableRoleMeta.map((role) => [role.key, role]),
+);
 
 export function useAllRoles(options?: { enabled?: boolean }) {
 	const t = useTranslations();
@@ -38,15 +34,22 @@ export function useAllRoles(options?: { enabled?: boolean }) {
 		isStatic: true,
 	}));
 
-	const dynamicRoles: RoleOption[] = (customRoles ?? []).map((role) => ({
-		value: role.role,
-		label: role.role
-			.replace(/_/g, " ")
-			.replace(/\b\w/g, (c) => c.toUpperCase()),
-		isStatic: false,
-		description: role.description ?? undefined,
-		color: role.color ?? undefined,
-	}));
+	const dynamicRoles: RoleOption[] = (customRoles ?? []).map((role) => {
+		const defaultRole = EDITABLE_ROLE_KEYS.get(role.role);
+		return {
+			value: role.role,
+			label:
+				defaultRole
+					? t(`organizations.roles.${role.role}`)
+					: role.role
+							.replace(/_/g, " ")
+							.replace(/\b\w/g, (c) => c.toUpperCase()),
+			isStatic: false,
+			description:
+				role.description ?? defaultRole?.description ?? undefined,
+			color: role.color ?? undefined,
+		};
+	});
 
 	return {
 		roles: [...staticRoles, ...dynamicRoles],

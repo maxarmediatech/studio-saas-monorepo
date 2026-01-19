@@ -2,7 +2,6 @@
 import { authClient } from "@repo/auth/client";
 import { hasAnyRole, normalizeRoles } from "@repo/auth/lib/permissions";
 import { isOrganizationAdmin } from "@repo/auth/lib/helper";
-import type { AppRole } from "@repo/auth/lib/permissions";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import {
@@ -58,6 +57,9 @@ export function OrganizationMembersList({
 }: {
 	organizationId: string;
 }) {
+	type UpdateRoleInput = Parameters<
+		typeof authClient.organization.updateMemberRole
+	>[0]["role"];
 	const t = useTranslations();
 	const queryClient = useQueryClient();
 	const { user } = useSession();
@@ -100,7 +102,7 @@ export function OrganizationMembersList({
 	const updateMemberRole = async (memberId: string, role: string[]) => {
 		toast.promise(
 			async () => {
-				const roleInput = role as unknown as AppRole[];
+				const roleInput = role as UpdateRoleInput;
 				const { error } = await authClient.organization.updateMemberRole({
 					memberId,
 					role: roleInput,
