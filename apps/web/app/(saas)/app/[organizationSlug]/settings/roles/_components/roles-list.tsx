@@ -1,6 +1,10 @@
 "use client";
 
-import { AppRole, appRoles, staticRolesList } from "@repo/auth/lib/permissions";
+import {
+	type AppRole,
+	appRoles,
+	staticRolesList,
+} from "@repo/auth/lib/permissions";
 import { Badge } from "@repo/ui/components/badge";
 import { Input } from "@repo/ui/components/input";
 import { ScrollArea } from "@repo/ui/components/scroll-area";
@@ -253,18 +257,20 @@ export function RolesList({ canManage, createSignal }: RolesListProps) {
 
 	return (
 		<div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
-			<div className="border-border border-b pb-6 lg:sticky lg:top-0 lg:flex lg:h-[calc(100vh-11rem)] lg:flex-col lg:border-b-0 lg:border-r lg:pb-0 lg:pr-6">
+			<div className="border-border border-b pb-6 lg:sticky lg:top-0 lg:flex lg:h-[calc(100vh-11rem)] lg:flex-col lg:border-b-0 lg:border-r lg:pb-0 lg:pr-6 pt-6">
 				<Input
 					placeholder="Search roles..."
 					value={search}
 					onChange={(event) => setSearch(event.target.value)}
 					className="mb-4"
 				/>
-				<ScrollArea className="h-full pr-4">
+				<ScrollArea className="h-full ">
 					<div className="space-y-4 pb-4">
 						<div className="space-y-2">
 							<div className="flex items-center justify-between">
-								<h3 className="text-sm font-medium">System roles</h3>
+								<h3 className="text-sm font-medium">
+									System roles
+								</h3>
 								<Badge variant="secondary" className="text-xs">
 									Read-only
 								</Badge>
@@ -274,22 +280,29 @@ export function RolesList({ canManage, createSignal }: RolesListProps) {
 									<button
 										key={role.key}
 										type="button"
-										onClick={() => handleRoleSelect(role.key)}
+										onClick={() =>
+											handleRoleSelect(role.key)
+										}
 										className={cn(
 											"w-full rounded-md border px-3 py-2 text-left transition",
-											selectedRoleKey === role.key && !isCreateMode
+											selectedRoleKey === role.key &&
+												!isCreateMode
 												? "border-primary bg-primary/5"
 												: "hover:bg-muted",
 										)}
 										aria-pressed={
-											selectedRoleKey === role.key && !isCreateMode
+											selectedRoleKey === role.key &&
+											!isCreateMode
 										}
 									>
 										<div className="flex items-center justify-between">
 											<span className="font-medium text-sm">
 												{role.name}
 											</span>
-											<Badge variant="outline" className="text-[10px]">
+											<Badge
+												variant="outline"
+												className="text-[10px]"
+											>
 												System
 											</Badge>
 										</div>
@@ -303,9 +316,14 @@ export function RolesList({ canManage, createSignal }: RolesListProps) {
 
 						<div className="space-y-2">
 							<div className="flex items-center justify-between">
-								<h3 className="text-sm font-medium">Custom roles</h3>
+								<h3 className="text-sm font-medium">
+									Custom roles
+								</h3>
 								{roleItems.customItems.length > 0 && (
-									<Badge variant="outline" className="text-xs">
+									<Badge
+										variant="outline"
+										className="text-xs"
+									>
 										{roleItems.customItems.length}
 									</Badge>
 								)}
@@ -313,7 +331,10 @@ export function RolesList({ canManage, createSignal }: RolesListProps) {
 							{isLoading ? (
 								<div className="space-y-2">
 									{[1, 2, 3].map((i) => (
-										<Skeleton key={i} className="h-16 w-full" />
+										<Skeleton
+											key={i}
+											className="h-16 w-full"
+										/>
 									))}
 								</div>
 							) : filteredItems.customItems.length > 0 ? (
@@ -322,15 +343,19 @@ export function RolesList({ canManage, createSignal }: RolesListProps) {
 										<button
 											key={role.key}
 											type="button"
-											onClick={() => handleRoleSelect(role.key)}
+											onClick={() =>
+												handleRoleSelect(role.key)
+											}
 											className={cn(
 												"w-full rounded-md border px-3 py-2 text-left transition",
-												selectedRoleKey === role.key && !isCreateMode
+												selectedRoleKey === role.key &&
+													!isCreateMode
 													? "border-primary bg-primary/5"
 													: "hover:bg-muted",
 											)}
 											aria-pressed={
-												selectedRoleKey === role.key && !isCreateMode
+												selectedRoleKey === role.key &&
+												!isCreateMode
 											}
 										>
 											<div className="flex items-center justify-between">
@@ -338,14 +363,20 @@ export function RolesList({ canManage, createSignal }: RolesListProps) {
 													{role.color && (
 														<span
 															className="h-2.5 w-2.5 rounded-full"
-															style={{ backgroundColor: role.color }}
+															style={{
+																backgroundColor:
+																	role.color,
+															}}
 														/>
 													)}
 													<span className="font-medium text-sm">
 														{role.name}
 													</span>
 												</div>
-												<Badge variant="outline" className="text-[10px]">
+												<Badge
+													variant="outline"
+													className="text-[10px]"
+												>
 													Custom
 												</Badge>
 											</div>
@@ -357,7 +388,8 @@ export function RolesList({ canManage, createSignal }: RolesListProps) {
 								</div>
 							) : (
 								<div className="rounded-md border border-dashed p-4 text-center text-muted-foreground text-xs">
-									No custom roles yet. Use "Create Role" to add one.
+									No custom roles yet. Use "Create Role" to
+									add one.
 								</div>
 							)}
 						</div>
@@ -365,7 +397,7 @@ export function RolesList({ canManage, createSignal }: RolesListProps) {
 				</ScrollArea>
 			</div>
 
-			<div className="min-h-[600px]">
+			<div className="min-h-[600px] pt-6">
 				<PermissionMatrixPanel
 					mode={selectedRole.mode}
 					role={selectedRole.role}
@@ -385,7 +417,9 @@ export function RolesList({ canManage, createSignal }: RolesListProps) {
 						setIsCreateMode(false);
 						setIsEditing(false);
 					}}
-					onDelete={selectedRole.customData ? handleDelete : undefined}
+					onDelete={
+						selectedRole.customData ? handleDelete : undefined
+					}
 				/>
 			</div>
 
@@ -393,9 +427,7 @@ export function RolesList({ canManage, createSignal }: RolesListProps) {
 				open={!!deletingRole}
 				onOpenChange={(open) => !open && setDeletingRole(null)}
 				roleName={
-					deletingRole?.role
-						? formatRoleName(deletingRole.role)
-						: ""
+					deletingRole?.role ? formatRoleName(deletingRole.role) : ""
 				}
 				onConfirm={confirmDelete}
 				isDeleting={deleteRoleMutation.isPending}
