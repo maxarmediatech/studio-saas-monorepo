@@ -55,6 +55,7 @@ export const sessions = pgTable(
 			.references(() => users.id, { onDelete: "cascade" }),
 		impersonatedBy: text("impersonated_by"),
 		activeOrganizationId: text("active_organization_id"),
+		activeTeamId: text("active_team_id"),
 		token: text("token").notNull(),
 		createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 		updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),

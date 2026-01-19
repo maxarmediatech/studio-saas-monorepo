@@ -73,6 +73,10 @@ export function OrganizationInvitationsList({
 				),
 		[organization?.invitations],
 	);
+	const teamNameById = useMemo(() => {
+		const teams = organization?.teams ?? [];
+		return new Map(teams.map((team) => [team.id, team.name]));
+	}, [organization?.teams]);
 
 	const revokeInvitation = (invitationId: string) => {
 		toast.promise(
@@ -119,6 +123,11 @@ export function OrganizationInvitationsList({
 					canceled: XIcon,
 				}[row.original.status];
 				const roleKeys = normalizeRoles(row.original.role);
+				const teamName = row.original.teamId
+					? teamNameById.get(row.original.teamId) ?? "Unknown team"
+					: null;
+				const shouldShowBadges =
+					roleKeys.length > 0 || Boolean(teamName);
 				return (
 					<div className="leading-normal">
 						<strong
@@ -152,7 +161,7 @@ export function OrganizationInvitationsList({
 								)}
 							</span>
 						</small>
-						{roleKeys.length > 0 && (
+						{shouldShowBadges && (
 							<div className="mt-1 flex flex-wrap gap-1">
 								{roleKeys.map((roleKey) => (
 									<Badge
@@ -163,6 +172,11 @@ export function OrganizationInvitationsList({
 										{getRoleLabel(roleKey)}
 									</Badge>
 								))}
+								{teamName && (
+									<Badge variant="outline" className="text-xs">
+										Team: {teamName}
+									</Badge>
+								)}
 							</div>
 						)}
 					</div>

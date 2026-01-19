@@ -12,6 +12,7 @@ import {
 } from "@repo/ui/components/form";
 import { Input } from "@repo/ui/components/input";
 import { OrganizationRoleSelect } from "@saas/organizations/components/OrganizationRoleSelect";
+import { OrganizationTeamSelect } from "@saas/organizations/components/OrganizationTeamSelect";
 import { fullOrganizationQueryKey } from "@saas/organizations/lib/api";
 import { SettingsItem } from "@saas/shared/components/SettingsItem";
 import { useQueryClient } from "@tanstack/react-query";
@@ -24,6 +25,7 @@ import { z } from "zod";
 const formSchema = z.object({
 	email: z.string().email(),
 	role: z.array(z.string()).min(1),
+	teamId: z.string().nullable().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -44,15 +46,18 @@ export function InviteMemberForm({
 		defaultValues: {
 			email: "",
 			role: ["member"],
+			teamId: null,
 		},
 	});
 
 	const onSubmit: SubmitHandler<FormValues> = async (values) => {
 		try {
 			const roleInput = values.role as InviteRoleInput;
+			const teamId = values.teamId ?? undefined;
 			const { error } = await authClient.organization.inviteMember({
-				...values,
+				email: values.email,
 				role: roleInput,
+				teamId,
 				organizationId,
 			});
 
@@ -125,6 +130,24 @@ export function InviteMemberForm({
 										</FormLabel>
 										<FormControl>
 											<OrganizationRoleSelect
+												value={field.value}
+												onSelect={field.onChange}
+											/>
+										</FormControl>
+									</FormItem>
+								)}
+							/>
+						</div>
+						<div>
+							<FormField
+								control={form.control}
+								name="teamId"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Team</FormLabel>
+										<FormControl>
+											<OrganizationTeamSelect
+												organizationId={organizationId}
 												value={field.value}
 												onSelect={field.onChange}
 											/>

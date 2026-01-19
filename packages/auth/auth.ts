@@ -418,6 +418,9 @@ export const auth = betterAuth({
 				enabled: true,
 				maximumRolesPerOrganization: 20,
 			},
+			teams: {
+				enabled: true,
+			},
 			organizationHooks: {
 				afterCreateOrganization: async ({ organization }) => {
 					await ensureDefaultOrganizationRoles(organization.id);

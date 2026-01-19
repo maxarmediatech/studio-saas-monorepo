@@ -23,6 +23,7 @@ import {
 	organizationRoles,
 	organizations,
 	purchases,
+	teams,
 } from "./core";
 import {
 	billToEnum,
@@ -2156,6 +2157,7 @@ export const savedViewFavoriteRelations = relations(
 export const organizationRelations = relations(organizations, ({ many }) => ({
 	members: many(members),
 	invitations: many(invitations),
+	teams: many(teams),
 	purchases: many(purchases),
 	organizationRoles: many(organizationRoles),
 	configurations: many(configurations),
