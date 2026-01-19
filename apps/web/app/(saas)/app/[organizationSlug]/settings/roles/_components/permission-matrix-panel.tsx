@@ -1,23 +1,24 @@
 "use client";
 
 import {
-	type AnyAction,
-	type AppRole,
+	AnyAction,
+	AppRole,
 	appRoles,
 	checkStaticRolePermission,
 	getPermissionMatrix,
-	type Resource,
+	Resource,
 } from "@repo/auth/lib/permissions";
+import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
-import { Checkbox } from "@repo/ui/components/checkbox";
 import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "@repo/ui/components/dialog";
+	Card,
+	CardContent,
+	CardDescription,
+	CardFooter,
+	CardHeader,
+	CardTitle,
+} from "@repo/ui/components/card";
+import { Checkbox } from "@repo/ui/components/checkbox";
 import { Input } from "@repo/ui/components/input";
 import { Label } from "@repo/ui/components/label";
 import { ScrollArea } from "@repo/ui/components/scroll-area";
@@ -30,21 +31,34 @@ import {
 } from "@repo/ui/components/select";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Loader2, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-interface PermissionMatrixDialogProps {
-	open: boolean;
-	onOpenChange: (open: boolean) => void;
-	organizationId: string;
+interface RoleData {
+	id: string;
+	name: string;
+	description?: string;
+	permissions: Record<string, string[]>;
+}
+
+interface CustomRoleRecord {
+	id: string;
+	role: string;
+	permission: string;
+	description: string | null;
+	color: string | null;
+	createdAt: Date;
+	updatedAt: Date | null;
+}
+
+interface PermissionMatrixPanelProps {
 	mode: "create" | "edit" | "view";
-	role?: {
-		id: string;
-		name: string;
-		description?: string;
-		permissions: Record<string, string[]>;
-	};
+	role?: RoleData;
+	onCancel?: () => void;
+	onCreated?: (role: CustomRoleRecord) => void;
+	onUpdated?: () => void;
+	onDelete?: () => void;
 }
 
 const RESOURCE_LABELS: Partial<Record<Resource, string>> = {
@@ -91,13 +105,14 @@ function toRoleKey(displayName: string): string {
 	return displayName.toLowerCase().replace(/\s+/g, "_");
 }
 
-export function PermissionMatrixDialog({
-	open,
-	onOpenChange,
-	organizationId,
+export function PermissionMatrixPanel({
 	mode,
 	role,
-}: PermissionMatrixDialogProps) {
+	onCancel,
+	onCreated,
+	onUpdated,
+	onDelete,
+}: PermissionMatrixPanelProps) {
 	const queryClient = useQueryClient();
 	const [name, setName] = useState(role?.name ?? "");
 	const [description, setDescription] = useState(role?.description ?? "");
@@ -106,23 +121,30 @@ export function PermissionMatrixDialog({
 	);
 	const [templateRole, setTemplateRole] = useState<AppRole | "">("");
 
+	const permissionMatrix = useMemo(
+		() => getPermissionMatrix().filter(({ resource }) => resource !== "ac"),
+		[],
+	);
+
+	const resetForm = () => {
+		setName(role?.name ?? "");
+		setDescription(role?.description ?? "");
+		setPermissions(role?.permissions ?? {});
+		setTemplateRole("");
+	};
+
 	useEffect(() => {
-		if (open) {
-			setName(role?.name ?? "");
-			setDescription(role?.description ?? "");
-			setPermissions(role?.permissions ?? {});
-			setTemplateRole("");
-		}
-	}, [open, role]);
+		resetForm();
+	}, [role, mode]);
 
 	const createMutation = useMutation({
 		...orpc.organizations.roles.create.mutationOptions(),
-		onSuccess: () => {
+		onSuccess: (data) => {
 			queryClient.invalidateQueries({
 				queryKey: orpc.organizations.roles.key(),
 			});
 			toast.success("Role created successfully");
-			onOpenChange(false);
+			onCreated?.(data as CustomRoleRecord);
 		},
 		onError: (error) => {
 			toast.error(error.message || "Failed to create role");
@@ -136,16 +158,12 @@ export function PermissionMatrixDialog({
 				queryKey: orpc.organizations.roles.key(),
 			});
 			toast.success("Role updated successfully");
-			onOpenChange(false);
+			onUpdated?.();
 		},
 		onError: (error) => {
 			toast.error(error.message || "Failed to update role");
 		},
 	});
-
-	const permissionMatrix = getPermissionMatrix().filter(
-		({ resource }) => resource !== "ac",
-	);
 
 	const handleTemplateChange = (roleKey: AppRole) => {
 		setTemplateRole(roleKey);
@@ -210,94 +228,114 @@ export function PermissionMatrixDialog({
 
 	const isViewOnly = mode === "view";
 	const isSaving = createMutation.isPending || updateMutation.isPending;
+	const isEditable = !isViewOnly;
 	const title =
 		mode === "create"
 			? "Create Custom Role"
 			: mode === "edit"
 				? "Edit Role"
-				: "View Role Permissions";
+				: "Role Overview";
+	const descriptionText =
+		mode === "create"
+			? "Define a new role and its permissions."
+			: mode === "edit"
+				? "Adjust what this role can access."
+				: "System roles are read-only. Review the permissions below.";
+
+	if (!role && mode !== "create") {
+		return null;
+	}
 
 	return (
-		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="max-w-4xl">
-				<DialogHeader>
-					<DialogTitle>{title}</DialogTitle>
-					<DialogDescription>
-						{mode === "create"
-							? "Create a new role with custom permissions. You can start from a template."
-							: mode === "edit"
-								? "Modify the permissions for this role."
-								: "View the permissions assigned to this role."}
-					</DialogDescription>
-				</DialogHeader>
-
-				<div className="space-y-4">
-					{!isViewOnly && (
-						<div className="grid gap-4 sm:grid-cols-2">
-							<div className="space-y-2">
-								<Label htmlFor="name">Role Name</Label>
-								<Input
-									id="name"
-									value={name}
-									onChange={(e) => setName(e.target.value)}
-									placeholder="e.g., Project Manager"
-									disabled={isSaving}
-								/>
-								<p className="text-muted-foreground text-xs">
-									Will be saved as: {toRoleKey(name) || "..."}
-								</p>
-							</div>
-							<div className="space-y-2">
-								<Label htmlFor="template">
-									Start from Template
-								</Label>
-								<Select
-									value={templateRole}
-									onValueChange={(v) =>
-										handleTemplateChange(v as AppRole)
-									}
-									disabled={isSaving}
-								>
-									<SelectTrigger>
-										<SelectValue placeholder="Select a role template..." />
-									</SelectTrigger>
-									<SelectContent>
-										{Object.keys(appRoles).map(
-											(roleKey) => (
-												<SelectItem
-													key={roleKey}
-													value={roleKey}
-												>
-													{roleKey
-														.replace(/_/g, " ")
-														.replace(/\b\w/g, (c) =>
-															c.toUpperCase(),
-														)}
-												</SelectItem>
-											),
-										)}
-									</SelectContent>
-								</Select>
-							</div>
-							<div className="space-y-2 sm:col-span-2">
-								<Label htmlFor="description">Description</Label>
-								<Input
-									id="description"
-									value={description}
-									onChange={(e) =>
-										setDescription(e.target.value)
-									}
-									placeholder="Brief description of this role..."
-									disabled={isSaving}
-								/>
-							</div>
+		<Card className="h-full">
+			<CardHeader>
+				<div className="flex items-start justify-between gap-4">
+					<div>
+						<CardTitle className="flex items-center gap-2">
+							{title}
+							{isViewOnly && (
+								<Badge variant="secondary">System</Badge>
+							)}
+						</CardTitle>
+						<CardDescription>{descriptionText}</CardDescription>
+					</div>
+					{onDelete && mode === "edit" && (
+						<Button
+							variant="ghost"
+							size="icon"
+							className="text-destructive hover:text-destructive"
+							onClick={onDelete}
+						>
+							<Trash2 className="h-4 w-4" />
+							<span className="sr-only">Delete role</span>
+						</Button>
+					)}
+				</div>
+			</CardHeader>
+			<CardContent className="space-y-4">
+				<div className="grid gap-4 lg:grid-cols-2">
+					<div className="space-y-2">
+						<Label htmlFor="name">Role Name</Label>
+						<Input
+							id="name"
+							value={name}
+							onChange={(e) => setName(e.target.value)}
+							placeholder="e.g., Project Manager"
+							disabled={!isEditable || isSaving}
+						/>
+						{isEditable && (
+							<p className="text-muted-foreground text-xs">
+								Will be saved as: {toRoleKey(name) || "..."}
+							</p>
+						)}
+					</div>
+					{isEditable && (
+						<div className="space-y-2">
+							<Label htmlFor="template">Start from Template</Label>
+							<Select
+								value={templateRole}
+								onValueChange={(v) =>
+									handleTemplateChange(v as AppRole)
+								}
+								disabled={isSaving}
+							>
+								<SelectTrigger>
+									<SelectValue placeholder="Select a role template..." />
+								</SelectTrigger>
+								<SelectContent>
+									{Object.keys(appRoles).map((roleKey) => (
+										<SelectItem
+											key={roleKey}
+											value={roleKey}
+										>
+											{roleKey
+												.replace(/_/g, " ")
+												.replace(/\b\w/g, (c) =>
+													c.toUpperCase(),
+												)}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
 						</div>
 					)}
+					<div className="space-y-2 lg:col-span-2">
+						<Label htmlFor="description">Description</Label>
+						<Input
+							id="description"
+							value={description}
+							onChange={(e) => setDescription(e.target.value)}
+							placeholder="Brief description of this role..."
+							disabled={!isEditable || isSaving}
+						/>
+					</div>
+				</div>
 
-					<div className="space-y-2">
-						<Label>Permissions</Label>
-						<ScrollArea className="h-[400px] rounded-md border">
-							<div className="p-4">
+				<div className="space-y-2">
+					<Label>Permissions</Label>
+					<ScrollArea className="h-[520px] rounded-md border">
+						<div className="p-4">
+							<div className="min-w-[900px] overflow-auto">
 								<table className="w-full text-sm">
 									<thead>
 										<tr className="border-b">
@@ -330,90 +368,82 @@ export function PermissionMatrixDialog({
 													className="border-b last:border-0"
 												>
 													<td className="py-2 font-medium">
-														{getResourceLabel(
-															resource,
-														)}
+														{getResourceLabel(resource)}
 													</td>
-													{Object.keys(
-														ACTION_LABELS,
-													).map((action) => {
-														const isAvailable =
-															actions.includes(
-																action,
-															);
-														const isChecked =
-															hasPermission(
-																resource,
-																action,
-															);
-														return (
-															<td
-																key={action}
-																className="py-2 text-center"
-															>
-																{isAvailable ? (
+													{Object.keys(ACTION_LABELS).map(
+														(action) => {
+															const isAvailable =
+																actions.includes(
+																	action as AnyAction,
+																);
+															if (!isAvailable) {
+																return (
+																	<td
+																		key={action}
+																		className="py-2 text-center text-muted-foreground"
+																	>
+																		—
+																	</td>
+																);
+															}
+															return (
+																<td key={action} className="py-2 text-center">
 																	<Checkbox
-																		checked={
-																			isChecked
-																		}
+																		checked={hasPermission(
+																			resource,
+																			action,
+																		)}
 																		onCheckedChange={() =>
-																			!isViewOnly &&
-																			!isSaving &&
 																			togglePermission(
 																				resource,
 																				action,
 																			)
 																		}
-																		disabled={
-																			isViewOnly ||
-																			isSaving
-																		}
+																		disabled={!isEditable || isSaving}
 																	/>
-																) : (
-																	<span className="text-muted-foreground">
-																		—
-																	</span>
-																)}
-															</td>
-														);
-													})}
+																</td>
+															);
+														},
+													)}
 												</tr>
 											),
 										)}
 									</tbody>
 								</table>
 							</div>
-						</ScrollArea>
-					</div>
+						</div>
+					</ScrollArea>
 				</div>
-
-				<DialogFooter>
+			</CardContent>
+			{isEditable && (
+				<CardFooter className="flex items-center justify-between">
 					<Button
-						variant="outline"
-						onClick={() => onOpenChange(false)}
+						variant="ghost"
+						onClick={() => {
+							resetForm();
+							onCancel?.();
+						}}
 						disabled={isSaving}
 					>
-						{isViewOnly ? "Close" : "Cancel"}
+						Cancel
 					</Button>
-					{!isViewOnly && (
-						<Button
-							onClick={handleSave}
-							disabled={!name.trim() || isSaving}
-						>
-							{isSaving ? (
-								<>
-									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-									Saving...
-								</>
-							) : mode === "create" ? (
-								"Create Role"
-							) : (
-								"Save Changes"
-							)}
-						</Button>
-					)}
-				</DialogFooter>
-			</DialogContent>
-		</Dialog>
+					<Button
+						onClick={handleSave}
+						disabled={isSaving || !name.trim()}
+					>
+						{isSaving ? (
+							<>
+								<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+								Saving...
+							</>
+						) : mode === "create" ? (
+							"Create Role"
+						) : (
+							"Save Changes"
+						)}
+					</Button>
+				</CardFooter>
+			)}
+		</Card>
 	);
 }

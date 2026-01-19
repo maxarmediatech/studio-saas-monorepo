@@ -33,7 +33,7 @@ export default async function RolesSettingsPage({ params }: Props) {
 
 	return (
 		<PageContent title="Roles">
-			<RolesList organizationId={organization.id} canManage={isAdmin} />
+			<RolesList canManage={isAdmin} />
 		</PageContent>
 	);
 }
