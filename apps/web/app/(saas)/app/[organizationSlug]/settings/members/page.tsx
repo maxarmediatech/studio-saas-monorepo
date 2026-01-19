@@ -1,6 +1,4 @@
-import { isOrganizationAdmin } from "@repo/auth/lib/helper";
-import { getActiveOrganization, getSession } from "@saas/auth/lib/server";
-import { InviteMemberForm } from "@saas/organizations/components/InviteMemberForm";
+import { getActiveOrganization } from "@saas/auth/lib/server";
 import { OrganizationMembersBlock } from "@saas/organizations/components/OrganizationMembersBlock";
 import { PageContent } from "@saas/studio";
 import { notFound } from "next/navigation";
@@ -19,7 +17,6 @@ export async function generateMetadata({ params }: Props) {
 }
 
 export default async function MembersSettingsPage({ params }: Props) {
-	const session = await getSession();
 	const { organizationSlug } = await params;
 	const organization = await getActiveOrganization(organizationSlug);
 
@@ -29,12 +26,7 @@ export default async function MembersSettingsPage({ params }: Props) {
 
 	return (
 		<PageContent title="Members">
-			<div className="space-y-6">
-				{isOrganizationAdmin(organization, session?.user) && (
-					<InviteMemberForm organizationId={organization.id} />
-				)}
-				<OrganizationMembersBlock organizationId={organization.id} />
-			</div>
+			<OrganizationMembersBlock organizationId={organization.id} />
 		</PageContent>
 	);
 }

@@ -317,18 +317,6 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							icon: "Settings2",
 						},
 						{
-							id: "members",
-							label: "Members",
-							path: url("/settings/members"),
-							icon: "Users",
-						},
-						{
-							id: "roles",
-							label: "Roles",
-							path: url("/settings/roles"),
-							icon: "Shield",
-						},
-						{
 							id: "billing",
 							label: "Billing",
 							path: url("/settings/billing"),
@@ -339,6 +327,38 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							label: "Danger Zone",
 							path: url("/settings/danger-zone"),
 							icon: "AlertTriangle",
+						},
+					],
+				},
+				{
+					id: "access",
+					label: "Access",
+					items: [
+						{
+							id: "members",
+							label: "Members",
+							path: url("/settings/members"),
+							icon: "Users",
+						},
+						{
+							id: "invitations",
+							label: "Invitations",
+							path: url("/settings/invitations"),
+							icon: "Inbox",
+							permission: {
+								any: [
+									{
+										resource: "invites",
+										action: "read",
+									},
+								],
+							},
+						},
+						{
+							id: "roles",
+							label: "Roles",
+							path: url("/settings/roles"),
+							icon: "Shield",
 						},
 					],
 				},
