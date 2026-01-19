@@ -6,7 +6,7 @@ import {
 } from "@repo/auth/lib/permissions";
 
 function any(
-	role: string,
+	role: string | string[],
 	resource: Resource,
 	actions: AnyAction[],
 	customRolePermissions?: CustomRolePermissions,
@@ -28,7 +28,7 @@ export interface HeaderCapabilities {
 }
 
 export function getCapabilities(
-	userRole: string,
+	userRole: string | string[],
 	customRolePermissions?: CustomRolePermissions,
 ): HeaderCapabilities {
 	return {

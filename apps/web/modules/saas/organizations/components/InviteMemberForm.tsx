@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { authClient } from "@repo/auth/client";
+import type { AppRole } from "@repo/auth/lib/permissions";
 import { Button } from "@repo/ui/components/button";
 import {
 	Form,
@@ -23,7 +24,7 @@ import { z } from "zod";
 
 const formSchema = z.object({
 	email: z.string().email(),
-	role: z.enum(["member", "owner", "admin"]),
+	role: z.array(z.string()).min(1),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -40,14 +41,16 @@ export function InviteMemberForm({
 		resolver: zodResolver(formSchema),
 		defaultValues: {
 			email: "",
-			role: "member",
+			role: ["member"],
 		},
 	});
 
 	const onSubmit: SubmitHandler<FormValues> = async (values) => {
 		try {
+			const roleInput = values.role as unknown as AppRole[];
 			const { error } = await authClient.organization.inviteMember({
 				...values,
+				role: roleInput,
 				organizationId,
 			});
 

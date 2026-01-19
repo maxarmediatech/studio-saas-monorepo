@@ -1,29 +1,43 @@
 import "server-only";
 
-import type { CustomRolePermissions } from "@repo/auth/lib/permissions";
-import { isStaticRole } from "@repo/auth/lib/permissions";
+import {
+	type CustomRolePermissions,
+	isStaticRole,
+	mergeCustomRolePermissions,
+	normalizeRoles,
+} from "@repo/auth/lib/permissions";
 import { db } from "@repo/database";
 
 export async function getCustomRolePermissions(
 	organizationId: string,
-	role: string,
+	role: string | string[],
 ): Promise<CustomRolePermissions | undefined> {
-	if (isStaticRole(role)) {
+	const roleList = normalizeRoles(role);
+	const customRoleKeys = roleList.filter((roleKey) => !isStaticRole(roleKey));
+
+	if (customRoleKeys.length === 0) {
 		return undefined;
 	}
 
-	const customRole = await db.query.organizationRoles.findFirst({
-		where: (roles, { and, eq }) =>
-			and(eq(roles.organizationId, organizationId), eq(roles.role, role)),
+	const customRoles = await db.query.organizationRoles.findMany({
+		where: (rolesTable, { and, eq, inArray }) =>
+			and(
+				eq(rolesTable.organizationId, organizationId),
+				inArray(rolesTable.role, customRoleKeys),
+			),
 	});
 
-	if (!customRole) {
+	if (!customRoles.length) {
 		return undefined;
 	}
 
-	try {
-		return JSON.parse(customRole.permission) as CustomRolePermissions;
-	} catch {
-		return undefined;
-	}
+	const parsedPermissions = customRoles.map((customRole) => {
+		try {
+			return JSON.parse(customRole.permission) as CustomRolePermissions;
+		} catch {
+			return undefined;
+		}
+	});
+
+	return mergeCustomRolePermissions(parsedPermissions);
 }

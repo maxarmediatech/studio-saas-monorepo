@@ -67,6 +67,112 @@ export type AnyAction =
 	| "approve"
 	| "claim";
 
+const ORGANIZATION_ADMIN_ROLES = ["owner", "admin"] as const;
+
+export function normalizeRoles(
+	value: string | string[] | null | undefined,
+): string[] {
+	if (!value) {
+		return [];
+	}
+
+	const rolePattern = /^[a-z][a-z0-9_]*$/;
+	const raw = Array.isArray(value) ? value : [value];
+	const roles: string[] = [];
+	const seen = new Set<string>();
+
+	const tryParseJsonArray = (input: string): string[] | null => {
+		let candidate = input.trim();
+		if (!candidate) {
+			return null;
+		}
+
+		for (let attempt = 0; attempt < 2; attempt += 1) {
+			try {
+				const parsed = JSON.parse(candidate) as unknown;
+				if (Array.isArray(parsed)) {
+					return parsed.filter(
+						(entry): entry is string => typeof entry === "string",
+					);
+				}
+				if (typeof parsed === "string") {
+					const next = parsed.trim();
+					if (next.startsWith("[")) {
+						candidate = next;
+						continue;
+					}
+					return [parsed];
+				}
+			} catch {
+				// Ignore parse errors and fall back to comma splitting.
+			}
+			break;
+		}
+
+		return null;
+	};
+
+	for (const entry of raw) {
+		if (typeof entry !== "string") {
+			continue;
+		}
+		const parsedRoles = tryParseJsonArray(entry);
+		const parts = parsedRoles ?? entry.split(",");
+
+		for (const part of parts) {
+			const trimmed = part.trim();
+			if (!trimmed) {
+				continue;
+			}
+
+			const normalized = trimmed.toLowerCase();
+			const cleaned = normalized.replace(
+				/^[^a-z0-9_]+|[^a-z0-9_]+$/g,
+				"",
+			);
+			if (!cleaned || !rolePattern.test(cleaned)) {
+				continue;
+			}
+			if (seen.has(cleaned)) {
+				continue;
+			}
+			seen.add(cleaned);
+			roles.push(cleaned);
+		}
+	}
+
+	return roles;
+}
+
+export function hasAnyRole(
+	value: string | string[] | null | undefined,
+	rolesToCheck: readonly string[],
+): boolean {
+	const roles = normalizeRoles(value);
+	return roles.some((role) => rolesToCheck.includes(role));
+}
+
+export function coerceOrganizationRoles(
+	value: string | string[] | null | undefined,
+): string[] {
+	const roles = normalizeRoles(value);
+	if (roles.length === 0) {
+		return ["member"];
+	}
+
+	if (hasAnyRole(roles, ORGANIZATION_ADMIN_ROLES)) {
+		return roles;
+	}
+
+	return roles.includes("member") ? roles : ["member", ...roles];
+}
+
+export function serializeRoles(
+	value: string | string[] | null | undefined,
+): string {
+	return coerceOrganizationRoles(value).join(",");
+}
+
 export const ac = createAccessControl(statement);
 
 /** Owner - Full access to everything including org management */
@@ -339,20 +445,50 @@ export function checkStaticRolePermission(
 
 export type CustomRolePermissions = Record<string, string[]>;
 
+export function mergeCustomRolePermissions(
+	permissionsList: Array<CustomRolePermissions | null | undefined>,
+): CustomRolePermissions | undefined {
+	const merged: CustomRolePermissions = {};
+
+	for (const permissions of permissionsList) {
+		if (!permissions) continue;
+		for (const [resource, actions] of Object.entries(permissions)) {
+			if (!merged[resource]) {
+				merged[resource] = [];
+			}
+			for (const action of actions) {
+				if (!merged[resource].includes(action)) {
+					merged[resource].push(action);
+				}
+			}
+		}
+	}
+
+	return Object.keys(merged).length > 0 ? merged : undefined;
+}
+
 export function checkRolePermission(
-	role: string,
+	role: string | string[],
 	resource: Resource,
 	action: AnyAction,
 	customRolePermissions?: CustomRolePermissions,
 ): boolean {
-	if (isStaticRole(role)) {
-		return checkStaticRolePermission(role, resource, action);
-	}
+	const roles = normalizeRoles(role);
 
-	if (customRolePermissions) {
-		const resourceActions = customRolePermissions[resource];
-		if (!resourceActions) return false;
-		return resourceActions.includes(action);
+	for (const roleKey of roles) {
+		if (isStaticRole(roleKey)) {
+			if (checkStaticRolePermission(roleKey, resource, action)) {
+				return true;
+			}
+			continue;
+		}
+
+		if (customRolePermissions) {
+			const resourceActions = customRolePermissions[resource];
+			if (resourceActions?.includes(action)) {
+				return true;
+			}
+		}
 	}
 
 	return false;

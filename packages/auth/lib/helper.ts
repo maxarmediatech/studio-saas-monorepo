@@ -1,4 +1,5 @@
 import type { ActiveOrganization } from "../auth";
+import { hasAnyRole } from "./permissions";
 
 export function isOrganizationAdmin(
 	organization?: ActiveOrganization | null,
@@ -12,7 +13,7 @@ export function isOrganizationAdmin(
 	)?.role;
 
 	return (
-		["owner", "admin"].includes(userOrganizationRole ?? "") ||
+		hasAnyRole(userOrganizationRole ?? undefined, ["owner", "admin"]) ||
 		user?.role === "admin"
 	);
 }

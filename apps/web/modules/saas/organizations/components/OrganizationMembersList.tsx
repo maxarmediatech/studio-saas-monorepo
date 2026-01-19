@@ -1,6 +1,8 @@
 "use client";
 import { authClient } from "@repo/auth/client";
+import { hasAnyRole, normalizeRoles } from "@repo/auth/lib/permissions";
 import { isOrganizationAdmin } from "@repo/auth/lib/helper";
+import type { AppRole } from "@repo/auth/lib/permissions";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import {
@@ -95,14 +97,18 @@ export function OrganizationMembersList({
 		queryClient.invalidateQueries({ queryKey: orpc.crews.key() });
 	};
 
-	const updateMemberRole = async (memberId: string, role: string) => {
+	const updateMemberRole = async (memberId: string, role: string[]) => {
 		toast.promise(
 			async () => {
-				await authClient.organization.updateMemberRole({
+				const roleInput = role as unknown as AppRole[];
+				const { error } = await authClient.organization.updateMemberRole({
 					memberId,
-					role,
+					role: roleInput,
 					organizationId,
 				});
+				if (error) {
+					throw error;
+				}
 			},
 			{
 				loading: t(
@@ -163,6 +169,7 @@ export function OrganizationMembersList({
 				const hasCrewProfile = userIdsWithCrewProfiles.has(
 					row.original.userId,
 				);
+				const roleKeys = normalizeRoles(row.original.role);
 				return row.original.user ? (
 					<div className="flex items-center gap-2">
 						<UserAvatar
@@ -189,6 +196,19 @@ export function OrganizationMembersList({
 							<small className="text-foreground/60">
 								{row.original.user.email}
 							</small>
+							{roleKeys.length > 0 && (
+								<div className="mt-1 flex flex-wrap gap-1">
+									{roleKeys.map((roleKey) => (
+										<Badge
+											key={roleKey}
+											variant="outline"
+											className="text-xs"
+										>
+											{getRoleLabel(roleKey)}
+										</Badge>
+									))}
+								</div>
+							)}
 						</div>
 					</div>
 				) : null;
@@ -206,13 +226,13 @@ export function OrganizationMembersList({
 						{userIsOrganizationAdmin ? (
 							<>
 								<OrganizationRoleSelect
-									value={row.original.role}
+									value={normalizeRoles(row.original.role)}
 									onSelect={async (value) =>
 										updateMemberRole(row.original.id, value)
 									}
 									disabled={
 										!userIsOrganizationAdmin ||
-										row.original.role === "owner"
+										hasAnyRole(row.original.role, ["owner"])
 									}
 								/>
 								<DropdownMenu>
@@ -281,7 +301,9 @@ export function OrganizationMembersList({
 							</>
 						) : (
 							<span className="font-medium text-foreground/60 text-sm">
-								{getRoleLabel(row.original.role)}
+								{normalizeRoles(row.original.role)
+									.map(getRoleLabel)
+									.join(", ")}
 							</span>
 						)}
 					</div>
