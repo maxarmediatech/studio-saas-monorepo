@@ -1,8 +1,7 @@
 import { isOrganizationAdmin } from "@repo/auth/lib/helper";
 import { getActiveOrganization, getSession } from "@saas/auth/lib/server";
-import { PageContent } from "@saas/studio";
 import { notFound } from "next/navigation";
-import { RolesList } from "./_components/roles-list";
+import { RolesPageClient } from "./roles-page-client";
 
 type Props = {
 	params: Promise<{ organizationSlug: string }>;
@@ -31,9 +30,5 @@ export default async function RolesSettingsPage({ params }: Props) {
 		return notFound();
 	}
 
-	return (
-		<PageContent title="Roles">
-			<RolesList canManage={isAdmin} />
-		</PageContent>
-	);
+	return <RolesPageClient canManage={isAdmin} />;
 }

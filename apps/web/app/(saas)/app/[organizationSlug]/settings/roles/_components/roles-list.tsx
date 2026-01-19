@@ -2,7 +2,6 @@
 
 import { AppRole, appRoles, staticRolesList } from "@repo/auth/lib/permissions";
 import { Badge } from "@repo/ui/components/badge";
-import { Button } from "@repo/ui/components/button";
 import {
 	Card,
 	CardContent,
@@ -15,14 +14,14 @@ import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { DeleteRoleDialog } from "./delete-role-dialog";
 import { PermissionMatrixPanel } from "./permission-matrix-panel";
 
 interface RolesListProps {
 	canManage: boolean;
+	createSignal?: number;
 }
 
 interface CustomRole {
@@ -76,7 +75,7 @@ function parsePermissions(value: string): Record<string, string[]> {
 	}
 }
 
-export function RolesList({ canManage }: RolesListProps) {
+export function RolesList({ canManage, createSignal }: RolesListProps) {
 	const queryClient = useQueryClient();
 	const [isCreateMode, setIsCreateMode] = useState(false);
 	const [selectedRoleKey, setSelectedRoleKey] =
@@ -84,6 +83,7 @@ export function RolesList({ canManage }: RolesListProps) {
 	const [previousRoleKey, setPreviousRoleKey] = useState<string | null>(null);
 	const [search, setSearch] = useState("");
 	const [deletingRole, setDeletingRole] = useState<CustomRole | null>(null);
+	const lastCreateSignal = useRef(createSignal);
 
 	const { data: customRoles, isLoading } = useQuery(
 		orpc.organizations.roles.list.queryOptions({}),
@@ -206,6 +206,19 @@ export function RolesList({ canManage }: RolesListProps) {
 		setIsCreateMode(true);
 	};
 
+	useEffect(() => {
+		if (createSignal === undefined) {
+			return;
+		}
+
+		if (createSignal !== lastCreateSignal.current) {
+			lastCreateSignal.current = createSignal;
+			if (canManage) {
+				handleCreateRole();
+			}
+		}
+	}, [canManage, createSignal]);
+
 	const handleCancelEdit = () => {
 		if (isCreateMode) {
 			setIsCreateMode(false);
@@ -233,23 +246,13 @@ export function RolesList({ canManage }: RolesListProps) {
 
 	return (
 		<div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
-			<Card className="h-fit">
+			<Card className="h-fit rounded-md shadow-none">
 				<CardHeader>
-					<div className="flex items-center justify-between">
-						<div>
-							<CardTitle>Roles</CardTitle>
-							<CardDescription>
-								Manage access by assigning custom roles. System roles are
-								locked.
-							</CardDescription>
-						</div>
-						{canManage && (
-							<Button size="sm" onClick={handleCreateRole}>
-								<Plus className="mr-2 h-4 w-4" />
-								Create Role
-							</Button>
-						)}
-					</div>
+					<CardTitle>Roles</CardTitle>
+					<CardDescription>
+						Manage access by assigning custom roles. System roles are
+						locked.
+					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
 					<Input
@@ -272,7 +275,7 @@ export function RolesList({ canManage }: RolesListProps) {
 									type="button"
 									onClick={() => handleRoleSelect(role.key)}
 									className={cn(
-										"w-full rounded-lg border px-3 py-2 text-left transition",
+										"w-full rounded-md border px-3 py-2 text-left transition",
 										selectedRoleKey === role.key && !isCreateMode
 											? "border-primary bg-primary/5"
 											: "hover:bg-muted",
@@ -318,7 +321,7 @@ export function RolesList({ canManage }: RolesListProps) {
 										type="button"
 										onClick={() => handleRoleSelect(role.key)}
 										className={cn(
-											"w-full rounded-lg border px-3 py-2 text-left transition",
+											"w-full rounded-md border px-3 py-2 text-left transition",
 											selectedRoleKey === role.key && !isCreateMode
 												? "border-primary bg-primary/5"
 												: "hover:bg-muted",
@@ -350,7 +353,7 @@ export function RolesList({ canManage }: RolesListProps) {
 								))}
 							</div>
 						) : (
-							<div className="rounded-lg border border-dashed p-4 text-center text-muted-foreground text-xs">
+							<div className="rounded-md border border-dashed p-4 text-center text-muted-foreground text-xs">
 								No custom roles yet. Use "Create Role" to add one.
 							</div>
 						)}

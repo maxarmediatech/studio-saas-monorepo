@@ -14,7 +14,6 @@ import {
 	Card,
 	CardContent,
 	CardDescription,
-	CardFooter,
 	CardHeader,
 	CardTitle,
 } from "@repo/ui/components/card";
@@ -247,7 +246,7 @@ export function PermissionMatrixPanel({
 	}
 
 	return (
-		<Card className="h-full">
+		<Card className="h-full rounded-md shadow-none">
 			<CardHeader>
 				<div className="flex items-start justify-between gap-4">
 					<div>
@@ -259,16 +258,45 @@ export function PermissionMatrixPanel({
 						</CardTitle>
 						<CardDescription>{descriptionText}</CardDescription>
 					</div>
-					{onDelete && mode === "edit" && (
-						<Button
-							variant="ghost"
-							size="icon"
-							className="text-destructive hover:text-destructive"
-							onClick={onDelete}
-						>
-							<Trash2 className="h-4 w-4" />
-							<span className="sr-only">Delete role</span>
-						</Button>
+					{isEditable && (
+						<div className="flex items-center gap-2">
+							{onDelete && mode === "edit" && (
+								<Button
+									variant="ghost"
+									size="icon"
+									className="text-destructive hover:text-destructive"
+									onClick={onDelete}
+								>
+									<Trash2 className="h-4 w-4" />
+									<span className="sr-only">Delete role</span>
+								</Button>
+							)}
+							<Button
+								variant="ghost"
+								onClick={() => {
+									resetForm();
+									onCancel?.();
+								}}
+								disabled={isSaving}
+							>
+								Cancel
+							</Button>
+							<Button
+								onClick={handleSave}
+								disabled={isSaving || !name.trim()}
+							>
+								{isSaving ? (
+									<>
+										<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+										Saving...
+									</>
+								) : mode === "create" ? (
+									"Create Role"
+								) : (
+									"Save Changes"
+								)}
+							</Button>
+						</div>
 					)}
 				</div>
 			</CardHeader>
@@ -415,35 +443,6 @@ export function PermissionMatrixPanel({
 					</ScrollArea>
 				</div>
 			</CardContent>
-			{isEditable && (
-				<CardFooter className="flex items-center justify-between">
-					<Button
-						variant="ghost"
-						onClick={() => {
-							resetForm();
-							onCancel?.();
-						}}
-						disabled={isSaving}
-					>
-						Cancel
-					</Button>
-					<Button
-						onClick={handleSave}
-						disabled={isSaving || !name.trim()}
-					>
-						{isSaving ? (
-							<>
-								<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-								Saving...
-							</>
-						) : mode === "create" ? (
-							"Create Role"
-						) : (
-							"Save Changes"
-						)}
-					</Button>
-				</CardFooter>
-			)}
 		</Card>
 	);
 }
