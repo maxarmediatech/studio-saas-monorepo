@@ -1,56 +1,39 @@
 "use client";
+
 import { authClient } from "@repo/auth/client";
 import { hasAnyRole, normalizeRoles } from "@repo/auth/lib/permissions";
 import { isOrganizationAdmin } from "@repo/auth/lib/helper";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from "@repo/ui/components/dropdown-menu";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableRow,
-} from "@repo/ui/components/table";
 import { useSession } from "@saas/auth/hooks/use-session";
 import { useAllRoles } from "@saas/organizations/hooks/use-all-roles";
 import {
 	fullOrganizationQueryKey,
 	useFullOrganizationQuery,
 } from "@saas/organizations/lib/api";
+import {
+	DataTable,
+	DataTableColumnHeader,
+	DataTableRowActions,
+	type RowAction,
+} from "@saas/shared/components/data-table";
+// Import types for column meta augmentation
+import "@saas/shared/components/data-table/types";
 import { crewsApi } from "@saas/studio/lib/api";
 import { UserAvatar } from "@shared/components/UserAvatar";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type {
-	ColumnDef,
-	ColumnFiltersState,
-	SortingState,
-} from "@tanstack/react-table";
-import {
-	flexRender,
-	getCoreRowModel,
-	getFilteredRowModel,
-	getPaginationRowModel,
-	getSortedRowModel,
-	useReactTable,
-} from "@tanstack/react-table";
+import type { ColumnDef } from "@tanstack/react-table";
 import {
 	LogOutIcon,
-	MoreVerticalIcon,
 	TrashIcon,
 	UsersIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AddToCrewDialog } from "./AddToCrewDialog";
-import { OrganizationRoleSelect } from "./OrganizationRoleSelect";
+import { MemberRolesDialog } from "./member-roles-dialog";
 
 export function OrganizationMembersList({
 	organizationId,
@@ -64,12 +47,18 @@ export function OrganizationMembersList({
 	const queryClient = useQueryClient();
 	const { user } = useSession();
 	const { data: organization } = useFullOrganizationQuery(organizationId);
-	const [sorting, setSorting] = useState<SortingState>([]);
-	const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 	const userIsOrganizationAdmin = isOrganizationAdmin(organization, user);
 	const { getRoleLabel } = useAllRoles({
 		enabled: userIsOrganizationAdmin,
 	});
+
+	const [rolesDialogOpen, setRolesDialogOpen] = useState(false);
+	const [selectedMember, setSelectedMember] = useState<{
+		memberId: string;
+		name: string;
+		email: string;
+		roles: string[];
+	} | null>(null);
 
 	// Dialog state for adding member to crew
 	const [addToCrewDialogOpen, setAddToCrewDialogOpen] = useState(false);
@@ -84,8 +73,13 @@ export function OrganizationMembersList({
 	});
 
 	// Get set of user IDs that have crew profiles
-	const userIdsWithCrewProfiles = new Set(
-		crewsData?.data?.filter((c) => c.userId).map((c) => c.userId) ?? [],
+	const userIdsWithCrewProfiles = useMemo(
+		() =>
+			new Set(
+				crewsData?.data?.filter((c) => c.userId).map((c) => c.userId) ??
+					[],
+			),
+		[crewsData],
 	);
 
 	const handleAddToCrew = (memberId: string, memberName: string) => {
@@ -160,212 +154,213 @@ export function OrganizationMembersList({
 		);
 	};
 
-	const columns: ColumnDef<
-		NonNullable<typeof organization>["members"][number]
-	>[] = [
-		{
-			accessorKey: "user",
-			header: "",
-			accessorFn: (row) => row.user,
-			cell: ({ row }) => {
-				const hasCrewProfile = userIdsWithCrewProfiles.has(
-					row.original.userId,
-				);
-				const roleKeys = normalizeRoles(row.original.role);
-				return row.original.user ? (
+	const handleOpenRolesDialog = (member: {
+		id: string;
+		name: string | null;
+		email: string;
+		roles: string[];
+	}) => {
+		setSelectedMember({
+			memberId: member.id,
+			name: member.name ?? member.email,
+			email: member.email,
+			roles: member.roles,
+		});
+		setRolesDialogOpen(true);
+	};
+
+	type MemberRow = {
+		id: string;
+		userId: string;
+		name: string;
+		email: string;
+		avatarUrl?: string | null;
+		roles: string[];
+		canUpdateRoles: boolean;
+		hasCrewProfile: boolean;
+	};
+
+	const memberRows = useMemo<MemberRow[]>(() => {
+		return (
+			organization?.members?.map((member) => {
+				const roleKeys = normalizeRoles(member.role);
+				const hasCrewProfile = userIdsWithCrewProfiles.has(member.userId);
+				const canUpdateRoles =
+					userIsOrganizationAdmin &&
+					!hasAnyRole(member.role, ["owner"]);
+
+				return {
+					id: member.id,
+					userId: member.userId,
+					name: member.user?.name ?? member.user?.email ?? "Member",
+					email: member.user?.email ?? "",
+					avatarUrl: member.user?.image ?? null,
+					roles: roleKeys,
+					canUpdateRoles,
+					hasCrewProfile,
+				};
+			}) ?? []
+		);
+	}, [organization?.members, userIdsWithCrewProfiles, userIsOrganizationAdmin]);
+
+	const rowActions = useMemo<RowAction<MemberRow>[]>(
+		() => [
+			{
+				label: "Add to Crew",
+				icon: <UsersIcon className="h-4 w-4" />,
+				onClick: (row) => handleAddToCrew(row.id, row.name),
+				show: (row) => !row.hasCrewProfile,
+			},
+			{
+				label: t("organizations.settings.members.removeMember"),
+				icon: <TrashIcon className="h-4 w-4" />,
+				variant: "destructive",
+				separator: true,
+				onClick: (row) => removeMember(row.id),
+				show: (row) => row.userId !== user?.id && userIsOrganizationAdmin,
+			},
+			{
+				label: t("organizations.settings.members.leaveOrganization"),
+				icon: <LogOutIcon className="h-4 w-4" />,
+				variant: "destructive",
+				separator: true,
+				onClick: (row) => removeMember(row.id),
+				show: (row) => row.userId === user?.id,
+			},
+		],
+		[handleAddToCrew, removeMember, t, user?.id, userIsOrganizationAdmin],
+	);
+
+	const columns = useMemo<ColumnDef<MemberRow>[]>(
+		() => [
+			{
+				id: "name",
+				accessorKey: "name",
+				header: ({ column }) => (
+					<DataTableColumnHeader column={column} title="Name" />
+				),
+				cell: ({ row }) => (
 					<div className="flex items-center gap-2">
 						<UserAvatar
-							name={
-								row.original.user.name ??
-								row.original.user.email
-							}
-							avatarUrl={row.original.user?.image}
+							name={row.original.name}
+							avatarUrl={row.original.avatarUrl}
 						/>
-						<div>
-							<div className="flex items-center gap-2">
-								<strong className="block">
-									{row.original.user.name}
-								</strong>
-								{hasCrewProfile && (
-									<Badge
-										variant="secondary"
-										className="text-xs"
-									>
-										Crew
-									</Badge>
-								)}
-							</div>
-							<small className="text-foreground/60">
-								{row.original.user.email}
-							</small>
-							{roleKeys.length > 0 && (
-								<div className="mt-1 flex flex-wrap gap-1">
-									{roleKeys.map((roleKey) => (
-										<Badge
-											key={roleKey}
-											variant="outline"
-											className="text-xs"
-										>
-											{getRoleLabel(roleKey)}
-										</Badge>
-									))}
-								</div>
+						<div className="flex items-center gap-2">
+							<span className="font-medium text-foreground">
+								{row.original.name}
+							</span>
+							{row.original.hasCrewProfile && (
+								<Badge variant="secondary" className="text-xs">
+									Crew
+								</Badge>
 							)}
 						</div>
 					</div>
-				) : null;
+				),
+				meta: {
+					label: "Name",
+					minWidth: 200,
+				},
 			},
-		},
-		{
-			accessorKey: "actions",
-			header: "",
-			cell: ({ row }) => {
-				const hasCrewProfile = userIdsWithCrewProfiles.has(
-					row.original.userId,
-				);
-				return (
-					<div className="flex flex-row justify-end gap-2">
-						{userIsOrganizationAdmin ? (
-							<>
-								<OrganizationRoleSelect
-									value={normalizeRoles(row.original.role)}
-									onSelect={async (value) =>
-										updateMemberRole(row.original.id, value)
-									}
-									disabled={
-										!userIsOrganizationAdmin ||
-										hasAnyRole(row.original.role, ["owner"])
-									}
-								/>
-								<DropdownMenu>
-									<DropdownMenuTrigger asChild>
-										<Button size="icon" variant="ghost">
-											<MoreVerticalIcon className="size-4" />
-										</Button>
-									</DropdownMenuTrigger>
-									<DropdownMenuContent>
-										{!hasCrewProfile && (
-											<>
-												<DropdownMenuItem
-													onClick={() =>
-														handleAddToCrew(
-															row.original.id,
-															row.original.user
-																?.name ??
-																"Member",
-														)
-													}
-												>
-													<UsersIcon className="mr-2 size-4" />
-													Add to Crew
-												</DropdownMenuItem>
-												<DropdownMenuSeparator />
-											</>
-										)}
-										{row.original.userId !== user?.id && (
-											<DropdownMenuItem
-												disabled={
-													!isOrganizationAdmin(
-														organization,
-														user,
-													)
-												}
-												className="text-destructive"
-												onClick={async () =>
-													removeMember(
-														row.original.id,
-													)
-												}
-											>
-												<TrashIcon className="mr-2 size-4" />
-												{t(
-													"organizations.settings.members.removeMember",
-												)}
-											</DropdownMenuItem>
-										)}
-										{row.original.userId === user?.id && (
-											<DropdownMenuItem
-												className="text-destructive"
-												onClick={async () =>
-													removeMember(
-														row.original.id,
-													)
-												}
-											>
-												<LogOutIcon className="mr-2 size-4" />
-												{t(
-													"organizations.settings.members.leaveOrganization",
-												)}
-											</DropdownMenuItem>
-										)}
-									</DropdownMenuContent>
-								</DropdownMenu>
-							</>
-						) : (
-							<span className="font-medium text-foreground/60 text-sm">
-								{normalizeRoles(row.original.role)
-									.map(getRoleLabel)
-									.join(", ")}
-							</span>
-						)}
+			{
+				id: "email",
+				accessorKey: "email",
+				header: ({ column }) => (
+					<DataTableColumnHeader column={column} title="Email" />
+				),
+				cell: ({ row }) => (
+					<span className="text-foreground/70 text-sm">
+						{row.original.email}
+					</span>
+				),
+				meta: {
+					label: "Email",
+					minWidth: 240,
+				},
+			},
+			{
+				id: "roles",
+				header: ({ column }) => (
+					<DataTableColumnHeader column={column} title="Roles" />
+				),
+				cell: ({ row }) =>
+					row.original.roles.length > 0 ? (
+						<div className="flex flex-wrap gap-1">
+							{row.original.roles.map((roleKey) => (
+								<Badge key={roleKey} variant="outline" className="text-xs">
+									{getRoleLabel(roleKey)}
+								</Badge>
+							))}
+						</div>
+					) : (
+						<span className="text-foreground/60 text-sm">—</span>
+					),
+				meta: {
+					label: "Roles",
+					minWidth: 220,
+				},
+			},
+			{
+				id: "actions",
+				header: () => <span className="text-right">Actions</span>,
+				cell: ({ row }) => (
+					<div className="flex items-center justify-end gap-2">
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() =>
+								handleOpenRolesDialog({
+									id: row.original.id,
+									name: row.original.name,
+									email: row.original.email,
+									roles: row.original.roles,
+								})
+							}
+							disabled={!row.original.canUpdateRoles}
+						>
+							Update roles
+						</Button>
+						<DataTableRowActions row={row.original} actions={rowActions} />
 					</div>
-				);
+				),
+				enableSorting: false,
+				meta: {
+					label: "Actions",
+					headerClassName: "text-right",
+					cellClassName: "text-right",
+					minWidth: 180,
+				},
 			},
-		},
-	];
-
-	const table = useReactTable({
-		data: organization?.members ?? [],
-		columns,
-		manualPagination: true,
-		onSortingChange: setSorting,
-		onColumnFiltersChange: setColumnFilters,
-		getCoreRowModel: getCoreRowModel(),
-		getPaginationRowModel: getPaginationRowModel(),
-		getSortedRowModel: getSortedRowModel(),
-		getFilteredRowModel: getFilteredRowModel(),
-		state: {
-			sorting,
-			columnFilters,
-		},
-	});
+		],
+		[getRoleLabel, handleOpenRolesDialog, rowActions],
+	);
 
 	return (
 		<>
-			<div className="rounded-md border">
-				<Table>
-					<TableBody>
-						{table.getRowModel().rows?.length ? (
-							table.getRowModel().rows.map((row) => (
-								<TableRow
-									key={row.id}
-									data-state={
-										row.getIsSelected() && "selected"
-									}
-								>
-									{row.getVisibleCells().map((cell) => (
-										<TableCell key={cell.id}>
-											{flexRender(
-												cell.column.columnDef.cell,
-												cell.getContext(),
-											)}
-										</TableCell>
-									))}
-								</TableRow>
-							))
-						) : (
-							<TableRow>
-								<TableCell
-									colSpan={columns.length}
-									className="h-24 text-center"
-								>
-									No results.
-								</TableCell>
-							</TableRow>
-						)}
-					</TableBody>
-				</Table>
-			</div>
+			<DataTable
+				columns={columns}
+				data={memberRows}
+				getRowId={(row) => row.id}
+			/>
+
+			{selectedMember && (
+				<MemberRolesDialog
+					open={rolesDialogOpen}
+					onOpenChange={setRolesDialogOpen}
+					member={
+						selectedMember
+							? {
+								name: selectedMember.name,
+								email: selectedMember.email,
+								roles: selectedMember.roles,
+							}
+							: undefined
+					}
+					onSave={(roles) => {
+						updateMemberRole(selectedMember.memberId, roles);
+					}}
+				/>
+			)}
 
 			{selectedMemberForCrew && (
 				<AddToCrewDialog
