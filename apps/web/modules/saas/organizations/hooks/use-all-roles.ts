@@ -14,7 +14,7 @@ export interface RoleOption {
 }
 
 const STATIC_ROLE_KEYS = ["owner", "admin", "member"] as const;
-const EDITABLE_ROLE_KEYS = new Map(
+const EDITABLE_ROLE_KEYS = new Map<string, (typeof editableRoleMeta)[number]>(
 	editableRoleMeta.map((role) => [role.key, role]),
 );
 

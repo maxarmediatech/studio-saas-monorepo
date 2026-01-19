@@ -16,6 +16,7 @@ export function RolesPageClient({
 	return (
 		<PageContent
 			title="Roles"
+			contentClassName="pt-0"
 			controls={
 				canManage ? (
 					<Button

@@ -2,14 +2,8 @@
 
 import { AppRole, appRoles, staticRolesList } from "@repo/auth/lib/permissions";
 import { Badge } from "@repo/ui/components/badge";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@repo/ui/components/card";
 import { Input } from "@repo/ui/components/input";
+import { ScrollArea } from "@repo/ui/components/scroll-area";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
 import { orpc } from "@shared/lib/orpc-query-utils";
@@ -78,6 +72,7 @@ function parsePermissions(value: string): Record<string, string[]> {
 export function RolesList({ canManage, createSignal }: RolesListProps) {
 	const queryClient = useQueryClient();
 	const [isCreateMode, setIsCreateMode] = useState(false);
+	const [isEditing, setIsEditing] = useState(false);
 	const [selectedRoleKey, setSelectedRoleKey] =
 		useState<string>(DEFAULT_ROLE_KEY);
 	const [previousRoleKey, setPreviousRoleKey] = useState<string | null>(null);
@@ -186,7 +181,7 @@ export function RolesList({ canManage, createSignal }: RolesListProps) {
 		);
 		if (customMatch) {
 			return {
-				mode: "edit" as const,
+				mode: isEditing ? ("edit" as const) : ("view" as const),
 				role: {
 					id: customMatch.data?.id ?? customMatch.key,
 					name: customMatch.name,
@@ -198,12 +193,19 @@ export function RolesList({ canManage, createSignal }: RolesListProps) {
 		}
 
 		return { mode: "view" as const, role: undefined };
-	}, [isCreateMode, roleItems.customItems, roleItems.staticItems, selectedRoleKey]);
+	}, [
+		isCreateMode,
+		isEditing,
+		roleItems.customItems,
+		roleItems.staticItems,
+		selectedRoleKey,
+	]);
 
 	const handleCreateRole = () => {
 		setPreviousRoleKey(selectedRoleKey || DEFAULT_ROLE_KEY);
 		setSelectedRoleKey("");
 		setIsCreateMode(true);
+		setIsEditing(true);
 	};
 
 	useEffect(() => {
@@ -224,11 +226,16 @@ export function RolesList({ canManage, createSignal }: RolesListProps) {
 			setIsCreateMode(false);
 			setSelectedRoleKey(previousRoleKey ?? DEFAULT_ROLE_KEY);
 			setPreviousRoleKey(null);
+			setIsEditing(false);
+			return;
 		}
+
+		setIsEditing(false);
 	};
 
 	const handleRoleSelect = (key: string) => {
 		setIsCreateMode(false);
+		setIsEditing(false);
 		setSelectedRoleKey(key);
 	};
 
@@ -246,76 +253,24 @@ export function RolesList({ canManage, createSignal }: RolesListProps) {
 
 	return (
 		<div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
-			<Card className="h-fit rounded-md shadow-none">
-				<CardHeader>
-					<CardTitle>Roles</CardTitle>
-					<CardDescription>
-						Manage access by assigning custom roles. System roles are
-						locked.
-					</CardDescription>
-				</CardHeader>
-				<CardContent className="space-y-4">
-					<Input
-						placeholder="Search roles..."
-						value={search}
-						onChange={(event) => setSearch(event.target.value)}
-					/>
-
-					<div className="space-y-2">
-						<div className="flex items-center justify-between">
-							<h3 className="text-sm font-medium">System roles</h3>
-							<Badge variant="secondary" className="text-xs">
-								Read-only
-							</Badge>
-						</div>
+			<div className="border-border border-b pb-6 lg:sticky lg:top-0 lg:flex lg:h-[calc(100vh-11rem)] lg:flex-col lg:border-b-0 lg:border-r lg:pb-0 lg:pr-6">
+				<Input
+					placeholder="Search roles..."
+					value={search}
+					onChange={(event) => setSearch(event.target.value)}
+					className="mb-4"
+				/>
+				<ScrollArea className="h-full pr-4">
+					<div className="space-y-4 pb-4">
 						<div className="space-y-2">
-							{filteredItems.staticItems.map((role) => (
-								<button
-									key={role.key}
-									type="button"
-									onClick={() => handleRoleSelect(role.key)}
-									className={cn(
-										"w-full rounded-md border px-3 py-2 text-left transition",
-										selectedRoleKey === role.key && !isCreateMode
-											? "border-primary bg-primary/5"
-											: "hover:bg-muted",
-									)}
-									aria-pressed={selectedRoleKey === role.key && !isCreateMode}
-								>
-									<div className="flex items-center justify-between">
-										<span className="font-medium text-sm">
-											{role.name}
-										</span>
-										<Badge variant="outline" className="text-[10px]">
-											System
-										</Badge>
-									</div>
-									<p className="mt-1 text-muted-foreground text-xs">
-										{role.description}
-									</p>
-								</button>
-							))}
-						</div>
-					</div>
-
-					<div className="space-y-2">
-						<div className="flex items-center justify-between">
-							<h3 className="text-sm font-medium">Custom roles</h3>
-							{roleItems.customItems.length > 0 && (
-								<Badge variant="outline" className="text-xs">
-									{roleItems.customItems.length}
+							<div className="flex items-center justify-between">
+								<h3 className="text-sm font-medium">System roles</h3>
+								<Badge variant="secondary" className="text-xs">
+									Read-only
 								</Badge>
-							)}
-						</div>
-						{isLoading ? (
-							<div className="space-y-2">
-								{[1, 2, 3].map((i) => (
-									<Skeleton key={i} className="h-16 w-full" />
-								))}
 							</div>
-						) : filteredItems.customItems.length > 0 ? (
 							<div className="space-y-2">
-								{filteredItems.customItems.map((role) => (
+								{filteredItems.staticItems.map((role) => (
 									<button
 										key={role.key}
 										type="button"
@@ -331,19 +286,11 @@ export function RolesList({ canManage, createSignal }: RolesListProps) {
 										}
 									>
 										<div className="flex items-center justify-between">
-											<div className="flex items-center gap-2">
-												{role.color && (
-													<span
-														className="h-2.5 w-2.5 rounded-full"
-														style={{ backgroundColor: role.color }}
-													/>
-												)}
-												<span className="font-medium text-sm">
-													{role.name}
-												</span>
-											</div>
+											<span className="font-medium text-sm">
+												{role.name}
+											</span>
 											<Badge variant="outline" className="text-[10px]">
-												Custom
+												System
 											</Badge>
 										</div>
 										<p className="mt-1 text-muted-foreground text-xs">
@@ -352,29 +299,93 @@ export function RolesList({ canManage, createSignal }: RolesListProps) {
 									</button>
 								))}
 							</div>
-						) : (
-							<div className="rounded-md border border-dashed p-4 text-center text-muted-foreground text-xs">
-								No custom roles yet. Use "Create Role" to add one.
+						</div>
+
+						<div className="space-y-2">
+							<div className="flex items-center justify-between">
+								<h3 className="text-sm font-medium">Custom roles</h3>
+								{roleItems.customItems.length > 0 && (
+									<Badge variant="outline" className="text-xs">
+										{roleItems.customItems.length}
+									</Badge>
+								)}
 							</div>
-						)}
+							{isLoading ? (
+								<div className="space-y-2">
+									{[1, 2, 3].map((i) => (
+										<Skeleton key={i} className="h-16 w-full" />
+									))}
+								</div>
+							) : filteredItems.customItems.length > 0 ? (
+								<div className="space-y-2">
+									{filteredItems.customItems.map((role) => (
+										<button
+											key={role.key}
+											type="button"
+											onClick={() => handleRoleSelect(role.key)}
+											className={cn(
+												"w-full rounded-md border px-3 py-2 text-left transition",
+												selectedRoleKey === role.key && !isCreateMode
+													? "border-primary bg-primary/5"
+													: "hover:bg-muted",
+											)}
+											aria-pressed={
+												selectedRoleKey === role.key && !isCreateMode
+											}
+										>
+											<div className="flex items-center justify-between">
+												<div className="flex items-center gap-2">
+													{role.color && (
+														<span
+															className="h-2.5 w-2.5 rounded-full"
+															style={{ backgroundColor: role.color }}
+														/>
+													)}
+													<span className="font-medium text-sm">
+														{role.name}
+													</span>
+												</div>
+												<Badge variant="outline" className="text-[10px]">
+													Custom
+												</Badge>
+											</div>
+											<p className="mt-1 text-muted-foreground text-xs">
+												{role.description}
+											</p>
+										</button>
+									))}
+								</div>
+							) : (
+								<div className="rounded-md border border-dashed p-4 text-center text-muted-foreground text-xs">
+									No custom roles yet. Use "Create Role" to add one.
+								</div>
+							)}
+						</div>
 					</div>
-				</CardContent>
-			</Card>
+				</ScrollArea>
+			</div>
 
 			<div className="min-h-[600px]">
 				<PermissionMatrixPanel
 					mode={selectedRole.mode}
 					role={selectedRole.role}
 					onCancel={handleCancelEdit}
+					onEdit={
+						selectedRole.customData && !isCreateMode
+							? () => setIsEditing(true)
+							: undefined
+					}
 					onCreated={(role) => {
 						setIsCreateMode(false);
+						setIsEditing(false);
 						setSelectedRoleKey(`custom:${role.id}`);
 						setPreviousRoleKey(null);
 					}}
 					onUpdated={() => {
 						setIsCreateMode(false);
+						setIsEditing(false);
 					}}
-					onDelete={handleDelete}
+					onDelete={selectedRole.customData ? handleDelete : undefined}
 				/>
 			</div>
 

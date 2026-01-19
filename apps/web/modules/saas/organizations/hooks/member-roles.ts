@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 export function useOrganizationMemberRoles() {
 	const t = useTranslations();
 
-	return {
+	const roles: Record<string, string> = {
 		owner: t("organizations.roles.owner"),
 		admin: t("organizations.roles.admin"),
 		manager: t("organizations.roles.manager"),
@@ -14,5 +14,7 @@ export function useOrganizationMemberRoles() {
 		hr: t("organizations.roles.hr"),
 		member: t("organizations.roles.member"),
 		crew: t("organizations.roles.crew"),
-	} satisfies Record<OrganizationMemberRole, string>;
+	};
+
+	return roles satisfies Record<OrganizationMemberRole, string>;
 }

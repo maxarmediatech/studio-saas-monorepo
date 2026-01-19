@@ -55,6 +55,7 @@ interface PermissionMatrixPanelProps {
 	mode: "create" | "edit" | "view";
 	role?: RoleData;
 	onCancel?: () => void;
+	onEdit?: () => void;
 	onCreated?: (role: CustomRoleRecord) => void;
 	onUpdated?: () => void;
 	onDelete?: () => void;
@@ -108,6 +109,7 @@ export function PermissionMatrixPanel({
 	mode,
 	role,
 	onCancel,
+	onEdit,
 	onCreated,
 	onUpdated,
 	onDelete,
@@ -258,7 +260,7 @@ export function PermissionMatrixPanel({
 						</CardTitle>
 						<CardDescription>{descriptionText}</CardDescription>
 					</div>
-					{isEditable && (
+					{isEditable ? (
 						<div className="flex items-center gap-2">
 							{onDelete && mode === "edit" && (
 								<Button
@@ -296,6 +298,23 @@ export function PermissionMatrixPanel({
 									"Save Changes"
 								)}
 							</Button>
+						</div>
+					) : (
+						<div className="flex items-center gap-2">
+							{onDelete && (
+								<Button
+									variant="ghost"
+									size="icon"
+									className="text-destructive hover:text-destructive"
+									onClick={onDelete}
+								>
+									<Trash2 className="h-4 w-4" />
+									<span className="sr-only">Delete role</span>
+								</Button>
+							)}
+							{onEdit && (
+								<Button onClick={onEdit}>Edit</Button>
+							)}
 						</div>
 					)}
 				</div>

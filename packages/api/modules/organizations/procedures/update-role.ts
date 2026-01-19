@@ -121,7 +121,8 @@ export const updateRole = studioProtectedProcedure
 				return null;
 			}
 
-			if (shouldRenameRole && input.role) {
+			if (shouldRenameRole) {
+				const nextRoleName = input.role ?? existingRole.role;
 				const membersToUpdate = await tx.query.members.findMany({
 					where: and(
 						eq(members.organizationId, context.organizationId),
@@ -132,7 +133,7 @@ export const updateRole = studioProtectedProcedure
 
 				for (const memberRow of membersToUpdate) {
 					const nextRoles = normalizeRoles(memberRow.role).map((role) =>
-						role === existingRole.role ? input.role : role,
+						role === existingRole.role ? nextRoleName : role,
 					);
 					const nextRole = serializeRoles(nextRoles);
 					if (nextRole !== memberRow.role) {
@@ -156,7 +157,7 @@ export const updateRole = studioProtectedProcedure
 						continue;
 					}
 					const nextRoles = normalizeRoles(invitationRow.role).map(
-						(role) => (role === existingRole.role ? input.role : role),
+						(role) => (role === existingRole.role ? nextRoleName : role),
 					);
 					const nextRole = serializeRoles(nextRoles);
 					if (nextRole !== invitationRow.role) {
