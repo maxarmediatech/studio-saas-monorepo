@@ -78,6 +78,13 @@
       "when": 1768778450000,
       "tag": "0010_team_support",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1768893443008,
+      "tag": "0011_big_mad_thinker",
+      "breakpoints": true
     }
   ]
 }
