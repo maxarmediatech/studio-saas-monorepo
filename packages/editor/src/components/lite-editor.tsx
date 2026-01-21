@@ -2,6 +2,7 @@
 
 import type { JSONContent } from "@tiptap/core";
 import { EditorContent } from "@tiptap/react";
+import { Send } from "lucide-react";
 import { forwardRef, useImperativeHandle } from "react";
 import { useEditorInstance } from "../hooks/use-editor";
 
@@ -64,15 +65,26 @@ export const LiteEditor = forwardRef<
 	return (
 		<div
 			className={cn(
-				"lite-editor relative rounded-md border border-input bg-background",
-				disabled && "opacity-50 cursor-not-allowed",
+				"lite-editor group relative flex min-h-[96px] w-full flex-col rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
+				disabled && "cursor-not-allowed opacity-50",
 				className,
 			)}
 		>
-			<EditorContent editor={editor} />
+			<EditorContent editor={editor} className="flex-1" />
 			{!disabled && (
-				<div className="absolute bottom-1 right-2 text-xs text-muted-foreground pointer-events-none">
-					Enter to send
+				<div className="mt-2 flex items-center justify-between pt-2 opacity-50 transition-opacity duration-200 group-focus-within:opacity-100">
+					<div className="flex items-center gap-2 text-muted-foreground select-none">
+						<span className="text-lg leading-none font-light">
+							/
+						</span>
+					</div>
+					<button
+						type="button"
+						onClick={submit}
+						className="rounded-full p-1 text-primary hover:bg-primary/10 transition-colors"
+					>
+						<Send className="size-4" />
+					</button>
 				</div>
 			)}
 		</div>

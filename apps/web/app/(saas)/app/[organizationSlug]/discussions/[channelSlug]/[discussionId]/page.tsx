@@ -36,6 +36,7 @@ import {
 	CheckCircle,
 	ChevronRight,
 	Hash,
+	MessageCircle,
 	MoreHorizontal,
 	Plus,
 } from "lucide-react";
@@ -156,98 +157,106 @@ function ThreadCard({
 	};
 
 	const allMessages = [message, ...(message.replies ?? [])];
+	const hasReplies = allMessages.length > 1;
 
 	return (
-		<div className="rounded-lg border bg-card">
-			{allMessages.map((msg, index) => (
-				<div
-					key={msg.id}
-					className={cn("p-4", index > 0 && "border-t")}
-				>
-					<div className="flex items-start gap-3">
-						<UserAvatar
-							name={msg.author?.name ?? "Unknown"}
-							avatarUrl={msg.author?.image}
-							className="size-8"
-						/>
-						<div className="min-w-0 flex-1">
-							<div className="flex items-center gap-2">
-								<span className="font-medium text-sm">
-									{msg.author?.name ?? "Unknown"}
-								</span>
-								<span className="text-xs text-muted-foreground">
-									{formatDistanceToNow(
-										new Date(msg.createdAt),
-										{
-											addSuffix: true,
-										},
-									)}
-								</span>
+		<div className="group relative rounded-lg border bg-card shadow-sm overflow-hidden transition-all">
+			<div className="p-4 space-y-6">
+				{allMessages.map((msg, index) => {
+					const isParent = index === 0;
+					return (
+						<div
+							key={msg.id}
+							className={cn(
+								"group/message relative flex gap-3",
+								!isParent && "mt-4 pl-11",
+							)}
+						>
+							<div className="shrink-0">
+								<UserAvatar
+									name={msg.author?.name ?? "Unknown"}
+									avatarUrl={msg.author?.image}
+									className={cn("size-8")}
+								/>
 							</div>
-							<div className="mt-1 text-sm">
-								{msg.contentJson ? (
-									<ReadOnlyRenderer
-										content={msg.contentJson as JSONContent}
-										variant="compact"
-									/>
-								) : (
-									<p className="text-foreground">
-										{msg.content}
-									</p>
-								)}
+
+							<div className="min-w-0 flex-1">
+								<div className="flex items-center gap-2 leading-none">
+									<span className="font-semibold text-sm text-foreground">
+										{msg.author?.name ?? "Unknown"}
+									</span>
+									<span className="text-xs text-muted-foreground">
+										{formatDistanceToNow(
+											new Date(msg.createdAt),
+											{
+												addSuffix: true,
+											},
+										)}
+									</span>
+								</div>
+								<div className="mt-1.5 text-sm text-foreground/90 leading-relaxed">
+									{msg.contentJson ? (
+										<ReadOnlyRenderer
+											content={
+												msg.contentJson as JSONContent
+											}
+											variant="compact"
+										/>
+									) : (
+										<p className="whitespace-pre-wrap">
+											{msg.content}
+										</p>
+									)}
+								</div>
+								<button
+									type="button"
+									onClick={() => setShowReplyInput(true)}
+									className="mt-2 flex items-center justify-center size-6 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors opacity-0 group-hover/message:opacity-100 focus:opacity-100"
+								>
+									<MessageCircle className="size-3.5" />
+								</button>
 							</div>
 						</div>
-					</div>
-				</div>
-			))}
+					);
+				})}
+			</div>
 
-			{message.replyCount > (message.replies?.length ?? 0) && (
-				<div className="border-t px-4 py-2">
-					<button
-						type="button"
-						className="text-xs text-muted-foreground hover:text-foreground"
-					>
-						View{" "}
-						{message.replyCount - (message.replies?.length ?? 0)}{" "}
-						more{" "}
-						{message.replyCount - (message.replies?.length ?? 0) ===
-						1
-							? "reply"
-							: "replies"}
-					</button>
-				</div>
-			)}
-
-			<div className="border-t p-3">
+			<div className="bg-muted/30 p-3 px-4 border-t">
 				{showReplyInput ? (
-					<div className="flex items-start gap-2">
-						<UserAvatar
-							name={user?.name ?? "You"}
-							avatarUrl={user?.image}
-							className="size-6 mt-2"
+					<div className="animate-in fade-in zoom-in-95 duration-200">
+						<LiteEditor
+							ref={replyEditorRef}
+							placeholder="Write a reply..."
+							disabled={isSubmitting}
+							onSubmit={handleSubmitReply}
+							autoFocus
+							className="bg-background min-h-[80px]"
 						/>
-						<div className="flex-1">
-							<LiteEditor
-								ref={replyEditorRef}
-								placeholder="Write a reply..."
-								disabled={isSubmitting}
-								onSubmit={handleSubmitReply}
-								autoFocus
-							/>
+						<div className="mt-2 flex justify-end">
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() => setShowReplyInput(false)}
+								className="h-7 text-xs"
+							>
+								Cancel
+							</Button>
 						</div>
 					</div>
 				) : (
 					<button
 						type="button"
 						onClick={() => setShowReplyInput(true)}
-						className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+						className="flex w-full items-center gap-3 cursor-text py-1 text-left"
 					>
 						<UserAvatar
 							name={user?.name ?? "You"}
 							avatarUrl={user?.image}
 							className="size-6"
 						/>
-						<span>Reply...</span>
+						<span className="text-sm text-muted-foreground">
+							Reply...
+						</span>
 					</button>
 				)}
 			</div>
@@ -678,22 +687,14 @@ export default function DiscussionDetailPage() {
 					)}
 				</div>
 
-				<div className="mt-6 rounded-lg border bg-card p-4">
-					<div className="flex items-start gap-3">
-						<UserAvatar
-							name={user?.name ?? "You"}
-							avatarUrl={user?.image}
-							className="size-8 mt-2"
-						/>
-						<div className="flex-1">
-							<LiteEditor
-								ref={newThreadEditorRef}
-								placeholder="Join the conversation..."
-								disabled={createMessageMutation.isPending}
-								onSubmit={handleNewThread}
-							/>
-						</div>
-					</div>
+				<div className="mt-8">
+					<LiteEditor
+						ref={newThreadEditorRef}
+						placeholder="Join the conversation..."
+						disabled={createMessageMutation.isPending}
+						onSubmit={handleNewThread}
+						className="min-h-[120px] shadow-sm rounded-lg border-muted-foreground/20"
+					/>
 				</div>
 			</div>
 		</div>
