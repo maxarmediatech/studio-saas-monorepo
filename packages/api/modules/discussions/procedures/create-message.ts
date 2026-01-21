@@ -2,16 +2,47 @@ import { ORPCError } from "@orpc/server";
 import {
 	and,
 	channelMembers,
+	crews,
 	db,
+	discussionMentions,
 	discussionMessages,
 	discussions,
 	eq,
+	inArray,
 	isNull,
 	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import { createMessageInputSchema } from "../schemas";
+
+interface ExtractedMention {
+	id: string;
+	label: string;
+}
+
+function extractMentionsFromJson(
+	node: Record<string, unknown>,
+): ExtractedMention[] {
+	const mentions: ExtractedMention[] = [];
+
+	if (node.type === "mention" && node.attrs) {
+		const attrs = node.attrs as Record<string, unknown>;
+		if (typeof attrs.id === "string" && typeof attrs.label === "string") {
+			mentions.push({ id: attrs.id, label: attrs.label });
+		}
+	}
+
+	if (Array.isArray(node.content)) {
+		for (const child of node.content) {
+			mentions.push(
+				...extractMentionsFromJson(child as Record<string, unknown>),
+			);
+		}
+	}
+
+	return mentions;
+}
 
 function extractTextFromJson(node: Record<string, unknown>): string {
 	if (node.type === "text" && typeof node.text === "string") {
@@ -133,6 +164,35 @@ export const createMessage = studioProtectedProcedure
 						replyCount: sql`${discussionMessages.replyCount} + 1`,
 					})
 					.where(eq(discussionMessages.id, threadRootId));
+			}
+
+			if (input.contentJson) {
+				const mentions = extractMentionsFromJson(
+					input.contentJson as Record<string, unknown>,
+				);
+
+				if (mentions.length > 0) {
+					const crewIds = [...new Set(mentions.map((m) => m.id))];
+					const crewsWithUsers = await tx.query.crews.findMany({
+						where: inArray(crews.id, crewIds),
+						columns: { id: true, userId: true },
+					});
+
+					const mentionsToInsert = crewsWithUsers
+						.filter((c) => c.userId !== null)
+						.map((c) => ({
+							entityType: "message" as const,
+							entityId: message.id,
+							mentionedUserId: c.userId as string,
+						}));
+
+					if (mentionsToInsert.length > 0) {
+						await tx
+							.insert(discussionMentions)
+							.values(mentionsToInsert)
+							.onConflictDoNothing();
+					}
+				}
 			}
 
 			return { data: message };
