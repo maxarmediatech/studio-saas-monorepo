@@ -48,15 +48,6 @@ export const createMessage = studioProtectedProcedure
 			});
 		}
 
-		if (
-			discussion.channel.visibility === "private" &&
-			discussion.channel.members.length === 0
-		) {
-			throw new ORPCError("FORBIDDEN", {
-				message: "You don't have access to this channel",
-			});
-		}
-
 		let threadRootId: string | null = null;
 		let parentId: string | null = null;
 

@@ -33,8 +33,6 @@ export const createChannel = studioProtectedProcedure
 					name: input.name,
 					slug,
 					description: input.description,
-					emoji: input.emoji ?? "💬",
-					visibility: input.visibility,
 					createdBy: context.user.id,
 					updatedBy: context.user.id,
 				})

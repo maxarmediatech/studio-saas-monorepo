@@ -15,16 +15,12 @@ export type DiscussionLinkEntityType =
 export const createChannelInputSchema = z.object({
 	name: z.string().min(1).max(100),
 	description: z.string().max(500).optional(),
-	emoji: z.string().max(20).optional(),
-	visibility: z.enum(["public", "private"]).default("public"),
 });
 
 export const updateChannelInputSchema = z.object({
 	channelId: z.string().min(1),
 	name: z.string().min(1).max(100).optional(),
 	description: z.string().max(500).optional(),
-	emoji: z.string().max(20).optional(),
-	visibility: z.enum(["public", "private"]).optional(),
 	isArchived: z.boolean().optional(),
 });
 

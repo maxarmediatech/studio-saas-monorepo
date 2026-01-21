@@ -28,15 +28,6 @@ export async function assertChannelAccess(
 		throw new ORPCError("NOT_FOUND", { message: "Channel not found" });
 	}
 
-	if (channel.visibility === "private") {
-		const isMember = channel.members.length > 0;
-		if (!isMember) {
-			throw new ORPCError("FORBIDDEN", {
-				message: "You don't have access to this private channel",
-			});
-		}
-	}
-
 	return channel;
 }
 
@@ -60,12 +51,6 @@ export async function getChannelBySlugWithAccess(
 
 	if (!channel) {
 		throw new ORPCError("NOT_FOUND", { message: "Channel not found" });
-	}
-
-	if (channel.visibility === "private" && channel.members.length === 0) {
-		throw new ORPCError("FORBIDDEN", {
-			message: "You don't have access to this private channel",
-		});
 	}
 
 	return channel;

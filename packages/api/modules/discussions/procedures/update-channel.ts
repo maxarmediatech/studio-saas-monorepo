@@ -32,8 +32,6 @@ export const updateChannel = studioProtectedProcedure
 			.set({
 				name: input.name ?? existing.name,
 				description: input.description ?? existing.description,
-				emoji: input.emoji ?? existing.emoji,
-				visibility: input.visibility ?? existing.visibility,
 				isArchived: input.isArchived ?? existing.isArchived,
 				updatedBy: context.user.id,
 				updatedAt: new Date(),

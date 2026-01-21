@@ -28,11 +28,7 @@ export const listChannels = studioProtectedProcedure
 			orderBy: (channels, { asc }) => [asc(channels.name)],
 		});
 
-		const accessibleChannels = result.filter(
-			(ch) => ch.visibility === "public" || ch.members.length > 0,
-		);
-
-		const data = accessibleChannels.map((ch) => ({
+		const data = result.map((ch) => ({
 			...ch,
 			isMember: ch.members.length > 0,
 			isSubscribed: ch.members[0]?.isSubscribed ?? false,

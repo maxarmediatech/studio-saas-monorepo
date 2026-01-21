@@ -34,7 +34,7 @@ export const getDiscussion = studioProtectedProcedure
 					columns: { id: true, name: true, image: true },
 				},
 				channel: {
-					columns: { id: true, name: true, slug: true, emoji: true },
+					columns: { id: true, name: true, slug: true },
 				},
 				links: true,
 				messages: {

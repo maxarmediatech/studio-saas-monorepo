@@ -12,7 +12,7 @@ import {
 import { v7 as uuidv7 } from "uuid";
 import { users } from "./auth";
 import { organizations } from "./core";
-import { channelVisibilityEnum, discussionStatusEnum } from "./enums";
+import { discussionStatusEnum } from "./enums";
 
 export const channels = pgTable(
 	"channels",
@@ -27,10 +27,6 @@ export const channels = pgTable(
 		name: text("name").notNull(),
 		slug: varchar("slug", { length: 100 }).notNull(),
 		description: text("description"),
-		emoji: varchar("emoji", { length: 20 }).default("💬"),
-		visibility: channelVisibilityEnum("visibility")
-			.default("public")
-			.notNull(),
 
 		isArchived: boolean("is_archived").default(false).notNull(),
 
