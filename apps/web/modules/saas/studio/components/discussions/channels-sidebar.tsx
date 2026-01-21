@@ -6,7 +6,7 @@ import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
 import { discussionsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
-import { Hash, Lock, Plus } from "lucide-react";
+import { Hash, Plus } from "lucide-react";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 
@@ -62,12 +62,7 @@ export function ChannelsSidebar() {
 										)}
 									>
 										<div className="flex items-center gap-2 overflow-hidden">
-											{channel.visibility ===
-											"private" ? (
-												<Lock className="size-4 shrink-0 text-neutral-400" />
-											) : (
-												<Hash className="size-4 shrink-0 text-neutral-400" />
-											)}
+											<Hash className="size-4 shrink-0 text-neutral-400" />
 											<span className="truncate">
 												{channel.name}
 											</span>

@@ -5,7 +5,7 @@ import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
 import { discussionsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, Hash, Lock, Plus } from "lucide-react";
+import { ChevronLeft, Hash, Plus } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -100,25 +100,14 @@ export function DiscussionsPanel({ area, studioSlug }: DiscussionsPanelProps) {
 										: "text-neutral-700 hover:bg-black/5 active:bg-black/10",
 								)}
 							>
-								{channel.visibility === "private" ? (
-									<Lock
-										className={cn(
-											"size-4 shrink-0",
-											isActive
-												? "text-blue-600"
-												: "text-neutral-500",
-										)}
-									/>
-								) : (
-									<Hash
-										className={cn(
-											"size-4 shrink-0",
-											isActive
-												? "text-blue-600"
-												: "text-neutral-500",
-										)}
-									/>
-								)}
+								<Hash
+									className={cn(
+										"size-4 shrink-0",
+										isActive
+											? "text-blue-600"
+											: "text-neutral-500",
+									)}
+								/>
 								<span className="truncate">{channel.name}</span>
 							</Link>
 						);

@@ -9,7 +9,7 @@ import { ChannelSettingsDialog } from "@saas/studio/components/discussions";
 import { discussionsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { format, isToday, isYesterday } from "date-fns";
-import { BellOff, Hash, Lock, MessageCircle, Settings } from "lucide-react";
+import { BellOff, Hash, MessageCircle, Settings } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -122,11 +122,7 @@ export default function ChannelPage() {
 				<div className="flex items-start justify-between pb-6 pt-2">
 					<div>
 						<div className="flex items-center gap-3">
-							{channel.visibility === "private" ? (
-								<Lock className="size-8 text-neutral-400" />
-							) : (
-								<Hash className="size-8 text-neutral-400" />
-							)}
+							<Hash className="size-8 text-neutral-400" />
 							<h1 className="text-2xl font-semibold text-neutral-900">
 								{channel.name}
 							</h1>
@@ -261,7 +257,6 @@ export default function ChannelPage() {
 					name: channel.name,
 					slug: channel.slug,
 					description: channel.description,
-					visibility: channel.visibility,
 				}}
 				organizationSlug={params.organizationSlug}
 			/>

@@ -22,13 +22,6 @@ import {
 } from "@repo/ui/components/dialog";
 import { Field, FieldError, FieldLabel } from "@repo/ui/components/field";
 import { Input } from "@repo/ui/components/input";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@repo/ui/components/select";
 import { Separator } from "@repo/ui/components/separator";
 import { Textarea } from "@repo/ui/components/textarea";
 import { discussionsMutations } from "@saas/studio/lib/api";
@@ -36,14 +29,13 @@ import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
 const channelSchema = z.object({
 	name: z.string().min(1, "Channel name is required").max(100),
 	description: z.string().max(500).optional(),
-	visibility: z.enum(["public", "private"]),
 });
 
 type ChannelFormValues = z.infer<typeof channelSchema>;
@@ -56,7 +48,6 @@ interface ChannelSettingsDialogProps {
 		name: string;
 		slug: string;
 		description?: string | null;
-		visibility: "public" | "private";
 	};
 	organizationSlug: string;
 }
@@ -82,7 +73,6 @@ export function ChannelSettingsDialog({
 		defaultValues: {
 			name: channel.name,
 			description: channel.description ?? "",
-			visibility: channel.visibility,
 		},
 	});
 
@@ -91,7 +81,6 @@ export function ChannelSettingsDialog({
 			reset({
 				name: channel.name,
 				description: channel.description ?? "",
-				visibility: channel.visibility,
 			});
 		}
 	}, [open, channel, reset]);
@@ -133,7 +122,6 @@ export function ChannelSettingsDialog({
 			channelId: channel.id,
 			name: values.name,
 			description: values.description || undefined,
-			visibility: values.visibility,
 		});
 	};
 
@@ -179,34 +167,6 @@ export function ChannelSettingsDialog({
 									{errors.description.message}
 								</FieldError>
 							)}
-						</Field>
-
-						<Field>
-							<FieldLabel>Visibility</FieldLabel>
-							<Controller
-								control={control}
-								name="visibility"
-								render={({ field }) => (
-									<Select
-										value={field.value}
-										onValueChange={field.onChange}
-									>
-										<SelectTrigger>
-											<SelectValue />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value="public">
-												Public - Anyone in the
-												organization can see
-											</SelectItem>
-											<SelectItem value="private">
-												Private - Only invited members
-												can see
-											</SelectItem>
-										</SelectContent>
-									</Select>
-								)}
-							/>
 						</Field>
 
 						<DialogFooter>

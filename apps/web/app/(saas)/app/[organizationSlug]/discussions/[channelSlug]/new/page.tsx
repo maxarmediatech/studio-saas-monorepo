@@ -9,7 +9,7 @@ import { cn } from "@repo/ui/lib/utils";
 import { discussionsApi, discussionsMutations } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Hash, Lock } from "lucide-react";
+import { ArrowLeft, Hash } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -109,11 +109,7 @@ export default function NewDiscussionPage() {
 					<ArrowLeft className="size-5" />
 				</Link>
 				<div className="flex items-center gap-2">
-					{channel.visibility === "private" ? (
-						<Lock className="size-5 text-neutral-400" />
-					) : (
-						<Hash className="size-5 text-neutral-400" />
-					)}
+					<Hash className="size-5 text-neutral-400" />
 					<h1 className="text-lg font-semibold text-neutral-900">
 						New discussion in {channel.name}
 					</h1>
