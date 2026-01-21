@@ -6,7 +6,6 @@ import {
 	discussions,
 	eq,
 	isNull,
-	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { getDiscussionInputSchema } from "../schemas";
@@ -70,11 +69,6 @@ export const getDiscussion = studioProtectedProcedure
 				message: "Discussion not found",
 			});
 		}
-
-		await db
-			.update(discussions)
-			.set({ viewCount: sql`${discussions.viewCount} + 1` })
-			.where(eq(discussions.id, input.discussionId));
 
 		return { data: discussion };
 	});

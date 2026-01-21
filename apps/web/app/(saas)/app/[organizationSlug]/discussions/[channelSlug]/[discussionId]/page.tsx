@@ -3,9 +3,15 @@
 import type { DiscussionLinkEntityType } from "@repo/api/modules/discussions/schemas";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
+import {
+	Collapsible,
+	CollapsibleContent,
+	CollapsibleTrigger,
+} from "@repo/ui/components/collapsible";
+import { Input } from "@repo/ui/components/input";
 import { Skeleton } from "@repo/ui/components/skeleton";
-import { Textarea } from "@repo/ui/components/textarea";
 import { cn } from "@repo/ui/lib/utils";
+import { useSession } from "@saas/auth/hooks/use-session";
 import { ENTITY_TYPE_CONFIG } from "@saas/studio/components/discussions/entity-link-picker";
 import {
 	bookingsApi,
@@ -17,15 +23,16 @@ import {
 	studioPaymentsApi,
 	tasksApi,
 } from "@saas/studio/lib/api";
+import { UserAvatar } from "@shared/components/UserAvatar";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import {
-	ArrowLeft,
 	CheckCircle,
-	Link2,
-	MessageCircle,
+	ChevronRight,
+	Hash,
 	MoreHorizontal,
+	Plus,
 	Send,
 } from "lucide-react";
 import Link from "next/link";
@@ -99,14 +106,170 @@ function useEntityNameLookup() {
 	]);
 }
 
+interface ThreadCardProps {
+	message: {
+		id: string;
+		content: string;
+		createdAt: Date | string;
+		replyCount: number;
+		author?: {
+			id: string;
+			name: string | null;
+			image: string | null;
+		} | null;
+		replies?: Array<{
+			id: string;
+			content: string;
+			createdAt: Date | string;
+			author?: {
+				id: string;
+				name: string | null;
+				image: string | null;
+			} | null;
+		}>;
+	};
+	discussionId: string;
+	onReplySubmit: (parentId: string, content: string) => void;
+	isSubmitting: boolean;
+}
+
+function ThreadCard({
+	message,
+	discussionId,
+	onReplySubmit,
+	isSubmitting,
+}: ThreadCardProps) {
+	const { user } = useSession();
+	const [replyContent, setReplyContent] = useState("");
+	const [showReplyInput, setShowReplyInput] = useState(false);
+
+	const handleSubmitReply = () => {
+		if (!replyContent.trim()) return;
+		onReplySubmit(message.id, replyContent.trim());
+		setReplyContent("");
+		setShowReplyInput(false);
+	};
+
+	const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+		if (e.key === "Enter" && !e.shiftKey) {
+			e.preventDefault();
+			handleSubmitReply();
+		}
+		if (e.key === "Escape") {
+			setShowReplyInput(false);
+			setReplyContent("");
+		}
+	};
+
+	const allMessages = [message, ...(message.replies ?? [])];
+
+	return (
+		<div className="rounded-lg border bg-card">
+			{allMessages.map((msg, index) => (
+				<div
+					key={msg.id}
+					className={cn("p-4", index > 0 && "border-t")}
+				>
+					<div className="flex items-start gap-3">
+						<UserAvatar
+							name={msg.author?.name ?? "Unknown"}
+							avatarUrl={msg.author?.image}
+							className="size-8"
+						/>
+						<div className="min-w-0 flex-1">
+							<div className="flex items-center gap-2">
+								<span className="font-medium text-sm">
+									{msg.author?.name ?? "Unknown"}
+								</span>
+								<span className="text-xs text-muted-foreground">
+									{formatDistanceToNow(
+										new Date(msg.createdAt),
+										{
+											addSuffix: true,
+										},
+									)}
+								</span>
+							</div>
+							<p className="mt-1 text-sm text-foreground">
+								{msg.content}
+							</p>
+						</div>
+					</div>
+				</div>
+			))}
+
+			{message.replyCount > (message.replies?.length ?? 0) && (
+				<div className="border-t px-4 py-2">
+					<button
+						type="button"
+						className="text-xs text-muted-foreground hover:text-foreground"
+					>
+						View{" "}
+						{message.replyCount - (message.replies?.length ?? 0)}{" "}
+						more{" "}
+						{message.replyCount - (message.replies?.length ?? 0) ===
+						1
+							? "reply"
+							: "replies"}
+					</button>
+				</div>
+			)}
+
+			<div className="border-t p-3">
+				{showReplyInput ? (
+					<div className="flex items-center gap-2">
+						<UserAvatar
+							name={user?.name ?? "You"}
+							avatarUrl={user?.image}
+							className="size-6"
+						/>
+						<Input
+							placeholder="Write a reply..."
+							value={replyContent}
+							onChange={(e) => setReplyContent(e.target.value)}
+							onKeyDown={handleKeyDown}
+							className="h-8 text-sm"
+							autoFocus
+							disabled={isSubmitting}
+						/>
+						<Button
+							size="sm"
+							onClick={handleSubmitReply}
+							disabled={!replyContent.trim() || isSubmitting}
+							className="h-8 px-3"
+						>
+							<Send className="size-3" />
+						</Button>
+					</div>
+				) : (
+					<button
+						type="button"
+						onClick={() => setShowReplyInput(true)}
+						className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+					>
+						<UserAvatar
+							name={user?.name ?? "You"}
+							avatarUrl={user?.image}
+							className="size-6"
+						/>
+						<span>Reply...</span>
+					</button>
+				)}
+			</div>
+		</div>
+	);
+}
+
 export default function DiscussionDetailPage() {
 	const params = useParams<{
 		organizationSlug: string;
 		channelSlug: string;
 		discussionId: string;
 	}>();
+	const { user } = useSession();
 	const queryClient = useQueryClient();
-	const [messageContent, setMessageContent] = useState("");
+	const [newThreadContent, setNewThreadContent] = useState("");
+	const [linksOpen, setLinksOpen] = useState(false);
 	const entityNameLookup = useEntityNameLookup();
 
 	const { data: discussionData, isLoading: discussionLoading } = useQuery(
@@ -124,6 +287,50 @@ export default function DiscussionDetailPage() {
 
 	const messages = messagesData?.data ?? [];
 
+	const participants = useMemo(() => {
+		const participantMap = new Map<
+			string,
+			{ id: string; name: string | null; image: string | null }
+		>();
+
+		if (discussion?.author?.id) {
+			participantMap.set(discussion.author.id, discussion.author);
+		}
+
+		for (const message of messages) {
+			const author = (
+				message as {
+					author?: {
+						id: string;
+						name: string | null;
+						image: string | null;
+					};
+				}
+			).author;
+			if (author?.id) {
+				participantMap.set(author.id, author);
+			}
+			const replies = (
+				message as {
+					replies?: Array<{
+						author?: {
+							id: string;
+							name: string | null;
+							image: string | null;
+						};
+					}>;
+				}
+			).replies;
+			for (const reply of replies ?? []) {
+				if (reply.author?.id) {
+					participantMap.set(reply.author.id, reply.author);
+				}
+			}
+		}
+
+		return Array.from(participantMap.values());
+	}, [discussion?.author, messages]);
+
 	const createMessageMutation = useMutation({
 		...discussionsMutations.createMessage(),
 		onSuccess: () => {
@@ -133,7 +340,7 @@ export default function DiscussionDetailPage() {
 			queryClient.invalidateQueries({
 				queryKey: orpc.discussions.getDiscussion.key(),
 			});
-			setMessageContent("");
+			setNewThreadContent("");
 		},
 		onError: () => {
 			toast.error("Failed to send message");
@@ -172,22 +379,30 @@ export default function DiscussionDetailPage() {
 		},
 	});
 
-	const handleSendMessage = () => {
-		if (!messageContent.trim()) return;
+	const handleNewThread = () => {
+		if (!newThreadContent.trim()) return;
 		createMessageMutation.mutate({
 			discussionId: params.discussionId,
-			content: messageContent.trim(),
+			content: newThreadContent.trim(),
 		});
 	};
 
-	const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-		if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+	const handleReply = (parentId: string, content: string) => {
+		createMessageMutation.mutate({
+			discussionId: params.discussionId,
+			content,
+			parentId,
+		});
+	};
+
+	const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+		if (e.key === "Enter" && !e.shiftKey) {
 			e.preventDefault();
-			handleSendMessage();
+			handleNewThread();
 		}
 	};
 
-	const backHref = `/app/${params.organizationSlug}/discussions/${params.channelSlug}`;
+	const channelHref = `/app/${params.organizationSlug}/discussions/${params.channelSlug}`;
 
 	const getEntityName = (entityType: string, entityId: string): string => {
 		return entityNameLookup[entityType]?.[entityId] ?? entityType;
@@ -195,13 +410,11 @@ export default function DiscussionDetailPage() {
 
 	if (discussionLoading) {
 		return (
-			<div className="mx-auto w-full max-w-[800px]">
-				<div className="flex h-14 items-center gap-3 border-b px-6">
-					<Skeleton className="h-5 w-64" />
-				</div>
-				<div className="flex-1 p-6">
-					<Skeleton className="h-32 w-full" />
-				</div>
+			<div className="mx-auto w-full max-w-[800px] py-6">
+				<Skeleton className="h-6 w-48" />
+				<Skeleton className="mt-8 h-8 w-96" />
+				<Skeleton className="mt-4 h-4 w-64" />
+				<Skeleton className="mt-6 h-24 w-full" />
 			</div>
 		);
 	}
@@ -209,24 +422,30 @@ export default function DiscussionDetailPage() {
 	if (!discussion) {
 		return (
 			<div className="flex flex-1 items-center justify-center">
-				<div className="text-neutral-500">Discussion not found</div>
+				<div className="text-muted-foreground">
+					Discussion not found
+				</div>
 			</div>
 		);
 	}
 
+	const linksCount = discussion.links?.length ?? 0;
+
 	return (
-		<div className="mx-auto flex w-full max-w-[800px] flex-1 flex-col">
-			<div className="flex h-14 shrink-0 items-center justify-between border-b">
-				<div className="flex items-center gap-3">
+		<div className="mx-auto w-full max-w-[800px] py-6">
+			<div className="flex items-center justify-between">
+				<div className="flex items-center gap-2 text-sm">
 					<Link
-						href={backHref}
-						className="rounded-lg p-1.5 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
+						href={channelHref}
+						className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
 					>
-						<ArrowLeft className="size-5" />
+						<Hash className="size-4" />
+						{discussion.channel?.name ?? params.channelSlug}
 					</Link>
-					<h1 className="truncate font-semibold text-neutral-900">
+					<ChevronRight className="size-4 text-muted-foreground" />
+					<span className="font-medium text-foreground truncate max-w-[300px]">
 						{discussion.title}
-					</h1>
+					</span>
 					{discussion.status === "resolved" && (
 						<span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
 							<CheckCircle className="size-3" />
@@ -265,157 +484,231 @@ export default function DiscussionDetailPage() {
 						</Button>
 					)}
 					<Button variant="ghost" size="icon" className="size-8">
-						<Link2 className="size-4" />
-					</Button>
-					<Button variant="ghost" size="icon" className="size-8">
 						<MoreHorizontal className="size-4" />
 					</Button>
 				</div>
 			</div>
 
-			<div className="flex-1 overflow-y-auto">
-				<div className="border-b py-6">
-					<div className="flex items-start gap-3">
-						<div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-neutral-200 text-sm font-medium text-neutral-600">
-							{discussion.author?.name?.charAt(0) ?? "?"}
-						</div>
-						<div className="min-w-0 flex-1">
-							<div className="flex items-center gap-2">
-								<span className="font-medium text-neutral-900">
-									{discussion.author?.name ?? "Unknown"}
-								</span>
-								<span className="text-sm text-neutral-500">
-									{formatDistanceToNow(
-										new Date(discussion.createdAt),
-										{
-											addSuffix: true,
-										},
+			<div className="mt-8">
+				<h1 className="text-2xl font-semibold">{discussion.title}</h1>
+				<div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+					<span>by</span>
+					<UserAvatar
+						name={discussion.author?.name ?? "Unknown"}
+						avatarUrl={discussion.author?.image}
+						className="size-5"
+					/>
+					<span className="font-medium text-foreground">
+						{discussion.author?.name ?? "Unknown"}
+					</span>
+					<span>in</span>
+					<Hash className="size-3" />
+					<span>{discussion.channel?.name}</span>
+					<span>on</span>
+					<span>
+						{format(
+							new Date(discussion.createdAt),
+							"d MMM yyyy, HH:mm",
+						)}
+					</span>
+				</div>
+
+				{discussion.content && (
+					<p className="mt-6 text-foreground whitespace-pre-wrap">
+						{discussion.content}
+					</p>
+				)}
+
+				{linksCount > 0 && (
+					<div className="mt-4 flex flex-wrap gap-2">
+						{discussion.links?.map((link) => {
+							const config =
+								ENTITY_TYPE_CONFIG[
+									link.entityType as DiscussionLinkEntityType
+								];
+							if (!config) return null;
+							const entityName = getEntityName(
+								link.entityType,
+								link.entityId,
+							);
+							return (
+								<Badge
+									key={link.id}
+									variant="secondary"
+									className={cn(
+										"flex items-center gap-1.5",
+										config.color,
 									)}
-								</span>
-							</div>
-							{discussion.content && (
-								<div className="mt-2 whitespace-pre-wrap text-neutral-700">
-									{discussion.content}
+								>
+									{config.icon}
+									<span>{entityName}</span>
+								</Badge>
+							);
+						})}
+					</div>
+				)}
+
+				<div className="mt-6 border-t pt-4">
+					<Collapsible open={linksOpen} onOpenChange={setLinksOpen}>
+						<div className="flex items-center justify-between">
+							<CollapsibleTrigger className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+								<ChevronRight
+									className={cn(
+										"size-4 transition-transform",
+										linksOpen && "rotate-90",
+									)}
+								/>
+								Related Items ({linksCount})
+							</CollapsibleTrigger>
+							<Button
+								variant="ghost"
+								size="icon"
+								className="size-7"
+							>
+								<Plus className="size-4" />
+							</Button>
+						</div>
+						<CollapsibleContent className="mt-2">
+							{linksCount === 0 ? (
+								<p className="text-sm text-muted-foreground py-2">
+									No related items linked to this discussion.
+								</p>
+							) : (
+								<div className="space-y-1">
+									{discussion.links?.map((link) => {
+										const config =
+											ENTITY_TYPE_CONFIG[
+												link.entityType as DiscussionLinkEntityType
+											];
+										if (!config) return null;
+										const entityName = getEntityName(
+											link.entityType,
+											link.entityId,
+										);
+										return (
+											<div
+												key={link.id}
+												className="flex items-center gap-2 py-1 text-sm"
+											>
+												{config.icon}
+												<span>{entityName}</span>
+												<span className="text-muted-foreground">
+													({config.label})
+												</span>
+											</div>
+										);
+									})}
 								</div>
 							)}
-							{discussion.links &&
-								discussion.links.length > 0 && (
-									<div className="mt-3 flex flex-wrap gap-2">
-										{discussion.links.map((link) => {
-											const config =
-												ENTITY_TYPE_CONFIG[
-													link.entityType as DiscussionLinkEntityType
-												];
-											if (!config) return null;
-											const entityName = getEntityName(
-												link.entityType,
-												link.entityId,
-											);
-											return (
-												<Badge
-													key={link.id}
-													variant="secondary"
-													className={cn(
-														"flex items-center gap-1.5",
-														config.color,
-													)}
-												>
-													{config.icon}
-													<span>{entityName}</span>
-												</Badge>
-											);
-										})}
-									</div>
-								)}
-						</div>
-					</div>
+						</CollapsibleContent>
+					</Collapsible>
 				</div>
-
-				{discussion.status === "resolved" && discussion.resolution && (
-					<div className="border-b bg-green-50 py-6">
-						<div className="flex items-start gap-3">
-							<CheckCircle className="size-5 shrink-0 text-green-600" />
-							<div>
-								<div className="font-medium text-green-900">
-									Resolution
-								</div>
-								<div className="mt-1 whitespace-pre-wrap text-green-800">
-									{discussion.resolution}
-								</div>
-							</div>
-						</div>
-					</div>
-				)}
-
-				{messagesLoading ? (
-					<div className="space-y-4 py-6">
-						<Skeleton className="h-20 w-full" />
-						<Skeleton className="h-20 w-full" />
-					</div>
-				) : messages.length === 0 ? (
-					<div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
-						<MessageCircle className="size-8 text-neutral-300" />
-						<p className="text-sm text-neutral-500">
-							No replies yet
-						</p>
-					</div>
-				) : (
-					<div className="divide-y">
-						{messages.map((message) => (
-							<div key={message.id} className="py-6">
-								<div className="flex items-start gap-3">
-									<div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-neutral-200 text-sm font-medium text-neutral-600">
-										{message.author?.name?.charAt(0) ?? "?"}
-									</div>
-									<div className="min-w-0 flex-1">
-										<div className="flex items-center gap-2">
-											<span className="font-medium text-neutral-900">
-												{message.author?.name ??
-													"Unknown"}
-											</span>
-											<span className="text-sm text-neutral-500">
-												{formatDistanceToNow(
-													new Date(message.createdAt),
-													{ addSuffix: true },
-												)}
-											</span>
-										</div>
-										<div className="mt-1 whitespace-pre-wrap text-neutral-700">
-											{message.content}
-										</div>
-									</div>
-								</div>
-							</div>
-						))}
-					</div>
-				)}
 			</div>
 
-			<div className="shrink-0 border-t bg-white py-4">
-				<div className="flex gap-2">
-					<Textarea
-						placeholder="Write a reply..."
-						value={messageContent}
-						onChange={(e) => setMessageContent(e.target.value)}
-						onKeyDown={handleKeyDown}
-						rows={2}
-						className="resize-none"
-					/>
-					<Button
-						onClick={handleSendMessage}
-						disabled={
-							!messageContent.trim() ||
-							createMessageMutation.isPending
-						}
-						className="shrink-0"
-					>
-						<Send className="size-4" />
-					</Button>
+			{discussion.status === "resolved" && discussion.resolution && (
+				<div className="mt-6 rounded-lg bg-green-50 p-4">
+					<div className="flex items-start gap-3">
+						<CheckCircle className="size-5 shrink-0 text-green-600" />
+						<div>
+							<div className="font-medium text-green-900">
+								Resolution
+							</div>
+							<div className="mt-1 text-sm text-green-800 whitespace-pre-wrap">
+								{discussion.resolution}
+							</div>
+						</div>
+					</div>
 				</div>
-				<p className="mt-1 text-xs text-neutral-500">
-					Press {navigator.platform?.includes("Mac") ? "Cmd" : "Ctrl"}
-					+Enter to send
-				</p>
+			)}
+
+			<div className="mt-8 border-t pt-6">
+				<div className="flex items-center justify-between">
+					<h2 className="font-semibold">Activity</h2>
+					<div className="flex items-center gap-1">
+						{participants.slice(0, 5).map((participant) => (
+							<UserAvatar
+								key={participant.id}
+								name={participant.name ?? "Unknown"}
+								avatarUrl={participant.image}
+								className="size-6 -ml-1 first:ml-0 ring-2 ring-background"
+							/>
+						))}
+						{participants.length > 5 && (
+							<span className="ml-1 text-xs text-muted-foreground">
+								+{participants.length - 5}
+							</span>
+						)}
+					</div>
+				</div>
+
+				<div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+					<UserAvatar
+						name={discussion.author?.name ?? "Unknown"}
+						avatarUrl={discussion.author?.image}
+						className="size-5"
+					/>
+					<span>
+						{discussion.author?.name ?? "Unknown"} created this post
+					</span>
+					<span>·</span>
+					<span>
+						{formatDistanceToNow(new Date(discussion.createdAt), {
+							addSuffix: true,
+						})}
+					</span>
+				</div>
+
+				<div className="mt-4 space-y-4">
+					{messagesLoading ? (
+						<>
+							<Skeleton className="h-24 w-full rounded-lg" />
+							<Skeleton className="h-24 w-full rounded-lg" />
+						</>
+					) : messages.length === 0 ? (
+						<p className="text-sm text-muted-foreground py-4">
+							No comments yet. Start the conversation!
+						</p>
+					) : (
+						messages.map((message) => (
+							<ThreadCard
+								key={message.id}
+								message={message}
+								discussionId={params.discussionId}
+								onReplySubmit={handleReply}
+								isSubmitting={createMessageMutation.isPending}
+							/>
+						))
+					)}
+				</div>
+
+				<div className="mt-6 rounded-lg border bg-card p-4">
+					<div className="flex items-center gap-3">
+						<UserAvatar
+							name={user?.name ?? "You"}
+							avatarUrl={user?.image}
+							className="size-8"
+						/>
+						<Input
+							placeholder="Join the conversation..."
+							value={newThreadContent}
+							onChange={(e) =>
+								setNewThreadContent(e.target.value)
+							}
+							onKeyDown={handleKeyDown}
+							className="flex-1"
+							disabled={createMessageMutation.isPending}
+						/>
+						<Button
+							onClick={handleNewThread}
+							disabled={
+								!newThreadContent.trim() ||
+								createMessageMutation.isPending
+							}
+						>
+							<Send className="size-4" />
+						</Button>
+					</div>
+				</div>
 			</div>
 		</div>
 	);
