@@ -7,7 +7,16 @@ import { Skeleton } from "@repo/ui/components/skeleton";
 import { Textarea } from "@repo/ui/components/textarea";
 import { cn } from "@repo/ui/lib/utils";
 import { ENTITY_TYPE_CONFIG } from "@saas/studio/components/discussions/entity-link-picker";
-import { discussionsApi, discussionsMutations } from "@saas/studio/lib/api";
+import {
+	bookingsApi,
+	deliverablesApi,
+	discussionsApi,
+	discussionsMutations,
+	expensesApi,
+	shootsApi,
+	studioPaymentsApi,
+	tasksApi,
+} from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
@@ -21,8 +30,74 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
+
+function useEntityNameLookup() {
+	const { data: bookingsData } = useQuery({
+		...bookingsApi.listMinimalOptions({}),
+		staleTime: 60000,
+	});
+	const { data: shootsData } = useQuery({
+		...shootsApi.listMinimalOptions({}),
+		staleTime: 60000,
+	});
+	const { data: deliverablesData } = useQuery({
+		...deliverablesApi.listMinimalOptions({}),
+		staleTime: 60000,
+	});
+	const { data: tasksData } = useQuery({
+		...tasksApi.listOptions({}),
+		staleTime: 60000,
+	});
+	const { data: schedulesData } = useQuery({
+		...studioPaymentsApi.listSchedulesOptions({}),
+		staleTime: 60000,
+	});
+	const { data: expensesData } = useQuery({
+		...expensesApi.listOptions({}),
+		staleTime: 60000,
+	});
+
+	return useMemo(() => {
+		const lookup: Record<string, Record<string, string>> = {
+			booking: {},
+			shoot: {},
+			deliverable: {},
+			task: {},
+			payment_schedule: {},
+			expense: {},
+		};
+
+		for (const b of bookingsData?.data ?? []) {
+			lookup.booking[b.id] = b.name;
+		}
+		for (const s of shootsData?.data ?? []) {
+			lookup.shoot[s.id] = s.name;
+		}
+		for (const d of deliverablesData?.data ?? []) {
+			lookup.deliverable[d.id] = d.name;
+		}
+		for (const t of tasksData?.data ?? []) {
+			lookup.task[t.id] = t.name;
+		}
+		for (const s of schedulesData?.data ?? []) {
+			lookup.payment_schedule[s.id] = s.name || `Payment $${s.amount}`;
+		}
+		for (const e of expensesData?.data ?? []) {
+			lookup.expense[e.id] = e.description || `Expense $${e.amount}`;
+		}
+
+		return lookup;
+	}, [
+		bookingsData,
+		shootsData,
+		deliverablesData,
+		tasksData,
+		schedulesData,
+		expensesData,
+	]);
+}
 
 export default function DiscussionDetailPage() {
 	const params = useParams<{
@@ -32,6 +107,7 @@ export default function DiscussionDetailPage() {
 	}>();
 	const queryClient = useQueryClient();
 	const [messageContent, setMessageContent] = useState("");
+	const entityNameLookup = useEntityNameLookup();
 
 	const { data: discussionData, isLoading: discussionLoading } = useQuery(
 		discussionsApi.getDiscussionOptions(params.discussionId),
@@ -113,9 +189,13 @@ export default function DiscussionDetailPage() {
 
 	const backHref = `/app/${params.organizationSlug}/discussions/${params.channelSlug}`;
 
+	const getEntityName = (entityType: string, entityId: string): string => {
+		return entityNameLookup[entityType]?.[entityId] ?? entityType;
+	};
+
 	if (discussionLoading) {
 		return (
-			<div className="flex flex-1 flex-col">
+			<div className="mx-auto w-full max-w-[800px]">
 				<div className="flex h-14 items-center gap-3 border-b px-6">
 					<Skeleton className="h-5 w-64" />
 				</div>
@@ -135,8 +215,8 @@ export default function DiscussionDetailPage() {
 	}
 
 	return (
-		<div className="flex flex-1 flex-col">
-			<div className="flex h-14 shrink-0 items-center justify-between border-b px-6">
+		<div className="mx-auto flex w-full max-w-[800px] flex-1 flex-col">
+			<div className="flex h-14 shrink-0 items-center justify-between border-b">
 				<div className="flex items-center gap-3">
 					<Link
 						href={backHref}
@@ -194,7 +274,7 @@ export default function DiscussionDetailPage() {
 			</div>
 
 			<div className="flex-1 overflow-y-auto">
-				<div className="border-b p-6">
+				<div className="border-b py-6">
 					<div className="flex items-start gap-3">
 						<div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-neutral-200 text-sm font-medium text-neutral-600">
 							{discussion.author?.name?.charAt(0) ?? "?"}
@@ -227,6 +307,10 @@ export default function DiscussionDetailPage() {
 													link.entityType as DiscussionLinkEntityType
 												];
 											if (!config) return null;
+											const entityName = getEntityName(
+												link.entityType,
+												link.entityId,
+											);
 											return (
 												<Badge
 													key={link.id}
@@ -237,12 +321,7 @@ export default function DiscussionDetailPage() {
 													)}
 												>
 													{config.icon}
-													<span className="capitalize">
-														{link.entityType.replace(
-															"_",
-															" ",
-														)}
-													</span>
+													<span>{entityName}</span>
 												</Badge>
 											);
 										})}
@@ -253,7 +332,7 @@ export default function DiscussionDetailPage() {
 				</div>
 
 				{discussion.status === "resolved" && discussion.resolution && (
-					<div className="border-b bg-green-50 p-6">
+					<div className="border-b bg-green-50 py-6">
 						<div className="flex items-start gap-3">
 							<CheckCircle className="size-5 shrink-0 text-green-600" />
 							<div>
@@ -269,12 +348,12 @@ export default function DiscussionDetailPage() {
 				)}
 
 				{messagesLoading ? (
-					<div className="space-y-4 p-6">
+					<div className="space-y-4 py-6">
 						<Skeleton className="h-20 w-full" />
 						<Skeleton className="h-20 w-full" />
 					</div>
 				) : messages.length === 0 ? (
-					<div className="flex flex-col items-center justify-center gap-2 p-12 text-center">
+					<div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
 						<MessageCircle className="size-8 text-neutral-300" />
 						<p className="text-sm text-neutral-500">
 							No replies yet
@@ -283,7 +362,7 @@ export default function DiscussionDetailPage() {
 				) : (
 					<div className="divide-y">
 						{messages.map((message) => (
-							<div key={message.id} className="p-6">
+							<div key={message.id} className="py-6">
 								<div className="flex items-start gap-3">
 									<div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-neutral-200 text-sm font-medium text-neutral-600">
 										{message.author?.name?.charAt(0) ?? "?"}
@@ -312,7 +391,7 @@ export default function DiscussionDetailPage() {
 				)}
 			</div>
 
-			<div className="shrink-0 border-t bg-white p-4">
+			<div className="shrink-0 border-t bg-white py-4">
 				<div className="flex gap-2">
 					<Textarea
 						placeholder="Write a reply..."
