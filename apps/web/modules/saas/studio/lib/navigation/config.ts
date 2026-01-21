@@ -86,6 +86,17 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							path: url("/activities"),
 							icon: "Activity",
 						},
+						{
+							id: "discussions",
+							label: "Discussions",
+							path: url("/discussions"),
+							icon: "MessageSquare",
+							permission: {
+								any: [
+									{ resource: "discussion", action: "list" },
+								],
+							},
+						},
 					],
 				},
 				{

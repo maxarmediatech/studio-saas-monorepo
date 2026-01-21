@@ -51,6 +51,9 @@ export const statement = {
 	configuration: ["create", "read", "update", "delete", "list"],
 	settings: ["read", "update"],
 	invites: ["read", "create", "delete"],
+	channel: ["create", "read", "update", "delete", "list"],
+	discussion: ["create", "read", "update", "delete", "list"],
+	conversation: ["create", "read", "update", "delete", "list"],
 } as const;
 
 export type Resource = keyof typeof statement;
@@ -177,7 +180,6 @@ export function serializeRoles(
 
 export const ac = createAccessControl(statement);
 
-/** Owner - Full access to everything including org management */
 export const owner = ac.newRole({
 	...ownerAc.statements,
 	dashboard: ["read"],
@@ -214,9 +216,11 @@ export const owner = ac.newRole({
 	configuration: ["create", "read", "update", "delete", "list"],
 	settings: ["read", "update"],
 	invites: ["read", "create", "delete"],
+	channel: ["create", "read", "update", "delete", "list"],
+	discussion: ["create", "read", "update", "delete", "list"],
+	conversation: ["create", "read", "update", "delete", "list"],
 });
 
-/** Admin - Full access except organization deletion */
 export const admin = ac.newRole({
 	...adminAc.statements,
 	dashboard: ["read"],
@@ -253,6 +257,9 @@ export const admin = ac.newRole({
 	configuration: ["create", "read", "update", "delete", "list"],
 	settings: ["read", "update"],
 	invites: ["read", "create", "delete"],
+	channel: ["create", "read", "update", "delete", "list"],
+	discussion: ["create", "read", "update", "delete", "list"],
+	conversation: ["create", "read", "update", "delete", "list"],
 });
 
 /** Manager - Manage shoots, tasks, deliverables; limited booking/client access */
@@ -337,13 +344,15 @@ export const hr = ac.newRole({
 	configuration: ["read", "list"],
 });
 
-/** Member - Internal team member with limited access */
 export const member = ac.newRole({
 	...memberAc.statements,
 	booking: ["read", "list"],
 	shoot: ["read", "list"],
 	task: ["read", "list", "submit"],
 	deliverable: ["read", "list", "submit"],
+	channel: ["read", "list"],
+	discussion: ["create", "read", "list"],
+	conversation: ["create", "read", "list"],
 });
 
 /** Crew - External crew, can only see and submit assigned work */

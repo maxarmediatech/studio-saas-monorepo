@@ -185,3 +185,26 @@ export const purchaseTypeEnum = pgEnum("purchaseType", [
 	"SUBSCRIPTION",
 	"ONE_TIME",
 ]);
+
+// ----------------------------------------------------------------------------
+// Discussions (Internal team collaboration)
+// ----------------------------------------------------------------------------
+
+/**
+ * Channel visibility - public or private
+ * Public channels are visible to all org members
+ * Private channels require explicit membership
+ */
+export const channelVisibilityEnum = pgEnum("channel_visibility", [
+	"public",
+	"private",
+]);
+
+/**
+ * Discussion status - open or resolved
+ * Tracks whether a discussion has been concluded with a resolution
+ */
+export const discussionStatusEnum = pgEnum("discussion_status", [
+	"open",
+	"resolved",
+]);

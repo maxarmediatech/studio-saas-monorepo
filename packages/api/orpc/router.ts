@@ -8,11 +8,12 @@ import { contactRouter } from "../modules/contact/router";
 import { crewsRouter } from "../modules/crews/router";
 import { dashboardRouter } from "../modules/dashboard/router";
 import { deliverablesRouter } from "../modules/deliverables/router";
+import { discussionsRouter } from "../modules/discussions/router";
 import { expensesRouter } from "../modules/expenses/router";
 import { globalSearchRouter } from "../modules/global-search/router";
 import { myAssignmentsRouter } from "../modules/my-assignments/router";
-import { notificationsRouter } from "../modules/notifications/router";
 import { newsletterRouter } from "../modules/newsletter/router";
+import { notificationsRouter } from "../modules/notifications/router";
 import { organizationsRouter } from "../modules/organizations/router";
 import { paymentsRouter } from "../modules/payments/router";
 import { quickLinksRouter } from "../modules/quick-links/router";
@@ -49,6 +50,9 @@ export const router = publicProcedure
 		studioPayments: studioPaymentsRouter,
 		expenses: expensesRouter,
 		globalSearch: globalSearchRouter,
+
+		// Discussions
+		discussions: discussionsRouter,
 
 		// Support routers
 		dashboard: dashboardRouter,

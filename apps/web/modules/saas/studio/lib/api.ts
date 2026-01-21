@@ -96,8 +96,7 @@ export const studioQueryKeys = {
 		all: ["studio", "notifications"] as const,
 		list: (filters?: Record<string, unknown>) =>
 			["studio", "notifications", "list", filters] as const,
-		unreadCount: () =>
-			["studio", "notifications", "unread-count"] as const,
+		unreadCount: () => ["studio", "notifications", "unread-count"] as const,
 	},
 	// Submissions (review queue)
 	submissions: {
@@ -106,6 +105,40 @@ export const studioQueryKeys = {
 			["studio", "submissions", "list", filters] as const,
 		detail: (id: string) =>
 			["studio", "submissions", "detail", id] as const,
+	},
+	discussions: {
+		all: ["studio", "discussions"] as const,
+		channels: {
+			all: ["studio", "discussions", "channels"] as const,
+			list: () => ["studio", "discussions", "channels", "list"] as const,
+			detail: (id: string) =>
+				["studio", "discussions", "channels", "detail", id] as const,
+			bySlug: (slug: string) =>
+				["studio", "discussions", "channels", "slug", slug] as const,
+		},
+		posts: {
+			list: (channelId: string, filters?: Record<string, unknown>) =>
+				[
+					"studio",
+					"discussions",
+					"posts",
+					channelId,
+					"list",
+					filters,
+				] as const,
+			detail: (id: string) =>
+				["studio", "discussions", "posts", "detail", id] as const,
+		},
+		messages: {
+			list: (discussionId: string) =>
+				[
+					"studio",
+					"discussions",
+					"messages",
+					discussionId,
+					"list",
+				] as const,
+		},
 	},
 } as const;
 
@@ -495,7 +528,9 @@ export const stickiesMutations = {
 
 export const activitiesApi = {
 	listOptions: (
-		input?: Parameters<typeof orpc.activities.list.queryOptions>[0]["input"],
+		input?: Parameters<
+			typeof orpc.activities.list.queryOptions
+		>[0]["input"],
 	) => orpc.activities.list.queryOptions({ input: input ?? {} }),
 };
 
@@ -524,11 +559,68 @@ export const notificationsApi = {
 			typeof orpc.notifications.list.queryOptions
 		>[0]["input"],
 	) => orpc.notifications.list.queryOptions({ input }),
-	unreadCountOptions: () =>
-		orpc.notifications.unreadCount.queryOptions(),
+	unreadCountOptions: () => orpc.notifications.unreadCount.queryOptions(),
 };
 
 export const notificationsMutations = {
 	markRead: () => orpc.notifications.markRead.mutationOptions(),
 	markAllRead: () => orpc.notifications.markAllRead.mutationOptions(),
+};
+
+// ============================================================================
+// DISCUSSIONS QUERY OPTIONS
+// ============================================================================
+
+export const discussionsApi = {
+	listChannelsOptions: () =>
+		orpc.discussions.listChannels.queryOptions({ input: {} }),
+
+	getChannelOptions: (channelId: string) =>
+		orpc.discussions.getChannel.queryOptions({ input: { channelId } }),
+
+	getChannelBySlugOptions: (slug: string) =>
+		orpc.discussions.getChannelBySlug.queryOptions({ input: { slug } }),
+
+	listDiscussionsOptions: (
+		input: Parameters<
+			typeof orpc.discussions.listDiscussions.queryOptions
+		>[0]["input"],
+	) => orpc.discussions.listDiscussions.queryOptions({ input }),
+
+	getDiscussionOptions: (discussionId: string) =>
+		orpc.discussions.getDiscussion.queryOptions({
+			input: { discussionId },
+		}),
+
+	listMessagesOptions: (
+		input: Parameters<
+			typeof orpc.discussions.listMessages.queryOptions
+		>[0]["input"],
+	) => orpc.discussions.listMessages.queryOptions({ input }),
+};
+
+export const discussionsMutations = {
+	createChannel: () => orpc.discussions.createChannel.mutationOptions(),
+	updateChannel: () => orpc.discussions.updateChannel.mutationOptions(),
+	deleteChannel: () => orpc.discussions.deleteChannel.mutationOptions(),
+	addChannelMember: () => orpc.discussions.addChannelMember.mutationOptions(),
+	removeChannelMember: () =>
+		orpc.discussions.removeChannelMember.mutationOptions(),
+	toggleSubscription: () =>
+		orpc.discussions.toggleSubscription.mutationOptions(),
+
+	createDiscussion: () => orpc.discussions.createDiscussion.mutationOptions(),
+	updateDiscussion: () => orpc.discussions.updateDiscussion.mutationOptions(),
+	deleteDiscussion: () => orpc.discussions.deleteDiscussion.mutationOptions(),
+	resolveDiscussion: () =>
+		orpc.discussions.resolveDiscussion.mutationOptions(),
+	reopenDiscussion: () => orpc.discussions.reopenDiscussion.mutationOptions(),
+	addDiscussionLink: () =>
+		orpc.discussions.addDiscussionLink.mutationOptions(),
+	removeDiscussionLink: () =>
+		orpc.discussions.removeDiscussionLink.mutationOptions(),
+
+	createMessage: () => orpc.discussions.createMessage.mutationOptions(),
+	updateMessage: () => orpc.discussions.updateMessage.mutationOptions(),
+	deleteMessage: () => orpc.discussions.deleteMessage.mutationOptions(),
 };
