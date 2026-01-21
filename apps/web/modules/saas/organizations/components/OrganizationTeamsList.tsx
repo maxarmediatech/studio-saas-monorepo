@@ -174,7 +174,6 @@ export function OrganizationTeamsList({
 		mutationFn: async ({ teamId, name }: { teamId: string; name: string }) => {
 			const { error } = await authClient.organization.updateTeam({
 				teamId,
-				organizationId,
 				data: {
 					name,
 				},
