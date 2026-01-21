@@ -13,6 +13,34 @@ import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import { createMessageInputSchema } from "../schemas";
 
+function extractTextFromJson(node: Record<string, unknown>): string {
+	if (node.type === "text" && typeof node.text === "string") {
+		return node.text;
+	}
+	if (
+		node.type === "mention" &&
+		node.attrs &&
+		typeof (node.attrs as Record<string, unknown>).label === "string"
+	) {
+		return `@${(node.attrs as Record<string, unknown>).label}`;
+	}
+	if (node.type === "hardBreak") {
+		return "\n";
+	}
+	if (Array.isArray(node.content)) {
+		return node.content
+			.map((child) =>
+				extractTextFromJson(child as Record<string, unknown>),
+			)
+			.join(
+				node.type === "paragraph" || node.type === "heading"
+					? "\n"
+					: "",
+			);
+	}
+	return "";
+}
+
 export const createMessage = studioProtectedProcedure
 	.route({
 		method: "POST",
@@ -70,12 +98,18 @@ export const createMessage = studioProtectedProcedure
 			threadRootId = parentMessage.threadRootId ?? parentMessage.id;
 		}
 
+		const contentText = input.contentJson
+			? extractTextFromJson(input.contentJson as Record<string, unknown>)
+			: (input.content ?? "");
+
 		return await db.transaction(async (tx) => {
 			const [message] = await tx
 				.insert(discussionMessages)
 				.values({
 					discussionId: input.discussionId,
-					content: input.content,
+					content: input.content ?? contentText,
+					contentJson: input.contentJson,
+					contentText,
 					parentId,
 					threadRootId,
 					createdBy: context.user.id,

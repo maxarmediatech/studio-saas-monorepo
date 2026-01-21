@@ -6,6 +6,34 @@ import { assertChannelAccess } from "../lib/channel-access";
 import { verifyLinkEntityExists } from "../lib/verify-link-entity";
 import { createDiscussionInputSchema } from "../schemas";
 
+function extractTextFromJson(node: Record<string, unknown>): string {
+	if (node.type === "text" && typeof node.text === "string") {
+		return node.text;
+	}
+	if (
+		node.type === "mention" &&
+		node.attrs &&
+		typeof (node.attrs as Record<string, unknown>).label === "string"
+	) {
+		return `@${(node.attrs as Record<string, unknown>).label}`;
+	}
+	if (node.type === "hardBreak") {
+		return "\n";
+	}
+	if (Array.isArray(node.content)) {
+		return node.content
+			.map((child) =>
+				extractTextFromJson(child as Record<string, unknown>),
+			)
+			.join(
+				node.type === "paragraph" || node.type === "heading"
+					? "\n"
+					: "",
+			);
+	}
+	return "";
+}
+
 export const createDiscussion = studioProtectedProcedure
 	.route({
 		method: "POST",
@@ -33,6 +61,10 @@ export const createDiscussion = studioProtectedProcedure
 			}
 		}
 
+		const contentText = input.contentJson
+			? extractTextFromJson(input.contentJson as Record<string, unknown>)
+			: (input.content ?? "");
+
 		return await db.transaction(async (tx) => {
 			const [discussion] = await tx
 				.insert(discussions)
@@ -40,7 +72,9 @@ export const createDiscussion = studioProtectedProcedure
 					organizationId: context.organizationId,
 					channelId: input.channelId,
 					title: input.title,
-					content: input.content,
+					content: input.content ?? contentText,
+					contentJson: input.contentJson,
+					contentText,
 					createdBy: context.user.id,
 					updatedBy: context.user.id,
 					lastActivityAt: new Date(),

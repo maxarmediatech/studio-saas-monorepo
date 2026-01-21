@@ -1,6 +1,12 @@
 "use client";
 
 import type { DiscussionLinkEntityType } from "@repo/api/modules/discussions/schemas";
+import {
+	type JSONContent,
+	LiteEditor,
+	type LiteEditorHandle,
+	ReadOnlyRenderer,
+} from "@repo/editor";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import {
@@ -8,7 +14,6 @@ import {
 	CollapsibleContent,
 	CollapsibleTrigger,
 } from "@repo/ui/components/collapsible";
-import { Input } from "@repo/ui/components/input";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
 import { useSession } from "@saas/auth/hooks/use-session";
@@ -33,11 +38,10 @@ import {
 	Hash,
 	MoreHorizontal,
 	Plus,
-	Send,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 function useEntityNameLookup() {
@@ -110,6 +114,7 @@ interface ThreadCardProps {
 	message: {
 		id: string;
 		content: string;
+		contentJson?: unknown;
 		createdAt: Date | string;
 		replyCount: number;
 		author?: {
@@ -120,6 +125,7 @@ interface ThreadCardProps {
 		replies?: Array<{
 			id: string;
 			content: string;
+			contentJson?: unknown;
 			createdAt: Date | string;
 			author?: {
 				id: string;
@@ -129,7 +135,7 @@ interface ThreadCardProps {
 		}>;
 	};
 	discussionId: string;
-	onReplySubmit: (parentId: string, content: string) => void;
+	onReplySubmit: (parentId: string, contentJson: JSONContent) => void;
 	isSubmitting: boolean;
 }
 
@@ -140,25 +146,13 @@ function ThreadCard({
 	isSubmitting,
 }: ThreadCardProps) {
 	const { user } = useSession();
-	const [replyContent, setReplyContent] = useState("");
 	const [showReplyInput, setShowReplyInput] = useState(false);
+	const replyEditorRef = useRef<LiteEditorHandle>(null);
 
-	const handleSubmitReply = () => {
-		if (!replyContent.trim()) return;
-		onReplySubmit(message.id, replyContent.trim());
-		setReplyContent("");
+	const handleSubmitReply = (contentJson: JSONContent) => {
+		onReplySubmit(message.id, contentJson);
+		replyEditorRef.current?.clearContent();
 		setShowReplyInput(false);
-	};
-
-	const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-		if (e.key === "Enter" && !e.shiftKey) {
-			e.preventDefault();
-			handleSubmitReply();
-		}
-		if (e.key === "Escape") {
-			setShowReplyInput(false);
-			setReplyContent("");
-		}
 	};
 
 	const allMessages = [message, ...(message.replies ?? [])];
@@ -190,9 +184,18 @@ function ThreadCard({
 									)}
 								</span>
 							</div>
-							<p className="mt-1 text-sm text-foreground">
-								{msg.content}
-							</p>
+							<div className="mt-1 text-sm">
+								{msg.contentJson ? (
+									<ReadOnlyRenderer
+										content={msg.contentJson as JSONContent}
+										variant="compact"
+									/>
+								) : (
+									<p className="text-foreground">
+										{msg.content}
+									</p>
+								)}
+							</div>
 						</div>
 					</div>
 				</div>
@@ -217,29 +220,21 @@ function ThreadCard({
 
 			<div className="border-t p-3">
 				{showReplyInput ? (
-					<div className="flex items-center gap-2">
+					<div className="flex items-start gap-2">
 						<UserAvatar
 							name={user?.name ?? "You"}
 							avatarUrl={user?.image}
-							className="size-6"
+							className="size-6 mt-2"
 						/>
-						<Input
-							placeholder="Write a reply..."
-							value={replyContent}
-							onChange={(e) => setReplyContent(e.target.value)}
-							onKeyDown={handleKeyDown}
-							className="h-8 text-sm"
-							autoFocus
-							disabled={isSubmitting}
-						/>
-						<Button
-							size="sm"
-							onClick={handleSubmitReply}
-							disabled={!replyContent.trim() || isSubmitting}
-							className="h-8 px-3"
-						>
-							<Send className="size-3" />
-						</Button>
+						<div className="flex-1">
+							<LiteEditor
+								ref={replyEditorRef}
+								placeholder="Write a reply..."
+								disabled={isSubmitting}
+								onSubmit={handleSubmitReply}
+								autoFocus
+							/>
+						</div>
 					</div>
 				) : (
 					<button
@@ -268,9 +263,9 @@ export default function DiscussionDetailPage() {
 	}>();
 	const { user } = useSession();
 	const queryClient = useQueryClient();
-	const [newThreadContent, setNewThreadContent] = useState("");
 	const [linksOpen, setLinksOpen] = useState(false);
 	const entityNameLookup = useEntityNameLookup();
+	const newThreadEditorRef = useRef<LiteEditorHandle>(null);
 
 	const { data: discussionData, isLoading: discussionLoading } = useQuery(
 		discussionsApi.getDiscussionOptions(params.discussionId),
@@ -340,7 +335,7 @@ export default function DiscussionDetailPage() {
 			queryClient.invalidateQueries({
 				queryKey: orpc.discussions.getDiscussion.key(),
 			});
-			setNewThreadContent("");
+			newThreadEditorRef.current?.clearContent();
 		},
 		onError: () => {
 			toast.error("Failed to send message");
@@ -379,27 +374,21 @@ export default function DiscussionDetailPage() {
 		},
 	});
 
-	const handleNewThread = () => {
-		if (!newThreadContent.trim()) return;
+	const handleNewThread = (contentJson: JSONContent) => {
 		createMessageMutation.mutate({
 			discussionId: params.discussionId,
-			content: newThreadContent.trim(),
+			content: "",
+			contentJson,
 		});
 	};
 
-	const handleReply = (parentId: string, content: string) => {
+	const handleReply = (parentId: string, contentJson: JSONContent) => {
 		createMessageMutation.mutate({
 			discussionId: params.discussionId,
-			content,
+			content: "",
+			contentJson,
 			parentId,
 		});
-	};
-
-	const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-		if (e.key === "Enter" && !e.shiftKey) {
-			e.preventDefault();
-			handleNewThread();
-		}
 	};
 
 	const channelHref = `/app/${params.organizationSlug}/discussions/${params.channelSlug}`;
@@ -513,10 +502,18 @@ export default function DiscussionDetailPage() {
 					</span>
 				</div>
 
-				{discussion.content && (
-					<p className="mt-6 text-foreground whitespace-pre-wrap">
-						{discussion.content}
-					</p>
+				{(discussion.contentJson || discussion.content) && (
+					<div className="mt-6">
+						{discussion.contentJson ? (
+							<ReadOnlyRenderer
+								content={discussion.contentJson}
+							/>
+						) : (
+							<p className="text-foreground whitespace-pre-wrap">
+								{discussion.content}
+							</p>
+						)}
+					</div>
 				)}
 
 				{linksCount > 0 && (
@@ -682,31 +679,20 @@ export default function DiscussionDetailPage() {
 				</div>
 
 				<div className="mt-6 rounded-lg border bg-card p-4">
-					<div className="flex items-center gap-3">
+					<div className="flex items-start gap-3">
 						<UserAvatar
 							name={user?.name ?? "You"}
 							avatarUrl={user?.image}
-							className="size-8"
+							className="size-8 mt-2"
 						/>
-						<Input
-							placeholder="Join the conversation..."
-							value={newThreadContent}
-							onChange={(e) =>
-								setNewThreadContent(e.target.value)
-							}
-							onKeyDown={handleKeyDown}
-							className="flex-1"
-							disabled={createMessageMutation.isPending}
-						/>
-						<Button
-							onClick={handleNewThread}
-							disabled={
-								!newThreadContent.trim() ||
-								createMessageMutation.isPending
-							}
-						>
-							<Send className="size-4" />
-						</Button>
+						<div className="flex-1">
+							<LiteEditor
+								ref={newThreadEditorRef}
+								placeholder="Join the conversation..."
+								disabled={createMessageMutation.isPending}
+								onSubmit={handleNewThread}
+							/>
+						</div>
 					</div>
 				</div>
 			</div>

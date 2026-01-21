@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Editor, type EditorHandle, type JSONContent } from "@repo/editor";
 import { Combobox, type ComboboxOption } from "@repo/ui/components/combobox";
 import {
 	Field,
@@ -10,10 +11,9 @@ import {
 } from "@repo/ui/components/field";
 import { Input } from "@repo/ui/components/input";
 import { ScrollArea } from "@repo/ui/components/scroll-area";
-import { Textarea } from "@repo/ui/components/textarea";
 import { discussionsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { FormActions } from "../ui/FormActions";
@@ -23,10 +23,17 @@ import { type EntityLink, EntityLinkPicker } from "./entity-link-picker";
 // Schema
 // ============================================================================
 
+// JSONContent is a recursive structure from TipTap - use passthrough validation
+// The editor handles structure validation; we just ensure it's a valid object
+const jsonContentSchema = z.custom<JSONContent>(
+	(val) => val !== null && typeof val === "object",
+	{ message: "Invalid content format" },
+);
+
 const discussionFormSchema = z.object({
 	channelId: z.string().min(1, "Channel is required"),
 	title: z.string().min(1, "Title is required").max(200),
-	content: z.string().max(10000).optional().or(z.literal("")),
+	contentJson: jsonContentSchema.nullable().optional(),
 	links: z.array(
 		z.object({
 			entityType: z.enum([
@@ -73,12 +80,14 @@ export function DiscussionForm({
 	);
 	const channels = channelsData?.data ?? [];
 
+	const editorRef = useRef<EditorHandle>(null);
+
 	const form = useForm<DiscussionFormValues>({
 		resolver: zodResolver(discussionFormSchema),
 		defaultValues: {
 			channelId: defaultChannelId ?? "",
 			title: "",
-			content: "",
+			contentJson: null,
 			links: defaultLinks ?? [],
 		},
 	});
@@ -180,20 +189,20 @@ export function DiscussionForm({
 						/>
 
 						<Controller
-							name="content"
+							name="contentJson"
 							control={form.control}
 							render={({ field, fieldState }) => (
 								<Field data-invalid={fieldState.invalid}>
 									<FieldLabel htmlFor={field.name}>
 										Details
 									</FieldLabel>
-									<Textarea
-										{...field}
-										id={field.name}
+									<Editor
+										ref={editorRef}
+										initialContent={field.value}
 										placeholder="Add more context (optional)"
-										className="resize-none"
-										rows={4}
-										aria-invalid={fieldState.invalid}
+										disabled={isSubmitting}
+										onUpdate={field.onChange}
+										minHeight="100px"
 									/>
 									{fieldState.invalid && (
 										<FieldError
