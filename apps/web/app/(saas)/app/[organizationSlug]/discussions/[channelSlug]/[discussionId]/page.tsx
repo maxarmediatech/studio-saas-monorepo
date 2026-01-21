@@ -1,8 +1,12 @@
 "use client";
 
+import type { DiscussionLinkEntityType } from "@repo/api/modules/discussions/schemas";
+import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { Textarea } from "@repo/ui/components/textarea";
+import { cn } from "@repo/ui/lib/utils";
+import { ENTITY_TYPE_CONFIG } from "@saas/studio/components/discussions/entity-link-picker";
 import { discussionsApi, discussionsMutations } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -214,6 +218,36 @@ export default function DiscussionDetailPage() {
 									{discussion.content}
 								</div>
 							)}
+							{discussion.links &&
+								discussion.links.length > 0 && (
+									<div className="mt-3 flex flex-wrap gap-2">
+										{discussion.links.map((link) => {
+											const config =
+												ENTITY_TYPE_CONFIG[
+													link.entityType as DiscussionLinkEntityType
+												];
+											if (!config) return null;
+											return (
+												<Badge
+													key={link.id}
+													variant="secondary"
+													className={cn(
+														"flex items-center gap-1.5",
+														config.color,
+													)}
+												>
+													{config.icon}
+													<span className="capitalize">
+														{link.entityType.replace(
+															"_",
+															" ",
+														)}
+													</span>
+												</Badge>
+											);
+										})}
+									</div>
+								)}
 						</div>
 					</div>
 				</div>

@@ -6,12 +6,13 @@ import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
 
 import { ChannelSettingsDialog } from "@saas/studio/components/discussions";
+import { useDiscussionParams } from "@saas/studio/hooks/params";
 import { discussionsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { format, isToday, isYesterday } from "date-fns";
 import { BellOff, Hash, MessageCircle, Settings } from "lucide-react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
 function groupDiscussionsByDate<T extends { createdAt: Date | string }>(
@@ -65,9 +66,8 @@ export default function ChannelPage() {
 		organizationSlug: string;
 		channelSlug: string;
 	}>();
-	const router = useRouter();
+	const { openCreate } = useDiscussionParams();
 	const [showSettings, setShowSettings] = useState(false);
-	const [composerValue, setComposerValue] = useState("");
 
 	const { data: channelData, isLoading: channelLoading } = useQuery(
 		discussionsApi.getChannelBySlugOptions(params.channelSlug),
@@ -90,9 +90,9 @@ export default function ChannelPage() {
 	);
 
 	const handleComposerClick = () => {
-		router.push(
-			`/app/${params.organizationSlug}/discussions/${params.channelSlug}/new`,
-		);
+		if (channel?.id) {
+			openCreate({ channelId: channel.id });
+		}
 	};
 
 	if (channelLoading) {
