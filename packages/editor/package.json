@@ -1,0 +1,50 @@
+{
+	"name": "@repo/editor",
+	"version": "0.0.0",
+	"type": "module",
+	"private": true,
+	"scripts": {
+		"lint": "eslint . --max-warnings 0"
+	},
+	"dependencies": {
+		"@floating-ui/react": "^0.26.28",
+		"@tiptap/core": "^2.11.5",
+		"@tiptap/extension-bubble-menu": "^2.27.2",
+		"@tiptap/extension-link": "^2.11.5",
+		"@tiptap/extension-mention": "^2.11.5",
+		"@tiptap/extension-placeholder": "^2.11.5",
+		"@tiptap/extension-task-item": "^2.11.5",
+		"@tiptap/extension-task-list": "^2.11.5",
+		"@tiptap/html": "^2.11.5",
+		"@tiptap/pm": "^2.11.5",
+		"@tiptap/react": "^2.11.5",
+		"@tiptap/starter-kit": "^2.11.5",
+		"@tiptap/suggestion": "^2.11.5",
+		"dompurify": "^3.2.4",
+		"lucide-react": "^0.562.0",
+		"react": "^19.2.3",
+		"react-dom": "^19.2.3"
+	},
+	"devDependencies": {
+		"@repo/tsconfig": "workspace:*",
+		"@types/dompurify": "^3.2.0",
+		"@types/node": "^24.10.4",
+		"@types/react": "19.2.7",
+		"@types/react-dom": "^19.1.7",
+		"eslint": "^9.39.2",
+		"typescript": "^5.9.3"
+	},
+	"peerDependencies": {
+		"react": "^18.0.0 || ^19.0.0",
+		"react-dom": "^18.0.0 || ^19.0.0"
+	},
+	"exports": {
+		".": "./src/index.ts",
+		"./components/*": "./src/components/*.tsx",
+		"./hooks/*": "./src/hooks/*.ts",
+		"./lib/*": "./src/lib/*.ts",
+		"./schema": "./src/schema/index.ts",
+		"./styles": "./src/styles/editor.css",
+		"./types": "./src/types/index.ts"
+	}
+}

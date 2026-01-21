@@ -1,0 +1,142 @@
+.editor-content {
+	font-size: 0.875rem;
+	line-height: 1.625;
+}
+
+.editor-content p {
+	margin: 0.5em 0;
+}
+
+.editor-content p:first-child {
+	margin-top: 0;
+}
+
+.editor-content p:last-child {
+	margin-bottom: 0;
+}
+
+.editor-content ul,
+.editor-content ol {
+	padding-left: 1.5em;
+	margin: 0.5em 0;
+}
+
+.editor-content li {
+	margin: 0.25em 0;
+}
+
+.editor-content ul[data-type="taskList"] {
+	list-style: none;
+	padding-left: 0;
+}
+
+.editor-content li[data-type="taskItem"] {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.5em;
+}
+
+.editor-content li[data-type="taskItem"] input[type="checkbox"] {
+	margin-top: 0.25em;
+}
+
+.editor-content code {
+	background-color: hsl(var(--muted));
+	border-radius: 0.25em;
+	padding: 0.125em 0.25em;
+	font-size: 0.875em;
+	font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas,
+		"Liberation Mono", Menlo, monospace;
+}
+
+.editor-content pre {
+	background-color: hsl(var(--muted));
+	border-radius: 0.5em;
+	padding: 0.75em 1em;
+	overflow-x: auto;
+	margin: 0.5em 0;
+}
+
+.editor-content pre code {
+	background: none;
+	padding: 0;
+	font-size: 0.8125em;
+}
+
+.editor-content blockquote {
+	border-left: 3px solid hsl(var(--border));
+	padding-left: 1em;
+	margin: 0.5em 0;
+	color: hsl(var(--muted-foreground));
+}
+
+.editor-content a {
+	color: hsl(var(--primary));
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+.editor-content a:hover {
+	text-decoration-thickness: 2px;
+}
+
+.editor-content [data-type="mention"] {
+	background-color: hsl(var(--primary) / 0.1);
+	color: hsl(var(--primary));
+	border-radius: 0.25em;
+	padding: 0.125em 0.25em;
+	font-weight: 500;
+}
+
+.editor-content h1 {
+	font-size: 1.5em;
+	font-weight: 600;
+	margin: 0.75em 0 0.5em;
+}
+
+.editor-content h2 {
+	font-size: 1.25em;
+	font-weight: 600;
+	margin: 0.75em 0 0.5em;
+}
+
+.editor-content h3 {
+	font-size: 1.125em;
+	font-weight: 600;
+	margin: 0.5em 0 0.25em;
+}
+
+.editor-content hr {
+	border: none;
+	border-top: 1px solid hsl(var(--border));
+	margin: 1em 0;
+}
+
+.editor-content.prose-compact {
+	font-size: 0.8125rem;
+}
+
+.editor-content.prose-compact p {
+	margin: 0.25em 0;
+}
+
+.editor-content.prose-preview {
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.is-editor-empty:first-child::before {
+	content: attr(data-placeholder);
+	color: hsl(var(--muted-foreground));
+	pointer-events: none;
+	position: absolute;
+	height: 0;
+}
+
+.ProseMirror {
+	outline: none;
+}
+
+.ProseMirror-focused {
+	outline: none;
+}

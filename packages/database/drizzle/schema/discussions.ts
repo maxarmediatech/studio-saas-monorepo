@@ -3,6 +3,7 @@ import {
 	boolean,
 	index,
 	integer,
+	jsonb,
 	pgTable,
 	text,
 	timestamp,
@@ -103,6 +104,9 @@ export const discussions = pgTable(
 
 		title: text("title").notNull(),
 		content: text("content"),
+		contentJson: jsonb("content_json"),
+		contentText: text("content_text"),
+		schemaVersion: integer("schema_version").default(1),
 
 		status: discussionStatusEnum("status").default("open").notNull(),
 		resolution: text("resolution"),
@@ -207,6 +211,9 @@ export const discussionMessages = pgTable(
 			.references(() => discussions.id, { onDelete: "cascade" }),
 
 		content: text("content").notNull(),
+		contentJson: jsonb("content_json"),
+		contentText: text("content_text"),
+		schemaVersion: integer("schema_version").default(1),
 
 		parentId: varchar("parent_id", { length: 255 }),
 		threadRootId: varchar("thread_root_id", { length: 255 }),
@@ -243,6 +250,38 @@ export const discussionMessages = pgTable(
 			table.createdAt,
 		),
 		index("discussion_messages_parent_idx").on(table.parentId),
+	],
+);
+
+export const discussionMentions = pgTable(
+	"discussion_mentions",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+
+		entityType: varchar("entity_type", { length: 50 }).notNull(),
+		entityId: varchar("entity_id", { length: 255 }).notNull(),
+
+		mentionedUserId: varchar("mentioned_user_id", { length: 255 })
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		uniqueIndex("discussion_mentions_unique").on(
+			table.entityType,
+			table.entityId,
+			table.mentionedUserId,
+		),
+		index("discussion_mentions_user_idx").on(table.mentionedUserId),
+		index("discussion_mentions_entity_idx").on(
+			table.entityType,
+			table.entityId,
+		),
 	],
 );
 
@@ -335,6 +374,16 @@ export const discussionMessagesRelations = relations(
 	}),
 );
 
+export const discussionMentionsRelations = relations(
+	discussionMentions,
+	({ one }) => ({
+		mentionedUser: one(users, {
+			fields: [discussionMentions.mentionedUserId],
+			references: [users.id],
+		}),
+	}),
+);
+
 export type Channel = typeof channels.$inferSelect;
 export type NewChannel = typeof channels.$inferInsert;
 export type ChannelMember = typeof channelMembers.$inferSelect;
@@ -345,3 +394,5 @@ export type DiscussionLink = typeof discussionLinks.$inferSelect;
 export type NewDiscussionLink = typeof discussionLinks.$inferInsert;
 export type DiscussionMessage = typeof discussionMessages.$inferSelect;
 export type NewDiscussionMessage = typeof discussionMessages.$inferInsert;
+export type DiscussionMention = typeof discussionMentions.$inferSelect;
+export type NewDiscussionMention = typeof discussionMentions.$inferInsert;
