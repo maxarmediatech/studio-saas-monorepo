@@ -122,11 +122,7 @@ export default function ChannelPage() {
 				<div className="flex items-start justify-between pb-6 pt-2">
 					<div>
 						<div className="flex items-center gap-3">
-							{channel.emoji ? (
-								<span className="text-3xl">
-									{channel.emoji}
-								</span>
-							) : channel.visibility === "private" ? (
+							{channel.visibility === "private" ? (
 								<Lock className="size-8 text-neutral-400" />
 							) : (
 								<Hash className="size-8 text-neutral-400" />
@@ -265,7 +261,6 @@ export default function ChannelPage() {
 					name: channel.name,
 					slug: channel.slug,
 					description: channel.description,
-					emoji: channel.emoji,
 					visibility: channel.visibility,
 				}}
 				organizationSlug={params.organizationSlug}

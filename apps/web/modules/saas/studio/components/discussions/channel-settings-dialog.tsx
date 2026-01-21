@@ -43,7 +43,6 @@ import { z } from "zod";
 const channelSchema = z.object({
 	name: z.string().min(1, "Channel name is required").max(100),
 	description: z.string().max(500).optional(),
-	emoji: z.string().max(20).optional(),
 	visibility: z.enum(["public", "private"]),
 });
 
@@ -57,7 +56,6 @@ interface ChannelSettingsDialogProps {
 		name: string;
 		slug: string;
 		description?: string | null;
-		emoji?: string | null;
 		visibility: "public" | "private";
 	};
 	organizationSlug: string;
@@ -84,7 +82,6 @@ export function ChannelSettingsDialog({
 		defaultValues: {
 			name: channel.name,
 			description: channel.description ?? "",
-			emoji: channel.emoji ?? "",
 			visibility: channel.visibility,
 		},
 	});
@@ -94,7 +91,6 @@ export function ChannelSettingsDialog({
 			reset({
 				name: channel.name,
 				description: channel.description ?? "",
-				emoji: channel.emoji ?? "",
 				visibility: channel.visibility,
 			});
 		}
@@ -137,7 +133,6 @@ export function ChannelSettingsDialog({
 			channelId: channel.id,
 			name: values.name,
 			description: values.description || undefined,
-			emoji: values.emoji || undefined,
 			visibility: values.visibility,
 		});
 	};
@@ -161,29 +156,16 @@ export function ChannelSettingsDialog({
 						onSubmit={handleSubmit(onSubmit)}
 						className="space-y-4"
 					>
-						<div className="flex gap-3">
-							<Field className="w-20">
-								<FieldLabel>Emoji</FieldLabel>
-								<Input
-									placeholder="💬"
-									maxLength={4}
-									{...register("emoji")}
-								/>
-							</Field>
-
-							<Field className="flex-1">
-								<FieldLabel>Name</FieldLabel>
-								<Input
-									placeholder="general"
-									{...register("name")}
-								/>
-								{errors.name && (
-									<FieldError>
-										{errors.name.message}
-									</FieldError>
-								)}
-							</Field>
-						</div>
+						<Field>
+							<FieldLabel>Name</FieldLabel>
+							<Input
+								placeholder="general"
+								{...register("name")}
+							/>
+							{errors.name && (
+								<FieldError>{errors.name.message}</FieldError>
+							)}
+						</Field>
 
 						<Field>
 							<FieldLabel>Description (optional)</FieldLabel>

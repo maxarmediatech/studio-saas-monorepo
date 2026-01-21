@@ -109,9 +109,7 @@ export default function NewDiscussionPage() {
 					<ArrowLeft className="size-5" />
 				</Link>
 				<div className="flex items-center gap-2">
-					{channel.emoji ? (
-						<span className="text-xl">{channel.emoji}</span>
-					) : channel.visibility === "private" ? (
+					{channel.visibility === "private" ? (
 						<Lock className="size-5 text-neutral-400" />
 					) : (
 						<Hash className="size-5 text-neutral-400" />

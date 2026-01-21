@@ -100,11 +100,7 @@ export function DiscussionsPanel({ area, studioSlug }: DiscussionsPanelProps) {
 										: "text-neutral-700 hover:bg-black/5 active:bg-black/10",
 								)}
 							>
-								{channel.emoji ? (
-									<span className="shrink-0 text-base leading-none">
-										{channel.emoji}
-									</span>
-								) : channel.visibility === "private" ? (
+								{channel.visibility === "private" ? (
 									<Lock
 										className={cn(
 											"size-4 shrink-0",
