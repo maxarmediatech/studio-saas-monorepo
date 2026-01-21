@@ -2,10 +2,13 @@
 
 import type { Extensions, JSONContent } from "@tiptap/core";
 import { EditorContent } from "@tiptap/react";
-import { forwardRef, useImperativeHandle, useMemo } from "react";
+import { forwardRef, useImperativeHandle, useMemo, useRef } from "react";
+import { createMentionExtension } from "../extensions/mentions/extension";
+import { createMentionSuggestionRenderer } from "../extensions/mentions/suggestion-renderer";
 import { createSlashCommandsExtension } from "../extensions/slash-commands/extension";
 import { createSlashCommandSuggestionRenderer } from "../extensions/slash-commands/suggestion-renderer";
 import { useEditorInstance } from "../hooks/use-editor";
+import type { MentionSuggestion } from "../types/mention";
 
 function cn(...classes: (string | boolean | undefined)[]) {
 	return classes.filter(Boolean).join(" ");
@@ -26,6 +29,7 @@ export interface EditorComponentProps {
 	autoFocus?: boolean;
 	onUpdate?: (content: JSONContent) => void;
 	onSubmit?: (content: JSONContent) => void;
+	onMentionSearch?: (query: string) => Promise<MentionSuggestion[]>;
 	extensions?: Extensions;
 	className?: string;
 	minHeight?: string;
@@ -40,24 +44,44 @@ export const Editor = forwardRef<EditorHandle, EditorComponentProps>(
 			autoFocus = false,
 			onUpdate,
 			onSubmit,
+			onMentionSearch,
 			extensions: customExtensions,
 			className,
 			minHeight = "120px",
 		},
 		ref,
 	) {
+		const onMentionSearchRef = useRef(onMentionSearch);
+		onMentionSearchRef.current = onMentionSearch;
+
 		const slashCommandExtension = useMemo(() => {
 			const renderer = createSlashCommandSuggestionRenderer();
 			return createSlashCommandsExtension(renderer);
 		}, []);
 
+		const mentionExtension = useMemo(() => {
+			if (!onMentionSearch) return null;
+			const renderer = createMentionSuggestionRenderer();
+			return createMentionExtension(
+				{
+					onSearch: (query) =>
+						onMentionSearchRef.current?.(query) ??
+						Promise.resolve([]),
+				},
+				renderer,
+			);
+		}, [onMentionSearch]);
+
 		const allExtensions = useMemo(() => {
 			const exts: Extensions = [slashCommandExtension];
+			if (mentionExtension) {
+				exts.push(mentionExtension);
+			}
 			if (customExtensions) {
 				exts.push(...customExtensions);
 			}
 			return exts;
-		}, [slashCommandExtension, customExtensions]);
+		}, [slashCommandExtension, mentionExtension, customExtensions]);
 
 		const { editor, clearContent, getContent, isEmpty, focus, submit } =
 			useEditorInstance({

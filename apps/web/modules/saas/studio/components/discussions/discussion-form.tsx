@@ -1,7 +1,12 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Editor, type EditorHandle, type JSONContent } from "@repo/editor";
+import {
+	Editor,
+	type EditorHandle,
+	type JSONContent,
+	type MentionSuggestion,
+} from "@repo/editor";
 import { Combobox, type ComboboxOption } from "@repo/ui/components/combobox";
 import {
 	Field,
@@ -11,7 +16,7 @@ import {
 } from "@repo/ui/components/field";
 import { Input } from "@repo/ui/components/input";
 import { ScrollArea } from "@repo/ui/components/scroll-area";
-import { discussionsApi } from "@saas/studio/lib/api";
+import { crewsApi, discussionsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { Controller, useForm } from "react-hook-form";
@@ -80,7 +85,28 @@ export function DiscussionForm({
 	);
 	const channels = channelsData?.data ?? [];
 
+	const { data: crewsData } = useQuery({
+		...crewsApi.listOptions({ limit: 100 }),
+		staleTime: 60000,
+	});
+	const crews = crewsData?.data ?? [];
+
 	const editorRef = useRef<EditorHandle>(null);
+
+	const handleMentionSearch = useCallback(
+		async (query: string): Promise<MentionSuggestion[]> => {
+			const lowerQuery = query.toLowerCase();
+			return crews
+				.filter((c) => c.name.toLowerCase().includes(lowerQuery))
+				.slice(0, 10)
+				.map((c) => ({
+					id: c.id,
+					label: c.name,
+					email: c.email,
+				}));
+		},
+		[crews],
+	);
 
 	const form = useForm<DiscussionFormValues>({
 		resolver: zodResolver(discussionFormSchema),
@@ -199,9 +225,10 @@ export function DiscussionForm({
 									<Editor
 										ref={editorRef}
 										initialContent={field.value}
-										placeholder="Add more context (optional)"
+										placeholder="Add more context (optional). Type @ to mention crew."
 										disabled={isSubmitting}
 										onUpdate={field.onChange}
+										onMentionSearch={handleMentionSearch}
 										minHeight="100px"
 									/>
 									{fieldState.invalid && (
