@@ -160,8 +160,8 @@ function ThreadCard({
 	const hasReplies = allMessages.length > 1;
 
 	return (
-		<div className="group relative rounded-lg border bg-card shadow-sm overflow-hidden transition-all">
-			<div className="p-4 space-y-6">
+		<div className="rounded-lg border bg-card overflow-hidden">
+			<div className="p-4 space-y-4">
 				{allMessages.map((msg, index) => {
 					const isParent = index === 0;
 					return (
@@ -211,7 +211,7 @@ function ThreadCard({
 								<button
 									type="button"
 									onClick={() => setShowReplyInput(true)}
-									className="mt-2 flex items-center justify-center size-6 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors opacity-0 group-hover/message:opacity-100 focus:opacity-100"
+									className="mt-2 flex items-center justify-center size-6 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
 								>
 									<MessageCircle className="size-3.5" />
 								</button>
@@ -221,33 +221,37 @@ function ThreadCard({
 				})}
 			</div>
 
-			<div className="bg-muted/30 p-3 px-4 border-t">
+			<div className="border-t px-4 py-3">
 				{showReplyInput ? (
-					<div className="animate-in fade-in zoom-in-95 duration-200">
-						<LiteEditor
-							ref={replyEditorRef}
-							placeholder="Write a reply..."
-							disabled={isSubmitting}
-							onSubmit={handleSubmitReply}
-							autoFocus
-							className="bg-background min-h-[80px]"
+					<div className="flex items-start gap-3">
+						<UserAvatar
+							name={user?.name ?? "You"}
+							avatarUrl={user?.image}
+							className="size-6 mt-0.5"
 						/>
-						<div className="mt-2 flex justify-end">
-							<Button
-								variant="ghost"
-								size="sm"
+						<div className="flex-1">
+							<LiteEditor
+								ref={replyEditorRef}
+								placeholder="Write a reply..."
+								disabled={isSubmitting}
+								onSubmit={handleSubmitReply}
+								autoFocus
+								variant="borderless"
+							/>
+							<button
+								type="button"
 								onClick={() => setShowReplyInput(false)}
-								className="h-7 text-xs"
+								className="mt-1 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
 							>
 								Cancel
-							</Button>
+							</button>
 						</div>
 					</div>
 				) : (
 					<button
 						type="button"
 						onClick={() => setShowReplyInput(true)}
-						className="flex w-full items-center gap-3 cursor-text py-1 text-left"
+						className="flex w-full items-center gap-3 cursor-text"
 					>
 						<UserAvatar
 							name={user?.name ?? "You"}
@@ -687,13 +691,13 @@ export default function DiscussionDetailPage() {
 					)}
 				</div>
 
-				<div className="mt-8">
+				<div className="mt-6 rounded-lg border">
 					<LiteEditor
 						ref={newThreadEditorRef}
 						placeholder="Join the conversation..."
 						disabled={createMessageMutation.isPending}
 						onSubmit={handleNewThread}
-						className="min-h-[120px] shadow-sm rounded-lg border-muted-foreground/20"
+						className="min-h-[100px] border-0"
 					/>
 				</div>
 			</div>

@@ -26,6 +26,7 @@ export interface LiteEditorComponentProps {
 	onUpdate?: (content: JSONContent) => void;
 	onSubmit?: (content: JSONContent) => void;
 	className?: string;
+	variant?: "default" | "borderless";
 }
 
 export const LiteEditor = forwardRef<
@@ -40,6 +41,7 @@ export const LiteEditor = forwardRef<
 		onUpdate,
 		onSubmit,
 		className,
+		variant = "default",
 	},
 	ref,
 ) {
@@ -62,26 +64,29 @@ export const LiteEditor = forwardRef<
 		submit,
 	}));
 
+	const isBorderless = variant === "borderless";
+
 	return (
 		<div
 			className={cn(
-				"lite-editor group relative flex min-h-[96px] w-full flex-col rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
+				"lite-editor group relative flex w-full flex-col text-sm",
+				!isBorderless &&
+					"min-h-[96px] rounded-md border border-input bg-transparent px-3 py-2 ring-offset-background focus-within:outline-none focus-within:ring-1 focus-within:ring-ring",
+				isBorderless && "min-h-[40px]",
 				disabled && "cursor-not-allowed opacity-50",
 				className,
 			)}
 		>
 			<EditorContent editor={editor} className="flex-1" />
 			{!disabled && (
-				<div className="mt-2 flex items-center justify-between pt-2 opacity-50 transition-opacity duration-200 group-focus-within:opacity-100">
-					<div className="flex items-center gap-2 text-muted-foreground select-none">
-						<span className="text-lg leading-none font-light">
-							/
-						</span>
-					</div>
+				<div className="mt-1 flex items-center justify-between text-muted-foreground">
+					<span className="text-base leading-none font-light select-none">
+						/
+					</span>
 					<button
 						type="button"
 						onClick={submit}
-						className="rounded-full p-1 text-primary hover:bg-primary/10 transition-colors"
+						className="p-1 hover:text-primary transition-colors cursor-pointer"
 					>
 						<Send className="size-4" />
 					</button>
