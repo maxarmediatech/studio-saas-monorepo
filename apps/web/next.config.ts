@@ -31,12 +31,7 @@ const imageRemotePatterns: RemotePattern[] = [
 const nextConfig = {
 	cacheComponents: true,
 	reactCompiler: true,
-	transpilePackages: [
-		"@repo/api",
-		"@repo/auth",
-		"@repo/database",
-		"@repo/editor",
-	],
+	transpilePackages: ["@repo/api", "@repo/auth", "@repo/database"],
 	images: {
 		remotePatterns: imageRemotePatterns,
 	},

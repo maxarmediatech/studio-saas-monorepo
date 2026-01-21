@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-const jsonContentSchema = z.record(z.string(), z.unknown());
-
 export const discussionLinkEntityTypes = [
 	"booking",
 	"shoot",
@@ -61,7 +59,6 @@ export const createDiscussionInputSchema = z.object({
 	channelId: z.string().min(1),
 	title: z.string().min(1).max(200),
 	content: z.string().max(10000).optional(),
-	contentJson: jsonContentSchema.nullable().optional(),
 	links: z
 		.array(
 			z.object({
@@ -120,8 +117,7 @@ export const removeDiscussionLinkInputSchema = z.object({
 
 export const createMessageInputSchema = z.object({
 	discussionId: z.string().min(1),
-	content: z.string().max(5000).optional().default(""),
-	contentJson: jsonContentSchema.nullable().optional(),
+	content: z.string().min(1).max(5000),
 	parentId: z.string().min(1).optional(),
 });
 

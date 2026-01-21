@@ -99,13 +99,6 @@
       "when": 1768992165423,
       "tag": "0013_legal_slipstream",
       "breakpoints": true
-    },
-    {
-      "idx": 14,
-      "version": "7",
-      "when": 1769001032443,
-      "tag": "0014_lumpy_jamie_braddock",
-      "breakpoints": true
     }
   ]
 }

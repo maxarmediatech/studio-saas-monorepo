@@ -1,73 +1,10 @@
 import { ORPCError } from "@orpc/server";
-import {
-	crews,
-	db,
-	discussionLinks,
-	discussionMentions,
-	discussions,
-	inArray,
-} from "@repo/database";
+import { db, discussionLinks, discussions } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import { assertChannelAccess } from "../lib/channel-access";
 import { verifyLinkEntityExists } from "../lib/verify-link-entity";
 import { createDiscussionInputSchema } from "../schemas";
-
-interface ExtractedMention {
-	id: string;
-	label: string;
-}
-
-function extractMentionsFromJson(
-	node: Record<string, unknown>,
-): ExtractedMention[] {
-	const mentions: ExtractedMention[] = [];
-
-	if (node.type === "mention" && node.attrs) {
-		const attrs = node.attrs as Record<string, unknown>;
-		if (typeof attrs.id === "string" && typeof attrs.label === "string") {
-			mentions.push({ id: attrs.id, label: attrs.label });
-		}
-	}
-
-	if (Array.isArray(node.content)) {
-		for (const child of node.content) {
-			mentions.push(
-				...extractMentionsFromJson(child as Record<string, unknown>),
-			);
-		}
-	}
-
-	return mentions;
-}
-
-function extractTextFromJson(node: Record<string, unknown>): string {
-	if (node.type === "text" && typeof node.text === "string") {
-		return node.text;
-	}
-	if (
-		node.type === "mention" &&
-		node.attrs &&
-		typeof (node.attrs as Record<string, unknown>).label === "string"
-	) {
-		return `@${(node.attrs as Record<string, unknown>).label}`;
-	}
-	if (node.type === "hardBreak") {
-		return "\n";
-	}
-	if (Array.isArray(node.content)) {
-		return node.content
-			.map((child) =>
-				extractTextFromJson(child as Record<string, unknown>),
-			)
-			.join(
-				node.type === "paragraph" || node.type === "heading"
-					? "\n"
-					: "",
-			);
-	}
-	return "";
-}
 
 export const createDiscussion = studioProtectedProcedure
 	.route({
@@ -96,10 +33,6 @@ export const createDiscussion = studioProtectedProcedure
 			}
 		}
 
-		const contentText = input.contentJson
-			? extractTextFromJson(input.contentJson as Record<string, unknown>)
-			: (input.content ?? "");
-
 		return await db.transaction(async (tx) => {
 			const [discussion] = await tx
 				.insert(discussions)
@@ -107,9 +40,7 @@ export const createDiscussion = studioProtectedProcedure
 					organizationId: context.organizationId,
 					channelId: input.channelId,
 					title: input.title,
-					content: input.content ?? contentText,
-					contentJson: input.contentJson,
-					contentText,
+					content: input.content,
 					createdBy: context.user.id,
 					updatedBy: context.user.id,
 					lastActivityAt: new Date(),
@@ -126,35 +57,6 @@ export const createDiscussion = studioProtectedProcedure
 						createdBy: context.user.id,
 					})),
 				);
-			}
-
-			if (input.contentJson) {
-				const mentions = extractMentionsFromJson(
-					input.contentJson as Record<string, unknown>,
-				);
-
-				if (mentions.length > 0) {
-					const crewIds = [...new Set(mentions.map((m) => m.id))];
-					const crewsWithUsers = await tx.query.crews.findMany({
-						where: inArray(crews.id, crewIds),
-						columns: { id: true, userId: true },
-					});
-
-					const mentionsToInsert = crewsWithUsers
-						.filter((c) => c.userId !== null)
-						.map((c) => ({
-							entityType: "discussion" as const,
-							entityId: discussion.id,
-							mentionedUserId: c.userId as string,
-						}));
-
-					if (mentionsToInsert.length > 0) {
-						await tx
-							.insert(discussionMentions)
-							.values(mentionsToInsert)
-							.onConflictDoNothing();
-					}
-				}
 			}
 
 			return { data: discussion };

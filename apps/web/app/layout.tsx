@@ -1,7 +1,6 @@
 import "../modules/shared/lib/orpc-client.server";
 
 import { config } from "@repo/config";
-import "@repo/editor/styles";
 import "@repo/ui/globals.css";
 import { cn } from "@repo/ui/lib/utils";
 import { ClientProviders } from "@shared/components/ClientProviders";
