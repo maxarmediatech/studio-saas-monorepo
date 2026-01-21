@@ -1,3 +1,6 @@
+"use client";
+
+import { PageContent } from "@saas/studio";
 import type { ReactNode } from "react";
 
 type Props = {
@@ -5,5 +8,5 @@ type Props = {
 };
 
 export default function DiscussionsLayout({ children }: Props) {
-	return <>{children}</>;
+	return <PageContent title="Discussions">{children}</PageContent>;
 }

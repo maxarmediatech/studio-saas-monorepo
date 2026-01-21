@@ -1,16 +1,18 @@
 "use client";
 
 import { Button } from "@repo/ui/components/button";
+import { Input } from "@repo/ui/components/input";
 import { Skeleton } from "@repo/ui/components/skeleton";
+import { cn } from "@repo/ui/lib/utils";
+
 import { ChannelSettingsDialog } from "@saas/studio/components/discussions";
 import { discussionsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
-import { format, formatDistanceToNow, isToday, isYesterday } from "date-fns";
-import { Hash, Lock, MessageCircle, Plus, Settings } from "lucide-react";
+import { format, isToday, isYesterday } from "date-fns";
+import { BellOff, Hash, Lock, MessageCircle, Settings } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { DiscussionCreateForm } from "./discussion-create-form";
 
 function groupDiscussionsByDate<T extends { createdAt: Date | string }>(
 	discussions: T[],
@@ -38,13 +40,34 @@ function groupDiscussionsByDate<T extends { createdAt: Date | string }>(
 	return Object.entries(groups).map(([label, items]) => ({ label, items }));
 }
 
+function UserAvatar({
+	name,
+	className,
+}: {
+	name?: string | null;
+	className?: string;
+}) {
+	const initial = name?.charAt(0)?.toUpperCase() ?? "?";
+	return (
+		<div
+			className={cn(
+				"flex shrink-0 items-center justify-center rounded-full bg-neutral-200 text-sm font-medium text-neutral-600",
+				className,
+			)}
+		>
+			{initial}
+		</div>
+	);
+}
+
 export default function ChannelPage() {
 	const params = useParams<{
 		organizationSlug: string;
 		channelSlug: string;
 	}>();
-	const [showCreateForm, setShowCreateForm] = useState(false);
+	const router = useRouter();
 	const [showSettings, setShowSettings] = useState(false);
+	const [composerValue, setComposerValue] = useState("");
 
 	const { data: channelData, isLoading: channelLoading } = useQuery(
 		discussionsApi.getChannelBySlugOptions(params.channelSlug),
@@ -66,15 +89,18 @@ export default function ChannelPage() {
 		[discussions],
 	);
 
+	const handleComposerClick = () => {
+		router.push(
+			`/app/${params.organizationSlug}/discussions/${params.channelSlug}/new`,
+		);
+	};
+
 	if (channelLoading) {
 		return (
-			<div className="flex flex-1 flex-col">
-				<div className="flex h-14 items-center gap-3 border-b px-6">
-					<Skeleton className="h-5 w-32" />
-				</div>
-				<div className="flex-1 p-6">
-					<Skeleton className="h-20 w-full" />
-				</div>
+			<div className="mx-auto w-full max-w-[800px]">
+				<Skeleton className="h-10 w-48" />
+				<Skeleton className="mt-2 h-4 w-24" />
+				<Skeleton className="mt-8 h-14 w-full rounded-xl" />
 			</div>
 		);
 	}
@@ -91,149 +117,144 @@ export default function ChannelPage() {
 		`/app/${params.organizationSlug}/discussions/${params.channelSlug}/${discussionId}`;
 
 	return (
-		<div className="flex flex-1 flex-col">
-			<div className="flex h-14 shrink-0 items-center justify-between border-b px-6">
-				<div className="flex items-center gap-2">
-					{channel.emoji ? (
-						<span className="text-lg">{channel.emoji}</span>
-					) : channel.visibility === "private" ? (
-						<Lock className="size-5 text-neutral-500" />
-					) : (
-						<Hash className="size-5 text-neutral-500" />
-					)}
-					<h1 className="font-semibold text-neutral-900">
-						{channel.name}
-					</h1>
-				</div>
-				<div className="flex items-center gap-2">
-					<Button size="sm" onClick={() => setShowCreateForm(true)}>
-						<Plus className="mr-1 size-4" />
-						New Discussion
-					</Button>
-					<Button
-						variant="ghost"
-						size="icon"
-						className="size-8"
-						onClick={() => setShowSettings(true)}
-					>
-						<Settings className="size-4" />
-					</Button>
-				</div>
-			</div>
-
-			{channel.description && (
-				<div className="border-b bg-neutral-50 px-6 py-3">
-					<p className="text-sm text-neutral-600">
-						{channel.description}
-					</p>
-				</div>
-			)}
-
-			{showCreateForm && (
-				<div className="border-b p-6">
-					<DiscussionCreateForm
-						channelId={channel.id}
-						onCancel={() => setShowCreateForm(false)}
-						onSuccess={() => setShowCreateForm(false)}
-					/>
-				</div>
-			)}
-
-			<div className="flex-1 overflow-y-auto">
-				{discussionsLoading ? (
-					<div className="space-y-4 p-6">
-						<Skeleton className="h-16 w-full" />
-						<Skeleton className="h-16 w-full" />
-						<Skeleton className="h-16 w-full" />
+		<>
+			<div className="mx-auto w-full max-w-[800px]">
+				<div className="flex items-start justify-between pb-6 pt-2">
+					<div>
+						<div className="flex items-center gap-3">
+							{channel.emoji ? (
+								<span className="text-3xl">
+									{channel.emoji}
+								</span>
+							) : channel.visibility === "private" ? (
+								<Lock className="size-8 text-neutral-400" />
+							) : (
+								<Hash className="size-8 text-neutral-400" />
+							)}
+							<h1 className="text-2xl font-semibold text-neutral-900">
+								{channel.name}
+							</h1>
+						</div>
+						<p className="mt-1 text-sm text-neutral-500">
+							0 people
+						</p>
 					</div>
-				) : discussions.length === 0 ? (
-					<div className="flex flex-col items-center justify-center gap-4 p-12">
-						<div className="rounded-full bg-neutral-100 p-4">
-							<MessageCircle className="size-8 text-neutral-400" />
-						</div>
-						<div className="text-center">
-							<h3 className="font-medium text-neutral-900">
-								No discussions yet
-							</h3>
-							<p className="mt-1 text-sm text-neutral-500">
-								Start the first discussion in this channel.
-							</p>
-						</div>
-						<Button onClick={() => setShowCreateForm(true)}>
-							Start Discussion
+					<div className="flex items-center gap-2">
+						<Button
+							variant="ghost"
+							size="icon"
+							className="size-9"
+							onClick={() => setShowSettings(true)}
+						>
+							<Settings className="size-4" />
+						</Button>
+						<Button variant="outline" size="sm" className="gap-2">
+							<BellOff className="size-4" />
+							Unsubscribed
 						</Button>
 					</div>
-				) : (
-					<div className="divide-y">
-						{groupedDiscussions.map((group) => (
-							<div key={group.label}>
-								<div className="sticky top-0 z-10 bg-white/95 px-6 py-2 backdrop-blur">
-									<span className="text-xs font-medium uppercase tracking-wider text-neutral-500">
+				</div>
+
+				<button
+					type="button"
+					className="flex w-full cursor-pointer items-center gap-3 rounded-xl border bg-white p-3 text-left transition-colors hover:border-neutral-300"
+					onClick={handleComposerClick}
+				>
+					<UserAvatar name="You" className="size-10" />
+					<Input
+						placeholder={`Start a discussion in ${channel.name}`}
+						className="pointer-events-none flex-1 border-0 bg-transparent shadow-none focus-visible:ring-0"
+						readOnly
+					/>
+					<span className="inline-flex h-8 items-center justify-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground">
+						Post
+					</span>
+				</button>
+
+				<div className="mt-8">
+					{discussionsLoading ? (
+						<div className="space-y-4">
+							<Skeleton className="h-16 w-full" />
+							<Skeleton className="h-16 w-full" />
+						</div>
+					) : discussions.length === 0 ? (
+						<div className="py-12 text-center">
+							<MessageCircle className="mx-auto size-10 text-neutral-300" />
+							<p className="mt-3 text-sm text-neutral-500">
+								No discussions yet. Start the first one!
+							</p>
+						</div>
+					) : (
+						<div className="space-y-6">
+							{groupedDiscussions.map((group) => (
+								<div key={group.label}>
+									<div className="mb-3 text-xs font-medium text-neutral-500">
 										{group.label}
-									</span>
-								</div>
-								<div className="divide-y">
-									{group.items.map((discussion) => (
-										<Link
-											key={discussion.id}
-											href={getDiscussionHref(
-												discussion.id,
-											)}
-											className="block px-6 py-4 transition-colors hover:bg-neutral-50"
-										>
-											<div className="flex items-start justify-between gap-4">
+									</div>
+									<div className="space-y-1">
+										{group.items.map((discussion) => (
+											<Link
+												key={discussion.id}
+												href={getDiscussionHref(
+													discussion.id,
+												)}
+												className="flex items-start gap-3 rounded-lg p-3 transition-colors hover:bg-neutral-50"
+											>
+												<UserAvatar
+													name={
+														discussion.author?.name
+													}
+													className="size-10"
+												/>
 												<div className="min-w-0 flex-1">
 													<div className="flex items-center gap-2">
-														<h3 className="truncate font-medium text-neutral-900">
+														<span className="font-medium text-neutral-900">
 															{discussion.title}
-														</h3>
+														</span>
 														{discussion.status ===
 															"resolved" && (
-															<span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+															<span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
 																Resolved
 															</span>
 														)}
 													</div>
-													{discussion.content && (
-														<p className="mt-1 line-clamp-2 text-sm text-neutral-600">
-															{discussion.content}
-														</p>
-													)}
-													<div className="mt-2 flex items-center gap-3 text-xs text-neutral-500">
-														<span>
+													<p className="mt-0.5 text-sm text-neutral-500">
+														<span className="text-neutral-700">
 															{discussion.author
 																?.name ??
 																"Unknown"}
 														</span>
-														<span>
-															{formatDistanceToNow(
-																new Date(
-																	discussion.createdAt,
-																),
-																{
-																	addSuffix: true,
-																},
-															)}
-														</span>
-														{discussion.messageCount >
-															0 && (
-															<span className="flex items-center gap-1">
-																<MessageCircle className="size-3" />
-																{
-																	discussion.messageCount
-																}
-															</span>
+														{discussion.content && (
+															<>
+																:{" "}
+																<span className="text-neutral-500">
+																	{discussion
+																		.content
+																		.length >
+																	60
+																		? `${discussion.content.slice(0, 60)}...`
+																		: discussion.content}
+																</span>
+															</>
 														)}
-													</div>
+													</p>
 												</div>
-											</div>
-										</Link>
-									))}
+												{discussion.messageCount >
+													0 && (
+													<span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-medium text-blue-700">
+														{
+															discussion.messageCount
+														}
+													</span>
+												)}
+											</Link>
+										))}
+									</div>
 								</div>
-							</div>
-						))}
-					</div>
-				)}
+							))}
+						</div>
+					)}
+				</div>
 			</div>
 
 			<ChannelSettingsDialog
@@ -249,6 +270,6 @@ export default function ChannelPage() {
 				}}
 				organizationSlug={params.organizationSlug}
 			/>
-		</div>
+		</>
 	);
 }
