@@ -41,7 +41,7 @@
 }
 
 .editor-content code {
-	background-color: hsl(var(--muted));
+	background-color: var(--muted);
 	border-radius: 0.25em;
 	padding: 0.125em 0.25em;
 	font-size: 0.875em;
@@ -50,7 +50,7 @@
 }
 
 .editor-content pre {
-	background-color: hsl(var(--muted));
+	background-color: var(--muted);
 	border-radius: 0.5em;
 	padding: 0.75em 1em;
 	overflow-x: auto;
@@ -64,14 +64,14 @@
 }
 
 .editor-content blockquote {
-	border-left: 3px solid hsl(var(--border));
+	border-left: 3px solid var(--border);
 	padding-left: 1em;
 	margin: 0.5em 0;
-	color: hsl(var(--muted-foreground));
+	color: var(--muted-foreground);
 }
 
 .editor-content a {
-	color: hsl(var(--primary));
+	color: var(--primary);
 	text-decoration: underline;
 	text-underline-offset: 2px;
 }
@@ -81,8 +81,8 @@
 }
 
 .editor-content [data-type="mention"] {
-	background-color: hsl(var(--primary) / 0.1);
-	color: hsl(var(--primary));
+	background-color: color-mix(in oklch, var(--primary) 10%, transparent);
+	color: var(--primary);
 	border-radius: 0.25em;
 	padding: 0.125em 0.25em;
 	font-weight: 500;
@@ -108,7 +108,7 @@
 
 .editor-content hr {
 	border: none;
-	border-top: 1px solid hsl(var(--border));
+	border-top: 1px solid var(--border);
 	margin: 1em 0;
 }
 
@@ -125,17 +125,9 @@
 	text-overflow: ellipsis;
 }
 
-.ProseMirror p.is-editor-empty:first-child::before {
+.ProseMirror .is-editor-empty:first-child::before {
 	content: attr(data-placeholder);
-	color: hsl(var(--muted-foreground));
-	pointer-events: none;
-	float: left;
-	height: 0;
-}
-
-.ProseMirror.is-editor-empty::before {
-	content: attr(data-placeholder);
-	color: hsl(var(--muted-foreground));
+	color: var(--muted-foreground);
 	pointer-events: none;
 	float: left;
 	height: 0;
