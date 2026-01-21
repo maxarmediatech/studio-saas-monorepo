@@ -10,6 +10,7 @@ import type {
 	NavModuleConfig,
 	RailIconConfig,
 } from "../../lib/navigation/types";
+import { DiscussionsPanel } from "./discussions-panel";
 import { SettingsPanel } from "./settings-panel";
 import { useSidebar } from "./sidebar-context";
 import { SidebarPanel } from "./sidebar-panel";
@@ -145,6 +146,19 @@ export function DubSidebar({
 						>
 							{areas.studioSettings && (
 								<SettingsPanel area={areas.studioSettings} />
+							)}
+						</Area>
+
+						{/* Discussions Area */}
+						<Area
+							visible={currentArea === "discussions"}
+							direction={areas.discussions?.direction ?? "right"}
+						>
+							{areas.discussions && (
+								<DiscussionsPanel
+									area={areas.discussions}
+									studioSlug={studioSlug}
+								/>
 							)}
 						</Area>
 					</div>

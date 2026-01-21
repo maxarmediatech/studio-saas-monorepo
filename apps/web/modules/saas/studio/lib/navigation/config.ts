@@ -408,6 +408,13 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 				},
 			],
 		},
+		discussions: {
+			id: "discussions",
+			title: "Discussions",
+			backHref: url("/home"),
+			direction: "right",
+			sections: [],
+		},
 	};
 
 	return { modules, utilities, areas };
