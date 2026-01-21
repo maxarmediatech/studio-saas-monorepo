@@ -2,7 +2,9 @@
 
 import type { Extensions, JSONContent } from "@tiptap/core";
 import { EditorContent } from "@tiptap/react";
-import { forwardRef, useImperativeHandle } from "react";
+import { forwardRef, useImperativeHandle, useMemo } from "react";
+import { createSlashCommandsExtension } from "../extensions/slash-commands/extension";
+import { createSlashCommandSuggestionRenderer } from "../extensions/slash-commands/suggestion-renderer";
 import { useEditorInstance } from "../hooks/use-editor";
 
 function cn(...classes: (string | boolean | undefined)[]) {
@@ -38,12 +40,25 @@ export const Editor = forwardRef<EditorHandle, EditorComponentProps>(
 			autoFocus = false,
 			onUpdate,
 			onSubmit,
-			extensions,
+			extensions: customExtensions,
 			className,
 			minHeight = "120px",
 		},
 		ref,
 	) {
+		const slashCommandExtension = useMemo(() => {
+			const renderer = createSlashCommandSuggestionRenderer();
+			return createSlashCommandsExtension(renderer);
+		}, []);
+
+		const allExtensions = useMemo(() => {
+			const exts: Extensions = [slashCommandExtension];
+			if (customExtensions) {
+				exts.push(...customExtensions);
+			}
+			return exts;
+		}, [slashCommandExtension, customExtensions]);
+
 		const { editor, clearContent, getContent, isEmpty, focus, submit } =
 			useEditorInstance({
 				initialContent,
@@ -52,7 +67,7 @@ export const Editor = forwardRef<EditorHandle, EditorComponentProps>(
 				autofocus: autoFocus ? "end" : false,
 				onUpdate,
 				onSubmit,
-				extensions,
+				extensions: allExtensions,
 				variant: "full",
 			});
 

@@ -3,7 +3,9 @@
 import type { JSONContent } from "@tiptap/core";
 import { EditorContent } from "@tiptap/react";
 import { Send } from "lucide-react";
-import { forwardRef, useImperativeHandle } from "react";
+import { forwardRef, useImperativeHandle, useMemo } from "react";
+import { createSlashCommandsExtension } from "../extensions/slash-commands/extension";
+import { createSlashCommandSuggestionRenderer } from "../extensions/slash-commands/suggestion-renderer";
 import { useEditorInstance } from "../hooks/use-editor";
 
 function cn(...classes: (string | boolean | undefined)[]) {
@@ -45,6 +47,11 @@ export const LiteEditor = forwardRef<
 	},
 	ref,
 ) {
+	const slashCommandExtension = useMemo(() => {
+		const renderer = createSlashCommandSuggestionRenderer();
+		return createSlashCommandsExtension(renderer);
+	}, []);
+
 	const { editor, clearContent, getContent, isEmpty, focus, submit } =
 		useEditorInstance({
 			initialContent,
@@ -53,6 +60,7 @@ export const LiteEditor = forwardRef<
 			autofocus: autoFocus ? "end" : false,
 			onUpdate,
 			onSubmit,
+			extensions: [slashCommandExtension],
 			variant: "lite",
 		});
 
