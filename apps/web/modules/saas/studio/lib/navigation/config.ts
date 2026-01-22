@@ -86,6 +86,12 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							path: url("/activities"),
 							icon: "Activity",
 						},
+					],
+				},
+				{
+					id: "workspace-communication",
+					label: "Comms.",
+					items: [
 						{
 							id: "discussions",
 							label: "Discussions",
@@ -97,6 +103,7 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 								],
 							},
 						},
+						// Future: Inbox (DMs between crew members)
 					],
 				},
 				{
