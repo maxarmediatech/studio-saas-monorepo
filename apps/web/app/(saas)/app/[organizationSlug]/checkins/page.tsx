@@ -19,6 +19,8 @@ import {
 } from "@repo/ui/components/select";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { Textarea } from "@repo/ui/components/textarea";
+import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
+import { useOrganizationTeamsQuery } from "@saas/organizations/lib/api";
 import { checkinsApi, checkinsMutations } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -68,7 +70,6 @@ interface CheckinTypeCardProps {
 	checkinType: {
 		id: string;
 		name: string;
-		emoji: string | null;
 		frequency: "daily" | "weekdays" | "weekly";
 		scheduledTime: string | null;
 	};
@@ -89,15 +90,12 @@ function CheckinTypeCard({
 			href={`/app/${organizationSlug}/checkins/${checkinType.id}`}
 			className="flex items-center justify-between p-4 rounded-lg hover:bg-neutral-50 transition-colors group"
 		>
-			<div className="flex items-center gap-3">
-				<span className="text-2xl">{checkinType.emoji ?? "👋"}</span>
-				<div>
-					<div className="font-medium text-neutral-900">
-						{checkinType.name}
-					</div>
-					<div className="text-sm text-neutral-500">
-						Next: {nextCheckin}
-					</div>
+			<div>
+				<div className="font-medium text-neutral-900">
+					{checkinType.name}
+				</div>
+				<div className="text-sm text-neutral-500">
+					Next: {nextCheckin}
 				</div>
 			</div>
 			<Button
@@ -128,7 +126,6 @@ function CreateCheckinTypeDialog({
 }: CreateCheckinTypeDialogProps) {
 	const queryClient = useQueryClient();
 	const [name, setName] = useState("");
-	const [emoji, setEmoji] = useState("👋");
 	const [description, setDescription] = useState("");
 	const [teamId, setTeamId] = useState("");
 	const [frequency, setFrequency] = useState<"daily" | "weekdays" | "weekly">(
@@ -153,7 +150,6 @@ function CreateCheckinTypeDialog({
 
 	const resetForm = () => {
 		setName("");
-		setEmoji("👋");
 		setDescription("");
 		setTeamId("");
 		setFrequency("weekdays");
@@ -166,7 +162,6 @@ function CreateCheckinTypeDialog({
 
 		createMutation.mutate({
 			name: name.trim(),
-			emoji: emoji || undefined,
 			description: description.trim() || undefined,
 			teamId,
 			frequency,
@@ -185,20 +180,11 @@ function CreateCheckinTypeDialog({
 				</DialogHeader>
 
 				<form onSubmit={handleSubmit} className="space-y-4">
-					<div className="flex gap-2">
-						<Input
-							value={emoji}
-							onChange={(e) => setEmoji(e.target.value)}
-							className="w-14 text-center text-lg"
-							maxLength={2}
-						/>
-						<Input
-							value={name}
-							onChange={(e) => setName(e.target.value)}
-							placeholder="e.g Daily Standup"
-							className="flex-1"
-						/>
-					</div>
+					<Input
+						value={name}
+						onChange={(e) => setName(e.target.value)}
+						placeholder="e.g Daily Standup"
+					/>
 
 					<Textarea
 						value={description}
@@ -307,22 +293,16 @@ function CreateCheckinTypeDialog({
 export default function CheckinsPage() {
 	const params = useParams<{ organizationSlug: string }>();
 	const [showCreateDialog, setShowCreateDialog] = useState(false);
+	const { activeOrganization } = useActiveOrganization();
 
 	const { data: checkinTypesData, isLoading } = useQuery(
 		checkinsApi.listTypesOptions({}),
 	);
 
-	const { data: teamsData } = useQuery({
-		queryKey: ["teams"],
-		queryFn: async () => {
-			const response = await fetch("/api/auth/list-teams", {
-				method: "GET",
-				headers: { "Content-Type": "application/json" },
-			});
-			if (!response.ok) throw new Error("Failed to fetch teams");
-			return response.json();
-		},
-	});
+	const { data: teamsData } = useOrganizationTeamsQuery(
+		activeOrganization?.id ?? "",
+		{ enabled: !!activeOrganization?.id },
+	);
 
 	const checkinTypes = checkinTypesData?.data ?? [];
 	const teams = teamsData ?? [];
