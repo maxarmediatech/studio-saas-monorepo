@@ -41,7 +41,7 @@ export async function ClientsTable({
 
 	return (
 		<HydrationBoundary state={dehydrate(queryClient)}>
-			<ClientsTableClient />
+			<ClientsTableClient organizationSlug={organizationSlug} />
 		</HydrationBoundary>
 	);
 }

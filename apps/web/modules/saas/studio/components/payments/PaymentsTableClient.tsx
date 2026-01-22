@@ -30,7 +30,6 @@ import { usePaymentsTable } from "@saas/studio/hooks/tables";
 import {
 	studioPaymentsApi,
 	studioPaymentsMutations,
-	studioQueryKeys,
 } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -38,11 +37,13 @@ import type { ColumnDef } from "@tanstack/react-table";
 import {
 	BanknoteIcon,
 	CalendarIcon,
+	EyeIcon,
 	Loader2Icon,
 	PencilIcon,
 	TrashIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { OpenPaymentCreateSheet } from "./OpenPaymentSheet";
@@ -84,6 +85,7 @@ const formatDate = (dateStr: string) => {
 export function PaymentsTableClient({
 	organizationSlug,
 }: PaymentsTableClientProps) {
+	const router = useRouter();
 	const queryClient = useQueryClient();
 
 	// Use the payments table hook for URL-synced state
@@ -148,9 +150,14 @@ export function PaymentsTableClient({
 		},
 	});
 
-	// Define row actions (inline handlers to avoid stale closure issues)
 	const rowActions: RowAction<ReceivedAmountListItem>[] = useMemo(
 		() => [
+			{
+				label: "View details",
+				icon: <EyeIcon className="h-4 w-4" />,
+				onClick: (row) =>
+					router.push(`/app/${organizationSlug}/payments/${row.id}`),
+			},
 			{
 				label: "Edit",
 				icon: <PencilIcon className="h-4 w-4" />,
@@ -167,7 +174,7 @@ export function PaymentsTableClient({
 				},
 			},
 		],
-		[openEdit],
+		[openEdit, organizationSlug, router],
 	);
 
 	// Define columns with sortable headers and meta for filters
