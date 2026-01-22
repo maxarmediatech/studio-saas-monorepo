@@ -323,6 +323,12 @@ export const tasksApi = {
 		input?: Parameters<typeof orpc.tasks.list.queryOptions>[0]["input"],
 	) => orpc.tasks.list.queryOptions({ input: input ?? {} }),
 
+	listMinimalOptions: (
+		input?: Parameters<
+			typeof orpc.tasks.listMinimal.queryOptions
+		>[0]["input"],
+	) => orpc.tasks.listMinimal.queryOptions({ input: input ?? {} }),
+
 	getOptions: (id: string) => orpc.tasks.get.queryOptions({ input: { id } }),
 
 	statsOptions: (
@@ -423,6 +429,15 @@ export const studioPaymentsApi = {
 		>[0]["input"],
 	) => orpc.studioPayments.listSchedules.queryOptions({ input: input ?? {} }),
 
+	listSchedulesMinimalOptions: (
+		input?: Parameters<
+			typeof orpc.studioPayments.listSchedulesMinimal.queryOptions
+		>[0]["input"],
+	) =>
+		orpc.studioPayments.listSchedulesMinimal.queryOptions({
+			input: input ?? {},
+		}),
+
 	getScheduleOptions: (id: string) =>
 		orpc.studioPayments.getSchedule.queryOptions({ input: { id } }),
 
@@ -456,6 +471,12 @@ export const expensesApi = {
 	listOptions: (
 		input?: Parameters<typeof orpc.expenses.list.queryOptions>[0]["input"],
 	) => orpc.expenses.list.queryOptions({ input: input ?? {} }),
+
+	listMinimalOptions: (
+		input?: Parameters<
+			typeof orpc.expenses.listMinimal.queryOptions
+		>[0]["input"],
+	) => orpc.expenses.listMinimal.queryOptions({ input: input ?? {} }),
 
 	getOptions: (id: string) =>
 		orpc.expenses.get.queryOptions({ input: { id } }),

@@ -95,6 +95,21 @@ export const paymentScheduleSchema = z.object({
 export type PaymentSchedule = z.infer<typeof paymentScheduleSchema>;
 
 /**
+ * Minimal payment schedule schema for dropdowns and references (omits sensitive amount)
+ */
+export const paymentScheduleMinimalSchema = z.object({
+	id: idSchema,
+	name: z.string(),
+	dueDate: z.string(),
+	status: paymentScheduleStatusSchema,
+	bookingId: idSchema,
+});
+
+export type PaymentScheduleMinimal = z.infer<
+	typeof paymentScheduleMinimalSchema
+>;
+
+/**
  * Payment schedule with booking info for list view
  */
 export const paymentScheduleListItemSchema = paymentScheduleSchema.extend({
@@ -245,7 +260,10 @@ export const listSchedulesInputSchema = z
 	.object({
 		bookingId: idSchema.optional(),
 		status: z
-			.union([paymentScheduleStatusSchema, z.array(paymentScheduleStatusSchema)])
+			.union([
+				paymentScheduleStatusSchema,
+				z.array(paymentScheduleStatusSchema),
+			])
 			.nullish(),
 		dueDateFrom: dateSchema.optional(),
 		dueDateTo: dateSchema.optional(),
@@ -262,6 +280,29 @@ export const listSchedulesOutputSchema = createListResponseSchema(
 );
 
 export type ListSchedulesOutput = z.infer<typeof listSchedulesOutputSchema>;
+
+// ============================================================================
+// LIST PAYMENT SCHEDULES MINIMAL
+// ============================================================================
+
+export const listSchedulesMinimalInputSchema = z
+	.object({
+		bookingId: idSchema.optional(),
+	})
+	.merge(paginationSchema)
+	.merge(searchSchema);
+
+export type ListSchedulesMinimalInput = z.infer<
+	typeof listSchedulesMinimalInputSchema
+>;
+
+export const listSchedulesMinimalOutputSchema = createListResponseSchema(
+	paymentScheduleMinimalSchema,
+);
+
+export type ListSchedulesMinimalOutput = z.infer<
+	typeof listSchedulesMinimalOutputSchema
+>;
 
 // ============================================================================
 // GET PAYMENT SCHEDULE

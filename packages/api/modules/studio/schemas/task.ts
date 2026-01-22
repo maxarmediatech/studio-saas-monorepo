@@ -139,6 +139,27 @@ export const listTasksOutputSchema =
 export type ListTasksOutput = z.infer<typeof listTasksOutputSchema>;
 
 // ============================================================================
+// LIST TASKS MINIMAL
+// ============================================================================
+
+export const listTasksMinimalInputSchema = z
+	.object({
+		bookingId: idSchema.optional(),
+		workflowStatus: workflowStatusSchema.optional(),
+	})
+	.merge(paginationSchema)
+	.merge(searchSchema);
+
+export type ListTasksMinimalInput = z.infer<typeof listTasksMinimalInputSchema>;
+
+export const listTasksMinimalOutputSchema =
+	createListResponseSchema(taskMinimalSchema);
+
+export type ListTasksMinimalOutput = z.infer<
+	typeof listTasksMinimalOutputSchema
+>;
+
+// ============================================================================
 // GET TASK
 // ============================================================================
 

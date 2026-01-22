@@ -106,15 +106,15 @@ export function EntityLinkPicker({
 		staleTime: 30000,
 	});
 	const { data: tasksData } = useQuery({
-		...tasksApi.listOptions({}),
+		...tasksApi.listMinimalOptions({}),
 		staleTime: 30000,
 	});
 	const { data: schedulesData } = useQuery({
-		...studioPaymentsApi.listSchedulesOptions({}),
+		...studioPaymentsApi.listSchedulesMinimalOptions({}),
 		staleTime: 30000,
 	});
 	const { data: expensesData } = useQuery({
-		...expensesApi.listOptions({}),
+		...expensesApi.listMinimalOptions({}),
 		staleTime: 30000,
 	});
 
@@ -141,16 +141,16 @@ export function EntityLinkPicker({
 			task: (tasksData?.data ?? []).map((t) => ({
 				value: t.id,
 				label: t.name,
-				description: t.bookingName ?? undefined,
+				description: t.status,
 			})),
 			payment_schedule: (schedulesData?.data ?? []).map((s) => ({
 				value: s.id,
-				label: s.name || `Payment $${s.amount}`,
-				description: s.bookingName,
+				label: s.name,
+				description: s.status,
 			})),
 			expense: (expensesData?.data ?? []).map((e) => ({
 				value: e.id,
-				label: e.description || `Expense $${e.amount}`,
+				label: e.description,
 				description: e.category ?? undefined,
 			})),
 		};

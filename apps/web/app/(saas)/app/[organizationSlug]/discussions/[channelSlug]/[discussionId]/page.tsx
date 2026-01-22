@@ -1,8 +1,8 @@
 "use client";
 
 import type { DiscussionLinkEntityType } from "@repo/api/modules/discussions/schemas";
-import { LiteRichTextEditor, ReadOnlyRenderer } from "@repo/editor";
 import type { EditorContentJson } from "@repo/editor";
+import { LiteRichTextEditor, ReadOnlyRenderer } from "@repo/editor";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import {
@@ -71,15 +71,15 @@ function useEntityNameLookup() {
 		staleTime: 60000,
 	});
 	const { data: tasksData } = useQuery({
-		...tasksApi.listOptions({}),
+		...tasksApi.listMinimalOptions({}),
 		staleTime: 60000,
 	});
 	const { data: schedulesData } = useQuery({
-		...studioPaymentsApi.listSchedulesOptions({}),
+		...studioPaymentsApi.listSchedulesMinimalOptions({}),
 		staleTime: 60000,
 	});
 	const { data: expensesData } = useQuery({
-		...expensesApi.listOptions({}),
+		...expensesApi.listMinimalOptions({}),
 		staleTime: 60000,
 	});
 
@@ -106,10 +106,10 @@ function useEntityNameLookup() {
 			lookup.task[t.id] = t.name;
 		}
 		for (const s of schedulesData?.data ?? []) {
-			lookup.payment_schedule[s.id] = s.name || `Payment $${s.amount}`;
+			lookup.payment_schedule[s.id] = s.name;
 		}
 		for (const e of expensesData?.data ?? []) {
-			lookup.expense[e.id] = e.description || `Expense $${e.amount}`;
+			lookup.expense[e.id] = e.description;
 		}
 
 		return lookup;
@@ -288,7 +288,8 @@ export default function DiscussionDetailPage() {
 	}>();
 	const { user } = useSession();
 	const queryClient = useQueryClient();
-	const [newThreadDoc, setNewThreadDoc] = useState<EditorContentJson>(EMPTY_DOC);
+	const [newThreadDoc, setNewThreadDoc] =
+		useState<EditorContentJson>(EMPTY_DOC);
 	const [newThreadText, setNewThreadText] = useState("");
 	const [linksOpen, setLinksOpen] = useState(false);
 	const entityNameLookup = useEntityNameLookup();
@@ -528,18 +529,18 @@ export default function DiscussionDetailPage() {
 					</span>
 				</div>
 
-			{isEditorContentJson(discussion.contentJson) ? (
-				<div className="mt-6">
-					<ReadOnlyRenderer
-						content={discussion.contentJson}
-						className="text-foreground"
-					/>
-				</div>
-			) : discussion.content ? (
-				<p className="mt-6 text-foreground whitespace-pre-wrap">
-					{discussion.content}
-				</p>
-			) : null}
+				{isEditorContentJson(discussion.contentJson) ? (
+					<div className="mt-6">
+						<ReadOnlyRenderer
+							content={discussion.contentJson}
+							className="text-foreground"
+						/>
+					</div>
+				) : discussion.content ? (
+					<p className="mt-6 text-foreground whitespace-pre-wrap">
+						{discussion.content}
+					</p>
+				) : null}
 
 				{linksCount > 0 && (
 					<div className="mt-4 flex flex-wrap gap-2">
@@ -663,44 +664,67 @@ export default function DiscussionDetailPage() {
 					</div>
 				</div>
 
-				<div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
-					<UserAvatar
-						name={discussion.author?.name ?? "Unknown"}
-						avatarUrl={discussion.author?.image}
-						className="size-5"
-					/>
-					<span>
-						{discussion.author?.name ?? "Unknown"} created this post
-					</span>
-					<span>·</span>
-					<span>
-						{formatDistanceToNow(new Date(discussion.createdAt), {
-							addSuffix: true,
-						})}
-					</span>
-				</div>
-
-				<div className="mt-4 space-y-4">
-					{messagesLoading ? (
-						<>
-							<Skeleton className="h-24 w-full rounded-lg" />
-							<Skeleton className="h-24 w-full rounded-lg" />
-						</>
-					) : messages.length === 0 ? (
-						<p className="text-sm text-muted-foreground py-4">
-							No comments yet. Start the conversation!
-						</p>
-					) : (
-						messages.map((message) => (
-							<ThreadCard
-								key={message.id}
-								message={message}
-								discussionId={params.discussionId}
-								onReplySubmit={handleReply}
-								isSubmitting={createMessageMutation.isPending}
-							/>
-						))
+				{/* Activity thread with connector line */}
+				<div className="mt-4 relative">
+					{/* Thread connector line - thin and subtle */}
+					{messages.length > 0 && (
+						<div
+							className="absolute w-px bg-border/60"
+							style={{
+								left: "9px",
+								top: "20px",
+								bottom: "0",
+							}}
+						/>
 					)}
+
+					{/* "Created this post" row */}
+					<div className="flex items-center gap-2 text-sm text-muted-foreground">
+						<UserAvatar
+							name={discussion.author?.name ?? "Unknown"}
+							avatarUrl={discussion.author?.image}
+							className="size-5"
+						/>
+						<span>
+							{discussion.author?.name ?? "Unknown"} created this
+							post
+						</span>
+						<span>·</span>
+						<span>
+							{formatDistanceToNow(
+								new Date(discussion.createdAt),
+								{
+									addSuffix: true,
+								},
+							)}
+						</span>
+					</div>
+
+					{/* Messages */}
+					<div className="mt-4 space-y-4">
+						{messagesLoading ? (
+							<>
+								<Skeleton className="h-24 w-full rounded-lg" />
+								<Skeleton className="h-24 w-full rounded-lg" />
+							</>
+						) : messages.length === 0 ? (
+							<p className="text-sm text-muted-foreground py-4">
+								No comments yet. Start the conversation!
+							</p>
+						) : (
+							messages.map((message) => (
+								<ThreadCard
+									key={message.id}
+									message={message}
+									discussionId={params.discussionId}
+									onReplySubmit={handleReply}
+									isSubmitting={
+										createMessageMutation.isPending
+									}
+								/>
+							))
+						)}
+					</div>
 				</div>
 
 				<InputGroup className="mt-6 bg-card">

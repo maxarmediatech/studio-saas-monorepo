@@ -43,8 +43,8 @@ export const statement = {
 		"review",
 		"approve",
 	],
-	expense: ["create", "read", "update", "delete", "list"],
-	payment: ["create", "read", "update", "delete", "list"],
+	expense: ["create", "read", "update", "delete", "list", "reference"],
+	payment: ["create", "read", "update", "delete", "list", "reference"],
 	crew: ["create", "read", "update", "delete", "list"],
 	team: ["create", "read", "update", "delete", "list"],
 	review: ["list", "claim", "review", "approve"],
@@ -69,7 +69,8 @@ export type AnyAction =
 	| "submit"
 	| "review"
 	| "approve"
-	| "claim";
+	| "claim"
+	| "reference";
 
 const ORGANIZATION_ADMIN_ROLES = ["owner", "admin"] as const;
 const SYSTEM_ROLE_KEYS = ["owner", "admin", "member"] as const;
@@ -350,6 +351,8 @@ export const member = ac.newRole({
 	shoot: ["read", "list"],
 	task: ["read", "list", "submit"],
 	deliverable: ["read", "list", "submit"],
+	expense: ["reference"],
+	payment: ["reference"],
 	channel: ["read", "list"],
 	discussion: ["create", "read", "list"],
 	conversation: ["create", "read", "list"],

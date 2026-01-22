@@ -1,12 +1,12 @@
 "use client";
 
 import {
-	AnyAction,
-	AppRole,
+	type AnyAction,
+	type AppRole,
 	appRoles,
 	checkStaticRolePermission,
 	getPermissionMatrix,
-	Resource,
+	type Resource,
 } from "@repo/auth/lib/permissions";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
@@ -99,6 +99,7 @@ const ACTION_LABELS: Record<AnyAction, string> = {
 	review: "Review",
 	approve: "Approve",
 	claim: "Claim",
+	reference: "Reference",
 };
 
 function toRoleKey(displayName: string): string {
@@ -312,9 +313,7 @@ export function PermissionMatrixPanel({
 									<span className="sr-only">Delete role</span>
 								</Button>
 							)}
-							{onEdit && (
-								<Button onClick={onEdit}>Edit</Button>
-							)}
+							{onEdit && <Button onClick={onEdit}>Edit</Button>}
 						</div>
 					)}
 				</div>
@@ -338,7 +337,9 @@ export function PermissionMatrixPanel({
 					</div>
 					{isEditable && (
 						<div className="space-y-2">
-							<Label htmlFor="template">Start from Template</Label>
+							<Label htmlFor="template">
+								Start from Template
+							</Label>
 							<Select
 								value={templateRole}
 								onValueChange={(v) =>
@@ -415,43 +416,51 @@ export function PermissionMatrixPanel({
 													className="border-b last:border-0"
 												>
 													<td className="py-2 font-medium">
-														{getResourceLabel(resource)}
+														{getResourceLabel(
+															resource,
+														)}
 													</td>
-													{Object.keys(ACTION_LABELS).map(
-														(action) => {
-															const isAvailable =
-																actions.includes(
-																	action as AnyAction,
-																);
-															if (!isAvailable) {
-																return (
-																	<td
-																		key={action}
-																		className="py-2 text-center text-muted-foreground"
-																	>
-																		—
-																	</td>
-																);
-															}
+													{Object.keys(
+														ACTION_LABELS,
+													).map((action) => {
+														const isAvailable =
+															actions.includes(
+																action as AnyAction,
+															);
+														if (!isAvailable) {
 															return (
-																<td key={action} className="py-2 text-center">
-																	<Checkbox
-																		checked={hasPermission(
-																			resource,
-																			action,
-																		)}
-																		onCheckedChange={() =>
-																			togglePermission(
-																				resource,
-																				action,
-																			)
-																		}
-																		disabled={!isEditable || isSaving}
-																	/>
+																<td
+																	key={action}
+																	className="py-2 text-center text-muted-foreground"
+																>
+																	—
 																</td>
 															);
-														},
-													)}
+														}
+														return (
+															<td
+																key={action}
+																className="py-2 text-center"
+															>
+																<Checkbox
+																	checked={hasPermission(
+																		resource,
+																		action,
+																	)}
+																	onCheckedChange={() =>
+																		togglePermission(
+																			resource,
+																			action,
+																		)
+																	}
+																	disabled={
+																		!isEditable ||
+																		isSaving
+																	}
+																/>
+															</td>
+														);
+													})}
 												</tr>
 											),
 										)}

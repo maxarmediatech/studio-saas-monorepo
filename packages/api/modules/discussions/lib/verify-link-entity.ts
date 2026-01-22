@@ -81,6 +81,7 @@ export async function verifyLinkEntityExists(
 				.where(
 					and(
 						eq(paymentSchedules.id, entityId),
+						eq(paymentSchedules.organizationId, organizationId),
 						isNull(paymentSchedules.deletedAt),
 					),
 				)

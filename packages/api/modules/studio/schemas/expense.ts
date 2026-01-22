@@ -81,6 +81,19 @@ export const expenseSchema = z.object({
 export type Expense = z.infer<typeof expenseSchema>;
 
 /**
+ * Minimal expense schema for dropdowns and references (omits sensitive amount)
+ */
+export const expenseMinimalSchema = z.object({
+	id: idSchema,
+	description: z.string(),
+	category: z.string().nullable(),
+	expenseDate: z.string(),
+	vendor: z.string().nullable(),
+});
+
+export type ExpenseMinimal = z.infer<typeof expenseMinimalSchema>;
+
+/**
  * Expense list item with assignment summary
  */
 export const expenseListItemSchema = expenseSchema.extend({
@@ -127,6 +140,28 @@ export const listExpensesOutputSchema = createListResponseSchema(
 );
 
 export type ListExpensesOutput = z.infer<typeof listExpensesOutputSchema>;
+
+// ============================================================================
+// LIST EXPENSES MINIMAL
+// ============================================================================
+
+export const listExpensesMinimalInputSchema = z
+	.object({
+		bookingId: idSchema.optional(),
+	})
+	.merge(paginationSchema)
+	.merge(searchSchema);
+
+export type ListExpensesMinimalInput = z.infer<
+	typeof listExpensesMinimalInputSchema
+>;
+
+export const listExpensesMinimalOutputSchema =
+	createListResponseSchema(expenseMinimalSchema);
+
+export type ListExpensesMinimalOutput = z.infer<
+	typeof listExpensesMinimalOutputSchema
+>;
 
 // ============================================================================
 // GET EXPENSE
