@@ -35,6 +35,7 @@ export const listShoots = studioProtectedProcedure
 
 		const {
 			bookingId,
+			crewId,
 			status,
 			shootType,
 			dateFrom,
@@ -97,6 +98,22 @@ export const listShoots = studioProtectedProcedure
 			conditions.push(
 				sql`(${shoots.name} ILIKE ${`%${search}%`} OR ${shoots.venue} ILIKE ${`%${search}%`})`,
 			);
+		}
+
+		if (crewId) {
+			const assignedShootIds = await db
+				.select({ shootId: shootAssignments.shootId })
+				.from(shootAssignments)
+				.where(eq(shootAssignments.crewId, crewId));
+
+			const shootIds = assignedShootIds.map((r) => r.shootId);
+			if (shootIds.length === 0) {
+				return {
+					data: [],
+					pagination: createPaginationResponse(page, limit, 0),
+				};
+			}
+			conditions.push(inArray(shoots.id, shootIds));
 		}
 
 		// Get total count
