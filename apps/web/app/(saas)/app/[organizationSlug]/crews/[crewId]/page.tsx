@@ -4,6 +4,7 @@ import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { formatMoney } from "@saas/shared/lib";
+import { CrewCheckinsSection } from "@saas/studio/components/crew/crew-checkins-section";
 import { useCrewParams } from "@saas/studio/hooks/params/use-crew-params";
 import {
 	crewsApi,
@@ -426,6 +427,11 @@ export default function CrewDetailPage() {
 					</div>
 				)}
 			</div>
+
+			<CrewCheckinsSection
+				userId={crew.userId}
+				organizationSlug={params.organizationSlug}
+			/>
 		</div>
 	);
 }

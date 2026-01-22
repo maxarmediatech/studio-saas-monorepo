@@ -645,3 +645,56 @@ export const discussionsMutations = {
 	updateMessage: () => orpc.discussions.updateMessage.mutationOptions(),
 	deleteMessage: () => orpc.discussions.deleteMessage.mutationOptions(),
 };
+
+// ============================================================================
+// CHECKINS QUERY OPTIONS
+// ============================================================================
+
+export const checkinsApi = {
+	listTypesOptions: (
+		input?: Parameters<
+			typeof orpc.checkins.listTypes.queryOptions
+		>[0]["input"],
+	) => orpc.checkins.listTypes.queryOptions({ input: input ?? {} }),
+
+	getTypeOptions: (checkinTypeId: string) =>
+		orpc.checkins.getType.queryOptions({ input: { checkinTypeId } }),
+
+	listCheckinsOptions: (
+		input: Parameters<
+			typeof orpc.checkins.listCheckins.queryOptions
+		>[0]["input"],
+	) => orpc.checkins.listCheckins.queryOptions({ input }),
+
+	getCheckinOptions: (checkinId: string) =>
+		orpc.checkins.getCheckin.queryOptions({ input: { checkinId } }),
+
+	listCommentsOptions: (
+		input: Parameters<
+			typeof orpc.checkins.listComments.queryOptions
+		>[0]["input"],
+	) => orpc.checkins.listComments.queryOptions({ input }),
+
+	listUserCheckinsOptions: (
+		input: Parameters<
+			typeof orpc.checkins.listUserCheckins.queryOptions
+		>[0]["input"],
+	) => orpc.checkins.listUserCheckins.queryOptions({ input }),
+};
+
+export const checkinsMutations = {
+	createType: () => orpc.checkins.createType.mutationOptions(),
+	updateType: () => orpc.checkins.updateType.mutationOptions(),
+	deleteType: () => orpc.checkins.deleteType.mutationOptions(),
+
+	createCheckin: () => orpc.checkins.createCheckin.mutationOptions(),
+	updateCheckin: () => orpc.checkins.updateCheckin.mutationOptions(),
+	deleteCheckin: () => orpc.checkins.deleteCheckin.mutationOptions(),
+
+	createComment: () => orpc.checkins.createComment.mutationOptions(),
+	updateComment: () => orpc.checkins.updateComment.mutationOptions(),
+	deleteComment: () => orpc.checkins.deleteComment.mutationOptions(),
+
+	addLink: () => orpc.checkins.addLink.mutationOptions(),
+	removeLink: () => orpc.checkins.removeLink.mutationOptions(),
+};

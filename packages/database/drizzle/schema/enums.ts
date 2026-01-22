@@ -198,3 +198,16 @@ export const discussionStatusEnum = pgEnum("discussion_status", [
 	"open",
 	"resolved",
 ]);
+
+// ----------------------------------------------------------------------------
+// Checkins (Team standup/update routines)
+// ----------------------------------------------------------------------------
+
+/**
+ * Checkin frequency - defines how often a checkin routine runs
+ */
+export const checkinFrequencyEnum = pgEnum("checkin_frequency", [
+	"daily",
+	"weekdays",
+	"weekly",
+]);

@@ -2,6 +2,7 @@ import type { RouterClient } from "@orpc/server";
 import { activitiesRouter } from "../modules/activities/router";
 import { adminRouter } from "../modules/admin/router";
 import { bookingsRouter } from "../modules/bookings/router";
+import { checkinsRouter } from "../modules/checkins/router";
 import { clientsRouter } from "../modules/clients/router";
 import { configurationsRouter } from "../modules/configurations/router";
 import { contactRouter } from "../modules/contact/router";
@@ -53,6 +54,9 @@ export const router = publicProcedure
 
 		// Discussions
 		discussions: discussionsRouter,
+
+		// Checkins
+		checkins: checkinsRouter,
 
 		// Support routers
 		dashboard: dashboardRouter,

@@ -103,6 +103,12 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 								],
 							},
 						},
+						{
+							id: "checkins",
+							label: "Checkins",
+							path: url("/checkins"),
+							icon: "Hand",
+						},
 						// Future: Inbox (DMs between crew members)
 					],
 				},

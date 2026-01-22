@@ -15,6 +15,7 @@ export type IconName =
 	| "ClipboardCheck"
 	| "Contact2"
 	| "CreditCard"
+	| "Hand"
 	| "HelpCircle"
 	| "Home"
 	| "Inbox"

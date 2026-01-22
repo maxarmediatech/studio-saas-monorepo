@@ -5,6 +5,8 @@
 export * from "@repo/whatsapp-db";
 // Auth tables (users, sessions, accounts, verifications, twoFactors)
 export * from "./auth";
+// Checkins tables (checkin types, checkins, comments, links)
+export * from "./checkins";
 // Core tables (organizations, members, invitations, purchases, webhookEvents)
 // Also includes userRelations
 export * from "./core";
