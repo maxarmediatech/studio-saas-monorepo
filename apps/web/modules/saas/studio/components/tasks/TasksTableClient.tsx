@@ -34,6 +34,7 @@ import {
 	CalendarIcon,
 	CheckCircle2Icon,
 	CircleIcon,
+	EyeIcon,
 	ListTodoIcon,
 	Loader2Icon,
 	PencilIcon,
@@ -42,11 +43,11 @@ import {
 	XCircleIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { OpenTaskCreateSheet } from "./OpenTaskSheet";
 
-// Note: organizationSlug kept for future task detail page navigation
 interface TasksTableClientProps {
 	organizationSlug?: string;
 }
@@ -142,6 +143,7 @@ function isOverdue(dateString: string | null, status: string): boolean {
 
 export function TasksTableClient({ organizationSlug }: TasksTableClientProps) {
 	const queryClient = useQueryClient();
+	const router = useRouter();
 
 	// Use the tasks table hook for URL-synced state
 	const {
@@ -208,9 +210,14 @@ export function TasksTableClient({ organizationSlug }: TasksTableClientProps) {
 		openEdit(task.id);
 	};
 
-	// Define row actions
 	const rowActions: RowAction<TaskListItem>[] = useMemo(
 		() => [
+			{
+				label: "View details",
+				icon: <EyeIcon className="h-4 w-4" />,
+				onClick: (row) =>
+					router.push(`/app/${organizationSlug}/tasks/${row.id}`),
+			},
 			{
 				label: "Edit",
 				icon: <PencilIcon className="h-4 w-4" />,
@@ -227,7 +234,7 @@ export function TasksTableClient({ organizationSlug }: TasksTableClientProps) {
 				},
 			},
 		],
-		[],
+		[organizationSlug, router],
 	);
 
 	// Define columns with sortable headers and meta for filters
@@ -241,9 +248,12 @@ export function TasksTableClient({ organizationSlug }: TasksTableClientProps) {
 					<DataTableColumnHeader column={column} title="Name" />
 				),
 				cell: ({ row }) => (
-					<span className="font-medium text-foreground">
+					<Link
+						href={`/app/${organizationSlug}/tasks/${row.original.id}`}
+						className="font-medium text-foreground hover:underline"
+					>
 						{row.original.name}
-					</span>
+					</Link>
 				),
 				meta: {
 					label: "Name",
