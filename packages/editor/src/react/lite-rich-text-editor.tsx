@@ -8,6 +8,8 @@ import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import React, { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 
+import "../styles/editor.css";
+
 import { extractText } from "../core/extract";
 import type { EditorContentJson } from "../core/types";
 
@@ -82,8 +84,9 @@ export const LiteRichTextEditor = forwardRef<LiteRichTextEditorRef, LiteRichText
 					class: className ?? "",
 				},
 				handleKeyDown: (_view, event) => {
+					// Submit on Cmd+Enter (Mac) or Ctrl+Enter (Windows/Linux)
 					if (event.key !== "Enter") return false;
-					if (event.shiftKey) return false;
+					if (!event.metaKey && !event.ctrlKey) return false;
 
 					// Avoid submitting while IME composition is active.
 					const isComposing = (event as any).isComposing === true || (event as any).keyCode === 229;

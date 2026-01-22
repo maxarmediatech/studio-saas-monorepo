@@ -13,6 +13,8 @@ import React, {
 	useRef,
 } from "react";
 
+import "../styles/editor.css";
+
 import { extractText } from "../core/extract";
 import type { EditorContentJson } from "../core/types";
 

@@ -7,6 +7,8 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import React, { useEffect, useRef } from "react";
 
+import "../styles/editor.css";
+
 import type { EditorContentJson } from "../core/types";
 
 export interface ReadOnlyRendererProps {
