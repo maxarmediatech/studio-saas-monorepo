@@ -1,8 +1,14 @@
 /* TipTap/ProseMirror Editor Styles */
 
+/* EditorContent wrapper - ensure it fills container */
+.tiptap {
+  width: 100%;
+}
+
 /* Base editor container */
 .ProseMirror {
   outline: none;
+  width: 100%;
 }
 
 .ProseMirror:focus {
@@ -16,6 +22,7 @@
   color: var(--muted-foreground, #9ca3af);
   pointer-events: none;
   height: 0;
+  opacity: 1;
 }
 
 /* Typography - Headings */

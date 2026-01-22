@@ -10,6 +10,11 @@ import {
 	CollapsibleContent,
 	CollapsibleTrigger,
 } from "@repo/ui/components/collapsible";
+import {
+	InputGroup,
+	InputGroupAddon,
+	InputGroupButton,
+} from "@repo/ui/components/input-group";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
 import { useSession } from "@saas/auth/hooks/use-session";
@@ -41,7 +46,10 @@ import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
-const EMPTY_DOC: EditorContentJson = { type: "doc", content: [] };
+const EMPTY_DOC: EditorContentJson = {
+	type: "doc",
+	content: [{ type: "paragraph" }],
+};
 
 function isEditorContentJson(value: unknown): value is EditorContentJson {
 	if (typeof value !== "object" || value === null) return false;
@@ -228,39 +236,36 @@ function ThreadCard({
 
 			<div className="border-t p-3">
 				{showReplyInput ? (
-					<div className="flex items-center gap-2">
-						<UserAvatar
-							name={user?.name ?? "You"}
-							avatarUrl={user?.image}
-							className="size-6"
+					<InputGroup className="bg-background">
+						<LiteRichTextEditor
+							value={replyDoc}
+							onChange={(payload) => {
+								setReplyDoc(payload.json);
+								setReplyText(payload.text);
+							}}
+							onSubmit={handleSubmitReply}
+							placeholder="Write a reply..."
+							className="min-h-[60px] w-full resize-none bg-transparent px-3 py-2 text-sm outline-none"
+							editable={!isSubmitting}
 						/>
-						<div className="flex-1">
-							<LiteRichTextEditor
-								value={replyDoc}
-								onChange={(payload) => {
-									setReplyDoc(payload.json);
-									setReplyText(payload.text);
-								}}
-								onSubmit={handleSubmitReply}
-								placeholder="Write a reply..."
-								className="min-h-[40px] text-sm"
-								editable={!isSubmitting}
-							/>
-						</div>
-						<Button
-							size="sm"
-							onClick={handleSubmitReply}
-							disabled={!replyText.trim() || isSubmitting}
-							className="h-8 px-3"
-						>
-							<Send className="size-3" />
-						</Button>
-					</div>
+						<InputGroupAddon align="block-end">
+							<InputGroupButton
+								className="ml-auto"
+								size="sm"
+								variant="default"
+								onClick={handleSubmitReply}
+								disabled={!replyText.trim() || isSubmitting}
+							>
+								<Send className="size-3" />
+								Reply
+							</InputGroupButton>
+						</InputGroupAddon>
+					</InputGroup>
 				) : (
 					<button
 						type="button"
 						onClick={() => setShowReplyInput(true)}
-						className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+						className="w-full flex items-center gap-2 py-2 px-1 -mx-1 rounded text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
 					>
 						<UserAvatar
 							name={user?.name ?? "You"}
@@ -698,27 +703,23 @@ export default function DiscussionDetailPage() {
 					)}
 				</div>
 
-				<div className="mt-6 rounded-lg border bg-card p-4">
-					<div className="flex items-center gap-3">
-						<UserAvatar
-							name={user?.name ?? "You"}
-							avatarUrl={user?.image}
-							className="size-8"
-						/>
-						<div className="flex-1">
-							<LiteRichTextEditor
-								value={newThreadDoc}
-								onChange={(payload) => {
-									setNewThreadDoc(payload.json);
-									setNewThreadText(payload.text);
-								}}
-								onSubmit={handleNewThread}
-								placeholder="Join the conversation..."
-								editable={!createMessageMutation.isPending}
-								className="min-h-[40px]"
-							/>
-						</div>
-						<Button
+				<InputGroup className="mt-6 bg-card">
+					<LiteRichTextEditor
+						value={newThreadDoc}
+						onChange={(payload) => {
+							setNewThreadDoc(payload.json);
+							setNewThreadText(payload.text);
+						}}
+						onSubmit={handleNewThread}
+						placeholder="Join the conversation..."
+						editable={!createMessageMutation.isPending}
+						className="min-h-[80px] w-full resize-none bg-transparent px-3 py-3 text-sm outline-none"
+					/>
+					<InputGroupAddon align="block-end">
+						<InputGroupButton
+							className="ml-auto"
+							size="sm"
+							variant="default"
 							onClick={handleNewThread}
 							disabled={
 								!newThreadText.trim() ||
@@ -726,9 +727,10 @@ export default function DiscussionDetailPage() {
 							}
 						>
 							<Send className="size-4" />
-						</Button>
-					</div>
-				</div>
+							Send
+						</InputGroupButton>
+					</InputGroupAddon>
+				</InputGroup>
 			</div>
 		</div>
 	);

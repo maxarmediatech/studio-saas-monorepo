@@ -81,6 +81,7 @@ export const LiteRichTextEditor = forwardRef<LiteRichTextEditorRef, LiteRichText
 			editorProps: {
 				attributes: {
 					"data-testid": dataTestId,
+					"data-slot": "input-group-control",
 					class: className ?? "",
 				},
 				handleKeyDown: (_view, event) => {
@@ -138,6 +139,10 @@ export const LiteRichTextEditor = forwardRef<LiteRichTextEditorRef, LiteRichText
 		}, [editor, value]);
 
 		if (!editor) return null;
-		return <EditorContent editor={editor} />;
+		return (
+			<div className="flex-1 w-full">
+				<EditorContent editor={editor} />
+			</div>
+		);
 	},
 );
