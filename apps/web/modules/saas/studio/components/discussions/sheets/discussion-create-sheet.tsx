@@ -44,6 +44,7 @@ export function DiscussionCreateSheet() {
 				channelId: data.channelId,
 				title: data.title,
 				content: data.content || undefined,
+				contentJson: data.contentJson,
 				links: data.links.map((link) => ({
 					entityType: link.entityType,
 					entityId: link.entityId,

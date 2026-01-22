@@ -12,6 +12,7 @@ import {
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import { createMessageInputSchema } from "../schemas";
+import { buildRichTextContent } from "../lib/rich-text";
 
 export const createMessage = studioProtectedProcedure
 	.route({
@@ -71,11 +72,31 @@ export const createMessage = studioProtectedProcedure
 		}
 
 		return await db.transaction(async (tx) => {
+			const richText = buildRichTextContent({
+				content: input.content,
+				contentJson: input.contentJson,
+				maxBytes: 50 * 1024,
+			});
+
+			if (!richText.validation.ok) {
+				throw new ORPCError("BAD_REQUEST", {
+					message: "Invalid message content",
+				});
+			}
+
+			if (!richText.text.trim()) {
+				throw new ORPCError("BAD_REQUEST", {
+					message: "Message content cannot be empty",
+				});
+			}
+
 			const [message] = await tx
 				.insert(discussionMessages)
 				.values({
 					discussionId: input.discussionId,
-					content: input.content,
+					content: richText.text,
+					contentJson: richText.json,
+					contentText: richText.text,
 					parentId,
 					threadRootId,
 					createdBy: context.user.id,

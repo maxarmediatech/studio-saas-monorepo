@@ -10,7 +10,8 @@ import {
 } from "@repo/ui/components/field";
 import { Input } from "@repo/ui/components/input";
 import { ScrollArea } from "@repo/ui/components/scroll-area";
-import { Textarea } from "@repo/ui/components/textarea";
+import { RichTextEditor } from "@repo/editor";
+import type { EditorContentJson } from "@repo/editor";
 import { discussionsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo } from "react";
@@ -27,6 +28,7 @@ const discussionFormSchema = z.object({
 	channelId: z.string().min(1, "Channel is required"),
 	title: z.string().min(1, "Title is required").max(200),
 	content: z.string().max(10000).optional().or(z.literal("")),
+	contentJson: z.unknown().optional(),
 	links: z.array(
 		z.object({
 			entityType: z.enum([
@@ -44,6 +46,15 @@ const discussionFormSchema = z.object({
 });
 
 export type DiscussionFormValues = z.infer<typeof discussionFormSchema>;
+
+const EMPTY_DOC: EditorContentJson = { type: "doc", content: [] };
+
+function coerceEditorContentJson(value: unknown): EditorContentJson {
+	if (typeof value !== "object" || value === null) return EMPTY_DOC;
+	const record = value as Record<string, unknown>;
+	if (record.type !== "doc") return EMPTY_DOC;
+	return value as unknown as EditorContentJson;
+}
 
 // ============================================================================
 // Types
@@ -79,6 +90,7 @@ export function DiscussionForm({
 			channelId: defaultChannelId ?? "",
 			title: "",
 			content: "",
+			contentJson: EMPTY_DOC,
 			links: defaultLinks ?? [],
 		},
 	});
@@ -180,20 +192,19 @@ export function DiscussionForm({
 						/>
 
 						<Controller
-							name="content"
+							name="contentJson"
 							control={form.control}
 							render={({ field, fieldState }) => (
 								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>
-										Details
-									</FieldLabel>
-									<Textarea
-										{...field}
-										id={field.name}
+									<FieldLabel>Details</FieldLabel>
+									<RichTextEditor
+										value={coerceEditorContentJson(field.value)}
+										onChange={(payload) => {
+											field.onChange(payload.json);
+											form.setValue("content", payload.text);
+										}}
 										placeholder="Add more context (optional)"
-										className="resize-none"
-										rows={4}
-										aria-invalid={fieldState.invalid}
+										className="min-h-[150px]"
 									/>
 									{fieldState.invalid && (
 										<FieldError

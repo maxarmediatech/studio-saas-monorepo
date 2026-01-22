@@ -3,6 +3,7 @@ import {
 	boolean,
 	index,
 	integer,
+	jsonb,
 	pgTable,
 	text,
 	timestamp,
@@ -103,6 +104,9 @@ export const discussions = pgTable(
 
 		title: text("title").notNull(),
 		content: text("content"),
+		contentJson: jsonb("content_json"),
+		contentText: text("content_text"),
+		contentSchemaVersion: integer("content_schema_version").default(1).notNull(),
 
 		status: discussionStatusEnum("status").default("open").notNull(),
 		resolution: text("resolution"),
@@ -207,6 +211,9 @@ export const discussionMessages = pgTable(
 			.references(() => discussions.id, { onDelete: "cascade" }),
 
 		content: text("content").notNull(),
+		contentJson: jsonb("content_json"),
+		contentText: text("content_text"),
+		contentSchemaVersion: integer("content_schema_version").default(1).notNull(),
 
 		parentId: varchar("parent_id", { length: 255 }),
 		threadRootId: varchar("thread_root_id", { length: 255 }),

@@ -38,6 +38,16 @@ export const listDiscussions = studioProtectedProcedure
 				: [desc(discussions.createdAt), desc(discussions.id)];
 
 		const result = await db.query.discussions.findMany({
+			columns: {
+				id: true,
+				title: true,
+				content: true,
+				contentText: true,
+				status: true,
+				createdAt: true,
+				lastActivityAt: true,
+				messageCount: true,
+			},
 			where: and(
 				eq(discussions.channelId, input.channelId),
 				eq(discussions.organizationId, context.organizationId),

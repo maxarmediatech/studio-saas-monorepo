@@ -2,6 +2,7 @@ import { ORPCError } from "@orpc/server";
 import { and, db, discussions, eq, isNull } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
+import { buildRichTextContent } from "../lib/rich-text";
 import { updateDiscussionInputSchema } from "../schemas";
 
 export const updateDiscussion = studioProtectedProcedure
@@ -29,14 +30,36 @@ export const updateDiscussion = studioProtectedProcedure
 			});
 		}
 
+		const updates: Partial<typeof discussions.$inferInsert> = {
+			updatedBy: context.user.id,
+			updatedAt: new Date(),
+		};
+
+		if (input.title !== undefined) {
+			updates.title = input.title;
+		}
+
+		if (input.content !== undefined || input.contentJson !== undefined) {
+			const richText = buildRichTextContent({
+				content: input.content ?? existing.content,
+				contentJson: input.contentJson,
+				maxBytes: 200 * 1024,
+			});
+
+			if (!richText.validation.ok) {
+				throw new ORPCError("BAD_REQUEST", {
+					message: "Invalid discussion content",
+				});
+			}
+
+			updates.content = richText.text || null;
+			updates.contentJson = richText.json;
+			updates.contentText = richText.text;
+		}
+
 		const [updated] = await db
 			.update(discussions)
-			.set({
-				title: input.title ?? existing.title,
-				content: input.content ?? existing.content,
-				updatedBy: context.user.id,
-				updatedAt: new Date(),
-			})
+			.set(updates)
 			.where(eq(discussions.id, input.discussionId))
 			.returning();
 

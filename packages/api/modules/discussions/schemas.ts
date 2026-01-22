@@ -59,6 +59,7 @@ export const createDiscussionInputSchema = z.object({
 	channelId: z.string().min(1),
 	title: z.string().min(1).max(200),
 	content: z.string().max(10000).optional(),
+	contentJson: z.unknown().optional(),
 	links: z
 		.array(
 			z.object({
@@ -73,6 +74,7 @@ export const updateDiscussionInputSchema = z.object({
 	discussionId: z.string().min(1),
 	title: z.string().min(1).max(200).optional(),
 	content: z.string().max(10000).optional(),
+	contentJson: z.unknown().optional(),
 });
 
 export const listDiscussionsInputSchema = z.object({
@@ -115,16 +117,26 @@ export const removeDiscussionLinkInputSchema = z.object({
 	linkId: z.string().min(1),
 });
 
-export const createMessageInputSchema = z.object({
-	discussionId: z.string().min(1),
-	content: z.string().min(1).max(5000),
-	parentId: z.string().min(1).optional(),
-});
+export const createMessageInputSchema = z
+	.object({
+		discussionId: z.string().min(1),
+		content: z.string().min(1).max(5000).optional(),
+		contentJson: z.unknown().optional(),
+		parentId: z.string().min(1).optional(),
+	})
+	.refine((data) => Boolean(data.content || data.contentJson), {
+		message: "content or contentJson is required",
+	});
 
-export const updateMessageInputSchema = z.object({
-	messageId: z.string().min(1),
-	content: z.string().min(1).max(5000),
-});
+export const updateMessageInputSchema = z
+	.object({
+		messageId: z.string().min(1),
+		content: z.string().min(1).max(5000).optional(),
+		contentJson: z.unknown().optional(),
+	})
+	.refine((data) => Boolean(data.content || data.contentJson), {
+		message: "content or contentJson is required",
+	});
 
 export const deleteMessageInputSchema = z.object({
 	messageId: z.string().min(1),

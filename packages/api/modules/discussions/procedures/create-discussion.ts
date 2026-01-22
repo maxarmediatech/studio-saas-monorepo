@@ -3,6 +3,7 @@ import { db, discussionLinks, discussions } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import { assertChannelAccess } from "../lib/channel-access";
+import { buildRichTextContent } from "../lib/rich-text";
 import { verifyLinkEntityExists } from "../lib/verify-link-entity";
 import { createDiscussionInputSchema } from "../schemas";
 
@@ -34,13 +35,43 @@ export const createDiscussion = studioProtectedProcedure
 		}
 
 		return await db.transaction(async (tx) => {
+			let derivedContent:
+				| {
+						content: string | null;
+						contentJson: unknown;
+						contentText: string;
+					}
+				| undefined;
+
+			if (input.content || input.contentJson) {
+				const richText = buildRichTextContent({
+					content: input.content,
+					contentJson: input.contentJson,
+					maxBytes: 200 * 1024,
+				});
+
+				if (!richText.validation.ok) {
+					throw new ORPCError("BAD_REQUEST", {
+						message: "Invalid discussion content",
+					});
+				}
+
+				derivedContent = {
+					content: richText.text || null,
+					contentJson: richText.json,
+					contentText: richText.text,
+				};
+			}
+
 			const [discussion] = await tx
 				.insert(discussions)
 				.values({
 					organizationId: context.organizationId,
 					channelId: input.channelId,
 					title: input.title,
-					content: input.content,
+					content: derivedContent?.content ?? input.content ?? null,
+					contentJson: derivedContent?.contentJson ?? null,
+					contentText: derivedContent?.contentText ?? null,
 					createdBy: context.user.id,
 					updatedBy: context.user.id,
 					lastActivityAt: new Date(),

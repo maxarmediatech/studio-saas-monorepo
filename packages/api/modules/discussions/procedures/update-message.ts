@@ -2,6 +2,7 @@ import { ORPCError } from "@orpc/server";
 import { and, db, discussionMessages, eq, isNull } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { updateMessageInputSchema } from "../schemas";
+import { buildRichTextContent } from "../lib/rich-text";
 
 export const updateMessage = studioProtectedProcedure
 	.route({
@@ -36,10 +37,30 @@ export const updateMessage = studioProtectedProcedure
 			});
 		}
 
+		const richText = buildRichTextContent({
+			content: input.content,
+			contentJson: input.contentJson,
+			maxBytes: 50 * 1024,
+		});
+
+		if (!richText.validation.ok) {
+			throw new ORPCError("BAD_REQUEST", {
+				message: "Invalid message content",
+			});
+		}
+
+		if (!richText.text.trim()) {
+			throw new ORPCError("BAD_REQUEST", {
+				message: "Message content cannot be empty",
+			});
+		}
+
 		const [updated] = await db
 			.update(discussionMessages)
 			.set({
-				content: input.content,
+				content: richText.text,
+				contentJson: richText.json,
+				contentText: richText.text,
 				updatedBy: context.user.id,
 				updatedAt: new Date(),
 			})

@@ -216,19 +216,18 @@ export default function ChannelPage() {
 																?.name ??
 																"Unknown"}
 														</span>
-														{discussion.content && (
-															<>
-																:{" "}
-																<span className="text-neutral-500">
-																	{discussion
-																		.content
-																		.length >
-																	60
-																		? `${discussion.content.slice(0, 60)}...`
-																		: discussion.content}
-																</span>
-															</>
-														)}
+									{(discussion.contentText ?? discussion.content) && (
+										<>
+											:{" "}
+											<span className="text-neutral-500">
+												{(discussion.contentText ?? discussion.content ?? "")
+													.length >
+												60
+													? `${(discussion.contentText ?? discussion.content ?? "").slice(0, 60)}...`
+													: (discussion.contentText ?? discussion.content ?? "")}
+											</span>
+										</>
+									)}
 													</p>
 												</div>
 												{discussion.messageCount >
