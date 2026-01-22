@@ -35,61 +35,81 @@ export const createCheckin = studioProtectedProcedure
 			}
 		}
 
-		return await db.transaction(async (tx) => {
-			let derivedContent:
-				| {
-						content: string | null;
-						contentJson: unknown;
-						contentText: string;
-				  }
-				| undefined;
+		try {
+			return await db.transaction(async (tx) => {
+				let derivedContent:
+					| {
+							content: string | null;
+							contentJson: unknown;
+							contentText: string;
+					  }
+					| undefined;
 
-			if (input.content || input.contentJson) {
-				const richText = buildRichTextContent({
-					content: input.content,
-					contentJson: input.contentJson,
-					maxBytes: 200 * 1024,
-				});
-
-				if (!richText.validation.ok) {
-					throw new ORPCError("BAD_REQUEST", {
-						message: "Invalid checkin content",
+				if (input.content || input.contentJson) {
+					const richText = buildRichTextContent({
+						content: input.content,
+						contentJson: input.contentJson,
+						maxBytes: 200 * 1024,
 					});
+
+					if (!richText.validation.ok) {
+						throw new ORPCError("BAD_REQUEST", {
+							message: "Invalid checkin content",
+						});
+					}
+
+					derivedContent = {
+						content: richText.text || null,
+						contentJson: richText.json,
+						contentText: richText.text,
+					};
 				}
 
-				derivedContent = {
-					content: richText.text || null,
-					contentJson: richText.json,
-					contentText: richText.text,
-				};
-			}
-
-			const [checkin] = await tx
-				.insert(checkins)
-				.values({
-					organizationId: context.organizationId,
-					checkinTypeId: input.checkinTypeId,
-					content: derivedContent?.content ?? input.content ?? null,
-					contentJson: derivedContent?.contentJson ?? null,
-					contentText: derivedContent?.contentText ?? null,
-					checkinDate: new Date(input.checkinDate),
-					createdBy: context.user.id,
-					updatedBy: context.user.id,
-				})
-				.returning();
-
-			if (input.links?.length) {
-				await tx.insert(checkinLinks).values(
-					input.links.map((link) => ({
-						checkinId: checkin.id,
+				const [checkin] = await tx
+					.insert(checkins)
+					.values({
 						organizationId: context.organizationId,
-						entityType: link.entityType,
-						entityId: link.entityId,
+						checkinTypeId: input.checkinTypeId,
+						content:
+							derivedContent?.content ?? input.content ?? null,
+						contentJson: derivedContent?.contentJson ?? null,
+						contentText: derivedContent?.contentText ?? null,
+						checkinDate: new Date(input.checkinDate),
 						createdBy: context.user.id,
-					})),
-				);
-			}
+						updatedBy: context.user.id,
+					})
+					.returning();
 
-			return { data: checkin };
-		});
+				if (input.links?.length) {
+					await tx.insert(checkinLinks).values(
+						input.links.map((link) => ({
+							checkinId: checkin.id,
+							organizationId: context.organizationId,
+							entityType: link.entityType,
+							entityId: link.entityId,
+							createdBy: context.user.id,
+						})),
+					);
+				}
+
+				return { data: checkin };
+			});
+		} catch (error) {
+			const errorString = String(error);
+			const causeString =
+				error instanceof Error && "cause" in error
+					? String(error.cause)
+					: "";
+
+			if (
+				errorString.includes("checkins_type_user_date_unique") ||
+				causeString.includes("checkins_type_user_date_unique")
+			) {
+				throw new ORPCError("CONFLICT", {
+					message:
+						"You have already posted a checkin for today. Edit your existing checkin instead.",
+				});
+			}
+			throw error;
+		}
 	});

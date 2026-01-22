@@ -21,7 +21,6 @@ import { Skeleton } from "@repo/ui/components/skeleton";
 import { Textarea } from "@repo/ui/components/textarea";
 import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
 import { useOrganizationTeamsQuery } from "@saas/organizations/lib/api";
-import { PageContent } from "@saas/studio";
 import { checkinsApi, checkinsMutations } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -31,6 +30,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useCheckinsContext } from "./checkins-context";
 
 const FREQUENCY_OPTIONS = [
 	{ value: "daily", label: "Every day" },
@@ -293,7 +293,8 @@ function CreateCheckinTypeDialog({
 
 export default function CheckinsPage() {
 	const params = useParams<{ organizationSlug: string }>();
-	const [showCreateDialog, setShowCreateDialog] = useState(false);
+	const { isCreateDialogOpen, openCreateDialog, closeCreateDialog } =
+		useCheckinsContext();
 	const { activeOrganization } = useActiveOrganization();
 
 	const { data: checkinTypesData, isLoading } = useQuery(
@@ -308,38 +309,43 @@ export default function CheckinsPage() {
 	const checkinTypes = checkinTypesData?.data ?? [];
 	const teams = teamsData ?? [];
 
-	const controls = (
-		<button
-			type="button"
-			onClick={() => setShowCreateDialog(true)}
-			className="flex items-center gap-1 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
-		>
-			<PlusIcon className="size-4" />
-			New Checkin
-		</button>
-	);
-
 	if (isLoading) {
 		return (
-			<PageContent title="Checkins" controls={controls}>
+			<div className="mx-auto w-full max-w-[800px]">
 				<div className="space-y-2">
 					<Skeleton className="h-16 w-full" />
 					<Skeleton className="h-16 w-full" />
 					<Skeleton className="h-16 w-full" />
 				</div>
-			</PageContent>
+			</div>
 		);
 	}
 
 	return (
 		<>
-			<PageContent title="Checkins" controls={controls}>
+			<div className="mx-auto w-full max-w-[800px]">
+				<div className="flex items-center gap-3 pb-6 pt-2">
+					<span className="text-2xl">✋</span>
+					<h1 className="text-xl font-semibold text-neutral-900">
+						Checkins
+					</h1>
+				</div>
+
 				{checkinTypes.length === 0 ? (
 					<div className="flex flex-col items-center justify-center py-12 bg-muted/30 rounded-xl">
 						<Hand className="size-10 text-muted-foreground/30 mb-3" />
 						<p className="text-sm text-muted-foreground">
 							Create your first checkin routine to get started
 						</p>
+						<Button
+							variant="outline"
+							size="sm"
+							className="mt-4 gap-1"
+							onClick={openCreateDialog}
+						>
+							<PlusIcon className="size-4" />
+							New Checkin
+						</Button>
 					</div>
 				) : (
 					<div className="space-y-1">
@@ -352,11 +358,13 @@ export default function CheckinsPage() {
 						))}
 					</div>
 				)}
-			</PageContent>
+			</div>
 
 			<CreateCheckinTypeDialog
-				open={showCreateDialog}
-				onOpenChange={setShowCreateDialog}
+				open={isCreateDialogOpen}
+				onOpenChange={(open) =>
+					open ? openCreateDialog() : closeCreateDialog()
+				}
 				teams={teams}
 			/>
 		</>

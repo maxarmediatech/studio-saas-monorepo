@@ -12,6 +12,7 @@ import { Skeleton } from "@repo/ui/components/skeleton";
 import { useSession } from "@saas/auth/hooks/use-session";
 import { checkinsApi, checkinsMutations } from "@saas/studio/lib/api";
 import { UserAvatar } from "@shared/components/UserAvatar";
+import { extractApiErrorMessage } from "@shared/lib/api-errors";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, formatDistanceToNow, isToday, isYesterday } from "date-fns";
@@ -59,6 +60,19 @@ function groupCheckinsByDate<T extends { checkinDate: Date | string }>(
 		.sort((a, b) => b.date.getTime() - a.date.getTime());
 }
 
+interface Comment {
+	id: string;
+	content: string | null;
+	contentText: string | null;
+	contentJson: unknown;
+	createdAt: Date | string;
+	author?: {
+		id: string;
+		name: string | null;
+		image: string | null;
+	} | null;
+}
+
 interface CheckinPostProps {
 	checkin: {
 		id: string;
@@ -76,44 +90,159 @@ interface CheckinPostProps {
 }
 
 function CheckinPost({ checkin }: CheckinPostProps) {
+	const { user } = useSession();
+	const queryClient = useQueryClient();
+	const [replyDoc, setReplyDoc] = useState<EditorContentJson>(EMPTY_DOC);
+	const [replyText, setReplyText] = useState("");
+	const [showReplyInput, setShowReplyInput] = useState(false);
+
+	const { data: commentsData } = useQuery({
+		...checkinsApi.listCommentsOptions({ checkinId: checkin.id }),
+		enabled: checkin.commentCount > 0,
+	});
+
+	const comments = (commentsData?.data ?? []) as Comment[];
+
+	const createCommentMutation = useMutation({
+		...checkinsMutations.createComment(),
+		onSuccess: () => {
+			queryClient.invalidateQueries({
+				queryKey: orpc.checkins.listComments.key(),
+			});
+			queryClient.invalidateQueries({
+				queryKey: orpc.checkins.listCheckins.key(),
+			});
+			setReplyDoc(EMPTY_DOC);
+			setReplyText("");
+			setShowReplyInput(false);
+		},
+		onError: (error) => {
+			toast.error(extractApiErrorMessage(error, "Failed to post reply"));
+		},
+	});
+
+	const handleSubmitReply = () => {
+		if (!replyText.trim()) return;
+		createCommentMutation.mutate({
+			checkinId: checkin.id,
+			contentJson: replyDoc,
+		});
+	};
+
 	return (
-		<div className="border-l-2 border-neutral-200 pl-4 py-2">
-			<div className="flex items-start gap-3">
-				<UserAvatar
-					name={checkin.author?.name ?? "Unknown"}
-					avatarUrl={checkin.author?.image}
-					className="size-8"
-				/>
-				<div className="flex-1 min-w-0">
-					<div className="flex items-center gap-2">
-						<span className="font-medium text-sm">
-							{checkin.author?.name ?? "Unknown"}
-						</span>
-						<span className="text-xs text-muted-foreground">
-							{formatDistanceToNow(new Date(checkin.createdAt), {
-								addSuffix: true,
-							})}
-						</span>
-					</div>
-					{isEditorContentJson(checkin.contentJson) ? (
-						<ReadOnlyRenderer
-							content={checkin.contentJson}
-							className="mt-1 text-sm"
-						/>
-					) : (
-						<p className="mt-1 text-sm">
-							{checkin.contentText ?? checkin.content}
-						</p>
-					)}
-					{checkin.commentCount > 0 && (
-						<div className="mt-2 text-xs text-muted-foreground">
-							{checkin.commentCount}{" "}
-							{checkin.commentCount === 1
-								? "comment"
-								: "comments"}
+		<div className="rounded-lg border bg-card">
+			<div className="p-4">
+				<div className="flex items-start gap-3">
+					<UserAvatar
+						name={checkin.author?.name ?? "Unknown"}
+						avatarUrl={checkin.author?.image}
+						className="size-8"
+					/>
+					<div className="flex-1 min-w-0">
+						<div className="flex items-center gap-2">
+							<span className="font-medium text-sm">
+								{checkin.author?.name ?? "Unknown"}
+							</span>
+							<span className="text-xs text-muted-foreground">
+								{formatDistanceToNow(
+									new Date(checkin.createdAt),
+									{ addSuffix: true },
+								)}
+							</span>
 						</div>
-					)}
+						{isEditorContentJson(checkin.contentJson) ? (
+							<ReadOnlyRenderer
+								content={checkin.contentJson}
+								className="mt-1 text-sm"
+							/>
+						) : (
+							<p className="mt-1 text-sm">
+								{checkin.contentText ?? checkin.content}
+							</p>
+						)}
+					</div>
 				</div>
+			</div>
+
+			{comments.map((comment) => (
+				<div key={comment.id} className="border-t p-4">
+					<div className="flex items-start gap-3">
+						<UserAvatar
+							name={comment.author?.name ?? "Unknown"}
+							avatarUrl={comment.author?.image}
+							className="size-8"
+						/>
+						<div className="flex-1 min-w-0">
+							<div className="flex items-center gap-2">
+								<span className="font-medium text-sm">
+									{comment.author?.name ?? "Unknown"}
+								</span>
+								<span className="text-xs text-muted-foreground">
+									{formatDistanceToNow(
+										new Date(comment.createdAt),
+										{ addSuffix: true },
+									)}
+								</span>
+							</div>
+							{isEditorContentJson(comment.contentJson) ? (
+								<ReadOnlyRenderer
+									content={comment.contentJson}
+									className="mt-1 text-sm"
+								/>
+							) : (
+								<p className="mt-1 text-sm">
+									{comment.contentText ?? comment.content}
+								</p>
+							)}
+						</div>
+					</div>
+				</div>
+			))}
+
+			<div className="border-t p-3">
+				{showReplyInput ? (
+					<InputGroup className="bg-background">
+						<LiteRichTextEditor
+							value={replyDoc}
+							onChange={(payload) => {
+								setReplyDoc(payload.json);
+								setReplyText(payload.text);
+							}}
+							onSubmit={handleSubmitReply}
+							placeholder="Write a reply..."
+							className="min-h-[60px] w-full resize-none bg-transparent px-3 py-2 text-sm outline-none"
+							editable={!createCommentMutation.isPending}
+						/>
+						<InputGroupAddon align="block-end">
+							<InputGroupButton
+								className="ml-auto"
+								size="sm"
+								variant="default"
+								onClick={handleSubmitReply}
+								disabled={
+									!replyText.trim() ||
+									createCommentMutation.isPending
+								}
+							>
+								<Send className="size-3" />
+								Reply
+							</InputGroupButton>
+						</InputGroupAddon>
+					</InputGroup>
+				) : (
+					<button
+						type="button"
+						onClick={() => setShowReplyInput(true)}
+						className="w-full flex items-center gap-2 py-2 px-1 -mx-1 rounded text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+					>
+						<UserAvatar
+							name={user?.name ?? "You"}
+							avatarUrl={user?.image}
+							className="size-6"
+						/>
+						<span>Reply...</span>
+					</button>
+				)}
 			</div>
 		</div>
 	);
@@ -160,8 +289,10 @@ export default function CheckinTypeDetailPage() {
 			setNewCheckinText("");
 			toast.success("Checkin posted");
 		},
-		onError: () => {
-			toast.error("Failed to post checkin");
+		onError: (error) => {
+			toast.error(
+				extractApiErrorMessage(error, "Failed to post checkin"),
+			);
 		},
 	});
 
