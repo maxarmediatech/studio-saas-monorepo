@@ -1,6 +1,7 @@
 import { getActiveOrganization } from "@saas/auth/lib/server";
 import { ChangeOrganizationNameForm } from "@saas/organizations/components/ChangeOrganizationNameForm";
 import { OrganizationLogoForm } from "@saas/organizations/components/OrganizationLogoForm";
+import { UserTimezoneForm } from "@saas/settings/components/UserTimezoneForm";
 import { SettingsList } from "@saas/shared/components/SettingsList";
 import { PageContent } from "@saas/studio";
 import { notFound } from "next/navigation";
@@ -34,6 +35,7 @@ export default async function GeneralSettingsPage({ params }: Props) {
 			<SettingsList>
 				<OrganizationLogoForm />
 				<ChangeOrganizationNameForm />
+				<UserTimezoneForm />
 			</SettingsList>
 		</PageContent>
 	);
