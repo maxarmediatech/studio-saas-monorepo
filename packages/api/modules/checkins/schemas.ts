@@ -53,7 +53,7 @@ export const createCheckinInputSchema = z.object({
 	checkinTypeId: z.string().min(1),
 	content: z.string().max(10000).optional(),
 	contentJson: z.unknown().optional(),
-	checkinDate: z.string().date(),
+	checkinDate: z.string().date().optional(),
 	links: z
 		.array(
 			z.object({

@@ -17,10 +17,23 @@ function isEditorContentJson(value: unknown): value is EditorContentJson {
 }
 
 function formatCheckinDate(date: Date | string): string {
-	const d = new Date(date);
+	const d = parsePlainDate(date);
 	if (isToday(d)) return "Today";
 	if (isYesterday(d)) return "Yesterday";
 	return format(d, "MMM d");
+}
+
+function parsePlainDate(value: Date | string): Date {
+	if (value instanceof Date) return value;
+	if (typeof value !== "string") return new Date(value);
+
+	const match = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(value);
+	if (!match) return new Date(value);
+
+	const year = Number(match[1]);
+	const month = Number(match[2]);
+	const day = Number(match[3]);
+	return new Date(year, month - 1, day);
 }
 
 interface CrewCheckinsSectionProps {

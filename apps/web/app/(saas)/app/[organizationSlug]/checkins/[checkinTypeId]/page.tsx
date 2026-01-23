@@ -38,7 +38,7 @@ function groupCheckinsByDate<T extends { checkinDate: Date | string }>(
 	const groups: Record<string, { date: Date; items: T[] }> = {};
 
 	for (const checkin of checkins) {
-		const date = new Date(checkin.checkinDate);
+		const date = parsePlainDate(checkin.checkinDate);
 		let label: string;
 
 		if (isToday(date)) {
@@ -58,6 +58,20 @@ function groupCheckinsByDate<T extends { checkinDate: Date | string }>(
 	return Object.entries(groups)
 		.map(([label, data]) => ({ label, ...data }))
 		.sort((a, b) => b.date.getTime() - a.date.getTime());
+}
+
+function parsePlainDate(value: Date | string): Date {
+	if (value instanceof Date) return value;
+	if (typeof value !== "string") return new Date(value);
+
+	// Treat YYYY-MM-DD as a plain calendar date in the user's local timezone.
+	const match = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(value);
+	if (!match) return new Date(value);
+
+	const year = Number(match[1]);
+	const month = Number(match[2]);
+	const day = Number(match[3]);
+	return new Date(year, month - 1, day);
 }
 
 interface Comment {
@@ -302,7 +316,6 @@ export default function CheckinTypeDetailPage() {
 		createCheckinMutation.mutate({
 			checkinTypeId: params.checkinTypeId,
 			contentJson: newCheckinDoc,
-			checkinDate: format(new Date(), "yyyy-MM-dd"),
 		});
 	};
 

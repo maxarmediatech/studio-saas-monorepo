@@ -3,7 +3,9 @@ import { checkinLinks, checkins, db } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { buildRichTextContent } from "../../discussions/lib/rich-text";
 import { verifyLinkEntityExists } from "../../discussions/lib/verify-link-entity";
+import { normalizeTimeZone } from "../../studio/lib/date-helpers";
 import { assertCheckinTypeAccess } from "../lib/checkin-access";
+import { computeCheckinDate } from "../lib/checkin-date";
 import { createCheckinInputSchema } from "../schemas";
 
 export const createCheckin = studioProtectedProcedure
@@ -19,6 +21,17 @@ export const createCheckin = studioProtectedProcedure
 			input.checkinTypeId,
 			context,
 		);
+		const headerTimeZone = context.headers.get("x-user-timezone");
+		const timezone = normalizeTimeZone(
+			headerTimeZone ??
+				context.user.timezone ??
+				context.membership.organization.timezone,
+		);
+		const effectiveCheckinDate = computeCheckinDate({
+			scheduledTime: checkinType.scheduledTime,
+			frequency: checkinType.frequency,
+			timezone,
+		});
 
 		if (input.links?.length) {
 			for (const link of input.links) {
@@ -74,7 +87,7 @@ export const createCheckin = studioProtectedProcedure
 							derivedContent?.content ?? input.content ?? null,
 						contentJson: derivedContent?.contentJson ?? null,
 						contentText: derivedContent?.contentText ?? null,
-						checkinDate: new Date(input.checkinDate),
+						checkinDate: new Date(effectiveCheckinDate),
 						createdBy: context.user.id,
 						updatedBy: context.user.id,
 					})
@@ -107,7 +120,7 @@ export const createCheckin = studioProtectedProcedure
 			) {
 				throw new ORPCError("CONFLICT", {
 					message:
-						"You have already posted a checkin for today. Edit your existing checkin instead.",
+						"You have already posted a checkin for this period. Edit your existing checkin instead.",
 				});
 			}
 			throw error;

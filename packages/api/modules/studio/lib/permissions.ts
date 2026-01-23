@@ -1,9 +1,9 @@
 import { ORPCError } from "@orpc/server";
 import { auth } from "@repo/auth";
 import {
-	hasAnyRole,
 	type Action,
 	type AnyAction,
+	hasAnyRole,
 	type Resource,
 } from "@repo/auth/lib/permissions";
 
@@ -24,6 +24,7 @@ export interface StudioContext {
 		id: string;
 		email: string;
 		name: string;
+		timezone?: string | null;
 	};
 	session: {
 		id: string;

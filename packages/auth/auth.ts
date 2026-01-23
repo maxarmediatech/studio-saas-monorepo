@@ -321,6 +321,10 @@ export const auth = betterAuth({
 				type: "string",
 				required: false,
 			},
+			timezone: {
+				type: "string",
+				required: false,
+			},
 		},
 		deleteUser: {
 			enabled: true,

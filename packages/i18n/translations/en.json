@@ -552,6 +552,16 @@
 				},
 				"title": "Your language"
 			},
+			"timezone": {
+				"description": "Used for checkins and personal views. Detected: {detected}",
+				"useBrowser": "Use browser timezone",
+				"notifications": {
+					"invalid": "Invalid timezone",
+					"error": "Could not update timezone",
+					"success": "Timezone was updated successfully"
+				},
+				"title": "Your timezone"
+			},
 			"security": {
 				"activeSessions": {
 					"description": "These are all the active sessions of your account. Click the X to end a specifc session.",

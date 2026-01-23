@@ -38,6 +38,7 @@ export const users = pgTable("users", {
 	onboardingComplete: boolean("onboarding_complete").default(false).notNull(),
 	paymentsCustomerId: text("payments_customer_id"),
 	locale: text("locale"),
+	timezone: text("timezone"),
 	twoFactorEnabled: boolean("two_factor_enabled").default(false).notNull(),
 });
 

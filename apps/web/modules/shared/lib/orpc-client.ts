@@ -14,6 +14,10 @@ const link = new RPCLink({
 		}
 		return `${getBaseUrl()}/api/rpc`;
 	},
+	headers: () => ({
+		"x-user-timezone":
+			Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
+	}),
 	interceptors: [
 		onError((error) => {
 			if (error instanceof Error && error.name === "AbortError") {

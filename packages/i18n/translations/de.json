@@ -539,6 +539,16 @@
 				},
 				"title": "Deine Sprache"
 			},
+			"timezone": {
+				"description": "Wird für Check-ins und persönliche Ansichten verwendet. Erkannt: {detected}",
+				"useBrowser": "Browser-Zeitzone verwenden",
+				"notifications": {
+					"invalid": "Ungültige Zeitzone",
+					"error": "Zeitzone konnte nicht aktualisiert werden",
+					"success": "Zeitzone wurde erfolgreich aktualisiert"
+				},
+				"title": "Deine Zeitzone"
+			},
 			"security": {
 				"activeSessions": {
 					"description": "Dies sind alle aktiven Sitzungen deines Kontos. Klicke auf das X, um eine bestimmte Sitzung zu beenden.",

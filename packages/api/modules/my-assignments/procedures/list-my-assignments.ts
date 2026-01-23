@@ -50,8 +50,11 @@ export const listMyAssignments = studioProtectedProcedure
 			context.organizationId,
 		);
 
+		const headerTimeZone = context.headers.get("x-user-timezone");
 		const timeZone = normalizeTimeZone(
-			context.membership.organization.timezone,
+			headerTimeZone ??
+				context.user.timezone ??
+				context.membership.organization.timezone,
 		);
 		const nowParts = getDateParts(new Date(), timeZone);
 		const todayStr = formatDateParts(nowParts);
