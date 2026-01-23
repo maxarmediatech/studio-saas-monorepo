@@ -132,6 +132,7 @@ const bookingSortFields = [
 
 export const listBookingsInputSchema = z
 	.object({
+		clientId: idSchema.optional(),
 		statuses: z.array(bookingPhaseSchema).optional(),
 		bookingType: z.union([z.string(), z.array(z.string())]).nullish(),
 		packageType: z.union([z.string(), z.array(z.string())]).nullish(),

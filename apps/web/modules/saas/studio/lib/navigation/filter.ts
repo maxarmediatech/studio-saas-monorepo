@@ -11,7 +11,7 @@ import type {
 
 function hasPermission(
 	permission: NavPermissionCheck | undefined,
-	userRole: string,
+	userRole: string | string[],
 	customRolePermissions?: CustomRolePermissions,
 ): boolean {
 	if (!permission) {
@@ -55,7 +55,7 @@ function hasPermission(
 
 function filterNavItems(
 	items: NavItemConfig[],
-	userRole: string,
+	userRole: string | string[],
 	customRolePermissions?: CustomRolePermissions,
 ): NavItemConfig[] {
 	const filtered: NavItemConfig[] = [];
@@ -99,7 +99,7 @@ function firstItemPath(navModule: NavModuleConfig): string | undefined {
 
 export function filterNavigationConfig(
 	config: NavigationConfig,
-	userRole: string,
+	userRole: string | string[],
 	customRolePermissions?: CustomRolePermissions,
 ): NavigationConfig {
 	const modules: NavModuleConfig[] = [];

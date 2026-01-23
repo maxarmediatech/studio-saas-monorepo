@@ -75,6 +75,57 @@ export const useFullOrganizationQuery = (id: string) => {
 	});
 };
 
+export const organizationTeamsQueryKey = (id: string) =>
+	["organizationTeams", id] as const;
+export const useOrganizationTeamsQuery = (
+	id: string,
+	options?: { enabled?: boolean },
+) => {
+	return useQuery({
+		queryKey: organizationTeamsQueryKey(id),
+		queryFn: async () => {
+			const { data, error } =
+				await authClient.organization.listTeams({
+					query: {
+						organizationId: id,
+					},
+				});
+
+			if (error) {
+				throw new Error(error.message || "Failed to fetch teams");
+			}
+
+			return data;
+		},
+		enabled: options?.enabled,
+	});
+};
+
+export const teamMembersQueryKey = (teamId: string) =>
+	["teamMembers", teamId] as const;
+export const useTeamMembersQuery = (
+	teamId: string,
+	options?: { enabled?: boolean },
+) => {
+	return useQuery({
+		queryKey: teamMembersQueryKey(teamId),
+		queryFn: async () => {
+			try {
+				return await orpcClient.organizations.teams.listMembers({
+					teamId,
+				});
+			} catch (error) {
+				throw new Error(
+					error instanceof Error
+						? error.message
+						: "Failed to fetch team members",
+				);
+			}
+		},
+		enabled: options?.enabled,
+	});
+};
+
 /*
  * Create organization
  */

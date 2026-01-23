@@ -11,6 +11,8 @@ import {
 	organizations,
 	purchases,
 	sessions,
+	teamMembers,
+	teams,
 	twoFactors,
 	users,
 	verifications,
@@ -26,6 +28,8 @@ export const OrganizationUpdateSchema = createUpdateSchema(organizations, {
 	id: z.string(),
 });
 export const MemberSchema = createSelectSchema(members);
+export const TeamSchema = createSelectSchema(teams);
+export const TeamMemberSchema = createSelectSchema(teamMembers);
 export const InvitationSchema = createSelectSchema(invitations);
 export const PurchaseSchema = createSelectSchema(purchases);
 export type Purchase = typeof purchases.$inferSelect;

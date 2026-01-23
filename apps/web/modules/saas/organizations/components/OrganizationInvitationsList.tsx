@@ -3,6 +3,8 @@
 import type { ActiveOrganization } from "@repo/auth";
 import { authClient } from "@repo/auth/client";
 import { isOrganizationAdmin } from "@repo/auth/lib/helper";
+import { normalizeRoles } from "@repo/auth/lib/permissions";
+import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import {
 	DropdownMenu,
@@ -22,6 +24,7 @@ import {
 	fullOrganizationQueryKey,
 	useFullOrganizationQuery,
 } from "@saas/organizations/lib/api";
+import { useAllRoles } from "@saas/organizations/hooks/use-all-roles";
 import { useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
@@ -42,7 +45,7 @@ import {
 import { useFormatter, useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { toast } from "sonner";
-import { OrganizationRoleSelect } from "./OrganizationRoleSelect";
+
 export function OrganizationInvitationsList({
 	organizationId,
 }: {
@@ -55,6 +58,9 @@ export function OrganizationInvitationsList({
 	const { data: organization } = useFullOrganizationQuery(organizationId);
 
 	const canUserEditInvitations = isOrganizationAdmin(organization, user);
+	const { getRoleLabel } = useAllRoles({
+		enabled: canUserEditInvitations,
+	});
 
 	const invitations = useMemo(
 		() =>
@@ -67,6 +73,10 @@ export function OrganizationInvitationsList({
 				),
 		[organization?.invitations],
 	);
+	const teamNameById = useMemo(() => {
+		const teams = organization?.teams ?? [];
+		return new Map(teams.map((team) => [team.id, team.name]));
+	}, [organization?.teams]);
 
 	const revokeInvitation = (invitationId: string) => {
 		toast.promise(
@@ -112,6 +122,12 @@ export function OrganizationInvitationsList({
 					rejected: XIcon,
 					canceled: XIcon,
 				}[row.original.status];
+				const roleKeys = normalizeRoles(row.original.role);
+				const teamName = row.original.teamId
+					? teamNameById.get(row.original.teamId) ?? "Unknown team"
+					: null;
+				const shouldShowBadges =
+					roleKeys.length > 0 || Boolean(teamName);
 				return (
 					<div className="leading-normal">
 						<strong
@@ -145,6 +161,24 @@ export function OrganizationInvitationsList({
 								)}
 							</span>
 						</small>
+						{shouldShowBadges && (
+							<div className="mt-1 flex flex-wrap gap-1">
+								{roleKeys.map((roleKey) => (
+									<Badge
+										key={roleKey}
+										variant="outline"
+										className="text-xs"
+									>
+										{getRoleLabel(roleKey)}
+									</Badge>
+								))}
+								{teamName && (
+									<Badge variant="outline" className="text-xs">
+										Team: {teamName}
+									</Badge>
+								)}
+							</div>
+						)}
 					</div>
 				);
 			},
@@ -156,14 +190,6 @@ export function OrganizationInvitationsList({
 
 				return (
 					<div className="flex flex-row justify-end gap-2">
-						<OrganizationRoleSelect
-							value={row.original.role}
-							disabled
-							onSelect={() => {
-								return;
-							}}
-						/>
-
 						{canUserEditInvitations && (
 							<DropdownMenu>
 								<DropdownMenuTrigger asChild>

@@ -1,13 +1,18 @@
 import { ORPCError } from "@orpc/server";
 import { auth } from "@repo/auth";
-import type { Action, AnyAction, Resource } from "@repo/auth/lib/permissions";
+import {
+	type Action,
+	type AnyAction,
+	hasAnyRole,
+	type Resource,
+} from "@repo/auth/lib/permissions";
 
 export interface StudioContext {
 	headers: Headers;
 	organizationId: string;
 	membership: {
 		id: string;
-		role: string;
+		role: string | string[];
 		organization: {
 			id: string;
 			name: string;
@@ -19,6 +24,7 @@ export interface StudioContext {
 		id: string;
 		email: string;
 		name: string;
+		timezone?: string | null;
 	};
 	session: {
 		id: string;
@@ -57,7 +63,7 @@ export async function requirePermission<R extends Resource>(
 export function requireOrganizationAdmin(
 	context: Pick<StudioContext, "membership">,
 ): void {
-	if (!["owner", "admin"].includes(context.membership.role)) {
+	if (!hasAnyRole(context.membership.role, ["owner", "admin"])) {
 		throw new ORPCError("FORBIDDEN", {
 			message: "Only organization owners and admins can manage roles",
 		});

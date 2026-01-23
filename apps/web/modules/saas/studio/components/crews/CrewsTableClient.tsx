@@ -32,12 +32,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
 	BriefcaseIcon,
+	EyeIcon,
 	Loader2Icon,
 	PencilIcon,
 	PhoneIcon,
 	TrashIcon,
 	UserIcon,
 } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { OpenCrewCreateSheet } from "./OpenCrewSheet";
@@ -71,9 +74,8 @@ const roleOptions = [
 	{ value: "other", label: "Other" },
 ];
 
-export function CrewsTableClient({
-	organizationSlug: _organizationSlug,
-}: CrewsTableClientProps) {
+export function CrewsTableClient({ organizationSlug }: CrewsTableClientProps) {
+	const router = useRouter();
 	const queryClient = useQueryClient();
 
 	// Use the crews table hook for URL-synced state
@@ -145,6 +147,12 @@ export function CrewsTableClient({
 	const rowActions: RowAction<Crew>[] = useMemo(
 		() => [
 			{
+				label: "View details",
+				icon: <EyeIcon className="h-4 w-4" />,
+				onClick: (row) =>
+					router.push(`/app/${organizationSlug}/crews/${row.id}`),
+			},
+			{
 				label: "Edit",
 				icon: <PencilIcon className="h-4 w-4" />,
 				onClick: handleOpenEdit,
@@ -160,7 +168,7 @@ export function CrewsTableClient({
 				},
 			},
 		],
-		[],
+		[organizationSlug, router],
 	);
 
 	// Define columns with sortable headers and meta for filters
@@ -174,9 +182,12 @@ export function CrewsTableClient({
 					<DataTableColumnHeader column={column} title="Name" />
 				),
 				cell: ({ row }) => (
-					<span className="font-medium text-foreground">
+					<Link
+						href={`/app/${organizationSlug}/crews/${row.original.id}`}
+						className="font-medium text-foreground hover:underline"
+					>
 						{row.original.name}
-					</span>
+					</Link>
 				),
 				meta: {
 					label: "Name",

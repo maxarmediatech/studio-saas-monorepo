@@ -185,3 +185,29 @@ export const purchaseTypeEnum = pgEnum("purchaseType", [
 	"SUBSCRIPTION",
 	"ONE_TIME",
 ]);
+
+// ----------------------------------------------------------------------------
+// Discussions (Internal team collaboration)
+// ----------------------------------------------------------------------------
+
+/**
+ * Discussion status - open or resolved
+ * Tracks whether a discussion has been concluded with a resolution
+ */
+export const discussionStatusEnum = pgEnum("discussion_status", [
+	"open",
+	"resolved",
+]);
+
+// ----------------------------------------------------------------------------
+// Checkins (Team standup/update routines)
+// ----------------------------------------------------------------------------
+
+/**
+ * Checkin frequency - defines how often a checkin routine runs
+ */
+export const checkinFrequencyEnum = pgEnum("checkin_frequency", [
+	"daily",
+	"weekdays",
+	"weekly",
+]);

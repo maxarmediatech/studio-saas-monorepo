@@ -75,6 +75,9 @@ function AppShellContent({
 		if (pathname.startsWith(`/app/${studioSlug}/settings`)) {
 			return "studioSettings";
 		}
+		if (pathname.startsWith(`/app/${studioSlug}/discussions`)) {
+			return "discussions";
+		}
 		return "default";
 	}, [pathname, studioSlug]);
 
@@ -90,9 +93,7 @@ function AppShellContent({
 		setFallbackModuleId(matchedModule.id);
 	}, [matchedModule?.id]);
 
-	const isSearchRoute = pathname.startsWith(
-		`/app/${studioSlug}/search`,
-	);
+	const isSearchRoute = pathname.startsWith(`/app/${studioSlug}/search`);
 
 	const activeModule = React.useMemo(() => {
 		if (matchedModule) return matchedModule;
@@ -154,20 +155,20 @@ function AppShellContent({
 			<div className="flex min-h-0 flex-1 md:grid md:grid-cols-[min-content_minmax(0,1fr)]">
 				{/* Desktop Sidebar */}
 				{showSidebar && (
-						<DubSidebar
-							studioSlug={studioSlug}
-							studioName={studioName}
-							studioLogo={studioLogo}
-							organizationId={organizationId}
-							railIcons={railIcons}
-							activeModule={activeModule}
-							activeModuleId={activeModuleId}
-							utilities={utilities}
-							currentArea={currentArea}
-							areas={areas}
-							caps={caps}
-							onSearchOpen={openSearch}
-						/>
+					<DubSidebar
+						studioSlug={studioSlug}
+						studioName={studioName}
+						studioLogo={studioLogo}
+						organizationId={organizationId}
+						railIcons={railIcons}
+						activeModule={activeModule}
+						activeModuleId={activeModuleId}
+						utilities={utilities}
+						currentArea={currentArea}
+						areas={areas}
+						caps={caps}
+						onSearchOpen={openSearch}
+					/>
 				)}
 
 				{/* Content Area */}

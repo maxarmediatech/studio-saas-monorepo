@@ -21,6 +21,9 @@ export const authClient = createAuthClient({
 			dynamicAccessControl: {
 				enabled: true,
 			},
+			teams: {
+				enabled: true,
+			},
 			schema: inferOrgAdditionalFields<typeof auth>(),
 		}),
 		adminClient(),

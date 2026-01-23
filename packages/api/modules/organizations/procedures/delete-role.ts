@@ -1,5 +1,6 @@
 import { ORPCError } from "@orpc/client";
-import { and, db, eq, members, organizationRoles } from "@repo/database";
+import { normalizeRoles } from "@repo/auth/lib/permissions";
+import { and, db, eq, ilike, members, organizationRoles } from "@repo/database";
 import { z } from "zod";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import {
@@ -38,15 +39,20 @@ export const deleteRole = studioProtectedProcedure
 			});
 		}
 
-		const membersWithRole = await db.query.members.findMany({
+		const memberCandidates = await db.query.members.findMany({
 			where: and(
 				eq(members.organizationId, context.organizationId),
-				eq(members.role, existingRole.role),
+				ilike(members.role, `%${existingRole.role}%`),
 			),
-			limit: 1,
+			columns: { role: true },
+			limit: 25,
 		});
 
-		if (membersWithRole.length > 0) {
+		const roleInUse = memberCandidates.some((member) =>
+			normalizeRoles(member.role).includes(existingRole.role),
+		);
+
+		if (roleInUse) {
 			throw new ORPCError("BAD_REQUEST", {
 				message:
 					"Cannot delete role that is assigned to members. Please reassign members first.",

@@ -71,6 +71,55 @@
       "when": 1768767517098,
       "tag": "0009_pale_starfox",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1768778450000,
+      "tag": "0010_team_support",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1768893443008,
+      "tag": "0011_big_mad_thinker",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1768983206521,
+      "tag": "0012_fluffy_masked_marvel",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1768992165423,
+      "tag": "0013_legal_slipstream",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1769062828550,
+      "tag": "0014_condemned_trauma",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1769110256428,
+      "tag": "0015_dry_william_stryker",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1769184829383,
+      "tag": "0016_nervous_blue_marvel",
+      "breakpoints": true
     }
   ]
 }

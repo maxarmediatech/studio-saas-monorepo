@@ -36,6 +36,7 @@ export const listBookings = studioProtectedProcedure
 		await requirePermission(context, "booking", "list");
 
 		const {
+			clientId,
 			statuses,
 			bookingType,
 			packageType,
@@ -136,6 +137,22 @@ export const listBookings = studioProtectedProcedure
 			conditions.push(
 				sql`(${bookings.name} ILIKE ${`%${search}%`} OR ${bookings.referenceNumber} ILIKE ${`%${search}%`})`,
 			);
+		}
+
+		if (clientId) {
+			const clientBookings = await db
+				.select({ bookingId: bookingParticipants.bookingId })
+				.from(bookingParticipants)
+				.where(eq(bookingParticipants.clientId, clientId));
+
+			const bookingIds = clientBookings.map((r) => r.bookingId);
+			if (bookingIds.length === 0) {
+				return {
+					data: [],
+					pagination: createPaginationResponse(page, limit, 0),
+				};
+			}
+			conditions.push(inArray(bookings.id, bookingIds));
 		}
 
 		// Get total count

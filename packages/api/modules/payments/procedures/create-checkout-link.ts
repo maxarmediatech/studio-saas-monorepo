@@ -6,6 +6,7 @@ import {
 	createCheckoutLink as createCheckoutLinkFn,
 	getCustomerIdFromEntity,
 } from "@repo/payments";
+import { hasAnyRole } from "@repo/auth/lib/permissions";
 import { z } from "zod";
 import { localeMiddleware } from "../../../orpc/middleware/locale-middleware";
 import { protectedProcedure } from "../../../orpc/procedures";
@@ -48,7 +49,7 @@ export const createCheckoutLink = protectedProcedure
 					user.id,
 				);
 
-				if (!membership || membership.role !== "owner") {
+				if (!membership || !hasAnyRole(membership.role, ["owner"])) {
 					throw new ORPCError("FORBIDDEN");
 				}
 			}

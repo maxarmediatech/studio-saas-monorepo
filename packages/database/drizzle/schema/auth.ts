@@ -38,6 +38,7 @@ export const users = pgTable("users", {
 	onboardingComplete: boolean("onboarding_complete").default(false).notNull(),
 	paymentsCustomerId: text("payments_customer_id"),
 	locale: text("locale"),
+	timezone: text("timezone"),
 	twoFactorEnabled: boolean("two_factor_enabled").default(false).notNull(),
 });
 
@@ -55,6 +56,7 @@ export const sessions = pgTable(
 			.references(() => users.id, { onDelete: "cascade" }),
 		impersonatedBy: text("impersonated_by"),
 		activeOrganizationId: text("active_organization_id"),
+		activeTeamId: text("active_team_id"),
 		token: text("token").notNull(),
 		createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 		updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),

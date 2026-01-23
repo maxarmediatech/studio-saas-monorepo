@@ -89,6 +89,30 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 					],
 				},
 				{
+					id: "workspace-communication",
+					label: "Comms.",
+					items: [
+						{
+							id: "discussions",
+							label: "Discussions",
+							path: url("/discussions"),
+							icon: "MessageSquare",
+							permission: {
+								any: [
+									{ resource: "discussion", action: "list" },
+								],
+							},
+						},
+						{
+							id: "checkins",
+							label: "Checkins",
+							path: url("/checkins"),
+							icon: "Hand",
+						},
+						// Future: Inbox (DMs between crew members)
+					],
+				},
+				{
 					id: "workspace-crm",
 					label: "CRM",
 					items: [
@@ -317,18 +341,6 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							icon: "Settings2",
 						},
 						{
-							id: "members",
-							label: "Members",
-							path: url("/settings/members"),
-							icon: "Users",
-						},
-						{
-							id: "roles",
-							label: "Roles",
-							path: url("/settings/roles"),
-							icon: "Shield",
-						},
-						{
 							id: "billing",
 							label: "Billing",
 							path: url("/settings/billing"),
@@ -339,6 +351,47 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							label: "Danger Zone",
 							path: url("/settings/danger-zone"),
 							icon: "AlertTriangle",
+						},
+					],
+				},
+				{
+					id: "access",
+					label: "Access",
+					items: [
+						{
+							id: "members",
+							label: "Members",
+							path: url("/settings/members"),
+							icon: "Users",
+						},
+						{
+							id: "teams",
+							label: "Teams",
+							path: url("/settings/teams"),
+							icon: "Users",
+							permission: {
+								any: [{ resource: "team", action: "list" }],
+							},
+						},
+						{
+							id: "invitations",
+							label: "Invitations",
+							path: url("/settings/invitations"),
+							icon: "Inbox",
+							permission: {
+								any: [
+									{
+										resource: "invites",
+										action: "read",
+									},
+								],
+							},
+						},
+						{
+							id: "roles",
+							label: "Roles",
+							path: url("/settings/roles"),
+							icon: "Shield",
 						},
 					],
 				},
@@ -367,6 +420,13 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 					],
 				},
 			],
+		},
+		discussions: {
+			id: "discussions",
+			title: "Discussions",
+			backHref: url("/home"),
+			direction: "right",
+			sections: [],
 		},
 	};
 

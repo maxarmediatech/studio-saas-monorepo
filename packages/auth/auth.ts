@@ -31,7 +31,8 @@ import {
 } from "better-auth/plugins";
 import { parse as parseCookies } from "cookie";
 import { updateSeatsInOrganizationSubscription } from "./lib/organization";
-import { ac, appRoles } from "./lib/permissions";
+import { ensureDefaultOrganizationRoles } from "./lib/organization-roles";
+import { ac, appRoles, serializeRoles } from "./lib/permissions";
 import { invitationOnlyPlugin } from "./plugins/invitation-only";
 
 type RequestLike =
@@ -320,6 +321,10 @@ export const auth = betterAuth({
 				type: "string",
 				required: false,
 			},
+			timezone: {
+				type: "string",
+				required: false,
+			},
 		},
 		deleteUser: {
 			enabled: true,
@@ -416,6 +421,31 @@ export const auth = betterAuth({
 			dynamicAccessControl: {
 				enabled: true,
 				maximumRolesPerOrganization: 20,
+			},
+			teams: {
+				enabled: true,
+			},
+			organizationHooks: {
+				afterCreateOrganization: async ({ organization }) => {
+					await ensureDefaultOrganizationRoles(organization.id);
+				},
+				beforeAddMember: async ({ member }) => ({
+					data: {
+						...member,
+						role: serializeRoles(member.role),
+					},
+				}),
+				beforeCreateInvitation: async ({ invitation }) => ({
+					data: {
+						...invitation,
+						role: serializeRoles(invitation.role),
+					},
+				}),
+				beforeUpdateMemberRole: async ({ newRole }) => ({
+					data: {
+						role: serializeRoles(newRole),
+					},
+				}),
 			},
 			schema: {
 				organizationRole: {

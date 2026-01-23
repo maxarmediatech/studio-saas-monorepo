@@ -9,6 +9,7 @@ import { createSchedule } from "./procedures/schedules/create-schedule";
 import { deleteSchedule } from "./procedures/schedules/delete-schedule";
 import { getSchedule } from "./procedures/schedules/get-schedule";
 import { listSchedules } from "./procedures/schedules/list-schedules";
+import { listSchedulesMinimal } from "./procedures/schedules/list-schedules-minimal";
 import { updateSchedule } from "./procedures/schedules/update-schedule";
 
 export const studioPaymentsRouter = {
@@ -21,6 +22,7 @@ export const studioPaymentsRouter = {
 
 	// Payment schedules
 	listSchedules,
+	listSchedulesMinimal,
 	getSchedule,
 	createSchedule,
 	updateSchedule,

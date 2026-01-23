@@ -30,7 +30,6 @@ import {
 	configurationsApi,
 	deliverablesApi,
 	deliverablesMutations,
-	studioQueryKeys,
 } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -40,6 +39,7 @@ import {
 	CheckCircleIcon,
 	CircleIcon,
 	ClockIcon,
+	EyeIcon,
 	Loader2Icon,
 	PackageIcon,
 	PencilIcon,
@@ -47,6 +47,7 @@ import {
 	TruckIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { OpenDeliverableCreateSheet } from "./OpenDeliverableSheet";
@@ -94,6 +95,7 @@ export function DeliverablesTableClient({
 	organizationSlug,
 }: DeliverablesTableClientProps) {
 	const queryClient = useQueryClient();
+	const router = useRouter();
 
 	// Use the deliverables table hook for URL-synced state
 	const {
@@ -173,9 +175,16 @@ export function DeliverablesTableClient({
 		openEdit(deliverable.id);
 	};
 
-	// Define row actions
 	const rowActions: RowAction<DeliverableListItem>[] = useMemo(
 		() => [
+			{
+				label: "View details",
+				icon: <EyeIcon className="h-4 w-4" />,
+				onClick: (row) =>
+					router.push(
+						`/app/${organizationSlug}/deliverables/${row.id}`,
+					),
+			},
 			{
 				label: "Edit",
 				icon: <PencilIcon className="h-4 w-4" />,
@@ -192,7 +201,7 @@ export function DeliverablesTableClient({
 				},
 			},
 		],
-		[],
+		[organizationSlug, router],
 	);
 
 	// Define columns with sortable headers and meta for filters
@@ -206,9 +215,12 @@ export function DeliverablesTableClient({
 					<DataTableColumnHeader column={column} title="Name" />
 				),
 				cell: ({ row }) => (
-					<span className="font-medium text-foreground">
+					<Link
+						href={`/app/${organizationSlug}/deliverables/${row.original.id}`}
+						className="font-medium text-foreground hover:underline"
+					>
 						{row.original.name}
-					</span>
+					</Link>
 				),
 				meta: {
 					label: "Name",
@@ -388,16 +400,16 @@ export function DeliverablesTableClient({
 				),
 				enableSorting: false,
 				enableHiding: false,
-					meta: {
-						width: 48,
-						minWidth: 48,
-						// First right-sticky column - add left border + fade
-						headerClassName:
-							"!px-0 md:sticky md:right-0 bg-gray-100 z-10",
-						cellClassName:
-							"!px-0 md:sticky md:right-0 bg-table-surface group-hover:bg-table-row-selected group-data-[state=selected]:bg-table-row-selected z-10",
-					},
+				meta: {
+					width: 48,
+					minWidth: 48,
+					// First right-sticky column - add left border + fade
+					headerClassName:
+						"!px-0 md:sticky md:right-0 bg-gray-100 z-10",
+					cellClassName:
+						"!px-0 md:sticky md:right-0 bg-table-surface group-hover:bg-table-row-selected group-data-[state=selected]:bg-table-row-selected z-10",
 				},
+			},
 		],
 		[organizationSlug, rowActions],
 	);

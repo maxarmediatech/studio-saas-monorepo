@@ -43,13 +43,17 @@ export const statement = {
 		"review",
 		"approve",
 	],
-	expense: ["create", "read", "update", "delete", "list"],
-	payment: ["create", "read", "update", "delete", "list"],
+	expense: ["create", "read", "update", "delete", "list", "reference"],
+	payment: ["create", "read", "update", "delete", "list", "reference"],
 	crew: ["create", "read", "update", "delete", "list"],
+	team: ["create", "read", "update", "delete", "list"],
 	review: ["list", "claim", "review", "approve"],
 	configuration: ["create", "read", "update", "delete", "list"],
 	settings: ["read", "update"],
 	invites: ["read", "create", "delete"],
+	channel: ["create", "read", "update", "delete", "list"],
+	discussion: ["create", "read", "update", "delete", "list"],
+	conversation: ["create", "read", "update", "delete", "list"],
 } as const;
 
 export type Resource = keyof typeof statement;
@@ -65,11 +69,118 @@ export type AnyAction =
 	| "submit"
 	| "review"
 	| "approve"
-	| "claim";
+	| "claim"
+	| "reference";
+
+const ORGANIZATION_ADMIN_ROLES = ["owner", "admin"] as const;
+const SYSTEM_ROLE_KEYS = ["owner", "admin", "member"] as const;
+
+export function normalizeRoles(
+	value: string | string[] | null | undefined,
+): string[] {
+	if (!value) {
+		return [];
+	}
+
+	const rolePattern = /^[a-z][a-z0-9_]*$/;
+	const raw = Array.isArray(value) ? value : [value];
+	const roles: string[] = [];
+	const seen = new Set<string>();
+
+	const tryParseJsonArray = (input: string): string[] | null => {
+		let candidate = input.trim();
+		if (!candidate) {
+			return null;
+		}
+
+		for (let attempt = 0; attempt < 2; attempt += 1) {
+			try {
+				const parsed = JSON.parse(candidate) as unknown;
+				if (Array.isArray(parsed)) {
+					return parsed.filter(
+						(entry): entry is string => typeof entry === "string",
+					);
+				}
+				if (typeof parsed === "string") {
+					const next = parsed.trim();
+					if (next.startsWith("[")) {
+						candidate = next;
+						continue;
+					}
+					return [parsed];
+				}
+			} catch {
+				// Ignore parse errors and fall back to comma splitting.
+			}
+			break;
+		}
+
+		return null;
+	};
+
+	for (const entry of raw) {
+		if (typeof entry !== "string") {
+			continue;
+		}
+		const parsedRoles = tryParseJsonArray(entry);
+		const parts = parsedRoles ?? entry.split(",");
+
+		for (const part of parts) {
+			const trimmed = part.trim();
+			if (!trimmed) {
+				continue;
+			}
+
+			const normalized = trimmed.toLowerCase();
+			const cleaned = normalized.replace(
+				/^[^a-z0-9_]+|[^a-z0-9_]+$/g,
+				"",
+			);
+			if (!cleaned || !rolePattern.test(cleaned)) {
+				continue;
+			}
+			if (seen.has(cleaned)) {
+				continue;
+			}
+			seen.add(cleaned);
+			roles.push(cleaned);
+		}
+	}
+
+	return roles;
+}
+
+export function hasAnyRole(
+	value: string | string[] | null | undefined,
+	rolesToCheck: readonly string[],
+): boolean {
+	const roles = normalizeRoles(value);
+	return roles.some((role) => rolesToCheck.includes(role));
+}
+
+export function coerceOrganizationRoles(
+	value: string | string[] | null | undefined,
+): string[] {
+	const roles = normalizeRoles(value);
+	if (roles.length === 0) {
+		return ["member"];
+	}
+
+	if (hasAnyRole(roles, ORGANIZATION_ADMIN_ROLES)) {
+		return roles;
+	}
+
+	return roles.includes("member") ? roles : ["member", ...roles];
+}
+
+export function serializeRoles(
+	value: string | string[] | null | undefined,
+): string {
+	return coerceOrganizationRoles(value).join(",");
+}
 
 export const ac = createAccessControl(statement);
 
-/** Owner - Full access to everything including org management */
 export const owner = ac.newRole({
 	...ownerAc.statements,
 	dashboard: ["read"],
@@ -102,12 +213,15 @@ export const owner = ac.newRole({
 	expense: ["create", "read", "update", "delete", "list"],
 	payment: ["create", "read", "update", "delete", "list"],
 	crew: ["create", "read", "update", "delete", "list"],
+	team: ["create", "read", "update", "delete", "list"],
 	configuration: ["create", "read", "update", "delete", "list"],
 	settings: ["read", "update"],
 	invites: ["read", "create", "delete"],
+	channel: ["create", "read", "update", "delete", "list"],
+	discussion: ["create", "read", "update", "delete", "list"],
+	conversation: ["create", "read", "update", "delete", "list"],
 });
 
-/** Admin - Full access except organization deletion */
 export const admin = ac.newRole({
 	...adminAc.statements,
 	dashboard: ["read"],
@@ -140,9 +254,13 @@ export const admin = ac.newRole({
 	expense: ["create", "read", "update", "delete", "list"],
 	payment: ["create", "read", "update", "delete", "list"],
 	crew: ["create", "read", "update", "delete", "list"],
+	team: ["create", "read", "update", "delete", "list"],
 	configuration: ["create", "read", "update", "delete", "list"],
 	settings: ["read", "update"],
 	invites: ["read", "create", "delete"],
+	channel: ["create", "read", "update", "delete", "list"],
+	discussion: ["create", "read", "update", "delete", "list"],
+	conversation: ["create", "read", "update", "delete", "list"],
 });
 
 /** Manager - Manage shoots, tasks, deliverables; limited booking/client access */
@@ -227,13 +345,17 @@ export const hr = ac.newRole({
 	configuration: ["read", "list"],
 });
 
-/** Member - Internal team member with limited access */
 export const member = ac.newRole({
 	...memberAc.statements,
 	booking: ["read", "list"],
 	shoot: ["read", "list"],
 	task: ["read", "list", "submit"],
 	deliverable: ["read", "list", "submit"],
+	expense: ["reference"],
+	payment: ["reference"],
+	channel: ["read", "list"],
+	discussion: ["create", "read", "list"],
+	conversation: ["create", "read", "list"],
 });
 
 /** Crew - External crew, can only see and submit assigned work */
@@ -246,11 +368,7 @@ export const crew = ac.newRole({
 export const appRoles = {
 	owner,
 	admin,
-	manager,
-	post_production_manager,
-	hr,
 	member,
-	crew,
 };
 
 export type AppRole = keyof typeof appRoles;
@@ -272,44 +390,58 @@ export const staticRolesList = [
 		canDelete: false,
 	},
 	{
+		key: "member" as const,
+		label: "Member",
+		description: "Limited access, can view and submit work",
+		isSystem: true,
+		canDelete: false,
+	},
+] as const;
+
+export const editableRoleMeta = [
+	{
 		key: "manager" as const,
 		label: "Manager",
 		description: "Manage shoots, tasks, and deliverables",
-		isSystem: false,
-		canDelete: false,
 	},
 	{
 		key: "post_production_manager" as const,
 		label: "Post-Production Manager",
 		description: "Focus on tasks and deliverables workflow",
-		isSystem: false,
-		canDelete: false,
 	},
 	{
 		key: "hr" as const,
 		label: "HR",
 		description: "Manage crew, expenses, and payments",
-		isSystem: false,
-		canDelete: false,
-	},
-	{
-		key: "member" as const,
-		label: "Member",
-		description: "Limited access, can view and submit work",
-		isSystem: false,
-		canDelete: false,
 	},
 	{
 		key: "crew" as const,
 		label: "Crew",
 		description: "External crew, submit assigned work only",
-		isSystem: false,
-		canDelete: false,
+	},
+] as const;
+
+export const defaultEditableRoles = [
+	{
+		...editableRoleMeta[0],
+		permissions: manager.statements,
+	},
+	{
+		...editableRoleMeta[1],
+		permissions: post_production_manager.statements,
+	},
+	{
+		...editableRoleMeta[2],
+		permissions: hr.statements,
+	},
+	{
+		...editableRoleMeta[3],
+		permissions: crew.statements,
 	},
 ] as const;
 
 export function isStaticRole(role: string): role is AppRole {
-	return role in appRoles;
+	return SYSTEM_ROLE_KEYS.includes(role as AppRole);
 }
 
 export function getPermissionMatrix(): Array<{
@@ -339,20 +471,50 @@ export function checkStaticRolePermission(
 
 export type CustomRolePermissions = Record<string, string[]>;
 
+export function mergeCustomRolePermissions(
+	permissionsList: Array<CustomRolePermissions | null | undefined>,
+): CustomRolePermissions | undefined {
+	const merged: CustomRolePermissions = {};
+
+	for (const permissions of permissionsList) {
+		if (!permissions) continue;
+		for (const [resource, actions] of Object.entries(permissions)) {
+			if (!merged[resource]) {
+				merged[resource] = [];
+			}
+			for (const action of actions) {
+				if (!merged[resource].includes(action)) {
+					merged[resource].push(action);
+				}
+			}
+		}
+	}
+
+	return Object.keys(merged).length > 0 ? merged : undefined;
+}
+
 export function checkRolePermission(
-	role: string,
+	role: string | string[],
 	resource: Resource,
 	action: AnyAction,
 	customRolePermissions?: CustomRolePermissions,
 ): boolean {
-	if (isStaticRole(role)) {
-		return checkStaticRolePermission(role, resource, action);
-	}
+	const roles = normalizeRoles(role);
 
-	if (customRolePermissions) {
-		const resourceActions = customRolePermissions[resource];
-		if (!resourceActions) return false;
-		return resourceActions.includes(action);
+	for (const roleKey of roles) {
+		if (isStaticRole(roleKey)) {
+			if (checkStaticRolePermission(roleKey, resource, action)) {
+				return true;
+			}
+			continue;
+		}
+
+		if (customRolePermissions) {
+			const resourceActions = customRolePermissions[resource];
+			if (resourceActions?.includes(action)) {
+				return true;
+			}
+		}
 	}
 
 	return false;

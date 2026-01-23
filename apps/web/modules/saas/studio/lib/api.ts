@@ -96,8 +96,7 @@ export const studioQueryKeys = {
 		all: ["studio", "notifications"] as const,
 		list: (filters?: Record<string, unknown>) =>
 			["studio", "notifications", "list", filters] as const,
-		unreadCount: () =>
-			["studio", "notifications", "unread-count"] as const,
+		unreadCount: () => ["studio", "notifications", "unread-count"] as const,
 	},
 	// Submissions (review queue)
 	submissions: {
@@ -106,6 +105,40 @@ export const studioQueryKeys = {
 			["studio", "submissions", "list", filters] as const,
 		detail: (id: string) =>
 			["studio", "submissions", "detail", id] as const,
+	},
+	discussions: {
+		all: ["studio", "discussions"] as const,
+		channels: {
+			all: ["studio", "discussions", "channels"] as const,
+			list: () => ["studio", "discussions", "channels", "list"] as const,
+			detail: (id: string) =>
+				["studio", "discussions", "channels", "detail", id] as const,
+			bySlug: (slug: string) =>
+				["studio", "discussions", "channels", "slug", slug] as const,
+		},
+		posts: {
+			list: (channelId: string, filters?: Record<string, unknown>) =>
+				[
+					"studio",
+					"discussions",
+					"posts",
+					channelId,
+					"list",
+					filters,
+				] as const,
+			detail: (id: string) =>
+				["studio", "discussions", "posts", "detail", id] as const,
+		},
+		messages: {
+			list: (discussionId: string) =>
+				[
+					"studio",
+					"discussions",
+					"messages",
+					discussionId,
+					"list",
+				] as const,
+		},
 	},
 } as const;
 
@@ -290,6 +323,12 @@ export const tasksApi = {
 		input?: Parameters<typeof orpc.tasks.list.queryOptions>[0]["input"],
 	) => orpc.tasks.list.queryOptions({ input: input ?? {} }),
 
+	listMinimalOptions: (
+		input?: Parameters<
+			typeof orpc.tasks.listMinimal.queryOptions
+		>[0]["input"],
+	) => orpc.tasks.listMinimal.queryOptions({ input: input ?? {} }),
+
 	getOptions: (id: string) => orpc.tasks.get.queryOptions({ input: { id } }),
 
 	statsOptions: (
@@ -390,6 +429,15 @@ export const studioPaymentsApi = {
 		>[0]["input"],
 	) => orpc.studioPayments.listSchedules.queryOptions({ input: input ?? {} }),
 
+	listSchedulesMinimalOptions: (
+		input?: Parameters<
+			typeof orpc.studioPayments.listSchedulesMinimal.queryOptions
+		>[0]["input"],
+	) =>
+		orpc.studioPayments.listSchedulesMinimal.queryOptions({
+			input: input ?? {},
+		}),
+
 	getScheduleOptions: (id: string) =>
 		orpc.studioPayments.getSchedule.queryOptions({ input: { id } }),
 
@@ -423,6 +471,12 @@ export const expensesApi = {
 	listOptions: (
 		input?: Parameters<typeof orpc.expenses.list.queryOptions>[0]["input"],
 	) => orpc.expenses.list.queryOptions({ input: input ?? {} }),
+
+	listMinimalOptions: (
+		input?: Parameters<
+			typeof orpc.expenses.listMinimal.queryOptions
+		>[0]["input"],
+	) => orpc.expenses.listMinimal.queryOptions({ input: input ?? {} }),
 
 	getOptions: (id: string) =>
 		orpc.expenses.get.queryOptions({ input: { id } }),
@@ -495,7 +549,9 @@ export const stickiesMutations = {
 
 export const activitiesApi = {
 	listOptions: (
-		input?: Parameters<typeof orpc.activities.list.queryOptions>[0]["input"],
+		input?: Parameters<
+			typeof orpc.activities.list.queryOptions
+		>[0]["input"],
 	) => orpc.activities.list.queryOptions({ input: input ?? {} }),
 };
 
@@ -524,11 +580,121 @@ export const notificationsApi = {
 			typeof orpc.notifications.list.queryOptions
 		>[0]["input"],
 	) => orpc.notifications.list.queryOptions({ input }),
-	unreadCountOptions: () =>
-		orpc.notifications.unreadCount.queryOptions(),
+	unreadCountOptions: () => orpc.notifications.unreadCount.queryOptions(),
 };
 
 export const notificationsMutations = {
 	markRead: () => orpc.notifications.markRead.mutationOptions(),
 	markAllRead: () => orpc.notifications.markAllRead.mutationOptions(),
+};
+
+// ============================================================================
+// DISCUSSIONS QUERY OPTIONS
+// ============================================================================
+
+export const discussionsApi = {
+	listChannelsOptions: () =>
+		orpc.discussions.listChannels.queryOptions({ input: {} }),
+
+	getChannelOptions: (channelId: string) =>
+		orpc.discussions.getChannel.queryOptions({ input: { channelId } }),
+
+	getChannelBySlugOptions: (slug: string) =>
+		orpc.discussions.getChannelBySlug.queryOptions({ input: { slug } }),
+
+	listDiscussionsOptions: (
+		input: Parameters<
+			typeof orpc.discussions.listDiscussions.queryOptions
+		>[0]["input"],
+	) => orpc.discussions.listDiscussions.queryOptions({ input }),
+
+	getDiscussionOptions: (discussionId: string) =>
+		orpc.discussions.getDiscussion.queryOptions({
+			input: { discussionId },
+		}),
+
+	listMessagesOptions: (
+		input: Parameters<
+			typeof orpc.discussions.listMessages.queryOptions
+		>[0]["input"],
+	) => orpc.discussions.listMessages.queryOptions({ input }),
+};
+
+export const discussionsMutations = {
+	createChannel: () => orpc.discussions.createChannel.mutationOptions(),
+	updateChannel: () => orpc.discussions.updateChannel.mutationOptions(),
+	deleteChannel: () => orpc.discussions.deleteChannel.mutationOptions(),
+	addChannelMember: () => orpc.discussions.addChannelMember.mutationOptions(),
+	removeChannelMember: () =>
+		orpc.discussions.removeChannelMember.mutationOptions(),
+	toggleSubscription: () =>
+		orpc.discussions.toggleSubscription.mutationOptions(),
+
+	createDiscussion: () => orpc.discussions.createDiscussion.mutationOptions(),
+	updateDiscussion: () => orpc.discussions.updateDiscussion.mutationOptions(),
+	deleteDiscussion: () => orpc.discussions.deleteDiscussion.mutationOptions(),
+	resolveDiscussion: () =>
+		orpc.discussions.resolveDiscussion.mutationOptions(),
+	reopenDiscussion: () => orpc.discussions.reopenDiscussion.mutationOptions(),
+	addDiscussionLink: () =>
+		orpc.discussions.addDiscussionLink.mutationOptions(),
+	removeDiscussionLink: () =>
+		orpc.discussions.removeDiscussionLink.mutationOptions(),
+
+	createMessage: () => orpc.discussions.createMessage.mutationOptions(),
+	updateMessage: () => orpc.discussions.updateMessage.mutationOptions(),
+	deleteMessage: () => orpc.discussions.deleteMessage.mutationOptions(),
+};
+
+// ============================================================================
+// CHECKINS QUERY OPTIONS
+// ============================================================================
+
+export const checkinsApi = {
+	listTypesOptions: (
+		input?: Parameters<
+			typeof orpc.checkins.listTypes.queryOptions
+		>[0]["input"],
+	) => orpc.checkins.listTypes.queryOptions({ input: input ?? {} }),
+
+	getTypeOptions: (checkinTypeId: string) =>
+		orpc.checkins.getType.queryOptions({ input: { checkinTypeId } }),
+
+	listCheckinsOptions: (
+		input: Parameters<
+			typeof orpc.checkins.listCheckins.queryOptions
+		>[0]["input"],
+	) => orpc.checkins.listCheckins.queryOptions({ input }),
+
+	getCheckinOptions: (checkinId: string) =>
+		orpc.checkins.getCheckin.queryOptions({ input: { checkinId } }),
+
+	listCommentsOptions: (
+		input: Parameters<
+			typeof orpc.checkins.listComments.queryOptions
+		>[0]["input"],
+	) => orpc.checkins.listComments.queryOptions({ input }),
+
+	listUserCheckinsOptions: (
+		input: Parameters<
+			typeof orpc.checkins.listUserCheckins.queryOptions
+		>[0]["input"],
+	) => orpc.checkins.listUserCheckins.queryOptions({ input }),
+};
+
+export const checkinsMutations = {
+	createType: () => orpc.checkins.createType.mutationOptions(),
+	updateType: () => orpc.checkins.updateType.mutationOptions(),
+	deleteType: () => orpc.checkins.deleteType.mutationOptions(),
+
+	createCheckin: () => orpc.checkins.createCheckin.mutationOptions(),
+	updateCheckin: () => orpc.checkins.updateCheckin.mutationOptions(),
+	deleteCheckin: () => orpc.checkins.deleteCheckin.mutationOptions(),
+
+	createComment: () => orpc.checkins.createComment.mutationOptions(),
+	updateComment: () => orpc.checkins.updateComment.mutationOptions(),
+	deleteComment: () => orpc.checkins.deleteComment.mutationOptions(),
+
+	addLink: () => orpc.checkins.addLink.mutationOptions(),
+	removeLink: () => orpc.checkins.removeLink.mutationOptions(),
 };

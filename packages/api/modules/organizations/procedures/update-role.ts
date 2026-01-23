@@ -1,9 +1,10 @@
 import { ORPCError } from "@orpc/client";
-import { isStaticRole } from "@repo/auth/lib/permissions";
+import { isStaticRole, normalizeRoles, serializeRoles } from "@repo/auth/lib/permissions";
 import {
 	and,
 	db,
 	eq,
+	ilike,
 	invitations,
 	members,
 	ne,
@@ -120,29 +121,52 @@ export const updateRole = studioProtectedProcedure
 				return null;
 			}
 
-			if (shouldRenameRole && input.role) {
-				await tx
-					.update(members)
-					.set({ role: input.role })
-					.where(
-						and(
-							eq(members.organizationId, context.organizationId),
-							eq(members.role, existingRole.role),
-						),
-					);
+			if (shouldRenameRole) {
+				const nextRoleName = input.role ?? existingRole.role;
+				const membersToUpdate = await tx.query.members.findMany({
+					where: and(
+						eq(members.organizationId, context.organizationId),
+						ilike(members.role, `%${existingRole.role}%`),
+					),
+					columns: { id: true, role: true },
+				});
 
-				await tx
-					.update(invitations)
-					.set({ role: input.role })
-					.where(
-						and(
-							eq(
-								invitations.organizationId,
-								context.organizationId,
-							),
-							eq(invitations.role, existingRole.role),
-						),
+				for (const memberRow of membersToUpdate) {
+					const nextRoles = normalizeRoles(memberRow.role).map((role) =>
+						role === existingRole.role ? nextRoleName : role,
 					);
+					const nextRole = serializeRoles(nextRoles);
+					if (nextRole !== memberRow.role) {
+						await tx
+							.update(members)
+							.set({ role: nextRole })
+							.where(eq(members.id, memberRow.id));
+					}
+				}
+
+				const invitationsToUpdate = await tx.query.invitations.findMany({
+					where: and(
+						eq(invitations.organizationId, context.organizationId),
+						ilike(invitations.role, `%${existingRole.role}%`),
+					),
+					columns: { id: true, role: true },
+				});
+
+				for (const invitationRow of invitationsToUpdate) {
+					if (!invitationRow.role) {
+						continue;
+					}
+					const nextRoles = normalizeRoles(invitationRow.role).map(
+						(role) => (role === existingRole.role ? nextRoleName : role),
+					);
+					const nextRole = serializeRoles(nextRoles);
+					if (nextRole !== invitationRow.role) {
+						await tx
+							.update(invitations)
+							.set({ role: nextRole })
+							.where(eq(invitations.id, invitationRow.id));
+					}
+				}
 			}
 
 			return updatedRole;

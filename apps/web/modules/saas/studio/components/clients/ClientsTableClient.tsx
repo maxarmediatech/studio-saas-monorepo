@@ -24,19 +24,31 @@ import {
 import "@saas/shared/components/data-table/types";
 import { useClientParams } from "@saas/studio/hooks/params/use-client-params";
 import { useClientsTable } from "@saas/studio/hooks/tables";
-import {
-	clientsApi,
-	clientsMutations,
-} from "@saas/studio/lib/api";
+import { clientsApi, clientsMutations } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Loader2Icon, PencilIcon, TrashIcon, UserIcon } from "lucide-react";
+import {
+	EyeIcon,
+	Loader2Icon,
+	PencilIcon,
+	TrashIcon,
+	UserIcon,
+} from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { OpenClientCreateSheet } from "./OpenClientSheet";
 
-export function ClientsTableClient() {
+interface ClientsTableClientProps {
+	organizationSlug?: string;
+}
+
+export function ClientsTableClient({
+	organizationSlug,
+}: ClientsTableClientProps) {
+	const router = useRouter();
 	const queryClient = useQueryClient();
 
 	// Use the clients table hook for URL-synced state
@@ -110,6 +122,12 @@ export function ClientsTableClient() {
 	const rowActions: RowAction<Client>[] = useMemo(
 		() => [
 			{
+				label: "View details",
+				icon: <EyeIcon className="h-4 w-4" />,
+				onClick: (row) =>
+					router.push(`/app/${organizationSlug}/clients/${row.id}`),
+			},
+			{
 				label: "Edit",
 				icon: <PencilIcon className="h-4 w-4" />,
 				onClick: handleOpenEdit,
@@ -125,7 +143,7 @@ export function ClientsTableClient() {
 				},
 			},
 		],
-		[],
+		[organizationSlug, router],
 	);
 
 	// Define columns with sortable headers and meta for filters
@@ -139,9 +157,12 @@ export function ClientsTableClient() {
 					<DataTableColumnHeader column={column} title="Name" />
 				),
 				cell: ({ row }) => (
-					<span className="font-medium text-foreground">
+					<Link
+						href={`/app/${organizationSlug}/clients/${row.original.id}`}
+						className="font-medium text-foreground hover:underline"
+					>
 						{row.original.name}
-					</span>
+					</Link>
 				),
 				meta: {
 					label: "Name",

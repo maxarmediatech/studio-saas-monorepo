@@ -29,7 +29,6 @@ import {
 	configurationsApi,
 	shootsApi,
 	shootsMutations,
-	studioQueryKeys,
 } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -39,6 +38,7 @@ import {
 	CameraIcon,
 	CheckCircleIcon,
 	CircleIcon,
+	EyeIcon,
 	Loader2Icon,
 	PauseCircleIcon,
 	PencilIcon,
@@ -47,6 +47,7 @@ import {
 	XCircleIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { OpenShootCreateSheet } from "./OpenShootSheet";
@@ -97,6 +98,7 @@ function formatShootType(type: string): string {
 export function ShootsTableClient({
 	organizationSlug,
 }: ShootsTableClientProps) {
+	const router = useRouter();
 	const queryClient = useQueryClient();
 
 	// Use the shoots table hook for URL-synced state
@@ -208,6 +210,12 @@ export function ShootsTableClient({
 	const rowActions: RowAction<ShootListItem>[] = useMemo(
 		() => [
 			{
+				label: "View details",
+				icon: <EyeIcon className="h-4 w-4" />,
+				onClick: (row) =>
+					router.push(`/app/${organizationSlug}/shoots/${row.id}`),
+			},
+			{
 				label: "Edit",
 				icon: <PencilIcon className="h-4 w-4" />,
 				onClick: handleOpenEdit,
@@ -223,7 +231,7 @@ export function ShootsTableClient({
 				},
 			},
 		],
-		[],
+		[organizationSlug, router],
 	);
 
 	// Define columns with sortable headers and meta for filters
@@ -270,9 +278,12 @@ export function ShootsTableClient({
 				),
 				cell: ({ row }) => (
 					<div className="flex items-center gap-2">
-						<span className="font-medium text-foreground">
+						<Link
+							href={`/app/${organizationSlug}/shoots/${row.original.id}`}
+							className="font-medium text-foreground hover:underline"
+						>
 							{formatShootType(row.original.shootType)}
-						</span>
+						</Link>
 						<span className="text-muted-foreground">·</span>
 						<Link
 							href={`/app/${organizationSlug}/bookings/${row.original.bookingId}`}
@@ -403,16 +414,16 @@ export function ShootsTableClient({
 				),
 				enableSorting: false,
 				enableHiding: false,
-					meta: {
-						width: 48,
-						minWidth: 48,
-						// First right-sticky column - add left border + fade
-						headerClassName:
-							"!px-0 md:sticky md:right-0 bg-gray-100 z-10",
-						cellClassName:
-							"!px-0 md:sticky md:right-0 bg-table-surface group-hover:bg-table-row-selected group-data-[state=selected]:bg-table-row-selected z-10",
-					},
+				meta: {
+					width: 48,
+					minWidth: 48,
+					// First right-sticky column - add left border + fade
+					headerClassName:
+						"!px-0 md:sticky md:right-0 bg-gray-100 z-10",
+					cellClassName:
+						"!px-0 md:sticky md:right-0 bg-table-surface group-hover:bg-table-row-selected group-data-[state=selected]:bg-table-row-selected z-10",
 				},
+			},
 		],
 		[organizationSlug, rowActions, statusLabels, statusOptions],
 	);
