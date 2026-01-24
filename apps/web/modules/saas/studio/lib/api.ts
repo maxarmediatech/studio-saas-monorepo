@@ -98,6 +98,16 @@ export const studioQueryKeys = {
 			["studio", "notifications", "list", filters] as const,
 		unreadCount: () => ["studio", "notifications", "unread-count"] as const,
 	},
+	// Dashboard
+	dashboard: {
+		all: ["studio", "dashboard"] as const,
+		overview: (filters?: Record<string, unknown>) =>
+			["studio", "dashboard", "overview", filters] as const,
+		kpis: (filters?: Record<string, unknown>) =>
+			["studio", "dashboard", "kpis", filters] as const,
+		operations: () => ["studio", "dashboard", "operations"] as const,
+		actions: () => ["studio", "dashboard", "actions"] as const,
+	},
 	// Submissions (review queue)
 	submissions: {
 		all: ["studio", "submissions"] as const,
@@ -697,4 +707,22 @@ export const checkinsMutations = {
 
 	addLink: () => orpc.checkins.addLink.mutationOptions(),
 	removeLink: () => orpc.checkins.removeLink.mutationOptions(),
+};
+
+export const dashboardApi = {
+	getOptions: (
+		input?: Parameters<typeof orpc.dashboard.get.queryOptions>[0]["input"],
+	) => orpc.dashboard.get.queryOptions({ input: input ?? {} }),
+
+	kpisOptions: (
+		input?: Parameters<typeof orpc.dashboard.kpis.queryOptions>[0]["input"],
+	) => orpc.dashboard.kpis.queryOptions({ input: input ?? {} }),
+
+	operationsOptions: (
+		input?: Parameters<
+			typeof orpc.dashboard.operations.queryOptions
+		>[0]["input"],
+	) => orpc.dashboard.operations.queryOptions({ input: input ?? {} }),
+
+	actionsOptions: () => orpc.dashboard.actions.queryOptions({ input: {} }),
 };
