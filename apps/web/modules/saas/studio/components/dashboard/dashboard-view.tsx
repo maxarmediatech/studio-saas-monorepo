@@ -14,6 +14,7 @@ import {
 	DateRangeFilter,
 	getDefaultDateRange,
 } from "./date-range-filter";
+import { FinancialTab } from "./financial";
 import { OperationsTab } from "./operations";
 import { OverviewTab } from "./overview";
 
@@ -156,9 +157,11 @@ export function DashboardView({ organizationSlug }: DashboardViewProps) {
 			)}
 
 			{activeTab === "financial" && (
-				<div className="rounded-lg border bg-card p-8 text-center text-muted-foreground">
-					Financial tab coming in Phase 3
-				</div>
+				<FinancialTab
+					organizationSlug={organizationSlug}
+					dateRange={dateRange}
+					dashboardData={dashboardQuery.data?.data}
+				/>
 			)}
 		</div>
 	);
