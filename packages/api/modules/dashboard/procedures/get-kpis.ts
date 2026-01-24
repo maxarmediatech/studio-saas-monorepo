@@ -69,7 +69,7 @@ export const getKpis = studioProtectedProcedure
 				totalRevenue: sql<string>`COALESCE(SUM(${bookings.packageCost}), 0)::text`,
 				totalReceived: sql<string>`COALESCE(SUM(${bookings.totalReceived}), 0)::text`,
 				totalExpenses: sql<string>`COALESCE(SUM(${bookings.totalExpenses}), 0)::text`,
-				bookingCount: count(),
+				bookingCount: count().mapWith(Number),
 			})
 			.from(bookings)
 			.where(
@@ -130,7 +130,7 @@ export const getKpis = studioProtectedProcedure
 
 		// Booking counts
 		const [activeBookingsResult] = await db
-			.select({ count: count() })
+			.select({ count: count().mapWith(Number) })
 			.from(bookings)
 			.where(
 				and(
@@ -141,7 +141,7 @@ export const getKpis = studioProtectedProcedure
 			);
 
 		const [completedBookingsResult] = await db
-			.select({ count: count() })
+			.select({ count: count().mapWith(Number) })
 			.from(bookings)
 			.where(
 				and(
@@ -152,7 +152,7 @@ export const getKpis = studioProtectedProcedure
 			);
 
 		const [totalBookingsResult] = await db
-			.select({ count: count() })
+			.select({ count: count().mapWith(Number) })
 			.from(bookings)
 			.where(
 				and(
@@ -177,7 +177,7 @@ export const getKpis = studioProtectedProcedure
 
 		// Total shoots
 		const [totalShootsResult] = await db
-			.select({ count: count() })
+			.select({ count: count().mapWith(Number) })
 			.from(shoots)
 			.where(
 				and(

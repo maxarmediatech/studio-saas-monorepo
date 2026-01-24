@@ -27,6 +27,10 @@ import {
 	getDashboardInputSchema,
 	getDashboardOutputSchema,
 } from "../../studio/schemas/dashboard";
+import {
+	bookingPhaseSchema,
+	type BookingPhase,
+} from "../../studio/schemas/common";
 
 export const getDashboard = studioProtectedProcedure
 	.route({
@@ -99,22 +103,25 @@ export const getDashboard = studioProtectedProcedure
 		const bookingsByPhase = await db
 			.select({
 				status: bookings.status,
-				count: count(),
+				count: count().mapWith(Number),
 			})
 			.from(bookings)
 			.where(and(...bookingRangeConditions))
 			.groupBy(bookings.status);
 
-		const byPhase: Record<string, number> = {};
+		const byPhase = Object.fromEntries(
+			bookingPhaseSchema.options.map((status) => [status, 0]),
+		) as Record<BookingPhase, number>;
 		let totalBookings = 0;
 		for (const row of bookingsByPhase) {
-			byPhase[row.status] = row.count;
+			const status = row.status as BookingPhase;
+			byPhase[status] = row.count;
 			totalBookings += row.count;
 		}
 
 		// New bookings this month
 		const [newThisMonthResult] = await db
-			.select({ count: count() })
+			.select({ count: count().mapWith(Number) })
 			.from(bookings)
 			.where(
 				and(
@@ -130,7 +137,7 @@ export const getDashboard = studioProtectedProcedure
 
 		// Completed this month
 		const [completedThisMonthResult] = await db
-			.select({ count: count() })
+			.select({ count: count().mapWith(Number) })
 			.from(bookings)
 			.where(
 				and(
@@ -149,7 +156,7 @@ export const getDashboard = studioProtectedProcedure
 		const thirtyDaysLater = addDays(today, 30);
 
 		const [upcomingShootsResult] = await db
-			.select({ count: count() })
+			.select({ count: count().mapWith(Number) })
 			.from(shoots)
 			.where(
 				and(
@@ -163,7 +170,7 @@ export const getDashboard = studioProtectedProcedure
 
 		// Shoots this week
 		const [shootsThisWeekResult] = await db
-			.select({ count: count() })
+			.select({ count: count().mapWith(Number) })
 			.from(shoots)
 			.where(
 				and(
@@ -177,7 +184,7 @@ export const getDashboard = studioProtectedProcedure
 
 		// Pending tasks (not_started or assigned)
 		const [pendingTasksResult] = await db
-			.select({ count: count() })
+			.select({ count: count().mapWith(Number) })
 			.from(tasks)
 			.where(
 				and(
@@ -189,7 +196,7 @@ export const getDashboard = studioProtectedProcedure
 
 		// Overdue tasks
 		const [overdueTasksResult] = await db
-			.select({ count: count() })
+			.select({ count: count().mapWith(Number) })
 			.from(tasks)
 			.where(
 				and(
@@ -202,7 +209,7 @@ export const getDashboard = studioProtectedProcedure
 
 		// Pending deliverables
 		const [pendingDeliverablesResult] = await db
-			.select({ count: count() })
+			.select({ count: count().mapWith(Number) })
 			.from(deliverables)
 			.where(
 				and(
@@ -214,7 +221,7 @@ export const getDashboard = studioProtectedProcedure
 
 		// Overdue deliverables
 		const [overdueDeliverablesResult] = await db
-			.select({ count: count() })
+			.select({ count: count().mapWith(Number) })
 			.from(deliverables)
 			.where(
 				and(
@@ -227,7 +234,7 @@ export const getDashboard = studioProtectedProcedure
 
 		// Pending submissions
 		const [pendingSubmissionsResult] = await db
-			.select({ count: count() })
+			.select({ count: count().mapWith(Number) })
 			.from(assignmentSubmissions)
 			.where(
 				and(
@@ -286,7 +293,7 @@ export const getDashboard = studioProtectedProcedure
 				});
 
 				const [assignmentCount] = await db
-					.select({ count: count() })
+					.select({ count: count().mapWith(Number) })
 					.from(shootAssignments)
 					.where(eq(shootAssignments.shootId, shoot.id));
 
@@ -315,15 +322,7 @@ export const getDashboard = studioProtectedProcedure
 				},
 				bookings: {
 					total: totalBookings,
-					byPhase: byPhase as Record<
-						| "new"
-						| "preparation"
-						| "shooting"
-						| "delivery"
-						| "completed"
-						| "cancelled",
-						number
-					>,
+					byPhase,
 					newThisMonth: newThisMonthResult?.count ?? 0,
 					completedThisMonth: completedThisMonthResult?.count ?? 0,
 				},
@@ -341,8 +340,8 @@ export const getDashboard = studioProtectedProcedure
 					name: b.name,
 					referenceNumber: b.referenceNumber,
 					status: b.status,
-					packageCost: b.packageCost,
-					totalReceived: b.totalReceived,
+					packageCost: String(b.packageCost),
+					totalReceived: String(b.totalReceived),
 					createdAt: b.createdAt.toISOString(),
 				})),
 				upcomingShoots: shootsWithDetails,

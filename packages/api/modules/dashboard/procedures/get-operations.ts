@@ -250,7 +250,7 @@ export const getOperations = studioProtectedProcedure
 
 		// Counts
 		const [shootsThisWeekResult] = await db
-			.select({ count: count() })
+			.select({ count: count().mapWith(Number) })
 			.from(shoots)
 			.where(
 				and(
@@ -263,7 +263,7 @@ export const getOperations = studioProtectedProcedure
 			);
 
 		const [overdueTasksResult] = await db
-			.select({ count: count() })
+			.select({ count: count().mapWith(Number) })
 			.from(tasks)
 			.where(
 				and(
@@ -275,7 +275,7 @@ export const getOperations = studioProtectedProcedure
 			);
 
 		const [overdueDeliverablesResult] = await db
-			.select({ count: count() })
+			.select({ count: count().mapWith(Number) })
 			.from(deliverables)
 			.where(
 				and(
