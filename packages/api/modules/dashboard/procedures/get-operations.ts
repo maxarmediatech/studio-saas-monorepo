@@ -44,7 +44,7 @@ export const getOperations = studioProtectedProcedure
 	.handler(async ({ input, context }) => {
 		await requirePermission(context, "booking", "read");
 
-		const { limit } = input;
+		const { limit, dateRange } = input;
 
 		const timeZone = normalizeTimeZone(
 			context.membership.organization.timezone,
@@ -54,7 +54,11 @@ export const getOperations = studioProtectedProcedure
 		const startOfWeek = getStartOfWeek(nowParts);
 		const endOfWeek = addDays(startOfWeek, 7);
 
-		// Upcoming shoots with crew assignments
+		// Compute range boundaries from input or defaults
+		const rangeStart = dateRange?.start ?? todayStr;
+		const rangeEnd = dateRange?.end ?? addDays(todayStr, 30);
+
+		// Upcoming shoots with crew assignments (within date range)
 		const upcomingShootsList = await db
 			.select({
 				id: shoots.id,
@@ -71,7 +75,8 @@ export const getOperations = studioProtectedProcedure
 				and(
 					eq(shoots.organizationId, context.organizationId),
 					isNull(shoots.deletedAt),
-					gte(shoots.shootDate, todayStr),
+					gte(shoots.shootDate, rangeStart),
+					sql`${shoots.shootDate} <= ${rangeEnd}`,
 					sql`${shoots.status} NOT IN ('completed', 'cancelled')`,
 				),
 			)
@@ -118,7 +123,7 @@ export const getOperations = studioProtectedProcedure
 			}),
 		);
 
-		// Pending tasks
+		// Pending tasks (overdue OR due within range OR no due date)
 		const pendingTasksList = await db
 			.select({
 				id: tasks.id,
@@ -134,10 +139,15 @@ export const getOperations = studioProtectedProcedure
 					eq(tasks.organizationId, context.organizationId),
 					isNull(tasks.deletedAt),
 					sql`${tasks.workflowStatus} IN ('not_started', 'assigned', 'revision_requested')`,
+					sql`(
+						${tasks.dueDate} < ${todayStr}
+						OR (${tasks.dueDate} >= ${rangeStart} AND ${tasks.dueDate} <= ${rangeEnd})
+						OR ${tasks.dueDate} IS NULL
+					)`,
 				),
 			)
 			.orderBy(
-				sql`CASE WHEN ${tasks.dueDate} IS NULL THEN 1 ELSE 0 END`,
+				sql`CASE WHEN ${tasks.dueDate} < ${todayStr} THEN 0 WHEN ${tasks.dueDate} IS NULL THEN 2 ELSE 1 END`,
 				asc(tasks.dueDate),
 			)
 			.limit(limit);
@@ -180,7 +190,7 @@ export const getOperations = studioProtectedProcedure
 			}),
 		);
 
-		// Pending deliverables
+		// Pending deliverables (overdue OR due within range OR no due date)
 		const pendingDeliverablesList = await db
 			.select({
 				id: deliverables.id,
@@ -195,10 +205,15 @@ export const getOperations = studioProtectedProcedure
 					eq(deliverables.organizationId, context.organizationId),
 					isNull(deliverables.deletedAt),
 					sql`${deliverables.workflowStatus} IN ('not_started', 'assigned', 'revision_requested')`,
+					sql`(
+						${deliverables.dueDate} < ${todayStr}
+						OR (${deliverables.dueDate} >= ${rangeStart} AND ${deliverables.dueDate} <= ${rangeEnd})
+						OR ${deliverables.dueDate} IS NULL
+					)`,
 				),
 			)
 			.orderBy(
-				sql`CASE WHEN ${deliverables.dueDate} IS NULL THEN 1 ELSE 0 END`,
+				sql`CASE WHEN ${deliverables.dueDate} < ${todayStr} THEN 0 WHEN ${deliverables.dueDate} IS NULL THEN 2 ELSE 1 END`,
 				asc(deliverables.dueDate),
 			)
 			.limit(limit);

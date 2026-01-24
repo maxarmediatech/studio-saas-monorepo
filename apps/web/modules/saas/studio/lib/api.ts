@@ -718,8 +718,11 @@ export const dashboardApi = {
 		input?: Parameters<typeof orpc.dashboard.kpis.queryOptions>[0]["input"],
 	) => orpc.dashboard.kpis.queryOptions({ input: input ?? {} }),
 
-	operationsOptions: () =>
-		orpc.dashboard.operations.queryOptions({ input: {} }),
+	operationsOptions: (
+		input?: Parameters<
+			typeof orpc.dashboard.operations.queryOptions
+		>[0]["input"],
+	) => orpc.dashboard.operations.queryOptions({ input: input ?? {} }),
 
 	actionsOptions: () => orpc.dashboard.actions.queryOptions({ input: {} }),
 };

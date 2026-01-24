@@ -14,6 +14,7 @@ import {
 	DateRangeFilter,
 	getDefaultDateRange,
 } from "./date-range-filter";
+import { OperationsTab } from "./operations";
 import { OverviewTab } from "./overview";
 
 type DashboardTab = "overview" | "operations" | "financial";
@@ -64,6 +65,19 @@ export function DashboardView({ organizationSlug }: DashboardViewProps) {
 		refetchOnWindowFocus: true,
 	});
 
+	const operationsQuery = useQuery({
+		...dashboardApi.operationsOptions({
+			dateRange: {
+				start: dateRange.from,
+				end: dateRange.to,
+			},
+			limit: 10,
+		}),
+		staleTime: 60_000,
+		refetchOnWindowFocus: true,
+		enabled: activeTab === "operations",
+	});
+
 	const handleRefresh = () => {
 		queryClient.invalidateQueries({ queryKey: orpc.dashboard.key() });
 	};
@@ -84,7 +98,10 @@ export function DashboardView({ organizationSlug }: DashboardViewProps) {
 	};
 
 	const isLoading = dashboardQuery.isLoading || actionsQuery.isLoading;
-	const isRefreshing = dashboardQuery.isFetching || actionsQuery.isFetching;
+	const isRefreshing =
+		dashboardQuery.isFetching ||
+		actionsQuery.isFetching ||
+		operationsQuery.isFetching;
 
 	if (isLoading) {
 		return <DashboardSkeleton />;
@@ -131,9 +148,11 @@ export function DashboardView({ organizationSlug }: DashboardViewProps) {
 			)}
 
 			{activeTab === "operations" && (
-				<div className="rounded-lg border bg-card p-8 text-center text-muted-foreground">
-					Operations tab coming in Phase 2
-				</div>
+				<OperationsTab
+					organizationSlug={organizationSlug}
+					data={operationsQuery.data?.data}
+					isLoading={operationsQuery.isLoading}
+				/>
 			)}
 
 			{activeTab === "financial" && (
