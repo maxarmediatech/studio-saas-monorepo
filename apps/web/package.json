@@ -92,14 +92,14 @@
 		"zustand": "^5.0.9"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "2.3.10",
-		"@playwright/test": "^1.57.0",
+		"@biomejs/biome": "2.3.13",
+		"@playwright/test": "^1.58.0",
 		"@repo/auth": "workspace:*",
 		"@repo/tailwind-config": "workspace:*",
 		"@repo/tsconfig": "workspace:*",
 		"@tailwindcss/postcss": "^4.1.18",
 		"@types/js-cookie": "^3.0.4",
-		"@types/node": "24.10.1",
+		"@types/node": "25.0.10",
 		"@types/nprogress": "^0.2.3",
 		"@types/react": "19.2.7",
 		"@types/react-dom": "19.2.3",
