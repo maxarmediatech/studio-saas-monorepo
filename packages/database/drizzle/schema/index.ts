@@ -13,6 +13,8 @@ export * from "./core";
 // Discussions tables (channels, discussions, messages)
 export * from "./discussions";
 export * from "./enums";
+// Integrations tables (google calendar, etc.)
+export * from "./integrations-google-calendar";
 // Studio domain tables (configurations, clients, bookings)
 // Also includes organizationRelations and studio relations
 export * from "./studio";

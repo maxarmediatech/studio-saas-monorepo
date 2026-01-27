@@ -341,6 +341,12 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							icon: "Settings2",
 						},
 						{
+							id: "integrations",
+							label: "Integrations",
+							path: url("/settings/integrations"),
+							icon: "Link2",
+						},
+						{
 							id: "billing",
 							label: "Billing",
 							path: url("/settings/billing"),

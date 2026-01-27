@@ -158,6 +158,25 @@ GOOGLE_CLIENT_ID="your-client-id.apps.googleusercontent.com"
 GOOGLE_CLIENT_SECRET="GOCSPX-your-secret"
 ```
 
+### Google Calendar Integration (Optional)
+
+This integration is separate from login OAuth so we can request Calendar scopes only when needed.
+
+1. Go to Google Cloud Console and enable the **Google Calendar API**
+2. Create a new OAuth 2.0 Client ID (Web application)
+3. Add authorized redirect URIs:
+   - Development: `http://localhost:3000/api/integrations/google-calendar/callback`
+   - Production: `https://yourdomain.com/api/integrations/google-calendar/callback`
+
+```env
+GOOGLE_CALENDAR_CLIENT_ID="your-client-id.apps.googleusercontent.com"
+GOOGLE_CALENDAR_CLIENT_SECRET="GOCSPX-your-secret"
+
+# Required for storing integration tokens securely
+INTEGRATIONS_TOKEN_ENCRYPTION_KEY=""  # Generate: openssl rand -base64 32
+INTEGRATIONS_OAUTH_STATE_SECRET=""     # Generate: openssl rand -base64 32
+```
+
 ### GitHub OAuth (Optional)
 
 1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
@@ -388,6 +407,12 @@ NEXT_PUBLIC_SITE_URL="http://localhost:3000"
 # ===================
 GOOGLE_CLIENT_ID=""
 GOOGLE_CLIENT_SECRET=""
+
+# Google Calendar Integration (Optional)
+GOOGLE_CALENDAR_CLIENT_ID=""
+GOOGLE_CALENDAR_CLIENT_SECRET=""
+INTEGRATIONS_TOKEN_ENCRYPTION_KEY=""
+INTEGRATIONS_OAUTH_STATE_SECRET=""
 
 # ===================
 # EMAIL

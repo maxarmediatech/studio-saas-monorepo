@@ -1,11 +1,40 @@
+import { TZDate } from "@date-fns/tz";
 import { OpenAPIGenerator } from "@orpc/openapi";
 import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
 import { auth } from "@repo/auth";
 import { config } from "@repo/config";
+import {
+	and,
+	calendarSyncJobs,
+	crews,
+	db,
+	eq,
+	googleCalendarConnections,
+	gte,
+	inArray,
+	isNull,
+	organizations,
+	shootAssignments,
+	shootCalendarEvents,
+	shoots,
+	sql,
+} from "@repo/database";
+import {
+	createSignedGoogleOAuthState,
+	decryptToken,
+	encryptToken,
+	exchangeGoogleCalendarCode,
+	fetchGoogleAccountEmail,
+	getGoogleCalendarAuthUrl,
+	getGoogleCalendarEnv,
+	revokeGoogleToken,
+	verifySignedGoogleOAuthState,
+} from "@repo/google-calendar";
 import { logger } from "@repo/logs";
 import { webhookHandler as paymentsWebhookHandler } from "@repo/payments";
 import { getBaseUrl } from "@repo/utils";
 import { Scalar } from "@scalar/hono-api-reference";
+import { format } from "date-fns";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger as honoLogger } from "hono/logger";
@@ -93,6 +122,314 @@ export const app = new Hono()
 	)
 	// Payments webhook handler
 	.post("/webhooks/payments", (c) => paymentsWebhookHandler(c.req.raw))
+	// Google Calendar integration (crew-level OAuth)
+	.get("/integrations/google-calendar/connect", async (c) => {
+		const session = await auth.api.getSession({
+			headers: c.req.raw.headers,
+		});
+		if (!session) {
+			return c.redirect("/auth/login");
+		}
+
+		const organizationId = session.session.activeOrganizationId;
+		if (!organizationId) {
+			return c.text("No active organization", 403);
+		}
+
+		const env = getGoogleCalendarEnv();
+		const state = createSignedGoogleOAuthState(
+			{ organizationId, userId: session.user.id },
+			env.stateSigningSecret,
+		);
+		const authUrl = getGoogleCalendarAuthUrl({
+			config: {
+				clientId: env.clientId,
+				clientSecret: env.clientSecret,
+				redirectUri: env.redirectUri,
+			},
+			state,
+		});
+
+		return c.redirect(authUrl);
+	})
+	.get("/integrations/google-calendar/callback", async (c) => {
+		const code = c.req.query("code");
+		const state = c.req.query("state");
+		const error = c.req.query("error");
+
+		if (error) {
+			logger.warn("Google Calendar OAuth error", { error });
+			return c.text("Google Calendar connection cancelled", 400);
+		}
+		if (!code || !state) {
+			return c.text("Missing OAuth code/state", 400);
+		}
+
+		const session = await auth.api.getSession({
+			headers: c.req.raw.headers,
+		});
+		if (!session) {
+			return c.redirect("/auth/login");
+		}
+
+		const organizationId = session.session.activeOrganizationId;
+		if (!organizationId) {
+			return c.text("No active organization", 403);
+		}
+
+		const env = getGoogleCalendarEnv();
+		const statePayload = verifySignedGoogleOAuthState(
+			state,
+			env.stateSigningSecret,
+			env.maxStateAgeSeconds,
+		);
+
+		if (
+			statePayload.userId !== session.user.id ||
+			statePayload.organizationId !== organizationId
+		) {
+			return c.text("OAuth state mismatch", 400);
+		}
+
+		const tokenResponse = await exchangeGoogleCalendarCode({
+			config: {
+				clientId: env.clientId,
+				clientSecret: env.clientSecret,
+				redirectUri: env.redirectUri,
+			},
+			code,
+		});
+
+		if (!tokenResponse.refreshToken) {
+			return c.text(
+				"Google did not return a refresh token. Please try connecting again.",
+				400,
+			);
+		}
+
+		const accessToken = tokenResponse.accessToken;
+		const googleAccountEmail = accessToken
+			? await fetchGoogleAccountEmail({
+					config: {
+						clientId: env.clientId,
+						clientSecret: env.clientSecret,
+						redirectUri: env.redirectUri,
+					},
+					accessToken,
+				})
+			: null;
+
+		await db
+			.insert(googleCalendarConnections)
+			.values({
+				organizationId,
+				userId: session.user.id,
+				googleAccountEmail: googleAccountEmail ?? null,
+				accessToken: accessToken ? encryptToken(accessToken) : null,
+				refreshToken: encryptToken(tokenResponse.refreshToken),
+				scope: tokenResponse.scope ?? null,
+				accessTokenExpiresAt: tokenResponse.accessTokenExpiresAt,
+				disconnectedAt: null,
+				updatedAt: new Date(),
+			})
+			.onConflictDoUpdate({
+				target: [
+					googleCalendarConnections.organizationId,
+					googleCalendarConnections.userId,
+				],
+				set: {
+					googleAccountEmail: googleAccountEmail ?? null,
+					accessToken: accessToken ? encryptToken(accessToken) : null,
+					refreshToken: encryptToken(tokenResponse.refreshToken),
+					scope: tokenResponse.scope ?? null,
+					accessTokenExpiresAt: tokenResponse.accessTokenExpiresAt,
+					disconnectedAt: null,
+					updatedAt: new Date(),
+				},
+			});
+
+		// Backfill: enqueue calendar events for upcoming assigned shoots for this crew user.
+		const crew = await db.query.crews.findFirst({
+			where: and(
+				eq(crews.organizationId, organizationId),
+				eq(crews.userId, session.user.id),
+				isNull(crews.deletedAt),
+			),
+			columns: { id: true },
+		});
+
+		if (crew) {
+			const org = await db.query.organizations.findFirst({
+				where: eq(organizations.id, organizationId),
+				columns: { timezone: true, slug: true },
+			});
+
+			const timezone = org?.timezone ?? "UTC";
+			const today = format(
+				new TZDate(new Date(), timezone),
+				"yyyy-MM-dd",
+			);
+
+			const assignedShootRows = await db
+				.select({ shootId: shootAssignments.shootId })
+				.from(shootAssignments)
+				.innerJoin(shoots, eq(shootAssignments.shootId, shoots.id))
+				.where(
+					and(
+						eq(shootAssignments.crewId, crew.id),
+						eq(shoots.organizationId, organizationId),
+						isNull(shoots.deletedAt),
+						sql`${shoots.status} NOT IN ('completed', 'cancelled')`,
+						gte(shoots.shootDate, today),
+					),
+				);
+
+			const shootIds = assignedShootRows.map((r) => r.shootId);
+			if (shootIds.length > 0) {
+				const existing = await db
+					.select({ shootId: shootCalendarEvents.shootId })
+					.from(shootCalendarEvents)
+					.where(
+						and(
+							eq(shootCalendarEvents.crewId, crew.id),
+							eq(
+								shootCalendarEvents.organizationId,
+								organizationId,
+							),
+							inArray(shootCalendarEvents.shootId, shootIds),
+						),
+					);
+
+				const existingIds = new Set(existing.map((e) => e.shootId));
+				const missingShootIds = shootIds.filter(
+					(id) => !existingIds.has(id),
+				);
+
+				if (missingShootIds.length > 0) {
+					await db.insert(shootCalendarEvents).values(
+						missingShootIds.map((shootId) => ({
+							organizationId,
+							shootId,
+							crewId: crew.id,
+							deliveryMethod: "google" as const,
+							syncStatus: "pending" as const,
+							updatedAt: new Date(),
+						})),
+					);
+
+					await db.insert(calendarSyncJobs).values(
+						missingShootIds.map((shootId) => ({
+							organizationId,
+							status: "pending" as const,
+							jobType: "google_create" as const,
+							shootId,
+							crewId: crew.id,
+							updatedAt: new Date(),
+						})),
+					);
+				}
+			}
+
+			if (org?.slug) {
+				return c.redirect(
+					`${getBaseUrl()}/app/${org.slug}/settings/integrations?googleCalendar=connected`,
+				);
+			}
+		}
+
+		return c.redirect(`${getBaseUrl()}/app/settings`);
+	})
+	.get("/integrations/google-calendar/status", async (c) => {
+		const session = await auth.api.getSession({
+			headers: c.req.raw.headers,
+		});
+		if (!session) {
+			return c.json({ connected: false }, 401);
+		}
+		const organizationId = session.session.activeOrganizationId;
+		if (!organizationId) {
+			return c.json({ connected: false }, 403);
+		}
+
+		const connection = await db.query.googleCalendarConnections.findFirst({
+			where: and(
+				eq(googleCalendarConnections.organizationId, organizationId),
+				eq(googleCalendarConnections.userId, session.user.id),
+				isNull(googleCalendarConnections.disconnectedAt),
+			),
+			columns: {
+				googleAccountEmail: true,
+				refreshToken: true,
+			},
+		});
+
+		return c.json({
+			connected: Boolean(connection?.refreshToken),
+			googleAccountEmail: connection?.googleAccountEmail ?? null,
+		});
+	})
+	.post("/integrations/google-calendar/disconnect", async (c) => {
+		const session = await auth.api.getSession({
+			headers: c.req.raw.headers,
+		});
+		if (!session) {
+			return c.json({ ok: false }, 401);
+		}
+		const organizationId = session.session.activeOrganizationId;
+		if (!organizationId) {
+			return c.json({ ok: false }, 403);
+		}
+
+		const connection = await db.query.googleCalendarConnections.findFirst({
+			where: and(
+				eq(googleCalendarConnections.organizationId, organizationId),
+				eq(googleCalendarConnections.userId, session.user.id),
+				isNull(googleCalendarConnections.disconnectedAt),
+			),
+		});
+
+		if (!connection) {
+			return c.json({ ok: true });
+		}
+
+		try {
+			const env = getGoogleCalendarEnv();
+			const tokenToRevoke = connection.accessToken
+				? decryptToken(connection.accessToken)
+				: connection.refreshToken
+					? decryptToken(connection.refreshToken)
+					: null;
+
+			if (tokenToRevoke) {
+				await revokeGoogleToken({
+					config: {
+						clientId: env.clientId,
+						clientSecret: env.clientSecret,
+						redirectUri: env.redirectUri,
+					},
+					token: tokenToRevoke,
+				});
+			}
+		} catch (error) {
+			logger.warn("Failed to revoke Google Calendar token", {
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+
+		await db
+			.update(googleCalendarConnections)
+			.set({
+				disconnectedAt: new Date(),
+				accessToken: null,
+				refreshToken: null,
+				scope: null,
+				accessTokenExpiresAt: null,
+				updatedAt: new Date(),
+			})
+			.where(eq(googleCalendarConnections.id, connection.id));
+
+		return c.json({ ok: true });
+	})
 	// Health check
 	.get("/health", (c) => c.text("OK"))
 	// oRPC handlers (for RPC and OpenAPI)

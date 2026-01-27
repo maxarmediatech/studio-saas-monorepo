@@ -211,3 +211,33 @@ export const checkinFrequencyEnum = pgEnum("checkin_frequency", [
 	"weekdays",
 	"weekly",
 ]);
+
+// ----------------------------------------------------------------------------
+// Calendar Sync (Google + iCalendar)
+// ----------------------------------------------------------------------------
+
+export const calendarJobStatusEnum = pgEnum("calendar_job_status", [
+	"pending",
+	"processing",
+	"completed",
+	"failed",
+]);
+
+export const calendarJobTypeEnum = pgEnum("calendar_job_type", [
+	"google_create",
+	"google_update",
+	"google_delete",
+	"ics_send_invite",
+	"ics_send_update",
+	"ics_send_cancel",
+]);
+
+export const calendarDeliveryMethodEnum = pgEnum("calendar_delivery_method", [
+	"google",
+	"ics",
+]);
+
+export const calendarEventSyncStatusEnum = pgEnum(
+	"calendar_event_sync_status",
+	["pending", "synced", "error", "deleted"],
+);
