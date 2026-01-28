@@ -134,6 +134,13 @@
       "when": 1769584575109,
       "tag": "0018_fat_power_man",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1769588437166,
+      "tag": "0019_flaky_the_fallen",
+      "breakpoints": true
     }
   ]
 }

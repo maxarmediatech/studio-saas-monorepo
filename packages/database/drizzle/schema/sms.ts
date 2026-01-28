@@ -1,4 +1,6 @@
+import { sql } from "drizzle-orm";
 import {
+	boolean,
 	index,
 	integer,
 	jsonb,
@@ -44,6 +46,17 @@ export const smsOutbox = pgTable(
 		nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }),
 		errorMessage: text("error_message"),
 		providerMessageId: varchar("provider_message_id", { length: 255 }), // ID from SMS provider
+		// Lease fields for atomic claiming and crash recovery
+		lockedAt: timestamp("locked_at", { withTimezone: true }),
+		lockedBy: text("locked_by"),
+		processingStartedAt: timestamp("processing_started_at", {
+			withTimezone: true,
+		}),
+		// Debug fields for operational visibility
+		lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
+		providerStatusCode: integer("provider_status_code"),
+		errorCode: text("error_code"),
+		isPermanentFailure: boolean("is_permanent_failure").default(false),
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.defaultNow()
 			.notNull(),
@@ -56,5 +69,16 @@ export const smsOutbox = pgTable(
 		index("sms_outbox_status_idx").on(table.status),
 		index("sms_outbox_next_attempt_idx").on(table.nextAttemptAt),
 		index("sms_outbox_queue_idx").on(table.status, table.nextAttemptAt),
+		// Partial indexes for queue performance
+		index("sms_outbox_immediate_queue_idx")
+			.on(table.status, table.nextAttemptAt)
+			.where(
+				sql`${table.status} = 'pending' AND ${table.nextAttemptAt} IS NULL`,
+			),
+		index("sms_outbox_scheduled_queue_idx")
+			.on(table.status, table.nextAttemptAt)
+			.where(
+				sql`${table.status} = 'pending' AND ${table.nextAttemptAt} IS NOT NULL`,
+			),
 	],
 );
