@@ -21,7 +21,7 @@ import {
 	SelectValue,
 } from "@repo/ui/components/select";
 import { Textarea } from "@repo/ui/components/textarea";
-import { bookingsApi } from "@saas/studio/lib/api";
+import { bookingsApi, invoicesApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -48,6 +48,7 @@ const PAYMENT_METHODS = [
 
 const paymentFormSchema = z.object({
 	bookingId: z.string().min(1, "Booking is required"),
+	invoiceId: z.string().optional().or(z.literal("")),
 	amount: z
 		.string()
 		.min(1, "Amount is required")
@@ -121,6 +122,7 @@ export function PaymentForm({
 		resolver: zodResolver(paymentFormSchema),
 		defaultValues: {
 			bookingId: defaultBookingId ?? "",
+			invoiceId: "",
 			amount: "",
 			paymentMethod: "upi",
 			receivedDate: new Date().toISOString().split("T")[0],
@@ -128,6 +130,17 @@ export function PaymentForm({
 			notes: "",
 		},
 	});
+
+	const selectedBookingId = form.watch("bookingId");
+
+	const { data: invoicesData, isLoading: isLoadingInvoices } = useQuery({
+		...invoicesApi.listOptions({
+			bookingId: selectedBookingId,
+			status: ["draft", "sent", "partial", "overdue"],
+		}),
+		enabled: !!selectedBookingId,
+	});
+	const unpaidInvoices = invoicesData?.data ?? [];
 
 	// Reset form when defaultValues change (edit mode)
 	useEffect(() => {
@@ -162,7 +175,6 @@ export function PaymentForm({
 			label: `${b.name} (${b.referenceNumber})`,
 		}));
 
-		// Include current booking in edit mode even if not in list
 		if (booking && !options.some((o) => o.value === booking.id)) {
 			options.unshift({
 				value: booking.id,
@@ -172,6 +184,23 @@ export function PaymentForm({
 
 		return options;
 	}, [bookings, booking]);
+
+	const invoiceOptions = useMemo((): ComboboxOption[] => {
+		const options: ComboboxOption[] = [
+			{ value: "", label: "No invoice (standalone payment)" },
+		];
+
+		for (const inv of unpaidInvoices) {
+			const remaining =
+				Number(inv.totalAmount) - Number(inv.paidAmount ?? 0);
+			options.push({
+				value: inv.id,
+				label: `${inv.invoiceNumber} - ₹${remaining.toFixed(2)} remaining`,
+			});
+		}
+
+		return options;
+	}, [unpaidInvoices]);
 
 	// ========================================================================
 	// Handlers
@@ -235,6 +264,45 @@ export function PaymentForm({
 								</Field>
 							)}
 						/>
+
+						{/* Invoice Linking (Optional) */}
+						{selectedBookingId && mode === "create" && (
+							<Controller
+								name="invoiceId"
+								control={form.control}
+								render={({ field, fieldState }) => (
+									<Field data-invalid={fieldState.invalid}>
+										<FieldLabel htmlFor={field.name}>
+											Link to Invoice
+										</FieldLabel>
+										<Combobox
+											id={field.name}
+											value={field.value ?? ""}
+											onValueChange={field.onChange}
+											options={invoiceOptions}
+											placeholder={
+												isLoadingInvoices
+													? "Loading invoices..."
+													: "Select invoice (optional)..."
+											}
+											searchPlaceholder="Search invoices..."
+											emptyText="No unpaid invoices for this booking"
+											disabled={isLoadingInvoices}
+											aria-invalid={fieldState.invalid}
+										/>
+										<p className="text-xs text-muted-foreground">
+											Linking generates a receipt and
+											updates invoice payment status
+										</p>
+										{fieldState.invalid && (
+											<FieldError
+												errors={[fieldState.error]}
+											/>
+										)}
+									</Field>
+								)}
+							/>
+						)}
 
 						{/* Amount, Payment Method, Date - Main row */}
 						<div className="grid grid-cols-3 gap-4">

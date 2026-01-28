@@ -4,13 +4,19 @@ import {
 	bookings,
 	db,
 	eq,
+	invoices,
 	isNull,
 	paymentSchedules,
+	receipts,
 	receivedAmounts,
 	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../../orpc/procedures";
 import { formatAmount, safeTrackActivity } from "../../../activities/lib";
+import {
+	generateReceiptNumber,
+	updateInvoicePaymentStatus,
+} from "../../../receipts/lib/receipt-helpers";
 import { requirePermission } from "../../../studio/lib/permissions";
 import {
 	createReceivedInputSchema,
@@ -39,6 +45,7 @@ export const createReceived = studioProtectedProcedure
 			notes,
 			proofAttachment,
 			paymentScheduleId,
+			invoiceId,
 		} = input;
 
 		// Verify booking exists and belongs to organization
@@ -54,6 +61,26 @@ export const createReceived = studioProtectedProcedure
 			throw new ORPCError("NOT_FOUND", {
 				message: "Booking not found",
 			});
+		}
+
+		let invoice = null;
+		if (invoiceId) {
+			invoice = await db.query.invoices.findFirst({
+				where: and(
+					eq(invoices.id, invoiceId),
+					eq(invoices.bookingId, bookingId),
+					eq(invoices.organizationId, context.organizationId),
+					isNull(invoices.deletedAt),
+				),
+				columns: { id: true, invoiceNumber: true },
+			});
+
+			if (!invoice) {
+				throw new ORPCError("NOT_FOUND", {
+					message:
+						"Invoice not found or does not belong to this booking",
+				});
+			}
 		}
 
 		// If payment schedule is specified, verify it exists and belongs to the booking
@@ -100,6 +127,7 @@ export const createReceived = studioProtectedProcedure
 					notes: notes ?? null,
 					proofAttachment: proofAttachment ?? null,
 					paymentScheduleId: paymentScheduleId ?? null,
+					invoiceId: invoiceId ?? null,
 					createdBy: context.user.id,
 					updatedBy: context.user.id,
 				})
@@ -109,6 +137,29 @@ export const createReceived = studioProtectedProcedure
 				throw new ORPCError("INTERNAL_SERVER_ERROR", {
 					message: "Failed to create received payment",
 				});
+			}
+
+			if (invoice && invoiceId) {
+				const receiptNumber = await generateReceiptNumber(
+					bookingId,
+					context.organizationId,
+				);
+
+				await tx.insert(receipts).values({
+					organizationId: context.organizationId,
+					bookingId,
+					invoiceId,
+					receivedAmountId: created.id,
+					receiptNumber,
+					amount,
+					paymentMethod,
+					receiptDate: receivedDate,
+					notes: notes ?? null,
+					createdBy: context.user.id,
+					updatedBy: context.user.id,
+				});
+
+				await updateInvoicePaymentStatus(invoiceId, context.user.id);
 			}
 
 			// Update booking total received

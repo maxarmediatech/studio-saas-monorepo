@@ -21,15 +21,17 @@ export async function GET(request: Request) {
 
 	try {
 		const now = new Date();
+		// Format date as YYYY-MM-DD for comparison with date column (which stores strings)
+		const todayStr = now.toISOString().split("T")[0];
 
-		// Update invoices with status 'sent' or 'partial' where dueDate < NOW()
+		// Update invoices with status 'sent' or 'partial' where dueDate < TODAY
 		const result = await db
 			.update(invoices)
 			.set({ status: "overdue", updatedAt: now })
 			.where(
 				and(
 					inArray(invoices.status, ["sent", "partial"]),
-					lt(invoices.dueDate, now),
+					lt(invoices.dueDate, todayStr),
 				),
 			)
 			.returning({ id: invoices.id });

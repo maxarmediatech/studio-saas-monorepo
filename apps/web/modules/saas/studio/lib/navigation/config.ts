@@ -196,6 +196,24 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 					label: "Finance",
 					items: [
 						{
+							id: "invoices",
+							label: "Invoices",
+							path: url("/invoices"),
+							icon: "FileText",
+							permission: {
+								any: [{ resource: "payment", action: "list" }],
+							},
+						},
+						{
+							id: "receipts",
+							label: "Receipts",
+							path: url("/receipts"),
+							icon: "Receipt",
+							permission: {
+								any: [{ resource: "payment", action: "list" }],
+							},
+						},
+						{
 							id: "payments",
 							label: "Payments",
 							path: url("/payments"),

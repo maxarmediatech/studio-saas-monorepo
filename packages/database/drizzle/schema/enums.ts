@@ -120,6 +120,7 @@ export const configTypeEnum = pgEnum("config_type", [
 	"relation_type",
 	"expense_category",
 	"event_type",
+	"gst_rate",
 ]);
 
 // ----------------------------------------------------------------------------
