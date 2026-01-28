@@ -1,6 +1,7 @@
 {
 	"dependencies": {
 		"@repo/config": "workspace:*",
+		"@repo/database": "workspace:*",
 		"@repo/logs": "workspace:*"
 	},
 	"devDependencies": {
