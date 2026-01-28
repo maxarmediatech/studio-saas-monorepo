@@ -6,7 +6,10 @@
 		"dev": "tsx watch src/index.ts",
 		"start": "node dist/index.js",
 		"build": "tsc",
-		"type-check": "tsc --noEmit"
+		"type-check": "tsc --noEmit",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"test:integration": "vitest run tests/integration.test.ts"
 	},
 	"dependencies": {
 		"@repo/database": "workspace:*",
@@ -18,7 +21,9 @@
 		"@biomejs/biome": "2.3.10",
 		"@repo/tsconfig": "workspace:*",
 		"@types/node": "24.10.4",
+		"dotenv": "^17.2.3",
 		"tsx": "^4.21.0",
-		"typescript": "^5.7.3"
+		"typescript": "^5.7.3",
+		"vitest": "^2.0.0"
 	}
 }
