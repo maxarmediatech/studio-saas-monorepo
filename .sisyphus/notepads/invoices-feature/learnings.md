@@ -501,3 +501,31 @@ apps/web/app/api/cron/invoices/mark-overdue/
 ## User Action Required
 1. Run `pnpm db:migrate` to apply migration
 2. Test manually in browser
+
+## Oracle Review Findings - Fixed (2026-01-28)
+
+### Critical Issues Fixed
+
+1. **PDF Routes - Missing Auth/Authz**
+   - Added session check via `auth.api.getSession()`
+   - Added org membership verification
+   - Added `Cache-Control: private, no-store`
+   - Sanitized filenames in Content-Disposition
+
+2. **Cron Endpoint - Auth Bypass**
+   - Now fails closed when CRON_SECRET undefined (500)
+   - Uses `crypto.timingSafeEqual` for token comparison
+   - Uses DB-native `CURRENT_DATE` instead of app string
+   - Added safety predicates (deletedAt, paidAt checks)
+   - Changed from GET to POST
+
+3. **Database Schema - Cascade Delete**
+   - Changed `receipts.invoiceId` FK from cascade to set null
+   - Changed `receipts.receivedAmountId` FK from cascade to set null
+   - Added index on `received_amounts.invoiceId`
+
+### Remaining Recommendations (Lower Priority)
+- Add unique constraint on `invoices.paymentScheduleId` for 1:1 enforcement
+- Add unique constraint on `receipts.receivedAmountId` to prevent duplicates
+- Add check constraint on receipts (invoice_id OR received_amount_id NOT NULL)
+- Use `paymentMethodEnum` for `receipts.payment_method` column
