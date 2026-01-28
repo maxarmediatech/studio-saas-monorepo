@@ -127,6 +127,13 @@
       "when": 1769506928285,
       "tag": "0017_giant_ronan",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1769584575109,
+      "tag": "0018_fat_power_man",
+      "breakpoints": true
     }
   ]
 }
