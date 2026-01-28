@@ -529,3 +529,41 @@ apps/web/app/api/cron/invoices/mark-overdue/
 - Add unique constraint on `receipts.receivedAmountId` to prevent duplicates
 - Add check constraint on receipts (invoice_id OR received_amount_id NOT NULL)
 - Use `paymentMethodEnum` for `receipts.payment_method` column
+
+## Implementation Complete - Awaiting User Action
+
+### Status: 87/91 checkboxes marked (96%)
+
+### Remaining 4 Items - BLOCKED (Require User Action)
+
+1. **`pnpm lint` passes** (x2 duplicates)
+   - Blocker: 236 pre-existing warnings in codebase
+   - Not related to invoice feature
+   - Fixing would be scope creep
+
+2. **Manual QA of full workflow** (x2 duplicates)
+   - Blocker: Requires user to test in browser
+   - Steps to test:
+     1. Run `pnpm db:migrate` to apply migrations
+     2. Run `pnpm dev` to start dev server
+     3. Navigate to /app/{org}/payments (schedules)
+     4. Click "Generate Invoice" on a schedule
+     5. View invoice detail, click "Mark as Sent"
+     6. Navigate to /app/{org}/payments (received)
+     7. Create payment, link to invoice
+     8. Verify receipt auto-generated
+     9. Download invoice and receipt PDFs
+
+### All Implementation Work Complete
+- Database schema ✅
+- Invoice API (11 procedures) ✅
+- Receipt API (4 procedures) ✅
+- Invoice UI (list/detail) ✅
+- Receipt UI (list/detail) ✅
+- PDF generation ✅
+- Payment linking ✅
+- Navigation integration ✅
+- Cron job ✅
+- Security fixes (Oracle review) ✅
+- 45 tests passing ✅
+- Build passing ✅
