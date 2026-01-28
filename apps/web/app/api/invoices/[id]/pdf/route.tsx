@@ -1,4 +1,5 @@
 import { renderToStream } from "@react-pdf/renderer";
+import { auth } from "@repo/auth";
 import { clients, configurations, db, eq, organizations } from "@repo/database";
 import { InvoicePdfDocument } from "@/modules/saas/studio/components/pdf/InvoicePdfDocument";
 import { orpcClient } from "@/modules/shared/lib/orpc-client.server";
@@ -7,10 +8,27 @@ export async function GET(
 	request: Request,
 	{ params }: { params: Promise<{ id: string }> },
 ) {
+	const session = await auth.api.getSession({
+		headers: request.headers,
+	});
+
+	if (!session?.user) {
+		return new Response("Unauthorized", { status: 401 });
+	}
+
+	const organizationId = session.session.activeOrganizationId;
+	if (!organizationId) {
+		return new Response("Organization required", { status: 403 });
+	}
+
 	const { id } = await params;
 
 	try {
 		const { data: invoice } = await orpcClient.invoices.get({ id });
+
+		if (invoice.organizationId !== organizationId) {
+			return new Response("Forbidden", { status: 403 });
+		}
 
 		const organization = await db.query.organizations.findFirst({
 			where: eq(organizations.id, invoice.organizationId),
@@ -78,10 +96,16 @@ export async function GET(
 
 		const stream = await renderToStream(<InvoicePdfDocument {...props} />);
 
+		const safeFilename = invoice.invoiceNumber.replace(
+			/[^a-zA-Z0-9-_]/g,
+			"_",
+		);
+
 		return new Response(stream as any, {
 			headers: {
 				"Content-Type": "application/pdf",
-				"Content-Disposition": `attachment; filename="invoice-${invoice.invoiceNumber}.pdf"`,
+				"Content-Disposition": `attachment; filename="invoice-${safeFilename}.pdf"`,
+				"Cache-Control": "private, no-store",
 			},
 		});
 	} catch (error) {

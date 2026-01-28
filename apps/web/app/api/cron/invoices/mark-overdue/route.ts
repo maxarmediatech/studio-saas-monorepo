@@ -1,37 +1,43 @@
-import { and, db, inArray, invoices, lt } from "@repo/database";
+import { timingSafeEqual } from "node:crypto";
+import { and, db, inArray, invoices, isNull, lt, sql } from "@repo/database";
 import { NextResponse } from "next/server";
 
-/**
- * GET /api/cron/invoices/mark-overdue
- *
- * Background job to auto-mark invoices as overdue.
- * Runs daily to update invoices with status 'sent' or 'partial' where dueDate < NOW()
- *
- * Protected by CRON_SECRET environment variable via Authorization header.
- * Returns JSON with count of updated invoices and timestamp for audit trail.
- */
-export async function GET(request: Request) {
-	// Verify CRON_SECRET from Authorization header
-	const authHeader = request.headers.get("authorization");
-	const expectedAuth = `Bearer ${process.env.CRON_SECRET}`;
+function secureCompare(a: string, b: string): boolean {
+	if (a.length !== b.length) return false;
+	return timingSafeEqual(Buffer.from(a), Buffer.from(b));
+}
 
-	if (authHeader !== expectedAuth) {
+export async function POST(request: Request) {
+	const cronSecret = process.env.CRON_SECRET;
+	if (!cronSecret) {
+		console.error("[CRON] CRON_SECRET not configured");
+		return NextResponse.json(
+			{ error: "Server misconfiguration" },
+			{ status: 500 },
+		);
+	}
+
+	const authHeader = request.headers.get("authorization");
+	const token = authHeader?.startsWith("Bearer ")
+		? authHeader.slice(7)
+		: null;
+
+	if (!token || !secureCompare(token, cronSecret)) {
 		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	}
 
 	try {
 		const now = new Date();
-		// Format date as YYYY-MM-DD for comparison with date column (which stores strings)
-		const todayStr = now.toISOString().split("T")[0];
 
-		// Update invoices with status 'sent' or 'partial' where dueDate < TODAY
 		const result = await db
 			.update(invoices)
 			.set({ status: "overdue", updatedAt: now })
 			.where(
 				and(
 					inArray(invoices.status, ["sent", "partial"]),
-					lt(invoices.dueDate, todayStr),
+					lt(invoices.dueDate, sql`CURRENT_DATE`),
+					isNull(invoices.deletedAt),
+					isNull(invoices.paidAt),
 				),
 			)
 			.returning({ id: invoices.id });

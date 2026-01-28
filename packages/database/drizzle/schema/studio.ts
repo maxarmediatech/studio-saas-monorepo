@@ -878,6 +878,7 @@ export const receivedAmounts = pgTable(
 		index("received_amounts_booking_idx").on(table.bookingId),
 		index("received_amounts_date_idx").on(table.receivedDate),
 		index("received_amounts_schedule_idx").on(table.paymentScheduleId),
+		index("received_amounts_invoice_idx").on(table.invoiceId),
 		check("received_amounts_amount_positive", sql`amount > 0`),
 	],
 );
@@ -1223,12 +1224,12 @@ export const receipts = pgTable(
 		// Link to invoice if this receipt is for a specific invoice
 		invoiceId: varchar("invoice_id", {
 			length: 255,
-		}).references(() => invoices.id, { onDelete: "cascade" }),
+		}).references(() => invoices.id, { onDelete: "set null" }),
 
 		// Link to received amount if this receipt documents a payment
 		receivedAmountId: varchar("received_amount_id", {
 			length: 255,
-		}).references(() => receivedAmounts.id, { onDelete: "cascade" }),
+		}).references(() => receivedAmounts.id, { onDelete: "set null" }),
 
 		receiptNumber: varchar("receipt_number", { length: 50 }).notNull(),
 		amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),

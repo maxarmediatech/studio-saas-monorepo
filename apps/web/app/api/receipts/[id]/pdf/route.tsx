@@ -1,4 +1,5 @@
 import { renderToStream } from "@react-pdf/renderer";
+import { auth } from "@repo/auth";
 import {
 	bookingParticipants,
 	configurations,
@@ -13,10 +14,27 @@ export async function GET(
 	request: Request,
 	{ params }: { params: Promise<{ id: string }> },
 ) {
+	const session = await auth.api.getSession({
+		headers: request.headers,
+	});
+
+	if (!session?.user) {
+		return new Response("Unauthorized", { status: 401 });
+	}
+
+	const organizationId = session.session.activeOrganizationId;
+	if (!organizationId) {
+		return new Response("Organization required", { status: 403 });
+	}
+
 	const { id } = await params;
 
 	try {
 		const { data: receipt } = await orpcClient.receipts.get({ id });
+
+		if (receipt.organizationId !== organizationId) {
+			return new Response("Forbidden", { status: 403 });
+		}
 
 		const organization = await db.query.organizations.findFirst({
 			where: eq(organizations.id, receipt.organizationId),
@@ -80,10 +98,16 @@ export async function GET(
 
 		const stream = await renderToStream(<ReceiptPdfDocument {...props} />);
 
+		const safeFilename = receipt.receiptNumber.replace(
+			/[^a-zA-Z0-9-_]/g,
+			"_",
+		);
+
 		return new Response(stream as any, {
 			headers: {
 				"Content-Type": "application/pdf",
-				"Content-Disposition": `attachment; filename="receipt-${receipt.receiptNumber}.pdf"`,
+				"Content-Disposition": `attachment; filename="receipt-${safeFilename}.pdf"`,
+				"Cache-Control": "private, no-store",
 			},
 		});
 	} catch (error) {
