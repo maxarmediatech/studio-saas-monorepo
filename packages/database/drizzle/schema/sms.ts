@@ -36,8 +36,8 @@ export const smsOutbox = pgTable(
 		id: varchar("id", { length: 255 })
 			.$defaultFn(() => uuidv7())
 			.primaryKey(),
-		organizationId: text("organization_id").notNull(),
-		phoneNumber: text("phone_number").notNull(), // E.164 format
+		organizationId: text("organization_id").notNull(), // Tenant ID for multi-tenant isolation and billing attribution
+		phoneNumber: text("phone_number").notNull(), // Indian mobile format: 91XXXXXXXXXX (country code + 10 digits)
 		templateId: varchar("template_id", { length: 255 }).notNull(),
 		variables: jsonb("variables"), // Template variables as JSON
 		status: smsStatusEnum("status").notNull().default("pending"),
