@@ -1,5 +1,3 @@
-"use client";
-
 import { Document, Page, Text, View } from "@react-pdf/renderer";
 import { pdfStyles } from "./pdf-styles";
 
@@ -7,12 +5,13 @@ export interface InvoicePdfProps {
 	invoice: {
 		invoiceNumber: string;
 		issueDate: Date | string;
-		dueDate: Date | string | null;
-		subtotal: string | number;
-		taxAmount: string | number;
-		totalAmount: string | number;
-		notes?: string | null;
-		lineItems: {
+			dueDate: Date | string | null;
+			subtotal: string | number;
+			taxAmount: string | number;
+			discountAmount?: string | number;
+			totalAmount: string | number;
+			notes?: string | null;
+			lineItems: {
 			id: string;
 			description: string;
 			quantity: string | number;
@@ -162,23 +161,31 @@ export function InvoicePdfDocument({
 				</View>
 
 				{/* Totals */}
-				<View style={pdfStyles.totalsSection}>
-					<View style={pdfStyles.totalRow}>
-						<Text style={pdfStyles.totalLabel}>Subtotal:</Text>
-						<Text style={pdfStyles.totalValue}>
-							{formatCurrency(invoice.subtotal)}
-						</Text>
-					</View>
-					<View style={pdfStyles.totalRow}>
-						<Text style={pdfStyles.totalLabel}>Tax (GST):</Text>
-						<Text style={pdfStyles.totalValue}>
-							{formatCurrency(invoice.taxAmount)}
-						</Text>
-					</View>
-					<View style={pdfStyles.grandTotal}>
-						<Text style={pdfStyles.grandTotalLabel}>Total:</Text>
-						<Text style={pdfStyles.grandTotalValue}>
-							{formatCurrency(invoice.totalAmount)}
+					<View style={pdfStyles.totalsSection}>
+						<View style={pdfStyles.totalRow}>
+							<Text style={pdfStyles.totalLabel}>Subtotal:</Text>
+							<Text style={pdfStyles.totalValue}>
+								{formatCurrency(invoice.subtotal)}
+							</Text>
+						</View>
+						<View style={pdfStyles.totalRow}>
+							<Text style={pdfStyles.totalLabel}>Tax (GST):</Text>
+							<Text style={pdfStyles.totalValue}>
+								{formatCurrency(invoice.taxAmount)}
+							</Text>
+						</View>
+						{Number(invoice.discountAmount ?? 0) > 0 && (
+							<View style={pdfStyles.totalRow}>
+								<Text style={pdfStyles.totalLabel}>Discount:</Text>
+								<Text style={pdfStyles.totalValue}>
+									-{formatCurrency(invoice.discountAmount ?? 0)}
+								</Text>
+							</View>
+						)}
+						<View style={pdfStyles.grandTotal}>
+							<Text style={pdfStyles.grandTotalLabel}>Total:</Text>
+							<Text style={pdfStyles.grandTotalValue}>
+								{formatCurrency(invoice.totalAmount)}
 						</Text>
 					</View>
 				</View>

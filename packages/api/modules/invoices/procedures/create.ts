@@ -11,6 +11,7 @@ import {
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { formatAmount, safeTrackActivity } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
+import { centsToMoney, moneyToCents } from "../../studio/lib/money";
 import {
 	createInvoiceInputSchema,
 	createInvoiceOutputSchema,
@@ -49,26 +50,33 @@ export const createInvoice = studioProtectedProcedure
 			columns: { id: true, name: true },
 		});
 
-		if (!booking) {
-			throw new ORPCError("NOT_FOUND", {
-				message: "Booking not found",
-			});
-		}
+			if (!booking) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Booking not found",
+				});
+			}
 
-		const subtotal = lineItems.reduce((sum, item) => {
-			const qty = Number.parseFloat(item.quantity ?? "1");
-			const price = Number.parseFloat(item.unitPrice);
-			return sum + qty * price;
-		}, 0);
+			const subtotalCents = lineItems.reduce((sum, item) => {
+				const qty = Number.parseInt(item.quantity ?? "1", 10);
+				const unitPriceCents = moneyToCents(item.unitPrice);
+				return sum + qty * unitPriceCents;
+			}, 0);
 
-		const discount = discountAmount ? Number.parseFloat(discountAmount) : 0;
-		const { taxAmount, totalAmount } = await calculateGst(
-			subtotal,
-			context.organizationId,
-			discount,
-		);
+			const discountCents = discountAmount ? moneyToCents(discountAmount) : 0;
+			if (discountCents > subtotalCents) {
+				throw new ORPCError("BAD_REQUEST", {
+					message: "Discount cannot exceed subtotal",
+				});
+			}
+			const discount = centsToMoney(discountCents);
 
-		return await db.transaction(async (tx) => {
+			const { taxAmount, totalAmount } = await calculateGst(
+				centsToMoney(subtotalCents),
+				context.organizationId,
+				discount,
+			);
+
+			return await db.transaction(async (tx) => {
 			const invoiceNumber = await generateInvoiceNumber(
 				bookingId,
 				context.organizationId,
@@ -76,21 +84,21 @@ export const createInvoice = studioProtectedProcedure
 
 			const [created] = await tx
 				.insert(invoices)
-				.values({
-					organizationId: context.organizationId,
-					bookingId,
-					invoiceNumber,
-					status: "draft",
-					issueDate,
-					dueDate: dueDate ?? null,
-					subtotal: subtotal.toFixed(2),
-					taxAmount: taxAmount.toFixed(2),
-					discountAmount: discount.toFixed(2),
-					totalAmount: totalAmount.toFixed(2),
-					paidAmount: "0.00",
-					notes: notes ?? null,
-					terms: terms ?? null,
-					createdBy: context.user.id,
+					.values({
+						organizationId: context.organizationId,
+						bookingId,
+						invoiceNumber,
+						status: "draft",
+						issueDate,
+						dueDate: dueDate ?? null,
+						subtotal: centsToMoney(subtotalCents),
+						taxAmount,
+						discountAmount: discount,
+						totalAmount,
+						paidAmount: "0.00",
+						notes: notes ?? null,
+						terms: terms ?? null,
+						createdBy: context.user.id,
 					updatedBy: context.user.id,
 				})
 				.returning({ id: invoices.id });
@@ -99,39 +107,39 @@ export const createInvoice = studioProtectedProcedure
 				throw new ORPCError("INTERNAL_SERVER_ERROR", {
 					message: "Failed to create invoice",
 				});
-			}
+				}
 
-			const lineItemValues = lineItems.map((item, idx) => {
-				const qty = Number.parseFloat(item.quantity ?? "1");
-				const price = Number.parseFloat(item.unitPrice);
-				const amount = qty * price;
+				const lineItemValues = lineItems.map((item, idx) => {
+					const qty = Number.parseInt(item.quantity ?? "1", 10);
+					const unitPriceCents = moneyToCents(item.unitPrice);
+					const amountCents = qty * unitPriceCents;
+					return {
+						invoiceId: created.id,
+						description: item.description,
+						quantity: item.quantity ?? "1",
+						unitPrice: centsToMoney(unitPriceCents),
+						amount: centsToMoney(amountCents),
+						sortOrder: idx,
+					};
+				});
+
+				await tx.insert(invoiceLineItems).values(lineItemValues);
+
+				await safeTrackActivity(context, {
+					entityType: "invoice",
+					entityId: created.id,
+					entityName: `${invoiceNumber} (${formatAmount(totalAmount)})`,
+					action: "created",
+					parentEntityType: "booking",
+					parentEntityId: bookingId,
+					parentEntityName: booking.name,
+					metadata: {
+						invoiceNumber,
+						totalAmount,
+					},
+				});
+
 				return {
-					invoiceId: created.id,
-					description: item.description,
-					quantity: item.quantity ?? "1",
-					unitPrice: item.unitPrice,
-					amount: amount.toFixed(2),
-					sortOrder: idx,
-				};
-			});
-
-			await tx.insert(invoiceLineItems).values(lineItemValues);
-
-			await safeTrackActivity(context, {
-				entityType: "invoice",
-				entityId: created.id,
-				entityName: `${invoiceNumber} (${formatAmount(totalAmount.toFixed(2))})`,
-				action: "created",
-				parentEntityType: "booking",
-				parentEntityId: bookingId,
-				parentEntityName: booking.name,
-				metadata: {
-					invoiceNumber,
-					totalAmount: totalAmount.toFixed(2),
-				},
-			});
-
-			return {
 				data: { id: created.id },
 				message: "Invoice created successfully",
 			};

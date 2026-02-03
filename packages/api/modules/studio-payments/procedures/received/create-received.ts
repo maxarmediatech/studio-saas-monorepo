@@ -145,22 +145,22 @@ export const createReceived = studioProtectedProcedure
 					context.organizationId,
 				);
 
-				await tx.insert(receipts).values({
-					organizationId: context.organizationId,
-					bookingId,
-					invoiceId,
+					await tx.insert(receipts).values({
+						organizationId: context.organizationId,
+						bookingId,
+						invoiceId,
 					receivedAmountId: created.id,
 					receiptNumber,
 					amount,
 					paymentMethod,
 					receiptDate: receivedDate,
 					notes: notes ?? null,
-					createdBy: context.user.id,
-					updatedBy: context.user.id,
-				});
+						createdBy: context.user.id,
+						updatedBy: context.user.id,
+					});
 
-				await updateInvoicePaymentStatus(invoiceId, context.user.id);
-			}
+					await updateInvoicePaymentStatus(tx, invoiceId, context.user.id);
+				}
 
 			// Update booking total received
 			await tx

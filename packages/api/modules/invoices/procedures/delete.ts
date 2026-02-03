@@ -6,8 +6,7 @@ import { requirePermission } from "../../studio/lib/permissions";
 import {
 	deleteInvoiceInputSchema,
 	deleteInvoiceOutputSchema,
-} from "../../studio/schemas/invoice";
-import type { InvoiceStatus } from "../lib/invoice-helpers";
+	} from "../../studio/schemas/invoice";
 
 export const deleteInvoice = studioProtectedProcedure
 	.route({
@@ -36,15 +35,15 @@ export const deleteInvoice = studioProtectedProcedure
 			throw new ORPCError("NOT_FOUND", {
 				message: "Invoice not found",
 			});
-		}
+			}
 
-		const status = invoice.status as InvoiceStatus;
-		if (status === "paid" || status === "partial") {
-			throw new ORPCError("CONFLICT", {
-				message:
-					"Cannot delete invoices with payments. Cancel the invoice instead.",
-			});
-		}
+			const paidAmount = Number.parseFloat(invoice.paidAmount);
+			if (paidAmount > 0) {
+				throw new ORPCError("CONFLICT", {
+					message:
+						"Cannot delete invoices with payments. Cancel the invoice instead.",
+				});
+			}
 
 		const booking = await db.query.bookings.findFirst({
 			where: and(

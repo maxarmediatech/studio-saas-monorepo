@@ -8,6 +8,7 @@ import {
 	safeTrackFieldChanges,
 } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
+import { centsToMoney, moneyToCents } from "../../studio/lib/money";
 import {
 	updateInvoiceInputSchema,
 	updateInvoiceOutputSchema,
@@ -70,20 +71,27 @@ export const updateInvoice = studioProtectedProcedure
 
 		if (updates.terms !== undefined) {
 			updateData.terms = updates.terms;
-		}
+			}
 
-		if (updates.discountAmount !== undefined) {
-			const newDiscount = Number.parseFloat(updates.discountAmount);
-			const subtotal = Number.parseFloat(invoice.subtotal);
-			const { taxAmount, totalAmount } = await calculateGst(
-				subtotal,
-				context.organizationId,
-				newDiscount,
-			);
-			updateData.discountAmount = newDiscount.toFixed(2);
-			updateData.taxAmount = taxAmount.toFixed(2);
-			updateData.totalAmount = totalAmount.toFixed(2);
-		}
+			if (updates.discountAmount !== undefined) {
+				const subtotalCents = moneyToCents(invoice.subtotal);
+				const newDiscountCents = moneyToCents(updates.discountAmount);
+
+				if (newDiscountCents > subtotalCents) {
+					throw new ORPCError("BAD_REQUEST", {
+						message: "Discount cannot exceed subtotal",
+					});
+				}
+
+				const { taxAmount, totalAmount } = await calculateGst(
+					centsToMoney(subtotalCents),
+					context.organizationId,
+					centsToMoney(newDiscountCents),
+				);
+				updateData.discountAmount = centsToMoney(newDiscountCents);
+				updateData.taxAmount = taxAmount;
+				updateData.totalAmount = totalAmount;
+			}
 
 		await db.update(invoices).set(updateData).where(eq(invoices.id, id));
 

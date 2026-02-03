@@ -10,6 +10,20 @@ import {
 import { ReceiptPdfDocument } from "@/modules/saas/studio/components/pdf/ReceiptPdfDocument";
 import { orpcClient } from "@/modules/shared/lib/orpc-client.server";
 
+function parseJsonRecord(value: unknown): Record<string, unknown> {
+	if (!value) return {};
+	if (typeof value === "object") return value as Record<string, unknown>;
+	if (typeof value === "string") {
+		try {
+			const parsed = JSON.parse(value) as unknown;
+			return typeof parsed === "object" && parsed ? (parsed as Record<string, unknown>) : {};
+		} catch {
+			return {};
+		}
+	}
+	return {};
+}
+
 export async function GET(
 	request: Request,
 	{ params }: { params: Promise<{ id: string }> },
@@ -44,18 +58,19 @@ export async function GET(
 			return new Response("Organization not found", { status: 404 });
 		}
 
-		const configs = await db.query.configurations.findMany({
-			where: eq(configurations.organizationId, receipt.organizationId),
-		});
+			const configs = await db.query.configurations.findMany({
+				where: eq(configurations.organizationId, receipt.organizationId),
+			});
 
-		const addressConfig = configs.find((c) => c.key === "address");
-		const orgMetadata = organization.metadata
-			? JSON.parse(organization.metadata as string)
-			: {};
+			const addressConfig = configs.find((c) => c.key === "address");
+			const orgMetadata = parseJsonRecord(organization.metadata);
 
-		const address = addressConfig?.label || orgMetadata?.address || "";
-		const email = orgMetadata?.email || "";
-		const phone = orgMetadata?.phone || "";
+			const address =
+				addressConfig?.label ||
+				(typeof orgMetadata.address === "string" ? orgMetadata.address : "") ||
+				"";
+			const email = typeof orgMetadata.email === "string" ? orgMetadata.email : "";
+			const phone = typeof orgMetadata.phone === "string" ? orgMetadata.phone : "";
 
 		const props = {
 			receipt: {

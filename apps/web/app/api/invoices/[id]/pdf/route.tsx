@@ -4,6 +4,20 @@ import { clients, configurations, db, eq, organizations } from "@repo/database";
 import { InvoicePdfDocument } from "@/modules/saas/studio/components/pdf/InvoicePdfDocument";
 import { orpcClient } from "@/modules/shared/lib/orpc-client.server";
 
+function parseJsonRecord(value: unknown): Record<string, unknown> {
+	if (!value) return {};
+	if (typeof value === "object") return value as Record<string, unknown>;
+	if (typeof value === "string") {
+		try {
+			const parsed = JSON.parse(value) as unknown;
+			return typeof parsed === "object" && parsed ? (parsed as Record<string, unknown>) : {};
+		} catch {
+			return {};
+		}
+	}
+	return {};
+}
+
 export async function GET(
 	request: Request,
 	{ params }: { params: Promise<{ id: string }> },
@@ -38,31 +52,34 @@ export async function GET(
 			return new Response("Organization not found", { status: 404 });
 		}
 
-		const configs = await db.query.configurations.findMany({
-			where: eq(configurations.organizationId, invoice.organizationId),
-		});
+			const configs = await db.query.configurations.findMany({
+				where: eq(configurations.organizationId, invoice.organizationId),
+			});
 
-		const addressConfig = configs.find((c) => c.key === "address");
-		const orgMetadata = organization.metadata
-			? JSON.parse(organization.metadata as string)
-			: {};
+			const addressConfig = configs.find((c) => c.key === "address");
+			const orgMetadata = parseJsonRecord(organization.metadata);
 
-		const address = addressConfig?.label || orgMetadata?.address || "";
-		const gstNumber = orgMetadata?.gstNumber || "";
-		const email = orgMetadata?.email || "";
-		const phone = orgMetadata?.phone || "";
+			const address =
+				addressConfig?.label ||
+				(typeof orgMetadata.address === "string" ? orgMetadata.address : "") ||
+				"";
+			const gstNumber =
+				typeof orgMetadata.gstNumber === "string" ? orgMetadata.gstNumber : "";
+			const email = typeof orgMetadata.email === "string" ? orgMetadata.email : "";
+			const phone = typeof orgMetadata.phone === "string" ? orgMetadata.phone : "";
 
-		const props = {
-			invoice: {
-				invoiceNumber: invoice.invoiceNumber,
-				issueDate: invoice.issueDate,
-				dueDate: invoice.dueDate,
-				subtotal: Number(invoice.subtotal),
-				taxAmount: Number(invoice.taxAmount),
-				totalAmount: Number(invoice.totalAmount),
-				notes: invoice.notes,
-				lineItems: invoice.lineItems.map((item) => ({
-					id: item.id,
+			const props = {
+				invoice: {
+					invoiceNumber: invoice.invoiceNumber,
+					issueDate: invoice.issueDate,
+					dueDate: invoice.dueDate,
+					subtotal: Number(invoice.subtotal),
+					taxAmount: Number(invoice.taxAmount),
+					discountAmount: Number(invoice.discountAmount),
+					totalAmount: Number(invoice.totalAmount),
+					notes: invoice.notes,
+					lineItems: invoice.lineItems.map((item) => ({
+						id: item.id,
 					description: item.description,
 					quantity: Number(item.quantity),
 					unitPrice: Number(item.unitPrice),

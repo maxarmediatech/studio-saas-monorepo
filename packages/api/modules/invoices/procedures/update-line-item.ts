@@ -15,6 +15,7 @@ import {
 	safeTrackFieldChanges,
 } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
+import { centsToMoney, moneyToCents } from "../../studio/lib/money";
 import {
 	updateLineItemInputSchema,
 	updateLineItemOutputSchema,
@@ -85,31 +86,31 @@ export const updateLineItem = studioProtectedProcedure
 			updateData.quantity = updates.quantity;
 		}
 
-		if (updates.unitPrice !== undefined) {
-			updateData.unitPrice = updates.unitPrice;
-		}
+			if (updates.unitPrice !== undefined) {
+				updateData.unitPrice = centsToMoney(moneyToCents(updates.unitPrice));
+			}
 
 		if (updates.sortOrder !== undefined) {
 			updateData.sortOrder = updates.sortOrder;
 		}
 
-		if (updates.quantity !== undefined || updates.unitPrice !== undefined) {
-			const qty = Number.parseFloat(newQuantity);
-			const price = Number.parseFloat(newUnitPrice);
-			updateData.amount = (qty * price).toFixed(2);
-		}
+			if (updates.quantity !== undefined || updates.unitPrice !== undefined) {
+				const qty = Number.parseInt(newQuantity, 10);
+				const unitPriceCents = moneyToCents(newUnitPrice);
+				updateData.amount = centsToMoney(qty * unitPriceCents);
+			}
 
-		return await db.transaction(async (tx) => {
-			await tx
-				.update(invoiceLineItems)
-				.set(updateData)
-				.where(eq(invoiceLineItems.id, id));
+			return await db.transaction(async (tx) => {
+				await tx
+					.update(invoiceLineItems)
+					.set(updateData)
+					.where(eq(invoiceLineItems.id, id));
 
-			const totals = await recalculateInvoiceTotals(lineItem.invoiceId);
-			await tx
-				.update(invoices)
-				.set({
-					...totals,
+				const totals = await recalculateInvoiceTotals(tx, lineItem.invoiceId);
+				await tx
+					.update(invoices)
+					.set({
+						...totals,
 					updatedAt: new Date(),
 					updatedBy: context.user.id,
 				})

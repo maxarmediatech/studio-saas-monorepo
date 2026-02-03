@@ -9,6 +9,7 @@ import {
 	isNull,
 	sql,
 } from "@repo/database";
+import { centsToMoney, moneyToCents } from "../../studio/lib/money";
 import { format } from "date-fns";
 
 export {
@@ -56,14 +57,17 @@ export async function generateInvoiceNumber(
 
 export interface GstCalculation {
 	gstRate: number;
-	taxAmount: number;
-	totalAmount: number;
+	taxAmount: string;
+	totalAmount: string;
 }
 
+type Tx = Parameters<Parameters<(typeof db)["transaction"]>[0]>[0];
+type DbOrTx = typeof db | Tx;
+
 export async function calculateGst(
-	subtotal: number,
+	subtotal: string,
 	orgId: string,
-	discountAmount = 0,
+	discountAmount = "0",
 ): Promise<GstCalculation> {
 	const config = await db.query.configurations.findFirst({
 		where: and(
@@ -74,21 +78,33 @@ export async function calculateGst(
 		columns: { metadata: true },
 	});
 
-	const gstRate = (config?.metadata as { rate?: number } | null)?.rate ?? 18;
-	const taxAmount = subtotal * (gstRate / 100);
-	const totalAmount = subtotal + taxAmount - discountAmount;
+	const rateValue = (config?.metadata as { rate?: unknown } | null)?.rate;
+	const gstRateRaw = Number(rateValue);
+	const gstRate = Number.isFinite(gstRateRaw) ? gstRateRaw : 18;
+
+	const subtotalCents = moneyToCents(subtotal);
+	const discountCents = moneyToCents(discountAmount);
+
+	if (discountCents > subtotalCents) {
+		throw new Error("Discount cannot exceed subtotal");
+	}
+
+	const taxableCents = subtotalCents - discountCents;
+	const taxCents = Math.round((taxableCents * gstRate) / 100);
+	const totalCents = taxableCents + taxCents;
 
 	return {
 		gstRate,
-		taxAmount: Math.round(taxAmount * 100) / 100,
-		totalAmount: Math.round(totalAmount * 100) / 100,
+		taxAmount: centsToMoney(taxCents),
+		totalAmount: centsToMoney(totalCents),
 	};
 }
 
 export async function recalculateInvoiceTotals(
+	dbOrTx: DbOrTx,
 	invoiceId: string,
 ): Promise<{ subtotal: string; taxAmount: string; totalAmount: string }> {
-	const invoice = await db.query.invoices.findFirst({
+	const invoice = await dbOrTx.query.invoices.findFirst({
 		where: eq(invoices.id, invoiceId),
 		columns: { organizationId: true, discountAmount: true },
 		with: {
@@ -103,20 +119,19 @@ export async function recalculateInvoiceTotals(
 	}
 
 	const subtotal = invoice.lineItems.reduce(
-		(sum, item) => sum + Number.parseFloat(item.amount),
+		(sum, item) => sum + moneyToCents(item.amount),
 		0,
 	);
 
-	const discountAmount = Number.parseFloat(invoice.discountAmount);
 	const { taxAmount, totalAmount } = await calculateGst(
-		subtotal,
+		centsToMoney(subtotal),
 		invoice.organizationId,
-		discountAmount,
+		invoice.discountAmount,
 	);
 
 	return {
-		subtotal: subtotal.toFixed(2),
-		taxAmount: taxAmount.toFixed(2),
-		totalAmount: totalAmount.toFixed(2),
+		subtotal: centsToMoney(subtotal),
+		taxAmount,
+		totalAmount,
 	};
 }

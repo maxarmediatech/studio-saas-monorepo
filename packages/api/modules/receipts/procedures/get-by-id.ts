@@ -70,17 +70,23 @@ export const getReceipt = studioProtectedProcedure
 			});
 		}
 
-		let invoice = null;
-		if (receipt.invoiceId) {
-			const invoiceResult = await db
-				.select({
-					id: invoices.id,
-					invoiceNumber: invoices.invoiceNumber,
-					totalAmount: invoices.totalAmount,
-				})
-				.from(invoices)
-				.where(eq(invoices.id, receipt.invoiceId))
-				.limit(1);
+			let invoice = null;
+			if (receipt.invoiceId) {
+				const invoiceResult = await db
+					.select({
+						id: invoices.id,
+						invoiceNumber: invoices.invoiceNumber,
+						totalAmount: invoices.totalAmount,
+					})
+					.from(invoices)
+					.where(
+						and(
+							eq(invoices.id, receipt.invoiceId),
+							eq(invoices.organizationId, context.organizationId),
+							isNull(invoices.deletedAt),
+						),
+					)
+					.limit(1);
 
 			if (invoiceResult[0]) {
 				invoice = {

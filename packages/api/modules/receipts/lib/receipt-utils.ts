@@ -51,6 +51,12 @@ export function determineInvoiceStatus(
 	invoiceTotal: number,
 	currentStatus: InvoiceStatus,
 ): InvoiceStatusResult {
+	if (currentStatus === "overdue") {
+		if (totalPaid >= invoiceTotal) {
+			return { newStatus: "paid", isPaid: true };
+		}
+		return { newStatus: "overdue", isPaid: false };
+	}
 	if (totalPaid >= invoiceTotal) {
 		return { newStatus: "paid", isPaid: true };
 	}

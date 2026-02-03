@@ -1,3 +1,4 @@
+import { ORPCError } from "@orpc/server";
 import {
 	and,
 	bookings,
@@ -9,6 +10,7 @@ import {
 	receipts,
 	sql,
 } from "@repo/database";
+import { centsToMoney, moneyToCents } from "../../studio/lib/money";
 import {
 	buildReceiptNumber,
 	determineInvoiceStatus,
@@ -55,25 +57,50 @@ export async function generateReceiptNumber(
 	return getNextReceiptNumber(baseNumber, existing?.receiptNumber ?? null);
 }
 
+type Tx = Parameters<Parameters<(typeof db)["transaction"]>[0]>[0];
+type DbOrTx = typeof db | Tx;
+
+function getDateOnlyString(value: unknown): string | null {
+	if (!value) return null;
+	if (typeof value === "string") return value;
+	if (value instanceof Date) return value.toISOString().slice(0, 10);
+	return null;
+}
+
 export async function updateInvoicePaymentStatus(
+	dbOrTx: DbOrTx,
 	invoiceId: string,
 	userId: string,
 ): Promise<void> {
-	const invoice = await db.query.invoices.findFirst({
-		where: eq(invoices.id, invoiceId),
+	const invoice = await dbOrTx.query.invoices.findFirst({
+		where: and(eq(invoices.id, invoiceId), isNull(invoices.deletedAt)),
 		columns: {
 			totalAmount: true,
-			paidAmount: true,
 			status: true,
 			paidAt: true,
+			dueDate: true,
 		},
 	});
 
 	if (!invoice) {
-		throw new Error("Invoice not found for status update");
+		throw new ORPCError("NOT_FOUND", {
+			message: "Invoice not found",
+		});
 	}
 
-	const receiptsForInvoice = await db.query.receipts.findMany({
+	const currentStatus = invoice.status as InvoiceStatus;
+	if (currentStatus === "cancelled") {
+		throw new ORPCError("CONFLICT", {
+			message: "Cannot record payments for a cancelled invoice",
+		});
+	}
+	if (currentStatus === "draft") {
+		throw new ORPCError("CONFLICT", {
+			message: "Invoice must be sent before recording payments",
+		});
+	}
+
+	const receiptsForInvoice = await dbOrTx.query.receipts.findMany({
 		where: and(
 			eq(receipts.invoiceId, invoiceId),
 			isNull(receipts.deletedAt),
@@ -81,24 +108,42 @@ export async function updateInvoicePaymentStatus(
 		columns: { amount: true },
 	});
 
-	const totalPaid = receiptsForInvoice.reduce(
-		(sum, r) => sum + Number.parseFloat(r.amount),
+	const totalPaidCents = receiptsForInvoice.reduce(
+		(sum, r) => sum + moneyToCents(r.amount),
 		0,
 	);
+	const invoiceTotalCents = moneyToCents(invoice.totalAmount);
 
-	const invoiceTotal = Number.parseFloat(invoice.totalAmount);
+	if (totalPaidCents > invoiceTotalCents) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "Payment total exceeds invoice total",
+		});
+	}
+
+	const today = new Date().toISOString().slice(0, 10);
+	const dueDate = getDateOnlyString(invoice.dueDate);
+	const isPastDue = !!dueDate && dueDate < today;
+
+	let baseStatus: InvoiceStatus =
+		currentStatus === "paid" || currentStatus === "partial"
+			? "sent"
+			: currentStatus;
+	if (isPastDue) {
+		baseStatus = "overdue";
+	}
+
 	const { newStatus, isPaid } = determineInvoiceStatus(
-		totalPaid,
-		invoiceTotal,
-		invoice.status as InvoiceStatus,
+		totalPaidCents,
+		invoiceTotalCents,
+		baseStatus,
 	);
 
-	await db
+	await dbOrTx
 		.update(invoices)
 		.set({
-			paidAmount: totalPaid.toFixed(2),
+			paidAmount: centsToMoney(totalPaidCents),
 			status: newStatus,
-			paidAt: isPaid ? new Date() : invoice.paidAt,
+			paidAt: isPaid ? (invoice.paidAt ?? new Date()) : null,
 			updatedAt: new Date(),
 			updatedBy: userId,
 		})

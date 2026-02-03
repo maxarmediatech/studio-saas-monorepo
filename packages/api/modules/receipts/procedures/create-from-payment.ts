@@ -103,7 +103,7 @@ export const createReceiptFromPayment = studioProtectedProcedure
 				});
 			}
 
-			await updateInvoicePaymentStatus(invoiceId, context.user.id);
+				await updateInvoicePaymentStatus(tx, invoiceId, context.user.id);
 
 			await safeTrackActivity(context, {
 				entityType: "received_amount",

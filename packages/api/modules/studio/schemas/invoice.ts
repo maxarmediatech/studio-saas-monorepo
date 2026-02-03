@@ -187,7 +187,7 @@ export const createInvoiceInputSchema = z.object({
 				description: z.string().min(1).max(500),
 				quantity: z
 					.string()
-					.regex(/^\d+(\.\d{1,2})?$/)
+					.regex(/^\d+$/)
 					.default("1"),
 				unitPrice: moneySchema,
 			}),
@@ -251,7 +251,7 @@ export const addLineItemInputSchema = z.object({
 	description: z.string().min(1).max(500),
 	quantity: z
 		.string()
-		.regex(/^\d+(\.\d{1,2})?$/)
+		.regex(/^\d+$/)
 		.default("1"),
 	unitPrice: moneySchema,
 	sortOrder: z.number().min(0).optional(),
@@ -268,7 +268,7 @@ export const updateLineItemInputSchema = z.object({
 	description: z.string().min(1).max(500).optional(),
 	quantity: z
 		.string()
-		.regex(/^\d+(\.\d{1,2})?$/)
+		.regex(/^\d+$/)
 		.optional(),
 	unitPrice: moneySchema.optional(),
 	sortOrder: z.number().min(0).optional(),

@@ -79,16 +79,16 @@ export const removeLineItem = studioProtectedProcedure
 			});
 		}
 
-		return await db.transaction(async (tx) => {
-			await tx
-				.delete(invoiceLineItems)
-				.where(eq(invoiceLineItems.id, id));
+			return await db.transaction(async (tx) => {
+				await tx
+					.delete(invoiceLineItems)
+					.where(eq(invoiceLineItems.id, id));
 
-			const totals = await recalculateInvoiceTotals(lineItem.invoiceId);
-			await tx
-				.update(invoices)
-				.set({
-					...totals,
+				const totals = await recalculateInvoiceTotals(tx, lineItem.invoiceId);
+				await tx
+					.update(invoices)
+					.set({
+						...totals,
 					updatedAt: new Date(),
 					updatedBy: context.user.id,
 				})

@@ -24,47 +24,51 @@ export const voidReceipt = studioProtectedProcedure
 
 		const { id, reason } = input;
 
-		const receipt = await db.query.receipts.findFirst({
-			where: and(
-				eq(receipts.id, id),
-				eq(receipts.organizationId, context.organizationId),
-				isNull(receipts.deletedAt),
-			),
-		});
-
-		if (!receipt) {
-			throw new ORPCError("NOT_FOUND", {
-				message: "Receipt not found",
+		const { receipt, bookingName } = await db.transaction(async (tx) => {
+			const receipt = await tx.query.receipts.findFirst({
+				where: and(
+					eq(receipts.id, id),
+					eq(receipts.organizationId, context.organizationId),
+					isNull(receipts.deletedAt),
+				),
 			});
-		}
 
-		const updateData: Record<string, unknown> = {
-			deletedAt: new Date(),
-			deletedBy: context.user.id,
-			updatedAt: new Date(),
-			updatedBy: context.user.id,
-		};
+			if (!receipt) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Receipt not found",
+				});
+			}
 
-		if (reason) {
-			const existingNotes = receipt.notes ?? "";
-			const voidNote = `[Voided: ${reason}]`;
-			updateData.notes = existingNotes
-				? `${existingNotes}\n\n${voidNote}`
-				: voidNote;
-		}
+			const updateData: Record<string, unknown> = {
+				deletedAt: new Date(),
+				deletedBy: context.user.id,
+				updatedAt: new Date(),
+				updatedBy: context.user.id,
+			};
 
-		await db.update(receipts).set(updateData).where(eq(receipts.id, id));
+			if (reason) {
+				const existingNotes = receipt.notes ?? "";
+				const voidNote = `[Voided: ${reason}]`;
+				updateData.notes = existingNotes
+					? `${existingNotes}\n\n${voidNote}`
+					: voidNote;
+			}
 
-		if (receipt.invoiceId) {
-			await updateInvoicePaymentStatus(
-				receipt.invoiceId,
-				context.user.id,
-			);
-		}
+			await tx.update(receipts).set(updateData).where(eq(receipts.id, id));
 
-		const booking = await db.query.bookings.findFirst({
-			where: eq(bookings.id, receipt.bookingId),
-			columns: { name: true },
+			if (receipt.invoiceId) {
+				await updateInvoicePaymentStatus(tx, receipt.invoiceId, context.user.id);
+			}
+
+			const booking = await tx.query.bookings.findFirst({
+				where: eq(bookings.id, receipt.bookingId),
+				columns: { name: true },
+			});
+
+			return {
+				receipt,
+				bookingName: booking?.name ?? "Unknown Booking",
+			};
 		});
 
 		await safeTrackActivity(context, {
@@ -74,7 +78,7 @@ export const voidReceipt = studioProtectedProcedure
 			action: "deleted",
 			parentEntityType: "booking",
 			parentEntityId: receipt.bookingId,
-			parentEntityName: booking?.name ?? "Unknown Booking",
+			parentEntityName: bookingName,
 			metadata: reason
 				? { reason, type: "receipt_voided" }
 				: { type: "receipt_voided" },

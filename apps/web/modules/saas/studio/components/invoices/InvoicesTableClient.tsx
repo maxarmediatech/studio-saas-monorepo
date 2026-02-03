@@ -20,15 +20,14 @@ import {
 	DataTableViewOptions,
 	type RowAction,
 	SortProvider,
-} from "@saas/shared/components/data-table";
-import "@saas/shared/components/data-table/types";
-import { formatMoney } from "@saas/shared/lib";
-import { useInvoiceParams } from "@saas/studio/hooks/params/use-invoice-params";
-import { useInvoicesTable } from "@saas/studio/hooks/tables/use-invoices-table";
-import { invoicesApi, invoicesMutations } from "@saas/studio/lib/api";
-import { orpc } from "@shared/lib/orpc-query-utils";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ColumnDef } from "@tanstack/react-table";
+	} from "@saas/shared/components/data-table";
+	import "@saas/shared/components/data-table/types";
+	import { formatMoney } from "@saas/shared/lib";
+	import { useInvoicesTable } from "@saas/studio/hooks/tables/use-invoices-table";
+	import { invoicesApi, invoicesMutations } from "@saas/studio/lib/api";
+	import { orpc } from "@shared/lib/orpc-query-utils";
+	import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+	import type { ColumnDef } from "@tanstack/react-table";
 import {
 	CalendarIcon,
 	CircleIcon,
@@ -38,10 +37,11 @@ import {
 	PencilIcon,
 	PlusIcon,
 	TrashIcon,
-} from "lucide-react";
-import Link from "next/link";
-import { useMemo, useState } from "react";
-import { toast } from "sonner";
+	} from "lucide-react";
+	import Link from "next/link";
+	import { useRouter } from "next/navigation";
+	import { useMemo, useState } from "react";
+	import { toast } from "sonner";
 
 interface InvoicesTableClientProps {
 	organizationSlug: string;
@@ -60,7 +60,7 @@ export function InvoicesTableClient({
 	organizationSlug,
 }: InvoicesTableClientProps) {
 	const queryClient = useQueryClient();
-	const { openView, openEdit } = useInvoiceParams();
+	const router = useRouter();
 
 	const {
 		filters,
@@ -122,12 +122,16 @@ export function InvoicesTableClient({
 			{
 				label: "View details",
 				icon: <EyeIcon className="h-4 w-4" />,
-				onClick: (row) => openView(row.id),
+				onClick: (row) => {
+					router.push(`/app/${organizationSlug}/invoices/${row.id}`);
+				},
 			},
 			{
 				label: "Edit",
 				icon: <PencilIcon className="h-4 w-4" />,
-				onClick: (row) => openEdit(row.id),
+				onClick: (row) => {
+					router.push(`/app/${organizationSlug}/invoices/${row.id}`);
+				},
 				show: (row) => row.status === "draft",
 			},
 			{
@@ -141,7 +145,7 @@ export function InvoicesTableClient({
 				},
 			},
 		],
-		[openView, openEdit],
+		[organizationSlug, router],
 	);
 
 	const columns: ColumnDef<InvoiceListItem>[] = useMemo(
@@ -311,17 +315,17 @@ export function InvoicesTableClient({
 						<div className="flex flex-col items-center gap-2">
 							<p className="text-muted-foreground">
 								No invoices found
-							</p>
-							<Button variant="outline" size="sm" asChild>
-								<Link
-									href={`/app/${organizationSlug}/invoices/new`}
-								>
-									<PlusIcon className="mr-2 h-4 w-4" />
-									Create your first invoice
-								</Link>
-							</Button>
-						</div>
-					}
+								</p>
+								<Button variant="outline" size="sm" asChild>
+									<Link
+										href={`/app/${organizationSlug}/bookings`}
+									>
+										<PlusIcon className="mr-2 h-4 w-4" />
+										Go to bookings
+									</Link>
+								</Button>
+							</div>
+						}
 				/>
 			</SortProvider>
 

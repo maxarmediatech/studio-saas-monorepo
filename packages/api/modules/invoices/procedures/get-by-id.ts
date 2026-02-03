@@ -98,16 +98,22 @@ export const getInvoice = studioProtectedProcedure
 
 		let schedule = null;
 		if (invoice.paymentScheduleId) {
-			const scheduleResult = await db
-				.select({
-					id: paymentSchedules.id,
-					name: paymentSchedules.name,
-					amount: paymentSchedules.amount,
-					dueDate: paymentSchedules.dueDate,
-				})
-				.from(paymentSchedules)
-				.where(eq(paymentSchedules.id, invoice.paymentScheduleId))
-				.limit(1);
+				const scheduleResult = await db
+					.select({
+						id: paymentSchedules.id,
+						name: paymentSchedules.name,
+						amount: paymentSchedules.amount,
+						dueDate: paymentSchedules.dueDate,
+					})
+					.from(paymentSchedules)
+					.where(
+						and(
+							eq(paymentSchedules.id, invoice.paymentScheduleId),
+							eq(paymentSchedules.organizationId, context.organizationId),
+							isNull(paymentSchedules.deletedAt),
+						),
+					)
+					.limit(1);
 
 			if (scheduleResult[0]) {
 				schedule = {

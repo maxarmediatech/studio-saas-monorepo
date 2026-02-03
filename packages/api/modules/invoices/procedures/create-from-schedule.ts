@@ -13,6 +13,7 @@ import { format } from "date-fns";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { formatAmount, safeTrackActivity } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
+import { centsToMoney, moneyToCents } from "../../studio/lib/money";
 import {
 	createInvoiceFromScheduleInputSchema,
 	createInvoiceFromScheduleOutputSchema,
@@ -75,17 +76,17 @@ export const createInvoiceFromSchedule = studioProtectedProcedure
 		if (!booking) {
 			throw new ORPCError("NOT_FOUND", {
 				message: "Booking not found",
-			});
-		}
+				});
+			}
 
-		const subtotal = Number.parseFloat(schedule.amount);
-		const { taxAmount, totalAmount } = await calculateGst(
-			subtotal,
-			context.organizationId,
-			0,
-		);
+			const subtotalCents = moneyToCents(schedule.amount);
+			const { taxAmount, totalAmount } = await calculateGst(
+				centsToMoney(subtotalCents),
+				context.organizationId,
+				"0.00",
+			);
 
-		return await db.transaction(async (tx) => {
+			return await db.transaction(async (tx) => {
 			const invoiceNumber = await generateInvoiceNumber(
 				schedule.bookingId,
 				context.organizationId,
@@ -97,22 +98,22 @@ export const createInvoiceFromSchedule = studioProtectedProcedure
 
 			const [created] = await tx
 				.insert(invoices)
-				.values({
-					organizationId: context.organizationId,
-					bookingId: schedule.bookingId,
-					paymentScheduleId,
-					invoiceNumber,
-					status: "draft",
-					issueDate: finalIssueDate,
-					dueDate: finalDueDate,
-					subtotal: subtotal.toFixed(2),
-					taxAmount: taxAmount.toFixed(2),
-					discountAmount: "0.00",
-					totalAmount: totalAmount.toFixed(2),
-					paidAmount: "0.00",
-					notes: notes ?? null,
-					terms: terms ?? null,
-					createdBy: context.user.id,
+					.values({
+						organizationId: context.organizationId,
+						bookingId: schedule.bookingId,
+						paymentScheduleId,
+						invoiceNumber,
+						status: "draft",
+						issueDate: finalIssueDate,
+						dueDate: finalDueDate,
+						subtotal: centsToMoney(subtotalCents),
+						taxAmount,
+						discountAmount: "0.00",
+						totalAmount,
+						paidAmount: "0.00",
+						notes: notes ?? null,
+						terms: terms ?? null,
+						createdBy: context.user.id,
 					updatedBy: context.user.id,
 				})
 				.returning({ id: invoices.id });
@@ -121,31 +122,32 @@ export const createInvoiceFromSchedule = studioProtectedProcedure
 				throw new ORPCError("INTERNAL_SERVER_ERROR", {
 					message: "Failed to create invoice",
 				});
-			}
+				}
 
-			await tx.insert(invoiceLineItems).values({
-				invoiceId: created.id,
-				description: schedule.name,
-				quantity: "1",
-				unitPrice: schedule.amount,
-				amount: schedule.amount,
-				sortOrder: 0,
-			});
+				const scheduleAmount = centsToMoney(moneyToCents(schedule.amount));
+				await tx.insert(invoiceLineItems).values({
+					invoiceId: created.id,
+					description: schedule.name,
+					quantity: "1",
+					unitPrice: scheduleAmount,
+					amount: scheduleAmount,
+					sortOrder: 0,
+				});
 
-			await safeTrackActivity(context, {
-				entityType: "invoice",
-				entityId: created.id,
-				entityName: `${invoiceNumber} (${formatAmount(totalAmount.toFixed(2))})`,
-				action: "created",
-				parentEntityType: "booking",
-				parentEntityId: schedule.bookingId,
-				parentEntityName: booking.name,
-				metadata: {
-					invoiceNumber,
-					totalAmount: totalAmount.toFixed(2),
-					fromSchedule: schedule.name,
-				},
-			});
+				await safeTrackActivity(context, {
+					entityType: "invoice",
+					entityId: created.id,
+					entityName: `${invoiceNumber} (${formatAmount(totalAmount)})`,
+					action: "created",
+					parentEntityType: "booking",
+					parentEntityId: schedule.bookingId,
+					parentEntityName: booking.name,
+					metadata: {
+						invoiceNumber,
+						totalAmount,
+						fromSchedule: schedule.name,
+					},
+				});
 
 			return {
 				data: { id: created.id },
