@@ -26,7 +26,9 @@ export function AuthWrapper({
 									<LocaleSwitch />
 								</Suspense>
 							)}
-							<ColorModeToggle />
+							{config.ui.enabledThemes.length > 1 && (
+								<ColorModeToggle />
+							)}
 						</div>
 					</div>
 				</div>

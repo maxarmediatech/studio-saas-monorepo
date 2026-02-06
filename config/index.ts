@@ -86,7 +86,7 @@ export const config = {
 	// Frontend
 	ui: {
 		// the themes that should be available in the app
-		enabledThemes: ["light", "dark"],
+		enabledThemes: ["light"],
 		// the default theme
 		defaultTheme: "light",
 		// the saas part of the application
