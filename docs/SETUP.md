@@ -212,7 +212,7 @@ RESEND_API_KEY="re_xxxxxxxxxxxx"
 
 1. Create account at [dodopayments.com](https://dodopayments.com)
 2. Get API key from dashboard
-3. Set up webhook endpoint: `https://yourdomain.com/api/webhooks/dodo`
+3. Set up webhook endpoint: `https://yourdomain.com/api/webhooks/payments`
 
 ```env
 DODO_PAYMENTS_API_KEY="your-api-key"
@@ -230,6 +230,17 @@ NEXT_PUBLIC_PRICE_ID_STARTER_MONTHLY="price_xxx"
 NEXT_PUBLIC_PRICE_ID_STARTER_YEARLY="price_xxx"
 NEXT_PUBLIC_PRICE_ID_GROWTH_MONTHLY="price_xxx"
 NEXT_PUBLIC_PRICE_ID_GROWTH_YEARLY="price_xxx"
+
+# Optional one-time setup products bundled with subscription checkout
+NEXT_PUBLIC_PRICE_ID_FREELANCER_MONTHLY_SETUP="price_xxx"
+NEXT_PUBLIC_PRICE_ID_FREELANCER_YEARLY_SETUP="price_xxx"
+NEXT_PUBLIC_PRICE_ID_STARTER_MONTHLY_SETUP="price_xxx"
+NEXT_PUBLIC_PRICE_ID_STARTER_YEARLY_SETUP="price_xxx"
+NEXT_PUBLIC_PRICE_ID_GROWTH_MONTHLY_SETUP="price_xxx"
+NEXT_PUBLIC_PRICE_ID_GROWTH_YEARLY_SETUP="price_xxx"
+
+# Optional: set to "0" to disable inline checkout and use full-page checkout
+NEXT_PUBLIC_DODO_INLINE_CHECKOUT="1"
 ```
 
 ---

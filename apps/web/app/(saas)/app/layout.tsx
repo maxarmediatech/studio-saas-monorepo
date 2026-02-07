@@ -91,7 +91,7 @@ export default async function ProtectedAppLayout({
 		const purchases = data?.purchases ?? [];
 		const { activePlan } = createPurchasesHelper(purchases);
 
-		const hasSelectedPlan = purchases.length > 0 && !!activePlan;
+		const hasSelectedPlan = Boolean(activePlan?.hasActivePurchase);
 
 		if (!hasSelectedPlan) {
 			redirect("/choose-plan");

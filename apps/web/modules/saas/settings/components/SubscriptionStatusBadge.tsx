@@ -1,9 +1,7 @@
 "use client";
 
-// import type { BadgeProps } from "@repo/ui/components/badge";
 import { Badge } from "@repo/ui/components/badge";
 import { useTranslations } from "next-intl";
-import type { BadgeProps } from "@/modules/ui/components/badge";
 
 export function SubscriptionStatusBadge({
 	status,
@@ -12,6 +10,19 @@ export function SubscriptionStatusBadge({
 	className?: string;
 }) {
 	const t = useTranslations();
+	const normalizedStatus = (() => {
+		const normalized = status.toLowerCase();
+		if (normalized === "cancelled") {
+			return "canceled";
+		}
+		if (normalized === "on_hold") {
+			return "paused";
+		}
+		if (normalized === "failed") {
+			return "unpaid";
+		}
+		return normalized;
+	})();
 
 	const badgeLabels: Record<string, string> = {
 		active: t("settings.billing.activePlan.status.active"),
@@ -24,22 +35,7 @@ export function SubscriptionStatusBadge({
 		unpaid: t("settings.billing.activePlan.status.unpaid"),
 	};
 
-	const _badgeColors: Record<string, BadgeProps["status"]> = {
-		active: "success",
-		canceled: "error",
-		expired: "error",
-		incomplete: "warning",
-		past_due: "warning",
-		paused: "warning",
-		trialing: "info",
-		unpaid: "error",
-	};
+	const label = badgeLabels[normalizedStatus] ?? normalizedStatus;
 
-	return (
-		<Badge
-		// status={badgeColors[status]}
-		>
-			{badgeLabels[status]}
-		</Badge>
-	);
+	return <Badge>{label}</Badge>;
 }

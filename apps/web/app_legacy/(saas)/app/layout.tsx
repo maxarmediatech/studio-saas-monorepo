@@ -63,7 +63,7 @@ export default async function Layout({ children }: PropsWithChildren) {
 
 		const { activePlan } = createPurchasesHelper(purchases);
 
-		if (!activePlan) {
+		if (!activePlan?.hasActivePurchase) {
 			redirect("/choose-plan");
 		}
 	}

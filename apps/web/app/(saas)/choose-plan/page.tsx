@@ -52,7 +52,7 @@ export default async function ChoosePlanPage() {
 	const { activePlan } = createPurchasesHelper(purchases);
 	const hasPurchases = purchases.length > 0;
 
-	if (hasPurchases && activePlan) {
+	if (hasPurchases && activePlan?.hasActivePurchase) {
 		redirect("/app");
 	}
 

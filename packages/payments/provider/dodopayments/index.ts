@@ -45,13 +45,12 @@ export function getDodoPaymentsClient() {
 export const createCheckoutLink: CreateCheckoutLink = async (options) => {
 	const client = getDodoPaymentsClient();
 	const {
-		productId,
+		productCart,
 		redirectUrl,
 		customerId,
 		organizationId,
 		userId,
 		trialPeriodDays,
-		seats,
 		email,
 		name,
 	} = options;
@@ -66,14 +65,28 @@ export const createCheckoutLink: CreateCheckoutLink = async (options) => {
 		metadata.user_id = userId;
 	}
 
+	const hasValidReturnUrl = (() => {
+		if (!redirectUrl) {
+			return false;
+		}
+
+		try {
+			new URL(redirectUrl);
+			return true;
+		} catch {
+			return false;
+		}
+	})();
+
 	const response = await client.checkoutSessions.create({
-		product_cart: [
-			{
-				product_id: productId,
-				quantity: seats ?? 1,
-			},
-		],
-		return_url: redirectUrl ?? "",
+		product_cart: productCart.map((item) => ({
+			product_id: item.productId,
+			quantity: item.quantity ?? 1,
+		})),
+		customization: {
+			theme: "light",
+		},
+		return_url: hasValidReturnUrl ? redirectUrl : undefined,
 		customer: customerId
 			? {
 					customer_id: customerId,
@@ -365,6 +378,63 @@ export const webhookHandler: WebhookHandler = async (req) => {
 					break;
 				}
 
+				// Subscription updated (any field changed)
+				case "subscription.updated": {
+					const subscription_id = getString(data.subscription_id);
+					const product_id = getString(data.product_id);
+					const status = getString(data.status);
+					const customer = getCustomer(data.customer);
+					const metadata = getMetadata(data.metadata);
+
+					if (!subscription_id) {
+						throw new Error(
+							"Missing subscription_id in subscription.updated",
+						);
+					}
+
+					const existingPurchase =
+						await getPurchaseBySubscriptionId(subscription_id);
+
+					if (existingPurchase) {
+						await updatePurchase({
+							id: existingPurchase.id,
+							status:
+								status ?? existingPurchase.status ?? "active",
+							productId: product_id ?? undefined,
+						});
+						break;
+					}
+
+					const customerId =
+						customer?.customer_id || customer?.email || "";
+					if (!customerId) {
+						throw new Error(
+							"Missing customer info in subscription.updated",
+						);
+					}
+
+					await createPurchase({
+						subscriptionId: subscription_id,
+						organizationId: metadata?.organization_id || null,
+						userId: metadata?.user_id || null,
+						customerId,
+						type: "SUBSCRIPTION",
+						productId: product_id || "",
+						status: status || "active",
+					});
+
+					if (customer?.customer_id || customer?.email) {
+						await setCustomerIdToEntity(
+							customer?.customer_id || customer?.email || "",
+							{
+								organizationId: metadata?.organization_id,
+								userId: metadata?.user_id,
+							},
+						);
+					}
+					break;
+				}
+
 				// Subscription on hold (e.g., payment issues)
 				case "subscription.on_hold": {
 					const subscription_id = getString(data.subscription_id);
@@ -513,6 +583,77 @@ export const webhookHandler: WebhookHandler = async (req) => {
 						type: "ONE_TIME",
 						productId: product_id || "",
 						paymentId: payment_id,
+						status: "active",
+					});
+
+					if (customer?.customer_id || customer?.email) {
+						await setCustomerIdToEntity(
+							customer?.customer_id || customer?.email || "",
+							{
+								organizationId: metadata?.organization_id,
+								userId: metadata?.user_id,
+							},
+						);
+					}
+					break;
+				}
+
+				case "payment.failed":
+				case "payment.cancelled": {
+					const paymentStatus =
+						type === "payment.failed" ? "failed" : "cancelled";
+					const subscription_id = getString(data.subscription_id);
+					const payment_id = getString(data.payment_id);
+					const product_id = getString(data.product_id);
+					const customer = getCustomer(data.customer);
+					const metadata = getMetadata(data.metadata);
+
+					if (subscription_id) {
+						const existingSubscriptionPurchase =
+							await getPurchaseBySubscriptionId(subscription_id);
+
+						if (existingSubscriptionPurchase) {
+							await updatePurchase({
+								id: existingSubscriptionPurchase.id,
+								status:
+									type === "payment.failed"
+										? "on_hold"
+										: paymentStatus,
+							});
+						}
+						break;
+					}
+
+					if (!payment_id) {
+						throw new Error(`Missing payment_id in ${type}`);
+					}
+
+					const existingPaymentPurchase =
+						await getPurchaseByPaymentId(payment_id);
+
+					if (existingPaymentPurchase) {
+						await updatePurchase({
+							id: existingPaymentPurchase.id,
+							status: paymentStatus,
+							productId: product_id ?? undefined,
+						});
+						break;
+					}
+
+					const customerId =
+						customer?.customer_id || customer?.email || "";
+					if (!customerId) {
+						throw new Error(`Missing customer info in ${type}`);
+					}
+
+					await createPurchase({
+						organizationId: metadata?.organization_id || null,
+						userId: metadata?.user_id || null,
+						customerId,
+						type: "ONE_TIME",
+						productId: product_id || "",
+						paymentId: payment_id,
+						status: paymentStatus,
 					});
 
 					if (customer?.customer_id || customer?.email) {

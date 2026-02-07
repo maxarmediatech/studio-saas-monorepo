@@ -1,6 +1,8 @@
 export type CreateCheckoutLink = (params: {
-	type: "subscription" | "one-time";
-	productId: string;
+	productCart: Array<{
+		productId: string;
+		quantity?: number;
+	}>;
 	email?: string;
 	name?: string;
 	redirectUrl?: string;
@@ -8,7 +10,6 @@ export type CreateCheckoutLink = (params: {
 	organizationId?: string;
 	userId?: string;
 	trialPeriodDays?: number;
-	seats?: number;
 }) => Promise<string | null>;
 
 export type CreateCustomerPortalLink = (params: {

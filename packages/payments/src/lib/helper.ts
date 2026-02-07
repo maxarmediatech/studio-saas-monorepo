@@ -5,15 +5,33 @@ import type { z } from "zod";
 const plans = config.payments.plans as Config["payments"]["plans"];
 
 type PlanId = keyof typeof config.payments.plans;
-type PurchaseWithoutTimestamps = Omit<
-	z.infer<typeof PurchaseSchema>,
-	"createdAt" | "updatedAt"
->;
+type PurchaseRecord = z.infer<typeof PurchaseSchema>;
 
-function getActivePlanFromPurchases(purchases?: PurchaseWithoutTimestamps[]) {
-	const subscriptionPurchase = purchases?.find(
-		(purchase) => purchase.type === "SUBSCRIPTION",
+const activeSubscriptionStatuses = new Set(["active", "trialing"]);
+const inactiveOneTimeStatuses = new Set(["failed", "cancelled"]);
+
+function sortByNewest(a: PurchaseRecord, b: PurchaseRecord) {
+	const aTime = a.updatedAt ?? a.createdAt;
+	const bTime = b.updatedAt ?? b.createdAt;
+	return bTime.getTime() - aTime.getTime();
+}
+
+function getActivePlanFromPurchases(purchases?: PurchaseRecord[]) {
+	const sortedPurchases = [...(purchases ?? [])].sort(sortByNewest);
+
+	const subscriptionPurchase = sortedPurchases.find(
+		(purchase) =>
+			purchase.type === "SUBSCRIPTION" &&
+			activeSubscriptionStatuses.has(
+				(purchase.status ?? "").toLowerCase(),
+			),
 	);
+	const oneTimePurchase = sortedPurchases.find(
+		(purchase) =>
+			purchase.type === "ONE_TIME" &&
+			!inactiveOneTimeStatuses.has((purchase.status ?? "").toLowerCase()),
+	);
+	const hasActivePurchase = Boolean(subscriptionPurchase || oneTimePurchase);
 
 	if (subscriptionPurchase) {
 		const plan = Object.entries(plans).find(([_, plan]) =>
@@ -29,12 +47,9 @@ function getActivePlanFromPurchases(purchases?: PurchaseWithoutTimestamps[]) {
 			),
 			status: subscriptionPurchase.status,
 			purchaseId: subscriptionPurchase.id,
+			hasActivePurchase,
 		};
 	}
-
-	const oneTimePurchase = purchases?.find(
-		(purchase) => purchase.type === "ONE_TIME",
-	);
 
 	if (oneTimePurchase) {
 		const plan = Object.entries(plans).find(([_, plan]) =>
@@ -48,8 +63,9 @@ function getActivePlanFromPurchases(purchases?: PurchaseWithoutTimestamps[]) {
 			price: plan?.[1].prices?.find(
 				(price) => price.productId === oneTimePurchase.productId,
 			),
-			status: "active",
+			status: oneTimePurchase.status || "active",
 			purchaseId: oneTimePurchase.id,
+			hasActivePurchase,
 		};
 	}
 
@@ -59,11 +75,12 @@ function getActivePlanFromPurchases(purchases?: PurchaseWithoutTimestamps[]) {
 		? {
 				id: freePlan[0] as PlanId,
 				status: "active",
+				hasActivePurchase,
 			}
 		: null;
 }
 
-export function createPurchasesHelper(purchases: PurchaseWithoutTimestamps[]) {
+export function createPurchasesHelper(purchases: PurchaseRecord[]) {
 	const activePlan = getActivePlanFromPurchases(purchases);
 
 	const hasSubscription = (planIds?: PlanId[] | PlanId) => {

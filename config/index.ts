@@ -136,6 +136,10 @@ export const config = {
 						amount: 599,
 						currency: "INR",
 						trialPeriodDays: 0,
+						bundledOneTimeProductId:
+							process.env
+								.NEXT_PUBLIC_PRICE_ID_FREELANCER_MONTHLY_SETUP ||
+							undefined,
 					},
 					{
 						type: "recurring",
@@ -145,6 +149,10 @@ export const config = {
 						amount: 6590,
 						currency: "INR",
 						trialPeriodDays: 0,
+						bundledOneTimeProductId:
+							process.env
+								.NEXT_PUBLIC_PRICE_ID_FREELANCER_YEARLY_SETUP ||
+							undefined,
 					},
 				],
 			},
@@ -159,6 +167,10 @@ export const config = {
 						amount: 899,
 						currency: "INR",
 						trialPeriodDays: 30,
+						bundledOneTimeProductId:
+							process.env
+								.NEXT_PUBLIC_PRICE_ID_STARTER_MONTHLY_SETUP ||
+							undefined,
 					},
 					{
 						type: "recurring",
@@ -168,6 +180,10 @@ export const config = {
 						amount: 9889,
 						currency: "INR",
 						trialPeriodDays: 30,
+						bundledOneTimeProductId:
+							process.env
+								.NEXT_PUBLIC_PRICE_ID_STARTER_YEARLY_SETUP ||
+							undefined,
 					},
 				],
 			},
@@ -181,6 +197,10 @@ export const config = {
 						amount: 1999,
 						currency: "INR",
 						trialPeriodDays: 30,
+						bundledOneTimeProductId:
+							process.env
+								.NEXT_PUBLIC_PRICE_ID_GROWTH_MONTHLY_SETUP ||
+							undefined,
 					},
 					{
 						type: "recurring",
@@ -190,6 +210,10 @@ export const config = {
 						amount: 21989,
 						currency: "INR",
 						trialPeriodDays: 30,
+						bundledOneTimeProductId:
+							process.env
+								.NEXT_PUBLIC_PRICE_ID_GROWTH_YEARLY_SETUP ||
+							undefined,
 					},
 				],
 			},
