@@ -20,12 +20,6 @@ type PlanPrice = NonNullable<
 	Config["payments"]["plans"][string]["prices"]
 >[number];
 
-type ProductCatalogEntry = {
-	price: PlanPrice;
-	isBundledOneTime: boolean;
-	parentRecurringProductId?: string;
-};
-
 export const createCheckoutLink = protectedProcedure
 	.use(localeMiddleware)
 	.route({
@@ -78,73 +72,80 @@ export const createCheckoutLink = protectedProcedure
 			);
 
 			const plans = config.payments.plans as Config["payments"]["plans"];
-			const productCatalog = new Map<string, ProductCatalogEntry>();
+			const basePricesByProductId = new Map<string, PlanPrice>();
+			const bundledParentMap = new Map<string, Set<string>>();
 
 			for (const plan of Object.values(plans)) {
 				for (const price of plan.prices ?? []) {
-					productCatalog.set(price.productId, {
-						price,
-						isBundledOneTime: false,
-					});
+					basePricesByProductId.set(price.productId, price);
 
 					if (
 						price.type === "recurring" &&
 						price.bundledOneTimeProductId &&
 						price.bundledOneTimeProductId.length > 0
 					) {
-						productCatalog.set(price.bundledOneTimeProductId, {
-							price,
-							isBundledOneTime: true,
-							parentRecurringProductId: price.productId,
-						});
+						const existingParents =
+							bundledParentMap.get(
+								price.bundledOneTimeProductId,
+							) ?? new Set<string>();
+						existingParents.add(price.productId);
+						bundledParentMap.set(
+							price.bundledOneTimeProductId,
+							existingParents,
+						);
 					}
 				}
 			}
 
-			const cartWithEntry = productCart.map((item) => {
-				const entry = productCatalog.get(item.productId);
+			const allowedProductIds = new Set<string>([
+				...basePricesByProductId.keys(),
+				...bundledParentMap.keys(),
+			]);
 
-				if (!entry) {
+			const cartWithContext = productCart.map((item) => {
+				const isAllowed = allowedProductIds.has(item.productId);
+
+				if (!isAllowed) {
 					throw new ORPCError("BAD_REQUEST");
 				}
 
 				return {
 					...item,
-					entry,
+					basePrice: basePricesByProductId.get(item.productId),
+					bundledParents: bundledParentMap.get(item.productId),
 				};
 			});
 
 			const recurringBaseProductIds = new Set(
-				cartWithEntry
-					.filter(
-						(item) =>
-							!item.entry.isBundledOneTime &&
-							item.entry.price.type === "recurring",
-					)
+				cartWithContext
+					.filter((item) => item.basePrice?.type === "recurring")
 					.map((item) => item.productId),
 			);
 
-			for (const item of cartWithEntry) {
-				if (
-					item.entry.isBundledOneTime &&
-					item.entry.parentRecurringProductId &&
-					!recurringBaseProductIds.has(
-						item.entry.parentRecurringProductId,
-					)
-				) {
+			for (const item of cartWithContext) {
+				const bundledParents = item.bundledParents;
+				if (!(bundledParents && bundledParents.size > 0)) {
+					continue;
+				}
+
+				const hasMatchingParent = [...bundledParents].some(
+					(parentProductId) =>
+						recurringBaseProductIds.has(parentProductId),
+				);
+
+				if (!hasMatchingParent) {
 					throw new ORPCError("BAD_REQUEST");
 				}
 			}
 
-			const subscriptionCartItem = cartWithEntry.find(
-				(item) =>
-					!item.entry.isBundledOneTime &&
-					item.entry.price.type === "recurring",
+			const subscriptionCartItem = cartWithContext.find(
+				(item) => item.basePrice?.type === "recurring",
 			);
+			const subscriptionBasePrice = subscriptionCartItem?.basePrice;
 			const trialPeriodDays =
-				subscriptionCartItem &&
-				"trialPeriodDays" in subscriptionCartItem.entry.price
-					? subscriptionCartItem.entry.price.trialPeriodDays
+				subscriptionBasePrice &&
+				"trialPeriodDays" in subscriptionBasePrice
+					? subscriptionBasePrice.trialPeriodDays
 					: undefined;
 
 			const organization = organizationId
@@ -155,15 +156,14 @@ export const createCheckoutLink = protectedProcedure
 				throw new ORPCError("NOT_FOUND");
 			}
 
-			const resolvedProductCart = cartWithEntry.map((item) => {
+			const resolvedProductCart = cartWithContext.map((item) => {
 				let quantity = item.quantity ?? 1;
 
 				if (
 					organization &&
-					!item.entry.isBundledOneTime &&
-					item.entry.price.type === "recurring" &&
-					"seatBased" in item.entry.price &&
-					item.entry.price.seatBased
+					item.basePrice?.type === "recurring" &&
+					"seatBased" in item.basePrice &&
+					item.basePrice.seatBased
 				) {
 					quantity = Math.max(organization.members.length, 1);
 				}
