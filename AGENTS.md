@@ -52,6 +52,10 @@ Work style: telegraph; noun-phrases ok; drop grammar; min tokens.
 
 ## Git
 - Safe by default: `git status`, `git diff`, `git log`.
+- If user asks a question about changes, answer first; do not revert/delete/edit unless explicitly asked.
+- Question-only messages are never consent for mutation (`edit`, `revert`, `delete`, `restore`, `trash`, `checkout`).
+- If instruction is ambiguous, ask one short clarification before any mutating command.
+- Before any revert/delete/restore, restate target files + requested action in-thread first.
 - Push only when user asks.
 - `git checkout` ok for review or explicit request.
 - Branch changes require user consent.
