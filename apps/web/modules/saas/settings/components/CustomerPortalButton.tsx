@@ -18,7 +18,6 @@ export function CustomerPortalButton({ purchaseId }: { purchaseId: string }) {
 			const { customerPortalLink } =
 				await createCustomerPortalMutation.mutateAsync({
 					purchaseId,
-					redirectUrl: window.location.href,
 				});
 
 			window.location.href = customerPortalLink;

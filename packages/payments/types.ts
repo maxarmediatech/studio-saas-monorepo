@@ -15,7 +15,6 @@ export type CreateCheckoutLink = (params: {
 export type CreateCustomerPortalLink = (params: {
 	subscriptionId?: string;
 	customerId: string;
-	redirectUrl?: string;
 }) => Promise<string | null>;
 
 export type SetSubscriptionSeats = (params: {

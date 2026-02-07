@@ -35,7 +35,7 @@ export default async function BillingSettingsPage() {
 		queryKey: orpc.payments.listPurchases.queryKey({
 			input: {},
 		}),
-		queryFn: () => purchases,
+		queryFn: () => ({ purchases }),
 	});
 
 	const { activePlan } = createPurchasesHelper(purchases);

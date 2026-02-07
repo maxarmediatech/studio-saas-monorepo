@@ -114,6 +114,23 @@ export function PricingTable({
 			window.location.href = checkoutLink;
 		} catch (error) {
 			console.error(error);
+
+			const errorCode =
+				typeof error === "object" && error !== null
+					? ((error as { code?: string }).code ??
+						(
+							error as {
+								shape?: { code?: string };
+							}
+						).shape?.code)
+					: undefined;
+
+			if (errorCode === "BAD_REQUEST") {
+				router.refresh();
+				toast.error("Plan data refreshed. Please try once again.");
+				return;
+			}
+
 			toast.error("Failed to create checkout. Please try again.");
 		} finally {
 			setLoadingPlan(null);

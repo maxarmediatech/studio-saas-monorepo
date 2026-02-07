@@ -254,7 +254,7 @@ export function InlineCheckoutPageClient({
 				<Button
 					variant="outline"
 					onClick={() => {
-						window.location.href = checkoutUrl;
+						window.location.replace(checkoutUrl);
 					}}
 				>
 					Open full-page checkout
