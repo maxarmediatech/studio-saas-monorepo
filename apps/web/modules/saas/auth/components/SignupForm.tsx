@@ -16,6 +16,7 @@ import {
 import { Input } from "@repo/ui/components/input";
 import { useAuthErrorMessages } from "@saas/auth/hooks/errors-messages";
 import { OrganizationInvitationAlert } from "@saas/organizations/components/OrganizationInvitationAlert";
+import { sanitizeRedirectPath } from "@shared/lib/sanitize-redirect-path";
 import {
 	AlertTriangleIcon,
 	ArrowRightIcon,
@@ -67,7 +68,7 @@ export function SignupForm({ prefillEmail }: { prefillEmail?: string }) {
 
 	const redirectPath = invitationId
 		? `/organization-invitation/${invitationId}`
-		: (redirectTo ?? config.auth.redirectAfterSignIn);
+		: sanitizeRedirectPath(redirectTo, config.auth.redirectAfterSignIn);
 
 	const onSubmit = form.handleSubmit(async ({ email, password, name }) => {
 		try {

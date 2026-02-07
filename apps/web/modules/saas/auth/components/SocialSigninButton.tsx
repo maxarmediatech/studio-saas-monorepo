@@ -3,6 +3,7 @@
 import { authClient } from "@repo/auth/client";
 import { config } from "@repo/config";
 import { Button } from "@repo/ui/components/button";
+import { sanitizeRedirectPath } from "@shared/lib/sanitize-redirect-path";
 import { parseAsString, useQueryState } from "nuqs";
 import { oAuthProviders } from "../constants/oauth-providers";
 
@@ -14,11 +15,12 @@ export function SocialSigninButton({
 	className?: string;
 }) {
 	const [invitationId] = useQueryState("invitationId", parseAsString);
+	const [redirectTo] = useQueryState("redirectTo", parseAsString);
 	const providerData = oAuthProviders[provider];
 
 	const redirectPath = invitationId
 		? `/organization-invitation/${invitationId}`
-		: config.auth.redirectAfterSignIn;
+		: sanitizeRedirectPath(redirectTo, config.auth.redirectAfterSignIn);
 
 	const onSignin = () => {
 		const callbackURL = new URL(redirectPath, window.location.origin);

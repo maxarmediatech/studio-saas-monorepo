@@ -3,8 +3,10 @@ import { authClient } from "@repo/auth/client";
 import { Progress } from "@repo/ui/components/progress";
 import { useRouter } from "@shared/hooks/router";
 import { clearCache } from "@shared/lib/cache";
+import { sanitizeRedirectPath } from "@shared/lib/sanitize-redirect-path";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { withQuery } from "ufo";
 import { OnboardingStep1 } from "./OnboardingStep1";
 
@@ -29,17 +31,22 @@ export function OnboardingForm() {
 	};
 
 	const onCompleted = async () => {
-		await authClient.updateUser({
+		const { error } = await authClient.updateUser({
 			onboardingComplete: true,
 		});
 
+		if (error) {
+			toast.error(t("onboarding.notifications.accountSetupFailed"));
+			return;
+		}
+
 		await clearCache();
-		router.replace(redirectTo ?? "/");
+		router.replace(sanitizeRedirectPath(redirectTo, "/"));
 	};
 
 	const steps = [
 		{
-			component: <OnboardingStep1 onCompleted={() => onCompleted()} />,
+			component: <OnboardingStep1 onCompleted={onCompleted} />,
 		},
 	];
 

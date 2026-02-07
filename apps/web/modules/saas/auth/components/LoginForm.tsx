@@ -18,6 +18,7 @@ import { sessionQueryKey } from "@saas/auth/lib/api";
 import { OrganizationInvitationAlert } from "@saas/organizations/components/OrganizationInvitationAlert";
 import { setActiveOrganizationSlugCookie } from "@saas/organizations/lib/active-organization-cookie";
 import { useRouter } from "@shared/hooks/router";
+import { sanitizeRedirectPath } from "@shared/lib/sanitize-redirect-path";
 import { useQueryClient } from "@tanstack/react-query";
 import {
 	AlertTriangleIcon,
@@ -81,7 +82,7 @@ export function LoginForm() {
 
 	const redirectPath = invitationId
 		? `/organization-invitation/${invitationId}`
-		: (redirectTo ?? config.auth.redirectAfterSignIn);
+		: sanitizeRedirectPath(redirectTo, config.auth.redirectAfterSignIn);
 
 	const resolveRedirectPath = async (path: string) => {
 		if (path !== "/app" && path !== "/app/") {

@@ -28,7 +28,11 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-export function OnboardingStep1({ onCompleted }: { onCompleted: () => void }) {
+export function OnboardingStep1({
+	onCompleted,
+}: {
+	onCompleted: () => Promise<void>;
+}) {
 	const t = useTranslations();
 	const { user } = useSession();
 	const form = useForm<FormValues>({
@@ -48,11 +52,15 @@ export function OnboardingStep1({ onCompleted }: { onCompleted: () => void }) {
 		form.clearErrors("root");
 
 		try {
-			await authClient.updateUser({
+			const { error } = await authClient.updateUser({
 				name,
 			});
 
-			onCompleted();
+			if (error) {
+				throw error;
+			}
+
+			await onCompleted();
 		} catch {
 			form.setError("root", {
 				type: "server",

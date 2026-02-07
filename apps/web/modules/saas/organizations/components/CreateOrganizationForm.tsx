@@ -17,6 +17,7 @@ import {
 	useCreateOrganizationMutation,
 } from "@saas/organizations/lib/api";
 import { useRouter } from "@shared/hooks/router";
+import { sanitizeRedirectPath } from "@shared/lib/sanitize-redirect-path";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -66,7 +67,7 @@ export function CreateOrganizationForm({
 				queryKey: organizationListQueryKey,
 			});
 
-			const nextPath = redirectTo ?? "/app";
+			const nextPath = sanitizeRedirectPath(redirectTo, "/app");
 			router.replace(
 				nextPath === "/app"
 					? `/app/${newOrganization.slug}/home`
