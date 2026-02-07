@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { authClient } from "@repo/auth/client";
 import { Button } from "@repo/ui/components/button";
 import {
 	Form,
@@ -11,7 +12,7 @@ import {
 	FormMessage,
 } from "@repo/ui/components/form";
 import { Input } from "@repo/ui/components/input";
-import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
+import { setActiveOrganizationSlugCookie } from "@saas/organizations/lib/active-organization-cookie";
 import {
 	organizationListQueryKey,
 	useCreateOrganizationMutation,
@@ -19,8 +20,10 @@ import {
 import { useRouter } from "@shared/hooks/router";
 import { sanitizeRedirectPath } from "@shared/lib/sanitize-redirect-path";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2Icon } from "lucide-react";
+import { ArrowLeftIcon, Loader2Icon } from "lucide-react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -34,14 +37,21 @@ type FormValues = z.infer<typeof formSchema>;
 export function CreateOrganizationForm({
 	defaultName,
 	redirectTo,
+	backHref,
+	organizationToEdit,
 }: {
 	defaultName?: string;
 	redirectTo?: string;
+	backHref?: string;
+	organizationToEdit?: {
+		id: string;
+		slug: string;
+		name: string;
+	};
 }) {
 	const t = useTranslations();
 	const router = useRouter();
 	const queryClient = useQueryClient();
-	const { setActiveOrganization } = useActiveOrganization();
 	const createOrganizationMutation = useCreateOrganizationMutation();
 	const form = useForm<FormValues>({
 		resolver: zodResolver(formSchema),
@@ -50,18 +60,48 @@ export function CreateOrganizationForm({
 		},
 	});
 
+	useEffect(() => {
+		form.reset({
+			name: defaultName ?? "",
+		});
+	}, [defaultName, form]);
+
 	const onSubmit = form.handleSubmit(async ({ name }) => {
 		try {
-			const newOrganization =
-				await createOrganizationMutation.mutateAsync({
-					name,
+			let organizationSlug: string;
+
+			if (organizationToEdit) {
+				const { error } = await authClient.organization.update({
+					organizationId: organizationToEdit.id,
+					data: {
+						name,
+					},
 				});
 
-			if (!newOrganization) {
-				throw new Error("Failed to create organization");
+				if (error) {
+					throw error;
+				}
+				organizationSlug = organizationToEdit.slug;
+			} else {
+				const newOrganization =
+					await createOrganizationMutation.mutateAsync({
+						name,
+					});
+
+				if (!newOrganization) {
+					throw new Error("Failed to create organization");
+				}
+				organizationSlug = newOrganization.slug;
 			}
 
-			await setActiveOrganization(newOrganization.slug);
+			const { error: setActiveError } =
+				await authClient.organization.setActive({
+					organizationSlug,
+				});
+			if (setActiveError) {
+				throw setActiveError;
+			}
+			setActiveOrganizationSlugCookie(organizationSlug);
 
 			await queryClient.invalidateQueries({
 				queryKey: organizationListQueryKey,
@@ -70,7 +110,7 @@ export function CreateOrganizationForm({
 			const nextPath = sanitizeRedirectPath(redirectTo, "/app");
 			router.replace(
 				nextPath === "/app"
-					? `/app/${newOrganization.slug}/home`
+					? `/app/${organizationSlug}/home`
 					: nextPath,
 			);
 		} catch {
@@ -80,6 +120,19 @@ export function CreateOrganizationForm({
 
 	return (
 		<div className="mx-auto w-full max-w-md">
+			{backHref && (
+				<Button
+					asChild
+					variant="ghost"
+					className="-ml-3 mb-2 h-8 px-2 text-foreground/70"
+				>
+					<Link href={backHref}>
+						<ArrowLeftIcon className="size-4" />
+						Back
+					</Link>
+				</Button>
+			)}
+
 			<h1 className="font-bold text-xl md:text-2xl">
 				{t("organizations.createForm.title")}
 			</h1>
@@ -117,7 +170,9 @@ export function CreateOrganizationForm({
 									aria-hidden="true"
 								/>
 							)}
-							{t("organizations.createForm.submit")}
+							{organizationToEdit
+								? "Continue"
+								: t("organizations.createForm.submit")}
 						</span>
 					</Button>
 				</form>

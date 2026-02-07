@@ -1,5 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 import { config } from "@repo/config";
+import { sanitizeRedirectPath } from "../modules/shared/lib/sanitize-redirect-path";
 
 async function expectSocialSectionOrder(page: Page) {
 	const isValidOrder = await page.evaluate(() => {
@@ -36,6 +37,27 @@ async function expectSocialSectionOrder(page: Page) {
 	});
 
 	expect(isValidOrder).toBe(true);
+}
+
+function getRequestField(
+	request: Awaited<ReturnType<Page["waitForRequest"]>>,
+	field: "callbackURL" | "errorCallbackURL",
+) {
+	const url = new URL(request.url());
+	const fieldFromQuery = url.searchParams.get(field);
+	const fieldFromBody = (() => {
+		try {
+			const data = request.postDataJSON() as {
+				callbackURL?: string;
+				errorCallbackURL?: string;
+			} | null;
+			return data?.[field] ?? null;
+		} catch {
+			return null;
+		}
+	})();
+
+	return fieldFromQuery ?? fieldFromBody;
 }
 
 test.describe("social auth redirect", () => {
@@ -78,22 +100,24 @@ test.describe("social auth redirect", () => {
 			.click();
 
 		const socialRequest = await socialRequestPromise;
-		const url = new URL(socialRequest.url());
+		const callbackURL = getRequestField(socialRequest, "callbackURL");
+		const errorCallbackURL = getRequestField(
+			socialRequest,
+			"errorCallbackURL",
+		);
+		expect(callbackURL).toBeTruthy();
+		expect(errorCallbackURL).toBeTruthy();
 
-		const callbackURLFromQuery = url.searchParams.get("callbackURL");
-		const callbackURLFromBody = (() => {
-			try {
-				const data = socialRequest.postDataJSON() as {
-					callbackURL?: string;
-				} | null;
-				return data?.callbackURL ?? null;
-			} catch {
-				return null;
-			}
-		})();
+		const parsedCallbackURL = new URL(callbackURL as string);
+		expect(parsedCallbackURL.pathname).toBe("/auth/complete");
+		expect(parsedCallbackURL.searchParams.get("redirectTo")).toBe(
+			redirectTo,
+		);
 
-		expect(callbackURLFromQuery ?? callbackURLFromBody).toBe(
-			`http://localhost:3000${redirectTo}`,
+		const parsedErrorCallbackURL = new URL(errorCallbackURL as string);
+		expect(parsedErrorCallbackURL.pathname).toBe("/auth/error");
+		expect(parsedErrorCallbackURL.searchParams.get("redirectTo")).toBe(
+			redirectTo,
 		);
 	});
 
@@ -116,22 +140,28 @@ test.describe("social auth redirect", () => {
 			.click();
 
 		const socialRequest = await socialRequestPromise;
-		const url = new URL(socialRequest.url());
+		const safeRedirectPath = sanitizeRedirectPath(
+			"https://evil.example/phish",
+			config.auth.redirectAfterSignIn,
+		);
+		const callbackURL = getRequestField(socialRequest, "callbackURL");
+		const errorCallbackURL = getRequestField(
+			socialRequest,
+			"errorCallbackURL",
+		);
+		expect(callbackURL).toBeTruthy();
+		expect(errorCallbackURL).toBeTruthy();
 
-		const callbackURLFromQuery = url.searchParams.get("callbackURL");
-		const callbackURLFromBody = (() => {
-			try {
-				const data = socialRequest.postDataJSON() as {
-					callbackURL?: string;
-				} | null;
-				return data?.callbackURL ?? null;
-			} catch {
-				return null;
-			}
-		})();
+		const parsedCallbackURL = new URL(callbackURL as string);
+		expect(parsedCallbackURL.pathname).toBe("/auth/complete");
+		expect(parsedCallbackURL.searchParams.get("redirectTo")).toBe(
+			safeRedirectPath,
+		);
 
-		expect(callbackURLFromQuery ?? callbackURLFromBody).toBe(
-			"http://localhost:3000/app",
+		const parsedErrorCallbackURL = new URL(errorCallbackURL as string);
+		expect(parsedErrorCallbackURL.pathname).toBe("/auth/error");
+		expect(parsedErrorCallbackURL.searchParams.get("redirectTo")).toBe(
+			safeRedirectPath,
 		);
 	});
 });

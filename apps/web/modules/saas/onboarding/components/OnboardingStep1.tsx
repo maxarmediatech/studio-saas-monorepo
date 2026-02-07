@@ -34,7 +34,7 @@ export function OnboardingStep1({
 	onCompleted: () => Promise<void>;
 }) {
 	const t = useTranslations();
-	const { user } = useSession();
+	const { user, reloadSession } = useSession();
 	const form = useForm<FormValues>({
 		resolver: zodResolver(formSchema),
 		defaultValues: {
@@ -54,12 +54,14 @@ export function OnboardingStep1({
 		try {
 			const { error } = await authClient.updateUser({
 				name,
+				onboardingComplete: true,
 			});
 
 			if (error) {
 				throw error;
 			}
 
+			await reloadSession();
 			await onCompleted();
 		} catch {
 			form.setError("root", {
