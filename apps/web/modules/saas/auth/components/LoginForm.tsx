@@ -191,6 +191,31 @@ export function LoginForm() {
 						<OrganizationInvitationAlert className="mb-6" />
 					)}
 
+					{config.auth.enableSignup &&
+						config.auth.enableSocialLogin && (
+							<>
+								<div className="grid grid-cols-1 items-stretch gap-2">
+									{Object.keys(oAuthProviders).map(
+										(providerId) => (
+											<SocialSigninButton
+												key={providerId}
+												provider={
+													providerId as OAuthProvider
+												}
+											/>
+										),
+									)}
+								</div>
+
+								<div className="relative my-6 h-4">
+									<hr className="relative top-2" />
+									<p className="-translate-x-1/2 absolute top-0 left-1/2 mx-auto inline-block h-4 bg-card px-2 text-center font-medium text-foreground/60 text-sm leading-tight">
+										{t("auth.login.continueWith")}
+									</p>
+								</div>
+							</>
+						)}
+
 					<Form {...form}>
 						<form
 							className="space-y-4"
@@ -314,31 +339,6 @@ export function LoginForm() {
 							</Button>
 						</form>
 					</Form>
-
-					{config.auth.enableSignup &&
-						config.auth.enableSocialLogin && (
-							<>
-								<div className="relative my-6 h-4">
-									<hr className="relative top-2" />
-									<p className="-translate-x-1/2 absolute top-0 left-1/2 mx-auto inline-block h-4 bg-card px-2 text-center font-medium text-foreground/60 text-sm leading-tight">
-										{t("auth.login.continueWith")}
-									</p>
-								</div>
-
-								<div className="grid grid-cols-1 items-stretch gap-2">
-									{Object.keys(oAuthProviders).map(
-										(providerId) => (
-											<SocialSigninButton
-												key={providerId}
-												provider={
-													providerId as OAuthProvider
-												}
-											/>
-										),
-									)}
-								</div>
-							</>
-						)}
 
 					{config.auth.enableSignup && (
 						<div className="mt-6 text-center text-sm">
