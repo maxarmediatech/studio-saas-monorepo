@@ -1,6 +1,5 @@
 import { auth } from "@repo/auth";
-import { config } from "@repo/config";
-import { hasStorageEnv } from "@repo/env";
+import { getUploadsBucketName, hasStorageEnv } from "@repo/env";
 import { deleteObject, getSignedUrl } from "@repo/storage";
 import {
 	createEnvConfigResponse,
@@ -57,7 +56,7 @@ export async function DELETE(request: Request) {
 		}
 
 		await deleteObject(key, {
-			bucket: config.storage.bucketNames.uploads,
+			bucket: getUploadsBucketName(),
 		});
 
 		return new NextResponse(null, { status: 204 });
@@ -129,7 +128,7 @@ export async function POST(request: Request) {
 
 		// Generate a short-lived URL (60 seconds)
 		const url = await getSignedUrl(key, {
-			bucket: config.storage.bucketNames.uploads,
+			bucket: getUploadsBucketName(),
 			expiresIn: 60,
 		});
 

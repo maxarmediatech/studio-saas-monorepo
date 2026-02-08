@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { auth } from "@repo/auth";
-import { config } from "@repo/config";
-import { hasStorageEnv } from "@repo/env";
+import { getUploadsBucketName, hasStorageEnv } from "@repo/env";
 import { getSignedUploadUrl } from "@repo/storage";
 import {
 	createEnvConfigResponse,
@@ -253,7 +252,7 @@ export async function POST(request: Request) {
 		}
 
 		const url = await getSignedUploadUrl(key, {
-			bucket: config.storage.bucketNames.uploads,
+			bucket: getUploadsBucketName(),
 			contentType: fileType,
 			expiresIn: 300, // 5 minutes to complete upload
 		});

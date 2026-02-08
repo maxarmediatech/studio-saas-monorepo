@@ -1,3 +1,4 @@
+import { config } from "@repo/config";
 import { cn } from "@repo/ui/lib/utils";
 import { ClientProviders } from "@shared/components/ClientProviders";
 import { ConsentProvider } from "@shared/components/ConsentProvider";
@@ -34,7 +35,12 @@ export async function Document({
 					<ConsentProvider
 						initialConsent={consentCookie?.value === "true"}
 					>
-						<ClientProviders>{children}</ClientProviders>
+						<ClientProviders
+							defaultTheme={config.ui.defaultTheme}
+							themes={config.ui.enabledThemes}
+						>
+							{children}
+						</ClientProviders>
 					</ConsentProvider>
 				</NuqsAdapter>
 			</body>

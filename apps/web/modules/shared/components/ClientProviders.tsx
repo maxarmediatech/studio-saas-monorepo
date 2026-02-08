@@ -2,13 +2,21 @@
 
 import { AnalyticsScript } from "@analytics";
 import { ProgressProvider } from "@bprogress/next/app";
-import { config } from "@repo/config";
 import { ApiClientProvider } from "@shared/components/ApiClientProvider";
 import { ThemeProvider } from "next-themes";
 import type { PropsWithChildren } from "react";
 import { Toaster } from "sonner";
 
-export function ClientProviders({ children }: PropsWithChildren) {
+type ClientProvidersProps = PropsWithChildren<{
+	defaultTheme: string;
+	themes: string[];
+}>;
+
+export function ClientProviders({
+	children,
+	defaultTheme,
+	themes,
+}: ClientProvidersProps) {
 	return (
 		<ApiClientProvider>
 			<ProgressProvider
@@ -22,8 +30,8 @@ export function ClientProviders({ children }: PropsWithChildren) {
 					attribute="class"
 					disableTransitionOnChange
 					enableSystem
-					defaultTheme={config.ui.defaultTheme}
-					themes={config.ui.enabledThemes}
+					defaultTheme={defaultTheme}
+					themes={themes}
 				>
 					<ApiClientProvider>
 						{children}

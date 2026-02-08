@@ -1,7 +1,6 @@
 import { auth } from "@repo/auth";
-import { config } from "@repo/config";
 import { attachments, db, eq, submissionFiles } from "@repo/database";
-import { hasStorageEnv } from "@repo/env";
+import { getUploadsBucketName, hasStorageEnv } from "@repo/env";
 import { getSignedUrl } from "@repo/storage";
 import {
 	createEnvConfigResponse,
@@ -135,7 +134,7 @@ export async function POST(request: Request) {
 				}
 
 				const signedUrl = await getSignedUrl(path, {
-					bucket: config.storage.bucketNames.uploads,
+					bucket: getUploadsBucketName(),
 					expiresIn: 60,
 				});
 
@@ -181,7 +180,7 @@ export async function POST(request: Request) {
 
 				if (method === "redirect") {
 					const signedUrl = await getSignedUrl(attachment.fileUrl, {
-						bucket: config.storage.bucketNames.uploads,
+						bucket: getUploadsBucketName(),
 						expiresIn: 60,
 					});
 
@@ -235,7 +234,7 @@ export async function POST(request: Request) {
 					const signedUrl = await getSignedUrl(
 						submissionFile.fileUrl,
 						{
-							bucket: config.storage.bucketNames.uploads,
+							bucket: getUploadsBucketName(),
 							expiresIn: 60,
 						},
 					);

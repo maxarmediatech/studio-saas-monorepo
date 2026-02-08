@@ -52,7 +52,12 @@ export default function RootLayout({ children }: PropsWithChildren) {
 				<NuqsAdapter>
 					<Suspense fallback={<FullPageLoader />}>
 						<ConsentWrapper>
-							<ClientProviders>{children}</ClientProviders>
+							<ClientProviders
+								defaultTheme={config.ui.defaultTheme}
+								themes={config.ui.enabledThemes}
+							>
+								{children}
+							</ClientProviders>
 						</ConsentWrapper>
 					</Suspense>
 				</NuqsAdapter>

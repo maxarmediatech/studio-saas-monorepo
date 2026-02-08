@@ -1,6 +1,5 @@
 import { auth } from "@repo/auth";
-import { config } from "@repo/config";
-import { hasStorageEnv } from "@repo/env";
+import { getUploadsBucketName, hasStorageEnv } from "@repo/env";
 import { getObject } from "@repo/storage";
 import {
 	createEnvConfigResponse,
@@ -55,7 +54,7 @@ export const GET = async (
 		}
 
 		const result = await getObject(filePath, {
-			bucket: config.storage.bucketNames.uploads,
+			bucket: getUploadsBucketName(),
 		});
 
 		if (!result) {
