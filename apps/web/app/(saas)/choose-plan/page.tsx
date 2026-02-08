@@ -1,6 +1,7 @@
 import { config } from "@repo/config";
 import { createPurchasesHelper } from "@repo/payments/lib/helper";
 import { Button } from "@repo/ui/components/button";
+import { resolveAppRedirectPath } from "@saas/auth/lib/redirects";
 import { getOrganizationList, getSession } from "@saas/auth/lib/server";
 import { ChoosePlanRecoveryActions } from "@saas/payments/components/ChoosePlanRecoveryActions";
 import { PricingTable } from "@saas/payments/components/PricingTable";
@@ -9,6 +10,7 @@ import { AuthWrapper } from "@saas/shared/components/AuthWrapper";
 import { attemptAsync } from "es-toolkit";
 import { ArrowLeftIcon } from "lucide-react";
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -18,6 +20,9 @@ export const metadata: Metadata = {
 
 export default async function ChoosePlanPage() {
 	const session = await getSession();
+	let activeOrganizationSlug = (await cookies()).get(
+		"activeOrganizationSlug",
+	)?.value;
 
 	if (!session) {
 		redirect("/auth/login");
@@ -38,6 +43,7 @@ export default async function ChoosePlanPage() {
 			);
 		}
 
+		activeOrganizationSlug = organization.slug;
 		organizationId = organization?.id;
 	}
 
@@ -53,7 +59,10 @@ export default async function ChoosePlanPage() {
 	const hasPurchases = purchases.length > 0;
 
 	if (hasPurchases && activePlan?.hasActivePurchase) {
-		redirect("/app");
+		const appRedirectPath = activeOrganizationSlug
+			? resolveAppRedirectPath("/app", activeOrganizationSlug)
+			: "/app";
+		redirect(appRedirectPath);
 	}
 
 	const newOrganizationPath = `/new-organization?redirectTo=${encodeURIComponent("/app")}`;

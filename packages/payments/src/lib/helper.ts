@@ -3,6 +3,15 @@ import type { PurchaseSchema } from "@repo/database";
 import type { z } from "zod";
 
 const plans = config.payments.plans as Config["payments"]["plans"];
+const bundledOneTimeProductIds = new Set(
+	Object.values(plans).flatMap((plan) =>
+		(plan.prices ?? []).flatMap((price) =>
+			price.type === "recurring" && price.bundledOneTimeProductId
+				? [price.bundledOneTimeProductId]
+				: [],
+		),
+	),
+);
 
 type PlanId = keyof typeof config.payments.plans;
 type PurchaseRecord = z.infer<typeof PurchaseSchema>;
@@ -29,7 +38,10 @@ function getActivePlanFromPurchases(purchases?: PurchaseRecord[]) {
 	const oneTimePurchase = sortedPurchases.find(
 		(purchase) =>
 			purchase.type === "ONE_TIME" &&
-			!inactiveOneTimeStatuses.has((purchase.status ?? "").toLowerCase()),
+			!inactiveOneTimeStatuses.has(
+				(purchase.status ?? "").toLowerCase(),
+			) &&
+			!bundledOneTimeProductIds.has(purchase.productId),
 	);
 	const hasActivePurchase = Boolean(subscriptionPurchase || oneTimePurchase);
 

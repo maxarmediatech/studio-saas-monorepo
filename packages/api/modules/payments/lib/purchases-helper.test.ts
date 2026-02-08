@@ -40,6 +40,10 @@ describe("createPurchasesHelper", () => {
 		vi.stubEnv("NEXT_PUBLIC_PRICE_ID_STARTER_YEARLY", "pdt_starter_year");
 		vi.stubEnv("NEXT_PUBLIC_PRICE_ID_GROWTH_MONTHLY", "pdt_growth_month");
 		vi.stubEnv("NEXT_PUBLIC_PRICE_ID_GROWTH_YEARLY", "pdt_growth_year");
+		vi.stubEnv(
+			"NEXT_PUBLIC_PRICE_ID_FREELANCER_MONTHLY_SETUP",
+			"pdt_setup_month",
+		);
 	});
 
 	afterEach(() => {
@@ -90,7 +94,7 @@ describe("createPurchasesHelper", () => {
 		expect(helper.activePlan?.purchaseId).toBe("purchase_old_active");
 	});
 
-	it("builds mixed-cart compatible one-time entitlement only for non-failed statuses", async () => {
+	it("does not grant entitlement from bundled setup one-time purchases", async () => {
 		const { createPurchasesHelper } = await import(
 			"@repo/payments/lib/helper"
 		);
@@ -100,12 +104,34 @@ describe("createPurchasesHelper", () => {
 				type: "ONE_TIME",
 				subscriptionId: null,
 				paymentId: "pay_setup",
+				productId: "pdt_setup_month",
+				status: "active",
+			}),
+		]);
+
+		expect(
+			helper.activePlan === null ||
+				helper.activePlan.hasActivePurchase === false,
+		).toBe(true);
+	});
+
+	it("keeps entitlement for non-bundled one-time purchases", async () => {
+		const { createPurchasesHelper } = await import(
+			"@repo/payments/lib/helper"
+		);
+		const helper = createPurchasesHelper([
+			makePurchase({
+				id: "purchase_legacy_one_time",
+				type: "ONE_TIME",
+				subscriptionId: null,
+				paymentId: "pay_legacy",
+				productId: "legacy_one_time_product",
 				status: "active",
 			}),
 		]);
 
 		expect(helper.activePlan?.hasActivePurchase).toBe(true);
 		expect(helper.activePlan?.status).toBe("active");
-		expect(helper.activePlan?.purchaseId).toBe("purchase_setup_paid");
+		expect(helper.activePlan?.purchaseId).toBe("purchase_legacy_one_time");
 	});
 });

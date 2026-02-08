@@ -1,8 +1,9 @@
 import { auth } from "@repo/auth";
 import { getOrganizationById } from "@repo/database";
+import { resolveAppRedirectPath } from "@saas/auth/lib/redirects";
 import { OrganizationInvitationModal } from "@saas/organizations/components/OrganizationInvitationModal";
 import { AuthWrapper } from "@saas/shared/components/AuthWrapper";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 type Props = {
@@ -20,7 +21,13 @@ export default async function OrganizationInvitationPage({ params }: Props) {
 	});
 
 	if (!invitation) {
-		redirect("/app");
+		const activeOrganizationSlug = (await cookies()).get(
+			"activeOrganizationSlug",
+		)?.value;
+		const appRedirectPath = activeOrganizationSlug
+			? resolveAppRedirectPath("/app", activeOrganizationSlug)
+			: "/app";
+		redirect(appRedirectPath);
 	}
 
 	const organization = await getOrganizationById(invitation.organizationId);
