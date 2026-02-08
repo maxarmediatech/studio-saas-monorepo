@@ -6,7 +6,7 @@ on:
 
 env:
   DATABASE_URL: ${{ secrets.DATABASE_URL }}
-  BETTER_AUTH_SECRET: ci-local-secret
+  BETTER_AUTH_SECRET: ci-local-secret-32-characters-minimum
   NEXT_PUBLIC_SITE_URL: http://localhost:3000
 
 jobs:
