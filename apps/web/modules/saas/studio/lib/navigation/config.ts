@@ -372,7 +372,7 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 						},
 						{
 							id: "danger-zone",
-							label: "Danger Zone",
+							label: "Studio Danger Zone",
 							path: url("/settings/danger-zone"),
 							icon: "AlertTriangle",
 						},
@@ -440,6 +440,12 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							label: "Notifications",
 							path: url("/settings/notifications"),
 							icon: "Bell",
+						},
+						{
+							id: "account-danger-zone",
+							label: "Account Danger Zone",
+							path: url("/settings/account/danger-zone"),
+							icon: "AlertTriangle",
 						},
 					],
 				},

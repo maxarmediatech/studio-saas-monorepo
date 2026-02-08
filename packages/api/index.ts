@@ -337,7 +337,7 @@ export const app = new Hono()
 			}
 		}
 
-		return c.redirect(`${getBaseUrl()}/app/settings`);
+		return c.redirect(`${getBaseUrl()}/app`);
 	})
 	.get("/integrations/google-calendar/status", async (c) => {
 		const session = await auth.api.getSession({

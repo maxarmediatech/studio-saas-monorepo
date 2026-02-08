@@ -29,6 +29,16 @@ export function NavBar() {
 		? `/app/${activeOrganization.slug}`
 		: "/app";
 	const homePath = activeOrganization ? `${basePath}/home` : basePath;
+	const accountSettingsPath = activeOrganization
+		? `${basePath}/settings/profile`
+		: "/app";
+
+	const isAccountSettingsRoute = activeOrganization
+		? pathname.startsWith(`${basePath}/settings/profile`) ||
+			pathname.startsWith(`${basePath}/settings/security`) ||
+			pathname.startsWith(`${basePath}/settings/notifications`) ||
+			pathname.startsWith(`${basePath}/settings/account/`)
+		: false;
 
 	const menuItems = [
 		{
@@ -43,15 +53,17 @@ export function NavBar() {
 						label: t("app.menu.organizationSettings"),
 						href: `${basePath}/settings`,
 						icon: SettingsIcon,
-						isActive: pathname.startsWith(`${basePath}/settings/`),
+						isActive:
+							pathname.startsWith(`${basePath}/settings/`) &&
+							!isAccountSettingsRoute,
 					},
 				]
 			: []),
 		{
 			label: t("app.menu.accountSettings"),
-			href: "/app/settings",
+			href: accountSettingsPath,
 			icon: UserCog2Icon,
-			isActive: pathname.startsWith("/app/settings/"),
+			isActive: isAccountSettingsRoute,
 		},
 		...(user?.role === "admin"
 			? [

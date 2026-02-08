@@ -18,6 +18,7 @@ import {
 } from "@repo/ui/components/dropdown-menu";
 import { cn } from "@repo/ui/lib/utils";
 import { useSession } from "@saas/auth/hooks/use-session";
+import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
 import { UserAvatar } from "@shared/components/UserAvatar";
 import {
 	HardDriveIcon,
@@ -44,8 +45,12 @@ export function UserMenu({
 }) {
 	const t = useTranslations();
 	const { user } = useSession();
+	const { activeOrganization } = useActiveOrganization();
 	const { setTheme: setCurrentTheme, theme: currentTheme } = useTheme();
 	const [theme, setTheme] = useState<string>(currentTheme ?? "system");
+	const accountSettingsHref = activeOrganization
+		? `/app/${activeOrganization.slug}/settings/profile`
+		: "/app";
 
 	const colorModeOptions = [
 		{
@@ -161,7 +166,7 @@ export function UserMenu({
 				)}
 
 				<DropdownMenuItem asChild>
-					<Link href="/app/settings/general">
+					<Link href={accountSettingsHref}>
 						<SettingsIcon className="mr-2 size-4" />
 						{t("app.userMenu.accountSettings")}
 					</Link>
