@@ -49,7 +49,7 @@ export default function ErrorPage({
 							Try again
 						</Button>
 						<Button variant="secondary" asChild className="gap-2">
-							<Link href="/app">
+							<Link href="/">
 								<Home className="h-4 w-4" aria-hidden />
 								Back home
 							</Link>

@@ -9,7 +9,7 @@ export default function NotFoundPage() {
 				The page you're looking for doesn't exist.
 			</p>
 			<Button asChild>
-				<Link href="/app">Go back home</Link>
+				<Link href="/">Go back home</Link>
 			</Button>
 		</div>
 	);
