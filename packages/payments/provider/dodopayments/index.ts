@@ -8,6 +8,7 @@ import {
 	markWebhookEventProcessed,
 	updatePurchase,
 } from "@repo/database";
+import { assertPaymentsEnv, isEnvConfigError } from "@repo/env";
 import { logger } from "@repo/logs";
 import DodoPayments from "dodopayments";
 import { setCustomerIdToEntity } from "../../src/lib/customer";
@@ -26,11 +27,7 @@ export function getDodoPaymentsClient() {
 		return dodoPaymentsClient;
 	}
 
-	const dodoPaymentsApiKey = process.env.DODO_PAYMENTS_API_KEY as string;
-
-	if (!dodoPaymentsApiKey) {
-		throw new Error("Missing env variable DODO_PAYMENTS_API_KEY");
-	}
+	const { DODO_PAYMENTS_API_KEY: dodoPaymentsApiKey } = assertPaymentsEnv();
 
 	dodoPaymentsClient = new DodoPayments({
 		bearerToken: dodoPaymentsApiKey,
@@ -144,24 +141,14 @@ export const cancelSubscription: CancelSubscription = async (id) => {
 };
 
 export const webhookHandler: WebhookHandler = async (req) => {
-	const webhookSecret = process.env.DODO_PAYMENTS_WEBHOOK_SECRET as string;
-	const apiKey = process.env.DODO_PAYMENTS_API_KEY as string;
-
-	if (!webhookSecret) {
-		logger.error(
-			"Missing DODO_PAYMENTS_WEBHOOK_SECRET environment variable",
-		);
-		return new Response("Missing webhook secret.", { status: 400 });
-	}
-
-	if (!req.body) {
-		return new Response("Invalid request.", { status: 400 });
-	}
-
 	try {
-		if (!apiKey) {
-			logger.error("Missing DODO_PAYMENTS_API_KEY environment variable");
-			return new Response("Server misconfigured.", { status: 500 });
+		const {
+			DODO_PAYMENTS_WEBHOOK_SECRET: webhookSecret,
+			DODO_PAYMENTS_API_KEY: apiKey,
+		} = assertPaymentsEnv();
+
+		if (!req.body) {
+			return new Response("Invalid request.", { status: 400 });
 		}
 
 		const body = await req.text();
@@ -696,6 +683,23 @@ export const webhookHandler: WebhookHandler = async (req) => {
 			});
 		}
 	} catch (error) {
+		if (isEnvConfigError(error)) {
+			logger.error("Payments environment is misconfigured", {
+				code: error.code,
+				keys: error.keys,
+			});
+
+			return Response.json(
+				{
+					message: "Payments are not configured on this deployment.",
+					code: error.code,
+				},
+				{
+					status: 503,
+				},
+			);
+		}
+
 		logger.error("Error processing webhook", {
 			error: error instanceof Error ? error.message : error,
 		});

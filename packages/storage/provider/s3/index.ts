@@ -5,6 +5,7 @@ import {
 	S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl as getS3SignedUrl } from "@aws-sdk/s3-request-presigner";
+import { assertStorageEnv } from "@repo/env";
 import { logger } from "@repo/logs";
 import type {
 	DeleteObjectHandler,
@@ -20,22 +21,12 @@ const getS3Client = () => {
 		return s3Client;
 	}
 
-	const s3Endpoint = process.env.S3_ENDPOINT as string;
-	if (!s3Endpoint) {
-		throw new Error("Missing env variable S3_ENDPOINT");
-	}
-
-	const s3Region = (process.env.S3_REGION as string) || "auto";
-
-	const s3AccessKeyId = process.env.S3_ACCESS_KEY_ID as string;
-	if (!s3AccessKeyId) {
-		throw new Error("Missing env variable S3_ACCESS_KEY_ID");
-	}
-
-	const s3SecretAccessKey = process.env.S3_SECRET_ACCESS_KEY as string;
-	if (!s3SecretAccessKey) {
-		throw new Error("Missing env variable S3_SECRET_ACCESS_KEY");
-	}
+	const {
+		S3_ENDPOINT: s3Endpoint,
+		S3_REGION: s3Region,
+		S3_ACCESS_KEY_ID: s3AccessKeyId,
+		S3_SECRET_ACCESS_KEY: s3SecretAccessKey,
+	} = assertStorageEnv();
 
 	s3Client = new S3Client({
 		region: s3Region,

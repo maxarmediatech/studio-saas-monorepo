@@ -18,9 +18,10 @@ export function UserAvatarForm() {
 						t("settings.account.avatar.notifications.success"),
 					);
 				}}
-				onError={() => {
+				onError={(message) => {
 					toast.error(
-						t("settings.account.avatar.notifications.error"),
+						message ??
+							t("settings.account.avatar.notifications.error"),
 					);
 				}}
 			/>

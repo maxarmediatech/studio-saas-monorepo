@@ -1,14 +1,11 @@
+import { assertCoreEnv } from "@repo/env";
 import { drizzle } from "drizzle-orm/node-postgres";
 import * as schema from "./schema";
 
 // Check the drizzle documentation for more information on how to connect to your preferred database provider
 // https://orm.drizzle.team/docs/get-started-postgresql
 
-const databaseUrl = process.env.DATABASE_URL as string;
-
-if (!databaseUrl) {
-	throw new Error("DATABASE_URL is not set");
-}
+const { DATABASE_URL: databaseUrl } = assertCoreEnv();
 
 export const db = drizzle(databaseUrl, {
 	schema,

@@ -1,5 +1,6 @@
 import { ORPCError } from "@orpc/client";
 import { getOrganizationMembership, getPurchaseById } from "@repo/database";
+import { isEnvConfigError } from "@repo/env";
 import { logger } from "@repo/logs";
 import { createCustomerPortalLink as createCustomerPortalLinkFn } from "@repo/payments";
 import { z } from "zod";
@@ -58,6 +59,11 @@ export const createCustomerPortalLink = protectedProcedure
 			return { customerPortalLink };
 		} catch (e) {
 			logger.error("Could not create customer portal link", e);
+			if (isEnvConfigError(e)) {
+				throw new ORPCError("INTERNAL_SERVER_ERROR", {
+					message: "Payments are not configured on this deployment.",
+				});
+			}
 			throw new ORPCError("INTERNAL_SERVER_ERROR");
 		}
 	});

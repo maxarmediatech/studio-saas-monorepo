@@ -1,3 +1,4 @@
+import { getUploadsBucketName } from "@repo/env";
 import type { Config } from "./types";
 
 export const config = {
@@ -111,7 +112,7 @@ export const config = {
 	storage: {
 		// define the name of the buckets for the different types of files
 		bucketNames: {
-			uploads: process.env.UPLOADS_BUCKET_NAME ?? "uploads",
+			uploads: getUploadsBucketName(),
 		},
 	},
 	contactForm: {
