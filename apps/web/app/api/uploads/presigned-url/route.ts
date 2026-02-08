@@ -1,9 +1,14 @@
 import { randomUUID } from "node:crypto";
-import { z } from "zod";
 import { auth } from "@repo/auth";
 import { config } from "@repo/config";
+import { hasStorageEnv } from "@repo/env";
 import { getSignedUploadUrl } from "@repo/storage";
+import {
+	createEnvConfigResponse,
+	createEnvErrorResponse,
+} from "@shared/lib/env-error-response";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
 /**
  * Valid upload contexts for organizing files in S3.
@@ -153,7 +158,14 @@ export async function POST(request: Request) {
 		});
 
 		if (!session?.user) {
-			return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+			return NextResponse.json(
+				{ message: "Unauthorized" },
+				{ status: 401 },
+			);
+		}
+
+		if (!hasStorageEnv()) {
+			return createEnvConfigResponse("ENV_STORAGE_MISSING");
 		}
 
 		// Parse and validate input FIRST (before checking org)
@@ -163,7 +175,10 @@ export async function POST(request: Request) {
 		} catch (error) {
 			if (error instanceof z.ZodError) {
 				return NextResponse.json(
-					{ message: "Invalid input", errors: error.flatten().fieldErrors },
+					{
+						message: "Invalid input",
+						errors: error.flatten().fieldErrors,
+					},
 					{ status: 400 },
 				);
 			}
@@ -197,7 +212,9 @@ export async function POST(request: Request) {
 		const allowedTypes = ALLOWED_MIME_TYPES[context];
 		if (!allowedTypes.includes(fileType)) {
 			return NextResponse.json(
-				{ message: `File type '${fileType}' not allowed for ${context}` },
+				{
+					message: `File type '${fileType}' not allowed for ${context}`,
+				},
 				{ status: 400 },
 			);
 		}
@@ -243,6 +260,11 @@ export async function POST(request: Request) {
 
 		return NextResponse.json({ url, key });
 	} catch (error) {
+		const envErrorResponse = createEnvErrorResponse(error);
+		if (envErrorResponse) {
+			return envErrorResponse;
+		}
+
 		console.error("Error generating presigned URL:", error);
 		return NextResponse.json(
 			{ message: "Internal Server Error" },

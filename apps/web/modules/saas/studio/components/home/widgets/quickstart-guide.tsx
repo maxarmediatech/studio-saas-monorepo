@@ -84,7 +84,7 @@ export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 			flag: "visitedSettings" as const,
 			cta: {
 				text: "Configure this workspace",
-				link: `/app/${organizationSlug}/configurations`,
+				link: `/app/${organizationSlug}/configurations/booking-types`,
 			},
 		},
 		{
@@ -113,7 +113,9 @@ export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 		return state[flag] === true;
 	};
 
-	if (state.hide) return null;
+	if (state.hide) {
+		return null;
+	}
 
 	return (
 		<div className="py-4">

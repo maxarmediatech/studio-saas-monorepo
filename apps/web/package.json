@@ -42,6 +42,7 @@
 		"@repo/config": "workspace:*",
 		"@repo/database": "workspace:*",
 		"@repo/editor": "workspace:*",
+		"@repo/env": "workspace:*",
 		"@repo/i18n": "workspace:*",
 		"@repo/logs": "workspace:*",
 		"@repo/mail": "workspace:*",

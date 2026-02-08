@@ -1,6 +1,11 @@
 import { auth } from "@repo/auth";
 import { config } from "@repo/config";
+import { hasStorageEnv } from "@repo/env";
 import { deleteObject, getSignedUrl } from "@repo/storage";
+import {
+	createEnvConfigResponse,
+	createEnvErrorResponse,
+} from "@shared/lib/env-error-response";
 import { NextResponse } from "next/server";
 
 /**
@@ -18,7 +23,14 @@ export async function DELETE(request: Request) {
 		});
 
 		if (!session?.user) {
-			return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+			return NextResponse.json(
+				{ message: "Unauthorized" },
+				{ status: 401 },
+			);
+		}
+
+		if (!hasStorageEnv()) {
+			return createEnvConfigResponse("ENV_STORAGE_MISSING");
 		}
 
 		const organizationId = session.session.activeOrganizationId;
@@ -50,6 +62,11 @@ export async function DELETE(request: Request) {
 
 		return new NextResponse(null, { status: 204 });
 	} catch (error) {
+		const envErrorResponse = createEnvErrorResponse(error);
+		if (envErrorResponse) {
+			return envErrorResponse;
+		}
+
 		console.error("Error deleting file:", error);
 		return NextResponse.json(
 			{ message: "Internal Server Error" },
@@ -77,7 +94,14 @@ export async function POST(request: Request) {
 		});
 
 		if (!session?.user) {
-			return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+			return NextResponse.json(
+				{ message: "Unauthorized" },
+				{ status: 401 },
+			);
+		}
+
+		if (!hasStorageEnv()) {
+			return createEnvConfigResponse("ENV_STORAGE_MISSING");
 		}
 
 		const organizationId = session.session.activeOrganizationId;
@@ -111,6 +135,11 @@ export async function POST(request: Request) {
 
 		return NextResponse.json({ url });
 	} catch (error) {
+		const envErrorResponse = createEnvErrorResponse(error);
+		if (envErrorResponse) {
+			return envErrorResponse;
+		}
+
 		console.error("Error generating download URL:", error);
 		return NextResponse.json(
 			{ message: "Internal Server Error" },

@@ -1,7 +1,12 @@
 import { auth } from "@repo/auth";
 import { config } from "@repo/config";
 import { attachments, db, eq, submissionFiles } from "@repo/database";
+import { hasStorageEnv } from "@repo/env";
 import { getSignedUrl } from "@repo/storage";
+import {
+	createEnvConfigResponse,
+	createEnvErrorResponse,
+} from "@shared/lib/env-error-response";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -72,6 +77,10 @@ export async function POST(request: Request) {
 				{ message: "Unauthorized" },
 				{ status: 401 },
 			);
+		}
+
+		if (!hasStorageEnv()) {
+			return createEnvConfigResponse("ENV_STORAGE_MISSING");
 		}
 
 		let input: z.infer<typeof accessRequestSchema>;
@@ -261,6 +270,11 @@ export async function POST(request: Request) {
 			{ status: 400 },
 		);
 	} catch (error) {
+		const envErrorResponse = createEnvErrorResponse(error);
+		if (envErrorResponse) {
+			return envErrorResponse;
+		}
+
 		console.error("Error in file access:", error);
 		return NextResponse.json(
 			{ message: "Internal Server Error" },

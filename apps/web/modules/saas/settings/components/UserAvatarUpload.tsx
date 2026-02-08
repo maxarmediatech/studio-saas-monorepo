@@ -13,7 +13,7 @@ export function UserAvatarUpload({
 	onError,
 }: {
 	onSuccess: () => void;
-	onError: () => void;
+	onError: (message?: string) => void;
 }) {
 	const { user, reloadSession } = useSession();
 	const [uploading, setUploading] = useState(false);
@@ -56,8 +56,17 @@ export function UserAvatarUpload({
 			});
 
 			if (!presignedRes.ok) {
-				const error = await presignedRes.json();
-				throw new Error(error.message || "Failed to get upload URL");
+				const error = (await presignedRes.json()) as
+					| { message?: string; code?: string }
+					| undefined;
+
+				if (error?.code === "ENV_STORAGE_MISSING") {
+					throw new Error(
+						"Avatar uploads are unavailable right now. Storage is not configured on this deployment.",
+					);
+				}
+
+				throw new Error(error?.message || "Failed to get upload URL");
 			}
 
 			const { url, key } = await presignedRes.json();
@@ -86,8 +95,8 @@ export function UserAvatarUpload({
 
 			await reloadSession();
 			onSuccess();
-		} catch {
-			onError();
+		} catch (error) {
+			onError(error instanceof Error ? error.message : undefined);
 		} finally {
 			setUploading(false);
 		}

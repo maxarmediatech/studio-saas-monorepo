@@ -8,6 +8,7 @@
 		"start": "dotenv -c -- turbo start",
 		"lint": "biome lint . ",
 		"check": "biome check",
+		"env:check": "pnpm --filter @repo/env check",
 		"clean": "turbo clean",
 		"format": "biome format . --write",
 		"typecheck": "turbo type-check",

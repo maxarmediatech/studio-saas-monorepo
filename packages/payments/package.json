@@ -2,6 +2,7 @@
 	"dependencies": {
 		"@repo/config": "workspace:*",
 		"@repo/database": "workspace:*",
+		"@repo/env": "workspace:*",
 		"@repo/logs": "workspace:*",
 		"dodopayments": "^2.13.1",
 		"ufo": "^1.6.1",
