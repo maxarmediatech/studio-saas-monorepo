@@ -78,6 +78,8 @@ export type Config = {
 								intervalCount?: number;
 								trialPeriodDays?: number;
 								seatBased?: boolean;
+								bundledOneTimeProductId?: string;
+								bundledOneTimeQuantity?: number;
 						  }
 						| {
 								type: "one-time";

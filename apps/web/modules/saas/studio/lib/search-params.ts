@@ -352,3 +352,74 @@ export const configurationSearchParamsCache = createSearchParamsCache({
 export type ConfigurationSearchParams = ReturnType<
 	typeof configurationSearchParamsCache.parse
 >;
+
+/**
+ * Invoice status values for filter validation
+ */
+const INVOICE_STATUSES = [
+	"draft",
+	"sent",
+	"paid",
+	"partial",
+	"overdue",
+	"cancelled",
+] as const;
+
+/**
+ * Server-side search params cache for invoices table.
+ * Use in server components to parse URL params before prefetching.
+ */
+export const invoiceSearchParamsCache = createSearchParamsCache({
+	// Pagination
+	page: parseAsInteger.withDefault(1),
+	limit: parseAsInteger.withDefault(10),
+
+	// Filters
+	search: parseAsString,
+	statuses: parseAsArrayOf(
+		parseAsStringLiteral(INVOICE_STATUSES),
+	).withDefault([]),
+	createdAt: parseAsArrayOf(parseAsString, ",").withDefault([]),
+
+	// Sorting
+	sort: sortStateParser,
+	sortBy: parseAsString.withDefault("createdAt"),
+	sortDirection: parseAsStringLiteral(["asc", "desc"] as const).withDefault(
+		"desc",
+	),
+});
+
+/**
+ * Type for parsed invoice search params
+ */
+export type InvoiceSearchParams = ReturnType<
+	typeof invoiceSearchParamsCache.parse
+>;
+
+/**
+ * Server-side search params cache for receipts table.
+ * Use in server components to parse URL params before prefetching.
+ */
+export const receiptSearchParamsCache = createSearchParamsCache({
+	// Pagination
+	page: parseAsInteger.withDefault(1),
+	limit: parseAsInteger.withDefault(10),
+
+	// Filters
+	search: parseAsString,
+	createdAt: parseAsArrayOf(parseAsString, ",").withDefault([]),
+
+	// Sorting
+	sort: sortStateParser,
+	sortBy: parseAsString.withDefault("receiptDate"),
+	sortDirection: parseAsStringLiteral(["asc", "desc"] as const).withDefault(
+		"desc",
+	),
+});
+
+/**
+ * Type for parsed receipt search params
+ */
+export type ReceiptSearchParams = ReturnType<
+	typeof receiptSearchParamsCache.parse
+>;

@@ -12,6 +12,13 @@ import { orpc } from "@shared/lib/orpc-query-utils";
 // ============================================================================
 
 export const studioQueryKeys = {
+	// Invoices
+	invoices: {
+		all: ["studio", "invoices"] as const,
+		list: (filters?: Record<string, unknown>) =>
+			["studio", "invoices", "list", filters] as const,
+		detail: (id: string) => ["studio", "invoices", "detail", id] as const,
+	},
 	// Bookings
 	bookings: {
 		all: ["studio", "bookings"] as const,
@@ -151,6 +158,41 @@ export const studioQueryKeys = {
 		},
 	},
 } as const;
+
+export const invoicesApi = {
+	listOptions: (
+		input?: Parameters<typeof orpc.invoices.list.queryOptions>[0]["input"],
+	) => orpc.invoices.list.queryOptions({ input: input ?? {} }),
+
+	getOptions: (id: string) =>
+		orpc.invoices.get.queryOptions({ input: { id } }),
+};
+
+export const invoicesMutations = {
+	create: () => orpc.invoices.create.mutationOptions(),
+	createFromSchedule: () =>
+		orpc.invoices.createFromSchedule.mutationOptions(),
+	update: () => orpc.invoices.update.mutationOptions(),
+	markSent: () => orpc.invoices.markSent.mutationOptions(),
+	cancel: () => orpc.invoices.cancel.mutationOptions(),
+	delete: () => orpc.invoices.delete.mutationOptions(),
+	addLineItem: () => orpc.invoices.addLineItem.mutationOptions(),
+	updateLineItem: () => orpc.invoices.updateLineItem.mutationOptions(),
+	removeLineItem: () => orpc.invoices.removeLineItem.mutationOptions(),
+};
+
+export const receiptsApi = {
+	listOptions: (
+		input?: Parameters<typeof orpc.receipts.list.queryOptions>[0]["input"],
+	) => orpc.receipts.list.queryOptions({ input: input ?? {} }),
+
+	getOptions: (id: string) =>
+		orpc.receipts.get.queryOptions({ input: { id } }),
+};
+
+export const receiptsMutations = {
+	void: () => orpc.receipts.void.mutationOptions(),
+};
 
 // ============================================================================
 // BOOKINGS QUERY OPTIONS

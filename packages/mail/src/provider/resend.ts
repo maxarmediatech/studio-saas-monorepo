@@ -4,7 +4,13 @@ import type { SendEmailHandler } from "../../types";
 
 const { from } = config.mails;
 
-export const send: SendEmailHandler = async ({ to, subject, html }) => {
+export const send: SendEmailHandler = async ({
+	to,
+	subject,
+	text,
+	html,
+	attachments,
+}) => {
 	const response = await fetch("https://api.resend.com/emails", {
 		method: "POST",
 		headers: {
@@ -15,7 +21,9 @@ export const send: SendEmailHandler = async ({ to, subject, html }) => {
 			from,
 			to,
 			subject,
+			text,
 			html,
+			attachments,
 		}),
 	});
 

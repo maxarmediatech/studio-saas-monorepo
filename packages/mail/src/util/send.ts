@@ -21,6 +21,7 @@ export async function sendEmail<T extends TemplateId>(
 				subject: string;
 				text?: string;
 				html?: string;
+				attachments?: Parameters<typeof send>[0]["attachments"];
 		  }
 	),
 ) {
@@ -52,6 +53,8 @@ export async function sendEmail<T extends TemplateId>(
 			subject,
 			text,
 			html,
+			attachments:
+				"attachments" in params ? params.attachments : undefined,
 		});
 		return true;
 	} catch (e) {

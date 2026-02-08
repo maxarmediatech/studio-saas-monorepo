@@ -45,12 +45,35 @@ export function PricingTable({
 	const localeCurrency = useLocaleCurrency();
 	const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
 	const [interval, setInterval] = useState<"month" | "year">("month");
+	const inlineCheckoutEnabled =
+		process.env.NEXT_PUBLIC_DODO_INLINE_CHECKOUT !== "0";
 
 	const { planData } = usePlanData();
 
 	const createCheckoutLinkMutation = useMutation(
 		orpc.payments.createCheckoutLink.mutationOptions(),
 	);
+
+	const buildProductCart = (
+		price: NonNullable<(typeof plans)[PlanId]["prices"]>[number],
+	) => {
+		const items: Array<{ productId: string; quantity?: number }> = [
+			{ productId: price.productId },
+		];
+
+		if (
+			price.type === "recurring" &&
+			price.bundledOneTimeProductId &&
+			price.bundledOneTimeProductId.length > 0
+		) {
+			items.push({
+				productId: price.bundledOneTimeProductId,
+				quantity: price.bundledOneTimeQuantity ?? 1,
+			});
+		}
+
+		return items;
+	};
 
 	const onSelectPlan = async (planId: PlanId, productId?: string) => {
 		if (!(userId || organizationId)) {
@@ -70,18 +93,44 @@ export function PricingTable({
 		setLoadingPlan(planId);
 
 		try {
+			const productCart = buildProductCart(price);
+
 			const { checkoutLink } =
 				await createCheckoutLinkMutation.mutateAsync({
-					type:
-						price.type === "one-time" ? "one-time" : "subscription",
-					productId: price.productId,
+					productCart,
 					organizationId,
 					redirectUrl: window.location.href,
 				});
 
+			if (inlineCheckoutEnabled) {
+				router.push(
+					`/choose-plan/checkout?checkoutUrl=${encodeURIComponent(
+						checkoutLink,
+					)}`,
+				);
+				return;
+			}
+
 			window.location.href = checkoutLink;
 		} catch (error) {
 			console.error(error);
+
+			const errorCode =
+				typeof error === "object" && error !== null
+					? ((error as { code?: string }).code ??
+						(
+							error as {
+								shape?: { code?: string };
+							}
+						).shape?.code)
+					: undefined;
+
+			if (errorCode === "BAD_REQUEST") {
+				router.refresh();
+				toast.error("Plan data refreshed. Please try once again.");
+				return;
+			}
+
 			toast.error("Failed to create checkout. Please try again.");
 		} finally {
 			setLoadingPlan(null);

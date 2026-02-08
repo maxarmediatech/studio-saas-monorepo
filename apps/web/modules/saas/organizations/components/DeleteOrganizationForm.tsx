@@ -2,9 +2,10 @@
 
 import { authClient } from "@repo/auth/client";
 import { Button } from "@repo/ui/components/button";
+import { resolveAppRedirectPath } from "@saas/auth/lib/redirects";
 import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
-import { useOrganizationListQuery } from "@saas/organizations/lib/api";
 import { setActiveOrganizationSlugCookie } from "@saas/organizations/lib/active-organization-cookie";
+import { useOrganizationListQuery } from "@saas/organizations/lib/api";
 import { useConfirmationAlert } from "@saas/shared/components/ConfirmationAlertProvider";
 import { SettingsItem } from "@saas/shared/components/SettingsItem";
 import { useRouter } from "@shared/hooks/router";
@@ -52,7 +53,7 @@ export function DeleteOrganizationForm() {
 				await setActiveOrganization(null);
 				setActiveOrganizationSlugCookie(null);
 				await reloadOrganizations();
-				router.replace("/app");
+				router.replace(resolveAppRedirectPath("/app"));
 			},
 		});
 	};

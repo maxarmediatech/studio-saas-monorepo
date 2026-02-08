@@ -28,9 +28,13 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-export function OnboardingStep1({ onCompleted }: { onCompleted: () => void }) {
+export function OnboardingStep1({
+	onCompleted,
+}: {
+	onCompleted: () => Promise<void>;
+}) {
 	const t = useTranslations();
-	const { user } = useSession();
+	const { user, reloadSession } = useSession();
 	const form = useForm<FormValues>({
 		resolver: zodResolver(formSchema),
 		defaultValues: {
@@ -48,11 +52,17 @@ export function OnboardingStep1({ onCompleted }: { onCompleted: () => void }) {
 		form.clearErrors("root");
 
 		try {
-			await authClient.updateUser({
+			const { error } = await authClient.updateUser({
 				name,
+				onboardingComplete: true,
 			});
 
-			onCompleted();
+			if (error) {
+				throw error;
+			}
+
+			await reloadSession();
+			await onCompleted();
 		} catch {
 			form.setError("root", {
 				type: "server",

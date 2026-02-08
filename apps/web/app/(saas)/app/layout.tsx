@@ -1,6 +1,10 @@
 import { config } from "@repo/config";
 import { createPurchasesHelper } from "@repo/payments/lib/helper";
 import { sessionQueryKey } from "@saas/auth/lib/api";
+import {
+	getActiveOrganizationSlug,
+	resolveAppRedirectPath,
+} from "@saas/auth/lib/redirects";
 import { getOrganizationList, getSession } from "@saas/auth/lib/server";
 import { ActiveOrganizationProvider } from "@saas/organizations/components/ActiveOrganizationProvider";
 import { organizationListQueryKey } from "@saas/organizations/lib/api";
@@ -22,13 +26,24 @@ export default async function ProtectedAppLayout({
 		redirect("/auth/login");
 	}
 
-	if (config.users.enableOnboarding && !session.user.onboardingComplete) {
-		redirect(`/onboarding?redirectTo=${encodeURIComponent("/app")}`);
-	}
-
 	const organizations = config.organizations.enable
 		? await getOrganizationList()
 		: [];
+
+	const activeOrganizationSlug = getActiveOrganizationSlug({
+		organizations,
+		activeOrganizationId: session.session.activeOrganizationId,
+	});
+	const postAuthRedirectPath = resolveAppRedirectPath(
+		"/app",
+		activeOrganizationSlug,
+	);
+
+	if (config.users.enableOnboarding && !session.user.onboardingComplete) {
+		redirect(
+			`/onboarding?redirectTo=${encodeURIComponent(postAuthRedirectPath)}`,
+		);
+	}
 
 	const activeOrganization =
 		organizations.find(
@@ -76,7 +91,7 @@ export default async function ProtectedAppLayout({
 		const purchases = data?.purchases ?? [];
 		const { activePlan } = createPurchasesHelper(purchases);
 
-		const hasSelectedPlan = purchases.length > 0 && !!activePlan;
+		const hasSelectedPlan = Boolean(activePlan?.hasActivePurchase);
 
 		if (!hasSelectedPlan) {
 			redirect("/choose-plan");

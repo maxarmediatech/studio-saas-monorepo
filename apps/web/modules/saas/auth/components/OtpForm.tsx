@@ -22,6 +22,7 @@ import {
 import { useAuthErrorMessages } from "@saas/auth/hooks/errors-messages";
 import { setActiveOrganizationSlugCookie } from "@saas/organizations/lib/active-organization-cookie";
 import { useRouter } from "@shared/hooks/router";
+import { sanitizeRedirectPath } from "@shared/lib/sanitize-redirect-path";
 import { AlertTriangleIcon, ArrowLeftIcon } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -46,7 +47,7 @@ export function OtpForm() {
 
 	const redirectPath = invitationId
 		? `/organization-invitation/${invitationId}`
-		: (redirectTo ?? config.auth.redirectAfterSignIn);
+		: sanitizeRedirectPath(redirectTo, config.auth.redirectAfterSignIn);
 
 	const resolveRedirectPath = async (path: string) => {
 		if (path !== "/app" && path !== "/app/") {

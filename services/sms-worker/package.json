@@ -1,0 +1,29 @@
+{
+	"name": "@repo/sms-worker",
+	"version": "0.0.0",
+	"main": "./src/index.ts",
+	"scripts": {
+		"dev": "tsx watch src/index.ts",
+		"start": "node dist/index.js",
+		"build": "tsc",
+		"type-check": "tsc --noEmit",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"test:integration": "vitest run tests/integration.test.ts"
+	},
+	"dependencies": {
+		"@repo/database": "workspace:*",
+		"@repo/logs": "workspace:*",
+		"@repo/sms": "workspace:*",
+		"drizzle-orm": "^0.45.1"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.3.10",
+		"@repo/tsconfig": "workspace:*",
+		"@types/node": "24.10.4",
+		"dotenv": "^17.2.3",
+		"tsx": "^4.21.0",
+		"typescript": "^5.7.3",
+		"vitest": "^2.0.0"
+	}
+}

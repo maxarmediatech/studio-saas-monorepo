@@ -493,6 +493,7 @@ export const auth = betterAuth({
 		twoFactor(),
 	],
 	onAPIError: {
+		errorURL: `${appUrl}/auth/error`,
 		onError(error, ctx) {
 			logger.error(error, { ctx });
 		},

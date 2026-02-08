@@ -1,10 +1,12 @@
 import { config } from "@repo/config";
+import { resolveAppRedirectPath } from "@saas/auth/lib/redirects";
 import { getSession } from "@saas/auth/lib/server";
 import { SettingsMenu } from "@saas/settings/components/SettingsMenu";
 import { PageHeader } from "@saas/shared/components/PageHeader";
 import { SidebarContentLayout } from "@saas/shared/components/SidebarContentLayout";
 import { Logo } from "@shared/components/Logo";
 import { Building2Icon, UsersIcon } from "lucide-react";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import type { PropsWithChildren } from "react";
@@ -18,7 +20,13 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
 	}
 
 	if (session.user?.role !== "admin") {
-		redirect("/app");
+		const activeOrganizationSlug = (await cookies()).get(
+			"activeOrganizationSlug",
+		)?.value;
+		const appRedirectPath = activeOrganizationSlug
+			? resolveAppRedirectPath("/app", activeOrganizationSlug)
+			: "/app";
+		redirect(appRedirectPath);
 	}
 
 	return (

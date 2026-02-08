@@ -19,50 +19,45 @@ export const createCustomerPortalLink = protectedProcedure
 	.input(
 		z.object({
 			purchaseId: z.string(),
-			redirectUrl: z.string().optional(),
 		}),
 	)
-	.handler(
-		async ({ input: { purchaseId, redirectUrl }, context: { user } }) => {
-			const purchase = await getPurchaseById(purchaseId);
+	.handler(async ({ input: { purchaseId }, context: { user } }) => {
+		const purchase = await getPurchaseById(purchaseId);
 
-			if (!purchase) {
+		if (!purchase) {
+			throw new ORPCError("FORBIDDEN");
+		}
+
+		if (purchase.organizationId) {
+			const userOrganizationMembership = await getOrganizationMembership(
+				purchase.organizationId,
+				user.id,
+			);
+			if (
+				!userOrganizationMembership ||
+				userOrganizationMembership.role !== "owner"
+			) {
 				throw new ORPCError("FORBIDDEN");
 			}
+		}
 
-			if (purchase.organizationId) {
-				const userOrganizationMembership =
-					await getOrganizationMembership(
-						purchase.organizationId,
-						user.id,
-					);
-				if (
-					!userOrganizationMembership ||
-					userOrganizationMembership.role !== "owner"
-				) {
-					throw new ORPCError("FORBIDDEN");
-				}
-			}
+		if (purchase.userId && purchase.userId !== user.id) {
+			throw new ORPCError("FORBIDDEN");
+		}
 
-			if (purchase.userId && purchase.userId !== user.id) {
-				throw new ORPCError("FORBIDDEN");
-			}
+		try {
+			const customerPortalLink = await createCustomerPortalLinkFn({
+				subscriptionId: purchase.subscriptionId ?? undefined,
+				customerId: purchase.customerId,
+			});
 
-			try {
-				const customerPortalLink = await createCustomerPortalLinkFn({
-					subscriptionId: purchase.subscriptionId ?? undefined,
-					customerId: purchase.customerId,
-					redirectUrl,
-				});
-
-				if (!customerPortalLink) {
-					throw new ORPCError("INTERNAL_SERVER_ERROR");
-				}
-
-				return { customerPortalLink };
-			} catch (e) {
-				logger.error("Could not create customer portal link", e);
+			if (!customerPortalLink) {
 				throw new ORPCError("INTERNAL_SERVER_ERROR");
 			}
-		},
-	);
+
+			return { customerPortalLink };
+		} catch (e) {
+			logger.error("Could not create customer portal link", e);
+			throw new ORPCError("INTERNAL_SERVER_ERROR");
+		}
+	});

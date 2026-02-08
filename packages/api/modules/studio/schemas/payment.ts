@@ -202,6 +202,7 @@ export const createReceivedInputSchema = z.object({
 	notes: notesSchema,
 	proofAttachment: uploadedAttachmentSchema.nullable().optional(),
 	paymentScheduleId: idSchema.optional(),
+	invoiceId: idSchema.optional(),
 });
 
 export type CreateReceivedInput = z.infer<typeof createReceivedInputSchema>;

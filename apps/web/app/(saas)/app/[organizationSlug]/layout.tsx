@@ -28,7 +28,7 @@ export default async function OrganizationLayout({ children, params }: Props) {
 	]);
 
 	if (!session) {
-		redirect("/sign-in");
+		redirect("/auth/login");
 	}
 
 	if (!organization) {

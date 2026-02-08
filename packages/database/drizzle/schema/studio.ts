@@ -847,6 +847,11 @@ export const receivedAmounts = pgTable(
 			length: 255,
 		}).references(() => paymentSchedules.id, { onDelete: "set null" }),
 
+		// Link to invoice if this payment is for a specific invoice
+		invoiceId: varchar("invoice_id", {
+			length: 255,
+		}).references(() => invoices.id, { onDelete: "set null" }),
+
 		createdBy: varchar("created_by", { length: 255 }).references(
 			() => users.id,
 			{ onDelete: "set null" },
@@ -873,6 +878,7 @@ export const receivedAmounts = pgTable(
 		index("received_amounts_booking_idx").on(table.bookingId),
 		index("received_amounts_date_idx").on(table.receivedDate),
 		index("received_amounts_schedule_idx").on(table.paymentScheduleId),
+		index("received_amounts_invoice_idx").on(table.invoiceId),
 		check("received_amounts_amount_positive", sql`amount > 0`),
 	],
 );
@@ -1087,6 +1093,11 @@ export const invoices = pgTable(
 		issueDate: date("issue_date").notNull(),
 		dueDate: date("due_date"),
 
+		// Link to payment schedule (1:1 relationship to milestone)
+		paymentScheduleId: varchar("payment_schedule_id", {
+			length: 255,
+		}).references(() => paymentSchedules.id, { onDelete: "set null" }),
+
 		// Calculated totals (cached for performance)
 		subtotal: decimal("subtotal", { precision: 12, scale: 2 })
 			.default("0")
@@ -1189,6 +1200,74 @@ export const invoiceLineItems = pgTable(
 			"invoice_line_items_amount_consistency",
 			sql`amount = quantity * unit_price`,
 		),
+	],
+);
+
+// ============================================================================
+// RECEIPTS TABLE
+// Payment receipts for bookings and invoices
+// ============================================================================
+
+export const receipts = pgTable(
+	"receipts",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 })
+			.notNull()
+			.references(() => organizations.id, { onDelete: "cascade" }),
+		bookingId: varchar("booking_id", { length: 255 })
+			.notNull()
+			.references(() => bookings.id, { onDelete: "cascade" }),
+
+		// Link to invoice if this receipt is for a specific invoice
+		invoiceId: varchar("invoice_id", {
+			length: 255,
+		}).references(() => invoices.id, { onDelete: "set null" }),
+
+		// Link to received amount if this receipt documents a payment
+		receivedAmountId: varchar("received_amount_id", {
+			length: 255,
+		}).references(() => receivedAmounts.id, { onDelete: "set null" }),
+
+		receiptNumber: varchar("receipt_number", { length: 50 }).notNull(),
+		amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+		paymentMethod: varchar("payment_method", { length: 50 }),
+		receiptDate: date("receipt_date").notNull(),
+		notes: text("notes"),
+
+		createdBy: varchar("created_by", { length: 255 }).references(
+			() => users.id,
+			{ onDelete: "set null" },
+		),
+		updatedBy: varchar("updated_by", { length: 255 }).references(
+			() => users.id,
+			{ onDelete: "set null" },
+		),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+
+		deletedAt: timestamp("deleted_at", { withTimezone: true }),
+		deletedBy: varchar("deleted_by", { length: 255 }).references(
+			() => users.id,
+			{ onDelete: "set null" },
+		),
+	},
+	(table) => [
+		index("receipts_org_idx").on(table.organizationId),
+		index("receipts_booking_idx").on(table.bookingId),
+		index("receipts_invoice_idx").on(table.invoiceId),
+		index("receipts_received_amount_idx").on(table.receivedAmountId),
+		index("receipts_date_idx").on(table.receiptDate),
+		uniqueIndex("receipts_org_number_idx")
+			.on(table.organizationId, table.receiptNumber)
+			.where(sql`deleted_at IS NULL`),
+		check("receipts_amount_positive", sql`amount > 0`),
 	],
 );
 

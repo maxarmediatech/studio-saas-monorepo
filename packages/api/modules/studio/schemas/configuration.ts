@@ -342,4 +342,5 @@ export const defaultConfigurations: Record<
 		{ key: "corporate", label: "Corporate Event" },
 		{ key: "other", label: "Other" },
 	],
+	gst_rate: [{ key: "default", label: "GST Rate (18%)", isDefault: true }],
 };

@@ -12,9 +12,10 @@ import {
 	DropdownMenuTrigger,
 } from "@repo/ui/components/dropdown-menu";
 import { useSession } from "@saas/auth/hooks/use-session";
+import { resolveAppRedirectPath } from "@saas/auth/lib/redirects";
 import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
-import { useOrganizationListQuery } from "@saas/organizations/lib/api";
 import { setActiveOrganizationSlugCookie } from "@saas/organizations/lib/active-organization-cookie";
+import { useOrganizationListQuery } from "@saas/organizations/lib/api";
 import { ActivePlanBadge } from "@saas/payments/components/ActivePlanBadge";
 import { UserAvatar } from "@shared/components/UserAvatar";
 import { useRouter } from "@shared/hooks/router";
@@ -87,7 +88,9 @@ export function OrganzationSelect({ className }: { className?: string }) {
 									if (value === user.id) {
 										setActiveOrganizationSlugCookie(null);
 										await clearCache();
-										router.replace("/app");
+										router.replace(
+											resolveAppRedirectPath("/app"),
+										);
 									}
 								}}
 							>

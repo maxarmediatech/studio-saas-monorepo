@@ -16,6 +16,7 @@ import {
 import { Input } from "@repo/ui/components/input";
 import { useAuthErrorMessages } from "@saas/auth/hooks/errors-messages";
 import { OrganizationInvitationAlert } from "@saas/organizations/components/OrganizationInvitationAlert";
+import { sanitizeRedirectPath } from "@shared/lib/sanitize-redirect-path";
 import {
 	AlertTriangleIcon,
 	ArrowRightIcon,
@@ -67,7 +68,7 @@ export function SignupForm({ prefillEmail }: { prefillEmail?: string }) {
 
 	const redirectPath = invitationId
 		? `/organization-invitation/${invitationId}`
-		: (redirectTo ?? config.auth.redirectAfterSignIn);
+		: sanitizeRedirectPath(redirectTo, config.auth.redirectAfterSignIn);
 
 	const onSubmit = form.handleSubmit(async ({ email, password, name }) => {
 		try {
@@ -132,6 +133,31 @@ export function SignupForm({ prefillEmail }: { prefillEmail?: string }) {
 					{invitationId && (
 						<OrganizationInvitationAlert className="mb-6" />
 					)}
+
+					{config.auth.enableSignup &&
+						config.auth.enableSocialLogin && (
+							<>
+								<div className="grid grid-cols-1 items-stretch gap-2">
+									{Object.keys(oAuthProviders).map(
+										(providerId) => (
+											<SocialSigninButton
+												key={providerId}
+												provider={
+													providerId as OAuthProvider
+												}
+											/>
+										),
+									)}
+								</div>
+
+								<div className="relative my-6 h-4">
+									<hr className="relative top-2" />
+									<p className="-translate-x-1/2 absolute top-0 left-1/2 mx-auto inline-block h-4 bg-card px-2 text-center font-medium text-foreground/60 text-sm leading-tight">
+										{t("auth.login.continueWith")}
+									</p>
+								</div>
+							</>
+						)}
 
 					<Form {...form}>
 						<form
@@ -244,31 +270,6 @@ export function SignupForm({ prefillEmail }: { prefillEmail?: string }) {
 							</Button>
 						</form>
 					</Form>
-
-					{config.auth.enableSignup &&
-						config.auth.enableSocialLogin && (
-							<>
-								<div className="relative my-6 h-4">
-									<hr className="relative top-2" />
-									<p className="-translate-x-1/2 absolute top-0 left-1/2 mx-auto inline-block h-4 bg-card px-2 text-center font-medium text-foreground/60 text-sm leading-tight">
-										{t("auth.login.continueWith")}
-									</p>
-								</div>
-
-								<div className="grid grid-cols-1 items-stretch gap-2">
-									{Object.keys(oAuthProviders).map(
-										(providerId) => (
-											<SocialSigninButton
-												key={providerId}
-												provider={
-													providerId as OAuthProvider
-												}
-											/>
-										),
-									)}
-								</div>
-							</>
-						)}
 				</>
 			)}
 

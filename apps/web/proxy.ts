@@ -4,7 +4,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { withQuery } from "ufo";
 
 export default async function middleware(req: NextRequest) {
-	const { pathname, origin } = req.nextUrl;
+	const { pathname, origin, search } = req.nextUrl;
 
 	const sessionCookie = getSessionCookie(req);
 
@@ -14,10 +14,11 @@ export default async function middleware(req: NextRequest) {
 		}
 
 		if (!sessionCookie) {
+			const redirectTo = `${pathname}${search}`;
 			return NextResponse.redirect(
 				new URL(
 					withQuery("/auth/login", {
-						redirectTo: pathname,
+						redirectTo,
 					}),
 					origin,
 				),

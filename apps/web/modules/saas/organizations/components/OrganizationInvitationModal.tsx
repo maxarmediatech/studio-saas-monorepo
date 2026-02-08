@@ -2,6 +2,7 @@
 
 import { authClient } from "@repo/auth/client";
 import { Button } from "@repo/ui/components/button";
+import { resolveAppRedirectPath } from "@saas/auth/lib/redirects";
 import { OrganizationLogo } from "@saas/organizations/components/OrganizationLogo";
 import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
 import { setActiveOrganizationSlugCookie } from "@saas/organizations/lib/active-organization-cookie";
@@ -49,7 +50,9 @@ export function OrganizationInvitationModal({
 				});
 
 				setActiveOrganizationSlugCookie(organizationSlug);
-				router.replace(`/app/${organizationSlug}/home`);
+				router.replace(
+					resolveAppRedirectPath("/app", organizationSlug),
+				);
 			} else {
 				const { error } =
 					await authClient.organization.rejectInvitation({
@@ -62,10 +65,12 @@ export function OrganizationInvitationModal({
 
 				if (activeOrganization?.slug) {
 					setActiveOrganizationSlugCookie(activeOrganization.slug);
-					router.replace(`/app/${activeOrganization.slug}/home`);
+					router.replace(
+						resolveAppRedirectPath("/app", activeOrganization.slug),
+					);
 				} else {
 					setActiveOrganizationSlugCookie(null);
-					router.replace("/app");
+					router.replace(resolveAppRedirectPath("/app"));
 				}
 			}
 		} catch {

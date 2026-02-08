@@ -34,6 +34,7 @@ import {
 	useSchedulesTableWithViews,
 } from "@saas/studio/hooks/tables";
 import {
+	invoicesMutations,
 	studioPaymentsApi,
 	studioPaymentsMutations,
 } from "@saas/studio/lib/api";
@@ -46,6 +47,7 @@ import {
 	CalendarIcon,
 	CheckCircle2Icon,
 	CircleDashedIcon,
+	FileTextIcon,
 	Loader2Icon,
 	PencilIcon,
 	TrashIcon,
@@ -184,9 +186,34 @@ export function SchedulesTableClient({
 		},
 	});
 
+	// Generate invoice mutation
+	const generateInvoiceMutation = useMutation({
+		...invoicesMutations.createFromSchedule(),
+		onSuccess: (data) => {
+			toast.success("Invoice generated successfully");
+			queryClient.invalidateQueries({
+				queryKey: orpc.studioPayments.key(),
+			});
+			queryClient.invalidateQueries({
+				queryKey: orpc.invoices.key(),
+			});
+		},
+		onError: (error) => {
+			toast.error(error.message || "Failed to generate invoice");
+		},
+	});
+
 	// Define row actions (inline handlers to avoid stale closure issues)
 	const rowActions: RowAction<PaymentScheduleListItem>[] = useMemo(
 		() => [
+			{
+				label: "Generate Invoice",
+				icon: <FileTextIcon className="h-4 w-4" />,
+				onClick: (row) =>
+					generateInvoiceMutation.mutate({
+						paymentScheduleId: row.id,
+					}),
+			},
 			{
 				label: "Edit",
 				icon: <PencilIcon className="h-4 w-4" />,
@@ -203,7 +230,7 @@ export function SchedulesTableClient({
 				},
 			},
 		],
-		[openEdit],
+		[openEdit, generateInvoiceMutation],
 	);
 
 	// Define columns with sortable headers and meta for filters

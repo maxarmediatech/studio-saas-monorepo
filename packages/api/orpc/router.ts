@@ -12,12 +12,14 @@ import { deliverablesRouter } from "../modules/deliverables/router";
 import { discussionsRouter } from "../modules/discussions/router";
 import { expensesRouter } from "../modules/expenses/router";
 import { globalSearchRouter } from "../modules/global-search/router";
+import { invoicesRouter } from "../modules/invoices/router";
 import { myAssignmentsRouter } from "../modules/my-assignments/router";
 import { newsletterRouter } from "../modules/newsletter/router";
 import { notificationsRouter } from "../modules/notifications/router";
 import { organizationsRouter } from "../modules/organizations/router";
 import { paymentsRouter } from "../modules/payments/router";
 import { quickLinksRouter } from "../modules/quick-links/router";
+import { receiptsRouter } from "../modules/receipts/router";
 import { recentVisitsRouter } from "../modules/recent-visits/router";
 import { savedViewsRouter } from "../modules/saved-views/router";
 import { shootsRouter } from "../modules/shoots/router";
@@ -49,6 +51,8 @@ export const router = publicProcedure
 		tasks: tasksRouter,
 		deliverables: deliverablesRouter,
 		studioPayments: studioPaymentsRouter,
+		invoices: invoicesRouter,
+		receipts: receiptsRouter,
 		expenses: expensesRouter,
 		globalSearch: globalSearchRouter,
 

@@ -125,36 +125,40 @@ export function UserMenu({
 
 				<DropdownMenuSeparator />
 
-				{/* Color mode selection */}
-				<DropdownMenuSub>
-					<DropdownMenuSubTrigger>
-						<SunIcon className="mr-2 size-4" />
-						{t("app.userMenu.colorMode")}
-					</DropdownMenuSubTrigger>
-					<DropdownMenuPortal>
-						<DropdownMenuSubContent>
-							<DropdownMenuRadioGroup
-								value={theme}
-								onValueChange={(value) => {
-									setTheme(value);
-									setCurrentTheme(value);
-								}}
-							>
-								{colorModeOptions.map((option) => (
-									<DropdownMenuRadioItem
-										key={option.value}
-										value={option.value}
+				{/* Color mode selection — gated behind enabledThemes */}
+				{config.ui.enabledThemes.length > 1 && (
+					<>
+						<DropdownMenuSub>
+							<DropdownMenuSubTrigger>
+								<SunIcon className="mr-2 size-4" />
+								{t("app.userMenu.colorMode")}
+							</DropdownMenuSubTrigger>
+							<DropdownMenuPortal>
+								<DropdownMenuSubContent>
+									<DropdownMenuRadioGroup
+										value={theme}
+										onValueChange={(value) => {
+											setTheme(value);
+											setCurrentTheme(value);
+										}}
 									>
-										<option.icon className="mr-2 size-4 opacity-50" />
-										{option.label}
-									</DropdownMenuRadioItem>
-								))}
-							</DropdownMenuRadioGroup>
-						</DropdownMenuSubContent>
-					</DropdownMenuPortal>
-				</DropdownMenuSub>
+										{colorModeOptions.map((option) => (
+											<DropdownMenuRadioItem
+												key={option.value}
+												value={option.value}
+											>
+												<option.icon className="mr-2 size-4 opacity-50" />
+												{option.label}
+											</DropdownMenuRadioItem>
+										))}
+									</DropdownMenuRadioGroup>
+								</DropdownMenuSubContent>
+							</DropdownMenuPortal>
+						</DropdownMenuSub>
 
-				<DropdownMenuSeparator />
+						<DropdownMenuSeparator />
+					</>
+				)}
 
 				<DropdownMenuItem asChild>
 					<Link href="/app/settings/general">
