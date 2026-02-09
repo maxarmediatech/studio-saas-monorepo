@@ -344,7 +344,11 @@ export const configurationsApi = {
 
 	relationTypesOptions: () =>
 		orpc.configurations.list.queryOptions({
-			input: { type: "relation_type" },
+			input: {
+				type: "relation_type",
+				sortBy: "sortOrder",
+				sortDirection: "asc",
+			},
 		}),
 
 	shootStatusOptions: () =>
