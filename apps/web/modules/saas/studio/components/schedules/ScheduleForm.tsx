@@ -12,6 +12,12 @@ import {
 	FieldLabel,
 } from "@repo/ui/components/field";
 import { Input } from "@repo/ui/components/input";
+import {
+	InputGroup,
+	InputGroupAddon,
+	InputGroupInput,
+	InputGroupText,
+} from "@repo/ui/components/input-group";
 import { ScrollArea } from "@repo/ui/components/scroll-area";
 import { Textarea } from "@repo/ui/components/textarea";
 import { bookingsApi } from "@saas/studio/lib/api";
@@ -200,15 +206,16 @@ export function ScheduleForm({
 										<FieldLabel htmlFor={field.name}>
 											Amount *
 										</FieldLabel>
-										<div className="relative">
-											<span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-												₹
-											</span>
-											<Input
+										<InputGroup>
+											<InputGroupAddon>
+												<InputGroupText>
+													₹
+												</InputGroupText>
+											</InputGroupAddon>
+											<InputGroupInput
 												{...field}
 												id={field.name}
 												placeholder="0.00"
-												className="pl-7"
 												aria-invalid={
 													fieldState.invalid
 												}
@@ -232,7 +239,7 @@ export function ScheduleForm({
 													field.onChange(value);
 												}}
 											/>
-										</div>
+										</InputGroup>
 										{fieldState.invalid && (
 											<FieldError
 												errors={[fieldState.error]}

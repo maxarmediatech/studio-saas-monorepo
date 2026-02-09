@@ -18,7 +18,12 @@ import {
 	FormLabel,
 	FormMessage,
 } from "@repo/ui/components/form";
-import { Input } from "@repo/ui/components/input";
+import {
+	InputGroup,
+	InputGroupAddon,
+	InputGroupInput,
+	InputGroupText,
+} from "@repo/ui/components/input-group";
 import {
 	Select,
 	SelectContent,
@@ -149,11 +154,18 @@ export function AddToCrewDialog({
 								<FormItem>
 									<FormLabel>Daily Rate (INR)</FormLabel>
 									<FormControl>
-										<Input
-											type="number"
-											placeholder="5000"
-											{...field}
-										/>
+										<InputGroup>
+											<InputGroupAddon>
+												<InputGroupText>
+													₹
+												</InputGroupText>
+											</InputGroupAddon>
+											<InputGroupInput
+												type="number"
+												placeholder="5000"
+												{...field}
+											/>
+										</InputGroup>
 									</FormControl>
 									<FormMessage />
 								</FormItem>

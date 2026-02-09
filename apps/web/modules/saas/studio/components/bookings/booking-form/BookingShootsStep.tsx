@@ -14,6 +14,12 @@ import {
 	FieldSet,
 } from "@repo/ui/components/field";
 import { Input } from "@repo/ui/components/input";
+import {
+	InputGroup,
+	InputGroupAddon,
+	InputGroupInput,
+	InputGroupText,
+} from "@repo/ui/components/input-group";
 import { Textarea } from "@repo/ui/components/textarea";
 import { TimePicker } from "@repo/ui/components/time-picker";
 import { useConfigurationParams } from "@saas/studio/hooks/params/use-configuration-params";
@@ -547,10 +553,7 @@ function ShootSection({
 										<Controller
 											name={`shoots.${shootIndex}.crewAssignments.${assignmentIndex}.crewId`}
 											control={form.control}
-											render={({
-												field,
-												fieldState,
-											}) => (
+											render={({ field, fieldState }) => (
 												<Combobox
 													value={field.value ?? ""}
 													onValueChange={(value) =>
@@ -577,20 +580,29 @@ function ShootSection({
 											name={`shoots.${shootIndex}.crewAssignments.${assignmentIndex}.rate`}
 											control={form.control}
 											render={({ field, fieldState }) => (
-												<Input
-													type="number"
-													step="0.01"
-													value={field.value ?? ""}
-													onChange={(e) =>
-														field.onChange(
-															e.target.value,
-														)
-													}
-													placeholder="Rate"
-													aria-invalid={
-														fieldState.invalid
-													}
-												/>
+												<InputGroup>
+													<InputGroupAddon>
+														<InputGroupText>
+															₹
+														</InputGroupText>
+													</InputGroupAddon>
+													<InputGroupInput
+														type="number"
+														step="0.01"
+														value={
+															field.value ?? ""
+														}
+														onChange={(e) =>
+															field.onChange(
+																e.target.value,
+															)
+														}
+														placeholder="Rate"
+														aria-invalid={
+															fieldState.invalid
+														}
+													/>
+												</InputGroup>
 											)}
 										/>
 

@@ -12,6 +12,12 @@ import {
 	FieldLabel,
 } from "@repo/ui/components/field";
 import { Input } from "@repo/ui/components/input";
+import {
+	InputGroup,
+	InputGroupAddon,
+	InputGroupInput,
+	InputGroupText,
+} from "@repo/ui/components/input-group";
 import { ScrollArea } from "@repo/ui/components/scroll-area";
 import {
 	Select,
@@ -286,17 +292,24 @@ export function PackageTypeForm({
 												>
 													Default Cost *
 												</FieldLabel>
-												<Input
-													{...field}
-													id={field.name}
-													type="number"
-													step="0.01"
-													min="0.01"
-													placeholder="0.00"
-													aria-invalid={
-														fieldState.invalid
-													}
-												/>
+												<InputGroup>
+													<InputGroupAddon>
+														<InputGroupText>
+															₹
+														</InputGroupText>
+													</InputGroupAddon>
+													<InputGroupInput
+														{...field}
+														id={field.name}
+														type="number"
+														step="0.01"
+														min="0.01"
+														placeholder="0.00"
+														aria-invalid={
+															fieldState.invalid
+														}
+													/>
+												</InputGroup>
 												{fieldState.invalid && (
 													<FieldError
 														errors={[

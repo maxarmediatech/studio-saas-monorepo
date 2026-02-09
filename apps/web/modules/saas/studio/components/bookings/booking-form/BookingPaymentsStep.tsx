@@ -20,6 +20,7 @@ import {
 	InputGroup,
 	InputGroupAddon,
 	InputGroupButton,
+	InputGroupInput,
 	InputGroupText,
 	InputGroupTextarea,
 } from "@repo/ui/components/input-group";
@@ -365,7 +366,8 @@ function PaymentRow({ index, onRemove }: PaymentRowProps) {
 				}),
 			});
 
-			if (!presignedUrlRes.ok) throw new Error("Failed to get upload URL");
+			if (!presignedUrlRes.ok)
+				throw new Error("Failed to get upload URL");
 
 			const { url, key } = await presignedUrlRes.json();
 
@@ -379,7 +381,13 @@ function PaymentRow({ index, onRemove }: PaymentRowProps) {
 				const finalUrl = url.split("?")[0];
 				form.setValue(
 					`payments.${index}.proofAttachment`,
-					{ name: file.name, size: file.size, type: file.type, key, url: finalUrl },
+					{
+						name: file.name,
+						size: file.size,
+						type: file.type,
+						key,
+						url: finalUrl,
+					},
 					{ shouldValidate: true },
 				);
 				toast.success("Proof uploaded");
@@ -404,7 +412,9 @@ function PaymentRow({ index, onRemove }: PaymentRowProps) {
 				body: JSON.stringify({ key: proofAttachment.key }),
 			});
 			if (!deleteRes.ok) throw new Error("Delete failed");
-			form.setValue(`payments.${index}.proofAttachment`, null, { shouldValidate: true });
+			form.setValue(`payments.${index}.proofAttachment`, null, {
+				shouldValidate: true,
+			});
 			toast.success("Proof removed");
 		} catch (_error) {
 			toast.error("Failed to remove file");
@@ -448,14 +458,13 @@ function PaymentRow({ index, onRemove }: PaymentRowProps) {
 								<FieldLabel htmlFor={field.name}>
 									Amount
 								</FieldLabel>
-								<div className="relative">
-									<span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-										₹
-									</span>
-									<Input
+								<InputGroup>
+									<InputGroupAddon>
+										<InputGroupText>₹</InputGroupText>
+									</InputGroupAddon>
+									<InputGroupInput
 										{...field}
 										id={field.name}
-										className="pl-7"
 										placeholder="0.00"
 										aria-invalid={fieldState.invalid}
 										onChange={(e) => {
@@ -466,11 +475,12 @@ function PaymentRow({ index, onRemove }: PaymentRowProps) {
 												);
 											const parts = value.split(".");
 											if (parts.length > 2) return;
-											if (parts[1] && parts[1].length > 2) return;
+											if (parts[1] && parts[1].length > 2)
+												return;
 											field.onChange(value);
 										}}
 									/>
-								</div>
+								</InputGroup>
 								{fieldState.invalid && (
 									<FieldError errors={[fieldState.error]} />
 								)}
@@ -592,7 +602,9 @@ function PaymentRow({ index, onRemove }: PaymentRowProps) {
 								{isUploading ? (
 									<InputGroupText>
 										<Loader2Icon className="h-4 w-4 animate-spin" />
-										<span className="text-xs">Uploading...</span>
+										<span className="text-xs">
+											Uploading...
+										</span>
 									</InputGroupText>
 								) : proofAttachment ? (
 									<>
@@ -605,7 +617,11 @@ function PaymentRow({ index, onRemove }: PaymentRowProps) {
 												{proofAttachment.name}
 											</span>
 											<span className="text-xs text-muted-foreground">
-												({formatFileSize(proofAttachment.size)})
+												(
+												{formatFileSize(
+													proofAttachment.size,
+												)}
+												)
 											</span>
 										</InputGroupText>
 										<InputGroupButton
@@ -620,21 +636,28 @@ function PaymentRow({ index, onRemove }: PaymentRowProps) {
 											) : (
 												<XIcon className="h-3.5 w-3.5" />
 											)}
-											<span className="sr-only">Remove proof</span>
+											<span className="sr-only">
+												Remove proof
+											</span>
 										</InputGroupButton>
 									</>
 								) : (
 									<InputGroupButton
 										variant="ghost"
 										size="xs"
-										onClick={() => fileInputRef.current?.click()}
+										onClick={() =>
+											fileInputRef.current?.click()
+										}
 									>
 										<PaperclipIcon className="h-4 w-4" />
 										Attach Proof
 									</InputGroupButton>
 								)}
 
-								<Separator orientation="vertical" className="!h-4 ml-auto" />
+								<Separator
+									orientation="vertical"
+									className="!h-4 ml-auto"
+								/>
 
 								<InputGroupText className="text-xs text-muted-foreground">
 									PDF or Image
@@ -742,14 +765,13 @@ function ScheduleRow({ index, onRemove }: ScheduleRowProps) {
 								<FieldLabel htmlFor={field.name}>
 									Amount
 								</FieldLabel>
-								<div className="relative">
-									<span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-										₹
-									</span>
-									<Input
+								<InputGroup>
+									<InputGroupAddon>
+										<InputGroupText>₹</InputGroupText>
+									</InputGroupAddon>
+									<InputGroupInput
 										{...field}
 										id={field.name}
-										className="pl-7"
 										placeholder="0.00"
 										aria-invalid={fieldState.invalid}
 										onChange={(e) => {
@@ -771,7 +793,7 @@ function ScheduleRow({ index, onRemove }: ScheduleRowProps) {
 											field.onChange(value);
 										}}
 									/>
-								</div>
+								</InputGroup>
 								{fieldState.invalid && (
 									<FieldError errors={[fieldState.error]} />
 								)}

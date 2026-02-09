@@ -15,6 +15,12 @@ import {
 	FieldSet,
 } from "@repo/ui/components/field";
 import { Input } from "@repo/ui/components/input";
+import {
+	InputGroup,
+	InputGroupAddon,
+	InputGroupInput,
+	InputGroupText,
+} from "@repo/ui/components/input-group";
 import { MultiSelectCombobox } from "@repo/ui/components/multi-select-combobox";
 import { Textarea } from "@repo/ui/components/textarea";
 import { useQuery } from "@tanstack/react-query";
@@ -326,14 +332,15 @@ function DeliverableCard({
 										<FieldLabel htmlFor={field.name}>
 											Cost
 										</FieldLabel>
-										<div className="relative">
-											<span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-												₹
-											</span>
-											<Input
+										<InputGroup>
+											<InputGroupAddon>
+												<InputGroupText>
+													₹
+												</InputGroupText>
+											</InputGroupAddon>
+											<InputGroupInput
 												{...field}
 												id={field.name}
-												className="pl-7"
 												placeholder="0.00"
 												value={field.value ?? ""}
 												aria-invalid={
@@ -359,7 +366,7 @@ function DeliverableCard({
 													field.onChange(value);
 												}}
 											/>
-										</div>
+										</InputGroup>
 										{fieldState.invalid && (
 											<FieldError
 												errors={[fieldState.error]}

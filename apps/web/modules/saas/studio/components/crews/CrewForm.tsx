@@ -9,6 +9,12 @@ import {
 	FieldLabel,
 } from "@repo/ui/components/field";
 import { Input } from "@repo/ui/components/input";
+import {
+	InputGroup,
+	InputGroupAddon,
+	InputGroupInput,
+	InputGroupText,
+} from "@repo/ui/components/input-group";
 import { ScrollArea } from "@repo/ui/components/scroll-area";
 import {
 	Select,
@@ -327,15 +333,22 @@ export function CrewForm({
 												>
 													Daily Rate (INR)
 												</FieldLabel>
-												<Input
-													{...field}
-													id={field.name}
-													type="number"
-													placeholder="5000"
-													aria-invalid={
-														fieldState.invalid
-													}
-												/>
+												<InputGroup>
+													<InputGroupAddon>
+														<InputGroupText>
+															₹
+														</InputGroupText>
+													</InputGroupAddon>
+													<InputGroupInput
+														{...field}
+														id={field.name}
+														type="number"
+														placeholder="5000"
+														aria-invalid={
+															fieldState.invalid
+														}
+													/>
+												</InputGroup>
 												{fieldState.invalid && (
 													<FieldError
 														errors={[

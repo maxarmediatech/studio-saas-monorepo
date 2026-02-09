@@ -10,7 +10,12 @@ import {
 	FieldGroup,
 	FieldLabel,
 } from "@repo/ui/components/field";
-import { Input } from "@repo/ui/components/input";
+import {
+	InputGroup,
+	InputGroupAddon,
+	InputGroupInput,
+	InputGroupText,
+} from "@repo/ui/components/input-group";
 import { ScrollArea } from "@repo/ui/components/scroll-area";
 import { Textarea } from "@repo/ui/components/textarea";
 import { TimePicker } from "@repo/ui/components/time-picker";
@@ -546,24 +551,31 @@ export function ShootForm({
 														field,
 														fieldState,
 													}) => (
-														<Input
-															type="number"
-															step="0.01"
-															value={
-																field.value ??
-																""
-															}
-															onChange={(e) =>
-																field.onChange(
-																	e.target
-																		.value,
-																)
-															}
-															placeholder="Rate"
-															aria-invalid={
-																fieldState.invalid
-															}
-														/>
+														<InputGroup>
+															<InputGroupAddon>
+																<InputGroupText>
+																	₹
+																</InputGroupText>
+															</InputGroupAddon>
+															<InputGroupInput
+																type="number"
+																step="0.01"
+																value={
+																	field.value ??
+																	""
+																}
+																onChange={(e) =>
+																	field.onChange(
+																		e.target
+																			.value,
+																	)
+																}
+																placeholder="Rate"
+																aria-invalid={
+																	fieldState.invalid
+																}
+															/>
+														</InputGroup>
 													)}
 												/>
 

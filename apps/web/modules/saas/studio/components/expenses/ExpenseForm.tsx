@@ -18,6 +18,7 @@ import {
 	InputGroup,
 	InputGroupAddon,
 	InputGroupButton,
+	InputGroupInput,
 	InputGroupText,
 	InputGroupTextarea,
 } from "@repo/ui/components/input-group";
@@ -197,23 +198,23 @@ export function ExpenseForm({
 
 	useEffect(() => {
 		if (defaultValues) {
-				const bookingAssignment = existingAssignments?.find(
-					(a) => a.bookingId,
-				);
-				const shootAssignment = existingAssignments?.find((a) => a.shootId);
+			const bookingAssignment = existingAssignments?.find(
+				(a) => a.bookingId,
+			);
+			const shootAssignment = existingAssignments?.find((a) => a.shootId);
 
-				const metadata = defaultValues.metadata as {
-					receiptAttachment?: ExpenseFormValues["receiptAttachment"];
-					shootId?: string;
-				} | null;
+			const metadata = defaultValues.metadata as {
+				receiptAttachment?: ExpenseFormValues["receiptAttachment"];
+				shootId?: string;
+			} | null;
 
-				const resolvedBookingId =
-					booking?.id ?? bookingAssignment?.bookingId ?? "";
-				const resolvedShootId =
-					shoot?.id ??
-					metadata?.shootId ??
-					shootAssignment?.shootId ??
-					"";
+			const resolvedBookingId =
+				booking?.id ?? bookingAssignment?.bookingId ?? "";
+			const resolvedShootId =
+				shoot?.id ??
+				metadata?.shootId ??
+				shootAssignment?.shootId ??
+				"";
 
 			const crewAssignments =
 				crewIdsFromMetadata && crewIdsFromMetadata.length > 0
@@ -239,10 +240,9 @@ export function ExpenseForm({
 				category: defaultValues.category ?? "",
 				vendor: defaultValues.vendor ?? "",
 				paymentMethod: defaultValues.paymentMethod ?? undefined,
-					notes: defaultValues.notes ?? "",
-					receiptAttachment:
-						metadata?.receiptAttachment ?? null,
-				});
+				notes: defaultValues.notes ?? "",
+				receiptAttachment: metadata?.receiptAttachment ?? null,
+			});
 
 			if (
 				defaultValues.category ||
@@ -524,15 +524,16 @@ export function ExpenseForm({
 										<FieldLabel htmlFor={field.name}>
 											Amount *
 										</FieldLabel>
-										<div className="relative">
-											<span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-												₹
-											</span>
-											<Input
+										<InputGroup>
+											<InputGroupAddon>
+												<InputGroupText>
+													₹
+												</InputGroupText>
+											</InputGroupAddon>
+											<InputGroupInput
 												{...field}
 												id={field.name}
 												placeholder="0.00"
-												className="pl-7"
 												aria-invalid={
 													fieldState.invalid
 												}
@@ -554,7 +555,7 @@ export function ExpenseForm({
 													field.onChange(value);
 												}}
 											/>
-										</div>
+										</InputGroup>
 										{fieldState.invalid && (
 											<FieldError
 												errors={[fieldState.error]}

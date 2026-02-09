@@ -20,6 +20,7 @@ import {
 	InputGroup,
 	InputGroupAddon,
 	InputGroupButton,
+	InputGroupInput,
 	InputGroupText,
 	InputGroupTextarea,
 } from "@repo/ui/components/input-group";
@@ -914,14 +915,15 @@ export function BookingDetailsStep() {
 											<FieldLabel htmlFor={field.name}>
 												Package Cost
 											</FieldLabel>
-											<div className="relative">
-												<span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-													₹
-												</span>
-												<Input
+											<InputGroup>
+												<InputGroupAddon>
+													<InputGroupText>
+														₹
+													</InputGroupText>
+												</InputGroupAddon>
+												<InputGroupInput
 													{...field}
 													id={field.name}
-													className="pl-7"
 													placeholder="0.00"
 													disabled={
 														!selectedBookingType
@@ -952,7 +954,7 @@ export function BookingDetailsStep() {
 														field.onChange(value);
 													}}
 												/>
-											</div>
+											</InputGroup>
 											{fieldState.invalid && (
 												<FieldError
 													errors={[fieldState.error]}
