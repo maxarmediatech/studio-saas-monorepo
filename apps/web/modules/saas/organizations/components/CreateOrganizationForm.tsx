@@ -17,9 +17,10 @@ import {
 	organizationListQueryKey,
 	useCreateOrganizationMutation,
 } from "@saas/organizations/lib/api";
+import { configurationsMutations } from "@saas/studio/lib/api";
 import { useRouter } from "@shared/hooks/router";
 import { sanitizeRedirectPath } from "@shared/lib/sanitize-redirect-path";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeftIcon, Loader2Icon } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -33,6 +34,12 @@ const formSchema = z.object({
 });
 
 type FormValues = z.infer<typeof formSchema>;
+
+const DEFAULT_SEED_CONFIGURATION_TYPES = [
+	"booking_type",
+	"event_type",
+	"relation_type",
+] as const;
 
 export function CreateOrganizationForm({
 	defaultName,
@@ -53,6 +60,9 @@ export function CreateOrganizationForm({
 	const router = useRouter();
 	const queryClient = useQueryClient();
 	const createOrganizationMutation = useCreateOrganizationMutation();
+	const seedConfigurationsMutation = useMutation({
+		...configurationsMutations.seed(),
+	});
 	const form = useForm<FormValues>({
 		resolver: zodResolver(formSchema),
 		defaultValues: {
@@ -102,6 +112,18 @@ export function CreateOrganizationForm({
 				throw setActiveError;
 			}
 			setActiveOrganizationSlugCookie(organizationSlug);
+
+			if (!organizationToEdit) {
+				try {
+					await seedConfigurationsMutation.mutateAsync({
+						types: [...DEFAULT_SEED_CONFIGURATION_TYPES],
+					});
+				} catch {
+					toast.warning(
+						"Workspace created, but default configuration seeding failed. You can add them from Configurations.",
+					);
+				}
+			}
 
 			await queryClient.invalidateQueries({
 				queryKey: organizationListQueryKey,
