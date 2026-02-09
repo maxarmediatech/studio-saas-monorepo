@@ -249,7 +249,7 @@ export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 
 	return (
 		<div className="py-4">
-			<div className="flex items-center mb-4">
+			<div className="mb-4 flex items-center justify-between">
 				<div className="flex items-center gap-2">
 					<h3 className="text-sm font-semibold text-muted-foreground">
 						Your quickstart guide
@@ -258,6 +258,15 @@ export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 						{completedCount}/{GUIDE_ITEMS.length} complete
 					</span>
 				</div>
+				{hasCreatedBooking ? (
+					<button
+						type="button"
+						onClick={handleDismiss}
+						className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+					>
+						Hide this
+					</button>
+				) : null}
 			</div>
 
 			<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -324,18 +333,6 @@ export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 					);
 				})}
 			</div>
-
-			{hasCreatedBooking ? (
-				<div className="mt-4 flex justify-end">
-					<button
-						type="button"
-						onClick={handleDismiss}
-						className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-					>
-						Hide this
-					</button>
-				</div>
-			) : null}
 		</div>
 	);
 }
