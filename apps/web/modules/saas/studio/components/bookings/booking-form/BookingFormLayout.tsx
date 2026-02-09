@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@repo/ui/components/button";
+import { ScrollArea } from "@repo/ui/components/scroll-area";
 import { cn } from "@repo/ui/lib/utils";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
@@ -101,15 +102,15 @@ export function BookingFormLayout({
 			{/* Main body - flex row on desktop */}
 			<div className="flex min-h-0 flex-1 flex-col md:flex-row">
 				{/* Content + Footer column */}
-				<main className="flex min-h-0 flex-1 flex-col">
+				<main className="flex min-h-0 flex-1 flex-col overflow-hidden">
 					{/* Scrollable content area */}
-					<div className="flex-1 overflow-y-auto">
+					<ScrollArea className="min-h-0 flex-1">
 						<div className="mx-auto max-w-4xl px-4 py-6 lg:px-6">
 							<BookingStepErrorBoundary stepName={stepName}>
 								{children}
 							</BookingStepErrorBoundary>
 						</div>
-					</div>
+					</ScrollArea>
 
 					{/* Navigation Footer - fixed at bottom, not scrollable */}
 					<footer className="shrink-0 border-t bg-background">
