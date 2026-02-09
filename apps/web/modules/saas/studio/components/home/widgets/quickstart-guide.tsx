@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@repo/ui/components/button";
 import { cn } from "@repo/ui/lib/utils";
 import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
 import { useLocalStorage } from "@saas/studio/hooks/use-local-storage";
@@ -12,7 +13,6 @@ import {
 	Loader2Icon,
 	PackageIcon,
 	UsersIcon,
-	XIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo } from "react";
@@ -162,7 +162,7 @@ export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 
 	return (
 		<div className="py-4">
-			<div className="flex items-center justify-between mb-4">
+			<div className="flex items-center mb-4">
 				<div className="flex items-center gap-2">
 					<h3 className="text-sm font-semibold text-muted-foreground">
 						Your quickstart guide
@@ -171,14 +171,6 @@ export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 						{completedCount}/{GUIDE_ITEMS.length} complete
 					</span>
 				</div>
-				<button
-					type="button"
-					onClick={handleDismiss}
-					className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-				>
-					<XIcon className="size-4" />
-					Not right now
-				</button>
 			</div>
 
 			<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -215,17 +207,35 @@ export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 									<CheckIcon className="size-3 text-white" />
 								</div>
 							) : (
-								<Link
-									href={item.cta.link}
-									className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+								<Button
+									asChild
+									variant="ghost"
+									size="sm"
+									className={cn(
+										"mt-auto h-8 w-fit justify-start rounded-md px-2.5  hover:text-blue-600 text-blue-600 hover:bg-blue-100/50								",
+									)}
 								>
-									{item.cta.text}
-								</Link>
+									<Link href={item.cta.link}>
+										{item.cta.text}
+									</Link>
+								</Button>
 							)}
 						</div>
 					);
 				})}
 			</div>
+
+			{hasCreatedBooking ? (
+				<div className="mt-4 flex justify-end">
+					<button
+						type="button"
+						onClick={handleDismiss}
+						className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+					>
+						Hide this
+					</button>
+				</div>
+			) : null}
 		</div>
 	);
 }
