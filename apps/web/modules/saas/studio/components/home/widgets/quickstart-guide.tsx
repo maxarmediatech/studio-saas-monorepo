@@ -4,21 +4,47 @@ import { Button } from "@repo/ui/components/button";
 import { cn } from "@repo/ui/lib/utils";
 import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
 import { useLocalStorage } from "@saas/studio/hooks/use-local-storage";
-import { bookingsApi, configurationsApi } from "@saas/studio/lib/api";
-import { useQuery } from "@tanstack/react-query";
+import {
+	bookingsApi,
+	configurationsApi,
+	configurationsMutations,
+} from "@saas/studio/lib/api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
 	CalendarPlusIcon,
 	CheckIcon,
-	ClipboardListIcon,
 	Loader2Icon,
 	PackageIcon,
+	SettingsIcon,
 	UsersIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo } from "react";
+import { type ReactNode, useEffect, useMemo } from "react";
+import { toast } from "sonner";
 
 interface QuickstartGuideProps {
 	organizationSlug: string;
+}
+
+interface GuideItem {
+	id: string;
+	title: string;
+	description: string;
+	icon: ReactNode;
+	completed: boolean;
+	isLoading: boolean;
+	cta:
+		| {
+				type: "link";
+				text: string;
+				link: string;
+		  }
+		| {
+				type: "action";
+				text: string;
+				onClick: () => void;
+				isPending?: boolean;
+		  };
 }
 
 interface QuickstartState {
@@ -31,11 +57,18 @@ const DEFAULT_STATE: QuickstartState = {
 	version: 2,
 };
 
+const DEFAULT_SEED_CONFIGURATION_TYPES = [
+	"booking_type",
+	"event_type",
+	"relation_type",
+] as const;
+
 export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 	const [storedState, setStoredState] = useLocalStorage<unknown>(
 		`quickstart-guide-${organizationSlug}`,
 		DEFAULT_STATE,
 	);
+	const queryClient = useQueryClient();
 	const state = useMemo(
 		() => normalizeQuickstartState(storedState),
 		[storedState],
@@ -58,6 +91,20 @@ export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 		}),
 		enabled: shouldShowWidget,
 	});
+	const eventTypesQuery = useQuery({
+		...configurationsApi.listOptions({
+			type: "event_type",
+			limit: 1,
+		}),
+		enabled: shouldShowWidget,
+	});
+	const relationTypesQuery = useQuery({
+		...configurationsApi.listOptions({
+			type: "relation_type",
+			limit: 1,
+		}),
+		enabled: shouldShowWidget,
+	});
 	const bookingStatsQuery = useQuery({
 		...bookingsApi.statsOptions(),
 		enabled: shouldShowWidget,
@@ -65,7 +112,12 @@ export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 
 	const hasBookingTypes = (bookingTypesQuery.data?.data?.length ?? 0) > 0;
 	const hasPackageTypes = (packageTypesQuery.data?.data?.length ?? 0) > 0;
-	const hasRequiredConfigurations = hasBookingTypes && hasPackageTypes;
+	const hasEventTypes = (eventTypesQuery.data?.data?.length ?? 0) > 0;
+	const hasRelationTypes = (relationTypesQuery.data?.data?.length ?? 0) > 0;
+	const hasSeededWorkspaceDefaults =
+		hasBookingTypes && hasEventTypes && hasRelationTypes;
+	const hasRequiredConfigurations =
+		hasSeededWorkspaceDefaults && hasPackageTypes;
 	const hasCreatedBooking =
 		(bookingStatsQuery.data?.data?.totalBookings ?? 0) > 0;
 	const hasInvitedTeam =
@@ -73,30 +125,60 @@ export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 			(invitation) => invitation.status === "pending",
 		).length ?? 0) > 0;
 
-	const isCheckingRequiredConfigurations =
-		bookingTypesQuery.isPending || packageTypesQuery.isPending;
-	const isCheckingBookingTypes = bookingTypesQuery.isPending;
+	const isCheckingWorkspaceDefaults =
+		bookingTypesQuery.isPending ||
+		eventTypesQuery.isPending ||
+		relationTypesQuery.isPending;
 	const isCheckingPackageTypes = packageTypesQuery.isPending;
 	const isCheckingBookingCreation = bookingStatsQuery.isPending;
 	const isCheckingTeamInvites = !activeOrganizationLoaded;
-	const firstMissingConfigurationLink = !hasBookingTypes
-		? `/app/${organizationSlug}/configurations/booking-types`
-		: !hasPackageTypes
+	const firstMissingConfigurationLink =
+		!hasSeededWorkspaceDefaults || !hasPackageTypes
 			? `/app/${organizationSlug}/configurations/package-types`
 			: `/app/${organizationSlug}/bookings/new/details`;
 
-	const GUIDE_ITEMS = [
+	const seedWorkspaceDefaultsMutation = useMutation({
+		...configurationsMutations.seed(),
+		onSuccess: async () => {
+			toast.success("Workspace defaults seeded successfully");
+			await queryClient.invalidateQueries({
+				queryKey: ["studio", "configurations"],
+			});
+			await Promise.all([
+				bookingTypesQuery.refetch(),
+				eventTypesQuery.refetch(),
+				relationTypesQuery.refetch(),
+			]);
+		},
+		onError: () => {
+			toast.error(
+				"Seeding failed. Try again from this card or add them manually in Configurations.",
+			);
+		},
+	});
+
+	const handleSeedWorkspaceDefaults = () => {
+		seedWorkspaceDefaultsMutation.mutate({
+			types: [...DEFAULT_SEED_CONFIGURATION_TYPES],
+		});
+	};
+
+	const GUIDE_ITEMS: GuideItem[] = [
 		{
-			id: "create-booking-types",
-			title: "Create booking types",
+			id: "configure-workspace",
+			title: "Configure your workspace",
 			description:
-				"Define booking categories so owners pick the right workflow from day one.",
-			icon: <ClipboardListIcon className="size-4" />,
-			completed: hasBookingTypes,
-			isLoading: isCheckingBookingTypes,
+				"Seed core defaults for booking, shoot, and relation setup.",
+			icon: <SettingsIcon className="size-4" />,
+			completed: hasSeededWorkspaceDefaults,
+			isLoading:
+				isCheckingWorkspaceDefaults ||
+				seedWorkspaceDefaultsMutation.isPending,
 			cta: {
-				text: "Open booking types",
-				link: `/app/${organizationSlug}/configurations/booking-types`,
+				type: "action",
+				text: "Seed defaults",
+				onClick: handleSeedWorkspaceDefaults,
+				isPending: seedWorkspaceDefaultsMutation.isPending,
 			},
 		},
 		{
@@ -108,6 +190,7 @@ export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 			completed: hasPackageTypes,
 			isLoading: isCheckingPackageTypes,
 			cta: {
+				type: "link",
 				text: "Open package types",
 				link: `/app/${organizationSlug}/configurations/package-types`,
 			},
@@ -117,12 +200,15 @@ export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 			title: "Create a booking",
 			description: hasRequiredConfigurations
 				? "Create your first booking once setup is complete."
-				: "Complete booking types and package types first.",
+				: "Complete workspace defaults and package types first.",
 			icon: <CalendarPlusIcon className="size-4" />,
 			completed: hasCreatedBooking,
 			isLoading:
-				isCheckingBookingCreation || isCheckingRequiredConfigurations,
+				isCheckingBookingCreation ||
+				isCheckingWorkspaceDefaults ||
+				isCheckingPackageTypes,
 			cta: {
+				type: "link",
 				text: hasRequiredConfigurations
 					? "Create booking"
 					: "Finish setup first",
@@ -138,6 +224,7 @@ export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 			completed: hasInvitedTeam,
 			isLoading: isCheckingTeamInvites,
 			cta: {
+				type: "link",
 				text: "Invite team",
 				link: `/app/${organizationSlug}/settings/invitations`,
 			},
@@ -206,18 +293,31 @@ export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 								<div className="flex items-center gap-1 bg-green-500 rounded-full p-1 w-fit">
 									<CheckIcon className="size-3 text-white" />
 								</div>
-							) : (
+							) : item.cta.type === "link" ? (
 								<Button
 									asChild
 									variant="ghost"
 									size="sm"
 									className={cn(
-										"mt-auto h-8 w-fit justify-start rounded-md px-2.5  hover:text-blue-600 text-blue-600 hover:bg-blue-100/50								",
+										"mt-auto h-8 w-fit justify-start rounded-md px-2.5 text-blue-600 hover:bg-blue-100/50 hover:text-blue-600",
 									)}
 								>
 									<Link href={item.cta.link}>
 										{item.cta.text}
 									</Link>
+								</Button>
+							) : (
+								<Button
+									type="button"
+									variant="ghost"
+									size="sm"
+									onClick={item.cta.onClick}
+									disabled={item.cta.isPending}
+									className={cn(
+										"mt-auto h-8 w-fit justify-start rounded-md px-2.5 text-blue-600 hover:bg-blue-100/50 hover:text-blue-600",
+									)}
+								>
+									{item.cta.text}
 								</Button>
 							)}
 						</div>

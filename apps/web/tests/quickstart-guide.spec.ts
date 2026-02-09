@@ -60,11 +60,14 @@ test.describe("quickstart guide", () => {
 		).toBeVisible();
 
 		await expect(
-			page.getByRole("heading", { name: "Create booking types" }),
+			page.getByRole("heading", { name: "Configure your workspace" }),
 		).toBeVisible();
 		await expect(
 			page.getByRole("heading", { name: "Create package types" }),
 		).toBeVisible();
+		await expect(
+			page.getByRole("heading", { name: "Create booking types" }),
+		).toHaveCount(0);
 		await expect(
 			page.getByRole("heading", { name: "Create a booking" }),
 		).toBeVisible();
@@ -93,9 +96,9 @@ test.describe("quickstart guide", () => {
 				version: 2,
 			});
 
-		const ctas = page.locator("a", {
+		const ctas = page.locator("a, button", {
 			hasText:
-				/Open booking types|Open package types|Create booking|Finish setup first|Invite team/,
+				/Seed defaults|Open package types|Create booking|Finish setup first|Invite team/,
 		});
 
 		if ((await ctas.count()) > 0) {
