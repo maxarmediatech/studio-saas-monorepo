@@ -25,6 +25,7 @@ export interface HeaderCapabilities {
 	paymentCreateOrUpdate: boolean;
 	crewCreateOrUpdate: boolean;
 	clientCreateOrUpdate: boolean;
+	configurationCreateOrUpdate: boolean;
 }
 
 export function getCapabilities(
@@ -80,6 +81,12 @@ export function getCapabilities(
 			["create", "update"],
 			customRolePermissions,
 		),
+		configurationCreateOrUpdate: any(
+			userRole,
+			"configuration",
+			["create", "update"],
+			customRolePermissions,
+		),
 	};
 }
 
@@ -93,5 +100,6 @@ export function selectHeaderCaps(caps: HeaderCapabilities): HeaderCapabilities {
 		paymentCreateOrUpdate: caps.paymentCreateOrUpdate,
 		crewCreateOrUpdate: caps.crewCreateOrUpdate,
 		clientCreateOrUpdate: caps.clientCreateOrUpdate,
+		configurationCreateOrUpdate: caps.configurationCreateOrUpdate,
 	};
 }

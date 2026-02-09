@@ -3,6 +3,7 @@
 import { Button } from "@repo/ui/components/button";
 import { cn } from "@repo/ui/lib/utils";
 import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
+import { useConfigurationParams } from "@saas/studio/hooks/params/use-configuration-params";
 import { useLocalStorage } from "@saas/studio/hooks/use-local-storage";
 import {
 	bookingsApi,
@@ -61,6 +62,8 @@ const DEFAULT_SEED_CONFIGURATION_TYPES = [
 	"booking_type",
 	"event_type",
 	"relation_type",
+	"deliverable_status",
+	"deliverable_priority",
 ] as const;
 
 export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
@@ -76,6 +79,7 @@ export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 	const shouldShowWidget = !state.hide;
 	const { activeOrganization, loaded: activeOrganizationLoaded } =
 		useActiveOrganization();
+	const { openCreate: openCreateConfiguration } = useConfigurationParams();
 
 	const bookingTypesQuery = useQuery({
 		...configurationsApi.listOptions({
@@ -105,6 +109,20 @@ export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 		}),
 		enabled: shouldShowWidget,
 	});
+	const deliverableStatusQuery = useQuery({
+		...configurationsApi.listOptions({
+			type: "deliverable_status",
+			limit: 1,
+		}),
+		enabled: shouldShowWidget,
+	});
+	const deliverablePriorityQuery = useQuery({
+		...configurationsApi.listOptions({
+			type: "deliverable_priority",
+			limit: 1,
+		}),
+		enabled: shouldShowWidget,
+	});
 	const bookingStatsQuery = useQuery({
 		...bookingsApi.statsOptions(),
 		enabled: shouldShowWidget,
@@ -114,10 +132,16 @@ export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 	const hasPackageTypes = (packageTypesQuery.data?.data?.length ?? 0) > 0;
 	const hasEventTypes = (eventTypesQuery.data?.data?.length ?? 0) > 0;
 	const hasRelationTypes = (relationTypesQuery.data?.data?.length ?? 0) > 0;
+	const hasDeliverableStatuses =
+		(deliverableStatusQuery.data?.data?.length ?? 0) > 0;
+	const hasDeliverablePriorities =
+		(deliverablePriorityQuery.data?.data?.length ?? 0) > 0;
 	const hasSeededWorkspaceDefaults =
-		hasBookingTypes && hasEventTypes && hasRelationTypes;
-	const hasRequiredConfigurations =
-		hasSeededWorkspaceDefaults && hasPackageTypes;
+		hasBookingTypes &&
+		hasEventTypes &&
+		hasRelationTypes &&
+		hasDeliverableStatuses &&
+		hasDeliverablePriorities;
 	const hasCreatedBooking =
 		(bookingStatsQuery.data?.data?.totalBookings ?? 0) > 0;
 	const hasInvitedTeam =
@@ -128,15 +152,12 @@ export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 	const isCheckingWorkspaceDefaults =
 		bookingTypesQuery.isPending ||
 		eventTypesQuery.isPending ||
-		relationTypesQuery.isPending;
+		relationTypesQuery.isPending ||
+		deliverableStatusQuery.isPending ||
+		deliverablePriorityQuery.isPending;
 	const isCheckingPackageTypes = packageTypesQuery.isPending;
 	const isCheckingBookingCreation = bookingStatsQuery.isPending;
 	const isCheckingTeamInvites = !activeOrganizationLoaded;
-	const firstMissingConfigurationLink =
-		!hasSeededWorkspaceDefaults || !hasPackageTypes
-			? `/app/${organizationSlug}/configurations/package-types`
-			: `/app/${organizationSlug}/bookings/new/details`;
-
 	const seedWorkspaceDefaultsMutation = useMutation({
 		...configurationsMutations.seed(),
 		onSuccess: async () => {
@@ -148,6 +169,8 @@ export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 				bookingTypesQuery.refetch(),
 				eventTypesQuery.refetch(),
 				relationTypesQuery.refetch(),
+				deliverableStatusQuery.refetch(),
+				deliverablePriorityQuery.refetch(),
 			]);
 		},
 		onError: () => {
@@ -163,12 +186,16 @@ export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 		});
 	};
 
+	const handleOpenPackageTypeSheet = () => {
+		openCreateConfiguration("package_type");
+	};
+
 	const GUIDE_ITEMS: GuideItem[] = [
 		{
 			id: "configure-workspace",
 			title: "Configure your workspace",
 			description:
-				"Seed core defaults for booking, shoot, and relation setup.",
+				"Seed core defaults for booking, shoot, relation, and deliverables setup.",
 			icon: <SettingsIcon className="size-4" />,
 			completed: hasSeededWorkspaceDefaults,
 			isLoading:
@@ -190,29 +217,22 @@ export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 			completed: hasPackageTypes,
 			isLoading: isCheckingPackageTypes,
 			cta: {
-				type: "link",
+				type: "action",
 				text: "Open package types",
-				link: `/app/${organizationSlug}/configurations/package-types`,
+				onClick: handleOpenPackageTypeSheet,
 			},
 		},
 		{
 			id: "create-booking",
 			title: "Create a booking",
-			description: hasRequiredConfigurations
-				? "Create your first booking once setup is complete."
-				: "Complete workspace defaults and package types first.",
+			description: "Create your first booking.",
 			icon: <CalendarPlusIcon className="size-4" />,
 			completed: hasCreatedBooking,
-			isLoading:
-				isCheckingBookingCreation ||
-				isCheckingWorkspaceDefaults ||
-				isCheckingPackageTypes,
+			isLoading: isCheckingBookingCreation,
 			cta: {
 				type: "link",
-				text: hasRequiredConfigurations
-					? "Create booking"
-					: "Finish setup first",
-				link: firstMissingConfigurationLink,
+				text: "Create booking",
+				link: `/app/${organizationSlug}/bookings/new/details`,
 			},
 		},
 		{

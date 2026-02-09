@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
+import { PACKAGE_DELIVERABLE_TEMPLATES } from "../../configurations/package-deliverable-templates";
 import { bookingFormQueries } from "./booking-form-queries";
 import type { BookingFormValues } from "./booking-form-schema";
 
@@ -68,13 +69,13 @@ export function BookingDeliverablesStep() {
 		name: "deliverables",
 	});
 
-	const addNewDeliverable = (name = "") => {
+	const addNewDeliverable = (name = "", quantity = 1) => {
 		appendDeliverable({
 			name,
 			description: "",
 			dueDate: "",
 			crewAssignments: [],
-			quantity: 1,
+			quantity,
 			cost: "",
 			isPackageIncluded: false, // Custom deliverable
 		});
@@ -121,25 +122,25 @@ export function BookingDeliverablesStep() {
 								</p>
 								{/* Quick add common deliverables */}
 								<div className="flex flex-wrap gap-2 justify-center">
-									{[
-										"Wedding Album",
-										"Highlight Video",
-										"Edited Photos",
-										"Full Video",
-									].map((name) => (
-										<Button
-											key={name}
-											type="button"
-											variant="outline"
-											size="sm"
-											onClick={() =>
-												addNewDeliverable(name)
-											}
-										>
-											<PlusIcon className="mr-1 h-3 w-3" />
-											{name}
-										</Button>
-									))}
+									{PACKAGE_DELIVERABLE_TEMPLATES.map(
+										(template) => (
+											<Button
+												key={template.title}
+												type="button"
+												variant="outline"
+												size="sm"
+												onClick={() =>
+													addNewDeliverable(
+														template.title,
+														template.quantity,
+													)
+												}
+											>
+												<PlusIcon className="mr-1 h-3 w-3" />
+												{template.title}
+											</Button>
+										),
+									)}
 								</div>
 							</div>
 						) : (

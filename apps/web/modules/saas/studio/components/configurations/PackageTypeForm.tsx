@@ -27,9 +27,11 @@ import { useQuery } from "@tanstack/react-query";
 import { PlusIcon, TrashIcon } from "lucide-react";
 import { useCallback, useEffect } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { z } from "zod";
 import { CollapsibleSection } from "../ui/CollapsibleSection";
 import { FormActions } from "../ui/FormActions";
+import { PACKAGE_DELIVERABLE_TEMPLATES } from "./package-deliverable-templates";
 
 const defaultDeliverableSchema = z.object({
 	title: z.string().min(1, "Title is required"),
@@ -54,7 +56,14 @@ const packageTypeFormSchema = z.object({
 	sortOrder: z.number().int().min(0).optional(),
 	isDefault: z.boolean().optional(),
 	bookingType: z.string().optional(),
-	defaultCost: z.string().optional(),
+	defaultCost: z
+		.string()
+		.trim()
+		.min(1, "Default cost is required")
+		.refine((value) => {
+			const numericValue = Number(value);
+			return Number.isFinite(numericValue) && numericValue > 0;
+		}, "Default cost must be greater than 0"),
 	defaultDeliverables: z.array(defaultDeliverableSchema).optional(),
 });
 
@@ -99,7 +108,12 @@ export function PackageTypeForm({
 			isDefault: false,
 			bookingType: "",
 			defaultCost: "",
-			defaultDeliverables: [],
+			defaultDeliverables:
+				mode === "create"
+					? PACKAGE_DELIVERABLE_TEMPLATES.map((template) => ({
+							...template,
+						}))
+					: [],
 		},
 	});
 
@@ -126,6 +140,19 @@ export function PackageTypeForm({
 	const isSubmitting = form.formState.isSubmitting || isPending;
 
 	const handleAddDeliverable = () => {
+		const currentDeliverables = form.getValues("defaultDeliverables") ?? [];
+		const incompleteIndex = currentDeliverables.findIndex(
+			(deliverable) => !deliverable?.title?.trim(),
+		);
+
+		if (incompleteIndex !== -1) {
+			toast.warning(
+				"Complete the current deliverable name before adding another.",
+			);
+			form.setFocus(`defaultDeliverables.${incompleteIndex}.title`);
+			return;
+		}
+
 		append({ title: "", quantity: 1 });
 	};
 
@@ -257,14 +284,14 @@ export function PackageTypeForm({
 												<FieldLabel
 													htmlFor={field.name}
 												>
-													Default Cost
+													Default Cost *
 												</FieldLabel>
 												<Input
 													{...field}
 													id={field.name}
 													type="number"
 													step="0.01"
-													min="0"
+													min="0.01"
 													placeholder="0.00"
 													aria-invalid={
 														fieldState.invalid
@@ -315,116 +342,113 @@ export function PackageTypeForm({
 										</CardContent>
 									</Card>
 								) : (
-									<div className="space-y-2">
-										{fields.map((fieldItem, index) => (
-											<Card key={fieldItem.id}>
-												<CardContent className="pt-3 pb-2">
-													<div className="grid grid-cols-[1fr_70px_32px] gap-2 items-start">
-														<Controller
-															name={`defaultDeliverables.${index}.title`}
-															control={
-																form.control
-															}
-															render={({
-																field,
-																fieldState,
-															}) => (
-																<Field
-																	data-invalid={
+									<Card>
+										<CardContent className="space-y-3 py-3">
+											{fields.map((fieldItem, index) => (
+												<div
+													key={fieldItem.id}
+													className="grid grid-cols-[1fr_70px_32px] gap-2 items-start"
+												>
+													<Controller
+														name={`defaultDeliverables.${index}.title`}
+														control={form.control}
+														render={({
+															field,
+															fieldState,
+														}) => (
+															<Field
+																data-invalid={
+																	fieldState.invalid
+																}
+															>
+																<Input
+																	{...field}
+																	id={
+																		field.name
+																	}
+																	placeholder="Name"
+																	aria-invalid={
 																		fieldState.invalid
 																	}
-																>
-																	<Input
-																		{...field}
-																		id={
-																			field.name
-																		}
-																		placeholder="Name"
-																		aria-invalid={
-																			fieldState.invalid
-																		}
+																/>
+																{fieldState.invalid && (
+																	<FieldError
+																		errors={[
+																			fieldState.error,
+																		]}
 																	/>
-																	{fieldState.invalid && (
-																		<FieldError
-																			errors={[
-																				fieldState.error,
-																			]}
-																		/>
-																	)}
-																</Field>
-															)}
-														/>
+																)}
+															</Field>
+														)}
+													/>
 
-														<Controller
-															name={`defaultDeliverables.${index}.quantity`}
-															control={
-																form.control
-															}
-															render={({
-																field,
-																fieldState,
-															}) => (
-																<Field
-																	data-invalid={
+													<Controller
+														name={`defaultDeliverables.${index}.quantity`}
+														control={form.control}
+														render={({
+															field,
+															fieldState,
+														}) => (
+															<Field
+																data-invalid={
+																	fieldState.invalid
+																}
+															>
+																<Input
+																	id={
+																		field.name
+																	}
+																	type="number"
+																	min={1}
+																	placeholder="Qty"
+																	value={
+																		field.value
+																	}
+																	onChange={(
+																		e,
+																	) =>
+																		field.onChange(
+																			e
+																				.target
+																				.value
+																				? Number(
+																						e
+																							.target
+																							.value,
+																					)
+																				: 1,
+																		)
+																	}
+																	aria-invalid={
 																		fieldState.invalid
 																	}
-																>
-																	<Input
-																		id={
-																			field.name
-																		}
-																		type="number"
-																		min={1}
-																		placeholder="Qty"
-																		value={
-																			field.value
-																		}
-																		onChange={(
-																			e,
-																		) =>
-																			field.onChange(
-																				e
-																					.target
-																					.value
-																					? Number(
-																							e
-																								.target
-																								.value,
-																						)
-																					: 1,
-																			)
-																		}
-																		aria-invalid={
-																			fieldState.invalid
-																		}
+																/>
+																{fieldState.invalid && (
+																	<FieldError
+																		errors={[
+																			fieldState.error,
+																		]}
 																	/>
-																	{fieldState.invalid && (
-																		<FieldError
-																			errors={[
-																				fieldState.error,
-																			]}
-																		/>
-																	)}
-																</Field>
-															)}
-														/>
+																)}
+															</Field>
+														)}
+													/>
 
-														<Button
-															type="button"
-															variant="ghost"
-															size="icon"
-															className="h-10 w-10 text-muted-foreground hover:text-destructive"
-															onClick={() =>
-																remove(index)
-															}
-														>
-															<TrashIcon className="h-4 w-4" />
-														</Button>
-													</div>
-												</CardContent>
-											</Card>
-										))}
-									</div>
+													<Button
+														type="button"
+														variant="ghost"
+														size="icon"
+														className="h-10 w-10 text-muted-foreground hover:text-destructive"
+														onClick={() =>
+															remove(index)
+														}
+													>
+														<TrashIcon className="h-4 w-4" />
+													</Button>
+												</div>
+											))}
+										</CardContent>
+									</Card>
 								)}
 							</div>
 						</div>

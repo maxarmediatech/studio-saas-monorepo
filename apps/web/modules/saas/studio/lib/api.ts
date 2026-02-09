@@ -330,7 +330,11 @@ export const configurationsApi = {
 	// Convenience helpers for specific config types
 	bookingTypesOptions: () =>
 		orpc.configurations.list.queryOptions({
-			input: { type: "booking_type" },
+			input: {
+				type: "booking_type",
+				sortBy: "sortOrder",
+				sortDirection: "asc",
+			},
 		}),
 
 	packageTypesOptions: () =>

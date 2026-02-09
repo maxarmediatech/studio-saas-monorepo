@@ -11,6 +11,7 @@ import {
 import { ChevronsUpDown, Plus, Shield, SquarePlus } from "lucide-react";
 import Link from "next/link";
 import { useClientParams } from "../../hooks/params/use-client-params";
+import { useConfigurationParams } from "../../hooks/params/use-configuration-params";
 import { useCrewParams } from "../../hooks/params/use-crew-params";
 import { useDeliverableParams } from "../../hooks/params/use-deliverable-params";
 import { useExpenseParams } from "../../hooks/params/use-expense-params";
@@ -41,6 +42,10 @@ export function NewActionSwitcher({
 	const { openCreate: openExpenseCreate } = useExpenseParams();
 	const { openCreate: openClientCreate } = useClientParams();
 	const { openCreate: openCrewCreate } = useCrewParams();
+	const { openCreate: openConfigurationCreate } = useConfigurationParams();
+
+	const hasConfigurationActions =
+		isSidebar && caps.configurationCreateOrUpdate;
 
 	const hasAnyAction =
 		caps.bookingCreateOrUpdate ||
@@ -50,7 +55,8 @@ export function NewActionSwitcher({
 		caps.expenseCreateOrUpdate ||
 		caps.paymentCreateOrUpdate ||
 		caps.crewCreateOrUpdate ||
-		caps.clientCreateOrUpdate;
+		caps.clientCreateOrUpdate ||
+		hasConfigurationActions;
 
 	return (
 		<DropdownMenu>
@@ -158,6 +164,48 @@ export function NewActionSwitcher({
 							<DropdownMenuItem onSelect={openCrewCreate}>
 								New Crew
 							</DropdownMenuItem>
+						)}
+
+						{hasConfigurationActions && (
+							<>
+								<DropdownMenuSeparator />
+
+								<DropdownMenuItem
+									onSelect={() =>
+										openConfigurationCreate("booking_type")
+									}
+								>
+									New Booking Type
+								</DropdownMenuItem>
+								<DropdownMenuItem
+									onSelect={() =>
+										openConfigurationCreate("package_type")
+									}
+								>
+									New Package Type
+								</DropdownMenuItem>
+								<DropdownMenuItem
+									onSelect={() =>
+										openConfigurationCreate("event_type")
+									}
+								>
+									New Event Type
+								</DropdownMenuItem>
+								<DropdownMenuItem
+									onSelect={() =>
+										openConfigurationCreate("relation_type")
+									}
+								>
+									New Relation Type
+								</DropdownMenuItem>
+								<DropdownMenuItem
+									onSelect={() =>
+										openConfigurationCreate("crew_role")
+									}
+								>
+									New Crew Role
+								</DropdownMenuItem>
+							</>
 						)}
 					</>
 				)}
