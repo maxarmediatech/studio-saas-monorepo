@@ -46,7 +46,12 @@ import {
 	XIcon,
 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
-import { Controller, useFieldArray, useFormContext } from "react-hook-form";
+import {
+	Controller,
+	useFieldArray,
+	useFormContext,
+	useWatch,
+} from "react-hook-form";
 import { toast } from "sonner";
 import {
 	type BookingFormValues,
@@ -57,20 +62,17 @@ import {
 export function BookingPaymentsStep() {
 	const form = useFormContext<BookingFormValues>();
 
-	const packageCost = form.watch("packageCost");
-	const payments = form.watch("payments") ?? [];
-	const paymentSchedules = form.watch("paymentSchedules") ?? [];
-	const deliverables = form.watch("deliverables") ?? [];
+	const packageCost =
+		useWatch({ control: form.control, name: "packageCost" }) ?? "0";
+	const payments =
+		useWatch({ control: form.control, name: "payments" }) ?? [];
+	const paymentSchedules =
+		useWatch({ control: form.control, name: "paymentSchedules" }) ?? [];
+	const deliverables =
+		useWatch({ control: form.control, name: "deliverables" }) ?? [];
 
 	// Calculate totals including custom deliverable costs
-	const {
-		totalCost,
-		totalReceived,
-		totalScheduled,
-		balance,
-		isOverpaid,
-		isFullyPaid,
-	} = useMemo(() => {
+	const { totalCost, totalReceived, totalScheduled } = useMemo(() => {
 		const pkgCost = Number.parseFloat(packageCost) || 0;
 		// Sum costs from custom (non-package) deliverables
 		const deliverableCosts = deliverables.reduce((sum, d) => {
@@ -89,17 +91,21 @@ export function BookingPaymentsStep() {
 			(sum, p) => sum + (Number.parseFloat(p.amount) || 0),
 			0,
 		);
-		const remaining = totalCostValue - received;
 
 		return {
 			totalCost: totalCostValue,
 			totalReceived: received,
 			totalScheduled: scheduled,
-			balance: remaining,
-			isOverpaid: received > totalCostValue,
-			isFullyPaid: received >= totalCostValue,
 		};
 	}, [packageCost, payments, paymentSchedules, deliverables]);
+
+	const packageCostOnly = Number.parseFloat(packageCost) || 0;
+	const availableToSchedule = Math.max(packageCostOnly - totalReceived, 0);
+	const scheduledOverBy = Math.max(totalScheduled - availableToSchedule, 0);
+	const hasScheduledOverage = scheduledOverBy > 0.0001;
+	const paymentSchedulesError = form.formState.errors.paymentSchedules as
+		| { message?: string }
+		| undefined;
 
 	const {
 		fields: paymentFields,
@@ -259,6 +265,22 @@ export function BookingPaymentsStep() {
 									<FieldDescription>
 										Upcoming payment milestones
 									</FieldDescription>
+									<p className="mt-1 text-xs text-muted-foreground">
+										Available to schedule:{" "}
+										{formatCurrency(availableToSchedule)}
+									</p>
+									{hasScheduledOverage && (
+										<p className="mt-1 text-xs text-destructive">
+											Over scheduled by{" "}
+											{formatCurrency(scheduledOverBy)}.
+											Reduce milestones before proceeding.
+										</p>
+									)}
+									{paymentSchedulesError?.message && (
+										<p className="mt-1 text-xs text-destructive">
+											{paymentSchedulesError.message}
+										</p>
+									)}
 								</FieldContent>
 							</div>
 							<Button

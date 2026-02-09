@@ -188,26 +188,56 @@ export type DeliverableFormValue = z.infer<typeof deliverableSchema>;
 /**
  * Main booking form schema
  */
-export const bookingFormSchema = z.object({
-	// Step 1: Details
-	name: z.string().min(1, "Booking name is required"),
-	bookingType: z.string().min(1, "Booking type is required"),
-	packageType: z.string().min(1, "Package type is required"),
-	packageCost: decimalStringSchema,
-	note: z.string().optional(),
-	contractAttachment: uploadedAttachmentSchema.nullable().optional(),
-	participants: participantsArraySchema,
+export const bookingFormSchema = z
+	.object({
+		// Step 1: Details
+		name: z.string().min(1, "Booking name is required"),
+		bookingType: z.string().min(1, "Booking type is required"),
+		packageType: z.string().min(1, "Package type is required"),
+		packageCost: decimalStringSchema,
+		note: z.string().optional(),
+		contractAttachment: uploadedAttachmentSchema.nullable().optional(),
+		participants: participantsArraySchema,
 
-	// Step 2: Payments
-	payments: z.array(paymentSchema).optional(),
-	paymentSchedules: z.array(paymentScheduleSchema).optional(),
+		// Step 2: Payments
+		payments: z.array(paymentSchema).optional(),
+		paymentSchedules: z.array(paymentScheduleSchema).optional(),
 
-	// Step 3: Shoots
-	shoots: z.array(shootSchema).optional(),
+		// Step 3: Shoots
+		shoots: z.array(shootSchema).optional(),
 
-	// Step 4: Deliverables
-	deliverables: z.array(deliverableSchema).optional(),
-});
+		// Step 4: Deliverables
+		deliverables: z.array(deliverableSchema).optional(),
+	})
+	.superRefine((values, ctx) => {
+		const packageCostValue = Number.parseFloat(values.packageCost);
+		if (Number.isNaN(packageCostValue)) {
+			return;
+		}
+
+		const totalReceived = (values.payments ?? []).reduce((sum, payment) => {
+			const amount = Number.parseFloat(payment.amount);
+			return sum + (Number.isNaN(amount) ? 0 : amount);
+		}, 0);
+
+		const totalScheduled = (values.paymentSchedules ?? []).reduce(
+			(sum, schedule) => {
+				const amount = Number.parseFloat(schedule.amount);
+				return sum + (Number.isNaN(amount) ? 0 : amount);
+			},
+			0,
+		);
+
+		const maxSchedulable = Math.max(packageCostValue - totalReceived, 0);
+		if (totalScheduled > maxSchedulable + 0.0001) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ["paymentSchedules"],
+				message:
+					"Scheduled payments cannot exceed package cost minus received payments.",
+			});
+		}
+	});
 
 export type BookingFormValues = z.input<typeof bookingFormSchema>;
 
