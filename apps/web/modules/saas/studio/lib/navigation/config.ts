@@ -53,6 +53,18 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							},
 						},
 						{
+							id: "activities",
+							label: "Activities",
+							path: url("/activities"),
+							icon: "Activity",
+						},
+					],
+				},
+				{
+					id: "workspace-your-work",
+					label: "Work",
+					items: [
+						{
 							id: "your-work",
 							label: "Your Work",
 							path: url("/your-work"),
@@ -79,12 +91,6 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							label: "Stickies",
 							path: url("/stickies"),
 							icon: "StickyNoteIcon",
-						},
-						{
-							id: "activities",
-							label: "Activities",
-							path: url("/activities"),
-							icon: "Activity",
 						},
 					],
 				},
