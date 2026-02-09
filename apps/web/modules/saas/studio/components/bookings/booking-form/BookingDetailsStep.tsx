@@ -343,7 +343,10 @@ export function BookingDetailsStep() {
 		// Only update if name actually changed (prevents infinite loop from watch reference changes)
 		const currentName = form.getValues("name");
 		if (generatedName !== currentName) {
-			form.setValue("name", generatedName, { shouldDirty: false });
+			form.setValue("name", generatedName, {
+				shouldDirty: false,
+				shouldValidate: true,
+			});
 		}
 	}, [
 		watchedParticipants,
@@ -361,7 +364,10 @@ export function BookingDetailsStep() {
 
 	// Handle package selection - auto-fill cost and deliverables
 	const handlePackageChange = (value: string) => {
-		form.setValue("packageType", value);
+		form.setValue("packageType", value, {
+			shouldDirty: true,
+			shouldValidate: true,
+		});
 		const selectedPackage = packageTypes.find((p) => p.key === value);
 		if (selectedPackage?.metadata) {
 			const metadata = selectedPackage.metadata as {
@@ -374,7 +380,10 @@ export function BookingDetailsStep() {
 
 			// Auto-fill package cost
 			if (metadata.defaultCost) {
-				form.setValue("packageCost", metadata.defaultCost);
+				form.setValue("packageCost", metadata.defaultCost, {
+					shouldDirty: true,
+					shouldValidate: true,
+				});
 			}
 
 			// Auto-populate deliverables from package (replaces all existing per design decision)
@@ -394,13 +403,17 @@ export function BookingDetailsStep() {
 				);
 				form.setValue("deliverables", packageDeliverables, {
 					shouldDirty: true,
+					shouldValidate: true,
 				});
 				toast.info(
 					`${packageDeliverables.length} deliverables added from package`,
 				);
 			} else {
 				// Clear deliverables if package has none
-				form.setValue("deliverables", [], { shouldDirty: true });
+				form.setValue("deliverables", [], {
+					shouldDirty: true,
+					shouldValidate: true,
+				});
 			}
 		}
 	};
