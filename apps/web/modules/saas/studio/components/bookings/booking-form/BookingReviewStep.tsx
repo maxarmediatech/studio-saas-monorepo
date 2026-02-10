@@ -11,11 +11,7 @@ import { Avatar, AvatarFallback } from "@repo/ui/components/avatar";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Card, CardContent } from "@repo/ui/components/card";
-import {
-	FieldDescription,
-	FieldLabel,
-	FieldLegend,
-} from "@repo/ui/components/field";
+import { FieldLabel, FieldLegend, FieldSet } from "@repo/ui/components/field";
 import { Progress } from "@repo/ui/components/progress";
 import { cn } from "@repo/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -692,77 +688,77 @@ export function BookingReviewStep({
 	]);
 
 	return (
-		<Card className={cn("shadow-none", className)}>
-			<CardContent className="p-6 space-y-4">
-				<FieldLegend>Review Booking</FieldLegend>
-				<FieldDescription>
-					Review your booking details before submission
-				</FieldDescription>
-
-				{/* Validation warnings */}
-				{warnings.length > 0 && (
-					<Alert variant="destructive">
-						<AlertCircleIcon className="h-4 w-4" />
-						<AlertDescription>
-							<ul className="space-y-1">
-								{warnings.map((w) => (
-									<li
-										key={w.id}
-										className="flex items-center justify-between"
-									>
-										<span className="text-sm">
-											{w.message}
-										</span>
-										<Button
-											type="button"
-											variant="link"
-											size="sm"
-											className="h-auto p-0 text-destructive-foreground underline"
-											onClick={() =>
-												onNavigateToStep(w.step)
-											}
+		<div className={cn("space-y-4", className)}>
+			<FieldSet className="gap-1">
+				<FieldLegend className="mb-0">Review Booking</FieldLegend>
+			</FieldSet>
+			<Card className="shadow-none">
+				<CardContent className="space-y-4">
+					{/* Validation warnings */}
+					{warnings.length > 0 && (
+						<Alert variant="destructive">
+							<AlertCircleIcon className="h-4 w-4" />
+							<AlertDescription>
+								<ul className="space-y-1">
+									{warnings.map((w) => (
+										<li
+											key={w.id}
+											className="flex items-center justify-between"
 										>
-											Fix
-										</Button>
-									</li>
-								))}
-							</ul>
-						</AlertDescription>
-					</Alert>
-				)}
+											<span className="text-sm">
+												{w.message}
+											</span>
+											<Button
+												type="button"
+												variant="link"
+												size="sm"
+												className="h-auto p-0 text-destructive-foreground underline"
+												onClick={() =>
+													onNavigateToStep(w.step)
+												}
+											>
+												Fix
+											</Button>
+										</li>
+									))}
+								</ul>
+							</AlertDescription>
+						</Alert>
+					)}
 
-				{/* Accordion sections - pass watched values as props */}
-				<Accordion
-					type="multiple"
-					defaultValue={["details"]}
-					className="mt-2 space-y-3"
-				>
-					<BookingDetailsSection
-						onEdit={() => onNavigateToStep("details")}
-						name={formValues.name}
-						bookingType={formValues.bookingType}
-						packageType={formValues.packageType}
-						packageCost={formValues.packageCost}
-						note={formValues.note}
-						participants={formValues.participants}
-					/>
-					<ShootsSection
-						onEdit={() => onNavigateToStep("shoots")}
-						shoots={formValues.shoots}
-					/>
-					<DeliverablesSection
-						onEdit={() => onNavigateToStep("deliverables")}
-						deliverables={formValues.deliverables}
-					/>
-					<PaymentsSection
-						onEdit={() => onNavigateToStep("payments")}
-						packageCost={formValues.packageCost}
-						payments={formValues.payments}
-						paymentSchedules={formValues.paymentSchedules}
-						deliverables={formValues.deliverables}
-					/>
-				</Accordion>
-			</CardContent>
-		</Card>
+					{/* Accordion sections - pass watched values as props */}
+					<Accordion
+						type="multiple"
+						defaultValue={["details"]}
+						className="mt-2 space-y-3"
+					>
+						<BookingDetailsSection
+							onEdit={() => onNavigateToStep("details")}
+							name={formValues.name}
+							bookingType={formValues.bookingType}
+							packageType={formValues.packageType}
+							packageCost={formValues.packageCost}
+							note={formValues.note}
+							participants={formValues.participants}
+						/>
+						<ShootsSection
+							onEdit={() => onNavigateToStep("shoots")}
+							shoots={formValues.shoots}
+						/>
+						<DeliverablesSection
+							onEdit={() => onNavigateToStep("deliverables")}
+							deliverables={formValues.deliverables}
+						/>
+						<PaymentsSection
+							onEdit={() => onNavigateToStep("payments")}
+							packageCost={formValues.packageCost}
+							payments={formValues.payments}
+							paymentSchedules={formValues.paymentSchedules}
+							deliverables={formValues.deliverables}
+						/>
+					</Accordion>
+				</CardContent>
+			</Card>
+		</div>
 	);
 }

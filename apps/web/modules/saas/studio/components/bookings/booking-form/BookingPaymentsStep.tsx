@@ -43,7 +43,6 @@ import {
 	PaperclipIcon,
 	PlusIcon,
 	TrashIcon,
-	WalletIcon,
 	XIcon,
 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
@@ -193,167 +192,156 @@ export function BookingPaymentsStep() {
 	};
 
 	return (
-		<Card className="shadow-none">
-			<CardContent>
-				<FieldSet>
-					<FieldGroup>
-						{/* Payment Summary */}
-						<Field orientation="responsive">
-							<div className="flex-1">
-								<FieldLegend className="flex items-center gap-2">
-									<WalletIcon className="h-4 w-4" />
-									Payment Summary
-								</FieldLegend>
-								<FieldDescription>
-									Track payment progress against total booking
-									cost
-								</FieldDescription>
-							</div>
-							<div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm text-right">
-								<div className="text-muted-foreground">
-									Total
+		<div className="space-y-4">
+			<div className="flex items-center justify-between gap-3 flex-wrap">
+				<FieldSet className="gap-1">
+					<FieldLegend className="mb-0">Payment</FieldLegend>
+				</FieldSet>
+				<div className="flex gap-x-3 gap-y-1 text-sm text-right">
+					<div className="font-medium text-green-600 dark:text-green-400">
+						{formatCurrency(totalReceived)}
+					</div>
+					<div className="text-muted-foreground">/</div>
+					<div className="font-medium">
+						{formatCurrency(totalCost)}
+					</div>
+				</div>
+			</div>
+			<Card className="shadow-none">
+				<CardContent>
+					<FieldSet>
+						<FieldGroup>
+							{/* Received sub-section */}
+							<Field orientation="responsive">
+								<div className="flex-1">
+									<FieldContent>
+										<FieldTitle className="flex items-center gap-2">
+											<BanknoteIcon className="h-4 w-4" />
+											Received
+										</FieldTitle>
+										<FieldDescription>
+											Payments already collected from the
+											client
+										</FieldDescription>
+									</FieldContent>
 								</div>
-								<div className="font-medium">
-									{formatCurrency(totalCost)}
-								</div>
-								<div className="text-muted-foreground">
-									Received
-								</div>
-								<div className="font-medium text-green-600 dark:text-green-400">
-									{formatCurrency(totalReceived)}
-								</div>
-							</div>
-						</Field>
-
-						<FieldSeparator />
-
-						{/* Received sub-section */}
-						<Field orientation="responsive">
-							<div className="flex-1">
-								<FieldContent>
-									<FieldTitle className="flex items-center gap-2">
-										<BanknoteIcon className="h-4 w-4" />
-										Received
-									</FieldTitle>
-									<FieldDescription>
-										Payments already collected from the
-										client
-									</FieldDescription>
-								</FieldContent>
-							</div>
-							<Button
-								type="button"
-								variant="outline"
-								size="sm"
-								onClick={() => addNewPayment()}
-							>
-								<PlusIcon className="mr-2 h-4 w-4" />
-								Add Payment
-							</Button>
-						</Field>
-						{paymentFields.length === 0 ? (
-							<div className="flex flex-col items-center gap-3 py-8 px-4 border border-dashed rounded-lg text-center">
-								<BanknoteIcon className="h-10 w-10 text-muted-foreground/40" />
-								<p className="text-sm text-muted-foreground">
-									No payments recorded yet
-								</p>
 								<Button
 									type="button"
 									variant="outline"
 									size="sm"
-									onClick={() =>
-										addNewPayment("Advance Payment")
-									}
-								>
-									<PlusIcon className="mr-1 h-3 w-3" />
-									Advance Payment
-								</Button>
-							</div>
-						) : (
-							<div className="space-y-3">
-								{paymentFields.map((payment, index) => (
-									<PaymentRow
-										key={payment.id}
-										index={index}
-										onRemove={() => removePayment(index)}
-									/>
-								))}
-								<Button
-									type="button"
-									variant="outline"
-									size="sm"
-									className="w-full justify-center border-dashed"
 									onClick={() => addNewPayment()}
 								>
 									<PlusIcon className="mr-2 h-4 w-4" />
-									Add another payment
+									Add Payment
 								</Button>
-							</div>
-						)}
-
-						<FieldSeparator />
-
-						{/* Scheduled sub-section */}
-						<Field orientation="responsive">
-							<div className="flex-1">
-								<FieldContent>
-									<FieldTitle className="flex items-center gap-2">
-										<CalendarIcon className="h-4 w-4" />
-										Scheduled
-									</FieldTitle>
-									<FieldDescription>
-										Upcoming payment milestones
-									</FieldDescription>
-								</FieldContent>
-							</div>
-							<Button
-								type="button"
-								variant="outline"
-								size="sm"
-								onClick={() => addNewSchedule()}
-							>
-								<PlusIcon className="mr-2 h-4 w-4" />
-								Add Milestone
-							</Button>
-						</Field>
-						<div className="rounded-lg border bg-muted/20 p-3">
-							<div className="flex flex-wrap gap-2">
-								<Badge
-									variant="outline"
-									className={
-										hasScheduledOverage
-											? "border-destructive/40 bg-destructive/10 text-destructive"
-											: "border-border/70 bg-background text-foreground"
-									}
-								>
-									Amount left •{" "}
-									{formatCurrency(amountLeftToSchedule)}
-								</Badge>
-								{shootScheduleItems.map((item, index) => (
-									<Badge
-										key={`${item.name}-${item.date}-${index}`}
+							</Field>
+							{paymentFields.length === 0 ? (
+								<div className="flex flex-col items-center gap-3 py-8 px-4 border border-dashed rounded-lg text-center">
+									<BanknoteIcon className="h-10 w-10 text-muted-foreground/40" />
+									<p className="text-sm text-muted-foreground">
+										No payments recorded yet
+									</p>
+									<Button
+										type="button"
 										variant="outline"
-										className="border-border/70 bg-background text-xs font-normal"
+										size="sm"
+										onClick={() =>
+											addNewPayment("Advance Payment")
+										}
 									>
-										{item.name} • {item.date}
-									</Badge>
-								))}
-							</div>
-							{paymentSchedulesError?.message && (
-								<p className="mt-2 text-xs text-destructive">
-									{paymentSchedulesError.message}
-								</p>
+										<PlusIcon className="mr-1 h-3 w-3" />
+										Advance Payment
+									</Button>
+								</div>
+							) : (
+								<div className="space-y-3">
+									{paymentFields.map((payment, index) => (
+										<PaymentRow
+											key={payment.id}
+											index={index}
+											onRemove={() =>
+												removePayment(index)
+											}
+										/>
+									))}
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										className="w-full justify-center border-dashed"
+										onClick={() => addNewPayment()}
+									>
+										<PlusIcon className="mr-2 h-4 w-4" />
+										Add another payment
+									</Button>
+								</div>
 							)}
-						</div>
-						{scheduleFields.length === 0 ? (
-							<div className="flex flex-col items-center gap-3 py-8 px-4 border border-dashed rounded-lg text-center">
-								<CalendarIcon className="h-10 w-10 text-muted-foreground/40" />
-								<p className="text-sm text-muted-foreground">
-									No payment schedule set
-								</p>
-								<div className="flex flex-wrap justify-center gap-2">
-									{PAYMENT_SCHEDULE_PRESETS.slice(1, 4).map(
-										(preset) => (
+
+							<FieldSeparator />
+
+							{/* Scheduled sub-section */}
+							<Field orientation="responsive">
+								<div className="flex-1">
+									<FieldContent>
+										<FieldTitle className="flex items-center gap-2">
+											<CalendarIcon className="h-4 w-4" />
+											Scheduled
+										</FieldTitle>
+										<FieldDescription>
+											Upcoming payment milestones
+										</FieldDescription>
+									</FieldContent>
+								</div>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									onClick={() => addNewSchedule()}
+								>
+									<PlusIcon className="mr-2 h-4 w-4" />
+									Add Milestone
+								</Button>
+							</Field>
+							<div className="rounded-lg border bg-muted/20 p-3">
+								<div className="flex flex-wrap gap-2">
+									<Badge
+										variant="outline"
+										className={
+											hasScheduledOverage
+												? "border-destructive/40 bg-destructive/10 text-destructive"
+												: "border-border/70 bg-background text-foreground"
+										}
+									>
+										Amount left •{" "}
+										{formatCurrency(amountLeftToSchedule)}
+									</Badge>
+									{shootScheduleItems.map((item, index) => (
+										<Badge
+											key={`${item.name}-${item.date}-${index}`}
+											variant="outline"
+											className="border-border/70 bg-background text-xs font-normal"
+										>
+											{item.name} • {item.date}
+										</Badge>
+									))}
+								</div>
+								{paymentSchedulesError?.message && (
+									<p className="mt-2 text-xs text-destructive">
+										{paymentSchedulesError.message}
+									</p>
+								)}
+							</div>
+							{scheduleFields.length === 0 ? (
+								<div className="flex flex-col items-center gap-3 py-8 px-4 border border-dashed rounded-lg text-center">
+									<CalendarIcon className="h-10 w-10 text-muted-foreground/40" />
+									<p className="text-sm text-muted-foreground">
+										No payment schedule set
+									</p>
+									<div className="flex flex-wrap justify-center gap-2">
+										{PAYMENT_SCHEDULE_PRESETS.slice(
+											1,
+											4,
+										).map((preset) => (
 											<Button
 												key={preset.value}
 												type="button"
@@ -366,35 +354,37 @@ export function BookingPaymentsStep() {
 												<PlusIcon className="mr-1 h-3 w-3" />
 												{preset.label}
 											</Button>
-										),
-									)}
+										))}
+									</div>
 								</div>
-							</div>
-						) : (
-							<div className="space-y-3">
-								{scheduleFields.map((schedule, index) => (
-									<ScheduleRow
-										key={schedule.id}
-										index={index}
-										onRemove={() => removeSchedule(index)}
-									/>
-								))}
-								<Button
-									type="button"
-									variant="outline"
-									size="sm"
-									className="w-full justify-center border-dashed"
-									onClick={() => addNewSchedule()}
-								>
-									<PlusIcon className="mr-2 h-4 w-4" />
-									Add another milestone
-								</Button>
-							</div>
-						)}
-					</FieldGroup>
-				</FieldSet>
-			</CardContent>
-		</Card>
+							) : (
+								<div className="space-y-3">
+									{scheduleFields.map((schedule, index) => (
+										<ScheduleRow
+											key={schedule.id}
+											index={index}
+											onRemove={() =>
+												removeSchedule(index)
+											}
+										/>
+									))}
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										className="w-full justify-center border-dashed"
+										onClick={() => addNewSchedule()}
+									>
+										<PlusIcon className="mr-2 h-4 w-4" />
+										Add another milestone
+									</Button>
+								</div>
+							)}
+						</FieldGroup>
+					</FieldSet>
+				</CardContent>
+			</Card>
+		</div>
 	);
 }
 
