@@ -17,3 +17,4 @@ export {
 	createShootsBatch,
 } from "./create-shoots-batch";
 export { validateCrewIds } from "./validate-crew-ids";
+export { deriveStudioPrefix } from "./derive-studio-prefix";

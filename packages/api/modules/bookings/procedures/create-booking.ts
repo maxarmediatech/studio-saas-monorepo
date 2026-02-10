@@ -26,21 +26,24 @@ import {
 	createDeliverablesBatch,
 	createPaymentsBatch,
 	createShootsBatch,
+	deriveStudioPrefix,
 	validateCrewIds,
 } from "../helpers";
 
 /**
  * Generate a unique reference number for the booking
- * Format: BKNYYYYMMXXXX (e.g., BKN2024120001)
+ * Format: {STUDIO_PREFIX}-{YYMM}-{XXXX} (e.g., ASP-2501-0001)
  * Supports up to 9,999 bookings per month per studio
  */
 async function generateReferenceNumber(
 	tx: TransactionClient,
 	organizationId: string,
+	orgName: string,
 ): Promise<string> {
 	const now = new Date();
-	const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
-	const prefix = `BKN${yearMonth}`;
+	const studioPrefix = deriveStudioPrefix(orgName);
+	const yearMonth = `${String(now.getFullYear()).slice(-2)}${String(now.getMonth() + 1).padStart(2, "0")}`;
+	const prefix = `${studioPrefix}-${yearMonth}-`;
 
 	// Get the highest reference number for this month
 	const [lastBooking] = await tx
@@ -173,6 +176,7 @@ export const createBooking = studioProtectedProcedure
 			const referenceNumber = await generateReferenceNumber(
 				tx,
 				context.organizationId,
+				context.membership.organization.name,
 			);
 
 			// 4. Create booking

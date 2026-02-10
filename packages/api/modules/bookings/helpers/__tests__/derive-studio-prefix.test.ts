@@ -1,0 +1,44 @@
+import { describe, expect, it } from "vitest";
+import { deriveStudioPrefix } from "../derive-studio-prefix";
+
+describe("deriveStudioPrefix", () => {
+	it("single word → first 3 characters uppercase", () => {
+		expect(deriveStudioPrefix("Snapworks")).toBe("SNA");
+	});
+
+	it("two words → initials uppercase", () => {
+		expect(deriveStudioPrefix("Acme Studios")).toBe("AS");
+	});
+
+	it("three or more words → first 3 initials uppercase", () => {
+		expect(deriveStudioPrefix("The Royal Photo Co")).toBe("TRP");
+	});
+
+	it("filters out non-alpha words", () => {
+		expect(deriveStudioPrefix("A & B Studios")).toBe("ABS");
+	});
+
+	it("empty string → BKN fallback", () => {
+		expect(deriveStudioPrefix("")).toBe("BKN");
+	});
+
+	it("whitespace only → BKN fallback", () => {
+		expect(deriveStudioPrefix("   ")).toBe("BKN");
+	});
+
+	it("single character name", () => {
+		expect(deriveStudioPrefix("X")).toBe("X");
+	});
+
+	it("short single word", () => {
+		expect(deriveStudioPrefix("Hi")).toBe("HI");
+	});
+
+	it("lowercase input is uppercased", () => {
+		expect(deriveStudioPrefix("pixel perfect studio")).toBe("PPS");
+	});
+
+	it("handles extra whitespace between words", () => {
+		expect(deriveStudioPrefix("  Acme   Studios  ")).toBe("AS");
+	});
+});
