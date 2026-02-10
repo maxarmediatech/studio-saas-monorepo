@@ -304,61 +304,6 @@ export function BookingPaymentsStep() {
 									<FieldDescription>
 										Upcoming payment milestones
 									</FieldDescription>
-									<div className="mt-3 rounded-lg border bg-muted/25 p-3">
-										<div className="flex items-center justify-between gap-2">
-											<p className="text-xs text-muted-foreground">
-												Amount left to schedule
-											</p>
-											<p
-												className={
-													hasScheduledOverage
-														? "text-sm font-semibold text-destructive"
-														: "text-sm font-semibold"
-												}
-											>
-												{formatCurrency(
-													amountLeftToSchedule,
-												)}
-											</p>
-										</div>
-										<div className="mt-3">
-											<p className="text-xs text-muted-foreground">
-												Shoot timeline
-											</p>
-											{shootScheduleItems.length > 0 ? (
-												<div className="mt-2 flex flex-wrap gap-2">
-													{shootScheduleItems.map(
-														(item, index) => (
-															<Badge
-																key={`${item.name}-${item.date}-${index}`}
-																variant="outline"
-																className="border-border/70 bg-background text-xs font-normal"
-															>
-																{item.name} •{" "}
-																{item.date}
-															</Badge>
-														),
-													)}
-												</div>
-											) : (
-												<p className="mt-1 text-xs text-muted-foreground">
-													No shoot dates added yet.
-												</p>
-											)}
-										</div>
-									</div>
-									{hasScheduledOverage && (
-										<p className="mt-1 text-xs text-destructive">
-											Over scheduled by{" "}
-											{formatCurrency(scheduledOverBy)}.
-											Reduce milestones before proceeding.
-										</p>
-									)}
-									{paymentSchedulesError?.message && (
-										<p className="mt-1 text-xs text-destructive">
-											{paymentSchedulesError.message}
-										</p>
-									)}
 								</FieldContent>
 							</div>
 							<Button
@@ -371,6 +316,65 @@ export function BookingPaymentsStep() {
 								Add Milestone
 							</Button>
 						</Field>
+						<div className="rounded-lg border bg-muted/20 p-3">
+							<p className="text-xs font-medium text-muted-foreground">
+								Tracking
+							</p>
+							<div className="mt-3 grid gap-4 md:grid-cols-2">
+								<div>
+									<p className="text-xs text-muted-foreground">
+										Amount left to schedule
+									</p>
+									<Badge
+										variant="outline"
+										className={
+											hasScheduledOverage
+												? "mt-2 border-destructive/40 bg-destructive/10 text-destructive"
+												: "mt-2 border-border/70 bg-background text-foreground"
+										}
+									>
+										{formatCurrency(amountLeftToSchedule)}
+									</Badge>
+								</div>
+								<div>
+									<p className="text-xs text-muted-foreground">
+										Shoot timeline
+									</p>
+									{shootScheduleItems.length > 0 ? (
+										<div className="mt-2 flex flex-wrap gap-2">
+											{shootScheduleItems.map(
+												(item, index) => (
+													<Badge
+														key={`${item.name}-${item.date}-${index}`}
+														variant="outline"
+														className="border-border/70 bg-background text-xs font-normal"
+													>
+														{item.name} •{" "}
+														{item.date}
+													</Badge>
+												),
+											)}
+										</div>
+									) : (
+										<p className="mt-2 text-xs text-muted-foreground">
+											No shoot dates added yet.
+										</p>
+									)}
+								</div>
+							</div>
+							{hasScheduledOverage && (
+								<p className="mt-3 text-xs text-destructive">
+									Over scheduled by{" "}
+									{formatCurrency(scheduledOverBy)}. Reduce
+									milestones before proceeding.
+								</p>
+							)}
+							{paymentSchedulesError?.message && (
+								<p className="mt-2 text-xs text-destructive">
+									{paymentSchedulesError.message}
+								</p>
+							)}
+						</div>
 						{scheduleFields.length === 0 ? (
 							<div className="flex flex-col items-center gap-3 py-8 px-4 border border-dashed rounded-lg text-center">
 								<CalendarIcon className="h-10 w-10 text-muted-foreground/40" />
