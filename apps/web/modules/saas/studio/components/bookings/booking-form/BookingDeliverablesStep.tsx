@@ -6,12 +6,10 @@ import { Button } from "@repo/ui/components/button";
 import { Card, CardContent } from "@repo/ui/components/card";
 import {
 	Field,
-	FieldDescription,
 	FieldError,
 	FieldGroup,
 	FieldLabel,
 	FieldLegend,
-	FieldSeparator,
 	FieldSet,
 } from "@repo/ui/components/field";
 import { Input } from "@repo/ui/components/input";
@@ -86,105 +84,95 @@ export function BookingDeliverablesStep() {
 		});
 	};
 
-	// Separate package and custom deliverables for display purposes
 	const watchedDeliverables = form.watch("deliverables") ?? [];
-	const packageDeliverables = watchedDeliverables.filter(
-		(d) => d.isPackageIncluded,
-	);
 
 	return (
-		<Card className="shadow-none">
-			<CardContent>
-				<FieldSet>
-					<FieldGroup>
-						<Field orientation="responsive">
-							<div className="flex-1">
-								<FieldLegend>Deliverables</FieldLegend>
-								<FieldDescription>
-									{packageDeliverables.length > 0
-										? "Package deliverables are included. Add custom deliverables below."
-										: "Define what will be delivered to the client"}
-								</FieldDescription>
-							</div>
-							<Button
-								type="button"
-								variant="outline"
-								size="sm"
-								onClick={() => addNewDeliverable()}
-							>
-								<PlusIcon className="mr-2 h-4 w-4" />
-								Add Custom Deliverable
-							</Button>
-						</Field>
-					</FieldGroup>
-					<FieldSeparator />
-					<FieldGroup className="gap-4">
-						{deliverables.length === 0 ? (
-							<div className="flex flex-col items-center justify-center gap-3 py-8 px-4 border border-dashed rounded-lg">
-								<PackageIcon className="h-10 w-10 text-muted-foreground/30" />
-								<p className="text-sm text-muted-foreground text-center">
-									No deliverables added yet
-								</p>
-								{/* Quick add common deliverables */}
-								<div className="flex flex-wrap gap-2 justify-center">
-									{PACKAGE_DELIVERABLE_TEMPLATES.map(
-										(template) => (
-											<Button
-												key={template.title}
-												type="button"
-												variant="outline"
-												size="sm"
-												onClick={() =>
-													addNewDeliverable(
-														template.title,
-														template.quantity,
-													)
-												}
-											>
-												<PlusIcon className="mr-1 h-3 w-3" />
-												{template.title}
-											</Button>
-										),
-									)}
-								</div>
-							</div>
-						) : (
-							<FieldGroup className="gap-4">
-								{deliverables.map((deliverable, index) => {
-									const watchedDeliverable =
-										watchedDeliverables[index];
-									return (
-										<DeliverableCard
-											key={deliverable.id}
-											deliverableIndex={index}
-											crews={crews}
-											isPackageIncluded={
-												watchedDeliverable?.isPackageIncluded ??
-												false
-											}
-											onRemove={() =>
-												removeDeliverable(index)
-											}
-										/>
-									);
-								})}
-								{/* Add another deliverable button */}
-								<Button
-									type="button"
-									variant="outline"
-									size="sm"
-									className="w-full justify-center border-dashed"
-									onClick={() => addNewDeliverable()}
-								>
-									<PlusIcon className="mr-2 h-4 w-4" />
-									Add another deliverable
-								</Button>
-							</FieldGroup>
-						)}
-					</FieldGroup>
+		<div className="space-y-4">
+			<div className="flex items-center justify-between gap-3 flex-wrap">
+				<FieldSet className="gap-1">
+					<FieldLegend className="mb-0">Deliverables</FieldLegend>
 				</FieldSet>
-			</CardContent>
-		</Card>
+				<Button
+					type="button"
+					variant="outline"
+					size="sm"
+					onClick={() => addNewDeliverable()}
+				>
+					<PlusIcon className="mr-2 h-4 w-4" />
+					Add Deliverable
+				</Button>
+			</div>
+			<Card className="shadow-none">
+				<CardContent>
+					<FieldSet>
+						<FieldGroup className="gap-4">
+							{deliverables.length === 0 ? (
+								<div className="flex flex-col items-center justify-center gap-3 py-8 px-4 border border-dashed rounded-lg">
+									<PackageIcon className="h-10 w-10 text-muted-foreground/30" />
+									<p className="text-sm text-muted-foreground text-center">
+										No deliverables added yet
+									</p>
+									{/* Quick add common deliverables */}
+									<div className="flex flex-wrap gap-2 justify-center">
+										{PACKAGE_DELIVERABLE_TEMPLATES.map(
+											(template) => (
+												<Button
+													key={template.title}
+													type="button"
+													variant="outline"
+													size="sm"
+													onClick={() =>
+														addNewDeliverable(
+															template.title,
+															template.quantity,
+														)
+													}
+												>
+													<PlusIcon className="mr-1 h-3 w-3" />
+													{template.title}
+												</Button>
+											),
+										)}
+									</div>
+								</div>
+							) : (
+								<FieldGroup className="gap-4">
+									{deliverables.map((deliverable, index) => {
+										const watchedDeliverable =
+											watchedDeliverables[index];
+										return (
+											<DeliverableCard
+												key={deliverable.id}
+												deliverableIndex={index}
+												crews={crews}
+												isPackageIncluded={
+													watchedDeliverable?.isPackageIncluded ??
+													false
+												}
+												onRemove={() =>
+													removeDeliverable(index)
+												}
+											/>
+										);
+									})}
+									{/* Add another deliverable button */}
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										className="w-full justify-center border-dashed"
+										onClick={() => addNewDeliverable()}
+									>
+										<PlusIcon className="mr-2 h-4 w-4" />
+										Add another deliverable
+									</Button>
+								</FieldGroup>
+							)}
+						</FieldGroup>
+					</FieldSet>
+				</CardContent>
+			</Card>
+		</div>
 	);
 }
 
@@ -227,9 +215,7 @@ function DeliverableCard({
 		form.watch(`deliverables.${deliverableIndex}.description`) ?? "";
 
 	return (
-		<div
-			className="overflow-hidden rounded-lg border bg-muted/10"
-		>
+		<div className="overflow-hidden rounded-lg border bg-muted/10">
 			<div className="flex items-center justify-between gap-2 border-b bg-muted/20 px-4 py-3">
 				<div className="flex items-center gap-2">
 					<PackageIcon className="h-4 w-4 text-muted-foreground" />

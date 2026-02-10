@@ -6,7 +6,6 @@ import { Combobox, type ComboboxOption } from "@repo/ui/components/combobox";
 import { DatePicker } from "@repo/ui/components/date-picker";
 import {
 	Field,
-	FieldDescription,
 	FieldError,
 	FieldGroup,
 	FieldLabel,
@@ -34,6 +33,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
+import { toast } from "sonner";
 import { bookingFormQueries } from "./booking-form-queries";
 import type { BookingFormValues } from "./booking-form-schema";
 
@@ -114,6 +114,25 @@ export function BookingShootsStep() {
 	});
 
 	const addNewShoot = () => {
+		const currentShoots = form.getValues("shoots") ?? [];
+		const incompleteIndex = currentShoots.findIndex(
+			(shoot) => !shoot?.shootType?.trim() || !shoot?.shootDate?.trim(),
+		);
+
+		if (incompleteIndex !== -1) {
+			const missingField = !currentShoots[
+				incompleteIndex
+			]?.shootType?.trim()
+				? "shootType"
+				: "shootDate";
+
+			toast.warning(
+				"Please complete the current shoot before adding another.",
+			);
+			form.setFocus(`shoots.${incompleteIndex}.${missingField}` as never);
+			return;
+		}
+
 		const newIndex = shoots.length; // Index of the new shoot
 		appendShoot(
 			{
@@ -136,67 +155,72 @@ export function BookingShootsStep() {
 	};
 
 	return (
-		<Card className="shadow-none">
-			<CardContent>
-				<FieldSet>
-					<FieldLegend>Shoots</FieldLegend>
-					<FieldDescription>
-						Schedule photo/video shoots for this booking
-					</FieldDescription>
-					<FieldGroup>
-						{/* Shoots list */}
-						{shoots.length === 0 ? (
-							<div className="flex flex-col items-center justify-center gap-3 py-8 px-4 border border-dashed rounded-lg">
-								<CameraIcon className="h-10 w-10 text-muted-foreground/30" />
-								<p className="text-sm text-muted-foreground text-center">
-									No shoots scheduled yet
-								</p>
-								<Button
-									type="button"
-									variant="outline"
-									size="sm"
-									onClick={addNewShoot}
-								>
-									<PlusIcon className="mr-2 h-4 w-4" />
-									Add first shoot
-								</Button>
-							</div>
-						) : (
-							<FieldGroup className="gap-4">
-								{shoots.map((shoot, shootIndex) => (
-									<ShootSection
-										key={shoot.id}
-										shootIndex={shootIndex}
-										crews={crews}
-										eventTypeOptions={getAvailableEventTypes(
-											shootIndex,
-										)}
-										hasConfiguredEventTypes={
-											hasConfiguredEventTypes
-										}
-										eventTypesLoading={eventTypesLoading}
-										onRemove={() => removeShoot(shootIndex)}
-										canRemove={shoots.length > 0}
-									/>
-								))}
+		<div className="space-y-4">
+			<FieldSet className="gap-1">
+				<FieldLegend className="mb-0">Shoots</FieldLegend>
+			</FieldSet>
+			<Card className="shadow-none">
+				<CardContent>
+					<FieldSet>
+						<FieldGroup>
+							{/* Shoots list */}
+							{shoots.length === 0 ? (
+								<div className="flex flex-col items-center justify-center gap-3 py-8 px-4 border border-dashed rounded-lg">
+									<CameraIcon className="h-10 w-10 text-muted-foreground/30" />
+									<p className="text-sm text-muted-foreground text-center">
+										No shoots scheduled yet
+									</p>
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										onClick={addNewShoot}
+									>
+										<PlusIcon className="mr-2 h-4 w-4" />
+										Add first shoot
+									</Button>
+								</div>
+							) : (
+								<FieldGroup className="gap-4">
+									{shoots.map((shoot, shootIndex) => (
+										<ShootSection
+											key={shoot.id}
+											shootIndex={shootIndex}
+											crews={crews}
+											eventTypeOptions={getAvailableEventTypes(
+												shootIndex,
+											)}
+											hasConfiguredEventTypes={
+												hasConfiguredEventTypes
+											}
+											eventTypesLoading={
+												eventTypesLoading
+											}
+											onRemove={() =>
+												removeShoot(shootIndex)
+											}
+											canRemove={shoots.length > 0}
+										/>
+									))}
 
-								{/* Add another shoot button */}
-								<Button
-									type="button"
-									variant="outline"
-									size="sm"
-									className="w-full justify-center border-dashed"
-									onClick={addNewShoot}
-								>
-									<PlusIcon className="mr-2 h-4 w-4" />
-									Add another shoot
-								</Button>
-							</FieldGroup>
-						)}
-					</FieldGroup>
-				</FieldSet>
-			</CardContent>
-		</Card>
+									{/* Add another shoot button */}
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										className="w-full justify-center border-dashed"
+										onClick={addNewShoot}
+									>
+										<PlusIcon className="mr-2 h-4 w-4" />
+										Add another shoot
+									</Button>
+								</FieldGroup>
+							)}
+						</FieldGroup>
+					</FieldSet>
+				</CardContent>
+			</Card>
+		</div>
 	);
 }
 
@@ -258,7 +282,9 @@ function ShootSection({
 		return crews
 			.filter((crew) => {
 				// Always include current selection
-				if (crew.id === currentCrewId) return true;
+				if (crew.id === currentCrewId) {
+					return true;
+				}
 				// Exclude already assigned crews
 				return !selectedCrewIds.includes(crew.id);
 			})
