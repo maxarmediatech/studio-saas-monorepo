@@ -508,13 +508,10 @@ export function BookingDetailsStep() {
 		<Card className="shadow-none">
 			<CardContent>
 				<FieldSet>
-					<FieldLegend>Booking Details</FieldLegend>
-					<FieldDescription>
-						Enter the details for this booking
-					</FieldDescription>
-					<FieldSeparator />
+					<FieldLegend className="sr-only">
+						Booking Details
+					</FieldLegend>
 					<FieldGroup>
-						{/* Section 1: Booking Type (context setter) */}
 						<Controller
 							name="bookingType"
 							control={form.control}
@@ -566,9 +563,9 @@ export function BookingDetailsStep() {
 								</Field>
 							)}
 						/>
-
-						<FieldSeparator />
-
+					</FieldGroup>
+					<FieldSeparator />
+					<FieldGroup>
 						{/* Section 2: Clients */}
 						<Field orientation="responsive">
 							<div className="flex-1">
