@@ -141,7 +141,7 @@ function Combobox({
 										className={cn(
 											"mr-2 size-4",
 											value === option.value
-												? "opacity-100"
+												? "opacity-100 text-primary"
 												: "opacity-0",
 										)}
 									/>

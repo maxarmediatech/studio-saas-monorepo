@@ -130,7 +130,7 @@ export function FormComboboxField<
 														"mr-2 h-4 w-4",
 														field.value ===
 															option.value
-															? "opacity-100"
+															? "opacity-100 text-primary"
 															: "opacity-0",
 													)}
 												/>

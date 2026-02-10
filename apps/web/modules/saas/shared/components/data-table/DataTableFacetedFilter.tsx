@@ -170,14 +170,19 @@ export function DataTableFacetedFilter({
 										}
 									>
 										<div
-											className={cn(
-												"mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+											data-state={
 												isSelected
-													? "bg-primary text-primary-foreground"
-													: "opacity-50 [&_svg]:invisible",
+													? "checked"
+													: "unchecked"
+											}
+											className={cn(
+												"mr-2 grid size-4 shrink-0 place-content-center rounded-[4px] border border-input text-transparent shadow-xs transition-shadow dark:bg-input/30",
+												"data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground dark:data-[state=checked]:bg-primary",
 											)}
 										>
-											<CheckIcon className="h-4 w-4" />
+											{isSelected ? (
+												<CheckIcon className="size-3.5 text-current" />
+											) : null}
 										</div>
 										{option.icon && (
 											<option.icon className="mr-2 h-4 w-4 text-muted-foreground" />
