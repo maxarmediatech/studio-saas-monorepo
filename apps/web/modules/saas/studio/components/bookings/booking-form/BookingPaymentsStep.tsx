@@ -317,58 +317,28 @@ export function BookingPaymentsStep() {
 							</Button>
 						</Field>
 						<div className="rounded-lg border bg-muted/20 p-3">
-							<p className="text-xs font-medium text-muted-foreground">
-								Tracking
-							</p>
-							<div className="mt-3 grid gap-4 md:grid-cols-2">
-								<div>
-									<p className="text-xs text-muted-foreground">
-										Amount left to schedule
-									</p>
+							<div className="flex flex-wrap gap-2">
+								<Badge
+									variant="outline"
+									className={
+										hasScheduledOverage
+											? "border-destructive/40 bg-destructive/10 text-destructive"
+											: "border-border/70 bg-background text-foreground"
+									}
+								>
+									Amount left •{" "}
+									{formatCurrency(amountLeftToSchedule)}
+								</Badge>
+								{shootScheduleItems.map((item, index) => (
 									<Badge
+										key={`${item.name}-${item.date}-${index}`}
 										variant="outline"
-										className={
-											hasScheduledOverage
-												? "mt-2 border-destructive/40 bg-destructive/10 text-destructive"
-												: "mt-2 border-border/70 bg-background text-foreground"
-										}
+										className="border-border/70 bg-background text-xs font-normal"
 									>
-										{formatCurrency(amountLeftToSchedule)}
+										{item.name} • {item.date}
 									</Badge>
-								</div>
-								<div>
-									<p className="text-xs text-muted-foreground">
-										Shoot timeline
-									</p>
-									{shootScheduleItems.length > 0 ? (
-										<div className="mt-2 flex flex-wrap gap-2">
-											{shootScheduleItems.map(
-												(item, index) => (
-													<Badge
-														key={`${item.name}-${item.date}-${index}`}
-														variant="outline"
-														className="border-border/70 bg-background text-xs font-normal"
-													>
-														{item.name} •{" "}
-														{item.date}
-													</Badge>
-												),
-											)}
-										</div>
-									) : (
-										<p className="mt-2 text-xs text-muted-foreground">
-											No shoot dates added yet.
-										</p>
-									)}
-								</div>
+								))}
 							</div>
-							{hasScheduledOverage && (
-								<p className="mt-3 text-xs text-destructive">
-									Over scheduled by{" "}
-									{formatCurrency(scheduledOverBy)}. Reduce
-									milestones before proceeding.
-								</p>
-							)}
 							{paymentSchedulesError?.message && (
 								<p className="mt-2 text-xs text-destructive">
 									{paymentSchedulesError.message}
