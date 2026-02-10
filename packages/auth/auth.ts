@@ -1,17 +1,11 @@
 import { config } from "@repo/config";
 import {
-	and,
-	crews,
 	db,
-	eq,
 	getInvitationById,
 	getOrganizationsByUserId,
 	getPurchasesByOrganizationId,
 	getPurchasesByUserId,
 	getUserByEmail,
-	isNull,
-	type members,
-	users,
 } from "@repo/database";
 import type { Locale } from "@repo/i18n";
 import { logger } from "@repo/logs";
@@ -30,7 +24,10 @@ import {
 	username,
 } from "better-auth/plugins";
 import { parse as parseCookies } from "cookie";
-import { updateSeatsInOrganizationSubscription } from "./lib/organization";
+import {
+	ensureCrewForMember,
+	updateSeatsInOrganizationSubscription,
+} from "./lib/organization";
 import { ensureDefaultOrganizationRoles } from "./lib/organization-roles";
 import { ac, appRoles, serializeRoles } from "./lib/permissions";
 import { invitationOnlyPlugin } from "./plugins/invitation-only";
@@ -122,87 +119,17 @@ export const auth = betterAuth({
 		},
 		member: {
 			create: {
-				after: async (member: typeof members.$inferSelect) => {
-					// Auto-create crew profile when member joins organization
-					try {
-						// Check if crew already exists for this user in this organization
-						const existingCrew = await db.query.crews.findFirst({
-							where: and(
-								eq(crews.organizationId, member.organizationId),
-								eq(crews.userId, member.userId),
-								isNull(crews.deletedAt),
-							),
-						});
-
-						if (existingCrew) {
-							logger.info(
-								"Crew profile already exists for member",
-								{
-									memberId: member.id,
-									userId: member.userId,
-									organizationId: member.organizationId,
-									crewId: existingCrew.id,
-								},
-							);
-							return;
-						}
-
-						// Get user details
-						const user = await db.query.users.findFirst({
-							where: eq(users.id, member.userId),
-						});
-
-						if (!user) {
-							logger.warn(
-								"User not found for auto-crew creation",
-								{
-									memberId: member.id,
-									userId: member.userId,
-								},
-							);
-							return;
-						}
-
-						// Create crew profile linked to user
-						const [created] = await db
-							.insert(crews)
-							.values({
-								organizationId: member.organizationId,
-								userId: user.id,
-								name: user.name,
-								email: user.email,
-								phoneNumber: null,
-								role: "member", // Default role, can be updated later
-								status: "active",
-								dailyRate: null,
-								metadata: { autoCreated: true },
-								createdBy: user.id,
-							})
-							.returning({ id: crews.id });
-
-						if (created) {
-							logger.info(
-								"Auto-created crew profile for new member",
-								{
-									memberId: member.id,
-									userId: member.userId,
-									organizationId: member.organizationId,
-									crewId: created.id,
-								},
-							);
-						}
-					} catch (error) {
-						// Log error but don't fail the member creation
-						logger.error("Failed to auto-create crew profile", {
-							memberId: member.id,
-							userId: member.userId,
-							organizationId: member.organizationId,
-							error:
-								error instanceof Error
-									? error.message
-									: String(error),
-						});
-					}
+				after: async (member: {
+					id: string;
+					organizationId: string;
+					userId: string;
+				}) => {
+					await ensureCrewForMember({
+						organizationId: member.organizationId,
+						userId: member.userId,
+						memberId: member.id,
+						source: "db_hook",
+					});
 				},
 			},
 		},
@@ -264,6 +191,14 @@ export const auth = betterAuth({
 							member.organizationId === activeOrganizationId,
 					)
 				: memberships[0];
+			if (activeMembership?.organizationId) {
+				await ensureCrewForMember({
+					organizationId: activeMembership.organizationId,
+					userId,
+					memberId: activeMembership.id,
+					source: "session_auto_heal",
+				});
+			}
 			const activeOrganizationSlug = activeMembership?.organization?.slug;
 
 			if (!activeOrganizationSlug) {
@@ -435,6 +370,14 @@ export const auth = betterAuth({
 						role: serializeRoles(member.role),
 					},
 				}),
+				afterAddMember: async ({ member }) => {
+					await ensureCrewForMember({
+						organizationId: member.organizationId,
+						userId: member.userId,
+						memberId: member.id,
+						source: "after_add_member",
+					});
+				},
 				beforeCreateInvitation: async ({ invitation }) => ({
 					data: {
 						...invitation,
@@ -446,6 +389,14 @@ export const auth = betterAuth({
 						role: serializeRoles(newRole),
 					},
 				}),
+				afterAcceptInvitation: async ({ member }) => {
+					await ensureCrewForMember({
+						organizationId: member.organizationId,
+						userId: member.userId,
+						memberId: member.id,
+						source: "after_accept_invitation",
+					});
+				},
 			},
 			schema: {
 				organizationRole: {
