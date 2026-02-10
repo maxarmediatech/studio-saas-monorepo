@@ -69,7 +69,6 @@ export async function ensureCrewForMember({
 				name: user.name,
 				email: user.email,
 				phoneNumber: null,
-				role: "member",
 				status: "active",
 				dailyRate: null,
 				metadata: { autoCreated: true },

@@ -305,7 +305,6 @@ export const crews = pgTable(
 		name: text("name").notNull(),
 		email: text("email"),
 		phoneNumber: text("phone_number"),
-		role: text("role").notNull(), // photographer, videographer, editor, etc.
 
 		// Status is TEXT - configurable via configurations table (config_type: crew_status)
 		status: text("status").default("active").notNull(),
@@ -337,6 +336,9 @@ export const crews = pgTable(
 	(table) => [
 		index("crews_organization_idx").on(table.organizationId),
 		index("crews_user_idx").on(table.userId),
+		index("crews_specializations_gin_idx")
+			.using("gin", sql`(${table.metadata} -> 'specializations')`)
+			.where(sql`${table.deletedAt} IS NULL`),
 		uniqueIndex("crews_org_user_active_unique")
 			.on(table.organizationId, table.userId)
 			.where(sql`user_id IS NOT NULL AND deleted_at IS NULL`),

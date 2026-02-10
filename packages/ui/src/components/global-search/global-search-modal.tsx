@@ -309,12 +309,6 @@ export function GlobalSearchModal({
 														{item.email}
 													</span>
 												)}
-												{typeof item.role ===
-													"string" && (
-													<span className="text-xs text-muted-foreground">
-														{item.role}
-													</span>
-												)}
 											</div>
 										</CommandItem>
 									);

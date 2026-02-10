@@ -40,7 +40,6 @@ export interface SubmissionCardData {
 	submissionLinks: string[] | null;
 	submittedAt: string | null;
 	submittedByName: string;
-	submittedByRole: string;
 	reviewedBy: string | null;
 	reviewedByName: string | null;
 	reviewedAt: string | null;
@@ -69,9 +68,6 @@ export function SubmissionCard({ submission }: SubmissionCardProps) {
 						<div className="flex items-center gap-2">
 							<span className="font-medium text-sm">
 								{submission.submittedByName}
-							</span>
-							<span className="text-xs text-muted-foreground">
-								({submission.submittedByRole})
 							</span>
 							<span className="text-xs text-muted-foreground">
 								submitted

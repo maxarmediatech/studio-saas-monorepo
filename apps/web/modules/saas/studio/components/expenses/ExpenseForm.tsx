@@ -109,7 +109,6 @@ interface ShootInfo {
 interface CrewOption {
 	value: string;
 	label: string;
-	role: string;
 }
 
 interface ExpenseFormProps {
@@ -299,7 +298,6 @@ export function ExpenseForm({
 			crews.map((crew) => ({
 				value: crew.id,
 				label: crew.name,
-				role: crew.role ?? "",
 			})),
 		[crews],
 	);
@@ -673,11 +671,6 @@ export function ExpenseForm({
 														</AvatarFallback>
 													</Avatar>
 													<span>{option.label}</span>
-													{option.role && (
-														<span className="text-muted-foreground text-sm">
-															({option.role})
-														</span>
-													)}
 												</div>
 											)}
 											renderSelectedItem={(

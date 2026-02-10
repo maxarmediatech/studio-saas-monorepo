@@ -300,9 +300,6 @@ export default function DeliverableDetailPage() {
 										className="size-4"
 									/>
 									<span>{assignment.crew.name}</span>
-									<span className="text-muted-foreground">
-										({assignment.crew.role})
-									</span>
 									{assignment.isLead && (
 										<span className="text-xs text-primary">
 											Lead

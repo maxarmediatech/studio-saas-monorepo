@@ -205,7 +205,6 @@ interface ShootSectionProps {
 	crews: Array<{
 		id: string;
 		name: string;
-		role: string;
 		phoneNumber?: string | null;
 		dailyRate?: string | null;
 		userId?: string | null;
@@ -265,7 +264,7 @@ function ShootSection({
 			})
 			.map((crew) => ({
 				value: crew.id,
-				label: `${crew.name}${crew.role ? ` (${crew.role})` : ""}`,
+				label: crew.name,
 			}));
 	};
 

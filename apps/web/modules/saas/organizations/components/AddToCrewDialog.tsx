@@ -24,38 +24,21 @@ import {
 	InputGroupInput,
 	InputGroupText,
 } from "@repo/ui/components/input-group";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@repo/ui/components/select";
-import { crewsMutations } from "@saas/studio/lib/api";
-import { useMutation } from "@tanstack/react-query";
+import { MultiSelectCombobox } from "@repo/ui/components/multi-select-combobox";
+import { configurationsApi, crewsMutations } from "@saas/studio/lib/api";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Loader2Icon } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
 const addToCrewSchema = z.object({
-	role: z.string().min(1, "Role is required"),
 	dailyRate: z.string().optional().or(z.literal("")),
+	specializations: z.array(z.string().min(1).max(100)).default([]),
 });
 
 type AddToCrewValues = z.infer<typeof addToCrewSchema>;
-
-// Common crew roles - these will later come from configurations
-const CREW_ROLES = [
-	{ value: "lead_photographer", label: "Lead Photographer" },
-	{ value: "photographer", label: "Photographer" },
-	{ value: "lead_videographer", label: "Lead Videographer" },
-	{ value: "videographer", label: "Videographer" },
-	{ value: "drone_operator", label: "Drone Operator" },
-	{ value: "assistant", label: "Assistant" },
-	{ value: "editor", label: "Editor" },
-	{ value: "member", label: "Member" },
-];
+type AddToCrewFormValues = z.input<typeof addToCrewSchema>;
 
 interface AddToCrewDialogProps {
 	open: boolean;
@@ -72,13 +55,21 @@ export function AddToCrewDialog({
 	memberName,
 	onSuccess,
 }: AddToCrewDialogProps) {
-	const form = useForm<AddToCrewValues>({
+	const form = useForm<AddToCrewFormValues>({
 		resolver: zodResolver(addToCrewSchema),
 		defaultValues: {
-			role: "",
 			dailyRate: "",
+			specializations: [],
 		},
 	});
+	const { data: specializationOptionsData } = useQuery(
+		configurationsApi.crewRolesOptions(),
+	);
+	const specializationOptions =
+		specializationOptionsData?.data?.map((item) => ({
+			value: item.key,
+			label: item.label,
+		})) ?? [];
 
 	const createFromMemberMutation = useMutation({
 		...crewsMutations.createFromMember(),
@@ -92,11 +83,12 @@ export function AddToCrewDialog({
 		},
 	});
 
-	const onSubmit = (values: AddToCrewValues) => {
+	const onSubmit = (values: AddToCrewFormValues) => {
+		const parsed: AddToCrewValues = addToCrewSchema.parse(values);
 		createFromMemberMutation.mutate({
 			memberId,
-			role: values.role,
-			dailyRate: values.dailyRate || undefined,
+			dailyRate: parsed.dailyRate || undefined,
+			specializations: parsed.specializations,
 		});
 	};
 
@@ -118,30 +110,20 @@ export function AddToCrewDialog({
 					>
 						<FormField
 							control={form.control}
-							name="role"
+							name="specializations"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel>Role *</FormLabel>
-									<Select
-										onValueChange={field.onChange}
-										value={field.value}
-									>
-										<FormControl>
-											<SelectTrigger>
-												<SelectValue placeholder="Select role" />
-											</SelectTrigger>
-										</FormControl>
-										<SelectContent>
-											{CREW_ROLES.map((role) => (
-												<SelectItem
-													key={role.value}
-													value={role.value}
-												>
-													{role.label}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
+									<FormLabel>Specializations</FormLabel>
+									<FormControl>
+										<MultiSelectCombobox
+											options={specializationOptions}
+											value={field.value ?? []}
+											onValueChange={field.onChange}
+											placeholder="Select specializations"
+											searchPlaceholder="Search specializations..."
+											emptyText="No specialization found."
+										/>
+									</FormControl>
 									<FormMessage />
 								</FormItem>
 							)}

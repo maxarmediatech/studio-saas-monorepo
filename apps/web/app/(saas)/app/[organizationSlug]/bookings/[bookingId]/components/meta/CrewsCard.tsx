@@ -34,7 +34,6 @@ type AssignmentSource = {
 type CrewMember = {
 	id: string;
 	name: string;
-	role: string;
 	phoneNumber: string | null;
 	email: string | null;
 	assignments: AssignmentSource[];
@@ -100,9 +99,6 @@ function CrewRow({ crew }: { crew: CrewMember }) {
 			<div className="min-w-0 flex-1 space-y-1">
 				<div className="flex items-center gap-2">
 					<p className="text-sm font-medium truncate">{crew.name}</p>
-					<span className="text-xs text-muted-foreground">
-						{crew.role}
-					</span>
 				</div>
 				{crew.phoneNumber && (
 					<a

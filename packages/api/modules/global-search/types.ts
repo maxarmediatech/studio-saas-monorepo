@@ -36,7 +36,6 @@ export interface ClientSearchResult {
 export interface CrewSearchResult {
 	id: string;
 	name: string;
-	role: string;
 	email: string | null;
 }
 

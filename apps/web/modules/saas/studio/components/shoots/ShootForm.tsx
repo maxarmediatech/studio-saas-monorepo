@@ -76,7 +76,7 @@ interface ShootFormProps {
 	existingAssignments?: Array<{
 		crewId: string;
 		rate: string | null;
-		crew: { id: string; name: string; role: string };
+		crew: { id: string; name: string };
 	}>;
 	onSubmit: (data: ShootFormValues) => Promise<void>;
 	mode: "create" | "edit";
@@ -216,7 +216,7 @@ export function ShootForm({
 				})
 				.map((crew) => ({
 					value: crew.id,
-					label: `${crew.name}${crew.role ? ` (${crew.role})` : ""}`,
+					label: crew.name,
 				}));
 		},
 		[crews, selectedCrewIds],

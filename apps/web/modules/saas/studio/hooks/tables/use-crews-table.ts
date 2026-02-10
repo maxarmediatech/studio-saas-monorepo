@@ -9,7 +9,7 @@ import { useDataTable } from "@/modules/saas/shared/hooks/use-data-table";
 export interface CrewFilters {
 	search?: string | null;
 	status?: string[] | null;
-	role?: string[] | null;
+	specializations?: string[] | null;
 }
 
 /**
@@ -18,7 +18,7 @@ export interface CrewFilters {
  */
 const crewFilterParsers = {
 	status: parseAsArrayOf(parseAsString, ","),
-	role: parseAsArrayOf(parseAsString, ","),
+	specializations: parseAsArrayOf(parseAsString, ","),
 };
 
 /**

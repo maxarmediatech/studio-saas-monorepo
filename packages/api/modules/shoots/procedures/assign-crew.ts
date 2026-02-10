@@ -83,7 +83,7 @@ export const assignCrew = studioProtectedProcedure
 			});
 		}
 
-		const assignmentRole = role || crew.role || "Crew";
+		const assignmentRole = role || "Crew";
 
 		const [created] = await db
 			.insert(shootAssignments)

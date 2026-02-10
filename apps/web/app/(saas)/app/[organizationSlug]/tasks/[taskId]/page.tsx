@@ -275,9 +275,6 @@ export default function TaskDetailPage() {
 									className="size-4"
 								/>
 								<span>{assignment.crew.name}</span>
-								<span className="text-muted-foreground">
-									({assignment.crew.role})
-								</span>
 							</Badge>
 						))}
 					</div>

@@ -48,13 +48,6 @@ const STATUS_LABELS: Record<string, string> = {
 	unavailable: "Unavailable",
 };
 
-function formatRole(role: string): string {
-	return role
-		.split("_")
-		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-		.join(" ");
-}
-
 function getTaskStatusIcon(status: string) {
 	switch (status.toLowerCase()) {
 		case "completed":
@@ -219,7 +212,17 @@ export default function CrewDetailPage() {
 						</div>
 						<div className="mt-1 flex items-center gap-2 text-muted-foreground">
 							<BriefcaseIcon className="size-4" />
-							<span>{formatRole(crew.role)}</span>
+							<div className="flex flex-wrap gap-1">
+								{crew.displayRoles.map((role) => (
+									<Badge
+										key={role}
+										variant="secondary"
+										className="capitalize"
+									>
+										{role.replace(/_/g, " ")}
+									</Badge>
+								))}
+							</div>
 							{crew.dailyRate && (
 								<>
 									<span>·</span>
@@ -230,6 +233,15 @@ export default function CrewDetailPage() {
 								</>
 							)}
 						</div>
+						{crew.specializations.length > 0 && (
+							<div className="mt-2 flex flex-wrap gap-1">
+								{crew.specializations.map((item) => (
+									<Badge key={item} variant="outline">
+										{item}
+									</Badge>
+								))}
+							</div>
+						)}
 						<div className="mt-3 flex flex-wrap gap-4 text-sm">
 							{crew.email && (
 								<a

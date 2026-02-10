@@ -4,6 +4,8 @@ import type { ToolbarFilterConfig } from "@saas/shared/components/data-table";
 import { DataTableToolbarWithViews } from "@saas/shared/components/data-table";
 import type { SavedView } from "@saas/shared/components/views";
 import { useCrewsTableWithViews } from "@saas/studio/hooks/tables";
+import { configurationsApi } from "@saas/studio/lib/api";
+import { useQuery } from "@tanstack/react-query";
 import { BriefcaseIcon, UserIcon } from "lucide-react";
 import { useCallback, useMemo } from "react";
 
@@ -11,16 +13,6 @@ const statusOptions = [
 	{ value: "active", label: "Active" },
 	{ value: "inactive", label: "Inactive" },
 	{ value: "unavailable", label: "Unavailable" },
-];
-
-const roleOptions = [
-	{ value: "photographer", label: "Photographer" },
-	{ value: "videographer", label: "Videographer" },
-	{ value: "editor", label: "Editor" },
-	{ value: "assistant", label: "Assistant" },
-	{ value: "makeup_artist", label: "Makeup Artist" },
-	{ value: "coordinator", label: "Coordinator" },
-	{ value: "other", label: "Other" },
 ];
 
 export function CrewsFilters() {
@@ -34,6 +26,14 @@ export function CrewsFilters() {
 		sortingState,
 		columnVisibility,
 	} = useCrewsTableWithViews();
+	const { data: specializationData } = useQuery(
+		configurationsApi.crewRolesOptions(),
+	);
+	const specializationOptions =
+		specializationData?.data?.map((item) => ({
+			value: item.key,
+			label: item.label,
+		})) ?? [];
 
 	const filterConfigs: ToolbarFilterConfig[] = useMemo(
 		() => [
@@ -45,22 +45,22 @@ export function CrewsFilters() {
 				options: statusOptions,
 			},
 			{
-				id: "role",
-				label: "Role",
+				id: "specializations",
+				label: "Specializations",
 				variant: "multiSelect",
 				icon: BriefcaseIcon,
-				options: roleOptions,
+				options: specializationOptions,
 			},
 		],
-		[],
+		[specializationOptions],
 	);
 
 	const filterValues = useMemo(
 		() => ({
 			status: filters.status ?? [],
-			role: filters.role ?? [],
+			specializations: filters.specializations ?? [],
 		}),
-		[filters.status, filters.role],
+		[filters.status, filters.specializations],
 	);
 
 	const handleFilterChange = useCallback(
@@ -77,10 +77,10 @@ export function CrewsFilters() {
 				const values =
 					Array.isArray(value) && value.length > 0 ? value : null;
 				setFilter("status", values);
-			} else if (filterId === "role") {
+			} else if (filterId === "specializations") {
 				const values =
 					Array.isArray(value) && value.length > 0 ? value : null;
-				setFilter("role", values);
+				setFilter("specializations", values);
 			}
 		},
 		[setFilter],

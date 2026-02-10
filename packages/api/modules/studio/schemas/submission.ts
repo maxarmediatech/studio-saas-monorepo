@@ -27,7 +27,6 @@ import {
 export const submissionCrewSchema = z.object({
 	id: idSchema,
 	name: z.string(),
-	role: z.string(),
 	phoneNumber: z.string().nullable(),
 });
 
@@ -107,7 +106,6 @@ export const submissionListItemSchema = submissionSchema.extend({
 	bookingReferenceNumber: z.string(),
 	// Crew info
 	submittedByName: z.string(),
-	submittedByRole: z.string(),
 	// Reviewer info
 	reviewedByName: z.string().nullable(),
 });

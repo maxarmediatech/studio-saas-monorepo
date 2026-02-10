@@ -105,7 +105,16 @@ export const auth = betterAuth({
 						const memberships = await getOrganizationsByUserId(
 							session.userId,
 						);
+						const firstMembership = memberships[0];
 						const firstOrg = memberships[0]?.organization;
+						if (firstMembership?.organizationId) {
+							await ensureCrewForMember({
+								organizationId: firstMembership.organizationId,
+								userId: session.userId,
+								memberId: firstMembership.id,
+								source: "session_auto_heal",
+							});
+						}
 
 						return {
 							data: {

@@ -76,7 +76,7 @@ interface DeliverableFormProps {
 	booking?: BookingInfo;
 	existingAssignments?: Array<{
 		crewId: string;
-		crew: { id: string; name: string; role: string };
+		crew: { id: string; name: string };
 	}>;
 	onSubmit: (data: DeliverableFormValues) => Promise<void>;
 	mode: "create" | "edit";
@@ -87,7 +87,6 @@ interface DeliverableFormProps {
 interface CrewOption {
 	value: string;
 	label: string;
-	role: string;
 }
 
 export function DeliverableForm({
@@ -130,7 +129,6 @@ export function DeliverableForm({
 			crews.map((crew) => ({
 				value: crew.id,
 				label: crew.name,
-				role: crew.role ?? "",
 			})),
 		[crews],
 	);
@@ -511,65 +509,47 @@ export function DeliverableForm({
 															<span>
 																{option.label}
 															</span>
-															{option.role && (
-																<span className="text-muted-foreground text-sm">
-																	(
-																	{
-																		option.role
-																	}
-																	)
-																</span>
-															)}
 														</div>
 													)}
-													renderSelectedItem={(
-														option,
-														onRemove,
-													) => (
-														<Badge
-															variant="secondary"
-															className="flex items-center gap-1.5 pr-1"
-														>
-															<Avatar className="h-4 w-4">
-																<AvatarFallback className="text-[8px]">
-																	{getInitials(
-																		option.label,
-																	)}
-																</AvatarFallback>
-															</Avatar>
-															<span className="truncate">
-																{option.label}
-															</span>
-															{option.role && (
-																<span className="text-muted-foreground text-xs">
-																	(
-																	{
-																		option.role
-																	}
-																	)
+														renderSelectedItem={(
+															option,
+															onRemove,
+														) => (
+															<Badge
+																variant="secondary"
+																className="flex items-center gap-1.5 pr-1"
+															>
+																<Avatar className="h-4 w-4">
+																	<AvatarFallback className="text-[8px]">
+																		{getInitials(
+																			option.label,
+																		)}
+																	</AvatarFallback>
+																</Avatar>
+																<span className="truncate">
+																	{option.label}
 																</span>
-															)}
-															<button
-																type="button"
-																onClick={(
-																	e,
+																<button
+																	type="button"
+																	onClick={(
+																		e,
 																) => {
 																	e.stopPropagation();
 																	onRemove();
 																}}
-																className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
-															>
-																<XIcon className="size-3" />
+																	className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
+																>
+																	<XIcon className="size-3" />
 																<span className="sr-only">
 																	Remove{" "}
 																	{
 																		option.label
 																	}
-																</span>
-															</button>
-														</Badge>
-													)}
-												/>
+																	</span>
+																</button>
+															</Badge>
+														)}
+													/>
 											</Field>
 										);
 									}}

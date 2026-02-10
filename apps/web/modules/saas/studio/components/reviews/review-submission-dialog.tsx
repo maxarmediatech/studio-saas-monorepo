@@ -173,9 +173,6 @@ export function ReviewSubmissionDialog({
 								<p className="text-xs text-muted-foreground">Submitted by</p>
 								<p className="font-medium">
 									{submission.submittedByCrew.name}
-									{submission.submittedByCrew.role
-										? ` · ${submission.submittedByCrew.role}`
-										: ""}
 								</p>
 							</div>
 						</div>

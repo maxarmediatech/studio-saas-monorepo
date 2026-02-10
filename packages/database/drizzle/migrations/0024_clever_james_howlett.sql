@@ -1,0 +1,1 @@
+CREATE INDEX "crews_specializations_gin_idx" ON "crews" USING gin (("metadata" -> 'specializations')) WHERE "crews"."deleted_at" IS NULL;

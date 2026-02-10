@@ -149,7 +149,6 @@ export const listSubmissions = studioProtectedProcedure
 				bookingName: bookings.name,
 				bookingReferenceNumber: bookings.referenceNumber,
 				submittedByName: crews.name,
-				submittedByRole: crews.role,
 				reviewedByName: users.name,
 			})
 			.from(assignmentSubmissions)
@@ -235,7 +234,6 @@ export const listSubmissions = studioProtectedProcedure
 				bookingName: submission.bookingName ?? "Unknown",
 				bookingReferenceNumber: submission.bookingReferenceNumber ?? "",
 				submittedByName: submission.submittedByName ?? "Unknown",
-				submittedByRole: submission.submittedByRole ?? "Unknown",
 				reviewedByName: submission.reviewedByName ?? null,
 			};
 		});

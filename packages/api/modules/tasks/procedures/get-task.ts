@@ -72,7 +72,6 @@ export const getTask = studioProtectedProcedure
 				crew: {
 					id: crews.id,
 					name: crews.name,
-					role: crews.role,
 					phoneNumber: crews.phoneNumber,
 				},
 			})

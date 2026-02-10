@@ -44,7 +44,7 @@ export function CrewCreateSheet() {
 			name: data.name,
 			email: data.email || undefined,
 			phoneNumber: data.phoneNumber || undefined,
-			role: data.role,
+			specializations: data.specializations,
 			status: data.status,
 			dailyRate: data.dailyRate || undefined,
 		});

@@ -27,7 +27,6 @@ export async function searchCrews(
 		.select({
 			id: crews.id,
 			name: crews.name,
-			role: crews.role,
 			email: crews.email,
 		})
 		.from(crews)

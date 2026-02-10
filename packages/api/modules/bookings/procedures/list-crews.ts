@@ -215,7 +215,6 @@ export const listBookingCrews = studioProtectedProcedure
 			columns: {
 				id: true,
 				name: true,
-				role: true,
 				phoneNumber: true,
 				email: true,
 			},
@@ -233,7 +232,6 @@ export const listBookingCrews = studioProtectedProcedure
 				return {
 					id: crew.id,
 					name: crew.name,
-					role: crew.role,
 					phoneNumber: crew.phoneNumber,
 					email: crew.email,
 					assignments: crewAssignmentsMap.get(crewId) || [],

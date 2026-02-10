@@ -162,6 +162,20 @@
       "when": 1770698802575,
       "tag": "0022_woozy_brother_voodoo",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1770702491264,
+      "tag": "0023_skinny_vapor",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1770703912323,
+      "tag": "0024_clever_james_howlett",
+      "breakpoints": true
     }
   ]
 }

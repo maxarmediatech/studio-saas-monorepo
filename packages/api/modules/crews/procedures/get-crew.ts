@@ -7,6 +7,7 @@ import {
 	deliverables,
 	eq,
 	isNull,
+	members,
 	shootAssignments,
 	shoots,
 	sql,
@@ -15,6 +16,10 @@ import {
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
+import {
+	deriveCrewRoles,
+	extractSpecializations,
+} from "../lib/crew-presentation";
 import {
 	getCrewInputSchema,
 	getCrewOutputSchema,
@@ -37,12 +42,40 @@ export const getCrew = studioProtectedProcedure
 		const { id } = input;
 
 		// Get crew with organization scope
-		const crew = await db.query.crews.findFirst({
-			where: and(
-				eq(crews.id, id),
-				eq(crews.organizationId, context.organizationId),
-			),
-		});
+		const [crew] = await db
+			.select({
+				id: crews.id,
+				organizationId: crews.organizationId,
+				userId: crews.userId,
+				name: crews.name,
+				email: crews.email,
+				phoneNumber: crews.phoneNumber,
+				status: crews.status,
+				dailyRate: crews.dailyRate,
+				metadata: crews.metadata,
+				createdBy: crews.createdBy,
+				updatedBy: crews.updatedBy,
+				createdAt: crews.createdAt,
+				updatedAt: crews.updatedAt,
+				deletedAt: crews.deletedAt,
+				deletedBy: crews.deletedBy,
+				memberRole: members.role,
+			})
+			.from(crews)
+			.leftJoin(
+				members,
+				and(
+					eq(members.organizationId, crews.organizationId),
+					eq(members.userId, crews.userId),
+				),
+			)
+			.where(
+				and(
+					eq(crews.id, id),
+					eq(crews.organizationId, context.organizationId),
+				),
+			)
+			.limit(1);
 
 		if (!crew) {
 			throw new ORPCError("NOT_FOUND", {
@@ -145,13 +178,33 @@ export const getCrew = studioProtectedProcedure
 				),
 			);
 
+		const metadata = crew.metadata as Record<string, unknown> | null;
+		const roleMeta = deriveCrewRoles({
+			memberRole: crew.memberRole,
+			userId: crew.userId,
+		});
+
 		return {
 			data: {
-				...crew,
-				metadata: crew.metadata as Record<string, unknown> | null,
+				id: crew.id,
+				organizationId: crew.organizationId,
+				userId: crew.userId,
+				name: crew.name,
+				email: crew.email,
+				phoneNumber: crew.phoneNumber,
+				memberRoles: roleMeta.memberRoles,
+				displayRoles: roleMeta.displayRoles,
+				isFreelancer: roleMeta.isFreelancer,
+				specializations: extractSpecializations(metadata),
+				status: crew.status,
+				dailyRate: crew.dailyRate,
+				metadata,
+				createdBy: crew.createdBy,
+				updatedBy: crew.updatedBy,
 				createdAt: crew.createdAt.toISOString(),
 				updatedAt: crew.updatedAt.toISOString(),
 				deletedAt: crew.deletedAt?.toISOString() ?? null,
+				deletedBy: crew.deletedBy,
 				activeShootAssignments: activeShootsResult?.count ?? 0,
 				activeTaskAssignments: activeTasksResult?.count ?? 0,
 				activeDeliverableAssignments:

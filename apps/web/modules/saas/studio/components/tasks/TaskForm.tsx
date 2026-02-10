@@ -78,7 +78,6 @@ interface BookingInfo {
 interface CrewOption {
 	value: string;
 	label: string;
-	role: string;
 }
 
 interface TaskFormProps {
@@ -87,7 +86,7 @@ interface TaskFormProps {
 	booking?: BookingInfo;
 	existingAssignments?: Array<{
 		crewId: string;
-		crew: { id: string; name: string; role: string };
+		crew: { id: string; name: string };
 	}>;
 	onSubmit: (data: TaskFormValues) => Promise<void>;
 	mode: "create" | "edit";
@@ -188,7 +187,6 @@ export function TaskForm({
 			crews.map((crew) => ({
 				value: crew.id,
 				label: crew.name,
-				role: crew.role ?? "",
 			})),
 		[crews],
 	);
@@ -429,11 +427,6 @@ export function TaskForm({
 														</AvatarFallback>
 													</Avatar>
 													<span>{option.label}</span>
-													{option.role && (
-														<span className="text-muted-foreground text-sm">
-															({option.role})
-														</span>
-													)}
 												</div>
 											)}
 											renderSelectedItem={(

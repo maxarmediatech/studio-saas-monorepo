@@ -86,7 +86,6 @@ export const getDeliverable = studioProtectedProcedure
 				assignedBy: deliverableAssignments.assignedBy,
 				createdAt: deliverableAssignments.createdAt,
 				crewName: crews.name,
-				crewRole: crews.role,
 				crewPhone: crews.phoneNumber,
 			})
 			.from(deliverableAssignments)
@@ -104,7 +103,6 @@ export const getDeliverable = studioProtectedProcedure
 				crew: {
 					id: row.crewId,
 					name: row.crewName,
-					role: row.crewRole,
 					phoneNumber: row.crewPhone,
 				},
 			}),

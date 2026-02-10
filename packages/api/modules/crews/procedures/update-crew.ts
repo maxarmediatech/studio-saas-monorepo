@@ -2,6 +2,7 @@ import { ORPCError } from "@orpc/server";
 import { and, crews, db, eq, isNull, ne } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { detectChanges, safeTrackFieldChanges } from "../../activities/lib";
+import { applySpecializationsToMetadata } from "../lib/crew-presentation";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	updateCrewInputSchema,
@@ -26,10 +27,10 @@ export const updateCrew = studioProtectedProcedure
 			name,
 			email,
 			phoneNumber,
-			role,
 			status,
 			dailyRate,
 			metadata,
+			specializations,
 		} = input;
 
 		// Verify crew exists and belongs to organization
@@ -79,17 +80,19 @@ export const updateCrew = studioProtectedProcedure
 		if (phoneNumber !== undefined) {
 			updates.phoneNumber = phoneNumber;
 		}
-		if (role !== undefined) {
-			updates.role = role;
-		}
 		if (status !== undefined) {
 			updates.status = status;
 		}
 		if (dailyRate !== undefined) {
 			updates.dailyRate = dailyRate;
 		}
-		if (metadata !== undefined) {
-			updates.metadata = metadata;
+		if (metadata !== undefined || specializations !== undefined) {
+			updates.metadata = applySpecializationsToMetadata(
+				(metadata ??
+					(existing.metadata as Record<string, unknown> | null)) ??
+					null,
+				specializations,
+			);
 		}
 
 		await db.update(crews).set(updates).where(eq(crews.id, id));
@@ -99,7 +102,6 @@ export const updateCrew = studioProtectedProcedure
 			"name",
 			"email",
 			"phoneNumber",
-			"role",
 			"status",
 			"dailyRate",
 		]);

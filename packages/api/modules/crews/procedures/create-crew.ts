@@ -2,6 +2,7 @@ import { ORPCError } from "@orpc/server";
 import { and, crews, db, eq, isNull } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { safeTrackActivity } from "../../activities/lib";
+import { applySpecializationsToMetadata } from "../lib/crew-presentation";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	createCrewInputSchema,
@@ -21,8 +22,15 @@ export const createCrew = studioProtectedProcedure
 	.handler(async ({ input, context }) => {
 		await requirePermission(context, "crew", "create");
 
-		const { name, email, phoneNumber, role, status, dailyRate, metadata } =
-			input;
+		const {
+			name,
+			email,
+			phoneNumber,
+			status,
+			dailyRate,
+			metadata,
+			specializations,
+		} = input;
 
 		// Check for duplicate phone within organization
 		if (phoneNumber) {
@@ -49,10 +57,12 @@ export const createCrew = studioProtectedProcedure
 				name,
 				email: email ?? null,
 				phoneNumber: phoneNumber ?? null,
-				role,
 				status: status ?? "active",
 				dailyRate: dailyRate ?? null,
-				metadata: metadata ?? null,
+				metadata: applySpecializationsToMetadata(
+					metadata ?? null,
+					specializations,
+				),
 				createdBy: context.user.id,
 			})
 			.returning({ id: crews.id });
@@ -69,7 +79,7 @@ export const createCrew = studioProtectedProcedure
 			entityId: created.id,
 			entityName: name,
 			action: "created",
-			metadata: { role },
+			metadata: { specializations: specializations ?? [] },
 		});
 
 		return {

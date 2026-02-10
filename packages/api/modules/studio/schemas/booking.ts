@@ -548,7 +548,6 @@ export type CrewAssignmentSource = z.infer<typeof crewAssignmentSourceSchema>;
 export const bookingCrewMemberSchema = z.object({
 	id: idSchema,
 	name: z.string(),
-	role: z.string(),
 	phoneNumber: z.string().nullable(),
 	email: z.string().nullable(),
 	assignments: z.array(crewAssignmentSourceSchema),

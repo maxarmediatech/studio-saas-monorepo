@@ -35,7 +35,10 @@ export const crewSchema = z.object({
 	name: z.string(),
 	email: z.string().nullable(),
 	phoneNumber: z.string().nullable(),
-	role: z.string(),
+	memberRoles: z.array(z.string()),
+	displayRoles: z.array(z.string()),
+	isFreelancer: z.boolean(),
+	specializations: z.array(z.string()),
 	status: z.string(),
 	dailyRate: z.string().nullable(),
 	metadata: z.record(z.string(), z.unknown()).nullable(),
@@ -55,7 +58,9 @@ export type Crew = z.infer<typeof crewSchema>;
 export const crewMinimalSchema = z.object({
 	id: idSchema,
 	name: z.string(),
-	role: z.string(),
+	displayRoles: z.array(z.string()),
+	isFreelancer: z.boolean(),
+	specializations: z.array(z.string()),
 	status: z.string(),
 });
 
@@ -65,18 +70,12 @@ export type CrewMinimal = z.infer<typeof crewMinimalSchema>;
 // LIST CREWS
 // ============================================================================
 
-const crewSortFields = [
-	"name",
-	"role",
-	"status",
-	"createdAt",
-	"updatedAt",
-] as const;
+const crewSortFields = ["name", "status", "createdAt", "updatedAt"] as const;
 
 export const listCrewsInputSchema = z
 	.object({
-		role: z.union([z.string(), z.array(z.string())]).nullish(),
 		status: z.union([z.string(), z.array(z.string())]).nullish(),
+		specializations: z.union([z.string(), z.array(z.string())]).nullish(),
 	})
 	.merge(paginationSchema)
 	.merge(searchSchema)
@@ -123,7 +122,7 @@ export const createCrewInputSchema = z.object({
 	name: nameSchema,
 	email: emailSchema.optional(),
 	phoneNumber: phoneSchema,
-	role: z.string().min(1).max(100),
+	specializations: z.array(z.string().min(1).max(100)).optional(),
 	status: z.string().min(1).max(50).optional(),
 	dailyRate: moneySchema.optional(),
 	metadata: z.record(z.string(), z.unknown()).optional(),
@@ -144,7 +143,7 @@ export const updateCrewInputSchema = z.object({
 	name: nameSchema.optional(),
 	email: emailSchema.optional().nullable(),
 	phoneNumber: phoneSchema.nullable(),
-	role: z.string().min(1).max(100).optional(),
+	specializations: z.array(z.string().min(1).max(100)).optional(),
 	status: z.string().min(1).max(50).optional(),
 	dailyRate: moneySchema.optional().nullable(),
 	metadata: z.record(z.string(), z.unknown()).optional().nullable(),
@@ -222,8 +221,8 @@ export type GetCrewAvailabilityOutput = z.infer<
 
 export const createCrewFromMemberInputSchema = z.object({
 	memberId: idSchema,
-	role: z.string().min(1).max(100),
 	dailyRate: moneySchema.optional(),
+	specializations: z.array(z.string().min(1).max(100)).optional(),
 });
 
 export type CreateCrewFromMemberInput = z.infer<

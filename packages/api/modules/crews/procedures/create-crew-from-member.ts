@@ -1,6 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { and, crews, db, eq, isNull, members, users } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { applySpecializationsToMetadata } from "../lib/crew-presentation";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	createCrewFromMemberInputSchema,
@@ -21,7 +22,7 @@ export const createCrewFromMember = studioProtectedProcedure
 	.handler(async ({ input, context }) => {
 		await requirePermission(context, "crew", "create");
 
-		const { memberId, role, dailyRate } = input;
+		const { memberId, dailyRate, specializations } = input;
 
 		// Verify member exists and belongs to organization
 		const member = await db.query.members.findFirst({
@@ -75,10 +76,12 @@ export const createCrewFromMember = studioProtectedProcedure
 				name: user.name,
 				email: user.email,
 				phoneNumber: null,
-				role,
 				status: "active",
 				dailyRate: dailyRate ?? null,
-				metadata: null,
+				metadata: applySpecializationsToMetadata(
+					{ autoCreatedFromMember: true },
+					specializations,
+				),
 				createdBy: context.user.id,
 			})
 			.returning({ id: crews.id });

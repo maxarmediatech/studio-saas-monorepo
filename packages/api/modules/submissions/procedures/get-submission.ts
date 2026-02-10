@@ -146,7 +146,7 @@ export const getSubmission = studioProtectedProcedure
 		// Get crew info
 		const crew = await db.query.crews.findFirst({
 			where: eq(crews.id, submission.submittedBy),
-			columns: { id: true, name: true, role: true, phoneNumber: true },
+			columns: { id: true, name: true, phoneNumber: true },
 		});
 
 		if (!crew) {
@@ -245,7 +245,6 @@ export const getSubmission = studioProtectedProcedure
 				submittedByCrew: {
 					id: crew.id,
 					name: crew.name,
-					role: crew.role,
 					phoneNumber: crew.phoneNumber,
 				},
 				reviewer,

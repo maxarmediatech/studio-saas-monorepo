@@ -1,15 +1,24 @@
 import {
+	asc,
 	and,
 	count,
 	crews,
 	db,
+	desc,
 	eq,
 	ilike,
 	inArray,
 	isNull,
+	members,
+	or,
+	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
+import {
+	deriveCrewRoles,
+	extractSpecializations,
+} from "../lib/crew-presentation";
 import { createPaginationResponse } from "../../studio/schemas/common";
 import {
 	listCrewsInputSchema,
@@ -31,8 +40,8 @@ export const listCrews = studioProtectedProcedure
 		await requirePermission(context, "crew", "list");
 
 		const {
-			role,
 			status,
+			specializations,
 			search,
 			sortBy,
 			sortDirection,
@@ -65,14 +74,20 @@ export const listCrews = studioProtectedProcedure
 			conditions.push(isNull(crews.deletedAt));
 		}
 
-		const roles = normalizeMultiValue(role);
-		if (roles) {
-			conditions.push(inArray(crews.role, roles));
-		}
-
 		const statuses = normalizeMultiValue(status);
 		if (statuses) {
 			conditions.push(inArray(crews.status, statuses));
+		}
+
+		const specializationFilters = normalizeMultiValue(specializations);
+		if (specializationFilters) {
+			const matchAnySpecialization = specializationFilters.map(
+				(tag) => sql`${crews.metadata}->'specializations' ? ${tag}`,
+			);
+			const specializationCondition = or(...matchAnySpecialization);
+			if (specializationCondition) {
+				conditions.push(specializationCondition);
+			}
 		}
 
 		if (search) {
@@ -91,32 +106,75 @@ export const listCrews = studioProtectedProcedure
 		const orderColumn =
 			sortBy === "name"
 				? crews.name
-				: sortBy === "role"
-					? crews.role
-					: sortBy === "status"
-						? crews.status
-						: sortBy === "updatedAt"
-							? crews.updatedAt
-							: crews.createdAt;
+				: sortBy === "status"
+					? crews.status
+					: sortBy === "updatedAt"
+						? crews.updatedAt
+						: crews.createdAt;
 
-		const data = await db.query.crews.findMany({
-			where: and(...conditions),
-			orderBy: (table, { asc, desc }) =>
-				sortDirection === "asc"
-					? [asc(orderColumn)]
-					: [desc(orderColumn)],
-			limit,
-			offset,
-		});
+		const data = await db
+			.select({
+				id: crews.id,
+				organizationId: crews.organizationId,
+				userId: crews.userId,
+				name: crews.name,
+				email: crews.email,
+				phoneNumber: crews.phoneNumber,
+				status: crews.status,
+				dailyRate: crews.dailyRate,
+				metadata: crews.metadata,
+				createdBy: crews.createdBy,
+				updatedBy: crews.updatedBy,
+				createdAt: crews.createdAt,
+				updatedAt: crews.updatedAt,
+				deletedAt: crews.deletedAt,
+				deletedBy: crews.deletedBy,
+				memberRole: members.role,
+			})
+			.from(crews)
+			.leftJoin(
+				members,
+				and(
+					eq(members.organizationId, crews.organizationId),
+					eq(members.userId, crews.userId),
+				),
+			)
+			.where(and(...conditions))
+			.orderBy(sortDirection === "asc" ? asc(orderColumn) : desc(orderColumn))
+			.limit(limit)
+			.offset(offset);
 
 		return {
-			data: data.map((crew) => ({
-				...crew,
-				metadata: crew.metadata as Record<string, unknown> | null,
-				createdAt: crew.createdAt.toISOString(),
-				updatedAt: crew.updatedAt.toISOString(),
-				deletedAt: crew.deletedAt?.toISOString() ?? null,
-			})),
+			data: data.map((crew) => {
+				const metadata = crew.metadata as
+					| Record<string, unknown>
+					| null;
+				const roleMeta = deriveCrewRoles({
+					memberRole: crew.memberRole,
+					userId: crew.userId,
+				});
+				return {
+					id: crew.id,
+					organizationId: crew.organizationId,
+					userId: crew.userId,
+					name: crew.name,
+					email: crew.email,
+					phoneNumber: crew.phoneNumber,
+					memberRoles: roleMeta.memberRoles,
+					displayRoles: roleMeta.displayRoles,
+					isFreelancer: roleMeta.isFreelancer,
+					specializations: extractSpecializations(metadata),
+					status: crew.status,
+					dailyRate: crew.dailyRate,
+					metadata,
+					createdBy: crew.createdBy,
+					updatedBy: crew.updatedBy,
+					createdAt: crew.createdAt.toISOString(),
+					updatedAt: crew.updatedAt.toISOString(),
+					deletedAt: crew.deletedAt?.toISOString() ?? null,
+					deletedBy: crew.deletedBy,
+				};
+			}),
 			pagination: createPaginationResponse(page, limit, total),
 		};
 	});

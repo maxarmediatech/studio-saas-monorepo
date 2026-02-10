@@ -39,7 +39,6 @@ export const taskAssignmentWithCrewSchema = taskAssignmentSchema.extend({
 	crew: z.object({
 		id: idSchema,
 		name: z.string(),
-		role: z.string(),
 		phoneNumber: z.string().nullable(),
 	}),
 });

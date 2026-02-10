@@ -56,7 +56,6 @@ function getInitials(name: string): string {
 interface CrewOption {
 	value: string;
 	label: string;
-	role: string;
 }
 
 export function BookingDeliverablesStep() {
@@ -194,7 +193,6 @@ interface DeliverableCardProps {
 	crews: Array<{
 		id: string;
 		name: string;
-		role: string;
 		phoneNumber?: string | null;
 	}>;
 	isPackageIncluded: boolean;
@@ -216,7 +214,6 @@ function DeliverableCard({
 			crews.map((crew) => ({
 				value: crew.id,
 				label: crew.name,
-				role: crew.role ?? "",
 			})),
 		[crews],
 	);
@@ -476,11 +473,6 @@ function DeliverableCard({
 														<span>
 															{option.label}
 														</span>
-														{option.role && (
-															<span className="text-muted-foreground text-sm">
-																({option.role})
-															</span>
-														)}
 													</div>
 												)}
 												renderSelectedItem={(
@@ -501,11 +493,6 @@ function DeliverableCard({
 														<span className="truncate">
 															{option.label}
 														</span>
-														{option.role && (
-															<span className="text-muted-foreground text-xs">
-																({option.role})
-															</span>
-														)}
 														<button
 															type="button"
 															onClick={(e) => {

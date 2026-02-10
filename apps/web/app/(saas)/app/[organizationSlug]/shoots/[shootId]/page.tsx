@@ -238,8 +238,7 @@ export default function ShootDetailPage() {
 											)}
 										</div>
 										<div className="text-sm text-muted-foreground">
-											{assignment.role ||
-												assignment.crew.role}
+											{assignment.role}
 										</div>
 									</div>
 								</div>

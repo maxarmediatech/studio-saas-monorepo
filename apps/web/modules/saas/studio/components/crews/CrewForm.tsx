@@ -15,6 +15,7 @@ import {
 	InputGroupInput,
 	InputGroupText,
 } from "@repo/ui/components/input-group";
+import { MultiSelectCombobox } from "@repo/ui/components/multi-select-combobox";
 import { ScrollArea } from "@repo/ui/components/scroll-area";
 import {
 	Select,
@@ -23,6 +24,8 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@repo/ui/components/select";
+import { configurationsApi } from "@saas/studio/lib/api";
+import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
@@ -37,23 +40,13 @@ const crewFormSchema = z.object({
 		.min(10, "Phone number must be at least 10 digits")
 		.optional()
 		.or(z.literal("")),
-	role: z.string().min(1, "Role is required").max(100),
+	specializations: z.array(z.string().min(1).max(100)).default([]),
 	status: z.string().min(1, "Status is required"),
 	dailyRate: z.string().optional().or(z.literal("")),
 });
 
-export type CrewFormValues = z.infer<typeof crewFormSchema>;
-
-const CREW_ROLES = [
-	{ value: "lead_photographer", label: "Lead Photographer" },
-	{ value: "photographer", label: "Photographer" },
-	{ value: "lead_videographer", label: "Lead Videographer" },
-	{ value: "videographer", label: "Videographer" },
-	{ value: "drone_operator", label: "Drone Operator" },
-	{ value: "assistant", label: "Assistant" },
-	{ value: "editor", label: "Editor" },
-	{ value: "member", label: "Member" },
-];
+type CrewFormInputValues = z.input<typeof crewFormSchema>;
+export type CrewFormValues = z.output<typeof crewFormSchema>;
 
 const CREW_STATUSES = [
 	{ value: "active", label: "Active" },
@@ -76,17 +69,26 @@ export function CrewForm({
 	isPending = false,
 	onScrollChange,
 }: CrewFormProps) {
-	const form = useForm<CrewFormValues>({
+	const form = useForm<CrewFormInputValues>({
 		resolver: zodResolver(crewFormSchema),
 		defaultValues: {
 			name: "",
 			email: "",
 			phoneNumber: "",
-			role: "",
+			specializations: [],
 			status: "active",
 			dailyRate: "",
 		},
 	});
+
+	const { data: specializationOptionsData } = useQuery(
+		configurationsApi.crewRolesOptions(),
+	);
+	const specializationOptions =
+		specializationOptionsData?.data?.map((item) => ({
+			value: item.key,
+			label: item.label,
+		})) ?? [];
 
 	useEffect(() => {
 		if (defaultValues) {
@@ -94,7 +96,7 @@ export function CrewForm({
 				name: defaultValues.name,
 				email: defaultValues.email ?? "",
 				phoneNumber: defaultValues.phoneNumber ?? "",
-				role: defaultValues.role,
+				specializations: defaultValues.specializations ?? [],
 				status: defaultValues.status,
 				dailyRate: defaultValues.dailyRate ?? "",
 			});
@@ -114,7 +116,9 @@ export function CrewForm({
 
 	return (
 		<form
-			onSubmit={form.handleSubmit(onSubmit)}
+			onSubmit={form.handleSubmit((values) =>
+				onSubmit(crewFormSchema.parse(values)),
+			)}
 			className="flex flex-col h-full min-h-0"
 		>
 			<ScrollArea
@@ -148,34 +152,23 @@ export function CrewForm({
 						/>
 
 						<Controller
-							name="role"
+							name="specializations"
 							control={form.control}
 							render={({ field, fieldState }) => (
 								<Field data-invalid={fieldState.invalid}>
 									<FieldLabel htmlFor={field.name}>
-										Role *
+										Specializations
 									</FieldLabel>
-									<Select
+									<MultiSelectCombobox
+										options={specializationOptions}
+										value={field.value ?? []}
 										onValueChange={field.onChange}
-										value={field.value}
-									>
-										<SelectTrigger
-											id={field.name}
-											aria-invalid={fieldState.invalid}
-										>
-											<SelectValue placeholder="Select role" />
-										</SelectTrigger>
-										<SelectContent>
-											{CREW_ROLES.map((role) => (
-												<SelectItem
-													key={role.value}
-													value={role.value}
-												>
-													{role.label}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
+										id={field.name}
+										aria-invalid={fieldState.invalid}
+										placeholder="Select specializations"
+										searchPlaceholder="Search specializations..."
+										emptyText="No specialization found."
+									/>
 									{fieldState.invalid && (
 										<FieldError
 											errors={[fieldState.error]}

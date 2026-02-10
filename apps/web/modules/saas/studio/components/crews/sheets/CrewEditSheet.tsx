@@ -55,7 +55,7 @@ export function CrewEditSheet() {
 			name: data.name,
 			email: data.email || null,
 			phoneNumber: data.phoneNumber || null,
-			role: data.role,
+			specializations: data.specializations,
 			status: data.status,
 			dailyRate: data.dailyRate || null,
 		});

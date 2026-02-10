@@ -26,12 +26,11 @@ import "@saas/shared/components/data-table/types";
 import { formatMoney } from "@saas/shared/lib";
 import { useCrewParams } from "@saas/studio/hooks/params/use-crew-params";
 import { useCrewsTable } from "@saas/studio/hooks/tables";
-import { crewsApi, crewsMutations } from "@saas/studio/lib/api";
+import { configurationsApi, crewsApi, crewsMutations } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-	BriefcaseIcon,
 	EyeIcon,
 	Loader2Icon,
 	PencilIcon,
@@ -64,16 +63,6 @@ const statusOptions = [
 	{ value: "unavailable", label: "Unavailable" },
 ];
 
-const roleOptions = [
-	{ value: "photographer", label: "Photographer" },
-	{ value: "videographer", label: "Videographer" },
-	{ value: "editor", label: "Editor" },
-	{ value: "assistant", label: "Assistant" },
-	{ value: "makeup_artist", label: "Makeup Artist" },
-	{ value: "coordinator", label: "Coordinator" },
-	{ value: "other", label: "Other" },
-];
-
 export function CrewsTableClient({ organizationSlug }: CrewsTableClientProps) {
 	const router = useRouter();
 	const queryClient = useQueryClient();
@@ -101,7 +90,7 @@ export function CrewsTableClient({ organizationSlug }: CrewsTableClientProps) {
 		limit: pagination.limit,
 		search: filters.search ?? undefined,
 		status: filters.status ?? undefined,
-		role: filters.role ?? undefined,
+		specializations: filters.specializations ?? undefined,
 		sortBy: sorting.sortBy ?? "name",
 		sortDirection: sorting.sortDirection,
 		includeDeleted: false,
@@ -110,6 +99,19 @@ export function CrewsTableClient({ organizationSlug }: CrewsTableClientProps) {
 	// Fetch crews with TanStack Query
 	const { data, isLoading, isFetching } = useQuery(
 		crewsApi.listOptions(queryInput),
+	);
+	const { data: specializationData } = useQuery(
+		configurationsApi.crewRolesOptions(),
+	);
+	const specializationLabelMap = useMemo(
+		() =>
+			new Map(
+				(specializationData?.data ?? []).map((item) => [
+					item.key,
+					item.label,
+				]),
+			),
+		[specializationData?.data],
 	);
 
 	const crews = data?.data ?? [];
@@ -203,25 +205,62 @@ export function CrewsTableClient({ organizationSlug }: CrewsTableClientProps) {
 				enableHiding: false,
 			},
 			{
-				id: "role",
-				accessorKey: "role",
+				id: "displayRoles",
+				accessorKey: "displayRoles",
 				header: ({ column }) => (
-					<DataTableColumnHeader column={column} title="Role" />
+					<DataTableColumnHeader column={column} title="Roles" />
 				),
 				cell: ({ row }) => (
-					<span className="capitalize">
-						{row.original.role.replace(/_/g, " ")}
-					</span>
+					<div className="flex flex-wrap gap-1">
+						{row.original.displayRoles.map((role) => (
+							<Badge
+								key={role}
+								variant="secondary"
+								className="capitalize"
+							>
+								{role.replace(/_/g, " ")}
+							</Badge>
+						))}
+					</div>
 				),
 				meta: {
-					label: "Role",
-					variant: "multiSelect" as const,
-					icon: BriefcaseIcon,
-					options: roleOptions,
-					width: 140,
-					minWidth: 140,
+					label: "Roles",
+					width: 180,
+					minWidth: 180,
 				},
-				enableSorting: true,
+				enableSorting: false,
+				enableHiding: true,
+			},
+			{
+				id: "specializations",
+				accessorKey: "specializations",
+				header: ({ column }) => (
+					<DataTableColumnHeader
+						column={column}
+						title="Specializations"
+					/>
+				),
+				cell: ({ row }) => {
+					const specializations = row.original.specializations;
+					if (!specializations.length) {
+						return <span className="text-muted-foreground">-</span>;
+					}
+					return (
+						<div className="flex flex-wrap gap-1">
+							{specializations.map((item) => (
+								<Badge key={item} variant="outline">
+									{specializationLabelMap.get(item) ?? item}
+								</Badge>
+							))}
+						</div>
+					);
+				},
+				meta: {
+					label: "Specializations",
+					width: 200,
+					minWidth: 200,
+				},
+				enableSorting: false,
 				enableHiding: true,
 			},
 			{
@@ -315,7 +354,7 @@ export function CrewsTableClient({ organizationSlug }: CrewsTableClientProps) {
 				},
 			},
 		],
-		[rowActions],
+		[rowActions, specializationLabelMap],
 	);
 
 	return (
