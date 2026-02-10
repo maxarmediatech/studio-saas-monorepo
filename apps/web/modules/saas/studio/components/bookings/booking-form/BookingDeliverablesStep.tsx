@@ -228,11 +228,7 @@ function DeliverableCard({
 
 	return (
 		<div
-			className={`overflow-hidden rounded-lg border ${
-				isPackageIncluded
-					? "border-primary/30 bg-primary/5"
-					: "bg-muted/10"
-			}`}
+			className="overflow-hidden rounded-lg border bg-muted/10"
 		>
 			<div className="flex items-center justify-between gap-2 border-b bg-muted/20 px-4 py-3">
 				<div className="flex items-center gap-2">
