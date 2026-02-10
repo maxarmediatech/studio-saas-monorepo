@@ -18,6 +18,14 @@ describe("deriveStudioPrefix", () => {
 		expect(deriveStudioPrefix("A & B Studios")).toBe("ABS");
 	});
 
+	it("strips wildcard and symbol characters from words", () => {
+		expect(deriveStudioPrefix("A%_ Studio")).toBe("AS");
+	});
+
+	it("single-word names keep only letters", () => {
+		expect(deriveStudioPrefix("%%S!n@ap#1")).toBe("SNA");
+	});
+
 	it("empty string → BKN fallback", () => {
 		expect(deriveStudioPrefix("")).toBe("BKN");
 	});
