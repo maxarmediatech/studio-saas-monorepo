@@ -296,9 +296,9 @@ export const defaultBookingValues: BookingFormValues =
  */
 export const BOOKING_TABS = [
 	"details",
-	"payments",
 	"shoots",
 	"deliverables",
+	"payments",
 	"review",
 ] as const;
 export type BookingTab = (typeof BOOKING_TABS)[number];
@@ -306,8 +306,8 @@ export type BookingTab = (typeof BOOKING_TABS)[number];
 export const BOOKING_STEP_SCHEMAS: Record<BookingTab, z.ZodTypeAny> = {
 	details: bookingDetailsStepSchema,
 	shoots: bookingShootsStepSchema,
-	payments: bookingPaymentsStepSchema,
 	deliverables: bookingDeliverablesStepSchema,
+	payments: bookingPaymentsStepSchema,
 	review: bookingFormSchema,
 };
 
@@ -328,8 +328,8 @@ export const TAB_FIELD_MAPPING: Record<
 		"participants",
 	],
 	shoots: ["shoots"],
-	payments: ["payments", "paymentSchedules"],
 	deliverables: ["deliverables"],
+	payments: ["payments", "paymentSchedules"],
 	review: [], // No form fields - just displays summary
 };
 
@@ -339,8 +339,8 @@ export const TAB_FIELD_MAPPING: Record<
 export const TAB_LABELS: Record<BookingTab, string> = {
 	details: "Details",
 	shoots: "Shoots",
-	payments: "Payments",
 	deliverables: "Deliverables",
+	payments: "Payments",
 	review: "Review",
 };
 
@@ -406,13 +406,6 @@ export const STEP_CONFIG: StepConfig[] = [
 		optional: false,
 	},
 	{
-		id: "payments",
-		label: "Payments",
-		description: "Record and plan payments",
-		icon: WalletIcon,
-		optional: true,
-	},
-	{
 		id: "shoots",
 		label: "Shoots",
 		description: "Schedule photo/video sessions",
@@ -424,6 +417,13 @@ export const STEP_CONFIG: StepConfig[] = [
 		label: "Deliverables",
 		description: "Define final outputs",
 		icon: PackageIcon,
+		optional: true,
+	},
+	{
+		id: "payments",
+		label: "Payments",
+		description: "Record and plan payments",
+		icon: WalletIcon,
 		optional: true,
 	},
 	{

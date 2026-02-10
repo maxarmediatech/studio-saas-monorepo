@@ -160,7 +160,9 @@ function BookingDetailsSection({
 							<FieldLabel className="text-xs">
 								Booking Name
 							</FieldLabel>
-							<p className="text-sm font-medium mt-1">{name || "—"}</p>
+							<p className="text-sm font-medium mt-1">
+								{name || "—"}
+							</p>
 						</div>
 						<div>
 							<FieldLabel className="text-xs">Type</FieldLabel>
@@ -179,7 +181,9 @@ function BookingDetailsSection({
 							</p>
 						</div>
 						<div>
-							<FieldLabel className="text-xs">Package Cost</FieldLabel>
+							<FieldLabel className="text-xs">
+								Package Cost
+							</FieldLabel>
 							<p className="text-sm font-medium mt-1">
 								{formatCurrency(packageCost)}
 							</p>
@@ -189,7 +193,9 @@ function BookingDetailsSection({
 					{/* Notes (optional) */}
 					{note && (
 						<div className="mt-4 pl-14 pr-20">
-							<FieldLabel className="text-xs mb-1">Notes</FieldLabel>
+							<FieldLabel className="text-xs mb-1">
+								Notes
+							</FieldLabel>
 							<p className="text-sm text-muted-foreground">
 								{note}
 							</p>
@@ -198,7 +204,9 @@ function BookingDetailsSection({
 
 					{/* Clients section */}
 					<div className="mt-4 pl-14 pr-20">
-						<FieldLabel className="text-xs mb-2">Clients</FieldLabel>
+						<FieldLabel className="text-xs mb-2">
+							Clients
+						</FieldLabel>
 						{!participants || participants.length === 0 ? (
 							<p className="text-sm text-muted-foreground">
 								No clients added
@@ -599,7 +607,8 @@ function PaymentsSection({
 						{(paymentSchedules ?? []).length > 0 && (
 							<div className="space-y-2">
 								<FieldLabel className="text-xs">
-									Scheduled Milestones ({paymentSchedules?.length})
+									Scheduled Milestones (
+									{paymentSchedules?.length})
 								</FieldLabel>
 								{paymentSchedules?.map((s, i) => (
 									<div
@@ -737,19 +746,19 @@ export function BookingReviewStep({
 						note={formValues.note}
 						participants={formValues.participants}
 					/>
-					<PaymentsSection
-						onEdit={() => onNavigateToStep("payments")}
-						packageCost={formValues.packageCost}
-						payments={formValues.payments}
-						paymentSchedules={formValues.paymentSchedules}
-						deliverables={formValues.deliverables}
-					/>
 					<ShootsSection
 						onEdit={() => onNavigateToStep("shoots")}
 						shoots={formValues.shoots}
 					/>
 					<DeliverablesSection
 						onEdit={() => onNavigateToStep("deliverables")}
+						deliverables={formValues.deliverables}
+					/>
+					<PaymentsSection
+						onEdit={() => onNavigateToStep("payments")}
+						packageCost={formValues.packageCost}
+						payments={formValues.payments}
+						paymentSchedules={formValues.paymentSchedules}
 						deliverables={formValues.deliverables}
 					/>
 				</Accordion>

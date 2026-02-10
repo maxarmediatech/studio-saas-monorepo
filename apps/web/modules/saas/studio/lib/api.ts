@@ -363,7 +363,11 @@ export const configurationsApi = {
 
 	eventTypesOptions: () =>
 		orpc.configurations.list.queryOptions({
-			input: { type: "event_type" },
+			input: {
+				type: "event_type",
+				sortBy: "sortOrder",
+				sortDirection: "asc",
+			},
 		}),
 };
 
