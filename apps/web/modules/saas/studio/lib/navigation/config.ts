@@ -324,9 +324,9 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							},
 						},
 						{
-							id: "crew-roles",
-							label: "Crew Roles",
-							path: url("/configurations/crew-roles"),
+							id: "specialisations",
+							label: "Specialisations",
+							path: url("/configurations/specialisations"),
 							icon: "UserCog",
 							permission: {
 								any: [

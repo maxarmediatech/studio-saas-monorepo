@@ -39,6 +39,7 @@ const DEFAULT_SEED_CONFIGURATION_TYPES = [
 	"booking_type",
 	"event_type",
 	"relation_type",
+	"crew_role",
 	"deliverable_status",
 	"deliverable_priority",
 ] as const;

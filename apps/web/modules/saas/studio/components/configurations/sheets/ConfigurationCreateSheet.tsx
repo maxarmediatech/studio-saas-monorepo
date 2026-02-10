@@ -72,7 +72,7 @@ const CONFIG_TYPE_LABELS: Record<string, string> = {
 	relation_type: "Relation Type",
 	event_type: "Event Type",
 	shoot_status: "Shoot Status",
-	crew_role: "Crew Role",
+	crew_role: "Specialisation",
 	task_status: "Task Status",
 	task_priority: "Task Priority",
 	deliverable_status: "Deliverable Status",

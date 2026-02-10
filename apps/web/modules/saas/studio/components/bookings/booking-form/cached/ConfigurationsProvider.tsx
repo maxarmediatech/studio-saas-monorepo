@@ -45,7 +45,7 @@ export default async function ConfigurationsProvider({
 		queryClient.prefetchQuery(configurationsApi.packageTypesOptions()),
 		queryClient.prefetchQuery(configurationsApi.relationTypesOptions()),
 		queryClient.prefetchQuery(configurationsApi.shootStatusOptions()),
-		queryClient.prefetchQuery(configurationsApi.crewRolesOptions()),
+		queryClient.prefetchQuery(configurationsApi.specialisationsOptions()),
 	]);
 
 	return (

@@ -8,10 +8,10 @@ type Props = {
 	children: ReactNode;
 };
 
-export default function CrewRolesLayout({ children }: Props) {
+export default function SpecialisationsLayout({ children }: Props) {
 	return (
 		<PageContent
-			title="Crew Roles"
+			title="Specialisations"
 			controls={
 				<OpenConfigurationCreateSheet
 					configurationType="crew_role"

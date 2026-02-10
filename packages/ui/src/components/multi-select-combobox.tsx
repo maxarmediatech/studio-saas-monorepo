@@ -42,10 +42,7 @@ export interface MultiSelectComboboxProps<T extends MultiSelectOption> {
 	/** Custom render function for dropdown items */
 	renderOption?: (option: T, isSelected: boolean) => React.ReactNode;
 	/** Custom render function for selected chips (return null to use default) */
-	renderSelectedItem?: (
-		option: T,
-		onRemove: () => void,
-	) => React.ReactNode;
+	renderSelectedItem?: (option: T, onRemove: () => void) => React.ReactNode;
 	/** Additional class name for trigger button */
 	className?: string;
 	/** ID for form association */
@@ -90,10 +87,7 @@ function MultiSelectCombobox<T extends MultiSelectOption>({
 	};
 
 	const defaultRenderSelectedItem = (option: T, onRemove: () => void) => (
-		<Badge
-			variant="secondary"
-			className="flex items-center gap-1 pr-1"
-		>
+		<Badge variant="secondary" className="flex items-center gap-1 pr-1">
 			<span className="truncate">{option.label}</span>
 			<button
 				type="button"
@@ -124,7 +118,9 @@ function MultiSelectCombobox<T extends MultiSelectOption>({
 						// Open on Enter/Space like a button
 						if (e.key === "Enter" || e.key === " ") {
 							e.preventDefault();
-							if (!disabled) setOpen(true);
+							if (!disabled) {
+								setOpen(true);
+							}
 						}
 					}}
 					className={cn(
@@ -180,18 +176,25 @@ function MultiSelectCombobox<T extends MultiSelectOption>({
 										key={option.value}
 										value={option.value}
 										disabled={option.disabled}
-										onSelect={() => handleSelect(option.value)}
+										onSelect={() =>
+											handleSelect(option.value)
+										}
 										keywords={[option.label]}
 									>
 										<div
-											className={cn(
-												"mr-2 flex size-4 items-center justify-center rounded-sm border border-primary",
+											data-state={
 												isSelected
-													? "bg-primary text-primary-foreground"
-													: "opacity-50 [&_svg]:invisible",
+													? "checked"
+													: "unchecked"
+											}
+											className={cn(
+												"mr-2 grid size-4 shrink-0 place-content-center rounded-[4px] border border-input text-transparent shadow-xs transition-shadow dark:bg-input/30",
+												"data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground dark:data-[state=checked]:bg-primary",
 											)}
 										>
-											<CheckIcon className="size-3" />
+											{isSelected ? (
+												<CheckIcon className="size-3.5 text-current" />
+											) : null}
 										</div>
 										{renderOption ? (
 											renderOption(option, isSelected)

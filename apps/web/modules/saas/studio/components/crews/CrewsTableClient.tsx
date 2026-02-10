@@ -26,7 +26,11 @@ import "@saas/shared/components/data-table/types";
 import { formatMoney } from "@saas/shared/lib";
 import { useCrewParams } from "@saas/studio/hooks/params/use-crew-params";
 import { useCrewsTable } from "@saas/studio/hooks/tables";
-import { configurationsApi, crewsApi, crewsMutations } from "@saas/studio/lib/api";
+import {
+	configurationsApi,
+	crewsApi,
+	crewsMutations,
+} from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -101,7 +105,7 @@ export function CrewsTableClient({ organizationSlug }: CrewsTableClientProps) {
 		crewsApi.listOptions(queryInput),
 	);
 	const { data: specializationData } = useQuery(
-		configurationsApi.crewRolesOptions(),
+		configurationsApi.specialisationsOptions(),
 	);
 	const specializationLabelMap = useMemo(
 		() =>
@@ -237,7 +241,7 @@ export function CrewsTableClient({ organizationSlug }: CrewsTableClientProps) {
 				header: ({ column }) => (
 					<DataTableColumnHeader
 						column={column}
-						title="Specializations"
+						title="Specialisations"
 					/>
 				),
 				cell: ({ row }) => {
@@ -256,7 +260,7 @@ export function CrewsTableClient({ organizationSlug }: CrewsTableClientProps) {
 					);
 				},
 				meta: {
-					label: "Specializations",
+					label: "Specialisations",
 					width: 200,
 					minWidth: 200,
 				},

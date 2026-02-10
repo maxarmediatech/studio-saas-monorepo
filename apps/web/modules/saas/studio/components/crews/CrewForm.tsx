@@ -82,7 +82,7 @@ export function CrewForm({
 	});
 
 	const { data: specializationOptionsData } = useQuery(
-		configurationsApi.crewRolesOptions(),
+		configurationsApi.specialisationsOptions(),
 	);
 	const specializationOptions =
 		specializationOptionsData?.data?.map((item) => ({
@@ -157,7 +157,7 @@ export function CrewForm({
 							render={({ field, fieldState }) => (
 								<Field data-invalid={fieldState.invalid}>
 									<FieldLabel htmlFor={field.name}>
-										Specializations
+										Specialisations
 									</FieldLabel>
 									<MultiSelectCombobox
 										options={specializationOptions}
@@ -165,9 +165,9 @@ export function CrewForm({
 										onValueChange={field.onChange}
 										id={field.name}
 										aria-invalid={fieldState.invalid}
-										placeholder="Select specializations"
-										searchPlaceholder="Search specializations..."
-										emptyText="No specialization found."
+										placeholder="Select specialisations"
+										searchPlaceholder="Search specialisations..."
+										emptyText="No specialisation found."
 									/>
 									{fieldState.invalid && (
 										<FieldError

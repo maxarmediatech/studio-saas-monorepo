@@ -281,10 +281,10 @@ export const defaultConfigurations: Record<
 		{ key: "photographer", label: "Photographer" },
 		{ key: "lead_videographer", label: "Lead Videographer" },
 		{ key: "videographer", label: "Videographer" },
+		{ key: "cinematographer", label: "Cinematographer" },
 		{ key: "drone_operator", label: "Drone Operator" },
 		{ key: "assistant", label: "Assistant" },
 		{ key: "editor", label: "Editor" },
-		{ key: "member", label: "Member" },
 	],
 	shoot_status: [
 		{

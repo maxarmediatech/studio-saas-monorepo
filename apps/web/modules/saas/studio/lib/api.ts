@@ -356,9 +356,22 @@ export const configurationsApi = {
 			input: { type: "shoot_status" },
 		}),
 
+	specialisationsOptions: () =>
+		orpc.configurations.list.queryOptions({
+			input: {
+				type: "crew_role",
+				sortBy: "sortOrder",
+				sortDirection: "asc",
+			},
+		}),
+
 	crewRolesOptions: () =>
 		orpc.configurations.list.queryOptions({
-			input: { type: "crew_role" },
+			input: {
+				type: "crew_role",
+				sortBy: "sortOrder",
+				sortDirection: "asc",
+			},
 		}),
 
 	eventTypesOptions: () =>

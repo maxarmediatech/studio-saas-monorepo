@@ -63,7 +63,7 @@ export function AddToCrewDialog({
 		},
 	});
 	const { data: specializationOptionsData } = useQuery(
-		configurationsApi.crewRolesOptions(),
+		configurationsApi.specialisationsOptions(),
 	);
 	const specializationOptions =
 		specializationOptionsData?.data?.map((item) => ({
@@ -113,15 +113,15 @@ export function AddToCrewDialog({
 							name="specializations"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel>Specializations</FormLabel>
+									<FormLabel>Specialisations</FormLabel>
 									<FormControl>
 										<MultiSelectCombobox
 											options={specializationOptions}
 											value={field.value ?? []}
 											onValueChange={field.onChange}
-											placeholder="Select specializations"
-											searchPlaceholder="Search specializations..."
-											emptyText="No specialization found."
+											placeholder="Select specialisations"
+											searchPlaceholder="Search specialisations..."
+											emptyText="No specialisation found."
 										/>
 									</FormControl>
 									<FormMessage />

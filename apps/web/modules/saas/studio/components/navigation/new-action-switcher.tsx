@@ -203,7 +203,7 @@ export function NewActionSwitcher({
 										openConfigurationCreate("crew_role")
 									}
 								>
-									New Crew Role
+									New Specialisation
 								</DropdownMenuItem>
 							</>
 						)}

@@ -27,7 +27,7 @@ export function CrewsFilters() {
 		columnVisibility,
 	} = useCrewsTableWithViews();
 	const { data: specializationData } = useQuery(
-		configurationsApi.crewRolesOptions(),
+		configurationsApi.specialisationsOptions(),
 	);
 	const specializationOptions =
 		specializationData?.data?.map((item) => ({
@@ -46,7 +46,7 @@ export function CrewsFilters() {
 			},
 			{
 				id: "specializations",
-				label: "Specializations",
+				label: "Specialisations",
 				variant: "multiSelect",
 				icon: BriefcaseIcon,
 				options: specializationOptions,

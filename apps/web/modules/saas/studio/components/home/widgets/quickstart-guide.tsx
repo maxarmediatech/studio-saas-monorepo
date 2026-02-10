@@ -62,6 +62,7 @@ const DEFAULT_SEED_CONFIGURATION_TYPES = [
 	"booking_type",
 	"event_type",
 	"relation_type",
+	"crew_role",
 	"deliverable_status",
 	"deliverable_priority",
 ] as const;
@@ -109,6 +110,13 @@ export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 		}),
 		enabled: shouldShowWidget,
 	});
+	const crewSpecialisationsQuery = useQuery({
+		...configurationsApi.listOptions({
+			type: "crew_role",
+			limit: 1,
+		}),
+		enabled: shouldShowWidget,
+	});
 	const deliverableStatusQuery = useQuery({
 		...configurationsApi.listOptions({
 			type: "deliverable_status",
@@ -132,6 +140,8 @@ export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 	const hasPackageTypes = (packageTypesQuery.data?.data?.length ?? 0) > 0;
 	const hasEventTypes = (eventTypesQuery.data?.data?.length ?? 0) > 0;
 	const hasRelationTypes = (relationTypesQuery.data?.data?.length ?? 0) > 0;
+	const hasCrewSpecialisations =
+		(crewSpecialisationsQuery.data?.data?.length ?? 0) > 0;
 	const hasDeliverableStatuses =
 		(deliverableStatusQuery.data?.data?.length ?? 0) > 0;
 	const hasDeliverablePriorities =
@@ -140,6 +150,7 @@ export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 		hasBookingTypes &&
 		hasEventTypes &&
 		hasRelationTypes &&
+		hasCrewSpecialisations &&
 		hasDeliverableStatuses &&
 		hasDeliverablePriorities;
 	const hasCreatedBooking =
@@ -153,6 +164,7 @@ export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 		bookingTypesQuery.isPending ||
 		eventTypesQuery.isPending ||
 		relationTypesQuery.isPending ||
+		crewSpecialisationsQuery.isPending ||
 		deliverableStatusQuery.isPending ||
 		deliverablePriorityQuery.isPending;
 	const isCheckingPackageTypes = packageTypesQuery.isPending;
@@ -169,6 +181,7 @@ export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 				bookingTypesQuery.refetch(),
 				eventTypesQuery.refetch(),
 				relationTypesQuery.refetch(),
+				crewSpecialisationsQuery.refetch(),
 				deliverableStatusQuery.refetch(),
 				deliverablePriorityQuery.refetch(),
 			]);
@@ -195,7 +208,7 @@ export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 			id: "configure-workspace",
 			title: "Configure your workspace",
 			description:
-				"Seed core defaults for booking, shoot, relation, and deliverables setup.",
+				"Seed core defaults for booking, shoot, relation, specialisations, and deliverables setup.",
 			icon: <SettingsIcon className="size-4" />,
 			completed: hasSeededWorkspaceDefaults,
 			isLoading:
