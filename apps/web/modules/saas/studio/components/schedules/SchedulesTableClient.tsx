@@ -131,6 +131,7 @@ export function SchedulesTableClient({
 		activeViewId,
 		applyView,
 		columnVisibility,
+		onColumnVisibilityChange,
 		onSortingChange,
 		onPaginationChange,
 		onLimitChange,
@@ -507,6 +508,8 @@ export function SchedulesTableClient({
 						onLimitChange={onLimitChange}
 						sorting={sortingState}
 						onSortingChange={onSortingChange}
+						columnVisibility={columnVisibility}
+						onColumnVisibilityChange={onColumnVisibilityChange}
 						enableRowSelection
 						getRowId={(row) => row.id}
 						// Sticky columns configuration

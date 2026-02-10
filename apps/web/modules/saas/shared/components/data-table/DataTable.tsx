@@ -18,6 +18,7 @@ import {
 	type RowSelectionState,
 	type SortingState,
 	useReactTable,
+	type VisibilityState,
 } from "@tanstack/react-table";
 import * as React from "react";
 import { useState } from "react";
@@ -71,6 +72,10 @@ export interface DataTableProps<TData, TValue> {
 	scrollControlsColumnId?: string;
 	/** Column index to start scrolling from (columns before this are sticky) */
 	scrollStartColumn?: number;
+	/** Controlled column visibility state */
+	columnVisibility?: VisibilityState;
+	/** Handler for column visibility changes (controlled mode) */
+	onColumnVisibilityChange?: OnChangeFn<VisibilityState>;
 }
 
 interface ColumnMeta {
@@ -103,18 +108,28 @@ export function DataTable<TData, TValue>({
 	minWidth,
 	scrollControlsColumnId,
 	scrollStartColumn,
+	columnVisibility: externalColumnVisibility,
+	onColumnVisibilityChange,
 }: DataTableProps<TData, TValue>) {
 	// Internal sorting state (used when no external sorting provided)
 	const [internalSorting, setInternalSorting] = useState<SortingState>([]);
 	// Internal row selection state (used when no external selection provided)
 	const [internalRowSelection, setInternalRowSelection] =
 		useState<RowSelectionState>({});
+	// Internal column visibility state (used when no external visibility provided)
+	const [internalColumnVisibility, setInternalColumnVisibility] =
+		useState<VisibilityState>({});
 
 	const sorting = externalSorting ?? internalSorting;
 	const setSorting = onSortingChange ?? setInternalSorting;
 
 	const rowSelection = externalRowSelection ?? internalRowSelection;
 	const setRowSelection = onRowSelectionChange ?? setInternalRowSelection;
+
+	const columnVisibility =
+		externalColumnVisibility ?? internalColumnVisibility;
+	const setColumnVisibility =
+		onColumnVisibilityChange ?? setInternalColumnVisibility;
 
 	const table = useReactTable({
 		data,
@@ -123,10 +138,12 @@ export function DataTable<TData, TValue>({
 		getSortedRowModel: getSortedRowModel(),
 		onSortingChange: setSorting,
 		onRowSelectionChange: setRowSelection,
+		onColumnVisibilityChange: setColumnVisibility,
 		getRowId,
 		state: {
 			sorting,
 			rowSelection,
+			columnVisibility,
 		},
 		// Only enable manual sorting when external sorting is provided (server-side sorting).
 		// Otherwise, allow TanStack Table to sort client-side using getSortedRowModel.

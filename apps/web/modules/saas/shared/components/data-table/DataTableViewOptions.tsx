@@ -35,7 +35,8 @@ export function DataTableViewOptions<TData>({
 						typeof column.accessorFn !== "undefined" &&
 						column.getCanHide(),
 				),
-		[table],
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+		[table, table.getState().columnVisibility],
 	);
 
 	if (columns.length === 0) {
