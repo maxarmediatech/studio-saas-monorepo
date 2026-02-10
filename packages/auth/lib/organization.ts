@@ -75,6 +75,7 @@ export async function ensureCrewForMember({
 				metadata: { autoCreated: true },
 				createdBy: user.id,
 			})
+			.onConflictDoNothing()
 			.returning({ id: crews.id });
 
 		if (created) {
@@ -83,6 +84,13 @@ export async function ensureCrewForMember({
 				userId,
 				organizationId,
 				crewId: created.id,
+				source,
+			});
+		} else {
+			logger.info("crew.auto_create.exists", {
+				memberId,
+				userId,
+				organizationId,
 				source,
 			});
 		}

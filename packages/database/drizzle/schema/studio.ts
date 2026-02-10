@@ -337,6 +337,9 @@ export const crews = pgTable(
 	(table) => [
 		index("crews_organization_idx").on(table.organizationId),
 		index("crews_user_idx").on(table.userId),
+		uniqueIndex("crews_org_user_active_unique")
+			.on(table.organizationId, table.userId)
+			.where(sql`user_id IS NOT NULL AND deleted_at IS NULL`),
 		uniqueIndex("crews_org_phone_idx")
 			.on(table.organizationId, table.phoneNumber)
 			.where(sql`phone_number IS NOT NULL AND deleted_at IS NULL`),

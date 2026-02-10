@@ -6,6 +6,7 @@ import {
 	getPurchasesByOrganizationId,
 	getPurchasesByUserId,
 	getUserByEmail,
+	type members,
 } from "@repo/database";
 import type { Locale } from "@repo/i18n";
 import { logger } from "@repo/logs";
@@ -119,11 +120,7 @@ export const auth = betterAuth({
 		},
 		member: {
 			create: {
-				after: async (member: {
-					id: string;
-					organizationId: string;
-					userId: string;
-				}) => {
+				after: async (member: typeof members.$inferSelect) => {
 					await ensureCrewForMember({
 						organizationId: member.organizationId,
 						userId: member.userId,
@@ -191,7 +188,13 @@ export const auth = betterAuth({
 							member.organizationId === activeOrganizationId,
 					)
 				: memberships[0];
-			if (activeMembership?.organizationId) {
+			const shouldRunSessionAutoHeal =
+				ctx.path.startsWith("/sign-in") ||
+				ctx.path.startsWith("/sign-up") ||
+				ctx.path.startsWith("/organization/create") ||
+				ctx.path.startsWith("/organization/accept-invitation") ||
+				ctx.path.startsWith("/organization/set-active");
+			if (shouldRunSessionAutoHeal && activeMembership?.organizationId) {
 				await ensureCrewForMember({
 					organizationId: activeMembership.organizationId,
 					userId,
