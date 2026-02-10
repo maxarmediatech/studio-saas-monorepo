@@ -1,5 +1,6 @@
 "use client";
 
+import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Card, CardContent } from "@repo/ui/components/card";
 import { DatePicker } from "@repo/ui/components/date-picker";
@@ -68,6 +69,7 @@ export function BookingPaymentsStep() {
 		useWatch({ control: form.control, name: "payments" }) ?? [];
 	const paymentSchedules =
 		useWatch({ control: form.control, name: "paymentSchedules" }) ?? [];
+	const shoots = form.watch("shoots") ?? [];
 	const deliverables =
 		useWatch({ control: form.control, name: "deliverables" }) ?? [];
 
@@ -101,11 +103,48 @@ export function BookingPaymentsStep() {
 
 	const packageCostOnly = Number.parseFloat(packageCost) || 0;
 	const availableToSchedule = Math.max(packageCostOnly - totalReceived, 0);
+	const amountLeftToSchedule = Math.max(
+		availableToSchedule - totalScheduled,
+		0,
+	);
 	const scheduledOverBy = Math.max(totalScheduled - availableToSchedule, 0);
 	const hasScheduledOverage = scheduledOverBy > 0.0001;
 	const paymentSchedulesError = form.formState.errors.paymentSchedules as
 		| { message?: string }
 		| undefined;
+
+	const shootScheduleItems = shoots
+		.filter((shoot) => shoot.shootType && shoot.shootDate)
+		.map((shoot) => {
+			const shootName = shoot.shootType
+				.replace(/_/g, " ")
+				.replace(/\b\w/g, (char) => char.toUpperCase());
+			const isoDateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(
+				shoot.shootDate,
+			);
+			const shootDate = isoDateMatch
+				? new Date(
+						Number(isoDateMatch[1]),
+						Number(isoDateMatch[2]) - 1,
+						Number(isoDateMatch[3]),
+					)
+				: new Date(shoot.shootDate);
+			const hasValidDate = !Number.isNaN(shootDate.getTime());
+			return {
+				name: shootName,
+				date: hasValidDate
+					? shootDate.toLocaleDateString("en-IN", {
+							day: "numeric",
+							month: "short",
+							year: "numeric",
+						})
+					: shoot.shootDate,
+				timestamp: hasValidDate
+					? shootDate.getTime()
+					: Number.MAX_SAFE_INTEGER,
+			};
+		})
+		.sort((a, b) => a.timestamp - b.timestamp);
 
 	const {
 		fields: paymentFields,
@@ -265,10 +304,49 @@ export function BookingPaymentsStep() {
 									<FieldDescription>
 										Upcoming payment milestones
 									</FieldDescription>
-									<p className="mt-1 text-xs text-muted-foreground">
-										Available to schedule:{" "}
-										{formatCurrency(availableToSchedule)}
-									</p>
+									<div className="mt-3 rounded-lg border bg-muted/25 p-3">
+										<div className="flex items-center justify-between gap-2">
+											<p className="text-xs text-muted-foreground">
+												Amount left to schedule
+											</p>
+											<p
+												className={
+													hasScheduledOverage
+														? "text-sm font-semibold text-destructive"
+														: "text-sm font-semibold"
+												}
+											>
+												{formatCurrency(
+													amountLeftToSchedule,
+												)}
+											</p>
+										</div>
+										<div className="mt-3">
+											<p className="text-xs text-muted-foreground">
+												Shoot timeline
+											</p>
+											{shootScheduleItems.length > 0 ? (
+												<div className="mt-2 flex flex-wrap gap-2">
+													{shootScheduleItems.map(
+														(item, index) => (
+															<Badge
+																key={`${item.name}-${item.date}-${index}`}
+																variant="outline"
+																className="border-border/70 bg-background text-xs font-normal"
+															>
+																{item.name} •{" "}
+																{item.date}
+															</Badge>
+														),
+													)}
+												</div>
+											) : (
+												<p className="mt-1 text-xs text-muted-foreground">
+													No shoot dates added yet.
+												</p>
+											)}
+										</div>
+									</div>
 									{hasScheduledOverage && (
 										<p className="mt-1 text-xs text-destructive">
 											Over scheduled by{" "}
