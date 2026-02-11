@@ -59,6 +59,8 @@ export const receivedAmountListItemSchema = receivedAmountSchema.extend({
 	bookingName: z.string(),
 	bookingReferenceNumber: z.string(),
 	scheduleName: z.string().nullable(),
+	receiptId: idSchema.nullable(),
+	receiptNumber: z.string().nullable(),
 });
 
 export type ReceivedAmountListItem = z.infer<
@@ -115,6 +117,10 @@ export type PaymentScheduleMinimal = z.infer<
 export const paymentScheduleListItemSchema = paymentScheduleSchema.extend({
 	bookingName: z.string(),
 	bookingReferenceNumber: z.string(),
+	invoiceId: idSchema.nullable(),
+	invoiceNumber: z.string().nullable(),
+	receiptId: idSchema.nullable(),
+	receiptNumber: z.string().nullable(),
 });
 
 export type PaymentScheduleListItem = z.infer<

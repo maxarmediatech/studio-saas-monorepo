@@ -76,6 +76,7 @@ export const listReceiptsInputSchema = z
 		bookingId: idSchema.optional(),
 		clientId: idSchema.optional(),
 		invoiceId: idSchema.optional(),
+		paymentScheduleId: idSchema.optional(),
 		dateFrom: dateSchema.optional(),
 		dateTo: dateSchema.optional(),
 		amountMin: moneySchema.optional(),
@@ -155,6 +156,24 @@ export const createReceiptFromPaymentOutputSchema = mutationResponseSchema;
 
 export type CreateReceiptFromPaymentOutput = z.infer<
 	typeof createReceiptFromPaymentOutputSchema
+>;
+
+// ============================================================================
+// GENERATE RECEIPT FROM RECEIVED PAYMENT
+// ============================================================================
+
+export const generateReceiptFromReceivedInputSchema = z.object({
+	receivedAmountId: idSchema,
+});
+
+export type GenerateReceiptFromReceivedInput = z.infer<
+	typeof generateReceiptFromReceivedInputSchema
+>;
+
+export const generateReceiptFromReceivedOutputSchema = mutationResponseSchema;
+
+export type GenerateReceiptFromReceivedOutput = z.infer<
+	typeof generateReceiptFromReceivedOutputSchema
 >;
 
 // ============================================================================

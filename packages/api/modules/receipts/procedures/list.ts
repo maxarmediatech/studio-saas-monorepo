@@ -12,6 +12,7 @@ import {
 	invoices,
 	isNull,
 	lte,
+	receivedAmounts,
 	receipts,
 	sql,
 } from "@repo/database";
@@ -44,6 +45,7 @@ export const listReceipts = studioProtectedProcedure
 			bookingId,
 			clientId,
 			invoiceId,
+			paymentScheduleId,
 			dateFrom,
 			dateTo,
 			amountMin,
@@ -69,6 +71,12 @@ export const listReceipts = studioProtectedProcedure
 
 		if (invoiceId) {
 			conditions.push(eq(receipts.invoiceId, invoiceId));
+		}
+
+		if (paymentScheduleId) {
+			conditions.push(
+				eq(receivedAmounts.paymentScheduleId, paymentScheduleId),
+			);
 		}
 
 		if (clientId) {
@@ -101,7 +109,14 @@ export const listReceipts = studioProtectedProcedure
 			.select({ count: count().mapWith(Number) })
 			.from(receipts)
 			.innerJoin(bookings, eq(receipts.bookingId, bookings.id))
-			.leftJoin(invoices, eq(receipts.invoiceId, invoices.id));
+			.leftJoin(invoices, eq(receipts.invoiceId, invoices.id))
+			.leftJoin(
+				receivedAmounts,
+				and(
+					eq(receipts.receivedAmountId, receivedAmounts.id),
+					eq(receivedAmounts.organizationId, context.organizationId),
+				),
+			);
 
 		const queryWithClientJoin = clientId
 			? baseQuery.innerJoin(
@@ -152,7 +167,14 @@ export const listReceipts = studioProtectedProcedure
 			})
 			.from(receipts)
 			.innerJoin(bookings, eq(receipts.bookingId, bookings.id))
-			.leftJoin(invoices, eq(receipts.invoiceId, invoices.id));
+			.leftJoin(invoices, eq(receipts.invoiceId, invoices.id))
+			.leftJoin(
+				receivedAmounts,
+				and(
+					eq(receipts.receivedAmountId, receivedAmounts.id),
+					eq(receivedAmounts.organizationId, context.organizationId),
+				),
+			);
 
 		const selectWithClientJoin = clientId
 			? selectQuery.innerJoin(
