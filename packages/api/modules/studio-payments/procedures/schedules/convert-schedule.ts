@@ -84,7 +84,10 @@ export const convertSchedule = studioProtectedProcedure
 				});
 			}
 
-			if (schedule.status === "completed") {
+			if (
+				schedule.status === "partial" ||
+				schedule.status === "completed"
+			) {
 				const existingReceived = await tx.query.receivedAmounts.findFirst({
 					where: and(
 						eq(receivedAmounts.paymentScheduleId, scheduleId),
@@ -125,6 +128,14 @@ export const convertSchedule = studioProtectedProcedure
 			const remainingAmountCents = scheduleAmountCents - existingPaidAmountCents;
 			const newPaidAmountCents =
 				existingPaidAmountCents + convertedAmountCents;
+			const newScheduleStatus =
+				newPaidAmountCents >= scheduleAmountCents
+					? "completed"
+					: "partial";
+			const paidAt =
+				newScheduleStatus === "completed"
+					? (schedule.paidAt ?? new Date())
+					: schedule.paidAt;
 
 			if (!Number.isFinite(convertedAmountCents) || convertedAmountCents <= 0) {
 				throw new ORPCError("BAD_REQUEST", {
@@ -142,12 +153,6 @@ export const convertSchedule = studioProtectedProcedure
 				throw new ORPCError("BAD_REQUEST", {
 					message:
 						"Amount cannot exceed remaining scheduled balance",
-				});
-			}
-
-			if (convertedAmountCents !== remainingAmountCents) {
-				throw new ORPCError("BAD_REQUEST", {
-					message: "Amount must match remaining scheduled balance",
 				});
 			}
 
@@ -287,8 +292,8 @@ export const convertSchedule = studioProtectedProcedure
 				.update(paymentSchedules)
 				.set({
 					paidAmount: newPaidAmountString,
-					paidAt: new Date(),
-					status: "completed",
+					paidAt,
+					status: newScheduleStatus,
 					updatedAt: new Date(),
 					updatedBy: context.user.id,
 				})
@@ -322,6 +327,7 @@ export const convertSchedule = studioProtectedProcedure
 				metadata: {
 					paidAmount: convertedAmountString,
 					totalPaidAmount: newPaidAmountString,
+					scheduleStatus: newScheduleStatus,
 					receivedId: created.id,
 					receiptId,
 				},

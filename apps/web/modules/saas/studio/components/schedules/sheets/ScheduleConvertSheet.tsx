@@ -104,7 +104,7 @@ export function ScheduleConvertSheet() {
 				queryClient.invalidateQueries({ queryKey: orpc.receipts.key() }),
 				queryClient.invalidateQueries({ queryKey: orpc.activities.key() }),
 			]);
-			toast.success("Payment schedule marked as paid");
+			toast.success("Payment recorded successfully");
 			close();
 		},
 		onError: (error) => {
@@ -129,7 +129,19 @@ export function ScheduleConvertSheet() {
 		return Math.max(scheduleAmount - paidAmount, 0);
 	}, [schedule?.data?.amount, schedule?.data?.paidAmount]);
 
+	const scheduleStatus = schedule?.data?.status;
 	const isFullyPaid = remainingAmount <= 0;
+	const isLockedSchedule =
+		isFullyPaid ||
+		scheduleStatus === "partial" ||
+		scheduleStatus === "completed" ||
+		scheduleStatus === "cancelled";
+	const lockedScheduleMessage =
+		scheduleStatus === "cancelled"
+			? "Cancelled schedules cannot accept payments."
+			: scheduleStatus === "partial"
+				? "This schedule already has a recorded payment and is locked."
+				: "This schedule is already fully paid.";
 
 	useEffect(() => {
 		if (!schedule?.data) {
@@ -150,8 +162,8 @@ export function ScheduleConvertSheet() {
 			return;
 		}
 
-		if (isFullyPaid) {
-			toast.error("This schedule is already fully paid");
+		if (isLockedSchedule) {
+			toast.error(lockedScheduleMessage);
 			return;
 		}
 
@@ -172,7 +184,7 @@ export function ScheduleConvertSheet() {
 					className="sm:max-w-xl p-0 gap-0 flex flex-col"
 				>
 					<SheetHeader className="shrink-0 p-4">
-						<SheetTitle className="text-xl">Mark Schedule as Paid</SheetTitle>
+						<SheetTitle className="text-xl">Record Schedule Payment</SheetTitle>
 					</SheetHeader>
 				<div className="flex-1 min-h-0 overflow-y-auto px-4 py-4">
 					{isLoading ? (
@@ -192,9 +204,14 @@ export function ScheduleConvertSheet() {
 								<p className="text-muted-foreground">
 									Already paid: {formatMoney(schedule.data.paidAmount)}
 								</p>
-								{isFullyPaid && (
+								{!isFullyPaid && (
+									<p className="text-muted-foreground font-medium">
+										Remaining: {formatMoney(String(remainingAmount.toFixed(2)))}
+									</p>
+								)}
+								{isLockedSchedule && (
 									<p className="mt-2 text-destructive">
-										This schedule is already fully paid.
+										{lockedScheduleMessage}
 									</p>
 								)}
 							</div>
@@ -328,9 +345,9 @@ export function ScheduleConvertSheet() {
 								isSubmitting={
 									form.formState.isSubmitting ||
 									convertMutation.isPending ||
-									isFullyPaid
+									isLockedSchedule
 								}
-								submitLabel="Mark as Paid"
+								submitLabel="Record Payment"
 							/>
 
 							<div className="pt-3">

@@ -210,11 +210,13 @@ export function SchedulesTableClient({
 	const rowActions: RowAction<PaymentScheduleListItem>[] = useMemo(
 		() => [
 			{
-				label: "Mark as Paid",
+				label: "Record Payment",
 				icon: <CheckCircle2Icon className="h-4 w-4" />,
 				onClick: (row) => openConvert(row.id),
 				show: (row) =>
-					row.status !== "completed" && row.status !== "cancelled",
+					row.status !== "partial" &&
+					row.status !== "completed" &&
+					row.status !== "cancelled",
 			},
 			{
 				label: "Generate Invoice",
@@ -224,14 +226,18 @@ export function SchedulesTableClient({
 						paymentScheduleId: row.id,
 					}),
 				show: (row) =>
-					row.status !== "completed" && row.status !== "cancelled",
+					row.status !== "partial" &&
+					row.status !== "completed" &&
+					row.status !== "cancelled",
 			},
 			{
 				label: "Edit",
 				icon: <PencilIcon className="h-4 w-4" />,
 				onClick: (row) => openEdit(row.id),
 				show: (row) =>
-					row.status !== "completed" && row.status !== "cancelled",
+					row.status !== "partial" &&
+					row.status !== "completed" &&
+					row.status !== "cancelled",
 			},
 			{
 				label: "Delete",
@@ -243,7 +249,9 @@ export function SchedulesTableClient({
 					setDeleteDialogOpen(true);
 				},
 				show: (row) =>
-					row.status !== "completed" && row.status !== "cancelled",
+					row.status !== "partial" &&
+					row.status !== "completed" &&
+					row.status !== "cancelled",
 			},
 		],
 		[openConvert, openEdit, generateInvoiceMutation],

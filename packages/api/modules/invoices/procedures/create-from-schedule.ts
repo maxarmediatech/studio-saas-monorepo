@@ -50,6 +50,17 @@ export const createInvoiceFromSchedule = studioProtectedProcedure
 			});
 		}
 
+		if (
+			schedule.status === "partial" ||
+			schedule.status === "completed" ||
+			schedule.status === "cancelled"
+		) {
+			throw new ORPCError("CONFLICT", {
+				message:
+					"Invoices cannot be generated from partially paid, completed, or cancelled schedules",
+			});
+		}
+
 		const existingInvoice = await db.query.invoices.findFirst({
 			where: and(
 				eq(invoices.paymentScheduleId, paymentScheduleId),

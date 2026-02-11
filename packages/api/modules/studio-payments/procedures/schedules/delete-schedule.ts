@@ -38,9 +38,14 @@ export const deleteSchedule = studioProtectedProcedure
 			});
 		}
 
-		if (schedule.status === "completed" || schedule.status === "cancelled") {
+		if (
+			schedule.status === "partial" ||
+			schedule.status === "completed" ||
+			schedule.status === "cancelled"
+		) {
 			throw new ORPCError("CONFLICT", {
-				message: "Completed or cancelled schedules cannot be deleted",
+				message:
+					"Partially paid, completed, or cancelled schedules cannot be deleted",
 			});
 		}
 
