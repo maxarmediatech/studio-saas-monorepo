@@ -78,6 +78,7 @@ export const createReceiptFromPayment = studioProtectedProcedure
 			const receiptNumber = await generateReceiptNumber(
 				bookingId,
 				context.organizationId,
+				tx,
 			);
 
 			const [created] = await tx

@@ -143,6 +143,7 @@ export const createReceived = studioProtectedProcedure
 				const receiptNumber = await generateReceiptNumber(
 					bookingId,
 					context.organizationId,
+					tx,
 				);
 
 					await tx.insert(receipts).values({

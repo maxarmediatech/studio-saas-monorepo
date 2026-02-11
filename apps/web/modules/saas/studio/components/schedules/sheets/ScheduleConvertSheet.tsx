@@ -126,9 +126,10 @@ export function ScheduleConvertSheet() {
 	const remainingAmount = useMemo(() => {
 		const scheduleAmount = Number(schedule?.data?.amount ?? "0");
 		const paidAmount = Number(schedule?.data?.paidAmount ?? "0");
-		const remaining = scheduleAmount - paidAmount;
-		return remaining > 0 ? remaining : scheduleAmount;
+		return Math.max(scheduleAmount - paidAmount, 0);
 	}, [schedule?.data?.amount, schedule?.data?.paidAmount]);
+
+	const isFullyPaid = remainingAmount <= 0;
 
 	useEffect(() => {
 		if (!schedule?.data) {
@@ -146,6 +147,11 @@ export function ScheduleConvertSheet() {
 
 	const onSubmit = async (values: ConvertScheduleFormValues) => {
 		if (!convertScheduleId) {
+			return;
+		}
+
+		if (isFullyPaid) {
+			toast.error("This schedule is already fully paid");
 			return;
 		}
 
@@ -186,6 +192,11 @@ export function ScheduleConvertSheet() {
 								<p className="text-muted-foreground">
 									Already paid: {formatMoney(schedule.data.paidAmount)}
 								</p>
+								{isFullyPaid && (
+									<p className="mt-2 text-destructive">
+										This schedule is already fully paid.
+									</p>
+								)}
 							</div>
 
 							<FieldGroup>
@@ -315,7 +326,9 @@ export function ScheduleConvertSheet() {
 							<FormActions
 								mode="edit"
 								isSubmitting={
-									form.formState.isSubmitting || convertMutation.isPending
+									form.formState.isSubmitting ||
+									convertMutation.isPending ||
+									isFullyPaid
 								}
 								submitLabel="Mark as Paid"
 							/>

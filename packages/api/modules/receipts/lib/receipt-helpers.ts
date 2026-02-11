@@ -26,11 +26,15 @@ export {
 	type InvoiceStatusResult,
 } from "./receipt-utils";
 
+type Tx = Parameters<Parameters<(typeof db)["transaction"]>[0]>[0];
+type DbOrTx = typeof db | Tx;
+
 export async function generateReceiptNumber(
 	bookingId: string,
 	orgId: string,
+	dbOrTx: DbOrTx = db,
 ): Promise<string> {
-	const booking = await db.query.bookings.findFirst({
+	const booking = await dbOrTx.query.bookings.findFirst({
 		where: and(
 			eq(bookings.id, bookingId),
 			eq(bookings.organizationId, orgId),
@@ -44,7 +48,7 @@ export async function generateReceiptNumber(
 
 	const baseNumber = buildReceiptNumber(booking.referenceNumber, new Date());
 
-	const existing = await db.query.receipts.findFirst({
+	const existing = await dbOrTx.query.receipts.findFirst({
 		where: and(
 			eq(receipts.organizationId, orgId),
 			sql`${receipts.receiptNumber} LIKE ${baseNumber + "%"}`,
@@ -56,9 +60,6 @@ export async function generateReceiptNumber(
 
 	return getNextReceiptNumber(baseNumber, existing?.receiptNumber ?? null);
 }
-
-type Tx = Parameters<Parameters<(typeof db)["transaction"]>[0]>[0];
-type DbOrTx = typeof db | Tx;
 
 function getDateOnlyString(value: unknown): string | null {
 	if (!value) return null;

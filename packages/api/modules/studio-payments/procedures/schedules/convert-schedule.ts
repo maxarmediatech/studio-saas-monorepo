@@ -17,11 +17,32 @@ import {
 	generateReceiptNumber,
 	updateInvoicePaymentStatus,
 } from "../../../receipts/lib/receipt-helpers";
+import { centsToMoney, moneyToCents } from "../../../studio/lib/money";
 import { requirePermission } from "../../../studio/lib/permissions";
 import {
 	convertScheduleInputSchema,
 	convertScheduleOutputSchema,
 } from "../../../studio/schemas/payment";
+
+const MAX_RECEIPT_INSERT_ATTEMPTS = 5;
+
+function isReceiptNumberConflict(error: unknown): boolean {
+	const code = (error as { code?: string })?.code;
+	const constraint = (error as { constraint?: string })?.constraint;
+
+	if (code === "23505") {
+		return true;
+	}
+
+	if (constraint === "receipts_org_number_idx") {
+		return true;
+	}
+
+	return (
+		error instanceof Error &&
+		error.message.toLowerCase().includes("receipts_org_number_idx")
+	);
+}
 
 export const convertSchedule = studioProtectedProcedure
 	.route({
@@ -64,9 +85,32 @@ export const convertSchedule = studioProtectedProcedure
 			}
 
 			if (schedule.status === "completed") {
-				throw new ORPCError("CONFLICT", {
-					message: "Schedule is already completed",
+				const existingReceived = await tx.query.receivedAmounts.findFirst({
+					where: and(
+						eq(receivedAmounts.paymentScheduleId, scheduleId),
+						isNull(receivedAmounts.deletedAt),
+					),
+					columns: { id: true },
 				});
+
+				const existingReceipt = existingReceived
+					? await tx.query.receipts.findFirst({
+						where: and(
+							eq(receipts.receivedAmountId, existingReceived.id),
+							isNull(receipts.deletedAt),
+						),
+						columns: { id: true },
+					})
+					: null;
+
+				return {
+					data: {
+						receivedId: existingReceived?.id ?? scheduleId,
+						scheduleId,
+						receiptId: existingReceipt?.id ?? null,
+					},
+					message: "Schedule already converted to payment",
+				};
 			}
 
 			if (schedule.status === "cancelled") {
@@ -75,26 +119,40 @@ export const convertSchedule = studioProtectedProcedure
 				});
 			}
 
-			const convertedAmount = Number.parseFloat(amount);
-			const scheduleAmount = Number.parseFloat(schedule.amount);
-			const existingPaidAmount = Number.parseFloat(schedule.paidAmount);
-			const newPaidAmount = existingPaidAmount + convertedAmount;
+			const convertedAmountCents = moneyToCents(amount);
+			const scheduleAmountCents = moneyToCents(schedule.amount);
+			const existingPaidAmountCents = moneyToCents(schedule.paidAmount);
+			const remainingAmountCents = scheduleAmountCents - existingPaidAmountCents;
+			const newPaidAmountCents =
+				existingPaidAmountCents + convertedAmountCents;
 
-			if (!Number.isFinite(convertedAmount) || convertedAmount <= 0) {
+			if (!Number.isFinite(convertedAmountCents) || convertedAmountCents <= 0) {
 				throw new ORPCError("BAD_REQUEST", {
 					message: "Amount must be greater than zero",
 				});
 			}
 
-			if (newPaidAmount > scheduleAmount) {
+			if (remainingAmountCents <= 0) {
+				throw new ORPCError("CONFLICT", {
+					message: "Schedule is already fully paid",
+				});
+			}
+
+			if (convertedAmountCents > remainingAmountCents) {
 				throw new ORPCError("BAD_REQUEST", {
 					message:
 						"Amount cannot exceed remaining scheduled balance",
 				});
 			}
 
-			const convertedAmountString = convertedAmount.toFixed(2);
-			const newPaidAmountString = newPaidAmount.toFixed(2);
+			if (convertedAmountCents !== remainingAmountCents) {
+				throw new ORPCError("BAD_REQUEST", {
+					message: "Amount must match remaining scheduled balance",
+				});
+			}
+
+			const convertedAmountString = centsToMoney(convertedAmountCents);
+			const newPaidAmountString = centsToMoney(newPaidAmountCents);
 
 			// Use current date if not provided
 			const actualReceivedDate =
@@ -156,35 +214,68 @@ export const convertSchedule = studioProtectedProcedure
 						.where(eq(invoices.id, linkedInvoice.id));
 				}
 
-				const receiptNumber = await generateReceiptNumber(
-					schedule.bookingId,
-					context.organizationId,
-				);
+				let createdReceiptId: string | null = null;
+				for (
+					let attempt = 0;
+					attempt < MAX_RECEIPT_INSERT_ATTEMPTS;
+					attempt++
+				) {
+					try {
+						const attemptReceiptId = await tx.transaction(
+							async (receiptTx) => {
+								const receiptNumber = await generateReceiptNumber(
+									schedule.bookingId,
+									context.organizationId,
+									receiptTx,
+								);
 
-				const [createdReceipt] = await tx
-					.insert(receipts)
-					.values({
-						organizationId: context.organizationId,
-						bookingId: schedule.bookingId,
-						invoiceId: linkedInvoice.id,
-						receivedAmountId: created.id,
-						receiptNumber,
-						amount: convertedAmountString,
-						paymentMethod,
-						receiptDate: actualReceivedDate,
-						notes: notes ?? null,
-						createdBy: context.user.id,
-						updatedBy: context.user.id,
-					})
-					.returning({ id: receipts.id });
+								const [createdReceipt] = await receiptTx
+									.insert(receipts)
+									.values({
+										organizationId: context.organizationId,
+										bookingId: schedule.bookingId,
+										invoiceId: linkedInvoice.id,
+										receivedAmountId: created.id,
+										receiptNumber,
+										amount: convertedAmountString,
+										paymentMethod,
+										receiptDate: actualReceivedDate,
+										notes: notes ?? null,
+										createdBy: context.user.id,
+										updatedBy: context.user.id,
+									})
+									.returning({ id: receipts.id });
 
-				if (!createdReceipt) {
+								if (!createdReceipt) {
+									throw new ORPCError("INTERNAL_SERVER_ERROR", {
+										message: "Failed to create receipt",
+									});
+								}
+
+								return createdReceipt.id;
+							},
+						);
+
+						createdReceiptId = attemptReceiptId;
+						break;
+					} catch (error) {
+						if (
+							isReceiptNumberConflict(error) &&
+							attempt < MAX_RECEIPT_INSERT_ATTEMPTS - 1
+						) {
+							continue;
+						}
+						throw error;
+					}
+				}
+
+				if (!createdReceiptId) {
 					throw new ORPCError("INTERNAL_SERVER_ERROR", {
 						message: "Failed to create receipt",
 					});
 				}
 
-				receiptId = createdReceipt.id;
+				receiptId = createdReceiptId;
 				await updateInvoicePaymentStatus(
 					tx,
 					linkedInvoice.id,
