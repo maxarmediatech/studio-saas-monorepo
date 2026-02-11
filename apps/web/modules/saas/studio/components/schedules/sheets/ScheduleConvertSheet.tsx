@@ -32,7 +32,6 @@ import {
 } from "@repo/ui/components/sheet";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { Textarea } from "@repo/ui/components/textarea";
-import { formatMoney } from "@saas/shared/lib";
 import { useScheduleConvertParams } from "@saas/studio/hooks/params/use-schedule-convert-params";
 import {
 	studioPaymentsApi,
@@ -184,7 +183,7 @@ export function ScheduleConvertSheet() {
 					className="sm:max-w-xl p-0 gap-0 flex flex-col"
 				>
 					<SheetHeader className="shrink-0 p-4">
-						<SheetTitle className="text-xl">Record Schedule Payment</SheetTitle>
+						<SheetTitle className="text-xl">Record Payment</SheetTitle>
 					</SheetHeader>
 				<div className="flex-1 min-h-0 overflow-y-auto px-4 py-4">
 					{isLoading ? (
@@ -196,27 +195,23 @@ export function ScheduleConvertSheet() {
 						</div>
 					) : schedule?.data ? (
 							<form onSubmit={form.handleSubmit(onSubmit)}>
-							<div className="mb-4 rounded-lg border bg-muted/30 p-3 text-sm">
-								<p className="font-medium">{schedule.data.name}</p>
-								<p className="text-muted-foreground mt-1">
-									Scheduled: {formatMoney(schedule.data.amount)}
+							{isLockedSchedule && (
+								<p className="mb-4 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+									{lockedScheduleMessage}
 								</p>
-								<p className="text-muted-foreground">
-									Already paid: {formatMoney(schedule.data.paidAmount)}
-								</p>
-								{!isFullyPaid && (
-									<p className="text-muted-foreground font-medium">
-										Remaining: {formatMoney(String(remainingAmount.toFixed(2)))}
-									</p>
-								)}
-								{isLockedSchedule && (
-									<p className="mt-2 text-destructive">
-										{lockedScheduleMessage}
-									</p>
-								)}
-							</div>
+							)}
 
 							<FieldGroup>
+								<Field>
+									<FieldLabel htmlFor="schedule-name">Schedule</FieldLabel>
+									<Input
+										id="schedule-name"
+										value={schedule.data.name}
+										disabled
+										readOnly
+									/>
+								</Field>
+
 								<Controller
 									name="amount"
 									control={form.control}
