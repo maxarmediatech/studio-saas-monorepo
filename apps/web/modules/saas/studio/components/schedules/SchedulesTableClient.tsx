@@ -55,6 +55,7 @@ import {
 	XCircleIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { OpenScheduleCreateSheet } from "./OpenScheduleSheet";
@@ -120,6 +121,7 @@ export function SchedulesTableClient({
 	organizationSlug,
 }: SchedulesTableClientProps) {
 	const queryClient = useQueryClient();
+	const router = useRouter();
 
 	const {
 		filters,
@@ -219,6 +221,33 @@ export function SchedulesTableClient({
 					row.status !== "cancelled",
 			},
 			{
+				label: "View Invoice",
+				icon: <FileTextIcon className="h-4 w-4" />,
+				onClick: (row) => {
+					if (!organizationSlug || !row.invoiceId) {
+						return;
+					}
+					router.push(
+						`/app/${organizationSlug}/invoices/${row.invoiceId}`,
+					);
+				},
+				show: (row) => !!organizationSlug && !!row.invoiceId,
+			},
+			{
+				label: "View Receipt",
+				icon: <FileTextIcon className="h-4 w-4" />,
+				onClick: (row) => {
+					if (!organizationSlug || !row.receiptId) {
+						return;
+					}
+					router.push(
+						`/app/${organizationSlug}/receipts/${row.receiptId}`,
+					);
+				},
+				show: (row) =>
+					!!organizationSlug && !!row.receiptId,
+			},
+			{
 				label: "Generate Invoice",
 				icon: <FileTextIcon className="h-4 w-4" />,
 				onClick: (row) =>
@@ -226,6 +255,8 @@ export function SchedulesTableClient({
 						paymentScheduleId: row.id,
 					}),
 				show: (row) =>
+					!row.invoiceId &&
+					Number(row.paidAmount) <= 0 &&
 					row.status !== "partial" &&
 					row.status !== "completed" &&
 					row.status !== "cancelled",
@@ -254,7 +285,7 @@ export function SchedulesTableClient({
 					row.status !== "cancelled",
 			},
 		],
-		[openConvert, openEdit, generateInvoiceMutation],
+		[openConvert, openEdit, generateInvoiceMutation, organizationSlug, router],
 	);
 
 	// Define columns with sortable headers and meta for filters

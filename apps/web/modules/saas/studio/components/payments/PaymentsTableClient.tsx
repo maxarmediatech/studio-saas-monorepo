@@ -28,6 +28,7 @@ import { formatMoney } from "@saas/shared/lib";
 import { usePaymentParams } from "@saas/studio/hooks/params/use-payment-params";
 import { usePaymentsTable } from "@saas/studio/hooks/tables";
 import {
+	receiptsMutations,
 	studioPaymentsApi,
 	studioPaymentsMutations,
 } from "@saas/studio/lib/api";
@@ -38,6 +39,7 @@ import {
 	BanknoteIcon,
 	CalendarIcon,
 	EyeIcon,
+	FileTextIcon,
 	Loader2Icon,
 	PencilIcon,
 	TrashIcon,
@@ -150,6 +152,29 @@ export function PaymentsTableClient({
 		},
 	});
 
+	const generateReceiptMutation = useMutation({
+		...receiptsMutations.generateFromReceived(),
+		onSuccess: (result) => {
+			toast.success(result.message || "Receipt generated successfully");
+			queryClient.invalidateQueries({
+				queryKey: orpc.receipts.key(),
+			});
+			queryClient.invalidateQueries({
+				queryKey: orpc.payments.key(),
+			});
+			queryClient.invalidateQueries({
+				queryKey: orpc.invoices.key(),
+			});
+
+			if (organizationSlug) {
+				router.push(`/app/${organizationSlug}/receipts/${result.data.id}`);
+			}
+		},
+		onError: (error) => {
+			toast.error(error.message || "Failed to generate receipt");
+		},
+	});
+
 	const rowActions: RowAction<ReceivedAmountListItem>[] = useMemo(
 		() => [
 			{
@@ -164,6 +189,29 @@ export function PaymentsTableClient({
 				onClick: (row) => openEdit(row.id),
 			},
 			{
+				label: "View Receipt",
+				icon: <FileTextIcon className="h-4 w-4" />,
+				onClick: (row) => {
+					if (!organizationSlug || !row.receiptId) {
+						return;
+					}
+
+					router.push(
+						`/app/${organizationSlug}/receipts/${row.receiptId}`,
+					);
+				},
+				show: (row) => !!organizationSlug && !!row.receiptId,
+			},
+			{
+				label: "Generate Receipt",
+				icon: <FileTextIcon className="h-4 w-4" />,
+				onClick: (row) =>
+					generateReceiptMutation.mutate({
+						receivedAmountId: row.id,
+					}),
+				show: (row) => !row.receiptId,
+			},
+			{
 				label: "Delete",
 				icon: <TrashIcon className="h-4 w-4" />,
 				variant: "destructive",
@@ -174,7 +222,12 @@ export function PaymentsTableClient({
 				},
 			},
 		],
-		[openEdit, organizationSlug, router],
+		[
+			openEdit,
+			organizationSlug,
+			router,
+			generateReceiptMutation,
+		],
 	);
 
 	// Define columns with sortable headers and meta for filters

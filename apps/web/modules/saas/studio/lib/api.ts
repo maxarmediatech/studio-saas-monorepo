@@ -191,6 +191,8 @@ export const receiptsApi = {
 };
 
 export const receiptsMutations = {
+	generateFromReceived: () =>
+		orpc.receipts.generateFromReceived.mutationOptions(),
 	void: () => orpc.receipts.void.mutationOptions(),
 };
 
