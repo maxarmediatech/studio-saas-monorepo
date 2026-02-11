@@ -2,6 +2,7 @@
 
 import {
 	Collapsible,
+	CollapsibleContent,
 	CollapsibleTrigger,
 } from "@repo/ui/components/collapsible";
 import { cn } from "@repo/ui/lib/utils";
@@ -20,9 +21,9 @@ import type {
 	NavItemConfig,
 	NavModuleConfig,
 } from "../../lib/navigation/types";
+import { NotificationBell } from "../notifications";
 import { IconByName } from "./icon-registry";
 import { NewActionSwitcher } from "./new-action-switcher";
-import { NotificationBell } from "../notifications";
 import { OrganizationSwitcher } from "./organization-switcher";
 
 interface SidebarPanelProps {
@@ -115,10 +116,7 @@ export function SidebarPanel({
 									<NavItem
 										key={item.id}
 										item={item}
-										isActive={isItemActive(
-											pathname,
-											item.path,
-										)}
+										pathname={pathname}
 									/>
 								))}
 							</nav>
@@ -206,7 +204,9 @@ export function SidebarPanel({
 															damping: 40,
 															mass: 1,
 														},
-														opacity: { duration: 0.15 },
+														opacity: {
+															duration: 0.15,
+														},
 													},
 												}}
 												className="scrollbar-hide relative flex max-h-[40vh] flex-col gap-0.5 overflow-y-auto pr-6"
@@ -228,14 +228,13 @@ export function SidebarPanel({
 																x: 0,
 																transition: {
 																	delay:
-																		i * 0.03,
-																	duration:
-																		0.2,
+																		i *
+																		0.03,
+																	duration: 0.2,
 																	ease: [
 																		0.25,
 																		0.1,
-																		0.25,
-																		1,
+																		0.25, 1,
 																	],
 																},
 															}}
@@ -248,10 +247,9 @@ export function SidebarPanel({
 														>
 															<NavItem
 																item={item}
-																isActive={isItemActive(
-																	pathname,
-																	item.path,
-																)}
+																pathname={
+																	pathname
+																}
 															/>
 														</motion.div>
 													),
@@ -271,10 +269,7 @@ export function SidebarPanel({
 										<NavItem
 											key={item.id}
 											item={item}
-											isActive={isItemActive(
-												pathname,
-												item.path,
-											)}
+											pathname={pathname}
 										/>
 									))}
 								</nav>
@@ -289,31 +284,104 @@ export function SidebarPanel({
 
 function NavItem({
 	item,
-	isActive,
+	pathname,
 }: {
 	item: NavItemConfig;
-	isActive: boolean;
+	pathname: string;
 }) {
 	const isExternal = item.path.startsWith("http");
+	const hasChildren = (item.children?.length ?? 0) > 0;
+	const isSelfActive = isItemActive(pathname, item.path);
+
+	const itemClassName = cn(
+		"group flex h-8 items-center justify-between rounded-lg p-2 text-sm leading-none transition-[background-color,color,font-weight] duration-75",
+		isSelfActive
+			? "bg-blue-100/50 font-medium text-blue-600 hover:bg-blue-100/80 active:bg-blue-100"
+			: "text-neutral-700 hover:bg-black/5 active:bg-black/10",
+	);
+
+	if (hasChildren) {
+		return (
+			<div>
+				{/* Parent — standard nav link */}
+				<Link
+					href={item.path}
+					target={isExternal ? "_blank" : undefined}
+					rel={isExternal ? "noopener noreferrer" : undefined}
+					className={itemClassName}
+				>
+					<span className="flex items-center gap-2.5">
+						<IconByName
+							name={item.icon}
+							className={cn(
+								"size-4 shrink-0",
+								isSelfActive
+									? "text-blue-600"
+									: "text-neutral-600",
+							)}
+						/>
+						<span className="truncate">{item.label}</span>
+					</span>
+					{isExternal && (
+						<ExternalLink className="size-3.5 text-neutral-500 transition-transform duration-75 group-hover:-translate-y-px group-hover:translate-x-px" />
+					)}
+				</Link>
+
+				{/* Children — always visible, vertical line on left */}
+				<ul className="ml-3.5 flex min-w-0 translate-x-px flex-col gap-1 border-l border-neutral-200 px-2.5 py-0.5">
+					{item.children?.map((child) => {
+						const childActive = isItemActive(
+							pathname,
+							child.path,
+						);
+						const childExternal =
+							child.path.startsWith("http");
+						return (
+							<li key={child.id}>
+								<Link
+									href={child.path}
+									target={
+										childExternal
+											? "_blank"
+											: undefined
+									}
+									rel={
+										childExternal
+											? "noopener noreferrer"
+											: undefined
+									}
+									className={cn(
+										"relative flex h-8 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-sm transition-colors",
+										childActive
+											? "overflow-visible bg-black/[0.03] font-medium text-blue-600 before:absolute before:-left-2.5 before:top-0 before:z-10 before:h-full before:w-px before:bg-blue-600 before:content-['']"
+											: "text-neutral-600 hover:bg-black/5 hover:text-neutral-900",
+									)}
+								>
+									<span className="truncate">
+										{child.label}
+									</span>
+								</Link>
+							</li>
+						);
+					})}
+				</ul>
+			</div>
+		);
+	}
 
 	return (
 		<Link
 			href={item.path}
 			target={isExternal ? "_blank" : undefined}
 			rel={isExternal ? "noopener noreferrer" : undefined}
-			className={cn(
-				"group flex h-8 items-center justify-between rounded-lg p-2 text-sm leading-none transition-[background-color,color,font-weight] duration-75",
-				isActive
-					? "bg-blue-100/50 font-medium text-blue-600 hover:bg-blue-100/80 active:bg-blue-100"
-					: "text-neutral-700 hover:bg-black/5 active:bg-black/10",
-			)}
+			className={itemClassName}
 		>
 			<span className="flex items-center gap-2.5">
 				<IconByName
 					name={item.icon}
 					className={cn(
 						"size-4 shrink-0",
-						isActive ? "text-blue-600" : "text-neutral-600",
+						isSelfActive ? "text-blue-600" : "text-neutral-600",
 					)}
 				/>
 				<span className="truncate">{item.label}</span>

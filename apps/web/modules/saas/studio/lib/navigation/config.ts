@@ -202,22 +202,29 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 					label: "Finance",
 					items: [
 						{
-							id: "invoices",
-							label: "Invoices",
-							path: url("/invoices"),
-							icon: "FileText",
+							id: "scheduled-payments",
+							label: "Scheduled",
+							path: url("/scheduled-payments"),
+							icon: "CreditCard",
 							permission: {
 								any: [{ resource: "payment", action: "list" }],
 							},
-						},
-						{
-							id: "receipts",
-							label: "Receipts",
-							path: url("/receipts"),
-							icon: "Receipt",
-							permission: {
-								any: [{ resource: "payment", action: "list" }],
-							},
+							children: [
+								{
+									id: "invoices",
+									label: "Invoices",
+									path: url("/invoices"),
+									icon: "FileText",
+									permission: {
+										any: [
+											{
+												resource: "payment",
+												action: "list",
+											},
+										],
+									},
+								},
+							],
 						},
 						{
 							id: "payments",
@@ -227,15 +234,22 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							permission: {
 								any: [{ resource: "payment", action: "list" }],
 							},
-						},
-						{
-							id: "scheduled-payments",
-							label: "Scheduled",
-							path: url("/scheduled-payments"),
-							icon: "CreditCard",
-							permission: {
-								any: [{ resource: "payment", action: "list" }],
-							},
+							children: [
+								{
+									id: "receipts",
+									label: "Receipts",
+									path: url("/receipts"),
+									icon: "Receipt",
+									permission: {
+										any: [
+											{
+												resource: "payment",
+												action: "list",
+											},
+										],
+									},
+								},
+							],
 						},
 						{
 							id: "expenses",
