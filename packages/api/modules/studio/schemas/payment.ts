@@ -400,6 +400,7 @@ export type DeleteScheduleOutput = z.infer<typeof deleteScheduleOutputSchema>;
 
 export const convertScheduleInputSchema = z.object({
 	scheduleId: idSchema,
+	amount: moneySchema,
 	paymentMethod: paymentMethodSchema,
 	transactionReference: z.string().max(100).optional(),
 	receivedDate: dateSchema.optional(),
@@ -412,6 +413,7 @@ export const convertScheduleOutputSchema = z.object({
 	data: z.object({
 		receivedId: idSchema,
 		scheduleId: idSchema,
+		receiptId: idSchema.nullable(),
 	}),
 	message: z.string(),
 });

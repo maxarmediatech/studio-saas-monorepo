@@ -38,6 +38,12 @@ export const deleteSchedule = studioProtectedProcedure
 			});
 		}
 
+		if (schedule.status === "completed" || schedule.status === "cancelled") {
+			throw new ORPCError("CONFLICT", {
+				message: "Completed or cancelled schedules cannot be deleted",
+			});
+		}
+
 		// Fetch booking for activity context (org-scoped for safety)
 		const booking = await db.query.bookings.findFirst({
 			where: and(

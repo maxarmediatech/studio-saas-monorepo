@@ -14,5 +14,6 @@ export { useExpenseParams } from "./use-expense-params";
 export { usePaymentParams } from "./use-payment-params";
 export { useReviewQueueParams } from "./use-review-queue-params";
 export { useScheduleParams } from "./use-schedule-params";
+export { useScheduleConvertParams } from "./use-schedule-convert-params";
 export { useShootParams } from "./use-shoot-params";
 export { useTaskParams } from "./use-task-params";

@@ -44,6 +44,12 @@ export const updateSchedule = studioProtectedProcedure
 			});
 		}
 
+		if (schedule.status === "completed" || schedule.status === "cancelled") {
+			throw new ORPCError("CONFLICT", {
+				message: "Completed or cancelled schedules cannot be modified",
+			});
+		}
+
 		// Build update object
 		const updateData: Record<string, unknown> = {
 			updatedAt: new Date(),

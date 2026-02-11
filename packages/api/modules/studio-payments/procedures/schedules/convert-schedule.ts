@@ -4,13 +4,19 @@ import {
 	bookings,
 	db,
 	eq,
+	invoices,
 	isNull,
 	paymentSchedules,
+	receipts,
 	receivedAmounts,
 	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../../orpc/procedures";
 import { formatAmount, safeTrackActivity } from "../../../activities/lib";
+import {
+	generateReceiptNumber,
+	updateInvoicePaymentStatus,
+} from "../../../receipts/lib/receipt-helpers";
 import { requirePermission } from "../../../studio/lib/permissions";
 import {
 	convertScheduleInputSchema,
@@ -33,6 +39,7 @@ export const convertSchedule = studioProtectedProcedure
 
 		const {
 			scheduleId,
+			amount,
 			paymentMethod,
 			transactionReference,
 			receivedDate,
@@ -56,52 +63,67 @@ export const convertSchedule = studioProtectedProcedure
 				});
 			}
 
-			// Check if already completed (idempotency)
 			if (schedule.status === "completed") {
-				// Find existing received amount linked to this schedule
-				const existing = await tx.query.receivedAmounts.findFirst({
-					where: and(
-						eq(receivedAmounts.paymentScheduleId, scheduleId),
-						isNull(receivedAmounts.deletedAt),
-					),
-				});
-
-				return {
-					data: {
-						receivedId: existing?.id ?? scheduleId,
-						scheduleId,
-					},
-					message: "Schedule already converted to payment",
-				};
-			}
-
-			// Calculate remaining amount to pay
-			const scheduleAmount = Number.parseFloat(schedule.amount);
-			const paidAmount = Number.parseFloat(schedule.paidAmount);
-			const remainingAmount = scheduleAmount - paidAmount;
-
-			if (remainingAmount <= 0) {
 				throw new ORPCError("CONFLICT", {
-					message: "Schedule is already fully paid",
+					message: "Schedule is already completed",
 				});
 			}
+
+			if (schedule.status === "cancelled") {
+				throw new ORPCError("CONFLICT", {
+					message: "Cancelled schedule cannot be converted",
+				});
+			}
+
+			const convertedAmount = Number.parseFloat(amount);
+			const scheduleAmount = Number.parseFloat(schedule.amount);
+			const existingPaidAmount = Number.parseFloat(schedule.paidAmount);
+			const newPaidAmount = existingPaidAmount + convertedAmount;
+
+			if (!Number.isFinite(convertedAmount) || convertedAmount <= 0) {
+				throw new ORPCError("BAD_REQUEST", {
+					message: "Amount must be greater than zero",
+				});
+			}
+
+			if (newPaidAmount > scheduleAmount) {
+				throw new ORPCError("BAD_REQUEST", {
+					message:
+						"Amount cannot exceed remaining scheduled balance",
+				});
+			}
+
+			const convertedAmountString = convertedAmount.toFixed(2);
+			const newPaidAmountString = newPaidAmount.toFixed(2);
 
 			// Use current date if not provided
 			const actualReceivedDate =
 				receivedDate ?? new Date().toISOString().split("T")[0];
 
-			// Create received amount for the remaining balance
+			const linkedInvoice = await tx.query.invoices.findFirst({
+				where: and(
+					eq(invoices.paymentScheduleId, scheduleId),
+					eq(invoices.organizationId, context.organizationId),
+					isNull(invoices.deletedAt),
+				),
+				columns: {
+					id: true,
+					status: true,
+				},
+			});
+
 			const [created] = await tx
 				.insert(receivedAmounts)
 				.values({
 					organizationId: context.organizationId,
 					bookingId: schedule.bookingId,
-					amount: remainingAmount.toFixed(2),
+					amount: convertedAmountString,
 					paymentMethod,
 					transactionReference: transactionReference ?? null,
 					receivedDate: actualReceivedDate,
 					notes: notes ?? null,
 					paymentScheduleId: scheduleId,
+					invoiceId: linkedInvoice?.id ?? null,
 					createdBy: context.user.id,
 					updatedBy: context.user.id,
 				})
@@ -113,11 +135,67 @@ export const convertSchedule = studioProtectedProcedure
 				});
 			}
 
-			// Update schedule to completed
+			let receiptId: string | null = null;
+
+			if (linkedInvoice) {
+				if (linkedInvoice.status === "cancelled") {
+					throw new ORPCError("CONFLICT", {
+						message:
+							"Cannot convert schedule linked to a cancelled invoice",
+					});
+				}
+
+				if (linkedInvoice.status === "draft") {
+					await tx
+						.update(invoices)
+						.set({
+							status: "sent",
+							updatedAt: new Date(),
+							updatedBy: context.user.id,
+						})
+						.where(eq(invoices.id, linkedInvoice.id));
+				}
+
+				const receiptNumber = await generateReceiptNumber(
+					schedule.bookingId,
+					context.organizationId,
+				);
+
+				const [createdReceipt] = await tx
+					.insert(receipts)
+					.values({
+						organizationId: context.organizationId,
+						bookingId: schedule.bookingId,
+						invoiceId: linkedInvoice.id,
+						receivedAmountId: created.id,
+						receiptNumber,
+						amount: convertedAmountString,
+						paymentMethod,
+						receiptDate: actualReceivedDate,
+						notes: notes ?? null,
+						createdBy: context.user.id,
+						updatedBy: context.user.id,
+					})
+					.returning({ id: receipts.id });
+
+				if (!createdReceipt) {
+					throw new ORPCError("INTERNAL_SERVER_ERROR", {
+						message: "Failed to create receipt",
+					});
+				}
+
+				receiptId = createdReceipt.id;
+				await updateInvoicePaymentStatus(
+					tx,
+					linkedInvoice.id,
+					context.user.id,
+				);
+			}
+
 			await tx
 				.update(paymentSchedules)
 				.set({
-					paidAmount: scheduleAmount.toFixed(2),
+					paidAmount: newPaidAmountString,
 					paidAt: new Date(),
 					status: "completed",
 					updatedAt: new Date(),
@@ -135,7 +213,7 @@ export const convertSchedule = studioProtectedProcedure
 			await tx
 				.update(bookings)
 				.set({
-					totalReceived: sql`${bookings.totalReceived} + ${remainingAmount.toFixed(2)}`,
+					totalReceived: sql`${bookings.totalReceived} + ${convertedAmountString}`,
 					updatedAt: new Date(),
 					updatedBy: context.user.id,
 				})
@@ -151,8 +229,10 @@ export const convertSchedule = studioProtectedProcedure
 				parentEntityId: schedule.bookingId,
 				parentEntityName: booking?.name ?? "Unknown Booking",
 				metadata: {
-					paidAmount: remainingAmount.toFixed(2),
+					paidAmount: convertedAmountString,
+					totalPaidAmount: newPaidAmountString,
 					receivedId: created.id,
+					receiptId,
 				},
 			});
 
@@ -160,6 +240,7 @@ export const convertSchedule = studioProtectedProcedure
 				data: {
 					receivedId: created.id,
 					scheduleId,
+					receiptId,
 				},
 				message: "Payment schedule converted successfully",
 			};

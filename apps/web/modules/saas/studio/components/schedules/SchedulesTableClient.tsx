@@ -28,6 +28,7 @@ import type { SavedView } from "@saas/shared/components/views";
 import "@saas/shared/components/data-table/types";
 import { cn } from "@repo/ui/lib/utils";
 import { formatMoney } from "@saas/shared/lib";
+import { useScheduleConvertParams } from "@saas/studio/hooks/params/use-schedule-convert-params";
 import { useScheduleParams } from "@saas/studio/hooks/params/use-schedule-params";
 import {
 	SCHEDULE_STATUSES,
@@ -143,6 +144,7 @@ export function SchedulesTableClient({
 
 	// URL-based sheet params (openEdit used inline in rowActions)
 	const { openEdit } = useScheduleParams();
+	const { openConvert } = useScheduleConvertParams();
 
 	// Build query input from hook state
 	const queryInput = {
@@ -190,7 +192,7 @@ export function SchedulesTableClient({
 	// Generate invoice mutation
 	const generateInvoiceMutation = useMutation({
 		...invoicesMutations.createFromSchedule(),
-		onSuccess: (data) => {
+		onSuccess: () => {
 			toast.success("Invoice generated successfully");
 			queryClient.invalidateQueries({
 				queryKey: orpc.studioPayments.key(),
@@ -208,17 +210,28 @@ export function SchedulesTableClient({
 	const rowActions: RowAction<PaymentScheduleListItem>[] = useMemo(
 		() => [
 			{
+				label: "Mark as Paid",
+				icon: <CheckCircle2Icon className="h-4 w-4" />,
+				onClick: (row) => openConvert(row.id),
+				show: (row) =>
+					row.status !== "completed" && row.status !== "cancelled",
+			},
+			{
 				label: "Generate Invoice",
 				icon: <FileTextIcon className="h-4 w-4" />,
 				onClick: (row) =>
 					generateInvoiceMutation.mutate({
 						paymentScheduleId: row.id,
 					}),
+				show: (row) =>
+					row.status !== "completed" && row.status !== "cancelled",
 			},
 			{
 				label: "Edit",
 				icon: <PencilIcon className="h-4 w-4" />,
 				onClick: (row) => openEdit(row.id),
+				show: (row) =>
+					row.status !== "completed" && row.status !== "cancelled",
 			},
 			{
 				label: "Delete",
@@ -229,9 +242,11 @@ export function SchedulesTableClient({
 					setScheduleToDelete(row);
 					setDeleteDialogOpen(true);
 				},
+				show: (row) =>
+					row.status !== "completed" && row.status !== "cancelled",
 			},
 		],
-		[openEdit, generateInvoiceMutation],
+		[openConvert, openEdit, generateInvoiceMutation],
 	);
 
 	// Define columns with sortable headers and meta for filters
