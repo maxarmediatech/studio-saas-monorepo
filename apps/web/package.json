@@ -36,7 +36,7 @@
 		"@radix-ui/react-toggle": "^1.1.10",
 		"@radix-ui/react-toggle-group": "^1.1.11",
 		"@radix-ui/react-tooltip": "^1.2.8",
-		"@react-pdf/renderer": "^3.4.5",
+		"@react-pdf/renderer": "^4.3.2",
 		"@repo/api": "workspace:*",
 		"@repo/auth": "workspace:*",
 		"@repo/config": "workspace:*",
@@ -133,6 +133,7 @@
 		"lint": "biome lint .",
 		"shadcn-ui": "pnpm dlx shadcn@latest",
 		"start": "next start",
+		"test:pdf-renderer": "node --test tests/pdf-renderer-smoke.test.cjs",
 		"type-check": "tsc --noEmit"
 	},
 	"version": "0.0.0"
