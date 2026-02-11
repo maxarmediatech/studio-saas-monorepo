@@ -1,9 +1,49 @@
 import { describe, expect, it } from "vitest";
+import { getNextInvoiceNumber } from "./invoice-number-utils";
 import {
 	getInvalidTransitionMessage,
 	type InvoiceStatus,
 	isValidStatusTransition,
 } from "./status-transitions";
+
+describe("getNextInvoiceNumber", () => {
+	it("returns base when there is no existing invoice", () => {
+		const result = getNextInvoiceNumber("INV-RS-2602-0001-260211", null);
+		expect(result).toBe("INV-RS-2602-0001-260211");
+	});
+
+	it("adds -1 when existing equals base", () => {
+		const result = getNextInvoiceNumber(
+			"INV-RS-2602-0001-260211",
+			"INV-RS-2602-0001-260211",
+		);
+		expect(result).toBe("INV-RS-2602-0001-260211-1");
+	});
+
+	it("increments explicit numeric suffix", () => {
+		const result = getNextInvoiceNumber(
+			"INV-RS-2602-0001-260211",
+			"INV-RS-2602-0001-260211-9",
+		);
+		expect(result).toBe("INV-RS-2602-0001-260211-10");
+	});
+
+	it("falls back to -1 for non-matching suffix", () => {
+		const result = getNextInvoiceNumber(
+			"INV-RS-2602-0001-260211",
+			"INV-RS-2602-0001-260211-ABC",
+		);
+		expect(result).toBe("INV-RS-2602-0001-260211-1");
+	});
+
+	it("handles base numbers containing regex special characters", () => {
+		const result = getNextInvoiceNumber(
+			"INV-BK.(A)+?-260211",
+			"INV-BK.(A)+?-260211-1",
+		);
+		expect(result).toBe("INV-BK.(A)+?-260211-2");
+	});
+});
 
 describe("isValidStatusTransition", () => {
 	const validTransitions: Array<[InvoiceStatus, InvoiceStatus]> = [

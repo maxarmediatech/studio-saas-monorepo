@@ -10,13 +10,17 @@ import {
 	sql,
 } from "@repo/database";
 import { centsToMoney, moneyToCents } from "../../studio/lib/money";
-import { format } from "date-fns";
+import {
+	buildInvoiceNumber,
+	getNextInvoiceNumber,
+} from "./invoice-number-utils";
 
 export {
 	getInvalidTransitionMessage,
 	type InvoiceStatus,
 	isValidStatusTransition,
 } from "./status-transitions";
+export { buildInvoiceNumber, getNextInvoiceNumber } from "./invoice-number-utils";
 
 export async function generateInvoiceNumber(
 	bookingId: string,
@@ -35,8 +39,7 @@ export async function generateInvoiceNumber(
 	}
 
 	const today = new Date();
-	const dateStr = format(today, "yyMMdd");
-	const baseNumber = `INV-${booking.referenceNumber}-${dateStr}`;
+	const baseNumber = buildInvoiceNumber(booking.referenceNumber, today);
 
 	const existing = await db.query.invoices.findFirst({
 		where: and(
@@ -48,11 +51,7 @@ export async function generateInvoiceNumber(
 		columns: { invoiceNumber: true },
 	});
 
-	if (!existing) return baseNumber;
-
-	const match = existing.invoiceNumber.match(/-(\d+)$/);
-	const nextSeq = match ? Number.parseInt(match[1], 10) + 1 : 1;
-	return `${baseNumber}-${nextSeq}`;
+	return getNextInvoiceNumber(baseNumber, existing?.invoiceNumber ?? null);
 }
 
 export interface GstCalculation {
