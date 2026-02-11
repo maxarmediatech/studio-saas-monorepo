@@ -11,6 +11,7 @@ import {
 	inArray,
 	isNull,
 	paymentSchedules,
+	receipts,
 	receivedAmounts,
 	sql,
 } from "@repo/database";
@@ -167,6 +168,43 @@ export const listReceived = studioProtectedProcedure
 			);
 		}
 
+		const receivedAmountIds = rows.map((row) => row.id);
+		const receiptByReceivedAmountId: Record<
+			string,
+			{ id: string; receiptNumber: string }
+		> = {};
+
+		if (receivedAmountIds.length > 0) {
+			const receiptRows = await db
+				.select({
+					id: receipts.id,
+					receivedAmountId: receipts.receivedAmountId,
+					receiptNumber: receipts.receiptNumber,
+				})
+				.from(receipts)
+				.where(
+					and(
+						eq(receipts.organizationId, context.organizationId),
+						isNull(receipts.deletedAt),
+						inArray(receipts.receivedAmountId, receivedAmountIds),
+					),
+				)
+				.orderBy(desc(receipts.createdAt));
+
+			for (const receipt of receiptRows) {
+				if (!receipt.receivedAmountId) {
+					continue;
+				}
+
+				if (!receiptByReceivedAmountId[receipt.receivedAmountId]) {
+					receiptByReceivedAmountId[receipt.receivedAmountId] = {
+						id: receipt.id,
+						receiptNumber: receipt.receiptNumber,
+					};
+				}
+			}
+		}
+
 		// Format response
 		const data: ReceivedAmountListItem[] = rows.map((row) => ({
 			id: row.id,
@@ -196,6 +234,9 @@ export const listReceived = studioProtectedProcedure
 			scheduleName: row.paymentScheduleId
 				? (scheduleNames[row.paymentScheduleId] ?? null)
 				: null,
+			receiptId: receiptByReceivedAmountId[row.id]?.id ?? null,
+			receiptNumber:
+				receiptByReceivedAmountId[row.id]?.receiptNumber ?? null,
 		}));
 
 		return {

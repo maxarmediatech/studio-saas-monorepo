@@ -9,8 +9,11 @@ import {
 	gte,
 	ilike,
 	inArray,
+	invoices,
 	isNull,
 	paymentSchedules,
+	receipts,
+	receivedAmounts,
 	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../../orpc/procedures";
@@ -131,13 +134,68 @@ export const listSchedules = studioProtectedProcedure
 				deletedBy: paymentSchedules.deletedBy,
 				bookingName: bookings.name,
 				bookingReferenceNumber: bookings.referenceNumber,
+				invoiceId: invoices.id,
+				invoiceNumber: invoices.invoiceNumber,
 			})
 			.from(paymentSchedules)
 			.innerJoin(bookings, eq(paymentSchedules.bookingId, bookings.id))
+			.leftJoin(
+				invoices,
+				and(
+					eq(invoices.paymentScheduleId, paymentSchedules.id),
+					eq(invoices.organizationId, context.organizationId),
+					isNull(invoices.deletedAt),
+				),
+			)
 			.where(and(...conditions))
 			.orderBy(orderFn(sortColumn))
 			.limit(limit)
 			.offset(offset);
+
+		const scheduleIds = rows.map((row) => row.id);
+		const receiptByScheduleId: Record<
+			string,
+			{ id: string; receiptNumber: string }
+		> = {};
+
+		if (scheduleIds.length > 0) {
+			const receiptRows = await db
+				.select({
+					id: receipts.id,
+					receiptNumber: receipts.receiptNumber,
+					scheduleId: receivedAmounts.paymentScheduleId,
+				})
+				.from(receipts)
+				.innerJoin(
+					receivedAmounts,
+					and(
+						eq(receipts.receivedAmountId, receivedAmounts.id),
+						eq(receivedAmounts.organizationId, context.organizationId),
+						isNull(receivedAmounts.deletedAt),
+					),
+				)
+				.where(
+					and(
+						eq(receipts.organizationId, context.organizationId),
+						isNull(receipts.deletedAt),
+						inArray(receivedAmounts.paymentScheduleId, scheduleIds),
+					),
+				)
+				.orderBy(desc(receipts.createdAt));
+
+			for (const receipt of receiptRows) {
+				if (!receipt.scheduleId) {
+					continue;
+				}
+
+				if (!receiptByScheduleId[receipt.scheduleId]) {
+					receiptByScheduleId[receipt.scheduleId] = {
+						id: receipt.id,
+						receiptNumber: receipt.receiptNumber,
+					};
+				}
+			}
+		}
 
 		// Format response
 		const data: PaymentScheduleListItem[] = rows.map((row) => ({
@@ -160,6 +218,10 @@ export const listSchedules = studioProtectedProcedure
 			deletedBy: row.deletedBy,
 			bookingName: row.bookingName,
 			bookingReferenceNumber: row.bookingReferenceNumber,
+			invoiceId: row.invoiceId,
+			invoiceNumber: row.invoiceNumber,
+			receiptId: receiptByScheduleId[row.id]?.id ?? null,
+			receiptNumber: receiptByScheduleId[row.id]?.receiptNumber ?? null,
 		}));
 
 		return {
