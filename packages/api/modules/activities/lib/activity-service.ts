@@ -23,6 +23,7 @@ export const ENTITY_TYPES = [
 	"submission",
 	"crew",
 	"received_amount",
+	"receipt",
 	"payment_schedule",
 	"expense",
 	"invoice",
