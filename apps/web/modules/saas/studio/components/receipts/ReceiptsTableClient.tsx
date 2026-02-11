@@ -59,6 +59,7 @@ export function ReceiptsTableClient({
 		search: filters.search ?? undefined,
 		bookingId: filters.bookingId ?? undefined,
 		invoiceId: filters.invoiceId ?? undefined,
+		paymentScheduleId: filters.paymentScheduleId ?? undefined,
 		dateFrom: filters.createdAt?.[0] ?? undefined,
 		dateTo: filters.createdAt?.[1] ?? undefined,
 		sortBy: sorting.sortBy ?? "receiptDate",

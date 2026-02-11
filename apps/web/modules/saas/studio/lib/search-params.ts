@@ -407,6 +407,9 @@ export const receiptSearchParamsCache = createSearchParamsCache({
 
 	// Filters
 	search: parseAsString,
+	bookingId: parseAsString,
+	invoiceId: parseAsString,
+	paymentScheduleId: parseAsString,
 	createdAt: parseAsArrayOf(parseAsString, ",").withDefault([]),
 
 	// Sorting

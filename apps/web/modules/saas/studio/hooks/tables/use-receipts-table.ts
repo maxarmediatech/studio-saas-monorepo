@@ -8,12 +8,14 @@ export interface ReceiptFilters {
 	createdAt?: string[] | null;
 	bookingId?: string | null;
 	invoiceId?: string | null;
+	paymentScheduleId?: string | null;
 }
 
 const receiptFilterParsers = {
 	createdAt: parseAsArrayOf(parseAsString, ","),
 	bookingId: parseAsString,
 	invoiceId: parseAsString,
+	paymentScheduleId: parseAsString,
 };
 
 export function useReceiptsTable() {
