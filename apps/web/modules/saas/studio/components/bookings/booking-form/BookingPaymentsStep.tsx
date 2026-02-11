@@ -803,6 +803,7 @@ function ScheduleRow({ index, onRemove }: ScheduleRowProps) {
 									id={field.name}
 									placeholder="e.g. Advance Payment"
 									list={`schedule-presets-${index}`}
+									autoComplete="off"
 									aria-invalid={fieldState.invalid}
 								/>
 								<datalist id={`schedule-presets-${index}`}>

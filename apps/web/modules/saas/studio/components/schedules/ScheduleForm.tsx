@@ -20,6 +20,7 @@ import {
 } from "@repo/ui/components/input-group";
 import { ScrollArea } from "@repo/ui/components/scroll-area";
 import { Textarea } from "@repo/ui/components/textarea";
+import { PAYMENT_SCHEDULE_PRESETS } from "@saas/studio/components/bookings/booking-form";
 import { bookingsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
@@ -186,8 +187,20 @@ export function ScheduleForm({
 										{...field}
 										id={field.name}
 										placeholder="e.g., Advance, Before Wedding, Final Payment"
+										list="schedule-name-presets"
+										autoComplete="off"
 										aria-invalid={fieldState.invalid}
 									/>
+									<datalist id="schedule-name-presets">
+										{PAYMENT_SCHEDULE_PRESETS.map(
+											(preset) => (
+												<option
+													key={preset.value}
+													value={preset.label}
+												/>
+											),
+										)}
+									</datalist>
 									{fieldState.invalid && (
 										<FieldError
 											errors={[fieldState.error]}
