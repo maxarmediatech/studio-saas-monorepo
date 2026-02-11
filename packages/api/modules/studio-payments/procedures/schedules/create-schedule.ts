@@ -6,9 +6,11 @@ import {
 	eq,
 	isNull,
 	paymentSchedules,
+	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../../orpc/procedures";
 import { formatAmount, safeTrackActivity } from "../../../activities/lib";
+import { centsToMoney, moneyToCents } from "../../../studio/lib/money";
 import { requirePermission } from "../../../studio/lib/permissions";
 import {
 	createScheduleInputSchema,
@@ -42,6 +44,43 @@ export const createSchedule = studioProtectedProcedure
 		if (!booking) {
 			throw new ORPCError("NOT_FOUND", {
 				message: "Booking not found",
+			});
+		}
+
+		const [pendingOutstandingResult] = await db
+			.select({
+				sum: sql<string>`COALESCE(SUM(${paymentSchedules.amount} - ${paymentSchedules.paidAmount}), 0)`,
+			})
+			.from(paymentSchedules)
+			.where(
+				and(
+					eq(paymentSchedules.organizationId, context.organizationId),
+					eq(paymentSchedules.bookingId, bookingId),
+					isNull(paymentSchedules.deletedAt),
+					sql`${paymentSchedules.status} NOT IN ('completed', 'cancelled')`,
+				),
+			);
+
+		const packageCostCents = moneyToCents(booking.packageCost);
+		const totalReceivedCents = moneyToCents(booking.totalReceived);
+		const totalPendingCents = moneyToCents(
+			pendingOutstandingResult?.sum ?? "0",
+		);
+		const leftToScheduleCents = Math.max(
+			packageCostCents - totalReceivedCents - totalPendingCents,
+			0,
+		);
+		const amountCents = moneyToCents(amount);
+
+		if (leftToScheduleCents <= 0) {
+			throw new ORPCError("CONFLICT", {
+				message: "No amount left to schedule for this booking",
+			});
+		}
+
+		if (amountCents > leftToScheduleCents) {
+			throw new ORPCError("BAD_REQUEST", {
+				message: `Amount cannot exceed left to schedule (${centsToMoney(leftToScheduleCents)})`,
 			});
 		}
 

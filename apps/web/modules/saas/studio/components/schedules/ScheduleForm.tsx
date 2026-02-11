@@ -20,8 +20,9 @@ import {
 } from "@repo/ui/components/input-group";
 import { ScrollArea } from "@repo/ui/components/scroll-area";
 import { Textarea } from "@repo/ui/components/textarea";
+import { formatMoney } from "@saas/shared/lib";
 import { PAYMENT_SCHEDULE_PRESETS } from "@saas/studio/components/bookings/booking-form";
-import { bookingsApi } from "@saas/studio/lib/api";
+import { bookingsApi, studioPaymentsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -58,6 +59,12 @@ interface ScheduleFormProps {
 	onScrollChange?: (isScrolled: boolean) => void;
 }
 
+function moneyToCents(value: string | undefined | null): number {
+	const [whole = "0", fraction = ""] = (value ?? "0").split(".");
+	const fractionPadded = (fraction + "00").slice(0, 2);
+	return Number(whole) * 100 + Number(fractionPadded);
+}
+
 export function ScheduleForm({
 	defaultValues,
 	defaultBookingId,
@@ -85,6 +92,21 @@ export function ScheduleForm({
 			notes: "",
 		},
 	});
+	const selectedBookingId = form.watch("bookingId");
+
+	const { data: selectedBookingData, isLoading: isLoadingSelectedBooking } =
+		useQuery({
+			...bookingsApi.getOptions(selectedBookingId),
+			enabled: mode === "create" && !!selectedBookingId,
+		});
+
+	const { data: paymentStatsData, isLoading: isLoadingPaymentStats } =
+		useQuery({
+			...studioPaymentsApi.statsOptions({
+				bookingId: selectedBookingId || undefined,
+			}),
+			enabled: mode === "create" && !!selectedBookingId,
+		});
 
 	useEffect(() => {
 		if (defaultValues) {
@@ -102,8 +124,64 @@ export function ScheduleForm({
 		}
 	}, [defaultValues, form]);
 
-	const isSubmitting = form.formState.isSubmitting || isPending;
 	const notesValue = form.watch("notes");
+	const amountValue = form.watch("amount");
+	const leftToScheduleCents = useMemo(() => {
+		if (mode !== "create" || !selectedBookingId) {
+			return null;
+		}
+
+		const bookingDetail = selectedBookingData?.data;
+		const paymentStats = paymentStatsData?.data;
+
+		if (!bookingDetail || !paymentStats) {
+			return null;
+		}
+
+		const packageCostCents = moneyToCents(bookingDetail.packageCost);
+		const totalReceivedCents = moneyToCents(bookingDetail.totalReceived);
+		const totalPendingCents = moneyToCents(paymentStats.totalPending);
+
+		return Math.max(
+			packageCostCents - totalReceivedCents - totalPendingCents,
+			0,
+		);
+	}, [
+		mode,
+		selectedBookingId,
+		selectedBookingData?.data,
+		paymentStatsData?.data,
+	]);
+	const isRemainingLoading =
+		mode === "create" &&
+		!!selectedBookingId &&
+		(isLoadingSelectedBooking || isLoadingPaymentStats);
+	const showLeftToSchedule =
+		mode === "create" &&
+		!!selectedBookingId &&
+		!isRemainingLoading &&
+		leftToScheduleCents !== null;
+	const leftToScheduleDisplay =
+		leftToScheduleCents !== null
+			? formatMoney((leftToScheduleCents / 100).toFixed(2))
+			: null;
+	const isScheduleAmountExhausted =
+		showLeftToSchedule &&
+		leftToScheduleCents !== null &&
+		leftToScheduleCents <= 0;
+	const isScheduleAmountLoading =
+		mode === "create" && !!selectedBookingId && isRemainingLoading;
+	const isSubmitting =
+		form.formState.isSubmitting ||
+		isPending ||
+		isScheduleAmountExhausted ||
+		isScheduleAmountLoading;
+
+	useEffect(() => {
+		if (form.formState.errors.amount?.type === "manual") {
+			form.clearErrors("amount");
+		}
+	}, [amountValue, selectedBookingId, leftToScheduleCents, form]);
 
 	const bookingOptions = useMemo((): ComboboxOption[] => {
 		const options = bookings.map((b) => ({
@@ -130,9 +208,51 @@ export function ScheduleForm({
 		[onScrollChange],
 	);
 
+	const handleSubmit = useCallback(
+		async (data: ScheduleFormValues) => {
+			if (mode === "create" && selectedBookingId && isRemainingLoading) {
+				form.setError("amount", {
+					type: "manual",
+					message:
+						"Please wait while we calculate amount left to schedule",
+				});
+				return;
+			}
+
+			if (mode === "create" && leftToScheduleCents !== null) {
+				if (leftToScheduleCents <= 0) {
+					form.setError("amount", {
+						type: "manual",
+						message: "No amount left to schedule for this booking",
+					});
+					return;
+				}
+
+				const amountCents = moneyToCents(data.amount);
+				if (amountCents > leftToScheduleCents) {
+					form.setError("amount", {
+						type: "manual",
+						message: `Amount cannot exceed left to schedule (${formatMoney((leftToScheduleCents / 100).toFixed(2))})`,
+					});
+					return;
+				}
+			}
+
+			await onSubmit(data);
+		},
+		[
+			isRemainingLoading,
+			leftToScheduleCents,
+			mode,
+			selectedBookingId,
+			form,
+			onSubmit,
+		],
+	);
+
 	return (
 		<form
-			onSubmit={form.handleSubmit(onSubmit)}
+			onSubmit={form.handleSubmit(handleSubmit)}
 			className="flex flex-col h-full min-h-0"
 		>
 			<ScrollArea
@@ -171,6 +291,22 @@ export function ScheduleForm({
 											errors={[fieldState.error]}
 										/>
 									)}
+									{isRemainingLoading && (
+										<p className="text-xs text-muted-foreground">
+											Checking amount left to schedule...
+										</p>
+									)}
+									{showLeftToSchedule &&
+										leftToScheduleDisplay && (
+											<p
+												className={`text-xs ${isScheduleAmountExhausted ? "text-destructive" : "text-muted-foreground"}`}
+											>
+												Left to schedule:{" "}
+												<span className="font-medium">
+													{leftToScheduleDisplay}
+												</span>
+											</p>
+										)}
 								</Field>
 							)}
 						/>
