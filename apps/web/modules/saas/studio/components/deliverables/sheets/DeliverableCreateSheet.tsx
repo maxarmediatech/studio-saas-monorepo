@@ -7,10 +7,10 @@ import {
 	SheetTitle,
 } from "@repo/ui/components/sheet";
 import { cn } from "@repo/ui/lib/utils";
-import { orpc } from "@shared/lib/orpc-query-utils";
-import { useBookingParams } from "@saas/studio/hooks/params";
 import { useDeliverableParams } from "@saas/studio/hooks/params/use-deliverable-params";
+import { useContextBookingId } from "@saas/studio/hooks/use-context-booking-id";
 import { deliverablesMutations } from "@saas/studio/lib/api";
+import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -21,7 +21,7 @@ import {
 
 export function DeliverableCreateSheet() {
 	const { createDeliverable, close } = useDeliverableParams();
-	const { bookingId } = useBookingParams();
+	const bookingId = useContextBookingId();
 	const isOpen = Boolean(createDeliverable);
 	const queryClient = useQueryClient();
 	const [isScrolled, setIsScrolled] = useState(false);

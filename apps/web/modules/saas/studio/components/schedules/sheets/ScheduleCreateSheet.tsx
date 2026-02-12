@@ -7,8 +7,8 @@ import {
 	SheetTitle,
 } from "@repo/ui/components/sheet";
 import { cn } from "@repo/ui/lib/utils";
-import { useBookingParams } from "@saas/studio/hooks/params";
 import { useScheduleParams } from "@saas/studio/hooks/params/use-schedule-params";
+import { useContextBookingId } from "@saas/studio/hooks/use-context-booking-id";
 import { studioPaymentsMutations } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -18,7 +18,7 @@ import { ScheduleForm, type ScheduleFormValues } from "../ScheduleForm";
 
 export function ScheduleCreateSheet() {
 	const { createSchedule, close } = useScheduleParams();
-	const { bookingId } = useBookingParams();
+	const bookingId = useContextBookingId();
 	const isOpen = Boolean(createSchedule);
 	const queryClient = useQueryClient();
 	const [isScrolled, setIsScrolled] = useState(false);

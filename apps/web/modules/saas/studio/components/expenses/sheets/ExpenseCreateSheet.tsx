@@ -7,8 +7,8 @@ import {
 	SheetTitle,
 } from "@repo/ui/components/sheet";
 import { cn } from "@repo/ui/lib/utils";
-import { useBookingParams } from "@saas/studio/hooks/params";
 import { useExpenseParams } from "@saas/studio/hooks/params/use-expense-params";
+import { useContextBookingId } from "@saas/studio/hooks/use-context-booking-id";
 import { expensesMutations } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -18,7 +18,7 @@ import { ExpenseForm, type ExpenseFormValues } from "../ExpenseForm";
 
 export function ExpenseCreateSheet() {
 	const { createExpense, close } = useExpenseParams();
-	const { bookingId } = useBookingParams();
+	const bookingId = useContextBookingId();
 	const isOpen = Boolean(createExpense);
 	const queryClient = useQueryClient();
 	const [isScrolled, setIsScrolled] = useState(false);
@@ -52,7 +52,9 @@ export function ExpenseCreateSheet() {
 				metadata:
 					Object.keys(metadata).length > 0 ? metadata : undefined,
 				assignments:
-					Object.keys(assignment).length > 0 ? [assignment] : undefined,
+					Object.keys(assignment).length > 0
+						? [assignment]
+						: undefined,
 			});
 
 			await queryClient.invalidateQueries({

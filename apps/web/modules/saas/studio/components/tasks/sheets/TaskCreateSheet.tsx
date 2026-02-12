@@ -7,10 +7,10 @@ import {
 	SheetTitle,
 } from "@repo/ui/components/sheet";
 import { cn } from "@repo/ui/lib/utils";
-import { orpc } from "@shared/lib/orpc-query-utils";
-import { useBookingParams } from "@saas/studio/hooks/params";
 import { useTaskParams } from "@saas/studio/hooks/params/use-task-params";
+import { useContextBookingId } from "@saas/studio/hooks/use-context-booking-id";
 import { tasksMutations } from "@saas/studio/lib/api";
+import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -18,7 +18,7 @@ import { TaskForm, type TaskFormValues } from "../TaskForm";
 
 export function TaskCreateSheet() {
 	const { createTask, close } = useTaskParams();
-	const { bookingId } = useBookingParams();
+	const bookingId = useContextBookingId();
 	const isOpen = Boolean(createTask);
 	const queryClient = useQueryClient();
 	const [isScrolled, setIsScrolled] = useState(false);

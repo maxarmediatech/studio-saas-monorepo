@@ -7,8 +7,8 @@ import {
 	SheetTitle,
 } from "@repo/ui/components/sheet";
 import { cn } from "@repo/ui/lib/utils";
-import { useBookingParams } from "@saas/studio/hooks/params";
 import { usePaymentParams } from "@saas/studio/hooks/params/use-payment-params";
+import { useContextBookingId } from "@saas/studio/hooks/use-context-booking-id";
 import { studioPaymentsMutations } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -18,7 +18,7 @@ import { PaymentForm, type PaymentFormValues } from "../PaymentForm";
 
 export function PaymentCreateSheet() {
 	const { createPayment, close } = usePaymentParams();
-	const { bookingId } = useBookingParams();
+	const bookingId = useContextBookingId();
 	const isOpen = Boolean(createPayment);
 	const queryClient = useQueryClient();
 	const [isScrolled, setIsScrolled] = useState(false);
