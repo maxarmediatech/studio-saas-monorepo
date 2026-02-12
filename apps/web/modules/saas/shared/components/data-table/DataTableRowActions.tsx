@@ -9,17 +9,31 @@ import {
 	DropdownMenuTrigger,
 } from "@repo/ui/components/dropdown-menu";
 import { MoreHorizontalIcon } from "lucide-react";
+import Link from "next/link";
 
-export interface RowAction<TData> {
+type RowActionClick<TData> = {
+	onClick: (row: TData) => void;
+	href?: never;
+	target?: never;
+	rel?: never;
+};
+
+type RowActionHref<TData> = {
+	href: (row: TData) => string;
+	target?: "_self" | "_blank";
+	rel?: string;
+	onClick?: never;
+};
+
+export type RowAction<TData> = {
 	label: string;
 	icon?: React.ReactNode;
-	onClick: (row: TData) => void;
 	variant?: "default" | "destructive";
 	/** If true, adds a separator before this action */
 	separator?: boolean;
 	/** Conditionally show this action */
 	show?: (row: TData) => boolean;
-}
+} & (RowActionClick<TData> | RowActionHref<TData>);
 
 interface DataTableRowActionsProps<TData> {
 	row: TData;
@@ -53,19 +67,45 @@ export function DataTableRowActions<TData>({
 							{action.separator && index > 0 && (
 								<DropdownMenuSeparator />
 							)}
-							<DropdownMenuItem
-								onClick={() => action.onClick(row)}
-								className={
-									action.variant === "destructive"
-										? "text-destructive focus:text-destructive"
-										: undefined
-								}
-							>
-								{action.icon && (
-									<span className="mr-2">{action.icon}</span>
-								)}
-								{action.label}
-							</DropdownMenuItem>
+							{"onClick" in action && action.onClick ? (
+								<DropdownMenuItem
+									onClick={() => action.onClick(row)}
+									className={
+										action.variant === "destructive"
+											? "text-destructive focus:text-destructive"
+											: undefined
+									}
+								>
+									{action.icon && (
+										<span className="mr-2">
+											{action.icon}
+										</span>
+									)}
+									{action.label}
+								</DropdownMenuItem>
+							) : (
+								<DropdownMenuItem
+									asChild
+									className={
+										action.variant === "destructive"
+											? "text-destructive focus:text-destructive"
+											: undefined
+									}
+								>
+									<Link
+										href={action.href(row)}
+										target={action.target}
+										rel={action.rel}
+									>
+										{action.icon && (
+											<span className="mr-2">
+												{action.icon}
+											</span>
+										)}
+										{action.label}
+									</Link>
+								</DropdownMenuItem>
+							)}
 						</div>
 					))}
 				</DropdownMenuContent>

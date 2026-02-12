@@ -43,17 +43,6 @@ function getConvertedTaskId(
 	return trimmed.length > 0 ? trimmed : null;
 }
 
-function openInNewTab(href: string) {
-	if (typeof window === "undefined") {
-		return;
-	}
-
-	const opened = window.open(href, "_blank", "noopener,noreferrer");
-	if (!opened) {
-		window.location.href = href;
-	}
-}
-
 function getStatusBadge(status: string) {
 	const statusLower = status.toLowerCase();
 	switch (statusLower) {
@@ -230,13 +219,15 @@ export default function DeliverableDetailPage() {
 				</div>
 				<div className="flex items-center gap-2">
 					{taskHref ? (
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={() => openInNewTab(taskHref)}
-						>
-							<ListTodoIcon className="mr-1 size-4" />
-							View Task
+						<Button variant="outline" size="sm" asChild>
+							<Link
+								href={taskHref}
+								target="_blank"
+								rel="noopener noreferrer"
+							>
+								<ListTodoIcon className="mr-1 size-4" />
+								View Task
+							</Link>
 						</Button>
 					) : (
 						<Button

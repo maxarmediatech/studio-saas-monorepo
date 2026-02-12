@@ -24,7 +24,8 @@ import { Textarea } from "@repo/ui/components/textarea";
 import { deliverablesMutations } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -65,17 +66,6 @@ function getConvertedTaskId(
 	return trimmed.length > 0 ? trimmed : null;
 }
 
-function openInNewTab(href: string) {
-	if (typeof window === "undefined") {
-		return;
-	}
-
-	const opened = window.open(href, "_blank", "noopener,noreferrer");
-	if (!opened) {
-		window.location.href = href;
-	}
-}
-
 function extractTaskIdFromConflictMessage(message: string): string | null {
 	const match = message.match(/\(([^)]+)\)\s*$/);
 	if (!match) {
@@ -93,8 +83,14 @@ export function ConvertToTaskDialog({
 	onOpenChange,
 }: ConvertToTaskDialogProps) {
 	const queryClient = useQueryClient();
+	const [resolvedTaskId, setResolvedTaskId] = useState<string | null>(null);
 	const convertedTaskId = getConvertedTaskId(deliverable?.metadata);
-	const alreadyConverted = Boolean(convertedTaskId);
+	const taskId = resolvedTaskId ?? convertedTaskId;
+	const taskHref = useMemo(
+		() => (taskId ? `/app/${organizationSlug}/tasks/${taskId}` : null),
+		[organizationSlug, taskId],
+	);
+	const hasLinkedTask = Boolean(taskHref);
 
 	const {
 		register,
@@ -114,6 +110,7 @@ export function ConvertToTaskDialog({
 
 	useEffect(() => {
 		if (open && deliverable) {
+			setResolvedTaskId(null);
 			reset({
 				taskName: `Task: ${deliverable.name}`,
 				taskDescription: deliverable.description ?? "",
@@ -121,6 +118,7 @@ export function ConvertToTaskDialog({
 				taskDueDate: deliverable.dueDate ?? undefined,
 			});
 		} else if (!open) {
+			setResolvedTaskId(null);
 			reset({
 				taskName: "",
 				taskDescription: "",
@@ -141,10 +139,7 @@ export function ConvertToTaskDialog({
 			queryClient.invalidateQueries({
 				queryKey: orpc.activities.key(),
 			});
-			openInNewTab(
-				`/app/${organizationSlug}/tasks/${response.data.taskId}`,
-			);
-			onOpenChange(false);
+			setResolvedTaskId(response.data.taskId);
 		},
 		onError: (error) => {
 			const message =
@@ -155,8 +150,7 @@ export function ConvertToTaskDialog({
 
 			if (isAlreadyConvertedError) {
 				const conflictedTaskId =
-					convertedTaskId ??
-					extractTaskIdFromConflictMessage(message);
+					taskId ?? extractTaskIdFromConflictMessage(message);
 				queryClient.invalidateQueries({
 					queryKey: orpc.deliverables.key(),
 				});
@@ -167,11 +161,7 @@ export function ConvertToTaskDialog({
 					return;
 				}
 
-				toast.info("Deliverable is already converted. Opening task.");
-				openInNewTab(
-					`/app/${organizationSlug}/tasks/${conflictedTaskId}`,
-				);
-				onOpenChange(false);
+				setResolvedTaskId(conflictedTaskId);
 				return;
 			}
 
@@ -181,12 +171,6 @@ export function ConvertToTaskDialog({
 
 	const onSubmit = (values: ConvertToTaskFormValues) => {
 		if (!deliverable) {
-			return;
-		}
-
-		if (alreadyConverted && convertedTaskId) {
-			openInNewTab(`/app/${organizationSlug}/tasks/${convertedTaskId}`);
-			onOpenChange(false);
 			return;
 		}
 
@@ -205,19 +189,19 @@ export function ConvertToTaskDialog({
 				<DialogHeader>
 					<DialogTitle>Convert to Task</DialogTitle>
 					<DialogDescription>
-						Create a new task from this deliverable. Crew
-						assignments will be copied automatically.
+						{hasLinkedTask
+							? "This deliverable is linked to a task."
+							: "Create a new task from this deliverable. Crew assignments will be copied automatically."}
 					</DialogDescription>
-					{alreadyConverted && (
+					{hasLinkedTask && (
 						<p className="text-sm text-muted-foreground mt-1">
-							This deliverable is already converted. Use View Task
-							to open the linked task.
+							Use View Task to open the linked task.
 						</p>
 					)}
 				</DialogHeader>
 
 				<form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-					{!alreadyConverted && (
+					{!hasLinkedTask && (
 						<>
 							<Field>
 								<FieldLabel>Task Name</FieldLabel>
@@ -329,19 +313,17 @@ export function ConvertToTaskDialog({
 							variant="outline"
 							onClick={() => onOpenChange(false)}
 						>
-							Cancel
+							{hasLinkedTask ? "Close" : "Cancel"}
 						</Button>
-						{alreadyConverted && convertedTaskId ? (
-							<Button
-								type="button"
-								onClick={() => {
-									openInNewTab(
-										`/app/${organizationSlug}/tasks/${convertedTaskId}`,
-									);
-									onOpenChange(false);
-								}}
-							>
-								View Task
+						{taskHref ? (
+							<Button type="button" asChild>
+								<Link
+									href={taskHref}
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									View Task
+								</Link>
 							</Button>
 						) : (
 							<Button

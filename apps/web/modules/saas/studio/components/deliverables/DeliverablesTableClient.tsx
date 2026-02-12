@@ -70,17 +70,6 @@ function getConvertedTaskId(
 	return trimmed.length > 0 ? trimmed : null;
 }
 
-function openInNewTab(href: string) {
-	if (typeof window === "undefined") {
-		return;
-	}
-
-	const opened = window.open(href, "_blank", "noopener,noreferrer");
-	if (!opened) {
-		window.location.href = href;
-	}
-}
-
 const STATUS_LABELS: Record<string, string> = {
 	pending: "Pending",
 	in_progress: "In Progress",
@@ -223,16 +212,14 @@ export function DeliverablesTableClient({
 				icon: <EyeIcon className="h-4 w-4" />,
 				separator: true,
 				show: (row) => Boolean(getConvertedTaskId(row.metadata)),
-				onClick: (row) => {
+				href: (row) => {
 					const convertedTaskId = getConvertedTaskId(row.metadata);
-					if (!convertedTaskId) {
-						return;
-					}
-
-					openInNewTab(
-						`/app/${organizationSlug}/tasks/${convertedTaskId}`,
-					);
+					return convertedTaskId
+						? `/app/${organizationSlug}/tasks/${convertedTaskId}`
+						: "#";
 				},
+				target: "_blank",
+				rel: "noopener noreferrer",
 			},
 			{
 				label: "Convert to task",
