@@ -24,8 +24,8 @@ import {
 	PlusIcon,
 	RefreshCwIcon,
 	Trash2Icon,
-	UserPlusIcon,
 	UserMinusIcon,
+	UserPlusIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -36,7 +36,13 @@ interface ActivityFeedWidgetProps {
 	title?: string;
 }
 
-type FilterKey = "all" | "booking" | "shoot" | "task" | "deliverable" | "payment";
+type FilterKey =
+	| "all"
+	| "booking"
+	| "shoot"
+	| "task"
+	| "deliverable"
+	| "payment";
 
 const FILTERS: { key: FilterKey; label: string }[] = [
 	{ key: "all", label: "All" },
@@ -112,9 +118,20 @@ function getActivityMessage(activity: {
 	parentEntityName?: string | null;
 	metadata?: unknown;
 }): string {
-	const { action, entityType, entityName, field, oldValue, newValue, parentEntityName } = activity;
+	const {
+		action,
+		entityType,
+		entityName,
+		field,
+		oldValue,
+		newValue,
+		parentEntityName,
+	} = activity;
 	// Safely access metadata as Record<string, unknown>
-	const metadata = activity.metadata as Record<string, unknown> | null | undefined;
+	const metadata = activity.metadata as
+		| Record<string, unknown>
+		| null
+		| undefined;
 	const note = typeof metadata?.note === "string" ? metadata.note : null;
 
 	// Format entity type for display
@@ -163,11 +180,6 @@ function getEntityLink(
 	parentEntityType?: string | null,
 	parentEntityId?: string | null,
 ): string {
-	// For nested entities, link to parent booking
-	if (parentEntityType === "booking" && parentEntityId) {
-		return `/app/${organizationSlug}/bookings/${parentEntityId}`;
-	}
-
 	switch (entityType) {
 		case "booking":
 			return `/app/${organizationSlug}/bookings/${entityId}`;
@@ -212,6 +224,10 @@ function getEntityLink(
 			}
 			return "#";
 		default:
+			// For unknown nested entities, prefer parent booking as safe fallback.
+			if (parentEntityType === "booking" && parentEntityId) {
+				return `/app/${organizationSlug}/bookings/${parentEntityId}`;
+			}
 			return "#";
 	}
 }
@@ -292,7 +308,9 @@ export function ActivityFeedWidget({
 				</div>
 				<div className="min-h-[300px] flex flex-col items-center justify-center">
 					<ActivityIcon className="size-12 text-red-300/50 mb-3" />
-					<p className="text-sm text-red-500">Failed to load activities</p>
+					<p className="text-sm text-red-500">
+						Failed to load activities
+					</p>
 					<p className="text-xs text-muted-foreground mt-1">
 						Please try again later
 					</p>
@@ -304,10 +322,10 @@ export function ActivityFeedWidget({
 	return (
 		<div className="py-4">
 			<div className="flex items-center justify-between mb-2">
-					<div className="text-sm font-semibold text-muted-foreground">
-						{title}
-					</div>
-					<DropdownMenu>
+				<div className="text-sm font-semibold text-muted-foreground">
+					{title}
+				</div>
+				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
 						<Button
 							variant="outline"

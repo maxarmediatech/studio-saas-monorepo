@@ -5,6 +5,7 @@ import { Button } from "@repo/ui/components/button";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
 import { formatMoney } from "@saas/shared/lib";
+import { ConvertToTaskDialog } from "@saas/studio/components/deliverables/ConvertToTaskDialog";
 import { SubmissionCard } from "@saas/studio/components/shared";
 import { useDeliverableParams } from "@saas/studio/hooks/params";
 import { deliverablesApi, submissionsApi } from "@saas/studio/lib/api";
@@ -20,6 +21,7 @@ import {
 	CheckCircle2Icon,
 	ChevronRight,
 	CircleIcon,
+	ListTodoIcon,
 	PackageIcon,
 	PencilIcon,
 	PlayCircleIcon,
@@ -27,7 +29,30 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+
+function getConvertedTaskId(
+	metadata: Record<string, unknown> | null | undefined,
+): string | null {
+	const value = metadata?.convertedToTaskId;
+	if (typeof value !== "string") {
+		return null;
+	}
+
+	const trimmed = value.trim();
+	return trimmed.length > 0 ? trimmed : null;
+}
+
+function openInNewTab(href: string) {
+	if (typeof window === "undefined") {
+		return;
+	}
+
+	const opened = window.open(href, "_blank", "noopener,noreferrer");
+	if (!opened) {
+		window.location.href = href;
+	}
+}
 
 function getStatusBadge(status: string) {
 	const statusLower = status.toLowerCase();
@@ -115,6 +140,7 @@ export default function DeliverableDetailPage() {
 		deliverableId: string;
 	}>();
 	const { openEdit } = useDeliverableParams();
+	const [convertDialogOpen, setConvertDialogOpen] = useState(false);
 
 	const { data: deliverableData, isLoading: deliverableLoading } = useQuery(
 		deliverablesApi.getOptions(params.deliverableId),
@@ -148,7 +174,9 @@ export default function DeliverableDetailPage() {
 	}, [submissions]);
 
 	const unassignedCrewSubmissions = useMemo(() => {
-		if (!deliverable?.assignments) return submissions;
+		if (!deliverable?.assignments) {
+			return submissions;
+		}
 		const assignedCrewIds = new Set(
 			deliverable.assignments.map((a) => a.crewId),
 		);
@@ -179,6 +207,10 @@ export default function DeliverableDetailPage() {
 	}
 
 	const booking = deliverable.booking;
+	const convertedTaskId = getConvertedTaskId(deliverable.metadata);
+	const taskHref = convertedTaskId
+		? `/app/${params.organizationSlug}/tasks/${convertedTaskId}`
+		: null;
 
 	return (
 		<div className="mx-auto w-full max-w-[800px] py-6 px-4">
@@ -196,14 +228,35 @@ export default function DeliverableDetailPage() {
 						{deliverable.name}
 					</span>
 				</div>
-				<Button
-					variant="outline"
-					size="sm"
-					onClick={() => openEdit(deliverable.id)}
-				>
-					<PencilIcon className="mr-1 size-4" />
-					Edit
-				</Button>
+				<div className="flex items-center gap-2">
+					{taskHref ? (
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => openInNewTab(taskHref)}
+						>
+							<ListTodoIcon className="mr-1 size-4" />
+							View Task
+						</Button>
+					) : (
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => setConvertDialogOpen(true)}
+						>
+							<ListTodoIcon className="mr-1 size-4" />
+							Convert to Task
+						</Button>
+					)}
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => openEdit(deliverable.id)}
+					>
+						<PencilIcon className="mr-1 size-4" />
+						Edit
+					</Button>
+				</div>
 			</div>
 
 			<div className="mt-8">
@@ -456,6 +509,13 @@ export default function DeliverableDetailPage() {
 					</div>
 				)}
 			</div>
+
+			<ConvertToTaskDialog
+				deliverable={deliverable}
+				organizationSlug={params.organizationSlug}
+				open={convertDialogOpen}
+				onOpenChange={setConvertDialogOpen}
+			/>
 		</div>
 	);
 }

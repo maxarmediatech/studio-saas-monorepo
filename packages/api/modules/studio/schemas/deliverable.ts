@@ -365,7 +365,7 @@ export const convertDeliverableToTaskInputSchema = z.object({
 	deliverableId: idSchema,
 	taskName: nameSchema.optional(),
 	taskDescription: descriptionSchema,
-	taskPriority: z.string().min(1).max(50).optional(),
+	taskPriority: z.enum(["low", "normal", "medium", "high"]).optional(),
 	taskDueDate: dateSchema.optional(),
 });
 

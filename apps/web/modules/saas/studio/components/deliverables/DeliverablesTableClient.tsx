@@ -40,6 +40,7 @@ import {
 	CircleIcon,
 	ClockIcon,
 	EyeIcon,
+	ListTodoIcon,
 	Loader2Icon,
 	PackageIcon,
 	PencilIcon,
@@ -50,10 +51,34 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { ConvertToTaskDialog } from "./ConvertToTaskDialog";
 import { OpenDeliverableCreateSheet } from "./OpenDeliverableSheet";
 
 interface DeliverablesTableClientProps {
 	organizationSlug: string;
+}
+
+function getConvertedTaskId(
+	metadata: Record<string, unknown> | null | undefined,
+): string | null {
+	const value = metadata?.convertedToTaskId;
+	if (typeof value !== "string") {
+		return null;
+	}
+
+	const trimmed = value.trim();
+	return trimmed.length > 0 ? trimmed : null;
+}
+
+function openInNewTab(href: string) {
+	if (typeof window === "undefined") {
+		return;
+	}
+
+	const opened = window.open(href, "_blank", "noopener,noreferrer");
+	if (!opened) {
+		window.location.href = href;
+	}
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -110,6 +135,9 @@ export function DeliverablesTableClient({
 
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [deliverableToDelete, setDeliverableToDelete] =
+		useState<DeliverableListItem | null>(null);
+	const [convertDialogOpen, setConvertDialogOpen] = useState(false);
+	const [deliverableToConvert, setDeliverableToConvert] =
 		useState<DeliverableListItem | null>(null);
 
 	// URL-based sheet params
@@ -189,6 +217,32 @@ export function DeliverablesTableClient({
 				label: "Edit",
 				icon: <PencilIcon className="h-4 w-4" />,
 				onClick: handleOpenEdit,
+			},
+			{
+				label: "View task",
+				icon: <EyeIcon className="h-4 w-4" />,
+				separator: true,
+				show: (row) => Boolean(getConvertedTaskId(row.metadata)),
+				onClick: (row) => {
+					const convertedTaskId = getConvertedTaskId(row.metadata);
+					if (!convertedTaskId) {
+						return;
+					}
+
+					openInNewTab(
+						`/app/${organizationSlug}/tasks/${convertedTaskId}`,
+					);
+				},
+			},
+			{
+				label: "Convert to task",
+				icon: <ListTodoIcon className="h-4 w-4" />,
+				separator: true,
+				show: (row) => !getConvertedTaskId(row.metadata),
+				onClick: (row) => {
+					setDeliverableToConvert(row);
+					setConvertDialogOpen(true);
+				},
 			},
 			{
 				label: "Delete",
@@ -494,6 +548,13 @@ export function DeliverablesTableClient({
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
+
+			<ConvertToTaskDialog
+				deliverable={deliverableToConvert}
+				organizationSlug={organizationSlug}
+				open={convertDialogOpen}
+				onOpenChange={setConvertDialogOpen}
+			/>
 		</>
 	);
 }
