@@ -411,7 +411,7 @@ export function DeliverablesTableClient({
 				},
 			},
 		],
-		[organizationSlug, rowActions],
+		[organizationSlug, packageTypeLabels, rowActions],
 	);
 
 	return (
