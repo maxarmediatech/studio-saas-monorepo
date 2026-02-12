@@ -267,6 +267,7 @@ export function TaskForm({
 										{...field}
 										id={field.name}
 										placeholder="Enter task name"
+										autoComplete="off"
 										aria-invalid={fieldState.invalid}
 									/>
 									{fieldState.invalid && (
