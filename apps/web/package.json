@@ -126,7 +126,7 @@
 	"name": "@repo/web",
 	"private": true,
 	"scripts": {
-		"build": "next build",
+		"build": "NODE_OPTIONS='--max-old-space-size=4096' next build",
 		"dev": "next dev",
 		"e2e": "pnpm exec playwright test --ui",
 		"e2e:ci": "pnpm exec playwright install && pnpm exec playwright test",
