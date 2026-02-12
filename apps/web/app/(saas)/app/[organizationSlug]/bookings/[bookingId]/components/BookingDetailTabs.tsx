@@ -7,7 +7,7 @@ import {
 	TabsTrigger,
 } from "@repo/ui/components/tabs";
 import {
-	useBookingParams,
+	useBookingEditParams,
 	useDeliverableParams,
 	useExpenseParams,
 	usePaymentParams,
@@ -75,7 +75,7 @@ export function BookingDetailTabs({
 	bookingId,
 	booking,
 }: BookingDetailTabsProps) {
-	const { openEdit: openEditBooking } = useBookingParams();
+	const { openEdit: openEditBooking } = useBookingEditParams();
 	const { openCreate: openCreateShoot } = useShootParams();
 	const { openCreate: openCreateDeliverable } = useDeliverableParams();
 	const { openCreate: openCreateTask } = useTaskParams();
