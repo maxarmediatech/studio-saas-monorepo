@@ -334,6 +334,7 @@ export const configurationsApi = {
 		orpc.configurations.list.queryOptions({
 			input: {
 				type: "booking_type",
+				limit: 100,
 				sortBy: "sortOrder",
 				sortDirection: "asc",
 			},
@@ -341,13 +342,14 @@ export const configurationsApi = {
 
 	packageTypesOptions: () =>
 		orpc.configurations.list.queryOptions({
-			input: { type: "package_type" },
+			input: { type: "package_type", limit: 100 },
 		}),
 
 	relationTypesOptions: () =>
 		orpc.configurations.list.queryOptions({
 			input: {
 				type: "relation_type",
+				limit: 100,
 				sortBy: "sortOrder",
 				sortDirection: "asc",
 			},
@@ -355,13 +357,14 @@ export const configurationsApi = {
 
 	shootStatusOptions: () =>
 		orpc.configurations.list.queryOptions({
-			input: { type: "shoot_status" },
+			input: { type: "shoot_status", limit: 100 },
 		}),
 
 	specialisationsOptions: () =>
 		orpc.configurations.list.queryOptions({
 			input: {
 				type: "crew_role",
+				limit: 100,
 				sortBy: "sortOrder",
 				sortDirection: "asc",
 			},
@@ -371,6 +374,7 @@ export const configurationsApi = {
 		orpc.configurations.list.queryOptions({
 			input: {
 				type: "crew_role",
+				limit: 100,
 				sortBy: "sortOrder",
 				sortDirection: "asc",
 			},
@@ -380,6 +384,7 @@ export const configurationsApi = {
 		orpc.configurations.list.queryOptions({
 			input: {
 				type: "event_type",
+				limit: 100,
 				sortBy: "sortOrder",
 				sortDirection: "asc",
 			},

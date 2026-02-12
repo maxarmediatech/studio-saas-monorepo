@@ -96,11 +96,17 @@ export function ConfigurationsTableClient({
 		configurationsApi.listOptions(queryInput),
 	);
 
-	// Fetch booking types for label resolution in the package type table
+	// Fetch booking types for label resolution (package_type, event_type, relation_type tables)
 	const { data: bookingTypesData } = useQuery(
 		configurationsApi.bookingTypesOptions(),
 	);
 	const bookingTypes = bookingTypesData?.data ?? [];
+
+	// Fetch relation types for label resolution (booking_type table → "Applicable Roles" column)
+	const { data: relationTypesData } = useQuery(
+		configurationsApi.relationTypesOptions(),
+	);
+	const relationTypes = relationTypesData?.data ?? [];
 
 	const configurations = data?.data ?? [];
 	const serverPagination = data?.pagination ?? {
@@ -302,6 +308,108 @@ export function ConfigurationsTableClient({
 						} satisfies ColumnDef<Configuration>,
 					]
 				: []),
+			// Booking type → "Applicable Roles" column (resolves metadata.roles keys to labels)
+			...(configType === "booking_type"
+				? [
+						{
+							id: "applicableRoles",
+							header: ({ column }: { column: unknown }) => (
+								<DataTableColumnHeader column={column as never} title="Applicable Roles" />
+							),
+							cell: ({ row }: { row: { original: Configuration } }) => {
+								const roles = (row.original.metadata as Record<string, unknown> | null)?.roles;
+								if (!Array.isArray(roles) || roles.length === 0) {
+									return <span className="text-muted-foreground">All roles</span>;
+								}
+								const labels = roles.map((key) => {
+									const match = relationTypes.find((rt) => rt.key === key);
+									return match?.label ?? key;
+								});
+								const text = labels.join(", ");
+								return (
+									<span className="truncate max-w-[160px] block" title={text}>
+										{text}
+									</span>
+								);
+							},
+							meta: {
+								label: "Applicable Roles",
+								width: 180,
+								minWidth: 150,
+							},
+							enableSorting: false,
+							enableHiding: true,
+						} satisfies ColumnDef<Configuration>,
+					]
+				: []),
+			// Event type → "Booking Types" column (resolves metadata.bookingTypes keys to labels)
+			...(configType === "event_type"
+				? [
+						{
+							id: "applicableBookingTypes",
+							header: ({ column }: { column: unknown }) => (
+								<DataTableColumnHeader column={column as never} title="Booking Types" />
+							),
+							cell: ({ row }: { row: { original: Configuration } }) => {
+								const bTypes = (row.original.metadata as Record<string, unknown> | null)?.bookingTypes;
+								if (!Array.isArray(bTypes) || bTypes.length === 0) {
+									return <span className="text-muted-foreground">All types</span>;
+								}
+								const labels = bTypes.map((key) => {
+									const match = bookingTypes.find((bt) => bt.key === key);
+									return match?.label ?? key;
+								});
+								const text = labels.join(", ");
+								return (
+									<span className="truncate max-w-[160px] block" title={text}>
+										{text}
+									</span>
+								);
+							},
+							meta: {
+								label: "Booking Types",
+								width: 180,
+								minWidth: 150,
+							},
+							enableSorting: false,
+							enableHiding: true,
+						} satisfies ColumnDef<Configuration>,
+					]
+				: []),
+			// Relation type → "Booking Types" column (resolves metadata.bookingTypes keys to labels)
+			...(configType === "relation_type"
+				? [
+						{
+							id: "applicableBookingTypes",
+							header: ({ column }: { column: unknown }) => (
+								<DataTableColumnHeader column={column as never} title="Booking Types" />
+							),
+							cell: ({ row }: { row: { original: Configuration } }) => {
+								const bTypes = (row.original.metadata as Record<string, unknown> | null)?.bookingTypes;
+								if (!Array.isArray(bTypes) || bTypes.length === 0) {
+									return <span className="text-muted-foreground">All types</span>;
+								}
+								const labels = bTypes.map((key) => {
+									const match = bookingTypes.find((bt) => bt.key === key);
+									return match?.label ?? key;
+								});
+								const text = labels.join(", ");
+								return (
+									<span className="truncate max-w-[160px] block" title={text}>
+										{text}
+									</span>
+								);
+							},
+							meta: {
+								label: "Booking Types",
+								width: 180,
+								minWidth: 150,
+							},
+							enableSorting: false,
+							enableHiding: true,
+						} satisfies ColumnDef<Configuration>,
+					]
+				: []),
 			{
 				id: "sortOrder",
 				accessorKey: "sortOrder",
@@ -427,7 +535,7 @@ export function ConfigurationsTableClient({
 				},
 			},
 		],
-		[rowActions, configType, bookingTypes],
+		[rowActions, configType, bookingTypes, relationTypes],
 	);
 
 	return (
