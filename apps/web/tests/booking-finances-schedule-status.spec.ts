@@ -90,6 +90,7 @@ test.describe("booking finances schedule status", () => {
 				true,
 				"Requires at least one non-pending scheduled payment row in the table",
 			);
+			return;
 		}
 
 		await page.goto(
