@@ -113,6 +113,7 @@ export const convertDeliverableToTask = studioProtectedProcedure
 					dueDate: finalTaskDueDate,
 					metadata: {
 						convertedFromDeliverableId: deliverableId,
+						convertedFromDeliverableName: lockedDeliverable.name,
 					},
 					createdBy: context.user.id,
 					updatedBy: context.user.id,

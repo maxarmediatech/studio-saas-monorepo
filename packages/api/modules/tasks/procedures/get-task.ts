@@ -5,6 +5,7 @@ import {
 	crews,
 	db,
 	eq,
+	sql,
 	taskAssignments,
 	tasks,
 } from "@repo/database";
@@ -79,12 +80,44 @@ export const getTask = studioProtectedProcedure
 			.innerJoin(crews, eq(taskAssignments.crewId, crews.id))
 			.where(eq(taskAssignments.taskId, id));
 
+		let metadata = task.metadata as Record<string, unknown> | null;
+		const convertedFromDeliverableId =
+			typeof metadata?.convertedFromDeliverableId === "string"
+				? metadata.convertedFromDeliverableId.trim()
+				: null;
+
+		// Backward compatibility for older converted tasks where metadata was not
+		// written on task records.
+		if (!convertedFromDeliverableId) {
+			const legacyConversionResult = await db.execute(sql`
+				SELECT d.id, d.name
+				FROM deliverables d
+				WHERE
+					d.organization_id = ${context.organizationId}
+					AND d.deleted_at IS NULL
+					AND d.metadata ->> 'convertedToTaskId' = ${id}
+				LIMIT 1
+			`);
+
+			const linkedDeliverable = legacyConversionResult.rows[0] as
+				| { id: string; name: string }
+				| undefined;
+
+			if (linkedDeliverable) {
+				metadata = {
+					...(metadata ?? {}),
+					convertedFromDeliverableId: linkedDeliverable.id,
+					convertedFromDeliverableName: linkedDeliverable.name,
+				};
+			}
+		}
+
 		return {
 			data: {
 				...task,
 				dueDate: task.dueDate ?? null,
 				completedAt: task.completedAt?.toISOString() ?? null,
-				metadata: task.metadata as Record<string, unknown> | null,
+				metadata,
 				createdAt: task.createdAt.toISOString(),
 				updatedAt: task.updatedAt.toISOString(),
 				deletedAt: task.deletedAt?.toISOString() ?? null,

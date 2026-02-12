@@ -28,6 +28,22 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMemo } from "react";
 
+function getConvertedFromDeliverable(metadata: Record<string, unknown> | null) {
+	const idValue = metadata?.convertedFromDeliverableId;
+	const nameValue = metadata?.convertedFromDeliverableName;
+
+	const deliverableId =
+		typeof idValue === "string" && idValue.trim().length > 0
+			? idValue.trim()
+			: null;
+	const deliverableName =
+		typeof nameValue === "string" && nameValue.trim().length > 0
+			? nameValue.trim()
+			: null;
+
+	return { deliverableId, deliverableName };
+}
+
 function getStatusBadge(status: string) {
 	const statusLower = status.toLowerCase();
 	switch (statusLower) {
@@ -169,7 +185,9 @@ export default function TaskDetailPage() {
 	}, [submissions]);
 
 	const unassignedCrewSubmissions = useMemo(() => {
-		if (!task?.assignments) return submissions;
+		if (!task?.assignments) {
+			return submissions;
+		}
 		const assignedCrewIds = new Set(task.assignments.map((a) => a.crewId));
 		return submissions.filter((s) => !assignedCrewIds.has(s.submittedBy));
 	}, [submissions, task?.assignments]);
@@ -196,6 +214,10 @@ export default function TaskDetailPage() {
 	}
 
 	const booking = task.booking;
+	const {
+		deliverableId: convertedFromDeliverableId,
+		deliverableName: convertedFromDeliverableName,
+	} = getConvertedFromDeliverable(task.metadata);
 
 	return (
 		<div className="mx-auto w-full max-w-[800px] py-6 px-4">
@@ -233,6 +255,20 @@ export default function TaskDetailPage() {
 					>
 						{booking.name}
 					</Link>
+					{convertedFromDeliverableId && (
+						<>
+							<span>·</span>
+							<span>Converted from</span>
+							<Link
+								href={`/app/${params.organizationSlug}/deliverables/${convertedFromDeliverableId}`}
+								target="_blank"
+								rel="noopener noreferrer"
+								className="font-medium text-foreground hover:underline"
+							>
+								{convertedFromDeliverableName ?? "Deliverable"}
+							</Link>
+						</>
+					)}
 					{task.dueDate && (
 						<>
 							<span>·</span>
