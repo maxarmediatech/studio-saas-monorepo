@@ -43,7 +43,6 @@ import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-	AlertTriangleIcon,
 	CalendarClockIcon,
 	CalendarIcon,
 	CheckCircle2Icon,
@@ -52,49 +51,26 @@ import {
 	Loader2Icon,
 	PencilIcon,
 	TrashIcon,
-	XCircleIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { OpenScheduleCreateSheet } from "./OpenScheduleSheet";
+import {
+	getScheduleStatusIcon,
+	getScheduleStatusLabel,
+	getScheduleStatusVariant,
+} from "./schedule-status-presentation";
 
 interface SchedulesTableClientProps {
 	organizationSlug?: string;
 }
 
-const STATUS_LABELS: Record<string, string> = {
-	pending: "Pending",
-	partial: "Partial",
-	completed: "Completed",
-	overdue: "Overdue",
-	cancelled: "Cancelled",
-};
-
-const STATUS_VARIANTS: Record<
-	string,
-	"default" | "secondary" | "destructive" | "outline"
-> = {
-	pending: "default",
-	partial: "secondary",
-	completed: "default",
-	overdue: "destructive",
-	cancelled: "outline",
-};
-
-const STATUS_ICONS: Record<string, typeof CircleDashedIcon> = {
-	pending: CircleDashedIcon,
-	partial: CalendarClockIcon,
-	completed: CheckCircle2Icon,
-	overdue: AlertTriangleIcon,
-	cancelled: XCircleIcon,
-};
-
 // Derive statusOptions from the source of truth
 const statusOptions = SCHEDULE_STATUSES.map((status) => ({
 	value: status,
-	label: STATUS_LABELS[status],
+	label: getScheduleStatusLabel(status),
 }));
 
 const formatDate = (dateStr: string) => {
@@ -109,7 +85,9 @@ const formatDate = (dateStr: string) => {
  * Check if a date is overdue (before today)
  */
 const isOverdue = (dateStr: string, status: string) => {
-	if (status === "completed" || status === "cancelled") return false;
+	if (status === "completed" || status === "cancelled") {
+		return false;
+	}
 	const dueDate = new Date(dateStr);
 	const today = new Date();
 	today.setHours(0, 0, 0, 0);
@@ -244,8 +222,7 @@ export function SchedulesTableClient({
 						`/app/${organizationSlug}/receipts/${row.receiptId}`,
 					);
 				},
-				show: (row) =>
-					!!organizationSlug && !!row.receiptId,
+				show: (row) => !!organizationSlug && !!row.receiptId,
 			},
 			{
 				label: "Generate Invoice",
@@ -285,7 +262,13 @@ export function SchedulesTableClient({
 					row.status !== "cancelled",
 			},
 		],
-		[openConvert, openEdit, generateInvoiceMutation, organizationSlug, router],
+		[
+			openConvert,
+			openEdit,
+			generateInvoiceMutation,
+			organizationSlug,
+			router,
+		],
 	);
 
 	// Define columns with sortable headers and meta for filters
@@ -444,12 +427,12 @@ export function SchedulesTableClient({
 				),
 				cell: ({ row }) => {
 					const status = row.original.status;
-					const StatusIcon = STATUS_ICONS[status] ?? CircleDashedIcon;
+					const StatusIcon = getScheduleStatusIcon(status);
 					const isCompleted = status === "completed";
 
 					return (
 						<Badge
-							variant={STATUS_VARIANTS[status]}
+							variant={getScheduleStatusVariant(status)}
 							className={cn(
 								"gap-1",
 								isCompleted &&
@@ -457,7 +440,7 @@ export function SchedulesTableClient({
 							)}
 						>
 							<StatusIcon className="h-3 w-3" />
-							{STATUS_LABELS[status]}
+							{getScheduleStatusLabel(status)}
 						</Badge>
 					);
 				},
