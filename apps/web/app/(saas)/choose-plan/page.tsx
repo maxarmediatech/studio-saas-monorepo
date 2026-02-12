@@ -3,6 +3,7 @@ import { createPurchasesHelper } from "@repo/payments/lib/helper";
 import { Button } from "@repo/ui/components/button";
 import { resolveAppRedirectPath } from "@saas/auth/lib/redirects";
 import { getOrganizationList, getSession } from "@saas/auth/lib/server";
+import { isOnboardingRequired } from "@saas/onboarding/lib/access";
 import { ChoosePlanRecoveryActions } from "@saas/payments/components/ChoosePlanRecoveryActions";
 import { PricingTable } from "@saas/payments/components/PricingTable";
 import { getPurchases } from "@saas/payments/lib/server";
@@ -65,6 +66,10 @@ export default async function ChoosePlanPage() {
 		redirect(appRedirectPath);
 	}
 
+	const onboardingRequired = isOnboardingRequired({
+		enableOnboarding: config.users.enableOnboarding,
+		onboardingComplete: Boolean(session.user.onboardingComplete),
+	});
 	const newOrganizationPath = `/new-organization?redirectTo=${encodeURIComponent("/app")}`;
 
 	return (
@@ -74,6 +79,7 @@ export default async function ChoosePlanPage() {
 				<ChoosePlanRecoveryActions
 					backHref={newOrganizationPath}
 					showBack={false}
+					showRestart={onboardingRequired}
 				/>
 			}
 		>

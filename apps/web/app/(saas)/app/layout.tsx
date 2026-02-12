@@ -6,6 +6,7 @@ import {
 	resolveAppRedirectPath,
 } from "@saas/auth/lib/redirects";
 import { getOrganizationList, getSession } from "@saas/auth/lib/server";
+import { isOnboardingRequired } from "@saas/onboarding/lib/access";
 import { ActiveOrganizationProvider } from "@saas/organizations/components/ActiveOrganizationProvider";
 import { organizationListQueryKey } from "@saas/organizations/lib/api";
 import { ConfirmationAlertProvider } from "@saas/shared/components/ConfirmationAlertProvider";
@@ -39,7 +40,12 @@ export default async function ProtectedAppLayout({
 		activeOrganizationSlug,
 	);
 
-	if (config.users.enableOnboarding && !session.user.onboardingComplete) {
+	if (
+		isOnboardingRequired({
+			enableOnboarding: config.users.enableOnboarding,
+			onboardingComplete: Boolean(session.user.onboardingComplete),
+		})
+	) {
 		redirect(
 			`/onboarding?redirectTo=${encodeURIComponent(postAuthRedirectPath)}`,
 		);
@@ -47,7 +53,7 @@ export default async function ProtectedAppLayout({
 
 	const activeOrganization =
 		organizations.find(
-			(org) => org.id === session?.session.activeOrganizationId,
+			(org) => org.id === session.session.activeOrganizationId,
 		) || organizations.at(0);
 
 	const organizationId: string | undefined =

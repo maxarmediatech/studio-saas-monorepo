@@ -4,6 +4,10 @@ import {
 	resolveAppRedirectPath,
 } from "@saas/auth/lib/redirects";
 import { getOrganizationList, getSession } from "@saas/auth/lib/server";
+import {
+	getOnboardingRecoveryLinks,
+	isOnboardingRequired,
+} from "@saas/onboarding/lib/access";
 import { CreateOrganizationForm } from "@saas/organizations/components/CreateOrganizationForm";
 import { ChoosePlanRecoveryActions } from "@saas/payments/components/ChoosePlanRecoveryActions";
 import { AuthWrapper } from "@saas/shared/components/AuthWrapper";
@@ -21,17 +25,25 @@ export default async function NewOrganizationPage({ searchParams }: Props) {
 	const nextPath = redirectTo ?? "/app";
 	const newOrganizationPath = `/new-organization?redirectTo=${encodeURIComponent(nextPath)}`;
 	const session = await getSession();
+
+	if (!session) {
+		redirect("/auth/login");
+	}
+
 	const organizations = await getOrganizationList();
 	const activeOrganization =
 		organizations.find(
-			(org) => org.id === session?.session.activeOrganizationId,
+			(org) => org.id === session.session.activeOrganizationId,
 		) || organizations.at(0);
-	const onboardingBackHref = config.users.enableOnboarding
-		? `/onboarding?allowCompleted=1&redirectTo=${encodeURIComponent(newOrganizationPath)}`
-		: undefined;
-	const restartRedirectHref =
-		onboardingBackHref ??
-		`/onboarding?allowCompleted=1&redirectTo=${encodeURIComponent(newOrganizationPath)}`;
+	const onboardingRequired = isOnboardingRequired({
+		enableOnboarding: config.users.enableOnboarding,
+		onboardingComplete: Boolean(session.user.onboardingComplete),
+	});
+	const { onboardingBackHref, restartRedirectHref, showRestart } =
+		getOnboardingRecoveryLinks({
+			onboardingRequired,
+			newOrganizationPath,
+		});
 
 	if (
 		!config.organizations.enable ||
@@ -41,7 +53,7 @@ export default async function NewOrganizationPage({ searchParams }: Props) {
 	) {
 		const activeOrganizationSlug = getActiveOrganizationSlug({
 			organizations,
-			activeOrganizationId: session?.session.activeOrganizationId,
+			activeOrganizationId: session.session.activeOrganizationId,
 		});
 		redirect(resolveAppRedirectPath("/app", activeOrganizationSlug));
 	}
@@ -53,6 +65,7 @@ export default async function NewOrganizationPage({ searchParams }: Props) {
 					backHref={onboardingBackHref}
 					restartRedirectHref={restartRedirectHref}
 					showBack={false}
+					showRestart={showRestart}
 				/>
 			}
 		>

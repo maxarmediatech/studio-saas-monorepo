@@ -19,7 +19,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 const DEFAULT_BACK_PATH = "/new-organization?redirectTo=%2Fapp";
-const DEFAULT_RESTART_PATH = `/onboarding?allowCompleted=1&redirectTo=${encodeURIComponent(
+const DEFAULT_RESTART_PATH = `/onboarding?redirectTo=${encodeURIComponent(
 	DEFAULT_BACK_PATH,
 )}`;
 
@@ -27,12 +27,34 @@ type Props = {
 	backHref?: string;
 	restartRedirectHref?: string;
 	showBack?: boolean;
+	showRestart?: boolean;
 };
+
+const SESSION_REFRESH_RETRY_DELAYS_MS = [0, 200, 400, 800] as const;
+
+async function ensureOnboardingResetSession() {
+	for (const delayMs of SESSION_REFRESH_RETRY_DELAYS_MS) {
+		if (delayMs > 0) {
+			await new Promise((resolve) => setTimeout(resolve, delayMs));
+		}
+
+		const { data, error } = await authClient.getSession({
+			query: { disableCookieCache: true },
+		});
+
+		if (!error && data && data.user.onboardingComplete === false) {
+			return;
+		}
+	}
+
+	throw new Error("Session refresh did not reflect onboarding reset");
+}
 
 export function ChoosePlanRecoveryActions({
 	backHref = DEFAULT_BACK_PATH,
 	restartRedirectHref = DEFAULT_RESTART_PATH,
 	showBack = true,
+	showRestart = false,
 }: Props) {
 	const [isResetting, setIsResetting] = useState(false);
 	const [isSigningOut, setIsSigningOut] = useState(false);
@@ -51,6 +73,8 @@ export function ChoosePlanRecoveryActions({
 			if (error) {
 				throw error;
 			}
+
+			await ensureOnboardingResetSession();
 
 			setActiveOrganizationSlugCookie(null);
 			window.location.href = restartRedirectHref;
@@ -99,24 +123,26 @@ export function ChoosePlanRecoveryActions({
 				</Tooltip>
 			)}
 
-			<Tooltip>
-				<TooltipTrigger asChild>
-					<Button
-						variant="outline"
-						size="icon"
-						aria-label="Restart setup"
-						onClick={() => void onResetSetup()}
-						disabled={isResetting || isSigningOut}
-					>
-						{isResetting ? (
-							<Loader2Icon className="size-4 animate-spin" />
-						) : (
-							<RotateCcwIcon className="size-4" />
-						)}
-					</Button>
-				</TooltipTrigger>
-				<TooltipContent side="bottom">Restart setup</TooltipContent>
-			</Tooltip>
+			{showRestart && (
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<Button
+							variant="outline"
+							size="icon"
+							aria-label="Restart setup"
+							onClick={() => void onResetSetup()}
+							disabled={isResetting || isSigningOut}
+						>
+							{isResetting ? (
+								<Loader2Icon className="size-4 animate-spin" />
+							) : (
+								<RotateCcwIcon className="size-4" />
+							)}
+						</Button>
+					</TooltipTrigger>
+					<TooltipContent side="bottom">Restart setup</TooltipContent>
+				</Tooltip>
+			)}
 
 			<Tooltip>
 				<TooltipTrigger asChild>

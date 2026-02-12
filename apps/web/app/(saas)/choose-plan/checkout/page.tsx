@@ -1,4 +1,6 @@
+import { config } from "@repo/config";
 import { getSession } from "@saas/auth/lib/server";
+import { isOnboardingRequired } from "@saas/onboarding/lib/access";
 import { ChoosePlanRecoveryActions } from "@saas/payments/components/ChoosePlanRecoveryActions";
 import { InlineCheckoutPageClient } from "@saas/payments/components/InlineCheckoutPageClient";
 import { AuthWrapper } from "@saas/shared/components/AuthWrapper";
@@ -49,6 +51,11 @@ export default async function ChoosePlanCheckoutPage({
 		redirect("/choose-plan");
 	}
 
+	const onboardingRequired = isOnboardingRequired({
+		enableOnboarding: config.users.enableOnboarding,
+		onboardingComplete: Boolean(session.user.onboardingComplete),
+	});
+
 	return (
 		<AuthWrapper
 			contentClass="max-w-6xl p-6 lg:p-8"
@@ -56,6 +63,7 @@ export default async function ChoosePlanCheckoutPage({
 				<ChoosePlanRecoveryActions
 					backHref="/choose-plan"
 					showBack={false}
+					showRestart={onboardingRequired}
 				/>
 			}
 		>

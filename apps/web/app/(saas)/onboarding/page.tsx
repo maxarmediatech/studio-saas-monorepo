@@ -5,6 +5,7 @@ import {
 } from "@saas/auth/lib/redirects";
 import { getOrganizationList, getSession } from "@saas/auth/lib/server";
 import { OnboardingForm } from "@saas/onboarding/components/OnboardingForm";
+import { isOnboardingRequired } from "@saas/onboarding/lib/access";
 import { ChoosePlanRecoveryActions } from "@saas/payments/components/ChoosePlanRecoveryActions";
 import { AuthWrapper } from "@saas/shared/components/AuthWrapper";
 import type { Metadata } from "next";
@@ -14,27 +15,7 @@ export const metadata: Metadata = {
 	title: "Onboarding",
 };
 
-type Props = {
-	searchParams: Promise<{
-		allowCompleted?: string | string[];
-	}>;
-};
-
-function getSingleValue(
-	value: string | string[] | undefined,
-): string | undefined {
-	if (Array.isArray(value)) {
-		return value[0];
-	}
-
-	return value;
-}
-
-export default async function OnboardingPage({ searchParams }: Props) {
-	const params = await searchParams;
-	const allowCompletedParam = getSingleValue(params.allowCompleted);
-	const allowCompletedOnboarding =
-		allowCompletedParam === "1" || allowCompletedParam === "true";
+export default async function OnboardingPage() {
 	const session = await getSession();
 
 	if (!session) {
@@ -42,8 +23,10 @@ export default async function OnboardingPage({ searchParams }: Props) {
 	}
 
 	if (
-		!config.users.enableOnboarding ||
-		(session.user.onboardingComplete && !allowCompletedOnboarding)
+		!isOnboardingRequired({
+			enableOnboarding: config.users.enableOnboarding,
+			onboardingComplete: Boolean(session.user.onboardingComplete),
+		})
 	) {
 		if (!config.organizations.enable) {
 			redirect("/");
@@ -60,7 +43,9 @@ export default async function OnboardingPage({ searchParams }: Props) {
 
 	return (
 		<AuthWrapper
-			headerActions={<ChoosePlanRecoveryActions showBack={false} />}
+			headerActions={
+				<ChoosePlanRecoveryActions showBack={false} showRestart />
+			}
 		>
 			<OnboardingForm />
 		</AuthWrapper>
