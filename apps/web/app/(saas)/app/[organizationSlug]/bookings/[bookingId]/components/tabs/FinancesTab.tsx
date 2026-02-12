@@ -16,6 +16,8 @@ import { expensesApi, studioPaymentsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ArrowDownIcon, ArrowUpIcon, ClockIcon, PlusIcon } from "lucide-react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 import { Fragment } from "react";
 import { formatCurrency } from "../utils";
 
@@ -30,6 +32,7 @@ const statuses = {
 } as const;
 
 export function FinancesTab({ bookingId }: FinancesTabProps) {
+	const { organizationSlug } = useParams<{ organizationSlug: string }>();
 	const { openCreate: openCreatePayment, openEdit: openEditPayment } =
 		usePaymentParams();
 	const { openCreate: openCreateSchedule, openEdit: openEditSchedule } =
@@ -235,17 +238,28 @@ export function FinancesTab({ bookingId }: FinancesTabProps) {
 													</span>
 												</td>
 												<td className="py-4 text-right">
-													<button
-														type="button"
-														onClick={() =>
-															openEditPayment(
-																payment.id,
-															)
-														}
-														className="text-sm font-medium text-primary hover:text-primary/80"
-													>
-														View
-													</button>
+													{organizationSlug ? (
+														<Link
+															href={`/app/${organizationSlug}/payments/${payment.id}`}
+															target="_blank"
+															rel="noopener noreferrer"
+															className="text-sm font-medium text-primary hover:text-primary/80"
+														>
+															View
+														</Link>
+													) : (
+														<button
+															type="button"
+															onClick={() =>
+																openEditPayment(
+																	payment.id,
+																)
+															}
+															className="text-sm font-medium text-primary hover:text-primary/80"
+														>
+															View
+														</button>
+													)}
 												</td>
 											</tr>
 										))}
@@ -347,17 +361,28 @@ export function FinancesTab({ bookingId }: FinancesTabProps) {
 													</span>
 												</td>
 												<td className="py-4 text-right">
-													<button
-														type="button"
-														onClick={() =>
-															openEditExpense(
-																expense.id,
-															)
-														}
-														className="text-sm font-medium text-primary hover:text-primary/80"
-													>
-														View
-													</button>
+													{organizationSlug ? (
+														<Link
+															href={`/app/${organizationSlug}/expenses/${expense.id}`}
+															target="_blank"
+															rel="noopener noreferrer"
+															className="text-sm font-medium text-primary hover:text-primary/80"
+														>
+															View
+														</Link>
+													) : (
+														<button
+															type="button"
+															onClick={() =>
+																openEditExpense(
+																	expense.id,
+																)
+															}
+															className="text-sm font-medium text-primary hover:text-primary/80"
+														>
+															View
+														</button>
+													)}
 												</td>
 											</tr>
 										))}

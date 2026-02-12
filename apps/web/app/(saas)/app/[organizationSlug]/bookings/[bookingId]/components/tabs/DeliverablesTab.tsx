@@ -1,7 +1,13 @@
 "use client";
 
 import { Button } from "@repo/ui/components/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@repo/ui/components/card";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@repo/ui/components/card";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -20,6 +26,8 @@ import {
 	PackageIcon,
 	PlusIcon,
 } from "lucide-react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 
 interface DeliverablesTabProps {
 	bookingId: string;
@@ -55,9 +63,11 @@ function getStatusStyle(status: string) {
 
 function DeliverableRow({
 	deliverable,
+	detailHref,
 	onEdit,
 }: {
 	deliverable: Deliverable;
+	detailHref?: string;
 	onEdit: (id: string) => void;
 }) {
 	const isCompleted = deliverable.status === "completed";
@@ -110,14 +120,31 @@ function DeliverableRow({
 						className="size-6 rounded-full bg-gray-50 ring-2 ring-background"
 					/>
 				</div>
-				<Button
-					variant="outline"
-					size="sm"
-					className="hidden sm:block"
-					onClick={() => onEdit(deliverable.id)}
-				>
-					Details
-				</Button>
+				{detailHref ? (
+					<Button
+						variant="outline"
+						size="sm"
+						className="hidden sm:block"
+						asChild
+					>
+						<Link
+							href={detailHref}
+							target="_blank"
+							rel="noopener noreferrer"
+						>
+							Details
+						</Link>
+					</Button>
+				) : (
+					<Button
+						variant="outline"
+						size="sm"
+						className="hidden sm:block"
+						onClick={() => onEdit(deliverable.id)}
+					>
+						Details
+					</Button>
+				)}
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
 						<Button
@@ -151,6 +178,7 @@ function DeliverableRow({
 
 export function DeliverablesTab({ bookingId }: DeliverablesTabProps) {
 	const { openCreate, openEdit } = useDeliverableParams();
+	const { organizationSlug } = useParams<{ organizationSlug: string }>();
 
 	const {
 		data: deliverables,
@@ -230,6 +258,11 @@ export function DeliverablesTab({ bookingId }: DeliverablesTabProps) {
 							<DeliverableRow
 								key={item.id}
 								deliverable={item}
+								detailHref={
+									organizationSlug
+										? `/app/${organizationSlug}/deliverables/${item.id}`
+										: undefined
+								}
 								onEdit={openEdit}
 							/>
 						))}

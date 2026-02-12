@@ -1,7 +1,13 @@
 "use client";
 
 import { Button } from "@repo/ui/components/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@repo/ui/components/card";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@repo/ui/components/card";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -20,6 +26,8 @@ import {
 	MoreVertical,
 	PlusIcon,
 } from "lucide-react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 
 interface ShootsTabProps {
 	bookingId: string;
@@ -51,9 +59,11 @@ function getStatusStyle(status: string) {
 
 function ShootRow({
 	shoot,
+	detailHref,
 	onEdit,
 }: {
 	shoot: Shoot;
+	detailHref?: string;
 	onEdit: (id: string) => void;
 }) {
 	const dateStr = shoot.shootDate
@@ -121,14 +131,31 @@ function ShootRow({
 						className="size-6 rounded-full bg-gray-50 ring-2 ring-background"
 					/>
 				</div>
-				<Button
-					variant="outline"
-					size="sm"
-					className="hidden sm:block"
-					onClick={() => onEdit(shoot.id)}
-				>
-					Details
-				</Button>
+				{detailHref ? (
+					<Button
+						variant="outline"
+						size="sm"
+						className="hidden sm:block"
+						asChild
+					>
+						<Link
+							href={detailHref}
+							target="_blank"
+							rel="noopener noreferrer"
+						>
+							Details
+						</Link>
+					</Button>
+				) : (
+					<Button
+						variant="outline"
+						size="sm"
+						className="hidden sm:block"
+						onClick={() => onEdit(shoot.id)}
+					>
+						Details
+					</Button>
+				)}
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
 						<Button
@@ -158,6 +185,7 @@ function ShootRow({
 
 export function ShootsTab({ bookingId }: ShootsTabProps) {
 	const { openCreate, openEdit } = useShootParams();
+	const { organizationSlug } = useParams<{ organizationSlug: string }>();
 
 	const {
 		data: shoots,
@@ -229,6 +257,11 @@ export function ShootsTab({ bookingId }: ShootsTabProps) {
 							<ShootRow
 								key={shoot.id}
 								shoot={shoot}
+								detailHref={
+									organizationSlug
+										? `/app/${organizationSlug}/shoots/${shoot.id}`
+										: undefined
+								}
 								onEdit={openEdit}
 							/>
 						))}
