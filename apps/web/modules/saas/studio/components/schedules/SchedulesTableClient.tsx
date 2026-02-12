@@ -47,6 +47,7 @@ import {
 	CalendarIcon,
 	CheckCircle2Icon,
 	CircleDashedIcon,
+	EyeIcon,
 	FileTextIcon,
 	Loader2Icon,
 	PencilIcon,
@@ -190,6 +191,19 @@ export function SchedulesTableClient({
 	const rowActions: RowAction<PaymentScheduleListItem>[] = useMemo(
 		() => [
 			{
+				label: "View details",
+				icon: <EyeIcon className="h-4 w-4" />,
+				onClick: (row) => {
+					if (!organizationSlug) {
+						return;
+					}
+					router.push(
+						`/app/${organizationSlug}/scheduled-payments/${row.id}`,
+					);
+				},
+				show: () => !!organizationSlug,
+			},
+			{
 				label: "Record Payment",
 				icon: <CheckCircle2Icon className="h-4 w-4" />,
 				onClick: (row) => openConvert(row.id),
@@ -308,9 +322,17 @@ export function SchedulesTableClient({
 				header: ({ column }) => (
 					<DataTableColumnHeader column={column} title="Schedule" />
 				),
-				cell: ({ row }) => (
-					<span className="font-medium">{row.original.name}</span>
-				),
+				cell: ({ row }) =>
+					organizationSlug ? (
+						<Link
+							href={`/app/${organizationSlug}/scheduled-payments/${row.original.id}`}
+							className="font-medium text-foreground hover:underline"
+						>
+							{row.original.name}
+						</Link>
+					) : (
+						<span className="font-medium">{row.original.name}</span>
+					),
 				meta: {
 					label: "Schedule",
 					width: 160,
