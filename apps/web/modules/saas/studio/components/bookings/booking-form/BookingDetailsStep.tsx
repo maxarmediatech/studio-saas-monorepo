@@ -74,10 +74,10 @@ export function BookingDetailsStep() {
 		bookingFormQueries.clients(),
 	);
 
-	// Use real data from API
-	const bookingTypes = bookingTypesData?.data ?? [];
-	const packageTypes = packageTypesData?.data ?? [];
-	const relationTypes = relationTypesData?.data ?? [];
+	// Use real data from API — filter to active configs only in booking form dropdowns
+	const bookingTypes = (bookingTypesData?.data ?? []).filter((c) => c.isActive);
+	const packageTypes = (packageTypesData?.data ?? []).filter((c) => c.isActive);
+	const relationTypes = (relationTypesData?.data ?? []).filter((c) => c.isActive);
 	const clients = clientsData?.data ?? [];
 
 	const {
@@ -192,18 +192,13 @@ export function BookingDetailsStep() {
 		);
 	}, [watchedParticipants]);
 
-	// Filter package types by booking type if metadata specifies it
+	// Filter package types by booking type — read column first, fallback to metadata
 	const filteredPackageTypes = packageTypes.filter((pkg) => {
 		if (!selectedBookingType) {
 			return true;
 		}
-		const bookingTypeMetadata = pkg.metadata as {
-			bookingType?: string;
-		} | null;
-		return (
-			!bookingTypeMetadata?.bookingType ||
-			bookingTypeMetadata.bookingType === selectedBookingType
-		);
+		const bookingTypeFilter = pkg.bookingTypeFilter ?? (pkg.metadata as { bookingType?: string } | null)?.bookingType;
+		return !bookingTypeFilter || bookingTypeFilter === selectedBookingType;
 	});
 
 	// Filter relation types (roles) by bi-directional relationship
@@ -369,29 +364,28 @@ export function BookingDetailsStep() {
 			shouldValidate: true,
 		});
 		const selectedPackage = packageTypes.find((p) => p.key === value);
-		if (selectedPackage?.metadata) {
+		if (selectedPackage) {
 			const metadata = selectedPackage.metadata as {
 				defaultCost?: string;
 				defaultDeliverables?: Array<{
 					title: string;
 					quantity: number;
 				}>;
-			};
+			} | null;
 
-			// Auto-fill package cost
-			if (metadata.defaultCost) {
-				form.setValue("packageCost", metadata.defaultCost, {
+			// Auto-fill package cost — column first, fallback to metadata
+			const cost = selectedPackage.defaultCost ?? metadata?.defaultCost;
+			if (cost) {
+				form.setValue("packageCost", cost, {
 					shouldDirty: true,
 					shouldValidate: true,
 				});
 			}
 
-			// Auto-populate deliverables from package (replaces all existing per design decision)
-			if (
-				metadata.defaultDeliverables &&
-				metadata.defaultDeliverables.length > 0
-			) {
-				const packageDeliverables = metadata.defaultDeliverables.map(
+			// Auto-populate deliverables from package metadata (replaces all existing per design decision)
+			const defaultDeliverables = metadata?.defaultDeliverables;
+			if (defaultDeliverables && defaultDeliverables.length > 0) {
+				const packageDeliverables = defaultDeliverables.map(
 					(d) => ({
 						name: d.title,
 						quantity: d.quantity,

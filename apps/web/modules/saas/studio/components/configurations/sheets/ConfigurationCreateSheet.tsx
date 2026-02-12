@@ -139,17 +139,8 @@ export function ConfigurationCreateSheet() {
 			return;
 		}
 
-		// Build metadata from package-specific fields
-		const metadata: Record<string, unknown> = {};
-		if (data.bookingType) {
-			metadata.bookingType = data.bookingType;
-		}
-		if (data.defaultCost) {
-			metadata.defaultCost = data.defaultCost;
-		}
-		if (data.defaultDeliverables && data.defaultDeliverables.length > 0) {
-			metadata.defaultDeliverables = data.defaultDeliverables;
-		}
+		// Only defaultDeliverables stays in metadata (genuinely polymorphic)
+		const hasDeliverables = data.defaultDeliverables && data.defaultDeliverables.length > 0;
 
 		await createMutation.mutateAsync({
 			type: "package_type",
@@ -159,7 +150,9 @@ export function ConfigurationCreateSheet() {
 			color: data.color || undefined,
 			sortOrder: data.sortOrder,
 			isDefault: data.isDefault,
-			metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
+			defaultCost: data.defaultCost || undefined,
+			bookingTypeFilter: data.bookingType || undefined,
+			metadata: hasDeliverables ? { defaultDeliverables: data.defaultDeliverables } : undefined,
 		});
 	};
 

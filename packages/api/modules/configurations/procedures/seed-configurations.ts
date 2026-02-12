@@ -66,7 +66,10 @@ export const seedConfigurations = studioProtectedProcedure
 						sortOrder: index,
 						isDefault: item.isDefault ?? false,
 						isSystem: false,
+						isActive: true,
 						metadata: null,
+						defaultCost: null,
+						bookingTypeFilter: null,
 					}),
 				);
 

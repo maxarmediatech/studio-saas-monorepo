@@ -29,7 +29,10 @@ export const updateConfiguration = studioProtectedProcedure
 			icon,
 			sortOrder,
 			isDefault,
+			isActive,
 			metadata,
+			defaultCost,
+			bookingTypeFilter,
 		} = input;
 
 		return await withTransaction(async (tx) => {
@@ -47,18 +50,19 @@ export const updateConfiguration = studioProtectedProcedure
 				});
 			}
 
-			// System configurations cannot be modified (except sortOrder)
+			// System configurations cannot be modified (except sortOrder and isActive)
 			if (existing.isSystem) {
-				const onlySortOrderChanged =
-					sortOrder !== undefined &&
+				const onlyAllowedChanges =
 					label === undefined &&
 					description === undefined &&
 					color === undefined &&
 					icon === undefined &&
 					isDefault === undefined &&
-					metadata === undefined;
+					metadata === undefined &&
+					defaultCost === undefined &&
+					bookingTypeFilter === undefined;
 
-				if (!onlySortOrderChanged) {
+				if (!onlyAllowedChanges) {
 					throw new ORPCError("FORBIDDEN", {
 						message: "System configurations cannot be modified",
 					});
@@ -93,7 +97,10 @@ export const updateConfiguration = studioProtectedProcedure
 			if (icon !== undefined) updates.icon = icon;
 			if (sortOrder !== undefined) updates.sortOrder = sortOrder;
 			if (isDefault !== undefined) updates.isDefault = isDefault;
+			if (isActive !== undefined) updates.isActive = isActive;
 			if (metadata !== undefined) updates.metadata = metadata;
+			if (defaultCost !== undefined) updates.defaultCost = defaultCost;
+			if (bookingTypeFilter !== undefined) updates.bookingTypeFilter = bookingTypeFilter;
 
 			await tx
 				.update(configurations)

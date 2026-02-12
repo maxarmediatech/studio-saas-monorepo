@@ -136,8 +136,8 @@ export function PackageTypeForm({
 				color: defaultValues.color ?? "",
 				sortOrder: defaultValues.sortOrder,
 				isDefault: defaultValues.isDefault,
-				bookingType: metadata?.bookingType ?? "",
-				defaultCost: metadata?.defaultCost ?? "",
+				bookingType: defaultValues.bookingTypeFilter ?? metadata?.bookingType ?? "",
+				defaultCost: defaultValues.defaultCost ?? metadata?.defaultCost ?? "",
 				defaultDeliverables: metadata?.defaultDeliverables ?? [],
 			});
 		}

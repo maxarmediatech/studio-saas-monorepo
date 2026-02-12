@@ -62,7 +62,10 @@ export const configurations = pgTable(
 
 		isDefault: boolean("is_default").default(false).notNull(),
 		isSystem: boolean("is_system").default(false).notNull(),
+		isActive: boolean("is_active").default(true).notNull(),
 		metadata: jsonb("metadata"),
+		defaultCost: decimal("default_cost", { precision: 12, scale: 2 }),
+		bookingTypeFilter: varchar("booking_type_filter", { length: 100 }),
 
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.defaultNow()

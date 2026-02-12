@@ -30,7 +30,10 @@ export const createConfiguration = studioProtectedProcedure
 			icon,
 			sortOrder,
 			isDefault,
+			isActive,
 			metadata,
+			defaultCost,
+			bookingTypeFilter,
 		} = input;
 
 		return await withTransaction(async (tx) => {
@@ -96,7 +99,10 @@ export const createConfiguration = studioProtectedProcedure
 					sortOrder: finalSortOrder,
 					isDefault: isDefault ?? false,
 					isSystem: false,
+					isActive: isActive ?? true,
 					metadata: metadata ?? null,
+					defaultCost: defaultCost ?? null,
+					bookingTypeFilter: bookingTypeFilter ?? null,
 				})
 				.returning({ id: configurations.id });
 

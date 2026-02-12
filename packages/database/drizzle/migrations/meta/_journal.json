@@ -176,6 +176,13 @@
       "when": 1770703912323,
       "tag": "0024_clever_james_howlett",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1770880000000,
+      "tag": "0025_promote_package_metadata",
+      "breakpoints": true
     }
   ]
 }

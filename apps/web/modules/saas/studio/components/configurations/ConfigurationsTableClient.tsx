@@ -33,8 +33,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
 	CheckIcon,
+	EyeOffIcon,
 	Loader2Icon,
 	PencilIcon,
+	PowerIcon,
 	SettingsIcon,
 	TrashIcon,
 } from "lucide-react";
@@ -94,6 +96,12 @@ export function ConfigurationsTableClient({
 		configurationsApi.listOptions(queryInput),
 	);
 
+	// Fetch booking types for label resolution in the package type table
+	const { data: bookingTypesData } = useQuery(
+		configurationsApi.bookingTypesOptions(),
+	);
+	const bookingTypes = bookingTypesData?.data ?? [];
+
 	const configurations = data?.data ?? [];
 	const serverPagination = data?.pagination ?? {
 		page: 1,
@@ -121,6 +129,23 @@ export function ConfigurationsTableClient({
 		},
 	});
 
+	// Toggle active mutation
+	const toggleActiveMutation = useMutation({
+		...configurationsMutations.update(),
+		onSuccess: (_data, variables) => {
+			const action = variables.isActive ? "activated" : "deactivated";
+			toast.success(`${configTypeLabel} ${action} successfully`);
+			queryClient.invalidateQueries({
+				queryKey: ["studio", "configurations"],
+			});
+		},
+		onError: (error) => {
+			toast.error(
+				error.message || `Failed to update ${configTypeLabel.toLowerCase()}`,
+			);
+		},
+	});
+
 	const handleOpenEdit = (config: Configuration) => {
 		openEdit(config.id, configType);
 	};
@@ -132,6 +157,28 @@ export function ConfigurationsTableClient({
 				label: "Edit",
 				icon: <PencilIcon className="h-4 w-4" />,
 				onClick: handleOpenEdit,
+			},
+			{
+				label: "Deactivate",
+				icon: <EyeOffIcon className="h-4 w-4" />,
+				show: (row) => row.isActive,
+				onClick: (row) => {
+					toggleActiveMutation.mutate({
+						id: row.id,
+						isActive: false,
+					});
+				},
+			},
+			{
+				label: "Activate",
+				icon: <PowerIcon className="h-4 w-4" />,
+				show: (row) => !row.isActive,
+				onClick: (row) => {
+					toggleActiveMutation.mutate({
+						id: row.id,
+						isActive: true,
+					});
+				},
 			},
 			{
 				label: "Delete",
@@ -148,7 +195,7 @@ export function ConfigurationsTableClient({
 				},
 			},
 		],
-		[],
+		[toggleActiveMutation],
 	);
 
 	// Define columns
@@ -161,7 +208,7 @@ export function ConfigurationsTableClient({
 					<DataTableColumnHeader column={column} title="Label" />
 				),
 				cell: ({ row }) => (
-					<div className="flex items-center gap-3">
+					<div className={`flex items-center gap-3 ${!row.original.isActive ? "opacity-50" : ""}`}>
 						{row.original.color && (
 							<div
 								className="h-4 w-4 rounded-full border"
@@ -203,6 +250,58 @@ export function ConfigurationsTableClient({
 				enableSorting: false,
 				enableHiding: true,
 			},
+			// Package-type-only columns: Default Cost & Booking Type
+			...(configType === "package_type"
+				? [
+						{
+							id: "defaultCost",
+							accessorKey: "defaultCost",
+							header: ({ column }: { column: unknown }) => (
+								<DataTableColumnHeader column={column as never} title="Default Cost" />
+							),
+							cell: ({ row }: { row: { original: Configuration } }) => {
+								const value = row.original.defaultCost;
+								if (!value) return <span className="text-muted-foreground">-</span>;
+								return (
+									<span className="font-mono text-sm">
+										{new Intl.NumberFormat("en-IN", {
+											style: "currency",
+											currency: "INR",
+											maximumFractionDigits: 0,
+										}).format(Number(value))}
+									</span>
+								);
+							},
+							meta: {
+								label: "Default Cost",
+								width: 120,
+								minWidth: 120,
+							},
+							enableSorting: false,
+							enableHiding: true,
+						} satisfies ColumnDef<Configuration>,
+						{
+							id: "bookingTypeFilter",
+							accessorKey: "bookingTypeFilter",
+							header: ({ column }: { column: unknown }) => (
+								<DataTableColumnHeader column={column as never} title="Booking Type" />
+							),
+							cell: ({ row }: { row: { original: Configuration } }) => {
+								const key = row.original.bookingTypeFilter;
+								if (!key) return <span className="text-muted-foreground">All</span>;
+								const match = bookingTypes.find((bt) => bt.key === key);
+								return <span>{match?.label ?? key}</span>;
+							},
+							meta: {
+								label: "Booking Type",
+								width: 130,
+								minWidth: 130,
+							},
+							enableSorting: false,
+							enableHiding: true,
+						} satisfies ColumnDef<Configuration>,
+					]
+				: []),
 			{
 				id: "sortOrder",
 				accessorKey: "sortOrder",
@@ -247,6 +346,37 @@ export function ConfigurationsTableClient({
 					label: "Default",
 					width: 80,
 					minWidth: 80,
+				},
+				enableSorting: false,
+				enableHiding: true,
+			},
+			{
+				id: "isActive",
+				accessorKey: "isActive",
+				header: ({ column }) => (
+					<DataTableColumnHeader
+						column={column}
+						title="Status"
+						className="justify-center"
+					/>
+				),
+				cell: ({ row }) => (
+					<div className="flex justify-center">
+						{row.original.isActive ? (
+							<Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">
+								Active
+							</Badge>
+						) : (
+							<Badge variant="outline" className="text-muted-foreground">
+								Inactive
+							</Badge>
+						)}
+					</div>
+				),
+				meta: {
+					label: "Status",
+					width: 100,
+					minWidth: 100,
 				},
 				enableSorting: false,
 				enableHiding: true,
@@ -297,7 +427,7 @@ export function ConfigurationsTableClient({
 				},
 			},
 		],
-		[rowActions],
+		[rowActions, configType, bookingTypes],
 	);
 
 	return (
@@ -317,6 +447,10 @@ export function ConfigurationsTableClient({
 					onLimitChange={onLimitChange}
 					sorting={sortingState}
 					onSortingChange={onSortingChange}
+					stickyLeftColumns={[{ id: "label", width: 220 }]}
+					stickyRightColumns={[{ id: "actions", width: 56 }]}
+					minWidth={1000}
+					scrollStartColumn={1}
 					emptyState={
 						<div className="flex flex-col items-center gap-2">
 							<SettingsIcon className="h-12 w-12 text-muted-foreground/50" />

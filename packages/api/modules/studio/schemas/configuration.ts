@@ -33,7 +33,10 @@ export const configurationSchema = z.object({
 	sortOrder: z.number(),
 	isDefault: z.boolean(),
 	isSystem: z.boolean(),
+	isActive: z.boolean(),
 	metadata: z.record(z.string(), z.unknown()).nullable(),
+	defaultCost: z.string().nullable(),
+	bookingTypeFilter: z.string().nullable(),
 	createdAt: z.string(),
 	updatedAt: z.string(),
 });
@@ -123,7 +126,13 @@ export const createConfigurationInputSchema = z.object({
 	icon: z.string().max(50).optional(),
 	sortOrder: z.number().int().min(0).optional(),
 	isDefault: z.boolean().optional(),
+	isActive: z.boolean().optional(),
 	metadata: z.record(z.string(), z.unknown()).optional(),
+	defaultCost: z
+		.string()
+		.refine((val) => /^\d+(\.\d{1,2})?$/.test(val), "Must be a valid cost (e.g., 1000 or 1000.50)")
+		.optional(),
+	bookingTypeFilter: z.string().max(100).optional(),
 });
 
 export type CreateConfigurationInput = z.infer<
@@ -157,7 +166,14 @@ export const updateConfigurationInputSchema = z.object({
 	icon: z.string().max(50).optional().nullable(),
 	sortOrder: z.number().int().min(0).optional(),
 	isDefault: z.boolean().optional(),
+	isActive: z.boolean().optional(),
 	metadata: z.record(z.string(), z.unknown()).optional().nullable(),
+	defaultCost: z
+		.string()
+		.refine((val) => /^\d+(\.\d{1,2})?$/.test(val), "Must be a valid cost (e.g., 1000 or 1000.50)")
+		.optional()
+		.nullable(),
+	bookingTypeFilter: z.string().max(100).optional().nullable(),
 });
 
 export type UpdateConfigurationInput = z.infer<
