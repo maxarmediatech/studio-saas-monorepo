@@ -190,11 +190,19 @@ export function ExpensesTableClient({
 						title="Description"
 					/>
 				),
-				cell: ({ row }) => (
-					<span className="font-medium text-foreground">
-						{row.original.description}
-					</span>
-				),
+				cell: ({ row }) =>
+					organizationSlug ? (
+						<Link
+							href={`/app/${organizationSlug}/expenses/${row.original.id}`}
+							className="font-medium text-foreground hover:underline"
+						>
+							{row.original.description}
+						</Link>
+					) : (
+						<span className="font-medium text-foreground">
+							{row.original.description}
+						</span>
+					),
 				meta: {
 					label: "Description",
 					width: 240,
