@@ -321,21 +321,29 @@ export function ConfigurationsTableClient({
 								if (!Array.isArray(roles) || roles.length === 0) {
 									return <span className="text-muted-foreground">All roles</span>;
 								}
-								const labels = roles.map((key) => {
-									const match = relationTypes.find((rt) => rt.key === key);
-									return match?.label ?? key;
-								});
-								const text = labels.join(", ");
 								return (
-									<span className="truncate max-w-[160px] block" title={text}>
-										{text}
-									</span>
+									<div className="flex flex-wrap gap-1">
+										{roles.map((key) => {
+											const match = relationTypes.find((rt) => rt.key === key);
+											return (
+												<Badge key={key} variant="outline" className="gap-1.5 text-xs font-normal">
+													{match?.color && (
+														<div
+															className="h-2 w-2 rounded-full"
+															style={{ backgroundColor: match.color }}
+														/>
+													)}
+													{match?.label ?? key}
+												</Badge>
+											);
+										})}
+									</div>
 								);
 							},
 							meta: {
 								label: "Applicable Roles",
-								width: 180,
-								minWidth: 150,
+								width: 240,
+								minWidth: 200,
 							},
 							enableSorting: false,
 							enableHiding: true,
