@@ -98,6 +98,9 @@ export type ExpenseMinimal = z.infer<typeof expenseMinimalSchema>;
  */
 export const expenseListItemSchema = expenseSchema.extend({
 	assignmentsCount: z.number(),
+	bookingId: idSchema.nullable(),
+	bookingName: z.string().nullable(),
+	bookingReferenceNumber: z.string().nullable(),
 });
 
 export type ExpenseListItem = z.infer<typeof expenseListItemSchema>;

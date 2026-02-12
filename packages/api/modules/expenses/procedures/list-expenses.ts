@@ -1,6 +1,7 @@
 import {
 	and,
 	asc,
+	bookings,
 	count,
 	db,
 	desc,
@@ -180,6 +181,14 @@ export const listExpenses = studioProtectedProcedure
 		// Get assignment counts
 		const expenseIds = rows.map((r) => r.id);
 		let assignmentCounts: Record<string, number> = {};
+		const bookingInfoByExpenseId: Record<
+			string,
+			{
+				bookingId: string;
+				bookingName: string;
+				bookingReferenceNumber: string;
+			}
+		> = {};
 
 		if (expenseIds.length > 0) {
 			const counts = await db
@@ -199,30 +208,83 @@ export const listExpenses = studioProtectedProcedure
 			assignmentCounts = Object.fromEntries(
 				counts.map((c) => [c.expenseId, c.count]),
 			);
+
+			const bookingAssignments = await db
+				.select({
+					expenseId: expenseAssignments.expenseId,
+					bookingId: expenseAssignments.bookingId,
+					bookingName: bookings.name,
+					bookingReferenceNumber: bookings.referenceNumber,
+				})
+				.from(expenseAssignments)
+				.leftJoin(
+					bookings,
+					and(
+						eq(expenseAssignments.bookingId, bookings.id),
+						eq(bookings.organizationId, context.organizationId),
+						isNull(bookings.deletedAt),
+					),
+				)
+				.where(
+					and(
+						inArray(expenseAssignments.expenseId, expenseIds),
+						sql`${expenseAssignments.bookingId} IS NOT NULL`,
+					),
+				)
+				.orderBy(
+					asc(expenseAssignments.createdAt),
+					asc(expenseAssignments.id),
+				);
+
+			for (const assignment of bookingAssignments) {
+				const existing = bookingInfoByExpenseId[assignment.expenseId];
+				if (existing) {
+					continue;
+				}
+				if (
+					assignment.bookingId &&
+					assignment.bookingName &&
+					assignment.bookingReferenceNumber
+				) {
+					bookingInfoByExpenseId[assignment.expenseId] = {
+						bookingId: assignment.bookingId,
+						bookingName: assignment.bookingName,
+						bookingReferenceNumber:
+							assignment.bookingReferenceNumber,
+					};
+				}
+			}
 		}
 
 		// Format response
-		const data: ExpenseListItem[] = rows.map((row) => ({
-			id: row.id,
-			organizationId: row.organizationId,
-			description: row.description,
-			amount: row.amount,
-			category: row.category,
-			expenseDate: row.expenseDate,
-			billTo: row.billTo,
-			paymentMethod: row.paymentMethod,
-			transactionReference: row.transactionReference,
-			vendor: row.vendor,
-			notes: row.notes,
-			metadata: row.metadata as Record<string, unknown> | null,
-			createdBy: row.createdBy,
-			updatedBy: row.updatedBy,
-			createdAt: row.createdAt.toISOString(),
-			updatedAt: row.updatedAt.toISOString(),
-			deletedAt: row.deletedAt?.toISOString() ?? null,
-			deletedBy: row.deletedBy,
-			assignmentsCount: assignmentCounts[row.id] ?? 0,
-		}));
+		const data: ExpenseListItem[] = rows.map((row) => {
+			const bookingInfo = bookingInfoByExpenseId[row.id];
+			return {
+				id: row.id,
+				organizationId: row.organizationId,
+				description: row.description,
+				amount: row.amount,
+				category: row.category,
+				expenseDate: row.expenseDate,
+				billTo: row.billTo,
+				paymentMethod: row.paymentMethod,
+				transactionReference: row.transactionReference,
+				vendor: row.vendor,
+				notes: row.notes,
+				metadata: row.metadata as Record<string, unknown> | null,
+				createdBy: row.createdBy,
+				updatedBy: row.updatedBy,
+				createdAt: row.createdAt.toISOString(),
+				updatedAt: row.updatedAt.toISOString(),
+				deletedAt: row.deletedAt?.toISOString() ?? null,
+				deletedBy: row.deletedBy,
+				assignmentsCount: assignmentCounts[row.id] ?? 0,
+				bookingId: bookingInfo?.bookingId ?? null,
+				bookingName: bookingInfo?.bookingName ?? null,
+				bookingReferenceNumber:
+					bookingInfo?.bookingReferenceNumber ?? null,
+			};
+		});
 
 		return {
 			data,

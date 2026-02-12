@@ -30,6 +30,7 @@ export interface ExpenseFilters {
 	category?: string[] | null;
 	billTo?: string[] | null;
 	paymentMethod?: string[] | null;
+	bookingId?: string | null;
 }
 
 /**
@@ -40,6 +41,7 @@ const expenseFilterParsers = {
 	category: parseAsArrayOf(parseAsString, ","),
 	billTo: parseAsArrayOf(parseAsString, ","),
 	paymentMethod: parseAsArrayOf(parseAsString, ","),
+	bookingId: parseAsString,
 };
 
 /**

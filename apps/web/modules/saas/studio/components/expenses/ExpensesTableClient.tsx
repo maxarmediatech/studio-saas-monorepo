@@ -30,10 +30,7 @@ import "@saas/shared/components/data-table/types";
 import { formatMoney } from "@saas/shared/lib";
 import { useExpenseParams } from "@saas/studio/hooks/params/use-expense-params";
 import { useExpensesTable } from "@saas/studio/hooks/tables";
-import {
-	expensesApi,
-	expensesMutations,
-} from "@saas/studio/lib/api";
+import { expensesApi, expensesMutations } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -45,6 +42,7 @@ import {
 	TagIcon,
 	TrashIcon,
 } from "lucide-react";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { OpenExpenseCreateSheet } from "./OpenExpenseSheet";
@@ -84,7 +82,7 @@ const formatDate = (dateStr: string) => {
 };
 
 export function ExpensesTableClient({
-	organizationSlug: _organizationSlug,
+	organizationSlug,
 }: ExpensesTableClientProps) {
 	const queryClient = useQueryClient();
 
@@ -115,6 +113,7 @@ export function ExpensesTableClient({
 		category: filters.category ?? undefined,
 		billTo: filters.billTo as BillTo[] | undefined,
 		paymentMethod: filters.paymentMethod as PaymentMethod[] | undefined,
+		bookingId: filters.bookingId ?? undefined,
 		sortBy: sorting.sortBy ?? "expenseDate",
 		sortDirection: sorting.sortDirection,
 		includeDeleted: false,
@@ -226,6 +225,31 @@ export function ExpensesTableClient({
 					minWidth: 130,
 				},
 				enableSorting: true,
+				enableHiding: true,
+			},
+			{
+				id: "booking",
+				accessorKey: "bookingName",
+				header: ({ column }) => (
+					<DataTableColumnHeader column={column} title="Booking" />
+				),
+				cell: ({ row }) =>
+					row.original.bookingId ? (
+						<Link
+							href={`/app/${organizationSlug}/bookings/${row.original.bookingId}`}
+							className="text-muted-foreground hover:underline hover:text-foreground transition-colors"
+						>
+							{row.original.bookingName ?? "—"}
+						</Link>
+					) : (
+						<span className="text-muted-foreground">—</span>
+					),
+				meta: {
+					label: "Booking",
+					width: 220,
+					minWidth: 180,
+				},
+				enableSorting: false,
 				enableHiding: true,
 			},
 			{
@@ -346,7 +370,7 @@ export function ExpensesTableClient({
 				},
 			},
 		],
-		[rowActions],
+		[organizationSlug, rowActions],
 	);
 
 	return (
@@ -374,7 +398,7 @@ export function ExpensesTableClient({
 						{ id: "description", width: 240 },
 					]}
 					stickyRightColumns={[{ id: "actions", width: 48 }]}
-					minWidth={950}
+					minWidth={1150}
 					// Place scroll controls in the last sticky left column
 					scrollControlsColumnId="description"
 					scrollStartColumn={2}

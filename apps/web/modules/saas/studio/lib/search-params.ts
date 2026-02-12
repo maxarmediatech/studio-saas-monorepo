@@ -227,6 +227,7 @@ export const expenseSearchParamsCache = createSearchParamsCache({
 	category: parseAsArrayOf(parseAsString, ",").withDefault([]),
 	billTo: parseAsArrayOf(parseAsString, ",").withDefault([]),
 	paymentMethod: parseAsArrayOf(parseAsString, ",").withDefault([]),
+	bookingId: parseAsString,
 
 	// Sorting
 	sort: sortStateParser,

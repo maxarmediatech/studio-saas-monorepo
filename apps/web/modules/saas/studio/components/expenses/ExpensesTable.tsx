@@ -39,6 +39,7 @@ export async function ExpensesTable({
 		category: params.category ?? undefined,
 		billTo: params.billTo as BillTo[] | undefined,
 		paymentMethod: params.paymentMethod as PaymentMethod[] | undefined,
+		bookingId: params.bookingId ?? undefined,
 		sortBy,
 		sortDirection,
 		includeDeleted: false,
