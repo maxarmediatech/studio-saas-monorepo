@@ -1,7 +1,6 @@
 "use client";
 
 import { Button } from "@repo/ui/components/button";
-import { Skeleton } from "@repo/ui/components/skeleton";
 import { useTrackVisit } from "@saas/studio/hooks/tracking";
 import { bookingsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
@@ -10,6 +9,7 @@ import { AlertCircleIcon } from "lucide-react";
 import {
 	BookingDetailHeader,
 	BookingDetailLayout,
+	BookingDetailPageSkeleton,
 	BookingDetailTabs,
 } from "./components";
 
@@ -42,16 +42,7 @@ export function BookingDetailPageClient({
 	const backHref = `/app/${organizationSlug}/bookings`;
 
 	if (isLoading) {
-		return (
-			<BookingDetailLayout
-				header={<BookingDetailHeader backHref={backHref} />}
-			>
-				<Skeleton className="h-28 w-full rounded-xl" />
-				<Skeleton className="h-48 w-full" />
-				<Skeleton className="h-48 w-full" />
-				<Skeleton className="h-64 w-full" />
-			</BookingDetailLayout>
-		);
+		return <BookingDetailPageSkeleton />;
 	}
 
 	if (isError || !bookingData) {

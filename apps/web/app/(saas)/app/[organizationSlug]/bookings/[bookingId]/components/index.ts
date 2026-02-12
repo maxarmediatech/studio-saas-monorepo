@@ -1,22 +1,10 @@
-// Layout
-export { BookingDetailLayout } from "./BookingDetailLayout";
-
-// Header & Navigation
+export { BookingDetailContent } from "./BookingDetailContent";
 export { BookingDetailHeader } from "./BookingDetailHeader";
+export { BookingDetailLayout } from "./BookingDetailLayout";
+export { BookingDetailPageSkeleton } from "./BookingDetailPageSkeleton";
+export { BookingDetailTabs } from "./BookingDetailTabs";
 export { BookingHeader } from "./BookingHeader";
 export { BookingHeroSection } from "./BookingHeroSection";
-
-// Main Content - Tabs Interface (new)
-export { BookingDetailTabs } from "./BookingDetailTabs";
-
-// Main Content - ScrollSpy Interface (legacy)
 export { BookingScrollSpy } from "./BookingScrollSpy";
-
-// Main Content - Unified Card (legacy)
-export { BookingDetailContent } from "./BookingDetailContent";
-
-// Meta Panel
 export { BookingMetaPanel } from "./meta";
-
-// Sidebar
 export { BookingListSidebar } from "./sidebar";
