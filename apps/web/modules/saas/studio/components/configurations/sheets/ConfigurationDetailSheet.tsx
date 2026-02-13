@@ -3,6 +3,13 @@
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import {
+	Card,
+	CardContent,
+	CardHeader,
+	CardTitle,
+} from "@repo/ui/components/card";
+import { Separator } from "@repo/ui/components/separator";
+import {
 	Sheet,
 	SheetContent,
 	SheetHeader,
@@ -14,7 +21,20 @@ import { useConfigurationParams } from "@saas/studio/hooks/params/use-configurat
 import { useConfigurationViewParams } from "@saas/studio/hooks/params/use-configuration-view-params";
 import { configurationsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
-import { AlertCircleIcon, PencilIcon } from "lucide-react";
+import {
+	AlertCircleIcon,
+	CalendarIcon,
+	CheckCircle2Icon,
+	ClockIcon,
+	InfoIcon,
+	ListIcon,
+	PackageIcon,
+	PencilIcon,
+	ShieldIcon,
+	TagIcon,
+	UsersIcon,
+	XCircleIcon,
+} from "lucide-react";
 import { useState } from "react";
 
 const CONFIG_TYPE_LABELS: Record<string, string> = {
@@ -45,6 +65,43 @@ function formatDate(dateString: string): string {
 		month: "short",
 		year: "numeric",
 	});
+}
+
+interface Deliverable {
+	title: string;
+	quantity: number;
+	rowKey: string;
+}
+
+function normalizeDeliverable(
+	value: unknown,
+): Omit<Deliverable, "rowKey"> | null {
+	if (typeof value === "string") {
+		const title = value.trim();
+		return title ? { title, quantity: 1 } : null;
+	}
+
+	if (typeof value !== "object" || value === null) {
+		return null;
+	}
+
+	const deliverable = value as { title?: unknown; quantity?: unknown };
+	const title =
+		typeof deliverable.title === "string"
+			? deliverable.title.trim()
+			: "";
+	const quantity =
+		typeof deliverable.quantity === "number"
+			? deliverable.quantity
+			: typeof deliverable.quantity === "string"
+				? Number(deliverable.quantity)
+				: NaN;
+
+	if (!title || !Number.isFinite(quantity) || quantity <= 0) {
+		return null;
+	}
+
+	return { title, quantity };
 }
 
 export function ConfigurationDetailSheet() {
@@ -90,18 +147,38 @@ export function ConfigurationDetailSheet() {
 	const isRelationType = config?.type === "relation_type";
 	const isEventType = config?.type === "event_type";
 	const metadata = config?.metadata as Record<string, unknown> | null;
-	const defaultDeliverables = Array.isArray(metadata?.defaultDeliverables)
-		? metadata.defaultDeliverables.filter(
-				(deliverable): deliverable is string =>
-					typeof deliverable === "string",
-			)
-		: [];
+	const defaultDeliverables = (() => {
+		if (!Array.isArray(metadata?.defaultDeliverables)) {
+			return [] as Deliverable[];
+		}
+
+		const duplicateCounts = new Map<string, number>();
+		return metadata.defaultDeliverables.reduce<Deliverable[]>(
+			(acc, item) => {
+				const normalized = normalizeDeliverable(item);
+				if (!normalized) {
+					return acc;
+				}
+
+				const baseKey = `${normalized.title}-${normalized.quantity}`;
+				const duplicateCount = duplicateCounts.get(baseKey) ?? 0;
+				duplicateCounts.set(baseKey, duplicateCount + 1);
+
+				acc.push({
+					...normalized,
+					rowKey: `${baseKey}-${duplicateCount}`,
+				});
+				return acc;
+			},
+			[],
+		);
+	})();
 
 	return (
 		<Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
 			<SheetContent
 				side="right"
-				className="sm:max-w-md p-0 gap-0 flex flex-col"
+				className="sm:max-w-xl p-0 gap-0 flex flex-col"
 			>
 				<SheetHeader
 					className={cn(
@@ -130,7 +207,7 @@ export function ConfigurationDetailSheet() {
 								<div className="flex items-center gap-3">
 									{config?.color && (
 										<div
-											className="h-5 w-5 rounded-full border shrink-0"
+											className="h-10 w-10 rounded-lg border shrink-0"
 											style={{
 												backgroundColor: config.color,
 											}}
@@ -166,15 +243,17 @@ export function ConfigurationDetailSheet() {
 								{config?.isActive ? (
 									<Badge
 										variant="outline"
-										className="text-green-600 border-green-200 bg-green-50"
+										className="text-green-600 border-green-200 bg-green-50 gap-1"
 									>
+										<CheckCircle2Icon className="h-3 w-3" />
 										Active
 									</Badge>
 								) : (
 									<Badge
 										variant="outline"
-										className="text-muted-foreground"
+										className="text-muted-foreground gap-1"
 									>
+										<XCircleIcon className="h-3 w-3" />
 										Inactive
 									</Badge>
 								)}
@@ -184,9 +263,20 @@ export function ConfigurationDetailSheet() {
 											? "secondary"
 											: "outline"
 									}
+									className="gap-1"
 								>
+									<ShieldIcon className="h-3 w-3" />
 									{config?.isSystem ? "System" : "Custom"}
 								</Badge>
+								{config?.isDefault && (
+									<Badge
+										variant="outline"
+										className="text-blue-600 border-blue-200 bg-blue-50 gap-1"
+									>
+										<TagIcon className="h-3 w-3" />
+										Default
+									</Badge>
+								)}
 							</div>
 						</>
 					)}
@@ -216,153 +306,210 @@ export function ConfigurationDetailSheet() {
 							</Button>
 						</div>
 					) : config ? (
-						<div className="px-6 py-4 space-y-6">
-							{/* Details */}
-							<div className="space-y-4">
-								<h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-									Details
-								</h3>
-								<DetailRow label="Type" value={typeLabel} />
-								<DetailRow
-									label="Description"
-									value={
-										config.description || "No description"
-									}
-									muted={!config.description}
-								/>
-								<DetailRow
-									label="Sort Order"
-									value={String(config.sortOrder)}
-									mono
-								/>
-								<DetailRow
-									label="Default"
-									value={config.isDefault ? "Yes" : "No"}
-								/>
-								<DetailRow
-									label="Created"
-									value={formatDate(config.createdAt)}
-								/>
-								<DetailRow
-									label="Updated"
-									value={formatDate(config.updatedAt)}
-								/>
-							</div>
+						<div className="px-6 py-4 space-y-4">
+							{/* Card A — Overview */}
+							<Card className="py-4 gap-3 shadow-none">
+								<CardHeader className="px-4 py-0">
+									<CardTitle className="flex items-center gap-2 text-sm">
+										<InfoIcon className="h-4 w-4 text-muted-foreground" />
+										Overview
+									</CardTitle>
+								</CardHeader>
+								<CardContent className="px-4 space-y-3">
+									<div className="grid grid-cols-2 gap-3">
+										<div>
+											<p className="text-xs text-muted-foreground mb-0.5">
+												Type
+											</p>
+											<p className="text-sm font-medium">
+												{typeLabel}
+											</p>
+										</div>
+										<div>
+											<p className="text-xs text-muted-foreground mb-0.5">
+												Sort Order
+											</p>
+											<p className="text-sm font-mono">
+												{config.sortOrder}
+											</p>
+										</div>
+									</div>
+									{config.description && (
+										<div>
+											<p className="text-xs text-muted-foreground mb-0.5">
+												Description
+											</p>
+											<p className="text-sm leading-relaxed">
+												{config.description}
+											</p>
+										</div>
+									)}
+									{config.color && (
+										<div>
+											<p className="text-xs text-muted-foreground mb-0.5">
+												Color
+											</p>
+											<div className="flex items-center gap-2">
+												<div
+													className="h-8 w-8 rounded-md border"
+													style={{
+														backgroundColor:
+															config.color,
+													}}
+												/>
+												<span className="text-sm font-mono text-muted-foreground">
+													{config.color}
+												</span>
+											</div>
+										</div>
+									)}
+								</CardContent>
+							</Card>
 
-							{/* Package Type details */}
+							{/* Card B — Package Type Details */}
 							{isPackageType && (
-								<div className="space-y-4">
-									<h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-										Package Details
-									</h3>
-									<DetailRow
-										label="Default Cost"
-										value={
-											config.defaultCost
-												? formatCurrency(
+								<Card className="py-4 gap-3 shadow-none">
+									<CardHeader className="px-4 py-0">
+										<CardTitle className="flex items-center gap-2 text-sm">
+											<PackageIcon className="h-4 w-4 text-muted-foreground" />
+											Package Details
+										</CardTitle>
+									</CardHeader>
+									<CardContent className="px-4 space-y-3">
+										<div>
+											<p className="text-xs text-muted-foreground mb-0.5">
+												Default Cost
+											</p>
+											{config.defaultCost ? (
+												<p className="text-2xl font-bold">
+													{formatCurrency(
 														config.defaultCost,
-													)
-												: "Not set"
-										}
-										mono={!!config.defaultCost}
-										muted={!config.defaultCost}
-									/>
-									<DetailRow
-										label="Booking Type"
-										value={
-											config.bookingTypeFilter
-												? (bookingTypes.find(
-														(bt) =>
-															bt.key ===
-															config.bookingTypeFilter,
-													)?.label ??
-													config.bookingTypeFilter)
-												: "All"
-										}
-										muted={!config.bookingTypeFilter}
-									/>
+													)}
+												</p>
+											) : (
+												<p className="text-sm text-muted-foreground italic">
+													Not set
+												</p>
+											)}
+										</div>
+										<div>
+											<p className="text-xs text-muted-foreground mb-0.5">
+												Booking Type Filter
+											</p>
+											<p className="text-sm">
+												{config.bookingTypeFilter
+													? (bookingTypes.find(
+															(bt) =>
+																bt.key ===
+																config.bookingTypeFilter,
+														)?.label ??
+														config.bookingTypeFilter)
+													: "All booking types"}
+											</p>
+										</div>
 										{defaultDeliverables.length > 0 && (
-												<div>
-													<p className="text-sm text-muted-foreground mb-2">
-														Default Deliverables
-													</p>
-													<div className="flex flex-wrap gap-1">
-														{defaultDeliverables.map((d, index) => (
-															<Badge
-																key={index}
-																variant="outline"
-															className="text-xs font-normal"
-														>
-															{d}
-														</Badge>
-													))}
+											<div>
+												<p className="text-xs text-muted-foreground mb-2">
+													Default Deliverables
+												</p>
+												<div className="rounded-md border">
+													<div className="grid grid-cols-[1fr_auto] gap-2 px-3 py-1.5 bg-muted/50 border-b">
+														<span className="text-xs font-medium text-muted-foreground">
+															Deliverable
+														</span>
+														<span className="text-xs font-medium text-muted-foreground text-right">
+															Qty
+														</span>
+													</div>
+														{defaultDeliverables.map(
+															(d, index) => (
+																<div
+																	key={d.rowKey}
+																	className={cn(
+																		"grid grid-cols-[1fr_auto] gap-2 px-3 py-2",
+																		index <
+																		defaultDeliverables.length -
+																			1 &&
+																		"border-b",
+																)}
+															>
+																<span className="text-sm">
+																	{d.title}
+																</span>
+																<span className="text-sm font-mono text-right">
+																	{d.quantity}
+																</span>
+															</div>
+														),
+													)}
 												</div>
 											</div>
 										)}
-								</div>
+									</CardContent>
+								</Card>
 							)}
 
-							{/* Booking Type → Applicable Roles */}
+							{/* Card B — Booking Type → Applicable Roles */}
 							{isBookingType && (
-								<div className="space-y-4">
-									<h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-										Applicable Roles
-									</h3>
-									<BadgeList
-										keys={metadata?.roles}
-										lookup={relationTypes}
-										emptyLabel="All roles"
-									/>
-								</div>
+								<Card className="py-4 gap-3 shadow-none">
+									<CardHeader className="px-4 py-0">
+										<CardTitle className="flex items-center gap-2 text-sm">
+											<UsersIcon className="h-4 w-4 text-muted-foreground" />
+											Applicable Roles
+										</CardTitle>
+									</CardHeader>
+									<CardContent className="px-4">
+										<BadgeList
+											keys={metadata?.roles}
+											lookup={relationTypes}
+											emptyLabel="All roles"
+										/>
+									</CardContent>
+								</Card>
 							)}
 
-							{/* Event Type / Relation Type → Applicable Booking Types */}
+							{/* Card B — Event/Relation Type → Applicable Booking Types */}
 							{(isEventType || isRelationType) && (
-								<div className="space-y-4">
-									<h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-										Applicable Booking Types
-									</h3>
-									<BadgeList
-										keys={metadata?.bookingTypes}
-										lookup={bookingTypes}
-										emptyLabel="All types"
-									/>
-								</div>
+								<Card className="py-4 gap-3 shadow-none">
+									<CardHeader className="px-4 py-0">
+										<CardTitle className="flex items-center gap-2 text-sm">
+											<ListIcon className="h-4 w-4 text-muted-foreground" />
+											Applicable Booking Types
+										</CardTitle>
+									</CardHeader>
+									<CardContent className="px-4">
+										<BadgeList
+											keys={metadata?.bookingTypes}
+											lookup={bookingTypes}
+											emptyLabel="All types"
+										/>
+									</CardContent>
+								</Card>
 							)}
+
+							{/* Footer — System Info */}
+							<Separator />
+							<div className="grid grid-cols-2 gap-3 pb-2">
+								<div className="flex items-center gap-2 text-xs text-muted-foreground">
+									<CalendarIcon className="h-3.5 w-3.5" />
+									<span>
+										Created{" "}
+										{formatDate(config.createdAt)}
+									</span>
+								</div>
+								<div className="flex items-center gap-2 text-xs text-muted-foreground">
+									<ClockIcon className="h-3.5 w-3.5" />
+									<span>
+										Updated{" "}
+										{formatDate(config.updatedAt)}
+									</span>
+								</div>
+							</div>
 						</div>
 					) : null}
 				</div>
 			</SheetContent>
 		</Sheet>
-	);
-}
-
-function DetailRow({
-	label,
-	value,
-	mono,
-	muted,
-}: {
-	label: string;
-	value: string;
-	mono?: boolean;
-	muted?: boolean;
-}) {
-	return (
-		<div className="flex items-start justify-between gap-4">
-			<span className="text-sm text-muted-foreground shrink-0">
-				{label}
-			</span>
-			<span
-				className={cn(
-					"text-sm text-right",
-					mono && "font-mono",
-					muted && "text-muted-foreground italic",
-				)}
-			>
-				{value}
-			</span>
-		</div>
 	);
 }
 
