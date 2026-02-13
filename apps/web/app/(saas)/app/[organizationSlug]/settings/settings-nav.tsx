@@ -54,10 +54,14 @@ function getTabGroups(basePath: string): TabGroup[] {
 function getActiveGroup(
 	pathname: string,
 	groups: TabGroup[],
+	basePath: string,
 ): TabGroup {
 	for (const group of groups) {
 		for (const tab of group.tabs) {
-			if (pathname === tab.href || pathname.startsWith(`${tab.href}/`)) {
+			if (
+				pathname === tab.href ||
+				(tab.href !== basePath && pathname.startsWith(`${tab.href}/`))
+			) {
 				return group;
 			}
 		}
@@ -70,7 +74,7 @@ export function SettingsNav() {
 	const params = useParams<{ organizationSlug: string }>();
 	const basePath = `/app/${params.organizationSlug}/settings`;
 	const groups = getTabGroups(basePath);
-	const activeGroup = getActiveGroup(pathname, groups);
+	const activeGroup = getActiveGroup(pathname, groups, basePath);
 
 	return (
 		<div className="shrink-0">
@@ -100,7 +104,7 @@ export function SettingsNav() {
 									key={tab.href}
 									href={tab.href}
 									className={cn(
-										"relative shrink-0 pb-2 pt-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground",
+										"relative shrink-0 py-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground",
 										isActive && "text-foreground",
 									)}
 								>
