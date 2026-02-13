@@ -27,10 +27,10 @@ export default async function ProfileSettingsPage() {
 	return (
 		<SettingsList>
 			<UserAvatarForm />
-			{config.i18n.enabled && <UserLanguageForm />}
-			<UserTimezoneForm />
 			<ChangeNameForm />
 			<ChangeEmailForm />
+			{config.i18n.enabled && <UserLanguageForm />}
+			<UserTimezoneForm />
 		</SettingsList>
 	);
 }
