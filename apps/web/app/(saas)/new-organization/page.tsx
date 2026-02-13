@@ -7,6 +7,7 @@ import { getOrganizationList, getSession } from "@saas/auth/lib/server";
 import {
 	getOnboardingRecoveryLinks,
 	isOnboardingRequired,
+	shouldRedirectFromNewOrganizationRecovery,
 } from "@saas/onboarding/lib/access";
 import { CreateOrganizationForm } from "@saas/organizations/components/CreateOrganizationForm";
 import { ChoosePlanRecoveryActions } from "@saas/payments/components/ChoosePlanRecoveryActions";
@@ -35,6 +36,20 @@ export default async function NewOrganizationPage({ searchParams }: Props) {
 		organizations.find(
 			(org) => org.id === session.session.activeOrganizationId,
 		) || organizations.at(0);
+
+	if (
+		shouldRedirectFromNewOrganizationRecovery({
+			nextPath,
+			organizationsCount: organizations.length,
+		})
+	) {
+		const activeOrganizationSlug = getActiveOrganizationSlug({
+			organizations,
+			activeOrganizationId: session.session.activeOrganizationId,
+		});
+		redirect(resolveAppRedirectPath("/app", activeOrganizationSlug));
+	}
+
 	const onboardingRequired = isOnboardingRequired({
 		enableOnboarding: config.users.enableOnboarding,
 		onboardingComplete: Boolean(session.user.onboardingComplete),

@@ -43,3 +43,19 @@ export function getOnboardingRecoveryLinks({
 		showRestart: true,
 	};
 }
+
+type NewOrganizationRecoveryRedirectInput = {
+	nextPath: string;
+	organizationsCount: number;
+};
+
+export function shouldRedirectFromNewOrganizationRecovery({
+	nextPath,
+	organizationsCount,
+}: NewOrganizationRecoveryRedirectInput): boolean {
+	if (organizationsCount === 0) {
+		return false;
+	}
+
+	return nextPath === "/app" || nextPath === "/app/";
+}

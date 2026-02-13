@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import {
 	getOnboardingRecoveryLinks,
 	isOnboardingRequired,
+	shouldRedirectFromNewOrganizationRecovery,
 } from "../modules/saas/onboarding/lib/access";
 
 test.describe("onboarding access", () => {
@@ -66,5 +67,41 @@ test.describe("onboarding access", () => {
 			restartRedirectHref: `/onboarding?redirectTo=${encodeURIComponent(path)}`,
 			showRestart: true,
 		});
+	});
+
+	test("redirects from new-organization recovery when org exists and path is /app", () => {
+		expect(
+			shouldRedirectFromNewOrganizationRecovery({
+				nextPath: "/app",
+				organizationsCount: 1,
+			}),
+		).toBe(true);
+	});
+
+	test("redirects from new-organization recovery when org exists and path is /app/", () => {
+		expect(
+			shouldRedirectFromNewOrganizationRecovery({
+				nextPath: "/app/",
+				organizationsCount: 2,
+			}),
+		).toBe(true);
+	});
+
+	test("does not redirect from new-organization recovery when no organization exists", () => {
+		expect(
+			shouldRedirectFromNewOrganizationRecovery({
+				nextPath: "/app",
+				organizationsCount: 0,
+			}),
+		).toBe(false);
+	});
+
+	test("does not redirect from new-organization recovery for non-app redirect paths", () => {
+		expect(
+			shouldRedirectFromNewOrganizationRecovery({
+				nextPath: "/settings",
+				organizationsCount: 1,
+			}),
+		).toBe(false);
 	});
 });
