@@ -30,5 +30,9 @@ export default async function RolesSettingsPage({ params }: Props) {
 		return notFound();
 	}
 
-	return <RolesPageClient canManage={isAdmin} />;
+	return (
+		<div className="px-4 lg:px-6">
+			<RolesPageClient canManage={isAdmin} />
+		</div>
+	);
 }

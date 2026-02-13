@@ -31,6 +31,8 @@ export default async function TeamsSettingsPage({ params }: Props) {
 	}
 
 	return (
-		<TeamsPageClient organizationId={organization.id} canManage={isAdmin} />
+		<div className="px-4 lg:px-6">
+			<TeamsPageClient organizationId={organization.id} canManage={isAdmin} />
+		</div>
 	);
 }

@@ -23,5 +23,9 @@ export default async function MembersSettingsPage({ params }: Props) {
 		return notFound();
 	}
 
-	return <OrganizationMembersBlock organizationId={organization.id} />;
+	return (
+		<div className="px-4 lg:px-6">
+			<OrganizationMembersBlock organizationId={organization.id} />
+		</div>
+	);
 }
