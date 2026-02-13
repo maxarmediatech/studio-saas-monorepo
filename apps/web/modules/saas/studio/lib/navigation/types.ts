@@ -36,6 +36,7 @@ export type IconName =
 	| "Tag"
 	| "User"
 	| "UserCog"
+	| "Plus"
 	| "Users"
 	| "Wallet2";
 
@@ -122,6 +123,7 @@ export interface NavAreaConfig {
 	backHref?: string; // If provided, show back button that navigates here
 	direction?: "left" | "right"; // Slide animation direction (default: right)
 	sections: NavSectionConfig[];
+	standaloneItems?: NavItemConfig[]; // Items rendered individually (no tab group)
 }
 
 // ============================================================================

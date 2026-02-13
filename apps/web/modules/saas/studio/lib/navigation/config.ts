@@ -379,43 +379,10 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							icon: "Settings2",
 						},
 						{
-							id: "integrations",
-							label: "Integrations",
-							path: url("/settings/integrations"),
-							icon: "Link2",
-						},
-						{
-							id: "billing",
-							label: "Billing",
-							path: url("/settings/billing"),
-							icon: "CreditCard",
-						},
-						{
-							id: "danger-zone",
-							label: "Studio Danger Zone",
-							path: url("/settings/danger-zone"),
-							icon: "AlertTriangle",
-						},
-					],
-				},
-				{
-					id: "access",
-					label: "Access",
-					items: [
-						{
 							id: "members",
 							label: "Members",
 							path: url("/settings/members"),
 							icon: "Users",
-						},
-						{
-							id: "teams",
-							label: "Teams",
-							path: url("/settings/teams"),
-							icon: "Users",
-							permission: {
-								any: [{ resource: "team", action: "list" }],
-							},
 						},
 						{
 							id: "invitations",
@@ -432,10 +399,10 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							},
 						},
 						{
-							id: "roles",
-							label: "Roles",
-							path: url("/settings/roles"),
-							icon: "Shield",
+							id: "danger-zone",
+							label: "Studio Danger Zone",
+							path: url("/settings/danger-zone"),
+							icon: "AlertTriangle",
 						},
 					],
 				},
@@ -468,6 +435,26 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							icon: "AlertTriangle",
 						},
 					],
+				},
+			],
+			standaloneItems: [
+				{
+					id: "roles",
+					label: "Access Control",
+					path: url("/settings/roles"),
+					icon: "Shield",
+				},
+				{
+					id: "integrations",
+					label: "Integrations",
+					path: url("/settings/integrations"),
+					icon: "Link2",
+				},
+				{
+					id: "billing",
+					label: "Billing",
+					path: url("/settings/billing"),
+					icon: "CreditCard",
 				},
 			],
 		},

@@ -11,7 +11,6 @@ import { IconByName } from "./icon-registry";
 /** Map section IDs to representative icons for the compressed sidebar */
 const SECTION_ICONS: Record<string, string> = {
 	studio: "Store",
-	access: "Shield",
 	account: "User",
 };
 
@@ -64,7 +63,7 @@ export function SettingsPanel({ area, organizationId, studioSlug }: SettingsPane
 				)}
 			</div>
 
-			{/* Compressed section links */}
+			{/* Navigation links */}
 			<nav className="flex flex-col gap-0.5 p-3 pt-0">
 				{area.sections.map((section) => {
 					const firstItem = section.items[0];
@@ -94,6 +93,33 @@ export function SettingsPanel({ area, organizationId, studioSlug }: SettingsPane
 						</Link>
 					);
 				})}
+				{area.standaloneItems?.map((item) => {
+					const isActive =
+						pathname === item.path ||
+						pathname.startsWith(`${item.path}/`);
+
+					return (
+						<Link
+							key={item.id}
+							href={item.path}
+							className={cn(
+								"group flex h-8 items-center gap-2.5 rounded-lg p-2 text-sm leading-none transition-[background-color,color,font-weight] duration-75",
+								isActive
+									? "bg-blue-100/50 font-medium text-blue-600 hover:bg-blue-100/80 active:bg-blue-100"
+									: "text-neutral-700 hover:bg-black/5 active:bg-black/10",
+							)}
+						>
+							<IconByName
+								name={item.icon}
+								className={cn(
+									"size-4 shrink-0",
+									isActive ? "text-blue-600" : "text-neutral-600",
+								)}
+							/>
+							<span className="truncate">{item.label}</span>
+						</Link>
+					);
+				})}
 			</nav>
 
 			{/* Teams list */}
@@ -105,8 +131,6 @@ export function SettingsPanel({ area, organizationId, studioSlug }: SettingsPane
 function TeamsSection({ organizationId, studioSlug }: { organizationId: string; studioSlug: string }) {
 	const { data: organization } = useFullOrganizationQuery(organizationId);
 	const teams = organization?.teams ?? [];
-
-	if (teams.length === 0) return null;
 
 	return (
 		<div className="mt-4 px-3">
@@ -126,6 +150,16 @@ function TeamsSection({ organizationId, studioSlug }: { organizationId: string; 
 						<span className="truncate">{team.name}</span>
 					</Link>
 				))}
+				<Link
+					href={`/app/${studioSlug}/settings/teams`}
+					className="group flex h-8 items-center gap-2.5 rounded-lg p-2 text-sm leading-none text-neutral-500 transition-[background-color,color] duration-75 hover:bg-black/5 hover:text-neutral-700 active:bg-black/10"
+				>
+					<IconByName
+						name="Plus"
+						className="size-4 shrink-0 text-neutral-400 group-hover:text-neutral-600"
+					/>
+					<span className="truncate">Create a Team</span>
+				</Link>
 			</nav>
 		</div>
 	);

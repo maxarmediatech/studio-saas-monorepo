@@ -167,6 +167,27 @@ export function MobileSidebar({
 										</div>
 									))}
 								</div>
+
+								{/* Standalone items */}
+								{settingsArea.standaloneItems &&
+									settingsArea.standaloneItems.length > 0 && (
+										<div className="mt-6 pt-3">
+											<nav className="flex flex-col gap-0.5">
+												{settingsArea.standaloneItems.map(
+													(item) => (
+														<MobileNavItem
+															key={item.id}
+															item={item}
+															isActive={isItemActive(
+																pathname,
+																item.path,
+															)}
+														/>
+													),
+												)}
+											</nav>
+										</div>
+									)}
 							</>
 						) : activeModule ? (
 							<>

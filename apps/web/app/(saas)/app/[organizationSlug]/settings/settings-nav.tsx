@@ -16,6 +16,11 @@ interface TabGroup {
 	tabs: TabItem[];
 }
 
+interface StandalonePage {
+	label: string;
+	href: string;
+}
+
 function getTabGroups(basePath: string): TabGroup[] {
 	return [
 		{
@@ -23,19 +28,9 @@ function getTabGroups(basePath: string): TabGroup[] {
 			label: "Studio",
 			tabs: [
 				{ label: "General", href: `${basePath}` },
-				{ label: "Integrations", href: `${basePath}/integrations` },
-				{ label: "Billing", href: `${basePath}/billing` },
-				{ label: "Danger Zone", href: `${basePath}/danger-zone` },
-			],
-		},
-		{
-			id: "access",
-			label: "Access",
-			tabs: [
 				{ label: "Members", href: `${basePath}/members` },
 				{ label: "Invitations", href: `${basePath}/invitations` },
-				{ label: "Roles", href: `${basePath}/roles` },
-				{ label: "Teams", href: `${basePath}/teams` },
+				{ label: "Danger Zone", href: `${basePath}/danger-zone` },
 			],
 		},
 		{
@@ -49,6 +44,29 @@ function getTabGroups(basePath: string): TabGroup[] {
 			],
 		},
 	];
+}
+
+function getStandalonePages(basePath: string): StandalonePage[] {
+	return [
+		{ label: "Access Control", href: `${basePath}/roles` },
+		{ label: "Integrations", href: `${basePath}/integrations` },
+		{ label: "Billing", href: `${basePath}/billing` },
+	];
+}
+
+function getActiveStandalone(
+	pathname: string,
+	pages: StandalonePage[],
+): StandalonePage | null {
+	for (const page of pages) {
+		if (
+			pathname === page.href ||
+			pathname.startsWith(`${page.href}/`)
+		) {
+			return page;
+		}
+	}
+	return null;
 }
 
 function getActiveGroup(
@@ -74,7 +92,19 @@ export function SettingsNav() {
 	const params = useParams<{ organizationSlug: string }>();
 	const basePath = `/app/${params.organizationSlug}/settings`;
 	const groups = getTabGroups(basePath);
-	const activeGroup = getActiveGroup(pathname, groups, basePath);
+	const standalonePages = getStandalonePages(basePath);
+
+	// Check standalone pages first — they take priority over tab groups
+	const activeStandalone = getActiveStandalone(pathname, standalonePages);
+	const activeGroup = activeStandalone
+		? null
+		: getActiveGroup(pathname, groups, basePath);
+
+	// Determine header label and whether to show tab bar
+	const headerLabel = activeStandalone
+		? activeStandalone.label
+		: activeGroup!.label;
+	const showTabs = !activeStandalone && activeGroup!.tabs.length > 1;
 
 	return (
 		<div className="shrink-0">
@@ -83,41 +113,43 @@ export function SettingsNav() {
 				<PageWidthWrapper>
 					<div className="flex h-12 items-center sm:h-16">
 						<h1 className="text-lg font-semibold text-neutral-900">
-							{activeGroup.label}
+							{headerLabel}
 						</h1>
 					</div>
 				</PageWidthWrapper>
 			</div>
 
-			{/* Tab bar */}
-			<div className="border-b border-neutral-200">
-				<PageWidthWrapper>
-					<div className="-mb-px flex gap-6 overflow-x-auto">
-						{activeGroup.tabs.map((tab) => {
-							const isActive =
-								pathname === tab.href ||
-								(tab.href !== basePath &&
-									pathname.startsWith(`${tab.href}/`));
+			{/* Tab bar — hidden for standalone pages and single-tab groups */}
+			{showTabs && (
+				<div className="border-b border-neutral-200">
+					<PageWidthWrapper>
+						<div className="-mb-px flex gap-6 overflow-x-auto">
+							{activeGroup!.tabs.map((tab) => {
+								const isActive =
+									pathname === tab.href ||
+									(tab.href !== basePath &&
+										pathname.startsWith(`${tab.href}/`));
 
-							return (
-								<Link
-									key={tab.href}
-									href={tab.href}
-									className={cn(
-										"relative shrink-0 py-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground",
-										isActive && "text-foreground",
-									)}
-								>
-									{tab.label}
-									{isActive && (
-										<div className="absolute inset-x-0 bottom-0 h-0.5 bg-neutral-900" />
-									)}
-								</Link>
-							);
-						})}
-					</div>
-				</PageWidthWrapper>
-			</div>
+								return (
+									<Link
+										key={tab.href}
+										href={tab.href}
+										className={cn(
+											"relative shrink-0 py-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground",
+											isActive && "text-foreground",
+										)}
+									>
+										{tab.label}
+										{isActive && (
+											<div className="absolute inset-x-0 bottom-0 h-0.5 bg-neutral-900" />
+										)}
+									</Link>
+								);
+							})}
+						</div>
+					</PageWidthWrapper>
+				</div>
+			)}
 		</div>
 	);
 }
