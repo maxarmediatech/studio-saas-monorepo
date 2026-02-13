@@ -423,12 +423,6 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							icon: "Shield",
 						},
 						{
-							id: "notifications",
-							label: "Notifications",
-							path: url("/settings/notifications"),
-							icon: "Bell",
-						},
-						{
 							id: "account-danger-zone",
 							label: "Account Danger Zone",
 							path: url("/settings/account/danger-zone"),
@@ -455,6 +449,12 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 					label: "Billing",
 					path: url("/settings/billing"),
 					icon: "CreditCard",
+				},
+				{
+					id: "notifications",
+					label: "Notifications",
+					path: url("/settings/notifications"),
+					icon: "Bell",
 				},
 			],
 		},

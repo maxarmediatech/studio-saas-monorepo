@@ -39,7 +39,6 @@ function getTabGroups(basePath: string): TabGroup[] {
 			tabs: [
 				{ label: "Profile", href: `${basePath}/profile` },
 				{ label: "Security", href: `${basePath}/security` },
-				{ label: "Notifications", href: `${basePath}/notifications` },
 				{ label: "Danger Zone", href: `${basePath}/account/danger-zone` },
 			],
 		},
@@ -51,6 +50,7 @@ function getStandalonePages(basePath: string): StandalonePage[] {
 		{ label: "Access Control", href: `${basePath}/roles` },
 		{ label: "Integrations", href: `${basePath}/integrations` },
 		{ label: "Billing", href: `${basePath}/billing` },
+		{ label: "Notifications", href: `${basePath}/notifications` },
 	];
 }
 
