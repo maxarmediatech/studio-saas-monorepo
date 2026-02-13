@@ -5,6 +5,7 @@ import { InviteMemberDialog } from "@saas/organizations/components/InviteMemberD
 import { OrganizationInvitationsList } from "@saas/organizations/components/OrganizationInvitationsList";
 import { Plus } from "lucide-react";
 import { useState } from "react";
+import { SettingsHeaderPortal } from "../_components/settings-header-portal";
 
 export function InvitationsPageClient({
 	organizationId,
@@ -15,12 +16,12 @@ export function InvitationsPageClient({
 
 	return (
 		<>
-			<div className="mb-4 flex justify-end">
+			<SettingsHeaderPortal>
 				<Button size="sm" onClick={() => setDialogOpen(true)}>
 					<Plus className="mr-2 h-4 w-4" />
 					Invite Member
 				</Button>
-			</div>
+			</SettingsHeaderPortal>
 
 			<InviteMemberDialog
 				organizationId={organizationId}

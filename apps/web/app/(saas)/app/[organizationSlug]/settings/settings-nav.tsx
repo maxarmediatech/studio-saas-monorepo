@@ -115,6 +115,7 @@ export function SettingsNav() {
 						<h1 className="text-lg font-semibold text-neutral-900">
 							{headerLabel}
 						</h1>
+						<div className="ml-auto" id="settings-header-actions" />
 					</div>
 				</PageWidthWrapper>
 			</div>

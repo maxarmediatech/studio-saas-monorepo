@@ -3,6 +3,7 @@
 import { Button } from "@repo/ui/components/button";
 import { Plus } from "lucide-react";
 import { useState } from "react";
+import { SettingsHeaderPortal } from "../_components/settings-header-portal";
 import { RolesList } from "./_components/roles-list";
 
 export function RolesPageClient({ canManage }: { canManage: boolean }) {
@@ -11,7 +12,7 @@ export function RolesPageClient({ canManage }: { canManage: boolean }) {
 	return (
 		<>
 			{canManage && (
-				<div className="mb-4 flex justify-end">
+				<SettingsHeaderPortal>
 					<Button
 						size="sm"
 						onClick={() => setCreateSignal((signal) => signal + 1)}
@@ -19,7 +20,7 @@ export function RolesPageClient({ canManage }: { canManage: boolean }) {
 						<Plus className="mr-2 h-4 w-4" />
 						Create Role
 					</Button>
-				</div>
+				</SettingsHeaderPortal>
 			)}
 			<RolesList canManage={canManage} createSignal={createSignal} />
 		</>

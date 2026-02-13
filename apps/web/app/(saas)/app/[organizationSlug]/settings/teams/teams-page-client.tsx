@@ -9,6 +9,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { SettingsHeaderPortal } from "../_components/settings-header-portal";
 
 interface TeamsPageClientProps {
 	organizationId: string;
@@ -48,12 +49,12 @@ export function TeamsPageClient({
 	return (
 		<>
 			{canManage && (
-				<div className="mb-4 flex justify-end">
+				<SettingsHeaderPortal>
 					<Button size="sm" onClick={() => setCreateOpen(true)}>
 						<Plus className="mr-2 h-4 w-4" />
 						Create Team
 					</Button>
-				</div>
+				</SettingsHeaderPortal>
 			)}
 			<OrganizationTeamsList organizationId={organizationId} />
 
