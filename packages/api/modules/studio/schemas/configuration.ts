@@ -253,6 +253,7 @@ export type DefaultConfigItem = {
 	color?: string;
 	icon?: string;
 	isDefault?: boolean;
+	metadata?: Record<string, unknown>;
 };
 
 export const defaultConfigurations: Record<
@@ -315,10 +316,9 @@ export const defaultConfigurations: Record<
 	],
 	booking_type: [
 		{ key: "wedding", label: "Wedding", isDefault: true },
-		{ key: "pre_wedding", label: "Pre-Wedding" },
-		{ key: "engagement", label: "Engagement" },
-		{ key: "corporate", label: "Corporate Event" },
-		{ key: "birthday", label: "Birthday" },
+		{ key: "pre_wedding", label: "Pre-Wedding", metadata: { roles: ["bride", "groom", "friend"] } },
+		{ key: "engagement", label: "Engagement", metadata: { roles: ["bride", "groom", "bride_family", "groom_family", "friend"] } },
+		{ key: "birthday", label: "Birthday", metadata: { roles: ["friend", "other"] } },
 		{ key: "other", label: "Other" },
 	],
 	package_type: [
@@ -328,10 +328,10 @@ export const defaultConfigurations: Record<
 		{ key: "custom", label: "Custom Package" },
 	],
 	relation_type: [
-		{ key: "bride", label: "Bride", isDefault: true },
-		{ key: "groom", label: "Groom" },
-		{ key: "bride_family", label: "Bride's Family" },
-		{ key: "groom_family", label: "Groom's Family" },
+		{ key: "bride", label: "Bride", isDefault: true, metadata: { bookingTypes: ["wedding", "pre_wedding", "engagement"] } },
+		{ key: "groom", label: "Groom", metadata: { bookingTypes: ["wedding", "pre_wedding", "engagement"] } },
+		{ key: "bride_family", label: "Bride's Family", metadata: { bookingTypes: ["wedding", "engagement"] } },
+		{ key: "groom_family", label: "Groom's Family", metadata: { bookingTypes: ["wedding", "engagement"] } },
 		{ key: "friend", label: "Friend" },
 		{ key: "other", label: "Other" },
 	],
@@ -345,17 +345,16 @@ export const defaultConfigurations: Record<
 		{ key: "other", label: "Other", color: "#6B7280", isDefault: true },
 	],
 	event_type: [
-		{ key: "wedding", label: "Wedding", isDefault: true },
-		{ key: "reception", label: "Reception" },
-		{ key: "engagement", label: "Engagement" },
-		{ key: "pre_wedding", label: "Pre-Wedding" },
-		{ key: "haldi", label: "Haldi" },
-		{ key: "mehendi", label: "Mehendi" },
-		{ key: "sangeet", label: "Sangeet" },
+		{ key: "wedding", label: "Wedding", isDefault: true, metadata: { bookingTypes: ["wedding"] } },
+		{ key: "reception", label: "Reception", metadata: { bookingTypes: ["wedding"] } },
+		{ key: "engagement", label: "Engagement", metadata: { bookingTypes: ["wedding", "engagement"] } },
+		{ key: "pre_wedding", label: "Pre-Wedding", metadata: { bookingTypes: ["wedding", "pre_wedding"] } },
+		{ key: "haldi", label: "Haldi", metadata: { bookingTypes: ["wedding"] } },
+		{ key: "mehendi", label: "Mehendi", metadata: { bookingTypes: ["wedding"] } },
+		{ key: "sangeet", label: "Sangeet", metadata: { bookingTypes: ["wedding"] } },
 		{ key: "portrait", label: "Portrait" },
 		{ key: "maternity", label: "Maternity" },
 		{ key: "baby_shoot", label: "Baby Shoot" },
-		{ key: "corporate", label: "Corporate Event" },
 		{ key: "other", label: "Other" },
 	],
 	gst_rate: [{ key: "default", label: "GST Rate (18%)", isDefault: true }],

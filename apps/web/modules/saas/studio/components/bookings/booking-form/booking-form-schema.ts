@@ -358,7 +358,6 @@ export const SHOOT_TYPE_OPTIONS = [
 	{ value: "portrait", label: "Portrait" },
 	{ value: "maternity", label: "Maternity" },
 	{ value: "baby_shoot", label: "Baby Shoot" },
-	{ value: "corporate", label: "Corporate" },
 	{ value: "other", label: "Other" },
 ] as const;
 

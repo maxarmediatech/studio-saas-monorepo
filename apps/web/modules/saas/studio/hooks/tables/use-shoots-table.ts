@@ -17,7 +17,6 @@ export const SHOOT_TYPES = [
 	"portrait",
 	"maternity",
 	"baby_shoot",
-	"corporate",
 	"other",
 ] as const;
 

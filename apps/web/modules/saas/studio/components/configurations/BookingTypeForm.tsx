@@ -149,7 +149,7 @@ export function BookingTypeForm({
 									<Input
 										{...field}
 										id={field.name}
-										placeholder="e.g., Wedding, Corporate Event"
+										placeholder="e.g., Wedding, Birthday"
 										aria-invalid={fieldState.invalid}
 									/>
 									{fieldState.invalid && (
