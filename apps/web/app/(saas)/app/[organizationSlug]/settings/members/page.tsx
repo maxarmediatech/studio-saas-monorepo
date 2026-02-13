@@ -24,7 +24,7 @@ export default async function MembersSettingsPage({ params }: Props) {
 	}
 
 	return (
-		<div className="px-4 lg:px-6">
+		<div className="px-4 pt-6 pb-8 lg:px-6">
 			<OrganizationMembersBlock organizationId={organization.id} />
 		</div>
 	);

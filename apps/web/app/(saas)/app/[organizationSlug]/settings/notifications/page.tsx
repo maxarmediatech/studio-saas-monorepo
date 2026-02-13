@@ -15,7 +15,7 @@ export default async function NotificationsSettingsPage() {
 	}
 
 	return (
-		<div className="px-4 lg:px-6">
+		<div className="px-4 pt-6 pb-8 lg:px-6">
 			<div className="rounded-lg border border-neutral-200 bg-neutral-50 p-8 text-center">
 				<h3 className="text-lg font-medium text-neutral-900">
 					Notification Settings

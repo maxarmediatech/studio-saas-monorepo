@@ -32,7 +32,7 @@ export default async function InvitationsSettingsPage({ params }: Props) {
 	}
 
 	return (
-		<div className="space-y-6 px-4 lg:px-6">
+		<div className="space-y-6 px-4 pt-6 pb-8 lg:px-6">
 			<InviteMemberForm organizationId={organization.id} />
 			<OrganizationInvitationsList organizationId={organization.id} />
 		</div>
