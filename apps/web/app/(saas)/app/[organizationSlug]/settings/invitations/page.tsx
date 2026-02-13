@@ -1,8 +1,7 @@
 import { isOrganizationAdmin } from "@repo/auth/lib/helper";
 import { getActiveOrganization, getSession } from "@saas/auth/lib/server";
-import { InviteMemberForm } from "@saas/organizations/components/InviteMemberForm";
-import { OrganizationInvitationsList } from "@saas/organizations/components/OrganizationInvitationsList";
 import { notFound } from "next/navigation";
+import { InvitationsPageClient } from "./invitations-page-client";
 
 type Props = {
 	params: Promise<{ organizationSlug: string }>;
@@ -32,9 +31,8 @@ export default async function InvitationsSettingsPage({ params }: Props) {
 	}
 
 	return (
-		<div className="space-y-6 px-4 pt-6 pb-8 lg:px-6">
-			<InviteMemberForm organizationId={organization.id} />
-			<OrganizationInvitationsList organizationId={organization.id} />
+		<div className="px-4 pt-6 pb-8 lg:px-6">
+			<InvitationsPageClient organizationId={organization.id} />
 		</div>
 	);
 }

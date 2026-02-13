@@ -40,6 +40,7 @@ import {
 	ClockIcon,
 	MailXIcon,
 	MoreVerticalIcon,
+	SendIcon,
 	XIcon,
 } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
@@ -48,8 +49,10 @@ import { toast } from "sonner";
 
 export function OrganizationInvitationsList({
 	organizationId,
+	onInvite,
 }: {
 	organizationId: string;
+	onInvite?: () => void;
 }) {
 	const t = useTranslations();
 	const queryClient = useQueryClient();
@@ -227,38 +230,48 @@ export function OrganizationInvitationsList({
 		getFilteredRowModel: getFilteredRowModel(),
 	});
 
+	if (!invitations?.length) {
+		return (
+			<div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed bg-muted/30 px-6 py-16 text-center">
+				<div className="mb-4 flex size-16 items-center justify-center rounded-2xl bg-primary/10">
+					<SendIcon className="size-8 text-primary" />
+				</div>
+				<h3 className="font-semibold text-lg">
+					No pending invitations
+				</h3>
+				<p className="mt-1 max-w-sm text-muted-foreground text-sm">
+					Invite team members to collaborate on bookings, tasks, and
+					more.
+				</p>
+				{onInvite && (
+					<Button className="mt-6" onClick={onInvite}>
+						<SendIcon className="size-4" />
+						Invite Member
+					</Button>
+				)}
+			</div>
+		);
+	}
+
 	return (
 		<div className="rounded-md border">
 			<Table>
 				<TableBody>
-					{table.getRowModel().rows?.length ? (
-						table.getRowModel().rows.map((row) => (
-							<TableRow
-								key={row.id}
-								data-state={row.getIsSelected() && "selected"}
-							>
-								{row.getVisibleCells().map((cell) => (
-									<TableCell key={cell.id}>
-										{flexRender(
-											cell.column.columnDef.cell,
-											cell.getContext(),
-										)}
-									</TableCell>
-								))}
-							</TableRow>
-						))
-					) : (
-						<TableRow>
-							<TableCell
-								colSpan={columns.length}
-								className="h-24 text-center"
-							>
-								{t(
-									"organizations.settings.members.invitations.empty",
-								)}
-							</TableCell>
+					{table.getRowModel().rows.map((row) => (
+						<TableRow
+							key={row.id}
+							data-state={row.getIsSelected() && "selected"}
+						>
+							{row.getVisibleCells().map((cell) => (
+								<TableCell key={cell.id}>
+									{flexRender(
+										cell.column.columnDef.cell,
+										cell.getContext(),
+									)}
+								</TableCell>
+							))}
 						</TableRow>
-					)}
+					))}
 				</TableBody>
 			</Table>
 		</div>
