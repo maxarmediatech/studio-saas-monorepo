@@ -1,7 +1,6 @@
 import { getActiveOrganization } from "@saas/auth/lib/server";
 import { GoogleCalendarIntegrationCard } from "@saas/settings/components/google-calendar-integration-card";
 import { SettingsList } from "@saas/shared/components/SettingsList";
-import { PageContent } from "@saas/studio";
 import { notFound } from "next/navigation";
 
 type Props = {
@@ -25,10 +24,8 @@ export default async function IntegrationsSettingsPage({ params }: Props) {
 	}
 
 	return (
-		<PageContent title="Integrations">
-			<SettingsList>
-				<GoogleCalendarIntegrationCard />
-			</SettingsList>
-		</PageContent>
+		<SettingsList>
+			<GoogleCalendarIntegrationCard />
+		</SettingsList>
 	);
 }

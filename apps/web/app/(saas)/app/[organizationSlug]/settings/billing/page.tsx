@@ -3,7 +3,6 @@ import { getActiveOrganization, getSession } from "@saas/auth/lib/server";
 import { ActivePlan } from "@saas/payments/components/ActivePlan";
 import { ChangePlan } from "@saas/payments/components/ChangePlan";
 import { SettingsList } from "@saas/shared/components/SettingsList";
-import { PageContent } from "@saas/studio";
 import { orpcClient } from "@shared/lib/orpc-client";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { getServerQueryClient } from "@shared/lib/server";
@@ -26,7 +25,6 @@ export async function generateMetadata({ params }: Props) {
 }
 
 export default async function BillingSettingsPage({ params }: Props) {
-	const t = await getTranslations();
 	const session = await getSession();
 	const { organizationSlug } = await params;
 	const organization = await getActiveOrganization(organizationSlug);
@@ -57,15 +55,13 @@ export default async function BillingSettingsPage({ params }: Props) {
 	const { activePlan } = createPurchasesHelper(purchases);
 
 	return (
-		<PageContent title={t("settings.billing.title")}>
-			<SettingsList>
-				{activePlan && <ActivePlan organizationId={organization.id} />}
-				<ChangePlan
-					organizationId={organization.id}
-					userId={session?.user.id}
-					activePlanId={activePlan?.id}
-				/>
-			</SettingsList>
-		</PageContent>
+		<SettingsList>
+			{activePlan && <ActivePlan organizationId={organization.id} />}
+			<ChangePlan
+				organizationId={organization.id}
+				userId={session?.user.id}
+				activePlanId={activePlan?.id}
+			/>
+		</SettingsList>
 	);
 }

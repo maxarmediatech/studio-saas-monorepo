@@ -6,7 +6,6 @@ import { UserAvatarForm } from "@saas/settings/components/UserAvatarForm";
 import { UserLanguageForm } from "@saas/settings/components/UserLanguageForm";
 import { UserTimezoneForm } from "@saas/settings/components/UserTimezoneForm";
 import { SettingsList } from "@saas/shared/components/SettingsList";
-import { PageContent } from "@saas/studio";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
@@ -19,7 +18,6 @@ export async function generateMetadata() {
 }
 
 export default async function ProfileSettingsPage() {
-	const t = await getTranslations();
 	const session = await getSession();
 
 	if (!session) {
@@ -27,14 +25,12 @@ export default async function ProfileSettingsPage() {
 	}
 
 	return (
-		<PageContent title={t("settings.account.profile.title")}>
-			<SettingsList>
-				<UserAvatarForm />
-				{config.i18n.enabled && <UserLanguageForm />}
-				<UserTimezoneForm />
-				<ChangeNameForm />
-				<ChangeEmailForm />
-			</SettingsList>
-		</PageContent>
+		<SettingsList>
+			<UserAvatarForm />
+			{config.i18n.enabled && <UserLanguageForm />}
+			<UserTimezoneForm />
+			<ChangeNameForm />
+			<ChangeEmailForm />
+		</SettingsList>
 	);
 }

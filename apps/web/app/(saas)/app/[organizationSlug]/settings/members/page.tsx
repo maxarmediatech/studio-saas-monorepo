@@ -1,6 +1,5 @@
 import { getActiveOrganization } from "@saas/auth/lib/server";
 import { OrganizationMembersBlock } from "@saas/organizations/components/OrganizationMembersBlock";
-import { PageContent } from "@saas/studio";
 import { notFound } from "next/navigation";
 
 type Props = {
@@ -24,9 +23,5 @@ export default async function MembersSettingsPage({ params }: Props) {
 		return notFound();
 	}
 
-	return (
-		<PageContent title="Members">
-			<OrganizationMembersBlock organizationId={organization.id} />
-		</PageContent>
-	);
+	return <OrganizationMembersBlock organizationId={organization.id} />;
 }

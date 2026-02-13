@@ -5,7 +5,6 @@ import { Button } from "@repo/ui/components/button";
 import { OrganizationTeamsList } from "@saas/organizations/components/OrganizationTeamsList";
 import { TeamDialog } from "@saas/organizations/components/team-dialog";
 import { fullOrganizationQueryKey } from "@saas/organizations/lib/api";
-import { PageContent } from "@saas/studio";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { useState } from "react";
@@ -47,17 +46,15 @@ export function TeamsPageClient({
 	});
 
 	return (
-		<PageContent
-			title="Teams"
-			controls={
-				canManage ? (
-					<Button onClick={() => setCreateOpen(true)}>
+		<>
+			{canManage && (
+				<div className="mb-4 flex justify-end">
+					<Button size="sm" onClick={() => setCreateOpen(true)}>
 						<Plus className="mr-2 h-4 w-4" />
 						Create Team
 					</Button>
-				) : null
-			}
-		>
+				</div>
+			)}
 			<OrganizationTeamsList organizationId={organizationId} />
 
 			<TeamDialog
@@ -67,6 +64,6 @@ export function TeamsPageClient({
 				isSaving={createTeamMutation.isPending}
 				onSave={(name) => createTeamMutation.mutate(name)}
 			/>
-		</PageContent>
+		</>
 	);
 }

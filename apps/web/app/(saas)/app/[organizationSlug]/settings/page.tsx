@@ -3,7 +3,6 @@ import { ChangeOrganizationNameForm } from "@saas/organizations/components/Chang
 import { OrganizationLogoForm } from "@saas/organizations/components/OrganizationLogoForm";
 import { UserTimezoneForm } from "@saas/settings/components/UserTimezoneForm";
 import { SettingsList } from "@saas/shared/components/SettingsList";
-import { PageContent } from "@saas/studio";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
@@ -22,7 +21,6 @@ export async function generateMetadata({ params }: Props) {
 }
 
 export default async function GeneralSettingsPage({ params }: Props) {
-	const t = await getTranslations();
 	const { organizationSlug } = await params;
 	const organization = await getActiveOrganization(organizationSlug);
 
@@ -31,12 +29,10 @@ export default async function GeneralSettingsPage({ params }: Props) {
 	}
 
 	return (
-		<PageContent title={t("organizations.settings.general.title")}>
-			<SettingsList>
-				<OrganizationLogoForm />
-				<ChangeOrganizationNameForm />
-				<UserTimezoneForm />
-			</SettingsList>
-		</PageContent>
+		<SettingsList>
+			<OrganizationLogoForm />
+			<ChangeOrganizationNameForm />
+			<UserTimezoneForm />
+		</SettingsList>
 	);
 }
