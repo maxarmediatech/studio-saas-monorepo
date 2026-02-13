@@ -23,6 +23,7 @@ import { BookingDetailSheet, BookingEditSheet } from "./bookings/sheets";
 import { ClientCreateSheet, ClientEditSheet } from "./clients/sheets";
 import {
 	ConfigurationCreateSheet,
+	ConfigurationDetailSheet,
 	ConfigurationEditSheet,
 } from "./configurations/sheets";
 import { CrewCreateSheet, CrewEditSheet } from "./crews/sheets";
@@ -66,6 +67,9 @@ export function GlobalSheets() {
 
 			{/* Configurations */}
 			<ConfigurationCreateSheet />
+			<Suspense fallback={null}>
+				<ConfigurationDetailSheet />
+			</Suspense>
 			<Suspense fallback={null}>
 				<ConfigurationEditSheet />
 			</Suspense>

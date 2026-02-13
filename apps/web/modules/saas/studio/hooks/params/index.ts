@@ -7,6 +7,7 @@ export { useBookingEditParams } from "./use-booking-edit-params";
 export { useBookingParams } from "./use-booking-params";
 export { useClientParams } from "./use-client-params";
 export { useConfigurationParams } from "./use-configuration-params";
+export { useConfigurationViewParams } from "./use-configuration-view-params";
 export { useCrewParams } from "./use-crew-params";
 export { useDeliverableParams } from "./use-deliverable-params";
 export { useDiscussionParams } from "./use-discussion-params";

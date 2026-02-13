@@ -21,6 +21,7 @@ import {
 	SortProvider,
 } from "@saas/shared/components/data-table";
 import { useConfigurationParams } from "@saas/studio/hooks/params/use-configuration-params";
+import { useConfigurationViewParams } from "@saas/studio/hooks/params/use-configuration-view-params";
 import {
 	type ConfigType,
 	useConfigurationsTable,
@@ -33,6 +34,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
 	CheckIcon,
+	EyeIcon,
 	EyeOffIcon,
 	Loader2Icon,
 	PencilIcon,
@@ -77,6 +79,7 @@ export function ConfigurationsTableClient({
 
 	// URL-based sheet params
 	const { openEdit } = useConfigurationParams();
+	const { openView } = useConfigurationViewParams();
 
 	// Build query input from hook state
 	const queryInput = {
@@ -160,6 +163,11 @@ export function ConfigurationsTableClient({
 	const rowActions: RowAction<Configuration>[] = useMemo(
 		() => [
 			{
+				label: "View details",
+				icon: <EyeIcon className="h-4 w-4" />,
+				onClick: (row) => openView(row.id),
+			},
+			{
 				label: "Edit",
 				icon: <PencilIcon className="h-4 w-4" />,
 				onClick: handleOpenEdit,
@@ -201,7 +209,7 @@ export function ConfigurationsTableClient({
 				},
 			},
 		],
-		[toggleActiveMutation],
+		[toggleActiveMutation, openView],
 	);
 
 	// Define columns
@@ -221,12 +229,16 @@ export function ConfigurationsTableClient({
 								style={{ backgroundColor: row.original.color }}
 							/>
 						)}
-						<div>
+						<button
+							type="button"
+							className="text-left hover:underline focus-visible:outline-none focus-visible:underline"
+							onClick={() => openView(row.original.id)}
+						>
 							<p className="font-medium">{row.original.label}</p>
 							<p className="text-xs text-muted-foreground font-mono">
 								{row.original.key}
 							</p>
-						</div>
+						</button>
 					</div>
 				),
 				meta: {
@@ -236,25 +248,6 @@ export function ConfigurationsTableClient({
 				},
 				enableSorting: true,
 				enableHiding: false,
-			},
-			{
-				id: "description",
-				accessorKey: "description",
-				header: ({ column }) => (
-					<DataTableColumnHeader column={column} title="Description" />
-				),
-				cell: ({ row }) => (
-					<span className="text-muted-foreground truncate max-w-[250px] block">
-						{row.original.description || "-"}
-					</span>
-				),
-				meta: {
-					label: "Description",
-					width: 250,
-					minWidth: 200,
-				},
-				enableSorting: false,
-				enableHiding: true,
 			},
 			// Package-type-only columns: Default Cost & Booking Type
 			...(configType === "package_type"
@@ -514,35 +507,6 @@ export function ConfigurationsTableClient({
 				enableHiding: true,
 			},
 			{
-				id: "isSystem",
-				accessorKey: "isSystem",
-				header: ({ column }) => (
-					<DataTableColumnHeader
-						column={column}
-						title="Type"
-						className="justify-center"
-					/>
-				),
-				cell: ({ row }) => (
-					<div className="flex justify-center">
-						<Badge
-							variant={
-								row.original.isSystem ? "secondary" : "outline"
-							}
-						>
-							{row.original.isSystem ? "System" : "Custom"}
-						</Badge>
-					</div>
-				),
-				meta: {
-					label: "Type",
-					width: 100,
-					minWidth: 100,
-				},
-				enableSorting: false,
-				enableHiding: true,
-			},
-			{
 				id: "actions",
 				header: ({ table }) => <DataTableViewOptions table={table} />,
 				cell: ({ row }) => (
@@ -559,7 +523,7 @@ export function ConfigurationsTableClient({
 				},
 			},
 		],
-		[rowActions, configType, bookingTypes, relationTypes],
+		[rowActions, configType, bookingTypes, relationTypes, openView],
 	);
 
 	return (
