@@ -145,7 +145,7 @@ export function DubSidebar({
 							}
 						>
 							{areas.studioSettings && (
-								<SettingsPanel area={areas.studioSettings} />
+								<SettingsPanel area={areas.studioSettings} organizationId={organizationId} studioSlug={studioSlug} />
 							)}
 						</Area>
 

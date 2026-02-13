@@ -1,27 +1,37 @@
 "use client";
 
 import { cn } from "@repo/ui/lib/utils";
-import { ChevronLeft, ExternalLink } from "lucide-react";
+import { useFullOrganizationQuery } from "@saas/organizations/lib/api";
+import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { NavAreaConfig, NavItemConfig } from "../../lib/navigation/types";
+import type { NavAreaConfig, NavSectionConfig } from "../../lib/navigation/types";
 import { IconByName } from "./icon-registry";
+
+/** Map section IDs to representative icons for the compressed sidebar */
+const SECTION_ICONS: Record<string, string> = {
+	studio: "Store",
+	access: "Shield",
+	account: "User",
+};
 
 interface SettingsPanelProps {
 	area: NavAreaConfig;
+	organizationId: string;
+	studioSlug: string;
 }
 
-function isItemActive(pathname: string, itemPath: string): boolean {
-	// For base settings path (e.g., /app/{slug}/settings), use exact match only
-	// to prevent highlighting when on child routes like /settings/danger-zone
-	if (itemPath.endsWith("/settings")) {
-		return pathname === itemPath;
-	}
-	// For other paths: exact match or starts with path followed by /
-	return pathname === itemPath || pathname.startsWith(`${itemPath}/`);
+function isSectionActive(pathname: string, section: NavSectionConfig): boolean {
+	return section.items.some((item) => {
+		// For base settings path, exact match only
+		if (item.path.endsWith("/settings")) {
+			return pathname === item.path;
+		}
+		return pathname === item.path || pathname.startsWith(`${item.path}/`);
+	});
 }
 
-export function SettingsPanel({ area }: SettingsPanelProps) {
+export function SettingsPanel({ area, organizationId, studioSlug }: SettingsPanelProps) {
 	const pathname = usePathname();
 
 	return (
@@ -54,65 +64,69 @@ export function SettingsPanel({ area }: SettingsPanelProps) {
 				)}
 			</div>
 
-			{/* Sections */}
-			<div className="flex flex-col gap-8 p-3 pt-0 text-neutral-500">
-				{area.sections.map((section) => (
-					<div key={section.id}>
-						{section.label && (
-							<div className="mb-2 pl-3 text-sm text-neutral-500">
-								{section.label}
-							</div>
-						)}
-						<nav className="flex flex-col gap-0.5">
-							{section.items.map((item) => (
-								<NavItem
-									key={item.id}
-									item={item}
-									isActive={isItemActive(pathname, item.path)}
-								/>
-							))}
-						</nav>
-					</div>
-				))}
-			</div>
+			{/* Compressed section links */}
+			<nav className="flex flex-col gap-0.5 p-3 pt-0">
+				{area.sections.map((section) => {
+					const firstItem = section.items[0];
+					if (!firstItem) return null;
+					const isActive = isSectionActive(pathname, section);
+					const iconName = SECTION_ICONS[section.id] ?? firstItem.icon;
+
+					return (
+						<Link
+							key={section.id}
+							href={firstItem.path}
+							className={cn(
+								"group flex h-8 items-center gap-2.5 rounded-lg p-2 text-sm leading-none transition-[background-color,color,font-weight] duration-75",
+								isActive
+									? "bg-blue-100/50 font-medium text-blue-600 hover:bg-blue-100/80 active:bg-blue-100"
+									: "text-neutral-700 hover:bg-black/5 active:bg-black/10",
+							)}
+						>
+							<IconByName
+								name={iconName}
+								className={cn(
+									"size-4 shrink-0",
+									isActive ? "text-blue-600" : "text-neutral-600",
+								)}
+							/>
+							<span className="truncate">{section.label}</span>
+						</Link>
+					);
+				})}
+			</nav>
+
+			{/* Teams list */}
+			<TeamsSection organizationId={organizationId} studioSlug={studioSlug} />
 		</div>
 	);
 }
 
-function NavItem({
-	item,
-	isActive,
-}: {
-	item: NavItemConfig;
-	isActive: boolean;
-}) {
-	const isExternal = item.path.startsWith("http");
+function TeamsSection({ organizationId, studioSlug }: { organizationId: string; studioSlug: string }) {
+	const { data: organization } = useFullOrganizationQuery(organizationId);
+	const teams = organization?.teams ?? [];
+
+	if (teams.length === 0) return null;
 
 	return (
-		<Link
-			href={item.path}
-			target={isExternal ? "_blank" : undefined}
-			rel={isExternal ? "noopener noreferrer" : undefined}
-			className={cn(
-				"group flex h-8 items-center justify-between rounded-lg p-2 text-sm leading-none transition-[background-color,color,font-weight] duration-75",
-				isActive
-					? "bg-blue-100/50 font-medium text-blue-600 hover:bg-blue-100/80 active:bg-blue-100"
-					: "text-neutral-700 hover:bg-black/5 active:bg-black/10",
-			)}
-		>
-			<span className="flex items-center gap-2.5">
-				<IconByName
-					name={item.icon}
-					className={cn(
-						"size-4 shrink-0",
-						isActive ? "text-blue-600" : "text-neutral-600",
-					)}
-				/>
-				<span className="truncate">{item.label}</span>
-			</span>
-			{isExternal && (
-				<ExternalLink className="size-3.5 text-neutral-500 transition-transform duration-75 group-hover:-translate-y-px group-hover:translate-x-px" />
-			)}
-		</Link>
+		<div className="mt-4 px-3">
+			<div className="mb-2 pl-2 text-xs font-medium uppercase tracking-wider text-neutral-400">
+				Your teams
+			</div>
+			<nav className="flex flex-col gap-0.5">
+				{teams.map((team) => (
+					<Link
+						key={team.id}
+						href={`/app/${studioSlug}/settings/teams`}
+						className="group flex h-8 items-center gap-2.5 rounded-lg p-2 text-sm leading-none text-neutral-700 transition-[background-color] duration-75 hover:bg-black/5 active:bg-black/10"
+					>
+						<span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-neutral-300 text-[10px] font-medium text-neutral-700">
+							{team.name.charAt(0).toUpperCase()}
+						</span>
+						<span className="truncate">{team.name}</span>
+					</Link>
+				))}
+			</nav>
+		</div>
 	);
 }
