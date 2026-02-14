@@ -28,9 +28,15 @@ function getTabGroups(basePath: string): TabGroup[] {
 			label: "Studio",
 			tabs: [
 				{ label: "General", href: `${basePath}` },
+				{ label: "Danger Zone", href: `${basePath}/danger-zone` },
+			],
+		},
+		{
+			id: "members",
+			label: "Members",
+			tabs: [
 				{ label: "Members", href: `${basePath}/members` },
 				{ label: "Invitations", href: `${basePath}/invitations` },
-				{ label: "Danger Zone", href: `${basePath}/danger-zone` },
 			],
 		},
 		{
