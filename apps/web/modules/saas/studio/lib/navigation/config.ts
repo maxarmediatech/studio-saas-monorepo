@@ -456,6 +456,12 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 					path: url("/settings/notifications"),
 					icon: "Bell",
 				},
+				{
+					id: "teams",
+					label: "Teams",
+					path: url("/settings/teams"),
+					icon: "Users",
+				},
 			],
 		},
 		discussions: {

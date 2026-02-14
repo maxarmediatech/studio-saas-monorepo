@@ -5,7 +5,8 @@ import { useFullOrganizationQuery } from "@saas/organizations/lib/api";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { NavAreaConfig, NavSectionConfig } from "../../lib/navigation/types";
+import { useMemo } from "react";
+import type { NavAreaConfig, NavItemConfig, NavSectionConfig } from "../../lib/navigation/types";
 import { IconByName } from "./icon-registry";
 
 /** Map section IDs to representative icons for the compressed sidebar */
@@ -20,6 +21,10 @@ interface SettingsPanelProps {
 	studioSlug: string;
 }
 
+function isItemActive(pathname: string, itemPath: string): boolean {
+	return pathname === itemPath || pathname.startsWith(`${itemPath}/`);
+}
+
 function isSectionActive(pathname: string, section: NavSectionConfig): boolean {
 	return section.items.some((item) => {
 		// For base settings path, exact match only
@@ -30,8 +35,99 @@ function isSectionActive(pathname: string, section: NavSectionConfig): boolean {
 	});
 }
 
+/**
+ * Renders a standalone nav item with optional parent-child tree.
+ * Mirrors the NavItem pattern from sidebar-panel.tsx for visual consistency.
+ */
+function SettingsNavItem({
+	item,
+	pathname,
+}: {
+	item: NavItemConfig;
+	pathname: string;
+}) {
+	const hasChildren = (item.children?.length ?? 0) > 0;
+	const isSelfActive = isItemActive(pathname, item.path);
+
+	const itemClassName = cn(
+		"group flex h-8 items-center gap-2.5 rounded-lg p-2 text-sm leading-none transition-[background-color,color,font-weight] duration-75",
+		isSelfActive
+			? "bg-blue-100/50 font-medium text-blue-600 hover:bg-blue-100/80 active:bg-blue-100"
+			: "text-neutral-700 hover:bg-black/5 active:bg-black/10",
+	);
+
+	if (hasChildren) {
+		return (
+			<div>
+				{/* Parent link */}
+				<Link href={item.path} className={itemClassName}>
+					<IconByName
+						name={item.icon}
+						className={cn(
+							"size-4 shrink-0",
+							isSelfActive ? "text-blue-600" : "text-neutral-600",
+						)}
+					/>
+					<span className="truncate">{item.label}</span>
+				</Link>
+
+				{/* Children — always visible, vertical line on left */}
+				<ul className="ml-3.5 flex min-w-0 translate-x-px flex-col gap-1 border-l border-neutral-200 px-2.5 py-0.5">
+					{item.children?.map((child) => {
+						const childActive = isItemActive(pathname, child.path);
+						return (
+							<li key={child.id}>
+								<Link
+									href={child.path}
+									className={cn(
+										"relative flex h-8 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-sm transition-colors",
+										childActive
+											? "overflow-visible bg-black/[0.03] font-medium text-blue-600 before:absolute before:-left-2.5 before:top-0 before:z-10 before:h-full before:w-px before:bg-blue-600 before:content-['']"
+											: "text-neutral-600 hover:bg-black/5 hover:text-neutral-900",
+									)}
+								>
+									<span className="truncate">{child.label}</span>
+								</Link>
+							</li>
+						);
+					})}
+				</ul>
+			</div>
+		);
+	}
+
+	return (
+		<Link href={item.path} className={itemClassName}>
+			<IconByName
+				name={item.icon}
+				className={cn(
+					"size-4 shrink-0",
+					isSelfActive ? "text-blue-600" : "text-neutral-600",
+				)}
+			/>
+			<span className="truncate">{item.label}</span>
+		</Link>
+	);
+}
+
 export function SettingsPanel({ area, organizationId, studioSlug }: SettingsPanelProps) {
 	const pathname = usePathname();
+	const { data: organization } = useFullOrganizationQuery(organizationId);
+	const teams = organization?.teams ?? [];
+
+	// Hydrate the "teams" standalone item with dynamic children from org query
+	const hydratedStandaloneItems = useMemo(() => {
+		return area.standaloneItems?.map((item) => {
+			if (item.id !== "teams") return item;
+			if (teams.length === 0) return item; // No children — render as flat link
+			const teamChildren: NavItemConfig[] = teams.map((team) => ({
+				id: `team-${team.id}`,
+				label: team.name,
+				path: `/app/${studioSlug}/settings/teams/${team.id}`,
+			}));
+			return { ...item, children: teamChildren };
+		}) ?? [];
+	}, [area.standaloneItems, teams, studioSlug]);
 
 	return (
 		<div className="scrollbar-hide relative flex h-full w-[var(--sidebar-panel-width)] flex-col overflow-y-auto overflow-x-hidden rounded-l-xl bg-neutral-100">
@@ -93,73 +189,9 @@ export function SettingsPanel({ area, organizationId, studioSlug }: SettingsPane
 						</Link>
 					);
 				})}
-				{area.standaloneItems?.map((item) => {
-					const isActive =
-						pathname === item.path ||
-						pathname.startsWith(`${item.path}/`);
-
-					return (
-						<Link
-							key={item.id}
-							href={item.path}
-							className={cn(
-								"group flex h-8 items-center gap-2.5 rounded-lg p-2 text-sm leading-none transition-[background-color,color,font-weight] duration-75",
-								isActive
-									? "bg-blue-100/50 font-medium text-blue-600 hover:bg-blue-100/80 active:bg-blue-100"
-									: "text-neutral-700 hover:bg-black/5 active:bg-black/10",
-							)}
-						>
-							<IconByName
-								name={item.icon}
-								className={cn(
-									"size-4 shrink-0",
-									isActive ? "text-blue-600" : "text-neutral-600",
-								)}
-							/>
-							<span className="truncate">{item.label}</span>
-						</Link>
-					);
-				})}
-			</nav>
-
-			{/* Teams list */}
-			<TeamsSection organizationId={organizationId} studioSlug={studioSlug} />
-		</div>
-	);
-}
-
-function TeamsSection({ organizationId, studioSlug }: { organizationId: string; studioSlug: string }) {
-	const { data: organization } = useFullOrganizationQuery(organizationId);
-	const teams = organization?.teams ?? [];
-
-	return (
-		<div className="mt-4 px-3">
-			<div className="mb-2 pl-2 text-xs font-medium uppercase tracking-wider text-neutral-400">
-				Your teams
-			</div>
-			<nav className="flex flex-col gap-0.5">
-				{teams.map((team) => (
-					<Link
-						key={team.id}
-						href={`/app/${studioSlug}/settings/teams`}
-						className="group flex h-8 items-center gap-2.5 rounded-lg p-2 text-sm leading-none text-neutral-700 transition-[background-color] duration-75 hover:bg-black/5 active:bg-black/10"
-					>
-						<span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-neutral-300 text-[10px] font-medium text-neutral-700">
-							{team.name.charAt(0).toUpperCase()}
-						</span>
-						<span className="truncate">{team.name}</span>
-					</Link>
+				{hydratedStandaloneItems.map((item) => (
+					<SettingsNavItem key={item.id} item={item} pathname={pathname} />
 				))}
-				<Link
-					href={`/app/${studioSlug}/settings/teams`}
-					className="group flex h-8 items-center gap-2.5 rounded-lg p-2 text-sm leading-none text-neutral-500 transition-[background-color,color] duration-75 hover:bg-black/5 hover:text-neutral-700 active:bg-black/10"
-				>
-					<IconByName
-						name="Plus"
-						className="size-4 shrink-0 text-neutral-400 group-hover:text-neutral-600"
-					/>
-					<span className="truncate">Create a Team</span>
-				</Link>
 			</nav>
 		</div>
 	);

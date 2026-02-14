@@ -51,6 +51,7 @@ function getStandalonePages(basePath: string): StandalonePage[] {
 		{ label: "Integrations", href: `${basePath}/integrations` },
 		{ label: "Billing", href: `${basePath}/billing` },
 		{ label: "Notifications", href: `${basePath}/notifications` },
+		{ label: "Teams", href: `${basePath}/teams` },
 	];
 }
 
