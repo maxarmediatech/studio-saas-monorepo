@@ -379,28 +379,8 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							icon: "Settings2",
 						},
 						{
-							id: "members",
-							label: "Members",
-							path: url("/settings/members"),
-							icon: "Users",
-						},
-						{
-							id: "invitations",
-							label: "Invitations",
-							path: url("/settings/invitations"),
-							icon: "Inbox",
-							permission: {
-								any: [
-									{
-										resource: "invites",
-										action: "read",
-									},
-								],
-							},
-						},
-						{
 							id: "danger-zone",
-							label: "Studio Danger Zone",
+							label: "Danger Zone",
 							path: url("/settings/danger-zone"),
 							icon: "AlertTriangle",
 						},
@@ -430,39 +410,77 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 						},
 					],
 				},
-			],
-			standaloneItems: [
 				{
-					id: "roles",
-					label: "Access Control",
-					path: url("/settings/roles"),
-					icon: "Shield",
+					id: "billing",
+					label: "Billing",
+					items: [
+						{
+							id: "billing",
+							label: "Billing",
+							path: url("/settings/billing"),
+							icon: "CreditCard",
+						},
+					],
 				},
 				{
 					id: "integrations",
 					label: "Integrations",
-					path: url("/settings/integrations"),
-					icon: "Link2",
-				},
-				{
-					id: "billing",
-					label: "Billing",
-					path: url("/settings/billing"),
-					icon: "CreditCard",
+					items: [
+						{
+							id: "integrations",
+							label: "Integrations",
+							path: url("/settings/integrations"),
+							icon: "Link2",
+						},
+					],
 				},
 				{
 					id: "notifications",
 					label: "Notifications",
-					path: url("/settings/notifications"),
-					icon: "Bell",
+					items: [
+						{
+							id: "notifications",
+							label: "Notifications",
+							path: url("/settings/notifications"),
+							icon: "Bell",
+						},
+					],
 				},
 				{
-					id: "teams",
-					label: "Teams",
-					path: url("/settings/teams"),
-					icon: "Users",
+					id: "team-access",
+					label: "Team & Access",
+					expanded: true,
+					items: [
+						{
+							id: "members",
+							label: "Members",
+							path: url("/settings/members"),
+							icon: "Users",
+						},
+						{
+							id: "teams",
+							label: "Teams",
+							path: url("/settings/teams"),
+							icon: "Users",
+						},
+						{
+							id: "roles",
+							label: "Access Control",
+							path: url("/settings/roles"),
+							icon: "Shield",
+							permission: {
+								any: [
+									{
+										resource: "invites",
+										action: "read",
+									},
+								],
+							},
+						},
+					],
 				},
 			],
+			standaloneItems: [],
 		},
 		discussions: {
 			id: "discussions",
