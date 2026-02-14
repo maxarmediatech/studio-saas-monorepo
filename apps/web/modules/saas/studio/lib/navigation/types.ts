@@ -88,6 +88,7 @@ export interface NavSectionConfig {
 	id: string;
 	label?: string;
 	items: NavItemConfig[];
+	expanded?: boolean;
 }
 
 export interface NavModuleConfig {
