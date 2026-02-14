@@ -371,6 +371,7 @@ export const auth = betterAuth({
 			},
 			teams: {
 				enabled: true,
+				allowRemovingAllTeams: true,
 				defaultTeam: {
 					enabled: false,
 				},
