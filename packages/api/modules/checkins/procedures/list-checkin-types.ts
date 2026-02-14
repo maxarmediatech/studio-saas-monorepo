@@ -1,4 +1,12 @@
-import { and, checkinTypes, db, eq, inArray, isNull } from "@repo/database";
+import {
+	and,
+	checkinTypes,
+	db,
+	eq,
+	inArray,
+	isNull,
+	or,
+} from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { canViewAllCheckins, getTeamsForUser } from "../lib/checkin-access";
 import { listCheckinTypesInputSchema } from "../schemas";
@@ -13,23 +21,39 @@ export const listCheckinTypes = studioProtectedProcedure
 	.input(listCheckinTypesInputSchema)
 	.handler(async ({ input, context }) => {
 		const isAdmin = canViewAllCheckins(context.membership.role);
+		const scopeFilter = input.scope
+			? eq(checkinTypes.scope, input.scope)
+			: undefined;
 
-		let teamFilter:
+		let visibilityFilter:
 			| ReturnType<typeof eq>
+			| ReturnType<typeof or>
 			| ReturnType<typeof inArray>
 			| undefined;
 
 		if (input.teamId) {
-			teamFilter = eq(checkinTypes.teamId, input.teamId);
+			if (!isAdmin) {
+				const userTeamIds = await getTeamsForUser(
+					context.user.id,
+					context.organizationId,
+				);
+				if (!userTeamIds.includes(input.teamId)) {
+					return { data: [] };
+				}
+			}
+			visibilityFilter = eq(checkinTypes.teamId, input.teamId);
 		} else if (!isAdmin) {
 			const userTeamIds = await getTeamsForUser(
 				context.user.id,
 				context.organizationId,
 			);
-			if (userTeamIds.length === 0) {
-				return { data: [] };
-			}
-			teamFilter = inArray(checkinTypes.teamId, userTeamIds);
+			visibilityFilter =
+				userTeamIds.length === 0
+					? eq(checkinTypes.scope, "organization")
+					: or(
+							eq(checkinTypes.scope, "organization"),
+							inArray(checkinTypes.teamId, userTeamIds),
+						);
 		}
 
 		const activeFilter = input.includeInactive
@@ -40,7 +64,8 @@ export const listCheckinTypes = studioProtectedProcedure
 			where: and(
 				eq(checkinTypes.organizationId, context.organizationId),
 				isNull(checkinTypes.deletedAt),
-				teamFilter,
+				scopeFilter,
+				visibilityFilter,
 				activeFilter,
 			),
 			with: {

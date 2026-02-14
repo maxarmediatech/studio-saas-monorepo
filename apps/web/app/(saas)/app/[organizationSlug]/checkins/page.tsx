@@ -28,7 +28,7 @@ import { addDays, format, nextMonday } from "date-fns";
 import { Hand, MoreHorizontal, PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useCheckinsContext } from "./checkins-context";
 
@@ -118,21 +118,44 @@ interface CreateCheckinTypeDialogProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	teams: Array<{ id: string; name: string }>;
+	isTeamsLoading: boolean;
+	canCreateOrganizationScope: boolean;
 }
 
 function CreateCheckinTypeDialog({
 	open,
 	onOpenChange,
 	teams,
+	isTeamsLoading,
+	canCreateOrganizationScope,
 }: CreateCheckinTypeDialogProps) {
 	const queryClient = useQueryClient();
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
+	const [scope, setScope] = useState<"organization" | "team">("organization");
 	const [teamId, setTeamId] = useState("");
 	const [frequency, setFrequency] = useState<"daily" | "weekdays" | "weekly">(
 		"weekdays",
 	);
 	const [scheduledTime, setScheduledTime] = useState("09:00");
+	const canSelectTeam = teams.length > 0 && !isTeamsLoading;
+
+	useEffect(() => {
+		if (scope === "team" && !canSelectTeam) {
+			setScope("organization");
+			setTeamId("");
+		}
+	}, [scope, canSelectTeam]);
+
+	useEffect(() => {
+		if (
+			!canCreateOrganizationScope &&
+			scope === "organization" &&
+			canSelectTeam
+		) {
+			setScope("team");
+		}
+	}, [canCreateOrganizationScope, scope, canSelectTeam]);
 
 	const createMutation = useMutation({
 		...checkinsMutations.createType(),
@@ -152,6 +175,7 @@ function CreateCheckinTypeDialog({
 	const resetForm = () => {
 		setName("");
 		setDescription("");
+		setScope("organization");
 		setTeamId("");
 		setFrequency("weekdays");
 		setScheduledTime("09:00");
@@ -159,12 +183,21 @@ function CreateCheckinTypeDialog({
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
-		if (!name.trim() || !teamId) return;
+		if (
+			!name.trim() ||
+			(scope === "team" && (isTeamsLoading || !teamId || !canSelectTeam))
+		) {
+			return;
+		}
+		if (scope === "organization" && !canCreateOrganizationScope) {
+			return;
+		}
 
 		createMutation.mutate({
 			name: name.trim(),
 			description: description.trim() || undefined,
-			teamId,
+			scope,
+			teamId: scope === "team" ? teamId : undefined,
 			frequency,
 			scheduledTime,
 		});
@@ -195,23 +228,98 @@ function CreateCheckinTypeDialog({
 					/>
 
 					<div className="space-y-2">
-						<Label>Team</Label>
-						<Select value={teamId} onValueChange={setTeamId}>
-							<SelectTrigger>
-								<SelectValue placeholder="Select a team" />
-							</SelectTrigger>
-							<SelectContent>
-								{teams.map((team) => (
-									<SelectItem key={team.id} value={team.id}>
-										{team.name}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-						<p className="text-xs text-muted-foreground">
-							Only team members will be able to post checkins
-						</p>
+						<Label>Visibility</Label>
+						<RadioGroup
+							value={scope}
+							onValueChange={(nextValue) =>
+								setScope(nextValue as "organization" | "team")
+							}
+						>
+							<div className="flex items-center space-x-2">
+								<RadioGroupItem
+									value="organization"
+									id="scope-organization"
+									disabled={!canCreateOrganizationScope}
+								/>
+								<Label
+									htmlFor="scope-organization"
+									className={
+										canCreateOrganizationScope
+											? "font-normal"
+											: "font-normal text-muted-foreground"
+									}
+								>
+									Organization-wide
+								</Label>
+							</div>
+							<div className="flex items-center space-x-2">
+								<RadioGroupItem
+									value="team"
+									id="scope-team"
+									disabled={!canSelectTeam}
+								/>
+								<Label
+									htmlFor="scope-team"
+									className={
+										canSelectTeam
+											? "font-normal"
+											: "font-normal text-muted-foreground"
+									}
+								>
+									Specific team
+								</Label>
+							</div>
+						</RadioGroup>
+						{isTeamsLoading ? (
+							<p className="text-xs text-muted-foreground">
+								Loading teams...
+							</p>
+						) : null}
+						{!canCreateOrganizationScope ? (
+							<p className="text-xs text-muted-foreground">
+								Only admins can create organization-wide
+								checkins.
+							</p>
+						) : null}
 					</div>
+
+					{scope === "team" && (
+						<div className="space-y-2">
+							<Label>Team</Label>
+							<Select value={teamId} onValueChange={setTeamId}>
+								<SelectTrigger>
+									<SelectValue placeholder="Select a team" />
+								</SelectTrigger>
+								<SelectContent>
+									{teams.map((team) => (
+										<SelectItem
+											key={team.id}
+											value={team.id}
+										>
+											{team.name}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+							{teams.length === 0 ? (
+								<p className="text-xs text-muted-foreground">
+									No teams yet. Create one in settings, or use
+									organization-wide scope.
+								</p>
+							) : (
+								<p className="text-xs text-muted-foreground">
+									Only members of this team can post checkins.
+								</p>
+							)}
+						</div>
+					)}
+
+					{scope === "organization" && (
+						<p className="text-xs text-muted-foreground">
+							All organization members can post and view this
+							checkin.
+						</p>
+					)}
 
 					<div className="space-y-2">
 						<Label>Frequency</Label>
@@ -278,7 +386,12 @@ function CreateCheckinTypeDialog({
 							type="submit"
 							disabled={
 								!name.trim() ||
-								!teamId ||
+								(scope === "organization" &&
+									!canCreateOrganizationScope) ||
+								(scope === "team" &&
+									(isTeamsLoading ||
+										!teamId ||
+										!canSelectTeam)) ||
 								createMutation.isPending
 							}
 						>
@@ -295,16 +408,16 @@ export default function CheckinsPage() {
 	const params = useParams<{ organizationSlug: string }>();
 	const { isCreateDialogOpen, openCreateDialog, closeCreateDialog } =
 		useCheckinsContext();
-	const { activeOrganization } = useActiveOrganization();
+	const { activeOrganization, isOrganizationAdmin } = useActiveOrganization();
 
 	const { data: checkinTypesData, isLoading } = useQuery(
 		checkinsApi.listTypesOptions({}),
 	);
 
-	const { data: teamsData } = useOrganizationTeamsQuery(
-		activeOrganization?.id ?? "",
-		{ enabled: !!activeOrganization?.id },
-	);
+	const { data: teamsData, isLoading: isTeamsLoading } =
+		useOrganizationTeamsQuery(activeOrganization?.id ?? "", {
+			enabled: !!activeOrganization?.id,
+		});
 
 	const checkinTypes = checkinTypesData?.data ?? [];
 	const teams = teamsData ?? [];
@@ -366,6 +479,8 @@ export default function CheckinsPage() {
 					open ? openCreateDialog() : closeCreateDialog()
 				}
 				teams={teams}
+				isTeamsLoading={isTeamsLoading}
+				canCreateOrganizationScope={isOrganizationAdmin}
 			/>
 		</>
 	);

@@ -10,33 +10,75 @@ export const checkinLinkEntityTypes = [
 ] as const;
 
 export type CheckinLinkEntityType = (typeof checkinLinkEntityTypes)[number];
+export const checkinScopeValues = ["organization", "team"] as const;
+export type CheckinScope = (typeof checkinScopeValues)[number];
 
-export const createCheckinTypeInputSchema = z.object({
-	teamId: z.string().min(1),
-	name: z.string().min(1).max(100),
-	emoji: z.string().max(10).optional(),
-	description: z.string().max(500).optional(),
-	frequency: z.enum(["daily", "weekdays", "weekly"]),
-	scheduledTime: z
-		.string()
-		.regex(/^\d{2}:\d{2}$/)
-		.optional(),
-});
+export const createCheckinTypeInputSchema = z
+	.object({
+		scope: z.enum(checkinScopeValues).default("organization"),
+		teamId: z.string().min(1).optional(),
+		name: z.string().min(1).max(100),
+		emoji: z.string().max(10).optional(),
+		description: z.string().max(500).optional(),
+		frequency: z.enum(["daily", "weekdays", "weekly"]),
+		scheduledTime: z
+			.string()
+			.regex(/^\d{2}:\d{2}$/)
+			.optional(),
+	})
+	.superRefine((value, context) => {
+		if (value.scope === "team" && !value.teamId) {
+			context.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ["teamId"],
+				message: "teamId is required when scope is team",
+			});
+		}
 
-export const updateCheckinTypeInputSchema = z.object({
-	checkinTypeId: z.string().min(1),
-	name: z.string().min(1).max(100).optional(),
-	emoji: z.string().max(10).optional(),
-	description: z.string().max(500).optional(),
-	frequency: z.enum(["daily", "weekdays", "weekly"]).optional(),
-	scheduledTime: z
-		.string()
-		.regex(/^\d{2}:\d{2}$/)
-		.optional(),
-	isActive: z.boolean().optional(),
-});
+		if (value.scope === "organization" && value.teamId) {
+			context.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ["teamId"],
+				message: "teamId must be omitted when scope is organization",
+			});
+		}
+	});
+
+export const updateCheckinTypeInputSchema = z
+	.object({
+		checkinTypeId: z.string().min(1),
+		scope: z.enum(checkinScopeValues).optional(),
+		teamId: z.string().min(1).nullable().optional(),
+		name: z.string().min(1).max(100).optional(),
+		emoji: z.string().max(10).optional(),
+		description: z.string().max(500).optional(),
+		frequency: z.enum(["daily", "weekdays", "weekly"]).optional(),
+		scheduledTime: z
+			.string()
+			.regex(/^\d{2}:\d{2}$/)
+			.optional(),
+		isActive: z.boolean().optional(),
+	})
+	.superRefine((value, context) => {
+		if (value.scope === "team" && value.teamId === null) {
+			context.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ["teamId"],
+				message: "teamId must be set when scope is team",
+			});
+		}
+
+		if (value.scope === "organization" && value.teamId) {
+			context.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ["teamId"],
+				message: "teamId must be omitted when scope is organization",
+			});
+		}
+	});
 
 export const listCheckinTypesInputSchema = z.object({
+	scope: z.enum(checkinScopeValues).optional(),
 	teamId: z.string().min(1).optional(),
 	includeInactive: z.boolean().default(false),
 });

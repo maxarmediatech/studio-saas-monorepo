@@ -371,6 +371,9 @@ export const auth = betterAuth({
 			},
 			teams: {
 				enabled: true,
+				defaultTeam: {
+					enabled: false,
+				},
 			},
 			organizationHooks: {
 				afterCreateOrganization: async ({ organization }) => {

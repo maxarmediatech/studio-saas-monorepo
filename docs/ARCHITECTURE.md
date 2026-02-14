@@ -91,6 +91,11 @@ Authentication and session management.
 - OAuth provider support
 - Organization/team context
 - Role-based access control
+- Team-optional memberships (users can belong to zero or many teams)
+
+**Checkins scope model:**
+- Checkin types support `organization` scope (all org members) or `team` scope (team members only)
+- Teams are enabled, but default team auto-creation is disabled
 
 ### `packages/ui`
 Shared UI component library based on shadcn/ui.

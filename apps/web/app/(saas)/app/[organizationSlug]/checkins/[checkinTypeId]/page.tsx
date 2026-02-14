@@ -355,7 +355,11 @@ export default function CheckinTypeDetailPage() {
 							{checkinType.scheduledTime ?? "No time set"}
 						</span>
 						<span>•</span>
-						<span>{checkinType.team?.name ?? "No team"}</span>
+						<span>
+							{checkinType.scope === "organization"
+								? "Organization"
+								: (checkinType.team?.name ?? "Team")}
+						</span>
 					</div>
 				</div>
 				<Button variant="outline" size="sm">

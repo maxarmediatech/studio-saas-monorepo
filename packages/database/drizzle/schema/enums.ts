@@ -213,6 +213,14 @@ export const checkinFrequencyEnum = pgEnum("checkin_frequency", [
 	"weekly",
 ]);
 
+/**
+ * Checkin scope - organization-wide or restricted to a team
+ */
+export const checkinScopeEnum = pgEnum("checkin_scope", [
+	"organization",
+	"team",
+]);
+
 // ----------------------------------------------------------------------------
 // Calendar Sync (Google + iCalendar)
 // ----------------------------------------------------------------------------

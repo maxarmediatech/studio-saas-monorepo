@@ -21,7 +21,12 @@ export const getCheckin = studioProtectedProcedure
 					columns: { id: true, name: true, image: true },
 				},
 				checkinType: {
-					columns: { id: true, name: true, emoji: true },
+					columns: {
+						id: true,
+						name: true,
+						emoji: true,
+						scope: true,
+					},
 					with: {
 						team: {
 							columns: { id: true, name: true },

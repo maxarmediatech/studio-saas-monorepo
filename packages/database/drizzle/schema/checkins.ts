@@ -1,6 +1,7 @@
 import { relations, sql } from "drizzle-orm";
 import {
 	boolean,
+	check,
 	date,
 	index,
 	integer,
@@ -15,10 +16,10 @@ import {
 import { v7 as uuidv7 } from "uuid";
 import { users } from "./auth";
 import { organizations, teams } from "./core";
-import { checkinFrequencyEnum } from "./enums";
+import { checkinFrequencyEnum, checkinScopeEnum } from "./enums";
 
 // ============================================================================
-// CHECKIN TYPES (like channels, but team-scoped)
+// CHECKIN TYPES (organization-wide or team-scoped)
 // ============================================================================
 
 export const checkinTypes = pgTable(
@@ -30,9 +31,10 @@ export const checkinTypes = pgTable(
 		organizationId: varchar("organization_id", { length: 255 })
 			.notNull()
 			.references(() => organizations.id, { onDelete: "cascade" }),
-		teamId: varchar("team_id", { length: 255 })
-			.notNull()
-			.references(() => teams.id, { onDelete: "cascade" }),
+		scope: checkinScopeEnum("scope").default("organization").notNull(),
+		teamId: varchar("team_id", { length: 255 }).references(() => teams.id, {
+			onDelete: "cascade",
+		}),
 
 		name: text("name").notNull(),
 		emoji: varchar("emoji", { length: 10 }),
@@ -64,6 +66,14 @@ export const checkinTypes = pgTable(
 		),
 	},
 	(table) => [
+		check(
+			"checkin_types_scope_team_constraint",
+			sql`(
+				(${table.scope} = 'team' AND ${table.teamId} IS NOT NULL)
+				OR
+				(${table.scope} = 'organization' AND ${table.teamId} IS NULL)
+			)`,
+		),
 		index("checkin_types_org_idx").on(table.organizationId),
 		index("checkin_types_team_idx").on(table.teamId),
 		index("checkin_types_org_team_idx").on(

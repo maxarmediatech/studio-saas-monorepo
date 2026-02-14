@@ -1,10 +1,12 @@
 import {
 	and,
+	checkinTypes,
 	checkins,
 	db,
 	desc,
 	eq,
 	gte,
+	inArray,
 	isNull,
 	lt,
 	lte,
@@ -25,6 +27,7 @@ export const listUserCheckins = studioProtectedProcedure
 	.handler(async ({ input, context }) => {
 		const isAdmin = canViewAllCheckins(context.membership.role);
 		const isOwnProfile = input.userId === context.user.id;
+		let allowedCheckinTypeIds: string[] | undefined;
 
 		if (!isAdmin && !isOwnProfile) {
 			const requestorTeams = await getTeamsForUser(
@@ -40,7 +43,23 @@ export const listUserCheckins = studioProtectedProcedure
 				targetTeams.includes(t),
 			);
 
-			if (sharedTeams.length === 0) {
+			const visibleTypes = await db.query.checkinTypes.findMany({
+				columns: { id: true },
+				where: and(
+					eq(checkinTypes.organizationId, context.organizationId),
+					isNull(checkinTypes.deletedAt),
+					sharedTeams.length === 0
+						? eq(checkinTypes.scope, "organization")
+						: or(
+								eq(checkinTypes.scope, "organization"),
+								inArray(checkinTypes.teamId, sharedTeams),
+							),
+				),
+			});
+
+			allowedCheckinTypeIds = visibleTypes.map((item) => item.id);
+
+			if (allowedCheckinTypeIds.length === 0) {
 				return { data: [], nextCursor: undefined, hasMore: false };
 			}
 		}
@@ -83,13 +102,21 @@ export const listUserCheckins = studioProtectedProcedure
 				eq(checkins.createdBy, input.userId),
 				eq(checkins.organizationId, context.organizationId),
 				isNull(checkins.deletedAt),
+				allowedCheckinTypeIds
+					? inArray(checkins.checkinTypeId, allowedCheckinTypeIds)
+					: undefined,
 				dateFromFilter,
 				dateToFilter,
 				cursorFilter,
 			),
 			with: {
 				checkinType: {
-					columns: { id: true, name: true, emoji: true },
+					columns: {
+						id: true,
+						name: true,
+						emoji: true,
+						scope: true,
+					},
 					with: {
 						team: {
 							columns: { id: true, name: true },

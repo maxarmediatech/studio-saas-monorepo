@@ -8,6 +8,7 @@ import {
 	eq,
 	isNull,
 	teamMembers,
+	teams,
 } from "@repo/database";
 
 const ADMIN_ROLES = ["owner", "admin"];
@@ -40,6 +41,16 @@ export async function assertCheckinTypeAccess(
 
 	if (canViewAllCheckins(context.membership.role)) {
 		return checkinType;
+	}
+
+	if (checkinType.scope === "organization") {
+		return checkinType;
+	}
+
+	if (!checkinType.teamId) {
+		throw new ORPCError("FORBIDDEN", {
+			message: "Checkin type has invalid scope configuration",
+		});
 	}
 
 	const teamMembership = await db.query.teamMembers.findFirst({
@@ -79,6 +90,16 @@ export async function assertCheckinAccess(
 
 	if (canViewAllCheckins(context.membership.role)) {
 		return checkin;
+	}
+
+	if (checkin.checkinType.scope === "organization") {
+		return checkin;
+	}
+
+	if (!checkin.checkinType.teamId) {
+		throw new ORPCError("FORBIDDEN", {
+			message: "Checkin type has invalid scope configuration",
+		});
 	}
 
 	const teamMembership = await db.query.teamMembers.findFirst({
@@ -131,4 +152,36 @@ export async function getTeamsForUser(
 	return memberships
 		.filter((m) => m.team.organizationId === organizationId)
 		.map((m) => m.teamId);
+}
+
+export async function assertTeamExistsInOrganization(
+	teamId: string,
+	organizationId: string,
+): Promise<void> {
+	const team = await db.query.teams.findFirst({
+		where: and(eq(teams.id, teamId), eq(teams.organizationId, organizationId)),
+		columns: { id: true },
+	});
+
+	if (!team) {
+		throw new ORPCError("NOT_FOUND", {
+			message: "Team not found",
+		});
+	}
+}
+
+export async function assertUserIsMemberOfTeam(
+	teamId: string,
+	userId: string,
+): Promise<void> {
+	const teamMembership = await db.query.teamMembers.findFirst({
+		where: and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userId)),
+		columns: { teamId: true },
+	});
+
+	if (!teamMembership) {
+		throw new ORPCError("FORBIDDEN", {
+			message: "Not a member of this team",
+		});
+	}
 }

@@ -1,7 +1,11 @@
 import { ORPCError } from "@orpc/server";
 import { hasAnyRole } from "@repo/auth/lib/permissions";
-import { and, checkinTypes, db, eq, teamMembers } from "@repo/database";
+import { checkinTypes, db } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import {
+	assertTeamExistsInOrganization,
+	assertUserIsMemberOfTeam,
+} from "../lib/checkin-access";
 import { createCheckinTypeInputSchema } from "../schemas";
 
 export const createCheckinType = studioProtectedProcedure
@@ -14,19 +18,26 @@ export const createCheckinType = studioProtectedProcedure
 	.input(createCheckinTypeInputSchema)
 	.handler(async ({ input, context }) => {
 		const isAdmin = hasAnyRole(context.membership.role, ["owner", "admin"]);
+		const isTeamScoped = input.scope === "team";
+		const teamId = input.teamId;
 
-		if (!isAdmin) {
-			const teamMembership = await db.query.teamMembers.findFirst({
-				where: and(
-					eq(teamMembers.teamId, input.teamId),
-					eq(teamMembers.userId, context.user.id),
-				),
+		if (!isAdmin && !isTeamScoped) {
+			throw new ORPCError("FORBIDDEN", {
+				message: "Only admins can create organization-wide checkins",
 			});
+		}
 
-			if (!teamMembership) {
-				throw new ORPCError("FORBIDDEN", {
-					message: "Not a member of this team",
-				});
+		if (isTeamScoped && !teamId) {
+			throw new ORPCError("BAD_REQUEST", {
+				message: "teamId is required for team-scoped checkins",
+			});
+		}
+
+		if (isTeamScoped && teamId) {
+			await assertTeamExistsInOrganization(teamId, context.organizationId);
+
+			if (!isAdmin) {
+				await assertUserIsMemberOfTeam(teamId, context.user.id);
 			}
 		}
 
@@ -34,7 +45,8 @@ export const createCheckinType = studioProtectedProcedure
 			.insert(checkinTypes)
 			.values({
 				organizationId: context.organizationId,
-				teamId: input.teamId,
+				scope: input.scope,
+				teamId: isTeamScoped ? teamId! : null,
 				name: input.name,
 				emoji: input.emoji,
 				description: input.description,
