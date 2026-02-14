@@ -227,7 +227,7 @@ export function DeliverablesTab({ bookingId }: DeliverablesTabProps) {
 	}
 
 	return (
-		<Card className="shadow-none rounded-lg">
+		<Card className="rounded-lg">
 			<CardHeader className="flex flex-row items-center justify-between space-y-0">
 				<div className="space-y-1">
 					<CardTitle className="text-base">Deliverables</CardTitle>

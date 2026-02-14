@@ -85,7 +85,7 @@ export function AttachmentsCard({ contractAttachment }: AttachmentsCardProps) {
 	const hasAttachments = !!contractAttachment;
 
 	return (
-		<Card className="shadow-none rounded-lg">
+		<Card className="rounded-lg">
 			<CardHeader>
 				<CardTitle className="text-base">Attachments</CardTitle>
 				<CardDescription>Uploaded files and documents.</CardDescription>

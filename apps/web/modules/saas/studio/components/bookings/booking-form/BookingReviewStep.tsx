@@ -692,7 +692,7 @@ export function BookingReviewStep({
 			<FieldSet className="gap-1">
 				<FieldLegend className="mb-0">Review Booking</FieldLegend>
 			</FieldSet>
-			<Card className="shadow-none">
+			<Card>
 				<CardContent className="space-y-4">
 					{/* Validation warnings */}
 					{warnings.length > 0 && (

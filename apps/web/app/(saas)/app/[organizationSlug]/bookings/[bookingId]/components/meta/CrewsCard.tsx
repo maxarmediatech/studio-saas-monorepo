@@ -177,7 +177,7 @@ export function CrewsCard({ bookingId }: CrewsCardProps) {
 	const hasCrews = crews.length > 0;
 
 	return (
-		<Card className="shadow-none rounded-lg">
+		<Card className="rounded-lg">
 			<CardHeader>
 				<CardTitle className="text-base">Crew</CardTitle>
 				<CardDescription>Team members on this booking.</CardDescription>

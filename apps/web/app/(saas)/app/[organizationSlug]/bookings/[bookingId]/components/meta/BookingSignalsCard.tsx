@@ -25,7 +25,7 @@ export function BookingSignalsCard({
 	contractDate,
 }: BookingSignalsCardProps) {
 	return (
-		<Card className="shadow-none rounded-lg">
+		<Card className="rounded-lg">
 			<CardHeader>
 				<CardTitle className="text-base">Booking signals</CardTitle>
 				<CardDescription>Latest updates and source info.</CardDescription>

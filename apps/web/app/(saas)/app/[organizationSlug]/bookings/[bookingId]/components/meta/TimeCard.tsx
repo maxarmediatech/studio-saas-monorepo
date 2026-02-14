@@ -60,7 +60,7 @@ export function TimeCard({ eventDate, bookingDate }: TimeCardProps) {
 			: "—";
 
 	return (
-		<Card className="shadow-none rounded-lg">
+		<Card className="rounded-lg">
 			<CardHeader>
 				<CardTitle className="text-base">Time</CardTitle>
 				<CardDescription>Key dates and remaining runway.</CardDescription>

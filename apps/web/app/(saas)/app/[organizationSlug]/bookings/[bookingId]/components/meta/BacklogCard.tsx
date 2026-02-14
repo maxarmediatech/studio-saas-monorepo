@@ -46,7 +46,7 @@ export function BacklogCard({
 	support,
 }: BacklogCardProps) {
 	return (
-		<Card className="shadow-none rounded-lg">
+		<Card className="rounded-lg">
 			<CardHeader>
 				<CardTitle className="text-base">Backlog</CardTitle>
 				<CardDescription>Booking metadata and ownership.</CardDescription>

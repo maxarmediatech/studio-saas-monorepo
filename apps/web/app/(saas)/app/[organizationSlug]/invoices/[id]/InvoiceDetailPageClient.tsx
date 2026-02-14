@@ -240,7 +240,7 @@ export function InvoiceDetailPageClient({
 				{/* ── Right Column: Summary Card ── */}
 				<div className="lg:col-start-3 lg:row-end-1">
 					<h2 className="sr-only">Summary</h2>
-					<div className="rounded-lg bg-gray-50 shadow-sm ring-1 ring-gray-900/5">
+					<div className="rounded-lg bg-gray-50 ring-1 ring-gray-900/5">
 						<dl className="flex flex-wrap">
 							{/* Amount */}
 							<div className="flex-auto pl-6 pt-6">
@@ -312,7 +312,7 @@ export function InvoiceDetailPageClient({
 				</div>
 
 				{/* ── Left 2 Columns: Invoice Card ── */}
-				<div className="-mx-4 px-4 py-8 shadow-sm ring-1 ring-gray-900/5 sm:mx-0 sm:rounded-lg sm:px-8 sm:pb-14 lg:col-span-2 lg:row-span-2 lg:row-end-2 xl:px-16 xl:pb-20 xl:pt-16">
+				<div className="-mx-4 px-4 py-8 ring-1 ring-gray-900/5 sm:mx-0 sm:rounded-lg sm:px-8 sm:pb-14 lg:col-span-2 lg:row-span-2 lg:row-end-2 xl:px-16 xl:pb-20 xl:pt-16">
 					<h2 className="text-base font-semibold text-gray-900">
 						Invoice
 					</h2>
@@ -590,7 +590,7 @@ function InvoiceDetailSkeleton({
 			<div className="grid max-w-2xl grid-cols-1 grid-rows-1 items-start gap-x-8 gap-y-8 lg:mx-0 lg:max-w-none lg:grid-cols-3">
 				{/* Summary card skeleton */}
 				<div className="lg:col-start-3 lg:row-end-1">
-					<div className="rounded-lg bg-gray-50 p-6 shadow-sm ring-1 ring-gray-900/5">
+					<div className="rounded-lg bg-gray-50 p-6 ring-1 ring-gray-900/5">
 						<Skeleton className="h-5 w-16" />
 						<Skeleton className="mt-2 h-6 w-28" />
 						<div className="mt-6 space-y-4 border-t border-gray-900/5 pt-6">
@@ -602,7 +602,7 @@ function InvoiceDetailSkeleton({
 				</div>
 
 				{/* Invoice card skeleton */}
-				<div className="rounded-lg p-8 shadow-sm ring-1 ring-gray-900/5 lg:col-span-2 lg:row-span-2 lg:row-end-2">
+				<div className="rounded-lg p-8 ring-1 ring-gray-900/5 lg:col-span-2 lg:row-span-2 lg:row-end-2">
 					<Skeleton className="h-5 w-20" />
 					<div className="mt-6 grid grid-cols-2 gap-4">
 						<Skeleton className="h-4 w-32" />

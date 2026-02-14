@@ -76,7 +76,7 @@ export function ClientsCard({ clients }: ClientsCardProps) {
 	const hasClients = clients.length > 0;
 
 	return (
-		<Card className="shadow-none rounded-lg">
+		<Card className="rounded-lg">
 			<CardHeader>
 				<CardTitle className="text-base">Clients</CardTitle>
 				<CardDescription>Contact information.</CardDescription>

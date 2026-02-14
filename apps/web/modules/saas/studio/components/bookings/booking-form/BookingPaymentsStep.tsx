@@ -207,7 +207,7 @@ export function BookingPaymentsStep() {
 					</div>
 				</div>
 			</div>
-			<Card className="shadow-none">
+			<Card>
 				<CardContent>
 					<FieldSet>
 						<FieldGroup>

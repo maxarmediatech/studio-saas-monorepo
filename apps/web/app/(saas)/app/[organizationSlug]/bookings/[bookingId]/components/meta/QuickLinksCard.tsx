@@ -48,7 +48,7 @@ function getLinkTypeName(type: QuickLink["type"]) {
 
 export function QuickLinksCard({ links = defaultLinks }: QuickLinksCardProps) {
 	return (
-		<Card className="shadow-none rounded-lg">
+		<Card className="rounded-lg">
 			<CardHeader>
 				<CardTitle className="text-base">Quick links</CardTitle>
 				<CardDescription>Shortcuts for key references.</CardDescription>

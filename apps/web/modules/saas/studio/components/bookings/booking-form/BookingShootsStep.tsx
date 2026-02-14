@@ -159,7 +159,7 @@ export function BookingShootsStep() {
 			<FieldSet className="gap-1">
 				<FieldLegend className="mb-0">Shoots</FieldLegend>
 			</FieldSet>
-			<Card className="shadow-none">
+			<Card>
 				<CardContent>
 					<FieldSet>
 						<FieldGroup>

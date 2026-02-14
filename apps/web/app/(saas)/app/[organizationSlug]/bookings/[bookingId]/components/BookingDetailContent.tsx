@@ -672,7 +672,7 @@ export function BookingDetailContent({
 	className,
 }: BookingDetailContentProps) {
 	return (
-		<Card className={cn("shadow-none", className)}>
+		<Card className={cn(className)}>
 			<CardContent className="p-0">
 				{/* Section 1: Shoots */}
 				<ShootsSection bookingId={bookingId} />

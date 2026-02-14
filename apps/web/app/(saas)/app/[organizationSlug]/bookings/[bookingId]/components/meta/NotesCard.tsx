@@ -26,7 +26,7 @@ export function NotesCard({ note }: NotesCardProps) {
 	const hasNote = note && note.trim().length > 0;
 
 	return (
-		<Card className="shadow-none rounded-lg">
+		<Card className="rounded-lg">
 			<CardHeader>
 				<CardTitle className="text-base">Notes</CardTitle>
 				<CardDescription>Preferences and special callouts.</CardDescription>

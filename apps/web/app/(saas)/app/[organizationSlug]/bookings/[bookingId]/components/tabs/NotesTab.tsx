@@ -67,7 +67,7 @@ export function NotesTab({ bookingId: _bookingId, note }: NotesTabProps) {
 
 	return (
 		<div className="space-y-6">
-			<Card className="shadow-none rounded-lg">
+			<Card className="rounded-lg">
 				<CardHeader>
 					<CardTitle className="text-base">Notes and guidance</CardTitle>
 					<CardDescription>

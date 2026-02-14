@@ -82,7 +82,7 @@ const defaultWorkstreams: Workstream[] = [
 
 function WorkstreamCard({ stream }: { stream: Workstream }) {
 	return (
-		<Card className="shadow-none rounded-lg">
+		<Card className="rounded-lg">
 			<CardHeader className="space-y-1">
 				<CardTitle className="text-base">{stream.title}</CardTitle>
 				<CardDescription>{stream.progress} completed</CardDescription>

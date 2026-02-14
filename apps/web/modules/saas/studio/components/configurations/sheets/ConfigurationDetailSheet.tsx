@@ -308,7 +308,7 @@ export function ConfigurationDetailSheet() {
 					) : config ? (
 						<div className="px-6 py-4 space-y-4">
 							{/* Card A — Overview */}
-							<Card className="py-4 gap-3 shadow-none">
+							<Card className="py-4 gap-3">
 								<CardHeader className="px-4 py-0">
 									<CardTitle className="flex items-center gap-2 text-sm">
 										<InfoIcon className="h-4 w-4 text-muted-foreground" />
@@ -368,7 +368,7 @@ export function ConfigurationDetailSheet() {
 
 							{/* Card B — Package Type Details */}
 							{isPackageType && (
-								<Card className="py-4 gap-3 shadow-none">
+								<Card className="py-4 gap-3">
 									<CardHeader className="px-4 py-0">
 										<CardTitle className="flex items-center gap-2 text-sm">
 											<PackageIcon className="h-4 w-4 text-muted-foreground" />
@@ -451,7 +451,7 @@ export function ConfigurationDetailSheet() {
 
 							{/* Card B — Booking Type → Applicable Roles */}
 							{isBookingType && (
-								<Card className="py-4 gap-3 shadow-none">
+								<Card className="py-4 gap-3">
 									<CardHeader className="px-4 py-0">
 										<CardTitle className="flex items-center gap-2 text-sm">
 											<UsersIcon className="h-4 w-4 text-muted-foreground" />
@@ -470,7 +470,7 @@ export function ConfigurationDetailSheet() {
 
 							{/* Card B — Event/Relation Type → Applicable Booking Types */}
 							{(isEventType || isRelationType) && (
-								<Card className="py-4 gap-3 shadow-none">
+								<Card className="py-4 gap-3">
 									<CardHeader className="px-4 py-0">
 										<CardTitle className="flex items-center gap-2 text-sm">
 											<ListIcon className="h-4 w-4 text-muted-foreground" />

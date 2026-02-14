@@ -70,7 +70,7 @@ function OverviewSkeleton() {
 			className="space-y-6"
 			data-testid="booking-detail-skeleton-tabs-content"
 		>
-			<Card className="rounded-lg shadow-none">
+			<Card className="rounded-lg">
 				<CardHeader className="space-y-2">
 					<Skeleton className="h-5 w-40" />
 					<Skeleton className="h-4 w-56 max-w-full" />
@@ -91,7 +91,7 @@ function OverviewSkeleton() {
 				</CardContent>
 			</Card>
 
-			<Card className="rounded-lg shadow-none">
+			<Card className="rounded-lg">
 				<CardHeader className="space-y-2">
 					<Skeleton className="h-5 w-28" />
 					<Skeleton className="h-4 w-44 max-w-full" />
@@ -109,7 +109,7 @@ function OverviewSkeleton() {
 				</CardContent>
 			</Card>
 
-			<Card className="rounded-lg shadow-none">
+			<Card className="rounded-lg">
 				<CardHeader className="space-y-2">
 					<Skeleton className="h-5 w-24" />
 					<Skeleton className="h-4 w-40 max-w-full" />
@@ -136,7 +136,7 @@ function MetaPanelSkeleton() {
 			{Array.from({ length: 4 }).map((_, index) => (
 				<Card
 					key={`meta-card-${index}`}
-					className="rounded-lg shadow-none"
+					className="rounded-lg"
 				>
 					<CardHeader className="space-y-2">
 						<Skeleton className="h-5 w-24" />

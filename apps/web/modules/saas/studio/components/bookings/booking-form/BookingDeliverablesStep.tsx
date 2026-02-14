@@ -102,7 +102,7 @@ export function BookingDeliverablesStep() {
 					Add Deliverable
 				</Button>
 			</div>
-			<Card className="shadow-none">
+			<Card>
 				<CardContent>
 					<FieldSet>
 						<FieldGroup className="gap-4">

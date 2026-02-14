@@ -111,7 +111,7 @@ function BookingSummaryCard({
 	];
 
 	return (
-		<Card className="shadow-none rounded-lg">
+		<Card className="rounded-lg">
 			<CardHeader>
 				<CardTitle className="text-base">Booking summary</CardTitle>
 				<CardDescription>
@@ -144,7 +144,7 @@ function BookingSummaryCard({
 
 function CoverageScopeCard() {
 	return (
-		<Card className="shadow-none rounded-lg">
+		<Card className="rounded-lg">
 			<CardHeader>
 				<CardTitle className="text-base">Coverage scope</CardTitle>
 				<CardDescription>What is included and excluded.</CardDescription>
@@ -173,7 +173,7 @@ function CoverageScopeCard() {
 
 function ExpectedOutcomesCard() {
 	return (
-		<Card className="shadow-none rounded-lg">
+		<Card className="rounded-lg">
 			<CardHeader>
 				<CardTitle className="text-base">Expected outcomes</CardTitle>
 				<CardDescription>Delivery goals for the booking.</CardDescription>
@@ -192,7 +192,7 @@ function ExpectedOutcomesCard() {
 
 function KeyPrioritiesCard() {
 	return (
-		<Card className="shadow-none rounded-lg">
+		<Card className="rounded-lg">
 			<CardHeader>
 				<CardTitle className="text-base">Key priorities</CardTitle>
 				<CardDescription>Primary focus areas by phase.</CardDescription>
@@ -230,7 +230,7 @@ function KeyPrioritiesCard() {
 function UpcomingShootsCard({ shoots }: { shoots: ShootData[] }) {
 	if (shoots.length === 0) {
 		return (
-			<Card className="shadow-none rounded-lg">
+			<Card className="rounded-lg">
 				<CardHeader>
 					<CardTitle className="text-base">Upcoming shoots</CardTitle>
 					<CardDescription>
@@ -247,7 +247,7 @@ function UpcomingShootsCard({ shoots }: { shoots: ShootData[] }) {
 	}
 
 	return (
-		<Card className="shadow-none rounded-lg">
+		<Card className="rounded-lg">
 			<CardHeader>
 				<CardTitle className="text-base">Upcoming shoots</CardTitle>
 				<CardDescription>Shoot plan and readiness status.</CardDescription>

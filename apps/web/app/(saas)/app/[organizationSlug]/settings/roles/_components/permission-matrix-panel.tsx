@@ -249,7 +249,7 @@ export function PermissionMatrixPanel({
 	}
 
 	return (
-		<Card className="h-full rounded-md shadow-none">
+		<Card className="h-full rounded-md">
 			<CardHeader>
 				<div className="flex items-start justify-between gap-4">
 					<div>

@@ -174,7 +174,7 @@ export function ActivitiesTab({ bookingId }: ActivitiesTabProps) {
 
 	if (isLoading) {
 		return (
-			<Card className="shadow-none rounded-lg">
+			<Card className="rounded-lg">
 				<CardHeader>
 					<CardTitle className="text-base">Activity</CardTitle>
 					<CardDescription>
@@ -204,7 +204,7 @@ export function ActivitiesTab({ bookingId }: ActivitiesTabProps) {
 
 	if (error) {
 		return (
-			<Card className="shadow-none rounded-lg">
+			<Card className="rounded-lg">
 				<CardHeader>
 					<CardTitle className="text-base">Activity</CardTitle>
 					<CardDescription>
@@ -225,7 +225,7 @@ export function ActivitiesTab({ bookingId }: ActivitiesTabProps) {
 	}
 
 	return (
-		<Card className="shadow-none rounded-lg">
+		<Card className="rounded-lg">
 			<CardHeader>
 				<CardTitle className="text-base">Activity</CardTitle>
 				<CardDescription>

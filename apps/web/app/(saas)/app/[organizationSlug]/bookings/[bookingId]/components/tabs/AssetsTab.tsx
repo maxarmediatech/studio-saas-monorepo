@@ -71,7 +71,7 @@ export function AssetsTab({ bookingId: _bookingId }: AssetsTabProps) {
 
 	return (
 		<div className="space-y-6">
-			<Card className="shadow-none rounded-lg">
+			<Card className="rounded-lg">
 				<CardHeader className="flex flex-row items-center justify-between">
 					<div>
 						<CardTitle className="text-base">Assets and files</CardTitle>
