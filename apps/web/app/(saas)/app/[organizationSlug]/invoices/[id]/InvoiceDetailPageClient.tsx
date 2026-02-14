@@ -23,6 +23,7 @@ import { toast } from "sonner";
 
 interface InvoiceDetailPageClientProps {
 	organizationSlug: string;
+	organizationName: string;
 	invoiceId: string;
 }
 
@@ -76,6 +77,7 @@ function formatRelativeTime(date: string) {
 
 export function InvoiceDetailPageClient({
 	organizationSlug,
+	organizationName,
 	invoiceId,
 }: InvoiceDetailPageClientProps) {
 	const queryClient = useQueryClient();
@@ -354,7 +356,7 @@ export function InvoiceDetailPageClient({
 								</dt>
 								<dd className="mt-2 text-gray-500">
 									<span className="font-medium text-gray-900">
-										Your Studio
+										{organizationName}
 									</span>
 								</dd>
 							</div>

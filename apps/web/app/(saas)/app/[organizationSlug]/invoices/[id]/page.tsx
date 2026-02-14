@@ -34,6 +34,7 @@ export default async function InvoiceDetailPage({ params }: Props) {
 		<HydrationBoundary state={dehydrate(queryClient)}>
 			<InvoiceDetailPageClient
 				organizationSlug={organizationSlug}
+				organizationName={organization.name}
 				invoiceId={id}
 			/>
 		</HydrationBoundary>
