@@ -204,6 +204,13 @@
       "when": 1771172624176,
       "tag": "0028_add_schedule_tax_type_backfill",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1771177446943,
+      "tag": "0029_set_schedule_tax_default_no_gst",
+      "breakpoints": true
     }
   ]
 }
