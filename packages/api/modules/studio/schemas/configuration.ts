@@ -357,5 +357,5 @@ export const defaultConfigurations: Record<
 		{ key: "baby_shoot", label: "Baby Shoot" },
 		{ key: "other", label: "Other" },
 	],
-	gst_rate: [{ key: "default", label: "GST Rate (18%)", isDefault: true }],
+	gst_rate: [{ key: "default", label: "GST Rate (18%)", isDefault: true, metadata: { rate: 18, defaultTaxType: "exclusive" } }],
 };

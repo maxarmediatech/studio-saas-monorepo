@@ -24,6 +24,10 @@ import {
 	SheetTitle,
 } from "@repo/ui/components/sheet";
 import { Skeleton } from "@repo/ui/components/skeleton";
+import {
+	RadioGroup,
+	RadioGroupItem,
+} from "@repo/ui/components/radio-group";
 import { cn } from "@repo/ui/lib/utils";
 import { useInvoiceEditParams } from "@saas/studio/hooks/params/use-invoice-edit-params";
 import { invoicesApi, invoicesMutations } from "@saas/studio/lib/api";
@@ -35,10 +39,21 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { FormActions } from "../../ui/FormActions";
 
+const taxTypeOptions = [
+	{ value: "exclusive", label: "Exclusive", description: "Tax added on top" },
+	{
+		value: "inclusive",
+		label: "Inclusive",
+		description: "Tax included in price",
+	},
+	{ value: "no_gst", label: "No GST", description: "No tax applied" },
+] as const;
+
 const invoiceEditFormSchema = z.object({
 	issueDate: z.string().min(1, "Issue date is required"),
 	dueDate: z.string().optional().or(z.literal("")),
 	discountAmount: z.string().optional().or(z.literal("")),
+	taxType: z.enum(["exclusive", "inclusive", "no_gst"]),
 	notes: z.string().max(10000).optional().or(z.literal("")),
 	terms: z.string().max(5000).optional().or(z.literal("")),
 });
@@ -81,6 +96,7 @@ export function InvoiceEditSheet() {
 			issueDate: "",
 			dueDate: "",
 			discountAmount: "",
+			taxType: "exclusive",
 			notes: "",
 			terms: "",
 		},
@@ -92,6 +108,7 @@ export function InvoiceEditSheet() {
 				issueDate: invoiceData.issueDate ?? "",
 				dueDate: invoiceData.dueDate ?? "",
 				discountAmount: invoiceData.discountAmount ?? "",
+				taxType: invoiceData.taxType ?? "exclusive",
 				notes: invoiceData.notes ?? "",
 				terms: invoiceData.terms ?? "",
 			});
@@ -108,6 +125,7 @@ export function InvoiceEditSheet() {
 			issueDate: data.issueDate,
 			dueDate: data.dueDate || null,
 			discountAmount: data.discountAmount || undefined,
+			taxType: data.taxType,
 			notes: data.notes || null,
 			terms: data.terms || null,
 		});
@@ -317,6 +335,58 @@ export function InvoiceEditSheet() {
 															]}
 														/>
 													)}
+												</Field>
+											)}
+										/>
+
+										<Controller
+											name="taxType"
+											control={form.control}
+											render={({ field }) => (
+												<Field>
+													<FieldLabel>
+														GST Type
+													</FieldLabel>
+													<RadioGroup
+														value={field.value}
+														onValueChange={
+															field.onChange
+														}
+														className="grid grid-cols-3 gap-2"
+													>
+														{taxTypeOptions.map(
+															(option) => (
+																<label
+																	key={
+																		option.value
+																	}
+																	className={cn(
+																		"flex cursor-pointer flex-col items-center gap-1 rounded-md border p-3 text-center transition-colors hover:bg-muted/50",
+																		field.value ===
+																			option.value &&
+																			"border-primary bg-primary/5",
+																	)}
+																>
+																	<RadioGroupItem
+																		value={
+																			option.value
+																		}
+																		className="sr-only"
+																	/>
+																	<span className="text-sm font-medium">
+																		{
+																			option.label
+																		}
+																	</span>
+																	<span className="text-[11px] text-muted-foreground">
+																		{
+																			option.description
+																		}
+																	</span>
+																</label>
+															),
+														)}
+													</RadioGroup>
 												</Field>
 											)}
 										/>

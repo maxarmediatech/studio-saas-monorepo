@@ -177,7 +177,9 @@ export function InvoiceDetailPageClient({
 	}
 
 	const canMarkSent = invoice.status === "draft";
-	const canEdit = invoice.status === "draft";
+	const hasPaidAmount = Number(invoice.paidAmount ?? "0") > 0;
+	const canEdit =
+		["draft", "sent", "overdue"].includes(invoice.status) && !hasPaidAmount;
 	const canCancel =
 		["draft", "sent", "partial", "overdue", "paid"].includes(
 			invoice.status,
@@ -304,16 +306,6 @@ export function InvoiceDetailPageClient({
 				backHref={`/app/${organizationSlug}/invoices`}
 				controls={
 					<>
-						{canEdit && (
-							<Button
-								variant="outline"
-								size="sm"
-								onClick={() => openEdit(invoiceId)}
-							>
-								<PencilIcon className="mr-2 h-4 w-4" />
-								Edit
-							</Button>
-						)}
 						<Button
 							variant="outline"
 							size="sm"
@@ -369,7 +361,7 @@ export function InvoiceDetailPageClient({
 							<p className="text-xs font-semibold tracking-[0.16em] text-gray-500 uppercase">
 								Invoice{" "}
 							</p>
-							<h2 className="mt-2 text-xl font-semibold tracking-tight text-gray-900 sm:text-2xl">
+							<h2 className="mt-2 text-xl font-semibold tracking-tight text-gray-900 sm:text-xl">
 								#{invoice.invoiceNumber}
 							</h2>
 							<p className="mt-1 text-sm text-gray-600">
@@ -380,6 +372,17 @@ export function InvoiceDetailPageClient({
 								{invoice.client?.name ?? "No client"}
 							</p>
 						</div>
+
+						{canEdit && (
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => openEdit(invoiceId)}
+							>
+								<PencilIcon className="mr-2 h-4 w-4" />
+								Edit
+							</Button>
+						)}
 
 						{canMarkSent && (
 							<Button
@@ -599,65 +602,149 @@ export function InvoiceDetailPageClient({
 								))}
 							</tbody>
 							<tfoot>
-								<tr>
-									<th
-										scope="row"
-										className="px-0 pb-0 pt-6 font-normal text-gray-700 sm:hidden"
-									>
-										Subtotal
-									</th>
-									<th
-										scope="row"
-										colSpan={3}
-										className="hidden px-0 pb-0 pt-6 text-right font-normal text-gray-700 sm:table-cell"
-									>
-										Subtotal
-									</th>
-									<td className="pb-0 pl-8 pr-0 pt-6 text-right tabular-nums text-gray-900">
-										{formatMoney(invoice.subtotal)}
-									</td>
-								</tr>
-								<tr>
-									<th
-										scope="row"
-										className="px-0 pt-4 font-normal text-gray-700 sm:hidden"
-									>
-										Tax (GST)
-									</th>
-									<th
-										scope="row"
-										colSpan={3}
-										className="hidden px-0 pt-4 text-right font-normal text-gray-700 sm:table-cell"
-									>
-										Tax (GST)
-									</th>
-									<td className="pl-8 pr-0 pt-4 text-right tabular-nums text-gray-900">
-										{formatMoney(invoice.taxAmount)}
-									</td>
-								</tr>
-								{Number(invoice.discountAmount) > 0 && (
+								{/* Subtotal: shown for exclusive, no_gst, or inclusive-with-discount */}
+								{(invoice.taxType !== "inclusive" ||
+									Number(invoice.discountAmount) > 0) && (
+									<tr>
+										<th
+											scope="row"
+											className="px-0 pb-0 pt-6 font-normal text-gray-700 sm:hidden"
+										>
+											Subtotal
+										</th>
+										<th
+											scope="row"
+											colSpan={3}
+											className="hidden px-0 pb-0 pt-6 text-right font-normal text-gray-700 sm:table-cell"
+										>
+											Subtotal
+										</th>
+										<td className="pb-0 pl-8 pr-0 pt-6 text-right tabular-nums text-gray-900">
+											{formatMoney(invoice.subtotal)}
+										</td>
+									</tr>
+								)}
+
+								{/* Inclusive with discount: show discount before taxable value */}
+								{invoice.taxType === "inclusive" &&
+									Number(invoice.discountAmount) > 0 && (
+										<tr>
+											<th
+												scope="row"
+												className="px-0 pt-4 font-normal text-gray-700 sm:hidden"
+											>
+												Discount
+											</th>
+											<th
+												scope="row"
+												colSpan={3}
+												className="hidden px-0 pt-4 text-right font-normal text-gray-700 sm:table-cell"
+											>
+												Discount
+											</th>
+											<td className="pl-8 pr-0 pt-4 text-right tabular-nums text-green-600">
+												-
+												{formatMoney(
+													invoice.discountAmount,
+												)}
+											</td>
+										</tr>
+									)}
+
+								{/* Inclusive GST: show Taxable Value (totalAmount - taxAmount) */}
+								{invoice.taxType === "inclusive" && (
+									<tr>
+										<th
+											scope="row"
+											className={cn(
+												"px-0 font-normal text-gray-700 sm:hidden",
+												Number(invoice.discountAmount) >
+													0
+													? "pt-4"
+													: "pb-0 pt-6",
+											)}
+										>
+											Taxable Value
+										</th>
+										<th
+											scope="row"
+											colSpan={3}
+											className={cn(
+												"hidden px-0 text-right font-normal text-gray-700 sm:table-cell",
+												Number(invoice.discountAmount) >
+													0
+													? "pt-4"
+													: "pb-0 pt-6",
+											)}
+										>
+											Taxable Value
+										</th>
+										<td
+											className={cn(
+												"pl-8 pr-0 text-right tabular-nums text-gray-900",
+												Number(invoice.discountAmount) >
+													0
+													? "pt-4"
+													: "pb-0 pt-6",
+											)}
+										>
+											{formatMoney(
+												Number(invoice.totalAmount) -
+													Number(invoice.taxAmount),
+											)}
+										</td>
+									</tr>
+								)}
+
+								{/* Tax: shown for exclusive and inclusive */}
+								{invoice.taxType !== "no_gst" && (
 									<tr>
 										<th
 											scope="row"
 											className="px-0 pt-4 font-normal text-gray-700 sm:hidden"
 										>
-											Discount
+											Tax (GST)
 										</th>
 										<th
 											scope="row"
 											colSpan={3}
 											className="hidden px-0 pt-4 text-right font-normal text-gray-700 sm:table-cell"
 										>
-											Discount
+											Tax (GST)
 										</th>
-										<td className="pl-8 pr-0 pt-4 text-right tabular-nums text-green-600">
-											-
-											{formatMoney(
-												invoice.discountAmount,
-											)}
+										<td className="pl-8 pr-0 pt-4 text-right tabular-nums text-gray-900">
+											{formatMoney(invoice.taxAmount)}
 										</td>
 									</tr>
 								)}
+
+								{/* Exclusive/No GST: discount row */}
+								{invoice.taxType !== "inclusive" &&
+									Number(invoice.discountAmount) > 0 && (
+										<tr>
+											<th
+												scope="row"
+												className="px-0 pt-4 font-normal text-gray-700 sm:hidden"
+											>
+												Discount
+											</th>
+											<th
+												scope="row"
+												colSpan={3}
+												className="hidden px-0 pt-4 text-right font-normal text-gray-700 sm:table-cell"
+											>
+												Discount
+											</th>
+											<td className="pl-8 pr-0 pt-4 text-right tabular-nums text-green-600">
+												-
+												{formatMoney(
+													invoice.discountAmount,
+												)}
+											</td>
+										</tr>
+									)}
+
+								{/* Total: always shown */}
 								<tr>
 									<th
 										scope="row"

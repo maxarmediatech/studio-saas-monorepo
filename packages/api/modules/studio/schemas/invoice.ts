@@ -19,6 +19,7 @@ import {
 	notesSchema,
 	paginationSchema,
 	searchSchema,
+	taxTypeSchema,
 } from "./common";
 
 // ============================================================================
@@ -61,6 +62,7 @@ export const invoiceSchema = z.object({
 	subtotal: z.string(),
 	taxAmount: z.string(),
 	discountAmount: z.string(),
+	taxType: taxTypeSchema,
 	totalAmount: z.string(),
 	paidAmount: z.string(),
 	notes: z.string().nullable(),
@@ -181,6 +183,7 @@ export const createInvoiceInputSchema = z.object({
 	notes: notesSchema,
 	terms: z.string().max(5000).optional(),
 	discountAmount: moneySchema.optional(),
+	taxType: taxTypeSchema.optional(),
 	lineItems: z
 		.array(
 			z.object({
@@ -211,6 +214,7 @@ export const createInvoiceFromScheduleInputSchema = z.object({
 	dueDate: dateSchema.optional(),
 	notes: notesSchema,
 	terms: z.string().max(5000).optional(),
+	taxType: taxTypeSchema.optional(),
 });
 
 export type CreateInvoiceFromScheduleInput = z.infer<
@@ -234,6 +238,7 @@ export const updateInvoiceInputSchema = z.object({
 	notes: notesSchema.nullable(),
 	terms: z.string().max(5000).optional().nullable(),
 	discountAmount: moneySchema.optional(),
+	taxType: taxTypeSchema.optional(),
 });
 
 export type UpdateInvoiceInput = z.infer<typeof updateInvoiceInputSchema>;

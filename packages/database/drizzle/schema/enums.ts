@@ -94,6 +94,18 @@ export const invoiceStatusEnum = pgEnum("invoice_status", [
 ]);
 
 /**
+ * Tax type - determines how GST is applied to an invoice
+ * - exclusive: Tax added on top of line item totals (default)
+ * - inclusive: Tax already included in prices
+ * - no_gst: No tax applied
+ */
+export const taxTypeEnum = pgEnum("tax_type", [
+	"exclusive",
+	"inclusive",
+	"no_gst",
+]);
+
+/**
  * Bill to - binary choice for expense billing
  * Determines who is responsible for an expense
  */

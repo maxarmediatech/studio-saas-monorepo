@@ -76,6 +76,7 @@ export async function GET(
 					subtotal: Number(invoice.subtotal),
 					taxAmount: Number(invoice.taxAmount),
 					discountAmount: Number(invoice.discountAmount),
+					taxType: invoice.taxType,
 					totalAmount: Number(invoice.totalAmount),
 					notes: invoice.notes,
 					lineItems: invoice.lineItems.map((item) => ({

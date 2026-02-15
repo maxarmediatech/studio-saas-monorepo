@@ -13,7 +13,7 @@ import {
 	updateInvoiceInputSchema,
 	updateInvoiceOutputSchema,
 } from "../../studio/schemas/invoice";
-import { calculateGst, type InvoiceStatus } from "../lib/invoice-helpers";
+import { calculateGst, type InvoiceStatus, type TaxType } from "../lib/invoice-helpers";
 
 export const updateInvoice = studioProtectedProcedure
 	.route({
@@ -45,10 +45,12 @@ export const updateInvoice = studioProtectedProcedure
 		}
 
 		const status = invoice.status as InvoiceStatus;
-		if (status !== "draft") {
+		const editableStatuses: InvoiceStatus[] = ["draft", "sent", "overdue"];
+		const hasPaidAmount = Number(invoice.paidAmount ?? "0") > 0;
+		if (!editableStatuses.includes(status) || hasPaidAmount) {
 			throw new ORPCError("CONFLICT", {
 				message:
-					"Only draft invoices can be edited. Cancel this invoice and create a new one if changes are needed.",
+					"This invoice cannot be edited because it has received payments or has been cancelled.",
 			});
 		}
 
@@ -71,27 +73,46 @@ export const updateInvoice = studioProtectedProcedure
 
 		if (updates.terms !== undefined) {
 			updateData.terms = updates.terms;
+		}
+
+		if (updates.taxType !== undefined) {
+			updateData.taxType = updates.taxType;
+		}
+
+		// Recalculate totals if discount or tax type changed
+		const needsRecalc =
+			updates.discountAmount !== undefined ||
+			updates.taxType !== undefined;
+
+		if (needsRecalc) {
+			const subtotalCents = moneyToCents(invoice.subtotal);
+			const newDiscountCents =
+				updates.discountAmount !== undefined
+					? moneyToCents(updates.discountAmount)
+					: moneyToCents(invoice.discountAmount);
+
+			if (newDiscountCents > subtotalCents) {
+				throw new ORPCError("BAD_REQUEST", {
+					message: "Discount cannot exceed subtotal",
+				});
 			}
+
+			const effectiveTaxType = (updates.taxType ??
+				invoice.taxType) as TaxType;
+
+			const { taxAmount, totalAmount } = await calculateGst(
+				centsToMoney(subtotalCents),
+				context.organizationId,
+				centsToMoney(newDiscountCents),
+				effectiveTaxType,
+			);
 
 			if (updates.discountAmount !== undefined) {
-				const subtotalCents = moneyToCents(invoice.subtotal);
-				const newDiscountCents = moneyToCents(updates.discountAmount);
-
-				if (newDiscountCents > subtotalCents) {
-					throw new ORPCError("BAD_REQUEST", {
-						message: "Discount cannot exceed subtotal",
-					});
-				}
-
-				const { taxAmount, totalAmount } = await calculateGst(
-					centsToMoney(subtotalCents),
-					context.organizationId,
-					centsToMoney(newDiscountCents),
-				);
 				updateData.discountAmount = centsToMoney(newDiscountCents);
-				updateData.taxAmount = taxAmount;
-				updateData.totalAmount = totalAmount;
 			}
+			updateData.taxAmount = taxAmount;
+			updateData.totalAmount = totalAmount;
+		}
 
 		await db.update(invoices).set(updateData).where(eq(invoices.id, id));
 
@@ -109,6 +130,7 @@ export const updateInvoice = studioProtectedProcedure
 				notes: invoice.notes,
 				terms: invoice.terms,
 				discountAmount: invoice.discountAmount,
+				taxType: invoice.taxType,
 			},
 			{
 				issueDate: updates.issueDate,
@@ -116,8 +138,9 @@ export const updateInvoice = studioProtectedProcedure
 				notes: updates.notes,
 				terms: updates.terms,
 				discountAmount: updates.discountAmount,
+				taxType: updates.taxType,
 			},
-			["issueDate", "dueDate", "notes", "terms", "discountAmount"],
+			["issueDate", "dueDate", "notes", "terms", "discountAmount", "taxType"],
 		).map((c) => ({
 			...c,
 			oldValue:

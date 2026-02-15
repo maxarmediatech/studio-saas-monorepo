@@ -33,6 +33,7 @@ import {
 	paymentMethodEnum,
 	paymentScheduleStatusEnum,
 	submissionStatusEnum,
+	taxTypeEnum,
 	workflowStatusEnum,
 } from "./enums";
 
@@ -1116,6 +1117,7 @@ export const invoices = pgTable(
 		discountAmount: decimal("discount_amount", { precision: 12, scale: 2 })
 			.default("0")
 			.notNull(),
+		taxType: taxTypeEnum("tax_type").default("exclusive").notNull(),
 		totalAmount: decimal("total_amount", { precision: 12, scale: 2 })
 			.default("0")
 			.notNull(),

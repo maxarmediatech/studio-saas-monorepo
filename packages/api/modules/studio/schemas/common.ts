@@ -302,6 +302,13 @@ export const invoiceStatusSchema = z.enum([
 export type InvoiceStatus = z.infer<typeof invoiceStatusSchema>;
 
 /**
+ * Tax type enum - determines how GST is applied to an invoice
+ */
+export const taxTypeSchema = z.enum(["exclusive", "inclusive", "no_gst"]);
+
+export type TaxType = z.infer<typeof taxTypeSchema>;
+
+/**
  * Bill to enum
  */
 export const billToSchema = z.enum(["studio", "client"]);

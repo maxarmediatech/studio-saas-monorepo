@@ -18,7 +18,12 @@ import {
 	createInvoiceFromScheduleInputSchema,
 	createInvoiceFromScheduleOutputSchema,
 } from "../../studio/schemas/invoice";
-import { calculateGst, generateInvoiceNumber } from "../lib/invoice-helpers";
+import {
+	calculateGst,
+	generateInvoiceNumber,
+	getGstConfig,
+	type TaxType,
+} from "../lib/invoice-helpers";
 
 export const createInvoiceFromSchedule = studioProtectedProcedure
 	.route({
@@ -34,7 +39,7 @@ export const createInvoiceFromSchedule = studioProtectedProcedure
 	.handler(async ({ input, context }) => {
 		await requirePermission(context, "payment", "create");
 
-		const { paymentScheduleId, issueDate, dueDate, notes, terms } = input;
+		const { paymentScheduleId, issueDate, dueDate, notes, terms, taxType: inputTaxType } = input;
 
 		const schedule = await db.query.paymentSchedules.findFirst({
 			where: and(
@@ -91,10 +96,21 @@ export const createInvoiceFromSchedule = studioProtectedProcedure
 			}
 
 			const subtotalCents = moneyToCents(schedule.amount);
+
+			// Resolve tax type: use input value or fall back to org default
+			let taxType: TaxType = "exclusive";
+			if (inputTaxType) {
+				taxType = inputTaxType;
+			} else {
+				const gstConfig = await getGstConfig(context.organizationId);
+				taxType = gstConfig.defaultTaxType;
+			}
+
 			const { taxAmount, totalAmount } = await calculateGst(
 				centsToMoney(subtotalCents),
 				context.organizationId,
 				"0.00",
+				taxType,
 			);
 
 			return await db.transaction(async (tx) => {
@@ -120,6 +136,7 @@ export const createInvoiceFromSchedule = studioProtectedProcedure
 						subtotal: centsToMoney(subtotalCents),
 						taxAmount,
 						discountAmount: "0.00",
+						taxType,
 						totalAmount,
 						paidAmount: "0.00",
 						notes: notes ?? null,

@@ -9,6 +9,7 @@ export interface InvoicePdfProps {
 			subtotal: string | number;
 			taxAmount: string | number;
 			discountAmount?: string | number;
+			taxType?: "exclusive" | "inclusive" | "no_gst";
 			totalAmount: string | number;
 			notes?: string | null;
 			lineItems: {
@@ -162,26 +163,73 @@ export function InvoicePdfDocument({
 
 				{/* Totals */}
 					<View style={pdfStyles.totalsSection}>
-						<View style={pdfStyles.totalRow}>
-							<Text style={pdfStyles.totalLabel}>Subtotal:</Text>
-							<Text style={pdfStyles.totalValue}>
-								{formatCurrency(invoice.subtotal)}
-							</Text>
-						</View>
-						<View style={pdfStyles.totalRow}>
-							<Text style={pdfStyles.totalLabel}>Tax (GST):</Text>
-							<Text style={pdfStyles.totalValue}>
-								{formatCurrency(invoice.taxAmount)}
-							</Text>
-						</View>
-						{Number(invoice.discountAmount ?? 0) > 0 && (
+						{/* Subtotal: shown for exclusive, no_gst, or inclusive-with-discount */}
+						{(invoice.taxType !== "inclusive" ||
+							Number(invoice.discountAmount ?? 0) > 0) && (
 							<View style={pdfStyles.totalRow}>
-								<Text style={pdfStyles.totalLabel}>Discount:</Text>
+								<Text style={pdfStyles.totalLabel}>
+									Subtotal:
+								</Text>
 								<Text style={pdfStyles.totalValue}>
-									-{formatCurrency(invoice.discountAmount ?? 0)}
+									{formatCurrency(invoice.subtotal)}
 								</Text>
 							</View>
 						)}
+
+						{/* Inclusive with discount: show discount before taxable value */}
+						{invoice.taxType === "inclusive" &&
+							Number(invoice.discountAmount ?? 0) > 0 && (
+								<View style={pdfStyles.totalRow}>
+									<Text style={pdfStyles.totalLabel}>
+										Discount:
+									</Text>
+									<Text style={pdfStyles.totalValue}>
+										-{formatCurrency(invoice.discountAmount ?? 0)}
+									</Text>
+								</View>
+							)}
+
+						{/* Inclusive GST: show Taxable Value (totalAmount - taxAmount) */}
+						{invoice.taxType === "inclusive" && (
+							<View style={pdfStyles.totalRow}>
+								<Text style={pdfStyles.totalLabel}>
+									Taxable Value:
+								</Text>
+								<Text style={pdfStyles.totalValue}>
+									{formatCurrency(
+										Number(invoice.totalAmount) -
+											Number(invoice.taxAmount),
+									)}
+								</Text>
+							</View>
+						)}
+
+						{/* Tax: shown for exclusive and inclusive */}
+						{invoice.taxType !== "no_gst" && (
+							<View style={pdfStyles.totalRow}>
+								<Text style={pdfStyles.totalLabel}>
+									Tax (GST):
+								</Text>
+								<Text style={pdfStyles.totalValue}>
+									{formatCurrency(invoice.taxAmount)}
+								</Text>
+							</View>
+						)}
+
+						{/* Exclusive/No GST: discount row */}
+						{invoice.taxType !== "inclusive" &&
+							Number(invoice.discountAmount ?? 0) > 0 && (
+								<View style={pdfStyles.totalRow}>
+									<Text style={pdfStyles.totalLabel}>
+										Discount:
+									</Text>
+									<Text style={pdfStyles.totalValue}>
+										-{formatCurrency(invoice.discountAmount ?? 0)}
+									</Text>
+								</View>
+							)}
+
+						{/* Total: always shown */}
 						<View style={pdfStyles.grandTotal}>
 							<Text style={pdfStyles.grandTotalLabel}>Total:</Text>
 							<Text style={pdfStyles.grandTotalValue}>
