@@ -12,12 +12,15 @@ import {
 } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInvoiceEditParams } from "@saas/studio/hooks/params/use-invoice-edit-params";
+import { InvoiceEditSheet } from "@saas/studio/components/invoices/sheets/InvoiceEditSheet";
 import {
 	CalendarDays,
 	CheckCircle2,
 	CreditCard,
 	DownloadIcon,
 	Loader2Icon,
+	PencilIcon,
 	SendIcon,
 	UserCircle,
 	XCircleIcon,
@@ -85,13 +88,16 @@ export function InvoiceDetailPageClient({
 	invoiceId,
 }: InvoiceDetailPageClientProps) {
 	const queryClient = useQueryClient();
+	const { openEdit } = useInvoiceEditParams();
 
-	const { data: invoiceData, isLoading } = useQuery(
-		invoicesApi.getOptions(invoiceId),
-	);
+	const {
+		data: invoiceData,
+		isLoading,
+		isError,
+	} = useQuery(invoicesApi.getOptions(invoiceId));
 
 	const { data: receiptsData } = useQuery(
-		receiptsApi.listOptions({ invoiceId }),
+		receiptsApi.listOptions({ invoiceId, limit: 100 }),
 	);
 
 	const invoice = invoiceData?.data;
@@ -124,8 +130,27 @@ export function InvoiceDetailPageClient({
 	});
 
 	if (isLoading) {
+		return <InvoiceDetailSkeleton organizationSlug={organizationSlug} />;
+	}
+
+	if (isError) {
 		return (
-			<InvoiceDetailSkeleton organizationSlug={organizationSlug} />
+			<PageContent
+				title="Invoice"
+				backHref={`/app/${organizationSlug}/invoices`}
+			>
+				<div className="flex min-h-[400px] flex-col items-center justify-center">
+					<p className="text-sm text-destructive">
+						Failed to load invoice
+					</p>
+					<Link
+						href={`/app/${organizationSlug}/invoices`}
+						className="mt-4 text-sm font-medium text-blue-600 hover:text-blue-500"
+					>
+						&larr; Back to invoices
+					</Link>
+				</div>
+			</PageContent>
 		);
 	}
 
@@ -151,13 +176,11 @@ export function InvoiceDetailPageClient({
 	}
 
 	const canMarkSent = invoice.status === "draft";
-	const canCancel = ["draft", "sent", "partial", "overdue"].includes(
-		invoice.status,
-	);
-	const outstandingAmount = Math.max(
-		Number(invoice.totalAmount) - Number(invoice.paidAmount ?? "0"),
-		0,
-	);
+	const canEdit = invoice.status === "draft";
+	const canCancel =
+		["draft", "sent", "partial", "overdue", "paid"].includes(
+			invoice.status,
+		) && Number(invoice.paidAmount ?? "0") === 0;
 
 	// Build activity timeline from real invoice timestamps + receipts
 	const activityItems: {
@@ -166,7 +189,11 @@ export function InvoiceDetailPageClient({
 		icon: "default" | "check";
 	}[] = [
 		{
-			label: <span className="font-medium text-gray-900">Invoice created</span>,
+			label: (
+				<span className="font-medium text-gray-900">
+					Invoice created
+				</span>
+			),
 			date: invoice.createdAt,
 			icon: "default",
 		},
@@ -174,7 +201,9 @@ export function InvoiceDetailPageClient({
 
 	if (invoice.sentAt) {
 		activityItems.push({
-			label: <span className="font-medium text-gray-900">Invoice sent</span>,
+			label: (
+				<span className="font-medium text-gray-900">Invoice sent</span>
+			),
 			date: invoice.sentAt,
 			icon: "default",
 		});
@@ -213,7 +242,9 @@ export function InvoiceDetailPageClient({
 
 	if (invoice.paidAt) {
 		activityItems.push({
-			label: <span className="font-medium text-gray-900">Invoice paid</span>,
+			label: (
+				<span className="font-medium text-gray-900">Invoice paid</span>
+			),
 			date: invoice.paidAt,
 			icon: "check",
 		});
@@ -221,7 +252,11 @@ export function InvoiceDetailPageClient({
 
 	if (invoice.status === "cancelled") {
 		activityItems.push({
-			label: <span className="font-medium text-gray-900">Invoice cancelled</span>,
+			label: (
+				<span className="font-medium text-gray-900">
+					Invoice cancelled
+				</span>
+			),
 			date: invoice.updatedAt,
 			icon: "default",
 		});
@@ -233,6 +268,7 @@ export function InvoiceDetailPageClient({
 	);
 
 	return (
+		<>
 		<PageContent
 			title={
 				<div className="flex items-center gap-3">
@@ -243,32 +279,28 @@ export function InvoiceDetailPageClient({
 			backHref={`/app/${organizationSlug}/invoices`}
 			controls={
 				<>
+					{canEdit && (
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => openEdit(invoiceId)}
+						>
+							<PencilIcon className="mr-2 h-4 w-4" />
+							Edit
+						</Button>
+					)}
+					<Button type="button" variant={"ghost"}>
+						Copy URL
+					</Button>
 					<Button variant="outline" size="sm" asChild>
 						<a
 							href={`/api/invoices/${invoiceId}/pdf`}
 							download={`${invoice.invoiceNumber}.pdf`}
 						>
 							<DownloadIcon className="mr-2 h-4 w-4" />
-							Download PDF
+							Download
 						</a>
 					</Button>
-
-					{canMarkSent && (
-						<Button
-							size="sm"
-							onClick={() =>
-								markSentMutation.mutate({ id: invoiceId })
-							}
-							disabled={markSentMutation.isPending}
-						>
-							{markSentMutation.isPending ? (
-								<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-							) : (
-								<SendIcon className="mr-2 h-4 w-4" />
-							)}
-							Mark as Sent
-						</Button>
-					)}
 
 					{canCancel && (
 						<Button
@@ -290,23 +322,23 @@ export function InvoiceDetailPageClient({
 				</>
 			}
 		>
-			<div className="relative isolate mb-8 overflow-hidden rounded-2xl border border-gray-200/80 bg-gradient-to-r from-slate-50 via-white to-emerald-50/70 px-6 py-6 sm:px-8">
+			<div className="relative isolate mb-8 overflow-hidden rounded-lg border border-gray-200/80 bg-gradient-to-r from-slate-50 via-white to-emerald-50/70 px-6 py-6 sm:px-8">
 				<div
 					aria-hidden="true"
-					className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-emerald-200/45 blur-3xl"
+					className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full  blur-3xl"
 				/>
 				<div
 					aria-hidden="true"
-					className="pointer-events-none absolute -left-10 -bottom-20 h-44 w-44 rounded-full bg-sky-200/30 blur-3xl"
+					className="pointer-events-none absolute -left-10 -bottom-20 h-44 w-44 rounded-full bg-blue-200/30 blur-3xl"
 				/>
 
 				<div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
 					<div>
 						<p className="text-xs font-semibold tracking-[0.16em] text-gray-500 uppercase">
-							Invoice Summary
+							Invoice{" "}
 						</p>
 						<h2 className="mt-2 text-xl font-semibold tracking-tight text-gray-900 sm:text-2xl">
-							{invoice.invoiceNumber}
+							#{invoice.invoiceNumber}
 						</h2>
 						<p className="mt-1 text-sm text-gray-600">
 							<span className="font-medium text-gray-900">
@@ -317,34 +349,24 @@ export function InvoiceDetailPageClient({
 						</p>
 					</div>
 
-					<dl className="grid grid-cols-1 gap-5 text-sm sm:grid-cols-3 sm:gap-8">
-						<div>
-							<dt className="text-gray-500">Issued</dt>
-							<dd className="mt-1 font-semibold text-gray-900">
-								{formatDate(invoice.issueDate)}
-							</dd>
-						</div>
-						<div>
-							<dt className="text-gray-500">Due</dt>
-							<dd className="mt-1 font-semibold text-gray-900">
-								{formatDate(invoice.dueDate)}
-							</dd>
-						</div>
-						<div>
-							<dt className="text-gray-500">Outstanding</dt>
-							<dd
-								className={cn(
-									"mt-1 font-semibold",
-									outstandingAmount === 0
-										? "text-green-700"
-										: "text-gray-900",
-								)}
-							>
-								{formatMoney(outstandingAmount.toString())}
-							</dd>
-						</div>
-					</dl>
-				</div>
+					{canMarkSent && (
+						<Button
+							size="sm"
+							onClick={() =>
+								markSentMutation.mutate({ id: invoiceId })
+							}
+							disabled={markSentMutation.isPending}
+						>
+							{markSentMutation.isPending ? (
+								<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+							) : (
+								<SendIcon className="mr-2 h-4 w-4" />
+							)}
+							Mark as Sent
+						</Button>
+					)}
+
+					</div>
 			</div>
 
 			{/* ── 3-column stacked grid ── */}
@@ -386,9 +408,7 @@ export function InvoiceDetailPageClient({
 								</dt>
 								<dd className="text-sm/6 text-gray-500">
 									<time
-										dateTime={
-											invoice.dueDate ?? undefined
-										}
+										dateTime={invoice.dueDate ?? undefined}
 									>
 										{formatDate(invoice.dueDate)}
 									</time>
@@ -403,8 +423,7 @@ export function InvoiceDetailPageClient({
 								</dt>
 								<dd className="text-sm/6 text-gray-500">
 									{formatMoney(invoice.paidAmount ?? "0")}{" "}
-									paid of{" "}
-									{formatMoney(invoice.totalAmount)}
+									paid of {formatMoney(invoice.totalAmount)}
 								</dd>
 							</div>
 						</dl>
@@ -434,9 +453,7 @@ export function InvoiceDetailPageClient({
 					{/* Dates */}
 					<dl className="mt-6 grid grid-cols-1 text-sm/6 sm:grid-cols-2">
 						<div className="sm:pr-4">
-							<dt className="inline text-gray-500">
-								Issued on
-							</dt>{" "}
+							<dt className="inline text-gray-500">Issued on</dt>{" "}
 							<dd className="inline text-gray-700">
 								<time dateTime={invoice.issueDate}>
 									{formatDate(invoice.issueDate)}
@@ -444,15 +461,9 @@ export function InvoiceDetailPageClient({
 							</dd>
 						</div>
 						<div className="mt-2 sm:mt-0 sm:pl-4">
-							<dt className="inline text-gray-500">
-								Due on
-							</dt>{" "}
+							<dt className="inline text-gray-500">Due on</dt>{" "}
 							<dd className="inline text-gray-700">
-								<time
-									dateTime={
-										invoice.dueDate ?? undefined
-									}
-								>
+								<time dateTime={invoice.dueDate ?? undefined}>
 									{formatDate(invoice.dueDate)}
 								</time>
 							</dd>
@@ -478,8 +489,7 @@ export function InvoiceDetailPageClient({
 								</dt>
 								<dd className="mt-2 text-gray-500">
 									<span className="font-medium text-gray-900">
-										{invoice.client?.name ??
-											"No client"}
+										{invoice.client?.name ?? "No client"}
 									</span>
 									<br />
 									{invoice.client?.email ?? ""}
@@ -600,10 +610,7 @@ export function InvoiceDetailPageClient({
 										Discount
 									</th>
 									<td className="pl-8 pr-0 pt-4 text-right tabular-nums text-green-600">
-										-
-										{formatMoney(
-											invoice.discountAmount,
-										)}
+										-{formatMoney(invoice.discountAmount)}
 									</td>
 								</tr>
 							)}
@@ -636,15 +643,16 @@ export function InvoiceDetailPageClient({
 					</h2>
 					<ul className="mt-6 space-y-6">
 						{activityItems.map((item, idx) => (
-							<li
-								key={idx}
-								className="relative flex gap-x-4"
-							>
+							<li key={idx} className="relative flex gap-x-4">
 								{/* Vertical connector line */}
-								<div className={cn(
-									idx === activityItems.length - 1 ? "h-6" : "-bottom-6",
-									"absolute left-0 top-0 flex w-6 justify-center",
-								)}>
+								<div
+									className={cn(
+										idx === activityItems.length - 1
+											? "h-6"
+											: "-bottom-6",
+										"absolute left-0 top-0 flex w-6 justify-center",
+									)}
+								>
 									<div className="w-px bg-gray-200" />
 								</div>
 
@@ -685,6 +693,8 @@ export function InvoiceDetailPageClient({
 				</div>
 			)}
 		</PageContent>
+		<InvoiceEditSheet />
+		</>
 	);
 }
 

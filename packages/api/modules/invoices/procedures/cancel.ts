@@ -52,6 +52,14 @@ export const cancelInvoice = studioProtectedProcedure
 			});
 		}
 
+		const paidAmount = Number.parseFloat(invoice.paidAmount);
+		if (paidAmount > 0) {
+			throw new ORPCError("CONFLICT", {
+				message:
+					"Cannot cancel an invoice with recorded payments. Void the receipts first.",
+			});
+		}
+
 		if (currentStatus === "cancelled") {
 			return {
 				data: { id },
