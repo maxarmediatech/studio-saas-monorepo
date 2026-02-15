@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Button } from "@repo/ui/components/button";
 import { DatePicker } from "@repo/ui/components/date-picker";
 import {
 	Field,
@@ -50,7 +51,7 @@ export function InvoiceEditSheet() {
 	const queryClient = useQueryClient();
 	const [isScrolled, setIsScrolled] = useState(false);
 
-	const { data: invoice, isLoading } = useQuery({
+	const { data: invoice, isLoading, isError } = useQuery({
 		...invoicesApi.getOptions(invoiceId ?? ""),
 		enabled: isOpen && !!invoiceId,
 	});
@@ -149,6 +150,15 @@ export function InvoiceEditSheet() {
 							<Skeleton className="h-10 w-full" />
 							<Skeleton className="h-24 w-full" />
 							<Skeleton className="h-24 w-full" />
+						</div>
+					) : isError || !invoiceData ? (
+						<div className="flex flex-col items-center justify-center gap-4 px-4 py-12 text-center">
+							<p className="text-sm text-muted-foreground">
+								Failed to load invoice data.
+							</p>
+							<Button variant="outline" size="sm" onClick={close}>
+								Close
+							</Button>
 						</div>
 					) : (
 						<form

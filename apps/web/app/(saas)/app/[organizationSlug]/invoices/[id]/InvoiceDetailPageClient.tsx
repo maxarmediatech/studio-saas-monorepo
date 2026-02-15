@@ -19,6 +19,7 @@ import {
 	CheckCircle2,
 	CreditCard,
 	DownloadIcon,
+	LinkIcon,
 	Loader2Icon,
 	PencilIcon,
 	SendIcon,
@@ -289,7 +290,15 @@ export function InvoiceDetailPageClient({
 							Edit
 						</Button>
 					)}
-					<Button type="button" variant={"ghost"}>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => {
+							navigator.clipboard.writeText(window.location.href);
+							toast.success("Link copied to clipboard");
+						}}
+					>
+						<LinkIcon className="mr-2 h-4 w-4" />
 						Copy URL
 					</Button>
 					<Button variant="outline" size="sm" asChild>
