@@ -5,6 +5,8 @@ import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
 import { formatMoney } from "@saas/shared/lib";
 import { PageContent } from "@saas/studio";
+import { InvoiceEditSheet } from "@saas/studio/components/invoices/sheets/InvoiceEditSheet";
+import { useInvoiceEditParams } from "@saas/studio/hooks/params/use-invoice-edit-params";
 import {
 	invoicesApi,
 	invoicesMutations,
@@ -12,8 +14,6 @@ import {
 } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useInvoiceEditParams } from "@saas/studio/hooks/params/use-invoice-edit-params";
-import { InvoiceEditSheet } from "@saas/studio/components/invoices/sheets/InvoiceEditSheet";
 import {
 	CalendarDays,
 	CheckCircle2,
@@ -299,151 +299,208 @@ export function InvoiceDetailPageClient({
 
 	return (
 		<>
-		<PageContent
-			title={
-				<div className="flex items-center gap-3">
-					<span>{invoice.invoiceNumber}</span>
-					<StatusBadge status={invoice.status} />
-				</div>
-			}
-			backHref={`/app/${organizationSlug}/invoices`}
-			controls={
-				<>
-					{canEdit && (
+			<PageContent
+				title={"Invoice Detail"}
+				backHref={`/app/${organizationSlug}/invoices`}
+				controls={
+					<>
+						{canEdit && (
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => openEdit(invoiceId)}
+							>
+								<PencilIcon className="mr-2 h-4 w-4" />
+								Edit
+							</Button>
+						)}
 						<Button
 							variant="outline"
 							size="sm"
-							onClick={() => openEdit(invoiceId)}
+							onClick={() => {
+								void handleCopyUrl();
+							}}
 						>
-							<PencilIcon className="mr-2 h-4 w-4" />
-							Edit
+							<LinkIcon className="mr-2 h-4 w-4" />
+							Copy URL
 						</Button>
-					)}
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={() => {
-							void handleCopyUrl();
-						}}
-					>
-						<LinkIcon className="mr-2 h-4 w-4" />
-						Copy URL
-					</Button>
-					<Button variant="outline" size="sm" asChild>
-						<a
-							href={`/api/invoices/${invoiceId}/pdf`}
-							download={`${invoice.invoiceNumber}.pdf`}
-						>
-							<DownloadIcon className="mr-2 h-4 w-4" />
-							Download
-						</a>
-					</Button>
+						<Button variant="outline" size="sm" asChild>
+							<a
+								href={`/api/invoices/${invoiceId}/pdf`}
+								download={`${invoice.invoiceNumber}.pdf`}
+							>
+								<DownloadIcon className="mr-2 h-4 w-4" />
+								Download
+							</a>
+						</Button>
 
-					{canCancel && (
-						<Button
-							variant="destructive"
-							size="sm"
-							onClick={() =>
-								cancelMutation.mutate({ id: invoiceId })
-							}
-							disabled={cancelMutation.isPending}
-						>
-							{cancelMutation.isPending ? (
-								<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-							) : (
-								<XCircleIcon className="mr-2 h-4 w-4" />
+						{canCancel && (
+							<Button
+								variant="destructive"
+								size="sm"
+								onClick={() =>
+									cancelMutation.mutate({ id: invoiceId })
+								}
+								disabled={cancelMutation.isPending}
+							>
+								{cancelMutation.isPending ? (
+									<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+								) : (
+									<XCircleIcon className="mr-2 h-4 w-4" />
+								)}
+								Cancel
+							</Button>
+						)}
+					</>
+				}
+			>
+				<div className="relative isolate mb-8 overflow-hidden rounded-lg border border-gray-200/80 bg-gradient-to-r from-slate-50 via-white to-emerald-50/70 px-6 py-6 sm:px-8">
+					<div
+						aria-hidden="true"
+						className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full  blur-3xl"
+					/>
+					<div
+						aria-hidden="true"
+						className="pointer-events-none absolute -left-10 -bottom-20 h-44 w-44 rounded-full bg-blue-200/30 blur-3xl"
+					/>
+
+					<div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+						<div>
+							<p className="text-xs font-semibold tracking-[0.16em] text-gray-500 uppercase">
+								Invoice{" "}
+							</p>
+							<h2 className="mt-2 text-xl font-semibold tracking-tight text-gray-900 sm:text-2xl">
+								#{invoice.invoiceNumber}
+							</h2>
+							<p className="mt-1 text-sm text-gray-600">
+								<span className="font-medium text-gray-900">
+									{organizationName}
+								</span>
+								<span className="mx-2 text-gray-300">/</span>
+								{invoice.client?.name ?? "No client"}
+							</p>
+						</div>
+
+						{canMarkSent && (
+							<Button
+								size="sm"
+								onClick={() =>
+									markSentMutation.mutate({ id: invoiceId })
+								}
+								disabled={markSentMutation.isPending}
+							>
+								{markSentMutation.isPending ? (
+									<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+								) : (
+									<SendIcon className="mr-2 h-4 w-4" />
+								)}
+								Mark as Sent
+							</Button>
+						)}
+					</div>
+				</div>
+
+				{/* ── 3-column stacked grid ── */}
+				<div className="grid max-w-2xl grid-cols-1 grid-rows-1 items-start gap-x-8 gap-y-8 lg:mx-0 lg:max-w-none lg:grid-cols-3">
+					{/* ── Right Column: Summary Card ── */}
+					<div className="lg:col-start-3 lg:row-end-1">
+						<h2 className="sr-only">Summary</h2>
+						<div className="rounded-lg bg-gray-50 ring-1 ring-gray-900/5">
+							<dl className="flex flex-wrap">
+								{/* Amount */}
+								<div className="flex-auto pl-6 pt-6">
+									<dt className="text-sm/6 font-semibold text-gray-900">
+										Amount
+									</dt>
+									<dd className="mt-1 text-base font-semibold text-gray-900">
+										{formatMoney(invoice.totalAmount)}
+									</dd>
+								</div>
+								<div className="flex-none self-end px-6 pt-4">
+									<StatusBadge status={invoice.status} />
+								</div>
+
+								{/* Client */}
+								<div className="mt-6 flex w-full flex-none gap-x-4 border-t border-gray-900/5 px-6 pt-6">
+									<dt className="flex-none">
+										<span className="sr-only">Client</span>
+										<UserCircle className="h-6 w-5 text-gray-400" />
+									</dt>
+									<dd className="text-sm/6 font-medium text-gray-900">
+										{invoice.client?.name ?? "No client"}
+									</dd>
+								</div>
+
+								{/* Due date */}
+								<div className="mt-4 flex w-full flex-none gap-x-4 px-6">
+									<dt className="flex-none">
+										<span className="sr-only">
+											Due date
+										</span>
+										<CalendarDays className="h-6 w-5 text-gray-400" />
+									</dt>
+									<dd className="text-sm/6 text-gray-500">
+										<time
+											dateTime={
+												invoice.dueDate ?? undefined
+											}
+										>
+											{formatDate(invoice.dueDate)}
+										</time>
+									</dd>
+								</div>
+
+								{/* Payment info */}
+								<div className="mt-4 flex w-full flex-none gap-x-4 px-6 pb-6">
+									<dt className="flex-none">
+										<span className="sr-only">Payment</span>
+										<CreditCard className="h-6 w-5 text-gray-400" />
+									</dt>
+									<dd className="text-sm/6 text-gray-500">
+										{formatMoney(invoice.paidAmount ?? "0")}{" "}
+										paid of{" "}
+										{formatMoney(invoice.totalAmount)}
+									</dd>
+								</div>
+							</dl>
+
+							{/* Download receipt link — only shown when a receipt exists */}
+							{receipts.length > 0 && (
+								<div className="border-t border-gray-900/5 px-6 py-6">
+									<a
+										href={`/api/receipts/${receipts[0].id}/pdf`}
+										download={`${receipts[0].receiptNumber}.pdf`}
+										className="text-sm/6 font-semibold text-gray-900"
+									>
+										Download receipt{" "}
+										<span aria-hidden="true">&rarr;</span>
+									</a>
+								</div>
 							)}
-							Cancel
-						</Button>
-					)}
-				</>
-			}
-		>
-			<div className="relative isolate mb-8 overflow-hidden rounded-lg border border-gray-200/80 bg-gradient-to-r from-slate-50 via-white to-emerald-50/70 px-6 py-6 sm:px-8">
-				<div
-					aria-hidden="true"
-					className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full  blur-3xl"
-				/>
-				<div
-					aria-hidden="true"
-					className="pointer-events-none absolute -left-10 -bottom-20 h-44 w-44 rounded-full bg-blue-200/30 blur-3xl"
-				/>
+						</div>
+					</div>
 
-				<div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-					<div>
-						<p className="text-xs font-semibold tracking-[0.16em] text-gray-500 uppercase">
-							Invoice{" "}
-						</p>
-						<h2 className="mt-2 text-xl font-semibold tracking-tight text-gray-900 sm:text-2xl">
-							#{invoice.invoiceNumber}
+					{/* ── Left 2 Columns: Invoice Card ── */}
+					<div className="-mx-4 px-4 py-8 ring-1 ring-gray-900/5 sm:mx-0 sm:rounded-lg sm:px-8 sm:pb-14 lg:col-span-2 lg:row-span-2 lg:row-end-2 xl:px-16 xl:pb-20 xl:pt-16">
+						<h2 className="text-base font-semibold text-gray-900">
+							Invoice
 						</h2>
-						<p className="mt-1 text-sm text-gray-600">
-							<span className="font-medium text-gray-900">
-								{organizationName}
-							</span>
-							<span className="mx-2 text-gray-300">/</span>
-							{invoice.client?.name ?? "No client"}
-						</p>
-					</div>
 
-					{canMarkSent && (
-						<Button
-							size="sm"
-							onClick={() =>
-								markSentMutation.mutate({ id: invoiceId })
-							}
-							disabled={markSentMutation.isPending}
-						>
-							{markSentMutation.isPending ? (
-								<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-							) : (
-								<SendIcon className="mr-2 h-4 w-4" />
-							)}
-							Mark as Sent
-						</Button>
-					)}
-
-					</div>
-			</div>
-
-			{/* ── 3-column stacked grid ── */}
-			<div className="grid max-w-2xl grid-cols-1 grid-rows-1 items-start gap-x-8 gap-y-8 lg:mx-0 lg:max-w-none lg:grid-cols-3">
-				{/* ── Right Column: Summary Card ── */}
-				<div className="lg:col-start-3 lg:row-end-1">
-					<h2 className="sr-only">Summary</h2>
-					<div className="rounded-lg bg-gray-50 ring-1 ring-gray-900/5">
-						<dl className="flex flex-wrap">
-							{/* Amount */}
-							<div className="flex-auto pl-6 pt-6">
-								<dt className="text-sm/6 font-semibold text-gray-900">
-									Amount
-								</dt>
-								<dd className="mt-1 text-base font-semibold text-gray-900">
-									{formatMoney(invoice.totalAmount)}
+						{/* Dates */}
+						<dl className="mt-6 grid grid-cols-1 text-sm/6 sm:grid-cols-2">
+							<div className="sm:pr-4">
+								<dt className="inline text-gray-500">
+									Issued on
+								</dt>{" "}
+								<dd className="inline text-gray-700">
+									<time dateTime={invoice.issueDate}>
+										{formatDate(invoice.issueDate)}
+									</time>
 								</dd>
 							</div>
-							<div className="flex-none self-end px-6 pt-4">
-								<StatusBadge status={invoice.status} />
-							</div>
-
-							{/* Client */}
-							<div className="mt-6 flex w-full flex-none gap-x-4 border-t border-gray-900/5 px-6 pt-6">
-								<dt className="flex-none">
-									<span className="sr-only">Client</span>
-									<UserCircle className="h-6 w-5 text-gray-400" />
-								</dt>
-								<dd className="text-sm/6 font-medium text-gray-900">
-									{invoice.client?.name ?? "No client"}
-								</dd>
-							</div>
-
-							{/* Due date */}
-							<div className="mt-4 flex w-full flex-none gap-x-4 px-6">
-								<dt className="flex-none">
-									<span className="sr-only">Due date</span>
-									<CalendarDays className="h-6 w-5 text-gray-400" />
-								</dt>
-								<dd className="text-sm/6 text-gray-500">
+							<div className="mt-2 sm:mt-0 sm:pl-4">
+								<dt className="inline text-gray-500">Due on</dt>{" "}
+								<dd className="inline text-gray-700">
 									<time
 										dateTime={invoice.dueDate ?? undefined}
 									>
@@ -451,286 +508,236 @@ export function InvoiceDetailPageClient({
 									</time>
 								</dd>
 							</div>
-
-							{/* Payment info */}
-							<div className="mt-4 flex w-full flex-none gap-x-4 px-6 pb-6">
-								<dt className="flex-none">
-									<span className="sr-only">Payment</span>
-									<CreditCard className="h-6 w-5 text-gray-400" />
-								</dt>
-								<dd className="text-sm/6 text-gray-500">
-									{formatMoney(invoice.paidAmount ?? "0")}{" "}
-									paid of {formatMoney(invoice.totalAmount)}
-								</dd>
-							</div>
 						</dl>
 
-						{/* Download receipt link — only shown when a receipt exists */}
-						{receipts.length > 0 && (
-							<div className="border-t border-gray-900/5 px-6 py-6">
-								<a
-									href={`/api/receipts/${receipts[0].id}/pdf`}
-									download={`${receipts[0].receiptNumber}.pdf`}
-									className="text-sm/6 font-semibold text-gray-900"
-								>
-									Download receipt{" "}
-									<span aria-hidden="true">&rarr;</span>
-								</a>
-							</div>
-						)}
-					</div>
-				</div>
-
-				{/* ── Left 2 Columns: Invoice Card ── */}
-				<div className="-mx-4 px-4 py-8 ring-1 ring-gray-900/5 sm:mx-0 sm:rounded-lg sm:px-8 sm:pb-14 lg:col-span-2 lg:row-span-2 lg:row-end-2 xl:px-16 xl:pb-20 xl:pt-16">
-					<h2 className="text-base font-semibold text-gray-900">
-						Invoice
-					</h2>
-
-					{/* Dates */}
-					<dl className="mt-6 grid grid-cols-1 text-sm/6 sm:grid-cols-2">
-						<div className="sm:pr-4">
-							<dt className="inline text-gray-500">Issued on</dt>{" "}
-							<dd className="inline text-gray-700">
-								<time dateTime={invoice.issueDate}>
-									{formatDate(invoice.issueDate)}
-								</time>
-							</dd>
+						{/* From / To addresses */}
+						<div className="mt-6 border-t border-gray-900/5 pt-6 sm:pr-4">
+							<dl className="grid grid-cols-1 text-sm/6 sm:grid-cols-2">
+								<div>
+									<dt className="font-semibold text-gray-900">
+										From
+									</dt>
+									<dd className="mt-2 text-gray-500">
+										<span className="font-medium text-gray-900">
+											{organizationName}
+										</span>
+									</dd>
+								</div>
+								<div className="mt-8 sm:mt-0">
+									<dt className="font-semibold text-gray-900">
+										To
+									</dt>
+									<dd className="mt-2 text-gray-500">
+										<span className="font-medium text-gray-900">
+											{invoice.client?.name ??
+												"No client"}
+										</span>
+										<br />
+										{invoice.client?.email ?? ""}
+									</dd>
+								</div>
+							</dl>
 						</div>
-						<div className="mt-2 sm:mt-0 sm:pl-4">
-							<dt className="inline text-gray-500">Due on</dt>{" "}
-							<dd className="inline text-gray-700">
-								<time dateTime={invoice.dueDate ?? undefined}>
-									{formatDate(invoice.dueDate)}
-								</time>
-							</dd>
-						</div>
-					</dl>
 
-					{/* From / To addresses */}
-					<div className="mt-6 border-t border-gray-900/5 pt-6 sm:pr-4">
-						<dl className="grid grid-cols-1 text-sm/6 sm:grid-cols-2">
-							<div>
-								<dt className="font-semibold text-gray-900">
-									From
-								</dt>
-								<dd className="mt-2 text-gray-500">
-									<span className="font-medium text-gray-900">
-										{organizationName}
-									</span>
-								</dd>
-							</div>
-							<div className="mt-8 sm:mt-0">
-								<dt className="font-semibold text-gray-900">
-									To
-								</dt>
-								<dd className="mt-2 text-gray-500">
-									<span className="font-medium text-gray-900">
-										{invoice.client?.name ?? "No client"}
-									</span>
-									<br />
-									{invoice.client?.email ?? ""}
-								</dd>
-							</div>
-						</dl>
-					</div>
-
-					{/* Line items table (native HTML, not shadcn) */}
-					<table className="mt-16 w-full whitespace-nowrap text-left text-sm/6">
-						<colgroup>
-							<col className="w-full" />
-							<col />
-							<col />
-							<col />
-						</colgroup>
-						<thead className="border-b border-gray-200 text-gray-900">
-							<tr>
-								<th
-									scope="col"
-									className="px-0 py-3 font-semibold"
-								>
-									Description
-								</th>
-								<th
-									scope="col"
-									className="hidden py-3 pl-8 pr-0 text-right font-semibold sm:table-cell"
-								>
-									Qty
-								</th>
-								<th
-									scope="col"
-									className="hidden py-3 pl-8 pr-0 text-right font-semibold sm:table-cell"
-								>
-									Rate
-								</th>
-								<th
-									scope="col"
-									className="py-3 pl-8 pr-0 text-right font-semibold"
-								>
-									Amount
-								</th>
-							</tr>
-						</thead>
-						<tbody>
-							{invoice.lineItems?.map((item) => (
-								<tr
-									key={item.id}
-									className="border-b border-gray-100"
-								>
-									<td className="max-w-0 px-0 py-5 align-top">
-										<div className="truncate font-medium text-gray-900">
-											{item.description}
-										</div>
-									</td>
-									<td className="hidden py-5 pl-8 pr-0 text-right align-top tabular-nums text-gray-700 sm:table-cell">
-										{item.quantity}
-									</td>
-									<td className="hidden py-5 pl-8 pr-0 text-right align-top tabular-nums text-gray-700 sm:table-cell">
-										{formatMoney(item.unitPrice)}
-									</td>
-									<td className="py-5 pl-8 pr-0 text-right align-top tabular-nums text-gray-700">
-										{formatMoney(item.amount)}
+						{/* Line items table (native HTML, not shadcn) */}
+						<table className="mt-16 w-full whitespace-nowrap text-left text-sm/6">
+							<colgroup>
+								<col className="w-full" />
+								<col />
+								<col />
+								<col />
+							</colgroup>
+							<thead className="border-b border-gray-200 text-gray-900">
+								<tr>
+									<th
+										scope="col"
+										className="px-0 py-3 font-semibold"
+									>
+										Description
+									</th>
+									<th
+										scope="col"
+										className="hidden py-3 pl-8 pr-0 text-right font-semibold sm:table-cell"
+									>
+										Qty
+									</th>
+									<th
+										scope="col"
+										className="hidden py-3 pl-8 pr-0 text-right font-semibold sm:table-cell"
+									>
+										Rate
+									</th>
+									<th
+										scope="col"
+										className="py-3 pl-8 pr-0 text-right font-semibold"
+									>
+										Amount
+									</th>
+								</tr>
+							</thead>
+							<tbody>
+								{invoice.lineItems?.map((item) => (
+									<tr
+										key={item.id}
+										className="border-b border-gray-100"
+									>
+										<td className="max-w-0 px-0 py-5 align-top">
+											<div className="truncate font-medium text-gray-900">
+												{item.description}
+											</div>
+										</td>
+										<td className="hidden py-5 pl-8 pr-0 text-right align-top tabular-nums text-gray-700 sm:table-cell">
+											{item.quantity}
+										</td>
+										<td className="hidden py-5 pl-8 pr-0 text-right align-top tabular-nums text-gray-700 sm:table-cell">
+											{formatMoney(item.unitPrice)}
+										</td>
+										<td className="py-5 pl-8 pr-0 text-right align-top tabular-nums text-gray-700">
+											{formatMoney(item.amount)}
+										</td>
+									</tr>
+								))}
+							</tbody>
+							<tfoot>
+								<tr>
+									<th
+										scope="row"
+										className="px-0 pb-0 pt-6 font-normal text-gray-700 sm:hidden"
+									>
+										Subtotal
+									</th>
+									<th
+										scope="row"
+										colSpan={3}
+										className="hidden px-0 pb-0 pt-6 text-right font-normal text-gray-700 sm:table-cell"
+									>
+										Subtotal
+									</th>
+									<td className="pb-0 pl-8 pr-0 pt-6 text-right tabular-nums text-gray-900">
+										{formatMoney(invoice.subtotal)}
 									</td>
 								</tr>
-							))}
-						</tbody>
-						<tfoot>
-							<tr>
-								<th
-									scope="row"
-									className="px-0 pb-0 pt-6 font-normal text-gray-700 sm:hidden"
-								>
-									Subtotal
-								</th>
-								<th
-									scope="row"
-									colSpan={3}
-									className="hidden px-0 pb-0 pt-6 text-right font-normal text-gray-700 sm:table-cell"
-								>
-									Subtotal
-								</th>
-								<td className="pb-0 pl-8 pr-0 pt-6 text-right tabular-nums text-gray-900">
-									{formatMoney(invoice.subtotal)}
-								</td>
-							</tr>
-							<tr>
-								<th
-									scope="row"
-									className="px-0 pt-4 font-normal text-gray-700 sm:hidden"
-								>
-									Tax (GST)
-								</th>
-								<th
-									scope="row"
-									colSpan={3}
-									className="hidden px-0 pt-4 text-right font-normal text-gray-700 sm:table-cell"
-								>
-									Tax (GST)
-								</th>
-								<td className="pl-8 pr-0 pt-4 text-right tabular-nums text-gray-900">
-									{formatMoney(invoice.taxAmount)}
-								</td>
-							</tr>
-							{Number(invoice.discountAmount) > 0 && (
 								<tr>
 									<th
 										scope="row"
 										className="px-0 pt-4 font-normal text-gray-700 sm:hidden"
 									>
-										Discount
+										Tax (GST)
 									</th>
 									<th
 										scope="row"
 										colSpan={3}
 										className="hidden px-0 pt-4 text-right font-normal text-gray-700 sm:table-cell"
 									>
-										Discount
+										Tax (GST)
 									</th>
-									<td className="pl-8 pr-0 pt-4 text-right tabular-nums text-green-600">
-										-{formatMoney(invoice.discountAmount)}
+									<td className="pl-8 pr-0 pt-4 text-right tabular-nums text-gray-900">
+										{formatMoney(invoice.taxAmount)}
 									</td>
 								</tr>
-							)}
-							<tr>
-								<th
-									scope="row"
-									className="px-0 pt-4 font-semibold text-gray-900 sm:hidden"
-								>
-									Total
-								</th>
-								<th
-									scope="row"
-									colSpan={3}
-									className="hidden px-0 pt-4 text-right font-semibold text-gray-900 sm:table-cell"
-								>
-									Total
-								</th>
-								<td className="pl-8 pr-0 pt-4 text-right font-semibold tabular-nums text-gray-900">
-									{formatMoney(invoice.totalAmount)}
-								</td>
-							</tr>
-						</tfoot>
-					</table>
+								{Number(invoice.discountAmount) > 0 && (
+									<tr>
+										<th
+											scope="row"
+											className="px-0 pt-4 font-normal text-gray-700 sm:hidden"
+										>
+											Discount
+										</th>
+										<th
+											scope="row"
+											colSpan={3}
+											className="hidden px-0 pt-4 text-right font-normal text-gray-700 sm:table-cell"
+										>
+											Discount
+										</th>
+										<td className="pl-8 pr-0 pt-4 text-right tabular-nums text-green-600">
+											-
+											{formatMoney(
+												invoice.discountAmount,
+											)}
+										</td>
+									</tr>
+								)}
+								<tr>
+									<th
+										scope="row"
+										className="px-0 pt-4 font-semibold text-gray-900 sm:hidden"
+									>
+										Total
+									</th>
+									<th
+										scope="row"
+										colSpan={3}
+										className="hidden px-0 pt-4 text-right font-semibold text-gray-900 sm:table-cell"
+									>
+										Total
+									</th>
+									<td className="pl-8 pr-0 pt-4 text-right font-semibold tabular-nums text-gray-900">
+										{formatMoney(invoice.totalAmount)}
+									</td>
+								</tr>
+							</tfoot>
+						</table>
+					</div>
+
+					{/* ── Right Column: Activity Feed ── */}
+					<div className="lg:col-start-3">
+						<h2 className="text-sm/6 font-semibold text-gray-900">
+							Activity
+						</h2>
+						<ul className="mt-6 space-y-6">
+							{activityItems.map((item, idx) => (
+								<li key={idx} className="relative flex gap-x-4">
+									{/* Vertical connector line */}
+									<div
+										className={cn(
+											idx === activityItems.length - 1
+												? "h-6"
+												: "-bottom-6",
+											"absolute left-0 top-0 flex w-6 justify-center",
+										)}
+									>
+										<div className="w-px bg-gray-200" />
+									</div>
+
+									{/* Dot / icon */}
+									<div className="relative flex h-6 w-6 flex-none items-center justify-center bg-white">
+										{item.icon === "check" ? (
+											<CheckCircle2 className="h-6 w-6 text-blue-600" />
+										) : (
+											<div className="h-1.5 w-1.5 rounded-full bg-gray-100 ring-1 ring-gray-300" />
+										)}
+									</div>
+
+									{/* Content */}
+									<p className="flex-auto py-0.5 text-xs/5 text-gray-500">
+										{item.label}
+									</p>
+									<time
+										dateTime={item.date}
+										className="flex-none py-0.5 text-xs/5 text-gray-500"
+									>
+										{formatRelativeTime(item.date)}
+									</time>
+								</li>
+							))}
+						</ul>
+					</div>
 				</div>
 
-				{/* ── Right Column: Activity Feed ── */}
-				<div className="lg:col-start-3">
-					<h2 className="text-sm/6 font-semibold text-gray-900">
-						Activity
-					</h2>
-					<ul className="mt-6 space-y-6">
-						{activityItems.map((item, idx) => (
-							<li key={idx} className="relative flex gap-x-4">
-								{/* Vertical connector line */}
-								<div
-									className={cn(
-										idx === activityItems.length - 1
-											? "h-6"
-											: "-bottom-6",
-										"absolute left-0 top-0 flex w-6 justify-center",
-									)}
-								>
-									<div className="w-px bg-gray-200" />
-								</div>
-
-								{/* Dot / icon */}
-								<div className="relative flex h-6 w-6 flex-none items-center justify-center bg-white">
-									{item.icon === "check" ? (
-										<CheckCircle2 className="h-6 w-6 text-blue-600" />
-									) : (
-										<div className="h-1.5 w-1.5 rounded-full bg-gray-100 ring-1 ring-gray-300" />
-									)}
-								</div>
-
-								{/* Content */}
-								<p className="flex-auto py-0.5 text-xs/5 text-gray-500">
-									{item.label}
-								</p>
-								<time
-									dateTime={item.date}
-									className="flex-none py-0.5 text-xs/5 text-gray-500"
-								>
-									{formatRelativeTime(item.date)}
-								</time>
-							</li>
-						))}
-					</ul>
-				</div>
-			</div>
-
-			{/* ── Notes (optional) ── */}
-			{invoice.notes && (
-				<div className="mt-8">
-					<h2 className="text-sm/6 font-semibold text-gray-900">
-						Notes
-					</h2>
-					<p className="mt-2 text-sm/6 text-gray-500 whitespace-pre-wrap">
-						{invoice.notes}
-					</p>
-				</div>
-			)}
-		</PageContent>
-		<InvoiceEditSheet />
+				{/* ── Notes (optional) ── */}
+				{invoice.notes && (
+					<div className="mt-8">
+						<h2 className="text-sm/6 font-semibold text-gray-900">
+							Notes
+						</h2>
+						<p className="mt-2 text-sm/6 text-gray-500 whitespace-pre-wrap">
+							{invoice.notes}
+						</p>
+					</div>
+				)}
+			</PageContent>
+			<InvoiceEditSheet />
 		</>
 	);
 }
