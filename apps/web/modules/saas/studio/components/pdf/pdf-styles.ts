@@ -5,8 +5,10 @@ export const pdfStyles = StyleSheet.create({
 		padding: 40,
 		fontSize: 11,
 		fontFamily: "Helvetica",
-		color: "#000",
+		color: "#374151", // gray-700
 	},
+
+	// Legacy shared styles kept for ReceiptPdfDocument compatibility
 	header: {
 		marginBottom: 30,
 		borderBottomWidth: 1,
@@ -17,10 +19,11 @@ export const pdfStyles = StyleSheet.create({
 		fontSize: 24,
 		fontWeight: "bold",
 		marginBottom: 10,
+		color: "#111827",
 	},
 	headerSubtitle: {
 		fontSize: 12,
-		color: "#666",
+		color: "#6b7280",
 		marginBottom: 5,
 	},
 	section: {
@@ -30,7 +33,7 @@ export const pdfStyles = StyleSheet.create({
 		fontSize: 14,
 		fontWeight: "bold",
 		marginBottom: 10,
-		color: "#1f2937",
+		color: "#111827",
 	},
 	row: {
 		display: "flex",
@@ -44,36 +47,7 @@ export const pdfStyles = StyleSheet.create({
 	},
 	value: {
 		width: "60%",
-		color: "#000",
-	},
-	table: {
-		marginBottom: 20,
-	},
-	tableHeader: {
-		display: "flex",
-		flexDirection: "row",
-		borderBottomWidth: 2,
-		borderBottomColor: "#1f2937",
-		paddingBottom: 8,
-		marginBottom: 8,
-		fontWeight: "bold",
-	},
-	tableRow: {
-		display: "flex",
-		flexDirection: "row",
-		borderBottomWidth: 1,
-		borderBottomColor: "#e5e7eb",
-		paddingBottom: 8,
-		marginBottom: 8,
-	},
-	tableCell: {
-		flex: 1,
-		fontSize: 10,
-	},
-	tableCellRight: {
-		flex: 1,
-		fontSize: 10,
-		textAlign: "right",
+		color: "#111827",
 	},
 	footer: {
 		marginTop: 40,
@@ -81,49 +55,185 @@ export const pdfStyles = StyleSheet.create({
 		borderTopWidth: 1,
 		borderTopColor: "#e5e7eb",
 		fontSize: 9,
-		color: "#666",
+		color: "#6b7280",
 		textAlign: "center",
 	},
-	totalsSection: {
-		marginTop: 20,
-		paddingTop: 20,
+
+	// ── Heading ──────────────────────────────────────────────────
+	heading: {
+		fontSize: 14,
+		fontWeight: "bold",
+		color: "#111827", // gray-900
+	},
+
+	// ── Dates row (inline "Issued on …" / "Due on …") ───────────
+	datesRow: {
+		display: "flex",
+		flexDirection: "row",
+		marginTop: 16,
+	},
+	datesCol: {
+		width: "50%",
+	},
+	dateLabel: {
+		fontSize: 10,
+		color: "#6b7280", // gray-500
+	},
+	dateValue: {
+		fontSize: 10,
+		color: "#374151", // gray-700
+	},
+
+	// ── From / To addresses ──────────────────────────────────────
+	addressSection: {
+		display: "flex",
+		flexDirection: "row",
+		marginTop: 16,
+		paddingTop: 16,
 		borderTopWidth: 1,
-		borderTopColor: "#e5e7eb",
+		borderTopColor: "#f3f4f6", // gray-100 (approx border-gray-900/5)
+	},
+	addressCol: {
+		width: "50%",
+	},
+	addressLabel: {
+		fontSize: 10,
+		fontWeight: "bold",
+		color: "#111827", // gray-900
+		marginBottom: 6,
+	},
+	addressName: {
+		fontSize: 10,
+		fontWeight: "bold",
+		color: "#111827", // gray-900
+		marginBottom: 2,
+	},
+	addressDetail: {
+		fontSize: 10,
+		color: "#6b7280", // gray-500
+		marginBottom: 2,
+	},
+
+	// ── Table ────────────────────────────────────────────────────
+	table: {
+		marginTop: 32,
+		marginBottom: 20,
+	},
+	tableHeader: {
+		display: "flex",
+		flexDirection: "row",
+		borderBottomWidth: 1,
+		borderBottomColor: "#e5e7eb", // gray-200
+		paddingBottom: 8,
+		marginBottom: 0,
+	},
+	tableRow: {
+		display: "flex",
+		flexDirection: "row",
+		borderBottomWidth: 1,
+		borderBottomColor: "#f3f4f6", // gray-100
+		paddingTop: 10,
+		paddingBottom: 10,
+	},
+	tableCell: {
+		flex: 1,
+		fontSize: 10,
+		color: "#374151", // gray-700
+	},
+	tableCellDesc: {
+		flex: 3,
+		fontSize: 10,
+		fontWeight: "bold",
+		color: "#111827", // gray-900
+	},
+	tableCellRight: {
+		flex: 1,
+		fontSize: 10,
+		textAlign: "right",
+		color: "#374151", // gray-700
+	},
+	tableHeaderCell: {
+		flex: 1,
+		fontSize: 10,
+		fontWeight: "bold",
+		color: "#111827", // gray-900
+	},
+	tableHeaderCellDesc: {
+		flex: 3,
+		fontSize: 10,
+		fontWeight: "bold",
+		color: "#111827", // gray-900
+	},
+	tableHeaderCellRight: {
+		flex: 1,
+		fontSize: 10,
+		fontWeight: "bold",
+		color: "#111827", // gray-900
+		textAlign: "right",
+	},
+
+	// ── Totals ───────────────────────────────────────────────────
+	totalsSection: {
+		marginTop: 12,
+		paddingTop: 0,
 	},
 	totalRow: {
 		display: "flex",
 		flexDirection: "row",
 		justifyContent: "flex-end",
-		marginBottom: 8,
+		marginBottom: 6,
 	},
 	totalLabel: {
 		width: 150,
-		fontWeight: "bold",
+		color: "#374151", // gray-700
 		paddingRight: 10,
+		textAlign: "right",
 	},
 	totalValue: {
 		width: 100,
 		textAlign: "right",
+		color: "#111827", // gray-900
+	},
+	discountValue: {
+		width: 100,
+		textAlign: "right",
+		color: "#059669", // green-600
 	},
 	grandTotal: {
 		display: "flex",
 		flexDirection: "row",
 		justifyContent: "flex-end",
-		marginTop: 10,
-		paddingTop: 10,
-		borderTopWidth: 2,
-		borderTopColor: "#1f2937",
+		marginTop: 6,
+		paddingTop: 0,
 	},
 	grandTotalLabel: {
 		width: 150,
 		fontWeight: "bold",
-		fontSize: 12,
+		fontSize: 11,
+		color: "#111827", // gray-900
 		paddingRight: 10,
+		textAlign: "right",
 	},
 	grandTotalValue: {
 		width: 100,
 		textAlign: "right",
 		fontWeight: "bold",
-		fontSize: 12,
+		fontSize: 11,
+		color: "#111827", // gray-900
+	},
+
+	// ── Notes ────────────────────────────────────────────────────
+	notesSection: {
+		marginTop: 24,
+	},
+	notesHeading: {
+		fontSize: 11,
+		fontWeight: "bold",
+		color: "#111827", // gray-900
+		marginBottom: 6,
+	},
+	notesText: {
+		fontSize: 10,
+		color: "#6b7280", // gray-500
 	},
 });
