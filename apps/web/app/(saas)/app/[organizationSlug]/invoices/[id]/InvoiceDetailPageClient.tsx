@@ -145,6 +145,10 @@ export function InvoiceDetailPageClient({
 	const canCancel = ["draft", "sent", "partial", "overdue"].includes(
 		invoice.status,
 	);
+	const outstandingAmount = Math.max(
+		Number(invoice.totalAmount) - Number(invoice.paidAmount ?? "0"),
+		0,
+	);
 
 	// Build activity timeline from real invoice timestamps
 	const activityItems: {
@@ -237,6 +241,63 @@ export function InvoiceDetailPageClient({
 				</>
 			}
 		>
+			<div className="relative isolate mb-8 overflow-hidden rounded-2xl border border-gray-200/80 bg-gradient-to-r from-slate-50 via-white to-emerald-50/70 px-6 py-6 sm:px-8">
+				<div
+					aria-hidden="true"
+					className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-emerald-200/45 blur-3xl"
+				/>
+				<div
+					aria-hidden="true"
+					className="pointer-events-none absolute -left-10 -bottom-20 h-44 w-44 rounded-full bg-sky-200/30 blur-3xl"
+				/>
+
+				<div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+					<div>
+						<p className="text-xs font-semibold tracking-[0.16em] text-gray-500 uppercase">
+							Invoice Summary
+						</p>
+						<h2 className="mt-2 text-xl font-semibold tracking-tight text-gray-900 sm:text-2xl">
+							{invoice.invoiceNumber}
+						</h2>
+						<p className="mt-1 text-sm text-gray-600">
+							<span className="font-medium text-gray-900">
+								{organizationName}
+							</span>
+							<span className="mx-2 text-gray-300">/</span>
+							{invoice.client?.name ?? "No client"}
+						</p>
+					</div>
+
+					<dl className="grid grid-cols-1 gap-5 text-sm sm:grid-cols-3 sm:gap-8">
+						<div>
+							<dt className="text-gray-500">Issued</dt>
+							<dd className="mt-1 font-semibold text-gray-900">
+								{formatDate(invoice.issueDate)}
+							</dd>
+						</div>
+						<div>
+							<dt className="text-gray-500">Due</dt>
+							<dd className="mt-1 font-semibold text-gray-900">
+								{formatDate(invoice.dueDate)}
+							</dd>
+						</div>
+						<div>
+							<dt className="text-gray-500">Outstanding</dt>
+							<dd
+								className={cn(
+									"mt-1 font-semibold",
+									outstandingAmount === 0
+										? "text-green-700"
+										: "text-gray-900",
+								)}
+							>
+								{formatMoney(outstandingAmount.toString())}
+							</dd>
+						</div>
+					</dl>
+				</div>
+			</div>
+
 			{/* ── 3-column stacked grid ── */}
 			<div className="grid max-w-2xl grid-cols-1 grid-rows-1 items-start gap-x-8 gap-y-8 lg:mx-0 lg:max-w-none lg:grid-cols-3">
 				{/* ── Right Column: Summary Card ── */}
@@ -589,6 +650,26 @@ function InvoiceDetailSkeleton({
 			title={<Skeleton className="h-5 w-40" />}
 			backHref={`/app/${organizationSlug}/invoices`}
 		>
+			<div className="mb-8 rounded-2xl border border-gray-200/70 bg-gray-50/70 p-6 sm:p-8">
+				<Skeleton className="h-3 w-28" />
+				<Skeleton className="mt-3 h-7 w-56" />
+				<Skeleton className="mt-2 h-4 w-64" />
+				<div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-3">
+					<div className="space-y-2">
+						<Skeleton className="h-3 w-16" />
+						<Skeleton className="h-4 w-24" />
+					</div>
+					<div className="space-y-2">
+						<Skeleton className="h-3 w-12" />
+						<Skeleton className="h-4 w-24" />
+					</div>
+					<div className="space-y-2">
+						<Skeleton className="h-3 w-20" />
+						<Skeleton className="h-4 w-24" />
+					</div>
+				</div>
+			</div>
+
 			<div className="grid max-w-2xl grid-cols-1 grid-rows-1 items-start gap-x-8 gap-y-8 lg:mx-0 lg:max-w-none lg:grid-cols-3">
 				{/* Summary card skeleton */}
 				<div className="lg:col-start-3 lg:row-end-1">
