@@ -1,5 +1,12 @@
 import { ORPCError } from "@orpc/server";
-import { and, bookings, db, eq, isNull, paymentSchedules } from "@repo/database";
+import {
+	and,
+	bookings,
+	db,
+	eq,
+	isNull,
+	paymentSchedules,
+} from "@repo/database";
 import { studioProtectedProcedure } from "../../../../orpc/procedures";
 import {
 	detectChanges,
@@ -95,6 +102,10 @@ export const updateSchedule = studioProtectedProcedure
 			updateData.dueDate = updates.dueDate;
 		}
 
+		if (updates.taxType !== undefined) {
+			updateData.taxType = updates.taxType;
+		}
+
 		if (updates.notes !== undefined) {
 			updateData.notes = updates.notes;
 		}
@@ -137,15 +148,17 @@ export const updateSchedule = studioProtectedProcedure
 				name: schedule.name,
 				amount: schedule.amount,
 				dueDate: schedule.dueDate,
+				taxType: schedule.taxType,
 				notes: schedule.notes,
 			},
 			{
 				name: updates.name,
 				amount: updates.amount,
 				dueDate: updates.dueDate,
+				taxType: updates.taxType,
 				notes: updates.notes,
 			},
-			["name", "amount", "dueDate", "notes"],
+			["name", "amount", "dueDate", "taxType", "notes"],
 		).map((c) => ({
 			...c,
 			// Format values for display

@@ -197,6 +197,13 @@
       "when": 1771165203081,
       "tag": "0027_freezing_felicia_hardy",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1771172624176,
+      "tag": "0028_add_schedule_tax_type_backfill",
+      "breakpoints": true
     }
   ]
 }

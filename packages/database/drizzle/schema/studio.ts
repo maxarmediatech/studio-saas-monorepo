@@ -917,6 +917,7 @@ export const paymentSchedules = pgTable(
 		status: paymentScheduleStatusEnum("status")
 			.default("pending")
 			.notNull(),
+		taxType: taxTypeEnum("tax_type").default("exclusive").notNull(),
 
 		paidAmount: decimal("paid_amount", { precision: 12, scale: 2 })
 			.default("0")

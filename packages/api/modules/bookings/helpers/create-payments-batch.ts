@@ -59,6 +59,7 @@ export async function createPaymentsBatch(
 					name: schedule.name,
 					amount: schedule.amount,
 					dueDate: schedule.dueDate,
+					taxType: "no_gst" as const,
 					status: "pending" as const,
 					paidAmount: "0",
 					notes: schedule.notes ?? null,

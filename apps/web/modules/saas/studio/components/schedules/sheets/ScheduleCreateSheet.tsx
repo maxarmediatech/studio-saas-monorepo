@@ -34,6 +34,7 @@ export function ScheduleCreateSheet() {
 				name: data.name,
 				amount: data.amount,
 				dueDate: data.dueDate,
+				taxType: data.taxType,
 				notes: data.notes || undefined,
 			});
 

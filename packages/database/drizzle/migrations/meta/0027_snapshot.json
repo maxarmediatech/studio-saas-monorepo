@@ -9397,6 +9397,14 @@
           "notNull": true,
           "default": "'pending'"
         },
+        "tax_type": {
+          "name": "tax_type",
+          "type": "tax_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'exclusive'"
+        },
         "paid_amount": {
           "name": "paid_amount",
           "type": "numeric(12, 2)",

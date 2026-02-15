@@ -122,6 +122,7 @@ export const listSchedules = studioProtectedProcedure
 				amount: paymentSchedules.amount,
 				dueDate: paymentSchedules.dueDate,
 				status: paymentSchedules.status,
+				taxType: paymentSchedules.taxType,
 				paidAmount: paymentSchedules.paidAmount,
 				paidAt: paymentSchedules.paidAt,
 				notes: paymentSchedules.notes,
@@ -170,7 +171,10 @@ export const listSchedules = studioProtectedProcedure
 					receivedAmounts,
 					and(
 						eq(receipts.receivedAmountId, receivedAmounts.id),
-						eq(receivedAmounts.organizationId, context.organizationId),
+						eq(
+							receivedAmounts.organizationId,
+							context.organizationId,
+						),
 						isNull(receivedAmounts.deletedAt),
 					),
 				)
@@ -206,6 +210,7 @@ export const listSchedules = studioProtectedProcedure
 			amount: row.amount,
 			dueDate: row.dueDate,
 			status: row.status,
+			taxType: row.taxType,
 			paidAmount: row.paidAmount,
 			paidAt: row.paidAt?.toISOString() ?? null,
 			notes: row.notes,

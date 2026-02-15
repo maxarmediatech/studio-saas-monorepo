@@ -30,7 +30,8 @@ export const createSchedule = studioProtectedProcedure
 	.handler(async ({ input, context }) => {
 		await requirePermission(context, "payment", "create");
 
-		const { bookingId, name, amount, dueDate, notes, sortOrder } = input;
+		const { bookingId, name, amount, dueDate, taxType, notes, sortOrder } =
+			input;
 
 		// Verify booking exists and belongs to organization
 		const booking = await db.query.bookings.findFirst({
@@ -93,6 +94,7 @@ export const createSchedule = studioProtectedProcedure
 				name,
 				amount,
 				dueDate,
+				taxType: taxType ?? "no_gst",
 				status: "pending",
 				paidAmount: "0",
 				notes: notes ?? null,

@@ -19,6 +19,13 @@ import {
 	InputGroupText,
 } from "@repo/ui/components/input-group";
 import { ScrollArea } from "@repo/ui/components/scroll-area";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@repo/ui/components/select";
 import { Textarea } from "@repo/ui/components/textarea";
 import { formatMoney } from "@saas/shared/lib";
 import { PAYMENT_SCHEDULE_PRESETS } from "@saas/studio/components/bookings/booking-form";
@@ -30,6 +37,12 @@ import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { FormActions } from "../ui/FormActions";
 
+const taxTypeOptions = [
+	{ value: "exclusive", label: "Exclusive (add GST)" },
+	{ value: "inclusive", label: "Inclusive (GST included)" },
+	{ value: "no_gst", label: "No GST" },
+] as const;
+
 const scheduleFormSchema = z.object({
 	bookingId: z.string().min(1, "Booking is required"),
 	name: z.string().min(1, "Schedule name is required").max(100),
@@ -38,6 +51,7 @@ const scheduleFormSchema = z.object({
 		.min(1, "Amount is required")
 		.regex(/^\d+(\.\d{1,2})?$/, "Must be a valid amount"),
 	dueDate: z.string().min(1, "Due date is required"),
+	taxType: z.enum(["exclusive", "inclusive", "no_gst"]),
 	notes: z.string().max(10000).optional().or(z.literal("")),
 });
 
@@ -89,6 +103,7 @@ export function ScheduleForm({
 			name: "",
 			amount: "",
 			dueDate: new Date().toISOString().split("T")[0],
+			taxType: "no_gst",
 			notes: "",
 		},
 	});
@@ -115,6 +130,7 @@ export function ScheduleForm({
 				name: defaultValues.name,
 				amount: defaultValues.amount,
 				dueDate: defaultValues.dueDate,
+				taxType: defaultValues.taxType ?? "no_gst",
 				notes: defaultValues.notes ?? "",
 			});
 
@@ -346,7 +362,7 @@ export function ScheduleForm({
 							)}
 						/>
 
-						<div className="grid grid-cols-2 gap-4">
+						<div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
 							<Controller
 								name="amount"
 								control={form.control}
@@ -389,6 +405,48 @@ export function ScheduleForm({
 												}}
 											/>
 										</InputGroup>
+										{fieldState.invalid && (
+											<FieldError
+												errors={[fieldState.error]}
+											/>
+										)}
+									</Field>
+								)}
+							/>
+
+							<Controller
+								name="taxType"
+								control={form.control}
+								render={({ field, fieldState }) => (
+									<Field data-invalid={fieldState.invalid}>
+										<FieldLabel htmlFor={field.name}>
+											GST Type *
+										</FieldLabel>
+										<Select
+											value={field.value}
+											onValueChange={field.onChange}
+										>
+											<SelectTrigger
+												id={field.name}
+												aria-invalid={
+													fieldState.invalid
+												}
+											>
+												<SelectValue placeholder="Select GST type" />
+											</SelectTrigger>
+											<SelectContent>
+												{taxTypeOptions.map(
+													(option) => (
+														<SelectItem
+															key={option.value}
+															value={option.value}
+														>
+															{option.label}
+														</SelectItem>
+													),
+												)}
+											</SelectContent>
+										</Select>
 										{fieldState.invalid && (
 											<FieldError
 												errors={[fieldState.error]}

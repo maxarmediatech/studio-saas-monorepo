@@ -21,6 +21,7 @@ import {
 	paymentMethodSchema,
 	paymentScheduleStatusSchema,
 	searchSchema,
+	taxTypeSchema,
 	uploadedAttachmentSchema,
 } from "./common";
 
@@ -82,6 +83,7 @@ export const paymentScheduleSchema = z.object({
 	amount: z.string(),
 	dueDate: z.string(),
 	status: paymentScheduleStatusSchema,
+	taxType: taxTypeSchema,
 	paidAmount: z.string(),
 	paidAt: z.string().nullable(),
 	notes: z.string().nullable(),
@@ -357,6 +359,7 @@ export const createScheduleInputSchema = z.object({
 	name: nameSchema,
 	amount: moneySchema,
 	dueDate: dateSchema,
+	taxType: taxTypeSchema.optional(),
 	notes: notesSchema,
 	sortOrder: z.number().min(0).optional(),
 });
@@ -376,6 +379,7 @@ export const updateScheduleInputSchema = z.object({
 	name: nameSchema.optional(),
 	amount: moneySchema.optional(),
 	dueDate: dateSchema.optional(),
+	taxType: taxTypeSchema.optional(),
 	notes: notesSchema.nullable(),
 	sortOrder: z.number().min(0).optional(),
 });
