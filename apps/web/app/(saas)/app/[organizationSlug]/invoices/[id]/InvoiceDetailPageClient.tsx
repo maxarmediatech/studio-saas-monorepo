@@ -5,7 +5,11 @@ import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
 import { formatMoney } from "@saas/shared/lib";
 import { PageContent } from "@saas/studio";
-import { invoicesApi, invoicesMutations } from "@saas/studio/lib/api";
+import {
+	invoicesApi,
+	invoicesMutations,
+	receiptsApi,
+} from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -86,7 +90,12 @@ export function InvoiceDetailPageClient({
 		invoicesApi.getOptions(invoiceId),
 	);
 
+	const { data: receiptsData } = useQuery(
+		receiptsApi.listOptions({ invoiceId }),
+	);
+
 	const invoice = invoiceData?.data;
+	const receipts = receiptsData?.data ?? [];
 
 	const markSentMutation = useMutation({
 		...invoicesMutations.markSent(),
@@ -132,7 +141,7 @@ export function InvoiceDetailPageClient({
 					</p>
 					<Link
 						href={`/app/${organizationSlug}/invoices`}
-						className="mt-4 text-sm font-medium text-indigo-600 hover:text-indigo-500"
+						className="mt-4 text-sm font-medium text-blue-600 hover:text-blue-500"
 					>
 						&larr; Back to invoices
 					</Link>
@@ -150,26 +159,61 @@ export function InvoiceDetailPageClient({
 		0,
 	);
 
-	// Build activity timeline from real invoice timestamps
+	// Build activity timeline from real invoice timestamps + receipts
 	const activityItems: {
-		label: string;
+		label: React.ReactNode;
 		date: string;
 		icon: "default" | "check";
 	}[] = [
-		{ label: "Invoice created", date: invoice.createdAt, icon: "default" },
+		{
+			label: <span className="font-medium text-gray-900">Invoice created</span>,
+			date: invoice.createdAt,
+			icon: "default",
+		},
 	];
 
 	if (invoice.sentAt) {
 		activityItems.push({
-			label: "Marked as sent",
+			label: <span className="font-medium text-gray-900">Invoice sent</span>,
 			date: invoice.sentAt,
 			icon: "default",
 		});
 	}
 
+	// Add receipt entries — each receipt generates two timeline items
+	for (const receipt of receipts) {
+		if (receipt.receivedAmountId) {
+			activityItems.push({
+				label: (
+					<Link
+						href={`/app/${organizationSlug}/payments/${receipt.receivedAmountId}`}
+						className="font-medium text-blue-600 hover:text-blue-500"
+					>
+						Payment received
+					</Link>
+				),
+				date: receipt.createdAt,
+				icon: "check",
+			});
+		}
+
+		activityItems.push({
+			label: (
+				<Link
+					href={`/app/${organizationSlug}/receipts/${receipt.id}`}
+					className="font-medium text-blue-600 hover:text-blue-500"
+				>
+					Receipt generated
+				</Link>
+			),
+			date: receipt.createdAt,
+			icon: "check",
+		});
+	}
+
 	if (invoice.paidAt) {
 		activityItems.push({
-			label: "Payment received",
+			label: <span className="font-medium text-gray-900">Invoice paid</span>,
 			date: invoice.paidAt,
 			icon: "check",
 		});
@@ -177,11 +221,16 @@ export function InvoiceDetailPageClient({
 
 	if (invoice.status === "cancelled") {
 		activityItems.push({
-			label: "Invoice cancelled",
+			label: <span className="font-medium text-gray-900">Invoice cancelled</span>,
 			date: invoice.updatedAt,
 			icon: "default",
 		});
 	}
+
+	// Sort chronologically
+	activityItems.sort(
+		(a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+	);
 
 	return (
 		<PageContent
@@ -360,17 +409,19 @@ export function InvoiceDetailPageClient({
 							</div>
 						</dl>
 
-						{/* Download receipt link */}
-						<div className="border-t border-gray-900/5 px-6 py-6">
-							<a
-								href={`/api/invoices/${invoiceId}/pdf`}
-								download={`${invoice.invoiceNumber}.pdf`}
-								className="text-sm/6 font-semibold text-gray-900"
-							>
-								Download receipt{" "}
-								<span aria-hidden="true">&rarr;</span>
-							</a>
-						</div>
+						{/* Download receipt link — only shown when a receipt exists */}
+						{receipts.length > 0 && (
+							<div className="border-t border-gray-900/5 px-6 py-6">
+								<a
+									href={`/api/receipts/${receipts[0].id}/pdf`}
+									download={`${receipts[0].receiptNumber}.pdf`}
+									className="text-sm/6 font-semibold text-gray-900"
+								>
+									Download receipt{" "}
+									<span aria-hidden="true">&rarr;</span>
+								</a>
+							</div>
+						)}
 					</div>
 				</div>
 
@@ -586,20 +637,21 @@ export function InvoiceDetailPageClient({
 					<ul className="mt-6 space-y-6">
 						{activityItems.map((item, idx) => (
 							<li
-								key={item.label}
+								key={idx}
 								className="relative flex gap-x-4"
 							>
 								{/* Vertical connector line */}
-								{idx < activityItems.length - 1 && (
-									<div className="absolute left-0 top-0 flex w-6 justify-center -bottom-6">
-										<div className="w-px bg-gray-200" />
-									</div>
-								)}
+								<div className={cn(
+									idx === activityItems.length - 1 ? "h-6" : "-bottom-6",
+									"absolute left-0 top-0 flex w-6 justify-center",
+								)}>
+									<div className="w-px bg-gray-200" />
+								</div>
 
 								{/* Dot / icon */}
 								<div className="relative flex h-6 w-6 flex-none items-center justify-center bg-white">
 									{item.icon === "check" ? (
-										<CheckCircle2 className="h-6 w-6 text-indigo-600" />
+										<CheckCircle2 className="h-6 w-6 text-blue-600" />
 									) : (
 										<div className="h-1.5 w-1.5 rounded-full bg-gray-100 ring-1 ring-gray-300" />
 									)}
@@ -607,9 +659,7 @@ export function InvoiceDetailPageClient({
 
 								{/* Content */}
 								<p className="flex-auto py-0.5 text-xs/5 text-gray-500">
-									<span className="font-medium text-gray-900">
-										{item.label}
-									</span>
+									{item.label}
 								</p>
 								<time
 									dateTime={item.date}
