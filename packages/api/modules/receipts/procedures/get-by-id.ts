@@ -57,7 +57,6 @@ export const getReceipt = studioProtectedProcedure
 				and(
 					eq(receipts.id, id),
 					eq(receipts.organizationId, context.organizationId),
-					isNull(receipts.deletedAt),
 				),
 			)
 			.limit(1);
