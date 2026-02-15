@@ -182,6 +182,35 @@ export function InvoiceDetailPageClient({
 		["draft", "sent", "partial", "overdue", "paid"].includes(
 			invoice.status,
 		) && Number(invoice.paidAmount ?? "0") === 0;
+	const handleCopyUrl = async () => {
+		const url = window.location.href;
+
+		try {
+			if (navigator.clipboard?.writeText && window.isSecureContext) {
+				await navigator.clipboard.writeText(url);
+				toast.success("Link copied to clipboard");
+				return;
+			}
+
+			const input = document.createElement("textarea");
+			input.value = url;
+			input.setAttribute("readonly", "");
+			input.style.position = "absolute";
+			input.style.left = "-9999px";
+			document.body.appendChild(input);
+			input.select();
+			const copied = document.execCommand("copy");
+			document.body.removeChild(input);
+
+			if (!copied) {
+				throw new Error("Copy command failed");
+			}
+
+			toast.success("Link copied to clipboard");
+		} catch {
+			toast.error("Failed to copy link");
+		}
+	};
 
 	// Build activity timeline from real invoice timestamps + receipts
 	const activityItems: {
@@ -294,8 +323,7 @@ export function InvoiceDetailPageClient({
 						variant="outline"
 						size="sm"
 						onClick={() => {
-							navigator.clipboard.writeText(window.location.href);
-							toast.success("Link copied to clipboard");
+							void handleCopyUrl();
 						}}
 					>
 						<LinkIcon className="mr-2 h-4 w-4" />
