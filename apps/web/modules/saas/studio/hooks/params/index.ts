@@ -12,6 +12,7 @@ export { useCrewParams } from "./use-crew-params";
 export { useDeliverableParams } from "./use-deliverable-params";
 export { useDiscussionParams } from "./use-discussion-params";
 export { useExpenseParams } from "./use-expense-params";
+export { useInvoiceGenerateParams } from "./use-invoice-generate-params";
 export { usePaymentParams } from "./use-payment-params";
 export { useReviewQueueParams } from "./use-review-queue-params";
 export { useScheduleParams } from "./use-schedule-params";

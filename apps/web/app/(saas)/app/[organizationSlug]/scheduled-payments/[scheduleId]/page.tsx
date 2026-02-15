@@ -10,6 +10,8 @@ import {
 	getScheduleStatusLabel,
 	getScheduleStatusVariant,
 } from "@saas/studio/components/schedules/schedule-status-presentation";
+import { InvoiceGenerateSheet } from "@saas/studio/components/invoices/sheets/InvoiceGenerateSheet";
+import { useInvoiceGenerateParams } from "@saas/studio/hooks/params/use-invoice-generate-params";
 import { useScheduleParams } from "@saas/studio/hooks/params/use-schedule-params";
 import { studioPaymentsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
@@ -42,6 +44,7 @@ export default function ScheduleDetailPage() {
 		scheduleId: string;
 	}>();
 	const { openEdit } = useScheduleParams();
+	const { openEdit: openGenerateInvoice } = useInvoiceGenerateParams();
 
 	const { data: scheduleData, isLoading } = useQuery(
 		studioPaymentsApi.getScheduleOptions(params.scheduleId),
@@ -73,12 +76,20 @@ export default function ScheduleDetailPage() {
 
 	const StatusIcon = getScheduleStatusIcon(schedule.status);
 	const isCompleted = schedule.status === "completed";
+	const isCancelled = schedule.status === "cancelled";
 	const paid = Number(schedule.paidAmount);
 	const amount = Number(schedule.amount);
 	const paidPercent = amount > 0 ? Math.min((paid / amount) * 100, 100) : 0;
+	const canGenerateInvoice =
+		!schedule.invoiceId &&
+		!isCompleted &&
+		!isCancelled &&
+		paid <= 0 &&
+		schedule.status !== "partial";
 
 	return (
-		<div className="mx-auto w-full max-w-[860px] py-6 px-4">
+		<>
+			<div className="mx-auto w-full max-w-[860px] py-6 px-4">
 			<div className="flex items-center justify-between gap-3">
 				<div className="flex items-center gap-2 text-sm">
 					<Link
@@ -93,14 +104,26 @@ export default function ScheduleDetailPage() {
 						{schedule.name}
 					</span>
 				</div>
-				<Button
-					variant="outline"
-					size="sm"
-					onClick={() => openEdit(schedule.id)}
-				>
-					<PencilIcon className="mr-1 size-4" />
-					Edit
-				</Button>
+				<div className="flex items-center gap-2">
+					{canGenerateInvoice && (
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => openGenerateInvoice(schedule.id)}
+						>
+							<FileTextIcon className="mr-1 size-4" />
+							Generate Invoice
+						</Button>
+					)}
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => openEdit(schedule.id)}
+					>
+						<PencilIcon className="mr-1 size-4" />
+						Edit
+					</Button>
+				</div>
 			</div>
 
 			<div className="mt-8">
@@ -256,5 +279,8 @@ export default function ScheduleDetailPage() {
 				)}
 			</div>
 		</div>
+
+			<InvoiceGenerateSheet />
+		</>
 	);
 }

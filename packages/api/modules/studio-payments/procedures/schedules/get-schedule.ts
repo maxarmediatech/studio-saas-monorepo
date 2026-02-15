@@ -4,6 +4,7 @@ import {
 	bookings,
 	db,
 	eq,
+	invoices,
 	isNull,
 	paymentSchedules,
 	receivedAmounts,
@@ -54,9 +55,19 @@ export const getSchedule = studioProtectedProcedure
 				deletedBy: paymentSchedules.deletedBy,
 				bookingName: bookings.name,
 				bookingReferenceNumber: bookings.referenceNumber,
+				invoiceId: invoices.id,
+				invoiceNumber: invoices.invoiceNumber,
 			})
 			.from(paymentSchedules)
 			.innerJoin(bookings, eq(paymentSchedules.bookingId, bookings.id))
+			.leftJoin(
+				invoices,
+				and(
+					eq(invoices.paymentScheduleId, paymentSchedules.id),
+					eq(invoices.organizationId, context.organizationId),
+					isNull(invoices.deletedAt),
+				),
+			)
 			.where(
 				and(
 					eq(paymentSchedules.id, id),
@@ -111,6 +122,8 @@ export const getSchedule = studioProtectedProcedure
 				updatedAt: schedule.updatedAt.toISOString(),
 				deletedAt: schedule.deletedAt?.toISOString() ?? null,
 				deletedBy: schedule.deletedBy,
+				invoiceId: schedule.invoiceId,
+				invoiceNumber: schedule.invoiceNumber,
 				booking: {
 					id: schedule.bookingId,
 					name: schedule.bookingName,

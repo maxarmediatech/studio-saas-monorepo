@@ -28,6 +28,7 @@ import type { SavedView } from "@saas/shared/components/views";
 import "@saas/shared/components/data-table/types";
 import { cn } from "@repo/ui/lib/utils";
 import { formatMoney } from "@saas/shared/lib";
+import { useInvoiceGenerateParams } from "@saas/studio/hooks/params/use-invoice-generate-params";
 import { useScheduleConvertParams } from "@saas/studio/hooks/params/use-schedule-convert-params";
 import { useScheduleParams } from "@saas/studio/hooks/params/use-schedule-params";
 import {
@@ -35,7 +36,6 @@ import {
 	useSchedulesTableWithViews,
 } from "@saas/studio/hooks/tables";
 import {
-	invoicesMutations,
 	studioPaymentsApi,
 	studioPaymentsMutations,
 } from "@saas/studio/lib/api";
@@ -57,6 +57,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { InvoiceGenerateSheet } from "../invoices/sheets/InvoiceGenerateSheet";
 import { OpenScheduleCreateSheet } from "./OpenScheduleSheet";
 import {
 	getScheduleStatusIcon,
@@ -126,6 +127,7 @@ export function SchedulesTableClient({
 	// URL-based sheet params (openEdit used inline in rowActions)
 	const { openEdit } = useScheduleParams();
 	const { openConvert } = useScheduleConvertParams();
+	const { openEdit: openGenerateInvoice } = useInvoiceGenerateParams();
 
 	// Build query input from hook state
 	const queryInput = {
@@ -167,23 +169,6 @@ export function SchedulesTableClient({
 		},
 		onError: (error) => {
 			toast.error(error.message || "Failed to delete schedule");
-		},
-	});
-
-	// Generate invoice mutation
-	const generateInvoiceMutation = useMutation({
-		...invoicesMutations.createFromSchedule(),
-		onSuccess: () => {
-			toast.success("Invoice generated successfully");
-			queryClient.invalidateQueries({
-				queryKey: orpc.studioPayments.key(),
-			});
-			queryClient.invalidateQueries({
-				queryKey: orpc.invoices.key(),
-			});
-		},
-		onError: (error) => {
-			toast.error(error.message || "Failed to generate invoice");
 		},
 	});
 
@@ -241,10 +226,7 @@ export function SchedulesTableClient({
 			{
 				label: "Generate Invoice",
 				icon: <FileTextIcon className="h-4 w-4" />,
-				onClick: (row) =>
-					generateInvoiceMutation.mutate({
-						paymentScheduleId: row.id,
-					}),
+				onClick: (row) => openGenerateInvoice(row.id),
 				show: (row) =>
 					!row.invoiceId &&
 					Number(row.paidAmount) <= 0 &&
@@ -279,7 +261,7 @@ export function SchedulesTableClient({
 		[
 			openConvert,
 			openEdit,
-			generateInvoiceMutation,
+			openGenerateInvoice,
 			organizationSlug,
 			router,
 		],
@@ -636,6 +618,9 @@ export function SchedulesTableClient({
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
+
+			{/* Generate invoice sheet */}
+			<InvoiceGenerateSheet />
 		</>
 	);
 }

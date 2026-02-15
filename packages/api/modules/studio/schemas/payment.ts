@@ -327,6 +327,8 @@ export type GetScheduleInput = z.infer<typeof getScheduleInputSchema>;
  * Payment schedule detail with booking info and linked payments
  */
 export const paymentScheduleDetailSchema = paymentScheduleSchema.extend({
+	invoiceId: idSchema.nullable(),
+	invoiceNumber: z.string().nullable(),
 	booking: z.object({
 		id: idSchema,
 		name: z.string(),
