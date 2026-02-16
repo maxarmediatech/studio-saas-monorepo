@@ -262,12 +262,12 @@ describe("Msg91Provider", () => {
 	describe("Request Timeout", () => {
 		it("should timeout if request takes longer than 15 seconds", async () => {
 			// Mock fetch to simulate slow network
-			const slowFetch = vi.fn(
-				() =>
-					new Promise((resolve) => {
-						setTimeout(() => {
-							resolve(
-								new Response(
+				const slowFetch = vi.fn(
+					() =>
+						new Promise<Response>((resolve) => {
+							setTimeout(() => {
+								resolve(
+									new Response(
 									JSON.stringify({
 										type: "success",
 										message: "OK",
@@ -294,12 +294,12 @@ describe("Msg91Provider", () => {
 		});
 
 		it("should succeed if request completes within 15 seconds", async () => {
-			const fastFetch = vi.fn(
-				() =>
-					new Promise((resolve) => {
-						setTimeout(() => {
-							resolve(
-								new Response(
+				const fastFetch = vi.fn(
+					() =>
+						new Promise<Response>((resolve) => {
+							setTimeout(() => {
+								resolve(
+									new Response(
 									JSON.stringify({
 										type: "success",
 										message: "OK",

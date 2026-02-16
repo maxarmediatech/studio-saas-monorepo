@@ -6,13 +6,13 @@
  * - Stuck message recovery (processing > 5min -> pending)
  * - Graceful shutdown (await in-flight, 30s timeout)
  * - Overlapping batch prevention
- * - Exponential backoff (30 * 2^(attempt-1), max 15min)
+ * - Exponential backoff with jitter (30 * 2^(attempt-1), max 15min)
  */
 
 import crypto from "node:crypto";
 import { and, db, eq, inArray, lt, smsOutbox, sql } from "@repo/database";
 import { logger } from "@repo/logs";
-import { createMsg91Provider } from "@repo/sms/src/provider/msg91";
+import { createMsg91Provider } from "@repo/sms";
 
 // ============================================================================
 // TYPES
@@ -69,17 +69,24 @@ type SmsOutboxRow = typeof smsOutbox.$inferSelect;
 
 /**
  * Compute next retry time using exponential backoff
- * Formula: 30 * 2^(attempts-1) seconds, capped at 15 minutes
+ * Formula: (30 * 2^(attempts-1)) * jitter seconds, capped at 15 minutes
+ * Jitter multiplier range: 0.5 .. 1.0
  */
-export function computeNextAttemptAt(attempts: number): Date {
+export function computeNextAttemptAt(
+	attempts: number,
+	randomValue = Math.random(),
+): Date {
 	const baseDelaySeconds = 30;
 	const maxDelaySeconds = 15 * 60; // 15 minutes
 
-	// Exponential: 30 * 2^(attempts-1)
-	const delaySeconds = Math.min(
+	// Exponential: 30 * 2^(attempts-1), capped at 15m
+	const baseDelay = Math.min(
 		baseDelaySeconds * 2 ** (attempts - 1),
 		maxDelaySeconds,
 	);
+	const boundedRandom = Math.max(0, Math.min(1, randomValue));
+	const jitterMultiplier = 0.5 + boundedRandom * 0.5;
+	const delaySeconds = Math.ceil(baseDelay * jitterMultiplier);
 
 	return new Date(Date.now() + delaySeconds * 1000);
 }
@@ -124,7 +131,7 @@ export async function claimMessages(
 			return [];
 		}
 
-		// Step 2: Update to processing with lock metadata and increment attempts
+		// Step 2: Update to processing with lock metadata
 		await tx
 			.update(smsOutbox)
 			.set({
@@ -132,8 +139,6 @@ export async function claimMessages(
 				lockedAt: now,
 				lockedBy: workerId,
 				processingStartedAt: now,
-				lastAttemptAt: now,
-				attempts: sql`COALESCE(${smsOutbox.attempts}, 0) + 1`,
 				updatedAt: now,
 			})
 			.where(inArray(smsOutbox.id, pendingIds));
@@ -225,23 +230,41 @@ export function createSmsWorker(config: SmsWorkerConfig): SmsWorker {
 	let maxConcurrentBatches = 0;
 	let currentConcurrentBatches = 0;
 	let inFlightCount = 0;
+	let lastRecoveryRunAt = 0;
+	let provider: ReturnType<typeof createMsg91Provider> | null = null;
+
+	function getProvider(): ReturnType<typeof createMsg91Provider> {
+		if (!provider) {
+			provider = createMsg91Provider();
+		}
+		return provider;
+	}
 
 	/**
 	 * Process a single message
 	 */
 	async function processMessage(item: SmsOutboxRow): Promise<void> {
-		const attempts = item.attempts ?? 1;
+		const previousAttempts = item.attempts ?? 0;
 		const maxAttempts = item.maxAttempts ?? 3;
 
 		try {
-			const provider = createMsg91Provider();
-			const variables = item.variables as Record<string, string> | null;
-			const message = variables?.message ?? variables?.VAR1 ?? "";
+			const smsProvider = getProvider();
+			const variables = (item.variables ?? {}) as Record<
+				string,
+				string | number | boolean
+			>;
+			const message =
+				typeof variables.message === "string"
+					? variables.message
+					: typeof variables.VAR1 === "string"
+						? variables.VAR1
+						: "";
 
-			const result = await provider.send({
+			const result = await smsProvider.send({
 				to: item.phoneNumber,
 				message,
 				templateId: item.templateId,
+				variables,
 			});
 
 			if (!result.success) {
@@ -251,9 +274,14 @@ export function createSmsWorker(config: SmsWorkerConfig): SmsWorker {
 				);
 				await markOutboxFailure({
 					outboxId: item.id,
-					attempts,
+					previousAttempts,
 					maxAttempts,
 					errorMessage: result.error ?? "Failed to send SMS",
+					errorCode: result.errorCode,
+					providerStatusCode: result.statusCode,
+					retryable: result.permanentFailure
+						? false
+						: (result.retryable ?? true),
 				});
 				return;
 			}
@@ -265,6 +293,7 @@ export function createSmsWorker(config: SmsWorkerConfig): SmsWorker {
 			await markOutboxSuccess({
 				outboxId: item.id,
 				providerMessageId: result.messageId,
+				providerStatusCode: result.statusCode,
 			});
 		} catch (error) {
 			const errorMessage =
@@ -272,9 +301,11 @@ export function createSmsWorker(config: SmsWorkerConfig): SmsWorker {
 			logger.error({ outboxId: item.id, error }, "SMS processing error");
 			await markOutboxFailure({
 				outboxId: item.id,
-				attempts,
+				previousAttempts,
 				maxAttempts,
 				errorMessage,
+				errorCode: "PROCESSING_ERROR",
+				retryable: true,
 			});
 		}
 	}
@@ -285,16 +316,23 @@ export function createSmsWorker(config: SmsWorkerConfig): SmsWorker {
 	async function markOutboxSuccess(params: {
 		outboxId: string;
 		providerMessageId?: string;
+		providerStatusCode?: number;
 	}): Promise<void> {
 		await db
 			.update(smsOutbox)
 			.set({
 				status: "sent",
 				providerMessageId: params.providerMessageId ?? null,
+				providerStatusCode: params.providerStatusCode ?? null,
+				lastAttemptAt: new Date(),
+				attempts: sql`COALESCE(${smsOutbox.attempts}, 0) + 1`,
 				nextAttemptAt: null,
 				errorMessage: null,
+				errorCode: null,
+				isPermanentFailure: false,
 				lockedAt: null,
 				lockedBy: null,
+				processingStartedAt: null,
 				updatedAt: new Date(),
 			})
 			.where(eq(smsOutbox.id, params.outboxId));
@@ -305,21 +343,30 @@ export function createSmsWorker(config: SmsWorkerConfig): SmsWorker {
 	 */
 	async function markOutboxFailure(params: {
 		outboxId: string;
-		attempts: number;
+		previousAttempts: number;
 		maxAttempts: number;
 		errorMessage: string;
+		errorCode?: string;
+		providerStatusCode?: number;
+		retryable?: boolean;
 	}): Promise<void> {
-		const shouldRetry = params.attempts < params.maxAttempts;
+		const retryable = params.retryable ?? true;
+		const currentAttempt = params.previousAttempts + 1;
+		const shouldRetry = retryable && currentAttempt < params.maxAttempts;
 		const nextAttemptAt = shouldRetry
-			? computeNextAttemptAt(params.attempts)
+			? computeNextAttemptAt(currentAttempt)
 			: null;
 
 		await db
 			.update(smsOutbox)
 			.set({
 				status: shouldRetry ? "pending" : "failed",
+				lastAttemptAt: new Date(),
+				attempts: sql`COALESCE(${smsOutbox.attempts}, 0) + 1`,
 				nextAttemptAt,
 				errorMessage: params.errorMessage,
+				errorCode: params.errorCode ?? null,
+				providerStatusCode: params.providerStatusCode ?? null,
 				lockedAt: null,
 				lockedBy: null,
 				processingStartedAt: null,
@@ -345,8 +392,12 @@ export function createSmsWorker(config: SmsWorkerConfig): SmsWorker {
 		try {
 			batchCount++;
 
-			// First, recover any stuck messages
-			await recoverStuckMessages({ staleThresholdMinutes: 5 });
+			// Recover stale processing rows once per minute to reduce write load.
+			const now = Date.now();
+			if (now - lastRecoveryRunAt >= 60_000) {
+				await recoverStuckMessages({ staleThresholdMinutes: 5 });
+				lastRecoveryRunAt = now;
+			}
 
 			// Claim messages atomically
 			const messages = await claimMessages({
@@ -359,7 +410,10 @@ export function createSmsWorker(config: SmsWorkerConfig): SmsWorker {
 
 			// Process each message
 			for (const item of messages) {
-				if (isShuttingDown) break;
+				if (isShuttingDown) {
+					inFlightCount = 0;
+					break;
+				}
 				try {
 					await processMessage(item as SmsOutboxRow);
 				} catch (error) {
@@ -367,11 +421,14 @@ export function createSmsWorker(config: SmsWorkerConfig): SmsWorker {
 						{ outboxId: item.id, error },
 						"Failed to process outbox item",
 					);
+				} finally {
+					if (inFlightCount > 0) {
+						inFlightCount--;
+					}
 				}
 			}
-
-			inFlightCount = 0;
 		} finally {
+			inFlightCount = 0;
 			currentConcurrentBatches--;
 		}
 	}
@@ -381,8 +438,14 @@ export function createSmsWorker(config: SmsWorkerConfig): SmsWorker {
 	 */
 	function scheduleNextBatch(): void {
 		if (isShuttingDown) return;
+		if (pollTimeout) {
+			clearTimeout(pollTimeout);
+			pollTimeout = null;
+		}
 
 		pollTimeout = setTimeout(async () => {
+			pollTimeout = null;
+
 			// Prevent overlapping batches
 			if (currentBatchPromise) {
 				overlapsSkipped++;
@@ -393,6 +456,8 @@ export function createSmsWorker(config: SmsWorkerConfig): SmsWorker {
 			currentBatchPromise = runBatch();
 			try {
 				await currentBatchPromise;
+			} catch (error) {
+				logger.error({ workerId, error }, "SMS batch failed");
 			} finally {
 				currentBatchPromise = null;
 			}
@@ -450,10 +515,14 @@ export function createSmsWorker(config: SmsWorkerConfig): SmsWorker {
 
 			// Graceful shutdown: wait for in-flight work with 30s timeout
 			if (currentBatchPromise) {
-				const timeoutPromise = new Promise<void>((resolve) =>
-					setTimeout(resolve, 30000),
-				);
+				let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+				const timeoutPromise = new Promise<void>((resolve) => {
+					timeoutHandle = setTimeout(resolve, 30000);
+				});
 				await Promise.race([currentBatchPromise, timeoutPromise]);
+				if (timeoutHandle) {
+					clearTimeout(timeoutHandle);
+				}
 			}
 
 			inFlightCount = 0;

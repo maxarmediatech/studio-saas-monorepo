@@ -10,6 +10,7 @@ import {
 	shootAssignments,
 	shootCalendarEvents,
 	shoots,
+	smsOutbox,
 } from "@repo/database";
 import { logger } from "@repo/logs";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
@@ -18,12 +19,12 @@ import {
 	safeAutoSubscribe,
 	safeNotifySubscribers,
 } from "../../notifications/lib/notification-service";
-import { isTerminalShootStatus } from "../calendar-sync";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	assignCrewInputSchema,
 	assignCrewOutputSchema,
 } from "../../studio/schemas/shoot";
+import { isTerminalShootStatus } from "../calendar-sync";
 
 export const assignCrew = studioProtectedProcedure
 	.route({
@@ -142,6 +143,59 @@ export const assignCrew = studioProtectedProcedure
 			actorName: context.user.name,
 			excludeUserId: context.user.id,
 		});
+
+		if (crew.phoneNumber) {
+			const location = shoot.venue ?? shoot.venueAddress ?? "TBD";
+			const crewAssignmentFlowId = process.env.MSG91_FLOW_CREW_ASSIGNMENT;
+			const parsedShootDate = new Date(
+				typeof shoot.shootDate === "string"
+					? `${shoot.shootDate}T00:00:00`
+					: shoot.shootDate,
+			);
+			const shootDate = Number.isNaN(parsedShootDate.getTime())
+				? String(shoot.shootDate)
+				: new Intl.DateTimeFormat("en-IN", {
+						dateStyle: "medium",
+					}).format(parsedShootDate);
+			const message = `Assigned to "${shoot.name}" on ${shootDate} as ${assignmentRole} at ${location}.`;
+
+			if (!crewAssignmentFlowId) {
+				logger.warn(
+					"Skipping crew assignment SMS: flow ID not configured",
+					{
+						shootId: shoot.id,
+						crewId: crew.id,
+					},
+				);
+			} else {
+				try {
+					await db.insert(smsOutbox).values({
+						organizationId: context.organizationId,
+						phoneNumber: crew.phoneNumber,
+						templateId: crewAssignmentFlowId,
+						variables: {
+							crewName: crew.name,
+							shootDate,
+							role: assignmentRole,
+							location,
+							message,
+						},
+						status: "pending",
+						attempts: 0,
+						maxAttempts: 3,
+					});
+				} catch (error) {
+					logger.error("Failed to queue crew assignment SMS", {
+						shootId: shoot.id,
+						crewId: crew.id,
+						error:
+							error instanceof Error
+								? error.message
+								: String(error),
+					});
+				}
+			}
+		}
 
 		// Calendar side-effects (non-blocking):
 		// - Connected user crew -> enqueue Google create

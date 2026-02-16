@@ -41,8 +41,8 @@ export const smsOutbox = pgTable(
 		templateId: varchar("template_id", { length: 255 }).notNull(),
 		variables: jsonb("variables"), // Template variables as JSON
 		status: smsStatusEnum("status").notNull().default("pending"),
-		attempts: integer("attempts").default(0),
-		maxAttempts: integer("max_attempts").default(3),
+		attempts: integer("attempts").default(0).notNull(),
+		maxAttempts: integer("max_attempts").default(3).notNull(),
 		nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }),
 		errorMessage: text("error_message"),
 		providerMessageId: varchar("provider_message_id", { length: 255 }), // ID from SMS provider
@@ -67,6 +67,10 @@ export const smsOutbox = pgTable(
 	(table) => [
 		index("sms_outbox_organization_id_idx").on(table.organizationId),
 		index("sms_outbox_status_idx").on(table.status),
+		index("sms_outbox_organization_status_idx").on(
+			table.organizationId,
+			table.status,
+		),
 		index("sms_outbox_next_attempt_idx").on(table.nextAttemptAt),
 		index("sms_outbox_queue_idx").on(table.status, table.nextAttemptAt),
 		// Partial indexes for queue performance

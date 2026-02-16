@@ -117,7 +117,7 @@ vi.mock("@repo/database", () => {
 });
 
 // Mock the SMS provider to avoid real API calls
-vi.mock("@repo/sms/src/provider/msg91", () => ({
+vi.mock("@repo/sms", () => ({
 	createMsg91Provider: () => ({
 		send: vi
 			.fn()
@@ -144,6 +144,10 @@ import {
 } from "./worker";
 
 describe("SMS Worker", () => {
+	beforeEach(() => {
+		claimCallCount = 0;
+	});
+
 	describe("Atomic Claiming (FOR UPDATE SKIP LOCKED)", () => {
 		it("should claim messages atomically with lockedAt and lockedBy", async () => {
 			// Test: claimMessages should update status, lockedAt, and lockedBy atomically
@@ -387,45 +391,43 @@ describe("SMS Worker", () => {
 	});
 
 	describe("Exponential Backoff", () => {
-		it("should use exponential backoff formula (30 * 2^(attempt-1) seconds)", () => {
-			// Test: Backoff should be exponential, not linear
-			// This should FAIL because current computeNextAttemptAt uses linear: 30 * attempts
-
+		it("should use exponential backoff formula at max jitter", () => {
 			// Attempt 1 → 30s
-			const delay1 = computeNextAttemptAt(1);
+			const delay1 = computeNextAttemptAt(1, 1);
 			const seconds1 = (delay1.getTime() - Date.now()) / 1000;
 			expect(seconds1).toBeCloseTo(30, -1); // 30 seconds
 
 			// Attempt 2 → 60s (30 * 2^1)
-			const delay2 = computeNextAttemptAt(2);
+			const delay2 = computeNextAttemptAt(2, 1);
 			const seconds2 = (delay2.getTime() - Date.now()) / 1000;
 			expect(seconds2).toBeCloseTo(60, -1); // 60 seconds
 
 			// Attempt 3 → 120s (30 * 2^2)
-			const delay3 = computeNextAttemptAt(3);
+			const delay3 = computeNextAttemptAt(3, 1);
 			const seconds3 = (delay3.getTime() - Date.now()) / 1000;
 			expect(seconds3).toBeCloseTo(120, -1); // 120 seconds
 
 			// Attempt 4 → 240s (30 * 2^3)
-			const delay4 = computeNextAttemptAt(4);
+			const delay4 = computeNextAttemptAt(4, 1);
 			const seconds4 = (delay4.getTime() - Date.now()) / 1000;
 			expect(seconds4).toBeCloseTo(240, -1); // 240 seconds
 		});
 
 		it("should cap backoff at maximum delay (15 minutes)", () => {
-			// Test: Backoff should not exceed 15 minutes
-			// Current impl caps at 15 * 60 = 900 seconds
-
 			// Attempt 10 would be 30 * 2^9 = 15360 seconds without cap
-			const delay10 = computeNextAttemptAt(10);
+			const delay10 = computeNextAttemptAt(10, 1);
 			const seconds10 = (delay10.getTime() - Date.now()) / 1000;
 
 			expect(seconds10).toBeLessThanOrEqual(15 * 60); // Max 15 minutes
 		});
 
-		it("should return future timestamp for retry", () => {
-			// Test: Next attempt should always be in the future
+		it("should apply 50% minimum jitter", () => {
+			const delay = computeNextAttemptAt(3, 0);
+			const seconds = (delay.getTime() - Date.now()) / 1000;
+			expect(seconds).toBeCloseTo(60, -1); // 120 * 0.5
+		});
 
+		it("should return future timestamp for retry", () => {
 			const delay = computeNextAttemptAt(1);
 			const now = new Date();
 
@@ -433,11 +435,9 @@ describe("SMS Worker", () => {
 		});
 
 		it("should increase delay with each attempt", () => {
-			// Test: Each subsequent attempt should have longer delay
-
-			const delay1 = computeNextAttemptAt(1);
-			const delay2 = computeNextAttemptAt(2);
-			const delay3 = computeNextAttemptAt(3);
+			const delay1 = computeNextAttemptAt(1, 1);
+			const delay2 = computeNextAttemptAt(2, 1);
+			const delay3 = computeNextAttemptAt(3, 1);
 
 			const ms1 = delay1.getTime() - Date.now();
 			const ms2 = delay2.getTime() - Date.now();

@@ -1,4 +1,4 @@
-export { getProvider, setProvider } from "./src/provider";
+export { createMsg91Provider, getProvider, setProvider } from "./src/provider";
 export {
 	bookingConfirmation,
 	crewAssignment,

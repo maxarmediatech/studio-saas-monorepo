@@ -1,5 +1,6 @@
 import { logger } from "@repo/logs";
 import type { SmsProvider, SmsSendParams, SmsSendResult } from "../types";
+import { normalizeAndValidateIndianPhone } from "../util/phone";
 
 const MSG91_API_URL = "https://api.msg91.com/api/v5/flow/";
 const REQUEST_TIMEOUT_MS = 15000;
@@ -7,54 +8,12 @@ const REQUEST_TIMEOUT_MS = 15000;
 export interface Msg91Config {
 	authKey: string;
 	senderId: string;
-	route?: number;
 }
 
 interface Msg91Response {
 	type: "success" | "error";
 	message: string;
 	request_id?: string;
-}
-
-type PhoneValidationResult =
-	| { valid: true; normalized: string }
-	| { valid: false; error: string };
-
-function normalizeAndValidatePhone(phone: string): PhoneValidationResult {
-	const stripped = phone.replace(/[\s\-()]/g, "");
-
-	if (!stripped || stripped.trim() === "") {
-		return { valid: false, error: "Phone number is invalid: empty" };
-	}
-
-	let digitsOnly = stripped.replace(/^\+/, "");
-
-	if (!/^\d+$/.test(digitsOnly)) {
-		return {
-			valid: false,
-			error: "Phone number is invalid: contains non-digit characters",
-		};
-	}
-
-	if (digitsOnly.startsWith("0091")) {
-		digitsOnly = `91${digitsOnly.slice(4)}`;
-	} else if (digitsOnly.startsWith("091")) {
-		digitsOnly = `91${digitsOnly.slice(3)}`;
-	} else if (digitsOnly.startsWith("0") && digitsOnly.length === 11) {
-		digitsOnly = `91${digitsOnly.slice(1)}`;
-	} else if (digitsOnly.length === 10) {
-		digitsOnly = `91${digitsOnly}`;
-	}
-
-	const indianMobilePattern = /^91[6-9]\d{9}$/;
-	if (!indianMobilePattern.test(digitsOnly)) {
-		return {
-			valid: false,
-			error: "Phone number is invalid: must be a valid Indian mobile number",
-		};
-	}
-
-	return { valid: true, normalized: digitsOnly };
 }
 
 function maskPhone(phone: string): string {
@@ -65,10 +24,28 @@ function maskPhone(phone: string): string {
 	return `${prefix}${masked}${suffix}`;
 }
 
+function getErrorCodeFromStatus(status: number): string {
+	if (status === 429) return "RATE_LIMIT";
+	if (status === 401 || status === 403) return "AUTH_ERROR";
+	if (status === 400) return "BAD_REQUEST";
+	if (status === 404) return "NOT_FOUND";
+	if (status >= 500) return "PROVIDER_ERROR";
+	return "PROVIDER_ERROR";
+}
+
+function getErrorCodeFromException(errorMessage: string): string {
+	const normalized = errorMessage.toUpperCase();
+	if (normalized.includes("ENOTFOUND")) return "DNS_ERROR";
+	if (normalized.includes("ECONNREFUSED")) return "CONNECTION_REFUSED";
+	if (normalized.includes("ETIMEDOUT")) return "TIMEOUT";
+	if (normalized.includes("ECONNRESET")) return "CONNECTION_RESET";
+	return "REQUEST_ERROR";
+}
+
 function classifyError(
 	status: number,
 	responseText: string,
-): { message: string; retryable: boolean } {
+): { message: string; retryable: boolean; errorCode: string } {
 	const isRetryable = status === 429 || status >= 500;
 
 	let parsedMessage = responseText;
@@ -82,6 +59,7 @@ function classifyError(
 	return {
 		message: `[${status}] ${parsedMessage}`,
 		retryable: isRetryable,
+		errorCode: getErrorCodeFromStatus(status),
 	};
 }
 
@@ -92,25 +70,40 @@ export class Msg91Provider implements SmsProvider {
 		this.config = {
 			authKey: config.authKey,
 			senderId: config.senderId,
-			route: config.route ?? 4,
 		};
 	}
 
 	async send(params: SmsSendParams): Promise<SmsSendResult> {
-		const { to, message, templateId } = params;
+		const { to, message, templateId, variables } = params;
 
 		if (!templateId) {
 			return {
 				success: false,
 				error: "MSG91 requires a template/flow ID",
+				errorCode: "TEMPLATE_REQUIRED",
+				retryable: false,
+				permanentFailure: true,
 			};
 		}
 
-		const phoneValidation = normalizeAndValidatePhone(to);
+		if (templateId.startsWith("FLOW_")) {
+			return {
+				success: false,
+				error: "SMS template flow ID is not configured",
+				errorCode: "TEMPLATE_NOT_CONFIGURED",
+				retryable: false,
+				permanentFailure: true,
+			};
+		}
+
+		const phoneValidation = normalizeAndValidateIndianPhone(to);
 		if (phoneValidation.valid === false) {
 			return {
 				success: false,
 				error: phoneValidation.error,
+				errorCode: "INVALID_PHONE",
+				retryable: false,
+				permanentFailure: true,
 			};
 		}
 
@@ -120,9 +113,14 @@ export class Msg91Provider implements SmsProvider {
 			flow_id: templateId,
 			sender: this.config.senderId,
 			mobiles: normalizedPhone,
-			route: this.config.route,
-			VAR1: message,
 		};
+		const safeVariables = variables ?? {};
+		for (const [key, value] of Object.entries(safeVariables)) {
+			body[key] = value;
+		}
+		if (!("VAR1" in body) && message) {
+			body.VAR1 = message;
+		}
 
 		const timeoutError = Symbol("timeout");
 		const timeoutPromise = new Promise<typeof timeoutError>((resolve) => {
@@ -149,6 +147,10 @@ export class Msg91Provider implements SmsProvider {
 				return {
 					success: false,
 					error: "Request timeout after 15 seconds",
+					errorCode: "TIMEOUT",
+					statusCode: 408,
+					retryable: true,
+					permanentFailure: false,
 				};
 			}
 
@@ -162,10 +164,11 @@ export class Msg91Provider implements SmsProvider {
 			}
 
 			if (!response.ok) {
-				const { message: errorMsg } = classifyError(
-					response.status,
-					responseText,
-				);
+				const {
+					message: errorMsg,
+					retryable,
+					errorCode,
+				} = classifyError(response.status, responseText);
 				logger.error(
 					{ status: response.status, to: maskPhone(normalizedPhone) },
 					"MSG91 API request failed",
@@ -173,6 +176,10 @@ export class Msg91Provider implements SmsProvider {
 				return {
 					success: false,
 					error: errorMsg,
+					errorCode,
+					statusCode: response.status,
+					retryable,
+					permanentFailure: !retryable,
 				};
 			}
 
@@ -185,6 +192,10 @@ export class Msg91Provider implements SmsProvider {
 				return {
 					success: false,
 					error: errorMsg,
+					errorCode: "INVALID_RESPONSE",
+					statusCode: response.status,
+					retryable: true,
+					permanentFailure: false,
 				};
 			}
 
@@ -196,6 +207,10 @@ export class Msg91Provider implements SmsProvider {
 				return {
 					success: false,
 					error: data.message || "Unknown MSG91 error",
+					errorCode: "PROVIDER_ERROR",
+					statusCode: response.status,
+					retryable: false,
+					permanentFailure: true,
 				};
 			}
 
@@ -207,10 +222,13 @@ export class Msg91Provider implements SmsProvider {
 			return {
 				success: true,
 				messageId: data.request_id,
+				statusCode: response.status,
 			};
 		} catch (error) {
 			const errorMessage =
 				error instanceof Error ? error.message : "Unknown error";
+			const retryable = true;
+			const errorCode = getErrorCodeFromException(errorMessage);
 			logger.error(
 				{ error, to: maskPhone(normalizedPhone) },
 				"MSG91 send failed with exception",
@@ -219,6 +237,9 @@ export class Msg91Provider implements SmsProvider {
 			return {
 				success: false,
 				error: errorMessage,
+				errorCode,
+				retryable,
+				permanentFailure: !retryable,
 			};
 		}
 	}

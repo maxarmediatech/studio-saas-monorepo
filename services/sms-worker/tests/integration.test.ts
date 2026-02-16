@@ -1,6 +1,5 @@
 import { db, eq, smsOutbox } from "@repo/database";
-import type { SmsSendResult } from "@repo/sms/src/types";
-import { queueSms } from "@repo/sms/src/util/send";
+import { queueSms, type SmsSendResult } from "@repo/sms";
 import {
 	afterAll,
 	afterEach,
@@ -31,44 +30,50 @@ let mockSendHandler: MockSendHandler = () => ({
 	messageId: "test-msg-id",
 });
 
-vi.mock("@repo/sms/src/provider/msg91", () => ({
-	createMsg91Provider: () => ({
-		send: async (params: {
-			to: string;
-			message: string;
-			templateId?: string;
-		}) => {
-			mockSendCallCount++;
-			mockSendCalls.push(params);
+vi.mock("@repo/sms", async () => {
+	const actual =
+		await vi.importActual<typeof import("@repo/sms")>("@repo/sms");
 
-			if (mockSendDelay > 0) {
-				await new Promise((resolve) =>
-					setTimeout(resolve, mockSendDelay),
-				);
-			}
+	return {
+		...actual,
+		createMsg91Provider: () => ({
+			send: async (params: {
+				to: string;
+				message: string;
+				templateId?: string;
+			}) => {
+				mockSendCallCount++;
+				mockSendCalls.push(params);
 
-			return mockSendHandler(params);
+				if (mockSendDelay > 0) {
+					await new Promise((resolve) =>
+						setTimeout(resolve, mockSendDelay),
+					);
+				}
+
+				return mockSendHandler(params);
+			},
+		}),
+		Msg91Provider: class {
+			send = async (params: {
+				to: string;
+				message: string;
+				templateId?: string;
+			}) => {
+				mockSendCallCount++;
+				mockSendCalls.push(params);
+
+				if (mockSendDelay > 0) {
+					await new Promise((resolve) =>
+						setTimeout(resolve, mockSendDelay),
+					);
+				}
+
+				return mockSendHandler(params);
+			};
 		},
-	}),
-	Msg91Provider: class {
-		send = async (params: {
-			to: string;
-			message: string;
-			templateId?: string;
-		}) => {
-			mockSendCallCount++;
-			mockSendCalls.push(params);
-
-			if (mockSendDelay > 0) {
-				await new Promise((resolve) =>
-					setTimeout(resolve, mockSendDelay),
-				);
-			}
-
-			return mockSendHandler(params);
-		};
-	},
-}));
+	};
+});
 
 import {
 	claimMessages,
@@ -318,30 +323,31 @@ describe("SMS Worker Integration Tests", () => {
 			expect(afterFirst.attempts).toBe(1);
 			expect(afterFirst.nextAttemptAt).not.toBeNull();
 
-			const expectedDelayMs = 30 * 1000;
+			const minDelayMs = 15 * 1000;
+			const maxDelayMs = 30 * 1000;
 			const actualDelay =
 				new Date(afterFirst.nextAttemptAt!).getTime() -
 				afterFirst.lastAttemptAt!.getTime();
-			expect(actualDelay).toBeGreaterThanOrEqual(expectedDelayMs - 5000);
-			expect(actualDelay).toBeLessThanOrEqual(expectedDelayMs + 5000);
+			expect(actualDelay).toBeGreaterThanOrEqual(minDelayMs - 1000);
+			expect(actualDelay).toBeLessThanOrEqual(maxDelayMs + 1000);
 		});
 
 		it("should compute correct backoff delays", () => {
 			const now = Date.now();
 
-			const delay1 = computeNextAttemptAt(1).getTime() - now;
+			const delay1 = computeNextAttemptAt(1, 1).getTime() - now;
 			expect(delay1).toBeGreaterThanOrEqual(29000);
 			expect(delay1).toBeLessThanOrEqual(31000);
 
-			const delay2 = computeNextAttemptAt(2).getTime() - now;
+			const delay2 = computeNextAttemptAt(2, 1).getTime() - now;
 			expect(delay2).toBeGreaterThanOrEqual(59000);
 			expect(delay2).toBeLessThanOrEqual(61000);
 
-			const delay3 = computeNextAttemptAt(3).getTime() - now;
+			const delay3 = computeNextAttemptAt(3, 1).getTime() - now;
 			expect(delay3).toBeGreaterThanOrEqual(119000);
 			expect(delay3).toBeLessThanOrEqual(121000);
 
-			const delay10 = computeNextAttemptAt(10).getTime() - now;
+			const delay10 = computeNextAttemptAt(10, 1).getTime() - now;
 			expect(delay10).toBeGreaterThanOrEqual(15 * 60 * 1000 - 1000);
 			expect(delay10).toBeLessThanOrEqual(15 * 60 * 1000 + 1000);
 		});
