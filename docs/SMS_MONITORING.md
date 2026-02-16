@@ -51,19 +51,19 @@ This document provides monitoring and alerting recommendations for the SMS integ
 ### 3. Provider Integration
 
 **Metric**: MSG91 API Success Rate
-- **Query**: `SELECT COUNT(*) FILTER (WHERE status = 'sent') / COUNT(*) FROM sms_outbox WHERE createdAt > NOW() - INTERVAL '1 hour'`
+- **Query**: `SELECT COUNT(*) FILTER (WHERE status = 'sent') / COUNT(*) FROM sms_outbox WHERE created_at > NOW() - INTERVAL '1 hour'`
 - **Alert Threshold**: < 95%
 - **Severity**: WARNING
 - **Action**: Check MSG91 status page, verify API credentials
 
 **Metric**: MSG91 Rate Limit Hits
-- **Query**: `SELECT COUNT(*) FROM sms_outbox WHERE errorCode = 'RATE_LIMIT' AND createdAt > NOW() - INTERVAL '1 hour'`
+- **Query**: `SELECT COUNT(*) FROM sms_outbox WHERE error_code = 'RATE_LIMIT' AND created_at > NOW() - INTERVAL '1 hour'`
 - **Alert Threshold**: > 10 in 1 hour
 - **Severity**: WARNING
 - **Action**: Reduce batch size or increase poll interval
 
 **Metric**: MSG91 Timeout Errors
-- **Query**: `SELECT COUNT(*) FROM sms_outbox WHERE errorCode = 'TIMEOUT' AND createdAt > NOW() - INTERVAL '1 hour'`
+- **Query**: `SELECT COUNT(*) FROM sms_outbox WHERE error_code = 'TIMEOUT' AND created_at > NOW() - INTERVAL '1 hour'`
 - **Alert Threshold**: > 5 in 1 hour
 - **Severity**: WARNING
 - **Action**: Check MSG91 network latency, increase timeout if needed
@@ -71,13 +71,13 @@ This document provides monitoring and alerting recommendations for the SMS integ
 ### 4. Data Quality
 
 **Metric**: Invalid Phone Numbers
-- **Query**: `SELECT COUNT(*) FROM sms_outbox WHERE isPermanentFailure = true AND errorCode = 'INVALID_PHONE' AND createdAt > NOW() - INTERVAL '1 hour'`
+- **Query**: `SELECT COUNT(*) FROM sms_outbox WHERE is_permanent_failure = true AND error_code = 'INVALID_PHONE' AND created_at > NOW() - INTERVAL '1 hour'`
 - **Alert Threshold**: > 100 in 1 hour
 - **Severity**: INFO
 - **Action**: Review phone number source, improve validation upstream
 
 **Metric**: Permanent Failures
-- **Query**: `SELECT COUNT(*) FROM sms_outbox WHERE isPermanentFailure = true AND createdAt > NOW() - INTERVAL '1 hour'`
+- **Query**: `SELECT COUNT(*) FROM sms_outbox WHERE is_permanent_failure = true AND created_at > NOW() - INTERVAL '1 hour'`
 - **Alert Threshold**: > 50 in 1 hour
 - **Severity**: WARNING
 - **Action**: Review error codes, check for API credential issues
@@ -85,13 +85,13 @@ This document provides monitoring and alerting recommendations for the SMS integ
 ### 5. Retry Behavior
 
 **Metric**: Messages Exceeding Max Attempts
-- **Query**: `SELECT COUNT(*) FROM sms_outbox WHERE attempts >= maxAttempts AND status = 'pending'`
+- **Query**: `SELECT COUNT(*) FROM sms_outbox WHERE attempts >= max_attempts AND status = 'pending'`
 - **Alert Threshold**: > 10 messages
 - **Severity**: WARNING
 - **Action**: Check for stuck messages, verify lease timeout recovery
 
 **Metric**: Average Retry Count
-- **Query**: `SELECT AVG(attempts) FROM sms_outbox WHERE status = 'sent' AND createdAt > NOW() - INTERVAL '1 hour'`
+- **Query**: `SELECT AVG(attempts) FROM sms_outbox WHERE status = 'sent' AND created_at > NOW() - INTERVAL '1 hour'`
 - **Alert Threshold**: > 2.0 (indicates frequent failures)
 - **Severity**: INFO
 - **Action**: Monitor error patterns, consider adjusting backoff strategy
@@ -220,7 +220,7 @@ For troubleshooting:
 **Investigation**:
 1. Check worker logs for crashes
 2. Verify database connectivity
-3. Check `processingStartedAt` timestamps
+3. Check `processing_started_at` timestamps
 
 **Resolution**:
 1. Run stuck message recovery:
@@ -299,5 +299,5 @@ For troubleshooting:
 ## References
 
 - [SMS Integration Architecture](./ARCHITECTURE.md)
-- [Oracle Review - SMS Integration](./.sisyphus/notepads/sms-integration/ORACLE_REVIEW_SUMMARY.md)
+- [Oracle Review - SMS Integration](../.sisyphus/notepads/sms-integration/ORACLE_REVIEW_SUMMARY.md)
 - [MSG91 API Documentation](https://www.msg91.com/api/)

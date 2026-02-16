@@ -502,7 +502,7 @@ GET  /api/payments/:id/receipt          # Get receipt
 - [ ] Notification grouping/batching
 - [ ] Mark as read/unread
 - [ ] Push notifications (web + mobile)
-- [ ] SMS notifications (via Twilio)
+- [ ] SMS notifications (via MSG91)
 - [ ] Notification history
 
 ---

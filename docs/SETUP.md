@@ -9,11 +9,12 @@ Complete guide for setting up this project in a new environment, including all e
 3. [Database Setup](#database-setup)
 4. [Authentication Setup](#authentication-setup)
 5. [Email Provider Setup](#email-provider-setup)
-6. [Payment Provider Setup](#payment-provider-setup)
-7. [Storage Setup](#storage-setup)
-8. [Analytics Setup](#analytics-setup)
-9. [Deployment Checklist](#deployment-checklist)
-10. [Troubleshooting](#troubleshooting)
+6. [SMS Provider Setup (MSG91)](#sms-provider-setup-msg91)
+7. [Payment Provider Setup](#payment-provider-setup)
+8. [Storage Setup](#storage-setup)
+9. [Analytics Setup](#analytics-setup)
+10. [Deployment Checklist](#deployment-checklist)
+11. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -202,6 +203,41 @@ GITHUB_CLIENT_SECRET="your-client-secret"
 
 ```env
 RESEND_API_KEY="re_xxxxxxxxxxxx"
+```
+
+---
+
+## SMS Provider Setup (MSG91)
+
+1. Create account at [msg91.com](https://msg91.com)
+2. Complete sender approval / DLT registration for your templates
+3. Create SMS flow templates in MSG91
+4. Add credentials:
+
+```env
+MSG91_AUTH_KEY="your-msg91-auth-key"
+MSG91_SENDER_ID="your-6-char-sender-id"
+MSG91_FLOW_CREW_ASSIGNMENT="your-msg91-flow-id-for-crew-assignment"
+```
+
+Optional worker tuning:
+
+```env
+SMS_OUTBOX_INTERVAL_MS="5000"   # Poll interval in ms (default: 5000)
+SMS_OUTBOX_BATCH_SIZE="10"      # Messages per batch (default: 10)
+```
+
+Run SMS worker in development:
+
+```bash
+pnpm --filter @repo/sms-worker dev
+```
+
+Run SMS worker in production:
+
+```bash
+pnpm --filter @repo/sms-worker build
+pnpm --filter @repo/sms-worker start
 ```
 
 ---
