@@ -1,6 +1,5 @@
 {
 	"dependencies": {
-		"@aws-sdk/client-s3": "3.954.0",
 		"@bprogress/next": "^3.2.12",
 		"@hookform/resolvers": "^5.2.2",
 		"@next/third-parties": "16.1.0",
@@ -65,9 +64,7 @@
 		"cmdk": "^1.1.1",
 		"cropperjs": "2.1.0",
 		"date-fns": "^4.1.0",
-		"deepmerge": "^4.3.1",
 		"dodopayments-checkout": "1.8.0",
-		"embla-carousel-react": "^8.6.0",
 		"es-toolkit": "^1.43.0",
 		"framer-motion": "^12.24.12",
 		"hono": "^4.11.1",
@@ -88,7 +85,6 @@
 		"react-dropzone": "^14.3.8",
 		"react-hook-form": "^7.69.0",
 		"react-masonry-component": "^6.3.0",
-		"react-qr-code": "^2.0.17",
 		"react-resizable-panels": "^3.0.6",
 		"recharts": "3.6.0",
 		"server-only": "^0.0.1",

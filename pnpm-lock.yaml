@@ -33,9 +33,6 @@ importers:
 
   apps/web:
     dependencies:
-      '@aws-sdk/client-s3':
-        specifier: 3.954.0
-        version: 3.954.0
       '@bprogress/next':
         specifier: ^3.2.12
         version: 3.2.12(next@16.1.0(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -228,15 +225,9 @@ importers:
       date-fns:
         specifier: ^4.1.0
         version: 4.1.0
-      deepmerge:
-        specifier: ^4.3.1
-        version: 4.3.1
       dodopayments-checkout:
         specifier: 1.8.0
         version: 1.8.0
-      embla-carousel-react:
-        specifier: ^8.6.0
-        version: 8.6.0(react@19.2.3)
       es-toolkit:
         specifier: ^1.43.0
         version: 1.43.0
@@ -297,9 +288,6 @@ importers:
       react-masonry-component:
         specifier: ^6.3.0
         version: 6.3.0(react@19.2.3)
-      react-qr-code:
-        specifier: ^2.0.17
-        version: 2.0.18(react@19.2.3)
       react-resizable-panels:
         specifier: ^3.0.6
         version: 3.0.6(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -779,9 +767,6 @@ importers:
       '@repo/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript
-      '@tailwindcss/line-clamp':
-        specifier: ^0.4.4
-        version: 0.4.4(tailwindcss@4.1.18)
       '@types/node':
         specifier: 24.10.1
         version: 24.10.1
@@ -806,9 +791,6 @@ importers:
       dodopayments:
         specifier: ^2.13.1
         version: 2.13.1
-      ufo:
-        specifier: ^1.6.1
-        version: 1.6.1
       zod:
         specifier: ^4.2.1
         version: 4.2.1
@@ -4214,11 +4196,6 @@ packages:
       zod:
         optional: true
 
-  '@tailwindcss/line-clamp@0.4.4':
-    resolution: {integrity: sha512-5U6SY5z8N42VtrCrKlsTAA35gy2VSyYtHWCsg1H87NU1SXnEfekTVlrga9fzUDrrHcGi2Lb5KenUWb4lRQT5/g==}
-    peerDependencies:
-      tailwindcss: '>=2.0.0 || >=3.0.0 || >=3.0.0-alpha.1'
-
   '@tailwindcss/node@4.1.18':
     resolution: {integrity: sha512-DoR7U1P7iYhw16qJ49fgXUlry1t4CpXeErJHnQ44JgTSKMaZUdf17cfn5mHchfJ4KRBZRFA/Coo+MUF5+gOaCQ==}
 
@@ -7017,9 +6994,6 @@ packages:
   pure-rand@6.1.0:
     resolution: {integrity: sha512-bVWawvoZoBYpp6yIoQtQXHZjmz35RSVHnUOTefl8Vcjr8snTPY1wnpSPMWekcFwbxI6gtmT7rSYPFvz71ldiOA==}
 
-  qr.js@0.0.0:
-    resolution: {integrity: sha512-c4iYnWb+k2E+vYpRimHqSu575b1/wKl4XFeJGpFmrJQz5I88v9aY2czh7s0w36srfCM1sXgC/xpoJz5dJfq+OQ==}
-
   qs@6.14.1:
     resolution: {integrity: sha512-4EK3+xJl8Ts67nLYNwqw/dsFVnCf+qR7RgXSK9jEEm9unao3njwMDdmsdvoKBKHzxd7tCYz5e5M+SnMjdtXGQQ==}
     engines: {node: '>=0.6'}
@@ -7087,11 +7061,6 @@ packages:
     resolution: {integrity: sha512-4ZI78nxMfCpU5yQiS6Rup07Ju++YzcOGAyvbMcl2GfpZTw8GRwT548lkKr0PJarNicRV1qE2D/NiT26UPg1T7A==}
     peerDependencies:
       react: ^0.14.0 || ^15.0.0-0 || ^16.0.0-0 || ^17.0.0
-
-  react-qr-code@2.0.18:
-    resolution: {integrity: sha512-v1Jqz7urLMhkO6jkgJuBYhnqvXagzceg3qJUWayuCK/c6LTIonpWbwxR1f1APGd4xrW/QcQEovNrAojbUz65Tg==}
-    peerDependencies:
-      react: '*'
 
   react-redux@9.2.0:
     resolution: {integrity: sha512-ROY9fvHhwOD9ySfrF0wmvu//bKCQ6AeZZq1nJNtbDC+kk5DuSuNX/n6YWYF/SYy7bSba4D4FSz8DJeKY/S/r+g==}
@@ -11064,10 +11033,6 @@ snapshots:
       typescript: 5.9.3
       zod: 4.2.1
 
-  '@tailwindcss/line-clamp@0.4.4(tailwindcss@4.1.18)':
-    dependencies:
-      tailwindcss: 4.1.18
-
   '@tailwindcss/node@4.1.18':
     dependencies:
       '@jridgewell/remapping': 2.3.5
@@ -13978,8 +13943,6 @@ snapshots:
   pure-rand@6.1.0:
     optional: true
 
-  qr.js@0.0.0: {}
-
   qs@6.14.1:
     dependencies:
       side-channel: 1.1.0
@@ -14071,12 +14034,6 @@ snapshots:
       lodash: 4.17.21
       masonry-layout: 4.2.2
       prop-types: 15.8.1
-      react: 19.2.3
-
-  react-qr-code@2.0.18(react@19.2.3):
-    dependencies:
-      prop-types: 15.8.1
-      qr.js: 0.0.0
       react: 19.2.3
 
   react-redux@9.2.0(@types/react@19.2.7)(react@19.2.3)(redux@5.0.1):
