@@ -4,7 +4,21 @@
  * Creates multiple shoots with their crew assignments within a transaction.
  */
 
-import { shootAssignments, shoots } from "@repo/database";
+import {
+	and,
+	calendarSyncJobs,
+	crews,
+	eq,
+	googleCalendarConnections,
+	inArray,
+	isNotNull,
+	isNull,
+	shootAssignments,
+	shootCalendarEvents,
+	shoots,
+} from "@repo/database";
+import { logger } from "@repo/logs";
+import { isTerminalShootStatus } from "../../shoots/calendar-sync";
 import type { TransactionClient } from "../../studio/lib/transactions";
 import type { ShootInput } from "../../studio/schemas/booking";
 
@@ -85,6 +99,162 @@ export async function createShootsBatch(
 					};
 				}),
 			);
+
+			if (!isTerminalShootStatus(shootInput.status)) {
+				try {
+					// Isolate side-effects with a savepoint so failures don't break booking creation.
+					await tx.transaction(async (calendarTx) => {
+						const crewIds = Array.from(
+							new Set(
+								crewAssignments.map(
+									(assignment) => assignment.crewId,
+								),
+							),
+						);
+
+						if (crewIds.length === 0) {
+							return;
+						}
+
+						const assignedCrews = await calendarTx
+							.select({
+								id: crews.id,
+								userId: crews.userId,
+								email: crews.email,
+							})
+							.from(crews)
+							.where(
+								and(
+									eq(crews.organizationId, organizationId),
+									inArray(crews.id, crewIds),
+									isNull(crews.deletedAt),
+								),
+							);
+
+						const userIds = assignedCrews
+							.map((crew) => crew.userId)
+							.filter((value): value is string => Boolean(value));
+
+						const connections = userIds.length
+							? await calendarTx
+									.select({
+										userId: googleCalendarConnections.userId,
+									})
+									.from(googleCalendarConnections)
+									.where(
+										and(
+											eq(
+												googleCalendarConnections.organizationId,
+												organizationId,
+											),
+											inArray(
+												googleCalendarConnections.userId,
+												userIds,
+											),
+											isNull(
+												googleCalendarConnections.disconnectedAt,
+											),
+											isNotNull(
+												googleCalendarConnections.refreshToken,
+											),
+										),
+									)
+							: [];
+
+						const connectedUserIds = new Set(
+							connections.map((connection) => connection.userId),
+						);
+
+						const mappingRows: Array<{
+							organizationId: string;
+							shootId: string;
+							crewId: string;
+							deliveryMethod: "google" | "ics";
+							recipientEmail?: string;
+							icalUid?: string;
+							syncStatus: "pending";
+							updatedAt: Date;
+						}> = [];
+						const jobRows: Array<{
+							organizationId: string;
+							status: "pending";
+							jobType: "google_create" | "ics_send_invite";
+							shootId: string;
+							crewId: string;
+							updatedAt: Date;
+						}> = [];
+
+						for (const crew of assignedCrews) {
+							if (
+								crew.userId &&
+								connectedUserIds.has(crew.userId)
+							) {
+								mappingRows.push({
+									organizationId,
+									shootId: createdShoot.id,
+									crewId: crew.id,
+									deliveryMethod: "google",
+									syncStatus: "pending",
+									updatedAt: new Date(),
+								});
+								jobRows.push({
+									organizationId,
+									status: "pending",
+									jobType: "google_create",
+									shootId: createdShoot.id,
+									crewId: crew.id,
+									updatedAt: new Date(),
+								});
+								continue;
+							}
+
+							if (!crew.userId && crew.email) {
+								mappingRows.push({
+									organizationId,
+									shootId: createdShoot.id,
+									crewId: crew.id,
+									deliveryMethod: "ics",
+									recipientEmail: crew.email,
+									icalUid: `shoot-${createdShoot.id}-crew-${crew.id}@studio-saas.invalid`,
+									syncStatus: "pending",
+									updatedAt: new Date(),
+								});
+								jobRows.push({
+									organizationId,
+									status: "pending",
+									jobType: "ics_send_invite",
+									shootId: createdShoot.id,
+									crewId: crew.id,
+									updatedAt: new Date(),
+								});
+							}
+						}
+
+						if (mappingRows.length > 0) {
+							await calendarTx
+								.insert(shootCalendarEvents)
+								.values(mappingRows);
+						}
+						if (jobRows.length > 0) {
+							await calendarTx
+								.insert(calendarSyncJobs)
+								.values(jobRows);
+						}
+					});
+				} catch (error) {
+					logger.error(
+						"Failed to enqueue calendar jobs in createShootsBatch",
+						{
+							shootId: createdShoot.id,
+							organizationId,
+							error:
+								error instanceof Error
+									? error.message
+									: String(error),
+						},
+					);
+				}
+			}
 		}
 	}
 

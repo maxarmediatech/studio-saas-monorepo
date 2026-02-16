@@ -21,6 +21,10 @@ import {
 	safeTrackStatusChange,
 } from "../../activities/lib";
 import { safeNotifySubscribers } from "../../notifications/lib/notification-service";
+import {
+	getCalendarDeleteJobType,
+	isTerminalShootStatus,
+} from "../calendar-sync";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	updateShootInputSchema,
@@ -195,8 +199,14 @@ export const updateShoot = studioProtectedProcedure
 		const shouldSyncCalendar = changes.some((c) =>
 			calendarRelevantFields.has(c.field),
 		);
-		if (shouldSyncCalendar) {
+		const statusChanged =
+			status !== undefined && status !== existing.status;
+		if (shouldSyncCalendar || statusChanged) {
 			try {
+				const effectiveStatus = status ?? existing.status;
+				const shouldDeleteCalendarEvents =
+					isTerminalShootStatus(effectiveStatus);
+
 				const assignees = await db
 					.select({
 						crewId: shootAssignments.crewId,
@@ -267,6 +277,24 @@ export const updateShoot = studioProtectedProcedure
 
 					for (const assignee of assignees) {
 						const mapping = mappingByCrewId.get(assignee.crewId);
+
+						if (shouldDeleteCalendarEvents) {
+							if (!mapping) {
+								continue;
+							}
+
+							await db.insert(calendarSyncJobs).values({
+								organizationId: context.organizationId,
+								status: "pending",
+								jobType: getCalendarDeleteJobType(
+									mapping.deliveryMethod,
+								),
+								shootId: id,
+								crewId: assignee.crewId,
+								updatedAt: new Date(),
+							});
+							continue;
+						}
 
 						if (
 							assignee.userId &&

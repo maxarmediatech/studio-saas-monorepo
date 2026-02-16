@@ -1,7 +1,16 @@
 import { ORPCError } from "@orpc/server";
-import { and, db, eq, shoots } from "@repo/database";
+import {
+	and,
+	calendarSyncJobs,
+	db,
+	eq,
+	shootCalendarEvents,
+	shoots,
+} from "@repo/database";
+import { logger } from "@repo/logs";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { safeTrackActivity } from "../../activities/lib";
+import { getCalendarDeleteJobType } from "../calendar-sync";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	deleteShootInputSchema,
@@ -59,6 +68,45 @@ export const deleteShoot = studioProtectedProcedure
 				updatedBy: context.user.id,
 			})
 			.where(eq(shoots.id, id));
+
+		// Calendar side-effects (non-blocking): remove/cancel existing events.
+		try {
+			const mappings = await db
+				.select({
+					crewId: shootCalendarEvents.crewId,
+					deliveryMethod: shootCalendarEvents.deliveryMethod,
+				})
+				.from(shootCalendarEvents)
+				.where(
+					and(
+						eq(
+							shootCalendarEvents.organizationId,
+							context.organizationId,
+						),
+						eq(shootCalendarEvents.shootId, id),
+					),
+				);
+
+			if (mappings.length > 0) {
+				await db.insert(calendarSyncJobs).values(
+					mappings.map((mapping) => ({
+						organizationId: context.organizationId,
+						status: "pending" as const,
+						jobType: getCalendarDeleteJobType(
+							mapping.deliveryMethod,
+						),
+						shootId: id,
+						crewId: mapping.crewId,
+						updatedAt: new Date(),
+					})),
+				);
+			}
+		} catch (error) {
+			logger.error("Failed to enqueue calendar jobs on shoot delete", {
+				shootId: id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
 
 		// Track activity (non-blocking)
 		await safeTrackActivity(

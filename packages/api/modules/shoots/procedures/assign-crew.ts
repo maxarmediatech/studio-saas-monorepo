@@ -18,6 +18,7 @@ import {
 	safeAutoSubscribe,
 	safeNotifySubscribers,
 } from "../../notifications/lib/notification-service";
+import { isTerminalShootStatus } from "../calendar-sync";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	assignCrewInputSchema,
@@ -146,7 +147,8 @@ export const assignCrew = studioProtectedProcedure
 		// - Connected user crew -> enqueue Google create
 		// - Non-user crew with email -> enqueue .ics invite
 		try {
-			if (crew.userId) {
+			const terminalShootStatus = isTerminalShootStatus(shoot.status);
+			if (!terminalShootStatus && crew.userId) {
 				const connection =
 					await db.query.googleCalendarConnections.findFirst({
 						where: and(
@@ -194,7 +196,7 @@ export const assignCrew = studioProtectedProcedure
 						updatedAt: new Date(),
 					});
 				}
-			} else if (crew.email) {
+			} else if (!terminalShootStatus && crew.email) {
 				const mapping = await db.query.shootCalendarEvents.findFirst({
 					where: and(
 						eq(

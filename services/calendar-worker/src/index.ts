@@ -3,17 +3,17 @@ import {
 	calendarSyncJobs,
 	crews,
 	db,
-	desc,
 	eq,
 	googleCalendarConnections,
 	inArray,
+	isNotNull,
 	isNull,
 	lte,
-	or,
 	organizations,
 	shootAssignments,
 	shootCalendarEvents,
 	shoots,
+	sql,
 } from "@repo/database";
 import {
 	buildShootAllDayEventInput,
@@ -28,44 +28,99 @@ import {
 } from "@repo/google-calendar";
 import { logger } from "@repo/logs";
 import { sendCalendarInviteEmail } from "@repo/mail";
+import {
+	DEFAULT_MAX_ATTEMPTS,
+	computeNextAttemptAfterFailure,
+} from "./queue-helpers";
 
 const pollIntervalMs = Number(process.env.CALENDAR_WORKER_INTERVAL_MS ?? 5000);
 const batchSize = Number(process.env.CALENDAR_WORKER_BATCH_SIZE ?? 10);
+const staleThresholdMinutesRaw = Number(
+	process.env.CALENDAR_WORKER_STALE_THRESHOLD_MINUTES ?? 15,
+);
+const staleThresholdMinutes =
+	Number.isFinite(staleThresholdMinutesRaw) && staleThresholdMinutesRaw > 0
+		? staleThresholdMinutesRaw
+		: 15;
 
-function computeNextAttemptAt(attempts: number) {
-	const delaySeconds = Math.min(30 * attempts, 15 * 60);
-	return new Date(Date.now() + delaySeconds * 1000);
-}
-
-async function fetchJobBatch() {
+async function claimJobBatch() {
 	const now = new Date();
-	return db
-		.select({ job: calendarSyncJobs })
-		.from(calendarSyncJobs)
-		.where(
-			and(
-				inArray(calendarSyncJobs.status, ["pending", "failed"]),
-				or(
-					isNull(calendarSyncJobs.nextAttemptAt),
-					lte(calendarSyncJobs.nextAttemptAt, now),
-				),
-			),
-		)
-		.orderBy(desc(calendarSyncJobs.createdAt))
-		.limit(batchSize);
+	return db.transaction(async (tx) => {
+		const claimableQuery = sql`
+			SELECT id FROM ${calendarSyncJobs}
+			WHERE (
+				${calendarSyncJobs.status} = 'pending'
+				OR (
+					${calendarSyncJobs.status} = 'failed'
+					AND COALESCE(${calendarSyncJobs.attempts}, 0) < COALESCE(${calendarSyncJobs.maxAttempts}, ${DEFAULT_MAX_ATTEMPTS})
+				)
+			)
+			AND (
+				${calendarSyncJobs.nextAttemptAt} IS NULL
+				OR ${calendarSyncJobs.nextAttemptAt} <= ${now}
+			)
+			ORDER BY ${calendarSyncJobs.createdAt} ASC
+			LIMIT ${batchSize}
+			FOR UPDATE SKIP LOCKED
+		`;
+
+		const claimableResult = await tx.execute(claimableQuery);
+		const jobIds = (claimableResult.rows as { id: string }[]).map(
+			(row) => row.id,
+		);
+
+		if (jobIds.length === 0) {
+			return [];
+		}
+
+		await tx
+			.update(calendarSyncJobs)
+			.set({
+				status: "processing",
+				attempts: sql`COALESCE(${calendarSyncJobs.attempts}, 0) + 1`,
+				lastAttemptAt: now,
+				lockedAt: now,
+				updatedAt: now,
+			})
+			.where(inArray(calendarSyncJobs.id, jobIds));
+
+		return tx
+			.select()
+			.from(calendarSyncJobs)
+			.where(inArray(calendarSyncJobs.id, jobIds));
+	});
 }
 
-async function markJobAttempt(jobId: string, attempts: number) {
-	await db
+async function recoverStaleProcessingJobs() {
+	const threshold = new Date(Date.now() - staleThresholdMinutes * 60 * 1000);
+	const recoveredJobs = await db
 		.update(calendarSyncJobs)
 		.set({
-			status: "processing",
-			attempts,
-			lastAttemptAt: new Date(),
-			lockedAt: new Date(),
+			status: "failed",
+			nextAttemptAt: sql`CASE
+				WHEN COALESCE(${calendarSyncJobs.attempts}, 0) < COALESCE(${calendarSyncJobs.maxAttempts}, ${DEFAULT_MAX_ATTEMPTS})
+				THEN NOW()
+				ELSE NULL
+			END`,
+			lastError: "Recovered stale processing lock",
+			lockedAt: null,
 			updatedAt: new Date(),
 		})
-		.where(eq(calendarSyncJobs.id, jobId));
+		.where(
+			and(
+				eq(calendarSyncJobs.status, "processing"),
+				isNotNull(calendarSyncJobs.lockedAt),
+				lte(calendarSyncJobs.lockedAt, threshold),
+			),
+		)
+		.returning({ id: calendarSyncJobs.id });
+
+	if (recoveredJobs.length > 0) {
+		logger.warn("Recovered stale calendar sync jobs", {
+			count: recoveredJobs.length,
+			staleThresholdMinutes,
+		});
+	}
 }
 
 async function markJobSuccess(jobId: string) {
@@ -75,6 +130,7 @@ async function markJobSuccess(jobId: string) {
 			status: "completed",
 			nextAttemptAt: null,
 			lastError: null,
+			lockedAt: null,
 			updatedAt: new Date(),
 		})
 		.where(eq(calendarSyncJobs.id, jobId));
@@ -86,10 +142,10 @@ async function markJobFailure(params: {
 	maxAttempts: number;
 	errorMessage: string;
 }) {
-	const nextAttemptAt =
-		params.attempts >= params.maxAttempts
-			? null
-			: computeNextAttemptAt(params.attempts);
+	const nextAttemptAt = computeNextAttemptAfterFailure({
+		attempts: params.attempts,
+		maxAttempts: params.maxAttempts,
+	});
 
 	await db
 		.update(calendarSyncJobs)
@@ -97,6 +153,7 @@ async function markJobFailure(params: {
 			status: "failed",
 			nextAttemptAt,
 			lastError: params.errorMessage,
+			lockedAt: null,
 			updatedAt: new Date(),
 		})
 		.where(eq(calendarSyncJobs.id, params.jobId));
@@ -238,9 +295,8 @@ function normalizeYmd(value: unknown): string {
 }
 
 async function processJob(job: typeof calendarSyncJobs.$inferSelect) {
-	const attempts = (job.attempts ?? 0) + 1;
-	const maxAttempts = job.maxAttempts ?? 5;
-	await markJobAttempt(job.id, attempts);
+	const attempts = job.attempts ?? 0;
+	const maxAttempts = job.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
 
 	try {
 		if (!job.shootId || !job.crewId) {
@@ -518,9 +574,10 @@ function escapeHtml(value: string) {
 }
 
 async function loop() {
-	const batch = await fetchJobBatch();
-	for (const row of batch) {
-		await processJob(row.job);
+	await recoverStaleProcessingJobs();
+	const batch = await claimJobBatch();
+	for (const job of batch) {
+		await processJob(job);
 	}
 }
 
@@ -528,6 +585,7 @@ async function main() {
 	logger.info("Calendar worker started", {
 		pollIntervalMs,
 		batchSize,
+		staleThresholdMinutes,
 	});
 
 	// eslint-disable-next-line no-constant-condition
