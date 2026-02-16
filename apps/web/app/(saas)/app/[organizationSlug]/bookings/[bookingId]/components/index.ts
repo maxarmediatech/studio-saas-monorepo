@@ -1,10 +1,7 @@
-export { BookingDetailContent } from "./BookingDetailContent";
 export { BookingDetailHeader } from "./BookingDetailHeader";
 export { BookingDetailLayout } from "./BookingDetailLayout";
 export { BookingDetailPageSkeleton } from "./BookingDetailPageSkeleton";
 export { BookingDetailTabs } from "./BookingDetailTabs";
-export { BookingHeader } from "./BookingHeader";
 export { BookingHeroSection } from "./BookingHeroSection";
-export { BookingScrollSpy } from "./BookingScrollSpy";
 export { BookingMetaPanel } from "./meta";
 export { BookingListSidebar } from "./sidebar";
