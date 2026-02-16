@@ -106,6 +106,20 @@ export const taxTypeEnum = pgEnum("tax_type", [
 ]);
 
 /**
+ * Line item type - determines how an invoice line item behaves
+ * - milestone: Lump-sum amount (no quantity/unit_price)
+ * - item: Itemized with quantity × unit_price
+ * - service: Itemized with quantity × unit_price
+ * - expense: Lump-sum amount (no quantity/unit_price)
+ */
+export const lineItemTypeEnum = pgEnum("line_item_type", [
+	"milestone",
+	"item",
+	"service",
+	"expense",
+]);
+
+/**
  * Bill to - binary choice for expense billing
  * Determines who is responsible for an expense
  */

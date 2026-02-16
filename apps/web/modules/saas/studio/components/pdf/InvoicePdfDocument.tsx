@@ -14,9 +14,10 @@ export interface InvoicePdfProps {
 		notes?: string | null;
 		lineItems: {
 			id: string;
+			type: "milestone" | "item" | "service" | "expense";
 			description: string;
-			quantity: string | number;
-			unitPrice: string | number;
+			quantity: string | number | null;
+			unitPrice: string | number | null;
 			amount: string | number;
 		}[];
 	};
@@ -136,35 +137,85 @@ export function InvoicePdfDocument({
 				</View>
 
 				{/* Line Items Table */}
-				<View style={pdfStyles.table}>
-					<View style={pdfStyles.tableHeader}>
-						<Text style={pdfStyles.tableHeaderCellDesc}>
-							Description
-						</Text>
-						<Text style={pdfStyles.tableHeaderCellRight}>Qty</Text>
-						<Text style={pdfStyles.tableHeaderCellRight}>Rate</Text>
-						<Text style={pdfStyles.tableHeaderCellRight}>
-							Amount
-						</Text>
-					</View>
+				{(() => {
+					const hasItemizedRows = invoice.lineItems.some(
+						(i) => i.type === "item" || i.type === "service",
+					);
+					return (
+						<View style={pdfStyles.table}>
+							<View style={pdfStyles.tableHeader}>
+								<Text style={pdfStyles.tableHeaderCellDesc}>
+									Description
+								</Text>
+								{hasItemizedRows && (
+									<>
+										<Text
+											style={
+												pdfStyles.tableHeaderCellRight
+											}
+										>
+											Qty
+										</Text>
+										<Text
+											style={
+												pdfStyles.tableHeaderCellRight
+											}
+										>
+											Rate
+										</Text>
+									</>
+								)}
+								<Text style={pdfStyles.tableHeaderCellRight}>
+									Amount
+								</Text>
+							</View>
 
-					{invoice.lineItems.map((item) => (
-						<View key={item.id} style={pdfStyles.tableRow}>
-							<Text style={pdfStyles.tableCellDesc}>
-								{item.description}
-							</Text>
-							<Text style={pdfStyles.tableCellRight}>
-								{item.quantity}
-							</Text>
-							<Text style={pdfStyles.tableCellRight}>
-								{formatCurrency(item.unitPrice)}
-							</Text>
-							<Text style={pdfStyles.tableCellRight}>
-								{formatCurrency(item.amount)}
-							</Text>
+							{invoice.lineItems.map((item) => {
+								const isLumpSum =
+									item.type === "milestone" ||
+									item.type === "expense";
+								return (
+									<View
+										key={item.id}
+										style={pdfStyles.tableRow}
+									>
+										<Text style={pdfStyles.tableCellDesc}>
+											{item.description}
+										</Text>
+										{hasItemizedRows && (
+											<>
+												<Text
+													style={
+														pdfStyles.tableCellRight
+													}
+												>
+													{isLumpSum
+														? "\u2014"
+														: String(item.quantity)}
+												</Text>
+												<Text
+													style={
+														pdfStyles.tableCellRight
+													}
+												>
+													{isLumpSum ||
+													item.unitPrice == null
+														? "\u2014"
+														: formatCurrency(
+																item.unitPrice,
+															)}
+												</Text>
+											</>
+										)}
+										<Text style={pdfStyles.tableCellRight}>
+											{formatCurrency(item.amount)}
+										</Text>
+									</View>
+								);
+							})}
 						</View>
-					))}
-				</View>
+					);
+				})()}
 
 				{/* Totals */}
 				<View style={pdfStyles.totalsSection}>
@@ -187,7 +238,10 @@ export function InvoicePdfDocument({
 									Discount
 								</Text>
 								<Text style={pdfStyles.discountValue}>
-									-{formatCurrency(invoice.discountAmount ?? 0)}
+									-
+									{formatCurrency(
+										invoice.discountAmount ?? 0,
+									)}
 								</Text>
 							</View>
 						)}
@@ -225,7 +279,10 @@ export function InvoicePdfDocument({
 									Discount
 								</Text>
 								<Text style={pdfStyles.discountValue}>
-									-{formatCurrency(invoice.discountAmount ?? 0)}
+									-
+									{formatCurrency(
+										invoice.discountAmount ?? 0,
+									)}
 								</Text>
 							</View>
 						)}

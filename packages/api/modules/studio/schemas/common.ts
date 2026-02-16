@@ -309,6 +309,20 @@ export const taxTypeSchema = z.enum(["exclusive", "inclusive", "no_gst"]);
 export type TaxType = z.infer<typeof taxTypeSchema>;
 
 /**
+ * Line item type enum - determines how a line item is priced
+ */
+export const lineItemTypeSchema = z.enum([
+	"milestone",
+	"item",
+	"service",
+	"expense",
+]);
+
+export type LineItemType = z.infer<typeof lineItemTypeSchema>;
+
+export const lumpSumTypes = ["milestone", "expense"] as const;
+
+/**
  * Bill to enum
  */
 export const billToSchema = z.enum(["studio", "client"]);

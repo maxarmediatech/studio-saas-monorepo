@@ -30,6 +30,7 @@ import {
 	bookingPhaseEnum,
 	configTypeEnum,
 	invoiceStatusEnum,
+	lineItemTypeEnum,
 	paymentMethodEnum,
 	paymentScheduleStatusEnum,
 	submissionStatusEnum,
@@ -1183,12 +1184,11 @@ export const invoiceLineItems = pgTable(
 		invoiceId: varchar("invoice_id", { length: 255 })
 			.notNull()
 			.references(() => invoices.id, { onDelete: "cascade" }),
+		type: lineItemTypeEnum("type").default("item").notNull(),
 
 		description: text("description").notNull(),
-		quantity: decimal("quantity", { precision: 10, scale: 2 })
-			.default("1")
-			.notNull(),
-		unitPrice: decimal("unit_price", { precision: 12, scale: 2 }).notNull(),
+		quantity: decimal("quantity", { precision: 10, scale: 2 }),
+		unitPrice: decimal("unit_price", { precision: 12, scale: 2 }),
 		amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
 
 		sortOrder: integer("sort_order").default(0).notNull(),
@@ -1202,14 +1202,13 @@ export const invoiceLineItems = pgTable(
 	},
 	(table) => [
 		index("invoice_line_items_invoice_idx").on(table.invoiceId),
-		check("invoice_line_items_quantity_positive", sql`quantity > 0`),
 		check(
-			"invoice_line_items_unit_price_non_negative",
-			sql`unit_price >= 0`,
+			"invoice_line_items_itemized_check",
+			sql`CASE WHEN type IN ('item', 'service') THEN quantity IS NOT NULL AND quantity > 0 AND unit_price IS NOT NULL AND unit_price >= 0 AND amount = quantity * unit_price ELSE TRUE END`,
 		),
 		check(
-			"invoice_line_items_amount_consistency",
-			sql`amount = quantity * unit_price`,
+			"invoice_line_items_lump_sum_check",
+			sql`CASE WHEN type IN ('milestone', 'expense') THEN quantity IS NULL AND unit_price IS NULL AND amount >= 0 ELSE TRUE END`,
 		),
 	],
 );

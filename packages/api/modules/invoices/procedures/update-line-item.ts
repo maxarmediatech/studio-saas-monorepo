@@ -14,8 +14,8 @@ import {
 	formatAmount,
 	safeTrackFieldChanges,
 } from "../../activities/lib";
-import { requirePermission } from "../../studio/lib/permissions";
 import { centsToMoney, moneyToCents } from "../../studio/lib/money";
+import { requirePermission } from "../../studio/lib/permissions";
 import {
 	updateLineItemInputSchema,
 	updateLineItemOutputSchema,
@@ -24,6 +24,7 @@ import {
 	type InvoiceStatus,
 	recalculateInvoiceTotals,
 } from "../lib/invoice-helpers";
+import { isLumpSumType, parseItemizedQuantity } from "../lib/line-item-helpers";
 
 export const updateLineItem = studioProtectedProcedure
 	.route({
@@ -75,42 +76,125 @@ export const updateLineItem = studioProtectedProcedure
 			updatedAt: new Date(),
 		};
 
-		const newQuantity = updates.quantity ?? lineItem.quantity;
-		const newUnitPrice = updates.unitPrice ?? lineItem.unitPrice;
-
 		if (updates.description !== undefined) {
 			updateData.description = updates.description;
 		}
-
-		if (updates.quantity !== undefined) {
-			updateData.quantity = updates.quantity;
-		}
-
-			if (updates.unitPrice !== undefined) {
-				updateData.unitPrice = centsToMoney(moneyToCents(updates.unitPrice));
-			}
 
 		if (updates.sortOrder !== undefined) {
 			updateData.sortOrder = updates.sortOrder;
 		}
 
-			if (updates.quantity !== undefined || updates.unitPrice !== undefined) {
-				const qty = Number.parseInt(newQuantity, 10);
+		const effectiveType = updates.type ?? lineItem.type;
+		const isLumpSum = isLumpSumType(effectiveType);
+		const wasLumpSum = isLumpSumType(lineItem.type);
+		const hasPricingUpdates =
+			updates.type !== undefined ||
+			updates.quantity !== undefined ||
+			updates.unitPrice !== undefined ||
+			updates.amount !== undefined;
+
+		if (hasPricingUpdates) {
+			if (isLumpSum) {
+				if (
+					updates.quantity !== undefined &&
+					updates.quantity !== null
+				) {
+					throw new ORPCError("BAD_REQUEST", {
+						message:
+							"Quantity is not applicable for milestone/expense line items",
+					});
+				}
+				if (
+					updates.unitPrice !== undefined &&
+					updates.unitPrice !== null
+				) {
+					throw new ORPCError("BAD_REQUEST", {
+						message:
+							"Unit price is not applicable for milestone/expense line items",
+					});
+				}
+				if (!wasLumpSum && updates.amount === undefined) {
+					throw new ORPCError("BAD_REQUEST", {
+						message:
+							"Amount is required when switching to milestone/expense line items",
+					});
+				}
+
+				updateData.type = effectiveType;
+				updateData.quantity = null;
+				updateData.unitPrice = null;
+				if (updates.amount !== undefined) {
+					updateData.amount = updates.amount;
+				}
+			} else {
+				if (updates.amount !== undefined) {
+					throw new ORPCError("BAD_REQUEST", {
+						message:
+							"Amount is computed server-side for item/service line items",
+					});
+				}
+				if (updates.quantity === null || updates.unitPrice === null) {
+					throw new ORPCError("BAD_REQUEST", {
+						message:
+							"Quantity and unit price cannot be null for item/service line items",
+					});
+				}
+				if (
+					wasLumpSum &&
+					(updates.quantity === undefined ||
+						updates.unitPrice === undefined)
+				) {
+					throw new ORPCError("BAD_REQUEST", {
+						message:
+							"Quantity and unit price are required when switching to item/service line items",
+					});
+				}
+
+				const newQuantity = updates.quantity ?? lineItem.quantity;
+				const newUnitPrice = updates.unitPrice ?? lineItem.unitPrice;
+				if (!newQuantity || !newUnitPrice) {
+					throw new ORPCError("BAD_REQUEST", {
+						message:
+							"Quantity and unit price are required for item/service line items",
+					});
+				}
+
+				const qty = parseItemizedQuantity(newQuantity);
 				const unitPriceCents = moneyToCents(newUnitPrice);
+				updateData.type = effectiveType;
+				updateData.quantity = newQuantity;
+				updateData.unitPrice = centsToMoney(unitPriceCents);
 				updateData.amount = centsToMoney(qty * unitPriceCents);
 			}
+		}
 
-			return await db.transaction(async (tx) => {
-				await tx
-					.update(invoiceLineItems)
-					.set(updateData)
-					.where(eq(invoiceLineItems.id, id));
+		return await db.transaction(async (tx) => {
+			const [updatedLineItem] = await tx
+				.update(invoiceLineItems)
+				.set(updateData)
+				.where(eq(invoiceLineItems.id, id))
+				.returning({
+					description: invoiceLineItems.description,
+					type: invoiceLineItems.type,
+					quantity: invoiceLineItems.quantity,
+					unitPrice: invoiceLineItems.unitPrice,
+					amount: invoiceLineItems.amount,
+				});
 
-				const totals = await recalculateInvoiceTotals(tx, lineItem.invoiceId);
-				await tx
-					.update(invoices)
-					.set({
-						...totals,
+			if (!updatedLineItem) {
+				throw new ORPCError("INTERNAL_SERVER_ERROR", {
+					message: "Failed to update line item",
+				});
+			}
+
+			const totals = await recalculateInvoiceTotals(
+				tx,
+				lineItem.invoiceId,
+			);
+			await tx
+				.update(invoices)
+				.set({
+					...totals,
 					updatedAt: new Date(),
 					updatedBy: context.user.id,
 				})
@@ -124,23 +208,29 @@ export const updateLineItem = studioProtectedProcedure
 			const changes = detectChanges(
 				{
 					description: lineItem.description,
+					type: lineItem.type,
 					quantity: lineItem.quantity,
 					unitPrice: lineItem.unitPrice,
+					amount: lineItem.amount,
 				},
 				{
-					description: updates.description,
-					quantity: updates.quantity,
-					unitPrice: updates.unitPrice,
+					description: updatedLineItem.description,
+					type: updatedLineItem.type,
+					quantity: updatedLineItem.quantity,
+					unitPrice: updatedLineItem.unitPrice,
+					amount: updatedLineItem.amount,
 				},
-				["description", "quantity", "unitPrice"],
+				["description", "type", "quantity", "unitPrice", "amount"],
 			).map((c) => ({
 				...c,
 				oldValue:
-					c.field === "unitPrice" && c.oldValue
+					(c.field === "unitPrice" || c.field === "amount") &&
+					c.oldValue
 						? formatAmount(c.oldValue)
 						: c.oldValue,
 				newValue:
-					c.field === "unitPrice" && c.newValue
+					(c.field === "unitPrice" || c.field === "amount") &&
+					c.newValue
 						? formatAmount(c.newValue)
 						: c.newValue,
 			}));

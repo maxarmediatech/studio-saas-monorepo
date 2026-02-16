@@ -14,6 +14,7 @@ import {
 	dateSchema,
 	idSchema,
 	invoiceStatusSchema,
+	lineItemTypeSchema,
 	moneySchema,
 	mutationResponseSchema,
 	notesSchema,
@@ -32,9 +33,10 @@ import {
 export const invoiceLineItemSchema = z.object({
 	id: idSchema,
 	invoiceId: idSchema,
+	type: lineItemTypeSchema,
 	description: z.string(),
-	quantity: z.string(),
-	unitPrice: z.string(),
+	quantity: z.string().nullable(),
+	unitPrice: z.string().nullable(),
 	amount: z.string(),
 	sortOrder: z.number(),
 	createdAt: z.string(),
@@ -186,14 +188,58 @@ export const createInvoiceInputSchema = z.object({
 	taxType: taxTypeSchema.optional(),
 	lineItems: z
 		.array(
-			z.object({
-				description: z.string().min(1).max(500),
-				quantity: z
-					.string()
-					.regex(/^\d+$/)
-					.default("1"),
-				unitPrice: moneySchema,
-			}),
+			z
+				.object({
+					type: lineItemTypeSchema.default("item"),
+					description: z.string().min(1).max(500),
+					quantity: z.string().regex(/^\d+$/).optional(),
+					unitPrice: moneySchema.optional(),
+					amount: moneySchema.optional(),
+				})
+				.superRefine((data, ctx) => {
+					const isLumpSum =
+						data.type === "milestone" || data.type === "expense";
+					if (isLumpSum) {
+						if (!data.amount)
+							ctx.addIssue({
+								code: "custom",
+								path: ["amount"],
+								message: "Required for milestone/expense",
+							});
+						if (data.quantity)
+							ctx.addIssue({
+								code: "custom",
+								path: ["quantity"],
+								message: "Not applicable for milestone/expense",
+							});
+						if (data.unitPrice)
+							ctx.addIssue({
+								code: "custom",
+								path: ["unitPrice"],
+								message: "Not applicable for milestone/expense",
+							});
+					} else {
+						if (!data.quantity)
+							ctx.addIssue({
+								code: "custom",
+								path: ["quantity"],
+								message: "Required for item/service",
+							});
+						if (!data.unitPrice)
+							ctx.addIssue({
+								code: "custom",
+								path: ["unitPrice"],
+								message: "Required for item/service",
+							});
+						if (data.amount)
+							ctx.addIssue({
+								code: "custom",
+								path: ["amount"],
+								message:
+									"Computed server-side for item/service",
+							});
+					}
+				}),
 		)
 		.min(1, "At least one line item is required"),
 });
@@ -251,16 +297,58 @@ export type UpdateInvoiceOutput = z.infer<typeof updateInvoiceOutputSchema>;
 // LINE ITEM CRUD
 // ============================================================================
 
-export const addLineItemInputSchema = z.object({
-	invoiceId: idSchema,
-	description: z.string().min(1).max(500),
-	quantity: z
-		.string()
-		.regex(/^\d+$/)
-		.default("1"),
-	unitPrice: moneySchema,
-	sortOrder: z.number().min(0).optional(),
-});
+export const addLineItemInputSchema = z
+	.object({
+		invoiceId: idSchema,
+		type: lineItemTypeSchema.default("item"),
+		description: z.string().min(1).max(500),
+		quantity: z.string().regex(/^\d+$/).optional(),
+		unitPrice: moneySchema.optional(),
+		amount: moneySchema.optional(),
+		sortOrder: z.number().min(0).optional(),
+	})
+	.superRefine((data, ctx) => {
+		const isLumpSum = data.type === "milestone" || data.type === "expense";
+		if (isLumpSum) {
+			if (!data.amount)
+				ctx.addIssue({
+					code: "custom",
+					path: ["amount"],
+					message: "Required for milestone/expense",
+				});
+			if (data.quantity)
+				ctx.addIssue({
+					code: "custom",
+					path: ["quantity"],
+					message: "Not applicable for milestone/expense",
+				});
+			if (data.unitPrice)
+				ctx.addIssue({
+					code: "custom",
+					path: ["unitPrice"],
+					message: "Not applicable for milestone/expense",
+				});
+		} else {
+			if (!data.quantity)
+				ctx.addIssue({
+					code: "custom",
+					path: ["quantity"],
+					message: "Required for item/service",
+				});
+			if (!data.unitPrice)
+				ctx.addIssue({
+					code: "custom",
+					path: ["unitPrice"],
+					message: "Required for item/service",
+				});
+			if (data.amount)
+				ctx.addIssue({
+					code: "custom",
+					path: ["amount"],
+					message: "Computed server-side for item/service",
+				});
+		}
+	});
 
 export type AddLineItemInput = z.infer<typeof addLineItemInputSchema>;
 
@@ -268,16 +356,83 @@ export const addLineItemOutputSchema = mutationResponseSchema;
 
 export type AddLineItemOutput = z.infer<typeof addLineItemOutputSchema>;
 
-export const updateLineItemInputSchema = z.object({
-	id: idSchema,
-	description: z.string().min(1).max(500).optional(),
-	quantity: z
-		.string()
-		.regex(/^\d+$/)
-		.optional(),
-	unitPrice: moneySchema.optional(),
-	sortOrder: z.number().min(0).optional(),
-});
+export const updateLineItemInputSchema = z
+	.object({
+		id: idSchema,
+		type: lineItemTypeSchema.optional(),
+		description: z.string().min(1).max(500).optional(),
+		quantity: z.string().regex(/^\d+$/).optional().nullable(),
+		unitPrice: moneySchema.optional().nullable(),
+		amount: moneySchema.optional(),
+		sortOrder: z.number().min(0).optional(),
+	})
+	.superRefine((data, ctx) => {
+		const hasItemizedValues =
+			(data.quantity !== undefined && data.quantity !== null) ||
+			(data.unitPrice !== undefined && data.unitPrice !== null);
+		if (data.amount !== undefined && hasItemizedValues) {
+			ctx.addIssue({
+				code: "custom",
+				path: ["amount"],
+				message:
+					"Amount cannot be provided with quantity/unitPrice in the same update",
+			});
+		}
+
+		if (data.type) {
+			const isLumpSum =
+				data.type === "milestone" || data.type === "expense";
+			if (isLumpSum) {
+				if (!data.amount)
+					ctx.addIssue({
+						code: "custom",
+						path: ["amount"],
+						message: "Required when switching to milestone/expense",
+					});
+				if (data.quantity)
+					ctx.addIssue({
+						code: "custom",
+						path: ["quantity"],
+						message: "Not applicable for milestone/expense",
+					});
+				if (data.unitPrice)
+					ctx.addIssue({
+						code: "custom",
+						path: ["unitPrice"],
+						message: "Not applicable for milestone/expense",
+					});
+			} else {
+				if (!data.quantity)
+					ctx.addIssue({
+						code: "custom",
+						path: ["quantity"],
+						message: "Required when switching to item/service",
+					});
+				if (!data.unitPrice)
+					ctx.addIssue({
+						code: "custom",
+						path: ["unitPrice"],
+						message: "Required when switching to item/service",
+					});
+				if (data.amount)
+					ctx.addIssue({
+						code: "custom",
+						path: ["amount"],
+						message: "Computed server-side for item/service",
+					});
+			}
+			return;
+		}
+
+		if (data.quantity === null || data.unitPrice === null) {
+			ctx.addIssue({
+				code: "custom",
+				path: ["type"],
+				message:
+					"Type is required when setting quantity/unitPrice to null",
+			});
+		}
+	});
 
 export type UpdateLineItemInput = z.infer<typeof updateLineItemInputSchema>;
 

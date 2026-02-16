@@ -85,6 +85,7 @@ export const getInvoice = studioProtectedProcedure
 			.select({
 				id: invoiceLineItems.id,
 				invoiceId: invoiceLineItems.invoiceId,
+				type: invoiceLineItems.type,
 				description: invoiceLineItems.description,
 				quantity: invoiceLineItems.quantity,
 				unitPrice: invoiceLineItems.unitPrice,
@@ -180,6 +181,7 @@ export const getInvoice = studioProtectedProcedure
 				lineItems: lineItems.map((item) => ({
 					id: item.id,
 					invoiceId: item.invoiceId,
+					type: item.type,
 					description: item.description,
 					quantity: item.quantity,
 					unitPrice: item.unitPrice,

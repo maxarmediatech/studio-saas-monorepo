@@ -10,8 +10,8 @@ import {
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { formatAmount, safeTrackActivity } from "../../activities/lib";
-import { requirePermission } from "../../studio/lib/permissions";
 import { centsToMoney, moneyToCents } from "../../studio/lib/money";
+import { requirePermission } from "../../studio/lib/permissions";
 import {
 	createInvoiceInputSchema,
 	createInvoiceOutputSchema,
@@ -22,6 +22,7 @@ import {
 	getGstConfig,
 	type TaxType,
 } from "../lib/invoice-helpers";
+import { computeLineItemFields } from "../lib/line-item-helpers";
 
 export const createInvoice = studioProtectedProcedure
 	.route({
@@ -56,43 +57,53 @@ export const createInvoice = studioProtectedProcedure
 			columns: { id: true, name: true },
 		});
 
-			if (!booking) {
-				throw new ORPCError("NOT_FOUND", {
-					message: "Booking not found",
-				});
-			}
+		if (!booking) {
+			throw new ORPCError("NOT_FOUND", {
+				message: "Booking not found",
+			});
+		}
 
-			const subtotalCents = lineItems.reduce((sum, item) => {
-				const qty = Number.parseInt(item.quantity ?? "1", 10);
-				const unitPriceCents = moneyToCents(item.unitPrice);
-				return sum + qty * unitPriceCents;
-			}, 0);
+		const lineItemValues = lineItems.map((item, idx) => {
+			const effectiveType = item.type ?? "item";
+			const fields = computeLineItemFields(item, effectiveType);
+			return {
+				invoiceId: "",
+				description: item.description,
+				...fields,
+				sortOrder: idx,
+			};
+		});
 
-			const discountCents = discountAmount ? moneyToCents(discountAmount) : 0;
-			if (discountCents > subtotalCents) {
-				throw new ORPCError("BAD_REQUEST", {
-					message: "Discount cannot exceed subtotal",
-				});
-			}
-			const discount = centsToMoney(discountCents);
+		const subtotalCents = lineItemValues.reduce(
+			(sum, item) => sum + moneyToCents(item.amount),
+			0,
+		);
 
-			// Resolve tax type: use input value or fall back to org default
-			let taxType: TaxType = "exclusive";
-			if (inputTaxType) {
-				taxType = inputTaxType;
-			} else {
-				const gstConfig = await getGstConfig(context.organizationId);
-				taxType = gstConfig.defaultTaxType;
-			}
+		const discountCents = discountAmount ? moneyToCents(discountAmount) : 0;
+		if (discountCents > subtotalCents) {
+			throw new ORPCError("BAD_REQUEST", {
+				message: "Discount cannot exceed subtotal",
+			});
+		}
+		const discount = centsToMoney(discountCents);
 
-			const { taxAmount, totalAmount } = await calculateGst(
-				centsToMoney(subtotalCents),
-				context.organizationId,
-				discount,
-				taxType,
-			);
+		// Resolve tax type: use input value or fall back to org default
+		let taxType: TaxType = "exclusive";
+		if (inputTaxType) {
+			taxType = inputTaxType;
+		} else {
+			const gstConfig = await getGstConfig(context.organizationId);
+			taxType = gstConfig.defaultTaxType;
+		}
 
-			return await db.transaction(async (tx) => {
+		const { taxAmount, totalAmount } = await calculateGst(
+			centsToMoney(subtotalCents),
+			context.organizationId,
+			discount,
+			taxType,
+		);
+
+		return await db.transaction(async (tx) => {
 			const invoiceNumber = await generateInvoiceNumber(
 				bookingId,
 				context.organizationId,
@@ -100,22 +111,22 @@ export const createInvoice = studioProtectedProcedure
 
 			const [created] = await tx
 				.insert(invoices)
-					.values({
-						organizationId: context.organizationId,
-						bookingId,
-						invoiceNumber,
-						status: "draft",
-						issueDate,
-						dueDate: dueDate ?? null,
-						subtotal: centsToMoney(subtotalCents),
-						taxAmount,
-						discountAmount: discount,
-						taxType,
-						totalAmount,
-						paidAmount: "0.00",
-						notes: notes ?? null,
-						terms: terms ?? null,
-						createdBy: context.user.id,
+				.values({
+					organizationId: context.organizationId,
+					bookingId,
+					invoiceNumber,
+					status: "draft",
+					issueDate,
+					dueDate: dueDate ?? null,
+					subtotal: centsToMoney(subtotalCents),
+					taxAmount,
+					discountAmount: discount,
+					taxType,
+					totalAmount,
+					paidAmount: "0.00",
+					notes: notes ?? null,
+					terms: terms ?? null,
+					createdBy: context.user.id,
 					updatedBy: context.user.id,
 				})
 				.returning({ id: invoices.id });
@@ -124,39 +135,30 @@ export const createInvoice = studioProtectedProcedure
 				throw new ORPCError("INTERNAL_SERVER_ERROR", {
 					message: "Failed to create invoice",
 				});
-				}
+			}
 
-				const lineItemValues = lineItems.map((item, idx) => {
-					const qty = Number.parseInt(item.quantity ?? "1", 10);
-					const unitPriceCents = moneyToCents(item.unitPrice);
-					const amountCents = qty * unitPriceCents;
-					return {
-						invoiceId: created.id,
-						description: item.description,
-						quantity: item.quantity ?? "1",
-						unitPrice: centsToMoney(unitPriceCents),
-						amount: centsToMoney(amountCents),
-						sortOrder: idx,
-					};
-				});
+			const finalLineItemValues = lineItemValues.map((item) => ({
+				...item,
+				invoiceId: created.id,
+			}));
 
-				await tx.insert(invoiceLineItems).values(lineItemValues);
+			await tx.insert(invoiceLineItems).values(finalLineItemValues);
 
-				await safeTrackActivity(context, {
-					entityType: "invoice",
-					entityId: created.id,
-					entityName: `${invoiceNumber} (${formatAmount(totalAmount)})`,
-					action: "created",
-					parentEntityType: "booking",
-					parentEntityId: bookingId,
-					parentEntityName: booking.name,
-					metadata: {
-						invoiceNumber,
-						totalAmount,
-					},
-				});
+			await safeTrackActivity(context, {
+				entityType: "invoice",
+				entityId: created.id,
+				entityName: `${invoiceNumber} (${formatAmount(totalAmount)})`,
+				action: "created",
+				parentEntityType: "booking",
+				parentEntityId: bookingId,
+				parentEntityName: booking.name,
+				metadata: {
+					invoiceNumber,
+					totalAmount,
+				},
+			});
 
-				return {
+			return {
 				data: { id: created.id },
 				message: "Invoice created successfully",
 			};

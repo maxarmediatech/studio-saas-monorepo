@@ -12,7 +12,6 @@ import {
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { safeTrackActivity } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
-import { centsToMoney, moneyToCents } from "../../studio/lib/money";
 import {
 	addLineItemInputSchema,
 	addLineItemOutputSchema,
@@ -21,6 +20,7 @@ import {
 	type InvoiceStatus,
 	recalculateInvoiceTotals,
 } from "../lib/invoice-helpers";
+import { computeLineItemFields } from "../lib/line-item-helpers";
 
 export const addLineItem = studioProtectedProcedure
 	.route({
@@ -35,8 +35,15 @@ export const addLineItem = studioProtectedProcedure
 	.handler(async ({ input, context }) => {
 		await requirePermission(context, "payment", "update");
 
-		const { invoiceId, description, quantity, unitPrice, sortOrder } =
-			input;
+		const {
+			invoiceId,
+			description,
+			quantity,
+			unitPrice,
+			amount,
+			type,
+			sortOrder,
+		} = input;
 
 		const invoice = await db.query.invoices.findFirst({
 			where: and(
@@ -57,13 +64,15 @@ export const addLineItem = studioProtectedProcedure
 			throw new ORPCError("CONFLICT", {
 				message: "Can only add line items to draft invoices",
 			});
-			}
+		}
 
-			const qty = Number.parseInt(quantity, 10);
-			const unitPriceCents = moneyToCents(unitPrice);
-			const amountCents = qty * unitPriceCents;
+		const effectiveType = type ?? "item";
+		const fields = computeLineItemFields(
+			{ type: effectiveType, quantity, unitPrice, amount },
+			effectiveType,
+		);
 
-			return await db.transaction(async (tx) => {
+		return await db.transaction(async (tx) => {
 			let finalSortOrder = sortOrder;
 			if (finalSortOrder === undefined) {
 				const [maxSort] = await tx
@@ -75,29 +84,27 @@ export const addLineItem = studioProtectedProcedure
 				finalSortOrder = (maxSort?.maxOrder ?? -1) + 1;
 			}
 
-				const [created] = await tx
-					.insert(invoiceLineItems)
-					.values({
-						invoiceId,
-						description,
-						quantity,
-						unitPrice: centsToMoney(unitPriceCents),
-						amount: centsToMoney(amountCents),
-						sortOrder: finalSortOrder,
-					})
-					.returning({ id: invoiceLineItems.id });
+			const [created] = await tx
+				.insert(invoiceLineItems)
+				.values({
+					invoiceId,
+					description,
+					...fields,
+					sortOrder: finalSortOrder,
+				})
+				.returning({ id: invoiceLineItems.id });
 
 			if (!created) {
 				throw new ORPCError("INTERNAL_SERVER_ERROR", {
 					message: "Failed to add line item",
-					});
-				}
+				});
+			}
 
-				const totals = await recalculateInvoiceTotals(tx, invoiceId);
-				await tx
-					.update(invoices)
-					.set({
-						...totals,
+			const totals = await recalculateInvoiceTotals(tx, invoiceId);
+			await tx
+				.update(invoices)
+				.set({
+					...totals,
 					updatedAt: new Date(),
 					updatedBy: context.user.id,
 				})

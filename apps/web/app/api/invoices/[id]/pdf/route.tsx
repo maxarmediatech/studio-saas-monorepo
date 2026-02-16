@@ -10,7 +10,9 @@ function parseJsonRecord(value: unknown): Record<string, unknown> {
 	if (typeof value === "string") {
 		try {
 			const parsed = JSON.parse(value) as unknown;
-			return typeof parsed === "object" && parsed ? (parsed as Record<string, unknown>) : {};
+			return typeof parsed === "object" && parsed
+				? (parsed as Record<string, unknown>)
+				: {};
 		} catch {
 			return {};
 		}
@@ -52,38 +54,47 @@ export async function GET(
 			return new Response("Organization not found", { status: 404 });
 		}
 
-			const configs = await db.query.configurations.findMany({
-				where: eq(configurations.organizationId, invoice.organizationId),
-			});
+		const configs = await db.query.configurations.findMany({
+			where: eq(configurations.organizationId, invoice.organizationId),
+		});
 
-			const addressConfig = configs.find((c) => c.key === "address");
-			const orgMetadata = parseJsonRecord(organization.metadata);
+		const addressConfig = configs.find((c) => c.key === "address");
+		const orgMetadata = parseJsonRecord(organization.metadata);
 
-			const address =
-				addressConfig?.label ||
-				(typeof orgMetadata.address === "string" ? orgMetadata.address : "") ||
-				"";
-			const gstNumber =
-				typeof orgMetadata.gstNumber === "string" ? orgMetadata.gstNumber : "";
-			const email = typeof orgMetadata.email === "string" ? orgMetadata.email : "";
-			const phone = typeof orgMetadata.phone === "string" ? orgMetadata.phone : "";
+		const address =
+			addressConfig?.label ||
+			(typeof orgMetadata.address === "string"
+				? orgMetadata.address
+				: "") ||
+			"";
+		const gstNumber =
+			typeof orgMetadata.gstNumber === "string"
+				? orgMetadata.gstNumber
+				: "";
+		const email =
+			typeof orgMetadata.email === "string" ? orgMetadata.email : "";
+		const phone =
+			typeof orgMetadata.phone === "string" ? orgMetadata.phone : "";
 
-			const props = {
-				invoice: {
-					invoiceNumber: invoice.invoiceNumber,
-					issueDate: invoice.issueDate,
-					dueDate: invoice.dueDate,
-					subtotal: Number(invoice.subtotal),
-					taxAmount: Number(invoice.taxAmount),
-					discountAmount: Number(invoice.discountAmount),
-					taxType: invoice.taxType,
-					totalAmount: Number(invoice.totalAmount),
-					notes: invoice.notes,
-					lineItems: invoice.lineItems.map((item) => ({
-						id: item.id,
+		const props = {
+			invoice: {
+				invoiceNumber: invoice.invoiceNumber,
+				issueDate: invoice.issueDate,
+				dueDate: invoice.dueDate,
+				subtotal: Number(invoice.subtotal),
+				taxAmount: Number(invoice.taxAmount),
+				discountAmount: Number(invoice.discountAmount),
+				taxType: invoice.taxType,
+				totalAmount: Number(invoice.totalAmount),
+				notes: invoice.notes,
+				lineItems: invoice.lineItems.map((item) => ({
+					id: item.id,
+					type: item.type,
 					description: item.description,
-					quantity: Number(item.quantity),
-					unitPrice: Number(item.unitPrice),
+					quantity:
+						item.quantity != null ? Number(item.quantity) : null,
+					unitPrice:
+						item.unitPrice != null ? Number(item.unitPrice) : null,
 					amount: Number(item.amount),
 				})),
 			},

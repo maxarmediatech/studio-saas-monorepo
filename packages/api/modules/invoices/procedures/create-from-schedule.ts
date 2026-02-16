@@ -158,8 +158,9 @@ export const createInvoiceFromSchedule = studioProtectedProcedure
 			await tx.insert(invoiceLineItems).values({
 				invoiceId: created.id,
 				description: schedule.name,
-				quantity: "1",
-				unitPrice: scheduleAmount,
+				type: "milestone",
+				quantity: null,
+				unitPrice: null,
 				amount: scheduleAmount,
 				sortOrder: 0,
 			});
