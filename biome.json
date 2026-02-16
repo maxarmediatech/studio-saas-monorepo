@@ -49,10 +49,9 @@
 			"**",
 			"!zod/index.ts",
 			"!tailwind-animate.css",
-			"!.claude",
-			"!**/apps/web/app_legacy/globals.css"
-		]
-	},
+			"!.claude"
+			]
+		},
 	"javascript": {
 		"jsxRuntime": "reactClassic"
 	},

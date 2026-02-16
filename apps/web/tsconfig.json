@@ -22,5 +22,5 @@
 		"**/*.mjs",
 		".next/types/**/*.ts"
 	],
-	"exclude": ["node_modules", "app_legacy"]
+	"exclude": ["node_modules"]
 }
