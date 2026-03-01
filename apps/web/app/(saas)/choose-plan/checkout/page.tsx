@@ -1,4 +1,5 @@
 import { config } from "@repo/config";
+import { isAllowedDodoCheckoutUrl } from "@repo/payments/lib/checkout";
 import { getSession } from "@saas/auth/lib/server";
 import { isOnboardingRequired } from "@saas/onboarding/lib/access";
 import { ChoosePlanRecoveryActions } from "@saas/payments/components/ChoosePlanRecoveryActions";
@@ -21,22 +22,15 @@ function getSingleValue(
 	return value;
 }
 
-function isAllowedDodoCheckoutUrl(urlValue: string): boolean {
-	try {
-		const url = new URL(urlValue);
-		return (
-			(url.protocol === "https:" || url.hostname === "localhost") &&
-			url.hostname.includes("dodopayments.com")
-		);
-	} catch {
-		return false;
-	}
-}
-
 export default async function ChoosePlanCheckoutPage({
 	searchParams,
 }: {
-	searchParams: Promise<{ checkoutUrl?: string | string[] }>;
+	searchParams: Promise<{
+		checkoutUrl?: string | string[];
+		checkoutSessionId?: string | string[];
+		redirectTo?: string | string[];
+		products?: string | string[];
+	}>;
 }) {
 	const session = await getSession();
 
@@ -46,6 +40,11 @@ export default async function ChoosePlanCheckoutPage({
 
 	const params = await searchParams;
 	const checkoutUrl = getSingleValue(params.checkoutUrl);
+	const checkoutSessionId = getSingleValue(params.checkoutSessionId);
+	const redirectTo = getSingleValue(params.redirectTo);
+	const products = getSingleValue(params.products);
+	const backHref =
+		redirectTo && redirectTo !== "/app" ? redirectTo : "/choose-plan";
 
 	if (!(checkoutUrl && isAllowedDodoCheckoutUrl(checkoutUrl))) {
 		redirect("/choose-plan");
@@ -69,7 +68,10 @@ export default async function ChoosePlanCheckoutPage({
 		>
 			<InlineCheckoutPageClient
 				checkoutUrl={checkoutUrl}
-				backHref="/choose-plan"
+				checkoutSessionId={checkoutSessionId}
+				postCheckoutPath={redirectTo ?? "/app"}
+				expectedProducts={products ?? ""}
+				backHref={backHref}
 			/>
 		</AuthWrapper>
 	);

@@ -109,13 +109,18 @@ export async function updateSeatsInOrganizationSubscription(
 ) {
 	const organization =
 		await getOrganizationWithPurchasesAndMembersCount(organizationId);
+	const activeSubscriptionStatuses = new Set(["active", "trialing"]);
 
 	if (!organization?.purchases.length) {
 		return;
 	}
 
 	const activeSubscription = organization.purchases.find(
-		(purchase) => purchase.type === "SUBSCRIPTION",
+		(purchase) =>
+			purchase.type === "SUBSCRIPTION" &&
+			activeSubscriptionStatuses.has(
+				(purchase.status ?? "").toLowerCase(),
+			),
 	);
 
 	if (!activeSubscription?.subscriptionId) {

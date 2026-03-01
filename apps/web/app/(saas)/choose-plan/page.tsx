@@ -108,6 +108,7 @@ export default async function ChoosePlanPage() {
 			<div>
 				<PricingTable
 					activePlanId={hasPurchases ? activePlan?.id : undefined}
+					postCheckoutPath="/app"
 					{...(organizationId
 						? {
 								organizationId,

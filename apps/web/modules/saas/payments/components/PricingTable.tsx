@@ -4,6 +4,7 @@ import { Button } from "@repo/ui/components/button";
 import { Tabs, TabsList, TabsTrigger } from "@repo/ui/components/tabs";
 import { cn } from "@repo/ui/lib/utils";
 import { usePlanData } from "@saas/payments/hooks/plan-data";
+import { buildCheckoutLaunchPath } from "@saas/payments/lib/checkout-launch";
 import type { PlanId } from "@saas/payments/types";
 import { useLocaleCurrency } from "@shared/hooks/locale-currency";
 import { useRouter } from "@shared/hooks/router";
@@ -35,11 +36,13 @@ export function PricingTable({
 	userId,
 	organizationId,
 	activePlanId,
+	postCheckoutPath = "/app",
 }: {
 	className?: string;
 	userId?: string;
 	organizationId?: string;
 	activePlanId?: string;
+	postCheckoutPath?: string;
 }) {
 	const router = useRouter();
 	const localeCurrency = useLocaleCurrency();
@@ -95,23 +98,31 @@ export function PricingTable({
 		try {
 			const productCart = buildProductCart(price);
 
-			const { checkoutLink } =
+			const { checkoutLink, checkoutSessionId } =
 				await createCheckoutLinkMutation.mutateAsync({
 					productCart,
 					organizationId,
-					redirectUrl: window.location.href,
+					postCheckoutPath,
 				});
 
+			if (!(checkoutLink && checkoutSessionId)) {
+				throw new Error("Checkout session did not return a link.");
+			}
+
+			const launchPath = buildCheckoutLaunchPath({
+				checkoutUrl: checkoutLink,
+				checkoutSessionId,
+				expectedProductIds: productCart.map((item) => item.productId),
+				postCheckoutPath,
+				mode: inlineCheckoutEnabled ? "inline" : "hosted",
+			});
+
 			if (inlineCheckoutEnabled) {
-				router.push(
-					`/choose-plan/checkout?checkoutUrl=${encodeURIComponent(
-						checkoutLink,
-					)}`,
-				);
+				router.push(launchPath);
 				return;
 			}
 
-			window.location.href = checkoutLink;
+			window.location.href = launchPath;
 		} catch (error) {
 			console.error(error);
 

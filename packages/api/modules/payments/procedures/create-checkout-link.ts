@@ -33,13 +33,13 @@ export const createCheckoutLink = protectedProcedure
 	.input(
 		z.object({
 			productCart: z.array(checkoutCartItemSchema).min(1),
-			redirectUrl: z.string().optional(),
+			postCheckoutPath: z.string().optional(),
 			organizationId: z.string().optional(),
 		}),
 	)
 	.handler(
 		async ({
-			input: { productCart, redirectUrl, organizationId },
+			input: { productCart, postCheckoutPath, organizationId },
 			context: { user },
 		}) => {
 			if (
@@ -176,23 +176,24 @@ export const createCheckoutLink = protectedProcedure
 			});
 
 			try {
-				const checkoutLink = await createCheckoutLinkFn({
-					productCart: resolvedProductCart,
-					email: user.email,
-					name: user.name ?? "",
-					redirectUrl,
-					...(organizationId
-						? { organizationId }
-						: { userId: user.id }),
-					trialPeriodDays,
-					customerId: customerId ?? undefined,
-				});
+				const { checkoutLink, checkoutSessionId } =
+					await createCheckoutLinkFn({
+						productCart: resolvedProductCart,
+						email: user.email,
+						name: user.name ?? "",
+						postCheckoutPath,
+						...(organizationId
+							? { organizationId }
+							: { userId: user.id }),
+						trialPeriodDays,
+						customerId: customerId ?? undefined,
+					});
 
 				if (!checkoutLink) {
 					throw new ORPCError("INTERNAL_SERVER_ERROR");
 				}
 
-				return { checkoutLink };
+				return { checkoutLink, checkoutSessionId };
 			} catch (e) {
 				logger.error(e);
 				if (isEnvConfigError(e)) {

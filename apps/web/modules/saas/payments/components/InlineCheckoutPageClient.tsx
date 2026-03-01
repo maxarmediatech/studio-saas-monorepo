@@ -1,7 +1,9 @@
 "use client";
 
+import { sanitizeCheckoutSessionId } from "@repo/payments/lib/checkout";
 import { Alert, AlertDescription } from "@repo/ui/components/alert";
 import { Button } from "@repo/ui/components/button";
+import { buildCheckoutLaunchPath } from "@saas/payments/lib/checkout-launch";
 import {
 	AlertCircleIcon,
 	ArrowLeftIcon,
@@ -48,9 +50,15 @@ function getRedirectUrl(event: DodoCheckoutEvent): string | null {
 
 export function InlineCheckoutPageClient({
 	checkoutUrl,
+	checkoutSessionId,
+	postCheckoutPath,
+	expectedProducts,
 	backHref,
 }: {
 	checkoutUrl: string;
+	checkoutSessionId?: string;
+	postCheckoutPath: string;
+	expectedProducts: string;
 	backHref: string;
 }) {
 	const [checkoutState, setCheckoutState] = useState<
@@ -98,7 +106,21 @@ export function InlineCheckoutPageClient({
 							case "checkout.redirect_requested": {
 								const redirectUrl = getRedirectUrl(event);
 								if (redirectUrl) {
-									window.location.href = redirectUrl;
+									const nextUrl = new URL(
+										redirectUrl,
+										window.location.origin,
+									);
+									const normalizedCheckoutSessionId =
+										sanitizeCheckoutSessionId(
+											checkoutSessionId,
+										);
+									if (normalizedCheckoutSessionId) {
+										nextUrl.searchParams.set(
+											"checkoutSessionId",
+											normalizedCheckoutSessionId,
+										);
+									}
+									window.location.href = nextUrl.toString();
 								}
 								break;
 							}
@@ -254,7 +276,26 @@ export function InlineCheckoutPageClient({
 				<Button
 					variant="outline"
 					onClick={() => {
-						window.location.replace(checkoutUrl);
+						const normalizedCheckoutSessionId =
+							sanitizeCheckoutSessionId(checkoutSessionId);
+
+						if (!normalizedCheckoutSessionId) {
+							window.location.replace(checkoutUrl);
+							return;
+						}
+
+						window.location.replace(
+							buildCheckoutLaunchPath({
+								checkoutUrl,
+								checkoutSessionId: normalizedCheckoutSessionId,
+								expectedProductIds: expectedProducts
+									.split(",")
+									.map((item) => item.trim())
+									.filter(Boolean),
+								postCheckoutPath,
+								mode: "hosted",
+							}),
+						);
 					}}
 				>
 					Open full-page checkout

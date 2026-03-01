@@ -61,6 +61,7 @@ export default async function BillingSettingsPage({ params }: Props) {
 				organizationId={organization.id}
 				userId={session?.user.id}
 				activePlanId={activePlan?.id}
+				postCheckoutPath={`/app/${organizationSlug}/settings/billing`}
 			/>
 		</SettingsList>
 	);

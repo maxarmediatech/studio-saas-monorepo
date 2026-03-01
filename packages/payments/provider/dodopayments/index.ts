@@ -11,6 +11,7 @@ import {
 import { assertPaymentsEnv, isEnvConfigError } from "@repo/env";
 import { logger } from "@repo/logs";
 import DodoPayments from "dodopayments";
+import { buildCheckoutCompletionUrl } from "../../src/lib/checkout";
 import { setCustomerIdToEntity } from "../../src/lib/customer";
 import type {
 	CancelSubscription,
@@ -43,7 +44,7 @@ export const createCheckoutLink: CreateCheckoutLink = async (options) => {
 	const client = getDodoPaymentsClient();
 	const {
 		productCart,
-		redirectUrl,
+		postCheckoutPath,
 		customerId,
 		organizationId,
 		userId,
@@ -62,18 +63,10 @@ export const createCheckoutLink: CreateCheckoutLink = async (options) => {
 		metadata.user_id = userId;
 	}
 
-	const hasValidReturnUrl = (() => {
-		if (!redirectUrl) {
-			return false;
-		}
-
-		try {
-			new URL(redirectUrl);
-			return true;
-		} catch {
-			return false;
-		}
-	})();
+	const returnUrl = buildCheckoutCompletionUrl({
+		postCheckoutPath,
+		expectedProductIds: productCart.map((item) => item.productId),
+	});
 
 	const response = await client.checkoutSessions.create({
 		product_cart: productCart.map((item) => ({
@@ -83,7 +76,10 @@ export const createCheckoutLink: CreateCheckoutLink = async (options) => {
 		customization: {
 			theme: "light",
 		},
-		return_url: hasValidReturnUrl ? redirectUrl : undefined,
+		feature_flags: {
+			redirect_immediately: true,
+		},
+		return_url: returnUrl,
 		customer: customerId
 			? {
 					customer_id: customerId,
@@ -100,8 +96,16 @@ export const createCheckoutLink: CreateCheckoutLink = async (options) => {
 			: undefined,
 	});
 
-	return response.checkout_url ?? null;
+	return {
+		checkoutLink: response.checkout_url ?? null,
+		checkoutSessionId: response.session_id ?? null,
+	};
 };
+
+export async function getCheckoutSessionStatus(sessionId: string) {
+	const client = getDodoPaymentsClient();
+	return client.checkoutSessions.retrieve(sessionId);
+}
 
 export const createCustomerPortalLink: CreateCustomerPortalLink = async ({
 	customerId,

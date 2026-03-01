@@ -5,12 +5,15 @@ export type CreateCheckoutLink = (params: {
 	}>;
 	email?: string;
 	name?: string;
-	redirectUrl?: string;
+	postCheckoutPath?: string;
 	customerId?: string;
 	organizationId?: string;
 	userId?: string;
 	trialPeriodDays?: number;
-}) => Promise<string | null>;
+}) => Promise<{
+	checkoutLink: string | null;
+	checkoutSessionId: string | null;
+}>;
 
 export type CreateCustomerPortalLink = (params: {
 	subscriptionId?: string;
