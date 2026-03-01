@@ -530,8 +530,17 @@ export const webhookHandler: WebhookHandler = async (req) => {
 								{ subscription_id, payment_id },
 							);
 						} else {
+							await updatePurchase({
+								id: existingSubscriptionPurchase.id,
+								paymentId:
+									payment_id ??
+									existingSubscriptionPurchase.paymentId ??
+									undefined,
+								status: "active",
+							});
+
 							logger.info(
-								"Skipping payment.succeeded for subscription payment",
+								"Linked subscription purchase to payment.succeeded event",
 								{ subscription_id, payment_id },
 							);
 						}
@@ -606,6 +615,10 @@ export const webhookHandler: WebhookHandler = async (req) => {
 						if (existingSubscriptionPurchase) {
 							await updatePurchase({
 								id: existingSubscriptionPurchase.id,
+								paymentId:
+									payment_id ??
+									existingSubscriptionPurchase.paymentId ??
+									undefined,
 								status:
 									type === "payment.failed"
 										? "on_hold"

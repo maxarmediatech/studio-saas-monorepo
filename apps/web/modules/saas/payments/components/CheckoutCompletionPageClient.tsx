@@ -90,6 +90,8 @@ export function CheckoutCompletionPageClient({
 	}, [statusQuery.data?.status]);
 
 	const status = statusQuery.data?.status ?? "pending";
+	const isCheckingNow =
+		statusQuery.isFetching && statusQuery.fetchStatus === "fetching";
 
 	if (statusQuery.isError) {
 		return (
@@ -115,9 +117,16 @@ export function CheckoutCompletionPageClient({
 				</Alert>
 
 				<div className="flex flex-wrap gap-2">
-					<Button onClick={() => void statusQuery.refetch()}>
-						<RefreshCcwIcon className="size-4" />
-						Retry verification
+					<Button
+						disabled={isCheckingNow}
+						onClick={() => void statusQuery.refetch()}
+					>
+						{isCheckingNow ? (
+							<Loader2Icon className="size-4 animate-spin" />
+						) : (
+							<RefreshCcwIcon className="size-4" />
+						)}
+						{isCheckingNow ? "Checking..." : "Retry verification"}
 					</Button>
 					<Button asChild variant="outline">
 						<Link href={fallbackHref}>Back</Link>
@@ -162,9 +171,16 @@ export function CheckoutCompletionPageClient({
 				</Alert>
 
 				<div className="flex flex-wrap gap-2">
-					<Button onClick={() => void statusQuery.refetch()}>
-						<RefreshCcwIcon className="size-4" />
-						Check again
+					<Button
+						disabled={isCheckingNow}
+						onClick={() => void statusQuery.refetch()}
+					>
+						{isCheckingNow ? (
+							<Loader2Icon className="size-4 animate-spin" />
+						) : (
+							<RefreshCcwIcon className="size-4" />
+						)}
+						{isCheckingNow ? "Checking..." : "Check again"}
 					</Button>
 					<Button asChild variant="outline">
 						<Link href={fallbackHref}>Back</Link>
@@ -201,9 +217,16 @@ export function CheckoutCompletionPageClient({
 			)}
 
 			<div className="flex flex-wrap gap-2">
-				<Button onClick={() => void statusQuery.refetch()}>
-					<RefreshCcwIcon className="size-4" />
-					Check now
+				<Button
+					disabled={isCheckingNow}
+					onClick={() => void statusQuery.refetch()}
+				>
+					{isCheckingNow ? (
+						<Loader2Icon className="size-4 animate-spin" />
+					) : (
+						<RefreshCcwIcon className="size-4" />
+					)}
+					{isCheckingNow ? "Checking..." : "Check now"}
 				</Button>
 				<Button asChild variant="outline">
 					<Link href={fallbackHref}>
