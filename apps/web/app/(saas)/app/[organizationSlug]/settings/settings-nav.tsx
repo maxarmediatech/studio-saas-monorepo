@@ -2,69 +2,17 @@
 
 import { cn } from "@repo/ui/lib/utils";
 import { PageWidthWrapper } from "@saas/studio/components/PageWidthWrapper";
+import type {
+	SettingsStandalonePage,
+	SettingsTabGroup,
+} from "@saas/settings/lib/access";
 import Link from "next/link";
-import { useParams, usePathname } from "next/navigation";
-
-interface TabItem {
-	label: string;
-	href: string;
-}
-
-interface TabGroup {
-	id: string;
-	label: string;
-	tabs: TabItem[];
-}
-
-interface StandalonePage {
-	label: string;
-	href: string;
-}
-
-function getTabGroups(basePath: string): TabGroup[] {
-	return [
-		{
-			id: "studio",
-			label: "Studio",
-			tabs: [
-				{ label: "General", href: `${basePath}` },
-				{ label: "Danger Zone", href: `${basePath}/danger-zone` },
-			],
-		},
-		{
-			id: "members",
-			label: "Members",
-			tabs: [
-				{ label: "Members", href: `${basePath}/members` },
-				{ label: "Invitations", href: `${basePath}/invitations` },
-			],
-		},
-		{
-			id: "account",
-			label: "Account",
-			tabs: [
-				{ label: "Profile", href: `${basePath}/profile` },
-				{ label: "Security", href: `${basePath}/security` },
-				{ label: "Danger Zone", href: `${basePath}/account/danger-zone` },
-			],
-		},
-	];
-}
-
-function getStandalonePages(basePath: string): StandalonePage[] {
-	return [
-		{ label: "Access Control", href: `${basePath}/roles` },
-		{ label: "Integrations", href: `${basePath}/integrations` },
-		{ label: "Billing", href: `${basePath}/billing` },
-		{ label: "Notifications", href: `${basePath}/notifications` },
-		{ label: "Teams", href: `${basePath}/teams` },
-	];
-}
+import { usePathname } from "next/navigation";
 
 function getActiveStandalone(
 	pathname: string,
-	pages: StandalonePage[],
-): StandalonePage | null {
+	pages: SettingsStandalonePage[],
+): SettingsStandalonePage | null {
 	for (const page of pages) {
 		if (
 			pathname === page.href ||
@@ -78,40 +26,35 @@ function getActiveStandalone(
 
 function getActiveGroup(
 	pathname: string,
-	groups: TabGroup[],
-	basePath: string,
-): TabGroup {
+	groups: SettingsTabGroup[],
+): SettingsTabGroup | null {
 	for (const group of groups) {
 		for (const tab of group.tabs) {
-			if (
-				pathname === tab.href ||
-				(tab.href !== basePath && pathname.startsWith(`${tab.href}/`))
-			) {
+			if (pathname === tab.href || pathname.startsWith(`${tab.href}/`)) {
 				return group;
 			}
 		}
 	}
-	return groups[0];
+	return groups[0] ?? null;
 }
 
-export function SettingsNav() {
+export function SettingsNav({
+	groups,
+	standalonePages,
+}: {
+	groups: SettingsTabGroup[];
+	standalonePages: SettingsStandalonePage[];
+}) {
 	const pathname = usePathname();
-	const params = useParams<{ organizationSlug: string }>();
-	const basePath = `/app/${params.organizationSlug}/settings`;
-	const groups = getTabGroups(basePath);
-	const standalonePages = getStandalonePages(basePath);
 
 	// Check standalone pages first — they take priority over tab groups
 	const activeStandalone = getActiveStandalone(pathname, standalonePages);
-	const activeGroup = activeStandalone
-		? null
-		: getActiveGroup(pathname, groups, basePath);
+	const activeGroup = activeStandalone ? null : getActiveGroup(pathname, groups);
 
 	// Determine header label and whether to show tab bar
-	const headerLabel = activeStandalone
-		? activeStandalone.label
-		: activeGroup!.label;
-	const showTabs = !activeStandalone && activeGroup!.tabs.length > 1;
+	const headerLabel =
+		activeStandalone?.label ?? activeGroup?.label ?? "Settings";
+	const showTabs = !activeStandalone && (activeGroup?.tabs.length ?? 0) > 1;
 
 	return (
 		<div className="shrink-0">
@@ -132,11 +75,10 @@ export function SettingsNav() {
 				<div className="border-b border-neutral-200">
 					<PageWidthWrapper>
 						<div className="-mb-px flex gap-6 overflow-x-auto">
-							{activeGroup!.tabs.map((tab) => {
+							{activeGroup?.tabs.map((tab) => {
 								const isActive =
 									pathname === tab.href ||
-									(tab.href !== basePath &&
-										pathname.startsWith(`${tab.href}/`));
+									pathname.startsWith(`${tab.href}/`);
 
 								return (
 									<Link

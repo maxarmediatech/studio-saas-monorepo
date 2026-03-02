@@ -33,6 +33,7 @@ interface OrganizationSwitcherProps {
 	studioLogo?: string | null;
 	studioSlug: string;
 	organizationId: string;
+	settingsEntryPath: string;
 	variant?: "header" | "panel";
 }
 
@@ -41,6 +42,7 @@ export function OrganizationSwitcher({
 	studioLogo,
 	studioSlug,
 	organizationId,
+	settingsEntryPath,
 	variant = "header",
 }: OrganizationSwitcherProps) {
 	const { setActiveOrganization } = useActiveOrganization();
@@ -195,7 +197,7 @@ export function OrganizationSwitcher({
 					</DropdownMenuItem>
 					<DropdownMenuItem asChild className="cursor-pointer">
 						<Link
-							href={`/app/${studioSlug}/settings`}
+							href={settingsEntryPath}
 							className="flex items-center gap-2 rounded-lg px-2 py-2"
 						>
 							<Settings className="size-4 text-neutral-500" />

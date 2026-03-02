@@ -25,6 +25,7 @@ interface MobileSidebarProps {
 	studioSlug: string;
 	studioName: string;
 	studioLogo?: string | null;
+	settingsEntryPath: string;
 	railIcons: RailIconConfig[];
 	activeModule: NavModuleConfig | null;
 	activeModuleId: string;
@@ -47,6 +48,7 @@ export function MobileSidebar({
 	studioSlug,
 	studioName,
 	studioLogo,
+	settingsEntryPath,
 	railIcons,
 	activeModule,
 	activeModuleId,
@@ -106,7 +108,7 @@ export function MobileSidebar({
 					})}
 					{/* Settings Tab */}
 					<Link
-						href={`/app/${studioSlug}/settings`}
+						href={settingsEntryPath}
 						className={cn(
 							"flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors duration-150",
 							isSettingsArea

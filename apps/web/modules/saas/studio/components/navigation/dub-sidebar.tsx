@@ -25,6 +25,7 @@ interface DubSidebarProps {
 	studioName: string;
 	studioLogo?: string | null;
 	organizationId: string;
+	settingsEntryPath: string;
 	railIcons: RailIconConfig[];
 	activeModule: NavModuleConfig | null;
 	activeModuleId: string;
@@ -73,6 +74,7 @@ export function DubSidebar({
 	studioName,
 	studioLogo,
 	organizationId,
+	settingsEntryPath,
 	railIcons,
 	activeModule,
 	activeModuleId,
@@ -108,6 +110,7 @@ export function DubSidebar({
 				<nav className="grid size-full grid-cols-[var(--sidebar-rail-width)_1fr]">
 					<SidebarRail
 						studioSlug={studioSlug}
+						settingsEntryPath={settingsEntryPath}
 						railIcons={railIcons}
 						activeModuleId={activeModuleId}
 						currentArea={currentArea}
@@ -132,6 +135,7 @@ export function DubSidebar({
 									studioName={studioName}
 									studioLogo={studioLogo}
 									organizationId={organizationId}
+									settingsEntryPath={settingsEntryPath}
 									caps={caps}
 								/>
 							)}

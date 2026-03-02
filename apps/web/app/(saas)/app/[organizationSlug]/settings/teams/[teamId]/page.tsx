@@ -1,5 +1,5 @@
-import { isOrganizationAdmin } from "@repo/auth/lib/helper";
-import { getActiveOrganization, getSession } from "@saas/auth/lib/server";
+import { getActiveOrganization } from "@saas/auth/lib/server";
+import { requireSettingsRouteAccess } from "@saas/settings/lib/server-access";
 import { notFound } from "next/navigation";
 import { TeamDetailPageClient } from "./team-detail-page-client";
 
@@ -17,25 +17,22 @@ export async function generateMetadata({ params }: Props) {
 }
 
 export default async function TeamDetailPage({ params }: Props) {
-	const session = await getSession();
 	const { organizationSlug, teamId } = await params;
-	const organization = await getActiveOrganization(organizationSlug);
+	const context = await requireSettingsRouteAccess(
+		organizationSlug,
+		"teams",
+	);
 
-	if (!organization) {
-		return notFound();
-	}
-
-	const isAdmin = isOrganizationAdmin(organization, session?.user);
-	if (!isAdmin) {
+	if (!context) {
 		return notFound();
 	}
 
 	return (
 		<TeamDetailPageClient
-			organizationId={organization.id}
+			organizationId={context.organization.id}
 			organizationSlug={organizationSlug}
 			teamId={teamId}
-			canManage={isAdmin}
+			canManage
 		/>
 	);
 }

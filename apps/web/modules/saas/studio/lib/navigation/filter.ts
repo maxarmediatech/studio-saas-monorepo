@@ -1,57 +1,11 @@
-import {
-	type CustomRolePermissions,
-	checkRolePermission,
-} from "@repo/auth/lib/permissions";
+import type { CustomRolePermissions } from "@repo/auth/lib/permissions";
 import type {
 	NavItemConfig,
+	NavAreaConfig,
 	NavigationConfig,
 	NavModuleConfig,
-	NavPermissionCheck,
 } from "./types";
-
-function hasPermission(
-	permission: NavPermissionCheck | undefined,
-	userRole: string | string[],
-	customRolePermissions?: CustomRolePermissions,
-): boolean {
-	if (!permission) {
-		return true;
-	}
-
-	if (permission.any && permission.any.length > 0) {
-		const hasAny = permission.any.some(({ resource, action }) =>
-			checkRolePermission(
-				userRole,
-				resource as never,
-				action as never,
-				customRolePermissions,
-			),
-		);
-		if (hasAny) {
-			return true;
-		}
-	}
-
-	if (permission.all && permission.all.length > 0) {
-		const hasAll = permission.all.every(({ resource, action }) =>
-			checkRolePermission(
-				userRole,
-				resource as never,
-				action as never,
-				customRolePermissions,
-			),
-		);
-		if (hasAll) {
-			return true;
-		}
-	}
-
-	if (permission.any || permission.all) {
-		return false;
-	}
-
-	return true;
-}
+import { matchesNavPermission } from "./access";
 
 function filterNavItems(
 	items: NavItemConfig[],
@@ -61,7 +15,7 @@ function filterNavItems(
 	const filtered: NavItemConfig[] = [];
 
 	for (const item of items) {
-		const allowed = hasPermission(
+		const allowed = matchesNavPermission(
 			item.permission,
 			userRole,
 			customRolePermissions,
@@ -78,6 +32,40 @@ function filterNavItems(
 	}
 
 	return filtered;
+}
+
+function filterNavArea(
+	area: NavAreaConfig,
+	userRole: string | string[],
+	customRolePermissions?: CustomRolePermissions,
+): NavAreaConfig {
+	const sections = area.sections
+		.map((section) => ({
+			...section,
+			items: filterNavItems(
+				section.items,
+				userRole,
+				customRolePermissions,
+			),
+		}))
+		.filter((section) => section.items.length > 0);
+
+	const standaloneItems = area.standaloneItems
+		? filterNavItems(area.standaloneItems, userRole, customRolePermissions)
+		: undefined;
+
+	if (
+		area.sections.length === 0 &&
+		(area.standaloneItems?.length ?? 0) === 0
+	) {
+		return area;
+	}
+
+	return {
+		...area,
+		sections,
+		standaloneItems,
+	};
 }
 
 function firstItemPath(navModule: NavModuleConfig): string | undefined {
@@ -143,9 +131,17 @@ export function filterNavigationConfig(
 		customRolePermissions,
 	);
 
+	const areas = Object.fromEntries(
+		Object.entries(config.areas).map(([areaKey, area]) => [
+			areaKey,
+			filterNavArea(area, userRole, customRolePermissions),
+		]),
+	);
+
 	return {
 		...config,
 		modules,
 		utilities,
+		areas,
 	};
 }

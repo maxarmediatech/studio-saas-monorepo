@@ -2,7 +2,6 @@
 
 import {
 	Collapsible,
-	CollapsibleContent,
 	CollapsibleTrigger,
 } from "@repo/ui/components/collapsible";
 import { cn } from "@repo/ui/lib/utils";
@@ -33,6 +32,7 @@ interface SidebarPanelProps {
 	studioName: string;
 	studioLogo?: string | null;
 	organizationId: string;
+	settingsEntryPath: string;
 	caps: HeaderCapabilities;
 }
 
@@ -47,6 +47,7 @@ export function SidebarPanel({
 	studioName,
 	studioLogo,
 	organizationId,
+	settingsEntryPath,
 	caps,
 }: SidebarPanelProps) {
 	const pathname = usePathname();
@@ -85,6 +86,7 @@ export function SidebarPanel({
 							studioLogo={studioLogo}
 							studioSlug={studioSlug}
 							organizationId={organizationId}
+							settingsEntryPath={settingsEntryPath}
 							variant="panel"
 						/>
 						<NotificationBell

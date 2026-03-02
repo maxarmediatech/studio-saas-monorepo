@@ -2,6 +2,7 @@ import { createPurchasesHelper } from "@repo/payments/lib/helper";
 import { getActiveOrganization, getSession } from "@saas/auth/lib/server";
 import { ActivePlan } from "@saas/payments/components/ActivePlan";
 import { ChangePlan } from "@saas/payments/components/ChangePlan";
+import { requireSettingsRouteAccess } from "@saas/settings/lib/server-access";
 import { SettingsList } from "@saas/shared/components/SettingsList";
 import { orpcClient } from "@shared/lib/orpc-client";
 import { orpc } from "@shared/lib/orpc-query-utils";
@@ -27,14 +28,19 @@ export async function generateMetadata({ params }: Props) {
 export default async function BillingSettingsPage({ params }: Props) {
 	const session = await getSession();
 	const { organizationSlug } = await params;
-	const organization = await getActiveOrganization(organizationSlug);
+	const context = await requireSettingsRouteAccess(
+		organizationSlug,
+		"billing",
+	);
 
-	if (!organization) {
+	if (!context) {
 		return notFound();
 	}
 
 	const [error, data] = await attemptAsync(() =>
-		orpcClient.payments.listPurchases({ organizationId: organization.id }),
+		orpcClient.payments.listPurchases({
+			organizationId: context.organization.id,
+		}),
 	);
 
 	if (error) {
@@ -47,7 +53,7 @@ export default async function BillingSettingsPage({ params }: Props) {
 
 	await queryClient.prefetchQuery({
 		queryKey: orpc.payments.listPurchases.queryKey({
-			input: { organizationId: organization.id },
+			input: { organizationId: context.organization.id },
 		}),
 		queryFn: () => ({ purchases }),
 	});
@@ -56,9 +62,11 @@ export default async function BillingSettingsPage({ params }: Props) {
 
 	return (
 		<SettingsList>
-			{activePlan && <ActivePlan organizationId={organization.id} />}
+			{activePlan && (
+				<ActivePlan organizationId={context.organization.id} />
+			)}
 			<ChangePlan
-				organizationId={organization.id}
+				organizationId={context.organization.id}
 				userId={session?.user.id}
 				activePlanId={activePlan?.id}
 				postCheckoutPath={`/app/${organizationSlug}/settings/billing`}

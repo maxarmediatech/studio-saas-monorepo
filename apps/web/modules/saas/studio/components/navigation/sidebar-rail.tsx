@@ -16,6 +16,7 @@ import { SidebarTrigger } from "./sidebar-trigger";
 
 interface SidebarRailProps {
 	studioSlug: string;
+	settingsEntryPath: string;
 	railIcons: RailIconConfig[];
 	activeModuleId: string;
 	currentArea: string;
@@ -24,6 +25,7 @@ interface SidebarRailProps {
 
 export function SidebarRail({
 	studioSlug,
+	settingsEntryPath,
 	railIcons,
 	activeModuleId,
 	currentArea,
@@ -106,7 +108,7 @@ export function SidebarRail({
 				<Tooltip>
 					<TooltipTrigger asChild>
 						<Link
-							href={`/app/${studioSlug}/settings`}
+							href={settingsEntryPath}
 							className={cn(
 								"flex size-11 items-center justify-center rounded-lg outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-black/50",
 								isSettingsActive

@@ -1,5 +1,5 @@
-import { isOrganizationAdmin } from "@repo/auth/lib/helper";
-import { getActiveOrganization, getSession } from "@saas/auth/lib/server";
+import { getActiveOrganization } from "@saas/auth/lib/server";
+import { requireSettingsRouteAccess } from "@saas/settings/lib/server-access";
 import { notFound } from "next/navigation";
 import { RolesPageClient } from "./roles-page-client";
 
@@ -17,22 +17,19 @@ export async function generateMetadata({ params }: Props) {
 }
 
 export default async function RolesSettingsPage({ params }: Props) {
-	const session = await getSession();
 	const { organizationSlug } = await params;
-	const organization = await getActiveOrganization(organizationSlug);
+	const context = await requireSettingsRouteAccess(
+		organizationSlug,
+		"roles",
+	);
 
-	if (!organization) {
-		return notFound();
-	}
-
-	const isAdmin = isOrganizationAdmin(organization, session?.user);
-	if (!isAdmin) {
+	if (!context) {
 		return notFound();
 	}
 
 	return (
 		<div className="px-4 pb-8 lg:px-6">
-			<RolesPageClient canManage={isAdmin} />
+			<RolesPageClient canManage />
 		</div>
 	);
 }

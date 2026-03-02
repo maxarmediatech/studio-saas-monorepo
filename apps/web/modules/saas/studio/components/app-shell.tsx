@@ -13,6 +13,27 @@ interface AppShellProps {
 	activeOrganization: ActiveOrganization;
 }
 
+function getAreaEntryPath(
+	activeOrganization: ActiveOrganization,
+	areas: Record<string, { sections: Array<{ items: Array<{ path: string }> }>; standaloneItems?: Array<{ path: string }> }>,
+): string {
+	const settingsArea = areas.studioSettings;
+
+	const firstSectionPath = settingsArea?.sections
+		.flatMap((section) => section.items)
+		.find((item) => Boolean(item.path))?.path;
+
+	const firstStandalonePath = settingsArea?.standaloneItems?.find((item) =>
+		Boolean(item.path),
+	)?.path;
+
+	return (
+		firstSectionPath ??
+		firstStandalonePath ??
+		`/app/${activeOrganization.slug ?? ""}/settings/profile`
+	);
+}
+
 export async function AppShell({
 	children,
 	session,
@@ -44,6 +65,10 @@ export async function AppShell({
 
 	const capabilities = getCapabilities(userRole, customRolePermissions);
 	const caps = selectHeaderCaps(capabilities);
+	const settingsEntryPath = getAreaEntryPath(
+		activeOrganization,
+		filteredNavigation.areas,
+	);
 
 	return (
 		<AppShellClient
@@ -51,6 +76,7 @@ export async function AppShell({
 			studioName={activeOrganization.name}
 			studioLogo={activeOrganization.logo}
 			organizationId={activeOrganization.id}
+			settingsEntryPath={settingsEntryPath}
 			modules={filteredNavigation.modules}
 			utilities={filteredNavigation.utilities}
 			areas={filteredNavigation.areas}

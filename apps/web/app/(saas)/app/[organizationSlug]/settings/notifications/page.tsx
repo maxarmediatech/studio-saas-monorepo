@@ -1,17 +1,31 @@
-import { getSession } from "@saas/auth/lib/server";
-import { redirect } from "next/navigation";
+import { requireSettingsRouteAccess } from "@saas/settings/lib/server-access";
+import { notFound } from "next/navigation";
 
-export async function generateMetadata() {
+type Props = {
+	params: Promise<{ organizationSlug: string }>;
+};
+
+export async function generateMetadata({ params }: Props) {
+	const { organizationSlug } = await params;
+	const context = await requireSettingsRouteAccess(
+		organizationSlug,
+		"notifications",
+	);
+
 	return {
-		title: "Notification Settings",
+		title: `Notification Settings | ${context?.organization.name ?? "Studio"}`,
 	};
 }
 
-export default async function NotificationsSettingsPage() {
-	const session = await getSession();
+export default async function NotificationsSettingsPage({ params }: Props) {
+	const { organizationSlug } = await params;
+	const context = await requireSettingsRouteAccess(
+		organizationSlug,
+		"notifications",
+	);
 
-	if (!session) {
-		redirect("/auth/login");
+	if (!context) {
+		return notFound();
 	}
 
 	return (

@@ -24,6 +24,7 @@ interface AppShellClientProps {
 	studioName: string;
 	studioLogo?: string | null;
 	organizationId: string;
+	settingsEntryPath: string;
 	modules: NavModuleConfig[];
 	utilities: NavItemConfig[];
 	areas: Record<string, NavAreaConfig>;
@@ -45,6 +46,7 @@ function AppShellContent({
 	studioName,
 	studioLogo,
 	organizationId,
+	settingsEntryPath,
 	modules,
 	utilities,
 	areas,
@@ -155,13 +157,14 @@ function AppShellContent({
 			<div className="flex min-h-0 flex-1 md:grid md:grid-cols-[min-content_minmax(0,1fr)]">
 				{/* Desktop Sidebar */}
 				{showSidebar && (
-					<DubSidebar
-						studioSlug={studioSlug}
-						studioName={studioName}
-						studioLogo={studioLogo}
-						organizationId={organizationId}
-						railIcons={railIcons}
-						activeModule={activeModule}
+						<DubSidebar
+							studioSlug={studioSlug}
+							studioName={studioName}
+							studioLogo={studioLogo}
+							organizationId={organizationId}
+							settingsEntryPath={settingsEntryPath}
+							railIcons={railIcons}
+							activeModule={activeModule}
 						activeModuleId={activeModuleId}
 						utilities={utilities}
 						currentArea={currentArea}
@@ -203,6 +206,7 @@ function AppShellContent({
 					studioSlug={studioSlug}
 					studioName={studioName}
 					studioLogo={studioLogo}
+					settingsEntryPath={settingsEntryPath}
 					railIcons={railIcons}
 					activeModule={activeModule}
 					activeModuleId={activeModuleId}

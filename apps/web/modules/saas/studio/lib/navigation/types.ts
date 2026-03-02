@@ -66,6 +66,7 @@ export interface NavPermission {
  * - `all`: User needs ALL of these permissions (AND logic)
  */
 export interface NavPermissionCheck {
+	rolesAny?: readonly string[];
 	any?: NavPermission[];
 	all?: NavPermission[];
 }
