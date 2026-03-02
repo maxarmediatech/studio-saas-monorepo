@@ -1,7 +1,7 @@
-import type { ActiveOrganization, Session } from "@repo/auth";
+import type { ActiveOrganization } from "@repo/auth";
+import type { CustomRolePermissions } from "@repo/auth/lib/permissions";
 import type { ReactNode } from "react";
-import { getCapabilities, selectHeaderCaps } from "../lib/capability.server";
-import { getCustomRolePermissions } from "../lib/get-custom-role-permissions.server";
+import type { HeaderCapabilities } from "../lib/capability.server";
 import { getNavigationConfig } from "../lib/navigation/config";
 import { filterNavigationConfig } from "../lib/navigation/filter";
 import type { RailIconConfig } from "../lib/navigation/types";
@@ -9,8 +9,12 @@ import { AppShellClient } from "./app-shell.client";
 
 interface AppShellProps {
 	children: ReactNode;
-	session: Session;
 	activeOrganization: ActiveOrganization;
+	studioAccess: {
+		userRole: string | string[];
+		customRolePermissions?: CustomRolePermissions;
+		caps: HeaderCapabilities;
+	};
 }
 
 function getAreaEntryPath(
@@ -36,18 +40,10 @@ function getAreaEntryPath(
 
 export async function AppShell({
 	children,
-	session,
 	activeOrganization,
+	studioAccess,
 }: AppShellProps) {
-	const userMembership = activeOrganization.members.find(
-		(member) => member.userId === session.user.id,
-	);
-	const userRole = userMembership?.role ?? "member";
-
-	const customRolePermissions = await getCustomRolePermissions(
-		activeOrganization.id,
-		userRole,
-	);
+	const { userRole, customRolePermissions, caps } = studioAccess;
 
 	const navigationConfig = getNavigationConfig(activeOrganization.slug ?? "");
 	const filteredNavigation = filterNavigationConfig(
@@ -63,8 +59,6 @@ export async function AppShell({
 		defaultPath: m.defaultPath,
 	}));
 
-	const capabilities = getCapabilities(userRole, customRolePermissions);
-	const caps = selectHeaderCaps(capabilities);
 	const settingsEntryPath = getAreaEntryPath(
 		activeOrganization,
 		filteredNavigation.areas,

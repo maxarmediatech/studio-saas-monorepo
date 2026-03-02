@@ -36,6 +36,7 @@ import {
 	XCircleIcon,
 } from "lucide-react";
 import { useState } from "react";
+import { useStudioCapabilities } from "../../studio-capabilities-context";
 
 const CONFIG_TYPE_LABELS: Record<string, string> = {
 	booking_type: "Booking Type",
@@ -95,7 +96,7 @@ function normalizeDeliverable(
 			? deliverable.quantity
 			: typeof deliverable.quantity === "string"
 				? Number(deliverable.quantity)
-				: NaN;
+				: Number.NaN;
 
 	if (!title || !Number.isFinite(quantity) || quantity <= 0) {
 		return null;
@@ -107,6 +108,7 @@ function normalizeDeliverable(
 export function ConfigurationDetailSheet() {
 	const { configurationId, close } = useConfigurationViewParams();
 	const { openEdit } = useConfigurationParams();
+	const { configurationCreateOrUpdate } = useStudioCapabilities();
 	const isOpen = Boolean(configurationId);
 	const [isScrolled, setIsScrolled] = useState(false);
 
@@ -222,22 +224,24 @@ export function ConfigurationDetailSheet() {
 										</p>
 									</div>
 								</div>
-								<Button
-									variant="ghost"
-									size="icon"
-									aria-label="Edit configuration"
-									onClick={() => {
-										if (configurationId && config) {
-											close();
-											openEdit(
-												configurationId,
-												config.type,
-											);
-										}
-									}}
-								>
-									<PencilIcon className="h-4 w-4" />
-								</Button>
+								{configurationCreateOrUpdate && (
+									<Button
+										variant="ghost"
+										size="icon"
+										aria-label="Edit configuration"
+										onClick={() => {
+											if (configurationId && config) {
+												close();
+												openEdit(
+													configurationId,
+													config.type,
+												);
+											}
+										}}
+									>
+										<PencilIcon className="h-4 w-4" />
+									</Button>
+								)}
 							</div>
 							<div className="flex items-center gap-2 pt-2">
 								{config?.isActive ? (

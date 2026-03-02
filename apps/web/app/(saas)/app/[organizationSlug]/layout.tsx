@@ -5,7 +5,9 @@ import { SheetProvider } from "@saas/shared/components/sheet-provider";
 import { AppShell } from "@saas/studio/components/app-shell";
 import { GlobalSheets } from "@saas/studio/components/global-sheets";
 import { StickiesActionBar } from "@saas/studio/components/stickies/stickies-action-bar";
+import { StudioCapabilitiesProvider } from "@saas/studio/components/studio-capabilities-context";
 import { ClientCallbackProvider } from "@saas/studio/hooks/params/client-callback-context";
+import { resolveStudioAccess } from "@saas/studio/lib/resolve-studio-access.server";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { getServerQueryClient } from "@shared/lib/server";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
@@ -35,6 +37,8 @@ export default async function OrganizationLayout({ children, params }: Props) {
 		return notFound();
 	}
 
+	const studioAccess = await resolveStudioAccess(organization, session);
+
 	const queryClient = getServerQueryClient();
 
 	await queryClient.prefetchQuery({
@@ -56,18 +60,22 @@ export default async function OrganizationLayout({ children, params }: Props) {
 		<HydrationBoundary state={dehydrate(queryClient)}>
 			<ClientCallbackProvider>
 				<SheetProvider>
-					<AppShell
-						session={session}
-						activeOrganization={organization}
-					>
-						{children}
-					</AppShell>
-					<Suspense fallback={null}>
-						<GlobalSheets />
-					</Suspense>
-					<Suspense fallback={null}>
-						<StickiesActionBar organizationSlug={organizationSlug} />
-					</Suspense>
+					<StudioCapabilitiesProvider caps={studioAccess.caps}>
+						<AppShell
+							activeOrganization={organization}
+							studioAccess={studioAccess}
+						>
+							{children}
+						</AppShell>
+						<Suspense fallback={null}>
+							<GlobalSheets />
+						</Suspense>
+						<Suspense fallback={null}>
+							<StickiesActionBar
+								organizationSlug={organizationSlug}
+							/>
+						</Suspense>
+					</StudioCapabilitiesProvider>
 				</SheetProvider>
 			</ClientCallbackProvider>
 		</HydrationBoundary>

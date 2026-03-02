@@ -15,8 +15,9 @@ import {
 } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { useStudioCapabilities } from "../../studio-capabilities-context";
 import {
 	BookingTypeForm,
 	type BookingTypeFormValues,
@@ -52,9 +53,16 @@ const CONFIG_TYPE_LABELS: Record<string, string> = {
 export function ConfigurationEditSheet() {
 	const { configurationId, configurationType, close } =
 		useConfigurationParams();
+	const { configurationCreateOrUpdate } = useStudioCapabilities();
 	const isOpen = Boolean(configurationId);
 	const queryClient = useQueryClient();
 	const [isScrolled, setIsScrolled] = useState(false);
+
+	useEffect(() => {
+		if (!configurationCreateOrUpdate && isOpen) {
+			close();
+		}
+	}, [close, configurationCreateOrUpdate, isOpen]);
 
 	const typeLabel = configurationType
 		? (CONFIG_TYPE_LABELS[configurationType] ?? configurationType)
@@ -62,7 +70,7 @@ export function ConfigurationEditSheet() {
 
 	const { data: configuration, isLoading } = useQuery({
 		...configurationsApi.getOptions(configurationId ?? ""),
-		enabled: isOpen && !!configurationId,
+		enabled: configurationCreateOrUpdate && isOpen && !!configurationId,
 	});
 
 	const updateMutation = useMutation({
@@ -81,6 +89,10 @@ export function ConfigurationEditSheet() {
 			);
 		},
 	});
+
+	if (!configurationCreateOrUpdate) {
+		return null;
+	}
 
 	const handleSubmit = async (data: ConfigurationFormValues) => {
 		if (!configurationId) {

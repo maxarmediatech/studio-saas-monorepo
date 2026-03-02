@@ -4,6 +4,7 @@ import { Button } from "@repo/ui/components/button";
 import { useConfigurationParams } from "@saas/studio/hooks/params/use-configuration-params";
 import { PencilIcon, PlusIcon } from "lucide-react";
 import type { ComponentProps } from "react";
+import { useStudioCapabilities } from "../studio-capabilities-context";
 
 type ButtonProps = ComponentProps<typeof Button>;
 
@@ -21,7 +22,12 @@ export function OpenConfigurationCreateSheet({
 	children,
 	...props
 }: OpenConfigurationCreateSheetProps) {
+	const { configurationCreateOrUpdate } = useStudioCapabilities();
 	const { openCreate } = useConfigurationParams();
+
+	if (!configurationCreateOrUpdate) {
+		return null;
+	}
 
 	return (
 		<Button onClick={() => openCreate(configurationType)} {...props}>
@@ -42,7 +48,12 @@ export function OpenConfigurationEditSheet({
 	configurationType,
 	...props
 }: OpenConfigurationEditSheetProps) {
+	const { configurationCreateOrUpdate } = useStudioCapabilities();
 	const { openEdit } = useConfigurationParams();
+
+	if (!configurationCreateOrUpdate) {
+		return null;
+	}
 
 	return (
 		<Button

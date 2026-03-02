@@ -351,6 +351,7 @@ export const member = ac.newRole({
 	shoot: ["read", "list"],
 	task: ["read", "list", "submit"],
 	deliverable: ["read", "list", "submit"],
+	configuration: ["read", "list"],
 	expense: ["reference"],
 	payment: ["reference"],
 	channel: ["read", "list"],

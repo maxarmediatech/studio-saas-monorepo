@@ -45,6 +45,7 @@ import {
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { OpenConfigurationCreateSheet } from "./OpenConfigurationSheet";
+import { useStudioCapabilities } from "../studio-capabilities-context";
 
 interface ConfigurationsTableClientProps {
 	configType: ConfigType;
@@ -60,6 +61,7 @@ export function ConfigurationsTableClient({
 	configTypeLabelPlural,
 }: ConfigurationsTableClientProps) {
 	const queryClient = useQueryClient();
+	const { configurationCreateOrUpdate } = useStudioCapabilities();
 
 	// Use the configurations table hook for URL-synced state
 	const {
@@ -161,55 +163,68 @@ export function ConfigurationsTableClient({
 
 	// Define row actions
 	const rowActions: RowAction<Configuration>[] = useMemo(
-		() => [
-			{
-				label: "View details",
-				icon: <EyeIcon className="h-4 w-4" />,
-				onClick: (row) => openView(row.id),
-			},
-			{
-				label: "Edit",
-				icon: <PencilIcon className="h-4 w-4" />,
-				onClick: handleOpenEdit,
-			},
-			{
-				label: "Deactivate",
-				icon: <EyeOffIcon className="h-4 w-4" />,
-				show: (row) => row.isActive,
-				onClick: (row) => {
-					toggleActiveMutation.mutate({
-						id: row.id,
-						isActive: false,
-					});
+		() => {
+			const actions: RowAction<Configuration>[] = [
+				{
+					label: "View details",
+					icon: <EyeIcon className="h-4 w-4" />,
+					onClick: (row) => openView(row.id),
 				},
-			},
-			{
-				label: "Activate",
-				icon: <PowerIcon className="h-4 w-4" />,
-				show: (row) => !row.isActive,
-				onClick: (row) => {
-					toggleActiveMutation.mutate({
-						id: row.id,
-						isActive: true,
-					});
+			];
+
+			if (!configurationCreateOrUpdate) {
+				return actions;
+			}
+
+			actions.push(
+				{
+					label: "Edit",
+					icon: <PencilIcon className="h-4 w-4" />,
+					onClick: handleOpenEdit,
 				},
-			},
-			{
-				label: "Delete",
-				icon: <TrashIcon className="h-4 w-4" />,
-				variant: "destructive",
-				separator: true,
-				onClick: (row) => {
-					if (row.isSystem) {
-						toast.error("Cannot delete system configurations");
-						return;
-					}
-					setConfigToDelete(row);
-					setDeleteDialogOpen(true);
+				{
+					label: "Deactivate",
+					icon: <EyeOffIcon className="h-4 w-4" />,
+					show: (row) => row.isActive,
+					onClick: (row) => {
+						toggleActiveMutation.mutate({
+							id: row.id,
+							isActive: false,
+						});
+					},
 				},
-			},
-		],
-		[toggleActiveMutation, openView],
+				{
+					label: "Activate",
+					icon: <PowerIcon className="h-4 w-4" />,
+					show: (row) => !row.isActive,
+					onClick: (row) => {
+						toggleActiveMutation.mutate({
+							id: row.id,
+							isActive: true,
+						});
+					},
+				},
+				{
+					label: "Delete",
+					icon: <TrashIcon className="h-4 w-4" />,
+					variant: "destructive",
+					separator: true,
+					onClick: (row) => {
+						if (row.isSystem) {
+							toast.error(
+								"Cannot delete system configurations",
+							);
+							return;
+						}
+						setConfigToDelete(row);
+						setDeleteDialogOpen(true);
+					},
+				},
+			);
+
+			return actions;
+		},
+		[configurationCreateOrUpdate, toggleActiveMutation, openView],
 	);
 
 	// Define columns
@@ -260,7 +275,13 @@ export function ConfigurationsTableClient({
 							),
 							cell: ({ row }: { row: { original: Configuration } }) => {
 								const value = row.original.defaultCost;
-								if (!value) return <span className="text-muted-foreground">-</span>;
+								if (!value) {
+									return (
+										<span className="text-muted-foreground">
+											-
+										</span>
+									);
+								}
 								return (
 									<span className="font-mono text-sm">
 										{new Intl.NumberFormat("en-IN", {
@@ -287,7 +308,13 @@ export function ConfigurationsTableClient({
 							),
 							cell: ({ row }: { row: { original: Configuration } }) => {
 								const key = row.original.bookingTypeFilter;
-								if (!key) return <span className="text-muted-foreground">All</span>;
+								if (!key) {
+									return (
+										<span className="text-muted-foreground">
+											All
+										</span>
+									);
+								}
 								const match = bookingTypes.find((bt) => bt.key === key);
 								return <span>{match?.label ?? key}</span>;
 							},
@@ -553,12 +580,14 @@ export function ConfigurationsTableClient({
 							<p className="text-muted-foreground">
 								No {configTypeLabelPlural.toLowerCase()} found
 							</p>
-							<OpenConfigurationCreateSheet
-								configurationType={configType}
-								variant="outline"
-								size="sm"
-								label={`Add your first ${configTypeLabel.toLowerCase()}`}
-							/>
+							{configurationCreateOrUpdate && (
+								<OpenConfigurationCreateSheet
+									configurationType={configType}
+									variant="outline"
+									size="sm"
+									label={`Add your first ${configTypeLabel.toLowerCase()}`}
+								/>
+							)}
 						</div>
 					}
 				/>
