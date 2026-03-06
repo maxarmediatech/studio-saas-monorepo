@@ -81,7 +81,8 @@
 			"colorMode": "Farbmodus",
 			"documentation": "Dokumentation",
 			"home": "Startseite",
-			"logout": "Abmelden"
+			"logout": "Abmelden",
+			"stopImpersonation": "Imitation beenden"
 		}
 	},
 	"auth": {

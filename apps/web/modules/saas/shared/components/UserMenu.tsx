@@ -28,6 +28,7 @@ import {
 	MoreVerticalIcon,
 	SettingsIcon,
 	SunIcon,
+	UserRoundXIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -44,13 +45,16 @@ export function UserMenu({
 	avatarClassName?: string;
 }) {
 	const t = useTranslations();
-	const { user } = useSession();
+	const { session, user } = useSession();
 	const { activeOrganization } = useActiveOrganization();
 	const { setTheme: setCurrentTheme, theme: currentTheme } = useTheme();
 	const [theme, setTheme] = useState<string>(currentTheme ?? "system");
+	const [isStoppingImpersonation, setIsStoppingImpersonation] =
+		useState(false);
 	const accountSettingsHref = activeOrganization
 		? `/app/${activeOrganization.slug}/settings/profile`
 		: "/app";
+	const isImpersonating = Boolean(session?.impersonatedBy);
 
 	const colorModeOptions = [
 		{
@@ -81,6 +85,29 @@ export function UserMenu({
 				},
 			},
 		});
+	};
+
+	const onStopImpersonation = async () => {
+		if (isStoppingImpersonation) {
+			return;
+		}
+
+		setIsStoppingImpersonation(true);
+
+		try {
+			const { error } = await authClient.admin.stopImpersonating();
+
+			if (error) {
+				return;
+			}
+
+			window.location.href = new URL(
+				"/admin/users",
+				window.location.origin,
+			).toString();
+		} finally {
+			setIsStoppingImpersonation(false);
+		}
 	};
 
 	if (!user) {
@@ -178,6 +205,16 @@ export function UserMenu({
 						{t("app.userMenu.home")}
 					</Link>
 				</DropdownMenuItem>
+
+				{isImpersonating && (
+					<DropdownMenuItem
+						onClick={onStopImpersonation}
+						disabled={isStoppingImpersonation}
+					>
+						<UserRoundXIcon className="mr-2 size-4" />
+						{t("app.userMenu.stopImpersonation")}
+					</DropdownMenuItem>
+				)}
 
 				<DropdownMenuItem onClick={onLogout}>
 					<LogOutIcon className="mr-2 size-4" />
