@@ -1,5 +1,5 @@
 import { ORPCError } from "@orpc/client";
-import { isStaticRole } from "@repo/auth/lib/permissions";
+import { isProfileOnlyRole, isStaticRole } from "@repo/auth/lib/permissions";
 import { and, db, eq, organizationRoles } from "@repo/database";
 import { z } from "zod";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
@@ -53,6 +53,12 @@ export const createRole = studioProtectedProcedure
 		if (isStaticRole(input.role)) {
 			throw new ORPCError("BAD_REQUEST", {
 				message: "Role name is reserved for a system role",
+			});
+		}
+		if (isProfileOnlyRole(input.role)) {
+			throw new ORPCError("BAD_REQUEST", {
+				message:
+					"Role name is reserved for profile mapping and cannot be assigned to organization members",
 			});
 		}
 

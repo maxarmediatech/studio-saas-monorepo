@@ -13,7 +13,6 @@ export function useOrganizationMemberRoles() {
 		),
 		hr: t("organizations.roles.hr"),
 		member: t("organizations.roles.member"),
-		crew: t("organizations.roles.crew"),
 	};
 
 	return roles satisfies Record<OrganizationMemberRole, string>;

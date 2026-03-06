@@ -74,6 +74,7 @@ export type AnyAction =
 
 const ORGANIZATION_ADMIN_ROLES = ["owner", "admin"] as const;
 const SYSTEM_ROLE_KEYS = ["owner", "admin", "member"] as const;
+const PROFILE_ONLY_ROLE_KEYS = ["crew"] as const;
 
 export function normalizeRoles(
 	value: string | string[] | null | undefined,
@@ -161,7 +162,12 @@ export function hasAnyRole(
 export function coerceOrganizationRoles(
 	value: string | string[] | null | undefined,
 ): string[] {
-	const roles = normalizeRoles(value);
+	const roles = normalizeRoles(value).filter(
+		(role) =>
+			!PROFILE_ONLY_ROLE_KEYS.includes(
+				role as (typeof PROFILE_ONLY_ROLE_KEYS)[number],
+			),
+	);
 	if (roles.length === 0) {
 		return ["member"];
 	}
@@ -415,31 +421,22 @@ export const editableRoleMeta = [
 		label: "HR",
 		description: "Manage crew, expenses, and payments",
 	},
-	{
-		key: "crew" as const,
-		label: "Crew",
-		description: "External crew, submit assigned work only",
-	},
 ] as const;
 
 export const defaultEditableRoles = [
-	{
-		...editableRoleMeta[0],
-		permissions: manager.statements,
-	},
+	{ ...editableRoleMeta[0], permissions: manager.statements },
 	{
 		...editableRoleMeta[1],
 		permissions: post_production_manager.statements,
 	},
-	{
-		...editableRoleMeta[2],
-		permissions: hr.statements,
-	},
-	{
-		...editableRoleMeta[3],
-		permissions: crew.statements,
-	},
+	{ ...editableRoleMeta[2], permissions: hr.statements },
 ] as const;
+
+export function isProfileOnlyRole(role: string): boolean {
+	return PROFILE_ONLY_ROLE_KEYS.includes(
+		role as (typeof PROFILE_ONLY_ROLE_KEYS)[number],
+	);
+}
 
 export function isStaticRole(role: string): role is AppRole {
 	return SYSTEM_ROLE_KEYS.includes(role as AppRole);
@@ -461,11 +458,15 @@ export function checkStaticRolePermission(
 	action: AnyAction,
 ): boolean {
 	const rolePermissions = appRoles[role as AppRole];
-	if (!rolePermissions) return false;
+	if (!rolePermissions) {
+		return false;
+	}
 
 	const permissions = rolePermissions.statements as Record<string, string[]>;
 	const resourceActions = permissions[resource];
-	if (!resourceActions) return false;
+	if (!resourceActions) {
+		return false;
+	}
 
 	return resourceActions.includes(action);
 }
@@ -478,7 +479,9 @@ export function mergeCustomRolePermissions(
 	const merged: CustomRolePermissions = {};
 
 	for (const permissions of permissionsList) {
-		if (!permissions) continue;
+		if (!permissions) {
+			continue;
+		}
 		for (const [resource, actions] of Object.entries(permissions)) {
 			if (!merged[resource]) {
 				merged[resource] = [];

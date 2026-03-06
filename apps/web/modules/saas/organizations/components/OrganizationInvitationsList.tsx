@@ -3,7 +3,7 @@
 import type { ActiveOrganization } from "@repo/auth";
 import { authClient } from "@repo/auth/client";
 import { isOrganizationAdmin } from "@repo/auth/lib/helper";
-import { normalizeRoles } from "@repo/auth/lib/permissions";
+import { coerceOrganizationRoles } from "@repo/auth/lib/permissions";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import {
@@ -20,11 +20,11 @@ import {
 } from "@repo/ui/components/table";
 import { cn } from "@repo/ui/lib/utils";
 import { useSession } from "@saas/auth/hooks/use-session";
+import { useAllRoles } from "@saas/organizations/hooks/use-all-roles";
 import {
 	fullOrganizationQueryKey,
 	useFullOrganizationQuery,
 } from "@saas/organizations/lib/api";
-import { useAllRoles } from "@saas/organizations/hooks/use-all-roles";
 import { useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
@@ -125,9 +125,9 @@ export function OrganizationInvitationsList({
 					rejected: XIcon,
 					canceled: XIcon,
 				}[row.original.status];
-				const roleKeys = normalizeRoles(row.original.role);
+				const roleKeys = coerceOrganizationRoles(row.original.role);
 				const teamName = row.original.teamId
-					? teamNameById.get(row.original.teamId) ?? "Unknown team"
+					? (teamNameById.get(row.original.teamId) ?? "Unknown team")
 					: null;
 				const shouldShowBadges =
 					roleKeys.length > 0 || Boolean(teamName);
@@ -176,7 +176,10 @@ export function OrganizationInvitationsList({
 									</Badge>
 								))}
 								{teamName && (
-									<Badge variant="outline" className="text-xs">
+									<Badge
+										variant="outline"
+										className="text-xs"
+									>
 										Team: {teamName}
 									</Badge>
 								)}

@@ -1,8 +1,11 @@
 "use client";
 
 import { authClient } from "@repo/auth/client";
-import { hasAnyRole, normalizeRoles } from "@repo/auth/lib/permissions";
 import { isOrganizationAdmin } from "@repo/auth/lib/helper";
+import {
+	coerceOrganizationRoles,
+	hasAnyRole,
+} from "@repo/auth/lib/permissions";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { useSession } from "@saas/auth/hooks/use-session";
@@ -27,11 +30,7 @@ import { UserAvatar } from "@shared/components/UserAvatar";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import {
-	LogOutIcon,
-	TrashIcon,
-	UsersIcon,
-} from "lucide-react";
+import { LogOutIcon, TrashIcon, UsersIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -110,11 +109,12 @@ export function OrganizationMembersList({
 		toast.promise(
 			async () => {
 				const roleInput = role as UpdateRoleInput;
-				const { error } = await authClient.organization.updateMemberRole({
-					memberId,
-					role: roleInput,
-					organizationId,
-				});
+				const { error } =
+					await authClient.organization.updateMemberRole({
+						memberId,
+						role: roleInput,
+						organizationId,
+					});
 				if (error) {
 					throw error;
 				}
@@ -196,8 +196,10 @@ export function OrganizationMembersList({
 	const memberRows = useMemo<MemberRow[]>(() => {
 		return (
 			organization?.members?.map((member) => {
-				const roleKeys = normalizeRoles(member.role);
-				const hasCrewProfile = userIdsWithCrewProfiles.has(member.userId);
+				const roleKeys = coerceOrganizationRoles(member.role);
+				const hasCrewProfile = userIdsWithCrewProfiles.has(
+					member.userId,
+				);
 				const canUpdateRoles =
 					userIsOrganizationAdmin &&
 					!hasAnyRole(member.role, ["owner"]);
@@ -214,7 +216,11 @@ export function OrganizationMembersList({
 				};
 			}) ?? []
 		);
-	}, [organization?.members, userIdsWithCrewProfiles, userIsOrganizationAdmin]);
+	}, [
+		organization?.members,
+		userIdsWithCrewProfiles,
+		userIsOrganizationAdmin,
+	]);
 
 	const filteredRows = useMemo(() => {
 		const query = filters.search?.trim().toLowerCase();
@@ -303,7 +309,8 @@ export function OrganizationMembersList({
 				variant: "destructive",
 				separator: true,
 				onClick: (row) => removeMember(row.id),
-				show: (row) => row.userId !== user?.id && userIsOrganizationAdmin,
+				show: (row) =>
+					row.userId !== user?.id && userIsOrganizationAdmin,
 			},
 			{
 				label: t("organizations.settings.members.leaveOrganization"),
@@ -379,7 +386,11 @@ export function OrganizationMembersList({
 					row.original.roles.length > 0 ? (
 						<div className="flex flex-wrap gap-1">
 							{row.original.roles.map((roleKey) => (
-								<Badge key={roleKey} variant="outline" className="text-xs">
+								<Badge
+									key={roleKey}
+									variant="outline"
+									className="text-xs"
+								>
 									{getRoleLabel(roleKey)}
 								</Badge>
 							))}
@@ -414,7 +425,10 @@ export function OrganizationMembersList({
 						>
 							Update roles
 						</Button>
-						<DataTableRowActions row={row.original} actions={rowActions} />
+						<DataTableRowActions
+							row={row.original}
+							actions={rowActions}
+						/>
 					</div>
 				),
 				enableSorting: false,
@@ -474,10 +488,10 @@ export function OrganizationMembersList({
 					member={
 						selectedMember
 							? {
-								name: selectedMember.name,
-								email: selectedMember.email,
-								roles: selectedMember.roles,
-							}
+									name: selectedMember.name,
+									email: selectedMember.email,
+									roles: selectedMember.roles,
+								}
 							: undefined
 					}
 					onSave={(roles) => {

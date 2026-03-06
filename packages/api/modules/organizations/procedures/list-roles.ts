@@ -1,3 +1,4 @@
+import { isProfileOnlyRole } from "@repo/auth/lib/permissions";
 import { db, eq, organizationRoles } from "@repo/database";
 import { z } from "zod";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
@@ -31,5 +32,5 @@ export const listRoles = studioProtectedProcedure
 			orderBy: (roles, { asc }) => [asc(roles.role)],
 		});
 
-		return roles;
+		return roles.filter((role) => !isProfileOnlyRole(role.role));
 	});

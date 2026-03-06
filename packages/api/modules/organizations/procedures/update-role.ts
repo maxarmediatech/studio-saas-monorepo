@@ -1,5 +1,10 @@
 import { ORPCError } from "@orpc/client";
-import { isStaticRole, normalizeRoles, serializeRoles } from "@repo/auth/lib/permissions";
+import {
+	isProfileOnlyRole,
+	isStaticRole,
+	normalizeRoles,
+	serializeRoles,
+} from "@repo/auth/lib/permissions";
 import {
 	and,
 	db,
@@ -80,6 +85,12 @@ export const updateRole = studioProtectedProcedure
 					message: "Role name is reserved for a system role",
 				});
 			}
+			if (isProfileOnlyRole(input.role)) {
+				throw new ORPCError("BAD_REQUEST", {
+					message:
+						"Role name is reserved for profile mapping and cannot be assigned to organization members",
+				});
+			}
 
 			const duplicateName = await db.query.organizationRoles.findFirst({
 				where: and(
@@ -103,12 +114,18 @@ export const updateRole = studioProtectedProcedure
 		const shouldRenameRole =
 			input.role !== undefined && input.role !== existingRole.role;
 
-		if (input.role !== undefined) updateData.role = input.role;
-		if (input.permission !== undefined)
+		if (input.role !== undefined) {
+			updateData.role = input.role;
+		}
+		if (input.permission !== undefined) {
 			updateData.permission = JSON.stringify(input.permission);
-		if (input.description !== undefined)
+		}
+		if (input.description !== undefined) {
 			updateData.description = input.description;
-		if (input.color !== undefined) updateData.color = input.color;
+		}
+		if (input.color !== undefined) {
+			updateData.color = input.color;
+		}
 
 		const updated = await db.transaction(async (tx) => {
 			const [updatedRole] = await tx
@@ -132,8 +149,9 @@ export const updateRole = studioProtectedProcedure
 				});
 
 				for (const memberRow of membersToUpdate) {
-					const nextRoles = normalizeRoles(memberRow.role).map((role) =>
-						role === existingRole.role ? nextRoleName : role,
+					const nextRoles = normalizeRoles(memberRow.role).map(
+						(role) =>
+							role === existingRole.role ? nextRoleName : role,
 					);
 					const nextRole = serializeRoles(nextRoles);
 					if (nextRole !== memberRow.role) {
@@ -144,20 +162,26 @@ export const updateRole = studioProtectedProcedure
 					}
 				}
 
-				const invitationsToUpdate = await tx.query.invitations.findMany({
-					where: and(
-						eq(invitations.organizationId, context.organizationId),
-						ilike(invitations.role, `%${existingRole.role}%`),
-					),
-					columns: { id: true, role: true },
-				});
+				const invitationsToUpdate = await tx.query.invitations.findMany(
+					{
+						where: and(
+							eq(
+								invitations.organizationId,
+								context.organizationId,
+							),
+							ilike(invitations.role, `%${existingRole.role}%`),
+						),
+						columns: { id: true, role: true },
+					},
+				);
 
 				for (const invitationRow of invitationsToUpdate) {
 					if (!invitationRow.role) {
 						continue;
 					}
 					const nextRoles = normalizeRoles(invitationRow.role).map(
-						(role) => (role === existingRole.role ? nextRoleName : role),
+						(role) =>
+							role === existingRole.role ? nextRoleName : role,
 					);
 					const nextRole = serializeRoles(nextRoles);
 					if (nextRole !== invitationRow.role) {
