@@ -347,7 +347,11 @@ export const auth = betterAuth({
 	},
 	plugins: [
 		username(),
-		admin(),
+		admin({
+			// Disable role-based platform admin and allow only explicit user IDs.
+			adminRoles: [],
+			adminUserIds: config.auth.platformAdminUserIds,
+		}),
 		magicLink({
 			disableSignUp: false,
 			sendMagicLink: async ({ email, url }, request) => {

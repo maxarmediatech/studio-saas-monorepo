@@ -4,6 +4,7 @@ import { getSession } from "@saas/auth/lib/server";
 import { SettingsMenu } from "@saas/settings/components/SettingsMenu";
 import { PageHeader } from "@saas/shared/components/PageHeader";
 import { SidebarContentLayout } from "@saas/shared/components/SidebarContentLayout";
+import { ConfirmationAlertProvider } from "@saas/shared/components/ConfirmationAlertProvider";
 import { Logo } from "@shared/components/Logo";
 import { Building2Icon, UsersIcon } from "lucide-react";
 import { cookies } from "next/headers";
@@ -19,7 +20,11 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
 		redirect("/auth/login");
 	}
 
-	if (session.user?.role !== "admin") {
+	const isPlatformAdmin = config.auth.platformAdminUserIds.some(
+		(adminUserId) => adminUserId === session.user.id,
+	);
+
+	if (!isPlatformAdmin) {
 		const activeOrganizationSlug = (await cookies()).get(
 			"activeOrganizationSlug",
 		)?.value;
@@ -35,47 +40,49 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
 				title={t("admin.title")}
 				subtitle={t("admin.description")}
 			/>
-			<SidebarContentLayout
-				sidebar={
-					<SettingsMenu
-						menuItems={[
-							{
-								avatar: (
-									<Logo
-										className="size-8"
-										withLabel={false}
-									/>
-								),
-								title: t("admin.title"),
-								items: [
-									{
-										title: t("admin.menu.users"),
-										href: "/app/admin/users",
-										icon: (
-											<UsersIcon className="size-4 opacity-50" />
-										),
-									},
-									...(config.organizations.enable
-										? [
-												{
-													title: t(
-														"admin.menu.organizations",
-													),
-													href: "/app/admin/organizations",
-													icon: (
-														<Building2Icon className="size-4 opacity-50" />
-													),
-												},
-											]
-										: []),
-								],
-							},
-						]}
-					/>
-				}
-			>
-				{children}
-			</SidebarContentLayout>
+			<ConfirmationAlertProvider>
+				<SidebarContentLayout
+					sidebar={
+						<SettingsMenu
+							menuItems={[
+								{
+									avatar: (
+										<Logo
+											className="size-8"
+											withLabel={false}
+										/>
+									),
+									title: t("admin.title"),
+									items: [
+										{
+											title: t("admin.menu.users"),
+											href: "/admin/users",
+											icon: (
+												<UsersIcon className="size-4 opacity-50" />
+											),
+										},
+										...(config.organizations.enable
+											? [
+													{
+														title: t(
+															"admin.menu.organizations",
+														),
+														href: "/admin/organizations",
+														icon: (
+															<Building2Icon className="size-4 opacity-50" />
+														),
+													},
+												]
+											: []),
+									],
+								},
+							]}
+						/>
+					}
+				>
+					{children}
+				</SidebarContentLayout>
+			</ConfirmationAlertProvider>
 		</>
 	);
 }

@@ -59,6 +59,8 @@ export const config = {
 	},
 	// Authentication
 	auth: {
+		// App-wide admin access allowlist. Only these user IDs can access /app/admin and admin APIs.
+		platformAdminUserIds: ["019b4b90-7eeb-7498-b687-0c2594d68a1e"],
 		// Whether users should be able to create accounts (otherwise users can only be by admins)
 		enableSignup: true,
 		// Whether users should be able to sign in with a magic link

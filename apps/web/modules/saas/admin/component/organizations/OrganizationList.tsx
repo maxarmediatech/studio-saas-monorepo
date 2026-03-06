@@ -80,9 +80,9 @@ export function OrganizationList() {
 	const { data, isLoading } = useQuery(
 		orpc.admin.organizations.list.queryOptions({
 			input: {
-				itemsPerPage: ITEMS_PER_PAGE,
-				currentPage,
-				searchTerm: debouncedSearchTerm,
+				limit: ITEMS_PER_PAGE,
+				offset: (currentPage - 1) * ITEMS_PER_PAGE,
+				query: debouncedSearchTerm || undefined,
 			},
 		}),
 	);

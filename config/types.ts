@@ -20,6 +20,7 @@ export type Config = {
 		enableOnboarding: boolean;
 	};
 	auth: {
+		platformAdminUserIds: string[];
 		enableSignup: boolean;
 		enableMagicLink: boolean;
 		enableSocialLogin: boolean;

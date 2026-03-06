@@ -24,6 +24,12 @@ export function NavBar() {
 	const { activeOrganization } = useActiveOrganization();
 
 	const { useSidebarLayout } = config.ui.saas;
+	const isPlatformAdmin = Boolean(
+		user?.id &&
+			config.auth.platformAdminUserIds.some(
+				(adminUserId) => adminUserId === user.id,
+			),
+	);
 
 	const basePath = activeOrganization
 		? `/app/${activeOrganization.slug}`
@@ -65,13 +71,15 @@ export function NavBar() {
 			icon: UserCog2Icon,
 			isActive: isAccountSettingsRoute,
 		},
-		...(user?.role === "admin"
+		...(isPlatformAdmin
 			? [
 					{
 						label: t("app.menu.admin"),
-						href: "/app/admin",
+						href: "/admin",
 						icon: UserCogIcon,
-						isActive: pathname.startsWith("/app/admin/"),
+						isActive:
+							pathname === "/admin" ||
+							pathname.startsWith("/admin/"),
 					},
 				]
 			: []),
@@ -146,8 +154,8 @@ export function NavBar() {
 						},
 					)}
 				>
-					{menuItems.map((menuItem) => (
-						<li key={menuItem.href}>
+					{menuItems.map((menuItem, menuIndex) => (
+						<li key={`${menuItem.href}-${menuItem.label}-${menuIndex}`}>
 							<Link
 								href={menuItem.href}
 								className={cn(

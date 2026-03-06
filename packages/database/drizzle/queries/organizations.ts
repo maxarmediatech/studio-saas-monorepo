@@ -1,4 +1,4 @@
-import { type AnyColumn, and, eq, sql } from "drizzle-orm";
+import { type AnyColumn, and, eq, ilike, sql } from "drizzle-orm";
 import { PgDialect } from "drizzle-orm/pg-core";
 import type { z } from "zod";
 import { db } from "../client";
@@ -27,10 +27,11 @@ export async function getOrganizations({
 }) {
 	return db.query.organizations.findMany({
 		where: query
-			? (org, { like }) => like(org.name, `%${query}%`)
+			? (org, { ilike }) => ilike(org.name, `%${query}%`)
 			: undefined,
 		limit,
 		offset,
+		orderBy: (org, { asc }) => [asc(org.createdAt), asc(org.id)],
 		extras: {
 			membersCount: countRelation(
 				organizations.id,
@@ -40,8 +41,11 @@ export async function getOrganizations({
 	});
 }
 
-export async function countAllOrganizations() {
-	return db.$count(organizations);
+export async function countAllOrganizations(query?: string) {
+	return db.$count(
+		organizations,
+		query ? ilike(organizations.name, `%${query}%`) : undefined,
+	);
 }
 
 export async function getOrganizationById(id: string) {

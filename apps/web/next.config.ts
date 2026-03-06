@@ -44,9 +44,19 @@ const nextConfig = {
 	async redirects() {
 		return [
 			{
+				source: "/admin",
+				destination: "/admin/users",
+				permanent: false,
+			},
+			{
 				source: "/app/admin",
-				destination: "/app/admin/users",
-				permanent: true,
+				destination: "/admin/users",
+				permanent: false,
+			},
+			{
+				source: "/app/admin/:path*",
+				destination: "/admin/:path*",
+				permanent: false,
 			},
 			{
 				source: "/app/:organizationSlug/bookings/new",

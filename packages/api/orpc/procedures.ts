@@ -1,5 +1,6 @@
 import { ORPCError, os } from "@orpc/server";
 import { auth } from "@repo/auth";
+import { config } from "@repo/config";
 import { getOrganizationMembership } from "@repo/database";
 
 export const publicProcedure = os.$context<{
@@ -28,7 +29,11 @@ export const protectedProcedure = publicProcedure.use(
 
 export const adminProcedure = protectedProcedure.use(
 	async ({ context, next }) => {
-		if (context.user.role !== "admin") {
+		const isPlatformAdmin = config.auth.platformAdminUserIds.some(
+			(adminUserId) => adminUserId === context.user.id,
+		);
+
+		if (!isPlatformAdmin) {
 			throw new ORPCError("FORBIDDEN");
 		}
 

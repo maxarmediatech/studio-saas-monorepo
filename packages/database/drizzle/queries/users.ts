@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, ilike, or } from "drizzle-orm";
 import type { z } from "zod";
 import { db } from "../client";
 import { accounts, users } from "../schema";
@@ -15,15 +15,27 @@ export async function getUsers({
 }) {
 	return await db.query.users.findMany({
 		where: query
-			? (user, { like }) => like(user.name, `%${query}%`)
+			? or(
+					ilike(users.name, `%${query}%`),
+					ilike(users.email, `%${query}%`),
+				)
 			: undefined,
 		limit,
 		offset,
+		orderBy: (user, { asc }) => [asc(user.createdAt), asc(user.id)],
 	});
 }
 
-export async function countAllUsers() {
-	return db.$count(users);
+export async function countAllUsers(query?: string) {
+	return db.$count(
+		users,
+		query
+			? or(
+					ilike(users.name, `%${query}%`),
+					ilike(users.email, `%${query}%`),
+				)
+			: undefined,
+	);
 }
 
 export async function getUserById(id: string) {
