@@ -80,17 +80,19 @@ export function SidebarPanel({
 			>
 				{/* Header */}
 				<div className="shrink-0 p-3">
-					<div className="mb-2 flex items-center gap-2">
-						<OrganizationSwitcher
-							studioName={studioName}
-							studioLogo={studioLogo}
-							studioSlug={studioSlug}
-							organizationId={organizationId}
-							settingsEntryPath={settingsEntryPath}
-							variant="panel"
-						/>
+					<div className="mb-2 grid grid-cols-[minmax(0,6fr)_minmax(2rem,1fr)] items-center gap-1">
+						<div className="min-w-0">
+							<OrganizationSwitcher
+								studioName={studioName}
+								studioLogo={studioLogo}
+								studioSlug={studioSlug}
+								organizationId={organizationId}
+								settingsEntryPath={settingsEntryPath}
+								variant="panel"
+							/>
+						</div>
 						<NotificationBell
-							buttonClassName="ml-auto size-8 text-neutral-600 hover:bg-black/5"
+							buttonClassName="size-8 shrink-0 justify-self-end text-neutral-600 hover:bg-black/5"
 							align="start"
 						/>
 					</div>

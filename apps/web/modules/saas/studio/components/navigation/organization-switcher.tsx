@@ -152,12 +152,14 @@ export function OrganizationSwitcher({
 			<DropdownMenuTrigger asChild>
 				<Button
 					variant="ghost"
-					className="flex h-auto items-center gap-1.5 rounded-lg px-2 py-1.5 hover:bg-black/5 active:bg-black/10"
+					className="h-auto w-full min-w-0 justify-start rounded-lg px-2 py-1.5 hover:bg-black/5 active:bg-black/10"
 				>
-					<span className="max-w-40 truncate text-sm font-semibold text-neutral-900">
-						{studioName}
+					<span className="flex min-w-0 max-w-full items-center gap-1.5">
+						<span className="min-w-0 truncate text-left text-sm font-semibold text-neutral-900">
+							{studioName}
+						</span>
+						<ChevronDown className="size-3.5 shrink-0 text-neutral-500" />
 					</span>
-					<ChevronDown className="size-3.5 text-neutral-500" />
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent
