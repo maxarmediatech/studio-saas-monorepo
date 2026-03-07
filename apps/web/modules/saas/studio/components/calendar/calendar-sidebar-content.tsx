@@ -12,6 +12,8 @@ import type { NavAreaConfig } from "../../lib/navigation/types";
 import {
 	CALENDAR_PAGE_LIMIT,
 	formatCalendarDate,
+	getMonthEnd,
+	getMonthStart,
 	getWeekDays,
 	getWeekEnd,
 } from "./calendar-utils";
@@ -22,38 +24,46 @@ export function CalendarWorkspaceSidebarContent({
 }: {
 	area: NavAreaConfig;
 }) {
-	const { weekStart, setWeekStart } = useCalendarRouteState();
+	const { focusDate, setFocusDate, view, weekStart } =
+		useCalendarRouteState();
 	const weekEnd = getWeekEnd(weekStart);
+	const monthStart = getMonthStart(focusDate);
+	const monthEnd = getMonthEnd(focusDate);
 	const visibleDays = React.useMemo(
-		() => getWeekDays(weekStart),
-		[weekStart],
+		() => (view === "week" ? getWeekDays(weekStart) : []),
+		[view, weekStart],
 	);
-	const [displayedMonth, setDisplayedMonth] = React.useState(weekStart);
+	const [displayedMonth, setDisplayedMonth] = React.useState(focusDate);
 	const modifiers = React.useMemo(
-		() => ({
-			inView: (date: Date) =>
-				visibleDays.some((day) => isSameDay(day, date)),
-		}),
-		[visibleDays],
+		() =>
+			view === "week"
+				? {
+						inView: (date: Date) =>
+							visibleDays.some((day) => isSameDay(day, date)),
+					}
+				: undefined,
+		[view, visibleDays],
 	);
 
 	React.useEffect(() => {
 		setDisplayedMonth((currentMonth) => {
 			if (
-				currentMonth.getFullYear() === weekStart.getFullYear() &&
-				currentMonth.getMonth() === weekStart.getMonth()
+				currentMonth.getFullYear() === focusDate.getFullYear() &&
+				currentMonth.getMonth() === focusDate.getMonth()
 			) {
 				return currentMonth;
 			}
 
-			return weekStart;
+			return focusDate;
 		});
-	}, [weekStart]);
+	}, [focusDate]);
 
 	const { data, isLoading } = useQuery(
 		shootsApi.listOptions({
-			dateFrom: formatCalendarDate(weekStart),
-			dateTo: formatCalendarDate(weekEnd),
+			dateFrom: formatCalendarDate(
+				view === "week" ? weekStart : monthStart,
+			),
+			dateTo: formatCalendarDate(view === "week" ? weekEnd : monthEnd),
 			page: 1,
 			limit: CALENDAR_PAGE_LIMIT,
 			sortBy: "shootDate",
@@ -93,14 +103,16 @@ export function CalendarWorkspaceSidebarContent({
 						mode="single"
 						month={displayedMonth}
 						onMonthChange={setDisplayedMonth}
-						selected={weekStart}
+						selected={focusDate}
 						onSelect={(date) => {
 							if (date) {
-								setWeekStart(date);
+								setFocusDate(date);
 							}
 						}}
 						modifiers={modifiers}
-						modifiersClassNames={{ inView: "in-view-day" }}
+						modifiersClassNames={
+							modifiers ? { inView: "in-view-day" } : undefined
+						}
 						className="min-w-0 w-full bg-transparent p-0 [--cell-size:1.9rem]"
 						classNames={{
 							root: "w-full min-w-0 bg-transparent",
@@ -121,14 +133,17 @@ export function CalendarWorkspaceSidebarContent({
 
 				<div className="space-y-3 px-1">
 					<div className="text-xs font-medium uppercase tracking-[0.14em] text-neutral-500">
-						Week
+						{view === "week" ? "Week" : "Month"}
 					</div>
 					<div className="text-lg font-semibold text-neutral-900">
-						{format(weekStart, "MMM d")} to{" "}
-						{format(weekEnd, "MMM d")}
+						{view === "week"
+							? `${format(weekStart, "MMM d")} to ${format(weekEnd, "MMM d")}`
+							: format(focusDate, "MMMM yyyy")}
 					</div>
 					<div className="text-sm text-neutral-500">
-						{format(weekStart, "yyyy")}
+						{view === "week"
+							? format(weekStart, "yyyy")
+							: `${format(monthStart, "MMM d")} to ${format(monthEnd, "MMM d")}`}
 					</div>
 					<div className="flex flex-wrap gap-2">
 						<MetaPill>
@@ -136,7 +151,7 @@ export function CalendarWorkspaceSidebarContent({
 								? "Loading shoots..."
 								: `${shoots.length} shoots`}
 						</MetaPill>
-						<MetaPill>{bookedDaysCount} booked days</MetaPill>
+						<MetaPill>{bookedDaysCount} active days</MetaPill>
 					</div>
 				</div>
 			</div>

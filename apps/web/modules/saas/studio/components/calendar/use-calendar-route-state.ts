@@ -3,17 +3,22 @@
 import { isValid, parseISO } from "date-fns";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import * as React from "react";
-import { formatWeekParam, getWeekStart } from "./calendar-utils";
+import { formatCalendarDate, getWeekStart } from "./calendar-utils";
 
-function getWeekStartFromParam(value: string | null) {
-	if (!value) {
-		return getWeekStart(new Date());
+export type CalendarView = "week" | "month";
+
+function getFocusDateFromParams(searchParams: URLSearchParams) {
+	const rawValue = searchParams.get("date") ?? searchParams.get("week");
+	if (!rawValue) {
+		return new Date();
 	}
 
-	const parsedDate = parseISO(value);
-	return isValid(parsedDate)
-		? getWeekStart(parsedDate)
-		: getWeekStart(new Date());
+	const parsedDate = parseISO(rawValue);
+	return isValid(parsedDate) ? parsedDate : new Date();
+}
+
+function getViewFromParams(searchParams: URLSearchParams): CalendarView {
+	return searchParams.get("view") === "month" ? "month" : "week";
 }
 
 export function useCalendarRouteState() {
@@ -21,10 +26,15 @@ export function useCalendarRouteState() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 
-	const weekStart = React.useMemo(
-		() => getWeekStartFromParam(searchParams.get("week")),
+	const focusDate = React.useMemo(
+		() => getFocusDateFromParams(searchParams),
 		[searchParams],
 	);
+	const view = React.useMemo(
+		() => getViewFromParams(searchParams),
+		[searchParams],
+	);
+	const weekStart = React.useMemo(() => getWeekStart(focusDate), [focusDate]);
 
 	const updateSearchParams = React.useCallback(
 		(mutator: (nextParams: URLSearchParams) => void) => {
@@ -44,17 +54,43 @@ export function useCalendarRouteState() {
 		[pathname, router, searchParams],
 	);
 
-	const setWeekStart = React.useCallback(
+	const setFocusDate = React.useCallback(
 		(date: Date) => {
 			updateSearchParams((nextParams) => {
-				nextParams.set("week", formatWeekParam(date));
+				nextParams.set("date", formatCalendarDate(date));
+				nextParams.delete("week");
+			});
+		},
+		[updateSearchParams],
+	);
+
+	const setWeekStart = React.useCallback(
+		(date: Date) => {
+			setFocusDate(getWeekStart(date));
+		},
+		[setFocusDate],
+	);
+
+	const setView = React.useCallback(
+		(nextView: CalendarView) => {
+			updateSearchParams((nextParams) => {
+				if (nextView === "week") {
+					nextParams.delete("view");
+					return;
+				}
+
+				nextParams.set("view", nextView);
 			});
 		},
 		[updateSearchParams],
 	);
 
 	return {
+		focusDate,
+		view,
 		weekStart,
+		setFocusDate,
+		setView,
 		setWeekStart,
 	};
 }

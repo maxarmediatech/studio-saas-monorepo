@@ -4,9 +4,11 @@ import type {
 } from "@repo/api/modules/studio/schemas/shoot";
 import {
 	eachDayOfInterval,
+	endOfMonth,
 	endOfWeek,
 	format,
 	parseISO,
+	startOfMonth,
 	startOfWeek,
 } from "date-fns";
 
@@ -32,6 +34,33 @@ export function getWeekDays(date: Date) {
 	return eachDayOfInterval({
 		start: getWeekStart(date),
 		end: getWeekEnd(date),
+	});
+}
+
+export function getMonthStart(date: Date) {
+	return startOfMonth(date);
+}
+
+export function getMonthEnd(date: Date) {
+	return endOfMonth(date);
+}
+
+export function getMonthGridStart(date: Date) {
+	return startOfWeek(getMonthStart(date), {
+		weekStartsOn: CALENDAR_WEEK_STARTS_ON,
+	});
+}
+
+export function getMonthGridEnd(date: Date) {
+	return endOfWeek(getMonthEnd(date), {
+		weekStartsOn: CALENDAR_WEEK_STARTS_ON,
+	});
+}
+
+export function getMonthGridDays(date: Date) {
+	return eachDayOfInterval({
+		start: getMonthGridStart(date),
+		end: getMonthGridEnd(date),
 	});
 }
 
