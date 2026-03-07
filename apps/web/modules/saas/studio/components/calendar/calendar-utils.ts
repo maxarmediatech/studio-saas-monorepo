@@ -12,6 +12,7 @@ import {
 
 export const CALENDAR_WEEK_STARTS_ON = 0 as const;
 export const CALENDAR_PAGE_LIMIT = 100;
+export const DEFAULT_SHOOT_DURATION_MINUTES = 60;
 
 type ShootCalendarTitleInput = {
 	bookingName?: string | null;
@@ -68,14 +69,15 @@ export function getShootTimeLabel(
 	shoot: Pick<ShootListItem | ShootDetail, "startTime" | "endTime">,
 ) {
 	if (!shoot.startTime) {
-		return "All day";
+		return "No time";
 	}
 
+	const startLabel = formatShootClockTime(shoot.startTime);
 	if (!shoot.endTime) {
-		return shoot.startTime;
+		return startLabel;
 	}
 
-	return `${shoot.startTime} - ${shoot.endTime}`;
+	return `${startLabel} - ${formatShootClockTime(shoot.endTime)}`;
 }
 
 export function getShootLocation(
@@ -101,6 +103,82 @@ export function groupShootsByDay(shoots: ShootListItem[], days: Date[]) {
 	}
 
 	return grouped;
+}
+
+export function getShootStartDateTime(
+	shoot: Pick<ShootListItem | ShootDetail, "shootDate" | "startTime">,
+) {
+	if (!shoot.startTime) {
+		return null;
+	}
+
+	const parsed = parseShootDateTime(shoot.shootDate, shoot.startTime);
+	return parsed && !Number.isNaN(parsed.getTime()) ? parsed : null;
+}
+
+export function getShootEndDateTime(
+	shoot: Pick<
+		ShootListItem | ShootDetail,
+		"shootDate" | "startTime" | "endTime"
+	>,
+) {
+	const start = getShootStartDateTime(shoot);
+	if (!start) {
+		return null;
+	}
+
+	if (!shoot.endTime) {
+		return new Date(
+			start.getTime() + DEFAULT_SHOOT_DURATION_MINUTES * 60 * 1000,
+		);
+	}
+
+	const parsedEnd = parseShootDateTime(shoot.shootDate, shoot.endTime);
+	if (!parsedEnd || Number.isNaN(parsedEnd.getTime())) {
+		return new Date(
+			start.getTime() + DEFAULT_SHOOT_DURATION_MINUTES * 60 * 1000,
+		);
+	}
+
+	if (parsedEnd <= start) {
+		return new Date(
+			start.getTime() + DEFAULT_SHOOT_DURATION_MINUTES * 60 * 1000,
+		);
+	}
+
+	return parsedEnd;
+}
+
+export function formatShootClockTime(value: string) {
+	const parsed = parseTimeValue(value);
+	if (!parsed) {
+		return value;
+	}
+
+	return format(parsed, "h:mm a");
+}
+
+function parseShootDateTime(date: string, time: string) {
+	const normalizedTime = normalizeTimeValue(time);
+	return normalizedTime ? new Date(`${date}T${normalizedTime}`) : null;
+}
+
+function parseTimeValue(value: string) {
+	const normalizedTime = normalizeTimeValue(value);
+	return normalizedTime ? new Date(`2000-01-01T${normalizedTime}`) : null;
+}
+
+function normalizeTimeValue(value: string) {
+	const trimmed = value.trim();
+	if (/^\d{2}:\d{2}$/.test(trimmed)) {
+		return `${trimmed}:00`;
+	}
+
+	if (/^\d{2}:\d{2}:\d{2}$/.test(trimmed)) {
+		return trimmed;
+	}
+
+	return null;
 }
 
 export function getShootStatusAppearance(status: string) {
