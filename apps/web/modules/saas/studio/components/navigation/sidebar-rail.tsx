@@ -18,7 +18,7 @@ interface SidebarRailProps {
 	studioSlug: string;
 	settingsEntryPath: string;
 	railIcons: RailIconConfig[];
-	activeModuleId: string;
+	activeRailItemId: string;
 	currentArea: string;
 	onSearchOpen?: () => void;
 }
@@ -27,7 +27,7 @@ export function SidebarRail({
 	studioSlug,
 	settingsEntryPath,
 	railIcons,
-	activeModuleId,
+	activeRailItemId,
 	currentArea,
 	onSearchOpen,
 }: SidebarRailProps) {
@@ -51,13 +51,12 @@ export function SidebarRail({
 				<div className="flex flex-col items-center gap-3">
 					{railIcons.map((item) => {
 						const isActive =
-							item.moduleId === activeModuleId &&
-							!isSettingsActive;
+							item.id === activeRailItemId && !isSettingsActive;
 						return (
-							<Tooltip key={item.moduleId}>
+							<Tooltip key={item.id}>
 								<TooltipTrigger asChild>
 									<Link
-										href={item.defaultPath}
+										href={item.href}
 										className={cn(
 											"relative flex size-11 items-center justify-center rounded-lg outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-black/50",
 											isActive
@@ -95,7 +94,6 @@ export function SidebarRail({
 							Search
 						</TooltipContent>
 					</Tooltip>
-
 				</div>
 			</div>
 

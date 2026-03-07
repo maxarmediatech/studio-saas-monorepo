@@ -69,7 +69,9 @@ function AppShellContent({
 	const [fallbackModuleId, setFallbackModuleId] = React.useState<
 		string | null
 	>(() => {
-		if (typeof window === "undefined") return null;
+		if (typeof window === "undefined") {
+			return null;
+		}
 		return window.sessionStorage.getItem(LAST_ACTIVE_MODULE_KEY);
 	});
 
@@ -79,6 +81,9 @@ function AppShellContent({
 		}
 		if (pathname.startsWith(`/app/${studioSlug}/discussions`)) {
 			return "discussions";
+		}
+		if (pathname.startsWith(`/app/${studioSlug}/calendar`)) {
+			return "calendarWorkspace";
 		}
 		return "default";
 	}, [pathname, studioSlug]);
@@ -90,7 +95,9 @@ function AppShellContent({
 	);
 
 	React.useEffect(() => {
-		if (typeof window === "undefined" || !matchedModule?.id) return;
+		if (typeof window === "undefined" || !matchedModule?.id) {
+			return;
+		}
 		window.sessionStorage.setItem(LAST_ACTIVE_MODULE_KEY, matchedModule.id);
 		setFallbackModuleId(matchedModule.id);
 	}, [matchedModule?.id]);
@@ -98,8 +105,12 @@ function AppShellContent({
 	const isSearchRoute = pathname.startsWith(`/app/${studioSlug}/search`);
 
 	const activeModule = React.useMemo(() => {
-		if (matchedModule) return matchedModule;
-		if (!isSearchRoute) return null;
+		if (matchedModule) {
+			return matchedModule;
+		}
+		if (!isSearchRoute) {
+			return null;
+		}
 
 		return (
 			modules.find((module) => module.id === fallbackModuleId) ??
@@ -109,6 +120,11 @@ function AppShellContent({
 	}, [matchedModule, isSearchRoute, modules, fallbackModuleId]);
 
 	const activeModuleId = activeModule?.id ?? modules[0]?.id ?? "";
+	const activeRailItemId =
+		currentArea !== "default" &&
+		railIcons.some((item) => item.id === currentArea)
+			? currentArea
+			: activeModuleId;
 
 	const openSearch = React.useCallback(() => setIsSearchOpen(true), []);
 	const closeSearch = React.useCallback(() => setIsSearchOpen(false), []);
@@ -128,7 +144,9 @@ function AppShellContent({
 					target?.closest("input, textarea") ||
 					target?.getAttribute("contenteditable") === "true";
 
-				if (isTyping) return;
+				if (isTyping) {
+					return;
+				}
 
 				event.preventDefault();
 				openSearch();
@@ -157,15 +175,15 @@ function AppShellContent({
 			<div className="flex min-h-0 flex-1 md:grid md:grid-cols-[min-content_minmax(0,1fr)]">
 				{/* Desktop Sidebar */}
 				{showSidebar && (
-						<DubSidebar
-							studioSlug={studioSlug}
-							studioName={studioName}
-							studioLogo={studioLogo}
-							organizationId={organizationId}
-							settingsEntryPath={settingsEntryPath}
-							railIcons={railIcons}
-							activeModule={activeModule}
-						activeModuleId={activeModuleId}
+					<DubSidebar
+						studioSlug={studioSlug}
+						studioName={studioName}
+						studioLogo={studioLogo}
+						organizationId={organizationId}
+						settingsEntryPath={settingsEntryPath}
+						railIcons={railIcons}
+						activeModule={activeModule}
+						activeRailItemId={activeRailItemId}
 						utilities={utilities}
 						currentArea={currentArea}
 						areas={areas}
@@ -209,7 +227,7 @@ function AppShellContent({
 					settingsEntryPath={settingsEntryPath}
 					railIcons={railIcons}
 					activeModule={activeModule}
-					activeModuleId={activeModuleId}
+					activeRailItemId={activeRailItemId}
 					utilities={utilities}
 					currentArea={currentArea}
 					areas={areas}

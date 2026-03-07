@@ -10,6 +10,7 @@ import type {
 	NavModuleConfig,
 	RailIconConfig,
 } from "../../lib/navigation/types";
+import { CalendarWorkspacePanel } from "../calendar/calendar-workspace-panel";
 import { DiscussionsPanel } from "./discussions-panel";
 import { SettingsPanel } from "./settings-panel";
 import { useSidebar } from "./sidebar-context";
@@ -28,7 +29,7 @@ interface DubSidebarProps {
 	settingsEntryPath: string;
 	railIcons: RailIconConfig[];
 	activeModule: NavModuleConfig | null;
-	activeModuleId: string;
+	activeRailItemId: string;
 	utilities: NavItemConfig[];
 	currentArea: string; // "default" | "studioSettings"
 	areas: Record<string, NavAreaConfig>;
@@ -77,7 +78,7 @@ export function DubSidebar({
 	settingsEntryPath,
 	railIcons,
 	activeModule,
-	activeModuleId,
+	activeRailItemId,
 	utilities,
 	currentArea,
 	areas,
@@ -112,7 +113,7 @@ export function DubSidebar({
 						studioSlug={studioSlug}
 						settingsEntryPath={settingsEntryPath}
 						railIcons={railIcons}
-						activeModuleId={activeModuleId}
+						activeRailItemId={activeRailItemId}
 						currentArea={currentArea}
 						onSearchOpen={onSearchOpen}
 					/>
@@ -149,7 +150,11 @@ export function DubSidebar({
 							}
 						>
 							{areas.studioSettings && (
-								<SettingsPanel area={areas.studioSettings} organizationId={organizationId} studioSlug={studioSlug} />
+								<SettingsPanel
+									area={areas.studioSettings}
+									organizationId={organizationId}
+									studioSlug={studioSlug}
+								/>
 							)}
 						</Area>
 
@@ -162,6 +167,20 @@ export function DubSidebar({
 								<DiscussionsPanel
 									area={areas.discussions}
 									studioSlug={studioSlug}
+								/>
+							)}
+						</Area>
+
+						{/* Calendar Workspace Area */}
+						<Area
+							visible={currentArea === "calendarWorkspace"}
+							direction={
+								areas.calendarWorkspace?.direction ?? "right"
+							}
+						>
+							{areas.calendarWorkspace && (
+								<CalendarWorkspacePanel
+									area={areas.calendarWorkspace}
 								/>
 							)}
 						</Area>

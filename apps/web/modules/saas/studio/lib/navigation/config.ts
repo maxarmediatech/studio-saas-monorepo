@@ -493,6 +493,13 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 			direction: "right",
 			sections: [],
 		},
+		calendarWorkspace: {
+			id: "calendarWorkspace",
+			title: "Calendar",
+			backHref: url("/home"),
+			direction: "right",
+			sections: [],
+		},
 	};
 
 	return { modules, utilities, areas };
