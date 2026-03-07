@@ -70,9 +70,9 @@ export function CalendarWorkspaceSidebarContent({
 								setWeekStart(date);
 							}
 						}}
-						className="min-w-0 w-full p-0 [--cell-size:1.9rem]"
+						className="min-w-0 w-full bg-transparent p-0 [--cell-size:1.9rem]"
 						classNames={{
-							root: "w-full min-w-0",
+							root: "w-full min-w-0 bg-transparent",
 							month: "w-full gap-2",
 							table: "w-full",
 							weekdays: "flex w-full",
