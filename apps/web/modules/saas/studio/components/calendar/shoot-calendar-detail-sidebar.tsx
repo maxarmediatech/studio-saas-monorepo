@@ -11,6 +11,7 @@ import {
 	SheetTitle,
 } from "@repo/ui/components/sheet";
 import { Skeleton } from "@repo/ui/components/skeleton";
+import { useIsMobile } from "@repo/ui/hooks/use-mobile";
 import { cn } from "@repo/ui/lib/utils";
 import { shootsApi, studioQueryKeys } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
@@ -34,12 +35,10 @@ import {
 
 export function ShootCalendarDetailSidebar({
 	shootId,
-	open,
-	onOpenChange,
+	onClearSelection,
 }: {
 	shootId: string | null;
-	open: boolean;
-	onOpenChange: (open: boolean) => void;
+	onClearSelection: () => void;
 }) {
 	const { data, isLoading } = useQuery({
 		...(shootId
@@ -51,26 +50,36 @@ export function ShootCalendarDetailSidebar({
 				}),
 	});
 
+	const isMobile = useIsMobile();
 	const shoot = data?.data ?? null;
+	const isDesktopSidebarOpen = Boolean(shootId) && !isMobile;
+	const isMobileSheetOpen = Boolean(shootId) && isMobile;
 
 	return (
 		<>
 			<aside
 				className={cn(
 					"hidden shrink-0 border-l border-neutral-200 bg-neutral-50 transition-[width] duration-300 md:flex",
-					open ? "w-96" : "w-0",
+					isDesktopSidebarOpen ? "w-96" : "w-0",
 				)}
 			>
 				<div className="h-full w-96">
 					<SidebarContent
 						shoot={shoot}
 						isLoading={isLoading}
-						onClose={() => onOpenChange(false)}
+						onClose={onClearSelection}
 					/>
 				</div>
 			</aside>
 
-			<Sheet open={Boolean(shootId) && open} onOpenChange={onOpenChange}>
+			<Sheet
+				open={isMobileSheetOpen}
+				onOpenChange={(nextOpen) => {
+					if (!nextOpen) {
+						onClearSelection();
+					}
+				}}
+			>
 				<SheetContent side="right" className="w-full sm:max-w-md">
 					<SheetHeader className="border-b border-neutral-200 px-6 py-5">
 						<SheetTitle>Shoot details</SheetTitle>

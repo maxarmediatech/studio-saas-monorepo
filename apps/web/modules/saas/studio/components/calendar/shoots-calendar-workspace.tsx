@@ -5,12 +5,7 @@ import { Button } from "@repo/ui/components/button";
 import { shootsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { addWeeks, format, getWeek, subWeeks } from "date-fns";
-import {
-	ChevronLeft,
-	ChevronRight,
-	PanelRightClose,
-	PanelRightOpen,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import * as React from "react";
 import {
 	CALENDAR_PAGE_LIMIT,
@@ -35,7 +30,6 @@ export function ShootsCalendarWorkspace() {
 	const [selectedShootId, setSelectedShootId] = React.useState<string | null>(
 		null,
 	);
-	const [isDetailOpen, setIsDetailOpen] = React.useState(true);
 
 	const { data, isLoading } = useQuery(
 		shootsApi.listOptions({
@@ -69,7 +63,6 @@ export function ShootsCalendarWorkspace() {
 
 	const handleShootSelect = React.useCallback((shoot: ShootListItem) => {
 		setSelectedShootId(shoot.id);
-		setIsDetailOpen(true);
 	}, []);
 
 	return (
@@ -119,20 +112,6 @@ export function ShootsCalendarWorkspace() {
 								<ChevronRight className="size-4" />
 							</Button>
 						</div>
-						<Button
-							variant="ghost"
-							size="sm"
-							onClick={() => setIsDetailOpen((open) => !open)}
-							disabled={!selectedShootId}
-							className="gap-2"
-						>
-							{isDetailOpen ? (
-								<PanelRightClose className="size-4" />
-							) : (
-								<PanelRightOpen className="size-4" />
-							)}
-							Details
-						</Button>
 					</div>
 				</header>
 
@@ -149,8 +128,7 @@ export function ShootsCalendarWorkspace() {
 
 					<ShootCalendarDetailSidebar
 						shootId={selectedShootId}
-						open={isDetailOpen}
-						onOpenChange={setIsDetailOpen}
+						onClearSelection={() => setSelectedShootId(null)}
 					/>
 				</div>
 			</div>
