@@ -107,6 +107,9 @@ function Calendar({
 				),
 				day: cn(
 					"relative w-full h-full p-0 text-center [&:last-child[data-selected=true]_button]:rounded-r-md group/day aspect-square select-none",
+					"[&.in-view-day]:bg-black/[0.06]",
+					"[&.in-view-day:not(.in-view-day+.in-view-day)]:rounded-l-md",
+					"[&.in-view-day:not(:has(+.in-view-day))]:rounded-r-md",
 					props.showWeekNumber
 						? "[&:nth-child(2)[data-selected=true]_button]:rounded-l-md"
 						: "[&:first-child[data-selected=true]_button]:rounded-l-md",

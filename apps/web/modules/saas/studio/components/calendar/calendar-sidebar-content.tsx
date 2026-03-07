@@ -3,14 +3,16 @@
 import { Calendar } from "@repo/ui/components/calendar";
 import { shootsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
-import { format } from "date-fns";
+import { format, isSameDay } from "date-fns";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import * as React from "react";
 import type { NavAreaConfig } from "../../lib/navigation/types";
 import {
 	CALENDAR_PAGE_LIMIT,
 	formatCalendarDate,
+	getWeekDays,
 	getWeekEnd,
 } from "./calendar-utils";
 import { useCalendarRouteState } from "./use-calendar-route-state";
@@ -22,6 +24,17 @@ export function CalendarWorkspaceSidebarContent({
 }) {
 	const { weekStart, setWeekStart } = useCalendarRouteState();
 	const weekEnd = getWeekEnd(weekStart);
+	const visibleDays = React.useMemo(
+		() => getWeekDays(weekStart),
+		[weekStart],
+	);
+	const modifiers = React.useMemo(
+		() => ({
+			inView: (date: Date) =>
+				visibleDays.some((day) => isSameDay(day, date)),
+		}),
+		[visibleDays],
+	);
 
 	const { data, isLoading } = useQuery(
 		shootsApi.listOptions({
@@ -70,6 +83,8 @@ export function CalendarWorkspaceSidebarContent({
 								setWeekStart(date);
 							}
 						}}
+						modifiers={modifiers}
+						modifiersClassNames={{ inView: "in-view-day" }}
 						className="min-w-0 w-full bg-transparent p-0 [--cell-size:1.9rem]"
 						classNames={{
 							root: "w-full min-w-0 bg-transparent",
