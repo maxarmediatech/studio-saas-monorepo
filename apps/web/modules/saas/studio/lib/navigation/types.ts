@@ -105,10 +105,11 @@ export interface NavModuleConfig {
 // ============================================================================
 
 export interface RailIconConfig {
-	moduleId: string;
+	id: string;
+	kind: "module" | "area";
 	icon: IconName;
 	label: string; // Tooltip text
-	defaultPath: string;
+	href: string;
 }
 
 // ============================================================================

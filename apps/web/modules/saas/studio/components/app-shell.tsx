@@ -19,7 +19,13 @@ interface AppShellProps {
 
 function getAreaEntryPath(
 	activeOrganization: ActiveOrganization,
-	areas: Record<string, { sections: Array<{ items: Array<{ path: string }> }>; standaloneItems?: Array<{ path: string }> }>,
+	areas: Record<
+		string,
+		{
+			sections: Array<{ items: Array<{ path: string }> }>;
+			standaloneItems?: Array<{ path: string }>;
+		}
+	>,
 ): string {
 	const settingsArea = areas.studioSettings;
 
@@ -52,12 +58,36 @@ export async function AppShell({
 		customRolePermissions,
 	);
 
-	const railIcons: RailIconConfig[] = filteredNavigation.modules.map((m) => ({
-		moduleId: m.id,
-		icon: m.icon,
-		label: m.label,
-		defaultPath: m.defaultPath,
-	}));
+	const hasShootAccess = filteredNavigation.modules.some((module) =>
+		module.sections.some((section) =>
+			section.items.some((item) => item.id === "shoots"),
+		),
+	);
+
+	const moduleRailIcons: RailIconConfig[] = filteredNavigation.modules.map(
+		(module) => ({
+			id: module.id,
+			kind: "module",
+			icon: module.icon,
+			label: module.label,
+			href: module.defaultPath,
+		}),
+	);
+
+	const calendarRailIcon: RailIconConfig | null = hasShootAccess
+		? {
+				id: "calendarWorkspace",
+				kind: "area",
+				icon: "CalendarDays",
+				label: "Calendar",
+				href: `/app/${activeOrganization.slug ?? ""}/calendar`,
+			}
+		: null;
+
+	const railIcons =
+		calendarRailIcon === null
+			? moduleRailIcons
+			: insertRailIconAfter(moduleRailIcons, "studio", calendarRailIcon);
 
 	const settingsEntryPath = getAreaEntryPath(
 		activeOrganization,
@@ -83,3 +113,20 @@ export async function AppShell({
 }
 
 export default AppShell;
+
+function insertRailIconAfter(
+	railIcons: RailIconConfig[],
+	targetId: string,
+	railIcon: RailIconConfig,
+) {
+	const nextRailIcons = [...railIcons];
+	const targetIndex = nextRailIcons.findIndex((item) => item.id === targetId);
+
+	if (targetIndex === -1) {
+		nextRailIcons.push(railIcon);
+		return nextRailIcons;
+	}
+
+	nextRailIcons.splice(targetIndex + 1, 0, railIcon);
+	return nextRailIcons;
+}

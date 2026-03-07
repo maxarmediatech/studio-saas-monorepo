@@ -17,6 +17,7 @@ import type {
 	NavModuleConfig,
 	RailIconConfig,
 } from "../../lib/navigation/types";
+import { CalendarWorkspaceSidebarContent } from "../calendar/calendar-sidebar-content";
 import { IconByName } from "./icon-registry";
 
 interface MobileSidebarProps {
@@ -28,15 +29,12 @@ interface MobileSidebarProps {
 	settingsEntryPath: string;
 	railIcons: RailIconConfig[];
 	activeModule: NavModuleConfig | null;
-	activeModuleId: string;
+	activeRailItemId: string;
 	utilities: NavItemConfig[];
 	currentArea: string;
 	areas: Record<string, NavAreaConfig>;
 	pathname: string;
 }
-
-const _isSettingsPath = (pathname: string, studioSlug: string) =>
-	pathname.startsWith(`/app/${studioSlug}/settings`);
 
 function isItemActive(pathname: string, itemPath: string): boolean {
 	return pathname === itemPath || pathname.startsWith(`${itemPath}/`);
@@ -51,13 +49,14 @@ export function MobileSidebar({
 	settingsEntryPath,
 	railIcons,
 	activeModule,
-	activeModuleId,
+	activeRailItemId,
 	utilities,
 	currentArea,
 	areas,
 	pathname,
 }: MobileSidebarProps) {
 	const isSettingsArea = currentArea === "studioSettings";
+	const isCalendarArea = currentArea === "calendarWorkspace";
 	const settingsArea = areas.studioSettings;
 	return (
 		<Sheet open={open} onOpenChange={onOpenChange}>
@@ -86,11 +85,11 @@ export function MobileSidebar({
 				<div className="flex gap-1 overflow-x-auto bg-neutral-200 px-3 py-2">
 					{railIcons.map((item) => {
 						const isActive =
-							item.moduleId === activeModuleId && !isSettingsArea;
+							item.id === activeRailItemId && !isSettingsArea;
 						return (
 							<Link
-								key={item.moduleId}
-								href={item.defaultPath}
+								key={item.id}
+								href={item.href}
 								className={cn(
 									"flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors duration-150",
 									isActive
@@ -191,6 +190,10 @@ export function MobileSidebar({
 										</div>
 									)}
 							</>
+						) : isCalendarArea && areas.calendarWorkspace ? (
+							<CalendarWorkspaceSidebarContent
+								area={areas.calendarWorkspace}
+							/>
 						) : activeModule ? (
 							<>
 								{/* Module Title */}
