@@ -1,15 +1,23 @@
 "use client";
 
 import type { ShootListItem } from "@repo/api/modules/studio/schemas/shoot";
+import {
+	HoverCard,
+	HoverCardContent,
+	HoverCardTrigger,
+} from "@repo/ui/components/hover-card";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
-import { format, isToday } from "date-fns";
+import { format, isToday, parseISO } from "date-fns";
 import * as React from "react";
 import {
 	formatShootClockTime,
 	getShootCalendarTitle,
 	getShootEndDateTime,
+	getShootLocation,
 	getShootStartDateTime,
+	getShootStatusAppearance,
+	getShootTimeLabel,
 } from "./calendar-utils";
 
 const TIME_AXIS_WIDTH = 64;
@@ -247,28 +255,30 @@ function TopRowShootEvent({
 	style: React.CSSProperties;
 	onClick: () => void;
 }) {
-	const tone = getShootEventTone(shoot.status);
+	const appearance = getShootStatusAppearance(shoot.status);
 
 	return (
-		<button
-			type="button"
-			onClick={onClick}
-			className={cn(
-				"absolute inset-x-1.5 h-6 overflow-hidden rounded-md border text-left text-xs font-medium transition-colors",
-				"flex items-center gap-1.5 px-2",
-				tone.baseClassName,
-				selected && "ring-2 ring-neutral-950/10",
-			)}
-			style={style}
-		>
-			<span
+		<ShootHoverCard shoot={shoot}>
+			<button
+				type="button"
+				onClick={onClick}
 				className={cn(
-					"size-2 shrink-0 rounded-full",
-					tone.dotClassName,
+					"absolute inset-x-1.5 h-6 overflow-hidden rounded-md border text-left text-xs font-medium transition-colors",
+					"flex items-center gap-1.5 px-2",
+					appearance.cardClassName,
+					selected && "ring-2 ring-neutral-950/10",
 				)}
-			/>
-			<span className="truncate">{getShootCalendarTitle(shoot)}</span>
-		</button>
+				style={style}
+			>
+				<span
+					className={cn(
+						"size-2 shrink-0 rounded-full",
+						appearance.dotClassName,
+					)}
+				/>
+				<span className="truncate">{getShootCalendarTitle(shoot)}</span>
+			</button>
+		</ShootHoverCard>
 	);
 }
 
@@ -281,37 +291,105 @@ function TimedShootEvent({
 	selected: boolean;
 	onClick: () => void;
 }) {
-	const tone = getShootEventTone(timedShoot.shoot.status);
+	const appearance = getShootStatusAppearance(timedShoot.shoot.status);
 
 	return (
-		<button
-			type="button"
-			onClick={onClick}
-			className={cn(
-				"pointer-events-auto absolute inset-x-1.5 overflow-hidden rounded-xl border px-2.5 py-2 text-left shadow-[0_1px_0_rgba(0,0,0,0.02)] transition-colors",
-				tone.baseClassName,
-				selected && "ring-2 ring-neutral-950/10",
-			)}
-			style={{
-				top: timedShoot.top,
-				height: timedShoot.height,
-			}}
-		>
-			<div className="flex items-center gap-1.5">
+		<ShootHoverCard shoot={timedShoot.shoot}>
+			<button
+				type="button"
+				onClick={onClick}
+				className={cn(
+					"pointer-events-auto absolute inset-x-1.5 h-6 overflow-hidden rounded-md border text-left text-xs font-medium transition-colors",
+					"flex items-center gap-1.5 px-2",
+					appearance.cardClassName,
+					selected && "ring-2 ring-neutral-950/10",
+				)}
+				style={{
+					top: timedShoot.top,
+				}}
+			>
 				<span
 					className={cn(
 						"size-2 shrink-0 rounded-full",
-						tone.dotClassName,
+						appearance.dotClassName,
 					)}
 				/>
-				<div className="truncate text-[11px] font-semibold uppercase tracking-[0.1em] text-neutral-500">
+				<span className="shrink-0 text-[11px] text-neutral-500">
 					{formatShootClockTime(timedShoot.shoot.startTime ?? "")}
+				</span>
+				<span className="truncate text-neutral-900">
+					{getShootCalendarTitle(timedShoot.shoot)}
+				</span>
+			</button>
+		</ShootHoverCard>
+	);
+}
+
+function ShootHoverCard({
+	shoot,
+	children,
+}: {
+	shoot: ShootListItem;
+	children: React.ReactElement;
+}) {
+	const appearance = getShootStatusAppearance(shoot.status);
+	const location = getShootLocation(shoot);
+
+	return (
+		<HoverCard openDelay={120} closeDelay={80}>
+			<HoverCardTrigger asChild>{children}</HoverCardTrigger>
+			<HoverCardContent
+				align="start"
+				side="right"
+				sideOffset={10}
+				className="w-72 rounded-2xl border-neutral-200 bg-white/96 p-0 shadow-[0_24px_60px_rgba(15,23,42,0.12)] backdrop-blur-sm"
+			>
+				<div className="border-b border-neutral-200 px-4 py-3">
+					<div className="flex items-center gap-2">
+						<span
+							className={cn(
+								"size-2.5 shrink-0 rounded-full",
+								appearance.dotClassName,
+							)}
+						/>
+						<span
+							className={cn(
+								"inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold tracking-[0.16em] uppercase",
+								appearance.chipClassName,
+							)}
+						>
+							{shoot.status}
+						</span>
+					</div>
+					<div className="mt-3 text-base font-semibold leading-6 text-neutral-950">
+						{getShootCalendarTitle(shoot)}
+					</div>
 				</div>
-			</div>
-			<div className="mt-1 line-clamp-2 text-sm font-semibold leading-5 text-neutral-900">
-				{getShootCalendarTitle(timedShoot.shoot)}
-			</div>
-		</button>
+				<div className="space-y-3 px-4 py-3 text-sm text-neutral-600">
+					<div>
+						<div className="text-[11px] font-semibold tracking-[0.14em] text-neutral-400 uppercase">
+							When
+						</div>
+						<div className="mt-1 font-medium text-neutral-900">
+							{format(parseISO(shoot.shootDate), "EEE, MMM d")}
+						</div>
+						<div className="text-neutral-500">
+							{getShootTimeLabel(shoot)}
+						</div>
+					</div>
+					{location ? (
+						<div>
+							<div className="text-[11px] font-semibold tracking-[0.14em] text-neutral-400 uppercase">
+								Location
+							</div>
+							<div className="mt-1 text-neutral-900">
+								{location}
+							</div>
+						</div>
+					) : null}
+				</div>
+			</HoverCardContent>
+		</HoverCard>
 	);
 }
 
@@ -457,54 +535,4 @@ function getTimezoneAbbreviation() {
 
 function isWeekend(day: Date) {
 	return day.getDay() === 0 || day.getDay() === 6;
-}
-
-function getShootEventTone(status: string) {
-	const normalizedStatus = status.toLowerCase();
-
-	if (normalizedStatus.includes("cancel")) {
-		return {
-			baseClassName:
-				"border-red-200 bg-red-100 text-red-800 hover:bg-red-200/80",
-			dotClassName: "bg-red-500",
-		};
-	}
-
-	if (normalizedStatus.includes("complete")) {
-		return {
-			baseClassName:
-				"border-emerald-200 bg-emerald-100 text-emerald-800 hover:bg-emerald-200/80",
-			dotClassName: "bg-emerald-500",
-		};
-	}
-
-	if (normalizedStatus.includes("progress")) {
-		return {
-			baseClassName:
-				"border-blue-200 bg-blue-100 text-blue-800 hover:bg-blue-200/80",
-			dotClassName: "bg-blue-500",
-		};
-	}
-
-	if (normalizedStatus.includes("confirm")) {
-		return {
-			baseClassName:
-				"border-violet-200 bg-violet-100 text-violet-800 hover:bg-violet-200/80",
-			dotClassName: "bg-violet-500",
-		};
-	}
-
-	if (normalizedStatus.includes("postpone")) {
-		return {
-			baseClassName:
-				"border-amber-200 bg-amber-100 text-amber-800 hover:bg-amber-200/80",
-			dotClassName: "bg-amber-500",
-		};
-	}
-
-	return {
-		baseClassName:
-			"border-neutral-200 bg-neutral-100 text-neutral-800 hover:bg-neutral-200/80",
-		dotClassName: "bg-neutral-500",
-	};
 }
