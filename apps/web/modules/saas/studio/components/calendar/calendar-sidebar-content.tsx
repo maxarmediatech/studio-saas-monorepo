@@ -28,6 +28,7 @@ export function CalendarWorkspaceSidebarContent({
 		() => getWeekDays(weekStart),
 		[weekStart],
 	);
+	const [displayedMonth, setDisplayedMonth] = React.useState(weekStart);
 	const modifiers = React.useMemo(
 		() => ({
 			inView: (date: Date) =>
@@ -35,6 +36,19 @@ export function CalendarWorkspaceSidebarContent({
 		}),
 		[visibleDays],
 	);
+
+	React.useEffect(() => {
+		setDisplayedMonth((currentMonth) => {
+			if (
+				currentMonth.getFullYear() === weekStart.getFullYear() &&
+				currentMonth.getMonth() === weekStart.getMonth()
+			) {
+				return currentMonth;
+			}
+
+			return weekStart;
+		});
+	}, [weekStart]);
 
 	const { data, isLoading } = useQuery(
 		shootsApi.listOptions({
@@ -77,6 +91,8 @@ export function CalendarWorkspaceSidebarContent({
 				<div className="min-w-0">
 					<Calendar
 						mode="single"
+						month={displayedMonth}
+						onMonthChange={setDisplayedMonth}
 						selected={weekStart}
 						onSelect={(date) => {
 							if (date) {
