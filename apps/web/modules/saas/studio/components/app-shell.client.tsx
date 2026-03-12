@@ -178,7 +178,7 @@ function AppShellContent({
 	const showCornerFills = showSidebar && hasContent && isPanelOpen;
 
 	return (
-		<div className="flex h-screen flex-col overflow-hidden bg-neutral-200">
+		<div className="flex h-screen flex-col overflow-hidden bg-white md:bg-neutral-200">
 			{/* Mobile Header */}
 			<SiteHeader
 				studioSlug={studioSlug}
@@ -212,7 +212,7 @@ function AppShellContent({
 				)}
 
 				{/* Content Area */}
-				<div className="flex min-h-0 flex-1 flex-col bg-neutral-200 md:py-2 md:pr-2">
+				<div className="flex min-h-0 flex-1 flex-col bg-white md:bg-neutral-200 md:py-2 md:pr-2">
 					<div className="relative flex min-h-0 flex-1 flex-col">
 						{/* Corner fills */}
 						<div
@@ -228,7 +228,7 @@ function AppShellContent({
 							)}
 						/>
 						{/* Content Card */}
-						<main className="z-10 flex min-h-0 flex-1 flex-col overflow-hidden pb-[calc(env(safe-area-inset-bottom)+4.5rem)] pt-14 md:rounded-xl md:bg-white md:pb-0 md:pt-0">
+						<main className="z-10 flex min-h-0 flex-1 flex-col overflow-hidden bg-white pb-[calc(env(safe-area-inset-bottom)+4.5rem)] pt-14 md:rounded-xl md:pb-0 md:pt-0">
 							{children}
 						</main>
 					</div>
