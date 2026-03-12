@@ -56,6 +56,9 @@ function AppShellContent({
 }: AppShellClientProps) {
 	const pathname = usePathname();
 	const [mobileOpen, setMobileOpen] = React.useState(false);
+	const [pendingMobileRailId, setPendingMobileRailId] = React.useState<
+		string | null
+	>(null);
 	const [isSearchOpen, setIsSearchOpen] = React.useState(false);
 	const { isPanelOpen } = useSidebar();
 
@@ -134,6 +137,17 @@ function AppShellContent({
 	}, [pathname]);
 
 	React.useEffect(() => {
+		if (!pendingMobileRailId) {
+			return;
+		}
+
+		if (activeRailItemId === pendingMobileRailId) {
+			setMobileOpen(true);
+		}
+		setPendingMobileRailId(null);
+	}, [activeRailItemId, pathname, pendingMobileRailId]);
+
+	React.useEffect(() => {
 		const handleKeyDown = (event: KeyboardEvent) => {
 			if (
 				(event.metaKey || event.ctrlKey) &&
@@ -166,8 +180,11 @@ function AppShellContent({
 			{/* Mobile Header */}
 			<SiteHeader
 				studioSlug={studioSlug}
+				studioName={studioName}
+				studioLogo={studioLogo}
+				organizationId={organizationId}
+				settingsEntryPath={settingsEntryPath}
 				caps={caps}
-				onMobileMenuClick={() => setMobileOpen(true)}
 				onSearchOpen={openSearch}
 			/>
 
@@ -209,7 +226,7 @@ function AppShellContent({
 							)}
 						/>
 						{/* Content Card */}
-						<main className="z-10 flex min-h-0 flex-1 flex-col overflow-hidden pt-14 md:rounded-xl md:bg-white md:pt-0">
+						<main className="z-10 flex min-h-0 flex-1 flex-col overflow-hidden pb-[calc(env(safe-area-inset-bottom)+4.5rem)] pt-14 md:rounded-xl md:bg-white md:pb-0 md:pt-0">
 							{children}
 						</main>
 					</div>
@@ -222,9 +239,6 @@ function AppShellContent({
 					open={mobileOpen}
 					onOpenChange={setMobileOpen}
 					studioSlug={studioSlug}
-					studioName={studioName}
-					studioLogo={studioLogo}
-					settingsEntryPath={settingsEntryPath}
 					railIcons={railIcons}
 					activeModule={activeModule}
 					activeRailItemId={activeRailItemId}
@@ -232,6 +246,8 @@ function AppShellContent({
 					currentArea={currentArea}
 					areas={areas}
 					pathname={pathname}
+					onActiveRailItemPress={() => setMobileOpen(true)}
+					onRailNavigationIntent={setPendingMobileRailId}
 				/>
 			)}
 			<SearchCommandModal isOpen={isSearchOpen} onClose={closeSearch} />
