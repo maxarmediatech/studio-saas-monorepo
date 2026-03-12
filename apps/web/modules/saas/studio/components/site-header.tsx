@@ -51,7 +51,7 @@ export function SiteHeader({
 						className="size-8 rounded-full"
 						aria-label="Search"
 					>
-						<SearchIcon className="size-4" />
+						<SearchIcon className="size-5" />
 					</Button>
 					<UserMenu
 						triggerClassName="flex size-8 items-center justify-center rounded-full hover:bg-black/5 active:bg-black/10"
