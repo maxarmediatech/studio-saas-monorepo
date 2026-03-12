@@ -22,6 +22,7 @@ interface MobileSidebarProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	studioSlug: string;
+	settingsEntryPath: string;
 	railIcons: RailIconConfig[];
 	activeModule: NavModuleConfig | null;
 	activeRailItemId: string;
@@ -41,6 +42,7 @@ export function MobileSidebar({
 	open,
 	onOpenChange,
 	studioSlug,
+	settingsEntryPath,
 	railIcons,
 	activeModule,
 	activeRailItemId,
@@ -54,6 +56,16 @@ export function MobileSidebar({
 	const isSettingsArea = currentArea === "studioSettings";
 	const isCalendarArea = currentArea === "calendarWorkspace";
 	const settingsArea = areas.studioSettings;
+	const mobileRailItems = [
+		...railIcons,
+		{
+			id: "studioSettings",
+			kind: "area" as const,
+			icon: "Settings" as const,
+			label: "Settings",
+			href: settingsEntryPath,
+		},
+	];
 	const activeTitle = isSettingsArea
 		? (settingsArea?.title ?? "Settings")
 		: isCalendarArea
@@ -204,10 +216,10 @@ export function MobileSidebar({
 				<div
 					className="grid px-2 pb-[calc(env(safe-area-inset-bottom)+0.35rem)] pt-2"
 					style={{
-						gridTemplateColumns: `repeat(${railIcons.length}, minmax(0, 1fr))`,
+						gridTemplateColumns: `repeat(${mobileRailItems.length}, minmax(0, 1fr))`,
 					}}
 				>
-					{railIcons.map((item) => {
+					{mobileRailItems.map((item) => {
 						const isActive = item.id === activeRailItemId;
 						return (
 							<Link

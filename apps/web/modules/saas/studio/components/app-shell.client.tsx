@@ -124,10 +124,12 @@ function AppShellContent({
 
 	const activeModuleId = activeModule?.id ?? modules[0]?.id ?? "";
 	const activeRailItemId =
-		currentArea !== "default" &&
-		railIcons.some((item) => item.id === currentArea)
-			? currentArea
-			: activeModuleId;
+		currentArea === "studioSettings"
+			? "studioSettings"
+			: currentArea !== "default" &&
+					railIcons.some((item) => item.id === currentArea)
+				? currentArea
+				: activeModuleId;
 
 	const openSearch = React.useCallback(() => setIsSearchOpen(true), []);
 	const closeSearch = React.useCallback(() => setIsSearchOpen(false), []);
@@ -239,6 +241,7 @@ function AppShellContent({
 					open={mobileOpen}
 					onOpenChange={setMobileOpen}
 					studioSlug={studioSlug}
+					settingsEntryPath={settingsEntryPath}
 					railIcons={railIcons}
 					activeModule={activeModule}
 					activeRailItemId={activeRailItemId}
