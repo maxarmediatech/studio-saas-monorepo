@@ -34,7 +34,7 @@ interface OrganizationSwitcherProps {
 	studioSlug: string;
 	organizationId: string;
 	settingsEntryPath: string;
-	variant?: "header" | "panel";
+	variant?: "header" | "mobile" | "panel";
 }
 
 export function OrganizationSwitcher({
@@ -52,6 +52,7 @@ export function OrganizationSwitcher({
 	const [switchingToSlug, setSwitchingToSlug] = useState<string | null>(null);
 
 	const isPanel = variant === "panel";
+	const isMobile = variant === "mobile";
 
 	// Plan info
 	const activePlanTitle =
@@ -75,19 +76,37 @@ export function OrganizationSwitcher({
 				<DropdownMenuTrigger asChild>
 					<Button
 						variant="ghost"
-						className="flex h-auto items-center gap-2 px-2 py-1.5 hover:bg-accent"
+						className={
+							isMobile
+								? "h-9 max-w-[10.5rem] min-w-0 items-center gap-1 rounded-lg px-2.5 text-sm font-semibold text-neutral-900 hover:bg-accent"
+								: "flex h-auto items-center gap-2 px-2 py-1.5 hover:bg-accent"
+						}
 					>
-						<OrganizationLogo
-							name={studioName}
-							logoUrl={studioLogo}
-							className="size-7 rounded-md"
-						/>
+						{isMobile ? null : (
+							<OrganizationLogo
+								name={studioName}
+								logoUrl={studioLogo}
+								className="size-7 rounded-md"
+							/>
+						)}
 						<span className="flex min-w-0 flex-col items-start leading-tight">
-							<span className="max-w-35 truncate text-sm font-medium">
+							<span
+								className={
+									isMobile
+										? "truncate text-sm font-semibold"
+										: "max-w-35 truncate text-sm font-medium"
+								}
+							>
 								{studioName}
 							</span>
 						</span>
-						<ChevronDown className="size-3 text-muted-foreground" />
+						<ChevronDown
+							className={
+								isMobile
+									? "size-3.5 shrink-0 text-muted-foreground"
+									: "size-3 text-muted-foreground"
+							}
+						/>
 					</Button>
 				</DropdownMenuTrigger>
 				<DropdownMenuContent

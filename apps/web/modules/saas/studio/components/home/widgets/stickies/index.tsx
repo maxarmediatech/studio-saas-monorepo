@@ -291,26 +291,26 @@ export function StickiesWidget({ organizationSlug }: StickiesWidgetProps) {
 	if (isLoading) {
 		return (
 			<div className="py-4">
-				<div className="flex items-center justify-between mb-4">
-				<div className="text-sm font-semibold text-muted-foreground">
-					Stickies
+				<div className="mb-4 flex items-center justify-between">
+					<div className="text-sm font-semibold text-muted-foreground">
+						Stickies
+					</div>
+					<Skeleton className="h-5 w-20 rounded" />
 				</div>
-				<Skeleton className="h-5 w-20 rounded" />
+				<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+					{Array.from({ length: 3 }).map((_, i) => (
+						<Skeleton key={i} className="h-48 rounded-lg" />
+					))}
+				</div>
 			</div>
-			<div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-				{Array.from({ length: 6 }).map((_, i) => (
-					<Skeleton key={i} className="h-48 rounded-lg" />
-				))}
-			</div>
-		</div>
-	);
-}
+		);
+	}
 
 	const hasStickies = stickies.length > 0;
 
 	return (
 		<div className="py-4">
-			<div className="flex items-center justify-between mb-4">
+			<div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<div className="text-sm font-semibold text-muted-foreground">
 					Stickies
 				</div>
@@ -318,7 +318,7 @@ export function StickiesWidget({ organizationSlug }: StickiesWidgetProps) {
 					type="button"
 					onClick={handleCreate}
 					disabled={createMutation.isPending}
-					className="flex items-center gap-1 text-sm font-medium text-primary hover:text-primary/80 transition-colors disabled:opacity-50"
+					className="flex h-9 items-center gap-1 self-start rounded-md px-2 text-sm font-medium text-primary transition-colors hover:bg-primary/5 hover:text-primary/80 disabled:opacity-50"
 				>
 					<PlusIcon className="size-4" />
 					Add sticky
@@ -329,14 +329,14 @@ export function StickiesWidget({ organizationSlug }: StickiesWidgetProps) {
 			</div>
 
 			{!hasStickies ? (
-				<div className="flex flex-col items-center justify-center py-12 bg-muted/30 rounded-xl">
+				<div className="flex flex-col items-center justify-center rounded-xl bg-muted/30 px-4 py-10 sm:py-12">
 					<StickyNoteIcon className="size-10 text-muted-foreground/30 mb-3" />
 					<p className="text-sm text-muted-foreground">
 						Jot down quick notes and reminders
 					</p>
 				</div>
 			) : (
-				<div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+				<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
 					{stickies.map((sticky) => (
 						<StickyNote
 							key={sticky.id}
@@ -362,7 +362,7 @@ export function StickiesWidget({ organizationSlug }: StickiesWidgetProps) {
 				</div>
 			)}
 
-			<div className="flex justify-end mt-3">
+			<div className="mt-3 flex justify-start sm:justify-end">
 				<Link
 					href={`/app/${organizationSlug}/stickies`}
 					className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"

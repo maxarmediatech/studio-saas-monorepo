@@ -33,7 +33,12 @@ export function StickyToolbar({
 	const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
 
 	return (
-		<div className={cn("flex items-center gap-3 h-10 w-full", className)}>
+		<div
+			className={cn(
+				"flex min-h-10 w-full flex-wrap items-center gap-x-3 gap-y-2",
+				className,
+			)}
+		>
 			{/* Color Picker */}
 			<Popover
 				open={isColorPickerOpen}
@@ -44,7 +49,7 @@ export function StickyToolbar({
 						<PopoverTrigger asChild>
 							<button
 								type="button"
-								className="flex items-center justify-center text-foreground/50 hover:text-foreground/70 transition-colors"
+								className="flex size-8 items-center justify-center rounded-md text-foreground/50 transition-colors hover:bg-black/5 hover:text-foreground/70"
 								aria-label="Change background color"
 							>
 								<PaletteIcon className="size-4" />
@@ -110,7 +115,7 @@ export function StickyToolbar({
 					<button
 						type="button"
 						onClick={onDelete}
-						className="flex items-center justify-center text-foreground/50 hover:text-destructive transition-colors"
+						className="flex size-8 items-center justify-center rounded-md text-foreground/50 transition-colors hover:bg-black/5 hover:text-destructive"
 						aria-label="Delete sticky note"
 					>
 						<TrashIcon className="size-4" />

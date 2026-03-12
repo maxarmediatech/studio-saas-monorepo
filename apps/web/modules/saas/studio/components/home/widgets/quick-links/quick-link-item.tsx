@@ -51,33 +51,29 @@ export function QuickLinkItem({ link, onEdit, onDelete }: QuickLinkItemProps) {
 	};
 
 	return (
-		<div className="group relative flex items-center">
+		<div className="group relative flex w-full items-center sm:w-auto">
 			<Link
 				href={link.url}
 				target="_blank"
 				rel="noopener noreferrer"
-				className="flex items-center gap-2 px-3 py-1.5 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors pr-8"
+				className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2 pr-10 transition-colors hover:bg-muted/50 sm:w-auto sm:flex-initial sm:py-1.5"
 			>
-				{/* eslint-disable-next-line @next/next/no-img-element */}
-				<img
-					src={faviconUrl}
-					alt=""
-					className="size-4 rounded-sm"
-					onError={(e) => {
-						e.currentTarget.style.display = "none";
-					}}
+				<span
+					aria-hidden="true"
+					className="size-4 rounded-sm bg-cover bg-center bg-no-repeat"
+					style={{ backgroundImage: `url(${faviconUrl})` }}
 				/>
-				<span className="text-sm font-medium max-w-[150px] truncate">
+				<span className="truncate text-sm font-medium sm:max-w-[150px]">
 					{displayName}
 				</span>
 			</Link>
 
-			<div className="absolute right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+			<div className="absolute right-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
 						<button
 							type="button"
-							className="p-1 hover:bg-background rounded-md text-muted-foreground hover:text-foreground"
+							className="rounded-md p-1.5 text-muted-foreground hover:bg-background hover:text-foreground"
 						>
 							<MoreHorizontalIcon className="size-3" />
 						</button>
