@@ -186,7 +186,6 @@ function AppShellContent({
 				studioLogo={studioLogo}
 				organizationId={organizationId}
 				settingsEntryPath={settingsEntryPath}
-				caps={caps}
 				onSearchOpen={openSearch}
 			/>
 
