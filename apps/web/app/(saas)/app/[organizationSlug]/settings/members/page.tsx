@@ -6,5 +6,5 @@ type Props = {
 
 export default async function LegacyMembersSettingsPage({ params }: Props) {
 	const { organizationSlug } = await params;
-	redirect(`/app/${organizationSlug}/settings/people`);
+	redirect(`/app/${organizationSlug}/settings/people?workerType=internal`);
 }
