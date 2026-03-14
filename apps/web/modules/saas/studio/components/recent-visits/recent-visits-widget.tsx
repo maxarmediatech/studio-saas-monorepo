@@ -91,7 +91,7 @@ export function RecentVisitsWidget({
 	if (isLoading) {
 		return (
 			<div className="py-4">
-				<div className="flex items-center justify-between mb-2">
+				<div className="mb-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 					<div className="text-sm font-semibold text-muted-foreground">
 						Recents
 					</div>
@@ -101,12 +101,14 @@ export function RecentVisitsWidget({
 					{Array.from({ length: 5 }).map((_, i) => (
 						<div
 							key={i}
-							className="flex items-center gap-3 py-3 border-b border-border/50"
+							className="flex items-start gap-3 border-b border-border/50 py-3 sm:items-center"
 						>
 							<Skeleton className="size-8 rounded-sm" />
-							<Skeleton className="h-4 w-20" />
-							<Skeleton className="h-4 w-40" />
-							<Skeleton className="h-3 w-16 ml-auto" />
+							<div className="flex min-w-0 flex-1 flex-col gap-2">
+								<Skeleton className="h-4 w-20" />
+								<Skeleton className="h-4 w-40" />
+							</div>
+							<Skeleton className="ml-auto h-3 w-16" />
 						</div>
 					))}
 				</div>
@@ -116,7 +118,7 @@ export function RecentVisitsWidget({
 
 	return (
 		<div className="py-4">
-			<div className="flex items-center justify-between mb-2">
+			<div className="mb-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<div className="text-sm font-semibold text-muted-foreground">
 					Recents
 				</div>
@@ -125,7 +127,7 @@ export function RecentVisitsWidget({
 						<Button
 							variant="outline"
 							size="sm"
-							className="h-7 px-2 text-xs font-medium gap-1"
+							className="h-8 w-full justify-between gap-1 px-2 text-xs font-medium sm:h-7 sm:w-auto sm:justify-center"
 						>
 							{activeFilterLabel}
 							<ChevronDownIcon className="size-3 text-muted-foreground" />
@@ -154,48 +156,56 @@ export function RecentVisitsWidget({
 						</p>
 					</div>
 				) : (
-					<>
-						{visits.map((visit) => {
-							const route = getEntityRoute(
-								organizationSlug,
-								visit.entityType,
-								visit.entityId,
-							);
-							const icon = getEntityIcon(visit.entityType);
+					visits.map((visit) => {
+						const route = getEntityRoute(
+							organizationSlug,
+							visit.entityType,
+							visit.entityId,
+						);
+						const icon = getEntityIcon(visit.entityType);
 
-							return (
-								<Link
-									key={visit.id}
-									href={route}
-									className="group flex w-full items-center justify-between gap-3 py-3 text-sm border-b border-border/50 hover:bg-muted/50 transition-colors"
-								>
-									<div className="flex items-center gap-3 overflow-hidden">
-										<div className="flex-shrink-0 grid place-items-center rounded-sm bg-muted size-8">
-											{icon}
-										</div>
-										{visit.entityData?.referenceNumber && (
-											<div className="font-medium text-muted-foreground text-sm whitespace-nowrap">
-												{
-													visit.entityData
-														.referenceNumber
-												}
+						return (
+							<Link
+								key={visit.id}
+								href={route}
+								className="group flex w-full flex-col gap-2 border-b border-border/50 py-3 text-sm transition-colors hover:bg-muted/50 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+							>
+								<div className="flex w-full min-w-0 items-start gap-3 overflow-hidden sm:items-center">
+									<div className="flex-shrink-0 grid place-items-center rounded-sm bg-muted size-8">
+										{icon}
+									</div>
+									<div className="flex min-w-0 flex-1 flex-col gap-1">
+										<div className="flex flex-wrap items-center gap-2">
+											{visit.entityData
+												?.referenceNumber && (
+												<div className="whitespace-nowrap text-sm font-medium text-muted-foreground">
+													{
+														visit.entityData
+															.referenceNumber
+													}
+												</div>
+											)}
+											<div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground/80">
+												{visit.entityType}
 											</div>
-										)}
-										<span className="truncate text-sm">
+										</div>
+										<span className="truncate text-sm font-medium sm:font-normal">
 											{visit.entityData?.name ??
 												"Unknown Item"}
 										</span>
 									</div>
-									<div className="flex-shrink-0 font-medium text-xs text-muted-foreground">
-										{formatDistanceToNow(
-											new Date(visit.visitedAt),
-											{ addSuffix: false },
-										)}
-									</div>
-								</Link>
-							);
-						})}
-					</>
+								</div>
+								<div className="w-full flex-shrink-0 text-left text-xs font-medium text-muted-foreground sm:w-auto sm:text-right">
+									{formatDistanceToNow(
+										new Date(visit.visitedAt),
+										{
+											addSuffix: false,
+										},
+									)}
+								</div>
+							</Link>
+						);
+					})
 				)}
 			</div>
 

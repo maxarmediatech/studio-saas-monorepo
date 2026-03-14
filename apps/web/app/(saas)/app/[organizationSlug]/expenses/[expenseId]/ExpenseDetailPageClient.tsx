@@ -292,7 +292,7 @@ export function ExpenseDetailPageClient({
 											Crew:{" "}
 										</span>
 										<Link
-											href={`/app/${organizationSlug}/crews/${assignment.crewId}`}
+											href={`/app/${organizationSlug}/people/${assignment.crewId}`}
 											className="font-medium hover:underline inline-flex items-center gap-1"
 										>
 											<UserIcon className="size-3.5" />

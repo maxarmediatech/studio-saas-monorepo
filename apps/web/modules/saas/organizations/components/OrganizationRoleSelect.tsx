@@ -14,10 +14,12 @@ export function OrganizationRoleSelect({
 	value,
 	onSelect,
 	disabled,
+	excludeOwnerRole = false,
 }: {
 	value: string[];
 	onSelect: (value: string[]) => void;
 	disabled?: boolean;
+	excludeOwnerRole?: boolean;
 }) {
 	const { staticRoles, customRoles, isLoading, getRoleLabel } = useAllRoles();
 	const normalizedValue = coerceOrganizationRoles(value);
@@ -28,12 +30,14 @@ export function OrganizationRoleSelect({
 	}
 
 	const options = [
-		...staticRoles.map((role) => ({
-			value: role.value,
-			label: role.label,
-			color: undefined as string | undefined,
-			isStatic: true,
-		})),
+		...staticRoles
+			.filter((role) => !(excludeOwnerRole && role.value === "owner"))
+			.map((role) => ({
+				value: role.value,
+				label: role.label,
+				color: undefined as string | undefined,
+				isStatic: true,
+			})),
 		...customRoles.map((role) => ({
 			value: role.value,
 			label: role.label,

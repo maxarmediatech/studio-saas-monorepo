@@ -27,6 +27,9 @@ export function InvitationsPageClient({
 				organizationId={organizationId}
 				open={dialogOpen}
 				onOpenChange={setDialogOpen}
+				title="Invite member"
+				description="Invite a member. They will appear in People after they accept."
+				submitLabel="Send invite"
 			/>
 
 			<OrganizationInvitationsList

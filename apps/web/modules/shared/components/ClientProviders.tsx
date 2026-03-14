@@ -2,10 +2,10 @@
 
 import { AnalyticsScript } from "@analytics";
 import { ProgressProvider } from "@bprogress/next/app";
+import { Toaster } from "@repo/ui/components/sonner";
 import { ApiClientProvider } from "@shared/components/ApiClientProvider";
 import { ThemeProvider } from "next-themes";
 import type { PropsWithChildren } from "react";
-import { Toaster } from "sonner";
 
 type ClientProvidersProps = PropsWithChildren<{
 	defaultTheme: string;

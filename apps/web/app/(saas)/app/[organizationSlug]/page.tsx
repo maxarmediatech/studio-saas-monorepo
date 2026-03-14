@@ -1,10 +1,6 @@
-import { isOrganizationAdmin } from "@repo/auth/lib/helper";
 import { config } from "@repo/config";
 import { createPurchasesHelper } from "@repo/payments/lib/helper";
 import { getActiveOrganization, getSession } from "@saas/auth/lib/server";
-import { InviteMemberForm } from "@saas/organizations/components/InviteMemberForm";
-import { OrganizationMembersBlock } from "@saas/organizations/components/OrganizationMembersBlock";
-import { SettingsList } from "@saas/shared/components/SettingsList";
 import { SignOutButton } from "@saas/shared/components/SignOutButton";
 import { orpcClient } from "@shared/lib/orpc-client";
 import { attemptAsync } from "es-toolkit";
@@ -34,10 +30,6 @@ export default async function OrganizationPage({ params }: Props) {
 	if (!activeOrganization) {
 		return notFound();
 	}
-
-	const canManageMembers =
-		Array.isArray(activeOrganization.members) &&
-		isOrganizationAdmin(activeOrganization, session?.user);
 
 	const billingEnabled =
 		(config.organizations.enable && config.organizations.enableBilling) ||
@@ -180,27 +172,6 @@ export default async function OrganizationPage({ params }: Props) {
 					</p>
 				</div>
 				<SignOutButton />
-			</section>
-
-			<section className="space-y-4">
-				<div>
-					<h2 className="text-xl font-semibold tracking-tight">
-						Members
-					</h2>
-					<p className="text-muted-foreground">
-						Invite teammates and review current access.
-					</p>
-				</div>
-				<SettingsList>
-					{canManageMembers && (
-						<InviteMemberForm
-							organizationId={activeOrganization.id}
-						/>
-					)}
-					<OrganizationMembersBlock
-						organizationId={activeOrganization.id}
-					/>
-				</SettingsList>
 			</section>
 		</div>
 	);

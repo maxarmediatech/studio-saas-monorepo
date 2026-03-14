@@ -24,6 +24,7 @@ export type IconName =
 	| "Link2"
 	| "ListChecks"
 	| "ListTodo"
+	| "Mail"
 	| "MessageSquare"
 	| "Package"
 	| "Receipt"

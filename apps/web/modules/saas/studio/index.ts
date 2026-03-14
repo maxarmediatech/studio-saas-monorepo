@@ -30,6 +30,7 @@ export {
 	CrewsFilters,
 	CrewsTableClient,
 	CrewsTableSkeleton,
+	PeopleWorkerTypeTabs,
 } from "./components/crews";
 // Deliverables
 export {

@@ -129,7 +129,9 @@ export function SearchPageClient({ organizationSlug }: SearchPageClientProps) {
 	// Keep the selected item in view when navigating with the keyboard
 	useEffect(() => {
 		const container = resultsRef.current;
-		if (!container) return;
+		if (!container) {
+			return;
+		}
 
 		const target = container.querySelector<HTMLElement>(
 			`[data-search-index="${selectedIndex}"]`,
@@ -228,7 +230,7 @@ export function SearchPageClient({ organizationSlug }: SearchPageClientProps) {
 							type="text"
 							value={query}
 							onChange={(e) => setQuery(e.target.value)}
-							placeholder="Search bookings, clients, crew, shoots..."
+							placeholder="Search bookings, clients, people, shoots..."
 							className="flex-1 bg-transparent text-sm outline-none placeholder:text-neutral-400"
 							autoComplete="off"
 							spellCheck={false}
@@ -323,7 +325,9 @@ export function SearchPageClient({ organizationSlug }: SearchPageClientProps) {
 				{/* No results */}
 				{hasQuery && !isLoading && !hasResults && (
 					<div className="p-8 text-center text-neutral-500">
-						<p className="text-base font-medium">No results found</p>
+						<p className="text-base font-medium">
+							No results found
+						</p>
 						<p className="mt-1 text-sm">
 							Try a different search term or check another
 							category

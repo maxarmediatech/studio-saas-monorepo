@@ -12,6 +12,7 @@ import {
 	AlertDialogTitle,
 } from "@repo/ui/components/alert-dialog";
 import { Button } from "@repo/ui/components/button";
+import { useIsMobile } from "@repo/ui/hooks/use-mobile";
 import {
 	createSelectColumn,
 	DataTable,
@@ -60,6 +61,7 @@ import {
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { MobileBookingsList } from "./mobile-bookings-list";
 
 interface BookingsTableClientProps {
 	organizationSlug: string;
@@ -68,6 +70,7 @@ interface BookingsTableClientProps {
 export function BookingsTableClient({
 	organizationSlug,
 }: BookingsTableClientProps) {
+	const isMobile = useIsMobile();
 	const queryClient = useQueryClient();
 	const { openView } = useBookingParams();
 	const { openEdit } = useBookingEditParams();
@@ -471,16 +474,16 @@ export function BookingsTableClient({
 				),
 				enableSorting: false,
 				enableHiding: false,
-					meta: {
-						width: 48,
-						minWidth: 48,
-						headerClassName:
-							"!px-0 md:sticky md:right-0 bg-gray-100 z-10",
-						cellClassName:
-							"!px-0 md:sticky md:right-0 bg-table-surface group-hover:bg-table-row-selected group-data-[state=selected]:bg-table-row-selected z-10",
-					},
+				meta: {
+					width: 48,
+					minWidth: 48,
+					headerClassName:
+						"!px-0 md:sticky md:right-0 bg-gray-100 z-10",
+					cellClassName:
+						"!px-0 md:sticky md:right-0 bg-table-surface group-hover:bg-table-row-selected group-data-[state=selected]:bg-table-row-selected z-10",
 				},
-			],
+			},
+		],
 		[
 			organizationSlug,
 			rowActions,
@@ -493,48 +496,60 @@ export function BookingsTableClient({
 
 	return (
 		<>
-			<SortProvider
-				sortColumn={sorting.sortBy}
-				sortDirection={sorting.sortDirection}
-			>
-				<DataTable
-					columns={columns}
-					data={bookings}
+			{isMobile ? (
+				<MobileBookingsList
+					bookings={bookings}
+					organizationSlug={organizationSlug}
+					rowActions={rowActions}
 					isLoading={isLoading}
 					isFetching={isFetching}
 					pagination={serverPagination}
 					onPaginationChange={onPaginationChange}
-					onLimitChange={onLimitChange}
-					sorting={sortingState}
-					onSortingChange={onSortingChange}
-					enableRowSelection
-					getRowId={(row) => row.id}
-					stickyLeftColumns={[
-						{ id: "select", width: 48 },
-						{ id: "referenceNumber", width: 120 },
-						{ id: "name", width: 240 },
-					]}
-					stickyRightColumns={[{ id: "actions", width: 48 }]}
-					minWidth={1400}
-					scrollControlsColumnId="name"
-					scrollStartColumn={3}
-					emptyState={
-						<div className="flex flex-col items-center gap-2">
-							<p className="text-muted-foreground">
-								No bookings found
-							</p>
-							<Button variant="outline" size="sm" asChild>
-								<Link
-									href={`/app/${organizationSlug}/bookings/new`}
-								>
-									<PlusIcon className="mr-2 h-4 w-4" />
-									Create your first booking
-								</Link>
-							</Button>
-						</div>
-					}
 				/>
-			</SortProvider>
+			) : (
+				<SortProvider
+					sortColumn={sorting.sortBy}
+					sortDirection={sorting.sortDirection}
+				>
+					<DataTable
+						columns={columns}
+						data={bookings}
+						isLoading={isLoading}
+						isFetching={isFetching}
+						pagination={serverPagination}
+						onPaginationChange={onPaginationChange}
+						onLimitChange={onLimitChange}
+						sorting={sortingState}
+						onSortingChange={onSortingChange}
+						enableRowSelection
+						getRowId={(row) => row.id}
+						stickyLeftColumns={[
+							{ id: "select", width: 48 },
+							{ id: "referenceNumber", width: 120 },
+							{ id: "name", width: 240 },
+						]}
+						stickyRightColumns={[{ id: "actions", width: 48 }]}
+						minWidth={1400}
+						scrollControlsColumnId="name"
+						scrollStartColumn={3}
+						emptyState={
+							<div className="flex flex-col items-center gap-2">
+								<p className="text-muted-foreground">
+									No bookings found
+								</p>
+								<Button variant="outline" size="sm" asChild>
+									<Link
+										href={`/app/${organizationSlug}/bookings/new`}
+									>
+										<PlusIcon className="mr-2 h-4 w-4" />
+										Create your first booking
+									</Link>
+								</Button>
+							</div>
+						}
+					/>
+				</SortProvider>
+			)}
 
 			{/* Delete confirmation dialog */}
 			<AlertDialog

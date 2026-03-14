@@ -132,6 +132,7 @@ export function InviteMemberForm({
 											<OrganizationRoleSelect
 												value={field.value}
 												onSelect={field.onChange}
+												excludeOwnerRole
 											/>
 										</FormControl>
 									</FormItem>

@@ -7,6 +7,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@repo/ui/components/table";
+import { useIsMobile } from "@repo/ui/hooks/use-mobile";
 import { cn } from "@repo/ui/lib/utils";
 import { useTableScroll } from "@saas/shared/hooks/use-table-scroll";
 import {
@@ -111,6 +112,8 @@ export function DataTable<TData, TValue>({
 	columnVisibility: externalColumnVisibility,
 	onColumnVisibilityChange,
 }: DataTableProps<TData, TValue>) {
+	const isMobile = useIsMobile();
+
 	// Internal sorting state (used when no external sorting provided)
 	const [internalSorting, setInternalSorting] = useState<SortingState>([]);
 	// Internal row selection state (used when no external selection provided)
@@ -156,10 +159,16 @@ export function DataTable<TData, TValue>({
 
 	const showLoading = isLoading && data.length === 0;
 
+	const effectiveStickyLeftColumns = isMobile ? [] : stickyLeftColumns;
+	const effectiveStickyRightColumns = isMobile ? [] : stickyRightColumns;
+
 	// Set up horizontal scroll controls
 	const hasSticky =
-		stickyLeftColumns.length > 0 || stickyRightColumns.length > 0;
-	const defaultStartColumn = hasSticky ? stickyLeftColumns.length : 0;
+		effectiveStickyLeftColumns.length > 0 ||
+		effectiveStickyRightColumns.length > 0;
+	const defaultStartColumn = hasSticky
+		? effectiveStickyLeftColumns.length
+		: 0;
 	const tableScroll = useTableScroll({
 		useColumnWidths: true,
 		startFromColumn: scrollStartColumn ?? defaultStartColumn,
@@ -168,13 +177,13 @@ export function DataTable<TData, TValue>({
 
 	// Build sticky position maps
 	const leftColumnIds = React.useMemo(
-		() => new Set(stickyLeftColumns.map((c) => c.id)),
-		[stickyLeftColumns],
+		() => new Set(effectiveStickyLeftColumns.map((c) => c.id)),
+		[effectiveStickyLeftColumns],
 	);
 
 	const rightColumnIds = React.useMemo(
-		() => new Set(stickyRightColumns.map((c) => c.id)),
-		[stickyRightColumns],
+		() => new Set(effectiveStickyRightColumns.map((c) => c.id)),
+		[effectiveStickyRightColumns],
 	);
 
 	// Calculate left positions for left-pinned columns
@@ -182,13 +191,13 @@ export function DataTable<TData, TValue>({
 		let position = 0;
 		const positions: Record<string, number> = {};
 
-		for (const col of stickyLeftColumns) {
+		for (const col of effectiveStickyLeftColumns) {
 			positions[col.id] = position;
 			position += col.width;
 		}
 
 		return positions;
-	}, [stickyLeftColumns]);
+	}, [effectiveStickyLeftColumns]);
 
 	// Calculate right positions for right-pinned columns
 	const rightPositions = React.useMemo(() => {
@@ -196,8 +205,8 @@ export function DataTable<TData, TValue>({
 		const positions: Record<string, number> = {};
 
 		// Process from right to left
-		for (let i = stickyRightColumns.length - 1; i >= 0; i--) {
-			const col = stickyRightColumns[i];
+		for (let i = effectiveStickyRightColumns.length - 1; i >= 0; i--) {
+			const col = effectiveStickyRightColumns[i];
 			if (col) {
 				positions[col.id] = position;
 				position += col.width;
@@ -205,7 +214,7 @@ export function DataTable<TData, TValue>({
 		}
 
 		return positions;
-	}, [stickyRightColumns]);
+	}, [effectiveStickyRightColumns]);
 
 	const getStickyStyle = React.useCallback(
 		(
@@ -245,7 +254,7 @@ export function DataTable<TData, TValue>({
 	);
 
 	const rightStickyDividerTargetId = React.useMemo(() => {
-		if (stickyRightColumns.length === 0) {
+		if (effectiveStickyRightColumns.length === 0) {
 			return null;
 		}
 
@@ -253,7 +262,7 @@ export function DataTable<TData, TValue>({
 			.getVisibleLeafColumns()
 			.map((c) => c.id);
 
-		for (const stickyColumn of stickyRightColumns) {
+		for (const stickyColumn of effectiveStickyRightColumns) {
 			const stickyId = stickyColumn.id;
 			const idx = visibleLeafColumnIds.indexOf(stickyId);
 			if (idx > 0) {
@@ -262,7 +271,7 @@ export function DataTable<TData, TValue>({
 		}
 
 		return null;
-	}, [table, stickyRightColumns]);
+	}, [table, effectiveStickyRightColumns]);
 
 	const getStickyClassName = React.useCallback(
 		(columnId: string, isHeader: boolean, meta?: ColumnMeta): string => {
@@ -273,7 +282,9 @@ export function DataTable<TData, TValue>({
 				? meta?.headerClassName
 				: meta?.cellClassName;
 
-			const rightIndex = stickyRightColumns.findIndex((c) => c.id === columnId);
+			const rightIndex = effectiveStickyRightColumns.findIndex(
+				(c) => c.id === columnId,
+			);
 			const isFirstRightSticky = rightIndex === 0;
 
 			return cn(
@@ -289,7 +300,7 @@ export function DataTable<TData, TValue>({
 		[
 			leftColumnIds,
 			rightColumnIds,
-			stickyRightColumns,
+			effectiveStickyRightColumns,
 			rightStickyDividerTargetId,
 		],
 	);
@@ -299,9 +310,9 @@ export function DataTable<TData, TValue>({
 			<div
 				ref={tableScroll.containerRef}
 				className={cn(
-					"border-table-border-subtle bg-card overflow-hidden rounded-lg border",
+					"border-table-border-subtle bg-card overflow-x-auto overflow-y-visible rounded-lg border [touch-action:pan-x_pan-y]",
 					hasSticky &&
-						"vertical-scrollbar horizontal-scrollbar scrollbar-md overflow-x-auto overscroll-x-none",
+						"vertical-scrollbar horizontal-scrollbar scrollbar-md overscroll-x-none",
 				)}
 			>
 				<table

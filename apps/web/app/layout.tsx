@@ -42,7 +42,7 @@ export default function RootLayout({ children }: PropsWithChildren) {
 		<html
 			lang={config.i18n.defaultLocale}
 			suppressHydrationWarning
-			className={sansFont.className}
+			className={cn("font-sans", sansFont.variable)}
 		>
 			<body
 				className={cn(

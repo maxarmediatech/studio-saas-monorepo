@@ -269,8 +269,8 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 					items: [
 						{
 							id: "crew",
-							label: "Crew",
-							path: url("/crews"),
+							label: "People",
+							path: url("/people"),
 							icon: "Users",
 							permission: {
 								any: [{ resource: "crew", action: "list" }],
@@ -461,11 +461,18 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 					expanded: true,
 					items: [
 						{
-							id: "members",
-							label: "Members",
-							path: url("/settings/members"),
-							icon: "Users",
-							permission: settingsRouteAccess.members,
+							id: "people",
+							label: "People",
+							path: url("/settings/people"),
+							icon: "User",
+							permission: settingsRouteAccess.people,
+						},
+						{
+							id: "invitations",
+							label: "Invitations",
+							path: url("/settings/invitations"),
+							icon: "Mail",
+							permission: settingsRouteAccess.invitations,
 						},
 						{
 							id: "teams",

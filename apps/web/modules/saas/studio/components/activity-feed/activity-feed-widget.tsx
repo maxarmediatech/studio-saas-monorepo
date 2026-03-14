@@ -207,7 +207,7 @@ function getEntityLink(
 		case "expense":
 			return `/app/${organizationSlug}/expenses/${entityId}`;
 		case "crew":
-			return `/app/${organizationSlug}/crews/${entityId}`;
+			return `/app/${organizationSlug}/people/${entityId}`;
 		case "client":
 			return `/app/${organizationSlug}/clients/${entityId}`;
 		case "received_amount":

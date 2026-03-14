@@ -110,7 +110,7 @@ export function QuickLinkModal({
 
 	return (
 		<Dialog open={isOpen} onOpenChange={onOpenChange}>
-			<DialogContent>
+			<DialogContent className="sm:max-w-md">
 				<DialogHeader>
 					<DialogTitle>
 						{isEditing ? "Edit Quick Link" : "Add Quick Link"}
@@ -140,7 +140,7 @@ export function QuickLinkModal({
 						)}
 					</Field>
 
-					<DialogFooter>
+					<DialogFooter className="gap-2 sm:gap-0">
 						<Button
 							type="button"
 							variant="outline"

@@ -13,9 +13,9 @@ interface HomeViewProps {
 
 export function HomeView({ organizationSlug, userName }: HomeViewProps) {
 	return (
-		<div className="mx-auto max-w-[800px] w-full">
+		<div className="mx-auto w-full max-w-[800px] pb-8 sm:pb-10">
 			<UserGreeting userName={userName} />
-			<div className="flex flex-col gap-7">
+			<div className="flex flex-col gap-5 sm:gap-7">
 				<QuickstartGuide organizationSlug={organizationSlug} />
 				<QuickLinksWidget />
 				<StickiesWidget organizationSlug={organizationSlug} />

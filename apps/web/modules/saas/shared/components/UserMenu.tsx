@@ -19,6 +19,10 @@ import {
 import { cn } from "@repo/ui/lib/utils";
 import { useSession } from "@saas/auth/hooks/use-session";
 import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
+import {
+	NotificationMenuPanel,
+	useNotificationMenuState,
+} from "@saas/studio/components/notifications/notification-bell";
 import { UserAvatar } from "@shared/components/UserAvatar";
 import {
 	HardDriveIcon,
@@ -39,10 +43,14 @@ export function UserMenu({
 	showUserName,
 	triggerClassName,
 	avatarClassName,
+	includeNotifications,
+	showNotificationBadge,
 }: {
 	showUserName?: boolean;
 	triggerClassName?: string;
 	avatarClassName?: string;
+	includeNotifications?: boolean;
+	showNotificationBadge?: boolean;
 }) {
 	const t = useTranslations();
 	const { session, user } = useSession();
@@ -55,6 +63,9 @@ export function UserMenu({
 		? `/app/${activeOrganization.slug}/settings/profile`
 		: "/app";
 	const isImpersonating = Boolean(session?.impersonatedBy);
+	const shouldShowNotifications =
+		Boolean(includeNotifications) || Boolean(showNotificationBadge);
+	const notificationState = useNotificationMenuState(shouldShowNotifications);
 
 	const colorModeOptions = [
 		{
@@ -121,16 +132,24 @@ export function UserMenu({
 			<DropdownMenuTrigger asChild>
 				<button
 					type="button"
-					className={cn("cursor-pointer", triggerClassName)}
+					className={cn("relative cursor-pointer", triggerClassName)}
 					// className="flex cursor-pointer w-full items-center justify-between gap-2 rounded-lg outline-hidden focus-visible:ring-2 focus-visible:ring-primary md:w-[100%+1rem] md:px-2 md:py-1.5 md:hover:bg-primary/5"
 					aria-label="User menu"
 				>
 					<span className="flex items-center gap-2">
-						<UserAvatar
-							name={name ?? ""}
-							avatarUrl={image}
-							className={avatarClassName}
-						/>
+						<span className="relative">
+							<UserAvatar
+								name={name ?? ""}
+								avatarUrl={image}
+								className={avatarClassName}
+							/>
+							{showNotificationBadge &&
+							notificationState.badgeLabel ? (
+								<span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white">
+									{notificationState.badgeLabel}
+								</span>
+							) : null}
+						</span>
 						{showUserName && (
 							<span className="text-left leading-tight">
 								<span className="font-medium text-sm">
@@ -147,7 +166,10 @@ export function UserMenu({
 				</button>
 			</DropdownMenuTrigger>
 
-			<DropdownMenuContent align="end">
+			<DropdownMenuContent
+				align="end"
+				className={cn(includeNotifications && "w-80 p-0")}
+			>
 				<DropdownMenuLabel>
 					{name}
 					<span className="block font-normal text-xs opacity-70">
@@ -156,6 +178,25 @@ export function UserMenu({
 				</DropdownMenuLabel>
 
 				<DropdownMenuSeparator />
+
+				{includeNotifications ? (
+					<>
+						<div className="-mx-1 -mt-1 mb-1 overflow-hidden">
+							<NotificationMenuPanel
+								unreadCount={notificationState.unreadCount}
+								notifications={notificationState.notifications}
+								isLoading={notificationState.isLoading}
+								isMarkAllPending={
+									notificationState.isMarkAllPending
+								}
+								onMarkAllRead={notificationState.markAllRead}
+								onMarkRead={notificationState.markRead}
+							/>
+						</div>
+
+						<DropdownMenuSeparator />
+					</>
+				) : null}
 
 				{/* Color mode selection — gated behind enabledThemes */}
 				{config.ui.enabledThemes.length > 1 && (

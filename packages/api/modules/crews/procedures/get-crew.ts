@@ -17,13 +17,13 @@ import {
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
-	deriveCrewRoles,
-	extractSpecializations,
-} from "../lib/crew-presentation";
-import {
 	getCrewInputSchema,
 	getCrewOutputSchema,
 } from "../../studio/schemas/crew";
+import {
+	deriveCrewRoles,
+	extractSpecializations,
+} from "../lib/crew-presentation";
 
 export const getCrew = studioProtectedProcedure
 	.route({
@@ -50,6 +50,7 @@ export const getCrew = studioProtectedProcedure
 				name: crews.name,
 				email: crews.email,
 				phoneNumber: crews.phoneNumber,
+				workerType: crews.workerType,
 				status: crews.status,
 				dailyRate: crews.dailyRate,
 				metadata: crews.metadata,
@@ -181,6 +182,7 @@ export const getCrew = studioProtectedProcedure
 		const metadata = crew.metadata as Record<string, unknown> | null;
 		const roleMeta = deriveCrewRoles({
 			memberRole: crew.memberRole,
+			workerType: crew.workerType,
 			userId: crew.userId,
 		});
 
@@ -192,6 +194,8 @@ export const getCrew = studioProtectedProcedure
 				name: crew.name,
 				email: crew.email,
 				phoneNumber: crew.phoneNumber,
+				workerType: roleMeta.workerType,
+				hasAppAccess: Boolean(crew.memberRole),
 				memberRoles: roleMeta.memberRoles,
 				displayRoles: roleMeta.displayRoles,
 				isFreelancer: roleMeta.isFreelancer,

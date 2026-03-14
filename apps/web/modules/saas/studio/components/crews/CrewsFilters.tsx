@@ -6,13 +6,18 @@ import type { SavedView } from "@saas/shared/components/views";
 import { useCrewsTableWithViews } from "@saas/studio/hooks/tables";
 import { configurationsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
-import { BriefcaseIcon, UserIcon } from "lucide-react";
+import { BriefcaseIcon, ShieldCheckIcon, UserIcon } from "lucide-react";
 import { useCallback, useMemo } from "react";
 
 const statusOptions = [
 	{ value: "active", label: "Active" },
 	{ value: "inactive", label: "Inactive" },
 	{ value: "unavailable", label: "Unavailable" },
+];
+
+const accessOptions = [
+	{ value: "true", label: "Has Access" },
+	{ value: "false", label: "No Access" },
 ];
 
 export function CrewsFilters() {
@@ -51,6 +56,13 @@ export function CrewsFilters() {
 				icon: BriefcaseIcon,
 				options: specializationOptions,
 			},
+			{
+				id: "hasAppAccess",
+				label: "Access",
+				variant: "multiSelect",
+				icon: ShieldCheckIcon,
+				options: accessOptions,
+			},
 		],
 		[specializationOptions],
 	);
@@ -59,8 +71,9 @@ export function CrewsFilters() {
 		() => ({
 			status: filters.status ?? [],
 			specializations: filters.specializations ?? [],
+			hasAppAccess: filters.hasAppAccess ?? [],
 		}),
-		[filters.status, filters.specializations],
+		[filters.hasAppAccess, filters.specializations, filters.status],
 	);
 
 	const handleFilterChange = useCallback(
@@ -81,6 +94,10 @@ export function CrewsFilters() {
 				const values =
 					Array.isArray(value) && value.length > 0 ? value : null;
 				setFilter("specializations", values);
+			} else if (filterId === "hasAppAccess") {
+				const values =
+					Array.isArray(value) && value.length > 0 ? value : null;
+				setFilter("hasAppAccess", values);
 			}
 		},
 		[setFilter],
@@ -127,7 +144,7 @@ export function CrewsFilters() {
 			isFiltered={isFiltered}
 			showSearch
 			searchValue={filters.search ?? ""}
-			searchPlaceholder="Search crew members..."
+			searchPlaceholder="Search people..."
 			onSearchChange={handleSearchChange}
 			showViewOptions={false}
 		/>

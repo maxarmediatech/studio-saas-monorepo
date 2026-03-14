@@ -51,7 +51,7 @@ export function StickyFormatToolbar({
 	}
 
 	return (
-		<div className={cn("flex items-center gap-0.5", className)}>
+		<div className={cn("flex flex-wrap items-center gap-1", className)}>
 			{FORMAT_BUTTONS.map(
 				({ key, icon: Icon, label, shortcut, action, isActive }) => (
 					<Tooltip key={key}>
@@ -60,7 +60,7 @@ export function StickyFormatToolbar({
 								type="button"
 								onClick={() => action(editor)}
 								className={cn(
-									"flex items-center justify-center rounded p-1.5 transition-colors",
+									"flex size-8 items-center justify-center rounded-md transition-colors",
 									isActive(editor)
 										? "bg-foreground/10 text-foreground/80"
 										: "text-foreground/50 hover:text-foreground/70 hover:bg-foreground/5",

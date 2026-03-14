@@ -1,6 +1,6 @@
 import type { CustomRolePermissions } from "@repo/auth/lib/permissions";
-import type { NavPermissionCheck } from "@saas/studio/lib/navigation/types";
 import { matchesNavPermission } from "@saas/studio/lib/navigation/access";
+import type { NavPermissionCheck } from "@saas/studio/lib/navigation/types";
 
 export type SettingsRouteKey =
 	| "general"
@@ -8,6 +8,7 @@ export type SettingsRouteKey =
 	| "profile"
 	| "security"
 	| "accountDangerZone"
+	| "people"
 	| "members"
 	| "invitations"
 	| "teams"
@@ -22,6 +23,13 @@ export interface SettingsTabItem {
 	href: string;
 }
 
+export interface SettingsStandaloneTab {
+	label: string;
+	href: string;
+	searchParamKey?: string;
+	searchParamValue?: string;
+}
+
 export interface SettingsTabGroup {
 	id: string;
 	label: string;
@@ -32,6 +40,7 @@ export interface SettingsStandalonePage {
 	key: SettingsRouteKey;
 	label: string;
 	href: string;
+	tabs?: SettingsStandaloneTab[];
 }
 
 const SETTINGS_ADMIN_ROLES = ["owner", "admin"] as const;
@@ -54,6 +63,9 @@ export const settingsRouteAccess: Record<
 	profile: undefined,
 	security: undefined,
 	accountDangerZone: undefined,
+	people: {
+		rolesAny: SETTINGS_ADMIN_ROLES,
+	},
 	members: {
 		rolesAny: SETTINGS_ADMIN_ROLES,
 	},
@@ -98,22 +110,14 @@ export function getSettingsTabGroups(basePath: string): SettingsTabGroup[] {
 			],
 		},
 		{
-			id: "members",
-			label: "Members",
-			tabs: [
-				{ key: "members", label: "Members", href: `${basePath}/members` },
-				{
-					key: "invitations",
-					label: "Invitations",
-					href: `${basePath}/invitations`,
-				},
-			],
-		},
-		{
 			id: "account",
 			label: "Account",
 			tabs: [
-				{ key: "profile", label: "Profile", href: `${basePath}/profile` },
+				{
+					key: "profile",
+					label: "Profile",
+					href: `${basePath}/profile`,
+				},
 				{
 					key: "security",
 					label: "Security",
@@ -133,6 +137,32 @@ export function getSettingsStandalonePages(
 	basePath: string,
 ): SettingsStandalonePage[] {
 	return [
+		{
+			key: "people",
+			label: "People",
+			href: `${basePath}/people`,
+			tabs: [
+				{ label: "All", href: `${basePath}/people` },
+				{
+					label: "Members",
+					href: `${basePath}/people?view=members`,
+					searchParamKey: "view",
+					searchParamValue: "members",
+				},
+				{
+					label: "Contractual",
+					href: `${basePath}/people?view=contractual&workerType=freelancer`,
+					searchParamKey: "view",
+					searchParamValue: "contractual",
+				},
+			],
+		},
+		{
+			key: "invitations",
+			label: "Invitations",
+			href: `${basePath}/invitations`,
+		},
+		{ key: "teams", label: "Teams", href: `${basePath}/teams` },
 		{ key: "roles", label: "Access Control", href: `${basePath}/roles` },
 		{
 			key: "integrations",
@@ -145,7 +175,6 @@ export function getSettingsStandalonePages(
 			label: "Notifications",
 			href: `${basePath}/notifications`,
 		},
-		{ key: "teams", label: "Teams", href: `${basePath}/teams` },
 	];
 }
 
@@ -174,10 +203,6 @@ export function getVisibleSettingsStandalonePages(
 	customRolePermissions?: CustomRolePermissions,
 ): SettingsStandalonePage[] {
 	return getSettingsStandalonePages(basePath).filter((page) =>
-		canAccessSettingsRoute(
-			page.key,
-			userRole,
-			customRolePermissions,
-		),
+		canAccessSettingsRoute(page.key, userRole, customRolePermissions),
 	);
 }

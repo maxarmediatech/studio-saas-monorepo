@@ -1,23 +1,22 @@
 "use client";
 
 import { cn } from "@repo/ui/lib/utils";
-import { PageWidthWrapper } from "@saas/studio/components/PageWidthWrapper";
 import type {
 	SettingsStandalonePage,
+	SettingsStandaloneTab,
 	SettingsTabGroup,
+	SettingsTabItem,
 } from "@saas/settings/lib/access";
+import { PageWidthWrapper } from "@saas/studio/components/PageWidthWrapper";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
 function getActiveStandalone(
 	pathname: string,
 	pages: SettingsStandalonePage[],
 ): SettingsStandalonePage | null {
 	for (const page of pages) {
-		if (
-			pathname === page.href ||
-			pathname.startsWith(`${page.href}/`)
-		) {
+		if (pathname === page.href || pathname.startsWith(`${page.href}/`)) {
 			return page;
 		}
 	}
@@ -46,15 +45,41 @@ export function SettingsNav({
 	standalonePages: SettingsStandalonePage[];
 }) {
 	const pathname = usePathname();
+	const searchParams = useSearchParams();
 
 	// Check standalone pages first — they take priority over tab groups
 	const activeStandalone = getActiveStandalone(pathname, standalonePages);
-	const activeGroup = activeStandalone ? null : getActiveGroup(pathname, groups);
+	const activeGroup = activeStandalone
+		? null
+		: getActiveGroup(pathname, groups);
+	const tabs = activeStandalone?.tabs ?? activeGroup?.tabs ?? [];
 
 	// Determine header label and whether to show tab bar
 	const headerLabel =
 		activeStandalone?.label ?? activeGroup?.label ?? "Settings";
-	const showTabs = !activeStandalone && (activeGroup?.tabs.length ?? 0) > 1;
+	const showTabs = tabs.length > 1;
+
+	function isTabActive(tab: SettingsStandaloneTab | SettingsTabItem) {
+		const standaloneSearchParamKey = activeStandalone?.tabs?.find(
+			(standaloneTab) => standaloneTab.searchParamKey,
+		)?.searchParamKey;
+
+		if (activeStandalone && standaloneSearchParamKey) {
+			const currentValue =
+				searchParams.get(standaloneSearchParamKey) ?? undefined;
+
+			if ("searchParamKey" in tab && tab.searchParamKey) {
+				return (
+					pathname === activeStandalone.href &&
+					currentValue === tab.searchParamValue
+				);
+			}
+
+			return pathname === activeStandalone.href && !currentValue;
+		}
+
+		return pathname === tab.href || pathname.startsWith(`${tab.href}/`);
+	}
 
 	return (
 		<div className="shrink-0">
@@ -70,15 +95,13 @@ export function SettingsNav({
 				</PageWidthWrapper>
 			</div>
 
-			{/* Tab bar — hidden for standalone pages and single-tab groups */}
+			{/* Tab bar */}
 			{showTabs && (
 				<div className="border-b border-neutral-200">
 					<PageWidthWrapper>
 						<div className="-mb-px flex gap-6 overflow-x-auto">
-							{activeGroup?.tabs.map((tab) => {
-								const isActive =
-									pathname === tab.href ||
-									pathname.startsWith(`${tab.href}/`);
+							{tabs.map((tab) => {
+								const isActive = isTabActive(tab);
 
 								return (
 									<Link

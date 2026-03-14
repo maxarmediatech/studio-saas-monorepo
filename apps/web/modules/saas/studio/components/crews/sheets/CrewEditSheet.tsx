@@ -30,7 +30,7 @@ export function CrewEditSheet() {
 	const updateMutation = useMutation({
 		...crewsMutations.update(),
 		onSuccess: () => {
-			toast.success("Crew member updated successfully");
+			toast.success("Person updated successfully");
 			// Use ORPC's key generator to match the booking form's query keys
 			queryClient.invalidateQueries({
 				queryKey: orpc.crews.key(),
@@ -41,7 +41,7 @@ export function CrewEditSheet() {
 			close();
 		},
 		onError: (error) => {
-			toast.error(error.message || "Failed to update crew member");
+			toast.error(error.message || "Failed to update person");
 		},
 	});
 
@@ -74,9 +74,7 @@ export function CrewEditSheet() {
 							"shadow-[0_4px_12px_-4px_rgba(0,0,0,0.15)]",
 					)}
 				>
-					<SheetTitle className="text-xl">
-						Edit Crew Member
-					</SheetTitle>
+					<SheetTitle className="text-xl">Edit Person</SheetTitle>
 				</SheetHeader>
 				<div className="flex-1 min-h-0">
 					{isLoading ? (

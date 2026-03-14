@@ -2,12 +2,12 @@ import { ORPCError } from "@orpc/server";
 import { and, crews, db, eq, isNull } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { safeTrackActivity } from "../../activities/lib";
-import { applySpecializationsToMetadata } from "../lib/crew-presentation";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	createCrewInputSchema,
 	createCrewOutputSchema,
 } from "../../studio/schemas/crew";
+import { applySpecializationsToMetadata } from "../lib/crew-presentation";
 
 export const createCrew = studioProtectedProcedure
 	.route({
@@ -57,6 +57,7 @@ export const createCrew = studioProtectedProcedure
 				name,
 				email: email ?? null,
 				phoneNumber: phoneNumber ?? null,
+				workerType: "freelancer",
 				status: status ?? "active",
 				dailyRate: dailyRate ?? null,
 				metadata: applySpecializationsToMetadata(

@@ -58,7 +58,7 @@ export function QuickLinksWidget() {
 	if (isLoading) {
 		return (
 			<div className="py-4">
-				<div className="flex items-center justify-between mb-2">
+				<div className="mb-2 flex items-center justify-between">
 					<div className="text-sm font-semibold text-muted-foreground">
 						Quicklinks
 					</div>
@@ -75,23 +75,23 @@ export function QuickLinksWidget() {
 
 	return (
 		<div className="py-4">
-			<div className="flex items-center justify-between mb-2">
+			<div className="mb-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<div className="text-sm font-semibold text-muted-foreground">
 					Quicklinks
 				</div>
 				<button
 					type="button"
 					onClick={handleCreate}
-					className="flex items-center gap-1 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+					className="flex h-9 items-center gap-1 self-start rounded-md px-2 text-sm font-medium text-primary transition-colors hover:bg-primary/5 hover:text-primary/80"
 				>
 					<PlusIcon className="size-4" />
 					Add quick Link
 				</button>
 			</div>
 
-			<div className="mt-3 max-h-[200px] overflow-y-auto">
+			<div className="mt-3 md:max-h-[200px] md:overflow-y-auto">
 				{links.length === 0 ? (
-					<div className="flex flex-col items-center justify-center py-12 text-center bg-muted/30 rounded-xl">
+					<div className="flex flex-col items-center justify-center rounded-xl bg-muted/30 px-4 py-10 text-center sm:py-12">
 						<LinkIcon className="size-10 text-muted-foreground/30 mb-3" />
 						<p className="text-sm text-muted-foreground">
 							Keep important references, resources, or docs handy
@@ -99,7 +99,7 @@ export function QuickLinksWidget() {
 						</p>
 					</div>
 				) : (
-					<div className="flex flex-wrap gap-2">
+					<div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
 						{links.map((link) => (
 							<QuickLinkItem
 								key={link.id}

@@ -310,6 +310,7 @@ export const crews = pgTable(
 		name: text("name").notNull(),
 		email: text("email"),
 		phoneNumber: text("phone_number"),
+		workerType: text("worker_type").default("freelancer").notNull(),
 
 		// Status is TEXT - configurable via configurations table (config_type: crew_status)
 		status: text("status").default("active").notNull(),
@@ -341,6 +342,7 @@ export const crews = pgTable(
 	(table) => [
 		index("crews_organization_idx").on(table.organizationId),
 		index("crews_user_idx").on(table.userId),
+		index("crews_worker_type_idx").on(table.workerType),
 		index("crews_specializations_gin_idx")
 			.using("gin", sql`(${table.metadata} -> 'specializations')`)
 			.where(sql`${table.deletedAt} IS NULL`),

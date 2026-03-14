@@ -1,15 +1,13 @@
 "use client";
 
 import {
-	Sheet,
-	SheetContent,
-	SheetHeader,
-	SheetTitle,
-} from "@repo/ui/components/sheet";
+	Drawer,
+	DrawerContent,
+	DrawerHeader,
+	DrawerTitle,
+} from "@repo/ui/components/drawer";
 import { cn } from "@repo/ui/lib/utils";
-import { OrganizationLogo } from "@saas/organizations/components/OrganizationLogo";
-import { Logo } from "@shared/components/Logo";
-import { ChevronLeft, ExternalLink, Settings } from "lucide-react";
+import { ChevronLeft, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import type {
 	NavAreaConfig,
@@ -24,8 +22,6 @@ interface MobileSidebarProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	studioSlug: string;
-	studioName: string;
-	studioLogo?: string | null;
 	settingsEntryPath: string;
 	railIcons: RailIconConfig[];
 	activeModule: NavModuleConfig | null;
@@ -34,6 +30,8 @@ interface MobileSidebarProps {
 	currentArea: string;
 	areas: Record<string, NavAreaConfig>;
 	pathname: string;
+	onActiveRailItemPress?: () => void;
+	onRailNavigationIntent?: (railItemId: string) => void;
 }
 
 function isItemActive(pathname: string, itemPath: string): boolean {
@@ -44,8 +42,6 @@ export function MobileSidebar({
 	open,
 	onOpenChange,
 	studioSlug,
-	studioName,
-	studioLogo,
 	settingsEntryPath,
 	railIcons,
 	activeModule,
@@ -54,166 +50,93 @@ export function MobileSidebar({
 	currentArea,
 	areas,
 	pathname,
+	onActiveRailItemPress,
+	onRailNavigationIntent,
 }: MobileSidebarProps) {
 	const isSettingsArea = currentArea === "studioSettings";
 	const isCalendarArea = currentArea === "calendarWorkspace";
 	const settingsArea = areas.studioSettings;
+	const mobileRailItems = [
+		...railIcons,
+		{
+			id: "studioSettings",
+			kind: "area" as const,
+			icon: "Settings" as const,
+			label: "Settings",
+			href: settingsEntryPath,
+		},
+	];
+	const activeTitle = isSettingsArea
+		? (settingsArea?.title ?? "Settings")
+		: isCalendarArea
+			? (areas.calendarWorkspace?.title ?? "Calendar")
+			: (activeModule?.label ?? "Navigation");
+
 	return (
-		<Sheet open={open} onOpenChange={onOpenChange}>
-			<SheetContent
-				side="left"
-				className="flex w-80 flex-col bg-neutral-200 p-0"
-			>
-				{/* Header with App Logo + Org */}
-				<SheetHeader className="border-b border-neutral-300 bg-neutral-200 px-4 py-3">
-					<SheetTitle className="flex items-center gap-3">
-						<Logo withLabel={false} className="h-5" />
-						<div className="flex items-center gap-2">
-							<OrganizationLogo
-								name={studioName}
-								logoUrl={studioLogo}
-								className="size-6 rounded-full"
-							/>
-							<span className="text-sm font-medium text-neutral-700">
-								{studioName}
-							</span>
-						</div>
-					</SheetTitle>
-				</SheetHeader>
+		<>
+			<Drawer open={open} onOpenChange={onOpenChange}>
+				<DrawerContent className="max-h-[78vh] border-neutral-200 bg-white md:hidden">
+					<DrawerHeader className="pb-2 text-left">
+						<DrawerTitle className="text-base font-semibold text-neutral-900">
+							{activeTitle}
+						</DrawerTitle>
+					</DrawerHeader>
 
-				{/* Module Tabs */}
-				<div className="flex gap-1 overflow-x-auto bg-neutral-200 px-3 py-2">
-					{railIcons.map((item) => {
-						const isActive =
-							item.id === activeRailItemId && !isSettingsArea;
-						return (
-							<Link
-								key={item.id}
-								href={item.href}
-								className={cn(
-									"flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors duration-150",
-									isActive
-										? "bg-white font-medium text-neutral-900"
-										: "text-neutral-600 hover:bg-black/5 active:bg-black/10",
-								)}
-							>
-								<IconByName
-									name={item.icon}
-									className="size-4"
-								/>
-								<span>{item.label}</span>
-							</Link>
-						);
-					})}
-					{/* Settings Tab */}
-					<Link
-						href={settingsEntryPath}
-						className={cn(
-							"flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors duration-150",
-							isSettingsArea
-								? "bg-white font-medium text-neutral-900"
-								: "text-neutral-600 hover:bg-black/5 active:bg-black/10",
-						)}
-					>
-						<Settings className="size-4" />
-						<span>Settings</span>
-					</Link>
-				</div>
-
-				{/* Content Panel - Dub style */}
-				<div className="flex-1 overflow-hidden p-2 pt-0">
-					<div className="scrollbar-hide h-full overflow-y-auto rounded-xl bg-neutral-100 p-3">
+					<div className="scrollbar-hide overflow-y-auto px-4 pb-6">
 						{isSettingsArea && settingsArea ? (
-							<>
-								{/* Settings Header with back button */}
-								<Link
-									href={
-										settingsArea.backHref ??
-										`/app/${studioSlug}/home`
-									}
-									className="group mb-2 flex items-center gap-3 px-2 py-2"
-								>
-									<div className="flex size-6 items-center justify-center rounded-lg bg-neutral-200 text-neutral-600 transition-[transform,background-color] duration-150 group-hover:-translate-x-0.5 group-hover:bg-neutral-300">
-										<ChevronLeft
-											className="size-3"
-											strokeWidth={2.5}
-										/>
+							<div className="flex flex-col gap-6">
+								{settingsArea.backHref ? (
+									<Link
+										href={
+											settingsArea.backHref ??
+											`/app/${studioSlug}/home`
+										}
+										onClick={() => onOpenChange(false)}
+										className="group -mt-1 flex items-center gap-3 px-1 py-1"
+									>
+										<div className="flex size-7 items-center justify-center rounded-lg bg-neutral-100 text-neutral-600 transition-colors group-hover:bg-neutral-200">
+											<ChevronLeft
+												className="size-3"
+												strokeWidth={2.5}
+											/>
+										</div>
+										<span className="text-sm font-medium text-neutral-700">
+											Back to home
+										</span>
+									</Link>
+								) : null}
+
+								{settingsArea.sections.map((section) => (
+									<div key={section.id}>
+										{section.label ? (
+											<div className="mb-2 pl-2 text-xs font-medium uppercase tracking-[0.14em] text-neutral-500">
+												{section.label}
+											</div>
+										) : null}
+										<nav className="flex flex-col gap-0.5">
+											{section.items.map((item) => (
+												<MobileNavItem
+													key={item.id}
+													item={item}
+													isActive={isItemActive(
+														pathname,
+														item.path,
+													)}
+													onSelect={() =>
+														onOpenChange(false)
+													}
+												/>
+											))}
+										</nav>
 									</div>
-									<span className="text-lg font-semibold text-neutral-900">
-										{settingsArea.title}
-									</span>
-								</Link>
+								))}
 
-								{/* Settings Sections */}
-								<div className="flex flex-col gap-6">
-									{settingsArea.sections.map((section) => (
-										<div key={section.id}>
-											{section.label && (
-												<div className="mb-2 pl-2 text-sm text-neutral-500">
-													{section.label}
-												</div>
-											)}
-											<nav className="flex flex-col gap-0.5">
-												{section.items.map((item) => (
-													<MobileNavItem
-														key={item.id}
-														item={item}
-														isActive={isItemActive(
-															pathname,
-															item.path,
-														)}
-													/>
-												))}
-											</nav>
-										</div>
-									))}
-								</div>
-
-								{/* Standalone items */}
 								{settingsArea.standaloneItems &&
-									settingsArea.standaloneItems.length > 0 && (
-										<div className="mt-6 pt-3">
-											<nav className="flex flex-col gap-0.5">
-												{settingsArea.standaloneItems.map(
-													(item) => (
-														<MobileNavItem
-															key={item.id}
-															item={item}
-															isActive={isItemActive(
-																pathname,
-																item.path,
-															)}
-														/>
-													),
-												)}
-											</nav>
-										</div>
-									)}
-							</>
-						) : isCalendarArea && areas.calendarWorkspace ? (
-							<CalendarWorkspaceSidebarContent
-								area={areas.calendarWorkspace}
-							/>
-						) : activeModule ? (
-							<>
-								{/* Module Title */}
-								<div className="mb-2 px-2 py-2">
-									<h2 className="text-lg font-semibold text-neutral-900">
-										{activeModule.label}
-									</h2>
-								</div>
-
-								{/* Sections */}
-								<div className="flex flex-col gap-6">
-									{activeModule.sections.map((section) => (
-										<div key={section.id}>
-											{section.label && (
-												<div className="mb-2 pl-2 text-sm text-neutral-500">
-													{section.label}
-												</div>
-											)}
-											<nav className="flex flex-col gap-0.5">
-												{section.items.map((item) => (
+								settingsArea.standaloneItems.length > 0 ? (
+									<div className="border-t border-neutral-200 pt-3">
+										<nav className="flex flex-col gap-0.5">
+											{settingsArea.standaloneItems.map(
+												(item) => (
 													<MobileNavItem
 														key={item.id}
 														item={item}
@@ -221,16 +144,51 @@ export function MobileSidebar({
 															pathname,
 															item.path,
 														)}
+														onSelect={() =>
+															onOpenChange(false)
+														}
 													/>
-												))}
-											</nav>
-										</div>
-									))}
-								</div>
+												),
+											)}
+										</nav>
+									</div>
+								) : null}
+							</div>
+						) : isCalendarArea && areas.calendarWorkspace ? (
+							<div className="-mx-4 -mb-6">
+								<CalendarWorkspaceSidebarContent
+									area={areas.calendarWorkspace}
+								/>
+							</div>
+						) : activeModule ? (
+							<div className="flex flex-col gap-6">
+								{activeModule.sections.map((section) => (
+									<div key={section.id}>
+										{section.label ? (
+											<div className="mb-2 pl-2 text-xs font-medium uppercase tracking-[0.14em] text-neutral-500">
+												{section.label}
+											</div>
+										) : null}
+										<nav className="flex flex-col gap-0.5">
+											{section.items.map((item) => (
+												<MobileNavItem
+													key={item.id}
+													item={item}
+													isActive={isItemActive(
+														pathname,
+														item.path,
+													)}
+													onSelect={() =>
+														onOpenChange(false)
+													}
+												/>
+											))}
+										</nav>
+									</div>
+								))}
 
-								{/* Footer: Utilities */}
-								{utilities.length > 0 && (
-									<div className="mt-6 border-t border-neutral-200 pt-3">
+								{utilities.length > 0 ? (
+									<div className="border-t border-neutral-200 pt-3">
 										<nav className="flex flex-col gap-0.5">
 											{utilities.map((item) => (
 												<MobileNavItem
@@ -240,26 +198,73 @@ export function MobileSidebar({
 														pathname,
 														item.path,
 													)}
+													onSelect={() =>
+														onOpenChange(false)
+													}
 												/>
 											))}
 										</nav>
 									</div>
-								)}
-							</>
+								) : null}
+							</div>
 						) : null}
 					</div>
+				</DrawerContent>
+			</Drawer>
+
+			<nav className="fixed inset-x-0 bottom-0 z-30 border-t border-neutral-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 md:hidden">
+				<div
+					className="grid px-2 pb-[calc(env(safe-area-inset-bottom)+0.35rem)] pt-2"
+					style={{
+						gridTemplateColumns: `repeat(${mobileRailItems.length}, minmax(0, 1fr))`,
+					}}
+				>
+					{mobileRailItems.map((item) => {
+						const isActive = item.id === activeRailItemId;
+						return (
+							<Link
+								key={item.id}
+								href={item.href}
+								onClick={(event) => {
+									if (isActive) {
+										event.preventDefault();
+										onActiveRailItemPress?.();
+										return;
+									}
+
+									onRailNavigationIntent?.(item.id);
+								}}
+								className={cn(
+									"flex min-w-0 flex-col items-center gap-1 rounded-xl px-2 py-2 transition-colors",
+									isActive
+										? "text-blue-600"
+										: "text-neutral-500 hover:text-neutral-900",
+								)}
+							>
+								<IconByName
+									name={item.icon}
+									className="size-5 shrink-0"
+								/>
+								<span className="truncate text-[11px] font-medium">
+									{item.label}
+								</span>
+							</Link>
+						);
+					})}
 				</div>
-			</SheetContent>
-		</Sheet>
+			</nav>
+		</>
 	);
 }
 
 function MobileNavItem({
 	item,
 	isActive,
+	onSelect,
 }: {
 	item: NavItemConfig;
 	isActive: boolean;
+	onSelect?: () => void;
 }) {
 	const isExternal = item.path.startsWith("http");
 
@@ -268,14 +273,15 @@ function MobileNavItem({
 			href={item.path}
 			target={isExternal ? "_blank" : undefined}
 			rel={isExternal ? "noopener noreferrer" : undefined}
+			onClick={onSelect}
 			className={cn(
-				"group flex h-8 items-center justify-between rounded-lg p-2 text-sm leading-none transition-[background-color,color,font-weight] duration-75",
+				"group flex min-h-10 items-center justify-between rounded-lg px-3 py-2 text-sm transition-[background-color,color,font-weight] duration-75",
 				isActive
 					? "bg-blue-100/50 font-medium text-blue-600 hover:bg-blue-100/80 active:bg-blue-100"
 					: "text-neutral-700 hover:bg-black/5 active:bg-black/10",
 			)}
 		>
-			<span className="flex items-center gap-2.5">
+			<span className="flex min-w-0 items-center gap-2.5">
 				<IconByName
 					name={item.icon}
 					className={cn(
@@ -285,9 +291,9 @@ function MobileNavItem({
 				/>
 				<span className="truncate">{item.label}</span>
 			</span>
-			{isExternal && (
+			{isExternal ? (
 				<ExternalLink className="size-3.5 text-neutral-500 transition-transform duration-75 group-hover:-translate-y-px group-hover:translate-x-px" />
-			)}
+			) : null}
 		</Link>
 	);
 }

@@ -43,12 +43,20 @@ interface InviteMemberDialogProps {
 	organizationId: string;
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
+	defaultEmail?: string;
+	title?: string;
+	description?: string;
+	submitLabel?: string;
 }
 
 export function InviteMemberDialog({
 	organizationId,
 	open,
 	onOpenChange,
+	defaultEmail,
+	title,
+	description,
+	submitLabel,
 }: InviteMemberDialogProps) {
 	type InviteRoleInput = Parameters<
 		typeof authClient.organization.inviteMember
@@ -59,7 +67,7 @@ export function InviteMemberDialog({
 	const form = useForm<FormValues>({
 		resolver: zodResolver(formSchema),
 		defaultValues: {
-			email: "",
+			email: defaultEmail ?? "",
 			role: ["member"],
 			teamId: null,
 		},
@@ -67,9 +75,13 @@ export function InviteMemberDialog({
 
 	useEffect(() => {
 		if (!open) {
-			form.reset();
+			form.reset({
+				email: defaultEmail ?? "",
+				role: ["member"],
+				teamId: null,
+			});
 		}
-	}, [open, form]);
+	}, [defaultEmail, open, form]);
 
 	const onSubmit: SubmitHandler<FormValues> = async (values) => {
 		try {
@@ -111,14 +123,16 @@ export function InviteMemberDialog({
 			<DialogContent className="sm:max-w-[480px]">
 				<DialogHeader>
 					<DialogTitle>
-						{t(
-							"organizations.settings.members.inviteMember.title",
-						)}
+						{title ??
+							t(
+								"organizations.settings.members.inviteMember.title",
+							)}
 					</DialogTitle>
 					<DialogDescription>
-						{t(
-							"organizations.settings.members.inviteMember.description",
-						)}
+						{description ??
+							t(
+								"organizations.settings.members.inviteMember.description",
+							)}
 					</DialogDescription>
 				</DialogHeader>
 
@@ -158,6 +172,7 @@ export function InviteMemberDialog({
 										<OrganizationRoleSelect
 											value={field.value}
 											onSelect={field.onChange}
+											excludeOwnerRole
 										/>
 									</FormControl>
 								</FormItem>
@@ -197,9 +212,10 @@ export function InviteMemberDialog({
 								{form.formState.isSubmitting && (
 									<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
 								)}
-								{t(
-									"organizations.settings.members.inviteMember.submit",
-								)}
+								{submitLabel ??
+									t(
+										"organizations.settings.members.inviteMember.submit",
+									)}
 							</Button>
 						</DialogFooter>
 					</form>

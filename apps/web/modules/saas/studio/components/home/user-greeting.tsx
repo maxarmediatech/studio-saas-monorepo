@@ -32,11 +32,11 @@ export function UserGreeting({ userName }: UserGreetingProps) {
 	}).format(currentTime);
 
 	return (
-		<div className="flex flex-col items-center my-6">
-			<h2 className="text-xl font-semibold text-center">
+		<div className="my-5 flex flex-col items-start text-left sm:my-6 sm:items-center sm:text-center">
+			<h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
 				Good {greeting}, {firstName}
 			</h2>
-			<p className="flex items-center gap-2 font-medium text-muted-foreground">
+			<p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 font-medium text-muted-foreground">
 				<span>{emoji}</span>
 				<span>
 					{weekDay}, {date} {timeString}

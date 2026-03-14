@@ -27,7 +27,7 @@ export const SEARCH_TABS: SearchTabConfig[] = [
 		countKey: "bookings",
 	},
 	{ id: "clients", label: "Clients", icon: UserIcon, countKey: "clients" },
-	{ id: "crews", label: "Crew", icon: UsersIcon, countKey: "crews" },
+	{ id: "crews", label: "People", icon: UsersIcon, countKey: "crews" },
 	{ id: "shoots", label: "Shoots", icon: CameraIcon, countKey: "shoots" },
 	{ id: "tasks", label: "Tasks", icon: CheckSquareIcon, countKey: "tasks" },
 	{
@@ -82,14 +82,14 @@ export const ENTITY_DISPLAY_CONFIG: Record<
 	},
 	crews: {
 		icon: UsersIcon,
-		label: "Crew",
-		singularLabel: "crew member",
+		label: "People",
+		singularLabel: "person",
 		color: "text-purple-600",
 		bgColor: "bg-purple-50",
 		getDisplayName: (item: SearchResultItem) =>
-			item.name || "Unnamed Crew Member",
+			item.name || "Unnamed Person",
 		getSubtext: (item: SearchResultItem) => item.role,
-		route: "crew",
+		route: "people",
 	},
 	shoots: {
 		icon: CameraIcon,

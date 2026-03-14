@@ -12,6 +12,8 @@ import {
 	AlertDialogTitle,
 } from "@repo/ui/components/alert-dialog";
 import { Badge } from "@repo/ui/components/badge";
+import { Button } from "@repo/ui/components/button";
+import { InviteMemberDialog } from "@saas/organizations/components/InviteMemberDialog";
 import {
 	createSelectColumn,
 	DataTable,
@@ -31,6 +33,7 @@ import {
 	crewsApi,
 	crewsMutations,
 } from "@saas/studio/lib/api";
+import { getWorkerTypeLabel } from "@saas/studio/lib/people";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -40,7 +43,9 @@ import {
 	PencilIcon,
 	PhoneIcon,
 	TrashIcon,
+	UserCheckIcon,
 	UserIcon,
+	UserPlusIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -51,6 +56,7 @@ import { OpenCrewCreateSheet } from "./OpenCrewSheet";
 // Note: organizationSlug kept for future crew detail page navigation
 interface CrewsTableClientProps {
 	organizationSlug?: string;
+	organizationId?: string;
 }
 
 const statusColors: Record<string, string> = {
@@ -67,7 +73,10 @@ const statusOptions = [
 	{ value: "unavailable", label: "Unavailable" },
 ];
 
-export function CrewsTableClient({ organizationSlug }: CrewsTableClientProps) {
+export function CrewsTableClient({
+	organizationSlug,
+	organizationId,
+}: CrewsTableClientProps) {
 	const router = useRouter();
 	const queryClient = useQueryClient();
 
@@ -84,9 +93,20 @@ export function CrewsTableClient({ organizationSlug }: CrewsTableClientProps) {
 
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [crewToDelete, setCrewToDelete] = useState<Crew | null>(null);
+	const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+	const [crewToInvite, setCrewToInvite] = useState<Crew | null>(null);
 
 	// URL-based sheet params
 	const { openEdit } = useCrewParams();
+	const workerType = filters.workerType?.filter(
+		(value): value is "internal" | "freelancer" =>
+			value === "internal" || value === "freelancer",
+	);
+	const activeWorkerType = workerType?.[0] ?? "all";
+	const hasAppAccess = filters.hasAppAccess?.filter(
+		(value): value is "true" | "false" =>
+			value === "true" || value === "false",
+	);
 
 	// Build query input from hook state
 	const queryInput = {
@@ -95,6 +115,10 @@ export function CrewsTableClient({ organizationSlug }: CrewsTableClientProps) {
 		search: filters.search ?? undefined,
 		status: filters.status ?? undefined,
 		specializations: filters.specializations ?? undefined,
+		workerType:
+			workerType && workerType.length > 0 ? workerType : undefined,
+		hasAppAccess:
+			hasAppAccess && hasAppAccess.length > 0 ? hasAppAccess : undefined,
 		sortBy: sorting.sortBy ?? "name",
 		sortDirection: sorting.sortDirection,
 		includeDeleted: false,
@@ -130,7 +154,7 @@ export function CrewsTableClient({ organizationSlug }: CrewsTableClientProps) {
 	const deleteMutation = useMutation({
 		...crewsMutations.delete(),
 		onSuccess: () => {
-			toast.success("Crew member deleted successfully");
+			toast.success("Person deleted successfully");
 			setDeleteDialogOpen(false);
 			setCrewToDelete(null);
 			queryClient.invalidateQueries({
@@ -141,7 +165,7 @@ export function CrewsTableClient({ organizationSlug }: CrewsTableClientProps) {
 			});
 		},
 		onError: (error) => {
-			toast.error(error.message || "Failed to delete crew member");
+			toast.error(error.message || "Failed to delete person");
 		},
 	});
 
@@ -156,12 +180,24 @@ export function CrewsTableClient({ organizationSlug }: CrewsTableClientProps) {
 				label: "View details",
 				icon: <EyeIcon className="h-4 w-4" />,
 				onClick: (row) =>
-					router.push(`/app/${organizationSlug}/crews/${row.id}`),
+					router.push(`/app/${organizationSlug}/people/${row.id}`),
 			},
 			{
 				label: "Edit",
 				icon: <PencilIcon className="h-4 w-4" />,
 				onClick: handleOpenEdit,
+			},
+			{
+				label: "Invite to App",
+				icon: <UserPlusIcon className="h-4 w-4" />,
+				onClick: (row) => {
+					setCrewToInvite(row);
+					setInviteDialogOpen(true);
+				},
+				show: (row) =>
+					Boolean(organizationId) &&
+					!row.hasAppAccess &&
+					Boolean(row.email),
 			},
 			{
 				label: "Delete",
@@ -174,7 +210,7 @@ export function CrewsTableClient({ organizationSlug }: CrewsTableClientProps) {
 				},
 			},
 		],
-		[organizationSlug, router],
+		[organizationId, organizationSlug, router],
 	);
 
 	// Define columns with sortable headers and meta for filters
@@ -189,7 +225,7 @@ export function CrewsTableClient({ organizationSlug }: CrewsTableClientProps) {
 				),
 				cell: ({ row }) => (
 					<Link
-						href={`/app/${organizationSlug}/crews/${row.original.id}`}
+						href={`/app/${organizationSlug}/people/${row.original.id}`}
 						className="font-medium text-foreground hover:underline"
 					>
 						{row.original.name}
@@ -209,26 +245,73 @@ export function CrewsTableClient({ organizationSlug }: CrewsTableClientProps) {
 				enableHiding: false,
 			},
 			{
+				id: "workerType",
+				accessorKey: "workerType",
+				header: ({ column }) => (
+					<DataTableColumnHeader column={column} title="Type" />
+				),
+				cell: ({ row }) => (
+					<Badge variant="outline">
+						{getWorkerTypeLabel(row.original.workerType)}
+					</Badge>
+				),
+				meta: {
+					label: "Type",
+					width: 120,
+					minWidth: 120,
+				},
+				enableSorting: false,
+				enableHiding: true,
+			},
+			{
+				id: "hasAppAccess",
+				accessorKey: "hasAppAccess",
+				header: ({ column }) => (
+					<DataTableColumnHeader column={column} title="Access" />
+				),
+				cell: ({ row }) => (
+					<Badge
+						variant={
+							row.original.hasAppAccess ? "default" : "secondary"
+						}
+						className="gap-1"
+					>
+						<UserCheckIcon className="h-3.5 w-3.5" />
+						{row.original.hasAppAccess ? "Has Access" : "No Access"}
+					</Badge>
+				),
+				meta: {
+					label: "Access",
+					width: 130,
+					minWidth: 130,
+				},
+				enableSorting: false,
+				enableHiding: true,
+			},
+			{
 				id: "displayRoles",
 				accessorKey: "displayRoles",
 				header: ({ column }) => (
-					<DataTableColumnHeader column={column} title="Roles" />
+					<DataTableColumnHeader column={column} title="Org Roles" />
 				),
-				cell: ({ row }) => (
-					<div className="flex flex-wrap gap-1">
-						{row.original.displayRoles.map((role) => (
-							<Badge
-								key={role}
-								variant="secondary"
-								className="capitalize"
-							>
-								{role.replace(/_/g, " ")}
-							</Badge>
-						))}
-					</div>
-				),
+				cell: ({ row }) =>
+					row.original.memberRoles.length > 0 ? (
+						<div className="flex flex-wrap gap-1">
+							{row.original.memberRoles.map((role) => (
+								<Badge
+									key={role}
+									variant="secondary"
+									className="capitalize"
+								>
+									{role.replace(/_/g, " ")}
+								</Badge>
+							))}
+						</div>
+					) : (
+						<span className="text-muted-foreground">-</span>
+					),
 				meta: {
-					label: "Roles",
+					label: "Org Roles",
 					width: 180,
 					minWidth: 180,
 				},
@@ -394,17 +477,41 @@ export function CrewsTableClient({ organizationSlug }: CrewsTableClientProps) {
 						<div className="flex flex-col items-center gap-2">
 							<UserIcon className="h-12 w-12 text-muted-foreground/50" />
 							<p className="text-muted-foreground">
-								No crew members found
+								No people found
 							</p>
 							<OpenCrewCreateSheet
 								variant="outline"
 								size="sm"
-								label="Add your first crew member"
+								label="Add your first contractual person"
 							/>
+							{activeWorkerType === "internal" &&
+								organizationId && (
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={() =>
+											setInviteDialogOpen(true)
+										}
+									>
+										Invite your first member
+									</Button>
+								)}
 						</div>
 					}
 				/>
 			</SortProvider>
+
+			{organizationId && (
+				<InviteMemberDialog
+					organizationId={organizationId}
+					open={inviteDialogOpen}
+					onOpenChange={setInviteDialogOpen}
+					defaultEmail={crewToInvite?.email ?? ""}
+					title="Invite to App"
+					description="Give this person workspace access. Their People profile will stay linked."
+					submitLabel="Send invite"
+				/>
+			)}
 
 			{/* Delete confirmation dialog */}
 			<AlertDialog
@@ -413,7 +520,7 @@ export function CrewsTableClient({ organizationSlug }: CrewsTableClientProps) {
 			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Delete crew member?</AlertDialogTitle>
+						<AlertDialogTitle>Delete person?</AlertDialogTitle>
 						<AlertDialogDescription>
 							This will permanently delete "{crewToDelete?.name}".
 							This action cannot be undone.

@@ -21,6 +21,9 @@ import {
 	searchSchema,
 } from "./common";
 
+export const crewWorkerTypeValues = ["internal", "freelancer"] as const;
+export const crewAccessFilterValues = ["true", "false"] as const;
+
 // ============================================================================
 // CREW SCHEMA
 // ============================================================================
@@ -35,6 +38,8 @@ export const crewSchema = z.object({
 	name: z.string(),
 	email: z.string().nullable(),
 	phoneNumber: z.string().nullable(),
+	workerType: z.enum(crewWorkerTypeValues),
+	hasAppAccess: z.boolean(),
 	memberRoles: z.array(z.string()),
 	displayRoles: z.array(z.string()),
 	isFreelancer: z.boolean(),
@@ -58,6 +63,8 @@ export type Crew = z.infer<typeof crewSchema>;
 export const crewMinimalSchema = z.object({
 	id: idSchema,
 	name: z.string(),
+	workerType: z.enum(crewWorkerTypeValues),
+	hasAppAccess: z.boolean(),
 	displayRoles: z.array(z.string()),
 	isFreelancer: z.boolean(),
 	specializations: z.array(z.string()),
@@ -76,6 +83,18 @@ export const listCrewsInputSchema = z
 	.object({
 		status: z.union([z.string(), z.array(z.string())]).nullish(),
 		specializations: z.union([z.string(), z.array(z.string())]).nullish(),
+		workerType: z
+			.union([
+				z.enum(crewWorkerTypeValues),
+				z.array(z.enum(crewWorkerTypeValues)),
+			])
+			.nullish(),
+		hasAppAccess: z
+			.union([
+				z.enum(crewAccessFilterValues),
+				z.array(z.enum(crewAccessFilterValues)),
+			])
+			.nullish(),
 	})
 	.merge(paginationSchema)
 	.merge(searchSchema)

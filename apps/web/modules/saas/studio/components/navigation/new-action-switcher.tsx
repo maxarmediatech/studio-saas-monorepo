@@ -24,12 +24,14 @@ interface NewActionSwitcherProps {
 	studioSlug: string;
 	caps: HeaderCapabilities;
 	variant?: "header" | "sidebar";
+	compact?: boolean;
 }
 
 export function NewActionSwitcher({
 	studioSlug,
 	caps,
 	variant = "header",
+	compact = false,
 }: NewActionSwitcherProps) {
 	const basePath = `/app/${studioSlug}`;
 	const isSidebar = variant === "sidebar";
@@ -68,7 +70,9 @@ export function NewActionSwitcher({
 					className={
 						isSidebar
 							? "h-8 w-full justify-start gap-2.5 rounded-lg py-2! pl-1.75! pr-2! text-sm font-normal text-neutral-700 hover:bg-black/5 active:bg-black/10"
-							: "w-25 justify-between"
+							: compact
+								? "h-10 gap-1.5 rounded-xl px-3 text-sm font-medium"
+								: "w-25 justify-between"
 					}
 				>
 					{isSidebar ? (

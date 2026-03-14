@@ -282,8 +282,8 @@ export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 
 	return (
 		<div className="py-4">
-			<div className="mb-4 flex items-center justify-between">
-				<div className="flex items-center gap-2">
+			<div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+				<div className="flex flex-wrap items-center gap-x-2 gap-y-1">
 					<h3 className="text-sm font-semibold text-muted-foreground">
 						Your quickstart guide
 					</h3>
@@ -295,19 +295,19 @@ export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 					<button
 						type="button"
 						onClick={handleDismiss}
-						className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+						className="self-start text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:self-auto"
 					>
 						Hide this
 					</button>
 				) : null}
 			</div>
 
-			<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+			<div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2">
 				{GUIDE_ITEMS.map((item) => {
 					return (
 						<div
 							key={item.id}
-							className="flex flex-col p-4 bg-muted/30 rounded-xl border border-border/50"
+							className="flex min-h-44 flex-col rounded-xl border border-border/50 bg-muted/30 p-4 sm:min-h-48"
 						>
 							<div
 								className={cn(
@@ -327,7 +327,7 @@ export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 							<h4 className="text-sm font-medium text-foreground mb-1">
 								{item.title}
 							</h4>
-							<p className="text-xs text-muted-foreground mb-3">
+							<p className="mb-3 text-xs leading-5 text-muted-foreground">
 								{item.description}
 							</p>
 
@@ -341,7 +341,7 @@ export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 									variant="ghost"
 									size="sm"
 									className={cn(
-										"mt-auto h-8 w-fit justify-start rounded-md px-2.5 text-blue-600 hover:bg-blue-100/50 hover:text-blue-600",
+										"mt-auto h-9 w-full justify-start rounded-md px-2.5 text-blue-600 hover:bg-blue-100/50 hover:text-blue-600 sm:w-fit",
 									)}
 								>
 									<Link href={item.cta.link}>
@@ -356,7 +356,7 @@ export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 									onClick={item.cta.onClick}
 									disabled={item.cta.isPending}
 									className={cn(
-										"mt-auto h-8 w-fit justify-start rounded-md px-2.5 text-blue-600 hover:bg-blue-100/50 hover:text-blue-600",
+										"mt-auto h-9 w-full justify-start rounded-md px-2.5 text-blue-600 hover:bg-blue-100/50 hover:text-blue-600 sm:w-fit",
 									)}
 								>
 									{item.cta.text}

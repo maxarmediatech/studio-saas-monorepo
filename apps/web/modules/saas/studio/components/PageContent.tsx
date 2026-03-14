@@ -77,7 +77,7 @@ export function PageContent({
 			{/* Content area - scrollable */}
 			<div
 				className={cn(
-					"min-h-0 flex-1 overflow-y-auto pt-4 lg:pt-6",
+					"min-h-0 flex-1 overflow-y-auto pb-[calc(env(safe-area-inset-bottom)+4.5rem)] pt-4 md:pb-0 lg:pt-6",
 					contentClassName,
 				)}
 			>
