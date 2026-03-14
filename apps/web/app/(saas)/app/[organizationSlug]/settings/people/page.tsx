@@ -33,10 +33,10 @@ export default async function PeopleSettingsPage({
 		return notFound();
 	}
 
-	const activeWorkerType = Array.isArray(resolvedSearchParams.workerType)
-		? resolvedSearchParams.workerType[0]
-		: resolvedSearchParams.workerType;
-	const showMembersView = activeWorkerType === "internal";
+	const activeView = Array.isArray(resolvedSearchParams.view)
+		? resolvedSearchParams.view[0]
+		: resolvedSearchParams.view;
+	const showMembersView = activeView === "members";
 
 	return (
 		<div className="px-4 pb-8 pt-6 lg:px-6">

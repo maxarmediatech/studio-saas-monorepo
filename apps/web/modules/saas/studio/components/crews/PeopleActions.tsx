@@ -1,53 +1,27 @@
 "use client";
 
 import { Button } from "@repo/ui/components/button";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@repo/ui/components/dropdown-menu";
 import { InviteMemberDialog } from "@saas/organizations/components/InviteMemberDialog";
 import { useCrewParams } from "@saas/studio/hooks/params/use-crew-params";
-import {
-	ChevronDownIcon,
-	PlusIcon,
-	UserPlusIcon,
-	UsersIcon,
-} from "lucide-react";
+import { PlusIcon, UserPlusIcon } from "lucide-react";
 import { useState } from "react";
 
-export function PeopleActions({
-	organizationId,
-	buttonLabel = "Add Person",
-}: {
-	organizationId: string;
-	buttonLabel?: string;
-}) {
+export function PeopleActions({ organizationId }: { organizationId: string }) {
 	const { openCreate } = useCrewParams();
 	const [inviteOpen, setInviteOpen] = useState(false);
 
 	return (
 		<>
-			<DropdownMenu>
-				<DropdownMenuTrigger asChild>
-					<Button size="sm">
-						<PlusIcon className="mr-2 h-4 w-4" />
-						{buttonLabel}
-						<ChevronDownIcon className="ml-2 h-4 w-4" />
-					</Button>
-				</DropdownMenuTrigger>
-				<DropdownMenuContent align="end">
-					<DropdownMenuItem onClick={() => setInviteOpen(true)}>
-						<UserPlusIcon className="mr-2 h-4 w-4" />
-						Invite Member
-					</DropdownMenuItem>
-					<DropdownMenuItem onClick={openCreate}>
-						<UsersIcon className="mr-2 h-4 w-4" />
-						Add Contractual Person
-					</DropdownMenuItem>
-				</DropdownMenuContent>
-			</DropdownMenu>
+			<div className="flex items-center gap-2">
+				<Button size="sm" onClick={() => setInviteOpen(true)}>
+					<UserPlusIcon className="mr-2 h-4 w-4" />
+					Invite Member
+				</Button>
+				<Button size="sm" variant="outline" onClick={openCreate}>
+					<PlusIcon className="mr-2 h-4 w-4" />
+					Add Crew
+				</Button>
+			</div>
 
 			<InviteMemberDialog
 				organizationId={organizationId}
