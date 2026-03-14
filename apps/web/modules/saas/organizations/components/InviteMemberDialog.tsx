@@ -111,9 +111,7 @@ export function InviteMemberDialog({
 			<DialogContent className="sm:max-w-[480px]">
 				<DialogHeader>
 					<DialogTitle>
-						{t(
-							"organizations.settings.members.inviteMember.title",
-						)}
+						{t("organizations.settings.members.inviteMember.title")}
 					</DialogTitle>
 					<DialogDescription>
 						{t(
@@ -158,6 +156,7 @@ export function InviteMemberDialog({
 										<OrganizationRoleSelect
 											value={field.value}
 											onSelect={field.onChange}
+											excludeOwnerRole
 										/>
 									</FormControl>
 								</FormItem>
