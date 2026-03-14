@@ -4,6 +4,7 @@ import {
 	db,
 	eq,
 	getOrganizationWithPurchasesAndMembersCount,
+	ilike,
 	isNull,
 	users,
 } from "@repo/database";
@@ -61,6 +62,38 @@ export async function ensureCrewForMember({
 			return;
 		}
 
+		if (user.email) {
+			const matchingCrew = await db.query.crews.findFirst({
+				where: and(
+					eq(crews.organizationId, organizationId),
+					ilike(crews.email, user.email),
+					isNull(crews.userId),
+					isNull(crews.deletedAt),
+				),
+			});
+
+			if (matchingCrew) {
+				await db
+					.update(crews)
+					.set({
+						userId: user.id,
+						email: user.email,
+						updatedBy: user.id,
+						updatedAt: new Date(),
+					})
+					.where(eq(crews.id, matchingCrew.id));
+
+				logger.info("crew.auto_create.linked_existing", {
+					memberId,
+					userId,
+					organizationId,
+					crewId: matchingCrew.id,
+					source,
+				});
+				return;
+			}
+		}
+
 		const [created] = await db
 			.insert(crews)
 			.values({
@@ -69,6 +102,7 @@ export async function ensureCrewForMember({
 				name: user.name,
 				email: user.email,
 				phoneNumber: null,
+				workerType: "internal",
 				status: "active",
 				dailyRate: null,
 				metadata: { autoCreated: true },

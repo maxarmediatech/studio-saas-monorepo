@@ -1,6 +1,6 @@
 import {
-	asc,
 	and,
+	asc,
 	count,
 	crews,
 	db,
@@ -15,15 +15,15 @@ import {
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
-import {
-	deriveCrewRoles,
-	extractSpecializations,
-} from "../lib/crew-presentation";
 import { createPaginationResponse } from "../../studio/schemas/common";
 import {
 	listCrewsInputSchema,
 	listCrewsOutputSchema,
 } from "../../studio/schemas/crew";
+import {
+	deriveCrewRoles,
+	extractSpecializations,
+} from "../lib/crew-presentation";
 
 export const listCrews = studioProtectedProcedure
 	.route({
@@ -42,6 +42,8 @@ export const listCrews = studioProtectedProcedure
 		const {
 			status,
 			specializations,
+			workerType,
+			hasAppAccess,
 			search,
 			sortBy,
 			sortDirection,
@@ -90,6 +92,34 @@ export const listCrews = studioProtectedProcedure
 			}
 		}
 
+		const workerTypeFilters = normalizeMultiValue(workerType);
+		if (workerTypeFilters) {
+			conditions.push(
+				inArray(
+					crews.workerType,
+					workerTypeFilters.filter(
+						(value): value is "internal" | "freelancer" =>
+							value === "internal" || value === "freelancer",
+					),
+				),
+			);
+		}
+
+		const accessFilters = normalizeMultiValue(hasAppAccess);
+		if (accessFilters?.length === 1) {
+			const membershipExists = sql`exists (
+				select 1
+				from ${members}
+				where ${members.organizationId} = ${crews.organizationId}
+					and ${members.userId} = ${crews.userId}
+			)`;
+			conditions.push(
+				accessFilters[0] === "true"
+					? membershipExists
+					: sql`not (${membershipExists})`,
+			);
+		}
+
 		if (search) {
 			conditions.push(ilike(crews.name, `%${search}%`));
 		}
@@ -120,6 +150,7 @@ export const listCrews = studioProtectedProcedure
 				name: crews.name,
 				email: crews.email,
 				phoneNumber: crews.phoneNumber,
+				workerType: crews.workerType,
 				status: crews.status,
 				dailyRate: crews.dailyRate,
 				metadata: crews.metadata,
@@ -140,17 +171,21 @@ export const listCrews = studioProtectedProcedure
 				),
 			)
 			.where(and(...conditions))
-			.orderBy(sortDirection === "asc" ? asc(orderColumn) : desc(orderColumn))
+			.orderBy(
+				sortDirection === "asc" ? asc(orderColumn) : desc(orderColumn),
+			)
 			.limit(limit)
 			.offset(offset);
 
 		return {
 			data: data.map((crew) => {
-				const metadata = crew.metadata as
-					| Record<string, unknown>
-					| null;
+				const metadata = crew.metadata as Record<
+					string,
+					unknown
+				> | null;
 				const roleMeta = deriveCrewRoles({
 					memberRole: crew.memberRole,
+					workerType: crew.workerType,
 					userId: crew.userId,
 				});
 				return {
@@ -160,6 +195,8 @@ export const listCrews = studioProtectedProcedure
 					name: crew.name,
 					email: crew.email,
 					phoneNumber: crew.phoneNumber,
+					workerType: roleMeta.workerType,
+					hasAppAccess: Boolean(crew.memberRole),
 					memberRoles: roleMeta.memberRoles,
 					displayRoles: roleMeta.displayRoles,
 					isFreelancer: roleMeta.isFreelancer,

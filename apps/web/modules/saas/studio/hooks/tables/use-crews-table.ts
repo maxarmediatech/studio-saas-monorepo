@@ -10,6 +10,8 @@ export interface CrewFilters {
 	search?: string | null;
 	status?: string[] | null;
 	specializations?: string[] | null;
+	workerType?: string[] | null;
+	hasAppAccess?: string[] | null;
 }
 
 /**
@@ -19,6 +21,8 @@ export interface CrewFilters {
 const crewFilterParsers = {
 	status: parseAsArrayOf(parseAsString, ","),
 	specializations: parseAsArrayOf(parseAsString, ","),
+	workerType: parseAsArrayOf(parseAsString, ","),
+	hasAppAccess: parseAsArrayOf(parseAsString, ","),
 };
 
 /**

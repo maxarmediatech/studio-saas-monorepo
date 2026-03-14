@@ -1,5 +1,8 @@
 import { normalizeRoles } from "@repo/auth/lib/permissions";
 
+export const crewWorkerTypes = ["internal", "freelancer"] as const;
+export type CrewWorkerType = (typeof crewWorkerTypes)[number];
+
 export function extractSpecializations(
 	metadata: Record<string, unknown> | null | undefined,
 ): string[] {
@@ -45,20 +48,39 @@ export function applySpecializationsToMetadata(
 
 export function deriveCrewRoles({
 	memberRole,
+	workerType,
 	userId,
 }: {
 	memberRole: string | null | undefined;
+	workerType: string | null | undefined;
 	userId: string | null | undefined;
 }) {
+	const normalizedWorkerType = normalizeCrewWorkerType(workerType, userId);
 	const memberRoles = normalizeRoles(memberRole);
-	const isFreelancer = !userId || memberRoles.length === 0;
-	const displayRoles = isFreelancer ? ["freelancer"] : memberRoles;
-	const primaryRole = displayRoles[0] ?? "freelancer";
+	const isFreelancer = normalizedWorkerType === "freelancer";
+	const displayRoles = isFreelancer
+		? ["freelancer"]
+		: memberRoles.length > 0
+			? memberRoles
+			: ["internal"];
+	const primaryRole = displayRoles[0] ?? normalizedWorkerType;
 
 	return {
+		workerType: normalizedWorkerType,
 		memberRoles,
 		displayRoles,
 		isFreelancer,
 		primaryRole,
 	};
+}
+
+export function normalizeCrewWorkerType(
+	workerType: string | null | undefined,
+	userId?: string | null | undefined,
+): CrewWorkerType {
+	if (workerType === "internal" || workerType === "freelancer") {
+		return workerType;
+	}
+
+	return userId ? "internal" : "freelancer";
 }

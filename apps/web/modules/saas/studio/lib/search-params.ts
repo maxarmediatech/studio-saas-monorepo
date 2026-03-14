@@ -102,7 +102,8 @@ export const crewSearchParamsCache = createSearchParamsCache({
 	// Filters
 	search: parseAsString,
 	status: parseAsArrayOf(parseAsString, ",").withDefault([]),
-	role: parseAsArrayOf(parseAsString, ",").withDefault([]),
+	workerType: parseAsArrayOf(parseAsString, ",").withDefault([]),
+	hasAppAccess: parseAsArrayOf(parseAsString, ",").withDefault([]),
 
 	// Sorting
 	sort: sortStateParser,

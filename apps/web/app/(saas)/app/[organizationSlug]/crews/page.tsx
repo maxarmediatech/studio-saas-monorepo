@@ -1,42 +1,33 @@
-import { getActiveOrganization } from "@saas/auth/lib/server";
-import { CrewsFilters, CrewsTableSkeleton } from "@saas/studio";
-import { CrewsTable } from "@saas/studio/components/crews/index.server";
-import { notFound } from "next/navigation";
-import { Suspense } from "react";
+import { redirect } from "next/navigation";
 
 type Props = {
 	params: Promise<{ organizationSlug: string }>;
 	searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export async function generateMetadata({ params }: Props) {
-	const { organizationSlug } = await params;
-	const organization = await getActiveOrganization(organizationSlug);
+function toQueryString(
+	searchParams: Record<string, string | string[] | undefined>,
+) {
+	const nextParams = new URLSearchParams();
 
-	return {
-		title: `Team | ${organization?.name ?? "Studio"}`,
-	};
-}
+	for (const [key, value] of Object.entries(searchParams)) {
+		if (typeof value === "string") {
+			nextParams.set(key, value);
+			continue;
+		}
 
-export default async function CrewsPage({ params, searchParams }: Props) {
-	const { organizationSlug } = await params;
-
-	const organization = await getActiveOrganization(organizationSlug);
-
-	if (!organization) {
-		return notFound();
+		for (const entry of value ?? []) {
+			nextParams.append(key, entry);
+		}
 	}
 
-	return (
-		<div className="space-y-4">
-			<CrewsFilters />
+	const query = nextParams.toString();
+	return query ? `?${query}` : "";
+}
 
-			<Suspense fallback={<CrewsTableSkeleton />}>
-				<CrewsTable
-					organizationSlug={organizationSlug}
-					searchParams={searchParams}
-				/>
-			</Suspense>
-		</div>
+export default async function LegacyCrewsPage({ params, searchParams }: Props) {
+	const { organizationSlug } = await params;
+	redirect(
+		`/app/${organizationSlug}/people${toQueryString(await searchParams)}`,
 	);
 }

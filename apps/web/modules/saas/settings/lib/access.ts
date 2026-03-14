@@ -8,6 +8,7 @@ export type SettingsRouteKey =
 	| "profile"
 	| "security"
 	| "accountDangerZone"
+	| "people"
 	| "members"
 	| "invitations"
 	| "teams"
@@ -54,6 +55,9 @@ export const settingsRouteAccess: Record<
 	profile: undefined,
 	security: undefined,
 	accountDangerZone: undefined,
+	people: {
+		rolesAny: SETTINGS_ADMIN_ROLES,
+	},
 	members: {
 		rolesAny: SETTINGS_ADMIN_ROLES,
 	},
@@ -125,7 +129,7 @@ export function getSettingsStandalonePages(
 	basePath: string,
 ): SettingsStandalonePage[] {
 	return [
-		{ key: "members", label: "Members", href: `${basePath}/members` },
+		{ key: "people", label: "People", href: `${basePath}/people` },
 		{
 			key: "invitations",
 			label: "Invitations",

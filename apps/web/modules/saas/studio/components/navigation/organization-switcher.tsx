@@ -209,7 +209,7 @@ export function OrganizationSwitcher({
 				<div className="p-1">
 					<DropdownMenuItem asChild className="cursor-pointer">
 						<Link
-							href={`/app/${studioSlug}/settings/members`}
+							href={`/app/${studioSlug}/settings/invitations`}
 							className="flex items-center gap-2 rounded-lg px-2 py-2"
 						>
 							<UserPlus className="size-4 text-neutral-500" />

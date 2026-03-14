@@ -1,38 +1,10 @@
-import { getActiveOrganization } from "@saas/auth/lib/server";
-import { requireSettingsRouteAccess } from "@saas/settings/lib/server-access";
-import { notFound } from "next/navigation";
-import { MembersPageClient } from "./members-page-client";
+import { redirect } from "next/navigation";
 
 type Props = {
 	params: Promise<{ organizationSlug: string }>;
 };
 
-export async function generateMetadata({ params }: Props) {
+export default async function LegacyMembersSettingsPage({ params }: Props) {
 	const { organizationSlug } = await params;
-	const organization = await getActiveOrganization(organizationSlug);
-
-	return {
-		title: `Members | ${organization?.name ?? "Studio"}`,
-	};
-}
-
-export default async function MembersSettingsPage({ params }: Props) {
-	const { organizationSlug } = await params;
-	const context = await requireSettingsRouteAccess(
-		organizationSlug,
-		"members",
-	);
-
-	if (!context) {
-		return notFound();
-	}
-
-	return (
-		<div className="px-4 pt-6 pb-8 lg:px-6">
-			<MembersPageClient
-				organizationId={context.organization.id}
-				canManage
-			/>
-		</div>
-	);
+	redirect(`/app/${organizationSlug}/settings/people`);
 }

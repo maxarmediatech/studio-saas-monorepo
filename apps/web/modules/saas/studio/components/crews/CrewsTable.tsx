@@ -25,6 +25,14 @@ export async function CrewsTable({
 		sortBy: params.sortBy,
 		sortDirection: params.sortDirection,
 	});
+	const workerType = params.workerType.filter(
+		(value): value is "internal" | "freelancer" =>
+			value === "internal" || value === "freelancer",
+	);
+	const hasAppAccess = params.hasAppAccess.filter(
+		(value): value is "true" | "false" =>
+			value === "true" || value === "false",
+	);
 
 	// Build query input from parsed params
 	const input = {
@@ -32,7 +40,8 @@ export async function CrewsTable({
 		limit: params.limit,
 		search: params.search ?? undefined,
 		status: params.status ?? undefined,
-		role: params.role ?? undefined,
+		workerType: workerType.length > 0 ? workerType : undefined,
+		hasAppAccess: hasAppAccess.length > 0 ? hasAppAccess : undefined,
 		sortBy,
 		sortDirection,
 		includeDeleted: false,

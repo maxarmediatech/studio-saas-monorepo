@@ -24,7 +24,7 @@ export function CrewCreateSheet() {
 	const createMutation = useMutation({
 		...crewsMutations.create(),
 		onSuccess: () => {
-			toast.success("Crew member added successfully");
+			toast.success("Freelancer added successfully");
 			// Use ORPC's key generator to match the booking form's query keys
 			queryClient.invalidateQueries({
 				queryKey: orpc.crews.key(),
@@ -35,7 +35,7 @@ export function CrewCreateSheet() {
 			close();
 		},
 		onError: (error) => {
-			toast.error(error.message || "Failed to add crew member");
+			toast.error(error.message || "Failed to add freelancer");
 		},
 	});
 
@@ -63,7 +63,7 @@ export function CrewCreateSheet() {
 							"shadow-[0_4px_12px_-4px_rgba(0,0,0,0.15)]",
 					)}
 				>
-					<SheetTitle className="text-xl">Add Crew Member</SheetTitle>
+					<SheetTitle className="text-xl">Add Freelancer</SheetTitle>
 				</SheetHeader>
 				<div className="flex-1 min-h-0">
 					<CrewForm
