@@ -1,6 +1,6 @@
 "use client";
 
-import { CrewsFilters, PeopleWorkerTypeTabs } from "@saas/studio";
+import { CrewsFilters } from "@saas/studio";
 import { CrewsTableClient } from "@saas/studio/components/crews/CrewsTableClient";
 import { PeopleActions } from "@saas/studio/components/crews/PeopleActions";
 import { SettingsHeaderPortal } from "../_components/settings-header-portal";
@@ -21,7 +21,6 @@ export function PeoplePageClient({
 			</SettingsHeaderPortal>
 
 			<div className="space-y-4">
-				<PeopleWorkerTypeTabs />
 				<CrewsFilters />
 				<CrewsTableClient
 					organizationId={organizationId}

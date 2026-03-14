@@ -31,7 +31,7 @@ export function EmptyDashboard({ organizationSlug }: EmptyDashboardProps) {
 		},
 		{
 			title: "Add People",
-			description: "Set up internal teammates and freelancers",
+			description: "Set up members and contractual people",
 			icon: CameraIcon,
 			href: `/app/${organizationSlug}/people`,
 			color: "text-purple-500",

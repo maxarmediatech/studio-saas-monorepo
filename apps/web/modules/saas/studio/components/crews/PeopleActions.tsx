@@ -40,11 +40,11 @@ export function PeopleActions({
 				<DropdownMenuContent align="end">
 					<DropdownMenuItem onClick={() => setInviteOpen(true)}>
 						<UserPlusIcon className="mr-2 h-4 w-4" />
-						Invite Internal Member
+						Invite Member
 					</DropdownMenuItem>
 					<DropdownMenuItem onClick={openCreate}>
 						<UsersIcon className="mr-2 h-4 w-4" />
-						Add Freelancer
+						Add Contractual Person
 					</DropdownMenuItem>
 				</DropdownMenuContent>
 			</DropdownMenu>
@@ -53,8 +53,8 @@ export function PeopleActions({
 				organizationId={organizationId}
 				open={inviteOpen}
 				onOpenChange={setInviteOpen}
-				title="Invite internal member"
-				description="Invite an internal teammate. They will appear in People after they accept."
+				title="Invite member"
+				description="Invite a member. They will appear in People after they accept."
 				submitLabel="Send invite"
 			/>
 		</>

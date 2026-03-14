@@ -12,6 +12,7 @@ import {
 	AlertDialogTitle,
 } from "@repo/ui/components/alert-dialog";
 import { Badge } from "@repo/ui/components/badge";
+import { Button } from "@repo/ui/components/button";
 import { InviteMemberDialog } from "@saas/organizations/components/InviteMemberDialog";
 import {
 	createSelectColumn,
@@ -32,6 +33,7 @@ import {
 	crewsApi,
 	crewsMutations,
 } from "@saas/studio/lib/api";
+import { getWorkerTypeLabel } from "@saas/studio/lib/people";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -100,6 +102,7 @@ export function CrewsTableClient({
 		(value): value is "internal" | "freelancer" =>
 			value === "internal" || value === "freelancer",
 	);
+	const activeWorkerType = workerType?.[0] ?? "all";
 	const hasAppAccess = filters.hasAppAccess?.filter(
 		(value): value is "true" | "false" =>
 			value === "true" || value === "false",
@@ -248,8 +251,8 @@ export function CrewsTableClient({
 					<DataTableColumnHeader column={column} title="Type" />
 				),
 				cell: ({ row }) => (
-					<Badge variant="outline" className="capitalize">
-						{row.original.workerType}
+					<Badge variant="outline">
+						{getWorkerTypeLabel(row.original.workerType)}
 					</Badge>
 				),
 				meta: {
@@ -479,8 +482,20 @@ export function CrewsTableClient({
 							<OpenCrewCreateSheet
 								variant="outline"
 								size="sm"
-								label="Add your first freelancer"
+								label="Add your first contractual person"
 							/>
+							{activeWorkerType === "internal" &&
+								organizationId && (
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={() =>
+											setInviteDialogOpen(true)
+										}
+									>
+										Invite your first member
+									</Button>
+								)}
 						</div>
 					}
 				/>

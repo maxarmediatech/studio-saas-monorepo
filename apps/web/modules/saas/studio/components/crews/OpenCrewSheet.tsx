@@ -13,7 +13,7 @@ interface OpenCrewCreateSheetProps extends Omit<ButtonProps, "onClick"> {
 }
 
 export function OpenCrewCreateSheet({
-	label = "Add Freelancer",
+	label = "Add Contractual Person",
 	showIcon = true,
 	children,
 	...props

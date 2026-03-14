@@ -12,6 +12,7 @@ import {
 	shootsApi,
 	tasksApi,
 } from "@saas/studio/lib/api";
+import { getWorkerTypeLabel } from "@saas/studio/lib/people";
 import { UserAvatar } from "@shared/components/UserAvatar";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -210,8 +211,8 @@ export default function CrewDetailPage() {
 							</Badge>
 						</div>
 						<div className="mt-2 flex flex-wrap items-center gap-2 text-muted-foreground">
-							<Badge variant="outline" className="capitalize">
-								{crew.workerType}
+							<Badge variant="outline">
+								{getWorkerTypeLabel(crew.workerType)}
 							</Badge>
 							<Badge
 								variant={

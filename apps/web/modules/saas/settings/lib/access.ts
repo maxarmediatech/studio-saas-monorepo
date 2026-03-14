@@ -23,6 +23,13 @@ export interface SettingsTabItem {
 	href: string;
 }
 
+export interface SettingsStandaloneTab {
+	label: string;
+	href: string;
+	searchParamKey?: string;
+	searchParamValue?: string;
+}
+
 export interface SettingsTabGroup {
 	id: string;
 	label: string;
@@ -33,6 +40,7 @@ export interface SettingsStandalonePage {
 	key: SettingsRouteKey;
 	label: string;
 	href: string;
+	tabs?: SettingsStandaloneTab[];
 }
 
 const SETTINGS_ADMIN_ROLES = ["owner", "admin"] as const;
@@ -129,7 +137,26 @@ export function getSettingsStandalonePages(
 	basePath: string,
 ): SettingsStandalonePage[] {
 	return [
-		{ key: "people", label: "People", href: `${basePath}/people` },
+		{
+			key: "people",
+			label: "People",
+			href: `${basePath}/people`,
+			tabs: [
+				{ label: "All", href: `${basePath}/people` },
+				{
+					label: "Members",
+					href: `${basePath}/people?workerType=internal`,
+					searchParamKey: "workerType",
+					searchParamValue: "internal",
+				},
+				{
+					label: "Contractual",
+					href: `${basePath}/people?workerType=freelancer`,
+					searchParamKey: "workerType",
+					searchParamValue: "freelancer",
+				},
+			],
+		},
 		{
 			key: "invitations",
 			label: "Invitations",
