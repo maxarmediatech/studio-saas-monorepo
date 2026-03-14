@@ -464,8 +464,15 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							id: "members",
 							label: "Members",
 							path: url("/settings/members"),
-							icon: "Users",
+							icon: "User",
 							permission: settingsRouteAccess.members,
+						},
+						{
+							id: "invitations",
+							label: "Invitations",
+							path: url("/settings/invitations"),
+							icon: "Mail",
+							permission: settingsRouteAccess.invitations,
 						},
 						{
 							id: "teams",

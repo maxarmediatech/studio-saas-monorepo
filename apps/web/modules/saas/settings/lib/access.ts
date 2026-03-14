@@ -1,6 +1,6 @@
 import type { CustomRolePermissions } from "@repo/auth/lib/permissions";
-import type { NavPermissionCheck } from "@saas/studio/lib/navigation/types";
 import { matchesNavPermission } from "@saas/studio/lib/navigation/access";
+import type { NavPermissionCheck } from "@saas/studio/lib/navigation/types";
 
 export type SettingsRouteKey =
 	| "general"
@@ -98,22 +98,14 @@ export function getSettingsTabGroups(basePath: string): SettingsTabGroup[] {
 			],
 		},
 		{
-			id: "members",
-			label: "Members",
-			tabs: [
-				{ key: "members", label: "Members", href: `${basePath}/members` },
-				{
-					key: "invitations",
-					label: "Invitations",
-					href: `${basePath}/invitations`,
-				},
-			],
-		},
-		{
 			id: "account",
 			label: "Account",
 			tabs: [
-				{ key: "profile", label: "Profile", href: `${basePath}/profile` },
+				{
+					key: "profile",
+					label: "Profile",
+					href: `${basePath}/profile`,
+				},
 				{
 					key: "security",
 					label: "Security",
@@ -133,6 +125,13 @@ export function getSettingsStandalonePages(
 	basePath: string,
 ): SettingsStandalonePage[] {
 	return [
+		{ key: "members", label: "Members", href: `${basePath}/members` },
+		{
+			key: "invitations",
+			label: "Invitations",
+			href: `${basePath}/invitations`,
+		},
+		{ key: "teams", label: "Teams", href: `${basePath}/teams` },
 		{ key: "roles", label: "Access Control", href: `${basePath}/roles` },
 		{
 			key: "integrations",
@@ -145,7 +144,6 @@ export function getSettingsStandalonePages(
 			label: "Notifications",
 			href: `${basePath}/notifications`,
 		},
-		{ key: "teams", label: "Teams", href: `${basePath}/teams` },
 	];
 }
 
@@ -174,10 +172,6 @@ export function getVisibleSettingsStandalonePages(
 	customRolePermissions?: CustomRolePermissions,
 ): SettingsStandalonePage[] {
 	return getSettingsStandalonePages(basePath).filter((page) =>
-		canAccessSettingsRoute(
-			page.key,
-			userRole,
-			customRolePermissions,
-		),
+		canAccessSettingsRoute(page.key, userRole, customRolePermissions),
 	);
 }

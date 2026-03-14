@@ -1,7 +1,7 @@
 import { getActiveOrganization } from "@saas/auth/lib/server";
-import { OrganizationMembersBlock } from "@saas/organizations/components/OrganizationMembersBlock";
 import { requireSettingsRouteAccess } from "@saas/settings/lib/server-access";
 import { notFound } from "next/navigation";
+import { MembersPageClient } from "./members-page-client";
 
 type Props = {
 	params: Promise<{ organizationSlug: string }>;
@@ -29,7 +29,10 @@ export default async function MembersSettingsPage({ params }: Props) {
 
 	return (
 		<div className="px-4 pt-6 pb-8 lg:px-6">
-			<OrganizationMembersBlock organizationId={context.organization.id} />
+			<MembersPageClient
+				organizationId={context.organization.id}
+				canManage
+			/>
 		</div>
 	);
 }
