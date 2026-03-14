@@ -32,7 +32,7 @@ export default function BookingsLayout({ params, children }: Props) {
 		<PageContent
 			title="Bookings"
 			controls={
-				<Button asChild size="sm">
+				<Button asChild size="sm" className="hidden md:inline-flex">
 					<Link href={`${baseRoute}/new/details`}>
 						<PlusIcon className="mr-2 h-4 w-4" />
 						New Booking
