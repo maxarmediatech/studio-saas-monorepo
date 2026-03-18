@@ -381,48 +381,47 @@ export function PermissionMatrixPanel({
 
 				<div className="space-y-2">
 					<Label>Permissions</Label>
-					<ScrollArea className="h-[520px] rounded-md border">
-						<div className="p-4">
-							<div className="min-w-[900px] overflow-auto">
-								<table className="w-full text-sm">
-									<thead>
-										<tr className="border-b">
-											<th className="pb-2 text-left font-medium">
-												Resource
-											</th>
-											{Object.keys(ACTION_LABELS).map(
-												(action) => (
-													<th
-														key={action}
-														className="pb-2 text-center font-medium"
-													>
-														<span className="text-xs">
-															{
-																ACTION_LABELS[
-																	action as AnyAction
-																]
-															}
-														</span>
-													</th>
-												),
-											)}
-										</tr>
-									</thead>
-									<tbody>
-										{permissionMatrix.map(
-											({ resource, actions }) => (
-												<tr
-													key={resource}
-													className="border-b last:border-0"
+					<ScrollArea
+						horizontal
+						className="h-[520px] rounded-md border"
+					>
+						<div className="min-w-full p-4">
+							<table className="min-w-[900px] w-full text-sm">
+								<thead>
+									<tr className="border-b">
+										<th className="pb-2 text-left font-medium">
+											Resource
+										</th>
+										{Object.keys(ACTION_LABELS).map(
+											(action) => (
+												<th
+													key={action}
+													className="pb-2 text-center font-medium"
 												>
-													<td className="py-2 font-medium">
-														{getResourceLabel(
-															resource,
-														)}
-													</td>
-													{Object.keys(
-														ACTION_LABELS,
-													).map((action) => {
+													<span className="text-xs">
+														{
+															ACTION_LABELS[
+																action as AnyAction
+															]
+														}
+													</span>
+												</th>
+											),
+										)}
+									</tr>
+								</thead>
+								<tbody>
+									{permissionMatrix.map(
+										({ resource, actions }) => (
+											<tr
+												key={resource}
+												className="border-b last:border-0"
+											>
+												<td className="py-2 font-medium">
+													{getResourceLabel(resource)}
+												</td>
+												{Object.keys(ACTION_LABELS).map(
+													(action) => {
 														const isAvailable =
 															actions.includes(
 																action as AnyAction,
@@ -460,13 +459,13 @@ export function PermissionMatrixPanel({
 																/>
 															</td>
 														);
-													})}
-												</tr>
-											),
-										)}
-									</tbody>
-								</table>
-							</div>
+													},
+												)}
+											</tr>
+										),
+									)}
+								</tbody>
+							</table>
 						</div>
 					</ScrollArea>
 				</div>
