@@ -101,7 +101,7 @@ export function DeliverableForm({
 	onScrollChange,
 }: DeliverableFormProps) {
 	const [showDetails, setShowDetails] = useState(false);
-	const { bookingReadOrList } = useStudioCapabilities();
+	const { bookingReadOrReference } = useStudioCapabilities();
 
 	const form = useForm<DeliverableFormValues>({
 		resolver: zodResolver(deliverableFormSchema),
@@ -119,7 +119,7 @@ export function DeliverableForm({
 
 	const { data: bookingsData, isLoading: isLoadingBookings } = useQuery({
 		...bookingsApi.listMinimalOptions({}),
-		enabled: mode === "create" && bookingReadOrList,
+		enabled: mode === "create" && bookingReadOrReference,
 	});
 	const bookings = bookingsData?.data ?? [];
 

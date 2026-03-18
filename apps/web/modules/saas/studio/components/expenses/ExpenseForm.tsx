@@ -150,7 +150,7 @@ export function ExpenseForm({
 	const [isUploading, setIsUploading] = useState(false);
 	const [isDeleting, setIsDeleting] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
-	const { bookingReadOrList, shootReadOrList } = useStudioCapabilities();
+	const { bookingReadOrReference, shootReadOrList } = useStudioCapabilities();
 
 	const form = useForm<ExpenseFormValues>({
 		resolver: zodResolver(expenseFormSchema),
@@ -184,7 +184,7 @@ export function ExpenseForm({
 
 	const { data: bookingsData, isLoading: isLoadingBookings } = useQuery({
 		...bookingsApi.listMinimalOptions({}),
-		enabled: mode === "create" && bookingReadOrList,
+		enabled: mode === "create" && bookingReadOrReference,
 	});
 	const bookings = bookingsData?.data ?? [];
 

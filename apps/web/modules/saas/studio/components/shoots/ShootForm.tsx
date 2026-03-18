@@ -100,7 +100,7 @@ export function ShootForm({
 	onScrollChange,
 }: ShootFormProps) {
 	const [showNotes, setShowNotes] = useState(false);
-	const { bookingReadOrList } = useStudioCapabilities();
+	const { bookingReadOrReference } = useStudioCapabilities();
 	const { openCreate: openConfigCreate } = useConfigurationParams();
 
 	// ========================================================================
@@ -109,7 +109,7 @@ export function ShootForm({
 
 	const { data: bookingsData, isLoading: isLoadingBookings } = useQuery({
 		...bookingsApi.listMinimalOptions({}),
-		enabled: mode === "create" && bookingReadOrList,
+		enabled: mode === "create" && bookingReadOrReference,
 	});
 	const bookings = bookingsData?.data ?? [];
 

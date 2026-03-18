@@ -22,6 +22,7 @@ export interface HeaderCapabilities {
 	deliverableCreateOrUpdate: boolean;
 	taskCreateOrUpdate: boolean;
 	bookingReadOrList: boolean;
+	bookingReadOrReference: boolean;
 	shootReadOrList: boolean;
 	deliverableReadOrList: boolean;
 	taskReadOrList: boolean;
@@ -68,6 +69,12 @@ export function getCapabilities(
 			userRole,
 			"booking",
 			["read", "list"],
+			customRolePermissions,
+		),
+		bookingReadOrReference: any(
+			userRole,
+			"booking",
+			["read", "list", "reference"],
 			customRolePermissions,
 		),
 		shootReadOrList: any(
@@ -146,6 +153,7 @@ export function selectHeaderCaps(caps: HeaderCapabilities): HeaderCapabilities {
 		deliverableCreateOrUpdate: caps.deliverableCreateOrUpdate,
 		taskCreateOrUpdate: caps.taskCreateOrUpdate,
 		bookingReadOrList: caps.bookingReadOrList,
+		bookingReadOrReference: caps.bookingReadOrReference,
 		shootReadOrList: caps.shootReadOrList,
 		deliverableReadOrList: caps.deliverableReadOrList,
 		taskReadOrList: caps.taskReadOrList,

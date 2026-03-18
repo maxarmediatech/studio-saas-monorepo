@@ -18,7 +18,7 @@ import {
 export const statement = {
 	...defaultStatements,
 	dashboard: ["read"],
-	booking: ["create", "read", "update", "delete", "list"],
+	booking: ["create", "read", "update", "delete", "list", "reference"],
 	client: ["create", "read", "update", "delete", "list"],
 	shoot: ["create", "read", "update", "delete", "list", "assign"],
 	deliverable: [

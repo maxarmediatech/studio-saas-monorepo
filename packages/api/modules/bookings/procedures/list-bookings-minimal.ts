@@ -1,6 +1,6 @@
 import { and, bookings, db, eq, isNull, sql } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { requirePermission } from "../../studio/lib/permissions";
+import { requireAnyPermission } from "../../studio/lib/permissions";
 import {
 	listBookingsMinimalInputSchema,
 	listBookingsMinimalOutputSchema,
@@ -18,7 +18,10 @@ export const listBookingsMinimal = studioProtectedProcedure
 	.input(listBookingsMinimalInputSchema)
 	.output(listBookingsMinimalOutputSchema)
 	.handler(async ({ input, context }) => {
-		await requirePermission(context, "booking", "list");
+		await requireAnyPermission(context, [
+			{ resource: "booking", action: "list" },
+			{ resource: "booking", action: "reference" },
+		]);
 
 		const { status, search } = input;
 

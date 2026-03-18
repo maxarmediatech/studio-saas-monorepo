@@ -109,7 +109,7 @@ export function TaskForm({
 	isPending = false,
 	onScrollChange,
 }: TaskFormProps) {
-	const { bookingReadOrList } = useStudioCapabilities();
+	const { bookingReadOrReference } = useStudioCapabilities();
 
 	// ========================================================================
 	// Data Fetching
@@ -117,7 +117,7 @@ export function TaskForm({
 
 	const { data: bookingsData, isLoading: bookingsLoading } = useQuery({
 		...bookingsApi.listMinimalOptions({}),
-		enabled: mode === "create" && bookingReadOrList,
+		enabled: mode === "create" && bookingReadOrReference,
 	});
 	const bookings = bookingsData?.data ?? [];
 

@@ -110,7 +110,7 @@ export function PaymentForm({
 	onScrollChange,
 }: PaymentFormProps) {
 	const [showDetails, setShowDetails] = useState(false);
-	const { bookingReadOrList } = useStudioCapabilities();
+	const { bookingReadOrReference } = useStudioCapabilities();
 
 	// ========================================================================
 	// Data Fetching
@@ -118,7 +118,7 @@ export function PaymentForm({
 
 	const { data: bookingsData, isLoading: isLoadingBookings } = useQuery({
 		...bookingsApi.listMinimalOptions({}),
-		enabled: mode === "create" && bookingReadOrList,
+		enabled: mode === "create" && bookingReadOrReference,
 	});
 	const bookings = bookingsData?.data ?? [];
 

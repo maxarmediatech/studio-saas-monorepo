@@ -84,7 +84,7 @@ describe("verifyLinkEntityExists", () => {
 		);
 
 		expect(result).toBe(false);
-		expect(mocks.mockHasPermission).toHaveBeenCalledTimes(2);
+		expect(mocks.mockHasPermission).toHaveBeenCalledTimes(3);
 		expect(mocks.mockSelect).not.toHaveBeenCalled();
 	});
 
@@ -102,6 +102,24 @@ describe("verifyLinkEntityExists", () => {
 
 		expect(result).toBe(true);
 		expect(mocks.mockHasPermission).toHaveBeenCalledTimes(2);
+		expect(mocks.mockSelect).toHaveBeenCalledOnce();
+	});
+
+	it("accepts reference access for booking links", async () => {
+		mocks.mockHasPermission
+			.mockResolvedValueOnce(false)
+			.mockResolvedValueOnce(false)
+			.mockResolvedValueOnce(true);
+		mocks.mockLimit.mockResolvedValue([{ id: "booking_1" }]);
+
+		const result = await verifyLinkEntityExists(
+			"booking",
+			"booking_1",
+			context,
+		);
+
+		expect(result).toBe(true);
+		expect(mocks.mockHasPermission).toHaveBeenCalledTimes(3);
 		expect(mocks.mockSelect).toHaveBeenCalledOnce();
 	});
 

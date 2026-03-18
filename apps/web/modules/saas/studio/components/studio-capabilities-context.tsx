@@ -9,6 +9,7 @@ const EMPTY_CAPABILITIES: HeaderCapabilities = {
 	deliverableCreateOrUpdate: false,
 	taskCreateOrUpdate: false,
 	bookingReadOrList: false,
+	bookingReadOrReference: false,
 	shootReadOrList: false,
 	deliverableReadOrList: false,
 	taskReadOrList: false,

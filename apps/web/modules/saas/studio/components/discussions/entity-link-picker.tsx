@@ -95,7 +95,7 @@ export function EntityLinkPicker({
 	disabled = false,
 }: EntityLinkPickerProps) {
 	const {
-		bookingReadOrList,
+		bookingReadOrReference,
 		shootReadOrList,
 		deliverableReadOrList,
 		taskReadOrList,
@@ -107,7 +107,7 @@ export function EntityLinkPicker({
 			ENTITY_TYPES.filter((type) => {
 				switch (type) {
 					case "booking":
-						return bookingReadOrList;
+						return bookingReadOrReference;
 					case "shoot":
 						return shootReadOrList;
 					case "deliverable":
@@ -123,7 +123,7 @@ export function EntityLinkPicker({
 				}
 			}),
 		[
-			bookingReadOrList,
+			bookingReadOrReference,
 			deliverableReadOrList,
 			expenseReadOrReference,
 			paymentReadOrReference,
@@ -144,7 +144,7 @@ export function EntityLinkPicker({
 	const { data: bookingsData } = useQuery({
 		...bookingsApi.listMinimalOptions({}),
 		staleTime: 30000,
-		enabled: bookingReadOrList,
+		enabled: bookingReadOrReference,
 	});
 	const { data: shootsData } = useQuery({
 		...shootsApi.listMinimalOptions({}),

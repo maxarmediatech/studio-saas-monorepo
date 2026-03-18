@@ -26,7 +26,8 @@ async function hasLinkEntityPermission(
 		case "booking":
 			return (
 				(await hasPermission(context, "booking", "read")) ||
-				(await hasPermission(context, "booking", "list"))
+				(await hasPermission(context, "booking", "list")) ||
+				(await hasPermission(context, "booking", "reference"))
 			);
 		case "shoot":
 			return (

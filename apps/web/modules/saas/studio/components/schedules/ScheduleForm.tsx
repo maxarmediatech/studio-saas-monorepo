@@ -90,11 +90,12 @@ export function ScheduleForm({
 	onScrollChange,
 }: ScheduleFormProps) {
 	const [showNotes, setShowNotes] = useState(false);
-	const { bookingReadOrList } = useStudioCapabilities();
+	const { bookingReadOrList, bookingReadOrReference } =
+		useStudioCapabilities();
 
 	const { data: bookingsData, isLoading: isLoadingBookings } = useQuery({
 		...bookingsApi.listMinimalOptions({}),
-		enabled: mode === "create" && bookingReadOrList,
+		enabled: mode === "create" && bookingReadOrReference,
 	});
 	const bookings = bookingsData?.data ?? [];
 
