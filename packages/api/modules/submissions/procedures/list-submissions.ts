@@ -16,12 +16,12 @@ import {
 	users,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { requirePermission } from "../../studio/lib/permissions";
 import { createPaginationResponse } from "../../studio/schemas/common";
 import {
 	listSubmissionsInputSchema,
 	listSubmissionsOutputSchema,
 } from "../../studio/schemas/submission";
+import { assertListSubmissionsAccess } from "../lib/list-submissions-access";
 
 export const listSubmissions = studioProtectedProcedure
 	.route({
@@ -34,7 +34,7 @@ export const listSubmissions = studioProtectedProcedure
 	.input(listSubmissionsInputSchema)
 	.output(listSubmissionsOutputSchema)
 	.handler(async ({ input, context }) => {
-		await requirePermission(context, "review", "list");
+		await assertListSubmissionsAccess(input, context);
 
 		const {
 			page,
