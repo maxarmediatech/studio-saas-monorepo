@@ -271,17 +271,7 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 				{
 					id: "studio-team",
 					label: "Team",
-					items: [
-						{
-							id: "crew",
-							label: "People",
-							path: url("/people"),
-							icon: "Users",
-							permission: {
-								any: [{ resource: "crew", action: "list" }],
-							},
-						},
-					],
+					items: [],
 				},
 				{
 					id: "studio-setup",
