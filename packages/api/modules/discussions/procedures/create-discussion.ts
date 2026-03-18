@@ -24,7 +24,7 @@ export const createDiscussion = studioProtectedProcedure
 				const exists = await verifyLinkEntityExists(
 					link.entityType,
 					link.entityId,
-					context.organizationId,
+					context,
 				);
 				if (!exists) {
 					throw new ORPCError("BAD_REQUEST", {
@@ -40,7 +40,7 @@ export const createDiscussion = studioProtectedProcedure
 						content: string | null;
 						contentJson: unknown;
 						contentText: string;
-					}
+				  }
 				| undefined;
 
 			if (input.content || input.contentJson) {

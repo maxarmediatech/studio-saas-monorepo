@@ -19,7 +19,7 @@ export const addCheckinLink = studioProtectedProcedure
 		const exists = await verifyLinkEntityExists(
 			input.entityType,
 			input.entityId,
-			context.organizationId,
+			context,
 		);
 
 		if (!exists) {

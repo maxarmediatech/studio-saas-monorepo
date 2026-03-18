@@ -38,7 +38,7 @@ export const createCheckin = studioProtectedProcedure
 				const exists = await verifyLinkEntityExists(
 					link.entityType,
 					link.entityId,
-					context.organizationId,
+					context,
 				);
 				if (!exists) {
 					throw new ORPCError("BAD_REQUEST", {
