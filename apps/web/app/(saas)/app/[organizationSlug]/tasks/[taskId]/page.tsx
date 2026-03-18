@@ -4,6 +4,7 @@ import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { SubmissionCard } from "@saas/studio/components/shared";
+import { useStudioCapabilities } from "@saas/studio/components/studio-capabilities-context";
 import { useTaskParams } from "@saas/studio/hooks/params/use-task-params";
 import { submissionsApi, tasksApi } from "@saas/studio/lib/api";
 import type {
@@ -151,6 +152,8 @@ export default function TaskDetailPage() {
 		organizationSlug: string;
 		taskId: string;
 	}>();
+	const { bookingReadOrList, deliverableReadOrList } =
+		useStudioCapabilities();
 	const { openEdit } = useTaskParams();
 
 	const { data: taskData, isLoading: taskLoading } = useQuery(
@@ -249,24 +252,38 @@ export default function TaskDetailPage() {
 				<h1 className="text-2xl font-semibold">{task.name}</h1>
 				<div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
 					<span>in</span>
-					<Link
-						href={`/app/${params.organizationSlug}/bookings/${booking.id}`}
-						className="font-medium text-foreground hover:underline"
-					>
-						{booking.name}
-					</Link>
+					{bookingReadOrList ? (
+						<Link
+							href={`/app/${params.organizationSlug}/bookings/${booking.id}`}
+							className="font-medium text-foreground hover:underline"
+						>
+							{booking.name}
+						</Link>
+					) : (
+						<span className="font-medium text-foreground">
+							{booking.name}
+						</span>
+					)}
 					{convertedFromDeliverableId && (
 						<>
 							<span>·</span>
 							<span>Converted from</span>
-							<Link
-								href={`/app/${params.organizationSlug}/deliverables/${convertedFromDeliverableId}`}
-								target="_blank"
-								rel="noopener noreferrer"
-								className="font-medium text-foreground hover:underline"
-							>
-								{convertedFromDeliverableName ?? "Deliverable"}
-							</Link>
+							{deliverableReadOrList ? (
+								<Link
+									href={`/app/${params.organizationSlug}/deliverables/${convertedFromDeliverableId}`}
+									target="_blank"
+									rel="noopener noreferrer"
+									className="font-medium text-foreground hover:underline"
+								>
+									{convertedFromDeliverableName ??
+										"Deliverable"}
+								</Link>
+							) : (
+								<span className="font-medium text-foreground">
+									{convertedFromDeliverableName ??
+										"Deliverable"}
+								</span>
+							)}
 						</>
 					)}
 					{task.dueDate && (

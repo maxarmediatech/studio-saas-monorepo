@@ -19,6 +19,7 @@ import {
 import { ScrollArea } from "@repo/ui/components/scroll-area";
 import { Textarea } from "@repo/ui/components/textarea";
 import { TimePicker } from "@repo/ui/components/time-picker";
+import { useStudioCapabilities } from "@saas/studio/components/studio-capabilities-context";
 import { useConfigurationParams } from "@saas/studio/hooks/params/use-configuration-params";
 import { bookingsApi, configurationsApi, crewsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
@@ -99,6 +100,7 @@ export function ShootForm({
 	onScrollChange,
 }: ShootFormProps) {
 	const [showNotes, setShowNotes] = useState(false);
+	const { bookingReadOrReference } = useStudioCapabilities();
 	const { openCreate: openConfigCreate } = useConfigurationParams();
 
 	// ========================================================================
@@ -107,7 +109,7 @@ export function ShootForm({
 
 	const { data: bookingsData, isLoading: isLoadingBookings } = useQuery({
 		...bookingsApi.listMinimalOptions({}),
-		enabled: mode === "create",
+		enabled: mode === "create" && bookingReadOrReference,
 	});
 	const bookings = bookingsData?.data ?? [];
 

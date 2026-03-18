@@ -4,6 +4,7 @@ import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { formatMoney } from "@saas/shared/lib";
+import { useStudioCapabilities } from "@saas/studio/components/studio-capabilities-context";
 import { useShootParams } from "@saas/studio/hooks/params/use-shoot-params";
 import { shootsApi } from "@saas/studio/lib/api";
 import { UserAvatar } from "@shared/components/UserAvatar";
@@ -78,6 +79,7 @@ export default function ShootDetailPage() {
 		organizationSlug: string;
 		shootId: string;
 	}>();
+	const { bookingReadOrList, shootReadOrList } = useStudioCapabilities();
 	const { openEdit } = useShootParams();
 
 	const { data: shootData, isLoading } = useQuery(
@@ -113,13 +115,20 @@ export default function ShootDetailPage() {
 		<div className="mx-auto w-full max-w-[800px] py-6 px-4">
 			<div className="flex items-center justify-between">
 				<div className="flex items-center gap-2 text-sm">
-					<Link
-						href={shootsHref}
-						className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
-					>
-						<CameraIcon className="size-4" />
-						Shoots
-					</Link>
+					{shootReadOrList ? (
+						<Link
+							href={shootsHref}
+							className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
+						>
+							<CameraIcon className="size-4" />
+							Shoots
+						</Link>
+					) : (
+						<span className="flex items-center gap-1 text-muted-foreground">
+							<CameraIcon className="size-4" />
+							Shoots
+						</span>
+					)}
 					<ChevronRight className="size-4 text-muted-foreground" />
 					<span className="font-medium text-foreground truncate max-w-[300px]">
 						{formatShootType(shoot.shootType)}
@@ -145,12 +154,18 @@ export default function ShootDetailPage() {
 
 				<div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
 					<span>for</span>
-					<Link
-						href={`/app/${params.organizationSlug}/bookings/${booking.id}`}
-						className="font-medium text-foreground hover:underline"
-					>
-						{booking.name}
-					</Link>
+					{bookingReadOrList ? (
+						<Link
+							href={`/app/${params.organizationSlug}/bookings/${booking.id}`}
+							className="font-medium text-foreground hover:underline"
+						>
+							{booking.name}
+						</Link>
+					) : (
+						<span className="font-medium text-foreground">
+							{booking.name}
+						</span>
+					)}
 					<span className="text-xs">({booking.referenceNumber})</span>
 				</div>
 

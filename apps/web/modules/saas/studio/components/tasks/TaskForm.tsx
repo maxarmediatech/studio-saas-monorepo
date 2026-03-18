@@ -24,6 +24,7 @@ import {
 	SelectValue,
 } from "@repo/ui/components/select";
 import { Textarea } from "@repo/ui/components/textarea";
+import { useStudioCapabilities } from "@saas/studio/components/studio-capabilities-context";
 import { bookingsApi, crewsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { XIcon } from "lucide-react";
@@ -108,13 +109,15 @@ export function TaskForm({
 	isPending = false,
 	onScrollChange,
 }: TaskFormProps) {
+	const { bookingReadOrReference } = useStudioCapabilities();
+
 	// ========================================================================
 	// Data Fetching
 	// ========================================================================
 
 	const { data: bookingsData, isLoading: bookingsLoading } = useQuery({
 		...bookingsApi.listMinimalOptions({}),
-		enabled: mode === "create",
+		enabled: mode === "create" && bookingReadOrReference,
 	});
 	const bookings = bookingsData?.data ?? [];
 

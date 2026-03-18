@@ -3,6 +3,7 @@
 import type { YourWorkEntityType } from "@repo/api/modules/studio/schemas/your-work";
 import { Tabs, TabsList, TabsTrigger } from "@repo/ui/components/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@repo/ui/components/toggle-group";
+import { useStudioCapabilities } from "@saas/studio/components/studio-capabilities-context";
 import { yourWorkApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { LayoutGrid, LayoutList } from "lucide-react";
@@ -39,9 +40,30 @@ export function YourWorkView({
 	organizationSlug,
 	initialFilters,
 }: YourWorkViewProps) {
+	const { shootReadOrList, taskReadOrList, deliverableReadOrList } =
+		useStudioCapabilities();
 	const router = useRouter();
 	const [isPending, startTransition] = useTransition();
 	const [filters, setFilters] = useState(initialFilters);
+	const visibleEntityTabs = useMemo(
+		() =>
+			ENTITY_TABS.filter((tab) => {
+				if (tab.value === "all") {
+					return true;
+				}
+				if (tab.value === "shoot") {
+					return shootReadOrList;
+				}
+				if (tab.value === "task") {
+					return taskReadOrList;
+				}
+				if (tab.value === "deliverable") {
+					return deliverableReadOrList;
+				}
+				return false;
+			}),
+		[deliverableReadOrList, shootReadOrList, taskReadOrList],
+	);
 
 	const queryInput = useMemo(
 		() => ({
@@ -52,24 +74,18 @@ export function YourWorkView({
 		[filters.entityType],
 	);
 
-	const assignedQuery = useQuery(
-		{
-			...yourWorkApi.listOptions({ ...queryInput, view: "assigned" }),
-			...queryDefaults,
-		},
-	);
-	const createdQuery = useQuery(
-		{
-			...yourWorkApi.listOptions({ ...queryInput, view: "created" }),
-			...queryDefaults,
-		},
-	);
-	const subscribedQuery = useQuery(
-		{
-			...yourWorkApi.listOptions({ ...queryInput, view: "subscribed" }),
-			...queryDefaults,
-		},
-	);
+	const assignedQuery = useQuery({
+		...yourWorkApi.listOptions({ ...queryInput, view: "assigned" }),
+		...queryDefaults,
+	});
+	const createdQuery = useQuery({
+		...yourWorkApi.listOptions({ ...queryInput, view: "created" }),
+		...queryDefaults,
+	});
+	const subscribedQuery = useQuery({
+		...yourWorkApi.listOptions({ ...queryInput, view: "subscribed" }),
+		...queryDefaults,
+	});
 
 	const updateEntityType = (nextEntityType: EntityTypeFilter) => {
 		setFilters((current) => ({ ...current, entityType: nextEntityType }));
@@ -111,27 +127,28 @@ export function YourWorkView({
 			created: createdQuery.data?.data ?? [],
 			subscribed: subscribedQuery.data?.data ?? [],
 		}),
-		[assignedQuery.data?.data, createdQuery.data?.data, subscribedQuery.data?.data],
+		[
+			assignedQuery.data?.data,
+			createdQuery.data?.data,
+			subscribedQuery.data?.data,
+		],
 	);
 
-	const tableItems = useMemo(
-		() => {
-			const entries = [
-				{ items: groupedItems.assigned, label: "Assigned" },
-				{ items: groupedItems.created, label: "Created" },
-				{ items: groupedItems.subscribed, label: "Watching" },
-			];
+	const tableItems = useMemo(() => {
+		const entries = [
+			{ items: groupedItems.assigned, label: "Assigned" },
+			{ items: groupedItems.created, label: "Created" },
+			{ items: groupedItems.subscribed, label: "Watching" },
+		];
 
-			return entries.flatMap(({ items, label }) =>
-				items.map((item) => ({
-					...item,
-					groupLabel: label,
-					rowKey: `${item.id}:${label}`,
-				})),
-			);
-		},
-		[groupedItems],
-	);
+		return entries.flatMap(({ items, label }) =>
+			items.map((item) => ({
+				...item,
+				groupLabel: label,
+				rowKey: `${item.id}:${label}`,
+			})),
+		);
+	}, [groupedItems]);
 
 	return (
 		<div className="flex flex-col gap-6">
@@ -143,7 +160,7 @@ export function YourWorkView({
 					}
 				>
 					<TabsList>
-						{ENTITY_TABS.map((tab) => (
+						{visibleEntityTabs.map((tab) => (
 							<TabsTrigger key={tab.value} value={tab.value}>
 								{tab.label}
 							</TabsTrigger>

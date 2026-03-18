@@ -30,6 +30,7 @@ import {
 	XIcon,
 } from "lucide-react";
 import { useMemo } from "react";
+import { useStudioCapabilities } from "../studio-capabilities-context";
 
 export interface EntityLink {
 	entityType: DiscussionLinkEntityType;
@@ -93,29 +94,82 @@ export function EntityLinkPicker({
 	onChange,
 	disabled = false,
 }: EntityLinkPickerProps) {
+	const {
+		bookingReadOrReference,
+		shootReadOrList,
+		deliverableReadOrList,
+		taskReadOrList,
+		expenseReadOrReference,
+		paymentReadOrReference,
+	} = useStudioCapabilities();
+	const availableEntityTypes = useMemo(
+		() =>
+			ENTITY_TYPES.filter((type) => {
+				switch (type) {
+					case "booking":
+						return bookingReadOrReference;
+					case "shoot":
+						return shootReadOrList;
+					case "deliverable":
+						return deliverableReadOrList;
+					case "task":
+						return taskReadOrList;
+					case "payment_schedule":
+						return paymentReadOrReference;
+					case "expense":
+						return expenseReadOrReference;
+					default:
+						return false;
+				}
+			}),
+		[
+			bookingReadOrReference,
+			deliverableReadOrList,
+			expenseReadOrReference,
+			paymentReadOrReference,
+			shootReadOrList,
+			taskReadOrList,
+		],
+	);
+	const selectableEntityTypes = useMemo(
+		() =>
+			Array.from(
+				new Set([
+					...availableEntityTypes,
+					...value.map((link) => link.entityType),
+				]),
+			),
+		[availableEntityTypes, value],
+	);
 	const { data: bookingsData } = useQuery({
 		...bookingsApi.listMinimalOptions({}),
 		staleTime: 30000,
+		enabled: bookingReadOrReference,
 	});
 	const { data: shootsData } = useQuery({
 		...shootsApi.listMinimalOptions({}),
 		staleTime: 30000,
+		enabled: shootReadOrList,
 	});
 	const { data: deliverablesData } = useQuery({
 		...deliverablesApi.listMinimalOptions({}),
 		staleTime: 30000,
+		enabled: deliverableReadOrList,
 	});
 	const { data: tasksData } = useQuery({
 		...tasksApi.listMinimalOptions({}),
 		staleTime: 30000,
+		enabled: taskReadOrList,
 	});
 	const { data: schedulesData } = useQuery({
 		...studioPaymentsApi.listSchedulesMinimalOptions({}),
 		staleTime: 30000,
+		enabled: paymentReadOrReference,
 	});
 	const { data: expensesData } = useQuery({
 		...expensesApi.listMinimalOptions({}),
 		staleTime: 30000,
+		enabled: expenseReadOrReference,
 	});
 
 	const optionsByType = useMemo((): Record<
@@ -164,9 +218,14 @@ export function EntityLinkPicker({
 	]);
 
 	const handleAddRow = () => {
+		const defaultEntityType = availableEntityTypes[0];
+		if (!defaultEntityType) {
+			return;
+		}
+
 		onChange([
 			...value,
-			{ entityType: "booking", entityId: "", label: "" },
+			{ entityType: defaultEntityType, entityId: "", label: "" },
 		]);
 	};
 
@@ -240,7 +299,7 @@ export function EntityLinkPicker({
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>
-								{ENTITY_TYPES.map((type) => (
+								{selectableEntityTypes.map((type) => (
 									<SelectItem key={type} value={type}>
 										<div className="flex items-center gap-2">
 											{ENTITY_TYPE_CONFIG[type].icon}

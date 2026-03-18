@@ -21,11 +21,19 @@ export interface HeaderCapabilities {
 	shootCreateOrUpdate: boolean;
 	deliverableCreateOrUpdate: boolean;
 	taskCreateOrUpdate: boolean;
+	bookingReadOrList: boolean;
+	bookingReadOrReference: boolean;
+	shootReadOrList: boolean;
+	deliverableReadOrList: boolean;
+	taskReadOrList: boolean;
 	expenseCreateOrUpdate: boolean;
 	paymentCreateOrUpdate: boolean;
+	expenseReadOrReference: boolean;
+	paymentReadOrReference: boolean;
 	crewCreateOrUpdate: boolean;
 	clientCreateOrUpdate: boolean;
 	configurationCreateOrUpdate: boolean;
+	activityRead: boolean;
 }
 
 export function getCapabilities(
@@ -57,6 +65,36 @@ export function getCapabilities(
 			["create", "update"],
 			customRolePermissions,
 		),
+		bookingReadOrList: any(
+			userRole,
+			"booking",
+			["read", "list"],
+			customRolePermissions,
+		),
+		bookingReadOrReference: any(
+			userRole,
+			"booking",
+			["read", "list", "reference"],
+			customRolePermissions,
+		),
+		shootReadOrList: any(
+			userRole,
+			"shoot",
+			["read", "list"],
+			customRolePermissions,
+		),
+		deliverableReadOrList: any(
+			userRole,
+			"deliverable",
+			["read", "list"],
+			customRolePermissions,
+		),
+		taskReadOrList: any(
+			userRole,
+			"task",
+			["read", "list"],
+			customRolePermissions,
+		),
 		expenseCreateOrUpdate: any(
 			userRole,
 			"expense",
@@ -67,6 +105,18 @@ export function getCapabilities(
 			userRole,
 			"payment",
 			["create", "update"],
+			customRolePermissions,
+		),
+		expenseReadOrReference: any(
+			userRole,
+			"expense",
+			["read", "list", "reference"],
+			customRolePermissions,
+		),
+		paymentReadOrReference: any(
+			userRole,
+			"payment",
+			["read", "list", "reference"],
 			customRolePermissions,
 		),
 		crewCreateOrUpdate: any(
@@ -87,6 +137,12 @@ export function getCapabilities(
 			["create", "update"],
 			customRolePermissions,
 		),
+		activityRead: any(
+			userRole,
+			"dashboard",
+			["read"],
+			customRolePermissions,
+		),
 	};
 }
 
@@ -96,10 +152,18 @@ export function selectHeaderCaps(caps: HeaderCapabilities): HeaderCapabilities {
 		shootCreateOrUpdate: caps.shootCreateOrUpdate,
 		deliverableCreateOrUpdate: caps.deliverableCreateOrUpdate,
 		taskCreateOrUpdate: caps.taskCreateOrUpdate,
+		bookingReadOrList: caps.bookingReadOrList,
+		bookingReadOrReference: caps.bookingReadOrReference,
+		shootReadOrList: caps.shootReadOrList,
+		deliverableReadOrList: caps.deliverableReadOrList,
+		taskReadOrList: caps.taskReadOrList,
 		expenseCreateOrUpdate: caps.expenseCreateOrUpdate,
 		paymentCreateOrUpdate: caps.paymentCreateOrUpdate,
+		expenseReadOrReference: caps.expenseReadOrReference,
+		paymentReadOrReference: caps.paymentReadOrReference,
 		crewCreateOrUpdate: caps.crewCreateOrUpdate,
 		clientCreateOrUpdate: caps.clientCreateOrUpdate,
 		configurationCreateOrUpdate: caps.configurationCreateOrUpdate,
+		activityRead: caps.activityRead,
 	};
 }

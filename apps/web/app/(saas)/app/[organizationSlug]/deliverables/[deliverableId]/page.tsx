@@ -7,6 +7,7 @@ import { cn } from "@repo/ui/lib/utils";
 import { formatMoney } from "@saas/shared/lib";
 import { ConvertToTaskDialog } from "@saas/studio/components/deliverables/ConvertToTaskDialog";
 import { SubmissionCard } from "@saas/studio/components/shared";
+import { useStudioCapabilities } from "@saas/studio/components/studio-capabilities-context";
 import { useDeliverableParams } from "@saas/studio/hooks/params";
 import { deliverablesApi, submissionsApi } from "@saas/studio/lib/api";
 import type {
@@ -128,6 +129,8 @@ export default function DeliverableDetailPage() {
 		organizationSlug: string;
 		deliverableId: string;
 	}>();
+	const { bookingReadOrList, deliverableReadOrList, taskReadOrList } =
+		useStudioCapabilities();
 	const { openEdit } = useDeliverableParams();
 	const [convertDialogOpen, setConvertDialogOpen] = useState(false);
 
@@ -198,20 +201,29 @@ export default function DeliverableDetailPage() {
 	const booking = deliverable.booking;
 	const convertedTaskId = getConvertedTaskId(deliverable.metadata);
 	const taskHref = convertedTaskId
-		? `/app/${params.organizationSlug}/tasks/${convertedTaskId}`
+		? taskReadOrList
+			? `/app/${params.organizationSlug}/tasks/${convertedTaskId}`
+			: null
 		: null;
 
 	return (
 		<div className="mx-auto w-full max-w-[800px] py-6 px-4">
 			<div className="flex items-center justify-between">
 				<div className="flex items-center gap-2 text-sm">
-					<Link
-						href={deliverablesHref}
-						className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
-					>
-						<PackageIcon className="size-4" />
-						Deliverables
-					</Link>
+					{deliverableReadOrList ? (
+						<Link
+							href={deliverablesHref}
+							className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
+						>
+							<PackageIcon className="size-4" />
+							Deliverables
+						</Link>
+					) : (
+						<span className="flex items-center gap-1 text-muted-foreground">
+							<PackageIcon className="size-4" />
+							Deliverables
+						</span>
+					)}
 					<ChevronRight className="size-4 text-muted-foreground" />
 					<span className="font-medium text-foreground truncate max-w-[300px]">
 						{deliverable.name}
@@ -254,12 +266,18 @@ export default function DeliverableDetailPage() {
 				<h1 className="text-2xl font-semibold">{deliverable.name}</h1>
 				<div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
 					<span>in</span>
-					<Link
-						href={`/app/${params.organizationSlug}/bookings/${booking.id}`}
-						className="font-medium text-foreground hover:underline"
-					>
-						{booking.name}
-					</Link>
+					{bookingReadOrList ? (
+						<Link
+							href={`/app/${params.organizationSlug}/bookings/${booking.id}`}
+							className="font-medium text-foreground hover:underline"
+						>
+							{booking.name}
+						</Link>
+					) : (
+						<span className="font-medium text-foreground">
+							{booking.name}
+						</span>
+					)}
 					{deliverable.dueDate && (
 						<>
 							<span>·</span>

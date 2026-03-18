@@ -27,6 +27,7 @@ import {
 	SelectValue,
 } from "@repo/ui/components/select";
 import { Textarea } from "@repo/ui/components/textarea";
+import { useStudioCapabilities } from "@saas/studio/components/studio-capabilities-context";
 import { bookingsApi, invoicesApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
@@ -109,6 +110,7 @@ export function PaymentForm({
 	onScrollChange,
 }: PaymentFormProps) {
 	const [showDetails, setShowDetails] = useState(false);
+	const { bookingReadOrReference } = useStudioCapabilities();
 
 	// ========================================================================
 	// Data Fetching
@@ -116,7 +118,7 @@ export function PaymentForm({
 
 	const { data: bookingsData, isLoading: isLoadingBookings } = useQuery({
 		...bookingsApi.listMinimalOptions({}),
-		enabled: mode === "create",
+		enabled: mode === "create" && bookingReadOrReference,
 	});
 	const bookings = bookingsData?.data ?? [];
 
