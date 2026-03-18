@@ -58,6 +58,11 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							label: "Activities",
 							path: url("/activities"),
 							icon: "Activity",
+							permission: {
+								any: [
+									{ resource: "dashboard", action: "read" },
+								],
+							},
 						},
 					],
 				},

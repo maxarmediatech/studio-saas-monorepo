@@ -32,6 +32,7 @@ import {
 	SelectValue,
 } from "@repo/ui/components/select";
 import { Separator } from "@repo/ui/components/separator";
+import { useStudioCapabilities } from "@saas/studio/components/studio-capabilities-context";
 import { bookingsApi, crewsApi, shootsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -149,6 +150,7 @@ export function ExpenseForm({
 	const [isUploading, setIsUploading] = useState(false);
 	const [isDeleting, setIsDeleting] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
+	const { bookingReadOrList, shootReadOrList } = useStudioCapabilities();
 
 	const form = useForm<ExpenseFormValues>({
 		resolver: zodResolver(expenseFormSchema),
@@ -182,13 +184,13 @@ export function ExpenseForm({
 
 	const { data: bookingsData, isLoading: isLoadingBookings } = useQuery({
 		...bookingsApi.listMinimalOptions({}),
-		enabled: mode === "create",
+		enabled: mode === "create" && bookingReadOrList,
 	});
 	const bookings = bookingsData?.data ?? [];
 
 	const { data: shootsData, isLoading: isLoadingShoots } = useQuery({
 		...shootsApi.listMinimalOptions({ bookingId: selectedBookingId }),
-		enabled: !!selectedBookingId,
+		enabled: shootReadOrList && !!selectedBookingId,
 	});
 	const shoots = shootsData?.data ?? [];
 

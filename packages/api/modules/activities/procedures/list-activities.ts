@@ -1,11 +1,13 @@
-import { activities, db, desc, eq, and, sql, inArray } from "@repo/database";
+import { activities, and, db, desc, eq, inArray, sql } from "@repo/database";
 import { z } from "zod";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { ENTITY_TYPES, ACTION_TYPES } from "../lib";
+import { requirePermission } from "../../studio/lib/permissions";
+import { ACTION_TYPES, ENTITY_TYPES } from "../lib";
 
 // Cursor format: {ISO_DATE}_{UUID}
 // Example: 2025-01-13T10:30:00.000Z_abc123-def456
-const CURSOR_REGEX = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z)_([a-z0-9-]+)$/i;
+const CURSOR_REGEX =
+	/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z)_([a-z0-9-]+)$/i;
 
 function parseCursor(cursor: string): { createdAt: Date; id: string } | null {
 	const match = cursor.match(CURSOR_REGEX);
@@ -77,6 +79,8 @@ export const listActivities = studioProtectedProcedure
 	.input(listActivitiesInputSchema)
 	.output(listActivitiesOutputSchema)
 	.handler(async ({ input, context }) => {
+		await requirePermission(context, "dashboard", "read");
+
 		const {
 			limit,
 			cursor,
@@ -90,7 +94,9 @@ export const listActivities = studioProtectedProcedure
 		} = input;
 
 		// Build filter conditions
-		const conditions = [eq(activities.organizationId, context.organizationId)];
+		const conditions = [
+			eq(activities.organizationId, context.organizationId),
+		];
 
 		// Compound cursor for deterministic pagination
 		if (cursor) {
@@ -98,7 +104,7 @@ export const listActivities = studioProtectedProcedure
 			if (parsed) {
 				// WHERE (createdAt < cursorDate) OR (createdAt = cursorDate AND id < cursorId)
 				conditions.push(
-					sql`(${activities.createdAt} < ${parsed.createdAt} OR (${activities.createdAt} = ${parsed.createdAt} AND ${activities.id} < ${parsed.id}))`
+					sql`(${activities.createdAt} < ${parsed.createdAt} OR (${activities.createdAt} = ${parsed.createdAt} AND ${activities.id} < ${parsed.id}))`,
 				);
 			}
 			// If cursor is invalid, skip it and start from beginning
@@ -142,7 +148,10 @@ export const listActivities = studioProtectedProcedure
 		const hasMore = results.length > limit;
 		const items = hasMore ? results.slice(0, limit) : results;
 		const lastItem = items[items.length - 1];
-		const nextCursor = hasMore && lastItem ? encodeCursor(lastItem.createdAt, lastItem.id) : null;
+		const nextCursor =
+			hasMore && lastItem
+				? encodeCursor(lastItem.createdAt, lastItem.id)
+				: null;
 
 		// Type assertions needed because DB returns strings, but Zod output
 		// schema validates these are valid enum values before returning
@@ -155,7 +164,9 @@ export const listActivities = studioProtectedProcedure
 				entityType: item.entityType as z.infer<typeof entityTypeSchema>,
 				entityId: item.entityId,
 				entityName: item.entityName,
-				parentEntityType: item.parentEntityType as z.infer<typeof entityTypeSchema> | null,
+				parentEntityType: item.parentEntityType as z.infer<
+					typeof entityTypeSchema
+				> | null,
 				parentEntityId: item.parentEntityId,
 				parentEntityName: item.parentEntityName,
 				action: item.action as z.infer<typeof actionTypeSchema>,

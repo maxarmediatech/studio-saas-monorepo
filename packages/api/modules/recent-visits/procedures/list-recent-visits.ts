@@ -12,6 +12,7 @@ import {
 	tasks,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { hasPermission } from "../../studio/lib/permissions";
 import {
 	listRecentVisitsInputSchema,
 	listRecentVisitsOutputSchema,
@@ -32,6 +33,34 @@ export const listRecentVisits = studioProtectedProcedure
 		const { entityType, limit } = input;
 		const { organizationId, user } = context;
 		const userId = user.id;
+		const [
+			canReadBookings,
+			canReadShoots,
+			canReadTasks,
+			canReadDeliverables,
+		] = await Promise.all([
+			hasPermission(context, "booking", "list"),
+			hasPermission(context, "shoot", "list"),
+			hasPermission(context, "task", "list"),
+			hasPermission(context, "deliverable", "list"),
+		]);
+		const allowedEntityTypes = new Set(
+			[
+				canReadBookings ? "booking" : null,
+				canReadShoots ? "shoot" : null,
+				canReadTasks ? "task" : null,
+				canReadDeliverables ? "deliverable" : null,
+			].filter(
+				(
+					value,
+				): value is "booking" | "shoot" | "task" | "deliverable" =>
+					value !== null,
+			),
+		);
+
+		if (entityType !== "all" && !allowedEntityTypes.has(entityType)) {
+			return { data: [] };
+		}
 
 		const conditions = [
 			eq(recentVisits.organizationId, organizationId),
@@ -61,7 +90,16 @@ export const listRecentVisits = studioProtectedProcedure
 		};
 
 		for (const visit of visits) {
-			if (visit.entityType in grouped) {
+			if (
+				visit.entityType in grouped &&
+				allowedEntityTypes.has(
+					visit.entityType as
+						| "booking"
+						| "shoot"
+						| "task"
+						| "deliverable",
+				)
+			) {
 				grouped[visit.entityType].push(visit.entityId);
 			}
 		}

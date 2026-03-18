@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { hasPermission } from "../../studio/lib/permissions";
 import {
 	searchBookings,
 	searchClients,
@@ -40,6 +41,68 @@ export const search = studioProtectedProcedure
 		const searchAll = !entities || entities.length === 0;
 		const shouldSearch = (type: (typeof SEARCH_ENTITY_TYPES)[number]) =>
 			searchAll || entities?.includes(type);
+		const canSearchAny = async (
+			permissions: Array<{
+				resource:
+					| "booking"
+					| "client"
+					| "crew"
+					| "shoot"
+					| "task"
+					| "deliverable"
+					| "expense"
+					| "payment";
+				action: "read" | "list" | "reference";
+			}>,
+		) => {
+			const results = await Promise.all(
+				permissions.map(({ resource, action }) =>
+					hasPermission(context, resource, action),
+				),
+			);
+			return results.some(Boolean);
+		};
+		const [
+			canSearchBookings,
+			canSearchClients,
+			canSearchCrews,
+			canSearchShoots,
+			canSearchTasks,
+			canSearchDeliverables,
+			canSearchExpenses,
+			canSearchInvoices,
+		] = await Promise.all([
+			shouldSearch("booking")
+				? canSearchAny([{ resource: "booking", action: "list" }])
+				: Promise.resolve(false),
+			shouldSearch("client")
+				? canSearchAny([{ resource: "client", action: "list" }])
+				: Promise.resolve(false),
+			shouldSearch("crew")
+				? canSearchAny([{ resource: "crew", action: "list" }])
+				: Promise.resolve(false),
+			shouldSearch("shoot")
+				? canSearchAny([{ resource: "shoot", action: "list" }])
+				: Promise.resolve(false),
+			shouldSearch("task")
+				? canSearchAny([{ resource: "task", action: "list" }])
+				: Promise.resolve(false),
+			shouldSearch("deliverable")
+				? canSearchAny([{ resource: "deliverable", action: "list" }])
+				: Promise.resolve(false),
+			shouldSearch("expense")
+				? canSearchAny([
+						{ resource: "expense", action: "list" },
+						{ resource: "expense", action: "reference" },
+					])
+				: Promise.resolve(false),
+			shouldSearch("invoice")
+				? canSearchAny([
+						{ resource: "payment", action: "list" },
+						{ resource: "payment", action: "reference" },
+					])
+				: Promise.resolve(false),
+		]);
 
 		// Execute all searches in parallel
 		const [
@@ -52,28 +115,28 @@ export const search = studioProtectedProcedure
 			expenses,
 			invoices,
 		] = await Promise.all([
-			shouldSearch("booking")
+			canSearchBookings
 				? searchBookings(organizationId, query, limit)
 				: Promise.resolve([]),
-			shouldSearch("client")
+			canSearchClients
 				? searchClients(organizationId, query, limit)
 				: Promise.resolve([]),
-			shouldSearch("crew")
+			canSearchCrews
 				? searchCrews(organizationId, query, limit)
 				: Promise.resolve([]),
-			shouldSearch("shoot")
+			canSearchShoots
 				? searchShoots(organizationId, query, limit)
 				: Promise.resolve([]),
-			shouldSearch("task")
+			canSearchTasks
 				? searchTasks(organizationId, query, limit)
 				: Promise.resolve([]),
-			shouldSearch("deliverable")
+			canSearchDeliverables
 				? searchDeliverables(organizationId, query, limit)
 				: Promise.resolve([]),
-			shouldSearch("expense")
+			canSearchExpenses
 				? searchExpenses(organizationId, query, limit)
 				: Promise.resolve([]),
-			shouldSearch("invoice")
+			canSearchInvoices
 				? searchInvoices(organizationId, query, limit)
 				: Promise.resolve([]),
 		]);

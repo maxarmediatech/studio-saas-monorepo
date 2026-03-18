@@ -29,6 +29,7 @@ import {
 import { Textarea } from "@repo/ui/components/textarea";
 import { formatMoney } from "@saas/shared/lib";
 import { PAYMENT_SCHEDULE_PRESETS } from "@saas/studio/components/bookings/booking-form";
+import { useStudioCapabilities } from "@saas/studio/components/studio-capabilities-context";
 import { bookingsApi, studioPaymentsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
@@ -89,10 +90,11 @@ export function ScheduleForm({
 	onScrollChange,
 }: ScheduleFormProps) {
 	const [showNotes, setShowNotes] = useState(false);
+	const { bookingReadOrList } = useStudioCapabilities();
 
 	const { data: bookingsData, isLoading: isLoadingBookings } = useQuery({
 		...bookingsApi.listMinimalOptions({}),
-		enabled: mode === "create",
+		enabled: mode === "create" && bookingReadOrList,
 	});
 	const bookings = bookingsData?.data ?? [];
 
@@ -112,7 +114,8 @@ export function ScheduleForm({
 	const { data: selectedBookingData, isLoading: isLoadingSelectedBooking } =
 		useQuery({
 			...bookingsApi.getOptions(selectedBookingId),
-			enabled: mode === "create" && !!selectedBookingId,
+			enabled:
+				mode === "create" && bookingReadOrList && !!selectedBookingId,
 		});
 
 	const { data: paymentStatsData, isLoading: isLoadingPaymentStats } =

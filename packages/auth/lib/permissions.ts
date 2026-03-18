@@ -353,10 +353,10 @@ export const hr = ac.newRole({
 
 export const member = ac.newRole({
 	...memberAc.statements,
-	booking: ["read", "list"],
-	shoot: ["read", "list"],
+	// booking: ["read", "list"],
+	// shoot: ["read", "list"],
 	task: ["read", "list", "submit"],
-	deliverable: ["read", "list", "submit"],
+	// deliverable: ["read", "list", "submit"],
 	configuration: ["read", "list"],
 	expense: ["reference"],
 	payment: ["reference"],

@@ -30,6 +30,7 @@ import {
 	SelectValue,
 } from "@repo/ui/components/select";
 import { Textarea } from "@repo/ui/components/textarea";
+import { useStudioCapabilities } from "@saas/studio/components/studio-capabilities-context";
 import { bookingsApi, crewsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDownIcon, ChevronUpIcon, XIcon } from "lucide-react";
@@ -100,6 +101,7 @@ export function DeliverableForm({
 	onScrollChange,
 }: DeliverableFormProps) {
 	const [showDetails, setShowDetails] = useState(false);
+	const { bookingReadOrList } = useStudioCapabilities();
 
 	const form = useForm<DeliverableFormValues>({
 		resolver: zodResolver(deliverableFormSchema),
@@ -117,7 +119,7 @@ export function DeliverableForm({
 
 	const { data: bookingsData, isLoading: isLoadingBookings } = useQuery({
 		...bookingsApi.listMinimalOptions({}),
-		enabled: mode === "create",
+		enabled: mode === "create" && bookingReadOrList,
 	});
 	const bookings = bookingsData?.data ?? [];
 
@@ -511,45 +513,45 @@ export function DeliverableForm({
 															</span>
 														</div>
 													)}
-														renderSelectedItem={(
-															option,
-															onRemove,
-														) => (
-															<Badge
-																variant="secondary"
-																className="flex items-center gap-1.5 pr-1"
-															>
-																<Avatar className="h-4 w-4">
-																	<AvatarFallback className="text-[8px]">
-																		{getInitials(
-																			option.label,
-																		)}
-																	</AvatarFallback>
-																</Avatar>
-																<span className="truncate">
-																	{option.label}
-																</span>
-																<button
-																	type="button"
-																	onClick={(
-																		e,
+													renderSelectedItem={(
+														option,
+														onRemove,
+													) => (
+														<Badge
+															variant="secondary"
+															className="flex items-center gap-1.5 pr-1"
+														>
+															<Avatar className="h-4 w-4">
+																<AvatarFallback className="text-[8px]">
+																	{getInitials(
+																		option.label,
+																	)}
+																</AvatarFallback>
+															</Avatar>
+															<span className="truncate">
+																{option.label}
+															</span>
+															<button
+																type="button"
+																onClick={(
+																	e,
 																) => {
 																	e.stopPropagation();
 																	onRemove();
 																}}
-																	className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
-																>
-																	<XIcon className="size-3" />
+																className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
+															>
+																<XIcon className="size-3" />
 																<span className="sr-only">
 																	Remove{" "}
 																	{
 																		option.label
 																	}
-																	</span>
-																</button>
-															</Badge>
-														)}
-													/>
+																</span>
+															</button>
+														</Badge>
+													)}
+												/>
 											</Field>
 										);
 									}}

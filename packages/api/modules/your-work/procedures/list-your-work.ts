@@ -16,6 +16,7 @@ import {
 	tasks,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { hasPermission } from "../../studio/lib/permissions";
 import { createPaginationResponse } from "../../studio/schemas/common";
 import {
 	listYourWorkInputSchema,
@@ -30,8 +31,12 @@ function buildItemId(entityType: YourWorkEntityType, entityId: string) {
 
 function sortWorkItems(items: YourWorkItem[]) {
 	return items.sort((a, b) => {
-		const aTime = a.date ? new Date(a.date).getTime() : Number.POSITIVE_INFINITY;
-		const bTime = b.date ? new Date(b.date).getTime() : Number.POSITIVE_INFINITY;
+		const aTime = a.date
+			? new Date(a.date).getTime()
+			: Number.POSITIVE_INFINITY;
+		const bTime = b.date
+			? new Date(b.date).getTime()
+			: Number.POSITIVE_INFINITY;
 		if (aTime !== bTime) {
 			return aTime - bTime;
 		}
@@ -54,11 +59,20 @@ export const listYourWork = studioProtectedProcedure
 		const { organizationId, user } = context;
 		const userId = user.id;
 		const offset = (page - 1) * limit;
+		const [canListTasks, canListDeliverables, canListShoots] =
+			await Promise.all([
+				hasPermission(context, "task", "list"),
+				hasPermission(context, "deliverable", "list"),
+				hasPermission(context, "shoot", "list"),
+			]);
 
-		const includeTasks = entityType === "all" || entityType === "task";
+		const includeTasks =
+			canListTasks && (entityType === "all" || entityType === "task");
 		const includeDeliverables =
-			entityType === "all" || entityType === "deliverable";
-		const includeShoots = entityType === "all" || entityType === "shoot";
+			canListDeliverables &&
+			(entityType === "all" || entityType === "deliverable");
+		const includeShoots =
+			canListShoots && (entityType === "all" || entityType === "shoot");
 
 		const crew = await db.query.crews.findFirst({
 			where: and(
@@ -115,8 +129,14 @@ export const listYourWork = studioProtectedProcedure
 								bookingName: bookings.name,
 							})
 							.from(taskAssignments)
-							.innerJoin(tasks, eq(taskAssignments.taskId, tasks.id))
-							.innerJoin(bookings, eq(tasks.bookingId, bookings.id))
+							.innerJoin(
+								tasks,
+								eq(taskAssignments.taskId, tasks.id),
+							)
+							.innerJoin(
+								bookings,
+								eq(tasks.bookingId, bookings.id),
+							)
 							.where(
 								and(
 									eq(taskAssignments.crewId, crewId),
@@ -151,7 +171,10 @@ export const listYourWork = studioProtectedProcedure
 							.where(
 								and(
 									eq(deliverableAssignments.crewId, crewId),
-									eq(deliverables.organizationId, organizationId),
+									eq(
+										deliverables.organizationId,
+										organizationId,
+									),
 									isNull(deliverables.deletedAt),
 								),
 							)
@@ -190,12 +213,15 @@ export const listYourWork = studioProtectedProcedure
 			const deliverableIds = deliverableRows.map((row) => row.id);
 			const shootIds = shootRows.map((row) => row.id);
 
-			const [taskSubscriptions, deliverableSubscriptions, shootSubscriptions] =
-				await Promise.all([
-					loadSubscriptionSet("task", taskIds),
-					loadSubscriptionSet("deliverable", deliverableIds),
-					loadSubscriptionSet("shoot", shootIds),
-				]);
+			const [
+				taskSubscriptions,
+				deliverableSubscriptions,
+				shootSubscriptions,
+			] = await Promise.all([
+				loadSubscriptionSet("task", taskIds),
+				loadSubscriptionSet("deliverable", deliverableIds),
+				loadSubscriptionSet("shoot", shootIds),
+			]);
 
 			for (const row of taskRows) {
 				items.push({
@@ -253,7 +279,10 @@ export const listYourWork = studioProtectedProcedure
 								bookingName: bookings.name,
 							})
 							.from(tasks)
-							.innerJoin(bookings, eq(tasks.bookingId, bookings.id))
+							.innerJoin(
+								bookings,
+								eq(tasks.bookingId, bookings.id),
+							)
 							.where(
 								and(
 									eq(tasks.organizationId, organizationId),
@@ -280,7 +309,10 @@ export const listYourWork = studioProtectedProcedure
 							)
 							.where(
 								and(
-									eq(deliverables.organizationId, organizationId),
+									eq(
+										deliverables.organizationId,
+										organizationId,
+									),
 									eq(deliverables.createdBy, userId),
 									isNull(deliverables.deletedAt),
 								),
@@ -315,12 +347,15 @@ export const listYourWork = studioProtectedProcedure
 			const deliverableIds = deliverableRows.map((row) => row.id);
 			const shootIds = shootRows.map((row) => row.id);
 
-			const [taskSubscriptions, deliverableSubscriptions, shootSubscriptions] =
-				await Promise.all([
-					loadSubscriptionSet("task", taskIds),
-					loadSubscriptionSet("deliverable", deliverableIds),
-					loadSubscriptionSet("shoot", shootIds),
-				]);
+			const [
+				taskSubscriptions,
+				deliverableSubscriptions,
+				shootSubscriptions,
+			] = await Promise.all([
+				loadSubscriptionSet("task", taskIds),
+				loadSubscriptionSet("deliverable", deliverableIds),
+				loadSubscriptionSet("shoot", shootIds),
+			]);
 
 			for (const row of taskRows) {
 				items.push({
@@ -408,7 +443,10 @@ export const listYourWork = studioProtectedProcedure
 								bookingName: bookings.name,
 							})
 							.from(tasks)
-							.innerJoin(bookings, eq(tasks.bookingId, bookings.id))
+							.innerJoin(
+								bookings,
+								eq(tasks.bookingId, bookings.id),
+							)
 							.where(
 								and(
 									eq(tasks.organizationId, organizationId),
@@ -435,7 +473,10 @@ export const listYourWork = studioProtectedProcedure
 							)
 							.where(
 								and(
-									eq(deliverables.organizationId, organizationId),
+									eq(
+										deliverables.organizationId,
+										organizationId,
+									),
 									isNull(deliverables.deletedAt),
 									inArray(deliverables.id, deliverableIds),
 								),
