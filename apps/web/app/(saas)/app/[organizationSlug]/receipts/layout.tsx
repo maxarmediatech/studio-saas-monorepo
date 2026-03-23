@@ -1,26 +1,28 @@
-"use client";
-
-import { PageContent } from "@saas/studio";
-import { usePathname } from "next/navigation";
-import { type ReactNode, use } from "react";
+import { buildStudioRoutePath } from "@saas/studio/lib/route-access";
+import { requireStudioRouteAccess } from "@saas/studio/lib/server-access";
+import { notFound } from "next/navigation";
+import type { ReactNode } from "react";
+import { ReceiptsLayoutClient } from "./receipts-layout-client";
 
 type Props = {
 	params: Promise<{ organizationSlug: string }>;
 	children: ReactNode;
 };
 
-export default function ReceiptsLayout({ params, children }: Props) {
-	const { organizationSlug } = use(params);
-	const pathname = usePathname();
-	const baseRoute = `/app/${organizationSlug}/receipts`;
-
-	// Detail pages use their own PageContent with backHref + controls
-	const isDetailPage =
-		pathname !== baseRoute && pathname.startsWith(`${baseRoute}/`);
-
-	if (isDetailPage) {
-		return <>{children}</>;
+export default async function ReceiptsLayout({ params, children }: Props) {
+	const { organizationSlug } = await params;
+	if (
+		!(await requireStudioRouteAccess(
+			organizationSlug,
+			buildStudioRoutePath(organizationSlug, "/receipts"),
+		))
+	) {
+		notFound();
 	}
 
-	return <PageContent title="Receipts">{children}</PageContent>;
+	return (
+		<ReceiptsLayoutClient organizationSlug={organizationSlug}>
+			{children}
+		</ReceiptsLayoutClient>
+	);
 }

@@ -1,46 +1,28 @@
-"use client";
-
-import { Button } from "@repo/ui/components/button";
-import { PageContent } from "@saas/studio";
-import { PlusIcon } from "lucide-react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { type ReactNode, use } from "react";
+import { buildStudioRoutePath } from "@saas/studio/lib/route-access";
+import { requireStudioRouteAccess } from "@saas/studio/lib/server-access";
+import { notFound } from "next/navigation";
+import type { ReactNode } from "react";
+import { BookingsLayoutClient } from "./bookings-layout-client";
 
 type Props = {
 	params: Promise<{ organizationSlug: string }>;
 	children: ReactNode;
 };
 
-export default function BookingsLayout({ params, children }: Props) {
-	const { organizationSlug } = use(params);
-	const pathname = usePathname();
-	const baseRoute = `/app/${organizationSlug}/bookings`;
-	const isNewBookingForm = pathname.startsWith(`${baseRoute}/new`);
-	// Check if this is a booking detail page (has a bookingId segment after /bookings/)
-	const isDetailPage =
-		pathname !== baseRoute &&
-		!isNewBookingForm &&
-		pathname.startsWith(`${baseRoute}/`);
-
-	// New booking form and detail pages use their own full-bleed layout
-	if (isNewBookingForm || isDetailPage) {
-		return <>{children}</>;
+export default async function BookingsLayout({ params, children }: Props) {
+	const { organizationSlug } = await params;
+	if (
+		!(await requireStudioRouteAccess(
+			organizationSlug,
+			buildStudioRoutePath(organizationSlug, "/bookings"),
+		))
+	) {
+		notFound();
 	}
 
 	return (
-		<PageContent
-			title="Bookings"
-			controls={
-				<Button asChild size="sm" className="hidden md:inline-flex">
-					<Link href={`${baseRoute}/new/details`}>
-						<PlusIcon className="mr-2 h-4 w-4" />
-						New Booking
-					</Link>
-				</Button>
-			}
-		>
+		<BookingsLayoutClient organizationSlug={organizationSlug}>
 			{children}
-		</PageContent>
+		</BookingsLayoutClient>
 	);
 }
