@@ -52,3 +52,4 @@ apps/web/app_legacy/globals.css
 .claude/tsc-cache/
 .code/
 thoughts/
+.vercel
