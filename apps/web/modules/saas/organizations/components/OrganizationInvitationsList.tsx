@@ -34,8 +34,9 @@ import { toast } from "sonner";
 
 type Invitation = NonNullable<ActiveOrganization["invitations"]>[number];
 
-function getExpiryMeta(expiresAt: string) {
-	const expiresAtDate = new Date(expiresAt);
+function getExpiryMeta(expiresAt: Date | string) {
+	const expiresAtDate =
+		expiresAt instanceof Date ? expiresAt : new Date(expiresAt);
 	const hasExpired = expiresAtDate.getTime() <= Date.now();
 
 	return {
