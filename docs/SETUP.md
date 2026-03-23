@@ -203,6 +203,7 @@ GITHUB_CLIENT_SECRET="your-client-secret"
 
 ```env
 RESEND_API_KEY="re_xxxxxxxxxxxx"
+EMAIL_FROM="noreply@updates.stuwiz.com"
 ```
 
 ---
@@ -465,6 +466,7 @@ INTEGRATIONS_OAUTH_STATE_SECRET=""
 # EMAIL
 # ===================
 RESEND_API_KEY=""
+EMAIL_FROM="noreply@updates.stuwiz.com"
 
 # ===================
 # PAYMENTS

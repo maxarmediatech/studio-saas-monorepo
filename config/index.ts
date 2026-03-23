@@ -83,7 +83,7 @@ export const config = {
 	// Mails
 	mails: {
 		// the from address for mails
-		from: "noreply@updates.studsol.com",
+		from: process.env.EMAIL_FROM ?? "noreply@updates.stuwiz.com",
 	},
 	// Frontend
 	ui: {
