@@ -12,12 +12,6 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@repo/ui/components/dropdown-menu";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableRow,
-} from "@repo/ui/components/table";
 import { cn } from "@repo/ui/lib/utils";
 import { useSession } from "@saas/auth/hooks/use-session";
 import { useAllRoles } from "@saas/organizations/hooks/use-all-roles";
@@ -26,26 +20,35 @@ import {
 	useFullOrganizationQuery,
 } from "@saas/organizations/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
-import type { ColumnDef } from "@tanstack/react-table";
+import { formatDistanceToNowStrict } from "date-fns";
 import {
-	flexRender,
-	getCoreRowModel,
-	getFilteredRowModel,
-	getPaginationRowModel,
-	getSortedRowModel,
-	useReactTable,
-} from "@tanstack/react-table";
-import {
-	CheckIcon,
 	ClockIcon,
+	MailIcon,
 	MailXIcon,
 	MoreVerticalIcon,
 	SendIcon,
-	XIcon,
 } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { toast } from "sonner";
+
+type Invitation = NonNullable<ActiveOrganization["invitations"]>[number];
+
+function getExpiryMeta(expiresAt: string) {
+	const expiresAtDate = new Date(expiresAt);
+	const hasExpired = expiresAtDate.getTime() <= Date.now();
+
+	return {
+		hasExpired,
+		relativeLabel: hasExpired
+			? `Expired ${formatDistanceToNowStrict(expiresAtDate, {
+					addSuffix: true,
+				})}`
+			: `Expires ${formatDistanceToNowStrict(expiresAtDate, {
+					addSuffix: true,
+				})}`,
+	};
+}
 
 export function OrganizationInvitationsList({
 	organizationId,
@@ -76,6 +79,7 @@ export function OrganizationInvitationsList({
 				),
 		[organization?.invitations],
 	);
+
 	const teamNameById = useMemo(() => {
 		const teams = organization?.teams ?? [];
 		return new Map(teams.map((team) => [team.id, team.name]));
@@ -112,127 +116,6 @@ export function OrganizationInvitationsList({
 		);
 	};
 
-	const columns: ColumnDef<
-		NonNullable<ActiveOrganization["invitations"]>[number]
-	>[] = [
-		{
-			accessorKey: "email",
-			accessorFn: (row) => row.email,
-			cell: ({ row }) => {
-				const InvitationStatusIcon = {
-					pending: ClockIcon,
-					accepted: CheckIcon,
-					rejected: XIcon,
-					canceled: XIcon,
-				}[row.original.status];
-				const roleKeys = coerceOrganizationRoles(row.original.role);
-				const teamName = row.original.teamId
-					? (teamNameById.get(row.original.teamId) ?? "Unknown team")
-					: null;
-				const shouldShowBadges =
-					roleKeys.length > 0 || Boolean(teamName);
-				return (
-					<div className="leading-normal">
-						<strong
-							className={cn("block", {
-								"opacity-50":
-									row.original.status === "canceled",
-							})}
-						>
-							{row.original.email}
-						</strong>
-						<small className="flex flex-wrap gap-1 text-foreground/60">
-							<span className="flex items-center gap-0.5">
-								<InvitationStatusIcon className="size-3" />
-								{t(
-									`organizations.settings.members.invitations.invitationStatus.${row.original.status}`,
-								)}
-							</span>
-							<span>-</span>
-							<span>
-								{t(
-									"organizations.settings.members.invitations.expiresAt",
-									{
-										date: formatter.dateTime(
-											new Date(row.original.expiresAt),
-											{
-												dateStyle: "medium",
-												timeStyle: "short",
-											},
-										),
-									},
-								)}
-							</span>
-						</small>
-						{shouldShowBadges && (
-							<div className="mt-1 flex flex-wrap gap-1">
-								{roleKeys.map((roleKey) => (
-									<Badge
-										key={roleKey}
-										variant="outline"
-										className="text-xs"
-									>
-										{getRoleLabel(roleKey)}
-									</Badge>
-								))}
-								{teamName && (
-									<Badge
-										variant="outline"
-										className="text-xs"
-									>
-										Team: {teamName}
-									</Badge>
-								)}
-							</div>
-						)}
-					</div>
-				);
-			},
-		},
-		{
-			accessorKey: "actions",
-			cell: ({ row }) => {
-				const isPending = row.original.status === "pending";
-
-				return (
-					<div className="flex flex-row justify-end gap-2">
-						{canUserEditInvitations && (
-							<DropdownMenu>
-								<DropdownMenuTrigger asChild>
-									<Button size="icon" variant="ghost">
-										<MoreVerticalIcon className="size-4" />
-									</Button>
-								</DropdownMenuTrigger>
-								<DropdownMenuContent>
-									<DropdownMenuItem
-										disabled={!isPending}
-										onClick={() =>
-											revokeInvitation(row.original.id)
-										}
-									>
-										<MailXIcon className="mr-2 size-4" />
-										{t(
-											"organizations.settings.members.invitations.revoke",
-										)}
-									</DropdownMenuItem>
-								</DropdownMenuContent>
-							</DropdownMenu>
-						)}
-					</div>
-				);
-			},
-		},
-	];
-
-	const table = useReactTable({
-		data: invitations ?? [],
-		columns,
-		getCoreRowModel: getCoreRowModel(),
-		getPaginationRowModel: getPaginationRowModel(),
-		getSortedRowModel: getSortedRowModel(),
-		getFilteredRowModel: getFilteredRowModel(),
-	});
-
 	if (!invitations?.length) {
 		return (
 			<div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed bg-muted/30 px-6 py-16 text-center">
@@ -256,27 +139,167 @@ export function OrganizationInvitationsList({
 		);
 	}
 
+	const nextExpiry = formatter.dateTime(new Date(invitations[0].expiresAt), {
+		dateStyle: "medium",
+		timeStyle: "short",
+	});
+
 	return (
-		<div className="rounded-md border">
-			<Table>
-				<TableBody>
-					{table.getRowModel().rows.map((row) => (
-						<TableRow
-							key={row.id}
-							data-state={row.getIsSelected() && "selected"}
+		<div className="space-y-4">
+			<div className="flex flex-col gap-1 px-1 sm:flex-row sm:items-center sm:justify-between">
+				<p className="text-sm font-medium text-foreground">
+					{invitations.length} pending
+					{invitations.length === 1 ? " invitation" : " invitations"}
+				</p>
+				<p className="text-sm text-muted-foreground">
+					Next expiry {nextExpiry}
+				</p>
+			</div>
+
+			<ul className="overflow-hidden rounded-lg border bg-background">
+				{invitations.map((invitation: Invitation) => {
+					const roleKeys = coerceOrganizationRoles(invitation.role);
+					const teamName = invitation.teamId
+						? (teamNameById.get(invitation.teamId) ??
+							"Unknown team")
+						: null;
+					const shouldShowBadges =
+						roleKeys.length > 0 || Boolean(teamName);
+					const expiryMeta = getExpiryMeta(invitation.expiresAt);
+					const statusLabel = t(
+						`organizations.settings.members.invitations.invitationStatus.${invitation.status}`,
+					);
+
+					return (
+						<li
+							key={invitation.id}
+							className="border-b last:border-b-0"
 						>
-							{row.getVisibleCells().map((cell) => (
-								<TableCell key={cell.id}>
-									{flexRender(
-										cell.column.columnDef.cell,
-										cell.getContext(),
-									)}
-								</TableCell>
-							))}
-						</TableRow>
-					))}
-				</TableBody>
-			</Table>
+							<div className="flex flex-col gap-4 px-4 py-4 sm:px-5 sm:py-5 lg:flex-row lg:items-start lg:justify-between">
+								<div className="min-w-0 flex-1">
+									<div className="flex items-start gap-3">
+										<div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+											<MailIcon
+												className="size-4"
+												aria-hidden="true"
+											/>
+										</div>
+
+										<div className="min-w-0 flex-1 space-y-3">
+											<div className="flex flex-wrap items-center gap-2">
+												<Badge
+													variant="outline"
+													className="text-[11px]"
+												>
+													<ClockIcon
+														className="size-3"
+														aria-hidden="true"
+													/>
+													{statusLabel}
+												</Badge>
+												<Badge
+													variant="outline"
+													className={cn(
+														"text-[11px] text-muted-foreground",
+														expiryMeta.hasExpired &&
+															"text-destructive",
+													)}
+												>
+													{expiryMeta.relativeLabel}
+												</Badge>
+											</div>
+
+											<div className="space-y-1">
+												<p className="break-words font-medium text-base text-foreground">
+													{invitation.email}
+												</p>
+												<p className="text-sm text-muted-foreground">
+													{t(
+														"organizations.settings.members.invitations.expiresAt",
+														{
+															date: formatter.dateTime(
+																new Date(
+																	invitation.expiresAt,
+																),
+																{
+																	dateStyle:
+																		"medium",
+																	timeStyle:
+																		"short",
+																},
+															),
+														},
+													)}
+												</p>
+											</div>
+
+											{shouldShowBadges && (
+												<div className="flex flex-wrap gap-2">
+													{roleKeys.map((roleKey) => (
+														<Badge
+															key={roleKey}
+															variant="outline"
+															className="text-xs"
+														>
+															{getRoleLabel(
+																roleKey,
+															)}
+														</Badge>
+													))}
+													{teamName && (
+														<Badge
+															variant="outline"
+															className="text-xs"
+														>
+															Team: {teamName}
+														</Badge>
+													)}
+												</div>
+											)}
+										</div>
+									</div>
+								</div>
+
+								{canUserEditInvitations && (
+									<div className="flex items-center justify-end lg:pl-4">
+										<DropdownMenu>
+											<DropdownMenuTrigger asChild>
+												<Button
+													size="icon"
+													variant="ghost"
+													aria-label={`Open actions for ${invitation.email}`}
+												>
+													<MoreVerticalIcon
+														className="size-4"
+														aria-hidden="true"
+													/>
+												</Button>
+											</DropdownMenuTrigger>
+											<DropdownMenuContent align="end">
+												<DropdownMenuItem
+													onClick={() =>
+														revokeInvitation(
+															invitation.id,
+														)
+													}
+												>
+													<MailXIcon
+														className="mr-2 size-4"
+														aria-hidden="true"
+													/>
+													{t(
+														"organizations.settings.members.invitations.revoke",
+													)}
+												</DropdownMenuItem>
+											</DropdownMenuContent>
+										</DropdownMenu>
+									</div>
+								)}
+							</div>
+						</li>
+					);
+				})}
+			</ul>
 		</div>
 	);
 }
