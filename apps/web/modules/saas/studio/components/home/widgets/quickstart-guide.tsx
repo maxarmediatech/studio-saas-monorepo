@@ -22,6 +22,12 @@ import {
 import Link from "next/link";
 import { type ReactNode, useEffect, useMemo } from "react";
 import { toast } from "sonner";
+import {
+	DEFAULT_QUICKSTART_STATE,
+	isCanonicalQuickstartState,
+	normalizeQuickstartState,
+	shouldShowQuickstartGuide,
+} from "./quickstart-guide-state";
 
 interface QuickstartGuideProps {
 	organizationSlug: string;
@@ -48,16 +54,6 @@ interface GuideItem {
 		  };
 }
 
-interface QuickstartState {
-	hide: boolean;
-	version: 2;
-}
-
-const DEFAULT_STATE: QuickstartState = {
-	hide: false,
-	version: 2,
-};
-
 const DEFAULT_SEED_CONFIGURATION_TYPES = [
 	"booking_type",
 	"event_type",
@@ -70,16 +66,23 @@ const DEFAULT_SEED_CONFIGURATION_TYPES = [
 export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 	const [storedState, setStoredState] = useLocalStorage<unknown>(
 		`quickstart-guide-${organizationSlug}`,
-		DEFAULT_STATE,
+		DEFAULT_QUICKSTART_STATE,
 	);
 	const queryClient = useQueryClient();
 	const state = useMemo(
 		() => normalizeQuickstartState(storedState),
 		[storedState],
 	);
-	const shouldShowWidget = !state.hide;
-	const { activeOrganization, loaded: activeOrganizationLoaded } =
-		useActiveOrganization();
+	const {
+		activeOrganization,
+		activeOrganizationUserRole,
+		loaded: activeOrganizationLoaded,
+	} = useActiveOrganization();
+	const shouldShowWidget = shouldShowQuickstartGuide({
+		activeOrganizationLoaded,
+		activeOrganizationUserRole,
+		state,
+	});
 	const { openCreate: openCreateConfiguration } = useConfigurationParams();
 
 	const bookingTypesQuery = useQuery({
@@ -276,7 +279,7 @@ export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 		setStoredState(state);
 	}, [state, setStoredState, storedState]);
 
-	if (state.hide) {
+	if (!shouldShowWidget) {
 		return null;
 	}
 
@@ -367,39 +370,5 @@ export function QuickstartGuide({ organizationSlug }: QuickstartGuideProps) {
 				})}
 			</div>
 		</div>
-	);
-}
-
-function normalizeQuickstartState(value: unknown): QuickstartState {
-	if (!value || typeof value !== "object") {
-		return DEFAULT_STATE;
-	}
-
-	const hide =
-		"hide" in value &&
-		typeof (value as { hide?: unknown }).hide === "boolean"
-			? (value as { hide: boolean }).hide
-			: false;
-
-	return {
-		hide,
-		version: 2,
-	};
-}
-
-function isCanonicalQuickstartState(value: unknown): value is QuickstartState {
-	if (!value || typeof value !== "object") {
-		return false;
-	}
-
-	const record = value as Record<string, unknown>;
-	const keys = Object.keys(record);
-
-	return (
-		keys.length === 2 &&
-		keys.includes("hide") &&
-		keys.includes("version") &&
-		typeof record.hide === "boolean" &&
-		record.version === 2
 	);
 }

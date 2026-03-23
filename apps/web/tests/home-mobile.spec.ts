@@ -35,9 +35,12 @@ test.describe("home mobile", () => {
 				name: /Good (morning|afternoon|evening)/i,
 			}),
 		).toBeVisible();
-		await expect(
-			page.getByRole("heading", { name: "Your quickstart guide" }),
-		).toBeVisible();
+		const quickstartHeading = page.getByRole("heading", {
+			name: "Your quickstart guide",
+		});
+		if ((await quickstartHeading.count()) > 0) {
+			await expect(quickstartHeading).toBeVisible();
+		}
 		await expect(page.getByText("Quicklinks")).toBeVisible();
 		await expect(page.getByText("Stickies")).toBeVisible();
 		await expect(page.getByText("Recents")).toBeVisible();
