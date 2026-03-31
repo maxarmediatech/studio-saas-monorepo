@@ -1,0 +1,127 @@
+"use client";
+
+import { Button } from "@repo/ui/components/button";
+import { Tabs, TabsList, TabsTrigger } from "@repo/ui/components/tabs";
+import { PageContent } from "@saas/studio";
+import { notificationsApi, notificationsMutations } from "@saas/studio/lib/api";
+import { orpc } from "@shared/lib/orpc-query-utils";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { NotificationList, NotificationsPagination } from "./notification-list";
+
+interface NotificationsPageClientProps {
+	organizationSlug: string;
+}
+
+const PAGE_SIZE = 25;
+
+export function NotificationsPageClient({
+	organizationSlug,
+}: NotificationsPageClientProps) {
+	const queryClient = useQueryClient();
+	const [filter, setFilter] = useState<"all" | "unread">("all");
+	const [page, setPage] = useState(1);
+
+	const unreadOnly = filter === "unread";
+	const notificationsQuery = useQuery(
+		notificationsApi.listOptions({
+			page,
+			limit: PAGE_SIZE,
+			unreadOnly,
+		}),
+	);
+
+	const unreadCountQuery = useQuery(notificationsApi.unreadCountOptions());
+
+	const markAllMutation = useMutation({
+		...notificationsMutations.markAllRead(),
+		onSuccess: () => {
+			queryClient.invalidateQueries({
+				queryKey: orpc.notifications.key(),
+			});
+		},
+	});
+
+	const markReadMutation = useMutation({
+		...notificationsMutations.markRead(),
+		onSuccess: () => {
+			queryClient.invalidateQueries({
+				queryKey: orpc.notifications.key(),
+			});
+		},
+	});
+
+	const data = notificationsQuery.data?.data ?? [];
+	const pagination = notificationsQuery.data?.pagination ?? {
+		page,
+		limit: PAGE_SIZE,
+		total: 0,
+		pageCount: 0,
+	};
+	const unreadCount = unreadCountQuery.data?.count ?? 0;
+
+	return (
+		<PageContent
+			title="Notifications"
+			controls={
+				<Button
+					variant="outline"
+					size="sm"
+					onClick={() => markAllMutation.mutate(undefined)}
+					disabled={markAllMutation.isPending || unreadCount === 0}
+				>
+					Mark all read
+				</Button>
+			}
+			headerContent={
+				<Tabs
+					value={filter}
+					onValueChange={(value) => {
+						setFilter(value as "all" | "unread");
+						setPage(1);
+					}}
+				>
+					<TabsList>
+						<TabsTrigger value="all">All</TabsTrigger>
+						<TabsTrigger value="unread">
+							Unread
+							{unreadCount > 0 ? ` (${unreadCount})` : ""}
+						</TabsTrigger>
+					</TabsList>
+				</Tabs>
+			}
+		>
+			<div className="overflow-hidden rounded-3xl border border-neutral-200 bg-white">
+				<NotificationList
+					notifications={data}
+					isLoading={notificationsQuery.isLoading}
+					organizationSlug={organizationSlug}
+					onNotificationClick={async (notification) => {
+						if (!notification.readAt) {
+							await markReadMutation.mutateAsync({
+								id: notification.id,
+							});
+						}
+					}}
+					emptyState={{
+						title:
+							filter === "unread"
+								? "No unread notifications."
+								: "No notifications yet.",
+						description:
+							filter === "unread"
+								? "You’re all caught up."
+								: "New updates from tasks, shoots, and deliverables will appear here.",
+					}}
+				/>
+				<NotificationsPagination
+					page={pagination.page}
+					pageCount={pagination.pageCount}
+					total={pagination.total}
+					isFetching={notificationsQuery.isFetching}
+					onPageChange={setPage}
+				/>
+			</div>
+		</PageContent>
+	);
+}

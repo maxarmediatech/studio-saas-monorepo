@@ -1,5 +1,9 @@
 import type { NotificationItem } from "@repo/api/modules/studio/schemas/notification";
 
+export function getNotificationsPageHref(organizationSlug: string | undefined) {
+	return organizationSlug ? `/app/${organizationSlug}/notifications` : null;
+}
+
 export function getNotificationEntityHref(
 	organizationSlug: string | undefined,
 	item: Pick<NotificationItem, "entityType" | "entityId">,

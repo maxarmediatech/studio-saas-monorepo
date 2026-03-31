@@ -190,6 +190,7 @@ export function UserMenu({
 								isMarkAllPending={
 									notificationState.isMarkAllPending
 								}
+								organizationSlug={activeOrganization?.slug}
 								onMarkAllRead={notificationState.markAllRead}
 								onMarkRead={notificationState.markRead}
 								onClose={() => setOpen(false)}

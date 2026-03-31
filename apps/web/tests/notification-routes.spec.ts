@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { getNotificationEntityHref } from "../modules/saas/studio/components/notifications/routes";
+import {
+	getNotificationEntityHref,
+	getNotificationsPageHref,
+} from "../modules/saas/studio/components/notifications/routes";
 
 test.describe("notification routes", () => {
 	test("builds task detail routes", () => {
@@ -36,5 +39,11 @@ test.describe("notification routes", () => {
 				entityId: "task_123",
 			}),
 		).toBeNull();
+	});
+
+	test("builds notifications page route", () => {
+		expect(getNotificationsPageHref("acme")).toBe(
+			"/app/acme/notifications",
+		);
 	});
 });

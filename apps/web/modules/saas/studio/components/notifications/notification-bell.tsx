@@ -8,26 +8,15 @@ import {
 	PopoverTrigger,
 } from "@repo/ui/components/popover";
 import { cn } from "@repo/ui/lib/utils";
-import {
-	configurationsApi,
-	notificationsApi,
-	notificationsMutations,
-} from "@saas/studio/lib/api";
+import { notificationsApi, notificationsMutations } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
-import {
-	useMutation,
-	useQueries,
-	useQuery,
-	useQueryClient,
-} from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
-import {
-	getNotificationBodyText,
-	type NotificationStatusLabelMaps,
-} from "./content";
-import { getNotificationEntityHref } from "./routes";
+import { NotificationList } from "./notification-list";
+import { getNotificationsPageHref } from "./routes";
 
 interface NotificationBellProps {
 	buttonClassName?: string;
@@ -39,19 +28,10 @@ interface NotificationPanelProps {
 	notifications: NotificationItem[];
 	isLoading: boolean;
 	isMarkAllPending: boolean;
+	organizationSlug?: string;
 	onMarkAllRead: () => void;
 	onMarkRead: (id: string) => Promise<unknown>;
 	onClose: () => void;
-}
-
-function formatTimestamp(value: string) {
-	const date = new Date(value);
-	return date.toLocaleString("en-US", {
-		month: "short",
-		day: "numeric",
-		hour: "numeric",
-		minute: "2-digit",
-	});
 }
 
 export function useNotificationMenuState(enabled = true) {
@@ -109,58 +89,22 @@ export function useNotificationMenuState(enabled = true) {
 	};
 }
 
-function useNotificationStatusLabelMaps() {
-	const [taskStatusQuery, deliverableStatusQuery, shootStatusQuery] =
-		useQueries({
-			queries: [
-				configurationsApi.taskStatusOptions(),
-				configurationsApi.deliverableStatusOptions(),
-				configurationsApi.shootStatusOptions(),
-			],
-		});
-
-	return useMemo<NotificationStatusLabelMaps>(() => {
-		const taskStatusLabels: Record<string, string> = {};
-		const deliverableStatusLabels: Record<string, string> = {};
-		const shootStatusLabels: Record<string, string> = {};
-
-		for (const config of taskStatusQuery.data?.data ?? []) {
-			taskStatusLabels[config.key] = config.label;
-		}
-
-		for (const config of deliverableStatusQuery.data?.data ?? []) {
-			deliverableStatusLabels[config.key] = config.label;
-		}
-
-		for (const config of shootStatusQuery.data?.data ?? []) {
-			shootStatusLabels[config.key] = config.label;
-		}
-
-		return {
-			task_status: taskStatusLabels,
-			deliverable_status: deliverableStatusLabels,
-			shoot_status: shootStatusLabels,
-		};
-	}, [
-		deliverableStatusQuery.data?.data,
-		shootStatusQuery.data?.data,
-		taskStatusQuery.data?.data,
-	]);
-}
-
 export function NotificationMenuPanel({
 	unreadCount,
 	notifications,
 	isLoading,
 	isMarkAllPending,
+	organizationSlug,
 	onMarkAllRead,
 	onMarkRead,
 	onClose,
 }: NotificationPanelProps) {
 	const params = useParams<{ organizationSlug?: string }>();
-	const router = useRouter();
-	const statusLabelMaps = useNotificationStatusLabelMaps();
-	const organizationSlug = params.organizationSlug;
+	const resolvedOrganizationSlug =
+		params.organizationSlug ?? organizationSlug;
+	const notificationsPageHref = getNotificationsPageHref(
+		resolvedOrganizationSlug,
+	);
 
 	return (
 		<>
@@ -178,67 +122,32 @@ export function NotificationMenuPanel({
 				</Button>
 			</div>
 			<div className="max-h-80 overflow-auto">
-				{isLoading ? (
-					<div className="p-4 text-sm text-neutral-500">
-						Loading notifications...
-					</div>
-				) : notifications.length === 0 ? (
-					<div className="p-4 text-sm text-neutral-500">
-						No notifications yet.
-					</div>
-				) : (
-					notifications.map((notification) => {
-						const isUnread = !notification.readAt;
-						const href = getNotificationEntityHref(
-							organizationSlug,
-							notification,
-						);
-						const bodyText = getNotificationBodyText(
-							notification,
-							statusLabelMaps,
-						);
-						return (
-							<button
-								key={notification.id}
-								type="button"
-								disabled={!href}
-								className={cn(
-									"flex w-full flex-col gap-1 border-b border-neutral-100 px-3 py-2 text-left text-sm",
-									isUnread ? "bg-neutral-50" : "bg-white",
-									!href && "cursor-default opacity-70",
-								)}
-								onClick={() => {
-									if (!href) {
-										return;
-									}
-
-									if (isUnread) {
-										void onMarkRead(notification.id);
-									}
-									onClose();
-									router.push(href);
-								}}
-							>
-								<div className="flex items-center justify-between gap-2">
-									<span className="font-medium text-neutral-900">
-										{notification.title}
-									</span>
-									{isUnread ? (
-										<span className="h-2 w-2 rounded-full bg-blue-500" />
-									) : null}
-								</div>
-								{bodyText ? (
-									<span className="text-xs text-neutral-500">
-										{bodyText}
-									</span>
-								) : null}
-								<span className="text-xs text-neutral-400">
-									{formatTimestamp(notification.createdAt)}
-								</span>
-							</button>
-						);
-					})
-				)}
+				<NotificationList
+					notifications={notifications}
+					isLoading={isLoading}
+					organizationSlug={resolvedOrganizationSlug}
+					onNotificationClick={async (notification) => {
+						if (!notification.readAt) {
+							await onMarkRead(notification.id);
+						}
+						onClose();
+					}}
+					emptyState={{
+						title: "No notifications yet.",
+					}}
+				/>
+			</div>
+			<div className="border-t border-neutral-200 p-2">
+				<Button
+					asChild
+					variant="ghost"
+					size="sm"
+					className="w-full justify-center"
+				>
+					<Link href={notificationsPageHref ?? "#"} onClick={onClose}>
+						View all notifications
+					</Link>
+				</Button>
 			</div>
 		</>
 	);
@@ -248,6 +157,7 @@ export function NotificationBell({
 	buttonClassName,
 	align = "end",
 }: NotificationBellProps) {
+	const params = useParams<{ organizationSlug?: string }>();
 	const [open, setOpen] = useState(false);
 	const {
 		unreadCount,
@@ -282,6 +192,7 @@ export function NotificationBell({
 					notifications={notifications}
 					isLoading={isLoading}
 					isMarkAllPending={isMarkAllPending}
+					organizationSlug={params.organizationSlug}
 					onMarkAllRead={markAllRead}
 					onMarkRead={markRead}
 					onClose={() => setOpen(false)}
