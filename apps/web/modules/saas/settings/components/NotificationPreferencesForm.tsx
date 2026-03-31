@@ -67,7 +67,10 @@ const preferenceGroups = [
 
 export function NotificationPreferencesForm() {
 	const queryClient = useQueryClient();
-	const preferencesQuery = useQuery(notificationsApi.preferencesOptions());
+	const preferencesQuery = useQuery({
+		...notificationsApi.preferencesOptions(),
+		refetchOnWindowFocus: false,
+	});
 	const updateMutation = useMutation({
 		...notificationsMutations.updatePreferences(),
 		onSuccess: (result) => {
@@ -75,6 +78,8 @@ export function NotificationPreferencesForm() {
 				orpc.notifications.getPreferences.key(),
 				result,
 			);
+			setLastSaved(result.data);
+			setDraft(result.data);
 			toast.success("Notification preferences updated");
 		},
 		onError: (error) => {
@@ -84,23 +89,24 @@ export function NotificationPreferencesForm() {
 		},
 	});
 	const [draft, setDraft] = useState<NotificationPreferences | null>(null);
+	const [lastSaved, setLastSaved] = useState<NotificationPreferences | null>(
+		null,
+	);
 
 	useEffect(() => {
-		if (preferencesQuery.data?.data) {
+		if (preferencesQuery.data?.data && lastSaved === null) {
 			setDraft(preferencesQuery.data.data);
+			setLastSaved(preferencesQuery.data.data);
 		}
-	}, [preferencesQuery.data]);
+	}, [lastSaved, preferencesQuery.data]);
 
 	const isLoading = preferencesQuery.isLoading || draft === null;
 	const isDirty =
 		draft !== null &&
-		preferencesQuery.data !== undefined &&
+		lastSaved !== null &&
 		Object.keys(draft).some((key) => {
 			const preferenceKey = key as keyof NotificationPreferences;
-			return (
-				draft[preferenceKey] !==
-				preferencesQuery.data.data[preferenceKey]
-			);
+			return draft[preferenceKey] !== lastSaved[preferenceKey];
 		});
 
 	return (
@@ -110,7 +116,27 @@ export function NotificationPreferencesForm() {
 				description="Control who can reach you inside Studio. Email and WhatsApp stay out of this phase."
 			>
 				<div className="space-y-6 rounded-2xl border border-border bg-card p-5">
-					{isLoading ? (
+					{preferencesQuery.isError && draft === null ? (
+						<div className="space-y-3 rounded-xl border border-destructive/20 bg-destructive/5 p-4">
+							<p className="text-sm font-medium text-foreground">
+								Unable to load notification preferences.
+							</p>
+							<p className="text-sm text-muted-foreground">
+								Check that migrations are up to date, then
+								retry.
+							</p>
+							<div>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									onClick={() => preferencesQuery.refetch()}
+								>
+									Retry
+								</Button>
+							</div>
+						</div>
+					) : isLoading ? (
 						<p className="text-sm text-muted-foreground">
 							Loading notification preferences...
 						</p>
