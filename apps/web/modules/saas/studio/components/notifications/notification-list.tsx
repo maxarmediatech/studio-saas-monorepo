@@ -5,7 +5,11 @@ import { Button } from "@repo/ui/components/button";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
 import { useRouter } from "next/navigation";
-import { getNotificationBodyText } from "./content";
+import {
+	getNotificationBodyText,
+	getNotificationTypeLabel,
+	getNotificationTypeTone,
+} from "./content";
 import { getNotificationEntityHref } from "./routes";
 import { useNotificationStatusLabelMaps } from "./status-labels";
 import { formatNotificationTimestamp } from "./timestamp";
@@ -72,6 +76,8 @@ export function NotificationList({
 					notification,
 					statusLabelMaps,
 				);
+				const typeLabel = getNotificationTypeLabel(notification);
+				const typeTone = getNotificationTypeTone(notification);
 
 				return (
 					<button
@@ -94,6 +100,16 @@ export function NotificationList({
 					>
 						<div className="flex items-start justify-between gap-3">
 							<div className="min-w-0">
+								<div className="mb-1 flex items-center gap-2">
+									<span
+										className={cn(
+											"inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium",
+											typeTone,
+										)}
+									>
+										{typeLabel}
+									</span>
+								</div>
 								<div className="truncate font-medium text-sm text-neutral-900">
 									{notification.title}
 								</div>

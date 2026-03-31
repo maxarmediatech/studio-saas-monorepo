@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { getNotificationBodyText } from "../modules/saas/studio/components/notifications/content";
+import {
+	getNotificationBodyText,
+	getNotificationTypeLabel,
+} from "../modules/saas/studio/components/notifications/content";
 
 const statusLabelMaps = {
 	task_status: {
@@ -103,5 +106,102 @@ test.describe("notification content", () => {
 				statusLabelMaps,
 			),
 		).toBe("Awaiting Review -> Client Approved");
+	});
+
+	test("renders review request copy from metadata", () => {
+		expect(
+			getNotificationBodyText(
+				{
+					id: "notif_5",
+					entityType: "task",
+					entityId: "task_5",
+					entityName: "Edit reel",
+					type: "review_requested",
+					title: "Task submitted for review: Edit reel",
+					body: null,
+					metadata: {
+						submittedByName: "Satish Kumar Tripathy",
+					},
+					actorId: null,
+					actorName: null,
+					readAt: null,
+					createdAt: new Date().toISOString(),
+				},
+				statusLabelMaps,
+			),
+		).toBe("Submitted by Satish Kumar Tripathy");
+	});
+
+	test("renders review decision copy with note", () => {
+		expect(
+			getNotificationBodyText(
+				{
+					id: "notif_6",
+					entityType: "deliverable",
+					entityId: "deliverable_6",
+					entityName: "Wedding film",
+					type: "review_revision_requested",
+					title: "Deliverable needs changes: Wedding film",
+					body: null,
+					metadata: {
+						outcome: "revision_requested",
+						reviewerName: "Rakesh",
+						reviewNote: "Please tighten the first minute",
+					},
+					actorId: null,
+					actorName: null,
+					readAt: null,
+					createdAt: new Date().toISOString(),
+				},
+				statusLabelMaps,
+			),
+		).toBe("Changes requested by Rakesh: Please tighten the first minute");
+	});
+
+	test("renders due soon reminders from metadata", () => {
+		expect(
+			getNotificationBodyText(
+				{
+					id: "notif_7",
+					entityType: "task",
+					entityId: "task_7",
+					entityName: "Album draft",
+					type: "due_soon",
+					title: "Task due soon: Album draft",
+					body: null,
+					metadata: {
+						kind: "due_soon",
+						dueDate: "2026-04-02",
+						daysUntilDue: 1,
+					},
+					actorId: null,
+					actorName: null,
+					readAt: null,
+					createdAt: new Date().toISOString(),
+				},
+				statusLabelMaps,
+			),
+		).toBe("Due tomorrow, Apr 2, 2026");
+	});
+
+	test("returns compact labels for the new notification types", () => {
+		expect(
+			getNotificationTypeLabel({
+				id: "notif_8",
+				entityType: "task",
+				entityId: "task_8",
+				entityName: "Trailer",
+				type: "review_requested",
+				title: "Task submitted for review: Trailer",
+				body: null,
+				metadata: {
+					submittedByName: "Satish Kumar Tripathy",
+				},
+				actorId: null,
+				actorName: null,
+				readAt: null,
+				createdAt: new Date().toISOString(),
+			}),
+		).toBe("Review");
 	});
 });
