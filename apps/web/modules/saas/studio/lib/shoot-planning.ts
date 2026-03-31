@@ -7,7 +7,7 @@ export const SHOOT_EXTRA_SERVICE_OPTIONS = [
 	},
 ] as const satisfies readonly MultiSelectOption[];
 
-const SHOOT_EXTRA_SERVICE_LABELS = new Map(
+const SHOOT_EXTRA_SERVICE_LABELS = new Map<string, string>(
 	SHOOT_EXTRA_SERVICE_OPTIONS.map((option) => [option.value, option.label]),
 );
 
