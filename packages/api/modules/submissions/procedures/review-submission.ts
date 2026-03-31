@@ -8,7 +8,8 @@ import {
 	tasks,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { safeTrackActivity, type ActionType } from "../../activities/lib";
+import { type ActionType, safeTrackActivity } from "../../activities/lib";
+import { safeNotifySubscribers } from "../../notifications/lib/notification-service";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	reviewSubmissionInputSchema,
@@ -173,6 +174,42 @@ export const reviewSubmission = studioProtectedProcedure
 			parentEntityName,
 			metadata: reviewNote ? { reviewNote } : undefined,
 		});
+
+		if (parentEntityType && parentEntityId) {
+			const notificationTypeMap = {
+				approve: "review_approved",
+				request_revision: "review_revision_requested",
+				reject: "review_rejected",
+			} as const;
+			const notificationBodyMap = {
+				approve: `Approved by ${context.user.name}`,
+				request_revision: `Changes requested by ${context.user.name}`,
+				reject: `Rejected by ${context.user.name}`,
+			} as const;
+			const notificationTitleMap = {
+				approve: `${parentEntityType === "task" ? "Task" : "Deliverable"} approved: ${parentEntityName}`,
+				request_revision: `${parentEntityType === "task" ? "Task" : "Deliverable"} needs changes: ${parentEntityName}`,
+				reject: `${parentEntityType === "task" ? "Task" : "Deliverable"} rejected: ${parentEntityName}`,
+			} as const;
+
+			await safeNotifySubscribers({
+				organizationId: context.organizationId,
+				entityType: parentEntityType,
+				entityId: parentEntityId,
+				entityName: parentEntityName,
+				type: notificationTypeMap[decision],
+				title: notificationTitleMap[decision],
+				body: notificationBodyMap[decision],
+				metadata: {
+					outcome: newStatus,
+					reviewerName: context.user.name,
+					reviewNote: reviewNote ?? null,
+				},
+				actorId: context.user.id,
+				actorName: context.user.name,
+				excludeUserId: context.user.id,
+			});
+		}
 
 		const messages = {
 			approve: "Submission approved",

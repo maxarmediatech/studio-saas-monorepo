@@ -6,13 +6,14 @@ import {
 	db,
 	eq,
 	isNull,
-	submissionFiles,
 	sql,
+	submissionFiles,
 	taskAssignments,
 	tasks,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { safeTrackActivity } from "../../activities/lib";
+import { safeNotifySubscribers } from "../../notifications/lib/notification-service";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	submitTaskInputSchema,
@@ -150,6 +151,22 @@ export const submitTask = studioProtectedProcedure
 			parentEntityId: task.id,
 			parentEntityName: task.name,
 			metadata: { crewId: crew.id, crewName: crew.name },
+		});
+
+		await safeNotifySubscribers({
+			organizationId: context.organizationId,
+			entityType: "task",
+			entityId: task.id,
+			entityName: task.name,
+			type: "review_requested",
+			title: `Task submitted for review: ${task.name}`,
+			body: `Submitted by ${crew.name}`,
+			metadata: {
+				submittedByName: crew.name,
+			},
+			actorId: context.user.id,
+			actorName: context.user.name,
+			excludeUserId: context.user.id,
 		});
 
 		return {

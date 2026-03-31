@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
 	assignedNotificationMetadataSchema,
+	deadlineReminderNotificationMetadataSchema,
 	notificationMetadataSchema,
+	reviewDecisionNotificationMetadataSchema,
+	reviewRequestedNotificationMetadataSchema,
 	statusChangedNotificationMetadataSchema,
 } from "./notification-metadata";
 
@@ -27,6 +30,42 @@ describe("notification metadata", () => {
 		).toEqual({
 			assigneeName: "Satish Kumar Tripathy",
 			assigneeId: "user_1",
+		});
+	});
+
+	it("accepts review metadata", () => {
+		expect(
+			reviewRequestedNotificationMetadataSchema.parse({
+				submittedByName: "Satish Kumar Tripathy",
+			}),
+		).toEqual({
+			submittedByName: "Satish Kumar Tripathy",
+		});
+
+		expect(
+			reviewDecisionNotificationMetadataSchema.parse({
+				outcome: "revision_requested",
+				reviewerName: "Rakesh",
+				reviewNote: "Please tighten the first cut",
+			}),
+		).toEqual({
+			outcome: "revision_requested",
+			reviewerName: "Rakesh",
+			reviewNote: "Please tighten the first cut",
+		});
+	});
+
+	it("accepts deadline reminder metadata", () => {
+		expect(
+			deadlineReminderNotificationMetadataSchema.parse({
+				kind: "due_soon",
+				dueDate: "2026-04-02",
+				daysUntilDue: 1,
+			}),
+		).toEqual({
+			kind: "due_soon",
+			dueDate: "2026-04-02",
+			daysUntilDue: 1,
 		});
 	});
 

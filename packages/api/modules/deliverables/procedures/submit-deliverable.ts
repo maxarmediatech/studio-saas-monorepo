@@ -8,11 +8,12 @@ import {
 	deliverables,
 	eq,
 	isNull,
-	submissionFiles,
 	sql,
+	submissionFiles,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { safeTrackActivity } from "../../activities/lib";
+import { safeNotifySubscribers } from "../../notifications/lib/notification-service";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	submitDeliverableInputSchema,
@@ -151,6 +152,22 @@ export const submitDeliverable = studioProtectedProcedure
 			parentEntityId: deliverable.id,
 			parentEntityName: deliverable.name,
 			metadata: { crewId: crew.id, crewName: crew.name },
+		});
+
+		await safeNotifySubscribers({
+			organizationId: context.organizationId,
+			entityType: "deliverable",
+			entityId: deliverable.id,
+			entityName: deliverable.name,
+			type: "review_requested",
+			title: `Deliverable submitted for review: ${deliverable.name}`,
+			body: `Submitted by ${crew.name}`,
+			metadata: {
+				submittedByName: crew.name,
+			},
+			actorId: context.user.id,
+			actorName: context.user.name,
+			excludeUserId: context.user.id,
 		});
 
 		return {

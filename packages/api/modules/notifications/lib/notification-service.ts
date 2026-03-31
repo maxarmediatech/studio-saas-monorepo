@@ -13,11 +13,15 @@ import {
 	notifications,
 	shootAssignments,
 	shoots,
+	sql,
 	subscriptions,
 	taskAssignments,
 	tasks,
 } from "@repo/database";
-import type { NotificationMetadata } from "./notification-metadata";
+import {
+	isDeadlineReminderMetadata,
+	type NotificationMetadata,
+} from "./notification-metadata";
 import {
 	getEffectiveNotificationPreferences,
 	type NotificationRecipientReason,
@@ -252,7 +256,11 @@ function buildRecipientReasons(
 	const recipients = new Map<string, Set<NotificationRecipientReason>>();
 
 	for (const userId of subscriberUserIds) {
-		addRecipientReason(recipients, userId, "subscriber");
+		if (input.type === "due_soon" || input.type === "overdue") {
+			addRecipientReason(recipients, userId, "reminder");
+		} else {
+			addRecipientReason(recipients, userId, "subscriber");
+		}
 	}
 
 	if (input.type === "assigned") {
@@ -264,13 +272,39 @@ function buildRecipientReasons(
 		addRecipientReason(recipients, assigneeId, "assignee");
 	}
 
-	if (input.type === "status_changed") {
+	if (
+		input.type === "status_changed" ||
+		input.type === "review_approved" ||
+		input.type === "review_rejected" ||
+		input.type === "review_revision_requested"
+	) {
 		for (const userId of context.assigneeUserIds) {
 			addRecipientReason(recipients, userId, "assignee");
 		}
 	}
 
-	if (input.type === "assigned" || input.type === "status_changed") {
+	if (input.type === "due_soon") {
+		for (const userId of context.assigneeUserIds) {
+			addRecipientReason(recipients, userId, "reminder");
+		}
+	}
+
+	if (input.type === "overdue") {
+		for (const userId of context.assigneeUserIds) {
+			addRecipientReason(recipients, userId, "reminder");
+		}
+
+		addRecipientReason(recipients, context.bookingOwnerUserId, "reminder");
+	}
+
+	if (
+		input.type === "assigned" ||
+		input.type === "status_changed" ||
+		input.type === "review_requested" ||
+		input.type === "review_approved" ||
+		input.type === "review_rejected" ||
+		input.type === "review_revision_requested"
+	) {
 		for (const userId of context.assignerUserIds) {
 			addRecipientReason(recipients, userId, "assigner");
 		}
@@ -283,6 +317,35 @@ function buildRecipientReasons(
 	}
 
 	return recipients;
+}
+
+async function filterDuplicateReminderRecipients(
+	input: NotifyEntityUsersInput,
+	recipients: string[],
+) {
+	const reminderMetadata = input.metadata ?? null;
+
+	if (!isDeadlineReminderMetadata(reminderMetadata) || recipients.length === 0) {
+		return recipients;
+	}
+
+	const existingRows = await db
+		.select({ userId: notifications.userId })
+		.from(notifications)
+		.where(
+			and(
+				eq(notifications.organizationId, input.organizationId),
+				eq(notifications.entityType, input.entityType),
+				eq(notifications.entityId, input.entityId),
+				eq(notifications.type, input.type),
+				inArray(notifications.userId, recipients),
+				sql`${notifications.metadata} ->> 'kind' = ${reminderMetadata.kind}`,
+				sql`${notifications.metadata} ->> 'dueDate' = ${reminderMetadata.dueDate}`,
+			),
+		);
+
+	const existingUserIds = new Set(existingRows.map((row) => row.userId));
+	return recipients.filter((userId) => !existingUserIds.has(userId));
 }
 
 async function getPreferenceMap(organizationId: string, userIds: string[]) {
@@ -420,12 +483,17 @@ export async function notifyEntityUsers(input: NotifyEntityUsersInput) {
 		),
 	);
 
-	if (recipients.length === 0) {
+	const dedupedRecipients = await filterDuplicateReminderRecipients(
+		input,
+		recipients,
+	);
+
+	if (dedupedRecipients.length === 0) {
 		return 0;
 	}
 
 	await db.insert(notifications).values(
-		recipients.map((userId) => ({
+		dedupedRecipients.map((userId) => ({
 			organizationId: input.organizationId,
 			userId,
 			entityType: input.entityType,
@@ -440,7 +508,7 @@ export async function notifyEntityUsers(input: NotifyEntityUsersInput) {
 		})),
 	);
 
-	return recipients.length;
+	return dedupedRecipients.length;
 }
 
 export async function safeNotifyEntityUsers(input: NotifyEntityUsersInput) {
