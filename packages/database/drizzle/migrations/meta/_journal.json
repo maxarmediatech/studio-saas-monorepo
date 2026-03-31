@@ -246,6 +246,13 @@
       "when": 1774978721913,
       "tag": "0034_pretty_thunderbird",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1774983637557,
+      "tag": "0035_plain_wiccan",
+      "breakpoints": true
     }
   ]
 }

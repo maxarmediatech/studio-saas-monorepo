@@ -1,18 +1,34 @@
 import {
 	and,
+	crews,
 	db,
+	deliverableAssignments,
+	deliverables,
 	eq,
+	inArray,
 	isNotNull,
 	isNull,
 	ne,
+	notificationPreferences,
 	notifications,
+	shootAssignments,
+	shoots,
 	subscriptions,
+	taskAssignments,
+	tasks,
 } from "@repo/database";
 import type { NotificationMetadata } from "./notification-metadata";
+import {
+	getEffectiveNotificationPreferences,
+	type NotificationRecipientReason,
+	shouldNotifyForReasons,
+} from "./notification-preferences";
 
-interface NotifySubscribersInput {
+type NotificationEntityType = "deliverable" | "shoot" | "task";
+
+interface NotifyEntityUsersInput {
 	organizationId: string;
-	entityType: string;
+	entityType: NotificationEntityType;
 	entityId: string;
 	entityName: string;
 	type: string;
@@ -29,6 +45,278 @@ interface AutoSubscribeInput {
 	userId: string;
 	entityType: string;
 	entityId: string;
+}
+
+interface EntityNotificationContext {
+	assignerUserIds: string[];
+	assigneeUserIds: string[];
+	bookingOwnerUserId: string | null;
+}
+
+function addRecipientReason(
+	recipients: Map<string, Set<NotificationRecipientReason>>,
+	userId: string | null | undefined,
+	reason: NotificationRecipientReason,
+) {
+	if (!userId) {
+		return;
+	}
+
+	const reasons =
+		recipients.get(userId) ?? new Set<NotificationRecipientReason>();
+	reasons.add(reason);
+	recipients.set(userId, reasons);
+}
+
+async function getSubscribers(
+	organizationId: string,
+	entityType: NotificationEntityType,
+	entityId: string,
+	excludeUserId?: string,
+) {
+	const conditions = [
+		eq(subscriptions.organizationId, organizationId),
+		eq(subscriptions.entityType, entityType),
+		eq(subscriptions.entityId, entityId),
+		isNull(subscriptions.deletedAt),
+	];
+
+	if (excludeUserId) {
+		conditions.push(ne(subscriptions.userId, excludeUserId));
+	}
+
+	return db
+		.select({ userId: subscriptions.userId })
+		.from(subscriptions)
+		.where(and(...conditions));
+}
+
+async function getTaskNotificationContext(
+	organizationId: string,
+	entityId: string,
+): Promise<EntityNotificationContext> {
+	const task = await db.query.tasks.findFirst({
+		where: and(
+			eq(tasks.organizationId, organizationId),
+			eq(tasks.id, entityId),
+			isNull(tasks.deletedAt),
+		),
+		with: {
+			booking: {
+				columns: { createdBy: true },
+			},
+		},
+		columns: { id: true },
+	});
+
+	const assignments = await db
+		.select({
+			userId: crews.userId,
+			assignedBy: taskAssignments.assignedBy,
+		})
+		.from(taskAssignments)
+		.innerJoin(crews, eq(taskAssignments.crewId, crews.id))
+		.where(eq(taskAssignments.taskId, entityId));
+
+	return {
+		assignerUserIds: [
+			...new Set(
+				assignments
+					.map((assignment) => assignment.assignedBy)
+					.filter((userId): userId is string => Boolean(userId)),
+			),
+		],
+		assigneeUserIds: [
+			...new Set(
+				assignments
+					.map((assignment) => assignment.userId)
+					.filter((userId): userId is string => Boolean(userId)),
+			),
+		],
+		bookingOwnerUserId: task?.booking.createdBy ?? null,
+	};
+}
+
+async function getDeliverableNotificationContext(
+	organizationId: string,
+	entityId: string,
+): Promise<EntityNotificationContext> {
+	const deliverable = await db.query.deliverables.findFirst({
+		where: and(
+			eq(deliverables.organizationId, organizationId),
+			eq(deliverables.id, entityId),
+			isNull(deliverables.deletedAt),
+		),
+		with: {
+			booking: {
+				columns: { createdBy: true },
+			},
+		},
+		columns: { id: true },
+	});
+
+	const assignments = await db
+		.select({
+			userId: crews.userId,
+			assignedBy: deliverableAssignments.assignedBy,
+		})
+		.from(deliverableAssignments)
+		.innerJoin(crews, eq(deliverableAssignments.crewId, crews.id))
+		.where(eq(deliverableAssignments.deliverableId, entityId));
+
+	return {
+		assignerUserIds: [
+			...new Set(
+				assignments
+					.map((assignment) => assignment.assignedBy)
+					.filter((userId): userId is string => Boolean(userId)),
+			),
+		],
+		assigneeUserIds: [
+			...new Set(
+				assignments
+					.map((assignment) => assignment.userId)
+					.filter((userId): userId is string => Boolean(userId)),
+			),
+		],
+		bookingOwnerUserId: deliverable?.booking.createdBy ?? null,
+	};
+}
+
+async function getShootNotificationContext(
+	organizationId: string,
+	entityId: string,
+): Promise<EntityNotificationContext> {
+	const shoot = await db.query.shoots.findFirst({
+		where: and(
+			eq(shoots.organizationId, organizationId),
+			eq(shoots.id, entityId),
+			isNull(shoots.deletedAt),
+		),
+		with: {
+			booking: {
+				columns: { createdBy: true },
+			},
+		},
+		columns: { id: true },
+	});
+
+	const assignments = await db
+		.select({
+			userId: crews.userId,
+			assignedBy: shootAssignments.assignedBy,
+		})
+		.from(shootAssignments)
+		.innerJoin(crews, eq(shootAssignments.crewId, crews.id))
+		.where(eq(shootAssignments.shootId, entityId));
+
+	return {
+		assignerUserIds: [
+			...new Set(
+				assignments
+					.map((assignment) => assignment.assignedBy)
+					.filter((userId): userId is string => Boolean(userId)),
+			),
+		],
+		assigneeUserIds: [
+			...new Set(
+				assignments
+					.map((assignment) => assignment.userId)
+					.filter((userId): userId is string => Boolean(userId)),
+			),
+		],
+		bookingOwnerUserId: shoot?.booking.createdBy ?? null,
+	};
+}
+
+async function getEntityNotificationContext(
+	organizationId: string,
+	entityType: NotificationEntityType,
+	entityId: string,
+) {
+	switch (entityType) {
+		case "task":
+			return getTaskNotificationContext(organizationId, entityId);
+		case "deliverable":
+			return getDeliverableNotificationContext(organizationId, entityId);
+		case "shoot":
+			return getShootNotificationContext(organizationId, entityId);
+	}
+}
+
+function buildRecipientReasons(
+	input: NotifyEntityUsersInput,
+	context: EntityNotificationContext,
+	subscriberUserIds: string[],
+) {
+	const recipients = new Map<string, Set<NotificationRecipientReason>>();
+
+	for (const userId of subscriberUserIds) {
+		addRecipientReason(recipients, userId, "subscriber");
+	}
+
+	if (input.type === "assigned") {
+		const assigneeId =
+			input.metadata && "assigneeId" in input.metadata
+				? input.metadata.assigneeId
+				: null;
+
+		addRecipientReason(recipients, assigneeId, "assignee");
+	}
+
+	if (input.type === "status_changed") {
+		for (const userId of context.assigneeUserIds) {
+			addRecipientReason(recipients, userId, "assignee");
+		}
+	}
+
+	if (input.type === "assigned" || input.type === "status_changed") {
+		for (const userId of context.assignerUserIds) {
+			addRecipientReason(recipients, userId, "assigner");
+		}
+
+		addRecipientReason(
+			recipients,
+			context.bookingOwnerUserId,
+			"booking_owner",
+		);
+	}
+
+	return recipients;
+}
+
+async function getPreferenceMap(organizationId: string, userIds: string[]) {
+	if (userIds.length === 0) {
+		return new Map<
+			string,
+			ReturnType<typeof getEffectiveNotificationPreferences>
+		>();
+	}
+
+	const rows = await db
+		.select({
+			userId: notificationPreferences.userId,
+			assignedToMe: notificationPreferences.assignedToMe,
+			itemsIAssigned: notificationPreferences.itemsIAssigned,
+			bookingsIOwn: notificationPreferences.bookingsIOwn,
+			itemsIFollow: notificationPreferences.itemsIFollow,
+			mentions: notificationPreferences.mentions,
+			dueOverdueReminders: notificationPreferences.dueOverdueReminders,
+		})
+		.from(notificationPreferences)
+		.where(
+			and(
+				eq(notificationPreferences.organizationId, organizationId),
+				inArray(notificationPreferences.userId, userIds),
+			),
+		);
+
+	return new Map(
+		rows.map((row) => [
+			row.userId,
+			getEffectiveNotificationPreferences(row),
+		]),
+	);
 }
 
 export async function autoSubscribe({
@@ -92,63 +380,77 @@ export async function safeAutoSubscribe(input: AutoSubscribeInput) {
 	}
 }
 
-export async function notifySubscribers({
-	organizationId,
-	entityType,
-	entityId,
-	entityName,
-	type,
-	title,
-	body,
-	metadata,
-	actorId,
-	actorName,
-	excludeUserId,
-}: NotifySubscribersInput) {
-	const conditions = [
-		eq(subscriptions.organizationId, organizationId),
-		eq(subscriptions.entityType, entityType),
-		eq(subscriptions.entityId, entityId),
-		isNull(subscriptions.deletedAt),
-	];
+export async function notifyEntityUsers(input: NotifyEntityUsersInput) {
+	const [subscribersList, context] = await Promise.all([
+		getSubscribers(
+			input.organizationId,
+			input.entityType,
+			input.entityId,
+			input.excludeUserId,
+		),
+		getEntityNotificationContext(
+			input.organizationId,
+			input.entityType,
+			input.entityId,
+		),
+	]);
 
-	if (excludeUserId) {
-		conditions.push(ne(subscriptions.userId, excludeUserId));
+	const recipientReasons = buildRecipientReasons(
+		input,
+		context,
+		subscribersList.map((subscriber) => subscriber.userId),
+	);
+	const candidateUserIds = [...recipientReasons.keys()].filter(
+		(userId) => userId !== input.excludeUserId,
+	);
+
+	if (candidateUserIds.length === 0) {
+		return 0;
 	}
 
-	const subscribersList = await db
-		.select({ userId: subscriptions.userId })
-		.from(subscriptions)
-		.where(and(...conditions));
+	const preferencesByUserId = await getPreferenceMap(
+		input.organizationId,
+		candidateUserIds,
+	);
+	const recipients = candidateUserIds.filter((userId) =>
+		shouldNotifyForReasons(
+			preferencesByUserId.get(userId) ??
+				getEffectiveNotificationPreferences(),
+			recipientReasons.get(userId) ?? [],
+		),
+	);
 
-	if (subscribersList.length === 0) {
+	if (recipients.length === 0) {
 		return 0;
 	}
 
 	await db.insert(notifications).values(
-		subscribersList.map((subscriber) => ({
-			organizationId,
-			userId: subscriber.userId,
-			entityType,
-			entityId,
-			entityName,
-			type,
-			title,
-			body: body ?? null,
-			metadata: metadata ?? null,
-			actorId: actorId ?? null,
-			actorName: actorName ?? null,
+		recipients.map((userId) => ({
+			organizationId: input.organizationId,
+			userId,
+			entityType: input.entityType,
+			entityId: input.entityId,
+			entityName: input.entityName,
+			type: input.type,
+			title: input.title,
+			body: input.body ?? null,
+			metadata: input.metadata ?? null,
+			actorId: input.actorId ?? null,
+			actorName: input.actorName ?? null,
 		})),
 	);
 
-	return subscribersList.length;
+	return recipients.length;
 }
 
-export async function safeNotifySubscribers(input: NotifySubscribersInput) {
+export async function safeNotifyEntityUsers(input: NotifyEntityUsersInput) {
 	try {
-		return await notifySubscribers(input);
+		return await notifyEntityUsers(input);
 	} catch (error) {
 		console.error("Notification dispatch failed:", error);
 		return 0;
 	}
 }
+
+export const notifySubscribers = notifyEntityUsers;
+export const safeNotifySubscribers = safeNotifyEntityUsers;

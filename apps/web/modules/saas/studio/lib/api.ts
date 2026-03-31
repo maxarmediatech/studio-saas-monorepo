@@ -104,6 +104,7 @@ export const studioQueryKeys = {
 		list: (filters?: Record<string, unknown>) =>
 			["studio", "notifications", "list", filters] as const,
 		unreadCount: () => ["studio", "notifications", "unread-count"] as const,
+		preferences: () => ["studio", "notifications", "preferences"] as const,
 	},
 	// Dashboard
 	dashboard: {
@@ -675,11 +676,15 @@ export const notificationsApi = {
 		>[0]["input"],
 	) => orpc.notifications.list.queryOptions({ input }),
 	unreadCountOptions: () => orpc.notifications.unreadCount.queryOptions(),
+	preferencesOptions: () =>
+		orpc.notifications.getPreferences.queryOptions({ input: undefined }),
 };
 
 export const notificationsMutations = {
 	markRead: () => orpc.notifications.markRead.mutationOptions(),
 	markAllRead: () => orpc.notifications.markAllRead.mutationOptions(),
+	updatePreferences: () =>
+		orpc.notifications.updatePreferences.mutationOptions(),
 };
 
 // ============================================================================

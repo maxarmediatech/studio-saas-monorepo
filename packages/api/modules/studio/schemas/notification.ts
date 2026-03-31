@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { notificationMetadataSchema } from "../../notifications/lib/notification-metadata";
+import { notificationPreferencesSchema } from "../../notifications/lib/notification-preferences";
 import {
 	datetimeSchema,
 	paginationResponseSchema,
@@ -52,6 +53,18 @@ export const unreadNotificationCountOutputSchema = z.object({
 	count: z.number(),
 });
 
+export const getNotificationPreferencesOutputSchema = z.object({
+	data: notificationPreferencesSchema,
+});
+
+export const updateNotificationPreferencesInputSchema =
+	notificationPreferencesSchema;
+
+export const updateNotificationPreferencesOutputSchema = z.object({
+	data: notificationPreferencesSchema,
+	message: z.string(),
+});
+
 // ============================================================================
 // TYPES
 // ============================================================================
@@ -59,6 +72,9 @@ export const unreadNotificationCountOutputSchema = z.object({
 export type NotificationItem = z.infer<typeof notificationSchema>;
 export type NotificationMetadata = NonNullable<
 	z.infer<typeof notificationMetadataSchema>
+>;
+export type NotificationPreferences = z.infer<
+	typeof notificationPreferencesSchema
 >;
 export type StatusChangedNotificationMetadata =
 	z.infer<typeof notificationMetadataSchema> extends infer T

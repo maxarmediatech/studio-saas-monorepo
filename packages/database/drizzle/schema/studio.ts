@@ -1474,7 +1474,7 @@ export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
 
 // ============================================================================
 // NOTIFICATIONS TABLE
-// In-app notifications for subscribed entities
+// In-app notifications
 // ============================================================================
 
 export const notifications = pgTable(
@@ -1537,6 +1537,58 @@ export const notificationsRelations = relations(notifications, ({ one }) => ({
 		references: [users.id],
 	}),
 }));
+
+export const notificationPreferences = pgTable(
+	"notification_preferences",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 })
+			.notNull()
+			.references(() => organizations.id, { onDelete: "cascade" }),
+		userId: varchar("user_id", { length: 255 })
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+
+		assignedToMe: boolean("assigned_to_me").default(true).notNull(),
+		itemsIAssigned: boolean("items_i_assigned").default(true).notNull(),
+		bookingsIOwn: boolean("bookings_i_own").default(true).notNull(),
+		itemsIFollow: boolean("items_i_follow").default(true).notNull(),
+		mentions: boolean("mentions").default(true).notNull(),
+		dueOverdueReminders: boolean("due_overdue_reminders")
+			.default(true)
+			.notNull(),
+
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		uniqueIndex("notification_preferences_org_user_idx").on(
+			table.organizationId,
+			table.userId,
+		),
+		index("notification_preferences_user_idx").on(table.userId),
+	],
+);
+
+export const notificationPreferencesRelations = relations(
+	notificationPreferences,
+	({ one }) => ({
+		organization: one(organizations, {
+			fields: [notificationPreferences.organizationId],
+			references: [organizations.id],
+		}),
+		user: one(users, {
+			fields: [notificationPreferences.userId],
+			references: [users.id],
+		}),
+	}),
+);
 
 // ============================================================================
 // STICKIES
@@ -2449,3 +2501,8 @@ export type NewSubscription = typeof subscriptions.$inferInsert;
 
 export type Notification = typeof notifications.$inferSelect;
 export type NewNotification = typeof notifications.$inferInsert;
+
+export type NotificationPreference =
+	typeof notificationPreferences.$inferSelect;
+export type NewNotificationPreference =
+	typeof notificationPreferences.$inferInsert;
