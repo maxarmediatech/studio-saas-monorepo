@@ -9,8 +9,9 @@ import { Button } from "@repo/ui/components/button";
 import { Camera, ListTodoIcon, Package } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { SubscribeButton } from "./subscribe-button";
+import { getYourWorkEntityHref } from "./routes";
 import { SubmitForReviewDialog } from "./submit-for-review-dialog";
+import { SubscribeButton } from "./subscribe-button";
 
 interface YourWorkGroup {
 	id: "assigned" | "created" | "subscribed";
@@ -35,19 +36,6 @@ function formatDate(dateString: string | null): string {
 		day: "numeric",
 		year: "numeric",
 	});
-}
-
-function getEntityLink(organizationSlug: string, item: YourWorkItem) {
-	switch (item.entityType) {
-		case "task":
-			return `/app/${organizationSlug}/tasks?taskId=${item.entityId}`;
-		case "deliverable":
-			return `/app/${organizationSlug}/deliverables?deliverableId=${item.entityId}`;
-		case "shoot":
-			return `/app/${organizationSlug}/shoots?shootId=${item.entityId}`;
-		default:
-			return `/app/${organizationSlug}/home`;
-	}
 }
 
 function getEntityLabel(entityType: YourWorkItem["entityType"]) {
@@ -121,7 +109,7 @@ function GroupRow({
 					</span>
 				) : null}
 				<Link
-					href={getEntityLink(organizationSlug, item)}
+					href={getYourWorkEntityHref(organizationSlug, item)}
 					className="truncate text-sm font-medium text-neutral-900 hover:underline"
 				>
 					{item.name}
