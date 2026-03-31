@@ -8,6 +8,7 @@ import {
 	sql,
 	taskAssignments,
 	tasks,
+	users,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
@@ -69,6 +70,7 @@ export const getTask = studioProtectedProcedure
 				taskId: taskAssignments.taskId,
 				crewId: taskAssignments.crewId,
 				assignedBy: taskAssignments.assignedBy,
+				assignedByName: users.name,
 				createdAt: taskAssignments.createdAt,
 				crew: {
 					id: crews.id,
@@ -78,6 +80,7 @@ export const getTask = studioProtectedProcedure
 			})
 			.from(taskAssignments)
 			.innerJoin(crews, eq(taskAssignments.crewId, crews.id))
+			.leftJoin(users, eq(taskAssignments.assignedBy, users.id))
 			.where(eq(taskAssignments.taskId, id));
 
 		let metadata = task.metadata as Record<string, unknown> | null;

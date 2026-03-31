@@ -322,12 +322,23 @@ export default function TaskDetailPage() {
 								key={assignment.id}
 								variant="secondary"
 								className="flex items-center gap-1.5"
+								title={
+									assignment.assignedByName
+										? `Assigned by ${assignment.assignedByName}`
+										: undefined
+								}
 							>
 								<UserAvatar
 									name={assignment.crew.name}
 									className="size-4"
 								/>
 								<span>{assignment.crew.name}</span>
+								{assignment.assignedByName ? (
+									<span className="text-muted-foreground">
+										· assigned by{" "}
+										{assignment.assignedByName}
+									</span>
+								) : null}
 							</Badge>
 						))}
 					</div>
@@ -386,6 +397,16 @@ export default function TaskDetailPage() {
 													{assignment.crew.name}
 												</span>
 												<span>assigned</span>
+												{assignment.assignedByName ? (
+													<span>
+														by{" "}
+														<span className="font-medium text-foreground">
+															{
+																assignment.assignedByName
+															}
+														</span>
+													</span>
+												) : null}
 												<span>·</span>
 												<span>
 													{formatDistanceToNow(

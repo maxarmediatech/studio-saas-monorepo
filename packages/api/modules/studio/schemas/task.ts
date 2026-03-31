@@ -30,6 +30,7 @@ export const taskAssignmentSchema = z.object({
 	taskId: idSchema,
 	crewId: idSchema,
 	assignedBy: idSchema.nullable(),
+	assignedByName: z.string().nullable(),
 	createdAt: z.string(),
 });
 
