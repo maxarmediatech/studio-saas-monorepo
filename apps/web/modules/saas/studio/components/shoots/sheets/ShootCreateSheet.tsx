@@ -38,6 +38,10 @@ export function ShootCreateSheet() {
 				venue: undefined,
 				venueAddress: data.location || undefined,
 				notes: data.notes || undefined,
+				requiredCrewCount: data.requiredCrewCount?.trim()
+					? Number.parseInt(data.requiredCrewCount, 10)
+					: undefined,
+				additionalServices: data.additionalServices ?? [],
 			});
 
 			const crewAssignments = data.crewAssignments ?? [];

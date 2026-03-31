@@ -16,12 +16,17 @@ import {
 	InputGroupInput,
 	InputGroupText,
 } from "@repo/ui/components/input-group";
+import { MultiSelectCombobox } from "@repo/ui/components/multi-select-combobox";
 import { ScrollArea } from "@repo/ui/components/scroll-area";
 import { Textarea } from "@repo/ui/components/textarea";
 import { TimePicker } from "@repo/ui/components/time-picker";
 import { useStudioCapabilities } from "@saas/studio/components/studio-capabilities-context";
 import { useConfigurationParams } from "@saas/studio/hooks/params/use-configuration-params";
 import { bookingsApi, configurationsApi, crewsApi } from "@saas/studio/lib/api";
+import {
+	getShootExtraServiceLabel,
+	SHOOT_EXTRA_SERVICE_OPTIONS,
+} from "@saas/studio/lib/shoot-planning";
 import { useQuery } from "@tanstack/react-query";
 import {
 	ChevronDownIcon,
@@ -49,8 +54,17 @@ const shootFormSchema = z.object({
 	shootType: z.string().min(1, "Event type is required"),
 	shootDate: z.string().min(1, "Date is required"),
 	startTime: z.string().optional().or(z.literal("")),
+	requiredCrewCount: z
+		.string()
+		.optional()
+		.or(z.literal(""))
+		.refine(
+			(value) => !value || /^[1-9]\d*$/.test(value),
+			"Required crew count must be a positive whole number",
+		),
 	location: z.string().max(500).optional().or(z.literal("")),
 	notes: z.string().max(5000).optional().or(z.literal("")),
+	additionalServices: z.array(z.string()).optional(),
 	crewAssignments: z.array(crewAssignmentSchema).optional(),
 });
 
@@ -73,12 +87,6 @@ interface ShootFormProps {
 	defaultBookingId?: string;
 	/** Booking info for edit mode (read-only display) */
 	booking?: BookingInfo;
-	/** Existing crew assignments for edit mode */
-	existingAssignments?: Array<{
-		crewId: string;
-		rate: string | null;
-		crew: { id: string; name: string };
-	}>;
 	onSubmit: (data: ShootFormValues) => Promise<void>;
 	mode: "create" | "edit";
 	isPending?: boolean;
@@ -93,7 +101,6 @@ export function ShootForm({
 	defaultValues,
 	defaultBookingId,
 	booking,
-	existingAssignments,
 	onSubmit,
 	mode,
 	isPending = false,
@@ -133,8 +140,10 @@ export function ShootForm({
 			shootType: "",
 			shootDate: "",
 			startTime: "",
+			requiredCrewCount: "",
 			location: "",
 			notes: "",
+			additionalServices: [],
 			crewAssignments: [],
 		},
 	});
@@ -157,8 +166,10 @@ export function ShootForm({
 				shootType: defaultValues.shootType ?? "",
 				shootDate: defaultValues.shootDate ?? "",
 				startTime: defaultValues.startTime ?? "",
+				requiredCrewCount: defaultValues.requiredCrewCount ?? "",
 				location: defaultValues.location ?? "",
 				notes: defaultValues.notes ?? "",
+				additionalServices: defaultValues.additionalServices ?? [],
 				crewAssignments: defaultValues.crewAssignments ?? [],
 			});
 			// Auto-expand notes if there's content
@@ -213,7 +224,9 @@ export function ShootForm({
 		(currentCrewId?: string): ComboboxOption[] => {
 			return crews
 				.filter((crew) => {
-					if (crew.id === currentCrewId) return true;
+					if (crew.id === currentCrewId) {
+						return true;
+					}
 					return !selectedCrewIds.includes(crew.id);
 				})
 				.map((crew) => ({
@@ -392,6 +405,72 @@ export function ShootForm({
 							/>
 						</div>
 
+						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+							<Controller
+								name="requiredCrewCount"
+								control={form.control}
+								render={({ field, fieldState }) => (
+									<Field data-invalid={fieldState.invalid}>
+										<FieldLabel htmlFor={field.name}>
+											Required Crew Count
+										</FieldLabel>
+										<InputGroup>
+											<InputGroupInput
+												id={field.name}
+												type="number"
+												min="1"
+												step="1"
+												value={field.value ?? ""}
+												onChange={(e) =>
+													field.onChange(
+														e.target.value,
+													)
+												}
+												placeholder="e.g. 4"
+												aria-invalid={
+													fieldState.invalid
+												}
+											/>
+										</InputGroup>
+										{fieldState.invalid && (
+											<FieldError
+												errors={[fieldState.error]}
+											/>
+										)}
+									</Field>
+								)}
+							/>
+
+							<Controller
+								name="additionalServices"
+								control={form.control}
+								render={({ field, fieldState }) => (
+									<Field data-invalid={fieldState.invalid}>
+										<FieldLabel htmlFor={field.name}>
+											Extra Services
+										</FieldLabel>
+										<MultiSelectCombobox
+											id={field.name}
+											options={[
+												...SHOOT_EXTRA_SERVICE_OPTIONS,
+											]}
+											value={field.value ?? []}
+											onValueChange={field.onChange}
+											placeholder="Select extra services"
+											searchPlaceholder="Search services..."
+											emptyText="No extra services found"
+											aria-invalid={fieldState.invalid}
+										/>
+										{fieldState.invalid && (
+											<FieldError
+												errors={[fieldState.error]}
+											/>
+										)}
+									</Field>
+								)}
+							/>
+						</div>
+
 						{/* Location */}
 						<Controller
 							name="location"
@@ -484,6 +563,14 @@ export function ShootForm({
 										<p className="text-sm text-muted-foreground">
 											No crew assigned yet
 										</p>
+										{form.watch("requiredCrewCount") && (
+											<p className="text-xs text-muted-foreground">
+												Required:{" "}
+												{form.watch(
+													"requiredCrewCount",
+												)}
+											</p>
+										)}
 										<Button
 											type="button"
 											variant="link"
@@ -618,6 +705,18 @@ export function ShootForm({
 								</div>
 							)}
 						</Field>
+
+						{(form.watch("additionalServices")?.length ?? 0) >
+							0 && (
+							<p className="text-xs text-muted-foreground">
+								Extra services:{" "}
+								{(form.watch("additionalServices") ?? [])
+									.map((service) =>
+										getShootExtraServiceLabel(service),
+									)
+									.join(", ")}
+							</p>
+						)}
 					</FieldGroup>
 				</div>
 			</ScrollArea>

@@ -8,9 +8,9 @@ import {
 } from "@repo/ui/components/sheet";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
-import { orpc } from "@shared/lib/orpc-query-utils";
 import { useShootParams } from "@saas/studio/hooks/params/use-shoot-params";
 import { shootsApi, shootsMutations } from "@saas/studio/lib/api";
+import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -34,15 +34,19 @@ export function ShootEditSheet() {
 	const formDefaultValues = useMemo(():
 		| Partial<ShootFormValues>
 		| undefined => {
-		if (!shoot?.data) return undefined;
+		if (!shoot?.data) {
+			return undefined;
+		}
 
 		return {
 			bookingId: shoot.data.bookingId,
 			shootType: shoot.data.shootType,
 			shootDate: shoot.data.shootDate,
 			startTime: shoot.data.startTime ?? "",
+			requiredCrewCount: shoot.data.requiredCrewCount?.toString() ?? "",
 			location: shoot.data.venueAddress ?? "",
 			notes: shoot.data.notes ?? "",
+			additionalServices: shoot.data.additionalServices ?? [],
 			crewAssignments:
 				shoot.data.assignments?.map((a) => ({
 					crewId: a.crewId,
@@ -56,7 +60,9 @@ export function ShootEditSheet() {
 	}, [shoot?.data?.assignments]);
 
 	const handleSubmit = async (data: ShootFormValues) => {
-		if (!shootId) return;
+		if (!shootId) {
+			return;
+		}
 
 		try {
 			await updateMutation.mutateAsync({
@@ -69,6 +75,10 @@ export function ShootEditSheet() {
 				venue: null,
 				venueAddress: data.location || null,
 				notes: data.notes || null,
+				requiredCrewCount: data.requiredCrewCount?.trim()
+					? Number.parseInt(data.requiredCrewCount, 10)
+					: null,
+				additionalServices: data.additionalServices ?? [],
 			});
 
 			const newAssignments =
@@ -181,7 +191,6 @@ export function ShootEditSheet() {
 						<ShootForm
 							defaultValues={formDefaultValues}
 							booking={shoot?.data?.booking}
-							existingAssignments={existingAssignments}
 							onSubmit={handleSubmit}
 							mode="edit"
 							isPending={isPending}

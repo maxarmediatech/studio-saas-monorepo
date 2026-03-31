@@ -68,6 +68,8 @@ export const shootSchema = z.object({
 	venue: z.string().nullable(),
 	venueAddress: z.string().nullable(),
 	notes: z.string().nullable(),
+	requiredCrewCount: z.number().int().positive().nullable(),
+	additionalServices: z.array(z.string()),
 	status: z.string(),
 	createdBy: idSchema.nullable(),
 	updatedBy: idSchema.nullable(),
@@ -202,6 +204,8 @@ export const createShootInputSchema = z.object({
 	venue: z.string().max(255).optional(),
 	venueAddress: z.string().max(500).optional(),
 	notes: z.string().max(5000).optional(),
+	requiredCrewCount: z.number().int().positive().optional(),
+	additionalServices: z.array(z.string()).optional(),
 	status: z.string().min(1).max(50).optional(),
 });
 
@@ -225,6 +229,8 @@ export const updateShootInputSchema = z.object({
 	venue: z.string().max(255).optional().nullable(),
 	venueAddress: z.string().max(500).optional().nullable(),
 	notes: z.string().max(5000).optional().nullable(),
+	requiredCrewCount: z.number().int().positive().optional().nullable(),
+	additionalServices: z.array(z.string()).optional(),
 	status: z.string().min(1).max(50).optional(),
 });
 

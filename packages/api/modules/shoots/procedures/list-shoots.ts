@@ -18,6 +18,7 @@ import {
 	listShootsInputSchema,
 	listShootsOutputSchema,
 } from "../../studio/schemas/shoot";
+import { extractShootPlanningFields } from "../lib/shoot-planning";
 
 export const listShoots = studioProtectedProcedure
 	.route({
@@ -182,6 +183,7 @@ export const listShoots = studioProtectedProcedure
 			data: data.map(
 				({ shoot, bookingName, bookingReferenceNumber }) => ({
 					...shoot,
+					...extractShootPlanningFields(shoot.metadata),
 					createdAt: shoot.createdAt.toISOString(),
 					updatedAt: shoot.updatedAt.toISOString(),
 					deletedAt: shoot.deletedAt?.toISOString() ?? null,

@@ -19,6 +19,7 @@ import {
 } from "@repo/database";
 import { logger } from "@repo/logs";
 import { isTerminalShootStatus } from "../../shoots/calendar-sync";
+import { buildShootPlanningMetadata } from "../../shoots/lib/shoot-planning";
 import type { TransactionClient } from "../../studio/lib/transactions";
 import type { ShootInput } from "../../studio/schemas/booking";
 
@@ -64,6 +65,10 @@ export async function createShootsBatch(
 				venue: shootInput.venue ?? null,
 				venueAddress: shootInput.venueAddress ?? null,
 				notes: shootInput.notes ?? null,
+				metadata: buildShootPlanningMetadata(null, {
+					requiredCrewCount: shootInput.requiredCrewCount ?? null,
+					additionalServices: shootInput.additionalServices ?? [],
+				}),
 				status: shootInput.status ?? "scheduled",
 				createdBy: userId,
 			})

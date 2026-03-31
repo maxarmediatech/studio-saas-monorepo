@@ -10,6 +10,7 @@ import {
 } from "@repo/ui/components/card";
 import { Progress } from "@repo/ui/components/progress";
 import { deliverablesApi, shootsApi } from "@saas/studio/lib/api";
+import { getShootExtraServiceLabel } from "@saas/studio/lib/shoot-planning";
 import { useQuery } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
 import { CheckCircle2Icon } from "lucide-react";
@@ -43,6 +44,9 @@ type ShootData = {
 	shootDate?: string | null;
 	startTime?: string | null;
 	endTime?: string | null;
+	requiredCrewCount?: number | null;
+	assignmentsCount?: number;
+	additionalServices?: string[];
 	status: string;
 };
 
@@ -125,8 +129,12 @@ function BookingSummaryCard({
 							key={stat.label}
 							className="rounded-lg border bg-muted/20 p-3"
 						>
-							<p className="text-xs text-muted-foreground">{stat.label}</p>
-							<p className="mt-1 text-lg font-semibold">{stat.value}</p>
+							<p className="text-xs text-muted-foreground">
+								{stat.label}
+							</p>
+							<p className="mt-1 text-lg font-semibold">
+								{stat.value}
+							</p>
 						</div>
 					))}
 				</div>
@@ -142,12 +150,14 @@ function BookingSummaryCard({
 	);
 }
 
-function CoverageScopeCard() {
+function _CoverageScopeCard() {
 	return (
 		<Card className="rounded-lg">
 			<CardHeader>
 				<CardTitle className="text-base">Coverage scope</CardTitle>
-				<CardDescription>What is included and excluded.</CardDescription>
+				<CardDescription>
+					What is included and excluded.
+				</CardDescription>
 			</CardHeader>
 			<CardContent className="grid gap-6 sm:grid-cols-2">
 				<div>
@@ -171,12 +181,14 @@ function CoverageScopeCard() {
 	);
 }
 
-function ExpectedOutcomesCard() {
+function _ExpectedOutcomesCard() {
 	return (
 		<Card className="rounded-lg">
 			<CardHeader>
 				<CardTitle className="text-base">Expected outcomes</CardTitle>
-				<CardDescription>Delivery goals for the booking.</CardDescription>
+				<CardDescription>
+					Delivery goals for the booking.
+				</CardDescription>
 			</CardHeader>
 			<CardContent className="space-y-2 text-sm text-muted-foreground">
 				{defaultOutcomes.map((item) => (
@@ -190,7 +202,7 @@ function ExpectedOutcomesCard() {
 	);
 }
 
-function KeyPrioritiesCard() {
+function _KeyPrioritiesCard() {
 	return (
 		<Card className="rounded-lg">
 			<CardHeader>
@@ -199,7 +211,9 @@ function KeyPrioritiesCard() {
 			</CardHeader>
 			<CardContent className="grid gap-4 sm:grid-cols-3">
 				<div className="space-y-2">
-					<p className="text-xs font-semibold text-muted-foreground">P0</p>
+					<p className="text-xs font-semibold text-muted-foreground">
+						P0
+					</p>
 					{defaultPriorities.p0.map((item) => (
 						<p key={item} className="text-sm">
 							{item}
@@ -207,7 +221,9 @@ function KeyPrioritiesCard() {
 					))}
 				</div>
 				<div className="space-y-2">
-					<p className="text-xs font-semibold text-muted-foreground">P1</p>
+					<p className="text-xs font-semibold text-muted-foreground">
+						P1
+					</p>
 					{defaultPriorities.p1.map((item) => (
 						<p key={item} className="text-sm">
 							{item}
@@ -215,7 +231,9 @@ function KeyPrioritiesCard() {
 					))}
 				</div>
 				<div className="space-y-2">
-					<p className="text-xs font-semibold text-muted-foreground">P2</p>
+					<p className="text-xs font-semibold text-muted-foreground">
+						P2
+					</p>
 					{defaultPriorities.p2.map((item) => (
 						<p key={item} className="text-sm">
 							{item}
@@ -250,7 +268,9 @@ function UpcomingShootsCard({ shoots }: { shoots: ShootData[] }) {
 		<Card className="rounded-lg">
 			<CardHeader>
 				<CardTitle className="text-base">Upcoming shoots</CardTitle>
-				<CardDescription>Shoot plan and readiness status.</CardDescription>
+				<CardDescription>
+					Shoot plan and readiness status.
+				</CardDescription>
 			</CardHeader>
 			<CardContent className="space-y-3">
 				{shoots.slice(0, 5).map((session) => {
@@ -270,12 +290,43 @@ function UpcomingShootsCard({ shoots }: { shoots: ShootData[] }) {
 						>
 							<div>
 								<p className="text-sm font-medium">
-									{session.name || session.shootType || "Session"}
+									{session.name ||
+										session.shootType ||
+										"Session"}
 								</p>
 								<p className="text-xs text-muted-foreground">
 									{dateStr}
 									{timeStr && ` - ${timeStr}`}
 								</p>
+								{(session.requiredCrewCount ||
+									(session.additionalServices?.length ?? 0) >
+										0) && (
+									<div className="mt-1 flex flex-wrap gap-1">
+										{session.requiredCrewCount ? (
+											<Badge
+												variant="outline"
+												className="text-[10px]"
+											>
+												Assigned{" "}
+												{session.assignmentsCount ?? 0}{" "}
+												/ {session.requiredCrewCount}
+											</Badge>
+										) : null}
+										{session.additionalServices?.map(
+											(service) => (
+												<Badge
+													key={service}
+													variant="outline"
+													className="text-[10px]"
+												>
+													{getShootExtraServiceLabel(
+														service,
+													)}
+												</Badge>
+											),
+										)}
+									</div>
+								)}
 							</div>
 							<Badge
 								variant={getStatusVariant(session.status)}
@@ -315,6 +366,7 @@ export function OverviewTabEnhanced({
 				shootsCount={shoots.length}
 				deliverablesTotal={deliverables.length}
 			/>
+			<UpcomingShootsCard shoots={shoots} />
 			<TasksTab bookingId={bookingId} />
 			<FinancesTab bookingId={bookingId} />
 		</div>

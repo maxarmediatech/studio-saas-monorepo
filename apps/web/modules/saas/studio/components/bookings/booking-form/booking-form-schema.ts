@@ -106,12 +106,20 @@ export const shootSchema = z.object({
 	shootType: z.string().min(1, "Event type is required"),
 	shootDate: z.string().min(1, "Shoot date is required"),
 	startTime: z.string().optional(),
+	requiredCrewCount: z
+		.string()
+		.optional()
+		.refine(
+			(value) => !value || /^[1-9]\d*$/.test(value),
+			"Required crew count must be a positive whole number",
+		),
 	// Max 500 to match API venueAddress field constraint
 	location: z
 		.string()
 		.max(500, "Location is too long (max 500 characters)")
 		.optional(),
 	notes: z.string().optional(),
+	additionalServices: z.array(z.string()).optional(),
 	crewAssignments: z.array(crewAssignmentSchema).optional(),
 });
 

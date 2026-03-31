@@ -7,6 +7,7 @@ import { formatMoney } from "@saas/shared/lib";
 import { useStudioCapabilities } from "@saas/studio/components/studio-capabilities-context";
 import { useShootParams } from "@saas/studio/hooks/params/use-shoot-params";
 import { shootsApi } from "@saas/studio/lib/api";
+import { getShootExtraServiceLabel } from "@saas/studio/lib/shoot-planning";
 import { UserAvatar } from "@shared/components/UserAvatar";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -207,6 +208,16 @@ export default function ShootDetailPage() {
 							</div>
 						</div>
 					)}
+
+					{shoot.requiredCrewCount && (
+						<div className="flex items-center gap-3 text-sm">
+							<CameraIcon className="size-4 text-muted-foreground" />
+							<span>
+								Assigned {shoot.assignments?.length ?? 0} /
+								Required {shoot.requiredCrewCount}
+							</span>
+						</div>
+					)}
 				</div>
 
 				{shoot.notes && (
@@ -217,6 +228,21 @@ export default function ShootDetailPage() {
 						<p className="text-foreground whitespace-pre-wrap">
 							{shoot.notes}
 						</p>
+					</div>
+				)}
+
+				{shoot.additionalServices.length > 0 && (
+					<div className="mt-6">
+						<h3 className="text-sm font-medium text-muted-foreground mb-2">
+							Extra Services
+						</h3>
+						<div className="flex flex-wrap gap-2">
+							{shoot.additionalServices.map((service) => (
+								<Badge key={service} variant="outline">
+									{getShootExtraServiceLabel(service)}
+								</Badge>
+							))}
+						</div>
 					</div>
 				)}
 			</div>

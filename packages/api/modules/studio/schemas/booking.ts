@@ -281,6 +281,8 @@ const shootInputSchema = z.object({
 	venue: z.string().max(255).optional(),
 	venueAddress: z.string().max(500).optional(),
 	notes: z.string().max(5000).optional(),
+	requiredCrewCount: z.number().int().positive().optional(),
+	additionalServices: z.array(z.string()).optional(),
 	status: z.string().min(1).max(50).default("scheduled"),
 	crewAssignments: z.array(shootCrewAssignmentInputSchema).optional(),
 });

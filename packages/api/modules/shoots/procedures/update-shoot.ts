@@ -21,15 +21,19 @@ import {
 	safeTrackStatusChange,
 } from "../../activities/lib";
 import { safeNotifySubscribers } from "../../notifications/lib/notification-service";
-import {
-	getCalendarDeleteJobType,
-	isTerminalShootStatus,
-} from "../calendar-sync";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	updateShootInputSchema,
 	updateShootOutputSchema,
 } from "../../studio/schemas/shoot";
+import {
+	getCalendarDeleteJobType,
+	isTerminalShootStatus,
+} from "../calendar-sync";
+import {
+	buildShootPlanningMetadata,
+	extractShootPlanningFields,
+} from "../lib/shoot-planning";
 
 export const updateShoot = studioProtectedProcedure
 	.route({
@@ -54,6 +58,8 @@ export const updateShoot = studioProtectedProcedure
 			venue,
 			venueAddress,
 			notes,
+			requiredCrewCount,
+			additionalServices,
 			status,
 		} = input;
 
@@ -106,6 +112,15 @@ export const updateShoot = studioProtectedProcedure
 		if (notes !== undefined) {
 			updates.notes = notes;
 		}
+		if (
+			requiredCrewCount !== undefined ||
+			additionalServices !== undefined
+		) {
+			updates.metadata = buildShootPlanningMetadata(existing.metadata, {
+				requiredCrewCount,
+				additionalServices,
+			});
+		}
 		if (status !== undefined) {
 			updates.status = status;
 		}
@@ -144,7 +159,10 @@ export const updateShoot = studioProtectedProcedure
 
 		// Track other field changes (non-blocking)
 		const changes = detectChanges(
-			existing,
+			{
+				...existing,
+				...extractShootPlanningFields(existing.metadata),
+			},
 			{
 				name,
 				shootType,
@@ -154,6 +172,8 @@ export const updateShoot = studioProtectedProcedure
 				venue,
 				venueAddress,
 				notes,
+				requiredCrewCount,
+				additionalServices,
 			},
 			[
 				"name",
@@ -164,6 +184,8 @@ export const updateShoot = studioProtectedProcedure
 				"venue",
 				"venueAddress",
 				"notes",
+				"requiredCrewCount",
+				"additionalServices",
 			],
 		);
 

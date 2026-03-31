@@ -8,6 +8,7 @@ import {
 	createShootInputSchema,
 	createShootOutputSchema,
 } from "../../studio/schemas/shoot";
+import { buildShootPlanningMetadata } from "../lib/shoot-planning";
 
 export const createShoot = studioProtectedProcedure
 	.route({
@@ -32,6 +33,8 @@ export const createShoot = studioProtectedProcedure
 			venue,
 			venueAddress,
 			notes,
+			requiredCrewCount,
+			additionalServices,
 			status,
 		} = input;
 
@@ -64,6 +67,10 @@ export const createShoot = studioProtectedProcedure
 				venue: venue ?? null,
 				venueAddress: venueAddress ?? null,
 				notes: notes ?? null,
+				metadata: buildShootPlanningMetadata(null, {
+					requiredCrewCount: requiredCrewCount ?? null,
+					additionalServices: additionalServices ?? [],
+				}),
 				status: status ?? "scheduled",
 				createdBy: context.user.id,
 			})
@@ -86,7 +93,12 @@ export const createShoot = studioProtectedProcedure
 				parentEntityType: "booking",
 				parentEntityId: bookingId,
 				parentEntityName: booking.name,
-				metadata: { shootType, shootDate },
+				metadata: {
+					shootType,
+					shootDate,
+					requiredCrewCount: requiredCrewCount ?? null,
+					additionalServices: additionalServices ?? [],
+				},
 			},
 		);
 

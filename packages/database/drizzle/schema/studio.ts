@@ -432,6 +432,7 @@ export const shoots = pgTable(
 		venue: text("venue"),
 		venueAddress: text("venue_address"),
 		notes: text("notes"),
+		metadata: jsonb("metadata"),
 
 		// Status is TEXT - configurable via configurations table (config_type: shoot_status)
 		status: text("status").default("scheduled").notNull(),

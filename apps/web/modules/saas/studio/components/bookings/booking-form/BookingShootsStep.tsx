@@ -1,5 +1,6 @@
 "use client";
 
+import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Card, CardContent } from "@repo/ui/components/card";
 import { Combobox, type ComboboxOption } from "@repo/ui/components/combobox";
@@ -19,9 +20,14 @@ import {
 	InputGroupInput,
 	InputGroupText,
 } from "@repo/ui/components/input-group";
+import { MultiSelectCombobox } from "@repo/ui/components/multi-select-combobox";
 import { Textarea } from "@repo/ui/components/textarea";
 import { TimePicker } from "@repo/ui/components/time-picker";
 import { useConfigurationParams } from "@saas/studio/hooks/params/use-configuration-params";
+import {
+	getShootExtraServiceLabel,
+	SHOOT_EXTRA_SERVICE_OPTIONS,
+} from "@saas/studio/lib/shoot-planning";
 import { useQuery } from "@tanstack/react-query";
 import {
 	CameraIcon,
@@ -139,8 +145,10 @@ export function BookingShootsStep() {
 				shootType: "",
 				shootDate: "",
 				startTime: "",
+				requiredCrewCount: "",
 				location: "",
 				notes: "",
+				additionalServices: [],
 				crewAssignments: [],
 			},
 			{ shouldFocus: false },
@@ -255,6 +263,11 @@ function ShootSection({
 
 	// Check if notes has content to auto-expand
 	const notesValue = form.watch(`shoots.${shootIndex}.notes`);
+	const requiredCrewCountValue = form.watch(
+		`shoots.${shootIndex}.requiredCrewCount`,
+	);
+	const additionalServicesValue =
+		form.watch(`shoots.${shootIndex}.additionalServices`) ?? [];
 
 	// useFieldArray for crew assignments
 	const {
@@ -454,6 +467,66 @@ function ShootSection({
 						/>
 					</div>
 
+					<div className="grid gap-3 grid-cols-1 md:grid-cols-2">
+						<Controller
+							name={`shoots.${shootIndex}.requiredCrewCount`}
+							control={form.control}
+							render={({ field, fieldState }) => (
+								<Field data-invalid={fieldState.invalid}>
+									<FieldLabel htmlFor={field.name}>
+										Required Crew Count
+									</FieldLabel>
+									<Input
+										id={field.name}
+										type="number"
+										min="1"
+										step="1"
+										value={field.value ?? ""}
+										onChange={(e) =>
+											field.onChange(e.target.value)
+										}
+										placeholder="e.g. 4"
+										aria-invalid={fieldState.invalid}
+									/>
+									{fieldState.invalid && (
+										<FieldError
+											errors={[fieldState.error]}
+										/>
+									)}
+								</Field>
+							)}
+						/>
+
+						<Controller
+							name={`shoots.${shootIndex}.additionalServices`}
+							control={form.control}
+							render={({ field, fieldState }) => (
+								<Field data-invalid={fieldState.invalid}>
+									<FieldLabel htmlFor={field.name}>
+										Extra Services
+									</FieldLabel>
+									<MultiSelectCombobox
+										id={field.name}
+										options={[
+											...SHOOT_EXTRA_SERVICE_OPTIONS,
+										]}
+										value={field.value ?? []}
+										onValueChange={field.onChange}
+										placeholder="Select extra services"
+										searchPlaceholder="Search services..."
+										emptyText="No extra services found"
+										aria-invalid={fieldState.invalid}
+									/>
+									{fieldState.invalid && (
+										<FieldError
+											errors={[fieldState.error]}
+										/>
+									)}
+								</Field>
+							)}
+						/>
+					</div>
+
 					{/* Row 3: Location (single textarea) */}
 					<Controller
 						name={`shoots.${shootIndex}.location`}
@@ -547,6 +620,12 @@ function ShootSection({
 								<p className="text-sm text-muted-foreground">
 									No crew assigned yet
 								</p>
+								{requiredCrewCountValue && (
+									<p className="text-xs text-muted-foreground">
+										Assigned 0 / Required{" "}
+										{requiredCrewCountValue}
+									</p>
+								)}
 								<Button
 									type="button"
 									variant="link"
@@ -668,6 +747,27 @@ function ShootSection({
 						</div>
 					)}
 				</Field>
+
+				{(requiredCrewCountValue ||
+					additionalServicesValue.length > 0) && (
+					<div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+						{requiredCrewCountValue && (
+							<span>
+								Assigned {currentAssignments.length} / Required{" "}
+								{requiredCrewCountValue}
+							</span>
+						)}
+						{additionalServicesValue.map((service) => (
+							<Badge
+								key={service}
+								variant="outline"
+								className="text-[11px]"
+							>
+								{getShootExtraServiceLabel(service)}
+							</Badge>
+						))}
+					</div>
+				)}
 			</div>
 		</div>
 	);

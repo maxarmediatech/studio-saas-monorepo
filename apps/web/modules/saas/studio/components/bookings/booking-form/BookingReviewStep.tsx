@@ -14,6 +14,7 @@ import { Card, CardContent } from "@repo/ui/components/card";
 import { FieldLabel, FieldLegend, FieldSet } from "@repo/ui/components/field";
 import { Progress } from "@repo/ui/components/progress";
 import { cn } from "@repo/ui/lib/utils";
+import { getShootExtraServiceLabel } from "@saas/studio/lib/shoot-planning";
 import { useQuery } from "@tanstack/react-query";
 import {
 	AlertCircleIcon,
@@ -337,6 +338,15 @@ function ShootsSection({ onEdit, shoots }: ShootsSectionProps) {
 												)}
 											</div>
 										)}
+										{shoot.requiredCrewCount && (
+											<div className="mt-2 text-sm text-muted-foreground">
+												Assigned{" "}
+												{shoot.crewAssignments
+													?.length ?? 0}{" "}
+												/ Required{" "}
+												{shoot.requiredCrewCount}
+											</div>
+										)}
 										{(shoot.crewAssignments?.length ?? 0) >
 											0 && (
 											<div className="mt-2 flex flex-wrap gap-1">
@@ -359,6 +369,24 @@ function ShootsSection({ onEdit, shoots }: ShootsSectionProps) {
 																		crew.rate,
 																	).toLocaleString()}
 																</span>
+															)}
+														</Badge>
+													),
+												)}
+											</div>
+										)}
+										{(shoot.additionalServices?.length ??
+											0) > 0 && (
+											<div className="mt-2 flex flex-wrap gap-1">
+												{shoot.additionalServices?.map(
+													(service) => (
+														<Badge
+															key={service}
+															variant="outline"
+															className="text-xs"
+														>
+															{getShootExtraServiceLabel(
+																service,
 															)}
 														</Badge>
 													),

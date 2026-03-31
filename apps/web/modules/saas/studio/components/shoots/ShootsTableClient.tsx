@@ -30,6 +30,7 @@ import {
 	shootsApi,
 	shootsMutations,
 } from "@saas/studio/lib/api";
+import { getShootExtraServiceLabel } from "@saas/studio/lib/shoot-planning";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -388,17 +389,62 @@ export function ShootsTableClient({
 				id: "assignmentsCount",
 				accessorKey: "assignmentsCount",
 				header: ({ column }) => (
-					<DataTableColumnHeader column={column} title="Crew" />
+					<DataTableColumnHeader column={column} title="Crew Plan" />
 				),
-				cell: ({ row }) => (
-					<span className="tabular-nums">
-						{row.original.assignmentsCount}
-					</span>
-				),
+				cell: ({ row }) => {
+					const assigned = row.original.assignmentsCount;
+					const required = row.original.requiredCrewCount;
+
+					if (!required) {
+						return <span className="tabular-nums">{assigned}</span>;
+					}
+
+					return (
+						<span className="tabular-nums">
+							{assigned} / {required}
+						</span>
+					);
+				},
 				meta: {
-					label: "Crew",
-					width: 70,
-					minWidth: 70,
+					label: "Crew Plan",
+					width: 90,
+					minWidth: 90,
+				},
+				enableSorting: false,
+				enableHiding: true,
+			},
+			{
+				id: "additionalServices",
+				accessorKey: "additionalServices",
+				header: ({ column }) => (
+					<DataTableColumnHeader
+						column={column}
+						title="Extra Services"
+					/>
+				),
+				cell: ({ row }) => {
+					if (row.original.additionalServices.length === 0) {
+						return <span className="text-muted-foreground">—</span>;
+					}
+
+					return (
+						<div className="flex flex-wrap gap-1">
+							{row.original.additionalServices.map((service) => (
+								<Badge
+									key={service}
+									variant="outline"
+									className="text-[10px]"
+								>
+									{getShootExtraServiceLabel(service)}
+								</Badge>
+							))}
+						</div>
+					);
+				},
+				meta: {
+					label: "Extra Services",
+					width: 200,
+					minWidth: 160,
 				},
 				enableSorting: false,
 				enableHiding: true,
@@ -454,7 +500,7 @@ export function ShootsTableClient({
 						{ id: "eventBooking", width: 300 },
 					]}
 					stickyRightColumns={[{ id: "actions", width: 48 }]}
-					minWidth={1400}
+					minWidth={1560}
 					// Place scroll controls in the last sticky left column
 					scrollControlsColumnId="eventBooking"
 					scrollStartColumn={3}

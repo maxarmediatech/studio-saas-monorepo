@@ -14,6 +14,7 @@ import {
 	getShootInputSchema,
 	getShootOutputSchema,
 } from "../../studio/schemas/shoot";
+import { extractShootPlanningFields } from "../lib/shoot-planning";
 
 export const getShoot = studioProtectedProcedure
 	.route({
@@ -85,6 +86,7 @@ export const getShoot = studioProtectedProcedure
 		return {
 			data: {
 				...shoot,
+				...extractShootPlanningFields(shoot.metadata),
 				createdAt: shoot.createdAt.toISOString(),
 				updatedAt: shoot.updatedAt.toISOString(),
 				deletedAt: shoot.deletedAt?.toISOString() ?? null,

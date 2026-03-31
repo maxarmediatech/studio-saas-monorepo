@@ -72,6 +72,10 @@ function buildCreateBookingInput(rawValues: BookingFormValues) {
 			venue: undefined,
 			venueAddress: shoot.location,
 			notes: shoot.notes,
+			requiredCrewCount: shoot.requiredCrewCount?.trim()
+				? Number.parseInt(shoot.requiredCrewCount, 10)
+				: undefined,
+			additionalServices: shoot.additionalServices ?? [],
 			// Role is auto-filled from crew profile by API
 			crewAssignments: shoot.crewAssignments?.map((assignment) => ({
 				crewId: assignment.crewId,
