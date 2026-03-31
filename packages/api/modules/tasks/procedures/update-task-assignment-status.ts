@@ -111,6 +111,10 @@ export const updateTaskAssignmentStatus = studioProtectedProcedure
 			type: "status_changed",
 			title: `Task status updated: ${task.name}`,
 			body: `${task.status} -> ${status}`,
+			metadata: {
+				oldStatus: task.status,
+				newStatus: status,
+			},
 			actorId: context.user.id,
 			actorName: context.user.name,
 			excludeUserId: context.user.id,

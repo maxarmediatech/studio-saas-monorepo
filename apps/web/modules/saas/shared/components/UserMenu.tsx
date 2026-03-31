@@ -59,6 +59,7 @@ export function UserMenu({
 	const [theme, setTheme] = useState<string>(currentTheme ?? "system");
 	const [isStoppingImpersonation, setIsStoppingImpersonation] =
 		useState(false);
+	const [open, setOpen] = useState(false);
 	const accountSettingsHref = activeOrganization
 		? `/app/${activeOrganization.slug}/settings/profile`
 		: "/app";
@@ -128,7 +129,7 @@ export function UserMenu({
 	const { name, email, image } = user;
 
 	return (
-		<DropdownMenu modal={false}>
+		<DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
 			<DropdownMenuTrigger asChild>
 				<button
 					type="button"
@@ -191,6 +192,7 @@ export function UserMenu({
 								}
 								onMarkAllRead={notificationState.markAllRead}
 								onMarkRead={notificationState.markRead}
+								onClose={() => setOpen(false)}
 							/>
 						</div>
 

@@ -114,6 +114,10 @@ export const updateDeliverableAssignmentStatus = studioProtectedProcedure
 			type: "status_changed",
 			title: `Deliverable status updated: ${deliverable.name}`,
 			body: `${deliverable.status} -> ${status}`,
+			metadata: {
+				oldStatus: deliverable.status,
+				newStatus: status,
+			},
 			actorId: context.user.id,
 			actorName: context.user.name,
 			excludeUserId: context.user.id,

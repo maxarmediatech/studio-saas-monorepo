@@ -1,10 +1,19 @@
-import { and, count, db, desc, eq, isNull, notifications } from "@repo/database";
+import {
+	and,
+	count,
+	db,
+	desc,
+	eq,
+	isNull,
+	notifications,
+} from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { createPaginationResponse } from "../../studio/schemas/common";
 import {
 	listNotificationsInputSchema,
 	listNotificationsOutputSchema,
 } from "../../studio/schemas/notification";
+import { parseNotificationMetadata } from "../lib/notification-metadata";
 
 export const listNotifications = studioProtectedProcedure
 	.route({
@@ -53,6 +62,7 @@ export const listNotifications = studioProtectedProcedure
 				type: row.type,
 				title: row.title,
 				body: row.body ?? null,
+				metadata: parseNotificationMetadata(row.metadata),
 				actorId: row.actorId ?? null,
 				actorName: row.actorName ?? null,
 				readAt: row.readAt?.toISOString() ?? null,

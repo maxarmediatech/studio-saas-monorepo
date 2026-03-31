@@ -119,7 +119,11 @@ export const assignCrewToDeliverable = studioProtectedProcedure
 			parentEntityType: "deliverable",
 			parentEntityId: deliverable.id,
 			parentEntityName: deliverable.name,
-			metadata: { crewId: crew.id, crewName: crew.name, isLead: isLead ?? false },
+			metadata: {
+				crewId: crew.id,
+				crewName: crew.name,
+				isLead: isLead ?? false,
+			},
 		});
 
 		if (crew.userId) {
@@ -139,6 +143,10 @@ export const assignCrewToDeliverable = studioProtectedProcedure
 			type: "assigned",
 			title: `Deliverable assigned: ${deliverable.name}`,
 			body: `Assigned to ${crew.name}`,
+			metadata: {
+				assigneeName: crew.name,
+				assigneeId: crew.userId ?? null,
+			},
 			actorId: context.user.id,
 			actorName: context.user.name,
 			excludeUserId: context.user.id,

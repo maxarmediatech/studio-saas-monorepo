@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { notificationMetadataSchema } from "../../notifications/lib/notification-metadata";
 import {
 	datetimeSchema,
 	paginationResponseSchema,
@@ -18,6 +19,7 @@ export const notificationSchema = z.object({
 	type: z.string(),
 	title: z.string(),
 	body: z.string().nullable(),
+	metadata: notificationMetadataSchema,
 	actorId: z.string().nullable(),
 	actorName: z.string().nullable(),
 	readAt: datetimeSchema.nullable(),
@@ -55,3 +57,10 @@ export const unreadNotificationCountOutputSchema = z.object({
 // ============================================================================
 
 export type NotificationItem = z.infer<typeof notificationSchema>;
+export type NotificationMetadata = NonNullable<
+	z.infer<typeof notificationMetadataSchema>
+>;
+export type StatusChangedNotificationMetadata =
+	z.infer<typeof notificationMetadataSchema> extends infer T
+		? Extract<T, { oldStatus: string; newStatus: string }>
+		: never;

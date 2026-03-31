@@ -1,5 +1,6 @@
 "use client";
 
+import type { NotificationItem } from "@repo/api/modules/studio/schemas/notification";
 import { Button } from "@repo/ui/components/button";
 import {
 	Popover,
@@ -7,11 +8,26 @@ import {
 	PopoverTrigger,
 } from "@repo/ui/components/popover";
 import { cn } from "@repo/ui/lib/utils";
-import { notificationsApi, notificationsMutations } from "@saas/studio/lib/api";
+import {
+	configurationsApi,
+	notificationsApi,
+	notificationsMutations,
+} from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+	useMutation,
+	useQueries,
+	useQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
 import { Bell } from "lucide-react";
-import { useMemo } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
+import {
+	getNotificationBodyText,
+	type NotificationStatusLabelMaps,
+} from "./content";
+import { getNotificationEntityHref } from "./routes";
 
 interface NotificationBellProps {
 	buttonClassName?: string;
@@ -20,17 +36,12 @@ interface NotificationBellProps {
 
 interface NotificationPanelProps {
 	unreadCount: number;
-	notifications: Array<{
-		id: string;
-		title: string;
-		body: string | null;
-		readAt: string | null;
-		createdAt: string;
-	}>;
+	notifications: NotificationItem[];
 	isLoading: boolean;
 	isMarkAllPending: boolean;
 	onMarkAllRead: () => void;
-	onMarkRead: (id: string) => void;
+	onMarkRead: (id: string) => Promise<unknown>;
+	onClose: () => void;
 }
 
 function formatTimestamp(value: string) {
@@ -94,8 +105,47 @@ export function useNotificationMenuState(enabled = true) {
 		badgeLabel,
 		isMarkAllPending: markAllMutation.isPending,
 		markAllRead: () => markAllMutation.mutate(undefined),
-		markRead: (id: string) => markReadMutation.mutate({ id }),
+		markRead: (id: string) => markReadMutation.mutateAsync({ id }),
 	};
+}
+
+function useNotificationStatusLabelMaps() {
+	const [taskStatusQuery, deliverableStatusQuery, shootStatusQuery] =
+		useQueries({
+			queries: [
+				configurationsApi.taskStatusOptions(),
+				configurationsApi.deliverableStatusOptions(),
+				configurationsApi.shootStatusOptions(),
+			],
+		});
+
+	return useMemo<NotificationStatusLabelMaps>(() => {
+		const taskStatusLabels: Record<string, string> = {};
+		const deliverableStatusLabels: Record<string, string> = {};
+		const shootStatusLabels: Record<string, string> = {};
+
+		for (const config of taskStatusQuery.data?.data ?? []) {
+			taskStatusLabels[config.key] = config.label;
+		}
+
+		for (const config of deliverableStatusQuery.data?.data ?? []) {
+			deliverableStatusLabels[config.key] = config.label;
+		}
+
+		for (const config of shootStatusQuery.data?.data ?? []) {
+			shootStatusLabels[config.key] = config.label;
+		}
+
+		return {
+			task_status: taskStatusLabels,
+			deliverable_status: deliverableStatusLabels,
+			shoot_status: shootStatusLabels,
+		};
+	}, [
+		deliverableStatusQuery.data?.data,
+		shootStatusQuery.data?.data,
+		taskStatusQuery.data?.data,
+	]);
 }
 
 export function NotificationMenuPanel({
@@ -105,7 +155,13 @@ export function NotificationMenuPanel({
 	isMarkAllPending,
 	onMarkAllRead,
 	onMarkRead,
+	onClose,
 }: NotificationPanelProps) {
+	const params = useParams<{ organizationSlug?: string }>();
+	const router = useRouter();
+	const statusLabelMaps = useNotificationStatusLabelMaps();
+	const organizationSlug = params.organizationSlug;
+
 	return (
 		<>
 			<div className="flex items-center justify-between border-b border-neutral-200 px-3 py-2">
@@ -133,18 +189,34 @@ export function NotificationMenuPanel({
 				) : (
 					notifications.map((notification) => {
 						const isUnread = !notification.readAt;
+						const href = getNotificationEntityHref(
+							organizationSlug,
+							notification,
+						);
+						const bodyText = getNotificationBodyText(
+							notification,
+							statusLabelMaps,
+						);
 						return (
 							<button
 								key={notification.id}
 								type="button"
+								disabled={!href}
 								className={cn(
 									"flex w-full flex-col gap-1 border-b border-neutral-100 px-3 py-2 text-left text-sm",
 									isUnread ? "bg-neutral-50" : "bg-white",
+									!href && "cursor-default opacity-70",
 								)}
 								onClick={() => {
-									if (isUnread) {
-										onMarkRead(notification.id);
+									if (!href) {
+										return;
 									}
+
+									if (isUnread) {
+										void onMarkRead(notification.id);
+									}
+									onClose();
+									router.push(href);
 								}}
 							>
 								<div className="flex items-center justify-between gap-2">
@@ -155,9 +227,9 @@ export function NotificationMenuPanel({
 										<span className="h-2 w-2 rounded-full bg-blue-500" />
 									) : null}
 								</div>
-								{notification.body ? (
+								{bodyText ? (
 									<span className="text-xs text-neutral-500">
-										{notification.body}
+										{bodyText}
 									</span>
 								) : null}
 								<span className="text-xs text-neutral-400">
@@ -176,6 +248,7 @@ export function NotificationBell({
 	buttonClassName,
 	align = "end",
 }: NotificationBellProps) {
+	const [open, setOpen] = useState(false);
 	const {
 		unreadCount,
 		notifications,
@@ -187,7 +260,7 @@ export function NotificationBell({
 	} = useNotificationMenuState();
 
 	return (
-		<Popover>
+		<Popover open={open} onOpenChange={setOpen}>
 			<PopoverTrigger asChild>
 				<Button
 					variant="ghost"
@@ -211,6 +284,7 @@ export function NotificationBell({
 					isMarkAllPending={isMarkAllPending}
 					onMarkAllRead={markAllRead}
 					onMarkRead={markRead}
+					onClose={() => setOpen(false)}
 				/>
 			</PopoverContent>
 		</Popover>

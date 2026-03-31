@@ -345,6 +345,16 @@ export const configurationsApi = {
 			input: { type: "package_type", limit: 100 },
 		}),
 
+	taskStatusOptions: () =>
+		orpc.configurations.list.queryOptions({
+			input: { type: "task_status", limit: 100 },
+		}),
+
+	deliverableStatusOptions: () =>
+		orpc.configurations.list.queryOptions({
+			input: { type: "deliverable_status", limit: 100 },
+		}),
+
 	relationTypesOptions: () =>
 		orpc.configurations.list.queryOptions({
 			input: {

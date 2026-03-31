@@ -8,6 +8,7 @@ import {
 	notifications,
 	subscriptions,
 } from "@repo/database";
+import type { NotificationMetadata } from "./notification-metadata";
 
 interface NotifySubscribersInput {
 	organizationId: string;
@@ -17,6 +18,7 @@ interface NotifySubscribersInput {
 	type: string;
 	title: string;
 	body?: string;
+	metadata?: NotificationMetadata;
 	actorId?: string;
 	actorName?: string;
 	excludeUserId?: string;
@@ -98,6 +100,7 @@ export async function notifySubscribers({
 	type,
 	title,
 	body,
+	metadata,
 	actorId,
 	actorName,
 	excludeUserId,
@@ -132,6 +135,7 @@ export async function notifySubscribers({
 			type,
 			title,
 			body: body ?? null,
+			metadata: metadata ?? null,
 			actorId: actorId ?? null,
 			actorName: actorName ?? null,
 		})),

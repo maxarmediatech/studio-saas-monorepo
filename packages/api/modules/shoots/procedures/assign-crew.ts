@@ -139,6 +139,10 @@ export const assignCrew = studioProtectedProcedure
 			type: "assigned",
 			title: `Shoot assigned: ${shoot.name}`,
 			body: `Assigned to ${crew.name}`,
+			metadata: {
+				assigneeName: crew.name,
+				assigneeId: crew.userId ?? null,
+			},
 			actorId: context.user.id,
 			actorName: context.user.name,
 			excludeUserId: context.user.id,

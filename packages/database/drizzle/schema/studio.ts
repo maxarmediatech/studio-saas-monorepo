@@ -1497,6 +1497,7 @@ export const notifications = pgTable(
 		type: varchar("type", { length: 50 }).notNull(),
 		title: text("title").notNull(),
 		body: text("body"),
+		metadata: jsonb("metadata"),
 
 		actorId: varchar("actor_id", { length: 255 }).references(
 			() => users.id,

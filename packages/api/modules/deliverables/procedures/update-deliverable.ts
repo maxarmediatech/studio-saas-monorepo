@@ -89,7 +89,10 @@ export const updateDeliverable = studioProtectedProcedure
 			.where(eq(deliverables.id, id));
 
 		// Track status change separately (non-blocking)
-		if (updates.status !== undefined && updates.status !== existing.status) {
+		if (
+			updates.status !== undefined &&
+			updates.status !== existing.status
+		) {
 			await safeTrackStatusChange(
 				{ organizationId: context.organizationId, user: context.user },
 				{
@@ -112,6 +115,10 @@ export const updateDeliverable = studioProtectedProcedure
 				type: "status_changed",
 				title: `Deliverable status updated: ${updates.name ?? existing.name}`,
 				body: `${existing.status} -> ${updates.status}`,
+				metadata: {
+					oldStatus: existing.status,
+					newStatus: updates.status,
+				},
 				actorId: context.user.id,
 				actorName: context.user.name,
 				excludeUserId: context.user.id,
@@ -121,7 +128,13 @@ export const updateDeliverable = studioProtectedProcedure
 		// Track other field changes (non-blocking)
 		const changes = detectChanges(
 			existing,
-			{ name: updates.name, description: updates.description, quantity: updates.quantity, cost: updates.cost, dueDate: updates.dueDate },
+			{
+				name: updates.name,
+				description: updates.description,
+				quantity: updates.quantity,
+				cost: updates.cost,
+				dueDate: updates.dueDate,
+			},
 			["name", "description", "quantity", "cost", "dueDate"],
 		);
 
