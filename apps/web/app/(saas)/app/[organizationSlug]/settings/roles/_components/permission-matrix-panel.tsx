@@ -20,7 +20,6 @@ import {
 import { Checkbox } from "@repo/ui/components/checkbox";
 import { Input } from "@repo/ui/components/input";
 import { Label } from "@repo/ui/components/label";
-import { ScrollArea } from "@repo/ui/components/scroll-area";
 import {
 	Select,
 	SelectContent,
@@ -381,22 +380,19 @@ export function PermissionMatrixPanel({
 
 				<div className="space-y-2">
 					<Label>Permissions</Label>
-					<ScrollArea
-						horizontal
-						className="h-[520px] rounded-md border"
-					>
-						<div className="min-w-full p-4">
+					<div className="h-[520px] overflow-auto rounded-md border">
+						<div className="min-w-full p-4 pr-6">
 							<table className="min-w-[900px] w-full text-sm">
 								<thead>
-									<tr className="border-b">
-										<th className="pb-2 text-left font-medium">
+									<tr>
+										<th className="sticky top-0 z-10 border-b bg-card py-2 text-left align-middle font-medium">
 											Resource
 										</th>
 										{Object.keys(ACTION_LABELS).map(
 											(action) => (
 												<th
 													key={action}
-													className="pb-2 text-center font-medium"
+													className="sticky top-0 z-10 border-b bg-card py-2 text-center align-middle font-medium"
 												>
 													<span className="text-xs">
 														{
@@ -467,7 +463,7 @@ export function PermissionMatrixPanel({
 								</tbody>
 							</table>
 						</div>
-					</ScrollArea>
+					</div>
 				</div>
 			</CardContent>
 		</Card>
