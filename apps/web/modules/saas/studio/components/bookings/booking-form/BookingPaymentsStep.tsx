@@ -34,6 +34,12 @@ import {
 } from "@repo/ui/components/select";
 import { Separator } from "@repo/ui/components/separator";
 import {
+	getUploadAccept,
+	getUploadHelperText,
+	getUploadResponseErrorMessage,
+	validateUploadFile,
+} from "@shared/lib/upload-policy";
+import {
 	BanknoteIcon,
 	CalendarIcon,
 	ChevronDownIcon,
@@ -58,6 +64,9 @@ import {
 	PAYMENT_METHOD_OPTIONS,
 	PAYMENT_SCHEDULE_PRESETS,
 } from "./booking-form-schema";
+
+const PAYMENT_UPLOAD_ACCEPT = getUploadAccept("payments");
+const PAYMENT_UPLOAD_HELPER_TEXT = getUploadHelperText("payments");
 
 export function BookingPaymentsStep() {
 	const form = useFormContext<BookingFormValues>();
@@ -410,13 +419,23 @@ function PaymentRow({ index, onRemove }: PaymentRowProps) {
 
 	// Format file size for display
 	const formatFileSize = (bytes: number) => {
-		if (bytes < 1024) return `${bytes} B`;
-		if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+		if (bytes < 1024) {
+			return `${bytes} B`;
+		}
+		if (bytes < 1024 * 1024) {
+			return `${(bytes / 1024).toFixed(1)} KB`;
+		}
 		return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 	};
 
 	// Handle file upload
 	const handleFileUpload = async (file: File) => {
+		const validationError = validateUploadFile(file, "payments");
+		if (validationError) {
+			toast.error(validationError);
+			return;
+		}
+
 		setIsUploading(true);
 		try {
 			const presignedUrlRes = await fetch("/api/uploads/presigned-url", {
@@ -430,8 +449,14 @@ function PaymentRow({ index, onRemove }: PaymentRowProps) {
 				}),
 			});
 
-			if (!presignedUrlRes.ok)
-				throw new Error("Failed to get upload URL");
+			if (!presignedUrlRes.ok) {
+				throw new Error(
+					await getUploadResponseErrorMessage(
+						presignedUrlRes,
+						"Failed to get upload URL",
+					),
+				);
+			}
 
 			const { url, key } = await presignedUrlRes.json();
 
@@ -458,8 +483,12 @@ function PaymentRow({ index, onRemove }: PaymentRowProps) {
 			} else {
 				throw new Error("Upload failed");
 			}
-		} catch (_error) {
-			toast.error("Failed to upload file");
+		} catch (error) {
+			toast.error(
+				error instanceof Error
+					? error.message
+					: "Failed to upload file",
+			);
 		} finally {
 			setIsUploading(false);
 		}
@@ -467,7 +496,9 @@ function PaymentRow({ index, onRemove }: PaymentRowProps) {
 
 	// Handle file removal
 	const handleFileRemove = async () => {
-		if (!proofAttachment) return;
+		if (!proofAttachment) {
+			return;
+		}
 		setIsDeleting(true);
 		try {
 			const deleteRes = await fetch("/api/uploads/file", {
@@ -475,7 +506,9 @@ function PaymentRow({ index, onRemove }: PaymentRowProps) {
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ key: proofAttachment.key }),
 			});
-			if (!deleteRes.ok) throw new Error("Delete failed");
+			if (!deleteRes.ok) {
+				throw new Error("Delete failed");
+			}
 			form.setValue(`payments.${index}.proofAttachment`, null, {
 				shouldValidate: true,
 			});
@@ -538,9 +571,15 @@ function PaymentRow({ index, onRemove }: PaymentRowProps) {
 													"",
 												);
 											const parts = value.split(".");
-											if (parts.length > 2) return;
-											if (parts[1] && parts[1].length > 2)
+											if (parts.length > 2) {
 												return;
+											}
+											if (
+												parts[1] &&
+												parts[1].length > 2
+											) {
+												return;
+											}
 											field.onChange(value);
 										}}
 									/>
@@ -654,10 +693,12 @@ function PaymentRow({ index, onRemove }: PaymentRowProps) {
 									ref={fileInputRef}
 									type="file"
 									className="hidden"
-									accept=".pdf,.jpg,.jpeg,.png,.webp"
+									accept={PAYMENT_UPLOAD_ACCEPT}
 									onChange={(e) => {
 										const file = e.target.files?.[0];
-										if (file) handleFileUpload(file);
+										if (file) {
+											handleFileUpload(file);
+										}
 										e.target.value = "";
 									}}
 								/>
@@ -724,7 +765,7 @@ function PaymentRow({ index, onRemove }: PaymentRowProps) {
 								/>
 
 								<InputGroupText className="text-xs text-muted-foreground">
-									PDF or Image
+									{PAYMENT_UPLOAD_HELPER_TEXT}
 								</InputGroupText>
 							</InputGroupAddon>
 						</InputGroup>

@@ -5,6 +5,14 @@ import { useActiveOrganization } from "@saas/organizations/hooks/use-active-orga
 import { organizationListQueryKey } from "@saas/organizations/lib/api";
 import { SettingsItem } from "@saas/shared/components/SettingsItem";
 import { Spinner } from "@shared/components/Spinner";
+import {
+	getUploadDropzoneAccept,
+	getUploadHelperText,
+	getUploadPolicy,
+	getUploadResponseErrorMessage,
+	getUploadTooLargeMessage,
+	validateUploadFile,
+} from "@shared/lib/upload-policy";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -12,6 +20,8 @@ import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
 import { CropImageDialog } from "../../settings/components/CropImageDialog";
 import { OrganizationLogo } from "./OrganizationLogo";
+
+const ORG_LOGO_UPLOAD_HELPER_TEXT = getUploadHelperText("org-logos");
 
 export function OrganizationLogoForm() {
 	const t = useTranslations();
@@ -27,10 +37,16 @@ export function OrganizationLogoForm() {
 			setImage(acceptedFiles[0]);
 			setCropDialogOpen(true);
 		},
-		accept: {
-			"image/png": [".png"],
-			"image/jpeg": [".jpg", ".jpeg"],
+		onDropRejected: (rejections) => {
+			const firstError = rejections[0]?.errors[0]?.code;
+			if (firstError === "file-too-large") {
+				toast.error(getUploadTooLargeMessage("org-logos"));
+				return;
+			}
+			toast.error(ORG_LOGO_UPLOAD_HELPER_TEXT);
 		},
+		accept: getUploadDropzoneAccept("org-logos"),
+		maxSize: getUploadPolicy("org-logos").maxFileSize,
 		multiple: false,
 	});
 
@@ -40,6 +56,19 @@ export function OrganizationLogoForm() {
 
 	const onCrop = async (croppedImageData: Blob | null) => {
 		if (!croppedImageData) {
+			return;
+		}
+
+		const validationError = validateUploadFile(
+			{
+				name: "logo.png",
+				type: "image/png",
+				size: croppedImageData.size,
+			},
+			"org-logos",
+		);
+		if (validationError) {
+			toast.error(validationError);
 			return;
 		}
 
@@ -58,8 +87,12 @@ export function OrganizationLogoForm() {
 			});
 
 			if (!presignedRes.ok) {
-				const error = await presignedRes.json();
-				throw new Error(error.message || "Failed to get upload URL");
+				throw new Error(
+					await getUploadResponseErrorMessage(
+						presignedRes,
+						"Failed to get upload URL",
+					),
+				);
 			}
 
 			const { url, key } = await presignedRes.json();
@@ -106,19 +139,27 @@ export function OrganizationLogoForm() {
 			title={t("organizations.settings.logo.title")}
 			description={t("organizations.settings.logo.description")}
 		>
-			<div className="relative size-24 rounded-full" {...getRootProps()}>
-				<input {...getInputProps()} />
-				<OrganizationLogo
-					className="size-24 cursor-pointer text-xl"
-					logoUrl={activeOrganization.logo}
-					name={activeOrganization.name ?? ""}
-				/>
+			<div className="flex flex-col items-center gap-2">
+				<div
+					className="relative size-24 rounded-full"
+					{...getRootProps()}
+				>
+					<input {...getInputProps()} />
+					<OrganizationLogo
+						className="size-24 cursor-pointer text-xl"
+						logoUrl={activeOrganization.logo}
+						name={activeOrganization.name ?? ""}
+					/>
 
-				{uploading && (
-					<div className="absolute inset-0 z-20 flex items-center justify-center bg-card/90">
-						<Spinner />
-					</div>
-				)}
+					{uploading && (
+						<div className="absolute inset-0 z-20 flex items-center justify-center bg-card/90">
+							<Spinner />
+						</div>
+					)}
+				</div>
+				<p className="text-center text-xs text-muted-foreground">
+					{ORG_LOGO_UPLOAD_HELPER_TEXT}
+				</p>
 			</div>
 
 			<CropImageDialog

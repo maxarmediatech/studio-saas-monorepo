@@ -8,89 +8,13 @@ import {
 } from "@shared/lib/env-error-response";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-
-/**
- * Valid upload contexts for organizing files in S3.
- */
-const UPLOAD_CONTEXTS = {
-	contracts: "contracts",
-	payments: "payments",
-	deliverables: "deliverables",
-	submissions: "submissions",
-	shoots: "shoots",
-	receipts: "receipts",
-	documents: "documents",
-	avatars: "avatars",
-	"org-logos": "org-logos",
-} as const;
-
-type UploadContext = keyof typeof UPLOAD_CONTEXTS;
-
-/**
- * Contexts that don't require organization (user-level uploads)
- */
-const USER_LEVEL_CONTEXTS: UploadContext[] = ["avatars"];
-
-/**
- * Maximum file sizes per context (in bytes)
- */
-const MAX_FILE_SIZES: Record<UploadContext, number> = {
-	contracts: 10 * 1024 * 1024, // 10MB
-	payments: 5 * 1024 * 1024, // 5MB
-	receipts: 5 * 1024 * 1024, // 5MB
-	documents: 25 * 1024 * 1024, // 25MB
-	deliverables: 100 * 1024 * 1024, // 100MB (TBD)
-	submissions: 100 * 1024 * 1024, // 100MB (TBD)
-	shoots: 100 * 1024 * 1024, // 100MB (TBD)
-	avatars: 2 * 1024 * 1024, // 2MB
-	"org-logos": 2 * 1024 * 1024, // 2MB
-};
-
-/**
- * Allowed MIME types per context
- */
-const ALLOWED_MIME_TYPES: Record<UploadContext, string[]> = {
-	contracts: ["application/pdf", "image/jpeg", "image/png", "image/webp"],
-	payments: ["application/pdf", "image/jpeg", "image/png", "image/webp"],
-	deliverables: [
-		"application/pdf",
-		"image/jpeg",
-		"image/png",
-		"video/mp4",
-		"application/zip",
-	],
-	submissions: [
-		"application/pdf",
-		"image/jpeg",
-		"image/png",
-		"video/mp4",
-		"application/zip",
-	],
-	shoots: ["image/jpeg", "image/png", "image/webp", "video/mp4"],
-	receipts: ["application/pdf", "image/jpeg", "image/png", "image/webp"],
-	documents: [
-		"application/pdf",
-		"application/msword",
-		"application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-	],
-	avatars: ["image/png", "image/jpeg"],
-	"org-logos": ["image/png", "image/jpeg"],
-};
-
-/**
- * Map MIME type to file extension (more secure than trusting client)
- */
-const MIME_TO_EXT: Record<string, string> = {
-	"image/png": "png",
-	"image/jpeg": "jpg",
-	"image/webp": "webp",
-	"application/pdf": "pdf",
-	"video/mp4": "mp4",
-	"application/zip": "zip",
-	"application/msword": "doc",
-	"application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-		"docx",
-};
+import {
+	getUploadAllowedMimeTypes,
+	getUploadPolicy,
+	MIME_TO_EXT,
+	requiresOrganizationForUpload,
+	UPLOAD_CONTEXT_VALUES,
+} from "@/modules/shared/lib/upload-policy";
 
 /**
  * Input validation schema
@@ -106,17 +30,7 @@ const presignedUrlInputSchema = z.object({
 		.int()
 		.positive()
 		.max(100 * 1024 * 1024, "File too large"),
-	context: z.enum([
-		"contracts",
-		"payments",
-		"deliverables",
-		"submissions",
-		"shoots",
-		"receipts",
-		"documents",
-		"avatars",
-		"org-logos",
-	]),
+	context: z.enum(UPLOAD_CONTEXT_VALUES),
 });
 
 /**
@@ -188,7 +102,7 @@ export async function POST(request: Request) {
 		const organizationId = session.session.activeOrganizationId;
 
 		// Check org requirement based on context
-		const requiresOrg = !USER_LEVEL_CONTEXTS.includes(context);
+		const requiresOrg = requiresOrganizationForUpload(context);
 		if (requiresOrg && !organizationId) {
 			return NextResponse.json(
 				{ message: "Organization required for this upload type" },
@@ -197,7 +111,7 @@ export async function POST(request: Request) {
 		}
 
 		// Validate file size for context
-		const maxSize = MAX_FILE_SIZES[context];
+		const maxSize = getUploadPolicy(context).maxFileSize;
 		if (fileSize > maxSize) {
 			return NextResponse.json(
 				{
@@ -208,7 +122,7 @@ export async function POST(request: Request) {
 		}
 
 		// Validate MIME type for context
-		const allowedTypes = ALLOWED_MIME_TYPES[context];
+		const allowedTypes = getUploadAllowedMimeTypes(context);
 		if (!allowedTypes.includes(fileType)) {
 			return NextResponse.json(
 				{
@@ -246,7 +160,7 @@ export async function POST(request: Request) {
 			key = `org-logos/${randomUUID()}.${ext}`;
 		} else {
 			// Org documents: orgs/{orgId}/{context}/{timestamp}-{uuid}-{filename}
-			const folderPath = UPLOAD_CONTEXTS[context];
+			const folderPath = context;
 			const sanitizedFile = sanitizeFilename(fileName);
 			key = `orgs/${organizationId}/${folderPath}/${timestamp}-${randomUUID()}-${sanitizedFile}`;
 		}

@@ -28,6 +28,12 @@ import { Separator } from "@repo/ui/components/separator";
 import { useClientCallback } from "@saas/studio/hooks/params/client-callback-context";
 import { useClientParams } from "@saas/studio/hooks/params/use-client-params";
 import { useConfigurationParams } from "@saas/studio/hooks/params/use-configuration-params";
+import {
+	getUploadAccept,
+	getUploadHelperText,
+	getUploadResponseErrorMessage,
+	validateUploadFile,
+} from "@shared/lib/upload-policy";
 import { useQuery } from "@tanstack/react-query";
 import {
 	FileTextIcon,
@@ -44,6 +50,9 @@ import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import { toast } from "sonner";
 import { bookingFormQueries } from "./booking-form-queries";
 import type { BookingFormValues } from "./booking-form-schema";
+
+const CONTRACT_UPLOAD_ACCEPT = getUploadAccept("contracts");
+const CONTRACT_UPLOAD_HELPER_TEXT = getUploadHelperText("contracts");
 
 export function BookingDetailsStep() {
 	const form = useFormContext<BookingFormValues>();
@@ -75,9 +84,15 @@ export function BookingDetailsStep() {
 	);
 
 	// Use real data from API — filter to active configs only in booking form dropdowns
-	const bookingTypes = (bookingTypesData?.data ?? []).filter((c) => c.isActive);
-	const packageTypes = (packageTypesData?.data ?? []).filter((c) => c.isActive);
-	const relationTypes = (relationTypesData?.data ?? []).filter((c) => c.isActive);
+	const bookingTypes = (bookingTypesData?.data ?? []).filter(
+		(c) => c.isActive,
+	);
+	const packageTypes = (packageTypesData?.data ?? []).filter(
+		(c) => c.isActive,
+	);
+	const relationTypes = (relationTypesData?.data ?? []).filter(
+		(c) => c.isActive,
+	);
 	const clients = clientsData?.data ?? [];
 
 	const {
@@ -197,7 +212,9 @@ export function BookingDetailsStep() {
 		if (!selectedBookingType) {
 			return true;
 		}
-		const bookingTypeFilter = pkg.bookingTypeFilter ?? (pkg.metadata as { bookingType?: string } | null)?.bookingType;
+		const bookingTypeFilter =
+			pkg.bookingTypeFilter ??
+			(pkg.metadata as { bookingType?: string } | null)?.bookingType;
 		return !bookingTypeFilter || bookingTypeFilter === selectedBookingType;
 	});
 
@@ -385,16 +402,14 @@ export function BookingDetailsStep() {
 			// Auto-populate deliverables from package metadata (replaces all existing per design decision)
 			const defaultDeliverables = metadata?.defaultDeliverables;
 			if (defaultDeliverables && defaultDeliverables.length > 0) {
-				const packageDeliverables = defaultDeliverables.map(
-					(d) => ({
-						name: d.title,
-						quantity: d.quantity,
-						isPackageIncluded: true,
-						description: "",
-						dueDate: "",
-						crewAssignments: [],
-					}),
-				);
+				const packageDeliverables = defaultDeliverables.map((d) => ({
+					name: d.title,
+					quantity: d.quantity,
+					isPackageIncluded: true,
+					description: "",
+					dueDate: "",
+					crewAssignments: [],
+				}));
 				form.setValue("deliverables", packageDeliverables, {
 					shouldDirty: true,
 					shouldValidate: true,
@@ -414,6 +429,12 @@ export function BookingDetailsStep() {
 
 	// Handle file upload
 	const handleFileUpload = async (file: File) => {
+		const validationError = validateUploadFile(file, "contracts");
+		if (validationError) {
+			toast.error(validationError);
+			return;
+		}
+
 		setIsUploading(true);
 		try {
 			const presignedUrlRes = await fetch("/api/uploads/presigned-url", {
@@ -428,7 +449,12 @@ export function BookingDetailsStep() {
 			});
 
 			if (!presignedUrlRes.ok) {
-				throw new Error("Failed to get upload URL");
+				throw new Error(
+					await getUploadResponseErrorMessage(
+						presignedUrlRes,
+						"Failed to get upload URL",
+					),
+				);
 			}
 
 			const { url, key } = await presignedUrlRes.json();
@@ -456,8 +482,12 @@ export function BookingDetailsStep() {
 			} else {
 				throw new Error("Upload failed");
 			}
-		} catch (_error) {
-			toast.error("Failed to upload file");
+		} catch (error) {
+			toast.error(
+				error instanceof Error
+					? error.message
+					: "Failed to upload file",
+			);
 		} finally {
 			setIsUploading(false);
 		}
@@ -1044,7 +1074,9 @@ export function BookingDetailsStep() {
 														ref={fileInputRef}
 														type="file"
 														className="hidden"
-														accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+														accept={
+															CONTRACT_UPLOAD_ACCEPT
+														}
 														onChange={(e) => {
 															const file =
 																e.target
@@ -1128,7 +1160,9 @@ export function BookingDetailsStep() {
 													/>
 
 													<InputGroupText className="text-xs text-muted-foreground">
-														PDF, DOC, or Image
+														{
+															CONTRACT_UPLOAD_HELPER_TEXT
+														}
 													</InputGroupText>
 												</InputGroupAddon>
 											</InputGroup>

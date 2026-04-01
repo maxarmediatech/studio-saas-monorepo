@@ -4,9 +4,18 @@ import { authClient } from "@repo/auth/client";
 import { useSession } from "@saas/auth/hooks/use-session";
 import { Spinner } from "@shared/components/Spinner";
 import { UserAvatar } from "@shared/components/UserAvatar";
+import {
+	getUploadDropzoneAccept,
+	getUploadHelperText,
+	getUploadPolicy,
+	getUploadTooLargeMessage,
+	validateUploadFile,
+} from "@shared/lib/upload-policy";
 import { useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { CropImageDialog } from "./CropImageDialog";
+
+const AVATAR_UPLOAD_HELPER_TEXT = getUploadHelperText("avatars");
 
 export function UserAvatarUpload({
 	onSuccess,
@@ -25,10 +34,16 @@ export function UserAvatarUpload({
 			setImage(acceptedFiles[0]);
 			setCropDialogOpen(true);
 		},
-		accept: {
-			"image/png": [".png"],
-			"image/jpeg": [".jpg", ".jpeg"],
+		onDropRejected: (rejections) => {
+			const firstError = rejections[0]?.errors[0]?.code;
+			if (firstError === "file-too-large") {
+				onError(getUploadTooLargeMessage("avatars"));
+				return;
+			}
+			onError(AVATAR_UPLOAD_HELPER_TEXT);
 		},
+		accept: getUploadDropzoneAccept("avatars"),
+		maxSize: getUploadPolicy("avatars").maxFileSize,
 		multiple: false,
 	});
 
@@ -38,6 +53,19 @@ export function UserAvatarUpload({
 
 	const onCrop = async (croppedImageData: Blob | null) => {
 		if (!croppedImageData) {
+			return;
+		}
+
+		const validationError = validateUploadFile(
+			{
+				name: "avatar.png",
+				type: "image/png",
+				size: croppedImageData.size,
+			},
+			"avatars",
+		);
+		if (validationError) {
+			onError(validationError);
 			return;
 		}
 
@@ -104,19 +132,27 @@ export function UserAvatarUpload({
 
 	return (
 		<>
-			<div className="relative size-24 rounded-full" {...getRootProps()}>
-				<input {...getInputProps()} />
-				<UserAvatar
-					className="size-24 cursor-pointer text-xl"
-					avatarUrl={user.image}
-					name={user.name ?? ""}
-				/>
+			<div className="flex flex-col items-center gap-2">
+				<div
+					className="relative size-24 rounded-full"
+					{...getRootProps()}
+				>
+					<input {...getInputProps()} />
+					<UserAvatar
+						className="size-24 cursor-pointer text-xl"
+						avatarUrl={user.image}
+						name={user.name ?? ""}
+					/>
 
-				{uploading && (
-					<div className="absolute inset-0 z-20 flex items-center justify-center bg-card/90">
-						<Spinner className="size-6" />
-					</div>
-				)}
+					{uploading && (
+						<div className="absolute inset-0 z-20 flex items-center justify-center bg-card/90">
+							<Spinner className="size-6" />
+						</div>
+					)}
+				</div>
+				<p className="text-center text-xs text-muted-foreground">
+					{AVATAR_UPLOAD_HELPER_TEXT}
+				</p>
 			</div>
 
 			<CropImageDialog

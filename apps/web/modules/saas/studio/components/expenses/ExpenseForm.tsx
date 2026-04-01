@@ -34,6 +34,12 @@ import {
 import { Separator } from "@repo/ui/components/separator";
 import { useStudioCapabilities } from "@saas/studio/components/studio-capabilities-context";
 import { bookingsApi, crewsApi, shootsApi } from "@saas/studio/lib/api";
+import {
+	getUploadAccept,
+	getUploadHelperText,
+	getUploadResponseErrorMessage,
+	validateUploadFile,
+} from "@shared/lib/upload-policy";
 import { useQuery } from "@tanstack/react-query";
 import {
 	ChevronDownIcon,
@@ -59,8 +65,12 @@ function getInitials(name: string): string {
 }
 
 function formatFileSize(bytes: number) {
-	if (bytes < 1024) return `${bytes} B`;
-	if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+	if (bytes < 1024) {
+		return `${bytes} B`;
+	}
+	if (bytes < 1024 * 1024) {
+		return `${(bytes / 1024).toFixed(1)} KB`;
+	}
 	return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
@@ -134,6 +144,9 @@ const PAYMENT_METHODS = [
 	{ value: "other", label: "Other" },
 ] as const;
 
+const RECEIPT_UPLOAD_ACCEPT = getUploadAccept("receipts");
+const RECEIPT_UPLOAD_HELPER_TEXT = getUploadHelperText("receipts");
+
 export function ExpenseForm({
 	defaultValues,
 	defaultBookingId,
@@ -172,9 +185,9 @@ export function ExpenseForm({
 
 	const selectedBookingId = form.watch("bookingId");
 	const billTo = form.watch("billTo");
-	const notesValue = form.watch("notes");
+	const _notesValue = form.watch("notes");
 	const receiptAttachment = form.watch("receiptAttachment");
-	const crewAssignments = form.watch("crewAssignments") ?? [];
+	const _crewAssignments = form.watch("crewAssignments") ?? [];
 
 	useEffect(() => {
 		if (billTo !== "studio" && billTo !== "client") {
@@ -316,8 +329,9 @@ export function ExpenseForm({
 	);
 
 	const handleFileUpload = async (file: File) => {
-		if (file.size > 5 * 1024 * 1024) {
-			toast.error("File size must be less than 5MB");
+		const validationError = validateUploadFile(file, "receipts");
+		if (validationError) {
+			toast.error(validationError);
 			return;
 		}
 
@@ -335,8 +349,12 @@ export function ExpenseForm({
 			});
 
 			if (!presignedUrlRes.ok) {
-				const error = await presignedUrlRes.json();
-				throw new Error(error.message || "Failed to get upload URL");
+				throw new Error(
+					await getUploadResponseErrorMessage(
+						presignedUrlRes,
+						"Failed to get upload URL",
+					),
+				);
 			}
 
 			const { url, key } = await presignedUrlRes.json();
@@ -377,7 +395,9 @@ export function ExpenseForm({
 
 	const handleFileRemove = async () => {
 		const currentAttachment = form.getValues("receiptAttachment");
-		if (!currentAttachment) return;
+		if (!currentAttachment) {
+			return;
+		}
 
 		setIsDeleting(true);
 		try {
@@ -545,13 +565,15 @@ export function ExpenseForm({
 														);
 													const parts =
 														value.split(".");
-													if (parts.length > 2)
+													if (parts.length > 2) {
 														return;
+													}
 													if (
 														parts[1] &&
 														parts[1].length > 2
-													)
+													) {
 														return;
+													}
 													field.onChange(value);
 												}}
 											/>
@@ -877,7 +899,9 @@ export function ExpenseForm({
 														ref={fileInputRef}
 														type="file"
 														className="hidden"
-														accept=".pdf,.jpg,.jpeg,.png,.webp"
+														accept={
+															RECEIPT_UPLOAD_ACCEPT
+														}
 														onChange={(e) => {
 															const file =
 																e.target
@@ -961,7 +985,9 @@ export function ExpenseForm({
 													/>
 
 													<InputGroupText className="text-xs text-muted-foreground">
-														PDF or Image
+														{
+															RECEIPT_UPLOAD_HELPER_TEXT
+														}
 													</InputGroupText>
 												</InputGroupAddon>
 											</InputGroup>

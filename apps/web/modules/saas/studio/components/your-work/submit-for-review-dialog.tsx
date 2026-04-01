@@ -30,8 +30,14 @@ import {
 	SelectValue,
 } from "@repo/ui/components/select";
 import { Textarea } from "@repo/ui/components/textarea";
-import { orpc } from "@shared/lib/orpc-query-utils";
 import { orpcClient } from "@shared/lib/orpc-client";
+import { orpc } from "@shared/lib/orpc-query-utils";
+import {
+	getUploadAccept,
+	getUploadHelperText,
+	getUploadResponseErrorMessage,
+	validateUploadFile,
+} from "@shared/lib/upload-policy";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { FileText, Link2, Loader2, Paperclip, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -45,9 +51,7 @@ const submissionSchema = z.object({
 	submissionLinks: z
 		.array(
 			z.object({
-				value: z
-					.union([z.string().url(), z.literal("")])
-					.optional(),
+				value: z.union([z.string().url(), z.literal("")]).optional(),
 			}),
 		)
 		.optional(),
@@ -71,9 +75,16 @@ interface SubmitForReviewDialogProps {
 	onOpenChange: (isOpen: boolean) => void;
 }
 
+const SUBMISSION_UPLOAD_ACCEPT = getUploadAccept("submissions");
+const SUBMISSION_UPLOAD_HELPER_TEXT = getUploadHelperText("submissions");
+
 function formatFileSize(bytes: number) {
-	if (bytes < 1024) return `${bytes} B`;
-	if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+	if (bytes < 1024) {
+		return `${bytes} B`;
+	}
+	if (bytes < 1024 * 1024) {
+		return `${(bytes / 1024).toFixed(1)} KB`;
+	}
 	return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
@@ -118,9 +129,7 @@ export function SubmitForReviewDialog({
 
 	const handleAddLink = async () => {
 		const links = form.getValues("submissionLinks") ?? [];
-		const firstEmptyIndex = links.findIndex(
-			(link) => !link.value?.trim(),
-		);
+		const firstEmptyIndex = links.findIndex((link) => !link.value?.trim());
 
 		if (firstEmptyIndex !== -1) {
 			form.setError(
@@ -225,6 +234,14 @@ export function SubmitForReviewDialog({
 	const isSubmitting = submitMutation.isPending;
 
 	const handleUploadFiles = async (files: File[]) => {
+		for (const file of files) {
+			const validationError = validateUploadFile(file, "submissions");
+			if (validationError) {
+				toast.error(validationError);
+				return;
+			}
+		}
+
 		setIsUploading(true);
 		try {
 			const uploaded: SubmissionAttachment[] = [];
@@ -244,9 +261,11 @@ export function SubmitForReviewDialog({
 				);
 
 				if (!presignedUrlRes.ok) {
-					const error = await presignedUrlRes.json();
 					throw new Error(
-						error.message || "Failed to get upload URL",
+						await getUploadResponseErrorMessage(
+							presignedUrlRes,
+							"Failed to get upload URL",
+						),
 					);
 				}
 
@@ -444,7 +463,11 @@ export function SubmitForReviewDialog({
 																type="button"
 																variant="outline"
 																size="icon"
-																onClick={() => remove(index)}
+																onClick={() =>
+																	remove(
+																		index,
+																	)
+																}
 															>
 																<X className="h-4 w-4" />
 															</Button>
@@ -469,7 +492,9 @@ export function SubmitForReviewDialog({
 										type="button"
 										variant="outline"
 										size="sm"
-										onClick={() => fileInputRef.current?.click()}
+										onClick={() =>
+											fileInputRef.current?.click()
+										}
 										disabled={isUploading}
 									>
 										{isUploading ? (
@@ -484,9 +509,13 @@ export function SubmitForReviewDialog({
 										type="file"
 										multiple
 										className="hidden"
+										accept={SUBMISSION_UPLOAD_ACCEPT}
 										onChange={handleFileInput}
 									/>
 								</div>
+								<p className="text-xs text-muted-foreground">
+									{SUBMISSION_UPLOAD_HELPER_TEXT}
+								</p>
 
 								{attachments.length === 0 ? (
 									<p className="text-xs text-muted-foreground">
@@ -506,7 +535,9 @@ export function SubmitForReviewDialog({
 															{attachment.name}
 														</p>
 														<p className="text-xs text-muted-foreground">
-															{formatFileSize(attachment.size)}
+															{formatFileSize(
+																attachment.size,
+															)}
 														</p>
 													</div>
 												</div>
@@ -515,13 +546,17 @@ export function SubmitForReviewDialog({
 													variant="ghost"
 													size="icon"
 													onClick={() =>
-														handleRemoveAttachment(attachment)
+														handleRemoveAttachment(
+															attachment,
+														)
 													}
 													disabled={
-														deletingKey === attachment.key
+														deletingKey ===
+														attachment.key
 													}
 												>
-													{deletingKey === attachment.key ? (
+													{deletingKey ===
+													attachment.key ? (
 														<Loader2 className="h-4 w-4 animate-spin" />
 													) : (
 														<Trash2 className="h-4 w-4" />

@@ -20,6 +20,12 @@ import {
 import { ScrollArea } from "@repo/ui/components/scroll-area";
 import { Separator } from "@repo/ui/components/separator";
 import { configurationsApi } from "@saas/studio/lib/api";
+import {
+	getUploadAccept,
+	getUploadHelperText,
+	getUploadResponseErrorMessage,
+	validateUploadFile,
+} from "@shared/lib/upload-policy";
 import { useQuery } from "@tanstack/react-query";
 import { FileTextIcon, Loader2Icon, PaperclipIcon, XIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -64,6 +70,9 @@ interface BookingEditFormProps {
 	isPending?: boolean;
 	onScrollChange?: (isScrolled: boolean) => void;
 }
+
+const CONTRACT_UPLOAD_ACCEPT = getUploadAccept("contracts");
+const CONTRACT_UPLOAD_HELPER_TEXT = getUploadHelperText("contracts");
 
 function formatFileSize(bytes: number) {
 	if (bytes < 1024) {
@@ -116,6 +125,12 @@ export function BookingEditForm({
 	}, [defaultValues, form]);
 
 	const handleFileUpload = async (file: File) => {
+		const validationError = validateUploadFile(file, "contracts");
+		if (validationError) {
+			toast.error(validationError);
+			return;
+		}
+
 		setIsUploading(true);
 		try {
 			const presignedUrlRes = await fetch("/api/uploads/presigned-url", {
@@ -130,7 +145,12 @@ export function BookingEditForm({
 			});
 
 			if (!presignedUrlRes.ok) {
-				throw new Error("Failed to get upload URL");
+				throw new Error(
+					await getUploadResponseErrorMessage(
+						presignedUrlRes,
+						"Failed to get upload URL",
+					),
+				);
 			}
 
 			const { url, key } = await presignedUrlRes.json();
@@ -158,8 +178,12 @@ export function BookingEditForm({
 			} else {
 				throw new Error("Upload failed");
 			}
-		} catch {
-			toast.error("Failed to upload file");
+		} catch (error) {
+			toast.error(
+				error instanceof Error
+					? error.message
+					: "Failed to upload file",
+			);
 		} finally {
 			setIsUploading(false);
 		}
@@ -336,7 +360,7 @@ export function BookingEditForm({
 												ref={fileInputRef}
 												type="file"
 												className="hidden"
-												accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+												accept={CONTRACT_UPLOAD_ACCEPT}
 												onChange={(e) => {
 													const file =
 														e.target.files?.[0];
@@ -414,7 +438,7 @@ export function BookingEditForm({
 											/>
 
 											<InputGroupText className="text-xs text-muted-foreground">
-												PDF, DOC, or Image
+												{CONTRACT_UPLOAD_HELPER_TEXT}
 											</InputGroupText>
 										</InputGroupAddon>
 									</InputGroup>
