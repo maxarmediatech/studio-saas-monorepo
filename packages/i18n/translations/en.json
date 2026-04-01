@@ -389,6 +389,47 @@
 					"submit": "Invite",
 					"title": "Invite member"
 				},
+				"bulkInvite": {
+					"title": "Invite members",
+					"description": "Paste up to {max} email addresses to invite them with one shared role and optional team.",
+					"emails": "Emails",
+					"hint": "Use commas, semicolons, or new lines. Max {max} unique emails.",
+					"parsedCount": "{count} unique ready",
+					"duplicateCount": "{count} duplicate ignored",
+					"invalidCount": "{count} invalid",
+					"limitError": "You can invite up to {max} unique emails at a time.",
+					"submit": "Send invites",
+					"resultsTitle": "Invitation results",
+					"resultsSummary": "{created} sent, {skipped} skipped, {failed} failed",
+					"status": {
+						"created": "Created",
+						"duplicate_in_batch": "Duplicate in batch",
+						"already_member": "Already a member",
+						"already_invited": "Already invited",
+						"invalid_email": "Invalid email",
+						"forbidden": "Not allowed",
+						"limit_reached": "Limit reached",
+						"failed": "Failed"
+					},
+					"notifications": {
+						"success": {
+							"title": "Invites sent",
+							"description": "{count} invitations sent."
+						},
+						"partial": {
+							"title": "Some invites need review",
+							"description": "{created} sent, {skipped} skipped, {failed} failed."
+						},
+						"none": {
+							"title": "No invites sent",
+							"description": "Review the results below and try again."
+						},
+						"error": {
+							"title": "Could not process invites",
+							"description": "We were unable to process the invite batch. Please try again later."
+						}
+					}
+				},
 				"leaveOrganization": "Leave studio",
 				"notifications": {
 					"removeMember": {

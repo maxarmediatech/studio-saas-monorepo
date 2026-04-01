@@ -382,6 +382,47 @@
 					"submit": "Einladen",
 					"title": "Mitglied einladen"
 				},
+				"bulkInvite": {
+					"title": "Mitglieder einladen",
+					"description": "Füge bis zu {max} E-Mail-Adressen ein, um sie mit einer gemeinsamen Rolle und optionalem Team einzuladen.",
+					"emails": "E-Mails",
+					"hint": "Verwende Kommas, Semikolons oder neue Zeilen. Maximal {max} eindeutige E-Mails.",
+					"parsedCount": "{count} eindeutige bereit",
+					"duplicateCount": "{count} Duplikat ignoriert",
+					"invalidCount": "{count} ungültig",
+					"limitError": "Du kannst höchstens {max} eindeutige E-Mails gleichzeitig einladen.",
+					"submit": "Einladungen senden",
+					"resultsTitle": "Einladungsergebnisse",
+					"resultsSummary": "{created} gesendet, {skipped} übersprungen, {failed} fehlgeschlagen",
+					"status": {
+						"created": "Erstellt",
+						"duplicate_in_batch": "Duplikat im Stapel",
+						"already_member": "Bereits Mitglied",
+						"already_invited": "Bereits eingeladen",
+						"invalid_email": "Ungültige E-Mail",
+						"forbidden": "Nicht erlaubt",
+						"limit_reached": "Limit erreicht",
+						"failed": "Fehlgeschlagen"
+					},
+					"notifications": {
+						"success": {
+							"title": "Einladungen gesendet",
+							"description": "{count} Einladungen wurden gesendet."
+						},
+						"partial": {
+							"title": "Einige Einladungen brauchen Aufmerksamkeit",
+							"description": "{created} gesendet, {skipped} übersprungen, {failed} fehlgeschlagen."
+						},
+						"none": {
+							"title": "Keine Einladungen gesendet",
+							"description": "Prüfe die Ergebnisse unten und versuche es erneut."
+						},
+						"error": {
+							"title": "Einladungen konnten nicht verarbeitet werden",
+							"description": "Der Einladungsstapel konnte nicht verarbeitet werden. Bitte versuche es später erneut."
+						}
+					}
+				},
 				"leaveOrganization": "Studio verlassen",
 				"notifications": {
 					"removeMember": {

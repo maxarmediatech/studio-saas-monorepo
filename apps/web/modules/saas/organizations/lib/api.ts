@@ -84,12 +84,11 @@ export const useOrganizationTeamsQuery = (
 	return useQuery({
 		queryKey: organizationTeamsQueryKey(id),
 		queryFn: async () => {
-			const { data, error } =
-				await authClient.organization.listTeams({
-					query: {
-						organizationId: id,
-					},
-				});
+			const { data, error } = await authClient.organization.listTeams({
+				query: {
+					organizationId: id,
+				},
+			});
 
 			if (error) {
 				throw new Error(error.message || "Failed to fetch teams");
@@ -123,6 +122,20 @@ export const useTeamMembersQuery = (
 			}
 		},
 		enabled: options?.enabled,
+	});
+};
+
+export const bulkInviteMembersMutationKey = ["bulk-invite-members"] as const;
+export const useBulkInviteMembersMutation = () => {
+	return useMutation({
+		mutationKey: bulkInviteMembersMutationKey,
+		mutationFn: async (input: {
+			emails: string[];
+			role: string[];
+			teamId?: string | null;
+		}) => {
+			return await orpcClient.organizations.invites.bulkCreate(input);
+		},
 	});
 };
 
