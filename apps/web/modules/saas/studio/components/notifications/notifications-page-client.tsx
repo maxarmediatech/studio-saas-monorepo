@@ -7,6 +7,12 @@ import { notificationsApi, notificationsMutations } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import {
+	getNotificationEmptyStateCopy,
+	getNotificationTypesForFilter,
+	type NotificationTypeFilterValue,
+	notificationTypeFilterOptions,
+} from "./filters";
 import { NotificationList, NotificationsPagination } from "./notification-list";
 
 interface NotificationsPageClientProps {
@@ -20,14 +26,18 @@ export function NotificationsPageClient({
 }: NotificationsPageClientProps) {
 	const queryClient = useQueryClient();
 	const [filter, setFilter] = useState<"all" | "unread">("all");
+	const [typeFilter, setTypeFilter] =
+		useState<NotificationTypeFilterValue>("all");
 	const [page, setPage] = useState(1);
 
 	const unreadOnly = filter === "unread";
+	const filteredTypes = getNotificationTypesForFilter(typeFilter);
 	const notificationsQuery = useQuery(
 		notificationsApi.listOptions({
 			page,
 			limit: PAGE_SIZE,
 			unreadOnly,
+			types: filteredTypes,
 		}),
 	);
 
@@ -51,6 +61,15 @@ export function NotificationsPageClient({
 		},
 	});
 
+	const markUnreadMutation = useMutation({
+		...notificationsMutations.markUnread(),
+		onSuccess: () => {
+			queryClient.invalidateQueries({
+				queryKey: orpc.notifications.key(),
+			});
+		},
+	});
+
 	const data = notificationsQuery.data?.data ?? [];
 	const pagination = notificationsQuery.data?.pagination ?? {
 		page,
@@ -59,6 +78,69 @@ export function NotificationsPageClient({
 		pageCount: 0,
 	};
 	const unreadCount = unreadCountQuery.data?.count ?? 0;
+	const emptyState = getNotificationEmptyStateCopy(filter, typeFilter);
+
+	const handleNotificationClick = async (
+		notification: (typeof data)[number],
+	) => {
+		if (!notification.readAt) {
+			await markReadMutation.mutateAsync({
+				id: notification.id,
+			});
+		}
+	};
+
+	const handleToggleReadState = async (
+		notification: (typeof data)[number],
+	) => {
+		if (notification.readAt) {
+			await markUnreadMutation.mutateAsync({
+				id: notification.id,
+			});
+			return;
+		}
+
+		await markReadMutation.mutateAsync({
+			id: notification.id,
+		});
+	};
+
+	const headerContent = (
+		<div>
+			<Tabs
+				value={filter}
+				onValueChange={(value) => {
+					setFilter(value as "all" | "unread");
+					setPage(1);
+				}}
+			>
+				<TabsList>
+					<TabsTrigger value="all">All</TabsTrigger>
+					<TabsTrigger value="unread">
+						Unread
+						{unreadCount > 0 ? ` (${unreadCount})` : ""}
+					</TabsTrigger>
+				</TabsList>
+			</Tabs>
+			<div className="mt-3 flex flex-wrap gap-2">
+				{notificationTypeFilterOptions.map((option) => (
+					<Button
+						key={option.value}
+						variant={
+							typeFilter === option.value ? "default" : "outline"
+						}
+						size="sm"
+						onClick={() => {
+							setTypeFilter(option.value);
+							setPage(1);
+						}}
+					>
+						{option.label}
+					</Button>
+				))}
+			</div>
+		</div>
+	);
 
 	return (
 		<PageContent
@@ -73,46 +155,16 @@ export function NotificationsPageClient({
 					Mark all read
 				</Button>
 			}
-			headerContent={
-				<Tabs
-					value={filter}
-					onValueChange={(value) => {
-						setFilter(value as "all" | "unread");
-						setPage(1);
-					}}
-				>
-					<TabsList>
-						<TabsTrigger value="all">All</TabsTrigger>
-						<TabsTrigger value="unread">
-							Unread
-							{unreadCount > 0 ? ` (${unreadCount})` : ""}
-						</TabsTrigger>
-					</TabsList>
-				</Tabs>
-			}
+			headerContent={headerContent}
 		>
 			<div className="overflow-hidden rounded-3xl border border-neutral-200 bg-white">
 				<NotificationList
 					notifications={data}
 					isLoading={notificationsQuery.isLoading}
 					organizationSlug={organizationSlug}
-					onNotificationClick={async (notification) => {
-						if (!notification.readAt) {
-							await markReadMutation.mutateAsync({
-								id: notification.id,
-							});
-						}
-					}}
-					emptyState={{
-						title:
-							filter === "unread"
-								? "No unread notifications."
-								: "No notifications yet.",
-						description:
-							filter === "unread"
-								? "You’re all caught up."
-								: "New updates from tasks, shoots, and deliverables will appear here.",
-					}}
+					onNotificationClick={handleNotificationClick}
+					onToggleReadState={handleToggleReadState}
+					emptyState={emptyState}
 				/>
 				<NotificationsPagination
 					page={pagination.page}

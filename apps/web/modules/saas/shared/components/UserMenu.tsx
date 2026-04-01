@@ -193,6 +193,7 @@ export function UserMenu({
 								organizationSlug={activeOrganization?.slug}
 								onMarkAllRead={notificationState.markAllRead}
 								onMarkRead={notificationState.markRead}
+								onMarkUnread={notificationState.markUnread}
 								onClose={() => setOpen(false)}
 							/>
 						</div>

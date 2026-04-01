@@ -27,8 +27,20 @@ export const notificationSchema = z.object({
 	createdAt: datetimeSchema,
 });
 
+export const notificationTypeFilterSchema = z.enum([
+	"assigned",
+	"status_changed",
+	"review_requested",
+	"review_approved",
+	"review_rejected",
+	"review_revision_requested",
+	"due_soon",
+	"overdue",
+]);
+
 export const listNotificationsInputSchema = paginationSchema.extend({
 	unreadOnly: z.boolean().default(false),
+	types: z.array(notificationTypeFilterSchema).optional(),
 });
 
 export const listNotificationsOutputSchema = z.object({
@@ -41,6 +53,15 @@ export const markNotificationReadInputSchema = z.object({
 });
 
 export const markNotificationReadOutputSchema = z.object({
+	data: z.object({ id: z.string() }),
+	message: z.string(),
+});
+
+export const markNotificationUnreadInputSchema = z.object({
+	id: z.string().min(1),
+});
+
+export const markNotificationUnreadOutputSchema = z.object({
 	data: z.object({ id: z.string() }),
 	message: z.string(),
 });
@@ -75,6 +96,9 @@ export type NotificationMetadata = NonNullable<
 >;
 export type NotificationPreferences = z.infer<
 	typeof notificationPreferencesSchema
+>;
+export type NotificationTypeFilter = z.infer<
+	typeof notificationTypeFilterSchema
 >;
 export type StatusChangedNotificationMetadata =
 	z.infer<typeof notificationMetadataSchema> extends infer T

@@ -31,6 +31,7 @@ interface NotificationPanelProps {
 	organizationSlug?: string;
 	onMarkAllRead: () => void;
 	onMarkRead: (id: string) => Promise<unknown>;
+	onMarkUnread: (id: string) => Promise<unknown>;
 	onClose: () => void;
 }
 
@@ -71,6 +72,15 @@ export function useNotificationMenuState(enabled = true) {
 		},
 	});
 
+	const markUnreadMutation = useMutation({
+		...notificationsMutations.markUnread(),
+		onSuccess: () => {
+			queryClient.invalidateQueries({
+				queryKey: orpc.notifications.key(),
+			});
+		},
+	});
+
 	const badgeLabel = useMemo(() => {
 		if (unreadCount <= 0) {
 			return null;
@@ -86,6 +96,7 @@ export function useNotificationMenuState(enabled = true) {
 		isMarkAllPending: markAllMutation.isPending,
 		markAllRead: () => markAllMutation.mutate(undefined),
 		markRead: (id: string) => markReadMutation.mutateAsync({ id }),
+		markUnread: (id: string) => markUnreadMutation.mutateAsync({ id }),
 	};
 }
 
@@ -97,6 +108,7 @@ export function NotificationMenuPanel({
 	organizationSlug,
 	onMarkAllRead,
 	onMarkRead,
+	onMarkUnread,
 	onClose,
 }: NotificationPanelProps) {
 	const params = useParams<{ organizationSlug?: string }>();
@@ -131,6 +143,14 @@ export function NotificationMenuPanel({
 							await onMarkRead(notification.id);
 						}
 						onClose();
+					}}
+					onToggleReadState={async (notification) => {
+						if (notification.readAt) {
+							await onMarkUnread(notification.id);
+							return;
+						}
+
+						await onMarkRead(notification.id);
 					}}
 					emptyState={{
 						title: "No notifications yet.",
@@ -167,6 +187,7 @@ export function NotificationBell({
 		isMarkAllPending,
 		markAllRead,
 		markRead,
+		markUnread,
 	} = useNotificationMenuState();
 
 	return (
@@ -195,6 +216,7 @@ export function NotificationBell({
 					organizationSlug={params.organizationSlug}
 					onMarkAllRead={markAllRead}
 					onMarkRead={markRead}
+					onMarkUnread={markUnread}
 					onClose={() => setOpen(false)}
 				/>
 			</PopoverContent>

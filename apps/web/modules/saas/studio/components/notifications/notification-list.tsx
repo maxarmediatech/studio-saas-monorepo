@@ -4,6 +4,7 @@ import type { NotificationItem } from "@repo/api/modules/studio/schemas/notifica
 import { Button } from "@repo/ui/components/button";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
+import { Mail, MailOpen } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
 	getNotificationBodyText,
@@ -21,6 +22,9 @@ interface NotificationListProps {
 	onNotificationClick?: (
 		notification: NotificationItem,
 	) => void | Promise<void>;
+	onToggleReadState?: (
+		notification: NotificationItem,
+	) => void | Promise<void>;
 	emptyState?: {
 		title: string;
 		description?: string;
@@ -32,6 +36,7 @@ export function NotificationList({
 	isLoading,
 	organizationSlug,
 	onNotificationClick,
+	onToggleReadState,
 	emptyState = {
 		title: "No notifications yet.",
 	},
@@ -80,62 +85,95 @@ export function NotificationList({
 				const typeTone = getNotificationTypeTone(notification);
 
 				return (
-					<button
+					<div
 						key={notification.id}
-						type="button"
-						disabled={!href}
 						className={cn(
-							"flex w-full flex-col gap-2 border-b border-neutral-100 px-4 py-3 text-left transition-colors hover:bg-neutral-50",
+							"group flex items-start gap-2 border-b border-neutral-100 transition-colors hover:bg-neutral-50",
 							isUnread ? "bg-neutral-50/80" : "bg-white",
-							!href && "cursor-default opacity-70 hover:bg-white",
+							!href && "opacity-70 hover:bg-white",
 						)}
-						onClick={() => {
-							if (!href) {
-								return;
-							}
-
-							void onNotificationClick?.(notification);
-							router.push(href);
-						}}
 					>
-						<div className="flex items-start justify-between gap-3">
-							<div className="min-w-0">
-								<div className="mb-1 flex items-center gap-2">
-									<span
-										className={cn(
-											"inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium",
-											typeTone,
+						<button
+							type="button"
+							disabled={!href}
+							className={cn(
+								"flex min-w-0 flex-1 flex-col gap-2 px-4 py-3 text-left",
+								!href && "cursor-default",
+							)}
+							onClick={() => {
+								if (!href) {
+									return;
+								}
+
+								void onNotificationClick?.(notification);
+								router.push(href);
+							}}
+						>
+							<div className="flex items-start justify-between gap-3">
+								<div className="min-w-0">
+									<div className="mb-1 flex items-center gap-2">
+										<span
+											className={cn(
+												"inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium",
+												typeTone,
+											)}
+										>
+											{typeLabel}
+										</span>
+									</div>
+									<div className="truncate font-medium text-sm text-neutral-900">
+										{notification.title}
+									</div>
+									{notification.actorName ? (
+										<div className="mt-1 text-xs text-neutral-500">
+											by {notification.actorName}
+										</div>
+									) : null}
+								</div>
+								<div className="flex shrink-0 items-center gap-2">
+									{isUnread ? (
+										<span className="h-2 w-2 rounded-full bg-blue-500" />
+									) : null}
+									<span className="text-xs text-neutral-400">
+										{formatNotificationTimestamp(
+											notification.createdAt,
 										)}
-									>
-										{typeLabel}
 									</span>
 								</div>
-								<div className="truncate font-medium text-sm text-neutral-900">
-									{notification.title}
+							</div>
+							{bodyText ? (
+								<div className="text-sm text-neutral-600">
+									{bodyText}
 								</div>
-								{notification.actorName ? (
-									<div className="mt-1 text-xs text-neutral-500">
-										by {notification.actorName}
-									</div>
-								) : null}
-							</div>
-							<div className="flex shrink-0 items-center gap-2">
-								{isUnread ? (
-									<span className="h-2 w-2 rounded-full bg-blue-500" />
-								) : null}
-								<span className="text-xs text-neutral-400">
-									{formatNotificationTimestamp(
-										notification.createdAt,
+							) : null}
+						</button>
+						{onToggleReadState ? (
+							<div className="pr-2 pt-2">
+								<Button
+									type="button"
+									variant="ghost"
+									size="icon"
+									className="size-8 text-neutral-400 hover:text-neutral-700"
+									aria-label={
+										isUnread
+											? "Mark notification as read"
+											: "Mark notification as unread"
+									}
+									onClick={(event) => {
+										event.preventDefault();
+										event.stopPropagation();
+										void onToggleReadState(notification);
+									}}
+								>
+									{isUnread ? (
+										<MailOpen className="size-4" />
+									) : (
+										<Mail className="size-4" />
 									)}
-								</span>
-							</div>
-						</div>
-						{bodyText ? (
-							<div className="text-sm text-neutral-600">
-								{bodyText}
+								</Button>
 							</div>
 						) : null}
-					</button>
+					</div>
 				);
 			})}
 		</div>

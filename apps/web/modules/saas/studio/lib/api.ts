@@ -682,6 +682,7 @@ export const notificationsApi = {
 
 export const notificationsMutations = {
 	markRead: () => orpc.notifications.markRead.mutationOptions(),
+	markUnread: () => orpc.notifications.markUnread.mutationOptions(),
 	markAllRead: () => orpc.notifications.markAllRead.mutationOptions(),
 	updatePreferences: () =>
 		orpc.notifications.updatePreferences.mutationOptions(),

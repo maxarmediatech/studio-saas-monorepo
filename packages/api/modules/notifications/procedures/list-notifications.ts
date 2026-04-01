@@ -4,6 +4,7 @@ import {
 	db,
 	desc,
 	eq,
+	inArray,
 	isNull,
 	notifications,
 } from "@repo/database";
@@ -26,7 +27,7 @@ export const listNotifications = studioProtectedProcedure
 	.input(listNotificationsInputSchema)
 	.output(listNotificationsOutputSchema)
 	.handler(async ({ input, context }) => {
-		const { page, limit, unreadOnly } = input;
+		const { page, limit, unreadOnly, types } = input;
 		const offset = (page - 1) * limit;
 
 		const conditions = [
@@ -36,6 +37,10 @@ export const listNotifications = studioProtectedProcedure
 
 		if (unreadOnly) {
 			conditions.push(isNull(notifications.readAt));
+		}
+
+		if (types?.length) {
+			conditions.push(inArray(notifications.type, types));
 		}
 
 		const [countResult] = await db
