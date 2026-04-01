@@ -5,7 +5,7 @@ export type PackageDeliverableTemplate = {
 
 export const PACKAGE_DELIVERABLE_TEMPLATES: PackageDeliverableTemplate[] = [
 	{ title: "Wedding Album", quantity: 1 },
-	{ title: "Highlight Video", quantity: 1 },
-	{ title: "Edited Photos", quantity: 1 },
-	{ title: "Full Video", quantity: 1 },
+	{ title: "Full Wedding Video", quantity: 1 },
+	{ title: "Wedding Highlight", quantity: 1 },
+	{ title: "Edited Photos of Each Event", quantity: 1 },
 ];
