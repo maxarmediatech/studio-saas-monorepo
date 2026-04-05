@@ -507,6 +507,7 @@
 		"getStarted": "Get started",
 		"month": "{count, plural, one {month} other {{count} months}}",
 		"monthly": "Monthly",
+		"moneyBackGuarantee": "100% money-back guarantee",
 		"products": {
 			"studio-basics": {
 				"description": "",

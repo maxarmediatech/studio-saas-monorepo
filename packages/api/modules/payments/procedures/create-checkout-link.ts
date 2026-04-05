@@ -28,13 +28,19 @@ export const createCheckoutLink = protectedProcedure
 	.input(
 		z.object({
 			priceKey: z.string().min(1),
+			applyIntroOffer: z.boolean().optional(),
 			postCheckoutPath: z.string().optional(),
 			organizationId: z.string().optional(),
 		}),
 	)
 	.handler(
 		async ({
-			input: { priceKey, postCheckoutPath, organizationId },
+			input: {
+				priceKey,
+				applyIntroOffer,
+				postCheckoutPath,
+				organizationId,
+			},
 			context: { user },
 		}) => {
 			if (
@@ -101,7 +107,10 @@ export const createCheckoutLink = protectedProcedure
 						priceKey,
 						productId: catalogPrice.productId,
 						quantity,
-						discountCode: catalogPrice.discountCode,
+						discountCode:
+							applyIntroOffer === false
+								? undefined
+								: catalogPrice.discountCode,
 						email: user.email,
 						name: user.name ?? "",
 						postCheckoutPath,

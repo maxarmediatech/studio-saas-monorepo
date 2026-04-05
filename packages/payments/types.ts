@@ -2,6 +2,7 @@ export type CreateCheckoutLink = (params: {
 	priceKey: string;
 	productId: string;
 	quantity?: number;
+	applyIntroOffer?: boolean;
 	discountCode?: string;
 	email?: string;
 	name?: string;

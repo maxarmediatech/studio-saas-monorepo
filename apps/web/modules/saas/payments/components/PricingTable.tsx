@@ -2,6 +2,7 @@
 
 import { type Config, config } from "@repo/config";
 import { Button } from "@repo/ui/components/button";
+import { Checkbox } from "@repo/ui/components/checkbox";
 import { Tabs, TabsList, TabsTrigger } from "@repo/ui/components/tabs";
 import { cn } from "@repo/ui/lib/utils";
 import { usePlanData } from "@saas/payments/hooks/plan-data";
@@ -16,9 +17,11 @@ import {
 	CheckIcon,
 	Loader2Icon,
 	PhoneIcon,
+	ShieldCheckIcon,
 	StarIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -49,9 +52,11 @@ export function PricingTable({
 	hasMonthlyIntroOffer?: boolean;
 }) {
 	const router = useRouter();
+	const t = useTranslations();
 	const localeCurrency = useLocaleCurrency();
 	const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
 	const [interval, setInterval] = useState<"month" | "year">("month");
+	const [applyIntroOffer, setApplyIntroOffer] = useState(true);
 	const inlineCheckoutEnabled =
 		process.env.NEXT_PUBLIC_DODO_INLINE_CHECKOUT !== "0";
 	const { planData } = usePlanData();
@@ -59,7 +64,11 @@ export function PricingTable({
 		orpc.payments.createCheckoutLink.mutationOptions(),
 	);
 
-	const onSelectPlan = async (planId: PlanId, priceKey?: string) => {
+	const onSelectPlan = async (
+		planId: PlanId,
+		priceKey?: string,
+		shouldApplyIntroOffer?: boolean,
+	) => {
 		if (!(userId || organizationId)) {
 			router.push("/auth/signup");
 			return;
@@ -75,6 +84,7 @@ export function PricingTable({
 			const { checkoutLink, checkoutSessionId } =
 				await createCheckoutLinkMutation.mutateAsync({
 					priceKey,
+					applyIntroOffer: shouldApplyIntroOffer,
 					organizationId,
 					postCheckoutPath,
 				});
@@ -176,6 +186,9 @@ export function PricingTable({
 							price.priceKey === "studio-basics-monthly" &&
 							price.introOfferAmount,
 					);
+					const introOfferFieldId = price
+						? `intro-offer-${price.priceKey}`
+						: undefined;
 
 					if (!(price || isEnterprise || comingSoon)) {
 						return null;
@@ -278,18 +291,44 @@ export function PricingTable({
 									) : null}
 
 									{showIntroOffer && price && (
-										<p className="mt-2 text-primary text-sm">
-											{formatCurrency(
-												price.introOfferAmount ?? 0,
-												price.currency,
-											)}{" "}
-											first month, then{" "}
-											{formatCurrency(
-												price.amount,
-												price.currency,
-											)}
-											/month
-										</p>
+										<div className="mt-3 rounded-2xl border border-foreground/10 bg-foreground/[0.03] p-3">
+											<div className="flex items-start gap-3">
+												<Checkbox
+													id={introOfferFieldId}
+													checked={applyIntroOffer}
+													onCheckedChange={(
+														checked,
+													) =>
+														setApplyIntroOffer(
+															checked === true,
+														)
+													}
+													className="mt-0.5"
+												/>
+												<div className="space-y-1">
+													<label
+														htmlFor={
+															introOfferFieldId
+														}
+														className="cursor-pointer font-medium text-foreground text-sm"
+													>
+														Apply launch offer
+													</label>
+													<p className="text-muted-foreground text-sm">
+														{applyIntroOffer
+															? `${formatCurrency(
+																	price.introOfferAmount ??
+																		0,
+																	price.currency,
+																)} first month, then ${formatCurrency(
+																	price.amount,
+																	price.currency,
+																)}/month`
+															: "Pay regular monthly price from checkout"}
+													</p>
+												</div>
+											</div>
+										</div>
 									)}
 
 									{comingSoon ? null : isEnterprise ? (
@@ -315,6 +354,9 @@ export function PricingTable({
 												void onSelectPlan(
 													planId as PlanId,
 													price?.priceKey,
+													showIntroOffer
+														? applyIntroOffer
+														: undefined,
 												)
 											}
 											disabled={
@@ -345,6 +387,13 @@ export function PricingTable({
 						</div>
 					);
 				})}
+			</div>
+
+			<div className="mt-5 flex justify-center">
+				<div className="inline-flex items-center gap-2 rounded-full border border-foreground/10 bg-foreground/[0.03] px-4 py-2 text-center text-foreground/70 text-sm">
+					<ShieldCheckIcon className="size-4 text-foreground/60" />
+					<span>{t("pricing.moneyBackGuarantee")}</span>
+				</div>
 			</div>
 		</div>
 	);
