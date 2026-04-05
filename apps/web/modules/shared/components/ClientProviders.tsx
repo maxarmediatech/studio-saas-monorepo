@@ -17,6 +17,8 @@ export function ClientProviders({
 	defaultTheme,
 	themes,
 }: ClientProvidersProps) {
+	const singleTheme = themes.length === 1 ? themes[0] : undefined;
+
 	return (
 		<ApiClientProvider>
 			<ProgressProvider
@@ -29,8 +31,9 @@ export function ClientProviders({
 				<ThemeProvider
 					attribute="class"
 					disableTransitionOnChange
-					enableSystem
-					defaultTheme={defaultTheme}
+					enableSystem={!singleTheme}
+					forcedTheme={singleTheme}
+					defaultTheme={singleTheme ?? defaultTheme}
 					themes={themes}
 				>
 					<ApiClientProvider>
