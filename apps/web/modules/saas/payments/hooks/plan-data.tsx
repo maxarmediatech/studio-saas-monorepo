@@ -15,31 +15,30 @@ export function usePlanData() {
 			features: ReactNode[];
 		}
 	> = {
-		freelancer: {
-			title: t("pricing.products.freelancer.title"),
-			description: t("pricing.products.freelancer.description"),
+		"studio-basics": {
+			title: t("pricing.products.studio-basics.title"),
+			description: t("pricing.products.studio-basics.description"),
 			features: [
-				t("pricing.products.freelancer.features.singleStudio"),
-				t("pricing.products.freelancer.features.singleCrew"),
-				t("pricing.products.freelancer.features.unlimitedBookings"),
+				t("pricing.products.studio-basics.features.bookings"),
+				t("pricing.products.studio-basics.features.clients"),
+				t("pricing.products.studio-basics.features.crew"),
+				t("pricing.products.studio-basics.features.finance"),
+				t("pricing.products.studio-basics.features.ops"),
+				t("pricing.products.studio-basics.features.setup"),
 			],
 		},
-		starter: {
-			title: t("pricing.products.starter.title"),
-			description: t("pricing.products.starter.description"),
+		"studio-advance": {
+			title: t("pricing.products.studio-advance.title"),
+			description: t("pricing.products.studio-advance.description"),
 			features: [
-				t("pricing.products.starter.features.singleStudio"),
-				t("pricing.products.starter.features.unlimitedBookings"),
-				t("pricing.products.starter.features.crewCap"),
-			],
-		},
-		growth: {
-			title: t("pricing.products.growth.title"),
-			description: t("pricing.products.growth.description"),
-			features: [
-				t("pricing.products.growth.features.studios"),
-				t("pricing.products.growth.features.unlimitedBookings"),
-				t("pricing.products.growth.features.crewCap"),
+				t(
+					"pricing.products.studio-advance.features.everythingInBasics",
+				),
+				t("pricing.products.studio-advance.features.whatsappFlows"),
+				t(
+					"pricing.products.studio-advance.features.priorityAutomation",
+				),
+				t("pricing.products.studio-advance.features.comingSoon"),
 			],
 		},
 	};

@@ -66,21 +66,20 @@ export type Config = {
 				isFree?: boolean;
 				isEnterprise?: boolean;
 				recommended?: boolean;
+				comingSoon?: boolean;
 				prices?: Array<
 					{
-						productId: string;
+						priceKey: string;
 						amount: number;
 						currency: string;
 						hidden?: boolean;
+						introOfferAmount?: number;
 					} & (
 						| {
 								type: "recurring";
 								interval: "month" | "year" | "week";
 								intervalCount?: number;
-								trialPeriodDays?: number;
 								seatBased?: boolean;
-								bundledOneTimeProductId?: string;
-								bundledOneTimeQuantity?: number;
 						  }
 						| {
 								type: "one-time";

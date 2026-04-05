@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 type PurchaseRecord = {
 	id: string;
@@ -8,6 +8,10 @@ type PurchaseRecord = {
 	customerId: string;
 	subscriptionId: string | null;
 	paymentId: string | null;
+	planKey: string;
+	priceKey: string;
+	billingInterval: string | null;
+	catalogVersion: string;
 	productId: string;
 	status: string | null;
 	createdAt: Date;
@@ -23,7 +27,11 @@ function makePurchase(overrides: Partial<PurchaseRecord>): PurchaseRecord {
 		customerId: "customer_1",
 		subscriptionId: "sub_1",
 		paymentId: null,
-		productId: "pdt_sub_month",
+		planKey: "studio-basics",
+		priceKey: "studio-basics-monthly",
+		billingInterval: "month",
+		catalogVersion: "2026-04-basics",
+		productId: "pdt_basics_month",
 		status: "active",
 		createdAt: new Date("2026-01-01T00:00:00.000Z"),
 		updatedAt: new Date("2026-01-01T00:00:00.000Z"),
@@ -32,42 +40,21 @@ function makePurchase(overrides: Partial<PurchaseRecord>): PurchaseRecord {
 }
 
 describe("createPurchasesHelper", () => {
-	beforeEach(() => {
-		vi.resetModules();
-		vi.stubEnv("NEXT_PUBLIC_PRICE_ID_FREELANCER_MONTHLY", "pdt_sub_month");
-		vi.stubEnv("NEXT_PUBLIC_PRICE_ID_FREELANCER_YEARLY", "pdt_sub_year");
-		vi.stubEnv("NEXT_PUBLIC_PRICE_ID_STARTER_MONTHLY", "pdt_starter_month");
-		vi.stubEnv("NEXT_PUBLIC_PRICE_ID_STARTER_YEARLY", "pdt_starter_year");
-		vi.stubEnv("NEXT_PUBLIC_PRICE_ID_GROWTH_MONTHLY", "pdt_growth_month");
-		vi.stubEnv("NEXT_PUBLIC_PRICE_ID_GROWTH_YEARLY", "pdt_growth_year");
-		vi.stubEnv(
-			"NEXT_PUBLIC_PRICE_ID_FREELANCER_MONTHLY_SETUP",
-			"pdt_setup_month",
-		);
-	});
-
-	afterEach(() => {
-		vi.unstubAllEnvs();
-	});
-
-	it("does not grant active purchase from failed one-time payments", async () => {
+	it("does not grant active purchase from one-time payments", async () => {
 		const { createPurchasesHelper } = await import(
 			"@repo/payments/lib/helper"
 		);
 		const helper = createPurchasesHelper([
 			makePurchase({
-				id: "purchase_failed",
+				id: "purchase_one_time",
 				type: "ONE_TIME",
 				subscriptionId: null,
-				paymentId: "pay_failed",
-				status: "failed",
+				paymentId: "pay_one_time",
+				status: "active",
 			}),
 		]);
 
-		expect(
-			helper.activePlan === null ||
-				helper.activePlan.hasActivePurchase === false,
-		).toBe(true);
+		expect(helper.activePlan).toBeNull();
 	});
 
 	it("prefers active subscriptions even if newer failed subscription exists", async () => {
@@ -94,44 +81,30 @@ describe("createPurchasesHelper", () => {
 		expect(helper.activePlan?.purchaseId).toBe("purchase_old_active");
 	});
 
-	it("does not grant entitlement from bundled setup one-time purchases", async () => {
+	it("resolves the active plan from stored price identity", async () => {
 		const { createPurchasesHelper } = await import(
 			"@repo/payments/lib/helper"
 		);
 		const helper = createPurchasesHelper([
 			makePurchase({
-				id: "purchase_setup_paid",
-				type: "ONE_TIME",
-				subscriptionId: null,
-				paymentId: "pay_setup",
-				productId: "pdt_setup_month",
-				status: "active",
+				priceKey: "studio-basics-yearly",
+				billingInterval: "year",
+				productId: "pdt_basics_year",
 			}),
 		]);
 
-		expect(
-			helper.activePlan === null ||
-				helper.activePlan.hasActivePurchase === false,
-		).toBe(true);
+		expect(helper.activePlan?.id).toBe("studio-basics");
+		expect(helper.activePlan?.price?.priceKey).toBe("studio-basics-yearly");
 	});
 
-	it("keeps entitlement for non-bundled one-time purchases", async () => {
+	it("matches purchases by internal plan key", async () => {
 		const { createPurchasesHelper } = await import(
 			"@repo/payments/lib/helper"
 		);
-		const helper = createPurchasesHelper([
-			makePurchase({
-				id: "purchase_legacy_one_time",
-				type: "ONE_TIME",
-				subscriptionId: null,
-				paymentId: "pay_legacy",
-				productId: "legacy_one_time_product",
-				status: "active",
-			}),
-		]);
+		const helper = createPurchasesHelper([makePurchase({})]);
 
-		expect(helper.activePlan?.hasActivePurchase).toBe(true);
-		expect(helper.activePlan?.status).toBe("active");
-		expect(helper.activePlan?.purchaseId).toBe("purchase_legacy_one_time");
+		expect(helper.hasPurchase("studio-basics")).toBe(true);
+		expect(helper.hasSubscription("studio-basics")).toBe(true);
+		expect(helper.hasPurchase("studio-advance")).toBe(false);
 	});
 });

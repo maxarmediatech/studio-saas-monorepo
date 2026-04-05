@@ -1,15 +1,14 @@
 export type CreateCheckoutLink = (params: {
-	productCart: Array<{
-		productId: string;
-		quantity?: number;
-	}>;
+	priceKey: string;
+	productId: string;
+	quantity?: number;
+	discountCode?: string;
 	email?: string;
 	name?: string;
 	postCheckoutPath?: string;
 	customerId?: string;
 	organizationId?: string;
 	userId?: string;
-	trialPeriodDays?: number;
 }) => Promise<{
 	checkoutLink: string | null;
 	checkoutSessionId: string | null;

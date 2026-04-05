@@ -19,6 +19,7 @@
 			"types": "./index.ts",
 			"default": "./index.ts"
 		},
+		"./lib/catalog": "./src/lib/catalog.ts",
 		"./lib/checkout": "./src/lib/checkout.ts",
 		"./types": "./types.ts",
 		"./lib/helper": "./src/lib/helper.ts"

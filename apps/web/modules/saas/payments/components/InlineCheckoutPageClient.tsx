@@ -52,13 +52,13 @@ export function InlineCheckoutPageClient({
 	checkoutUrl,
 	checkoutSessionId,
 	postCheckoutPath,
-	expectedProducts,
+	expectedPriceKeys,
 	backHref,
 }: {
 	checkoutUrl: string;
 	checkoutSessionId?: string;
 	postCheckoutPath: string;
-	expectedProducts: string;
+	expectedPriceKeys: string;
 	backHref: string;
 }) {
 	const [checkoutState, setCheckoutState] = useState<
@@ -288,7 +288,7 @@ export function InlineCheckoutPageClient({
 							buildCheckoutLaunchPath({
 								checkoutUrl,
 								checkoutSessionId: normalizedCheckoutSessionId,
-								expectedProductIds: expectedProducts
+								expectedPriceKeys: expectedPriceKeys
 									.split(",")
 									.map((item) => item.trim())
 									.filter(Boolean),

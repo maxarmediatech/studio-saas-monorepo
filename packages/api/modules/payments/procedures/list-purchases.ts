@@ -5,6 +5,7 @@ import {
 	getPurchasesByOrganizationId,
 	getPurchasesByUserId,
 } from "@repo/database";
+import { hydratePurchaseIdentity } from "@repo/payments/lib/catalog";
 import { z } from "zod";
 import { protectedProcedure } from "../../../orpc/procedures";
 
@@ -36,7 +37,11 @@ export const listPurchases = protectedProcedure
 			const purchases =
 				await getPurchasesByOrganizationId(organizationId);
 
-			return { purchases };
+			return {
+				purchases: purchases.map((purchase) =>
+					hydratePurchaseIdentity(purchase),
+				),
+			};
 		}
 
 		if (
@@ -49,5 +54,9 @@ export const listPurchases = protectedProcedure
 
 		const purchases = await getPurchasesByUserId(user.id);
 
-		return { purchases };
+		return {
+			purchases: purchases.map((purchase) =>
+				hydratePurchaseIdentity(purchase),
+			),
+		};
 	});

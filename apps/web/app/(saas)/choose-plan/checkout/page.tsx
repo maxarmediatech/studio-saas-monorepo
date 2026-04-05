@@ -29,6 +29,7 @@ export default async function ChoosePlanCheckoutPage({
 		checkoutUrl?: string | string[];
 		checkoutSessionId?: string | string[];
 		redirectTo?: string | string[];
+		prices?: string | string[];
 		products?: string | string[];
 	}>;
 }) {
@@ -42,7 +43,8 @@ export default async function ChoosePlanCheckoutPage({
 	const checkoutUrl = getSingleValue(params.checkoutUrl);
 	const checkoutSessionId = getSingleValue(params.checkoutSessionId);
 	const redirectTo = getSingleValue(params.redirectTo);
-	const products = getSingleValue(params.products);
+	const prices =
+		getSingleValue(params.prices) ?? getSingleValue(params.products);
 	const backHref =
 		redirectTo && redirectTo !== "/app" ? redirectTo : "/choose-plan";
 
@@ -70,7 +72,7 @@ export default async function ChoosePlanCheckoutPage({
 				checkoutUrl={checkoutUrl}
 				checkoutSessionId={checkoutSessionId}
 				postCheckoutPath={redirectTo ?? "/app"}
-				expectedProducts={products ?? ""}
+				expectedPriceKeys={prices ?? ""}
 				backHref={backHref}
 			/>
 		</AuthWrapper>

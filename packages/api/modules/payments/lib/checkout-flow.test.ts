@@ -8,6 +8,10 @@ type PurchaseRecord = {
 	customerId: string;
 	subscriptionId: string | null;
 	paymentId: string | null;
+	planKey: string;
+	priceKey: string;
+	billingInterval: string | null;
+	catalogVersion: string;
 	productId: string;
 	status: string | null;
 	createdAt: Date;
@@ -23,7 +27,11 @@ function makePurchase(overrides: Partial<PurchaseRecord>): PurchaseRecord {
 		customerId: "customer_1",
 		subscriptionId: "sub_1",
 		paymentId: null,
-		productId: "pdt_starter_month",
+		planKey: "studio-basics",
+		priceKey: "studio-basics-monthly",
+		billingInterval: "month",
+		catalogVersion: "2026-04-basics",
+		productId: "pdt_basics_month",
 		status: "active",
 		createdAt: new Date("2026-01-01T00:00:00.000Z"),
 		updatedAt: new Date("2026-01-01T00:00:00.000Z"),
@@ -35,33 +43,23 @@ describe("checkout flow helpers", () => {
 	beforeEach(() => {
 		vi.resetModules();
 		vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://app.example.com");
-		vi.stubEnv("NEXT_PUBLIC_PRICE_ID_FREELANCER_MONTHLY", "pdt_sub_month");
-		vi.stubEnv("NEXT_PUBLIC_PRICE_ID_FREELANCER_YEARLY", "pdt_sub_year");
-		vi.stubEnv("NEXT_PUBLIC_PRICE_ID_STARTER_MONTHLY", "pdt_starter_month");
-		vi.stubEnv("NEXT_PUBLIC_PRICE_ID_STARTER_YEARLY", "pdt_starter_year");
-		vi.stubEnv("NEXT_PUBLIC_PRICE_ID_GROWTH_MONTHLY", "pdt_growth_month");
-		vi.stubEnv("NEXT_PUBLIC_PRICE_ID_GROWTH_YEARLY", "pdt_growth_year");
-		vi.stubEnv(
-			"NEXT_PUBLIC_PRICE_ID_STARTER_MONTHLY_SETUP",
-			"pdt_setup_month",
-		);
 	});
 
 	afterEach(() => {
 		vi.unstubAllEnvs();
 	});
 
-	it("builds a completion URL on the app origin", async () => {
+	it("builds a completion URL with expected price keys", async () => {
 		const { buildCheckoutCompletionUrl } = await import(
 			"@repo/payments/lib/checkout"
 		);
 		const url = buildCheckoutCompletionUrl({
 			postCheckoutPath: "/app/acme/settings/billing",
-			expectedProductIds: ["pdt_starter_month", "pdt_setup_month"],
+			expectedPriceKeys: ["studio-basics-monthly"],
 		});
 
 		expect(url).toBe(
-			"https://app.example.com/checkout/complete?redirectTo=%2Fapp%2Facme%2Fsettings%2Fbilling&products=pdt_starter_month%2Cpdt_setup_month",
+			"https://app.example.com/checkout/complete?redirectTo=%2Fapp%2Facme%2Fsettings%2Fbilling&prices=studio-basics-monthly",
 		);
 	});
 
@@ -85,40 +83,20 @@ describe("checkout flow helpers", () => {
 		);
 	});
 
-	it("keeps checkout status pending when only bundled setup purchase exists", async () => {
+	it("waits for the expected price instead of reusing another active purchase", async () => {
 		const { getCheckoutStatusFromPurchases } = await import(
 			"@repo/payments/lib/checkout"
 		);
 		const status = getCheckoutStatusFromPurchases({
 			purchases: [
 				makePurchase({
-					id: "purchase_setup",
-					type: "ONE_TIME",
-					subscriptionId: null,
-					paymentId: "pay_setup",
-					productId: "pdt_setup_month",
-					status: "active",
+					id: "purchase_yearly",
+					priceKey: "studio-basics-yearly",
+					billingInterval: "year",
+					productId: "pdt_basics_year",
 				}),
 			],
-			expectedProductIds: ["pdt_starter_month", "pdt_setup_month"],
-		});
-
-		expect(status.status).toBe("pending");
-	});
-
-	it("waits for the expected product instead of reusing an older active plan", async () => {
-		const { getCheckoutStatusFromPurchases } = await import(
-			"@repo/payments/lib/checkout"
-		);
-		const status = getCheckoutStatusFromPurchases({
-			purchases: [
-				makePurchase({
-					id: "purchase_old",
-					productId: "pdt_sub_month",
-					status: "active",
-				}),
-			],
-			expectedProductIds: ["pdt_starter_month"],
+			expectedPriceKeys: ["studio-basics-monthly"],
 		});
 
 		expect(status.status).toBe("pending");
@@ -133,17 +111,17 @@ describe("checkout flow helpers", () => {
 			purchases: [
 				makePurchase({
 					id: "purchase_old",
-					productId: "pdt_starter_month",
+					priceKey: "studio-basics-monthly",
 					status: "active",
 				}),
 			],
-			expectedProductIds: ["pdt_starter_month"],
+			expectedPriceKeys: ["studio-basics-monthly"],
 		});
 
 		expect(status.status).toBe("pending");
 	});
 
-	it("surfaces checkout session failure even when an older purchase for the same product exists", async () => {
+	it("surfaces checkout session failure even when an older purchase for the same price exists", async () => {
 		const { getCheckoutStatusFromPurchases } = await import(
 			"@repo/payments/lib/checkout"
 		);
@@ -152,11 +130,11 @@ describe("checkout flow helpers", () => {
 			purchases: [
 				makePurchase({
 					id: "purchase_old",
-					productId: "pdt_starter_month",
+					priceKey: "studio-basics-monthly",
 					status: "active",
 				}),
 			],
-			expectedProductIds: ["pdt_starter_month"],
+			expectedPriceKeys: ["studio-basics-monthly"],
 		});
 
 		expect(status.status).toBe("failed");
@@ -173,11 +151,11 @@ describe("checkout flow helpers", () => {
 				makePurchase({
 					id: "purchase_old",
 					paymentId: "pay_old",
-					productId: "pdt_starter_month",
+					priceKey: "studio-basics-monthly",
 					status: "active",
 				}),
 			],
-			expectedProductIds: ["pdt_starter_month"],
+			expectedPriceKeys: ["studio-basics-monthly"],
 		});
 
 		expect(status.status).toBe("pending");
@@ -194,18 +172,18 @@ describe("checkout flow helpers", () => {
 				makePurchase({
 					id: "purchase_new",
 					paymentId: "pay_new",
-					productId: "pdt_starter_month",
+					priceKey: "studio-basics-monthly",
 					status: "active",
 				}),
 			],
-			expectedProductIds: ["pdt_starter_month"],
+			expectedPriceKeys: ["studio-basics-monthly"],
 		});
 
 		expect(status.status).toBe("active");
 		expect(status.purchaseId).toBe("purchase_new");
 	});
 
-	it("activates checkout status once the expected subscription product is active", async () => {
+	it("activates checkout status once the expected subscription price is active", async () => {
 		const { getCheckoutStatusFromPurchases } = await import(
 			"@repo/payments/lib/checkout"
 		);
@@ -213,11 +191,11 @@ describe("checkout flow helpers", () => {
 			purchases: [
 				makePurchase({
 					id: "purchase_new",
-					productId: "pdt_starter_month",
+					priceKey: "studio-basics-monthly",
 					status: "active",
 				}),
 			],
-			expectedProductIds: ["pdt_starter_month", "pdt_setup_month"],
+			expectedPriceKeys: ["studio-basics-monthly"],
 		});
 
 		expect(status.status).toBe("active");

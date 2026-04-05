@@ -10,6 +10,21 @@ type Props = {
 	params: Promise<{ organizationSlug: string }>;
 };
 
+function formatPlanLabel(planId?: string | null) {
+	if (!planId) {
+		return "No active plan";
+	}
+
+	return planId
+		.split("-")
+		.map((segment) =>
+			segment.length > 0
+				? `${segment[0]?.toUpperCase() ?? ""}${segment.slice(1)}`
+				: segment,
+		)
+		.join(" ");
+}
+
 export async function generateMetadata({ params }: Props) {
 	const { organizationSlug } = await params;
 
@@ -125,7 +140,7 @@ export default async function OrganizationPage({ params }: Props) {
 						<div className="flex justify-between gap-4">
 							<dt className="text-muted-foreground">Plan</dt>
 							<dd className="font-medium">
-								{activePlan?.id ?? "No active plan"}
+								{formatPlanLabel(activePlan?.id)}
 							</dd>
 						</div>
 						<div className="flex justify-between gap-4">

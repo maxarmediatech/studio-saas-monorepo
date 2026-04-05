@@ -1,4 +1,3 @@
-import { type Config, config } from "@repo/config";
 import type { PurchaseSchema } from "@repo/database";
 import type { z } from "zod";
 import { createPurchasesHelper } from "./helper";
@@ -10,17 +9,6 @@ const allowedDodoCheckoutHosts = new Set([
 	"checkout.dodopayments.com",
 	"test.checkout.dodopayments.com",
 ]);
-
-const plans = config.payments.plans as Config["payments"]["plans"];
-const bundledOneTimeProductIds = new Set(
-	Object.values(plans).flatMap((plan) =>
-		(plan.prices ?? []).flatMap((price) =>
-			price.type === "recurring" && price.bundledOneTimeProductId
-				? [price.bundledOneTimeProductId]
-				: [],
-		),
-	),
-);
 
 type PurchaseRecord = z.infer<typeof PurchaseSchema>;
 export type CheckoutStatus = {
@@ -113,10 +101,10 @@ export function sanitizeCheckoutSessionId(
 
 export function buildCheckoutCompletionUrl({
 	postCheckoutPath,
-	expectedProductIds,
+	expectedPriceKeys,
 }: {
 	postCheckoutPath?: string;
-	expectedProductIds?: string[];
+	expectedPriceKeys?: string[];
 }) {
 	const completionUrl = new URL("/checkout/complete", getBaseUrl());
 	completionUrl.searchParams.set(
@@ -124,11 +112,11 @@ export function buildCheckoutCompletionUrl({
 		sanitizePostCheckoutPath(postCheckoutPath),
 	);
 
-	const uniqueProductIds = [
-		...new Set(expectedProductIds?.filter(Boolean) ?? []),
+	const uniquePriceKeys = [
+		...new Set(expectedPriceKeys?.filter(Boolean) ?? []),
 	];
-	if (uniqueProductIds.length > 0) {
-		completionUrl.searchParams.set("products", uniqueProductIds.join(","));
+	if (uniquePriceKeys.length > 0) {
+		completionUrl.searchParams.set("prices", uniquePriceKeys.join(","));
 	}
 
 	return completionUrl.toString();
@@ -148,22 +136,22 @@ export function isAllowedDodoCheckoutUrl(urlValue: string): boolean {
 
 export function getCheckoutStatusFromPurchases({
 	purchases,
-	expectedProductIds,
+	expectedPriceKeys,
 	checkoutSessionPaymentStatus,
 	checkoutSessionPaymentId,
 }: {
 	purchases: PurchaseRecord[];
-	expectedProductIds?: string[];
+	expectedPriceKeys?: string[];
 	checkoutSessionPaymentStatus?: string | null;
 	checkoutSessionPaymentId?: string | null;
 }): CheckoutStatus {
 	const normalizedCheckoutSessionPaymentStatus =
 		checkoutSessionPaymentStatus?.toLowerCase() ?? null;
-	const normalizedExpectedProductIds = [
-		...new Set(expectedProductIds?.filter(Boolean) ?? []),
+	const normalizedExpectedPriceKeys = [
+		...new Set(expectedPriceKeys?.filter(Boolean) ?? []),
 	];
 
-	if (normalizedExpectedProductIds.length === 0) {
+	if (normalizedExpectedPriceKeys.length === 0) {
 		const { activePlan } = createPurchasesHelper(purchases);
 		return activePlan?.hasActivePurchase
 			? {
@@ -174,7 +162,7 @@ export function getCheckoutStatusFromPurchases({
 	}
 
 	const matchingPurchases = purchases.filter((purchase) =>
-		normalizedExpectedProductIds.includes(purchase.productId),
+		normalizedExpectedPriceKeys.includes(purchase.priceKey),
 	);
 	const matchingCheckoutSessionPurchase = checkoutSessionPaymentId
 		? (matchingPurchases.find(
@@ -235,9 +223,7 @@ export function getCheckoutStatusFromPurchases({
 				: { status: "pending" as const, purchaseId: null };
 	}
 
-	const latestRelevantPurchase = [...matchingPurchases]
-		.filter((purchase) => !bundledOneTimeProductIds.has(purchase.productId))
-		.sort(sortByNewest)[0];
+	const latestRelevantPurchase = [...matchingPurchases].sort(sortByNewest)[0];
 	const normalizedStatus = latestRelevantPurchase?.status?.toLowerCase();
 
 	if (normalizedStatus === "cancelled") {

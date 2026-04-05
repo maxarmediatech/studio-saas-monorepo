@@ -498,32 +498,27 @@
 		"month": "Monat",
 		"monthly": "Monatlich",
 		"products": {
-			"freelancer": {
-				"description": "Für Solo-Fotograf:innen: 1 Studio, 1 Crew, unbegrenzte Buchungen.",
+			"studio-basics": {
+				"description": "",
 				"features": {
-					"singleStudio": "1 Studio-Workspace",
-					"singleCrew": "1 Crew-Mitglied",
-					"unlimitedBookings": "Unbegrenzte Buchungen"
+					"bookings": "Unbegrenzte Buchungen mit verknüpften Shoots und Deliverables",
+					"clients": "Kund:innen-CRM mit Notizen und Buchungsverlauf",
+					"crew": "Crew-Rollen, Teams und Zuweisungen für besser organisierte Abläufe",
+					"finance": "Zahlungen, Rechnungen, Belege und Ausgaben an einem Ort",
+					"ops": "Dashboard, Suche, Benachrichtigungen und Team-Diskussionen",
+					"setup": "Eigene Buchungstypen, Pakete und Vorlagen"
 				},
-				"title": "Freelancer"
+				"title": "Studio Basics"
 			},
-			"starter": {
-				"description": "Empfohlen: Launch-Preis für dein erstes Studio (inkl. Steuern).",
+			"studio-advance": {
+				"description": "",
 				"features": {
-					"singleStudio": "1 Studio-Workspace",
-					"unlimitedBookings": "Unbegrenzte Buchungen",
-					"crewCap": "Bis zu 20 Crew-Mitglieder"
+					"everythingInBasics": "Alles aus Studio Basics",
+					"comingSoon": "Kund:innen-Updates und Erinnerungen",
+					"priorityAutomation": "Automatisierte Follow-ups",
+					"whatsappFlows": "Sofortige Lead-Antworten"
 				},
-				"title": "Studio Starter"
-			},
-			"growth": {
-				"description": "Fünf Studios mit unbegrenzten Buchungen – ideal zum Skalieren.",
-				"features": {
-					"studios": "5 Studio-Workspaces inklusive",
-					"unlimitedBookings": "Unbegrenzte Buchungen",
-					"crewCap": "Bis zu 20 Crew-Mitglieder pro Studio"
-				},
-				"title": "Multi-Studio"
+				"title": "Studio Advance"
 			}
 		},
 		"purchase": "Kaufen",

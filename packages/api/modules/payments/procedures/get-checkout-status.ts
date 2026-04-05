@@ -7,6 +7,7 @@ import {
 } from "@repo/database";
 import { logger } from "@repo/logs";
 import { getCheckoutSessionStatus } from "@repo/payments";
+import { hydratePurchaseIdentity } from "@repo/payments/lib/catalog";
 import {
 	getCheckoutStatusFromPurchases,
 	sanitizeCheckoutSessionId,
@@ -33,12 +34,12 @@ export const getCheckoutStatus = protectedProcedure
 				.regex(/^[A-Za-z0-9_-]+$/)
 				.optional(),
 			organizationId: z.string().optional(),
-			expectedProductIds: z.array(z.string().min(1)).optional(),
+			expectedPriceKeys: z.array(z.string().min(1)).optional(),
 		}),
 	)
 	.handler(
 		async ({
-			input: { checkoutSessionId, organizationId, expectedProductIds },
+			input: { checkoutSessionId, organizationId, expectedPriceKeys },
 			context: { user },
 		}) => {
 			let checkoutSessionPaymentStatus: string | null = null;
@@ -92,14 +93,15 @@ export const getCheckoutStatus = protectedProcedure
 					throw new ORPCError("FORBIDDEN");
 				}
 
-				const purchases =
-					await getPurchasesByOrganizationId(organizationId);
+				const purchases = (
+					await getPurchasesByOrganizationId(organizationId)
+				).map((purchase) => hydratePurchaseIdentity(purchase));
 
 				return getCheckoutStatusFromPurchases({
 					checkoutSessionPaymentId,
 					checkoutSessionPaymentStatus,
 					purchases,
-					expectedProductIds,
+					expectedPriceKeys,
 				});
 			}
 
@@ -111,13 +113,15 @@ export const getCheckoutStatus = protectedProcedure
 				throw new ORPCError("FORBIDDEN");
 			}
 
-			const purchases = await getPurchasesByUserId(user.id);
+			const purchases = (await getPurchasesByUserId(user.id)).map(
+				(purchase) => hydratePurchaseIdentity(purchase),
+			);
 
 			return getCheckoutStatusFromPurchases({
 				checkoutSessionPaymentId,
 				checkoutSessionPaymentStatus,
 				purchases,
-				expectedProductIds,
+				expectedPriceKeys,
 			});
 		},
 	);

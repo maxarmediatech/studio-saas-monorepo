@@ -8,18 +8,13 @@ import {
 	createCheckoutLink as createCheckoutLinkFn,
 	getCustomerIdFromEntity,
 } from "@repo/payments";
+import {
+	getConfiguredPrice,
+	getServerCatalogPrice,
+} from "@repo/payments/lib/catalog";
 import { z } from "zod";
 import { localeMiddleware } from "../../../orpc/middleware/locale-middleware";
 import { protectedProcedure } from "../../../orpc/procedures";
-
-const checkoutCartItemSchema = z.object({
-	productId: z.string().min(1),
-	quantity: z.number().int().positive().optional(),
-});
-
-type PlanPrice = NonNullable<
-	Config["payments"]["plans"][string]["prices"]
->[number];
 
 export const createCheckoutLink = protectedProcedure
 	.use(localeMiddleware)
@@ -28,18 +23,18 @@ export const createCheckoutLink = protectedProcedure
 		path: "/payments/create-checkout-link",
 		tags: ["Payments"],
 		summary: "Create checkout link",
-		description: "Creates a checkout link for one or more products",
+		description: "Creates a checkout link for a configured price key",
 	})
 	.input(
 		z.object({
-			productCart: z.array(checkoutCartItemSchema).min(1),
+			priceKey: z.string().min(1),
 			postCheckoutPath: z.string().optional(),
 			organizationId: z.string().optional(),
 		}),
 	)
 	.handler(
 		async ({
-			input: { productCart, postCheckoutPath, organizationId },
+			input: { priceKey, postCheckoutPath, organizationId },
 			context: { user },
 		}) => {
 			if (
@@ -71,83 +66,20 @@ export const createCheckoutLink = protectedProcedure
 							userId: user.id,
 						},
 			);
+			const price = getConfiguredPrice(priceKey);
+			const catalogPrice = getServerCatalogPrice(priceKey);
 
-			const plans = config.payments.plans as Config["payments"]["plans"];
-			const basePricesByProductId = new Map<string, PlanPrice>();
-			const bundledParentMap = new Map<string, Set<string>>();
-
-			for (const plan of Object.values(plans)) {
-				for (const price of plan.prices ?? []) {
-					basePricesByProductId.set(price.productId, price);
-
-					if (
-						price.type === "recurring" &&
-						price.bundledOneTimeProductId &&
-						price.bundledOneTimeProductId.length > 0
-					) {
-						const existingParents =
-							bundledParentMap.get(
-								price.bundledOneTimeProductId,
-							) ?? new Set<string>();
-						existingParents.add(price.productId);
-						bundledParentMap.set(
-							price.bundledOneTimeProductId,
-							existingParents,
-						);
-					}
-				}
+			if (!(price && catalogPrice && catalogPrice.productId)) {
+				throw new ORPCError("BAD_REQUEST");
 			}
 
-			const allowedProductIds = new Set<string>([
-				...basePricesByProductId.keys(),
-				...bundledParentMap.keys(),
-			]);
+			const plan = (config.payments.plans as Config["payments"]["plans"])[
+				catalogPrice.planKey
+			];
 
-			const cartWithContext = productCart.map((item) => {
-				const isAllowed = allowedProductIds.has(item.productId);
-
-				if (!isAllowed) {
-					throw new ORPCError("BAD_REQUEST");
-				}
-
-				return {
-					...item,
-					basePrice: basePricesByProductId.get(item.productId),
-					bundledParents: bundledParentMap.get(item.productId),
-				};
-			});
-
-			const recurringBaseProductIds = new Set(
-				cartWithContext
-					.filter((item) => item.basePrice?.type === "recurring")
-					.map((item) => item.productId),
-			);
-
-			for (const item of cartWithContext) {
-				const bundledParents = item.bundledParents;
-				if (!(bundledParents && bundledParents.size > 0)) {
-					continue;
-				}
-
-				const hasMatchingParent = [...bundledParents].some(
-					(parentProductId) =>
-						recurringBaseProductIds.has(parentProductId),
-				);
-
-				if (!hasMatchingParent) {
-					throw new ORPCError("BAD_REQUEST");
-				}
+			if (plan?.comingSoon || price.type !== "recurring") {
+				throw new ORPCError("BAD_REQUEST");
 			}
-
-			const subscriptionCartItem = cartWithContext.find(
-				(item) => item.basePrice?.type === "recurring",
-			);
-			const subscriptionBasePrice = subscriptionCartItem?.basePrice;
-			const trialPeriodDays =
-				subscriptionBasePrice &&
-				"trialPeriodDays" in subscriptionBasePrice
-					? subscriptionBasePrice.trialPeriodDays
-					: undefined;
 
 			const organization = organizationId
 				? await getOrganizationById(organizationId)
@@ -157,35 +89,25 @@ export const createCheckoutLink = protectedProcedure
 				throw new ORPCError("NOT_FOUND");
 			}
 
-			const resolvedProductCart = cartWithContext.map((item) => {
-				let quantity = item.quantity ?? 1;
+			let quantity = 1;
 
-				if (
-					organization &&
-					item.basePrice?.type === "recurring" &&
-					"seatBased" in item.basePrice &&
-					item.basePrice.seatBased
-				) {
-					quantity = Math.max(organization.members.length, 1);
-				}
-
-				return {
-					productId: item.productId,
-					quantity,
-				};
-			});
+			if (organization && "seatBased" in price && price.seatBased) {
+				quantity = Math.max(organization.members.length, 1);
+			}
 
 			try {
 				const { checkoutLink, checkoutSessionId } =
 					await createCheckoutLinkFn({
-						productCart: resolvedProductCart,
+						priceKey,
+						productId: catalogPrice.productId,
+						quantity,
+						discountCode: catalogPrice.discountCode,
 						email: user.email,
 						name: user.name ?? "",
 						postCheckoutPath,
 						...(organizationId
 							? { organizationId }
 							: { userId: user.id }),
-						trialPeriodDays,
 						customerId: customerId ?? undefined,
 					});
 

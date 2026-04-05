@@ -6,7 +6,7 @@ export const PENDING_CHECKOUT_MAX_AGE_SECONDS = 60 * 15;
 
 export type PendingCheckoutCookie = {
 	sessionId: string;
-	expectedProductIds: string[];
+	expectedPriceKeys: string[];
 	postCheckoutPath: string;
 	createdAt: number;
 };
@@ -37,11 +37,15 @@ export function readPendingCheckoutCookie(
 				: null;
 		const createdAt =
 			typeof parsed.createdAt === "number" ? parsed.createdAt : null;
-		const expectedProductIds = Array.isArray(parsed.expectedProductIds)
-			? parsed.expectedProductIds.filter(
+		const expectedPriceKeys = Array.isArray(parsed.expectedPriceKeys)
+			? parsed.expectedPriceKeys.filter(
 					(value): value is string => typeof value === "string",
 				)
-			: [];
+			: Array.isArray(parsed.expectedProductIds)
+				? parsed.expectedProductIds.filter(
+						(value): value is string => typeof value === "string",
+					)
+				: [];
 
 		if (!(sessionId && postCheckoutPath && createdAt)) {
 			return null;
@@ -51,7 +55,7 @@ export function readPendingCheckoutCookie(
 			sessionId,
 			postCheckoutPath,
 			createdAt,
-			expectedProductIds,
+			expectedPriceKeys,
 		};
 	} catch {
 		return null;

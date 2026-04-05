@@ -3,26 +3,65 @@ import type { PurchaseSchema } from "@repo/database";
 import type { z } from "zod";
 
 const plans = config.payments.plans as Config["payments"]["plans"];
-const bundledOneTimeProductIds = new Set(
-	Object.values(plans).flatMap((plan) =>
-		(plan.prices ?? []).flatMap((price) =>
-			price.type === "recurring" && price.bundledOneTimeProductId
-				? [price.bundledOneTimeProductId]
-				: [],
-		),
-	),
-);
-
-type PlanId = keyof typeof config.payments.plans;
+type PlanId = Extract<keyof typeof plans, string>;
 type PurchaseRecord = z.infer<typeof PurchaseSchema>;
+type PlanPrice = {
+	priceKey: string;
+	amount: number;
+	currency: string;
+	hidden?: boolean;
+	introOfferAmount?: number;
+	type: "recurring" | "one-time";
+	interval?: "month" | "year" | "week";
+	intervalCount?: number;
+	seatBased?: boolean;
+};
 
 const activeSubscriptionStatuses = new Set(["active", "trialing"]);
-const inactiveOneTimeStatuses = new Set(["failed", "cancelled"]);
+const configuredPricesByKey = new Map<
+	string,
+	{
+		planId: PlanId;
+		price: PlanPrice;
+	}
+>();
+
+for (const [planId, plan] of Object.entries(plans) as Array<
+	[PlanId, (typeof plans)[PlanId]]
+>) {
+	for (const price of plan.prices ?? []) {
+		configuredPricesByKey.set(price.priceKey, {
+			planId,
+			price,
+		});
+	}
+}
 
 function sortByNewest(a: PurchaseRecord, b: PurchaseRecord) {
 	const aTime = a.updatedAt ?? a.createdAt;
 	const bTime = b.updatedAt ?? b.createdAt;
 	return bTime.getTime() - aTime.getTime();
+}
+
+function getConfiguredPlanForPurchase(purchase: PurchaseRecord) {
+	if (purchase.priceKey) {
+		const matchedPrice = configuredPricesByKey.get(purchase.priceKey);
+		if (matchedPrice) {
+			return matchedPrice;
+		}
+	}
+
+	if (purchase.planKey && purchase.planKey in plans) {
+		return {
+			planId: purchase.planKey as PlanId,
+			price:
+				(plans[purchase.planKey as PlanId].prices ?? []).find(
+					(price: PlanPrice) => price.priceKey === purchase.priceKey,
+				) ?? null,
+		};
+	}
+
+	return null;
 }
 
 function getActivePlanFromPurchases(purchases?: PurchaseRecord[]) {
@@ -33,63 +72,24 @@ function getActivePlanFromPurchases(purchases?: PurchaseRecord[]) {
 			purchase.type === "SUBSCRIPTION" &&
 			activeSubscriptionStatuses.has(
 				(purchase.status ?? "").toLowerCase(),
-			),
-	);
-	const oneTimePurchase = sortedPurchases.find(
-		(purchase) =>
-			purchase.type === "ONE_TIME" &&
-			!inactiveOneTimeStatuses.has(
-				(purchase.status ?? "").toLowerCase(),
 			) &&
-			!bundledOneTimeProductIds.has(purchase.productId),
+			getConfiguredPlanForPurchase(purchase),
 	);
-	const hasActivePurchase = Boolean(subscriptionPurchase || oneTimePurchase);
+	const hasActivePurchase = Boolean(subscriptionPurchase);
 
 	if (subscriptionPurchase) {
-		const plan = Object.entries(plans).find(([_, plan]) =>
-			plan.prices?.some(
-				(price) => price.productId === subscriptionPurchase.productId,
-			),
-		);
+		const matchedPlan = getConfiguredPlanForPurchase(subscriptionPurchase);
 
 		return {
-			id: plan?.[0] as PlanId,
-			price: plan?.[1].prices?.find(
-				(price) => price.productId === subscriptionPurchase.productId,
-			),
+			id: matchedPlan?.planId as PlanId,
+			price: matchedPlan?.price ?? null,
 			status: subscriptionPurchase.status,
 			purchaseId: subscriptionPurchase.id,
 			hasActivePurchase,
 		};
 	}
 
-	if (oneTimePurchase) {
-		const plan = Object.entries(plans).find(([_, plan]) =>
-			plan.prices?.some(
-				(price) => price.productId === oneTimePurchase.productId,
-			),
-		);
-
-		return {
-			id: plan?.[0] as PlanId,
-			price: plan?.[1].prices?.find(
-				(price) => price.productId === oneTimePurchase.productId,
-			),
-			status: oneTimePurchase.status || "active",
-			purchaseId: oneTimePurchase.id,
-			hasActivePurchase,
-		};
-	}
-
-	const freePlan = Object.entries(plans).find(([_, plan]) => plan.isFree);
-
-	return freePlan
-		? {
-				id: freePlan[0] as PlanId,
-				status: "active",
-				hasActivePurchase,
-			}
-		: null;
+	return null;
 }
 
 export function createPurchasesHelper(purchases: PurchaseRecord[]) {
@@ -105,12 +105,9 @@ export function createPurchasesHelper(purchases: PurchaseRecord[]) {
 	};
 
 	const hasPurchase = (planId: PlanId) => {
-		return !!purchases?.some((purchase) =>
-			Object.entries(plans)
-				.find(([id]) => id === planId)?.[1]
-				.prices?.some(
-					(price) => price.productId === purchase.productId,
-				),
+		return !!purchases?.some(
+			(purchase) =>
+				getConfiguredPlanForPurchase(purchase)?.planId === planId,
 		);
 	};
 

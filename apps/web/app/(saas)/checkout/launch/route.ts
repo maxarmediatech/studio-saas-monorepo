@@ -9,7 +9,7 @@ import {
 } from "@saas/payments/lib/pending-checkout-cookie";
 import { NextResponse } from "next/server";
 
-function parseExpectedProductIds(value: string | null) {
+function parseExpectedPriceKeys(value: string | null) {
 	if (!value) {
 		return [];
 	}
@@ -34,8 +34,9 @@ export async function GET(request: Request) {
 		requestUrl.searchParams.get("redirectTo"),
 	);
 	const mode = requestUrl.searchParams.get("mode");
-	const expectedProductIds = parseExpectedProductIds(
-		requestUrl.searchParams.get("products"),
+	const expectedPriceKeys = parseExpectedPriceKeys(
+		requestUrl.searchParams.get("prices") ??
+			requestUrl.searchParams.get("products"),
 	);
 
 	if (
@@ -56,8 +57,8 @@ export async function GET(request: Request) {
 							checkoutSessionId,
 						)}&redirectTo=${encodeURIComponent(
 							redirectTo,
-						)}&products=${encodeURIComponent(
-							expectedProductIds.join(","),
+						)}&prices=${encodeURIComponent(
+							expectedPriceKeys.join(","),
 						)}`,
 						requestUrl,
 					),
@@ -69,7 +70,7 @@ export async function GET(request: Request) {
 		value: encodeURIComponent(
 			JSON.stringify({
 				sessionId: checkoutSessionId,
-				expectedProductIds,
+				expectedPriceKeys,
 				postCheckoutPath: redirectTo,
 				createdAt: Date.now(),
 			}),

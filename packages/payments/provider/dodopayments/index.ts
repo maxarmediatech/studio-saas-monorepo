@@ -11,6 +11,10 @@ import {
 import { assertPaymentsEnv, isEnvConfigError } from "@repo/env";
 import { logger } from "@repo/logs";
 import DodoPayments from "dodopayments";
+import {
+	PAYMENT_CATALOG_VERSION,
+	resolvePurchaseIdentity,
+} from "../../src/lib/catalog";
 import { buildCheckoutCompletionUrl } from "../../src/lib/checkout";
 import { setCustomerIdToEntity } from "../../src/lib/customer";
 import type {
@@ -43,12 +47,14 @@ export function getDodoPaymentsClient() {
 export const createCheckoutLink: CreateCheckoutLink = async (options) => {
 	const client = getDodoPaymentsClient();
 	const {
-		productCart,
+		priceKey,
+		productId,
+		quantity,
+		discountCode,
 		postCheckoutPath,
 		customerId,
 		organizationId,
 		userId,
-		trialPeriodDays,
 		email,
 		name,
 	} = options;
@@ -65,17 +71,20 @@ export const createCheckoutLink: CreateCheckoutLink = async (options) => {
 
 	const returnUrl = buildCheckoutCompletionUrl({
 		postCheckoutPath,
-		expectedProductIds: productCart.map((item) => item.productId),
+		expectedPriceKeys: [priceKey],
 	});
 
 	const response = await client.checkoutSessions.create({
-		product_cart: productCart.map((item) => ({
-			product_id: item.productId,
-			quantity: item.quantity ?? 1,
-		})),
+		product_cart: [
+			{
+				product_id: productId,
+				quantity: quantity ?? 1,
+			},
+		],
 		customization: {
 			theme: "light",
 		},
+		discount_code: discountCode,
 		feature_flags: {
 			redirect_immediately: true,
 		},
@@ -89,11 +98,6 @@ export const createCheckoutLink: CreateCheckoutLink = async (options) => {
 					name: name ?? "",
 				},
 		metadata,
-		subscription_data: trialPeriodDays
-			? {
-					trial_period_days: trialPeriodDays,
-				}
-			: undefined,
 	});
 
 	return {
@@ -263,6 +267,30 @@ export const webhookHandler: WebhookHandler = async (req) => {
 			val && typeof val === "object"
 				? (val as Record<string, string>)
 				: null;
+		const getResolvedIdentity = ({
+			type,
+			productId,
+			existingPurchase,
+		}: {
+			type: "SUBSCRIPTION" | "ONE_TIME";
+			productId: string | null;
+			existingPurchase?: {
+				planKey: string;
+				priceKey: string;
+				billingInterval: string | null;
+				catalogVersion: string;
+				productId: string;
+			} | null;
+		}) =>
+			resolvePurchaseIdentity({
+				type,
+				productId: productId ?? existingPurchase?.productId ?? "",
+				planKey: existingPurchase?.planKey ?? null,
+				priceKey: existingPurchase?.priceKey ?? null,
+				billingInterval: existingPurchase?.billingInterval ?? null,
+				catalogVersion:
+					existingPurchase?.catalogVersion ?? PAYMENT_CATALOG_VERSION,
+			});
 
 		try {
 			switch (type) {
@@ -281,12 +309,21 @@ export const webhookHandler: WebhookHandler = async (req) => {
 
 					const existingPurchase =
 						await getPurchaseBySubscriptionId(subscription_id);
+					const identity = getResolvedIdentity({
+						type: "SUBSCRIPTION",
+						productId: product_id,
+						existingPurchase,
+					});
 
 					if (existingPurchase) {
 						await updatePurchase({
 							id: existingPurchase.id,
 							status: "active",
 							productId: product_id ?? undefined,
+							planKey: identity.planKey,
+							priceKey: identity.priceKey,
+							billingInterval: identity.billingInterval,
+							catalogVersion: identity.catalogVersion,
 						});
 					} else {
 						const customerId =
@@ -303,6 +340,10 @@ export const webhookHandler: WebhookHandler = async (req) => {
 							userId: metadata?.user_id || null,
 							customerId,
 							type: "SUBSCRIPTION",
+							planKey: identity.planKey,
+							priceKey: identity.priceKey,
+							billingInterval: identity.billingInterval,
+							catalogVersion: identity.catalogVersion,
 							productId: product_id || "",
 							status: "active",
 						});
@@ -333,12 +374,21 @@ export const webhookHandler: WebhookHandler = async (req) => {
 
 					const existingPurchase =
 						await getPurchaseBySubscriptionId(subscription_id);
+					const identity = getResolvedIdentity({
+						type: "SUBSCRIPTION",
+						productId: product_id,
+						existingPurchase,
+					});
 
 					if (existingPurchase) {
 						await updatePurchase({
 							id: existingPurchase.id,
 							status: "active",
 							productId: product_id ?? undefined,
+							planKey: identity.planKey,
+							priceKey: identity.priceKey,
+							billingInterval: identity.billingInterval,
+							catalogVersion: identity.catalogVersion,
 						});
 					}
 					break;
@@ -358,12 +408,21 @@ export const webhookHandler: WebhookHandler = async (req) => {
 
 					const existingPurchase =
 						await getPurchaseBySubscriptionId(subscription_id);
+					const identity = getResolvedIdentity({
+						type: "SUBSCRIPTION",
+						productId: product_id,
+						existingPurchase,
+					});
 
 					if (existingPurchase) {
 						await updatePurchase({
 							id: existingPurchase.id,
 							status: status || "active",
 							productId: product_id ?? undefined,
+							planKey: identity.planKey,
+							priceKey: identity.priceKey,
+							billingInterval: identity.billingInterval,
+							catalogVersion: identity.catalogVersion,
 						});
 					}
 					break;
@@ -385,6 +444,11 @@ export const webhookHandler: WebhookHandler = async (req) => {
 
 					const existingPurchase =
 						await getPurchaseBySubscriptionId(subscription_id);
+					const identity = getResolvedIdentity({
+						type: "SUBSCRIPTION",
+						productId: product_id,
+						existingPurchase,
+					});
 
 					if (existingPurchase) {
 						await updatePurchase({
@@ -392,6 +456,10 @@ export const webhookHandler: WebhookHandler = async (req) => {
 							status:
 								status ?? existingPurchase.status ?? "active",
 							productId: product_id ?? undefined,
+							planKey: identity.planKey,
+							priceKey: identity.priceKey,
+							billingInterval: identity.billingInterval,
+							catalogVersion: identity.catalogVersion,
 						});
 						break;
 					}
@@ -410,6 +478,10 @@ export const webhookHandler: WebhookHandler = async (req) => {
 						userId: metadata?.user_id || null,
 						customerId,
 						type: "SUBSCRIPTION",
+						planKey: identity.planKey,
+						priceKey: identity.priceKey,
+						billingInterval: identity.billingInterval,
+						catalogVersion: identity.catalogVersion,
 						productId: product_id || "",
 						status: status || "active",
 					});
@@ -551,6 +623,10 @@ export const webhookHandler: WebhookHandler = async (req) => {
 					const product_id = getString(data.product_id);
 					const customer = getCustomer(data.customer);
 					const metadata = getMetadata(data.metadata);
+					const identity = getResolvedIdentity({
+						type: "ONE_TIME",
+						productId: product_id,
+					});
 
 					if (!payment_id) {
 						throw new Error(
@@ -581,6 +657,10 @@ export const webhookHandler: WebhookHandler = async (req) => {
 						userId: metadata?.user_id || null,
 						customerId,
 						type: "ONE_TIME",
+						planKey: identity.planKey,
+						priceKey: identity.priceKey,
+						billingInterval: identity.billingInterval,
+						catalogVersion: identity.catalogVersion,
 						productId: product_id || "",
 						paymentId: payment_id,
 						status: "active",
@@ -612,6 +692,12 @@ export const webhookHandler: WebhookHandler = async (req) => {
 						const existingSubscriptionPurchase =
 							await getPurchaseBySubscriptionId(subscription_id);
 
+						const identity = getResolvedIdentity({
+							type: "SUBSCRIPTION",
+							productId: product_id,
+							existingPurchase: existingSubscriptionPurchase,
+						});
+
 						if (existingSubscriptionPurchase) {
 							await updatePurchase({
 								id: existingSubscriptionPurchase.id,
@@ -619,6 +705,11 @@ export const webhookHandler: WebhookHandler = async (req) => {
 									payment_id ??
 									existingSubscriptionPurchase.paymentId ??
 									undefined,
+								productId: product_id ?? undefined,
+								planKey: identity.planKey,
+								priceKey: identity.priceKey,
+								billingInterval: identity.billingInterval,
+								catalogVersion: identity.catalogVersion,
 								status:
 									type === "payment.failed"
 										? "on_hold"
@@ -634,12 +725,21 @@ export const webhookHandler: WebhookHandler = async (req) => {
 
 					const existingPaymentPurchase =
 						await getPurchaseByPaymentId(payment_id);
+					const identity = getResolvedIdentity({
+						type: "ONE_TIME",
+						productId: product_id,
+						existingPurchase: existingPaymentPurchase,
+					});
 
 					if (existingPaymentPurchase) {
 						await updatePurchase({
 							id: existingPaymentPurchase.id,
 							status: paymentStatus,
 							productId: product_id ?? undefined,
+							planKey: identity.planKey,
+							priceKey: identity.priceKey,
+							billingInterval: identity.billingInterval,
+							catalogVersion: identity.catalogVersion,
 						});
 						break;
 					}
@@ -655,6 +755,10 @@ export const webhookHandler: WebhookHandler = async (req) => {
 						userId: metadata?.user_id || null,
 						customerId,
 						type: "ONE_TIME",
+						planKey: identity.planKey,
+						priceKey: identity.priceKey,
+						billingInterval: identity.billingInterval,
+						catalogVersion: identity.catalogVersion,
 						productId: product_id || "",
 						paymentId: payment_id,
 						status: paymentStatus,

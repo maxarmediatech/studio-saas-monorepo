@@ -15,6 +15,9 @@ export const env = createEnv({
 		UPLOADS_BUCKET_NAME: optionalString,
 		DODO_PAYMENTS_API_KEY: optionalString,
 		DODO_PAYMENTS_WEBHOOK_SECRET: optionalString,
+		DODO_PRODUCT_ID_STUDIO_BASICS_MONTHLY: optionalString,
+		DODO_PRODUCT_ID_STUDIO_BASICS_YEARLY: optionalString,
+		DODO_DISCOUNT_CODE_STUDIO_BASICS_MONTHLY_INTRO: optionalString,
 	},
 	runtimeEnv: process.env,
 	emptyStringAsUndefined: true,
@@ -114,8 +117,6 @@ export function getUploadsBucketName() {
 	return env.UPLOADS_BUCKET_NAME ?? "uploads";
 }
 
-export function isEnvConfigError(
-	error: unknown,
-): error is EnvConfigError {
+export function isEnvConfigError(error: unknown): error is EnvConfigError {
 	return error instanceof EnvConfigError;
 }

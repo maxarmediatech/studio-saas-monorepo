@@ -21,6 +21,9 @@ export const metadata: Metadata = {
 
 export default async function ChoosePlanPage() {
 	const session = await getSession();
+	const hasMonthlyIntroOffer = Boolean(
+		process.env.DODO_DISCOUNT_CODE_STUDIO_BASICS_MONTHLY_INTRO,
+	);
 	let activeOrganizationSlug = (await cookies()).get(
 		"activeOrganizationSlug",
 	)?.value;
@@ -108,6 +111,7 @@ export default async function ChoosePlanPage() {
 			<div>
 				<PricingTable
 					activePlanId={hasPurchases ? activePlan?.id : undefined}
+					hasMonthlyIntroOffer={hasMonthlyIntroOffer}
 					postCheckoutPath="/app"
 					{...(organizationId
 						? {

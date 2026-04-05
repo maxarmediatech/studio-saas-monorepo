@@ -1,13 +1,13 @@
 export function buildCheckoutLaunchPath({
 	checkoutUrl,
 	checkoutSessionId,
-	expectedProductIds,
+	expectedPriceKeys,
 	postCheckoutPath,
 	mode,
 }: {
 	checkoutUrl: string;
 	checkoutSessionId: string;
-	expectedProductIds: string[];
+	expectedPriceKeys: string[];
 	postCheckoutPath: string;
 	mode: "hosted" | "inline";
 }) {
@@ -18,8 +18,8 @@ export function buildCheckoutLaunchPath({
 		redirectTo: postCheckoutPath,
 	});
 
-	if (expectedProductIds.length > 0) {
-		searchParams.set("products", expectedProductIds.join(","));
+	if (expectedPriceKeys.length > 0) {
+		searchParams.set("prices", expectedPriceKeys.join(","));
 	}
 
 	return `/checkout/launch?${searchParams.toString()}`;

@@ -22,6 +22,7 @@ type Props = {
 	searchParams: Promise<{
 		checkoutSessionId?: string | string[];
 		redirectTo?: string | string[];
+		prices?: string | string[];
 		products?: string | string[];
 	}>;
 };
@@ -36,7 +37,7 @@ function getSingleValue(
 	return value;
 }
 
-function parseExpectedProductIds(value: string | undefined) {
+function parseExpectedPriceKeys(value: string | undefined) {
 	if (!value) {
 		return [];
 	}
@@ -65,16 +66,17 @@ export default async function CheckoutCompletePage({ searchParams }: Props) {
 		getSingleValue(rawSearchParams.redirectTo) ??
 			pendingCheckout?.postCheckoutPath,
 	);
-	const expectedProductIds = (() => {
-		const productIdsFromQuery = parseExpectedProductIds(
-			getSingleValue(rawSearchParams.products),
+	const expectedPriceKeys = (() => {
+		const priceKeysFromQuery = parseExpectedPriceKeys(
+			getSingleValue(rawSearchParams.prices) ??
+				getSingleValue(rawSearchParams.products),
 		);
 
-		if (productIdsFromQuery.length > 0) {
-			return productIdsFromQuery;
+		if (priceKeysFromQuery.length > 0) {
+			return priceKeysFromQuery;
 		}
 
-		return pendingCheckout?.expectedProductIds ?? [];
+		return pendingCheckout?.expectedPriceKeys ?? [];
 	})();
 
 	const completionSearchParams = new URLSearchParams();
@@ -82,8 +84,8 @@ export default async function CheckoutCompletePage({ searchParams }: Props) {
 		completionSearchParams.set("checkoutSessionId", checkoutSessionId);
 	}
 	completionSearchParams.set("redirectTo", redirectTo);
-	if (expectedProductIds.length > 0) {
-		completionSearchParams.set("products", expectedProductIds.join(","));
+	if (expectedPriceKeys.length > 0) {
+		completionSearchParams.set("prices", expectedPriceKeys.join(","));
 	}
 
 	const session = await getSession();
@@ -122,7 +124,7 @@ export default async function CheckoutCompletePage({ searchParams }: Props) {
 	const initialStatus = await orpcClient.payments.getCheckoutStatus({
 		checkoutSessionId: checkoutSessionId ?? undefined,
 		organizationId,
-		expectedProductIds,
+		expectedPriceKeys,
 	});
 
 	if (initialStatus.status === "active") {
@@ -134,7 +136,7 @@ export default async function CheckoutCompletePage({ searchParams }: Props) {
 			<CheckoutCompletionPageClient
 				checkoutSessionId={checkoutSessionId ?? undefined}
 				organizationId={organizationId}
-				expectedProductIds={expectedProductIds}
+				expectedPriceKeys={expectedPriceKeys}
 				initialStatus={initialStatus}
 				redirectTo={resolvedRedirectPath}
 				fallbackHref={fallbackHref}

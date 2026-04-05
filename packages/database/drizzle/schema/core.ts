@@ -170,6 +170,12 @@ export const purchases = pgTable("purchases", {
 	customerId: text("customer_id").notNull(),
 	subscriptionId: text("subscription_id").unique(),
 	paymentId: text("payment_id").unique(),
+	planKey: text("plan_key").default("legacy-unknown").notNull(),
+	priceKey: text("price_key").default("legacy-unknown").notNull(),
+	billingInterval: text("billing_interval"),
+	catalogVersion: text("catalog_version")
+		.default("2026-04-basics")
+		.notNull(),
 	productId: text("product_id").notNull(),
 	status: text("status"),
 	createdAt: timestamp("created_at", { withTimezone: true })

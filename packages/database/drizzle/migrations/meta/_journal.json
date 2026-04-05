@@ -253,6 +253,13 @@
       "when": 1774983637557,
       "tag": "0035_plain_wiccan",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1775378168880,
+      "tag": "0036_nice_carlie_cooper",
+      "breakpoints": true
     }
   ]
 }

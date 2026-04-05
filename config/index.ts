@@ -126,98 +126,30 @@ export const config = {
 	},
 	// Payments
 	payments: {
-		// define the products that should be available in the checkout
+		// client-safe pricing metadata
 		plans: {
-			freelancer: {
-				prices: [
-					{
-						type: "recurring",
-						productId: process.env
-							.NEXT_PUBLIC_PRICE_ID_FREELANCER_MONTHLY as string,
-						interval: "month",
-						amount: 599,
-						currency: "INR",
-						trialPeriodDays: 0,
-						bundledOneTimeProductId:
-							process.env
-								.NEXT_PUBLIC_PRICE_ID_FREELANCER_MONTHLY_SETUP ||
-							undefined,
-					},
-					{
-						type: "recurring",
-						productId: process.env
-							.NEXT_PUBLIC_PRICE_ID_FREELANCER_YEARLY as string,
-						interval: "year",
-						amount: 6590,
-						currency: "INR",
-						trialPeriodDays: 0,
-						bundledOneTimeProductId:
-							process.env
-								.NEXT_PUBLIC_PRICE_ID_FREELANCER_YEARLY_SETUP ||
-							undefined,
-					},
-				],
-			},
-			starter: {
+			"studio-basics": {
 				recommended: true,
 				prices: [
 					{
 						type: "recurring",
-						productId: process.env
-							.NEXT_PUBLIC_PRICE_ID_STARTER_MONTHLY as string,
+						priceKey: "studio-basics-monthly",
 						interval: "month",
-						amount: 899,
+						amount: 999,
 						currency: "INR",
-						trialPeriodDays: 30,
-						bundledOneTimeProductId:
-							process.env
-								.NEXT_PUBLIC_PRICE_ID_STARTER_MONTHLY_SETUP ||
-							undefined,
+						introOfferAmount: 199,
 					},
 					{
 						type: "recurring",
-						productId: process.env
-							.NEXT_PUBLIC_PRICE_ID_STARTER_YEARLY as string,
+						priceKey: "studio-basics-yearly",
 						interval: "year",
-						amount: 9889,
+						amount: 9990,
 						currency: "INR",
-						trialPeriodDays: 30,
-						bundledOneTimeProductId:
-							process.env
-								.NEXT_PUBLIC_PRICE_ID_STARTER_YEARLY_SETUP ||
-							undefined,
 					},
 				],
 			},
-			growth: {
-				prices: [
-					{
-						type: "recurring",
-						productId: process.env
-							.NEXT_PUBLIC_PRICE_ID_GROWTH_MONTHLY as string,
-						interval: "month",
-						amount: 1999,
-						currency: "INR",
-						trialPeriodDays: 30,
-						bundledOneTimeProductId:
-							process.env
-								.NEXT_PUBLIC_PRICE_ID_GROWTH_MONTHLY_SETUP ||
-							undefined,
-					},
-					{
-						type: "recurring",
-						productId: process.env
-							.NEXT_PUBLIC_PRICE_ID_GROWTH_YEARLY as string,
-						interval: "year",
-						amount: 21989,
-						currency: "INR",
-						trialPeriodDays: 30,
-						bundledOneTimeProductId:
-							process.env
-								.NEXT_PUBLIC_PRICE_ID_GROWTH_YEARLY_SETUP ||
-							undefined,
-					},
-				],
+			"studio-advance": {
+				comingSoon: true,
 			},
 		},
 	},

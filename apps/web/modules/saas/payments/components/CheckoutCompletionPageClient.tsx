@@ -22,14 +22,14 @@ const MAX_WAIT_MS = 30_000;
 export function CheckoutCompletionPageClient({
 	checkoutSessionId,
 	organizationId,
-	expectedProductIds,
+	expectedPriceKeys,
 	initialStatus,
 	redirectTo,
 	fallbackHref,
 }: {
 	checkoutSessionId?: string;
 	organizationId?: string;
-	expectedProductIds: string[];
+	expectedPriceKeys: string[];
 	initialStatus: CheckoutStatus;
 	redirectTo: string;
 	fallbackHref: string;
@@ -42,7 +42,7 @@ export function CheckoutCompletionPageClient({
 			input: {
 				checkoutSessionId,
 				organizationId,
-				expectedProductIds,
+				expectedPriceKeys,
 			},
 		}),
 		initialData: initialStatus,

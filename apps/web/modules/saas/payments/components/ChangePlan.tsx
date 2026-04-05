@@ -8,11 +8,13 @@ export function ChangePlan({
 	userId,
 	activePlanId,
 	postCheckoutPath,
+	hasMonthlyIntroOffer,
 }: {
 	organizationId?: string;
 	userId?: string;
 	activePlanId?: string;
 	postCheckoutPath?: string;
+	hasMonthlyIntroOffer?: boolean;
 }) {
 	const t = useTranslations();
 
@@ -26,6 +28,7 @@ export function ChangePlan({
 				userId={userId}
 				activePlanId={activePlanId}
 				postCheckoutPath={postCheckoutPath}
+				hasMonthlyIntroOffer={hasMonthlyIntroOffer}
 			/>
 		</SettingsItem>
 	);
