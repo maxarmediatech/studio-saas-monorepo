@@ -724,8 +724,36 @@
 				"title": "Your plan"
 			},
 			"changePlan": {
-				"description": "Switch monthly or yearly billing from the billing portal.",
-				"portalHint": "Use the billing portal to switch monthly or yearly billing, update payment details, or cancel without creating a second subscription.",
+				"description": "Switch billing cadence here. Use the billing portal for payment details, invoices, or cancellation.",
+				"portalHint": "Use the billing portal for invoices, payment methods, or cancellation.",
+				"portalTitle": "Billing portal",
+				"frequency": {
+					"title": "Billing frequency",
+					"description": "Move between monthly and yearly billing on your next renewal. No prorated charge today.",
+					"loading": "Loading your billing frequency…",
+					"current": "Current billing",
+					"available": "Next option",
+					"scheduled": "Scheduled change",
+					"monthly": "Monthly",
+					"yearly": "Yearly",
+					"renewsOn": "Renews on {date}.",
+					"switchesOn": "Switches on {date}.",
+					"noChargeToday": "The new cadence starts on your next renewal. No charge today.",
+					"cancelPendingTitle": "Cancellation already scheduled",
+					"cancelPendingDescription": "This subscription is already set to end on its next renewal date. Remove that cancellation in the billing portal before switching billing cadence.",
+					"scheduledTitle": "Billing change scheduled",
+					"scheduledDescription": "Your subscription will switch to {interval} billing on {date}.",
+					"nextStepTitle": "Ready when this cycle ends",
+					"nextStepDescription": "Schedule {interval} billing for {date}.",
+					"switchToMonthly": "Switch to monthly on next renewal",
+					"switchToYearly": "Switch to yearly on next renewal",
+					"cancelScheduled": "Keep current billing",
+					"notifications": {
+						"scheduled": "Scheduled {interval} billing for {date}.",
+						"canceled": "Scheduled billing change canceled.",
+						"error": "Could not update the billing schedule. Please try again."
+					}
+				},
 				"title": "Manage your subscription"
 			},
 			"title": "Billing"

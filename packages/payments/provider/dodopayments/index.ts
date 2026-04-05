@@ -18,32 +18,17 @@ import {
 } from "../../src/lib/catalog";
 import { buildCheckoutCompletionUrl } from "../../src/lib/checkout";
 import { setCustomerIdToEntity } from "../../src/lib/customer";
-import type {
-	CancelSubscription,
-	CreateCheckoutLink,
-	CreateCustomerPortalLink,
-	SetSubscriptionSeats,
-	WebhookHandler,
-} from "../../types";
+import type { CreateCheckoutLink, WebhookHandler } from "../../types";
+import { getDodoPaymentsClient } from "./client";
 
-let dodoPaymentsClient: DodoPayments | null = null;
-
-export function getDodoPaymentsClient() {
-	if (dodoPaymentsClient) {
-		return dodoPaymentsClient;
-	}
-
-	const { DODO_PAYMENTS_API_KEY: dodoPaymentsApiKey } = assertPaymentsEnv();
-
-	dodoPaymentsClient = new DodoPayments({
-		bearerToken: dodoPaymentsApiKey,
-		environment: "test_mode",
-		// environment:
-		// 	process.env.NODE_ENV === "production" ? "live_mode" : "test_mode",
-	});
-
-	return dodoPaymentsClient;
-}
+export {
+	cancelScheduledSubscriptionPlanChange,
+	cancelSubscription,
+	createCustomerPortalLink,
+	getSubscriptionPlanState,
+	scheduleSubscriptionPlanChange,
+	setSubscriptionSeats,
+} from "./subscriptions";
 
 export const createCheckoutLink: CreateCheckoutLink = async (options) => {
 	const client = getDodoPaymentsClient();
@@ -79,7 +64,9 @@ export const createCheckoutLink: CreateCheckoutLink = async (options) => {
 				: [priceKey],
 	});
 
-	const checkoutRequest: Parameters<typeof client.checkoutSessions.create>[0] = {
+	const checkoutRequest: Parameters<
+		typeof client.checkoutSessions.create
+	>[0] = {
 		product_cart: productCollectionId
 			? []
 			: [
@@ -121,43 +108,6 @@ export async function getCheckoutSessionStatus(sessionId: string) {
 	const client = getDodoPaymentsClient();
 	return client.checkoutSessions.retrieve(sessionId);
 }
-
-export const createCustomerPortalLink: CreateCustomerPortalLink = async ({
-	customerId,
-}) => {
-	const client = getDodoPaymentsClient();
-
-	const response = await client.customers.customerPortal.create(customerId);
-
-	return response.link;
-};
-
-export const setSubscriptionSeats: SetSubscriptionSeats = async ({
-	id,
-	seats,
-}) => {
-	const client = getDodoPaymentsClient();
-
-	const subscription = await client.subscriptions.retrieve(id);
-
-	if (!subscription) {
-		throw new Error("Subscription not found.");
-	}
-
-	await client.subscriptions.changePlan(id, {
-		product_id: subscription.product_id,
-		proration_billing_mode: "prorated_immediately",
-		quantity: seats,
-	});
-};
-
-export const cancelSubscription: CancelSubscription = async (id) => {
-	const client = getDodoPaymentsClient();
-
-	await client.subscriptions.update(id, {
-		status: "cancelled",
-	});
-};
 
 export const webhookHandler: WebhookHandler = async (req) => {
 	try {

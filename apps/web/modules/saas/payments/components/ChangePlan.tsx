@@ -1,6 +1,6 @@
 "use client";
+import { BillingFrequencySwitcher } from "@saas/payments/components/BillingFrequencySwitcher";
 import { PricingTable } from "@saas/payments/components/PricingTable";
-import { CustomerPortalButton } from "@saas/settings/components/CustomerPortalButton";
 import { SettingsItem } from "@saas/shared/components/SettingsItem";
 import { useTranslations } from "next-intl";
 
@@ -25,18 +25,7 @@ export function ChangePlan({
 			description={t("settings.billing.changePlan.description")}
 		>
 			{activePlanId && activePlanPurchaseId ? (
-				<div className="rounded-lg border p-4">
-					<div className="space-y-4">
-						<p className="max-w-xl text-muted-foreground text-sm leading-6">
-							{t("settings.billing.changePlan.portalHint")}
-						</p>
-						<div>
-							<CustomerPortalButton
-								purchaseId={activePlanPurchaseId}
-							/>
-						</div>
-					</div>
-				</div>
+				<BillingFrequencySwitcher purchaseId={activePlanPurchaseId} />
 			) : (
 				<PricingTable
 					organizationId={organizationId}

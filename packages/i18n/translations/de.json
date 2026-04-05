@@ -711,8 +711,36 @@
 				"title": "Dein Plan"
 			},
 			"changePlan": {
-				"description": "Wechsle im Abrechnungsportal zwischen monatlicher und jährlicher Abrechnung.",
-				"portalHint": "Nutze das Abrechnungsportal, um zwischen monatlicher und jährlicher Abrechnung zu wechseln, Zahlungsdaten zu aktualisieren oder zu kündigen, ohne ein zweites Abo zu erzeugen.",
+				"description": "Wechsle den Abrechnungsrhythmus hier. Nutze das Abrechnungsportal für Zahlungsdaten, Rechnungen oder Kündigung.",
+				"portalHint": "Nutze das Abrechnungsportal für Rechnungen, Zahlungsmethoden oder Kündigung.",
+				"portalTitle": "Abrechnungsportal",
+				"frequency": {
+					"title": "Abrechnungsrhythmus",
+					"description": "Wechsle zum nächsten Verlängerungstermin zwischen monatlicher und jährlicher Abrechnung. Heute keine anteilige Belastung.",
+					"loading": "Abrechnungsrhythmus wird geladen…",
+					"current": "Aktuelle Abrechnung",
+					"available": "Nächste Option",
+					"scheduled": "Geplante Änderung",
+					"monthly": "Monatlich",
+					"yearly": "Jährlich",
+					"renewsOn": "Verlängert sich am {date}.",
+					"switchesOn": "Wechselt am {date}.",
+					"noChargeToday": "Der neue Rhythmus startet bei deiner nächsten Verlängerung. Heute keine Belastung.",
+					"cancelPendingTitle": "Kündigung bereits geplant",
+					"cancelPendingDescription": "Dieses Abo ist bereits zum Ende des nächsten Verlängerungstermins zur Kündigung vorgemerkt. Hebe die Kündigung im Abrechnungsportal auf, bevor du den Abrechnungsrhythmus wechselst.",
+					"scheduledTitle": "Abrechnungswechsel geplant",
+					"scheduledDescription": "Dein Abo wechselt am {date} zu {interval}er Abrechnung.",
+					"nextStepTitle": "Bereit zum Zyklusende",
+					"nextStepDescription": "Plane {interval}e Abrechnung für {date}.",
+					"switchToMonthly": "Zum nächsten Termin auf monatlich wechseln",
+					"switchToYearly": "Zum nächsten Termin auf jährlich wechseln",
+					"cancelScheduled": "Aktuelle Abrechnung behalten",
+					"notifications": {
+						"scheduled": "{interval}e Abrechnung für {date} geplant.",
+						"canceled": "Geplanter Abrechnungswechsel wurde aufgehoben.",
+						"error": "Der Abrechnungsplan konnte nicht aktualisiert werden. Bitte versuche es erneut."
+					}
+				},
 				"title": "Verwalte dein Abonnement"
 			},
 			"title": "Zahlung"

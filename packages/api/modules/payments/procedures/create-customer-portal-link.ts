@@ -1,11 +1,11 @@
 import { ORPCError } from "@orpc/client";
-import { getOrganizationMembership, getPurchaseById } from "@repo/database";
 import { isEnvConfigError } from "@repo/env";
 import { logger } from "@repo/logs";
 import { createCustomerPortalLink as createCustomerPortalLinkFn } from "@repo/payments";
 import { z } from "zod";
 import { localeMiddleware } from "../../../orpc/middleware/locale-middleware";
 import { protectedProcedure } from "../../../orpc/procedures";
+import { getManageablePurchase } from "../lib/get-manageable-purchase";
 
 export const createCustomerPortalLink = protectedProcedure
 	.use(localeMiddleware)
@@ -23,28 +23,10 @@ export const createCustomerPortalLink = protectedProcedure
 		}),
 	)
 	.handler(async ({ input: { purchaseId }, context: { user } }) => {
-		const purchase = await getPurchaseById(purchaseId);
-
-		if (!purchase) {
-			throw new ORPCError("FORBIDDEN");
-		}
-
-		if (purchase.organizationId) {
-			const userOrganizationMembership = await getOrganizationMembership(
-				purchase.organizationId,
-				user.id,
-			);
-			if (
-				!userOrganizationMembership ||
-				userOrganizationMembership.role !== "owner"
-			) {
-				throw new ORPCError("FORBIDDEN");
-			}
-		}
-
-		if (purchase.userId && purchase.userId !== user.id) {
-			throw new ORPCError("FORBIDDEN");
-		}
+		const purchase = await getManageablePurchase({
+			purchaseId,
+			userId: user.id,
+		});
 
 		try {
 			const customerPortalLink = await createCustomerPortalLinkFn({
