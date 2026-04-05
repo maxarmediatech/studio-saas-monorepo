@@ -139,11 +139,13 @@ export function getCheckoutStatusFromPurchases({
 	expectedPriceKeys,
 	checkoutSessionPaymentStatus,
 	checkoutSessionPaymentId,
+	checkoutSessionSubscriptionId,
 }: {
 	purchases: PurchaseRecord[];
 	expectedPriceKeys?: string[];
 	checkoutSessionPaymentStatus?: string | null;
 	checkoutSessionPaymentId?: string | null;
+	checkoutSessionSubscriptionId?: string | null;
 }): CheckoutStatus {
 	const normalizedCheckoutSessionPaymentStatus =
 		checkoutSessionPaymentStatus?.toLowerCase() ?? null;
@@ -169,7 +171,36 @@ export function getCheckoutStatusFromPurchases({
 				(purchase) => purchase.paymentId === checkoutSessionPaymentId,
 			) ?? null)
 		: null;
+	const matchingCheckoutSessionSubscriptionPurchase =
+		checkoutSessionSubscriptionId
+			? (matchingPurchases.find(
+					(purchase) =>
+						purchase.subscriptionId ===
+						checkoutSessionSubscriptionId,
+				) ?? null)
+			: null;
 	const { activePlan } = createPurchasesHelper(matchingPurchases);
+
+	if (
+		matchingCheckoutSessionSubscriptionPurchase &&
+		(normalizedCheckoutSessionPaymentStatus === "succeeded" ||
+			normalizedCheckoutSessionPaymentStatus === "active" ||
+			normalizedCheckoutSessionPaymentStatus === null)
+	) {
+		const normalizedMatchedPurchaseStatus =
+			matchingCheckoutSessionSubscriptionPurchase.status?.toLowerCase() ??
+			"active";
+
+		if (
+			normalizedMatchedPurchaseStatus === "active" ||
+			normalizedMatchedPurchaseStatus === "trialing"
+		) {
+			return {
+				status: "active" as const,
+				purchaseId: matchingCheckoutSessionSubscriptionPurchase.id,
+			};
+		}
+	}
 
 	if (
 		matchingCheckoutSessionPurchase &&

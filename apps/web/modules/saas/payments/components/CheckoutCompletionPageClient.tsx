@@ -21,6 +21,7 @@ const MAX_WAIT_MS = 30_000;
 
 export function CheckoutCompletionPageClient({
 	checkoutSessionId,
+	subscriptionId,
 	organizationId,
 	expectedPriceKeys,
 	initialStatus,
@@ -28,6 +29,7 @@ export function CheckoutCompletionPageClient({
 	fallbackHref,
 }: {
 	checkoutSessionId?: string;
+	subscriptionId?: string;
 	organizationId?: string;
 	expectedPriceKeys: string[];
 	initialStatus: CheckoutStatus;
@@ -41,6 +43,7 @@ export function CheckoutCompletionPageClient({
 		...orpc.payments.getCheckoutStatus.queryOptions({
 			input: {
 				checkoutSessionId,
+				subscriptionId,
 				organizationId,
 				expectedPriceKeys,
 			},

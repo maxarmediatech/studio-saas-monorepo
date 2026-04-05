@@ -12,6 +12,7 @@ import { assertPaymentsEnv, isEnvConfigError } from "@repo/env";
 import { logger } from "@repo/logs";
 import DodoPayments from "dodopayments";
 import {
+	LEGACY_UNKNOWN_PLAN_KEY,
 	PAYMENT_CATALOG_VERSION,
 	resolvePurchaseIdentity,
 } from "../../src/lib/catalog";
@@ -291,6 +292,31 @@ export const webhookHandler: WebhookHandler = async (req) => {
 				catalogVersion:
 					existingPurchase?.catalogVersion ?? PAYMENT_CATALOG_VERSION,
 			});
+		const isUniqueConstraintViolation = (error: unknown): boolean => {
+			if (!error || typeof error !== "object") {
+				return false;
+			}
+
+			if ("code" in error && error.code === "23505") {
+				return true;
+			}
+
+			if (
+				"message" in error &&
+				typeof error.message === "string" &&
+				error.message.includes(
+					"duplicate key value violates unique constraint",
+				)
+			) {
+				return true;
+			}
+
+			if ("cause" in error) {
+				return isUniqueConstraintViolation(error.cause);
+			}
+
+			return false;
+		};
 
 		try {
 			switch (type) {
@@ -334,19 +360,45 @@ export const webhookHandler: WebhookHandler = async (req) => {
 							);
 						}
 
-						await createPurchase({
-							subscriptionId: subscription_id,
-							organizationId: metadata?.organization_id || null,
-							userId: metadata?.user_id || null,
-							customerId,
-							type: "SUBSCRIPTION",
-							planKey: identity.planKey,
-							priceKey: identity.priceKey,
-							billingInterval: identity.billingInterval,
-							catalogVersion: identity.catalogVersion,
-							productId: product_id || "",
-							status: "active",
-						});
+						try {
+							await createPurchase({
+								subscriptionId: subscription_id,
+								organizationId:
+									metadata?.organization_id || null,
+								userId: metadata?.user_id || null,
+								customerId,
+								type: "SUBSCRIPTION",
+								planKey: identity.planKey,
+								priceKey: identity.priceKey,
+								billingInterval: identity.billingInterval,
+								catalogVersion: identity.catalogVersion,
+								productId: product_id || "",
+								status: "active",
+							});
+						} catch (error) {
+							if (!isUniqueConstraintViolation(error)) {
+								throw error;
+							}
+
+							const concurrentPurchase =
+								await getPurchaseBySubscriptionId(
+									subscription_id,
+								);
+
+							if (!concurrentPurchase) {
+								throw error;
+							}
+
+							await updatePurchase({
+								id: concurrentPurchase.id,
+								status: "active",
+								productId: product_id ?? undefined,
+								planKey: identity.planKey,
+								priceKey: identity.priceKey,
+								billingInterval: identity.billingInterval,
+								catalogVersion: identity.catalogVersion,
+							});
+						}
 
 						if (customer?.customer_id || customer?.email) {
 							await setCustomerIdToEntity(
@@ -472,19 +524,43 @@ export const webhookHandler: WebhookHandler = async (req) => {
 						);
 					}
 
-					await createPurchase({
-						subscriptionId: subscription_id,
-						organizationId: metadata?.organization_id || null,
-						userId: metadata?.user_id || null,
-						customerId,
-						type: "SUBSCRIPTION",
-						planKey: identity.planKey,
-						priceKey: identity.priceKey,
-						billingInterval: identity.billingInterval,
-						catalogVersion: identity.catalogVersion,
-						productId: product_id || "",
-						status: status || "active",
-					});
+					try {
+						await createPurchase({
+							subscriptionId: subscription_id,
+							organizationId: metadata?.organization_id || null,
+							userId: metadata?.user_id || null,
+							customerId,
+							type: "SUBSCRIPTION",
+							planKey: identity.planKey,
+							priceKey: identity.priceKey,
+							billingInterval: identity.billingInterval,
+							catalogVersion: identity.catalogVersion,
+							productId: product_id || "",
+							status: status || "active",
+						});
+					} catch (error) {
+						if (!isUniqueConstraintViolation(error)) {
+							throw error;
+						}
+
+						const concurrentPurchase =
+							await getPurchaseBySubscriptionId(subscription_id);
+
+						if (!concurrentPurchase) {
+							throw error;
+						}
+
+						await updatePurchase({
+							id: concurrentPurchase.id,
+							status:
+								status ?? concurrentPurchase.status ?? "active",
+							productId: product_id ?? undefined,
+							planKey: identity.planKey,
+							priceKey: identity.priceKey,
+							billingInterval: identity.billingInterval,
+							catalogVersion: identity.catalogVersion,
+						});
+					}
 
 					if (customer?.customer_id || customer?.email) {
 						await setCustomerIdToEntity(
@@ -590,6 +666,8 @@ export const webhookHandler: WebhookHandler = async (req) => {
 				case "payment.succeeded": {
 					const subscription_id = getString(data.subscription_id);
 					const payment_id = getString(data.payment_id);
+					const customer = getCustomer(data.customer);
+					const metadata = getMetadata(data.metadata);
 
 					// Skip if this payment is for a subscription - handled by subscription events
 					if (subscription_id) {
@@ -597,10 +675,73 @@ export const webhookHandler: WebhookHandler = async (req) => {
 							await getPurchaseBySubscriptionId(subscription_id);
 
 						if (!existingSubscriptionPurchase) {
-							logger.warn(
-								"Received subscription payment before subscription purchase exists",
-								{ subscription_id, payment_id },
-							);
+							const customerId =
+								customer?.customer_id || customer?.email || "";
+
+							if (!customerId) {
+								logger.warn(
+									"Received subscription payment before subscription purchase exists and without customer info",
+									{ subscription_id, payment_id },
+								);
+							} else {
+								try {
+									await createPurchase({
+										subscriptionId: subscription_id,
+										organizationId:
+											metadata?.organization_id || null,
+										userId: metadata?.user_id || null,
+										customerId,
+										type: "SUBSCRIPTION",
+										planKey: LEGACY_UNKNOWN_PLAN_KEY,
+										priceKey: LEGACY_UNKNOWN_PLAN_KEY,
+										billingInterval: null,
+										catalogVersion: PAYMENT_CATALOG_VERSION,
+										productId: "",
+										paymentId: payment_id ?? undefined,
+										status: "active",
+									});
+								} catch (error) {
+									if (!isUniqueConstraintViolation(error)) {
+										throw error;
+									}
+
+									const concurrentPurchase =
+										await getPurchaseBySubscriptionId(
+											subscription_id,
+										);
+
+									if (!concurrentPurchase) {
+										throw error;
+									}
+
+									await updatePurchase({
+										id: concurrentPurchase.id,
+										paymentId:
+											payment_id ??
+											concurrentPurchase.paymentId ??
+											undefined,
+										status: "active",
+									});
+								}
+
+								if (customer?.customer_id || customer?.email) {
+									await setCustomerIdToEntity(
+										customer?.customer_id ||
+											customer?.email ||
+											"",
+										{
+											organizationId:
+												metadata?.organization_id,
+											userId: metadata?.user_id,
+										},
+									);
+								}
+
+								logger.info(
+									"Created placeholder subscription purchase from early payment.succeeded event",
+									{ subscription_id, payment_id },
+								);
+							}
 						} else {
 							await updatePurchase({
 								id: existingSubscriptionPurchase.id,
@@ -621,8 +762,6 @@ export const webhookHandler: WebhookHandler = async (req) => {
 					}
 
 					const product_id = getString(data.product_id);
-					const customer = getCustomer(data.customer);
-					const metadata = getMetadata(data.metadata);
 					const identity = getResolvedIdentity({
 						type: "ONE_TIME",
 						productId: product_id,

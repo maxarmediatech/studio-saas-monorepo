@@ -33,13 +33,25 @@ export const getCheckoutStatus = protectedProcedure
 				.max(200)
 				.regex(/^[A-Za-z0-9_-]+$/)
 				.optional(),
+			subscriptionId: z
+				.string()
+				.trim()
+				.min(1)
+				.max(200)
+				.regex(/^[A-Za-z0-9_-]+$/)
+				.optional(),
 			organizationId: z.string().optional(),
 			expectedPriceKeys: z.array(z.string().min(1)).optional(),
 		}),
 	)
 	.handler(
 		async ({
-			input: { checkoutSessionId, organizationId, expectedPriceKeys },
+			input: {
+				checkoutSessionId,
+				subscriptionId,
+				organizationId,
+				expectedPriceKeys,
+			},
 			context: { user },
 		}) => {
 			let checkoutSessionPaymentStatus: string | null = null;
@@ -71,15 +83,33 @@ export const getCheckoutStatus = protectedProcedure
 							: null;
 
 					if (status === 400 || status === 404 || status === 422) {
-						throw new ORPCError("BAD_REQUEST");
+						if (subscriptionId) {
+							logger.info(
+								"Ignoring stale checkout session lookup during subscription-based recovery",
+								{
+									checkoutSessionId:
+										normalizedCheckoutSessionId,
+									subscriptionId,
+									status,
+								},
+							);
+
+							checkoutSessionPaymentStatus = null;
+							checkoutSessionPaymentId = null;
+						} else {
+							throw new ORPCError("BAD_REQUEST");
+						}
+					} else {
+						logger.error(
+							"Failed to fetch checkout session status",
+							{
+								checkoutSessionId: normalizedCheckoutSessionId,
+								error,
+							},
+						);
+
+						throw new ORPCError("INTERNAL_SERVER_ERROR");
 					}
-
-					logger.error("Failed to fetch checkout session status", {
-						checkoutSessionId: normalizedCheckoutSessionId,
-						error,
-					});
-
-					throw new ORPCError("INTERNAL_SERVER_ERROR");
 				}
 			}
 
@@ -100,6 +130,7 @@ export const getCheckoutStatus = protectedProcedure
 				return getCheckoutStatusFromPurchases({
 					checkoutSessionPaymentId,
 					checkoutSessionPaymentStatus,
+					checkoutSessionSubscriptionId: subscriptionId ?? null,
 					purchases,
 					expectedPriceKeys,
 				});
@@ -120,6 +151,7 @@ export const getCheckoutStatus = protectedProcedure
 			return getCheckoutStatusFromPurchases({
 				checkoutSessionPaymentId,
 				checkoutSessionPaymentStatus,
+				checkoutSessionSubscriptionId: subscriptionId ?? null,
 				purchases,
 				expectedPriceKeys,
 			});

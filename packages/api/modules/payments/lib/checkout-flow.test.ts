@@ -183,6 +183,29 @@ describe("checkout flow helpers", () => {
 		expect(status.purchaseId).toBe("purchase_new");
 	});
 
+	it("activates checkout when the completion URL subscription id matches the active purchase", async () => {
+		const { getCheckoutStatusFromPurchases } = await import(
+			"@repo/payments/lib/checkout"
+		);
+		const status = getCheckoutStatusFromPurchases({
+			checkoutSessionSubscriptionId: "sub_new",
+			checkoutSessionPaymentStatus: "active",
+			purchases: [
+				makePurchase({
+					id: "purchase_new",
+					subscriptionId: "sub_new",
+					paymentId: null,
+					priceKey: "studio-basics-monthly",
+					status: "active",
+				}),
+			],
+			expectedPriceKeys: ["studio-basics-monthly"],
+		});
+
+		expect(status.status).toBe("active");
+		expect(status.purchaseId).toBe("purchase_new");
+	});
+
 	it("activates checkout status once the expected subscription price is active", async () => {
 		const { getCheckoutStatusFromPurchases } = await import(
 			"@repo/payments/lib/checkout"

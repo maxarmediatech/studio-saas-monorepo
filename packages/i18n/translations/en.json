@@ -702,7 +702,7 @@
 		},
 		"billing": {
 			"createCustomerPortal": {
-				"label": "Manage billing",
+				"label": "Open billing portal",
 				"notifications": {
 					"error": {
 						"title": "Could not create a customer portal session. Please try again."
@@ -723,8 +723,9 @@
 				"title": "Your plan"
 			},
 			"changePlan": {
-				"description": "Choose a plan to subscribe to.",
-				"title": "Change your plan"
+				"description": "Switch monthly or yearly billing from the billing portal.",
+				"portalHint": "Use the billing portal to switch monthly or yearly billing, update payment details, or cancel without creating a second subscription.",
+				"title": "Manage your subscription"
 			},
 			"title": "Billing"
 		},

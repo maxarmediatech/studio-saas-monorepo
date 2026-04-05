@@ -272,6 +272,23 @@ DODO_DISCOUNT_CODE_STUDIO_BASICS_MONTHLY_INTRO=""
 NEXT_PUBLIC_DODO_INLINE_CHECKOUT="1"
 ```
 
+### Product Collection + Customer Portal
+
+For real plan changes between `Studio Basics Monthly` and `Studio Basics Yearly`, configure Dodo before going live:
+
+1. Create one Product Collection for `Studio Basics`
+2. Add both recurring products to that collection:
+   - `Studio Basics Monthly`
+   - `Studio Basics Yearly`
+3. In the collection subscription settings:
+   - enable `Allow Subscription Updates`
+   - disable `Allow Multiple Subscriptions`
+4. In Customer Portal settings:
+   - enable subscription management / plan changes
+   - keep payment method updates enabled
+
+The app keeps new signups on the normal checkout flow. Active subscribers should switch monthly/yearly billing from the Dodo billing portal so we do not create duplicate subscriptions.
+
 ---
 
 ## Storage Setup

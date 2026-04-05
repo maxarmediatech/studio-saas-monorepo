@@ -689,7 +689,7 @@
 		},
 		"billing": {
 			"createCustomerPortal": {
-				"label": "Abrechung verwalten",
+				"label": "Abrechnungsportal öffnen",
 				"notifications": {
 					"error": {
 						"title": "Es konnte keine Kundenportalsitzung erstellt werden. \nBitte versuche es erneut."
@@ -710,8 +710,9 @@
 				"title": "Dein Plan"
 			},
 			"changePlan": {
-				"description": "Wähle einen Plan aus, den du abonnieren möchtest.",
-				"title": "Ändere deinen Plan"
+				"description": "Wechsle im Abrechnungsportal zwischen monatlicher und jährlicher Abrechnung.",
+				"portalHint": "Nutze das Abrechnungsportal, um zwischen monatlicher und jährlicher Abrechnung zu wechseln, Zahlungsdaten zu aktualisieren oder zu kündigen, ohne ein zweites Abo zu erzeugen.",
+				"title": "Verwalte dein Abonnement"
 			},
 			"title": "Zahlung"
 		},

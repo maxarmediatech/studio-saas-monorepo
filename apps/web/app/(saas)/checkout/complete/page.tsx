@@ -9,6 +9,7 @@ import {
 } from "@saas/auth/lib/redirects";
 import { getOrganizationList, getSession } from "@saas/auth/lib/server";
 import { CheckoutCompletionPageClient } from "@saas/payments/components/CheckoutCompletionPageClient";
+import { buildCheckoutCompleteRecoveryPath } from "@saas/payments/lib/checkout-complete-recovery";
 import {
 	PENDING_CHECKOUT_COOKIE_NAME,
 	readPendingCheckoutCookie,
@@ -21,6 +22,7 @@ import { redirect } from "next/navigation";
 type Props = {
 	searchParams: Promise<{
 		checkoutSessionId?: string | string[];
+		subscription_id?: string | string[];
 		redirectTo?: string | string[];
 		prices?: string | string[];
 		products?: string | string[];
@@ -62,6 +64,9 @@ export default async function CheckoutCompletePage({ searchParams }: Props) {
 		getSingleValue(rawSearchParams.checkoutSessionId) ??
 			pendingCheckout?.sessionId,
 	);
+	const subscriptionId = sanitizeCheckoutSessionId(
+		getSingleValue(rawSearchParams.subscription_id),
+	);
 	const redirectTo = sanitizePostCheckoutPath(
 		getSingleValue(rawSearchParams.redirectTo) ??
 			pendingCheckout?.postCheckoutPath,
@@ -79,20 +84,18 @@ export default async function CheckoutCompletePage({ searchParams }: Props) {
 		return pendingCheckout?.expectedPriceKeys ?? [];
 	})();
 
-	const completionSearchParams = new URLSearchParams();
-	if (checkoutSessionId) {
-		completionSearchParams.set("checkoutSessionId", checkoutSessionId);
-	}
-	completionSearchParams.set("redirectTo", redirectTo);
-	if (expectedPriceKeys.length > 0) {
-		completionSearchParams.set("prices", expectedPriceKeys.join(","));
-	}
-
 	const session = await getSession();
 
 	if (!session) {
 		redirect(
-			`/auth/login?redirectTo=${encodeURIComponent(`/checkout/complete?${completionSearchParams.toString()}`)}`,
+			`/auth/login?redirectTo=${encodeURIComponent(
+				buildCheckoutCompleteRecoveryPath({
+					checkoutSessionId: checkoutSessionId ?? undefined,
+					subscriptionId: subscriptionId ?? undefined,
+					redirectTo,
+					expectedPriceKeys,
+				}),
+			)}`,
 		);
 	}
 
@@ -123,6 +126,7 @@ export default async function CheckoutCompletePage({ searchParams }: Props) {
 			: resolvedRedirectPath;
 	const initialStatus = await orpcClient.payments.getCheckoutStatus({
 		checkoutSessionId: checkoutSessionId ?? undefined,
+		subscriptionId: subscriptionId ?? undefined,
 		organizationId,
 		expectedPriceKeys,
 	});
@@ -135,6 +139,7 @@ export default async function CheckoutCompletePage({ searchParams }: Props) {
 		<AuthWrapper contentClass="max-w-2xl p-6 lg:p-8">
 			<CheckoutCompletionPageClient
 				checkoutSessionId={checkoutSessionId ?? undefined}
+				subscriptionId={subscriptionId ?? undefined}
 				organizationId={organizationId}
 				expectedPriceKeys={expectedPriceKeys}
 				initialStatus={initialStatus}

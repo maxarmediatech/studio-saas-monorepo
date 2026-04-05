@@ -5,7 +5,6 @@ import { usePurchases } from "@saas/payments/hooks/purchases";
 import { SettingsItem } from "@saas/shared/components/SettingsItem";
 import { BadgeCheckIcon, CheckIcon } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
-import { CustomerPortalButton } from "../../settings/components/CustomerPortalButton";
 import { SubscriptionStatusBadge } from "../../settings/components/SubscriptionStatusBadge";
 
 export function ActivePlan({
@@ -93,16 +92,6 @@ export function ActivePlan({
 						</strong>
 					)}
 				</div>
-
-				{"purchaseId" in activePlan && activePlan.purchaseId && (
-					<div className="mt-4 flex justify-end">
-						<div className="flex w-full flex-col flex-wrap gap-2 md:flex-row">
-							<CustomerPortalButton
-								purchaseId={activePlan.purchaseId}
-							/>
-						</div>
-					</div>
-				)}
 			</div>
 		</SettingsItem>
 	);
