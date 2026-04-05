@@ -3,12 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 describe("payment catalog identity", () => {
 	beforeEach(() => {
 		vi.resetModules();
+		vi.stubEnv(
+			"DODO_PRODUCT_COLLECTION_ID_STUDIO_BASICS",
+			"pdc_basics_collection",
+		);
 		vi.stubEnv("DODO_PRODUCT_ID_STUDIO_BASICS_MONTHLY", "pdt_basics_month");
 		vi.stubEnv("DODO_PRODUCT_ID_STUDIO_BASICS_YEARLY", "pdt_basics_year");
-		vi.stubEnv(
-			"DODO_DISCOUNT_CODE_STUDIO_BASICS_MONTHLY_INTRO",
-			"BASICS199",
-		);
 	});
 
 	afterEach(() => {
@@ -16,16 +16,20 @@ describe("payment catalog identity", () => {
 	});
 
 	it("returns server catalog metadata for checkout prices", async () => {
-		const { getServerCatalogPrice } = await import(
+		const { getServerCatalogPlan, getServerCatalogPrice } = await import(
 			"@repo/payments/lib/catalog"
 		);
 		const monthly = getServerCatalogPrice("studio-basics-monthly");
 		const yearly = getServerCatalogPrice("studio-basics-yearly");
+		const plan = getServerCatalogPlan("studio-basics");
 
 		expect(monthly?.productId).toBe("pdt_basics_month");
-		expect(monthly?.discountCode).toBe("BASICS199");
 		expect(yearly?.productId).toBe("pdt_basics_year");
-		expect(yearly?.discountCode).toBeUndefined();
+		expect(plan?.productCollectionId).toBe("pdc_basics_collection");
+		expect(plan?.expectedPriceKeys).toEqual([
+			"studio-basics-monthly",
+			"studio-basics-yearly",
+		]);
 	});
 
 	it("maps known Dodo product IDs back to internal identity", async () => {

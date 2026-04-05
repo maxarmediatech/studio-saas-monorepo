@@ -137,7 +137,6 @@ export const config = {
 						interval: "month",
 						amount: 999,
 						currency: "INR",
-						introOfferAmount: 199,
 					},
 					{
 						type: "recurring",

@@ -789,8 +789,8 @@ importers:
         specifier: workspace:*
         version: link:../logs
       dodopayments:
-        specifier: ^2.13.1
-        version: 2.13.1
+        specifier: ^2.26.0
+        version: 2.26.0
       zod:
         specifier: ^4.2.1
         version: 4.2.1
@@ -4856,6 +4856,7 @@ packages:
   basic-ftp@5.0.5:
     resolution: {integrity: sha512-4Bcg1P8xhUuqcii/S0Z9wiHIrQVPMermM1any+MX5GeGD7faD3/msQUDGLol9wOcz4/jbg/WJnGqoJF6LiBdtg==}
     engines: {node: '>=10.0.0'}
+    deprecated: Security vulnerability fixed in 5.2.0, please upgrade
 
   batch-processor@1.0.0:
     resolution: {integrity: sha512-xoLQD8gmmR32MeuBHgH0Tzd5PuSZx71ZsbhVxOCRbgktZEPe4SQy7s9Z50uPp0F/f7iw2XmkHN2xkgbMfckMDA==}
@@ -5368,8 +5369,8 @@ packages:
     resolution: {integrity: sha512-KvQfzGpSPzV0GITSBHvSmDQehGhx6R8XtpuLgvt0RuyxrvumDBboE9/5Iv1sd98cVXeeSl3B6OeVIo4IQmXDdQ==}
     engines: {node: '>=18.0.0'}
 
-  dodopayments@2.13.1:
-    resolution: {integrity: sha512-awA3WM6m8vPIaD6k6fNV57Hk6dwooBdyNDbWpXdG8OPrdmma8qjt5NOILRvjHseRWGm2/LewJFq/Md0HFROA4w==}
+  dodopayments@2.26.0:
+    resolution: {integrity: sha512-PdFfzu1qtisoecoYArcfAlYybizRO4i+xeDLyoK+dGGTOpSNexSzbZ0tmMvAd0HRYqILS1lWzyJeNwS0iwS8nA==}
     hasBin: true
 
   dom-accessibility-api@0.5.16:
@@ -12364,7 +12365,7 @@ snapshots:
     dependencies:
       '@iframe-resizer/parent': 5.5.9
 
-  dodopayments@2.13.1:
+  dodopayments@2.26.0:
     dependencies:
       standardwebhooks: 1.0.0
 

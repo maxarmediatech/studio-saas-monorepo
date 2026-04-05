@@ -9,16 +9,24 @@ const knownPaymentCatalog = {
 		planKey: "studio-basics",
 		billingInterval: "month",
 		productId: process.env.DODO_PRODUCT_ID_STUDIO_BASICS_MONTHLY ?? "",
-		discountCode:
-			process.env.DODO_DISCOUNT_CODE_STUDIO_BASICS_MONTHLY_INTRO ||
-			undefined,
 	},
 	"studio-basics-yearly": {
 		priceKey: "studio-basics-yearly",
 		planKey: "studio-basics",
 		billingInterval: "year",
 		productId: process.env.DODO_PRODUCT_ID_STUDIO_BASICS_YEARLY ?? "",
-		discountCode: undefined,
+	},
+} as const;
+
+const knownCollectionCatalog = {
+	"studio-basics": {
+		planKey: "studio-basics",
+		productCollectionId:
+			process.env.DODO_PRODUCT_COLLECTION_ID_STUDIO_BASICS ?? "",
+		expectedPriceKeys: [
+			"studio-basics-monthly",
+			"studio-basics-yearly",
+		] as const,
 	},
 } as const;
 
@@ -34,7 +42,6 @@ type ClientPlanPrice = {
 	amount: number;
 	currency: string;
 	hidden?: boolean;
-	introOfferAmount?: number;
 	type: "recurring" | "one-time";
 	interval?: "month" | "year" | "week";
 	intervalCount?: number;
@@ -70,6 +77,14 @@ export function getKnownPaymentCatalog() {
 
 export function getServerCatalogPrice(priceKey: string) {
 	return knownPaymentCatalog[priceKey as KnownPriceKey] ?? null;
+}
+
+export function getServerCatalogPlan(planKey: string) {
+	return (
+		knownCollectionCatalog[
+			planKey as keyof typeof knownCollectionCatalog
+		] ?? null
+	);
 }
 
 export function findCatalogPriceByProductId(productId: string) {

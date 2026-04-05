@@ -15,9 +15,9 @@ export const env = createEnv({
 		UPLOADS_BUCKET_NAME: optionalString,
 		DODO_PAYMENTS_API_KEY: optionalString,
 		DODO_PAYMENTS_WEBHOOK_SECRET: optionalString,
+		DODO_PRODUCT_COLLECTION_ID_STUDIO_BASICS: optionalString,
 		DODO_PRODUCT_ID_STUDIO_BASICS_MONTHLY: optionalString,
 		DODO_PRODUCT_ID_STUDIO_BASICS_YEARLY: optionalString,
-		DODO_DISCOUNT_CODE_STUDIO_BASICS_MONTHLY_INTRO: optionalString,
 	},
 	runtimeEnv: process.env,
 	emptyStringAsUndefined: true,
@@ -39,6 +39,9 @@ const storageEnvSchema = z.object({
 const paymentsEnvSchema = z.object({
 	DODO_PAYMENTS_API_KEY: z.string().min(1),
 	DODO_PAYMENTS_WEBHOOK_SECRET: z.string().min(1),
+	DODO_PRODUCT_COLLECTION_ID_STUDIO_BASICS: z.string().min(1),
+	DODO_PRODUCT_ID_STUDIO_BASICS_MONTHLY: z.string().min(1),
+	DODO_PRODUCT_ID_STUDIO_BASICS_YEARLY: z.string().min(1),
 });
 
 export type EnvConfigErrorCode =

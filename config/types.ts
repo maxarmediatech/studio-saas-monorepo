@@ -73,7 +73,6 @@ export type Config = {
 						amount: number;
 						currency: string;
 						hidden?: boolean;
-						introOfferAmount?: number;
 					} & (
 						| {
 								type: "recurring";

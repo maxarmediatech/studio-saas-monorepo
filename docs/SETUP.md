@@ -261,12 +261,9 @@ DODO_PAYMENTS_WEBHOOK_SECRET="whsec_xxxx"
 After creating products in DodoPayments, add the live catalog IDs:
 
 ```env
+DODO_PRODUCT_COLLECTION_ID_STUDIO_BASICS=""
 DODO_PRODUCT_ID_STUDIO_BASICS_MONTHLY="price_xxx"
 DODO_PRODUCT_ID_STUDIO_BASICS_YEARLY="price_xxx"
-
-# Optional intro offer for Studio Basics monthly.
-# Example: BASICS199 with subscription cycle limit = 1
-DODO_DISCOUNT_CODE_STUDIO_BASICS_MONTHLY_INTRO=""
 
 # Optional: set to "0" to disable inline checkout and use full-page checkout
 NEXT_PUBLIC_DODO_INLINE_CHECKOUT="1"
@@ -280,14 +277,15 @@ For real plan changes between `Studio Basics Monthly` and `Studio Basics Yearly`
 2. Add both recurring products to that collection:
    - `Studio Basics Monthly`
    - `Studio Basics Yearly`
-3. In the collection subscription settings:
+3. Keep `Studio Basics Monthly` first in the collection if you want checkout to open with the monthly option first
+4. In the collection subscription settings:
    - enable `Allow Subscription Updates`
    - disable `Allow Multiple Subscriptions`
-4. In Customer Portal settings:
+5. In Customer Portal settings:
    - enable subscription management / plan changes
    - keep payment method updates enabled
 
-The app keeps new signups on the normal checkout flow. Active subscribers should switch monthly/yearly billing from the Dodo billing portal so we do not create duplicate subscriptions.
+The app keeps one `Studio Basics` card and sends new signups through the Product Collection checkout so Dodo can present monthly and yearly billing inside checkout. Active subscribers should still switch monthly/yearly billing from the Dodo billing portal so we do not create duplicate subscriptions.
 
 ---
 
@@ -484,9 +482,9 @@ DODO_PAYMENTS_API_KEY=""
 DODO_PAYMENTS_WEBHOOK_SECRET=""
 
 # Product IDs
+DODO_PRODUCT_COLLECTION_ID_STUDIO_BASICS=""
 DODO_PRODUCT_ID_STUDIO_BASICS_MONTHLY=""
 DODO_PRODUCT_ID_STUDIO_BASICS_YEARLY=""
-DODO_DISCOUNT_CODE_STUDIO_BASICS_MONTHLY_INTRO=""
 
 # ===================
 # STORAGE (Optional)

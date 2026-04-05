@@ -4,7 +4,7 @@
 		"@repo/database": "workspace:*",
 		"@repo/env": "workspace:*",
 		"@repo/logs": "workspace:*",
-		"dodopayments": "^2.13.1",
+		"dodopayments": "^2.26.0",
 		"zod": "^4.2.1"
 	},
 	"devDependencies": {

@@ -508,6 +508,7 @@
 		"month": "{count, plural, one {month} other {{count} months}}",
 		"monthly": "Monthly",
 		"moneyBackGuarantee": "100% money-back guarantee",
+		"saveAmount": "Save {amount}",
 		"products": {
 			"studio-basics": {
 				"description": "",

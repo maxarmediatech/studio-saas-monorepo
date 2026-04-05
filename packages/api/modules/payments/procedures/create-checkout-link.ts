@@ -10,6 +10,7 @@ import {
 } from "@repo/payments";
 import {
 	getConfiguredPrice,
+	getServerCatalogPlan,
 	getServerCatalogPrice,
 } from "@repo/payments/lib/catalog";
 import { z } from "zod";
@@ -28,19 +29,13 @@ export const createCheckoutLink = protectedProcedure
 	.input(
 		z.object({
 			priceKey: z.string().min(1),
-			applyIntroOffer: z.boolean().optional(),
 			postCheckoutPath: z.string().optional(),
 			organizationId: z.string().optional(),
 		}),
 	)
 	.handler(
 		async ({
-			input: {
-				priceKey,
-				applyIntroOffer,
-				postCheckoutPath,
-				organizationId,
-			},
+			input: { priceKey, postCheckoutPath, organizationId },
 			context: { user },
 		}) => {
 			if (
@@ -74,8 +69,11 @@ export const createCheckoutLink = protectedProcedure
 			);
 			const price = getConfiguredPrice(priceKey);
 			const catalogPrice = getServerCatalogPrice(priceKey);
+			const collectionPlan = catalogPrice
+				? getServerCatalogPlan(catalogPrice.planKey)
+				: null;
 
-			if (!(price && catalogPrice && catalogPrice.productId)) {
+			if (!(price && catalogPrice)) {
 				throw new ORPCError("BAD_REQUEST");
 			}
 
@@ -84,6 +82,31 @@ export const createCheckoutLink = protectedProcedure
 			];
 
 			if (plan?.comingSoon || price.type !== "recurring") {
+				throw new ORPCError("BAD_REQUEST");
+			}
+
+			const expectedPriceKeys = collectionPlan?.expectedPriceKeys?.length
+				? [...collectionPlan.expectedPriceKeys]
+				: [catalogPrice.priceKey];
+			const collectionCatalogProducts = expectedPriceKeys.map(
+				(expectedKey) => getServerCatalogPrice(expectedKey),
+			);
+
+			if (
+				collectionPlan &&
+				(!collectionPlan.productCollectionId ||
+					collectionCatalogProducts.some(
+						(product) => !product?.productId,
+					))
+			) {
+				throw new ORPCError("INTERNAL_SERVER_ERROR", {
+					message:
+						"Payments collection catalog is not configured correctly.",
+				});
+			}
+			if (
+				!(collectionPlan?.productCollectionId || catalogPrice.productId)
+			) {
 				throw new ORPCError("BAD_REQUEST");
 			}
 
@@ -105,12 +128,11 @@ export const createCheckoutLink = protectedProcedure
 				const { checkoutLink, checkoutSessionId } =
 					await createCheckoutLinkFn({
 						priceKey,
-						productId: catalogPrice.productId,
+						productId: catalogPrice.productId || undefined,
+						productCollectionId:
+							collectionPlan?.productCollectionId || undefined,
 						quantity,
-						discountCode:
-							applyIntroOffer === false
-								? undefined
-								: catalogPrice.discountCode,
+						expectedPriceKeys,
 						email: user.email,
 						name: user.name ?? "",
 						postCheckoutPath,
@@ -124,7 +146,13 @@ export const createCheckoutLink = protectedProcedure
 					throw new ORPCError("INTERNAL_SERVER_ERROR");
 				}
 
-				return { checkoutLink, checkoutSessionId };
+				return {
+					checkoutLink,
+					checkoutSessionId,
+					requiresHostedCheckout: Boolean(
+						collectionPlan?.productCollectionId,
+					),
+				};
 			} catch (e) {
 				logger.error(e);
 				if (isEnvConfigError(e)) {

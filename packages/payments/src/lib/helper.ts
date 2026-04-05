@@ -10,7 +10,6 @@ type PlanPrice = {
 	amount: number;
 	currency: string;
 	hidden?: boolean;
-	introOfferAmount?: number;
 	type: "recurring" | "one-time";
 	interval?: "month" | "year" | "week";
 	intervalCount?: number;

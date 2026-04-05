@@ -50,8 +50,9 @@ export const createCheckoutLink: CreateCheckoutLink = async (options) => {
 	const {
 		priceKey,
 		productId,
+		productCollectionId,
 		quantity,
-		discountCode,
+		expectedPriceKeys,
 		postCheckoutPath,
 		customerId,
 		organizationId,
@@ -72,20 +73,27 @@ export const createCheckoutLink: CreateCheckoutLink = async (options) => {
 
 	const returnUrl = buildCheckoutCompletionUrl({
 		postCheckoutPath,
-		expectedPriceKeys: [priceKey],
+		expectedPriceKeys:
+			expectedPriceKeys && expectedPriceKeys.length > 0
+				? expectedPriceKeys
+				: [priceKey],
 	});
 
-	const response = await client.checkoutSessions.create({
-		product_cart: [
-			{
-				product_id: productId,
-				quantity: quantity ?? 1,
-			},
-		],
+	const checkoutRequest: Parameters<typeof client.checkoutSessions.create>[0] = {
+		product_cart: productCollectionId
+			? []
+			: [
+					{
+						product_id: productId ?? "",
+						quantity: quantity ?? 1,
+					},
+				],
+		...(productCollectionId
+			? { product_collection_id: productCollectionId }
+			: {}),
 		customization: {
 			theme: "light",
 		},
-		discount_code: discountCode,
 		feature_flags: {
 			redirect_immediately: true,
 		},
@@ -99,7 +107,9 @@ export const createCheckoutLink: CreateCheckoutLink = async (options) => {
 					name: name ?? "",
 				},
 		metadata,
-	});
+	};
+
+	const response = await client.checkoutSessions.create(checkoutRequest);
 
 	return {
 		checkoutLink: response.checkout_url ?? null,

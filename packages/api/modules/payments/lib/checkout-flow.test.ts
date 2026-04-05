@@ -63,6 +63,23 @@ describe("checkout flow helpers", () => {
 		);
 	});
 
+	it("builds a completion URL for collection checkout with both basics prices", async () => {
+		const { buildCheckoutCompletionUrl } = await import(
+			"@repo/payments/lib/checkout"
+		);
+		const url = buildCheckoutCompletionUrl({
+			postCheckoutPath: "/app",
+			expectedPriceKeys: [
+				"studio-basics-monthly",
+				"studio-basics-yearly",
+			],
+		});
+
+		expect(url).toBe(
+			"https://app.example.com/checkout/complete?redirectTo=%2Fapp&prices=studio-basics-monthly%2Cstudio-basics-yearly",
+		);
+	});
+
 	it("rejects external checkout URLs and only allows exact Dodo hosts", async () => {
 		const { isAllowedDodoCheckoutUrl } = await import(
 			"@repo/payments/lib/checkout"
@@ -223,5 +240,29 @@ describe("checkout flow helpers", () => {
 
 		expect(status.status).toBe("active");
 		expect(status.purchaseId).toBe("purchase_new");
+	});
+
+	it("activates collection checkout once either basics billing interval is active", async () => {
+		const { getCheckoutStatusFromPurchases } = await import(
+			"@repo/payments/lib/checkout"
+		);
+		const status = getCheckoutStatusFromPurchases({
+			purchases: [
+				makePurchase({
+					id: "purchase_yearly",
+					priceKey: "studio-basics-yearly",
+					billingInterval: "year",
+					productId: "pdt_basics_year",
+					status: "active",
+				}),
+			],
+			expectedPriceKeys: [
+				"studio-basics-monthly",
+				"studio-basics-yearly",
+			],
+		});
+
+		expect(status.status).toBe("active");
+		expect(status.purchaseId).toBe("purchase_yearly");
 	});
 });

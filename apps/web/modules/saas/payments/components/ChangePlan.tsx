@@ -10,14 +10,12 @@ export function ChangePlan({
 	activePlanId,
 	activePlanPurchaseId,
 	postCheckoutPath,
-	hasMonthlyIntroOffer,
 }: {
 	organizationId?: string;
 	userId?: string;
 	activePlanId?: string;
 	activePlanPurchaseId?: string;
 	postCheckoutPath?: string;
-	hasMonthlyIntroOffer?: boolean;
 }) {
 	const t = useTranslations();
 
@@ -45,7 +43,6 @@ export function ChangePlan({
 					userId={userId}
 					activePlanId={activePlanId}
 					postCheckoutPath={postCheckoutPath}
-					hasMonthlyIntroOffer={hasMonthlyIntroOffer}
 				/>
 			)}
 		</SettingsItem>

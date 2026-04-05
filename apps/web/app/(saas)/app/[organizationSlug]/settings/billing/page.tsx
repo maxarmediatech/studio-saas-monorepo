@@ -27,9 +27,6 @@ export async function generateMetadata({ params }: Props) {
 
 export default async function BillingSettingsPage({ params }: Props) {
 	const session = await getSession();
-	const hasMonthlyIntroOffer = Boolean(
-		process.env.DODO_DISCOUNT_CODE_STUDIO_BASICS_MONTHLY_INTRO,
-	);
 	const { organizationSlug } = await params;
 	const context = await requireSettingsRouteAccess(
 		organizationSlug,
@@ -73,7 +70,6 @@ export default async function BillingSettingsPage({ params }: Props) {
 				userId={session?.user.id}
 				activePlanId={activePlan?.id}
 				activePlanPurchaseId={activePlan?.purchaseId}
-				hasMonthlyIntroOffer={hasMonthlyIntroOffer}
 				postCheckoutPath={`/app/${organizationSlug}/settings/billing`}
 			/>
 		</SettingsList>

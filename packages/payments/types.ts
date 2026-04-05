@@ -1,9 +1,9 @@
 export type CreateCheckoutLink = (params: {
 	priceKey: string;
-	productId: string;
+	productId?: string;
+	productCollectionId?: string;
 	quantity?: number;
-	applyIntroOffer?: boolean;
-	discountCode?: string;
+	expectedPriceKeys?: string[];
 	email?: string;
 	name?: string;
 	postCheckoutPath?: string;

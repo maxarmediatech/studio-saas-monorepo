@@ -2,8 +2,6 @@
 
 import { type Config, config } from "@repo/config";
 import { Button } from "@repo/ui/components/button";
-import { Checkbox } from "@repo/ui/components/checkbox";
-import { Tabs, TabsList, TabsTrigger } from "@repo/ui/components/tabs";
 import { cn } from "@repo/ui/lib/utils";
 import { usePlanData } from "@saas/payments/hooks/plan-data";
 import { buildCheckoutLaunchPath } from "@saas/payments/lib/checkout-launch";
@@ -28,6 +26,7 @@ import { toast } from "sonner";
 const plans = config.payments.plans as Config["payments"]["plans"];
 type PlanConfig = Config["payments"]["plans"][string];
 type PlanPrice = NonNullable<PlanConfig["prices"]>[number];
+type RecurringPlanPrice = Extract<PlanPrice, { type: "recurring" }>;
 
 function formatCurrency(amount: number, currency: string) {
 	return new Intl.NumberFormat("en-IN", {
@@ -42,21 +41,17 @@ export function PricingTable({
 	organizationId,
 	activePlanId,
 	postCheckoutPath = "/app",
-	hasMonthlyIntroOffer = false,
 }: {
 	className?: string;
 	userId?: string;
 	organizationId?: string;
 	activePlanId?: string;
 	postCheckoutPath?: string;
-	hasMonthlyIntroOffer?: boolean;
 }) {
 	const router = useRouter();
 	const t = useTranslations();
 	const localeCurrency = useLocaleCurrency();
 	const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
-	const [interval, setInterval] = useState<"month" | "year">("month");
-	const [applyIntroOffer, setApplyIntroOffer] = useState(true);
 	const inlineCheckoutEnabled =
 		process.env.NEXT_PUBLIC_DODO_INLINE_CHECKOUT !== "0";
 	const { planData } = usePlanData();
@@ -67,7 +62,7 @@ export function PricingTable({
 	const onSelectPlan = async (
 		planId: PlanId,
 		priceKey?: string,
-		shouldApplyIntroOffer?: boolean,
+		expectedPriceKeys: string[] = [],
 	) => {
 		if (!(userId || organizationId)) {
 			router.push("/auth/signup");
@@ -81,10 +76,9 @@ export function PricingTable({
 		setLoadingPlan(planId);
 
 		try {
-			const { checkoutLink, checkoutSessionId } =
+			const { checkoutLink, checkoutSessionId, requiresHostedCheckout } =
 				await createCheckoutLinkMutation.mutateAsync({
 					priceKey,
-					applyIntroOffer: shouldApplyIntroOffer,
 					organizationId,
 					postCheckoutPath,
 				});
@@ -96,12 +90,18 @@ export function PricingTable({
 			const launchPath = buildCheckoutLaunchPath({
 				checkoutUrl: checkoutLink,
 				checkoutSessionId,
-				expectedPriceKeys: [priceKey],
+				expectedPriceKeys:
+					expectedPriceKeys.length > 0
+						? expectedPriceKeys
+						: [priceKey],
 				postCheckoutPath,
-				mode: inlineCheckoutEnabled ? "inline" : "hosted",
+				mode:
+					inlineCheckoutEnabled && !requiresHostedCheckout
+						? "inline"
+						: "hosted",
 			});
 
-			if (inlineCheckoutEnabled) {
+			if (inlineCheckoutEnabled && !requiresHostedCheckout) {
 				router.push(launchPath);
 				return;
 			}
@@ -136,31 +136,8 @@ export function PricingTable({
 		([planId]) => planId !== activePlanId,
 	);
 
-	const hasSubscriptions = filteredPlans.some(
-		([_, plan]) =>
-			!plan.comingSoon &&
-			plan.prices?.some((price) => price.type === "recurring"),
-	);
-
 	return (
 		<div className={cn("@container", className)}>
-			{hasSubscriptions && (
-				<div className="mb-6 flex @xl:justify-center">
-					<Tabs
-						value={interval}
-						onValueChange={(value) =>
-							setInterval(value as typeof interval)
-						}
-						data-test="price-table-interval-tabs"
-					>
-						<TabsList className="border-foreground/10">
-							<TabsTrigger value="month">Monthly</TabsTrigger>
-							<TabsTrigger value="year">Yearly</TabsTrigger>
-						</TabsList>
-					</Tabs>
-				</div>
-			)}
-
 			<div
 				className={cn("grid grid-cols-1 gap-4", {
 					"@xl:grid-cols-2": filteredPlans.length >= 2,
@@ -173,24 +150,49 @@ export function PricingTable({
 						plan as PlanConfig;
 					const { title, description, features } =
 						planData[planId as keyof typeof planData];
-					const price = prices?.find(
-						(item: PlanPrice) =>
-							!item.hidden &&
-							(item.type === "one-time" ||
-								item.interval === interval) &&
-							item.currency === localeCurrency,
+					const visibleRecurringPrices =
+						prices?.filter(
+							(item: PlanPrice): item is RecurringPlanPrice =>
+								!item.hidden &&
+								item.type === "recurring" &&
+								item.currency === localeCurrency,
+						) ?? [];
+					const defaultPrice =
+						visibleRecurringPrices.find(
+							(item: RecurringPlanPrice) =>
+								item.interval === "month",
+						) ??
+						visibleRecurringPrices[0] ??
+						null;
+					const displayPrices = visibleRecurringPrices.toSorted(
+						(a, b) => {
+							const intervalRank = {
+								month: 0,
+								year: 1,
+								week: 2,
+							} as const;
+							return (
+								intervalRank[a.interval] -
+								intervalRank[b.interval]
+							);
+						},
 					);
-					const showIntroOffer = Boolean(
-						hasMonthlyIntroOffer &&
-							price?.type === "recurring" &&
-							price.priceKey === "studio-basics-monthly" &&
-							price.introOfferAmount,
+					const monthlyPrice = displayPrices.find(
+						(item) => item.interval === "month",
 					);
-					const introOfferFieldId = price
-						? `intro-offer-${price.priceKey}`
-						: undefined;
+					const yearlyPrice = displayPrices.find(
+						(item) => item.interval === "year",
+					);
+					const yearlySavings =
+						monthlyPrice && yearlyPrice
+							? Math.max(
+									monthlyPrice.amount * 12 -
+										yearlyPrice.amount,
+									0,
+								)
+							: 0;
 
-					if (!(price || isEnterprise || comingSoon)) {
+					if (!(defaultPrice || isEnterprise || comingSoon)) {
 						return null;
 					}
 
@@ -263,73 +265,106 @@ export function PricingTable({
 												Coming soon
 											</div>
 										</div>
-									) : price ? (
-										<strong
-											className="block font-medium text-2xl lg:text-3xl"
-											data-test="price-table-plan-price"
-										>
-											{formatCurrency(
-												price.amount,
-												price.currency,
-											)}
-											{"interval" in price && (
-												<span className="font-normal text-xs opacity-60">
-													{" / "}
-													{interval === "month"
-														? "month"
-														: "year"}
-												</span>
-											)}
-											{organizationId &&
-												"seatBased" in price &&
-												price.seatBased && (
-													<span className="font-normal text-xs opacity-60">
-														{" / seat"}
-													</span>
-												)}
-										</strong>
-									) : null}
-
-									{showIntroOffer && price && (
-										<div className="mt-3 rounded-2xl border border-foreground/10 bg-foreground/[0.03] p-3">
-											<div className="flex items-start gap-3">
-												<Checkbox
-													id={introOfferFieldId}
-													checked={applyIntroOffer}
-													onCheckedChange={(
-														checked,
-													) =>
-														setApplyIntroOffer(
-															checked === true,
-														)
-													}
-													className="mt-0.5"
-												/>
-												<div className="space-y-1">
-													<label
-														htmlFor={
-															introOfferFieldId
-														}
-														className="cursor-pointer font-medium text-foreground text-sm"
-													>
-														Apply launch offer
-													</label>
-													<p className="text-muted-foreground text-sm">
-														{applyIntroOffer
-															? `${formatCurrency(
-																	price.introOfferAmount ??
-																		0,
-																	price.currency,
-																)} first month, then ${formatCurrency(
-																	price.amount,
-																	price.currency,
-																)}/month`
-															: "Pay regular monthly price from checkout"}
-													</p>
+									) : defaultPrice ? (
+										<div className="space-y-3">
+											{displayPrices.length > 1 ? (
+												<div className="grid gap-2 sm:grid-cols-2">
+													{displayPrices.map(
+														(item) => (
+															<div
+																key={
+																	item.priceKey
+																}
+																className="rounded-2xl border border-foreground/10 bg-foreground/[0.03] p-4"
+															>
+																<div className="flex items-start justify-between gap-3">
+																	<div className="inline-flex items-center gap-2 font-medium text-[11px] uppercase tracking-[0.18em] text-foreground/56">
+																		<span className="size-2 rounded-full bg-foreground/18" />
+																		{item.interval ===
+																		"month"
+																			? t(
+																					"pricing.monthly",
+																				)
+																			: t(
+																					"pricing.yearly",
+																				)}
+																	</div>
+																	{item.interval ===
+																		"year" &&
+																	yearlySavings >
+																		0 ? (
+																		<div className="rounded-full border border-foreground/10 bg-background px-2 py-1 font-medium text-[10px] text-foreground/62">
+																			{t(
+																				"pricing.saveAmount",
+																				{
+																					amount: formatCurrency(
+																						yearlySavings,
+																						item.currency,
+																					),
+																				},
+																			)}
+																		</div>
+																	) : null}
+																</div>
+																<div className="mt-4">
+																	<div className="font-medium text-2xl text-foreground lg:text-[2rem]">
+																		{formatCurrency(
+																			item.amount,
+																			item.currency,
+																		)}
+																	</div>
+																	<div className="mt-1 text-foreground/56 text-sm">
+																		/{" "}
+																		{item.interval ===
+																		"month"
+																			? t(
+																					"pricing.month",
+																					{
+																						count: 1,
+																					},
+																				)
+																			: t(
+																					"pricing.year",
+																					{
+																						count: 1,
+																					},
+																				)}
+																	</div>
+																</div>
+															</div>
+														),
+													)}
 												</div>
-											</div>
+											) : (
+												<strong
+													className="block font-medium text-2xl lg:text-3xl"
+													data-test="price-table-plan-price"
+												>
+													{formatCurrency(
+														defaultPrice.amount,
+														defaultPrice.currency,
+													)}
+													<span className="font-normal text-xs opacity-60">
+														{" / "}
+														{defaultPrice.interval ===
+														"month"
+															? t(
+																	"pricing.month",
+																	{
+																		count: 1,
+																	},
+																)
+															: t(
+																	"pricing.year",
+																	{
+																		count: 1,
+																	},
+																)}
+													</span>
+												</strong>
+											)}
 										</div>
-									)}
+									) : null}
 
 									{comingSoon ? null : isEnterprise ? (
 										<Button
@@ -353,15 +388,15 @@ export function PricingTable({
 											onClick={() =>
 												void onSelectPlan(
 													planId as PlanId,
-													price?.priceKey,
-													showIntroOffer
-														? applyIntroOffer
-														: undefined,
+													defaultPrice?.priceKey,
+													displayPrices.map(
+														(item) => item.priceKey,
+													),
 												)
 											}
 											disabled={
 												comingSoon ||
-												!price ||
+												!defaultPrice ||
 												loadingPlan ===
 													(planId as PlanId)
 											}
@@ -373,9 +408,7 @@ export function PricingTable({
 												)}
 												{comingSoon
 													? "Coming soon"
-													: userId || organizationId
-														? "Choose Plan"
-														: "Get Started"}
+													: t("pricing.choosePlan")}
 											</span>
 											{!comingSoon && (
 												<ArrowRightIcon className="ml-2 size-4" />
