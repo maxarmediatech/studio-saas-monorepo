@@ -59,7 +59,7 @@ export default async function ChoosePlanCheckoutPage({
 
 	return (
 		<AuthWrapper
-			contentClass="max-w-6xl p-6 lg:p-8"
+			contentClass="max-w-[1040px] p-5 lg:p-7"
 			headerActions={
 				<ChoosePlanRecoveryActions
 					backHref="/choose-plan"

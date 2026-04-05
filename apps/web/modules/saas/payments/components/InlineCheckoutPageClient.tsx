@@ -260,7 +260,7 @@ export function InlineCheckoutPageClient({
 	}, [checkoutState]);
 
 	return (
-		<div className="space-y-4">
+		<div className="mx-auto w-full max-w-[920px] space-y-5">
 			<div className="flex items-center justify-between gap-2">
 				<Button
 					asChild
@@ -303,7 +303,7 @@ export function InlineCheckoutPageClient({
 				</Button>
 			</div>
 
-			<div>
+			<div className="space-y-1">
 				<h1 className="font-bold text-2xl">Complete Your Checkout</h1>
 				<p className="text-muted-foreground text-sm">
 					Secure payment powered by Dodo Payments.
@@ -329,7 +329,7 @@ export function InlineCheckoutPageClient({
 
 			<div
 				id={INLINE_CHECKOUT_CONTAINER_ID}
-				className="h-[72vh] min-h-[560px] w-full rounded-xl border bg-background"
+				className="mx-auto min-h-[760px] w-full overflow-hidden rounded-[28px] border border-foreground/10 bg-background shadow-sm [&>iframe]:mx-auto [&>iframe]:block [&>iframe]:min-h-[760px] [&>iframe]:w-full [&>iframe]:max-w-full [&>iframe]:border-0"
 			/>
 		</div>
 	);
