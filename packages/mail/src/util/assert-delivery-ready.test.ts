@@ -10,6 +10,7 @@ describe("assertTransactionalEmailDeliveryReady", () => {
 
 	it("accepts public Stuwiz email URLs with a configured provider key", () => {
 		process.env.RESEND_API_KEY = "re_test";
+		process.env.NEXT_PUBLIC_SITE_URL = "https://app.stuwiz.com";
 		process.env.EMAIL_BASE_URL = "https://app.stuwiz.com";
 		process.env.EMAIL_ASSET_BASE_URL = "https://app.stuwiz.com";
 
@@ -18,6 +19,7 @@ describe("assertTransactionalEmailDeliveryReady", () => {
 
 	it("rejects missing resend credentials", () => {
 		delete process.env.RESEND_API_KEY;
+		process.env.NEXT_PUBLIC_SITE_URL = "https://app.stuwiz.com";
 		process.env.EMAIL_BASE_URL = "https://app.stuwiz.com";
 		process.env.EMAIL_ASSET_BASE_URL = "https://app.stuwiz.com";
 
@@ -28,6 +30,7 @@ describe("assertTransactionalEmailDeliveryReady", () => {
 
 	it("rejects localhost email URLs", () => {
 		process.env.RESEND_API_KEY = "re_test";
+		process.env.NEXT_PUBLIC_SITE_URL = "https://app.stuwiz.com";
 		process.env.EMAIL_BASE_URL = "http://localhost:3000";
 		process.env.EMAIL_ASSET_BASE_URL = "http://localhost:3000";
 
@@ -45,6 +48,7 @@ describe("assertTransactionalEmailDeliveryReady", () => {
 		"http://app.internal:3000",
 	])("rejects private network email URL %s", (url) => {
 		process.env.RESEND_API_KEY = "re_test";
+		process.env.NEXT_PUBLIC_SITE_URL = "https://app.stuwiz.com";
 		process.env.EMAIL_BASE_URL = url;
 		process.env.EMAIL_ASSET_BASE_URL = url;
 

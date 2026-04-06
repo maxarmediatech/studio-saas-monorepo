@@ -4,6 +4,8 @@ import { getPublicAssetBaseUrl } from "@repo/utils";
 import React from "react";
 
 function getAssetUrl(path: string) {
+	// Email images must stay on a public asset host; auth/invite action links are
+	// intentionally built from the active app origin elsewhere.
 	return new URL(path, getPublicAssetBaseUrl()).toString();
 }
 
