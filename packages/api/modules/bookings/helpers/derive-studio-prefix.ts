@@ -2,7 +2,7 @@
  * Derive a short uppercase prefix from a studio (organization) name.
  *
  * - 1 word  → first 3 characters: "Snapworks" → "SNA"
- * - 2 words → first letter of each: "Acme Studios" → "AS"
+ * - 2 words → first letter of each: "Studio Wiz" → "SW"
  * - 3+ words → first letter of first 3 words: "The Royal Photo Co" → "TRP"
  *
  * Non-alphabetic characters are stripped before derivation.

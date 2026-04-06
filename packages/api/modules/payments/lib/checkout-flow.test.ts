@@ -54,12 +54,12 @@ describe("checkout flow helpers", () => {
 			"@repo/payments/lib/checkout"
 		);
 		const url = buildCheckoutCompletionUrl({
-			postCheckoutPath: "/app/acme/settings/billing",
+			postCheckoutPath: "/app/stuwiz/settings/billing",
 			expectedPriceKeys: ["studio-basics-monthly"],
 		});
 
 		expect(url).toBe(
-			"https://app.example.com/checkout/complete?redirectTo=%2Fapp%2Facme%2Fsettings%2Fbilling&prices=studio-basics-monthly",
+			"https://app.example.com/checkout/complete?redirectTo=%2Fapp%2Fstuwiz%2Fsettings%2Fbilling&prices=studio-basics-monthly",
 		);
 	});
 

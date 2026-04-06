@@ -1,17 +1,18 @@
-# W-Tales to Lumen Migration Plan
+# Stuwiz Migration Plan
 
 > **Document Version**: 1.3
 > **Created**: 2024-12-18
 > **Last Updated**: 2024-12-24
 > **Status**: API ~80% Complete, Frontend Not Started
+> **Note**: Historical migration document. Legacy product names normalized to current Stuwiz terminology.
 
 ---
 
 ## Table of Contents
 
 1. [Executive Summary](#executive-summary)
-2. [Source Application: W-Tales Studio](#source-application-w-tales-studio)
-3. [Target Template: Lumen Monorepo](#target-template-lumen-monorepo)
+2. [Source Application: Legacy Studio App](#source-application-legacy-studio-app)
+3. [Target Application: Stuwiz Monorepo](#target-application-stuwiz-monorepo)
 4. [Schema Review & Improvements](#schema-review--improvements)
 5. [Schema Comparison](#schema-comparison)
 6. [Final Unified Schema Plan](#final-unified-schema-plan)
@@ -27,16 +28,16 @@
 
 ## Executive Summary
 
-This document outlines the migration plan for porting **W-Tales Studio** (a photography/videography studio management application) to the **Lumen SaaS monorepo template**.
+This document outlines the migration plan for porting the legacy studio management application to the **Stuwiz** monorepo.
 
 ### Goals
-- Leverage Lumen's mature SaaS infrastructure (auth, billing, monorepo structure)
-- Preserve all W-Tales domain functionality (bookings, shoots, crews, deliverables, payments)
+- Leverage Stuwiz's SaaS infrastructure (auth, billing, monorepo structure)
+- Preserve legacy domain functionality (bookings, shoots, crews, deliverables, payments)
 - Apply schema improvements identified during review
 - Maintain clean separation of concerns via monorepo packages
 
 ### Key Metrics
-| Metric | W-Tales | Lumen | Final |
+| Metric | Legacy App | Stuwiz | Final |
 |--------|---------|-------------|-------|
 | Database Tables | 30+ | 8 | ~35 |
 | API Endpoints | ~50 | ~20 | ~70 |
@@ -45,10 +46,10 @@ This document outlines the migration plan for porting **W-Tales Studio** (a phot
 
 ---
 
-## Source Application: W-Tales Studio
+## Source Application: Legacy Studio App
 
 ### Overview
-**W-Tales Studio** is a comprehensive studio management application designed for wedding/event photography studios. It provides tools for managing the entire workflow from client booking to final deliverable handoff.
+The legacy studio app is a comprehensive studio management application designed for wedding/event photography studios. It provides tools for managing the entire workflow from client booking to final deliverable handoff.
 
 ### Tech Stack
 | Layer | Technology |
@@ -110,7 +111,7 @@ This document outlines the migration plan for porting **W-Tales Studio** (a phot
 
 ### File Structure
 ```
-w-tales/
+legacy-studio-app/
 ├── src/
 │   ├── app/
 │   │   ├── (dashboard)/          # Main app routes
@@ -141,10 +142,10 @@ w-tales/
 
 ---
 
-## Target Template: Lumen Monorepo
+## Target Application: Stuwiz Monorepo
 
 ### Overview
-**Lumen** is a production-ready SaaS starter template built as a PNPM monorepo with Turborepo orchestration. It provides authentication, organization management, payments, and a solid foundation for B2B SaaS applications.
+**Stuwiz** is the current PNPM monorepo application built with Turborepo orchestration. It provides authentication, organization management, payments, and a solid foundation for B2B SaaS applications.
 
 ### Tech Stack
 | Layer | Technology |
@@ -389,18 +390,18 @@ Added constraints in the current schema:
 
 ### Side-by-Side Analysis
 
-| Aspect | Lumen | W-Tales | Decision |
+| Aspect | Stuwiz | Legacy App | Decision |
 |--------|-------------|---------|----------|
 | **ID Strategy** | UUIDv7 (`varchar(255)`) | `text` for auth, `serial` for domain | Use UUIDv7 for all |
 | **Timestamp TZ** | No timezone | Mixed | Standardize: withTimezone |
-| **Auth Tables** | Full (with 2FA) | Basic | Keep Lumen |
+| **Auth Tables** | Full (with 2FA) | Basic | Keep Stuwiz core |
 | **Org Tables** | organizations, members, invitations | Same + activityLogs | Merge |
-| **SaaS Billing** | purchases, webhookEvents | None | Keep Lumen |
+| **SaaS Billing** | purchases, webhookEvents | None | Keep Stuwiz core |
 | **Domain Tables** | None | 25+ tables | Add with improvements |
 
 ### Tables Inventory
 
-#### Keep from Lumen (10 tables)
+#### Keep from Stuwiz core (10 tables)
 ```
 ✅ users (enhanced)
 ✅ sessions
@@ -414,7 +415,7 @@ Added constraints in the current schema:
 ✅ webhookEvents
 ```
 
-#### Add from W-Tales (25+ tables)
+#### Add from legacy app (25+ tables)
 ```
 📦 configurations
 👥 clients
@@ -597,7 +598,7 @@ export const messageStatusEnum = pgEnum("message_status", [
   "sent", "delivered", "read", "failed"
 ]);
 
-// SaaS Billing (from Lumen)
+// SaaS Billing (from Stuwiz core)
 export const purchaseTypeEnum = pgEnum("purchase_type", [
   "SUBSCRIPTION", "ONE_TIME"
 ]);
@@ -826,8 +827,8 @@ export const receivedAmounts = pgTable("received_amounts", {
 | Task | Description | Status |
 |------|-------------|--------|
 | 1.1 | Create enum definitions file | ✅ |
-| 1.2 | Update auth tables (keep Lumen) | ✅ |
-| 1.3 | Keep billing tables (Lumen) | ✅ |
+| 1.2 | Update auth tables (keep Stuwiz core) | ✅ |
+| 1.3 | Keep billing tables (Stuwiz core) | ✅ |
 | 1.4 | Add configurations table | ✅ |
 | 1.5 | Add clients table | ✅ |
 | 1.6 | Add bookings + participants + events | ✅ |
@@ -1046,7 +1047,7 @@ apps/web/modules/saas/studio/bookings/
 4. **URL State:** nuqs for filter/pagination
 5. **Tables:** TanStack Table with server-side pagination
 
-### W-Tales Reference Files
+### Legacy Reference Files
 
 **Pages:** `/app/(dashboard)/bookings/`, `/app/(dashboard)/clients/`, etc.
 **Hooks:** `/hooks/use-bookings.ts`, `/hooks/use-booking-mutation.ts`
@@ -1064,7 +1065,7 @@ apps/web/modules/saas/studio/bookings/
 | 2 | ID Strategy for Domain | UUIDv7 / Serial | UUIDv7 (consistency) | ⬜ Pending |
 | 3 | Activity Logs | Enhanced / Simple | Enhanced (resource tracking) | ⬜ Pending |
 | 4 | Package Templates | Structured / Text | Defer (use text initially) | ⬜ Pending |
-| 5 | i18n | Keep / Remove | Keep (already in Lumen) | ⬜ Pending |
+| 5 | i18n | Keep / Remove | Keep (already in Stuwiz) | ⬜ Pending |
 | 6 | User Billing vs Org Billing | Both / Org Only | Org Only (B2B focus) | ⬜ Pending |
 
 ### Approved Decisions
@@ -1084,14 +1085,14 @@ apps/web/modules/saas/studio/bookings/
 - [Next.js App Router](https://nextjs.org/docs/app)
 
 ### Repository Links
-- Source: W-Tales MVP repository
+- Source: Legacy studio MVP repository
 - Target: This repository (studio-saas-monorepo)
 
 ### Key Files
-- W-Tales Schema: `<w-tales>/src/lib/db/schema.ts`
-- Lumen Schema: `packages/database/drizzle/schema/studio.ts`
-- W-Tales Auth: `<w-tales>/src/lib/auth/index.ts`
-- W-Tales Permissions: `<w-tales>/src/lib/auth/permission.ts`
+- Legacy Schema: `<legacy-source-app>/src/lib/db/schema.ts`
+- Stuwiz Schema: `packages/database/drizzle/schema/studio.ts`
+- Legacy Auth: `<legacy-source-app>/src/lib/auth/index.ts`
+- Legacy Permissions: `<legacy-source-app>/src/lib/auth/permission.ts`
 
 ---
 

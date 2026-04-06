@@ -7,7 +7,7 @@ describe("deriveStudioPrefix", () => {
 	});
 
 	it("two words → initials uppercase", () => {
-		expect(deriveStudioPrefix("Acme Studios")).toBe("AS");
+		expect(deriveStudioPrefix("Studio Wiz")).toBe("SW");
 	});
 
 	it("three or more words → first 3 initials uppercase", () => {
@@ -47,6 +47,6 @@ describe("deriveStudioPrefix", () => {
 	});
 
 	it("handles extra whitespace between words", () => {
-		expect(deriveStudioPrefix("  Acme   Studios  ")).toBe("AS");
+		expect(deriveStudioPrefix("  Studio   Wiz  ")).toBe("SW");
 	});
 });

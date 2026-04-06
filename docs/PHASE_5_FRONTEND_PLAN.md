@@ -2,8 +2,9 @@
 
 > **Status**: Planning
 > **Created**: 2024-12-19
-> **Source**: W-Tales `/Users/rakesh/Developer/winter-arc/w-tales/src`
-> **Target**: Lumen `/Users/rakesh/Developer/agency/studio-saas-monorepo/apps/web`
+> **Source**: Legacy source app `<legacy-source-app>/src`
+> **Target**: Stuwiz `/Users/rakesh/Developer/agency/studio-saas-monorepo/apps/web`
+> **Note**: Historical planning doc. Legacy product names normalized to current Stuwiz terminology.
 
 ---
 
@@ -24,11 +25,11 @@
 
 ## Overview
 
-Phase 5 migrates the W-Tales frontend to the Lumen monorepo structure. The goal is to port all UI routes, components, hooks, and patterns while adapting them to use the new oRPC API layer created in Phase 4.
+Phase 5 migrates the legacy frontend to the Stuwiz monorepo structure. The goal is to port all UI routes, components, hooks, and patterns while adapting them to use the new oRPC API layer created in Phase 4.
 
-### Key Changes from W-Tales
+### Key Changes from the Legacy App
 
-| Aspect | W-Tales | Lumen |
+| Aspect | Legacy App | Stuwiz |
 |--------|---------|-------------|
 | API Layer | Next.js API routes + fetch | oRPC procedures + client |
 | Data Fetching | Custom hooks + fetch | oRPC client + React Query |
@@ -41,7 +42,7 @@ Phase 5 migrates the W-Tales frontend to the Lumen monorepo structure. The goal 
 
 ## Source Analysis Summary
 
-### W-Tales Frontend Statistics
+### Legacy Frontend Statistics
 
 | Category | Count | Notes |
 |----------|-------|-------|
@@ -89,10 +90,10 @@ We'll migrate feature-by-feature rather than all-at-once:
 
 ### Key Principle: Adapt, Don't Copy
 
-- **Don't**: Copy W-Tales code verbatim
+- **Don't**: Copy legacy app code verbatim
 - **Do**: Adapt patterns to use oRPC client
-- **Do**: Follow Lumen conventions where they exist
-- **Do**: Improve patterns where W-Tales has issues
+- **Do**: Follow Stuwiz conventions where they exist
+- **Do**: Improve patterns where the legacy app has issues
 
 ---
 
@@ -100,7 +101,7 @@ We'll migrate feature-by-feature rather than all-at-once:
 
 ### 1. Route Structure
 
-**Lumen Pattern** (URL-based org):
+**Stuwiz Pattern** (URL-based org):
 ```
 /app/[organizationSlug]/
 ├── dashboard/
@@ -109,7 +110,7 @@ We'll migrate feature-by-feature rather than all-at-once:
 └── ...
 ```
 
-**W-Tales Pattern** (session-based org):
+**Legacy Pattern** (session-based org):
 ```
 /(dashboard)/
 ├── dashboard/
@@ -117,14 +118,14 @@ We'll migrate feature-by-feature rather than all-at-once:
 └── ...
 ```
 
-**Decision**: Use Lumen's URL-based organization pattern. This is better for:
+**Decision**: Use Stuwiz's URL-based organization pattern. This is better for:
 - Multi-tab workflows (different orgs in different tabs)
 - Bookmarkable URLs
 - SSR with org context
 
 ### 2. Data Fetching with oRPC
 
-**W-Tales Pattern**:
+**Legacy Pattern**:
 ```typescript
 // Custom hook with fetch
 export function useBookings() {
@@ -135,7 +136,7 @@ export function useBookings() {
 }
 ```
 
-**Lumen Pattern** (oRPC):
+**Stuwiz Pattern** (oRPC):
 ```typescript
 // Using oRPC client
 import { useSuspenseQuery } from "@tanstack/react-query";
@@ -156,7 +157,7 @@ export function useBookings(filters: BookingFilters) {
 
 ### 3. Mutation Pattern
 
-**W-Tales Pattern**:
+**Legacy Pattern**:
 ```typescript
 export function useCreateBooking() {
   return useMutation({
@@ -168,7 +169,7 @@ export function useCreateBooking() {
 }
 ```
 
-**Lumen Pattern**:
+**Stuwiz Pattern**:
 ```typescript
 export function useCreateBooking() {
   const utils = orpc.useUtils();
@@ -185,7 +186,7 @@ export function useCreateBooking() {
 
 ### 4. Permission Checking
 
-**W-Tales Pattern** (client hooks):
+**Legacy Pattern** (client hooks):
 ```typescript
 export function useBookingPermissions() {
   const { session } = useSession();
@@ -198,7 +199,7 @@ export function useBookingPermissions() {
 }
 ```
 
-**Lumen Pattern** (same, but with context):
+**Stuwiz Pattern** (same, but with context):
 ```typescript
 export function useBookingPermissions() {
   const { membership } = useStudioContext();
@@ -269,14 +270,14 @@ apps/web/
 │   ├── expense.ts
 │   └── data-table.ts
 └── components/
-    ├── data-table/             # Port from W-Tales
+    ├── data-table/             # Port from legacy app
     │   ├── data-table.tsx
     │   ├── data-table-toolbar.tsx
     │   ├── data-table-pagination.tsx
     │   ├── data-table-faceted-filter.tsx
     │   ├── data-table-date-filter.tsx
     │   └── data-table-view-options.tsx
-    └── form/                   # Port from W-Tales
+    └── form/                   # Port from legacy app
         ├── text-field.tsx
         ├── select-field.tsx
         ├── date-field.tsx
@@ -728,7 +729,7 @@ apps/web/app/(saas)/app/[organizationSlug]/settings/
 
 ### Hooks to Port (66 total)
 
-| W-Tales Hook | Target Location | Adaptation Needed |
+| Legacy Hook | Target Location | Adaptation Needed |
 |--------------|-----------------|-------------------|
 | `use-bookings.ts` | `bookings/_hooks/` | Use oRPC client |
 | `use-booking-mutation.ts` | `bookings/_hooks/` | Use oRPC mutations |
@@ -741,7 +742,7 @@ apps/web/app/(saas)/app/[organizationSlug]/settings/
 
 ### Components to Port
 
-| Category | W-Tales Location | Target Location |
+| Category | Legacy Location | Target Location |
 |----------|------------------|-----------------|
 | Data Table | `components/data-table/` | `components/data-table/` |
 | Form Fields | `components/form/` | `components/form/` |
@@ -750,7 +751,7 @@ apps/web/app/(saas)/app/[organizationSlug]/settings/
 
 ### Types to Port
 
-| W-Tales File | Target | Notes |
+| Legacy File | Target | Notes |
 |--------------|--------|-------|
 | `types/booking.ts` | `types/booking.ts` | Align with API types |
 | `types/shoot.ts` | `types/shoot.ts` | |
@@ -910,7 +911,7 @@ function CreateBookingButton() {
 ### Data Fetching Hook Template
 
 ```typescript
-// Before (W-Tales)
+// Before (Legacy)
 export function useBookings() {
   const searchParams = useSearchParams();
 
@@ -924,7 +925,7 @@ export function useBookings() {
   });
 }
 
-// After (Lumen)
+// After (Stuwiz)
 export function useBookings(filters: ListBookingsInput) {
   return useSuspenseQuery(
     orpc.bookings.list.queryOptions({ input: filters })
@@ -935,7 +936,7 @@ export function useBookings(filters: ListBookingsInput) {
 ### Mutation Hook Template
 
 ```typescript
-// Before (W-Tales)
+// Before (Legacy)
 export function useCreateBooking() {
   const queryClient = useQueryClient();
 
@@ -959,7 +960,7 @@ export function useCreateBooking() {
   });
 }
 
-// After (Lumen)
+// After (Stuwiz)
 export function useCreateBooking() {
   const utils = orpc.useUtils();
 

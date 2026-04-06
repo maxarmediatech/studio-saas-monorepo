@@ -1,10 +1,11 @@
-# W-Tales Studio - Missing Features & Roadmap
+# Legacy Studio Feature Gap Audit
 
-> **Repository:** `/Users/rakesh/Developer/winter-arc/w-tales`
+> **Repository:** `<legacy-source-app>`
 > **Last Updated:** 2024-12-20
 > **Status:** Early Beta / MVP (60-70% Production Ready)
+> **Note:** Historical planning doc from the pre-Stuwiz product.
 
-This document tracks all missing, incomplete, and planned features for the W-Tales Photography Studio Management SaaS platform.
+This document tracks missing, incomplete, and planned features from the legacy studio management product that preceded Stuwiz.
 
 ---
 
@@ -975,4 +976,4 @@ When adding a new feature:
 
 ---
 
-*This document is maintained as the single source of truth for W-Tales feature planning.*
+*This document is maintained as the single source of truth for legacy feature planning.*

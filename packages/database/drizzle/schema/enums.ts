@@ -200,13 +200,13 @@ export const messageStatusEnum = pgEnum("message_status", [
 ]);
 
 // ----------------------------------------------------------------------------
-// SaaS Billing (from NebulaForge)
+// SaaS Billing
 // ----------------------------------------------------------------------------
 
 /**
  * Purchase type - subscription or one-time payment
  * Used for SaaS subscription management
- * Note: Using "purchaseType" (camelCase) to match existing NebulaForge schema
+ * Note: Using "purchaseType" (camelCase) to preserve the existing database shape
  */
 export const purchaseTypeEnum = pgEnum("purchaseType", [
 	"SUBSCRIPTION",

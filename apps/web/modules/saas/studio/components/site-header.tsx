@@ -30,8 +30,8 @@ export function SiteHeader({
 		<header className="fixed top-0 right-0 left-0 z-30 bg-white md:hidden">
 			<div className="flex h-14 items-center gap-2 border-b border-neutral-200 bg-white px-3">
 				<div className="flex min-w-0 flex-1 items-center gap-1.5">
-					<Link href={homePath}>
-						<Logo withLabel={false} className="size-6 shrink-0" />
+					<Link href={homePath} className="shrink-0">
+						<Logo className="h-7 w-[5.1rem]" />
 					</Link>
 					<OrganizationSwitcher
 						studioName={studioName}

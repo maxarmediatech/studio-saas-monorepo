@@ -11,7 +11,7 @@ import { v7 as uuidv7 } from "uuid";
 
 // ============================================================================
 // AUTH TABLES
-// Core authentication tables from NebulaForge + better-auth
+// Core authentication tables powered by better-auth
 // Note: userRelations is defined in core.ts as it spans multiple files
 // ============================================================================
 

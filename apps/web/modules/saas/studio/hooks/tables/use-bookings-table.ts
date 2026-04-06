@@ -29,7 +29,7 @@ export interface BookingFilters {
 
 /**
  * nuqs parsers for booking-specific filters
- * Using comma separator for array values to match w-tales pattern
+ * Using comma separators for array values to match our existing URL filter shape
  */
 const bookingFilterParsers = {
 	statuses: parseAsArrayOf(parseAsStringLiteral(BOOKING_PHASES)),

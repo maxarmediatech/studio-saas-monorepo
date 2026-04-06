@@ -41,9 +41,9 @@ export function SidebarRail({
 				<div className="pb-1 pt-2">
 					<Link
 						href={`/app/${studioSlug}/home`}
-						className="block rounded-lg px-1 py-4 outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-black/50"
+						className="block rounded-xl outline-none transition-opacity duration-150 hover:opacity-85 focus-visible:ring-2 focus-visible:ring-black/50"
 					>
-						<Logo withLabel={false} className="h-5" />
+						<Logo variant="badge" className="h-9 w-[3.15rem]" />
 					</Link>
 				</div>
 

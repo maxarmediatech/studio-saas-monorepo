@@ -7,29 +7,29 @@ import {
 test.describe("notification routes", () => {
 	test("builds task detail routes", () => {
 		expect(
-			getNotificationEntityHref("acme", {
+			getNotificationEntityHref("stuwiz", {
 				entityType: "task",
 				entityId: "task_123",
 			}),
-		).toBe("/app/acme/tasks/task_123");
+		).toBe("/app/stuwiz/tasks/task_123");
 	});
 
 	test("builds deliverable detail routes", () => {
 		expect(
-			getNotificationEntityHref("acme", {
+			getNotificationEntityHref("stuwiz", {
 				entityType: "deliverable",
 				entityId: "del_123",
 			}),
-		).toBe("/app/acme/deliverables/del_123");
+		).toBe("/app/stuwiz/deliverables/del_123");
 	});
 
 	test("builds shoot detail routes", () => {
 		expect(
-			getNotificationEntityHref("acme", {
+			getNotificationEntityHref("stuwiz", {
 				entityType: "shoot",
 				entityId: "shoot_123",
 			}),
-		).toBe("/app/acme/shoots/shoot_123");
+		).toBe("/app/stuwiz/shoots/shoot_123");
 	});
 
 	test("returns null when organization slug is unavailable", () => {
@@ -42,8 +42,8 @@ test.describe("notification routes", () => {
 	});
 
 	test("builds notifications page route", () => {
-		expect(getNotificationsPageHref("acme")).toBe(
-			"/app/acme/notifications",
+		expect(getNotificationsPageHref("stuwiz")).toBe(
+			"/app/stuwiz/notifications",
 		);
 	});
 });

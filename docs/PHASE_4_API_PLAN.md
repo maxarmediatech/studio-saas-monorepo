@@ -22,7 +22,7 @@
 
 ## Overview
 
-Phase 4 ports the W-Tales API routes to oRPC, following the NebulaForge patterns. The goal is to create a type-safe, well-documented API layer that supports both RPC-style and REST-style endpoints.
+Phase 4 ports the legacy app API routes to oRPC, following the current monorepo API patterns. The goal is to create a type-safe, well-documented API layer that supports both RPC-style and REST-style endpoints.
 
 ---
 
@@ -112,7 +112,7 @@ import { createBookingSchema, bookingFiltersSchema } from "../studio/schemas/boo
 
 ### 4. Response Envelope Standard
 
-**All responses MUST follow the NebulaForge pattern:**
+**All responses MUST follow the standard API envelope:**
 
 ```typescript
 // List response (matches existing /api/users pattern)
@@ -138,7 +138,7 @@ interface MutationResponse {
 }
 ```
 
-**Note**: Existing NebulaForge endpoints use `{ users, total }` style. New studio endpoints will use `{ data, pagination }` style for consistency within the studio domain. No compatibility layer needed as these are new endpoints.
+**Note**: Existing endpoints use `{ users, total }` style. New studio endpoints will use `{ data, pagination }` style for consistency within the studio domain. No compatibility layer needed as these are new endpoints.
 
 ### 5. Money Field Handling
 
@@ -160,7 +160,7 @@ const cost = new Decimal(input.packageCost);
 
 **Rationale**: JSON lacks a decimal type. Strings preserve precision and avoid floating-point errors.
 
-### Key Patterns from NebulaForge
+### Key Module Patterns
 
 ```
 /packages/api/modules/{domain}/
@@ -336,7 +336,7 @@ const { data } = await client.bookings.list({
 │   └── studio/
 │       ├── lib/
 │       │   ├── permissions.ts     # RBAC permission helpers (requirePermission, hasPermission)
-│       │   ├── roles.ts           # Role definitions (port from W-Tales)
+│       │   ├── roles.ts           # Role definitions (port from legacy app)
 │       │   ├── queries.ts         # Shared query utilities (scoped finders)
 │       │   └── transactions.ts    # Transaction helpers
 │       └── schemas/               # ← SINGLE SOURCE OF TRUTH FOR ALL SCHEMAS
@@ -796,7 +796,7 @@ Based on dependencies and complexity:
 
 ```typescript
 // /modules/studio/lib/transactions.ts
-import { db } from "@acme/database";
+import { db } from "@repo/database";
 
 export async function withTransaction<T>(
   fn: (tx: typeof db) => Promise<T>

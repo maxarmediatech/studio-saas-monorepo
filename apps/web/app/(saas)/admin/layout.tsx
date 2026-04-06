@@ -2,9 +2,9 @@ import { config } from "@repo/config";
 import { resolveAppRedirectPath } from "@saas/auth/lib/redirects";
 import { getSession } from "@saas/auth/lib/server";
 import { SettingsMenu } from "@saas/settings/components/SettingsMenu";
+import { ConfirmationAlertProvider } from "@saas/shared/components/ConfirmationAlertProvider";
 import { PageHeader } from "@saas/shared/components/PageHeader";
 import { SidebarContentLayout } from "@saas/shared/components/SidebarContentLayout";
-import { ConfirmationAlertProvider } from "@saas/shared/components/ConfirmationAlertProvider";
 import { Logo } from "@shared/components/Logo";
 import { Building2Icon, UsersIcon } from "lucide-react";
 import { cookies } from "next/headers";
@@ -48,8 +48,8 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
 								{
 									avatar: (
 										<Logo
-											className="size-8"
-											withLabel={false}
+											className="h-8 w-[2.9rem]"
+											variant="badge"
 										/>
 									),
 									title: t("admin.title"),
