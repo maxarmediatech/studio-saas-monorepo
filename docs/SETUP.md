@@ -210,6 +210,11 @@ EMAIL_BASE_URL="https://app.stuwiz.com"
 EMAIL_ASSET_BASE_URL="https://app.stuwiz.com"
 ```
 
+Auth email action links follow the origin that triggered the request
+(`localhost`, tunnel, preview, or production). `EMAIL_BASE_URL` and
+`EMAIL_ASSET_BASE_URL` still need to stay public for delivery checks and email
+assets.
+
 ---
 
 ## SMS Provider Setup (MSG91)

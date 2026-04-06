@@ -12,7 +12,7 @@ import type { Locale } from "@repo/i18n";
 import { logger } from "@repo/logs";
 import { sendEmail } from "@repo/mail";
 import { cancelSubscription } from "@repo/payments";
-import { getBaseUrl } from "@repo/utils";
+import { getBaseUrl, getRequestBaseUrl, toRequestAppUrl } from "@repo/utils";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import {
@@ -354,13 +354,11 @@ export const auth = betterAuth({
 				request,
 			) => {
 				const locale = getLocaleFromRequest(request);
-				// Keep auth action links on the issuing app origin so localhost emails
-				// still round-trip to localhost during development.
 				await sendAuthEmail("change_email_verification", {
 					to: email,
 					templateId: "emailVerification",
 					context: {
-						url,
+						url: toRequestAppUrl(url, request, appUrl),
 						name,
 					},
 					locale,
@@ -380,7 +378,7 @@ export const auth = betterAuth({
 				to: user.email,
 				templateId: "forgotPassword",
 				context: {
-					url,
+					url: toRequestAppUrl(url, request, appUrl),
 					name: user.name,
 				},
 				locale,
@@ -399,7 +397,7 @@ export const auth = betterAuth({
 				to: email,
 				templateId: "emailVerification",
 				context: {
-					url,
+					url: toRequestAppUrl(url, request, appUrl),
 					name,
 				},
 				locale,
@@ -433,7 +431,7 @@ export const auth = betterAuth({
 					to: email,
 					templateId: "magicLink",
 					context: {
-						url,
+						url: toRequestAppUrl(url, request, appUrl),
 					},
 					locale,
 				});
@@ -516,7 +514,7 @@ export const auth = betterAuth({
 
 					const url = new URL(
 						existingUser ? "/auth/login" : "/auth/signup",
-						appUrl,
+						getRequestBaseUrl(request) ?? appUrl,
 					);
 
 					url.searchParams.set("invitationId", id);
