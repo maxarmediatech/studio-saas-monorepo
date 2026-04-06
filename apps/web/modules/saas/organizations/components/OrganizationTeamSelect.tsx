@@ -1,6 +1,5 @@
 "use client";
 
-import { Skeleton } from "@repo/ui/components/skeleton";
 import {
 	Select,
 	SelectContent,
@@ -8,6 +7,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@repo/ui/components/select";
+import { Skeleton } from "@repo/ui/components/skeleton";
 import { useOrganizationTeamsQuery } from "@saas/organizations/lib/api";
 import { useMemo } from "react";
 
@@ -18,15 +18,20 @@ export function OrganizationTeamSelect({
 	value,
 	onSelect,
 	disabled,
+	enabled = true,
 }: {
 	organizationId: string;
 	value: string | null | undefined;
 	onSelect: (value: string | null) => void;
 	disabled?: boolean;
+	enabled?: boolean;
 }) {
-	const { data: teams, isLoading } = useOrganizationTeamsQuery(organizationId, {
-		enabled: Boolean(organizationId),
-	});
+	const { data: teams, isLoading } = useOrganizationTeamsQuery(
+		organizationId,
+		{
+			enabled: enabled && Boolean(organizationId),
+		},
+	);
 
 	const options = useMemo(
 		() =>
@@ -37,7 +42,7 @@ export function OrganizationTeamSelect({
 		[teams],
 	);
 
-	if (isLoading) {
+	if (enabled && isLoading) {
 		return <Skeleton className="h-10 w-36" />;
 	}
 

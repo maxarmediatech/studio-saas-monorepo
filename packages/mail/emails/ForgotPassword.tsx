@@ -20,16 +20,22 @@ export function ForgotPassword({
 	});
 
 	return (
-		<Wrapper>
+		<Wrapper preview={t("mail.forgotPassword.preview")}>
 			<Text>{t("mail.forgotPassword.body")}</Text>
 
 			<PrimaryButton href={url}>
 				{t("mail.forgotPassword.resetPassword")} &rarr;
 			</PrimaryButton>
 
-			<Text className="text-muted-foreground text-sm">
+			<Text className="mt-6 text-brandMuted text-sm leading-6">
 				{t("mail.common.openLinkInBrowser")}
-				<Link href={url}>{url}</Link>
+				<Link
+					href={url}
+					className="text-brandLink"
+					style={{ wordBreak: "break-all" }}
+				>
+					{url}
+				</Link>
 			</Text>
 		</Wrapper>
 	);

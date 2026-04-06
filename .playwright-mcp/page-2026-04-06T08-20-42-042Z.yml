@@ -1,0 +1,53 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e5]:
+      - link "Stuwiz logo" [ref=e6] [cursor=pointer]:
+        - /url: /
+        - img "Stuwiz logo" [ref=e8]
+      - button "Language" [ref=e10] [cursor=pointer]:
+        - img
+    - main [ref=e12]:
+      - generic [ref=e13]:
+        - heading "Welcome back" [level=1] [ref=e14]
+        - paragraph [ref=e15]: Please enter your credentials to sign in.
+        - button "Sign in with Google" [ref=e17] [cursor=pointer]:
+          - generic [ref=e18]:
+            - img
+          - text: Sign in with Google
+        - generic [ref=e19]:
+          - separator [ref=e20]
+          - paragraph [ref=e21]: Or continue with
+        - generic [ref=e22]:
+          - tablist [ref=e24]:
+            - tab "Password" [selected] [ref=e25] [cursor=pointer]
+            - tab "Magic link" [ref=e26] [cursor=pointer]
+          - generic [ref=e27]:
+            - generic [ref=e28]: Email
+            - textbox "Email" [ref=e29]
+          - generic [ref=e30]:
+            - generic [ref=e31]:
+              - generic [ref=e32]: Password
+              - link "Forgot password?" [ref=e33] [cursor=pointer]:
+                - /url: /auth/forgot-password
+            - generic [ref=e34]:
+              - textbox [ref=e35]
+              - button [ref=e36] [cursor=pointer]:
+                - img [ref=e37]
+          - button "Sign in" [ref=e40] [cursor=pointer]:
+            - generic [ref=e41]: Sign in
+        - generic [ref=e42]:
+          - generic [ref=e43]: Don't have an account yet?
+          - link "Create an account" [ref=e44] [cursor=pointer]:
+            - /url: /auth/signup?redirectTo=%2Fapp%2Fmaxar-media%2Fsettings%2Finvitations
+            - text: Create an account
+            - img [ref=e45]
+    - contentinfo [ref=e47]:
+      - link "Privacy policy" [ref=e48] [cursor=pointer]:
+        - /url: /legal/privacy-policy
+      - text: "|"
+      - link "Terms and conditions" [ref=e49] [cursor=pointer]:
+        - /url: /legal/terms
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e55] [cursor=pointer]:
+    - img [ref=e56]
+  - alert [ref=e59]

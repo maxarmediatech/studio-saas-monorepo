@@ -10,7 +10,14 @@ export default function PrimaryButton({
 	return (
 		<Button
 			href={href}
-			className="rounded-full bg-primary px-4 py-2 text-lg text-primary-foreground"
+			className="rounded-full px-5 py-3 text-base font-semibold no-underline"
+			style={{
+				backgroundColor: "#18181b",
+				color: "#ffffff",
+				display: "inline-block",
+				fontWeight: 600,
+				textDecoration: "none",
+			}}
 		>
 			{children}
 		</Button>

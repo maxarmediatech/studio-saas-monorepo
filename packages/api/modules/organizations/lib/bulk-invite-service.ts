@@ -1,14 +1,14 @@
 import {
 	BULK_INVITE_MAX_EMAILS,
+	type BulkInviteInput,
 	BulkInviteLimitError,
+	type BulkInviteOutput,
+	type BulkInviteResult,
 	buildBulkInviteSummary,
 	bulkInviteOutputSchema,
 	classifyBulkInviteErrorMessage,
 	normalizeBulkInviteEmail,
 	prepareBulkInviteBatch,
-	type BulkInviteInput,
-	type BulkInviteOutput,
-	type BulkInviteResult,
 } from "./bulk-invitations";
 
 export interface ExistingPendingInvitation {
@@ -21,6 +21,11 @@ export interface ExecuteBulkInviteBatchDeps {
 	findPendingInvitations: (
 		emails: string[],
 	) => Promise<ExistingPendingInvitation[]>;
+	beforeCreateInvitation?: (input: {
+		email: string;
+		role: string[];
+		teamId?: string | null;
+	}) => Promise<void> | void;
 	createInvitation: (input: {
 		email: string;
 		role: string[];
@@ -123,11 +128,13 @@ export async function executeBulkInviteBatch(
 		}
 
 		try {
-			const invitation = await deps.createInvitation({
+			const invitationInput = {
 				email: entry.email,
 				role: input.role,
 				teamId: input.teamId ?? null,
-			});
+			};
+			await deps.beforeCreateInvitation?.(invitationInput);
+			const invitation = await deps.createInvitation(invitationInput);
 
 			results.push({
 				email: entry.email,

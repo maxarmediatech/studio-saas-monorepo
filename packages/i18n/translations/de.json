@@ -244,32 +244,38 @@
 		"emailVerification": {
 			"body": "Hallo!\nbitte klicke auf den unten stehenden Link, um diese neue E-Mail-Adresse zu bestätigen.",
 			"confirmEmail": "E-Mail verifizieren",
+			"preview": "Bestätige deine E-Mail-Adresse, um dein Stuwiz-Konto zu sichern.",
 			"subject": "E-Mail bestätigen"
 		},
 		"forgotPassword": {
 			"body": "Hallo,\n\ndu hast eine Passwortzurücksetzung beantragt.\n\n\nKlicke auf den unten stehenden Link, um dein Passwort zurückzusetzen.",
+			"preview": "Setze dein Stuwiz-Passwort mit diesem sicheren Link zurück.",
 			"resetPassword": "Passwort zurücksetzen",
 			"subject": "Passwort zurücksetzen"
 		},
 		"magicLink": {
 			"body": "Hey,\ndu hast eine Anmelde-E-Mail von Stuwiz angefordert.\n\nKlicke auf den unten stehenden Link, um dich anzumelden.",
 			"login": "Login",
+			"preview": "Nutze diesen sicheren Link, um dich bei Stuwiz anzumelden.",
 			"subject": "Login bei Stuwiz"
 		},
 		"newUser": {
 			"body": "Hallo,\n\nVielen Dank, dass du dich bei Stuwiz angemeldet hast.\n\n\nUm mit der Nutzung unserer App zu beginnen, bestätige bitte deine E-Mail-Adresse, indem du auf den untenstehenden Link klickst.",
 			"confirmEmail": "E-Mail bestätigen",
+			"preview": "Bestätige deine E-Mail, um mit Stuwiz loszulegen.",
 			"subject": "E-Mail bestätigen"
 		},
 		"newsletterSignup": {
 			"body": "Vielen Dank, dass du dich für den Stuwiz-Newsletter angemeldet hast. \nWir halten dich mit den neuesten Nachrichten und Updates auf dem Laufenden.",
+			"preview": "Du bist jetzt auf der Liste für Stuwiz-Updates.",
 			"subject": "Willkommen bei unserem Newsletter"
 		},
 		"organizationInvitation": {
 			"body": "Du wurdest eingeladen, dem Studio {organizationName} beizutreten. Klicke auf den Button unten oder kopiere den Link und füge ihn in den Browser deiner Wahl ein, um die Einladung anzunehmen und dem Studio beizutreten.",
 			"headline": "Einladung zum Studio {organizationName}",
-			"join": "Tritt dem Studio bei",
-			"subject": "Du wurdest eingeladen, einem Studio beizutreten"
+			"join": "{organizationName} beitreten",
+			"preview": "{organizationName} hat dich zu Stuwiz eingeladen.",
+			"subject": "{organizationName} hat dich zu Stuwiz eingeladen"
 		}
 	},
 	"newsletter": {

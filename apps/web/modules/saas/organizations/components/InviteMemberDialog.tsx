@@ -353,6 +353,7 @@ export function InviteMemberDialog({
 										<OrganizationRoleSelect
 											value={field.value}
 											onSelect={field.onChange}
+											enabled={open}
 											excludeOwnerRole
 										/>
 									</FormControl>
@@ -371,6 +372,7 @@ export function InviteMemberDialog({
 											organizationId={organizationId}
 											value={field.value}
 											onSelect={field.onChange}
+											enabled={open}
 										/>
 									</FormControl>
 								</FormItem>

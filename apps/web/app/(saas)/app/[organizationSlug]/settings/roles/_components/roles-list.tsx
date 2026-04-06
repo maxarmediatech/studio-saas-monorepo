@@ -85,7 +85,7 @@ export function RolesList({ canManage, createSignal }: RolesListProps) {
 	const lastCreateSignal = useRef(createSignal);
 
 	const { data: customRoles, isLoading } = useQuery(
-		orpc.organizations.roles.list.queryOptions({}),
+		orpc.organizations.roles.list.queryOptions(),
 	);
 
 	const deleteRoleMutation = useMutation({

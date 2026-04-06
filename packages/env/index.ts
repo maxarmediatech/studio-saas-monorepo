@@ -8,6 +8,12 @@ export const env = createEnv({
 		DATABASE_URL: optionalString,
 		BETTER_AUTH_SECRET: optionalString,
 		NEXT_PUBLIC_SITE_URL: optionalString,
+		RESEND_API_KEY: optionalString,
+		EMAIL_FROM_NAME: optionalString,
+		EMAIL_FROM_ADDRESS: optionalString,
+		EMAIL_REPLY_TO: optionalString,
+		EMAIL_BASE_URL: optionalString,
+		EMAIL_ASSET_BASE_URL: optionalString,
 		S3_ACCESS_KEY_ID: optionalString,
 		S3_SECRET_ACCESS_KEY: optionalString,
 		S3_ENDPOINT: optionalString,
@@ -44,10 +50,20 @@ const paymentsEnvSchema = z.object({
 	DODO_PRODUCT_ID_STUDIO_BASICS_YEARLY: z.string().min(1),
 });
 
+const mailEnvSchema = z.object({
+	RESEND_API_KEY: z.string().min(1),
+	EMAIL_FROM_NAME: z.string().min(1).default("Stuwiz"),
+	EMAIL_FROM_ADDRESS: z.string().email(),
+	EMAIL_BASE_URL: z.string().url(),
+	EMAIL_ASSET_BASE_URL: z.string().url().optional(),
+	EMAIL_REPLY_TO: z.string().email().optional(),
+});
+
 export type EnvConfigErrorCode =
 	| "ENV_CORE_MISSING"
 	| "ENV_STORAGE_MISSING"
-	| "ENV_PAYMENTS_MISSING";
+	| "ENV_PAYMENTS_MISSING"
+	| "ENV_MAIL_MISSING";
 
 export class EnvConfigError extends Error {
 	readonly code: EnvConfigErrorCode;
@@ -108,12 +124,20 @@ export function assertPaymentsEnv() {
 	return parseOrThrow(paymentsEnvSchema, env, "ENV_PAYMENTS_MISSING");
 }
 
+export function assertMailEnv() {
+	return parseOrThrow(mailEnvSchema, env, "ENV_MAIL_MISSING");
+}
+
 export function hasStorageEnv() {
 	return storageEnvSchema.safeParse(env).success;
 }
 
 export function hasPaymentsEnv() {
 	return paymentsEnvSchema.safeParse(env).success;
+}
+
+export function hasMailEnv() {
+	return mailEnvSchema.safeParse(env).success;
 }
 
 export function getUploadsBucketName() {

@@ -1,6 +1,7 @@
 import { render } from "@react-email/render";
 import type { Locale, Messages } from "@repo/i18n";
 import { getMessagesForLocale } from "@repo/i18n";
+import { createTranslator } from "use-intl/core";
 import { mailTemplates } from "../../emails";
 
 export async function getTemplate<T extends TemplateId>({
@@ -23,10 +24,14 @@ export async function getTemplate<T extends TemplateId>({
 		locale,
 		translations,
 	});
+	const t = createTranslator({
+		locale,
+		messages: translations,
+	});
 
 	const subject =
 		"subject" in translations.mail[templateId as keyof Messages["mail"]]
-			? translations.mail[templateId].subject
+			? t(`mail.${templateId}.subject` as never, context as never)
 			: "";
 
 	const html = await render(email);

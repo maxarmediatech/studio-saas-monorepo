@@ -23,7 +23,7 @@ export function NewUser({
 	});
 
 	return (
-		<Wrapper>
+		<Wrapper preview={t("mail.newUser.preview")}>
 			<Text>{t("mail.newUser.body", { name })}</Text>
 
 			<Text>
@@ -38,9 +38,15 @@ export function NewUser({
 				{t("mail.newUser.confirmEmail")} &rarr;
 			</PrimaryButton>
 
-			<Text className="text-muted-foreground text-sm">
+			<Text className="mt-6 text-brandMuted text-sm leading-6">
 				{t("mail.common.openLinkInBrowser")}
-				<Link href={url}>{url}</Link>
+				<Link
+					href={url}
+					className="text-brandLink"
+					style={{ wordBreak: "break-all" }}
+				>
+					{url}
+				</Link>
 			</Text>
 		</Wrapper>
 	);

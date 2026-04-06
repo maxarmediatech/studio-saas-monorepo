@@ -1,7 +1,6 @@
 import { createORPCClient, onError } from "@orpc/client";
 import { RPCLink } from "@orpc/client/fetch";
 import type { ApiRouterClient } from "@repo/api/orpc/router";
-import { getBaseUrl } from "@repo/utils";
 
 declare global {
 	var $orpcClient: ApiRouterClient | undefined;
@@ -12,7 +11,7 @@ const link = new RPCLink({
 		if (typeof window === "undefined") {
 			throw new Error("RPCLink should not be used on the server side.");
 		}
-		return `${getBaseUrl()}/api/rpc`;
+		return new URL("/api/rpc", window.location.origin).toString();
 	},
 	headers: () => ({
 		"x-user-timezone":

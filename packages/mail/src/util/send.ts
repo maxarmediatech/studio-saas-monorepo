@@ -21,6 +21,8 @@ export async function sendEmail<T extends TemplateId>(
 				subject: string;
 				text?: string;
 				html?: string;
+				from?: Parameters<typeof send>[0]["from"];
+				replyTo?: Parameters<typeof send>[0]["replyTo"];
 				attachments?: Parameters<typeof send>[0]["attachments"];
 		  }
 	),
@@ -53,12 +55,17 @@ export async function sendEmail<T extends TemplateId>(
 			subject,
 			text,
 			html,
+			from: "from" in params ? params.from : undefined,
+			replyTo: "replyTo" in params ? params.replyTo : undefined,
 			attachments:
 				"attachments" in params ? params.attachments : undefined,
 		});
-		return true;
-	} catch (e) {
-		logger.error(e);
-		return false;
+	} catch (error) {
+		logger.error("mail.send.failed", {
+			error,
+			subject,
+			to,
+		});
+		throw error;
 	}
 }

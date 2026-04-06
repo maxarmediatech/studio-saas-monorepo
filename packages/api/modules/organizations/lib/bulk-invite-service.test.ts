@@ -147,6 +147,47 @@ describe("executeBulkInviteBatch", () => {
 		});
 	});
 
+	it("fails ready emails before persistence when delivery preflight is not ready", async () => {
+		const createInvitation = vi.fn();
+
+		const result = await executeBulkInviteBatch(
+			{
+				emails: ["alice@example.com"],
+				role: ["member"],
+				teamId: null,
+			},
+			{
+				findExistingMemberEmails: vi.fn().mockResolvedValue([]),
+				findPendingInvitations: vi.fn().mockResolvedValue([]),
+				beforeCreateInvitation: vi
+					.fn()
+					.mockRejectedValue(
+						new Error(
+							"Email app URLs must be public. Set EMAIL_BASE_URL to your public Stuwiz domain instead of localhost.",
+						),
+					),
+				createInvitation,
+			},
+		);
+
+		expect(createInvitation).not.toHaveBeenCalled();
+		expect(result.summary).toEqual({
+			requested: 1,
+			normalized: 1,
+			created: 0,
+			skipped: 0,
+			failed: 1,
+		});
+		expect(result.results).toEqual([
+			{
+				email: "alice@example.com",
+				status: "failed",
+				message:
+					"Email app URLs must be public. Set EMAIL_BASE_URL to your public Stuwiz domain instead of localhost.",
+			},
+		]);
+	});
+
 	it("throws when the unique valid limit is exceeded", async () => {
 		await expect(
 			executeBulkInviteBatch(

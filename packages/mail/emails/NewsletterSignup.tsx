@@ -12,11 +12,13 @@ export function NewsletterSignup({ locale, translations }: BaseMailProps) {
 	});
 
 	return (
-		<Wrapper>
-			<Heading className="text-xl">
+		<Wrapper preview={t("mail.newsletterSignup.preview")}>
+			<Heading className="m-0 text-2xl font-semibold text-brandInk">
 				{t("mail.newsletterSignup.subject")}
 			</Heading>
-			<Text>{t("mail.newsletterSignup.body")}</Text>
+			<Text className="mt-4 leading-7">
+				{t("mail.newsletterSignup.body")}
+			</Text>
 		</Wrapper>
 	);
 }

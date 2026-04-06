@@ -1,5 +1,5 @@
 import { ORPCError } from "@orpc/server";
-import { auth } from "@repo/auth";
+import { auth, OrganizationInvitationEmailDeliveryError } from "@repo/auth";
 import {
 	and,
 	db,
@@ -9,15 +9,17 @@ import {
 	members,
 	users,
 } from "@repo/database";
+import { logger } from "@repo/logs";
+import { assertTransactionalEmailDeliveryReady } from "@repo/mail";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { requirePermission } from "../../studio/lib/permissions";
 import {
-	BulkInviteLimitError,
 	type BulkInviteInput,
+	BulkInviteLimitError,
 	bulkInviteInputSchema,
 	bulkInviteOutputSchema,
 } from "../lib/bulk-invitations";
 import { executeBulkInviteBatch } from "../lib/bulk-invite-service";
-import { requirePermission } from "../../studio/lib/permissions";
 
 type CreateInvitationInput = NonNullable<
 	Parameters<typeof auth.api.createInvitation>[0]
@@ -26,6 +28,45 @@ type CreateInvitationInput = NonNullable<
 interface BulkCreateInvitationsContext {
 	headers: Headers;
 	organizationId: string;
+}
+
+async function cancelInvitationCreatedDuringFailedBulkInvite({
+	email,
+	invitationId,
+	organizationId,
+}: {
+	email: string;
+	invitationId: string;
+	organizationId: string;
+}) {
+	try {
+		await db
+			.update(invitations)
+			.set({
+				status: "canceled",
+			})
+			.where(
+				and(
+					eq(invitations.id, invitationId),
+					eq(invitations.organizationId, organizationId),
+					eq(invitations.status, "pending"),
+				),
+			);
+		logger.warn("organizations.bulk_invite.canceled_failed_invitation", {
+			email,
+			invitationId,
+			organizationId,
+		});
+		return true;
+	} catch (rollbackError) {
+		logger.error("organizations.bulk_invite.rollback_failed", {
+			email,
+			error: rollbackError,
+			invitationId,
+			organizationId,
+		});
+		return false;
+	}
 }
 
 export async function createBulkInvitations(
@@ -78,17 +119,67 @@ export async function createBulkInvitations(
 					invitationId: row.id,
 				}));
 			},
+			beforeCreateInvitation: async ({ email }) => {
+				try {
+					assertTransactionalEmailDeliveryReady();
+				} catch (error) {
+					const message =
+						error instanceof Error
+							? error.message
+							: "Check email delivery configuration and try again.";
+					logger.error(
+						"organizations.bulk_invite.delivery_not_ready",
+						{
+							email,
+							error,
+							organizationId: context.organizationId,
+						},
+					);
+					throw new Error(
+						`Email delivery is not ready, so no invitation was created. ${message}`,
+					);
+				}
+			},
 			createInvitation: async ({ email, role, teamId }) => {
-				return await auth.api.createInvitation({
-					headers: context.headers,
-					body: {
-						email,
-						role,
-						organizationId: context.organizationId,
-						teamId: teamId ?? undefined,
-						resend: false,
-					},
-				} as CreateInvitationInput);
+				try {
+					return await auth.api.createInvitation({
+						headers: context.headers,
+						body: {
+							email,
+							role,
+							organizationId: context.organizationId,
+							teamId: teamId ?? undefined,
+							resend: false,
+						},
+					} as CreateInvitationInput);
+				} catch (error) {
+					if (
+						!(
+							error instanceof
+							OrganizationInvitationEmailDeliveryError
+						)
+					) {
+						throw error;
+					}
+
+					const rollbackSucceeded =
+						await cancelInvitationCreatedDuringFailedBulkInvite({
+							email,
+							invitationId: error.invitationId,
+							organizationId: context.organizationId,
+						});
+					const reason = error.reason;
+
+					throw new Error(
+						rollbackSucceeded
+							? reason
+								? `Invitation email could not be delivered, and the pending invitation was canceled. ${reason}`
+								: "Invitation email could not be delivered, and the pending invitation was canceled."
+							: reason
+								? `Invitation email could not be delivered, and the pending invitation could not be canceled automatically. Please revoke it manually and try again. ${reason}`
+								: "Invitation email could not be delivered, and the pending invitation could not be canceled automatically. Please revoke it manually and try again.",
+					);
+				}
 			},
 		});
 	} catch (error) {

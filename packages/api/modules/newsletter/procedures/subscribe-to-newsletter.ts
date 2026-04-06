@@ -31,7 +31,7 @@ export const subscribeToNewsletter = publicProcedure
 				context: {},
 			});
 		} catch (error) {
-			logger.error(error);
+			logger.error("newsletter.email.send_failed", { email, error });
 			throw new ORPCError("INTERNAL_SERVER_ERROR");
 		}
 	});

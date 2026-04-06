@@ -1,56 +1,56 @@
 import {
+	Body,
 	Container,
-	Font,
 	Head,
 	Html,
+	Preview,
 	Section,
 	Tailwind,
 } from "@react-email/components";
 import React, { type PropsWithChildren } from "react";
 import { Logo } from "./Logo";
 
-export default function Wrapper({ children }: PropsWithChildren) {
+export default function Wrapper({
+	children,
+	preview,
+}: PropsWithChildren<{
+	preview: string;
+}>) {
 	return (
 		<Html lang="en">
-			<Head>
-				<Font
-					fontFamily="Inter"
-					fallbackFontFamily="Arial"
-					fontWeight={400}
-					fontStyle="normal"
-				/>
-			</Head>
+			<Head />
+			<Preview>{preview}</Preview>
 			<Tailwind
 				config={{
 					theme: {
 						extend: {
 							colors: {
-								border: "#e3ebf6",
-								background: "#fafafe",
-								foreground: "#292b35",
-								primary: {
-									DEFAULT: "#4e6df5",
-									foreground: "#f6f7f9",
-								},
-								secondary: {
-									DEFAULT: "#292b35",
-									foreground: "#ffffff",
-								},
-								card: {
-									DEFAULT: "#ffffff",
-									foreground: "#292b35",
-								},
+								brandBg: "#f6f3ee",
+								brandBorder: "#e7e0d6",
+								brandCard: "#ffffff",
+								brandInk: "#1f2937",
+								brandMuted: "#6b7280",
+								brandLink: "#111827",
 							},
 						},
 					},
 				}}
 			>
-				<Section className="bg-background p-4">
-					<Container className="rounded-lg bg-card p-6 text-card-foreground">
-						<Logo />
-						{children}
-					</Container>
-				</Section>
+				<Body
+					className="m-0 bg-brandBg p-0 text-brandInk"
+					style={{
+						fontFamily:
+							'"Helvetica Neue", Arial, "Segoe UI", sans-serif',
+						margin: 0,
+					}}
+				>
+					<Section className="bg-brandBg px-4 py-8">
+						<Container className="mx-auto rounded-3xl border border-solid border-brandBorder bg-brandCard px-8 py-8 text-brandInk">
+							<Logo />
+							{children}
+						</Container>
+					</Section>
+				</Body>
 			</Tailwind>
 		</Html>
 	);

@@ -12,7 +12,7 @@ export async function sendCalendarInviteEmail(params: {
 
 	const content = Buffer.from(params.icsContent, "utf8").toString("base64");
 
-	return await sendEmail({
+	await sendEmail({
 		to: params.to,
 		subject: params.subject,
 		text: params.text,

@@ -4,10 +4,9 @@ import { NextResponse } from "next/server";
 
 const ENV_ERROR_MESSAGES: Record<EnvConfigErrorCode, string> = {
 	ENV_CORE_MISSING: "Core environment variables are misconfigured.",
-	ENV_STORAGE_MISSING:
-		"Storage is not configured on this deployment.",
-	ENV_PAYMENTS_MISSING:
-		"Payments are not configured on this deployment.",
+	ENV_MAIL_MISSING: "Email delivery is not configured on this deployment.",
+	ENV_STORAGE_MISSING: "Storage is not configured on this deployment.",
+	ENV_PAYMENTS_MISSING: "Payments are not configured on this deployment.",
 };
 
 export function createEnvConfigResponse(code: EnvConfigErrorCode) {

@@ -21,16 +21,20 @@ export function EmailVerification({
 	});
 
 	return (
-		<Wrapper>
+		<Wrapper preview={t("mail.emailVerification.preview")}>
 			<Text>{t("mail.emailVerification.body", { name })}</Text>
 
 			<PrimaryButton href={url}>
 				{t("mail.emailVerification.confirmEmail")} &rarr;
 			</PrimaryButton>
 
-			<Text className="text-muted-foreground text-sm">
+			<Text className="mt-6 text-brandMuted text-sm leading-6">
 				{t("mail.common.openLinkInBrowser")}
-				<Link href={url} className="break-all">
+				<Link
+					href={url}
+					className="text-brandLink"
+					style={{ wordBreak: "break-all" }}
+				>
 					{url}
 				</Link>
 			</Text>

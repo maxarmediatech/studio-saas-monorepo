@@ -19,7 +19,7 @@ export function MagicLink({
 	});
 
 	return (
-		<Wrapper>
+		<Wrapper preview={t("mail.magicLink.preview")}>
 			<Text>{t("mail.magicLink.body")}</Text>
 
 			<Text>{t("mail.common.useLink")}</Text>
@@ -28,9 +28,15 @@ export function MagicLink({
 				{t("mail.magicLink.login")} &rarr;
 			</PrimaryButton>
 
-			<Text className="text-muted-foreground text-sm">
+			<Text className="mt-6 text-brandMuted text-sm leading-6">
 				{t("mail.common.openLinkInBrowser")}
-				<Link href={url}>{url}</Link>
+				<Link
+					href={url}
+					className="text-brandLink"
+					style={{ wordBreak: "break-all" }}
+				>
+					{url}
+				</Link>
 			</Text>
 		</Wrapper>
 	);

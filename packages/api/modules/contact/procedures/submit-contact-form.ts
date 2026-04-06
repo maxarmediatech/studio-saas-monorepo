@@ -21,11 +21,16 @@ export const submitContactForm = publicProcedure
 				await sendEmail({
 					to: config.contactForm.to,
 					locale,
+					replyTo: email,
 					subject: config.contactForm.subject,
 					text: `Name: ${name}\n\nEmail: ${email}\n\nMessage: ${message}`,
 				});
 			} catch (error) {
-				logger.error(error);
+				logger.error("contact.email.send_failed", {
+					email,
+					error,
+					name,
+				});
 				throw new ORPCError("INTERNAL_SERVER_ERROR");
 			}
 		},

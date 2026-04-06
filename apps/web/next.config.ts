@@ -37,6 +37,8 @@ const nextConfig = {
 		"@repo/database",
 		"@repo/editor",
 		"@repo/google-calendar",
+		"@repo/mail",
+		"@repo/utils",
 	],
 	images: {
 		remotePatterns: imageRemotePatterns,

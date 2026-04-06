@@ -21,24 +21,33 @@ export function OrganizationInvitation({
 	});
 
 	return (
-		<Wrapper>
-			<Heading className="text-xl">
-				{t.markup("mail.organizationInvitation.headline", {
+		<Wrapper
+			preview={t("mail.organizationInvitation.preview", {
+				organizationName,
+			})}
+		>
+			<Heading className="m-0 text-2xl font-semibold text-brandInk">
+				{t("mail.organizationInvitation.headline", {
 					organizationName,
-					strong: (chunks) => `<strong>${chunks}</strong>`,
 				})}
 			</Heading>
-			<Text>
+			<Text className="mt-4 leading-7">
 				{t("mail.organizationInvitation.body", { organizationName })}
 			</Text>
 
 			<PrimaryButton href={url}>
-				{t("mail.organizationInvitation.join")}
+				{t("mail.organizationInvitation.join", { organizationName })}
 			</PrimaryButton>
 
-			<Text className="mt-4 text-muted-foreground text-sm">
+			<Text className="mt-6 text-brandMuted text-sm leading-6">
 				{t("mail.common.openLinkInBrowser")}
-				<Link href={url}>{url}</Link>
+				<Link
+					href={url}
+					className="text-brandLink"
+					style={{ wordBreak: "break-all" }}
+				>
+					{url}
+				</Link>
 			</Text>
 		</Wrapper>
 	);

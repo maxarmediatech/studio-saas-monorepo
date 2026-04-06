@@ -1,5 +1,11 @@
 import type { Config } from "./types";
 
+const fallbackPublicUrl = process.env.NEXT_PUBLIC_SITE_URL
+	? process.env.NEXT_PUBLIC_SITE_URL
+	: process.env.NEXT_PUBLIC_VERCEL_URL
+		? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
+		: undefined;
+
 export const config = {
 	appName: "Stuwiz",
 	// Internationalization
@@ -82,8 +88,18 @@ export const config = {
 	},
 	// Mails
 	mails: {
-		// the from address for mails
-		from: process.env.EMAIL_FROM ?? "noreply@updates.stuwiz.com",
+		// branded sender details for transactional emails
+		fromName: process.env.EMAIL_FROM_NAME ?? "Stuwiz",
+		fromAddress:
+			process.env.EMAIL_FROM_ADDRESS ??
+			process.env.EMAIL_FROM ??
+			"noreply@updates.stuwiz.com",
+		replyTo: process.env.EMAIL_REPLY_TO,
+		baseUrl: process.env.EMAIL_BASE_URL ?? fallbackPublicUrl,
+		assetBaseUrl:
+			process.env.EMAIL_ASSET_BASE_URL ??
+			process.env.EMAIL_BASE_URL ??
+			fallbackPublicUrl,
 	},
 	// Frontend
 	ui: {

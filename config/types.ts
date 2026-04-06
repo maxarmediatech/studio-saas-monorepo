@@ -32,7 +32,11 @@ export type Config = {
 		sessionCookieMaxAge: number;
 	};
 	mails: {
-		from: string;
+		fromName: string;
+		fromAddress: string;
+		replyTo?: string;
+		baseUrl?: string;
+		assetBaseUrl?: string;
 	};
 	storage: {
 		bucketNames: {

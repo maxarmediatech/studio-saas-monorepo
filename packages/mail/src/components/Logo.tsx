@@ -1,27 +1,24 @@
 import { Img } from "@react-email/components";
 import { config } from "@repo/config";
+import { getPublicAssetBaseUrl } from "@repo/utils";
 import React from "react";
 
 function getAssetUrl(path: string) {
-	const baseUrl = process.env.NEXT_PUBLIC_SITE_URL
-		? process.env.NEXT_PUBLIC_SITE_URL
-		: process.env.NEXT_PUBLIC_VERCEL_URL
-			? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
-			: "http://localhost:3000";
-
-	return new URL(path, baseUrl).toString();
+	return new URL(path, getPublicAssetBaseUrl()).toString();
 }
 
 export function Logo({ withLabel = true }: { withLabel?: boolean }) {
 	return (
 		<Img
 			alt={`${config.appName} logo`}
-			height={withLabel ? 40 : 48}
+			height={withLabel ? 46 : 40}
 			src={getAssetUrl(
-				withLabel ? "/images/brand/stuwiz-logo-dark.png" : "/icon.png",
+				withLabel
+					? "/images/brand/stuwiz-logo-dark.png"
+					: "/images/brand/stuwiz-mark-tight.png",
 			)}
-			style={{ display: "block" }}
-			width={withLabel ? 153 : 48}
+			style={{ display: "block", marginBottom: "8px" }}
+			width={withLabel ? 176 : 64}
 		/>
 	);
 }

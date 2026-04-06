@@ -203,7 +203,11 @@ GITHUB_CLIENT_SECRET="your-client-secret"
 
 ```env
 RESEND_API_KEY="re_xxxxxxxxxxxx"
-EMAIL_FROM="noreply@updates.stuwiz.com"
+EMAIL_FROM_NAME="Stuwiz"
+EMAIL_FROM_ADDRESS="noreply@updates.stuwiz.com"
+EMAIL_REPLY_TO="hello@stuwiz.com"
+EMAIL_BASE_URL="https://app.stuwiz.com"
+EMAIL_ASSET_BASE_URL="https://app.stuwiz.com"
 ```
 
 ---
@@ -373,6 +377,7 @@ OPENAI_API_KEY="sk-xxxx"
 - [ ] Database is accessible from deployment environment
 - [ ] Database migrations have been run
 - [ ] `NEXT_PUBLIC_SITE_URL` matches your production domain
+- [ ] `EMAIL_BASE_URL` points to a public domain, never localhost
 - [ ] OAuth redirect URIs updated for production domain
 - [ ] Webhook URLs updated for production domain
 - [ ] SSL/TLS certificate is configured
@@ -382,6 +387,7 @@ OPENAI_API_KEY="sk-xxxx"
 | Setting | Development | Production |
 |---------|-------------|------------|
 | `NEXT_PUBLIC_SITE_URL` | `http://localhost:3000` | `https://app.yourdomain.com` |
+| `EMAIL_BASE_URL` | `https://preview.yourdomain.com` or production domain | `https://app.yourdomain.com` |
 | `DATABASE_URL` | Local PostgreSQL | Production database |
 | OAuth Redirect URIs | `localhost:3000` | `app.yourdomain.com` |
 | Webhook URLs | Use ngrok/localtunnel | Production URLs |
@@ -473,7 +479,11 @@ INTEGRATIONS_OAUTH_STATE_SECRET=""
 # EMAIL
 # ===================
 RESEND_API_KEY=""
-EMAIL_FROM="noreply@updates.stuwiz.com"
+EMAIL_FROM_NAME="Stuwiz"
+EMAIL_FROM_ADDRESS="noreply@updates.stuwiz.com"
+EMAIL_REPLY_TO="hello@stuwiz.com"
+EMAIL_BASE_URL="https://app.stuwiz.com"
+EMAIL_ASSET_BASE_URL="https://app.stuwiz.com"
 
 # ===================
 # PAYMENTS

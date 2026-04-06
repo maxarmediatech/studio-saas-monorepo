@@ -12,7 +12,7 @@ import type { Locale } from "@repo/i18n";
 import { logger } from "@repo/logs";
 import { sendEmail } from "@repo/mail";
 import { cancelSubscription } from "@repo/payments";
-import { getBaseUrl } from "@repo/utils";
+import { getBaseUrl, getPublicBaseUrl, toPublicAppUrl } from "@repo/utils";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import {
@@ -72,6 +72,77 @@ const getLocaleFromRequest = (request?: RequestLike) => {
 };
 
 const appUrl = getBaseUrl();
+
+function getErrorMessage(error: unknown) {
+	if (error instanceof Error) {
+		return error.message;
+	}
+
+	if (
+		typeof error === "object" &&
+		error !== null &&
+		"message" in error &&
+		typeof error.message === "string"
+	) {
+		return error.message;
+	}
+
+	return null;
+}
+
+export class OrganizationInvitationEmailDeliveryError extends Error {
+	readonly email: string;
+	readonly invitationId: string;
+	readonly organizationId: string;
+	readonly reason: string | null;
+	readonly originalError: unknown;
+
+	constructor({
+		email,
+		invitationId,
+		organizationId,
+		cause,
+	}: {
+		email: string;
+		invitationId: string;
+		organizationId: string;
+		cause: unknown;
+	}) {
+		const reason = getErrorMessage(cause);
+		super(
+			reason
+				? `Invitation email could not be delivered. ${reason}`
+				: "Invitation email could not be delivered.",
+		);
+		this.name = "OrganizationInvitationEmailDeliveryError";
+		this.email = email;
+		this.invitationId = invitationId;
+		this.organizationId = organizationId;
+		this.reason = reason;
+		this.originalError = cause;
+	}
+}
+
+async function sendAuthEmail(
+	flow:
+		| "change_email_verification"
+		| "reset_password"
+		| "email_verification"
+		| "magic_link"
+		| "organization_invitation",
+	params: Parameters<typeof sendEmail>[0],
+) {
+	try {
+		await sendEmail(params);
+	} catch (error) {
+		logger.error("auth.email.send_failed", {
+			error,
+			flow,
+			to: params.to,
+		});
+		throw error;
+	}
+}
 
 export const auth = betterAuth({
 	baseURL: appUrl,
@@ -283,11 +354,11 @@ export const auth = betterAuth({
 				request,
 			) => {
 				const locale = getLocaleFromRequest(request);
-				await sendEmail({
+				await sendAuthEmail("change_email_verification", {
 					to: email,
 					templateId: "emailVerification",
 					context: {
-						url,
+						url: toPublicAppUrl(url),
 						name,
 					},
 					locale,
@@ -303,11 +374,11 @@ export const auth = betterAuth({
 		requireEmailVerification: config.auth.enableSignup,
 		sendResetPassword: async ({ user, url }, request) => {
 			const locale = getLocaleFromRequest(request);
-			await sendEmail({
+			await sendAuthEmail("reset_password", {
 				to: user.email,
 				templateId: "forgotPassword",
 				context: {
-					url,
+					url: toPublicAppUrl(url),
 					name: user.name,
 				},
 				locale,
@@ -322,11 +393,11 @@ export const auth = betterAuth({
 			request,
 		) => {
 			const locale = getLocaleFromRequest(request);
-			await sendEmail({
+			await sendAuthEmail("email_verification", {
 				to: email,
 				templateId: "emailVerification",
 				context: {
-					url,
+					url: toPublicAppUrl(url),
 					name,
 				},
 				locale,
@@ -356,11 +427,11 @@ export const auth = betterAuth({
 			disableSignUp: false,
 			sendMagicLink: async ({ email, url }, request) => {
 				const locale = getLocaleFromRequest(request);
-				await sendEmail({
+				await sendAuthEmail("magic_link", {
 					to: email,
 					templateId: "magicLink",
 					context: {
-						url,
+						url: toPublicAppUrl(url),
 					},
 					locale,
 				});
@@ -437,26 +508,41 @@ export const auth = betterAuth({
 				{ email, id, organization },
 				request,
 			) => {
-				const locale = getLocaleFromRequest(request);
-				const existingUser = await getUserByEmail(email);
+				try {
+					const locale = getLocaleFromRequest(request);
+					const existingUser = await getUserByEmail(email);
 
-				const url = new URL(
-					existingUser ? "/auth/login" : "/auth/signup",
-					getBaseUrl(),
-				);
+					const url = new URL(
+						existingUser ? "/auth/login" : "/auth/signup",
+						getPublicBaseUrl(),
+					);
 
-				url.searchParams.set("invitationId", id);
-				url.searchParams.set("email", email);
+					url.searchParams.set("invitationId", id);
+					url.searchParams.set("email", email);
 
-				await sendEmail({
-					to: email,
-					templateId: "organizationInvitation",
-					locale,
-					context: {
-						organizationName: organization.name,
-						url: url.toString(),
-					},
-				});
+					await sendAuthEmail("organization_invitation", {
+						to: email,
+						templateId: "organizationInvitation",
+						locale,
+						context: {
+							organizationName: organization.name,
+							url: url.toString(),
+						},
+					});
+				} catch (error) {
+					logger.error("auth.organization_invitation.send_failed", {
+						email,
+						error,
+						invitationId: id,
+						organizationId: organization.id,
+					});
+					throw new OrganizationInvitationEmailDeliveryError({
+						email,
+						invitationId: id,
+						organizationId: organization.id,
+						cause: error,
+					});
+				}
 			},
 		}),
 		openAPI(),

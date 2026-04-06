@@ -14,18 +14,22 @@ export function OrganizationRoleSelect({
 	value,
 	onSelect,
 	disabled,
+	enabled = true,
 	excludeOwnerRole = false,
 }: {
 	value: string[];
 	onSelect: (value: string[]) => void;
 	disabled?: boolean;
+	enabled?: boolean;
 	excludeOwnerRole?: boolean;
 }) {
-	const { staticRoles, customRoles, isLoading, getRoleLabel } = useAllRoles();
+	const { staticRoles, customRoles, isLoading, getRoleLabel } = useAllRoles({
+		enabled,
+	});
 	const normalizedValue = coerceOrganizationRoles(value);
 	const lockMemberRole = !hasAnyRole(normalizedValue, ["owner", "admin"]);
 
-	if (isLoading) {
+	if (enabled && isLoading) {
 		return <Skeleton className="h-10 w-32" />;
 	}
 
