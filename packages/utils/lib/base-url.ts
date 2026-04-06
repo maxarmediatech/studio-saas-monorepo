@@ -8,13 +8,11 @@ const LOCAL_HOSTNAMES = new Set([
 
 const PRIVATE_HOSTNAMES = new Set(["host.docker.internal"]);
 const PRIVATE_HOSTNAME_SUFFIXES = [".internal"];
-type HeaderBag = Headers | Record<string, unknown> | undefined;
 type RequestLike =
 	| Request
 	| {
 			request?: Request;
 			url?: string;
-			headers?: HeaderBag;
 	  }
 	| undefined;
 
@@ -192,18 +190,6 @@ function getValidatedPublicBaseUrl({
 	return normalized;
 }
 
-function getRequestHeaders(request?: RequestLike) {
-	if (request instanceof Request) {
-		return request.headers;
-	}
-
-	if (request?.request instanceof Request) {
-		return request.request.headers;
-	}
-
-	return request?.headers;
-}
-
 function getRequestUrl(request?: RequestLike) {
 	if (request instanceof Request) {
 		return request.url;
@@ -214,49 +200,6 @@ function getRequestUrl(request?: RequestLike) {
 	}
 
 	return typeof request?.url === "string" ? request.url : undefined;
-}
-
-function getHeader(headers: HeaderBag, name: string) {
-	if (!headers) {
-		return null;
-	}
-
-	if (typeof (headers as Headers).get === "function") {
-		return (headers as Headers).get(name);
-	}
-
-	const normalizedName = name.toLowerCase();
-	const record = headers as Record<string, unknown>;
-	const normalizedValue = record[normalizedName];
-	if (typeof normalizedValue === "string") {
-		return normalizedValue;
-	}
-	if (normalizedValue === null) {
-		return null;
-	}
-
-	const exactValue = record[name];
-	return typeof exactValue === "string"
-		? exactValue
-		: exactValue === null
-			? null
-			: null;
-}
-
-function getPrimaryHeaderValue(headers: HeaderBag, name: string) {
-	const value = getHeader(headers, name);
-	return value?.split(",")[0]?.trim() || null;
-}
-
-function normalizeProtocol(value: string | null | undefined) {
-	return value?.replace(/:$/, "").toLowerCase() || null;
-}
-
-function isDefaultPort(protocol: string, port: string) {
-	return (
-		(protocol === "https" && port === "443") ||
-		(protocol === "http" && port === "80")
-	);
 }
 
 function normalizeMaybeUrl(value: string) {
@@ -286,54 +229,13 @@ export function getPublicAssetBaseUrl(options?: { allowLocalhost?: boolean }) {
 }
 
 export function getRequestBaseUrl(request?: RequestLike) {
-	const headers = getRequestHeaders(request);
 	const requestUrl = getRequestUrl(request);
-	const requestProtocol = requestUrl
-		? normalizeProtocol(new URL(requestUrl).protocol)
-		: null;
-	const forwardedProtocol =
-		normalizeProtocol(
-			getPrimaryHeaderValue(headers, "x-forwarded-proto"),
-		) ??
-		normalizeProtocol(
-			getPrimaryHeaderValue(headers, "x-forwarded-protocol"),
-		) ??
-		(getPrimaryHeaderValue(headers, "x-forwarded-ssl") === "on"
-			? "https"
-			: null);
-	const forwardedHost = getPrimaryHeaderValue(headers, "x-forwarded-host");
-	const forwardedPort = getPrimaryHeaderValue(headers, "x-forwarded-port");
-
-	if (forwardedHost && (forwardedProtocol ?? requestProtocol)) {
-		const protocol = forwardedProtocol ?? requestProtocol ?? "http";
-		const host = forwardedPort
-			? forwardedHost.includes(":") ||
-				isDefaultPort(protocol, forwardedPort)
-				? forwardedHost
-				: `${forwardedHost}:${forwardedPort}`
-			: forwardedHost;
-		const forwardedBaseUrl = normalizeMaybeUrl(`${protocol}://${host}`);
-
-		if (forwardedBaseUrl) {
-			return forwardedBaseUrl;
-		}
-	}
 
 	if (requestUrl) {
 		const requestBaseUrl = normalizeMaybeUrl(new URL(requestUrl).origin);
 
 		if (requestBaseUrl) {
 			return requestBaseUrl;
-		}
-	}
-
-	const host = getPrimaryHeaderValue(headers, "host");
-	if (host) {
-		const protocol = forwardedProtocol ?? requestProtocol ?? "http";
-		const hostBaseUrl = normalizeMaybeUrl(`${protocol}://${host}`);
-
-		if (hostBaseUrl) {
-			return hostBaseUrl;
 		}
 	}
 

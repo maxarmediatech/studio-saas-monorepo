@@ -30,14 +30,14 @@ describe("toRequestAppUrl", () => {
 		);
 	});
 
-	it("prefers forwarded host headers when the app is behind a proxy", () => {
+	it("ignores forwarded host headers and uses the actual request origin", () => {
 		process.env.NEXT_PUBLIC_SITE_URL = "https://app.stuwiz.com";
 
 		const request = new Request(
-			"http://127.0.0.1:3000/api/auth/magic-link",
+			"https://preview.stuwiz.com/api/auth/magic-link",
 			{
 				headers: new Headers({
-					"x-forwarded-host": "preview.stuwiz.com",
+					"x-forwarded-host": "evil.example, preview.stuwiz.com",
 					"x-forwarded-proto": "https",
 				}),
 			},
@@ -49,6 +49,27 @@ describe("toRequestAppUrl", () => {
 				request,
 			),
 		).toBe("https://preview.stuwiz.com/auth/login?token=test");
+	});
+
+	it("keeps localhost links even when forwarded host headers are poisoned", () => {
+		process.env.NEXT_PUBLIC_SITE_URL = "https://app.stuwiz.com";
+
+		const request = new Request(
+			"http://localhost:3000/api/auth/magic-link",
+			{
+				headers: new Headers({
+					"x-forwarded-host": "evil.example, preview.stuwiz.com",
+					"x-forwarded-proto": "https",
+				}),
+			},
+		);
+
+		expect(
+			toRequestAppUrl(
+				"https://app.stuwiz.com/auth/login?token=test",
+				request,
+			),
+		).toBe("http://localhost:3000/auth/login?token=test");
 	});
 
 	it("falls back to the configured app URL when request context is unavailable", () => {
