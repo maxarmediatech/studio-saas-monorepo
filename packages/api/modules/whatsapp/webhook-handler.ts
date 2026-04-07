@@ -6,6 +6,7 @@ import {
 	waContacts,
 	waConversations,
 	waEvents,
+	waMedia,
 	waMessages,
 } from "@repo/whatsapp-db";
 import {
@@ -24,6 +25,24 @@ const buildWebhookTokenClause = (token: string) => {
 		eq(waAccounts.webhookVerifyToken, hashedToken),
 	);
 };
+
+const getInboundPreview = (params: {
+	messageType: string;
+	text?: string;
+	caption?: string;
+	fileName?: string;
+}) =>
+	params.text ??
+	params.caption ??
+	params.fileName ??
+	{
+		audio: "Voice note",
+		document: "Document",
+		image: "Photo",
+		sticker: "Sticker",
+		video: "Video",
+	}[params.messageType] ??
+	params.messageType;
 
 const resolveAccount = async (phoneNumberId: string, token: string) => {
 	const account = await db.query.waAccounts.findFirst({
@@ -273,6 +292,38 @@ export const handleCloudWebhook = async (req: Request, token: string) => {
 					throw new Error("Failed to create conversation");
 				}
 
+				let createdMediaId: string | null = null;
+				let mediaFileName: string | null = null;
+
+				if (event.content.mediaId) {
+					const [createdMedia] = await db
+						.insert(waMedia)
+						.values({
+							organizationId: account.organizationId,
+							providerMediaId: event.content.mediaId,
+							ingestStatus: "pending",
+							ingestAttempts: 0,
+							nextIngestAttemptAt: new Date(),
+							mimeType:
+								event.content.mimeType ??
+								"application/octet-stream",
+							fileName: event.content.fileName ?? null,
+							storageType: "s3",
+							storageUrl: null,
+						})
+						.returning({
+							id: waMedia.id,
+							fileName: waMedia.fileName,
+						});
+
+					if (!createdMedia) {
+						throw new Error("Failed to create media");
+					}
+
+					createdMediaId = createdMedia.id;
+					mediaFileName = createdMedia.fileName ?? null;
+				}
+
 				const [created] = await db
 					.insert(waMessages)
 					.values({
@@ -286,6 +337,7 @@ export const handleCloudWebhook = async (req: Request, token: string) => {
 						type: event.messageType,
 						textBody: event.content.text ?? null,
 						caption: event.content.caption ?? null,
+						mediaId: createdMediaId,
 						status: "delivered",
 						statusUpdatedAt: new Date(),
 						rawPayload: payload,
@@ -301,8 +353,12 @@ export const handleCloudWebhook = async (req: Request, token: string) => {
 					.set({
 						lastMessageId: created.id,
 						lastMessageAt: event.timestamp,
-						lastMessagePreview:
-							event.content.text ?? event.messageType,
+						lastMessagePreview: getInboundPreview({
+							messageType: event.messageType,
+							text: event.content.text,
+							caption: event.content.caption,
+							fileName: mediaFileName ?? undefined,
+						}),
 						unreadCount: sql`coalesce(${waConversations.unreadCount}, 0) + 1`,
 					})
 					.where(eq(waConversations.id, conversationId));

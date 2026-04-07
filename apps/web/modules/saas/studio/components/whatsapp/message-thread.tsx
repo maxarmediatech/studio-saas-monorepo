@@ -23,6 +23,7 @@ import {
 	MessageCircleMoreIcon,
 	SendHorizonalIcon,
 } from "lucide-react";
+import Image from "next/image";
 import { useEffect, useMemo, useRef } from "react";
 import type { z } from "zod";
 
@@ -66,11 +67,112 @@ function getMessageBody(message: MessageItem) {
 		return `Template: ${message.templateName}`;
 	}
 
-	if (message.media?.fileName) {
+	if (
+		message.media?.fileName &&
+		(!message.media.accessUrl ||
+			(message.type !== "image" &&
+				message.type !== "video" &&
+				message.type !== "audio" &&
+				message.type !== "sticker"))
+	) {
 		return message.media.fileName;
 	}
 
-	return `${message.type} message`;
+	return message.media ? null : `${message.type} message`;
+}
+
+function renderMessageMedia(message: MessageItem) {
+	if (!message.media) {
+		return null;
+	}
+
+	if (!message.media.accessUrl) {
+		const statusLabel =
+			message.media.ingestStatus === "failed"
+				? message.media.ingestErrorMessage || "Attachment unavailable"
+				: message.direction === "inbound"
+					? "Attachment processing..."
+					: "Preview unavailable in inbox";
+
+		return (
+			<div className="rounded-2xl border border-dashed border-border/70 bg-white/70 px-4 py-3">
+				<p className="m-0 text-sm font-medium text-foreground">
+					{message.media.fileName || `${message.type} attachment`}
+				</p>
+				<p className="m-0 mt-1 text-xs text-muted-foreground">
+					{statusLabel}
+				</p>
+			</div>
+		);
+	}
+
+	if (message.type === "image" || message.type === "sticker") {
+		return (
+			<a
+				href={message.media.accessUrl}
+				target="_blank"
+				rel="noreferrer"
+				className="block overflow-hidden rounded-2xl border border-border/70 bg-white/70"
+			>
+				<Image
+					src={message.media.accessUrl}
+					alt={message.media.fileName || `${message.type} attachment`}
+					width={1200}
+					height={1200}
+					sizes="(max-width: 768px) 100vw, 480px"
+					className="max-h-80 w-full object-cover"
+					unoptimized
+				/>
+			</a>
+		);
+	}
+
+	if (message.type === "video") {
+		return (
+			// biome-ignore lint/a11y/useMediaCaption: WhatsApp inbound video does not include caption tracks.
+			<video
+				controls
+				preload="metadata"
+				className="max-h-96 w-full rounded-2xl border border-border/70 bg-black"
+			>
+				<source
+					src={message.media.accessUrl}
+					type={message.media.mimeType}
+				/>
+			</video>
+		);
+	}
+
+	if (message.type === "audio") {
+		return (
+			// biome-ignore lint/a11y/useMediaCaption: WhatsApp inbound audio does not include caption tracks.
+			<audio controls preload="metadata" className="w-full">
+				<source
+					src={message.media.accessUrl}
+					type={message.media.mimeType}
+				/>
+			</audio>
+		);
+	}
+
+	return (
+		<a
+			href={message.media.accessUrl}
+			target="_blank"
+			rel="noreferrer"
+			className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-white/80 px-4 py-3 no-underline transition hover:border-border hover:bg-white"
+		>
+			<div className="min-w-0">
+				<p className="m-0 truncate text-sm font-medium text-foreground">
+					{message.media.fileName || "Open attachment"}
+				</p>
+				<p className="m-0 truncate text-xs text-muted-foreground">
+					{message.media.mimeType}
+				</p>
+			</div>
+			<Badge variant="outline">Open</Badge>
+		</a>
+	);
 }
 
 export function WhatsAppMessageThread({
@@ -184,6 +286,7 @@ export function WhatsAppMessageThread({
 					) : (
 						orderedMessages.map((message) => {
 							const isOutbound = message.direction === "outbound";
+							const body = getMessageBody(message);
 							return (
 								<div
 									key={message.id}
@@ -194,9 +297,14 @@ export function WhatsAppMessageThread({
 											: "mr-auto border-border/70 bg-white text-foreground",
 									)}
 								>
-									<p className="m-0 whitespace-pre-wrap text-sm leading-6">
-										{getMessageBody(message)}
-									</p>
+									<div className="space-y-3">
+										{renderMessageMedia(message)}
+										{body ? (
+											<p className="m-0 whitespace-pre-wrap text-sm leading-6">
+												{body}
+											</p>
+										) : null}
+									</div>
 									<div className="mt-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
 										<span>
 											{formatMessageTime(

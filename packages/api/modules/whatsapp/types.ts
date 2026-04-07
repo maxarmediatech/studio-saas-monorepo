@@ -255,6 +255,9 @@ export const messageItemSchema = z.object({
 	media: z
 		.object({
 			id: z.string(),
+			accessUrl: z.string().nullable(),
+			ingestStatus: z.enum(["pending", "processing", "ready", "failed"]),
+			ingestErrorMessage: z.string().nullable(),
 			storageUrl: z.string().nullable(),
 			mimeType: z.string(),
 			fileName: z.string().nullable(),

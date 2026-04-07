@@ -219,8 +219,8 @@ export function WhatsAppInboxPageClient() {
 					<AlertTitle>Minimal inbox shell</AlertTitle>
 					<AlertDescription>
 						<p>
-							This first slice covers list, thread, mark-read, and
-							send text. Media, templates, assignment, and
+							List, thread, mark-read, send text, and inbound
+							attachments are live. Templates, assignment, and
 							realtime are next.
 						</p>
 					</AlertDescription>

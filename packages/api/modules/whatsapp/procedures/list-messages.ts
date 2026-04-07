@@ -64,7 +64,9 @@ export const listMessages = studioProtectedProcedure
 		const items = hasMore ? results.slice(0, input.limit) : results;
 		const lastItem = items[items.length - 1]?.message;
 		const nextCursor =
-			hasMore && lastItem ? encodeCursor(lastItem.createdAt, lastItem.id) : null;
+			hasMore && lastItem
+				? encodeCursor(lastItem.createdAt, lastItem.id)
+				: null;
 
 		return {
 			data: items.map(({ message, media }) => ({
@@ -78,11 +80,20 @@ export const listMessages = studioProtectedProcedure
 				caption: message.caption ?? null,
 				media: media
 					? {
-						id: media.id,
-						storageUrl: media.storageUrl ?? null,
-						mimeType: media.mimeType,
-						fileName: media.fileName ?? null,
-					}
+							id: media.id,
+							accessUrl:
+								media.ingestStatus === "ready" &&
+								media.storageType !== "provider" &&
+								media.storageUrl
+									? `/api/whatsapp/media/${media.id}`
+									: null,
+							ingestStatus: media.ingestStatus,
+							ingestErrorMessage:
+								media.ingestErrorMessage ?? null,
+							storageUrl: media.storageUrl ?? null,
+							mimeType: media.mimeType,
+							fileName: media.fileName ?? null,
+						}
 					: null,
 				templateName: message.templateName ?? null,
 				templateParams: message.templateParams ?? null,

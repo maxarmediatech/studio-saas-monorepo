@@ -1,5 +1,16 @@
 import crypto from "node:crypto";
-import { and, db, desc, eq, inArray, isNull, lte, or } from "@repo/database";
+import {
+	and,
+	db,
+	desc,
+	eq,
+	inArray,
+	isNotNull,
+	isNull,
+	lte,
+	or,
+	sql,
+} from "@repo/database";
 import { logger } from "@repo/logs";
 import {
 	waAccounts,
@@ -9,9 +20,14 @@ import {
 	waOutbox,
 } from "@repo/whatsapp-db";
 import { CloudApiProvider } from "@repo/whatsapp-providers";
+import { ingestCloudApiMediaAsset } from "./cloud-api-media";
 
 const pollIntervalMs = Number(process.env.WHATSAPP_OUTBOX_INTERVAL_MS ?? 5000);
 const batchSize = Number(process.env.WHATSAPP_OUTBOX_BATCH_SIZE ?? 10);
+const DEFAULT_CLOUD_API_VERSION = "v22.0";
+const inboundMediaMaxAttempts = Number(
+	process.env.WHATSAPP_MEDIA_MAX_ATTEMPTS ?? 5,
+);
 
 const decryptStoredSecret = (value: string) => {
 	if (!value.startsWith("v1:")) {
@@ -80,6 +96,31 @@ const fetchOutboxBatch = async () => {
 		.limit(batchSize);
 };
 
+const fetchInboundMediaBatch = async () =>
+	db
+		.select({
+			account: waAccounts,
+			media: waMedia,
+			message: waMessages,
+		})
+		.from(waMedia)
+		.innerJoin(waMessages, eq(waMessages.mediaId, waMedia.id))
+		.innerJoin(waAccounts, eq(waMessages.accountId, waAccounts.id))
+		.where(
+			and(
+				eq(waMessages.direction, "inbound"),
+				eq(waAccounts.provider, "cloud_api"),
+				isNotNull(waMedia.providerMediaId),
+				eq(waMedia.ingestStatus, "pending"),
+				or(
+					isNull(waMedia.nextIngestAttemptAt),
+					lte(waMedia.nextIngestAttemptAt, new Date()),
+				),
+			),
+		)
+		.orderBy(desc(waMessages.createdAt))
+		.limit(batchSize);
+
 const markOutboxAttempt = async (outboxId: string, attempts: number) => {
 	await db
 		.update(waOutbox)
@@ -146,6 +187,69 @@ const markOutboxFailure = async (params: {
 			errorMessage: params.errorMessage,
 		})
 		.where(eq(waMessages.id, params.messageId));
+};
+
+const markInboundMediaReady = async (params: {
+	mediaId: string;
+	fileName: string | null;
+	fileSize: number | null;
+	mimeType: string;
+	storageUrl: string;
+}) => {
+	await db
+		.update(waMedia)
+		.set({
+			fileName: params.fileName,
+			fileSize: params.fileSize,
+			ingestStatus: "ready",
+			ingestErrorMessage: null,
+			mimeType: params.mimeType,
+			nextIngestAttemptAt: null,
+			storageType: "s3",
+			storageUrl: params.storageUrl,
+		})
+		.where(eq(waMedia.id, params.mediaId));
+};
+
+const claimInboundMedia = async (mediaId: string) => {
+	const [claimed] = await db
+		.update(waMedia)
+		.set({
+			ingestStatus: "processing",
+			ingestAttempts: sql`coalesce(${waMedia.ingestAttempts}, 0) + 1`,
+			lastIngestAttemptAt: new Date(),
+			nextIngestAttemptAt: null,
+			ingestErrorMessage: null,
+		})
+		.where(
+			and(eq(waMedia.id, mediaId), eq(waMedia.ingestStatus, "pending")),
+		)
+		.returning({
+			id: waMedia.id,
+			ingestAttempts: waMedia.ingestAttempts,
+		});
+
+	return claimed ?? null;
+};
+
+const markInboundMediaFailure = async (params: {
+	mediaId: string;
+	attempts: number;
+	errorMessage: string;
+}) => {
+	const exhausted = params.attempts >= inboundMediaMaxAttempts;
+
+	await db
+		.update(waMedia)
+		.set({
+			ingestStatus: exhausted ? "failed" : "pending",
+			ingestErrorMessage: params.errorMessage,
+			nextIngestAttemptAt: exhausted
+				? null
+				: computeNextAttemptAt(params.attempts),
+			storageUrl: null,
+		})
+		.where(eq(waMedia.id, params.mediaId));
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -412,7 +516,72 @@ const processOutboxItem = async (item: {
 	});
 };
 
+const processInboundMediaItem = async (item: {
+	account: typeof waAccounts.$inferSelect;
+	media: typeof waMedia.$inferSelect;
+	message: typeof waMessages.$inferSelect;
+}) => {
+	if (!item.media.providerMediaId) {
+		return;
+	}
+
+	if (!item.account.accessToken) {
+		throw new Error("Missing WhatsApp access token for inbound media");
+	}
+
+	const claimed = await claimInboundMedia(item.media.id);
+	if (!claimed) {
+		return;
+	}
+
+	try {
+		const mediaAsset = await ingestCloudApiMediaAsset({
+			accessToken: decryptStoredSecret(item.account.accessToken),
+			accountId: item.account.id,
+			organizationId: item.account.organizationId,
+			apiVersion:
+				item.account.apiVersion?.trim() || DEFAULT_CLOUD_API_VERSION,
+			fileName: item.media.fileName,
+			mediaId: item.media.providerMediaId,
+			messageType: item.message.type,
+			mimeType: item.media.mimeType,
+		});
+
+		await markInboundMediaReady({
+			mediaId: item.media.id,
+			fileName: mediaAsset.fileName,
+			fileSize: mediaAsset.fileSize,
+			mimeType: mediaAsset.mimeType,
+			storageUrl: mediaAsset.storageUrl,
+		});
+	} catch (error) {
+		await markInboundMediaFailure({
+			mediaId: item.media.id,
+			attempts: claimed.ingestAttempts ?? 1,
+			errorMessage:
+				error instanceof Error
+					? error.message
+					: "Unknown media ingest error",
+		});
+		throw error;
+	}
+};
+
 const runBatch = async () => {
+	const mediaBatch = await fetchInboundMediaBatch();
+	for (const item of mediaBatch) {
+		try {
+			await processInboundMediaItem(item);
+		} catch (error) {
+			logger.error("Failed to ingest inbound WhatsApp media", {
+				accountId: item.account.id,
+				mediaId: item.media.id,
+				providerMediaId: item.media.providerMediaId,
+				error,
+			});
+		}
+	}
+
 	const batch = await fetchOutboxBatch();
 	for (const item of batch) {
 		try {
@@ -450,8 +619,15 @@ const run = async () => {
 		batchSize,
 	});
 
-	await runBatch();
-	setInterval(runBatch, pollIntervalMs);
+	while (true) {
+		try {
+			await runBatch();
+		} catch (error) {
+			logger.error("WhatsApp worker batch failed", { error });
+		}
+
+		await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+	}
 };
 
 run().catch((error) => {
