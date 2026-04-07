@@ -20,6 +20,38 @@ export function getSavedViewPermissionResource(
 	return savedViewEntityResourceMap[entityType];
 }
 
+export async function listAuthorizedSavedViewEntityTypes(
+	context: { headers: Headers },
+	action: "create" | "update" | "delete" | "list",
+): Promise<SavedViewEntityType[]> {
+	const { hasPermission } = await import("../../studio/lib/permissions");
+
+	const entityTypes = Object.keys(
+		savedViewEntityResourceMap,
+	) as SavedViewEntityType[];
+	const resources = [
+		...new Set(entityTypes.map(getSavedViewPermissionResource)),
+	];
+
+	const allowedResources = new Set<Resource>();
+	const results = await Promise.all(
+		resources.map(async (resource) => ({
+			resource,
+			allowed: await hasPermission(context, resource, action),
+		})),
+	);
+
+	for (const result of results) {
+		if (result.allowed) {
+			allowedResources.add(result.resource);
+		}
+	}
+
+	return entityTypes.filter((entityType) =>
+		allowedResources.has(getSavedViewPermissionResource(entityType)),
+	);
+}
+
 export async function requireSavedViewPermission(
 	context: { headers: Headers },
 	entityType: SavedViewEntityType,

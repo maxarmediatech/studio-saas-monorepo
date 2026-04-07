@@ -1,12 +1,11 @@
 import { ORPCError } from "@orpc/server";
-import { and, db, eq, savedViews } from "@repo/database";
+import { and, db, eq, inArray, savedViews } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import {
 	deleteSavedViewInputSchema,
 	deleteSavedViewOutputSchema,
-	type SavedViewEntityType,
 } from "../../studio/schemas/saved-view";
-import { requireSavedViewPermission } from "../lib/saved-view-permissions";
+import { listAuthorizedSavedViewEntityTypes } from "../lib/saved-view-permissions";
 
 export const deleteSavedView = studioProtectedProcedure
 	.route({
@@ -22,23 +21,26 @@ export const deleteSavedView = studioProtectedProcedure
 		const { organizationId } = context;
 		const userId = context.user.id;
 		const { id } = input;
+		const allowedEntityTypes = await listAuthorizedSavedViewEntityTypes(
+			context,
+			"delete",
+		);
+
+		if (allowedEntityTypes.length === 0) {
+			throw new ORPCError("NOT_FOUND", { message: "View not found" });
+		}
 
 		const existing = await db.query.savedViews.findFirst({
 			where: and(
 				eq(savedViews.id, id),
 				eq(savedViews.organizationId, organizationId),
+				inArray(savedViews.entityType, allowedEntityTypes),
 			),
 		});
 
 		if (!existing) {
 			throw new ORPCError("NOT_FOUND", { message: "View not found" });
 		}
-
-		await requireSavedViewPermission(
-			context,
-			existing.entityType as SavedViewEntityType,
-			"delete",
-		);
 
 		if (existing.isSystem) {
 			throw new ORPCError("FORBIDDEN", {
