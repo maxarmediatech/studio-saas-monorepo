@@ -175,6 +175,8 @@ export function InvoicesFilters() {
 		limit: pagination.limit,
 		search: filters.search ?? undefined,
 		status: filters.statuses ?? undefined,
+		bookingId: filters.bookingId ?? undefined,
+		clientId: filters.clientId ?? undefined,
 		dateFrom: filters.createdAt?.[0] ?? undefined,
 		dateTo: filters.createdAt?.[1] ?? undefined,
 		sortBy: sorting.sortBy ?? "createdAt",

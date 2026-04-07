@@ -1,7 +1,14 @@
 import { auth } from "@repo/auth";
 import { NextResponse } from "next/server";
-import { TABLE_EXPORT_ENTITIES, TABLE_EXPORT_FORMATS, type TableExportRequest } from "@/modules/saas/shared/lib/table-export/types";
-import { createTableExport } from "@/modules/saas/shared/lib/table-export/server";
+import {
+	createTableExport,
+	TableExportTooLargeError,
+} from "@/modules/saas/shared/lib/table-export/server";
+import {
+	TABLE_EXPORT_ENTITIES,
+	TABLE_EXPORT_FORMATS,
+	type TableExportRequest,
+} from "@/modules/saas/shared/lib/table-export/types";
 
 function isValidExportRequest(body: unknown): body is TableExportRequest {
 	if (!body || typeof body !== "object") {
@@ -49,6 +56,13 @@ export async function POST(request: Request) {
 			},
 		});
 	} catch (error) {
+		if (error instanceof TableExportTooLargeError) {
+			return NextResponse.json(
+				{ message: error.message },
+				{ status: 413 },
+			);
+		}
+
 		console.error("Table export failed", error);
 		return NextResponse.json({ message: "Failed to export table data" }, { status: 500 });
 	}

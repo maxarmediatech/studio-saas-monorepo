@@ -11,6 +11,14 @@ import type {
 } from "./types";
 
 const EXPORT_PAGE_SIZE = 100;
+const MAX_EXPORT_ROWS = 10_000;
+
+export class TableExportTooLargeError extends Error {
+	constructor(limit: number) {
+		super(`Export exceeds the ${limit.toLocaleString()} row limit.`);
+		this.name = "TableExportTooLargeError";
+	}
+}
 
 function createApiClient(headers: Headers): ApiRouterClient {
 	return createRouterClient(router, {
@@ -27,6 +35,9 @@ async function collectAllPages<Row>(
 
 	do {
 		const result = await fetchPage(page, EXPORT_PAGE_SIZE);
+		if (rows.length + result.data.length > MAX_EXPORT_ROWS) {
+			throw new TableExportTooLargeError(MAX_EXPORT_ROWS);
+		}
 		rows.push(...result.data);
 		pageCount = result.pagination.pageCount;
 		page += 1;

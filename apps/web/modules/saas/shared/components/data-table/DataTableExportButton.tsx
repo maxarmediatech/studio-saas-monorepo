@@ -66,7 +66,20 @@ export function DataTableExportButton({
 			});
 
 			if (!response.ok) {
-				throw new Error(`Export failed with status ${response.status}`);
+				let errorMessage = `Failed to export ${entityType}s`;
+
+				try {
+					const errorBody = (await response.json()) as {
+						message?: string;
+					};
+					if (typeof errorBody.message === "string") {
+						errorMessage = errorBody.message;
+					}
+				} catch {
+					// Ignore non-JSON error responses and fall back to generic copy.
+				}
+
+				throw new Error(errorMessage);
 			}
 
 			const blob = await response.blob();
@@ -77,7 +90,11 @@ export function DataTableExportButton({
 			triggerDownload(blob, filename);
 		} catch (error) {
 			console.error(error);
-			toast.error(`Failed to export ${entityType}s`);
+			toast.error(
+				error instanceof Error
+					? error.message
+					: `Failed to export ${entityType}s`,
+			);
 		} finally {
 			setExportingFormat(null);
 		}

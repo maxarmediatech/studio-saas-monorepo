@@ -73,7 +73,15 @@ function useSharedColumnVisibility(columnVisibilityKey?: string) {
 				return;
 			}
 
-			window.localStorage.setItem(storageKey, JSON.stringify(nextState));
+			try {
+				window.localStorage.setItem(
+					storageKey,
+					JSON.stringify(nextState),
+				);
+			} catch {
+				// Ignore storage failures in restricted environments.
+			}
+
 			window.dispatchEvent(
 				new CustomEvent(COLUMN_VISIBILITY_EVENT, {
 					detail: {
