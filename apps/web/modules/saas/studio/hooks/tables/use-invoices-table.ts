@@ -30,6 +30,7 @@ const invoiceFilterParsers = {
 
 export function useInvoicesTable() {
 	return useDataTable<InvoiceFilters>(invoiceFilterParsers, {
+		columnVisibilityKey: "invoice",
 		defaultSortBy: "createdAt",
 		defaultSortDirection: "desc",
 		defaultLimit: 10,

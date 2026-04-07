@@ -92,6 +92,8 @@ export function ExpensesTableClient({
 		pagination,
 		sorting,
 		sortingState,
+		columnVisibility,
+		onColumnVisibilityChange,
 		onSortingChange,
 		onPaginationChange,
 		onLimitChange,
@@ -398,6 +400,8 @@ export function ExpensesTableClient({
 					onLimitChange={onLimitChange}
 					sorting={sortingState}
 					onSortingChange={onSortingChange}
+					columnVisibility={columnVisibility}
+					onColumnVisibilityChange={onColumnVisibilityChange}
 					enableRowSelection
 					getRowId={(row) => row.id}
 					// Sticky columns configuration

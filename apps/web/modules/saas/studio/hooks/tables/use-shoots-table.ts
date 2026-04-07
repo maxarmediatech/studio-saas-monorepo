@@ -78,6 +78,7 @@ const shootFilterParsers = {
  */
 export function useShootsTable() {
 	return useDataTable<ShootFilters>(shootFilterParsers, {
+		columnVisibilityKey: "shoot",
 		defaultSortBy: "shootDate",
 		defaultSortDirection: "desc",
 		defaultLimit: 10,

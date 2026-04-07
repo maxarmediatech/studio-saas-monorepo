@@ -1,7 +1,10 @@
 "use client";
 
-import type { ToolbarFilterConfig } from "@saas/shared/components/data-table";
-import { DataTableToolbarWithViews } from "@saas/shared/components/data-table";
+import {
+	DataTableExportButton,
+	DataTableToolbarWithViews,
+	type ToolbarFilterConfig,
+} from "@saas/shared/components/data-table";
 import type { SavedView } from "@saas/shared/components/views";
 import { useBookingsTableWithViews } from "@saas/studio/hooks/tables";
 import { configurationsApi } from "@saas/studio/lib/api";
@@ -74,6 +77,8 @@ export function BookingsFilters() {
 		isFiltered,
 		activeViewId,
 		applyView,
+		pagination,
+		sorting,
 		sortingState,
 		columnVisibility,
 	} = useBookingsTableWithViews();
@@ -211,6 +216,19 @@ export function BookingsFilters() {
 		return columnVisibility;
 	}, [columnVisibility]);
 
+	const queryInput = {
+		page: pagination.page,
+		limit: pagination.limit,
+		search: filters.search ?? undefined,
+		statuses: filters.statuses ?? undefined,
+		bookingType: filters.bookingType ?? undefined,
+		packageType: filters.packageType ?? undefined,
+		createdAt: filters.createdAt?.join(",") ?? undefined,
+		sortBy: sorting.sortBy ?? "createdAt",
+		sortDirection: sorting.sortDirection,
+		includeDeleted: false,
+	};
+
 	return (
 		<DataTableToolbarWithViews
 			entityType="booking"
@@ -229,6 +247,13 @@ export function BookingsFilters() {
 			searchPlaceholder="Search bookings..."
 			onSearchChange={handleSearchChange}
 			showViewOptions={false}
-		/>
+		>
+			<DataTableExportButton
+				entityType="booking"
+				input={queryInput}
+				columnVisibility={columnVisibility}
+				iconOnly
+			/>
+		</DataTableToolbarWithViews>
 	);
 }

@@ -151,6 +151,8 @@ export function TasksTableClient({ organizationSlug }: TasksTableClientProps) {
 		pagination,
 		sorting,
 		sortingState,
+		columnVisibility,
+		onColumnVisibilityChange,
 		onSortingChange,
 		onPaginationChange,
 		onLimitChange,
@@ -422,6 +424,8 @@ export function TasksTableClient({ organizationSlug }: TasksTableClientProps) {
 					onLimitChange={onLimitChange}
 					sorting={sortingState}
 					onSortingChange={onSortingChange}
+					columnVisibility={columnVisibility}
+					onColumnVisibilityChange={onColumnVisibilityChange}
 					enableRowSelection
 					getRowId={(row) => row.id}
 					// Sticky columns configuration

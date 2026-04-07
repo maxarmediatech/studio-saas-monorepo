@@ -11,7 +11,7 @@ import {
 	useQueryState,
 	useQueryStates,
 } from "nuqs";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDebounceCallback } from "usehooks-ts";
 import { getSortingStateParser } from "./parsers";
 import type {
@@ -31,6 +31,105 @@ const DEFAULT_CONFIG = {
 	debounceMs: 300,
 	clearOnDefault: true,
 };
+
+const COLUMN_VISIBILITY_STORAGE_PREFIX = "datatable-column-visibility";
+const COLUMN_VISIBILITY_EVENT = "datatable-column-visibility-change";
+
+function getColumnVisibilityStorageKey(key?: string) {
+	return key ? `${COLUMN_VISIBILITY_STORAGE_PREFIX}:${key}` : null;
+}
+
+function readColumnVisibility(storageKey: string | null): VisibilityState {
+	if (!storageKey || typeof window === "undefined") {
+		return {};
+	}
+
+	try {
+		const raw = window.localStorage.getItem(storageKey);
+		if (!raw) {
+			return {};
+		}
+
+		const parsed = JSON.parse(raw);
+		return typeof parsed === "object" && parsed !== null ? parsed : {};
+	} catch {
+		return {};
+	}
+}
+
+function useSharedColumnVisibility(columnVisibilityKey?: string) {
+	const storageKey = useMemo(
+		() => getColumnVisibilityStorageKey(columnVisibilityKey),
+		[columnVisibilityKey],
+	);
+	const [columnVisibility, setColumnVisibilityState] =
+		useState<VisibilityState>(() => readColumnVisibility(storageKey));
+
+	const setSharedColumnVisibility = useCallback(
+		(nextState: VisibilityState) => {
+			setColumnVisibilityState(nextState);
+
+			if (!storageKey || typeof window === "undefined") {
+				return;
+			}
+
+			window.localStorage.setItem(storageKey, JSON.stringify(nextState));
+			window.dispatchEvent(
+				new CustomEvent(COLUMN_VISIBILITY_EVENT, {
+					detail: {
+						storageKey,
+						columnVisibility: nextState,
+					},
+				}),
+			);
+		},
+		[storageKey],
+	);
+
+	useEffect(() => {
+		if (!storageKey || typeof window === "undefined") {
+			return;
+		}
+
+		setColumnVisibilityState(readColumnVisibility(storageKey));
+
+		const handleStorage = (event: StorageEvent) => {
+			if (event.key !== storageKey) {
+				return;
+			}
+			setColumnVisibilityState(readColumnVisibility(storageKey));
+		};
+
+		const handleColumnVisibilityEvent = (event: Event) => {
+			const customEvent = event as CustomEvent<{
+				storageKey?: string;
+				columnVisibility?: VisibilityState;
+			}>;
+
+			if (customEvent.detail?.storageKey !== storageKey) {
+				return;
+			}
+
+			setColumnVisibilityState(customEvent.detail.columnVisibility ?? {});
+		};
+
+		window.addEventListener("storage", handleStorage);
+		window.addEventListener(
+			COLUMN_VISIBILITY_EVENT,
+			handleColumnVisibilityEvent as EventListener,
+		);
+
+		return () => {
+			window.removeEventListener("storage", handleStorage);
+			window.removeEventListener(
+				COLUMN_VISIBILITY_EVENT,
+				handleColumnVisibilityEvent as EventListener,
+			);
+		};
+	}, [storageKey]);
+
+	return [columnVisibility, setSharedColumnVisibility] as const;
+}
 
 /**
  * A reusable hook for managing data table state with URL synchronization.
@@ -60,6 +159,8 @@ export function useDataTable<
 	config?: UseDataTableConfig<TFilters>,
 ): UseDataTableReturn<TFilters> {
 	const mergedConfig = { ...DEFAULT_CONFIG, ...config };
+	const [columnVisibility, setColumnVisibilityState] =
+		useSharedColumnVisibility(mergedConfig.columnVisibilityKey);
 
 	// Default sorting state for TanStack Table
 	const defaultSortingState: SortingState = mergedConfig.defaultSortBy
@@ -205,6 +306,24 @@ export function useDataTable<
 		[sortingState, setSortingState],
 	);
 
+	const setColumnVisibility = useCallback(
+		(visibility: VisibilityState) => {
+			setColumnVisibilityState(visibility);
+		},
+		[setColumnVisibilityState],
+	);
+
+	const onColumnVisibilityChange: OnChangeFn<VisibilityState> = useCallback(
+		(updater) => {
+			const newState =
+				typeof updater === "function"
+					? updater(columnVisibility)
+					: updater;
+			setColumnVisibilityState(newState);
+		},
+		[columnVisibility, setColumnVisibilityState],
+	);
+
 	// Derived: current sort column and direction (for API calls)
 	const sorting = useMemo(() => {
 		const firstSort = sortingState[0];
@@ -244,6 +363,9 @@ export function useDataTable<
 		onLimitChange,
 		onSortingChange,
 		sortingState,
+		columnVisibility,
+		setColumnVisibility,
+		onColumnVisibilityChange,
 	};
 }
 
@@ -254,6 +376,10 @@ export function useDataTableWithViews<
 	config?: UseDataTableWithViewsConfig<TFilters>,
 ): UseDataTableWithViewsReturn<TFilters> {
 	const mergedConfig = { ...DEFAULT_CONFIG, ...config };
+	const [columnVisibility, setColumnVisibilityState] =
+		useSharedColumnVisibility(
+			mergedConfig.columnVisibilityKey ?? mergedConfig.entityType,
+		);
 
 	// Default sorting state for TanStack Table
 	const defaultSortingState: SortingState = mergedConfig.defaultSortBy
@@ -292,9 +418,6 @@ export function useDataTableWithViews<
 			shallow: false,
 		},
 	);
-
-	const [columnVisibility, setColumnVisibilityState] =
-		useState<VisibilityState>({});
 
 	// Debounced filter setter - for individual filter changes
 	const debouncedSetFilters = useDebounceCallback(

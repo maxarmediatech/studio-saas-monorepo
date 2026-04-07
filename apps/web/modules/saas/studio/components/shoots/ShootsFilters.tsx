@@ -1,7 +1,10 @@
 "use client";
 
-import type { ToolbarFilterConfig } from "@saas/shared/components/data-table";
-import { DataTableToolbarWithViews } from "@saas/shared/components/data-table";
+import {
+	DataTableExportButton,
+	DataTableToolbarWithViews,
+	type ToolbarFilterConfig,
+} from "@saas/shared/components/data-table";
 import type { SavedView } from "@saas/shared/components/views";
 import {
 	SHOOT_TYPE_OPTIONS,
@@ -29,6 +32,8 @@ export function ShootsFilters() {
 		isFiltered,
 		activeViewId,
 		applyView,
+		pagination,
+		sorting,
 		sortingState,
 		columnVisibility,
 	} = useShootsTableWithViews();
@@ -154,6 +159,24 @@ export function ShootsFilters() {
 		return columnVisibility;
 	}, [columnVisibility]);
 
+	const queryInput = {
+		page: pagination.page,
+		limit: pagination.limit,
+		search: filters.search ?? undefined,
+		shootType: filters.shootType ?? undefined,
+		status: filters.status ?? undefined,
+		dateFrom: filters.shootDate?.[0] ?? undefined,
+		dateTo: filters.shootDate?.[1] ?? undefined,
+		sortBy: (sorting.sortBy ?? "shootDate") as
+			| "name"
+			| "shootDate"
+			| "shootType"
+			| "status"
+			| "createdAt",
+		sortDirection: sorting.sortDirection,
+		includeDeleted: false,
+	};
+
 	return (
 		<DataTableToolbarWithViews
 			entityType="shoot"
@@ -172,6 +195,13 @@ export function ShootsFilters() {
 			searchPlaceholder="Search shoots..."
 			onSearchChange={handleSearchChange}
 			showViewOptions={false}
-		/>
+		>
+			<DataTableExportButton
+				entityType="shoot"
+				input={queryInput}
+				columnVisibility={columnVisibility}
+				iconOnly
+			/>
+		</DataTableToolbarWithViews>
 	);
 }

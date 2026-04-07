@@ -59,6 +59,7 @@ const paymentFilterParsers = {
  */
 export function usePaymentsTable() {
 	return useDataTable<PaymentFilters>(paymentFilterParsers, {
+		columnVisibilityKey: "payment",
 		defaultSortBy: "receivedDate",
 		defaultSortDirection: "desc",
 		defaultLimit: 10,

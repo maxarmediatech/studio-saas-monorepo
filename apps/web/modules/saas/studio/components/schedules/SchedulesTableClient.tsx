@@ -17,6 +17,7 @@ import {
 	createSelectColumn,
 	DataTable,
 	DataTableColumnHeader,
+	DataTableExportButton,
 	DataTableRowActions,
 	DataTableToolbarWithViews,
 	DataTableViewOptions,
@@ -532,7 +533,14 @@ export function SchedulesTableClient({
 						setFilter("search", value || null)
 					}
 					showViewOptions={false}
-				/>
+				>
+					<DataTableExportButton
+						entityType="schedule"
+						input={queryInput}
+						columnVisibility={columnVisibility}
+						iconOnly
+					/>
+				</DataTableToolbarWithViews>
 
 				{/* Table with sort context */}
 				<SortProvider

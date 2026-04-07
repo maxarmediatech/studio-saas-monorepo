@@ -48,6 +48,8 @@ export function ReceiptsTableClient({
 		pagination,
 		sorting,
 		sortingState,
+		columnVisibility,
+		onColumnVisibilityChange,
 		onSortingChange,
 		onPaginationChange,
 		onLimitChange,
@@ -275,6 +277,8 @@ export function ReceiptsTableClient({
 				onLimitChange={onLimitChange}
 				sorting={sortingState}
 				onSortingChange={onSortingChange}
+				columnVisibility={columnVisibility}
+				onColumnVisibilityChange={onColumnVisibilityChange}
 				enableRowSelection
 				getRowId={(row) => row.id}
 				emptyState={

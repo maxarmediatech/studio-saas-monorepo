@@ -81,6 +81,8 @@ export function BookingsTableClient({
 		pagination,
 		sorting,
 		sortingState,
+		columnVisibility,
+		onColumnVisibilityChange,
 		onSortingChange,
 		onPaginationChange,
 		onLimitChange,
@@ -521,6 +523,8 @@ export function BookingsTableClient({
 						onLimitChange={onLimitChange}
 						sorting={sortingState}
 						onSortingChange={onSortingChange}
+						columnVisibility={columnVisibility}
+						onColumnVisibilityChange={onColumnVisibilityChange}
 						enableRowSelection
 						getRowId={(row) => row.id}
 						stickyLeftColumns={[

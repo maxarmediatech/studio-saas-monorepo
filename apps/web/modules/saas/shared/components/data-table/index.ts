@@ -4,6 +4,7 @@ export {
 	type StickyColumnConfig,
 } from "./DataTable";
 export { DataTableColumnHeader } from "./DataTableColumnHeader";
+export { DataTableExportButton } from "./DataTableExportButton";
 export {
 	DataTableDateFilter,
 	type DateFilterValue,

@@ -58,6 +58,7 @@ const scheduleFilterParsers = {
  */
 export function useSchedulesTable() {
 	return useDataTable<ScheduleFilters>(scheduleFilterParsers, {
+		columnVisibilityKey: "schedule",
 		defaultSortBy: "dueDate",
 		defaultSortDirection: "asc",
 		defaultLimit: 10,

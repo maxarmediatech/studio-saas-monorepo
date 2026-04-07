@@ -1,7 +1,10 @@
 "use client";
 
-import type { ToolbarFilterConfig } from "@saas/shared/components/data-table";
-import { DataTableToolbarWithViews } from "@saas/shared/components/data-table";
+import {
+	DataTableExportButton,
+	DataTableToolbarWithViews,
+	type ToolbarFilterConfig,
+} from "@saas/shared/components/data-table";
 import type { SavedView } from "@saas/shared/components/views";
 import { useInvoicesTableWithViews } from "@saas/studio/hooks/tables/use-invoices-table-with-views";
 import { CalendarIcon, CircleIcon } from "lucide-react";
@@ -70,6 +73,8 @@ export function InvoicesFilters() {
 		isFiltered,
 		activeViewId,
 		applyView,
+		pagination,
+		sorting,
 		sortingState,
 		columnVisibility,
 	} = useInvoicesTableWithViews();
@@ -165,6 +170,18 @@ export function InvoicesFilters() {
 		return columnVisibility;
 	}, [columnVisibility]);
 
+	const queryInput = {
+		page: pagination.page,
+		limit: pagination.limit,
+		search: filters.search ?? undefined,
+		status: filters.statuses ?? undefined,
+		dateFrom: filters.createdAt?.[0] ?? undefined,
+		dateTo: filters.createdAt?.[1] ?? undefined,
+		sortBy: sorting.sortBy ?? "createdAt",
+		sortDirection: sorting.sortDirection,
+		includeDeleted: false,
+	};
+
 	return (
 		<DataTableToolbarWithViews
 			entityType="invoice"
@@ -183,6 +200,13 @@ export function InvoicesFilters() {
 			searchPlaceholder="Search invoices..."
 			onSearchChange={handleSearchChange}
 			showViewOptions={false}
-		/>
+		>
+			<DataTableExportButton
+				entityType="invoice"
+				input={queryInput}
+				columnVisibility={columnVisibility}
+				iconOnly
+			/>
+		</DataTableToolbarWithViews>
 	);
 }

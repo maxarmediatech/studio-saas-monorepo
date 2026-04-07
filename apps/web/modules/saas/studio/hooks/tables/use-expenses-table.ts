@@ -73,6 +73,7 @@ const expenseFilterParsers = {
  */
 export function useExpensesTable() {
 	return useDataTable<ExpenseFilters>(expenseFilterParsers, {
+		columnVisibilityKey: "expense",
 		defaultSortBy: "expenseDate",
 		defaultSortDirection: "desc",
 		defaultLimit: 10,

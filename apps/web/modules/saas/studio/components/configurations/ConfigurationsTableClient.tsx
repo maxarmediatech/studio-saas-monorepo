@@ -69,6 +69,8 @@ export function ConfigurationsTableClient({
 		pagination,
 		sorting,
 		sortingState,
+		columnVisibility,
+		onColumnVisibilityChange,
 		onSortingChange,
 		onPaginationChange,
 		onLimitChange,
@@ -570,6 +572,8 @@ export function ConfigurationsTableClient({
 					onLimitChange={onLimitChange}
 					sorting={sortingState}
 					onSortingChange={onSortingChange}
+					columnVisibility={columnVisibility}
+					onColumnVisibilityChange={onColumnVisibilityChange}
 					stickyLeftColumns={[{ id: "label", width: 220 }]}
 					stickyRightColumns={[{ id: "actions", width: 56 }]}
 					minWidth={1000}

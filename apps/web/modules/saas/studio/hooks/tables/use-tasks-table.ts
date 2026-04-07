@@ -64,6 +64,7 @@ const taskFilterParsers = {
  */
 export function useTasksTable() {
 	return useDataTable<TaskFilters>(taskFilterParsers, {
+		columnVisibilityKey: "task",
 		defaultSortBy: "dueDate",
 		defaultSortDirection: "asc",
 		defaultLimit: 10,

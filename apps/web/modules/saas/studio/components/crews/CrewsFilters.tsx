@@ -1,7 +1,10 @@
 "use client";
 
-import type { ToolbarFilterConfig } from "@saas/shared/components/data-table";
-import { DataTableToolbarWithViews } from "@saas/shared/components/data-table";
+import {
+	DataTableExportButton,
+	DataTableToolbarWithViews,
+	type ToolbarFilterConfig,
+} from "@saas/shared/components/data-table";
 import type { SavedView } from "@saas/shared/components/views";
 import { useCrewsTableWithViews } from "@saas/studio/hooks/tables";
 import { configurationsApi } from "@saas/studio/lib/api";
@@ -28,6 +31,8 @@ export function CrewsFilters() {
 		isFiltered,
 		activeViewId,
 		applyView,
+		pagination,
+		sorting,
 		sortingState,
 		columnVisibility,
 	} = useCrewsTableWithViews();
@@ -129,6 +134,29 @@ export function CrewsFilters() {
 		return columnVisibility;
 	}, [columnVisibility]);
 
+	const workerType = filters.workerType?.filter(
+		(value): value is "internal" | "freelancer" =>
+			value === "internal" || value === "freelancer",
+	);
+	const hasAppAccess = filters.hasAppAccess?.filter(
+		(value): value is "true" | "false" =>
+			value === "true" || value === "false",
+	);
+	const queryInput = {
+		page: pagination.page,
+		limit: pagination.limit,
+		search: filters.search ?? undefined,
+		status: filters.status ?? undefined,
+		specializations: filters.specializations ?? undefined,
+		workerType:
+			workerType && workerType.length > 0 ? workerType : undefined,
+		hasAppAccess:
+			hasAppAccess && hasAppAccess.length > 0 ? hasAppAccess : undefined,
+		sortBy: sorting.sortBy ?? "name",
+		sortDirection: sorting.sortDirection,
+		includeDeleted: false,
+	};
+
 	return (
 		<DataTableToolbarWithViews
 			entityType="crew"
@@ -147,6 +175,13 @@ export function CrewsFilters() {
 			searchPlaceholder="Search people..."
 			onSearchChange={handleSearchChange}
 			showViewOptions={false}
-		/>
+		>
+			<DataTableExportButton
+				entityType="crew"
+				input={queryInput}
+				columnVisibility={columnVisibility}
+				iconOnly
+			/>
+		</DataTableToolbarWithViews>
 	);
 }

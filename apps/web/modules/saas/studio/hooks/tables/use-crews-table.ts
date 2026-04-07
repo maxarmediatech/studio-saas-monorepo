@@ -52,6 +52,7 @@ const crewFilterParsers = {
  */
 export function useCrewsTable() {
 	return useDataTable<CrewFilters>(crewFilterParsers, {
+		columnVisibilityKey: "crew",
 		defaultSortBy: "name",
 		defaultSortDirection: "asc",
 		defaultLimit: 10,

@@ -29,7 +29,10 @@ export default async function BookingTypesPage({ params, searchParams }: Props) 
 
 	return (
 		<div className="space-y-4">
-			<ConfigurationsFilters configTypeLabelPlural="Booking Types" />
+			<ConfigurationsFilters
+				configType="booking_type"
+				configTypeLabelPlural="Booking Types"
+			/>
 
 			<Suspense fallback={<ConfigurationsTableSkeleton />}>
 				<ConfigurationsTable

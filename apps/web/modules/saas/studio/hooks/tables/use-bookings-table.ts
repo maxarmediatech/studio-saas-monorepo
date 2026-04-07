@@ -64,6 +64,7 @@ const bookingFilterParsers = {
  */
 export function useBookingsTable() {
 	return useDataTable<BookingFilters>(bookingFilterParsers, {
+		columnVisibilityKey: "booking",
 		defaultSortBy: "createdAt",
 		defaultSortDirection: "desc",
 		defaultLimit: 10,

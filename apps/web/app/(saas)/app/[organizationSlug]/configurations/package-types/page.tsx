@@ -29,7 +29,10 @@ export default async function PackageTypesPage({ params, searchParams }: Props) 
 
 	return (
 		<div className="space-y-4">
-			<ConfigurationsFilters configTypeLabelPlural="Package Types" />
+			<ConfigurationsFilters
+				configType="package_type"
+				configTypeLabelPlural="Package Types"
+			/>
 
 			<Suspense fallback={<ConfigurationsTableSkeleton />}>
 				<ConfigurationsTable

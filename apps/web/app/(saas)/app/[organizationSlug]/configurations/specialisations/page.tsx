@@ -35,7 +35,10 @@ export default async function SpecialisationsPage({
 
 	return (
 		<div className="space-y-4">
-			<ConfigurationsFilters configTypeLabelPlural="Specialisations" />
+			<ConfigurationsFilters
+				configType="crew_role"
+				configTypeLabelPlural="Specialisations"
+			/>
 
 			<Suspense fallback={<ConfigurationsTableSkeleton />}>
 				<ConfigurationsTable
