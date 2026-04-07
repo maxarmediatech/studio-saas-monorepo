@@ -28,6 +28,7 @@ import { studioPaymentsRouter } from "../modules/studio-payments/router";
 import { submissionsRouter } from "../modules/submissions/router";
 import { tasksRouter } from "../modules/tasks/router";
 import { usersRouter } from "../modules/users/router";
+import { whatsappRouter } from "../modules/whatsapp/router";
 import { yourWorkRouter } from "../modules/your-work/router";
 import { publicProcedure } from "./procedures";
 
@@ -73,6 +74,7 @@ export const router = publicProcedure
 		stickies: stickiesRouter,
 		activities: activitiesRouter,
 		notifications: notificationsRouter,
+		whatsapp: whatsappRouter,
 	});
 
 export type ApiRouterClient = RouterClient<typeof router>;

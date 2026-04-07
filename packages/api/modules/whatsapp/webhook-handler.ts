@@ -1,6 +1,6 @@
-import { parseCloudApiWebhook } from "@repo/whatsapp-core";
+import { and, db, eq, or, sql } from "@repo/database";
 import { logger } from "@repo/logs";
-import { and, db, eq } from "@repo/database";
+import { parseCloudApiWebhook } from "@repo/whatsapp-core";
 import {
 	waAccounts,
 	waContacts,
@@ -8,28 +8,32 @@ import {
 	waEvents,
 	waMessages,
 } from "@repo/whatsapp-db";
+import {
+	decryptWhatsAppSecret,
+	hashWebhookVerifyToken,
+} from "./lib/account-secrets";
+import { verifyWebhookSignature } from "./lib/webhook-security";
 
-const getStatusEventId = (
-	messageId: string,
-	status: string,
-	timestamp: Date,
-) => `${messageId}:${status}:${timestamp.getTime()}`;
+const getStatusEventId = (messageId: string, status: string, timestamp: Date) =>
+	`${messageId}:${status}:${timestamp.getTime()}`;
+
+const buildWebhookTokenClause = (token: string) => {
+	const hashedToken = hashWebhookVerifyToken(token);
+	return or(
+		eq(waAccounts.webhookVerifyToken, token),
+		eq(waAccounts.webhookVerifyToken, hashedToken),
+	);
+};
 
 const resolveAccount = async (phoneNumberId: string, token: string) => {
 	const account = await db.query.waAccounts.findFirst({
 		where: and(
 			eq(waAccounts.phoneNumberId, phoneNumberId),
-			eq(waAccounts.webhookVerifyToken, token),
+			buildWebhookTokenClause(token),
 		),
 	});
 
-	if (account) {
-		return account;
-	}
-
-	return db.query.waAccounts.findFirst({
-		where: eq(waAccounts.webhookVerifyToken, token),
-	});
+	return account;
 };
 
 const createEventRecord = async (params: {
@@ -140,7 +144,7 @@ export const verifyCloudWebhook = async (params: {
 	}
 
 	const account = await db.query.waAccounts.findFirst({
-		where: eq(waAccounts.webhookVerifyToken, params.token),
+		where: buildWebhookTokenClause(params.token),
 	});
 
 	if (!account) {
@@ -160,6 +164,7 @@ export const handleCloudWebhook = async (req: Request, token: string) => {
 	}
 
 	const rawBody = await req.text();
+	const signatureHeader = req.headers.get("x-hub-signature-256");
 	if (!rawBody.length) {
 		return new Response("Empty webhook body", { status: 400 });
 	}
@@ -186,13 +191,35 @@ export const handleCloudWebhook = async (req: Request, token: string) => {
 			continue;
 		}
 
+		if (account.appSecret && !signatureHeader) {
+			logger.warn("WhatsApp webhook signature missing", {
+				accountId: account.id,
+				phoneNumberId: event.phoneNumberId,
+			});
+			return new Response("Missing signature", { status: 403 });
+		}
+
+		if (signatureHeader && account.appSecret) {
+			const appSecret = decryptWhatsAppSecret(account.appSecret);
+			if (
+				!appSecret ||
+				!verifyWebhookSignature(rawBody, signatureHeader, appSecret)
+			) {
+				logger.warn("WhatsApp webhook signature verification failed", {
+					accountId: account.id,
+					phoneNumberId: event.phoneNumberId,
+				});
+				return new Response("Invalid signature", { status: 403 });
+			}
+		}
+
 		const providerEventId =
 			event.type === "message.status"
 				? getStatusEventId(
-					event.providerMessageId,
-					event.status,
-					event.timestamp,
-				)
+						event.providerMessageId,
+						event.status,
+						event.timestamp,
+					)
 				: event.providerMessageId;
 
 		const existing = await db.query.waEvents.findFirst({
@@ -276,12 +303,16 @@ export const handleCloudWebhook = async (req: Request, token: string) => {
 						lastMessageAt: event.timestamp,
 						lastMessagePreview:
 							event.content.text ?? event.messageType,
+						unreadCount: sql`coalesce(${waConversations.unreadCount}, 0) + 1`,
 					})
 					.where(eq(waConversations.id, conversationId));
 			} else {
 				const existingMessage = await db.query.waMessages.findFirst({
 					where: and(
-						eq(waMessages.providerMessageId, event.providerMessageId),
+						eq(
+							waMessages.providerMessageId,
+							event.providerMessageId,
+						),
 						eq(waMessages.accountId, account.id),
 					),
 				});
@@ -304,6 +335,14 @@ export const handleCloudWebhook = async (req: Request, token: string) => {
 			if (eventId) {
 				await markEventProcessed(eventId);
 			}
+
+			await db
+				.update(waAccounts)
+				.set({
+					lastEventAt: event.timestamp,
+					lastErrorMessage: null,
+				})
+				.where(eq(waAccounts.id, account.id));
 		} catch (error) {
 			logger.error("Failed to process WhatsApp webhook event", { error });
 			if (eventId) {
@@ -312,6 +351,17 @@ export const handleCloudWebhook = async (req: Request, token: string) => {
 					error instanceof Error ? error.message : "Unknown error",
 				);
 			}
+
+			await db
+				.update(waAccounts)
+				.set({
+					lastErrorMessage:
+						error instanceof Error
+							? error.message
+							: "Unknown error",
+					errorCount: sql`coalesce(${waAccounts.errorCount}, 0) + 1`,
+				})
+				.where(eq(waAccounts.id, account.id));
 		}
 	}
 

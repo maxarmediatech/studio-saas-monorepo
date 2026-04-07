@@ -1,5 +1,6 @@
-import { logger } from "@repo/logs";
+import crypto from "node:crypto";
 import { and, db, desc, eq, inArray, isNull, lte, or } from "@repo/database";
+import { logger } from "@repo/logs";
 import {
 	waAccounts,
 	waContacts,
@@ -11,6 +12,40 @@ import { CloudApiProvider } from "@repo/whatsapp-providers";
 
 const pollIntervalMs = Number(process.env.WHATSAPP_OUTBOX_INTERVAL_MS ?? 5000);
 const batchSize = Number(process.env.WHATSAPP_OUTBOX_BATCH_SIZE ?? 10);
+
+const decryptStoredSecret = (value: string) => {
+	if (!value.startsWith("v1:")) {
+		return value;
+	}
+
+	const rawKey = process.env.INTEGRATIONS_TOKEN_ENCRYPTION_KEY;
+	if (!rawKey) {
+		throw new Error("Missing INTEGRATIONS_TOKEN_ENCRYPTION_KEY");
+	}
+
+	const key = Buffer.from(rawKey, "base64");
+	if (key.length !== 32) {
+		throw new Error(
+			"INTEGRATIONS_TOKEN_ENCRYPTION_KEY must be 32 bytes (base64-encoded)",
+		);
+	}
+
+	const parts = value.split(":");
+	if (parts.length !== 4 || parts[0] !== "v1") {
+		throw new Error("Invalid encrypted token format");
+	}
+
+	const iv = Buffer.from(parts[1], "base64");
+	const ciphertext = Buffer.from(parts[2], "base64");
+	const tag = Buffer.from(parts[3], "base64");
+	const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
+	decipher.setAuthTag(tag);
+	const plaintext = Buffer.concat([
+		decipher.update(ciphertext),
+		decipher.final(),
+	]);
+	return plaintext.toString("utf8");
+};
 
 const computeNextAttemptAt = (attempts: number) => {
 	const delaySeconds = Math.min(30 * attempts, 15 * 60);
@@ -35,7 +70,10 @@ const fetchOutboxBatch = async () => {
 		.where(
 			and(
 				inArray(waOutbox.status, ["pending", "failed"]),
-				or(isNull(waOutbox.nextAttemptAt), lte(waOutbox.nextAttemptAt, now)),
+				or(
+					isNull(waOutbox.nextAttemptAt),
+					lte(waOutbox.nextAttemptAt, now),
+				),
 			),
 		)
 		.orderBy(desc(waOutbox.priority))
@@ -148,8 +186,9 @@ const processOutboxItem = async (item: {
 	}
 
 	const provider = new CloudApiProvider({
-		accessToken: item.account.accessToken,
+		accessToken: decryptStoredSecret(item.account.accessToken),
 		phoneNumberId: item.account.phoneNumberId,
+		apiVersion: item.account.apiVersion ?? undefined,
 	});
 
 	const recipient = item.contact.phoneNumber || item.contact.waId;
@@ -238,7 +277,8 @@ const processOutboxItem = async (item: {
 		}
 
 		const languageValue = templateParams.language;
-		const language = typeof languageValue === "string" ? languageValue : null;
+		const language =
+			typeof languageValue === "string" ? languageValue : null;
 		if (!language) {
 			await markOutboxFailure({
 				outboxId: item.outbox.id,
@@ -256,7 +296,10 @@ const processOutboxItem = async (item: {
 					.filter(isRecord)
 					.map((component) => {
 						const componentType = component.type;
-						if (typeof componentType !== "string" || !componentType) {
+						if (
+							typeof componentType !== "string" ||
+							!componentType
+						) {
 							return null;
 						}
 
@@ -277,7 +320,9 @@ const processOutboxItem = async (item: {
 						return next;
 					})
 					.filter(
-						(component): component is {
+						(
+							component,
+						): component is {
 							type: string;
 							parameters?: Array<Record<string, unknown>>;
 						} => component !== null,
@@ -373,9 +418,27 @@ const runBatch = async () => {
 		try {
 			await processOutboxItem(item);
 		} catch (error) {
+			const attempts = (item.outbox.attempts ?? 0) + 1;
+			const maxAttempts = item.outbox.maxAttempts ?? 3;
+			const errorMessage =
+				error instanceof Error ? error.message : "Unknown error";
+
 			logger.error("Failed to process outbox item", {
 				outboxId: item.outbox.id,
 				error,
+			});
+
+			await markOutboxFailure({
+				outboxId: item.outbox.id,
+				messageId: item.message.id,
+				attempts,
+				maxAttempts,
+				errorMessage,
+			}).catch((markError) => {
+				logger.error("Failed to mark outbox item as failed", {
+					outboxId: item.outbox.id,
+					error: markError,
+				});
 			});
 		}
 	}

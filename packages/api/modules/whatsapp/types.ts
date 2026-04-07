@@ -14,6 +14,8 @@ export const connectCloudApiInputSchema = z.object({
 	phoneNumberId: z.string().min(1),
 	wabaId: z.string().min(1).optional(),
 	accessToken: z.string().min(1),
+	appSecret: z.string().min(1).optional(),
+	apiVersion: z.string().min(1).optional(),
 	webhookVerifyToken: z.string().min(1),
 });
 
@@ -156,7 +158,14 @@ export const messageItemSchema = z.object({
 		.nullable(),
 	templateName: z.string().nullable(),
 	templateParams: z.unknown().nullable(),
-	status: z.enum(["pending", "queued", "sent", "delivered", "read", "failed"]),
+	status: z.enum([
+		"pending",
+		"queued",
+		"sent",
+		"delivered",
+		"read",
+		"failed",
+	]),
 	statusUpdatedAt: z.date().nullable(),
 	providerMessageId: z.string().nullable(),
 	providerTimestamp: z.date().nullable(),
