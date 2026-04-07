@@ -7,11 +7,11 @@ import {
 	savedViews,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { requirePermission } from "../../studio/lib/permissions";
 import {
 	listSavedViewsInputSchema,
 	listSavedViewsOutputSchema,
 } from "../../studio/schemas/saved-view";
+import { requireSavedViewPermission } from "../lib/saved-view-permissions";
 
 export const listSavedViews = studioProtectedProcedure
 	.route({
@@ -24,9 +24,9 @@ export const listSavedViews = studioProtectedProcedure
 	.input(listSavedViewsInputSchema)
 	.output(listSavedViewsOutputSchema)
 	.handler(async ({ input, context }) => {
-		await requirePermission(context, "booking", "list");
-
 		const { entityType } = input;
+		await requireSavedViewPermission(context, entityType, "list");
+
 		const { organizationId } = context;
 		const userId = context.user.id;
 

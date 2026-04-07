@@ -1,11 +1,12 @@
-import { and, db, eq, savedViews } from "@repo/database";
 import { ORPCError } from "@orpc/server";
+import { and, db, eq, savedViews } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { requirePermission } from "../../studio/lib/permissions";
 import {
+	type SavedViewEntityType,
 	updateSavedViewInputSchema,
 	updateSavedViewOutputSchema,
 } from "../../studio/schemas/saved-view";
+import { requireSavedViewPermission } from "../lib/saved-view-permissions";
 
 export const updateSavedView = studioProtectedProcedure
 	.route({
@@ -19,8 +20,6 @@ export const updateSavedView = studioProtectedProcedure
 	.input(updateSavedViewInputSchema)
 	.output(updateSavedViewOutputSchema)
 	.handler(async ({ input, context }) => {
-		await requirePermission(context, "booking", "update");
-
 		const { organizationId } = context;
 		const userId = context.user.id;
 		const { id, ...updates } = input;
@@ -36,6 +35,12 @@ export const updateSavedView = studioProtectedProcedure
 			throw new ORPCError("NOT_FOUND", { message: "View not found" });
 		}
 
+		await requireSavedViewPermission(
+			context,
+			existing.entityType as SavedViewEntityType,
+			"update",
+		);
+
 		if (existing.isSystem) {
 			throw new ORPCError("FORBIDDEN", {
 				message: "Cannot modify system views",
@@ -50,19 +55,33 @@ export const updateSavedView = studioProtectedProcedure
 
 		const updateData: Record<string, unknown> = { updatedAt: new Date() };
 
-		if (updates.name !== undefined) updateData.name = updates.name;
-		if (updates.description !== undefined)
+		if (updates.name !== undefined) {
+			updateData.name = updates.name;
+		}
+		if (updates.description !== undefined) {
 			updateData.description = updates.description;
-		if (updates.icon !== undefined) updateData.icon = updates.icon;
-		if (updates.color !== undefined) updateData.color = updates.color;
-		if (updates.filters !== undefined) updateData.filters = updates.filters;
-		if (updates.displayFilters !== undefined)
+		}
+		if (updates.icon !== undefined) {
+			updateData.icon = updates.icon;
+		}
+		if (updates.color !== undefined) {
+			updateData.color = updates.color;
+		}
+		if (updates.filters !== undefined) {
+			updateData.filters = updates.filters;
+		}
+		if (updates.displayFilters !== undefined) {
 			updateData.displayFilters = updates.displayFilters;
-		if (updates.columnVisibility !== undefined)
+		}
+		if (updates.columnVisibility !== undefined) {
 			updateData.columnVisibility = updates.columnVisibility;
-		if (updates.sorting !== undefined) updateData.sorting = updates.sorting;
-		if (updates.isPublic !== undefined)
+		}
+		if (updates.sorting !== undefined) {
+			updateData.sorting = updates.sorting;
+		}
+		if (updates.isPublic !== undefined) {
 			updateData.isPublic = updates.isPublic;
+		}
 
 		await db
 			.update(savedViews)

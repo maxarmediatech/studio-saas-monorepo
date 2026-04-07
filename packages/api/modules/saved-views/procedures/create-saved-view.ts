@@ -1,10 +1,10 @@
 import { db, savedViews } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { requirePermission } from "../../studio/lib/permissions";
 import {
 	createSavedViewInputSchema,
 	createSavedViewOutputSchema,
 } from "../../studio/schemas/saved-view";
+import { requireSavedViewPermission } from "../lib/saved-view-permissions";
 
 export const createSavedView = studioProtectedProcedure
 	.route({
@@ -17,7 +17,7 @@ export const createSavedView = studioProtectedProcedure
 	.input(createSavedViewInputSchema)
 	.output(createSavedViewOutputSchema)
 	.handler(async ({ input, context }) => {
-		await requirePermission(context, "booking", "create");
+		await requireSavedViewPermission(context, input.entityType, "create");
 
 		const { organizationId } = context;
 		const userId = context.user.id;
@@ -44,7 +44,7 @@ export const createSavedView = studioProtectedProcedure
 			.returning({ id: savedViews.id });
 
 		return {
-			data: { id: created!.id },
+			data: { id: created.id },
 			message: "View created successfully",
 		};
 	});

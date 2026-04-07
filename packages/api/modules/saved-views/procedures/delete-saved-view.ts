@@ -1,11 +1,12 @@
-import { and, db, eq, savedViews } from "@repo/database";
 import { ORPCError } from "@orpc/server";
+import { and, db, eq, savedViews } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { requirePermission } from "../../studio/lib/permissions";
 import {
 	deleteSavedViewInputSchema,
 	deleteSavedViewOutputSchema,
+	type SavedViewEntityType,
 } from "../../studio/schemas/saved-view";
+import { requireSavedViewPermission } from "../lib/saved-view-permissions";
 
 export const deleteSavedView = studioProtectedProcedure
 	.route({
@@ -18,8 +19,6 @@ export const deleteSavedView = studioProtectedProcedure
 	.input(deleteSavedViewInputSchema)
 	.output(deleteSavedViewOutputSchema)
 	.handler(async ({ input, context }) => {
-		await requirePermission(context, "booking", "delete");
-
 		const { organizationId } = context;
 		const userId = context.user.id;
 		const { id } = input;
@@ -34,6 +33,12 @@ export const deleteSavedView = studioProtectedProcedure
 		if (!existing) {
 			throw new ORPCError("NOT_FOUND", { message: "View not found" });
 		}
+
+		await requireSavedViewPermission(
+			context,
+			existing.entityType as SavedViewEntityType,
+			"delete",
+		);
 
 		if (existing.isSystem) {
 			throw new ORPCError("FORBIDDEN", {

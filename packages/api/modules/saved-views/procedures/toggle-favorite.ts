@@ -1,11 +1,12 @@
-import { and, db, eq, savedViewFavorites, savedViews } from "@repo/database";
 import { ORPCError } from "@orpc/server";
+import { and, db, eq, savedViewFavorites, savedViews } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { requirePermission } from "../../studio/lib/permissions";
 import {
+	type SavedViewEntityType,
 	toggleFavoriteInputSchema,
 	toggleFavoriteOutputSchema,
 } from "../../studio/schemas/saved-view";
+import { requireSavedViewPermission } from "../lib/saved-view-permissions";
 
 export const toggleFavorite = studioProtectedProcedure
 	.route({
@@ -18,8 +19,6 @@ export const toggleFavorite = studioProtectedProcedure
 	.input(toggleFavoriteInputSchema)
 	.output(toggleFavoriteOutputSchema)
 	.handler(async ({ input, context }) => {
-		await requirePermission(context, "booking", "list");
-
 		const { organizationId } = context;
 		const userId = context.user.id;
 		const { viewId } = input;
@@ -34,6 +33,12 @@ export const toggleFavorite = studioProtectedProcedure
 		if (!view) {
 			throw new ORPCError("NOT_FOUND", { message: "View not found" });
 		}
+
+		await requireSavedViewPermission(
+			context,
+			view.entityType as SavedViewEntityType,
+			"list",
+		);
 
 		const existingFavorite = await db.query.savedViewFavorites.findFirst({
 			where: and(
