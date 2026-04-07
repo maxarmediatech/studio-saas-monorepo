@@ -1,5 +1,60 @@
-import { describe, expect, it } from "vitest";
-import { getSavedViewPermissionResource } from "./saved-view-permissions";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({
+	mockHasPermission: vi.fn(),
+}));
+
+vi.mock("../../studio/lib/permissions", () => ({
+	hasPermission: mocks.mockHasPermission,
+}));
+
+import {
+	getSavedViewPermissionResource,
+	listAuthorizedSavedViewEntityTypes,
+} from "./saved-view-permissions";
+
+describe("listAuthorizedSavedViewEntityTypes", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it("returns workflow entities for directly allowed resources", async () => {
+		mocks.mockHasPermission.mockImplementation(
+			async (_context, resource: string) => resource === "task",
+		);
+
+		await expect(
+			listAuthorizedSavedViewEntityTypes(
+				{ headers: new Headers() },
+				"list",
+			),
+		).resolves.toEqual(["task"]);
+	});
+
+	it("expands payment access to all payment-backed entity types", async () => {
+		mocks.mockHasPermission.mockImplementation(
+			async (_context, resource: string) => resource === "payment",
+		);
+
+		await expect(
+			listAuthorizedSavedViewEntityTypes(
+				{ headers: new Headers() },
+				"list",
+			),
+		).resolves.toEqual(["payment", "schedule", "invoice"]);
+	});
+
+	it("returns an empty list when no resources are authorized", async () => {
+		mocks.mockHasPermission.mockResolvedValue(false);
+
+		await expect(
+			listAuthorizedSavedViewEntityTypes(
+				{ headers: new Headers() },
+				"list",
+			),
+		).resolves.toEqual([]);
+	});
+});
 
 describe("getSavedViewPermissionResource", () => {
 	it("maps workflow entities to their own resources", () => {
