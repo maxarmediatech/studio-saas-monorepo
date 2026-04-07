@@ -12,7 +12,7 @@ export const connectBaileysOutputSchema = z.object({
 export const connectCloudApiInputSchema = z.object({
 	name: z.string().min(1),
 	phoneNumberId: z.string().min(1),
-	wabaId: z.string().min(1).optional(),
+	wabaId: z.string().min(1),
 	accessToken: z.string().min(1),
 	appSecret: z.string().min(1).optional(),
 	apiVersion: z.string().min(1).optional(),
@@ -20,6 +20,110 @@ export const connectCloudApiInputSchema = z.object({
 });
 
 export const connectCloudApiOutputSchema = z.object({
+	data: z.object({ id: z.string() }),
+	message: z.string(),
+});
+
+export const whatsappAccountSummarySchema = z.object({
+	id: z.string(),
+	name: z.string(),
+	provider: z.enum(["baileys", "cloud_api"]),
+	connectionStatus: z.enum([
+		"disconnected",
+		"connecting",
+		"qr_pending",
+		"connected",
+		"banned",
+	]),
+	ownershipType: z.enum(["platform", "customer"]),
+	phoneNumber: z.string().nullable(),
+	displayPhoneNumber: z.string().nullable(),
+	phoneNumberId: z.string().nullable(),
+	wabaId: z.string().nullable(),
+	apiVersion: z.string().nullable(),
+	verifiedName: z.string().nullable(),
+	qualityRating: z.string().nullable(),
+	messagingLimitTier: z.string().nullable(),
+	lastConnectedAt: z.date().nullable(),
+	lastValidatedAt: z.date().nullable(),
+	lastEventAt: z.date().nullable(),
+	lastErrorMessage: z.string().nullable(),
+	errorCount: z.number(),
+	hasAccessToken: z.boolean(),
+	hasAppSecret: z.boolean(),
+	createdAt: z.date(),
+	updatedAt: z.date(),
+});
+
+export const listAccountsInputSchema = z.object({});
+
+export const listAccountsOutputSchema = z.object({
+	data: z.array(whatsappAccountSummarySchema),
+});
+
+export const getAccountInputSchema = z.object({
+	accountId: z.string(),
+});
+
+export const getAccountOutputSchema = z.object({
+	data: whatsappAccountSummarySchema,
+});
+
+export const updateAccountInputSchema = z
+	.object({
+		accountId: z.string(),
+		name: z.string().min(1).optional(),
+		phoneNumberId: z.string().min(1).optional(),
+		wabaId: z.string().min(1).optional(),
+		accessToken: z.string().min(1).optional(),
+		appSecret: z.string().min(1).optional(),
+		apiVersion: z.string().min(1).optional(),
+		webhookVerifyToken: z.string().min(1).optional(),
+	})
+	.refine(
+		(input) =>
+			Boolean(
+				input.name ||
+					input.phoneNumberId ||
+					input.wabaId ||
+					input.accessToken ||
+					input.appSecret ||
+					input.apiVersion ||
+					input.webhookVerifyToken,
+			),
+		{
+			message: "At least one field must be updated",
+		},
+	);
+
+export const updateAccountOutputSchema = z.object({
+	data: whatsappAccountSummarySchema,
+	message: z.string(),
+});
+
+export const deleteAccountInputSchema = z.object({
+	accountId: z.string(),
+});
+
+export const deleteAccountOutputSchema = z.object({
+	data: z.object({ id: z.string() }),
+	message: z.string(),
+});
+
+export const testAccountInputSchema = z.object({
+	accountId: z.string(),
+});
+
+export const testAccountOutputSchema = z.object({
+	data: whatsappAccountSummarySchema,
+	message: z.string(),
+});
+
+export const subscribeAccountInputSchema = z.object({
+	accountId: z.string(),
+});
+
+export const subscribeAccountOutputSchema = z.object({
 	data: z.object({ id: z.string() }),
 	message: z.string(),
 });

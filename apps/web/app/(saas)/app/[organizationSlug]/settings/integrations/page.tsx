@@ -1,6 +1,7 @@
 import { getActiveOrganization } from "@saas/auth/lib/server";
-import { requireSettingsRouteAccess } from "@saas/settings/lib/server-access";
 import { GoogleCalendarIntegrationCard } from "@saas/settings/components/google-calendar-integration-card";
+import { WhatsAppAccountsCard } from "@saas/settings/components/whatsapp-accounts-card";
+import { requireSettingsRouteAccess } from "@saas/settings/lib/server-access";
 import { SettingsList } from "@saas/shared/components/SettingsList";
 import { notFound } from "next/navigation";
 
@@ -30,6 +31,7 @@ export default async function IntegrationsSettingsPage({ params }: Props) {
 	return (
 		<SettingsList>
 			<GoogleCalendarIntegrationCard />
+			<WhatsAppAccountsCard />
 		</SettingsList>
 	);
 }

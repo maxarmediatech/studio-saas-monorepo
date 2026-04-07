@@ -40,7 +40,7 @@ export const connectCloudApi = studioProtectedProcedure
 		const validation = await validateCloudApiAccount({
 			accessToken: input.accessToken,
 			phoneNumberId: input.phoneNumberId,
-			wabaId: input.wabaId ?? null,
+			wabaId: input.wabaId,
 			apiVersion: input.apiVersion,
 		}).catch((error) => {
 			throw new ORPCError("BAD_REQUEST", {
@@ -64,7 +64,7 @@ export const connectCloudApi = studioProtectedProcedure
 				ownershipType: "customer",
 				apiVersion: validation.apiVersion,
 				phoneNumberId: input.phoneNumberId,
-				wabaId: input.wabaId ?? null,
+				wabaId: input.wabaId,
 				accessToken: encryptWhatsAppSecret(input.accessToken),
 				appSecret: input.appSecret
 					? encryptWhatsAppSecret(input.appSecret)

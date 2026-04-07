@@ -689,6 +689,26 @@ export const notificationsMutations = {
 };
 
 // ============================================================================
+// WHATSAPP QUERY OPTIONS
+// ============================================================================
+
+export const whatsappApi = {
+	listAccountsOptions: () =>
+		orpc.whatsapp.listAccounts.queryOptions({ input: {} }),
+
+	getAccountOptions: (accountId: string) =>
+		orpc.whatsapp.getAccount.queryOptions({ input: { accountId } }),
+};
+
+export const whatsappMutations = {
+	connectCloudApi: () => orpc.whatsapp.connectCloudApi.mutationOptions(),
+	updateAccount: () => orpc.whatsapp.updateAccount.mutationOptions(),
+	deleteAccount: () => orpc.whatsapp.deleteAccount.mutationOptions(),
+	testAccount: () => orpc.whatsapp.testAccount.mutationOptions(),
+	subscribeAccount: () => orpc.whatsapp.subscribeAccount.mutationOptions(),
+};
+
+// ============================================================================
 // DISCUSSIONS QUERY OPTIONS
 // ============================================================================
 

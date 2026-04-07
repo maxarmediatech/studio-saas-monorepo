@@ -148,4 +148,19 @@ export const markCloudApiMessagesRead = async (params: {
 	);
 };
 
+export const subscribeCloudApiApp = async (params: {
+	accessToken: string;
+	wabaId: string;
+	apiVersion?: string | null;
+}) => {
+	const apiVersion = params.apiVersion?.trim() || DEFAULT_CLOUD_API_VERSION;
+
+	await postGraph(
+		`${apiVersion}/${params.wabaId}/subscribed_apps`,
+		params.accessToken,
+		{},
+		"Failed to subscribe WhatsApp account to webhook events",
+	);
+};
+
 export { DEFAULT_CLOUD_API_VERSION };
