@@ -1,4 +1,5 @@
 import { LoginForm } from "@saas/auth/components/LoginForm";
+import { AuthWrapper } from "@saas/shared/components/AuthWrapper";
 import { getTranslations } from "next-intl/server";
 
 export async function generateMetadata() {
@@ -10,5 +11,9 @@ export async function generateMetadata() {
 }
 
 export default function LoginPage() {
-	return <LoginForm />;
+	return (
+		<AuthWrapper>
+			<LoginForm />
+		</AuthWrapper>
+	);
 }

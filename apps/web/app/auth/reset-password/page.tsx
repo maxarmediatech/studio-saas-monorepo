@@ -1,4 +1,5 @@
 import { ResetPasswordForm } from "@saas/auth/components/ResetPasswordForm";
+import { AuthWrapper } from "@saas/shared/components/AuthWrapper";
 import { getTranslations } from "next-intl/server";
 
 // export const dynamic = "force-dynamic";
@@ -13,5 +14,9 @@ export async function generateMetadata() {
 }
 
 export default function ResetPasswordPage() {
-	return <ResetPasswordForm />;
+	return (
+		<AuthWrapper>
+			<ResetPasswordForm />
+		</AuthWrapper>
+	);
 }

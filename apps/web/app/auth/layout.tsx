@@ -1,5 +1,5 @@
 import { SessionProvider } from "@saas/auth/components/SessionProvider";
-import { AuthWrapper } from "@saas/shared/components/AuthWrapper";
+import { FullPageLoader } from "@shared/components/LogoSpinner";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { type PropsWithChildren, Suspense } from "react";
@@ -10,16 +10,14 @@ async function AuthContent({ children }: PropsWithChildren) {
 
 	return (
 		<NextIntlClientProvider locale={locale} messages={messages}>
-			<SessionProvider>
-				<AuthWrapper>{children}</AuthWrapper>
-			</SessionProvider>
+			<SessionProvider>{children}</SessionProvider>
 		</NextIntlClientProvider>
 	);
 }
 
 export default function AuthLayout({ children }: PropsWithChildren) {
 	return (
-		<Suspense fallback={null}>
+		<Suspense fallback={<FullPageLoader />}>
 			<AuthContent>{children}</AuthContent>
 		</Suspense>
 	);

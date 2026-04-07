@@ -4,8 +4,17 @@ import { Footer } from "@saas/shared/components/Footer";
 import { ColorModeToggle } from "@shared/components/ColorModeToggle";
 import { LocaleSwitch } from "@shared/components/LocaleSwitch";
 import { Logo } from "@shared/components/Logo";
+import { LogoSpinner } from "@shared/components/LogoSpinner";
 import Link from "next/link";
 import { type PropsWithChildren, type ReactNode, Suspense } from "react";
+
+function AuthCardLoader() {
+	return (
+		<div className="flex min-h-48 items-center justify-center">
+			<LogoSpinner />
+		</div>
+	);
+}
 
 export function AuthWrapper({
 	children,
@@ -45,7 +54,7 @@ export function AuthWrapper({
 							contentClass,
 						)}
 					>
-						{children}
+						<Suspense fallback={<AuthCardLoader />}>{children}</Suspense>
 					</main>
 				</div>
 

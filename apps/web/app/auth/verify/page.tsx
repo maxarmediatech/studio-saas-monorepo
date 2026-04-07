@@ -1,4 +1,5 @@
 import { OtpForm } from "@saas/auth/components/OtpForm";
+import { AuthWrapper } from "@saas/shared/components/AuthWrapper";
 import { getTranslations } from "next-intl/server";
 
 export async function generateMetadata() {
@@ -10,5 +11,9 @@ export async function generateMetadata() {
 }
 
 export default function VerifyPage() {
-	return <OtpForm />;
+	return (
+		<AuthWrapper>
+			<OtpForm />
+		</AuthWrapper>
+	);
 }
