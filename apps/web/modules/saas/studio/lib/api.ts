@@ -698,6 +698,18 @@ export const whatsappApi = {
 
 	getAccountOptions: (accountId: string) =>
 		orpc.whatsapp.getAccount.queryOptions({ input: { accountId } }),
+
+	listConversationsOptions: (
+		input?: Parameters<
+			typeof orpc.whatsapp.listConversations.queryOptions
+		>[0]["input"],
+	) => orpc.whatsapp.listConversations.queryOptions({ input: input ?? {} }),
+
+	listMessagesOptions: (
+		input: Parameters<
+			typeof orpc.whatsapp.listMessages.queryOptions
+		>[0]["input"],
+	) => orpc.whatsapp.listMessages.queryOptions({ input }),
 };
 
 export const whatsappMutations = {
@@ -706,6 +718,9 @@ export const whatsappMutations = {
 	deleteAccount: () => orpc.whatsapp.deleteAccount.mutationOptions(),
 	testAccount: () => orpc.whatsapp.testAccount.mutationOptions(),
 	subscribeAccount: () => orpc.whatsapp.subscribeAccount.mutationOptions(),
+	sendText: () => orpc.whatsapp.sendText.mutationOptions(),
+	markConversationRead: () =>
+		orpc.whatsapp.markConversationRead.mutationOptions(),
 };
 
 // ============================================================================

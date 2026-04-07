@@ -7,6 +7,7 @@ import {
 	waOutbox,
 } from "@repo/whatsapp-db";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { recordOutboundConversationActivity } from "../lib/outbound-activity";
 import { sendTextInputSchema, sendTextOutputSchema } from "../types";
 
 export const sendText = studioProtectedProcedure
@@ -29,16 +30,16 @@ export const sendText = studioProtectedProcedure
 		const contactId = existingContact
 			? existingContact.id
 			: (
-				await db
-					.insert(waContacts)
-					.values({
-						organizationId: context.organizationId,
-						accountId: input.accountId,
-						waId: input.to,
-						phoneNumber: input.to,
-					})
-					.returning({ id: waContacts.id })
-			)[0]?.id;
+					await db
+						.insert(waContacts)
+						.values({
+							organizationId: context.organizationId,
+							accountId: input.accountId,
+							waId: input.to,
+							phoneNumber: input.to,
+						})
+						.returning({ id: waContacts.id })
+				)[0]?.id;
 
 		if (!contactId) {
 			throw new ORPCError("INTERNAL_SERVER_ERROR", {
@@ -57,15 +58,15 @@ export const sendText = studioProtectedProcedure
 		const conversationId = existingConversation
 			? existingConversation.id
 			: (
-				await db
-					.insert(waConversations)
-					.values({
-						organizationId: context.organizationId,
-						accountId: input.accountId,
-						contactId,
-					})
-					.returning({ id: waConversations.id })
-			)[0]?.id;
+					await db
+						.insert(waConversations)
+						.values({
+							organizationId: context.organizationId,
+							accountId: input.accountId,
+							contactId,
+						})
+						.returning({ id: waConversations.id })
+				)[0]?.id;
 
 		if (!conversationId) {
 			throw new ORPCError("INTERNAL_SERVER_ERROR", {
@@ -85,13 +86,22 @@ export const sendText = studioProtectedProcedure
 				textBody: input.text,
 				status: "pending",
 			})
-			.returning({ id: waMessages.id });
+			.returning({ id: waMessages.id, createdAt: waMessages.createdAt });
 
 		if (!createdMessage) {
 			throw new ORPCError("INTERNAL_SERVER_ERROR", {
 				message: "Failed to create message",
 			});
 		}
+
+		await recordOutboundConversationActivity({
+			organizationId: context.organizationId,
+			conversationId,
+			contactId,
+			messageId: createdMessage.id,
+			preview: input.text,
+			at: createdMessage.createdAt,
+		});
 
 		const [outbox] = await db
 			.insert(waOutbox)

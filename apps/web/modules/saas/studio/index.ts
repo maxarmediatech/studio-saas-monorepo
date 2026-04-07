@@ -52,6 +52,7 @@ export {
 	ShootsTableClient,
 	ShootsTableSkeleton,
 } from "./components/shoots";
+export { WhatsAppInboxPageClient } from "./components/whatsapp";
 // API Utilities
 export {
 	bookingsApi,
@@ -75,6 +76,8 @@ export {
 	submissionsMutations,
 	tasksApi,
 	tasksMutations,
+	whatsappApi,
+	whatsappMutations,
 } from "./lib/api";
 export type { HeaderCapabilities } from "./lib/capability.server";
 // Capabilities

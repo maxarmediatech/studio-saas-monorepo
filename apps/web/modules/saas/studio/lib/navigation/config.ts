@@ -105,6 +105,12 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 					label: "Comms.",
 					items: [
 						{
+							id: "inbox",
+							label: "Inbox",
+							path: url("/inbox"),
+							icon: "Inbox",
+						},
+						{
 							id: "discussions",
 							label: "Discussions",
 							path: url("/discussions"),

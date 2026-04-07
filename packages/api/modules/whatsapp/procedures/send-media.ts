@@ -1,7 +1,14 @@
 import { ORPCError } from "@orpc/server";
 import { and, db, eq } from "@repo/database";
-import { waContacts, waConversations, waMedia, waMessages, waOutbox } from "@repo/whatsapp-db";
+import {
+	waContacts,
+	waConversations,
+	waMedia,
+	waMessages,
+	waOutbox,
+} from "@repo/whatsapp-db";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { recordOutboundConversationActivity } from "../lib/outbound-activity";
 import { sendMediaInputSchema, sendMediaOutputSchema } from "../types";
 
 export const sendMedia = studioProtectedProcedure
@@ -24,16 +31,16 @@ export const sendMedia = studioProtectedProcedure
 		const contactId = existingContact
 			? existingContact.id
 			: (
-				await db
-					.insert(waContacts)
-					.values({
-						organizationId: context.organizationId,
-						accountId: input.accountId,
-						waId: input.to,
-						phoneNumber: input.to,
-					})
-					.returning({ id: waContacts.id })
-			)[0]?.id;
+					await db
+						.insert(waContacts)
+						.values({
+							organizationId: context.organizationId,
+							accountId: input.accountId,
+							waId: input.to,
+							phoneNumber: input.to,
+						})
+						.returning({ id: waContacts.id })
+				)[0]?.id;
 
 		if (!contactId) {
 			throw new ORPCError("INTERNAL_SERVER_ERROR", {
@@ -52,15 +59,15 @@ export const sendMedia = studioProtectedProcedure
 		const conversationId = existingConversation
 			? existingConversation.id
 			: (
-				await db
-					.insert(waConversations)
-					.values({
-						organizationId: context.organizationId,
-						accountId: input.accountId,
-						contactId,
-					})
-					.returning({ id: waConversations.id })
-			)[0]?.id;
+					await db
+						.insert(waConversations)
+						.values({
+							organizationId: context.organizationId,
+							accountId: input.accountId,
+							contactId,
+						})
+						.returning({ id: waConversations.id })
+				)[0]?.id;
 
 		if (!conversationId) {
 			throw new ORPCError("INTERNAL_SERVER_ERROR", {
@@ -98,13 +105,33 @@ export const sendMedia = studioProtectedProcedure
 				mediaId: createdMedia.id,
 				status: "pending",
 			})
-			.returning({ id: waMessages.id });
+			.returning({ id: waMessages.id, createdAt: waMessages.createdAt });
 
 		if (!createdMessage) {
 			throw new ORPCError("INTERNAL_SERVER_ERROR", {
 				message: "Failed to create message",
 			});
 		}
+
+		const mediaLabel =
+			input.caption?.trim() ||
+			({
+				image: "Photo sent",
+				video: "Video sent",
+				audio: "Audio sent",
+				document: "Document sent",
+				sticker: "Sticker sent",
+			}[input.mediaType] ??
+				"Media sent");
+
+		await recordOutboundConversationActivity({
+			organizationId: context.organizationId,
+			conversationId,
+			contactId,
+			messageId: createdMessage.id,
+			preview: mediaLabel,
+			at: createdMessage.createdAt,
+		});
 
 		const [outbox] = await db
 			.insert(waOutbox)

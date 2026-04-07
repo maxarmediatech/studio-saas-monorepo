@@ -1,7 +1,13 @@
 import { ORPCError } from "@orpc/server";
 import { and, db, eq } from "@repo/database";
-import { waContacts, waConversations, waMessages, waOutbox } from "@repo/whatsapp-db";
+import {
+	waContacts,
+	waConversations,
+	waMessages,
+	waOutbox,
+} from "@repo/whatsapp-db";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { recordOutboundConversationActivity } from "../lib/outbound-activity";
 import { sendTemplateInputSchema, sendTemplateOutputSchema } from "../types";
 
 export const sendTemplate = studioProtectedProcedure
@@ -24,16 +30,16 @@ export const sendTemplate = studioProtectedProcedure
 		const contactId = existingContact
 			? existingContact.id
 			: (
-				await db
-					.insert(waContacts)
-					.values({
-						organizationId: context.organizationId,
-						accountId: input.accountId,
-						waId: input.to,
-						phoneNumber: input.to,
-					})
-					.returning({ id: waContacts.id })
-			)[0]?.id;
+					await db
+						.insert(waContacts)
+						.values({
+							organizationId: context.organizationId,
+							accountId: input.accountId,
+							waId: input.to,
+							phoneNumber: input.to,
+						})
+						.returning({ id: waContacts.id })
+				)[0]?.id;
 
 		if (!contactId) {
 			throw new ORPCError("INTERNAL_SERVER_ERROR", {
@@ -52,15 +58,15 @@ export const sendTemplate = studioProtectedProcedure
 		const conversationId = existingConversation
 			? existingConversation.id
 			: (
-				await db
-					.insert(waConversations)
-					.values({
-						organizationId: context.organizationId,
-						accountId: input.accountId,
-						contactId,
-					})
-					.returning({ id: waConversations.id })
-			)[0]?.id;
+					await db
+						.insert(waConversations)
+						.values({
+							organizationId: context.organizationId,
+							accountId: input.accountId,
+							contactId,
+						})
+						.returning({ id: waConversations.id })
+				)[0]?.id;
 
 		if (!conversationId) {
 			throw new ORPCError("INTERNAL_SERVER_ERROR", {
@@ -84,13 +90,22 @@ export const sendTemplate = studioProtectedProcedure
 				},
 				status: "pending",
 			})
-			.returning({ id: waMessages.id });
+			.returning({ id: waMessages.id, createdAt: waMessages.createdAt });
 
 		if (!createdMessage) {
 			throw new ORPCError("INTERNAL_SERVER_ERROR", {
 				message: "Failed to create message",
 			});
 		}
+
+		await recordOutboundConversationActivity({
+			organizationId: context.organizationId,
+			conversationId,
+			contactId,
+			messageId: createdMessage.id,
+			preview: `Template: ${input.templateName}`,
+			at: createdMessage.createdAt,
+		});
 
 		const [outbox] = await db
 			.insert(waOutbox)
