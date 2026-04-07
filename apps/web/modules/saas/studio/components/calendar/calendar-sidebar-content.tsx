@@ -21,8 +21,10 @@ import { useCalendarRouteState } from "./use-calendar-route-state";
 
 export function CalendarWorkspaceSidebarContent({
 	area,
+	enabled = true,
 }: {
 	area: NavAreaConfig;
+	enabled?: boolean;
 }) {
 	const { focusDate, setFocusDate, view, weekStart } =
 		useCalendarRouteState();
@@ -58,8 +60,8 @@ export function CalendarWorkspaceSidebarContent({
 		});
 	}, [focusDate]);
 
-	const { data, isLoading } = useQuery(
-		shootsApi.listOptions({
+	const { data, isLoading } = useQuery({
+		...shootsApi.listOptions({
 			dateFrom: formatCalendarDate(
 				view === "week" ? weekStart : monthStart,
 			),
@@ -69,7 +71,8 @@ export function CalendarWorkspaceSidebarContent({
 			sortBy: "shootDate",
 			sortDirection: "asc",
 		}),
-	);
+		enabled,
+	});
 
 	const shoots = data?.data ?? [];
 	const bookedDaysCount = new Set(shoots.map((shoot) => shoot.shootDate))

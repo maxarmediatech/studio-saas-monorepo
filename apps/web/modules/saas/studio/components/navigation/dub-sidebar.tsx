@@ -172,18 +172,20 @@ export function DubSidebar({
 						</Area>
 
 						{/* Calendar Workspace Area */}
-						<Area
-							visible={currentArea === "calendarWorkspace"}
-							direction={
-								areas.calendarWorkspace?.direction ?? "right"
-							}
-						>
-							{areas.calendarWorkspace && (
+						{currentArea === "calendarWorkspace" &&
+						areas.calendarWorkspace ? (
+							<Area
+								visible
+								direction={
+									areas.calendarWorkspace.direction ?? "right"
+								}
+							>
 								<CalendarWorkspacePanel
 									area={areas.calendarWorkspace}
+									enabled
 								/>
-							)}
-						</Area>
+							</Area>
+						) : null}
 					</div>
 				</nav>
 			</aside>
