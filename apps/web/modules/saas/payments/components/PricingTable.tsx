@@ -275,25 +275,31 @@ export function PricingTable({
 																key={
 																	item.priceKey
 																}
-																className="rounded-2xl border border-foreground/10 bg-foreground/[0.03] p-4"
+																className="rounded-2xl border border-foreground/8 bg-foreground/[0.03] p-4"
 															>
-																<div className="flex items-start justify-between gap-3">
-																	<div className="inline-flex items-center gap-2 font-medium text-[11px] uppercase tracking-[0.18em] text-foreground/56">
-																		<span className="size-2 rounded-full bg-foreground/18" />
+																<div className="flex flex-col items-start gap-3">
+																	<div className="font-medium text-[11px] uppercase tracking-[0.18em] text-foreground/56">
 																		{item.interval ===
 																		"month"
 																			? t(
-																					"pricing.monthly",
+																					"pricing.monthlyPreview",
 																				)
 																			: t(
-																					"pricing.yearly",
+																					"pricing.yearlyPreview",
 																				)}
+																	</div>
+																	<div className="font-medium text-2xl text-foreground lg:text-[2rem]">
+																		{formatCurrency(
+																			item.amount,
+																			item.currency,
+																		)}
 																	</div>
 																	{item.interval ===
 																		"year" &&
 																	yearlySavings >
 																		0 ? (
-																		<div className="rounded-full border border-foreground/10 bg-background px-2 py-1 font-medium text-[10px] text-foreground/62">
+																		<div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-emerald-600/15 bg-emerald-600/[0.08] px-2.5 py-1 font-medium text-[11px] text-emerald-700">
+																			<span className="size-1.5 rounded-full bg-emerald-600/70" />
 																			{t(
 																				"pricing.saveAmount",
 																				{
@@ -305,31 +311,6 @@ export function PricingTable({
 																			)}
 																		</div>
 																	) : null}
-																</div>
-																<div className="mt-4">
-																	<div className="font-medium text-2xl text-foreground lg:text-[2rem]">
-																		{formatCurrency(
-																			item.amount,
-																			item.currency,
-																		)}
-																	</div>
-																	<div className="mt-1 text-foreground/56 text-sm">
-																		/{" "}
-																		{item.interval ===
-																		"month"
-																			? t(
-																					"pricing.month",
-																					{
-																						count: 1,
-																					},
-																				)
-																			: t(
-																					"pricing.year",
-																					{
-																						count: 1,
-																					},
-																				)}
-																	</div>
 																</div>
 															</div>
 														),
@@ -408,7 +389,9 @@ export function PricingTable({
 												)}
 												{comingSoon
 													? "Coming soon"
-													: t("pricing.choosePlan")}
+													: t(
+															"pricing.continueToCheckout",
+														)}
 											</span>
 											{!comingSoon && (
 												<ArrowRightIcon className="ml-2 size-4" />

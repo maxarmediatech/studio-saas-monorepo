@@ -100,7 +100,8 @@ export default async function ChoosePlanPage() {
 						Choose Your Plan
 					</h1>
 					<p className="text-muted-foreground text-sm lg:text-base">
-						Select a plan that works best for you
+						Pick your plan here. Monthly or yearly billing is chosen
+						in checkout.
 					</p>
 				</div>
 			</div>

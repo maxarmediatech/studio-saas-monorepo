@@ -499,10 +499,12 @@
 	"pricing": {
 		"choosePlan": "Plan auswählen",
 		"contactSales": "Vertrieb kontaktieren",
+		"continueToCheckout": "Weiter zum Checkout",
 		"description": "Tarife für Fotostudios in Indien. Preise inkl. Steuern.",
 		"getStarted": "Jetzt loslegen",
 		"month": "Monat",
 		"monthly": "Monatlich",
+		"monthlyPreview": "Monatspreis",
 		"moneyBackGuarantee": "100 % Geld-zurück-Garantie",
 		"saveAmount": "{amount} sparen",
 		"products": {
@@ -536,6 +538,7 @@
 		"trialPeriod": "{days} {days, plural, one {Tag} other {Tage}} kostenlose Testphase",
 		"year": "Jahr",
 		"yearly": "Jährlich",
+		"yearlyPreview": "Jahrespreis",
 		"perSeat": "Sitz",
 		"notifications": {
 			"checkoutError": "Checkout konnte nicht gestartet werden. Bitte versuche es erneut."
