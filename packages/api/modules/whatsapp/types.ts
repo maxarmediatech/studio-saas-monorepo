@@ -128,6 +128,60 @@ export const subscribeAccountOutputSchema = z.object({
 	message: z.string(),
 });
 
+export const whatsappTemplateVariableSchema = z.object({
+	key: z.string(),
+	componentType: z.enum(["header", "body", "button"]),
+	index: z.number().int().positive(),
+	label: z.string(),
+	buttonIndex: z.number().int().nonnegative().nullable(),
+	buttonSubType: z.string().nullable(),
+});
+
+export const whatsappTemplateSummarySchema = z.object({
+	id: z.string(),
+	accountId: z.string(),
+	providerTemplateId: z.string().nullable(),
+	name: z.string(),
+	language: z.string(),
+	status: z.string(),
+	category: z.string(),
+	headerText: z.string().nullable(),
+	bodyText: z.string().nullable(),
+	footerText: z.string().nullable(),
+	buttonLabels: z.array(z.string()),
+	variables: z.array(whatsappTemplateVariableSchema),
+	isSupported: z.boolean(),
+	unsupportedReason: z.string().nullable(),
+	lastSyncedAt: z.date(),
+	createdAt: z.date(),
+	updatedAt: z.date(),
+});
+
+export const listTemplatesInputSchema = z.object({
+	accountId: z.string(),
+	status: z.string().min(1).optional(),
+	category: z.string().min(1).optional(),
+	language: z.string().min(1).optional(),
+	search: z.string().min(1).max(100).optional(),
+});
+
+export const listTemplatesOutputSchema = z.object({
+	data: z.array(whatsappTemplateSummarySchema),
+});
+
+export const syncTemplatesInputSchema = z.object({
+	accountId: z.string(),
+});
+
+export const syncTemplatesOutputSchema = z.object({
+	data: z.object({
+		accountId: z.string(),
+		count: z.number().int().nonnegative(),
+		lastSyncedAt: z.date(),
+	}),
+	message: z.string(),
+});
+
 export const sendTextInputSchema = z.object({
 	accountId: z.string(),
 	to: z.string(),

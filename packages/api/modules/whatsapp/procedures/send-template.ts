@@ -1,13 +1,16 @@
 import { ORPCError } from "@orpc/server";
 import { and, db, eq } from "@repo/database";
 import {
+	waAccounts,
 	waContacts,
 	waConversations,
 	waMessages,
 	waOutbox,
+	waTemplates,
 } from "@repo/whatsapp-db";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { recordOutboundConversationActivity } from "../lib/outbound-activity";
+import { inspectWhatsAppTemplate } from "../lib/template-inspector";
 import { sendTemplateInputSchema, sendTemplateOutputSchema } from "../types";
 
 export const sendTemplate = studioProtectedProcedure
@@ -20,6 +23,60 @@ export const sendTemplate = studioProtectedProcedure
 	.input(sendTemplateInputSchema)
 	.output(sendTemplateOutputSchema)
 	.handler(async ({ input, context }) => {
+		const account = await db.query.waAccounts.findFirst({
+			where: and(
+				eq(waAccounts.organizationId, context.organizationId),
+				eq(waAccounts.id, input.accountId),
+			),
+		});
+
+		if (!account || account.deletedAt) {
+			throw new ORPCError("NOT_FOUND", {
+				message: "WhatsApp account not found",
+			});
+		}
+
+		const template = await db.query.waTemplates.findFirst({
+			where: and(
+				eq(waTemplates.organizationId, context.organizationId),
+				eq(waTemplates.accountId, input.accountId),
+				eq(waTemplates.name, input.templateName),
+				eq(waTemplates.language, input.language),
+			),
+		});
+
+		if (!template) {
+			throw new ORPCError("BAD_REQUEST", {
+				message:
+					"Template is not synced for this account yet. Sync templates and try again.",
+			});
+		}
+
+		if (template.status.toLowerCase() !== "approved") {
+			throw new ORPCError("BAD_REQUEST", {
+				message: `Template ${template.name} is ${template.status.toLowerCase()} and cannot be sent.`,
+			});
+		}
+
+		const inspection = inspectWhatsAppTemplate(template.components);
+		if (!inspection.isSupported) {
+			throw new ORPCError("BAD_REQUEST", {
+				message:
+					inspection.unsupportedReason ??
+					"Template is not supported by the inbox sender yet.",
+			});
+		}
+
+		if (
+			inspection.variables.length > 0 &&
+			(!input.components || input.components.length === 0)
+		) {
+			throw new ORPCError("BAD_REQUEST", {
+				message:
+					"Template requires variables before it can be sent. Fill them in and try again.",
+			});
+		}
+
 		const existingContact = await db.query.waContacts.findFirst({
 			where: and(
 				eq(waContacts.organizationId, context.organizationId),

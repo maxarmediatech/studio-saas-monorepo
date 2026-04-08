@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { markCloudApiMessagesRead } from "./cloud-api-admin";
+import {
+	listCloudApiTemplates,
+	markCloudApiMessagesRead,
+} from "./cloud-api-admin";
 
 describe("markCloudApiMessagesRead", () => {
 	afterEach(() => {
@@ -42,5 +45,83 @@ describe("markCloudApiMessagesRead", () => {
 				messageIds: ["wamid-1"],
 			}),
 		).rejects.toThrow("Meta rejected the read receipt");
+	});
+});
+
+describe("listCloudApiTemplates", () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	it("collects templates across Graph pagination", async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce({
+				ok: true,
+				json: async () => ({
+					data: [
+						{
+							id: "tpl_1",
+							name: "booking_reminder",
+							language: "en",
+							status: "APPROVED",
+							category: "UTILITY",
+							components: [{ type: "BODY", text: "Hi {{1}}" }],
+						},
+					],
+					paging: {
+						cursors: {
+							after: "cursor-1",
+						},
+					},
+				}),
+			})
+			.mockResolvedValueOnce({
+				ok: true,
+				json: async () => ({
+					data: [
+						{
+							id: "tpl_2",
+							name: "crew_update",
+							language: "en",
+							status: "APPROVED",
+							category: "UTILITY",
+							components: [{ type: "BODY", text: "Crew {{1}}" }],
+						},
+					],
+				}),
+			});
+		vi.stubGlobal("fetch", fetchMock);
+
+		await expect(
+			listCloudApiTemplates({
+				accessToken: "token",
+				wabaId: "waba_123",
+			}),
+		).resolves.toEqual({
+			apiVersion: "v22.0",
+			templates: [
+				{
+					providerTemplateId: "tpl_1",
+					name: "booking_reminder",
+					language: "en",
+					status: "APPROVED",
+					category: "UTILITY",
+					components: [{ type: "BODY", text: "Hi {{1}}" }],
+					rejectedReason: null,
+				},
+				{
+					providerTemplateId: "tpl_2",
+					name: "crew_update",
+					language: "en",
+					status: "APPROVED",
+					category: "UTILITY",
+					components: [{ type: "BODY", text: "Crew {{1}}" }],
+					rejectedReason: null,
+				},
+			],
+		});
+
+		expect(fetchMock).toHaveBeenCalledTimes(2);
 	});
 });

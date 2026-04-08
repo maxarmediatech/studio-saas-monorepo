@@ -7,11 +7,13 @@ import { listAccounts } from "./procedures/list-accounts";
 import { listContacts } from "./procedures/list-contacts";
 import { listConversations } from "./procedures/list-conversations";
 import { listMessages } from "./procedures/list-messages";
+import { listTemplates } from "./procedures/list-templates";
 import { markConversationRead } from "./procedures/mark-conversation-read";
 import { sendMedia } from "./procedures/send-media";
 import { sendTemplate } from "./procedures/send-template";
 import { sendText } from "./procedures/send-text";
 import { subscribeAccount } from "./procedures/subscribe-account";
+import { syncTemplates } from "./procedures/sync-templates";
 import { testAccount } from "./procedures/test-account";
 import { updateAccount } from "./procedures/update-account";
 import { whatsappWebhook } from "./procedures/webhook";
@@ -26,11 +28,13 @@ export const whatsappRouter = {
 	listContacts,
 	listConversations,
 	listMessages,
+	listTemplates,
 	markConversationRead,
 	sendMedia,
 	sendTemplate,
 	sendText,
 	subscribeAccount,
+	syncTemplates,
 	testAccount,
 	updateAccount,
 	webhook: whatsappWebhook,

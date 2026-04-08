@@ -710,6 +710,12 @@ export const whatsappApi = {
 			typeof orpc.whatsapp.listMessages.queryOptions
 		>[0]["input"],
 	) => orpc.whatsapp.listMessages.queryOptions({ input }),
+
+	listTemplatesOptions: (
+		input: Parameters<
+			typeof orpc.whatsapp.listTemplates.queryOptions
+		>[0]["input"],
+	) => orpc.whatsapp.listTemplates.queryOptions({ input }),
 };
 
 export const whatsappMutations = {
@@ -719,6 +725,8 @@ export const whatsappMutations = {
 	testAccount: () => orpc.whatsapp.testAccount.mutationOptions(),
 	subscribeAccount: () => orpc.whatsapp.subscribeAccount.mutationOptions(),
 	sendText: () => orpc.whatsapp.sendText.mutationOptions(),
+	sendTemplate: () => orpc.whatsapp.sendTemplate.mutationOptions(),
+	syncTemplates: () => orpc.whatsapp.syncTemplates.mutationOptions(),
 	markConversationRead: () =>
 		orpc.whatsapp.markConversationRead.mutationOptions(),
 };

@@ -274,6 +274,13 @@
       "when": 1775581323136,
       "tag": "0038_dizzy_meggan",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1775619259051,
+      "tag": "0039_open_ezekiel",
+      "breakpoints": true
     }
   ]
 }

@@ -411,14 +411,33 @@ const processOutboxItem = async (item: {
 						const parameters = Array.isArray(parametersValue)
 							? parametersValue.filter(isRecord)
 							: undefined;
+						const subTypeValue = component.subType;
+						const indexValue = component.index;
 
 						const next: {
 							type: string;
 							parameters?: Array<Record<string, unknown>>;
+							subType?: string;
+							index?: number;
 						} = { type: componentType };
 
 						if (parameters) {
 							next.parameters = parameters;
+						}
+
+						if (
+							typeof subTypeValue === "string" &&
+							subTypeValue.length > 0
+						) {
+							next.subType = subTypeValue;
+						}
+
+						if (
+							typeof indexValue === "number" &&
+							Number.isInteger(indexValue) &&
+							indexValue >= 0
+						) {
+							next.index = indexValue;
 						}
 
 						return next;
@@ -429,6 +448,8 @@ const processOutboxItem = async (item: {
 						): component is {
 							type: string;
 							parameters?: Array<Record<string, unknown>>;
+							subType?: string;
+							index?: number;
 						} => component !== null,
 					)
 			: [];

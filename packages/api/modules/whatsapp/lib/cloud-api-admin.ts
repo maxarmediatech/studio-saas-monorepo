@@ -21,12 +21,41 @@ type PhoneNumberListResponse = {
 	}>;
 };
 
+type MessageTemplateResponse = {
+	id?: string;
+	name?: string;
+	language?: string;
+	status?: string;
+	category?: string;
+	components?: unknown;
+	rejected_reason?: string;
+};
+
+type MessageTemplateListResponse = {
+	data?: MessageTemplateResponse[];
+	paging?: {
+		cursors?: {
+			after?: string;
+		};
+	};
+};
+
 export interface CloudApiValidationResult {
 	apiVersion: string;
 	displayPhoneNumber: string | null;
 	verifiedName: string | null;
 	qualityRating: string | null;
 	messagingLimitTier: string | null;
+}
+
+export interface CloudApiTemplateSummary {
+	providerTemplateId: string | null;
+	name: string;
+	language: string;
+	status: string;
+	category: string;
+	components: unknown;
+	rejectedReason: string | null;
 }
 
 const parseGraphError = (payload: unknown, fallback: string) => {
@@ -161,6 +190,61 @@ export const subscribeCloudApiApp = async (params: {
 		{},
 		"Failed to subscribe WhatsApp account to webhook events",
 	);
+};
+
+export const listCloudApiTemplates = async (params: {
+	accessToken: string;
+	wabaId: string;
+	apiVersion?: string | null;
+}) => {
+	const apiVersion = params.apiVersion?.trim() || DEFAULT_CLOUD_API_VERSION;
+	const templates: CloudApiTemplateSummary[] = [];
+	let afterCursor: string | null = null;
+
+	do {
+		const query = new URLSearchParams({
+			fields: "id,name,language,status,category,components,rejected_reason",
+			limit: "100",
+		});
+
+		if (afterCursor) {
+			query.set("after", afterCursor);
+		}
+
+		const payload = await fetchGraph<MessageTemplateListResponse>(
+			`${apiVersion}/${params.wabaId}/message_templates?${query.toString()}`,
+			params.accessToken,
+			"Failed to fetch WhatsApp templates",
+		);
+
+		for (const item of payload.data ?? []) {
+			if (
+				!item.name ||
+				!item.language ||
+				!item.status ||
+				!item.category
+			) {
+				continue;
+			}
+
+			templates.push({
+				providerTemplateId: item.id ?? null,
+				name: item.name,
+				language: item.language,
+				status: item.status,
+				category: item.category,
+				components: item.components ?? null,
+				rejectedReason: item.rejected_reason ?? null,
+			});
+		}
+
+		afterCursor = payload.paging?.cursors?.after ?? null;
+	} while (afterCursor);
+
+	return {
+		apiVersion,
+		templates,
+	};
 };
 
 export { DEFAULT_CLOUD_API_VERSION };

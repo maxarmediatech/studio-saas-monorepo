@@ -87,15 +87,17 @@ services/
 
 ### 1) Template Sync (Meta)
 Goal: avoid “guessing” template names/params; allow UI to pick from known templates.
-- [ ] Create `wa_templates` table (or equivalent) to store:
+- [x] Create `wa_templates` table (or equivalent) to store:
   - `organizationId`, `accountId`, `name`, `language`, `status`, `category`, `components` (json)
   - timestamps + optional versioning
-- [ ] Add sync job (service or API-triggered):
+- [x] Add sync job (service or API-triggered):
   - Fetch templates from Meta (Cloud API endpoint)
   - Upsert into DB
 - [ ] Add API:
-  - [ ] list templates (filter by status/category/language)
+  - [x] list templates (filter by status/category/language)
   - [ ] get template details
+- [x] Inbox template picker for approved synced templates
+- [x] `send-template` validates against synced account templates instead of name-only guessing
 
 ### 2) Media Upload Flow (first-class)
 Current implementation assumes `mediaUrl` is already a public URL.

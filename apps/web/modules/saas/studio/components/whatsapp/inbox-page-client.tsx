@@ -1,5 +1,6 @@
 "use client";
 
+import type { whatsappTemplateSummarySchema } from "@repo/api/modules/whatsapp/types";
 import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
 import { Button } from "@repo/ui/components/button";
 import { Input } from "@repo/ui/components/input";
@@ -22,10 +23,14 @@ import {
 } from "lucide-react";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import type { z } from "zod";
 import { WhatsAppConversationList } from "./conversation-list";
 import { WhatsAppMessageThread } from "./message-thread";
+import { WhatsAppTemplatePickerDialog } from "./template-picker-dialog";
+import { buildTemplateSendComponents } from "./template-send-payload";
 
 const ALL_ACCOUNTS_VALUE = "__all_accounts__";
+type WhatsAppTemplate = z.infer<typeof whatsappTemplateSummarySchema>;
 
 export function WhatsAppInboxPageClient() {
 	const queryClient = useQueryClient();
@@ -35,6 +40,7 @@ export function WhatsAppInboxPageClient() {
 		string | null
 	>(null);
 	const [composerValue, setComposerValue] = useState("");
+	const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
 	const deferredSearch = useDeferredValue(search);
 	const autoMarkedConversationIdRef = useRef<string | null>(null);
 
@@ -87,6 +93,14 @@ export function WhatsAppInboxPageClient() {
 			limit: 100,
 		}),
 		enabled: Boolean(selectedConversationId),
+		refetchOnWindowFocus: false,
+	});
+
+	const templatesQuery = useQuery({
+		...whatsappApi.listTemplatesOptions({
+			accountId: selectedConversation?.accountId ?? "",
+		}),
+		enabled: Boolean(selectedConversation && templateDialogOpen),
 		refetchOnWindowFocus: false,
 	});
 
@@ -144,6 +158,33 @@ export function WhatsAppInboxPageClient() {
 		},
 	});
 
+	const sendTemplateMutation = useMutation({
+		...whatsappMutations.sendTemplate(),
+		onSuccess: async () => {
+			setTemplateDialogOpen(false);
+			await queryClient.invalidateQueries({
+				queryKey: orpc.whatsapp.key(),
+			});
+			toast.success("Template queued");
+		},
+		onError: (error) => {
+			toast.error(error.message || "Failed to queue template");
+		},
+	});
+
+	const syncTemplatesMutation = useMutation({
+		...whatsappMutations.syncTemplates(),
+		onSuccess: async (result) => {
+			await queryClient.invalidateQueries({
+				queryKey: orpc.whatsapp.key(),
+			});
+			toast.success(result.message);
+		},
+		onError: (error) => {
+			toast.error(error.message || "Failed to sync templates");
+		},
+	});
+
 	const handleSend = () => {
 		if (!selectedConversation || composerValue.trim().length === 0) {
 			return;
@@ -153,6 +194,35 @@ export function WhatsAppInboxPageClient() {
 			accountId: selectedConversation.accountId,
 			to: selectedConversation.contact.waId,
 			text: composerValue.trim(),
+		});
+	};
+
+	const handleTemplateSend = (
+		template: WhatsAppTemplate,
+		variableValues: Record<string, string>,
+	) => {
+		if (!selectedConversation) {
+			return;
+		}
+
+		let components: ReturnType<typeof buildTemplateSendComponents>;
+		try {
+			components = buildTemplateSendComponents(template, variableValues);
+		} catch (error) {
+			toast.error(
+				error instanceof Error
+					? error.message
+					: "Template variables are incomplete",
+			);
+			return;
+		}
+
+		sendTemplateMutation.mutate({
+			accountId: selectedConversation.accountId,
+			to: selectedConversation.contact.waId,
+			templateName: template.name,
+			language: template.language,
+			components,
 		});
 	};
 
@@ -220,8 +290,8 @@ export function WhatsAppInboxPageClient() {
 					<AlertDescription>
 						<p>
 							List, thread, mark-read, send text, and inbound
-							attachments are live. Templates, assignment, and
-							realtime are next.
+							attachments are live. Template send is live too.
+							Assignment and realtime next.
 						</p>
 					</AlertDescription>
 				</Alert>
@@ -260,11 +330,35 @@ export function WhatsAppInboxPageClient() {
 							composerValue={composerValue}
 							onComposerChange={setComposerValue}
 							onSendMessage={handleSend}
+							onOpenTemplateDialog={() =>
+								setTemplateDialogOpen(true)
+							}
 							isSending={sendTextMutation.isPending}
+							isTemplateActionDisabled={!selectedConversation}
 						/>
 					</div>
 				</div>
 			</div>
+
+			<WhatsAppTemplatePickerDialog
+				open={templateDialogOpen}
+				onOpenChange={setTemplateDialogOpen}
+				conversation={selectedConversation}
+				templates={templatesQuery.data?.data ?? []}
+				isLoading={templatesQuery.isLoading}
+				isSyncing={syncTemplatesMutation.isPending}
+				isSending={sendTemplateMutation.isPending}
+				onSyncTemplates={() => {
+					if (!selectedConversation) {
+						return;
+					}
+
+					syncTemplatesMutation.mutate({
+						accountId: selectedConversation.accountId,
+					});
+				}}
+				onSendTemplate={handleTemplateSend}
+			/>
 		</PageContent>
 	);
 }

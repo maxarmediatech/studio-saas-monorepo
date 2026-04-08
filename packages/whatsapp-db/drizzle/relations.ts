@@ -9,12 +9,14 @@ import {
 	waMedia,
 	waMessages,
 	waOutbox,
+	waTemplates,
 } from "./schema";
 
 export const waAccountRelations = relations(waAccounts, ({ many }) => ({
 	contacts: many(waContacts),
 	conversations: many(waConversations),
 	messages: many(waMessages),
+	templates: many(waTemplates),
 	events: many(waEvents),
 	outbox: many(waOutbox),
 	campaigns: many(waCampaigns),
@@ -74,6 +76,13 @@ export const waMessageRelations = relations(waMessages, ({ one }) => ({
 
 export const waMediaRelations = relations(waMedia, ({ many }) => ({
 	messages: many(waMessages),
+}));
+
+export const waTemplateRelations = relations(waTemplates, ({ one }) => ({
+	account: one(waAccounts, {
+		fields: [waTemplates.accountId],
+		references: [waAccounts.id],
+	}),
 }));
 
 export const waEventRelations = relations(waEvents, ({ one }) => ({

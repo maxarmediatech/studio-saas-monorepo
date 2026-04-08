@@ -21,6 +21,7 @@ import { cn } from "@repo/ui/lib/utils";
 import {
 	CircleAlertIcon,
 	MessageCircleMoreIcon,
+	NotebookTextIcon,
 	SendHorizonalIcon,
 } from "lucide-react";
 import Image from "next/image";
@@ -182,7 +183,9 @@ export function WhatsAppMessageThread({
 	composerValue,
 	onComposerChange,
 	onSendMessage,
+	onOpenTemplateDialog,
 	isSending,
+	isTemplateActionDisabled,
 }: {
 	conversation: ConversationItem | null;
 	messages: MessageItem[];
@@ -190,7 +193,9 @@ export function WhatsAppMessageThread({
 	composerValue: string;
 	onComposerChange: (value: string) => void;
 	onSendMessage: () => void;
+	onOpenTemplateDialog: () => void;
 	isSending: boolean;
+	isTemplateActionDisabled: boolean;
 }) {
 	const scrollBottomRef = useRef<HTMLDivElement | null>(null);
 	const orderedMessages = useMemo(() => [...messages].reverse(), [messages]);
@@ -349,19 +354,31 @@ export function WhatsAppMessageThread({
 					/>
 					<div className="flex items-center justify-between gap-3">
 						<p className="m-0 text-xs text-muted-foreground">
-							Text only for this first slice. Media and templates
-							come next.
+							Text + approved templates live here. Media send and
+							live updates next.
 						</p>
-						<Button
-							type="button"
-							onClick={onSendMessage}
-							disabled={
-								isSending || composerValue.trim().length === 0
-							}
-						>
-							<SendHorizonalIcon className="mr-1.5 size-4" />
-							{isSending ? "Sending..." : "Send"}
-						</Button>
+						<div className="flex items-center gap-2">
+							<Button
+								type="button"
+								variant="outline"
+								onClick={onOpenTemplateDialog}
+								disabled={isTemplateActionDisabled}
+							>
+								<NotebookTextIcon className="mr-1.5 size-4" />
+								Template
+							</Button>
+							<Button
+								type="button"
+								onClick={onSendMessage}
+								disabled={
+									isSending ||
+									composerValue.trim().length === 0
+								}
+							>
+								<SendHorizonalIcon className="mr-1.5 size-4" />
+								{isSending ? "Sending..." : "Send"}
+							</Button>
+						</div>
 					</div>
 				</div>
 			</div>
