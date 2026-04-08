@@ -125,6 +125,11 @@ Current implementation assumes `mediaUrl` is already a public URL.
 
 ## Phase 2
 
+### Assignment Workflow
+- [x] Conversation assignment / unassignment API
+- [x] Inbox filters for `all`, `mine`, `unassigned`
+- [x] Assignee controls in inbox thread header
+
 ### Baileys Bridge (QR + Session)
 - [ ] QR code generation and display
 - [ ] Session persistence (Redis or DB)

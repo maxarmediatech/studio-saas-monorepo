@@ -11,6 +11,8 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@repo/ui/components/select";
+import { useSession } from "@saas/auth/hooks/use-session";
+import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
 import { PageContent } from "@saas/studio";
 import { whatsappApi, whatsappMutations } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
@@ -30,11 +32,19 @@ import { WhatsAppTemplatePickerDialog } from "./template-picker-dialog";
 import { buildTemplateSendComponents } from "./template-send-payload";
 
 const ALL_ACCOUNTS_VALUE = "__all_accounts__";
+const ALL_ASSIGNMENTS_VALUE = "__all_assignments__";
+const MY_ASSIGNMENTS_VALUE = "__my_assignments__";
+const UNASSIGNED_ASSIGNMENTS_VALUE = "__unassigned_assignments__";
 type WhatsAppTemplate = z.infer<typeof whatsappTemplateSummarySchema>;
 
 export function WhatsAppInboxPageClient() {
 	const queryClient = useQueryClient();
+	const { session } = useSession();
+	const { activeOrganization } = useActiveOrganization();
 	const [accountFilter, setAccountFilter] = useState(ALL_ACCOUNTS_VALUE);
+	const [assignmentFilter, setAssignmentFilter] = useState(
+		ALL_ASSIGNMENTS_VALUE,
+	);
 	const [search, setSearch] = useState("");
 	const [selectedConversationId, setSelectedConversationId] = useState<
 		string | null
@@ -56,6 +66,12 @@ export function WhatsAppInboxPageClient() {
 				accountFilter === ALL_ACCOUNTS_VALUE
 					? undefined
 					: accountFilter,
+			assignment:
+				assignmentFilter === MY_ASSIGNMENTS_VALUE
+					? "mine"
+					: assignmentFilter === UNASSIGNED_ASSIGNMENTS_VALUE
+						? "unassigned"
+						: undefined,
 			search: deferredSearch.trim() || undefined,
 		}),
 		refetchOnWindowFocus: false,
@@ -158,6 +174,19 @@ export function WhatsAppInboxPageClient() {
 		},
 	});
 
+	const assignConversationMutation = useMutation({
+		...whatsappMutations.assignConversation(),
+		onSuccess: async (result) => {
+			await queryClient.invalidateQueries({
+				queryKey: orpc.whatsapp.key(),
+			});
+			toast.success(result.message);
+		},
+		onError: (error) => {
+			toast.error(error.message || "Failed to update assignment");
+		},
+	});
+
 	const sendTemplateMutation = useMutation({
 		...whatsappMutations.sendTemplate(),
 		onSuccess: async () => {
@@ -226,6 +255,35 @@ export function WhatsAppInboxPageClient() {
 		});
 	};
 
+	const assigneeOptions = useMemo(
+		() =>
+			(activeOrganization?.members ?? []).map((member) => ({
+				userId: member.userId,
+				label: member.user?.name ?? member.user?.email ?? "Member",
+			})),
+		[activeOrganization?.members],
+	);
+
+	const assigneeLabelMap = useMemo(
+		() =>
+			new Map(
+				assigneeOptions.map((option) => [option.userId, option.label]),
+			),
+		[assigneeOptions],
+	);
+
+	const resolveAssigneeLabel = (assignedToUserId: string | null) => {
+		if (!assignedToUserId) {
+			return null;
+		}
+
+		if (assignedToUserId === session?.userId) {
+			return "You";
+		}
+
+		return assigneeLabelMap.get(assignedToUserId) ?? "Assigned";
+	};
+
 	const headerContent = (
 		<div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
 			<div className="relative w-full max-w-md">
@@ -251,6 +309,25 @@ export function WhatsAppInboxPageClient() {
 								{account.name}
 							</SelectItem>
 						))}
+					</SelectContent>
+				</Select>
+				<Select
+					value={assignmentFilter}
+					onValueChange={setAssignmentFilter}
+				>
+					<SelectTrigger className="min-w-44">
+						<SelectValue placeholder="All assignments" />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value={ALL_ASSIGNMENTS_VALUE}>
+							All assignments
+						</SelectItem>
+						<SelectItem value={MY_ASSIGNMENTS_VALUE}>
+							Mine
+						</SelectItem>
+						<SelectItem value={UNASSIGNED_ASSIGNMENTS_VALUE}>
+							Unassigned
+						</SelectItem>
 					</SelectContent>
 				</Select>
 				<Button
@@ -290,8 +367,8 @@ export function WhatsAppInboxPageClient() {
 					<AlertDescription>
 						<p>
 							List, thread, mark-read, send text, and inbound
-							attachments are live. Template send is live too.
-							Assignment and realtime next.
+							attachments are live. Template send and assignment
+							are live too. Realtime next.
 						</p>
 					</AlertDescription>
 				</Alert>
@@ -319,6 +396,7 @@ export function WhatsAppInboxPageClient() {
 							isLoading={conversationsQuery.isLoading}
 							selectedConversationId={selectedConversationId}
 							onSelectConversation={setSelectedConversationId}
+							resolveAssigneeLabel={resolveAssigneeLabel}
 						/>
 					</div>
 
@@ -333,7 +411,19 @@ export function WhatsAppInboxPageClient() {
 							onOpenTemplateDialog={() =>
 								setTemplateDialogOpen(true)
 							}
+							assigneeOptions={assigneeOptions}
+							onAssignConversation={(assignedToUserId) => {
+								if (!selectedConversation) {
+									return;
+								}
+
+								assignConversationMutation.mutate({
+									conversationId: selectedConversation.id,
+									assignedToUserId,
+								});
+							}}
 							isSending={sendTextMutation.isPending}
+							isAssigning={assignConversationMutation.isPending}
 							isTemplateActionDisabled={!selectedConversation}
 						/>
 					</div>

@@ -1,3 +1,4 @@
+import { assignConversation } from "./procedures/assign-conversation";
 import { connectBaileys } from "./procedures/connect-baileys";
 import { connectCloudApi } from "./procedures/connect-cloud-api";
 import { deleteAccount } from "./procedures/delete-account";
@@ -19,6 +20,7 @@ import { updateAccount } from "./procedures/update-account";
 import { whatsappWebhook } from "./procedures/webhook";
 
 export const whatsappRouter = {
+	assignConversation,
 	connectBaileys,
 	connectCloudApi,
 	deleteAccount,

@@ -16,6 +16,13 @@ import {
 	EmptyTitle,
 } from "@repo/ui/components/empty";
 import { ScrollArea } from "@repo/ui/components/scroll-area";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@repo/ui/components/select";
 import { Textarea } from "@repo/ui/components/textarea";
 import { cn } from "@repo/ui/lib/utils";
 import {
@@ -30,6 +37,11 @@ import type { z } from "zod";
 
 type ConversationItem = z.infer<typeof conversationItemSchema>;
 type MessageItem = z.infer<typeof messageItemSchema>;
+type AssigneeOption = {
+	userId: string;
+	label: string;
+};
+const UNASSIGNED_VALUE = "__unassigned__";
 
 function getConversationName(conversation: ConversationItem) {
 	return (
@@ -184,7 +196,10 @@ export function WhatsAppMessageThread({
 	onComposerChange,
 	onSendMessage,
 	onOpenTemplateDialog,
+	assigneeOptions,
+	onAssignConversation,
 	isSending,
+	isAssigning,
 	isTemplateActionDisabled,
 }: {
 	conversation: ConversationItem | null;
@@ -194,7 +209,10 @@ export function WhatsAppMessageThread({
 	onComposerChange: (value: string) => void;
 	onSendMessage: () => void;
 	onOpenTemplateDialog: () => void;
+	assigneeOptions: AssigneeOption[];
+	onAssignConversation: (assignedToUserId: string | null) => void;
 	isSending: boolean;
+	isAssigning: boolean;
 	isTemplateActionDisabled: boolean;
 }) {
 	const scrollBottomRef = useRef<HTMLDivElement | null>(null);
@@ -247,6 +265,37 @@ export function WhatsAppMessageThread({
 									? `${conversation.unreadCount} unread`
 									: "Read"}
 							</Badge>
+							<Select
+								value={
+									conversation.assignedToUserId ??
+									UNASSIGNED_VALUE
+								}
+								onValueChange={(value) =>
+									onAssignConversation(
+										value === UNASSIGNED_VALUE
+											? null
+											: value,
+									)
+								}
+								disabled={isAssigning}
+							>
+								<SelectTrigger className="h-8 min-w-44 text-xs">
+									<SelectValue placeholder="Unassigned" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value={UNASSIGNED_VALUE}>
+										Unassigned
+									</SelectItem>
+									{assigneeOptions.map((option) => (
+										<SelectItem
+											key={option.userId}
+											value={option.userId}
+										>
+											{option.label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
 						</div>
 						<p className="mt-1 text-sm text-muted-foreground">
 							{conversation.contact.phoneNumber} •{" "}

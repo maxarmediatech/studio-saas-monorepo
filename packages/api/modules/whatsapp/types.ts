@@ -250,6 +250,7 @@ export const listConversationsInputSchema = z.object({
 	cursor: z.string().optional(),
 	accountId: z.string().optional(),
 	status: z.enum(["open", "closed", "archived"]).optional(),
+	assignment: z.enum(["all", "mine", "unassigned"]).optional(),
 	search: z.string().min(1).max(100).optional(),
 });
 
@@ -258,6 +259,7 @@ export const conversationItemSchema = z.object({
 	accountId: z.string(),
 	contactId: z.string(),
 	status: z.enum(["open", "closed", "archived"]),
+	assignedToUserId: z.string().nullable(),
 	unreadCount: z.number(),
 	lastMessageId: z.string().nullable(),
 	lastMessageAt: z.date().nullable(),
@@ -346,6 +348,16 @@ export const getConversationInputSchema = z.object({
 
 export const getConversationOutputSchema = z.object({
 	data: conversationItemSchema,
+});
+
+export const assignConversationInputSchema = z.object({
+	conversationId: z.string(),
+	assignedToUserId: z.string().nullable(),
+});
+
+export const assignConversationOutputSchema = z.object({
+	data: conversationItemSchema,
+	message: z.string(),
 });
 
 export const markConversationReadInputSchema = z.object({

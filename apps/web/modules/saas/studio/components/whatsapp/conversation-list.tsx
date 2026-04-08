@@ -57,11 +57,13 @@ export function WhatsAppConversationList({
 	isLoading,
 	selectedConversationId,
 	onSelectConversation,
+	resolveAssigneeLabel,
 }: {
 	conversations: ConversationItem[];
 	isLoading: boolean;
 	selectedConversationId: string | null;
 	onSelectConversation: (conversationId: string) => void;
+	resolveAssigneeLabel: (assignedToUserId: string | null) => string | null;
 }) {
 	if (isLoading) {
 		return (
@@ -106,6 +108,9 @@ export function WhatsAppConversationList({
 			<div className="space-y-2 p-3">
 				{conversations.map((conversation) => {
 					const isActive = selectedConversationId === conversation.id;
+					const assigneeLabel = resolveAssigneeLabel(
+						conversation.assignedToUserId,
+					);
 					return (
 						<button
 							key={conversation.id}
@@ -160,6 +165,11 @@ export function WhatsAppConversationList({
 										<Badge variant="outline">
 											{conversation.status}
 										</Badge>
+										{assigneeLabel ? (
+											<Badge variant="outline">
+												{assigneeLabel}
+											</Badge>
+										) : null}
 									</div>
 								</div>
 							</div>
