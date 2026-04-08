@@ -137,10 +137,12 @@ Current implementation assumes `mediaUrl` is already a public URL.
 - [ ] HTTP API contract between `packages/api` and `services/whatsapp-bridge`
 
 ### Real-time Updates
-- [ ] WebSocket events:
+- [x] DB-backed SSE stream for WhatsApp inbox refresh
+- [x] Live inbox invalidation for:
   - message created
   - message status updated
-  - conversation updated
+  - conversation assignment / updates
+- [ ] Fine-grained cache patching (current implementation invalidates WhatsApp queries)
 
 ### Contact Management
 - [ ] Contact CRUD APIs

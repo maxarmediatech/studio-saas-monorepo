@@ -23,7 +23,14 @@ import {
 	RefreshCwIcon,
 	SearchIcon,
 } from "lucide-react";
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import {
+	startTransition,
+	useDeferredValue,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { toast } from "sonner";
 import type { z } from "zod";
 import { WhatsAppConversationList } from "./conversation-list";
@@ -53,6 +60,28 @@ export function WhatsAppInboxPageClient() {
 	const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
 	const deferredSearch = useDeferredValue(search);
 	const autoMarkedConversationIdRef = useRef<string | null>(null);
+
+	useEffect(() => {
+		if (!activeOrganization?.id) {
+			return;
+		}
+
+		const eventSource = new EventSource("/api/whatsapp/events");
+		const handleRefresh = () => {
+			startTransition(() => {
+				void queryClient.invalidateQueries({
+					queryKey: orpc.whatsapp.key(),
+				});
+			});
+		};
+
+		eventSource.addEventListener("refresh", handleRefresh);
+
+		return () => {
+			eventSource.removeEventListener("refresh", handleRefresh);
+			eventSource.close();
+		};
+	}, [activeOrganization?.id, queryClient]);
 
 	const accountsQuery = useQuery({
 		...whatsappApi.listAccountsOptions(),
