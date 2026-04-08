@@ -8,9 +8,6 @@ const heartbeatIntervalMs = 15000;
 const encodeSseEvent = (event: string, data: Record<string, unknown>) =>
 	encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 
-export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
-
 export const GET = async (request: Request) => {
 	const session = await auth.api.getSession({
 		headers: request.headers,
