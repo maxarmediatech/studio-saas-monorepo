@@ -101,16 +101,16 @@ Goal: avoid “guessing” template names/params; allow UI to pick from known te
 
 ### 2) Media Upload Flow (first-class)
 Current implementation assumes `mediaUrl` is already a public URL.
-- [ ] Decide storage strategy:
+- [x] Decide storage strategy:
   - S3 pre-signed upload (recommended)
   - Provider upload (`/media`) + store providerMediaId
-- [ ] Add upload endpoint(s):
-  - [ ] request upload (returns signed url + object key)
-  - [ ] finalize upload (writes `wa_media` row)
-- [ ] Update `send-media` to support either:
+- [x] Reuse existing request upload endpoint (signed url + object key)
+- [ ] Add finalize upload endpoint if media drafts become first-class objects
+- [x] Update `send-media` to support:
   - `mediaUrl` (public link) OR
-  - `mediaId` (stored object) OR
-  - `providerMediaId`
+  - `mediaKey` (private uploaded object key)
+- [x] Worker signs private uploaded media URLs before Cloud API send
+- [x] Inbox composer supports outbound media upload/send
 
 ### 3) Message Read Receipts (provider-side)
 - [ ] When `markConversationRead` is called:

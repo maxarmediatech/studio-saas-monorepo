@@ -37,6 +37,7 @@ import {
 import { toast } from "sonner";
 import type { z } from "zod";
 import { WhatsAppConversationList } from "./conversation-list";
+import { WhatsAppMediaComposeDialog } from "./media-compose-dialog";
 import { WhatsAppMessageThread } from "./message-thread";
 import { WhatsAppTemplatePickerDialog } from "./template-picker-dialog";
 import { buildTemplateSendComponents } from "./template-send-payload";
@@ -67,6 +68,7 @@ export function WhatsAppInboxPageClient() {
 		string | null
 	>(null);
 	const [composerValue, setComposerValue] = useState("");
+	const [mediaDialogOpen, setMediaDialogOpen] = useState(false);
 	const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
 	const deferredSearch = useDeferredValue(search);
 	const autoMarkedConversationIdRef = useRef<string | null>(null);
@@ -212,6 +214,19 @@ export function WhatsAppInboxPageClient() {
 		},
 		onError: (error) => {
 			toast.error(error.message || "Failed to queue message");
+		},
+	});
+
+	const sendMediaMutation = useMutation({
+		...whatsappMutations.sendMedia(),
+		onSuccess: async () => {
+			await queryClient.invalidateQueries({
+				queryKey: orpc.whatsapp.key(),
+			});
+			toast.success("Media queued");
+		},
+		onError: (error) => {
+			toast.error(error.message || "Failed to queue media");
 		},
 	});
 
@@ -443,8 +458,9 @@ export function WhatsAppInboxPageClient() {
 					<AlertDescription>
 						<p>
 							List, thread, mark-read, send text, and inbound
-							attachments are live. Template send and assignment
-							are live too. Realtime and status control live.
+							attachments are live. Template send, assignment,
+							realtime, status control, and outbound media are
+							live too.
 						</p>
 					</AlertDescription>
 				</Alert>
@@ -484,6 +500,7 @@ export function WhatsAppInboxPageClient() {
 							composerValue={composerValue}
 							onComposerChange={setComposerValue}
 							onSendMessage={handleSend}
+							onOpenMediaDialog={() => setMediaDialogOpen(true)}
 							onOpenTemplateDialog={() =>
 								setTemplateDialogOpen(true)
 							}
@@ -537,6 +554,28 @@ export function WhatsAppInboxPageClient() {
 					});
 				}}
 				onSendTemplate={handleTemplateSend}
+			/>
+
+			<WhatsAppMediaComposeDialog
+				open={mediaDialogOpen}
+				onOpenChange={setMediaDialogOpen}
+				conversation={selectedConversation}
+				isSending={sendMediaMutation.isPending}
+				onSendMedia={async (payload) => {
+					if (!selectedConversation) {
+						return;
+					}
+
+					await sendMediaMutation.mutateAsync({
+						accountId: selectedConversation.accountId,
+						to: selectedConversation.contact.waId,
+						mediaType: payload.mediaType,
+						mediaKey: payload.mediaKey,
+						mimeType: payload.mimeType,
+						fileName: payload.fileName,
+						caption: payload.caption,
+					});
+				}}
 			/>
 		</PageContent>
 	);

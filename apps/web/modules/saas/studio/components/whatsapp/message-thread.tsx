@@ -29,6 +29,7 @@ import {
 	CircleAlertIcon,
 	MessageCircleMoreIcon,
 	NotebookTextIcon,
+	PaperclipIcon,
 	SendHorizonalIcon,
 } from "lucide-react";
 import Image from "next/image";
@@ -202,6 +203,7 @@ export function WhatsAppMessageThread({
 	composerValue,
 	onComposerChange,
 	onSendMessage,
+	onOpenMediaDialog,
 	onOpenTemplateDialog,
 	assigneeOptions,
 	onAssignConversation,
@@ -217,6 +219,7 @@ export function WhatsAppMessageThread({
 	composerValue: string;
 	onComposerChange: (value: string) => void;
 	onSendMessage: () => void;
+	onOpenMediaDialog: () => void;
 	onOpenTemplateDialog: () => void;
 	assigneeOptions: AssigneeOption[];
 	onAssignConversation: (assignedToUserId: string | null) => void;
@@ -440,10 +443,19 @@ export function WhatsAppMessageThread({
 					/>
 					<div className="flex items-center justify-between gap-3">
 						<p className="m-0 text-xs text-muted-foreground">
-							Text + approved templates live here. Media send and
-							live updates next.
+							Text, templates, and media all send from this thread
+							now.
 						</p>
 						<div className="flex items-center gap-2">
+							<Button
+								type="button"
+								variant="outline"
+								onClick={onOpenMediaDialog}
+								disabled={isTemplateActionDisabled}
+							>
+								<PaperclipIcon className="mr-1.5 size-4" />
+								Media
+							</Button>
 							<Button
 								type="button"
 								variant="outline"

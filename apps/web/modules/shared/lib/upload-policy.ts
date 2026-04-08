@@ -17,6 +17,7 @@ export const UPLOAD_CONTEXT_VALUES = [
 	"shoots",
 	"receipts",
 	"documents",
+	"whatsapp-media",
 	"avatars",
 	"org-logos",
 ] as const;
@@ -123,6 +124,36 @@ const uploadPolicies: Record<UploadContext, UploadPolicy> = {
 					"application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 				extensions: [".docx"],
 			},
+		],
+	},
+	"whatsapp-media": {
+		maxFileSize: 64 * MB,
+		files: [
+			{
+				label: "JPG",
+				mimeType: "image/jpeg",
+				extensions: [".jpg", ".jpeg"],
+			},
+			{ label: "PNG", mimeType: "image/png", extensions: [".png"] },
+			{ label: "WEBP", mimeType: "image/webp", extensions: [".webp"] },
+			{ label: "PDF", mimeType: "application/pdf", extensions: [".pdf"] },
+			{
+				label: "DOC",
+				mimeType: "application/msword",
+				extensions: [".doc"],
+			},
+			{
+				label: "DOCX",
+				mimeType:
+					"application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+				extensions: [".docx"],
+			},
+			{ label: "MP4", mimeType: "video/mp4", extensions: [".mp4"] },
+			{ label: "MP3", mimeType: "audio/mpeg", extensions: [".mp3"] },
+			{ label: "M4A", mimeType: "audio/mp4", extensions: [".m4a"] },
+			{ label: "OGG", mimeType: "audio/ogg", extensions: [".ogg"] },
+			{ label: "AAC", mimeType: "audio/aac", extensions: [".aac"] },
+			{ label: "WAV", mimeType: "audio/wav", extensions: [".wav"] },
 		],
 	},
 	avatars: {

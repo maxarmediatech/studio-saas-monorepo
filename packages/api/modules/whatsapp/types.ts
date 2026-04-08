@@ -208,10 +208,17 @@ export const sendMediaInputSchema = z
 		accountId: z.string(),
 		to: z.string(),
 		mediaType: waMediaTypeSchema,
-		mediaUrl: z.string().url(),
+		mediaUrl: z.string().url().optional(),
+		mediaKey: z.string().min(1).optional(),
 		mimeType: z.string().min(1),
 		caption: z.string().min(1).optional(),
 		fileName: z.string().min(1).optional(),
+	})
+	.refine((data) => Boolean(data.mediaUrl || data.mediaKey), {
+		message: "mediaUrl or mediaKey is required",
+	})
+	.refine((data) => !(data.mediaUrl && data.mediaKey), {
+		message: "Provide either mediaUrl or mediaKey, not both",
 	})
 	.refine(
 		(data) =>

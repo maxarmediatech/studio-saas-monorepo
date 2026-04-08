@@ -20,6 +20,8 @@ import {
 	waOutbox,
 } from "@repo/whatsapp-db";
 import { CloudApiProvider } from "@repo/whatsapp-providers";
+import { getUploadsBucketName } from "../../../packages/env";
+import { getSignedUrl } from "../../../packages/storage";
 import { ingestCloudApiMediaAsset } from "./cloud-api-media";
 
 const pollIntervalMs = Number(process.env.WHATSAPP_OUTBOX_INTERVAL_MS ?? 5000);
@@ -27,6 +29,9 @@ const batchSize = Number(process.env.WHATSAPP_OUTBOX_BATCH_SIZE ?? 10);
 const DEFAULT_CLOUD_API_VERSION = "v22.0";
 const inboundMediaMaxAttempts = Number(
 	process.env.WHATSAPP_MEDIA_MAX_ATTEMPTS ?? 5,
+);
+const outboundMediaUrlExpirySeconds = Number(
+	process.env.WHATSAPP_MEDIA_SEND_URL_TTL_SECONDS ?? 15 * 60,
 );
 
 const decryptStoredSecret = (value: string) => {
@@ -512,9 +517,17 @@ const processOutboxItem = async (item: {
 		return;
 	}
 
+	let resolvedMediaUrl = mediaUrl;
+	if (item.media?.storageType === "s3") {
+		resolvedMediaUrl = await getSignedUrl(mediaUrl, {
+			bucket: getUploadsBucketName(),
+			expiresIn: outboundMediaUrlExpirySeconds,
+		});
+	}
+
 	const result = await provider.messaging.sendMedia({
 		to: recipient,
-		mediaUrl,
+		mediaUrl: resolvedMediaUrl,
 		mediaType,
 		caption: item.message.caption ?? undefined,
 	});

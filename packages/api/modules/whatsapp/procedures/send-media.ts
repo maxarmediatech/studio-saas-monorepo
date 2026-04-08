@@ -21,6 +21,17 @@ export const sendMedia = studioProtectedProcedure
 	.input(sendMediaInputSchema)
 	.output(sendMediaOutputSchema)
 	.handler(async ({ input, context }) => {
+		if (
+			input.mediaKey &&
+			!input.mediaKey.startsWith(
+				`orgs/${context.organizationId}/whatsapp-media/`,
+			)
+		) {
+			throw new ORPCError("FORBIDDEN", {
+				message: "Invalid media key",
+			});
+		}
+
 		const existingContact = await db.query.waContacts.findFirst({
 			where: and(
 				eq(waContacts.organizationId, context.organizationId),
@@ -81,8 +92,8 @@ export const sendMedia = studioProtectedProcedure
 				organizationId: context.organizationId,
 				mimeType: input.mimeType,
 				fileName: input.fileName ?? null,
-				storageType: "provider",
-				storageUrl: input.mediaUrl,
+				storageType: input.mediaKey ? "s3" : "provider",
+				storageUrl: input.mediaKey ?? input.mediaUrl ?? null,
 			})
 			.returning({ id: waMedia.id });
 
