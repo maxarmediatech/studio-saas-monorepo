@@ -731,6 +731,8 @@ export const whatsappMutations = {
 	syncTemplates: () => orpc.whatsapp.syncTemplates.mutationOptions(),
 	markConversationRead: () =>
 		orpc.whatsapp.markConversationRead.mutationOptions(),
+	updateConversationStatus: () =>
+		orpc.whatsapp.updateConversationStatus.mutationOptions(),
 };
 
 // ============================================================================

@@ -17,6 +17,7 @@ import { subscribeAccount } from "./procedures/subscribe-account";
 import { syncTemplates } from "./procedures/sync-templates";
 import { testAccount } from "./procedures/test-account";
 import { updateAccount } from "./procedures/update-account";
+import { updateConversationStatus } from "./procedures/update-conversation-status";
 import { whatsappWebhook } from "./procedures/webhook";
 
 export const whatsappRouter = {
@@ -39,5 +40,6 @@ export const whatsappRouter = {
 	syncTemplates,
 	testAccount,
 	updateAccount,
+	updateConversationStatus,
 	webhook: whatsappWebhook,
 };

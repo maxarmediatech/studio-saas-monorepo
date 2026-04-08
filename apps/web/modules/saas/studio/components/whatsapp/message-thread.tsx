@@ -42,6 +42,13 @@ type AssigneeOption = {
 	label: string;
 };
 const UNASSIGNED_VALUE = "__unassigned__";
+const OPEN_VALUE = "open";
+const CLOSED_VALUE = "closed";
+const ARCHIVED_VALUE = "archived";
+
+function formatConversationStatusLabel(value: ConversationItem["status"]) {
+	return value.charAt(0).toUpperCase() + value.slice(1);
+}
 
 function getConversationName(conversation: ConversationItem) {
 	return (
@@ -198,8 +205,10 @@ export function WhatsAppMessageThread({
 	onOpenTemplateDialog,
 	assigneeOptions,
 	onAssignConversation,
+	onUpdateConversationStatus,
 	isSending,
 	isAssigning,
+	isUpdatingStatus,
 	isTemplateActionDisabled,
 }: {
 	conversation: ConversationItem | null;
@@ -211,8 +220,10 @@ export function WhatsAppMessageThread({
 	onOpenTemplateDialog: () => void;
 	assigneeOptions: AssigneeOption[];
 	onAssignConversation: (assignedToUserId: string | null) => void;
+	onUpdateConversationStatus: (status: ConversationItem["status"]) => void;
 	isSending: boolean;
 	isAssigning: boolean;
+	isUpdatingStatus: boolean;
 	isTemplateActionDisabled: boolean;
 }) {
 	const scrollBottomRef = useRef<HTMLDivElement | null>(null);
@@ -266,6 +277,30 @@ export function WhatsAppMessageThread({
 									: "Read"}
 							</Badge>
 							<Select
+								value={conversation.status}
+								onValueChange={(value) =>
+									onUpdateConversationStatus(
+										value as ConversationItem["status"],
+									)
+								}
+								disabled={isUpdatingStatus}
+							>
+								<SelectTrigger className="h-8 min-w-32 text-xs">
+									<SelectValue placeholder="Status" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value={OPEN_VALUE}>
+										Open
+									</SelectItem>
+									<SelectItem value={CLOSED_VALUE}>
+										Closed
+									</SelectItem>
+									<SelectItem value={ARCHIVED_VALUE}>
+										Archived
+									</SelectItem>
+								</SelectContent>
+							</Select>
+							<Select
 								value={
 									conversation.assignedToUserId ??
 									UNASSIGNED_VALUE
@@ -300,6 +335,8 @@ export function WhatsAppMessageThread({
 						<p className="mt-1 text-sm text-muted-foreground">
 							{conversation.contact.phoneNumber} •{" "}
 							{conversation.contact.waId}
+							{" • "}
+							{formatConversationStatusLabel(conversation.status)}
 						</p>
 					</div>
 				</div>

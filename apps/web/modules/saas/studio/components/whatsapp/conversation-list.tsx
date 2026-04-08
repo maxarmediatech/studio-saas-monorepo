@@ -18,6 +18,10 @@ import type { z } from "zod";
 
 type ConversationItem = z.infer<typeof conversationItemSchema>;
 
+function formatConversationStatusLabel(value: ConversationItem["status"]) {
+	return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
 function getConversationName(conversation: ConversationItem) {
 	return (
 		conversation.contact.name ||
@@ -163,7 +167,9 @@ export function WhatsAppConversationList({
 												: "Read"}
 										</Badge>
 										<Badge variant="outline">
-											{conversation.status}
+											{formatConversationStatusLabel(
+												conversation.status,
+											)}
 										</Badge>
 										{assigneeLabel ? (
 											<Badge variant="outline">

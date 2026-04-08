@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+const waConversationStatusSchema = z.enum(["open", "closed", "archived"]);
+
 export const connectBaileysInputSchema = z.object({
 	name: z.string().min(1),
 });
@@ -249,7 +251,7 @@ export const listConversationsInputSchema = z.object({
 	limit: z.number().min(1).max(100).default(20),
 	cursor: z.string().optional(),
 	accountId: z.string().optional(),
-	status: z.enum(["open", "closed", "archived"]).optional(),
+	status: waConversationStatusSchema.optional(),
 	assignment: z.enum(["all", "mine", "unassigned"]).optional(),
 	search: z.string().min(1).max(100).optional(),
 });
@@ -258,7 +260,7 @@ export const conversationItemSchema = z.object({
 	id: z.string(),
 	accountId: z.string(),
 	contactId: z.string(),
-	status: z.enum(["open", "closed", "archived"]),
+	status: waConversationStatusSchema,
 	assignedToUserId: z.string().nullable(),
 	unreadCount: z.number(),
 	lastMessageId: z.string().nullable(),
@@ -356,6 +358,16 @@ export const assignConversationInputSchema = z.object({
 });
 
 export const assignConversationOutputSchema = z.object({
+	data: conversationItemSchema,
+	message: z.string(),
+});
+
+export const updateConversationStatusInputSchema = z.object({
+	conversationId: z.string(),
+	status: waConversationStatusSchema,
+});
+
+export const updateConversationStatusOutputSchema = z.object({
 	data: conversationItemSchema,
 	message: z.string(),
 });

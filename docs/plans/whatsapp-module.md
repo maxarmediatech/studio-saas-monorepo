@@ -129,6 +129,7 @@ Current implementation assumes `mediaUrl` is already a public URL.
 - [x] Conversation assignment / unassignment API
 - [x] Inbox filters for `all`, `mine`, `unassigned`
 - [x] Assignee controls in inbox thread header
+- [x] Conversation status controls + inbox status filter
 
 ### Baileys Bridge (QR + Session)
 - [ ] QR code generation and display

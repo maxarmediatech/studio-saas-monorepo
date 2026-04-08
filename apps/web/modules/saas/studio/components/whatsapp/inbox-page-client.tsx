@@ -1,6 +1,9 @@
 "use client";
 
-import type { whatsappTemplateSummarySchema } from "@repo/api/modules/whatsapp/types";
+import type {
+	conversationItemSchema,
+	whatsappTemplateSummarySchema,
+} from "@repo/api/modules/whatsapp/types";
 import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
 import { Button } from "@repo/ui/components/button";
 import { Input } from "@repo/ui/components/input";
@@ -40,9 +43,13 @@ import { buildTemplateSendComponents } from "./template-send-payload";
 
 const ALL_ACCOUNTS_VALUE = "__all_accounts__";
 const ALL_ASSIGNMENTS_VALUE = "__all_assignments__";
+const ALL_STATUSES_VALUE = "__all_statuses__";
 const MY_ASSIGNMENTS_VALUE = "__my_assignments__";
 const UNASSIGNED_ASSIGNMENTS_VALUE = "__unassigned_assignments__";
 type WhatsAppTemplate = z.infer<typeof whatsappTemplateSummarySchema>;
+type WhatsAppConversationStatus = z.infer<
+	typeof conversationItemSchema
+>["status"];
 
 export function WhatsAppInboxPageClient() {
 	const queryClient = useQueryClient();
@@ -52,6 +59,9 @@ export function WhatsAppInboxPageClient() {
 	const [assignmentFilter, setAssignmentFilter] = useState(
 		ALL_ASSIGNMENTS_VALUE,
 	);
+	const [statusFilter, setStatusFilter] = useState<
+		typeof ALL_STATUSES_VALUE | WhatsAppConversationStatus
+	>(ALL_STATUSES_VALUE);
 	const [search, setSearch] = useState("");
 	const [selectedConversationId, setSelectedConversationId] = useState<
 		string | null
@@ -101,6 +111,8 @@ export function WhatsAppInboxPageClient() {
 					: assignmentFilter === UNASSIGNED_ASSIGNMENTS_VALUE
 						? "unassigned"
 						: undefined,
+			status:
+				statusFilter === ALL_STATUSES_VALUE ? undefined : statusFilter,
 			search: deferredSearch.trim() || undefined,
 		}),
 		refetchOnWindowFocus: false,
@@ -227,6 +239,19 @@ export function WhatsAppInboxPageClient() {
 		},
 		onError: (error) => {
 			toast.error(error.message || "Failed to queue template");
+		},
+	});
+
+	const updateConversationStatusMutation = useMutation({
+		...whatsappMutations.updateConversationStatus(),
+		onSuccess: async (result) => {
+			await queryClient.invalidateQueries({
+				queryKey: orpc.whatsapp.key(),
+			});
+			toast.success(result.message);
+		},
+		onError: (error) => {
+			toast.error(error.message || "Failed to update status");
 		},
 	});
 
@@ -359,6 +384,28 @@ export function WhatsAppInboxPageClient() {
 						</SelectItem>
 					</SelectContent>
 				</Select>
+				<Select
+					value={statusFilter}
+					onValueChange={(value) =>
+						setStatusFilter(
+							value as
+								| typeof ALL_STATUSES_VALUE
+								| WhatsAppConversationStatus,
+						)
+					}
+				>
+					<SelectTrigger className="min-w-40">
+						<SelectValue placeholder="All statuses" />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value={ALL_STATUSES_VALUE}>
+							All statuses
+						</SelectItem>
+						<SelectItem value="open">Open</SelectItem>
+						<SelectItem value="closed">Closed</SelectItem>
+						<SelectItem value="archived">Archived</SelectItem>
+					</SelectContent>
+				</Select>
 				<Button
 					type="button"
 					variant="outline"
@@ -397,7 +444,7 @@ export function WhatsAppInboxPageClient() {
 						<p>
 							List, thread, mark-read, send text, and inbound
 							attachments are live. Template send and assignment
-							are live too. Realtime next.
+							are live too. Realtime and status control live.
 						</p>
 					</AlertDescription>
 				</Alert>
@@ -451,8 +498,21 @@ export function WhatsAppInboxPageClient() {
 									assignedToUserId,
 								});
 							}}
+							onUpdateConversationStatus={(status) => {
+								if (!selectedConversation) {
+									return;
+								}
+
+								updateConversationStatusMutation.mutate({
+									conversationId: selectedConversation.id,
+									status,
+								});
+							}}
 							isSending={sendTextMutation.isPending}
 							isAssigning={assignConversationMutation.isPending}
+							isUpdatingStatus={
+								updateConversationStatusMutation.isPending
+							}
 							isTemplateActionDisabled={!selectedConversation}
 						/>
 					</div>
