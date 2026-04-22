@@ -170,6 +170,7 @@ export const bookingListItemSchema = bookingSchema.extend({
 	participantsCount: z.number(),
 	participants: z.array(participantSummarySchema),
 	shootsCount: z.number(),
+	weddingDate: dateSchema.nullable(),
 	balance: z.string(),
 });
 

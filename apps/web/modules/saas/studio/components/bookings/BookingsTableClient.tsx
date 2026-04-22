@@ -469,6 +469,38 @@ export function BookingsTableClient({
 				enableHiding: true,
 			},
 			{
+				id: "weddingDate",
+				accessorKey: "weddingDate",
+				header: ({ column }) => (
+					<DataTableColumnHeader
+						column={column}
+						title="Wedding Date"
+					/>
+				),
+				cell: ({ row }) => {
+					if (
+						row.original.bookingType !== "wedding" ||
+						!row.original.weddingDate
+					) {
+						return <span className="text-muted-foreground">—</span>;
+					}
+
+					return (
+						<span className="text-muted-foreground">
+							{formatBookingDate(row.original.weddingDate)}
+						</span>
+					);
+				},
+				meta: {
+					label: "Wedding Date",
+					icon: CalendarIcon,
+					width: 130,
+					minWidth: 130,
+				},
+				enableSorting: false,
+				enableHiding: true,
+			},
+			{
 				id: "actions",
 				header: ({ table }) => <DataTableViewOptions table={table} />,
 				cell: ({ row }) => (
