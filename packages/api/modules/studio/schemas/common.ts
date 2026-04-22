@@ -77,6 +77,14 @@ export const idInputSchema = z.object({
 
 export type IdInput = z.infer<typeof idInputSchema>;
 
+export const assignedCrewSummarySchema = z.object({
+	id: idSchema,
+	name: z.string(),
+	avatarUrl: z.string().nullable(),
+});
+
+export type AssignedCrewSummary = z.infer<typeof assignedCrewSummarySchema>;
+
 // ============================================================================
 // MONEY HANDLING
 // ============================================================================

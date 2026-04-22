@@ -2,6 +2,7 @@ import {
 	and,
 	bookings,
 	count,
+	crews,
 	db,
 	eq,
 	gte,
@@ -10,6 +11,7 @@ import {
 	shootAssignments,
 	shoots,
 	sql,
+	users,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
@@ -157,26 +159,42 @@ export const listShoots = studioProtectedProcedure
 
 		// Get assignment counts
 		const shootIds = data.map((d) => d.shoot.id);
-		let assignmentCounts: Record<string, number> = {};
+		const assignmentCounts: Record<string, number> = {};
+		const assignedCrewByShoot: Record<
+			string,
+			{ id: string; name: string; avatarUrl: string | null }[]
+		> = {};
 
 		if (shootIds.length > 0) {
 			const assignmentResults = await db
 				.select({
 					shootId: shootAssignments.shootId,
-					count: count().mapWith(Number),
+					crewId: crews.id,
+					crewName: crews.name,
+					avatarUrl: users.image,
 				})
 				.from(shootAssignments)
+				.innerJoin(crews, eq(shootAssignments.crewId, crews.id))
+				.leftJoin(users, eq(crews.userId, users.id))
 				.where(
-					sql`${shootAssignments.shootId} IN (${sql.join(
-						shootIds.map((id) => sql`${id}`),
-						sql`, `,
-					)})`,
-				)
-				.groupBy(shootAssignments.shootId);
+					and(
+						inArray(shootAssignments.shootId, shootIds),
+						isNull(crews.deletedAt),
+					),
+				);
 
-			assignmentCounts = Object.fromEntries(
-				assignmentResults.map((r) => [r.shootId, r.count]),
-			);
+			for (const row of assignmentResults) {
+				assignmentCounts[row.shootId] =
+					(assignmentCounts[row.shootId] ?? 0) + 1;
+				if (!assignedCrewByShoot[row.shootId]) {
+					assignedCrewByShoot[row.shootId] = [];
+				}
+				assignedCrewByShoot[row.shootId].push({
+					id: row.crewId,
+					name: row.crewName,
+					avatarUrl: row.avatarUrl,
+				});
+			}
 		}
 
 		return {
@@ -188,6 +206,7 @@ export const listShoots = studioProtectedProcedure
 					updatedAt: shoot.updatedAt.toISOString(),
 					deletedAt: shoot.deletedAt?.toISOString() ?? null,
 					assignmentsCount: assignmentCounts[shoot.id] ?? 0,
+					assignedCrew: assignedCrewByShoot[shoot.id] ?? [],
 					bookingName,
 					bookingReferenceNumber,
 				}),
