@@ -3,6 +3,7 @@
 import { Button } from "@repo/ui/components/button";
 import { Card, CardContent } from "@repo/ui/components/card";
 import { Combobox } from "@repo/ui/components/combobox";
+import { DatePicker } from "@repo/ui/components/date-picker";
 import {
 	Field,
 	FieldContent,
@@ -907,6 +908,45 @@ export function BookingDetailsStep() {
 													);
 													field.onChange(nextValue);
 												}}
+											/>
+											{fieldState.invalid && (
+												<FieldError
+													errors={[fieldState.error]}
+												/>
+											)}
+										</div>
+									</Field>
+								)}
+							/>
+							<Controller
+								name="bookingDate"
+								control={form.control}
+								render={({ field, fieldState }) => (
+									<Field
+										orientation="responsive"
+										data-invalid={fieldState.invalid}
+									>
+										<div className="flex-1">
+											<FieldContent>
+												<FieldLabel
+													htmlFor={field.name}
+												>
+													Booking Date
+												</FieldLabel>
+												<FieldDescription>
+													Date the client confirmed
+													this booking
+												</FieldDescription>
+											</FieldContent>
+										</div>
+										<div className="w-full md:min-w-[320px] md:shrink-0">
+											<DatePicker
+												value={field.value}
+												onValueChange={field.onChange}
+												id={field.name}
+												aria-invalid={
+													fieldState.invalid
+												}
 											/>
 											{fieldState.invalid && (
 												<FieldError

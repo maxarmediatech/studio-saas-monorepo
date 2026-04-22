@@ -18,6 +18,7 @@ export interface BookingFilters {
 	statuses?: BookingPhase[] | null;
 	bookingType?: string[] | null;
 	packageType?: string[] | null;
+	bookingDate?: string[] | null;
 	createdAt?: string[] | null;
 }
 
@@ -25,13 +26,14 @@ const bookingFilterParsers = {
 	statuses: parseAsArrayOf(parseAsStringLiteral(BOOKING_PHASES)),
 	bookingType: parseAsArrayOf(parseAsString, ","),
 	packageType: parseAsArrayOf(parseAsString, ","),
+	bookingDate: parseAsArrayOf(parseAsString, ","),
 	createdAt: parseAsArrayOf(parseAsString, ","),
 };
 
 export function useBookingsTableWithViews() {
 	return useDataTableWithViews<BookingFilters>(bookingFilterParsers, {
 		entityType: "booking",
-		defaultSortBy: "createdAt",
+		defaultSortBy: "bookingDate",
 		defaultSortDirection: "desc",
 		defaultLimit: 10,
 	});

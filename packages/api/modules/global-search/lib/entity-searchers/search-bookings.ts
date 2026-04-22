@@ -24,12 +24,13 @@ export async function searchBookings(
 
 	if (pattern) {
 		// Exact match on pattern takes priority
-		conditions.push(
-			or(
-				eq(bookings.referenceNumber, pattern),
-				ilike(bookings.referenceNumber, `%${pattern}%`),
-			)!,
+		const referenceMatch = or(
+			eq(bookings.referenceNumber, pattern),
+			ilike(bookings.referenceNumber, `%${pattern}%`),
 		);
+		if (referenceMatch) {
+			conditions.push(referenceMatch);
+		}
 	} else if (number) {
 		// Search by number within reference
 		conditions.push(ilike(bookings.referenceNumber, `%${number}%`));
@@ -46,7 +47,7 @@ export async function searchBookings(
 		})
 		.from(bookings)
 		.where(and(...conditions))
-		.orderBy(desc(bookings.createdAt))
+		.orderBy(desc(bookings.bookingDate))
 		.limit(limit);
 
 	return results;

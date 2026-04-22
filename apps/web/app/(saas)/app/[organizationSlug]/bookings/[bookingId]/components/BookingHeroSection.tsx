@@ -39,6 +39,7 @@ type BookingHeroSectionProps = {
 		eventTime?: string | null;
 		venue?: string | null;
 		city?: string | null;
+		bookingDate?: string | Date | null;
 		createdAt?: string | Date | null;
 		participants?: Participant[];
 	};
@@ -59,8 +60,7 @@ export function BookingHeroSection({
 	onAddPayment,
 	onAddExpense,
 }: BookingHeroSectionProps) {
-	const statusLabel =
-		booking.statusLabel || booking.status.replace("_", " ");
+	const statusLabel = booking.statusLabel || booking.status.replace("_", " ");
 	const priority = booking.priority || "medium";
 
 	const eventDateFormatted = booking.eventDate
@@ -72,11 +72,11 @@ export function BookingHeroSection({
 			)
 		: null;
 
-	const bookedOnFormatted = booking.createdAt
+	const bookedOnFormatted = booking.bookingDate
 		? format(
-				typeof booking.createdAt === "string"
-					? parseISO(booking.createdAt)
-					: booking.createdAt,
+				typeof booking.bookingDate === "string"
+					? parseISO(booking.bookingDate)
+					: booking.bookingDate,
 				"MMM d, yyyy",
 			)
 		: null;
@@ -91,7 +91,9 @@ export function BookingHeroSection({
 		subtitleParts.push(`${formatPackageType(booking.packageType)} package`);
 	}
 	if (booking.bookingType) {
-		subtitleParts.push(`${formatPackageType(booking.bookingType)} coverage`);
+		subtitleParts.push(
+			`${formatPackageType(booking.bookingType)} coverage`,
+		);
 	}
 	const subtitle = subtitleParts.join(" - ");
 
@@ -149,7 +151,9 @@ export function BookingHeroSection({
 				<div>
 					<h2 className="text-2xl font-semibold">{booking.name}</h2>
 					{subtitle && (
-						<p className="text-sm text-muted-foreground">{subtitle}</p>
+						<p className="text-sm text-muted-foreground">
+							{subtitle}
+						</p>
 					)}
 				</div>
 
@@ -175,7 +179,10 @@ export function BookingHeroSection({
 					<div className="flex flex-wrap gap-2">
 						{clientsWithPhone.map((client) => (
 							<Badge key={client.id} variant="secondary" asChild>
-								<a href={`tel:${client.phone}`} className="gap-1.5">
+								<a
+									href={`tel:${client.phone}`}
+									className="gap-1.5"
+								>
 									<PhoneIcon className="h-3 w-3" />
 									{client.phone}
 								</a>
@@ -204,25 +211,41 @@ export function BookingHeroSection({
 							</Button>
 						)}
 						{onAddDeliverable && (
-							<Button size="sm" variant="outline" onClick={onAddDeliverable}>
+							<Button
+								size="sm"
+								variant="outline"
+								onClick={onAddDeliverable}
+							>
 								<PlusIcon className="h-3.5 w-3.5 mr-1.5" />
 								Add deliverable
 							</Button>
 						)}
 						{onAddTask && (
-							<Button size="sm" variant="outline" onClick={onAddTask}>
+							<Button
+								size="sm"
+								variant="outline"
+								onClick={onAddTask}
+							>
 								<PlusIcon className="h-3.5 w-3.5 mr-1.5" />
 								Add task
 							</Button>
 						)}
 						{onAddPayment && (
-							<Button size="sm" variant="outline" onClick={onAddPayment}>
+							<Button
+								size="sm"
+								variant="outline"
+								onClick={onAddPayment}
+							>
 								<PlusIcon className="h-3.5 w-3.5 mr-1.5" />
 								Add payment
 							</Button>
 						)}
 						{onAddExpense && (
-							<Button size="sm" variant="outline" onClick={onAddExpense}>
+							<Button
+								size="sm"
+								variant="outline"
+								onClick={onAddExpense}
+							>
 								<PlusIcon className="h-3.5 w-3.5 mr-1.5" />
 								Add expense
 							</Button>

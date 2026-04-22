@@ -50,7 +50,7 @@ export const listBookingsMinimal = studioProtectedProcedure
 				status: true,
 				packageType: true,
 			},
-			orderBy: (table, { desc }) => [desc(table.createdAt)],
+			orderBy: (table, { desc }) => [desc(table.bookingDate)],
 			limit: 100,
 		});
 

@@ -24,6 +24,7 @@ export const updateBooking = studioProtectedProcedure
 		const {
 			id,
 			name,
+			bookingDate,
 			bookingType,
 			packageType,
 			packageCost,
@@ -52,6 +53,9 @@ export const updateBooking = studioProtectedProcedure
 		if (name !== undefined) {
 			updates.name = name;
 		}
+		if (bookingDate !== undefined) {
+			updates.bookingDate = bookingDate;
+		}
 		if (bookingType !== undefined) {
 			updates.bookingType = bookingType;
 		}
@@ -70,8 +74,15 @@ export const updateBooking = studioProtectedProcedure
 		// Track field changes (non-blocking)
 		const changes = detectChanges(
 			existing,
-			{ name, bookingType, packageType, packageCost, note },
-			["name", "bookingType", "packageType", "packageCost", "note"],
+			{ name, bookingDate, bookingType, packageType, packageCost, note },
+			[
+				"name",
+				"bookingDate",
+				"bookingType",
+				"packageType",
+				"packageCost",
+				"note",
+			],
 		);
 
 		if (changes.length > 0) {

@@ -24,13 +24,13 @@ import {
 } from "../../studio/lib/date-helpers";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
+	type BookingPhase,
+	bookingPhaseSchema,
+} from "../../studio/schemas/common";
+import {
 	getDashboardInputSchema,
 	getDashboardOutputSchema,
 } from "../../studio/schemas/dashboard";
-import {
-	bookingPhaseSchema,
-	type BookingPhase,
-} from "../../studio/schemas/common";
 
 export const getDashboard = studioProtectedProcedure
 	.route({
@@ -66,11 +66,8 @@ export const getDashboard = studioProtectedProcedure
 			? [
 					eq(bookings.organizationId, context.organizationId),
 					isNull(bookings.deletedAt),
-					gte(
-						sql`DATE(${bookings.createdAt} AT TIME ZONE ${timeZone})`,
-						rangeStart,
-					),
-					sql`DATE(${bookings.createdAt} AT TIME ZONE ${timeZone}) <= ${rangeEnd}`,
+					gte(bookings.bookingDate, rangeStart),
+					sql`${bookings.bookingDate} <= ${rangeEnd}`,
 				]
 			: [
 					eq(bookings.organizationId, context.organizationId),
@@ -127,11 +124,8 @@ export const getDashboard = studioProtectedProcedure
 				and(
 					eq(bookings.organizationId, context.organizationId),
 					isNull(bookings.deletedAt),
-					gte(
-						sql`DATE(${bookings.createdAt} AT TIME ZONE ${timeZone})`,
-						dateRange?.start ?? startOfMonth,
-					),
-					sql`DATE(${bookings.createdAt} AT TIME ZONE ${timeZone}) <= ${dateRange?.end ?? today}`,
+					gte(bookings.bookingDate, dateRange?.start ?? startOfMonth),
+					sql`${bookings.bookingDate} <= ${dateRange?.end ?? today}`,
 				),
 			);
 
@@ -249,7 +243,7 @@ export const getDashboard = studioProtectedProcedure
 		// Recent bookings (last 5)
 		const recentBookingsList = await db.query.bookings.findMany({
 			where: and(...bookingRangeConditions),
-			orderBy: [desc(bookings.createdAt)],
+			orderBy: [desc(bookings.bookingDate), desc(bookings.createdAt)],
 			limit: 5,
 			columns: {
 				id: true,
@@ -258,6 +252,7 @@ export const getDashboard = studioProtectedProcedure
 				status: true,
 				packageCost: true,
 				totalReceived: true,
+				bookingDate: true,
 				createdAt: true,
 			},
 		});
@@ -342,6 +337,7 @@ export const getDashboard = studioProtectedProcedure
 					status: b.status,
 					packageCost: String(b.packageCost),
 					totalReceived: String(b.totalReceived),
+					bookingDate: b.bookingDate,
 					createdAt: b.createdAt.toISOString(),
 				})),
 				upcomingShoots: shootsWithDetails,

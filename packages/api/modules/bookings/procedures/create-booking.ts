@@ -130,6 +130,7 @@ export const createBooking = studioProtectedProcedure
 
 		const {
 			name,
+			bookingDate,
 			bookingType,
 			packageType,
 			packageCost,
@@ -186,6 +187,7 @@ export const createBooking = studioProtectedProcedure
 					organizationId: context.organizationId,
 					referenceNumber,
 					name,
+					bookingDate,
 					bookingType,
 					packageType,
 					packageCost,

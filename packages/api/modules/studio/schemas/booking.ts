@@ -11,6 +11,7 @@ import {
 	createItemResponseSchema,
 	createListResponseSchema,
 	createSortSchema,
+	dateSchema,
 	datetimeSchema,
 	idSchema,
 	moneySchema,
@@ -87,6 +88,7 @@ export const bookingSchema = z.object({
 	organizationId: idSchema,
 	referenceNumber: z.string(),
 	name: z.string(),
+	bookingDate: dateSchema,
 	bookingType: z.string(),
 	packageType: z.string(),
 	packageCost: z.string(),
@@ -126,6 +128,7 @@ const bookingSortFields = [
 	"referenceNumber",
 	"status",
 	"packageCost",
+	"bookingDate",
 	"createdAt",
 	"updatedAt",
 ] as const;
@@ -136,12 +139,13 @@ export const listBookingsInputSchema = z
 		statuses: z.array(bookingPhaseSchema).optional(),
 		bookingType: z.union([z.string(), z.array(z.string())]).nullish(),
 		packageType: z.union([z.string(), z.array(z.string())]).nullish(),
+		bookingDate: z.string().optional(), // comma-separated date range "from,to"
 		createdAt: z.string().optional(), // comma-separated date range "from,to"
 	})
 	.merge(paginationSchema)
 	.merge(searchSchema)
 	.merge(baseListFiltersSchema)
-	.merge(createSortSchema(bookingSortFields, "createdAt"));
+	.merge(createSortSchema(bookingSortFields, "bookingDate"));
 
 export type ListBookingsInput = z.infer<typeof listBookingsInputSchema>;
 
@@ -329,6 +333,7 @@ export type PaymentScheduleInput = z.infer<typeof paymentScheduleInputSchema>;
 export const createBookingInputSchema = z.object({
 	// Core booking fields
 	name: nameSchema,
+	bookingDate: dateSchema,
 	bookingType: z.string().min(1).max(100),
 	packageType: z.string().min(1).max(100),
 	packageCost: moneySchema,
@@ -365,6 +370,7 @@ export type CreateBookingOutput = z.infer<typeof createBookingOutputSchema>;
 export const updateBookingInputSchema = z.object({
 	id: idSchema,
 	name: nameSchema.optional(),
+	bookingDate: dateSchema.optional(),
 	bookingType: z.string().min(1).max(100).optional(),
 	packageType: z.string().min(1).max(100).optional(),
 	packageCost: moneySchema.optional(),

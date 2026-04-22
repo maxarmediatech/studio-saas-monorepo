@@ -51,6 +51,13 @@ export function formatDecimalForApi(value: string): string {
 	return parsed.toFixed(2);
 }
 
+function getLocalDateInputValue(date: Date): string {
+	const year = date.getFullYear();
+	const month = String(date.getMonth() + 1).padStart(2, "0");
+	const day = String(date.getDate()).padStart(2, "0");
+	return `${year}-${month}-${day}`;
+}
+
 /**
  * Participant schema - links a client to the booking with a role
  */
@@ -200,6 +207,7 @@ export const bookingFormSchema = z
 	.object({
 		// Step 1: Details
 		name: z.string().min(1, "Booking name is required"),
+		bookingDate: z.string().min(1, "Booking date is required"),
 		bookingType: z.string().min(1, "Booking type is required"),
 		packageType: z.string().min(1, "Package type is required"),
 		packageCost: decimalStringSchema,
@@ -251,6 +259,7 @@ export type BookingFormValues = z.input<typeof bookingFormSchema>;
 
 export const bookingDetailsStepSchema = bookingFormSchema.pick({
 	name: true,
+	bookingDate: true,
 	bookingType: true,
 	packageType: true,
 	packageCost: true,
@@ -278,6 +287,7 @@ export const bookingDeliverablesStepSchema = bookingFormSchema.pick({
 export function createDefaultBookingValues(): BookingFormValues {
 	return {
 		name: "",
+		bookingDate: getLocalDateInputValue(new Date()),
 		bookingType: "",
 		packageType: "",
 		packageCost: "0.00",
@@ -328,6 +338,7 @@ export const TAB_FIELD_MAPPING: Record<
 > = {
 	details: [
 		"name",
+		"bookingDate",
 		"bookingType",
 		"packageType",
 		"packageCost",

@@ -53,6 +53,7 @@ interface OverviewTabProps {
 		balance: string;
 		phase: string;
 		note: string | null;
+		bookingDate: Date | string;
 		createdAt: Date | string;
 		participants: Array<{
 			role: string;
@@ -75,7 +76,9 @@ interface OverviewTabProps {
 // Main Component
 // ============================================================================
 
-export const OverviewTab = memo(function OverviewTab({ booking }: OverviewTabProps) {
+export const OverviewTab = memo(function OverviewTab({
+	booking,
+}: OverviewTabProps) {
 	return (
 		<div className="space-y-6">
 			{/* Financial Summary Card */}
@@ -121,7 +124,10 @@ export const OverviewTab = memo(function OverviewTab({ booking }: OverviewTabPro
 				<CardContent>
 					<div className="space-y-3">
 						{booking.participants.map((participant) => (
-							<div key={participant.client.id} className="flex items-start gap-3">
+							<div
+								key={participant.client.id}
+								className="flex items-start gap-3"
+							>
 								<Avatar className="h-10 w-10">
 									<AvatarFallback>
 										{getInitials(participant.client.name)}
@@ -232,10 +238,10 @@ export const OverviewTab = memo(function OverviewTab({ booking }: OverviewTabPro
 						</div>
 						<div className="space-y-1">
 							<p className="text-sm text-muted-foreground">
-								Created
+								Booking Date
 							</p>
 							<p className="font-medium">
-								{formatDate(booking.createdAt)}
+								{formatDate(booking.bookingDate)}
 							</p>
 						</div>
 						<div className="space-y-1">

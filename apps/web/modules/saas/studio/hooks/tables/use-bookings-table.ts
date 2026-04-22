@@ -24,7 +24,8 @@ export interface BookingFilters {
 	statuses?: BookingPhase[] | null;
 	bookingType?: string[] | null;
 	packageType?: string[] | null;
-	createdAt?: string[] | null; // Array of [from, to] dates in YYYY-MM-DD format
+	bookingDate?: string[] | null; // Array of [from, to] dates in YYYY-MM-DD format
+	createdAt?: string[] | null; // Backwards-compatible alias for older saved views
 }
 
 /**
@@ -35,6 +36,7 @@ const bookingFilterParsers = {
 	statuses: parseAsArrayOf(parseAsStringLiteral(BOOKING_PHASES)),
 	bookingType: parseAsArrayOf(parseAsString, ","),
 	packageType: parseAsArrayOf(parseAsString, ","),
+	bookingDate: parseAsArrayOf(parseAsString, ","),
 	createdAt: parseAsArrayOf(parseAsString, ","),
 };
 
@@ -57,7 +59,7 @@ const bookingFilterParsers = {
  *   limit: pagination.limit,
  *   search: filters.search ?? undefined,
  *   status: filters.status ?? undefined,
- *   sortBy: sorting.sortBy ?? "createdAt",
+ *   sortBy: sorting.sortBy ?? "bookingDate",
  *   sortDirection: sorting.sortDirection,
  * }));
  * ```
@@ -65,7 +67,7 @@ const bookingFilterParsers = {
 export function useBookingsTable() {
 	return useDataTable<BookingFilters>(bookingFilterParsers, {
 		columnVisibilityKey: "booking",
-		defaultSortBy: "createdAt",
+		defaultSortBy: "bookingDate",
 		defaultSortDirection: "desc",
 		defaultLimit: 10,
 	});
