@@ -1,13 +1,24 @@
 "use client";
 
-import type { ToolbarFilterConfig } from "@saas/shared/components/data-table";
-import { DataTableToolbar } from "@saas/shared/components/data-table";
+import {
+	DataTableExportButton,
+	DataTableToolbar,
+	type ToolbarFilterConfig,
+} from "@saas/shared/components/data-table";
 import { useReceiptsTable } from "@saas/studio/hooks/tables/use-receipts-table";
 import { CalendarIcon } from "lucide-react";
 import { useCallback, useMemo } from "react";
 
 export function ReceiptsFilters() {
-	const { filters, setFilter, resetFilters, isFiltered } = useReceiptsTable();
+	const {
+		filters,
+		pagination,
+		sorting,
+		setFilter,
+		resetFilters,
+		isFiltered,
+		columnVisibility,
+	} = useReceiptsTable();
 
 	const filterConfigs: ToolbarFilterConfig[] = useMemo(
 		() => [
@@ -70,6 +81,19 @@ export function ReceiptsFilters() {
 		[setFilter],
 	);
 
+	const queryInput = {
+		page: pagination.page,
+		limit: pagination.limit,
+		search: filters.search ?? undefined,
+		bookingId: filters.bookingId ?? undefined,
+		invoiceId: filters.invoiceId ?? undefined,
+		paymentScheduleId: filters.paymentScheduleId ?? undefined,
+		dateFrom: filters.createdAt?.[0] ?? undefined,
+		dateTo: filters.createdAt?.[1] ?? undefined,
+		sortBy: sorting.sortBy ?? "receiptDate",
+		sortDirection: sorting.sortDirection,
+	};
+
 	return (
 		<DataTableToolbar
 			filters={filterConfigs}
@@ -81,6 +105,13 @@ export function ReceiptsFilters() {
 			searchValue={filters.search ?? ""}
 			searchPlaceholder="Search receipts..."
 			onSearchChange={handleSearchChange}
-		/>
+		>
+			<DataTableExportButton
+				entityType="receipt"
+				input={queryInput}
+				columnVisibility={columnVisibility}
+				iconOnly
+			/>
+		</DataTableToolbar>
 	);
 }

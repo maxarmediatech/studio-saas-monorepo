@@ -55,6 +55,7 @@ const configurationFilterParsers = {};
  */
 export function useConfigurationsTable() {
 	return useDataTable<ConfigurationFilters>(configurationFilterParsers, {
+		columnVisibilityKey: "configuration",
 		defaultSortBy: "sortOrder",
 		defaultSortDirection: "asc",
 		defaultLimit: 50,

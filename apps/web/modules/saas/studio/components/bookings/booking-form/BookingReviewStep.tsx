@@ -76,6 +76,7 @@ const getInitials = (name: string): string => {
 interface BookingDetailsSectionProps {
 	onEdit: () => void;
 	name: string;
+	bookingDate: string;
 	bookingType: string;
 	packageType: string;
 	packageCost: string;
@@ -86,6 +87,7 @@ interface BookingDetailsSectionProps {
 function BookingDetailsSection({
 	onEdit,
 	name,
+	bookingDate,
 	bookingType,
 	packageType,
 	packageCost,
@@ -159,6 +161,14 @@ function BookingDetailsSection({
 							</FieldLabel>
 							<p className="text-sm font-medium mt-1">
 								{name || "—"}
+							</p>
+						</div>
+						<div>
+							<FieldLabel className="text-xs">
+								Booking Date
+							</FieldLabel>
+							<p className="text-sm font-medium mt-1">
+								{formatDate(bookingDate)}
 							</p>
 						</div>
 						<div>
@@ -763,6 +773,7 @@ export function BookingReviewStep({
 						<BookingDetailsSection
 							onEdit={() => onNavigateToStep("details")}
 							name={formValues.name}
+							bookingDate={formValues.bookingDate}
 							bookingType={formValues.bookingType}
 							packageType={formValues.packageType}
 							packageCost={formValues.packageCost}

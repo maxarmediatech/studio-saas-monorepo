@@ -1,0 +1,2 @@
+ALTER TABLE "bookings" ADD COLUMN "booking_date" date DEFAULT CURRENT_DATE NOT NULL;--> statement-breakpoint
+CREATE INDEX "bookings_org_booking_date_idx" ON "bookings" USING btree ("organization_id","booking_date");

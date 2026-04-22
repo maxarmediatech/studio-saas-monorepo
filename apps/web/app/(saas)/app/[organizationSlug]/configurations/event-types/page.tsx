@@ -29,7 +29,10 @@ export default async function EventTypesPage({ params, searchParams }: Props) {
 
 	return (
 		<div className="space-y-4">
-			<ConfigurationsFilters configTypeLabelPlural="Event Types" />
+			<ConfigurationsFilters
+				configType="event_type"
+				configTypeLabelPlural="Event Types"
+			/>
 
 			<Suspense fallback={<ConfigurationsTableSkeleton />}>
 				<ConfigurationsTable

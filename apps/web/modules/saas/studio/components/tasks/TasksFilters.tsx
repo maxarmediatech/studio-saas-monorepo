@@ -1,7 +1,10 @@
 "use client";
 
-import type { ToolbarFilterConfig } from "@saas/shared/components/data-table";
-import { DataTableToolbarWithViews } from "@saas/shared/components/data-table";
+import {
+	DataTableExportButton,
+	DataTableToolbarWithViews,
+	type ToolbarFilterConfig,
+} from "@saas/shared/components/data-table";
 import type { SavedView } from "@saas/shared/components/views";
 import { useTasksTableWithViews } from "@saas/studio/hooks/tables";
 import {
@@ -58,6 +61,8 @@ export function TasksFilters() {
 		isFiltered,
 		activeViewId,
 		applyView,
+		pagination,
+		sorting,
 		sortingState,
 		columnVisibility,
 	} = useTasksTableWithViews();
@@ -141,6 +146,17 @@ export function TasksFilters() {
 		return columnVisibility;
 	}, [columnVisibility]);
 
+	const queryInput = {
+		page: pagination.page,
+		limit: pagination.limit,
+		search: filters.search ?? undefined,
+		status: filters.status ?? undefined,
+		priority: filters.priority ?? undefined,
+		sortBy: sorting.sortBy ?? "dueDate",
+		sortDirection: sorting.sortDirection,
+		includeDeleted: false,
+	};
+
 	return (
 		<DataTableToolbarWithViews
 			entityType="task"
@@ -159,6 +175,13 @@ export function TasksFilters() {
 			searchPlaceholder="Search tasks..."
 			onSearchChange={handleSearchChange}
 			showViewOptions={false}
-		/>
+		>
+			<DataTableExportButton
+				entityType="task"
+				input={queryInput}
+				columnVisibility={columnVisibility}
+				iconOnly
+			/>
+		</DataTableToolbarWithViews>
 	);
 }

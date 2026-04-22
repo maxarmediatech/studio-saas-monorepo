@@ -2,6 +2,7 @@ import {
 	and,
 	bookings,
 	count,
+	crews,
 	db,
 	eq,
 	gte,
@@ -10,6 +11,7 @@ import {
 	sql,
 	taskAssignments,
 	tasks,
+	users,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
@@ -172,26 +174,42 @@ export const listTasks = studioProtectedProcedure
 
 		// Get assignment counts
 		const taskIds = data.map((d) => d.task.id);
-		let assignmentCounts: Record<string, number> = {};
+		const assignmentCounts: Record<string, number> = {};
+		const assignedCrewByTask: Record<
+			string,
+			{ id: string; name: string; avatarUrl: string | null }[]
+		> = {};
 
 		if (taskIds.length > 0) {
 			const assignmentResults = await db
 				.select({
 					taskId: taskAssignments.taskId,
-					count: count().mapWith(Number),
+					crewId: crews.id,
+					crewName: crews.name,
+					avatarUrl: users.image,
 				})
 				.from(taskAssignments)
+				.innerJoin(crews, eq(taskAssignments.crewId, crews.id))
+				.leftJoin(users, eq(crews.userId, users.id))
 				.where(
-					sql`${taskAssignments.taskId} IN (${sql.join(
-						taskIds.map((id) => sql`${id}`),
-						sql`, `,
-					)})`,
-				)
-				.groupBy(taskAssignments.taskId);
+					and(
+						inArray(taskAssignments.taskId, taskIds),
+						isNull(crews.deletedAt),
+					),
+				);
 
-			assignmentCounts = Object.fromEntries(
-				assignmentResults.map((r) => [r.taskId, r.count]),
-			);
+			for (const row of assignmentResults) {
+				assignmentCounts[row.taskId] =
+					(assignmentCounts[row.taskId] ?? 0) + 1;
+				if (!assignedCrewByTask[row.taskId]) {
+					assignedCrewByTask[row.taskId] = [];
+				}
+				assignedCrewByTask[row.taskId].push({
+					id: row.crewId,
+					name: row.crewName,
+					avatarUrl: row.avatarUrl,
+				});
+			}
 		}
 
 		return {
@@ -204,6 +222,7 @@ export const listTasks = studioProtectedProcedure
 				updatedAt: task.updatedAt.toISOString(),
 				deletedAt: task.deletedAt?.toISOString() ?? null,
 				assignmentsCount: assignmentCounts[task.id] ?? 0,
+				assignedCrew: assignedCrewByTask[task.id] ?? [],
 				bookingName,
 				bookingReferenceNumber,
 			})),

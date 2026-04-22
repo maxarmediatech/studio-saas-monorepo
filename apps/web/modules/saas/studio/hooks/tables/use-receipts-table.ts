@@ -20,6 +20,7 @@ const receiptFilterParsers = {
 
 export function useReceiptsTable() {
 	return useDataTable<ReceiptFilters>(receiptFilterParsers, {
+		columnVisibilityKey: "receipt",
 		defaultSortBy: "receiptDate",
 		defaultSortDirection: "desc",
 		defaultLimit: 10,

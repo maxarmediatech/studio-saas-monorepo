@@ -45,6 +45,7 @@ import {
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
+import { format, parseISO } from "date-fns";
 import {
 	CalendarIcon,
 	CameraIcon,
@@ -67,6 +68,10 @@ interface BookingsTableClientProps {
 	organizationSlug: string;
 }
 
+function formatBookingDate(value: string): string {
+	return format(parseISO(value), "MMM d, yyyy");
+}
+
 export function BookingsTableClient({
 	organizationSlug,
 }: BookingsTableClientProps) {
@@ -81,6 +86,8 @@ export function BookingsTableClient({
 		pagination,
 		sorting,
 		sortingState,
+		columnVisibility,
+		onColumnVisibilityChange,
 		onSortingChange,
 		onPaginationChange,
 		onLimitChange,
@@ -98,8 +105,11 @@ export function BookingsTableClient({
 		statuses: filters.statuses ?? undefined,
 		bookingType: filters.bookingType ?? undefined,
 		packageType: filters.packageType ?? undefined,
-		createdAt: filters.createdAt?.join(",") ?? undefined,
-		sortBy: sorting.sortBy ?? "createdAt",
+		bookingDate:
+			filters.bookingDate?.join(",") ??
+			filters.createdAt?.join(",") ??
+			undefined,
+		sortBy: sorting.sortBy ?? "bookingDate",
 		sortDirection: sorting.sortDirection,
 		includeDeleted: false,
 	};
@@ -436,31 +446,58 @@ export function BookingsTableClient({
 				enableHiding: true,
 			},
 			{
-				id: "createdAt",
-				accessorKey: "createdAt",
+				id: "bookingDate",
+				accessorKey: "bookingDate",
 				header: ({ column }) => (
-					<DataTableColumnHeader column={column} title="Created" />
+					<DataTableColumnHeader column={column} title="Booked" />
 				),
 				cell: ({ row }) => {
-					const date = new Date(row.original.createdAt);
 					return (
 						<span className="text-muted-foreground">
-							{date.toLocaleDateString("en-US", {
-								month: "short",
-								day: "numeric",
-								year: "numeric",
-							})}
+							{formatBookingDate(row.original.bookingDate)}
 						</span>
 					);
 				},
 				meta: {
-					label: "Created",
+					label: "Booked",
 					variant: "dateRange" as const,
 					icon: CalendarIcon,
 					width: 110,
 					minWidth: 110,
 				},
 				enableSorting: true,
+				enableHiding: true,
+			},
+			{
+				id: "weddingDate",
+				accessorKey: "weddingDate",
+				header: ({ column }) => (
+					<DataTableColumnHeader
+						column={column}
+						title="Wedding Date"
+					/>
+				),
+				cell: ({ row }) => {
+					if (
+						row.original.bookingType !== "wedding" ||
+						!row.original.weddingDate
+					) {
+						return <span className="text-muted-foreground">—</span>;
+					}
+
+					return (
+						<span className="text-muted-foreground">
+							{formatBookingDate(row.original.weddingDate)}
+						</span>
+					);
+				},
+				meta: {
+					label: "Wedding Date",
+					icon: CalendarIcon,
+					width: 130,
+					minWidth: 130,
+				},
+				enableSorting: false,
 				enableHiding: true,
 			},
 			{
@@ -521,6 +558,8 @@ export function BookingsTableClient({
 						onLimitChange={onLimitChange}
 						sorting={sortingState}
 						onSortingChange={onSortingChange}
+						columnVisibility={columnVisibility}
+						onColumnVisibilityChange={onColumnVisibilityChange}
 						enableRowSelection
 						getRowId={(row) => row.id}
 						stickyLeftColumns={[

@@ -87,6 +87,7 @@ export const dashboardDataSchema = z.object({
 			status: bookingPhaseSchema,
 			packageCost: z.string(),
 			totalReceived: z.string(),
+			bookingDate: z.string(),
 			createdAt: z.string(),
 		}),
 	),

@@ -20,14 +20,14 @@ import {
 	DataTableViewOptions,
 	type RowAction,
 	SortProvider,
-	} from "@saas/shared/components/data-table";
-	import "@saas/shared/components/data-table/types";
-	import { formatMoney } from "@saas/shared/lib";
-	import { useInvoicesTable } from "@saas/studio/hooks/tables/use-invoices-table";
-	import { invoicesApi, invoicesMutations } from "@saas/studio/lib/api";
-	import { orpc } from "@shared/lib/orpc-query-utils";
-	import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-	import type { ColumnDef } from "@tanstack/react-table";
+} from "@saas/shared/components/data-table";
+import "@saas/shared/components/data-table/types";
+import { formatMoney } from "@saas/shared/lib";
+import { useInvoicesTable } from "@saas/studio/hooks/tables/use-invoices-table";
+import { invoicesApi, invoicesMutations } from "@saas/studio/lib/api";
+import { orpc } from "@shared/lib/orpc-query-utils";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { ColumnDef } from "@tanstack/react-table";
 import {
 	CalendarIcon,
 	CircleIcon,
@@ -37,11 +37,11 @@ import {
 	PencilIcon,
 	PlusIcon,
 	TrashIcon,
-	} from "lucide-react";
-	import Link from "next/link";
-	import { useRouter } from "next/navigation";
-	import { useMemo, useState } from "react";
-	import { toast } from "sonner";
+} from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
 interface InvoicesTableClientProps {
 	organizationSlug: string;
@@ -67,6 +67,8 @@ export function InvoicesTableClient({
 		pagination,
 		sorting,
 		sortingState,
+		columnVisibility,
+		onColumnVisibilityChange,
 		onSortingChange,
 		onPaginationChange,
 		onLimitChange,
@@ -309,6 +311,8 @@ export function InvoicesTableClient({
 					onLimitChange={onLimitChange}
 					sorting={sortingState}
 					onSortingChange={onSortingChange}
+					columnVisibility={columnVisibility}
+					onColumnVisibilityChange={onColumnVisibilityChange}
 					enableRowSelection
 					getRowId={(row) => row.id}
 					emptyState={

@@ -1,7 +1,10 @@
 "use client";
 
-import type { ToolbarFilterConfig } from "@saas/shared/components/data-table";
-import { DataTableToolbarWithViews } from "@saas/shared/components/data-table";
+import {
+	DataTableExportButton,
+	DataTableToolbarWithViews,
+	type ToolbarFilterConfig,
+} from "@saas/shared/components/data-table";
 import type { SavedView } from "@saas/shared/components/views";
 import { useExpensesTableWithViews } from "@saas/studio/hooks/tables";
 import { bookingsApi } from "@saas/studio/lib/api";
@@ -31,6 +34,8 @@ export function ExpensesFilters() {
 		isFiltered,
 		activeViewId,
 		applyView,
+		pagination,
+		sorting,
 		sortingState,
 		columnVisibility,
 	} = useExpensesTableWithViews();
@@ -132,6 +137,19 @@ export function ExpensesFilters() {
 		return columnVisibility;
 	}, [columnVisibility]);
 
+	const queryInput = {
+		page: pagination.page,
+		limit: pagination.limit,
+		search: filters.search ?? undefined,
+		category: filters.category ?? undefined,
+		billTo: filters.billTo ?? undefined,
+		paymentMethod: filters.paymentMethod ?? undefined,
+		bookingId: filters.bookingId ?? undefined,
+		sortBy: sorting.sortBy ?? "expenseDate",
+		sortDirection: sorting.sortDirection,
+		includeDeleted: false,
+	};
+
 	return (
 		<DataTableToolbarWithViews
 			entityType="expense"
@@ -150,6 +168,13 @@ export function ExpensesFilters() {
 			searchPlaceholder="Search expenses..."
 			onSearchChange={handleSearchChange}
 			showViewOptions={false}
-		/>
+		>
+			<DataTableExportButton
+				entityType="expense"
+				input={queryInput}
+				columnVisibility={columnVisibility}
+				iconOnly
+			/>
+		</DataTableToolbarWithViews>
 	);
 }

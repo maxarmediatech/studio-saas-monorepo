@@ -76,11 +76,8 @@ export const getKpis = studioProtectedProcedure
 				and(
 					eq(bookings.organizationId, context.organizationId),
 					isNull(bookings.deletedAt),
-					gte(
-						sql`DATE(${bookings.createdAt} AT TIME ZONE ${timeZone})`,
-						rangeStartStr,
-					),
-					sql`DATE(${bookings.createdAt} AT TIME ZONE ${timeZone}) <= ${rangeEndStr}`,
+					gte(bookings.bookingDate, rangeStartStr),
+					sql`${bookings.bookingDate} <= ${rangeEndStr}`,
 				),
 			);
 
@@ -94,11 +91,8 @@ export const getKpis = studioProtectedProcedure
 				and(
 					eq(bookings.organizationId, context.organizationId),
 					isNull(bookings.deletedAt),
-					gte(
-						sql`DATE(${bookings.createdAt} AT TIME ZONE ${timeZone})`,
-						previousPeriodStartStr,
-					),
-					sql`DATE(${bookings.createdAt} AT TIME ZONE ${timeZone}) <= ${previousPeriodEndStr}`,
+					gte(bookings.bookingDate, previousPeriodStartStr),
+					sql`${bookings.bookingDate} <= ${previousPeriodEndStr}`,
 				),
 			);
 

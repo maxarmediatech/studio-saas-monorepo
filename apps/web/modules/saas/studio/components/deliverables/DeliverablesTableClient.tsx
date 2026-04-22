@@ -117,6 +117,8 @@ export function DeliverablesTableClient({
 		pagination,
 		sorting,
 		sortingState,
+		columnVisibility,
+		onColumnVisibilityChange,
 		onSortingChange,
 		onPaginationChange,
 		onLimitChange,
@@ -472,6 +474,8 @@ export function DeliverablesTableClient({
 					onLimitChange={onLimitChange}
 					sorting={sortingState}
 					onSortingChange={onSortingChange}
+					columnVisibility={columnVisibility}
+					onColumnVisibilityChange={onColumnVisibilityChange}
 					enableRowSelection
 					getRowId={(row) => row.id}
 					// Sticky columns configuration

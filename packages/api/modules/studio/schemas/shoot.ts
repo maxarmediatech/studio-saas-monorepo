@@ -6,6 +6,7 @@
 
 import { z } from "zod";
 import {
+	assignedCrewSummarySchema,
 	baseListFiltersSchema,
 	createItemResponseSchema,
 	createListResponseSchema,
@@ -128,6 +129,7 @@ export type ListShootsInput = z.infer<typeof listShootsInputSchema>;
  */
 export const shootListItemSchema = shootSchema.extend({
 	assignmentsCount: z.number(),
+	assignedCrew: z.array(assignedCrewSummarySchema),
 	bookingName: z.string(),
 	bookingReferenceNumber: z.string(),
 });

@@ -8,7 +8,7 @@ import {
 	CardTitle,
 } from "@repo/ui/components/card";
 import { cn } from "@repo/ui/lib/utils";
-import { formatDistanceToNow } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { ArrowRightIcon, CalendarPlusIcon } from "lucide-react";
 import Link from "next/link";
 
@@ -19,6 +19,7 @@ interface RecentBooking {
 	status: string;
 	packageCost: string;
 	totalReceived: string;
+	bookingDate: string;
 	createdAt: string;
 }
 
@@ -45,6 +46,10 @@ const currencyFormatter = new Intl.NumberFormat("en-IN", {
 function formatCurrency(value: string): string {
 	const num = Number.parseFloat(value);
 	return currencyFormatter.format(num);
+}
+
+function formatBookingDate(value: string): string {
+	return format(parseISO(value), "MMM d, yyyy");
 }
 
 export function RecentBookings({
@@ -106,12 +111,8 @@ export function RecentBookings({
 									</div>
 									<p className="text-xs text-muted-foreground">
 										{booking.referenceNumber} &middot;{" "}
-										{formatDistanceToNow(
-											new Date(booking.createdAt),
-											{
-												addSuffix: true,
-											},
-										)}
+										Booked{" "}
+										{formatBookingDate(booking.bookingDate)}
 									</p>
 								</div>
 								<div className="flex items-center gap-2 flex-shrink-0">

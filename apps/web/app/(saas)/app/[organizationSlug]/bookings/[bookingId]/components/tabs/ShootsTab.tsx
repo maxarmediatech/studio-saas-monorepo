@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { CrewAvatarStack } from "./CrewAvatarStack";
 
 interface ShootsTabProps {
 	bookingId: string;
@@ -42,6 +43,11 @@ type Shoot = {
 	endTime?: string | null;
 	venue?: string | null;
 	status: string;
+	assignedCrew: Array<{
+		id: string;
+		name: string;
+		avatarUrl?: string | null;
+	}>;
 };
 
 const STATUS_STYLES: Record<string, string> = {
@@ -114,23 +120,7 @@ function ShootRow({
 				</div>
 			</div>
 			<div className="flex flex-none items-center gap-x-4">
-				<div className="flex -space-x-1">
-					<img
-						alt="Assignee"
-						src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
-						className="size-6 rounded-full bg-gray-50 ring-2 ring-background"
-					/>
-					<img
-						alt="Assignee"
-						src="https://images.unsplash.com/photo-1519244703995-f4e0f30006d5?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
-						className="size-6 rounded-full bg-gray-50 ring-2 ring-background"
-					/>
-					<img
-						alt="Assignee"
-						src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
-						className="size-6 rounded-full bg-gray-50 ring-2 ring-background"
-					/>
-				</div>
+				<CrewAvatarStack crew={shoot.assignedCrew} />
 				{detailHref ? (
 					<Button
 						variant="outline"

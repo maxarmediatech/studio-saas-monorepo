@@ -3,6 +3,7 @@
 import { Button } from "@repo/ui/components/button";
 import { Card, CardContent } from "@repo/ui/components/card";
 import { Combobox } from "@repo/ui/components/combobox";
+import { DatePicker } from "@repo/ui/components/date-picker";
 import {
 	Field,
 	FieldContent,
@@ -536,29 +537,45 @@ export function BookingDetailsStep() {
 			<Card>
 				<CardContent>
 					<FieldSet>
-						<FieldGroup>
-							<Controller
-								name="bookingType"
-								control={form.control}
-								render={({ field, fieldState }) => (
-									<Field
-										orientation="responsive"
-										data-invalid={fieldState.invalid}
-									>
-										<div className="flex-1">
-											<FieldContent>
-												<FieldLabel
-													htmlFor={field.name}
-												>
-													Booking Type
-												</FieldLabel>
-												<FieldDescription>
-													Select the type of booking
-													session
-												</FieldDescription>
-											</FieldContent>
-										</div>
-										<div className="w-full md:min-w-[320px] md:shrink-0">
+						<FieldGroup className="gap-3">
+							<div className="grid gap-3 md:grid-cols-2">
+								<Controller
+									name="bookingDate"
+									control={form.control}
+									render={({ field, fieldState }) => (
+										<Field
+											data-invalid={fieldState.invalid}
+										>
+											<FieldLabel htmlFor={field.name}>
+												Booking Date
+											</FieldLabel>
+											<DatePicker
+												value={field.value}
+												onValueChange={field.onChange}
+												id={field.name}
+												aria-invalid={
+													fieldState.invalid
+												}
+											/>
+											{fieldState.invalid && (
+												<FieldError
+													errors={[fieldState.error]}
+												/>
+											)}
+										</Field>
+									)}
+								/>
+
+								<Controller
+									name="bookingType"
+									control={form.control}
+									render={({ field, fieldState }) => (
+										<Field
+											data-invalid={fieldState.invalid}
+										>
+											<FieldLabel htmlFor={field.name}>
+												Booking Type
+											</FieldLabel>
 											<Combobox
 												id={field.name}
 												options={bookingTypes.map(
@@ -588,10 +605,10 @@ export function BookingDetailsStep() {
 													errors={[fieldState.error]}
 												/>
 											)}
-										</div>
-									</Field>
-								)}
-							/>
+										</Field>
+									)}
+								/>
+							</div>
 						</FieldGroup>
 						<FieldSeparator />
 						<FieldGroup>
@@ -919,7 +936,7 @@ export function BookingDetailsStep() {
 							/>
 							<FieldGroup className="gap-3">
 								{/* Row 1: Package + Cost */}
-								<div className="grid gap-3 md:grid-cols-[1.35fr_1fr]">
+								<div className="grid gap-3 md:grid-cols-2">
 									{/* Package Type */}
 									<Controller
 										name="packageType"

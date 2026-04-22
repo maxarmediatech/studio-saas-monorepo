@@ -73,11 +73,12 @@ export const bookingSearchParamsCache = createSearchParamsCache({
 	),
 	bookingType: parseAsArrayOf(parseAsString, ",").withDefault([]),
 	packageType: parseAsArrayOf(parseAsString, ",").withDefault([]),
+	bookingDate: parseAsArrayOf(parseAsString, ",").withDefault([]),
 	createdAt: parseAsArrayOf(parseAsString, ",").withDefault([]),
 
 	// Sorting
 	sort: sortStateParser,
-	sortBy: parseAsString.withDefault("createdAt"),
+	sortBy: parseAsString.withDefault("bookingDate"),
 	sortDirection: parseAsStringLiteral(["asc", "desc"] as const).withDefault(
 		"desc",
 	),

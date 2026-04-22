@@ -55,6 +55,8 @@ export interface UseDataTableConfig<TFilters extends BaseFilterState> {
 	clearOnDefault?: boolean;
 	/** Initial filter values */
 	initialFilters?: Partial<TFilters>;
+	/** Shared column visibility storage key */
+	columnVisibilityKey?: string;
 }
 
 /**
@@ -98,6 +100,12 @@ export interface UseDataTableReturn<TFilters extends BaseFilterState> {
 	onSortingChange: OnChangeFn<SortingState>;
 	/** TanStack Table compatible sorting state */
 	sortingState: SortingState;
+	/** Current column visibility state */
+	columnVisibility: VisibilityState;
+	/** Set column visibility */
+	setColumnVisibility: (visibility: VisibilityState) => void;
+	/** Handler for TanStack Table column visibility */
+	onColumnVisibilityChange: OnChangeFn<VisibilityState>;
 }
 
 /**
@@ -151,12 +159,4 @@ export interface UseDataTableWithViewsReturn<TFilters extends BaseFilterState>
 	clearView: () => void;
 	/** Get current table state for saving as a view */
 	getCurrentViewState: () => ViewState<TFilters>;
-
-	// === Column Visibility ===
-	/** Current column visibility state */
-	columnVisibility: VisibilityState;
-	/** Set column visibility */
-	setColumnVisibility: (visibility: VisibilityState) => void;
-	/** Handler for TanStack Table column visibility */
-	onColumnVisibilityChange: OnChangeFn<VisibilityState>;
 }

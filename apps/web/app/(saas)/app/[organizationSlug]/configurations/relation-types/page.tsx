@@ -29,7 +29,10 @@ export default async function RelationTypesPage({ params, searchParams }: Props)
 
 	return (
 		<div className="space-y-4">
-			<ConfigurationsFilters configTypeLabelPlural="Relation Types" />
+			<ConfigurationsFilters
+				configType="relation_type"
+				configTypeLabelPlural="Relation Types"
+			/>
 
 			<Suspense fallback={<ConfigurationsTableSkeleton />}>
 				<ConfigurationsTable

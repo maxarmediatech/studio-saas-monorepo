@@ -1,7 +1,10 @@
 "use client";
 
-import type { ToolbarFilterConfig } from "@saas/shared/components/data-table";
-import { DataTableToolbarWithViews } from "@saas/shared/components/data-table";
+import {
+	DataTableExportButton,
+	DataTableToolbarWithViews,
+	type ToolbarFilterConfig,
+} from "@saas/shared/components/data-table";
 import type { SavedView } from "@saas/shared/components/views";
 import { useBookingsTableWithViews } from "@saas/studio/hooks/tables";
 import { configurationsApi } from "@saas/studio/lib/api";
@@ -74,6 +77,8 @@ export function BookingsFilters() {
 		isFiltered,
 		activeViewId,
 		applyView,
+		pagination,
+		sorting,
 		sortingState,
 		columnVisibility,
 	} = useBookingsTableWithViews();
@@ -114,8 +119,8 @@ export function BookingsFilters() {
 				})),
 			},
 			{
-				id: "createdAt",
-				label: "Date",
+				id: "bookingDate",
+				label: "Booking Date",
 				variant: "dateRange",
 				icon: CalendarIcon,
 			},
@@ -128,11 +133,18 @@ export function BookingsFilters() {
 			statuses: filters.statuses ?? [],
 			bookingType: filters.bookingType ?? [],
 			packageType: filters.packageType ?? [],
-			createdAt:
-				filters.createdAt && filters.createdAt.length > 0
+			bookingDate:
+				(filters.bookingDate && filters.bookingDate.length > 0) ||
+				(filters.createdAt && filters.createdAt.length > 0)
 					? {
-							from: filters.createdAt[0] ?? undefined,
-							to: filters.createdAt[1] ?? undefined,
+							from:
+								filters.bookingDate?.[0] ??
+								filters.createdAt?.[0] ??
+								undefined,
+							to:
+								filters.bookingDate?.[1] ??
+								filters.createdAt?.[1] ??
+								undefined,
 						}
 					: null,
 		}),
@@ -140,6 +152,7 @@ export function BookingsFilters() {
 			filters.statuses,
 			filters.bookingType,
 			filters.packageType,
+			filters.bookingDate,
 			filters.createdAt,
 		],
 	);
@@ -166,7 +179,7 @@ export function BookingsFilters() {
 				const values =
 					Array.isArray(value) && value.length > 0 ? value : null;
 				setFilter("packageType", values);
-			} else if (filterId === "createdAt") {
+			} else if (filterId === "bookingDate") {
 				if (
 					value &&
 					typeof value === "object" &&
@@ -176,9 +189,9 @@ export function BookingsFilters() {
 					const dates = [dateRange.from, dateRange.to].filter(
 						(d): d is string => !!d,
 					);
-					setFilter("createdAt", dates.length > 0 ? dates : null);
+					setFilter("bookingDate", dates.length > 0 ? dates : null);
 				} else {
-					setFilter("createdAt", null);
+					setFilter("bookingDate", null);
 				}
 			}
 		},
@@ -211,6 +224,22 @@ export function BookingsFilters() {
 		return columnVisibility;
 	}, [columnVisibility]);
 
+	const queryInput = {
+		page: pagination.page,
+		limit: pagination.limit,
+		search: filters.search ?? undefined,
+		statuses: filters.statuses ?? undefined,
+		bookingType: filters.bookingType ?? undefined,
+		packageType: filters.packageType ?? undefined,
+		bookingDate:
+			filters.bookingDate?.join(",") ??
+			filters.createdAt?.join(",") ??
+			undefined,
+		sortBy: sorting.sortBy ?? "bookingDate",
+		sortDirection: sorting.sortDirection,
+		includeDeleted: false,
+	};
+
 	return (
 		<DataTableToolbarWithViews
 			entityType="booking"
@@ -229,6 +258,13 @@ export function BookingsFilters() {
 			searchPlaceholder="Search bookings..."
 			onSearchChange={handleSearchChange}
 			showViewOptions={false}
-		/>
+		>
+			<DataTableExportButton
+				entityType="booking"
+				input={queryInput}
+				columnVisibility={columnVisibility}
+				iconOnly
+			/>
+		</DataTableToolbarWithViews>
 	);
 }

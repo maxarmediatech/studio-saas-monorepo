@@ -21,6 +21,7 @@ const deliverableFilterParsers = {
 
 export function useDeliverablesTable() {
 	return useDataTable<DeliverableFilters>(deliverableFilterParsers, {
+		columnVisibilityKey: "deliverable",
 		defaultSortBy: "dueDate",
 		defaultSortDirection: "asc",
 		defaultLimit: 10,

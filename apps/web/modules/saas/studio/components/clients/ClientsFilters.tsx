@@ -1,7 +1,10 @@
 "use client";
 
-import type { ToolbarFilterConfig } from "@saas/shared/components/data-table";
-import { DataTableToolbarWithViews } from "@saas/shared/components/data-table";
+import {
+	DataTableExportButton,
+	DataTableToolbarWithViews,
+	type ToolbarFilterConfig,
+} from "@saas/shared/components/data-table";
 import type { SavedView } from "@saas/shared/components/views";
 import { useClientsTableWithViews } from "@saas/studio/hooks/tables";
 import { useCallback } from "react";
@@ -14,6 +17,8 @@ export function ClientsFilters() {
 		isFiltered,
 		activeViewId,
 		applyView,
+		pagination,
+		sorting,
 		sortingState,
 		columnVisibility,
 	} = useClientsTableWithViews();
@@ -46,6 +51,19 @@ export function ClientsFilters() {
 		return columnVisibility;
 	}, [columnVisibility]);
 
+	const queryInput = {
+		page: pagination.page,
+		limit: pagination.limit,
+		search: filters.search ?? undefined,
+		sortBy: (sorting.sortBy ?? "name") as
+			| "name"
+			| "email"
+			| "createdAt"
+			| "updatedAt",
+		sortDirection: sorting.sortDirection,
+		includeDeleted: false,
+	};
+
 	return (
 		<DataTableToolbarWithViews
 			entityType="client"
@@ -64,6 +82,13 @@ export function ClientsFilters() {
 			searchPlaceholder="Search clients..."
 			onSearchChange={handleSearchChange}
 			showViewOptions={false}
-		/>
+		>
+			<DataTableExportButton
+				entityType="client"
+				input={queryInput}
+				columnVisibility={columnVisibility}
+				iconOnly
+			/>
+		</DataTableToolbarWithViews>
 	);
 }

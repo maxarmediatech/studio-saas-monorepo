@@ -41,6 +41,7 @@ const clientFilterParsers = {};
  */
 export function useClientsTable() {
 	return useDataTable<ClientFilters>(clientFilterParsers, {
+		columnVisibilityKey: "client",
 		defaultSortBy: "name",
 		defaultSortDirection: "asc",
 		defaultLimit: 10,
