@@ -12,6 +12,8 @@ import {
 	sql,
 } from "@repo/database";
 import { logger } from "@repo/logs";
+import { getUploadsBucketName } from "@repo/env";
+import { getSignedUrl } from "@repo/storage";
 import {
 	waAccounts,
 	waContacts,
@@ -20,8 +22,6 @@ import {
 	waOutbox,
 } from "@repo/whatsapp-db";
 import { CloudApiProvider } from "@repo/whatsapp-providers";
-import { getUploadsBucketName } from "../../../packages/env";
-import { getSignedUrl } from "../../../packages/storage";
 import { ingestCloudApiMediaAsset } from "./cloud-api-media";
 
 const pollIntervalMs = Number(process.env.WHATSAPP_OUTBOX_INTERVAL_MS ?? 5000);

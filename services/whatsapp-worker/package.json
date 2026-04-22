@@ -1,7 +1,10 @@
 {
 	"dependencies": {
 		"@repo/database": "workspace:*",
+		"@repo/env": "workspace:*",
 		"@repo/logs": "workspace:*",
+		"@repo/storage": "workspace:*",
+		"@repo/whatsapp-core": "workspace:*",
 		"@repo/whatsapp-db": "workspace:*",
 		"@repo/whatsapp-providers": "workspace:*",
 		"drizzle-orm": "^0.45.1"

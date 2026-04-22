@@ -1,6 +1,6 @@
-import { getUploadsBucketName } from "../../../packages/env";
-import { putObject } from "../../../packages/storage";
-import type { MessageType } from "../../../packages/whatsapp-core";
+import { getUploadsBucketName } from "@repo/env";
+import { putObject } from "@repo/storage";
+import type { MessageType } from "@repo/whatsapp-core";
 
 type GraphMediaMetadata = {
 	url?: string;

@@ -7,6 +7,7 @@ import {
 	waOutbox,
 } from "@repo/whatsapp-db";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { findActiveWhatsAppAccount } from "../lib/account-repository";
 import { recordOutboundConversationActivity } from "../lib/outbound-activity";
 import { sendTextInputSchema, sendTextOutputSchema } from "../types";
 
@@ -20,6 +21,17 @@ export const sendText = studioProtectedProcedure
 	.input(sendTextInputSchema)
 	.output(sendTextOutputSchema)
 	.handler(async ({ input, context }) => {
+		const account = await findActiveWhatsAppAccount(
+			context.organizationId,
+			input.accountId,
+		);
+
+		if (!account) {
+			throw new ORPCError("NOT_FOUND", {
+				message: "WhatsApp account not found",
+			});
+		}
+
 		const existingContact = await db.query.waContacts.findFirst({
 			where: and(
 				eq(waContacts.organizationId, context.organizationId),
@@ -34,7 +46,7 @@ export const sendText = studioProtectedProcedure
 						.insert(waContacts)
 						.values({
 							organizationId: context.organizationId,
-							accountId: input.accountId,
+							accountId: account.id,
 							waId: input.to,
 							phoneNumber: input.to,
 						})
@@ -50,7 +62,7 @@ export const sendText = studioProtectedProcedure
 		const existingConversation = await db.query.waConversations.findFirst({
 			where: and(
 				eq(waConversations.organizationId, context.organizationId),
-				eq(waConversations.accountId, input.accountId),
+				eq(waConversations.accountId, account.id),
 				eq(waConversations.contactId, contactId),
 			),
 		});
@@ -62,7 +74,7 @@ export const sendText = studioProtectedProcedure
 						.insert(waConversations)
 						.values({
 							organizationId: context.organizationId,
-							accountId: input.accountId,
+							accountId: account.id,
 							contactId,
 						})
 						.returning({ id: waConversations.id })
@@ -78,7 +90,7 @@ export const sendText = studioProtectedProcedure
 			.insert(waMessages)
 			.values({
 				organizationId: context.organizationId,
-				accountId: input.accountId,
+				accountId: account.id,
 				conversationId,
 				contactId,
 				direction: "outbound",
@@ -107,7 +119,7 @@ export const sendText = studioProtectedProcedure
 			.insert(waOutbox)
 			.values({
 				organizationId: context.organizationId,
-				accountId: input.accountId,
+				accountId: account.id,
 				messageId: createdMessage.id,
 			})
 			.returning({ id: waOutbox.id });

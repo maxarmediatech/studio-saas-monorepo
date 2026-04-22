@@ -1220,9 +1220,18 @@ importers:
       '@repo/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@repo/env':
+        specifier: workspace:*
+        version: link:../../packages/env
       '@repo/logs':
         specifier: workspace:*
         version: link:../../packages/logs
+      '@repo/storage':
+        specifier: workspace:*
+        version: link:../../packages/storage
+      '@repo/whatsapp-core':
+        specifier: workspace:*
+        version: link:../../packages/whatsapp-core
       '@repo/whatsapp-db':
         specifier: workspace:*
         version: link:../../packages/whatsapp-db

@@ -8,6 +8,7 @@ import {
 	waOutbox,
 } from "@repo/whatsapp-db";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { findActiveWhatsAppAccount } from "../lib/account-repository";
 import { recordOutboundConversationActivity } from "../lib/outbound-activity";
 import { sendMediaInputSchema, sendMediaOutputSchema } from "../types";
 
@@ -32,6 +33,17 @@ export const sendMedia = studioProtectedProcedure
 			});
 		}
 
+		const account = await findActiveWhatsAppAccount(
+			context.organizationId,
+			input.accountId,
+		);
+
+		if (!account) {
+			throw new ORPCError("NOT_FOUND", {
+				message: "WhatsApp account not found",
+			});
+		}
+
 		const existingContact = await db.query.waContacts.findFirst({
 			where: and(
 				eq(waContacts.organizationId, context.organizationId),
@@ -46,7 +58,7 @@ export const sendMedia = studioProtectedProcedure
 						.insert(waContacts)
 						.values({
 							organizationId: context.organizationId,
-							accountId: input.accountId,
+							accountId: account.id,
 							waId: input.to,
 							phoneNumber: input.to,
 						})
@@ -62,7 +74,7 @@ export const sendMedia = studioProtectedProcedure
 		const existingConversation = await db.query.waConversations.findFirst({
 			where: and(
 				eq(waConversations.organizationId, context.organizationId),
-				eq(waConversations.accountId, input.accountId),
+				eq(waConversations.accountId, account.id),
 				eq(waConversations.contactId, contactId),
 			),
 		});
@@ -74,7 +86,7 @@ export const sendMedia = studioProtectedProcedure
 						.insert(waConversations)
 						.values({
 							organizationId: context.organizationId,
-							accountId: input.accountId,
+							accountId: account.id,
 							contactId,
 						})
 						.returning({ id: waConversations.id })
@@ -107,7 +119,7 @@ export const sendMedia = studioProtectedProcedure
 			.insert(waMessages)
 			.values({
 				organizationId: context.organizationId,
-				accountId: input.accountId,
+				accountId: account.id,
 				conversationId,
 				contactId,
 				direction: "outbound",
@@ -148,7 +160,7 @@ export const sendMedia = studioProtectedProcedure
 			.insert(waOutbox)
 			.values({
 				organizationId: context.organizationId,
-				accountId: input.accountId,
+				accountId: account.id,
 				messageId: createdMessage.id,
 			})
 			.returning({ id: waOutbox.id });
