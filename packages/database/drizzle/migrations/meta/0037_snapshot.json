@@ -1,5 +1,5 @@
 {
-  "id": "0664ed83-fca3-4644-8927-76af269488e7",
+  "id": "c0bb7e84-34d6-48c1-9153-07e79483a815",
   "prevId": "f2b2c3d7-85e4-44af-97b3-0c32249d3198",
   "version": "7",
   "dialect": "postgresql",
@@ -3232,12 +3232,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "api_version": {
-          "name": "api_version",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "waba_id": {
           "name": "waba_id",
           "type": "text",
@@ -3256,44 +3250,14 @@
           "primaryKey": false,
           "notNull": false
         },
-        "app_secret": {
-          "name": "app_secret",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "webhook_verify_token": {
           "name": "webhook_verify_token",
           "type": "text",
           "primaryKey": false,
           "notNull": false
         },
-        "verified_name": {
-          "name": "verified_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "quality_rating": {
-          "name": "quality_rating",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "messaging_limit_tier": {
-          "name": "messaging_limit_tier",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "last_connected_at": {
           "name": "last_connected_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "last_validated_at": {
-          "name": "last_validated_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
@@ -6811,6 +6775,13 @@
           "primaryKey": false,
           "notNull": true
         },
+        "booking_date": {
+          "name": "booking_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_DATE"
+        },
         "booking_type": {
           "name": "booking_type",
           "type": "text",
@@ -6972,6 +6943,27 @@
             },
             {
               "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "bookings_org_booking_date_idx": {
+          "name": "bookings_org_booking_date_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "booking_date",
               "isExpression": false,
               "asc": true,
               "nulls": "last"

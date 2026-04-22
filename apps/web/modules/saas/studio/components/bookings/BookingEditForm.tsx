@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Combobox } from "@repo/ui/components/combobox";
+import { DatePicker } from "@repo/ui/components/date-picker";
 import {
 	Field,
 	FieldError,
@@ -44,6 +45,7 @@ const uploadedAttachmentSchema = z.object({
 
 const bookingEditFormSchema = z.object({
 	name: z.string().min(1, "Name is required").max(255),
+	bookingDate: z.string().min(1, "Booking date is required"),
 	packageCost: z.string().min(1, "Package cost is required"),
 	note: z.string().max(5000).optional().or(z.literal("")),
 	contractAttachment: uploadedAttachmentSchema.nullable().optional(),
@@ -54,6 +56,7 @@ export type BookingEditFormValues = z.infer<typeof bookingEditFormSchema>;
 interface BookingEditFormProps {
 	defaultValues?: {
 		name: string;
+		bookingDate: string;
 		bookingType: string;
 		packageType: string;
 		packageCost: string;
@@ -94,6 +97,7 @@ export function BookingEditForm({
 		resolver: zodResolver(bookingEditFormSchema),
 		defaultValues: {
 			name: "",
+			bookingDate: "",
 			packageCost: "",
 			note: "",
 			contractAttachment: null,
@@ -117,6 +121,7 @@ export function BookingEditForm({
 		if (defaultValues) {
 			form.reset({
 				name: defaultValues.name,
+				bookingDate: defaultValues.bookingDate,
 				packageCost: defaultValues.packageCost,
 				note: defaultValues.note ?? "",
 				contractAttachment: defaultValues.contractAttachment,
@@ -282,6 +287,29 @@ export function BookingEditForm({
 										{...field}
 										id={field.name}
 										placeholder="Enter booking name"
+										aria-invalid={fieldState.invalid}
+									/>
+									{fieldState.invalid && (
+										<FieldError
+											errors={[fieldState.error]}
+										/>
+									)}
+								</Field>
+							)}
+						/>
+
+						<Controller
+							name="bookingDate"
+							control={form.control}
+							render={({ field, fieldState }) => (
+								<Field data-invalid={fieldState.invalid}>
+									<FieldLabel htmlFor={field.name}>
+										Booking Date *
+									</FieldLabel>
+									<DatePicker
+										value={field.value}
+										onValueChange={field.onChange}
+										id={field.name}
 										aria-invalid={fieldState.invalid}
 									/>
 									{fieldState.invalid && (

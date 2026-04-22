@@ -234,7 +234,7 @@ purchases, webhookEvents
 
 ```typescript
 // Required indexes
-bookings: (organizationId, status), (organizationId, createdAt)
+bookings: (organizationId, status), (organizationId, bookingDate), (organizationId, createdAt)
 shoots: (organizationId, date), (bookingId)
 tasks: (organizationId, status), (bookingId), (deliverableId)
 deliverables: (organizationId, status), (bookingId)
@@ -670,6 +670,7 @@ export const bookings = pgTable("bookings", {
   // Identification
   referenceNumber: varchar("reference_number", { length: 50 }).notNull(),
   name: text("name").notNull(),
+  bookingDate: date("booking_date").default(sql`CURRENT_DATE`).notNull(),
   
   // Type & Package
   bookingType: text("booking_type").notNull(),
@@ -702,6 +703,7 @@ export const bookings = pgTable("bookings", {
     .where(sql`deleted_at IS NULL`),
   index("bookings_org_status_idx").on(table.organizationId, table.status),
   index("bookings_org_created_idx").on(table.organizationId, table.createdAt),
+  index("bookings_org_booking_date_idx").on(table.organizationId, table.bookingDate),
 ]);
 ```
 

@@ -1,5 +1,6 @@
 import { and, bookings, count, db, eq, gte, isNull, sql } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { getDateParts, normalizeTimeZone } from "../../studio/lib/date-helpers";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	getBookingStatsInputSchema,
@@ -64,17 +65,18 @@ export const getBookingStats = studioProtectedProcedure
 		);
 		const totalOutstanding = totalRevenue - totalReceived;
 
-		// New this month (UTC to avoid server-local timezone drift)
-		const now = new Date();
-		const startOfMonth = new Date(
-			Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0),
+		// New this month by booking date, not record creation time.
+		const timeZone = normalizeTimeZone(
+			context.membership.organization.timezone,
 		);
+		const nowParts = getDateParts(new Date(), timeZone);
+		const startOfMonth = `${nowParts.year}-${nowParts.month}-01`;
 
 		const [newThisMonthResult] = await db
 			.select({ count: count().mapWith(Number) })
 			.from(bookings)
 			.where(
-				and(...baseConditions, gte(bookings.createdAt, startOfMonth)),
+				and(...baseConditions, gte(bookings.bookingDate, startOfMonth)),
 			);
 
 		return {

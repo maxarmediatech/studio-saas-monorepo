@@ -119,8 +119,8 @@ export function BookingsFilters() {
 				})),
 			},
 			{
-				id: "createdAt",
-				label: "Date",
+				id: "bookingDate",
+				label: "Booking Date",
 				variant: "dateRange",
 				icon: CalendarIcon,
 			},
@@ -133,11 +133,18 @@ export function BookingsFilters() {
 			statuses: filters.statuses ?? [],
 			bookingType: filters.bookingType ?? [],
 			packageType: filters.packageType ?? [],
-			createdAt:
-				filters.createdAt && filters.createdAt.length > 0
+			bookingDate:
+				(filters.bookingDate && filters.bookingDate.length > 0) ||
+				(filters.createdAt && filters.createdAt.length > 0)
 					? {
-							from: filters.createdAt[0] ?? undefined,
-							to: filters.createdAt[1] ?? undefined,
+							from:
+								filters.bookingDate?.[0] ??
+								filters.createdAt?.[0] ??
+								undefined,
+							to:
+								filters.bookingDate?.[1] ??
+								filters.createdAt?.[1] ??
+								undefined,
 						}
 					: null,
 		}),
@@ -145,6 +152,7 @@ export function BookingsFilters() {
 			filters.statuses,
 			filters.bookingType,
 			filters.packageType,
+			filters.bookingDate,
 			filters.createdAt,
 		],
 	);
@@ -171,7 +179,7 @@ export function BookingsFilters() {
 				const values =
 					Array.isArray(value) && value.length > 0 ? value : null;
 				setFilter("packageType", values);
-			} else if (filterId === "createdAt") {
+			} else if (filterId === "bookingDate") {
 				if (
 					value &&
 					typeof value === "object" &&
@@ -181,9 +189,9 @@ export function BookingsFilters() {
 					const dates = [dateRange.from, dateRange.to].filter(
 						(d): d is string => !!d,
 					);
-					setFilter("createdAt", dates.length > 0 ? dates : null);
+					setFilter("bookingDate", dates.length > 0 ? dates : null);
 				} else {
-					setFilter("createdAt", null);
+					setFilter("bookingDate", null);
 				}
 			}
 		},
@@ -223,8 +231,11 @@ export function BookingsFilters() {
 		statuses: filters.statuses ?? undefined,
 		bookingType: filters.bookingType ?? undefined,
 		packageType: filters.packageType ?? undefined,
-		createdAt: filters.createdAt?.join(",") ?? undefined,
-		sortBy: sorting.sortBy ?? "createdAt",
+		bookingDate:
+			filters.bookingDate?.join(",") ??
+			filters.createdAt?.join(",") ??
+			undefined,
+		sortBy: sorting.sortBy ?? "bookingDate",
 		sortDirection: sorting.sortDirection,
 		includeDeleted: false,
 	};

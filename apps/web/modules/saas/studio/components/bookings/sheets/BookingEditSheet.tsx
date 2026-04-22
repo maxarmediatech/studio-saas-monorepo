@@ -55,6 +55,7 @@ export function BookingEditSheet() {
 		await updateMutation.mutateAsync({
 			id: bookingId,
 			name: data.name,
+			bookingDate: data.bookingDate,
 			packageCost: data.packageCost,
 			note: data.note || null,
 			contractAttachment: data.contractAttachment,

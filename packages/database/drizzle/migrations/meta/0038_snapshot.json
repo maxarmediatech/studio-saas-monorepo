@@ -1,6 +1,6 @@
 {
-  "id": "e2ee6aef-068a-4313-80a3-78561e0ea1a2",
-  "prevId": "0664ed83-fca3-4644-8927-76af269488e7",
+  "id": "0664ed83-fca3-4644-8927-76af269488e7",
+  "prevId": "c0bb7e84-34d6-48c1-9153-07e79483a815",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -3898,39 +3898,6 @@
           "notNull": true,
           "default": "'s3'"
         },
-        "ingest_status": {
-          "name": "ingest_status",
-          "type": "wa_media_ingest_status",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'ready'"
-        },
-        "ingest_attempts": {
-          "name": "ingest_attempts",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "last_ingest_attempt_at": {
-          "name": "last_ingest_attempt_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "next_ingest_attempt_at": {
-          "name": "next_ingest_attempt_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "ingest_error_message": {
-          "name": "ingest_error_message",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "storage_url": {
           "name": "storage_url",
           "type": "text",
@@ -6844,6 +6811,13 @@
           "primaryKey": false,
           "notNull": true
         },
+        "booking_date": {
+          "name": "booking_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_DATE"
+        },
         "booking_type": {
           "name": "booking_type",
           "type": "text",
@@ -7005,6 +6979,27 @@
             },
             {
               "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "bookings_org_booking_date_idx": {
+          "name": "bookings_org_booking_date_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "booking_date",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -12710,16 +12705,6 @@
         "open",
         "closed",
         "archived"
-      ]
-    },
-    "public.wa_media_ingest_status": {
-      "name": "wa_media_ingest_status",
-      "schema": "public",
-      "values": [
-        "pending",
-        "processing",
-        "ready",
-        "failed"
       ]
     },
     "public.wa_media_storage_type": {

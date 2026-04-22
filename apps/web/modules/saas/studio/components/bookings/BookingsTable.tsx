@@ -34,7 +34,10 @@ export async function BookingsTable({
 		statuses: params.statuses ?? undefined,
 		bookingType: params.bookingType ?? undefined,
 		packageType: params.packageType ?? undefined,
-		createdAt: params.createdAt?.join(",") ?? undefined,
+		bookingDate:
+			params.bookingDate?.join(",") ??
+			params.createdAt?.join(",") ??
+			undefined,
 		sortBy,
 		sortDirection,
 		includeDeleted: false,

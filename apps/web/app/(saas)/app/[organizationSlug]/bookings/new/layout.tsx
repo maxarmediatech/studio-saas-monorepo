@@ -54,6 +54,7 @@ function buildCreateBookingInput(rawValues: BookingFormValues) {
 	const values = cleanupFormArrays(rawValues);
 	return {
 		name: values.name,
+		bookingDate: values.bookingDate,
 		bookingType: values.bookingType,
 		packageType: values.packageType,
 		packageCost: formatDecimalForApi(values.packageCost),

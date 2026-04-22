@@ -14,9 +14,9 @@ import {
 	useShootParams,
 	useTaskParams,
 } from "@saas/studio/hooks/params";
+import { BookingHeroSection } from "./BookingHeroSection";
 import { BookingDetailResponsiveGrid } from "./booking-detail-responsive-grid";
 import { BookingDetailScrollArea } from "./booking-detail-scroll-area";
-import { BookingHeroSection } from "./BookingHeroSection";
 import { BookingMetaPanel } from "./meta";
 import {
 	ActivitiesTab,
@@ -63,6 +63,7 @@ interface BookingDetailTabsProps {
 		eventTime?: string | null;
 		venue?: string | null;
 		city?: string | null;
+		bookingDate?: string | Date | null;
 		createdAt?: string | Date | null;
 		leadSource?: string | null;
 		coordinator?: string | null;
@@ -100,6 +101,7 @@ export function BookingDetailTabs({
 							eventTime: booking.eventTime,
 							venue: booking.venue,
 							city: booking.city,
+							bookingDate: booking.bookingDate,
 							createdAt: booking.createdAt,
 							participants: booking.participants,
 						}}
@@ -117,10 +119,18 @@ export function BookingDetailTabs({
 						<div className="space-y-5">
 							<Tabs defaultValue="overview" className="space-y-4">
 								<TabsList className="w-full justify-start gap-1 overflow-x-auto">
-									<TabsTrigger value="overview">Overview</TabsTrigger>
-									<TabsTrigger value="sessions">Shoots</TabsTrigger>
-									<TabsTrigger value="deliverables">Deliverables</TabsTrigger>
-									<TabsTrigger value="activities">Activity</TabsTrigger>
+									<TabsTrigger value="overview">
+										Overview
+									</TabsTrigger>
+									<TabsTrigger value="sessions">
+										Shoots
+									</TabsTrigger>
+									<TabsTrigger value="deliverables">
+										Deliverables
+									</TabsTrigger>
+									<TabsTrigger value="activities">
+										Activity
+									</TabsTrigger>
 									{/* <TabsTrigger value="finances">Finances</TabsTrigger> */}
 									{/* <TabsTrigger value="assets">Assets</TabsTrigger> */}
 								</TabsList>
@@ -132,7 +142,8 @@ export function BookingDetailTabs({
 											name: booking.name,
 											status: booking.status,
 											packageCost: booking.packageCost,
-											totalReceived: booking.totalReceived,
+											totalReceived:
+												booking.totalReceived,
 											note: booking.note,
 											guestCount: booking.guestCount,
 											participants: booking.participants,
@@ -144,11 +155,17 @@ export function BookingDetailTabs({
 									<ShootsTab bookingId={bookingId} />
 								</TabsContent>
 
-								<TabsContent value="deliverables" className="pt-2">
+								<TabsContent
+									value="deliverables"
+									className="pt-2"
+								>
 									<DeliverablesTab bookingId={bookingId} />
 								</TabsContent>
 
-								<TabsContent value="activities" className="pt-2">
+								<TabsContent
+									value="activities"
+									className="pt-2"
+								>
 									<ActivitiesTab bookingId={bookingId} />
 								</TabsContent>
 

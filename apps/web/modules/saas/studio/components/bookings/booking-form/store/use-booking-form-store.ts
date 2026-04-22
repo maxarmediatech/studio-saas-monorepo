@@ -10,7 +10,7 @@ import {
 	isStepOptional,
 } from "../booking-form-schema";
 
-const STORE_VERSION = 1;
+const STORE_VERSION = 2;
 
 /**
  * Validate if a step is actually complete based on form data.
@@ -105,6 +105,23 @@ export const useBookingFormStore = create<BookingFormStore>()(
 		{
 			name: "booking-form-draft",
 			version: STORE_VERSION,
+			migrate: (persistedState) => {
+				const state = persistedState as
+					| {
+							formData?: Partial<BookingFormValues>;
+							completedSteps?: BookingTab[];
+							_lastSavedAt?: number | null;
+					  }
+					| undefined;
+
+				return {
+					...state,
+					formData: {
+						...createDefaultBookingValues(),
+						...(state?.formData ?? {}),
+					},
+				};
+			},
 			// Persist form data, completed steps, and last saved timestamp
 			partialize: (state) => ({
 				formData: state.formData,

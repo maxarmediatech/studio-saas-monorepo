@@ -40,6 +40,7 @@ export const listBookings = studioProtectedProcedure
 			statuses,
 			bookingType,
 			packageType,
+			bookingDate,
 			createdAt,
 			search,
 			sortBy,
@@ -89,47 +90,28 @@ export const listBookings = studioProtectedProcedure
 			conditions.push(inArray(bookings.packageType, packageTypes));
 		}
 
-		// Date range filter: comma-separated "from,to" dates
-		// Parse YYYY-MM-DD explicitly and apply UTC day boundaries for deterministic filtering.
-		if (createdAt) {
-			const parseDate = (dateStr: string): Date | null => {
+		// Booking date range filter: comma-separated "from,to" dates.
+		// `createdAt` is kept as a backwards-compatible alias for older URLs/saved views.
+		const bookingDateRange = bookingDate ?? createdAt;
+		if (bookingDateRange) {
+			const parseDateString = (dateStr: string): string | null => {
 				const trimmed = dateStr.trim();
 				if (!trimmed) {
 					return null;
 				}
 
-				// Parse YYYY-MM-DD format explicitly to avoid timezone issues
-				const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-				if (match) {
-					const year = Number.parseInt(match[1] ?? "", 10);
-					const month = Number.parseInt(match[2] ?? "", 10);
-					const day = Number.parseInt(match[3] ?? "", 10);
-					if (
-						Number.isNaN(year) ||
-						Number.isNaN(month) ||
-						Number.isNaN(day)
-					) {
-						return null;
-					}
-					return new Date(Date.UTC(year, month - 1, day));
-				}
-
-				// Fallback for other formats
-				const date = new Date(trimmed);
-				return Number.isNaN(date.getTime()) ? null : date;
+				return /^\d{4}-\d{2}-\d{2}$/.test(trimmed) ? trimmed : null;
 			};
 
-			const parts = createdAt.split(",");
-			const fromDate = parseDate(parts[0] ?? "");
-			const toDate = parseDate(parts[1] ?? "");
+			const parts = bookingDateRange.split(",");
+			const fromDate = parseDateString(parts[0] ?? "");
+			const toDate = parseDateString(parts[1] ?? "");
 
 			if (fromDate) {
-				fromDate.setUTCHours(0, 0, 0, 0);
-				conditions.push(gte(bookings.createdAt, fromDate));
+				conditions.push(gte(bookings.bookingDate, fromDate));
 			}
 			if (toDate) {
-				toDate.setUTCHours(23, 59, 59, 999);
-				conditions.push(lte(bookings.createdAt, toDate));
+				conditions.push(lte(bookings.bookingDate, toDate));
 			}
 		}
 
@@ -173,9 +155,11 @@ export const listBookings = studioProtectedProcedure
 						? bookings.status
 						: sortBy === "packageCost"
 							? bookings.packageCost
-							: sortBy === "updatedAt"
-								? bookings.updatedAt
-								: bookings.createdAt;
+							: sortBy === "bookingDate"
+								? bookings.bookingDate
+								: sortBy === "updatedAt"
+									? bookings.updatedAt
+									: bookings.createdAt;
 
 		const data = await db.query.bookings.findMany({
 			where: and(...conditions),
@@ -194,6 +178,7 @@ export const listBookings = studioProtectedProcedure
 			{ id: string; role: string; client: { id: string; name: string } }[]
 		> = {};
 		let shootCounts: Record<string, number> = {};
+		let weddingDates: Record<string, string> = {};
 
 		if (bookingIds.length > 0) {
 			// Fetch participants with client data
@@ -244,6 +229,27 @@ export const listBookings = studioProtectedProcedure
 			shootCounts = Object.fromEntries(
 				shootResults.map((r) => [r.bookingId, r.count]),
 			);
+
+			const weddingShootResults = await db
+				.select({
+					bookingId: shoots.bookingId,
+					weddingDate: sql<string>`MIN(${shoots.shootDate})`,
+				})
+				.from(shoots)
+				.where(
+					and(
+						inArray(shoots.bookingId, bookingIds),
+						eq(shoots.shootType, "wedding"),
+						isNull(shoots.deletedAt),
+					),
+				)
+				.groupBy(shoots.bookingId);
+
+			weddingDates = Object.fromEntries(
+				weddingShootResults
+					.filter((r) => r.weddingDate)
+					.map((r) => [r.bookingId, r.weddingDate]),
+			);
 		}
 
 		return {
@@ -261,6 +267,10 @@ export const listBookings = studioProtectedProcedure
 					participantsCount: participants.length,
 					participants,
 					shootsCount: shootCounts[booking.id] ?? 0,
+					weddingDate:
+						booking.bookingType === "wedding"
+							? (weddingDates[booking.id] ?? null)
+							: null,
 					balance,
 				};
 			}),

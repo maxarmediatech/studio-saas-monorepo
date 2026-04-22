@@ -163,6 +163,7 @@ export const bookings = pgTable(
 
 		referenceNumber: varchar("reference_number", { length: 50 }).notNull(),
 		name: text("name").notNull(),
+		bookingDate: date("booking_date").default(sql`CURRENT_DATE`).notNull(),
 
 		bookingType: text("booking_type").notNull(),
 		packageType: text("package_type").notNull(),
@@ -212,6 +213,10 @@ export const bookings = pgTable(
 		index("bookings_org_created_idx").on(
 			table.organizationId,
 			table.createdAt,
+		),
+		index("bookings_org_booking_date_idx").on(
+			table.organizationId,
+			table.bookingDate,
 		),
 	],
 );

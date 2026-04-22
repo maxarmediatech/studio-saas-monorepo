@@ -95,6 +95,7 @@ export function BookingDetailPageClient({
 					balance: bookingData.balance,
 					note: bookingData.note,
 					participants: bookingData.participants,
+					bookingDate: bookingData.bookingDate,
 					createdAt: bookingData.createdAt,
 					contractAttachment: bookingData.contractAttachment,
 				}}

@@ -213,6 +213,8 @@ export function BookingDetailSheet() {
 											balance: bookingData.balance,
 											phase: bookingData.status,
 											note: bookingData.note,
+											bookingDate:
+												bookingData.bookingDate,
 											createdAt: bookingData.createdAt,
 											participants:
 												bookingData.participants ?? [],

@@ -3,6 +3,7 @@ import {
 	asc,
 	bookings,
 	count,
+	crews,
 	db,
 	deliverableAssignments,
 	deliverables,
@@ -13,6 +14,7 @@ import {
 	inArray,
 	isNull,
 	sql,
+	users,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
@@ -161,26 +163,45 @@ export const listDeliverables = studioProtectedProcedure
 
 		// Get assignment counts
 		const deliverableIds = rows.map((r) => r.id);
-		let assignmentCounts: Record<string, number> = {};
+		const assignmentCounts: Record<string, number> = {};
+		const assignedCrewByDeliverable: Record<
+			string,
+			{ id: string; name: string; avatarUrl: string | null }[]
+		> = {};
 
 		if (deliverableIds.length > 0) {
 			const counts = await db
 				.select({
 					deliverableId: deliverableAssignments.deliverableId,
-					count: count().mapWith(Number),
+					crewId: crews.id,
+					crewName: crews.name,
+					avatarUrl: users.image,
 				})
 				.from(deliverableAssignments)
+				.innerJoin(crews, eq(deliverableAssignments.crewId, crews.id))
+				.leftJoin(users, eq(crews.userId, users.id))
 				.where(
-					sql`${deliverableAssignments.deliverableId} IN (${sql.join(
-						deliverableIds.map((id) => sql`${id}`),
-						sql`, `,
-					)})`,
-				)
-				.groupBy(deliverableAssignments.deliverableId);
+					and(
+						inArray(
+							deliverableAssignments.deliverableId,
+							deliverableIds,
+						),
+						isNull(crews.deletedAt),
+					),
+				);
 
-			assignmentCounts = Object.fromEntries(
-				counts.map((c) => [c.deliverableId, c.count]),
-			);
+			for (const row of counts) {
+				assignmentCounts[row.deliverableId] =
+					(assignmentCounts[row.deliverableId] ?? 0) + 1;
+				if (!assignedCrewByDeliverable[row.deliverableId]) {
+					assignedCrewByDeliverable[row.deliverableId] = [];
+				}
+				assignedCrewByDeliverable[row.deliverableId].push({
+					id: row.crewId,
+					name: row.crewName,
+					avatarUrl: row.avatarUrl,
+				});
+			}
 		}
 
 		// Format response
@@ -205,6 +226,7 @@ export const listDeliverables = studioProtectedProcedure
 			deletedAt: row.deletedAt?.toISOString() ?? null,
 			deletedBy: row.deletedBy,
 			assignmentsCount: assignmentCounts[row.id] ?? 0,
+			assignedCrew: assignedCrewByDeliverable[row.id] ?? [],
 			bookingName: row.bookingName,
 			bookingReferenceNumber: row.bookingReferenceNumber,
 			bookingPackageType: row.bookingPackageType,
