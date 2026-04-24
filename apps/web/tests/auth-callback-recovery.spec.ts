@@ -7,10 +7,7 @@ const AUTH_SHELL_MARKERS = [
 	"stuwiz-logo-dark.png",
 ];
 
-function expectAuthShellMarkers(
-	html: string,
-	mode: "present" | "absent",
-) {
+function expectAuthShellMarkers(html: string, mode: "present" | "absent") {
 	for (const marker of AUTH_SHELL_MARKERS) {
 		if (mode === "present") {
 			expect(html).toContain(marker);
@@ -49,14 +46,31 @@ test.describe("auth callback recovery", () => {
 		expectAuthShellMarkers(html, "absent");
 	});
 
-	test("auth login still renders auth shell markup", async ({
-		request,
-	}) => {
+	test("auth login still renders auth shell markup", async ({ request }) => {
 		const response = await request.get("/auth/login");
 		expect(response.ok()).toBe(true);
 
 		const html = await response.text();
 		expectAuthShellMarkers(html, "present");
+	});
+
+	test("auth login links to legal pages", async ({ page }) => {
+		await page.goto("/auth/login", { waitUntil: "domcontentloaded" });
+
+		await expect(
+			page.getByRole("link", { name: "Privacy policy" }),
+		).toHaveAttribute("href", "/legal/privacy-policy");
+		await expect(
+			page.getByRole("link", { name: "Terms and conditions" }),
+		).toHaveAttribute("href", "/legal/terms");
+	});
+
+	test("legal pages render", async ({ request }) => {
+		for (const path of ["/legal/privacy-policy", "/legal/terms"]) {
+			const response = await request.get(path);
+
+			expect(response.ok()).toBe(true);
+		}
 	});
 
 	test("auth error page renders recovery actions", async ({ page }) => {
