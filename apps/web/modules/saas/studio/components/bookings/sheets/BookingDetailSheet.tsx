@@ -99,7 +99,7 @@ export function BookingDetailSheet() {
 					) : (
 						<>
 							<div className="flex items-center justify-between">
-								<SheetTitle className="text-2xl font-semibold">
+								<SheetTitle className="pr-4 text-2xl font-semibold break-words [overflow-wrap:anywhere]">
 									{bookingData?.name}
 								</SheetTitle>
 								<Button
@@ -120,7 +120,7 @@ export function BookingDetailSheet() {
 									{bookingData?.referenceNumber}
 								</span>
 							</div>
-							<div className="flex items-center gap-3 pt-2">
+							<div className="flex flex-wrap items-center gap-3 pt-2">
 								<Badge
 									variant="outline"
 									className={cn(
@@ -131,7 +131,7 @@ export function BookingDetailSheet() {
 								>
 									{status}
 								</Badge>
-								<div className="flex items-center gap-2 text-sm">
+								<div className="flex flex-wrap items-center gap-2 text-sm">
 									<span className="text-muted-foreground">
 										Package Cost:
 									</span>
@@ -183,7 +183,7 @@ export function BookingDetailSheet() {
 						</div>
 					) : (
 						<Tabs defaultValue="overview" className="w-full">
-							<TabsList className="w-full justify-start rounded-none border-b px-6">
+							<TabsList className="w-full justify-start overflow-x-auto rounded-none border-b px-6">
 								<TabsTrigger value="overview">
 									Overview
 								</TabsTrigger>

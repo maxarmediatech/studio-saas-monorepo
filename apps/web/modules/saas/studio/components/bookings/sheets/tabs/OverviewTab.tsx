@@ -9,6 +9,8 @@ import {
 	CardTitle,
 } from "@repo/ui/components/card";
 import { formatMoney } from "@saas/shared/lib";
+import { configurationsApi } from "@saas/studio/lib/api";
+import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
 	CalendarIcon,
@@ -17,7 +19,7 @@ import {
 	PhoneIcon,
 	UserIcon,
 } from "lucide-react";
-import { memo } from "react";
+import { memo, useMemo } from "react";
 
 // ============================================================================
 // Utilities
@@ -36,6 +38,18 @@ const getInitials = (name: string): string => {
 
 const formatDate = (dateValue: Date | string) => {
 	return format(new Date(dateValue), "MMM d, yyyy");
+};
+
+const humanizeKey = (value: string | null | undefined, fallback = "—") => {
+	if (!value) {
+		return fallback;
+	}
+
+	return value
+		.split("_")
+		.filter(Boolean)
+		.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+		.join(" ");
 };
 
 // ============================================================================
@@ -79,17 +93,70 @@ interface OverviewTabProps {
 export const OverviewTab = memo(function OverviewTab({
 	booking,
 }: OverviewTabProps) {
+	const { data: bookingTypesData } = useQuery(
+		configurationsApi.bookingTypesOptions(),
+	);
+	const { data: packageTypesData } = useQuery(
+		configurationsApi.packageTypesOptions(),
+	);
+	const { data: relationTypesData } = useQuery(
+		configurationsApi.relationTypesOptions(),
+	);
+	const { data: eventTypesData } = useQuery(
+		configurationsApi.eventTypesOptions(),
+	);
+
+	const bookingTypeLabels = useMemo(() => {
+		const map = new Map<string, string>();
+		for (const config of bookingTypesData?.data ?? []) {
+			map.set(config.key, config.label);
+		}
+		return map;
+	}, [bookingTypesData]);
+
+	const packageTypeLabels = useMemo(() => {
+		const map = new Map<string, string>();
+		for (const config of packageTypesData?.data ?? []) {
+			map.set(config.key, config.label);
+		}
+		return map;
+	}, [packageTypesData]);
+
+	const relationTypeLabels = useMemo(() => {
+		const map = new Map<string, string>();
+		for (const config of relationTypesData?.data ?? []) {
+			map.set(config.key, config.label);
+		}
+		return map;
+	}, [relationTypesData]);
+
+	const eventTypeLabels = useMemo(() => {
+		const map = new Map<string, string>();
+		for (const config of eventTypesData?.data ?? []) {
+			map.set(config.key, config.label);
+		}
+		return map;
+	}, [eventTypesData]);
+
+	const bookingTypeLabel = booking.bookingType
+		? (bookingTypeLabels.get(booking.bookingType) ?? "—")
+		: "—";
+
+	const packageTypeLabel = booking.packageType
+		? (packageTypeLabels.get(booking.packageType) ?? "—")
+		: "—";
+
 	return (
 		<div className="space-y-6">
 			{/* Financial Summary Card */}
 			<Card>
 				<CardContent className="pt-6">
-					<div className="grid grid-cols-3 gap-4">
+					<div className="grid gap-4 sm:grid-cols-3">
 						<div className="space-y-1">
 							<p className="text-sm text-muted-foreground">
 								Package Cost
 							</p>
-							<p className="text-2xl font-bold">
+							<p className="text-2xl font-bold break-words [overflow-wrap:anywhere]">
 								{formatMoney(booking.packageCost)}
 							</p>
 						</div>
@@ -97,7 +164,7 @@ export const OverviewTab = memo(function OverviewTab({
 							<p className="text-sm text-muted-foreground">
 								Total Received
 							</p>
-							<p className="text-2xl font-bold text-green-600">
+							<p className="text-2xl font-bold text-green-600 break-words [overflow-wrap:anywhere]">
 								{formatMoney(booking.totalReceived)}
 							</p>
 						</div>
@@ -105,7 +172,7 @@ export const OverviewTab = memo(function OverviewTab({
 							<p className="text-sm text-muted-foreground">
 								Balance
 							</p>
-							<p className="text-2xl font-bold text-amber-600">
+							<p className="text-2xl font-bold text-amber-600 break-words [overflow-wrap:anywhere]">
 								{formatMoney(booking.balance)}
 							</p>
 						</div>
@@ -134,22 +201,24 @@ export const OverviewTab = memo(function OverviewTab({
 									</AvatarFallback>
 								</Avatar>
 								<div className="flex-1 space-y-1">
-									<div className="flex items-center gap-2">
-										<p className="font-medium">
+									<div className="flex flex-wrap items-center gap-2">
+										<p className="font-medium break-words [overflow-wrap:anywhere]">
 											{participant.client.name}
 										</p>
 										<Badge
 											variant="secondary"
 											className="text-xs"
 										>
-											{participant.role}
+											{relationTypeLabels.get(
+												participant.role,
+											) ?? humanizeKey(participant.role)}
 										</Badge>
 									</div>
 									<div className="space-y-0.5 text-sm text-muted-foreground">
 										{participant.client.email && (
 											<div className="flex items-center gap-1.5">
 												<MailIcon className="h-3.5 w-3.5" />
-												<span>
+												<span className="break-words [overflow-wrap:anywhere]">
 													{participant.client.email}
 												</span>
 											</div>
@@ -157,7 +226,7 @@ export const OverviewTab = memo(function OverviewTab({
 										{participant.client.phoneNumber && (
 											<div className="flex items-center gap-1.5">
 												<PhoneIcon className="h-3.5 w-3.5" />
-												<span>
+												<span className="break-words [overflow-wrap:anywhere]">
 													{
 														participant.client
 															.phoneNumber
@@ -187,16 +256,20 @@ export const OverviewTab = memo(function OverviewTab({
 							{booking.events.map((event) => (
 								<div
 									key={`${event.eventType}-${event.eventDate}`}
-									className="flex items-start justify-between gap-4"
+									className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4"
 								>
 									<div className="space-y-1">
-										<p className="font-medium">
-											{event.eventType}
+										<p className="font-medium break-words [overflow-wrap:anywhere]">
+											{eventTypeLabels.get(
+												event.eventType,
+											) ?? humanizeKey(event.eventType)}
 										</p>
 										{event.venue && (
 											<div className="flex items-center gap-1.5 text-sm text-muted-foreground">
 												<MapPinIcon className="h-3.5 w-3.5" />
-												<span>{event.venue}</span>
+												<span className="break-words [overflow-wrap:anywhere]">
+													{event.venue}
+												</span>
 											</div>
 										)}
 									</div>
@@ -219,21 +292,21 @@ export const OverviewTab = memo(function OverviewTab({
 					<CardTitle className="text-base">Booking Details</CardTitle>
 				</CardHeader>
 				<CardContent>
-					<div className="grid grid-cols-2 gap-4">
+					<div className="grid gap-4 sm:grid-cols-2">
 						<div className="space-y-1">
 							<p className="text-sm text-muted-foreground">
 								Booking Type
 							</p>
-							<p className="font-medium">
-								{booking.bookingType || "—"}
+							<p className="font-medium break-words [overflow-wrap:anywhere]">
+								{bookingTypeLabel}
 							</p>
 						</div>
 						<div className="space-y-1">
 							<p className="text-sm text-muted-foreground">
 								Package Type
 							</p>
-							<p className="font-medium">
-								{booking.packageType || "—"}
+							<p className="font-medium break-words [overflow-wrap:anywhere]">
+								{packageTypeLabel}
 							</p>
 						</div>
 						<div className="space-y-1">
@@ -248,7 +321,9 @@ export const OverviewTab = memo(function OverviewTab({
 							<p className="text-sm text-muted-foreground">
 								Status
 							</p>
-							<Badge variant="outline">{booking.phase}</Badge>
+							<Badge variant="outline">
+								{humanizeKey(booking.phase)}
+							</Badge>
 						</div>
 					</div>
 				</CardContent>
@@ -261,7 +336,7 @@ export const OverviewTab = memo(function OverviewTab({
 						<CardTitle className="text-base">Notes</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<p className="text-sm text-muted-foreground">
+						<p className="text-sm text-muted-foreground break-words [overflow-wrap:anywhere]">
 							{booking.note}
 						</p>
 					</CardContent>
