@@ -89,12 +89,14 @@ function Combobox({
 					aria-invalid={ariaInvalid}
 					disabled={disabled}
 					className={cn(
-						"w-full justify-between font-normal",
+						"w-full justify-between gap-2 font-normal",
 						!value && "text-muted-foreground",
 						className,
 					)}
 				>
-					{selectedOption ? selectedOption.label : placeholder}
+					<span className="min-w-0 flex-1 truncate text-left">
+						{selectedOption ? selectedOption.label : placeholder}
+					</span>
 					<ChevronsUpDownIcon className="ml-2 size-4 shrink-0 opacity-50" />
 				</Button>
 			</PopoverTrigger>

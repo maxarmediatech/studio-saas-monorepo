@@ -169,6 +169,7 @@ export function TasksTableClient({ organizationSlug }: TasksTableClientProps) {
 		page: pagination.page,
 		limit: pagination.limit,
 		search: filters.search ?? undefined,
+		bookingId: filters.bookingId ?? undefined,
 		status: filters.status ?? undefined,
 		priority: filters.priority ?? undefined,
 		sortBy: sorting.sortBy ?? "dueDate",

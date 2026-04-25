@@ -30,6 +30,7 @@ export async function InvoicesTable({
 		limit: params.limit,
 		search: params.search ?? undefined,
 		status: params.statuses ?? undefined,
+		bookingId: params.bookingId ?? undefined,
 		dateFrom: params.createdAt?.[0] ?? undefined,
 		dateTo: params.createdAt?.[1] ?? undefined,
 		sortBy,

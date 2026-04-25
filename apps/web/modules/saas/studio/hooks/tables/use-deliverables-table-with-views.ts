@@ -5,10 +5,12 @@ import { useDataTableWithViews } from "@/modules/saas/shared/hooks/use-data-tabl
 
 export interface DeliverableFilters {
 	search?: string | null;
+	bookingId?: string | null;
 	status?: string[] | null;
 }
 
 const deliverableFilterParsers = {
+	bookingId: parseAsString,
 	status: parseAsArrayOf(parseAsString, ","),
 };
 

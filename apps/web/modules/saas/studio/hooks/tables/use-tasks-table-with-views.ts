@@ -5,11 +5,13 @@ import { useDataTableWithViews } from "@/modules/saas/shared/hooks/use-data-tabl
 
 export interface TaskFilters {
 	search?: string | null;
+	bookingId?: string | null;
 	status?: string[] | null;
 	priority?: string[] | null;
 }
 
 const taskFilterParsers = {
+	bookingId: parseAsString,
 	status: parseAsArrayOf(parseAsString, ","),
 	priority: parseAsArrayOf(parseAsString, ","),
 };

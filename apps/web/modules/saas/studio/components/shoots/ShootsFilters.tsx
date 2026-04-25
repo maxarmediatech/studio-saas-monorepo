@@ -7,6 +7,11 @@ import {
 } from "@saas/shared/components/data-table";
 import type { SavedView } from "@saas/shared/components/views";
 import {
+	getBookingFilterValue,
+	parseBookingFilterValue,
+	useBookingFilterConfig,
+} from "@saas/studio/components/shared/booking-filter";
+import {
 	SHOOT_TYPE_OPTIONS,
 	useShootsTableWithViews,
 } from "@saas/studio/hooks/tables";
@@ -41,6 +46,7 @@ export function ShootsFilters() {
 	const { data: shootStatusData } = useQuery(
 		configurationsApi.shootStatusOptions(),
 	);
+	const bookingFilterConfig = useBookingFilterConfig();
 
 	const statusOptions = useMemo(() => {
 		if (shootStatusData?.data && shootStatusData.data.length > 0) {
@@ -77,12 +83,14 @@ export function ShootsFilters() {
 				variant: "dateRange",
 				icon: CalendarIcon,
 			},
+			bookingFilterConfig,
 		],
-		[statusOptions],
+		[bookingFilterConfig, statusOptions],
 	);
 
 	const filterValues = useMemo(
 		() => ({
+			bookingId: getBookingFilterValue(filters.bookingId),
 			shootType: filters.shootType ?? [],
 			status: filters.status ?? [],
 			shootDate:
@@ -93,7 +101,12 @@ export function ShootsFilters() {
 						}
 					: null,
 		}),
-		[filters.shootType, filters.status, filters.shootDate],
+		[
+			filters.bookingId,
+			filters.shootType,
+			filters.status,
+			filters.shootDate,
+		],
 	);
 
 	const handleFilterChange = useCallback(
@@ -106,7 +119,9 @@ export function ShootsFilters() {
 				| null
 				| undefined,
 		) => {
-			if (filterId === "shootType") {
+			if (filterId === "bookingId") {
+				setFilter("bookingId", parseBookingFilterValue(value));
+			} else if (filterId === "shootType") {
 				const values =
 					Array.isArray(value) && value.length > 0 ? value : null;
 				setFilter("shootType", values);
@@ -163,6 +178,7 @@ export function ShootsFilters() {
 		page: pagination.page,
 		limit: pagination.limit,
 		search: filters.search ?? undefined,
+		bookingId: filters.bookingId ?? undefined,
 		shootType: filters.shootType ?? undefined,
 		status: filters.status ?? undefined,
 		dateFrom: filters.shootDate?.[0] ?? undefined,

@@ -139,6 +139,7 @@ export function DeliverablesTableClient({
 		page: pagination.page,
 		limit: pagination.limit,
 		search: filters.search ?? undefined,
+		bookingId: filters.bookingId ?? undefined,
 		status: filters.status ?? undefined,
 		sortBy: sorting.sortBy ?? "dueDate",
 		sortDirection: sorting.sortDirection,

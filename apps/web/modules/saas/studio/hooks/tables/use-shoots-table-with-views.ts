@@ -5,12 +5,14 @@ import { useDataTableWithViews } from "@/modules/saas/shared/hooks/use-data-tabl
 
 export interface ShootFilters {
 	search?: string | null;
+	bookingId?: string | null;
 	shootType?: string[] | null;
 	status?: string[] | null;
 	shootDate?: string[] | null;
 }
 
 const shootFilterParsers = {
+	bookingId: parseAsString,
 	shootType: parseAsArrayOf(parseAsString, ","),
 	status: parseAsArrayOf(parseAsString, ","),
 	shootDate: parseAsArrayOf(parseAsString, ","),

@@ -159,6 +159,7 @@ export function ShootsTableClient({
 		page: pagination.page,
 		limit: pagination.limit,
 		search: filters.search ?? undefined,
+		bookingId: filters.bookingId ?? undefined,
 		shootType: filters.shootType ?? undefined,
 		status: filters.status ?? undefined,
 		dateFrom: filters.shootDate?.[0] ?? undefined,

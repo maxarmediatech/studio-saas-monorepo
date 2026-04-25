@@ -12,10 +12,12 @@ const DELIVERABLE_STATUSES = [
 
 export interface DeliverableFilters {
 	search?: string | null;
+	bookingId?: string | null;
 	status?: string[] | null;
 }
 
 const deliverableFilterParsers = {
+	bookingId: parseAsString,
 	status: parseAsArrayOf(parseAsString, ","),
 };
 

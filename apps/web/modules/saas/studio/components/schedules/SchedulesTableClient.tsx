@@ -25,6 +25,11 @@ import {
 	SortProvider,
 } from "@saas/shared/components/data-table";
 import type { SavedView } from "@saas/shared/components/views";
+import {
+	getBookingFilterValue,
+	parseBookingFilterValue,
+	useBookingFilterConfig,
+} from "@saas/studio/components/shared/booking-filter";
 // Import types for column meta augmentation
 import "@saas/shared/components/data-table/types";
 import { cn } from "@repo/ui/lib/utils";
@@ -120,6 +125,7 @@ export function SchedulesTableClient({
 		onPaginationChange,
 		onLimitChange,
 	} = useSchedulesTableWithViews();
+	const bookingFilterConfig = useBookingFilterConfig();
 
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [scheduleToDelete, setScheduleToDelete] =
@@ -135,6 +141,7 @@ export function SchedulesTableClient({
 		page: pagination.page,
 		limit: pagination.limit,
 		search: filters.search ?? undefined,
+		bookingId: filters.bookingId ?? undefined,
 		status: filters.status as PaymentScheduleStatus[] | undefined,
 		sortBy: sorting.sortBy ?? "dueDate",
 		sortDirection: sorting.sortDirection,
@@ -259,13 +266,7 @@ export function SchedulesTableClient({
 					row.status !== "cancelled",
 			},
 		],
-		[
-			openConvert,
-			openEdit,
-			openGenerateInvoice,
-			organizationSlug,
-			router,
-		],
+		[openConvert, openEdit, openGenerateInvoice, organizationSlug, router],
 	);
 
 	// Define columns with sortable headers and meta for filters
@@ -503,8 +504,10 @@ export function SchedulesTableClient({
 							options: statusOptions,
 							icon: CircleDashedIcon,
 						},
+						bookingFilterConfig,
 					]}
 					filterValues={{
+						bookingId: getBookingFilterValue(filters.bookingId),
 						status: filters.status ?? [],
 					}}
 					onFilterChange={(
@@ -516,7 +519,12 @@ export function SchedulesTableClient({
 							| null
 							| undefined,
 					) => {
-						if (id === "status") {
+						if (id === "bookingId") {
+							setFilter(
+								"bookingId",
+								parseBookingFilterValue(value),
+							);
+						} else if (id === "status") {
 							const values =
 								Array.isArray(value) && value.length > 0
 									? value

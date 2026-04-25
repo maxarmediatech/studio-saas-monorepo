@@ -5,6 +5,11 @@ import {
 	DataTableToolbar,
 	type ToolbarFilterConfig,
 } from "@saas/shared/components/data-table";
+import {
+	getBookingFilterValue,
+	parseBookingFilterValue,
+	useBookingFilterConfig,
+} from "@saas/studio/components/shared/booking-filter";
 import { useReceiptsTable } from "@saas/studio/hooks/tables/use-receipts-table";
 import { CalendarIcon } from "lucide-react";
 import { useCallback, useMemo } from "react";
@@ -19,6 +24,7 @@ export function ReceiptsFilters() {
 		isFiltered,
 		columnVisibility,
 	} = useReceiptsTable();
+	const bookingFilterConfig = useBookingFilterConfig();
 
 	const filterConfigs: ToolbarFilterConfig[] = useMemo(
 		() => [
@@ -28,12 +34,14 @@ export function ReceiptsFilters() {
 				variant: "dateRange",
 				icon: CalendarIcon,
 			},
+			bookingFilterConfig,
 		],
-		[],
+		[bookingFilterConfig],
 	);
 
 	const filterValues = useMemo(
 		() => ({
+			bookingId: getBookingFilterValue(filters.bookingId),
 			createdAt:
 				filters.createdAt && filters.createdAt.length > 0
 					? {
@@ -42,7 +50,7 @@ export function ReceiptsFilters() {
 						}
 					: null,
 		}),
-		[filters.createdAt],
+		[filters.bookingId, filters.createdAt],
 	);
 
 	const handleFilterChange = useCallback(
@@ -55,7 +63,9 @@ export function ReceiptsFilters() {
 				| null
 				| undefined,
 		) => {
-			if (filterId === "createdAt") {
+			if (filterId === "bookingId") {
+				setFilter("bookingId", parseBookingFilterValue(value));
+			} else if (filterId === "createdAt") {
 				if (
 					value &&
 					typeof value === "object" &&

@@ -31,6 +31,7 @@ export async function TasksTable({
 		page: params.page,
 		limit: params.limit,
 		search: params.search ?? undefined,
+		bookingId: params.bookingId ?? undefined,
 		status: params.status ?? undefined,
 		priority: params.priority ?? undefined,
 		sortBy,

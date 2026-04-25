@@ -32,6 +32,7 @@ export async function SchedulesTable({
 		page: params.page,
 		limit: params.limit,
 		search: params.search ?? undefined,
+		bookingId: params.bookingId ?? undefined,
 		status: params.status as PaymentScheduleStatus[] | undefined,
 		sortBy,
 		sortDirection,

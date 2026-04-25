@@ -8,6 +8,7 @@ import type { RowData } from "@tanstack/react-table";
  */
 export type FilterVariant =
 	| "text"
+	| "combobox"
 	| "number"
 	| "range"
 	| "date"

@@ -23,6 +23,7 @@ const TASK_PRIORITIES = ["high", "medium", "normal", "low"] as const;
  */
 export interface TaskFilters {
 	search?: string | null;
+	bookingId?: string | null;
 	status?: string[] | null;
 	priority?: string[] | null;
 }
@@ -32,6 +33,7 @@ export interface TaskFilters {
  * Using comma separator for array values
  */
 const taskFilterParsers = {
+	bookingId: parseAsString,
 	status: parseAsArrayOf(parseAsString, ","),
 	priority: parseAsArrayOf(parseAsString, ","),
 };

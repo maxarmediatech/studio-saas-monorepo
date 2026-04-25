@@ -6,6 +6,11 @@ import {
 	type ToolbarFilterConfig,
 } from "@saas/shared/components/data-table";
 import type { SavedView } from "@saas/shared/components/views";
+import {
+	getBookingFilterValue,
+	parseBookingFilterValue,
+	useBookingFilterConfig,
+} from "@saas/studio/components/shared/booking-filter";
 import { useInvoicesTableWithViews } from "@saas/studio/hooks/tables/use-invoices-table-with-views";
 import { CalendarIcon, CircleIcon } from "lucide-react";
 import { useCallback, useMemo } from "react";
@@ -78,6 +83,7 @@ export function InvoicesFilters() {
 		sortingState,
 		columnVisibility,
 	} = useInvoicesTableWithViews();
+	const bookingFilterConfig = useBookingFilterConfig();
 
 	const filterConfigs: ToolbarFilterConfig[] = useMemo(
 		() => [
@@ -93,12 +99,14 @@ export function InvoicesFilters() {
 				variant: "dateRange",
 				icon: CalendarIcon,
 			},
+			bookingFilterConfig,
 		],
-		[],
+		[bookingFilterConfig],
 	);
 
 	const filterValues = useMemo(
 		() => ({
+			bookingId: getBookingFilterValue(filters.bookingId),
 			statuses: filters.statuses ?? [],
 			createdAt:
 				filters.createdAt && filters.createdAt.length > 0
@@ -108,7 +116,7 @@ export function InvoicesFilters() {
 						}
 					: null,
 		}),
-		[filters.statuses, filters.createdAt],
+		[filters.bookingId, filters.statuses, filters.createdAt],
 	);
 
 	const handleFilterChange = useCallback(
@@ -121,7 +129,9 @@ export function InvoicesFilters() {
 				| null
 				| undefined,
 		) => {
-			if (filterId === "statuses") {
+			if (filterId === "bookingId") {
+				setFilter("bookingId", parseBookingFilterValue(value));
+			} else if (filterId === "statuses") {
 				const statusValues =
 					Array.isArray(value) && value.length > 0 ? value : null;
 				setFilter("statuses", statusValues as typeof filters.statuses);

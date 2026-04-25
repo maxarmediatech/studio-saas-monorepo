@@ -31,6 +31,7 @@ export async function ShootsTable({
 		page: params.page,
 		limit: params.limit,
 		search: params.search ?? undefined,
+		bookingId: params.bookingId ?? undefined,
 		shootType: params.shootType ?? undefined,
 		status: params.status ?? undefined,
 		dateFrom: params.shootDate?.[0] ?? undefined,

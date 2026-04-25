@@ -6,10 +6,12 @@ import { useDataTableWithViews } from "@/modules/saas/shared/hooks/use-data-tabl
 export interface ScheduleFilters {
 	search?: string | null;
 	status?: string[] | null;
+	bookingId?: string | null;
 }
 
 const scheduleFilterParsers = {
 	status: parseAsArrayOf(parseAsString, ","),
+	bookingId: parseAsString,
 };
 
 export function useSchedulesTableWithViews() {

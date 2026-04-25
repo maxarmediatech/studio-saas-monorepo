@@ -33,6 +33,7 @@ export async function PaymentsTable({
 		page: params.page,
 		limit: params.limit,
 		search: params.search ?? undefined,
+		bookingId: params.bookingId ?? undefined,
 		paymentMethod: params.paymentMethod as PaymentMethod[] | undefined,
 		sortBy,
 		sortDirection,

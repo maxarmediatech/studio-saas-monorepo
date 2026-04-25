@@ -53,3 +53,4 @@ apps/web/app_legacy/globals.css
 .code/
 thoughts/
 .vercel
+.playwright-mcp/

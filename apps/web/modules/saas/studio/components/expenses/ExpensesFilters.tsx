@@ -6,9 +6,12 @@ import {
 	type ToolbarFilterConfig,
 } from "@saas/shared/components/data-table";
 import type { SavedView } from "@saas/shared/components/views";
+import {
+	getBookingFilterValue,
+	parseBookingFilterValue,
+	useBookingFilterConfig,
+} from "@saas/studio/components/shared/booking-filter";
 import { useExpensesTableWithViews } from "@saas/studio/hooks/tables";
-import { bookingsApi } from "@saas/studio/lib/api";
-import { useQuery } from "@tanstack/react-query";
 import { CreditCardIcon, UserIcon } from "lucide-react";
 import { useCallback, useMemo } from "react";
 
@@ -39,21 +42,10 @@ export function ExpensesFilters() {
 		sortingState,
 		columnVisibility,
 	} = useExpensesTableWithViews();
-	const { data: bookingsData } = useQuery(
-		bookingsApi.listOptions({ limit: 100 }),
-	);
+	const bookingFilterConfig = useBookingFilterConfig();
 
 	const filterConfigs: ToolbarFilterConfig[] = useMemo(
 		() => [
-			{
-				id: "bookingId",
-				label: "Booking",
-				variant: "select",
-				options: (bookingsData?.data ?? []).map((booking) => ({
-					value: booking.id,
-					label: `${booking.name} (${booking.referenceNumber})`,
-				})),
-			},
 			{
 				id: "billTo",
 				label: "Bill To",
@@ -68,13 +60,14 @@ export function ExpensesFilters() {
 				icon: CreditCardIcon,
 				options: paymentMethodOptions,
 			},
+			bookingFilterConfig,
 		],
-		[bookingsData],
+		[bookingFilterConfig],
 	);
 
 	const filterValues = useMemo(
 		() => ({
-			bookingId: filters.bookingId ?? null,
+			bookingId: getBookingFilterValue(filters.bookingId),
 			billTo: filters.billTo ?? [],
 			paymentMethod: filters.paymentMethod ?? [],
 		}),
@@ -92,12 +85,7 @@ export function ExpensesFilters() {
 				| undefined,
 		) => {
 			if (filterId === "bookingId") {
-				const bookingId = Array.isArray(value)
-					? (value[0] ?? null)
-					: typeof value === "string"
-						? value
-						: null;
-				setFilter("bookingId", bookingId);
+				setFilter("bookingId", parseBookingFilterValue(value));
 			} else if (filterId === "billTo") {
 				const values =
 					Array.isArray(value) && value.length > 0 ? value : null;

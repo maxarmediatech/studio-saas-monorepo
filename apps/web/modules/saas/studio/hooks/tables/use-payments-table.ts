@@ -21,6 +21,7 @@ const PAYMENT_METHODS = [
  */
 export interface PaymentFilters {
 	search?: string | null;
+	bookingId?: string | null;
 	paymentMethod?: string[] | null;
 }
 
@@ -29,6 +30,7 @@ export interface PaymentFilters {
  * Using comma separator for array values
  */
 const paymentFilterParsers = {
+	bookingId: parseAsString,
 	paymentMethod: parseAsArrayOf(parseAsString, ","),
 };
 

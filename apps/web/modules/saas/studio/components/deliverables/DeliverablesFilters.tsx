@@ -6,6 +6,11 @@ import {
 	type ToolbarFilterConfig,
 } from "@saas/shared/components/data-table";
 import type { SavedView } from "@saas/shared/components/views";
+import {
+	getBookingFilterValue,
+	parseBookingFilterValue,
+	useBookingFilterConfig,
+} from "@saas/studio/components/shared/booking-filter";
 import { useDeliverablesTableWithViews } from "@saas/studio/hooks/tables";
 import { CircleIcon } from "lucide-react";
 import { useCallback, useMemo } from "react";
@@ -62,6 +67,7 @@ export function DeliverablesFilters() {
 		sortingState,
 		columnVisibility,
 	} = useDeliverablesTableWithViews();
+	const bookingFilterConfig = useBookingFilterConfig();
 
 	const filterConfigs: ToolbarFilterConfig[] = useMemo(
 		() => [
@@ -71,15 +77,17 @@ export function DeliverablesFilters() {
 				variant: "multiSelect",
 				options: STATUS_OPTIONS,
 			},
+			bookingFilterConfig,
 		],
-		[],
+		[bookingFilterConfig],
 	);
 
 	const filterValues = useMemo(
 		() => ({
+			bookingId: getBookingFilterValue(filters.bookingId),
 			status: filters.status ?? [],
 		}),
-		[filters.status],
+		[filters.bookingId, filters.status],
 	);
 
 	const handleFilterChange = useCallback(
@@ -92,7 +100,9 @@ export function DeliverablesFilters() {
 				| null
 				| undefined,
 		) => {
-			if (filterId === "status") {
+			if (filterId === "bookingId") {
+				setFilter("bookingId", parseBookingFilterValue(value));
+			} else if (filterId === "status") {
 				const values =
 					Array.isArray(value) && value.length > 0 ? value : null;
 				setFilter("status", values);
@@ -131,6 +141,7 @@ export function DeliverablesFilters() {
 		page: pagination.page,
 		limit: pagination.limit,
 		search: filters.search ?? undefined,
+		bookingId: filters.bookingId ?? undefined,
 		status: filters.status ?? undefined,
 		sortBy: sorting.sortBy ?? "dueDate",
 		sortDirection: sorting.sortDirection,

@@ -6,6 +6,11 @@ import {
 	type ToolbarFilterConfig,
 } from "@saas/shared/components/data-table";
 import type { SavedView } from "@saas/shared/components/views";
+import {
+	getBookingFilterValue,
+	parseBookingFilterValue,
+	useBookingFilterConfig,
+} from "@saas/studio/components/shared/booking-filter";
 import { usePaymentsTableWithViews } from "@saas/studio/hooks/tables";
 import { CreditCardIcon } from "lucide-react";
 import { useCallback, useMemo } from "react";
@@ -32,6 +37,7 @@ export function PaymentsFilters() {
 		sortingState,
 		columnVisibility,
 	} = usePaymentsTableWithViews();
+	const bookingFilterConfig = useBookingFilterConfig();
 
 	const filterConfigs: ToolbarFilterConfig[] = useMemo(
 		() => [
@@ -42,15 +48,17 @@ export function PaymentsFilters() {
 				icon: CreditCardIcon,
 				options: PAYMENT_METHOD_OPTIONS,
 			},
+			bookingFilterConfig,
 		],
-		[],
+		[bookingFilterConfig],
 	);
 
 	const filterValues = useMemo(
 		() => ({
+			bookingId: getBookingFilterValue(filters.bookingId),
 			paymentMethod: filters.paymentMethod ?? [],
 		}),
-		[filters.paymentMethod],
+		[filters.bookingId, filters.paymentMethod],
 	);
 
 	const handleFilterChange = useCallback(
@@ -63,7 +71,9 @@ export function PaymentsFilters() {
 				| null
 				| undefined,
 		) => {
-			if (filterId === "paymentMethod") {
+			if (filterId === "bookingId") {
+				setFilter("bookingId", parseBookingFilterValue(value));
+			} else if (filterId === "paymentMethod") {
 				const values =
 					Array.isArray(value) && value.length > 0 ? value : null;
 				setFilter("paymentMethod", values);
@@ -102,6 +112,7 @@ export function PaymentsFilters() {
 		page: pagination.page,
 		limit: pagination.limit,
 		search: filters.search ?? undefined,
+		bookingId: filters.bookingId ?? undefined,
 		paymentMethod: filters.paymentMethod ?? undefined,
 		sortBy: sorting.sortBy ?? "receivedDate",
 		sortDirection: sorting.sortDirection,

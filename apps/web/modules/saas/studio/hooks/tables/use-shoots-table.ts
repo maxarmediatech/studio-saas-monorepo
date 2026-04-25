@@ -36,6 +36,7 @@ export const SHOOT_TYPE_OPTIONS = SHOOT_TYPES.map((type) => ({
  */
 export interface ShootFilters {
 	search?: string | null;
+	bookingId?: string | null;
 	shootType?: string[] | null;
 	status?: string[] | null;
 	shootDate?: string[] | null; // Array of [from, to] dates in YYYY-MM-DD format
@@ -46,6 +47,7 @@ export interface ShootFilters {
  * Using comma separator for array values to match existing pattern
  */
 const shootFilterParsers = {
+	bookingId: parseAsString,
 	shootType: parseAsArrayOf(parseAsString, ","),
 	status: parseAsArrayOf(parseAsString, ","),
 	shootDate: parseAsArrayOf(parseAsString, ","),

@@ -116,6 +116,7 @@ export function PaymentsTableClient({
 		page: pagination.page,
 		limit: pagination.limit,
 		search: filters.search ?? undefined,
+		bookingId: filters.bookingId ?? undefined,
 		paymentMethod: filters.paymentMethod as PaymentMethod[] | undefined,
 		sortBy: sorting.sortBy ?? "receivedDate",
 		sortDirection: sorting.sortDirection,
@@ -169,7 +170,9 @@ export function PaymentsTableClient({
 			});
 
 			if (organizationSlug) {
-				router.push(`/app/${organizationSlug}/receipts/${result.data.id}`);
+				router.push(
+					`/app/${organizationSlug}/receipts/${result.data.id}`,
+				);
 			}
 		},
 		onError: (error) => {
@@ -224,12 +227,7 @@ export function PaymentsTableClient({
 				},
 			},
 		],
-		[
-			openEdit,
-			organizationSlug,
-			router,
-			generateReceiptMutation,
-		],
+		[openEdit, organizationSlug, router, generateReceiptMutation],
 	);
 
 	// Define columns with sortable headers and meta for filters

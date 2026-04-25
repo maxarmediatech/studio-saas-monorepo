@@ -10,6 +10,7 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@repo/ui/components/alert-dialog";
+import { Combobox } from "@repo/ui/components/combobox";
 import { Input } from "@repo/ui/components/input";
 import { cn } from "@repo/ui/lib/utils";
 import type {
@@ -280,6 +281,29 @@ export function DataTableToolbarWithViews<TData>({
 								)
 							}
 							className="h-8 w-40"
+						/>
+					);
+
+				case "combobox":
+					return (
+						<Combobox
+							key={filter.id}
+							id={filter.id}
+							value={(value as string) ?? ""}
+							onValueChange={(selectedValue) =>
+								onFilterChange?.(
+									filter.id,
+									selectedValue || null,
+								)
+							}
+							options={(filter.options ?? []).map((option) => ({
+								value: option.value,
+								label: option.label,
+							}))}
+							placeholder={filter.placeholder ?? filter.label}
+							searchPlaceholder={`Search ${filter.label.toLowerCase()}...`}
+							emptyText={`No ${filter.label.toLowerCase()} found`}
+							className="h-8 w-[220px] lg:w-[280px]"
 						/>
 					);
 

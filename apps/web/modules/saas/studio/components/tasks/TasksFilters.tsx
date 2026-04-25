@@ -6,6 +6,11 @@ import {
 	type ToolbarFilterConfig,
 } from "@saas/shared/components/data-table";
 import type { SavedView } from "@saas/shared/components/views";
+import {
+	getBookingFilterValue,
+	parseBookingFilterValue,
+	useBookingFilterConfig,
+} from "@saas/studio/components/shared/booking-filter";
 import { useTasksTableWithViews } from "@saas/studio/hooks/tables";
 import {
 	AlertTriangleIcon,
@@ -66,6 +71,7 @@ export function TasksFilters() {
 		sortingState,
 		columnVisibility,
 	} = useTasksTableWithViews();
+	const bookingFilterConfig = useBookingFilterConfig();
 
 	const filterConfigs: ToolbarFilterConfig[] = useMemo(
 		() => [
@@ -82,16 +88,18 @@ export function TasksFilters() {
 				icon: AlertTriangleIcon,
 				options: PRIORITY_OPTIONS,
 			},
+			bookingFilterConfig,
 		],
-		[],
+		[bookingFilterConfig],
 	);
 
 	const filterValues = useMemo(
 		() => ({
+			bookingId: getBookingFilterValue(filters.bookingId),
 			status: filters.status ?? [],
 			priority: filters.priority ?? [],
 		}),
-		[filters.status, filters.priority],
+		[filters.bookingId, filters.status, filters.priority],
 	);
 
 	const handleFilterChange = useCallback(
@@ -104,7 +112,9 @@ export function TasksFilters() {
 				| null
 				| undefined,
 		) => {
-			if (filterId === "status") {
+			if (filterId === "bookingId") {
+				setFilter("bookingId", parseBookingFilterValue(value));
+			} else if (filterId === "status") {
 				const statusValues =
 					Array.isArray(value) && value.length > 0 ? value : null;
 				setFilter("status", statusValues as typeof filters.status);
@@ -150,6 +160,7 @@ export function TasksFilters() {
 		page: pagination.page,
 		limit: pagination.limit,
 		search: filters.search ?? undefined,
+		bookingId: filters.bookingId ?? undefined,
 		status: filters.status ?? undefined,
 		priority: filters.priority ?? undefined,
 		sortBy: sorting.sortBy ?? "dueDate",

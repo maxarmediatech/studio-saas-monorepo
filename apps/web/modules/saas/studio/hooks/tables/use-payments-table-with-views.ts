@@ -5,10 +5,12 @@ import { useDataTableWithViews } from "@/modules/saas/shared/hooks/use-data-tabl
 
 export interface PaymentFilters {
 	search?: string | null;
+	bookingId?: string | null;
 	paymentMethod?: string[] | null;
 }
 
 const paymentFilterParsers = {
+	bookingId: parseAsString,
 	paymentMethod: parseAsArrayOf(parseAsString, ","),
 };
 

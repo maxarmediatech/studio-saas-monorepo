@@ -130,6 +130,7 @@ export const taskSearchParamsCache = createSearchParamsCache({
 
 	// Filters
 	search: parseAsString,
+	bookingId: parseAsString,
 	status: parseAsArrayOf(parseAsString, ",").withDefault([]),
 	priority: parseAsArrayOf(parseAsString, ",").withDefault([]),
 
@@ -157,6 +158,7 @@ export const paymentSearchParamsCache = createSearchParamsCache({
 
 	// Filters
 	search: parseAsString,
+	bookingId: parseAsString,
 	paymentMethod: parseAsArrayOf(parseAsString, ",").withDefault([]),
 
 	// Sorting
@@ -199,6 +201,7 @@ export const scheduleSearchParamsCache = createSearchParamsCache({
 	status: parseAsArrayOf(
 		parseAsStringLiteral(PAYMENT_SCHEDULE_STATUSES),
 	).withDefault([]),
+	bookingId: parseAsString,
 
 	// Sorting - default to dueDate ascending (upcoming first)
 	sort: sortStateParser,
@@ -257,6 +260,7 @@ export const deliverableSearchParamsCache = createSearchParamsCache({
 
 	// Filters
 	search: parseAsString,
+	bookingId: parseAsString,
 	status: parseAsArrayOf(parseAsString, ",").withDefault([]),
 
 	// Sorting
@@ -285,6 +289,7 @@ export const shootSearchParamsCache = createSearchParamsCache({
 
 	// Filters
 	search: parseAsString,
+	bookingId: parseAsString,
 	shootType: parseAsArrayOf(parseAsString, ",").withDefault([]),
 	status: parseAsArrayOf(parseAsString, ",").withDefault([]),
 	shootDate: parseAsArrayOf(parseAsString, ",").withDefault([]),
@@ -383,6 +388,7 @@ export const invoiceSearchParamsCache = createSearchParamsCache({
 		parseAsStringLiteral(INVOICE_STATUSES),
 	).withDefault([]),
 	createdAt: parseAsArrayOf(parseAsString, ",").withDefault([]),
+	bookingId: parseAsString,
 
 	// Sorting
 	sort: sortStateParser,
