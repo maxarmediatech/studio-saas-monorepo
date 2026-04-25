@@ -32,8 +32,9 @@ import {
 	SelectValue,
 } from "@repo/ui/components/select";
 import { Separator } from "@repo/ui/components/separator";
+import { useAllCrewOptions } from "@saas/studio/components/shared";
 import { useStudioCapabilities } from "@saas/studio/components/studio-capabilities-context";
-import { bookingsApi, crewsApi, shootsApi } from "@saas/studio/lib/api";
+import { bookingsApi, shootsApi } from "@saas/studio/lib/api";
 import {
 	getUploadAccept,
 	getUploadHelperText,
@@ -207,8 +208,7 @@ export function ExpenseForm({
 	});
 	const shoots = shootsData?.data ?? [];
 
-	const { data: crewsData } = useQuery(crewsApi.listOptions({}));
-	const crews = crewsData?.data ?? [];
+	const { data: crews = [] } = useAllCrewOptions();
 
 	useEffect(() => {
 		if (defaultValues) {

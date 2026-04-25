@@ -20,9 +20,10 @@ import { MultiSelectCombobox } from "@repo/ui/components/multi-select-combobox";
 import { ScrollArea } from "@repo/ui/components/scroll-area";
 import { Textarea } from "@repo/ui/components/textarea";
 import { TimePicker } from "@repo/ui/components/time-picker";
+import { useAllCrewOptions } from "@saas/studio/components/shared";
 import { useStudioCapabilities } from "@saas/studio/components/studio-capabilities-context";
 import { useConfigurationParams } from "@saas/studio/hooks/params/use-configuration-params";
-import { bookingsApi, configurationsApi, crewsApi } from "@saas/studio/lib/api";
+import { bookingsApi, configurationsApi } from "@saas/studio/lib/api";
 import {
 	getShootExtraServiceLabel,
 	SHOOT_EXTRA_SERVICE_OPTIONS,
@@ -126,8 +127,7 @@ export function ShootForm({
 	);
 
 	// Crews for assignments
-	const { data: crewsData } = useQuery(crewsApi.listOptions({}));
-	const crews = crewsData?.data ?? [];
+	const { data: crews = [] } = useAllCrewOptions();
 
 	// ========================================================================
 	// Form Setup

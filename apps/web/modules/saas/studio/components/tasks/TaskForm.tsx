@@ -24,8 +24,9 @@ import {
 	SelectValue,
 } from "@repo/ui/components/select";
 import { Textarea } from "@repo/ui/components/textarea";
+import { useAllCrewOptions } from "@saas/studio/components/shared";
 import { useStudioCapabilities } from "@saas/studio/components/studio-capabilities-context";
-import { bookingsApi, crewsApi } from "@saas/studio/lib/api";
+import { bookingsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { XIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo } from "react";
@@ -121,8 +122,7 @@ export function TaskForm({
 	});
 	const bookings = bookingsData?.data ?? [];
 
-	const { data: crewsData } = useQuery(crewsApi.listOptions({}));
-	const crews = crewsData?.data ?? [];
+	const { data: crews = [] } = useAllCrewOptions();
 
 	// ========================================================================
 	// Form Setup
@@ -166,7 +166,6 @@ export function TaskForm({
 	// ========================================================================
 
 	const isSubmitting = form.formState.isSubmitting || isPending;
-	const crewAssignments = form.watch("crewAssignments") ?? [];
 
 	const bookingOptions = useMemo((): ComboboxOption[] => {
 		const options = bookings.map((b) => ({

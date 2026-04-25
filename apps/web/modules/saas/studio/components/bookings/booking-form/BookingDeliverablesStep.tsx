@@ -21,7 +21,7 @@ import {
 } from "@repo/ui/components/input-group";
 import { MultiSelectCombobox } from "@repo/ui/components/multi-select-combobox";
 import { Textarea } from "@repo/ui/components/textarea";
-import { useQuery } from "@tanstack/react-query";
+import { useAllCrewOptions } from "@saas/studio/components/shared";
 import {
 	ChevronDownIcon,
 	ChevronUpIcon,
@@ -33,7 +33,6 @@ import {
 import { useMemo, useState } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import { PACKAGE_DELIVERABLE_TEMPLATES } from "../../configurations/package-deliverable-templates";
-import { bookingFormQueries } from "./booking-form-queries";
 import type { BookingFormValues } from "./booking-form-schema";
 
 /**
@@ -59,9 +58,7 @@ interface CrewOption {
 export function BookingDeliverablesStep() {
 	const form = useFormContext<BookingFormValues>();
 
-	// Fetch crews using centralized query options
-	const { data: crewsData } = useQuery(bookingFormQueries.crews());
-	const crews = crewsData?.data ?? [];
+	const { data: crews = [] } = useAllCrewOptions();
 
 	const {
 		fields: deliverables,

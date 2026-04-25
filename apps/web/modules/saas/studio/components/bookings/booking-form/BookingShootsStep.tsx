@@ -23,6 +23,7 @@ import {
 import { MultiSelectCombobox } from "@repo/ui/components/multi-select-combobox";
 import { Textarea } from "@repo/ui/components/textarea";
 import { TimePicker } from "@repo/ui/components/time-picker";
+import { useAllCrewOptions } from "@saas/studio/components/shared";
 import { useConfigurationParams } from "@saas/studio/hooks/params/use-configuration-params";
 import {
 	getShootExtraServiceLabel,
@@ -46,8 +47,7 @@ import type { BookingFormValues } from "./booking-form-schema";
 export function BookingShootsStep() {
 	const form = useFormContext<BookingFormValues>();
 
-	// Fetch crews and event types using centralized query options
-	const { data: crewsData } = useQuery(bookingFormQueries.crews());
+	const { data: crews = [] } = useAllCrewOptions();
 	const { data: eventTypesData, isPending: eventTypesLoading } = useQuery(
 		bookingFormQueries.eventTypes(),
 	);
@@ -106,9 +106,6 @@ export function BookingShootsStep() {
 			return !selectedByOtherShoots.includes(et.value);
 		});
 	};
-
-	// Use real data from API
-	const crews = crewsData?.data ?? [];
 
 	const {
 		fields: shoots,

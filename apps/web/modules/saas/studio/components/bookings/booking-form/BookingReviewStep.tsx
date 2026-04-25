@@ -14,6 +14,7 @@ import { Card, CardContent } from "@repo/ui/components/card";
 import { FieldLabel, FieldLegend, FieldSet } from "@repo/ui/components/field";
 import { Progress } from "@repo/ui/components/progress";
 import { cn } from "@repo/ui/lib/utils";
+import { useAllCrewOptions } from "@saas/studio/components/shared";
 import { getShootExtraServiceLabel } from "@saas/studio/lib/shoot-planning";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -264,11 +265,11 @@ interface ShootsSectionProps {
 }
 
 function ShootsSection({ onEdit, shoots }: ShootsSectionProps) {
-	const { data: crewsData } = useQuery(bookingFormQueries.crews());
+	const { data: crews = [] } = useAllCrewOptions();
 	const { data: eventTypesData } = useQuery(bookingFormQueries.eventTypes());
 
 	const getCrewName = (crewId: string) =>
-		crewsData?.data?.find((c) => c.id === crewId)?.name ?? "Unknown";
+		crews.find((c) => c.id === crewId)?.name ?? "Unknown";
 	const getEventType = (key: string) =>
 		eventTypesData?.data?.find((t) => t.key === key)?.label ?? key;
 
