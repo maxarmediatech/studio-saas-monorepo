@@ -178,7 +178,6 @@ export const listBookings = studioProtectedProcedure
 			{ id: string; role: string; client: { id: string; name: string } }[]
 		> = {};
 		let shootCounts: Record<string, number> = {};
-		let weddingDates: Record<string, string> = {};
 
 		if (bookingIds.length > 0) {
 			// Fetch participants with client data
@@ -229,27 +228,6 @@ export const listBookings = studioProtectedProcedure
 			shootCounts = Object.fromEntries(
 				shootResults.map((r) => [r.bookingId, r.count]),
 			);
-
-			const weddingShootResults = await db
-				.select({
-					bookingId: shoots.bookingId,
-					weddingDate: sql<string>`MIN(${shoots.shootDate})`,
-				})
-				.from(shoots)
-				.where(
-					and(
-						inArray(shoots.bookingId, bookingIds),
-						eq(shoots.shootType, "wedding"),
-						isNull(shoots.deletedAt),
-					),
-				)
-				.groupBy(shoots.bookingId);
-
-			weddingDates = Object.fromEntries(
-				weddingShootResults
-					.filter((r) => r.weddingDate)
-					.map((r) => [r.bookingId, r.weddingDate]),
-			);
 		}
 
 		return {
@@ -267,10 +245,6 @@ export const listBookings = studioProtectedProcedure
 					participantsCount: participants.length,
 					participants,
 					shootsCount: shootCounts[booking.id] ?? 0,
-					weddingDate:
-						booking.bookingType === "wedding"
-							? (weddingDates[booking.id] ?? null)
-							: null,
 					balance,
 				};
 			}),
