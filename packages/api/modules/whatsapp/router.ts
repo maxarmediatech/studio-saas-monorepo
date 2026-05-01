@@ -1,4 +1,5 @@
 import { assignConversation } from "./procedures/assign-conversation";
+import { completeEmbeddedSignup } from "./procedures/complete-embedded-signup";
 import { connectBaileys } from "./procedures/connect-baileys";
 import { connectCloudApi } from "./procedures/connect-cloud-api";
 import { deleteAccount } from "./procedures/delete-account";
@@ -22,6 +23,7 @@ import { whatsappWebhook } from "./procedures/webhook";
 
 export const whatsappRouter = {
 	assignConversation,
+	completeEmbeddedSignup,
 	connectBaileys,
 	connectCloudApi,
 	deleteAccount,

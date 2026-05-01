@@ -26,6 +26,19 @@ export const connectCloudApiOutputSchema = z.object({
 	message: z.string(),
 });
 
+export const completeEmbeddedSignupInputSchema = z.object({
+	code: z.string().min(1),
+	wabaId: z.string().min(1),
+	phoneNumberId: z.string().min(1),
+	businessId: z.string().min(1).optional(),
+	accountName: z.string().min(1).max(120).optional(),
+});
+
+export const completeEmbeddedSignupOutputSchema = z.object({
+	data: z.object({ id: z.string() }),
+	message: z.string(),
+});
+
 export const whatsappAccountSummarySchema = z.object({
 	id: z.string(),
 	name: z.string(),

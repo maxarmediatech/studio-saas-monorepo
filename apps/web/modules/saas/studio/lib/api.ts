@@ -721,6 +721,8 @@ export const whatsappApi = {
 export const whatsappMutations = {
 	assignConversation: () =>
 		orpc.whatsapp.assignConversation.mutationOptions(),
+	completeEmbeddedSignup: () =>
+		orpc.whatsapp.completeEmbeddedSignup.mutationOptions(),
 	connectCloudApi: () => orpc.whatsapp.connectCloudApi.mutationOptions(),
 	updateAccount: () => orpc.whatsapp.updateAccount.mutationOptions(),
 	deleteAccount: () => orpc.whatsapp.deleteAccount.mutationOptions(),

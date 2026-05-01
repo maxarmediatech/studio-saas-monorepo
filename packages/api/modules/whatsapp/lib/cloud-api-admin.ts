@@ -40,6 +40,12 @@ type MessageTemplateListResponse = {
 	};
 };
 
+type OAuthAccessTokenResponse = {
+	access_token?: string;
+	token_type?: string;
+	expires_in?: number;
+};
+
 export interface CloudApiValidationResult {
 	apiVersion: string;
 	displayPhoneNumber: string | null;
@@ -74,9 +80,11 @@ const fetchGraph = async <T>(
 	fallbackMessage: string,
 ) => {
 	const response = await fetch(`https://graph.facebook.com/${path}`, {
-		headers: {
-			Authorization: `Bearer ${accessToken}`,
-		},
+		headers: accessToken
+			? {
+					Authorization: `Bearer ${accessToken}`,
+				}
+			: undefined,
 	});
 
 	const payload = (await response.json().catch(() => null)) as T | null;
@@ -190,6 +198,36 @@ export const subscribeCloudApiApp = async (params: {
 		{},
 		"Failed to subscribe WhatsApp account to webhook events",
 	);
+};
+
+export const exchangeEmbeddedSignupCode = async (params: {
+	appId: string;
+	appSecret: string;
+	code: string;
+	apiVersion?: string | null;
+}) => {
+	const apiVersion = params.apiVersion?.trim() || DEFAULT_CLOUD_API_VERSION;
+	const query = new URLSearchParams({
+		client_id: params.appId,
+		client_secret: params.appSecret,
+		code: params.code,
+	});
+
+	const payload = await fetchGraph<OAuthAccessTokenResponse>(
+		`${apiVersion}/oauth/access_token?${query.toString()}`,
+		"",
+		"Failed to exchange WhatsApp embedded signup code",
+	);
+
+	if (!payload.access_token) {
+		throw new Error("Meta did not return an access token");
+	}
+
+	return {
+		accessToken: payload.access_token,
+		tokenType: payload.token_type ?? null,
+		expiresIn: payload.expires_in ?? null,
+	};
 };
 
 export const listCloudApiTemplates = async (params: {

@@ -18,6 +18,7 @@ services/
 
 ### Key Design Decisions
 - **Same DATABASE_URL**: `@repo/whatsapp-db` is a schema package, not a separate DB.
+- **Single migration source**: Run Drizzle migrations from `@repo/database` only. `@repo/whatsapp-db` is intentionally schema-only in this monorepo so it does not generate duplicate WhatsApp migrations.
 - **Baileys in Docker**: Runs in separate service, not Next.js.
 - **Multi-tenancy**: All WA tables include `organizationId`.
 - **Idempotency**: `wa_events` unique `(accountId, providerEventId)`.
