@@ -10,7 +10,6 @@ import { whatsappApi, whatsappMutations } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-	CheckCircle2Icon,
 	CircleAlertIcon,
 	MessageCircleIcon,
 	PlugZapIcon,
@@ -299,20 +298,19 @@ export function WhatsAppAccountsCard() {
 					WhatsApp Accounts
 				</span>
 			}
-			description="Each studio gets its own WhatsApp line. Connect the Cloud API account here, validate it, then subscribe webhooks before the inbox goes live."
+			description="Connect studio WhatsApp numbers through Meta Embedded Signup."
 		>
-			<div className="space-y-4 rounded-2xl border border-border bg-card p-5">
-				<div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+			<div className="space-y-3 rounded-xl border border-border bg-card p-4">
+				<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 					<div className="space-y-1">
 						<p className="m-0 text-sm font-medium text-foreground">
-							Studio-owned WhatsApp infrastructure
+							WhatsApp Business account
 						</p>
-						<p className="m-0 text-sm text-muted-foreground">
-							Use one unique business number per studio. We route
-							by phone number ID, not by a shared platform inbox.
+						<p className="m-0 text-xs text-muted-foreground">
+							One connected number per studio.
 						</p>
 					</div>
-					<div className="flex flex-wrap gap-2 sm:justify-end">
+					<div className="flex shrink-0">
 						<button
 							type="button"
 							onClick={embeddedSignup.launch}
@@ -325,31 +323,26 @@ export function WhatsAppAccountsCard() {
 								cursor: embeddedSignupMutation.isPending
 									? "not-allowed"
 									: "pointer",
+								display: "inline-flex",
+								alignItems: "center",
+								justifyContent: "center",
+								flexShrink: 0,
 								fontFamily: "Helvetica, Arial, sans-serif",
 								fontSize: 16,
 								fontWeight: "bold",
 								height: 40,
+								lineHeight: "40px",
 								opacity: embeddedSignupMutation.isPending
 									? 0.7
 									: 1,
 								padding: "0 24px",
+								whiteSpace: "nowrap",
 							}}
 						>
 							Login with Facebook
 						</button>
 					</div>
 				</div>
-
-				<Alert className="border-border/70 bg-background">
-					<CheckCircle2Icon />
-					<AlertTitle>WhatsApp Embedded Signup</AlertTitle>
-					<AlertDescription>
-						<p>
-							Studios can create or link their WhatsApp Business
-							account through Meta Embedded Signup.
-						</p>
-					</AlertDescription>
-				</Alert>
 
 				{embeddedSignup.configured ? null : (
 					<Alert className="border-amber-300/50 bg-amber-50 text-amber-950">
@@ -400,13 +393,9 @@ export function WhatsAppAccountsCard() {
 						</AlertDescription>
 					</Alert>
 				) : accounts.length === 0 ? (
-					<div className="rounded-2xl border border-dashed border-border/80 bg-background px-4 py-8 text-center">
-						<p className="m-0 text-sm font-medium text-foreground">
-							No WhatsApp accounts connected yet.
-						</p>
-						<p className="mt-2 text-sm text-muted-foreground">
-							Start with one studio number, validate it, then
-							subscribe webhook events.
+					<div className="border-t border-border/70 pt-3">
+						<p className="m-0 text-xs text-muted-foreground">
+							No WhatsApp account connected.
 						</p>
 					</div>
 				) : (
