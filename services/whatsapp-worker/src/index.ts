@@ -1,5 +1,19 @@
+import crypto from "node:crypto";
+import {
+	and,
+	db,
+	desc,
+	eq,
+	inArray,
+	isNotNull,
+	isNull,
+	lte,
+	or,
+	sql,
+} from "@repo/database";
 import { logger } from "@repo/logs";
-import { and, db, desc, eq, inArray, isNull, lte, or } from "@repo/database";
+import { getUploadsBucketName } from "@repo/env";
+import { getSignedUrl } from "@repo/storage";
 import {
 	waAccounts,
 	waContacts,
@@ -8,9 +22,51 @@ import {
 	waOutbox,
 } from "@repo/whatsapp-db";
 import { CloudApiProvider } from "@repo/whatsapp-providers";
+import { ingestCloudApiMediaAsset } from "./cloud-api-media";
 
 const pollIntervalMs = Number(process.env.WHATSAPP_OUTBOX_INTERVAL_MS ?? 5000);
 const batchSize = Number(process.env.WHATSAPP_OUTBOX_BATCH_SIZE ?? 10);
+const DEFAULT_CLOUD_API_VERSION = "v22.0";
+const inboundMediaMaxAttempts = Number(
+	process.env.WHATSAPP_MEDIA_MAX_ATTEMPTS ?? 5,
+);
+const outboundMediaUrlExpirySeconds = Number(
+	process.env.WHATSAPP_MEDIA_SEND_URL_TTL_SECONDS ?? 15 * 60,
+);
+
+const decryptStoredSecret = (value: string) => {
+	if (!value.startsWith("v1:")) {
+		return value;
+	}
+
+	const rawKey = process.env.INTEGRATIONS_TOKEN_ENCRYPTION_KEY;
+	if (!rawKey) {
+		throw new Error("Missing INTEGRATIONS_TOKEN_ENCRYPTION_KEY");
+	}
+
+	const key = Buffer.from(rawKey, "base64");
+	if (key.length !== 32) {
+		throw new Error(
+			"INTEGRATIONS_TOKEN_ENCRYPTION_KEY must be 32 bytes (base64-encoded)",
+		);
+	}
+
+	const parts = value.split(":");
+	if (parts.length !== 4 || parts[0] !== "v1") {
+		throw new Error("Invalid encrypted token format");
+	}
+
+	const iv = Buffer.from(parts[1], "base64");
+	const ciphertext = Buffer.from(parts[2], "base64");
+	const tag = Buffer.from(parts[3], "base64");
+	const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
+	decipher.setAuthTag(tag);
+	const plaintext = Buffer.concat([
+		decipher.update(ciphertext),
+		decipher.final(),
+	]);
+	return plaintext.toString("utf8");
+};
 
 const computeNextAttemptAt = (attempts: number) => {
 	const delaySeconds = Math.min(30 * attempts, 15 * 60);
@@ -35,12 +91,40 @@ const fetchOutboxBatch = async () => {
 		.where(
 			and(
 				inArray(waOutbox.status, ["pending", "failed"]),
-				or(isNull(waOutbox.nextAttemptAt), lte(waOutbox.nextAttemptAt, now)),
+				or(
+					isNull(waOutbox.nextAttemptAt),
+					lte(waOutbox.nextAttemptAt, now),
+				),
 			),
 		)
 		.orderBy(desc(waOutbox.priority))
 		.limit(batchSize);
 };
+
+const fetchInboundMediaBatch = async () =>
+	db
+		.select({
+			account: waAccounts,
+			media: waMedia,
+			message: waMessages,
+		})
+		.from(waMedia)
+		.innerJoin(waMessages, eq(waMessages.mediaId, waMedia.id))
+		.innerJoin(waAccounts, eq(waMessages.accountId, waAccounts.id))
+		.where(
+			and(
+				eq(waMessages.direction, "inbound"),
+				eq(waAccounts.provider, "cloud_api"),
+				isNotNull(waMedia.providerMediaId),
+				eq(waMedia.ingestStatus, "pending"),
+				or(
+					isNull(waMedia.nextIngestAttemptAt),
+					lte(waMedia.nextIngestAttemptAt, new Date()),
+				),
+			),
+		)
+		.orderBy(desc(waMessages.createdAt))
+		.limit(batchSize);
 
 const markOutboxAttempt = async (outboxId: string, attempts: number) => {
 	await db
@@ -110,6 +194,69 @@ const markOutboxFailure = async (params: {
 		.where(eq(waMessages.id, params.messageId));
 };
 
+const markInboundMediaReady = async (params: {
+	mediaId: string;
+	fileName: string | null;
+	fileSize: number | null;
+	mimeType: string;
+	storageUrl: string;
+}) => {
+	await db
+		.update(waMedia)
+		.set({
+			fileName: params.fileName,
+			fileSize: params.fileSize,
+			ingestStatus: "ready",
+			ingestErrorMessage: null,
+			mimeType: params.mimeType,
+			nextIngestAttemptAt: null,
+			storageType: "s3",
+			storageUrl: params.storageUrl,
+		})
+		.where(eq(waMedia.id, params.mediaId));
+};
+
+const claimInboundMedia = async (mediaId: string) => {
+	const [claimed] = await db
+		.update(waMedia)
+		.set({
+			ingestStatus: "processing",
+			ingestAttempts: sql`coalesce(${waMedia.ingestAttempts}, 0) + 1`,
+			lastIngestAttemptAt: new Date(),
+			nextIngestAttemptAt: null,
+			ingestErrorMessage: null,
+		})
+		.where(
+			and(eq(waMedia.id, mediaId), eq(waMedia.ingestStatus, "pending")),
+		)
+		.returning({
+			id: waMedia.id,
+			ingestAttempts: waMedia.ingestAttempts,
+		});
+
+	return claimed ?? null;
+};
+
+const markInboundMediaFailure = async (params: {
+	mediaId: string;
+	attempts: number;
+	errorMessage: string;
+}) => {
+	const exhausted = params.attempts >= inboundMediaMaxAttempts;
+
+	await db
+		.update(waMedia)
+		.set({
+			ingestStatus: exhausted ? "failed" : "pending",
+			ingestErrorMessage: params.errorMessage,
+			nextIngestAttemptAt: exhausted
+				? null
+				: computeNextAttemptAt(params.attempts),
+			storageUrl: null,
+		})
+		.where(eq(waMedia.id, params.mediaId));
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null;
 }
@@ -148,8 +295,9 @@ const processOutboxItem = async (item: {
 	}
 
 	const provider = new CloudApiProvider({
-		accessToken: item.account.accessToken,
+		accessToken: decryptStoredSecret(item.account.accessToken),
 		phoneNumberId: item.account.phoneNumberId,
+		apiVersion: item.account.apiVersion ?? undefined,
 	});
 
 	const recipient = item.contact.phoneNumber || item.contact.waId;
@@ -238,7 +386,8 @@ const processOutboxItem = async (item: {
 		}
 
 		const languageValue = templateParams.language;
-		const language = typeof languageValue === "string" ? languageValue : null;
+		const language =
+			typeof languageValue === "string" ? languageValue : null;
 		if (!language) {
 			await markOutboxFailure({
 				outboxId: item.outbox.id,
@@ -256,7 +405,10 @@ const processOutboxItem = async (item: {
 					.filter(isRecord)
 					.map((component) => {
 						const componentType = component.type;
-						if (typeof componentType !== "string" || !componentType) {
+						if (
+							typeof componentType !== "string" ||
+							!componentType
+						) {
 							return null;
 						}
 
@@ -264,22 +416,45 @@ const processOutboxItem = async (item: {
 						const parameters = Array.isArray(parametersValue)
 							? parametersValue.filter(isRecord)
 							: undefined;
+						const subTypeValue = component.subType;
+						const indexValue = component.index;
 
 						const next: {
 							type: string;
 							parameters?: Array<Record<string, unknown>>;
+							subType?: string;
+							index?: number;
 						} = { type: componentType };
 
 						if (parameters) {
 							next.parameters = parameters;
 						}
 
+						if (
+							typeof subTypeValue === "string" &&
+							subTypeValue.length > 0
+						) {
+							next.subType = subTypeValue;
+						}
+
+						if (
+							typeof indexValue === "number" &&
+							Number.isInteger(indexValue) &&
+							indexValue >= 0
+						) {
+							next.index = indexValue;
+						}
+
 						return next;
 					})
 					.filter(
-						(component): component is {
+						(
+							component,
+						): component is {
 							type: string;
 							parameters?: Array<Record<string, unknown>>;
+							subType?: string;
+							index?: number;
 						} => component !== null,
 					)
 			: [];
@@ -342,9 +517,17 @@ const processOutboxItem = async (item: {
 		return;
 	}
 
+	let resolvedMediaUrl = mediaUrl;
+	if (item.media?.storageType === "s3") {
+		resolvedMediaUrl = await getSignedUrl(mediaUrl, {
+			bucket: getUploadsBucketName(),
+			expiresIn: outboundMediaUrlExpirySeconds,
+		});
+	}
+
 	const result = await provider.messaging.sendMedia({
 		to: recipient,
-		mediaUrl,
+		mediaUrl: resolvedMediaUrl,
 		mediaType,
 		caption: item.message.caption ?? undefined,
 	});
@@ -367,15 +550,98 @@ const processOutboxItem = async (item: {
 	});
 };
 
+const processInboundMediaItem = async (item: {
+	account: typeof waAccounts.$inferSelect;
+	media: typeof waMedia.$inferSelect;
+	message: typeof waMessages.$inferSelect;
+}) => {
+	if (!item.media.providerMediaId) {
+		return;
+	}
+
+	if (!item.account.accessToken) {
+		throw new Error("Missing WhatsApp access token for inbound media");
+	}
+
+	const claimed = await claimInboundMedia(item.media.id);
+	if (!claimed) {
+		return;
+	}
+
+	try {
+		const mediaAsset = await ingestCloudApiMediaAsset({
+			accessToken: decryptStoredSecret(item.account.accessToken),
+			accountId: item.account.id,
+			organizationId: item.account.organizationId,
+			apiVersion:
+				item.account.apiVersion?.trim() || DEFAULT_CLOUD_API_VERSION,
+			fileName: item.media.fileName,
+			mediaId: item.media.providerMediaId,
+			messageType: item.message.type,
+			mimeType: item.media.mimeType,
+		});
+
+		await markInboundMediaReady({
+			mediaId: item.media.id,
+			fileName: mediaAsset.fileName,
+			fileSize: mediaAsset.fileSize,
+			mimeType: mediaAsset.mimeType,
+			storageUrl: mediaAsset.storageUrl,
+		});
+	} catch (error) {
+		await markInboundMediaFailure({
+			mediaId: item.media.id,
+			attempts: claimed.ingestAttempts ?? 1,
+			errorMessage:
+				error instanceof Error
+					? error.message
+					: "Unknown media ingest error",
+		});
+		throw error;
+	}
+};
+
 const runBatch = async () => {
+	const mediaBatch = await fetchInboundMediaBatch();
+	for (const item of mediaBatch) {
+		try {
+			await processInboundMediaItem(item);
+		} catch (error) {
+			logger.error("Failed to ingest inbound WhatsApp media", {
+				accountId: item.account.id,
+				mediaId: item.media.id,
+				providerMediaId: item.media.providerMediaId,
+				error,
+			});
+		}
+	}
+
 	const batch = await fetchOutboxBatch();
 	for (const item of batch) {
 		try {
 			await processOutboxItem(item);
 		} catch (error) {
+			const attempts = (item.outbox.attempts ?? 0) + 1;
+			const maxAttempts = item.outbox.maxAttempts ?? 3;
+			const errorMessage =
+				error instanceof Error ? error.message : "Unknown error";
+
 			logger.error("Failed to process outbox item", {
 				outboxId: item.outbox.id,
 				error,
+			});
+
+			await markOutboxFailure({
+				outboxId: item.outbox.id,
+				messageId: item.message.id,
+				attempts,
+				maxAttempts,
+				errorMessage,
+			}).catch((markError) => {
+				logger.error("Failed to mark outbox item as failed", {
+					outboxId: item.outbox.id,
+					error: markError,
+				});
 			});
 		}
 	}
@@ -387,8 +653,15 @@ const run = async () => {
 		batchSize,
 	});
 
-	await runBatch();
-	setInterval(runBatch, pollIntervalMs);
+	while (true) {
+		try {
+			await runBatch();
+		} catch (error) {
+			logger.error("WhatsApp worker batch failed", { error });
+		}
+
+		await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+	}
 };
 
 run().catch((error) => {

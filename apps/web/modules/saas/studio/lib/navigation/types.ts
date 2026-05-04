@@ -26,6 +26,7 @@ export type IconName =
 	| "ListTodo"
 	| "Mail"
 	| "MessageSquare"
+	| "MessagesSquare"
 	| "Package"
 	| "Receipt"
 	| "Settings"

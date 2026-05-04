@@ -105,6 +105,12 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 					label: "Comms.",
 					items: [
 						{
+							id: "messages",
+							label: "Messages",
+							path: url("/messages"),
+							icon: "MessagesSquare",
+						},
+						{
 							id: "discussions",
 							label: "Discussions",
 							path: url("/discussions"),
@@ -494,6 +500,21 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 			backHref: url("/home"),
 			direction: "right",
 			sections: [],
+		},
+		messagesWorkspace: {
+			id: "messagesWorkspace",
+			title: "Messages",
+			backHref: url("/home"),
+			direction: "right",
+			sections: [],
+			standaloneItems: [
+				{
+					id: "whatsapp",
+					label: "WhatsApp",
+					path: url("/messages"),
+					icon: "MessageSquare",
+				},
+			],
 		},
 		calendarWorkspace: {
 			id: "calendarWorkspace",

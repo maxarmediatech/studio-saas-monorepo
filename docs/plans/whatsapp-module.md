@@ -18,6 +18,7 @@ services/
 
 ### Key Design Decisions
 - **Same DATABASE_URL**: `@repo/whatsapp-db` is a schema package, not a separate DB.
+- **Single migration source**: Run Drizzle migrations from `@repo/database` only. `@repo/whatsapp-db` is intentionally schema-only in this monorepo so it does not generate duplicate WhatsApp migrations.
 - **Baileys in Docker**: Runs in separate service, not Next.js.
 - **Multi-tenancy**: All WA tables include `organizationId`.
 - **Idempotency**: `wa_events` unique `(accountId, providerEventId)`.
@@ -87,28 +88,30 @@ services/
 
 ### 1) Template Sync (Meta)
 Goal: avoid “guessing” template names/params; allow UI to pick from known templates.
-- [ ] Create `wa_templates` table (or equivalent) to store:
+- [x] Create `wa_templates` table (or equivalent) to store:
   - `organizationId`, `accountId`, `name`, `language`, `status`, `category`, `components` (json)
   - timestamps + optional versioning
-- [ ] Add sync job (service or API-triggered):
+- [x] Add sync job (service or API-triggered):
   - Fetch templates from Meta (Cloud API endpoint)
   - Upsert into DB
 - [ ] Add API:
-  - [ ] list templates (filter by status/category/language)
+  - [x] list templates (filter by status/category/language)
   - [ ] get template details
+- [x] Inbox template picker for approved synced templates
+- [x] `send-template` validates against synced account templates instead of name-only guessing
 
 ### 2) Media Upload Flow (first-class)
 Current implementation assumes `mediaUrl` is already a public URL.
-- [ ] Decide storage strategy:
+- [x] Decide storage strategy:
   - S3 pre-signed upload (recommended)
   - Provider upload (`/media`) + store providerMediaId
-- [ ] Add upload endpoint(s):
-  - [ ] request upload (returns signed url + object key)
-  - [ ] finalize upload (writes `wa_media` row)
-- [ ] Update `send-media` to support either:
+- [x] Reuse existing request upload endpoint (signed url + object key)
+- [ ] Add finalize upload endpoint if media drafts become first-class objects
+- [x] Update `send-media` to support:
   - `mediaUrl` (public link) OR
-  - `mediaId` (stored object) OR
-  - `providerMediaId`
+  - `mediaKey` (private uploaded object key)
+- [x] Worker signs private uploaded media URLs before Cloud API send
+- [x] Inbox composer supports outbound media upload/send
 
 ### 3) Message Read Receipts (provider-side)
 - [ ] When `markConversationRead` is called:
@@ -123,6 +126,12 @@ Current implementation assumes `mediaUrl` is already a public URL.
 
 ## Phase 2
 
+### Assignment Workflow
+- [x] Conversation assignment / unassignment API
+- [x] Inbox filters for `all`, `mine`, `unassigned`
+- [x] Assignee controls in inbox thread header
+- [x] Conversation status controls + inbox status filter
+
 ### Baileys Bridge (QR + Session)
 - [ ] QR code generation and display
 - [ ] Session persistence (Redis or DB)
@@ -130,10 +139,12 @@ Current implementation assumes `mediaUrl` is already a public URL.
 - [ ] HTTP API contract between `packages/api` and `services/whatsapp-bridge`
 
 ### Real-time Updates
-- [ ] WebSocket events:
+- [x] DB-backed SSE stream for WhatsApp inbox refresh
+- [x] Live inbox invalidation for:
   - message created
   - message status updated
-  - conversation updated
+  - conversation assignment / updates
+- [ ] Fine-grained cache patching (current implementation invalidates WhatsApp queries)
 
 ### Contact Management
 - [ ] Contact CRUD APIs

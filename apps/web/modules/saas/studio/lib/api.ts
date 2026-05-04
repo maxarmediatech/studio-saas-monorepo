@@ -689,6 +689,56 @@ export const notificationsMutations = {
 };
 
 // ============================================================================
+// WHATSAPP QUERY OPTIONS
+// ============================================================================
+
+export const whatsappApi = {
+	listAccountsOptions: () =>
+		orpc.whatsapp.listAccounts.queryOptions({ input: {} }),
+
+	getAccountOptions: (accountId: string) =>
+		orpc.whatsapp.getAccount.queryOptions({ input: { accountId } }),
+
+	listConversationsOptions: (
+		input?: Parameters<
+			typeof orpc.whatsapp.listConversations.queryOptions
+		>[0]["input"],
+	) => orpc.whatsapp.listConversations.queryOptions({ input: input ?? {} }),
+
+	listMessagesOptions: (
+		input: Parameters<
+			typeof orpc.whatsapp.listMessages.queryOptions
+		>[0]["input"],
+	) => orpc.whatsapp.listMessages.queryOptions({ input }),
+
+	listTemplatesOptions: (
+		input: Parameters<
+			typeof orpc.whatsapp.listTemplates.queryOptions
+		>[0]["input"],
+	) => orpc.whatsapp.listTemplates.queryOptions({ input }),
+};
+
+export const whatsappMutations = {
+	assignConversation: () =>
+		orpc.whatsapp.assignConversation.mutationOptions(),
+	completeEmbeddedSignup: () =>
+		orpc.whatsapp.completeEmbeddedSignup.mutationOptions(),
+	connectCloudApi: () => orpc.whatsapp.connectCloudApi.mutationOptions(),
+	updateAccount: () => orpc.whatsapp.updateAccount.mutationOptions(),
+	deleteAccount: () => orpc.whatsapp.deleteAccount.mutationOptions(),
+	testAccount: () => orpc.whatsapp.testAccount.mutationOptions(),
+	subscribeAccount: () => orpc.whatsapp.subscribeAccount.mutationOptions(),
+	sendMedia: () => orpc.whatsapp.sendMedia.mutationOptions(),
+	sendText: () => orpc.whatsapp.sendText.mutationOptions(),
+	sendTemplate: () => orpc.whatsapp.sendTemplate.mutationOptions(),
+	syncTemplates: () => orpc.whatsapp.syncTemplates.mutationOptions(),
+	markConversationRead: () =>
+		orpc.whatsapp.markConversationRead.mutationOptions(),
+	updateConversationStatus: () =>
+		orpc.whatsapp.updateConversationStatus.mutationOptions(),
+};
+
+// ============================================================================
 // DISCUSSIONS QUERY OPTIONS
 // ============================================================================
 

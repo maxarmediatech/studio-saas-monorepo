@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+const waConversationStatusSchema = z.enum(["open", "closed", "archived"]);
+
 export const connectBaileysInputSchema = z.object({
 	name: z.string().min(1),
 });
@@ -12,13 +14,186 @@ export const connectBaileysOutputSchema = z.object({
 export const connectCloudApiInputSchema = z.object({
 	name: z.string().min(1),
 	phoneNumberId: z.string().min(1),
-	wabaId: z.string().min(1).optional(),
+	wabaId: z.string().min(1),
 	accessToken: z.string().min(1),
+	appSecret: z.string().min(1).optional(),
+	apiVersion: z.string().min(1).optional(),
 	webhookVerifyToken: z.string().min(1),
 });
 
 export const connectCloudApiOutputSchema = z.object({
 	data: z.object({ id: z.string() }),
+	message: z.string(),
+});
+
+export const completeEmbeddedSignupInputSchema = z.object({
+	code: z.string().min(1),
+	wabaId: z.string().min(1),
+	phoneNumberId: z.string().min(1),
+	businessId: z.string().min(1).optional(),
+	accountName: z.string().min(1).max(120).optional(),
+});
+
+export const completeEmbeddedSignupOutputSchema = z.object({
+	data: z.object({ id: z.string() }),
+	message: z.string(),
+});
+
+export const whatsappAccountSummarySchema = z.object({
+	id: z.string(),
+	name: z.string(),
+	provider: z.enum(["baileys", "cloud_api"]),
+	connectionStatus: z.enum([
+		"disconnected",
+		"connecting",
+		"qr_pending",
+		"connected",
+		"banned",
+	]),
+	ownershipType: z.enum(["platform", "customer"]),
+	phoneNumber: z.string().nullable(),
+	displayPhoneNumber: z.string().nullable(),
+	phoneNumberId: z.string().nullable(),
+	wabaId: z.string().nullable(),
+	apiVersion: z.string().nullable(),
+	verifiedName: z.string().nullable(),
+	qualityRating: z.string().nullable(),
+	messagingLimitTier: z.string().nullable(),
+	lastConnectedAt: z.date().nullable(),
+	lastValidatedAt: z.date().nullable(),
+	lastEventAt: z.date().nullable(),
+	lastErrorMessage: z.string().nullable(),
+	errorCount: z.number(),
+	hasAccessToken: z.boolean(),
+	hasAppSecret: z.boolean(),
+	createdAt: z.date(),
+	updatedAt: z.date(),
+});
+
+export const listAccountsInputSchema = z.object({});
+
+export const listAccountsOutputSchema = z.object({
+	data: z.array(whatsappAccountSummarySchema),
+});
+
+export const getAccountInputSchema = z.object({
+	accountId: z.string(),
+});
+
+export const getAccountOutputSchema = z.object({
+	data: whatsappAccountSummarySchema,
+});
+
+export const updateAccountInputSchema = z
+	.object({
+		accountId: z.string(),
+		name: z.string().min(1).optional(),
+		phoneNumberId: z.string().min(1).optional(),
+		wabaId: z.string().min(1).optional(),
+		accessToken: z.string().min(1).optional(),
+		appSecret: z.string().min(1).optional(),
+		apiVersion: z.string().min(1).optional(),
+		webhookVerifyToken: z.string().min(1).optional(),
+	})
+	.refine(
+		(input) =>
+			Boolean(
+				input.name ||
+					input.phoneNumberId ||
+					input.wabaId ||
+					input.accessToken ||
+					input.appSecret ||
+					input.apiVersion ||
+					input.webhookVerifyToken,
+			),
+		{
+			message: "At least one field must be updated",
+		},
+	);
+
+export const updateAccountOutputSchema = z.object({
+	data: whatsappAccountSummarySchema,
+	message: z.string(),
+});
+
+export const deleteAccountInputSchema = z.object({
+	accountId: z.string(),
+});
+
+export const deleteAccountOutputSchema = z.object({
+	data: z.object({ id: z.string() }),
+	message: z.string(),
+});
+
+export const testAccountInputSchema = z.object({
+	accountId: z.string(),
+});
+
+export const testAccountOutputSchema = z.object({
+	data: whatsappAccountSummarySchema,
+	message: z.string(),
+});
+
+export const subscribeAccountInputSchema = z.object({
+	accountId: z.string(),
+});
+
+export const subscribeAccountOutputSchema = z.object({
+	data: z.object({ id: z.string() }),
+	message: z.string(),
+});
+
+export const whatsappTemplateVariableSchema = z.object({
+	key: z.string(),
+	componentType: z.enum(["header", "body", "button"]),
+	index: z.number().int().positive(),
+	label: z.string(),
+	buttonIndex: z.number().int().nonnegative().nullable(),
+	buttonSubType: z.string().nullable(),
+});
+
+export const whatsappTemplateSummarySchema = z.object({
+	id: z.string(),
+	accountId: z.string(),
+	providerTemplateId: z.string().nullable(),
+	name: z.string(),
+	language: z.string(),
+	status: z.string(),
+	category: z.string(),
+	headerText: z.string().nullable(),
+	bodyText: z.string().nullable(),
+	footerText: z.string().nullable(),
+	buttonLabels: z.array(z.string()),
+	variables: z.array(whatsappTemplateVariableSchema),
+	isSupported: z.boolean(),
+	unsupportedReason: z.string().nullable(),
+	lastSyncedAt: z.date(),
+	createdAt: z.date(),
+	updatedAt: z.date(),
+});
+
+export const listTemplatesInputSchema = z.object({
+	accountId: z.string(),
+	status: z.string().min(1).optional(),
+	category: z.string().min(1).optional(),
+	language: z.string().min(1).optional(),
+	search: z.string().min(1).max(100).optional(),
+});
+
+export const listTemplatesOutputSchema = z.object({
+	data: z.array(whatsappTemplateSummarySchema),
+});
+
+export const syncTemplatesInputSchema = z.object({
+	accountId: z.string(),
+});
+
+export const syncTemplatesOutputSchema = z.object({
+	data: z.object({
+		accountId: z.string(),
+		count: z.number().int().nonnegative(),
+		lastSyncedAt: z.date(),
+	}),
 	message: z.string(),
 });
 
@@ -46,10 +221,17 @@ export const sendMediaInputSchema = z
 		accountId: z.string(),
 		to: z.string(),
 		mediaType: waMediaTypeSchema,
-		mediaUrl: z.string().url(),
+		mediaUrl: z.string().url().optional(),
+		mediaKey: z.string().min(1).optional(),
 		mimeType: z.string().min(1),
 		caption: z.string().min(1).optional(),
 		fileName: z.string().min(1).optional(),
+	})
+	.refine((data) => Boolean(data.mediaUrl || data.mediaKey), {
+		message: "mediaUrl or mediaKey is required",
+	})
+	.refine((data) => !(data.mediaUrl && data.mediaKey), {
+		message: "Provide either mediaUrl or mediaKey, not both",
 	})
 	.refine(
 		(data) =>
@@ -89,7 +271,8 @@ export const listConversationsInputSchema = z.object({
 	limit: z.number().min(1).max(100).default(20),
 	cursor: z.string().optional(),
 	accountId: z.string().optional(),
-	status: z.enum(["open", "closed", "archived"]).optional(),
+	status: waConversationStatusSchema.optional(),
+	assignment: z.enum(["all", "mine", "unassigned"]).optional(),
 	search: z.string().min(1).max(100).optional(),
 });
 
@@ -97,7 +280,8 @@ export const conversationItemSchema = z.object({
 	id: z.string(),
 	accountId: z.string(),
 	contactId: z.string(),
-	status: z.enum(["open", "closed", "archived"]),
+	status: waConversationStatusSchema,
+	assignedToUserId: z.string().nullable(),
 	unreadCount: z.number(),
 	lastMessageId: z.string().nullable(),
 	lastMessageAt: z.date().nullable(),
@@ -149,6 +333,9 @@ export const messageItemSchema = z.object({
 	media: z
 		.object({
 			id: z.string(),
+			accessUrl: z.string().nullable(),
+			ingestStatus: z.enum(["pending", "processing", "ready", "failed"]),
+			ingestErrorMessage: z.string().nullable(),
 			storageUrl: z.string().nullable(),
 			mimeType: z.string(),
 			fileName: z.string().nullable(),
@@ -156,7 +343,15 @@ export const messageItemSchema = z.object({
 		.nullable(),
 	templateName: z.string().nullable(),
 	templateParams: z.unknown().nullable(),
-	status: z.enum(["pending", "queued", "sent", "delivered", "read", "failed"]),
+	templateRenderedText: z.string().nullable(),
+	status: z.enum([
+		"pending",
+		"queued",
+		"sent",
+		"delivered",
+		"read",
+		"failed",
+	]),
 	statusUpdatedAt: z.date().nullable(),
 	providerMessageId: z.string().nullable(),
 	providerTimestamp: z.date().nullable(),
@@ -176,6 +371,26 @@ export const getConversationInputSchema = z.object({
 
 export const getConversationOutputSchema = z.object({
 	data: conversationItemSchema,
+});
+
+export const assignConversationInputSchema = z.object({
+	conversationId: z.string(),
+	assignedToUserId: z.string().nullable(),
+});
+
+export const assignConversationOutputSchema = z.object({
+	data: conversationItemSchema,
+	message: z.string(),
+});
+
+export const updateConversationStatusInputSchema = z.object({
+	conversationId: z.string(),
+	status: waConversationStatusSchema,
+});
+
+export const updateConversationStatusOutputSchema = z.object({
+	data: conversationItemSchema,
+	message: z.string(),
 });
 
 export const markConversationReadInputSchema = z.object({

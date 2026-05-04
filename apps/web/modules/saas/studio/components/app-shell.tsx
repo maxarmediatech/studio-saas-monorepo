@@ -63,6 +63,11 @@ export async function AppShell({
 			section.items.some((item) => item.id === "shoots"),
 		),
 	);
+	const hasMessagesAccess = filteredNavigation.modules.some((module) =>
+		module.sections.some((section) =>
+			section.items.some((item) => item.id === "messages"),
+		),
+	);
 
 	const moduleRailIcons: RailIconConfig[] = filteredNavigation.modules.map(
 		(module) => ({
@@ -83,11 +88,28 @@ export async function AppShell({
 				href: `/app/${activeOrganization.slug ?? ""}/calendar`,
 			}
 		: null;
+	const messagesRailIcon: RailIconConfig | null = hasMessagesAccess
+		? {
+				id: "messagesWorkspace",
+				kind: "area",
+				icon: "MessagesSquare",
+				label: "Messages",
+				href: `/app/${activeOrganization.slug ?? ""}/messages`,
+			}
+		: null;
 
-	const railIcons =
+	const railIconsWithCalendar =
 		calendarRailIcon === null
 			? moduleRailIcons
 			: insertRailIconAfter(moduleRailIcons, "studio", calendarRailIcon);
+	const railIcons =
+		messagesRailIcon === null
+			? railIconsWithCalendar
+			: insertRailIconAfter(
+					railIconsWithCalendar,
+					"workspace",
+					messagesRailIcon,
+				);
 
 	const settingsEntryPath = getAreaEntryPath(
 		activeOrganization,

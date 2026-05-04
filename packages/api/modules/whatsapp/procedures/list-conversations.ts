@@ -1,6 +1,7 @@
 import { and, db, desc, eq, sql } from "@repo/database";
 import { waContacts, waConversations } from "@repo/whatsapp-db";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { toConversationItem } from "../lib/conversation-presenter";
 import {
 	listConversationsInputSchema,
 	listConversationsOutputSchema,
@@ -49,6 +50,16 @@ export const listConversations = studioProtectedProcedure
 			conditions.push(eq(waConversations.status, input.status));
 		}
 
+		if (input.assignment === "mine") {
+			conditions.push(
+				eq(waConversations.assignedToUserId, context.user.id),
+			);
+		}
+
+		if (input.assignment === "unassigned") {
+			conditions.push(sql`${waConversations.assignedToUserId} IS NULL`);
+		}
+
 		if (input.search) {
 			const search = `%${input.search}%`;
 			conditions.push(
@@ -83,29 +94,14 @@ export const listConversations = studioProtectedProcedure
 		const items = hasMore ? results.slice(0, input.limit) : results;
 		const lastItem = items[items.length - 1];
 		const nextCursor =
-			hasMore && lastItem ? encodeCursor(lastItem.sortAt, lastItem.conversation.id) : null;
+			hasMore && lastItem
+				? encodeCursor(lastItem.sortAt, lastItem.conversation.id)
+				: null;
 
 		return {
-			data: items.map(({ conversation, contact }) => ({
-				id: conversation.id,
-				accountId: conversation.accountId,
-				contactId: conversation.contactId,
-				status: conversation.status,
-				unreadCount: conversation.unreadCount ?? 0,
-				lastMessageId: conversation.lastMessageId ?? null,
-				lastMessageAt: conversation.lastMessageAt ?? null,
-				lastMessagePreview: conversation.lastMessagePreview ?? null,
-				createdAt: conversation.createdAt,
-				updatedAt: conversation.updatedAt,
-				contact: {
-					id: contact.id,
-					waId: contact.waId,
-					phoneNumber: contact.phoneNumber,
-					pushName: contact.pushName ?? null,
-					name: contact.name ?? null,
-					lastMessageAt: contact.lastMessageAt ?? null,
-				},
-			})),
+			data: items.map(({ conversation, contact }) =>
+				toConversationItem(conversation, contact),
+			),
 			nextCursor,
 		};
 	});
