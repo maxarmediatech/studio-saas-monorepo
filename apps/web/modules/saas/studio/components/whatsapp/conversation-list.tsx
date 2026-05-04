@@ -99,8 +99,8 @@ export function WhatsAppConversationList({
 					</EmptyMedia>
 					<EmptyTitle>No conversations yet</EmptyTitle>
 					<EmptyDescription>
-						Incoming WhatsApp chats will appear here once a studio
-						number starts receiving messages.
+						Start a message from the header or wait for inbound
+						replies.
 					</EmptyDescription>
 				</EmptyHeader>
 			</Empty>

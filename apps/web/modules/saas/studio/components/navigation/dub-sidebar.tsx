@@ -12,6 +12,7 @@ import type {
 } from "../../lib/navigation/types";
 import { CalendarWorkspacePanel } from "../calendar/calendar-workspace-panel";
 import { DiscussionsPanel } from "./discussions-panel";
+import { GenericAreaPanel } from "./generic-area-panel";
 import { SettingsPanel } from "./settings-panel";
 import { useSidebar } from "./sidebar-context";
 import { SidebarPanel } from "./sidebar-panel";
@@ -183,6 +184,21 @@ export function DubSidebar({
 								<CalendarWorkspacePanel
 									area={areas.calendarWorkspace}
 									enabled
+								/>
+							</Area>
+						) : null}
+
+						{/* Messages Workspace Area */}
+						{currentArea === "messagesWorkspace" &&
+						areas.messagesWorkspace ? (
+							<Area
+								visible
+								direction={
+									areas.messagesWorkspace.direction ?? "right"
+								}
+							>
+								<GenericAreaPanel
+									area={areas.messagesWorkspace}
 								/>
 							</Area>
 						) : null}

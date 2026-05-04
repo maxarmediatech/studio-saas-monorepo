@@ -1,23 +1,10 @@
-import { WhatsAppInboxPageClient } from "@saas/studio";
-import { buildStudioRoutePath } from "@saas/studio/lib/route-access";
-import { requireStudioRouteAccess } from "@saas/studio/lib/server-access";
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 
 type Props = {
 	params: Promise<{ organizationSlug: string }>;
 };
 
-export default async function InboxPage({ params }: Props) {
+export default async function InboxRedirectPage({ params }: Props) {
 	const { organizationSlug } = await params;
-
-	if (
-		!(await requireStudioRouteAccess(
-			organizationSlug,
-			buildStudioRoutePath(organizationSlug, "/inbox"),
-		))
-	) {
-		notFound();
-	}
-
-	return <WhatsAppInboxPageClient />;
+	redirect(`/app/${organizationSlug}/messages`);
 }

@@ -55,7 +55,9 @@ export function MobileSidebar({
 }: MobileSidebarProps) {
 	const isSettingsArea = currentArea === "studioSettings";
 	const isCalendarArea = currentArea === "calendarWorkspace";
+	const isMessagesArea = currentArea === "messagesWorkspace";
 	const settingsArea = areas.studioSettings;
+	const messagesArea = areas.messagesWorkspace;
 	const mobileRailItems = [
 		...railIcons,
 		{
@@ -70,7 +72,9 @@ export function MobileSidebar({
 		? (settingsArea?.title ?? "Settings")
 		: isCalendarArea
 			? (areas.calendarWorkspace?.title ?? "Calendar")
-			: (activeModule?.label ?? "Navigation");
+			: isMessagesArea
+				? (messagesArea?.title ?? "Messages")
+				: (activeModule?.label ?? "Navigation");
 
 	return (
 		<>
@@ -160,6 +164,12 @@ export function MobileSidebar({
 									area={areas.calendarWorkspace}
 								/>
 							</div>
+						) : isMessagesArea && messagesArea ? (
+							<MobileAreaContent
+								area={messagesArea}
+								pathname={pathname}
+								onSelect={() => onOpenChange(false)}
+							/>
 						) : activeModule ? (
 							<div className="flex flex-col gap-6">
 								{activeModule.sections.map((section) => (
@@ -295,5 +305,67 @@ function MobileNavItem({
 				<ExternalLink className="size-3.5 text-neutral-500 transition-transform duration-75 group-hover:-translate-y-px group-hover:translate-x-px" />
 			) : null}
 		</Link>
+	);
+}
+
+function MobileAreaContent({
+	area,
+	pathname,
+	onSelect,
+}: {
+	area: NavAreaConfig;
+	pathname: string;
+	onSelect?: () => void;
+}) {
+	return (
+		<div className="flex flex-col gap-6">
+			{area.backHref ? (
+				<Link
+					href={area.backHref}
+					onClick={onSelect}
+					className="group -mt-1 flex items-center gap-3 px-1 py-1"
+				>
+					<div className="flex size-7 items-center justify-center rounded-lg bg-neutral-100 text-neutral-600 transition-colors group-hover:bg-neutral-200">
+						<ChevronLeft className="size-3" strokeWidth={2.5} />
+					</div>
+					<span className="text-sm font-medium text-neutral-700">
+						Back to home
+					</span>
+				</Link>
+			) : null}
+
+			{area.standaloneItems?.length ? (
+				<nav className="flex flex-col gap-0.5">
+					{area.standaloneItems.map((item) => (
+						<MobileNavItem
+							key={item.id}
+							item={item}
+							isActive={isItemActive(pathname, item.path)}
+							onSelect={onSelect}
+						/>
+					))}
+				</nav>
+			) : null}
+
+			{area.sections.map((section) => (
+				<div key={section.id}>
+					{section.label ? (
+						<div className="mb-2 pl-2 text-xs font-medium uppercase tracking-[0.14em] text-neutral-500">
+							{section.label}
+						</div>
+					) : null}
+					<nav className="flex flex-col gap-0.5">
+						{section.items.map((item) => (
+							<MobileNavItem
+								key={item.id}
+								item={item}
+								isActive={isItemActive(pathname, item.path)}
+								onSelect={onSelect}
+							/>
+						))}
+					</nav>
+				</div>
+			))}
+		</div>
 	);
 }

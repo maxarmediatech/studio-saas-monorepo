@@ -6,7 +6,16 @@ import type {
 } from "@repo/api/modules/whatsapp/types";
 import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
 import { Button } from "@repo/ui/components/button";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@repo/ui/components/dialog";
 import { Input } from "@repo/ui/components/input";
+import { Label } from "@repo/ui/components/label";
 import {
 	Select,
 	SelectContent,
@@ -14,6 +23,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@repo/ui/components/select";
+import { Textarea } from "@repo/ui/components/textarea";
 import { useSession } from "@saas/auth/hooks/use-session";
 import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
 import { PageContent } from "@saas/studio";
@@ -22,7 +32,8 @@ import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
 	CircleAlertIcon,
-	InboxIcon,
+	MessageSquareIcon,
+	PlusIcon,
 	RefreshCwIcon,
 	SearchIcon,
 } from "lucide-react";
@@ -52,6 +63,10 @@ type WhatsAppConversationStatus = z.infer<
 	typeof conversationItemSchema
 >["status"];
 
+function normalizeWhatsAppRecipient(value: string) {
+	return value.replace(/[^\d+]/g, "").replace(/^\+/, "");
+}
+
 export function WhatsAppInboxPageClient() {
 	const queryClient = useQueryClient();
 	const { session } = useSession();
@@ -70,6 +85,10 @@ export function WhatsAppInboxPageClient() {
 	const [composerValue, setComposerValue] = useState("");
 	const [mediaDialogOpen, setMediaDialogOpen] = useState(false);
 	const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+	const [newMessageOpen, setNewMessageOpen] = useState(false);
+	const [newMessageAccountId, setNewMessageAccountId] = useState("");
+	const [newMessagePhone, setNewMessagePhone] = useState("");
+	const [newMessageText, setNewMessageText] = useState("");
 	const deferredSearch = useDeferredValue(search);
 	const autoMarkedConversationIdRef = useRef<string | null>(null);
 
@@ -99,6 +118,13 @@ export function WhatsAppInboxPageClient() {
 		...whatsappApi.listAccountsOptions(),
 		refetchOnWindowFocus: false,
 	});
+	const accounts = accountsQuery.data?.data ?? [];
+
+	useEffect(() => {
+		if (!newMessageAccountId && accounts[0]) {
+			setNewMessageAccountId(accounts[0].id);
+		}
+	}, [accounts, newMessageAccountId]);
 
 	const conversationsQuery = useQuery({
 		...whatsappApi.listConversationsOptions({
@@ -207,6 +233,9 @@ export function WhatsAppInboxPageClient() {
 		...whatsappMutations.sendText(),
 		onSuccess: async () => {
 			setComposerValue("");
+			setNewMessageOpen(false);
+			setNewMessagePhone("");
+			setNewMessageText("");
 			await queryClient.invalidateQueries({
 				queryKey: orpc.whatsapp.key(),
 			});
@@ -295,6 +324,23 @@ export function WhatsAppInboxPageClient() {
 		});
 	};
 
+	const handleNewMessageSend = () => {
+		const accountId = newMessageAccountId || accounts[0]?.id;
+		const to = normalizeWhatsAppRecipient(newMessagePhone);
+		const text = newMessageText.trim();
+
+		if (!accountId || !to || !text) {
+			toast.error("Choose an account, recipient, and message");
+			return;
+		}
+
+		sendTextMutation.mutate({
+			accountId,
+			to,
+			text,
+		});
+	};
+
 	const handleTemplateSend = (
 		template: WhatsAppTemplate,
 		variableValues: Record<string, string>,
@@ -354,8 +400,8 @@ export function WhatsAppInboxPageClient() {
 	};
 
 	const headerContent = (
-		<div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-			<div className="relative w-full max-w-md">
+		<div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+			<div className="relative w-full lg:max-w-sm">
 				<SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
 				<Input
 					value={search}
@@ -364,16 +410,16 @@ export function WhatsAppInboxPageClient() {
 					className="pl-9"
 				/>
 			</div>
-			<div className="flex items-center gap-2">
+			<div className="flex flex-wrap items-center gap-2">
 				<Select value={accountFilter} onValueChange={setAccountFilter}>
-					<SelectTrigger className="min-w-52">
+					<SelectTrigger className="h-9 min-w-48">
 						<SelectValue placeholder="All accounts" />
 					</SelectTrigger>
 					<SelectContent>
 						<SelectItem value={ALL_ACCOUNTS_VALUE}>
 							All accounts
 						</SelectItem>
-						{(accountsQuery.data?.data ?? []).map((account) => (
+						{accounts.map((account) => (
 							<SelectItem key={account.id} value={account.id}>
 								{account.name}
 							</SelectItem>
@@ -384,7 +430,7 @@ export function WhatsAppInboxPageClient() {
 					value={assignmentFilter}
 					onValueChange={setAssignmentFilter}
 				>
-					<SelectTrigger className="min-w-44">
+					<SelectTrigger className="h-9 min-w-40">
 						<SelectValue placeholder="All assignments" />
 					</SelectTrigger>
 					<SelectContent>
@@ -409,7 +455,7 @@ export function WhatsAppInboxPageClient() {
 						)
 					}
 				>
-					<SelectTrigger className="min-w-40">
+					<SelectTrigger className="h-9 min-w-36">
 						<SelectValue placeholder="All statuses" />
 					</SelectTrigger>
 					<SelectContent>
@@ -445,33 +491,38 @@ export function WhatsAppInboxPageClient() {
 		</div>
 	);
 
+	const controls = (
+		<Button
+			type="button"
+			size="sm"
+			onClick={() => setNewMessageOpen(true)}
+			disabled={accounts.length === 0}
+		>
+			<PlusIcon className="mr-1.5 size-4" />
+			New message
+		</Button>
+	);
+
 	return (
 		<PageContent
-			title="Inbox"
+			title={
+				<span className="inline-flex items-center gap-2">
+					<MessageSquareIcon className="size-4 text-neutral-500" />
+					Messages
+				</span>
+			}
+			controls={controls}
 			headerContent={headerContent}
-			contentClassName="overflow-hidden pb-0 pt-4 lg:pt-4"
+			contentClassName="overflow-hidden pb-0 pt-3 lg:pt-3"
 		>
-			<div className="space-y-4">
-				<Alert className="border-border/70 bg-background">
-					<InboxIcon />
-					<AlertTitle>Minimal inbox shell</AlertTitle>
-					<AlertDescription>
-						<p>
-							List, thread, mark-read, send text, and inbound
-							attachments are live. Template send, assignment,
-							realtime, status control, and outbound media are
-							live too.
-						</p>
-					</AlertDescription>
-				</Alert>
-
+			<div className="space-y-3">
 				{conversationsQuery.isError ? (
 					<Alert
 						variant="destructive"
 						className="border-destructive/20"
 					>
 						<CircleAlertIcon />
-						<AlertTitle>Inbox failed to load</AlertTitle>
+						<AlertTitle>WhatsApp failed to load</AlertTitle>
 						<AlertDescription>
 							<p>
 								{conversationsQuery.error.message ||
@@ -481,8 +532,8 @@ export function WhatsAppInboxPageClient() {
 					</Alert>
 				) : null}
 
-				<div className="grid min-h-[720px] gap-4 rounded-3xl border border-neutral-200 bg-white p-3 lg:grid-cols-[340px_minmax(0,1fr)]">
-					<div className="overflow-hidden rounded-3xl border border-border/70 bg-neutral-50/70">
+				<div className="grid min-h-[calc(100vh-13rem)] gap-3 rounded-2xl border border-neutral-200 bg-white p-2 lg:grid-cols-[340px_minmax(0,1fr)]">
+					<div className="overflow-hidden rounded-xl border border-border/70 bg-neutral-50/70">
 						<WhatsAppConversationList
 							conversations={conversations}
 							isLoading={conversationsQuery.isLoading}
@@ -492,7 +543,7 @@ export function WhatsAppInboxPageClient() {
 						/>
 					</div>
 
-					<div className="overflow-hidden rounded-3xl border border-border/70 bg-white">
+					<div className="overflow-hidden rounded-xl border border-border/70 bg-white">
 						<WhatsAppMessageThread
 							conversation={selectedConversation}
 							messages={messagesQuery.data?.data ?? []}
@@ -535,6 +586,105 @@ export function WhatsAppInboxPageClient() {
 					</div>
 				</div>
 			</div>
+
+			<Dialog open={newMessageOpen} onOpenChange={setNewMessageOpen}>
+				<DialogContent className="sm:max-w-lg">
+					<DialogHeader>
+						<DialogTitle>New message</DialogTitle>
+						<DialogDescription>
+							Send through the WhatsApp channel for now.
+						</DialogDescription>
+					</DialogHeader>
+
+					<div className="space-y-4">
+						<div className="space-y-2">
+							<Label htmlFor="new-whatsapp-account">
+								From account
+							</Label>
+							<Select
+								value={newMessageAccountId}
+								onValueChange={setNewMessageAccountId}
+							>
+								<SelectTrigger id="new-whatsapp-account">
+									<SelectValue placeholder="Select account" />
+								</SelectTrigger>
+								<SelectContent>
+									{accounts.map((account) => (
+										<SelectItem
+											key={account.id}
+											value={account.id}
+										>
+											{account.name}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+
+						<div className="space-y-2">
+							<Label htmlFor="new-whatsapp-phone">
+								Recipient
+							</Label>
+							<Input
+								id="new-whatsapp-phone"
+								value={newMessagePhone}
+								onChange={(event) =>
+									setNewMessagePhone(event.target.value)
+								}
+								placeholder="919876543210"
+								inputMode="tel"
+							/>
+							<p className="m-0 text-xs text-muted-foreground">
+								Use country code. For India: 91 + mobile number.
+							</p>
+						</div>
+
+						<div className="space-y-2">
+							<Label htmlFor="new-whatsapp-message">
+								Message
+							</Label>
+							<Textarea
+								id="new-whatsapp-message"
+								value={newMessageText}
+								onChange={(event) =>
+									setNewMessageText(event.target.value)
+								}
+								placeholder="Type the first message..."
+								className="min-h-28 resize-none"
+							/>
+							<p className="m-0 text-xs text-muted-foreground">
+								For cold starts, use an approved template from
+								an existing thread until template-first compose
+								is added.
+							</p>
+						</div>
+					</div>
+
+					<DialogFooter>
+						<Button
+							type="button"
+							variant="outline"
+							onClick={() => setNewMessageOpen(false)}
+						>
+							Cancel
+						</Button>
+						<Button
+							type="button"
+							onClick={handleNewMessageSend}
+							disabled={
+								sendTextMutation.isPending ||
+								!newMessageAccountId ||
+								!newMessagePhone.trim() ||
+								!newMessageText.trim()
+							}
+						>
+							{sendTextMutation.isPending
+								? "Sending..."
+								: "Send message"}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 
 			<WhatsAppTemplatePickerDialog
 				open={templateDialogOpen}

@@ -88,6 +88,13 @@ function AppShellContent({
 		if (pathname.startsWith(`/app/${studioSlug}/calendar`)) {
 			return "calendarWorkspace";
 		}
+		if (
+			pathname.startsWith(`/app/${studioSlug}/messages`) ||
+			pathname.startsWith(`/app/${studioSlug}/whatsapp`) ||
+			pathname.startsWith(`/app/${studioSlug}/inbox`)
+		) {
+			return "messagesWorkspace";
+		}
 		return "default";
 	}, [pathname, studioSlug]);
 
