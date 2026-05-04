@@ -11,6 +11,7 @@ import {
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { recordOutboundConversationActivity } from "../lib/outbound-activity";
 import { inspectWhatsAppTemplate } from "../lib/template-inspector";
+import { renderWhatsAppTemplateMessage } from "../lib/template-renderer";
 import { sendTemplateInputSchema, sendTemplateOutputSchema } from "../types";
 
 export const sendTemplate = studioProtectedProcedure
@@ -160,7 +161,14 @@ export const sendTemplate = studioProtectedProcedure
 			conversationId,
 			contactId,
 			messageId: createdMessage.id,
-			preview: `Template: ${input.templateName}`,
+			preview:
+				renderWhatsAppTemplateMessage({
+					components: template.components,
+					params: {
+						language: input.language,
+						components: input.components ?? [],
+					},
+				}) ?? `Template: ${input.templateName}`,
 			at: createdMessage.createdAt,
 		});
 

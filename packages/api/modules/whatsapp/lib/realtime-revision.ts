@@ -10,8 +10,15 @@ const messageActivityAt = sql<Date>`coalesce(${waMessages.statusUpdatedAt}, ${wa
 
 const encodeRevisionPart = (params: {
 	id: string | null;
-	timestamp: Date | null;
-}) => `${params.timestamp?.toISOString() ?? "0"}:${params.id ?? "0"}`;
+	timestamp: Date | string | null;
+}) => {
+	const timestamp =
+		params.timestamp instanceof Date
+			? params.timestamp.toISOString()
+			: (params.timestamp ?? "0");
+
+	return `${timestamp}:${params.id ?? "0"}`;
+};
 
 export async function getWhatsAppRealtimeRevision(
 	organizationId: string,

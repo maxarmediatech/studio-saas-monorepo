@@ -84,6 +84,10 @@ function getMessageBody(message: MessageItem) {
 		return message.caption;
 	}
 
+	if (message.type === "template" && message.templateRenderedText) {
+		return message.templateRenderedText;
+	}
+
 	if (message.type === "template" && message.templateName) {
 		return `Template: ${message.templateName}`;
 	}

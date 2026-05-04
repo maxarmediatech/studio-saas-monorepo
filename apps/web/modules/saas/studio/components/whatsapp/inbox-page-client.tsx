@@ -19,7 +19,10 @@ import { Label } from "@repo/ui/components/label";
 import {
 	Select,
 	SelectContent,
+	SelectGroup,
 	SelectItem,
+	SelectLabel,
+	SelectSeparator,
 	SelectTrigger,
 	SelectValue,
 } from "@repo/ui/components/select";
@@ -27,7 +30,12 @@ import { Textarea } from "@repo/ui/components/textarea";
 import { useSession } from "@saas/auth/hooks/use-session";
 import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
 import { PageContent } from "@saas/studio";
-import { whatsappApi, whatsappMutations } from "@saas/studio/lib/api";
+import {
+	clientsApi,
+	crewsApi,
+	whatsappApi,
+	whatsappMutations,
+} from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -56,6 +64,7 @@ import { buildTemplateSendComponents } from "./template-send-payload";
 const ALL_ACCOUNTS_VALUE = "__all_accounts__";
 const ALL_ASSIGNMENTS_VALUE = "__all_assignments__";
 const ALL_STATUSES_VALUE = "__all_statuses__";
+const MANUAL_RECIPIENT_VALUE = "__manual_recipient__";
 const MY_ASSIGNMENTS_VALUE = "__my_assignments__";
 const UNASSIGNED_ASSIGNMENTS_VALUE = "__unassigned_assignments__";
 type WhatsAppTemplate = z.infer<typeof whatsappTemplateSummarySchema>;
@@ -87,6 +96,8 @@ export function WhatsAppInboxPageClient() {
 	const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
 	const [newMessageOpen, setNewMessageOpen] = useState(false);
 	const [newMessageAccountId, setNewMessageAccountId] = useState("");
+	const [newMessageRecipientValue, setNewMessageRecipientValue] =
+		useState("");
 	const [newMessagePhone, setNewMessagePhone] = useState("");
 	const [newMessageText, setNewMessageText] = useState("");
 	const deferredSearch = useDeferredValue(search);
@@ -119,6 +130,59 @@ export function WhatsAppInboxPageClient() {
 		refetchOnWindowFocus: false,
 	});
 	const accounts = accountsQuery.data?.data ?? [];
+
+	const clientsQuery = useQuery({
+		...clientsApi.listOptions({
+			page: 1,
+			limit: 100,
+			sortBy: "name",
+			sortDirection: "asc",
+		}),
+		enabled: newMessageOpen,
+	});
+	const crewsQuery = useQuery({
+		...crewsApi.listOptions({
+			page: 1,
+			limit: 100,
+			sortBy: "name",
+			sortDirection: "asc",
+		}),
+		enabled: newMessageOpen,
+	});
+
+	const clientRecipients = useMemo(
+		() =>
+			(clientsQuery.data?.data ?? [])
+				.filter((client) => Boolean(client.phoneNumber))
+				.map((client) => ({
+					value: `client:${client.id}`,
+					name: client.name,
+					phoneNumber: client.phoneNumber ?? "",
+					type: "Client",
+				})),
+		[clientsQuery.data?.data],
+	);
+	const crewRecipients = useMemo(
+		() =>
+			(crewsQuery.data?.data ?? [])
+				.filter((crew) => Boolean(crew.phoneNumber))
+				.map((crew) => ({
+					value: `crew:${crew.id}`,
+					name: crew.name,
+					phoneNumber: crew.phoneNumber ?? "",
+					type: "Crew",
+				})),
+		[crewsQuery.data?.data],
+	);
+	const recipientOptions = useMemo(
+		() => [...clientRecipients, ...crewRecipients],
+		[clientRecipients, crewRecipients],
+	);
+	const selectedRecipient = recipientOptions.find(
+		(recipient) => recipient.value === newMessageRecipientValue,
+	);
+	const newMessageRecipientPhone =
+		selectedRecipient?.phoneNumber ?? newMessagePhone;
 
 	useEffect(() => {
 		if (!newMessageAccountId && accounts[0]) {
@@ -234,6 +298,7 @@ export function WhatsAppInboxPageClient() {
 		onSuccess: async () => {
 			setComposerValue("");
 			setNewMessageOpen(false);
+			setNewMessageRecipientValue("");
 			setNewMessagePhone("");
 			setNewMessageText("");
 			await queryClient.invalidateQueries({
@@ -326,7 +391,7 @@ export function WhatsAppInboxPageClient() {
 
 	const handleNewMessageSend = () => {
 		const accountId = newMessageAccountId || accounts[0]?.id;
-		const to = normalizeWhatsAppRecipient(newMessagePhone);
+		const to = normalizeWhatsAppRecipient(newMessageRecipientPhone);
 		const text = newMessageText.trim();
 
 		if (!accountId || !to || !text) {
@@ -625,18 +690,95 @@ export function WhatsAppInboxPageClient() {
 							<Label htmlFor="new-whatsapp-phone">
 								Recipient
 							</Label>
-							<Input
-								id="new-whatsapp-phone"
-								value={newMessagePhone}
-								onChange={(event) =>
-									setNewMessagePhone(event.target.value)
-								}
-								placeholder="919876543210"
-								inputMode="tel"
-							/>
+							<Select
+								value={newMessageRecipientValue}
+								onValueChange={(value) => {
+									setNewMessageRecipientValue(value);
+									if (value !== MANUAL_RECIPIENT_VALUE) {
+										setNewMessagePhone("");
+									}
+								}}
+							>
+								<SelectTrigger
+									id="new-whatsapp-phone"
+									className="w-full"
+								>
+									<SelectValue placeholder="Select a client or crew" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectGroup>
+										<SelectLabel>Clients</SelectLabel>
+										{clientRecipients.length > 0 ? (
+											clientRecipients.map(
+												(recipient) => (
+													<SelectItem
+														key={recipient.value}
+														value={recipient.value}
+													>
+														{recipient.name} •{" "}
+														{recipient.phoneNumber}
+													</SelectItem>
+												),
+											)
+										) : (
+											<SelectItem
+												value="__no_clients__"
+												disabled
+											>
+												No clients with phone numbers
+											</SelectItem>
+										)}
+									</SelectGroup>
+									<SelectSeparator />
+									<SelectGroup>
+										<SelectLabel>Crew</SelectLabel>
+										{crewRecipients.length > 0 ? (
+											crewRecipients.map((recipient) => (
+												<SelectItem
+													key={recipient.value}
+													value={recipient.value}
+												>
+													{recipient.name} •{" "}
+													{recipient.phoneNumber}
+												</SelectItem>
+											))
+										) : (
+											<SelectItem
+												value="__no_crew__"
+												disabled
+											>
+												No crew with phone numbers
+											</SelectItem>
+										)}
+									</SelectGroup>
+									<SelectSeparator />
+									<SelectItem value={MANUAL_RECIPIENT_VALUE}>
+										Manual test number
+									</SelectItem>
+								</SelectContent>
+							</Select>
+							{newMessageRecipientValue ===
+							MANUAL_RECIPIENT_VALUE ? (
+								<Input
+									value={newMessagePhone}
+									onChange={(event) =>
+										setNewMessagePhone(event.target.value)
+									}
+									placeholder="919876543210"
+									inputMode="tel"
+								/>
+							) : null}
 							<p className="m-0 text-xs text-muted-foreground">
-								Use country code. For India: 91 + mobile number.
+								{clientsQuery.isLoading || crewsQuery.isLoading
+									? "Loading clients and crew..."
+									: "Choose a saved client or crew with country code in their phone number."}
 							</p>
+							{selectedRecipient ? (
+								<p className="m-0 text-xs text-muted-foreground">
+									Sending to {selectedRecipient.type}:{" "}
+									{selectedRecipient.phoneNumber}
+								</p>
+							) : null}
 						</div>
 
 						<div className="space-y-2">
@@ -674,7 +816,7 @@ export function WhatsAppInboxPageClient() {
 							disabled={
 								sendTextMutation.isPending ||
 								!newMessageAccountId ||
-								!newMessagePhone.trim() ||
+								!newMessageRecipientPhone.trim() ||
 								!newMessageText.trim()
 							}
 						>

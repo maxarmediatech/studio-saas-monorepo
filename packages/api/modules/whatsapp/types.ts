@@ -343,6 +343,7 @@ export const messageItemSchema = z.object({
 		.nullable(),
 	templateName: z.string().nullable(),
 	templateParams: z.unknown().nullable(),
+	templateRenderedText: z.string().nullable(),
 	status: z.enum([
 		"pending",
 		"queued",
