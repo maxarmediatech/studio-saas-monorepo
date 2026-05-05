@@ -172,7 +172,10 @@ export const sendMedia = studioProtectedProcedure
 			});
 		}
 
-		await triggerWhatsAppOutbox(outbox.id);
+		await triggerWhatsAppOutbox({
+			outboxId: outbox.id,
+			messageId: createdMessage.id,
+		});
 
 		return {
 			data: { messageId: createdMessage.id, outboxId: outbox.id },

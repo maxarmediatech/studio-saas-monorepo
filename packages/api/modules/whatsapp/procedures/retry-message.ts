@@ -107,7 +107,10 @@ export const retryMessage = studioProtectedProcedure
 			});
 		}
 
-		await triggerWhatsAppOutbox(retryableOutbox.id);
+		await triggerWhatsAppOutbox({
+			outboxId: retryableOutbox.id,
+			messageId: message.id,
+		});
 
 		return {
 			data: { messageId: message.id, outboxId: retryableOutbox.id },

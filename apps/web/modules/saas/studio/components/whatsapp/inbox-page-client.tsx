@@ -309,7 +309,10 @@ export function WhatsAppInboxPageClient() {
 			});
 			toast.success("Message queued");
 		},
-		onError: (error) => {
+		onError: async (error) => {
+			await queryClient.invalidateQueries({
+				queryKey: orpc.whatsapp.key(),
+			});
 			toast.error(error.message || "Failed to queue message");
 		},
 	});
@@ -322,7 +325,10 @@ export function WhatsAppInboxPageClient() {
 			});
 			toast.success("Media queued");
 		},
-		onError: (error) => {
+		onError: async (error) => {
+			await queryClient.invalidateQueries({
+				queryKey: orpc.whatsapp.key(),
+			});
 			toast.error(error.message || "Failed to queue media");
 		},
 	});
@@ -349,7 +355,10 @@ export function WhatsAppInboxPageClient() {
 			});
 			toast.success("Template queued");
 		},
-		onError: (error) => {
+		onError: async (error) => {
+			await queryClient.invalidateQueries({
+				queryKey: orpc.whatsapp.key(),
+			});
 			toast.error(error.message || "Failed to queue template");
 		},
 	});
@@ -362,7 +371,10 @@ export function WhatsAppInboxPageClient() {
 			});
 			toast.success(result.message);
 		},
-		onError: (error) => {
+		onError: async (error) => {
+			await queryClient.invalidateQueries({
+				queryKey: orpc.whatsapp.key(),
+			});
 			toast.error(error.message || "Failed to retry message");
 		},
 		onSettled: () => {
