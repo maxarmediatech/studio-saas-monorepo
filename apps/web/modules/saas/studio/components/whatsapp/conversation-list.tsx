@@ -13,7 +13,7 @@ import {
 import { ScrollArea } from "@repo/ui/components/scroll-area";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
-import { InboxIcon } from "lucide-react";
+import { CheckCircle2Icon, InboxIcon } from "lucide-react";
 import type { z } from "zod";
 
 type ConversationItem = z.infer<typeof conversationItemSchema>;
@@ -71,17 +71,17 @@ export function WhatsAppConversationList({
 }) {
 	if (isLoading) {
 		return (
-			<div className="space-y-3 p-4">
+			<div className="p-4">
 				{Array.from({ length: 6 }).map((_, index) => (
 					<div
 						key={`conversation-skeleton-${index + 1}`}
-						className="rounded-2xl border border-border/60 p-4"
+						className="flex gap-3 border-b px-0 py-4 last:border-b-0"
 					>
 						<div className="flex items-center gap-3">
-							<Skeleton className="size-11 rounded-full" />
+							<Skeleton className="size-9 rounded-full" />
 							<div className="min-w-0 flex-1 space-y-2">
 								<Skeleton className="h-4 w-28" />
-								<Skeleton className="h-4 w-full" />
+								<Skeleton className="h-3 w-44" />
 							</div>
 						</div>
 					</div>
@@ -92,7 +92,7 @@ export function WhatsAppConversationList({
 
 	if (conversations.length === 0) {
 		return (
-			<Empty className="m-4 min-h-[320px] border border-dashed border-border/80 bg-background">
+			<Empty className="m-4 min-h-[320px] border border-dashed bg-background">
 				<EmptyHeader>
 					<EmptyMedia variant="icon">
 						<InboxIcon />
@@ -108,8 +108,8 @@ export function WhatsAppConversationList({
 	}
 
 	return (
-		<ScrollArea className="h-full">
-			<div className="space-y-2 p-3">
+		<ScrollArea className="h-full [&>[data-slot=scroll-area-viewport]>div]:!block">
+			<div>
 				{conversations.map((conversation) => {
 					const isActive = selectedConversationId === conversation.id;
 					const assigneeLabel = resolveAssigneeLabel(
@@ -123,60 +123,89 @@ export function WhatsAppConversationList({
 								onSelectConversation(conversation.id)
 							}
 							className={cn(
-								"w-full rounded-2xl border p-3 text-left transition-colors",
+								"flex w-full gap-3 border-b border-l-2 border-l-transparent p-4 text-left text-sm leading-tight transition-colors last:border-b-0",
+								conversation.unreadCount > 0 && "bg-muted/30",
 								isActive
-									? "border-blue-200 bg-blue-50/80"
-									: "border-border/60 bg-card hover:bg-muted/40",
+									? "border-l-emerald-500 bg-emerald-50/70 text-foreground"
+									: "hover:border-l-neutral-300 hover:bg-neutral-50",
 							)}
 						>
-							<div className="flex items-start gap-3">
-								<Avatar className="size-11 border border-border/70">
-									<AvatarFallback className="bg-neutral-100 text-xs font-semibold text-neutral-700">
-										{getConversationInitials(conversation)}
-									</AvatarFallback>
-								</Avatar>
-								<div className="min-w-0 flex-1">
-									<div className="flex items-center justify-between gap-2">
-										<p className="truncate text-sm font-semibold text-foreground">
-											{getConversationName(conversation)}
-										</p>
-										{formatConversationTime(
-											conversation.lastMessageAt,
-										) ? (
-											<span className="text-xs text-muted-foreground">
-												{formatConversationTime(
-													conversation.lastMessageAt,
-												)}
-											</span>
-										) : null}
-									</div>
-									<p className="mt-1 truncate text-sm text-muted-foreground">
-										{conversation.lastMessagePreview ||
-											"Conversation ready"}
-									</p>
-									<div className="mt-2 flex items-center gap-2">
-										<Badge
-											variant={
-												conversation.unreadCount > 0
-													? "default"
-													: "outline"
-											}
-										>
-											{conversation.unreadCount > 0
-												? `${conversation.unreadCount} unread`
-												: "Read"}
-										</Badge>
-										<Badge variant="outline">
-											{formatConversationStatusLabel(
-												conversation.status,
+							<Avatar className="mt-0.5 size-9 shrink-0">
+								<AvatarFallback
+									className={cn(
+										"text-xs font-medium",
+										isActive
+											? "bg-emerald-600 text-white"
+											: "bg-neutral-900 text-white",
+									)}
+								>
+									{getConversationInitials(conversation)}
+								</AvatarFallback>
+							</Avatar>
+							<div className="min-w-0 flex-1">
+								<div className="flex items-center justify-between gap-2">
+									<div className="flex min-w-0 items-center gap-1.5">
+										<span
+											className={cn(
+												"truncate text-sm",
+												conversation.unreadCount > 0 &&
+													"font-semibold",
 											)}
-										</Badge>
-										{assigneeLabel ? (
-											<Badge variant="outline">
-												{assigneeLabel}
-											</Badge>
+										>
+											{getConversationName(conversation)}
+										</span>
+										{conversation.status === "closed" ? (
+											<CheckCircle2Icon className="size-3.5 shrink-0 text-emerald-600" />
 										) : null}
 									</div>
+									{formatConversationTime(
+										conversation.lastMessageAt,
+									) ? (
+										<span className="shrink-0 text-xs text-muted-foreground">
+											{formatConversationTime(
+												conversation.lastMessageAt,
+											)}
+										</span>
+									) : null}
+								</div>
+								<p
+									className={cn(
+										"mt-0.5 truncate text-sm",
+										conversation.unreadCount > 0 &&
+											"font-medium",
+									)}
+								>
+									{conversation.contact.phoneNumber}
+								</p>
+								<p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+									{conversation.lastMessagePreview ||
+										"Conversation ready"}
+								</p>
+								<div className="mt-2 flex min-w-0 items-center gap-1.5">
+									{conversation.unreadCount > 0 ? (
+										<Badge
+											variant="secondary"
+											className="h-5 px-1.5 text-[10px]"
+										>
+											{conversation.unreadCount}
+										</Badge>
+									) : null}
+									<Badge
+										variant="outline"
+										className="h-5 px-1.5 text-[10px]"
+									>
+										{formatConversationStatusLabel(
+											conversation.status,
+										)}
+									</Badge>
+									{assigneeLabel ? (
+										<Badge
+											variant="outline"
+											className="h-5 max-w-24 truncate px-1.5 text-[10px]"
+										>
+											{assigneeLabel}
+										</Badge>
+									) : null}
 								</div>
 							</div>
 						</button>

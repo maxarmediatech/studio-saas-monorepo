@@ -26,10 +26,10 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@repo/ui/components/select";
+import { Switch } from "@repo/ui/components/switch";
 import { Textarea } from "@repo/ui/components/textarea";
 import { useSession } from "@saas/auth/hooks/use-session";
 import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
-import { PageContent } from "@saas/studio";
 import {
 	clientsApi,
 	crewsApi,
@@ -39,11 +39,15 @@ import {
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+	ArchiveIcon,
+	CheckCircle2Icon,
 	CircleAlertIcon,
+	InboxIcon,
 	MessageSquareIcon,
 	PlusIcon,
 	RefreshCwIcon,
 	SearchIcon,
+	UserCheckIcon,
 } from "lucide-react";
 import {
 	startTransition,
@@ -88,6 +92,7 @@ export function WhatsAppInboxPageClient() {
 		typeof ALL_STATUSES_VALUE | WhatsAppConversationStatus
 	>(ALL_STATUSES_VALUE);
 	const [search, setSearch] = useState("");
+	const [showUnreadOnly, setShowUnreadOnly] = useState(false);
 	const [selectedConversationId, setSelectedConversationId] = useState<
 		string | null
 	>(null);
@@ -214,29 +219,46 @@ export function WhatsAppInboxPageClient() {
 	});
 
 	const conversations = conversationsQuery.data?.data ?? [];
+	const visibleConversations = useMemo(
+		() =>
+			showUnreadOnly
+				? conversations.filter(
+						(conversation) => conversation.unreadCount > 0,
+					)
+				: conversations,
+		[conversations, showUnreadOnly],
+	);
+	const unreadCount = useMemo(
+		() =>
+			conversations.reduce(
+				(total, conversation) => total + conversation.unreadCount,
+				0,
+			),
+		[conversations],
+	);
 
 	useEffect(() => {
-		if (!selectedConversationId && conversations[0]) {
-			setSelectedConversationId(conversations[0].id);
+		if (!selectedConversationId && visibleConversations[0]) {
+			setSelectedConversationId(visibleConversations[0].id);
 			return;
 		}
 
 		if (
 			selectedConversationId &&
-			!conversations.some(
+			!visibleConversations.some(
 				(conversation) => conversation.id === selectedConversationId,
 			)
 		) {
-			setSelectedConversationId(conversations[0]?.id ?? null);
+			setSelectedConversationId(visibleConversations[0]?.id ?? null);
 		}
-	}, [conversations, selectedConversationId]);
+	}, [visibleConversations, selectedConversationId]);
 
 	const selectedConversation = useMemo(
 		() =>
-			conversations.find(
+			visibleConversations.find(
 				(conversation) => conversation.id === selectedConversationId,
 			) ?? null,
-		[conversations, selectedConversationId],
+		[visibleConversations, selectedConversationId],
 	);
 
 	const messagesQuery = useQuery({
@@ -506,18 +528,100 @@ export function WhatsAppInboxPageClient() {
 
 	const headerContent = (
 		<div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-			<div className="relative w-full lg:max-w-sm">
-				<SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-				<Input
-					value={search}
-					onChange={(event) => setSearch(event.target.value)}
-					placeholder="Search by name, phone, or WhatsApp ID"
-					className="pl-9"
-				/>
+			<div className="flex items-center gap-1 overflow-x-auto">
+				<Button
+					type="button"
+					variant="ghost"
+					size="sm"
+					className={
+						statusFilter === ALL_STATUSES_VALUE &&
+						assignmentFilter === ALL_ASSIGNMENTS_VALUE
+							? "h-[30px] gap-1.5 bg-muted text-foreground hover:bg-muted"
+							: "h-[30px] gap-1.5"
+					}
+					onClick={() => {
+						setStatusFilter(ALL_STATUSES_VALUE);
+						setAssignmentFilter(ALL_ASSIGNMENTS_VALUE);
+					}}
+				>
+					<InboxIcon className="size-4" />
+					<span className="text-[13px]">Inbox</span>
+					<span className="rounded-md bg-background px-1.5 py-0.5 text-[10px]">
+						{conversations.length}
+					</span>
+				</Button>
+				<Button
+					type="button"
+					variant="ghost"
+					size="sm"
+					className={
+						statusFilter === "open"
+							? "h-[30px] gap-1.5 bg-muted text-foreground hover:bg-muted"
+							: "h-[30px] gap-1.5"
+					}
+					onClick={() => {
+						setStatusFilter("open");
+						setAssignmentFilter(ALL_ASSIGNMENTS_VALUE);
+					}}
+				>
+					<MessageSquareIcon className="size-4" />
+					<span className="text-[13px]">Open</span>
+				</Button>
+				<Button
+					type="button"
+					variant="ghost"
+					size="sm"
+					className={
+						assignmentFilter === MY_ASSIGNMENTS_VALUE
+							? "h-[30px] gap-1.5 bg-muted text-foreground hover:bg-muted"
+							: "h-[30px] gap-1.5"
+					}
+					onClick={() => {
+						setAssignmentFilter(MY_ASSIGNMENTS_VALUE);
+						setStatusFilter(ALL_STATUSES_VALUE);
+					}}
+				>
+					<UserCheckIcon className="size-4" />
+					<span className="text-[13px]">Mine</span>
+				</Button>
+				<Button
+					type="button"
+					variant="ghost"
+					size="sm"
+					className={
+						statusFilter === "closed"
+							? "h-[30px] gap-1.5 bg-muted text-foreground hover:bg-muted"
+							: "h-[30px] gap-1.5"
+					}
+					onClick={() => {
+						setStatusFilter("closed");
+						setAssignmentFilter(ALL_ASSIGNMENTS_VALUE);
+					}}
+				>
+					<CheckCircle2Icon className="size-4" />
+					<span className="text-[13px]">Closed</span>
+				</Button>
+				<Button
+					type="button"
+					variant="ghost"
+					size="sm"
+					className={
+						statusFilter === "archived"
+							? "h-[30px] gap-1.5 bg-muted text-foreground hover:bg-muted"
+							: "h-[30px] gap-1.5"
+					}
+					onClick={() => {
+						setStatusFilter("archived");
+						setAssignmentFilter(ALL_ASSIGNMENTS_VALUE);
+					}}
+				>
+					<ArchiveIcon className="size-4" />
+					<span className="text-[13px]">Archived</span>
+				</Button>
 			</div>
-			<div className="flex flex-wrap items-center gap-2">
+			<div className="flex flex-wrap items-center gap-2 lg:justify-end">
 				<Select value={accountFilter} onValueChange={setAccountFilter}>
-					<SelectTrigger className="h-9 min-w-48">
+					<SelectTrigger className="h-8 min-w-44">
 						<SelectValue placeholder="All accounts" />
 					</SelectTrigger>
 					<SelectContent>
@@ -535,7 +639,7 @@ export function WhatsAppInboxPageClient() {
 					value={assignmentFilter}
 					onValueChange={setAssignmentFilter}
 				>
-					<SelectTrigger className="h-9 min-w-40">
+					<SelectTrigger className="h-8 min-w-40">
 						<SelectValue placeholder="All assignments" />
 					</SelectTrigger>
 					<SelectContent>
@@ -560,7 +664,7 @@ export function WhatsAppInboxPageClient() {
 						)
 					}
 				>
-					<SelectTrigger className="h-9 min-w-36">
+					<SelectTrigger className="h-8 min-w-36">
 						<SelectValue placeholder="All statuses" />
 					</SelectTrigger>
 					<SelectContent>
@@ -609,22 +713,23 @@ export function WhatsAppInboxPageClient() {
 	);
 
 	return (
-		<PageContent
-			title={
-				<span className="inline-flex items-center gap-2">
-					<MessageSquareIcon className="size-4 text-neutral-500" />
-					Messages
-				</span>
-			}
-			controls={controls}
-			headerContent={headerContent}
-			contentClassName="overflow-hidden pb-0 pt-3 lg:pt-3"
-		>
-			<div className="space-y-3">
+		<div className="flex min-h-0 flex-1 flex-col bg-background">
+			<header className="shrink-0 border-b">
+				<div className="flex h-16 items-center justify-between gap-4 px-4 lg:px-6">
+					<h1 className="inline-flex min-w-0 items-center gap-2 truncate text-lg font-semibold text-neutral-900">
+						<MessageSquareIcon className="size-4 shrink-0 text-neutral-500" />
+						Messages
+					</h1>
+					{controls}
+				</div>
+				<div className="px-4 pb-3 lg:px-6">{headerContent}</div>
+			</header>
+
+			<main className="min-h-0 flex-1 overflow-hidden bg-neutral-100 p-3">
 				{conversationsQuery.isError ? (
 					<Alert
 						variant="destructive"
-						className="border-destructive/20"
+						className="m-4 border-destructive/20 lg:m-6"
 					>
 						<CircleAlertIcon />
 						<AlertTitle>WhatsApp failed to load</AlertTitle>
@@ -637,18 +742,50 @@ export function WhatsAppInboxPageClient() {
 					</Alert>
 				) : null}
 
-				<div className="grid min-h-[calc(100vh-13rem)] gap-3 rounded-2xl border border-neutral-200 bg-white p-2 lg:grid-cols-[340px_minmax(0,1fr)]">
-					<div className="overflow-hidden rounded-xl border border-border/70 bg-neutral-50/70">
+				<div className="grid h-full min-h-0 grid-cols-1 overflow-hidden rounded-xl border bg-background shadow-sm md:grid-cols-[360px_minmax(0,1fr)]">
+					<aside className="flex min-w-0 flex-col overflow-hidden border-r bg-white">
+						<div className="flex shrink-0 flex-col gap-3.5 border-b bg-white p-4">
+							<div className="flex w-full items-center justify-between">
+								<div className="text-base font-medium text-foreground">
+									Inbox
+								</div>
+								<div className="flex items-center gap-2 text-sm">
+									<span>Unreads</span>
+									<Switch
+										checked={showUnreadOnly}
+										onCheckedChange={setShowUnreadOnly}
+										className="shadow-none"
+										aria-label="Show unread conversations only"
+									/>
+								</div>
+							</div>
+							<div className="relative">
+								<SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+								<Input
+									value={search}
+									onChange={(event) =>
+										setSearch(event.target.value)
+									}
+									placeholder="Type to search..."
+									className="pl-9"
+								/>
+							</div>
+							{unreadCount > 0 ? (
+								<p className="m-0 text-xs text-muted-foreground">
+									{unreadCount} unread across this view
+								</p>
+							) : null}
+						</div>
 						<WhatsAppConversationList
-							conversations={conversations}
+							conversations={visibleConversations}
 							isLoading={conversationsQuery.isLoading}
 							selectedConversationId={selectedConversationId}
 							onSelectConversation={setSelectedConversationId}
 							resolveAssigneeLabel={resolveAssigneeLabel}
 						/>
-					</div>
+					</aside>
 
-					<div className="overflow-hidden rounded-xl border border-border/70 bg-white">
+					<div className="hidden min-w-0 overflow-hidden bg-white md:block">
 						<WhatsAppMessageThread
 							conversation={selectedConversation}
 							messages={messagesQuery.data?.data ?? []}
@@ -692,7 +829,7 @@ export function WhatsAppInboxPageClient() {
 						/>
 					</div>
 				</div>
-			</div>
+			</main>
 
 			<Dialog open={newMessageOpen} onOpenChange={setNewMessageOpen}>
 				<DialogContent className="sm:max-w-lg">
@@ -911,6 +1048,6 @@ export function WhatsAppInboxPageClient() {
 					});
 				}}
 			/>
-		</PageContent>
+		</div>
 	);
 }

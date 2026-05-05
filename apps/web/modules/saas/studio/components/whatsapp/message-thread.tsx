@@ -5,7 +5,6 @@ import type {
 	messageItemSchema,
 } from "@repo/api/modules/whatsapp/types";
 import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
-import { Avatar, AvatarFallback } from "@repo/ui/components/avatar";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import {
@@ -28,13 +27,14 @@ import { cn } from "@repo/ui/lib/utils";
 import {
 	CircleAlertIcon,
 	MessageCircleMoreIcon,
+	MoreHorizontalIcon,
 	NotebookTextIcon,
 	PaperclipIcon,
 	RotateCcwIcon,
 	SendHorizonalIcon,
 } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo } from "react";
 import type { z } from "zod";
 
 type ConversationItem = z.infer<typeof conversationItemSchema>;
@@ -48,25 +48,12 @@ const OPEN_VALUE = "open";
 const CLOSED_VALUE = "closed";
 const ARCHIVED_VALUE = "archived";
 
-function formatConversationStatusLabel(value: ConversationItem["status"]) {
-	return value.charAt(0).toUpperCase() + value.slice(1);
-}
-
 function getConversationName(conversation: ConversationItem) {
 	return (
 		conversation.contact.name ||
 		conversation.contact.pushName ||
 		conversation.contact.phoneNumber
 	);
-}
-
-function getConversationInitials(conversation: ConversationItem) {
-	return getConversationName(conversation)
-		.split(" ")
-		.filter(Boolean)
-		.slice(0, 2)
-		.map((part) => part[0]?.toUpperCase() ?? "")
-		.join("");
 }
 
 function formatMessageTime(value: Date) {
@@ -121,7 +108,7 @@ function renderMessageMedia(message: MessageItem) {
 					: "Preview unavailable in inbox";
 
 		return (
-			<div className="rounded-2xl border border-dashed border-border/70 bg-white/70 px-4 py-3">
+			<div className="rounded-lg border border-dashed bg-muted/30 px-3 py-2.5">
 				<p className="m-0 text-sm font-medium text-foreground">
 					{message.media.fileName || `${message.type} attachment`}
 				</p>
@@ -138,7 +125,7 @@ function renderMessageMedia(message: MessageItem) {
 				href={message.media.accessUrl}
 				target="_blank"
 				rel="noreferrer"
-				className="block overflow-hidden rounded-2xl border border-border/70 bg-white/70"
+				className="block overflow-hidden rounded-lg border bg-background"
 			>
 				<Image
 					src={message.media.accessUrl}
@@ -238,18 +225,11 @@ export function WhatsAppMessageThread({
 	isTemplateActionDisabled: boolean;
 	retryingMessageId: string | null;
 }) {
-	const scrollBottomRef = useRef<HTMLDivElement | null>(null);
 	const orderedMessages = useMemo(() => [...messages].reverse(), [messages]);
-
-	useEffect(() => {
-		scrollBottomRef.current?.scrollIntoView({
-			block: "end",
-		});
-	}, [orderedMessages.length]);
 
 	if (!conversation) {
 		return (
-			<Empty className="m-6 min-h-[420px] border border-dashed border-border/80 bg-background">
+			<Empty className="min-h-[520px] border-0 bg-background">
 				<EmptyHeader>
 					<EmptyMedia variant="icon">
 						<MessageCircleMoreIcon />
@@ -264,17 +244,13 @@ export function WhatsAppMessageThread({
 	}
 
 	return (
-		<div className="grid h-full min-h-[720px] grid-rows-[auto_minmax(0,1fr)_auto]">
-			<div className="border-b border-border/70 px-5 py-4">
-				<div className="flex items-start gap-3">
-					<Avatar className="size-11 border border-border/70">
-						<AvatarFallback className="bg-neutral-100 text-xs font-semibold text-neutral-700">
-							{getConversationInitials(conversation)}
-						</AvatarFallback>
-					</Avatar>
+		<div className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)_auto] bg-background">
+			<header className="flex min-h-14 items-center justify-between gap-3 border-b px-4">
+				<div className="flex min-w-0 items-center gap-3">
+					<MessageCircleMoreIcon className="size-5 shrink-0 text-muted-foreground" />
 					<div className="min-w-0 flex-1">
-						<div className="flex flex-wrap items-center gap-2">
-							<h2 className="m-0 truncate text-base font-semibold text-foreground">
+						<div className="flex items-center gap-2">
+							<h2 className="m-0 truncate text-sm font-medium sm:text-base">
 								{getConversationName(conversation)}
 							</h2>
 							<Badge
@@ -283,88 +259,85 @@ export function WhatsAppMessageThread({
 										? "default"
 										: "outline"
 								}
+								className="h-5 px-1.5 text-[10px]"
 							>
 								{conversation.unreadCount > 0
 									? `${conversation.unreadCount} unread`
 									: "Read"}
 							</Badge>
-							<Select
-								value={conversation.status}
-								onValueChange={(value) =>
-									onUpdateConversationStatus(
-										value as ConversationItem["status"],
-									)
-								}
-								disabled={isUpdatingStatus}
-							>
-								<SelectTrigger className="h-8 min-w-32 text-xs">
-									<SelectValue placeholder="Status" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value={OPEN_VALUE}>
-										Open
-									</SelectItem>
-									<SelectItem value={CLOSED_VALUE}>
-										Closed
-									</SelectItem>
-									<SelectItem value={ARCHIVED_VALUE}>
-										Archived
-									</SelectItem>
-								</SelectContent>
-							</Select>
-							<Select
-								value={
-									conversation.assignedToUserId ??
-									UNASSIGNED_VALUE
-								}
-								onValueChange={(value) =>
-									onAssignConversation(
-										value === UNASSIGNED_VALUE
-											? null
-											: value,
-									)
-								}
-								disabled={isAssigning}
-							>
-								<SelectTrigger className="h-8 min-w-44 text-xs">
-									<SelectValue placeholder="Unassigned" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value={UNASSIGNED_VALUE}>
-										Unassigned
-									</SelectItem>
-									{assigneeOptions.map((option) => (
-										<SelectItem
-											key={option.userId}
-											value={option.userId}
-										>
-											{option.label}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
 						</div>
-						<p className="mt-1 text-sm text-muted-foreground">
-							{conversation.contact.phoneNumber} •{" "}
+						<p className="truncate text-xs text-muted-foreground">
+							{conversation.contact.phoneNumber} ·{" "}
 							{conversation.contact.waId}
-							{" • "}
-							{formatConversationStatusLabel(conversation.status)}
 						</p>
 					</div>
 				</div>
-			</div>
+				<div className="flex shrink-0 items-center gap-2">
+					<Select
+						value={conversation.status}
+						onValueChange={(value) =>
+							onUpdateConversationStatus(
+								value as ConversationItem["status"],
+							)
+						}
+						disabled={isUpdatingStatus}
+					>
+						<SelectTrigger className="h-8 min-w-28 text-xs">
+							<SelectValue placeholder="Status" />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value={OPEN_VALUE}>Open</SelectItem>
+							<SelectItem value={CLOSED_VALUE}>Closed</SelectItem>
+							<SelectItem value={ARCHIVED_VALUE}>
+								Archived
+							</SelectItem>
+						</SelectContent>
+					</Select>
+					<Select
+						value={
+							conversation.assignedToUserId ?? UNASSIGNED_VALUE
+						}
+						onValueChange={(value) =>
+							onAssignConversation(
+								value === UNASSIGNED_VALUE ? null : value,
+							)
+						}
+						disabled={isAssigning}
+					>
+						<SelectTrigger className="hidden h-8 min-w-40 text-xs sm:flex">
+							<SelectValue placeholder="Unassigned" />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value={UNASSIGNED_VALUE}>
+								Unassigned
+							</SelectItem>
+							{assigneeOptions.map((option) => (
+								<SelectItem
+									key={option.userId}
+									value={option.userId}
+								>
+									{option.label}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+					<Button variant="ghost" size="icon" className="size-8">
+						<MoreHorizontalIcon className="size-4" />
+					</Button>
+				</div>
+			</header>
 
-			<ScrollArea className="bg-neutral-50/60">
-				<div className="space-y-4 px-5 py-5">
+			<ScrollArea className="min-h-0 flex-1">
+				<article className="flex min-h-full w-full flex-col gap-4 px-5 py-5 lg:px-8">
 					{isLoading ? (
 						Array.from({ length: 6 }).map((_, index) => (
 							<div
 								key={`message-skeleton-${index + 1}`}
 								className={cn(
-									"max-w-[85%] rounded-2xl border px-4 py-3",
+									"max-w-[72%] rounded-lg border px-4 py-3",
 									index % 2 === 0
-										? "mr-auto bg-white"
-										: "ml-auto bg-blue-50",
+										? "mr-auto bg-muted/30"
+										: "ml-auto bg-background",
 								)}
 							>
 								<div className="space-y-2">
@@ -374,7 +347,7 @@ export function WhatsAppMessageThread({
 							</div>
 						))
 					) : orderedMessages.length === 0 ? (
-						<Empty className="min-h-[320px] border border-dashed border-border/80 bg-background">
+						<Empty className="min-h-[320px] border border-dashed bg-background">
 							<EmptyHeader>
 								<EmptyMedia variant="icon">
 									<MessageCircleMoreIcon />
@@ -394,10 +367,10 @@ export function WhatsAppMessageThread({
 								<div
 									key={message.id}
 									className={cn(
-										"max-w-[85%] rounded-2xl border px-4 py-3 shadow-xs",
+										"w-fit max-w-[min(680px,82%)] rounded-lg border px-4 py-3",
 										isOutbound
-											? "ml-auto border-blue-200 bg-blue-50 text-blue-950"
-											: "mr-auto border-border/70 bg-white text-foreground",
+											? "ml-auto bg-muted/40 text-foreground"
+											: "mr-auto bg-background text-foreground",
 									)}
 								>
 									<div className="space-y-3">
@@ -415,7 +388,10 @@ export function WhatsAppMessageThread({
 											)}
 										</span>
 										{isOutbound ? (
-											<Badge variant="outline">
+											<Badge
+												variant="outline"
+												className="h-5 px-1.5 text-[10px]"
+											>
 												{message.status}
 											</Badge>
 										) : null}
@@ -464,53 +440,62 @@ export function WhatsAppMessageThread({
 							);
 						})
 					)}
-					<div ref={scrollBottomRef} />
-				</div>
+				</article>
 			</ScrollArea>
 
-			<div className="border-t border-border/70 bg-white px-5 py-4">
-				<div className="space-y-3">
+			<div className="shrink-0 border-t px-5 py-4 lg:px-8">
+				<div className="w-full rounded-lg border bg-muted/30">
+					<div className="border-b px-3 py-2 text-sm text-muted-foreground">
+						Reply to {conversation.contact.phoneNumber}
+					</div>
 					<Textarea
 						value={composerValue}
 						onChange={(event) =>
 							onComposerChange(event.target.value)
 						}
-						placeholder={`Reply to ${getConversationName(conversation)}...`}
-						className="min-h-24 resize-none"
+						placeholder="Write a reply..."
+						className="min-h-[90px] resize-none border-0 bg-transparent focus-visible:ring-0"
 					/>
-					<div className="flex items-center justify-between gap-3">
-						<p className="m-0 text-xs text-muted-foreground">
-							Text, templates, and media all send from this thread
-							now.
-						</p>
-						<div className="flex items-center gap-2">
+					<div className="flex items-center justify-between gap-3 border-t px-3 py-2">
+						<div className="flex items-center gap-1">
 							<Button
 								type="button"
-								variant="outline"
+								variant="ghost"
+								size="icon"
+								className="size-8"
 								onClick={onOpenMediaDialog}
 								disabled={isTemplateActionDisabled}
 							>
-								<PaperclipIcon className="mr-1.5 size-4" />
-								Media
+								<PaperclipIcon className="size-4" />
+								<span className="sr-only">Media</span>
 							</Button>
 							<Button
 								type="button"
-								variant="outline"
+								variant="ghost"
+								size="icon"
+								className="size-8"
 								onClick={onOpenTemplateDialog}
 								disabled={isTemplateActionDisabled}
 							>
-								<NotebookTextIcon className="mr-1.5 size-4" />
-								Template
+								<NotebookTextIcon className="size-4" />
+								<span className="sr-only">Template</span>
 							</Button>
+							<span className="ml-1 text-xs text-muted-foreground">
+								Use / for snippets
+							</span>
+						</div>
+						<div className="flex items-center gap-2">
 							<Button
 								type="button"
+								size="sm"
+								className="gap-1.5"
 								onClick={onSendMessage}
 								disabled={
 									isSending ||
 									composerValue.trim().length === 0
 								}
 							>
-								<SendHorizonalIcon className="mr-1.5 size-4" />
+								<SendHorizonalIcon className="size-3.5" />
 								{isSending ? "Sending..." : "Send"}
 							</Button>
 						</div>
