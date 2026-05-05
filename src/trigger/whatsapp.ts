@@ -31,10 +31,10 @@ export const processWhatsAppOutbox = schemaTask({
 
 export const recoverWhatsAppOutbox = schedules.task({
 	id: "whatsapp-recover-outbox",
-	cron: "*/1 * * * *",
+	cron: "0 3 * * *",
 	maxDuration: 60,
 	run: async () => {
-		const items = await fetchDueWhatsAppOutboxItems({ limit: 25 });
+		const items = await fetchDueWhatsAppOutboxItems({ limit: 10 });
 
 		await Promise.all(
 			items.map(async (item) => {

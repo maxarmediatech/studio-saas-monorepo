@@ -34,6 +34,11 @@ type OutboxItem = {
 	media: typeof waMedia.$inferSelect | null;
 };
 
+type ProviderSendError = {
+	code?: string;
+	message?: string;
+};
+
 function decryptStoredSecret(value: string) {
 	if (!value.startsWith("v1:")) {
 		return value;
@@ -81,6 +86,24 @@ function getErrorMessage(error: unknown) {
 	return error instanceof Error
 		? error.message
 		: "Unknown WhatsApp send error";
+}
+
+function isPermanentProviderError(error: ProviderSendError | undefined) {
+	const code = error?.code;
+	const message = error?.message?.toLowerCase() ?? "";
+
+	if (code && ["10", "100", "190", "200", "368", "131031"].includes(code)) {
+		return true;
+	}
+
+	return (
+		message.includes("authentication") ||
+		message.includes("access token") ||
+		message.includes("permission") ||
+		message.includes("unsupported post request") ||
+		message.includes("does not exist") ||
+		message.includes("recipient phone number not in allowed list")
+	);
 }
 
 function canAttemptOutboxItem() {
@@ -149,9 +172,10 @@ export async function markWhatsAppOutboxFailure(params: {
 	attempts: number;
 	maxAttempts: number;
 	errorMessage: string;
+	retryable?: boolean;
 }) {
 	const nextAttemptAt =
-		params.attempts >= params.maxAttempts
+		params.retryable === false || params.attempts >= params.maxAttempts
 			? null
 			: computeNextAttemptAt(params.attempts);
 
@@ -159,6 +183,10 @@ export async function markWhatsAppOutboxFailure(params: {
 		.update(waOutbox)
 		.set({
 			status: "failed",
+			attempts:
+				params.retryable === false
+					? params.maxAttempts
+					: params.attempts,
 			nextAttemptAt,
 			errorMessage: params.errorMessage,
 		})
@@ -172,6 +200,24 @@ export async function markWhatsAppOutboxFailure(params: {
 			errorMessage: params.errorMessage,
 		})
 		.where(eq(waMessages.id, params.messageId));
+}
+
+async function markProviderFailure(params: {
+	outboxId: string;
+	messageId: string;
+	attempts: number;
+	maxAttempts: number;
+	error?: ProviderSendError;
+	defaultMessage: string;
+}) {
+	await markWhatsAppOutboxFailure({
+		outboxId: params.outboxId,
+		messageId: params.messageId,
+		attempts: params.attempts,
+		maxAttempts: params.maxAttempts,
+		errorMessage: params.error?.message ?? params.defaultMessage,
+		retryable: !isPermanentProviderError(params.error),
+	});
 }
 
 export async function fetchWhatsAppOutboxItem(outboxId: string) {
@@ -325,12 +371,13 @@ async function deliverClaimedOutboxItem({
 		});
 
 		if (!result.success) {
-			await markWhatsAppOutboxFailure({
+			await markProviderFailure({
 				outboxId: item.outbox.id,
 				messageId: item.message.id,
 				attempts,
 				maxAttempts,
-				errorMessage: result.error?.message ?? "Failed to send message",
+				error: result.error,
+				defaultMessage: "Failed to send message",
 			});
 			return { status: "failed" as const };
 		}
@@ -460,12 +507,13 @@ async function deliverClaimedOutboxItem({
 		});
 
 		if (!result.success) {
-			await markWhatsAppOutboxFailure({
+			await markProviderFailure({
 				outboxId: item.outbox.id,
 				messageId: item.message.id,
 				attempts,
 				maxAttempts,
-				errorMessage: result.error?.message ?? "Failed to send message",
+				error: result.error,
+				defaultMessage: "Failed to send message",
 			});
 			return { status: "failed" as const };
 		}
@@ -526,12 +574,13 @@ async function deliverClaimedOutboxItem({
 	});
 
 	if (!result.success) {
-		await markWhatsAppOutboxFailure({
+		await markProviderFailure({
 			outboxId: item.outbox.id,
 			messageId: item.message.id,
 			attempts,
 			maxAttempts,
-			errorMessage: result.error?.message ?? "Failed to send message",
+			error: result.error,
+			defaultMessage: "Failed to send message",
 		});
 		return { status: "failed" as const };
 	}
