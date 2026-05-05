@@ -77,6 +77,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null;
 }
 
+function getErrorMessage(error: unknown) {
+	return error instanceof Error
+		? error.message
+		: "Unknown WhatsApp send error";
+}
+
 function canAttemptOutboxItem() {
 	return sql`coalesce(${waOutbox.attempts}, 0) < coalesce(${waOutbox.maxAttempts}, 3)`;
 }
@@ -231,6 +237,34 @@ export async function processWhatsAppOutboxItem(item: OutboxItem) {
 	const attempts = claim.attempts ?? (item.outbox.attempts ?? 0) + 1;
 	const maxAttempts = claim.maxAttempts ?? item.outbox.maxAttempts ?? 3;
 
+	try {
+		return await deliverClaimedOutboxItem({
+			attempts,
+			item,
+			maxAttempts,
+		});
+	} catch (error) {
+		await markWhatsAppOutboxFailure({
+			outboxId: item.outbox.id,
+			messageId: item.message.id,
+			attempts,
+			maxAttempts,
+			errorMessage: getErrorMessage(error),
+		});
+
+		return { status: "failed" as const };
+	}
+}
+
+async function deliverClaimedOutboxItem({
+	attempts,
+	item,
+	maxAttempts,
+}: {
+	attempts: number;
+	item: OutboxItem;
+	maxAttempts: number;
+}) {
 	if (item.account.provider !== "cloud_api") {
 		await markWhatsAppOutboxFailure({
 			outboxId: item.outbox.id,
