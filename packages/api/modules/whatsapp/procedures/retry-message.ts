@@ -1,5 +1,5 @@
 import { ORPCError } from "@orpc/server";
-import { and, db, eq } from "@repo/database";
+import { and, db, eq, inArray } from "@repo/database";
 import { waMessages, waOutbox } from "@repo/whatsapp-db";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { triggerWhatsAppOutbox } from "../lib/trigger-outbox";
@@ -65,8 +65,8 @@ export const retryMessage = studioProtectedProcedure
 			});
 		}
 
-		await db.transaction(async (tx) => {
-			await tx
+		const retryableOutbox = await db.transaction(async (tx) => {
+			const [updatedOutbox] = await tx
 				.update(waOutbox)
 				.set({
 					status: "pending",
@@ -75,7 +75,18 @@ export const retryMessage = studioProtectedProcedure
 					nextAttemptAt: null,
 					errorMessage: null,
 				})
-				.where(eq(waOutbox.id, outbox.id));
+				.where(
+					and(
+						eq(waOutbox.id, outbox.id),
+						eq(waOutbox.organizationId, context.organizationId),
+						inArray(waOutbox.status, ["pending", "failed"]),
+					),
+				)
+				.returning({ id: waOutbox.id });
+
+			if (!updatedOutbox) {
+				return null;
+			}
 
 			await tx
 				.update(waMessages)
@@ -86,12 +97,20 @@ export const retryMessage = studioProtectedProcedure
 					errorMessage: null,
 				})
 				.where(eq(waMessages.id, message.id));
+
+			return updatedOutbox;
 		});
 
-		await triggerWhatsAppOutbox(outbox.id);
+		if (!retryableOutbox) {
+			throw new ORPCError("CONFLICT", {
+				message: "This message is already being processed",
+			});
+		}
+
+		await triggerWhatsAppOutbox(retryableOutbox.id);
 
 		return {
-			data: { messageId: message.id, outboxId: outbox.id },
+			data: { messageId: message.id, outboxId: retryableOutbox.id },
 			message: "Message retry queued",
 		};
 	});
