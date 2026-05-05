@@ -725,7 +725,7 @@ export function WhatsAppInboxPageClient() {
 				<div className="px-4 pb-3 lg:px-6">{headerContent}</div>
 			</header>
 
-			<main className="min-h-0 flex-1 overflow-hidden border-l bg-background">
+			<main className="min-h-0 flex-1 overflow-hidden  bg-background">
 				{conversationsQuery.isError ? (
 					<Alert
 						variant="destructive"
