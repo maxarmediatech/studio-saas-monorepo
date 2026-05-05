@@ -728,6 +728,7 @@ export const whatsappMutations = {
 	deleteAccount: () => orpc.whatsapp.deleteAccount.mutationOptions(),
 	testAccount: () => orpc.whatsapp.testAccount.mutationOptions(),
 	subscribeAccount: () => orpc.whatsapp.subscribeAccount.mutationOptions(),
+	retryMessage: () => orpc.whatsapp.retryMessage.mutationOptions(),
 	sendMedia: () => orpc.whatsapp.sendMedia.mutationOptions(),
 	sendText: () => orpc.whatsapp.sendText.mutationOptions(),
 	sendTemplate: () => orpc.whatsapp.sendTemplate.mutationOptions(),

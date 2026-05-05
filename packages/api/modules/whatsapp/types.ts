@@ -267,6 +267,15 @@ export const sendTemplateOutputSchema = z.object({
 	message: z.string(),
 });
 
+export const retryMessageInputSchema = z.object({
+	messageId: z.string().min(1),
+});
+
+export const retryMessageOutputSchema = z.object({
+	data: z.object({ messageId: z.string(), outboxId: z.string() }),
+	message: z.string(),
+});
+
 export const listConversationsInputSchema = z.object({
 	limit: z.number().min(1).max(100).default(20),
 	cursor: z.string().optional(),

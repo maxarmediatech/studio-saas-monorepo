@@ -100,6 +100,9 @@ export function WhatsAppInboxPageClient() {
 		useState("");
 	const [newMessagePhone, setNewMessagePhone] = useState("");
 	const [newMessageText, setNewMessageText] = useState("");
+	const [retryingMessageId, setRetryingMessageId] = useState<string | null>(
+		null,
+	);
 	const deferredSearch = useDeferredValue(search);
 	const autoMarkedConversationIdRef = useRef<string | null>(null);
 
@@ -351,6 +354,22 @@ export function WhatsAppInboxPageClient() {
 		},
 	});
 
+	const retryMessageMutation = useMutation({
+		...whatsappMutations.retryMessage(),
+		onSuccess: async (result) => {
+			await queryClient.invalidateQueries({
+				queryKey: orpc.whatsapp.key(),
+			});
+			toast.success(result.message);
+		},
+		onError: (error) => {
+			toast.error(error.message || "Failed to retry message");
+		},
+		onSettled: () => {
+			setRetryingMessageId(null);
+		},
+	});
+
 	const updateConversationStatusMutation = useMutation({
 		...whatsappMutations.updateConversationStatus(),
 		onSuccess: async (result) => {
@@ -433,6 +452,15 @@ export function WhatsAppInboxPageClient() {
 			language: template.language,
 			components,
 		});
+	};
+
+	const handleRetryMessage = (messageId: string) => {
+		if (retryMessageMutation.isPending) {
+			return;
+		}
+
+		setRetryingMessageId(messageId);
+		retryMessageMutation.mutate({ messageId });
 	};
 
 	const assigneeOptions = useMemo(
@@ -620,6 +648,7 @@ export function WhatsAppInboxPageClient() {
 							onOpenTemplateDialog={() =>
 								setTemplateDialogOpen(true)
 							}
+							onRetryMessage={handleRetryMessage}
 							assigneeOptions={assigneeOptions}
 							onAssignConversation={(assignedToUserId) => {
 								if (!selectedConversation) {
@@ -647,6 +676,7 @@ export function WhatsAppInboxPageClient() {
 								updateConversationStatusMutation.isPending
 							}
 							isTemplateActionDisabled={!selectedConversation}
+							retryingMessageId={retryingMessageId}
 						/>
 					</div>
 				</div>

@@ -30,6 +30,7 @@ import {
 	MessageCircleMoreIcon,
 	NotebookTextIcon,
 	PaperclipIcon,
+	RotateCcwIcon,
 	SendHorizonalIcon,
 } from "lucide-react";
 import Image from "next/image";
@@ -209,6 +210,7 @@ export function WhatsAppMessageThread({
 	onSendMessage,
 	onOpenMediaDialog,
 	onOpenTemplateDialog,
+	onRetryMessage,
 	assigneeOptions,
 	onAssignConversation,
 	onUpdateConversationStatus,
@@ -216,6 +218,7 @@ export function WhatsAppMessageThread({
 	isAssigning,
 	isUpdatingStatus,
 	isTemplateActionDisabled,
+	retryingMessageId,
 }: {
 	conversation: ConversationItem | null;
 	messages: MessageItem[];
@@ -225,6 +228,7 @@ export function WhatsAppMessageThread({
 	onSendMessage: () => void;
 	onOpenMediaDialog: () => void;
 	onOpenTemplateDialog: () => void;
+	onRetryMessage: (messageId: string) => void;
 	assigneeOptions: AssigneeOption[];
 	onAssignConversation: (assignedToUserId: string | null) => void;
 	onUpdateConversationStatus: (status: ConversationItem["status"]) => void;
@@ -232,6 +236,7 @@ export function WhatsAppMessageThread({
 	isAssigning: boolean;
 	isUpdatingStatus: boolean;
 	isTemplateActionDisabled: boolean;
+	retryingMessageId: string | null;
 }) {
 	const scrollBottomRef = useRef<HTMLDivElement | null>(null);
 	const orderedMessages = useMemo(() => [...messages].reverse(), [messages]);
@@ -423,7 +428,35 @@ export function WhatsAppMessageThread({
 											<CircleAlertIcon />
 											<AlertTitle>Send issue</AlertTitle>
 											<AlertDescription>
-												<p>{message.errorMessage}</p>
+												<div className="flex flex-wrap items-center justify-between gap-3">
+													<p className="m-0">
+														{message.errorMessage}
+													</p>
+													{isOutbound &&
+													message.status ===
+														"failed" ? (
+														<Button
+															type="button"
+															size="sm"
+															variant="outline"
+															onClick={() =>
+																onRetryMessage(
+																	message.id,
+																)
+															}
+															disabled={
+																retryingMessageId ===
+																message.id
+															}
+														>
+															<RotateCcwIcon className="mr-1.5 size-3.5" />
+															{retryingMessageId ===
+															message.id
+																? "Retrying..."
+																: "Retry"}
+														</Button>
+													) : null}
+												</div>
 											</AlertDescription>
 										</Alert>
 									) : null}

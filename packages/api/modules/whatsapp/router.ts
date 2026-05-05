@@ -11,6 +11,7 @@ import { listConversations } from "./procedures/list-conversations";
 import { listMessages } from "./procedures/list-messages";
 import { listTemplates } from "./procedures/list-templates";
 import { markConversationRead } from "./procedures/mark-conversation-read";
+import { retryMessage } from "./procedures/retry-message";
 import { sendMedia } from "./procedures/send-media";
 import { sendTemplate } from "./procedures/send-template";
 import { sendText } from "./procedures/send-text";
@@ -35,6 +36,7 @@ export const whatsappRouter = {
 	listMessages,
 	listTemplates,
 	markConversationRead,
+	retryMessage,
 	sendMedia,
 	sendTemplate,
 	sendText,
