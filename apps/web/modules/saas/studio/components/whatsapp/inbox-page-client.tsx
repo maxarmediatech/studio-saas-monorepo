@@ -725,7 +725,7 @@ export function WhatsAppInboxPageClient() {
 				<div className="px-4 pb-3 lg:px-6">{headerContent}</div>
 			</header>
 
-			<main className="min-h-0 flex-1 overflow-hidden bg-neutral-100 p-3">
+			<main className="min-h-0 flex-1 overflow-hidden border-l bg-background">
 				{conversationsQuery.isError ? (
 					<Alert
 						variant="destructive"
@@ -742,8 +742,8 @@ export function WhatsAppInboxPageClient() {
 					</Alert>
 				) : null}
 
-				<div className="grid h-full min-h-0 grid-cols-1 overflow-hidden rounded-xl border bg-background shadow-sm md:grid-cols-[360px_minmax(0,1fr)]">
-					<aside className="flex min-w-0 flex-col overflow-hidden border-r bg-white">
+				<div className="grid h-full min-h-0 grid-cols-1 overflow-hidden bg-background md:grid-cols-[360px_minmax(0,1fr)]">
+					<aside className="flex min-w-0 flex-col overflow-hidden border-r bg-neutral-50/80">
 						<div className="flex shrink-0 flex-col gap-3.5 border-b bg-white p-4">
 							<div className="flex w-full items-center justify-between">
 								<div className="text-base font-medium text-foreground">

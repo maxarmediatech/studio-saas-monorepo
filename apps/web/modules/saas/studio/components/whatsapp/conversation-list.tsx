@@ -126,7 +126,7 @@ export function WhatsAppConversationList({
 								"flex w-full gap-3 border-b border-l-2 border-l-transparent p-4 text-left text-sm leading-tight transition-colors last:border-b-0",
 								conversation.unreadCount > 0 && "bg-muted/30",
 								isActive
-									? "border-l-emerald-500 bg-emerald-50/70 text-foreground"
+									? "border-l-emerald-500 bg-white text-foreground"
 									: "hover:border-l-neutral-300 hover:bg-neutral-50",
 							)}
 						>
