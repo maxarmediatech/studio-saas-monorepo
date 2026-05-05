@@ -6,7 +6,7 @@
 		"@repo/storage": "workspace:*",
 		"@repo/whatsapp-core": "workspace:*",
 		"@repo/whatsapp-db": "workspace:*",
-		"@repo/whatsapp-providers": "workspace:*",
+		"@repo/whatsapp-outbox": "workspace:*",
 		"drizzle-orm": "^0.45.1"
 	},
 	"devDependencies": {

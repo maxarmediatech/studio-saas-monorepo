@@ -54,3 +54,5 @@ apps/web/app_legacy/globals.css
 thoughts/
 .vercel
 .playwright-mcp/
+
+.trigger

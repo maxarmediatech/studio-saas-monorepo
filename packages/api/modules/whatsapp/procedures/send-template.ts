@@ -12,6 +12,7 @@ import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { recordOutboundConversationActivity } from "../lib/outbound-activity";
 import { inspectWhatsAppTemplate } from "../lib/template-inspector";
 import { renderWhatsAppTemplateMessage } from "../lib/template-renderer";
+import { triggerWhatsAppOutbox } from "../lib/trigger-outbox";
 import { sendTemplateInputSchema, sendTemplateOutputSchema } from "../types";
 
 export const sendTemplate = studioProtectedProcedure
@@ -186,6 +187,8 @@ export const sendTemplate = studioProtectedProcedure
 				message: "Failed to enqueue message",
 			});
 		}
+
+		await triggerWhatsAppOutbox(outbox.id);
 
 		return {
 			data: { messageId: createdMessage.id, outboxId: outbox.id },

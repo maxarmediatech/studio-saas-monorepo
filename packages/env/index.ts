@@ -19,6 +19,8 @@ export const env = createEnv({
 		WHATSAPP_DEV_ACCESS_TOKEN: optionalString,
 		WHATSAPP_DEV_DISPLAY_PHONE_NUMBER: optionalString,
 		WHATSAPP_DEV_API_VERSION: optionalString,
+		TRIGGER_PROJECT_ID: optionalString,
+		TRIGGER_SECRET_KEY: optionalString,
 		RESEND_API_KEY: optionalString,
 		EMAIL_FROM_NAME: optionalString,
 		EMAIL_FROM_ADDRESS: optionalString,

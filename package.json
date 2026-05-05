@@ -18,6 +18,8 @@
 		"db:push": "pnpm --filter @repo/database push",
 		"db:seed": "turbo db:seed",
 		"db:studio": "pnpm --filter @repo/database studio",
+		"jobs:dev": "pnpm dlx trigger.dev@4.4.5 dev",
+		"jobs:deploy": "pnpm dlx trigger.dev@4.4.5 deploy",
 		"notifications:deadlines": "pnpm --filter @repo/scripts notifications:deadlines"
 	},
 	"engines": {
@@ -37,5 +39,10 @@
 			"@types/react": "19.2.7",
 			"@types/react-dom": "19.2.3"
 		}
+	},
+	"dependencies": {
+		"@repo/whatsapp-outbox": "workspace:*",
+		"@trigger.dev/sdk": "4.4.5",
+		"zod": "^4.2.1"
 	}
 }
