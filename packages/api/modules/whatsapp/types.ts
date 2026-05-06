@@ -18,6 +18,7 @@ export const connectCloudApiInputSchema = z.object({
 	accessToken: z.string().min(1),
 	appSecret: z.string().min(1).optional(),
 	apiVersion: z.string().min(1).optional(),
+	displayPhoneNumber: z.string().min(1).optional(),
 	webhookVerifyToken: z.string().min(1),
 });
 

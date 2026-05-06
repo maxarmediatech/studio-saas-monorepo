@@ -64,6 +64,7 @@ import { WhatsAppMediaComposeDialog } from "./media-compose-dialog";
 import { WhatsAppMessageThread } from "./message-thread";
 import { WhatsAppTemplatePickerDialog } from "./template-picker-dialog";
 import { buildTemplateSendComponents } from "./template-send-payload";
+import { TestWhatsAppSetupPanel } from "./test-whatsapp-setup-panel";
 
 const ALL_ACCOUNTS_VALUE = "__all_accounts__";
 const ALL_ASSIGNMENTS_VALUE = "__all_assignments__";
@@ -71,6 +72,7 @@ const ALL_STATUSES_VALUE = "__all_statuses__";
 const MANUAL_RECIPIENT_VALUE = "__manual_recipient__";
 const MY_ASSIGNMENTS_VALUE = "__my_assignments__";
 const UNASSIGNED_ASSIGNMENTS_VALUE = "__unassigned_assignments__";
+const TEST_ENV_HOSTS = new Set(["dev.stuwiz.com", "localhost", "127.0.0.1"]);
 type WhatsAppTemplate = z.infer<typeof whatsappTemplateSummarySchema>;
 type WhatsAppConversationStatus = z.infer<
 	typeof conversationItemSchema
@@ -108,8 +110,13 @@ export function WhatsAppInboxPageClient() {
 	const [retryingMessageId, setRetryingMessageId] = useState<string | null>(
 		null,
 	);
+	const [browserOrigin, setBrowserOrigin] = useState("");
 	const deferredSearch = useDeferredValue(search);
 	const autoMarkedConversationIdRef = useRef<string | null>(null);
+
+	useEffect(() => {
+		setBrowserOrigin(window.location.origin);
+	}, []);
 
 	useEffect(() => {
 		if (!activeOrganization?.id) {
@@ -138,6 +145,11 @@ export function WhatsAppInboxPageClient() {
 		refetchOnWindowFocus: false,
 	});
 	const accounts = accountsQuery.data?.data ?? [];
+	const isTestEnvironment =
+		browserOrigin.length > 0 &&
+		TEST_ENV_HOSTS.has(new URL(browserOrigin).hostname);
+	const shouldShowTestSetup =
+		isTestEnvironment && !accountsQuery.isLoading && accounts.length === 0;
 
 	const clientsQuery = useQuery({
 		...clientsApi.listOptions({
@@ -705,7 +717,7 @@ export function WhatsAppInboxPageClient() {
 			type="button"
 			size="sm"
 			onClick={() => setNewMessageOpen(true)}
-			disabled={accounts.length === 0}
+			disabled={accounts.length === 0 || shouldShowTestSetup}
 		>
 			<PlusIcon className="mr-1.5 size-4" />
 			New message
@@ -726,6 +738,16 @@ export function WhatsAppInboxPageClient() {
 			</header>
 
 			<main className="min-h-0 flex-1 overflow-hidden  bg-background">
+				{shouldShowTestSetup ? (
+					<TestWhatsAppSetupPanel
+						origin={browserOrigin}
+						onConnected={async () => {
+							await accountsQuery.refetch();
+							await conversationsQuery.refetch();
+						}}
+					/>
+				) : null}
+
 				{conversationsQuery.isError ? (
 					<Alert
 						variant="destructive"
@@ -742,7 +764,13 @@ export function WhatsAppInboxPageClient() {
 					</Alert>
 				) : null}
 
-				<div className="grid h-full min-h-0 grid-cols-1 overflow-hidden bg-background md:grid-cols-[360px_minmax(0,1fr)]">
+				<div
+					className={
+						shouldShowTestSetup
+							? "hidden"
+							: "grid h-full min-h-0 grid-cols-1 overflow-hidden bg-background md:grid-cols-[360px_minmax(0,1fr)]"
+					}
+				>
 					<aside className="flex min-w-0 flex-col overflow-hidden border-r bg-neutral-50/80">
 						<div className="flex shrink-0 flex-col gap-3.5 border-b bg-white p-4">
 							<div className="flex w-full items-center justify-between">

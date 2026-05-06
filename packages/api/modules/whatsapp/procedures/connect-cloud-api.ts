@@ -52,13 +52,15 @@ export const connectCloudApi = studioProtectedProcedure
 		});
 
 		const now = new Date();
+		const displayPhoneNumber =
+			validation.displayPhoneNumber || input.displayPhoneNumber || null;
 		const [created] = await db
 			.insert(waAccounts)
 			.values({
 				organizationId: context.organizationId,
 				name: input.name,
-				phoneNumber: validation.displayPhoneNumber,
-				displayPhoneNumber: validation.displayPhoneNumber,
+				phoneNumber: displayPhoneNumber,
+				displayPhoneNumber,
 				provider: "cloud_api",
 				connectionStatus: "connected",
 				ownershipType: "customer",
