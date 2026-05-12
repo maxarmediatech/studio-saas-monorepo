@@ -36,7 +36,7 @@ export function FinancialStatCards({
 
 	const stats = [
 		{
-			label: "Revenue",
+			label: "Booked Value",
 			value: formatCurrency(revenueNum),
 			icon: DollarSignIcon,
 			iconColor: "text-blue-500",
@@ -57,7 +57,7 @@ export function FinancialStatCards({
 			bgColor: "bg-orange-500/10",
 		},
 		{
-			label: "Net Profit",
+			label: "Net Cash",
 			value: formatCurrency(netProfit),
 			icon: netProfit >= 0 ? TrendingUpIcon : ArrowDownIcon,
 			iconColor: netProfit >= 0 ? "text-emerald-500" : "text-red-500",

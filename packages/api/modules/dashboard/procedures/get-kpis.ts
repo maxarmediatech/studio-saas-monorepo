@@ -5,9 +5,11 @@ import {
 	db,
 	deliverables,
 	eq,
+	expenses,
 	gte,
 	isNull,
 	paymentSchedules,
+	receivedAmounts,
 	shoots,
 	sql,
 } from "@repo/database";
@@ -67,8 +69,6 @@ export const getKpis = studioProtectedProcedure
 		const [currentPeriodTotals] = await db
 			.select({
 				totalRevenue: sql<string>`COALESCE(SUM(${bookings.packageCost}), 0)::text`,
-				totalReceived: sql<string>`COALESCE(SUM(${bookings.totalReceived}), 0)::text`,
-				totalExpenses: sql<string>`COALESCE(SUM(${bookings.totalExpenses}), 0)::text`,
 				bookingCount: count().mapWith(Number),
 			})
 			.from(bookings)
@@ -96,31 +96,45 @@ export const getKpis = studioProtectedProcedure
 				),
 			);
 
-		// All-time totals for collection metrics
-		const [allTimeTotals] = await db
+		const [receivedTotals] = await db
 			.select({
-				totalRevenue: sql<string>`COALESCE(SUM(${bookings.packageCost}), 0)::text`,
-				totalReceived: sql<string>`COALESCE(SUM(${bookings.totalReceived}), 0)::text`,
-				totalExpenses: sql<string>`COALESCE(SUM(${bookings.totalExpenses}), 0)::text`,
+				totalReceived: sql<string>`COALESCE(SUM(${receivedAmounts.amount}), 0)::text`,
 			})
-			.from(bookings)
+			.from(receivedAmounts)
+			.innerJoin(bookings, eq(receivedAmounts.bookingId, bookings.id))
 			.where(
 				and(
-					eq(bookings.organizationId, context.organizationId),
+					eq(receivedAmounts.organizationId, context.organizationId),
+					isNull(receivedAmounts.deletedAt),
 					isNull(bookings.deletedAt),
+					gte(receivedAmounts.receivedDate, rangeStartStr),
+					sql`${receivedAmounts.receivedDate} <= ${rangeEndStr}`,
+				),
+			);
+
+		const [expenseTotals] = await db
+			.select({
+				totalExpenses: sql<string>`COALESCE(SUM(${expenses.amount}), 0)::text`,
+			})
+			.from(expenses)
+			.where(
+				and(
+					eq(expenses.organizationId, context.organizationId),
+					isNull(expenses.deletedAt),
+					gte(expenses.expenseDate, rangeStartStr),
+					sql`${expenses.expenseDate} <= ${rangeEndStr}`,
 				),
 			);
 
 		const totalRevenue = Number.parseFloat(
-			allTimeTotals?.totalRevenue ?? "0",
+			currentPeriodTotals?.totalRevenue ?? "0",
 		);
 		const totalReceived = Number.parseFloat(
-			allTimeTotals?.totalReceived ?? "0",
+			receivedTotals?.totalReceived ?? "0",
 		);
 		const totalExpenses = Number.parseFloat(
-			allTimeTotals?.totalExpenses ?? "0",
+			expenseTotals?.totalExpenses ?? "0",
 		);
-		const totalPending = totalRevenue - totalReceived;
 
 		// Booking counts
 		const [activeBookingsResult] = await db
@@ -161,11 +175,31 @@ export const getKpis = studioProtectedProcedure
 				total: sql<string>`COALESCE(SUM(${paymentSchedules.amount} - COALESCE(${paymentSchedules.paidAmount}, 0)), 0)::text`,
 			})
 			.from(paymentSchedules)
+			.innerJoin(bookings, eq(paymentSchedules.bookingId, bookings.id))
 			.where(
 				and(
 					eq(paymentSchedules.organizationId, context.organizationId),
+					isNull(paymentSchedules.deletedAt),
+					isNull(bookings.deletedAt),
 					sql`${paymentSchedules.status} IN ('pending', 'partial', 'overdue')`,
 					sql`${paymentSchedules.dueDate} < ${todayStr}`,
+				),
+			);
+
+		const [pendingPaymentsResult] = await db
+			.select({
+				total: sql<string>`COALESCE(SUM(${paymentSchedules.amount} - COALESCE(${paymentSchedules.paidAmount}, 0)), 0)::text`,
+			})
+			.from(paymentSchedules)
+			.innerJoin(bookings, eq(paymentSchedules.bookingId, bookings.id))
+			.where(
+				and(
+					eq(paymentSchedules.organizationId, context.organizationId),
+					isNull(paymentSchedules.deletedAt),
+					isNull(bookings.deletedAt),
+					gte(paymentSchedules.dueDate, rangeStartStr),
+					sql`${paymentSchedules.dueDate} <= ${rangeEndStr}`,
+					sql`${paymentSchedules.status} NOT IN ('completed', 'cancelled')`,
 				),
 			);
 
@@ -208,8 +242,9 @@ export const getKpis = studioProtectedProcedure
 
 		const totalBookings = totalBookingsResult?.count ?? 0;
 		const completedBookings = completedBookingsResult?.count ?? 0;
+		const currentBookingCount = currentPeriodTotals?.bookingCount ?? 0;
 		const averageBookingValue =
-			totalBookings > 0 ? totalRevenue / totalBookings : 0;
+			currentBookingCount > 0 ? totalRevenue / currentBookingCount : 0;
 
 		const collectionRate =
 			totalRevenue > 0 ? (totalReceived / totalRevenue) * 100 : 0;
@@ -238,7 +273,7 @@ export const getKpis = studioProtectedProcedure
 				revenueGrowth: Math.round(revenueGrowth * 100) / 100,
 
 				totalReceived: totalReceived.toFixed(2),
-				totalPending: totalPending.toFixed(2),
+				totalPending: pendingPaymentsResult?.total ?? "0",
 				collectionRate: Math.round(collectionRate * 100) / 100,
 				overduePayments: overduePaymentsResult?.total ?? "0",
 

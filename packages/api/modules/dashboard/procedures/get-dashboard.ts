@@ -7,8 +7,11 @@ import {
 	deliverables,
 	desc,
 	eq,
+	expenses,
 	gte,
 	isNull,
+	paymentSchedules,
+	receivedAmounts,
 	shootAssignments,
 	shoots,
 	sql,
@@ -73,25 +76,88 @@ export const getDashboard = studioProtectedProcedure
 					eq(bookings.organizationId, context.organizationId),
 					isNull(bookings.deletedAt),
 				];
+		const receivedRangeConditions = dateRange
+			? [
+					eq(receivedAmounts.organizationId, context.organizationId),
+					isNull(receivedAmounts.deletedAt),
+					isNull(bookings.deletedAt),
+					gte(receivedAmounts.receivedDate, rangeStart),
+					sql`${receivedAmounts.receivedDate} <= ${rangeEnd}`,
+				]
+			: [
+					eq(receivedAmounts.organizationId, context.organizationId),
+					isNull(receivedAmounts.deletedAt),
+					isNull(bookings.deletedAt),
+				];
+		const pendingRangeConditions = dateRange
+			? [
+					eq(paymentSchedules.organizationId, context.organizationId),
+					isNull(paymentSchedules.deletedAt),
+					isNull(bookings.deletedAt),
+					gte(paymentSchedules.dueDate, rangeStart),
+					sql`${paymentSchedules.dueDate} <= ${rangeEnd}`,
+					sql`${paymentSchedules.status} NOT IN ('completed', 'cancelled')`,
+				]
+			: [
+					eq(paymentSchedules.organizationId, context.organizationId),
+					isNull(paymentSchedules.deletedAt),
+					isNull(bookings.deletedAt),
+					sql`${paymentSchedules.status} NOT IN ('completed', 'cancelled')`,
+				];
+		const expenseRangeConditions = dateRange
+			? [
+					eq(expenses.organizationId, context.organizationId),
+					isNull(expenses.deletedAt),
+					gte(expenses.expenseDate, rangeStart),
+					sql`${expenses.expenseDate} <= ${rangeEnd}`,
+				]
+			: [
+					eq(expenses.organizationId, context.organizationId),
+					isNull(expenses.deletedAt),
+				];
+
 		const [bookingTotals] = await db
 			.select({
 				totalRevenue: sql<string>`COALESCE(SUM(${bookings.packageCost}), 0)::text`,
-				totalReceived: sql<string>`COALESCE(SUM(${bookings.totalReceived}), 0)::text`,
-				totalExpenses: sql<string>`COALESCE(SUM(${bookings.totalExpenses}), 0)::text`,
 			})
 			.from(bookings)
 			.where(and(...bookingRangeConditions));
+
+		const [receivedTotals] = await db
+			.select({
+				totalReceived: sql<string>`COALESCE(SUM(${receivedAmounts.amount}), 0)::text`,
+			})
+			.from(receivedAmounts)
+			.innerJoin(bookings, eq(receivedAmounts.bookingId, bookings.id))
+			.where(and(...receivedRangeConditions));
+
+		const [pendingTotals] = await db
+			.select({
+				totalPending: sql<string>`COALESCE(SUM(${paymentSchedules.amount} - ${paymentSchedules.paidAmount}), 0)::text`,
+			})
+			.from(paymentSchedules)
+			.innerJoin(bookings, eq(paymentSchedules.bookingId, bookings.id))
+			.where(and(...pendingRangeConditions));
+
+		const [expenseTotals] = await db
+			.select({
+				totalExpenses: sql<string>`COALESCE(SUM(${expenses.amount}), 0)::text`,
+			})
+			.from(expenses)
+			.where(and(...expenseRangeConditions));
 
 		const totalRevenue = Number.parseFloat(
 			bookingTotals?.totalRevenue ?? "0",
 		);
 		const totalReceived = Number.parseFloat(
-			bookingTotals?.totalReceived ?? "0",
+			receivedTotals?.totalReceived ?? "0",
 		);
 		const totalExpenses = Number.parseFloat(
-			bookingTotals?.totalExpenses ?? "0",
+			expenseTotals?.totalExpenses ?? "0",
 		);
-		const totalPending = totalRevenue - totalReceived;
+		const totalPending = Number.parseFloat(
+			pendingTotals?.totalPending ?? "0",
+		);
 		const netProfit = totalReceived - totalExpenses;
 		const collectionRate =
 			totalRevenue > 0 ? (totalReceived / totalRevenue) * 100 : 0;

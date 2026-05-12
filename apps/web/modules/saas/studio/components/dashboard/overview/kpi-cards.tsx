@@ -29,9 +29,9 @@ function formatCurrency(value: string): string {
 export function KpiCards({ financial, isLoading }: KpiCardsProps) {
 	const cards = [
 		{
-			title: "Total Revenue",
+			title: "Booked Value",
 			value: formatCurrency(financial.totalRevenue),
-			subtitle: "This period",
+			subtitle: "Bookings dated in period",
 			icon: BanknoteIcon,
 			iconBg: "bg-green-100",
 			iconColor: "text-green-600",
@@ -39,21 +39,21 @@ export function KpiCards({ financial, isLoading }: KpiCardsProps) {
 		{
 			title: "Collected",
 			value: formatCurrency(financial.totalReceived),
-			subtitle: `${financial.collectionRate.toFixed(0)}% collection rate`,
+			subtitle: "Payments received in period",
 			icon: WalletIcon,
 			iconBg: "bg-blue-100",
 			iconColor: "text-blue-600",
 		},
 		{
-			title: "Pending",
+			title: "Due Pending",
 			value: formatCurrency(financial.totalPending),
-			subtitle: "Outstanding amount",
+			subtitle: "Unpaid schedules due in period",
 			icon: ClockIcon,
 			iconBg: "bg-amber-100",
 			iconColor: "text-amber-600",
 		},
 		{
-			title: "Net Profit",
+			title: "Net Cash",
 			value: formatCurrency(financial.netProfit),
 			subtitle: `₹${formatCurrency(financial.totalExpenses).replace("₹", "")} expenses`,
 			icon: TrendingUpIcon,
