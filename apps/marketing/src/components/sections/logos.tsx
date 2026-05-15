@@ -122,7 +122,8 @@ export default function Logos() {
     <section className="section-padding relative">
       <Noise />
       <p className="container text-center text-base">
-        Over 2+ million teams rely on Lumen to collaborate and get work done.
+        Built for photography, video, wedding, event, and production studios
+        that need calmer operations.
       </p>
 
       <div>

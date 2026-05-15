@@ -26,8 +26,8 @@ const testimonials = [
   {
     id: '1',
     name: 'Sarah Mitchell',
-    title: 'Head of Product',
-    company: 'Nike',
+    title: 'Studio Owner',
+    company: 'Frame House Studio',
     image:
       'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=400&fit=crop&crop=face',
     companyLogo: {
@@ -36,80 +36,80 @@ const testimonials = [
       height: 24,
     },
     testimonial:
-      'Lumen has completely changed the way we present our project workflows. We can create visual boards, share tasks instantly, and demo progress live. It’s business-focused collaboration without the overhead.',
+      'Stuwiz finally gave our booking, payment, and shoot schedule one home. I can see what is coming up, what is pending, and who owns the next step without asking three people.',
     className: COMMON_CARDS_CLASSNAMES.big,
   },
   {
     id: '2',
     name: 'Alex Chen',
-    title: 'Senior Designer',
-    company: 'Spotify',
+    title: 'Operations Lead',
+    company: 'Northlight Films',
     image:
       'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face',
     testimonial:
-      'Lumen was the missing layer between our product and engineering teams. We’ve never had this much clarity in how tasks move through the pipeline.',
+      'Crew assignments used to live in messages. Now each shoot has the right people, dates, venues, and deliverables attached.',
     className: 'col-span-2 ',
   },
   {
     id: '3',
     name: 'Marcus Johnson',
-    title: 'VP Product',
-    company: 'T-Mobile',
+    title: 'Wedding Studio Manager',
+    company: 'Vows & Frames',
     image:
       'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face',
     testimonial:
-      'We used to lose track of deliverables every week. With Lumen, task ownership is crystal clear and timelines are actually realistic.',
+      'We stopped losing track of album edits and final delivery. The whole team can see what is done and what is waiting.',
     className: 'col-span-2 ',
   },
   {
     id: '4',
     name: 'Emily Davis',
-    title: 'Product Manager',
-    company: 'Booking',
+    title: 'Client Coordinator',
+    company: 'The Bridal Edit',
     image:
       'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop&crop=face',
     testimonial:
-      'Lumen blended perfectly into our design-to-dev process. We organize prototypes, handoffs, and sprints without switching tools.',
+      'Client details, event dates, payment status, and conversations are all easier to find. It feels built for the way studios work.',
     className: 'col-span-2 ',
   },
   {
     id: '5',
     name: 'Ben Parker',
-    title: 'Engineering Lead',
-    company: 'IBM',
+    title: 'Post-production Lead',
+    company: 'Cut & Color Studio',
     image:
       'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop&crop=face',
     testimonial:
-      "Since adopting Lumen, our feedback cycles became shorter and much more effective. It's a must-have for any growing product team.",
+      'Editors know exactly which deliverables are due and which booking they belong to. That clarity saves us hours every week.',
     className: 'col-span-2 ',
   },
   {
     id: '6',
     name: 'Samantha Lee',
-    title: 'Design Director',
-    company: 'Logitech',
+    title: 'Finance Manager',
+    company: 'Silverline Weddings',
     image:
       'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&h=400&fit=crop&crop=face',
     testimonial:
-      'Lumen makes it incredibly easy to manage cross-functional work. We’ve cut coordination time in half and deliver with better insights.',
+      'Payment schedules, received amounts, receipts, and invoices are no longer split across files. The money picture is much clearer.',
     className: 'col-span-2',
   },
   {
     id: '7',
     name: 'David Kim',
-    title: 'CTO',
-    company: 'Fortinet',
+    title: 'Founder',
+    company: 'Studio Meridian',
     image:
       'https://images.unsplash.com/photo-1507591064344-4c6ce005b128?w=400&h=400&fit=crop&crop=face',
     testimonial:
-      'We use Lumen across all departments — from tech to support. Creating shared workflows has drastically improved internal communication.”',
+      'We use Stuwiz across bookings, shoots, crew, and delivery. It has made our morning planning much faster.',
     className: 'col-span-2',
   },
   {
     id: '8',
     name: 'Rachel Green',
-    title: 'Product Designer',
-    company: 'Zapier',
+    title: 'Producer',
+    company: 'Archive Motion',
     image:
       'https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?w=400&h=400&fit=crop&crop=face',
     companyLogo: {
@@ -118,14 +118,14 @@ const testimonials = [
       height: 28,
     },
     testimonial:
-      'Lumen has completely transformed how we approach daily project planning and execution. Before switching, we constantly missed deadlines due to misalignment. Now, everyone knows what’s happening, who’s responsible, and when things are due. Our productivity skyrocketed, and team communication has never been clearer.',
+      'Before Stuwiz, every project required a status hunt. Now our dashboard tells us what is upcoming, overdue, assigned, paid, and still open.',
     className: cn(COMMON_CARDS_CLASSNAMES.big, ''),
   },
   {
     id: '9',
     name: 'Mike Johnson',
-    title: 'Startup Founder',
-    company: 'Tailwind CSS',
+    title: 'Creative Director',
+    company: 'Golden Hour Co.',
     image:
       'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=400&fit=crop&crop=face',
     companyLogo: {
@@ -134,7 +134,7 @@ const testimonials = [
       height: 20,
     },
     testimonial:
-      'I created a workspace, invited my co-founder, and started assigning tasks in 45 seconds. That’s how fast Lumen works.',
+      'I can create a booking, add shoots, add payments, and assign the team before the kickoff call ends.',
     className: cn(
       COMMON_CARDS_CLASSNAMES.big,
       'lg:[&_blockquote]:text-4xl lg:[&_blockquote]:leading-tight lg:shadow-lg',
@@ -167,11 +167,11 @@ export default function Testimonials() {
         {/* Section Header */}
         <div className="mx-auto max-w-4xl space-y-3 lg:space-y-4 lg:text-center">
           <h2 className="text-4xl tracking-tight lg:text-5xl">
-            Trusted by modern teams
+            Trusted by studio teams
           </h2>
           <p className="text-muted-foreground text-lg leading-snug lg:text-balance">
-            Join thousands of product managers, designers, and developers who
-            rely on Lumen to plan, track, and deliver value without the chaos.
+            For studio owners, coordinators, editors, and field teams who need
+            every booking, payment, shoot, and deliverable to stay visible.
           </p>
         </div>
 

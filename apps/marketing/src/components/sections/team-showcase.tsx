@@ -38,8 +38,8 @@ export default function TeamShowcase() {
       <div className="bigger-container">
         <div className="flex flex-col items-center gap-6 lg:flex-row lg:justify-between lg:gap-12">
           <p className="max-w-sm text-center text-2xl leading-tight lg:text-start">
-            We are a team of passionate developers, designers, and
-            entrepreneurs.
+            Built for the people who keep a studio moving: owners,
+            coordinators, crew, editors, and finance teams.
           </p>
 
           {/* Right Side - Tech Stack Logos */}

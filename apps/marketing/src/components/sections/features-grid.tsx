@@ -6,10 +6,10 @@ const FEATURES_DATA = [
   {
     id: 1,
     image: '/images/features-grid/1.webp',
-    imageAlt: 'Feature management interface',
-    title: 'Smart Task Management',
+    imageAlt: 'Booking management interface',
+    title: 'Booking management',
     description:
-      'Organize and prioritize tasks with intelligent automation that adapts to your workflow patterns.',
+      'Create full wedding, event, and commercial bookings with clients, dates, package cost, notes, and status in one record.',
     className: 'lg:col-span-3',
     width: 423,
     height: 228,
@@ -17,10 +17,10 @@ const FEATURES_DATA = [
   {
     id: 2,
     image: '/images/features-grid/2.webp',
-    imageAlt: 'Team collaboration dashboard',
-    title: 'Team Collaboration',
+    imageAlt: 'Shoot planning dashboard',
+    title: 'Shoot scheduling',
     description:
-      'Connect with your team seamlessly through integrated communication and shared workspaces.',
+      'Break each booking into shoots with dates, venues, call details, and assigned crew so the field team knows what matters.',
     className: 'lg:col-span-3',
     width: 435,
     height: 228,
@@ -28,10 +28,10 @@ const FEATURES_DATA = [
   {
     id: 3,
     image: '/images/features-grid/3.webp',
-    imageAlt: 'Analytics and reporting',
-    title: 'Advanced Analytics',
+    imageAlt: 'Crew and people management',
+    title: 'Crew and people',
     description:
-      'Get comprehensive insights into your project performance with detailed analytics and customizable reports.',
+      'Manage photographers, editors, assistants, roles, specialisations, rates, availability, and app access from one people hub.',
     className: 'lg:col-span-4',
     width: 599,
     height: 218,
@@ -39,10 +39,10 @@ const FEATURES_DATA = [
   {
     id: 4,
     image: '/images/features-grid/4.webp',
-    imageAlt: 'Project timeline view',
-    title: 'Project Timeline',
+    imageAlt: 'Client relationship view',
+    title: 'Client CRM',
     description:
-      'Visualize project progress and milestones with interactive timeline views and dependency tracking.',
+      'Keep client contacts, participants, relations, booking history, and communication context easy to find.',
     className: 'lg:col-span-2',
     width: 292,
     height: 215,
@@ -50,10 +50,10 @@ const FEATURES_DATA = [
   {
     id: 5,
     image: '/images/features-grid/5.webp',
-    imageAlt: 'Integration capabilities',
-    title: 'Seamless Integrations',
+    imageAlt: 'Financial tracking view',
+    title: 'Finance tracking',
     description:
-      'Connect with your favorite tools and services to create a unified workflow ecosystem.',
+      'Follow payment milestones, received amounts, invoices, receipts, expenses, and outstanding balances without spreadsheet drift.',
     className: 'lg:col-span-3',
     width: 417,
     height: 175,
@@ -61,10 +61,10 @@ const FEATURES_DATA = [
   {
     id: 6,
     image: '/images/features-grid/6.webp',
-    imageAlt: 'Mobile application',
-    title: 'Mobile Ready',
+    imageAlt: 'Team collaboration workspace',
+    title: 'Team coordination',
     description:
-      'Access your projects anywhere with our fully responsive mobile application.',
+      'Use discussions, activity, notifications, check-ins, tasks, and deliverables to keep studio work moving after booking day.',
     className: 'lg:col-span-3',
     width: 433,
     height: 155,
@@ -79,12 +79,12 @@ export default function FeaturesGrid() {
         {/* Section Header */}
         <div className="mx-auto max-w-5xl space-y-3 lg:space-y-4 lg:text-center">
           <h2 className="text-4xl tracking-tight lg:text-5xl">
-            Feature management that fits your workflow
+            Built around how studios actually operate
           </h2>
           <p className="text-muted-foreground text-lg leading-snug lg:text-balance">
-            Assign, prioritize, and monitor every feature with precision. Lumen
-            helps teams ship faster by bringing structure to your development
-            process, without slowing you down.
+            Stuwiz follows the real path of studio work: book the client,
+            schedule the shoot, assign the crew, collect payments, finish
+            deliverables, and keep every team member in sync.
           </p>
         </div>
 

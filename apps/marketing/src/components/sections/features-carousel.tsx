@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-import { BarChart3, Clock, Filter, Link } from 'lucide-react';
+import { CalendarDays, CheckSquare, CreditCard, Users } from 'lucide-react';
 import { motion } from 'motion/react';
 
 import Noise from '@/components/elements/noise';
@@ -25,12 +25,12 @@ import { cn } from '@/lib/utils';
 const features = [
   {
     id: 'navigation',
-    icon: Link,
-    title: 'Navigate your work with clarity',
-    description: 'A style board that adapts with your work.',
+    icon: CalendarDays,
+    title: 'Plan every booking from inquiry to delivery',
+    description: 'Capture clients, event dates, venues, shoots, and package details in one flow.',
     image: {
       src: '/images/features-carousel/1.webp',
-      alt: 'Navigate your work with clarity',
+      alt: 'Booking planning workspace',
       width: 400,
       height: 400,
       className: 'ps-4 pt-4',
@@ -38,12 +38,12 @@ const features = [
   },
   {
     id: 'tracking',
-    icon: BarChart3,
-    title: 'Issue tracking with less noise',
-    description: 'Simple, powerful, and built for clarity.',
+    icon: Users,
+    title: 'Assign crew with the full shoot context',
+    description: 'Match photographers, videographers, editors, and assistants to the right work.',
     image: {
       src: '/images/features-carousel/2.webp',
-      alt: 'Issue tracking with less noise',
+      alt: 'Crew assignment workspace',
       width: 400,
       height: 400,
       className: 'pt-4',
@@ -51,12 +51,12 @@ const features = [
   },
   {
     id: 'filtering',
-    icon: Filter,
-    title: 'Filtering Tasks, no more distractions',
-    description: 'Smart filters that adapt to your needs.',
+    icon: CreditCard,
+    title: 'Know what is paid, pending, and overdue',
+    description: 'Track received payments, schedules, invoices, receipts, and expenses together.',
     image: {
       src: '/images/features-carousel/3.webp',
-      alt: 'Filtering Tasks',
+      alt: 'Studio finance dashboard',
       width: 400,
       height: 400,
       className: 'p-4',
@@ -64,12 +64,12 @@ const features = [
   },
   {
     id: 'timeline',
-    icon: Clock,
-    title: 'Timeline Management, no more delays',
-    description: 'Keep track of project progress with ease.',
+    icon: CheckSquare,
+    title: 'Move deliverables and tasks to done',
+    description: 'Keep editing, album, delivery, and follow-up work visible after the shoot.',
     image: {
       src: '/images/features-carousel/4.webp',
-      alt: 'Timeline Management',
+      alt: 'Deliverables and tasks workspace',
       width: 400,
       height: 400,
       className: 'pt-4',
@@ -183,13 +183,12 @@ export default function FeaturesCarousel() {
             variants={headerVariants}
           >
             <h2 className="text-4xl tracking-tight text-balance lg:text-5xl">
-              Navigate your{' '}
-              <span className="text-muted-foreground/80">
-                work with clarity
-              </span>
+              Studio operations{' '}
+              <span className="text-muted-foreground/80">in one place</span>
             </h2>
             <p className="text-muted-foreground text-lg leading-snug">
-              A style board that adapts to how your team works.
+              Replace scattered spreadsheets, payment notes, WhatsApp threads,
+              and calendar reminders with one connected studio workflow.
             </p>
           </motion.div>
 

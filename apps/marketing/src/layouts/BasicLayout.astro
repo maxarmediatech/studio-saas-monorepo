@@ -2,7 +2,6 @@
 import { Font } from 'astro:assets';
 
 import BaseHead from '@/components/BaseHead.astro';
-import Banner from '@/components/layout/banner';
 import Footer from '@/components/layout/footer';
 import Navbar from '@/components/layout/navbar';
 
@@ -20,7 +19,6 @@ const pageTitle = frontmatter?.title || title;
   <body
     class={`h-screen antialiased [--header-height:calc(var(--spacing)*14)] lg:[--header-height:calc(var(--spacing)*23)]`}
   >
-    <Banner url="https://www.shadcnblocks.com/template/lumen" client:load />
     <Navbar currentPage={currentPage} client:load />
     <main>
       <section class="section-padding bg-chart-4">

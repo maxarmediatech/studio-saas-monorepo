@@ -28,17 +28,17 @@ interface FeatureSection {
 
 const pricingPlans = [
   {
-    name: 'Free',
+    name: 'Starter',
     price: '$0/mo',
     yearlyPrice: '$0/mo',
   },
   {
-    name: 'Pro',
+    name: 'Studio',
     price: '$250/mo',
     yearlyPrice: '$188/mo',
   },
   {
-    name: 'Business',
+    name: 'Teams',
     price: '$499/mo',
     yearlyPrice: '$374/mo',
   },
@@ -70,24 +70,24 @@ const comparisonFeatures: FeatureSection[] = [
     ],
   },
   {
-    category: 'Product',
+    category: 'Studio operations',
     features: [
       {
-        name: 'Real-time user insights',
+        name: 'Bookings and clients',
         free: true,
         pro: true,
         business: true,
         enterprise: true,
       },
       {
-        name: 'Goal tracking dashboard',
+        name: 'Shoots and event dates',
         free: true,
         pro: true,
         business: true,
         enterprise: true,
       },
       {
-        name: 'Releases and Goals',
+        name: 'Tasks and deliverables',
         isNew: true,
         free: true,
         pro: true,
@@ -95,14 +95,14 @@ const comparisonFeatures: FeatureSection[] = [
         enterprise: true,
       },
       {
-        name: 'Segmentation & Slack notifications',
+        name: 'Discussions and notifications',
         free: true,
         pro: true,
         business: true,
         enterprise: true,
       },
       {
-        name: 'EU data hosting',
+        name: 'Calendar workspace',
         free: true,
         pro: true,
         business: true,
@@ -111,12 +111,12 @@ const comparisonFeatures: FeatureSection[] = [
     ],
   },
   {
-    category: 'Usage',
+    category: 'Team scale',
     features: [
       {
-        name: 'Monthly Tracked Users (MTU)',
-        free: 'Up to 25K',
-        pro: 'Up to 50K',
+        name: 'Active bookings',
+        free: 'Up to 25',
+        pro: 'Up to 100',
         business: 'Custom',
         enterprise: 'Custom',
       },
@@ -128,36 +128,36 @@ const comparisonFeatures: FeatureSection[] = [
         enterprise: 'Unlimited',
       },
       {
-        name: 'Releases (concurrent)',
+        name: 'Crew profiles',
+        free: 'Up to 5',
+        pro: 'Unlimited',
+        business: 'Unlimited',
+        enterprise: 'Unlimited',
+      },
+      {
+        name: 'Saved views',
         free: '1',
         pro: 'Unlimited',
         business: 'Unlimited',
         enterprise: 'Unlimited',
       },
       {
-        name: 'Live Satisfaction surveys (concurrent)',
-        free: '1',
+        name: 'Table exports',
+        free: null,
         pro: 'Unlimited',
         business: 'Unlimited',
         enterprise: 'Unlimited',
       },
       {
-        name: 'Live Satisfaction feedback',
-        free: '10/mo',
-        pro: 'Unlimited',
-        business: 'Unlimited',
-        enterprise: 'Unlimited',
-      },
-      {
-        name: 'Live Satisfaction branding',
-        free: 'Yes',
+        name: 'Custom configurations',
+        free: 'Basic',
         pro: 'Customizable',
         business: 'Custom',
         enterprise: 'Custom',
       },
       {
-        name: 'Features',
-        free: '3',
+        name: 'Workspaces',
+        free: '1',
         pro: 'Unlimited',
         business: 'Unlimited',
         enterprise: 'Unlimited',
@@ -165,44 +165,44 @@ const comparisonFeatures: FeatureSection[] = [
     ],
   },
   {
-    category: 'Data',
+    category: 'Finance',
     isNew: true,
     features: [
       {
-        name: 'Manual export',
-        free: null,
-        pro: null,
-        business: true,
-        enterprise: true,
-      },
-      {
-        name: 'Automatic export to S3',
-        free: null,
-        pro: null,
-        business: true,
-        enterprise: true,
-      },
-      {
-        name: 'Retention',
-        free: '3 months',
-        pro: '5 years',
-        business: '5 years',
-        enterprise: '5 years',
-      },
-    ],
-  },
-  {
-    category: 'Privacy',
-    features: [
-      {
-        name: 'GDPR compliant',
+        name: 'Payment schedules',
         free: true,
         pro: true,
         business: true,
         enterprise: true,
       },
       {
-        name: 'EU-only storage option',
+        name: 'Invoices and receipts',
+        free: true,
+        pro: true,
+        business: true,
+        enterprise: true,
+      },
+      {
+        name: 'Expenses and financial dashboard',
+        free: null,
+        pro: true,
+        business: true,
+        enterprise: true,
+      },
+    ],
+  },
+  {
+    category: 'Controls',
+    features: [
+      {
+        name: 'Role-based access',
+        free: true,
+        pro: true,
+        business: true,
+        enterprise: true,
+      },
+      {
+        name: 'Organization settings',
         free: true,
         pro: true,
         business: true,
@@ -228,7 +228,7 @@ const comparisonFeatures: FeatureSection[] = [
         enterprise: '<12 hours',
       },
       {
-        name: 'Private Slack Channel',
+        name: 'Private onboarding channel',
         free: null,
         pro: null,
         business: null,

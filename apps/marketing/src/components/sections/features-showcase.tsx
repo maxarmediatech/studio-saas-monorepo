@@ -1,6 +1,6 @@
 'use client';
 
-import { Shield, TrendingUp, Users, Zap } from 'lucide-react';
+import { CalendarCheck, MessageSquare, ReceiptText, TrendingUp } from 'lucide-react';
 import { motion } from 'motion/react';
 
 import Noise from '@/components/elements/noise';
@@ -11,39 +11,39 @@ import { cn } from '@/lib/utils';
 const features = [
   {
     id: 'security',
-    icon: Shield,
-    title: 'Manage features with clarity, not clutter',
+    icon: CalendarCheck,
+    title: 'See every shoot, deadline, and booking at a glance',
     description:
-      'Say goodbye to messy event logs. Lumen turns real usage data into clear, grouped feature insights, so you can track what matters, not just what happened.',
+      'A shared calendar and booking workspace help your team understand what is coming up, who is assigned, and what still needs attention.',
     image: {
       src: '/images/features-showcase/1.webp',
-      alt: 'Advanced Security',
+      alt: 'Studio calendar and booking overview',
       width: 500,
       height: 400,
     },
   },
   {
     id: 'performance',
-    icon: Zap,
-    title: 'Instant answers to product usage questions',
+    icon: ReceiptText,
+    title: 'Keep money conversations factual',
     description:
-      'Lumen’s powerful filters make it easy to get actionable usage insights, no SQL needed.',
+      'Payment schedules, received amounts, receipts, invoices, and expenses stay connected to the booking they belong to.',
     image: {
       src: '/images/features-showcase/2.webp',
-      alt: 'Lightning Fast Performance',
+      alt: 'Studio payment and invoice tracking',
       width: 500,
       height: 400,
     },
   },
   {
     id: 'collaboration',
-    icon: Users,
-    title: 'Segment users by feature behavior',
+    icon: MessageSquare,
+    title: 'Discuss work where the work lives',
     description:
-      'Slice your audience based on real feature interaction.Find champions, trial users, and at-risk accounts in seconds.',
+      'Keep internal discussions linked to bookings, shoots, expenses, and payment schedules instead of losing context in chat threads.',
     image: {
       src: '/images/features-showcase/3.webp',
-      alt: 'Team Collaboration',
+      alt: 'Studio discussions workspace',
       width: 500,
       height: 400,
     },
@@ -51,12 +51,12 @@ const features = [
   {
     id: 'analytics',
     icon: TrendingUp,
-    title: 'Export insights, tie them to business impact',
+    title: 'Understand the health of the studio',
     description:
-      'Send enriched usage data to your warehouse.Blend Lumen metrics with revenue, churn, or NPS to connect product behavior to outcomes.',
+      'Use dashboards to watch upcoming work, overdue payments, booking value, expenses, and operational bottlenecks before they become surprises.',
     image: {
       src: '/images/features-showcase/4.webp',
-      alt: 'Smart Analytics',
+      alt: 'Studio dashboard analytics',
       width: 500,
       height: 400,
     },
@@ -149,12 +149,12 @@ export default function FeaturesShowcase() {
           }}
         >
           <h2 className="text-4xl tracking-tight lg:text-5xl">
-            Feature intelligence built for modern product teams
+            Clear operations for busy studio teams
           </h2>
           <p className="text-muted-foreground text-lg leading-snug">
-            Stay ahead of user needs. Lumen turns your product features into
-            actionable insights, so you can prioritize what matters, streamline
-            delivery, and scale with confidence.
+            Stuwiz keeps the operational and financial sides of your studio
+            connected, so owners, managers, crew, and editors can work from the
+            same source of truth.
           </p>
         </motion.div>
 

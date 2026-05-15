@@ -17,11 +17,11 @@ const FOOTER_SECTIONS = [
     links: [
       { name: 'All Posts', href: '/blog' },
       {
-        name: 'Agile Project Management',
+        name: 'Managing studio bookings',
         href: '/blog/agile-project-management-tips',
       },
       {
-        name: 'Customer Onboarding',
+        name: 'Client onboarding',
         href: '/blog/customer-onboarding-strategies',
       },
     ],
@@ -103,7 +103,7 @@ const Footer = ({ currentPage }: { currentPage: string }) => {
             ))}
           </div>
 
-          {/* Right side - Lumen branding and social */}
+          {/* Right side - Stuwiz branding and social */}
           <div className="flex w-fit flex-col items-start justify-self-end md:col-span-1">
             <Logo />
             <div className="mt-4 space-y-3 md:mt-8">
@@ -167,10 +167,10 @@ const Footer = ({ currentPage }: { currentPage: string }) => {
 
           <div className="flex gap-6">
             <a
-              href="https://www.shadcnblocks.com"
+              href="/"
               className="text-muted-foreground hover:text-foreground text-sm transition-colors"
             >
-              © {new Date().getFullYear()} Shadcnblocks.com
+              © {new Date().getFullYear()} Stuwiz
             </a>
             <a
               href="/privacy-policy"

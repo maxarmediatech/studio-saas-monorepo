@@ -15,47 +15,47 @@ import { cn } from '@/lib/utils';
 
 const pricingPlans = {
   individual: {
-    title: 'Individual Plan',
-    subtitle: 'Best option for solo',
-    description: 'Designers or Freelancers',
+    title: 'Studio Basics',
+    subtitle: 'Best for small studios',
+    description: 'Bookings, shoots, and payments',
     monthlyPrice: 25,
     annualPrice: 19,
     popular: true,
     features: [
-      { name: 'Real-time task syncing', included: true },
-      { name: 'Basic project analytics', included: true },
-      { name: 'Custom workflows & automation', included: true },
-      { name: 'Cross-platform integrations', included: true },
-      { name: 'Unlimited boards & views', included: false },
-      { name: 'Priority support for teams', included: false },
-      { name: 'API access (Limited)', included: false },
-      { name: 'Community support', included: false },
+      { name: 'Bookings and client records', included: true },
+      { name: 'Shoot scheduling', included: true },
+      { name: 'Payment schedules', included: true },
+      { name: 'Invoices and receipts', included: true },
+      { name: 'Advanced crew permissions', included: false },
+      { name: 'Priority onboarding', included: false },
+      { name: 'Custom integrations', included: false },
+      { name: 'Dedicated support', included: false },
     ],
     cta: {
-      text: 'Contact us for Custom CRM Integration',
-      button: 'Contact With Us',
+      text: 'Start with the core workflows most studios need first.',
+      button: 'Talk to us',
     },
   },
   team: {
-    title: 'Power Users & Teams',
-    subtitle: 'Best option for team',
-    description: 'Agencies or Corporates',
+    title: 'Studio Teams',
+    subtitle: 'Best for growing teams',
+    description: 'Crew, finance, and operations',
     monthlyPrice: 59,
     annualPrice: 44,
     popular: false,
     features: [
-      { name: 'Advanced task syncing with dependencies', included: true },
-      { name: 'Smart automations & conditional triggers', included: true },
-      { name: 'In-depth usage insights & analytics', included: true },
-      { name: 'Priority team collaboration tools', included: true },
-      { name: 'CRM integrations', included: true },
-      { name: 'Developer toolkit', included: true },
-      { name: 'API access (Full)', included: true },
-      { name: 'Premium support & onboarding', included: true },
+      { name: 'Everything in Studio Basics', included: true },
+      { name: 'Crew roles and assignments', included: true },
+      { name: 'Tasks and deliverables', included: true },
+      { name: 'Expenses and dashboards', included: true },
+      { name: 'Discussions and activity feed', included: true },
+      { name: 'Saved views and exports', included: true },
+      { name: 'Integrations support', included: true },
+      { name: 'Premium onboarding', included: true },
     ],
     cta: {
-      text: 'Connect us for Custom CRM Integration',
-      button: 'Contact With Us',
+      text: 'Scale your studio with deeper operations and team controls.',
+      button: 'Talk to us',
     },
   },
 };
@@ -97,12 +97,12 @@ export default function Pricing() {
           {/* Left side - Title and subtitle */}
           <div className="">
             <h2 className="text-center text-4xl font-medium tracking-tighter md:text-start md:text-6xl md:leading-none lg:text-7xl">
-              Power your progress with <br className="hidden md:block" />
-              Pro Access
+              Choose the workspace your <br className="hidden md:block" />
+              studio needs
             </h2>
             <p className="text-muted-foreground/70 mt-3 hidden text-lg leading-relaxed md:block lg:mt-4">
-              Increase feature adoption and customer satisfaction with the right
-              Lumen plan.
+              Start with booking and finance clarity, then add deeper crew,
+              delivery, and operational control as your team grows.
             </p>
           </div>
 
@@ -171,7 +171,7 @@ export default function Pricing() {
                       <span className="text-2xl">/mo</span>
                     </div>
                     <Button className="h-10 !pl-5.5">
-                      Upgrade to Pro
+                      Start with Stuwiz
                       <div className="bg-background/15 border-background/10 grid size-5.5 place-items-center rounded-full border">
                         <ChevronRight className="size-4" />
                       </div>
@@ -192,7 +192,7 @@ export default function Pricing() {
                       asChild
                     >
                       <a href="/contact">
-                        Contact With Us
+                        Talk to us
                         <div className="bg-border border-input grid size-5.5 place-items-center rounded-full border">
                           <ChevronRight className="size-4 transition-transform group-hover:translate-x-0.25" />
                         </div>

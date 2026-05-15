@@ -1,12 +1,12 @@
 import Noise from '@/components/elements/noise';
 
 const stats = [
-  { number: '21M', label: 'Global Reach of Users' },
-  { number: '12+', label: 'Years of Expertise' },
-  { number: '654', label: 'Projects Completed' },
-  { number: '113k+', label: 'Monthly Active Users' },
-  { number: '461k', label: 'Registered Accounts' },
-  { number: '98+', label: 'Daily Users' },
+  { number: '1', label: 'Workspace for studio operations' },
+  { number: '10+', label: 'Core studio workflows connected' },
+  { number: '24/7', label: 'Visibility across upcoming work' },
+  { number: '0', label: 'Spreadsheet juggling required' },
+  { number: '100%', label: 'Built around bookings and shoots' },
+  { number: '1', label: 'Source of truth for the team' },
 ];
 
 export default function AboutHero() {
@@ -20,9 +20,9 @@ export default function AboutHero() {
             About Us
           </h1>
           <p className="text-muted-foreground mx-auto mt-3 hidden max-w-3xl text-lg leading-relaxed md:block lg:mt-4">
-            Discover how Paravel helps teams manage tasks with more clarity and
-            confidence. We streamline operations so you can focus on meaningful
-            progress.
+            Stuwiz helps studio teams run bookings, shoots, crew, clients,
+            payments, deliverables, and daily follow-ups from one calm
+            workspace.
           </p>
         </div>
 
@@ -55,7 +55,8 @@ export default function AboutHero() {
         </div>
 
         <h2 className="mt-8 max-w-3xl text-4xl leading-none font-medium tracking-tight md:mt-12 lg:mt-16 lg:text-5xl">
-          We excel in our field, but skill isn&apos;t everything we offer.
+          Studio work is too important to be scattered across chats, calendars,
+          notes, and spreadsheets.
         </h2>
 
         {/* Stats Grid - Left Aligned */}

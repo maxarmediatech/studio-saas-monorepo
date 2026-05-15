@@ -27,17 +27,17 @@ const performanceStats = [
   {
     value: '42%',
     description:
-      'Teams using Lumen report a 42% increase in overall project efficiency and communication clarity within the first month.',
+      'Studios lose time when bookings, payments, crew assignments, and delivery work live in separate tools.',
   },
   {
     value: '3200+',
     description:
-      'Projects successfully managed through Lumen across product, marketing, operations, and creative teams worldwide.',
+      'Bookings, shoots, clients, crew, payments, invoices, receipts, expenses, tasks, and deliverables belong in one workflow.',
   },
   {
     value: '97%',
     description:
-      'Our customer satisfaction score stands at 97%, reflecting the trust teams place in Lumen for critical workflows.',
+      'Clear ownership helps owners, coordinators, editors, and field crew know what has happened and what needs to happen next.',
   },
 ];
 
@@ -69,16 +69,15 @@ export default function WhyWeBegan() {
               </h2>
               <div>
                 <p>
-                  We built Lumen after experiencing the headaches of managing
-                  multiple tools and scattered communication. Instead of
-                  switching tabs and losing focus, we imagined one space where
-                  everything connects.
+                  We built Stuwiz for studios that had outgrown informal
+                  tracking. A booking starts with a client conversation, but it
+                  quickly becomes shoots, crew, payments, expenses, editing,
+                  delivery, and follow-up.
                 </p>
                 <br />
                 <p>
-                  Today, Lumen is used by thousands of teams who value
-                  structure, speed, and a more intuitive way to manage their
-                  projects.
+                  Stuwiz gives that work a home, so teams can move without
+                  rebuilding the truth from old messages and spreadsheet tabs.
                 </p>
               </div>
             </div>
@@ -108,20 +107,19 @@ export default function WhyWeBegan() {
           <div className="flex-1 space-y-6 lg:space-y-8">
             <div className="space-y-8 lg:space-y-12">
               <h2 className="text-3xl leading-none font-medium tracking-tight lg:text-4xl">
-                Power your progress with Pro Access
+                A calmer way to run every booking
               </h2>
               <div className="">
                 <p>
-                  At Lumen, our mission is to help modern teams eliminate chaos
-                  and regain clarity by offering beautifully simple task and
-                  project management tools. We believe great work doesn&apos;t
-                  need to be complicated — it needs to be intentional.
+                  Our mission is to help studio teams stop chasing operational
+                  details. Every shoot, client, payment milestone, invoice,
+                  receipt, task, and discussion should be easy to find and act
+                  on.
                 </p>
                 <br />
                 <p>
-                  With years of experience building tools for creatives,
-                  developers, and teams of all sizes, we&apos;ve shaped Lumen to
-                  be the silent partner for you.
+                  Stuwiz is shaped for creative businesses where the work is
+                  personal, deadline-heavy, and financially detailed.
                 </p>
               </div>
             </div>
@@ -129,7 +127,7 @@ export default function WhyWeBegan() {
             {/* CTA Buttons */}
             <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
               <Button className="!text-sm shadow-none" size="lg" asChild>
-                <a href="#">Explore Lumen</a>
+                <a href="/#features-carousel">Explore Stuwiz</a>
               </Button>
               <Button
                 variant="outline"

@@ -43,8 +43,8 @@ const testimonials = [
   {
     id: '1',
     name: 'Sarah Mitchell',
-    title: 'Head of Product',
-    company: 'Nike',
+    title: 'Studio Owner',
+    company: 'Frame House Studio',
     image:
       'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=400&fit=crop&crop=face',
     companyLogo: {
@@ -53,37 +53,37 @@ const testimonials = [
       height: 24,
     },
     testimonial:
-      'Lumen has completely changed the way we present our project workflows. We can create visual boards, share tasks instantly, and demo progress live.',
+      'Stuwiz brought our bookings, payments, and shoot schedules into one place.',
   },
   {
     id: '2',
     name: 'Alex Chen',
-    title: 'Senior Designer',
-    company: 'Spotify',
+    title: 'Operations Lead',
+    company: 'Northlight Films',
     image:
       'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face',
     testimonial:
-      "Lumen was the missing layer between our product and engineering teams. We've never had this much clarity in how tasks move through the pipeline and deliver results.",
+      "Crew assignments are finally tied to the exact shoot, venue, and booking context.",
   },
   {
     id: '3',
     name: 'Marcus Johnson',
-    title: 'VP Product',
-    company: 'T-Mobile',
+    title: 'Wedding Studio Manager',
+    company: 'Vows & Frames',
     image:
       'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face',
     testimonial:
-      'We used to lose track of deliverables every week. With Lumen, task ownership is crystal clear and timelines are actually realistic for our team.',
+      'We used to lose track of edits every week. Now ownership is clear.',
   },
   {
     id: '4',
     name: 'Emily Davis',
-    title: 'Product Manager',
-    company: 'Booking',
+    title: 'Client Coordinator',
+    company: 'The Bridal Edit',
     image:
       'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop&crop=face',
     testimonial:
-      'Lumen blended perfectly into our design-to-dev process. We organize prototypes, handoffs, and sprints without switching tools constantly.',
+      'Client details, event dates, and payments are much easier to find.',
   },
   {
     id: '5',
@@ -93,7 +93,7 @@ const testimonials = [
     image:
       'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop&crop=face',
     testimonial:
-      "Since adopting Lumen, our feedback cycles became shorter and much more effective. It's a must-have for any growing product team today.",
+      "Since adopting Stuwiz, our delivery follow-ups became shorter and much clearer.",
   },
   {
     id: '6',
@@ -103,7 +103,7 @@ const testimonials = [
     image:
       'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&h=400&fit=crop&crop=face',
     testimonial:
-      "Lumen makes it incredibly easy to manage cross-functional work. We've cut coordination time in half and deliver with better insights.",
+      "Stuwiz makes it easier to manage finance, crew, and client work together.",
   },
   {
     id: '7',
@@ -113,12 +113,12 @@ const testimonials = [
     image:
       'https://images.unsplash.com/photo-1507591064344-4c6ce005b128?w=400&h=400&fit=crop&crop=face',
     testimonial:
-      'We use Lumen across all departments — from tech to support. Creating shared workflows has drastically improved internal communication.',
+      'We use Stuwiz across bookings, shoots, editing, and finance.',
   },
   {
     id: '8',
     name: 'Rachel Green',
-    title: 'Product Designer',
+    title: 'Producer',
     company: 'Zapier',
     image:
       'https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?w=400&h=400&fit=crop&crop=face',
@@ -128,7 +128,7 @@ const testimonials = [
       height: 28,
     },
     testimonial:
-      'Lumen has completely transformed how we approach daily project planning and execution. Before switching, we constantly missed deadlines due to misalignment. Our productivity skyrocketed.',
+      'Stuwiz changed our daily planning. We know what is upcoming and what is overdue.',
   },
   {
     id: '9',
@@ -143,7 +143,7 @@ const testimonials = [
       height: 20,
     },
     testimonial:
-      "I created a workspace, invited my co-founder, and started assigning tasks in 45 seconds. That's how fast Lumen works for our team.",
+      "I can create a booking, add payments, and assign work before the kickoff call ends.",
   },
 ];
 
@@ -181,11 +181,11 @@ const TestimonialsMarquee = () => {
 
         <div className="max-w-4xl space-y-3 lg:space-y-4">
           <h2 className="text-4xl tracking-tight lg:text-5xl">
-            Why teams are leaving Monday for Lumen
+            Why studios are moving their operations into Stuwiz
           </h2>
           <p className="text-muted-foreground text-lg leading-snug">
-            Hear how teams are moving faster, collaborating better, and finally
-            loving their workflow with Lumen.
+            Hear how studio teams are reducing spreadsheet drift, payment
+            confusion, and lost delivery follow-ups.
           </p>
         </div>
       </div>

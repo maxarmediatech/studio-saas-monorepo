@@ -19,34 +19,34 @@ import {
 
 const faqData = [
   {
-    id: 'lumen-who-is-it-for',
-    question: 'What is Lumen and who is it for?',
+    id: 'stuwiz-who-is-it-for',
+    question: 'What is Stuwiz and who is it for?',
     answer:
-      'Lumen is a task and workflow management platform designed for product teams, developers, and creatives who want to move faster with clarity and control.',
+      'Stuwiz is studio management software for photography, video, wedding, event, and production teams that need one place for bookings, shoots, crew, clients, payments, and deliverables.',
   },
   {
     id: 'technical-knowledge',
-    question: 'Can I use Lumen without technical knowledge?',
+    question: 'Can my team use Stuwiz without technical knowledge?',
     answer:
-      'Absolutely! Lumen is designed with simplicity in mind. You can start organizing tasks, creating workflows, and collaborating with your team without any technical background. The intuitive interface makes it easy for anyone to get started.',
+      'Yes. Stuwiz is designed for studio owners, coordinators, managers, editors, and crew members. You can start with bookings and payments, then bring in crew, tasks, discussions, and dashboards as your workflow matures.',
   },
   {
     id: 'integrations',
-    question: 'Does Lumen integrate with tools like Slack or Figma?',
+    question: 'Can I manage payment schedules, invoices, and receipts?',
     answer:
-      "Yes, Lumen integrates seamlessly with popular tools including Slack, Figma, GitHub, Jira, and many more. You can connect your existing workflow tools to create a unified workspace that fits your team's needs.",
+      'Yes. Stuwiz connects payments to bookings, tracks scheduled milestones, records received amounts, supports invoices and receipts, and keeps expenses visible for each project.',
   },
   {
     id: 'task-automation',
-    question: 'How does task automation work in Lumen?',
+    question: 'Can crew members be assigned to shoots and tasks?',
     answer:
-      'Lumen offers intelligent task automation that helps streamline repetitive processes. You can set up custom rules, triggers, and workflows that automatically assign tasks, update statuses, send notifications, and move projects through different stages based on your defined criteria.',
+      'Yes. You can manage crew profiles, roles, specialisations, day rates, availability, app access, shoot assignments, task assignments, and deliverable responsibilities.',
   },
   {
     id: 'security-compliance',
-    question: 'Is Lumen secure and compliant?',
+    question: 'Does Stuwiz replace my spreadsheets?',
     answer:
-      'Security is our top priority. Lumen is built with enterprise-grade security features including end-to-end encryption, SOC 2 Type II compliance, GDPR compliance, and regular security audits. Your data is protected with industry-standard security protocols.',
+      'That is the goal. Instead of tracking bookings in one sheet, payments in another, crew availability in chat, and deliverables in reminders, Stuwiz keeps those records connected inside the app.',
   },
 ];
 
@@ -90,8 +90,8 @@ export default function FAQSection() {
             </CardHeader>
             <CardContent className="pt-0">
               <p className="text-muted-foreground">
-                Let&apos;s talk. Our team is here to help you make the most of
-                Lumen. Whether it&apos;s onboarding, integration, or support.
+                Let&apos;s talk through how your studio currently manages
+                bookings, crew, payments, and deliverables.
               </p>
             </CardContent>
             <CardFooter className="mt-auto">

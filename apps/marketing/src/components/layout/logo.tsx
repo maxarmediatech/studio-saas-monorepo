@@ -37,7 +37,7 @@ const Logo: React.FC<LogoProps> = ({
       <a href="/" className={cn(`relative block h-6 w-25`, className)}>
         <img
           src="/layout/logo.svg"
-          alt="Lumen Logo"
+          alt="Stuwiz Logo"
           className="size-full object-contain dark:invert"
         />
       </a>

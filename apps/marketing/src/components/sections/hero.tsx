@@ -100,16 +100,17 @@ export default function Hero() {
           variants={itemVariants}
           className="text-3xl leading-tight tracking-tight md:text-5xl lg:text-6xl"
         >
-          Optimize Your Workflow
-          <br className="hidden md:block" /> Accelerate Your Growth
+          Run your studio without
+          <br className="hidden md:block" /> losing track of the work
         </motion.h1>
 
         <motion.p
           variants={itemVariants}
           className="text-muted-foreground my-2 text-sm md:my-4 md:text-lg lg:my-6 lg:text-xl"
         >
-          Simplify project management and boost team productivity with our SaaS
-          platform.
+          Stuwiz brings bookings, shoots, crew, clients, payments, invoices,
+          tasks, deliverables, and discussions into one operating system for
+          photography and video studios.
         </motion.p>
 
         <motion.div variants={itemVariants}>
@@ -117,7 +118,7 @@ export default function Hero() {
             size="lg"
             className="mt-2 rounded-full !pl-5.5 before:rounded-full"
           >
-            Start Testing
+            Start your studio workspace
             <div className="bg-background/15 border-background/10 grid size-5.5 place-items-center rounded-full border">
               <ChevronRight className="size-4" />
             </div>
@@ -130,7 +131,7 @@ export default function Hero() {
         >
           <img
             src="/images/hero.webp"
-            alt="Lumina Workspace"
+            alt="Stuwiz studio workspace"
             width={1056}
             height={752.5}
             className="border-background/45 rounded-t-sm md:rounded-t-xl"

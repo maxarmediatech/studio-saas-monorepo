@@ -34,10 +34,11 @@ import { cn } from '@/lib/utils';
 
 const categories = [
   'View all',
-  'Design',
-  'Product',
-  'Software Engineering',
-  'Customer Success',
+  'Studio Operations',
+  'Bookings',
+  'Finance',
+  'Crew',
+  'Delivery',
 ];
 
 /**

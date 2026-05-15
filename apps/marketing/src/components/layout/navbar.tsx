@@ -1,7 +1,7 @@
 'use client';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
-import { BarChart3, Clock, Cpu, Filter, Link2 } from 'lucide-react';
+import { CalendarDays, CreditCard, Users } from 'lucide-react';
 
 import { ThemeToggle } from '@/components/elements/theme-toggle';
 import { useBannerVisibility } from '@/components/layout/banner';
@@ -31,22 +31,22 @@ export const NAV_LINKS = [
     href: '#',
     subitems: [
       {
-        label: 'Work with clarity',
+        label: 'Bookings & shoots',
         href: '/#features-carousel',
-        description: 'This is a subtext that explains a part of the item',
-        icon: Link2,
+        description: 'Plan events, shoots, venues, and deliverables together.',
+        icon: CalendarDays,
       },
       {
-        label: 'Issue tracking with less noise',
+        label: 'Crew & clients',
         href: '/#features-grid',
-        description: 'This is a subtext that explains a part of the item',
-        icon: BarChart3,
+        description: 'Keep contacts, roles, availability, and assignments clear.',
+        icon: Users,
       },
       {
-        label: 'Filtering Tasks, no more distractions',
+        label: 'Studio finance',
         href: '/#features-showcase',
-        description: 'This is a subtext that explains a part of the item',
-        icon: Filter,
+        description: 'Track payments, invoices, receipts, and expenses.',
+        icon: CreditCard,
       },
     ],
   },
@@ -58,7 +58,7 @@ export const NAV_LINKS = [
 
 const ACTION_BUTTONS = [
   { label: 'Sign in', href: '/signin', variant: 'ghost' as const },
-  { label: 'Get started', href: '/signup', variant: 'default' as const },
+  { label: 'Start free', href: '/signup', variant: 'default' as const },
 ];
 
 const Navbar = ({ currentPage }: { currentPage: string }) => {

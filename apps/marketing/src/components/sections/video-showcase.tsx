@@ -19,16 +19,16 @@ export default function VideoShowcase() {
       <Noise />
       <div className="bigger-container">
         <span className="text-muted-foreground mb-4 text-sm font-semibold tracking-wide uppercase">
-          ABOUT US
+          ABOUT STUWIZ
         </span>
         <div className="flex flex-col justify-between gap-4 md:flex-row xl:gap-8">
           <h2 className="max-w-2xl text-4xl leading-none font-medium tracking-tight lg:text-5xl">
-            Simplifying Complex Workflows with Developer-Focused Solutions
+            Built for the messy middle of running a creative studio
           </h2>
           <p className="max-w-lg">
-            Lumen removes the clutter from task management. We designed it for
-            modern product teams, helping them stay in sync across features,
-            deadlines, and discussions.
+            Stuwiz is for the work that happens after a client says yes:
+            schedules, crew, payment milestones, deliverables, reminders,
+            approvals, and the daily coordination that keeps a studio moving.
           </p>
         </div>
         {/* Video Section */}
@@ -79,8 +79,8 @@ export default function VideoShowcase() {
 
           {/* Description */}
           <p className="text-muted-foreground mx-auto mt-4 text-center md:mt-8 md:text-lg">
-            It&apos;s built to support transparency, accountability, and
-            progress...no matter the team size.
+            It&apos;s built to support clear ownership, fewer missed follow-ups,
+            and better visibility across every active booking.
           </p>
         </div>
       </div>
