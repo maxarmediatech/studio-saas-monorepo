@@ -15,19 +15,11 @@ import {
 	EmptyTitle,
 } from "@repo/ui/components/empty";
 import { ScrollArea } from "@repo/ui/components/scroll-area";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@repo/ui/components/select";
 import { Textarea } from "@repo/ui/components/textarea";
 import { cn } from "@repo/ui/lib/utils";
 import {
 	CircleAlertIcon,
 	MessageCircleMoreIcon,
-	MoreHorizontalIcon,
 	NotebookTextIcon,
 	PaperclipIcon,
 	RotateCcwIcon,
@@ -39,14 +31,6 @@ import type { z } from "zod";
 
 type ConversationItem = z.infer<typeof conversationItemSchema>;
 type MessageItem = z.infer<typeof messageItemSchema>;
-type AssigneeOption = {
-	userId: string;
-	label: string;
-};
-const UNASSIGNED_VALUE = "__unassigned__";
-const OPEN_VALUE = "open";
-const CLOSED_VALUE = "closed";
-const ARCHIVED_VALUE = "archived";
 
 function getConversationName(conversation: ConversationItem) {
 	return (
@@ -54,6 +38,16 @@ function getConversationName(conversation: ConversationItem) {
 		conversation.contact.pushName ||
 		conversation.contact.phoneNumber
 	);
+}
+
+function getConversationMeta(conversation: ConversationItem) {
+	if (conversation.contact.name || conversation.contact.pushName) {
+		return conversation.contact.phoneNumber;
+	}
+
+	return conversation.contact.waId !== conversation.contact.phoneNumber
+		? conversation.contact.waId
+		: "WhatsApp conversation";
 }
 
 function formatMessageTime(value: Date) {
@@ -198,12 +192,7 @@ export function WhatsAppMessageThread({
 	onOpenMediaDialog,
 	onOpenTemplateDialog,
 	onRetryMessage,
-	assigneeOptions,
-	onAssignConversation,
-	onUpdateConversationStatus,
 	isSending,
-	isAssigning,
-	isUpdatingStatus,
 	isTemplateActionDisabled,
 	retryingMessageId,
 }: {
@@ -216,12 +205,7 @@ export function WhatsAppMessageThread({
 	onOpenMediaDialog: () => void;
 	onOpenTemplateDialog: () => void;
 	onRetryMessage: (messageId: string) => void;
-	assigneeOptions: AssigneeOption[];
-	onAssignConversation: (assignedToUserId: string | null) => void;
-	onUpdateConversationStatus: (status: ConversationItem["status"]) => void;
 	isSending: boolean;
-	isAssigning: boolean;
-	isUpdatingStatus: boolean;
 	isTemplateActionDisabled: boolean;
 	retryingMessageId: string | null;
 }) {
@@ -253,82 +237,21 @@ export function WhatsAppMessageThread({
 							<h2 className="m-0 truncate text-sm font-medium sm:text-base">
 								{getConversationName(conversation)}
 							</h2>
-							<Badge
-								variant={
-									conversation.unreadCount > 0
-										? "default"
-										: "outline"
-								}
-								className="h-5 px-1.5 text-[10px]"
-							>
-								{conversation.unreadCount > 0
-									? `${conversation.unreadCount} unread`
-									: "Read"}
-							</Badge>
+							{conversation.unreadCount > 0 ? (
+								<Badge className="h-5 px-1.5 text-[10px]">
+									{conversation.unreadCount} unread
+								</Badge>
+							) : null}
 						</div>
 						<p className="truncate text-xs text-muted-foreground">
-							{conversation.contact.phoneNumber} ·{" "}
-							{conversation.contact.waId}
+							{getConversationMeta(conversation)}
 						</p>
 					</div>
 				</div>
-				<div className="flex shrink-0 items-center gap-2">
-					<Select
-						value={conversation.status}
-						onValueChange={(value) =>
-							onUpdateConversationStatus(
-								value as ConversationItem["status"],
-							)
-						}
-						disabled={isUpdatingStatus}
-					>
-						<SelectTrigger className="h-8 min-w-28 text-xs">
-							<SelectValue placeholder="Status" />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value={OPEN_VALUE}>Open</SelectItem>
-							<SelectItem value={CLOSED_VALUE}>Closed</SelectItem>
-							<SelectItem value={ARCHIVED_VALUE}>
-								Archived
-							</SelectItem>
-						</SelectContent>
-					</Select>
-					<Select
-						value={
-							conversation.assignedToUserId ?? UNASSIGNED_VALUE
-						}
-						onValueChange={(value) =>
-							onAssignConversation(
-								value === UNASSIGNED_VALUE ? null : value,
-							)
-						}
-						disabled={isAssigning}
-					>
-						<SelectTrigger className="hidden h-8 min-w-40 text-xs sm:flex">
-							<SelectValue placeholder="Unassigned" />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value={UNASSIGNED_VALUE}>
-								Unassigned
-							</SelectItem>
-							{assigneeOptions.map((option) => (
-								<SelectItem
-									key={option.userId}
-									value={option.userId}
-								>
-									{option.label}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-					<Button variant="ghost" size="icon" className="size-8">
-						<MoreHorizontalIcon className="size-4" />
-					</Button>
-				</div>
 			</header>
 
-			<ScrollArea className="min-h-0 flex-1">
-				<article className="flex min-h-full w-full flex-col gap-4 px-5 py-5 lg:px-8">
+			<ScrollArea className="min-h-0 flex-1 bg-neutral-50/60">
+				<article className="mx-auto flex min-h-full w-full max-w-5xl flex-col gap-3 px-5 py-5 lg:px-8">
 					{isLoading ? (
 						Array.from({ length: 6 }).map((_, index) => (
 							<div
@@ -367,9 +290,9 @@ export function WhatsAppMessageThread({
 								<div
 									key={message.id}
 									className={cn(
-										"w-fit max-w-[min(680px,82%)] rounded-lg border px-4 py-3",
+										"w-fit max-w-[min(620px,78%)] rounded-lg border px-4 py-3 shadow-xs",
 										isOutbound
-											? "ml-auto bg-muted/40 text-foreground"
+											? "ml-auto bg-emerald-50 text-foreground"
 											: "mr-auto bg-background text-foreground",
 									)}
 								>
@@ -443,18 +366,15 @@ export function WhatsAppMessageThread({
 				</article>
 			</ScrollArea>
 
-			<div className="shrink-0 border-t px-5 py-4 lg:px-8">
-				<div className="w-full rounded-lg border bg-muted/30">
-					<div className="border-b px-3 py-2 text-sm text-muted-foreground">
-						Reply to {conversation.contact.phoneNumber}
-					</div>
+			<div className="shrink-0 border-t bg-background px-5 py-4 lg:px-8">
+				<div className="mx-auto w-full max-w-5xl rounded-lg border bg-background">
 					<Textarea
 						value={composerValue}
 						onChange={(event) =>
 							onComposerChange(event.target.value)
 						}
-						placeholder="Write a reply..."
-						className="min-h-[90px] resize-none border-0 bg-transparent focus-visible:ring-0"
+						placeholder="Message..."
+						className="min-h-[76px] resize-none border-0 bg-transparent focus-visible:ring-0"
 					/>
 					<div className="flex items-center justify-between gap-3 border-t px-3 py-2">
 						<div className="flex items-center gap-1">

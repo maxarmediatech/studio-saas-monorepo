@@ -1,4 +1,14 @@
-import { and, db, desc, eq, sql } from "@repo/database";
+import {
+	and,
+	clients,
+	crews,
+	db,
+	desc,
+	eq,
+	inArray,
+	isNull,
+	sql,
+} from "@repo/database";
 import { waContacts, waConversations } from "@repo/whatsapp-db";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { toConversationItem } from "../lib/conversation-presenter";
@@ -26,6 +36,68 @@ function parseCursor(cursor: string): { createdAt: Date; id: string } | null {
 
 function encodeCursor(createdAt: Date, id: string): string {
 	return `${createdAt.toISOString()}_${id}`;
+}
+
+function normalizePhone(value: string | null | undefined) {
+	return value?.replace(/\D/g, "") ?? "";
+}
+
+const normalizedWaContactPhone = sql<string>`regexp_replace(coalesce(${waContacts.phoneNumber}, ''), '[^0-9]', '', 'g')`;
+const normalizedWaContactId = sql<string>`regexp_replace(coalesce(${waContacts.waId}, ''), '[^0-9]', '', 'g')`;
+const normalizedClientPhone = sql<string>`regexp_replace(coalesce(${clients.phoneNumber}, ''), '[^0-9]', '', 'g')`;
+const normalizedCrewPhone = sql<string>`regexp_replace(coalesce(${crews.phoneNumber}, ''), '[^0-9]', '', 'g')`;
+
+async function getSavedContactNameByPhone(params: {
+	organizationId: string;
+	phoneNumbers: string[];
+}) {
+	const normalizedPhones = [
+		...new Set(params.phoneNumbers.map(normalizePhone).filter(Boolean)),
+	];
+
+	if (normalizedPhones.length === 0) {
+		return new Map<string, string>();
+	}
+
+	const [clientMatches, crewMatches] = await Promise.all([
+		db
+			.select({
+				name: clients.name,
+				phoneNumber: clients.phoneNumber,
+			})
+			.from(clients)
+			.where(
+				and(
+					eq(clients.organizationId, params.organizationId),
+					isNull(clients.deletedAt),
+					inArray(normalizedClientPhone, normalizedPhones),
+				),
+			),
+		db
+			.select({
+				name: crews.name,
+				phoneNumber: crews.phoneNumber,
+			})
+			.from(crews)
+			.where(
+				and(
+					eq(crews.organizationId, params.organizationId),
+					isNull(crews.deletedAt),
+					inArray(normalizedCrewPhone, normalizedPhones),
+				),
+			),
+	]);
+
+	const namesByPhone = new Map<string, string>();
+
+	for (const match of [...crewMatches, ...clientMatches]) {
+		const normalizedPhone = normalizePhone(match.phoneNumber);
+		if (normalizedPhone) {
+			namesByPhone.set(normalizedPhone, match.name);
+		}
+	}
+
+	return namesByPhone;
 }
 
 export const listConversations = studioProtectedProcedure
@@ -63,7 +135,28 @@ export const listConversations = studioProtectedProcedure
 		if (input.search) {
 			const search = `%${input.search}%`;
 			conditions.push(
-				sql`(coalesce(${waContacts.name}, '') ILIKE ${search} OR coalesce(${waContacts.pushName}, '') ILIKE ${search} OR ${waContacts.phoneNumber} ILIKE ${search} OR ${waContacts.waId} ILIKE ${search})`,
+				sql`(
+					coalesce(${waContacts.name}, '') ILIKE ${search}
+					OR coalesce(${waContacts.pushName}, '') ILIKE ${search}
+					OR ${waContacts.phoneNumber} ILIKE ${search}
+					OR ${waContacts.waId} ILIKE ${search}
+					OR EXISTS (
+						SELECT 1
+						FROM ${clients}
+						WHERE ${clients.organizationId} = ${waContacts.organizationId}
+							AND ${clients.deletedAt} IS NULL
+							AND ${clients.name} ILIKE ${search}
+							AND ${normalizedClientPhone} IN (${normalizedWaContactPhone}, ${normalizedWaContactId})
+					)
+					OR EXISTS (
+						SELECT 1
+						FROM ${crews}
+						WHERE ${crews.organizationId} = ${waContacts.organizationId}
+							AND ${crews.deletedAt} IS NULL
+							AND ${crews.name} ILIKE ${search}
+							AND ${normalizedCrewPhone} IN (${normalizedWaContactPhone}, ${normalizedWaContactId})
+					)
+				)`,
 			);
 		}
 
@@ -97,11 +190,34 @@ export const listConversations = studioProtectedProcedure
 			hasMore && lastItem
 				? encodeCursor(lastItem.sortAt, lastItem.conversation.id)
 				: null;
+		const savedNamesByPhone = await getSavedContactNameByPhone({
+			organizationId: context.organizationId,
+			phoneNumbers: items.flatMap(({ contact }) => [
+				contact.phoneNumber,
+				contact.waId,
+			]),
+		});
 
 		return {
-			data: items.map(({ conversation, contact }) =>
-				toConversationItem(conversation, contact),
-			),
+			data: items.map(({ conversation, contact }) => {
+				const item = toConversationItem(conversation, contact);
+				const savedName =
+					savedNamesByPhone.get(normalizePhone(contact.phoneNumber)) ??
+					savedNamesByPhone.get(normalizePhone(contact.waId)) ??
+					null;
+
+				if (item.contact.name || !savedName) {
+					return item;
+				}
+
+				return {
+					...item,
+					contact: {
+						...item.contact,
+						name: savedName,
+					},
+				};
+			}),
 			nextCursor,
 		};
 	});

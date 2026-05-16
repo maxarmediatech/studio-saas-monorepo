@@ -40,6 +40,16 @@ export const sendText = studioProtectedProcedure
 			),
 		});
 
+		if (existingContact && input.contactName && !existingContact.name) {
+			await db
+				.update(waContacts)
+				.set({
+					name: input.contactName,
+					updatedAt: new Date(),
+				})
+				.where(eq(waContacts.id, existingContact.id));
+		}
+
 		const contactId = existingContact
 			? existingContact.id
 			: (
@@ -50,6 +60,7 @@ export const sendText = studioProtectedProcedure
 							accountId: account.id,
 							waId: input.to,
 							phoneNumber: input.to,
+							name: input.contactName ?? null,
 						})
 						.returning({ id: waContacts.id })
 				)[0]?.id;

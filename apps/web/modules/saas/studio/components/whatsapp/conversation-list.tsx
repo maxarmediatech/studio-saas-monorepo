@@ -30,6 +30,10 @@ function getConversationName(conversation: ConversationItem) {
 	);
 }
 
+function shouldShowSecondaryPhone(conversation: ConversationItem) {
+	return Boolean(conversation.contact.name || conversation.contact.pushName);
+}
+
 function getConversationInitials(conversation: ConversationItem) {
 	return getConversationName(conversation)
 		.split(" ")
@@ -168,15 +172,17 @@ export function WhatsAppConversationList({
 										</span>
 									) : null}
 								</div>
-								<p
-									className={cn(
-										"mt-0.5 truncate text-sm",
-										conversation.unreadCount > 0 &&
-											"font-medium",
-									)}
-								>
-									{conversation.contact.phoneNumber}
-								</p>
+								{shouldShowSecondaryPhone(conversation) ? (
+									<p
+										className={cn(
+											"mt-0.5 truncate text-xs text-muted-foreground",
+											conversation.unreadCount > 0 &&
+												"font-medium text-foreground",
+										)}
+									>
+										{conversation.contact.phoneNumber}
+									</p>
+								) : null}
 								<p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
 									{conversation.lastMessagePreview ||
 										"Conversation ready"}
@@ -190,14 +196,16 @@ export function WhatsAppConversationList({
 											{conversation.unreadCount}
 										</Badge>
 									) : null}
-									<Badge
-										variant="outline"
-										className="h-5 px-1.5 text-[10px]"
-									>
-										{formatConversationStatusLabel(
-											conversation.status,
-										)}
-									</Badge>
+									{conversation.status !== "open" ? (
+										<Badge
+											variant="outline"
+											className="h-5 px-1.5 text-[10px]"
+										>
+											{formatConversationStatusLabel(
+												conversation.status,
+											)}
+										</Badge>
+									) : null}
 									{assigneeLabel ? (
 										<Badge
 											variant="outline"

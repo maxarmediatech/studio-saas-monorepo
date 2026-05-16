@@ -202,6 +202,7 @@ export const sendTextInputSchema = z.object({
 	accountId: z.string(),
 	to: z.string(),
 	text: z.string().min(1),
+	contactName: z.string().min(1).optional(),
 });
 
 export const sendTextOutputSchema = z.object({

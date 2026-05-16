@@ -1,9 +1,6 @@
 "use client";
 
-import type {
-	conversationItemSchema,
-	whatsappTemplateSummarySchema,
-} from "@repo/api/modules/whatsapp/types";
+import type { whatsappTemplateSummarySchema } from "@repo/api/modules/whatsapp/types";
 import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
 import { Button } from "@repo/ui/components/button";
 import {
@@ -39,15 +36,10 @@ import {
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-	ArchiveIcon,
-	CheckCircle2Icon,
 	CircleAlertIcon,
-	InboxIcon,
 	MessageSquareIcon,
 	PlusIcon,
-	RefreshCwIcon,
 	SearchIcon,
-	UserCheckIcon,
 } from "lucide-react";
 import {
 	startTransition,
@@ -66,17 +58,9 @@ import { WhatsAppTemplatePickerDialog } from "./template-picker-dialog";
 import { buildTemplateSendComponents } from "./template-send-payload";
 import { TestWhatsAppSetupPanel } from "./test-whatsapp-setup-panel";
 
-const ALL_ACCOUNTS_VALUE = "__all_accounts__";
-const ALL_ASSIGNMENTS_VALUE = "__all_assignments__";
-const ALL_STATUSES_VALUE = "__all_statuses__";
 const MANUAL_RECIPIENT_VALUE = "__manual_recipient__";
-const MY_ASSIGNMENTS_VALUE = "__my_assignments__";
-const UNASSIGNED_ASSIGNMENTS_VALUE = "__unassigned_assignments__";
 const TEST_ENV_HOSTS = new Set(["dev.stuwiz.com", "localhost", "127.0.0.1"]);
 type WhatsAppTemplate = z.infer<typeof whatsappTemplateSummarySchema>;
-type WhatsAppConversationStatus = z.infer<
-	typeof conversationItemSchema
->["status"];
 
 function normalizeWhatsAppRecipient(value: string) {
 	return value.replace(/[^\d+]/g, "").replace(/^\+/, "");
@@ -86,13 +70,6 @@ export function WhatsAppInboxPageClient() {
 	const queryClient = useQueryClient();
 	const { session } = useSession();
 	const { activeOrganization } = useActiveOrganization();
-	const [accountFilter, setAccountFilter] = useState(ALL_ACCOUNTS_VALUE);
-	const [assignmentFilter, setAssignmentFilter] = useState(
-		ALL_ASSIGNMENTS_VALUE,
-	);
-	const [statusFilter, setStatusFilter] = useState<
-		typeof ALL_STATUSES_VALUE | WhatsAppConversationStatus
-	>(ALL_STATUSES_VALUE);
 	const [search, setSearch] = useState("");
 	const [showUnreadOnly, setShowUnreadOnly] = useState(false);
 	const [selectedConversationId, setSelectedConversationId] = useState<
@@ -213,18 +190,6 @@ export function WhatsAppInboxPageClient() {
 	const conversationsQuery = useQuery({
 		...whatsappApi.listConversationsOptions({
 			limit: 50,
-			accountId:
-				accountFilter === ALL_ACCOUNTS_VALUE
-					? undefined
-					: accountFilter,
-			assignment:
-				assignmentFilter === MY_ASSIGNMENTS_VALUE
-					? "mine"
-					: assignmentFilter === UNASSIGNED_ASSIGNMENTS_VALUE
-						? "unassigned"
-						: undefined,
-			status:
-				statusFilter === ALL_STATUSES_VALUE ? undefined : statusFilter,
 			search: deferredSearch.trim() || undefined,
 		}),
 		refetchOnWindowFocus: false,
@@ -367,19 +332,6 @@ export function WhatsAppInboxPageClient() {
 		},
 	});
 
-	const assignConversationMutation = useMutation({
-		...whatsappMutations.assignConversation(),
-		onSuccess: async (result) => {
-			await queryClient.invalidateQueries({
-				queryKey: orpc.whatsapp.key(),
-			});
-			toast.success(result.message);
-		},
-		onError: (error) => {
-			toast.error(error.message || "Failed to update assignment");
-		},
-	});
-
 	const sendTemplateMutation = useMutation({
 		...whatsappMutations.sendTemplate(),
 		onSuccess: async () => {
@@ -413,19 +365,6 @@ export function WhatsAppInboxPageClient() {
 		},
 		onSettled: () => {
 			setRetryingMessageId(null);
-		},
-	});
-
-	const updateConversationStatusMutation = useMutation({
-		...whatsappMutations.updateConversationStatus(),
-		onSuccess: async (result) => {
-			await queryClient.invalidateQueries({
-				queryKey: orpc.whatsapp.key(),
-			});
-			toast.success(result.message);
-		},
-		onError: (error) => {
-			toast.error(error.message || "Failed to update status");
 		},
 	});
 
@@ -468,6 +407,7 @@ export function WhatsAppInboxPageClient() {
 			accountId,
 			to,
 			text,
+			contactName: selectedRecipient?.name,
 		});
 	};
 
@@ -538,180 +478,6 @@ export function WhatsAppInboxPageClient() {
 		return assigneeLabelMap.get(assignedToUserId) ?? "Assigned";
 	};
 
-	const headerContent = (
-		<div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-			<div className="flex items-center gap-1 overflow-x-auto">
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					className={
-						statusFilter === ALL_STATUSES_VALUE &&
-						assignmentFilter === ALL_ASSIGNMENTS_VALUE
-							? "h-[30px] gap-1.5 bg-muted text-foreground hover:bg-muted"
-							: "h-[30px] gap-1.5"
-					}
-					onClick={() => {
-						setStatusFilter(ALL_STATUSES_VALUE);
-						setAssignmentFilter(ALL_ASSIGNMENTS_VALUE);
-					}}
-				>
-					<InboxIcon className="size-4" />
-					<span className="text-[13px]">Inbox</span>
-					<span className="rounded-md bg-background px-1.5 py-0.5 text-[10px]">
-						{conversations.length}
-					</span>
-				</Button>
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					className={
-						statusFilter === "open"
-							? "h-[30px] gap-1.5 bg-muted text-foreground hover:bg-muted"
-							: "h-[30px] gap-1.5"
-					}
-					onClick={() => {
-						setStatusFilter("open");
-						setAssignmentFilter(ALL_ASSIGNMENTS_VALUE);
-					}}
-				>
-					<MessageSquareIcon className="size-4" />
-					<span className="text-[13px]">Open</span>
-				</Button>
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					className={
-						assignmentFilter === MY_ASSIGNMENTS_VALUE
-							? "h-[30px] gap-1.5 bg-muted text-foreground hover:bg-muted"
-							: "h-[30px] gap-1.5"
-					}
-					onClick={() => {
-						setAssignmentFilter(MY_ASSIGNMENTS_VALUE);
-						setStatusFilter(ALL_STATUSES_VALUE);
-					}}
-				>
-					<UserCheckIcon className="size-4" />
-					<span className="text-[13px]">Mine</span>
-				</Button>
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					className={
-						statusFilter === "closed"
-							? "h-[30px] gap-1.5 bg-muted text-foreground hover:bg-muted"
-							: "h-[30px] gap-1.5"
-					}
-					onClick={() => {
-						setStatusFilter("closed");
-						setAssignmentFilter(ALL_ASSIGNMENTS_VALUE);
-					}}
-				>
-					<CheckCircle2Icon className="size-4" />
-					<span className="text-[13px]">Closed</span>
-				</Button>
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					className={
-						statusFilter === "archived"
-							? "h-[30px] gap-1.5 bg-muted text-foreground hover:bg-muted"
-							: "h-[30px] gap-1.5"
-					}
-					onClick={() => {
-						setStatusFilter("archived");
-						setAssignmentFilter(ALL_ASSIGNMENTS_VALUE);
-					}}
-				>
-					<ArchiveIcon className="size-4" />
-					<span className="text-[13px]">Archived</span>
-				</Button>
-			</div>
-			<div className="flex flex-wrap items-center gap-2 lg:justify-end">
-				<Select value={accountFilter} onValueChange={setAccountFilter}>
-					<SelectTrigger className="h-8 min-w-44">
-						<SelectValue placeholder="All accounts" />
-					</SelectTrigger>
-					<SelectContent>
-						<SelectItem value={ALL_ACCOUNTS_VALUE}>
-							All accounts
-						</SelectItem>
-						{accounts.map((account) => (
-							<SelectItem key={account.id} value={account.id}>
-								{account.name}
-							</SelectItem>
-						))}
-					</SelectContent>
-				</Select>
-				<Select
-					value={assignmentFilter}
-					onValueChange={setAssignmentFilter}
-				>
-					<SelectTrigger className="h-8 min-w-40">
-						<SelectValue placeholder="All assignments" />
-					</SelectTrigger>
-					<SelectContent>
-						<SelectItem value={ALL_ASSIGNMENTS_VALUE}>
-							All assignments
-						</SelectItem>
-						<SelectItem value={MY_ASSIGNMENTS_VALUE}>
-							Mine
-						</SelectItem>
-						<SelectItem value={UNASSIGNED_ASSIGNMENTS_VALUE}>
-							Unassigned
-						</SelectItem>
-					</SelectContent>
-				</Select>
-				<Select
-					value={statusFilter}
-					onValueChange={(value) =>
-						setStatusFilter(
-							value as
-								| typeof ALL_STATUSES_VALUE
-								| WhatsAppConversationStatus,
-						)
-					}
-				>
-					<SelectTrigger className="h-8 min-w-36">
-						<SelectValue placeholder="All statuses" />
-					</SelectTrigger>
-					<SelectContent>
-						<SelectItem value={ALL_STATUSES_VALUE}>
-							All statuses
-						</SelectItem>
-						<SelectItem value="open">Open</SelectItem>
-						<SelectItem value="closed">Closed</SelectItem>
-						<SelectItem value="archived">Archived</SelectItem>
-					</SelectContent>
-				</Select>
-				<Button
-					type="button"
-					variant="outline"
-					size="sm"
-					onClick={() => {
-						accountsQuery.refetch();
-						conversationsQuery.refetch();
-						if (selectedConversationId) {
-							messagesQuery.refetch();
-						}
-					}}
-					disabled={
-						accountsQuery.isFetching ||
-						conversationsQuery.isFetching ||
-						messagesQuery.isFetching
-					}
-				>
-					<RefreshCwIcon className="mr-1.5 size-4" />
-					Refresh
-				</Button>
-			</div>
-		</div>
-	);
-
 	const controls = (
 		<Button
 			type="button"
@@ -734,7 +500,6 @@ export function WhatsAppInboxPageClient() {
 					</h1>
 					{controls}
 				</div>
-				<div className="px-4 pb-3 lg:px-6">{headerContent}</div>
 			</header>
 
 			<main className="min-h-0 flex-1 overflow-hidden  bg-background">
@@ -774,11 +539,13 @@ export function WhatsAppInboxPageClient() {
 					<aside className="flex min-w-0 flex-col overflow-hidden border-r bg-neutral-50/80">
 						<div className="flex shrink-0 flex-col gap-3.5 border-b bg-white p-4">
 							<div className="flex w-full items-center justify-between">
-								<div className="text-base font-medium text-foreground">
+								<div className="text-sm font-medium text-foreground">
 									Inbox
 								</div>
 								<div className="flex items-center gap-2 text-sm">
-									<span>Unreads</span>
+									<span className="text-xs text-muted-foreground">
+										Unread only
+									</span>
 									<Switch
 										checked={showUnreadOnly}
 										onCheckedChange={setShowUnreadOnly}
@@ -826,32 +593,7 @@ export function WhatsAppInboxPageClient() {
 								setTemplateDialogOpen(true)
 							}
 							onRetryMessage={handleRetryMessage}
-							assigneeOptions={assigneeOptions}
-							onAssignConversation={(assignedToUserId) => {
-								if (!selectedConversation) {
-									return;
-								}
-
-								assignConversationMutation.mutate({
-									conversationId: selectedConversation.id,
-									assignedToUserId,
-								});
-							}}
-							onUpdateConversationStatus={(status) => {
-								if (!selectedConversation) {
-									return;
-								}
-
-								updateConversationStatusMutation.mutate({
-									conversationId: selectedConversation.id,
-									status,
-								});
-							}}
 							isSending={sendTextMutation.isPending}
-							isAssigning={assignConversationMutation.isPending}
-							isUpdatingStatus={
-								updateConversationStatusMutation.isPending
-							}
 							isTemplateActionDisabled={!selectedConversation}
 							retryingMessageId={retryingMessageId}
 						/>
