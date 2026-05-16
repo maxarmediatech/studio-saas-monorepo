@@ -52,7 +52,10 @@ export {
 	ShootsTableClient,
 	ShootsTableSkeleton,
 } from "./components/shoots";
-export { WhatsAppInboxPageClient } from "./components/whatsapp";
+export {
+	WhatsAppInboxPageClient,
+	WhatsAppTemplatesPageClient,
+} from "./components/whatsapp";
 // API Utilities
 export {
 	bookingsApi,
