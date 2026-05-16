@@ -284,6 +284,7 @@ export const listConversationsInputSchema = z.object({
 	accountId: z.string().optional(),
 	status: waConversationStatusSchema.optional(),
 	assignment: z.enum(["all", "mine", "unassigned"]).optional(),
+	contactType: z.enum(["client", "crew"]).optional(),
 	search: z.string().min(1).max(100).optional(),
 });
 

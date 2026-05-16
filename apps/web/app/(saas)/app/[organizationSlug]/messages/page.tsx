@@ -19,5 +19,5 @@ export default async function MessagesPage({ params }: Props) {
 		notFound();
 	}
 
-	return <WhatsAppInboxPageClient />;
+	return <WhatsAppInboxPageClient audience="client" />;
 }

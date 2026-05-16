@@ -7,7 +7,15 @@ import { usePathname } from "next/navigation";
 import type { NavAreaConfig, NavItemConfig } from "../../lib/navigation/types";
 import { IconByName } from "./icon-registry";
 
-function isItemActive(pathname: string, itemPath: string): boolean {
+function isItemActive(
+	pathname: string,
+	itemPath: string,
+	exact = false,
+): boolean {
+	if (exact) {
+		return pathname === itemPath;
+	}
+
 	return pathname === itemPath || pathname.startsWith(`${itemPath}/`);
 }
 
@@ -18,7 +26,7 @@ function AreaNavItem({
 	item: NavItemConfig;
 	pathname: string;
 }) {
-	const active = isItemActive(pathname, item.path);
+	const active = isItemActive(pathname, item.path, item.exact);
 
 	return (
 		<Link

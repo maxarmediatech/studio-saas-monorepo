@@ -506,15 +506,46 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 			title: "Messages",
 			backHref: url("/home"),
 			direction: "right",
-			sections: [],
-			standaloneItems: [
+			sections: [
 				{
-					id: "whatsapp",
+					id: "messages-inbox",
+					label: "Inbox",
+					items: [
+						{
+							id: "messages-clients",
+							label: "Clients",
+							path: url("/messages"),
+							icon: "Contact2",
+							exact: true,
+						},
+						{
+							id: "messages-crew",
+							label: "Crew",
+							path: url("/messages/crew"),
+							icon: "Users",
+						},
+					],
+				},
+				{
+					id: "messages-whatsapp",
 					label: "WhatsApp",
-					path: url("/messages"),
-					icon: "MessageSquare",
+					items: [
+						{
+							id: "messages-templates",
+							label: "Templates",
+							path: url("/messages/templates"),
+							icon: "FileText",
+						},
+						{
+							id: "messages-setup",
+							label: "Setup & Review",
+							path: url("/messages/setup"),
+							icon: "Shield",
+						},
+					],
 				},
 			],
+			standaloneItems: [],
 		},
 		calendarWorkspace: {
 			id: "calendarWorkspace",

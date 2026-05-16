@@ -60,13 +60,18 @@ import { TestWhatsAppSetupPanel } from "./test-whatsapp-setup-panel";
 
 const MANUAL_RECIPIENT_VALUE = "__manual_recipient__";
 const TEST_ENV_HOSTS = new Set(["dev.stuwiz.com", "localhost", "127.0.0.1"]);
+type WhatsAppInboxAudience = "client" | "crew";
 type WhatsAppTemplate = z.infer<typeof whatsappTemplateSummarySchema>;
 
 function normalizeWhatsAppRecipient(value: string) {
 	return value.replace(/[^\d+]/g, "").replace(/^\+/, "");
 }
 
-export function WhatsAppInboxPageClient() {
+export function WhatsAppInboxPageClient({
+	audience = "client",
+}: {
+	audience?: WhatsAppInboxAudience;
+}) {
 	const queryClient = useQueryClient();
 	const { session } = useSession();
 	const { activeOrganization } = useActiveOrganization();
@@ -135,7 +140,7 @@ export function WhatsAppInboxPageClient() {
 			sortBy: "name",
 			sortDirection: "asc",
 		}),
-		enabled: newMessageOpen,
+		enabled: newMessageOpen && audience === "client",
 	});
 	const crewsQuery = useQuery({
 		...crewsApi.listOptions({
@@ -144,7 +149,7 @@ export function WhatsAppInboxPageClient() {
 			sortBy: "name",
 			sortDirection: "asc",
 		}),
-		enabled: newMessageOpen,
+		enabled: newMessageOpen && audience === "crew",
 	});
 
 	const clientRecipients = useMemo(
@@ -172,8 +177,8 @@ export function WhatsAppInboxPageClient() {
 		[crewsQuery.data?.data],
 	);
 	const recipientOptions = useMemo(
-		() => [...clientRecipients, ...crewRecipients],
-		[clientRecipients, crewRecipients],
+		() => (audience === "crew" ? crewRecipients : clientRecipients),
+		[audience, clientRecipients, crewRecipients],
 	);
 	const selectedRecipient = recipientOptions.find(
 		(recipient) => recipient.value === newMessageRecipientValue,
@@ -191,6 +196,7 @@ export function WhatsAppInboxPageClient() {
 		...whatsappApi.listConversationsOptions({
 			limit: 50,
 			search: deferredSearch.trim() || undefined,
+			contactType: audience,
 		}),
 		refetchOnWindowFocus: false,
 	});
@@ -489,6 +495,10 @@ export function WhatsAppInboxPageClient() {
 			New message
 		</Button>
 	);
+	const recipientLabel = audience === "crew" ? "crew" : "client";
+	const recipientLabelPlural = audience === "crew" ? "crew" : "clients";
+	const recipientSelectPlaceholder =
+		audience === "crew" ? "Select crew" : "Select a client";
 
 	return (
 		<div className="flex min-h-0 flex-1 flex-col bg-background">
@@ -652,13 +662,19 @@ export function WhatsAppInboxPageClient() {
 									id="new-whatsapp-phone"
 									className="w-full"
 								>
-									<SelectValue placeholder="Select a client or crew" />
+									<SelectValue
+										placeholder={recipientSelectPlaceholder}
+									/>
 								</SelectTrigger>
 								<SelectContent>
 									<SelectGroup>
-										<SelectLabel>Clients</SelectLabel>
-										{clientRecipients.length > 0 ? (
-											clientRecipients.map(
+										<SelectLabel>
+											{audience === "crew"
+												? "Crew"
+												: "Clients"}
+										</SelectLabel>
+										{recipientOptions.length > 0 ? (
+											recipientOptions.map(
 												(recipient) => (
 													<SelectItem
 														key={recipient.value}
@@ -671,32 +687,11 @@ export function WhatsAppInboxPageClient() {
 											)
 										) : (
 											<SelectItem
-												value="__no_clients__"
+												value="__no_recipients__"
 												disabled
 											>
-												No clients with phone numbers
-											</SelectItem>
-										)}
-									</SelectGroup>
-									<SelectSeparator />
-									<SelectGroup>
-										<SelectLabel>Crew</SelectLabel>
-										{crewRecipients.length > 0 ? (
-											crewRecipients.map((recipient) => (
-												<SelectItem
-													key={recipient.value}
-													value={recipient.value}
-												>
-													{recipient.name} •{" "}
-													{recipient.phoneNumber}
-												</SelectItem>
-											))
-										) : (
-											<SelectItem
-												value="__no_crew__"
-												disabled
-											>
-												No crew with phone numbers
+												No {recipientLabelPlural} with
+												phone numbers
 											</SelectItem>
 										)}
 									</SelectGroup>
@@ -719,8 +714,8 @@ export function WhatsAppInboxPageClient() {
 							) : null}
 							<p className="m-0 text-xs text-muted-foreground">
 								{clientsQuery.isLoading || crewsQuery.isLoading
-									? "Loading clients and crew..."
-									: "Choose a saved client or crew with country code in their phone number."}
+									? `Loading ${recipientLabelPlural}...`
+									: `Choose a saved ${recipientLabel} with country code in their phone number.`}
 							</p>
 							{selectedRecipient ? (
 								<p className="m-0 text-xs text-muted-foreground">

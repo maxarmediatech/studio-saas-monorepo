@@ -47,6 +47,35 @@ const normalizedWaContactId = sql<string>`regexp_replace(coalesce(${waContacts.w
 const normalizedClientPhone = sql<string>`regexp_replace(coalesce(${clients.phoneNumber}, ''), '[^0-9]', '', 'g')`;
 const normalizedCrewPhone = sql<string>`regexp_replace(coalesce(${crews.phoneNumber}, ''), '[^0-9]', '', 'g')`;
 
+const clientPhoneMatchesContact = sql`
+	${normalizedClientPhone} IN (${normalizedWaContactPhone}, ${normalizedWaContactId})
+`;
+const crewPhoneMatchesContact = sql`
+	${normalizedCrewPhone} IN (${normalizedWaContactPhone}, ${normalizedWaContactId})
+`;
+
+function clientContactExists(search?: string) {
+	return sql`EXISTS (
+		SELECT 1
+		FROM ${clients}
+		WHERE ${clients.organizationId} = ${waContacts.organizationId}
+			AND ${clients.deletedAt} IS NULL
+			${search ? sql`AND ${clients.name} ILIKE ${search}` : sql``}
+			AND ${clientPhoneMatchesContact}
+	)`;
+}
+
+function crewContactExists(search?: string) {
+	return sql`EXISTS (
+		SELECT 1
+		FROM ${crews}
+		WHERE ${crews.organizationId} = ${waContacts.organizationId}
+			AND ${crews.deletedAt} IS NULL
+			${search ? sql`AND ${crews.name} ILIKE ${search}` : sql``}
+			AND ${crewPhoneMatchesContact}
+	)`;
+}
+
 async function getSavedContactNameByPhone(params: {
 	organizationId: string;
 	phoneNumbers: string[];
@@ -132,6 +161,14 @@ export const listConversations = studioProtectedProcedure
 			conditions.push(sql`${waConversations.assignedToUserId} IS NULL`);
 		}
 
+		if (input.contactType === "client") {
+			conditions.push(sql`NOT ${crewContactExists()}`);
+		}
+
+		if (input.contactType === "crew") {
+			conditions.push(crewContactExists());
+		}
+
 		if (input.search) {
 			const search = `%${input.search}%`;
 			conditions.push(
@@ -140,22 +177,8 @@ export const listConversations = studioProtectedProcedure
 					OR coalesce(${waContacts.pushName}, '') ILIKE ${search}
 					OR ${waContacts.phoneNumber} ILIKE ${search}
 					OR ${waContacts.waId} ILIKE ${search}
-					OR EXISTS (
-						SELECT 1
-						FROM ${clients}
-						WHERE ${clients.organizationId} = ${waContacts.organizationId}
-							AND ${clients.deletedAt} IS NULL
-							AND ${clients.name} ILIKE ${search}
-							AND ${normalizedClientPhone} IN (${normalizedWaContactPhone}, ${normalizedWaContactId})
-					)
-					OR EXISTS (
-						SELECT 1
-						FROM ${crews}
-						WHERE ${crews.organizationId} = ${waContacts.organizationId}
-							AND ${crews.deletedAt} IS NULL
-							AND ${crews.name} ILIKE ${search}
-							AND ${normalizedCrewPhone} IN (${normalizedWaContactPhone}, ${normalizedWaContactId})
-					)
+					OR ${clientContactExists(search)}
+					OR ${crewContactExists(search)}
 				)`,
 			);
 		}

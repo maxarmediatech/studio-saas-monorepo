@@ -34,7 +34,15 @@ interface MobileSidebarProps {
 	onRailNavigationIntent?: (railItemId: string) => void;
 }
 
-function isItemActive(pathname: string, itemPath: string): boolean {
+function isItemActive(
+	pathname: string,
+	itemPath: string,
+	exact = false,
+): boolean {
+	if (exact) {
+		return pathname === itemPath;
+	}
+
 	return pathname === itemPath || pathname.startsWith(`${itemPath}/`);
 }
 
@@ -125,6 +133,7 @@ export function MobileSidebar({
 													isActive={isItemActive(
 														pathname,
 														item.path,
+														item.exact,
 													)}
 													onSelect={() =>
 														onOpenChange(false)
@@ -147,6 +156,7 @@ export function MobileSidebar({
 														isActive={isItemActive(
 															pathname,
 															item.path,
+															item.exact,
 														)}
 														onSelect={() =>
 															onOpenChange(false)
@@ -187,6 +197,7 @@ export function MobileSidebar({
 													isActive={isItemActive(
 														pathname,
 														item.path,
+														item.exact,
 													)}
 													onSelect={() =>
 														onOpenChange(false)
@@ -207,6 +218,7 @@ export function MobileSidebar({
 													isActive={isItemActive(
 														pathname,
 														item.path,
+														item.exact,
 													)}
 													onSelect={() =>
 														onOpenChange(false)
@@ -340,7 +352,11 @@ function MobileAreaContent({
 						<MobileNavItem
 							key={item.id}
 							item={item}
-							isActive={isItemActive(pathname, item.path)}
+							isActive={isItemActive(
+								pathname,
+								item.path,
+								item.exact,
+							)}
 							onSelect={onSelect}
 						/>
 					))}
@@ -359,7 +375,11 @@ function MobileAreaContent({
 							<MobileNavItem
 								key={item.id}
 								item={item}
-								isActive={isItemActive(pathname, item.path)}
+								isActive={isItemActive(
+									pathname,
+									item.path,
+									item.exact,
+								)}
 								onSelect={onSelect}
 							/>
 						))}

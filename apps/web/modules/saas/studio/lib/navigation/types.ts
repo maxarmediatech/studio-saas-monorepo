@@ -83,6 +83,7 @@ export interface NavItemConfig {
 	path: string;
 	icon?: IconName;
 	intent?: NavIntent;
+	exact?: boolean;
 	permission?: NavPermissionCheck;
 	children?: NavItemConfig[];
 }
