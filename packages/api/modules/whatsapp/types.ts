@@ -436,6 +436,19 @@ export const listContactsOutputSchema = z.object({
 	nextCursor: z.string().nullable(),
 });
 
+export const contactTagSummarySchema = z.object({
+	name: z.string(),
+	contactCount: z.number().int().nonnegative(),
+});
+
+export const listContactTagsInputSchema = z.object({
+	search: z.string().min(1).max(100).optional(),
+});
+
+export const listContactTagsOutputSchema = z.object({
+	data: z.array(contactTagSummarySchema),
+});
+
 export const webhookInputSchema = z.object({
 	token: z.string(),
 	payload: z.unknown(),

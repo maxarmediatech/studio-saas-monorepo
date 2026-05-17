@@ -531,16 +531,10 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 					label: "WhatsApp",
 					items: [
 						{
-							id: "messages-templates",
-							label: "Templates",
-							path: url("/messages/templates"),
-							icon: "FileText",
-						},
-						{
-							id: "messages-setup",
-							label: "Setup & Review",
-							path: url("/messages/setup"),
-							icon: "Shield",
+							id: "messages-settings",
+							label: "Settings",
+							path: url("/messages/settings"),
+							icon: "Settings2",
 						},
 					],
 				},

@@ -6,6 +6,7 @@ import { deleteAccount } from "./procedures/delete-account";
 import { getAccount } from "./procedures/get-account";
 import { getConversation } from "./procedures/get-conversation";
 import { listAccounts } from "./procedures/list-accounts";
+import { listContactTags } from "./procedures/list-contact-tags";
 import { listContacts } from "./procedures/list-contacts";
 import { listConversations } from "./procedures/list-conversations";
 import { listMessages } from "./procedures/list-messages";
@@ -31,6 +32,7 @@ export const whatsappRouter = {
 	getAccount,
 	getConversation,
 	listAccounts,
+	listContactTags,
 	listContacts,
 	listConversations,
 	listMessages,
