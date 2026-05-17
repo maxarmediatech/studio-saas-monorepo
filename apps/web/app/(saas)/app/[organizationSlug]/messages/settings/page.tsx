@@ -1,6 +1,6 @@
 import { cn } from "@repo/ui/lib/utils";
 import { getSession } from "@saas/auth/lib/server";
-import { WhatsAppAccountsCard } from "@saas/settings/components/whatsapp-accounts-card";
+import { WhatsAppConfigSettingsPanel } from "@saas/settings/components/whatsapp-accounts-card";
 import { WhatsAppTagsCard } from "@saas/settings/components/whatsapp-tags-card";
 import { SettingsList } from "@saas/shared/components/SettingsList";
 import { WhatsAppTemplatesPageClient } from "@saas/studio";
@@ -93,9 +93,7 @@ export default async function MessageSettingsPage({
 
 			<main className="min-h-0 flex-1 overflow-y-auto">
 				{activeTab === "whatsapp" ? (
-					<SettingsList>
-						<WhatsAppAccountsCard />
-					</SettingsList>
+					<WhatsAppConfigSettingsPanel />
 				) : null}
 				{activeTab === "templates" ? (
 					<WhatsAppTemplatesPageClient />
