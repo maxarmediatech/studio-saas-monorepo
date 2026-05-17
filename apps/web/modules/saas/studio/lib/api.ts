@@ -705,6 +705,12 @@ export const whatsappApi = {
 		>[0]["input"],
 	) => orpc.whatsapp.listConversations.queryOptions({ input: input ?? {} }),
 
+	listCampaignsOptions: (
+		input?: Parameters<
+			typeof orpc.whatsapp.listCampaigns.queryOptions
+		>[0]["input"],
+	) => orpc.whatsapp.listCampaigns.queryOptions({ input: input ?? {} }),
+
 	listMessagesOptions: (
 		input: Parameters<
 			typeof orpc.whatsapp.listMessages.queryOptions

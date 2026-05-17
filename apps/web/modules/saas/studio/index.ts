@@ -53,6 +53,7 @@ export {
 	ShootsTableSkeleton,
 } from "./components/shoots";
 export {
+	WhatsAppBroadcastsPageClient,
 	WhatsAppContactsPageClient,
 	WhatsAppInboxPageClient,
 	WhatsAppTemplatesPageClient,

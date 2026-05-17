@@ -1,6 +1,14 @@
 import { z } from "zod";
 
 const waConversationStatusSchema = z.enum(["open", "closed", "archived"]);
+const waCampaignStatusSchema = z.enum([
+	"draft",
+	"scheduled",
+	"running",
+	"paused",
+	"completed",
+	"cancelled",
+]);
 
 export const connectBaileysInputSchema = z.object({
 	name: z.string().min(1),
@@ -459,6 +467,48 @@ export const listContactTagsInputSchema = z.object({
 
 export const listContactTagsOutputSchema = z.object({
 	data: z.array(contactTagSummarySchema),
+});
+
+export const listCampaignsInputSchema = z.object({
+	status: waCampaignStatusSchema.optional(),
+	search: z.string().min(1).max(100).optional(),
+});
+
+export const campaignItemSchema = z.object({
+	id: z.string(),
+	accountId: z.string(),
+	name: z.string(),
+	description: z.string().nullable(),
+	status: waCampaignStatusSchema,
+	messageType: z.enum([
+		"text",
+		"image",
+		"video",
+		"audio",
+		"document",
+		"sticker",
+		"location",
+		"contact",
+		"template",
+		"interactive",
+	]),
+	templateName: z.string().nullable(),
+	audienceFilter: z.unknown().nullable(),
+	estimatedRecipients: z.number().int().nonnegative(),
+	scheduledAt: z.date().nullable(),
+	startedAt: z.date().nullable(),
+	completedAt: z.date().nullable(),
+	totalSent: z.number().int().nonnegative(),
+	totalDelivered: z.number().int().nonnegative(),
+	totalRead: z.number().int().nonnegative(),
+	totalFailed: z.number().int().nonnegative(),
+	createdByUserId: z.string().nullable(),
+	createdAt: z.date(),
+	updatedAt: z.date(),
+});
+
+export const listCampaignsOutputSchema = z.object({
+	data: z.array(campaignItemSchema),
 });
 
 export const webhookInputSchema = z.object({
