@@ -418,6 +418,12 @@ export const listContactsInputSchema = z.object({
 	limit: z.number().min(1).max(100).default(50),
 	cursor: z.string().optional(),
 	search: z.string().min(1).max(100).optional(),
+	tag: z.string().min(1).max(100).optional(),
+	blocked: z.boolean().optional(),
+	optedOut: z.boolean().optional(),
+	linkType: z
+		.enum(["all", "linked", "unlinked", "client", "crew"])
+		.optional(),
 });
 
 export const contactItemSchema = z.object({
@@ -426,6 +432,12 @@ export const contactItemSchema = z.object({
 	phoneNumber: z.string(),
 	pushName: z.string().nullable(),
 	name: z.string().nullable(),
+	email: z.string().nullable(),
+	tags: z.array(z.string()),
+	isBlocked: z.boolean(),
+	isOptedOut: z.boolean(),
+	externalSource: z.string().nullable(),
+	externalId: z.string().nullable(),
 	lastMessageAt: z.date().nullable(),
 	createdAt: z.date(),
 	updatedAt: z.date(),

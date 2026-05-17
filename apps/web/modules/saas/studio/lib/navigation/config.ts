@@ -524,6 +524,12 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							path: url("/messages/crew"),
 							icon: "Users",
 						},
+						{
+							id: "messages-contacts",
+							label: "Contacts",
+							path: url("/messages/contacts"),
+							icon: "Contact2",
+						},
 					],
 				},
 				{
