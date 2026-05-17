@@ -1,6 +1,5 @@
 "use client";
 
-import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Input } from "@repo/ui/components/input";
@@ -11,13 +10,21 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@repo/ui/components/select";
-import { cn } from "@repo/ui/lib/utils";
+import {
+	DataTable,
+	DataTableColumnHeader,
+	DataTableRowActions,
+	DataTableViewOptions,
+	type RowAction,
+} from "@saas/shared/components/data-table";
+import "@saas/shared/components/data-table/types";
 import { whatsappApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
+import type { ColumnDef } from "@tanstack/react-table";
 import {
 	BanIcon,
-	CircleAlertIcon,
 	Link2Icon,
+	PencilIcon,
 	SearchIcon,
 	ShieldOffIcon,
 	TagIcon,
@@ -31,6 +38,7 @@ import {
 	formatDate,
 	getLinkLabel,
 	type LinkType,
+	type WhatsAppContact,
 } from "./contacts-page-utils";
 
 export function WhatsAppContactsPageClient() {
@@ -63,11 +71,6 @@ export function WhatsAppContactsPageClient() {
 
 	const contacts = contactsQuery.data?.data ?? [];
 	const tags = tagsQuery.data?.data ?? [];
-	const linkedCount = contacts.filter((contact) => contact.externalId).length;
-	const optedOutCount = contacts.filter(
-		(contact) => contact.isOptedOut,
-	).length;
-	const blockedCount = contacts.filter((contact) => contact.isBlocked).length;
 	const hasActiveFilters =
 		Boolean(search.trim()) ||
 		tag !== ALL_FILTER_VALUE ||
@@ -75,121 +78,259 @@ export function WhatsAppContactsPageClient() {
 		blocked !== ALL_FILTER_VALUE ||
 		optedOut !== ALL_FILTER_VALUE;
 
-	return (
-		<div className="flex min-h-[calc(100vh-5rem)] flex-col bg-background">
-			<div className="border-b bg-white px-4 py-4 lg:px-6">
-				<div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-					<div>
-						<h1 className="m-0 text-base font-semibold text-foreground">
-							WhatsApp contacts
-						</h1>
-						<div className="mt-2 flex flex-wrap gap-2">
-							<Badge variant="outline">
-								{contacts.length} visible
-							</Badge>
-							<Badge variant="outline">
-								{linkedCount} linked
-							</Badge>
-							{optedOutCount > 0 ? (
-								<Badge variant="destructive">
-									{optedOutCount} opted out
-								</Badge>
-							) : null}
-							{blockedCount > 0 ? (
-								<Badge variant="destructive">
-									{blockedCount} blocked
-								</Badge>
-							) : null}
-						</div>
-					</div>
+	const rowActions: RowAction<WhatsAppContact>[] = useMemo(
+		() => [
+			{
+				label: "Link to CRM",
+				icon: <Link2Icon className="h-4 w-4" />,
+				disabled: true,
+				onClick: () => {},
+			},
+			{
+				label: "Edit tags",
+				icon: <PencilIcon className="h-4 w-4" />,
+				disabled: true,
+				onClick: () => {},
+			},
+		],
+		[],
+	);
 
-					<div className="grid gap-2 md:grid-cols-[minmax(220px,320px)_130px_130px_130px_130px_auto]">
-						<div className="relative">
-							<SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-							<Input
-								value={search}
-								onChange={(event) =>
-									setSearch(event.target.value)
-								}
-								placeholder="Search name, phone, WA ID"
-								className="h-9 pl-9"
-							/>
-						</div>
-						<Select value={tag} onValueChange={setTag}>
-							<SelectTrigger className="h-9 text-xs">
-								<SelectValue placeholder="Tag" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value={ALL_FILTER_VALUE}>
-									All tags
+	const columns: ColumnDef<WhatsAppContact>[] = useMemo(
+		() => [
+			{
+				id: "contact",
+				accessorKey: "phoneNumber",
+				header: ({ column }) => (
+					<DataTableColumnHeader column={column} title="Contact" />
+				),
+				cell: ({ row }) => (
+					<div>
+						<p className="m-0 font-medium text-foreground">
+							{displayName(row.original)}
+						</p>
+						<p className="mt-1 text-muted-foreground text-xs">
+							{row.original.phoneNumber} • WA {row.original.waId}
+						</p>
+					</div>
+				),
+				meta: {
+					label: "Contact",
+					width: 260,
+					minWidth: 220,
+					headerClassName:
+						"!border-r-0 bg-gray-100 z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[0.5px] before:bg-table-border-subtle after:absolute after:right-0 after:top-0 after:bottom-0 after:w-[0.5px] after:bg-table-border-subtle",
+					cellClassName:
+						"!border-r-0 bg-table-surface group-hover:bg-table-row-selected group-data-[state=selected]:bg-table-row-selected z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[0.5px] before:bg-table-border-subtle after:absolute after:right-0 after:top-0 after:bottom-0 after:w-[0.5px] after:bg-table-border-subtle",
+				},
+				enableSorting: false,
+				enableHiding: false,
+			},
+			{
+				id: "tags",
+				header: ({ column }) => (
+					<DataTableColumnHeader column={column} title="Tags" />
+				),
+				cell: ({ row }) => (
+					<div className="flex max-w-[260px] flex-wrap gap-1.5">
+						{row.original.tags.length === 0 ? (
+							<span className="text-muted-foreground">—</span>
+						) : (
+							row.original.tags.map((name) => (
+								<Badge key={name} variant="secondary">
+									<TagIcon className="mr-1 size-3" />
+									{name}
+								</Badge>
+							))
+						)}
+					</div>
+				),
+				meta: {
+					label: "Tags",
+					width: 240,
+					minWidth: 180,
+				},
+				enableSorting: false,
+				enableHiding: true,
+			},
+			{
+				id: "crmLink",
+				header: ({ column }) => (
+					<DataTableColumnHeader column={column} title="CRM Link" />
+				),
+				cell: ({ row }) => (
+					<div className="flex items-center gap-2">
+						<Link2Icon className="size-3.5 text-muted-foreground" />
+						<Badge variant="outline">
+							{getLinkLabel(row.original)}
+						</Badge>
+					</div>
+				),
+				meta: {
+					label: "CRM Link",
+					width: 150,
+					minWidth: 130,
+				},
+				enableSorting: false,
+				enableHiding: true,
+			},
+			{
+				id: "rules",
+				header: ({ column }) => (
+					<DataTableColumnHeader column={column} title="Rules" />
+				),
+				cell: ({ row }) => (
+					<div className="flex flex-wrap gap-1.5">
+						{row.original.isOptedOut ? (
+							<Badge variant="destructive">
+								<ShieldOffIcon className="mr-1 size-3" />
+								Opted out
+							</Badge>
+						) : (
+							<Badge variant="outline">Allowed</Badge>
+						)}
+						{row.original.isBlocked ? (
+							<Badge variant="destructive">
+								<BanIcon className="mr-1 size-3" />
+								Blocked
+							</Badge>
+						) : null}
+					</div>
+				),
+				meta: {
+					label: "Rules",
+					width: 180,
+					minWidth: 160,
+				},
+				enableSorting: false,
+				enableHiding: true,
+			},
+			{
+				id: "lastMessageAt",
+				accessorKey: "lastMessageAt",
+				header: ({ column }) => (
+					<DataTableColumnHeader
+						column={column}
+						title="Last Message"
+					/>
+				),
+				cell: ({ row }) => (
+					<span className="text-muted-foreground">
+						{formatDate(row.original.lastMessageAt)}
+					</span>
+				),
+				meta: {
+					label: "Last Message",
+					width: 160,
+					minWidth: 140,
+				},
+				enableSorting: false,
+				enableHiding: true,
+			},
+			{
+				id: "actions",
+				header: ({ table }) => <DataTableViewOptions table={table} />,
+				cell: ({ row }) => (
+					<DataTableRowActions
+						row={row.original}
+						actions={rowActions}
+					/>
+				),
+				enableSorting: false,
+				enableHiding: false,
+				meta: {
+					width: 48,
+					minWidth: 48,
+					headerClassName:
+						"!px-0 md:sticky md:right-0 bg-gray-100 z-10",
+					cellClassName:
+						"!px-0 md:sticky md:right-0 bg-table-surface group-hover:bg-table-row-selected group-data-[state=selected]:bg-table-row-selected z-10",
+				},
+			},
+		],
+		[rowActions],
+	);
+
+	return (
+		<div className="space-y-4">
+			<div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+				<div className="relative w-full max-w-sm">
+					<SearchIcon className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+					<Input
+						placeholder="Search contacts..."
+						value={search}
+						onChange={(event) => setSearch(event.target.value)}
+						className="pl-9"
+					/>
+				</div>
+				<div className="flex flex-wrap gap-2">
+					<Select value={tag} onValueChange={setTag}>
+						<SelectTrigger className="h-9 w-[150px]">
+							<SelectValue placeholder="Tag" />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value={ALL_FILTER_VALUE}>
+								All tags
+							</SelectItem>
+							{tags.map((item) => (
+								<SelectItem key={item.name} value={item.name}>
+									{item.name} ({item.contactCount})
 								</SelectItem>
-								{tags.map((item) => (
-									<SelectItem
-										key={item.name}
-										value={item.name}
-									>
-										{item.name} ({item.contactCount})
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-						<Select
-							value={linkType}
-							onValueChange={(value) =>
-								setLinkType(value as LinkType)
-							}
-						>
-							<SelectTrigger className="h-9 text-xs">
-								<SelectValue placeholder="Link" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="all">All links</SelectItem>
-								<SelectItem value="linked">Linked</SelectItem>
-								<SelectItem value="unlinked">
-									Unlinked
-								</SelectItem>
-								<SelectItem value="client">Clients</SelectItem>
-								<SelectItem value="crew">Crew</SelectItem>
-							</SelectContent>
-						</Select>
-						<Select
-							value={optedOut}
-							onValueChange={(value) =>
-								setOptedOut(value as FlagFilter)
-							}
-						>
-							<SelectTrigger className="h-9 text-xs">
-								<SelectValue placeholder="Opt-out" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="all">Opt-out</SelectItem>
-								<SelectItem value="yes">Opted out</SelectItem>
-								<SelectItem value="no">Allowed</SelectItem>
-							</SelectContent>
-						</Select>
-						<Select
-							value={blocked}
-							onValueChange={(value) =>
-								setBlocked(value as FlagFilter)
-							}
-						>
-							<SelectTrigger className="h-9 text-xs">
-								<SelectValue placeholder="Blocked" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="all">Blocked</SelectItem>
-								<SelectItem value="yes">Blocked</SelectItem>
-								<SelectItem value="no">Open</SelectItem>
-							</SelectContent>
-						</Select>
+							))}
+						</SelectContent>
+					</Select>
+					<Select
+						value={linkType}
+						onValueChange={(value) =>
+							setLinkType(value as LinkType)
+						}
+					>
+						<SelectTrigger className="h-9 w-[150px]">
+							<SelectValue placeholder="Link" />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="all">All links</SelectItem>
+							<SelectItem value="linked">Linked</SelectItem>
+							<SelectItem value="unlinked">Unlinked</SelectItem>
+							<SelectItem value="client">Clients</SelectItem>
+							<SelectItem value="crew">Crew</SelectItem>
+						</SelectContent>
+					</Select>
+					<Select
+						value={optedOut}
+						onValueChange={(value) =>
+							setOptedOut(value as FlagFilter)
+						}
+					>
+						<SelectTrigger className="h-9 w-[140px]">
+							<SelectValue placeholder="Opt-out" />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="all">Opt-out</SelectItem>
+							<SelectItem value="yes">Opted out</SelectItem>
+							<SelectItem value="no">Allowed</SelectItem>
+						</SelectContent>
+					</Select>
+					<Select
+						value={blocked}
+						onValueChange={(value) =>
+							setBlocked(value as FlagFilter)
+						}
+					>
+						<SelectTrigger className="h-9 w-[130px]">
+							<SelectValue placeholder="Blocked" />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="all">Blocked</SelectItem>
+							<SelectItem value="yes">Blocked</SelectItem>
+							<SelectItem value="no">Open</SelectItem>
+						</SelectContent>
+					</Select>
+					{hasActiveFilters ? (
 						<Button
 							type="button"
 							variant="ghost"
 							size="sm"
-							className={cn(
-								"h-9 px-2 text-xs",
-								!hasActiveFilters && "invisible",
-							)}
 							onClick={() => {
 								setSearch("");
 								setTag(ALL_FILTER_VALUE);
@@ -198,144 +339,32 @@ export function WhatsAppContactsPageClient() {
 								setOptedOut(ALL_FILTER_VALUE);
 							}}
 						>
-							Clear
+							Reset
 						</Button>
-					</div>
+					) : null}
 				</div>
 			</div>
 
-			<div className="min-h-0 flex-1 overflow-auto">
-				{contactsQuery.isLoading ? (
-					<div className="space-y-2 p-4 lg:p-6">
-						{Array.from({ length: 8 }).map((_, index) => (
-							<div
-								key={`contact-skeleton-${index + 1}`}
-								className="h-14 animate-pulse rounded-lg bg-neutral-100"
-							/>
-						))}
+			<DataTable
+				columns={columns}
+				data={contacts}
+				isLoading={contactsQuery.isLoading}
+				isFetching={contactsQuery.isFetching}
+				getRowId={(row) => row.id}
+				stickyLeftColumns={[{ id: "contact", width: 260 }]}
+				stickyRightColumns={[{ id: "actions", width: 48 }]}
+				minWidth={1040}
+				scrollControlsColumnId="contact"
+				scrollStartColumn={1}
+				emptyState={
+					<div className="flex flex-col items-center gap-2">
+						<Link2Icon className="h-12 w-12 text-muted-foreground/50" />
+						<p className="text-muted-foreground">
+							No WhatsApp contacts found
+						</p>
 					</div>
-				) : contacts.length === 0 ? (
-					<div className="p-4 lg:p-6">
-						<Alert className="border-border/70 bg-background">
-							<CircleAlertIcon />
-							<AlertTitle>No contacts found</AlertTitle>
-							<AlertDescription>
-								Contacts appear after inbound messages or
-								outbound sends.
-							</AlertDescription>
-						</Alert>
-					</div>
-				) : (
-					<table className="w-full min-w-[980px] border-separate border-spacing-0 text-sm">
-						<thead className="sticky top-0 z-10 bg-neutral-50 text-muted-foreground text-xs">
-							<tr>
-								<th className="border-b px-6 py-3 text-left font-medium">
-									Contact
-								</th>
-								<th className="border-b px-4 py-3 text-left font-medium">
-									Tags
-								</th>
-								<th className="border-b px-4 py-3 text-left font-medium">
-									CRM link
-								</th>
-								<th className="border-b px-4 py-3 text-left font-medium">
-									Rules
-								</th>
-								<th className="border-b px-4 py-3 text-left font-medium">
-									Last message
-								</th>
-								<th className="border-b px-6 py-3 text-right font-medium">
-									Next action
-								</th>
-							</tr>
-						</thead>
-						<tbody>
-							{contacts.map((contact) => (
-								<tr
-									key={contact.id}
-									className="bg-white hover:bg-neutral-50/80"
-								>
-									<td className="border-b px-6 py-4 align-top">
-										<div className="font-medium text-foreground">
-											{displayName(contact)}
-										</div>
-										<div className="mt-1 text-muted-foreground text-xs">
-											{contact.phoneNumber} • WA{" "}
-											{contact.waId}
-										</div>
-									</td>
-									<td className="border-b px-4 py-4 align-top">
-										<div className="flex max-w-[260px] flex-wrap gap-1.5">
-											{contact.tags.length === 0 ? (
-												<span className="text-muted-foreground text-xs">
-													No tags
-												</span>
-											) : (
-												contact.tags.map((name) => (
-													<Badge
-														key={name}
-														variant="secondary"
-													>
-														<TagIcon className="mr-1 size-3" />
-														{name}
-													</Badge>
-												))
-											)}
-										</div>
-									</td>
-									<td className="border-b px-4 py-4 align-top">
-										<div className="flex items-center gap-2">
-											<Link2Icon className="size-3.5 text-muted-foreground" />
-											<Badge variant="outline">
-												{getLinkLabel(contact)}
-											</Badge>
-										</div>
-										{contact.externalId ? (
-											<div className="mt-1 max-w-[180px] truncate text-muted-foreground text-xs">
-												{contact.externalId}
-											</div>
-										) : null}
-									</td>
-									<td className="border-b px-4 py-4 align-top">
-										<div className="flex flex-wrap gap-1.5">
-											{contact.isOptedOut ? (
-												<Badge variant="destructive">
-													<ShieldOffIcon className="mr-1 size-3" />
-													Opted out
-												</Badge>
-											) : (
-												<Badge variant="outline">
-													Allowed
-												</Badge>
-											)}
-											{contact.isBlocked ? (
-												<Badge variant="destructive">
-													<BanIcon className="mr-1 size-3" />
-													Blocked
-												</Badge>
-											) : null}
-										</div>
-									</td>
-									<td className="border-b px-4 py-4 align-top text-muted-foreground">
-										{formatDate(contact.lastMessageAt)}
-									</td>
-									<td className="border-b px-6 py-4 text-right align-top">
-										<Button
-											type="button"
-											variant="outline"
-											size="sm"
-											disabled
-											className="h-8"
-										>
-											Link
-										</Button>
-									</td>
-								</tr>
-							))}
-						</tbody>
-					</table>
-				)}
-			</div>
+				}
+			/>
 		</div>
 	);
 }
