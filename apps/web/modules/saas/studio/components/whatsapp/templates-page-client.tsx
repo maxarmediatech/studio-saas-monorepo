@@ -23,7 +23,6 @@ import {
 	CircleAlertIcon,
 	RefreshCwIcon,
 	SearchIcon,
-	SlidersHorizontalIcon,
 	VariableIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -292,7 +291,7 @@ export function WhatsAppTemplatesPageClient() {
 
 			<div className="grid min-h-0 flex-1 lg:grid-cols-[390px_minmax(0,1fr)]">
 				<aside className="min-h-0 border-r bg-neutral-50/70">
-					<div className="space-y-4 border-b bg-white px-4 py-4">
+					<div className="space-y-3 border-b bg-white px-4 py-3">
 						<div className="relative">
 							<SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
 							<Input
@@ -305,17 +304,13 @@ export function WhatsAppTemplatesPageClient() {
 							/>
 						</div>
 
-						<div className="grid gap-3">
-							<div className="flex items-center gap-2 text-muted-foreground text-xs font-medium uppercase tracking-[0.16em]">
-								<SlidersHorizontalIcon className="size-3.5" />
-								Filters
-							</div>
-							<div className="grid grid-cols-2 gap-2">
+						<div className="grid grid-cols-2 gap-2 xl:grid-cols-3">
+							<div className="min-w-0">
 								<Select
 									value={status}
 									onValueChange={setStatus}
 								>
-									<SelectTrigger>
+									<SelectTrigger className="h-9 w-full text-xs">
 										<SelectValue placeholder="Status" />
 									</SelectTrigger>
 									<SelectContent>
@@ -332,11 +327,13 @@ export function WhatsAppTemplatesPageClient() {
 										))}
 									</SelectContent>
 								</Select>
+							</div>
+							<div className="min-w-0">
 								<Select
 									value={category}
 									onValueChange={setCategory}
 								>
-									<SelectTrigger>
+									<SelectTrigger className="h-9 w-full text-xs">
 										<SelectValue placeholder="Category" />
 									</SelectTrigger>
 									<SelectContent>
@@ -354,30 +351,37 @@ export function WhatsAppTemplatesPageClient() {
 									</SelectContent>
 								</Select>
 							</div>
-							<Select
-								value={language}
-								onValueChange={setLanguage}
-							>
-								<SelectTrigger>
-									<SelectValue placeholder="Language" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value={ALL_FILTER_VALUE}>
-										All languages
-									</SelectItem>
-									{languages.map((value) => (
-										<SelectItem key={value} value={value}>
-											{value}
+							<div className="min-w-0">
+								<Select
+									value={language}
+									onValueChange={setLanguage}
+								>
+									<SelectTrigger className="h-9 w-full text-xs">
+										<SelectValue placeholder="Language" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value={ALL_FILTER_VALUE}>
+											All languages
 										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-							{hasActiveFilters ? (
+										{languages.map((value) => (
+											<SelectItem
+												key={value}
+												value={value}
+											>
+												{value}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
+						</div>
+						{hasActiveFilters ? (
+							<div className="-mt-1">
 								<Button
 									type="button"
 									variant="ghost"
 									size="sm"
-									className="justify-start px-0 text-muted-foreground"
+									className="h-7 justify-start px-0 text-muted-foreground text-xs"
 									onClick={() => {
 										setSearch("");
 										setStatus(ALL_FILTER_VALUE);
@@ -387,11 +391,11 @@ export function WhatsAppTemplatesPageClient() {
 								>
 									Clear filters
 								</Button>
-							) : null}
-						</div>
+							</div>
+						) : null}
 					</div>
 
-					<ScrollArea className="h-[calc(100vh-20rem)]">
+					<ScrollArea className="h-[calc(100vh-17rem)]">
 						<div className="space-y-2 p-3">
 							{templatesQuery.isLoading ||
 							allTemplatesQuery.isLoading ||
