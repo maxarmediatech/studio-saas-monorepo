@@ -4,7 +4,6 @@ import type {
 	DashboardData,
 	QuickActionsData,
 } from "@repo/api/modules/studio/schemas/dashboard";
-import { EmptyDashboard } from "./empty-dashboard";
 import { KpiCards } from "./kpi-cards";
 import { NeedsAttention } from "./needs-attention";
 import { OperationsSummary } from "./operations-summary";
@@ -26,18 +25,7 @@ export function OverviewTab({
 	isLoading,
 }: OverviewTabProps) {
 	if (!data) {
-		return <EmptyDashboard organizationSlug={organizationSlug} />;
-	}
-
-	const hasNoData =
-		data.bookings.total === 0 &&
-		data.recentBookings.length === 0 &&
-		data.upcomingShoots.length === 0 &&
-		data.whatsapp.recentActivity.length === 0 &&
-		data.whatsapp.topContacts.length === 0;
-
-	if (hasNoData) {
-		return <EmptyDashboard organizationSlug={organizationSlug} />;
+		return null;
 	}
 
 	return (
