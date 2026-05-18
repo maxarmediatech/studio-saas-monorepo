@@ -10,6 +10,7 @@ import { NeedsAttention } from "./needs-attention";
 import { OperationsSummary } from "./operations-summary";
 import { RecentBookings } from "./recent-bookings";
 import { UpcomingShoots } from "./upcoming-shoots";
+import { WhatsAppSummary } from "./whatsapp-summary";
 
 interface OverviewTabProps {
 	organizationSlug: string;
@@ -31,7 +32,9 @@ export function OverviewTab({
 	const hasNoData =
 		data.bookings.total === 0 &&
 		data.recentBookings.length === 0 &&
-		data.upcomingShoots.length === 0;
+		data.upcomingShoots.length === 0 &&
+		data.whatsapp.recentActivity.length === 0 &&
+		data.whatsapp.topContacts.length === 0;
 
 	if (hasNoData) {
 		return <EmptyDashboard organizationSlug={organizationSlug} />;
@@ -54,6 +57,11 @@ export function OverviewTab({
 					organizationSlug={organizationSlug}
 				/>
 			)}
+
+			<WhatsAppSummary
+				data={data.whatsapp}
+				organizationSlug={organizationSlug}
+			/>
 
 			<div className="grid gap-6 lg:grid-cols-2">
 				<RecentBookings

@@ -31,6 +31,7 @@ import {
 	getDashboardInputSchema,
 	getDashboardOutputSchema,
 } from "../../studio/schemas/dashboard";
+import { getWhatsAppDashboardData } from "../lib/whatsapp-dashboard";
 
 export const getDashboard = studioProtectedProcedure
 	.route({
@@ -60,6 +61,8 @@ export const getDashboard = studioProtectedProcedure
 
 		const rangeStart = dateRange?.start ?? startOfMonth;
 		const rangeEnd = dateRange?.end ?? today;
+		const rangeStartDate = new Date(`${rangeStart}T00:00:00.000Z`);
+		const rangeEndDate = new Date(`${rangeEnd}T23:59:59.999Z`);
 
 		// Financial summary
 		const bookingRangeConditions = dateRange
@@ -305,6 +308,13 @@ export const getDashboard = studioProtectedProcedure
 			}),
 		);
 
+		const whatsapp = await getWhatsAppDashboardData({
+			organizationId: context.organizationId,
+			today,
+			rangeStartDate,
+			rangeEndDate,
+		});
+
 		return {
 			data: {
 				financial: {
@@ -330,6 +340,7 @@ export const getDashboard = studioProtectedProcedure
 					overdueDeliverables: overdueDeliverablesResult?.count ?? 0,
 					pendingSubmissions: pendingSubmissionsResult?.count ?? 0,
 				},
+				whatsapp,
 				recentBookings: recentBookingsList.map((b) => ({
 					id: b.id,
 					name: b.name,
