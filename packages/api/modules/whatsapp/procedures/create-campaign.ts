@@ -4,6 +4,11 @@ import { waCampaigns, waContacts, waTemplates } from "@repo/whatsapp-db";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { findActiveWhatsAppAccount } from "../lib/account-repository";
 import {
+	getCampaignAudienceConditions,
+	runCampaignNow,
+} from "../lib/campaign-engine";
+import { inspectWhatsAppTemplate } from "../lib/template-inspector";
+import {
 	createCampaignInputSchema,
 	createCampaignOutputSchema,
 } from "../types";
@@ -30,54 +35,6 @@ function toCampaignItem(campaign: typeof waCampaigns.$inferSelect) {
 		createdAt: campaign.createdAt,
 		updatedAt: campaign.updatedAt,
 	};
-}
-
-function getAudienceConditions(
-	organizationId: string,
-	accountId: string,
-	audienceFilter: {
-		tag?: string;
-		linkType: "all" | "linked" | "unlinked" | "client" | "crew";
-		excludeOptedOut: boolean;
-		excludeBlocked: boolean;
-	},
-) {
-	const conditions = [
-		eq(waContacts.organizationId, organizationId),
-		eq(waContacts.accountId, accountId),
-	];
-
-	if (audienceFilter.tag) {
-		conditions.push(
-			sql`coalesce(${waContacts.tags}, '[]'::jsonb) ? ${audienceFilter.tag}`,
-		);
-	}
-
-	if (audienceFilter.excludeOptedOut) {
-		conditions.push(eq(waContacts.isOptedOut, false));
-	}
-
-	if (audienceFilter.excludeBlocked) {
-		conditions.push(eq(waContacts.isBlocked, false));
-	}
-
-	if (audienceFilter.linkType === "linked") {
-		conditions.push(sql`${waContacts.externalId} IS NOT NULL`);
-	}
-
-	if (audienceFilter.linkType === "unlinked") {
-		conditions.push(sql`${waContacts.externalId} IS NULL`);
-	}
-
-	if (audienceFilter.linkType === "client") {
-		conditions.push(eq(waContacts.externalSource, "client"));
-	}
-
-	if (audienceFilter.linkType === "crew") {
-		conditions.push(eq(waContacts.externalSource, "crew"));
-	}
-
-	return conditions;
 }
 
 export const createCampaign = studioProtectedProcedure
@@ -122,7 +79,29 @@ export const createCampaign = studioProtectedProcedure
 			});
 		}
 
-		const audienceConditions = getAudienceConditions(
+		const inspection = inspectWhatsAppTemplate(template.components);
+		if (!inspection.isSupported) {
+			throw new ORPCError("BAD_REQUEST", {
+				message:
+					inspection.unsupportedReason ??
+					"Template is not supported for broadcasts yet",
+			});
+		}
+
+		if (input.action !== "draft") {
+			const missingVariable = inspection.variables.find((variable) => {
+				const value = input.variableValues[variable.key]?.trim();
+				return !value;
+			});
+
+			if (missingVariable) {
+				throw new ORPCError("BAD_REQUEST", {
+					message: `Missing value for ${missingVariable.label}`,
+				});
+			}
+		}
+
+		const audienceConditions = getCampaignAudienceConditions(
 			context.organizationId,
 			input.accountId,
 			input.audienceFilter,
@@ -167,6 +146,18 @@ export const createCampaign = studioProtectedProcedure
 			throw new ORPCError("INTERNAL_SERVER_ERROR", {
 				message: "Failed to create broadcast",
 			});
+		}
+
+		if (input.action === "send") {
+			await runCampaignNow(campaign.id);
+			const refreshed = await db.query.waCampaigns.findFirst({
+				where: eq(waCampaigns.id, campaign.id),
+			});
+
+			return {
+				data: toCampaignItem(refreshed ?? campaign),
+				message: "Broadcast sent",
+			};
 		}
 
 		return {

@@ -1,0 +1,2 @@
+ALTER TABLE "wa_messages" ADD COLUMN "sent_by_campaign_id" varchar(255);--> statement-breakpoint
+CREATE INDEX "wa_messages_sent_by_campaign_id_idx" ON "wa_messages" USING btree ("sent_by_campaign_id");

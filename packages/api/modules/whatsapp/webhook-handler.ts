@@ -3,6 +3,7 @@ import { logger } from "@repo/logs";
 import { parseCloudApiWebhook } from "@repo/whatsapp-core";
 import {
 	waAccounts,
+	waCampaigns,
 	waContacts,
 	waConversations,
 	waEvents,
@@ -397,6 +398,38 @@ export const handleCloudWebhook = async (req: Request, token: string) => {
 						errorMessage: event.error?.message ?? null,
 					})
 					.where(eq(waMessages.id, existingMessage.id));
+
+				if (existingMessage.sentByCampaignId) {
+					const campaignTotals =
+						event.status === "delivered"
+							? {
+									totalDelivered: sql`coalesce(${waCampaigns.totalDelivered}, 0) + 1`,
+								}
+							: event.status === "read"
+								? {
+										totalRead: sql`coalesce(${waCampaigns.totalRead}, 0) + 1`,
+									}
+								: event.status === "failed"
+									? {
+											totalFailed: sql`coalesce(${waCampaigns.totalFailed}, 0) + 1`,
+										}
+									: null;
+
+					if (campaignTotals) {
+						await db
+							.update(waCampaigns)
+							.set({
+								...campaignTotals,
+								updatedAt: new Date(),
+							})
+							.where(
+								eq(
+									waCampaigns.id,
+									existingMessage.sentByCampaignId,
+								),
+							);
+					}
+				}
 			}
 
 			if (eventId) {
