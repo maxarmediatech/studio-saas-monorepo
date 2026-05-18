@@ -13,6 +13,7 @@ import {
 	decryptWhatsAppSecret,
 	hashWebhookVerifyToken,
 } from "./lib/account-secrets";
+import { runInboundAutomations } from "./lib/automation-engine";
 import { verifyWebhookSignature } from "./lib/webhook-security";
 
 const getStatusEventId = (messageId: string, status: string, timestamp: Date) =>
@@ -362,6 +363,16 @@ export const handleCloudWebhook = async (req: Request, token: string) => {
 						unreadCount: sql`coalesce(${waConversations.unreadCount}, 0) + 1`,
 					})
 					.where(eq(waConversations.id, conversationId));
+
+				await runInboundAutomations({
+					organizationId: account.organizationId,
+					accountId: account.id,
+					contactId,
+					conversationId,
+					inboundMessageId: created.id,
+					inboundText:
+						event.content.text ?? event.content.caption ?? "",
+				});
 			} else {
 				const existingMessage = await db.query.waMessages.findFirst({
 					where: and(
