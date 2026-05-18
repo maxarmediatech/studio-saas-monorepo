@@ -55,6 +55,7 @@ export {
 export {
 	WhatsAppBroadcastsPageClient,
 	WhatsAppContactsPageClient,
+	WhatsAppDashboardPageClient,
 	WhatsAppInboxPageClient,
 	WhatsAppTemplatesPageClient,
 } from "./components/whatsapp";

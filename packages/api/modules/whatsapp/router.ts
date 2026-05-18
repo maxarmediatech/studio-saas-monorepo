@@ -6,6 +6,7 @@ import { createCampaign } from "./procedures/create-campaign";
 import { deleteAccount } from "./procedures/delete-account";
 import { getAccount } from "./procedures/get-account";
 import { getConversation } from "./procedures/get-conversation";
+import { getDashboard } from "./procedures/get-dashboard";
 import { listAccounts } from "./procedures/list-accounts";
 import { listCampaigns } from "./procedures/list-campaigns";
 import { listContactTags } from "./procedures/list-contact-tags";
@@ -34,6 +35,7 @@ export const whatsappRouter = {
 	deleteAccount,
 	getAccount,
 	getConversation,
+	getDashboard,
 	listAccounts,
 	listCampaigns,
 	listContactTags,

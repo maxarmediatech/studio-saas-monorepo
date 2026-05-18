@@ -699,6 +699,12 @@ export const whatsappApi = {
 	getAccountOptions: (accountId: string) =>
 		orpc.whatsapp.getAccount.queryOptions({ input: { accountId } }),
 
+	getDashboardOptions: (
+		input?: Parameters<
+			typeof orpc.whatsapp.getDashboard.queryOptions
+		>[0]["input"],
+	) => orpc.whatsapp.getDashboard.queryOptions({ input: input ?? {} }),
+
 	listConversationsOptions: (
 		input?: Parameters<
 			typeof orpc.whatsapp.listConversations.queryOptions

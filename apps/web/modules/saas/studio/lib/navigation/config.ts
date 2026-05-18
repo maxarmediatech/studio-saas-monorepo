@@ -512,6 +512,12 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 					label: "Inbox",
 					items: [
 						{
+							id: "messages-dashboard",
+							label: "Dashboard",
+							path: url("/messages/dashboard"),
+							icon: "LayoutDashboard",
+						},
+						{
 							id: "messages-clients",
 							label: "Clients",
 							path: url("/messages"),

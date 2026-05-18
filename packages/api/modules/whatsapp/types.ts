@@ -521,6 +521,57 @@ export const listCampaignsOutputSchema = z.object({
 	data: z.array(campaignItemSchema),
 });
 
+export const whatsappDashboardInputSchema = z.object({
+	dateRange: z
+		.object({
+			start: z.string().min(1),
+			end: z.string().min(1),
+		})
+		.optional(),
+});
+
+export const whatsappDashboardSchema = z.object({
+	conversationsToday: z.number(),
+	responseTimeMinutes: z.number().nullable(),
+	messages: z.object({
+		sent: z.number(),
+		delivered: z.number(),
+		read: z.number(),
+		failed: z.number(),
+	}),
+	campaigns: z.object({
+		total: z.number(),
+		running: z.number(),
+		scheduled: z.number(),
+		completed: z.number(),
+		totalRecipients: z.number(),
+	}),
+	topContacts: z.array(
+		z.object({
+			id: z.string(),
+			name: z.string(),
+			phoneNumber: z.string(),
+			messageCount: z.number(),
+			lastMessageAt: z.string().nullable(),
+		}),
+	),
+	recentActivity: z.array(
+		z.object({
+			id: z.string(),
+			contactName: z.string(),
+			phoneNumber: z.string(),
+			direction: z.enum(["inbound", "outbound"]),
+			status: z.string(),
+			preview: z.string(),
+			createdAt: z.string(),
+		}),
+	),
+});
+
+export const whatsappDashboardOutputSchema = z.object({
+	data: whatsappDashboardSchema,
+});
+
 export const createCampaignInputSchema = z
 	.object({
 		accountId: z.string().min(1),

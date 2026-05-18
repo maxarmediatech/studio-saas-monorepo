@@ -72,46 +72,6 @@ export const operationsSummarySchema = z.object({
 
 export type OperationsSummary = z.infer<typeof operationsSummarySchema>;
 
-export const whatsappDashboardSchema = z.object({
-	conversationsToday: z.number(),
-	responseTimeMinutes: z.number().nullable(),
-	messages: z.object({
-		sent: z.number(),
-		delivered: z.number(),
-		read: z.number(),
-		failed: z.number(),
-	}),
-	campaigns: z.object({
-		total: z.number(),
-		running: z.number(),
-		scheduled: z.number(),
-		completed: z.number(),
-		totalRecipients: z.number(),
-	}),
-	topContacts: z.array(
-		z.object({
-			id: idSchema,
-			name: z.string(),
-			phoneNumber: z.string(),
-			messageCount: z.number(),
-			lastMessageAt: z.string().nullable(),
-		}),
-	),
-	recentActivity: z.array(
-		z.object({
-			id: idSchema,
-			contactName: z.string(),
-			phoneNumber: z.string(),
-			direction: z.enum(["inbound", "outbound"]),
-			status: z.string(),
-			preview: z.string(),
-			createdAt: z.string(),
-		}),
-	),
-});
-
-export type WhatsAppDashboard = z.infer<typeof whatsappDashboardSchema>;
-
 /**
  * Full dashboard data schema
  */
@@ -119,7 +79,6 @@ export const dashboardDataSchema = z.object({
 	financial: financialSummarySchema,
 	bookings: bookingSummarySchema,
 	operations: operationsSummarySchema,
-	whatsapp: whatsappDashboardSchema,
 	recentBookings: z.array(
 		z.object({
 			id: idSchema,
