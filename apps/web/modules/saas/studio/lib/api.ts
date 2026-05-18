@@ -770,7 +770,9 @@ export const whatsappMutations = {
 
 export const discussionsApi = {
 	listChannelsOptions: () =>
-		orpc.discussions.listChannels.queryOptions({ input: {} }),
+		orpc.discussions.listChannels.queryOptions({
+			input: { includeArchived: false },
+		}),
 
 	getChannelOptions: (channelId: string) =>
 		orpc.discussions.getChannel.queryOptions({ input: { channelId } }),
