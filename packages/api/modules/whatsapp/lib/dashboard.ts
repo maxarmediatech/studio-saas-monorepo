@@ -121,7 +121,7 @@ export async function getWhatsAppDashboardData({
 			phoneNumber: waContacts.phoneNumber,
 			direction: waMessages.direction,
 			status: waMessages.status,
-			preview: sql<string>`coalesce(${waMessages.textBody}, ${waMessages.caption}, ${waMessages.templateName}, ${waMessages.type})`,
+			preview: sql<string>`coalesce(${waMessages.textBody}, ${waMessages.caption}, ${waMessages.templateName}, ${waMessages.type}::text)`,
 			createdAt: waMessages.createdAt,
 		})
 		.from(waMessages)
