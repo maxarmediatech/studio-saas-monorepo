@@ -9,6 +9,7 @@ const waCampaignStatusSchema = z.enum([
 	"completed",
 	"cancelled",
 ]);
+const waBotFlowStatusSchema = z.enum(["draft", "published", "archived"]);
 
 export const connectBaileysInputSchema = z.object({
 	name: z.string().min(1),
@@ -595,6 +596,87 @@ export const createCampaignInputSchema = z
 
 export const createCampaignOutputSchema = z.object({
 	data: campaignItemSchema,
+	message: z.string(),
+});
+
+export const automationActionSchema = z.discriminatedUnion("type", [
+	z.object({
+		type: z.literal("send_text"),
+		text: z.string().min(1).max(4000),
+	}),
+	z.object({
+		type: z.literal("send_template"),
+		templateName: z.string().min(1),
+		language: z.string().min(1),
+	}),
+	z.object({
+		type: z.literal("add_tag"),
+		tag: z.string().min(1).max(100),
+	}),
+	z.object({
+		type: z.literal("assign_conversation"),
+		userId: z.string().min(1),
+	}),
+	z.object({
+		type: z.literal("wait"),
+		durationMinutes: z.number().int().min(1).max(43_200),
+	}),
+	z.object({
+		type: z.literal("close_conversation"),
+	}),
+]);
+
+export const automationFlowDataSchema = z.object({
+	actions: z.array(automationActionSchema).min(1).max(20),
+});
+
+export const automationItemSchema = z.object({
+	id: z.string(),
+	accountId: z.string(),
+	name: z.string(),
+	description: z.string().nullable(),
+	status: waBotFlowStatusSchema,
+	triggerType: z.enum(["keyword", "first_inbound"]),
+	triggerKeywords: z.array(z.string()),
+	flowData: automationFlowDataSchema,
+	totalTriggered: z.number().int().nonnegative(),
+	lastTriggeredAt: z.date().nullable(),
+	publishedAt: z.date().nullable(),
+	createdAt: z.date(),
+	updatedAt: z.date(),
+});
+
+export const listAutomationsInputSchema = z.object({
+	status: waBotFlowStatusSchema.optional(),
+	search: z.string().min(1).max(100).optional(),
+});
+
+export const listAutomationsOutputSchema = z.object({
+	data: z.array(automationItemSchema),
+});
+
+export const createAutomationInputSchema = z.object({
+	accountId: z.string().min(1),
+	name: z.string().min(1).max(120),
+	description: z.string().max(500).optional(),
+	status: waBotFlowStatusSchema.default("draft"),
+	triggerType: z.enum(["keyword", "first_inbound"]),
+	triggerKeywords: z.array(z.string().min(1).max(100)).max(20).default([]),
+	flowData: automationFlowDataSchema,
+});
+
+export const createAutomationOutputSchema = z.object({
+	data: automationItemSchema,
+	message: z.string(),
+});
+
+export const updateAutomationStatusInputSchema = z.object({
+	automationId: z.string().min(1),
+	status: waBotFlowStatusSchema,
+});
+
+export const updateAutomationStatusOutputSchema = z.object({
+	data: automationItemSchema,
 	message: z.string(),
 });
 

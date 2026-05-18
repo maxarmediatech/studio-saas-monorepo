@@ -1,3 +1,4 @@
+export { WhatsAppAutomationsPageClient } from "./automations-page-client";
 export { WhatsAppBroadcastsPageClient } from "./broadcasts-page-client";
 export { WhatsAppContactsPageClient } from "./contacts-page-client";
 export { WhatsAppDashboardPageClient } from "./dashboard-page-client";

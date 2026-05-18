@@ -542,6 +542,12 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							path: url("/messages/broadcasts"),
 							icon: "Mail",
 						},
+						{
+							id: "messages-automations",
+							label: "Automations",
+							path: url("/messages/automations"),
+							icon: "Sparkles",
+						},
 					],
 				},
 				{

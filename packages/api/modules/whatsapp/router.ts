@@ -2,12 +2,14 @@ import { assignConversation } from "./procedures/assign-conversation";
 import { completeEmbeddedSignup } from "./procedures/complete-embedded-signup";
 import { connectBaileys } from "./procedures/connect-baileys";
 import { connectCloudApi } from "./procedures/connect-cloud-api";
+import { createAutomation } from "./procedures/create-automation";
 import { createCampaign } from "./procedures/create-campaign";
 import { deleteAccount } from "./procedures/delete-account";
 import { getAccount } from "./procedures/get-account";
 import { getConversation } from "./procedures/get-conversation";
 import { getDashboard } from "./procedures/get-dashboard";
 import { listAccounts } from "./procedures/list-accounts";
+import { listAutomations } from "./procedures/list-automations";
 import { listCampaigns } from "./procedures/list-campaigns";
 import { listContactTags } from "./procedures/list-contact-tags";
 import { listContacts } from "./procedures/list-contacts";
@@ -23,6 +25,7 @@ import { subscribeAccount } from "./procedures/subscribe-account";
 import { syncTemplates } from "./procedures/sync-templates";
 import { testAccount } from "./procedures/test-account";
 import { updateAccount } from "./procedures/update-account";
+import { updateAutomationStatus } from "./procedures/update-automation-status";
 import { updateConversationStatus } from "./procedures/update-conversation-status";
 import { whatsappWebhook } from "./procedures/webhook";
 
@@ -31,12 +34,14 @@ export const whatsappRouter = {
 	completeEmbeddedSignup,
 	connectBaileys,
 	connectCloudApi,
+	createAutomation,
 	createCampaign,
 	deleteAccount,
 	getAccount,
 	getConversation,
 	getDashboard,
 	listAccounts,
+	listAutomations,
 	listCampaigns,
 	listContactTags,
 	listContacts,
@@ -52,6 +57,7 @@ export const whatsappRouter = {
 	syncTemplates,
 	testAccount,
 	updateAccount,
+	updateAutomationStatus,
 	updateConversationStatus,
 	webhook: whatsappWebhook,
 };

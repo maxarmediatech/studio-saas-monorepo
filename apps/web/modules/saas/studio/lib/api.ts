@@ -717,6 +717,12 @@ export const whatsappApi = {
 		>[0]["input"],
 	) => orpc.whatsapp.listCampaigns.queryOptions({ input: input ?? {} }),
 
+	listAutomationsOptions: (
+		input?: Parameters<
+			typeof orpc.whatsapp.listAutomations.queryOptions
+		>[0]["input"],
+	) => orpc.whatsapp.listAutomations.queryOptions({ input: input ?? {} }),
+
 	listMessagesOptions: (
 		input: Parameters<
 			typeof orpc.whatsapp.listMessages.queryOptions
@@ -748,8 +754,11 @@ export const whatsappMutations = {
 	completeEmbeddedSignup: () =>
 		orpc.whatsapp.completeEmbeddedSignup.mutationOptions(),
 	connectCloudApi: () => orpc.whatsapp.connectCloudApi.mutationOptions(),
+	createAutomation: () => orpc.whatsapp.createAutomation.mutationOptions(),
 	createCampaign: () => orpc.whatsapp.createCampaign.mutationOptions(),
 	updateAccount: () => orpc.whatsapp.updateAccount.mutationOptions(),
+	updateAutomationStatus: () =>
+		orpc.whatsapp.updateAutomationStatus.mutationOptions(),
 	deleteAccount: () => orpc.whatsapp.deleteAccount.mutationOptions(),
 	testAccount: () => orpc.whatsapp.testAccount.mutationOptions(),
 	subscribeAccount: () => orpc.whatsapp.subscribeAccount.mutationOptions(),
