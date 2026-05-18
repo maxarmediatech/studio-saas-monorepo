@@ -1,4 +1,4 @@
-import { and, db, eq, sql } from "@repo/database";
+import { and, db, eq, lte, sql } from "@repo/database";
 import { logger } from "@repo/logs";
 import {
 	waCampaigns,
@@ -376,4 +376,72 @@ export async function runCampaignNow(campaignId: string) {
 			updatedAt: new Date(),
 		})
 		.where(eq(waCampaigns.id, campaign.id));
+}
+
+export async function processDueScheduledCampaigns({
+	limit = 10,
+	now = new Date(),
+}: {
+	limit?: number;
+	now?: Date;
+} = {}) {
+	const dueCampaigns = await db
+		.select({ id: waCampaigns.id })
+		.from(waCampaigns)
+		.where(
+			and(
+				eq(waCampaigns.status, "scheduled"),
+				lte(waCampaigns.scheduledAt, now),
+			),
+		)
+		.limit(limit);
+
+	let processed = 0;
+	let failed = 0;
+
+	for (const campaign of dueCampaigns) {
+		const [claimed] = await db
+			.update(waCampaigns)
+			.set({
+				status: "running",
+				startedAt: now,
+				updatedAt: now,
+			})
+			.where(
+				and(
+					eq(waCampaigns.id, campaign.id),
+					eq(waCampaigns.status, "scheduled"),
+				),
+			)
+			.returning({ id: waCampaigns.id });
+
+		if (!claimed) {
+			continue;
+		}
+
+		try {
+			await runCampaignNow(claimed.id);
+			processed += 1;
+		} catch (error) {
+			failed += 1;
+			logger.error("Failed to process scheduled WhatsApp campaign", {
+				campaignId: claimed.id,
+				error,
+			});
+
+			await db
+				.update(waCampaigns)
+				.set({
+					status: "paused",
+					updatedAt: new Date(),
+				})
+				.where(eq(waCampaigns.id, claimed.id));
+		}
+	}
+
+	return {
+		processed,
+		failed,
+		checked: dueCampaigns.length,
+	};
 }
