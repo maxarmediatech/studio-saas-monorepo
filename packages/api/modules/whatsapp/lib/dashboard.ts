@@ -6,6 +6,18 @@ import {
 	waMessages,
 } from "@repo/whatsapp-db";
 
+function toIsoString(value: Date | string | null) {
+	if (!value) {
+		return null;
+	}
+
+	if (value instanceof Date) {
+		return value.toISOString();
+	}
+
+	return new Date(value).toISOString();
+}
+
 export async function getWhatsAppDashboardData({
 	organizationId,
 	today,
@@ -99,7 +111,9 @@ export async function getWhatsAppDashboardData({
 			name: sql<string>`coalesce(${waContacts.name}, ${waContacts.pushName}, ${waContacts.phoneNumber})`,
 			phoneNumber: waContacts.phoneNumber,
 			messageCount: count(waMessages.id).mapWith(Number),
-			lastMessageAt: sql<Date | null>`max(${waMessages.createdAt})`,
+			lastMessageAt: sql<
+				Date | string | null
+			>`max(${waMessages.createdAt})`,
 		})
 		.from(waMessages)
 		.innerJoin(waContacts, eq(waContacts.id, waMessages.contactId))
@@ -154,7 +168,7 @@ export async function getWhatsAppDashboardData({
 			name: contact.name,
 			phoneNumber: contact.phoneNumber,
 			messageCount: contact.messageCount,
-			lastMessageAt: contact.lastMessageAt?.toISOString() ?? null,
+			lastMessageAt: toIsoString(contact.lastMessageAt),
 		})),
 		recentActivity: recentActivity.map((activity) => ({
 			id: activity.id,
@@ -163,7 +177,7 @@ export async function getWhatsAppDashboardData({
 			direction: activity.direction,
 			status: activity.status,
 			preview: activity.preview,
-			createdAt: activity.createdAt.toISOString(),
+			createdAt: toIsoString(activity.createdAt) ?? "",
 		})),
 	};
 }
