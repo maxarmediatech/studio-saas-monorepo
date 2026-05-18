@@ -425,6 +425,7 @@ export const markConversationReadOutputSchema = z.object({
 export const listContactsInputSchema = z.object({
 	limit: z.number().min(1).max(100).default(50),
 	cursor: z.string().optional(),
+	accountId: z.string().optional(),
 	search: z.string().min(1).max(100).optional(),
 	tag: z.string().min(1).max(100).optional(),
 	blocked: z.boolean().optional(),
@@ -474,6 +475,15 @@ export const listCampaignsInputSchema = z.object({
 	search: z.string().min(1).max(100).optional(),
 });
 
+export const campaignAudienceFilterSchema = z.object({
+	tag: z.string().min(1).max(100).optional(),
+	linkType: z
+		.enum(["all", "linked", "unlinked", "client", "crew"])
+		.default("all"),
+	excludeOptedOut: z.boolean().default(true),
+	excludeBlocked: z.boolean().default(true),
+});
+
 export const campaignItemSchema = z.object({
 	id: z.string(),
 	accountId: z.string(),
@@ -509,6 +519,32 @@ export const campaignItemSchema = z.object({
 
 export const listCampaignsOutputSchema = z.object({
 	data: z.array(campaignItemSchema),
+});
+
+export const createCampaignInputSchema = z
+	.object({
+		accountId: z.string().min(1),
+		name: z.string().min(1).max(120),
+		description: z.string().max(500).optional(),
+		templateName: z.string().min(1),
+		language: z.string().min(1),
+		variableValues: z.record(z.string(), z.string()).default({}),
+		audienceFilter: campaignAudienceFilterSchema.default({
+			linkType: "all",
+			excludeOptedOut: true,
+			excludeBlocked: true,
+		}),
+		action: z.enum(["draft", "send", "schedule"]),
+		scheduledAt: z.date().optional(),
+	})
+	.refine((input) => input.action !== "schedule" || input.scheduledAt, {
+		message: "scheduledAt is required when scheduling a broadcast",
+		path: ["scheduledAt"],
+	});
+
+export const createCampaignOutputSchema = z.object({
+	data: campaignItemSchema,
+	message: z.string(),
 });
 
 export const webhookInputSchema = z.object({

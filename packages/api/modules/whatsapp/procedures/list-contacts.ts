@@ -38,6 +38,10 @@ export const listContacts = studioProtectedProcedure
 			eq(waContacts.organizationId, context.organizationId),
 		];
 
+		if (input.accountId) {
+			conditions.push(eq(waContacts.accountId, input.accountId));
+		}
+
 		if (input.search) {
 			const search = `%${input.search}%`;
 			conditions.push(

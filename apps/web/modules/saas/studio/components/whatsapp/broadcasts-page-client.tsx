@@ -23,6 +23,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { MailIcon, PlusIcon, SearchIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { z } from "zod";
+import { BroadcastWizardSheet } from "./broadcast-wizard-sheet";
 
 type Campaign = z.infer<typeof campaignItemSchema>;
 type CampaignStatus =
@@ -80,6 +81,7 @@ function getStatusVariant(status: Campaign["status"]) {
 export function WhatsAppBroadcastsPageClient() {
 	const [search, setSearch] = useState("");
 	const [status, setStatus] = useState<CampaignStatus>(ALL_STATUS);
+	const [isCreateOpen, setIsCreateOpen] = useState(false);
 
 	const campaignsQuery = useQuery({
 		...whatsappApi.listCampaignsOptions({
@@ -273,7 +275,11 @@ export function WhatsAppBroadcastsPageClient() {
 						Reset
 					</Button>
 				) : null}
-				<Button type="button" className="lg:ml-auto" disabled>
+				<Button
+					type="button"
+					className="lg:ml-auto"
+					onClick={() => setIsCreateOpen(true)}
+				>
 					<PlusIcon className="mr-1.5 size-4" />
 					New Broadcast
 				</Button>
@@ -298,6 +304,10 @@ export function WhatsAppBroadcastsPageClient() {
 						</p>
 					</div>
 				}
+			/>
+			<BroadcastWizardSheet
+				open={isCreateOpen}
+				onOpenChange={setIsCreateOpen}
 			/>
 		</div>
 	);

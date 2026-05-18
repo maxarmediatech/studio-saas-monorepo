@@ -2,6 +2,7 @@ import { assignConversation } from "./procedures/assign-conversation";
 import { completeEmbeddedSignup } from "./procedures/complete-embedded-signup";
 import { connectBaileys } from "./procedures/connect-baileys";
 import { connectCloudApi } from "./procedures/connect-cloud-api";
+import { createCampaign } from "./procedures/create-campaign";
 import { deleteAccount } from "./procedures/delete-account";
 import { getAccount } from "./procedures/get-account";
 import { getConversation } from "./procedures/get-conversation";
@@ -29,6 +30,7 @@ export const whatsappRouter = {
 	completeEmbeddedSignup,
 	connectBaileys,
 	connectCloudApi,
+	createCampaign,
 	deleteAccount,
 	getAccount,
 	getConversation,
