@@ -110,6 +110,9 @@ export function SidebarPanel({
 				<div className="scrollbar-hide flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-3 pb-3">
 					{primarySections.map((section) => (
 						<div key={section.id}>
+							{section.dividerBefore ? (
+								<div className="mx-1 my-2 border-neutral-200 border-t" />
+							) : null}
 							{section.label && (
 								<div className="mb-2 pl-3 text-sm text-neutral-500">
 									{section.label}
@@ -334,20 +337,14 @@ function NavItem({
 				{/* Children — always visible, vertical line on left */}
 				<ul className="ml-3.5 flex min-w-0 translate-x-px flex-col gap-1 border-l border-neutral-200 px-2.5 py-0.5">
 					{item.children?.map((child) => {
-						const childActive = isItemActive(
-							pathname,
-							child.path,
-						);
-						const childExternal =
-							child.path.startsWith("http");
+						const childActive = isItemActive(pathname, child.path);
+						const childExternal = child.path.startsWith("http");
 						return (
 							<li key={child.id}>
 								<Link
 									href={child.path}
 									target={
-										childExternal
-											? "_blank"
-											: undefined
+										childExternal ? "_blank" : undefined
 									}
 									rel={
 										childExternal

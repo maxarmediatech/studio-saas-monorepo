@@ -77,7 +77,7 @@ export function GenericAreaPanel({ area }: { area: NavAreaConfig }) {
 				)}
 			</div>
 
-			<div className="flex flex-col gap-5 px-3 pb-3">
+			<div className="flex flex-col gap-1 px-3 pb-3">
 				{area.standaloneItems?.length ? (
 					<nav className="flex flex-col gap-0.5">
 						{area.standaloneItems.map((item) => (
@@ -92,6 +92,9 @@ export function GenericAreaPanel({ area }: { area: NavAreaConfig }) {
 
 				{area.sections.map((section) => (
 					<div key={section.id}>
+						{section.dividerBefore ? (
+							<div className="mx-1 my-2 border-neutral-200 border-t" />
+						) : null}
 						{section.label ? (
 							<div className="mb-2 pl-2 text-xs font-medium uppercase tracking-[0.14em] text-neutral-500">
 								{section.label}

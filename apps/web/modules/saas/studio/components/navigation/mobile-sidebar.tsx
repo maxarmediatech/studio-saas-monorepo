@@ -120,6 +120,9 @@ export function MobileSidebar({
 
 								{settingsArea.sections.map((section) => (
 									<div key={section.id}>
+										{section.dividerBefore ? (
+											<div className="mx-1 my-2 border-neutral-200 border-t" />
+										) : null}
 										{section.label ? (
 											<div className="mb-2 pl-2 text-xs font-medium uppercase tracking-[0.14em] text-neutral-500">
 												{section.label}
@@ -184,6 +187,9 @@ export function MobileSidebar({
 							<div className="flex flex-col gap-6">
 								{activeModule.sections.map((section) => (
 									<div key={section.id}>
+										{section.dividerBefore ? (
+											<div className="mx-1 my-2 border-neutral-200 border-t" />
+										) : null}
 										{section.label ? (
 											<div className="mb-2 pl-2 text-xs font-medium uppercase tracking-[0.14em] text-neutral-500">
 												{section.label}
@@ -365,6 +371,9 @@ function MobileAreaContent({
 
 			{area.sections.map((section) => (
 				<div key={section.id}>
+					{section.dividerBefore ? (
+						<div className="mx-1 my-2 border-neutral-200 border-t" />
+					) : null}
 					{section.label ? (
 						<div className="mb-2 pl-2 text-xs font-medium uppercase tracking-[0.14em] text-neutral-500">
 							{section.label}

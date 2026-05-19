@@ -508,15 +508,8 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 			direction: "right",
 			sections: [
 				{
-					id: "messages-inbox",
-					label: "Inbox",
+					id: "messages-conversations",
 					items: [
-						{
-							id: "messages-dashboard",
-							label: "Dashboard",
-							path: url("/messages/dashboard"),
-							icon: "LayoutDashboard",
-						},
 						{
 							id: "messages-clients",
 							label: "Clients",
@@ -529,6 +522,18 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							label: "Crew",
 							path: url("/messages/crew"),
 							icon: "Users",
+						},
+					],
+				},
+				{
+					id: "messages-whatsapp",
+					dividerBefore: true,
+					items: [
+						{
+							id: "messages-dashboard",
+							label: "Dashboard",
+							path: url("/messages/dashboard"),
+							icon: "LayoutDashboard",
 						},
 						{
 							id: "messages-contacts",
@@ -551,8 +556,8 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 					],
 				},
 				{
-					id: "messages-whatsapp",
-					label: "WhatsApp",
+					id: "messages-settings-section",
+					dividerBefore: true,
 					items: [
 						{
 							id: "messages-settings",

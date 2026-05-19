@@ -91,6 +91,7 @@ export interface NavItemConfig {
 export interface NavSectionConfig {
 	id: string;
 	label?: string;
+	dividerBefore?: boolean;
 	items: NavItemConfig[];
 	expanded?: boolean;
 }
