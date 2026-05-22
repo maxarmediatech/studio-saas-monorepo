@@ -1,152 +1,113 @@
-'use client';
-
-import { useEffect, useState } from 'react';
-
-import Noise from '@/components/elements/noise';
-import { Marquee } from '@/components/magicui/marquee';
-import { cn } from '@/lib/utils';
-
-const companies = [
+const ITEMS = [
   {
-    name: 'Booking.com',
-    logo: '/images/logos/booking.svg',
-    className: 'dark:hidden',
-    url: 'https://booking.com',
+    name: "Mercury",
+    src: "/images/logos/mercury.svg",
+    width: 143,
+    height: 26,
+    href: "https://mercury.com",
   },
   {
-    name: 'Fortinet',
-    logo: '/images/logos/fortinet.svg',
-    className: 'dark:hidden',
-    url: 'https://fortinet.com',
+    name: "Watershed",
+    src: "/images/logos/watershed.svg",
+    width: 154,
+    height: 31,
+    href: "https://watershed.com",
   },
   {
-    name: 'IBM',
-    logo: '/images/logos/ibm.svg',
-    className: '',
-    url: 'https://ibm.com',
+    name: "Retool",
+    src: "/images/logos/retool.svg",
+    width: 113,
+    height: 22,
+    href: "https://retool.com",
   },
   {
-    name: 'Logitech',
-    logo: '/images/logos/logitech.svg',
-    className: 'dark:hidden',
-    url: 'https://logitech.com',
+    name: "Descript",
+    src: "/images/logos/descript.svg",
+    width: 112,
+    height: 27,
+    href: "https://descript.com",
   },
   {
-    name: 'Netflix',
-    logo: '/images/logos/netflix.svg',
-    className: '',
-    url: 'https://netflix.com',
+    name: "Perplexity",
+    src: "/images/logos/perplexity.svg",
+    width: 141,
+    height: 32,
+    href: "https://perplexity.ai",
   },
   {
-    name: 'Spotify',
-    logo: '/images/logos/spotify.svg',
-    className: '',
-    url: 'https://spotify.com',
+    name: "Monzo",
+    src: "/images/logos/monzo.svg",
+    width: 104,
+    height: 18,
+    href: "https://monzo.com",
   },
   {
-    name: 'T-Mobile',
-    logo: '/images/logos/t-mobile.svg',
-    className: '',
-    url: 'https://t-mobile.com',
+    name: "Ramp",
+    src: "/images/logos/ramp.svg",
+    width: 105,
+    height: 28,
+    href: "https://ramp.com",
   },
   {
-    name: 'TIBCO',
-    logo: '/images/logos/tibc.svg',
-    className: '',
-    url: 'https://tibco.com',
+    name: "Raycast",
+    src: "/images/logos/raycast.svg",
+    width: 128,
+    height: 33,
+    href: "https://raycast.com",
+  },
+  {
+    name: "Arc",
+    src: "/images/logos/arc.svg",
+    width: 90,
+    height: 28,
+    href: "https://arc.com",
   },
 ];
 
 export default function Logos() {
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
-  const [mounted, setMounted] = useState(false);
-  const storageKey = 'theme';
-
-  useEffect(() => {
-    setMounted(true);
-
-    // Get initial theme from localStorage, default to 'light' if none exists
-    const savedTheme = localStorage.getItem(storageKey) as
-      | 'light'
-      | 'dark'
-      | null;
-    const initialTheme = savedTheme || 'light';
-    setTheme(initialTheme);
-
-    // Listen for theme changes
-    const handleStorageChange = () => {
-      const newTheme = localStorage.getItem(storageKey) as
-        | 'light'
-        | 'dark'
-        | null;
-      if (newTheme) {
-        setTheme(newTheme);
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-
-    // Listen for direct DOM class and data-theme changes (for immediate updates)
-    const observer = new MutationObserver(() => {
-      const isDark = document.documentElement.classList.contains('dark');
-      const dataTheme = document.documentElement.getAttribute('data-theme');
-      const currentTheme = dataTheme || (isDark ? 'dark' : 'light');
-      setTheme(currentTheme as 'light' | 'dark');
-    });
-
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['class', 'data-theme'],
-    });
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      observer.disconnect();
-    };
-  }, []);
-
-  // Filter out companies with dark:hidden when theme is dark
-  // Only apply theme-based filtering after component is mounted to prevent hydration mismatch
-  const visibleCompanies = companies.filter((company) => {
-    if (
-      mounted &&
-      theme === 'dark' &&
-      company.className.includes('dark:hidden')
-    ) {
-      return false;
-    }
-    return true;
-  });
-
   return (
-    <section className="section-padding relative">
-      <Noise />
-      <p className="container text-center text-base">
-        Built for photography, video, wedding, event, and production studios
-        that need calmer operations.
-      </p>
+    <section className="bg-sand-100 overflow-hidden py-12 md:py-20 lg:py-24">
+      <div className="container text-center">
+        <h2 className="text-balance text-xl font-semibold tracking-tight lg:text-3xl">
+          Powering the world&apos;s best product teams.
+          <br />
+          <span className="text-muted-foreground">
+            From next-gen startups to established enterprises.
+          </span>
+        </h2>
+      </div>
 
-      <div>
-        <Marquee
-          pauseOnHover
-          className="mt-8 mask-r-from-60% mask-r-to-100% mask-l-from-60% mask-l-to-100% [--duration:20s] [--gap:4rem]"
-        >
-          {visibleCompanies.map((company) => (
-            <a
-              key={company.name}
-              href={company.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="relative h-8 w-24 transition-transform duration-200 hover:scale-105"
-            >
-              <img
-                src={company.logo}
-                alt={`${company.name} logo`}
-                className={cn('object-contai size-full', company.className)}
-              />
-            </a>
-          ))}
-        </Marquee>
+      <div className="relative mt-10">
+        <div className="flex w-full">
+          {/* First marquee group */}
+          <div className="animate-marquee flex shrink-0 items-center gap-12">
+            {ITEMS.map((logo, index) => (
+              <a href={logo.href} target="_blank" key={index} className="p-6">
+                <img
+                  src={logo.src}
+                  alt={logo.name}
+                  width={logo.width}
+                  height={logo.height}
+                  className="object-contain transition-opacity hover:opacity-70"
+                />
+              </a>
+            ))}
+          </div>
+          {/* Second marquee group */}
+          <div className="animate-marquee flex shrink-0 items-center gap-12">
+            {ITEMS.map((logo, index) => (
+              <a href={logo.href} target="_blank" key={index} className="p-6">
+                <img
+                  src={logo.src}
+                  alt={logo.name}
+                  width={logo.width}
+                  height={logo.height}
+                  className="object-contain transition-opacity hover:opacity-70"
+                />
+              </a>
+            ))}
+          </div>
+        </div>
       </div>
     </section>
   );

@@ -1,32 +1,21 @@
 ---
-import { Font } from 'astro:assets';
-import { ClientRouter } from 'astro:transitions';
-
 import BaseHead from '@/components/BaseHead.astro';
-import { NavigationProvider } from '@/components/elements/navigation-provider';
-import Footer from '@/components/layout/footer';
-import Navbar from '@/components/layout/navbar';
+import Banner from '@/components/sections/banner';
+import { Navbar } from '@/components/sections/navbar';
+import { Footer } from '@/components/sections/footer';
 
 const { title, description } = Astro.props;
-const currentPath = Astro.url.pathname;
 ---
 
 <html lang="en">
-  <head>
-    <ClientRouter />
-    <BaseHead title={title} description={description} />
-    <Font cssVariable="--font-inter" preload />
-    <meta name="view-transition" content="same-origin" />
-  </head>
-  <body
-    class={`h-screen antialiased flex flex-col [--header-height:calc(var(--spacing)*14)] lg:[--header-height:calc(var(--spacing)*23)]`}
-  >
-    <NavigationProvider client:load currentPath={currentPath}>
-      <Navbar currentPage={currentPath} client:load />
-      <main class="flex-1" style="view-transition-name: main;">
-        <slot />
-      </main>
-      <Footer currentPage={currentPath} />
-    </NavigationProvider>
-  </body>
+    <head>		
+        <BaseHead title={title} description={description}  />
+    </head>
+    <body class={`h-screen antialiased`}
+    >
+        <Banner client:only="react" url="https://shadcnblocks.com/template/streamline?bundle=astro" />
+        <Navbar currentPage={Astro.url.pathname} client:only='react' />
+        <main><slot /></main>
+        <Footer />
+    </body>
 </html>

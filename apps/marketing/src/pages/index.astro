@@ -1,24 +1,24 @@
 ---
+import DefaultLayout from '@/layouts/DefaultLayout.astro';
 import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
 
-import FAQSection from '@/components/sections/faq-section';
-import FeaturesCarousel from '@/components/sections/features-carousel';
-import FeaturesGrid from '@/components/sections/features-grid';
-import FeaturesShowcase from '@/components/sections/features-showcase';
-import Hero from '@/components/sections/hero';
+import { FAQ } from '@/components/sections/faq';
+import { Feature1 } from '@/components/sections/feature1';
+import { Feature2 } from '@/components/sections/feature2';
+import { Feature3 } from '@/components/sections/feature3';
+import { Hero } from '@/components/sections/hero';
 import Logos from '@/components/sections/logos';
-import Pricing from '@/components/sections/pricing';
+import { Pricing1 } from '@/components/sections/pricing1';
 import Testimonials from '@/components/sections/testimonials';
-import DefaultLayout from '@/layouts/DefaultLayout.astro';
 ---
 
 <DefaultLayout title={SITE_TITLE} description={SITE_DESCRIPTION}>
-  <Hero client:load />
-  <Logos client:load />
-  <FeaturesCarousel client:load />
-  <FeaturesGrid />
-  <FeaturesShowcase client:load />
-  <Testimonials client:load />
-  <FAQSection client:load />
-  <Pricing client:load />
+  <Hero client:only='react' />
+  <Logos />
+  <Feature1 />
+  <Feature2 />
+  <Feature3 client:only='react'/>
+  <Testimonials  client:only='react'/>
+  <Pricing1 client:only='react'/>
+  <FAQ client:only='react'/>
 </DefaultLayout>

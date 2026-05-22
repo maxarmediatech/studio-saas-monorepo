@@ -1,160 +1,80 @@
-import type { CollectionEntry } from 'astro:content';
-import { ChevronLeft, Facebook, Twitter, MessageCircle } from 'lucide-react';
-import { motion } from 'motion/react';
-
-import { BlogCard } from './blog-posts';
-
-/**
- * Calculate read time based on word count
- * @param content - The markdown content to analyze
- * @returns Formatted read time string (e.g., "5 min read")
- */
-export function calculateReadTime(content: string): string {
-  // Remove markdown syntax and count words
-  const cleanContent = content
-    .replace(/#{1,6}\s+/g, '') // Remove headers
-    .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold
-    .replace(/\*(.*?)\*/g, '$1') // Remove italic
-    .replace(/\[(.*?)\]\(.*?\)/g, '$1') // Remove links
-    .replace(/```[\s\S]*?```/g, '') // Remove code blocks
-    .replace(/`(.*?)`/g, '$1') // Remove inline code
-    .replace(/^\s*[-*+]\s+/gm, '') // Remove list markers
-    .replace(/^\s*\d+\.\s+/gm, '') // Remove numbered list markers
-    .replace(/---[\s\S]*?---/g, '') // Remove frontmatter
-    .trim();
-
-  const words = cleanContent.split(/\s+/).filter((word) => word.length > 0);
-  const wordCount = words.length;
-
-  // Average reading speed is 200-250 words per minute, using 225
-  const readingSpeed = 225;
-  const minutes = Math.ceil(wordCount / readingSpeed);
-
-  return `${Math.max(1, minutes)} min read`;
-}
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { format } from "date-fns";
+import { Badge } from "@/components/ui/badge";
+import { Calendar, Clock, Share2, ChevronLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 
 const BlogPost = ({
   post,
-  relatedPosts,
   children,
 }: {
-  post: CollectionEntry<'blog'>[];
-  relatedPosts: CollectionEntry<'blog'>[];
+  post: any;
   children: React.ReactNode;
 }) => {
-  const { title, description, date, coverImage, author } = post[0].data;
-  const { id, body } = post[0];
-  const readTime = calculateReadTime(body || '');
-
+  const { title, authorName, image, pubDate, description, authorImage } =
+    post.data;
   return (
-    <div className="section-padding container">
-      <div className="mx-auto max-w-4xl">
-        {/* Header */}
-        <header className="mb-8">
-          <a
-            href="/blog"
-            className="group text-muted-foreground hover:text-foreground mb-8 inline-flex items-center gap-2 text-sm transition-colors"
-          >
-            <ChevronLeft className="size-4 transition-transform group-hover:-translate-x-0.5" />
-            Back to Blog
-          </a>
-
-          {/* Title and Description */}
-          <h1 className="mb-4 text-4xl tracking-tight md:text-5xl lg:text-6xl">
-            {title}
-          </h1>
-          <p className="text-muted-foreground mb-8 text-lg md:text-xl">
-            {description}
-          </p>
-        </header>
-
-        <motion.div className="relative aspect-[16/9] overflow-hidden rounded-xl">
-          <img
-            src={coverImage}
-            alt={title}
-            className="size-full object-cover"
-          />
-        </motion.div>
-
-        {/* Author Information */}
-        <div className="mt-8 mb-12 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="relative size-14 overflow-hidden rounded-full">
-              <img
-                src={author.image}
-                alt={author.name}
-                className="size-full object-cover"
-              />
-            </div>
-            <div>
-              <div className="text-foreground text-2xl font-semibold">
-                {author.name}
-              </div>
-              <div className="text-muted-foreground">
-                {new Date(date).toLocaleDateString('en-GB', {
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric',
-                })}{' '}
-                · {readTime}
-              </div>
-            </div>
+    <div className="relative">
+      {/* Header */}
+      <div className="bg-muted/20 relative pb-8 pt-12 md:pt-20">
+        <div className="container max-w-4xl">
+          <div className="mb-8 text-center">
+            <Badge variant="outline" className="mb-6 px-3 py-1 text-xs">
+              Published {format(pubDate, "MMMM d, yyyy")}
+            </Badge>
+            <h1 className="mb-6 text-3xl font-bold leading-tight tracking-tight md:text-4xl lg:text-5xl">
+              {title}
+            </h1>
+            <p className="text-muted-foreground mx-auto max-w-3xl text-xl font-normal leading-relaxed">
+              {description}
+            </p>
           </div>
 
-          {/* Social Share Icons */}
-          <div className="bg-background border-input [&_*]:border-input grid grid-cols-3 items-center divide-x rounded-sm border shadow-sm">
-            <a
-              href={author.facebookUrl}
-              className="flex items-center justify-center px-3 py-2.5 md:px-5"
-            >
-              <Facebook className="size-4 shrink-0 md:size-5" />
-            </a>
-            <a
-              href={author.twitterUrl}
-              className="flex items-center justify-center px-3 py-2.5 md:px-5"
-            >
-              <Twitter className="size-4 shrink-0 md:size-5" />
-            </a>
-            <a
-              href={author.linkedinUrl}
-              className="flex items-center justify-center px-3 py-2.5 md:px-5"
-            >
-              <MessageCircle className="size-4 shrink-0 md:size-5" />
-            </a>
+          <div className="flex items-center justify-center">
+            <div className="text-muted-foreground flex items-center gap-1.5 text-sm">
+              <Clock className="h-4 w-4" />
+              <span>10 min read</span>
+            </div>
           </div>
         </div>
-
-        {/* Article Content */}
-        <article className="prose lg:prose-lg prose-headings:font-weight-display dark:prose-invert prose-headings:tracking-tight prose-p:leading-relaxed prose-li:leading-relaxed prose-img:rounded-xl prose-img:shadow-sm prose-a:text-primary prose-a:no-underline hover:prose-a:underline mx-auto max-w-none">
-          {children}
-        </article>
       </div>
 
-      {relatedPosts.length > 0 && (
-        <section className="mt-20 lg:mt-24">
-          <h2 className="text-4xl tracking-tight lg:text-5xl">
-            Related Articles
-          </h2>
-          <p className="text-muted-foreground mt-3 text-lg leading-snug lg:mt-4">
-            From seamless integrations to productivity wins and fresh feature
-            drops—these stories show how Pulse empowers teams to save time,
-            collaborate better, and stay ahead in fast-paced work environments.
-          </p>
-          <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:mt-12 lg:grid-cols-3">
-            {relatedPosts.map((relatedPost) => {
-              return (
-                <a
-                  key={relatedPost.id}
-                  href={`/blog/${relatedPost.id}`}
-                  className="group block h-full"
-                >
-                  <BlogCard post={relatedPost} />
-                </a>
-              );
-            })}
+      {/* Featured Image */}
+      <div className="relative mx-auto -mt-4 max-w-4xl px-4 md:-mt-8 lg:-mt-12">
+        <div className="aspect-[16/9] overflow-hidden rounded-xl border shadow-lg">
+          <img src={image} alt={title} className="h-full w-full object-cover" />
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="container">
+        <div className="mx-auto my-12 max-w-3xl space-y-12 md:my-16 lg:my-20">
+          <article className="prose prose-lg dark:prose-invert prose-headings:font-semibold prose-h2:text-2xl prose-h2:mt-12 prose-h2:mb-6 prose-p:text-base prose-p:leading-relaxed prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-img:rounded-md prose-img:shadow-sm prose-blockquote:border-l-primary prose-blockquote:bg-muted/40 prose-blockquote:py-1 prose-blockquote:not-italic max-w-none">
+            {children}
+          </article>
+
+          <Separator />
+
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <Avatar className="h-12 w-12 border">
+                <AvatarImage src={authorImage} alt={authorName} />
+                <AvatarFallback>{authorName.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <div>
+                <div className="font-semibold">{authorName}</div>
+                <div className="text-muted-foreground text-sm">Written by</div>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" asChild>
+                <a href="/blog">More Articles</a>
+              </Button>
+            </div>
           </div>
-        </section>
-      )}
+        </div>
+      </div>
     </div>
   );
 };

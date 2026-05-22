@@ -1,21 +1,29 @@
 // @ts-check
-import mdx from '@astrojs/mdx';
-import react from '@astrojs/react';
-import sitemap from '@astrojs/sitemap';
-import tailwindcss from '@tailwindcss/vite';
-import { defineConfig, fontProviders } from 'astro/config';
+import { defineConfig, fontProviders } from "astro/config";
+import mdx from "@astrojs/mdx";
+import sitemap from "@astrojs/sitemap";
+
+import react from "@astrojs/react";
+import tailwindcss from "@tailwindcss/vite";
 
 // https://astro.build/config
 export default defineConfig({
-  site: 'https://stuwiz.com',
+  site: "https://example.com",
   integrations: [mdx(), sitemap(), react()],
+  output: "static",
 
   fonts: [
     {
       provider: fontProviders.google(),
-      name: 'Inter',
-      cssVariable: '--font-inter',
-      weights: ['400', '500', '600', '700'],
+      name: "Inter",
+      cssVariable: "--font-inter",
+      weights: ["400", "500", "600", "700"],
+    },
+    {
+      provider: fontProviders.google(),
+      name: "Inter Tight",
+      cssVariable: "--font-inter-tight",
+      weights: ["400", "500", "600", "700"],
     },
   ],
 

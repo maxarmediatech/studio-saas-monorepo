@@ -1,13 +1,13 @@
-# Lumen Astro Template
+# Streamline Astro Template
 
-Lumen Astro Template is a premium template built by https://www.shadcnblocks.com
+Streamline Astro Template is a premium template built by https://www.shadcnblocks.com
 
-- [Demo](https://lumen-astro-template.vercel.app/)
+- [Demo](https://streamline-astro-template.vercel.app/)
 - [Documentation](https://www.shadcnblocks.com/docs/templates/getting-started)
 
 ## Screenshot
 
-![Lumen Astro Template screenshot](./public/images/og-image.jpg)
+![Streamline Astro Template screenshot](./public/og-image.jpg)
 
 ## Getting Started
 
