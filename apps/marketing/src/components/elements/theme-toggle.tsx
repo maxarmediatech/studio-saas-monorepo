@@ -7,13 +7,8 @@ const ThemeToggle = () => {
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
   useEffect(() => {
-    // Get initial theme from localStorage or system preference
     const savedTheme = localStorage.getItem("theme");
-    const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-      .matches
-      ? "dark"
-      : "light";
-    const initialTheme = savedTheme || systemTheme;
+    const initialTheme = savedTheme || "light";
 
     setTheme(initialTheme as "light" | "dark");
     document.documentElement.classList.toggle("dark", initialTheme === "dark");
