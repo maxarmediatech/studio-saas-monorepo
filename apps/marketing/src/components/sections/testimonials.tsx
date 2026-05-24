@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 const TESTIMONIALS = [
   {
     quote:
-      "Thanks to Streamline, we're finding new leads that we never would have found with legal methods.",
+      "Thanks to Stuwiz, every booking finally has one clear owner, schedule, and delivery path.",
     author: "Amy Chase, PM",
     company: "Mercury Finance",
     image: "/images/homepage/testimonials/amy-chase.webp",
@@ -54,7 +54,7 @@ const TESTIMONIALS = [
   },
   {
     quote:
-      "I was able to replace 80% of my team with Streamline bots so I can spend more time on my body.",
+      "Stuwiz gave our team one place to see what is booked, assigned, delivered, and paid.",
     author: "Jonas Kotara, Lead Engineer",
     company: "Mercury Finance",
     image: "/images/homepage/testimonials/jonas-kotara.webp",
@@ -85,9 +85,8 @@ export default function Testimonials() {
           </h2>
           <div className="flex flex-1 flex-col items-start gap-3 md:max-w-md md:self-end">
             <p className="text-lg font-medium text-gray-700 dark:text-gray-300">
-              Streamline is built on the habits that make the best product teams
-              successful: staying focused, moving quickly, and always aiming for
-              high-quality work.
+              Stuwiz is built around the way studios actually work: inquiries,
+              bookings, crews, shoots, deliverables, payments, and follow-ups.
             </p>
             <Button asChild variant="outline" className="group">
               <a href="/customer-stories">

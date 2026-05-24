@@ -77,7 +77,7 @@ export const Feature2 = () => {
     <section id="feature2" className="bg-muted py-16 md:py-28 lg:py-32">
       <div className="container">
         <h2 className="text-balance text-center text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl lg:text-6xl">
-          Streamline your resource allocation and execution
+          Plan studio resources and execution
         </h2>
 
         <div className="mt-8 grid grid-cols-1 gap-4 md:mt-12 md:grid-cols-6 md:grid-rows-5 lg:mt-20">

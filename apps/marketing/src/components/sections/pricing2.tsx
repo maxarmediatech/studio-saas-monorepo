@@ -95,7 +95,7 @@ const comparisonFeatures: FeatureSection[] = [
         enterprise: true,
       },
       {
-        name: "Streamline AI",
+        name: "Stuwiz AI",
         free: false,
         startup: true,
         enterprise: true,

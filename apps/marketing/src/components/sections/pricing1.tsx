@@ -28,10 +28,10 @@ const plans = [
     annualPerUnit: "per user/annum",
     features: [
       "All free plan features and...",
-      "Streamline AI",
+      "Stuwiz AI",
       "Unlimited teams",
       "Unlimited issues and file uploads",
-      "Streamline Insights",
+      "Stuwiz Insights",
       "Admin roles",
     ],
     cta: "7 day free trial",
@@ -45,10 +45,10 @@ const plans = [
     annualPerUnit: "per user/annum",
     features: [
       "All free plan features and...",
-      "Streamline AI",
+      "Stuwiz AI",
       "Unlimited teams",
       "Unlimited issues and file uploads",
-      "Streamline Insights",
+      "Stuwiz Insights",
       "Admin roles",
     ],
     cta: "Get started",
@@ -72,7 +72,7 @@ export function Pricing1({ headerTag = "h2" }: { headerTag?: "h1" | "h2" }) {
             </h2>
           )}
           <p className="text-muted-foreground text-balance text-lg">
-            Use Streamline for free with your whole team. Upgrade to enable
+            Use Stuwiz for free with your whole team. Upgrade to enable
             unlimited issues, enhanced security controls, and additional
             features.
           </p>

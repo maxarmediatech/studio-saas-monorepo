@@ -7,12 +7,12 @@ import {
 
 const leftQuestions = [
   {
-    question: "What is Streamline?",
+    question: "What is Stuwiz?",
     answer:
       "Lorem ipsum dolor sit amet consectetur adipisicing elit. Minus voluptates deserunt officia temporibus dignissimos.",
   },
   {
-    question: "How is Streamline different Linear and Jira?",
+    question: "How is Stuwiz different from generic project tools?",
     answer:
       "Lorem ipsum dolor sit amet consectetur adipisicing elit. Minus voluptates deserunt officia temporibus dignissimos.",
   },

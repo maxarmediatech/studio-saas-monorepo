@@ -69,19 +69,19 @@ export const ContactPage = () => {
                 <div>
                   <p>Careers</p>
                   <a
-                    href="mailto:careers@streamline.com"
+                    href="mailto:careers@stuwiz.com"
                     className="text-muted-foreground mt-3 text-lg font-medium tracking-tight"
                   >
-                    careers@streamline.com
+                    careers@stuwiz.com
                   </a>
                 </div>
                 <div>
                   <p>Press</p>
                   <a
-                    href="mailto:press@streamline.com"
+                    href="mailto:press@stuwiz.com"
                     className="text-muted-foreground mt-3 text-lg font-medium tracking-tight"
                   >
-                    press@streamline.com
+                    press@stuwiz.com
                   </a>
                 </div>
               </div>

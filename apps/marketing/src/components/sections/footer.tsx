@@ -43,12 +43,12 @@ const socialLinks = [
 
 export const Footer = () => {
   return (
-    <footer className="bg-primary text-primary-foreground">
-      <div className="bg-primary">
-        <div className="border-sand-600 mx-auto flex max-w-[95vw] flex-col items-center border-b py-10 text-center md:py-14 lg:py-20">
+    <footer className="overflow-hidden bg-primary text-primary-foreground">
+      <div className="border-sand-600/50 mx-auto max-w-[95vw] border-x">
+        <div className="border-sand-600 flex flex-col items-center border-b py-10 text-center md:py-14 lg:py-20">
           <h2 className="max-w-[800px] text-balance text-5xl font-semibold leading-none tracking-tight lg:text-6xl">
-            Streamline starts now.{" "}
-            <span className="text-sand-600">Your future won&apos;t wait.</span>
+            Stuwiz starts now.{" "}
+            <span className="text-sand-600">Your studio won&apos;t wait.</span>
           </h2>
           <Button asChild variant="secondary" size="lg" className="mt-9">
             <a href="/get-started">Get started with 7 days free</a>
@@ -56,7 +56,7 @@ export const Footer = () => {
         </div>
 
         {/* Navigation Section */}
-        <nav className="border-sand-600/50 mx-auto max-w-[95vw] border-b py-6">
+        <nav className="border-sand-600/50 border-b py-6">
           <div className="container flex flex-wrap gap-x-32 gap-y-20 md:justify-end md:gap-y-24 lg:gap-y-32">
             {navigation.map((section) => (
               <div key={section.title}>
@@ -79,17 +79,10 @@ export const Footer = () => {
         </nav>
 
         {/* Bottom Section */}
-        <div className="container py-8">
-          <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="border-sand-600/50 border-b">
+          <div className="container flex flex-wrap items-center justify-between gap-4 py-8">
             <p className="font-medium">
-              © {new Date().getFullYear()} Streamline -{" "}
-              <a
-                href="https://shadcnblocks.com"
-                className="underline transition-opacity hover:opacity-80"
-                target="_blank"
-              >
-                Shadcnblocks.com
-              </a>
+              © {new Date().getFullYear()} Stuwiz
             </p>
             <div className="flex items-center gap-6">
               {socialLinks.map((link) => (
@@ -105,6 +98,20 @@ export const Footer = () => {
             </div>
           </div>
         </div>
+
+        <a
+          href="/"
+          aria-label="Stuwiz home"
+          className="border-sand-600/50 group relative flex h-36 items-end justify-center overflow-hidden border-b px-4 md:h-48 lg:h-60"
+        >
+          <span
+            aria-hidden="true"
+            className="pointer-events-none block max-w-full translate-y-[28%] text-center text-[clamp(6rem,15vw,18rem)] font-semibold uppercase leading-none tracking-normal text-primary-foreground/[0.13] transition duration-500 group-hover:text-primary-foreground/[0.18] md:translate-y-[32%]"
+          >
+            STUWIZ
+          </span>
+          <span className="sr-only">Stuwiz</span>
+        </a>
       </div>
     </footer>
   );

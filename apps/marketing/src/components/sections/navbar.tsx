@@ -41,17 +41,17 @@ export const Navbar = ({ currentPage }: { currentPage: string }) => {
           title: "Feature1",
           href: "/#feature1",
           description:
-            "Streamline is built on the habits that make the best product teams successful",
+            "Stuwiz keeps bookings, shoots, crews, tasks, and delivery moving together",
         },
         {
           title: "Feature2",
           href: "/#feature2",
-          description: "Streamline your resource allocation and execution",
+          description: "Plan studio resources and project execution",
         },
         {
           title: "Feature3",
           href: "/#feature3",
-          description: "Streamline your feature development",
+          description: "Track delivery from inquiry to final handoff",
         },
       ],
     },
@@ -73,15 +73,15 @@ export const Navbar = ({ currentPage }: { currentPage: string }) => {
     <header className={cn("relative z-50", bgColor)}>
       <div className="max-w-9xl container">
         <div className="flex items-center justify-between py-3">
-          {/* Logo */}
-          <a href="/" className="flex items-center gap-2">
-            <img
-              src="/images/layout/logo.svg"
-              alt="logo"
-              width={129}
-              height={32}
-              className="dark:invert"
-            />
+          <a
+            href="/"
+            className="flex items-center gap-2 text-lg font-semibold tracking-tight"
+            aria-label="Stuwiz home"
+          >
+            <span className="flex size-5 items-center justify-center rounded-full bg-primary text-[11px] font-bold leading-none text-primary-foreground">
+              S
+            </span>
+            <span>Stuwiz</span>
           </a>
 
           {/* Desktop Navigation */}

@@ -9,7 +9,7 @@ const FEATURES = [
     description: "Track progress across custom issue flows for your team.",
     content: {
       title: "Issue tracking with more noise.",
-      description: `Simple, robust, and blazingly fast. streamline is designed with developer ergonomics in mind. It's the first issue tracker your team will actually enjoy using.`,
+      description: `Simple, robust, and blazingly fast. Stuwiz is designed around studio operations. It's the workspace your team will actually keep up to date.`,
       image: "/images/homepage/features-tabs/1.webp",
       className: "md:[&_img]:translate-x-20 [&_img]:translate-x-5 ",
     },
@@ -21,7 +21,7 @@ const FEATURES = [
     content: {
       title: "Issue tracking with more noise.",
       description:
-        "Simple, robust, and blazingly fast. streamline is designed with developer ergonomics in mind. It’s the first issue tracker your team will actually enjoy using.",
+        "Simple, robust, and blazingly fast. Stuwiz is designed around studio operations. It’s the workspace your team will actually keep up to date.",
       image: "/images/homepage/features-tabs/2.webp",
     },
     icon: Blend,
@@ -32,7 +32,7 @@ const FEATURES = [
     content: {
       title: "Issue tracking with more noise.",
       description:
-        "Simple, robust, and blazingly fast. streamline is designed with developer ergonomics in mind. It’s the first issue tracker your team will actually enjoy using.",
+        "Simple, robust, and blazingly fast. Stuwiz is designed around studio operations. It’s the workspace your team will actually keep up to date.",
       image: "/images/homepage/features-tabs/3.webp",
     },
     icon: Diamond,
@@ -43,7 +43,7 @@ const FEATURES = [
     content: {
       title: "Issue tracking with more noise.",
       description:
-        "Simple, robust, and blazingly fast. streamline is designed with developer ergonomics in mind. It’s the first issue tracker your team will actually enjoy using.",
+        "Simple, robust, and blazingly fast. Stuwiz is designed around studio operations. It’s the workspace your team will actually keep up to date.",
       image: "/images/homepage/features-tabs/4.webp",
     },
     icon: ChartNoAxesColumn,
@@ -56,12 +56,11 @@ export const Feature3 = () => {
       <div className="container">
         <div className="flex flex-col gap-3 md:flex-row">
           <h2 className="flex-1 text-balance text-3xl font-semibold tracking-tight md:text-4xl lg:text-5xl">
-            Streamline your resource allocation and execution
+            Plan studio resources and execution
           </h2>
           <p className="text-muted-foreground flex-1 text-lg font-medium md:max-w-md md:self-end">
-            Streamline is built on the habits that make the best product teams
-            successful: staying focused, moving quickly, and always aiming for
-            high-quality work.
+            Stuwiz is built around the way studios actually work: inquiries,
+            bookings, crews, shoots, deliverables, payments, and follow-ups.
           </p>
         </div>
 

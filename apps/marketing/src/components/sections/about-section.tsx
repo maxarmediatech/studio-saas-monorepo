@@ -12,8 +12,8 @@ export const AboutSection = () => {
           </h2>
 
           <h1 className="leading-13 max-w-[600px] flex-1 text-balance text-3xl font-semibold tracking-tight md:text-4xl lg:text-5xl">
-            We&apos;re Streamline. We&apos;re a different kind of planning tool
-            that enables builders to create the future now.
+            We&apos;re Stuwiz. We&apos;re a different kind of studio management
+            tool that helps creative teams deliver the work they promised.
           </h1>
         </div>
 
@@ -77,7 +77,7 @@ export const AboutSection = () => {
 
           {/* Timeline Section */}
           <p className="ml-auto max-w-xl text-lg leading-6 lg:-translate-x-24">
-            We started building Streamline in 2019 and launched in 2022. Every
+            We started building Stuwiz to bring studio operations into one place. Every
             single feature has been built from scratch — with no unnecessary
             complexity or outdated tools. We are purpose-built to redefine
             productivity for the next hundred years.

@@ -74,8 +74,8 @@ export const Hero = () => {
             </h1>
 
             <p className="text-sand-700 font-inter-tight leading-13 mt-3 text-3xl font-medium md:text-4xl lg:text-5xl">
-              Streamline is the fit-for-purpose tool for planning and building
-              modern software products.
+              Stuwiz is the fit-for-purpose tool for running modern creative
+              studios.
             </p>
           </div>
 
@@ -104,14 +104,14 @@ export const Hero = () => {
 
           <div className="flex flex-wrap items-center gap-4">
             <Button aria-label="Get started">Get started</Button>
-            <a href="#Streamline-news">
+            <a href="#Stuwiz-news">
               <Button
-                aria-label="Streamline raises $12M from Roba Ventures"
+                aria-label="Stuwiz helps studios manage bookings and delivery"
                 variant="outline"
                 className="max-sm:hidden"
               >
                 <span className="flex items-center gap-2 whitespace-pre-wrap text-start">
-                  Streamline raises $12M from Roba Ventures{" "}
+                  Stuwiz keeps every shoot on track{" "}
                   <ArrowRight className="stroke-3 size-4" />
                 </span>
               </Button>
@@ -142,7 +142,7 @@ export const Hero = () => {
                   <div className="relative size-full min-h-[30rem] overflow-hidden rounded-t-xl">
                     <img
                       src={slide.image}
-                      alt={`Streamline product interface showing ${slide.label}`}
+                      alt={`Stuwiz product interface showing ${slide.label}`}
                       className="size-full object-cover object-left-top"
                     />
                   </div>

@@ -1,29 +1,27 @@
 // Place any global data in this file.
 // You can import this data from anywhere in your site by using the `import` keyword.
 
-export const SITE_TITLE = "Streamline - Modern Astro Template";
+export const SITE_TITLE = "Stuwiz";
 export const SITE_DESCRIPTION =
-  "A modern, fully featured Astro template built with Shadcn/UI, TailwindCSS and TypeScript, perfect for your next web application.";
+  "Studio management software for bookings, crews, deliverables, payments, and client communication.";
 
 export const SITE_METADATA = {
   title: {
     default: SITE_TITLE,
-    template: "%s | Streamline",
+    template: "%s | Stuwiz",
   },
   description: SITE_DESCRIPTION,
   keywords: [
-    "Astro",
-    "React",
-    "JavaScript",
-    "TypeScript",
-    "TailwindCSS",
-    "Template",
-    "Shadcn/UI",
-    "Web Development",
+    "Studio Management",
+    "Photography CRM",
+    "Bookings",
+    "Crew Management",
+    "Payments",
+    "Client Communication",
   ],
-  authors: [{ name: "streamline Team" }],
-  creator: "streamline Team",
-  publisher: "streamline",
+  authors: [{ name: "Stuwiz Team" }],
+  creator: "Stuwiz Team",
+  publisher: "Stuwiz",
   robots: {
     index: true,
     follow: true,
@@ -42,13 +40,13 @@ export const SITE_METADATA = {
   openGraph: {
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
-    siteName: "streamline",
+    siteName: "Stuwiz",
     images: [
       {
         url: "/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: "streamline - Modern Astro Template",
+        alt: "Stuwiz studio management dashboard",
       },
     ],
   },
@@ -57,6 +55,6 @@ export const SITE_METADATA = {
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
     images: ["/og-image.jpg"],
-    creator: "@streamline",
+    creator: "@stuwiz",
   },
 };

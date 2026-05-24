@@ -1,13 +1,10 @@
-# Streamline Astro Template
+# Stuwiz Marketing
 
-Streamline Astro Template is a premium template built by https://www.shadcnblocks.com
-
-- [Demo](https://streamline-astro-template.vercel.app/)
-- [Documentation](https://www.shadcnblocks.com/docs/templates/getting-started)
+Astro marketing site for Stuwiz.
 
 ## Screenshot
 
-![Streamline Astro Template screenshot](./public/og-image.jpg)
+![Stuwiz marketing screenshot](./public/og-image.jpg)
 
 ## Getting Started
 

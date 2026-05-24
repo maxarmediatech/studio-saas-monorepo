@@ -27,9 +27,8 @@ export const Feature1 = () => {
             Tailor made for post-modern product teams
           </h2>
           <p className="text-muted-foreground flex-1 text-lg font-medium md:max-w-md md:self-end">
-            Streamline is built on the habits that make the best product teams
-            successful: staying focused, moving quickly, and always aiming for
-            high-quality work.
+            Stuwiz is built around the way studios actually work: inquiries,
+            bookings, crews, shoots, deliverables, payments, and follow-ups.
           </p>
         </div>
 

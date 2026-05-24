@@ -10,13 +10,16 @@ const SignupSection = () => {
         <div className="flex flex-col gap-4">
           <Card className="mx-auto w-full max-w-sm">
             <CardHeader className="flex flex-col items-center space-y-0">
-              <img
-                src="/images/layout/logo.svg"
-                alt="logo"
-                width={94}
-                height={18}
-                className="mb-7 dark:invert"
-              />
+              <a
+                href="/"
+                className="mb-7 flex items-center gap-2 text-lg font-semibold tracking-tight"
+                aria-label="Stuwiz home"
+              >
+                <span className="flex size-5 items-center justify-center rounded-full bg-primary text-[11px] font-bold leading-none text-primary-foreground">
+                  S
+                </span>
+                <span>Stuwiz</span>
+              </a>
               <p className="mb-2 text-2xl font-bold">Start your free trial</p>
               <p className="text-muted-foreground">
                 Sign up in less than 2 minutes.
