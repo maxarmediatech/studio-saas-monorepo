@@ -34,6 +34,14 @@
 	"[javascriptreact]": {
 		"editor.defaultFormatter": "biomejs.biome"
 	},
+	"[astro]": {
+		"editor.defaultFormatter": "astro-build.astro-vscode",
+		"editor.formatOnSave": false,
+		"editor.codeActionsOnSave": {
+			"source.fixAll.biome": "never",
+			"source.organizeImports.biome": "never"
+		}
+	},
 	"prettier.enable": false,
 	"eslint.enable": false,
 

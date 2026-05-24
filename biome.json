@@ -45,13 +45,16 @@
 	},
 	"assist": { "actions": { "source": { "organizeImports": "on" } } },
 	"files": {
-		"includes": [
-			"**",
-			"!zod/index.ts",
-			"!tailwind-animate.css",
-			"!.claude"
-			]
-		},
+		"includes": ["**", "!zod/index.ts", "!tailwind-animate.css", "!.claude"]
+	},
+	"overrides": [
+		{
+			"includes": ["apps/marketing/**/*.astro"],
+			"formatter": { "enabled": false },
+			"linter": { "enabled": false },
+			"assist": { "enabled": false }
+		}
+	],
 	"javascript": {
 		"jsxRuntime": "reactClassic"
 	},
