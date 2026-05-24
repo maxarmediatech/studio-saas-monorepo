@@ -81,7 +81,7 @@ const Footer = () => {
 		"dark bg-[#09090B] text-white [--background:#09090B] [--foreground:#FFFFFF] [--border:rgba(255,255,255,0.1)] [--muted-foreground:#A1A1AA] [&_*]:border-white/10";
 
 	const logoWordmarkClass =
-		"mt-[4.35rem] text-white/15 md:mt-[5.85rem] lg:mt-[7.2rem]";
+		"mt-[4.85rem] text-white/15 sm:mt-[4.35rem] md:mt-[5.85rem] lg:mt-[7.2rem]";
 
 	return (
 		<footer className={cn("overflow-hidden", themeClass)}>
@@ -234,14 +234,14 @@ const Footer = () => {
 				{/* Large Logo */}
 				<a
 					href="/"
-					className="relative flex h-52 items-start justify-center overflow-hidden border-x bg-[#09090B]  md:h-64 lg:h-[18.25rem]"
+					className="relative flex h-44 items-start justify-center overflow-hidden border-x bg-[#09090B] sm:h-52 md:h-64 lg:h-[18.25rem]"
 					aria-label="Stuwiz home"
 				>
 					<span
 						aria-hidden="true"
 						className={cn(
 							logoWordmarkClass,
-							"block text-center text-[8.5rem] font-semibold leading-none tracking-normal md:text-[12.75rem] lg:text-[17rem]",
+							"block text-center text-[6.5rem] font-semibold leading-none tracking-normal sm:text-[8.5rem] md:text-[12.75rem] lg:text-[17rem]",
 						)}
 					>
 						Stuwiz
