@@ -9,7 +9,7 @@ export const EXTERNAL_LINKS = {
   LINKEDIN: 'https://www.shadcnblocks.com/',
 
   // Contact
-  EMAIL: 'mailto:team@scalar.com',
+  EMAIL: 'mailto:team@stuwiz.com',
 
   // Open Source
   GITHUB_REPO: 'https://www.shadcnblocks.com/',

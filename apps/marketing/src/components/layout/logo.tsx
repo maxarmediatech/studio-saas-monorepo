@@ -17,14 +17,14 @@ export default function Logo({
     <a href={href} className={cn('flex items-center gap-2.5', className)}>
       <img
         src="/layout/logo-icon.svg"
-        alt="Scalar Logo"
+        alt="Stuwiz Logo"
         width={22}
         height={24}
         className={cn('object-contain', iconClassName)}
       />
       <img
         src="/layout/logo-wordmark.svg"
-        alt="Scalar"
+        alt="Stuwiz"
         width={51.353}
         height={14.009}
         className={cn('object-contain', wordmarkClassName)}
