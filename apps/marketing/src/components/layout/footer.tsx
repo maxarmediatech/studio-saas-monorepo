@@ -1,78 +1,36 @@
 "use client";
 
-import {
-	FileCode,
-	Globe,
-	LineChart,
-	Lock,
-	Server,
-	Terminal,
-	Users,
-} from "lucide-react";
 import { FaDiscord, FaGithub, FaLinkedin, FaXTwitter } from "react-icons/fa6";
 
-import { Diamonds } from "@/components/icons/diamonds";
-import { Button } from "@/components/ui/button";
 import { EXTERNAL_LINKS } from "@/constants/external-links";
 import { cn } from "@/lib/utils";
 
-const FEATURES = [
+const FOOTER_LINK_GROUPS = [
 	{
-		title: "Open Source",
-		description: "0$ / forever",
-		features: [
-			{
-				name: "Self-host on your own infrastructure",
-				icon: <Server className="size-5" />,
-			},
-			{
-				name: "Full access to the Stuwiz studio workspace",
-				icon: <FileCode className="size-5" />,
-			},
-			{
-				name: "GitHub community support",
-				icon: <FaGithub className="size-5" />,
-			},
-			{
-				name: "Ideal for developers and internal tools",
-				icon: <Terminal className="size-5" />,
-			},
+		title: "Contact",
+		links: [
+			{ label: "hello@stuwiz.com", href: "mailto:hello@stuwiz.com" },
+			{ label: "Book a demo", href: "/contact" },
+			{ label: "For studios and creative teams", href: "/about" },
 		],
-		button: {
-			text: "View on GitHub",
-			href: EXTERNAL_LINKS.GITHUB_REPO,
-			className: "bg-border hover:bg-border/80 text-foreground",
-		},
 	},
 	{
-		title: "Cloud",
-		description: "From $29 / month",
-		features: [
-			{
-				name: "Fully managed infrastructure",
-				icon: <Server className="size-5" />,
-			},
-			{
-				name: "Realtime collaboration & autosave",
-				icon: <Users className="size-5" />,
-			},
-			{
-				name: "Role-based access & team permissions",
-				icon: <Lock className="size-5" />,
-			},
-			{
-				name: "Built-in CDN for media delivery",
-				icon: <Globe className="size-5" />,
-			},
-			{
-				name: "Email support & usage analytics",
-				icon: <LineChart className="size-5" />,
-			},
+		title: "Navigation",
+		links: [
+			{ label: "Home", href: "/" },
+			{ label: "About", href: "/about" },
+			{ label: "Pricing", href: "/pricing" },
+			{ label: "Blog", href: "/blog" },
 		],
-		button: {
-			text: "Start Free Trial",
-			href: "/signup",
-		},
+	},
+	{
+		title: "Support",
+		links: [
+			{ label: "FAQ", href: "/faq" },
+			{ label: "Contact", href: "/contact" },
+			{ label: "Privacy Policy", href: "/privacy-policy" },
+			{ label: "Terms of Service", href: "/terms-of-service" },
+		],
 	},
 ];
 
@@ -88,79 +46,45 @@ const Footer = () => {
 
 	return (
 		<footer className={cn("overflow-hidden", themeClass)}>
-			{/* Pricing Section */}
 			<div className="container">
 				<div className="bordered-div-padding border-x">
-					<h2 className="lg:text-4xxl font-weight-display mt-6 text-xl md:mt-14 md:text-3xl lg:mt-40">
-						Start free. Scale confidently.
-					</h2>
+					<a
+						href="/"
+						className="inline-flex items-center gap-3 text-xl font-semibold text-white dark:text-[#09090B]"
+						aria-label="Stuwiz home"
+					>
+						<span className="flex size-8 items-center justify-center rounded-full bg-white text-sm font-bold leading-none text-[#09090B] dark:bg-[#09090B] dark:text-white">
+							S
+						</span>
+						<span>Stuwiz</span>
+					</a>
+					<p className="mt-8 max-w-3xl text-2xl leading-tight text-white/80 md:text-4xl md:leading-tight dark:text-[#09090B]/75">
+						Run bookings, shoots, crews, projects, and client
+						delivery from one calm studio workspace.
+					</p>
 				</div>
 
-				<div className="grid divide-y border md:grid-cols-2 md:divide-x md:divide-y-0">
-					{FEATURES.map((plan, index) => (
+				<div className="grid divide-y border md:grid-cols-3 md:divide-x md:divide-y-0">
+					{FOOTER_LINK_GROUPS.map((group) => (
 						<div
-							key={index}
-							className={cn(
-								"bordered-div-padding relative flex flex-col gap-6 md:gap-10",
-							)}
+							key={group.title}
+							className="bordered-div-padding min-h-48 md:min-h-56"
 						>
-							{index === 1 && (
-								<Diamonds className="absolute top-0 left-full -mt-0.25 hidden !h-[calc(100%+2px)] border-y md:block" />
-							)}
-
-							{index === 1 && (
-								<div className="bg-secondary text-secondary-foreground absolute top-0 right-0 px-3 py-2.5 text-sm leading-none font-medium">
-									Most popular
-								</div>
-							)}
-							<div>
-								<h3 className="font-weight-display text-lg md:text-2xl lg:text-3xl">
-									{plan.title}
-								</h3>
-								<p className="font-weight-display mt-6 text-base md:text-xl">
-									{plan.description}
-								</p>
-							</div>
-
-							<ul className="space-y-6">
-								{plan.features.map((feature, featureIndex) => (
-									<li
-										key={featureIndex}
-										className="flex items-start gap-2"
-									>
-										<span className="flex-shrink-0">
-											{feature.icon}
-										</span>
-										<span className="text-muted-foreground font-medium">
-											{feature.name}
-										</span>
+							<h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-white/45 dark:text-[#09090B]/45">
+								{group.title}
+							</h3>
+							<ul className="mt-7 space-y-3.5">
+								{group.links.map((link) => (
+									<li key={link.label}>
+										<a
+											href={link.href}
+											className="text-base font-medium text-white/90 transition-opacity hover:opacity-70 md:text-lg dark:text-[#09090B]/85"
+										>
+											{link.label}
+										</a>
 									</li>
 								))}
 							</ul>
-
-							<Button
-								asChild
-								className={cn(
-									"mt-auto mb-0 w-fit",
-									plan.button.className,
-								)}
-							>
-								<a
-									href={plan.button.href}
-									target={
-										plan.button.href.startsWith("http")
-											? "_blank"
-											: undefined
-									}
-									rel={
-										plan.button.href.startsWith("http")
-											? "noopener noreferrer"
-											: undefined
-									}
-								>
-									{plan.button.text}
-								</a>
-							</Button>
 						</div>
 					))}
 				</div>
