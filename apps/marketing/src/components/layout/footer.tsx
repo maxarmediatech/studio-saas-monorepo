@@ -10,9 +10,13 @@ const FOOTER_LINK_GROUPS = [
 		title: "Contact",
 		links: [
 			{ label: "hello@stuwiz.com", href: "mailto:hello@stuwiz.com" },
-			{ label: "Book a demo", href: "/contact" },
-			{ label: "For studios and creative teams", href: "/about" },
+			{ label: "+1 (415) 555-0184", href: "tel:+14155550184" },
+			{
+				label: "456 Studio Avenue, Suite 204, San Francisco, CA 94107",
+				href: "/contact",
+			},
 		],
+		featured: true,
 	},
 	{
 		title: "Navigation",
@@ -64,7 +68,7 @@ const Footer = () => {
 					</p>
 				</div>
 
-				<div className="grid divide-y border md:grid-cols-3 md:divide-x md:divide-y-0">
+				<div className="grid divide-y border md:grid-cols-[1.45fr_0.95fr_0.95fr] md:divide-x md:divide-y-0">
 					{FOOTER_LINK_GROUPS.map((group) => (
 						<div
 							key={group.title}
@@ -73,12 +77,21 @@ const Footer = () => {
 							<h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-white/45 dark:text-[#09090B]/45">
 								{group.title}
 							</h3>
-							<ul className="mt-7 space-y-3.5">
+							<ul
+								className={cn(
+									"mt-7 space-y-3.5",
+									group.featured && "max-w-sm",
+								)}
+							>
 								{group.links.map((link) => (
 									<li key={link.label}>
 										<a
 											href={link.href}
-											className="text-base font-medium text-white/90 transition-opacity hover:opacity-70 md:text-lg dark:text-[#09090B]/85"
+											className={cn(
+												"text-base font-medium text-white/90 transition-opacity hover:opacity-70 md:text-lg dark:text-[#09090B]/85",
+												group.featured &&
+													"leading-snug",
+											)}
 										>
 											{link.label}
 										</a>
