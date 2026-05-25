@@ -5,6 +5,8 @@ interface LogoProps {
   wordmarkClassName?: string;
   className?: string;
   href?: string;
+  tone?: 'dark' | 'light';
+  variant?: 'lockup' | 'mark';
 }
 
 export default function Logo({
@@ -12,22 +14,36 @@ export default function Logo({
   wordmarkClassName,
   className,
   href = '/',
+  tone = 'dark',
+  variant = 'lockup',
 }: LogoProps) {
+  const logoSrc =
+    tone === 'light'
+      ? '/images/brand/stuwiz-logo-light.png'
+      : '/images/brand/stuwiz-logo-dark.png';
+
+  if (variant === 'mark') {
+    return (
+      <a href={href} className={cn('inline-flex items-center', className)}>
+        <img
+          src="/images/brand/stuwiz-mark-tight.png"
+          alt="Stuwiz Logo"
+          width={56}
+          height={29}
+          className={cn('h-7 w-auto object-contain', iconClassName)}
+        />
+      </a>
+    );
+  }
+
   return (
-    <a href={href} className={cn('flex items-center gap-2.5', className)}>
+    <a href={href} className={cn('inline-flex items-center', className)}>
       <img
-        src="/layout/logo-icon.svg"
-        alt="Stuwiz Logo"
-        width={22}
-        height={24}
-        className={cn('object-contain', iconClassName)}
-      />
-      <img
-        src="/layout/logo-wordmark.svg"
+        src={logoSrc}
         alt="Stuwiz"
-        width={51.353}
-        height={14.009}
-        className={cn('object-contain', wordmarkClassName)}
+        width={291}
+        height={112}
+        className={cn('h-10 w-auto object-contain', wordmarkClassName)}
       />
     </a>
   );

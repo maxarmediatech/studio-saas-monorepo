@@ -2,6 +2,7 @@
 
 import { FaDiscord, FaGithub, FaLinkedin, FaXTwitter } from "react-icons/fa6";
 
+import Logo from "@/components/layout/logo";
 import { EXTERNAL_LINKS } from "@/constants/external-links";
 import { cn } from "@/lib/utils";
 
@@ -52,16 +53,11 @@ const Footer = () => {
 		<footer className={cn("overflow-hidden", themeClass)}>
 			<div className="container">
 				<div className="bordered-div-padding border-x">
-					<a
-						href="/"
-						className="inline-flex items-center gap-3 text-xl font-semibold text-white dark:text-[#09090B]"
-						aria-label="Stuwiz home"
-					>
-						<span className="flex size-8 items-center justify-center rounded-full bg-white text-sm font-bold leading-none text-[#09090B] dark:bg-[#09090B] dark:text-white">
-							S
-						</span>
-						<span>Stuwiz</span>
-					</a>
+					<Logo tone="light" wordmarkClassName="h-11 dark:hidden" />
+					<Logo
+						tone="dark"
+						wordmarkClassName="hidden h-11 dark:block"
+					/>
 					<p className="mt-8 max-w-3xl text-2xl leading-tight text-white/80 md:text-4xl md:leading-tight dark:text-[#09090B]/75">
 						Run bookings, shoots, crews, projects, and client
 						delivery from one calm studio workspace.

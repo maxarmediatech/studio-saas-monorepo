@@ -11,6 +11,7 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
+import Logo from "@/components/layout/logo";
 import { cn } from "@/lib/utils";
 
 export const Navbar = ({ currentPage }: { currentPage: string }) => {
@@ -72,16 +73,7 @@ export const Navbar = ({ currentPage }: { currentPage: string }) => {
     <header className={cn("relative z-50", bgColor)}>
       <div className="max-w-9xl container">
         <div className="flex items-center justify-between py-3">
-          <a
-            href="/"
-            className="flex items-center gap-2 text-lg font-semibold tracking-tight"
-            aria-label="Stuwiz home"
-          >
-            <span className="flex size-5 items-center justify-center rounded-full bg-primary text-[11px] font-bold leading-none text-primary-foreground">
-              S
-            </span>
-            <span>Stuwiz</span>
-          </a>
+          <Logo className="shrink-0" wordmarkClassName="h-9" />
 
           {/* Desktop Navigation */}
           <NavigationMenu className="hidden items-center gap-8 lg:flex">

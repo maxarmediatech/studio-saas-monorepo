@@ -3,6 +3,7 @@ import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { FcGoogle } from "react-icons/fc";
 import { Checkbox } from "../ui/checkbox";
+import Logo from "@/components/layout/logo";
 
 const LoginSection = () => {
   return (
@@ -11,16 +12,7 @@ const LoginSection = () => {
         <div className="flex flex-col gap-4">
           <Card className="mx-auto w-full max-w-sm">
             <CardHeader className="flex flex-col items-center space-y-0">
-              <a
-                href="/"
-                className="mb-7 flex items-center gap-2 text-lg font-semibold tracking-tight"
-                aria-label="Stuwiz home"
-              >
-                <span className="flex size-5 items-center justify-center rounded-full bg-primary text-[11px] font-bold leading-none text-primary-foreground">
-                  S
-                </span>
-                <span>Stuwiz</span>
-              </a>
+              <Logo className="mb-7" wordmarkClassName="h-10" />
               <p className="mb-2 text-2xl font-bold">Welcome back</p>
               <p className="text-muted-foreground">
                 Please enter your details.
