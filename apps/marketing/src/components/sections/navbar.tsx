@@ -12,7 +12,6 @@ import {
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
 import { cn } from "@/lib/utils";
-import { ThemeToggle } from "../elements/theme-toggle";
 
 export const Navbar = ({ currentPage }: { currentPage: string }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -147,12 +146,6 @@ export const Navbar = ({ currentPage }: { currentPage: string }) => {
             >
               <Button variant="outline">Login</Button>
             </a>
-            <div
-              className={`transition-opacity duration-300 ${isMenuOpen ? "max-lg:pointer-events-none max-lg:opacity-0" : "opacity-100"}`}
-            >
-              <ThemeToggle />
-            </div>
-
             {/* Hamburger Menu Button (Mobile Only) */}
             <button
               className="text-muted-foreground relative flex size-8 lg:hidden"

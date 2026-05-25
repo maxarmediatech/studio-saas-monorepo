@@ -78,10 +78,13 @@ const FEATURES = [
 
 const Footer = () => {
 	const themeClass =
-		"dark bg-[#09090B] text-white [--background:#09090B] [--foreground:#FFFFFF] [--border:rgba(255,255,255,0.1)] [--muted-foreground:#A1A1AA] [&_*]:border-white/10";
+		"bg-[#09090B] text-white [--background:#09090B] [--foreground:#FFFFFF] [--border:rgba(255,255,255,0.1)] [--muted-foreground:#A1A1AA] [&_*]:border-white/10 dark:bg-white dark:text-[#09090B] dark:[--background:#FFFFFF] dark:[--foreground:#09090B] dark:[--border:rgba(9,9,11,0.1)] dark:[--muted-foreground:#71717A] dark:[&_*]:border-black/10";
 
 	const logoWordmarkClass =
-		"mt-[4.85rem] text-white/15 sm:mt-[4.35rem] md:mt-[5.85rem] lg:mt-[7.2rem]";
+		cn(
+			"mt-[4.85rem] sm:mt-[4.35rem] md:mt-[5.85rem] lg:mt-[7.2rem]",
+			"text-white/15 dark:text-black/[0.03]",
+		);
 
 	return (
 		<footer className={cn("overflow-hidden", themeClass)}>
@@ -234,7 +237,10 @@ const Footer = () => {
 				{/* Large Logo */}
 				<a
 					href="/"
-					className="relative flex h-44 items-start justify-center overflow-hidden border-x bg-[#09090B] sm:h-52 md:h-64 lg:h-[18.25rem]"
+					className={cn(
+						"relative flex h-44 items-start justify-center overflow-hidden border-x sm:h-52 md:h-64 lg:h-[18.25rem]",
+						"bg-[#09090B] dark:bg-white",
+					)}
 					aria-label="Stuwiz home"
 				>
 					<span
