@@ -263,7 +263,14 @@ pnpm --filter @repo/sms-worker start
 ```env
 DODO_PAYMENTS_API_KEY="your-api-key"
 DODO_PAYMENTS_WEBHOOK_SECRET="whsec_xxxx"
+# Optional: force test checkout on dev/staging deployments that still run with NODE_ENV=production.
+DODO_PAYMENTS_ENVIRONMENT="test_mode"
 ```
+
+`DODO_PAYMENTS_ENVIRONMENT` accepts `test_mode` or `live_mode`. If omitted, local
+development uses `test_mode` and production uses `live_mode`. For
+`dev.stuwiz.com`, set this to `test_mode` and use Dodo test API/product/catalog
+IDs so signup checkout stays in Dodo test mode.
 
 ### Product IDs
 
