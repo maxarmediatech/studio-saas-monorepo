@@ -1,0 +1,155 @@
+---
+title: Dashboard API
+description: Studio dashboard summaries, KPIs, operations panels, and prioritized quick actions.
+---
+
+## Ownership
+
+Dashboard endpoints aggregate financial, booking, operations, and review data for the active
+organization. They are read-only and feed the dashboard overview, financial, operations, and attention
+panels.
+
+| Area | Source |
+| --- | --- |
+| Router | `packages/api/modules/dashboard/router.ts` |
+| Procedures | `packages/api/modules/dashboard/procedures/*.ts` |
+| Contract schemas | `packages/api/modules/studio/schemas/dashboard.ts` |
+| Frontend API helpers | `apps/web/modules/saas/studio/lib/api.ts` |
+| UI | `apps/web/modules/saas/studio/components/dashboard/*` |
+
+## API Operations
+
+All procedures use `studioProtectedProcedure` and require `booking:read`.
+
+| Operation | Method/path | Input schema | Output schema | Notes |
+| --- | --- | --- | --- | --- |
+| `dashboard.get` | `GET /dashboard` | `getDashboardInputSchema` | `getDashboardOutputSchema` | Overview summary and preview lists. |
+| `dashboard.kpis` | `GET /dashboard/kpis` | `getKpisInputSchema` | `getKpisOutputSchema` | Financial/booking/operational KPIs. |
+| `dashboard.operations` | `GET /dashboard/operations` | `getOperationsInputSchema` | `getOperationsOutputSchema` | Upcoming shoots and pending work panels. |
+| `dashboard.actions` | `GET /dashboard/actions` | `getQuickActionsInputSchema` | `getQuickActionsOutputSchema` | Prioritized attention/action list. |
+
+## Shared Inputs
+
+`dashboard.get` and `dashboard.kpis` accept:
+
+- `dateRange.start`
+- `dateRange.end`
+
+`dashboard.operations` accepts:
+
+- `dateRange.start`
+- `dateRange.end`
+- `limit`: defaults to `10`, max `50`
+
+`dashboard.actions` accepts:
+
+- `limit`: defaults to `5`, max `20`
+
+Date calculations use organization timezone. When no date range is passed, overview/KPIs default to
+the current month through today where period math is needed.
+
+## Dashboard Overview Contract
+
+`dashboard.get` returns:
+
+- `financial`: revenue, received, pending, expenses, net profit, collection rate
+- `bookings`: total, counts by booking phase, new this month, completed this month
+- `operations`: upcoming shoots, shoots this week, pending/overdue tasks, pending/overdue deliverables, pending submissions
+- `recentBookings`: last five bookings in range
+- `upcomingShoots`: next five non-completed/non-cancelled shoots with assignment counts
+
+Financial sources:
+
+- `bookings.packageCost`
+- `received_amounts.amount`
+- `payment_schedules.amount - paidAmount`
+- `expenses.amount`
+
+Operational sources:
+
+- `shoots`
+- `tasks`
+- `deliverables`
+- `assignment_submissions`
+- `shoot_assignments`
+
+## KPI Contract
+
+`dashboard.kpis` returns:
+
+- revenue metrics: `totalRevenue`, `averageBookingValue`, `revenueGrowth`
+- collection metrics: `totalReceived`, `totalPending`, `collectionRate`, `overduePayments`
+- expense metrics: `totalExpenses`, `profitMargin`
+- booking metrics: `totalBookings`, `activeBookings`, `completedBookings`, `conversionRate`
+- operations metrics: `totalShoots`, `averageShootsPerBooking`, `onTimeDeliveryRate`
+
+Revenue growth compares the selected/current period against the previous equal-length period.
+On-time delivery rate counts approved deliverables delivered on or before due date; if there are no
+approved deliverables, it returns `100`.
+
+## Operations Contract
+
+`dashboard.operations` returns:
+
+- `upcomingShoots`: non-completed/non-cancelled shoots in range, including booking and assigned crew
+- `pendingTasks`: `not_started`, `assigned`, or `revision_requested` tasks that are overdue, in range, or missing due date
+- `pendingDeliverables`: same pending logic for deliverables
+- `shootsThisWeek`
+- `overdueTasksCount`
+- `overdueDeliverablesCount`
+
+Pending work is ordered by:
+
+1. overdue first
+2. dated work
+3. no due date
+
+## Quick Actions Contract
+
+Action types:
+
+- `overdue_payment`
+- `overdue_task`
+- `overdue_deliverable`
+- `pending_submission`
+- `upcoming_shoot_unassigned`
+- `booking_needs_attention`
+
+Current producer behavior:
+
+- overdue payments are high priority
+- overdue tasks are high priority
+- overdue deliverables are high priority
+- pending submissions are medium priority
+- unassigned shoots in the next 14 days are medium priority
+- `booking_needs_attention` is in the schema but is not currently produced
+
+Actions are sorted by priority, then due date, then creation date, and sliced to `limit`.
+
+## Related Surfaces
+
+| Surface | Relationship |
+| --- | --- |
+| Bookings | Dashboard permission gate and booking phase/revenue source. |
+| Finance | Received amounts, payment schedules, expenses, collection metrics. |
+| Shoots | Upcoming shoot panels and unassigned shoot actions. |
+| Tasks / Deliverables | Pending, overdue, workflow, and delivery metrics. |
+| Submissions | Pending review counts/actions. |
+
+## Change Checklist
+
+When changing dashboard:
+
+- update `packages/api/modules/studio/schemas/dashboard.ts`
+- update dashboard procedures for metric definitions and date range behavior
+- update dashboard UI panels that consume changed fields
+- update related entity docs when metric semantics change
+- add focused tests for non-trivial metric changes
+- update this page in the same PR
+
+## Known Gaps
+
+- All dashboard endpoints are gated only by `booking:read`, even though they expose finance and operations aggregates.
+- `booking_needs_attention` exists in the quick action schema but is not produced.
+- Some overview values use current-month defaults while some totals ignore date range when no range is supplied.
+- Quick actions issue multiple per-row follow-up queries for names/assignments.
