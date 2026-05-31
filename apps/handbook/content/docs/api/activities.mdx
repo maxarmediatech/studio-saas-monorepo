@@ -1,0 +1,173 @@
+---
+title: Activities API
+description: Organization activity feed reads, cursor pagination, filters, immutable audit rows, and producer helpers.
+---
+
+## Ownership
+
+Activities provide the studio audit/feed timeline. The public API is read-only; writes happen through
+activity service helpers called by domain mutations.
+
+| Area | Source |
+| --- | --- |
+| Router | `packages/api/modules/activities/router.ts` |
+| List procedure | `packages/api/modules/activities/procedures/list-activities.ts` |
+| Write service | `packages/api/modules/activities/lib/activity-service.ts` |
+| DB table | `packages/database/drizzle/schema/studio.ts` |
+| Frontend API helpers | `apps/web/modules/saas/studio/lib/api.ts` |
+| Feed UI | `apps/web/modules/saas/studio/components/activity-feed/*` |
+| Page UI | `apps/web/modules/saas/studio/components/activities/*` |
+
+## Database Shape
+
+| Table | Owns | Notes |
+| --- | --- | --- |
+| `activities` | Actor, entity, parent context, action, field changes, identifiers, metadata, grouping epoch, created timestamp. | Organization scoped. Immutable; no `updatedAt` or `deletedAt`. |
+
+Important indexes:
+
+| Index | Purpose |
+| --- | --- |
+| `activities_org_created_idx` | Recent organization activity feed. |
+| `activities_entity_idx` | Entity history by type/id. |
+| `activities_actor_idx` | Actor-specific history. |
+| `activities_parent_idx` | Parent entity timeline, e.g. booking child activity. |
+| `activities_org_action_idx` | Filter by action type. |
+
+## API Operation
+
+| Operation | Method/path | Input schema | Output schema | Notes |
+| --- | --- | --- | --- | --- |
+| `activities.list` | `GET /activities` | inline Zod schema | inline Zod schema | Lists organization activities with cursor pagination. |
+
+The endpoint uses `studioProtectedProcedure` and requires `dashboard:read`.
+
+## List Contract
+
+Inputs:
+
+- `limit`: defaults to `20`, min `1`, max `100`
+- `cursor`: optional compound cursor in `{createdAt}_{id}` format
+- `entityType`: single entity type filter
+- `entityTypes`: array entity type filter; takes precedence over `entityType`
+- `entityId`
+- `parentEntityType`
+- `parentEntityId`
+- `actorId`
+- `action`
+
+Ordering:
+
+1. `createdAt` descending
+2. `id` descending
+
+Cursor behavior:
+
+- cursor encodes the last row as ISO timestamp plus id
+- next page filters rows older than that compound cursor
+- invalid cursors are ignored and read from the beginning
+- returns `nextCursor` only when more rows exist
+
+Returned item:
+
+- `id`
+- `actorId`
+- `actorType`
+- `actorName`
+- `entityType`
+- `entityId`
+- `entityName`
+- `parentEntityType`
+- `parentEntityId`
+- `parentEntityName`
+- `action`
+- `field`
+- `oldValue`
+- `newValue`
+- `metadata`
+- `createdAt`
+
+## Entity Types
+
+Tracked entity types:
+
+- `booking`
+- `booking_participant`
+- `booking_event`
+- `shoot`
+- `shoot_assignment`
+- `task`
+- `task_assignment`
+- `deliverable`
+- `deliverable_assignment`
+- `submission`
+- `crew`
+- `received_amount`
+- `receipt`
+- `payment_schedule`
+- `expense`
+- `invoice`
+- `client`
+- `member`
+- `configuration`
+
+## Action Types
+
+Actions include:
+
+- CRUD: `created`, `updated`, `deleted`
+- Status/workflow: `status_changed`, `workflow_changed`
+- Assignments: `assigned`, `unassigned`, `lead_changed`
+- Submissions: `submitted`, `approved`, `rejected`, `revision_requested`
+- Payments/invoices: `payment_received`, `linked_to_schedule`, `unlinked_from_schedule`, `marked_paid`, `marked_partial`, `invoice_sent`, `cancelled`
+- Participants/events/files/feedback/crew/config/member/conversion actions
+
+`ENTITY_TYPES` and `ACTION_TYPES` in `activity-service.ts` are the source of truth.
+
+## Producer Contract
+
+Domain mutations should use the service helpers instead of inserting directly:
+
+- `trackActivity`
+- `safeTrackActivity`
+- field/status/assignment helper variants in `activity-service.ts`
+
+`safeTrackActivity` catches and logs failures so activity writes do not break the primary mutation.
+
+Created rows store:
+
+- current organization id
+- actor id/name/type
+- affected entity type/id/name
+- optional parent entity context
+- action
+- optional field old/new values and relation identifiers
+- optional metadata
+- optional epoch for grouping related changes
+
+## Related Surfaces
+
+| Surface | Relationship |
+| --- | --- |
+| Activity feed widget | Reads recent activities via `activitiesApi.listOptions`. |
+| Activities page | Shows larger feed with higher limit. |
+| Domain mutations | Invalidate `orpc.activities.key()` after creating/updating/deleting domain data. |
+| Submissions/reviews/payments/configurations | Produce specialized action events. |
+
+## Change Checklist
+
+When changing activities:
+
+- update `ENTITY_TYPES` and `ACTION_TYPES` in `activity-service.ts`
+- update the list input/output schema in `list-activities.ts`
+- update `activities` table/migrations for persistence changes
+- update feed rendering/message formatting
+- update domain mutation activity producers
+- update this page in the same PR
+
+## Known Gaps
+
+- Input/output schemas are local to `list-activities.ts`, not exported from `studio/schemas`.
+- Read access is gated by `dashboard:read`, not a dedicated activity permission.
+- `oldIdentifier`, `newIdentifier`, and `epoch` are stored but not returned by the list endpoint.
+- Activity rows are immutable and have no deletion/retention API.
