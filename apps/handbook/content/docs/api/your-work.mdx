@@ -1,0 +1,154 @@
+---
+title: Your Work API
+description: Unified assigned/created/subscribed work list for tasks, deliverables, shoots, and subscription toggles.
+---
+
+## Ownership
+
+Your Work is a unified user-facing work list. It combines tasks, deliverables, and shoots across three
+views: assigned, created, and subscribed.
+
+| Area | Source |
+| --- | --- |
+| Router | `packages/api/modules/your-work/router.ts` |
+| Procedures | `packages/api/modules/your-work/procedures/*.ts` |
+| Contract schemas | `packages/api/modules/studio/schemas/your-work.ts` |
+| DB tables | `packages/database/drizzle/schema/studio.ts` |
+| Frontend API helpers | `apps/web/modules/saas/studio/lib/api.ts` |
+| UI | `apps/web/modules/saas/studio/components/your-work/*` |
+
+## Database Shape
+
+| Table | Use |
+| --- | --- |
+| `tasks` | Task rows in assigned/created/subscribed views. |
+| `deliverables` | Deliverable rows in assigned/created/subscribed views. |
+| `shoots` | Shoot rows in assigned/created/subscribed views. |
+| `task_assignments` | Assigned task membership. |
+| `deliverable_assignments` | Assigned deliverable membership. |
+| `shoot_assignments` | Assigned shoot membership. |
+| `subscriptions` | User watch/subscription state for task, deliverable, or shoot. |
+
+Subscription indexes:
+
+| Index | Purpose |
+| --- | --- |
+| `subscriptions_user_entity_unique` | Prevents duplicate active subscriptions per user/entity. |
+| `subscriptions_org_user_idx` | Lists current user's subscriptions in an organization. |
+| `subscriptions_entity_idx` | Finds watchers by entity. |
+
+## API Operations
+
+All procedures use `studioProtectedProcedure`.
+
+| Operation | Method/path | Input schema | Output schema | Notes |
+| --- | --- | --- | --- | --- |
+| `yourWork.list` | `GET /your-work` | `listYourWorkInputSchema` | `listYourWorkOutputSchema` | Unified paginated list. |
+| `yourWork.subscribe` | `POST /your-work/subscribe` | `subscriptionInputSchema` | `subscriptionStatusOutputSchema` | Subscribes current user to an entity. |
+| `yourWork.unsubscribe` | `DELETE /your-work/unsubscribe` | `subscriptionInputSchema` | `subscriptionStatusOutputSchema` | Soft-deletes current user's subscription. |
+| `yourWork.subscriptionStatus` | `GET /your-work/subscription-status` | `subscriptionInputSchema` | `subscriptionStatusOutputSchema` | Reads current user's active subscription state. |
+
+## List Contract
+
+Inputs:
+
+- `view`: `assigned`, `created`, or `subscribed`; defaults to `assigned`
+- `entityType`: `all`, `task`, `deliverable`, or `shoot`; defaults to `all`
+- `page`: defaults to `1`
+- `limit`: defaults to `20`, max `100`
+
+Returned item:
+
+- `id`: composite `${entityType}:${entityId}`
+- `entityType`: `task`, `deliverable`, or `shoot`
+- `entityId`
+- `name`
+- `status`
+- `workflowStatus`: `null` for shoots
+- `date`: task/deliverable due date or shoot date
+- `bookingId`
+- `bookingName`
+- `isSubscribed`
+
+Ordering/pagination:
+
+- loads all matching items for the selected view/type
+- sorts by `date` ascending, with missing dates last
+- breaks ties by `name`
+- slices the sorted array by requested page/limit
+
+## View Behavior
+
+Assigned view:
+
+- resolves current user to an active crew row
+- returns no rows when no crew row exists
+- includes assigned tasks/deliverables/shoots only when caller has the matching `list` permission
+- marks `isSubscribed` by checking active subscription rows
+
+Created view:
+
+- includes task/deliverable/shoot rows created by the current user
+- requires matching `list` permission per entity type
+- excludes soft-deleted entities
+- marks `isSubscribed` by checking active subscription rows
+
+Subscribed view:
+
+- reads active subscriptions for the current user and organization
+- optionally filters by entity type
+- rehydrates entity rows only when caller has matching `list` permission
+- excludes soft-deleted entities
+- always returns `isSubscribed: true`
+
+## Subscription Contract
+
+Allowed subscription entity types:
+
+- `task`
+- `deliverable`
+- `shoot`
+
+Subscribe behavior:
+
+- verifies the target entity exists in the current organization and is not soft-deleted
+- calls `autoSubscribe`
+- returns `{ subscribed: true }`
+
+Unsubscribe behavior:
+
+- soft-deletes the active subscription by setting `deletedAt`
+- does not error if no active row exists
+- returns `{ subscribed: false }`
+
+Subscription status behavior:
+
+- checks current organization/user/entity active subscription
+- returns `{ subscribed: boolean }`
+
+## Related Surfaces
+
+| Surface | Relationship |
+| --- | --- |
+| Notifications | Subscriptions drive watcher notifications for entity changes. |
+| Tasks / Deliverables / Shoots | Your Work reads their status, workflow status, dates, and booking context. |
+| Submit for review | Your Work UI opens submission flow for task/deliverable items. |
+| Review queue | Review decisions invalidate `yourWork` queries. |
+
+## Change Checklist
+
+When changing Your Work:
+
+- update `packages/api/modules/studio/schemas/your-work.ts`
+- update list behavior when adding/removing entity types or views
+- update subscription behavior when notification watcher rules change
+- update `subscriptions` table/migrations for persistence changes
+- update Your Work UI, route tests, and cache invalidation
+- update this page in the same PR
+
+## Known Gaps
+
+- List sorting is fixed; there are no API sort fields or search filters.
+- The list endpoint fetches all matching rows, then paginates in memory.
+- Created/subscribed views still require entity `list` permission; a user can be creator/subscriber but see no rows without that permission.
+- Unsubscribe is idempotent and does not report whether a row actually changed.
