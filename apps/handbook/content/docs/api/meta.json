@@ -4,6 +4,7 @@
 		"index",
 		"bookings",
 		"shoots",
-		"deliverables"
+		"deliverables",
+		"tasks"
 	]
 }

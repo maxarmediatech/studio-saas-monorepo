@@ -1,0 +1,257 @@
+---
+title: Tasks API
+description: Production task CRUD, priority/status contracts, crew assignments, submissions, and workflow behavior.
+---
+
+## Ownership
+
+Tasks are production work items under a booking: editing, grading, selection, review prep, or work
+created from deliverable conversion. They own status, priority, due date, workflow state, crew
+assignments, submissions, and conversion metadata when they come from deliverables.
+
+| Area | Source |
+| --- | --- |
+| Router | `packages/api/modules/tasks/router.ts` |
+| Procedures | `packages/api/modules/tasks/procedures/*.ts` |
+| Contract schemas | `packages/api/modules/studio/schemas/task.ts` |
+| DB tables | `packages/database/drizzle/schema/studio.ts` |
+| Frontend API helpers | `apps/web/modules/saas/studio/lib/api.ts` |
+| Table export types | `apps/web/modules/saas/shared/lib/table-export/definitions.ts` |
+
+## Database Shape
+
+| Table | Owns | Notes |
+| --- | --- | --- |
+| `tasks` | Core task fields, status, priority, workflow state, due/completed dates, metadata, audit columns, soft delete. | Tenant-scoped by `organizationId`; belongs to one booking. |
+| `task_assignments` | Crew assigned to a task. | Unique on `taskId`, `crewId`; physically deleted on unassign. |
+| `assignment_submissions` | Crew work submissions for tasks or deliverables. | Polymorphic check requires exactly one of `taskId` or `deliverableId`. |
+| `submission_files` | Files attached to a submission. | Cascades with submission. |
+| `submission_feedback` | Review comments/ratings on submissions. | Rating constrained to 1-5 when present. |
+| `deliverables` | Optional source entity for converted tasks. | `tasks.metadata.convertedFromDeliverableId` links forward; legacy lookup checks deliverable metadata. |
+
+Important indexes:
+
+| Index | Purpose |
+| --- | --- |
+| `tasks_organization_idx` | Tenant filtering. |
+| `tasks_booking_idx` | Booking-scoped lists/details. |
+| `tasks_org_status_idx` | Configurable status filtering. |
+| `tasks_org_workflow_idx` | Review workflow filtering. |
+| `tasks_due_date_idx` | Due-date filtering/sorting. |
+| `task_assignments_task_crew_idx` | Prevent duplicate crew assignment. |
+| `task_assignments_crew_idx` | Crew-scoped assignment lookup. |
+
+Status fields:
+
+| Field | Type | Source |
+| --- | --- | --- |
+| `status` | text | Configurable via settings (`config_type: task_status`). |
+| `priority` | text | Configurable via settings (`config_type: task_priority`). |
+| `workflowStatus` | enum | System workflow: `not_started`, `assigned`, `submitted`, `in_review`, `revision_requested`, `approved`. |
+| `assignment_submissions.status` | enum | Submission state: `draft`, `submitted`, `in_review`, `approved`, `rejected`, `revision_requested`. |
+
+## API Operations
+
+All task procedures use `studioProtectedProcedure` and active organization scope.
+
+| Operation | Method/path | Input schema | Output schema | Permission | Notes |
+| --- | --- | --- | --- | --- | --- |
+| `tasks.list` | `GET /tasks` | `listTasksInputSchema` | `listTasksOutputSchema` | `task:list` | Paginated list with booking info and assigned crew summary. |
+| `tasks.listMinimal` | `GET /tasks/minimal` | `listTasksMinimalInputSchema` | `listTasksMinimalOutputSchema` | `task:list` or `task:reference` | Paginated lightweight list for selectors/references. |
+| `tasks.get` | `GET /tasks/{id}` | `getTaskInputSchema` | `getTaskOutputSchema` | `task:read` | Detail with assignments and booking reference. |
+| `tasks.create` | `POST /tasks` | `createTaskInputSchema` | `createTaskOutputSchema` | `task:create` | Creates one task under an active booking. |
+| `tasks.update` | `PUT /tasks/{id}` | `updateTaskInputSchema` | `updateTaskOutputSchema` | `task:update` | Updates fields and notifies on status change. |
+| `tasks.delete` | `DELETE /tasks/{id}` | `deleteTaskInputSchema` | `deleteTaskOutputSchema` | `task:delete` | Soft delete. |
+| `tasks.stats` | `GET /tasks/stats` | `getTaskStatsInputSchema` | `getTaskStatsOutputSchema` | `task:list` | Aggregate counts, optionally booking-scoped. |
+| `tasks.assign` | `POST /tasks/{taskId}/assignments` | `assignCrewToTaskInputSchema` | `assignCrewToTaskOutputSchema` | `task:assign` | Creates assignment and may move workflow to `assigned`. |
+| `tasks.unassign` | `DELETE /tasks/{taskId}/assignments/{crewId}` | `unassignCrewFromTaskInputSchema` | `unassignCrewFromTaskOutputSchema` | `task:assign` | Deletes assignment. |
+| `tasks.updateStatus` | `PUT /tasks/{id}/status` | `updateTaskStatusInputSchema` | `updateTaskStatusOutputSchema` | `task:update` | Updates configurable task `status`. |
+| `tasks.updateAssignmentStatus` | `PUT /tasks/{id}/assignment-status` | `updateTaskAssignmentStatusInputSchema` | `updateTaskAssignmentStatusOutputSchema` | `task:submit` | Assignee-only status update; currently only accepts `blocked`. |
+| `tasks.submit` | `POST /tasks/{taskId}/submissions` | `submitTaskInputSchema` | `submitTaskOutputSchema` | `task:submit` | Assigned crew submits work for review. |
+
+## Read Contracts
+
+`list` accepts:
+
+- `bookingId`
+- `status` as string, array, or comma-separated values
+- `priority` as string, array, or comma-separated values
+- `workflowStatus`
+- `dueDateFrom`, `dueDateTo`
+- `crewId`
+- `search` over task `name` and `description`
+- pagination, sorting, and `includeDeleted`
+
+`list` returns each task plus:
+
+- `assignmentsCount`
+- `assignedCrew`: crew id/name/avatar
+- `bookingName`
+- `bookingReferenceNumber`
+
+`listMinimal` accepts:
+
+- `bookingId`
+- `workflowStatus`
+- `search`
+- pagination
+
+It returns `id`, `name`, `status`, `priority`, `workflowStatus`, `dueDate`, `bookingId`.
+
+`get` returns the base task plus:
+
+- assignments with crew id/name/phone and assigned-by name
+- booking id/name/reference number
+- metadata with converted-deliverable compatibility
+
+If a converted task does not have `metadata.convertedFromDeliverableId`, `get` checks legacy
+deliverable metadata where `convertedToTaskId` equals the task id and synthesizes the source fields.
+
+`stats` returns:
+
+- `totalTasks`
+- `byStatus`
+- `byPriority`
+- `byWorkflowStatus`
+- `overdueTasks`, where due date is before today and workflow status is not `approved`
+- `completedTasks`, based on workflow status `approved`
+- `tasksThisMonth`, based on created date in organization timezone
+
+## Create Contract
+
+Required fields:
+
+- `bookingId`
+- `name`
+
+Optional fields:
+
+- `description`
+- `status`, defaults to `pending`
+- `priority`, defaults to `normal`
+- `dueDate`
+- `metadata`
+
+Create behavior:
+
+- verifies booking exists, belongs to active organization, and is not deleted
+- creates task with default workflow status from DB: `not_started`
+- tracks non-blocking `created` activity under the booking
+- auto-subscribes creator to the task
+
+Deliverable conversion can also create tasks through `deliverables.convertToTask`; that path writes
+conversion metadata and can copy deliverable assignments.
+
+## Update Contract
+
+Updatable fields:
+
+- `name`
+- `description`
+- `status`
+- `priority`
+- `dueDate`
+- `metadata`
+
+Update behavior:
+
+- verifies task belongs to active organization
+- updates only provided fields
+- tracks status changes separately from other field changes
+- notifies subscribers on status change
+
+`updateStatus` is a narrower status-only endpoint. It rejects deleted tasks and notifies
+subscribers, but does not track activity status change.
+
+Update does not change `workflowStatus`; workflow changes happen through assignment, submission,
+review, or dedicated workflow procedures.
+
+## Assignment Contract
+
+`assign` requires:
+
+- `taskId`
+- `crewId`
+
+Assign behavior:
+
+- verifies task and crew are active and in the organization
+- rejects duplicate assignment
+- creates `task_assignments` row
+- moves `workflowStatus` from `not_started` to `assigned`
+- tracks assignment activity
+- auto-subscribes linked crew user
+- notifies subscribers
+
+`unassign` physically deletes the assignment row and tracks activity. Unlike deliverables, it does
+not currently revert workflow status when the last assignment is removed.
+
+## Submission Contract
+
+`submit` requires the current user to be linked to an active crew row and assigned to the task.
+
+Input:
+
+- `taskId`
+- optional `submissionNote`
+- optional `submissionLinks`
+- optional uploaded `files`
+
+Submit behavior:
+
+- rejects if current user is not a crew member
+- rejects if the crew member is not assigned to the task
+- rejects if the crew already has an active `submitted` or `in_review` submission
+- creates `assignment_submissions` row with status `submitted`
+- creates `submission_files` rows for uploaded files
+- moves task `workflowStatus` to `submitted`
+- tracks submission activity
+- notifies subscribers with `review_requested`
+
+`updateAssignmentStatus` is for assigned crew status updates. Current input only accepts
+`status: "blocked"` plus optional note, and writes to task `status`, not `workflowStatus`.
+
+## Delete Contract
+
+`delete` soft-deletes the task by setting:
+
+- `deletedAt`
+- `deletedBy`
+- `updatedAt`
+- `updatedBy`
+
+It rejects already-deleted tasks. Activity tracking records the deletion under the parent booking.
+
+## Related Surfaces
+
+| Surface | Relationship |
+| --- | --- |
+| Bookings | Every task belongs to a booking. |
+| Deliverables | Conversion creates tasks from deliverables and copies assignments. |
+| Crews | Task assignments reference crew rows. |
+| Submissions | Assigned crew submit task work for review. |
+| Files | Submission files store uploaded file metadata. |
+| Notifications | Assignment, status change, and submission review request notify subscribers. |
+| Activities | Create, update, status change, delete, assign, unassign, submit are tracked non-blockingly. |
+| Settings | Task status and priority values are configurable. |
+
+## Change Checklist
+
+When changing task behavior:
+
+- update `packages/api/modules/studio/schemas/task.ts`
+- update procedure route metadata and side-effect notes
+- update DB schema/migration if fields, workflow enums, indexes, metadata, or delete behavior change
+- update submission/review tests when workflow behavior changes
+- update deliverable conversion tests when source metadata or copied assignments change
+- update frontend API helpers, forms, table columns, filters, and exports when shapes change
+- update this page in the same PR
+
+## Known Gaps
+
+- `status` and `priority` are configurable text; API does not validate against configuration values yet.
+- `updateAssignmentStatus` only accepts `blocked` and writes to `status`; the naming can be confused with `workflowStatus`.
+- `get` and `update` include deleted tasks unless callers avoid those IDs.
+- `unassign` does not revert workflow status when the last assignment is removed.
+- Assignment delete is physical, not soft delete.
+
