@@ -1,0 +1,166 @@
+---
+title: Stickies API
+description: User-scoped sticky notes, rich-text content, colors, limits, and delete behavior.
+---
+
+## Ownership
+
+Stickies are personal notes/reminders for the active studio user inside the active organization. They
+show on the home widget, the stickies page, and the floating stickies action bar.
+
+| Area | Source |
+| --- | --- |
+| Router | `packages/api/modules/stickies/router.ts` |
+| Contract schemas | `packages/api/modules/stickies/schemas.ts` |
+| Procedures | `packages/api/modules/stickies/procedures/*.ts` |
+| DB table | `packages/database/drizzle/schema/studio.ts` |
+| Frontend API helpers | `apps/web/modules/saas/studio/lib/api.ts` |
+| Home widget | `apps/web/modules/saas/studio/components/home/widgets/stickies/*` |
+| Stickies page/action bar | `apps/web/modules/saas/studio/components/stickies/*` |
+
+## Database Shape
+
+| Table | Owns | Notes |
+| --- | --- | --- |
+| `stickies` | Sticky title, plain content, rich HTML content, color, sort order, timestamps. | Tenant and user scoped. No soft delete. |
+
+Important fields:
+
+| Field | Contract |
+| --- | --- |
+| `title` | Optional varchar, max 255. Empty input is stored as `null`. |
+| `content` | Optional plain text. Empty input is stored as `null`. |
+| `descriptionHtml` | Optional rich-text HTML from the editor. Empty input is stored as `null`. |
+| `color` | Required enum-like string. Defaults to `yellow`. |
+| `sortOrder` | Required integer. Currently created as `0`. |
+
+Allowed colors:
+
+- `yellow`
+- `gray`
+- `peach`
+- `pink`
+- `orange`
+- `green`
+- `light-blue`
+- `dark-blue`
+- `purple`
+
+Important indexes:
+
+| Index | Purpose |
+| --- | --- |
+| `stickies_org_user_idx` | List current user's notes for organization. |
+| `stickies_org_user_sort_idx` | Intended ordering support by user/org/sort order. |
+
+## API Operations
+
+All sticky procedures use `studioProtectedProcedure` and current user scope.
+
+| Operation | Method/path | Input schema | Output schema | Notes |
+| --- | --- | --- | --- | --- |
+| `stickies.list` | `GET /stickies` | `listStickiesInputSchema` | `listStickiesOutputSchema` | Lists current user's stickies, optionally capped. |
+| `stickies.create` | `POST /stickies` | `createStickyInputSchema` | `createStickyOutputSchema` | Creates one current-user sticky. |
+| `stickies.update` | `PUT /stickies/{id}` | `updateStickyInputSchema` | `updateStickyOutputSchema` | Updates current-user sticky fields. |
+| `stickies.delete` | `DELETE /stickies/{id}` | `deleteStickyInputSchema` | `deleteStickyOutputSchema` | Physically deletes current-user sticky. |
+
+## Read Contracts
+
+`list` supports:
+
+- `limit`: optional number from `1` to `100`
+
+It returns current organization/current user stickies ordered by:
+
+1. `createdAt` descending
+2. `id` descending
+
+Returned shape:
+
+- `id`
+- `organizationId`
+- `userId`
+- `title`
+- `content`
+- `descriptionHtml`
+- `color`
+- `sortOrder`
+- `createdAt`
+- `updatedAt`
+
+## Create Contract
+
+Optional fields:
+
+- `title`
+- `content`
+- `descriptionHtml`
+- `color`
+
+Create behavior:
+
+- trims `title` and stores empty title as `null`
+- trims `content` and stores empty content as `null`
+- stores empty `descriptionHtml` as `null`
+- defaults `color` to `yellow`
+- stores `sortOrder = 0`
+- returns created row
+
+## Update/Delete Contract
+
+Update can change:
+
+- `title`
+- `content`
+- `descriptionHtml`
+- `color`
+
+Update behavior:
+
+- verifies sticky belongs to current organization and current user
+- trims `title` and stores empty title as `null`
+- trims `content` and stores empty content as `null`
+- stores empty `descriptionHtml` as `null`
+- validates `color` against the sticky color enum
+- updates `updatedAt`
+- returns `NOT_FOUND` when the sticky is outside current scope or missing
+
+Delete behavior:
+
+- verifies sticky belongs to current organization and current user
+- physically deletes row
+- returns `success: true`
+- returns `NOT_FOUND` when the sticky is outside current scope or missing
+
+## Frontend Cache Behavior
+
+The home widget, stickies page, and action bar all use `stickiesApi.listOptions()` plus
+`stickiesMutations`. After mutations, they update matching stickies list query caches directly so the
+same note stays in sync across the home widget and floating action bar.
+
+## Related Surfaces
+
+| Surface | Relationship |
+| --- | --- |
+| Home | Shows a limited stickies widget and creates/updates/deletes notes. |
+| Stickies page | Full-page list and editor for current user's notes. |
+| Floating action bar | Quick create, preview, search, update, and delete flow. |
+| User/session | Stickies are private to the active user inside the active organization. |
+
+## Change Checklist
+
+When changing stickies:
+
+- update `packages/api/modules/stickies/schemas.ts`
+- update sticky procedures for list/create/update/delete behavior
+- update `packages/database/drizzle/schema/studio.ts` plus migrations for shape changes
+- update sticky editor/cache behavior in home, page, and action-bar components
+- update `apps/web/tests/stickies.spec.ts` when user flows change
+- update this page in the same PR
+
+## Known Gaps
+
+- `sortOrder` exists and has an index, but the API does not expose reordering.
+- List ordering uses newest-first, not `sortOrder`.
+- Delete is physical, not soft.
+- Rich HTML is stored as provided by the editor; the API does not sanitize or transform it.
