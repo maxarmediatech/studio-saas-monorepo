@@ -1,0 +1,171 @@
+---
+title: Organizations API
+description: Organization slug generation, bulk invites, custom roles, and team member reads.
+---
+
+## Ownership
+
+Organizations API owns platform-level organization helpers plus active-organization admin surfaces:
+slug generation, bulk invitations, custom role CRUD, and team membership reads.
+
+| Area | Source |
+| --- | --- |
+| Router | `packages/api/modules/organizations/router.ts` |
+| Procedures | `packages/api/modules/organizations/procedures/*.ts` |
+| Bulk invite schemas/helpers | `packages/api/modules/organizations/lib/bulk-invitations.ts` |
+| Bulk invite executor | `packages/api/modules/organizations/lib/bulk-invite-service.ts` |
+| Membership helpers | `packages/api/modules/organizations/lib/membership.ts` |
+| DB tables | `packages/database/drizzle/schema/core.ts` |
+
+## Database Shape
+
+| Table | Owns | Notes |
+| --- | --- | --- |
+| `organizations` | Org identity, slug, timezone, logo, metadata, payment customer id. | `slug` is unique. |
+| `members` | User membership and role string per organization. | Unique user/org membership. |
+| `teams` | Organization teams. | Organization scoped. |
+| `team_members` | Team/user membership. | Indexed by team and user. |
+| `invitations` | Pending/canceled invite records. | Created through Better Auth invitation API. |
+| `organization_roles` | Custom role permissions, color, description. | Organization scoped; max 20 custom roles in API. |
+
+## API Operations
+
+| Operation | Method/path | Procedure scope | Notes |
+| --- | --- | --- | --- |
+| `organizations.generateSlug` | `GET /organizations/generate-slug` | `publicProcedure` | Generates available slug from name. |
+| `organizations.invites.bulkCreate` | `POST /organizations/invites/bulk` | `studioProtectedProcedure` | Creates a small batch of invitations. |
+| `organizations.roles.list` | `GET /organizations/roles` | `studioProtectedProcedure` | Lists custom assignable roles. |
+| `organizations.roles.create` | `POST /organizations/roles` | `studioProtectedProcedure` | Creates custom role. |
+| `organizations.roles.update` | `PATCH /organizations/roles/{roleId}` | `studioProtectedProcedure` | Updates role and optionally rewrites member/invite role strings. |
+| `organizations.roles.delete` | `DELETE /organizations/roles/{roleId}` | `studioProtectedProcedure` | Deletes unused custom role. |
+| `organizations.teams.listMembers` | `GET /organizations/teams/members` | `studioProtectedProcedure` | Lists members for a team. |
+
+## Slug Contract
+
+Input:
+
+- `name`
+
+Behavior:
+
+- slugifies the name in lowercase
+- checks existing organization slugs
+- retries up to three times with a 5-character suffix
+- returns `{ slug }`
+- throws internal error if no slug is available after retries
+
+## Bulk Invite Contract
+
+Input:
+
+- `emails`: array of raw strings, min 1
+- `role`: array of role strings, min 1
+- `teamId`: optional nullable string
+
+Limits/normalization:
+
+- emails are trimmed and lowercased
+- invalid emails are classified as `invalid_email`
+- duplicate emails in the same batch are classified as `duplicate_in_batch`
+- max 10 unique ready emails per batch
+
+Output:
+
+- `summary.requested`
+- `summary.normalized`
+- `summary.created`
+- `summary.skipped`
+- `summary.failed`
+- `results[]` with `email`, `status`, optional `invitationId`, `code`, `message`
+
+Statuses:
+
+- `created`
+- `duplicate_in_batch`
+- `already_member`
+- `already_invited`
+- `invalid_email`
+- `forbidden`
+- `limit_reached`
+- `failed`
+
+Permission/side effects:
+
+- requires `invites:create`
+- skips existing members and pending invites
+- verifies transactional email delivery before create
+- calls `auth.api.createInvitation`
+- if email delivery fails after invitation creation, attempts to cancel the pending invitation
+
+## Role Contract
+
+Role name rules:
+
+- required for create
+- optional for update
+- 1 to 50 characters
+- starts with a lowercase letter
+- lowercase letters, numbers, and underscores only
+- cannot use static/system roles
+- cannot use profile-only role names
+
+Create:
+
+- requires organization admin
+- requires `settings:update`
+- rejects duplicate role name
+- rejects when organization already has 20 custom roles
+- stores `permission` as JSON string
+- defaults color to `#6366f1`
+
+List:
+
+- requires organization admin
+- returns roles ordered by role name
+- filters out profile-only roles
+
+Update:
+
+- requires organization admin
+- requires `settings:update`
+- validates duplicate/reserved names
+- updates role, permission, description, and color
+- when role is renamed, rewrites matching member and invitation role strings in a transaction
+
+Delete:
+
+- requires organization admin
+- requires `settings:update`
+- rejects missing role
+- rejects role still assigned to members
+- physically deletes custom role
+
+## Team Members Contract
+
+Input:
+
+- `teamId`
+
+Behavior:
+
+- requires `team:read`
+- verifies team belongs to active organization
+- returns `team_members` rows ordered by `createdAt`
+- throws `NOT_FOUND` for missing/out-of-org team
+
+## Change Checklist
+
+When changing Organizations:
+
+- update organization procedure schemas and this page together
+- update `packages/database/drizzle/schema/core.ts` plus migrations for org/member/team/role shape changes
+- update Better Auth integration assumptions when invite behavior changes
+- update bulk invite tests when status/limit behavior changes
+- update role/member UI when role rewrite behavior changes
+
+## Known Gaps
+
+- Organization slug generation is public and only validates availability by retrying.
+- Role permissions are stored as JSON string, not typed JSON.
+- Role delete only checks members, not pending invitations using that role.
+- Team member list returns team membership rows only, not joined user profile details.
