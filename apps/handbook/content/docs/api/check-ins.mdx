@@ -1,0 +1,259 @@
+---
+title: Check-ins API
+description: Check-in types, posts, comments, links, org/team visibility, and date-period rules.
+---
+
+## Ownership
+
+Check-ins are recurring team/organization updates. A check-in type defines cadence and visibility;
+users post one check-in per type per period. Check-ins support rich text, threaded comments, and
+links to other studio entities.
+
+| Area | Source |
+| --- | --- |
+| Router | `packages/api/modules/checkins/router.ts` |
+| Contract schemas | `packages/api/modules/checkins/schemas.ts` |
+| Procedures | `packages/api/modules/checkins/procedures/*.ts` |
+| DB tables | `packages/database/drizzle/schema/checkins.ts` |
+| Access helpers | `packages/api/modules/checkins/lib/checkin-access.ts` |
+| Date helpers | `packages/api/modules/checkins/lib/checkin-date.ts` |
+| Shared rich text | `packages/api/modules/discussions/lib/rich-text.ts` |
+| Shared link validation | `packages/api/modules/discussions/lib/verify-link-entity.ts` |
+
+## Database Shape
+
+| Table | Owns | Notes |
+| --- | --- | --- |
+| `checkin_types` | Scope, team, name, emoji, description, frequency, scheduled time, active flag, audit, soft delete. | Scope is organization or team. |
+| `checkins` | User check-in post, rich-text payload, business date, comment count, audit, soft delete. | One active post per user/type/date. |
+| `checkin_comments` | Threaded comments with rich-text payload, parent/root pointers, reply count, soft delete. | Mirrors discussion message threading. |
+| `checkin_links` | Links check-ins to studio entities. | Unique per checkin/entity pair. |
+
+Important indexes/constraints:
+
+| Index/constraint | Purpose |
+| --- | --- |
+| `checkin_types_scope_team_constraint` | Team scope requires `teamId`; organization scope requires no `teamId`. |
+| `checkin_types_org_idx` | Organization list/filter. |
+| `checkin_types_team_idx` | Team-scoped lookup. |
+| `checkins_type_user_date_unique` | One active check-in per user, type, and period date. |
+| `checkins_type_date_idx` | List check-ins by type/date. |
+| `checkins_user_date_idx` | User/crew check-in history. |
+| `checkin_comments_thread_idx` | Thread reply list. |
+| `checkin_links_entity_idx` | Find linked entity check-ins. |
+
+Enums:
+
+- scope: `organization`, `team`
+- frequency: `daily`, `weekdays`, `weekly`
+
+Link entity types:
+
+- `booking`
+- `shoot`
+- `deliverable`
+- `task`
+- `payment_schedule`
+- `expense`
+
+## API Operations
+
+All procedures use `studioProtectedProcedure`.
+
+| Operation | Method/path | Input schema | Guard | Notes |
+| --- | --- | --- | --- | --- |
+| `checkins.createType` | `POST /checkins/types` | `createCheckinTypeInputSchema` | owner/admin for organization scope; team member for team scope | Creates a check-in type. |
+| `checkins.listTypes` | `GET /checkins/types` | `listCheckinTypesInputSchema` | access helper | Lists visible check-in types. |
+| `checkins.getType` | `GET /checkins/types/{checkinTypeId}` | `getCheckinTypeInputSchema` | type access helper | Gets one type. |
+| `checkins.updateType` | `PATCH /checkins/types/{checkinTypeId}` | `updateCheckinTypeInputSchema` | owner/admin for org or visibility/team changes | Updates type/cadence/active state. |
+| `checkins.deleteType` | `DELETE /checkins/types/{checkinTypeId}` | `deleteCheckinTypeInputSchema` | type access helper | Soft delete. |
+| `checkins.createCheckin` | `POST /checkins/posts` | `createCheckinInputSchema` | type access helper | Creates user check-in for computed period. |
+| `checkins.listCheckins` | `GET /checkins/posts` | `listCheckinsInputSchema` | type access helper | Cursor-paged posts for a type. |
+| `checkins.getCheckin` | `GET /checkins/posts/{checkinId}` | `getCheckinInputSchema` | check-in access helper | Detail with author/type/links. |
+| `checkins.updateCheckin` | `PATCH /checkins/posts/{checkinId}` | `updateCheckinInputSchema` | owner or owner/admin | Updates post content. |
+| `checkins.deleteCheckin` | `DELETE /checkins/posts/{checkinId}` | `deleteCheckinInputSchema` | owner or owner/admin | Soft delete. |
+| `checkins.createComment` | `POST /checkins/comments` | `createCommentInputSchema` | check-in access helper | Creates comment or reply. |
+| `checkins.listComments` | `GET /checkins/comments` | `listCommentsInputSchema` | check-in access helper | Lists comments or thread replies. |
+| `checkins.updateComment` | `PATCH /checkins/comments/{commentId}` | `updateCommentInputSchema` | comment owner | Updates comment content. |
+| `checkins.deleteComment` | `DELETE /checkins/comments/{commentId}` | `deleteCommentInputSchema` | comment owner | Soft delete; adjusts counts. |
+| `checkins.addLink` | `POST /checkins/links` | `addCheckinLinkInputSchema` | entity permission via shared validator | Adds validated entity link. |
+| `checkins.removeLink` | `DELETE /checkins/links/{linkId}` | `removeCheckinLinkInputSchema` | organization link ownership | Physically deletes link. |
+| `checkins.listUserCheckins` | `GET /checkins/user/{userId}` | `listUserCheckinsInputSchema` | admin/all-view or scoped access | User history for crew detail. |
+
+## Read Contracts
+
+`listTypes` accepts:
+
+- `scope`
+- `teamId`
+- `includeInactive`
+
+Visibility rules:
+
+- owners/admins can view all organization check-ins and team check-ins
+- non-admins can view organization-scoped types and team-scoped types for teams they belong to
+- inactive types are excluded unless requested
+
+`listCheckins` accepts:
+
+- `checkinTypeId`
+- cursor: `checkinDate`, `id`
+- `limit`
+
+`getCheckin` returns:
+
+- base check-in fields
+- check-in type
+- author
+- links
+
+`listComments` accepts:
+
+- `checkinId`
+- optional `threadRootId`
+
+`listUserCheckins` accepts:
+
+- `userId`
+- `dateFrom`
+- `dateTo`
+- cursor: `checkinDate`, `id`
+- `limit`
+
+## Check-in Type Contracts
+
+Create type requires:
+
+- `scope`
+- `name`
+- `frequency`
+
+Optional:
+
+- `teamId`
+- `emoji`
+- `description`
+- `scheduledTime`
+
+Scope rules:
+
+- `scope = organization`: `teamId` must be omitted; only owner/admin can create or update
+- `scope = team`: `teamId` is required; non-admin creator must belong to the team
+
+Update type can change:
+
+- `scope`
+- `teamId`
+- `name`
+- `emoji`
+- `description`
+- `frequency`
+- `scheduledTime`
+- `isActive`
+
+Only admins can change visibility or team assignment.
+
+Delete type:
+
+- soft-deletes by setting `deletedAt`/`deletedBy`
+- does not physically delete check-ins/comments
+
+## Check-in Post Contracts
+
+Create check-in accepts:
+
+- `checkinTypeId`
+- optional `content`
+- optional `contentJson`
+- optional `checkinDate`
+- optional `links`
+
+Date behavior:
+
+- API computes the effective period date from type frequency, scheduled time, and timezone
+- timezone preference order: `x-user-timezone` header, user timezone, organization timezone
+- weekly check-ins use week start
+- weekdays skip weekend dates
+
+Create behavior:
+
+- verifies type visibility/access
+- validates linked entities through shared discussion link validator
+- builds rich text JSON/text when content is present
+- inserts check-in with `createdBy`
+- inserts links when provided
+- maps duplicate period rows to `CONFLICT`
+
+The schema accepts `checkinDate`, but create currently uses the computed effective period date.
+
+Update check-in:
+
+- owner/admin only
+- updates rich-text content fields
+- rejects invalid rich-text content
+
+Delete check-in:
+
+- owner/admin only
+- soft-deletes post
+
+## Comment Contracts
+
+Create comment requires:
+
+- `checkinId`
+- either `content` or `contentJson`
+
+Optional:
+
+- `parentId`
+
+Behavior:
+
+- verifies check-in access
+- validates parent belongs to same check-in
+- sets `threadRootId` for replies
+- increments check-in `commentCount`
+- increments parent/root reply count for replies
+
+Update/delete:
+
+- comment author only
+- update rebuilds rich-text payload
+- delete soft-deletes and decrements counts
+
+## Link Contract
+
+Check-in links reuse discussion entity-link validation. The user must have access to the target entity,
+and the target row must belong to the active organization and not be deleted.
+
+Links are physically deleted by `removeLink`.
+
+## Related Surfaces
+
+| Surface | Relationship |
+| --- | --- |
+| Discussions | Shares rich-text and entity-link helpers. |
+| Teams | Team-scoped check-in types use team membership. |
+| Crews/users | User check-in history appears on crew/detail surfaces. |
+| Bookings/shoots/tasks/deliverables | Link targets. |
+| Payments/expenses | Payment schedules and expenses can be linked. |
+
+## Change Checklist
+
+When changing check-ins:
+
+- update `packages/api/modules/checkins/schemas.ts`
+- update check-in procedures and access/date helpers
+- update `packages/database/drizzle/schema/checkins.ts` plus migrations for table/index changes
+- update shared rich-text/link validation if payload or link types change
+- update team membership/visibility consumers
+- update frontend query helpers, check-in pages/forms, and crew detail history
+- update this page in the same PR
+
+## Known Gaps
+
+- `createCheckinInputSchema` accepts `checkinDate`, but create uses the computed period date instead.
+- Link rows are physically deleted, so link removals have no audit trail.
+- Type deletion is soft, but child check-ins/comments remain.
+- Rich metadata/search behavior depends on `contentText`; consumers should not parse rich-text JSON for previews.
