@@ -1,0 +1,123 @@
+---
+title: Quick Links API
+description: User-scoped home-page bookmarks, URL normalization, ordering, and delete behavior.
+---
+
+## Ownership
+
+Quick links are per-user, per-organization bookmarks shown on the studio home page. They store a URL,
+optional title, metadata, and sort order.
+
+| Area | Source |
+| --- | --- |
+| Router | `packages/api/modules/quick-links/router.ts` |
+| Contract schemas | `packages/api/modules/quick-links/schemas.ts` |
+| Procedures | `packages/api/modules/quick-links/procedures/*.ts` |
+| DB table | `packages/database/drizzle/schema/studio.ts` |
+| Frontend API helpers | `apps/web/modules/saas/studio/lib/api.ts` |
+| Home widget | `apps/web/modules/saas/studio/components/home/widgets/quick-links/*` |
+
+## Database Shape
+
+| Table | Owns | Notes |
+| --- | --- | --- |
+| `quick_links` | User bookmark title, URL, metadata, sort order, timestamps. | Tenant and user scoped. No soft delete. |
+
+Important indexes:
+
+| Index | Purpose |
+| --- | --- |
+| `quick_links_org_user_idx` | List current user's links for organization. |
+| `quick_links_org_user_sort_idx` | Stable widget ordering. |
+
+## API Operations
+
+All quick link procedures use `studioProtectedProcedure` and current user scope.
+
+| Operation | Method/path | Input schema | Output schema | Notes |
+| --- | --- | --- | --- | --- |
+| `quickLinks.list` | `GET /quick-links` | `listQuickLinksInputSchema` | `listQuickLinksOutputSchema` | Lists current user's links. |
+| `quickLinks.create` | `POST /quick-links` | `createQuickLinkInputSchema` | `createQuickLinkOutputSchema` | Creates one current-user link. |
+| `quickLinks.update` | `PUT /quick-links/{id}` | `updateQuickLinkInputSchema` | `updateQuickLinkOutputSchema` | Updates current-user link. |
+| `quickLinks.delete` | `DELETE /quick-links/{id}` | `deleteQuickLinkInputSchema` | `deleteQuickLinkOutputSchema` | Physically deletes current-user link. |
+
+## Read Contracts
+
+`list` has no filters. It returns current organization/current user links ordered by:
+
+1. `sortOrder`
+2. `createdAt`
+
+Returned shape:
+
+- `id`
+- `organizationId`
+- `userId`
+- `title`
+- `url`
+- `metadata`
+- `sortOrder`
+- `createdAt`
+- `updatedAt`
+
+## Create Contract
+
+Required fields:
+
+- `url`
+
+Optional fields:
+
+- `title`
+
+Create behavior:
+
+- trims URL
+- prepends `https://` when URL does not start with `http://` or `https://`
+- trims title and stores empty title as `null`
+- stores `sortOrder = 0`
+- returns created row
+
+## Update/Delete Contract
+
+Update can change:
+
+- `url`
+- `title`
+
+Update behavior:
+
+- verifies link belongs to current organization and current user
+- normalizes URL the same way as create
+- trims title and stores empty title as `null`
+- updates `updatedAt`
+
+Delete behavior:
+
+- verifies link belongs to current organization and current user
+- physically deletes row
+- returns `success: true`
+
+## Related Surfaces
+
+| Surface | Relationship |
+| --- | --- |
+| Home | Quick links widget lists, creates, edits, and deletes rows. |
+| User/session | Links are user-specific inside the active organization. |
+
+## Change Checklist
+
+When changing quick links:
+
+- update `packages/api/modules/quick-links/schemas.ts`
+- update quick link procedures for URL/title/ordering behavior
+- update `packages/database/drizzle/schema/studio.ts` plus migrations for shape changes
+- update home widget forms/cache invalidation
+- update this page in the same PR
+
+## Known Gaps
+
+- There is no reorder endpoint even though `sortOrder` exists.
+- URL validation only normalizes scheme; it does not validate domain/URL shape.
+- Delete is physical, not soft.
+- `metadata` exists in DB/output but is not writable through current create/update schemas.
