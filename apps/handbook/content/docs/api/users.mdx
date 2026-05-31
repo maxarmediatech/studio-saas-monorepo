@@ -1,0 +1,93 @@
+---
+title: Users API
+description: Mounted users router status, auth user table shape, and current user-management ownership.
+---
+
+## Ownership
+
+The `users` router is mounted in the main API router, but it currently exposes no procedures.
+User-management operations live under Admin and Better Auth, while domain APIs reference `users` for
+actors, owners, reviewers, members, notifications, and crew-linked profiles.
+
+| Area | Source |
+| --- | --- |
+| Router | `packages/api/modules/users/router.ts` |
+| Main router mount | `packages/api/orpc/router.ts` |
+| Auth user table | `packages/database/drizzle/schema/auth.ts` |
+| User queries | `packages/database/drizzle/queries/users.ts` |
+| Admin user API | `packages/api/modules/admin/procedures/list-users.ts` |
+
+## API Operations
+
+There are no active `users.*` operations today.
+
+The router is:
+
+```ts
+export const usersRouter = {};
+```
+
+## Database Shape
+
+Primary table:
+
+| Table | Owns | Notes |
+| --- | --- | --- |
+| `users` | Auth identity, profile, role, ban fields, onboarding, billing customer id, locale/timezone, 2FA flag. | Better Auth-backed table. |
+
+Important user fields:
+
+- `id`
+- `name`
+- `email`
+- `emailVerified`
+- `image`
+- `username`
+- `displayUsername`
+- `role`
+- `banned`
+- `banReason`
+- `banExpires`
+- `onboardingComplete`
+- `paymentsCustomerId`
+- `locale`
+- `timezone`
+- `twoFactorEnabled`
+
+Related auth/core tables:
+
+- `sessions`
+- `accounts`
+- `verifications`
+- `two_factors`
+- `members`
+- `team_members`
+- `invitations`
+- `purchases`
+
+## Current Read/Write Ownership
+
+| Surface | Ownership |
+| --- | --- |
+| Admin user list | `admin.users.list` reads `users` with pagination/search. |
+| Auth/session/profile changes | Better Auth and auth package flows. |
+| Organization membership | `members` / organization APIs. |
+| Studio actor/reviewer/owner fields | Domain APIs join or reference `users`. |
+| Avatar upload | Comment says avatar upload moved to `/api/uploads/presigned-url`. |
+
+## Change Checklist
+
+When adding real Users API procedures:
+
+- add procedures under `packages/api/modules/users`
+- update `usersRouter`
+- define exported schemas if the surface is non-trivial
+- update auth/user query helpers only when ownership is clear
+- document permission model; do not duplicate admin-only operations accidentally
+- update this page in the same PR
+
+## Known Gaps
+
+- Mounted router is empty, so generated clients may expose `users` with no methods.
+- Admin user mutations seen in UI appear to be Better Auth/client actions, not this `users` router.
+- No dedicated handbook contract existed for user profile update/read APIs because none are currently mounted here.

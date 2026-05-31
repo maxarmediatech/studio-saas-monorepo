@@ -26,6 +26,7 @@
 		"dashboard",
 		"global-search",
 		"activities",
-		"organizations"
+		"organizations",
+		"users"
 	]
 }
