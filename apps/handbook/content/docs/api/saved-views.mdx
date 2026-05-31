@@ -1,0 +1,196 @@
+---
+title: Saved Views API
+description: User-created table views, filters, column state, public/private visibility, and favorites.
+---
+
+## Ownership
+
+Saved views store reusable table state for studio entity lists. A view belongs to an entity type and
+can capture filters, display filter labels, column visibility, sorting, styling, public/private
+visibility, and per-user favorites.
+
+| Area | Source |
+| --- | --- |
+| Router | `packages/api/modules/saved-views/router.ts` |
+| Procedures | `packages/api/modules/saved-views/procedures/*.ts` |
+| Contract schemas | `packages/api/modules/studio/schemas/saved-view.ts` |
+| Permission helper | `packages/api/modules/saved-views/lib/saved-view-permissions.ts` |
+| DB tables | `packages/database/drizzle/schema/studio.ts` |
+| Frontend API helpers | `apps/web/modules/saas/studio/lib/api.ts` |
+| Filter consumers | `apps/web/modules/saas/studio/components/*/*Filters.tsx` |
+
+## Database Shape
+
+| Table | Owns | Notes |
+| --- | --- | --- |
+| `saved_views` | View metadata, entity type, filters, display filters, column visibility, sorting, flags, ordering. | No soft delete. |
+| `saved_view_favorites` | User-specific favorite toggle for a saved view. | Cascade deletes with saved view/user. |
+
+Important indexes:
+
+| Index | Purpose |
+| --- | --- |
+| `saved_views_org_idx` | Tenant filtering. |
+| `saved_views_org_entity_idx` | Entity-specific view list. |
+| `saved_views_created_by_idx` | Owner lookup. |
+| `saved_views_org_entity_name_idx` | Unique view name per organization and entity type. |
+| `saved_view_favorites_view_user_idx` | Prevent duplicate favorites. |
+| `saved_view_favorites_user_idx` | Current user's favorites lookup. |
+
+Entity types:
+
+- `booking`
+- `task`
+- `shoot`
+- `deliverable`
+- `payment`
+- `schedule`
+- `expense`
+- `crew`
+- `client`
+- `invoice`
+
+## API Operations
+
+All saved view procedures use `studioProtectedProcedure` and active organization scope.
+
+| Operation | Method/path | Input schema | Output schema | Permission | Notes |
+| --- | --- | --- | --- | --- | --- |
+| `savedViews.list` | `GET /saved-views` | `listSavedViewsInputSchema` | `listSavedViewsOutputSchema` | mapped entity `list` | Lists public views and current user's private views. |
+| `savedViews.create` | `POST /saved-views` | `createSavedViewInputSchema` | `createSavedViewOutputSchema` | mapped entity `create` | Creates custom non-system view. |
+| `savedViews.update` | `PUT /saved-views/{id}` | `updateSavedViewInputSchema` | `updateSavedViewOutputSchema` | mapped entity `update` | Updates owner/private or public view. |
+| `savedViews.delete` | `DELETE /saved-views/{id}` | `deleteSavedViewInputSchema` | `deleteSavedViewOutputSchema` | mapped entity `delete` | Physically deletes owner-created non-system view. |
+| `savedViews.toggleFavorite` | `POST /saved-views/{viewId}/favorite` | `toggleFavoriteInputSchema` | `toggleFavoriteOutputSchema` | mapped entity `list` | Inserts or deletes favorite row. |
+
+Permission mapping:
+
+| Entity type | Permission resource |
+| --- | --- |
+| `booking` | `booking` |
+| `task` | `task` |
+| `shoot` | `shoot` |
+| `deliverable` | `deliverable` |
+| `payment` | `payment` |
+| `schedule` | `payment` |
+| `invoice` | `payment` |
+| `expense` | `expense` |
+| `crew` | `crew` |
+| `client` | `client` |
+
+## Read Contracts
+
+`list` accepts:
+
+- `entityType`
+
+Returns:
+
+- view identity and owner
+- `entityType`
+- `name`, `description`, `icon`, `color`
+- `filters`
+- `displayFilters`
+- `columnVisibility`
+- `sorting`
+- `isSystem`, `isDefault`, `isPublic`
+- `sortOrder`
+- timestamps
+- `isFavorite`
+- `createdByUser`
+
+List behavior:
+
+- requires list permission for requested entity type
+- excludes system views
+- returns public views plus views created by current user
+- orders by `sortOrder`, then `name`
+- computes `isFavorite` from current user's favorite rows
+
+## Create Contract
+
+Required fields:
+
+- `entityType`
+- `name`
+
+Optional fields:
+
+- `description`
+- `icon`
+- `color`
+- `filters`
+- `displayFilters`
+- `columnVisibility`
+- `sorting`
+- `isPublic`
+
+Create behavior:
+
+- requires create permission for mapped resource
+- sets `createdBy` to current user
+- stores empty `{}` filters by default
+- sets `isSystem = false`, `isDefault = false`
+- sets `sortOrder = 100`
+
+## Update/Delete Contract
+
+Update can change:
+
+- `name`
+- `description`
+- `icon`
+- `color`
+- `filters`
+- `displayFilters`
+- `columnVisibility`
+- `sorting`
+- `isPublic`
+
+Update behavior:
+
+- checks user is authorized for at least one entity type with update permission
+- scopes lookup to active organization and authorized entity types
+- rejects system views
+- allows owner updates
+- allows updates to public views even if current user is not the creator
+
+Delete behavior:
+
+- scopes lookup to active organization and authorized entity types
+- rejects system views
+- requires current user to be creator
+- physically deletes `saved_views`; favorite rows cascade
+
+Favorite behavior:
+
+- scopes lookup to active organization and authorized entity types
+- if favorite exists, deletes it and returns `isFavorite: false`
+- otherwise inserts favorite and returns `isFavorite: true`
+
+## Related Surfaces
+
+| Surface | Relationship |
+| --- | --- |
+| Bookings/tasks/shoots/deliverables | Table filters can save/restore views. |
+| Payments/schedules/invoices/expenses | Finance table filters use saved views. |
+| Clients/crews | Directory table filters use saved views. |
+| Frontend filters | `*Filters.tsx` components apply saved view payloads to URL/table state. |
+
+## Change Checklist
+
+When changing saved views:
+
+- update `packages/api/modules/studio/schemas/saved-view.ts`
+- update permission mapping when adding entity types
+- update DB schema/migrations for persisted table state changes
+- update frontend filter/table hooks that apply `filters`, `displayFilters`, `columnVisibility`, or `sorting`
+- add or adjust regression tests for permission scoping
+- update this page in the same PR
+
+## Known Gaps
+
+- `saved_views` has no soft delete.
+- `saved_views_org_entity_name_idx` makes names unique across public and private views for the same entity type.
+- System/default view flags exist, but list currently excludes system views.
+- Public view update is allowed for non-creators if they have update permission for that entity type.
+- Filter payloads are generic JSON and validated by consumers, not centrally by entity type.
