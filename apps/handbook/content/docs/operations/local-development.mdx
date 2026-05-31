@@ -3,28 +3,347 @@ title: Local Development
 description: Setup path and daily commands for running the workspace.
 ---
 
+## Purpose
+
+Local development should get an engineer from clone to a running app with the same mental model the
+repo uses in production:
+
+- pnpm workspaces own dependency installation.
+- Turborepo coordinates app, package, and service tasks.
+- Next.js runs the product app and handbook.
+- Drizzle owns database migrations.
+- Environment validation is centralized in `@repo/env`.
+
+## Prerequisites
+
+Use the versions implied by the repo:
+
+| Tool | Expected |
+| --- | --- |
+| Node.js | 20 or newer. |
+| pnpm | `10.23.0` from the root `packageManager` field. |
+| PostgreSQL | Local or hosted PostgreSQL. |
+| Git | Required for branch and review workflow. |
+
+Check the basics:
+
+```bash
+node --version
+pnpm --version
+git status --short --branch
+```
+
+## Workspace Shape
+
+The workspace is declared in `pnpm-workspace.yaml`:
+
+```yaml
+packages:
+  - config
+  - apps/*
+  - packages/*
+  - services/*
+  - tooling/*
+```
+
+That means package names matter more than folder names when running filtered commands:
+
+```bash
+pnpm --filter @repo/web dev
+pnpm --filter @repo/handbook dev
+pnpm --filter @repo/database migrate
+pnpm --filter @repo/sms-worker dev
+```
+
 ## First Run
+
+Start with the root:
 
 ```bash
 pnpm install
 cp .env.example .env.local
+```
+
+Fill at least the core variables:
+
+```dotenv
+DATABASE_URL="postgresql://user:password@localhost:5432/studio_saas"
+BETTER_AUTH_SECRET="generated-secret"
+NEXT_PUBLIC_SITE_URL="http://localhost:3000"
+```
+
+Generate an auth secret with:
+
+```bash
+openssl rand -base64 32
+```
+
+Then validate the required core environment:
+
+```bash
+pnpm env:check
+```
+
+`pnpm env:check` runs `@repo/env` and currently validates only the core environment:
+
+```ts
+const coreEnvSchema = z.object({
+  DATABASE_URL: z.string().min(1),
+  BETTER_AUTH_SECRET: z.string().min(1),
+  NEXT_PUBLIC_SITE_URL: z.string().url(),
+});
+```
+
+## Environment Files
+
+Root env files are ignored by git:
+
+```text
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+```
+
+The common setup path uses `.env.local`, but some package scripts explicitly load root `.env`.
+Database scripts are the main example:
+
+```json
+{
+  "migrate": "dotenv -c -e ../../.env -- drizzle-kit migrate --config=drizzle.config.ts",
+  "generate": "dotenv -c -e ../../.env -- drizzle-kit generate --config=drizzle.config.ts"
+}
+```
+
+If `pnpm db:migrate` cannot see `DATABASE_URL`, create a local root `.env` with the same database
+connection or export `DATABASE_URL` in the shell before running the command. Both `.env` and
+`.env.local` are gitignored.
+
+## Database Setup
+
+For a local PostgreSQL database:
+
+```bash
+createdb studio_saas
+```
+
+Apply migrations:
+
+```bash
 pnpm db:migrate
+```
+
+Useful database commands:
+
+```bash
+pnpm db:generate   # Generate SQL after schema edits
+pnpm db:migrate    # Apply migrations
+pnpm db:seed       # Run seed scripts when available
+pnpm db:studio     # Open Drizzle Studio
+```
+
+Use `pnpm db:push` only for throwaway local experiments. It bypasses the migration review path.
+
+## Main App
+
+Run the product app:
+
+```bash
 pnpm dev
 ```
 
+The root `dev` script runs Turborepo with dotenv:
+
+```json
+{
+  "dev": "dotenv -c -- turbo dev --concurrency 15 --filter=!@repo/whatsapp-bridge --filter=!@repo/whatsapp-db --filter=!@repo/whatsapp-core --filter=!@repo/whatsapp-providers --filter=!@repo/whatsapp-worker"
+}
+```
+
+Important behavior:
+
+- It starts workspace `dev` tasks through Turbo.
+- It excludes WhatsApp packages and workers from the default dev set.
+- It depends on upstream `generate` tasks through `turbo.json`.
+- The web app package script is plain `next dev`.
+
+Open the product app at:
+
+```text
+http://localhost:3000
+```
+
 ## Handbook App
+
+Run the handbook only:
 
 ```bash
 pnpm handbook:dev
 ```
 
-The handbook runs on port `3010` by default.
+The handbook package script is:
 
-## Common Commands
+```json
+{
+  "dev": "next dev --port 3010"
+}
+```
+
+Open:
+
+```text
+http://localhost:3010
+```
+
+Useful direct pages while editing docs:
+
+```text
+http://localhost:3010/docs/architecture/system-overview
+http://localhost:3010/docs/architecture/database
+http://localhost:3010/docs/architecture/auth
+http://localhost:3010/docs/architecture/payments
+```
+
+## Marketing App
+
+The marketing app is Astro:
 
 ```bash
-pnpm lint
-pnpm check
-pnpm typecheck
-pnpm build
+pnpm --filter @repo/marketing dev
+pnpm --filter @repo/marketing build
+pnpm --filter @repo/marketing preview
 ```
+
+Use this only when changing `apps/marketing` or shared packages it consumes.
+
+## Workers
+
+Workers are not all part of the default root `pnpm dev` path.
+
+| Service | Dev command | Notes |
+| --- | --- | --- |
+| SMS worker | `pnpm --filter @repo/sms-worker dev` | Polls `smsOutbox`; requires SMS env for real sends. |
+| Calendar worker | `pnpm --filter @repo/calendar-worker dev` | Processes calendar sync jobs; requires Google Calendar env for provider calls. |
+| WhatsApp worker | `pnpm --filter @repo/whatsapp-worker dev` | Processes WhatsApp queues; excluded from root dev. |
+| WhatsApp bridge | `pnpm --filter @repo/whatsapp-bridge dev` | Hono node bridge; excluded from root dev. |
+
+Start workers in separate terminals when the feature you are testing depends on async processing.
+
+## Daily Commands
+
+Root commands:
+
+```bash
+pnpm lint                 # Biome lint
+pnpm check                # Biome check
+pnpm typecheck            # Turbo type-check across workspace
+pnpm build                # Build web dependency graph
+pnpm build:all            # Build all workspace packages
+pnpm clean                # Turbo clean
+pnpm env:check            # Validate core env
+```
+
+Handbook commands:
+
+```bash
+pnpm handbook:dev
+pnpm handbook:build
+pnpm handbook:typecheck
+```
+
+Web app commands:
+
+```bash
+pnpm --filter @repo/web dev
+pnpm --filter @repo/web build
+pnpm --filter @repo/web type-check
+pnpm --filter @repo/web e2e:ci
+```
+
+## Testing
+
+Use the narrowest test that proves the change:
+
+| Change type | First check |
+| --- | --- |
+| Handbook MDX/content | `pnpm handbook:build && pnpm handbook:typecheck` |
+| Web TypeScript | `pnpm --filter @repo/web type-check` |
+| Workspace type contracts | `pnpm typecheck` |
+| Biome formatting/linting | `pnpm check` or `pnpm lint` |
+| Browser flows | `cd apps/web && pnpm e2e:ci` |
+| PDF rendering | `pnpm --filter @repo/web test:pdf-renderer` |
+| SMS worker | `pnpm --filter @repo/sms-worker test:unit` |
+| Calendar worker | `pnpm --filter @repo/calendar-worker test` |
+
+The Playwright config builds and starts the web app at `http://localhost:3000`:
+
+```ts
+webServer: {
+  command: "pnpm --filter web run build && pnpm --filter web run start",
+  url: "http://localhost:3000",
+  reuseExistingServer: !process.env.CI,
+}
+```
+
+## Generated And Local Files
+
+Expect these during local work:
+
+- `node_modules`
+- `.turbo`
+- `.next`
+- `dist`
+- `*.tsbuildinfo`
+- `apps/handbook/.source`
+- `.playwright-mcp`
+
+They are local build or tool artifacts and should not be committed.
+
+## Troubleshooting
+
+Environment validation fails:
+
+```bash
+pnpm env:check
+```
+
+Read the missing keys from the `EnvConfigError`. Core app boot needs `DATABASE_URL`,
+`BETTER_AUTH_SECRET`, and `NEXT_PUBLIC_SITE_URL`.
+
+Database command cannot find `DATABASE_URL`:
+
+```bash
+cp .env.local .env
+pnpm db:migrate
+```
+
+Only do that locally; both files are ignored.
+
+Handbook MDX changed but generated files look stale:
+
+```bash
+pnpm handbook:build
+```
+
+Fumadocs generates source files during install/build/dev, and the generated `.source` folder is
+ignored.
+
+Port `3000` or `3010` is already in use:
+
+```bash
+lsof -i :3000
+lsof -i :3010
+```
+
+Stop the old process or run the package command directly with another port when supported.
+
+## Review Checklist
+
+Before handing off local-development changes:
+
+- The command shown exists in the relevant `package.json`.
+- The env file behavior matches the script actually being run.
+- Database instructions mention migrations, not only `db:push`.
+- Worker instructions identify which workers are excluded from root `pnpm dev`.
+- Handbook checks use `pnpm handbook:build` and `pnpm handbook:typecheck`.

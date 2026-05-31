@@ -5,17 +5,550 @@ description: How application code reads, writes, validates, and scopes data.
 
 ## Purpose
 
-Data access patterns keep authorization, validation, transactions, and query ownership predictable.
+Data access in this repo is intentionally layered:
 
-## Expected Coverage
+- Database schema and shared low-level queries live in `@repo/database`.
+- API procedures live in `@repo/api`.
+- Web data fetching goes through oRPC and TanStack Query.
+- Server layouts can prefetch data and hydrate the client.
+- Workers can use `@repo/database` directly when they own background processing.
 
-- where queries live
-- how organization/team scope is enforced
-- transaction rules
-- validation schemas
-- pagination/filtering conventions
-- cache invalidation expectations
+The important rule: product code should not bypass authorization, tenant scope, validation, or
+idempotency just to make a query shorter.
 
-## Change Safety
+## Ownership Map
 
-When changing shared data access, list all routes/workers that consume the function and run the narrowest tests that cover each affected path.
+| Layer | Owns | Main paths |
+| --- | --- | --- |
+| Database package | Drizzle schema, migrations, runtime `db`, generated Zod DTOs, shared query helpers. | `packages/database/drizzle` |
+| API package | Route contracts, auth gates, domain validation, tenant scope, permissions, transactions, response shaping. | `packages/api/modules` |
+| Web app | Query options, mutation options, cache invalidation, server prefetch, UI state. | `apps/web/modules/saas` |
+| Workers | Queue polling, retry-safe mutations, provider side effects. | `services/*` |
+
+If a query is used by more than one API module or a worker, consider moving it into a shared helper.
+If it is specific to one endpoint, keep it in that procedure until a second caller appears.
+
+## API Procedure Gates
+
+Every oRPC endpoint starts with the narrowest procedure gate it needs:
+
+| Gate | Use for |
+| --- | --- |
+| `publicProcedure` | Public form submissions, public docs, public webhooks after provider verification. |
+| `protectedProcedure` | Signed-in user data that is not automatically scoped to the active studio organization. Billing uses this. |
+| `adminProcedure` | Platform admin endpoints guarded by `config.auth.platformAdminUserIds`. |
+| `studioProtectedProcedure` | Tenant-scoped studio data. This is the default for bookings, clients, tasks, shoots, payments, discussions, etc. |
+
+The studio gate proves identity and active organization membership:
+
+```ts
+export const studioProtectedProcedure = protectedProcedure.use(
+  async ({ context, next }) => {
+    const organizationId = context.session.activeOrganizationId;
+
+    if (!organizationId) {
+      throw new ORPCError("FORBIDDEN", {
+        message: "No active organization. Please select an organization.",
+      });
+    }
+
+    const membership = await getOrganizationMembership(
+      organizationId,
+      context.user.id,
+    );
+
+    if (!membership) {
+      throw new ORPCError("FORBIDDEN", {
+        message: "Not a member of this organization",
+      });
+    }
+
+    return next({
+      context: {
+        ...context,
+        organizationId,
+        membership,
+      },
+    });
+  },
+);
+```
+
+Use `context.organizationId` after this point. Do not accept `organizationId` from the client for
+studio-domain reads/writes unless the procedure is intentionally cross-organization.
+
+## Permissions
+
+Tenant membership is not enough for mutations. Studio procedures should call permission helpers from
+`packages/api/modules/studio/lib/permissions.ts`.
+
+```ts
+export const createClient = studioProtectedProcedure
+  .input(createClientInputSchema)
+  .output(createClientOutputSchema)
+  .handler(async ({ input, context }) => {
+    await requirePermission(context, "client", "create");
+
+    const [created] = await db
+      .insert(clients)
+      .values({
+        organizationId: context.organizationId,
+        name: input.name,
+        createdBy: context.user.id,
+      })
+      .returning({ id: clients.id });
+
+    return {
+      data: { id: created.id },
+      message: "Client created successfully",
+    };
+  });
+```
+
+Use:
+
+- `requirePermission()` for one resource/action.
+- `requireAnyPermission()` when several permissions can satisfy the read.
+- `requireAllPermissions()` when a write affects several protected resources.
+- `requireOrganizationAdmin()` for organization role/admin management.
+
+## Validation Schemas
+
+Studio endpoint schemas live under `packages/api/modules/studio/schemas`.
+
+Common building blocks:
+
+```ts
+export const paginationSchema = z.object({
+  page: z.number().min(1).default(1),
+  limit: z.number().min(1).max(100).default(20),
+});
+
+export const idSchema = z
+  .string()
+  .regex(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+    "Invalid ID format",
+  );
+
+export const moneySchema = z
+  .string()
+  .regex(/^\d+(\.\d{1,2})?$/, "Must be a valid money amount");
+```
+
+Domain schemas compose those blocks:
+
+```ts
+export const listClientsInputSchema = z
+  .object({})
+  .merge(paginationSchema)
+  .merge(searchSchema)
+  .merge(baseListFiltersSchema)
+  .merge(createSortSchema(clientSortFields, "createdAt"));
+
+export const createClientInputSchema = z.object({
+  name: nameSchema,
+  email: emailSchema.optional(),
+  phoneNumber: phoneSchema,
+  alternatePhone: phoneSchema,
+  address: z.string().max(1000).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});
+```
+
+Always attach both `.input()` and `.output()` when the procedure has a product contract. Output
+schemas catch accidental response drift before it reaches the UI.
+
+## Tenant Scope
+
+Tenant-owned queries must include `context.organizationId`.
+
+Good detail query:
+
+```ts
+const booking = await db.query.bookings.findFirst({
+  where: and(
+    eq(bookings.id, id),
+    eq(bookings.organizationId, context.organizationId),
+  ),
+});
+
+if (!booking) {
+  throw new ORPCError("NOT_FOUND", {
+    message: "Booking not found",
+  });
+}
+```
+
+Good list query:
+
+```ts
+const conditions = [
+  eq(clients.organizationId, context.organizationId),
+];
+
+if (!includeDeleted) {
+  conditions.push(isNull(clients.deletedAt));
+}
+
+if (search) {
+  conditions.push(ilike(clients.name, `%${search}%`));
+}
+```
+
+Do not fetch by `id` first and check organization later. That leaks existence timing and makes later
+refactors easy to get wrong.
+
+## Soft Deletes
+
+Most studio tables use `deletedAt`. Active list queries should exclude deleted rows unless the input
+explicitly opts in:
+
+```ts
+if (!includeDeleted) {
+  conditions.push(isNull(clients.deletedAt));
+}
+```
+
+Detail queries should usually exclude deleted rows for user-facing screens, unless the screen is an
+audit/restore view.
+
+For writes, prefer soft delete when business history matters:
+
+```ts
+await db
+  .update(clients)
+  .set({
+    deletedAt: new Date(),
+    deletedBy: context.user.id,
+    updatedAt: new Date(),
+  })
+  .where(
+    and(
+      eq(clients.id, id),
+      eq(clients.organizationId, context.organizationId),
+    ),
+  );
+```
+
+## Pagination, Filtering, Sorting
+
+List endpoints use page/limit pagination and return a standard response:
+
+```ts
+const offset = (page - 1) * limit;
+
+const [countResult] = await db
+  .select({ count: count().mapWith(Number) })
+  .from(clients)
+  .where(and(...conditions));
+
+const total = countResult?.count ?? 0;
+
+const data = await db.query.clients.findMany({
+  where: and(...conditions),
+  orderBy: (_table, { asc, desc }) =>
+    sortDirection === "asc" ? [asc(orderColumn)] : [desc(orderColumn)],
+  limit,
+  offset,
+});
+
+return {
+  data,
+  pagination: createPaginationResponse(page, limit, total),
+};
+```
+
+Sorting should map allowed string fields to real Drizzle columns. Do not interpolate a client-provided
+column name into SQL.
+
+## Response Shaping
+
+API responses should be UI-ready and schema-safe:
+
+- Convert `Date` values to ISO strings when output schemas expect strings.
+- Convert decimal strings deliberately; do not lose money precision in writes.
+- Hide raw storage/provider internals unless the UI needs them.
+- Return `data` plus a standard `message` for mutations.
+
+Example:
+
+```ts
+return {
+  data: data.map((client) => ({
+    ...client,
+    metadata: client.metadata as Record<string, unknown> | null,
+    createdAt: client.createdAt.toISOString(),
+    updatedAt: client.updatedAt.toISOString(),
+    deletedAt: client.deletedAt?.toISOString() ?? null,
+  })),
+  pagination: createPaginationResponse(page, limit, total),
+};
+```
+
+## Transactions
+
+Use transactions when a request writes several related tables or depends on consistent reads during
+the operation.
+
+The helper lives in `packages/api/modules/studio/lib/transactions.ts`:
+
+```ts
+export async function withTransaction<T>(
+  fn: (tx: TransactionClient) => Promise<T>,
+): Promise<T> {
+  return db.transaction(fn);
+}
+
+export async function withSerializableTransaction<T>(
+  fn: (tx: TransactionClient) => Promise<T>,
+): Promise<T> {
+  return db.transaction(fn, {
+    isolationLevel: "serializable",
+  });
+}
+```
+
+Booking creation is the canonical aggregate write:
+
+```ts
+return await withTransaction(async (tx) => {
+  const existingClients = await tx.query.clients.findMany({
+    where: and(
+      eq(clients.organizationId, context.organizationId),
+      isNull(clients.deletedAt),
+      inArray(clients.id, clientIds),
+    ),
+    columns: { id: true },
+  });
+
+  const [created] = await tx
+    .insert(bookings)
+    .values({
+      organizationId: context.organizationId,
+      referenceNumber,
+      name,
+      createdBy: context.user.id,
+    })
+    .returning({ id: bookings.id });
+
+  await tx.insert(bookingParticipants).values(
+    participants.map((participant) => ({
+      bookingId: created.id,
+      clientId: participant.clientId,
+      role: participant.role,
+    })),
+  );
+
+  return { data: { id: created.id } };
+});
+```
+
+Use `withSerializableTransaction()` for financial calculations, unique sequence generation under
+contention, or any workflow where two concurrent requests must not both win.
+
+## Idempotency
+
+Retryable workers and provider callbacks should be idempotent. Use a database key or lookup before
+creating records.
+
+The transaction helper includes `idempotentCreate()`:
+
+```ts
+const result = await idempotentCreate({
+  tx,
+  findExisting: async () =>
+    tx.query.receivedAmounts.findFirst({
+      where: eq(receivedAmounts.scheduleId, scheduleId),
+    }),
+  create: async () => {
+    const [received] = await tx
+      .insert(receivedAmounts)
+      .values({ scheduleId })
+      .returning();
+    return received;
+  },
+  entityName: "payment",
+});
+```
+
+Webhook paths should also record provider event ids before business mutation. See the payments page
+for the `webhookEvents` pattern.
+
+## Shared Database Helpers
+
+`packages/database/drizzle/queries` contains shared query helpers for cross-cutting data:
+
+- users
+- organizations
+- purchases
+- webhook events
+
+Use package-level helpers when the query is reused across packages or needs one canonical behavior:
+
+```ts
+export async function getOrganizationMembership(
+  organizationId: string,
+  userId: string,
+) {
+  return db.query.members.findFirst({
+    where: (member, { eq }) =>
+      and(
+        eq(member.organizationId, organizationId),
+        eq(member.userId, userId),
+      ),
+    with: {
+      organization: true,
+    },
+  });
+}
+```
+
+Keep feature-specific list/detail queries inside API modules so permissions, filters, and response
+shape stay close to the route contract.
+
+## Web Query Layer
+
+The browser oRPC client is configured in `apps/web/modules/shared/lib/orpc-client.ts`:
+
+```ts
+const link = new RPCLink({
+  url: () => new URL("/api/rpc", window.location.origin).toString(),
+  headers: () => ({
+    "x-user-timezone":
+      Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
+  }),
+});
+
+export const orpcClient: ApiRouterClient =
+  globalThis.$orpcClient ?? createORPCClient(link);
+```
+
+TanStack Query options are generated from that client:
+
+```ts
+export const orpc = createTanstackQueryUtils(orpcClient);
+```
+
+Feature modules wrap generated options in named helpers:
+
+```ts
+export const studioApi = {
+  clients: {
+    listOptions: (
+      input?: Parameters<typeof orpc.clients.list.queryOptions>[0]["input"],
+    ) => orpc.clients.list.queryOptions({ input: input ?? {} }),
+    getOptions: (id: string) =>
+      orpc.clients.get.queryOptions({ input: { id } }),
+    create: () => orpc.clients.create.mutationOptions(),
+    update: () => orpc.clients.update.mutationOptions(),
+    delete: () => orpc.clients.delete.mutationOptions(),
+  },
+};
+```
+
+Prefer those wrappers in UI code. They centralize query option shapes and make invalidation easier.
+
+## Server Prefetch
+
+Server layouts/pages can prefetch queries and hydrate the client:
+
+```tsx
+const queryClient = getServerQueryClient();
+
+await queryClient.prefetchQuery({
+  queryKey: activeOrganizationQueryKey(organizationSlug),
+  queryFn: () => organization,
+});
+
+return (
+  <HydrationBoundary state={dehydrate(queryClient)}>
+    {children}
+  </HydrationBoundary>
+);
+```
+
+The query client defaults are:
+
+```ts
+queries: {
+  staleTime: 60 * 1000,
+  retry: false,
+}
+```
+
+Do not add aggressive client refetching unless the screen actually needs near-real-time data.
+
+## Cache Invalidation
+
+Client mutations should invalidate the smallest useful query key:
+
+```ts
+await queryClient.invalidateQueries({
+  queryKey: orpc.clients.list.key(),
+});
+```
+
+Organization/auth data uses explicit query keys:
+
+```ts
+export const organizationListQueryKey = ["user", "organizations"] as const;
+export const fullOrganizationQueryKey = (id: string) =>
+  ["fullOrganization", id] as const;
+```
+
+Server Component caches use Next cache tags in focused helpers:
+
+```ts
+export function revalidateConfigurations(organizationId: string): void {
+  revalidateTag(`configurations-${organizationId}`, { expire: 0 });
+}
+```
+
+After a mutation, invalidate:
+
+- The list query that would show the row.
+- The detail query when the current row changed.
+- Related stats/dashboard queries when counts or totals changed.
+- Activity queries when an activity event was written.
+
+## Error Semantics
+
+Use `ORPCError` codes deliberately:
+
+| Code | Use for |
+| --- | --- |
+| `UNAUTHORIZED` | No session. Usually thrown by `protectedProcedure`. |
+| `FORBIDDEN` | Signed in but not allowed: no org, no membership, wrong role, missing permission. |
+| `NOT_FOUND` | The scoped record does not exist. |
+| `BAD_REQUEST` | Invalid state or invalid request after schema parsing. |
+| `CONFLICT` | Duplicate business value or conflicting state. |
+| `INTERNAL_SERVER_ERROR` | Unexpected failure after expected cases are handled. |
+
+For tenant-owned detail reads, prefer `NOT_FOUND` after a scoped lookup fails. Do not reveal whether
+the id exists in another organization.
+
+## Security Checklist
+
+Before adding or changing a data-access path:
+
+- Does the procedure use the narrowest correct gate?
+- Does every tenant-owned query include `context.organizationId`?
+- Does the mutation call `requirePermission()` or an equivalent helper?
+- Are input and output schemas attached?
+- Are soft-deleted rows excluded by default?
+- Are sort fields mapped to known columns?
+- Are multi-table writes wrapped in a transaction?
+- Is the operation idempotent if it can be retried?
+- Are storage keys or provider ids checked against organization ownership before use?
+- Are cache invalidations scoped to affected queries?
+
+## Related Context
+
+- Database guide: `docs/architecture/database`
+- Auth guide: `docs/architecture/auth`
+- Payments guide: `docs/architecture/payments`
+- API gates: `packages/api/orpc/procedures.ts`
+- Studio schemas: `packages/api/modules/studio/schemas`
+- Transactions: `packages/api/modules/studio/lib/transactions.ts`
+- Web query helpers: `apps/web/modules/saas/studio/lib/api.ts`
