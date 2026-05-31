@@ -2,6 +2,7 @@
 	"title": "API Surfaces",
 	"pages": [
 		"index",
-		"bookings"
+		"bookings",
+		"shoots"
 	]
 }
