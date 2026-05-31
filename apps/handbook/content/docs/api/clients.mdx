@@ -1,0 +1,178 @@
+---
+title: Clients API
+description: Client/contact CRUD, duplicate constraints, booking participation, stats, and safe-change notes.
+---
+
+## Ownership
+
+Clients are studio customer/contact records. Bookings reference clients through participants, so
+client identity and duplicate behavior directly affect booking creation, booking detail, stats, and
+search/reference workflows.
+
+| Area | Source |
+| --- | --- |
+| Router | `packages/api/modules/clients/router.ts` |
+| Procedures | `packages/api/modules/clients/procedures/*.ts` |
+| Contract schemas | `packages/api/modules/studio/schemas/client.ts` |
+| DB table | `packages/database/drizzle/schema/studio.ts` |
+| Booking participant usage | `packages/api/modules/bookings/procedures/*participant*.ts` |
+| Frontend API helpers | `apps/web/modules/saas/studio/lib/api.ts` |
+| Table export types | `apps/web/modules/saas/shared/lib/table-export/definitions.ts` |
+
+## Database Shape
+
+| Table | Owns | Notes |
+| --- | --- | --- |
+| `clients` | Contact fields, metadata, audit columns, soft delete. | Tenant-scoped by `organizationId`. |
+| `booking_participants` | Links clients to bookings with a role. | Cascades if client is physically deleted. |
+| `bookings` | Used for client detail/stats counts through participants. | Soft-deleted bookings excluded from counts. |
+
+Important indexes:
+
+| Index | Purpose |
+| --- | --- |
+| `clients_organization_idx` | Tenant filtering. |
+| `clients_org_phone_idx` | Unique active phone per organization when phone is present. |
+| `clients_org_email_idx` | Unique active email per organization when email is present. |
+
+Soft-deleted clients release the unique email/phone constraints because both unique indexes filter on
+`deleted_at IS NULL`.
+
+## API Operations
+
+All client procedures use `studioProtectedProcedure` and active organization scope.
+
+| Operation | Method/path | Input schema | Output schema | Permission | Notes |
+| --- | --- | --- | --- | --- | --- |
+| `clients.list` | `GET /clients` | `listClientsInputSchema` | `listClientsOutputSchema` | `client:list` | Paginated list with optional search/sort. |
+| `clients.get` | `GET /clients/{id}` | `getClientInputSchema` | `getClientOutputSchema` | `client:read` | Detail with booking counts. |
+| `clients.create` | `POST /clients` | `createClientInputSchema` | `createClientOutputSchema` | `client:create` | Creates one active client after duplicate check. |
+| `clients.update` | `PUT /clients/{id}` | `updateClientInputSchema` | `updateClientOutputSchema` | `client:update` | Updates contact fields after duplicate check. |
+| `clients.delete` | `DELETE /clients/{id}` | `deleteClientInputSchema` | `deleteClientOutputSchema` | `client:delete` | Soft delete. |
+| `clients.stats` | `GET /clients/stats` | `getClientStatsInputSchema` | `getClientStatsOutputSchema` | `client:list` | Aggregate client/booking participation counts. |
+
+## Read Contracts
+
+`list` accepts:
+
+- `search` over client `name`
+- pagination
+- sorting by `name`, `email`, `createdAt`, `updatedAt`
+- `includeDeleted`
+
+`list` returns base client fields:
+
+- identity/contact fields
+- `metadata`
+- audit fields
+- `deletedAt`, `deletedBy`
+
+`get` returns the base client plus:
+
+- `bookingsCount`: distinct non-deleted bookings where client is a participant
+- `activeBookingsCount`: distinct non-deleted bookings where status is not `completed` or `cancelled`
+
+`stats` returns:
+
+- `totalClients`: active clients
+- `activeClients`: clients linked to at least one non-deleted booking
+- `newClientsThisMonth`: active clients created since UTC month start
+- `clientsWithActiveBookings`: clients linked to non-deleted bookings whose status is not `completed` or `cancelled`
+
+## Create Contract
+
+Required fields:
+
+- `name`
+- `phoneNumber`
+- `alternatePhone`
+
+Optional fields:
+
+- `email`
+- `address`
+- `metadata`
+
+Create behavior:
+
+- checks duplicate active email and phone number inside the organization
+- stores absent optional fields as `null`
+- writes `createdBy`
+- tracks non-blocking `created` activity
+
+If duplicate email or phone exists, API returns `CONFLICT` with a field-specific message.
+
+## Update Contract
+
+Updatable fields:
+
+- `name`
+- `email`
+- `phoneNumber`
+- `alternatePhone`
+- `address`
+- `metadata`
+
+Update behavior:
+
+- verifies client belongs to active organization
+- checks duplicate active email/phone in the organization, excluding the current client
+- updates only provided fields
+- writes `updatedAt` and `updatedBy`
+- tracks field changes for `name`, `email`, `phoneNumber`, and `address`
+
+`alternatePhone` and `metadata` updates are not currently included in field-change activity tracking.
+
+## Delete Contract
+
+`delete` soft-deletes the client by setting:
+
+- `deletedAt`
+- `deletedBy`
+- `updatedAt`
+- `updatedBy`
+
+It rejects already-deleted clients. It does not remove booking participant rows. Booking/client joins
+that explicitly filter deleted clients may hide the client, while participant history remains in the
+database.
+
+## Booking Relationship
+
+Bookings link to clients through `booking_participants`, not a direct `clientId` column.
+
+Client effects in booking flows:
+
+- booking create validates every participant client exists in the active organization and is not deleted
+- participant add validates client exists in the active organization and is not deleted
+- booking detail and participant list join clients for contact display
+- client detail/stats count bookings through participant rows
+
+## Related Surfaces
+
+| Surface | Relationship |
+| --- | --- |
+| Bookings | Clients become participants with roles. |
+| Global search | Client name/contact data can appear in search surfaces. |
+| Table exports | Client type is consumed by shared export definitions. |
+| Activities | Create, update field changes, and delete are tracked non-blockingly. |
+| Settings | No configurable client status exists today. |
+
+## Change Checklist
+
+When changing client behavior:
+
+- update `packages/api/modules/studio/schemas/client.ts`
+- update procedure route metadata and duplicate handling
+- update DB schema/migration if contact fields, indexes, or soft-delete behavior change
+- update booking participant flows if client identity or deletion behavior changes
+- update frontend API helpers, forms, tables, search, and exports when shapes change
+- update this page in the same PR
+
+## Known Gaps
+
+- `get` includes deleted clients because it does not filter `deletedAt`.
+- `update` allows updating a deleted client because it does not reject `deletedAt`.
+- `alternatePhone` and `metadata` changes are not tracked in activity field changes.
+- `list` search only checks `name`, not email or phone.
+- There is no `listMinimal` endpoint even though the schema defines `clientMinimalSchema`.
+

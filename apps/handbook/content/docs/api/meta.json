@@ -5,6 +5,7 @@
 		"bookings",
 		"shoots",
 		"deliverables",
-		"tasks"
+		"tasks",
+		"clients"
 	]
 }
