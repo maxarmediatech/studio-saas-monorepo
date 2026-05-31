@@ -28,6 +28,7 @@
 		"activities",
 		"organizations",
 		"users",
-		"admin"
+		"admin",
+		"public-messaging"
 	]
 }

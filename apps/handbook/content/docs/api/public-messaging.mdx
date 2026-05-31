@@ -1,0 +1,71 @@
+---
+title: Public Messaging API
+description: Public contact form and newsletter subscription email surfaces.
+---
+
+## Ownership
+
+Public Messaging covers unauthenticated marketing/public communication endpoints: contact form
+submission and newsletter signup.
+
+| Area | Source |
+| --- | --- |
+| Contact router | `packages/api/modules/contact/router.ts` |
+| Contact procedure | `packages/api/modules/contact/procedures/submit-contact-form.ts` |
+| Contact schema | `packages/api/modules/contact/types.ts` |
+| Newsletter router | `packages/api/modules/newsletter/router.ts` |
+| Newsletter procedure | `packages/api/modules/newsletter/procedures/subscribe-to-newsletter.ts` |
+| Mail service | `@repo/mail` |
+
+## API Operations
+
+Both endpoints use `publicProcedure` and `localeMiddleware`.
+
+| Operation | Method/path | Input | Output | Notes |
+| --- | --- | --- | --- | --- |
+| `contact.submit` | `POST /contact` | `contactFormSchema` | void | Sends contact email to configured recipient. |
+| `newsletter.subscribe` | `POST /newsletter` | inline email schema | void | Sends newsletter signup email/template to subscriber. |
+
+## Contact Contract
+
+Input:
+
+- `email`: valid email
+- `name`: string, min 3
+- `message`: string, min 10
+
+Behavior:
+
+- sends email to `config.contactForm.to`
+- uses `config.contactForm.subject`
+- sets `replyTo` to submitted email
+- email text includes submitted name, email, and message
+- logs `contact.email.send_failed` and throws `INTERNAL_SERVER_ERROR` on send failure
+
+## Newsletter Contract
+
+Input:
+
+- `email`: valid email
+
+Behavior:
+
+- currently does not persist to CRM/database
+- sends `newsletterSignup` template to submitted email
+- logs `newsletter.email.send_failed` and throws `INTERNAL_SERVER_ERROR` on send failure
+
+## Change Checklist
+
+When changing public messaging:
+
+- update contact/newsletter input schemas
+- update mail templates/config usage
+- add persistence/CRM documentation if newsletter storage is implemented
+- update public forms and error states
+- update this page in the same PR
+
+## Known Gaps
+
+- No database persistence for contact submissions or newsletter signups.
+- No rate limit/captcha is visible in these procedures.
+- Outputs are implicit/void rather than explicit success payloads.
