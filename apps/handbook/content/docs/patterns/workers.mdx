@@ -1,0 +1,32 @@
+---
+title: Workers
+description: Background job ownership, retry expectations, and operational patterns.
+---
+
+## Purpose
+
+Workers handle async provider integrations and scheduled product work outside request/response paths.
+
+## Key Locations
+
+- `services/calendar-worker`
+- `services/sms-worker`
+- `services/whatsapp-worker`
+- `services/whatsapp-bridge`
+- provider/domain packages under `packages/*`
+
+## Worker Page Contract
+
+Each worker should document:
+
+- trigger source
+- queue/topic or schedule
+- idempotency key
+- retry policy
+- dead-letter/manual recovery path
+- logs/metrics to inspect
+- local test command
+
+## Change Safety
+
+Worker changes need targeted tests when feasible and explicit notes about duplicate delivery, partial provider failure, and retry behavior.

@@ -1,0 +1,25 @@
+---
+title: Database
+description: Data model, migrations, schema ownership, and safe change rules.
+---
+
+## Purpose
+
+The database layer owns schema definitions, migrations, typed queries, and data validation boundaries.
+
+## Key Locations
+
+- `packages/database`
+- root scripts: `pnpm db:generate`, `pnpm db:migrate`, `pnpm db:push`, `pnpm db:studio`
+- existing ADR: `docs/adr/0002-database-orm-drizzle.md`
+
+## Change Safety
+
+- Prefer additive migrations for production data.
+- Pair schema changes with type-check and targeted feature tests.
+- Document backfills, destructive migrations, and rollback plans before merge.
+- Keep generated schema docs here later, sourced from Drizzle/migrations.
+
+## Open Handbook Work
+
+Add entity ownership, relationship diagrams, retention rules, and common query patterns after reading the live schema.

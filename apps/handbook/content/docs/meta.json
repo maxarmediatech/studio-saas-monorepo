@@ -1,0 +1,10 @@
+{
+	"title": "Handbook",
+	"pages": [
+		"index",
+		"architecture",
+		"patterns",
+		"operations",
+		"decisions"
+	]
+}

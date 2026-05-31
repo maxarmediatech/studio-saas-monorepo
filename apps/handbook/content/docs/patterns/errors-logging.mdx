@@ -1,0 +1,23 @@
+---
+title: Errors And Logging
+description: How errors are shaped, logged, surfaced, and debugged.
+---
+
+## Purpose
+
+Error and logging conventions make failures searchable, actionable, and safe to expose.
+
+## Key Locations
+
+- `packages/logs`
+- `apps/web/modules/shared/lib/api-errors.ts`
+- `apps/web/modules/shared/lib/env-error-response.ts`
+
+## Expected Coverage
+
+- user-facing error copy rules
+- structured log fields
+- provider failure logging
+- request correlation
+- sensitive data redaction
+- escalation paths

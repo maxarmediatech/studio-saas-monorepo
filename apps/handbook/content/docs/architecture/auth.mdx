@@ -1,0 +1,28 @@
+---
+title: Auth
+description: Identity, sessions, organizations, teams, roles, and permissions.
+---
+
+## Purpose
+
+Auth defines how users enter the system, how sessions are resolved, and how product permissions are enforced across organizations and teams.
+
+## Key Locations
+
+- `packages/auth`
+- `apps/web/app/auth`
+- auth-related server utilities inside `apps/web/modules`
+- existing ADR: `docs/adr/0004-authentication-strategy.md`
+
+## Required Coverage
+
+- login and signup flow
+- session lifecycle
+- organization/team membership model
+- role and permission checks
+- admin access
+- auth failure modes and recovery
+
+## Change Safety
+
+Any auth change should include the exact route/API surface affected and the checks that prove unauthorized users cannot access protected data.

@@ -1,0 +1,35 @@
+---
+title: Start Here
+description: The entry point for Studio SaaS engineering knowledge transfer.
+---
+
+## Purpose
+
+This handbook is the internal source of truth for how the Studio SaaS monorepo works. It should explain the system at the level a new engineer, reviewer, or operator needs before changing production behavior.
+
+## Ownership Rules
+
+- Keep implementation facts close to source links.
+- Prefer "how to change safely" over abstract descriptions.
+- Add failure modes for auth, payments, database, workers, and deploy flows.
+- Move API endpoint reference to Mintlify later only if API docs become their own product surface.
+
+## First Reading Path
+
+1. [System Overview](/docs/architecture/system-overview)
+2. [Repository Map](/docs/architecture/repository-map)
+3. [Database](/docs/architecture/database)
+4. [Auth](/docs/architecture/auth)
+5. [Workers](/docs/patterns/workers)
+6. [Local Development](/docs/operations/local-development)
+
+## Content Contract
+
+Every durable page should answer:
+
+- what this area owns
+- key source files and packages
+- common happy path
+- known failure modes
+- how to change it safely
+- what tests or checks prove the change

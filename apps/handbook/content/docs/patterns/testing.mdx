@@ -1,0 +1,20 @@
+---
+title: Testing
+description: Which checks prove a change across app, package, and worker code.
+---
+
+## Standard Gates
+
+- `pnpm lint`
+- `pnpm check`
+- `pnpm typecheck`
+- package-specific unit or smoke tests
+- `cd apps/web && pnpm e2e` for user-facing route/flow changes when feasible
+
+## Regression Rule
+
+For bugs, add a regression test when the behavior has a stable test boundary.
+
+## Handbook Work
+
+Add package-specific test commands and known slow/flaky checks as they are confirmed.

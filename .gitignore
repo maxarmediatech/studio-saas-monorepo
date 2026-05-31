@@ -45,6 +45,7 @@ apps/web/app_legacy/globals.css
 # other 
 .react-email/
 .content-collections/
+apps/handbook/.source/
 
 # Continuous Claude cache (local only)
 .claude/cache/

@@ -1,0 +1,25 @@
+---
+title: Payments
+description: Billing provider boundaries, webhook expectations, and payment failure handling.
+---
+
+## Purpose
+
+Payments owns provider integration, billing state transitions, webhook handling, invoice/receipt behavior, and payment-related operational recovery.
+
+## Key Locations
+
+- `packages/payments`
+- `apps/web/app/api/invoices`
+- `apps/web/app/api/receipts`
+- scheduled invoice route: `apps/web/app/api/cron/invoices/mark-overdue`
+
+## Provider Notes
+
+The current architecture supports multiple payment provider integrations. Keep provider-specific code behind package boundaries where possible.
+
+## Change Safety
+
+- Verify idempotency for webhooks and retries.
+- Document provider dashboard actions needed for production changes.
+- Test invoice and receipt rendering when billing data shape changes.

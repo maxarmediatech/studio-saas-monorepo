@@ -1,0 +1,21 @@
+---
+title: Data Access
+description: How application code reads, writes, validates, and scopes data.
+---
+
+## Purpose
+
+Data access patterns keep authorization, validation, transactions, and query ownership predictable.
+
+## Expected Coverage
+
+- where queries live
+- how organization/team scope is enforced
+- transaction rules
+- validation schemas
+- pagination/filtering conventions
+- cache invalidation expectations
+
+## Change Safety
+
+When changing shared data access, list all routes/workers that consume the function and run the narrowest tests that cover each affected path.

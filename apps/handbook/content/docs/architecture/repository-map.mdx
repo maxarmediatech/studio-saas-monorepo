@@ -1,0 +1,29 @@
+---
+title: Repository Map
+description: Where things live and when to touch each area.
+---
+
+## Workspace Root
+
+- `apps/`: deployable applications.
+- `packages/`: shared libraries imported with the `@repo/*` namespace.
+- `services/`: long-running or scheduled workers.
+- `tooling/`: shared build and development tooling.
+- `config/`: shared app configuration.
+
+## Current Apps
+
+- `apps/web`: main Studio SaaS web application.
+- `apps/marketing`: marketing surface.
+- `apps/handbook`: internal engineering handbook.
+
+## Current Services
+
+- `services/calendar-worker`
+- `services/sms-worker`
+- `services/whatsapp-bridge`
+- `services/whatsapp-worker`
+
+## Rule Of Thumb
+
+Put reusable domain logic in `packages/*` when more than one app/service needs it. Keep app-only presentation and route glue inside the app that owns the route.

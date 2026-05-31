@@ -1,0 +1,38 @@
+@import "tailwindcss";
+@import "fumadocs-ui/css/neutral.css";
+@import "fumadocs-ui/css/preset.css";
+
+@source "../app/**/*.{ts,tsx,mdx}";
+@source "../components/**/*.{ts,tsx}";
+@source "../content/**/*.{md,mdx}";
+@source "../lib/**/*.{ts,tsx}";
+
+:root {
+	--font-sans: var(--font-handbook-sans);
+	--font-mono: var(--font-handbook-mono);
+	--handbook-ink: oklch(0.18 0.035 248);
+	--handbook-paper: oklch(0.985 0.012 92);
+	--handbook-line: oklch(0.82 0.025 248);
+	--handbook-accent: oklch(0.58 0.18 148);
+}
+
+.dark {
+	--handbook-ink: oklch(0.94 0.01 248);
+	--handbook-paper: oklch(0.16 0.025 248);
+	--handbook-line: oklch(0.32 0.03 248);
+	--handbook-accent: oklch(0.73 0.17 148);
+}
+
+body {
+	background:
+		linear-gradient(135deg, color-mix(in oklch, var(--handbook-accent), transparent 88%) 0%, transparent 34%),
+		radial-gradient(circle at top right, color-mix(in oklch, var(--handbook-line), transparent 60%) 0 1px, transparent 1px),
+		var(--handbook-paper);
+	background-size: auto, 18px 18px, auto;
+	color: var(--handbook-ink);
+}
+
+.handbook-mark {
+	background: var(--handbook-ink);
+	color: var(--handbook-paper);
+}

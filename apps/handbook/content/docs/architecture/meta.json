@@ -1,0 +1,10 @@
+{
+	"title": "Architecture",
+	"pages": [
+		"system-overview",
+		"repository-map",
+		"database",
+		"auth",
+		"payments"
+	]
+}

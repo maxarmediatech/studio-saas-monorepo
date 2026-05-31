@@ -1,0 +1,30 @@
+---
+title: Local Development
+description: Setup path and daily commands for running the workspace.
+---
+
+## First Run
+
+```bash
+pnpm install
+cp .env.example .env.local
+pnpm db:migrate
+pnpm dev
+```
+
+## Handbook App
+
+```bash
+pnpm handbook:dev
+```
+
+The handbook runs on port `3010` by default.
+
+## Common Commands
+
+```bash
+pnpm lint
+pnpm check
+pnpm typecheck
+pnpm build
+```

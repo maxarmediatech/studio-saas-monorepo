@@ -1,0 +1,21 @@
+---
+title: System Overview
+description: High-level map of apps, packages, services, and runtime responsibilities.
+---
+
+## Runtime Shape
+
+Studio SaaS is a pnpm/Turborepo workspace. The main product app lives in `apps/web`, shared capabilities live in `packages/*`, and async workers live in `services/*`.
+
+## Primary Layers
+
+- `apps/web`: Next.js application, App Router routes, product UI, API routes, and server-side orchestration.
+- `packages/database`: Drizzle schema, migrations, typed database access, and database utilities.
+- `packages/auth`: authentication/session logic and authorization helpers.
+- `packages/payments`: payment provider integration boundary.
+- `services/*`: background worker processes and provider bridges.
+- `tooling/*`: shared TypeScript, Tailwind, and operational scripts.
+
+## Change Safety
+
+Architectural changes should update this handbook when they change an ownership boundary, runtime dependency, deployment path, or incident response flow.
