@@ -1,21 +1,326 @@
 ---
 title: System Overview
-description: High-level map of apps, packages, services, and runtime responsibilities.
+description: How requests, apps, packages, database, auth, payments, and workers fit together.
 ---
 
-## Runtime Shape
+## Mental Model
 
-Studio SaaS is a pnpm/Turborepo workspace. The main product app lives in `apps/web`, shared capabilities live in `packages/*`, and async workers live in `services/*`.
+Studio SaaS is a pnpm + Turborepo monorepo with three runtime lanes:
 
-## Primary Layers
+- user-facing apps in `apps/*`
+- shared product/domain packages in `packages/*`
+- polling workers and provider bridges in `services/*`
 
-- `apps/web`: Next.js application, App Router routes, product UI, API routes, and server-side orchestration.
-- `packages/database`: Drizzle schema, migrations, typed database access, and database utilities.
-- `packages/auth`: authentication/session logic and authorization helpers.
-- `packages/payments`: payment provider integration boundary.
-- `services/*`: background worker processes and provider bridges.
-- `tooling/*`: shared TypeScript, Tailwind, and operational scripts.
+The main product is `apps/web`. It renders the authenticated studio UI, hosts API route handlers, and composes shared packages. Most durable business rules should live in `packages/*`, not inside route components, so workers and APIs can reuse them.
 
-## Change Safety
+```txt
+Browser
+  -> apps/web app router pages and layouts
+  -> apps/web app/api route handlers
+  -> packages/api Hono + oRPC routers
+  -> packages/auth, packages/database, packages/payments, packages/*
+  -> PostgreSQL and external providers
 
-Architectural changes should update this handbook when they change an ownership boundary, runtime dependency, deployment path, or incident response flow.
+services/*
+  -> poll database-backed queues/outboxes
+  -> call provider packages
+  -> update database state
+```
+
+## Deployed Surfaces
+
+| Surface | Path | Runtime | Role |
+| --- | --- | --- | --- |
+| Product app | `apps/web` | Next.js 16 App Router | SaaS app, auth pages, studio workspace, API entrypoints |
+| Marketing site | `apps/marketing` | Astro | Public marketing surface |
+| Handbook | `apps/handbook` | Next.js + Fumadocs | Internal engineering knowledge base |
+| Calendar worker | `services/calendar-worker` | Node worker | Google Calendar sync jobs |
+| SMS worker | `services/sms-worker` | Node worker | SMS outbox delivery |
+| WhatsApp worker | `services/whatsapp-worker` | Node worker | WhatsApp outbox delivery |
+| WhatsApp bridge | `services/whatsapp-bridge` | Hono server | Placeholder bridge API for WhatsApp sessions |
+
+## Product App Shape
+
+`apps/web/app` is route-only glue. Feature code lives mostly under `apps/web/modules`.
+
+Important route groups:
+
+- `apps/web/app/auth/*`: login, signup, reset, verify, complete, auth error pages
+- `apps/web/app/(saas)/app/*`: authenticated account/app shell
+- `apps/web/app/(saas)/app/[organizationSlug]/*`: organization-scoped studio workspace
+- `apps/web/app/(saas)/admin/*`: platform admin views
+- `apps/web/app/api/[[...rest]]/route.ts`: catch-all API adapter for the Hono app from `@repo/api`
+- `apps/web/app/api/files/*`, `uploads/*`, `table-export`, invoice/receipt PDF routes: web-owned route handlers that do not go through the oRPC catch-all
+
+Next.js route groups like `(saas)` organize layouts without adding URL segments. The codebase uses this to keep authenticated app routes separate from public/auth routes while still serving URLs like `/app/[organizationSlug]`.
+
+The protected app layout is the first important gate:
+
+```tsx
+// apps/web/app/(saas)/app/layout.tsx
+const session = await getSession();
+
+if (!session) {
+	redirect("/auth/login");
+}
+
+const organizations = config.organizations.enable
+	? await getOrganizationList()
+	: [];
+
+if (billingEnabled && !hasSelectedPlan) {
+	redirect("/choose-plan");
+}
+```
+
+The organization layout is the second gate. It resolves the active organization, verifies access, prefetches data, and mounts the studio shell:
+
+```tsx
+// apps/web/app/(saas)/app/[organizationSlug]/layout.tsx
+const [session, organization] = await Promise.all([
+	getSession(),
+	getActiveOrganization(organizationSlug),
+]);
+
+if (!session) {
+	redirect("/auth/login");
+}
+
+if (!organization) {
+	return notFound();
+}
+
+const studioAccess = await resolveStudioAccess(organization, session);
+```
+
+## API Flow
+
+The main API entrypoint is a Next route handler that delegates to the Hono app exported from `@repo/api`.
+
+```ts
+// apps/web/app/api/[[...rest]]/route.ts
+import { app } from "@repo/api";
+import { handle } from "hono/vercel";
+
+const handler = handle(app);
+
+export const GET = handler;
+export const POST = handler;
+export const PUT = handler;
+export const PATCH = handler;
+export const DELETE = handler;
+export const OPTIONS = handler;
+```
+
+`packages/api/index.ts` builds one Hono app under `/api`. It handles:
+
+- Better Auth endpoints at `/api/auth/**`
+- OpenAPI schema at `/api/openapi`
+- Scalar API reference at `/api/docs`
+- WhatsApp webhooks at `/api/webhooks/whatsapp/:token`
+- payment webhooks at `/api/webhooks/payments`
+- Google Calendar connect/callback/status/disconnect routes
+- health check at `/api/health`
+- oRPC RPC/OpenAPI handlers for the product routers
+
+The oRPC router list is the best high-level index of product domains:
+
+```ts
+// packages/api/orpc/router.ts
+export const router = publicProcedure.prefix("/api").router({
+	admin: adminRouter,
+	newsletter: newsletterRouter,
+	contact: contactRouter,
+	organizations: organizationsRouter,
+	users: usersRouter,
+	payments: paymentsRouter,
+
+	configurations: configurationsRouter,
+	clients: clientsRouter,
+	crews: crewsRouter,
+	bookings: bookingsRouter,
+	shoots: shootsRouter,
+	tasks: tasksRouter,
+	deliverables: deliverablesRouter,
+	studioPayments: studioPaymentsRouter,
+	invoices: invoicesRouter,
+	receipts: receiptsRouter,
+	expenses: expensesRouter,
+	globalSearch: globalSearchRouter,
+
+	discussions: discussionsRouter,
+	checkins: checkinsRouter,
+	dashboard: dashboardRouter,
+	submissions: submissionsRouter,
+	myAssignments: myAssignmentsRouter,
+	yourWork: yourWorkRouter,
+	savedViews: savedViewsRouter,
+	recentVisits: recentVisitsRouter,
+	quickLinks: quickLinksRouter,
+	stickies: stickiesRouter,
+	activities: activitiesRouter,
+	notifications: notificationsRouter,
+});
+```
+
+## Auth And Tenant Scope
+
+Auth is provided by `better-auth` in `packages/auth`. The app uses Better Auth sessions, organization membership, invitations, roles, and database hooks.
+
+The most important server-side API guard is `studioProtectedProcedure`:
+
+```ts
+// packages/api/orpc/procedures.ts
+export const studioProtectedProcedure = protectedProcedure.use(
+	async ({ context, next }) => {
+		const organizationId = context.session.activeOrganizationId;
+
+		if (!organizationId) {
+			throw new ORPCError("FORBIDDEN", {
+				message: "No active organization. Please select an organization.",
+			});
+		}
+
+		const membership = await getOrganizationMembership(
+			organizationId,
+			context.user.id,
+		);
+
+		if (!membership) {
+			throw new ORPCError("FORBIDDEN", {
+				message: "Not a member of this organization",
+			});
+		}
+
+		return await next({
+			context: {
+				...context,
+				organizationId,
+				membership: {
+					id: membership.id,
+					role: membership.role,
+					organization: membership.organization,
+				},
+			},
+		});
+	},
+);
+```
+
+Use `studioProtectedProcedure` for studio-domain endpoints that must be scoped to the active organization. Use `adminProcedure` only for platform admin endpoints, where access is checked against `config.auth.platformAdminUserIds`.
+
+## Database Shape
+
+`packages/database` owns the primary Drizzle schema and client.
+
+```ts
+// packages/database/drizzle/client.ts
+const { DATABASE_URL: databaseUrl } = assertCoreEnv();
+
+export const db = drizzle(databaseUrl, {
+	schema,
+});
+```
+
+Schema modules are split by domain:
+
+- `auth.ts`: users, sessions, accounts, verifications, two-factor rows
+- `core.ts`: organizations, members, teams, invitations, roles, purchases, webhook events
+- `studio.ts`: configurations, clients, bookings, crews, shoots, tasks, deliverables, invoices, receipts, expenses, attachments, saved views, stickies, activities, notifications
+- `discussions.ts`: channels, discussions, messages, links
+- `checkins.ts`: check-in types, check-ins, comments, links
+- `integrations-google-calendar.ts`: Google Calendar connections, shoot calendar events, calendar sync jobs
+- `sms.ts`: SMS outbox
+- `@repo/whatsapp-db`: WhatsApp tables re-exported into the main schema for `db.query.*` access
+
+The important architectural point: async work is database-backed. Workers do not receive in-memory jobs from the web app. They poll tables like `calendarSyncJobs`, `smsOutbox`, and `waOutbox`.
+
+## Worker Flow
+
+Workers are separate packages under `services/*`. They read pending rows, claim or mark them for processing, call provider packages, then write success/failure state back to Postgres.
+
+Calendar worker pattern:
+
+```ts
+// services/calendar-worker/src/index.ts
+SELECT id FROM calendar_sync_jobs
+WHERE status = 'pending'
+ORDER BY created_at ASC
+LIMIT batchSize
+FOR UPDATE SKIP LOCKED
+```
+
+SMS worker pattern:
+
+```ts
+// services/sms-worker/src/worker.ts
+await tx
+	.update(smsOutbox)
+	.set({
+		status: "processing",
+		lockedAt: now,
+		lockedBy: workerId,
+		processingStartedAt: now,
+	})
+	.where(inArray(smsOutbox.id, pendingIds));
+```
+
+WhatsApp worker pattern:
+
+```ts
+// services/whatsapp-worker/src/index.ts
+const result = await provider.messaging.sendText({
+	to: recipient,
+	text: item.message.textBody,
+});
+```
+
+Worker pages should document retry behavior, stale lock recovery, idempotency, and provider failure modes. The high-level rule is: if a web route inserts into an outbox/job table, there should be a corresponding worker/runbook page.
+
+## Package Boundary Rules
+
+Use these defaults unless there is a strong reason not to:
+
+- `apps/web/app`: route files, layouts, route handlers, server entrypoints
+- `apps/web/modules`: app-only UI, hooks, app-specific server helpers
+- `packages/api`: API routers, oRPC procedures, webhook/API orchestration
+- `packages/auth`: session/auth provider configuration, org auth hooks, permissions
+- `packages/database`: schema, migrations, query helpers, Drizzle client
+- `packages/payments`: provider-specific billing logic and webhook handling
+- `packages/mail`, `packages/storage`, `packages/sms`, `packages/google-calendar`, `packages/whatsapp-*`: provider/domain boundaries shared by app and workers
+- `services/*`: polling loops and operational worker behavior
+
+If code is used by both `apps/web` and a worker, it should move into `packages/*`. If it only coordinates a route or page, keep it in the owning app.
+
+## Common Change Paths
+
+Add a new studio feature:
+
+1. Add/extend schema in `packages/database/drizzle/schema/studio.ts`.
+2. Add API procedures in `packages/api/modules/<domain>/router.ts`.
+3. Use `studioProtectedProcedure` for organization-scoped access.
+4. Add web UI in `apps/web/modules/saas/studio`.
+5. Wire route entry in `apps/web/app/(saas)/app/[organizationSlug]`.
+6. Add tests close to changed package/module.
+
+Add a provider-backed async flow:
+
+1. Add durable state table or reuse an outbox/job table.
+2. Keep provider API details in a provider package.
+3. Insert job/outbox rows from API/web code.
+4. Process rows from a `services/*` worker.
+5. Document retry, max attempts, stuck lock recovery, and manual repair.
+
+Add a public API surface:
+
+1. Add oRPC router/procedure in `packages/api/modules`.
+2. Confirm OpenAPI generation at `/api/openapi`.
+3. Decide whether it belongs in the internal handbook or future Mintlify API docs.
+
+## Next Pages To Read
+
+- [Repository Map](/docs/architecture/repository-map)
+- [Database](/docs/architecture/database)
+- [Auth](/docs/architecture/auth)
+- [Payments](/docs/architecture/payments)
+- [Workers](/docs/patterns/workers)
