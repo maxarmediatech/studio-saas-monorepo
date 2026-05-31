@@ -1,0 +1,237 @@
+---
+title: Crews API
+description: Crew profile CRUD, app access, freelancer/internal roles, specializations, availability, and assignment usage.
+---
+
+## Ownership
+
+Crews are people who can be assigned to shoots, tasks, and deliverables. A crew profile can be a
+freelancer with no app account, or an internal organization member linked to a user account. Crew
+records drive assignment lists, submission permissions, calendar invites, SMS assignment messages,
+and availability checks.
+
+| Area | Source |
+| --- | --- |
+| Router | `packages/api/modules/crews/router.ts` |
+| Procedures | `packages/api/modules/crews/procedures/*.ts` |
+| Contract schemas | `packages/api/modules/studio/schemas/crew.ts` |
+| DB tables | `packages/database/drizzle/schema/studio.ts` |
+| Presentation helpers | `packages/api/modules/crews/lib/crew-presentation.ts` |
+| Assignment consumers | `packages/api/modules/shoots`, `tasks`, `deliverables` |
+| Frontend API helpers | `apps/web/modules/saas/studio/lib/api.ts` |
+| Table export types | `apps/web/modules/saas/shared/lib/table-export/definitions.ts` |
+
+## Database Shape
+
+| Table | Owns | Notes |
+| --- | --- | --- |
+| `crews` | Crew profile, optional linked user, worker type, status, daily rate, metadata, audit columns, soft delete. | Tenant-scoped by `organizationId`. |
+| `crew_availability` | Per-crew date availability override. | Unique by `crewId`, `date`. |
+| `crew_feedback_summary` | Assignment/completion/rating/earnings summary. | One row per crew; not currently exposed by crew API. |
+| `shoot_assignments` | Shoot assignment relation. | Drives availability and shoot crew lists. |
+| `task_assignments` | Task assignment relation. | Drives task work/submission permission. |
+| `deliverable_assignments` | Deliverable assignment relation. | Drives deliverable work/submission permission. |
+| `members` / `users` | App access and organization role display for linked internal crew. | Joined in `list` and `get`. |
+
+Important indexes:
+
+| Index | Purpose |
+| --- | --- |
+| `crews_organization_idx` | Tenant filtering. |
+| `crews_user_idx` | Linked app user lookup. |
+| `crews_worker_type_idx` | Worker-type filtering. |
+| `crews_specializations_gin_idx` | Metadata specialization filtering. |
+| `crews_org_user_active_unique` | One active crew profile per linked user per organization. |
+| `crews_org_phone_idx` | Unique active phone per organization when phone is present. |
+| `crew_availability_crew_date_idx` | One availability row per crew/date. |
+| `crew_availability_date_idx` | Date-range availability lookup. |
+
+Soft-deleted crew release user/phone uniqueness because unique indexes filter on `deleted_at IS NULL`.
+
+## API Operations
+
+All crew procedures use `studioProtectedProcedure` and active organization scope.
+
+| Operation | Method/path | Input schema | Output schema | Permission | Notes |
+| --- | --- | --- | --- | --- | --- |
+| `crews.list` | `GET /crews` | `listCrewsInputSchema` | `listCrewsOutputSchema` | `crew:list` | Paginated list with filters and derived role/app-access fields. |
+| `crews.get` | `GET /crews/{id}` | `getCrewInputSchema` | `getCrewOutputSchema` | `crew:read` | Detail with active/completed assignment counts. |
+| `crews.create` | `POST /crews` | `createCrewInputSchema` | `createCrewOutputSchema` | `crew:create` | Creates freelancer crew profile. |
+| `crews.createFromMember` | `POST /crews/from-member` | `createCrewFromMemberInputSchema` | `createCrewFromMemberOutputSchema` | `crew:create` | Creates internal crew profile linked to an org member/user. |
+| `crews.update` | `PUT /crews/{id}` | `updateCrewInputSchema` | `updateCrewOutputSchema` | `crew:update` | Updates profile fields and specializations. |
+| `crews.delete` | `DELETE /crews/{id}` | `deleteCrewInputSchema` | `deleteCrewOutputSchema` | `crew:delete` | Soft delete. |
+| `crews.availability` | `GET /crews/availability` | `getCrewAvailabilityInputSchema` | `getCrewAvailabilityOutputSchema` | `crew:list` | Date matrix with availability override and shoot-assignment flag. |
+
+## Read Contracts
+
+`list` accepts:
+
+- `status` as string, array, or comma-separated values
+- `specializations` as string, array, or comma-separated values
+- `workerType`: `internal`, `freelancer`, array, or comma-separated values
+- `hasAppAccess`: `true`, `false`, array, or comma-separated values
+- `search` over crew `name`
+- pagination, sorting, and `includeDeleted`
+
+`list` returns each crew plus derived presentation fields:
+
+- `workerType`, normalized to `internal` or `freelancer`
+- `hasAppAccess`, based on matching organization membership
+- `memberRoles`, normalized from membership role
+- `displayRoles`, `["freelancer"]`, member roles, or `["internal"]`
+- `isFreelancer`
+- `specializations`, extracted from `metadata.specializations`
+
+`get` returns the same base/presentation fields plus:
+
+- `activeShootAssignments`: non-deleted shoots not `completed` or `cancelled`
+- `activeTaskAssignments`: non-deleted tasks whose workflow is not `approved`
+- `activeDeliverableAssignments`: non-deleted deliverables whose workflow is not `approved`
+- `totalCompletedAssignments`: approved tasks plus approved deliverables
+
+`availability` accepts:
+
+- optional `crewIds`
+- required `startDate`
+- required `endDate`
+
+It returns one row per crew and one availability entry per date. Each date defaults to available
+unless `crew_availability` says otherwise, and includes `hasShootAssignment` when the crew is
+assigned to a non-deleted shoot on that date.
+
+## Create Contract
+
+`create` creates a freelancer crew profile.
+
+Required fields:
+
+- `name`
+- `phoneNumber`
+
+Optional fields:
+
+- `email`
+- `specializations`
+- `status`, defaults to `active`
+- `dailyRate`
+- `metadata`
+
+Create behavior:
+
+- rejects duplicate active phone number inside the organization
+- sets `workerType` to `freelancer`
+- stores specializations in `metadata.specializations`
+- writes `createdBy`
+- tracks non-blocking `created` activity
+
+`createFromMember` creates an internal crew profile linked to an organization member.
+
+Required fields:
+
+- `memberId`
+
+Optional fields:
+
+- `dailyRate`
+- `specializations`
+
+Create-from-member behavior:
+
+- verifies member belongs to the active organization
+- rejects if an active crew profile already exists for the member's user
+- copies user name/email
+- sets `userId` to member user id
+- sets `workerType` to `internal`
+- sets `status` to `active`
+- stores `autoCreatedFromMember: true` plus specializations in metadata
+
+## Update Contract
+
+Updatable fields:
+
+- `name`
+- `email`
+- `phoneNumber`
+- `status`
+- `dailyRate`
+- `metadata`
+- `specializations`
+
+Update behavior:
+
+- verifies crew belongs to active organization
+- rejects duplicate active phone number in the organization, excluding current crew
+- updates only provided fields
+- merges specializations into metadata through presentation helper
+- tracks field changes for `name`, `email`, `phoneNumber`, `status`, and `dailyRate`
+
+`metadata` and `specializations` changes are not directly included in activity field-change tracking.
+
+## Delete Contract
+
+`delete` soft-deletes the crew by setting:
+
+- `deletedAt`
+- `deletedBy`
+- `updatedAt`
+- `updatedBy`
+
+It rejects already-deleted crew. It does not remove existing shoot/task/deliverable assignments.
+Assignment queries usually filter deleted crew out of display summaries, but assignment rows remain.
+
+## Assignment Relationship
+
+Crew IDs are consumed by:
+
+- `shoots.assign` / `shoots.unassign`
+- `tasks.assign` / `tasks.unassign`
+- `deliverables.assign` / `deliverables.unassign`
+- booking create embedded shoot/deliverable assignment helpers
+- `myAssignments` and submission permissions through linked crew/user
+
+Linked `userId` matters:
+
+- only linked crew users can submit task/deliverable work
+- linked crew users can be auto-subscribed to assigned work
+- linked crew with Google Calendar can receive Google calendar jobs for shoots
+- unlinked crew with email can receive ICS invites for shoots
+
+Phone number matters:
+
+- shoot assignment can queue SMS if `MSG91_FLOW_CREW_ASSIGNMENT` is configured
+- active phone is unique per organization
+
+## Related Surfaces
+
+| Surface | Relationship |
+| --- | --- |
+| Shoots | Assignments, availability, SMS, calendar jobs. |
+| Tasks | Assignments and submission permission. |
+| Deliverables | Assignments and submission permission. |
+| Members/users | Internal crew app access and display roles. |
+| Calendar worker | Uses linked user/email from crew for shoot calendar delivery. |
+| SMS worker | Uses crew phone for assignment messages. |
+| Settings | Crew status values are configurable. |
+| Activities | Create, update field changes, delete, assign, unassign are tracked non-blockingly. |
+
+## Change Checklist
+
+When changing crew behavior:
+
+- update `packages/api/modules/studio/schemas/crew.ts`
+- update presentation helper if roles, app access, worker type, or specializations change
+- update DB schema/migration if fields, indexes, metadata, or delete behavior change
+- update assignment procedures if crew identity/app-access assumptions change
+- update availability logic if shoot assignment or date behavior changes
+- update frontend API helpers, forms, filters, tables, and exports when shapes change
+- update this page in the same PR
+
+## Known Gaps
+
+- `status` is configurable text; API does not validate against configuration values yet.
+- `get`, `update`, and `delete` include deleted crew in initial lookup unless explicitly rejected later.
+- `delete` does not remove or soft-delete existing assignments.
+- `email` is not unique for crew profiles.
+- There is no write API for `crew_availability` in this router.
+- `createFromMember` does not track activity today.
+
