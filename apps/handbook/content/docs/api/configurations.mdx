@@ -1,0 +1,263 @@
+---
+title: Packages & Configurations API
+description: Organization settings CRUD, package-type records, metadata contracts, defaults, and safe-change notes.
+---
+
+## Ownership
+
+Configurations are per-organization settings used by studio workflows. Package types are not a
+separate table: they are `configurations` rows where `type = "package_type"` with extra fields for
+default cost, booking-type filtering, and default deliverable templates.
+
+| Area | Source |
+| --- | --- |
+| Router | `packages/api/modules/configurations/router.ts` |
+| Procedures | `packages/api/modules/configurations/procedures/*.ts` |
+| Contract schemas | `packages/api/modules/studio/schemas/configuration.ts` |
+| Config type enum | `packages/api/modules/studio/schemas/common.ts` |
+| DB table | `packages/database/drizzle/schema/studio.ts` |
+| Config UI | `apps/web/modules/saas/studio/components/configurations/*` |
+| Booking form usage | `apps/web/modules/saas/studio/components/bookings/booking-form/*` |
+| API helpers | `apps/web/modules/saas/studio/lib/api.ts` |
+
+## Database Shape
+
+| Table | Owns | Notes |
+| --- | --- | --- |
+| `configurations` | Type/key/label, display metadata, ordering, default state, active state, package extras. | Tenant-scoped by `organizationId`. |
+
+Fields:
+
+| Field | Purpose |
+| --- | --- |
+| `type` | Config category, backed by `config_type` enum. |
+| `key` | Stable machine key used by domain rows such as `bookings.packageType`. |
+| `label` | User-facing name. |
+| `description`, `color`, `icon` | Display hints. |
+| `sortOrder` | UI ordering. |
+| `isDefault` | Single default row per organization/type. |
+| `isSystem` | Protected row flag; system rows cannot be fully edited/deleted. |
+| `isActive` | Hide/disable without deleting. |
+| `metadata` | Type-specific JSON payload. |
+| `defaultCost` | Package-type default booking cost. |
+| `bookingTypeFilter` | Package-type filter for booking type key. |
+
+Important constraints:
+
+| Constraint/index | Purpose |
+| --- | --- |
+| `configurations_org_type_key_idx` | Unique key per organization and type. |
+| `configurations_org_type_default_idx` | Only one default per organization and type. |
+| `configurations_org_type_idx` | Fast list/filter by organization and type. |
+
+Config types:
+
+- `task_status`
+- `task_priority`
+- `deliverable_status`
+- `deliverable_priority`
+- `crew_status`
+- `crew_role`
+- `shoot_status`
+- `booking_type`
+- `package_type`
+- `relation_type`
+- `expense_category`
+- `event_type`
+- `gst_rate`
+
+## API Operations
+
+All configuration procedures use `studioProtectedProcedure` and active organization scope.
+
+| Operation | Method/path | Input schema | Output schema | Permission | Notes |
+| --- | --- | --- | --- | --- | --- |
+| `configurations.list` | `GET /configurations` | `listConfigurationsInputSchema` | `listConfigurationsOutputSchema` | `configuration:list` | Paginated list, optional type/search. |
+| `configurations.get` | `GET /configurations/{id}` | `getConfigurationInputSchema` | `getConfigurationOutputSchema` | `configuration:read` | Single config by id. |
+| `configurations.create` | `POST /configurations` | `createConfigurationInputSchema` | `createConfigurationOutputSchema` | `configuration:create` | Creates user config row. |
+| `configurations.update` | `PUT /configurations/{id}` | `updateConfigurationInputSchema` | `updateConfigurationOutputSchema` | `configuration:update` | Updates row; system rows limited. |
+| `configurations.delete` | `DELETE /configurations/{id}` | `deleteConfigurationInputSchema` | `deleteConfigurationOutputSchema` | `configuration:delete` | Physical delete; system rows blocked. |
+| `configurations.seed` | `POST /configurations/seed` | `seedConfigurationsInputSchema` | `seedConfigurationsOutputSchema` | `configuration:create` | Inserts missing default rows/backfills metadata. |
+
+## Read Contracts
+
+`list` accepts:
+
+- `type`
+- `search` over label
+- `sortBy`: `label`, `sortOrder`, `createdAt`
+- `sortDirection`
+- pagination
+
+`list` and `get` return:
+
+- identity: `id`, `organizationId`
+- config identity: `type`, `key`, `label`
+- display fields: `description`, `color`, `icon`, `sortOrder`
+- flags: `isDefault`, `isSystem`, `isActive`
+- package/config payload: `metadata`, `defaultCost`, `bookingTypeFilter`
+- timestamps: `createdAt`, `updatedAt`
+
+## Create Contract
+
+Required fields:
+
+- `type`
+- `key`
+- `label`
+
+`key` rules:
+
+- starts with a lowercase letter
+- contains only lowercase letters, numbers, and underscores
+- max length 100
+
+Optional fields:
+
+- `description`
+- `color`
+- `icon`
+- `sortOrder`
+- `isDefault`
+- `isActive`
+- `metadata`
+- `defaultCost`
+- `bookingTypeFilter`
+
+Create behavior:
+
+- rejects duplicate `key` within the same organization and type
+- if `isDefault` is true, unsets existing defaults for the same type
+- if `sortOrder` is omitted, appends after current max sort order for the type
+- creates `isSystem = false`
+- defaults `isActive = true`
+
+## Update/Delete Contract
+
+Updatable fields:
+
+- `label`
+- `description`
+- `color`
+- `icon`
+- `sortOrder`
+- `isDefault`
+- `isActive`
+- `metadata`
+- `defaultCost`
+- `bookingTypeFilter`
+
+Update behavior:
+
+- verifies row belongs to active organization
+- if setting `isDefault = true`, unsets other defaults for the same type
+- system rows can only change `sortOrder` and `isActive`
+
+Delete behavior:
+
+- verifies row belongs to active organization
+- rejects `isSystem` rows
+- physically deletes the row
+
+Deleting or deactivating a configuration does not rewrite existing domain rows that already store the
+configuration key.
+
+## Package Type Contract
+
+Package types are `configurations` rows with:
+
+- `type = "package_type"`
+- `key`: stored on `bookings.packageType`
+- `label`: shown in booking forms/tables
+- `defaultCost`: used to auto-fill booking package cost
+- `bookingTypeFilter`: limits package availability to a booking type key
+- `metadata.defaultDeliverables`: optional array of `{ title, quantity }`
+
+Create/edit UI stores package fields as:
+
+| UI field | API/DB field |
+| --- | --- |
+| Package label | `label` |
+| Booking type filter | `bookingTypeFilter` |
+| Default cost | `defaultCost` |
+| Default deliverables | `metadata.defaultDeliverables` |
+| Default toggle | `isDefault` |
+
+Booking form behavior:
+
+- loads active package types via configuration list helpers
+- filters package types by `bookingTypeFilter`
+- falls back to legacy `metadata.bookingType` when present
+- auto-fills package cost from `defaultCost`, falling back to `metadata.defaultCost`
+- replaces booking deliverables with `metadata.defaultDeliverables` when a package is selected
+
+Seeded package defaults:
+
+- `basic`
+- `standard`
+- `premium`
+- `custom`
+
+Default deliverable templates in the package UI:
+
+- Wedding Album
+- Full Wedding Video
+- Wedding Highlight
+- Edited Photos of Each Event
+
+## Metadata Contracts
+
+Known metadata shapes:
+
+- `package_type`: `defaultDeliverables` array of `{ title, quantity }`
+- `booking_type`: `roles` array of relation-type keys
+- `relation_type`: `bookingTypes` array of booking-type keys
+- `event_type`: `bookingTypes` array of booking-type keys
+- `gst_rate`: `rate` plus `defaultTaxType`
+
+These metadata shapes are UI/procedure conventions. The API schema accepts generic JSON metadata, so
+consumers must validate expected metadata before use.
+
+## Seed Contract
+
+`seed` accepts optional `types`. If omitted, it checks all config types.
+
+Seed behavior:
+
+- inserts missing default rows by key
+- does not overwrite existing rows
+- preserves an existing default for a type; new seeded rows are not default if one already exists
+- backfills metadata for existing default rows when metadata is currently null
+- returns `seededCount` and touched `types`
+
+## Related Surfaces
+
+| Surface | Relationship |
+| --- | --- |
+| Bookings | Uses `booking_type`, `package_type`, `relation_type`, and package deliverable metadata. |
+| Shoots | Uses `shoot_status` and `event_type`. |
+| Tasks | Uses `task_status` and `task_priority`. |
+| Deliverables | Uses `deliverable_status`, `deliverable_priority`, and booking package labels. |
+| Crews | Uses `crew_status` and `crew_role`. |
+| Expenses | Uses `expense_category`. |
+| Invoices | Uses `gst_rate` metadata for tax defaults. |
+
+## Change Checklist
+
+When changing packages/configurations:
+
+- update `packages/api/modules/studio/schemas/configuration.ts`
+- update `configTypeSchema` and DB enum/migration when adding/removing a type
+- update seed defaults and metadata contracts
+- update create/edit/detail forms for specialized types
+- update consumers that read keys from domain rows
+- add migration/backfill when promoting metadata into first-class columns
+- update this page in the same PR
+
+## Known Gaps
+
+- `delete` is a physical delete, not soft delete; existing domain rows can keep dangling keys.
+- `isActive` is not consistently enforced by every consumer.
+- Metadata is generic JSON at the API boundary, so bad metadata can be saved outside specialized UI forms.
+- `booking_type` defaults contain a duplicate `engagement` seed item in schema defaults; seed logic avoids inserting a duplicate if one already exists.
+- Domain create/update APIs often store config keys without validating active configuration rows.
