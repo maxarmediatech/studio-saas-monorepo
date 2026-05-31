@@ -29,6 +29,7 @@
 		"organizations",
 		"users",
 		"admin",
-		"public-messaging"
+		"public-messaging",
+		"whatsapp"
 	]
 }

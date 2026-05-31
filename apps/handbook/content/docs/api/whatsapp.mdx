@@ -1,0 +1,168 @@
+---
+title: WhatsApp API
+description: Draft WhatsApp account, conversation, contact, message, send, and webhook contracts.
+---
+
+## Ownership
+
+WhatsApp code exists as a router module with schemas, procedures, webhook handling, and a separate
+`@repo/whatsapp-db` schema. It is not currently mounted in `packages/api/orpc/router.ts`, so these
+operations are not reachable through the main ORPC API root today.
+
+| Area | Source |
+| --- | --- |
+| Router | `packages/api/modules/whatsapp/router.ts` |
+| Procedures | `packages/api/modules/whatsapp/procedures/*.ts` |
+| Schemas | `packages/api/modules/whatsapp/types.ts` |
+| Webhook handler | `packages/api/modules/whatsapp/webhook-handler.ts` |
+| DB package | `packages/whatsapp-db/drizzle/schema/*` |
+
+## Mount Status
+
+Current status:
+
+- `whatsappRouter` exists
+- `whatsappRouter` is not imported/mounted in `packages/api/orpc/router.ts`
+- main API clients cannot call `orpc.whatsapp.*` until it is mounted
+
+## Draft API Operations
+
+| Operation | Method/path | Scope | Notes |
+| --- | --- | --- | --- |
+| `whatsapp.connectBaileys` | `POST /whatsapp/accounts/connect-baileys` | studio protected | Creates QR-pending Baileys account. |
+| `whatsapp.connectCloudApi` | `POST /whatsapp/accounts/connect-cloud-api` | studio protected | Creates connected Cloud API account. |
+| `whatsapp.listContacts` | `GET /whatsapp/contacts` | studio protected | Lists/searches contacts with cursor pagination. |
+| `whatsapp.listConversations` | `GET /whatsapp/conversations` | studio protected | Lists conversations with contact data. |
+| `whatsapp.getConversation` | `GET /whatsapp/conversations/:conversationId` | studio protected | Reads one conversation with contact data. |
+| `whatsapp.listMessages` | `GET /whatsapp/conversations/:conversationId/messages` | studio protected | Lists conversation messages and media. |
+| `whatsapp.markConversationRead` | `POST /whatsapp/conversations/:conversationId/mark-read` | studio protected | Sets unread count to 0. |
+| `whatsapp.sendText` | `POST /whatsapp/messages/send` | studio protected | Creates/uses contact and conversation, queues text message. |
+| `whatsapp.sendMedia` | `POST /whatsapp/messages/send-media` | studio protected | Creates media, message, and outbox row. |
+| `whatsapp.sendTemplate` | `POST /whatsapp/messages/send-template` | studio protected | Queues template message. |
+| `whatsapp.webhook` | `POST /whatsapp/webhook/{token}` | public | Currently acknowledges receipt only. |
+
+## Database Shape
+
+Core tables:
+
+| Table | Owns |
+| --- | --- |
+| `wa_accounts` | Provider account, connection status, tokens/session data, webhook config. |
+| `wa_contacts` | WhatsApp contacts and profile names. |
+| `wa_conversations` | Account/contact conversation state, unread count, last message preview. |
+| `wa_messages` | Inbound/outbound message rows and provider status. |
+| `wa_media` | Media metadata/storage pointers. |
+| `wa_outbox` | Pending outbound delivery queue. |
+| `wa_events` | Webhook/provider events. |
+| `wa_campaigns` | Campaign state. |
+| `wa_bot_flows` | Bot flow state. |
+
+## Connect Contract
+
+Baileys input:
+
+- `name`
+
+Creates `wa_accounts` with:
+
+- `provider = baileys`
+- `connectionStatus = qr_pending`
+- `ownershipType = platform`
+
+Cloud API input:
+
+- `name`
+- `phoneNumberId`
+- `wabaId` optional
+- `accessToken`
+- `webhookVerifyToken`
+
+Creates `wa_accounts` with:
+
+- `provider = cloud_api`
+- `connectionStatus = connected`
+- `ownershipType = customer`
+- Cloud API credentials
+
+## List/Read Contract
+
+Cursor format:
+
+- `{createdAt}_{id}` for contacts/messages
+- `{sortAt}_{id}` for conversations, where `sortAt = coalesce(lastMessageAt, createdAt)`
+
+Contacts:
+
+- `limit`: defaults to 50, max 100
+- optional `cursor`
+- optional `search` over name, push name, phone number, and `waId`
+
+Conversations:
+
+- `limit`: defaults to 20, max 100
+- optional `cursor`
+- optional `accountId`
+- optional `status`: `open`, `closed`, `archived`
+- optional contact search
+
+Messages:
+
+- `conversationId`
+- `limit`: defaults to 50, max 100
+- optional `cursor`
+- optional `direction`: `inbound` or `outbound`
+- includes media metadata when present
+
+## Send Contract
+
+All send procedures:
+
+- find or create contact by `organizationId` + `waId`
+- find or create conversation by `organizationId` + `accountId` + `contactId`
+- create outbound `wa_messages` row with `status = pending`
+- create `wa_outbox` row
+- return `messageId` and `outboxId`
+
+Text input:
+
+- `accountId`
+- `to`
+- `text`
+
+Media input:
+
+- `accountId`
+- `to`
+- `mediaType`: `image`, `video`, `audio`, `document`, `sticker`
+- `mediaUrl`
+- `mimeType`
+- optional `caption`
+- optional `fileName`
+
+Caption is allowed only for image, video, or document.
+
+Template input:
+
+- `accountId`
+- `to`
+- `templateName`
+- `language`
+- optional `components`
+
+## Change Checklist
+
+When activating or changing WhatsApp:
+
+- mount `whatsappRouter` in `packages/api/orpc/router.ts`
+- decide and document permissions for connect/read/send operations
+- update `packages/api/modules/whatsapp/types.ts` for contract changes
+- update `packages/whatsapp-db/drizzle/schema/*` plus migrations for DB changes
+- verify outbox worker/webhook behavior end to end
+- update this page in the same PR
+
+## Known Gaps
+
+- Router is not mounted in the main ORPC router.
+- Procedures do not currently call `requirePermission`.
+- Webhook procedure only returns `{ received: true }`; handling appears separate/incomplete.
+- Cloud API access token is stored in `wa_accounts.accessToken`; secret handling needs review before production use.
