@@ -3,6 +3,7 @@
 	"pages": [
 		"index",
 		"bookings",
-		"shoots"
+		"shoots",
+		"deliverables"
 	]
 }

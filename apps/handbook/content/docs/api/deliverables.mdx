@@ -1,0 +1,283 @@
+---
+title: Deliverables API
+description: Deliverable CRUD, crew assignments, submission workflow, review state, and task conversion.
+---
+
+## Ownership
+
+Deliverables are the final output commitments for a booking: albums, videos, photo sets, edits, or
+custom package items. They own package quantity/cost, due dates, delivery status, review workflow
+status, crew assignments, submissions, and conversion into production tasks.
+
+| Area | Source |
+| --- | --- |
+| Router | `packages/api/modules/deliverables/router.ts` |
+| Procedures | `packages/api/modules/deliverables/procedures/*.ts` |
+| Contract schemas | `packages/api/modules/studio/schemas/deliverable.ts` |
+| DB tables | `packages/database/drizzle/schema/studio.ts` |
+| Conversion helpers | `packages/api/modules/deliverables/lib/convert-to-task.ts` |
+| Frontend API helpers | `apps/web/modules/saas/studio/lib/api.ts` |
+| Table export types | `apps/web/modules/saas/shared/lib/table-export/definitions.ts` |
+
+## Database Shape
+
+| Table | Owns | Notes |
+| --- | --- | --- |
+| `deliverables` | Core deliverable fields, package relation fields, workflow state, due/delivery dates, metadata, audit columns, soft delete. | Tenant-scoped by `organizationId`; belongs to one booking. |
+| `deliverable_assignments` | Crew assigned to a deliverable with lead flag. | Unique on `deliverableId`, `crewId`; physically deleted on unassign. |
+| `assignment_submissions` | Crew work submissions for tasks or deliverables. | Polymorphic check requires exactly one of `taskId` or `deliverableId`. |
+| `submission_files` | Files attached to a submission. | Cascades with submission. |
+| `submission_feedback` | Review comments/ratings on submissions. | Rating constrained to 1-5 when present. |
+| `tasks` / `task_assignments` | Target records when converting a deliverable into a task. | Conversion copies deliverable assignments to task assignments. |
+
+Important indexes:
+
+| Index | Purpose |
+| --- | --- |
+| `deliverables_organization_idx` | Tenant filtering. |
+| `deliverables_booking_idx` | Booking-scoped lists/details. |
+| `deliverables_org_status_idx` | Configurable status filtering. |
+| `deliverables_org_workflow_idx` | Review workflow filtering. |
+| `deliverables_due_date_idx` | Due-date filtering/sorting. |
+| `deliverable_assignments_del_crew_idx` | Prevent duplicate crew assignment. |
+| `deliverable_assignments_crew_idx` | Crew-scoped assignment lookup. |
+| `assignment_submissions_*` | Submission queue filters by org, task, deliverable, crew, status. |
+
+Status fields:
+
+| Field | Type | Source |
+| --- | --- | --- |
+| `status` | text | Configurable via settings (`config_type: deliverable_status`). |
+| `workflowStatus` | enum | System workflow: `not_started`, `assigned`, `submitted`, `in_review`, `revision_requested`, `approved`. |
+| `assignment_submissions.status` | enum | Submission state: `draft`, `submitted`, `in_review`, `approved`, `rejected`, `revision_requested`. |
+
+## API Operations
+
+All deliverable procedures use `studioProtectedProcedure` and active organization scope.
+
+| Operation | Method/path | Input schema | Output schema | Permission | Notes |
+| --- | --- | --- | --- | --- | --- |
+| `deliverables.list` | `GET /deliverables` | `listDeliverablesInputSchema` | `listDeliverablesOutputSchema` | `deliverable:list` | Paginated list with booking info and assigned crew summary. |
+| `deliverables.listMinimal` | `GET /deliverables/minimal` | `listDeliverablesMinimalInputSchema` | `listDeliverablesMinimalOutputSchema` | `deliverable:list` | Paginated lightweight list for selectors/references. |
+| `deliverables.get` | `GET /deliverables/{id}` | `getDeliverableInputSchema` | `getDeliverableOutputSchema` | `deliverable:read` | Detail with assignments and booking reference. |
+| `deliverables.create` | `POST /deliverables` | `createDeliverableInputSchema` | `createDeliverableOutputSchema` | `deliverable:create` | Creates one custom deliverable under an active booking. |
+| `deliverables.update` | `PUT /deliverables/{id}` | `updateDeliverableInputSchema` | `updateDeliverableOutputSchema` | `deliverable:update` | Updates fields and notifies on status change. |
+| `deliverables.delete` | `DELETE /deliverables/{id}` | `deleteDeliverableInputSchema` | `deleteDeliverableOutputSchema` | `deliverable:delete` | Soft delete. |
+| `deliverables.stats` | `GET /deliverables/stats` | `getDeliverableStatsInputSchema` | `getDeliverableStatsOutputSchema` | `deliverable:list` | Aggregate counts, optionally booking-scoped. |
+| `deliverables.assign` | `POST /deliverables/{deliverableId}/assignments` | `assignCrewToDeliverableInputSchema` | `assignCrewToDeliverableOutputSchema` | `deliverable:assign` | Creates assignment and may move workflow to `assigned`. |
+| `deliverables.unassign` | `DELETE /deliverables/{deliverableId}/assignments/{crewId}` | `unassignCrewFromDeliverableInputSchema` | `unassignCrewFromDeliverableOutputSchema` | `deliverable:assign` | Deletes assignment and may revert workflow to `not_started`. |
+| `deliverables.updateAssignmentStatus` | `PUT /deliverables/{id}/assignment-status` | `updateDeliverableAssignmentStatusInputSchema` | `updateDeliverableAssignmentStatusOutputSchema` | `deliverable:submit` | Assignee-only status update; currently only accepts `blocked`. |
+| `deliverables.submit` | `POST /deliverables/{deliverableId}/submissions` | `submitDeliverableInputSchema` | `submitDeliverableOutputSchema` | `deliverable:submit` | Assigned crew submits work for review. |
+| `deliverables.convertToTask` | `POST /deliverables/{deliverableId}/convert-to-task` | `convertDeliverableToTaskInputSchema` | `convertDeliverableToTaskOutputSchema` | `deliverable:update` + `task:create` | Creates task, copies assignments, marks metadata. |
+
+## Read Contracts
+
+`list` accepts:
+
+- `bookingId`
+- `status` as string, array, or comma-separated values
+- `workflowStatus`
+- `dueDateFrom`, `dueDateTo`
+- `crewId`
+- `search` over deliverable `name`
+- pagination, sorting, and `includeDeleted`
+
+`list` returns each deliverable plus:
+
+- `assignmentsCount`
+- `assignedCrew`: crew id/name/avatar
+- `bookingName`
+- `bookingReferenceNumber`
+- `bookingPackageType`
+
+`listMinimal` accepts:
+
+- `bookingId`
+- `workflowStatus`
+- `search`
+- pagination
+
+It returns `id`, `name`, `status`, `workflowStatus`, `dueDate`, `bookingId`.
+
+`get` returns the base deliverable plus:
+
+- assignments with crew id/name/phone
+- booking id/name/reference number
+
+`stats` returns:
+
+- `totalDeliverables`
+- `byStatus`
+- `byWorkflowStatus`
+- `overdueDeliverables`, where due date is before today and workflow status is not `approved`
+- `deliveredDeliverables`, based on non-null `deliveredAt`
+- `deliverablesThisMonth`, based on created date in organization timezone
+
+## Create Contract
+
+Required fields:
+
+- `bookingId`
+- `name`
+
+Optional fields:
+
+- `description`
+- `quantity`, defaults to `1`
+- `cost`
+- `status`, defaults to `pending`
+- `dueDate`
+- `metadata`
+
+Create behavior:
+
+- verifies booking exists, belongs to active organization, and is not deleted
+- sets `isPackageIncluded` to `false`
+- sets `workflowStatus` to `not_started`
+- tracks non-blocking `created` activity under the booking
+- auto-subscribes creator to the deliverable
+
+Booking creation can also create embedded deliverables through booking helper code. This standalone
+procedure creates one custom deliverable.
+
+## Update Contract
+
+Updatable fields:
+
+- `name`
+- `description`
+- `quantity`
+- `cost`
+- `status`
+- `dueDate`
+- `metadata`
+
+Update behavior:
+
+- verifies deliverable exists, belongs to active organization, and is not deleted
+- updates only non-undefined fields
+- tracks status changes separately from other field changes
+- notifies subscribers on status change
+
+Update does not change `workflowStatus`; workflow changes happen through assignment, submission,
+review, or dedicated workflow procedures.
+
+## Assignment Contract
+
+`assign` requires:
+
+- `deliverableId`
+- `crewId`
+
+Optional:
+
+- `isLead`, defaults to `false`
+
+Assign behavior:
+
+- verifies deliverable and crew are active and in the organization
+- rejects duplicate assignment
+- creates `deliverable_assignments` row
+- moves `workflowStatus` from `not_started` to `assigned` for first assignment
+- tracks assignment activity
+- auto-subscribes linked crew user
+- notifies subscribers
+
+`unassign` physically deletes the assignment row. If no assignments remain and workflow status is
+`assigned`, the deliverable reverts to `not_started`.
+
+## Submission Contract
+
+`submit` requires the current user to be linked to an active crew row and assigned to the
+deliverable.
+
+Input:
+
+- `deliverableId`
+- optional `submissionNote`
+- optional `submissionLinks`
+- optional uploaded `files`
+
+Submit behavior:
+
+- rejects if current user is not a crew member
+- rejects if the crew member is not assigned to the deliverable
+- rejects if the crew already has an active `submitted` or `in_review` submission
+- creates `assignment_submissions` row with status `submitted`
+- creates `submission_files` rows for uploaded files
+- moves deliverable `workflowStatus` to `submitted`
+- tracks submission activity
+- notifies subscribers with `review_requested`
+
+`updateAssignmentStatus` is for assigned crew status updates. Current input only accepts
+`status: "blocked"` plus optional note, and writes to deliverable `status`, not `workflowStatus`.
+
+## Convert To Task Contract
+
+`convertToTask` creates a production task from a deliverable.
+
+Input:
+
+- `deliverableId`
+- optional `taskName`, defaults to `Task: <deliverable name>`
+- optional `taskDescription`, defaults to deliverable description
+- optional `taskPriority`, defaults to `normal`
+- optional `taskDueDate`, defaults to deliverable due date
+
+Conversion behavior:
+
+- requires both `deliverable:update` and `task:create`
+- locks the deliverable row with `FOR UPDATE`
+- rejects deleted or already-converted deliverables
+- creates a task under the same booking
+- copies deliverable assignments to task assignments
+- moves task workflow to `assigned` if assignments were copied
+- writes `convertedToTaskId` and `convertedAt` into deliverable metadata
+- tracks task creation and deliverable conversion activity
+- auto-subscribes converter to the new task
+
+## Delete Contract
+
+`delete` soft-deletes the deliverable by setting:
+
+- `deletedAt`
+- `deletedBy`
+- `updatedAt`
+- `updatedBy`
+
+It verifies the deliverable is active and belongs to the organization. Activity tracking records the
+deletion under the parent booking.
+
+## Related Surfaces
+
+| Surface | Relationship |
+| --- | --- |
+| Bookings | Every deliverable belongs to a booking. |
+| Crews | Deliverable assignments reference crew rows. |
+| Tasks | Conversion creates tasks and copies assignments. |
+| Submissions | Assigned crew submit work for review. |
+| Files | Submission files store uploaded file metadata. |
+| Notifications | Assignment, status change, and submission review request notify subscribers. |
+| Activities | Create, update, status change, delete, assign, unassign, submit, convert are tracked non-blockingly. |
+| Settings | Deliverable status values are configurable. |
+
+## Change Checklist
+
+When changing deliverable behavior:
+
+- update `packages/api/modules/studio/schemas/deliverable.ts`
+- update procedure route metadata and side-effect notes
+- update DB schema/migration if fields, workflow enums, indexes, metadata, or delete behavior change
+- update submission/review tests when workflow behavior changes
+- update task conversion tests when conversion metadata or copied assignments change
+- update frontend API helpers, forms, table columns, filters, and exports when shapes change
+- update this page in the same PR
+
+## Known Gaps
+
+- `status` is configurable text; API does not validate against configuration values yet.
+- `updateAssignmentStatus` only accepts `blocked` and writes to `status`; the naming can be confused with `workflowStatus`.
+- `delete` soft-deletes only the deliverable row; assignments/submissions remain unless later physical delete cascades.
+- Assignment delete is physical, not soft delete.
+- `list` schema allows array status, but string handling does not split comma-separated values.
+
