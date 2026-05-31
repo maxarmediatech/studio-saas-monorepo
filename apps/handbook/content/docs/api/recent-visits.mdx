@@ -1,0 +1,128 @@
+---
+title: Recent Visits API
+description: User-specific recent entity tracking, hydrated lists, permissions, and retention cap.
+---
+
+## Ownership
+
+Recent visits power the home/recent-items widget. The API records when a user visits supported studio
+entities and returns the user's latest visits with lightweight hydrated entity data.
+
+| Area | Source |
+| --- | --- |
+| Router | `packages/api/modules/recent-visits/router.ts` |
+| Contract schemas | `packages/api/modules/recent-visits/schemas.ts` |
+| Procedures | `packages/api/modules/recent-visits/procedures/*.ts` |
+| Entity verification | `packages/api/modules/recent-visits/lib/verify-entity.ts` |
+| DB table | `packages/database/drizzle/schema/studio.ts` |
+| Frontend API helpers | `apps/web/modules/saas/studio/lib/api.ts` |
+| Tracking hook | `apps/web/modules/saas/studio/hooks/tracking/use-track-visit.ts` |
+| Widget | `apps/web/modules/saas/studio/components/recent-visits/recent-visits-widget.tsx` |
+
+## Database Shape
+
+| Table | Owns | Notes |
+| --- | --- | --- |
+| `recent_visits` | Organization, user, entity type/id, visit timestamp, create timestamp. | No soft delete. |
+
+Important indexes:
+
+| Index | Purpose |
+| --- | --- |
+| `recent_visits_user_org_entity_idx` | Unique upsert key per user/entity. |
+| `recent_visits_user_org_visited_idx` | List current user's visits by recency. |
+
+Supported tracked entity types:
+
+- `booking`
+- `shoot`
+- `task`
+- `deliverable`
+
+List filter also accepts:
+
+- `all`
+
+## API Operations
+
+All recent visit procedures use `studioProtectedProcedure` and current user scope.
+
+| Operation | Method/path | Input schema | Output schema | Notes |
+| --- | --- | --- | --- | --- |
+| `recentVisits.track` | `POST /recent-visits/track` | `trackVisitInputSchema` | `trackVisitOutputSchema` | Upserts current user's visit and prunes old rows. |
+| `recentVisits.list` | `GET /recent-visits` | `listRecentVisitsInputSchema` | `listRecentVisitsOutputSchema` | Returns hydrated recent visits for current user. |
+
+## Read Contracts
+
+`list` accepts:
+
+- `entityType`: `booking`, `shoot`, `task`, `deliverable`, or `all`
+- `limit`: 1 to 20, default 10
+
+Read behavior:
+
+- checks current user's list permission for each supported entity type
+- returns empty list if a specific requested type is not allowed
+- fetches extra rows up to `limit * 2` so deleted/unauthorized visits can be filtered out
+- hydrates each visit from the entity table
+- excludes deleted entity rows
+- returns at most `limit` hydrated rows
+
+Returned item:
+
+- `id`
+- `entityType`
+- `entityId`
+- `visitedAt`
+- `entityData`
+
+`entityData` includes:
+
+- `id`
+- `name`
+- optional `status`
+- optional `referenceNumber`
+- optional `bookingId`
+
+## Track Contract
+
+`track` requires:
+
+- `entityType`
+- `entityId`
+
+Track behavior:
+
+- verifies entity exists in active organization and is not deleted
+- if entity is missing, returns success without writing
+- upserts by organization, user, entity type, entity id
+- updates `visitedAt` to `NOW()` on conflict
+- prunes rows after the most recent 20 for the current organization/user
+
+## Related Surfaces
+
+| Surface | Relationship |
+| --- | --- |
+| Bookings | Track/list hydrated booking visits. |
+| Shoots | Track/list hydrated shoot visits. |
+| Tasks | Track/list hydrated task visits. |
+| Deliverables | Track/list hydrated deliverable visits. |
+| Home | Recent visits widget reads this API. |
+
+## Change Checklist
+
+When changing recent visits:
+
+- update `packages/api/modules/recent-visits/schemas.ts`
+- update `verify-entity.ts` when adding/removing supported entity types
+- update list hydration and permission checks together
+- update DB schema/migration if retention/index behavior changes
+- update tracking hook and widget routing for new entity types
+- update this page in the same PR
+
+## Known Gaps
+
+- Track does not check user permission for the entity; list filters by permissions before display.
+- Unsupported entity types are schema-rejected instead of stored generically.
+- Missing/deleted entities leave old recent rows until pruning naturally removes them.
+- Retention cap is hard-coded to 20 visits per user/organization.
