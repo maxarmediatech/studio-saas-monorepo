@@ -27,6 +27,7 @@
 		"global-search",
 		"activities",
 		"organizations",
-		"users"
+		"users",
+		"admin"
 	]
 }

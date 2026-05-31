@@ -1,0 +1,100 @@
+---
+title: Admin API
+description: Platform admin user and organization listing/finding surfaces.
+---
+
+## Ownership
+
+Admin API owns platform-level reads for users and organizations. These endpoints are separate from
+studio organization-scoped APIs and use `adminProcedure`.
+
+| Area | Source |
+| --- | --- |
+| Router | `packages/api/modules/admin/router.ts` |
+| Procedures | `packages/api/modules/admin/procedures/*.ts` |
+| User queries | `packages/database/drizzle/queries/users.ts` |
+| Organization queries | `packages/database/drizzle/queries/organizations.ts` |
+| DB tables | `packages/database/drizzle/schema/auth.ts`, `packages/database/drizzle/schema/core.ts` |
+| UI | `apps/web/modules/saas/admin/*` |
+
+## API Operations
+
+| Operation | Method/path | Input | Output | Notes |
+| --- | --- | --- | --- | --- |
+| `admin.users.list` | `GET /admin/users` | inline Zod schema | `{ users, total }` | Lists users with search and offset pagination. |
+| `admin.organizations.list` | `GET /admin/organizations` | inline Zod schema | `{ organizations, total }` | Lists organizations with search, member counts, and offset pagination. |
+| `admin.organizations.find` | `GET /admin/organizations/{id}` | `{ id }` | organization row with members/invitations | Finds organization by id. |
+
+## Shared List Contract
+
+List inputs:
+
+- `query`: optional string
+- `limit`: defaults to `10`, min `1`, max `100`
+- `offset`: defaults to `0`, min `0`
+
+Pagination is offset-based. Responses include `total` from a separate count query.
+
+## User List Contract
+
+Search:
+
+- `users.name ILIKE %query%`
+- `users.email ILIKE %query%`
+
+Ordering:
+
+1. `createdAt` ascending
+2. `id` ascending
+
+Returns raw user rows from `users`.
+
+## Organization List Contract
+
+Search:
+
+- `organizations.name ILIKE %query%`
+
+Ordering:
+
+1. `createdAt` ascending
+2. `id` ascending
+
+Returns organization rows plus `membersCount` extra.
+
+## Organization Find Contract
+
+Input:
+
+- `id`
+
+Behavior:
+
+- fetches organization by id
+- includes `members`
+- includes `invitations`
+- throws `NOT_FOUND` when missing
+
+## Related Tables
+
+| Table | Use |
+| --- | --- |
+| `users` | Admin user list. |
+| `organizations` | Admin organization list/find. |
+| `members` | Organization member count and find payload. |
+| `invitations` | Organization find payload. |
+
+## Change Checklist
+
+When changing Admin:
+
+- update admin procedure input/output contracts
+- update query helpers in `packages/database/drizzle/queries/*`
+- update admin UI and table pagination assumptions
+- update this page in the same PR
+
+## Known Gaps
+
+- Outputs are not declared as exported schemas.
+- Admin router currently exposes reads only; user mutations in UI are outside this router.
+- `list-organizations.ts` also exports `getOrganizationById`, but the router uses `findOrganization`.
