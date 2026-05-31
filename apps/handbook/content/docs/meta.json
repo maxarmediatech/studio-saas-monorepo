@@ -3,6 +3,7 @@
 	"pages": [
 		"index",
 		"architecture",
+		"api",
 		"patterns",
 		"operations",
 		"decisions"

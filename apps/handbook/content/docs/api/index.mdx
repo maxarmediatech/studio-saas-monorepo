@@ -1,0 +1,65 @@
+---
+title: API Surfaces
+description: Entity API contracts, database ownership, CRUD expectations, and safe-change notes.
+---
+
+## Purpose
+
+This section maps every durable entity and setting surface we touch across the database, API, and
+frontend. Use it before changing CRUD behavior, response shapes, filters, statuses, settings, or
+side effects.
+
+The goal is practical: know what a procedure accepts, what it returns, which tables it writes, what
+else changes because of it, and which UI/client helpers expect that shape.
+
+## Coverage Rule
+
+Add or update a page here when a change touches:
+
+- a Drizzle table, enum, relation, index, or soft-delete rule
+- an oRPC router, procedure, input schema, or output schema
+- a list/detail/minimal/stats response shape
+- a frontend API helper, form schema, table export definition, or cache invalidation rule
+- a workflow/status field, assignment model, setting, notification, or provider side effect
+
+## Source Order
+
+When documenting a surface, read in this order:
+
+| Layer | Source |
+| --- | --- |
+| API router | `packages/api/orpc/router.ts`, then `packages/api/modules/<domain>/router.ts` |
+| Procedure contract | `packages/api/modules/<domain>/procedures/*.ts` |
+| Shared schemas | `packages/api/modules/studio/schemas/*.ts` |
+| Database | `packages/database/drizzle/schema/*.ts` |
+| Web usage | `apps/web/modules/saas/studio/lib/api.ts`, feature forms/hooks/tables |
+| Exports/reporting | `apps/web/modules/saas/shared/lib/table-export/definitions.ts` |
+
+## Page Template
+
+Each entity/settings page should answer:
+
+| Section | Contents |
+| --- | --- |
+| Ownership | Router, schema, DB tables, frontend helpers |
+| Database shape | Tables, relationships, unique indexes, soft-delete behavior |
+| API operations | Procedure, method/path, input, output, permission, notes |
+| Read contracts | `list`, `listMinimal`, `get`, `stats` response expectations |
+| Write contracts | `create`, `update`, `delete`, workflow actions, side effects |
+| Related surfaces | Children, assignments, attachments, files, activities, notifications |
+| Change checklist | Tests, docs, frontend cache, exports, migrations |
+| Known gaps | Any mismatch or behavior that needs a follow-up |
+
+## Current Priority
+
+1. Bookings
+2. Shoots
+3. Deliverables
+4. Tasks
+5. Clients
+6. Crews
+7. Studio payments, invoices, receipts
+8. Expenses
+9. Configurations/settings
+10. Discussions, check-ins, notifications, saved views, recent visits, quick links, stickies
+

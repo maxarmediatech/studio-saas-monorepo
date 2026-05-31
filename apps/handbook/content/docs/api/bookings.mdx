@@ -1,0 +1,215 @@
+---
+title: Bookings API
+description: Booking database shape, oRPC procedures, CRUD contracts, and side effects.
+---
+
+## Ownership
+
+Bookings are the core studio project entity. They connect clients, events, shoots, deliverables,
+tasks, payments, expenses, crew assignments, contract attachments, and activity history.
+
+| Area | Source |
+| --- | --- |
+| Router | `packages/api/modules/bookings/router.ts` |
+| Procedures | `packages/api/modules/bookings/procedures/*.ts` |
+| Contract schemas | `packages/api/modules/studio/schemas/booking.ts` |
+| DB tables | `packages/database/drizzle/schema/studio.ts` |
+| DB enum | `packages/database/drizzle/schema/enums.ts` |
+| Frontend API helpers | `apps/web/modules/saas/studio/lib/api.ts` |
+| Booking form schema | `apps/web/modules/saas/studio/components/bookings/booking-form/booking-form-schema.ts` |
+| Table export types | `apps/web/modules/saas/shared/lib/table-export/definitions.ts` |
+
+## Database Shape
+
+| Table | Owns | Notes |
+| --- | --- | --- |
+| `bookings` | Core booking fields, financial totals, lifecycle status, audit columns, soft delete. | Tenant-scoped by `organizationId`. |
+| `booking_participants` | Client-to-booking roles. | Unique on `bookingId`, `clientId`, `role`; cascades when booking/client is deleted. |
+| `booking_events` | Event dates/venues for the booking. | Cascades when booking is deleted. |
+| `attachments` | Contract attachment where `entityType = "booking"` and `description = "contract"`. | Attachment keys must start with `orgs/<organizationId>/`. |
+
+Important indexes:
+
+| Index | Purpose |
+| --- | --- |
+| `bookings_id_org_idx` | Verify booking belongs to active organization. |
+| `bookings_org_ref_idx` | Unique active reference number per organization. |
+| `bookings_org_status_idx` | Status filters. |
+| `bookings_org_created_idx` | Created-date sorting. |
+| `bookings_org_booking_date_idx` | Booking-date filters/sorting. |
+| `booking_participants_uniq_idx` | Prevent duplicate participant role rows. |
+
+Booking status is system-defined, not organization-customized:
+
+```txt
+new -> preparation -> shooting -> delivery -> completed
+cancelled
+```
+
+Current API allows direct status update to any `bookingPhaseSchema` value. If transition rules are
+added later, document them here and enforce them in `update-booking-status.ts`.
+
+## API Operations
+
+All booking procedures use `studioProtectedProcedure`, so they require a signed-in user, active
+organization, and membership. Procedures use `context.organizationId`; clients do not send
+`organizationId`.
+
+| Operation | Method/path | Input schema | Output schema | Permission | Notes |
+| --- | --- | --- | --- | --- | --- |
+| `bookings.list` | `GET /bookings` | `listBookingsInputSchema` | `listBookingsOutputSchema` | `booking:list` | Paginated list with filters, participant summary, shoots count, balance. |
+| `bookings.listMinimal` | `GET /bookings/minimal` | `listBookingsMinimalInputSchema` | `listBookingsMinimalOutputSchema` | `booking:list` or `booking:reference` | Max 100 records for dropdown/reference use. |
+| `bookings.get` | `GET /bookings/{id}` | `getBookingInputSchema` | `getBookingOutputSchema` | `booking:read` | Detail with participants, events, counts, balance, contract attachment. |
+| `bookings.create` | `POST /bookings` | `createBookingInputSchema` | `createBookingOutputSchema` | `booking:create` | Creates booking plus optional events, shoots, deliverables, payments, schedules, contract. |
+| `bookings.update` | `PUT /bookings/{id}` | `updateBookingInputSchema` | `updateBookingOutputSchema` | `booking:update` | Updates basic fields and replaces contract attachment when provided. |
+| `bookings.delete` | `DELETE /bookings/{id}` | `deleteBookingInputSchema` | `deleteBookingOutputSchema` | `booking:delete` | Soft delete only. |
+| `bookings.stats` | `GET /bookings/stats` | `getBookingStatsInputSchema` | `getBookingStatsOutputSchema` | `booking:list` | Aggregate counts and financial totals. |
+| `bookings.updateStatus` | `PUT /bookings/{id}/status` | `updateBookingStatusInputSchema` | `updateBookingStatusOutputSchema` | `booking:update` | Rejects deleted bookings. |
+| `bookings.listParticipants` | `GET /bookings/{bookingId}/participants` | `listParticipantsInputSchema` | `listParticipantsOutputSchema` | `booking:read` | Excludes soft-deleted clients. |
+| `bookings.addParticipant` | `POST /bookings/{bookingId}/participants` | `addParticipantInputSchema` | `addParticipantOutputSchema` | `booking:update` | Verifies booking/client in org; rejects duplicate role. |
+| `bookings.updateParticipant` | `PUT /bookings/{bookingId}/participants/{participantId}` | `updateParticipantInputSchema` | `updateParticipantOutputSchema` | `booking:update` | Updates participant role; rejects duplicate role for same client. |
+| `bookings.removeParticipant` | `DELETE /bookings/{bookingId}/participants/{participantId}` | `removeParticipantInputSchema` | `removeParticipantOutputSchema` | `booking:update` | Hard deletes participant row; at least one participant must remain. |
+| `bookings.listCrews` | `GET /bookings/{bookingId}/crews` | `listBookingCrewsInputSchema` | `listBookingCrewsOutputSchema` | `booking:read` | Aggregates crew from shoots, tasks, and deliverables. |
+
+## Read Contracts
+
+`list` accepts:
+
+- `clientId`
+- `statuses`
+- `bookingType`
+- `packageType`
+- `bookingDate` as `from,to`
+- `createdAt` as a backward-compatible alias for booking-date range
+- `search` over `name` and `referenceNumber`
+- pagination, sorting, and `includeDeleted`
+
+`list` returns each booking plus:
+
+- `participantsCount`
+- `participants`: participant id, role, client id/name
+- `shootsCount`
+- `balance`: `packageCost - totalReceived`, string with two decimals
+
+`listMinimal` accepts `status` and `search`, returns `id`, `referenceNumber`, `name`, `status`,
+`packageType`, sorted by newest `bookingDate`, limited to 100.
+
+`get` returns the base booking plus:
+
+- participants with client id/name/email/phone
+- booking events sorted by event date
+- `shootsCount`, `tasksCount`, `deliverablesCount`
+- `balance`
+- `contractAttachment` or `null`
+
+`stats` returns:
+
+- `totalBookings`
+- `byStatus`
+- `totalRevenue`
+- `totalReceived`
+- `totalExpenses`
+- `totalOutstanding`
+- `newThisMonth`, based on `bookingDate` in organization timezone
+
+## Create Contract
+
+Required core fields:
+
+- `name`
+- `bookingDate`
+- `bookingType`
+- `packageType`
+- `packageCost`
+- at least one participant
+
+Optional embedded creates:
+
+- events
+- contract attachment
+- shoots with crew assignments
+- deliverables with crew assignments
+- received payments
+- payment schedules
+
+Create behavior:
+
+- validates every participant client belongs to the active organization and is not deleted
+- validates crew IDs used in embedded shoots/deliverables
+- generates `referenceNumber` as `{STUDIO_PREFIX}-{YYMM}-{XXXX}`
+- sets status to `new`
+- initializes `totalReceived` and `totalExpenses` to `"0"`
+- inserts participants and optional child records inside one transaction
+- validates contract attachment key belongs to the active organization
+- tracks a non-blocking `created` activity
+
+Reference numbers are unique per active organization and month. The monthly sequence limit is 9,999.
+
+## Update Contract
+
+Updatable fields:
+
+- `name`
+- `bookingDate`
+- `bookingType`
+- `packageType`
+- `packageCost`
+- `note`
+- `contractAttachment`
+
+Update does not edit participants, events, shoots, deliverables, payments, or schedules. Those use
+their own procedures.
+
+When `contractAttachment` is:
+
+- omitted: current contract remains unchanged
+- `null`: current contract attachment is soft-deleted
+- an attachment object: current contract is soft-deleted and a new contract attachment row is inserted
+
+Field changes are tracked through non-blocking activity logging.
+
+## Delete Contract
+
+`delete` soft-deletes the booking by setting:
+
+- `deletedAt`
+- `deletedBy`
+- `updatedAt`
+- `updatedBy`
+
+It rejects already-deleted bookings. It does not cascade soft-delete children. Child tables with
+foreign-key cascade only matter for physical deletion, not this soft-delete path.
+
+## Related Surfaces
+
+| Surface | Relationship |
+| --- | --- |
+| Clients | Participants reference clients. |
+| Shoots | Created in booking flow and counted/listed separately. |
+| Deliverables | Created in booking flow and counted/listed separately. |
+| Tasks | Counted in booking detail and included in crew aggregation. |
+| Payments | Received payments and schedules can be created during booking creation. |
+| Expenses | Booking stores `totalExpenses`; expense procedures own updates. |
+| Attachments | Contract attachment is polymorphic on booking. |
+| Activities | Create, update field changes, status changes, delete are tracked non-blockingly. |
+| Table exports | Booking list item type is consumed by shared export definitions. |
+
+## Change Checklist
+
+When changing booking behavior:
+
+- update `packages/api/modules/studio/schemas/booking.ts`
+- update the matching procedure and router metadata
+- update DB schema/migration if fields, enums, relations, indexes, or delete behavior change
+- update booking form schema and frontend API helpers when input/output changes
+- update table export definitions when list shape changes
+- add or update package tests for validation, permissions, side effects, and regressions
+- update this page in the same PR
+
+## Known Gaps
+
+- `updateStatus` permits any valid booking phase; no transition guard yet.
+- `delete` soft-deletes only the booking row; children remain active unless their own procedures handle cleanup.
+- `update` does not manage events or participants; callers must use participant procedures and future event procedures.
+- `listCrews` aggregates assignments but should be checked if assignment query behavior changes.
+
