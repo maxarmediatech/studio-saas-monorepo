@@ -1,67 +1,81 @@
 ---
 title: WhatsApp API
-description: Actual WhatsApp Cloud API, webhook, outbox, and placeholder surfaces.
+description: WhatsApp Meta Cloud API, Trigger.dev outbox queue, webhook, and cleanup notes.
 ---
 
 ## Ownership
 
-WhatsApp is a partially wired module. The active production-shaped path is Meta Cloud API webhook
-ingestion plus a custom outbox worker. It is not a Trigger.dev setup, and the studio-facing
-`whatsappRouter` is still not mounted into the main ORPC router.
+This page documents the WhatsApp implementation from the `dev` branch. That is the source of truth
+for the app wiring: WhatsApp API procedures are mounted, outbound messages are queued through
+Trigger.dev, and Meta credentials come from embedded signup or manual Cloud API connection.
 
 | Area | Status | Source |
 | --- | --- | --- |
+| ORPC router | Active on `dev` | `packages/api/orpc/router.ts`, `packages/api/modules/whatsapp/router.ts` |
 | Meta webhook ingress | Active | `packages/api/index.ts`, `packages/api/modules/whatsapp/webhook-handler.ts` |
+| Trigger.dev jobs | Active queue/recovery | `trigger.config.ts`, `src/trigger/whatsapp.ts` |
+| Outbox trigger callsite | Active | `packages/api/modules/whatsapp/lib/trigger-outbox.ts` |
+| Outbox processor | Active shared delivery logic | `packages/whatsapp-outbox/outbox-processor.ts` |
 | Cloud API provider | Active | `packages/whatsapp-providers/src/cloud-api/provider.ts` |
-| Outbox delivery worker | Active service, excluded from root `pnpm dev` | `services/whatsapp-worker/src/index.ts` |
-| WhatsApp DB schema | Active schema package, re-exported by database | `packages/whatsapp-db/drizzle/schema/*`, `packages/database/drizzle/schema/index.ts` |
-| Studio ORPC router | Draft/unmounted | `packages/api/modules/whatsapp/router.ts` |
+| WhatsApp DB schema | Active | `packages/whatsapp-db/drizzle/schema/*` |
+| Legacy poll worker | Redundant candidate | `services/whatsapp-worker/src/index.ts` |
 | Baileys bridge | Placeholder | `services/whatsapp-bridge/src/index.ts` |
-| Trigger.dev | Not present | no tracked `@trigger.dev` dependency or `trigger.config.*` |
 
 ## Runtime Shape
 
-Current end-to-end Cloud API shape:
+Current Cloud API flow:
 
-1. An account row is created in `wa_accounts` with `provider = cloud_api`, Meta phone number id,
-   WABA id, access token, and webhook verify token.
-2. Meta calls `GET /api/webhooks/whatsapp/:token` to verify the webhook.
-3. Meta calls `POST /api/webhooks/whatsapp/:token` for inbound messages and status updates.
-4. Webhook handling resolves the account by `phoneNumberId` plus token, stores a dedupe event in
-   `wa_events`, then updates `wa_contacts`, `wa_conversations`, and `wa_messages`.
-5. Outbound sends are designed to insert `wa_messages` plus `wa_outbox` rows.
-6. `@repo/whatsapp-worker` polls `wa_outbox`, sends through Meta Graph API, and updates
-   `wa_outbox` and `wa_messages`.
-
-Important routing detail:
-
-- The webhook endpoint is mounted directly in the Hono API app at `/api/webhooks/whatsapp/:token`.
-- Draft ORPC paths such as `/api/whatsapp/messages/send` are not reachable until
-  `whatsappRouter` is mounted in `packages/api/orpc/router.ts`.
+1. Studio connects a WhatsApp account through embedded signup or manual Cloud API credentials.
+2. Credentials are validated against Meta, encrypted, and stored in `wa_accounts`.
+3. Meta calls `GET /api/webhooks/whatsapp/:token` for verification and
+   `POST /api/webhooks/whatsapp/:token` for events.
+4. Inbound webhook processing writes `wa_events`, `wa_contacts`, `wa_conversations`, and
+   `wa_messages`.
+5. Send procedures create/update contact and conversation rows, insert `wa_messages`, insert
+   `wa_outbox`, then call `triggerWhatsAppOutbox`.
+6. `triggerWhatsAppOutbox` calls Trigger.dev task `whatsapp-process-outbox`.
+7. Trigger.dev runs `@repo/whatsapp-outbox`, which claims the row, sends through Meta Graph API,
+   updates `wa_outbox` and `wa_messages`, and lets Meta webhooks later advance delivery status.
+8. Scheduled Trigger.dev recovery task `whatsapp-recover-outbox` re-triggers due pending/failed
+   outbox rows.
 
 ## Meta Credentials
 
-Cloud API credentials are stored per WhatsApp account row, not as app-level `.env.example` values.
+App-level Meta env on `dev`:
 
-| Field | Stored in | Used by |
+| Env var | Purpose |
+| --- | --- |
+| `NEXT_PUBLIC_META_APP_ID` | Meta developer app id for embedded signup. |
+| `NEXT_PUBLIC_WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID` | Facebook Login for Business config id. |
+| `META_APP_SECRET` | Server-only app secret for token exchange and webhook security. |
+| `META_GRAPH_VERSION` | Graph API version, defaulted around `v22.0`. |
+| `META_WEBHOOK_VERIFY_TOKEN` | Platform webhook verify token for embedded signup accounts. |
+
+Per-account fields:
+
+| Field | Stored in | Notes |
 | --- | --- | --- |
-| `phoneNumberId` | `wa_accounts.phone_number_id` | webhook account resolution, Graph API message URL |
-| `wabaId` | `wa_accounts.waba_id` | account metadata/future template sync |
-| `accessToken` | `wa_accounts.access_token` | outbound worker Authorization bearer token |
-| `webhookVerifyToken` | `wa_accounts.webhook_verify_token` | webhook URL token and Meta verify token comparison |
-| `webhookUrl` | `wa_accounts.webhook_url` | schema supports it, current connect procedure does not set it |
+| `phoneNumberId` | `wa_accounts.phone_number_id` | Graph API message URL and webhook account resolution. |
+| `wabaId` | `wa_accounts.waba_id` | Business account id and template sync. |
+| `accessToken` | `wa_accounts.access_token` | Encrypted with `encryptWhatsAppSecret`. |
+| `appSecret` | `wa_accounts.app_secret` | Encrypted when present. |
+| `webhookVerifyToken` | `wa_accounts.webhook_verify_token` | Stored as SHA-256 hash. |
+| `apiVersion` | `wa_accounts.api_version` | Used by provider/admin calls. |
 
-Graph API provider behavior:
+Manual connection:
 
-- default API version is `v22.0`
-- sends to `https://graph.facebook.com/{version}/{phoneNumberId}/messages`
-- supports text, media, template, and read receipt calls
-- returns Meta `messages[0].id` as `providerMessageId`
+- validates `accessToken`, `phoneNumberId`, and optional `wabaId`
+- stores encrypted access token and optional encrypted app secret
+- hashes the provided webhook verify token
+- stores Meta metadata such as verified name, quality rating, messaging tier, and validation time
 
-Security note:
+Embedded signup:
 
-- `accessToken` is stored as plain text in `wa_accounts.access_token`. Before production rollout,
-  encrypt this field or move token storage behind a secrets abstraction.
+- requires `NEXT_PUBLIC_META_APP_ID`, `META_APP_SECRET`, and `META_WEBHOOK_VERIFY_TOKEN`
+- exchanges signup code for access token
+- validates account through Meta
+- subscribes the WABA to app webhook events
+- stores encrypted token/app secret and signup metadata
 
 ## Webhook Contract
 
@@ -69,154 +83,142 @@ Mounted routes:
 
 | Method/path | Purpose | Behavior |
 | --- | --- | --- |
-| `GET /api/webhooks/whatsapp/:token` | Meta verification | Requires `hub.mode=subscribe`, `hub.verify_token`, and `hub.challenge`; token must match an account `webhookVerifyToken`. |
-| `POST /api/webhooks/whatsapp/:token` | Meta events | Parses Cloud API payload, dedupes via `wa_events`, mutates contacts/conversations/messages, always returns 200 after per-event processing attempts. |
+| `GET /api/webhooks/whatsapp/:token` | Meta verification | Verifies Meta subscription challenge against stored token/hash behavior. |
+| `POST /api/webhooks/whatsapp/:token` | Meta events | Parses Cloud API payload, dedupes events, mutates contacts/conversations/messages/statuses. |
 
-Inbound message behavior:
+Webhook side effects:
 
-- creates missing `wa_contacts` by `organizationId`, `accountId`, and WhatsApp id
-- creates missing `wa_conversations`
-- inserts inbound `wa_messages` with `status = delivered`
-- updates conversation last message id/time/preview
-- stores the parsed event in `wa_events` and marks it processed or failed
-
-Status update behavior:
-
-- dedupe id is `{providerMessageId}:{status}:{timestamp}`
-- finds existing outbound message by `providerMessageId` and account
-- updates `wa_messages.status`, `statusUpdatedAt`, `errorCode`, and `errorMessage`
-- records failure on the event if the message cannot be found
-
-Current webhook gaps:
-
-- no Meta `X-Hub-Signature-256` app-secret validation
-- verification compares the query verify token to the route token, not to a separate account secret
-- account fallback by token alone can accept events without matching `phoneNumberId`
-- `wa_accounts.lastEventAt` is not updated
+- `message.inbound`: ensure contact and conversation, insert inbound message, update conversation
+  last-message fields
+- `message.status`: find outbound message by provider id and update sent/delivered/read/failed
+  state
+- `wa_events`: stores provider event id, event type, payload, processed/error state
 
 ## Outbound Send Contract
 
-Draft ORPC procedures exist for:
+Mounted ORPC operations on `dev` include:
 
-| Operation | Draft path | Result |
+| Operation | Path | Result |
 | --- | --- | --- |
-| `whatsapp.connectCloudApi` | `POST /whatsapp/accounts/connect-cloud-api` | creates connected Cloud API account with Meta credentials |
-| `whatsapp.connectBaileys` | `POST /whatsapp/accounts/connect-baileys` | creates QR-pending Baileys account |
-| `whatsapp.sendText` | `POST /whatsapp/messages/send` | creates contact/conversation/message/outbox |
-| `whatsapp.sendMedia` | `POST /whatsapp/messages/send-media` | creates media/message/outbox |
-| `whatsapp.sendTemplate` | `POST /whatsapp/messages/send-template` | creates message/outbox |
+| `whatsapp.connectCloudApi` | `POST /whatsapp/accounts/connect-cloud-api` | Manual Cloud API account connection. |
+| `whatsapp.completeEmbeddedSignup` | `POST /whatsapp/accounts/embedded-signup/complete` | Embedded signup token exchange, validation, webhook subscription. |
+| `whatsapp.sendText` | `POST /whatsapp/messages/send` | Creates outbound text message and queues Trigger.dev send. |
+| `whatsapp.sendMedia` | `POST /whatsapp/messages/send-media` | Creates media/message/outbox and queues Trigger.dev send. |
+| `whatsapp.sendTemplate` | `POST /whatsapp/messages/send-template` | Creates template message/outbox and queues Trigger.dev send. |
+| `whatsapp.retryMessage` | `POST /whatsapp/messages/:messageId/retry` | Resets failed/pending outbox row and queues Trigger.dev send again. |
+| `whatsapp.listConversations` | `GET /whatsapp/conversations` | Inbox list. |
+| `whatsapp.listMessages` | `GET /whatsapp/conversations/:conversationId/messages` | Thread messages. |
+| `whatsapp.listContacts` | `GET /whatsapp/contacts` | Contact list/search. |
+| `whatsapp.listTemplates` | `GET /whatsapp/templates` | Synced Meta templates. |
+| `whatsapp.syncTemplates` | `POST /whatsapp/templates/sync` | Fetches/upserts Meta templates. |
 
-These procedures are studio-protected but currently unreachable through the main app API because
-`whatsappRouter` is not mounted.
+Send procedure behavior:
 
-Expected send lifecycle once mounted:
+- resolves active account with `findActiveWhatsAppAccount`
+- creates or updates contact details
+- creates or finds conversation
+- inserts `wa_messages` with `status = pending`
+- records outbound conversation activity
+- inserts `wa_outbox`
+- calls `triggerWhatsAppOutbox({ outboxId, messageId })`
 
-- validate input via `packages/api/modules/whatsapp/types.ts`
-- find or create contact by `organizationId` and `to`
-- find or create conversation by `organizationId`, `accountId`, and contact
-- insert outbound `wa_messages` with `status = pending`
-- insert `wa_outbox`
-- worker sends to Meta and marks the message `sent` or `failed`
-- Meta webhook later upgrades status to delivered/read/failed
+If Trigger.dev enqueue fails, `triggerWhatsAppOutbox` marks both the outbox row and message failed,
+records the enqueue error, and throws back to the API caller.
 
-## Worker Contract
+## Trigger.dev Queue
 
-The worker is a long-running Node service, not Trigger.dev.
+Trigger config:
 
-Command:
+| Setting | Value |
+| --- | --- |
+| Config file | `trigger.config.ts` |
+| Project env | `TRIGGER_PROJECT_ID` |
+| Secret env | `TRIGGER_SECRET_KEY` |
+| Runtime | `node` |
+| Task dirs | `./src/trigger` |
+| Default retries | 3 attempts, exponential backoff from 1s to 10s, randomized |
+| Local command | `pnpm jobs:dev` |
+| Deploy command | `pnpm jobs:deploy` |
 
-```bash
-pnpm --filter @repo/whatsapp-worker dev
-```
+Tasks:
 
-Root `pnpm dev` excludes WhatsApp packages and services:
-
-```bash
---filter=!@repo/whatsapp-bridge
---filter=!@repo/whatsapp-db
---filter=!@repo/whatsapp-core
---filter=!@repo/whatsapp-providers
---filter=!@repo/whatsapp-worker
-```
-
-Runtime knobs:
-
-| Env var | Default | Meaning |
+| Task id | Type | Purpose |
 | --- | --- | --- |
-| `WHATSAPP_OUTBOX_INTERVAL_MS` | `5000` | poll interval |
-| `WHATSAPP_OUTBOX_BATCH_SIZE` | `10` | max rows per batch |
+| `whatsapp-process-outbox` | `schemaTask` | Process one outbox row by id. Queue concurrency limit: 5. |
+| `whatsapp-recover-outbox` | scheduled task | Daily at `0 3 * * *`; fetches due rows and triggers `whatsapp-process-outbox`. |
+| `whatsapp-process-outbox-batch` | `schemaTask` | Processes up to `limit` due rows inline. Queue concurrency limit: 1. |
 
-Worker behavior:
+Recovery behavior:
 
-- selects `wa_outbox` rows with `status IN ('pending', 'failed')`
+- recovery fetches due `wa_outbox` rows with `status IN ('pending', 'failed')`
 - respects `nextAttemptAt`
-- orders by `priority DESC`
-- marks row `processing` and increments attempts
-- supports `text`, `template`, `image`, `video`, `audio`, `document`, and `sticker`
-- only sends accounts with `provider = cloud_api`
-- fails rows with missing `accessToken`, missing `phoneNumberId`, missing recipient, or invalid message data
-- retries with delay `min(30 * attempts, 15 minutes)` until `maxAttempts`
+- skips rows whose attempts reached max attempts
+- re-triggers each due row through Trigger.dev
+- if re-triggering fails, marks the outbox/message failed via `markWhatsAppOutboxFailure`
 
-Worker gaps:
+## Outbox Processor
 
-- no transaction claim with `FOR UPDATE SKIP LOCKED`
-- no lock owner/timestamp columns
-- no stale `processing` recovery
-- `setInterval` can overlap long batches
-- no tests for claim/retry/exhaustion behavior
+`@repo/whatsapp-outbox` owns delivery logic used by Trigger.dev.
 
-## Read APIs
+Claim behavior:
 
-Draft inbox APIs exist but are not mounted:
+- updates one due row to `processing`
+- increments `attempts`
+- clears `nextAttemptAt` and `errorMessage`
+- only claims rows in `pending` or `failed`
+- only claims rows below `maxAttempts`
 
-| Operation | Draft path | Notes |
-| --- | --- | --- |
-| `whatsapp.listContacts` | `GET /whatsapp/contacts` | cursor pagination and search |
-| `whatsapp.listConversations` | `GET /whatsapp/conversations` | filters by account/status/search |
-| `whatsapp.getConversation` | `GET /whatsapp/conversations/:conversationId` | includes contact |
-| `whatsapp.listMessages` | `GET /whatsapp/conversations/:conversationId/messages` | cursor pagination and media join |
-| `whatsapp.markConversationRead` | `POST /whatsapp/conversations/:conversationId/mark-read` | only clears local unread count |
+Delivery behavior:
 
-`markConversationRead` does not currently call Meta `markRead`, even though the Cloud API provider
-has a `markRead(messageIds)` method.
+- decrypts stored access token before constructing `CloudApiProvider`
+- supports text, template, image, video, audio, document, and sticker sends
+- signs S3 media URLs before sending when `wa_media.storage_type = s3`
+- marks success as `wa_outbox.status = sent`, `wa_messages.status = sent`
+- stores Meta provider message id on success
+- classifies known auth/permission/recipient/provider errors as permanent
+- retryable failures compute `nextAttemptAt = min(30 * attempts, 15 minutes)`
+- permanent failures or max-attempt failures do not schedule another retry
+
+Known processor gap:
+
+- claim is an atomic conditional update, but there are no explicit lock owner/timestamp columns.
+  Trigger.dev concurrency is the main runtime guard.
 
 ## Database Shape
 
 | Table | Active role |
 | --- | --- |
-| `wa_accounts` | Meta account credentials, provider type, connection state, webhook token. |
-| `wa_contacts` | WhatsApp contact records scoped by organization/account. |
+| `wa_accounts` | Meta account, encrypted credentials, webhook hash, connection metadata. |
+| `wa_contacts` | WhatsApp contacts scoped by organization/account. |
 | `wa_conversations` | Account/contact thread state and last-message cache. |
 | `wa_messages` | Inbound/outbound message records and provider status. |
-| `wa_media` | Media metadata and public/provider URLs for media sends. |
-| `wa_outbox` | Pending outbound delivery queue. |
+| `wa_media` | Media metadata, S3 keys, public/provider URLs. |
+| `wa_outbox` | Durable send intent/audit row consumed by Trigger.dev tasks. |
 | `wa_events` | Webhook event log and idempotency. |
-| `wa_campaigns` | Future campaign foundation, not wired to API/UI. |
-| `wa_bot_flows` | Future bot-flow foundation, not wired to API/UI. |
+| `wa_templates` | Meta-approved templates synced by account/name/language. |
+| `wa_campaigns` | Broadcast/campaign foundation. |
+| `wa_bot_flows` | Automation foundation. |
 
 ## Redundant Or Placeholder Surfaces
 
-Mark these for deletion or hardening before expanding the module:
+Mark these for deletion or hardening:
 
 | Surface | Current state | Recommendation |
 | --- | --- | --- |
-| `services/whatsapp-bridge` | health route only; all session/send routes return `501 not_implemented` | delete if Baileys is no longer planned, otherwise implement before documenting as supported |
-| `connectBaileys` procedure | creates `qr_pending` account only; no working bridge/session flow | keep hidden/unmounted or delete with bridge if Meta-only is the direction |
-| `whatsapp.webhook` ORPC procedure | only returns `{ received: true }` | delete or replace with the mounted webhook handler; do not expose both |
-| `wa_campaigns` | schema only | keep as planned foundation or remove until campaign API lands |
-| `wa_bot_flows` | schema only | keep as planned foundation or remove until bot-flow engine lands |
-| empty WhatsApp settings route folders | directories exist without tracked pages | remove if no UI work is planned in this branch |
-| Trigger.dev expectation | no tracked source/dependency/config | document as not used, or add real Trigger.dev jobs before referring to it |
+| `services/whatsapp-worker` | legacy/custom poll worker over `wa_outbox` | delete once all environments use Trigger.dev, or keep only as local fallback with clear docs |
+| `packages/whatsapp-outbox` duplicate secret decrypt | decrypts `v1:` tokens locally | keep aligned with `account-secrets`; avoid two encryption implementations drifting |
+| `services/whatsapp-bridge` | health route only; session/send routes return `501 not_implemented` | delete if Baileys is not planned |
+| `connectBaileys` | creates QR-pending account without complete bridge session flow | hide/delete until Baileys is real |
+| `whatsapp.webhook` ORPC procedure | separate draft webhook endpoint | prefer mounted Hono webhook path; avoid duplicate ingress |
 
 ## Change Checklist
 
 When changing WhatsApp:
 
-- update this page from actual mounted routes and runnable services, not only file lists
-- if mounting `whatsappRouter`, add permissions and update API clients/UI flows
-- add Meta app-secret signature verification before production webhook use
-- add token encryption or a secrets abstraction for `wa_accounts.accessToken`
-- verify webhook GET/POST with a real Meta test payload
-- run the outbox worker against a queued row and confirm Graph API response handling
-- close worker locking gaps before running multiple worker instances
-- update `.env.example` if app-level WhatsApp or Trigger.dev env vars are introduced
+- inspect `dev` branch implementation first if working from another branch
+- update Trigger.dev task ids, retry policy, and env docs together
+- keep send procedures, `trigger-outbox`, and `@repo/whatsapp-outbox` contract aligned
+- verify `pnpm jobs:dev` for local queue testing
+- verify webhook GET/POST with Meta test payloads
+- update `.env.example` when Meta or Trigger env changes
+- do not delete `wa_outbox`; Trigger.dev uses it as durable send state, not as a replacement queue
