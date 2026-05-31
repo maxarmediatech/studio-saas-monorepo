@@ -1,0 +1,201 @@
+---
+title: My Assignments API
+description: Current crew member overview, assigned shoots, assigned tasks, assigned deliverables, and latest submission state.
+---
+
+## Ownership
+
+My Assignments is the crew-facing read surface for the current logged-in user's own assigned work.
+Each endpoint resolves the current user to an active crew row inside the active organization.
+
+| Area | Source |
+| --- | --- |
+| Router | `packages/api/modules/my-assignments/router.ts` |
+| Procedures | `packages/api/modules/my-assignments/procedures/*.ts` |
+| Contract schemas | `packages/api/modules/studio/schemas/my-assignments.ts` |
+| Crew lookup | `packages/api/modules/my-assignments/lib/get-my-crew.ts` |
+| DB tables | `packages/database/drizzle/schema/studio.ts` |
+
+## Scope Rules
+
+There is no explicit permission check. These procedures are self-scoped:
+
+- current session user
+- current organization
+- active crew row for that user
+- non-deleted shoots/tasks/deliverables
+
+If the user is not registered as an active crew member in the organization, `getMyCrewId` throws
+`NOT_FOUND`.
+
+## API Operations
+
+All procedures use `studioProtectedProcedure`.
+
+| Operation | Method/path | Input schema | Output schema | Notes |
+| --- | --- | --- | --- | --- |
+| `myAssignments.list` | `GET /me/assignments` | `listMyAssignmentsInputSchema` | `listMyAssignmentsOutputSchema` | Overview counts and urgent work. |
+| `myAssignments.shoots` | `GET /me/assignments/shoots` | `getMyShootsInputSchema` | `getMyShootsOutputSchema` | Paginated shoot assignments. |
+| `myAssignments.tasks` | `GET /me/assignments/tasks` | `getMyTasksInputSchema` | `getMyTasksOutputSchema` | Paginated task assignments with latest submission. |
+| `myAssignments.deliverables` | `GET /me/assignments/deliverables` | `getMyDeliverablesInputSchema` | `getMyDeliverablesOutputSchema` | Paginated deliverable assignments with latest submission. |
+
+## Overview Contract
+
+`list` input:
+
+- `includeCompleted`: defaults to `false`
+
+Overview uses `x-user-timezone`, then user timezone, then organization timezone to calculate today.
+
+Returned shape:
+
+- `summary.upcomingShoots`
+- `summary.activeTasks`
+- `summary.activeDeliverables`
+- `summary.pendingSubmissions`
+- `summary.overdueItems`
+- `nextShoot`
+- `urgentTasks`
+- `urgentDeliverables`
+
+Overview behavior:
+
+- upcoming shoots are dated today or later
+- active tasks/deliverables exclude `workflowStatus = approved` unless `includeCompleted` is true
+- pending submissions count this crew member's `submitted` and `in_review` submissions
+- overdue items are non-approved tasks/deliverables with due dates before today
+- urgent tasks/deliverables are non-approved items due within seven days, capped at five each
+
+## Shoots Contract
+
+Filters:
+
+- `dateFrom`
+- `dateTo`
+- `status`
+- `bookingId`
+- `includeCompleted`: defaults to `false`; when false, only today/future shoots are returned
+
+Pagination/sort:
+
+- `page`: defaults to `1`
+- `limit`: defaults to `20`, max `100`
+- `sortBy`: `shootDate` or `createdAt`; defaults to `shootDate`
+- `sortDirection`: `asc` or `desc`; defaults to `desc`
+
+Returned item:
+
+- assignment `id`
+- `shootId`
+- `title`
+- `shootDate`
+- `startTime`
+- `endTime`
+- `location`
+- `status`
+- assignment `role`
+- `isLead`
+- `booking`
+- `otherCrew`
+
+## Tasks Contract
+
+Filters:
+
+- `dueDateFrom`
+- `dueDateTo`
+- `status`
+- `priority`
+- `workflowStatus`
+- `bookingId`
+- `includeCompleted`: defaults to `false`; when false, excludes `workflowStatus = approved`
+
+Pagination/sort:
+
+- `page`: defaults to `1`
+- `limit`: defaults to `20`, max `100`
+- `sortBy`: `dueDate`, `priority`, `workflowStatus`, or `createdAt`; defaults to `dueDate`
+- `sortDirection`: `asc` or `desc`; defaults to `desc`
+
+Returned item:
+
+- assignment `id`
+- `taskId`
+- `name`
+- `description`
+- `status`
+- `priority`
+- `workflowStatus`
+- `dueDate`
+- `isOverdue`
+- `booking`
+- `latestSubmission`
+- `otherCrew`
+
+`latestSubmission` is the newest submission by this crew member for the task and includes:
+
+- `id`
+- `status`
+- `submittedAt`
+- `reviewNote`
+
+## Deliverables Contract
+
+Filters:
+
+- `dueDateFrom`
+- `dueDateTo`
+- `status`
+- `workflowStatus`
+- `bookingId`
+- `includeCompleted`: defaults to `false`; when false, excludes `workflowStatus = approved`
+
+Pagination/sort:
+
+- `page`: defaults to `1`
+- `limit`: defaults to `20`, max `100`
+- `sortBy`: `dueDate`, `workflowStatus`, or `createdAt`; defaults to `dueDate`
+- `sortDirection`: `asc` or `desc`; defaults to `desc`
+
+Returned item:
+
+- assignment `id`
+- `deliverableId`
+- `name`
+- `description`
+- `status`
+- `workflowStatus`
+- `dueDate`
+- `isOverdue`
+- `isLead`
+- `booking`
+- `latestSubmission`
+- `otherCrew`
+
+## Related Tables
+
+| Table | Use |
+| --- | --- |
+| `crews` | Maps current user to crew identity. |
+| `shoot_assignments` | Owns shoot assignment row, role, and lead flag. |
+| `task_assignments` | Owns current user's task assignments. |
+| `deliverable_assignments` | Owns current user's deliverable assignments and lead flag. |
+| `assignment_submissions` | Provides pending counts and latest submission state. |
+| `bookings` | Provides assignment booking context. |
+
+## Change Checklist
+
+When changing my assignments:
+
+- update `packages/api/modules/studio/schemas/my-assignments.ts`
+- update assignment procedures for filter/sort/output behavior
+- update assignment DB tables/migrations when assignment shape changes
+- update submission docs when latest submission logic changes
+- add/update frontend API helpers if the UI starts consuming these endpoints directly
+- update this page in the same PR
+
+## Known Gaps
+
+- No frontend helper was found in `apps/web/modules/saas/studio/lib/api.ts` for `myAssignments`.
+- Date handling differs: overview uses the user/organization timezone helper, while list endpoints use server-local `Date` calculations.
+- Latest submission lookup does not tenant-filter directly; it is scoped indirectly through the current user's assignment result.
