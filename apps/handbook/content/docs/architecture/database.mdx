@@ -5,21 +5,381 @@ description: Data model, migrations, schema ownership, and safe change rules.
 
 ## Purpose
 
-The database layer owns schema definitions, migrations, typed queries, and data validation boundaries.
+The database package is the source of truth for persistent data shape. It owns:
 
-## Key Locations
+- PostgreSQL table definitions through Drizzle.
+- Generated SQL migrations.
+- The shared runtime database client.
+- Reusable query helpers for common reads and writes.
+- Zod schemas generated from Drizzle tables for API input and output validation.
 
-- `packages/database`
-- root scripts: `pnpm db:generate`, `pnpm db:migrate`, `pnpm db:push`, `pnpm db:studio`
-- existing ADR: `docs/adr/0002-database-orm-drizzle.md`
+Anything that changes persisted shape should start here, then move outward into API procedures,
+workers, and UI screens.
 
-## Change Safety
+## Package Map
 
-- Prefer additive migrations for production data.
-- Pair schema changes with type-check and targeted feature tests.
-- Document backfills, destructive migrations, and rollback plans before merge.
-- Keep generated schema docs here later, sourced from Drizzle/migrations.
+| Path | Role |
+| --- | --- |
+| `packages/database/drizzle.config.ts` | Drizzle Kit config. Reads `DATABASE_URL`, points schema to `./drizzle/schema/**/*.ts`, writes migrations to `./drizzle/migrations`. |
+| `packages/database/drizzle/client.ts` | Runtime database client. Calls `assertCoreEnv()` and creates `drizzle(databaseUrl, { schema })`. |
+| `packages/database/drizzle/schema` | Table definitions, relations, enums, indexes, and constraints. |
+| `packages/database/drizzle/migrations` | Generated SQL migration history. Do not hand-wave these in review; read the SQL. |
+| `packages/database/drizzle/queries` | Shared query helpers for users, organizations, purchases, and webhook events. |
+| `packages/database/drizzle/zod.ts` | `drizzle-zod` schemas used by API and service boundaries. |
+| `packages/database/drizzle/index.ts` | Public export surface for `db`, schema, query helpers, Zod schemas, and common Drizzle operators. |
+| `packages/database/index.ts` | Package root export. Consumers import from `@repo/database`. |
 
-## Open Handbook Work
+The root scripts are thin package delegates:
 
-Add entity ownership, relationship diagrams, retention rules, and common query patterns after reading the live schema.
+```json
+{
+  "db:generate": "pnpm --filter @repo/database generate",
+  "db:baseline": "pnpm --filter @repo/database baseline",
+  "db:migrate": "pnpm --filter @repo/database migrate",
+  "db:push": "pnpm --filter @repo/database push",
+  "db:seed": "turbo db:seed",
+  "db:studio": "pnpm --filter @repo/database studio"
+}
+```
+
+## Runtime Contract
+
+The app and services share one typed client:
+
+```ts
+// packages/database/drizzle/client.ts
+import { drizzle } from "drizzle-orm/node-postgres";
+import { assertCoreEnv } from "@repo/env";
+import * as schema from "./schema";
+
+const { databaseUrl } = assertCoreEnv();
+
+export const db = drizzle(databaseUrl, { schema });
+```
+
+Use that client from `@repo/database`; do not create ad hoc PostgreSQL clients in app code.
+The package export also re-exports common Drizzle helpers, so callers can keep imports compact:
+
+```ts
+import { and, db, eq, organizations } from "@repo/database";
+```
+
+## Schema Domains
+
+The schema folder is split by domain, not by technical layer.
+
+| File | Owns |
+| --- | --- |
+| `auth.ts` | Users, sessions, OAuth/password accounts, email verification, two-factor records. |
+| `core.ts` | Organizations, members, teams, invitations, roles, purchases, webhook events. |
+| `studio.ts` | Studio operating system: clients, bookings, crews, shoots, tasks, deliverables, invoices, receipts, payments, expenses, notifications, saved views, activity log, attachments, quick links, and recent visits. |
+| `checkins.ts` | Check-in types, check-ins, threaded comments, and entity links. |
+| `discussions.ts` | Channels, memberships, discussions, linked entities, and messages. |
+| `integrations-google-calendar.ts` | Google Calendar connections, shoot calendar events, and sync jobs. |
+| `sms.ts` | SMS outbox queue and delivery tracking. |
+| `enums.ts` | Shared PostgreSQL enums for workflow, booking, payment, messaging, invoice, check-in, and calendar states. |
+| `index.ts` | Exports every schema module, including the WhatsApp package schema from `@repo/whatsapp-db`. |
+
+When adding a table, put it beside the domain it belongs to. If it crosses domains, choose the domain
+that owns the lifecycle and expose the relationship from there.
+
+## Core Entity Shape
+
+Most business tables follow the same shape:
+
+- `id` is a UUID generated with `uuidv7`.
+- `organizationId` scopes tenant-owned rows.
+- `createdAt` and `updatedAt` exist on mutable business data.
+- Soft-deletable rows use `deletedAt` and often `deletedBy`.
+- User-attribution fields such as `createdBy` and `updatedBy` appear on operational records.
+- Unique indexes are often partial, so soft-deleted rows do not block replacement records.
+
+Example from the studio domain:
+
+```ts
+export const clients = pgTable(
+  "clients",
+  {
+    id: uuid("id").primaryKey().default(sql`uuidv7()`),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    phone: text("phone"),
+    email: text("email"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at"),
+    deletedBy: text("deleted_by").references(() => users.id),
+  },
+  (table) => [
+    index("clients_organization_idx").on(table.organizationId),
+    uniqueIndex("clients_org_phone_unique_idx")
+      .on(table.organizationId, table.phone)
+      .where(sql`${table.phone} IS NOT NULL AND ${table.deletedAt} IS NULL`),
+  ],
+);
+```
+
+Read this as the default design vocabulary: tenant scope, audit columns, soft delete, indexes for
+common list filters, and database-level constraints for uniqueness.
+
+## Tenancy
+
+Tenant-owned data should be keyed by `organizationId`. The SaaS route layout resolves the active
+organization from the URL slug, then API code should pass the organization id through to database
+queries.
+
+Good tenant-scoped query shape:
+
+```ts
+import { and, db, eq, shoots } from "@repo/database";
+
+export async function getShootForOrganization({
+  organizationId,
+  shootId,
+}: {
+  organizationId: string;
+  shootId: string;
+}) {
+  return db.query.shoots.findFirst({
+    where: (shoot, { and, eq }) =>
+      and(eq(shoot.organizationId, organizationId), eq(shoot.id, shootId)),
+  });
+}
+```
+
+Avoid id-only reads for tenant-owned data unless the caller has already proved tenant ownership in
+the same call path.
+
+## Soft Deletes
+
+Soft-deletable tables keep historical rows and exclude them from active lists with `deletedAt`.
+Partial indexes preserve active uniqueness while allowing historical duplicates.
+
+```ts
+uniqueIndex("bookings_org_reference_unique_idx")
+  .on(table.organizationId, table.reference)
+  .where(sql`${table.deletedAt} IS NULL`);
+```
+
+For active list queries, include the filter explicitly:
+
+```ts
+const activeClients = await db.query.clients.findMany({
+  where: (client, { and, eq, isNull }) =>
+    and(
+      eq(client.organizationId, organizationId),
+      isNull(client.deletedAt),
+    ),
+});
+```
+
+If a feature needs restore, audit, or historical reporting, use soft delete. If the row is purely
+ephemeral and has no business history, a hard delete may be acceptable, but document that choice in
+the PR.
+
+## Query Helpers
+
+Shared query helpers live in `packages/database/drizzle/queries`. They are intentionally boring:
+validate input shape at the boundary, perform one focused read or write, and return typed rows.
+
+Existing examples:
+
+```ts
+export async function getOrganizationMembership(
+  organizationId: string,
+  userId: string,
+) {
+  return db.query.members.findFirst({
+    where: (member, { eq }) =>
+      and(
+        eq(member.organizationId, organizationId),
+        eq(member.userId, userId),
+      ),
+    with: {
+      organization: true,
+    },
+  });
+}
+```
+
+```ts
+export async function createPurchase(
+  insertedPurchase: z.infer<typeof PurchaseInsertSchema>,
+) {
+  const [row] = await db
+    .insert(purchases)
+    .values(insertedPurchase)
+    .returning({ id: purchases.id });
+
+  if (!row) {
+    throw new Error("Failed to insert purchase");
+  }
+
+  return getPurchaseById(row.id);
+}
+```
+
+Use a shared helper when:
+
+- Multiple callers need the same query.
+- The query encodes authorization-sensitive filtering.
+- The write has required follow-up reads or failure handling.
+- The operation is part of an integration flow, such as payments or webhooks.
+
+Keep one-off screen-specific list queries close to the API procedure until a second caller appears.
+
+## Zod Schemas
+
+`packages/database/drizzle/zod.ts` derives DTO schemas from Drizzle tables:
+
+```ts
+export const UserInsertSchema = createInsertSchema(users);
+export const UserUpdateSchema = createUpdateSchema(users);
+export const OrganizationSelectSchema = createSelectSchema(organizations);
+export const PurchaseInsertSchema = createInsertSchema(purchases);
+```
+
+Use these schemas for database-shaped inputs and outputs. API routes can still add stricter product
+validation on top.
+
+Example:
+
+```ts
+import { OrganizationUpdateSchema, updateOrganization } from "@repo/database";
+
+const input = OrganizationUpdateSchema.parse({
+  id,
+  name,
+  slug,
+});
+
+await updateOrganization(input);
+```
+
+Do not duplicate database DTO schemas by hand in API packages. If a table changes, update this file
+when callers need insert, update, or select validation.
+
+## Migrations
+
+Schema changes should move through this path:
+
+1. Edit the Drizzle schema file.
+2. Run `pnpm db:generate`.
+3. Read the generated SQL in `packages/database/drizzle/migrations`.
+4. Run `pnpm db:migrate` against the intended local database.
+5. Run the affected app/service tests or type checks.
+6. Call out destructive changes, backfills, and rollback notes in the PR.
+
+Use `pnpm db:push` only for local throwaway development. Do not treat it as a production migration
+workflow because it bypasses the reviewed SQL history.
+
+## Safe Change Patterns
+
+Prefer additive changes:
+
+```ts
+// Safe first step: nullable column with no behavioral dependency.
+externalReference: text("external_reference"),
+```
+
+Then deploy code that writes both old and new shape. After data is backfilled and reads have moved,
+tighten the schema:
+
+```ts
+// Later migration after every row has a value.
+externalReference: text("external_reference").notNull(),
+```
+
+For enum changes, remember the database enum is real PostgreSQL state. Adding a value is usually
+safe; renaming or removing values needs a data migration and careful deploy ordering.
+
+For destructive changes, write down:
+
+- Which code has stopped reading the old column or table.
+- How existing production rows are migrated.
+- Whether rollback requires restoring data or only reverting code.
+- Which command and environment ran the migration.
+
+## Workers And Outboxes
+
+The database is also the coordination layer for background work.
+
+`sms.ts` defines `smsOutbox`, with status, attempt counters, `nextAttemptAt`, provider metadata,
+and lock fields. Queue indexes separate immediate and scheduled messages.
+
+`integrations-google-calendar.ts` defines `calendarSyncJobs`, with job type, status, attempts,
+locking, target entity fields, and error metadata.
+
+These tables are designed for idempotent workers:
+
+```ts
+const jobs = await db.query.calendarSyncJobs.findMany({
+  where: (job, { and, eq, lte, isNull }) =>
+    and(
+      eq(job.status, "queued"),
+      lte(job.nextAttemptAt, new Date()),
+      isNull(job.lockedAt),
+    ),
+  limit: 25,
+});
+```
+
+When adding a worker-backed feature, model the queued work in the database first. Include status,
+attempts, next retry time, provider identifiers, last error, and lock ownership where concurrency is
+possible.
+
+## Payments And Webhooks
+
+Payment state is split between `purchases` and `webhookEvents`.
+
+- `purchases` stores product/payment/subscription identifiers, amount, currency, status, period,
+  user, and organization links.
+- `webhookEvents` stores provider webhook ids and processing status, so handlers can be idempotent.
+
+Webhook helpers show the intended flow:
+
+```ts
+const existing = await getWebhookEventByWebhookId(webhookId);
+if (existing) return;
+
+const id = await createWebhookEvent({
+  webhookId,
+  eventType,
+  provider,
+  payload,
+  processed: false,
+});
+
+try {
+  // Apply business mutation.
+  await markWebhookEventProcessed(id);
+} catch (error) {
+  await markWebhookEventFailed(id, String(error));
+  throw error;
+}
+```
+
+Any new provider webhook should use the same shape: record first, make the business change
+idempotently, then mark processed or failed.
+
+## Review Checklist
+
+Before merging a database change, check:
+
+- Does every tenant-owned table include `organizationId` and tenant-scoped indexes?
+- Do active list queries exclude `deletedAt` rows where the table is soft-deletable?
+- Are uniqueness rules enforced in the database, not only in application code?
+- Did `pnpm db:generate` create SQL that matches the intended change?
+- Is `pnpm db:push` absent from the deployment plan?
+- Are generated Zod schemas updated if API input/output needs the new shape?
+- Are workers and webhooks idempotent under retry?
+- Are destructive changes paired with a backfill and rollback note?
+
+## Related Context
+
+- ADR: `docs/adr/0002-database-orm-drizzle.md`
+- API procedures: `packages/api/orpc`
+- Web route handlers: `apps/web/app/api/[[...rest]]/route.ts`
+- Worker services: `services/*`
