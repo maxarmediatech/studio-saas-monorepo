@@ -1,0 +1,147 @@
+---
+title: Receipts API
+description: Receipt listing, generation from payments, immutability, and void behavior.
+---
+
+## Ownership
+
+Receipts document money received. They are intentionally immutable after creation. Corrections should
+happen by voiding a receipt and generating a new one from the correct payment state.
+
+| Area | Source |
+| --- | --- |
+| Router | `packages/api/modules/receipts/router.ts` |
+| Procedures | `packages/api/modules/receipts/procedures/*.ts` |
+| Contract schemas | `packages/api/modules/studio/schemas/receipt.ts` |
+| Helpers | `packages/api/modules/receipts/lib/*` |
+| DB table | `packages/database/drizzle/schema/studio.ts` |
+| Payment integration | `packages/api/modules/studio-payments/procedures/*` |
+
+## Database Shape
+
+| Table | Owns | Notes |
+| --- | --- | --- |
+| `receipts` | Receipt number, amount, method, date, links, audit, soft delete. | Active receipt numbers unique per organization. |
+| `received_amounts` | Optional source payment. | One received payment can have generated receipt evidence. |
+| `invoices` | Optional invoice link. | Used for invoice payment receipts. |
+| `bookings` | Required receipt owner. | Receipt always belongs to a booking. |
+
+Important indexes:
+
+| Index/constraint | Purpose |
+| --- | --- |
+| `receipts_org_idx` | Tenant filtering. |
+| `receipts_booking_idx` | Booking detail/history lookup. |
+| `receipts_invoice_idx` | Invoice receipt lookup. |
+| `receipts_received_amount_idx` | Payment receipt lookup. |
+| `receipts_date_idx` | Date filtering/sorting. |
+| `receipts_org_number_idx` | Active receipt number unique per organization. |
+| `receipts_amount_positive` | Receipt amount must be greater than zero. |
+
+## API Operations
+
+All receipt procedures use `studioProtectedProcedure` and active organization scope.
+
+| Operation | Method/path | Input schema | Output schema | Permission | Notes |
+| --- | --- | --- | --- | --- | --- |
+| `receipts.list` | `GET /receipts` | `listReceiptsInputSchema` | `listReceiptsOutputSchema` | `payment:list` | Paginated receipt list. |
+| `receipts.get` | `GET /receipts/{id}` | `getReceiptInputSchema` | `getReceiptOutputSchema` | `payment:read` | Detail with booking and invoice. |
+| `receipts.createFromPayment` | `POST /receipts/from-payment` | `createReceiptFromPaymentInputSchema` | `createReceiptFromPaymentOutputSchema` | `payment:create` | Creates receipt from explicit payment/invoice values. |
+| `receipts.generateFromReceived` | `POST /receipts/from-received` | `generateReceiptFromReceivedInputSchema` | `generateReceiptFromReceivedOutputSchema` | `payment:create` | Generates receipt from an existing received payment. |
+| `receipts.void` | `POST /receipts/{id}/void` | `voidReceiptInputSchema` | `voidReceiptOutputSchema` | `payment:delete` | Soft delete; receipts cannot be edited. |
+
+## Read Contracts
+
+`list` accepts:
+
+- `bookingId`
+- `clientId`
+- `invoiceId`
+- `paymentScheduleId`
+- `dateFrom`, `dateTo`
+- `amountMin`, `amountMax`
+- `search`
+- pagination, sorting, and `includeDeleted`
+
+`list` returns base receipt fields plus:
+
+- `bookingName`
+- `bookingReferenceNumber`
+- `invoiceNumber`
+
+`get` returns base receipt fields plus:
+
+- `booking`: `id`, `name`, `referenceNumber`
+- `invoice`: `id`, `invoiceNumber`, `totalAmount` when linked
+
+## Create Contract
+
+`createFromPayment` requires:
+
+- `bookingId`
+- `invoiceId`
+- `receivedAmountId`
+- `amount`
+- `receiptDate`
+
+Optional fields:
+
+- `paymentMethod`
+- `notes`
+
+Behavior:
+
+- verifies booking belongs to active organization and is not deleted
+- verifies invoice belongs to the booking and organization
+- generates organization-scoped receipt number
+- inserts receipt
+
+`generateFromReceived` requires:
+
+- `receivedAmountId`
+
+Behavior:
+
+- verifies received payment belongs to active organization and is not deleted
+- returns existing active receipt for that received payment when present
+- verifies booking still exists and is not deleted
+- creates receipt from received payment amount/method/date/notes
+- retries receipt number generation on unique conflicts
+
+## Void Contract
+
+`void`:
+
+- finds active receipt by id and organization
+- sets `deletedAt`, `deletedBy`, `updatedAt`, `updatedBy`
+- tracks non-blocking delete activity
+
+Voiding a receipt does not reverse the received payment, booking total, schedule paid amount, or
+invoice paid amount. Use the payment APIs for money corrections.
+
+## Related Surfaces
+
+| Surface | Relationship |
+| --- | --- |
+| Payments | Receipts are generated from received payments. |
+| Invoices | Invoice-linked payments can generate receipts and update invoice state. |
+| Bookings | Receipts belong to bookings and use booking context. |
+| Activities | Voids are tracked as deletes. |
+
+## Change Checklist
+
+When changing receipt behavior:
+
+- update `packages/api/modules/studio/schemas/receipt.ts`
+- update receipt procedures and helpers
+- update payment conversion/create flows when auto-generating receipts
+- update DB schema/migration if receipt numbering, links, or immutability changes
+- update receipt UI/download/export surfaces
+- update this page in the same PR
+
+## Known Gaps
+
+- Receipts have no update endpoint by design.
+- Voiding a receipt does not update linked invoice or received payment totals.
+- Receipt number generation is retried in some flows, but direct `createFromPayment` does not expose the same retry wrapper.
+- Receipt PDF/download delivery is not documented as an API endpoint yet.

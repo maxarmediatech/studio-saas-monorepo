@@ -1,0 +1,203 @@
+---
+title: Expenses API
+description: Expense CRUD, allocation targets, booking total side effects, stats, and safe-change notes.
+---
+
+## Ownership
+
+Expenses track studio costs. They can stand alone or be allocated to exactly one booking, shoot, or
+crew per assignment row. Booking-assigned expenses update cached booking expense totals.
+
+| Area | Source |
+| --- | --- |
+| Router | `packages/api/modules/expenses/router.ts` |
+| Procedures | `packages/api/modules/expenses/procedures/*.ts` |
+| Contract schemas | `packages/api/modules/studio/schemas/expense.ts` |
+| Allocation helpers | `packages/api/modules/expenses/lib/expense-allocations.ts` |
+| DB tables | `packages/database/drizzle/schema/studio.ts` |
+| Frontend UI | `apps/web/modules/saas/studio/components/expenses/*` |
+| Table exports | `apps/web/modules/saas/shared/lib/table-export/definitions.ts` |
+
+## Database Shape
+
+| Table | Owns | Notes |
+| --- | --- | --- |
+| `expenses` | Description, amount, category, date, bill-to, payment method, vendor, notes, metadata, audit, soft delete. | Category is free text/config-backed. |
+| `expense_assignments` | Links an expense to one booking, shoot, or crew. | Physically deleted/reinserted when allocations change. |
+| `bookings` | Cached `totalExpenses`. | Updated for booking assignments. |
+| `shoots` | Optional assignment target. | Used for shoot-level cost allocation. |
+| `crews` | Optional assignment target. | Used for crew/vendor cost allocation. |
+| `configurations` | Expense categories. | `expense_category` values are not DB-enforced. |
+
+Important indexes/constraints:
+
+| Index/constraint | Purpose |
+| --- | --- |
+| `expenses_org_idx` | Tenant filtering. |
+| `expenses_date_idx` | Date sorting/filtering. |
+| `expenses_org_date_idx` | Tenant + date reports. |
+| `expenses_category_idx` | Category filters. |
+| `expenses_bill_to_idx` | Studio/client split filters. |
+| `expenses_amount_positive` | Expense amount must be greater than zero. |
+| `expense_assignments_single_target` | Exactly one target column is set. |
+
+Enums:
+
+- bill-to: `studio`, `client`
+- payment method: `cash`, `upi`, `bank_transfer`, `cheque`, `card`, `other`
+
+## API Operations
+
+All expense procedures use `studioProtectedProcedure` and active organization scope.
+
+| Operation | Method/path | Input schema | Output schema | Permission | Notes |
+| --- | --- | --- | --- | --- | --- |
+| `expenses.list` | `GET /expenses` | `listExpensesInputSchema` | `listExpensesOutputSchema` | `expense:list` | Paginated list with assignment summary. |
+| `expenses.listMinimal` | `GET /expenses/minimal` | `listExpensesMinimalInputSchema` | `listExpensesMinimalOutputSchema` | `expense:list` or `expense:reference` | Dropdown/reference shape. |
+| `expenses.get` | `GET /expenses/{id}` | `getExpenseInputSchema` | `getExpenseOutputSchema` | `expense:read` | Detail with assignments. |
+| `expenses.create` | `POST /expenses` | `createExpenseInputSchema` | `createExpenseOutputSchema` | `expense:create` | Creates expense and optional assignments. |
+| `expenses.update` | `PUT /expenses/{id}` | `updateExpenseInputSchema` | `updateExpenseOutputSchema` | `expense:update` | Updates expense fields; no assignment update input. |
+| `expenses.delete` | `DELETE /expenses/{id}` | `deleteExpenseInputSchema` | `deleteExpenseOutputSchema` | `expense:delete` | Soft delete; adjusts booking totals. |
+| `expenses.stats` | `GET /expenses/stats` | `getExpenseStatsInputSchema` | `getExpenseStatsOutputSchema` | `expense:list` | Aggregate spend totals/splits. |
+
+## Read Contracts
+
+`list` accepts:
+
+- `category`
+- `billTo`
+- `paymentMethod`
+- `dateFrom`, `dateTo`
+- `bookingId`
+- `shootId`
+- `crewId`
+- `search`
+- pagination, sorting, and `includeDeleted`
+
+`list` returns base expense fields plus:
+
+- `assignmentsCount`
+- first booking assignment summary: `bookingId`, `bookingName`, `bookingReferenceNumber`
+
+`listMinimal` returns:
+
+- `id`
+- `description`
+- `category`
+- `expenseDate`
+- `vendor`
+
+`get` returns base expense fields plus `assignments`:
+
+- assignment id and target ids
+- allocation percentage/amount
+- booking/shoot/crew display names where available
+
+`stats` accepts:
+
+- `bookingId`
+- `dateFrom`
+- `dateTo`
+
+`stats` returns:
+
+- `totalExpenses`
+- `expensesThisMonth`
+- `byCategory`
+- `byBillTo`
+- `byPaymentMethod`
+- `expenseCount`
+- `averageExpense`
+
+## Create Contract
+
+Required fields:
+
+- `description`
+- `amount`
+- `expenseDate`
+
+Optional fields:
+
+- `category`
+- `billTo`
+- `paymentMethod`
+- `transactionReference`
+- `vendor`
+- `notes`
+- `metadata`
+- `assignments`
+
+Assignment input:
+
+- exactly one of `bookingId`, `shootId`, or `crewId`
+- optional `allocationPercentage`
+- optional `allocationAmount`
+
+Create behavior:
+
+- validates each assignment target belongs to active organization and is not deleted
+- inserts expense
+- inserts assignment rows when provided
+- increments `bookings.totalExpenses` for booking assignments
+- tracks non-blocking create activity
+
+If there are no assignments, the expense is created as unallocated.
+
+## Update/Delete Contract
+
+`update` can change:
+
+- `description`
+- `amount`
+- `category`
+- `expenseDate`
+- `billTo`
+- `paymentMethod`
+- `transactionReference`
+- `vendor`
+- `notes`
+- `metadata`
+
+When amount changes, booking totals for existing booking assignments are adjusted by the amount delta.
+
+`update` does not accept assignment changes. Allocation edits require separate implementation.
+
+`delete`:
+
+- soft-deletes the expense
+- subtracts the expense amount from booking totals for booking assignments
+- tracks non-blocking delete activity
+
+Assignment rows are not soft-deleted directly. They remain attached to the soft-deleted expense.
+
+## Related Surfaces
+
+| Surface | Relationship |
+| --- | --- |
+| Bookings | Booking-assigned expenses update `bookings.totalExpenses`. |
+| Shoots | Expenses can be allocated to a shoot. |
+| Crews | Expenses can be allocated to a crew. |
+| Configurations | Expense category values come from `expense_category` settings. |
+| Dashboard | Finance widgets use expense totals/splits. |
+| Global search | Expenses are searchable. |
+
+## Change Checklist
+
+When changing expense behavior:
+
+- update `packages/api/modules/studio/schemas/expense.ts`
+- update expense procedures and allocation helpers
+- update DB schema/migration for expense or assignment shape changes
+- update booking total math and add regression coverage for amount changes
+- update expense UI, filters, tables, exports, and dashboard widgets
+- update configurations docs if category behavior changes
+- update this page in the same PR
+
+## Known Gaps
+
+- There is no assignment update endpoint; existing assignments cannot be changed through `expenses.update`.
+- Expense category is text/config-backed but not validated against active `expense_category` configurations.
+- Deleting an expense does not remove assignment rows.
+- `list` surfaces only one booking summary even when multiple assignments exist.
+- `listMinimal` omits amount intentionally, but consumers needing amount must use `list` or `get`.

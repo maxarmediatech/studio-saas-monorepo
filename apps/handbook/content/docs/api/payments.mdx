@@ -1,0 +1,283 @@
+---
+title: Payments API
+description: Studio received payments, payment schedules, receipts, invoices, and SaaS billing boundaries.
+---
+
+## Ownership
+
+Payments have two separate surfaces:
+
+- studio finance: client money against bookings, payment schedules, receipts, and invoices
+- SaaS billing: subscription checkout, customer portal, purchases, and plan changes for the app itself
+
+Keep these separate. Studio finance lives under `studioPayments`, `invoices`, and `receipts`.
+SaaS billing lives under `payments`.
+
+| Area | Source |
+| --- | --- |
+| Studio payments router | `packages/api/modules/studio-payments/router.ts` |
+| Studio payment schemas | `packages/api/modules/studio/schemas/payment.ts` |
+| Invoice router | `packages/api/modules/invoices/router.ts` |
+| Receipt router | `packages/api/modules/receipts/router.ts` |
+| SaaS billing router | `packages/api/modules/payments/router.ts` |
+| Studio finance tables | `packages/database/drizzle/schema/studio.ts` |
+| SaaS purchase table | `packages/database/drizzle/schema/core.ts` |
+| Booking payment form | `apps/web/modules/saas/studio/components/bookings/booking-form/BookingPaymentsStep.tsx` |
+| Studio payments UI | `apps/web/modules/saas/studio/components/payments/*` |
+
+## Database Shape
+
+| Table | Owns | Notes |
+| --- | --- | --- |
+| `received_amounts` | Actual money received from clients. | Linked to booking, optional schedule, optional invoice. |
+| `payment_schedules` | Expected/milestone payments. | Tracks amount, paid amount, due date, status, and tax type. |
+| `receipts` | Receipt documents for received payments. | Immutable after creation; void means soft delete. |
+| `invoices` | Invoice headers and cached totals. | Covered in [Invoices API](/docs/api/invoices). |
+| `invoice_line_items` | Invoice billable rows. | Covered in [Invoices API](/docs/api/invoices). |
+| `purchases` | SaaS product/subscription ownership. | User or organization scoped; Dodo-backed. |
+| `webhook_events` | Provider webhook idempotency/audit. | Stores raw provider payload and processing status. |
+
+Important constraints:
+
+| Constraint/index | Purpose |
+| --- | --- |
+| `received_amounts_amount_positive` | Payment amount must be greater than zero. |
+| `received_amounts_schedule_idx` | Finds payments linked to a schedule. |
+| `received_amounts_invoice_idx` | Finds payments linked to an invoice. |
+| `payment_schedules_paid_amount_range` | Paid amount must stay between zero and schedule amount. |
+| `payment_schedules_status_idx` | Schedule status filtering. |
+| `receipts_org_number_idx` | Active receipt number is unique per organization. |
+| `purchases.subscriptionId` unique | One purchase row per provider subscription. |
+| `purchases.paymentId` unique | One purchase row per provider payment. |
+
+Enums:
+
+- payment method: `cash`, `upi`, `bank_transfer`, `cheque`, `card`, `other`
+- schedule status: `pending`, `partial`, `completed`, `overdue`, `cancelled`
+- tax type: `exclusive`, `inclusive`, `no_gst`
+
+## Studio Payment Operations
+
+All studio payment procedures use `studioProtectedProcedure` and active organization scope.
+
+| Operation | Method/path | Input schema | Output schema | Permission | Notes |
+| --- | --- | --- | --- | --- | --- |
+| `studioPayments.listReceived` | `GET /studio-payments/received` | `listReceivedInputSchema` | `listReceivedOutputSchema` | `payment:list` | Paginated received payment list. |
+| `studioPayments.getReceived` | `GET /studio-payments/received/{id}` | `getReceivedInputSchema` | `getReceivedOutputSchema` | `payment:read` | Received payment detail with booking and schedule. |
+| `studioPayments.createReceived` | `POST /studio-payments/received` | `createReceivedInputSchema` | `createReceivedOutputSchema` | `payment:create` | Records actual money; updates booking totals. |
+| `studioPayments.updateReceived` | `PUT /studio-payments/received/{id}` | `updateReceivedInputSchema` | `updateReceivedOutputSchema` | `payment:update` | Updates received payment; amount changes recalc totals. |
+| `studioPayments.deleteReceived` | `DELETE /studio-payments/received/{id}` | `deleteReceivedInputSchema` | `deleteReceivedOutputSchema` | `payment:delete` | Soft delete; subtracts from booking totals. |
+| `studioPayments.listSchedules` | `GET /studio-payments/schedules` | `listSchedulesInputSchema` | `listSchedulesOutputSchema` | `payment:list` | Paginated schedule list. |
+| `studioPayments.listSchedulesMinimal` | `GET /studio-payments/schedules/minimal` | `listSchedulesMinimalInputSchema` | `listSchedulesMinimalOutputSchema` | `payment:list` or `payment:reference` | Dropdown/reference shape. |
+| `studioPayments.getSchedule` | `GET /studio-payments/schedules/{id}` | `getScheduleInputSchema` | `getScheduleOutputSchema` | `payment:read` | Schedule detail with linked payments. |
+| `studioPayments.createSchedule` | `POST /studio-payments/schedules` | `createScheduleInputSchema` | `createScheduleOutputSchema` | `payment:create` | Creates pending milestone if booking has schedulable balance. |
+| `studioPayments.updateSchedule` | `PUT /studio-payments/schedules/{id}` | `updateScheduleInputSchema` | `updateScheduleOutputSchema` | `payment:update` | Only pending schedules are editable. |
+| `studioPayments.deleteSchedule` | `DELETE /studio-payments/schedules/{id}` | `deleteScheduleInputSchema` | `deleteScheduleOutputSchema` | `payment:delete` | Only pending schedules are deletable. |
+| `studioPayments.convertSchedule` | `POST /studio-payments/schedules/{scheduleId}/convert` | `convertScheduleInputSchema` | `convertScheduleOutputSchema` | `payment:create` | Creates received payment from schedule, optionally receipt. |
+| `studioPayments.stats` | `GET /studio-payments/stats` | `getPaymentStatsInputSchema` | `getPaymentStatsOutputSchema` | `payment:list` | Aggregates received, pending, overdue, status/method splits. |
+
+## Read Contracts
+
+`listReceived` accepts:
+
+- `bookingId`
+- `paymentMethod`
+- `dateFrom`, `dateTo`
+- `search` over booking name or transaction reference
+- pagination, sorting, and `includeDeleted`
+
+`listReceived` returns base received amount fields plus:
+
+- `bookingName`
+- `bookingReferenceNumber`
+- `scheduleName`
+- `receiptId`
+- `receiptNumber`
+
+`getReceived` returns the base received amount plus:
+
+- `booking`: `id`, `name`, `referenceNumber`
+- `schedule`: `id`, `name` when linked
+
+`listSchedules` accepts:
+
+- `bookingId`
+- `status`
+- `dueDateFrom`, `dueDateTo`
+- `search` over schedule or booking name
+- pagination, sorting, and `includeDeleted`
+
+`listSchedules` returns base schedule fields plus:
+
+- `bookingName`
+- `bookingReferenceNumber`
+- `invoiceId`
+- `invoiceNumber`
+- `receiptId`
+- `receiptNumber`
+
+`getSchedule` returns the base schedule plus:
+
+- `booking`: `id`, `name`, `referenceNumber`
+- `invoiceId`, `invoiceNumber`
+- `linkedPayments`: received payment id, amount, date, method
+
+`stats` returns:
+
+- `totalReceived`
+- `totalScheduled`
+- `totalPending`
+- `totalOverdue`
+- `receivedThisMonth`
+- `byPaymentMethod`
+- `byScheduleStatus`
+- `upcomingSchedules`
+
+## Create Contract
+
+`createReceived` requires:
+
+- `bookingId`
+- `amount`
+- `paymentMethod`
+- `receivedDate`
+
+Optional fields:
+
+- `transactionReference`
+- `notes`
+- `proofAttachment`
+- `paymentScheduleId`
+- `invoiceId`
+
+Create behavior:
+
+- verifies booking belongs to active organization and is not deleted
+- verifies linked schedule belongs to the same booking
+- verifies linked invoice belongs to the same booking
+- validates proof attachment keys start with `orgs/{organizationId}/`
+- inserts `received_amounts`
+- increments `bookings.totalReceived`
+- updates linked schedule paid amount and status
+- creates a receipt when linked to an invoice
+- updates linked invoice payment status
+- tracks non-blocking `payment_received` activity
+
+`createSchedule` requires:
+
+- `bookingId`
+- `name`
+- `amount`
+- `dueDate`
+
+Optional fields:
+
+- `taxType`
+- `notes`
+- `sortOrder`
+
+Create behavior:
+
+- verifies booking belongs to active organization and is not deleted
+- computes left-to-schedule as package cost minus received minus pending outstanding
+- rejects schedules above remaining balance
+- creates a `pending` schedule with `paidAmount = 0`
+- tracks non-blocking activity
+
+## Update/Delete Contract
+
+`updateReceived` can change:
+
+- `amount`
+- `paymentMethod`
+- `transactionReference`
+- `receivedDate`
+- `notes`
+- `proofAttachment`
+
+Amount changes:
+
+- update `bookings.totalReceived` by the delta
+- recompute linked schedule `paidAmount`, `status`, and `paidAt`
+- reject if linked received payments exceed the schedule amount
+
+`deleteReceived`:
+
+- soft-deletes the received amount
+- subtracts payment amount from `bookings.totalReceived`
+- recomputes linked schedule totals and status
+- tracks non-blocking delete activity
+
+`updateSchedule` can change:
+
+- `name`
+- `amount`
+- `dueDate`
+- `taxType`
+- `notes`
+- `sortOrder`
+
+Only pending schedules can be modified. Partial, completed, and cancelled schedules are locked.
+
+`deleteSchedule` soft-deletes only pending schedules. Partial, completed, and cancelled schedules are
+rejected.
+
+## Convert Schedule Contract
+
+`convertSchedule` marks a schedule as paid or partially paid by creating a received payment.
+
+Behavior:
+
+- rejects cancelled schedules
+- returns existing conversion for already partial/completed schedules when a received payment exists
+- rejects amounts above remaining scheduled balance
+- creates `received_amounts`
+- updates schedule `paidAmount`, `status`, and `paidAt`
+- if a linked invoice exists, moves draft invoice to sent, updates invoice payment status, and creates a receipt
+- retries receipt number generation on unique conflicts
+
+## SaaS Billing Operations
+
+These procedures use `protectedProcedure`, not studio permissions.
+
+| Operation | Method/path | Notes |
+| --- | --- | --- |
+| `payments.createCheckoutLink` | `POST /payments/create-checkout-link` | Creates Dodo checkout for a configured price key. |
+| `payments.getCheckoutStatus` | `GET /payments/checkout-status` | Checks checkout session/payment/subscription recovery and active purchases. |
+| `payments.listPurchases` | `GET /payments/purchases` | Lists current user purchases, or organization purchases when requested. |
+| `payments.createCustomerPortalLink` | `POST /payments/create-customer-portal-link` | Opens provider portal for purchase customer/subscription. |
+| `payments.getSubscriptionPlanState` | `GET /payments/get-subscription-plan-state` | Returns live interval and scheduled plan change. |
+| `payments.scheduleSubscriptionPlanChange` | `POST /payments/schedule-subscription-plan-change` | Schedules next-renewal billing interval change. |
+| `payments.cancelScheduledSubscriptionPlanChange` | `POST /payments/cancel-scheduled-subscription-plan-change` | Cancels a scheduled provider plan change. |
+
+## Related Surfaces
+
+| Surface | Relationship |
+| --- | --- |
+| Bookings | Payment schedules and received payments belong to bookings; booking totals are cached. |
+| Invoices | Invoices can be linked to schedules and received payments. |
+| Receipts | Generated from invoice-linked payments or manually from received payments. |
+| Expenses | Finance reports combine income and expenses. |
+| Dashboard | Uses finance totals, payment aging, and recent payment state. |
+| Activities | Payment and schedule creates/updates/deletes are tracked non-blockingly. |
+
+## Change Checklist
+
+When changing payment behavior:
+
+- update `packages/api/modules/studio/schemas/payment.ts`
+- update `packages/database/drizzle/schema/studio.ts` and migrations for finance table changes
+- update `packages/api/modules/studio-payments/procedures/*`
+- update invoice/receipt helpers if invoice-linked payment behavior changes
+- update booking totals logic and regression tests when changing amount math
+- update booking payment form, payments table, filters, and exports
+- update this page in the same PR
+
+## Known Gaps
+
+- `updateReceived` does not update receipt rows when amount/date/method changes after receipt creation.
+- `deleteReceived` does not void/delete receipts linked to the received payment.
+- `createReceived` can link a schedule and invoice independently; it validates each belongs to the booking, but not that the invoice is tied to the same schedule.
+- `listReceived` and `listSchedules` join bookings without filtering deleted bookings.
+- Schedule `overdue` is an enum value, but stats calculate overdue dynamically from due date and status.
+- SaaS billing and studio finance both use the word payments; route names must stay explicit to avoid mixing subscription purchases with client payments.

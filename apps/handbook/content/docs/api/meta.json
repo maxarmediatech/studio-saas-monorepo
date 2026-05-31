@@ -7,6 +7,10 @@
 		"deliverables",
 		"tasks",
 		"clients",
-		"crews"
+		"crews",
+		"payments",
+		"invoices",
+		"receipts",
+		"expenses"
 	]
 }
