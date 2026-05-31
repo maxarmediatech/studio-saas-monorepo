@@ -5,21 +5,489 @@ description: Billing provider boundaries, webhook expectations, and payment fail
 
 ## Purpose
 
-Payments owns provider integration, billing state transitions, webhook handling, invoice/receipt behavior, and payment-related operational recovery.
+Payments owns the boundary between product billing decisions and the external billing provider. In
+this repo that means:
 
-## Key Locations
+- Product plan and price identity.
+- Checkout link creation and checkout recovery.
+- Customer ids on users or organizations.
+- Purchase records in the database.
+- Dodo Payments subscription and payment webhooks.
+- Customer portal links.
+- Subscription plan changes and seat updates.
 
-- `packages/payments`
-- `apps/web/app/api/invoices`
-- `apps/web/app/api/receipts`
-- scheduled invoice route: `apps/web/app/api/cron/invoices/mark-overdue`
+The product should not talk to Dodo directly outside `packages/payments`.
 
-## Provider Notes
+## Package Map
 
-The current architecture supports multiple payment provider integrations. Keep provider-specific code behind package boundaries where possible.
+| Path | Role |
+| --- | --- |
+| `packages/payments/index.ts` | Public package exports. Re-exports provider functions plus checkout/customer helpers. |
+| `packages/payments/provider` | Provider boundary. Currently exports the Dodo implementation. |
+| `packages/payments/provider/dodopayments` | Dodo client, checkout, webhooks, portal links, subscription changes, seat updates, and cancellation. |
+| `packages/payments/src/lib/catalog.ts` | Server-side catalog mapping from internal price keys to Dodo product ids and collection ids. |
+| `packages/payments/src/lib/checkout.ts` | Checkout URL safety, completion URL building, checkout session id validation, checkout status resolution. |
+| `packages/payments/src/lib/customer.ts` | Reads and writes provider customer ids on users or organizations. |
+| `packages/payments/src/lib/helper.ts` | Converts purchase rows into active-plan helpers for access checks. |
+| `packages/payments/types.ts` | Provider interface types. |
+| `packages/api/modules/payments` | oRPC procedures for checkout, purchase listing, checkout status, portal links, and subscription plan changes. |
+| `packages/database/drizzle/schema/core.ts` | `purchases` and `webhookEvents` tables. |
+| `apps/web/app/(saas)/checkout` | Checkout launch, inline checkout, and completion recovery screens. |
+| `apps/web/app/(saas)/choose-plan` | Plan selection and checkout entry UI. |
 
-## Change Safety
+## Provider Boundary
 
-- Verify idempotency for webhooks and retries.
-- Document provider dashboard actions needed for production changes.
-- Test invoice and receipt rendering when billing data shape changes.
+`packages/payments/types.ts` defines the provider shape:
+
+```ts
+export type PaymentProvider = {
+  createCheckoutLink: CreateCheckoutLink;
+  createCustomerPortalLink: CreateCustomerPortalLink;
+  getSubscriptionPlanState: GetSubscriptionPlanState;
+  scheduleSubscriptionPlanChange: ScheduleSubscriptionPlanChange;
+  cancelScheduledSubscriptionPlanChange: CancelScheduledSubscriptionPlanChange;
+  webhookHandler: WebhookHandler;
+};
+```
+
+The only current provider is Dodo Payments:
+
+```ts
+// packages/payments/provider/index.ts
+export * from "./dodopayments";
+```
+
+Keep provider-specific SDK calls behind this boundary. API procedures should call
+`@repo/payments`, not import `dodopayments` directly.
+
+## Catalog Identity
+
+The catalog connects product-facing price keys to Dodo product ids:
+
+```ts
+export const PAYMENT_CATALOG_VERSION = "2026-04-basics" as const;
+
+const knownPaymentCatalog = {
+  "studio-basics-monthly": {
+    priceKey: "studio-basics-monthly",
+    planKey: "studio-basics",
+    billingInterval: "month",
+    productId: process.env.DODO_PRODUCT_ID_STUDIO_BASICS_MONTHLY ?? "",
+  },
+  "studio-basics-yearly": {
+    priceKey: "studio-basics-yearly",
+    planKey: "studio-basics",
+    billingInterval: "year",
+    productId: process.env.DODO_PRODUCT_ID_STUDIO_BASICS_YEARLY ?? "",
+  },
+} as const;
+```
+
+Collections are modeled separately so hosted checkout can offer monthly/yearly choices:
+
+```ts
+const knownCollectionCatalog = {
+  "studio-basics": {
+    planKey: "studio-basics",
+    productCollectionId:
+      process.env.DODO_PRODUCT_COLLECTION_ID_STUDIO_BASICS ?? "",
+    expectedPriceKeys: [
+      "studio-basics-monthly",
+      "studio-basics-yearly",
+    ],
+  },
+} as const;
+```
+
+Plan/price ids should be read as product contract keys, not provider ids. Provider ids live in env and
+catalog mapping only.
+
+## Purchase Identity
+
+`purchases` stores provider and product state:
+
+- `organizationId` or `userId`
+- `customerId`
+- `type`: `SUBSCRIPTION` or `ONE_TIME`
+- `productId`
+- `paymentId`
+- `subscriptionId`
+- `status`
+- `planKey`
+- `priceKey`
+- `billingInterval`
+- `catalogVersion`
+
+Old purchases can be incomplete. `resolvePurchaseIdentity()` maps current Dodo product ids back to
+current internal keys and falls back to `legacy-unknown` when old rows cannot be mapped.
+
+```ts
+export function hydratePurchaseIdentity<T extends PurchaseLike>(purchase: T) {
+  return {
+    ...purchase,
+    ...resolvePurchaseIdentity(purchase),
+  };
+}
+```
+
+Use `hydratePurchaseIdentity()` before returning purchase rows to product code.
+
+## Checkout Creation
+
+Checkout starts through the API procedure:
+
+```ts
+export const createCheckoutLink = protectedProcedure
+  .input(
+    z.object({
+      priceKey: z.string().min(1),
+      postCheckoutPath: z.string().optional(),
+      organizationId: z.string().optional(),
+    }),
+  )
+  .handler(async ({ input, context: { user } }) => {
+    // validate ownership, catalog, quantity, then call @repo/payments
+  });
+```
+
+Important rules in `create-checkout-link.ts`:
+
+- If organization billing is enabled, `organizationId` is required.
+- Organization checkout requires membership with `owner` role.
+- `priceKey` must exist in both the client config and server catalog.
+- Coming-soon plans and non-recurring prices are rejected.
+- Seat-based pricing uses `Math.max(organization.members.length, 1)`.
+- Customer id is reused from the organization/user when available.
+
+The provider receives metadata so webhooks can attach purchases to the right entity:
+
+```ts
+const metadata: Record<string, string> = {};
+
+if (organizationId) {
+  metadata.organization_id = organizationId;
+}
+
+if (userId) {
+  metadata.user_id = userId;
+}
+```
+
+## Checkout Completion
+
+Dodo returns users to `/checkout/complete`. The completion URL is built by the payments package:
+
+```ts
+export function buildCheckoutCompletionUrl({
+  postCheckoutPath,
+  expectedPriceKeys,
+}: {
+  postCheckoutPath?: string;
+  expectedPriceKeys?: string[];
+}) {
+  const completionUrl = new URL("/checkout/complete", getBaseUrl());
+  completionUrl.searchParams.set(
+    "redirectTo",
+    sanitizePostCheckoutPath(postCheckoutPath),
+  );
+  completionUrl.searchParams.set("prices", uniquePriceKeys.join(","));
+  return completionUrl.toString();
+}
+```
+
+`sanitizePostCheckoutPath()` only allows internal paths. It rejects empty values, control characters,
+backslashes, and cross-origin URLs.
+
+Checkout session ids are also restricted:
+
+```ts
+const CHECKOUT_SESSION_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
+```
+
+This protects the recovery flow from open redirects and unsafe session identifiers.
+
+## Checkout Launch
+
+`apps/web/app/(saas)/checkout/launch/route.ts` protects handoff into Dodo checkout:
+
+- `checkoutUrl` must be an allowed Dodo checkout host.
+- `checkoutSessionId` must pass the sanitizer.
+- `mode` must be `inline` or `hosted`.
+- Pending checkout state is stored in a short-lived cookie.
+
+Allowed checkout hosts:
+
+```ts
+const allowedDodoCheckoutHosts = new Set([
+  "checkout.dodopayments.com",
+  "test.checkout.dodopayments.com",
+]);
+```
+
+Hosted checkout redirects to Dodo. Inline checkout redirects to `/choose-plan/checkout` and opens the
+Dodo checkout script client-side.
+
+## Checkout Recovery
+
+`apps/web/app/(saas)/checkout/complete/page.tsx` handles the messy part: users can return before the
+webhook has finished, or they may be logged out.
+
+Flow:
+
+1. Read `checkoutSessionId`, `subscription_id`, `redirectTo`, and expected prices from query or the
+   pending checkout cookie.
+2. Sanitize every value.
+3. If logged out, redirect to login with a recovery `redirectTo`.
+4. Resolve active organization.
+5. Call `payments.getCheckoutStatus`.
+6. Redirect immediately when status is `active`; otherwise render the polling client.
+
+The status helper can return:
+
+```ts
+type CheckoutStatus = {
+  status: "active" | "pending" | "failed" | "cancelled";
+  purchaseId: string | null;
+};
+```
+
+This means successful checkout is not based only on provider redirect. The app waits for local
+purchase state or a matching provider session/subscription signal.
+
+## Webhook Route
+
+The Hono API mounts the payment webhook at:
+
+```ts
+.post("/webhooks/payments", (c) => paymentsWebhookHandler(c.req.raw))
+```
+
+The concrete handler is `packages/payments/provider/dodopayments/index.ts`.
+
+Webhook verification requires:
+
+- `DODO_PAYMENTS_WEBHOOK_SECRET`
+- `DODO_PAYMENTS_API_KEY`
+- `webhook-id`
+- `webhook-signature`
+- `webhook-timestamp`
+
+The handler reads the raw body and verifies it with the Dodo SDK:
+
+```ts
+const client = new DodoPayments({
+  bearerToken: apiKey,
+  webhookKey: webhookSecret,
+});
+
+event = client.webhooks.unwrap(body, {
+  headers: webhookHeaders,
+});
+```
+
+Never parse the body before provider verification in a new webhook route.
+
+## Webhook Idempotency
+
+Every webhook is recorded in `webhookEvents` before business processing:
+
+```ts
+const existingEvent = await getWebhookEventByWebhookId(webhookId);
+if (existingEvent?.processed) {
+  return new Response(null, { status: 200 });
+}
+
+let eventId = existingEvent?.id;
+
+if (!eventId) {
+  eventId = await createWebhookEvent({
+    webhookId,
+    eventType: type,
+    payload: body,
+  });
+}
+```
+
+If another worker inserts the same webhook first, the handler catches PostgreSQL unique constraint
+`23505`, re-reads the row, and continues. On success it calls `markWebhookEventProcessed()`. On
+business failure it calls `markWebhookEventFailed()` with the error message and returns `400`, letting
+the provider retry.
+
+## Webhook Events
+
+Handled subscription events:
+
+| Event | Local effect |
+| --- | --- |
+| `subscription.active` | Create or update subscription purchase as `active`; attach customer id. |
+| `subscription.renewed` | Keep existing subscription purchase `active`. |
+| `subscription.plan_changed` | Update product/plan/price/billing identity and provider status. |
+| `subscription.updated` | Update or create subscription purchase from provider state. |
+| `subscription.on_hold` | Mark subscription purchase `on_hold`. |
+| `subscription.failed` | Mark subscription purchase `failed`. |
+| `subscription.cancelled` | Mark subscription purchase `cancelled`. |
+| `subscription.expired` | Mark subscription purchase `expired`. |
+
+Handled payment events:
+
+| Event | Local effect |
+| --- | --- |
+| `payment.succeeded` | For subscription payments, link payment id to subscription purchase; for one-time payments, create active purchase. |
+| `payment.failed` | Mark related one-time purchase `failed`; mark subscription purchase `on_hold`. |
+| `payment.cancelled` | Mark related one-time or subscription payment `cancelled`. |
+
+Subscription payment events can arrive before subscription events. The handler creates a placeholder
+subscription purchase with `legacy-unknown` identity when it has enough customer metadata, then later
+subscription events hydrate the real product identity.
+
+## Customer Ids
+
+Customer ids are stored on the billed entity:
+
+```ts
+export async function setCustomerIdToEntity(
+  customerId: string,
+  { organizationId, userId }: { organizationId?: string; userId?: string },
+) {
+  if (organizationId) {
+    await updateOrganization({ id: organizationId, paymentsCustomerId: customerId });
+  } else if (userId) {
+    await updateUser({ id: userId, paymentsCustomerId: customerId });
+  }
+}
+```
+
+Organization billing writes `organizations.paymentsCustomerId`; user billing writes
+`users.paymentsCustomerId`.
+
+## Customer Portal And Plan Changes
+
+Management actions use `getManageablePurchase()` before calling the provider:
+
+```ts
+if (purchase.organizationId) {
+  const membership = await getOrganizationMembership(
+    purchase.organizationId,
+    userId,
+  );
+
+  if (!membership || membership.role !== "owner") {
+    throw new ORPCError("FORBIDDEN");
+  }
+}
+
+if (purchase.userId && purchase.userId !== userId) {
+  throw new ORPCError("FORBIDDEN");
+}
+```
+
+Portal link:
+
+- Procedure: `payments.createCustomerPortalLink`
+- Provider call: `customers.customerPortal.create(customerId)`
+
+Plan change:
+
+- Procedure: `payments.scheduleSubscriptionPlanChange`
+- Only active subscriptions can change.
+- Current and target price must belong to `studio-basics`.
+- Monthly/yearly switch is scheduled for `next_billing_date`.
+- Proration mode is `do_not_bill`.
+- Payment failure mode is `prevent_change`.
+
+Cancel scheduled change calls Dodo `subscriptions.cancelChangePlan(id)`.
+
+## Seat Updates
+
+Organization membership changes update subscription quantity from auth hooks:
+
+```ts
+await setSubscriptionSeats({
+  id: activeSubscription.subscriptionId,
+  seats: organization.membersCount,
+});
+```
+
+Dodo implementation retrieves the subscription, then calls `changePlan()` with current product id,
+`prorated_immediately`, and the new quantity.
+
+This means membership lifecycle changes are billing changes. Review auth hooks when touching seat
+logic.
+
+## Access Rules
+
+Use the correct procedure gate:
+
+- `protectedProcedure` for payment endpoints. They are identity-protected, but can be user-billed or
+  organization-billed.
+- For organization billing, manually verify organization membership and owner role where mutation or
+  management is involved.
+- Listing purchases for an organization requires membership.
+- Creating checkout or managing portal/plan changes for an organization requires owner.
+- User-billed purchase management requires `purchase.userId === user.id`.
+
+Do not use `studioProtectedProcedure` for generic payments endpoints unless the endpoint is strictly
+bound to `session.activeOrganizationId`.
+
+## Failure Modes
+
+| Failure | Behavior |
+| --- | --- |
+| Missing payments env | API returns an internal error with "Payments are not configured"; webhook returns `503`. |
+| Invalid checkout price | `BAD_REQUEST`. |
+| Non-owner organization checkout | `FORBIDDEN`. |
+| Unsafe checkout URL or session id | Redirect to `/choose-plan` or `BAD_REQUEST`. |
+| Webhook signature failure | `401`. |
+| Duplicate processed webhook | `200`, skipped. |
+| Webhook business processing failure | Mark failed and return `400` for retry. |
+| Checkout state not visible yet | Completion page shows pending/polling state. |
+
+## Common Change Patterns
+
+Add a new recurring price:
+
+1. Add the product id env var.
+2. Add the price to `knownPaymentCatalog`.
+3. Add it to the correct collection `expectedPriceKeys` if hosted checkout should offer it.
+4. Add matching client config in `config.payments.plans`.
+5. Update tests under `packages/api/modules/payments`.
+6. Verify checkout creation, completion, webhook identity, and active-plan helper behavior.
+
+Add a new provider:
+
+1. Implement the provider functions in `packages/payments/provider/<provider>`.
+2. Keep API procedure signatures unchanged.
+3. Map provider webhook events into the existing `purchases` and `webhookEvents` tables.
+4. Preserve idempotency and customer id persistence.
+5. Update env validation in `@repo/env`.
+
+Add a new webhook event:
+
+1. Verify raw body before parsing.
+2. Record `webhookEvents` before business mutation.
+3. Reuse existing purchase lookup by `subscriptionId` or `paymentId`.
+4. Make create/update safe under duplicate delivery.
+5. Mark processed only after all local mutations succeed.
+
+## Review Checklist
+
+Before merging a payment change, verify:
+
+- Provider SDK calls stay inside `packages/payments`.
+- Catalog keys match both server catalog and client plan config.
+- Checkout redirects are sanitized and internal.
+- Dodo checkout URLs are allowlisted.
+- Organization checkout/portal/plan management requires owner role.
+- Webhooks are idempotent under duplicate delivery and concurrent processing.
+- Subscription events and payment events can arrive in either order.
+- `purchases` rows are hydrated before product access checks.
+- Membership changes still update seats correctly.
+- Tests cover checkout status, catalog mapping, and plan-change edge cases where behavior changes.
+
+## Related Context
+
+- Auth membership hooks: `packages/auth/lib/organization.ts`
+- Purchase queries: `packages/database/drizzle/queries/purchases.ts`
+- Webhook event queries: `packages/database/drizzle/queries/webhook-events.ts`
+- API router: `packages/api/modules/payments/router.ts`
+- Hono route: `packages/api/index.ts`
