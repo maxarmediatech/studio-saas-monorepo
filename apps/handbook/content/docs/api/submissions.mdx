@@ -1,0 +1,200 @@
+---
+title: Submissions API
+description: Work submission creation, review queue reads, claim/review transitions, files, and side effects.
+---
+
+## Ownership
+
+Submissions are review records for crew work on tasks and deliverables. Creation lives on the task and
+deliverable APIs; the submissions router owns review queue reads, detail reads, claiming, and review
+decisions.
+
+| Area | Source |
+| --- | --- |
+| Review router | `packages/api/modules/submissions/router.ts` |
+| Review procedures | `packages/api/modules/submissions/procedures/*.ts` |
+| Review schemas | `packages/api/modules/studio/schemas/submission.ts` |
+| Task submit | `packages/api/modules/tasks/procedures/submit-task.ts` |
+| Deliverable submit | `packages/api/modules/deliverables/procedures/submit-deliverable.ts` |
+| DB tables | `packages/database/drizzle/schema/studio.ts` |
+| Frontend API helpers | `apps/web/modules/saas/studio/lib/api.ts` |
+| Review UI | `apps/web/modules/saas/studio/components/reviews/*` |
+| Crew submit UI | `apps/web/modules/saas/studio/components/your-work/submit-for-review-dialog.tsx` |
+
+## Database Shape
+
+| Table | Owns | Notes |
+| --- | --- | --- |
+| `assignment_submissions` | Submission status, task/deliverable pointer, submitting crew, reviewer, notes, links, review timestamps. | Tenant scoped. Exactly one of `taskId` or `deliverableId` must be set. |
+| `submission_files` | Uploaded files attached to a submission. | Cascades when submission is deleted. |
+| `submission_feedback` | Comment/rating feedback rows. | Present in DB, not exposed by the current submissions router. |
+
+Submission statuses:
+
+- `draft`
+- `submitted`
+- `in_review`
+- `approved`
+- `rejected`
+- `revision_requested`
+
+Important indexes/checks:
+
+| Name | Purpose |
+| --- | --- |
+| `assignment_submissions_org_idx` | Tenant-scoped list/count queries. |
+| `assignment_submissions_task_idx` | Task submission lookup/history. |
+| `assignment_submissions_deliverable_idx` | Deliverable submission lookup/history. |
+| `assignment_submissions_crew_idx` | Crew submission lookup. |
+| `assignment_submissions_status_idx` | Review queue status filtering. |
+| `assignment_submissions_task_or_deliverable` | Enforces task-or-deliverable polymorphic reference. |
+| `submission_files_submission_idx` | Detail/file lookup by submission. |
+
+## API Operations
+
+All procedures use `studioProtectedProcedure`.
+
+| Operation | Method/path | Input schema | Output schema | Notes |
+| --- | --- | --- | --- | --- |
+| `submissions.list` | `GET /submissions` | `listSubmissionsInputSchema` | `listSubmissionsOutputSchema` | Review queue list with filters/search/pagination. |
+| `submissions.get` | `GET /submissions/{id}` | `getSubmissionInputSchema` | `getSubmissionOutputSchema` | Detail read with files and previous submissions. |
+| `submissions.claim` | `POST /submissions/{id}/claim` | `claimSubmissionInputSchema` | `claimSubmissionOutputSchema` | Moves `submitted` to `in_review` and assigns reviewer. |
+| `submissions.review` | `POST /submissions/{id}/review` | `reviewSubmissionInputSchema` | `reviewSubmissionOutputSchema` | Approves, rejects, or requests revision. |
+| `tasks.submit` | `POST /tasks/{taskId}/submissions` | `submitTaskInputSchema` | `submitTaskOutputSchema` | Crew creates a task submission. |
+| `deliverables.submit` | `POST /deliverables/{deliverableId}/submissions` | `submitDeliverableInputSchema` | `submitDeliverableOutputSchema` | Crew creates a deliverable submission. |
+
+## List Contract
+
+Filters:
+
+- `status`
+- `submittedBy`
+- `reviewedBy`
+- `taskId`
+- `deliverableId`
+- `bookingId`
+- `entityType`: `task` or `deliverable`
+- `pendingReviewOnly`: defaults to `false`; when true, limits to `submitted` and `in_review`
+- `search`: entity name, booking name/reference number, or crew name
+
+Pagination/sort:
+
+- `page`: defaults to `1`
+- `limit`: defaults to `20`, max `100`
+- `sortBy`: `submittedAt`, `status`, or `createdAt`; defaults to `submittedAt`
+- `sortDirection`: `asc` or `desc`; defaults to `desc`
+
+Returned list items include base submission fields plus:
+
+- `entityType`
+- `entityId`
+- `entityName`
+- `entityWorkflowStatus`
+- `bookingId`
+- `bookingName`
+- `bookingReferenceNumber`
+- `submittedByName`
+- `reviewedByName`
+- `pagination`
+
+Access:
+
+- `review:list` can list all review queue submissions
+- task-scoped reads can list by `taskId` when the caller can read/list tasks
+- deliverable-scoped reads can list by `deliverableId` when the caller can read/list deliverables
+
+## Detail Contract
+
+`get` returns one tenant-scoped submission. Review users can read it through `review:list`; non-review
+users can read only their own submitted crew record.
+
+Detail adds:
+
+- task/deliverable name, description, due date, workflow status
+- booking id, name, reference number
+- submitted crew id, name, phone number
+- reviewer id, name, email when assigned
+- files ordered newest-first
+- previous submissions for the same task/deliverable, excluding current submission
+
+## Submit Contract
+
+Task and deliverable submission inputs:
+
+- `taskId` or `deliverableId`
+- `submissionNote`: optional, max 5000
+- `submissionLinks`: optional URL array
+- `files`: optional uploaded attachment array
+
+Submit behavior:
+
+- requires `task:submit` or `deliverable:submit`
+- verifies the entity belongs to the current organization and is not soft-deleted
+- resolves current user to an active crew row
+- verifies that crew is assigned to the task/deliverable
+- rejects when the same crew already has a `submitted` or `in_review` submission for that entity
+- creates `assignment_submissions` with `status = submitted` and `submittedAt = now`
+- stores links as JSON or `null`
+- inserts `submission_files` rows when files are provided
+- updates task/deliverable `workflowStatus` to `submitted`
+- tracks activity and notifies subscribers with `review_requested`
+
+## Claim/Review Contract
+
+Claim behavior:
+
+- requires `review:claim`
+- accepts only `submitted` or `in_review`
+- rejects claims already held by another reviewer
+- returns success without mutation when the current reviewer already claimed it
+- updates status to `in_review`, sets `reviewedBy`, and tracks a status-change activity
+
+Review behavior:
+
+- requires `review:review`
+- submission must already be `in_review`
+- current reviewer must match `reviewedBy`
+- `reviewNote` is optional, max 5000
+
+Decision mapping:
+
+| Decision | Submission status | Task/deliverable workflow status | Entity completion field |
+| --- | --- | --- | --- |
+| `approve` | `approved` | `approved` | Sets task `completedAt` or deliverable `deliveredAt`. |
+| `request_revision` | `revision_requested` | `revision_requested` | Clears completion/delivery timestamp. |
+| `reject` | `rejected` | `revision_requested` | Clears completion/delivery timestamp. |
+
+Review also records `reviewedAt`, stores `reviewNote`, tracks activity, and notifies subscribers with
+the matching review notification type.
+
+## Related Surfaces
+
+| Surface | Relationship |
+| --- | --- |
+| Tasks | Task assignment submissions create task review records and update task workflow status. |
+| Deliverables | Deliverable assignment submissions create deliverable review records and update deliverable workflow status. |
+| My assignments / Your work | Shows latest submission state for assigned crew work. |
+| Dashboard | Counts pending review submissions for quick actions/widgets. |
+| Activities | Submission submit/claim/review events are tracked. |
+| Notifications | Submit and review decisions notify subscribers. |
+| File access | Submission files are streamed through the file access/stream APIs. |
+
+## Change Checklist
+
+When changing submissions:
+
+- update `packages/api/modules/studio/schemas/submission.ts`
+- update task/deliverable submit schemas if producer input changes
+- update `packages/database/drizzle/schema/studio.ts` plus migrations for table/enum changes
+- update review queue/detail UI and crew submit dialog
+- update file access behavior when `submission_files` shape changes
+- update activity/notification side effects when lifecycle changes
+- update review queue E2E/unit tests
+- update this page in the same PR
+
+## Known Gaps
+
+- The submissions router does not expose direct create/update/delete; creation is through task and deliverable submit endpoints.
+- `submission_feedback` exists in DB but is not exposed by current API helpers.
+- Rejection maps the parent task/deliverable workflow to `revision_requested`, not a separate rejected workflow state.
+- Submit duplicate prevention only blocks active `submitted`/`in_review` records; a crew can submit again after approval, rejection, or revision request.
