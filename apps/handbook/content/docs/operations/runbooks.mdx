@@ -3,7 +3,13 @@ title: Runbooks
 description: Operational steps for common incidents and maintenance tasks.
 ---
 
-## Runbook Template
+## How To Use This Page
+
+Runbooks are for live incidents and repeat maintenance. They should be concrete enough that an engineer can act without rediscovering the system.
+
+Use the relevant runbook, copy exact errors into the incident notes, and record any code or config fix afterward.
+
+## Standard Runbook Shape
 
 ```mdx
 ## Symptom
@@ -14,10 +20,404 @@ description: Operational steps for common incidents and maintenance tasks.
 ## Follow-up
 ```
 
-## First Candidates
+## Payment Webhook Failing
 
-- failed payment webhook
-- overdue invoice job failure
-- SMS/WhatsApp provider outage
-- auth provider callback failure
-- failed database migration
+### Symptom
+
+- checkout completes at the provider but the app does not unlock the purchase
+- webhook route returns `400` or `500`
+- `webhookEvents` rows are stuck in failed state
+- users report plan/package access missing after payment
+
+### Impact
+
+Purchases can become stale even when the provider has accepted payment. This affects checkout completion, entitlements, and downstream invoicing.
+
+### First Checks
+
+- confirm the webhook route is reachable: `/api/webhooks/payments`
+- confirm `DODO_PAYMENTS_API_KEY` and `DODO_PAYMENTS_WEBHOOK_SECRET`
+- inspect recent `webhookEvents`
+- check whether the event was already processed
+- check logs for payment webhook signature, duplicate, or handler failures
+
+Useful SQL shape:
+
+```sql
+select
+	id,
+	provider,
+	event_type,
+	processed,
+	error_message,
+	created_at,
+	processed_at
+from webhook_events
+order by created_at desc
+limit 50;
+```
+
+### Fix
+
+- If the secret is wrong, fix the deployment secret and retry the webhook from the provider.
+- If the event is duplicated, verify the existing purchase state before replaying.
+- If the handler failed on a domain rule, fix the code path and add a regression test.
+- If a row is failed but safe to replay, reset only that event after understanding the failure.
+
+### Verification
+
+- webhook returns success
+- `webhookEvents.processed` is true
+- purchase status is updated
+- user checkout status reflects the purchase
+- no new failed webhook events appear for the same provider event
+
+### Follow-Up
+
+- add a focused test for the failure branch
+- document any provider dashboard change
+- confirm alerting for repeated webhook failures
+
+## SMS Queue Backlog
+
+### Symptom
+
+- `sms_outbox` pending count grows
+- messages remain in `processing`
+- users do not receive crew assignment or notification SMS
+- worker logs show provider failures, rate limits, or repeated retries
+
+### Impact
+
+Operational notifications can be delayed or never delivered.
+
+### First Checks
+
+Use the monitoring thresholds from `docs/SMS_MONITORING.md`.
+
+Critical or warning signals:
+
+- pending messages greater than `1000`
+- processing messages greater than `100`
+- failed messages greater than `50` in one hour
+- batch duration greater than `30` seconds
+- provider success rate below `95%`
+- more than `10` rate limits per hour
+
+Queue summary:
+
+```sql
+select
+	status,
+	count(*) as count
+from sms_outbox
+group by status
+order by status;
+```
+
+Old processing rows:
+
+```sql
+select
+	id,
+	status,
+	attempts,
+	updated_at,
+	last_error
+from sms_outbox
+where status = 'processing'
+order by updated_at asc
+limit 50;
+```
+
+### Fix
+
+- Confirm the SMS worker is running.
+- Confirm `MSG91_AUTH_KEY`, `MSG91_SENDER_ID`, and `MSG91_FLOW_CREW_ASSIGNMENT`.
+- Check provider dashboard for outage or rate limits.
+- Let retryable failures retry naturally when provider health is recovering.
+- For stuck `processing` rows, use the worker's stale recovery behavior where available.
+- Do not bulk-reset failed rows until permanent failures and invalid phone numbers are separated.
+
+### Verification
+
+- pending count decreases
+- processing count returns to normal
+- provider success rate recovers above `95%`
+- no spike in permanent failures
+- representative users receive messages
+
+### Follow-Up
+
+- add or tune alert thresholds
+- capture provider outage notes
+- add a worker regression test for the failure mode
+
+## Calendar Sync Stuck
+
+### Symptom
+
+- shoot calendar events stop updating
+- calendar sync jobs remain pending or processing
+- Google provider errors appear in worker logs
+
+### Impact
+
+Studio schedules can drift from external calendars.
+
+### First Checks
+
+- confirm `services/calendar-worker` is running
+- inspect `calendar_sync_jobs`
+- inspect `shoot_calendar_events`
+- confirm Google calendar credentials
+- confirm integration token encryption secret
+- check whether OAuth tokens expired or were revoked
+
+Job shape:
+
+```sql
+select
+	id,
+	status,
+	attempts,
+	last_error,
+	created_at,
+	updated_at
+from calendar_sync_jobs
+order by updated_at desc
+limit 50;
+```
+
+### Fix
+
+- Restart the worker if the process is down.
+- Fix missing Google or token encryption env first.
+- If OAuth was revoked, reconnect the affected integration.
+- Retry failed jobs only after confirming the underlying provider issue is fixed.
+- Add a regression test in `services/calendar-worker` for deterministic retry bugs.
+
+### Verification
+
+- failed job count stops increasing
+- jobs move through completed state
+- affected shoot has expected calendar events
+- no repeated token decryption or Google API errors
+
+### Follow-Up
+
+- document provider outage or credential change
+- add alerting if stuck jobs were not visible
+
+## Auth Callback Failure
+
+### Symptom
+
+- users cannot sign in
+- OAuth provider redirects back to an error
+- auth callback route loops
+- sessions are not created
+
+### Impact
+
+Users cannot access studio routes or organization-scoped workflows.
+
+### First Checks
+
+- confirm `BETTER_AUTH_SECRET`
+- confirm `NEXT_PUBLIC_SITE_URL`
+- confirm OAuth client id and secret for the provider
+- confirm callback URL in the provider dashboard matches the deployed site
+- inspect auth route logs
+- check recent changes to middleware, redirects, or cookie behavior
+
+### Fix
+
+- Correct callback URL or site URL mismatch.
+- Rotate/fix OAuth client secret if provider rejects it.
+- Restore `BETTER_AUTH_SECRET` if sessions were invalidated by accident.
+- Fix redirect sanitization if the callback is being rejected.
+
+### Verification
+
+- fresh sign-in succeeds
+- existing signed-in route access works
+- organization selection still resolves
+- social callback E2E still passes
+
+Useful checks:
+
+```bash
+pnpm --filter @repo/web e2e:ci
+pnpm --filter @repo/api test
+```
+
+### Follow-Up
+
+- add a Playwright regression when the bug is browser/session state dependent
+- update environment docs if callback URL ownership was unclear
+
+## Failed Database Migration
+
+### Symptom
+
+- deploy fails during migration
+- app errors mention missing columns or tables
+- local `pnpm db:migrate` fails
+- generated Drizzle SQL does not match the intended schema change
+
+### Impact
+
+Schema and application code can become incompatible.
+
+### First Checks
+
+- inspect the generated migration SQL
+- confirm `DATABASE_URL` points to the intended database
+- confirm whether the migration already ran partially
+- check app deploy timing against migration timing
+
+### Fix
+
+- Do not run `db:push` in production as a quick fix.
+- If migration has not run, fix the migration and regenerate.
+- If migration partially ran, inspect database state before changing files.
+- For destructive changes, use an expand-and-contract sequence.
+- Keep old app code compatible until the new schema is fully deployed.
+
+Local commands:
+
+```bash
+pnpm db:generate
+pnpm db:migrate
+pnpm typecheck
+```
+
+### Verification
+
+- migration completes once
+- app starts against migrated database
+- affected API/package tests pass
+- no runtime logs for missing columns or invalid relations
+
+### Follow-Up
+
+- add a regression test for query or mapper behavior
+- document any manual production repair
+
+## Deploy Build Failure
+
+### Symptom
+
+- Vercel or CI build fails
+- Next.js build fails locally
+- TypeScript errors appear only in deploy logs
+- MDX or Fumadocs generation fails for handbook
+
+### Impact
+
+Code cannot ship, or a deploy is blocked before rollout.
+
+### First Checks
+
+- copy the exact build error
+- reproduce with the matching local command
+- verify env with `pnpm env:check`
+- run package-specific typecheck
+- check whether generated files are missing
+
+Commands:
+
+```bash
+pnpm build
+pnpm build:all
+pnpm handbook:build
+pnpm typecheck
+```
+
+For GitHub CI:
+
+```bash
+gh run list
+gh run view
+```
+
+### Fix
+
+- Fix the first real compiler or build error.
+- Regenerate Drizzle artifacts if database types are stale.
+- Fix MDX syntax if handbook build fails.
+- Add missing environment only to the provider environment, never to git.
+
+### Verification
+
+- same failing command passes
+- PR CI passes or the provider deploy succeeds
+- smoke check the affected route/app after deploy
+
+### Follow-Up
+
+- document new deploy requirement if the failure was config-related
+
+## Storage Upload Failure
+
+### Symptom
+
+- upload policy route fails
+- users cannot upload assets
+- S3-compatible provider returns auth, bucket, or endpoint errors
+
+### Impact
+
+Deliverables and media workflows are blocked.
+
+### First Checks
+
+- confirm `S3_ACCESS_KEY_ID`
+- confirm `S3_SECRET_ACCESS_KEY`
+- confirm `S3_ENDPOINT`
+- confirm `S3_REGION`
+- confirm `UPLOADS_BUCKET_NAME`
+- check provider bucket permissions
+
+### Fix
+
+- Correct storage provider credentials.
+- Ensure the bucket exists.
+- Confirm CORS and signed URL behavior for browser uploads.
+- Return safe env errors for missing config.
+
+### Verification
+
+- upload policy route returns a valid policy
+- browser upload completes
+- asset appears in the configured bucket
+- related E2E or smoke test passes
+
+## Incident Notes Template
+
+Use this shape in a PR, issue, or incident note:
+
+```md
+## Incident
+- Started:
+- Detected by:
+- Affected users/workflows:
+
+## Cause
+- Exact error:
+- Root cause:
+
+## Fix
+- Code/config changed:
+- Data repaired:
+
+## Verification
+- Commands:
+- Production smoke:
+
+## Follow-up
+- Test:
+- Alert:
+- Docs:
+```

@@ -3,22 +3,172 @@ title: Decisions
 description: Architecture decision records and durable technical tradeoffs.
 ---
 
-## Purpose
+## What Decisions Own
 
-Decisions explain why the system is shaped this way. Keep final decisions here or mirror accepted ADRs from existing repo docs until the old docs are retired.
+Decisions explain why the system is shaped this way. This page mirrors the accepted ADRs that already exist under `docs/adr` so the handbook can become the shared human-facing knowledge base.
 
-## Existing ADRs To Import
+Keep decision records durable. They should not change every time implementation details move. Update them only when the underlying technical choice changes.
 
-- `docs/adr/0001-monorepo-structure.md`
-- `docs/adr/0002-database-orm-drizzle.md`
-- `docs/adr/0003-ui-component-library.md`
-- `docs/adr/0004-authentication-strategy.md`
+## Current Accepted Decisions
+
+| ADR | Decision | Status |
+| --- | --- | --- |
+| `0001` | Use a Turborepo monorepo | Accepted |
+| `0002` | Use Drizzle ORM | Accepted |
+| `0003` | Use shadcn/ui | Accepted |
+| `0004` | Use app-owned authentication strategy | Accepted |
+
+## 0001: Monorepo Structure
+
+The repo uses Turborepo to keep applications, packages, and workers in one workspace.
+
+Why this matters:
+
+- shared code can live in `packages/*`
+- web, handbook, workers, and packages can be changed atomically
+- build and typecheck tasks can be orchestrated across dependencies
+- package boundaries make ownership easier to see
+
+Tradeoffs:
+
+- the repo is larger than a single-app repository
+- build configuration needs more care
+- cross-package changes can create wider blast radius
+- engineers need to understand workspace filters
+
+Common commands shaped by this decision:
+
+```bash
+pnpm typecheck
+pnpm build:all
+pnpm --filter @repo/web build
+pnpm --filter @repo/api test
+```
+
+When adding new shared code, prefer `packages/*` only when more than one app/service needs it or when the boundary is already established.
+
+## 0002: Database ORM
+
+The repo uses Drizzle ORM for database schema, migrations, and typed query access.
+
+Why this matters:
+
+- database schema lives in TypeScript
+- migrations are generated from schema changes
+- query code keeps SQL-shaped control while preserving type safety
+- domain packages can share generated schema types
+
+Tradeoffs:
+
+- engineers still need to understand SQL
+- generated migration SQL must be reviewed
+- newer ecosystem than older ORMs
+- schema changes need disciplined migration flow
+
+Safe change flow:
+
+```bash
+pnpm db:generate
+pnpm db:migrate
+pnpm typecheck
+pnpm --filter @repo/api test
+```
+
+Use [Database](/docs/architecture/database) and [Data Access](/docs/patterns/data-access) for implementation-level guidance.
+
+## 0003: UI Component Library
+
+The repo uses shadcn/ui patterns for web UI.
+
+Why this matters:
+
+- components are owned in the repo instead of hidden behind a binary dependency
+- Radix primitives provide accessible behavior
+- Tailwind styling stays close to components
+- unused components can tree-shake normally
+
+Tradeoffs:
+
+- copied components become our maintenance responsibility
+- updates are manual
+- UI consistency depends on local discipline
+
+Safe change flow:
+
+```bash
+pnpm --filter @repo/web type-check
+pnpm --filter @repo/web e2e:ci
+```
+
+Prefer existing components and visual patterns before adding new primitives.
+
+## 0004: Authentication Strategy
+
+The accepted ADR describes app-owned authentication with sessions, OAuth, organizations, teams, and roles. The implementation has since moved to Better Auth concepts and package boundaries, so treat the ADR as the durable intent, not a file-by-file implementation map.
+
+Why this matters:
+
+- auth is part of the app's domain model
+- organization and studio access decisions belong near API/web boundaries
+- session behavior affects every protected route
+- OAuth integrations also support calendar and provider flows
+
+Tradeoffs:
+
+- auth requires careful environment and callback management
+- organization role changes have broad blast radius
+- social auth and calendar OAuth must stay separated where credentials differ
+
+Safe change flow:
+
+```bash
+pnpm --filter @repo/api test
+pnpm --filter @repo/web e2e:ci
+pnpm typecheck
+```
+
+Use [Auth](/docs/architecture/auth) for current implementation details.
+
+## When To Add A Decision
+
+Add a decision when the choice is durable and will affect future engineering tradeoffs.
+
+Good examples:
+
+- changing auth provider or session strategy
+- changing payment provider
+- changing database provider or migration model
+- adding a new deploy platform
+- moving workers to a new queue/runtime
+- creating a new shared package boundary
+
+Do not add an ADR for routine implementation details, copy tweaks, one-off bug fixes, or reversible local refactors.
 
 ## Decision Template
 
 ```mdx
+---
+title: "0005: Short Decision Name"
+description: Why this durable technical choice was made.
+---
+
 ## Context
+
+What problem forced a durable decision?
+
 ## Decision
+
+What did we choose?
+
 ## Consequences
+
+What gets easier, what gets harder, and what must future engineers remember?
+
 ## Alternatives Considered
+
+What credible options did we reject, and why?
 ```
+
+## Migration Note
+
+Until old docs are retired, accepted ADR source files remain under `docs/adr`. When a decision changes, update the source ADR and mirror the relevant summary here.

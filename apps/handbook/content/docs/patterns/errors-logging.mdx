@@ -3,21 +3,268 @@ title: Errors And Logging
 description: How errors are shaped, logged, surfaced, and debugged.
 ---
 
-## Purpose
+## What This Owns
 
 Error and logging conventions make failures searchable, actionable, and safe to expose.
 
+This repo has three error surfaces:
+
+- developer/operator logs
+- API and worker error objects
+- user-facing error messages
+
+Keep those separate. Operators need context. Users need safe, plain language. Code needs typed failures where callers can make decisions.
+
 ## Key Locations
 
-- `packages/logs`
-- `apps/web/modules/shared/lib/api-errors.ts`
-- `apps/web/modules/shared/lib/env-error-response.ts`
+- Logger package: `packages/logs`
+- Logger implementation: `packages/logs/lib/logger.ts`
+- API error extraction for UI: `apps/web/modules/shared/lib/api-errors.ts`
+- Safe environment error response: `apps/web/modules/shared/lib/env-error-response.ts`
+- API handler error hook: `packages/api/orpc/handler.ts`
+- Payments webhook handler: `apps/web/app/api/webhooks/payments/route.ts`
+- SMS worker logging: `services/sms-worker/src/index.ts`
+- SMS monitoring guide: `docs/SMS_MONITORING.md`
 
-## Expected Coverage
+## Logger
 
-- user-facing error copy rules
-- structured log fields
-- provider failure logging
-- request correlation
-- sensitive data redaction
-- escalation paths
+`packages/logs` exports the shared logger:
+
+```ts
+import { logger } from "@repo/logs";
+
+logger.info("Payment webhook processed", {
+	webhookEventId,
+	purchaseId,
+	organizationId,
+});
+```
+
+The implementation uses `consola` and disables timestamps in format options:
+
+```ts
+import { createConsola } from "consola";
+
+export const logger = createConsola({
+	formatOptions: {
+		date: false,
+	},
+});
+```
+
+Use it in packages, API handlers, and workers when the log is operationally useful. Avoid scattered `console.log` in durable code.
+
+## Structured Logs
+
+Prefer a short event message plus structured fields.
+
+Good:
+
+```ts
+logger.error("Failed to process payment webhook", {
+	webhookEventId,
+	eventType,
+	error,
+});
+```
+
+Weak:
+
+```ts
+logger.error(`Webhook failed ${eventType}: ${error}`);
+```
+
+Useful fields:
+
+- `userId`
+- `organizationId`
+- `studioId`
+- `bookingId`
+- `shootId`
+- `invoiceId`
+- `purchaseId`
+- `webhookEventId`
+- `jobId`
+- `providerMessageId`
+- `attempts`
+- `status`
+- `errorCode`
+
+Log enough to find the row, replay the flow, and identify the provider response. Do not log secrets or full provider payloads by default.
+
+## User-Facing Errors
+
+`apps/web/modules/shared/lib/api-errors.ts` exposes `extractApiErrorMessage`.
+
+Use it when UI code receives unknown errors:
+
+```ts
+import { extractApiErrorMessage } from "@/modules/shared/lib/api-errors";
+
+const message = extractApiErrorMessage(error, "Could not save booking.");
+```
+
+Behavior:
+
+- strings return as-is
+- `Error` instances return `error.message`
+- objects with a string `message` property return that message
+- everything else returns the fallback
+- default fallback is `An unexpected error occurred`
+
+Use specific fallback copy at the action boundary. Avoid leaking provider details like raw Stripe/Dodo, S3, Google, MSG91, or database errors into UI copy.
+
+## Environment Errors
+
+`apps/web/modules/shared/lib/env-error-response.ts` maps environment validation failures into safe 503 responses.
+
+Known codes:
+
+- `ENV_CORE_MISSING`: `Core environment variables are misconfigured.`
+- `ENV_MAIL_MISSING`: `Email delivery is not configured on this deployment.`
+- `ENV_STORAGE_MISSING`: `Storage is not configured on this deployment.`
+- `ENV_PAYMENTS_MISSING`: `Payments are not configured on this deployment.`
+
+Pattern:
+
+```ts
+import { envErrorResponse } from "@/modules/shared/lib/env-error-response";
+import { assertPaymentsEnv, isEnvConfigError } from "@repo/env";
+
+export async function POST() {
+	try {
+		assertPaymentsEnv();
+	} catch (error) {
+		if (isEnvConfigError(error)) {
+			return envErrorResponse(error);
+		}
+
+		throw error;
+	}
+}
+```
+
+This keeps deployment mistakes explicit without exposing secret names or secret values to users.
+
+## API Errors
+
+API code should use typed errors where callers need to branch. The API layer uses ORPC, so prefer `ORPCError` for expected business failures.
+
+```ts
+import { ORPCError } from "@orpc/server";
+
+throw new ORPCError("FORBIDDEN", {
+	message: "You do not have access to this organization.",
+});
+```
+
+Use typed errors for:
+
+- unauthenticated requests
+- forbidden organization/studio access
+- invalid entity state
+- missing required records
+- domain conflicts
+
+Use logs for unexpected failures, provider failures, or expensive debugging context.
+
+## Provider Failures
+
+Provider integrations should log:
+
+- provider name
+- operation
+- provider status or error code
+- internal entity id
+- retryability when known
+- attempts when the action is queued
+
+Example:
+
+```ts
+logger.warn("MSG91 send failed", {
+	smsId,
+	providerMessageId,
+	statusCode,
+	attempts,
+	retryable,
+});
+```
+
+Payments, email, SMS, storage, and Google integrations must not log:
+
+- API keys
+- OAuth tokens
+- webhook secrets
+- signed upload URLs
+- full card/payment payloads
+- raw cookies
+- full request headers
+
+SMS code should mask phone numbers before logging. If a helper already exists in the package or worker, use that helper instead of creating a new masking convention.
+
+## Request Correlation
+
+There is no universal request-id middleware documented in the repo yet. Until that exists, correlate with stable domain ids:
+
+- API mutation: `userId`, `organizationId`, and entity id
+- webhook: `webhookEventId` and provider event id
+- worker job: queue row id, attempts, and provider message id
+- upload: asset id, object key, and organization id
+
+When adding a new long-running or provider-backed flow, add one id that appears in all logs for that flow.
+
+## Logging Levels
+
+Use `info` for successful operational milestones:
+
+```ts
+logger.info("Calendar sync job completed", {
+	jobId,
+	shootId,
+	eventsSynced,
+});
+```
+
+Use `warn` for recoverable provider or validation failures:
+
+```ts
+logger.warn("SMS batch skipped due to overlap", {
+	batchId,
+	pendingCount,
+});
+```
+
+Use `error` for failed work that needs investigation:
+
+```ts
+logger.error("Payment webhook processing failed", {
+	webhookEventId,
+	error,
+});
+```
+
+Avoid logging expected user mistakes as `error` unless they indicate abuse or a broken integration.
+
+## Debugging Flow
+
+When debugging an incident:
+
+1. Identify the entry point: route, API procedure, webhook, or worker.
+2. Search logs by stable id: organization, user, job, webhook, invoice, purchase, or booking.
+3. Check the backing table for status and timestamps.
+4. Compare the error against environment validators and provider credentials.
+5. Reproduce locally with the smallest package or route command.
+6. Add a regression test if the failure is deterministic.
+
+## Change Checklist
+
+Before merging a new error/logging path:
+
+- user copy is safe and actionable
+- operational logs include stable ids
+- secrets and tokens are not logged
+- expected failures use typed errors
+- unexpected failures are logged once at the boundary
+- worker retries and webhook duplicates are visible
+- tests cover stable regressions

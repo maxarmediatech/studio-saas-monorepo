@@ -3,19 +3,273 @@ title: Deployments
 description: Build, release, CI, and production rollout notes.
 ---
 
-## Expected Coverage
+## What Deployments Own
 
-- deployment targets by app/service
-- required environment variables
-- CI checks
-- rollback path
-- release verification
-- ownership for failed deploys
+Deployment docs explain how code moves from this monorepo into running services, what checks should pass, and how to recover when a rollout breaks.
 
-## Current Build Commands
+The repo currently contains:
+
+- a Vercel-linked web project in local `.vercel/project.json`
+- a Fumadocs handbook app at `apps/handbook`
+- Dockerfiles for WhatsApp bridge and worker services
+- GitHub PR validation for lint and web E2E
+- Turborepo build orchestration
+
+There is no tracked `vercel.json` and no deploy workflow in `.github/workflows`. Treat deployment automation as provider-owned until a tracked workflow is added.
+
+## Apps And Services
+
+Web app:
+
+- package: `apps/web`
+- workspace name: `@repo/web`
+- framework: Next.js
+- local dev: `pnpm dev`
+- production build: `pnpm build`
+- package build: `pnpm --filter @repo/web build`
+- package start: `pnpm --filter @repo/web start`
+
+Handbook:
+
+- package: `apps/handbook`
+- workspace name: `@repo/handbook`
+- framework: Next.js and Fumadocs
+- local dev: `pnpm handbook:dev`
+- production build: `pnpm handbook:build`
+- production start: `pnpm --filter @repo/handbook start`
+- default dev/start port: `3010`
+
+SMS worker:
+
+- package: `services/sms-worker`
+- workspace name: `@repo/sms-worker`
+- build: `pnpm --filter @repo/sms-worker build`
+- start: `pnpm --filter @repo/sms-worker start`
+
+Calendar worker:
+
+- package: `services/calendar-worker`
+- workspace name: `@repo/calendar-worker`
+- dev command: `pnpm --filter @repo/calendar-worker dev`
+- tests: `pnpm --filter @repo/calendar-worker test`
+
+WhatsApp worker:
+
+- package: `services/whatsapp-worker`
+- workspace name: `@repo/whatsapp-worker`
+- Dockerfile: `services/whatsapp-worker/Dockerfile`
+- container command: `pnpm --filter @repo/whatsapp-worker dev`
+
+WhatsApp bridge:
+
+- package: `services/whatsapp-bridge`
+- workspace name: `@repo/whatsapp-bridge`
+- Dockerfile: `services/whatsapp-bridge/Dockerfile`
+- container command: `pnpm --filter @repo/whatsapp-bridge dev`
+
+The WhatsApp Dockerfiles use `node:20-alpine`, enable Corepack, prepare `pnpm@9.12.3`, install the filtered package graph, and start the dev entrypoint. Before treating them as production images, review whether they should build TypeScript and run compiled output.
+
+## Build Commands
 
 ```bash
 pnpm build
 pnpm build:all
 pnpm handbook:build
 ```
+
+Root script behavior:
+
+- `pnpm build`: builds the web app and its dependencies through Turborepo
+- `pnpm build:all`: builds every buildable package
+- `pnpm handbook:build`: builds the handbook and its dependencies
+- `pnpm start`: starts the Turborepo start task
+
+`turbo.json` declares build outputs:
+
+- `dist/**`
+- `.next/**`
+- excludes `.next/cache/**`
+
+The web package build uses:
+
+```bash
+NODE_OPTIONS='--max-old-space-size=4096' next build
+```
+
+The handbook build uses:
+
+```bash
+next build
+```
+
+## PR Validation
+
+Pull requests to `main` run `.github/workflows/validate-prs.yml`.
+
+Jobs:
+
+- `lint`: `biome ci .`
+- `e2e`: installs dependencies, runs `pnpm --filter database generate`, runs `pnpm env:check`, runs `pnpm --filter web e2e:ci`, uploads the Playwright report
+
+CI environment:
+
+```dotenv
+DATABASE_URL=
+BETTER_AUTH_SECRET=
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+```
+
+The current PR workflow does not run every local gate. For broad changes, run:
+
+```bash
+pnpm typecheck
+pnpm build:all
+```
+
+## Release Checklist
+
+Before merging a web or shared-package change:
+
+```bash
+pnpm lint
+pnpm check
+pnpm typecheck
+pnpm build
+```
+
+Before merging a handbook change:
+
+```bash
+pnpm handbook:typecheck
+pnpm handbook:build
+```
+
+Before merging a database migration:
+
+```bash
+pnpm db:generate
+pnpm db:migrate
+pnpm typecheck
+```
+
+Before merging a worker change:
+
+```bash
+pnpm --filter @repo/sms-worker test
+pnpm --filter @repo/calendar-worker test
+pnpm typecheck
+```
+
+Pick the relevant subset for the changed area, but do not skip local verification for deploy-affecting changes just because PR CI is narrower.
+
+## Environment Requirements
+
+Core web deploys need:
+
+```dotenv
+DATABASE_URL=
+BETTER_AUTH_SECRET=
+NEXT_PUBLIC_SITE_URL=
+```
+
+Feature-specific deploys need provider groups from [Environment](/docs/operations/environment):
+
+- auth/OAuth for social login and calendar integrations
+- Resend for transactional mail
+- MSG91 for SMS
+- Dodo Payments for checkout and webhooks
+- S3-compatible storage for uploads
+- analytics public variables for tracking
+
+Workers need their provider variables plus database access. Do not assume the web project environment automatically exists for independently deployed workers.
+
+## Deployment Targets
+
+Known from the repo:
+
+- local Vercel project metadata links the web app to a project named `studio-saas-monorepo-web`
+- `.vercel` is ignored by git and should not be committed
+- handbook deployment target is not tracked in repo configuration yet
+- worker deployment target is not tracked in repo configuration yet
+
+If a new deploy target is added, document:
+
+- provider
+- project/service name
+- build command
+- start command
+- root directory
+- environment groups
+- rollback process
+- smoke test URL or command
+
+## Rollback
+
+For Vercel-hosted apps, rollback through the Vercel deployment history or CLI for the linked project.
+
+Local verification before rollback decision:
+
+```bash
+pnpm build
+pnpm env:check
+```
+
+Rollback is usually correct when:
+
+- a deploy introduces auth outage
+- checkout or webhooks stop processing
+- migrations are not compatible with the running app
+- route rendering fails for a large user-facing surface
+
+Rollback is not enough when:
+
+- a migration already changed production data
+- a webhook provider retried and duplicated state
+- a worker is still processing bad queued jobs
+- an environment secret is wrong
+
+In those cases, stop the affected worker or provider callback first, then decide whether to rollback code.
+
+## Post-Deploy Smoke Checks
+
+Web:
+
+- home page loads
+- sign-in flow reaches auth provider or email flow
+- dashboard/studio route access works for a known account
+- upload policy route works when storage is enabled
+- checkout starts when payments are enabled
+
+Handbook:
+
+- `/docs` loads
+- key architecture pages render
+- search/navigation works
+- no MDX build warnings
+
+Workers:
+
+- process starts without missing env errors
+- queue count decreases
+- failed count does not spike
+- provider success rate is healthy
+- retry behavior matches the runbook
+
+## Failed Deploy Triage
+
+1. Read the failing build log and copy the exact error.
+2. Reproduce with the matching local command.
+3. Run `pnpm env:check` for core env failures.
+4. Run the package type check for TypeScript failures.
+5. Inspect migration output for database failures.
+6. Check provider secrets only in the deployment provider, not in git.
+7. Verify the fix with the same command that failed.
+
+For GitHub workflow failures, use:
+
+```bash
+gh run list
+gh run view
+```
+
+For Vercel failures, inspect the deployment log for the linked project and then reproduce with the matching pnpm script.

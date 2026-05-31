@@ -3,9 +3,31 @@ title: Start Here
 description: The entry point for Studio SaaS engineering knowledge transfer.
 ---
 
-## Purpose
+## What This Handbook Is
 
 This handbook is the internal source of truth for how the Studio SaaS monorepo works. It should explain the system at the level a new engineer, reviewer, or operator needs before changing production behavior.
+
+Use it for knowledge transfer, onboarding, review context, and incident response. It is not an agent-only instruction file and it is not a dumping ground for stale notes.
+
+## What The Repo Contains
+
+At a high level, the monorepo contains:
+
+- `apps/web`: the main Next.js product app
+- `apps/handbook`: this Fumadocs handbook
+- `packages/api`: API/domain procedure layer
+- `packages/database`: Drizzle schema, migrations, and database access
+- `packages/auth`: auth integration and session behavior
+- `packages/payments`: payment catalog and provider integration
+- `packages/mail`: transactional email templates and sending support
+- `packages/sms`: SMS provider and shared SMS logic
+- `packages/logs`: shared logger
+- `packages/env`: runtime environment validation
+- `services/sms-worker`: queued SMS processing
+- `services/calendar-worker`: calendar sync processing
+- `services/whatsapp-worker` and `services/whatsapp-bridge`: WhatsApp service surfaces
+
+Start with the architecture pages when you need the system shape. Use patterns when you need implementation conventions. Use operations when a command, deploy, env, or incident question comes up.
 
 ## Ownership Rules
 
@@ -13,6 +35,7 @@ This handbook is the internal source of truth for how the Studio SaaS monorepo w
 - Prefer "how to change safely" over abstract descriptions.
 - Add failure modes for auth, payments, database, workers, and deploy flows.
 - Move API endpoint reference to Mintlify later only if API docs become their own product surface.
+- Update this handbook when behavior, setup, deploy, or provider ownership changes.
 
 ## First Reading Path
 
@@ -20,8 +43,10 @@ This handbook is the internal source of truth for how the Studio SaaS monorepo w
 2. [Repository Map](/docs/architecture/repository-map)
 3. [Database](/docs/architecture/database)
 4. [Auth](/docs/architecture/auth)
-5. [Workers](/docs/patterns/workers)
-6. [Local Development](/docs/operations/local-development)
+5. [Payments](/docs/architecture/payments)
+6. [Workers](/docs/patterns/workers)
+7. [Local Development](/docs/operations/local-development)
+8. [Environment](/docs/operations/environment)
 
 ## Content Contract
 
@@ -33,3 +58,95 @@ Every durable page should answer:
 - known failure modes
 - how to change it safely
 - what tests or checks prove the change
+
+## Common Workflows
+
+Local setup:
+
+```bash
+cp .env.example .env.local
+pnpm install
+pnpm db:generate
+pnpm dev
+```
+
+Handbook preview:
+
+```bash
+pnpm handbook:dev
+```
+
+Handbook validation:
+
+```bash
+pnpm handbook:typecheck
+pnpm handbook:build
+```
+
+Broad repo validation:
+
+```bash
+pnpm lint
+pnpm check
+pnpm typecheck
+pnpm build
+```
+
+Database change:
+
+```bash
+pnpm db:generate
+pnpm db:migrate
+pnpm typecheck
+```
+
+Web E2E:
+
+```bash
+cd apps/web
+pnpm e2e
+```
+
+## Page Map
+
+Architecture:
+
+- [System Overview](/docs/architecture/system-overview): runtime shape and request flow
+- [Repository Map](/docs/architecture/repository-map): workspace layout and ownership
+- [Database](/docs/architecture/database): schema, migrations, relationships, and safe changes
+- [Auth](/docs/architecture/auth): sessions, organizations, route protection, and OAuth
+- [Payments](/docs/architecture/payments): catalog, checkout, webhooks, and entitlements
+
+Patterns:
+
+- [Data Access](/docs/patterns/data-access): where query logic belongs
+- [Workers](/docs/patterns/workers): SMS, calendar, and WhatsApp worker conventions
+- [Testing](/docs/patterns/testing): gates, package tests, E2E, and regression strategy
+- [Errors And Logging](/docs/patterns/errors-logging): safe error shaping and operational logs
+
+Operations:
+
+- [Local Development](/docs/operations/local-development): setup and daily commands
+- [Environment](/docs/operations/environment): variable ownership and provider groups
+- [Deployments](/docs/operations/deployments): build, CI, release, rollback, smoke checks
+- [Runbooks](/docs/operations/runbooks): incident steps for payments, SMS, auth, database, deploys, and storage
+
+Decisions:
+
+- [Decisions](/docs/decisions): accepted ADR summaries and the template for future choices
+
+## Update Rules
+
+When changing code:
+
+- update the relevant handbook page if the change affects architecture, setup, deploy, provider behavior, or operational debugging
+- add a new page when an area becomes too large for a section
+- prefer examples from this repo over generic examples
+- keep pages scoped and reviewable
+- avoid stale promises like "future work" unless there is an owner or known decision point
+
+When retiring old docs:
+
+- preserve durable facts in this handbook first
+- keep ADR history intact
+- avoid deleting operational runbooks until replacement coverage exists

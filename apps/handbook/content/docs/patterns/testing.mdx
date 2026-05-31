@@ -3,18 +3,281 @@ title: Testing
 description: Which checks prove a change across app, package, and worker code.
 ---
 
+## What Testing Owns
+
+Testing in this repo is layered by ownership boundary:
+
+- lint and format checks prove code style and import hygiene
+- TypeScript checks prove package contracts across the monorepo
+- Vitest and Node tests prove isolated package behavior
+- Playwright proves user-facing web flows
+- smoke tests prove small integration surfaces that are hard to unit-test
+- CI proves the minimum gate expected before merge
+
+The main rule: test at the lowest layer that catches the failure. Use Playwright for user journeys, package tests for business rules, and worker tests for queue/job behavior.
+
+## Source Locations
+
+- Root scripts: `package.json`
+- Web E2E config: `apps/web/playwright.config.ts`
+- Web E2E tests: `apps/web/tests`
+- API package tests: `packages/api/**/*.test.ts`
+- Editor package tests: `packages/editor/**/*.test.ts`
+- Mail package tests: `packages/mail/**/*.test.ts`
+- SMS package tests: `packages/sms/**/*.test.ts`
+- SMS worker tests: `services/sms-worker/src/index.test.ts`
+- SMS worker integration tests: `services/sms-worker/tests/integration.test.ts`
+- Calendar worker tests: `services/calendar-worker/src/**/*.test.ts`
+- PR CI: `.github/workflows/validate-prs.yml`
+
 ## Standard Gates
 
-- `pnpm lint`
-- `pnpm check`
-- `pnpm typecheck`
-- package-specific unit or smoke tests
-- `cd apps/web && pnpm e2e` for user-facing route/flow changes when feasible
+Use these before handing off broad changes:
+
+```bash
+pnpm lint
+pnpm check
+pnpm typecheck
+pnpm build
+```
+
+Use the handbook-specific gates after changing this site:
+
+```bash
+pnpm handbook:typecheck
+pnpm handbook:build
+```
+
+Use environment validation when setup, deploy, or CI behavior changes:
+
+```bash
+pnpm env:check
+```
+
+`pnpm env:check` validates the core variables required by `packages/env`: `DATABASE_URL`, `BETTER_AUTH_SECRET`, and `NEXT_PUBLIC_SITE_URL`.
+
+## Package Commands
+
+Run package tests through pnpm filters so workspace dependencies resolve the same way they do in CI.
+
+```bash
+pnpm --filter @repo/api test
+pnpm --filter @repo/editor test
+pnpm --filter @repo/mail test
+pnpm --filter @repo/sms test
+pnpm --filter @repo/sms-worker test
+pnpm --filter @repo/sms-worker test:integration
+pnpm --filter @repo/calendar-worker test
+```
+
+Package type checks:
+
+```bash
+pnpm --filter @repo/api type-check
+pnpm --filter @repo/editor type-check
+pnpm --filter @repo/mail type-check
+pnpm --filter @repo/sms type-check
+pnpm --filter @repo/web type-check
+pnpm --filter @repo/sms-worker type-check
+pnpm --filter @repo/calendar-worker type-check
+pnpm --filter @repo/whatsapp-worker type-check
+pnpm --filter @repo/whatsapp-bridge type-check
+```
+
+Web smoke tests:
+
+```bash
+pnpm --filter @repo/web test:pdf-renderer
+pnpm --filter @repo/web e2e:ci
+```
+
+## Playwright
+
+The web app uses Playwright from `apps/web/playwright.config.ts`.
+
+Important defaults:
+
+- test directory: `apps/web/tests`
+- base URL: `http://localhost:3000`
+- setup project: files matching `*.setup.ts`
+- browser project: desktop Chromium
+- CI retries: `1`
+- CI workers: `1`
+- traces: on first retry
+- videos: retained on failure
+- reporter: HTML report
+
+Playwright loads `../../.env.local` from the web app directory. Keep test-only values local and never commit secrets.
+
+The Playwright web server command builds and starts the app:
+
+```bash
+pnpm --filter web run build && pnpm --filter web run start
+```
+
+Run the interactive E2E UI while developing a flow:
+
+```bash
+cd apps/web
+pnpm e2e
+```
+
+Run CI-style E2E before merging user-facing route or workflow changes:
+
+```bash
+pnpm --filter @repo/web e2e:ci
+```
+
+## PR CI
+
+`.github/workflows/validate-prs.yml` runs on pull requests to `main`.
+
+The current workflow has two jobs:
+
+- `lint`: installs Biome and runs `biome ci .`
+- `e2e`: installs dependencies, generates database artifacts, runs `pnpm env:check`, runs `pnpm --filter web e2e:ci`, then uploads `apps/web/playwright-report`
+
+The workflow injects CI environment values for:
+
+- `DATABASE_URL`
+- `BETTER_AUTH_SECRET`
+- `NEXT_PUBLIC_SITE_URL`
+
+CI does not currently run the full root `pnpm typecheck` or `pnpm build:all` gate. Run those locally when a change touches shared packages, build configuration, database schema, or worker code.
+
+## Test Selection
+
+For a web route, component, or workflow change:
+
+```bash
+pnpm --filter @repo/web type-check
+pnpm --filter @repo/web e2e:ci
+```
+
+For API router or domain logic changes:
+
+```bash
+pnpm --filter @repo/api test
+pnpm --filter @repo/api type-check
+```
+
+For schema or query changes:
+
+```bash
+pnpm db:generate
+pnpm typecheck
+pnpm --filter @repo/api test
+```
+
+For SMS queue/provider changes:
+
+```bash
+pnpm --filter @repo/sms test
+pnpm --filter @repo/sms-worker test
+pnpm --filter @repo/sms-worker test:integration
+```
+
+For calendar sync changes:
+
+```bash
+pnpm --filter @repo/calendar-worker test
+pnpm --filter @repo/calendar-worker type-check
+```
+
+For email rendering or invitation flows:
+
+```bash
+pnpm --filter @repo/mail test
+pnpm --filter @repo/mail type-check
+```
+
+For handbook changes:
+
+```bash
+pnpm handbook:typecheck
+pnpm handbook:build
+```
 
 ## Regression Rule
 
 For bugs, add a regression test when the behavior has a stable test boundary.
 
-## Handbook Work
+Good regression boundaries:
 
-Add package-specific test commands and known slow/flaky checks as they are confirmed.
+- a pure helper in `packages/api`
+- schema validation behavior
+- worker queue selection or retry logic
+- payment catalog or checkout status mapping
+- redirect sanitization
+- notification recipient rules
+- route access rules
+- E2E flow where the bug only appears with browser state
+
+Avoid broad E2E tests for behavior that a package test can prove faster and more precisely.
+
+## Existing Test Coverage Map
+
+The web E2E suite covers:
+
+- auth callback and social redirect recovery
+- booking wizard state, mobile booking views, finances, and schedule status
+- checkout completion recovery
+- dashboard financial and operations pages
+- home and mobile home rendering
+- notification content, filters, routes, and preferences
+- onboarding access
+- package deliverable templates
+- redirect sanitization
+- review queue behavior
+- stickies
+- studio route access
+- table export
+- upload policy
+- user work routes
+
+The API tests cover business rules around:
+
+- booking helpers and studio prefixes
+- check-ins
+- deliverables
+- discussions
+- invoices
+- notifications
+- organizations and invitations
+- payments
+- receipts
+- saved views
+- shoots
+- submissions
+
+Worker tests cover SMS queue and calendar sync behavior.
+
+## Writing New Tests
+
+Prefer this pattern for package tests:
+
+```ts
+import { describe, expect, it } from "vitest";
+
+import { deriveStudioPrefix } from "./derive-studio-prefix";
+
+describe("deriveStudioPrefix", () => {
+	it("normalizes organization names into stable prefixes", () => {
+		expect(deriveStudioPrefix("Rakesh Studio")).toBe("rakesh-studio");
+	});
+});
+```
+
+Prefer this pattern for Playwright route tests:
+
+```ts
+import { expect, test } from "@playwright/test";
+
+test("redirects signed-out users to auth", async ({ page }) => {
+	await page.goto("/studio/acme");
+
+	await expect(page).toHaveURL(/auth/);
+});
+```
+
+Keep fixtures small and name the business behavior being protected. A test name should explain the regression without opening the implementation.

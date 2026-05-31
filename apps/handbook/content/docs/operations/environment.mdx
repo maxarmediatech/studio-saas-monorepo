@@ -3,13 +3,265 @@ title: Environment
 description: Environment variable ownership and safety rules.
 ---
 
+## What Environment Owns
+
+Environment variables connect the repo to production infrastructure: database, auth, email, SMS, payments, storage, analytics, and AI providers.
+
+This page explains where variables live, which validators enforce them, and how to change them safely.
+
+## Files
+
+- Inventory template: `.env.example`
+- Runtime validators: `packages/env/index.ts`
+- Env check command: `packages/env/check.ts`
+- Web E2E env loading: `apps/web/playwright.config.ts`
+- Root command loading: `package.json`
+
 ## Rules
 
 - Never commit secrets.
-- Add new variables to `.env.example`.
-- Document operational meaning and required providers.
-- Note whether the value is needed for web, workers, CI, or deploy only.
+- Keep `.env.example` updated for every new variable.
+- Document whether a value is needed by web, workers, CI, deploys, or local-only tooling.
+- Validate required runtime groups in `packages/env`.
+- Prefer explicit runtime errors over silent provider misconfiguration.
+- Keep public client variables prefixed with `NEXT_PUBLIC_`.
 
-## Future Generated Page
+## Local Files
 
-Generate an inventory from `.env.example` and package env validators once the handbook foundation is stable.
+Use `.env.local` for local development.
+
+```bash
+cp .env.example .env.local
+```
+
+Root scripts are wrapped with `dotenv -c`, so commands like `pnpm dev`, `pnpm build`, and `pnpm start` load local environment files through dotenv-cli.
+
+Database scripts use the database package and expect `DATABASE_URL` to be available:
+
+```bash
+pnpm db:generate
+pnpm db:migrate
+pnpm db:studio
+```
+
+Playwright loads `.env.local` directly from the repo root through the web config:
+
+```ts
+dotenv.config({ path: path.resolve(__dirname, "../../.env.local") });
+```
+
+## Validated Groups
+
+`packages/env/index.ts` defines validation groups. These are stricter than the full `.env.example` inventory.
+
+Core:
+
+```dotenv
+DATABASE_URL=
+BETTER_AUTH_SECRET=
+NEXT_PUBLIC_SITE_URL=
+```
+
+Storage:
+
+```dotenv
+S3_ACCESS_KEY_ID=
+S3_SECRET_ACCESS_KEY=
+S3_ENDPOINT=
+S3_REGION=auto
+UPLOADS_BUCKET_NAME=uploads
+```
+
+Payments:
+
+```dotenv
+DODO_PAYMENTS_API_KEY=
+DODO_PAYMENTS_WEBHOOK_SECRET=
+DODO_PAYMENTS_PRODUCT_ID=
+DODO_PAYMENTS_MONTHLY_PRODUCT_ID=
+DODO_PAYMENTS_YEARLY_PRODUCT_ID=
+NEXT_PUBLIC_DODO_INLINE_CHECKOUT=true
+```
+
+Mail:
+
+```dotenv
+RESEND_API_KEY=
+EMAIL_FROM_NAME=
+EMAIL_FROM_ADDRESS=
+EMAIL_BASE_URL=
+EMAIL_REPLY_TO=
+EMAIL_ASSET_BASE_URL=
+```
+
+The storage bucket has a fallback of `uploads` through `getUploadsBucketName()`. Set `UPLOADS_BUCKET_NAME` explicitly in shared and production environments so uploads do not depend on a default.
+
+## Validation Functions
+
+Use the validator for the provider boundary you are entering:
+
+```ts
+import {
+	assertCoreEnv,
+	assertMailEnv,
+	assertPaymentsEnv,
+	assertStorageEnv,
+} from "@repo/env";
+
+assertCoreEnv();
+assertPaymentsEnv();
+assertMailEnv();
+assertStorageEnv();
+```
+
+For optional provider-backed features, use availability helpers before rendering or scheduling work:
+
+```ts
+import { hasPaymentsEnv, hasStorageEnv } from "@repo/env";
+
+if (!hasPaymentsEnv()) {
+	return null;
+}
+
+if (!hasStorageEnv()) {
+	throw new Error("Storage is required before creating upload policy.");
+}
+```
+
+When a route catches an `EnvConfigError`, return a safe 503 response with `envErrorResponse`.
+
+```ts
+import { envErrorResponse } from "@/modules/shared/lib/env-error-response";
+import { assertMailEnv, isEnvConfigError } from "@repo/env";
+
+try {
+	assertMailEnv();
+} catch (error) {
+	if (isEnvConfigError(error)) {
+		return envErrorResponse(error);
+	}
+
+	throw error;
+}
+```
+
+## Provider Inventory
+
+Auth and OAuth:
+
+```dotenv
+BETTER_AUTH_SECRET=
+NEXT_PUBLIC_SITE_URL=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_CALENDAR_CLIENT_ID=
+GOOGLE_CALENDAR_CLIENT_SECRET=
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+INTEGRATIONS_TOKEN_ENCRYPTION_KEY=
+INTEGRATIONS_OAUTH_STATE_SECRET=
+```
+
+Email:
+
+```dotenv
+RESEND_API_KEY=
+EMAIL_FROM_NAME=
+EMAIL_FROM_ADDRESS=
+EMAIL_REPLY_TO=
+EMAIL_BASE_URL=
+EMAIL_ASSET_BASE_URL=
+```
+
+SMS:
+
+```dotenv
+MSG91_AUTH_KEY=
+MSG91_SENDER_ID=
+MSG91_FLOW_CREW_ASSIGNMENT=
+```
+
+Payments:
+
+```dotenv
+DODO_PAYMENTS_API_KEY=
+DODO_PAYMENTS_WEBHOOK_SECRET=
+DODO_PAYMENTS_PRODUCT_ID=
+DODO_PAYMENTS_MONTHLY_PRODUCT_ID=
+DODO_PAYMENTS_YEARLY_PRODUCT_ID=
+NEXT_PUBLIC_DODO_INLINE_CHECKOUT=
+```
+
+Storage:
+
+```dotenv
+S3_ACCESS_KEY_ID=
+S3_SECRET_ACCESS_KEY=
+S3_ENDPOINT=
+S3_REGION=
+UPLOADS_BUCKET_NAME=
+```
+
+Analytics:
+
+```dotenv
+NEXT_PUBLIC_GA_MEASUREMENT_ID=
+NEXT_PUBLIC_MIXPANEL_TOKEN=
+NEXT_PUBLIC_PIRSC_DOMAIN=
+NEXT_PUBLIC_PLAUSIBLE_DOMAIN=
+```
+
+AI:
+
+```dotenv
+OPENAI_API_KEY=
+```
+
+## CI Environment
+
+The PR workflow provides only the core environment needed for build and E2E:
+
+```dotenv
+DATABASE_URL=
+BETTER_AUTH_SECRET=
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+```
+
+If a test starts requiring mail, payments, storage, SMS, or OAuth providers, update the workflow intentionally. Do not make tests depend on real production provider credentials.
+
+## Build-Time Escape Hatch
+
+`.env.example` documents:
+
+```dotenv
+SKIP_ENV_VALIDATION=true
+```
+
+Use this only when a platform needs to compile without provider secrets. Runtime code should still validate the provider group before doing real work.
+
+## Adding A Variable
+
+1. Add the variable to `.env.example`.
+2. Add runtime validation in `packages/env/index.ts` when the feature cannot work without it.
+3. Add a safe error path for routes that can be called without the provider configured.
+4. Update deployment provider secrets.
+5. Update CI only when tests need the variable.
+6. Document the variable in this page if it belongs to a durable provider group.
+
+## Troubleshooting
+
+For a local failure:
+
+```bash
+pnpm env:check
+```
+
+For a provider failure:
+
+- confirm the provider group validator is called
+- compare `.env.example` with the deployment environment
+- verify public variables are safe to expose
+- verify callback URLs match `NEXT_PUBLIC_SITE_URL`
+- restart the process after changing secrets
+
+For Vercel builds, remember `.vercel` is local project metadata and ignored by git. The actual secrets live in the Vercel project environment settings.

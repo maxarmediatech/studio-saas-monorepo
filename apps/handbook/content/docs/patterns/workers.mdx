@@ -5,28 +5,496 @@ description: Background job ownership, retry expectations, and operational patte
 
 ## Purpose
 
-Workers handle async provider integrations and scheduled product work outside request/response paths.
+Workers move provider and scheduled work out of request/response paths. They should be safe under:
 
-## Key Locations
+- duplicate delivery
+- process restarts
+- provider timeouts
+- partial writes
+- concurrent worker instances
+- manual retry after failure
 
-- `services/calendar-worker`
-- `services/sms-worker`
-- `services/whatsapp-worker`
-- `services/whatsapp-bridge`
-- provider/domain packages under `packages/*`
+This repo currently has three real worker lanes plus one bridge stub:
 
-## Worker Page Contract
+- SMS outbox worker
+- Calendar sync worker
+- WhatsApp outbox worker
+- WhatsApp bridge HTTP service
 
-Each worker should document:
+## Worker Map
 
-- trigger source
-- queue/topic or schedule
-- idempotency key
-- retry policy
-- dead-letter/manual recovery path
-- logs/metrics to inspect
-- local test command
+| Worker | Package | Trigger | Queue table | Provider |
+| --- | --- | --- | --- | --- |
+| SMS | `@repo/sms-worker` | Poll loop | `sms_outbox` | MSG91 |
+| Calendar | `@repo/calendar-worker` | Poll loop | `calendar_sync_jobs` | Google Calendar or ICS email |
+| WhatsApp | `@repo/whatsapp-worker` | Poll loop | `wa_outbox` | WhatsApp Cloud API |
+| WhatsApp bridge | `@repo/whatsapp-bridge` | HTTP | none yet | Hono stub |
 
-## Change Safety
+Start commands:
 
-Worker changes need targeted tests when feasible and explicit notes about duplicate delivery, partial provider failure, and retry behavior.
+```bash
+pnpm --filter @repo/sms-worker dev
+pnpm --filter @repo/calendar-worker dev
+pnpm --filter @repo/whatsapp-worker dev
+pnpm --filter @repo/whatsapp-bridge dev
+```
+
+## Shared Principles
+
+Every production worker should document and preserve:
+
+- Queue source: table, topic, cron, webhook, or provider callback.
+- Claim rule: how a job moves from pending to processing.
+- Idempotency key: event id, row id, unique target, or provider id.
+- Retry policy: max attempts, backoff, and permanent failure rules.
+- Lock recovery: what happens when a process dies mid-job.
+- Provider contract: timeout, retryable errors, permanent errors.
+- Logs: fields required to debug one job.
+- Local test command.
+
+If any of these are missing, document the gap before extending the worker.
+
+## SMS Worker
+
+Code:
+
+- `services/sms-worker/src/index.ts`
+- `services/sms-worker/src/worker.ts`
+- `packages/sms/src/util/send.ts`
+- `packages/sms/src/provider/msg91.ts`
+- `packages/database/drizzle/schema/sms.ts`
+
+Queue table: `sms_outbox`.
+
+Statuses: `pending`, `processing`, `sent`, `failed`.
+
+Runtime knobs:
+
+```ts
+const pollIntervalMs = Number(process.env.SMS_OUTBOX_INTERVAL_MS ?? 5000);
+const batchSize = Number(process.env.SMS_OUTBOX_BATCH_SIZE ?? 10);
+```
+
+Provider env: `MSG91_AUTH_KEY`, `MSG91_SENDER_ID`.
+
+## SMS Queueing
+
+SMS jobs are queued through `queueSms()`:
+
+```ts
+await db.insert(smsOutbox).values({
+  organizationId,
+  phoneNumber: normalizedPhone,
+  templateId,
+  variables,
+  status: "pending",
+  attempts: 0,
+  maxAttempts: 3,
+});
+```
+
+Before insert, the helper:
+
+- normalizes Indian phone numbers
+- checks a 60-second dedupe window
+- compares stable JSON variables
+- skips duplicate pending/processing messages
+- logs masked phone numbers on failure
+
+The dedupe key is effectively:
+
+```text
+organizationId + normalizedPhone + templateId + stable variables + 60 second window
+```
+
+## SMS Claiming
+
+SMS claiming is atomic and concurrency-safe:
+
+```ts
+const pendingQuery = sql`
+  SELECT id FROM ${smsOutbox}
+  WHERE ${smsOutbox.status} = 'pending'
+  AND (${smsOutbox.nextAttemptAt} IS NULL OR ${smsOutbox.nextAttemptAt} <= ${now})
+  ORDER BY ${smsOutbox.createdAt} ASC
+  LIMIT ${batchSize}
+  FOR UPDATE SKIP LOCKED
+`;
+```
+
+The same transaction updates rows to `processing` with lock metadata:
+
+```ts
+await tx
+  .update(smsOutbox)
+  .set({
+    status: "processing",
+    lockedAt: now,
+    lockedBy: workerId,
+    processingStartedAt: now,
+    updatedAt: now,
+  })
+  .where(inArray(smsOutbox.id, pendingIds));
+```
+
+This is the strongest current worker pattern in the repo. Use it as the model for new DB-backed
+outbox workers.
+
+## SMS Retry And Failure
+
+Retry backoff uses exponential delay with jitter:
+
+```ts
+const baseDelay = Math.min(30 * 2 ** (attempts - 1), 15 * 60);
+const jitterMultiplier = 0.5 + boundedRandom * 0.5;
+const delaySeconds = Math.ceil(baseDelay * jitterMultiplier);
+```
+
+On success, the row becomes `sent` and lock fields are cleared.
+
+On failure:
+
+- retryable failures return to `pending` with `nextAttemptAt`
+- exhausted or permanent failures become `failed`
+- `errorMessage`, `errorCode`, and provider status are stored
+- lock fields are cleared
+- `isPermanentFailure` records whether automatic retry stopped
+
+MSG91 classification:
+
+| Condition | Retry? | Code |
+| --- | --- | --- |
+| `429` | yes | `RATE_LIMIT` |
+| `5xx` | yes | `PROVIDER_ERROR` |
+| timeout | yes | `TIMEOUT` |
+| invalid phone | no | `INVALID_PHONE` |
+| missing template | no | `TEMPLATE_REQUIRED` |
+| auth error | no | `AUTH_ERROR` |
+
+## SMS Shutdown
+
+The entrypoint handles:
+
+- `SIGTERM`
+- `SIGINT`
+- `unhandledRejection`
+- `uncaughtException`
+
+`shutdown()` stops scheduling, waits for the current batch, and caps graceful wait at 30 seconds.
+Overlapping batches are prevented by tracking `currentBatchPromise`.
+
+Tests:
+
+```bash
+pnpm --filter @repo/sms-worker test:unit
+pnpm --filter @repo/sms-worker test:integration
+pnpm --filter @repo/sms test
+```
+
+## Calendar Worker
+
+Code:
+
+- `services/calendar-worker/src/index.ts`
+- `services/calendar-worker/src/queue-helpers.ts`
+- `packages/google-calendar`
+- `packages/database/drizzle/schema/integrations-google-calendar.ts`
+
+Queue table: `calendar_sync_jobs`.
+
+Related state:
+
+- `google_calendar_connections`
+- `shoot_calendar_events`
+
+Runtime knobs:
+
+```ts
+const pollIntervalMs = Number(process.env.CALENDAR_WORKER_INTERVAL_MS ?? 5000);
+const batchSize = Number(process.env.CALENDAR_WORKER_BATCH_SIZE ?? 10);
+const staleThresholdMinutes = Number(
+  process.env.CALENDAR_WORKER_STALE_THRESHOLD_MINUTES ?? 15,
+);
+```
+
+## Calendar Claiming
+
+Calendar claiming also uses `FOR UPDATE SKIP LOCKED`, but it can claim both fresh and retryable failed
+jobs:
+
+```ts
+WHERE (
+  status = 'pending'
+  OR (
+    status = 'failed'
+    AND COALESCE(attempts, 0) < COALESCE(maxAttempts, 5)
+  )
+)
+AND (
+  next_attempt_at IS NULL
+  OR next_attempt_at <= now
+)
+ORDER BY created_at ASC
+LIMIT batchSize
+FOR UPDATE SKIP LOCKED
+```
+
+Claimed jobs are set to:
+
+```ts
+{
+  status: "processing",
+  attempts: sql`COALESCE(attempts, 0) + 1`,
+  lastAttemptAt: now,
+  lockedAt: now,
+  updatedAt: now,
+}
+```
+
+## Calendar Job Types
+
+Google job types:
+
+- `google_create`
+- `google_update`
+- `google_delete`
+
+ICS email job types:
+
+- `ics_send_invite`
+- `ics_send_update`
+- `ics_send_cancel`
+
+The worker branches by prefix:
+
+```ts
+if (job.jobType.startsWith("google_")) {
+  // use Google OAuth token and Calendar API
+}
+
+if (job.jobType.startsWith("ics_")) {
+  // generate .ics content and send email invite
+}
+```
+
+## Calendar Provider State
+
+Google Calendar uses per-user connections:
+
+```ts
+const connection = await db.query.googleCalendarConnections.findFirst({
+  where: and(
+    eq(googleCalendarConnections.organizationId, organizationId),
+    eq(googleCalendarConnections.userId, userId),
+    isNull(googleCalendarConnections.disconnectedAt),
+  ),
+});
+```
+
+Tokens are encrypted at rest. The worker decrypts valid access tokens or refreshes with the encrypted
+refresh token, then stores the new encrypted access token and expiry.
+
+Shoot-to-provider mapping is stored in `shoot_calendar_events` with:
+
+- `shootId`
+- `crewId`
+- `deliveryMethod`
+- `googleEventId`
+- `icalUid`
+- `icalSequence`
+- `syncStatus`
+- `lastError`
+
+The unique index on `shootId + crewId` is the practical idempotency key.
+
+## Calendar Retry And Recovery
+
+Queue helper defaults:
+
+```ts
+export const DEFAULT_MAX_ATTEMPTS = 5;
+```
+
+After failure, next attempt is linear and capped:
+
+```ts
+const delaySeconds = Math.min(30 * safeAttempts, 15 * 60);
+```
+
+When attempts are exhausted, `nextAttemptAt` becomes `null`, leaving the job failed for manual
+inspection.
+
+Stale `processing` jobs are recovered:
+
+```ts
+status: "failed",
+nextAttemptAt: attempts < maxAttempts ? NOW() : null,
+lastError: "Recovered stale processing lock",
+lockedAt: null,
+```
+
+Tests:
+
+```bash
+pnpm --filter @repo/calendar-worker test
+```
+
+## WhatsApp Worker
+
+Code:
+
+- `services/whatsapp-worker/src/index.ts`
+- `packages/whatsapp-db/drizzle/schema/outbox.ts`
+- `packages/whatsapp-db/drizzle/schema/messages.ts`
+- `packages/whatsapp-providers/src/cloud-api`
+
+Queue table: `wa_outbox`.
+
+Runtime knobs:
+
+```ts
+const pollIntervalMs = Number(process.env.WHATSAPP_OUTBOX_INTERVAL_MS ?? 5000);
+const batchSize = Number(process.env.WHATSAPP_OUTBOX_BATCH_SIZE ?? 10);
+```
+
+The worker selects pending or retryable failed rows:
+
+```ts
+where(
+  and(
+    inArray(waOutbox.status, ["pending", "failed"]),
+    or(isNull(waOutbox.nextAttemptAt), lte(waOutbox.nextAttemptAt, now)),
+  ),
+)
+.orderBy(desc(waOutbox.priority))
+.limit(batchSize)
+```
+
+Supported message types:
+
+- `text`
+- `template`
+- `image`
+- `video`
+- `audio`
+- `document`
+- `sticker`
+
+Provider support currently requires `account.provider === "cloud_api"`.
+
+## WhatsApp Guarantees And Gaps
+
+The WhatsApp worker:
+
+- marks an outbox row `processing`
+- increments attempts
+- updates both `wa_outbox` and `wa_messages`
+- computes retry delay as `min(30 * attempts, 15 minutes)`
+- records provider message id on success
+
+Current gaps compared with SMS:
+
+- no `FOR UPDATE SKIP LOCKED`
+- no lock fields in `wa_outbox`
+- no stale processing recovery
+- no graceful shutdown handler
+- `setInterval` can overlap if a batch takes longer than the poll interval
+
+Before running multiple WhatsApp worker instances, close these gaps or document the operational risk.
+
+## WhatsApp Bridge
+
+`services/whatsapp-bridge` is a Hono node service. It exposes:
+
+```ts
+app.get("/health", (c) => c.json({ status: "ok" }));
+```
+
+Session and send routes currently return `501 not_implemented`.
+
+Default port:
+
+```ts
+const port = Number(process.env.PORT ?? 4005);
+```
+
+Treat this as a placeholder service until the session routes are implemented.
+
+## Adding A Worker
+
+Prefer the SMS pattern for new DB-backed workers:
+
+1. Create a queue table with `status`, `attempts`, `maxAttempts`, `nextAttemptAt`, `lastAttemptAt`,
+   `errorMessage`, provider ids, and lock fields.
+2. Add queue indexes on `status` and `nextAttemptAt`.
+3. Claim inside a transaction with `FOR UPDATE SKIP LOCKED`.
+4. Move rows to `processing` with `lockedAt`, `lockedBy`, and `processingStartedAt`.
+5. Process provider work outside the claim transaction.
+6. Mark success/failure in the database.
+7. Clear locks on every terminal path.
+8. Recover stale processing rows.
+9. Add graceful shutdown.
+10. Add tests for backoff, retry exhaustion, duplicate prevention, and stale recovery.
+
+Minimal claim shape:
+
+```ts
+const claimed = await db.transaction(async (tx) => {
+  const pending = await tx.execute(sql`
+    SELECT id FROM ${queue}
+    WHERE status = 'pending'
+    AND (next_attempt_at IS NULL OR next_attempt_at <= ${now})
+    ORDER BY created_at ASC
+    LIMIT ${batchSize}
+    FOR UPDATE SKIP LOCKED
+  `);
+
+  const ids = pending.rows.map((row) => row.id);
+
+  await tx
+    .update(queue)
+    .set({
+      status: "processing",
+      lockedAt: now,
+      lockedBy: workerId,
+    })
+    .where(inArray(queue.id, ids));
+
+  return tx.select().from(queue).where(inArray(queue.id, ids));
+});
+```
+
+## Operational Checklist
+
+When debugging workers, inspect:
+
+- queue row `status`
+- `attempts` and `maxAttempts`
+- `nextAttemptAt`
+- `lockedAt` and `lockedBy`
+- provider id fields
+- `errorMessage` and provider status/error code
+- app logs with outbox/job id
+- provider dashboard for matching message/event ids
+
+Manual recovery usually means either:
+
+- set a failed retryable row back to `pending`
+- clear a stale lock
+- fix missing provider env/credentials
+- fix bad payload data and requeue
+
+Do not blindly replay provider sends without checking idempotency keys and provider-side state.
+
+## Review Checklist
+
+Before merging worker changes:
+
+- Can two workers process the same row?
+- What happens if the process dies after provider success but before DB success?
+- Are permanent provider failures separated from retryable failures?
+- Is retry delay bounded?
+- Is phone/email/provider-sensitive data masked in logs?
+- Are stale processing jobs recoverable?
+- Are local tests updated for retry and duplicate behavior?
+- Are new env vars documented in `.env.example` and the environment handbook page?
