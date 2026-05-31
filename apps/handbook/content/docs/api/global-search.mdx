@@ -1,0 +1,127 @@
+---
+title: Global Search API
+description: Cross-entity search across bookings, clients, crews, shoots, tasks, deliverables, expenses, and invoices.
+---
+
+## Ownership
+
+Global Search powers the command/search modal and full search page. It returns grouped results across
+studio entities in one request.
+
+| Area | Source |
+| --- | --- |
+| Router | `packages/api/modules/global-search/router.ts` |
+| Procedure | `packages/api/modules/global-search/procedures/search.ts` |
+| Types | `packages/api/modules/global-search/types.ts` |
+| Entity searchers | `packages/api/modules/global-search/lib/entity-searchers/*.ts` |
+| Search utilities | `packages/api/modules/global-search/lib/search-utils.ts` |
+| UI | `apps/web/modules/saas/studio/components/search/*` |
+| Shared modal | `apps/web/modules/saas/shared/components/global-search/*` |
+
+## API Operation
+
+| Operation | Method/path | Input | Output | Notes |
+| --- | --- | --- | --- | --- |
+| `globalSearch.search` | `GET /global-search` | inline Zod schema | `GlobalSearchResponse` | Searches allowed entity groups in parallel. |
+
+## Input Contract
+
+Fields:
+
+- `query`: required string, trimmed, min 2, max 100
+- `entities`: optional array of searchable entity types
+- `limit`: defaults to `5`, min `1`, max `20`
+
+Searchable entity types:
+
+- `booking`
+- `client`
+- `crew`
+- `shoot`
+- `task`
+- `deliverable`
+- `expense`
+- `invoice`
+
+If `entities` is missing or empty, the procedure attempts every entity group the caller can list.
+
+## Permission Contract
+
+Each group is searched only when the caller has the required permission:
+
+| Result group | Permission |
+| --- | --- |
+| `bookings` | `booking:list` |
+| `clients` | `client:list` |
+| `crews` | `crew:list` |
+| `shoots` | `shoot:list` |
+| `tasks` | `task:list` |
+| `deliverables` | `deliverable:list` |
+| `expenses` | `expense:list` or `expense:reference` |
+| `invoices` | `payment:list` or `payment:reference` |
+
+Unauthorized groups return an empty array rather than an authorization error.
+
+## Output Contract
+
+The response always includes all groups:
+
+- `bookings`
+- `clients`
+- `crews`
+- `shoots`
+- `tasks`
+- `deliverables`
+- `expenses`
+- `invoices`
+
+Each group is limited independently by `limit`.
+
+## Matching Behavior
+
+Entity searchers use organization scope and soft-delete filters where the underlying table supports
+`deletedAt`. Text matching uses `ILIKE '%query%'`.
+
+Bookings and invoices also use identifier extraction:
+
+- `BK-123`
+- `INV-2024-001`
+- numeric fragments like `123`
+
+## Result Shapes
+
+| Group | Key fields |
+| --- | --- |
+| `bookings` | `id`, `name`, `referenceNumber`, `status` |
+| `clients` | `id`, `name`, `email`, `phoneNumber` |
+| `crews` | `id`, `name`, `email` |
+| `shoots` | `id`, `name`, `shootType`, `shootDate`, `bookingId` |
+| `tasks` | `id`, `name`, `status`, `dueDate`, `bookingId` |
+| `deliverables` | `id`, `name`, `status`, `dueDate`, `bookingId` |
+| `expenses` | `id`, `description`, `amount`, `expenseDate`, `category` |
+| `invoices` | `id`, `invoiceNumber`, `status`, `totalAmount`, `bookingId` |
+
+## Related Surfaces
+
+| Surface | Relationship |
+| --- | --- |
+| App shell search modal | Calls `orpcClient.globalSearch.search` as the user types. |
+| Search page | Uses the same endpoint for full-page results. |
+| Entity list permissions | Control which result groups are populated. |
+
+## Change Checklist
+
+When changing global search:
+
+- update `packages/api/modules/global-search/types.ts`
+- update the entity searcher for any result field or matching change
+- update permission checks in `search.ts` when resource boundaries change
+- update search modal/page result rendering
+- update this page in the same PR
+
+## Known Gaps
+
+- There is no formal exported schema file for global search inputs/outputs; the input schema is local to the procedure.
+- Results are grouped, not globally ranked across entity types.
+- Text search is basic `ILIKE`; no trigram/full-text ranking.
+- Unauthorized groups silently return empty arrays.
