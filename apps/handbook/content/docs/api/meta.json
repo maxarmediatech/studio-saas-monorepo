@@ -12,6 +12,7 @@
 		"invoices",
 		"receipts",
 		"expenses",
-		"configurations"
+		"configurations",
+		"discussions"
 	]
 }

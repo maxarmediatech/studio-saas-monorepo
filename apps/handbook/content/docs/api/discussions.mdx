@@ -1,0 +1,284 @@
+---
+title: Discussions API
+description: Channels, posts, messages, linked entities, permissions, and soft-delete behavior.
+---
+
+## Ownership
+
+Discussions are the studio collaboration surface. They are organized into channels, contain
+discussion posts, support threaded messages, and can link back to studio entities such as bookings,
+shoots, deliverables, tasks, payment schedules, and expenses.
+
+| Area | Source |
+| --- | --- |
+| Router | `packages/api/modules/discussions/router.ts` |
+| Contract schemas | `packages/api/modules/discussions/schemas.ts` |
+| Procedures | `packages/api/modules/discussions/procedures/*.ts` |
+| DB tables | `packages/database/drizzle/schema/discussions.ts` |
+| Access helpers | `packages/api/modules/discussions/lib/channel-access.ts` |
+| Entity-link validation | `packages/api/modules/discussions/lib/verify-link-entity.ts` |
+| Rich text helpers | `packages/api/modules/discussions/lib/rich-text.ts` |
+| Frontend API helpers | `apps/web/modules/saas/studio/lib/api.ts` |
+| Frontend UI | `apps/web/modules/saas/studio/components/discussions/*` |
+
+## Database Shape
+
+| Table | Owns | Notes |
+| --- | --- | --- |
+| `channels` | Channel name, slug, description, archive flag, audit, soft delete. | Unique active slug per organization. |
+| `channel_members` | Channel membership, subscription flag, last read timestamp. | Unique channel/user pair. |
+| `discussions` | Post title/content, rich-text payload, status/resolution, counts, activity time, soft delete. | Belongs to one channel and organization. |
+| `discussion_links` | Links a discussion to another studio entity. | Unique per discussion/entity pair. |
+| `discussion_messages` | Messages and replies with rich-text payload, thread pointers, counts, soft delete. | Parent/thread root support nested replies. |
+
+Important indexes:
+
+| Index | Purpose |
+| --- | --- |
+| `channels_org_slug_unique` | Unique active channel slug inside organization. |
+| `channel_members_channel_user_unique` | Prevent duplicate membership rows. |
+| `discussions_org_channel_cursor_idx` | Cursor paging by organization/channel/createdAt/id. |
+| `discussions_channel_activity_idx` | Activity-based sorting. |
+| `discussion_links_entity_idx` | Find discussions linked to an entity. |
+| `discussion_messages_thread_idx` | Thread reply list. |
+
+Status enum:
+
+- `open`
+- `resolved`
+
+Link entity types:
+
+- `booking`
+- `shoot`
+- `deliverable`
+- `task`
+- `payment_schedule`
+- `expense`
+
+## API Operations
+
+All discussion procedures use active organization scope.
+
+| Operation | Method/path | Input schema | Permission/guard | Notes |
+| --- | --- | --- | --- | --- |
+| `discussions.createChannel` | `POST /discussions/channels` | `createChannelInputSchema` | `channel:create` | Creates channel and adds creator as member. |
+| `discussions.listChannels` | `GET /discussions/channels` | `listChannelsInputSchema` | protected studio context | Lists channels user can access. |
+| `discussions.getChannel` | `GET /discussions/channels/{channelId}` | `getChannelInputSchema` | channel access helper | Returns one active channel. |
+| `discussions.getChannelBySlug` | `GET /discussions/channels/by-slug/{slug}` | `getChannelBySlugInputSchema` | channel access helper | Slug lookup for routes. |
+| `discussions.updateChannel` | `PUT /discussions/channels/{channelId}` | `updateChannelInputSchema` | `channel:update` | Updates name/description/archive flag. |
+| `discussions.deleteChannel` | `DELETE /discussions/channels/{channelId}` | `deleteChannelInputSchema` | `channel:delete` | Soft delete. |
+| `discussions.addChannelMember` | `POST /discussions/channels/{channelId}/members` | `addChannelMemberInputSchema` | `channel:update` | Adds membership, idempotent by DB conflict behavior. |
+| `discussions.removeChannelMember` | `DELETE /discussions/channels/{channelId}/members/{userId}` | `removeChannelMemberInputSchema` | `channel:update` | Physically removes membership. |
+| `discussions.toggleSubscription` | `PUT /discussions/channels/{channelId}/subscription` | `toggleSubscriptionInputSchema` | protected studio context | Updates or creates membership subscription state. |
+| `discussions.createDiscussion` | `POST /discussions/posts` | `createDiscussionInputSchema` | `discussion:create` | Creates post and optional links. |
+| `discussions.listDiscussions` | `GET /discussions/posts` | `listDiscussionsInputSchema` | protected studio context | Cursor-paged channel post list. |
+| `discussions.getDiscussion` | `GET /discussions/posts/{discussionId}` | `getDiscussionInputSchema` | protected studio context | Detail with author/channel/links. |
+| `discussions.updateDiscussion` | `PUT /discussions/posts/{discussionId}` | `updateDiscussionInputSchema` | `discussion:update` | Updates title/content. |
+| `discussions.deleteDiscussion` | `DELETE /discussions/posts/{discussionId}` | `deleteDiscussionInputSchema` | `discussion:delete` | Soft delete. |
+| `discussions.resolveDiscussion` | `POST /discussions/posts/{discussionId}/resolve` | `resolveDiscussionInputSchema` | `discussion:update` | Open to resolved with resolution. |
+| `discussions.reopenDiscussion` | `POST /discussions/posts/{discussionId}/reopen` | `reopenDiscussionInputSchema` | `discussion:update` | Resolved to open. |
+| `discussions.addDiscussionLink` | `POST /discussions/posts/{discussionId}/links` | `addDiscussionLinkInputSchema` | `discussion:update` plus entity permission | Adds validated entity link. |
+| `discussions.removeDiscussionLink` | `DELETE /discussions/links/{linkId}` | `removeDiscussionLinkInputSchema` | `discussion:update` | Physically deletes link. |
+| `discussions.createMessage` | `POST /discussions/messages` | `createMessageInputSchema` | `conversation:create` | Creates message or reply. |
+| `discussions.listMessages` | `GET /discussions/messages` | `listMessagesInputSchema` | protected studio context | Lists discussion messages or thread replies. |
+| `discussions.updateMessage` | `PUT /discussions/messages/{messageId}` | `updateMessageInputSchema` | author or allowed guard | Edits active message. |
+| `discussions.deleteMessage` | `DELETE /discussions/messages/{messageId}` | `deleteMessageInputSchema` | author or allowed guard | Soft delete; adjusts counts. |
+
+## Read Contracts
+
+`listChannels` accepts:
+
+- `includeArchived`
+
+Returns active, non-deleted channels available to the user. Archived channels are excluded unless
+requested.
+
+`listDiscussions` accepts:
+
+- `channelId`
+- `status`: `open`, `resolved`, or `all`
+- `sortBy`: `created` or `activity`
+- cursor: `createdAt`, `id`
+- `limit`
+
+Returns discussion summaries with author and counts. Cursor paging is based on `createdAt` and `id`;
+activity sorting uses `lastActivityAt`.
+
+`getDiscussion` returns:
+
+- base discussion fields
+- `channel`
+- `author`
+- `links`
+- resolution fields when resolved
+
+`listMessages` accepts:
+
+- `discussionId`
+- optional `threadRootId`
+
+Returns active messages for the discussion or thread, including rich-text JSON/text fields and author
+display data.
+
+## Channel Contracts
+
+Create channel requires:
+
+- `name`
+
+Optional:
+
+- `description`
+
+Create behavior:
+
+- generates a slug from channel name
+- inserts channel under active organization
+- adds current user to `channel_members`
+
+Update channel can change:
+
+- `name`
+- `description`
+- `isArchived`
+
+Delete channel:
+
+- soft-deletes channel with `deletedAt` and `deletedBy`
+- does not physically delete discussions/messages
+- hides channel from active lookups
+
+Membership:
+
+- `addChannelMember` inserts a `channel_members` row
+- `removeChannelMember` physically deletes membership
+- `toggleSubscription` updates existing membership or creates one for the current user
+
+## Discussion Contracts
+
+Create discussion requires:
+
+- `channelId`
+- `title`
+
+Optional:
+
+- `content`
+- `contentJson`
+- `links`
+
+Create behavior:
+
+- validates linked entities before insert
+- builds rich text JSON/text using editor helpers
+- rejects invalid rich-text payloads
+- inserts `discussions`
+- inserts `discussion_links` when provided
+
+Update discussion can change:
+
+- `title`
+- `content`
+- `contentJson`
+
+Resolve behavior:
+
+- rejects already resolved discussions
+- sets `status = resolved`, `resolution`, `resolvedBy`, `resolvedAt`
+
+Reopen behavior:
+
+- rejects already open discussions
+- sets `status = open`
+- clears resolution fields
+
+Delete discussion:
+
+- soft-deletes the discussion
+- does not delete links or messages directly
+
+## Message Contracts
+
+Create message requires:
+
+- `discussionId`
+- either `content` or `contentJson`
+
+Optional:
+
+- `parentId`
+
+Create behavior:
+
+- verifies discussion exists and is not deleted
+- rejects messages on resolved discussions
+- validates parent message belongs to the same discussion
+- sets `threadRootId` from parent/root rules
+- inserts message
+- increments discussion `messageCount`
+- updates discussion `lastActivityAt`
+- increments parent/root `replyCount` for replies
+
+Update message:
+
+- requires either `content` or `contentJson`
+- rebuilds rich-text JSON/text
+- updates content and audit fields
+- rejects deleted messages
+
+Delete message:
+
+- soft-deletes message
+- decrements discussion `messageCount`
+- decrements parent/root reply count for replies
+
+## Link Contract
+
+Link validation checks both entity existence and current user's permission for that entity type.
+
+Permission checks:
+
+| Entity type | Permission accepted |
+| --- | --- |
+| `booking` | `booking:read`, `booking:list`, or `booking:reference` |
+| `shoot` | `shoot:read` or `shoot:list` |
+| `task` | `task:read` or `task:list` |
+| `deliverable` | `deliverable:read` or `deliverable:list` |
+| `payment_schedule` | `payment:read`, `payment:list`, or `payment:reference` |
+| `expense` | `expense:read`, `expense:list`, or `expense:reference` |
+
+Links are physically deleted by `removeDiscussionLink`.
+
+## Related Surfaces
+
+| Surface | Relationship |
+| --- | --- |
+| Bookings | Discussions can link to bookings. |
+| Shoots | Discussions can link to shoots. |
+| Tasks | Discussions can link to tasks. |
+| Deliverables | Discussions can link to deliverables. |
+| Payments | Discussions can link to payment schedules. |
+| Expenses | Discussions can link to expenses. |
+| Check-ins | Reuses discussion rich-text and entity-link helpers. |
+| Notifications | Mention/callout copy references discussions, but discussion procedures do not directly emit notifications yet. |
+
+## Change Checklist
+
+When changing discussions:
+
+- update `packages/api/modules/discussions/schemas.ts`
+- update relevant procedure files and route metadata
+- update `packages/database/drizzle/schema/discussions.ts` plus migrations for table/index changes
+- update rich-text validation if editor payload format changes
+- update entity-link validation when adding linkable entity types
+- update frontend query keys, route pages, discussion forms, and channel/sidebar components
+- update this page in the same PR
+
+## Known Gaps
+
+- `assertChannelAccess` loads membership but does not currently reject when membership is missing.
+- `listDiscussions`, `getDiscussion`, and `listMessages` rely on org/channel checks but do not all require explicit discussion permissions.
+- Channel slug uniqueness is enforced by DB, but slug collision handling should be verified for same-name channels.
+- Link removal is a physical delete; there is no link audit trail.
+- Discussion deletion is soft, but child links/messages remain in the database.
