@@ -1,0 +1,200 @@
+---
+title: Notifications API
+description: In-app notification inbox, unread state, preferences, metadata, and producer side effects.
+---
+
+## Ownership
+
+Notifications are per-user, per-organization inbox rows. API procedures expose read/unread state and
+preferences. Creation happens through service helpers called by task, deliverable, shoot, submission,
+and subscription flows.
+
+| Area | Source |
+| --- | --- |
+| Router | `packages/api/modules/notifications/router.ts` |
+| Contract schemas | `packages/api/modules/studio/schemas/notification.ts` |
+| Procedures | `packages/api/modules/notifications/procedures/*.ts` |
+| DB tables | `packages/database/drizzle/schema/studio.ts` |
+| Notification service | `packages/api/modules/notifications/lib/notification-service.ts` |
+| Recipient rules | `packages/api/modules/notifications/lib/recipient-rules.ts` |
+| Metadata schema | `packages/api/modules/notifications/lib/notification-metadata.ts` |
+| Preferences schema | `packages/api/modules/notifications/lib/notification-preferences.ts` |
+| Web preferences UI | `apps/web/modules/saas/settings/components/NotificationPreferencesForm.tsx` |
+
+## Database Shape
+
+| Table | Owns | Notes |
+| --- | --- | --- |
+| `notifications` | User inbox rows, entity pointer, type/title/body, metadata, actor, read timestamp. | No soft delete. |
+| `notification_preferences` | Per-user preference booleans per organization. | One row per organization/user. |
+| `subscriptions` | Follow/watch records used by notification service. | Owned by Your Work/subscriptions surface. |
+
+Important indexes:
+
+| Index | Purpose |
+| --- | --- |
+| `notifications_user_org_idx` | User inbox list by organization and created time. |
+| `notifications_user_unread_idx` | Fast unread count. |
+| `notifications_entity_idx` | Find notifications for an entity. |
+| `notification_preferences_org_user_idx` | Unique preferences per organization/user. |
+| `notification_preferences_user_idx` | User preference lookup. |
+
+## API Operations
+
+All procedures use `studioProtectedProcedure` and current user scope.
+
+| Operation | Method/path | Input schema | Output schema | Notes |
+| --- | --- | --- | --- | --- |
+| `notifications.list` | `GET /notifications` | `listNotificationsInputSchema` | `listNotificationsOutputSchema` | Paginated current-user inbox. |
+| `notifications.markRead` | `PATCH /notifications/{id}/read` | `markNotificationReadInputSchema` | `markNotificationReadOutputSchema` | Sets `readAt` to now. |
+| `notifications.markUnread` | `PATCH /notifications/{id}/unread` | `markNotificationUnreadInputSchema` | `markNotificationUnreadOutputSchema` | Clears `readAt`. |
+| `notifications.markAllRead` | `PATCH /notifications/read-all` | none | `markAllNotificationsReadOutputSchema` | Marks all current-user unread rows read. |
+| `notifications.unreadCount` | `GET /notifications/unread-count` | none | `unreadNotificationCountOutputSchema` | Counts unread current-user rows. |
+| `notifications.getPreferences` | `GET /notifications/preferences` | none | `getNotificationPreferencesOutputSchema` | Returns stored or default preferences. |
+| `notifications.updatePreferences` | `PUT /notifications/preferences` | `updateNotificationPreferencesInputSchema` | `updateNotificationPreferencesOutputSchema` | Upserts preferences for current user. |
+
+## Read Contracts
+
+`list` accepts:
+
+- pagination
+- `unreadOnly`
+- `types`
+
+Supported type filters:
+
+- `assigned`
+- `status_changed`
+- `review_requested`
+- `review_approved`
+- `review_rejected`
+- `review_revision_requested`
+- `due_soon`
+- `overdue`
+
+`list` returns:
+
+- `id`
+- `entityType`
+- `entityId`
+- `entityName`
+- `type`
+- `title`
+- `body`
+- parsed `metadata`
+- `actorId`
+- `actorName`
+- `readAt`
+- `createdAt`
+- pagination
+
+`unreadCount` returns:
+
+- `count`
+
+## Preference Contract
+
+Preference fields:
+
+- `assignedToMe`
+- `itemsIAssigned`
+- `bookingsIOwn`
+- `itemsIFollow`
+- `mentions`
+- `dueOverdueReminders`
+
+Defaults are all `true`.
+
+`getPreferences`:
+
+- returns defaults when no row exists
+- overlays stored partial preferences onto defaults
+
+`updatePreferences`:
+
+- upserts a row for current organization/user
+- updates `updatedAt` when row exists
+- returns the submitted preference object
+
+## Read/Unread Contract
+
+`markRead` and `markUnread`:
+
+- verify notification belongs to current organization and current user
+- return `NOT_FOUND` if the row is missing or belongs to another user
+- do not expose cross-user notification ids
+
+`markAllRead`:
+
+- updates only current user's unread notifications in the active organization
+- returns `{ success: true }`
+
+## Producer Contract
+
+Notification creation is not exposed as a public CRUD endpoint. Producers call helpers from
+`notification-service.ts`.
+
+Known producers:
+
+- task create/update/status/assignment/submission flows
+- deliverable create/update/assignment/submission/conversion flows
+- shoot create/update/assignment flows
+- submission review flow
+- Your Work subscription flow for auto-subscribe
+
+Recipient reasons:
+
+| Reason | Preference |
+| --- | --- |
+| `assignee` | `assignedToMe` |
+| `assigner` | `itemsIAssigned` |
+| `booking_owner` | `bookingsIOwn` |
+| `subscriber` | `itemsIFollow` |
+| `mention` | `mentions` |
+| `reminder` | `dueOverdueReminders` |
+
+The service checks preferences and inserts notifications for users who still have at least one
+enabled recipient reason.
+
+## Metadata Contract
+
+Recognized metadata shapes:
+
+- status changed: `oldStatus`, `newStatus`
+- assigned: `assigneeName`, optional `assigneeId`
+- review requested: `submittedByName`
+- review decision: `outcome`, optional `reviewerName`, optional `reviewNote`
+- reminder: `kind`, `dueDate`, optional `daysUntilDue`
+
+Invalid/legacy metadata parses to `null` in API responses.
+
+## Related Surfaces
+
+| Surface | Relationship |
+| --- | --- |
+| Tasks | Assignment/status/submission actions emit notifications. |
+| Deliverables | Assignment/status/submission/review actions emit notifications. |
+| Shoots | Assignment/status actions emit notifications. |
+| Submissions | Review decisions emit notifications. |
+| Your Work | Subscriptions provide follower recipients. |
+| Settings | User notification preferences live in settings UI. |
+
+## Change Checklist
+
+When changing notifications:
+
+- update `packages/api/modules/studio/schemas/notification.ts`
+- update notification procedure filters/outputs
+- update `notification-service.ts` and `recipient-rules.ts` for producer/recipient changes
+- update metadata parser/tests when adding notification metadata shapes
+- update DB schema/migration if inbox/preference fields change
+- update settings preferences UI and notification rendering content
+- update this page in the same PR
+
+## Known Gaps
+
+- Notifications have no delete/archive endpoint.
+- Public API does not expose notification creation; all writes come from service helpers.
+- `list` casts entity type to the current `yourWorkEntityTypeSchema` set, while DB stores free text.
+- Invalid metadata is silently returned as `null` for backward compatibility.
+- Mentions preference exists, but discussion/check-in procedures do not currently emit mention notifications directly.
