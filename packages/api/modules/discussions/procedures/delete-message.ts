@@ -8,10 +8,11 @@ import {
 	isNull,
 	sql,
 } from "@repo/database";
-import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { protectedProcedure } from "../../../orpc/procedures";
+import { resolveDiscussionRouteContext } from "../lib/route-context";
 import { deleteMessageInputSchema } from "../schemas";
 
-export const deleteMessage = studioProtectedProcedure
+export const deleteMessage = protectedProcedure
 	.route({
 		method: "DELETE",
 		path: "/discussions/messages/{messageId}",
@@ -19,7 +20,12 @@ export const deleteMessage = studioProtectedProcedure
 		summary: "Delete a message (soft delete)",
 	})
 	.input(deleteMessageInputSchema)
-	.handler(async ({ input, context }) => {
+	.handler(async ({ input, context: baseContext }) => {
+		const context = await resolveDiscussionRouteContext(
+			input.organizationSlug,
+			baseContext,
+		);
+
 		const message = await db.query.discussionMessages.findFirst({
 			where: and(
 				eq(discussionMessages.id, input.messageId),

@@ -61,8 +61,35 @@ const nextConfig = {
 				permanent: false,
 			},
 			{
+				source: "/app/:organizationSlug",
+				destination: "/app/:organizationSlug/home",
+				permanent: false,
+			},
+			{
 				source: "/app/:organizationSlug/bookings/new",
 				destination: "/app/:organizationSlug/bookings/new/details",
+				permanent: false,
+			},
+			{
+				source: "/app/:organizationSlug/configurations",
+				destination:
+					"/app/:organizationSlug/configurations/booking-types",
+				permanent: false,
+			},
+			{
+				source: "/app/:organizationSlug/crews",
+				destination: "/app/:organizationSlug/people",
+				permanent: false,
+			},
+			{
+				source: "/app/:organizationSlug/crews/:crewId",
+				destination: "/app/:organizationSlug/people/:crewId",
+				permanent: false,
+			},
+			{
+				source: "/app/:organizationSlug/settings/members",
+				destination:
+					"/app/:organizationSlug/settings/people?view=members",
 				permanent: false,
 			},
 		];

@@ -31,11 +31,13 @@ type ChannelFormValues = z.infer<typeof channelSchema>;
 interface ChannelCreateDialogProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
+	organizationSlug: string;
 }
 
 export function ChannelCreateDialog({
 	open,
 	onOpenChange,
+	organizationSlug,
 }: ChannelCreateDialogProps) {
 	const queryClient = useQueryClient();
 
@@ -43,7 +45,6 @@ export function ChannelCreateDialog({
 		register,
 		handleSubmit,
 		reset,
-		control,
 		formState: { errors },
 	} = useForm<ChannelFormValues>({
 		resolver: zodResolver(channelSchema),
@@ -75,6 +76,7 @@ export function ChannelCreateDialog({
 
 	const onSubmit = (values: ChannelFormValues) => {
 		createMutation.mutate({
+			organizationSlug,
 			name: values.name,
 			description: values.description || undefined,
 		});

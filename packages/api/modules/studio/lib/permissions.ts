@@ -3,9 +3,14 @@ import { auth } from "@repo/auth";
 import {
 	type Action,
 	type AnyAction,
+	checkRolePermission,
 	hasAnyRole,
+	isStaticRole,
+	mergeCustomRolePermissions,
+	normalizeRoles,
 	type Resource,
 } from "@repo/auth/lib/permissions";
+import { db, inArray } from "@repo/database";
 
 export interface StudioContext {
 	headers: Headers;
@@ -33,11 +38,56 @@ export interface StudioContext {
 	};
 }
 
+async function getCustomRolePermissions(
+	organizationId: string,
+	role: string | string[],
+) {
+	const roleList = normalizeRoles(role);
+	const customRoleKeys = roleList.filter((roleKey) => !isStaticRole(roleKey));
+
+	if (customRoleKeys.length === 0) {
+		return undefined;
+	}
+
+	const customRoles = await db.query.organizationRoles.findMany({
+		where: (rolesTable, { and, eq }) =>
+			and(
+				eq(rolesTable.organizationId, organizationId),
+				inArray(rolesTable.role, customRoleKeys),
+			),
+	});
+
+	const parsedPermissions = customRoles.map((customRole) => {
+		try {
+			return JSON.parse(customRole.permission);
+		} catch {
+			return undefined;
+		}
+	});
+
+	return mergeCustomRolePermissions(parsedPermissions);
+}
+
 export async function hasPermission<R extends Resource>(
-	context: Pick<StudioContext, "headers">,
+	context: Pick<StudioContext, "headers"> &
+		Partial<Pick<StudioContext, "membership">>,
 	resource: R,
 	action: Action<R>,
 ): Promise<boolean> {
+	if (context.membership) {
+		const customRolePermissions = await getCustomRolePermissions(
+			context.membership.organization.id,
+			context.membership.role,
+		);
+
+		return checkRolePermission(
+			context.membership.role,
+			resource,
+			action,
+			customRolePermissions,
+		);
+	}
+
 	const result = await auth.api.hasPermission({
 		headers: context.headers,
 		body: {

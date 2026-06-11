@@ -99,6 +99,7 @@ const ACTION_LABELS: Record<AnyAction, string> = {
 	approve: "Approve",
 	claim: "Claim",
 	reference: "Reference",
+	cancel: "Cancel",
 };
 
 function toRoleKey(displayName: string): string {

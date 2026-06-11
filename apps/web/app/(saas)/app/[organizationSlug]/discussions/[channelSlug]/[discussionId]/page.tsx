@@ -17,7 +17,6 @@ import {
 } from "@repo/ui/components/input-group";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
-import { useSession } from "@saas/auth/hooks/use-session";
 import { ENTITY_TYPE_CONFIG } from "@saas/studio/components/discussions/entity-link-picker";
 import { ThreadCard } from "@saas/studio/components/thread";
 import {
@@ -53,7 +52,9 @@ const EMPTY_DOC: EditorContentJson = {
 };
 
 function isEditorContentJson(value: unknown): value is EditorContentJson {
-	if (typeof value !== "object" || value === null) return false;
+	if (typeof value !== "object" || value === null) {
+		return false;
+	}
 	const record = value as Record<string, unknown>;
 	return record.type === "doc";
 }
@@ -130,7 +131,6 @@ export default function DiscussionDetailPage() {
 		channelSlug: string;
 		discussionId: string;
 	}>();
-	const { user } = useSession();
 	const queryClient = useQueryClient();
 	const [newThreadDoc, setNewThreadDoc] =
 		useState<EditorContentJson>(EMPTY_DOC);
@@ -139,13 +139,17 @@ export default function DiscussionDetailPage() {
 	const entityNameLookup = useEntityNameLookup();
 
 	const { data: discussionData, isLoading: discussionLoading } = useQuery(
-		discussionsApi.getDiscussionOptions(params.discussionId),
+		discussionsApi.getDiscussionOptions(
+			params.organizationSlug,
+			params.discussionId,
+		),
 	);
 
 	const discussion = discussionData?.data;
 
 	const { data: messagesData, isLoading: messagesLoading } = useQuery({
 		...discussionsApi.listMessagesOptions({
+			organizationSlug: params.organizationSlug,
 			discussionId: params.discussionId,
 		}),
 		enabled: !!params.discussionId,
@@ -247,8 +251,11 @@ export default function DiscussionDetailPage() {
 	});
 
 	const handleNewThread = () => {
-		if (!newThreadText.trim()) return;
+		if (!newThreadText.trim()) {
+			return;
+		}
 		createMessageMutation.mutate({
+			organizationSlug: params.organizationSlug,
 			discussionId: params.discussionId,
 			contentJson: newThreadDoc,
 		});
@@ -256,6 +263,7 @@ export default function DiscussionDetailPage() {
 
 	const handleReply = (parentId: string, contentJson: EditorContentJson) => {
 		createMessageMutation.mutate({
+			organizationSlug: params.organizationSlug,
 			discussionId: params.discussionId,
 			contentJson,
 			parentId,
@@ -320,6 +328,7 @@ export default function DiscussionDetailPage() {
 							size="sm"
 							onClick={() =>
 								resolveMutation.mutate({
+									organizationSlug: params.organizationSlug,
 									discussionId: params.discussionId,
 									resolution: "Marked as resolved",
 								})
@@ -335,6 +344,7 @@ export default function DiscussionDetailPage() {
 							size="sm"
 							onClick={() =>
 								reopenMutation.mutate({
+									organizationSlug: params.organizationSlug,
 									discussionId: params.discussionId,
 								})
 							}
@@ -393,7 +403,9 @@ export default function DiscussionDetailPage() {
 								ENTITY_TYPE_CONFIG[
 									link.entityType as DiscussionLinkEntityType
 								];
-							if (!config) return null;
+							if (!config) {
+								return null;
+							}
 							const entityName = getEntityName(
 								link.entityType,
 								link.entityId,
@@ -447,7 +459,9 @@ export default function DiscussionDetailPage() {
 											ENTITY_TYPE_CONFIG[
 												link.entityType as DiscussionLinkEntityType
 											];
-										if (!config) return null;
+										if (!config) {
+											return null;
+										}
 										const entityName = getEntityName(
 											link.entityType,
 											link.entityId,

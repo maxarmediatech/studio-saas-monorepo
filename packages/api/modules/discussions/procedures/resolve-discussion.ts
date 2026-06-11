@@ -1,10 +1,11 @@
 import { ORPCError } from "@orpc/server";
 import { and, db, discussions, eq, isNull } from "@repo/database";
-import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { protectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
+import { resolveDiscussionRouteContext } from "../lib/route-context";
 import { resolveDiscussionInputSchema } from "../schemas";
 
-export const resolveDiscussion = studioProtectedProcedure
+export const resolveDiscussion = protectedProcedure
 	.route({
 		method: "POST",
 		path: "/discussions/posts/{discussionId}/resolve",
@@ -12,7 +13,12 @@ export const resolveDiscussion = studioProtectedProcedure
 		summary: "Resolve a discussion",
 	})
 	.input(resolveDiscussionInputSchema)
-	.handler(async ({ input, context }) => {
+	.handler(async ({ input, context: baseContext }) => {
+		const context = await resolveDiscussionRouteContext(
+			input.organizationSlug,
+			baseContext,
+		);
+
 		await requirePermission(context, "discussion", "update");
 
 		const discussion = await db.query.discussions.findFirst({

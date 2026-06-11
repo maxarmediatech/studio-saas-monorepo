@@ -21,7 +21,9 @@ export function DiscussionsPanel({ area, studioSlug }: DiscussionsPanelProps) {
 	const pathname = usePathname();
 	const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
-	const { data, isLoading } = useQuery(discussionsApi.listChannelsOptions());
+	const { data, isLoading } = useQuery(
+		discussionsApi.listChannelsOptions(studioSlug),
+	);
 	const channels = data?.data ?? [];
 
 	const getChannelPath = (slug: string) =>
@@ -118,6 +120,7 @@ export function DiscussionsPanel({ area, studioSlug }: DiscussionsPanelProps) {
 			<ChannelCreateDialog
 				open={createDialogOpen}
 				onOpenChange={setCreateDialogOpen}
+				organizationSlug={studioSlug}
 			/>
 		</div>
 	);

@@ -1,8 +1,9 @@
 import { and, channelMembers, channels, db, eq, isNull } from "@repo/database";
-import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { protectedProcedure } from "../../../orpc/procedures";
+import { resolveDiscussionRouteContext } from "../lib/route-context";
 import { listChannelsInputSchema } from "../schemas";
 
-export const listChannels = studioProtectedProcedure
+export const listChannels = protectedProcedure
 	.route({
 		method: "GET",
 		path: "/discussions/channels",
@@ -10,7 +11,12 @@ export const listChannels = studioProtectedProcedure
 		summary: "List channels user has access to",
 	})
 	.input(listChannelsInputSchema)
-	.handler(async ({ input, context }) => {
+	.handler(async ({ input, context: baseContext }) => {
+		const context = await resolveDiscussionRouteContext(
+			input.organizationSlug,
+			baseContext,
+		);
+
 		const result = await db.query.channels.findMany({
 			where: and(
 				eq(channels.organizationId, context.organizationId),

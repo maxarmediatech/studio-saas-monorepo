@@ -1,10 +1,11 @@
 import { ORPCError } from "@orpc/server";
 import { and, db, discussions, eq, isNull } from "@repo/database";
-import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { protectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
+import { resolveDiscussionRouteContext } from "../lib/route-context";
 import { reopenDiscussionInputSchema } from "../schemas";
 
-export const reopenDiscussion = studioProtectedProcedure
+export const reopenDiscussion = protectedProcedure
 	.route({
 		method: "POST",
 		path: "/discussions/posts/{discussionId}/reopen",
@@ -12,7 +13,12 @@ export const reopenDiscussion = studioProtectedProcedure
 		summary: "Reopen a resolved discussion",
 	})
 	.input(reopenDiscussionInputSchema)
-	.handler(async ({ input, context }) => {
+	.handler(async ({ input, context: baseContext }) => {
+		const context = await resolveDiscussionRouteContext(
+			input.organizationSlug,
+			baseContext,
+		);
+
 		await requirePermission(context, "discussion", "update");
 
 		const discussion = await db.query.discussions.findFirst({

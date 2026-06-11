@@ -1,6 +1,7 @@
 import { channelMembers, channels, db } from "@repo/database";
-import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { protectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
+import { resolveDiscussionRouteContext } from "../lib/route-context";
 import { createChannelInputSchema } from "../schemas";
 
 function slugify(text: string): string {
@@ -12,7 +13,7 @@ function slugify(text: string): string {
 		.replace(/^-+|-+$/g, "");
 }
 
-export const createChannel = studioProtectedProcedure
+export const createChannel = protectedProcedure
 	.route({
 		method: "POST",
 		path: "/discussions/channels",
@@ -20,7 +21,12 @@ export const createChannel = studioProtectedProcedure
 		summary: "Create a new channel",
 	})
 	.input(createChannelInputSchema)
-	.handler(async ({ input, context }) => {
+	.handler(async ({ input, context: baseContext }) => {
+		const context = await resolveDiscussionRouteContext(
+			input.organizationSlug,
+			baseContext,
+		);
+
 		await requirePermission(context, "channel", "create");
 
 		const slug = slugify(input.name);

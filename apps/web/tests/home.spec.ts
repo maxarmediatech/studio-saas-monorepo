@@ -30,6 +30,42 @@ test.describe("home page", () => {
 				"/app/test-org/home?tab=recent&view=list",
 			);
 		});
+
+		test("legacy app aliases redirect before rendering", async ({
+			request,
+		}) => {
+			const cases = [
+				{
+					path: "/app/test-org",
+					location: "/app/test-org/home",
+				},
+				{
+					path: "/app/test-org/crews?view=list",
+					location: "/app/test-org/people?view=list",
+				},
+				{
+					path: "/app/test-org/crews/crew_123",
+					location: "/app/test-org/people/crew_123",
+				},
+				{
+					path: "/app/test-org/configurations",
+					location: "/app/test-org/configurations/booking-types",
+				},
+				{
+					path: "/app/test-org/settings/members",
+					location: "/app/test-org/settings/people?view=members",
+				},
+			];
+
+			for (const testCase of cases) {
+				const response = await request.get(testCase.path, {
+					maxRedirects: 0,
+				});
+
+				expect(response.status()).toBe(307);
+				expect(response.headers().location).toBe(testCase.location);
+			}
+		});
 	}
 
 	test("does not request shoots list on home when calendar is inactive", async ({

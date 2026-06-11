@@ -1,10 +1,11 @@
 import { ORPCError } from "@orpc/server";
 import { and, channels, db, eq, isNull } from "@repo/database";
-import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { protectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
+import { resolveDiscussionRouteContext } from "../lib/route-context";
 import { updateChannelInputSchema } from "../schemas";
 
-export const updateChannel = studioProtectedProcedure
+export const updateChannel = protectedProcedure
 	.route({
 		method: "PATCH",
 		path: "/discussions/channels/{channelId}",
@@ -12,7 +13,12 @@ export const updateChannel = studioProtectedProcedure
 		summary: "Update a channel",
 	})
 	.input(updateChannelInputSchema)
-	.handler(async ({ input, context }) => {
+	.handler(async ({ input, context: baseContext }) => {
+		const context = await resolveDiscussionRouteContext(
+			input.organizationSlug,
+			baseContext,
+		);
+
 		await requirePermission(context, "channel", "update");
 
 		const existing = await db.query.channels.findFirst({

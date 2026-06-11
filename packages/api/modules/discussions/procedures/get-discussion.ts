@@ -7,10 +7,11 @@ import {
 	eq,
 	isNull,
 } from "@repo/database";
-import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { protectedProcedure } from "../../../orpc/procedures";
+import { resolveDiscussionRouteContext } from "../lib/route-context";
 import { getDiscussionInputSchema } from "../schemas";
 
-export const getDiscussion = studioProtectedProcedure
+export const getDiscussion = protectedProcedure
 	.route({
 		method: "GET",
 		path: "/discussions/posts/{discussionId}",
@@ -18,7 +19,12 @@ export const getDiscussion = studioProtectedProcedure
 		summary: "Get discussion by ID",
 	})
 	.input(getDiscussionInputSchema)
-	.handler(async ({ input, context }) => {
+	.handler(async ({ input, context: baseContext }) => {
+		const context = await resolveDiscussionRouteContext(
+			input.organizationSlug,
+			baseContext,
+		);
+
 		const discussion = await db.query.discussions.findFirst({
 			where: and(
 				eq(discussions.id, input.discussionId),

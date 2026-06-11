@@ -1,10 +1,11 @@
 import { ORPCError } from "@orpc/server";
 import { and, channelMembers, channels, db, eq, isNull } from "@repo/database";
-import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { protectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
+import { resolveDiscussionRouteContext } from "../lib/route-context";
 import { addChannelMemberInputSchema } from "../schemas";
 
-export const addChannelMember = studioProtectedProcedure
+export const addChannelMember = protectedProcedure
 	.route({
 		method: "POST",
 		path: "/discussions/channels/{channelId}/members",
@@ -12,7 +13,12 @@ export const addChannelMember = studioProtectedProcedure
 		summary: "Add a member to a channel",
 	})
 	.input(addChannelMemberInputSchema)
-	.handler(async ({ input, context }) => {
+	.handler(async ({ input, context: baseContext }) => {
+		const context = await resolveDiscussionRouteContext(
+			input.organizationSlug,
+			baseContext,
+		);
+
 		await requirePermission(context, "channel", "update");
 
 		const channel = await db.query.channels.findFirst({

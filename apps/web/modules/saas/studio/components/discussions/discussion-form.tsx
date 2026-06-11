@@ -50,9 +50,13 @@ export type DiscussionFormValues = z.infer<typeof discussionFormSchema>;
 const EMPTY_DOC: EditorContentJson = { type: "doc", content: [] };
 
 function coerceEditorContentJson(value: unknown): EditorContentJson {
-	if (typeof value !== "object" || value === null) return EMPTY_DOC;
+	if (typeof value !== "object" || value === null) {
+		return EMPTY_DOC;
+	}
 	const record = value as Record<string, unknown>;
-	if (record.type !== "doc") return EMPTY_DOC;
+	if (record.type !== "doc") {
+		return EMPTY_DOC;
+	}
 	return value as unknown as EditorContentJson;
 }
 
@@ -61,6 +65,7 @@ function coerceEditorContentJson(value: unknown): EditorContentJson {
 // ============================================================================
 
 interface DiscussionFormProps {
+	organizationSlug: string;
 	defaultChannelId?: string;
 	defaultLinks?: EntityLink[];
 	onSubmit: (data: DiscussionFormValues) => Promise<void>;
@@ -73,6 +78,7 @@ interface DiscussionFormProps {
 // ============================================================================
 
 export function DiscussionForm({
+	organizationSlug,
 	defaultChannelId,
 	defaultLinks,
 	onSubmit,
@@ -80,7 +86,7 @@ export function DiscussionForm({
 	onScrollChange,
 }: DiscussionFormProps) {
 	const { data: channelsData, isLoading: channelsLoading } = useQuery(
-		discussionsApi.listChannelsOptions(),
+		discussionsApi.listChannelsOptions(organizationSlug),
 	);
 	const channels = channelsData?.data ?? [];
 
@@ -198,10 +204,15 @@ export function DiscussionForm({
 								<Field data-invalid={fieldState.invalid}>
 									<FieldLabel>Details</FieldLabel>
 									<RichTextEditor
-										value={coerceEditorContentJson(field.value)}
+										value={coerceEditorContentJson(
+											field.value,
+										)}
 										onChange={(payload) => {
 											field.onChange(payload.json);
-											form.setValue("content", payload.text);
+											form.setValue(
+												"content",
+												payload.text,
+											);
 										}}
 										placeholder="Add more context (optional)"
 										className="min-h-[150px]"

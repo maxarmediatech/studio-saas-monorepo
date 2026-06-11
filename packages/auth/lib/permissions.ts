@@ -70,7 +70,8 @@ export type AnyAction =
 	| "review"
 	| "approve"
 	| "claim"
-	| "reference";
+	| "reference"
+	| "cancel";
 
 const ORGANIZATION_ADMIN_ROLES = ["owner", "admin"] as const;
 const SYSTEM_ROLE_KEYS = ["owner", "admin", "member"] as const;
