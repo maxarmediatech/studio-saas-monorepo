@@ -8,6 +8,8 @@
 		"handbook:build": "dotenv -c -- turbo build --filter=@repo/handbook...",
 		"handbook:dev": "dotenv -c -- turbo dev --filter=@repo/handbook",
 		"handbook:typecheck": "turbo type-check --filter=@repo/handbook",
+		"chatgpt:dev": "dotenv -c -- pnpm --filter @repo/chatgpt-app dev",
+		"chatgpt:typecheck": "pnpm --filter @repo/chatgpt-app type-check",
 		"start": "dotenv -c -- turbo start",
 		"lint": "biome lint . ",
 		"check": "biome check",
