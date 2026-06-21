@@ -6,6 +6,7 @@ export default defineConfig({
 			rollupOptions: {
 				input: {
 					index: "src/main/index.ts",
+					sidecar: "src/main/sidecar.ts",
 				},
 			},
 		},

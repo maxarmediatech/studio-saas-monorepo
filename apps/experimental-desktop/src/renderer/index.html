@@ -31,6 +31,19 @@
 				</div>
 				<p id="selection" class="selection">No file or folder selected.</p>
 			</section>
+
+			<section class="panel">
+				<div>
+					<p class="label">OpenAI OAuth</p>
+					<p id="openai-status" class="value">Checking sidecar...</p>
+				</div>
+				<div class="actions">
+					<button id="connect-openai" type="button">Connect ChatGPT Plus</button>
+					<button id="refresh-openai" type="button">Refresh Status</button>
+					<button id="logout-openai" type="button">Disconnect</button>
+				</div>
+				<p id="openai-detail" class="selection">Sidecar starts on demand.</p>
+			</section>
 		</main>
 		<script type="module" src="./index.ts"></script>
 	</body>
