@@ -29,5 +29,5 @@ export type ExperimentalDesktopApi = {
 	startOpenAiBrowserAuth: () => Promise<OpenAiAuthStart>;
 	refreshOpenAiAuth: () => Promise<OpenAiAuthStatus>;
 	logoutOpenAi: () => Promise<{ ok: true }>;
-	sendCodexTest: () => Promise<CodexTestResponse>;
+	sendCodexTest?: () => Promise<CodexTestResponse>;
 };

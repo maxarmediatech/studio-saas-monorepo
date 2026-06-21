@@ -141,6 +141,8 @@ async function proxyCodexResponses(req: IncomingMessage) {
 	const headers = new Headers({
 		authorization: `Bearer ${auth.access}`,
 		"content-type": "application/json",
+		originator: "opencode",
+		"user-agent": "experimental-desktop",
 	});
 	if (auth.accountId) {
 		headers.set("ChatGPT-Account-Id", auth.accountId);
@@ -212,11 +214,45 @@ function parseJsonOrText(value: string) {
 	if (!value) {
 		return null;
 	}
+	if (value.includes("\nevent:") || value.startsWith("event:")) {
+		return parseServerSentEvents(value);
+	}
 	try {
 		return JSON.parse(value) as unknown;
 	} catch {
 		return { text: value };
 	}
+}
+
+function parseServerSentEvents(value: string) {
+	let outputText = "";
+	for (const line of value.split("\n")) {
+		if (!line.startsWith("data: ")) {
+			continue;
+		}
+		const data = line.slice("data: ".length);
+		if (!data || data === "[DONE]") {
+			continue;
+		}
+		try {
+			const event = JSON.parse(data) as Record<string, unknown>;
+			if (
+				event.type === "response.output_text.delta" &&
+				typeof event.delta === "string"
+			) {
+				outputText += event.delta;
+			}
+			if (
+				event.type === "response.output_text.done" &&
+				typeof event.text === "string"
+			) {
+				outputText = event.text;
+			}
+		} catch {
+			// Ignore non-JSON SSE keepalives.
+		}
+	}
+	return outputText ? { output_text: outputText } : { text: value };
 }
 
 function closeServer(server: ReturnType<typeof createServer> | undefined) {

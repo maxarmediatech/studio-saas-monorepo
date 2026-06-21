@@ -121,6 +121,11 @@ sendCodexTest?.addEventListener("click", async () => {
 		openAiStatus.textContent = "Sending Codex test...";
 	}
 	try {
+		if (!window.experimentalDesktop.sendCodexTest) {
+			throw new Error(
+				"Codex test bridge is not loaded. Restart the desktop app to load the updated preload.",
+			);
+		}
 		const result = await window.experimentalDesktop.sendCodexTest();
 		if (openAiStatus) {
 			openAiStatus.textContent = "Codex response received";
