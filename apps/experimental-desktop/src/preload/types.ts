@@ -18,8 +18,6 @@ export type OpenAiAuthStart = {
 	instructions: string;
 };
 
-export type CodexTestResponse = unknown;
-
 export type CodexProviderStatus = {
 	provider: {
 		id: string;
@@ -107,7 +105,6 @@ export type ExperimentalDesktopApi = {
 	logoutOpenAi: () => Promise<{ ok: true }>;
 	getCodexProviderStatus: () => Promise<CodexProviderStatus>;
 	probeCodexAppServer: () => Promise<CodexAppServerProbe>;
-	sendCodexTest?: () => Promise<CodexTestResponse>;
 	createSession: (input?: {
 		cwd?: string;
 		model?: string;
@@ -119,5 +116,5 @@ export type ExperimentalDesktopApi = {
 	subscribeSessionEvents: (
 		sessionId: string,
 		listener: (event: SessionEvent) => void,
-	) => () => void;
+	) => Promise<() => void>;
 };

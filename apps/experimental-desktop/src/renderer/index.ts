@@ -194,27 +194,33 @@ async function runCodexSessionSmokeTest() {
 		model: "gpt-5.4-mini",
 	});
 	let unsubscribe: () => void = () => undefined;
+	let resolveFirstDelta: (event: SessionEvent) => void = () => undefined;
+	let rejectFirstDelta: (error: Error) => void = () => undefined;
 	const firstDelta = new Promise<SessionEvent>((resolve, reject) => {
-		const timeout = window.setTimeout(() => {
-			unsubscribe();
-			reject(new Error("Codex session did not emit an assistant delta"));
-		}, 30_000);
-		unsubscribe = window.experimentalDesktop.subscribeSessionEvents(
-			session.id,
-			(event) => {
-				if (event.type === "assistant.delta") {
-					window.clearTimeout(timeout);
-					unsubscribe();
-					resolve(event);
-				}
-				if (event.type === "message.failed") {
-					window.clearTimeout(timeout);
-					unsubscribe();
-					reject(new Error(event.data.error));
-				}
-			},
-		);
+		resolveFirstDelta = resolve;
+		rejectFirstDelta = reject;
 	});
+	const timeout = window.setTimeout(() => {
+		unsubscribe();
+		rejectFirstDelta(
+			new Error("Codex session did not emit an assistant delta"),
+		);
+	}, 30_000);
+	unsubscribe = await window.experimentalDesktop.subscribeSessionEvents(
+		session.id,
+		(event) => {
+			if (event.type === "assistant.delta") {
+				window.clearTimeout(timeout);
+				unsubscribe();
+				resolveFirstDelta(event);
+			}
+			if (event.type === "message.failed") {
+				window.clearTimeout(timeout);
+				unsubscribe();
+				rejectFirstDelta(new Error(event.data.error));
+			}
+		},
+	);
 	await window.experimentalDesktop.sendSessionMessage(session.id, {
 		text: "Reply with one short sentence confirming the Codex app-server session path works.",
 		model: "gpt-5.4-mini",
@@ -233,7 +239,7 @@ newSession?.addEventListener("click", async () => {
 		});
 		currentSessionId = session.id;
 		unsubscribeSessionEvents =
-			window.experimentalDesktop.subscribeSessionEvents(
+			await window.experimentalDesktop.subscribeSessionEvents(
 				session.id,
 				handleSessionEvent,
 			);
@@ -253,7 +259,7 @@ sendSessionMessage?.addEventListener("click", async () => {
 			});
 			currentSessionId = session.id;
 			unsubscribeSessionEvents =
-				window.experimentalDesktop.subscribeSessionEvents(
+				await window.experimentalDesktop.subscribeSessionEvents(
 					session.id,
 					handleSessionEvent,
 				);

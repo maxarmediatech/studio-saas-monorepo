@@ -80,27 +80,6 @@ export function registerIpcHandlers(sidecarManager: SidecarManager) {
 		});
 	});
 
-	ipcMain.handle("sidecar:send-codex-test", async () => {
-		const runtime = await sidecarManager.ensure();
-		const session = (await sidecarManager.fetch(runtime, "/sessions", {
-			method: "POST",
-			headers: { "content-type": "application/json" },
-			body: JSON.stringify({ model: "gpt-5.4-mini" }),
-		})) as { id: string };
-		return sidecarManager.fetch(
-			runtime,
-			`/sessions/${encodeURIComponent(session.id)}/messages`,
-			{
-				method: "POST",
-				headers: { "content-type": "application/json" },
-				body: JSON.stringify({
-					text: "Reply with one short sentence confirming the Codex app-server session path works.",
-					model: "gpt-5.4-mini",
-				}),
-			},
-		);
-	});
-
 	ipcMain.handle("sidecar:create-session", async (_event, input) => {
 		const runtime = await sidecarManager.ensure();
 		return sidecarManager.fetch(runtime, "/sessions", {

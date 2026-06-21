@@ -52,6 +52,7 @@ export function createSessionController(input: {
 }) {
 	const sessions = new Map<string, Session>();
 	const sessionsByThreadId = new Map<string, Session>();
+	const sessionsByTurnId = new Map<string, Session>();
 	const unsubscribeRuntime = input.runtime.subscribe((event) => {
 		handleRuntimeEvent(event);
 	});
@@ -93,6 +94,9 @@ export function createSessionController(input: {
 				text: message.text,
 				model: message.model,
 			});
+			if (turn.turnId) {
+				sessionsByTurnId.set(turn.turnId, session);
+			}
 			if (!turn.turnId || !session.completedTurnIds.has(turn.turnId)) {
 				session.activeTurnId = turn.turnId;
 			}
@@ -132,18 +136,18 @@ export function createSessionController(input: {
 		unsubscribeRuntime();
 		sessions.clear();
 		sessionsByThreadId.clear();
+		sessionsByTurnId.clear();
 	}
 
 	function handleRuntimeEvent(event: CodexRuntimeEvent) {
 		const threadId = readThreadId(event.params);
-		if (!threadId) {
-			return;
-		}
-		const session = sessionsByThreadId.get(threadId);
+		const turnId = readTurnId(event.params);
+		const session =
+			(threadId ? sessionsByThreadId.get(threadId) : undefined) ??
+			(turnId ? sessionsByTurnId.get(turnId) : undefined);
 		if (!session) {
 			return;
 		}
-		const turnId = readTurnId(event.params);
 		if (event.method === "item/agentMessage/delta") {
 			pushEvent(session, "assistant.delta", {
 				text: readDeltaText(event.params),
@@ -155,6 +159,7 @@ export function createSessionController(input: {
 		if (event.method === "turn/completed") {
 			if (turnId) {
 				session.completedTurnIds.add(turnId);
+				sessionsByTurnId.delete(turnId);
 			}
 			if (isFailedTurn(event.params)) {
 				pushEvent(session, "message.failed", {

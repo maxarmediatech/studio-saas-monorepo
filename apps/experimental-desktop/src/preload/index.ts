@@ -4,7 +4,6 @@ import type {
 	CodexAppServerProbe,
 	CodexProviderStatus,
 	CodexSession,
-	CodexTestResponse,
 	ExperimentalDesktopApi,
 	OpenAiAuthStart,
 	OpenAiAuthStatus,
@@ -40,10 +39,6 @@ const api: ExperimentalDesktopApi = {
 		ipcRenderer.invoke(
 			"sidecar:probe-codex-app-server",
 		) as Promise<CodexAppServerProbe>,
-	sendCodexTest: () =>
-		ipcRenderer.invoke(
-			"sidecar:send-codex-test",
-		) as Promise<CodexTestResponse>,
 	createSession: (input) =>
 		ipcRenderer.invoke(
 			"sidecar:create-session",
@@ -65,17 +60,33 @@ const api: ExperimentalDesktopApi = {
 			listener(payload as SessionEvent);
 		};
 		ipcRenderer.on(channel, handler);
-		void ipcRenderer.invoke("sidecar:start-session-events", {
-			sessionId,
-			subscriptionId,
-		});
-		return () => {
-			ipcRenderer.off(channel, handler);
-			void ipcRenderer.invoke(
-				"sidecar:stop-session-events",
+		return ipcRenderer
+			.invoke("sidecar:start-session-events", {
+				sessionId,
 				subscriptionId,
-			);
-		};
+			})
+			.then(() => () => {
+				ipcRenderer.off(channel, handler);
+				void ipcRenderer.invoke(
+					"sidecar:stop-session-events",
+					subscriptionId,
+				);
+			})
+			.catch((error: unknown) => {
+				ipcRenderer.off(channel, handler);
+				listener({
+					id: subscriptionId,
+					type: "message.failed",
+					time: new Date().toISOString(),
+					data: {
+						error:
+							error instanceof Error
+								? error.message
+								: String(error),
+					},
+				});
+				return () => undefined;
+			});
 	},
 };
 

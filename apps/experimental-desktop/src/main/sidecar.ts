@@ -79,12 +79,10 @@ async function start(command: StartCommand) {
 }
 
 async function stop() {
-	await Promise.all([
-		closeServer(apiServer),
-		openAiAuth.stop(),
-		codexRuntime.stop(),
-		Promise.resolve(sessions.stop()),
-	]);
+	await closeServer(apiServer);
+	sessions.stop();
+	await codexRuntime.stop();
+	await openAiAuth.stop();
 	apiServer = undefined;
 	commandState = undefined;
 	parentPort.postMessage({ type: "stopped" });
