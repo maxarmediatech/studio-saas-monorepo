@@ -35,6 +35,16 @@ button {
 	cursor: pointer;
 }
 
+select {
+	height: 40px;
+	border: 1px solid rgba(242, 239, 231, 0.18);
+	border-radius: 8px;
+	padding: 0 34px 0 12px;
+	color: #f2efe7;
+	background: rgba(242, 239, 231, 0.08);
+	font: inherit;
+}
+
 textarea {
 	width: 100%;
 	border: 1px solid rgba(242, 239, 231, 0.16);
@@ -48,6 +58,7 @@ textarea {
 }
 
 textarea:focus,
+select:focus-visible,
 button:focus-visible {
 	outline: 2px solid #f4b24d;
 	outline-offset: 2px;
@@ -124,6 +135,14 @@ h1 {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 10px;
+}
+
+.mode-select {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	color: rgba(242, 239, 231, 0.68);
+	font-size: 13px;
 }
 
 .selection {

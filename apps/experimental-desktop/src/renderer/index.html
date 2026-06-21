@@ -55,6 +55,14 @@
 				<div class="actions">
 					<button id="new-session" type="button">New Session</button>
 					<button id="send-session-message" type="button">Send</button>
+					<label class="mode-select">
+						<span>Mode</span>
+						<select id="session-mode">
+							<option value="read-only" selected>Read Only</option>
+							<option value="workspace-write">Workspace Edit</option>
+							<option value="full-access">Full Access</option>
+						</select>
+					</label>
 				</div>
 				<textarea
 					id="session-input"

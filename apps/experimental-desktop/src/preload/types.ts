@@ -117,6 +117,8 @@ export type SendSessionMessageResult = {
 	turnId?: string;
 };
 
+export type CodexRuntimeMode = "read-only" | "workspace-write" | "full-access";
+
 export type RespondSessionRequestInput =
 	| { decision: "accept" | "acceptForSession" | "decline" | "cancel" }
 	| { answers: Record<string, string | string[]> };
@@ -135,6 +137,7 @@ export type ExperimentalDesktopApi = {
 	createSession: (input?: {
 		cwd?: string;
 		model?: string;
+		runtimeMode?: CodexRuntimeMode;
 	}) => Promise<CodexSession>;
 	sendSessionMessage: (
 		sessionId: string,

@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { SidecarHttpError } from "./sidecar-codex";
 import type {
 	CodexRuntimeEvent,
+	CodexRuntimeMode,
 	CodexSessionRuntime,
 } from "./sidecar-codex-runtime";
 
@@ -64,6 +65,7 @@ type Session = {
 	id: string;
 	threadId: string;
 	cwd: string;
+	runtimeMode: CodexRuntimeMode;
 	createdAt: string;
 	events: SessionEvent[];
 	subscribers: Set<(event: SessionEvent) => void>;
@@ -91,6 +93,7 @@ export function createSessionController(input: {
 			id: randomUUID(),
 			threadId: thread.threadId,
 			cwd,
+			runtimeMode: options.runtimeMode,
 			createdAt: new Date().toISOString(),
 			events: [],
 			subscribers: new Set(),
@@ -121,6 +124,7 @@ export function createSessionController(input: {
 				text: message.text,
 				cwd: session.cwd,
 				model: message.model,
+				runtimeMode: session.runtimeMode,
 			});
 			if (turn.turnId) {
 				sessionsByTurnId.set(turn.turnId, session);
@@ -270,9 +274,10 @@ export function createSessionController(input: {
 function validateCreateSession(value: unknown): {
 	cwd?: string;
 	model?: string;
+	runtimeMode: CodexRuntimeMode;
 } {
 	if (value === null || value === undefined) {
-		return {};
+		return { runtimeMode: "read-only" };
 	}
 	if (typeof value !== "object" || Array.isArray(value)) {
 		throw new SidecarHttpError(400, "Session body must be an object");
@@ -285,7 +290,19 @@ function validateCreateSession(value: unknown): {
 		...(typeof body.model === "string" && body.model.trim()
 			? { model: body.model }
 			: {}),
+		runtimeMode: validateRuntimeMode(body.runtimeMode),
 	};
+}
+
+function validateRuntimeMode(value: unknown): CodexRuntimeMode {
+	if (
+		value === "read-only" ||
+		value === "workspace-write" ||
+		value === "full-access"
+	) {
+		return value;
+	}
+	return "read-only";
 }
 
 function validateMessage(value: unknown): {

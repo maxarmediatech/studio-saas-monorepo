@@ -15,15 +15,22 @@ type CodexRuntime = {
 	provider: CodexProviderConfig;
 	initialize: () => Promise<unknown>;
 	readAccount: () => Promise<unknown>;
-	startThread: (input?: { cwd?: string; model?: string }) => Promise<string>;
+	startThread: (input?: {
+		cwd?: string;
+		model?: string;
+		runtimeMode?: CodexRuntimeMode;
+	}) => Promise<string>;
 	sendTurn: (input: {
 		threadId: string;
 		text: string;
 		cwd?: string;
 		model?: string;
+		runtimeMode?: CodexRuntimeMode;
 	}) => Promise<unknown>;
 	stop: () => Promise<void>;
 };
+
+export type CodexRuntimeMode = "read-only" | "workspace-write" | "full-access";
 
 type CodexRuntimeListener = (event: CodexRuntimeEvent) => void;
 
@@ -52,12 +59,14 @@ export type CodexSessionRuntime = {
 	createThread: (input?: {
 		cwd?: string;
 		model?: string;
+		runtimeMode?: CodexRuntimeMode;
 	}) => Promise<{ threadId: string }>;
 	sendTurn: (input: {
 		threadId: string;
 		text: string;
 		cwd?: string;
 		model?: string;
+		runtimeMode?: CodexRuntimeMode;
 	}) => Promise<{ turnId?: string; raw: unknown }>;
 	subscribe: (listener: (event: CodexRuntimeEvent) => void) => () => void;
 	respondToRequest: (input: {
@@ -91,7 +100,11 @@ export function createCodexSessionRuntime(): CodexSessionRuntime {
 		await ensureRuntime();
 	}
 
-	async function createThread(input?: { cwd?: string; model?: string }) {
+	async function createThread(input?: {
+		cwd?: string;
+		model?: string;
+		runtimeMode?: CodexRuntimeMode;
+	}) {
 		const activeRuntime = await ensureRuntime();
 		return {
 			threadId: await activeRuntime.startThread(input),
@@ -102,6 +115,7 @@ export function createCodexSessionRuntime(): CodexSessionRuntime {
 		threadId: string;
 		text: string;
 		model?: string;
+		runtimeMode?: CodexRuntimeMode;
 	}) {
 		const activeRuntime = await ensureRuntime();
 		const raw = await activeRuntime.sendTurn(input);
@@ -334,11 +348,21 @@ function startCodexRuntime(
 		) => Promise<unknown> | unknown;
 	} = {},
 ): CodexRuntime {
-	const child = spawn(provider.binaryPath, ["app-server"], {
-		cwd: process.cwd(),
-		env: getCodexProviderEnv(provider),
-		stdio: "pipe",
-	});
+	const child = spawn(
+		provider.binaryPath,
+		[
+			"app-server",
+			"-c",
+			"sandbox_workspace_write.exclude_slash_tmp=true",
+			"-c",
+			"sandbox_workspace_write.exclude_tmpdir_env_var=true",
+		],
+		{
+			cwd: process.cwd(),
+			env: getCodexProviderEnv(provider),
+			stdio: "pipe",
+		},
+	);
 	const protocol = createCodexProtocol(child, {
 		autoAnswerUserInput: options.autoAnswerUserInput ?? false,
 		requestTimeoutMs: 30_000,
@@ -387,13 +411,23 @@ function startCodexRuntime(
 		return protocol.request("account/read", {});
 	}
 
-	async function startThread(input?: { cwd?: string; model?: string }) {
+	async function startThread(input?: {
+		cwd?: string;
+		model?: string;
+		runtimeMode?: CodexRuntimeMode;
+	}) {
 		const cwd = input?.cwd ?? process.cwd();
+		const config = runtimeModeToCodexConfig(
+			input?.runtimeMode ?? "read-only",
+			cwd,
+		);
 		const response = await protocol.request("thread/start", {
 			cwd,
-			approvalPolicy: "on-request",
-			sandbox: "workspace-write",
-			sandboxPolicy: { type: "workspaceWrite", writableRoots: [cwd] },
+			approvalPolicy: config.approvalPolicy,
+			sandbox: config.sandbox,
+			...(config.threadSandboxPolicy
+				? { sandboxPolicy: config.threadSandboxPolicy }
+				: {}),
 			model: input?.model ?? "gpt-5.4-mini",
 		});
 		const threadId = readThreadId(response);
@@ -408,14 +442,19 @@ function startCodexRuntime(
 		text: string;
 		cwd?: string;
 		model?: string;
+		runtimeMode?: CodexRuntimeMode;
 	}) {
 		const cwd = input.cwd ?? process.cwd();
+		const config = runtimeModeToCodexConfig(
+			input.runtimeMode ?? "read-only",
+			cwd,
+		);
 		return protocol.request("turn/start", {
 			threadId: input.threadId,
 			input: [{ type: "text", text: input.text }],
 			cwd,
-			approvalPolicy: "on-request",
-			sandboxPolicy: { type: "workspaceWrite", writableRoots: [cwd] },
+			approvalPolicy: config.approvalPolicy,
+			sandboxPolicy: config.turnSandboxPolicy,
 			model: input.model ?? "gpt-5.4-mini",
 		});
 	}
@@ -444,6 +483,35 @@ function startCodexRuntime(
 	}
 
 	return { provider, initialize, readAccount, startThread, sendTurn, stop };
+}
+
+function runtimeModeToCodexConfig(mode: CodexRuntimeMode, cwd: string) {
+	if (mode === "full-access") {
+		return {
+			approvalPolicy: "never",
+			sandbox: "danger-full-access",
+			turnSandboxPolicy: { type: "dangerFullAccess" },
+		};
+	}
+	if (mode === "workspace-write") {
+		return {
+			approvalPolicy: "on-request",
+			sandbox: "workspace-write",
+			threadSandboxPolicy: {
+				type: "workspaceWrite",
+				writableRoots: [cwd],
+			},
+			turnSandboxPolicy: {
+				type: "workspaceWrite",
+				writableRoots: [cwd],
+			},
+		};
+	}
+	return {
+		approvalPolicy: "untrusted",
+		sandbox: "read-only",
+		turnSandboxPolicy: { type: "readOnly" },
+	};
 }
 
 function randomRequestId() {

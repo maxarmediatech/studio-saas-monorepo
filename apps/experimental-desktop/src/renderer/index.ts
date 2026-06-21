@@ -1,5 +1,5 @@
 import "./styles.css";
-import type { SessionEvent } from "../preload/types";
+import type { CodexRuntimeMode, SessionEvent } from "../preload/types";
 
 const appInfo = document.querySelector<HTMLParagraphElement>("#app-info");
 const selection = document.querySelector<HTMLParagraphElement>("#selection");
@@ -27,6 +27,7 @@ const newSession = document.querySelector<HTMLButtonElement>("#new-session");
 const sendSessionMessage = document.querySelector<HTMLButtonElement>(
 	"#send-session-message",
 );
+const sessionMode = document.querySelector<HTMLSelectElement>("#session-mode");
 const sessionInput =
 	document.querySelector<HTMLTextAreaElement>("#session-input");
 const sessionRequests =
@@ -36,6 +37,7 @@ let authPoll: number | undefined;
 let currentSessionId: string | undefined;
 let unsubscribeSessionEvents: (() => void) | undefined;
 let assistantText = "";
+let currentSessionMode: CodexRuntimeMode = "read-only";
 const pendingRequests = new Map<
 	string,
 	Extract<SessionEvent, { type: "request.pending" }>
@@ -198,6 +200,7 @@ sendCodexTest?.addEventListener("click", async () => {
 async function runCodexSessionSmokeTest() {
 	const session = await window.experimentalDesktop.createSession({
 		model: "gpt-5.4-mini",
+		runtimeMode: getSelectedSessionMode(),
 	});
 	let unsubscribe: () => void = () => undefined;
 	let resolveFirstDelta: (event: SessionEvent) => void = () => undefined;
@@ -244,14 +247,18 @@ newSession?.addEventListener("click", async () => {
 		renderPendingRequests();
 		const session = await window.experimentalDesktop.createSession({
 			model: "gpt-5.4-mini",
+			runtimeMode: getSelectedSessionMode(),
 		});
 		currentSessionId = session.id;
+		currentSessionMode = getSelectedSessionMode();
 		unsubscribeSessionEvents =
 			await window.experimentalDesktop.subscribeSessionEvents(
 				session.id,
 				handleSessionEvent,
 			);
-		setSessionStatus(`Ready · ${session.threadId ?? session.id}`);
+		setSessionStatus(
+			`Ready · ${formatRuntimeMode(currentSessionMode)} · ${session.threadId ?? session.id}`,
+		);
 	} catch (error) {
 		setSessionStatus(
 			error instanceof Error ? error.message : String(error),
@@ -264,8 +271,10 @@ sendSessionMessage?.addEventListener("click", async () => {
 		if (!currentSessionId) {
 			const session = await window.experimentalDesktop.createSession({
 				model: "gpt-5.4-mini",
+				runtimeMode: getSelectedSessionMode(),
 			});
 			currentSessionId = session.id;
+			currentSessionMode = getSelectedSessionMode();
 			unsubscribeSessionEvents =
 				await window.experimentalDesktop.subscribeSessionEvents(
 					session.id,
@@ -343,6 +352,28 @@ function writeSessionOutput(value: string) {
 		sessionOutput.textContent = value;
 		sessionOutput.scrollTop = sessionOutput.scrollHeight;
 	}
+}
+
+function getSelectedSessionMode(): CodexRuntimeMode {
+	const value = sessionMode?.value;
+	if (
+		value === "read-only" ||
+		value === "workspace-write" ||
+		value === "full-access"
+	) {
+		return value;
+	}
+	return "read-only";
+}
+
+function formatRuntimeMode(mode: CodexRuntimeMode) {
+	if (mode === "workspace-write") {
+		return "Workspace Edit";
+	}
+	if (mode === "full-access") {
+		return "Full Access";
+	}
+	return "Read Only";
 }
 
 function renderPendingRequests() {
