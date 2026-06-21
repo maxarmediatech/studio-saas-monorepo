@@ -6,6 +6,9 @@ import {
 } from "node:http";
 import { createOpenAiAuthController } from "./sidecar-openai";
 
+const CODEX_API_ENDPOINT = "https://chatgpt.com/backend-api/codex/responses";
+const MAX_BODY_BYTES = 1024 * 1024;
+
 type StartCommand = {
 	type: "start";
 	hostname: string;
@@ -119,12 +122,43 @@ async function handleApiRequest(req: IncomingMessage, res: ServerResponse) {
 			return;
 		}
 
+		if (req.method === "POST" && url.pathname === "/codex/responses") {
+			writeJson(res, 200, await proxyCodexResponses(req));
+			return;
+		}
+
 		writeJson(res, 404, { error: "Not found" });
 	} catch (error) {
 		writeJson(res, 500, {
 			error: error instanceof Error ? error.message : String(error),
 		});
 	}
+}
+
+async function proxyCodexResponses(req: IncomingMessage) {
+	const auth = await openAiAuth.getFreshAuth();
+	const body = await readRequestBody(req);
+	const headers = new Headers({
+		authorization: `Bearer ${auth.access}`,
+		"content-type": "application/json",
+	});
+	if (auth.accountId) {
+		headers.set("ChatGPT-Account-Id", auth.accountId);
+	}
+
+	const response = await fetch(CODEX_API_ENDPOINT, {
+		method: "POST",
+		headers,
+		body,
+	});
+	const responseBody = await readResponseBody(response);
+	if (!response.ok) {
+		throw new Error(
+			`Codex request failed: ${response.status} ${response.statusText}${responseBody ? `: ${responseBody}` : ""}`,
+		);
+	}
+
+	return parseJsonOrText(responseBody);
 }
 
 function isAuthorized(req: IncomingMessage) {
@@ -148,6 +182,41 @@ function writeJson(res: ServerResponse, status: number, body: unknown) {
 		"Access-Control-Allow-Origin": "*",
 	});
 	res.end(JSON.stringify(body));
+}
+
+function readRequestBody(req: IncomingMessage) {
+	return new Promise<string>((resolve, reject) => {
+		let size = 0;
+		const chunks: Buffer[] = [];
+		req.on("data", (chunk: Buffer) => {
+			size += chunk.byteLength;
+			if (size > MAX_BODY_BYTES) {
+				reject(new Error("Request body too large"));
+				req.destroy();
+				return;
+			}
+			chunks.push(chunk);
+		});
+		req.on("error", reject);
+		req.on("end", () => {
+			resolve(Buffer.concat(chunks).toString("utf8"));
+		});
+	});
+}
+
+async function readResponseBody(response: Response) {
+	return response.text();
+}
+
+function parseJsonOrText(value: string) {
+	if (!value) {
+		return null;
+	}
+	try {
+		return JSON.parse(value) as unknown;
+	} catch {
+		return { text: value };
+	}
 }
 
 function closeServer(server: ReturnType<typeof createServer> | undefined) {

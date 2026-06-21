@@ -18,6 +18,8 @@ export type OpenAiAuthStart = {
 	instructions: string;
 };
 
+export type CodexTestResponse = unknown;
+
 export type ExperimentalDesktopApi = {
 	getAppInfo: () => Promise<AppInfo>;
 	openDirectory: () => Promise<string | null>;
@@ -27,4 +29,5 @@ export type ExperimentalDesktopApi = {
 	startOpenAiBrowserAuth: () => Promise<OpenAiAuthStart>;
 	refreshOpenAiAuth: () => Promise<OpenAiAuthStatus>;
 	logoutOpenAi: () => Promise<{ ok: true }>;
+	sendCodexTest: () => Promise<CodexTestResponse>;
 };

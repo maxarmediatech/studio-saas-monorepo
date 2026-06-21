@@ -13,6 +13,8 @@ const connectOpenAi =
 	document.querySelector<HTMLButtonElement>("#connect-openai");
 const refreshOpenAi =
 	document.querySelector<HTMLButtonElement>("#refresh-openai");
+const sendCodexTest =
+	document.querySelector<HTMLButtonElement>("#send-codex-test");
 const logoutOpenAi =
 	document.querySelector<HTMLButtonElement>("#logout-openai");
 let authPoll: number | undefined;
@@ -114,9 +116,78 @@ refreshOpenAi?.addEventListener("click", () => {
 		.finally(() => void refreshOpenAiStatus());
 });
 
+sendCodexTest?.addEventListener("click", async () => {
+	if (openAiStatus) {
+		openAiStatus.textContent = "Sending Codex test...";
+	}
+	try {
+		const result = await window.experimentalDesktop.sendCodexTest();
+		if (openAiStatus) {
+			openAiStatus.textContent = "Codex response received";
+		}
+		if (openAiDetail) {
+			openAiDetail.textContent = summarizeCodexResult(result);
+		}
+	} catch (error) {
+		if (openAiStatus) {
+			openAiStatus.textContent = "Codex test failed";
+		}
+		if (openAiDetail) {
+			openAiDetail.textContent =
+				error instanceof Error ? error.message : String(error);
+		}
+	}
+});
+
 logoutOpenAi?.addEventListener("click", async () => {
 	await window.experimentalDesktop.logoutOpenAi();
 	await refreshOpenAiStatus();
 });
+
+function summarizeCodexResult(value: unknown) {
+	if (typeof value === "string") {
+		return value;
+	}
+	if (value && typeof value === "object") {
+		const outputText = findOutputText(value);
+		if (outputText) {
+			return outputText;
+		}
+		return JSON.stringify(value).slice(0, 600);
+	}
+	return String(value);
+}
+
+function findOutputText(value: unknown): string | undefined {
+	if (!value || typeof value !== "object") {
+		return undefined;
+	}
+	if ("output_text" in value && typeof value.output_text === "string") {
+		return value.output_text;
+	}
+	if ("text" in value && typeof value.text === "string") {
+		return value.text;
+	}
+	if ("output" in value && Array.isArray(value.output)) {
+		for (const item of value.output) {
+			const nested = findOutputText(item);
+			if (nested) {
+				return nested;
+			}
+			if (item && typeof item === "object" && "content" in item) {
+				const content = item.content;
+				if (Array.isArray(content)) {
+					for (const part of content) {
+						const text = findOutputText(part);
+						if (text) {
+							return text;
+						}
+					}
+				}
+			}
+		}
+	}
+	return undefined;
+}
 
 void boot();

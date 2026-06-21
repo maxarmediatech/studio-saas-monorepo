@@ -28,6 +28,11 @@ type StoredAuth = {
 	updatedAt: string;
 };
 
+export type FreshOpenAiAuth = {
+	access: string;
+	accountId?: string;
+};
+
 type PkceCodes = {
 	verifier: string;
 	challenge: string;
@@ -107,6 +112,29 @@ export function createOpenAiAuthController(options: {
 		await writeAuth(null);
 	}
 
+	async function getFreshAuth(): Promise<FreshOpenAiAuth> {
+		const auth = await readAuth();
+		if (!auth) {
+			throw new Error("OpenAI auth is not connected");
+		}
+		if (!auth.access || auth.expires <= Date.now()) {
+			const refreshed = await refreshStoredAuth();
+			if (!refreshed?.access) {
+				throw new Error("OpenAI auth refresh failed");
+			}
+			return {
+				access: refreshed.access,
+				...(refreshed.accountId
+					? { accountId: refreshed.accountId }
+					: {}),
+			};
+		}
+		return {
+			access: auth.access,
+			...(auth.accountId ? { accountId: auth.accountId } : {}),
+		};
+	}
+
 	async function stop() {
 		await closeServer(oauthServer);
 		oauthServer = undefined;
@@ -125,7 +153,19 @@ export function createOpenAiAuthController(options: {
 		});
 
 		await new Promise<void>((resolve, reject) => {
-			oauthServer?.once("error", reject);
+			oauthServer?.once("error", (error: NodeJS.ErrnoException) => {
+				oauthServer?.close(() => {});
+				oauthServer = undefined;
+				if (error.code === "EADDRINUSE") {
+					reject(
+						new Error(
+							"OpenAI OAuth port 1455 is already in use. Close any other Codex/OpenCode authorization flow and try again.",
+						),
+					);
+					return;
+				}
+				reject(error);
+			});
 			oauthServer?.listen(OAUTH_PORT, "127.0.0.1", resolve);
 		});
 
@@ -284,6 +324,7 @@ export function createOpenAiAuthController(options: {
 		getStatus,
 		startBrowserAuth,
 		refresh,
+		getFreshAuth,
 		logout,
 		stop,
 	};
