@@ -1,0 +1,29 @@
+{
+	"name": "@repo/experimental-desktop",
+	"version": "0.0.0",
+	"description": "Standalone Electron shell for desktop experiments.",
+	"author": "Rakesh",
+	"private": true,
+	"type": "module",
+	"main": "./out/main/index.js",
+	"scripts": {
+		"dev": "electron-vite dev",
+		"build": "electron-vite build",
+		"package": "electron-builder --config electron-builder.config.ts",
+		"package:mac": "electron-builder --mac --config electron-builder.config.ts",
+		"package:win": "electron-builder --win --config electron-builder.config.ts",
+		"type-check": "tsc --noEmit"
+	},
+	"dependencies": {
+		"electron-window-state": "^5.0.3"
+	},
+	"devDependencies": {
+		"@repo/tsconfig": "workspace:*",
+		"@types/node": "^24.10.4",
+		"electron": "^42.4.1",
+		"electron-builder": "^26.15.3",
+		"electron-vite": "^5.0.0",
+		"typescript": "5.9.3",
+		"vite": "^7.3.5"
+	}
+}

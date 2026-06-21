@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1.0"
+		/>
+		<title>Experimental Desktop</title>
+	</head>
+	<body>
+		<main class="shell">
+			<section class="hero">
+				<p class="eyebrow">Desktop shell</p>
+				<h1>Experimental Desktop</h1>
+				<p class="lede">
+					A standalone Electron surface for experiments, wired like opencode: native shell,
+					sandboxed renderer, narrow preload bridge.
+				</p>
+			</section>
+
+			<section class="panel">
+				<div>
+					<p class="label">Runtime</p>
+					<p id="app-info" class="value">Loading...</p>
+				</div>
+				<div class="actions">
+					<button id="open-folder" type="button">Choose Folder</button>
+					<button id="open-file" type="button">Choose File</button>
+					<button id="open-docs" type="button">Electron Docs</button>
+				</div>
+				<p id="selection" class="selection">No file or folder selected.</p>
+			</section>
+		</main>
+		<script type="module" src="./index.ts"></script>
+	</body>
+</html>

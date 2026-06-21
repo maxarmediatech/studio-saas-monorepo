@@ -1,0 +1,98 @@
+name: Desktop Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version without the leading v, for example 0.0.1
+        required: true
+        type: string
+      prerelease:
+        description: Mark the GitHub release as prerelease
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    name: Package ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: mac-arm64
+            os: macos-latest
+            package_command: pnpm --filter @repo/experimental-desktop exec electron-builder --mac --arm64 --config electron-builder.config.ts
+            artifact_glob: apps/experimental-desktop/dist/experimental-desktop-mac-arm64.*
+          - name: mac-x64
+            os: macos-latest
+            package_command: pnpm --filter @repo/experimental-desktop exec electron-builder --mac --x64 --config electron-builder.config.ts
+            artifact_glob: apps/experimental-desktop/dist/experimental-desktop-mac-x64.*
+          - name: windows-x64
+            os: windows-latest
+            package_command: pnpm --filter @repo/experimental-desktop exec electron-builder --win --x64 --config electron-builder.config.ts
+            artifact_glob: apps/experimental-desktop/dist/experimental-desktop-win-x64.*
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type-check desktop app
+        run: pnpm desktop:typecheck
+
+      - name: Build desktop app
+        run: pnpm desktop:build
+
+      - name: Package desktop app
+        run: ${{ matrix.package_command }}
+
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: experimental-desktop-${{ matrix.name }}
+          path: ${{ matrix.artifact_glob }}
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    needs: package
+    steps:
+      - name: Download package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: experimental-desktop-v${{ inputs.version }}
+        run: |
+          prerelease_flag=""
+          if [ "${{ inputs.prerelease }}" = "true" ]; then
+            prerelease_flag="--prerelease"
+          fi
+
+          gh release view "$RELEASE_TAG" >/dev/null 2>&1 || gh release create "$RELEASE_TAG" \
+            --title "Experimental Desktop v${{ inputs.version }}" \
+            --notes "Experimental Desktop build." \
+            $prerelease_flag
+          gh release upload "$RELEASE_TAG" release-assets/* --clobber

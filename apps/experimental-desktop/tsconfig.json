@@ -1,0 +1,16 @@
+{
+	"extends": "@repo/tsconfig/base.json",
+	"compilerOptions": {
+		"jsx": "react-jsx",
+		"lib": ["ES2022", "DOM"],
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"types": ["node", "electron-vite/node"]
+	},
+	"include": [
+		"electron-builder.config.ts",
+		"electron.vite.config.ts",
+		"src/**/*.ts"
+	],
+	"exclude": ["dist", "out", "node_modules"]
+}
