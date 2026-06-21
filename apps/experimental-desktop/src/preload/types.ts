@@ -20,6 +20,39 @@ export type OpenAiAuthStart = {
 
 export type CodexTestResponse = unknown;
 
+export type CodexProviderStatus = {
+	provider: {
+		id: string;
+		type: "codex";
+		displayName: string;
+		binaryPath: string;
+		codexHome: string;
+		shadowHome?: string;
+		env?: Record<string, string>;
+	};
+	effectiveCodexHome: string;
+	binary: {
+		path: string;
+		available: boolean;
+		version: string | null;
+		error: string | null;
+	};
+};
+
+export type CodexAppServerProbe = {
+	ok: boolean;
+	provider: {
+		id: string;
+		displayName: string;
+		binaryPath: string;
+		codexHome: string;
+		shadowHome: string | null;
+		effectiveCodexHome: string;
+	};
+	initialized: unknown;
+	account: unknown;
+};
+
 export type ExperimentalDesktopApi = {
 	getAppInfo: () => Promise<AppInfo>;
 	openDirectory: () => Promise<string | null>;
@@ -29,5 +62,7 @@ export type ExperimentalDesktopApi = {
 	startOpenAiBrowserAuth: () => Promise<OpenAiAuthStart>;
 	refreshOpenAiAuth: () => Promise<OpenAiAuthStatus>;
 	logoutOpenAi: () => Promise<{ ok: true }>;
+	getCodexProviderStatus: () => Promise<CodexProviderStatus>;
+	probeCodexAppServer: () => Promise<CodexAppServerProbe>;
 	sendCodexTest?: () => Promise<CodexTestResponse>;
 };

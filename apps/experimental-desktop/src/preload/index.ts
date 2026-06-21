@@ -1,6 +1,8 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type {
 	AppInfo,
+	CodexAppServerProbe,
+	CodexProviderStatus,
 	CodexTestResponse,
 	ExperimentalDesktopApi,
 	OpenAiAuthStart,
@@ -27,6 +29,14 @@ const api: ExperimentalDesktopApi = {
 		) as Promise<OpenAiAuthStatus>,
 	logoutOpenAi: () =>
 		ipcRenderer.invoke("sidecar:logout-openai") as Promise<{ ok: true }>,
+	getCodexProviderStatus: () =>
+		ipcRenderer.invoke(
+			"sidecar:get-codex-provider-status",
+		) as Promise<CodexProviderStatus>,
+	probeCodexAppServer: () =>
+		ipcRenderer.invoke(
+			"sidecar:probe-codex-app-server",
+		) as Promise<CodexAppServerProbe>,
 	sendCodexTest: () =>
 		ipcRenderer.invoke(
 			"sidecar:send-codex-test",

@@ -51,6 +51,7 @@ export function createSessionController(input: {
 		const message = validateMessage(body);
 		pushEvent(session, "message.created", { text: message.text });
 		try {
+			// Dev fallback while the Codex app-server session runtime is being wired.
 			const result = await sendWithModelFallback({
 				auth: await input.getFreshAuth(),
 				text: message.text,

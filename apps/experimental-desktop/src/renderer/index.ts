@@ -13,6 +13,9 @@ const connectOpenAi =
 	document.querySelector<HTMLButtonElement>("#connect-openai");
 const refreshOpenAi =
 	document.querySelector<HTMLButtonElement>("#refresh-openai");
+const probeCodexAppServer = document.querySelector<HTMLButtonElement>(
+	"#probe-codex-app-server",
+);
 const sendCodexTest =
 	document.querySelector<HTMLButtonElement>("#send-codex-test");
 const logoutOpenAi =
@@ -114,6 +117,40 @@ refreshOpenAi?.addEventListener("click", () => {
 		.refreshOpenAiAuth()
 		.catch(() => undefined)
 		.finally(() => void refreshOpenAiStatus());
+});
+
+probeCodexAppServer?.addEventListener("click", async () => {
+	if (openAiStatus) {
+		openAiStatus.textContent = "Probing Codex app-server...";
+	}
+	try {
+		const status =
+			await window.experimentalDesktop.getCodexProviderStatus();
+		if (!status.binary.available) {
+			throw new Error(
+				`Codex binary unavailable at '${status.binary.path}': ${status.binary.error}`,
+			);
+		}
+		const result = await window.experimentalDesktop.probeCodexAppServer();
+		if (openAiStatus) {
+			openAiStatus.textContent = "Codex app-server ready";
+		}
+		if (openAiDetail) {
+			openAiDetail.textContent = summarizeCodexResult({
+				version: status.binary.version,
+				home: result.provider.effectiveCodexHome,
+				account: result.account,
+			});
+		}
+	} catch (error) {
+		if (openAiStatus) {
+			openAiStatus.textContent = "Codex app-server probe failed";
+		}
+		if (openAiDetail) {
+			openAiDetail.textContent =
+				error instanceof Error ? error.message : String(error);
+		}
+	}
 });
 
 sendCodexTest?.addEventListener("click", async () => {

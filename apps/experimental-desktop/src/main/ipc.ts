@@ -66,6 +66,18 @@ export function registerIpcHandlers(sidecarManager: SidecarManager) {
 		});
 	});
 
+	ipcMain.handle("sidecar:get-codex-provider-status", async () => {
+		const runtime = await sidecarManager.ensure();
+		return sidecarManager.fetch(runtime, "/providers/codex/status");
+	});
+
+	ipcMain.handle("sidecar:probe-codex-app-server", async () => {
+		const runtime = await sidecarManager.ensure();
+		return sidecarManager.fetch(runtime, "/providers/codex/probe", {
+			method: "POST",
+		});
+	});
+
 	ipcMain.handle("sidecar:send-codex-test", async () => {
 		const runtime = await sidecarManager.ensure();
 		const session = (await sidecarManager.fetch(runtime, "/sessions", {

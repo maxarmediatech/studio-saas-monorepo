@@ -4,7 +4,9 @@ import {
 	type ServerResponse,
 } from "node:http";
 import { proxyCodexResponses, SidecarHttpError } from "./sidecar-codex";
+import { probeCodexAppServer } from "./sidecar-codex-runtime";
 import { createOpenAiAuthController } from "./sidecar-openai";
+import { getCodexProviderStatus } from "./sidecar-provider";
 import { createSessionController } from "./sidecar-sessions";
 
 const MAX_BODY_BYTES = 1024 * 1024;
@@ -113,6 +115,22 @@ async function handleApiRequest(req: IncomingMessage, res: ServerResponse) {
 		if (req.method === "POST" && url.pathname === "/auth/openai/logout") {
 			await openAiAuth.logout();
 			writeJson(res, 200, { ok: true });
+			return;
+		}
+
+		if (
+			req.method === "GET" &&
+			url.pathname === "/providers/codex/status"
+		) {
+			writeJson(res, 200, await getCodexProviderStatus());
+			return;
+		}
+
+		if (
+			req.method === "POST" &&
+			url.pathname === "/providers/codex/probe"
+		) {
+			writeJson(res, 200, await probeCodexAppServer());
 			return;
 		}
 
