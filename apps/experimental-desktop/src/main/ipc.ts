@@ -106,6 +106,27 @@ export function registerIpcHandlers(sidecarManager: SidecarManager) {
 	);
 
 	ipcMain.handle(
+		"sidecar:respond-session-request",
+		async (
+			_event,
+			sessionId: string,
+			requestId: string,
+			input: unknown,
+		) => {
+			const runtime = await sidecarManager.ensure();
+			return sidecarManager.fetch(
+				runtime,
+				`/sessions/${encodeURIComponent(sessionId)}/requests/${encodeURIComponent(requestId)}/respond`,
+				{
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify(input ?? {}),
+				},
+			);
+		},
+	);
+
+	ipcMain.handle(
 		"sidecar:start-session-events",
 		async (event, input: { sessionId: string; subscriptionId: string }) => {
 			const runtime = await sidecarManager.ensure();

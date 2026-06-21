@@ -78,6 +78,29 @@ export type SessionEvent =
 	  }
 	| {
 			id: string;
+			type: "request.pending";
+			time: string;
+			data: {
+				requestId: string;
+				method: string;
+				requestKind:
+					| "command"
+					| "file-change"
+					| "user-input"
+					| "unknown";
+				turnId?: string;
+				itemId?: string;
+				raw: unknown;
+			};
+	  }
+	| {
+			id: string;
+			type: "request.resolved";
+			time: string;
+			data: { requestId: string; response: unknown };
+	  }
+	| {
+			id: string;
 			type: "provider.raw";
 			time: string;
 			data: { method: string; params: unknown };
@@ -93,6 +116,10 @@ export type SendSessionMessageResult = {
 	accepted: true;
 	turnId?: string;
 };
+
+export type RespondSessionRequestInput =
+	| { decision: "accept" | "acceptForSession" | "decline" | "cancel" }
+	| { answers: Record<string, string | string[]> };
 
 export type ExperimentalDesktopApi = {
 	getAppInfo: () => Promise<AppInfo>;
@@ -113,6 +140,11 @@ export type ExperimentalDesktopApi = {
 		sessionId: string,
 		input: { text: string; model?: string },
 	) => Promise<SendSessionMessageResult>;
+	respondSessionRequest: (
+		sessionId: string,
+		requestId: string,
+		input: RespondSessionRequestInput,
+	) => Promise<{ ok: true }>;
 	subscribeSessionEvents: (
 		sessionId: string,
 		listener: (event: SessionEvent) => void,

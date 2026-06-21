@@ -151,6 +151,39 @@ h1 {
 		monospace;
 }
 
+.session-requests {
+	display: grid;
+	gap: 10px;
+}
+
+.request-card {
+	display: grid;
+	gap: 12px;
+	border: 1px solid rgba(244, 178, 77, 0.36);
+	border-radius: 8px;
+	padding: 14px;
+	background: rgba(244, 178, 77, 0.08);
+}
+
+.request-title {
+	margin: 0;
+	color: #f4b24d;
+	font-weight: 700;
+}
+
+.request-detail {
+	max-height: 180px;
+	margin: 0;
+	overflow: auto;
+	white-space: pre-wrap;
+	color: rgba(242, 239, 231, 0.76);
+	font:
+		12px/1.5 "IBM Plex Mono",
+		"SFMono-Regular",
+		Consolas,
+		monospace;
+}
+
 @media (max-width: 860px) {
 	body {
 		min-width: 0;

@@ -24,6 +24,8 @@ type IncomingRequest = {
 	params?: unknown;
 };
 
+export type CodexIncomingRequest = IncomingRequest;
+
 export type CodexProtocol = {
 	request: (method: string, params?: unknown) => Promise<unknown>;
 	notify: (method: string, params?: unknown) => void;
@@ -34,6 +36,9 @@ export function createCodexProtocol(
 	child: ChildProcessWithoutNullStreams,
 	input: {
 		onNotification?: (method: string, params: unknown) => void;
+		onRequest?: (
+			request: CodexIncomingRequest,
+		) => Promise<unknown> | unknown;
 		onStderr?: (text: string) => void;
 		autoAnswerUserInput?: boolean;
 		requestTimeoutMs?: number;
@@ -179,6 +184,25 @@ export function createCodexProtocol(
 					),
 				},
 			});
+			return;
+		}
+		if (input.onRequest) {
+			Promise.resolve(input.onRequest(requestMessage))
+				.then((result) =>
+					writeMessage({ id: requestMessage.id, result }),
+				)
+				.catch((error: unknown) =>
+					writeMessage({
+						id: requestMessage.id,
+						error: {
+							code: -32000,
+							message:
+								error instanceof Error
+									? error.message
+									: String(error),
+						},
+					}),
+				);
 			return;
 		}
 		void writeMessage({

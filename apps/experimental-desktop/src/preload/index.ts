@@ -50,6 +50,13 @@ const api: ExperimentalDesktopApi = {
 			sessionId,
 			input,
 		) as Promise<SendSessionMessageResult>,
+	respondSessionRequest: (sessionId, requestId, input) =>
+		ipcRenderer.invoke(
+			"sidecar:respond-session-request",
+			sessionId,
+			requestId,
+			input,
+		) as Promise<{ ok: true }>,
 	subscribeSessionEvents: (sessionId, listener) => {
 		const subscriptionId = crypto.randomUUID();
 		const channel = `sidecar:session-event:${subscriptionId}`;

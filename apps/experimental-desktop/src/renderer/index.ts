@@ -29,11 +29,17 @@ const sendSessionMessage = document.querySelector<HTMLButtonElement>(
 );
 const sessionInput =
 	document.querySelector<HTMLTextAreaElement>("#session-input");
+const sessionRequests =
+	document.querySelector<HTMLDivElement>("#session-requests");
 const sessionOutput = document.querySelector<HTMLPreElement>("#session-output");
 let authPoll: number | undefined;
 let currentSessionId: string | undefined;
 let unsubscribeSessionEvents: (() => void) | undefined;
 let assistantText = "";
+const pendingRequests = new Map<
+	string,
+	Extract<SessionEvent, { type: "request.pending" }>
+>();
 
 function setSelection(value: string | null, fallback: string) {
 	if (!selection) {
@@ -233,7 +239,9 @@ newSession?.addEventListener("click", async () => {
 		setSessionStatus("Creating session...");
 		unsubscribeSessionEvents?.();
 		assistantText = "";
+		pendingRequests.clear();
 		writeSessionOutput("");
+		renderPendingRequests();
 		const session = await window.experimentalDesktop.createSession({
 			model: "gpt-5.4-mini",
 		});
@@ -270,7 +278,9 @@ sendSessionMessage?.addEventListener("click", async () => {
 			return;
 		}
 		assistantText = "";
+		pendingRequests.clear();
 		writeSessionOutput("");
+		renderPendingRequests();
 		setSessionStatus("Sending...");
 		await window.experimentalDesktop.sendSessionMessage(currentSessionId, {
 			text,
@@ -308,6 +318,18 @@ function handleSessionEvent(event: SessionEvent) {
 		setSessionStatus(`Failed · ${event.data.error}`);
 		return;
 	}
+	if (event.type === "request.pending") {
+		pendingRequests.set(event.data.requestId, event);
+		renderPendingRequests();
+		setSessionStatus(`Waiting for ${event.data.requestKind} approval`);
+		return;
+	}
+	if (event.type === "request.resolved") {
+		pendingRequests.delete(event.data.requestId);
+		renderPendingRequests();
+		setSessionStatus("Running...");
+		return;
+	}
 }
 
 function setSessionStatus(value: string) {
@@ -321,6 +343,132 @@ function writeSessionOutput(value: string) {
 		sessionOutput.textContent = value;
 		sessionOutput.scrollTop = sessionOutput.scrollHeight;
 	}
+}
+
+function renderPendingRequests() {
+	if (!sessionRequests) {
+		return;
+	}
+	sessionRequests.replaceChildren(
+		...Array.from(pendingRequests.values()).map((event) =>
+			createRequestCard(event),
+		),
+	);
+}
+
+function createRequestCard(
+	event: Extract<SessionEvent, { type: "request.pending" }>,
+) {
+	const card = document.createElement("div");
+	card.className = "request-card";
+	const title = document.createElement("p");
+	title.className = "request-title";
+	title.textContent = `${event.data.requestKind} request`;
+	const detail = document.createElement("pre");
+	detail.className = "request-detail";
+	detail.textContent = summarizeRequest(event.data.raw);
+	const actions = document.createElement("div");
+	actions.className = "actions";
+	const primary = document.createElement("button");
+	primary.type = "button";
+	primary.textContent =
+		event.data.requestKind === "user-input" ? "Answer Default" : "Accept";
+	primary.addEventListener("click", () => {
+		void respondToPendingRequest(event, "accept");
+	});
+	actions.append(primary);
+	if (event.data.requestKind !== "user-input") {
+		const secondary = document.createElement("button");
+		secondary.type = "button";
+		secondary.textContent = "Decline";
+		secondary.addEventListener("click", () => {
+			void respondToPendingRequest(event, "decline");
+		});
+		actions.append(secondary);
+	}
+	card.append(title, detail, actions);
+	return card;
+}
+
+async function respondToPendingRequest(
+	event: Extract<SessionEvent, { type: "request.pending" }>,
+	decision: "accept" | "decline",
+) {
+	if (!currentSessionId) {
+		return;
+	}
+	try {
+		if (event.data.requestKind === "user-input") {
+			await window.experimentalDesktop.respondSessionRequest(
+				currentSessionId,
+				event.data.requestId,
+				{ answers: defaultAnswers(event.data.raw) },
+			);
+		} else {
+			await window.experimentalDesktop.respondSessionRequest(
+				currentSessionId,
+				event.data.requestId,
+				{ decision },
+			);
+		}
+		pendingRequests.delete(event.data.requestId);
+		renderPendingRequests();
+		setSessionStatus("Running...");
+	} catch (error) {
+		setSessionStatus(
+			error instanceof Error ? error.message : String(error),
+		);
+	}
+}
+
+function defaultAnswers(value: unknown) {
+	const answers: Record<string, string[]> = {};
+	if (!value || typeof value !== "object" || !("questions" in value)) {
+		return answers;
+	}
+	const questions = (value as { questions?: unknown }).questions;
+	if (!Array.isArray(questions)) {
+		return answers;
+	}
+	for (const question of questions) {
+		if (!question || typeof question !== "object") {
+			continue;
+		}
+		const record = question as {
+			id?: unknown;
+			options?: unknown;
+		};
+		if (typeof record.id !== "string") {
+			continue;
+		}
+		const firstOption = Array.isArray(record.options)
+			? record.options.find(
+					(option): option is { label: string } =>
+						!!option &&
+						typeof option === "object" &&
+						"label" in option &&
+						typeof option.label === "string",
+				)
+			: undefined;
+		answers[record.id] = [firstOption?.label ?? "ok"];
+	}
+	return answers;
+}
+
+function summarizeRequest(value: unknown) {
+	if (!value || typeof value !== "object") {
+		return String(value);
+	}
+	const record = value as Record<string, unknown>;
+	const lines = [
+		typeof record.command === "string" ? `command: ${record.command}` : "",
+		typeof record.path === "string" ? `path: ${record.path}` : "",
+		typeof record.itemId === "string" ? `item: ${record.itemId}` : "",
+		Array.isArray(record.questions)
+			? `questions: ${record.questions.length}`
+			: "",
+	].filter(Boolean);
+	return lines.length ? lines.join("\n") : JSON.stringify(value, null, 2);
 }
 
 function summarizeCodexResult(value: unknown) {

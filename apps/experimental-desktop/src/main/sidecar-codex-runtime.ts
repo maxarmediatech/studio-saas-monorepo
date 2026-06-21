@@ -1,5 +1,8 @@
 import { spawn } from "node:child_process";
-import { createCodexProtocol } from "./sidecar-codex-protocol";
+import {
+	type CodexIncomingRequest,
+	createCodexProtocol,
+} from "./sidecar-codex-protocol";
 import {
 	type CodexProviderConfig,
 	getCodexProviderEnv,
@@ -16,16 +19,32 @@ type CodexRuntime = {
 	sendTurn: (input: {
 		threadId: string;
 		text: string;
+		cwd?: string;
 		model?: string;
 	}) => Promise<unknown>;
 	stop: () => Promise<void>;
 };
 
-type CodexNotificationListener = (method: string, params: unknown) => void;
+type CodexRuntimeListener = (event: CodexRuntimeEvent) => void;
 
-export type CodexRuntimeEvent = {
+export type CodexRuntimeEvent =
+	| {
+			kind: "notification";
+			method: string;
+			params: unknown;
+	  }
+	| {
+			kind: "request";
+			requestId: string;
+			method: string;
+			params: unknown;
+	  };
+
+type PendingRuntimeRequest = {
 	method: string;
 	params: unknown;
+	resolve: (value: unknown) => void;
+	reject: (error: Error) => void;
 };
 
 export type CodexSessionRuntime = {
@@ -37,22 +56,31 @@ export type CodexSessionRuntime = {
 	sendTurn: (input: {
 		threadId: string;
 		text: string;
+		cwd?: string;
 		model?: string;
 	}) => Promise<{ turnId?: string; raw: unknown }>;
 	subscribe: (listener: (event: CodexRuntimeEvent) => void) => () => void;
+	respondToRequest: (input: {
+		requestId: string;
+		response: unknown;
+	}) => Promise<void>;
 	stop: () => Promise<void>;
 };
 
 export function createCodexSessionRuntime(): CodexSessionRuntime {
 	let runtime: CodexRuntime | null = null;
 	let runtimeStarting: Promise<CodexRuntime> | null = null;
-	const listeners = new Set<CodexNotificationListener>();
+	const listeners = new Set<CodexRuntimeListener>();
+	const pendingRequests = new Map<string, PendingRuntimeRequest>();
 
 	async function ensureRuntime() {
 		if (runtime) {
 			return runtime;
 		}
-		runtimeStarting ??= startReusableRuntime(listeners).finally(() => {
+		runtimeStarting ??= startReusableRuntime(
+			listeners,
+			pendingRequests,
+		).finally(() => {
 			runtimeStarting = null;
 		});
 		runtime = await runtimeStarting;
@@ -81,13 +109,24 @@ export function createCodexSessionRuntime(): CodexSessionRuntime {
 	}
 
 	function subscribe(listener: (event: CodexRuntimeEvent) => void) {
-		const wrapped: CodexNotificationListener = (method, params) => {
-			listener({ method, params });
-		};
-		listeners.add(wrapped);
+		listeners.add(listener);
 		return () => {
-			listeners.delete(wrapped);
+			listeners.delete(listener);
 		};
+	}
+
+	async function respondToRequest(input: {
+		requestId: string;
+		response: unknown;
+	}) {
+		const pending = pendingRequests.get(input.requestId);
+		if (!pending) {
+			throw new Error(
+				`Unknown pending Codex request: ${input.requestId}`,
+			);
+		}
+		pendingRequests.delete(input.requestId);
+		pending.resolve(input.response);
 	}
 
 	async function stop() {
@@ -95,10 +134,23 @@ export function createCodexSessionRuntime(): CodexSessionRuntime {
 		runtime = null;
 		runtimeStarting = null;
 		listeners.clear();
+		for (const [requestId, request] of pendingRequests) {
+			request.reject(
+				new Error(`Codex app-server stopped before ${request.method}`),
+			);
+			pendingRequests.delete(requestId);
+		}
 		await activeRuntime?.stop();
 	}
 
-	return { ensure, createThread, sendTurn, subscribe, stop };
+	return {
+		ensure,
+		createThread,
+		sendTurn,
+		subscribe,
+		respondToRequest,
+		stop,
+	};
 }
 
 export function createCodexAppServerSmokeController(
@@ -227,7 +279,10 @@ export async function probeCodexAppServer(
 	}
 }
 
-async function startReusableRuntime(listeners: Set<CodexNotificationListener>) {
+async function startReusableRuntime(
+	listeners: Set<CodexRuntimeListener>,
+	pendingRequests: Map<string, PendingRuntimeRequest>,
+) {
 	const provider = getDefaultCodexProvider();
 	const status = await getCodexProviderStatus(provider);
 	if (!status.binary.available) {
@@ -238,9 +293,27 @@ async function startReusableRuntime(listeners: Set<CodexNotificationListener>) {
 	const runtime = startCodexRuntime(provider, {
 		onNotification: (method, params) => {
 			for (const listener of listeners) {
-				listener(method, params);
+				listener({ kind: "notification", method, params });
 			}
 		},
+		onRequest: (request) =>
+			new Promise((resolve, reject) => {
+				const requestId = randomRequestId();
+				pendingRequests.set(requestId, {
+					method: request.method,
+					params: request.params,
+					resolve,
+					reject,
+				});
+				for (const listener of listeners) {
+					listener({
+						kind: "request",
+						requestId,
+						method: request.method,
+						params: request.params,
+					});
+				}
+			}),
 	});
 	try {
 		await runtime.initialize();
@@ -256,6 +329,9 @@ function startCodexRuntime(
 	options: {
 		autoAnswerUserInput?: boolean;
 		onNotification?: (method: string, params: unknown) => void;
+		onRequest?: (
+			request: CodexIncomingRequest,
+		) => Promise<unknown> | unknown;
 	} = {},
 ): CodexRuntime {
 	const child = spawn(provider.binaryPath, ["app-server"], {
@@ -278,6 +354,16 @@ function startCodexRuntime(
 				`[codex app-server] notification ${method} ${JSON.stringify(params ?? {}).slice(0, 500)}`,
 			);
 		},
+		...(options.onRequest
+			? {
+					onRequest: (request: CodexIncomingRequest) => {
+						console.log(
+							`[codex app-server] request ${request.method} ${JSON.stringify(request.params ?? {}).slice(0, 500)}`,
+						);
+						return options.onRequest?.(request);
+					},
+				}
+			: {}),
 	});
 	let stopped = false;
 
@@ -302,10 +388,12 @@ function startCodexRuntime(
 	}
 
 	async function startThread(input?: { cwd?: string; model?: string }) {
+		const cwd = input?.cwd ?? process.cwd();
 		const response = await protocol.request("thread/start", {
-			cwd: input?.cwd ?? process.cwd(),
-			approvalPolicy: "never",
-			sandbox: "read-only",
+			cwd,
+			approvalPolicy: "on-request",
+			sandbox: "workspace-write",
+			sandboxPolicy: { type: "workspaceWrite", writableRoots: [cwd] },
 			model: input?.model ?? "gpt-5.4-mini",
 		});
 		const threadId = readThreadId(response);
@@ -318,13 +406,16 @@ function startCodexRuntime(
 	function sendTurn(input: {
 		threadId: string;
 		text: string;
+		cwd?: string;
 		model?: string;
 	}) {
+		const cwd = input.cwd ?? process.cwd();
 		return protocol.request("turn/start", {
 			threadId: input.threadId,
 			input: [{ type: "text", text: input.text }],
-			approvalPolicy: "never",
-			sandboxPolicy: { type: "readOnly" },
+			cwd,
+			approvalPolicy: "on-request",
+			sandboxPolicy: { type: "workspaceWrite", writableRoots: [cwd] },
 			model: input.model ?? "gpt-5.4-mini",
 		});
 	}
@@ -353,6 +444,10 @@ function startCodexRuntime(
 	}
 
 	return { provider, initialize, readAccount, startThread, sendTurn, stop };
+}
+
+function randomRequestId() {
+	return `codex-request-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 function readThreadId(value: unknown) {

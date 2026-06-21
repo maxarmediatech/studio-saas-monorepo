@@ -32,6 +32,29 @@ export type SessionEvent =
 	  }
 	| {
 			id: string;
+			type: "request.pending";
+			time: string;
+			data: {
+				requestId: string;
+				method: string;
+				requestKind:
+					| "command"
+					| "file-change"
+					| "user-input"
+					| "unknown";
+				turnId?: string;
+				itemId?: string;
+				raw: unknown;
+			};
+	  }
+	| {
+			id: string;
+			type: "request.resolved";
+			time: string;
+			data: { requestId: string; response: unknown };
+	  }
+	| {
+			id: string;
 			type: "provider.raw";
 			time: string;
 			data: { method: string; params: unknown };
@@ -40,6 +63,7 @@ export type SessionEvent =
 type Session = {
 	id: string;
 	threadId: string;
+	cwd: string;
 	createdAt: string;
 	events: SessionEvent[];
 	subscribers: Set<(event: SessionEvent) => void>;
@@ -53,17 +77,20 @@ export function createSessionController(input: {
 	const sessions = new Map<string, Session>();
 	const sessionsByThreadId = new Map<string, Session>();
 	const sessionsByTurnId = new Map<string, Session>();
+	const sessionsByRequestId = new Map<string, Session>();
 	const unsubscribeRuntime = input.runtime.subscribe((event) => {
 		handleRuntimeEvent(event);
 	});
 
 	async function create(body?: unknown) {
 		const options = validateCreateSession(body);
+		const cwd = options.cwd ?? process.cwd();
 		await input.runtime.ensure();
-		const thread = await input.runtime.createThread(options);
+		const thread = await input.runtime.createThread({ ...options, cwd });
 		const session: Session = {
 			id: randomUUID(),
 			threadId: thread.threadId,
+			cwd,
 			createdAt: new Date().toISOString(),
 			events: [],
 			subscribers: new Set(),
@@ -92,6 +119,7 @@ export function createSessionController(input: {
 			const turn = await input.runtime.sendTurn({
 				threadId: session.threadId,
 				text: message.text,
+				cwd: session.cwd,
 				model: message.model,
 			});
 			if (turn.turnId) {
@@ -118,6 +146,22 @@ export function createSessionController(input: {
 		};
 	}
 
+	async function respondToRequest(
+		sessionId: string,
+		requestId: string,
+		body: unknown,
+	) {
+		const session = getSession(sessionId);
+		if (sessionsByRequestId.get(requestId)?.id !== session.id) {
+			throw new SidecarHttpError(404, "Pending request not found");
+		}
+		const response = validateRequestResponse(body);
+		await input.runtime.respondToRequest({ requestId, response });
+		sessionsByRequestId.delete(requestId);
+		pushEvent(session, "request.resolved", { requestId, response });
+		return { ok: true };
+	}
+
 	function subscribe(
 		sessionId: string,
 		listener: (event: SessionEvent) => void,
@@ -137,6 +181,7 @@ export function createSessionController(input: {
 		sessions.clear();
 		sessionsByThreadId.clear();
 		sessionsByTurnId.clear();
+		sessionsByRequestId.clear();
 	}
 
 	function handleRuntimeEvent(event: CodexRuntimeEvent) {
@@ -146,6 +191,18 @@ export function createSessionController(input: {
 			(threadId ? sessionsByThreadId.get(threadId) : undefined) ??
 			(turnId ? sessionsByTurnId.get(turnId) : undefined);
 		if (!session) {
+			return;
+		}
+		if (event.kind === "request") {
+			sessionsByRequestId.set(event.requestId, session);
+			pushEvent(session, "request.pending", {
+				requestId: event.requestId,
+				method: event.method,
+				requestKind: readRequestKind(event.method),
+				turnId,
+				itemId: readItemId(event.params),
+				raw: event.params,
+			});
 			return;
 		}
 		if (event.method === "item/agentMessage/delta") {
@@ -207,7 +264,7 @@ export function createSessionController(input: {
 		return session;
 	}
 
-	return { create, sendMessage, events, subscribe, stop };
+	return { create, sendMessage, events, respondToRequest, subscribe, stop };
 }
 
 function validateCreateSession(value: unknown): {
@@ -251,6 +308,45 @@ function validateMessage(value: unknown): {
 			? { model: body.model }
 			: {}),
 	};
+}
+
+function validateRequestResponse(value: unknown) {
+	if (!value || typeof value !== "object" || Array.isArray(value)) {
+		throw new SidecarHttpError(
+			400,
+			"Request response body must be an object",
+		);
+	}
+	const body = value as Record<string, unknown>;
+	if (body.decision === "accept" || body.decision === "acceptForSession") {
+		return { decision: body.decision };
+	}
+	if (body.decision === "decline" || body.decision === "cancel") {
+		return { decision: body.decision };
+	}
+	if (isRecord(body.answers)) {
+		return {
+			answers: Object.fromEntries(
+				Object.entries(body.answers).map(([questionId, answer]) => [
+					questionId,
+					{
+						answers: Array.isArray(answer)
+							? answer.filter(
+									(value): value is string =>
+										typeof value === "string",
+								)
+							: typeof answer === "string"
+								? [answer]
+								: [],
+					},
+				]),
+			),
+		};
+	}
+	throw new SidecarHttpError(
+		400,
+		"Request response must include decision or answers",
+	);
 }
 
 function pushEvent(
@@ -300,6 +396,26 @@ function readTurnId(value: unknown) {
 		return turn.id;
 	}
 	return undefined;
+}
+
+function readItemId(value: unknown) {
+	if (!isRecord(value)) {
+		return undefined;
+	}
+	return typeof value.itemId === "string" ? value.itemId : undefined;
+}
+
+function readRequestKind(method: string) {
+	if (method === "item/commandExecution/requestApproval") {
+		return "command";
+	}
+	if (method === "item/fileChange/requestApproval") {
+		return "file-change";
+	}
+	if (method === "item/tool/requestUserInput") {
+		return "user-input";
+	}
+	return "unknown";
 }
 
 function readDeltaText(value: unknown) {

@@ -14,6 +14,8 @@ import { getCodexProviderStatus } from "./sidecar-provider";
 import { createSessionController } from "./sidecar-sessions";
 
 const MAX_BODY_BYTES = 1024 * 1024;
+const ENABLE_CODEX_RESPONSES_FALLBACK =
+	process.env.EXPERIMENTAL_DESKTOP_ENABLE_CODEX_RESPONSES_FALLBACK === "1";
 
 type StartCommand = {
 	type: "start";
@@ -157,6 +159,12 @@ async function handleApiRequest(req: IncomingMessage, res: ServerResponse) {
 		}
 
 		if (req.method === "POST" && url.pathname === "/codex/responses") {
+			if (!ENABLE_CODEX_RESPONSES_FALLBACK) {
+				throw new SidecarHttpError(
+					404,
+					"Legacy /codex/responses fallback is disabled. Set EXPERIMENTAL_DESKTOP_ENABLE_CODEX_RESPONSES_FALLBACK=1 for dev diagnostics.",
+				);
+			}
 			writeJson(
 				res,
 				200,
@@ -182,6 +190,22 @@ async function handleApiRequest(req: IncomingMessage, res: ServerResponse) {
 				200,
 				await sessions.sendMessage(
 					decodeURIComponent(sessionMessageMatch[1]),
+					await readJsonBody(req),
+				),
+			);
+			return;
+		}
+
+		const sessionRequestMatch = url.pathname.match(
+			/^\/sessions\/([^/]+)\/requests\/([^/]+)\/respond$/,
+		);
+		if (req.method === "POST" && sessionRequestMatch) {
+			writeJson(
+				res,
+				200,
+				await sessions.respondToRequest(
+					decodeURIComponent(sessionRequestMatch[1]),
+					decodeURIComponent(sessionRequestMatch[2]),
 					await readJsonBody(req),
 				),
 			);
