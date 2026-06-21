@@ -152,10 +152,10 @@ async function handleApiRequest(req: IncomingMessage, res: ServerResponse) {
 			/^\/sessions\/([^/]+)\/events$/,
 		);
 		if (req.method === "GET" && sessionEventsMatch) {
-			writeJson(
+			writeSessionEvents(
+				req,
 				res,
-				200,
-				sessions.events(decodeURIComponent(sessionEventsMatch[1])),
+				decodeURIComponent(sessionEventsMatch[1]),
 			);
 			return;
 		}
@@ -189,6 +189,33 @@ function writeJson(res: ServerResponse, status: number, body: unknown) {
 		"Access-Control-Allow-Origin": "*",
 	});
 	res.end(JSON.stringify(body));
+}
+
+function writeSessionEvents(
+	req: IncomingMessage,
+	res: ServerResponse,
+	sessionId: string,
+) {
+	sessions.events(sessionId);
+	res.writeHead(200, {
+		"Content-Type": "text/event-stream; charset=utf-8",
+		"Cache-Control": "no-cache, no-transform",
+		Connection: "keep-alive",
+		"Access-Control-Allow-Origin": "*",
+	});
+	res.write("event: ready\ndata: {}\n\n");
+	const unsubscribe = sessions.subscribe(sessionId, (event) => {
+		res.write(`event: ${event.type}\n`);
+		res.write(`data: ${JSON.stringify(event)}\n\n`);
+	});
+	const heartbeat = setInterval(() => {
+		res.write("event: ping\ndata: {}\n\n");
+	}, 25_000);
+	req.on("close", () => {
+		clearInterval(heartbeat);
+		unsubscribe();
+		res.end();
+	});
 }
 
 async function readJsonBody(req: IncomingMessage) {

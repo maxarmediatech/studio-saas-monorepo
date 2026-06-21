@@ -17,6 +17,7 @@ type Session = {
 	id: string;
 	createdAt: string;
 	events: SessionEvent[];
+	subscribers: Set<(event: SessionEvent) => void>;
 };
 
 const DEFAULT_MODELS = [
@@ -36,6 +37,7 @@ export function createSessionController(input: {
 			id: randomUUID(),
 			createdAt: new Date().toISOString(),
 			events: [],
+			subscribers: new Set(),
 		};
 		sessions.set(session.id, session);
 		return { id: session.id, createdAt: session.createdAt };
@@ -72,7 +74,24 @@ export function createSessionController(input: {
 		return { id: session.id, events: session.events };
 	}
 
-	return { create, sendMessage, events };
+	function subscribe(
+		sessionId: string,
+		listener: (event: SessionEvent) => void,
+	) {
+		const session = sessions.get(sessionId);
+		if (!session) {
+			throw new SidecarHttpError(404, "Session not found");
+		}
+		for (const event of session.events) {
+			listener(event);
+		}
+		session.subscribers.add(listener);
+		return () => {
+			session.subscribers.delete(listener);
+		};
+	}
+
+	return { create, sendMessage, events, subscribe };
 }
 
 export async function sendWithModelFallback(input: {
@@ -152,10 +171,14 @@ function pushEvent(
 	type: SessionEvent["type"],
 	data: unknown,
 ) {
-	session.events.push({
+	const event = {
 		id: randomUUID(),
 		type,
 		time: new Date().toISOString(),
 		data,
-	});
+	} satisfies SessionEvent;
+	session.events.push(event);
+	for (const subscriber of session.subscribers) {
+		subscriber(event);
+	}
 }

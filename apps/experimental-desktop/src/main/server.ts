@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -44,6 +44,12 @@ type StoredAuthEnvelope = {
 	data: string;
 	updatedAt: string;
 };
+
+class SecureStorageUnavailableError extends Error {
+	constructor() {
+		super("Secure credential storage is unavailable on this machine.");
+	}
+}
 
 export type SidecarManager = {
 	ensure: () => Promise<SidecarRuntime>;
@@ -216,11 +222,12 @@ async function handleSidecarRuntimeMessage(
 	child: ReturnType<typeof utilityProcess.fork>,
 	message: unknown,
 ) {
-	const request = parseAuthStorageRequest(message);
-	if (!request) {
-		return;
-	}
+	const requestId = getAuthStorageRequestId(message);
 	try {
+		const request = parseAuthStorageRequest(message);
+		if (!request) {
+			return;
+		}
 		if (request.operation === "read") {
 			child.postMessage({
 				type: "auth-storage:response",
@@ -237,13 +244,27 @@ async function handleSidecarRuntimeMessage(
 			ok: true,
 		});
 	} catch (error) {
+		if (!requestId) {
+			return;
+		}
 		child.postMessage({
 			type: "auth-storage:response",
-			id: request.id,
+			id: requestId,
 			ok: false,
 			error: error instanceof Error ? error.message : String(error),
 		});
 	}
+}
+
+function getAuthStorageRequestId(value: unknown) {
+	if (!value || typeof value !== "object") {
+		return undefined;
+	}
+	const request = value as Partial<AuthStorageRequest>;
+	return request.type === "auth-storage:request" &&
+		typeof request.id === "string"
+		? request.id
+		: undefined;
 }
 
 function parseAuthStorageRequest(
@@ -267,11 +288,14 @@ function parseAuthStorageRequest(
 		};
 	}
 	if (request.operation === "write") {
+		if (request.auth !== null && !isStoredOpenAiAuth(request.auth)) {
+			throw new Error("Invalid OpenAI auth storage payload");
+		}
 		return {
 			type: "auth-storage:request",
 			id: request.id,
 			operation: "write",
-			auth: isStoredOpenAiAuth(request.auth) ? request.auth : null,
+			auth: request.auth,
 		};
 	}
 	return undefined;
@@ -310,7 +334,9 @@ function createMainOpenAiAuthStore() {
 			await unlink(file).catch(() => undefined);
 			return;
 		}
-		await writeFile(file, serializeStoredAuth(auth), { mode: 0o600 });
+		const tempFile = `${file}.${process.pid}.${Date.now()}.tmp`;
+		await writeFile(tempFile, serializeStoredAuth(auth), { mode: 0o600 });
+		await rename(tempFile, file);
 	}
 
 	function authPath() {
@@ -333,7 +359,7 @@ function parseStoredAuth(raw: string): StoredOpenAiAuth {
 
 function serializeStoredAuth(auth: StoredOpenAiAuth) {
 	if (!safeStorage.isEncryptionAvailable()) {
-		throw new Error("Electron safeStorage encryption is unavailable");
+		throw new SecureStorageUnavailableError();
 	}
 	const encrypted = safeStorage.encryptString(JSON.stringify(auth));
 	const envelope: StoredAuthEnvelope = {
