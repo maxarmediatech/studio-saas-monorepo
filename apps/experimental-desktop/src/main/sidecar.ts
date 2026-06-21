@@ -4,7 +4,10 @@ import {
 	type ServerResponse,
 } from "node:http";
 import { proxyCodexResponses, SidecarHttpError } from "./sidecar-codex";
-import { probeCodexAppServer } from "./sidecar-codex-runtime";
+import {
+	createCodexAppServerSmokeController,
+	probeCodexAppServer,
+} from "./sidecar-codex-runtime";
 import { createOpenAiAuthController } from "./sidecar-openai";
 import { getCodexProviderStatus } from "./sidecar-provider";
 import { createSessionController } from "./sidecar-sessions";
@@ -36,6 +39,7 @@ const parentPort = getParentPort();
 let apiServer: ReturnType<typeof createServer> | undefined;
 let commandState: StartCommand | undefined;
 const openAiAuth = createOpenAiAuthController();
+const codexSmoke = createCodexAppServerSmokeController();
 const sessions = createSessionController({
 	getFreshAuth: () => openAiAuth.getFreshAuth(),
 });
@@ -73,7 +77,11 @@ async function start(command: StartCommand) {
 }
 
 async function stop() {
-	await Promise.all([closeServer(apiServer), openAiAuth.stop()]);
+	await Promise.all([
+		closeServer(apiServer),
+		openAiAuth.stop(),
+		codexSmoke.stop(),
+	]);
 	apiServer = undefined;
 	commandState = undefined;
 	parentPort.postMessage({ type: "stopped" });
@@ -131,6 +139,19 @@ async function handleApiRequest(req: IncomingMessage, res: ServerResponse) {
 			url.pathname === "/providers/codex/probe"
 		) {
 			writeJson(res, 200, await probeCodexAppServer());
+			return;
+		}
+
+		if (
+			req.method === "POST" &&
+			url.pathname === "/providers/codex/smoke-test"
+		) {
+			const body = await readJsonBody(req);
+			writeJson(
+				res,
+				200,
+				await codexSmoke.send(validateCodexSmokeBody(body)),
+			);
 			return;
 		}
 
@@ -266,6 +287,25 @@ function readRequestBody(req: IncomingMessage) {
 			resolve(Buffer.concat(chunks).toString("utf8"));
 		});
 	});
+}
+
+function validateCodexSmokeBody(value: unknown) {
+	if (!value || typeof value !== "object" || Array.isArray(value)) {
+		throw new SidecarHttpError(400, "Codex smoke body must be an object");
+	}
+	const body = value as Record<string, unknown>;
+	if (typeof body.text !== "string" || !body.text.trim()) {
+		throw new SidecarHttpError(400, "Codex smoke text is required");
+	}
+	if (body.model !== undefined && typeof body.model !== "string") {
+		throw new SidecarHttpError(400, "Codex smoke model must be a string");
+	}
+	return {
+		text: body.text,
+		...(typeof body.model === "string" && body.model.trim()
+			? { model: body.model }
+			: {}),
+	};
 }
 
 function closeServer(server: ReturnType<typeof createServer> | undefined) {

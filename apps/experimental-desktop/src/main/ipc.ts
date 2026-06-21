@@ -80,20 +80,13 @@ export function registerIpcHandlers(sidecarManager: SidecarManager) {
 
 	ipcMain.handle("sidecar:send-codex-test", async () => {
 		const runtime = await sidecarManager.ensure();
-		const session = (await sidecarManager.fetch(runtime, "/sessions", {
+		return sidecarManager.fetch(runtime, "/providers/codex/smoke-test", {
 			method: "POST",
-		})) as { id: string };
-		return sidecarManager.fetch(
-			runtime,
-			`/sessions/${encodeURIComponent(session.id)}/messages`,
-			{
-				method: "POST",
-				headers: { "content-type": "application/json" },
-				body: JSON.stringify({
-					text: "Reply with one short sentence confirming the Codex proxy works.",
-					models: ["gpt-5.4-mini"],
-				}),
-			},
-		);
+			headers: { "content-type": "application/json" },
+			body: JSON.stringify({
+				text: "Reply with one short sentence confirming the Codex app-server path works.",
+				model: "gpt-5.4-mini",
+			}),
+		});
 	});
 }
