@@ -3,10 +3,13 @@ import type {
 	AppInfo,
 	CodexAppServerProbe,
 	CodexProviderStatus,
+	CodexSession,
 	CodexTestResponse,
 	ExperimentalDesktopApi,
 	OpenAiAuthStart,
 	OpenAiAuthStatus,
+	SendSessionMessageResult,
+	SessionEvent,
 } from "./types";
 
 const api: ExperimentalDesktopApi = {
@@ -41,6 +44,39 @@ const api: ExperimentalDesktopApi = {
 		ipcRenderer.invoke(
 			"sidecar:send-codex-test",
 		) as Promise<CodexTestResponse>,
+	createSession: (input) =>
+		ipcRenderer.invoke(
+			"sidecar:create-session",
+			input ?? {},
+		) as Promise<CodexSession>,
+	sendSessionMessage: (sessionId, input) =>
+		ipcRenderer.invoke(
+			"sidecar:send-session-message",
+			sessionId,
+			input,
+		) as Promise<SendSessionMessageResult>,
+	subscribeSessionEvents: (sessionId, listener) => {
+		const subscriptionId = crypto.randomUUID();
+		const channel = `sidecar:session-event:${subscriptionId}`;
+		const handler = (
+			_event: Electron.IpcRendererEvent,
+			payload: unknown,
+		) => {
+			listener(payload as SessionEvent);
+		};
+		ipcRenderer.on(channel, handler);
+		void ipcRenderer.invoke("sidecar:start-session-events", {
+			sessionId,
+			subscriptionId,
+		});
+		return () => {
+			ipcRenderer.off(channel, handler);
+			void ipcRenderer.invoke(
+				"sidecar:stop-session-events",
+				subscriptionId,
+			);
+		};
+	},
 };
 
 contextBridge.exposeInMainWorld("experimentalDesktop", api);

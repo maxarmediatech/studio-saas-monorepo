@@ -1,4 +1,5 @@
 import "./styles.css";
+import type { SessionEvent } from "../preload/types";
 
 const appInfo = document.querySelector<HTMLParagraphElement>("#app-info");
 const selection = document.querySelector<HTMLParagraphElement>("#selection");
@@ -20,7 +21,19 @@ const sendCodexTest =
 	document.querySelector<HTMLButtonElement>("#send-codex-test");
 const logoutOpenAi =
 	document.querySelector<HTMLButtonElement>("#logout-openai");
+const sessionStatus =
+	document.querySelector<HTMLParagraphElement>("#session-status");
+const newSession = document.querySelector<HTMLButtonElement>("#new-session");
+const sendSessionMessage = document.querySelector<HTMLButtonElement>(
+	"#send-session-message",
+);
+const sessionInput =
+	document.querySelector<HTMLTextAreaElement>("#session-input");
+const sessionOutput = document.querySelector<HTMLPreElement>("#session-output");
 let authPoll: number | undefined;
+let currentSessionId: string | undefined;
+let unsubscribeSessionEvents: (() => void) | undefined;
+let assistantText = "";
 
 function setSelection(value: string | null, fallback: string) {
 	if (!selection) {
@@ -158,14 +171,9 @@ sendCodexTest?.addEventListener("click", async () => {
 		openAiStatus.textContent = "Sending Codex test...";
 	}
 	try {
-		if (!window.experimentalDesktop.sendCodexTest) {
-			throw new Error(
-				"Codex test bridge is not loaded. Restart the desktop app to load the updated preload.",
-			);
-		}
-		const result = await window.experimentalDesktop.sendCodexTest();
+		const result = await runCodexSessionSmokeTest();
 		if (openAiStatus) {
-			openAiStatus.textContent = "Codex response received";
+			openAiStatus.textContent = "Codex session delta received";
 		}
 		if (openAiDetail) {
 			openAiDetail.textContent = summarizeCodexResult(result);
@@ -181,10 +189,133 @@ sendCodexTest?.addEventListener("click", async () => {
 	}
 });
 
+async function runCodexSessionSmokeTest() {
+	const session = await window.experimentalDesktop.createSession({
+		model: "gpt-5.4-mini",
+	});
+	let unsubscribe: () => void = () => undefined;
+	const firstDelta = new Promise<SessionEvent>((resolve, reject) => {
+		const timeout = window.setTimeout(() => {
+			unsubscribe();
+			reject(new Error("Codex session did not emit an assistant delta"));
+		}, 30_000);
+		unsubscribe = window.experimentalDesktop.subscribeSessionEvents(
+			session.id,
+			(event) => {
+				if (event.type === "assistant.delta") {
+					window.clearTimeout(timeout);
+					unsubscribe();
+					resolve(event);
+				}
+				if (event.type === "message.failed") {
+					window.clearTimeout(timeout);
+					unsubscribe();
+					reject(new Error(event.data.error));
+				}
+			},
+		);
+	});
+	await window.experimentalDesktop.sendSessionMessage(session.id, {
+		text: "Reply with one short sentence confirming the Codex app-server session path works.",
+		model: "gpt-5.4-mini",
+	});
+	return firstDelta;
+}
+
+newSession?.addEventListener("click", async () => {
+	try {
+		setSessionStatus("Creating session...");
+		unsubscribeSessionEvents?.();
+		assistantText = "";
+		writeSessionOutput("");
+		const session = await window.experimentalDesktop.createSession({
+			model: "gpt-5.4-mini",
+		});
+		currentSessionId = session.id;
+		unsubscribeSessionEvents =
+			window.experimentalDesktop.subscribeSessionEvents(
+				session.id,
+				handleSessionEvent,
+			);
+		setSessionStatus(`Ready · ${session.threadId ?? session.id}`);
+	} catch (error) {
+		setSessionStatus(
+			error instanceof Error ? error.message : String(error),
+		);
+	}
+});
+
+sendSessionMessage?.addEventListener("click", async () => {
+	try {
+		if (!currentSessionId) {
+			const session = await window.experimentalDesktop.createSession({
+				model: "gpt-5.4-mini",
+			});
+			currentSessionId = session.id;
+			unsubscribeSessionEvents =
+				window.experimentalDesktop.subscribeSessionEvents(
+					session.id,
+					handleSessionEvent,
+				);
+		}
+		const text = sessionInput?.value.trim();
+		if (!text) {
+			setSessionStatus("Message required");
+			return;
+		}
+		assistantText = "";
+		writeSessionOutput("");
+		setSessionStatus("Sending...");
+		await window.experimentalDesktop.sendSessionMessage(currentSessionId, {
+			text,
+			model: "gpt-5.4-mini",
+		});
+		setSessionStatus("Running...");
+	} catch (error) {
+		setSessionStatus(
+			error instanceof Error ? error.message : String(error),
+		);
+	}
+});
+
 logoutOpenAi?.addEventListener("click", async () => {
 	await window.experimentalDesktop.logoutOpenAi();
 	await refreshOpenAiStatus();
 });
+
+function handleSessionEvent(event: SessionEvent) {
+	if (event.type === "message.created") {
+		setSessionStatus("Running...");
+		return;
+	}
+	if (event.type === "assistant.delta") {
+		assistantText += event.data.text ?? "";
+		writeSessionOutput(assistantText);
+		setSessionStatus("Streaming...");
+		return;
+	}
+	if (event.type === "assistant.completed") {
+		setSessionStatus("Completed");
+		return;
+	}
+	if (event.type === "message.failed") {
+		setSessionStatus(`Failed · ${event.data.error}`);
+		return;
+	}
+}
+
+function setSessionStatus(value: string) {
+	if (sessionStatus) {
+		sessionStatus.textContent = value;
+	}
+}
+
+function writeSessionOutput(value: string) {
+	if (sessionOutput) {
+		sessionOutput.textContent = value;
+		sessionOutput.scrollTop = sessionOutput.scrollHeight;
+	}
+}
 
 function summarizeCodexResult(value: unknown) {
 	if (typeof value === "string") {

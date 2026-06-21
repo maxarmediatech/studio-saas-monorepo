@@ -1,64 +1,102 @@
 import { randomUUID } from "node:crypto";
-import {
-	type CodexResult,
-	proxyCodexResponses,
-	SidecarHttpError,
-} from "./sidecar-codex";
-import type { FreshOpenAiAuth } from "./sidecar-openai";
+import { SidecarHttpError } from "./sidecar-codex";
+import type {
+	CodexRuntimeEvent,
+	CodexSessionRuntime,
+} from "./sidecar-codex-runtime";
 
-type SessionEvent = {
-	id: string;
-	type: "message.created" | "message.completed" | "message.failed";
-	time: string;
-	data: unknown;
-};
+export type SessionEvent =
+	| {
+			id: string;
+			type: "message.created";
+			time: string;
+			data: { text: string };
+	  }
+	| {
+			id: string;
+			type: "assistant.delta";
+			time: string;
+			data: { text?: string; turnId?: string; raw: unknown };
+	  }
+	| {
+			id: string;
+			type: "assistant.completed";
+			time: string;
+			data: { turnId?: string; raw: unknown };
+	  }
+	| {
+			id: string;
+			type: "message.failed";
+			time: string;
+			data: { error: string; turnId?: string; raw?: unknown };
+	  }
+	| {
+			id: string;
+			type: "provider.raw";
+			time: string;
+			data: { method: string; params: unknown };
+	  };
 
 type Session = {
 	id: string;
+	threadId: string;
 	createdAt: string;
 	events: SessionEvent[];
 	subscribers: Set<(event: SessionEvent) => void>;
+	completedTurnIds: Set<string>;
+	activeTurnId?: string;
 };
 
-const DEFAULT_MODELS = [
-	"gpt-5.5",
-	"gpt-5.4",
-	"gpt-5.4-mini",
-	"gpt-5.3-codex-spark",
-];
-
 export function createSessionController(input: {
-	getFreshAuth: () => Promise<FreshOpenAiAuth>;
+	runtime: CodexSessionRuntime;
 }) {
 	const sessions = new Map<string, Session>();
+	const sessionsByThreadId = new Map<string, Session>();
+	const unsubscribeRuntime = input.runtime.subscribe((event) => {
+		handleRuntimeEvent(event);
+	});
 
-	function create() {
+	async function create(body?: unknown) {
+		const options = validateCreateSession(body);
+		await input.runtime.ensure();
+		const thread = await input.runtime.createThread(options);
 		const session: Session = {
 			id: randomUUID(),
+			threadId: thread.threadId,
 			createdAt: new Date().toISOString(),
 			events: [],
 			subscribers: new Set(),
+			completedTurnIds: new Set(),
 		};
 		sessions.set(session.id, session);
-		return { id: session.id, createdAt: session.createdAt };
+		sessionsByThreadId.set(session.threadId, session);
+		return {
+			id: session.id,
+			threadId: session.threadId,
+			createdAt: session.createdAt,
+		};
 	}
 
 	async function sendMessage(sessionId: string, body: unknown) {
-		const session = sessions.get(sessionId);
-		if (!session) {
-			throw new SidecarHttpError(404, "Session not found");
+		const session = getSession(sessionId);
+		if (session.activeTurnId) {
+			throw new SidecarHttpError(
+				409,
+				"Session already has a running turn",
+			);
 		}
 		const message = validateMessage(body);
 		pushEvent(session, "message.created", { text: message.text });
 		try {
-			// Dev fallback while the Codex app-server session runtime is being wired.
-			const result = await sendWithModelFallback({
-				auth: await input.getFreshAuth(),
+			const turn = await input.runtime.sendTurn({
+				threadId: session.threadId,
 				text: message.text,
-				models: message.models ?? DEFAULT_MODELS,
+				model: message.model,
 			});
-			pushEvent(session, "message.completed", result);
-			return result;
+			if (!turn.turnId || !session.completedTurnIds.has(turn.turnId)) {
+				session.activeTurnId = turn.turnId;
+			}
+			return { accepted: true, turnId: turn.turnId };
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : String(error);
@@ -68,21 +106,19 @@ export function createSessionController(input: {
 	}
 
 	function events(sessionId: string) {
-		const session = sessions.get(sessionId);
-		if (!session) {
-			throw new SidecarHttpError(404, "Session not found");
-		}
-		return { id: session.id, events: session.events };
+		const session = getSession(sessionId);
+		return {
+			id: session.id,
+			threadId: session.threadId,
+			events: session.events,
+		};
 	}
 
 	function subscribe(
 		sessionId: string,
 		listener: (event: SessionEvent) => void,
 	) {
-		const session = sessions.get(sessionId);
-		if (!session) {
-			throw new SidecarHttpError(404, "Session not found");
-		}
+		const session = getSession(sessionId);
 		for (const event of session.events) {
 			listener(event);
 		}
@@ -92,55 +128,107 @@ export function createSessionController(input: {
 		};
 	}
 
-	return { create, sendMessage, events, subscribe };
-}
-
-export async function sendWithModelFallback(input: {
-	auth: FreshOpenAiAuth;
-	text: string;
-	models?: string[];
-}): Promise<CodexResult | unknown> {
-	const errors: string[] = [];
-	for (const model of input.models ?? DEFAULT_MODELS) {
-		try {
-			return await proxyCodexResponses({
-				auth: input.auth,
-				body: createCodexMessageBody(model, input.text),
-			});
-		} catch (error) {
-			const message =
-				error instanceof Error ? error.message : String(error);
-			errors.push(`${model}: ${message}`);
-			if (!message.includes("model is not supported")) {
-				throw error;
-			}
-		}
+	function stop() {
+		unsubscribeRuntime();
+		sessions.clear();
+		sessionsByThreadId.clear();
 	}
-	throw new SidecarHttpError(
-		400,
-		`No tested Codex model was accepted by this ChatGPT account. ${errors.join(" | ")}`,
-	);
+
+	function handleRuntimeEvent(event: CodexRuntimeEvent) {
+		const threadId = readThreadId(event.params);
+		if (!threadId) {
+			return;
+		}
+		const session = sessionsByThreadId.get(threadId);
+		if (!session) {
+			return;
+		}
+		const turnId = readTurnId(event.params);
+		if (event.method === "item/agentMessage/delta") {
+			pushEvent(session, "assistant.delta", {
+				text: readDeltaText(event.params),
+				turnId,
+				raw: event.params,
+			});
+			return;
+		}
+		if (event.method === "turn/completed") {
+			if (turnId) {
+				session.completedTurnIds.add(turnId);
+			}
+			if (isFailedTurn(event.params)) {
+				pushEvent(session, "message.failed", {
+					error: readTurnError(event.params),
+					turnId,
+					raw: event.params,
+				});
+			} else {
+				pushEvent(session, "assistant.completed", {
+					turnId,
+					raw: event.params,
+				});
+			}
+			if (
+				!turnId ||
+				!session.activeTurnId ||
+				session.activeTurnId === turnId
+			) {
+				session.activeTurnId = undefined;
+			}
+			return;
+		}
+		if (event.method === "error") {
+			pushEvent(session, "message.failed", {
+				error: readErrorMessage(event.params),
+				turnId,
+				raw: event.params,
+			});
+			if (!turnId || session.activeTurnId === turnId) {
+				session.activeTurnId = undefined;
+			}
+			return;
+		}
+		pushEvent(session, "provider.raw", {
+			method: event.method,
+			params: event.params,
+		});
+	}
+
+	function getSession(sessionId: string) {
+		const session = sessions.get(sessionId);
+		if (!session) {
+			throw new SidecarHttpError(404, "Session not found");
+		}
+		return session;
+	}
+
+	return { create, sendMessage, events, subscribe, stop };
 }
 
-function createCodexMessageBody(model: string, text: string) {
+function validateCreateSession(value: unknown): {
+	cwd?: string;
+	model?: string;
+} {
+	if (value === null || value === undefined) {
+		return {};
+	}
+	if (typeof value !== "object" || Array.isArray(value)) {
+		throw new SidecarHttpError(400, "Session body must be an object");
+	}
+	const body = value as Record<string, unknown>;
 	return {
-		model,
-		instructions:
-			"You are a concise smoke-test assistant. Confirm whether the Codex proxy works.",
-		input: [
-			{
-				role: "user",
-				content: [{ type: "input_text", text }],
-			},
-		],
-		store: false,
-		stream: true,
+		...(typeof body.cwd === "string" && body.cwd.trim()
+			? { cwd: body.cwd }
+			: {}),
+		...(typeof body.model === "string" && body.model.trim()
+			? { model: body.model }
+			: {}),
 	};
 }
 
 function validateMessage(value: unknown): {
 	text: string;
-	models?: string[];
+	model?: string;
 } {
 	if (!value || typeof value !== "object" || Array.isArray(value)) {
 		throw new SidecarHttpError(
@@ -152,34 +240,95 @@ function validateMessage(value: unknown): {
 	if (typeof body.text !== "string" || !body.text.trim()) {
 		throw new SidecarHttpError(400, "Session message text is required");
 	}
-	if (body.models !== undefined) {
-		if (
-			!Array.isArray(body.models) ||
-			body.models.some((model) => typeof model !== "string")
-		) {
-			throw new SidecarHttpError(
-				400,
-				"Session message models must be a string list",
-			);
-		}
-		return { text: body.text, models: body.models as string[] };
-	}
-	return { text: body.text };
+	return {
+		text: body.text,
+		...(typeof body.model === "string" && body.model.trim()
+			? { model: body.model }
+			: {}),
+	};
 }
 
 function pushEvent(
 	session: Session,
 	type: SessionEvent["type"],
-	data: unknown,
+	data: SessionEvent["data"],
 ) {
 	const event = {
 		id: randomUUID(),
 		type,
 		time: new Date().toISOString(),
 		data,
-	} satisfies SessionEvent;
+	} as SessionEvent;
 	session.events.push(event);
 	for (const subscriber of session.subscribers) {
 		subscriber(event);
 	}
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function readThreadId(value: unknown) {
+	if (!isRecord(value)) {
+		return undefined;
+	}
+	if (typeof value.threadId === "string") {
+		return value.threadId;
+	}
+	const thread = value.thread;
+	if (isRecord(thread) && typeof thread.id === "string") {
+		return thread.id;
+	}
+	return undefined;
+}
+
+function readTurnId(value: unknown) {
+	if (!isRecord(value)) {
+		return undefined;
+	}
+	if (typeof value.turnId === "string") {
+		return value.turnId;
+	}
+	const turn = value.turn;
+	if (isRecord(turn) && typeof turn.id === "string") {
+		return turn.id;
+	}
+	return undefined;
+}
+
+function readDeltaText(value: unknown) {
+	if (!isRecord(value)) {
+		return undefined;
+	}
+	return typeof value.delta === "string" ? value.delta : undefined;
+}
+
+function isFailedTurn(value: unknown) {
+	if (!isRecord(value) || !isRecord(value.turn)) {
+		return false;
+	}
+	return value.turn.status === "failed";
+}
+
+function readTurnError(value: unknown) {
+	if (!isRecord(value) || !isRecord(value.turn)) {
+		return "Codex turn failed";
+	}
+	const error = value.turn.error;
+	if (isRecord(error) && typeof error.message === "string") {
+		return error.message;
+	}
+	return "Codex turn failed";
+}
+
+function readErrorMessage(value: unknown) {
+	if (!isRecord(value)) {
+		return "Codex app-server error";
+	}
+	const error = value.error;
+	if (isRecord(error) && typeof error.message === "string") {
+		return error.message;
+	}
+	return "Codex app-server error";
 }

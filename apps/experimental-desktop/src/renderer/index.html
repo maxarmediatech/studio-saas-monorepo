@@ -46,6 +46,23 @@
 				</div>
 				<p id="openai-detail" class="selection">Sidecar starts on demand.</p>
 			</section>
+
+			<section class="panel session-panel">
+				<div>
+					<p class="label">Codex Session</p>
+					<p id="session-status" class="value">No session</p>
+				</div>
+				<div class="actions">
+					<button id="new-session" type="button">New Session</button>
+					<button id="send-session-message" type="button">Send</button>
+				</div>
+				<textarea
+					id="session-input"
+					rows="4"
+					placeholder="Ask Codex something..."
+				></textarea>
+				<pre id="session-output" class="session-output"></pre>
+			</section>
 		</main>
 		<script type="module" src="./index.ts"></script>
 	</body>

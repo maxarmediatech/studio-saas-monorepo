@@ -6,6 +6,7 @@ import {
 import { proxyCodexResponses, SidecarHttpError } from "./sidecar-codex";
 import {
 	createCodexAppServerSmokeController,
+	createCodexSessionRuntime,
 	probeCodexAppServer,
 } from "./sidecar-codex-runtime";
 import { createOpenAiAuthController } from "./sidecar-openai";
@@ -39,9 +40,10 @@ const parentPort = getParentPort();
 let apiServer: ReturnType<typeof createServer> | undefined;
 let commandState: StartCommand | undefined;
 const openAiAuth = createOpenAiAuthController();
-const codexSmoke = createCodexAppServerSmokeController();
+const codexRuntime = createCodexSessionRuntime();
+const codexSmoke = createCodexAppServerSmokeController(codexRuntime);
 const sessions = createSessionController({
-	getFreshAuth: () => openAiAuth.getFreshAuth(),
+	runtime: codexRuntime,
 });
 
 parentPort.on("message", (event) => {
@@ -80,7 +82,8 @@ async function stop() {
 	await Promise.all([
 		closeServer(apiServer),
 		openAiAuth.stop(),
-		codexSmoke.stop(),
+		codexRuntime.stop(),
+		Promise.resolve(sessions.stop()),
 	]);
 	apiServer = undefined;
 	commandState = undefined;
@@ -168,7 +171,7 @@ async function handleApiRequest(req: IncomingMessage, res: ServerResponse) {
 		}
 
 		if (req.method === "POST" && url.pathname === "/sessions") {
-			writeJson(res, 200, sessions.create());
+			writeJson(res, 200, await sessions.create(await readJsonBody(req)));
 			return;
 		}
 
