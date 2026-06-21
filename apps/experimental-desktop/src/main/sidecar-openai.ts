@@ -38,14 +38,10 @@ type PendingOAuth = {
 	timeout: NodeJS.Timeout;
 };
 
-export function createOpenAiAuthController(options: {
-	getUserDataPath: () => string;
-}) {
+export function createOpenAiAuthController() {
 	let oauthServer: ReturnType<typeof createServer> | undefined;
 	let pendingOAuth: PendingOAuth | undefined;
-	const authStore = createOpenAiAuthStore({
-		getUserDataPath: options.getUserDataPath,
-	});
+	const authStore = createOpenAiAuthStore();
 
 	async function getStatus() {
 		const auth = await authStore.read();

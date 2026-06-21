@@ -1,4 +1,3 @@
-import { mkdir } from "node:fs/promises";
 import {
 	createServer,
 	type IncomingMessage,
@@ -16,7 +15,6 @@ type StartCommand = {
 	port: number;
 	username: string;
 	password: string;
-	userDataPath: string;
 };
 
 type StopCommand = { type: "stop" };
@@ -35,14 +33,7 @@ type ParentPort = {
 const parentPort = getParentPort();
 let apiServer: ReturnType<typeof createServer> | undefined;
 let commandState: StartCommand | undefined;
-const openAiAuth = createOpenAiAuthController({
-	getUserDataPath() {
-		if (!commandState) {
-			throw new Error("Sidecar not initialized");
-		}
-		return commandState.userDataPath;
-	},
-});
+const openAiAuth = createOpenAiAuthController();
 const sessions = createSessionController({
 	getFreshAuth: () => openAiAuth.getFreshAuth(),
 });
@@ -62,7 +53,6 @@ parentPort.on("message", (event) => {
 async function start(command: StartCommand) {
 	try {
 		commandState = command;
-		await mkdir(command.userDataPath, { recursive: true });
 
 		apiServer = createServer((req, res) => {
 			void handleApiRequest(req, res);
@@ -266,16 +256,12 @@ function parseCommand(value: unknown): SidecarCommand | undefined {
 	if (typeof command.password !== "string") {
 		return undefined;
 	}
-	if (typeof command.userDataPath !== "string") {
-		return undefined;
-	}
 	return {
 		type: "start",
 		hostname: command.hostname,
 		port: command.port,
 		username: command.username,
 		password: command.password,
-		userDataPath: command.userDataPath,
 	};
 }
 

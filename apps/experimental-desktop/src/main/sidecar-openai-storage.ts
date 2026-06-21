@@ -1,14 +1,4 @@
-import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
-import { createRequire } from "node:module";
-import { dirname, join } from "node:path";
-
-type SafeStorage = {
-	isEncryptionAvailable: () => boolean;
-	encryptString: (plainText: string) => Buffer;
-	decryptString: (encrypted: Buffer) => string;
-};
-
-const safeStorage = loadSafeStorage();
+import { randomUUID } from "node:crypto";
 
 export type StoredOpenAiAuth = {
 	type: "oauth";
@@ -20,75 +10,122 @@ export type StoredOpenAiAuth = {
 	updatedAt: string;
 };
 
-type StoredAuthEnvelope = {
-	encoding: "electron-safe-storage";
-	data: string;
-	updatedAt: string;
+type StorageRequest =
+	| { type: "auth-storage:request"; id: string; operation: "read" }
+	| {
+			type: "auth-storage:request";
+			id: string;
+			operation: "write";
+			auth: StoredOpenAiAuth | null;
+	  };
+
+type StorageResponse =
+	| {
+			type: "auth-storage:response";
+			id: string;
+			ok: true;
+			auth?: StoredOpenAiAuth | null;
+	  }
+	| {
+			type: "auth-storage:response";
+			id: string;
+			ok: false;
+			error: string;
+	  };
+
+type ParentPort = {
+	postMessage(message: StorageRequest): void;
+	on(event: "message", listener: (event: { data: unknown }) => void): void;
+	off(event: "message", listener: (event: { data: unknown }) => void): void;
 };
 
-export function createOpenAiAuthStore(options: {
-	getUserDataPath: () => string;
-}) {
+export function createOpenAiAuthStore() {
+	const parentPort = getParentPort();
+
 	async function read(): Promise<StoredOpenAiAuth | null> {
-		try {
-			const raw = await readFile(authPath(), "utf8");
-			const parsed = parseStoredAuth(raw);
-			return parsed.provider === "openai" ? parsed : null;
-		} catch {
-			return null;
-		}
+		const response = await requestStorage(parentPort, {
+			type: "auth-storage:request",
+			id: randomUUID(),
+			operation: "read",
+		});
+		return response.auth ?? null;
 	}
 
 	async function write(auth: StoredOpenAiAuth | null) {
-		const file = authPath();
-		await mkdir(dirname(file), { recursive: true });
-		if (!auth) {
-			await unlink(file).catch(() => undefined);
-			return;
-		}
-		await writeFile(file, serializeStoredAuth(auth), { mode: 0o600 });
-	}
-
-	function authPath() {
-		return join(options.getUserDataPath(), "sidecar-auth", "openai.json");
+		await requestStorage(parentPort, {
+			type: "auth-storage:request",
+			id: randomUUID(),
+			operation: "write",
+			auth,
+		});
 	}
 
 	return { read, write };
 }
 
-function parseStoredAuth(raw: string): StoredOpenAiAuth {
-	const parsed = JSON.parse(raw) as StoredOpenAiAuth | StoredAuthEnvelope;
-	if ("encoding" in parsed && parsed.encoding === "electron-safe-storage") {
-		if (!safeStorage?.isEncryptionAvailable()) {
-			throw new Error("Electron safeStorage is unavailable");
-		}
-		const decrypted = safeStorage.decryptString(
-			Buffer.from(parsed.data, "base64"),
-		);
-		return JSON.parse(decrypted) as StoredOpenAiAuth;
-	}
-	return parsed as StoredOpenAiAuth;
-}
+function requestStorage(
+	parentPort: ParentPort,
+	message: StorageRequest,
+): Promise<Extract<StorageResponse, { ok: true }>> {
+	return new Promise((resolve, reject) => {
+		const timeout = setTimeout(() => {
+			parentPort.off("message", onMessage);
+			reject(new Error("Auth storage request timed out"));
+		}, 10_000);
 
-function serializeStoredAuth(auth: StoredOpenAiAuth) {
-	if (safeStorage?.isEncryptionAvailable()) {
-		const encrypted = safeStorage.encryptString(JSON.stringify(auth));
-		const envelope: StoredAuthEnvelope = {
-			encoding: "electron-safe-storage",
-			data: encrypted.toString("base64"),
-			updatedAt: new Date().toISOString(),
+		const onMessage = (event: { data: unknown }) => {
+			const response = parseStorageResponse(event.data, message.id);
+			if (!response) {
+				return;
+			}
+			clearTimeout(timeout);
+			parentPort.off("message", onMessage);
+			if (response.ok) {
+				resolve(response);
+				return;
+			}
+			reject(new Error(response.error));
 		};
-		return JSON.stringify(envelope, null, 2);
-	}
-	return JSON.stringify(auth, null, 2);
+
+		parentPort.on("message", onMessage);
+		parentPort.postMessage(message);
+	});
 }
 
-function loadSafeStorage(): SafeStorage | undefined {
-	try {
-		const require = createRequire(import.meta.url);
-		const electron = require("electron") as { safeStorage?: SafeStorage };
-		return electron.safeStorage;
-	} catch {
+function parseStorageResponse(
+	value: unknown,
+	id: string,
+): StorageResponse | undefined {
+	if (!value || typeof value !== "object") {
 		return undefined;
 	}
+	const response = value as Partial<StorageResponse>;
+	if (response.type !== "auth-storage:response" || response.id !== id) {
+		return undefined;
+	}
+	if (response.ok === true) {
+		return {
+			type: "auth-storage:response",
+			id,
+			ok: true,
+			auth: response.auth ?? null,
+		};
+	}
+	if (response.ok === false && typeof response.error === "string") {
+		return {
+			type: "auth-storage:response",
+			id,
+			ok: false,
+			error: response.error,
+		};
+	}
+	return undefined;
+}
+
+function getParentPort() {
+	const port = process.parentPort as ParentPort | undefined;
+	if (!port) {
+		throw new Error("Sidecar parent port unavailable");
+	}
+	return port;
 }
