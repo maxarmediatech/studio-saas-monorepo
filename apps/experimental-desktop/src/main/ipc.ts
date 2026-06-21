@@ -91,6 +91,7 @@ export function registerIpcHandlers(sidecarManager: SidecarManager) {
 				headers: { "content-type": "application/json" },
 				body: JSON.stringify({
 					text: "Reply with one short sentence confirming the Codex proxy works.",
+					models: ["gpt-5.4-mini"],
 				}),
 			},
 		);
