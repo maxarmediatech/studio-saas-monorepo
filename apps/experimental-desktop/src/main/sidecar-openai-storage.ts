@@ -1,6 +1,14 @@
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
-import { safeStorage } from "electron";
+
+type SafeStorage = {
+	isEncryptionAvailable: () => boolean;
+	encryptString: (plainText: string) => Buffer;
+	decryptString: (encrypted: Buffer) => string;
+};
+
+const safeStorage = loadSafeStorage();
 
 export type StoredOpenAiAuth = {
 	type: "oauth";
@@ -51,6 +59,9 @@ export function createOpenAiAuthStore(options: {
 function parseStoredAuth(raw: string): StoredOpenAiAuth {
 	const parsed = JSON.parse(raw) as StoredOpenAiAuth | StoredAuthEnvelope;
 	if ("encoding" in parsed && parsed.encoding === "electron-safe-storage") {
+		if (!safeStorage?.isEncryptionAvailable()) {
+			throw new Error("Electron safeStorage is unavailable");
+		}
 		const decrypted = safeStorage.decryptString(
 			Buffer.from(parsed.data, "base64"),
 		);
@@ -60,7 +71,7 @@ function parseStoredAuth(raw: string): StoredOpenAiAuth {
 }
 
 function serializeStoredAuth(auth: StoredOpenAiAuth) {
-	if (safeStorage.isEncryptionAvailable()) {
+	if (safeStorage?.isEncryptionAvailable()) {
 		const encrypted = safeStorage.encryptString(JSON.stringify(auth));
 		const envelope: StoredAuthEnvelope = {
 			encoding: "electron-safe-storage",
@@ -70,4 +81,14 @@ function serializeStoredAuth(auth: StoredOpenAiAuth) {
 		return JSON.stringify(envelope, null, 2);
 	}
 	return JSON.stringify(auth, null, 2);
+}
+
+function loadSafeStorage(): SafeStorage | undefined {
+	try {
+		const require = createRequire(import.meta.url);
+		const electron = require("electron") as { safeStorage?: SafeStorage };
+		return electron.safeStorage;
+	} catch {
+		return undefined;
+	}
 }
