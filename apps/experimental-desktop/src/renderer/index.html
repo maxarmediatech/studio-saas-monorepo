@@ -60,7 +60,6 @@
 						<select id="session-mode">
 							<option value="read-only" selected>Read Only</option>
 							<option value="workspace-write">Workspace Edit</option>
-							<option value="full-access">Full Access</option>
 						</select>
 					</label>
 				</div>
@@ -71,6 +70,10 @@
 				></textarea>
 				<div id="session-requests" class="session-requests"></div>
 				<pre id="session-output" class="session-output"></pre>
+				<details class="event-log">
+					<summary>Recent events</summary>
+					<pre id="session-event-log"></pre>
+				</details>
 			</section>
 		</main>
 		<script type="module" src="./index.ts"></script>

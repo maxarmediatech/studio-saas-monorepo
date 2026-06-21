@@ -203,6 +203,30 @@ h1 {
 		monospace;
 }
 
+.event-log {
+	border-top: 1px solid rgba(242, 239, 231, 0.12);
+	padding-top: 14px;
+	color: rgba(242, 239, 231, 0.64);
+}
+
+.event-log summary {
+	cursor: pointer;
+	font-size: 13px;
+}
+
+.event-log pre {
+	max-height: 180px;
+	margin: 12px 0 0;
+	overflow: auto;
+	white-space: pre-wrap;
+	color: rgba(242, 239, 231, 0.7);
+	font:
+		12px/1.5 "IBM Plex Mono",
+		"SFMono-Regular",
+		Consolas,
+		monospace;
+}
+
 @media (max-width: 860px) {
 	body {
 		min-width: 0;

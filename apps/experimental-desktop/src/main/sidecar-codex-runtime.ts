@@ -50,6 +50,7 @@ export type CodexRuntimeEvent =
 type PendingRuntimeRequest = {
 	method: string;
 	params: unknown;
+	timeout: NodeJS.Timeout;
 	resolve: (value: unknown) => void;
 	reject: (error: Error) => void;
 };
@@ -140,6 +141,7 @@ export function createCodexSessionRuntime(): CodexSessionRuntime {
 			);
 		}
 		pendingRequests.delete(input.requestId);
+		clearTimeout(pending.timeout);
 		pending.resolve(input.response);
 	}
 
@@ -149,6 +151,7 @@ export function createCodexSessionRuntime(): CodexSessionRuntime {
 		runtimeStarting = null;
 		listeners.clear();
 		for (const [requestId, request] of pendingRequests) {
+			clearTimeout(request.timeout);
 			request.reject(
 				new Error(`Codex app-server stopped before ${request.method}`),
 			);
@@ -313,9 +316,21 @@ async function startReusableRuntime(
 		onRequest: (request) =>
 			new Promise((resolve, reject) => {
 				const requestId = randomRequestId();
+				const timeout = setTimeout(
+					() => {
+						pendingRequests.delete(requestId);
+						reject(
+							new Error(
+								`Codex request timed out waiting for response: ${request.method}`,
+							),
+						);
+					},
+					5 * 60 * 1000,
+				);
 				pendingRequests.set(requestId, {
 					method: request.method,
 					params: request.params,
+					timeout,
 					resolve,
 					reject,
 				});

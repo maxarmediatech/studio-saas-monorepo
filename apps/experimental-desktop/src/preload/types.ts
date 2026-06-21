@@ -2,6 +2,7 @@ export type AppInfo = {
 	name: string;
 	version: string;
 	platform: NodeJS.Platform;
+	allowFullAccessMode: boolean;
 };
 
 export type OpenAiAuthStatus = {

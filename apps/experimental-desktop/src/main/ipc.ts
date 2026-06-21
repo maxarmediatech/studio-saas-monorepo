@@ -8,6 +8,8 @@ export function registerIpcHandlers(sidecarManager: SidecarManager) {
 		name: app.getName(),
 		version: app.getVersion(),
 		platform: process.platform,
+		allowFullAccessMode:
+			process.env.EXPERIMENTAL_DESKTOP_ENABLE_FULL_ACCESS_MODE === "1",
 	}));
 
 	ipcMain.handle("dialog:open-directory", async () => {

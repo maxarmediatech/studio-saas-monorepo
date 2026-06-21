@@ -33,11 +33,14 @@ const sessionInput =
 const sessionRequests =
 	document.querySelector<HTMLDivElement>("#session-requests");
 const sessionOutput = document.querySelector<HTMLPreElement>("#session-output");
+const sessionEventLog =
+	document.querySelector<HTMLPreElement>("#session-event-log");
 let authPoll: number | undefined;
 let currentSessionId: string | undefined;
 let unsubscribeSessionEvents: (() => void) | undefined;
 let assistantText = "";
 let currentSessionMode: CodexRuntimeMode = "read-only";
+let recentSessionEvents: string[] = [];
 const pendingRequests = new Map<
 	string,
 	Extract<SessionEvent, { type: "request.pending" }>
@@ -55,6 +58,7 @@ async function boot() {
 	if (appInfo) {
 		appInfo.textContent = `${info.name} ${info.version} · ${info.platform}`;
 	}
+	configureRuntimeModeOptions(info.allowFullAccessMode);
 	await refreshOpenAiStatus();
 }
 
@@ -242,8 +246,10 @@ newSession?.addEventListener("click", async () => {
 		setSessionStatus("Creating session...");
 		unsubscribeSessionEvents?.();
 		assistantText = "";
+		recentSessionEvents = [];
 		pendingRequests.clear();
 		writeSessionOutput("");
+		renderSessionEventLog();
 		renderPendingRequests();
 		const session = await window.experimentalDesktop.createSession({
 			model: "gpt-5.4-mini",
@@ -287,8 +293,10 @@ sendSessionMessage?.addEventListener("click", async () => {
 			return;
 		}
 		assistantText = "";
+		recentSessionEvents = [];
 		pendingRequests.clear();
 		writeSessionOutput("");
+		renderSessionEventLog();
 		renderPendingRequests();
 		setSessionStatus("Sending...");
 		await window.experimentalDesktop.sendSessionMessage(currentSessionId, {
@@ -309,6 +317,7 @@ logoutOpenAi?.addEventListener("click", async () => {
 });
 
 function handleSessionEvent(event: SessionEvent) {
+	appendSessionEvent(event);
 	if (event.type === "message.created") {
 		setSessionStatus("Running...");
 		return;
@@ -324,6 +333,8 @@ function handleSessionEvent(event: SessionEvent) {
 		return;
 	}
 	if (event.type === "message.failed") {
+		pendingRequests.clear();
+		renderPendingRequests();
 		setSessionStatus(`Failed · ${event.data.error}`);
 		return;
 	}
@@ -354,6 +365,57 @@ function writeSessionOutput(value: string) {
 	}
 }
 
+function appendSessionEvent(event: SessionEvent) {
+	recentSessionEvents = [
+		...recentSessionEvents,
+		`${new Date(event.time).toLocaleTimeString()} ${event.type} ${summarizeSessionEvent(event)}`,
+	].slice(-50);
+	renderSessionEventLog();
+}
+
+function renderSessionEventLog() {
+	if (sessionEventLog) {
+		sessionEventLog.textContent = recentSessionEvents.join("\n");
+		sessionEventLog.scrollTop = sessionEventLog.scrollHeight;
+	}
+}
+
+function summarizeSessionEvent(event: SessionEvent) {
+	if (event.type === "message.created") {
+		return trimForLog(event.data.text);
+	}
+	if (event.type === "assistant.delta") {
+		return trimForLog(event.data.text ?? "");
+	}
+	if (event.type === "assistant.completed") {
+		return event.data.turnId ? `turn=${event.data.turnId}` : "";
+	}
+	if (event.type === "message.failed") {
+		return trimForLog(event.data.error);
+	}
+	if (event.type === "request.pending") {
+		return [
+			event.data.requestKind,
+			event.data.turnId ? `turn=${event.data.turnId}` : "",
+			event.data.itemId ? `item=${event.data.itemId}` : "",
+		]
+			.filter(Boolean)
+			.join(" ");
+	}
+	if (event.type === "request.resolved") {
+		return `request=${event.data.requestId}`;
+	}
+	if (event.type === "provider.raw") {
+		return event.data.method;
+	}
+	return "";
+}
+
+function trimForLog(value: string) {
+	const trimmed = value.replace(/\s+/g, " ").trim();
+	return trimmed.length > 140 ? `${trimmed.slice(0, 137)}...` : trimmed;
+}
+
 function getSelectedSessionMode(): CodexRuntimeMode {
 	const value = sessionMode?.value;
 	if (
@@ -371,9 +433,19 @@ function formatRuntimeMode(mode: CodexRuntimeMode) {
 		return "Workspace Edit";
 	}
 	if (mode === "full-access") {
-		return "Full Access";
+		return "Full Access - no approvals";
 	}
 	return "Read Only";
+}
+
+function configureRuntimeModeOptions(allowFullAccessMode: boolean) {
+	if (!sessionMode || !allowFullAccessMode) {
+		return;
+	}
+	const option = document.createElement("option");
+	option.value = "full-access";
+	option.textContent = "Full Access - no approvals";
+	sessionMode.append(option);
 }
 
 function renderPendingRequests() {
@@ -400,41 +472,65 @@ function createRequestCard(
 	detail.textContent = summarizeRequest(event.data.raw);
 	const actions = document.createElement("div");
 	actions.className = "actions";
-	const primary = document.createElement("button");
-	primary.type = "button";
-	primary.textContent =
-		event.data.requestKind === "user-input" ? "Answer Default" : "Accept";
-	primary.addEventListener("click", () => {
-		void respondToPendingRequest(event, "accept");
-	});
-	actions.append(primary);
 	if (event.data.requestKind !== "user-input") {
-		const secondary = document.createElement("button");
-		secondary.type = "button";
-		secondary.textContent = "Decline";
-		secondary.addEventListener("click", () => {
-			void respondToPendingRequest(event, "decline");
-		});
-		actions.append(secondary);
+		actions.append(
+			createRequestButton("Accept Once", () => {
+				void respondToPendingRequest(event, "accept");
+			}),
+			createRequestButton("Accept For Session", () => {
+				void respondToPendingRequest(event, "acceptForSession");
+			}),
+			createRequestButton("Decline", () => {
+				void respondToPendingRequest(event, "decline");
+			}),
+			createRequestButton("Cancel", () => {
+				void respondToPendingRequest(event, "cancel");
+			}),
+		);
+	} else {
+		actions.append(
+			createRequestButton("Answer Default", () => {
+				void respondToPendingRequest(event, "accept");
+			}),
+			createRequestButton("Cancel", () => {
+				void respondToPendingRequest(event, "cancel");
+			}),
+		);
 	}
 	card.append(title, detail, actions);
 	return card;
 }
 
+function createRequestButton(label: string, onClick: () => void) {
+	const button = document.createElement("button");
+	button.type = "button";
+	button.textContent = label;
+	button.addEventListener("click", onClick);
+	return button;
+}
+
 async function respondToPendingRequest(
 	event: Extract<SessionEvent, { type: "request.pending" }>,
-	decision: "accept" | "decline",
+	decision: "accept" | "acceptForSession" | "decline" | "cancel",
 ) {
 	if (!currentSessionId) {
 		return;
 	}
 	try {
 		if (event.data.requestKind === "user-input") {
-			await window.experimentalDesktop.respondSessionRequest(
-				currentSessionId,
-				event.data.requestId,
-				{ answers: defaultAnswers(event.data.raw) },
-			);
+			if (decision === "cancel") {
+				await window.experimentalDesktop.respondSessionRequest(
+					currentSessionId,
+					event.data.requestId,
+					{ decision },
+				);
+			} else {
+				await window.experimentalDesktop.respondSessionRequest(
+					currentSessionId,
+					event.data.requestId,
+					{ answers: defaultAnswers(event.data.raw) },
+				);
+			}
 		} else {
 			await window.experimentalDesktop.respondSessionRequest(
 				currentSessionId,

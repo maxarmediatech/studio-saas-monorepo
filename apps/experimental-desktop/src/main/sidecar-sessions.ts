@@ -80,6 +80,7 @@ export function createSessionController(input: {
 	const sessionsByThreadId = new Map<string, Session>();
 	const sessionsByTurnId = new Map<string, Session>();
 	const sessionsByRequestId = new Map<string, Session>();
+	const pendingTurnSessions = new Set<Session>();
 	const unsubscribeRuntime = input.runtime.subscribe((event) => {
 		handleRuntimeEvent(event);
 	});
@@ -118,6 +119,7 @@ export function createSessionController(input: {
 		}
 		const message = validateMessage(body);
 		pushEvent(session, "message.created", { text: message.text });
+		pendingTurnSessions.add(session);
 		try {
 			const turn = await input.runtime.sendTurn({
 				threadId: session.threadId,
@@ -138,6 +140,8 @@ export function createSessionController(input: {
 				error instanceof Error ? error.message : String(error);
 			pushEvent(session, "message.failed", { error: message });
 			throw error;
+		} finally {
+			pendingTurnSessions.delete(session);
 		}
 	}
 
@@ -186,6 +190,7 @@ export function createSessionController(input: {
 		sessionsByThreadId.clear();
 		sessionsByTurnId.clear();
 		sessionsByRequestId.clear();
+		pendingTurnSessions.clear();
 	}
 
 	function handleRuntimeEvent(event: CodexRuntimeEvent) {
@@ -193,7 +198,8 @@ export function createSessionController(input: {
 		const turnId = readTurnId(event.params);
 		const session =
 			(threadId ? sessionsByThreadId.get(threadId) : undefined) ??
-			(turnId ? sessionsByTurnId.get(turnId) : undefined);
+			(turnId ? sessionsByTurnId.get(turnId) : undefined) ??
+			getSinglePendingTurnSession();
 		if (!session) {
 			return;
 		}
@@ -222,6 +228,7 @@ export function createSessionController(input: {
 				session.completedTurnIds.add(turnId);
 				sessionsByTurnId.delete(turnId);
 			}
+			pendingTurnSessions.delete(session);
 			if (isFailedTurn(event.params)) {
 				pushEvent(session, "message.failed", {
 					error: readTurnError(event.params),
@@ -249,6 +256,7 @@ export function createSessionController(input: {
 				turnId,
 				raw: event.params,
 			});
+			pendingTurnSessions.delete(session);
 			if (!turnId || session.activeTurnId === turnId) {
 				session.activeTurnId = undefined;
 			}
@@ -266,6 +274,13 @@ export function createSessionController(input: {
 			throw new SidecarHttpError(404, "Session not found");
 		}
 		return session;
+	}
+
+	function getSinglePendingTurnSession() {
+		if (pendingTurnSessions.size !== 1) {
+			return undefined;
+		}
+		return pendingTurnSessions.values().next().value;
 	}
 
 	return { create, sendMessage, events, respondToRequest, subscribe, stop };
@@ -295,6 +310,12 @@ function validateCreateSession(value: unknown): {
 }
 
 function validateRuntimeMode(value: unknown): CodexRuntimeMode {
+	if (value === "full-access" && !isFullAccessModeEnabled()) {
+		throw new SidecarHttpError(
+			403,
+			"Full Access mode is disabled. Set EXPERIMENTAL_DESKTOP_ENABLE_FULL_ACCESS_MODE=1 for local dev.",
+		);
+	}
 	if (
 		value === "read-only" ||
 		value === "workspace-write" ||
@@ -303,6 +324,10 @@ function validateRuntimeMode(value: unknown): CodexRuntimeMode {
 		return value;
 	}
 	return "read-only";
+}
+
+function isFullAccessModeEnabled() {
+	return process.env.EXPERIMENTAL_DESKTOP_ENABLE_FULL_ACCESS_MODE === "1";
 }
 
 function validateMessage(value: unknown): {
