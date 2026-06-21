@@ -31,22 +31,37 @@ export type SidecarManager = {
 export function createSidecarManager(): SidecarManager {
 	let sidecar: SidecarRuntime | null = null;
 	let sidecarStarting: Promise<SidecarRuntime> | null = null;
+	let startingChild: ReturnType<typeof utilityProcess.fork> | null = null;
+	let stopRequested = false;
 
 	async function ensure() {
+		stopRequested = false;
 		if (sidecar) {
 			return sidecar;
 		}
 		sidecarStarting ??= spawnSidecar().finally(() => {
 			sidecarStarting = null;
 		});
-		sidecar = await sidecarStarting;
-		return sidecar;
+		const runtime = await sidecarStarting;
+		if (stopRequested) {
+			await runtime.stop();
+			throw new Error("Sidecar startup was canceled");
+		}
+		sidecar = runtime;
+		return runtime;
 	}
 
 	async function stop() {
-		await sidecar?.stop();
+		stopRequested = true;
+		if (sidecar) {
+			await sidecar.stop();
+		} else if (startingChild) {
+			startingChild.kill();
+			await sidecarStarting?.catch(() => undefined);
+		}
 		sidecar = null;
 		sidecarStarting = null;
+		startingChild = null;
 	}
 
 	async function spawnSidecar(): Promise<SidecarRuntime> {
@@ -60,6 +75,7 @@ export function createSidecarManager(): SidecarManager {
 			serviceName: "experimental desktop sidecar",
 			stdio: "pipe",
 		});
+		startingChild = child;
 
 		child.stdout?.on("data", (chunk: Buffer) => {
 			console.log(`[sidecar] ${chunk.toString("utf8").trimEnd()}`);
@@ -84,6 +100,9 @@ export function createSidecarManager(): SidecarManager {
 				clearTimeout(timeout);
 				child.off("message", onMessage);
 				child.off("exit", onExit);
+				if (startingChild === child) {
+					startingChild = null;
+				}
 			};
 
 			const onExit = (code: number) => {
@@ -132,6 +151,9 @@ export function createSidecarManager(): SidecarManager {
 
 		child.once("exit", () => {
 			sidecar = null;
+			if (startingChild === child) {
+				startingChild = null;
+			}
 		});
 
 		return {

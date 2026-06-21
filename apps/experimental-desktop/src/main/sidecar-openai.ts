@@ -1,11 +1,13 @@
 import { createHash, randomBytes } from "node:crypto";
-import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import {
 	createServer,
 	type IncomingMessage,
 	type ServerResponse,
 } from "node:http";
-import { dirname, join } from "node:path";
+import {
+	createOpenAiAuthStore,
+	type StoredOpenAiAuth,
+} from "./sidecar-openai-storage";
 
 const CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann";
 const ISSUER = "https://auth.openai.com";
@@ -16,16 +18,6 @@ type TokenResponse = {
 	access_token: string;
 	refresh_token: string;
 	expires_in?: number;
-};
-
-type StoredAuth = {
-	type: "oauth";
-	provider: "openai";
-	access: string;
-	refresh: string;
-	expires: number;
-	accountId?: string;
-	updatedAt: string;
 };
 
 export type FreshOpenAiAuth = {
@@ -51,9 +43,12 @@ export function createOpenAiAuthController(options: {
 }) {
 	let oauthServer: ReturnType<typeof createServer> | undefined;
 	let pendingOAuth: PendingOAuth | undefined;
+	const authStore = createOpenAiAuthStore({
+		getUserDataPath: options.getUserDataPath,
+	});
 
 	async function getStatus() {
-		const auth = await readAuth();
+		const auth = await authStore.read();
 		const expired = Boolean(auth && auth.expires <= Date.now());
 		return {
 			connected: Boolean(auth && !expired),
@@ -74,7 +69,7 @@ export function createOpenAiAuthController(options: {
 		void callbackPromise
 			.then(async (tokens) => {
 				const accountId = extractAccountId(tokens);
-				await writeAuth({
+				await authStore.write({
 					type: "oauth",
 					provider: "openai",
 					access: tokens.access_token,
@@ -109,11 +104,11 @@ export function createOpenAiAuthController(options: {
 	}
 
 	async function logout() {
-		await writeAuth(null);
+		await authStore.write(null);
 	}
 
 	async function getFreshAuth(): Promise<FreshOpenAiAuth> {
-		const auth = await readAuth();
+		const auth = await authStore.read();
 		if (!auth) {
 			throw new Error("OpenAI auth is not connected");
 		}
@@ -278,32 +273,8 @@ export function createOpenAiAuthController(options: {
 		oauthServer = undefined;
 	}
 
-	async function readAuth(): Promise<StoredAuth | null> {
-		try {
-			const raw = await readFile(authPath(), "utf8");
-			const parsed = JSON.parse(raw) as StoredAuth;
-			return parsed.provider === "openai" ? parsed : null;
-		} catch {
-			return null;
-		}
-	}
-
-	async function writeAuth(auth: StoredAuth | null) {
-		const file = authPath();
-		await mkdir(dirname(file), { recursive: true });
-		if (!auth) {
-			await unlink(file).catch(() => undefined);
-			return;
-		}
-		await writeFile(file, JSON.stringify(auth, null, 2), { mode: 0o600 });
-	}
-
-	function authPath() {
-		return join(options.getUserDataPath(), "sidecar-auth", "openai.json");
-	}
-
-	async function refreshStoredAuth(): Promise<StoredAuth | null> {
-		const auth = await readAuth();
+	async function refreshStoredAuth(): Promise<StoredOpenAiAuth | null> {
+		const auth = await authStore.read();
 		if (!auth) {
 			return null;
 		}
@@ -315,8 +286,8 @@ export function createOpenAiAuthController(options: {
 			expires: Date.now() + (tokens.expires_in ?? 3600) * 1000,
 			accountId: extractAccountId(tokens) ?? auth.accountId,
 			updatedAt: new Date().toISOString(),
-		} satisfies StoredAuth;
-		await writeAuth(next);
+		} satisfies StoredOpenAiAuth;
+		await authStore.write(next);
 		return next;
 	}
 

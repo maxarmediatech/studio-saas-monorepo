@@ -68,48 +68,19 @@ export function registerIpcHandlers(sidecarManager: SidecarManager) {
 
 	ipcMain.handle("sidecar:send-codex-test", async () => {
 		const runtime = await sidecarManager.ensure();
-		const models = [
-			"gpt-5.5",
-			"gpt-5.4",
-			"gpt-5.4-mini",
-			"gpt-5.3-codex-spark",
-		];
-		const errors: string[] = [];
-		for (const model of models) {
-			try {
-				return await sidecarManager.fetch(runtime, "/codex/responses", {
-					method: "POST",
-					headers: { "content-type": "application/json" },
-					body: JSON.stringify({
-						model,
-						instructions:
-							"You are a concise smoke-test assistant. Confirm whether the Codex proxy works.",
-						input: [
-							{
-								role: "user",
-								content: [
-									{
-										type: "input_text",
-										text: "Reply with one short sentence confirming the Codex proxy works.",
-									},
-								],
-							},
-						],
-						store: false,
-						stream: true,
-					}),
-				});
-			} catch (error) {
-				const message =
-					error instanceof Error ? error.message : String(error);
-				errors.push(`${model}: ${message}`);
-				if (!message.includes("model is not supported")) {
-					throw error;
-				}
-			}
-		}
-		throw new Error(
-			`No tested Codex model was accepted by this ChatGPT account. ${errors.join(" | ")}`,
+		const session = (await sidecarManager.fetch(runtime, "/sessions", {
+			method: "POST",
+		})) as { id: string };
+		return sidecarManager.fetch(
+			runtime,
+			`/sessions/${encodeURIComponent(session.id)}/messages`,
+			{
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({
+					text: "Reply with one short sentence confirming the Codex proxy works.",
+				}),
+			},
 		);
 	});
 }

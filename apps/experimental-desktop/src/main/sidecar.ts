@@ -4,9 +4,10 @@ import {
 	type IncomingMessage,
 	type ServerResponse,
 } from "node:http";
+import { proxyCodexResponses, SidecarHttpError } from "./sidecar-codex";
 import { createOpenAiAuthController } from "./sidecar-openai";
+import { createSessionController } from "./sidecar-sessions";
 
-const CODEX_API_ENDPOINT = "https://chatgpt.com/backend-api/codex/responses";
 const MAX_BODY_BYTES = 1024 * 1024;
 
 type StartCommand = {
@@ -41,6 +42,9 @@ const openAiAuth = createOpenAiAuthController({
 		}
 		return commandState.userDataPath;
 	},
+});
+const sessions = createSessionController({
+	getFreshAuth: () => openAiAuth.getFreshAuth(),
 });
 
 parentPort.on("message", (event) => {
@@ -123,44 +127,55 @@ async function handleApiRequest(req: IncomingMessage, res: ServerResponse) {
 		}
 
 		if (req.method === "POST" && url.pathname === "/codex/responses") {
-			writeJson(res, 200, await proxyCodexResponses(req));
+			writeJson(
+				res,
+				200,
+				await proxyCodexResponses({
+					auth: await openAiAuth.getFreshAuth(),
+					body: await readJsonBody(req),
+				}),
+			);
+			return;
+		}
+
+		if (req.method === "POST" && url.pathname === "/sessions") {
+			writeJson(res, 200, sessions.create());
+			return;
+		}
+
+		const sessionMessageMatch = url.pathname.match(
+			/^\/sessions\/([^/]+)\/messages$/,
+		);
+		if (req.method === "POST" && sessionMessageMatch) {
+			writeJson(
+				res,
+				200,
+				await sessions.sendMessage(
+					decodeURIComponent(sessionMessageMatch[1]),
+					await readJsonBody(req),
+				),
+			);
+			return;
+		}
+
+		const sessionEventsMatch = url.pathname.match(
+			/^\/sessions\/([^/]+)\/events$/,
+		);
+		if (req.method === "GET" && sessionEventsMatch) {
+			writeJson(
+				res,
+				200,
+				sessions.events(decodeURIComponent(sessionEventsMatch[1])),
+			);
 			return;
 		}
 
 		writeJson(res, 404, { error: "Not found" });
 	} catch (error) {
-		writeJson(res, 500, {
+		writeJson(res, error instanceof SidecarHttpError ? error.status : 500, {
 			error: error instanceof Error ? error.message : String(error),
 		});
 	}
-}
-
-async function proxyCodexResponses(req: IncomingMessage) {
-	const auth = await openAiAuth.getFreshAuth();
-	const body = await readRequestBody(req);
-	const headers = new Headers({
-		authorization: `Bearer ${auth.access}`,
-		"content-type": "application/json",
-		originator: "opencode",
-		"user-agent": "experimental-desktop",
-	});
-	if (auth.accountId) {
-		headers.set("ChatGPT-Account-Id", auth.accountId);
-	}
-
-	const response = await fetch(CODEX_API_ENDPOINT, {
-		method: "POST",
-		headers,
-		body,
-	});
-	const responseBody = await readResponseBody(response);
-	if (!response.ok) {
-		throw new Error(
-			`Codex request failed: ${response.status} ${response.statusText}${responseBody ? `: ${responseBody}` : ""}`,
-		);
-	}
-
-	return parseJsonOrText(responseBody);
 }
 
 function isAuthorized(req: IncomingMessage) {
@@ -186,6 +201,18 @@ function writeJson(res: ServerResponse, status: number, body: unknown) {
 	res.end(JSON.stringify(body));
 }
 
+async function readJsonBody(req: IncomingMessage) {
+	const body = await readRequestBody(req);
+	if (!body) {
+		return null;
+	}
+	try {
+		return JSON.parse(body) as unknown;
+	} catch {
+		throw new SidecarHttpError(400, "Request body must be valid JSON");
+	}
+}
+
 function readRequestBody(req: IncomingMessage) {
 	return new Promise<string>((resolve, reject) => {
 		let size = 0;
@@ -204,55 +231,6 @@ function readRequestBody(req: IncomingMessage) {
 			resolve(Buffer.concat(chunks).toString("utf8"));
 		});
 	});
-}
-
-async function readResponseBody(response: Response) {
-	return response.text();
-}
-
-function parseJsonOrText(value: string) {
-	if (!value) {
-		return null;
-	}
-	if (value.includes("\nevent:") || value.startsWith("event:")) {
-		return parseServerSentEvents(value);
-	}
-	try {
-		return JSON.parse(value) as unknown;
-	} catch {
-		return { text: value };
-	}
-}
-
-function parseServerSentEvents(value: string) {
-	let outputText = "";
-	for (const line of value.split("\n")) {
-		if (!line.startsWith("data: ")) {
-			continue;
-		}
-		const data = line.slice("data: ".length);
-		if (!data || data === "[DONE]") {
-			continue;
-		}
-		try {
-			const event = JSON.parse(data) as Record<string, unknown>;
-			if (
-				event.type === "response.output_text.delta" &&
-				typeof event.delta === "string"
-			) {
-				outputText += event.delta;
-			}
-			if (
-				event.type === "response.output_text.done" &&
-				typeof event.text === "string"
-			) {
-				outputText = event.text;
-			}
-		} catch {
-			// Ignore non-JSON SSE keepalives.
-		}
-	}
-	return outputText ? { output_text: outputText } : { text: value };
 }
 
 function closeServer(server: ReturnType<typeof createServer> | undefined) {
