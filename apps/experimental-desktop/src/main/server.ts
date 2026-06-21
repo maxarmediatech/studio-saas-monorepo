@@ -6,7 +6,6 @@ import { fileURLToPath } from "node:url";
 import { app, safeStorage, utilityProcess } from "electron";
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
-const authStore = createMainOpenAiAuthStore();
 
 export type SidecarRuntime = {
 	url: string;
@@ -66,6 +65,7 @@ export function createSidecarManager(): SidecarManager {
 	let sidecarStarting: Promise<SidecarRuntime> | null = null;
 	let startingChild: ReturnType<typeof utilityProcess.fork> | null = null;
 	let stopRequested = false;
+	const managerAuthStore = createMainOpenAiAuthStore();
 
 	async function ensure() {
 		stopRequested = false;
@@ -117,7 +117,7 @@ export function createSidecarManager(): SidecarManager {
 			console.warn(`[sidecar] ${chunk.toString("utf8").trimEnd()}`);
 		});
 		child.on("message", (message: unknown) => {
-			void handleSidecarRuntimeMessage(child, message);
+			void handleSidecarRuntimeMessage(child, message, managerAuthStore);
 		});
 
 		await new Promise<void>((resolve, reject) => {
@@ -196,7 +196,13 @@ export function createSidecarManager(): SidecarManager {
 			username,
 			password,
 			stop: async () => {
-				child.postMessage({ type: "stop" });
+				try {
+					child.postMessage({ type: "stop" });
+				} catch (error) {
+					console.warn(
+						`[sidecar] failed to request stop: ${error instanceof Error ? error.message : String(error)}`,
+					);
+				}
 				await new Promise<void>((resolve) => {
 					const timeout = setTimeout(() => {
 						child.kill();
@@ -221,6 +227,7 @@ export function createSidecarManager(): SidecarManager {
 async function handleSidecarRuntimeMessage(
 	child: ReturnType<typeof utilityProcess.fork>,
 	message: unknown,
+	storage: ReturnType<typeof createMainOpenAiAuthStore>,
 ) {
 	const requestId = getAuthStorageRequestId(message);
 	try {
@@ -233,11 +240,11 @@ async function handleSidecarRuntimeMessage(
 				type: "auth-storage:response",
 				id: request.id,
 				ok: true,
-				auth: await authStore.read(),
+				auth: await storage.read(),
 			});
 			return;
 		}
-		await authStore.write(request.auth);
+		await storage.write(request.auth);
 		child.postMessage({
 			type: "auth-storage:response",
 			id: request.id,
@@ -352,9 +359,16 @@ function parseStoredAuth(raw: string): StoredOpenAiAuth {
 		const decrypted = safeStorage.decryptString(
 			Buffer.from(parsed.data, "base64"),
 		);
-		return JSON.parse(decrypted) as StoredOpenAiAuth;
+		return validateStoredOpenAiAuth(JSON.parse(decrypted));
 	}
-	return parsed as StoredOpenAiAuth;
+	return validateStoredOpenAiAuth(parsed);
+}
+
+function validateStoredOpenAiAuth(value: unknown): StoredOpenAiAuth {
+	if (!isStoredOpenAiAuth(value)) {
+		throw new Error("Invalid stored OpenAI auth payload");
+	}
+	return value;
 }
 
 function serializeStoredAuth(auth: StoredOpenAiAuth) {
