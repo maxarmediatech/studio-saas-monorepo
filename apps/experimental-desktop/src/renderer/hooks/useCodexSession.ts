@@ -305,6 +305,20 @@ export function useCodexSession(input: {
 			);
 			setIsTurnActive(true);
 			setStatus("Running...");
+			return;
+		}
+		if (event.type === "session.compacted") {
+			setTranscript((items) => [
+				...items,
+				{
+					id: event.id,
+					type: "system",
+					text: `Session compacted · ${event.data.tokensBefore.toLocaleString()} tokens summarized`,
+					time: event.time,
+				},
+			]);
+			setStatus("Session compacted");
+			void refreshConversations();
 		}
 	}
 
@@ -431,6 +445,9 @@ function summarizeSessionEvent(event: SessionEvent) {
 	}
 	if (event.type === "provider.raw") {
 		return event.data.method;
+	}
+	if (event.type === "session.compacted") {
+		return `${event.data.reason} ${event.data.tokensBefore.toLocaleString()} tokens`;
 	}
 	return "";
 }

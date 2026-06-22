@@ -23,7 +23,11 @@ import {
 	validateSendBody,
 } from "./controller-utils";
 import { ConversationRepository } from "./repository";
-import { buildSummaryRequest, estimateTokens } from "./summarizer";
+import {
+	buildSummaryRequest,
+	chunkMessagesForCompaction,
+	estimateTokens,
+} from "./summarizer";
 import type { ConversationEvent } from "./types";
 
 type ActiveTurn = {
@@ -43,6 +47,9 @@ type ActiveApproval = {
 };
 
 const MIN_SUMMARY_SOURCE_MESSAGES = 4;
+const MIN_COMPACTION_SOURCE_MESSAGES = 8;
+const AUTO_COMPACT_TOKEN_THRESHOLD = 24_000;
+const COMPACTION_KEEP_RECENT_TOKENS = 20_000;
 
 export function createConversationController(input: {
 	db: ConversationDatabase;
@@ -181,9 +188,16 @@ export function createConversationController(input: {
 		const message = validateSendBody(body);
 		assertNoActiveTurn();
 		const conversation = repo.getConversation(conversationId);
-		const providerSession = repo.getProviderSession(conversationId);
+		let providerSession = repo.getProviderSession(conversationId);
 		if (!conversation || !providerSession) {
 			throw new Error("Conversation is not ready to continue");
+		}
+		await maybeAutoCompactConversation(conversationId, {
+			model: message.model ?? conversation.model,
+		});
+		providerSession = repo.getProviderSession(conversationId);
+		if (!providerSession) {
+			throw new Error("Conversation provider session is missing");
 		}
 		const shouldResumeProviderThread =
 			!!providerSession.provider_thread_id &&
@@ -344,16 +358,24 @@ export function createConversationController(input: {
 			messageId: value.messageId,
 			now: now(),
 		});
-		queueSummary({
-			conversationId,
-			messageId: value.messageId,
-			type: "branch",
-			abandonedLeafMessageId:
-				previousLeafMessageId === value.messageId
-					? undefined
-					: previousLeafMessageId,
-			model: conversation?.model,
-		});
+		if (
+			previousLeafMessageId &&
+			previousLeafMessageId !== value.messageId
+		) {
+			queueSummary({
+				conversationId,
+				messageId: value.messageId,
+				type: "branch",
+				abandonedLeafMessageId: previousLeafMessageId,
+				checkpointMessageId: value.messageId,
+				messages: repo.getBranchSummarySource({
+					conversationId,
+					fromMessageId: previousLeafMessageId,
+					toMessageId: value.messageId,
+				}),
+				model: conversation?.model,
+			});
+		}
 		return conversation;
 	}
 
@@ -467,19 +489,89 @@ export function createConversationController(input: {
 		return input.sidecarManager.fetch(runtime, path, init);
 	}
 
+	async function maybeAutoCompactConversation(
+		conversationId: string,
+		input: { model?: string },
+	) {
+		const activeLeafMessageId = repo.getActiveLeafMessageId(conversationId);
+		if (!activeLeafMessageId) {
+			return false;
+		}
+		const source = repo.getCompactionSource({
+			conversationId,
+			messageId: activeLeafMessageId,
+			keepRecentTokens: COMPACTION_KEEP_RECENT_TOKENS,
+		});
+		const tokensBefore = estimateTokens(source.candidateMessages);
+		if (
+			tokensBefore < AUTO_COMPACT_TOKEN_THRESHOLD ||
+			source.candidateMessages.length < MIN_COMPACTION_SOURCE_MESSAGES ||
+			source.headMessages.length === 0 ||
+			!source.tailStartMessageId ||
+			!source.lastSummarizedMessageId
+		) {
+			return false;
+		}
+		try {
+			const stored = await generateAndStoreSummary({
+				conversationId,
+				messageId: activeLeafMessageId,
+				type: "compaction",
+				model: input.model,
+				messages: source.headMessages,
+				previousSummary: source.previousSummary?.summary,
+				checkpointMessageId: source.lastSummarizedMessageId,
+				tailStartMessageId: source.tailStartMessageId,
+				tokensBefore,
+			});
+			if (!stored) {
+				return false;
+			}
+			repo.markProviderThreadStale(conversationId, stored.createdAt);
+			const event: ConversationEvent = {
+				id: randomUUID(),
+				type: "session.compacted",
+				time: stored.createdAt,
+				data: {
+					summaryId: stored.summaryId,
+					messageId: activeLeafMessageId,
+					reason: "auto",
+					tokensBefore,
+				},
+			};
+			repo.recordEvent({
+				id: event.id,
+				conversationId,
+				type: event.type,
+				raw: event.data,
+				now: event.time,
+			});
+			broadcast(conversationId, event);
+			return true;
+		} catch (error) {
+			console.warn(
+				"[conversations] failed to auto-compact session",
+				error,
+			);
+			return false;
+		}
+	}
+
 	function queueSummary(input: {
 		conversationId: string;
 		messageId: string;
 		type: "branch" | "fork";
 		abandonedLeafMessageId?: string;
+		checkpointMessageId?: string;
+		messages?: ReturnType<typeof repo.getSummarySource>;
 		model?: string;
 	}) {
-		// Replay summaries describe the kept path to the checkpoint. The
-		// abandoned leaf is only metadata until product UI needs that story.
-		const messages = repo.getSummarySource({
-			conversationId: input.conversationId,
-			messageId: input.messageId,
-		});
+		const messages =
+			input.messages ??
+			repo.getSummarySource({
+				conversationId: input.conversationId,
+				messageId: input.messageId,
+			});
 		if (messages.length < MIN_SUMMARY_SOURCE_MESSAGES) {
 			return;
 		}
@@ -497,35 +589,57 @@ export function createConversationController(input: {
 	async function generateAndStoreSummary(input: {
 		conversationId: string;
 		messageId: string;
-		type: "branch" | "fork";
+		type: "branch" | "fork" | "compaction";
 		abandonedLeafMessageId?: string;
 		model?: string;
 		messages: ReturnType<typeof repo.getSummarySource>;
+		previousSummary?: string;
+		checkpointMessageId?: string;
+		tailStartMessageId?: string;
+		tokensBefore?: number;
 	}) {
-		const response = (await sidecarFetch("/summaries/conversation", {
-			method: "POST",
-			headers: { "content-type": "application/json" },
-			body: JSON.stringify(
-				buildSummaryRequest({
-					model: input.model,
-					purpose: input.type,
-					messages: input.messages,
-				}),
-			),
-		})) as { summary?: string };
-		if (!response.summary?.trim()) {
-			return;
+		let summary = input.previousSummary;
+		const chunks =
+			input.type === "compaction"
+				? chunkMessagesForCompaction(input.messages)
+				: [input.messages];
+		for (const chunk of chunks) {
+			const response = (await sidecarFetch("/summaries/conversation", {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify(
+					buildSummaryRequest({
+						model: input.model,
+						purpose: input.type,
+						messages: chunk,
+						previousSummary: summary,
+					}),
+				),
+			})) as { summary?: string };
+			if (!response.summary?.trim()) {
+				return undefined;
+			}
+			summary = response.summary.trim();
 		}
+		if (!summary?.trim()) {
+			return undefined;
+		}
+		const summaryId = randomUUID();
+		const createdAt = now();
 		repo.storeSummary({
-			id: randomUUID(),
+			id: summaryId,
 			conversationId: input.conversationId,
 			type: input.type,
-			summary: response.summary.trim(),
+			summary: summary.trim(),
 			abandonedLeafMessageId: input.abandonedLeafMessageId,
-			firstKeptMessageId: input.messageId,
-			tokensBefore: estimateTokens(input.messages),
-			now: now(),
+			checkpointMessageId:
+				input.checkpointMessageId ??
+				(input.type === "compaction" ? undefined : input.messageId),
+			tailStartMessageId: input.tailStartMessageId,
+			tokensBefore: input.tokensBefore ?? estimateTokens(input.messages),
+			now: createdAt,
 		});
+		return { summaryId, createdAt };
 	}
 
 	async function streamRuntimeEvents(
@@ -626,6 +740,7 @@ export function createConversationController(input: {
 			clearTurn(activeTurn.turnId, providerTurnId);
 			return;
 		}
+		recordProviderContext(activeTurn, event);
 		const persisted: ConversationEvent = {
 			id: randomUUID(),
 			type: "provider.raw",
@@ -639,6 +754,38 @@ export function createConversationController(input: {
 			type: persisted.type,
 			raw: event.params,
 			event: persisted,
+		});
+	}
+
+	function recordProviderContext(
+		activeTurn: ActiveTurn,
+		event: Extract<CodexRuntimeEvent, { kind: "notification" }>,
+	) {
+		const context = providerContextFromEvent(event.method, event.params);
+		if (!context) {
+			return;
+		}
+		const providerItemId = readItemId(event.params) ?? context.itemId;
+		repo.recordProviderContextPart({
+			id: [
+				activeTurn.assistantMessageId,
+				"provider",
+				safePartId(context.kind),
+				safePartId(providerItemId ?? event.method),
+			].join(":"),
+			conversationId: activeTurn.conversationId,
+			messageId: activeTurn.assistantMessageId,
+			turnId: activeTurn.turnId,
+			providerItemId,
+			type: context.type,
+			text: context.text,
+			json: {
+				method: event.method,
+				params: event.params,
+				kind: context.kind,
+			},
+			append: context.append,
+			now: now(),
 		});
 	}
 
@@ -937,4 +1084,161 @@ export function createConversationController(input: {
 		subscribe,
 		stop,
 	};
+}
+
+type ProviderContextPart = {
+	type: "tool_call" | "tool_result" | "raw";
+	kind: string;
+	itemId?: string;
+	text?: string;
+	append?: boolean;
+};
+
+function providerContextFromEvent(
+	method: string,
+	params: unknown,
+): ProviderContextPart | undefined {
+	if (method === "item/started") {
+		const item = readPayloadItem(params);
+		const itemType = normalizeProviderItemType(item?.type);
+		if (!item || !isContextItemType(itemType)) {
+			return undefined;
+		}
+		return {
+			type: "tool_call",
+			kind: itemType,
+			itemId: readString(item.id),
+			text: readProviderItemDetail(item),
+		};
+	}
+	if (method === "item/completed") {
+		const item = readPayloadItem(params);
+		const itemType = normalizeProviderItemType(item?.type);
+		if (!item || !isContextItemType(itemType)) {
+			return undefined;
+		}
+		return {
+			type: "tool_result",
+			kind: itemType,
+			itemId: readString(item.id),
+			text: readProviderItemDetail(item),
+		};
+	}
+	if (method === "item/commandExecution/outputDelta") {
+		return {
+			type: "tool_result",
+			kind: "command_output",
+			itemId: readItemId(params),
+			text: readDeltaText(params),
+			append: true,
+		};
+	}
+	if (method === "item/fileChange/outputDelta") {
+		return {
+			type: "tool_result",
+			kind: "file_change_output",
+			itemId: readItemId(params),
+			text: readDeltaText(params),
+			append: true,
+		};
+	}
+	if (
+		method === "item/reasoning/textDelta" ||
+		method === "item/reasoning/summaryTextDelta" ||
+		method === "item/plan/delta"
+	) {
+		return {
+			type: "raw",
+			kind: method.replaceAll("/", "_"),
+			itemId: readItemId(params),
+			text: readDeltaText(params),
+			append: true,
+		};
+	}
+	if (
+		method === "turn/plan/updated" ||
+		method === "turn/diff/updated" ||
+		method === "thread/tokenUsage/updated" ||
+		method === "thread/compacted"
+	) {
+		return {
+			type: "raw",
+			kind: method.replaceAll("/", "_"),
+			text: summarizeProviderParams(params),
+		};
+	}
+	return undefined;
+}
+
+function readPayloadItem(value: unknown) {
+	if (!isRecord(value) || !isRecord(value.item)) {
+		return undefined;
+	}
+	return value.item;
+}
+
+function normalizeProviderItemType(value: unknown) {
+	return typeof value === "string"
+		? value
+				.replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+				.replace(/[._/-]/g, " ")
+				.replace(/\s+/g, " ")
+				.trim()
+				.toLowerCase()
+		: "";
+}
+
+function isContextItemType(type: string) {
+	return (
+		type.includes("command") ||
+		type.includes("file change") ||
+		type.includes("mcp") ||
+		type.includes("dynamic tool") ||
+		type.includes("collab") ||
+		type.includes("web search") ||
+		type.includes("reasoning") ||
+		type.includes("plan") ||
+		type.includes("compact") ||
+		type.includes("error")
+	);
+}
+
+function readProviderItemDetail(item: Record<string, unknown>) {
+	for (const key of [
+		"command",
+		"title",
+		"summary",
+		"text",
+		"path",
+		"prompt",
+	]) {
+		const value = readString(item[key]);
+		if (value) {
+			return value;
+		}
+	}
+	return summarizeProviderParams(item);
+}
+
+function readString(value: unknown) {
+	return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function summarizeProviderParams(value: unknown) {
+	if (typeof value === "string") {
+		return value;
+	}
+	try {
+		return JSON.stringify(value);
+	} catch {
+		return String(value);
+	}
+}
+
+function safePartId(value: string) {
+	return value.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 96) || "item";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return !!value && typeof value === "object" && !Array.isArray(value);
 }

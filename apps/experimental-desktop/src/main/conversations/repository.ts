@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { CodexRuntimeMode } from "../sidecar-codex-runtime";
 import type { ConversationDatabase } from "../storage/database";
+import { estimateTokens } from "./summarizer";
 import type {
 	ApprovalKind,
 	ApprovalStatus,
@@ -529,33 +530,73 @@ export class ConversationRepository {
 	}
 
 	buildReplayPrompt(conversationId: string, userText: string) {
-		const messages = this.listMessages(conversationId);
+		const messages = this.withSummaryContext(
+			this.listMessages(conversationId),
+		);
 		if (messages.length === 0) {
 			return userText;
 		}
-		const summary = this.getLatestApplicableSummary(
+		const compactionSummary = this.getLatestApplicableSummary(
 			conversationId,
 			messages,
+			"compaction",
 		);
-		const checkpointIndex = summary?.firstKeptMessageId
-			? messages.findIndex(
-					(message) => message.id === summary.firstKeptMessageId,
-				)
+		const branchSummary = this.getLatestApplicableSummary(
+			conversationId,
+			messages,
+			"branch",
+		);
+		const forkSummary = this.getLatestApplicableSummary(
+			conversationId,
+			messages,
+			"fork",
+		);
+		const replayBoundarySummary =
+			compactionSummary ?? branchSummary ?? forkSummary;
+		const boundaryId = replayBoundarySummary
+			? replayBoundaryId(replayBoundarySummary)
+			: undefined;
+		const boundaryIndex = boundaryId
+			? messages.findIndex((message) => message.id === boundaryId)
 			: -1;
 		const transcriptMessages =
-			summary && checkpointIndex >= 0
-				? messages.slice(checkpointIndex + 1)
+			replayBoundarySummary && boundaryIndex >= 0
+				? messages.slice(
+						replayBoundarySummary.type === "compaction"
+							? boundaryIndex
+							: boundaryIndex + 1,
+					)
 				: messages.slice(-12);
 		const transcript = transcriptMessages
-			.map((message) => `${message.role.toUpperCase()}: ${message.text}`)
+			.map(formatReplayMessage)
 			.join("\n\n");
 		const prompt = [
-			"Continue from this branched local conversation transcript.",
-			"Use it as context, but answer only the latest user message.",
+			compactionSummary
+				? "Continue this local smart-agent session from the compacted checkpoint."
+				: "Continue from this local conversation transcript.",
+			"Use the checkpoint, branch context, and recent transcript as context, but answer only the latest user message.",
 			"",
 		];
-		if (summary) {
-			prompt.push("CHECKPOINT SUMMARY:", summary.summary, "");
+		if (compactionSummary) {
+			prompt.push("SESSION CHECKPOINT:", compactionSummary.summary, "");
+		}
+		if (branchSummary) {
+			prompt.push("ABANDONED BRANCH CONTEXT:", branchSummary.summary, "");
+		}
+		if (forkSummary) {
+			prompt.push("FORK HANDOFF CONTEXT:", forkSummary.summary, "");
+		}
+		if (
+			!compactionSummary &&
+			!branchSummary &&
+			!forkSummary &&
+			replayBoundarySummary
+		) {
+			prompt.push(
+				"CHECKPOINT SUMMARY:",
+				replayBoundarySummary.summary,
+				"",
+			);
 		}
 		if (transcript) {
 			prompt.push("RECENT TRANSCRIPT:", transcript, "");
@@ -568,7 +609,89 @@ export class ConversationRepository {
 		conversationId: string;
 		messageId: string;
 	}): ConversationMessage[] {
-		return this.listMessagePathTo(input.conversationId, input.messageId);
+		return this.withSummaryContext(
+			this.listMessagePathTo(input.conversationId, input.messageId),
+		);
+	}
+
+	getBranchSummarySource(input: {
+		conversationId: string;
+		fromMessageId: string;
+		toMessageId: string;
+	}) {
+		const fromPath = this.listMessagePathTo(
+			input.conversationId,
+			input.fromMessageId,
+		);
+		const toPath = this.listMessagePathTo(
+			input.conversationId,
+			input.toMessageId,
+		);
+		let commonIndex = -1;
+		for (
+			let index = 0;
+			index < Math.min(fromPath.length, toPath.length);
+			index += 1
+		) {
+			if (fromPath[index].id !== toPath[index].id) {
+				break;
+			}
+			commonIndex = index;
+		}
+		return this.withSummaryContext(fromPath.slice(commonIndex + 1));
+	}
+
+	getCompactionSource(input: {
+		conversationId: string;
+		messageId: string;
+		keepRecentTokens: number;
+	}) {
+		const activePath = this.withSummaryContext(
+			this.listMessagePathTo(input.conversationId, input.messageId),
+		);
+		const previousSummary = this.getLatestApplicableSummary(
+			input.conversationId,
+			activePath,
+			"compaction",
+		);
+		const previousBoundaryId = previousSummary
+			? replayBoundaryId(previousSummary)
+			: undefined;
+		const previousBoundaryIndex = previousBoundaryId
+			? activePath.findIndex(
+					(message) => message.id === previousBoundaryId,
+				)
+			: -1;
+		const candidateMessages =
+			previousSummary && previousBoundaryIndex >= 0
+				? activePath.slice(previousBoundaryIndex)
+				: activePath;
+		const tailStartIndex = findTailStartIndex(
+			candidateMessages,
+			input.keepRecentTokens,
+		);
+		const headMessages = candidateMessages.slice(0, tailStartIndex);
+		const tailMessages = candidateMessages.slice(tailStartIndex);
+		return {
+			activePath,
+			candidateMessages,
+			headMessages,
+			tailMessages,
+			tailStartMessageId: tailMessages[0]?.id,
+			lastSummarizedMessageId: headMessages.at(-1)?.id,
+			previousSummary,
+		};
+	}
+
+	getLatestApplicableCompaction(
+		conversationId: string,
+		messages: ConversationMessage[],
+	) {
+		return this.getLatestApplicableSummary(
+			conversationId,
+			messages,
+			"compaction",
+		);
 	}
 
 	storeSummary(input: {
@@ -578,19 +701,27 @@ export class ConversationRepository {
 		summary: string;
 		abandonedLeafMessageId?: string;
 		firstKeptMessageId?: string;
+		checkpointMessageId?: string;
+		tailStartMessageId?: string;
 		tokensBefore?: number;
 		now: string;
 	}) {
+		const firstKeptMessageId =
+			input.firstKeptMessageId ??
+			input.tailStartMessageId ??
+			input.checkpointMessageId;
 		this.db
 			.prepare(
 				`INSERT INTO conversation_summaries
-				(id, conversation_id, type, summary, abandoned_leaf_message_id, first_kept_message_id, tokens_before, created_at)
-				VALUES (@id, @conversationId, @type, @summary, @abandonedLeafMessageId, @firstKeptMessageId, @tokensBefore, @now)`,
+				(id, conversation_id, type, summary, abandoned_leaf_message_id, first_kept_message_id, checkpoint_message_id, tail_start_message_id, tokens_before, created_at)
+				VALUES (@id, @conversationId, @type, @summary, @abandonedLeafMessageId, @firstKeptMessageId, @checkpointMessageId, @tailStartMessageId, @tokensBefore, @now)`,
 			)
 			.run({
 				...input,
 				abandonedLeafMessageId: input.abandonedLeafMessageId ?? null,
-				firstKeptMessageId: input.firstKeptMessageId ?? null,
+				firstKeptMessageId: firstKeptMessageId ?? null,
+				checkpointMessageId: input.checkpointMessageId ?? null,
+				tailStartMessageId: input.tailStartMessageId ?? null,
 				tokensBefore: input.tokensBefore ?? null,
 			});
 	}
@@ -685,6 +816,63 @@ export class ConversationRepository {
 				WHERE id = @providerSessionId`,
 			)
 			.run(input);
+	}
+
+	markProviderThreadStale(conversationId: string, now: string) {
+		this.db
+			.prepare(
+				`UPDATE provider_sessions
+				SET provider_leaf_message_id = NULL,
+					status = 'idle',
+					updated_at = @now
+				WHERE conversation_id = @conversationId`,
+			)
+			.run({ conversationId, now });
+	}
+
+	recordProviderContextPart(input: {
+		id: string;
+		conversationId: string;
+		messageId: string;
+		turnId?: string;
+		providerItemId?: string;
+		type: "tool_call" | "tool_result" | "approval" | "raw";
+		text?: string;
+		json: JsonValue;
+		append?: boolean;
+		now: string;
+	}) {
+		this.db
+			.prepare(
+				`INSERT OR IGNORE INTO message_parts
+				(id, conversation_id, message_id, turn_id, provider_item_id, ordinal, type, text, json, created_at, updated_at)
+				VALUES (@id, @conversationId, @messageId, @turnId, @providerItemId, @ordinal, @type, '', '{}', @now, @now)`,
+			)
+			.run({
+				...input,
+				turnId: input.turnId ?? null,
+				providerItemId: input.providerItemId ?? null,
+				ordinal: this.nextPartOrdinal(input.messageId),
+			});
+		this.db
+			.prepare(
+				`UPDATE message_parts
+				SET text = CASE
+						WHEN @append = 1 THEN COALESCE(text, '') || @text
+						WHEN @text IS NOT NULL THEN @text
+						ELSE text
+					END,
+					json = @json,
+					updated_at = @now
+				WHERE id = @id`,
+			)
+			.run({
+				id: input.id,
+				append: input.append ? 1 : 0,
+				text: input.text ?? null,
+				json: stringify(input.json),
+				now: input.now,
+			});
 	}
 
 	recordEvent(input: {
@@ -981,6 +1169,15 @@ export class ConversationRepository {
 		return row.ordinal;
 	}
 
+	private nextPartOrdinal(messageId: string) {
+		const row = this.db
+			.prepare(
+				"SELECT COALESCE(MAX(ordinal), -1) + 1 AS ordinal FROM message_parts WHERE message_id = ?",
+			)
+			.get(messageId) as { ordinal: number };
+		return row.ordinal;
+	}
+
 	private setActiveLeafMessage(
 		conversationId: string,
 		messageId: string,
@@ -1075,24 +1272,123 @@ export class ConversationRepository {
 		return rows.map(mapApproval);
 	}
 
+	private withSummaryContext(
+		messages: ConversationMessage[],
+	): ConversationMessage[] {
+		if (messages.length === 0) {
+			return messages;
+		}
+		const messageIds = messages.map((message) => message.id);
+		const turnIds = messages
+			.map((message) => message.turnId)
+			.filter((turnId): turnId is string => Boolean(turnId));
+		const parts = this.listSummaryParts(messageIds);
+		const approvals = this.listSummaryApprovals(turnIds);
+		const events = this.listSummaryEvents(turnIds);
+		return messages.map((message) => ({
+			...message,
+			summaryContext: [
+				...(parts.get(message.id) ?? []),
+				...(message.turnId
+					? (approvals.get(message.turnId) ?? [])
+					: []),
+				...(message.turnId ? (events.get(message.turnId) ?? []) : []),
+			],
+		}));
+	}
+
+	private listSummaryParts(messageIds: string[]) {
+		const context = new Map<string, string[]>();
+		for (const chunk of chunksOf(messageIds)) {
+			const rows = this.db
+				.prepare(
+					`SELECT * FROM message_parts
+					WHERE message_id IN (${placeholders(chunk)})
+						AND type != 'text'
+					ORDER BY message_id ASC, ordinal ASC`,
+				)
+				.all(...chunk) as MessagePartRow[];
+			for (const row of rows) {
+				pushContext(
+					context,
+					row.message_id,
+					`[${row.type.toUpperCase()}${row.provider_item_id ? ` ${row.provider_item_id}` : ""}] ${trimSummaryValue(row.text ?? row.json)}`,
+				);
+			}
+		}
+		return context;
+	}
+
+	private listSummaryApprovals(turnIds: string[]) {
+		const context = new Map<string, string[]>();
+		for (const chunk of chunksOf(turnIds)) {
+			const rows = this.db
+				.prepare(
+					`SELECT * FROM approvals
+					WHERE turn_id IN (${placeholders(chunk)})
+					ORDER BY created_at ASC`,
+				)
+				.all(...chunk) as SummaryApprovalRow[];
+			for (const row of rows) {
+				pushContext(
+					context,
+					row.turn_id,
+					`[APPROVAL ${row.kind} ${row.status}] request=${trimSummaryValue(row.request_json)}${row.response_json ? ` response=${trimSummaryValue(row.response_json)}` : ""}`,
+				);
+			}
+		}
+		return context;
+	}
+
+	private listSummaryEvents(turnIds: string[]) {
+		const context = new Map<string, string[]>();
+		for (const chunk of chunksOf(turnIds)) {
+			const rows = this.db
+				.prepare(
+					`SELECT * FROM events
+					WHERE turn_id IN (${placeholders(chunk)})
+						AND type IN ('message.failed', 'request.pending', 'request.resolved', 'provider.raw')
+					ORDER BY created_at ASC`,
+				)
+				.all(...chunk) as SummaryEventRow[];
+			for (const row of rows) {
+				pushContext(
+					context,
+					row.turn_id,
+					`[EVENT ${row.type}] ${trimSummaryValue(row.raw_json)}`,
+				);
+			}
+		}
+		return context;
+	}
+
 	private getLatestApplicableSummary(
 		conversationId: string,
 		messages: ConversationMessage[],
+		type?: ConversationCheckpointSummary["type"],
 	) {
-		const summaries = this.db
-			.prepare(
-				`SELECT * FROM conversation_summaries
-				WHERE conversation_id = ?
-				ORDER BY created_at DESC
-				LIMIT 20`,
-			)
-			.all(conversationId) as ConversationSummaryRow[];
+		const summaries = type
+			? (this.db
+					.prepare(
+						`SELECT * FROM conversation_summaries
+						WHERE conversation_id = ? AND type = ?
+						ORDER BY created_at DESC
+						LIMIT 20`,
+					)
+					.all(conversationId, type) as ConversationSummaryRow[])
+			: (this.db
+					.prepare(
+						`SELECT * FROM conversation_summaries
+						WHERE conversation_id = ?
+						ORDER BY created_at DESC
+						LIMIT 20`,
+					)
+					.all(conversationId) as ConversationSummaryRow[]);
 		const activePathIds = new Set(messages.map((message) => message.id));
-		const row = summaries.find(
-			(summary) =>
-				!summary.first_kept_message_id ||
-				activePathIds.has(summary.first_kept_message_id),
-		);
+		const row = summaries.find((summary) => {
+			const boundaryId = replayBoundaryId(mapCheckpointSummary(summary));
+			return !boundaryId || activePathIds.has(boundaryId);
+		});
 		return row ? mapCheckpointSummary(row) : undefined;
 	}
 
@@ -1177,6 +1473,29 @@ type TreeMessageRow = MessageRow & {
 	is_active_leaf: 0 | 1;
 };
 
+type MessagePartRow = {
+	message_id: string;
+	provider_item_id: string | null;
+	ordinal: number;
+	type: "tool_call" | "tool_result" | "approval" | "raw";
+	text: string | null;
+	json: string;
+};
+
+type SummaryApprovalRow = {
+	turn_id: string;
+	kind: ApprovalKind;
+	status: ApprovalStatus;
+	request_json: string;
+	response_json: string | null;
+};
+
+type SummaryEventRow = {
+	turn_id: string;
+	type: string;
+	raw_json: string;
+};
+
 type ApprovalRow = {
 	id: string;
 	conversation_id: string;
@@ -1197,6 +1516,8 @@ type ConversationSummaryRow = {
 	summary: string;
 	abandoned_leaf_message_id: string | null;
 	first_kept_message_id: string | null;
+	checkpoint_message_id: string | null;
+	tail_start_message_id: string | null;
 	tokens_before: number | null;
 	created_at: string;
 };
@@ -1269,9 +1590,70 @@ function mapCheckpointSummary(
 		summary: row.summary,
 		abandonedLeafMessageId: row.abandoned_leaf_message_id ?? undefined,
 		firstKeptMessageId: row.first_kept_message_id ?? undefined,
+		checkpointMessageId: row.checkpoint_message_id ?? undefined,
+		tailStartMessageId: row.tail_start_message_id ?? undefined,
 		tokensBefore: row.tokens_before ?? undefined,
 		createdAt: row.created_at,
 	};
+}
+
+function replayBoundaryId(summary: ConversationCheckpointSummary) {
+	return summary.type === "compaction"
+		? (summary.tailStartMessageId ?? summary.firstKeptMessageId)
+		: (summary.checkpointMessageId ?? summary.firstKeptMessageId);
+}
+
+function formatReplayMessage(message: ConversationMessage) {
+	const lines = [
+		`${message.role.toUpperCase()}: ${message.text.trim() || "(empty)"}`,
+	];
+	if (message.summaryContext?.length) {
+		lines.push("Context:", ...message.summaryContext);
+	}
+	return lines.join("\n");
+}
+
+function findTailStartIndex(
+	messages: ConversationMessage[],
+	keepRecentTokens: number,
+) {
+	let tokens = 0;
+	for (let index = messages.length - 1; index >= 0; index -= 1) {
+		tokens += estimateTokens([messages[index]]);
+		if (tokens > keepRecentTokens) {
+			return Math.min(index + 1, messages.length - 1);
+		}
+	}
+	return 0;
+}
+
+function placeholders(values: unknown[]) {
+	return values.map(() => "?").join(", ");
+}
+
+function chunksOf<T>(values: T[], size = 500) {
+	const chunks: T[][] = [];
+	for (let index = 0; index < values.length; index += size) {
+		chunks.push(values.slice(index, index + size));
+	}
+	return chunks;
+}
+
+function pushContext(
+	context: Map<string, string[]>,
+	key: string,
+	value: string,
+) {
+	const values = context.get(key) ?? [];
+	values.push(value);
+	context.set(key, values);
+}
+
+function trimSummaryValue(value: string, maxChars = 2_000) {
+	const trimmed = value.replace(/\s+/g, " ").trim();
+	return trimmed.length > maxChars
+		? `${trimmed.slice(0, maxChars - 1)}…`
+		: trimmed;
 }
 
 function mapApproval(row: ApprovalRow): PendingApproval {

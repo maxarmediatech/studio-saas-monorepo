@@ -206,6 +206,28 @@ CREATE INDEX conversation_summaries_first_kept_message_id_idx
 	ON conversation_summaries(first_kept_message_id);
 `,
 	},
+	{
+		id: "0004_compaction_boundaries",
+		sql: `
+ALTER TABLE conversation_summaries ADD COLUMN checkpoint_message_id TEXT REFERENCES messages(id) ON DELETE SET NULL;
+ALTER TABLE conversation_summaries ADD COLUMN tail_start_message_id TEXT REFERENCES messages(id) ON DELETE SET NULL;
+
+UPDATE conversation_summaries
+SET checkpoint_message_id = first_kept_message_id
+WHERE type IN ('branch', 'fork') AND checkpoint_message_id IS NULL;
+
+UPDATE conversation_summaries
+SET tail_start_message_id = first_kept_message_id
+WHERE type = 'compaction' AND tail_start_message_id IS NULL;
+
+CREATE INDEX conversation_summaries_checkpoint_message_id_idx
+	ON conversation_summaries(checkpoint_message_id);
+CREATE INDEX conversation_summaries_tail_start_message_id_idx
+	ON conversation_summaries(tail_start_message_id);
+CREATE INDEX conversation_summaries_conversation_type_created_at_idx
+	ON conversation_summaries(conversation_id, type, created_at);
+`,
+	},
 ];
 
 export type ConversationDatabase = Database.Database;

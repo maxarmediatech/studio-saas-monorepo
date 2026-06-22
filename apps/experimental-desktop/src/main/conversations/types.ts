@@ -89,6 +89,17 @@ export type ConversationEvent =
 			type: "provider.raw";
 			time: string;
 			data: { method: string; params: unknown };
+	  }
+	| {
+			id: string;
+			type: "session.compacted";
+			time: string;
+			data: {
+				summaryId: string;
+				messageId: string;
+				reason: "auto" | "manual";
+				tokensBefore: number;
+			};
 	  };
 
 export type DraftRecord = {
@@ -130,6 +141,7 @@ export type ConversationMessage = {
 	role: "user" | "assistant" | "system";
 	status: "pending" | "streaming" | "completed" | "failed" | "interrupted";
 	text: string;
+	summaryContext?: string[];
 	createdAt: string;
 	updatedAt: string;
 };
@@ -146,6 +158,8 @@ export type ConversationCheckpointSummary = {
 	summary: string;
 	abandonedLeafMessageId?: string;
 	firstKeptMessageId?: string;
+	checkpointMessageId?: string;
+	tailStartMessageId?: string;
 	tokensBefore?: number;
 	createdAt: string;
 };

@@ -11,6 +11,13 @@ export type CodexRequest = {
 	stream: true;
 };
 
+export type SimpleCompletionRequest = {
+	model: string;
+	instructions: string;
+	input: Array<{ role: "user" | "system"; content: string }>;
+	max_output_tokens: number;
+};
+
 export type CodexResult = {
 	output_text?: string;
 	text?: string;
@@ -31,19 +38,9 @@ export async function proxyCodexResponses(input: {
 	body: unknown;
 }) {
 	const request = validateCodexRequest(input.body);
-	const headers = new Headers({
-		authorization: `Bearer ${input.auth.access}`,
-		"content-type": "application/json",
-		originator: "opencode",
-		"user-agent": "experimental-desktop",
-	});
-	if (input.auth.accountId) {
-		headers.set("ChatGPT-Account-Id", input.auth.accountId);
-	}
-
 	const response = await fetch(CODEX_API_ENDPOINT, {
 		method: "POST",
-		headers,
+		headers: buildCodexHeaders(input.auth),
 		body: JSON.stringify(request),
 	});
 	const responseBody = await response.text();
@@ -55,6 +52,30 @@ export async function proxyCodexResponses(input: {
 	}
 
 	return parseCodexResponse(responseBody);
+}
+
+export async function callSimpleCompletion(
+	auth: FreshOpenAiAuth,
+	request: SimpleCompletionRequest,
+): Promise<CodexResult> {
+	const response = await fetch(CODEX_API_ENDPOINT, {
+		method: "POST",
+		headers: buildCodexHeaders(auth),
+		body: JSON.stringify({
+			...request,
+			store: false,
+			stream: true,
+		}),
+	});
+	const responseBody = await response.text();
+	if (!response.ok) {
+		throw new SidecarHttpError(
+			response.status,
+			`Codex request failed: ${response.status} ${response.statusText}${formatErrorBody(responseBody)}`,
+		);
+	}
+	const result = parseCodexResponse(responseBody);
+	return isCodexResult(result) ? result : { raw: result };
 }
 
 export function validateCodexRequest(value: unknown): CodexRequest {
@@ -102,6 +123,23 @@ export function parseCodexResponse(value: string): CodexResult | unknown {
 	} catch {
 		return { text: value };
 	}
+}
+
+function buildCodexHeaders(auth: FreshOpenAiAuth) {
+	const headers = new Headers({
+		authorization: `Bearer ${auth.access}`,
+		"content-type": "application/json",
+		originator: "opencode",
+		"user-agent": "experimental-desktop",
+	});
+	if (auth.accountId) {
+		headers.set("ChatGPT-Account-Id", auth.accountId);
+	}
+	return headers;
+}
+
+function isCodexResult(value: unknown): value is CodexResult {
+	return Boolean(value && typeof value === "object");
 }
 
 function parseServerSentEvents(value: string): CodexResult {

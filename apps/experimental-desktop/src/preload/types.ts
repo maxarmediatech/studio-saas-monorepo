@@ -118,6 +118,17 @@ export type ConversationEvent =
 			type: "provider.raw";
 			time: string;
 			data: { method: string; params: unknown };
+	  }
+	| {
+			id: string;
+			type: "session.compacted";
+			time: string;
+			data: {
+				summaryId: string;
+				messageId: string;
+				reason: "auto" | "manual";
+				tokensBefore: number;
+			};
 	  };
 
 export type CodexSession = {
@@ -184,6 +195,7 @@ export type ConversationMessage = {
 	role: "user" | "assistant" | "system";
 	status: "pending" | "streaming" | "completed" | "failed" | "interrupted";
 	text: string;
+	summaryContext?: string[];
 	createdAt: string;
 	updatedAt: string;
 };
