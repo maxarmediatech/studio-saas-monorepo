@@ -24,6 +24,14 @@ import type { CodexRuntimeMode } from "../../preload/types";
 import { iconProps } from "../app/icons";
 import type { RuntimeOption } from "../app/types";
 import { cn } from "../lib/utils";
+import {
+	Select,
+	SelectContent,
+	SelectGroup,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "./ui/select";
 import { Button } from "./ui/button";
 
 const navItems = [
@@ -180,38 +188,47 @@ export function RuntimeModeSelect(props: {
 	onChange: (mode: CodexRuntimeMode) => void;
 	variant?: "default" | "composer";
 }) {
+	const isComposer = props.variant === "composer";
 	return (
-		<label
+		<div
 			className={cn(
 				"inline-flex h-8 items-center gap-2 rounded-[9px] border-0 bg-transparent px-1 text-[13px] text-[var(--desktop-subtle)]",
-				props.variant === "composer" &&
-					"h-7 gap-0 rounded-full border border-[var(--desktop-inbox-border)] bg-[color-mix(in_srgb,var(--desktop-inbox-hover)_46%,transparent)] px-2.5",
+				isComposer && "h-9 gap-0 p-0",
 			)}
 		>
-			<span
-				className={props.variant === "composer" ? "hidden" : undefined}
-			>
-				Mode
-			</span>
-			<select
-				className={cn(
-					"border-0 bg-transparent text-[13px] font-medium text-[var(--desktop-default)] outline-0",
-					props.variant === "composer" && "text-[12px]",
-				)}
+			<span className={isComposer ? "hidden" : undefined}>Mode</span>
+			<Select
+				items={props.options}
 				value={props.value}
-				onChange={(event) =>
-					props.onChange(
-						event.currentTarget.value as CodexRuntimeMode,
-					)
+				onValueChange={(value) =>
+					props.onChange(value as CodexRuntimeMode)
 				}
 			>
-				{props.options.map((option) => (
-					<option value={option.value} key={option.value}>
-						{option.label}
-					</option>
-				))}
-			</select>
-		</label>
+				<SelectTrigger
+					aria-label="Runtime mode"
+					size={isComposer ? "default" : "sm"}
+					className={cn(
+						"border-0 bg-transparent p-0 text-[13px] font-medium text-[var(--desktop-default)] shadow-none hover:bg-transparent dark:bg-transparent dark:hover:bg-transparent",
+						isComposer &&
+							"h-9 min-w-[184px] rounded-[10px] border border-[var(--desktop-inbox-border)] bg-[color-mix(in_srgb,var(--desktop-inbox-hover)_46%,transparent)] px-3 text-[14px] dark:bg-[color-mix(in_srgb,var(--desktop-inbox-hover)_46%,transparent)]",
+					)}
+				>
+					<SelectValue />
+				</SelectTrigger>
+				<SelectContent align="start" alignItemWithTrigger={false}>
+					<SelectGroup>
+						{props.options.map((option) => (
+							<SelectItem
+								value={option.value}
+								key={option.value}
+							>
+								{option.label}
+							</SelectItem>
+						))}
+					</SelectGroup>
+				</SelectContent>
+			</Select>
+		</div>
 	);
 }
 
@@ -307,7 +324,7 @@ const toolIcons = [
 
 function ToolConnectStrip() {
 	return (
-		<div className="relative z-1 mt-[-12px] flex min-h-16 items-center justify-between gap-3 rounded-b-[18px] border border-t-0 border-[var(--desktop-inbox-border)] bg-[color-mix(in_srgb,var(--desktop-inbox-hover)_62%,var(--desktop-inbox))] px-4 pb-2 pt-4 [box-shadow:0_1px_0_color-mix(in_srgb,var(--desktop-strong)_3%,transparent)] [&_svg]:!size-[18px] [&_svg]:!stroke-[1.8]">
+		<div className="relative z-1 mt-[-12px] flex min-h-[58px] items-center justify-between gap-3 rounded-b-[18px] border border-t-0 border-[var(--desktop-inbox-border)] bg-[color-mix(in_srgb,var(--desktop-inbox-hover)_62%,var(--desktop-inbox))] px-4 pb-0 pt-3 [box-shadow:0_1px_0_color-mix(in_srgb,var(--desktop-strong)_3%,transparent)] [&_svg]:!size-[18px] [&_svg]:!stroke-[1.8]">
 			<div className="inline-flex min-w-0 items-center gap-2 text-[13px] font-medium text-[color-mix(in_srgb,var(--desktop-subtle)_88%,var(--desktop-default))]">
 				<IconCirclesRelation {...iconProps} />
 				<span className="overflow-hidden text-ellipsis whitespace-nowrap">
