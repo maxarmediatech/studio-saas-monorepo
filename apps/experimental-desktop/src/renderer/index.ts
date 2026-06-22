@@ -41,6 +41,7 @@ let unsubscribeSessionEvents: (() => void) | undefined;
 let assistantText = "";
 let currentSessionMode: CodexRuntimeMode = "read-only";
 let recentSessionEvents: string[] = [];
+let selectedFolderPath: string | undefined;
 const pendingRequests = new Map<
 	string,
 	Extract<SessionEvent, { type: "request.pending" }>
@@ -111,6 +112,7 @@ function startAuthPolling() {
 
 openFolder?.addEventListener("click", async () => {
 	const path = await window.experimentalDesktop.openDirectory();
+	selectedFolderPath = path ?? undefined;
 	setSelection(path, "Folder picker canceled.");
 });
 
@@ -205,6 +207,7 @@ async function runCodexSessionSmokeTest() {
 	const session = await window.experimentalDesktop.createSession({
 		model: "gpt-5.4-mini",
 		runtimeMode: getSelectedSessionMode(),
+		...(selectedFolderPath ? { cwd: selectedFolderPath } : {}),
 	});
 	let unsubscribe: () => void = () => undefined;
 	let resolveFirstDelta: (event: SessionEvent) => void = () => undefined;
@@ -254,6 +257,7 @@ newSession?.addEventListener("click", async () => {
 		const session = await window.experimentalDesktop.createSession({
 			model: "gpt-5.4-mini",
 			runtimeMode: getSelectedSessionMode(),
+			...(selectedFolderPath ? { cwd: selectedFolderPath } : {}),
 		});
 		currentSessionId = session.id;
 		currentSessionMode = getSelectedSessionMode();
@@ -278,6 +282,7 @@ sendSessionMessage?.addEventListener("click", async () => {
 			const session = await window.experimentalDesktop.createSession({
 				model: "gpt-5.4-mini",
 				runtimeMode: getSelectedSessionMode(),
+				...(selectedFolderPath ? { cwd: selectedFolderPath } : {}),
 			});
 			currentSessionId = session.id;
 			currentSessionMode = getSelectedSessionMode();

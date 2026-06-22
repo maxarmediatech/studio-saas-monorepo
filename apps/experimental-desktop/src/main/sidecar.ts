@@ -269,17 +269,28 @@ function writeSessionEvents(
 	});
 	res.write("event: ready\ndata: {}\n\n");
 	const unsubscribe = sessions.subscribe(sessionId, (event) => {
+		if (isResponseClosed(res)) {
+			return;
+		}
 		res.write(`event: ${event.type}\n`);
 		res.write(`data: ${JSON.stringify(event)}\n\n`);
 	});
 	const heartbeat = setInterval(() => {
-		res.write("event: ping\ndata: {}\n\n");
+		if (!isResponseClosed(res)) {
+			res.write("event: ping\ndata: {}\n\n");
+		}
 	}, 25_000);
 	req.on("close", () => {
 		clearInterval(heartbeat);
 		unsubscribe();
-		res.end();
+		if (!isResponseClosed(res)) {
+			res.end();
+		}
 	});
+}
+
+function isResponseClosed(res: ServerResponse) {
+	return res.writableEnded || res.destroyed;
 }
 
 async function readJsonBody(req: IncomingMessage) {

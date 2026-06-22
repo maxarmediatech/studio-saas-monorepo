@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { homedir } from "node:os";
 import {
 	type CodexIncomingRequest,
 	createCodexProtocol,
@@ -42,6 +43,12 @@ export type CodexRuntimeEvent =
 	  }
 	| {
 			kind: "request";
+			requestId: string;
+			method: string;
+			params: unknown;
+	  }
+	| {
+			kind: "request.timeout";
 			requestId: string;
 			method: string;
 			params: unknown;
@@ -115,6 +122,7 @@ export function createCodexSessionRuntime(): CodexSessionRuntime {
 	async function sendTurn(input: {
 		threadId: string;
 		text: string;
+		cwd?: string;
 		model?: string;
 		runtimeMode?: CodexRuntimeMode;
 	}) {
@@ -263,9 +271,20 @@ export function createCodexAppServerSmokeController(
 	return { send, stop };
 }
 
+let probeInFlight: Promise<
+	Awaited<ReturnType<typeof runCodexAppServerProbe>>
+> | null = null;
+
 export async function probeCodexAppServer(
 	provider = getDefaultCodexProvider(),
 ) {
+	probeInFlight ??= runCodexAppServerProbe(provider).finally(() => {
+		probeInFlight = null;
+	});
+	return probeInFlight;
+}
+
+async function runCodexAppServerProbe(provider: CodexProviderConfig) {
 	const status = await getCodexProviderStatus(provider);
 	if (!status.binary.available) {
 		throw new Error(
@@ -273,6 +292,8 @@ export async function probeCodexAppServer(
 		);
 	}
 	const runtime = startCodexRuntime(provider, {
+		// Probe only: user-input prompts are answered automatically so the
+		// readiness check cannot hang on an interactive app-server request.
 		autoAnswerUserInput: true,
 	});
 	try {
@@ -319,6 +340,14 @@ async function startReusableRuntime(
 				const timeout = setTimeout(
 					() => {
 						pendingRequests.delete(requestId);
+						for (const listener of listeners) {
+							listener({
+								kind: "request.timeout",
+								requestId,
+								method: request.method,
+								params: request.params,
+							});
+						}
 						reject(
 							new Error(
 								`Codex request timed out waiting for response: ${request.method}`,
@@ -363,6 +392,11 @@ function startCodexRuntime(
 		) => Promise<unknown> | unknown;
 	} = {},
 ): CodexRuntime {
+	if (options.autoAnswerUserInput && options.onRequest) {
+		throw new Error(
+			"autoAnswerUserInput is probe-only and cannot be used with session request handling",
+		);
+	}
 	const child = spawn(
 		provider.binaryPath,
 		[
@@ -373,7 +407,7 @@ function startCodexRuntime(
 			"sandbox_workspace_write.exclude_tmpdir_env_var=true",
 		],
 		{
-			cwd: process.cwd(),
+			cwd: homedir(),
 			env: getCodexProviderEnv(provider),
 			stdio: "pipe",
 		},
@@ -431,7 +465,7 @@ function startCodexRuntime(
 		model?: string;
 		runtimeMode?: CodexRuntimeMode;
 	}) {
-		const cwd = input?.cwd ?? process.cwd();
+		const cwd = input?.cwd ?? homedir();
 		const config = runtimeModeToCodexConfig(
 			input?.runtimeMode ?? "read-only",
 			cwd,
@@ -459,19 +493,23 @@ function startCodexRuntime(
 		model?: string;
 		runtimeMode?: CodexRuntimeMode;
 	}) {
-		const cwd = input.cwd ?? process.cwd();
+		const cwd = input.cwd ?? homedir();
 		const config = runtimeModeToCodexConfig(
 			input.runtimeMode ?? "read-only",
 			cwd,
 		);
-		return protocol.request("turn/start", {
-			threadId: input.threadId,
-			input: [{ type: "text", text: input.text }],
-			cwd,
-			approvalPolicy: config.approvalPolicy,
-			sandboxPolicy: config.turnSandboxPolicy,
-			model: input.model ?? "gpt-5.4-mini",
-		});
+		return protocol.request(
+			"turn/start",
+			{
+				threadId: input.threadId,
+				input: [{ type: "text", text: input.text }],
+				cwd,
+				approvalPolicy: config.approvalPolicy,
+				sandboxPolicy: config.turnSandboxPolicy,
+				model: input.model ?? "gpt-5.4-mini",
+			},
+			{ timeoutMs: 5 * 60 * 1000 },
+		);
 	}
 
 	async function stop() {

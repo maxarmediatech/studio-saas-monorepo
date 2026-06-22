@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { homedir } from "node:os";
 import { SidecarHttpError } from "./sidecar-codex";
 import type {
 	CodexRuntimeEvent,
@@ -81,13 +82,14 @@ export function createSessionController(input: {
 	const sessionsByTurnId = new Map<string, Session>();
 	const sessionsByRequestId = new Map<string, Session>();
 	const pendingTurnSessions = new Set<Session>();
+	let activeSessionId: string | undefined;
 	const unsubscribeRuntime = input.runtime.subscribe((event) => {
 		handleRuntimeEvent(event);
 	});
 
 	async function create(body?: unknown) {
 		const options = validateCreateSession(body);
-		const cwd = options.cwd ?? process.cwd();
+		const cwd = options.cwd ?? homedir();
 		await input.runtime.ensure();
 		const thread = await input.runtime.createThread({ ...options, cwd });
 		const session: Session = {
@@ -111,6 +113,12 @@ export function createSessionController(input: {
 
 	async function sendMessage(sessionId: string, body: unknown) {
 		const session = getSession(sessionId);
+		if (activeSessionId && activeSessionId !== session.id) {
+			throw new SidecarHttpError(
+				409,
+				"Another session already has a running turn",
+			);
+		}
 		if (session.activeTurnId) {
 			throw new SidecarHttpError(
 				409,
@@ -120,6 +128,7 @@ export function createSessionController(input: {
 		const message = validateMessage(body);
 		pushEvent(session, "message.created", { text: message.text });
 		pendingTurnSessions.add(session);
+		activeSessionId = session.id;
 		try {
 			const turn = await input.runtime.sendTurn({
 				threadId: session.threadId,
@@ -139,9 +148,11 @@ export function createSessionController(input: {
 			const message =
 				error instanceof Error ? error.message : String(error);
 			pushEvent(session, "message.failed", { error: message });
-			throw error;
-		} finally {
 			pendingTurnSessions.delete(session);
+			if (activeSessionId === session.id) {
+				activeSessionId = undefined;
+			}
+			throw error;
 		}
 	}
 
@@ -191,9 +202,23 @@ export function createSessionController(input: {
 		sessionsByTurnId.clear();
 		sessionsByRequestId.clear();
 		pendingTurnSessions.clear();
+		activeSessionId = undefined;
 	}
 
 	function handleRuntimeEvent(event: CodexRuntimeEvent) {
+		if (event.kind === "request.timeout") {
+			const session = sessionsByRequestId.get(event.requestId);
+			if (!session) {
+				return;
+			}
+			sessionsByRequestId.delete(event.requestId);
+			pushEvent(session, "message.failed", {
+				error: `Codex request timed out waiting for response: ${event.method}`,
+				raw: event.params,
+			});
+			clearActiveSession(session);
+			return;
+		}
 		const threadId = readThreadId(event.params);
 		const turnId = readTurnId(event.params);
 		const session =
@@ -246,7 +271,7 @@ export function createSessionController(input: {
 				!session.activeTurnId ||
 				session.activeTurnId === turnId
 			) {
-				session.activeTurnId = undefined;
+				clearActiveSession(session);
 			}
 			return;
 		}
@@ -258,7 +283,7 @@ export function createSessionController(input: {
 			});
 			pendingTurnSessions.delete(session);
 			if (!turnId || session.activeTurnId === turnId) {
-				session.activeTurnId = undefined;
+				clearActiveSession(session);
 			}
 			return;
 		}
@@ -281,6 +306,14 @@ export function createSessionController(input: {
 			return undefined;
 		}
 		return pendingTurnSessions.values().next().value;
+	}
+
+	function clearActiveSession(session: Session) {
+		session.activeTurnId = undefined;
+		pendingTurnSessions.delete(session);
+		if (activeSessionId === session.id) {
+			activeSessionId = undefined;
+		}
 	}
 
 	return { create, sendMessage, events, respondToRequest, subscribe, stop };

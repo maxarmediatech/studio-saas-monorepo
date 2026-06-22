@@ -27,7 +27,11 @@ type IncomingRequest = {
 export type CodexIncomingRequest = IncomingRequest;
 
 export type CodexProtocol = {
-	request: (method: string, params?: unknown) => Promise<unknown>;
+	request: (
+		method: string,
+		params?: unknown,
+		options?: { timeoutMs?: number },
+	) => Promise<unknown>;
 	notify: (method: string, params?: unknown) => void;
 	stop: () => void;
 };
@@ -48,6 +52,7 @@ export function createCodexProtocol(
 	let nextId = 1;
 	let stdoutRemainder = "";
 	let stopped = false;
+	let writeQueue = Promise.resolve();
 	const requestTimeoutMs = input.requestTimeoutMs ?? 30_000;
 
 	child.stdout.on("data", (chunk: Buffer) => {
@@ -70,7 +75,11 @@ export function createCodexProtocol(
 		);
 	});
 
-	function request(method: string, params?: unknown) {
+	function request(
+		method: string,
+		params?: unknown,
+		options?: { timeoutMs?: number },
+	) {
 		if (stopped) {
 			return Promise.reject(
 				new Error("codex app-server protocol is stopped"),
@@ -80,15 +89,16 @@ export function createCodexProtocol(
 		const requestId = String(id);
 		const message =
 			params === undefined ? { id, method } : { id, method, params };
+		const timeoutMs = options?.timeoutMs ?? requestTimeoutMs;
 		return new Promise<unknown>((resolve, reject) => {
 			const timeout = setTimeout(() => {
 				pending.delete(requestId);
 				reject(
 					new Error(
-						`codex app-server request '${method}' timed out after ${requestTimeoutMs}ms`,
+						`codex app-server request '${method}' timed out after ${timeoutMs}ms`,
 					),
 				);
-			}, requestTimeoutMs);
+			}, timeoutMs);
 			pending.set(requestId, { method, resolve, reject, timeout });
 			writeMessage(message).catch((error: unknown) => {
 				clearTimeout(timeout);
@@ -215,16 +225,20 @@ export function createCodexProtocol(
 	}
 
 	function writeMessage(message: Record<string, unknown>) {
-		return new Promise<void>((resolve, reject) => {
-			const payload = `${JSON.stringify(message)}\n`;
-			child.stdin.write(payload, (error) => {
-				if (error) {
-					reject(error);
-					return;
-				}
-				resolve();
+		const write = () =>
+			new Promise<void>((resolve, reject) => {
+				const payload = `${JSON.stringify(message)}\n`;
+				child.stdin.write(payload, (error) => {
+					if (error) {
+						reject(error);
+						return;
+					}
+					resolve();
+				});
 			});
-		});
+		const result = writeQueue.then(write, write);
+		writeQueue = result.catch(() => undefined);
+		return result;
 	}
 
 	function failAll(error: Error) {
