@@ -537,13 +537,15 @@ export class ConversationRepository {
 			conversationId,
 			messages,
 		);
-		const transcriptMessages = summary?.firstKeptMessageId
-			? messages.slice(
-					messages.findIndex(
-						(message) => message.id === summary.firstKeptMessageId,
-					) + 1,
+		const checkpointIndex = summary?.firstKeptMessageId
+			? messages.findIndex(
+					(message) => message.id === summary.firstKeptMessageId,
 				)
-			: messages.slice(-12);
+			: -1;
+		const transcriptMessages =
+			summary && checkpointIndex >= 0
+				? messages.slice(checkpointIndex + 1)
+				: messages.slice(-12);
 		const transcript = transcriptMessages
 			.map((message) => `${message.role.toUpperCase()}: ${message.text}`)
 			.join("\n\n");
@@ -1081,7 +1083,8 @@ export class ConversationRepository {
 			.prepare(
 				`SELECT * FROM conversation_summaries
 				WHERE conversation_id = ?
-				ORDER BY created_at DESC`,
+				ORDER BY created_at DESC
+				LIMIT 20`,
 			)
 			.all(conversationId) as ConversationSummaryRow[];
 		const activePathIds = new Set(messages.map((message) => message.id));

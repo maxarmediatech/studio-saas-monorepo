@@ -474,6 +474,8 @@ export function createConversationController(input: {
 		abandonedLeafMessageId?: string;
 		model?: string;
 	}) {
+		// Replay summaries describe the kept path to the checkpoint. The
+		// abandoned leaf is only metadata until product UI needs that story.
 		const messages = repo.getSummarySource({
 			conversationId: input.conversationId,
 			messageId: input.messageId,

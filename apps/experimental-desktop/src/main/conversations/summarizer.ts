@@ -7,6 +7,8 @@ const SYSTEM_PROMPT = [
 	"Be compact, factual, and structured.",
 ].join(" ");
 
+const MAX_SERIALIZED_MESSAGE_CHARS = 3000;
+
 export type SummaryPurpose = "branch" | "fork";
 
 export type SummaryRequest = {
@@ -30,6 +32,7 @@ export function buildSummaryRequest(input: SummaryRequest) {
 				],
 			},
 		],
+		max_output_tokens: 2048,
 		store: false,
 		stream: true,
 	};
@@ -52,12 +55,12 @@ function buildSummaryPrompt(input: SummaryRequest) {
 		heading,
 		"",
 		"Return exactly these sections:",
-		"Goal",
-		"Constraints & Preferences",
-		"Progress",
-		"Key Decisions",
-		"Next Steps",
-		"Critical Context",
+		"## Goal",
+		"## Constraints & Preferences",
+		"## Progress",
+		"## Key Decisions",
+		"## Next Steps",
+		"## Critical Context",
 		"",
 		"Conversation:",
 		serializeMessages(input.messages),
@@ -65,7 +68,7 @@ function buildSummaryPrompt(input: SummaryRequest) {
 }
 
 function serializeMessages(messages: ConversationMessage[]) {
-	return messages
+	const serialized = messages
 		.map((message) =>
 			[
 				`[${message.role.toUpperCase()} ${message.id}]`,
@@ -73,4 +76,11 @@ function serializeMessages(messages: ConversationMessage[]) {
 			].join("\n"),
 		)
 		.join("\n\n");
+	if (serialized.length <= MAX_SERIALIZED_MESSAGE_CHARS) {
+		return serialized;
+	}
+	return [
+		"(earlier transcript truncated for summary budget)",
+		serialized.slice(-MAX_SERIALIZED_MESSAGE_CHARS),
+	].join("\n");
 }
