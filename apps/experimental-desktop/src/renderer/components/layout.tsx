@@ -228,12 +228,12 @@ export function SessionComposer(props: {
 }
 
 const toolIcons = [
-	{ icon: IconBrandGithub, label: "GitHub" },
-	{ icon: IconBrandSlack, label: "Slack" },
-	{ icon: IconBrandTrello, label: "Trello" },
-	{ icon: IconBrandNotion, label: "Notion" },
-	{ icon: IconBrandFigma, label: "Figma" },
-	{ icon: IconBrandGoogleDrive, label: "Google Drive" },
+	{ icon: IconBrandGithub, label: "GitHub", tone: "github" },
+	{ icon: IconBrandSlack, label: "Slack", tone: "slack" },
+	{ icon: IconBrandTrello, label: "Trello", tone: "trello" },
+	{ icon: IconBrandNotion, label: "Notion", tone: "notion" },
+	{ icon: IconBrandFigma, label: "Figma", tone: "figma" },
+	{ icon: IconBrandGoogleDrive, label: "Google Drive", tone: "drive" },
 ];
 
 function ToolConnectStrip() {
@@ -241,14 +241,14 @@ function ToolConnectStrip() {
 		<div className="tool-connect-strip">
 			<div className="tool-connect-copy">
 				<IconCirclesRelation {...iconProps} />
-				<span>Tools</span>
+				<span>Connect your tools to workspace</span>
 			</div>
 			<div className="tool-connect-icons">
 				{toolIcons.map((tool) => {
 					const ToolIcon = tool.icon;
 					return (
 						<button
-							className="tool-connect-button"
+							className={`tool-connect-button ${tool.tone}`}
 							type="button"
 							key={tool.label}
 							title={tool.label}

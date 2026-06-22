@@ -332,6 +332,7 @@ textarea {
 	border: 0;
 	background: transparent;
 	box-shadow: none;
+	isolation: isolate;
 	overflow: visible;
 }
 
@@ -344,7 +345,7 @@ textarea {
 	background: var(--desktop-inbox);
 	box-shadow:
 		0 1px 0 color-mix(in srgb, var(--desktop-strong) 3%, transparent),
-		0 18px 34px -32px var(--desktop-shadow);
+		0 10px 22px -18px var(--desktop-shadow);
 	position: relative;
 	z-index: 2;
 }
@@ -520,14 +521,14 @@ textarea {
 	align-items: center;
 	justify-content: space-between;
 	gap: 12px;
-	min-height: 52px;
-	margin-top: -10px;
+	min-height: 58px;
+	margin-top: -12px;
 	border: 1px solid var(--desktop-inbox-border);
 	border-top: 0;
-	border-radius: 0 0 15px 15px;
-	background: color-mix(in srgb, var(--desktop-soft) 76%, var(--desktop-inbox));
-	box-shadow: 0 14px 28px -30px var(--desktop-shadow);
-	padding: 10px 16px 0;
+	border-radius: 0 0 18px 18px;
+	background: color-mix(in srgb, var(--desktop-inbox-hover) 62%, var(--desktop-inbox));
+	box-shadow: 0 1px 0 color-mix(in srgb, var(--desktop-strong) 3%, transparent);
+	padding: 12px 16px 0;
 	position: relative;
 	z-index: 1;
 }
@@ -557,11 +558,35 @@ textarea {
 
 .tool-connect-button {
 	display: grid;
+	width: 28px;
+	height: 30px;
 	place-items: center;
 	border: 1px solid var(--desktop-inbox-border);
+	border-radius: 8px;
 	background: color-mix(in srgb, var(--desktop-inbox) 92%, var(--desktop-inbox-hover));
 	color: var(--desktop-subtle);
 	box-shadow: 0 1px 0 color-mix(in srgb, var(--desktop-strong) 4%, transparent);
+}
+
+.tool-connect-button.github,
+.tool-connect-button.notion {
+	color: var(--desktop-default);
+}
+
+.tool-connect-button.slack {
+	color: #28a8ea;
+}
+
+.tool-connect-button.trello {
+	color: #0c66e4;
+}
+
+.tool-connect-button.figma {
+	color: #f24e1e;
+}
+
+.tool-connect-button.drive {
+	color: #1a73e8;
 }
 
 .value {
