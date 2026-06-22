@@ -60,16 +60,19 @@ export function App() {
 							<IconSparkles {...iconProps} size={24} />
 							<h1>Where should we begin?</h1>
 						</div>
-						<SessionComposer
-							value={message}
-							disabled={session.isTurnRunning}
-							runtimeMode={runtimeMode}
-							runtimeOptions={runtimeOptions}
-							onChange={setMessage}
-							onRuntimeModeChange={setRuntimeMode}
-							onSend={sendMessage}
-							onNewSession={session.createNewSession}
-						/>
+						<div className="inbox-stack">
+							{/* <StarterPrompts onSelect={setMessage} /> */}
+							<SessionComposer
+								value={message}
+								disabled={session.isTurnRunning}
+								runtimeMode={runtimeMode}
+								runtimeOptions={runtimeOptions}
+								onChange={setMessage}
+								onRuntimeModeChange={setRuntimeMode}
+								onSend={sendMessage}
+								onNewSession={session.createNewSession}
+							/>
+						</div>
 						<SessionPanel
 							status={session.status}
 							threadId={session.threadId ?? session.sessionId}

@@ -7,9 +7,11 @@
 
 .session-stream {
 	display: flex;
+	width: min(100%, 980px);
 	min-height: 0;
 	flex: 1;
 	flex-direction: column;
+	align-self: center;
 }
 
 .stream-header,

@@ -1,12 +1,23 @@
 import {
 	type Icon,
 	IconArrowUp,
+	IconBrandFigma,
+	IconBrandGithub,
+	IconBrandGoogleDrive,
+	IconBrandNotion,
+	IconBrandSlack,
+	IconBrandTrello,
+	IconChartBar,
+	IconCirclesRelation,
+	IconFileText,
 	IconFolder,
 	IconMicrophone,
 	IconMoon,
 	IconPlus,
+	IconRosette,
 	IconSparkles,
 	IconSun,
+	IconTemplate,
 } from "@tabler/icons-react";
 import type { ReactNode } from "react";
 import type { CodexRuntimeMode } from "../../preload/types";
@@ -156,51 +167,148 @@ export function SessionComposer(props: {
 	onNewSession: () => Promise<void>;
 }) {
 	return (
-		<section className="composer-card" aria-label="Codex session composer">
-			<textarea
-				value={props.value}
-				className="composer-input"
-				placeholder="Ask anything..."
-				disabled={props.disabled}
-				onChange={(event) => props.onChange(event.currentTarget.value)}
-				onKeyDown={(event) => {
-					if (
-						(event.metaKey || event.ctrlKey) &&
-						event.key === "Enter"
-					) {
-						event.preventDefault();
-						void props.onSend();
+		<section className="composer-shell" aria-label="Codex session composer">
+			<div className="composer-card">
+				<textarea
+					value={props.value}
+					className="composer-input"
+					placeholder="What do you want to create?"
+					disabled={props.disabled}
+					onChange={(event) =>
+						props.onChange(event.currentTarget.value)
 					}
-				}}
-			/>
-			<div className="composer-toolbar">
-				<div className="composer-actions">
-					<IconButton
-						label="New session"
-						onClick={props.onNewSession}
-					>
-						<IconPlus {...iconProps} />
-					</IconButton>
-					<RuntimeModeSelect
-						value={props.runtimeMode}
-						options={props.runtimeOptions}
-						onChange={props.onRuntimeModeChange}
-					/>
+					onKeyDown={(event) => {
+						if (
+							(event.metaKey || event.ctrlKey) &&
+							event.key === "Enter"
+						) {
+							event.preventDefault();
+							void props.onSend();
+						}
+					}}
+				/>
+				<div className="composer-toolbar">
+					<div className="composer-actions">
+						<IconButton
+							label="New session"
+							onClick={props.onNewSession}
+						>
+							<IconPlus {...iconProps} />
+						</IconButton>
+						<RuntimeModeSelect
+							value={props.runtimeMode}
+							options={props.runtimeOptions}
+							onChange={props.onRuntimeModeChange}
+						/>
+					</div>
+					<div className="composer-actions">
+						<Button
+							className="composer-ghost-button"
+							size="icon-sm"
+							variant="ghost"
+							type="button"
+						>
+							<IconMicrophone {...iconProps} />
+						</Button>
+						<Button
+							className="send-button"
+							size="icon-sm"
+							type="button"
+							disabled={props.disabled}
+							onClick={() => void props.onSend()}
+						>
+							<IconArrowUp {...iconProps} />
+						</Button>
+					</div>
 				</div>
-				<div className="composer-actions">
-					<Button size="icon-sm" variant="ghost" type="button">
-						<IconMicrophone {...iconProps} />
-					</Button>
-					<Button
-						className="send-button"
-						size="icon-sm"
-						type="button"
-						disabled={props.disabled}
-						onClick={() => void props.onSend()}
-					>
-						<IconArrowUp {...iconProps} />
-					</Button>
-				</div>
+			</div>
+			<ToolConnectStrip />
+		</section>
+	);
+}
+
+const toolIcons = [
+	{ icon: IconBrandGithub, label: "GitHub" },
+	{ icon: IconBrandSlack, label: "Slack" },
+	{ icon: IconBrandTrello, label: "Trello" },
+	{ icon: IconBrandNotion, label: "Notion" },
+	{ icon: IconBrandFigma, label: "Figma" },
+	{ icon: IconBrandGoogleDrive, label: "Google Drive" },
+];
+
+function ToolConnectStrip() {
+	return (
+		<div className="tool-connect-strip">
+			<div className="tool-connect-copy">
+				<IconCirclesRelation {...iconProps} />
+				<span>Tools</span>
+			</div>
+			<div className="tool-connect-icons">
+				{toolIcons.map((tool) => {
+					const ToolIcon = tool.icon;
+					return (
+						<button
+							className="tool-connect-button"
+							type="button"
+							key={tool.label}
+							title={tool.label}
+							aria-label={tool.label}
+						>
+							<ToolIcon {...iconProps} />
+						</button>
+					);
+				})}
+			</div>
+		</div>
+	);
+}
+
+const starterPrompts = [
+	{
+		icon: IconChartBar,
+		label: "Summarize the latest session events",
+		tone: "blue",
+	},
+	{
+		icon: IconRosette,
+		label: "Check runtime and provider status",
+		tone: "green",
+	},
+	{
+		icon: IconTemplate,
+		label: "Plan the next desktop UI pass",
+		tone: "pink",
+	},
+	{
+		icon: IconFileText,
+		label: "Review pending approvals and risks",
+		tone: "cyan",
+	},
+];
+
+export function StarterPrompts(props: { onSelect: (prompt: string) => void }) {
+	return (
+		<section className="starter-card" aria-label="Shortcuts">
+			<p className="starter-title">Shortcuts</p>
+			<div className="starter-list">
+				{starterPrompts.map((prompt) => {
+					const PromptIcon = prompt.icon;
+					return (
+						<button
+							className="starter-item"
+							type="button"
+							key={prompt.label}
+							onClick={() => props.onSelect(prompt.label)}
+						>
+							<PromptIcon
+								className={`starter-icon ${prompt.tone}`}
+								{...iconProps}
+								size={18}
+							/>
+							<span>{prompt.label}</span>
+						</button>
+					);
+				})}
 			</div>
 		</section>
 	);
@@ -213,6 +321,7 @@ function IconButton(props: {
 }) {
 	return (
 		<Button
+			className="composer-icon-button"
 			size="icon-sm"
 			variant="outline"
 			type="button"
