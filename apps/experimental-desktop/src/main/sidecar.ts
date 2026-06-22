@@ -13,6 +13,7 @@ import {
 import { createOpenAiAuthController } from "./sidecar-openai";
 import { getCodexProviderStatus } from "./sidecar-provider";
 import { createSessionController } from "./sidecar-sessions";
+import { generateConversationSummary } from "./sidecar-summary";
 
 const MAX_BODY_BYTES = 1024 * 1024;
 const ENABLE_CODEX_RESPONSES_FALLBACK =
@@ -209,6 +210,21 @@ async function handleApiRequest(req: IncomingMessage, res: ServerResponse) {
 
 		if (req.method === "GET" && url.pathname === "/runtime/events") {
 			writeRuntimeEvents(req, res);
+			return;
+		}
+
+		if (
+			req.method === "POST" &&
+			url.pathname === "/summaries/conversation"
+		) {
+			writeJson(
+				res,
+				200,
+				await generateConversationSummary({
+					auth: await openAiAuth.getFreshAuth(),
+					body: await readJsonBody(req),
+				}),
+			);
 			return;
 		}
 

@@ -139,6 +139,17 @@ export type ConversationTreeNode = ConversationMessage & {
 	isActiveLeaf: boolean;
 };
 
+export type ConversationCheckpointSummary = {
+	id: string;
+	conversationId: string;
+	type: "branch" | "fork" | "compaction";
+	summary: string;
+	abandonedLeafMessageId?: string;
+	firstKeptMessageId?: string;
+	tokensBefore?: number;
+	createdAt: string;
+};
+
 export type PendingApproval = {
 	id: string;
 	conversationId: string;

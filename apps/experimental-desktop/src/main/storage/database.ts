@@ -186,6 +186,26 @@ CREATE INDEX provider_sessions_provider_leaf_message_id_idx ON provider_sessions
 CREATE INDEX messages_parent_message_id_idx ON messages(parent_message_id);
 `,
 	},
+	{
+		id: "0003_conversation_summaries",
+		sql: `
+CREATE TABLE conversation_summaries (
+	id TEXT PRIMARY KEY,
+	conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+	type TEXT NOT NULL CHECK (type IN ('branch', 'fork', 'compaction')),
+	summary TEXT NOT NULL,
+	abandoned_leaf_message_id TEXT REFERENCES messages(id) ON DELETE SET NULL,
+	first_kept_message_id TEXT REFERENCES messages(id) ON DELETE SET NULL,
+	tokens_before INTEGER,
+	created_at TEXT NOT NULL
+);
+
+CREATE INDEX conversation_summaries_conversation_created_at_idx
+	ON conversation_summaries(conversation_id, created_at);
+CREATE INDEX conversation_summaries_first_kept_message_id_idx
+	ON conversation_summaries(first_kept_message_id);
+`,
+	},
 ];
 
 export type ConversationDatabase = Database.Database;

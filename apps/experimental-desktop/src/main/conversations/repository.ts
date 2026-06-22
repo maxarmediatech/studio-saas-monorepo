@@ -4,6 +4,7 @@ import type { ConversationDatabase } from "../storage/database";
 import type {
 	ApprovalKind,
 	ApprovalStatus,
+	ConversationCheckpointSummary,
 	ConversationDetail,
 	ConversationEvent,
 	ConversationMessage,
@@ -409,6 +410,17 @@ export class ConversationRepository {
 		return this.getConversation(input.conversationId);
 	}
 
+	getActiveLeafMessageId(conversationId: string) {
+		const row = this.db
+			.prepare(
+				"SELECT active_leaf_message_id FROM conversations WHERE id = ?",
+			)
+			.get(conversationId) as
+			| { active_leaf_message_id: string | null }
+			| undefined;
+		return row?.active_leaf_message_id ?? undefined;
+	}
+
 	forkConversationFromMessage(input: {
 		sourceConversationId: string;
 		messageId: string;
@@ -521,17 +533,76 @@ export class ConversationRepository {
 		if (messages.length === 0) {
 			return userText;
 		}
-		const transcript = messages
+		const summary = this.getLatestApplicableSummary(
+			conversationId,
+			messages,
+		);
+		const transcriptMessages = summary?.firstKeptMessageId
+			? messages.slice(
+					messages.findIndex(
+						(message) => message.id === summary.firstKeptMessageId,
+					) + 1,
+				)
+			: messages.slice(-12);
+		const transcript = transcriptMessages
 			.map((message) => `${message.role.toUpperCase()}: ${message.text}`)
 			.join("\n\n");
-		return [
+		const prompt = [
 			"Continue from this branched local conversation transcript.",
 			"Use it as context, but answer only the latest user message.",
 			"",
-			transcript,
-			"",
-			`USER: ${userText}`,
-		].join("\n");
+		];
+		if (summary) {
+			prompt.push("CHECKPOINT SUMMARY:", summary.summary, "");
+		}
+		if (transcript) {
+			prompt.push("RECENT TRANSCRIPT:", transcript, "");
+		}
+		prompt.push(`USER: ${userText}`);
+		return prompt.join("\n");
+	}
+
+	getSummarySource(input: {
+		conversationId: string;
+		messageId: string;
+	}): ConversationMessage[] {
+		return this.listMessagePathTo(input.conversationId, input.messageId);
+	}
+
+	storeSummary(input: {
+		id: string;
+		conversationId: string;
+		type: ConversationCheckpointSummary["type"];
+		summary: string;
+		abandonedLeafMessageId?: string;
+		firstKeptMessageId?: string;
+		tokensBefore?: number;
+		now: string;
+	}) {
+		this.db
+			.prepare(
+				`INSERT INTO conversation_summaries
+				(id, conversation_id, type, summary, abandoned_leaf_message_id, first_kept_message_id, tokens_before, created_at)
+				VALUES (@id, @conversationId, @type, @summary, @abandonedLeafMessageId, @firstKeptMessageId, @tokensBefore, @now)`,
+			)
+			.run({
+				...input,
+				abandonedLeafMessageId: input.abandonedLeafMessageId ?? null,
+				firstKeptMessageId: input.firstKeptMessageId ?? null,
+				tokensBefore: input.tokensBefore ?? null,
+			});
+	}
+
+	getLatestSummary(conversationId: string) {
+		const row = this.db
+			.prepare(
+				`SELECT * FROM conversation_summaries
+				WHERE conversation_id = ?
+				ORDER BY created_at DESC
+				LIMIT 1`,
+			)
+			.get(conversationId) as ConversationSummaryRow | undefined;
+		return row ? mapCheckpointSummary(row) : undefined;
 	}
 
 	getProviderSession(conversationId: string) {
@@ -908,17 +979,6 @@ export class ConversationRepository {
 		return row.ordinal;
 	}
 
-	private getActiveLeafMessageId(conversationId: string) {
-		const row = this.db
-			.prepare(
-				"SELECT active_leaf_message_id FROM conversations WHERE id = ?",
-			)
-			.get(conversationId) as
-			| { active_leaf_message_id: string | null }
-			| undefined;
-		return row?.active_leaf_message_id ?? undefined;
-	}
-
 	private setActiveLeafMessage(
 		conversationId: string,
 		messageId: string,
@@ -1011,6 +1071,26 @@ export class ConversationRepository {
 			)
 			.all(conversationId) as ApprovalRow[];
 		return rows.map(mapApproval);
+	}
+
+	private getLatestApplicableSummary(
+		conversationId: string,
+		messages: ConversationMessage[],
+	) {
+		const summaries = this.db
+			.prepare(
+				`SELECT * FROM conversation_summaries
+				WHERE conversation_id = ?
+				ORDER BY created_at DESC`,
+			)
+			.all(conversationId) as ConversationSummaryRow[];
+		const activePathIds = new Set(messages.map((message) => message.id));
+		const row = summaries.find(
+			(summary) =>
+				!summary.first_kept_message_id ||
+				activePathIds.has(summary.first_kept_message_id),
+		);
+		return row ? mapCheckpointSummary(row) : undefined;
 	}
 
 	private touchConversation(
@@ -1107,6 +1187,17 @@ type ApprovalRow = {
 	expires_at: string | null;
 };
 
+type ConversationSummaryRow = {
+	id: string;
+	conversation_id: string;
+	type: ConversationCheckpointSummary["type"];
+	summary: string;
+	abandoned_leaf_message_id: string | null;
+	first_kept_message_id: string | null;
+	tokens_before: number | null;
+	created_at: string;
+};
+
 function mapDraft(row: DraftRow): DraftRecord {
 	return {
 		id: row.id,
@@ -1162,6 +1253,21 @@ function mapTreeNode(row: TreeMessageRow): ConversationTreeNode {
 		...mapMessage(row),
 		childCount: row.child_count,
 		isActiveLeaf: row.is_active_leaf === 1,
+	};
+}
+
+function mapCheckpointSummary(
+	row: ConversationSummaryRow,
+): ConversationCheckpointSummary {
+	return {
+		id: row.id,
+		conversationId: row.conversation_id,
+		type: row.type,
+		summary: row.summary,
+		abandonedLeafMessageId: row.abandoned_leaf_message_id ?? undefined,
+		firstKeptMessageId: row.first_kept_message_id ?? undefined,
+		tokensBefore: row.tokens_before ?? undefined,
+		createdAt: row.created_at,
 	};
 }
 

@@ -23,6 +23,7 @@ import {
 	validateSendBody,
 } from "./controller-utils";
 import { ConversationRepository } from "./repository";
+import { buildSummaryRequest, estimateTokens } from "./summarizer";
 import type { ConversationEvent } from "./types";
 
 type ActiveTurn = {
@@ -40,6 +41,8 @@ type ActiveApproval = {
 	turnId?: string;
 	approvalId: string;
 };
+
+const MIN_SUMMARY_SOURCE_MESSAGES = 4;
 
 export function createConversationController(input: {
 	db: ConversationDatabase;
@@ -334,11 +337,24 @@ export function createConversationController(input: {
 		if (typeof value.messageId !== "string" || !value.messageId.trim()) {
 			throw new Error("Branch target message id is required");
 		}
-		return repo.branchConversationToMessage({
+		const previousLeafMessageId =
+			repo.getActiveLeafMessageId(conversationId);
+		const conversation = repo.branchConversationToMessage({
 			conversationId,
 			messageId: value.messageId,
 			now: now(),
 		});
+		queueSummary({
+			conversationId,
+			messageId: value.messageId,
+			type: "branch",
+			abandonedLeafMessageId:
+				previousLeafMessageId === value.messageId
+					? undefined
+					: previousLeafMessageId,
+			model: conversation?.model,
+		});
+		return conversation;
 	}
 
 	function forkConversation(conversationId: string, body: unknown) {
@@ -347,7 +363,7 @@ export function createConversationController(input: {
 		if (typeof value.messageId !== "string" || !value.messageId.trim()) {
 			throw new Error("Fork target message id is required");
 		}
-		return repo.forkConversationFromMessage({
+		const forked = repo.forkConversationFromMessage({
 			sourceConversationId: conversationId,
 			messageId: value.messageId,
 			ids: {
@@ -356,6 +372,15 @@ export function createConversationController(input: {
 			},
 			now: now(),
 		});
+		if (forked.conversation.activeLeafMessageId) {
+			queueSummary({
+				conversationId: forked.conversation.id,
+				messageId: forked.conversation.activeLeafMessageId,
+				type: "fork",
+				model: forked.conversation.model,
+			});
+		}
+		return forked;
 	}
 
 	function subscribe(
@@ -440,6 +465,65 @@ export function createConversationController(input: {
 	async function sidecarFetch(path: string, init: RequestInit) {
 		const runtime = await input.sidecarManager.ensure();
 		return input.sidecarManager.fetch(runtime, path, init);
+	}
+
+	function queueSummary(input: {
+		conversationId: string;
+		messageId: string;
+		type: "branch" | "fork";
+		abandonedLeafMessageId?: string;
+		model?: string;
+	}) {
+		const messages = repo.getSummarySource({
+			conversationId: input.conversationId,
+			messageId: input.messageId,
+		});
+		if (messages.length < MIN_SUMMARY_SOURCE_MESSAGES) {
+			return;
+		}
+		void generateAndStoreSummary({
+			...input,
+			messages,
+		}).catch((error) => {
+			console.warn(
+				`[conversations] failed to generate ${input.type} summary`,
+				error,
+			);
+		});
+	}
+
+	async function generateAndStoreSummary(input: {
+		conversationId: string;
+		messageId: string;
+		type: "branch" | "fork";
+		abandonedLeafMessageId?: string;
+		model?: string;
+		messages: ReturnType<typeof repo.getSummarySource>;
+	}) {
+		const response = (await sidecarFetch("/summaries/conversation", {
+			method: "POST",
+			headers: { "content-type": "application/json" },
+			body: JSON.stringify(
+				buildSummaryRequest({
+					model: input.model,
+					purpose: input.type,
+					messages: input.messages,
+				}),
+			),
+		})) as { summary?: string };
+		if (!response.summary?.trim()) {
+			return;
+		}
+		repo.storeSummary({
+			id: randomUUID(),
+			conversationId: input.conversationId,
+			type: input.type,
+			summary: response.summary.trim(),
+			abandonedLeafMessageId: input.abandonedLeafMessageId,
+			firstKeptMessageId: input.messageId,
+			tokensBefore: estimateTokens(input.messages),
+			now: now(),
+		});
 	}
 
 	async function streamRuntimeEvents(
