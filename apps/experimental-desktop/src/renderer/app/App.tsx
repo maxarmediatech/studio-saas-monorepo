@@ -11,6 +11,13 @@ import { useWorkspaceSelection } from "../hooks/useWorkspaceSelection";
 import { iconProps } from "./icons";
 import type { RuntimeOption } from "./types";
 
+const desktopRootClass =
+	"grid h-dvh w-screen min-w-[980px] grid-rows-[44px_minmax(0,1fr)] bg-[var(--desktop-bg)]";
+const desktopShellClass =
+	"grid min-h-0 grid-cols-[276px_minmax(520px,1fr)_320px] max-[1200px]:grid-cols-[248px_minmax(500px,1fr)_292px]";
+const sessionStageInnerClass =
+	"flex h-full w-full flex-col gap-6 px-7 pb-7 pt-[clamp(34px,7vh,72px)] max-[1200px]:px-5";
+
 export function App() {
 	const [appInfo, setAppInfo] = useState<AppInfo>();
 	const [runtimeMode, setRuntimeMode] =
@@ -44,9 +51,9 @@ export function App() {
 	}
 
 	return (
-		<div className="desktop-root">
+		<div className={desktopRootClass}>
 			<TopBar theme={theme} onToggleTheme={toggleTheme} />
-			<main className="desktop-shell">
+			<main className={desktopShellClass}>
 				<Sidebar
 					onChooseFolder={workspace.chooseFolder}
 					runtimeMode={runtimeMode}
@@ -54,13 +61,15 @@ export function App() {
 					onRuntimeModeChange={setRuntimeMode}
 					onNewSession={session.createNewSession}
 				/>
-				<section className="session-stage">
-					<div className="session-stage-inner">
-						<div className="stage-heading">
+				<section className="min-h-0 min-w-0 overflow-hidden">
+					<div className={sessionStageInnerClass}>
+						<div className="flex flex-col items-center gap-3.5">
 							<IconSparkles {...iconProps} size={24} />
-							<h1>Where should we begin?</h1>
+							<h1 className="m-0 text-[18px] font-medium tracking-normal text-[var(--desktop-strong)]">
+								Where should we begin?
+							</h1>
 						</div>
-						<div className="inbox-stack">
+						<div className="flex w-[min(100%,1080px)] flex-col gap-0 self-center">
 							{/* <StarterPrompts onSelect={setMessage} /> */}
 							<SessionComposer
 								value={message}

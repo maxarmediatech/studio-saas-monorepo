@@ -1,6 +1,12 @@
 import type { PendingRequest, TranscriptItem } from "../app/types";
+import { cn } from "../lib/utils";
 import { Button } from "./ui/button";
 import { ScrollArea } from "./ui/scroll-area";
+
+const labelClass = "m-0 text-[12px] font-medium text-[var(--desktop-subtle)]";
+const valueClass = "m-0 font-semibold text-[var(--desktop-strong)]";
+const preClass =
+	"m-0 overflow-hidden whitespace-pre-wrap text-[12px] text-[var(--desktop-subtle)]";
 
 export function SessionPanel(props: {
 	status: string;
@@ -14,18 +20,18 @@ export function SessionPanel(props: {
 	) => Promise<void>;
 }) {
 	return (
-		<section className="session-stream">
-			<div className="stream-header">
+		<section className="flex min-h-0 w-[min(100%,980px)] flex-1 flex-col self-center rounded-xl border border-border bg-[var(--desktop-panel)]">
+			<div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3.5">
 				<div>
-					<p className="label">Codex Session</p>
-					<p className="value">{props.status}</p>
+					<p className={labelClass}>Codex Session</p>
+					<p className={valueClass}>{props.status}</p>
 				</div>
-				<p className="label">{props.threadId ?? "No session"}</p>
+				<p className={labelClass}>{props.threadId ?? "No session"}</p>
 			</div>
-			<ScrollArea className="transcript-scroll">
-				<div className="transcript-list">
+			<ScrollArea className="min-h-0 flex-1">
+				<div className="flex flex-col gap-3 p-4">
 					{props.transcript.length === 0 ? (
-						<p className="empty-copy">
+						<p className="m-0 font-mono text-[var(--desktop-subtle)]">
 							Session output will appear here.
 						</p>
 					) : (
@@ -36,7 +42,7 @@ export function SessionPanel(props: {
 				</div>
 			</ScrollArea>
 			{props.pendingRequests.length > 0 ? (
-				<div className="request-stack">
+				<div className="flex flex-col gap-2.5 border-t border-border p-3.5">
 					{props.pendingRequests.map((request) => (
 						<ApprovalRequestCard
 							request={request}
@@ -53,12 +59,18 @@ export function SessionPanel(props: {
 function TranscriptRow(props: { item: TranscriptItem }) {
 	const item = props.item;
 	return (
-		<article className={`transcript-row ${item.type}`}>
-			<div className="transcript-meta">
+		<article
+			className={cn(
+				"rounded-[10px] border border-border p-3",
+				item.type === "user" && "bg-[var(--desktop-selected)]",
+				item.type === "assistant" && "bg-[var(--desktop-soft)]",
+			)}
+		>
+			<div className="flex justify-between text-[12px] text-[var(--desktop-subtle)]">
 				<span>{item.type}</span>
 				<time>{new Date(item.time).toLocaleTimeString()}</time>
 			</div>
-			<p>
+			<p className="mb-0 mt-2 whitespace-pre-wrap">
 				{item.type === "approval"
 					? `${item.requestKind} approval requested`
 					: item.text}
@@ -76,14 +88,16 @@ function ApprovalRequestCard(props: {
 }) {
 	const requestId = props.request.data.requestId;
 	return (
-		<article className="request-card">
+		<article className="grid gap-3 rounded-[10px] border border-border bg-[var(--desktop-selected)] p-3">
 			<div>
-				<p className="request-title">
+				<p className="mb-2 mt-0 font-semibold text-[var(--desktop-strong)]">
 					{props.request.data.requestKind} request
 				</p>
-				<pre>{summarizeRequest(props.request.data.raw)}</pre>
+				<pre className={preClass}>
+					{summarizeRequest(props.request.data.raw)}
+				</pre>
 			</div>
-			<div className="request-actions">
+			<div className="flex flex-wrap gap-2">
 				<Button
 					size="xs"
 					type="button"
