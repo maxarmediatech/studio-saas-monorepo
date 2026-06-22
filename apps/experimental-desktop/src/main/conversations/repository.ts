@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { CodexRuntimeMode } from "../sidecar-codex-runtime";
 import type { ConversationDatabase } from "../storage/database";
 import type {
@@ -8,7 +9,9 @@ import type {
 	ConversationMessage,
 	ConversationStatus,
 	ConversationSummary,
+	ConversationTreeNode,
 	DraftRecord,
+	ForkedConversation,
 	PendingApproval,
 	TurnStatus,
 } from "./types";
@@ -191,6 +194,7 @@ export class ConversationRepository {
 				id: input.ids.userMessageId,
 				conversationId: input.ids.conversationId,
 				turnId: input.ids.turnId,
+				parentMessageId: undefined,
 				ordinal: 0,
 				role: "user",
 				status: "completed",
@@ -211,6 +215,7 @@ export class ConversationRepository {
 				id: input.ids.assistantMessageId,
 				conversationId: input.ids.conversationId,
 				turnId: input.ids.turnId,
+				parentMessageId: input.ids.userMessageId,
 				ordinal: 1,
 				role: "assistant",
 				status: "streaming",
@@ -227,6 +232,11 @@ export class ConversationRepository {
 				json: {},
 				now: input.now,
 			});
+			this.setActiveLeafMessage(
+				input.ids.conversationId,
+				input.ids.assistantMessageId,
+				input.now,
+			);
 			if (input.draftId) {
 				this.db
 					.prepare(
@@ -262,6 +272,9 @@ export class ConversationRepository {
 	}) {
 		const run = this.db.transaction(() => {
 			const nextOrdinal = this.nextMessageOrdinal(input.conversationId);
+			const parentMessageId = this.getActiveLeafMessageId(
+				input.conversationId,
+			);
 			this.db
 				.prepare(
 					`INSERT INTO turns
@@ -273,6 +286,7 @@ export class ConversationRepository {
 				id: input.userMessageId,
 				conversationId: input.conversationId,
 				turnId: input.turnId,
+				parentMessageId,
 				ordinal: nextOrdinal,
 				role: "user",
 				status: "completed",
@@ -293,6 +307,7 @@ export class ConversationRepository {
 				id: input.assistantMessageId,
 				conversationId: input.conversationId,
 				turnId: input.turnId,
+				parentMessageId: input.userMessageId,
 				ordinal: nextOrdinal + 1,
 				role: "assistant",
 				status: "streaming",
@@ -309,6 +324,11 @@ export class ConversationRepository {
 				json: {},
 				now: input.now,
 			});
+			this.setActiveLeafMessage(
+				input.conversationId,
+				input.assistantMessageId,
+				input.now,
+			);
 			this.touchConversation(input.conversationId, "active", input.now);
 		});
 		run();
@@ -317,7 +337,7 @@ export class ConversationRepository {
 	listConversations() {
 		const rows = this.db
 			.prepare(
-				`SELECT c.*, ps.provider_thread_id
+				`SELECT c.*, ps.provider_thread_id, ps.provider_leaf_message_id
 				FROM conversations c
 				LEFT JOIN provider_sessions ps ON ps.conversation_id = c.id
 				WHERE c.status != 'deleted'
@@ -330,7 +350,7 @@ export class ConversationRepository {
 	getConversation(id: string): ConversationDetail | undefined {
 		const row = this.db
 			.prepare(
-				`SELECT c.*, ps.provider_thread_id
+				`SELECT c.*, ps.provider_thread_id, ps.provider_leaf_message_id
 				FROM conversations c
 				LEFT JOIN provider_sessions ps ON ps.conversation_id = c.id
 				WHERE c.id = ? AND c.status != 'deleted'`,
@@ -344,6 +364,174 @@ export class ConversationRepository {
 			messages: this.listMessages(id),
 			pendingApprovals: this.listPendingApprovals(id),
 		};
+	}
+
+	getConversationTree(conversationId: string): ConversationTreeNode[] {
+		const rows = this.db
+			.prepare(
+				`WITH text_parts AS (
+					SELECT
+						p.message_id,
+						GROUP_CONCAT(COALESCE(p.text, ''), '') AS text
+					FROM message_parts p
+					WHERE p.type = 'text'
+					GROUP BY p.message_id
+				)
+				SELECT
+					m.*,
+					COALESCE(text_parts.text, '') AS text,
+					(SELECT COUNT(*) FROM messages child WHERE child.parent_message_id = m.id) AS child_count,
+					CASE WHEN m.id = c.active_leaf_message_id THEN 1 ELSE 0 END AS is_active_leaf
+				FROM messages m
+				JOIN conversations c ON c.id = m.conversation_id
+				LEFT JOIN text_parts ON text_parts.message_id = m.id
+				WHERE m.conversation_id = ?
+				ORDER BY m.ordinal ASC`,
+			)
+			.all(conversationId) as TreeMessageRow[];
+		return rows.map(mapTreeNode);
+	}
+
+	branchConversationToMessage(input: {
+		conversationId: string;
+		messageId: string;
+		now: string;
+	}) {
+		const message = this.getMessage(input.messageId);
+		if (!message || message.conversation_id !== input.conversationId) {
+			throw new Error("Branch target message was not found");
+		}
+		this.setActiveLeafMessage(
+			input.conversationId,
+			input.messageId,
+			input.now,
+		);
+		return this.getConversation(input.conversationId);
+	}
+
+	forkConversationFromMessage(input: {
+		sourceConversationId: string;
+		messageId: string;
+		ids: { conversationId: string; providerSessionId: string };
+		now: string;
+	}): ForkedConversation {
+		const source = this.getConversation(input.sourceConversationId);
+		if (!source) {
+			throw new Error("Source conversation was not found");
+		}
+		const path = this.listMessagePathTo(
+			input.sourceConversationId,
+			input.messageId,
+		);
+		if (path.length === 0) {
+			throw new Error("Fork target message was not found");
+		}
+		const sourceProvider = this.getProviderSession(
+			input.sourceConversationId,
+		);
+		const idMap = new Map<string, string>();
+		for (const message of path) {
+			idMap.set(
+				message.id,
+				randomIdFrom(input.ids.conversationId, message.id),
+			);
+		}
+		const run = this.db.transaction(() => {
+			const target = path[path.length - 1];
+			this.db
+				.prepare(
+					`INSERT INTO conversations
+					(id, title, cwd, model, runtime_mode, status, parent_conversation_id, branched_from_message_id, branched_from_turn_id, branch_origin_provider_thread_id, created_at, updated_at, last_message_at)
+					VALUES (@conversationId, @title, @cwd, @model, @runtimeMode, 'idle', @parentConversationId, @branchedFromMessageId, @branchedFromTurnId, @branchOriginProviderThreadId, @now, @now, @now)`,
+				)
+				.run({
+					conversationId: input.ids.conversationId,
+					title: `${source.title} fork`,
+					cwd: source.cwd,
+					model: source.model ?? null,
+					runtimeMode: source.runtimeMode,
+					parentConversationId: source.id,
+					branchedFromMessageId: input.messageId,
+					branchedFromTurnId: target.turnId ?? null,
+					branchOriginProviderThreadId:
+						sourceProvider?.provider_thread_id ?? null,
+					now: input.now,
+				});
+			this.db
+				.prepare(
+					`INSERT INTO provider_sessions
+					(id, conversation_id, provider, status, provider_state_json, created_at, updated_at)
+					VALUES (@providerSessionId, @conversationId, 'codex', 'idle', @state, @now, @now)`,
+				)
+				.run({
+					providerSessionId: input.ids.providerSessionId,
+					conversationId: input.ids.conversationId,
+					state: stringify({
+						forkedFromConversationId: source.id,
+						forkedFromMessageId: input.messageId,
+					}),
+					now: input.now,
+				});
+			for (const [index, message] of path.entries()) {
+				const copiedId = idMap.get(message.id);
+				if (!copiedId) {
+					continue;
+				}
+				this.insertMessage({
+					id: copiedId,
+					conversationId: input.ids.conversationId,
+					parentMessageId: message.parentMessageId
+						? idMap.get(message.parentMessageId)
+						: undefined,
+					ordinal: index,
+					role: message.role,
+					status: message.status,
+					now: input.now,
+				});
+				this.insertPart({
+					id: `${copiedId}:text`,
+					conversationId: input.ids.conversationId,
+					messageId: copiedId,
+					ordinal: 0,
+					type: "text",
+					text: message.text,
+					json: { copiedFromMessageId: message.id },
+					now: input.now,
+				});
+			}
+			const copiedLeafId = idMap.get(input.messageId);
+			if (copiedLeafId) {
+				this.setActiveLeafMessage(
+					input.ids.conversationId,
+					copiedLeafId,
+					input.now,
+				);
+			}
+		});
+		run();
+		const conversation = this.getConversation(input.ids.conversationId);
+		if (!conversation) {
+			throw new Error("Forked conversation was not created");
+		}
+		return { conversation, copiedMessageCount: path.length };
+	}
+
+	buildReplayPrompt(conversationId: string, userText: string) {
+		const messages = this.listMessages(conversationId);
+		if (messages.length === 0) {
+			return userText;
+		}
+		const transcript = messages
+			.map((message) => `${message.role.toUpperCase()}: ${message.text}`)
+			.join("\n\n");
+		return [
+			"Continue from this branched local conversation transcript.",
+			"Use it as context, but answer only the latest user message.",
+			"",
+			transcript,
+			"",
+			`USER: ${userText}`,
+		].join("\n");
 	}
 
 	getProviderSession(conversationId: string) {
@@ -408,6 +596,22 @@ export class ConversationRepository {
 				providerTurnId: input.providerTurnId ?? null,
 				now: input.now,
 			});
+	}
+
+	setProviderLeaf(input: {
+		providerSessionId: string;
+		messageId: string;
+		now: string;
+	}) {
+		this.db
+			.prepare(
+				`UPDATE provider_sessions
+				SET provider_leaf_message_id = @messageId,
+					status = 'active',
+					updated_at = @now
+				WHERE id = @providerSessionId`,
+			)
+			.run(input);
 	}
 
 	recordEvent(input: {
@@ -645,26 +849,36 @@ export class ConversationRepository {
 	private insertMessage(input: {
 		id: string;
 		conversationId: string;
-		turnId: string;
+		turnId?: string;
+		parentMessageId?: string;
 		ordinal: number;
 		role: "user" | "assistant" | "system";
-		status: "pending" | "streaming" | "completed" | "failed";
+		status:
+			| "pending"
+			| "streaming"
+			| "completed"
+			| "failed"
+			| "interrupted";
 		now: string;
 	}) {
 		this.db
 			.prepare(
 				`INSERT INTO messages
-				(id, conversation_id, turn_id, ordinal, role, status, created_at, updated_at)
-				VALUES (@id, @conversationId, @turnId, @ordinal, @role, @status, @now, @now)`,
+				(id, conversation_id, turn_id, parent_message_id, ordinal, role, status, created_at, updated_at)
+				VALUES (@id, @conversationId, @turnId, @parentMessageId, @ordinal, @role, @status, @now, @now)`,
 			)
-			.run(input);
+			.run({
+				...input,
+				turnId: input.turnId ?? null,
+				parentMessageId: input.parentMessageId ?? null,
+			});
 	}
 
 	private insertPart(input: {
 		id: string;
 		conversationId: string;
 		messageId: string;
-		turnId: string;
+		turnId?: string;
 		ordinal: number;
 		type: "text" | "tool_call" | "tool_result" | "approval" | "raw";
 		text?: string;
@@ -679,6 +893,7 @@ export class ConversationRepository {
 			)
 			.run({
 				...input,
+				turnId: input.turnId ?? null,
 				text: input.text ?? null,
 				json: stringify(input.json),
 			});
@@ -693,19 +908,97 @@ export class ConversationRepository {
 		return row.ordinal;
 	}
 
+	private getActiveLeafMessageId(conversationId: string) {
+		const row = this.db
+			.prepare(
+				"SELECT active_leaf_message_id FROM conversations WHERE id = ?",
+			)
+			.get(conversationId) as
+			| { active_leaf_message_id: string | null }
+			| undefined;
+		return row?.active_leaf_message_id ?? undefined;
+	}
+
+	private setActiveLeafMessage(
+		conversationId: string,
+		messageId: string,
+		now: string,
+	) {
+		this.db
+			.prepare(
+				`UPDATE conversations
+				SET active_leaf_message_id = @messageId,
+					updated_at = @now
+				WHERE id = @conversationId`,
+			)
+			.run({ conversationId, messageId, now });
+	}
+
+	private getMessage(messageId: string) {
+		return this.db
+			.prepare("SELECT * FROM messages WHERE id = ?")
+			.get(messageId) as MessageRow | undefined;
+	}
+
+	private listMessagePathTo(
+		conversationId: string,
+		messageId: string,
+	): ConversationMessage[] {
+		const rows = this.db
+			.prepare(
+				`WITH RECURSIVE message_path AS (
+					SELECT m.*, 0 AS depth
+					FROM messages m
+					WHERE m.id = @messageId AND m.conversation_id = @conversationId
+					UNION ALL
+					SELECT parent.*, message_path.depth + 1 AS depth
+					FROM messages parent
+					JOIN message_path ON message_path.parent_message_id = parent.id
+				), text_parts AS (
+					SELECT
+						p.message_id,
+						GROUP_CONCAT(COALESCE(p.text, ''), '') AS text
+					FROM message_parts p
+					WHERE p.type = 'text'
+					GROUP BY p.message_id
+				)
+				SELECT message_path.*, COALESCE(text_parts.text, '') AS text
+				FROM message_path
+				LEFT JOIN text_parts ON text_parts.message_id = message_path.id
+				ORDER BY message_path.depth DESC`,
+			)
+			.all({ conversationId, messageId }) as MessageRow[];
+		return rows.map(mapMessage);
+	}
+
 	private listMessages(conversationId: string): ConversationMessage[] {
 		const rows = this.db
 			.prepare(
-				`SELECT
-					m.*,
-					COALESCE(GROUP_CONCAT(CASE WHEN p.type = 'text' THEN COALESCE(p.text, '') END, ''), '') AS text
-				FROM messages m
-				LEFT JOIN message_parts p ON p.message_id = m.id
-				WHERE m.conversation_id = ?
-				GROUP BY m.id
-				ORDER BY m.ordinal ASC`,
+				`WITH RECURSIVE active_path AS (
+					SELECT m.*, 0 AS depth
+					FROM messages m
+					WHERE m.id = COALESCE(
+						(SELECT active_leaf_message_id FROM conversations WHERE id = @conversationId),
+						(SELECT id FROM messages WHERE conversation_id = @conversationId ORDER BY ordinal DESC LIMIT 1)
+					)
+					UNION ALL
+					SELECT parent.*, active_path.depth + 1 AS depth
+					FROM messages parent
+					JOIN active_path ON active_path.parent_message_id = parent.id
+				), text_parts AS (
+					SELECT
+						p.message_id,
+						GROUP_CONCAT(COALESCE(p.text, ''), '') AS text
+					FROM message_parts p
+					WHERE p.type = 'text'
+					GROUP BY p.message_id
+				)
+				SELECT active_path.*, COALESCE(text_parts.text, '') AS text
+				FROM active_path
+				LEFT JOIN text_parts ON text_parts.message_id = active_path.id
+				ORDER BY active_path.ordinal ASC`,
 			)
-			.all(conversationId) as MessageRow[];
+			.all({ conversationId }) as MessageRow[];
 		return rows.map(mapMessage);
 	}
 
@@ -759,12 +1052,19 @@ type ConversationRow = {
 	updated_at: string;
 	last_message_at: string | null;
 	provider_thread_id: string | null;
+	provider_leaf_message_id: string | null;
+	parent_conversation_id: string | null;
+	branched_from_message_id: string | null;
+	branched_from_turn_id: string | null;
+	branch_origin_provider_thread_id: string | null;
+	active_leaf_message_id: string | null;
 };
 
 type ProviderSessionRow = {
 	id: string;
 	conversation_id: string;
 	provider_thread_id: string | null;
+	provider_leaf_message_id: string | null;
 };
 
 type TurnRow = {
@@ -780,12 +1080,18 @@ type MessageRow = {
 	id: string;
 	conversation_id: string;
 	turn_id: string | null;
+	parent_message_id: string | null;
 	ordinal: number;
 	role: "user" | "assistant" | "system";
 	status: ConversationMessage["status"];
 	text: string;
 	created_at: string;
 	updated_at: string;
+};
+
+type TreeMessageRow = MessageRow & {
+	child_count: number;
+	is_active_leaf: 0 | 1;
 };
 
 type ApprovalRow = {
@@ -826,6 +1132,13 @@ function mapConversation(row: ConversationRow): ConversationSummary {
 		updatedAt: row.updated_at,
 		lastMessageAt: row.last_message_at ?? undefined,
 		providerThreadId: row.provider_thread_id ?? undefined,
+		providerLeafMessageId: row.provider_leaf_message_id ?? undefined,
+		parentConversationId: row.parent_conversation_id ?? undefined,
+		branchedFromMessageId: row.branched_from_message_id ?? undefined,
+		branchedFromTurnId: row.branched_from_turn_id ?? undefined,
+		branchOriginProviderThreadId:
+			row.branch_origin_provider_thread_id ?? undefined,
+		activeLeafMessageId: row.active_leaf_message_id ?? undefined,
 	};
 }
 
@@ -834,12 +1147,21 @@ function mapMessage(row: MessageRow): ConversationMessage {
 		id: row.id,
 		conversationId: row.conversation_id,
 		turnId: row.turn_id ?? undefined,
+		parentMessageId: row.parent_message_id ?? undefined,
 		ordinal: row.ordinal,
 		role: row.role,
 		status: row.status,
 		text: row.text,
 		createdAt: row.created_at,
 		updatedAt: row.updated_at,
+	};
+}
+
+function mapTreeNode(row: TreeMessageRow): ConversationTreeNode {
+	return {
+		...mapMessage(row),
+		childCount: row.child_count,
+		isActiveLeaf: row.is_active_leaf === 1,
 	};
 }
 
@@ -876,4 +1198,8 @@ function titleFromText(text: string) {
 		return "Untitled conversation";
 	}
 	return title.length > 72 ? `${title.slice(0, 69)}...` : title;
+}
+
+function randomIdFrom(_conversationId: string, _sourceMessageId: string) {
+	return randomUUID();
 }

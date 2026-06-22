@@ -106,6 +106,22 @@ export function registerIpcHandlers(sidecarManager: SidecarManager) {
 		conversations.getConversation(conversationId),
 	);
 
+	ipcMain.handle("conversation:get-tree", (_event, conversationId: string) =>
+		conversations.getConversationTree(conversationId),
+	);
+
+	ipcMain.handle(
+		"conversation:branch-from-message",
+		(_event, conversationId: string, input) =>
+			conversations.branchConversation(conversationId, input),
+	);
+
+	ipcMain.handle(
+		"conversation:copy-branch-from-message",
+		(_event, conversationId: string, input) =>
+			conversations.forkConversation(conversationId, input),
+	);
+
 	ipcMain.handle("draft:create", (_event, input) =>
 		conversations.createDraft(input),
 	);

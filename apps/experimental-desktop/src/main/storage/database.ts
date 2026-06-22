@@ -140,6 +140,52 @@ CREATE INDEX approvals_conversation_id_idx ON approvals(conversation_id);
 CREATE INDEX approvals_turn_id_idx ON approvals(turn_id);
 `,
 	},
+	{
+		id: "0002_conversation_tree",
+		sql: `
+ALTER TABLE conversations ADD COLUMN parent_conversation_id TEXT REFERENCES conversations(id) ON DELETE SET NULL;
+ALTER TABLE conversations ADD COLUMN branched_from_message_id TEXT REFERENCES messages(id) ON DELETE SET NULL;
+ALTER TABLE conversations ADD COLUMN branched_from_turn_id TEXT REFERENCES turns(id) ON DELETE SET NULL;
+ALTER TABLE conversations ADD COLUMN branch_origin_provider_thread_id TEXT;
+ALTER TABLE conversations ADD COLUMN active_leaf_message_id TEXT REFERENCES messages(id) ON DELETE SET NULL;
+
+ALTER TABLE provider_sessions ADD COLUMN provider_leaf_message_id TEXT REFERENCES messages(id) ON DELETE SET NULL;
+ALTER TABLE messages ADD COLUMN parent_message_id TEXT REFERENCES messages(id) ON DELETE SET NULL;
+
+UPDATE messages
+SET parent_message_id = (
+	SELECT previous.id
+	FROM messages previous
+	WHERE previous.conversation_id = messages.conversation_id
+		AND previous.ordinal = messages.ordinal - 1
+)
+WHERE parent_message_id IS NULL AND ordinal > 0;
+
+UPDATE conversations
+SET active_leaf_message_id = (
+	SELECT m.id
+	FROM messages m
+	WHERE m.conversation_id = conversations.id
+	ORDER BY m.ordinal DESC
+	LIMIT 1
+)
+WHERE active_leaf_message_id IS NULL;
+
+UPDATE provider_sessions
+SET provider_leaf_message_id = (
+	SELECT c.active_leaf_message_id
+	FROM conversations c
+	WHERE c.id = provider_sessions.conversation_id
+)
+WHERE provider_leaf_message_id IS NULL AND provider_thread_id IS NOT NULL;
+
+CREATE INDEX conversations_parent_conversation_id_idx ON conversations(parent_conversation_id);
+CREATE INDEX conversations_active_leaf_message_id_idx ON conversations(active_leaf_message_id);
+CREATE INDEX conversations_branched_from_message_id_idx ON conversations(branched_from_message_id);
+CREATE INDEX provider_sessions_provider_leaf_message_id_idx ON provider_sessions(provider_leaf_message_id);
+CREATE INDEX messages_parent_message_id_idx ON messages(parent_message_id);
+`,
+	},
 ];
 
 export type ConversationDatabase = Database.Database;

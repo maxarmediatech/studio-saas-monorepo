@@ -7,8 +7,10 @@ import type {
 	ConversationDetail,
 	ConversationEvent,
 	ConversationSummary,
+	ConversationTreeNode,
 	DraftRecord,
 	ExperimentalDesktopApi,
+	ForkedConversation,
 	OpenAiAuthStart,
 	OpenAiAuthStatus,
 	SendSessionMessageResult,
@@ -51,6 +53,22 @@ const api: ExperimentalDesktopApi = {
 		ipcRenderer.invoke("conversation:get", conversationId) as Promise<
 			ConversationDetail | undefined
 		>,
+	getConversationTree: (conversationId) =>
+		ipcRenderer.invoke("conversation:get-tree", conversationId) as Promise<
+			ConversationTreeNode[]
+		>,
+	branchConversationFromMessage: (conversationId, input) =>
+		ipcRenderer.invoke(
+			"conversation:branch-from-message",
+			conversationId,
+			input,
+		) as Promise<ConversationDetail | undefined>,
+	copyConversationBranchFromMessage: (conversationId, input) =>
+		ipcRenderer.invoke(
+			"conversation:copy-branch-from-message",
+			conversationId,
+			input,
+		) as Promise<ForkedConversation>,
 	createDraft: (input) =>
 		ipcRenderer.invoke("draft:create", input ?? {}) as Promise<DraftRecord>,
 	updateDraft: (draftId, input) =>

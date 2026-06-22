@@ -67,6 +67,10 @@ export function createConversationController(input: {
 		return repo.getConversation(conversationId);
 	}
 
+	function getConversationTree(conversationId: string) {
+		return repo.getConversationTree(conversationId);
+	}
+
 	function createDraft(body: unknown) {
 		const draft = validateDraftBody(body);
 		return repo.createDraft({
@@ -175,9 +179,16 @@ export function createConversationController(input: {
 		assertNoActiveTurn();
 		const conversation = repo.getConversation(conversationId);
 		const providerSession = repo.getProviderSession(conversationId);
-		if (!conversation || !providerSession?.provider_thread_id) {
-			throw new Error("Conversation is not ready to resume");
+		if (!conversation || !providerSession) {
+			throw new Error("Conversation is not ready to continue");
 		}
+		const shouldResumeProviderThread =
+			!!providerSession.provider_thread_id &&
+			providerSession.provider_leaf_message_id ===
+				conversation.activeLeafMessageId;
+		const runtimeText = shouldResumeProviderThread
+			? message.text
+			: repo.buildReplayPrompt(conversationId, message.text);
 		const userMessageId = randomUUID();
 		const assistantMessageId = randomUUID();
 		const turn: ActiveTurn = {
@@ -219,17 +230,32 @@ export function createConversationController(input: {
 		});
 		try {
 			await ensureRuntimeEvents();
-			await sidecarFetch("/runtime/thread/resume", {
-				method: "POST",
-				headers: { "content-type": "application/json" },
-				body: JSON.stringify({
-					threadId: providerSession.provider_thread_id,
-				}),
-			});
-			await startTurn(
-				{ ...turn, threadId: providerSession.provider_thread_id },
-				message.text,
-			);
+			let threadId = providerSession.provider_thread_id ?? undefined;
+			if (shouldResumeProviderThread && threadId) {
+				await sidecarFetch("/runtime/thread/resume", {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({ threadId }),
+				});
+			} else {
+				const thread = (await sidecarFetch("/runtime/thread/start", {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({
+						cwd: turn.cwd,
+						model: turn.model,
+						runtimeMode: turn.runtimeMode,
+					}),
+				})) as { threadId: string };
+				threadId = thread.threadId;
+				repo.setProviderThread({
+					providerSessionId: providerSession.id,
+					threadId,
+					state: thread,
+					now: now(),
+				});
+			}
+			await startTurn({ ...turn, threadId }, runtimeText);
 			return repo.getConversation(conversationId);
 		} catch (error) {
 			failActiveTurn(turn, error);
@@ -300,6 +326,36 @@ export function createConversationController(input: {
 	function deleteConversation(id: string) {
 		repo.deleteConversation(id, now());
 		return { ok: true as const };
+	}
+
+	function branchConversation(conversationId: string, body: unknown) {
+		assertNoActiveTurn();
+		const value = validateObject(body, "Branch body must be an object");
+		if (typeof value.messageId !== "string" || !value.messageId.trim()) {
+			throw new Error("Branch target message id is required");
+		}
+		return repo.branchConversationToMessage({
+			conversationId,
+			messageId: value.messageId,
+			now: now(),
+		});
+	}
+
+	function forkConversation(conversationId: string, body: unknown) {
+		assertNoActiveTurn();
+		const value = validateObject(body, "Fork body must be an object");
+		if (typeof value.messageId !== "string" || !value.messageId.trim()) {
+			throw new Error("Fork target message id is required");
+		}
+		return repo.forkConversationFromMessage({
+			sourceConversationId: conversationId,
+			messageId: value.messageId,
+			ids: {
+				conversationId: randomUUID(),
+				providerSessionId: randomUUID(),
+			},
+			now: now(),
+		});
 	}
 
 	function subscribe(
@@ -604,11 +660,17 @@ export function createConversationController(input: {
 				event.params,
 			);
 		} else {
+			const completedAt = now();
 			repo.completeTurn({
 				turnId: activeTurn.turnId,
 				raw: event.params,
-				now: now(),
+				now: completedAt,
 				status: "completed",
+			});
+			repo.setProviderLeaf({
+				providerSessionId: activeTurn.providerSessionId,
+				messageId: activeTurn.assistantMessageId,
+				now: completedAt,
 			});
 			const persisted: ConversationEvent = {
 				id: randomUUID(),
@@ -775,6 +837,7 @@ export function createConversationController(input: {
 	return {
 		listConversations,
 		getConversation,
+		getConversationTree,
 		createDraft,
 		updateDraft,
 		promoteDraftAndSend,
@@ -783,6 +846,8 @@ export function createConversationController(input: {
 		renameConversation,
 		archiveConversation,
 		deleteConversation,
+		branchConversation,
+		forkConversation,
 		subscribe,
 		stop,
 	};

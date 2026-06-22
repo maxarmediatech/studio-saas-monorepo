@@ -167,12 +167,19 @@ export type ConversationSummary = {
 	updatedAt: string;
 	lastMessageAt?: string;
 	providerThreadId?: string;
+	providerLeafMessageId?: string;
+	parentConversationId?: string;
+	branchedFromMessageId?: string;
+	branchedFromTurnId?: string;
+	branchOriginProviderThreadId?: string;
+	activeLeafMessageId?: string;
 };
 
 export type ConversationMessage = {
 	id: string;
 	conversationId: string;
 	turnId?: string;
+	parentMessageId?: string;
 	ordinal: number;
 	role: "user" | "assistant" | "system";
 	status: "pending" | "streaming" | "completed" | "failed" | "interrupted";
@@ -206,6 +213,16 @@ export type ConversationDetail = ConversationSummary & {
 	pendingApprovals: PendingApproval[];
 };
 
+export type ConversationTreeNode = ConversationMessage & {
+	childCount: number;
+	isActiveLeaf: boolean;
+};
+
+export type ForkedConversation = {
+	conversation: ConversationDetail;
+	copiedMessageCount: number;
+};
+
 export type ExperimentalDesktopApi = {
 	getAppInfo: () => Promise<AppInfo>;
 	openDirectory: () => Promise<string | null>;
@@ -221,6 +238,17 @@ export type ExperimentalDesktopApi = {
 	getConversation: (
 		conversationId: string,
 	) => Promise<ConversationDetail | undefined>;
+	getConversationTree: (
+		conversationId: string,
+	) => Promise<ConversationTreeNode[]>;
+	branchConversationFromMessage: (
+		conversationId: string,
+		input: { messageId: string },
+	) => Promise<ConversationDetail | undefined>;
+	copyConversationBranchFromMessage: (
+		conversationId: string,
+		input: { messageId: string },
+	) => Promise<ForkedConversation>;
 	createDraft: (input?: {
 		text?: string;
 		cwd?: string;
