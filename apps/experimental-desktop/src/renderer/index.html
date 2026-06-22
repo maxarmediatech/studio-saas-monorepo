@@ -9,73 +9,234 @@
 		<title>Experimental Desktop</title>
 	</head>
 	<body>
-		<main class="shell">
-			<section class="hero">
-				<p class="eyebrow">Desktop shell</p>
-				<h1>Experimental Desktop</h1>
-				<p class="lede">
-					A standalone Electron surface for experiments, wired like opencode: native shell,
-					sandboxed renderer, narrow preload bridge.
-				</p>
-			</section>
+		<div class="desktop-frame">
+			<header class="topbar">
+				<nav class="mode-tabs" aria-label="Primary">
+					<a class="brand-mark" href="#" aria-label="Experimental Desktop">
+						<svg viewBox="0 0 24 24" aria-hidden="true">
+							<path d="M12 2.75v18.5M2.75 12h18.5M5.45 5.45l13.1 13.1M18.55 5.45l-13.1 13.1" />
+						</svg>
+					</a>
+					<a class="mode-tab is-active" href="#">
+						<svg viewBox="0 0 24 24" aria-hidden="true">
+							<path d="M13 3.5l1.8 4.7 4.7 1.8-4.7 1.8-1.8 4.7-1.8-4.7-4.7-1.8 4.7-1.8L13 3.5Z" />
+							<path d="M5 15.5v4M3 17.5h4M19 4.5v3M17.5 6h3" />
+						</svg>
+						<span>Chat</span>
+					</a>
+					<a class="mode-tab" href="#">
+						<svg viewBox="0 0 24 24" aria-hidden="true">
+							<path d="M5 6.5h14a1.5 1.5 0 0 1 1.5 1.5v5A1.5 1.5 0 0 1 19 14.5h-4.75L10.5 19v-4.5H5A1.5 1.5 0 0 1 3.5 13V8A1.5 1.5 0 0 1 5 6.5Z" />
+							<path d="M8 9.5h8M8 12h4" />
+						</svg>
+						<span>Agent</span>
+					</a>
+					<a class="mode-tab" href="#">
+						<svg viewBox="0 0 24 24" aria-hidden="true">
+							<path d="M6.5 4.5h11A2 2 0 0 1 19.5 6.5v11a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2v-11A2 2 0 0 1 6.5 4.5Z" />
+							<path d="m9.5 9-3 3 3 3M14.5 9l3 3-3 3" />
+						</svg>
+						<span>Code</span>
+					</a>
+					<a class="mode-tab" href="#">
+						<svg viewBox="0 0 24 24" aria-hidden="true">
+							<path d="M18.5 4.5C11.5 5 7.4 8.5 6.8 15.1c2-2.1 4.2-3 6.6-2.6" />
+							<path d="M6.8 15.1 5 19.5M18.5 4.5c-.4 5.7-3.2 9-8.4 9.8" />
+						</svg>
+						<span>Design</span>
+					</a>
+				</nav>
+				<label class="search-field">
+					<svg viewBox="0 0 24 24" aria-hidden="true">
+						<path d="m16.5 16.5 4 4M10.5 18.5a8 8 0 1 1 0-16 8 8 0 0 1 0 16Z" />
+					</svg>
+					<input type="search" placeholder="Search" />
+					<kbd>Cmd K</kbd>
+				</label>
+			</header>
 
-			<section class="panel">
-				<div>
-					<p class="label">Runtime</p>
-					<p id="app-info" class="value">Loading...</p>
-				</div>
-				<div class="actions">
-					<button id="open-folder" type="button">Choose Folder</button>
-					<button id="open-file" type="button">Choose File</button>
-					<button id="open-docs" type="button">Electron Docs</button>
-				</div>
-				<p id="selection" class="selection">No file or folder selected.</p>
-			</section>
+			<main class="app-shell">
+				<aside class="sidebar">
+					<section class="nav-section">
+						<a class="nav-item is-active" href="#">
+							<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+							<span>New task</span>
+						</a>
+						<button id="open-folder" class="nav-item" type="button">
+							<svg viewBox="0 0 24 24" aria-hidden="true">
+								<path d="M4 7.5h6l1.6 2H20v7.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7.5Z" />
+								<path d="M4 7.5V6a2 2 0 0 1 2-2h4l1.6 2H18a2 2 0 0 1 2 2v1.5" />
+							</svg>
+							<span>Workspace</span>
+						</button>
+						<a class="nav-item" href="#">
+							<svg viewBox="0 0 24 24" aria-hidden="true">
+								<path d="M5.5 5.5h13v4h-13zM5.5 14.5h8v4h-8zM17.5 15.5l3 2-3 2v-4Z" />
+							</svg>
+							<span>Active runs</span>
+						</a>
+						<a class="nav-item" href="#">
+							<svg viewBox="0 0 24 24" aria-hidden="true">
+								<path d="M5 5h5v5H5zM14 5h5v5h-5zM5 14h5v5H5zM16.5 14v5M14 16.5h5" />
+							</svg>
+							<span>Live Artifacts</span>
+						</a>
+						<a class="nav-item" href="#">
+							<svg viewBox="0 0 24 24" aria-hidden="true">
+								<path d="M7 4.5h6.5V11H7zM4.5 13H11v6.5H4.5zM13 13h6.5v6.5H13z" />
+							</svg>
+							<span>Plugins</span>
+						</a>
+					</section>
 
-			<section class="panel">
-				<div>
-					<p class="label">OpenAI OAuth</p>
-					<p id="openai-status" class="value">Checking sidecar...</p>
-				</div>
-				<div class="actions">
-					<button id="connect-openai" type="button">Connect ChatGPT Plus</button>
-					<button id="refresh-openai" type="button">Refresh Status</button>
-					<button id="probe-codex-app-server" type="button">Probe App Server</button>
-					<button id="send-codex-test" type="button">Send Codex Test</button>
-					<button id="logout-openai" type="button">Disconnect</button>
-				</div>
-				<p id="openai-detail" class="selection">Sidecar starts on demand.</p>
-			</section>
+					<section class="nav-section">
+						<p class="section-label">Workspace</p>
+						<a class="nav-item" href="#"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 7.5h5l2 2h8v8a2 2 0 0 1-2 2h-13z" /></svg><span>Growth Operator</span></a>
+						<a class="nav-item" href="#"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 7.5h5l2 2h8v8a2 2 0 0 1-2 2h-13z" /></svg><span>Content Pipeline</span></a>
+						<a class="nav-item" href="#"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 7.5h5l2 2h8v8a2 2 0 0 1-2 2h-13z" /></svg><span>Workflow Engine</span></a>
+						<a class="nav-item" href="#"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 7.5h5l2 2h8v8a2 2 0 0 1-2 2h-13z" /></svg><span>Research Cluster</span></a>
+					</section>
 
-			<section class="panel session-panel">
-				<div>
-					<p class="label">Codex Session</p>
-					<p id="session-status" class="value">No session</p>
-				</div>
-				<div class="actions">
-					<button id="new-session" type="button">New Session</button>
-					<button id="send-session-message" type="button">Send</button>
-					<label class="mode-select">
-						<span>Mode</span>
-						<select id="session-mode">
-							<option value="read-only" selected>Read Only</option>
-							<option value="workspace-write">Workspace Edit</option>
-						</select>
-					</label>
-				</div>
-				<textarea
-					id="session-input"
-					rows="4"
-					placeholder="Ask Codex something..."
-				></textarea>
-				<div id="session-requests" class="session-requests"></div>
-				<pre id="session-output" class="session-output"></pre>
-				<details class="event-log">
-					<summary>Recent events</summary>
-					<pre id="session-event-log"></pre>
-				</details>
-			</section>
-		</main>
+					<section class="nav-section recents">
+						<p class="section-label">Recents</p>
+						<a href="#">Fix spacing on cards</a>
+						<a href="#">Need better empty state</a>
+						<a href="#">Update sidebar structure</a>
+						<a href="#">Mobile runtime needs cleanup</a>
+						<a href="#">Improve retrieval accuracy</a>
+					</section>
+
+					<section class="connect-strip">
+						<p class="connect-title">Connect apps</p>
+						<p>External tools such as Figma, GitHub, Drive</p>
+						<div class="app-dots" aria-hidden="true">
+							<span>G</span><span>S</span><span>D</span><span>F</span><span>+</span>
+						</div>
+					</section>
+				</aside>
+
+				<section class="main-stage">
+					<div class="stage-orb" aria-hidden="true">
+						<svg viewBox="0 0 24 24"><path d="M12 2.75v18.5M2.75 12h18.5M5.45 5.45l13.1 13.1M18.55 5.45l-13.1 13.1" /></svg>
+					</div>
+					<p class="stage-kicker">Where should we begin?</p>
+					<section class="composer-card" aria-label="Codex session composer">
+						<textarea
+							id="session-input"
+							rows="4"
+							placeholder="Ask anything..."
+						></textarea>
+						<div class="composer-toolbar">
+							<div class="composer-actions">
+								<button id="new-session" class="icon-button" type="button" aria-label="New session">
+									<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+								</button>
+								<button id="open-file" class="icon-button" type="button" aria-label="Choose file">
+									<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 18.5 5 11 18.5l-1.8-5.7L5 12.5Z" /></svg>
+								</button>
+								<label class="mode-select">
+									<span>Mode</span>
+									<select id="session-mode">
+										<option value="read-only" selected>Read Only</option>
+										<option value="workspace-write">Workspace Edit</option>
+									</select>
+								</label>
+							</div>
+							<div class="composer-actions">
+								<span class="model-pill"><i></i> Opus 4.7</span>
+								<button class="icon-button ghost" type="button" aria-label="Voice">
+									<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5a3 3 0 0 0-3 3v4a3 3 0 0 0 6 0v-4a3 3 0 0 0-3-3Z" /><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3" /></svg>
+								</button>
+								<button id="send-session-message" class="send-button" type="button" aria-label="Send">
+									<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6.5 10.5 12 5l5.5 5.5" /></svg>
+								</button>
+							</div>
+						</div>
+					</section>
+
+					<section class="upgrade-row">
+						<div>
+							<svg class="crown" viewBox="0 0 24 24" aria-hidden="true">
+								<path d="m4.5 8 4.2 3.7L12 5l3.3 6.7L19.5 8l-1.7 9.5H6.2L4.5 8Z" />
+								<path d="M6.8 19.5h10.4" />
+							</svg>
+							<strong>Upgrade to PRO</strong>
+						</div>
+						<button type="button">Upgrade</button>
+					</section>
+
+					<section class="quick-grid" aria-label="Shortcuts">
+						<article>
+							<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+							<strong>Create</strong>
+							<span>Tasks, images, docs</span>
+						</article>
+						<article>
+							<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 18.5a8 8 0 1 1 0-16 8 8 0 0 1 0 16ZM16.5 16.5l4 4" /></svg>
+							<strong>Find</strong>
+							<span>Answers & files</span>
+						</article>
+						<article>
+							<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5a8.5 8.5 0 0 1 0 17 8.5 8.5 0 0 1 0-17ZM3.5 12h17M12 3.5c2.1 2.2 3.1 5 3.1 8.5S14.1 18.3 12 20.5M12 3.5C9.9 5.7 8.9 8.5 8.9 12s1 6.3 3.1 8.5" /></svg>
+							<strong>Research</strong>
+							<span>Apps & web</span>
+						</article>
+					</section>
+
+					<section class="session-stream">
+						<div class="stream-header">
+							<div>
+								<p class="label">Codex Session</p>
+								<p id="session-status" class="value">No session</p>
+							</div>
+							<details class="event-log">
+								<summary>Recent events</summary>
+								<pre id="session-event-log"></pre>
+							</details>
+						</div>
+						<div id="session-requests" class="session-requests"></div>
+						<pre id="session-output" class="session-output"></pre>
+					</section>
+				</section>
+
+				<aside class="inspector">
+					<section class="panel">
+						<div class="panel-heading">
+							<p class="label">Runtime</p>
+							<span class="status-dot"></span>
+						</div>
+						<p id="app-info" class="value">Loading...</p>
+						<p id="selection" class="muted">No file or folder selected.</p>
+						<div class="actions">
+							<button id="open-docs" type="button">Electron Docs</button>
+						</div>
+					</section>
+
+					<section class="panel">
+						<div class="panel-heading">
+							<p class="label">OpenAI OAuth</p>
+							<p id="openai-status" class="badge">Checking sidecar...</p>
+						</div>
+						<p id="openai-detail" class="muted">Sidecar starts on demand.</p>
+						<div class="actions">
+							<button id="connect-openai" type="button">Connect</button>
+							<button id="refresh-openai" type="button">Refresh</button>
+							<button id="probe-codex-app-server" type="button">Probe</button>
+							<button id="send-codex-test" type="button">Test</button>
+							<button id="logout-openai" type="button">Disconnect</button>
+						</div>
+					</section>
+
+					<section class="channel-card">
+						<div class="channel-art" aria-hidden="true"></div>
+						<div>
+							<strong>Connect your channel</strong>
+							<p>Bring Slack, GitHub, Drive into the workspace.</p>
+						</div>
+					</section>
+				</aside>
+			</main>
+		</div>
 		<script type="module" src="./index.ts"></script>
 	</body>
 </html>
