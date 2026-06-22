@@ -1,9 +1,25 @@
+import { join } from "node:path";
 import { app, dialog, ipcMain, shell } from "electron";
+import { createConversationController } from "./conversations/controller";
 import type { SidecarManager, SidecarRuntime } from "./server";
+import { openConversationDatabase } from "./storage/database";
 
 const sessionEventStreams = new Map<string, AbortController>();
+const conversationEventStreams = new Map<string, () => void>();
 
 export function registerIpcHandlers(sidecarManager: SidecarManager) {
+	const conversationsDb = openConversationDatabase(
+		join(app.getPath("userData"), "conversations.sqlite"),
+	);
+	const conversations = createConversationController({
+		db: conversationsDb,
+		sidecarManager,
+	});
+	app.once("before-quit", () => {
+		conversations.stop();
+		conversationsDb.close();
+	});
+
 	ipcMain.handle("app:get-info", () => ({
 		name: app.getName(),
 		version: app.getVersion(),
@@ -81,6 +97,80 @@ export function registerIpcHandlers(sidecarManager: SidecarManager) {
 			method: "POST",
 		});
 	});
+
+	ipcMain.handle("conversation:list", () =>
+		conversations.listConversations(),
+	);
+
+	ipcMain.handle("conversation:get", (_event, conversationId: string) =>
+		conversations.getConversation(conversationId),
+	);
+
+	ipcMain.handle("draft:create", (_event, input) =>
+		conversations.createDraft(input),
+	);
+
+	ipcMain.handle("draft:update", (_event, draftId: string, input) =>
+		conversations.updateDraft(draftId, input),
+	);
+
+	ipcMain.handle("draft:promote-and-send", (_event, input) =>
+		conversations.promoteDraftAndSend(input),
+	);
+
+	ipcMain.handle(
+		"conversation:send-message",
+		(_event, conversationId: string, input) =>
+			conversations.sendConversationMessage(conversationId, input),
+	);
+
+	ipcMain.handle(
+		"approval:respond",
+		(_event, conversationId: string, requestId: string, input) =>
+			conversations.respondApproval(conversationId, requestId, input),
+	);
+
+	ipcMain.handle(
+		"conversation:rename",
+		(_event, conversationId: string, input) =>
+			conversations.renameConversation(conversationId, input),
+	);
+
+	ipcMain.handle("conversation:archive", (_event, conversationId: string) =>
+		conversations.archiveConversation(conversationId),
+	);
+
+	ipcMain.handle("conversation:delete", (_event, conversationId: string) =>
+		conversations.deleteConversation(conversationId),
+	);
+
+	ipcMain.handle(
+		"conversation:subscribe-events",
+		(event, input: { conversationId: string; subscriptionId: string }) => {
+			const unsubscribe = conversations.subscribe(
+				input.conversationId,
+				(payload) => {
+					if (!event.sender.isDestroyed()) {
+						event.sender.send(
+							`conversation:event:${input.subscriptionId}`,
+							payload,
+						);
+					}
+				},
+			);
+			conversationEventStreams.set(input.subscriptionId, unsubscribe);
+			return { ok: true };
+		},
+	);
+
+	ipcMain.handle(
+		"conversation:stop-events",
+		(_event, subscriptionId: string) => {
+			conversationEventStreams.get(subscriptionId)?.();
+			conversationEventStreams.delete(subscriptionId);
+			return { ok: true };
+		},
+	);
 
 	ipcMain.handle("sidecar:create-session", async (_event, input) => {
 		const runtime = await sidecarManager.ensure();

@@ -20,10 +20,14 @@ import {
 	IconTemplate,
 } from "@tabler/icons-react";
 import type { ReactNode } from "react";
-import type { CodexRuntimeMode } from "../../preload/types";
+import type {
+	CodexRuntimeMode,
+	ConversationSummary,
+} from "../../preload/types";
 import { iconProps } from "../app/icons";
 import type { RuntimeOption } from "../app/types";
 import { cn } from "../lib/utils";
+import { Button } from "./ui/button";
 import {
 	Select,
 	SelectContent,
@@ -32,10 +36,9 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "./ui/select";
-import { Button } from "./ui/button";
 
 const navItems = [
-	{ icon: IconPlus, label: "New session", action: "new-session" },
+	{ icon: IconPlus, label: "New conversation", action: "new-session" },
 	{ icon: IconFolder, label: "Workspace", action: "workspace" },
 ];
 const noDragClass = "[-webkit-app-region:no-drag]";
@@ -125,8 +128,11 @@ function TopTab(props: { active?: boolean; icon: Icon; label: string }) {
 export function Sidebar(props: {
 	runtimeMode: CodexRuntimeMode;
 	runtimeOptions: RuntimeOption[];
+	conversations: ConversationSummary[];
+	activeConversationId?: string;
 	onRuntimeModeChange: (mode: CodexRuntimeMode) => void;
 	onNewSession: () => Promise<void>;
+	onOpenConversation: (id: string) => Promise<void>;
 	onChooseFolder: () => Promise<void>;
 }) {
 	return (
@@ -178,6 +184,41 @@ export function Sidebar(props: {
 					Applies to the next new session.
 				</p>
 			</section>
+			<section className="min-h-0 overflow-hidden">
+				<p className={labelClass}>History</p>
+				<div className="mt-2 flex max-h-full flex-col gap-1 overflow-y-auto pr-1">
+					{props.conversations.length === 0 ? (
+						<p className="mx-2.5 my-1 text-[12px] leading-[1.4] text-[var(--desktop-subtle)]">
+							No saved conversations yet.
+						</p>
+					) : (
+						props.conversations.map((conversation) => (
+							<button
+								className={cn(
+									"min-h-[42px] rounded-[7px] border-0 bg-transparent px-2.5 py-2 text-left hover:bg-[var(--desktop-selected)]",
+									props.activeConversationId ===
+										conversation.id &&
+										"bg-[var(--desktop-selected)]",
+								)}
+								type="button"
+								key={conversation.id}
+								onClick={() =>
+									void props.onOpenConversation(
+										conversation.id,
+									)
+								}
+							>
+								<span className="block overflow-hidden text-ellipsis whitespace-nowrap text-[13px] font-medium text-[var(--desktop-default)]">
+									{conversation.title}
+								</span>
+								<span className="block overflow-hidden text-ellipsis whitespace-nowrap text-[11px] text-[var(--desktop-subtle)]">
+									{conversation.status}
+								</span>
+							</button>
+						))
+					)}
+				</div>
+			</section>
 		</aside>
 	);
 }
@@ -218,10 +259,7 @@ export function RuntimeModeSelect(props: {
 				<SelectContent align="start" alignItemWithTrigger={false}>
 					<SelectGroup>
 						{props.options.map((option) => (
-							<SelectItem
-								value={option.value}
-								key={option.value}
-							>
+							<SelectItem value={option.value} key={option.value}>
 								{option.label}
 							</SelectItem>
 						))}

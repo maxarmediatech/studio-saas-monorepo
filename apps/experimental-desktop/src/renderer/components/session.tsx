@@ -23,7 +23,7 @@ export function SessionPanel(props: {
 		<section className="flex min-h-0 w-[min(100%,980px)] flex-1 flex-col self-center rounded-xl border border-border bg-[var(--desktop-panel)]">
 			<div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3.5">
 				<div>
-					<p className={labelClass}>Codex Session</p>
+					<p className={labelClass}>Conversation</p>
 					<p className={valueClass}>{props.status}</p>
 				</div>
 				<p className={labelClass}>{props.threadId ?? "No session"}</p>
@@ -32,7 +32,7 @@ export function SessionPanel(props: {
 				<div className="flex flex-col gap-3 p-4">
 					{props.transcript.length === 0 ? (
 						<p className="m-0 font-mono text-[var(--desktop-subtle)]">
-							Session output will appear here.
+							Conversation output will appear here.
 						</p>
 					) : (
 						props.transcript.map((item) => (

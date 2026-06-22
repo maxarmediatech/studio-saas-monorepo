@@ -5,6 +5,7 @@ import {
 } from "node:http";
 import { proxyCodexResponses, SidecarHttpError } from "./sidecar-codex";
 import {
+	type CodexRuntimeMode,
 	createCodexAppServerSmokeController,
 	createCodexSessionRuntime,
 	probeCodexAppServer,
@@ -158,6 +159,59 @@ async function handleApiRequest(req: IncomingMessage, res: ServerResponse) {
 			return;
 		}
 
+		if (req.method === "POST" && url.pathname === "/runtime/thread/start") {
+			writeJson(
+				res,
+				200,
+				await codexRuntime.createThread(
+					validateRuntimeThreadStartBody(await readJsonBody(req)),
+				),
+			);
+			return;
+		}
+
+		if (
+			req.method === "POST" &&
+			url.pathname === "/runtime/thread/resume"
+		) {
+			writeJson(
+				res,
+				200,
+				await codexRuntime.resumeThread(
+					validateRuntimeThreadResumeBody(await readJsonBody(req)),
+				),
+			);
+			return;
+		}
+
+		if (req.method === "POST" && url.pathname === "/runtime/turn/start") {
+			writeJson(
+				res,
+				200,
+				await codexRuntime.sendTurn(
+					validateRuntimeTurnStartBody(await readJsonBody(req)),
+				),
+			);
+			return;
+		}
+
+		const runtimeRequestMatch = url.pathname.match(
+			/^\/runtime\/requests\/([^/]+)\/respond$/,
+		);
+		if (req.method === "POST" && runtimeRequestMatch) {
+			await codexRuntime.respondToRequest({
+				requestId: decodeURIComponent(runtimeRequestMatch[1]),
+				response: await readJsonBody(req),
+			});
+			writeJson(res, 200, { ok: true });
+			return;
+		}
+
+		if (req.method === "GET" && url.pathname === "/runtime/events") {
+			writeRuntimeEvents(req, res);
+			return;
+		}
+
 		if (req.method === "POST" && url.pathname === "/codex/responses") {
 			if (!ENABLE_CODEX_RESPONSES_FALLBACK) {
 				throw new SidecarHttpError(
@@ -293,6 +347,35 @@ function isResponseClosed(res: ServerResponse) {
 	return res.writableEnded || res.destroyed;
 }
 
+function writeRuntimeEvents(req: IncomingMessage, res: ServerResponse) {
+	res.writeHead(200, {
+		"Content-Type": "text/event-stream; charset=utf-8",
+		"Cache-Control": "no-cache, no-transform",
+		Connection: "keep-alive",
+		"Access-Control-Allow-Origin": "*",
+	});
+	res.write("event: ready\ndata: {}\n\n");
+	const unsubscribe = codexRuntime.subscribe((event) => {
+		if (isResponseClosed(res)) {
+			return;
+		}
+		res.write("event: runtime\n");
+		res.write(`data: ${JSON.stringify(event)}\n\n`);
+	});
+	const heartbeat = setInterval(() => {
+		if (!isResponseClosed(res)) {
+			res.write("event: ping\ndata: {}\n\n");
+		}
+	}, 25_000);
+	req.on("close", () => {
+		clearInterval(heartbeat);
+		unsubscribe();
+		if (!isResponseClosed(res)) {
+			res.end();
+		}
+	});
+}
+
 async function readJsonBody(req: IncomingMessage) {
 	const body = await readRequestBody(req);
 	if (!body) {
@@ -303,6 +386,80 @@ async function readJsonBody(req: IncomingMessage) {
 	} catch {
 		throw new SidecarHttpError(400, "Request body must be valid JSON");
 	}
+}
+
+function validateRuntimeThreadStartBody(value: unknown): {
+	cwd?: string;
+	model?: string;
+	runtimeMode?: CodexRuntimeMode;
+} {
+	const body = validateObject(value, "Thread start body must be an object");
+	return {
+		...(typeof body.cwd === "string" && body.cwd.trim()
+			? { cwd: body.cwd }
+			: {}),
+		...(typeof body.model === "string" && body.model.trim()
+			? { model: body.model }
+			: {}),
+		...(body.runtimeMode
+			? { runtimeMode: validateRuntimeMode(body.runtimeMode) }
+			: {}),
+	};
+}
+
+function validateRuntimeThreadResumeBody(value: unknown): { threadId: string } {
+	const body = validateObject(value, "Thread resume body must be an object");
+	if (typeof body.threadId !== "string" || !body.threadId.trim()) {
+		throw new SidecarHttpError(400, "Thread id is required");
+	}
+	return { threadId: body.threadId };
+}
+
+function validateRuntimeTurnStartBody(value: unknown): {
+	threadId: string;
+	text: string;
+	cwd?: string;
+	model?: string;
+	runtimeMode?: CodexRuntimeMode;
+} {
+	const body = validateObject(value, "Turn start body must be an object");
+	if (typeof body.threadId !== "string" || !body.threadId.trim()) {
+		throw new SidecarHttpError(400, "Thread id is required");
+	}
+	if (typeof body.text !== "string" || !body.text.trim()) {
+		throw new SidecarHttpError(400, "Turn text is required");
+	}
+	return {
+		threadId: body.threadId,
+		text: body.text,
+		...(typeof body.cwd === "string" && body.cwd.trim()
+			? { cwd: body.cwd }
+			: {}),
+		...(typeof body.model === "string" && body.model.trim()
+			? { model: body.model }
+			: {}),
+		...(body.runtimeMode
+			? { runtimeMode: validateRuntimeMode(body.runtimeMode) }
+			: {}),
+	};
+}
+
+function validateObject(value: unknown, message: string) {
+	if (!value || typeof value !== "object" || Array.isArray(value)) {
+		throw new SidecarHttpError(400, message);
+	}
+	return value as Record<string, unknown>;
+}
+
+function validateRuntimeMode(value: unknown): CodexRuntimeMode {
+	if (
+		value === "read-only" ||
+		value === "workspace-write" ||
+		value === "full-access"
+	) {
+		return value;
+	}
+	return "read-only";
 }
 
 function readRequestBody(req: IncomingMessage) {

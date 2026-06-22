@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import type { CodexRuntimeMode, SessionEvent } from "../../preload/types";
+import type {
+	CodexRuntimeMode,
+	ConversationDetail,
+	ConversationEvent,
+	ConversationSummary,
+	SessionEvent,
+} from "../../preload/types";
 import type { PendingRequest, TranscriptItem } from "../app/types";
 
 const model = "gpt-5.4-mini";
@@ -8,9 +14,13 @@ export function useCodexSession(input: {
 	runtimeMode: CodexRuntimeMode;
 	selectedFolderPath?: string;
 }) {
-	const [sessionId, setSessionId] = useState<string>();
+	const [draftId, setDraftId] = useState<string>();
+	const [conversationId, setConversationId] = useState<string>();
 	const [threadId, setThreadId] = useState<string>();
-	const [status, setStatus] = useState("No session");
+	const [status, setStatus] = useState("No conversation");
+	const [conversations, setConversations] = useState<ConversationSummary[]>(
+		[],
+	);
 	const [transcript, setTranscript] = useState<TranscriptItem[]>([]);
 	const [eventLog, setEventLog] = useState<string[]>([]);
 	const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>(
@@ -22,56 +32,62 @@ export function useCodexSession(input: {
 	const seenEventsRef = useRef(new Set<string>());
 
 	useEffect(() => {
+		void refreshConversations();
 		return () => unsubscribeRef.current?.();
 	}, []);
 
-	async function ensureSession() {
-		if (sessionId) {
-			return sessionId;
+	async function refreshConversations() {
+		setConversations(await window.experimentalDesktop.listConversations());
+	}
+
+	async function persistDraft(text: string) {
+		if (conversationId) {
+			return;
 		}
-		setStatus("Creating session...");
-		const session = await window.experimentalDesktop.createSession({
+		const draftInput = {
+			text,
 			model,
-			runtimeMode: input.runtimeMode,
+			runtimeMode: inputRuntimeMode(),
 			...(input.selectedFolderPath
 				? { cwd: input.selectedFolderPath }
 				: {}),
-		});
-		setSessionId(session.id);
-		setThreadId(session.threadId);
+		};
+		if (draftId) {
+			await window.experimentalDesktop.updateDraft(draftId, draftInput);
+			return;
+		}
+		const draft = await window.experimentalDesktop.createDraft(draftInput);
+		setDraftId(draft.id);
+	}
+
+	async function openConversation(id: string) {
 		unsubscribeRef.current?.();
+		seenEventsRef.current.clear();
+		const conversation =
+			await window.experimentalDesktop.getConversation(id);
+		if (!conversation) {
+			setStatus("Conversation not found");
+			return;
+		}
+		hydrateConversation(conversation);
 		unsubscribeRef.current =
-			await window.experimentalDesktop.subscribeSessionEvents(
-				session.id,
+			await window.experimentalDesktop.subscribeConversationEvents(
+				conversation.id,
 				handleSessionEvent,
 			);
-		setStatus(`Ready · ${formatRuntimeMode(input.runtimeMode)}`);
-		return session.id;
 	}
 
 	async function createNewSession() {
 		unsubscribeRef.current?.();
 		seenEventsRef.current.clear();
+		setDraftId(undefined);
+		setConversationId(undefined);
+		setThreadId(undefined);
 		setTranscript([]);
 		setEventLog([]);
 		setPendingRequests([]);
 		setIsTurnActive(false);
-		setStatus("Creating session...");
-		const session = await window.experimentalDesktop.createSession({
-			model,
-			runtimeMode: input.runtimeMode,
-			...(input.selectedFolderPath
-				? { cwd: input.selectedFolderPath }
-				: {}),
-		});
-		setSessionId(session.id);
-		setThreadId(session.threadId);
-		unsubscribeRef.current =
-			await window.experimentalDesktop.subscribeSessionEvents(
-				session.id,
-				handleSessionEvent,
-			);
-		setStatus(`Ready · ${formatRuntimeMode(input.runtimeMode)}`);
+		setStatus("Draft ready");
 	}
 
 	async function sendMessage(text: string) {
@@ -83,25 +99,43 @@ export function useCodexSession(input: {
 		setIsSending(true);
 		setIsTurnActive(true);
 		try {
-			const activeSessionId = await ensureSession();
-			const now = new Date().toISOString();
-			setTranscript((items) => [
-				...items,
-				{
-					id: `user-${crypto.randomUUID()}`,
-					type: "user",
-					text: trimmed,
-					time: now,
-				},
-			]);
-			setStatus("Sending...");
-			await window.experimentalDesktop.sendSessionMessage(
-				activeSessionId,
-				{
-					text: trimmed,
-					model,
-				},
-			);
+			if (conversationId) {
+				setStatus("Sending...");
+				const conversation =
+					await window.experimentalDesktop.sendConversationMessage(
+						conversationId,
+						{
+							text: trimmed,
+							model,
+							runtimeMode: inputRuntimeMode(),
+						},
+					);
+				if (conversation) {
+					hydrateConversation(conversation);
+				}
+			} else {
+				setStatus("Starting conversation...");
+				const conversation =
+					await window.experimentalDesktop.promoteDraftAndSend({
+						draftId,
+						text: trimmed,
+						model,
+						runtimeMode: inputRuntimeMode(),
+						...(input.selectedFolderPath
+							? { cwd: input.selectedFolderPath }
+							: {}),
+					});
+				if (conversation) {
+					hydrateConversation(conversation);
+					unsubscribeRef.current?.();
+					unsubscribeRef.current =
+						await window.experimentalDesktop.subscribeConversationEvents(
+							conversation.id,
+							handleSessionEvent,
+						);
+				}
+			}
+			await refreshConversations();
 			setStatus("Running...");
 			return true;
 		} catch (error) {
@@ -117,7 +151,7 @@ export function useCodexSession(input: {
 		requestId: string,
 		decision: "accept" | "acceptForSession" | "decline" | "cancel",
 	) {
-		if (!sessionId) {
+		if (!conversationId) {
 			return;
 		}
 		const request = pendingRequests.find(
@@ -127,14 +161,14 @@ export function useCodexSession(input: {
 			request?.data.requestKind === "user-input" &&
 			decision !== "cancel"
 		) {
-			await window.experimentalDesktop.respondSessionRequest(
-				sessionId,
+			await window.experimentalDesktop.respondApproval(
+				conversationId,
 				requestId,
 				{ answers: defaultAnswers(request.data.raw) },
 			);
 		} else {
-			await window.experimentalDesktop.respondSessionRequest(
-				sessionId,
+			await window.experimentalDesktop.respondApproval(
+				conversationId,
 				requestId,
 				{ decision },
 			);
@@ -146,7 +180,45 @@ export function useCodexSession(input: {
 		setIsTurnActive(decision !== "cancel");
 	}
 
-	function handleSessionEvent(event: SessionEvent) {
+	function hydrateConversation(conversation: ConversationDetail) {
+		setConversationId(conversation.id);
+		setThreadId(conversation.providerThreadId);
+		setTranscript([
+			...conversation.messages.map(messageToTranscript),
+			...conversation.pendingApprovals.map((approval) => ({
+				id: approval.id,
+				type: "approval" as const,
+				requestId: approval.providerRequestId,
+				requestKind: approval.kind,
+				time: approval.createdAt,
+			})),
+		]);
+		setPendingRequests(
+			conversation.pendingApprovals.map((approval) => ({
+				id: approval.id,
+				type: "request.pending" as const,
+				time: approval.createdAt,
+				data: {
+					requestId: approval.providerRequestId,
+					approvalId: approval.id,
+					method: approval.kind,
+					requestKind: approval.kind,
+					turnId: approval.turnId,
+					itemId: approval.providerItemId,
+					raw: approval.request,
+				},
+			})),
+		);
+		setIsTurnActive(
+			conversation.status === "active" ||
+				conversation.status === "waiting_approval",
+		);
+		setStatus(
+			`${conversation.status} · ${formatRuntimeMode(conversation.runtimeMode)}`,
+		);
+	}
+
+	function handleSessionEvent(event: ConversationEvent) {
 		if (seenEventsRef.current.has(event.id)) {
 			return;
 		}
@@ -154,8 +226,22 @@ export function useCodexSession(input: {
 		appendEventLog(event);
 
 		if (event.type === "message.created") {
+			setTranscript((items) =>
+				items.some((item) => item.id === event.data.messageId)
+					? items
+					: [
+							...items,
+							{
+								id: event.data.messageId ?? event.id,
+								type: "user",
+								text: event.data.text,
+								time: event.time,
+							},
+						],
+			);
 			setIsTurnActive(true);
 			setStatus("Running...");
+			void refreshConversations();
 			return;
 		}
 		if (event.type === "assistant.delta") {
@@ -175,6 +261,7 @@ export function useCodexSession(input: {
 			);
 			setIsTurnActive(false);
 			setStatus("Completed");
+			void refreshConversations();
 			return;
 		}
 		if (event.type === "message.failed") {
@@ -190,6 +277,7 @@ export function useCodexSession(input: {
 			setPendingRequests([]);
 			setIsTurnActive(false);
 			setStatus(`Failed · ${event.data.error}`);
+			void refreshConversations();
 			return;
 		}
 		if (event.type === "request.pending") {
@@ -197,7 +285,7 @@ export function useCodexSession(input: {
 			setTranscript((items) => [
 				...items,
 				{
-					id: event.id,
+					id: event.data.approvalId ?? event.id,
 					type: "approval",
 					requestId: event.data.requestId,
 					requestKind: event.data.requestKind,
@@ -237,7 +325,7 @@ export function useCodexSession(input: {
 				return [
 					...items,
 					{
-						id: `assistant-${event.id}`,
+						id: event.data.messageId ?? `assistant-${event.id}`,
 						type: "assistant",
 						text: event.data.text ?? "",
 						status: "streaming",
@@ -264,18 +352,53 @@ export function useCodexSession(input: {
 		);
 	}
 
+	function inputRuntimeMode() {
+		return input.runtimeMode;
+	}
+
 	return {
-		sessionId,
+		sessionId: conversationId,
+		conversationId,
+		draftId,
 		threadId,
 		status,
+		conversations,
 		transcript,
 		eventLog,
 		pendingRequests,
 		isSending,
 		isTurnRunning: isSending || isTurnActive || pendingRequests.length > 0,
 		createNewSession,
+		openConversation,
+		persistDraft,
 		sendMessage,
 		respondToRequest,
+	};
+}
+
+function messageToTranscript(
+	message: ConversationDetail["messages"][number],
+): TranscriptItem {
+	if (message.role === "assistant") {
+		return {
+			id: message.id,
+			type: "assistant",
+			text: message.text,
+			status:
+				message.status === "completed"
+					? "done"
+					: message.status === "failed"
+						? "failed"
+						: "streaming",
+			turnId: message.turnId,
+			time: message.createdAt,
+		};
+	}
+	return {
+		id: message.id,
+		type: message.role === "system" ? "system" : "user",
+		text: message.text,
+		time: message.createdAt,
 	};
 }
 

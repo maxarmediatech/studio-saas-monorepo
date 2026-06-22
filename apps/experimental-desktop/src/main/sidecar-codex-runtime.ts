@@ -21,6 +21,7 @@ type CodexRuntime = {
 		model?: string;
 		runtimeMode?: CodexRuntimeMode;
 	}) => Promise<string>;
+	resumeThread: (input: { threadId: string }) => Promise<unknown>;
 	sendTurn: (input: {
 		threadId: string;
 		text: string;
@@ -69,6 +70,9 @@ export type CodexSessionRuntime = {
 		model?: string;
 		runtimeMode?: CodexRuntimeMode;
 	}) => Promise<{ threadId: string }>;
+	resumeThread: (input: {
+		threadId: string;
+	}) => Promise<{ threadId: string; raw: unknown }>;
 	sendTurn: (input: {
 		threadId: string;
 		text: string;
@@ -116,6 +120,15 @@ export function createCodexSessionRuntime(): CodexSessionRuntime {
 		const activeRuntime = await ensureRuntime();
 		return {
 			threadId: await activeRuntime.startThread(input),
+		};
+	}
+
+	async function resumeThread(input: { threadId: string }) {
+		const activeRuntime = await ensureRuntime();
+		const raw = await activeRuntime.resumeThread(input);
+		return {
+			threadId: readThreadId(raw) ?? input.threadId,
+			raw,
 		};
 	}
 
@@ -171,6 +184,7 @@ export function createCodexSessionRuntime(): CodexSessionRuntime {
 	return {
 		ensure,
 		createThread,
+		resumeThread,
 		sendTurn,
 		subscribe,
 		respondToRequest,
@@ -486,6 +500,12 @@ function startCodexRuntime(
 		return threadId;
 	}
 
+	function resumeThread(input: { threadId: string }) {
+		return protocol.request("thread/resume", {
+			threadId: input.threadId,
+		});
+	}
+
 	function sendTurn(input: {
 		threadId: string;
 		text: string;
@@ -535,7 +555,15 @@ function startCodexRuntime(
 		});
 	}
 
-	return { provider, initialize, readAccount, startThread, sendTurn, stop };
+	return {
+		provider,
+		initialize,
+		readAccount,
+		startThread,
+		resumeThread,
+		sendTurn,
+		stop,
+	};
 }
 
 function runtimeModeToCodexConfig(mode: CodexRuntimeMode, cwd: string) {

@@ -4,6 +4,10 @@ import type {
 	CodexAppServerProbe,
 	CodexProviderStatus,
 	CodexSession,
+	ConversationDetail,
+	ConversationEvent,
+	ConversationSummary,
+	DraftRecord,
 	ExperimentalDesktopApi,
 	OpenAiAuthStart,
 	OpenAiAuthStatus,
@@ -39,6 +43,91 @@ const api: ExperimentalDesktopApi = {
 		ipcRenderer.invoke(
 			"sidecar:probe-codex-app-server",
 		) as Promise<CodexAppServerProbe>,
+	listConversations: () =>
+		ipcRenderer.invoke("conversation:list") as Promise<
+			ConversationSummary[]
+		>,
+	getConversation: (conversationId) =>
+		ipcRenderer.invoke("conversation:get", conversationId) as Promise<
+			ConversationDetail | undefined
+		>,
+	createDraft: (input) =>
+		ipcRenderer.invoke("draft:create", input ?? {}) as Promise<DraftRecord>,
+	updateDraft: (draftId, input) =>
+		ipcRenderer.invoke(
+			"draft:update",
+			draftId,
+			input,
+		) as Promise<DraftRecord>,
+	promoteDraftAndSend: (input) =>
+		ipcRenderer.invoke("draft:promote-and-send", input) as Promise<
+			ConversationDetail | undefined
+		>,
+	sendConversationMessage: (conversationId, input) =>
+		ipcRenderer.invoke(
+			"conversation:send-message",
+			conversationId,
+			input,
+		) as Promise<ConversationDetail | undefined>,
+	respondApproval: (conversationId, requestId, input) =>
+		ipcRenderer.invoke(
+			"approval:respond",
+			conversationId,
+			requestId,
+			input,
+		) as Promise<{ ok: true }>,
+	renameConversation: (conversationId, input) =>
+		ipcRenderer.invoke(
+			"conversation:rename",
+			conversationId,
+			input,
+		) as Promise<ConversationDetail | undefined>,
+	archiveConversation: (conversationId) =>
+		ipcRenderer.invoke("conversation:archive", conversationId) as Promise<
+			ConversationDetail | undefined
+		>,
+	deleteConversation: (conversationId) =>
+		ipcRenderer.invoke("conversation:delete", conversationId) as Promise<{
+			ok: true;
+		}>,
+	subscribeConversationEvents: (conversationId, listener) => {
+		const subscriptionId = crypto.randomUUID();
+		const channel = `conversation:event:${subscriptionId}`;
+		const handler = (
+			_event: Electron.IpcRendererEvent,
+			payload: unknown,
+		) => {
+			listener(payload as ConversationEvent);
+		};
+		ipcRenderer.on(channel, handler);
+		return ipcRenderer
+			.invoke("conversation:subscribe-events", {
+				conversationId,
+				subscriptionId,
+			})
+			.then(() => () => {
+				ipcRenderer.off(channel, handler);
+				void ipcRenderer.invoke(
+					"conversation:stop-events",
+					subscriptionId,
+				);
+			})
+			.catch((error: unknown) => {
+				ipcRenderer.off(channel, handler);
+				listener({
+					id: subscriptionId,
+					type: "message.failed",
+					time: new Date().toISOString(),
+					data: {
+						error:
+							error instanceof Error
+								? error.message
+								: String(error),
+					},
+				});
+				return () => undefined;
+			});
+	},
 	createSession: (input) =>
 		ipcRenderer.invoke(
 			"sidecar:create-session",

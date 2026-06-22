@@ -35,6 +35,21 @@ export function App() {
 		void window.experimentalDesktop.getAppInfo().then(setAppInfo);
 	}, []);
 
+	useEffect(() => {
+		const timeout = window.setTimeout(() => {
+			if (message.trim() || session.draftId) {
+				void session.persistDraft(message);
+			}
+		}, 350);
+		return () => window.clearTimeout(timeout);
+	}, [
+		message,
+		runtimeMode,
+		workspace.selectedFolderPath,
+		session.conversationId,
+		session.draftId,
+	]);
+
 	const runtimeOptions: RuntimeOption[] = [
 		{ value: "read-only", label: "Read Only" },
 		{ value: "workspace-write", label: "Workspace Edit" },
@@ -58,8 +73,11 @@ export function App() {
 					onChooseFolder={workspace.chooseFolder}
 					runtimeMode={runtimeMode}
 					runtimeOptions={runtimeOptions}
+					conversations={session.conversations}
+					activeConversationId={session.conversationId}
 					onRuntimeModeChange={setRuntimeMode}
 					onNewSession={session.createNewSession}
+					onOpenConversation={session.openConversation}
 				/>
 				<section className="min-h-0 min-w-0 overflow-hidden">
 					<div className={sessionStageInnerClass}>
@@ -79,12 +97,17 @@ export function App() {
 								onChange={setMessage}
 								onRuntimeModeChange={setRuntimeMode}
 								onSend={sendMessage}
-								onNewSession={session.createNewSession}
+								onNewSession={async () => {
+									setMessage("");
+									await session.createNewSession();
+								}}
 							/>
 						</div>
 						<SessionPanel
 							status={session.status}
-							threadId={session.threadId ?? session.sessionId}
+							threadId={
+								session.threadId ?? session.conversationId
+							}
 							transcript={session.transcript}
 							eventLog={session.eventLog}
 							pendingRequests={session.pendingRequests}

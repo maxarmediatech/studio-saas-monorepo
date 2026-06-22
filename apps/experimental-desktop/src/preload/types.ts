@@ -52,24 +52,35 @@ export type CodexAppServerProbe = {
 	account: unknown;
 };
 
-export type SessionEvent =
+export type ConversationEvent =
 	| {
 			id: string;
 			type: "message.created";
 			time: string;
-			data: { text: string };
+			data: { text: string; messageId?: string; turnId?: string };
 	  }
 	| {
 			id: string;
 			type: "assistant.delta";
 			time: string;
-			data: { text?: string; turnId?: string; raw: unknown };
+			data: {
+				text?: string;
+				turnId?: string;
+				providerTurnId?: string;
+				messageId?: string;
+				raw: unknown;
+			};
 	  }
 	| {
 			id: string;
 			type: "assistant.completed";
 			time: string;
-			data: { turnId?: string; raw: unknown };
+			data: {
+				turnId?: string;
+				providerTurnId?: string;
+				messageId?: string;
+				raw: unknown;
+			};
 	  }
 	| {
 			id: string;
@@ -83,6 +94,7 @@ export type SessionEvent =
 			time: string;
 			data: {
 				requestId: string;
+				approvalId?: string;
 				method: string;
 				requestKind:
 					| "command"
@@ -90,6 +102,7 @@ export type SessionEvent =
 					| "user-input"
 					| "unknown";
 				turnId?: string;
+				providerTurnId?: string;
 				itemId?: string;
 				raw: unknown;
 			};
@@ -113,6 +126,8 @@ export type CodexSession = {
 	createdAt: string;
 };
 
+export type SessionEvent = ConversationEvent;
+
 export type SendSessionMessageResult = {
 	accepted: true;
 	turnId?: string;
@@ -123,6 +138,73 @@ export type CodexRuntimeMode = "read-only" | "workspace-write" | "full-access";
 export type RespondSessionRequestInput =
 	| { decision: "accept" | "acceptForSession" | "decline" | "cancel" }
 	| { answers: Record<string, string | string[]> };
+
+export type DraftRecord = {
+	id: string;
+	text: string;
+	cwd?: string;
+	model?: string;
+	runtimeMode: CodexRuntimeMode;
+	createdAt: string;
+	updatedAt: string;
+	promotedConversationId?: string;
+};
+
+export type ConversationSummary = {
+	id: string;
+	title: string;
+	cwd: string;
+	model?: string;
+	runtimeMode: CodexRuntimeMode;
+	status:
+		| "active"
+		| "idle"
+		| "waiting_approval"
+		| "failed"
+		| "archived"
+		| "deleted";
+	createdAt: string;
+	updatedAt: string;
+	lastMessageAt?: string;
+	providerThreadId?: string;
+};
+
+export type ConversationMessage = {
+	id: string;
+	conversationId: string;
+	turnId?: string;
+	ordinal: number;
+	role: "user" | "assistant" | "system";
+	status: "pending" | "streaming" | "completed" | "failed" | "interrupted";
+	text: string;
+	createdAt: string;
+	updatedAt: string;
+};
+
+export type PendingApproval = {
+	id: string;
+	conversationId: string;
+	turnId?: string;
+	providerRequestId: string;
+	providerItemId?: string;
+	kind: "command" | "file-change" | "user-input" | "unknown";
+	status:
+		| "pending"
+		| "accepted"
+		| "accepted_for_session"
+		| "declined"
+		| "canceled"
+		| "expired"
+		| "failed";
+	request: unknown;
+	createdAt: string;
+	expiresAt?: string;
+};
+
+export type ConversationDetail = ConversationSummary & {
+	messages: ConversationMessage[];
+	pendingApprovals: PendingApproval[];
+};
 
 export type ExperimentalDesktopApi = {
 	getAppInfo: () => Promise<AppInfo>;
@@ -135,6 +217,53 @@ export type ExperimentalDesktopApi = {
 	logoutOpenAi: () => Promise<{ ok: true }>;
 	getCodexProviderStatus: () => Promise<CodexProviderStatus>;
 	probeCodexAppServer: () => Promise<CodexAppServerProbe>;
+	listConversations: () => Promise<ConversationSummary[]>;
+	getConversation: (
+		conversationId: string,
+	) => Promise<ConversationDetail | undefined>;
+	createDraft: (input?: {
+		text?: string;
+		cwd?: string;
+		model?: string;
+		runtimeMode?: CodexRuntimeMode;
+	}) => Promise<DraftRecord>;
+	updateDraft: (
+		draftId: string,
+		input: {
+			text?: string;
+			cwd?: string;
+			model?: string;
+			runtimeMode?: CodexRuntimeMode;
+		},
+	) => Promise<DraftRecord>;
+	promoteDraftAndSend: (input: {
+		draftId?: string;
+		text: string;
+		cwd?: string;
+		model?: string;
+		runtimeMode?: CodexRuntimeMode;
+	}) => Promise<ConversationDetail | undefined>;
+	sendConversationMessage: (
+		conversationId: string,
+		input: { text: string; model?: string; runtimeMode?: CodexRuntimeMode },
+	) => Promise<ConversationDetail | undefined>;
+	respondApproval: (
+		conversationId: string,
+		requestId: string,
+		input: RespondSessionRequestInput,
+	) => Promise<{ ok: true }>;
+	renameConversation: (
+		conversationId: string,
+		input: { title: string },
+	) => Promise<ConversationDetail | undefined>;
+	archiveConversation: (
+		conversationId: string,
+	) => Promise<ConversationDetail | undefined>;
+	deleteConversation: (conversationId: string) => Promise<{ ok: true }>;
+	subscribeConversationEvents: (
+		conversationId: string,
+		listener: (event: ConversationEvent) => void,
+	) => Promise<() => void>;
 	createSession: (input?: {
 		cwd?: string;
 		model?: string;
