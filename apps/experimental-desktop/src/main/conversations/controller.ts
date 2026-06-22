@@ -375,6 +375,9 @@ export function createConversationController(input: {
 				if (runtimeStream === abort) {
 					runtimeStream = undefined;
 				}
+				if (!abort.signal.aborted) {
+					failRuntimeDisconnected();
+				}
 			});
 	}
 
@@ -673,14 +676,33 @@ export function createConversationController(input: {
 
 	function failActiveTurn(activeTurn: ActiveTurn, error: unknown) {
 		const message = error instanceof Error ? error.message : String(error);
+		const failedAt = now();
 		repo.failTurn({
 			turnId: activeTurn.turnId,
 			error: message,
 			raw: { error: message },
-			now: now(),
+			now: failedAt,
+		});
+		repo.expirePendingApprovalsForTurn({
+			turnId: activeTurn.turnId,
+			response: { error: message },
+			now: failedAt,
 		});
 		broadcastFailure(activeTurn.conversationId, activeTurn.turnId, message);
 		clearTurn(activeTurn.turnId);
+	}
+
+	function failRuntimeDisconnected() {
+		const liveTurns = new Map<string, ActiveTurn>();
+		for (const turn of pendingTurns.values()) {
+			liveTurns.set(turn.turnId, turn);
+		}
+		for (const turn of activeTurnsByProviderTurnId.values()) {
+			liveTurns.set(turn.turnId, turn);
+		}
+		for (const turn of liveTurns.values()) {
+			failActiveTurn(turn, "Codex runtime event stream disconnected");
+		}
 	}
 
 	function resolveActiveTurn(providerTurnId?: string) {

@@ -592,6 +592,26 @@ export class ConversationRepository {
 			.run({ now });
 	}
 
+	expirePendingApprovalsForTurn(input: {
+		turnId: string;
+		response: JsonValue;
+		now: string;
+	}) {
+		this.db
+			.prepare(
+				`UPDATE approvals
+				SET status = 'expired',
+					response_json = @response,
+					resolved_at = @now
+				WHERE turn_id = @turnId AND status = 'pending'`,
+			)
+			.run({
+				turnId: input.turnId,
+				response: stringify(input.response),
+				now: input.now,
+			});
+	}
+
 	renameConversation(id: string, title: string, now: string) {
 		this.db
 			.prepare(

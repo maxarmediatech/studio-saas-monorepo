@@ -67,7 +67,12 @@ function TranscriptRow(props: { item: TranscriptItem }) {
 			)}
 		>
 			<div className="flex justify-between text-[12px] text-[var(--desktop-subtle)]">
-				<span>{item.type}</span>
+				<span>
+					{item.type}
+					{item.type === "assistant" && item.status !== "done"
+						? ` · ${item.status}`
+						: ""}
+				</span>
 				<time>{new Date(item.time).toLocaleTimeString()}</time>
 			</div>
 			<p className="mb-0 mt-2 whitespace-pre-wrap">

@@ -389,7 +389,9 @@ function messageToTranscript(
 					? "done"
 					: message.status === "failed"
 						? "failed"
-						: "streaming",
+						: message.status === "interrupted"
+							? "interrupted"
+							: "streaming",
 			turnId: message.turnId,
 			time: message.createdAt,
 		};

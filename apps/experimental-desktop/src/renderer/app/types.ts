@@ -13,7 +13,7 @@ export type TranscriptItem =
 			id: string;
 			type: "assistant";
 			text: string;
-			status: "streaming" | "done" | "failed";
+			status: "streaming" | "done" | "failed" | "interrupted";
 			turnId?: string;
 			time: string;
 	  }
