@@ -107,13 +107,6 @@ export function RightPanel(props: {
 					<pre>{props.eventLog.join("\n")}</pre>
 				</ScrollArea>
 			</section>
-			<section className="channel-card">
-				<div className="channel-art" aria-hidden="true" />
-				<div>
-					<strong>Connect your channel</strong>
-					<p>Bring Slack, GitHub, Drive into the workspace.</p>
-				</div>
-			</section>
 		</aside>
 	);
 }

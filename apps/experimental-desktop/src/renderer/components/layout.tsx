@@ -1,21 +1,12 @@
 import {
 	type Icon,
-	IconApps,
 	IconArrowUp,
-	IconCode,
-	IconCrown,
-	IconFeather,
 	IconFolder,
-	IconMessageChatbot,
 	IconMicrophone,
 	IconMoon,
 	IconPlus,
-	IconRoute,
-	IconSearch,
-	IconSend2,
 	IconSparkles,
 	IconSun,
-	IconWorld,
 } from "@tabler/icons-react";
 import type { ReactNode } from "react";
 import type { CodexRuntimeMode } from "../../preload/types";
@@ -24,26 +15,8 @@ import type { RuntimeOption } from "../app/types";
 import { Button } from "./ui/button";
 
 const navItems = [
-	{ icon: IconPlus, label: "New task", active: true },
-	{ icon: IconFolder, label: "Workspace" },
-	{ icon: IconRoute, label: "Active runs" },
-	{ icon: IconApps, label: "Live Artifacts" },
-	{ icon: IconApps, label: "Plugins" },
-];
-
-const workspaces = [
-	"Growth Operator",
-	"Content Pipeline",
-	"Workflow Engine",
-	"Research Cluster",
-];
-
-const recents = [
-	"Fix spacing on cards",
-	"Need better empty state",
-	"Update sidebar structure",
-	"Mobile runtime needs cleanup",
-	"Improve retrieval accuracy",
+	{ icon: IconPlus, label: "New session", action: "new-session" },
+	{ icon: IconFolder, label: "Workspace", action: "workspace" },
 ];
 
 export function TopBar(props: { theme: string; onToggleTheme: () => void }) {
@@ -58,9 +31,6 @@ export function TopBar(props: { theme: string; onToggleTheme: () => void }) {
 					<IconSparkles {...iconProps} size={26} />
 				</button>
 				<TopTab active icon={IconSparkles} label="Chat" />
-				<TopTab icon={IconMessageChatbot} label="Agent" />
-				<TopTab icon={IconCode} label="Code" />
-				<TopTab icon={IconFeather} label="Design" />
 			</nav>
 			<Button
 				className="theme-toggle"
@@ -76,11 +46,6 @@ export function TopBar(props: { theme: string; onToggleTheme: () => void }) {
 				)}
 				{props.theme === "dark" ? "Light" : "Dark"}
 			</Button>
-			<label className="search-field">
-				<IconSearch {...iconProps} />
-				<input type="search" placeholder="Search" />
-				<kbd>Cmd K</kbd>
-			</label>
 		</header>
 	);
 }
@@ -103,6 +68,7 @@ export function Sidebar(props: {
 	runtimeMode: CodexRuntimeMode;
 	runtimeOptions: RuntimeOption[];
 	onRuntimeModeChange: (mode: CodexRuntimeMode) => void;
+	onNewSession: () => Promise<void>;
 	onChooseFolder: () => Promise<void>;
 }) {
 	return (
@@ -116,7 +82,7 @@ export function Sidebar(props: {
 							<span>{item.label}</span>
 						</>
 					);
-					if (item.label === "Workspace") {
+					if (item.action === "workspace") {
 						return (
 							<button
 								className="nav-item"
@@ -130,11 +96,10 @@ export function Sidebar(props: {
 					}
 					return (
 						<button
-							className={
-								item.active ? "nav-item is-active" : "nav-item"
-							}
+							className="nav-item is-active"
 							type="button"
 							key={item.label}
+							onClick={() => void props.onNewSession()}
 						>
 							{content}
 						</button>
@@ -148,34 +113,7 @@ export function Sidebar(props: {
 					options={props.runtimeOptions}
 					onChange={props.onRuntimeModeChange}
 				/>
-			</section>
-			<section className="nav-section">
-				<p className="section-label">Workspace</p>
-				{workspaces.map((workspace) => (
-					<button className="nav-item" type="button" key={workspace}>
-						<IconFolder {...iconProps} />
-						<span>{workspace}</span>
-					</button>
-				))}
-			</section>
-			<section className="nav-section recents">
-				<p className="section-label">Recents</p>
-				{recents.map((recent) => (
-					<button type="button" key={recent}>
-						{recent}
-					</button>
-				))}
-			</section>
-			<section className="connect-strip">
-				<p className="connect-title">Connect apps</p>
-				<p>External tools such as Figma, GitHub, Drive</p>
-				<div className="app-dots" aria-hidden="true">
-					<span>G</span>
-					<span>S</span>
-					<span>D</span>
-					<span>F</span>
-					<span>+</span>
-				</div>
+				<p className="mode-note">Applies to the next new session.</p>
 			</section>
 		</aside>
 	);
@@ -216,7 +154,6 @@ export function SessionComposer(props: {
 	onRuntimeModeChange: (mode: CodexRuntimeMode) => void;
 	onSend: () => Promise<void>;
 	onNewSession: () => Promise<void>;
-	onChooseFile: () => Promise<void>;
 }) {
 	return (
 		<section className="composer-card" aria-label="Codex session composer">
@@ -244,12 +181,6 @@ export function SessionComposer(props: {
 					>
 						<IconPlus {...iconProps} />
 					</IconButton>
-					<IconButton
-						label="Choose file"
-						onClick={props.onChooseFile}
-					>
-						<IconSend2 {...iconProps} />
-					</IconButton>
 					<RuntimeModeSelect
 						value={props.runtimeMode}
 						options={props.runtimeOptions}
@@ -257,10 +188,6 @@ export function SessionComposer(props: {
 					/>
 				</div>
 				<div className="composer-actions">
-					<span className="model-pill">
-						<span className="model-mark" />
-						Opus 4.7
-					</span>
 					<Button size="icon-sm" variant="ghost" type="button">
 						<IconMicrophone {...iconProps} />
 					</Button>
@@ -295,41 +222,5 @@ function IconButton(props: {
 		>
 			{props.children}
 		</Button>
-	);
-}
-
-export function UpgradeRow() {
-	return (
-		<section className="upgrade-row">
-			<div>
-				<IconCrown {...iconProps} />
-				<strong>Upgrade to PRO</strong>
-			</div>
-			<Button size="xs" variant="secondary" type="button">
-				Upgrade
-			</Button>
-		</section>
-	);
-}
-
-export function ShortcutGrid() {
-	const shortcuts = [
-		{ icon: IconPlus, title: "Create", text: "Tasks, images, docs" },
-		{ icon: IconSearch, title: "Find", text: "Answers & files" },
-		{ icon: IconWorld, title: "Research", text: "Apps & web" },
-	];
-	return (
-		<section className="quick-grid" aria-label="Shortcuts">
-			{shortcuts.map((shortcut) => {
-				const ShortcutIcon = shortcut.icon;
-				return (
-					<article key={shortcut.title}>
-						<ShortcutIcon {...iconProps} />
-						<strong>{shortcut.title}</strong>
-						<span>{shortcut.text}</span>
-					</article>
-				);
-			})}
-		</section>
 	);
 }

@@ -1,13 +1,7 @@
 import { IconSparkles } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import type { AppInfo, CodexRuntimeMode } from "../../preload/types";
-import {
-	SessionComposer,
-	ShortcutGrid,
-	Sidebar,
-	TopBar,
-	UpgradeRow,
-} from "../components/layout";
+import { SessionComposer, Sidebar, TopBar } from "../components/layout";
 import { RightPanel } from "../components/right-panel";
 import { SessionPanel } from "../components/session";
 import { useCodexSession } from "../hooks/useCodexSession";
@@ -58,6 +52,7 @@ export function App() {
 					runtimeMode={runtimeMode}
 					runtimeOptions={runtimeOptions}
 					onRuntimeModeChange={setRuntimeMode}
+					onNewSession={session.createNewSession}
 				/>
 				<section className="session-stage">
 					<div className="session-stage-inner">
@@ -67,17 +62,14 @@ export function App() {
 						</div>
 						<SessionComposer
 							value={message}
-							disabled={session.isSending}
+							disabled={session.isTurnRunning}
 							runtimeMode={runtimeMode}
 							runtimeOptions={runtimeOptions}
 							onChange={setMessage}
 							onRuntimeModeChange={setRuntimeMode}
 							onSend={sendMessage}
 							onNewSession={session.createNewSession}
-							onChooseFile={workspace.chooseFile}
 						/>
-						<UpgradeRow />
-						<ShortcutGrid />
 						<SessionPanel
 							status={session.status}
 							threadId={session.threadId ?? session.sessionId}

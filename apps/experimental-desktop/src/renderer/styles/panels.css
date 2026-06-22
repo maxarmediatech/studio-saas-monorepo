@@ -1,6 +1,5 @@
 .session-stream,
-.panel,
-.channel-card {
+.panel {
 	border: 1px solid var(--border);
 	border-radius: 12px;
 	background: var(--desktop-panel);
@@ -144,32 +143,4 @@
 .event-scroll {
 	min-height: 0;
 	flex: 1;
-}
-
-.channel-card {
-	display: grid;
-	grid-template-columns: 68px minmax(0, 1fr);
-	align-items: center;
-	gap: 14px;
-	padding: 12px;
-}
-
-.channel-card strong {
-	color: var(--desktop-strong);
-}
-
-.channel-card p {
-	margin: 4px 0 0;
-	color: var(--desktop-subtle);
-}
-
-.channel-art {
-	width: 68px;
-	height: 60px;
-	border-radius: 12px;
-	background:
-		radial-gradient(circle at 26% 32%, #ffffff 0 7px, transparent 8px),
-		radial-gradient(circle at 50% 32%, #ffffff 0 7px, transparent 8px),
-		radial-gradient(circle at 74% 32%, #ffffff 0 7px, transparent 8px),
-		linear-gradient(135deg, #f9d99f 0%, #f7e8c6 45%, #77b7ff 100%);
 }
