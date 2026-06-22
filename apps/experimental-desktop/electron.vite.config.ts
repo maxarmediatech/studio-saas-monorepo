@@ -1,3 +1,5 @@
+import { resolve } from "node:path";
+import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "electron-vite";
 
 export default defineConfig({
@@ -26,10 +28,22 @@ export default defineConfig({
 	},
 	renderer: {
 		root: "src/renderer",
+		plugins: [tailwindcss()],
+		resolve: {
+			alias: {
+				"@": resolve(__dirname, "src"),
+			},
+		},
 		build: {
 			rollupOptions: {
 				input: {
 					main: "src/renderer/index.html",
+				},
+				onwarn(warning, warn) {
+					if (warning.code === "MODULE_LEVEL_DIRECTIVE") {
+						return;
+					}
+					warn(warning);
 				},
 			},
 		},

@@ -5,20 +5,23 @@ import { createMainWindow } from "./windows";
 
 let mainWindow: BrowserWindow | null = null;
 const sidecarManager = createSidecarManager();
+const shouldUseSingleInstanceLock = app.isPackaged;
 
-if (!app.requestSingleInstanceLock()) {
+if (shouldUseSingleInstanceLock && !app.requestSingleInstanceLock()) {
 	app.quit();
 } else {
-	app.on("second-instance", () => {
-		if (!mainWindow) {
-			return;
-		}
-		if (mainWindow.isMinimized()) {
-			mainWindow.restore();
-		}
-		mainWindow.show();
-		mainWindow.focus();
-	});
+	if (shouldUseSingleInstanceLock) {
+		app.on("second-instance", () => {
+			if (!mainWindow) {
+				return;
+			}
+			if (mainWindow.isMinimized()) {
+				mainWindow.restore();
+			}
+			mainWindow.show();
+			mainWindow.focus();
+		});
+	}
 
 	app.whenReady().then(() => {
 		app.setName("Experimental Desktop");
