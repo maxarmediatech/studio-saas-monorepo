@@ -15,8 +15,11 @@ export function createComposerAttachmentFromFile(
 	input?: { allowPathless?: boolean },
 ): ComposerAttachment {
 	const path = file.path;
-	const kind = imageAttachmentKind(file.name || path || "");
 	const allowPathless = input?.allowPathless ?? false;
+	const kind =
+		allowPathless && !path
+			? "image"
+			: imageAttachmentKind(file.type || file.name || path || "");
 	const pathlessReady = allowPathless && kind === "image";
 	return {
 		id: globalThis.crypto.randomUUID(),
@@ -31,6 +34,31 @@ export function createComposerAttachmentFromFile(
 			path || pathlessReady
 				? undefined
 				: "Could not read this file path from Electron.",
+	};
+}
+
+export function createComposerAttachmentFromWrittenFile(input: {
+	path: string;
+	name: string;
+	mimeType?: string;
+	size?: number;
+	previewFile?: File;
+}): ComposerAttachment {
+	const kind = imageAttachmentKind(
+		input.mimeType || input.name || input.path,
+	);
+	return {
+		id: globalThis.crypto.randomUUID(),
+		kind,
+		name: input.name,
+		path: input.path,
+		mimeType: input.mimeType,
+		size: input.size,
+		previewUrl:
+			kind === "image" && input.previewFile
+				? URL.createObjectURL(input.previewFile)
+				: undefined,
+		status: "ready",
 	};
 }
 

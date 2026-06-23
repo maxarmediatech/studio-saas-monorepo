@@ -1,7 +1,10 @@
 import { type ClipboardEvent, type DragEvent, useState } from "react";
 
 export function useComposerFileDrop(input: {
-	onFiles: (files: File[], input?: { allowPathless?: boolean }) => void;
+	onFiles: (
+		files: File[],
+		input?: { allowPathless?: boolean; defaultMimeType?: string },
+	) => void;
 }) {
 	const [dragActive, setDragActive] = useState(false);
 
@@ -34,7 +37,9 @@ export function useComposerFileDrop(input: {
 		}
 		event.preventDefault();
 		setDragActive(false);
-		input.onFiles(Array.from(event.dataTransfer.files));
+		input.onFiles(Array.from(event.dataTransfer.files), {
+			allowPathless: true,
+		});
 	}
 
 	function onPaste(event: ClipboardEvent<HTMLElement>) {
@@ -43,7 +48,10 @@ export function useComposerFileDrop(input: {
 			return;
 		}
 		event.preventDefault();
-		input.onFiles(files, { allowPathless: true });
+		input.onFiles(files, {
+			allowPathless: true,
+			defaultMimeType: "image/png",
+		});
 	}
 
 	return {

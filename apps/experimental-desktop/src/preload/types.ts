@@ -296,10 +296,22 @@ export type ForkedConversation = {
 	copiedMessageCount: number;
 };
 
+export type WrittenAttachmentFile = {
+	path: string;
+	name: string;
+	mimeType?: string;
+	size: number;
+};
+
 export type ExperimentalDesktopApi = {
 	getAppInfo: () => Promise<AppInfo>;
 	openDirectory: () => Promise<string | null>;
 	openFile: () => Promise<string | null>;
+	writeAttachmentFile: (input: {
+		name?: string;
+		mimeType?: string;
+		data: ArrayBuffer;
+	}) => Promise<WrittenAttachmentFile>;
 	searchWorkspaceFiles: (input: {
 		rootPath: string;
 		query: string;

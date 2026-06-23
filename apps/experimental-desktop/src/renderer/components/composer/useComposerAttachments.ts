@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
 	createComposerAttachment,
 	createComposerAttachmentFromFile,
+	createComposerAttachmentFromWrittenFile,
 	revokeComposerAttachmentPreview,
 } from "./composerAttachments";
 import type { ComposerAttachment } from "./composerTypes";
@@ -73,18 +74,23 @@ export function useComposerAttachments(input: {
 		});
 	}
 
-	function addAttachmentFiles(
+	async function addAttachmentFiles(
 		files: File[],
-		input?: { allowPathless?: boolean },
+		input?: { allowPathless?: boolean; defaultMimeType?: string },
 	) {
-		setAttachments((items) => {
-			const next = [...items];
-			for (const file of files) {
-				const attachment = createComposerAttachmentFromFile(
+		const nextAttachments = await Promise.all(
+			files.map((file) =>
+				createAttachmentFromFile(
 					file as File & { path?: string },
 					input,
-				);
+				),
+			),
+		);
+		setAttachments((items) => {
+			const next = [...items];
+			for (const attachment of nextAttachments) {
 				if (next.some((item) => sameAttachment(item, attachment))) {
+					revokeComposerAttachmentPreview(attachment);
 					continue;
 				}
 				next.push(attachment);
@@ -123,6 +129,49 @@ export function useComposerAttachments(input: {
 		clearAttachments,
 		setAttachments,
 	};
+}
+
+async function createAttachmentFromFile(
+	file: File & { path?: string },
+	input?: { allowPathless?: boolean; defaultMimeType?: string },
+) {
+	if (file.path || !input?.allowPathless) {
+		return createComposerAttachmentFromFile(file, input);
+	}
+	try {
+		const mimeType =
+			file.type || input?.defaultMimeType || "application/octet-stream";
+		const written = await window.experimentalDesktop.writeAttachmentFile({
+			name: file.name || fallbackAttachmentName(mimeType),
+			mimeType,
+			data: await file.arrayBuffer(),
+		});
+		return createComposerAttachmentFromWrittenFile({
+			...written,
+			previewFile: file,
+		});
+	} catch (error) {
+		return {
+			...createComposerAttachmentFromFile(file),
+			status: "failed" as const,
+			error: error instanceof Error ? error.message : String(error),
+		};
+	}
+}
+
+function fallbackAttachmentName(mimeType: string) {
+	switch (mimeType) {
+		case "image/png":
+			return "clipboard.png";
+		case "image/jpeg":
+			return "clipboard.jpg";
+		case "image/gif":
+			return "clipboard.gif";
+		case "image/webp":
+			return "clipboard.webp";
+		default:
+			return "attachment.bin";
+	}
 }
 
 function sameAttachment(a: ComposerAttachment, b: ComposerAttachment) {

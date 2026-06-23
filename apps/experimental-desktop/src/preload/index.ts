@@ -16,6 +16,7 @@ import type {
 	SendSessionMessageResult,
 	SessionEvent,
 	WorkspaceFileMention,
+	WrittenAttachmentFile,
 } from "./types";
 
 const api: ExperimentalDesktopApi = {
@@ -24,6 +25,11 @@ const api: ExperimentalDesktopApi = {
 		ipcRenderer.invoke("dialog:open-directory") as Promise<string | null>,
 	openFile: () =>
 		ipcRenderer.invoke("dialog:open-file") as Promise<string | null>,
+	writeAttachmentFile: (input) =>
+		ipcRenderer.invoke(
+			"attachment:write-file",
+			input,
+		) as Promise<WrittenAttachmentFile>,
 	searchWorkspaceFiles: (input) =>
 		ipcRenderer.invoke("workspace:search-files", input) as Promise<
 			WorkspaceFileMention[]
