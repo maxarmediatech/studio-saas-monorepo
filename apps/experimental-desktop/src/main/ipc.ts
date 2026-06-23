@@ -98,6 +98,13 @@ export function registerIpcHandlers(sidecarManager: SidecarManager) {
 		});
 	});
 
+	ipcMain.handle("sidecar:update-codex-provider", async () => {
+		const runtime = await sidecarManager.ensure();
+		return sidecarManager.fetch(runtime, "/providers/codex/update", {
+			method: "POST",
+		});
+	});
+
 	ipcMain.handle("conversation:list", () =>
 		conversations.listConversations(),
 	);

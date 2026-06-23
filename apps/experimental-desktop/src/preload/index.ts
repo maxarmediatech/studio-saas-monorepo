@@ -45,6 +45,10 @@ const api: ExperimentalDesktopApi = {
 		ipcRenderer.invoke(
 			"sidecar:probe-codex-app-server",
 		) as Promise<CodexAppServerProbe>,
+	updateCodexProvider: () =>
+		ipcRenderer.invoke(
+			"sidecar:update-codex-provider",
+		) as Promise<CodexProviderStatus>,
 	listConversations: () =>
 		ipcRenderer.invoke("conversation:list") as Promise<
 			ConversationSummary[]

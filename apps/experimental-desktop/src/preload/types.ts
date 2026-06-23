@@ -35,8 +35,54 @@ export type CodexProviderStatus = {
 		available: boolean;
 		version: string | null;
 		error: string | null;
+		resolvedPath: string | null;
+		installSource: CodexInstallSource;
 	};
+	versionAdvisory?: ProviderVersionAdvisory;
+	updateState?: ProviderUpdateState;
 };
+
+export type ProviderVersionAdvisoryStatus =
+	| "unknown"
+	| "current"
+	| "behind_latest";
+
+export type ProviderVersionAdvisory = {
+	status: ProviderVersionAdvisoryStatus;
+	source: CodexInstallSource;
+	currentVersion: string | null;
+	latestVersion: string | null;
+	updateCommand: string | null;
+	canUpdate: boolean;
+	checkedAt: string | null;
+	message: string | null;
+};
+
+export type ProviderUpdateStatus =
+	| "idle"
+	| "queued"
+	| "running"
+	| "succeeded"
+	| "failed"
+	| "unchanged";
+
+export type ProviderUpdateState = {
+	status: ProviderUpdateStatus;
+	startedAt: string | null;
+	finishedAt: string | null;
+	message: string | null;
+	output: string | null;
+};
+
+export type CodexInstallSource =
+	| "npm"
+	| "pnpm"
+	| "bun"
+	| "brew-cask"
+	| "standalone"
+	| "windows-standalone"
+	| "manual"
+	| "unknown";
 
 export type CodexAppServerProbe = {
 	ok: boolean;
@@ -246,6 +292,7 @@ export type ExperimentalDesktopApi = {
 	logoutOpenAi: () => Promise<{ ok: true }>;
 	getCodexProviderStatus: () => Promise<CodexProviderStatus>;
 	probeCodexAppServer: () => Promise<CodexAppServerProbe>;
+	updateCodexProvider: () => Promise<CodexProviderStatus>;
 	listConversations: () => Promise<ConversationSummary[]>;
 	getConversation: (
 		conversationId: string,

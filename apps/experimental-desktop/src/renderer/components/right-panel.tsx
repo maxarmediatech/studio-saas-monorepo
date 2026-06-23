@@ -6,7 +6,8 @@ import { Button } from "./ui/button";
 import { ScrollArea } from "./ui/scroll-area";
 
 const labelClass = "m-0 text-[12px] font-medium text-[var(--desktop-subtle)]";
-const valueClass = "m-0 font-semibold leading-[1.45] text-[var(--desktop-strong)]";
+const valueClass =
+	"m-0 font-semibold leading-[1.45] text-[var(--desktop-strong)]";
 const mutedClass = "m-0 leading-[1.45] text-[var(--desktop-subtle)]";
 const panelClass =
 	"flex flex-col gap-3.5 rounded-xl border border-border bg-[var(--desktop-panel)] px-4 py-3.5";
@@ -19,6 +20,10 @@ export function RightPanel(props: {
 	pendingRequests: PendingRequest[];
 	eventLog: string[];
 }) {
+	const codexStatus = props.provider.codexStatus;
+	const codexAdvisory = codexStatus?.versionAdvisory;
+	const codexNeedsUpdate = codexAdvisory?.status === "behind_latest";
+
 	return (
 		<aside className="flex min-h-0 flex-col gap-3.5 border-l border-border bg-[var(--desktop-panel)] p-[18px]">
 			<section className={panelClass}>
@@ -71,6 +76,57 @@ export function RightPanel(props: {
 					</Button>
 					<Button
 						size="xs"
+						variant="ghost"
+						type="button"
+						onClick={props.provider.logout}
+					>
+						Disconnect
+					</Button>
+				</div>
+			</section>
+			<section className={panelClass}>
+				<div className={panelHeadingClass}>
+					<p className={labelClass}>Codex CLI</p>
+					<Badge variant={codexNeedsUpdate ? "default" : "secondary"}>
+						{codexAdvisory?.status === "current"
+							? "Current"
+							: codexNeedsUpdate
+								? "Update available"
+								: "Unknown"}
+					</Badge>
+				</div>
+				<p className={mutedClass}>
+					Codex {codexAdvisory?.currentVersion ?? "unknown"} → Latest{" "}
+					{codexAdvisory?.latestVersion ?? "unknown"}
+				</p>
+				<p className={mutedClass}>
+					Source {codexAdvisory?.source ?? "unknown"}
+				</p>
+				{codexStatus?.binary.resolvedPath ? (
+					<pre className="m-0 overflow-hidden whitespace-pre-wrap break-all rounded-md border border-border bg-background/40 px-2 py-1.5 text-[11px] text-[var(--desktop-subtle)]">
+						{codexStatus.binary.resolvedPath}
+					</pre>
+				) : null}
+				{codexAdvisory?.message ? (
+					<p className={mutedClass}>{codexAdvisory.message}</p>
+				) : null}
+				{codexNeedsUpdate ? (
+					<div className="flex flex-wrap gap-2">
+						<Button
+							size="xs"
+							type="button"
+							disabled={
+								props.provider.busy || !codexAdvisory.canUpdate
+							}
+							onClick={props.provider.updateCodex}
+						>
+							Update Codex
+						</Button>
+					</div>
+				) : null}
+				<div className="flex flex-wrap gap-2">
+					<Button
+						size="xs"
 						variant="secondary"
 						type="button"
 						onClick={props.provider.probe}
@@ -79,13 +135,21 @@ export function RightPanel(props: {
 					</Button>
 					<Button
 						size="xs"
-						variant="ghost"
+						variant="secondary"
 						type="button"
-						onClick={props.provider.logout}
+						onClick={props.provider.refresh}
 					>
-						Disconnect
+						Recheck
 					</Button>
 				</div>
+				{codexNeedsUpdate && !codexAdvisory.canUpdate ? (
+					<p className={mutedClass}>Manual update required.</p>
+				) : null}
+				{codexNeedsUpdate && codexAdvisory.updateCommand ? (
+					<pre className="m-0 overflow-hidden whitespace-pre-wrap break-all rounded-md border border-border bg-background/40 px-2 py-1.5 text-[11px] text-[var(--desktop-subtle)]">
+						{codexAdvisory.updateCommand}
+					</pre>
+				) : null}
 			</section>
 			<section className={`${panelClass} gap-2.5`}>
 				<div className={panelHeadingClass}>

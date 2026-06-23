@@ -118,6 +118,41 @@ export function useProviderStatus() {
 		}
 	}
 
+	async function updateCodex() {
+		setState((current) => ({
+			...current,
+			statusLabel: "Updating Codex...",
+			busy: true,
+		}));
+		try {
+			const codexStatus =
+				await window.experimentalDesktop.updateCodexProvider();
+			setState((current) => ({
+				...current,
+				codexStatus,
+				statusLabel:
+					codexStatus.updateState?.status === "succeeded"
+						? "Codex updated"
+						: codexStatus.updateState?.status === "unchanged"
+							? "Codex still behind"
+							: codexStatus.updateState?.status === "failed"
+								? "Codex update failed"
+								: "Codex update finished",
+				detail:
+					codexStatus.updateState?.message ??
+					`Codex ${codexStatus.binary.version ?? "unknown"}`,
+				busy: false,
+			}));
+		} catch (error) {
+			setState((current) => ({
+				...current,
+				statusLabel: "Codex update failed",
+				detail: error instanceof Error ? error.message : String(error),
+				busy: false,
+			}));
+		}
+	}
+
 	return {
 		...state,
 		refresh,
@@ -125,5 +160,6 @@ export function useProviderStatus() {
 		refreshAuth,
 		logout,
 		probe,
+		updateCodex,
 	};
 }

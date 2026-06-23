@@ -12,6 +12,7 @@ import {
 } from "./sidecar-codex-runtime";
 import { createOpenAiAuthController } from "./sidecar-openai";
 import { getCodexProviderStatus } from "./sidecar-provider";
+import { updateCodexProvider } from "./sidecar-provider-maintenance";
 import { createSessionController } from "./sidecar-sessions";
 import { generateConversationSummary } from "./sidecar-summary";
 
@@ -144,6 +145,21 @@ async function handleApiRequest(req: IncomingMessage, res: ServerResponse) {
 			url.pathname === "/providers/codex/probe"
 		) {
 			writeJson(res, 200, await probeCodexAppServer());
+			return;
+		}
+
+		if (
+			req.method === "POST" &&
+			url.pathname === "/providers/codex/update"
+		) {
+			writeJson(
+				res,
+				200,
+				await updateCodexProvider({
+					stopCodexRuntime: () => codexRuntime.stop(),
+					getStatus: () => getCodexProviderStatus(),
+				}),
+			);
 			return;
 		}
 
