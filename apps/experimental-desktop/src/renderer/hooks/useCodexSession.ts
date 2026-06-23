@@ -8,6 +8,10 @@ import type {
 	SessionEvent,
 } from "../../preload/types";
 import type { PendingRequest, TranscriptItem } from "../app/types";
+import {
+	type ComposerPayload,
+	serializeComposerPayload,
+} from "../components/composer/composerPayload";
 import { defaultAnswers } from "./pendingRequestDefaults";
 
 export function useCodexSession(input: {
@@ -41,15 +45,20 @@ export function useCodexSession(input: {
 		setConversations(await window.experimentalDesktop.listConversations());
 	}
 
-	async function persistDraft(text: string, attachments: unknown[] = []) {
+	async function persistDraft(payload: ComposerPayload) {
 		if (conversationId) {
 			return;
 		}
 		const draftInput = {
-			text,
+			text: payload.text,
 			model: inputModel(),
 			runtimeMode: inputRuntimeMode(),
-			attachments,
+			attachments: payload.contextItems,
+			payload: {
+				mode: payload.mode,
+				parts: payload.parts,
+				metrics: payload.metrics,
+			},
 			...(input.selectedFolderPath
 				? { cwd: input.selectedFolderPath }
 				: {}),
@@ -93,8 +102,8 @@ export function useCodexSession(input: {
 		setStatus("Draft ready");
 	}
 
-	async function sendMessage(text: string) {
-		const trimmed = text.trim();
+	async function sendMessage(payload: ComposerPayload) {
+		const trimmed = serializeComposerPayload(payload);
 		if (!trimmed) {
 			setStatus("Message required");
 			return false;

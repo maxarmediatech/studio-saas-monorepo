@@ -228,6 +228,12 @@ CREATE INDEX conversation_summaries_conversation_type_created_at_idx
 	ON conversation_summaries(conversation_id, type, created_at);
 `,
 	},
+	{
+		id: "0005_draft_payload",
+		sql: `
+ALTER TABLE drafts ADD COLUMN payload_json TEXT NOT NULL DEFAULT '{}';
+`,
+	},
 ];
 
 export type ConversationDatabase = Database.Database;

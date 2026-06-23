@@ -216,6 +216,7 @@ export type DraftRecord = {
 	model?: string;
 	runtimeMode: CodexRuntimeMode;
 	attachments: unknown[];
+	payload: unknown;
 	createdAt: string;
 	updatedAt: string;
 	promotedConversationId?: string;
@@ -333,6 +334,7 @@ export type ExperimentalDesktopApi = {
 		model?: string;
 		runtimeMode?: CodexRuntimeMode;
 		attachments?: unknown[];
+		payload?: unknown;
 	}) => Promise<DraftRecord>;
 	updateDraft: (
 		draftId: string,
@@ -342,6 +344,7 @@ export type ExperimentalDesktopApi = {
 			model?: string;
 			runtimeMode?: CodexRuntimeMode;
 			attachments?: unknown[];
+			payload?: unknown;
 		},
 	) => Promise<DraftRecord>;
 	promoteDraftAndSend: (input: {

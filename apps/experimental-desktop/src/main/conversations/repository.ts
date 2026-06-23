@@ -42,13 +42,14 @@ export class ConversationRepository {
 		model?: string;
 		runtimeMode: CodexRuntimeMode;
 		attachments?: unknown[];
+		payload?: unknown;
 		now: string;
 	}) {
 		this.db
 			.prepare(
 				`INSERT INTO drafts
-				(id, text, cwd, model, runtime_mode, attachments_json, created_at, updated_at)
-				VALUES (@id, @text, @cwd, @model, @runtimeMode, @attachments, @now, @now)`,
+				(id, text, cwd, model, runtime_mode, attachments_json, payload_json, created_at, updated_at)
+				VALUES (@id, @text, @cwd, @model, @runtimeMode, @attachments, @payload, @now, @now)`,
 			)
 			.run({
 				...input,
@@ -56,6 +57,7 @@ export class ConversationRepository {
 				cwd: input.cwd ?? null,
 				model: input.model ?? null,
 				attachments: stringify(input.attachments ?? []),
+				payload: stringify(input.payload ?? {}),
 			});
 		return this.getDraft(input.id);
 	}
@@ -67,6 +69,7 @@ export class ConversationRepository {
 		model?: string;
 		runtimeMode?: CodexRuntimeMode;
 		attachments?: unknown[];
+		payload?: unknown;
 		now: string;
 	}) {
 		const existing = this.getDraft(input.id);
@@ -78,6 +81,7 @@ export class ConversationRepository {
 				model: input.model,
 				runtimeMode: input.runtimeMode ?? "read-only",
 				attachments: input.attachments,
+				payload: input.payload,
 				now: input.now,
 			});
 		}
@@ -89,6 +93,7 @@ export class ConversationRepository {
 					model = @model,
 					runtime_mode = @runtimeMode,
 					attachments_json = @attachments,
+					payload_json = @payload,
 					updated_at = @now
 				WHERE id = @id`,
 			)
@@ -101,6 +106,7 @@ export class ConversationRepository {
 				attachments: stringify(
 					input.attachments ?? existing.attachments,
 				),
+				payload: stringify(input.payload ?? existing.payload ?? {}),
 				now: input.now,
 			});
 		return this.getDraft(input.id);
@@ -1452,6 +1458,7 @@ type DraftRow = {
 	model: string | null;
 	runtime_mode: CodexRuntimeMode;
 	attachments_json: string;
+	payload_json: string;
 	created_at: string;
 	updated_at: string;
 	promoted_conversation_id: string | null;
@@ -1567,6 +1574,7 @@ function mapDraft(row: DraftRow): DraftRecord {
 		model: row.model ?? undefined,
 		runtimeMode: row.runtime_mode,
 		attachments: parseArray(row.attachments_json),
+		payload: parseJson(row.payload_json) ?? {},
 		createdAt: row.created_at,
 		updatedAt: row.updated_at,
 		promotedConversationId: row.promoted_conversation_id ?? undefined,

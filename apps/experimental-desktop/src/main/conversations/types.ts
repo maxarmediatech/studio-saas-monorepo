@@ -115,6 +115,7 @@ export type DraftRecord = {
 	model?: string;
 	runtimeMode: CodexRuntimeMode;
 	attachments: unknown[];
+	payload: unknown;
 	createdAt: string;
 	updatedAt: string;
 	promotedConversationId?: string;

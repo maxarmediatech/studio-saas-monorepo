@@ -24,6 +24,7 @@ export function validateDraftBody(value: unknown): {
 	model?: string;
 	runtimeMode: CodexRuntimeMode;
 	attachments?: unknown[];
+	payload?: unknown;
 } {
 	if (value === null || value === undefined) {
 		return { runtimeMode: "read-only" };
@@ -40,6 +41,7 @@ export function validateDraftBody(value: unknown): {
 		...(Array.isArray(body.attachments)
 			? { attachments: body.attachments }
 			: {}),
+		...(body.payload !== undefined ? { payload: body.payload } : {}),
 		runtimeMode: validateRuntimeMode(body.runtimeMode),
 	};
 }

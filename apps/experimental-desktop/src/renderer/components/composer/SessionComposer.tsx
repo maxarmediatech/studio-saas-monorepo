@@ -22,8 +22,8 @@ import { nextSelectableIndex } from "./composerKeyboard";
 import { buildComposerMenuItems } from "./composerMenuItems";
 import {
 	buildComposerPayload,
+	type ComposerPayload,
 	estimateComposerContextMetrics,
-	serializeComposerPayload,
 } from "./composerPayload";
 import { type ComposerMode, detectComposerTrigger } from "./composerTriggers";
 import type { ComposerContextItem } from "./composerTypes";
@@ -44,10 +44,11 @@ export function SessionComposer(props: {
 	resetSignal: number;
 	initialContextItems: ComposerContextItem[];
 	onChange: (value: string) => void;
+	onModeChange: (mode: ComposerMode) => void;
 	onContextItemsChange: (items: ComposerContextItem[]) => void;
 	onModelChange: (model: string) => void;
 	onRuntimeModeChange: (mode: CodexRuntimeMode) => void;
-	onSend: (text: string) => Promise<boolean>;
+	onSend: (payload: ComposerPayload) => Promise<boolean>;
 	onInterrupt: () => Promise<void>;
 	onNewSession: () => Promise<void>;
 	onRespondRequest: (
@@ -127,20 +128,16 @@ export function SessionComposer(props: {
 
 	async function send() {
 		const sentText = props.value;
-		if (!sentText.trim()) {
-			return;
-		}
 		const sentContextItems = contextItems;
 		const payload = buildComposerPayload({
 			mode,
 			text: sentText,
 			contextItems: sentContextItems,
 		});
-		const text = serializeComposerPayload(payload);
-		if (!text) {
+		if (!payload.parts.length) {
 			return;
 		}
-		const sent = await props.onSend(text);
+		const sent = await props.onSend(payload);
 		if (!sent) {
 			return;
 		}
@@ -169,6 +166,7 @@ export function SessionComposer(props: {
 
 	function changeMode(nextMode: ComposerMode) {
 		setMode(nextMode);
+		props.onModeChange(nextMode);
 		if (nextMode === "shell") {
 			setContextItems([]);
 		}
@@ -346,7 +344,7 @@ export function SessionComposer(props: {
 		mode,
 		disabled: props.disabled,
 		turnActive: props.turnActive,
-		hasText: props.value.trim() !== "",
+		hasText: props.value.trim() !== "" || contextItems.length > 0,
 	});
 
 	function onPrimaryAction() {

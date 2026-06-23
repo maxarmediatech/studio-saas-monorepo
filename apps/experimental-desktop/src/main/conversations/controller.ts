@@ -90,6 +90,7 @@ export function createConversationController(input: {
 			model: draft.model,
 			runtimeMode: draft.runtimeMode,
 			attachments: draft.attachments,
+			payload: draft.payload,
 			now: now(),
 		});
 	}
@@ -103,6 +104,7 @@ export function createConversationController(input: {
 			model: draft.model,
 			runtimeMode: draft.runtimeMode,
 			attachments: draft.attachments,
+			payload: draft.payload,
 			now: now(),
 		});
 	}

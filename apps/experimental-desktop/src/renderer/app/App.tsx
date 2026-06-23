@@ -1,6 +1,11 @@
 import { IconSparkles } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import type { AppInfo, CodexRuntimeMode } from "../../preload/types";
+import {
+	buildComposerPayload,
+	type ComposerPayload,
+} from "../components/composer/composerPayload";
+import type { ComposerMode } from "../components/composer/composerTriggers";
 import type { ComposerContextItem } from "../components/composer/composerTypes";
 import { SessionComposer } from "../components/composer/SessionComposer";
 import { Sidebar, TopBar } from "../components/layout";
@@ -27,6 +32,7 @@ export function App() {
 		useState<CodexRuntimeMode>("read-only");
 	const [model, setModel] = useState("gpt-5.4-mini");
 	const [message, setMessage] = useState("");
+	const [composerMode, setComposerMode] = useState<ComposerMode>("ask");
 	const [composerContextItems, setComposerContextItems] = useState<
 		ComposerContextItem[]
 	>([]);
@@ -59,12 +65,19 @@ export function App() {
 				composerContextItems.length > 0 ||
 				session.draftId
 			) {
-				void session.persistDraft(message, composerContextItems);
+				void session.persistDraft(
+					buildComposerPayload({
+						mode: composerMode,
+						text: message,
+						contextItems: composerContextItems,
+					}),
+				);
 			}
 		}, 350);
 		return () => window.clearTimeout(timeout);
 	}, [
 		message,
+		composerMode,
 		composerContextItems,
 		model,
 		runtimeMode,
@@ -81,16 +94,18 @@ export function App() {
 			: []),
 	];
 
-	async function sendMessage(text: string) {
-		const sent = await session.sendMessage(text);
+	async function sendMessage(payload: ComposerPayload) {
+		const sent = await session.sendMessage(payload);
 		if (sent) {
 			setMessage("");
+			setComposerContextItems([]);
 		}
 		return sent;
 	}
 
 	async function createNewSession() {
 		setMessage("");
+		setComposerMode("ask");
 		setComposerContextItems([]);
 		setComposerResetSignal((signal) => signal + 1);
 		await session.createNewSession();
@@ -100,6 +115,7 @@ export function App() {
 		const opened = await session.openConversation(id);
 		if (opened) {
 			setMessage("");
+			setComposerMode("ask");
 			setComposerContextItems([]);
 			setComposerResetSignal((signal) => signal + 1);
 		}
@@ -141,6 +157,7 @@ export function App() {
 								resetSignal={composerResetSignal}
 								initialContextItems={composerContextItems}
 								onChange={setMessage}
+								onModeChange={setComposerMode}
 								onContextItemsChange={setComposerContextItems}
 								onModelChange={setModel}
 								onRuntimeModeChange={setRuntimeMode}
