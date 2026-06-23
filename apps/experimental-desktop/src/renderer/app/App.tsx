@@ -25,6 +25,7 @@ export function App() {
 		useState<CodexRuntimeMode>("read-only");
 	const [model, setModel] = useState("gpt-5.4-mini");
 	const [message, setMessage] = useState("");
+	const [composerResetSignal, setComposerResetSignal] = useState(0);
 	const { theme, toggleTheme } = useThemeMode();
 	const workspace = useWorkspaceSelection();
 	const provider = useProviderStatus();
@@ -70,6 +71,20 @@ export function App() {
 		return sent;
 	}
 
+	async function createNewSession() {
+		setMessage("");
+		setComposerResetSignal((signal) => signal + 1);
+		await session.createNewSession();
+	}
+
+	async function openConversation(id: string) {
+		const opened = await session.openConversation(id);
+		if (opened) {
+			setMessage("");
+			setComposerResetSignal((signal) => signal + 1);
+		}
+	}
+
 	return (
 		<div className={desktopRootClass}>
 			<TopBar theme={theme} onToggleTheme={toggleTheme} />
@@ -81,8 +96,8 @@ export function App() {
 					conversations={session.conversations}
 					activeConversationId={session.conversationId}
 					onRuntimeModeChange={setRuntimeMode}
-					onNewSession={session.createNewSession}
-					onOpenConversation={session.openConversation}
+					onNewSession={createNewSession}
+					onOpenConversation={openConversation}
 				/>
 				<section className="min-h-0 min-w-0 overflow-hidden">
 					<div className={sessionStageInnerClass}>
@@ -102,14 +117,12 @@ export function App() {
 								runtimeOptions={runtimeOptions}
 								pendingRequests={session.pendingRequests}
 								workspaceRoot={workspace.selectedFolderPath}
+								resetSignal={composerResetSignal}
 								onChange={setMessage}
 								onModelChange={setModel}
 								onRuntimeModeChange={setRuntimeMode}
 								onSend={sendMessage}
-								onNewSession={async () => {
-									setMessage("");
-									await session.createNewSession();
-								}}
+								onNewSession={createNewSession}
 								onRespondRequest={session.respondToRequest}
 							/>
 						</div>

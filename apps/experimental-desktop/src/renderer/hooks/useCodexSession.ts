@@ -68,7 +68,7 @@ export function useCodexSession(input: {
 			await window.experimentalDesktop.getConversation(id);
 		if (!conversation) {
 			setStatus("Conversation not found");
-			return;
+			return false;
 		}
 		hydrateConversation(conversation);
 		unsubscribeRef.current =
@@ -76,6 +76,7 @@ export function useCodexSession(input: {
 				conversation.id,
 				handleSessionEvent,
 			);
+		return true;
 	}
 
 	async function createNewSession() {

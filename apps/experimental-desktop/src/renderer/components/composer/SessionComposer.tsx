@@ -1,8 +1,5 @@
 import {
 	IconArrowUp,
-	IconChevronDown,
-	IconCommand,
-	IconFilePlus,
 	IconMicrophone,
 	IconPlus,
 	IconTerminal2,
@@ -17,12 +14,12 @@ import {
 import type {
 	CodexRuntimeMode,
 	RespondSessionRequestInput,
-	WorkspaceFileMention,
 } from "../../../preload/types";
 import { iconProps } from "../../app/icons";
 import type { PendingRequest, RuntimeOption } from "../../app/types";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
+import { ComposerContextChips } from "./ComposerContextChips";
 import {
 	composerControlClass,
 	IconButton,
@@ -30,31 +27,21 @@ import {
 	ModePill,
 	RuntimeModeSelect,
 } from "./ComposerControls";
+import { ComposerFooter } from "./ComposerFooter";
+import { ComposerMenu } from "./ComposerMenu";
+import { collectContextTokens, withContextItems } from "./composerContext";
+import { buildComposerMenuItems } from "./composerMenuItems";
 import {
 	type ComposerCommand,
 	type ComposerMode,
-	composerCommands,
 	detectComposerTrigger,
 	replaceComposerRange,
 	serializeComposerSendText,
 } from "./composerTriggers";
+import type { ComposerContextItem } from "./composerTypes";
 import { PendingRequestDock } from "./PendingRequestDock";
-
-const menuItemClass =
-	"grid w-full grid-cols-[22px_minmax(0,1fr)_auto] items-center gap-2 rounded-[9px] border-0 bg-transparent px-2.5 py-2 text-left text-[var(--desktop-default)] transition-colors hover:bg-[var(--desktop-inbox-hover)]";
-const chipClass =
-	"inline-flex h-7 max-w-[220px] items-center gap-1.5 rounded-[8px] border border-[var(--desktop-inbox-border)] bg-[color-mix(in_srgb,var(--desktop-inbox-hover)_72%,transparent)] px-2.5 text-[12px] font-medium text-[var(--desktop-subtle)]";
-
-type ComposerHistoryEntry = {
-	mode: ComposerMode;
-	text: string;
-};
-
-type ComposerContextItem = {
-	type: "file" | "directory";
-	label: string;
-	path: string;
-};
+import { useComposerHistory } from "./useComposerHistory";
+import { useWorkspaceFileMentions } from "./useWorkspaceFileMentions";
 
 export function SessionComposer(props: {
 	value: string;
@@ -64,6 +51,7 @@ export function SessionComposer(props: {
 	runtimeOptions: RuntimeOption[];
 	pendingRequests: PendingRequest[];
 	workspaceRoot?: string;
+	resetSignal: number;
 	onChange: (value: string) => void;
 	onModelChange: (model: string) => void;
 	onRuntimeModeChange: (mode: CodexRuntimeMode) => void;
@@ -77,16 +65,19 @@ export function SessionComposer(props: {
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const [mode, setMode] = useState<ComposerMode>("normal");
 	const [activeIndex, setActiveIndex] = useState(0);
-	const [history, setHistory] = useState<ComposerHistoryEntry[]>([]);
-	const [historyIndex, setHistoryIndex] = useState(-1);
-	const [savedDraft, setSavedDraft] = useState<string | null>(null);
+	const {
+		history,
+		setHistory,
+		historyIndex,
+		setHistoryIndex,
+		savedDraft,
+		setSavedDraft,
+	} = useComposerHistory(props.workspaceRoot);
 	const [selectionStart, setSelectionStart] = useState(0);
 	const [dismissedTriggerKey, setDismissedTriggerKey] = useState<
 		string | null
 	>(null);
 	const [contextItems, setContextItems] = useState<ComposerContextItem[]>([]);
-	const [fileResults, setFileResults] = useState<WorkspaceFileMention[]>([]);
-	const [fileSearchLoading, setFileSearchLoading] = useState(false);
 	const [userInputDrafts, setUserInputDrafts] = useState<
 		Record<string, Record<string, string>>
 	>({});
@@ -98,23 +89,15 @@ export function SessionComposer(props: {
 					props.value,
 					selectionStart || props.value.length,
 				);
-	}, [
-		props.value,
-		mode,
-		selectionStart,
-		fileResults,
-		fileSearchLoading,
-		dismissedTriggerKey,
-	]);
+	}, [props.value, mode, selectionStart]);
 	const triggerKey = trigger
 		? `${trigger.kind}:${trigger.rangeStart}:${trigger.query}`
 		: null;
 	const activeTrigger =
 		trigger && triggerKey !== dismissedTriggerKey ? trigger : null;
-	const historyStorageKey = useMemo(
-		() =>
-			`experimental-desktop:composer-history:${props.workspaceRoot ?? "global"}`,
-		[props.workspaceRoot],
+	const fileResults = useWorkspaceFileMentions(
+		activeTrigger,
+		props.workspaceRoot,
 	);
 
 	useEffect(() => {
@@ -122,132 +105,28 @@ export function SessionComposer(props: {
 	}, [activeTrigger?.kind, activeTrigger?.query]);
 
 	useEffect(() => {
-		const saved = window.localStorage.getItem(historyStorageKey);
-		if (!saved) {
-			setHistory([]);
-			return;
-		}
-		try {
-			const parsed = JSON.parse(saved) as ComposerHistoryEntry[];
-			setHistory(Array.isArray(parsed) ? parsed.slice(0, 80) : []);
-		} catch {
-			setHistory([]);
-		}
-	}, [historyStorageKey]);
-
-	useEffect(() => {
-		window.localStorage.setItem(
-			historyStorageKey,
-			JSON.stringify(history.slice(0, 80)),
-		);
-	}, [history, historyStorageKey]);
-
-	useEffect(() => {
-		if (activeTrigger?.kind !== "file" || !props.workspaceRoot) {
-			setFileResults([]);
-			setFileSearchLoading(false);
-			return;
-		}
-		let canceled = false;
-		setFileSearchLoading(true);
-		void window.experimentalDesktop
-			.searchWorkspaceFiles({
-				rootPath: props.workspaceRoot,
-				query: activeTrigger.query,
-				limit: 24,
-			})
-			.then((results) => {
-				if (!canceled) {
-					setFileResults(results);
-				}
-			})
-			.finally(() => {
-				if (!canceled) {
-					setFileSearchLoading(false);
-				}
-			});
-		return () => {
-			canceled = true;
-		};
-	}, [activeTrigger?.kind, activeTrigger?.query, props.workspaceRoot]);
+		setContextItems([]);
+		setHistoryIndex(-1);
+		setSavedDraft(null);
+		setDismissedTriggerKey(null);
+		setActiveIndex(0);
+	}, [
+		props.workspaceRoot,
+		props.resetSignal,
+		setHistoryIndex,
+		setSavedDraft,
+	]);
 
 	const menuItems = useMemo(() => {
-		if (!activeTrigger) {
-			return [];
-		}
-		const safeTrigger = activeTrigger;
-		const query = safeTrigger.query.toLowerCase();
-		if (safeTrigger.kind === "slash") {
-			return composerCommands.filter((command) =>
-				command.trigger.toLowerCase().startsWith(query),
-			);
-		}
-		if (safeTrigger.kind === "file") {
-			const resultItems = fileResults.map((file) => ({
-				id: `workspace-file:${file.path}`,
-				trigger: file.name,
-				label: file.name,
-				description: `${file.kind} · ${file.relativePath}`,
-				action: "insert" as const,
-				insertText: `@${file.name} `,
-			}));
-			return [
-				{
-					id: "choose-file",
-					trigger: "file",
-					label: "Choose File",
-					description: "Attach a local file path.",
-					action: "insert",
-					insertText: "@",
-				},
-				{
-					id: "current-workspace",
-					trigger: "workspace",
-					label: "Current Workspace",
-					description: "Reference the selected folder.",
-					action: "insert",
-					insertText: "@workspace ",
-				},
-				...resultItems,
-			] satisfies ComposerCommand[];
-		}
-		if (safeTrigger.kind === "skill") {
-			const skillItems: ComposerCommand[] = [
-				{
-					id: "apply-patch",
-					trigger: "apply_patch",
-					label: "apply_patch",
-					description: "Ask Codex to patch files.",
-					action: "insert",
-					insertText: "$apply_patch ",
-				},
-				{
-					id: "run-tests",
-					trigger: "run_tests",
-					label: "run_tests",
-					description: "Ask Codex to validate changes.",
-					action: "insert",
-					insertText: "$run_tests ",
-				},
-			];
-			return skillItems.filter((item) => item.trigger.startsWith(query));
-		}
-		return [
-			{
-				id: "terminal-context",
-				trigger: "terminal",
-				label: "Terminal Context",
-				description: "Reference latest terminal output.",
-				action: "insert",
-				insertText: ">latest-terminal ",
-			},
-		] satisfies ComposerCommand[];
-	}, [trigger]);
+		return buildComposerMenuItems(activeTrigger, fileResults);
+	}, [activeTrigger, fileResults]);
 
 	async function send() {
+		const sentText = props.value;
+		const sentContextItems = contextItems;
 		const text = withContextItems(
-			serializeComposerSendText(props.value, mode),
-			contextItems,
+			serializeComposerSendText(sentText, mode),
+			sentContextItems,
 		);
 		if (!text) {
 			return;
@@ -257,10 +136,33 @@ export function SessionComposer(props: {
 			return;
 		}
 		setHistory((entries) =>
-			[{ mode, text: props.value }, ...entries].slice(0, 80),
+			[
+				{
+					mode,
+					text: sentText,
+					contextItems: sentContextItems,
+				},
+				...entries,
+			].slice(0, 80),
 		);
+		setContextItems([]);
 		setHistoryIndex(-1);
 		setSavedDraft(null);
+	}
+
+	async function createNewSession() {
+		props.onChange("");
+		setContextItems([]);
+		setHistoryIndex(-1);
+		setSavedDraft(null);
+		await props.onNewSession();
+	}
+
+	function changeMode(nextMode: ComposerMode) {
+		setMode(nextMode);
+		if (nextMode === "shell") {
+			setContextItems([]);
+		}
 	}
 
 	function focusAt(cursor: number) {
@@ -275,17 +177,26 @@ export function SessionComposer(props: {
 		if (!path || !trigger) {
 			return;
 		}
+		const label = path.slice(
+			Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\")) + 1,
+		);
+		setContextItems((items) =>
+			items.some((existing) => existing.path === path)
+				? items
+				: [...items, { type: "file", label, path }],
+		);
 		const next = replaceComposerRange(
 			props.value,
 			trigger.rangeStart,
 			trigger.rangeEnd,
-			`@${path.slice(path.lastIndexOf("/") + 1)} `,
+			`@${label} `,
 		);
 		props.onChange(next.text);
 		focusAt(next.cursor);
 	}
 
 	function selectItem(item: ComposerCommand) {
+		const workspaceRoot = props.workspaceRoot;
 		if (item.id.startsWith("workspace-file:")) {
 			const file = fileResults.find(
 				(result) => `workspace-file:${result.path}` === item.id,
@@ -314,27 +225,42 @@ export function SessionComposer(props: {
 			}
 			return;
 		}
+		if (item.id === "current-workspace" && workspaceRoot && trigger) {
+			setContextItems((items) =>
+				items.some((existing) => existing.path === workspaceRoot)
+					? items
+					: [
+							...items,
+							{
+								type: "directory",
+								label: workspaceRoot,
+								path: workspaceRoot,
+							},
+						],
+			);
+		}
 		if (item.id === "choose-file") {
 			void chooseFile();
 			return;
 		}
 		if (item.action === "new-session") {
-			props.onChange("");
-			void props.onNewSession();
+			void createNewSession();
 			return;
 		}
 		if (item.action === "clear") {
 			props.onChange("");
+			setContextItems([]);
 			return;
 		}
 		if (item.action === "shell") {
-			setMode("shell");
+			changeMode("shell");
 			props.onChange("");
 			return;
 		}
 		if (item.action === "normal") {
-			setMode("normal");
+			changeMode("normal");
 			props.onChange("");
+			setContextItems([]);
 			return;
 		}
 		if (!trigger) {
@@ -363,12 +289,13 @@ export function SessionComposer(props: {
 				return false;
 			}
 			if (historyIndex === -1) {
-				setSavedDraft(props.value);
+				setSavedDraft({ text: props.value, contextItems });
 			}
 			const entry = history[nextIndex];
 			setHistoryIndex(nextIndex);
 			setMode(entry.mode);
 			props.onChange(entry.text);
+			setContextItems(entry.contextItems ?? []);
 			return true;
 		}
 		if (historyIndex <= -1) {
@@ -380,8 +307,10 @@ export function SessionComposer(props: {
 		if (entry) {
 			setMode(entry.mode);
 			props.onChange(entry.text);
+			setContextItems(entry.contextItems ?? []);
 		} else {
-			props.onChange(savedDraft ?? "");
+			props.onChange(savedDraft?.text ?? "");
+			setContextItems(savedDraft?.contextItems ?? []);
 			setSavedDraft(null);
 		}
 		return true;
@@ -389,7 +318,6 @@ export function SessionComposer(props: {
 
 	function syncSelection(target: HTMLTextAreaElement) {
 		setSelectionStart(target.selectionStart ?? props.value.length);
-		setDismissedTriggerKey(null);
 	}
 
 	function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -440,10 +368,10 @@ export function SessionComposer(props: {
 		}
 	}
 
-	const contextTokens = [
-		...contextItems.map((item) => item.label),
-		...collectContextTokens(props.value),
-	].slice(0, 8);
+	const contextTokens = collectContextTokens(props.value).slice(
+		0,
+		Math.max(0, 8 - contextItems.length),
+	);
 
 	return (
 		<section
@@ -479,16 +407,15 @@ export function SessionComposer(props: {
 						onSelect={selectItem}
 					/>
 				) : null}
-				{contextTokens.length > 0 ? (
-					<div className="flex flex-wrap gap-1.5 px-[18px] pt-3">
-						{contextTokens.map((token) => (
-							<span className={chipClass} key={token}>
-								<IconFilePlus {...iconProps} size={14} />
-								<span className="truncate">{token}</span>
-							</span>
-						))}
-					</div>
-				) : null}
+				<ComposerContextChips
+					contextItems={contextItems}
+					textTokens={contextTokens}
+					onRemoveContext={(path) =>
+						setContextItems((items) =>
+							items.filter((item) => item.path !== path),
+						)
+					}
+				/>
 				<textarea
 					ref={textareaRef}
 					value={props.value}
@@ -517,11 +444,11 @@ export function SessionComposer(props: {
 					<div className="flex min-w-0 items-center gap-2">
 						<IconButton
 							label="New session"
-							onClick={props.onNewSession}
+							onClick={createNewSession}
 						>
 							<IconPlus {...iconProps} />
 						</IconButton>
-						<ModePill mode={mode} onModeChange={setMode} />
+						<ModePill mode={mode} onModeChange={changeMode} />
 						<ModelPill
 							model={props.model}
 							onModelChange={props.onModelChange}
@@ -570,75 +497,7 @@ export function SessionComposer(props: {
 					</div>
 				</div>
 			</div>
-			<div className="relative z-1 mt-[-12px] flex min-h-[48px] items-center justify-between gap-3 rounded-b-[18px] border border-t-0 border-[var(--desktop-inbox-border)] bg-[color-mix(in_srgb,var(--desktop-inbox-hover)_62%,var(--desktop-inbox))] px-4 pb-0 pt-3 text-[12px] text-[var(--desktop-subtle)] [box-shadow:0_1px_0_color-mix(in_srgb,var(--desktop-strong)_3%,transparent)]">
-				<span className="truncate">
-					{mode === "shell"
-						? "Shell mode sends a command request to Codex."
-						: "Triggers: / commands, @ files, $ skills, > terminal context"}
-				</span>
-				<span className="shrink-0">Cmd Enter</span>
-			</div>
+			<ComposerFooter mode={mode} />
 		</section>
 	);
-}
-
-function ComposerMenu(props: {
-	items: ComposerCommand[];
-	activeIndex: number;
-	onHover: (index: number) => void;
-	onSelect: (item: ComposerCommand) => void;
-}) {
-	return (
-		<div className="absolute inset-x-3 bottom-full mb-2 max-h-[284px] overflow-auto rounded-[14px] border border-[var(--desktop-inbox-border)] bg-[color-mix(in_srgb,var(--desktop-inbox)_94%,transparent)] p-1.5 shadow-[0_18px_52px_-34px_var(--desktop-shadow)] backdrop-blur-xl">
-			{props.items.map((item, index) => {
-				const active = index === props.activeIndex;
-				return (
-					<button
-						className={cn(
-							menuItemClass,
-							active && "bg-[var(--desktop-inbox-hover)]",
-						)}
-						type="button"
-						key={item.id}
-						onMouseEnter={() => props.onHover(index)}
-						onMouseDown={(event) => {
-							event.preventDefault();
-							props.onSelect(item);
-						}}
-					>
-						<IconCommand {...iconProps} size={16} />
-						<span className="min-w-0">
-							<span className="block truncate text-[13px] font-semibold">
-								/{item.trigger} · {item.label}
-							</span>
-							<span className="block truncate text-[12px] text-[var(--desktop-subtle)]">
-								{item.description}
-							</span>
-						</span>
-						<IconChevronDown
-							className={active ? "opacity-100" : "opacity-0"}
-							{...iconProps}
-							size={15}
-						/>
-					</button>
-				);
-			})}
-		</div>
-	);
-}
-
-function collectContextTokens(text: string) {
-	const matches = text.match(/(?:^|\s)([@$>][^\s]+)/g) ?? [];
-	return matches.map((match) => match.trim()).slice(0, 6);
-}
-
-function withContextItems(text: string, items: ComposerContextItem[]) {
-	const trimmed = text.trim();
-	if (!items.length) {
-		return trimmed;
-	}
-	const context = items
-		.map((item) => `- ${item.type}: ${item.label}\n  path: ${item.path}`)
-		.join("\n");
-	return `Context files:\n${context}\n\nUser request:\n${trimmed}`.trim();
 }
