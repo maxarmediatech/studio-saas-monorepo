@@ -78,7 +78,7 @@ function TranscriptRow(props: { item: TranscriptItem }) {
 			<p className="mb-0 mt-2 whitespace-pre-wrap">
 				{item.type === "approval"
 					? `${item.requestKind} approval requested`
-					: item.text}
+					: safeDisplayText(item.text)}
 			</p>
 		</article>
 	);
@@ -147,4 +147,8 @@ function summarizeRequest(value: unknown) {
 	} catch {
 		return String(value);
 	}
+}
+
+function safeDisplayText(value: unknown) {
+	return typeof value === "string" ? value : summarizeRequest(value);
 }

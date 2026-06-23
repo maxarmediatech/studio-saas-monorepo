@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./app/App";
+import { RendererErrorBoundary } from "./app/RendererErrorBoundary";
 import "./styles.css";
 
 const root = document.getElementById("root");
@@ -11,6 +12,8 @@ if (!(root instanceof HTMLElement)) {
 
 createRoot(root).render(
 	<StrictMode>
-		<App />
+		<RendererErrorBoundary>
+			<App />
+		</RendererErrorBoundary>
 	</StrictMode>,
 );

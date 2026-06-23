@@ -1,4 +1,9 @@
-import { stat } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { mkdir, stat, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { promisify } from "node:util";
+import { app, nativeImage } from "electron";
 import {
 	formatAttachmentLimitBytes,
 	isImageAttachmentMimeType,
@@ -6,6 +11,8 @@ import {
 	MAX_ATTACHMENT_SIZE_BYTES,
 	MAX_COMPOSER_ATTACHMENTS,
 } from "../shared/composerAttachmentPolicy";
+
+const execFileAsync = promisify(execFile);
 
 export async function buildCodexTurnInput(input: {
 	text: string;
@@ -37,7 +44,10 @@ export async function buildCodexTurnInput(input: {
 			});
 			parts.push({
 				type: "localImage",
-				path: record.path,
+				path: await normalizeLocalImageAttachment(
+					record.path,
+					record.mimeType,
+				),
 			});
 			continue;
 		}
@@ -58,6 +68,63 @@ export async function buildCodexTurnInput(input: {
 		}
 	}
 	return parts.length ? parts : [{ type: "text", text: input.text }];
+}
+
+async function normalizeLocalImageAttachment(
+	filePath: string,
+	mimeType: string,
+) {
+	if (mimeType !== "image/avif") {
+		return filePath;
+	}
+	const outputDir = path.join(
+		app.getPath("userData"),
+		"composer-attachments",
+		"normalized-images",
+	);
+	await mkdir(outputDir, { recursive: true });
+	const outputPath = path.join(outputDir, `${randomUUID()}.jpg`);
+	const image = nativeImage.createFromPath(filePath);
+	if (image.isEmpty()) {
+		await convertAvifWithSips(filePath, outputPath);
+	} else {
+		const size = image.getSize();
+		const scale = Math.min(1, 2000 / size.width, 2000 / size.height);
+		const normalized =
+			scale < 1
+				? image.resize({
+						width: Math.max(1, Math.round(size.width * scale)),
+						height: Math.max(1, Math.round(size.height * scale)),
+					})
+				: image;
+		await writeFile(outputPath, normalized.toJPEG(88));
+	}
+	await validateLocalAttachment(outputPath, "image/jpeg", {
+		imageOnly: true,
+	});
+	return outputPath;
+}
+
+async function convertAvifWithSips(filePath: string, outputPath: string) {
+	if (process.platform !== "darwin") {
+		throw new Error("Could not decode AVIF image attachment.");
+	}
+	await execFileAsync("sips", [
+		"-Z",
+		"2000",
+		"-s",
+		"format",
+		"jpeg",
+		filePath,
+		"--out",
+		outputPath,
+	]).catch((error) => {
+		throw new Error(
+			error instanceof Error
+				? `Could not decode AVIF image attachment. ${error.message}`
+				: "Could not decode AVIF image attachment.",
+		);
+	});
 }
 
 function assertNativeAttachmentCount(count: number) {
