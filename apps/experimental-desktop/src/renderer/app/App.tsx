@@ -101,6 +101,7 @@ export function App() {
 								runtimeMode={runtimeMode}
 								runtimeOptions={runtimeOptions}
 								pendingRequests={session.pendingRequests}
+								workspaceRoot={workspace.selectedFolderPath}
 								onChange={setMessage}
 								onModelChange={setModel}
 								onRuntimeModeChange={setRuntimeMode}

@@ -196,6 +196,13 @@ export type RespondSessionRequestInput =
 	| { decision: "accept" | "acceptForSession" | "decline" | "cancel" }
 	| { answers: Record<string, string | string[]> };
 
+export type WorkspaceFileMention = {
+	path: string;
+	name: string;
+	relativePath: string;
+	kind: "file" | "directory";
+};
+
 export type DraftRecord = {
 	id: string;
 	text: string;
@@ -285,6 +292,11 @@ export type ExperimentalDesktopApi = {
 	getAppInfo: () => Promise<AppInfo>;
 	openDirectory: () => Promise<string | null>;
 	openFile: () => Promise<string | null>;
+	searchWorkspaceFiles: (input: {
+		rootPath: string;
+		query: string;
+		limit?: number;
+	}) => Promise<WorkspaceFileMention[]>;
 	openExternal: (url: string) => Promise<void>;
 	getOpenAiAuthStatus: () => Promise<OpenAiAuthStatus>;
 	startOpenAiBrowserAuth: () => Promise<OpenAiAuthStart>;

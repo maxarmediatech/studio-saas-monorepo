@@ -7,10 +7,11 @@ import {
 	IconPlus,
 	IconTerminal2,
 } from "@tabler/icons-react";
-import { type KeyboardEvent, useMemo, useRef, useState } from "react";
+import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import type {
 	CodexRuntimeMode,
 	RespondSessionRequestInput,
+	WorkspaceFileMention,
 } from "../../../preload/types";
 import { iconProps } from "../../app/icons";
 import type { PendingRequest, RuntimeOption } from "../../app/types";
@@ -43,6 +44,12 @@ type ComposerHistoryEntry = {
 	text: string;
 };
 
+type ComposerContextItem = {
+	type: "file" | "directory";
+	label: string;
+	path: string;
+};
+
 export function SessionComposer(props: {
 	value: string;
 	disabled: boolean;
@@ -50,6 +57,7 @@ export function SessionComposer(props: {
 	runtimeMode: CodexRuntimeMode;
 	runtimeOptions: RuntimeOption[];
 	pendingRequests: PendingRequest[];
+	workspaceRoot?: string;
 	onChange: (value: string) => void;
 	onModelChange: (model: string) => void;
 	onRuntimeModeChange: (mode: CodexRuntimeMode) => void;
@@ -66,29 +74,94 @@ export function SessionComposer(props: {
 	const [history, setHistory] = useState<ComposerHistoryEntry[]>([]);
 	const [historyIndex, setHistoryIndex] = useState(-1);
 	const [savedDraft, setSavedDraft] = useState<string | null>(null);
+	const [selectionStart, setSelectionStart] = useState(0);
+	const [dismissedTriggerKey, setDismissedTriggerKey] = useState<string | null>(null);
+	const [contextItems, setContextItems] = useState<ComposerContextItem[]>([]);
+	const [fileResults, setFileResults] = useState<WorkspaceFileMention[]>([]);
+	const [fileSearchLoading, setFileSearchLoading] = useState(false);
 	const [userInputDrafts, setUserInputDrafts] = useState<
 		Record<string, Record<string, string>>
 	>({});
 
 	const trigger = useMemo(() => {
-		const target = textareaRef.current;
-		const cursor = target?.selectionStart ?? props.value.length;
 		return mode === "shell"
 			? null
-			: detectComposerTrigger(props.value, cursor);
-	}, [props.value, mode]);
+			: detectComposerTrigger(props.value, selectionStart || props.value.length);
+	}, [props.value, mode, selectionStart, fileResults, fileSearchLoading, dismissedTriggerKey]);
+	const triggerKey = trigger
+		? `${trigger.kind}:${trigger.rangeStart}:${trigger.query}`
+		: null;
+	const activeTrigger =
+		trigger && triggerKey !== dismissedTriggerKey ? trigger : null;
+	const historyStorageKey = useMemo(
+		() => `experimental-desktop:composer-history:${props.workspaceRoot ?? "global"}`,
+		[props.workspaceRoot],
+	);
+
+	useEffect(() => {
+		setActiveIndex(0);
+	}, [activeTrigger?.kind, activeTrigger?.query]);
+
+	useEffect(() => {
+		const saved = window.localStorage.getItem(historyStorageKey);
+		if (!saved) {
+			setHistory([]);
+			return;
+		}
+		try {
+			const parsed = JSON.parse(saved) as ComposerHistoryEntry[];
+			setHistory(Array.isArray(parsed) ? parsed.slice(0, 80) : []);
+		} catch {
+			setHistory([]);
+		}
+	}, [historyStorageKey]);
+
+	useEffect(() => {
+		window.localStorage.setItem(historyStorageKey, JSON.stringify(history.slice(0, 80)));
+	}, [history, historyStorageKey]);
+
+	useEffect(() => {
+		if (activeTrigger?.kind !== "file" || !props.workspaceRoot) {
+			setFileResults([]);
+			setFileSearchLoading(false);
+			return;
+		}
+		let canceled = false;
+		setFileSearchLoading(true);
+		void window.experimentalDesktop.searchWorkspaceFiles({
+			rootPath: props.workspaceRoot,
+			query: activeTrigger.query,
+			limit: 24,
+		}).then((results) => {
+			if (!canceled) setFileResults(results);
+		}).finally(() => {
+			if (!canceled) setFileSearchLoading(false);
+		});
+		return () => {
+			canceled = true;
+		};
+	}, [activeTrigger?.kind, activeTrigger?.query, props.workspaceRoot]);
 
 	const menuItems = useMemo(() => {
-		if (!trigger) {
+		if (!activeTrigger) {
 			return [];
 		}
-		const query = trigger.query.toLowerCase();
-		if (trigger.kind === "slash") {
+		const safeTrigger = activeTrigger;
+		const query = safeTrigger.query.toLowerCase();
+		if (safeTrigger.kind === "slash") {
 			return composerCommands.filter((command) =>
 				command.trigger.toLowerCase().startsWith(query),
 			);
 		}
-		if (trigger.kind === "file") {
+		if (safeTrigger.kind === "file") {
+			const resultItems = fileResults.map((file) => ({
+				id: `workspace-file:${file.path}`,
+				trigger: file.name,
+				label: file.name,
+				description: `${file.kind} · ${file.relativePath}`,
+				action: "insert" as const,
+				insertText: `@${file.name} `,
+			}));
 			return [
 				{
 					id: "choose-file",
@@ -106,9 +179,10 @@ export function SessionComposer(props: {
 					action: "insert",
 					insertText: "@workspace ",
 				},
+				...resultItems,
 			] satisfies ComposerCommand[];
 		}
-		if (trigger.kind === "skill") {
+		if (safeTrigger.kind === "skill") {
 			const skillItems: ComposerCommand[] = [
 				{
 					id: "apply-patch",
@@ -173,13 +247,41 @@ export function SessionComposer(props: {
 			props.value,
 			trigger.rangeStart,
 			trigger.rangeEnd,
-			`@${path} `,
+			`@${path.slice(path.lastIndexOf("/") + 1)} `,
 		);
 		props.onChange(next.text);
 		focusAt(next.cursor);
 	}
 
 	function selectItem(item: ComposerCommand) {
+		if (item.id.startsWith("workspace-file:")) {
+			const file = fileResults.find(
+				(result) => `workspace-file:${result.path}` === item.id,
+			);
+			if (file && trigger) {
+				setContextItems((items) =>
+					items.some((existing) => existing.path === file.path)
+						? items
+						: [
+							...items,
+							{
+								type: file.kind,
+								label: file.relativePath,
+								path: file.path,
+							},
+						],
+				);
+				const next = replaceComposerRange(
+					props.value,
+					trigger.rangeStart,
+					trigger.rangeEnd,
+					`@${file.name} `,
+				);
+				props.onChange(next.text);
+				focusAt(next.cursor);
+			}
+			return;
+		}
 		if (item.id === "choose-file") {
 			void chooseFile();
 			return;
@@ -253,10 +355,16 @@ export function SessionComposer(props: {
 		return true;
 	}
 
+	function syncSelection(target: HTMLTextAreaElement) {
+		setSelectionStart(target.selectionStart ?? props.value.length);
+		setDismissedTriggerKey(null);
+	}
+
 	function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
 		if (event.nativeEvent.isComposing) {
 			return;
 		}
+		syncSelection(event.currentTarget);
 		if (menuItems.length > 0) {
 			if (event.key === "ArrowDown") {
 				event.preventDefault();
@@ -298,7 +406,10 @@ export function SessionComposer(props: {
 		}
 	}
 
-	const contextTokens = collectContextTokens(props.value);
+	const contextTokens = [
+		...contextItems.map((item) => item.label),
+		...collectContextTokens(props.value),
+	].slice(0, 8);
 
 	return (
 		<section
@@ -360,8 +471,12 @@ export function SessionComposer(props: {
 					disabled={props.disabled}
 					onChange={(event) => {
 						setActiveIndex(0);
+						syncSelection(event.currentTarget);
 						props.onChange(event.currentTarget.value);
 					}}
+					onClick={(event) => syncSelection(event.currentTarget)}
+					onKeyUp={(event) => syncSelection(event.currentTarget)}
+					onSelect={(event) => syncSelection(event.currentTarget)}
 					onKeyDown={onKeyDown}
 				/>
 				<div className="flex items-center justify-between gap-2 px-4 pb-3 [&_svg]:!stroke-[1.8]">
