@@ -10,6 +10,12 @@ export type ComposerNativeInputPart =
 			path: string;
 			name: string;
 			mimeType: string;
+	  }
+	| {
+			type: "local_file";
+			path: string;
+			name: string;
+			mimeType: string;
 	  };
 
 export function buildComposerProviderInput(payload: ComposerPayload) {
@@ -33,7 +39,9 @@ export function buildComposerProviderInput(payload: ComposerPayload) {
 		attachments: readyAttachments,
 		parts,
 	};
-	const text = serializeComposerPayload(safePayload);
+	const text = serializeComposerPayload(safePayload, {
+		omitNativeAttachments: readyAttachments.length > 0,
+	});
 	return {
 		text,
 		nativeInput: [
@@ -51,6 +59,19 @@ export function buildComposerProviderInput(payload: ComposerPayload) {
 					name: attachment.name,
 					mimeType: attachment.mimeType as string,
 				})),
+			...readyAttachments
+				.filter(
+					(attachment) =>
+						attachment.kind !== "image" &&
+						attachment.path &&
+						attachment.mimeType,
+				)
+				.map((attachment) => ({
+					type: "local_file" as const,
+					path: attachment.path as string,
+					name: attachment.name,
+					mimeType: attachment.mimeType as string,
+				})),
 		] satisfies ComposerNativeInputPart[],
 		payload: {
 			mode: safePayload.mode,
@@ -62,6 +83,9 @@ export function buildComposerProviderInput(payload: ComposerPayload) {
 				kind: "codex-app-server-v1",
 				imageCount: readyAttachments.filter(
 					(attachment) => attachment.kind === "image",
+				).length,
+				fileCount: readyAttachments.filter(
+					(attachment) => attachment.kind !== "image",
 				).length,
 			},
 		},

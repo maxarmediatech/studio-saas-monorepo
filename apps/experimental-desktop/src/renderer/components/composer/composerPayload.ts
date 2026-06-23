@@ -69,7 +69,10 @@ export function buildComposerPayload(input: {
 	};
 }
 
-export function serializeComposerPayload(payload: ComposerPayload) {
+export function serializeComposerPayload(
+	payload: ComposerPayload,
+	input?: { omitNativeAttachments?: boolean },
+) {
 	const requestText = serializeComposerSendText(
 		payload.text || defaultRequestForMode(payload.mode),
 		payload.mode,
@@ -86,7 +89,13 @@ export function serializeComposerPayload(payload: ComposerPayload) {
 			return `- ${item.type}: ${item.label}\n  ref: ${item.path}${description}${folderDetails}`;
 		})
 		.join("\n");
-	const attachments = payload.attachments
+	const attachments = (
+		input?.omitNativeAttachments
+			? payload.attachments.filter(
+					(attachment) => attachment.status === "failed",
+				)
+			: payload.attachments
+	)
 		.map((item) => {
 			const ref = item.path ? `\n  ref: ${item.path}` : "";
 			const status =

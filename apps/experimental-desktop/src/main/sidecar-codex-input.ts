@@ -1,7 +1,8 @@
-import { readFile, stat } from "node:fs/promises";
+import { stat } from "node:fs/promises";
 import {
 	formatAttachmentLimitBytes,
 	isImageAttachmentMimeType,
+	isSupportedAttachmentMimeType,
 	MAX_ATTACHMENT_SIZE_BYTES,
 	MAX_COMPOSER_ATTACHMENTS,
 } from "../shared/composerAttachmentPolicy";
@@ -14,7 +15,7 @@ export async function buildCodexTurnInput(input: {
 		? input.nativeInput
 		: [{ type: "text", text: input.text }];
 	const parts = [];
-	let imageCount = 0;
+	let nativeAttachmentCount = 0;
 	for (const part of nativeInput) {
 		if (!part || typeof part !== "object" || Array.isArray(part)) {
 			continue;
@@ -29,24 +30,54 @@ export async function buildCodexTurnInput(input: {
 			typeof record.path === "string" &&
 			typeof record.mimeType === "string"
 		) {
-			imageCount += 1;
-			if (imageCount > MAX_COMPOSER_ATTACHMENTS) {
-				throw new Error(
-					`You can attach up to ${MAX_COMPOSER_ATTACHMENTS} images per message.`,
-				);
-			}
+			nativeAttachmentCount += 1;
+			assertNativeAttachmentCount(nativeAttachmentCount);
+			await validateLocalAttachment(record.path, record.mimeType, {
+				imageOnly: true,
+			});
 			parts.push({
-				type: "input_image",
-				image_url: await imageDataUrl(record.path, record.mimeType),
+				type: "localImage",
+				path: record.path,
+			});
+			continue;
+		}
+		if (
+			record.type === "local_file" &&
+			typeof record.path === "string" &&
+			typeof record.name === "string" &&
+			typeof record.mimeType === "string"
+		) {
+			nativeAttachmentCount += 1;
+			assertNativeAttachmentCount(nativeAttachmentCount);
+			await validateLocalAttachment(record.path, record.mimeType);
+			parts.push({
+				type: "mention",
+				name: record.name,
+				path: record.path,
 			});
 		}
 	}
 	return parts.length ? parts : [{ type: "text", text: input.text }];
 }
 
-async function imageDataUrl(path: string, mimeType: string) {
-	if (!isImageAttachmentMimeType(mimeType)) {
+function assertNativeAttachmentCount(count: number) {
+	if (count > MAX_COMPOSER_ATTACHMENTS) {
+		throw new Error(
+			`You can attach up to ${MAX_COMPOSER_ATTACHMENTS} files per message.`,
+		);
+	}
+}
+
+async function validateLocalAttachment(
+	path: string,
+	mimeType: string,
+	input?: { imageOnly?: boolean },
+) {
+	if (input?.imageOnly && !isImageAttachmentMimeType(mimeType)) {
 		throw new Error("Native image input must use an image MIME type.");
+	}
+	if (!isSupportedAttachmentMimeType(mimeType)) {
+		throw new Error("Native file input uses an unsupported MIME type.");
 	}
 	const info = await stat(path).catch(() => {
 		throw new Error(
@@ -63,8 +94,6 @@ async function imageDataUrl(path: string, mimeType: string) {
 			`Attachment "${basenameFromPath(path)}" is larger than ${formatAttachmentLimitBytes(MAX_ATTACHMENT_SIZE_BYTES)}. Remove it and retry.`,
 		);
 	}
-	const buffer = await readFile(path);
-	return `data:${mimeType};base64,${buffer.toString("base64")}`;
 }
 
 function basenameFromPath(path: string) {
