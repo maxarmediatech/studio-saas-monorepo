@@ -303,10 +303,46 @@ export type WrittenAttachmentFile = {
 	size: number;
 };
 
+export type AttachmentFileInfo = {
+	path: string;
+	name: string;
+	mimeType?: string;
+	size: number;
+};
+
+export type FolderContextMode =
+	| "reference"
+	| "tree"
+	| "pattern"
+	| "changed-files"
+	| "summary";
+
+export type FolderContextScanResult = {
+	mode: FolderContextMode;
+	rootPath: string;
+	label: string;
+	fileCount: number;
+	directoryCount: number;
+	includedFileCount: number;
+	ignoredCount: number;
+	visitedCount: number;
+	truncated: boolean;
+	patterns?: string[];
+	treeLines?: string[];
+	includedPaths?: string[];
+	extensions?: Array<{ extension: string; count: number }>;
+	warnings: string[];
+	approxChars: number;
+	approxTokens: number;
+	createdAt: string;
+};
+
 export type ExperimentalDesktopApi = {
 	getAppInfo: () => Promise<AppInfo>;
 	openDirectory: () => Promise<string | null>;
 	openFile: () => Promise<string | null>;
+	getPathForFile: (file: File) => string;
+	getAttachmentFileInfo: (path: string) => Promise<AttachmentFileInfo>;
 	writeAttachmentFile: (input: {
 		name?: string;
 		mimeType?: string;
@@ -317,6 +353,11 @@ export type ExperimentalDesktopApi = {
 		query: string;
 		limit?: number;
 	}) => Promise<WorkspaceFileMention[]>;
+	scanFolderContext: (input: {
+		path: string;
+		mode: FolderContextMode;
+		patterns?: string[];
+	}) => Promise<FolderContextScanResult>;
 	openExternal: (url: string) => Promise<void>;
 	getOpenAiAuthStatus: () => Promise<OpenAiAuthStatus>;
 	startOpenAiBrowserAuth: () => Promise<OpenAiAuthStart>;

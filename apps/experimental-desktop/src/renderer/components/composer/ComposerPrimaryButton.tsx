@@ -12,11 +12,12 @@ export function resolvePrimaryAction(input: {
 	disabled: boolean;
 	turnActive: boolean;
 	hasText: boolean;
+	blocked?: boolean;
 }): ComposerPrimaryAction {
 	if (input.turnActive) {
 		return "stop";
 	}
-	if (input.disabled || !input.hasText) {
+	if (input.disabled || input.blocked || !input.hasText) {
 		return "disabled";
 	}
 	return input.mode === "shell" ? "run-shell" : "send";

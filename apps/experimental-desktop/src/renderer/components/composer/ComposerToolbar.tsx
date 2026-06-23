@@ -57,7 +57,7 @@ export function ComposerToolbar(props: {
 					<IconFilePlus {...iconProps} />
 				</IconButton>
 				<IconButton
-					label="Attach folder"
+					label="Reference folder"
 					onClick={props.onAttachFolder}
 				>
 					<IconFolderPlus {...iconProps} />

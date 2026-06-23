@@ -14,6 +14,8 @@ type ComposerContextPayloadPart = {
 	label: string;
 	path: string;
 	description?: string;
+	folderMode?: ComposerContextItem["folderMode"];
+	folderSnapshot?: ComposerContextItem["folderSnapshot"];
 };
 
 type ComposerAttachmentPayloadPart = {
@@ -80,7 +82,8 @@ export function serializeComposerPayload(payload: ComposerPayload) {
 			const description = item.description
 				? `\n  description: ${item.description}`
 				: "";
-			return `- ${item.type}: ${item.label}\n  ref: ${item.path}${description}`;
+			const folderDetails = serializeFolderDetails(item);
+			return `- ${item.type}: ${item.label}\n  ref: ${item.path}${description}${folderDetails}`;
 		})
 		.join("\n");
 	const attachments = payload.attachments
@@ -107,12 +110,43 @@ export function estimateComposerContextMetrics(items: ComposerContextItem[]) {
 	return estimatePayloadMetrics(items.map(contextItemToPart));
 }
 
+function serializeFolderDetails(item: ComposerContextItem) {
+	const snapshot = item.folderSnapshot;
+	if (!snapshot) {
+		return item.folderMode ? `\n  folderMode: ${item.folderMode}` : "";
+	}
+	const tree = snapshot.treeLines?.length
+		? `\n  tree:\n${snapshot.treeLines
+				.slice(0, 80)
+				.map((line) => `    ${line}`)
+				.join("\n")}`
+		: "";
+	const included = snapshot.includedPaths?.length
+		? `\n  includedPaths:\n${snapshot.includedPaths
+				.slice(0, 120)
+				.map((path) => `    ${path}`)
+				.join("\n")}`
+		: "";
+	const extensions = snapshot.extensions?.length
+		? `\n  extensions: ${snapshot.extensions
+				.slice(0, 12)
+				.map((entry) => `${entry.extension}:${entry.count}`)
+				.join(", ")}`
+		: "";
+	const warnings = snapshot.warnings.length
+		? `\n  warnings: ${snapshot.warnings.join("; ")}`
+		: "";
+	return `\n  folderMode: ${snapshot.mode}\n  files: ${snapshot.fileCount}\n  directories: ${snapshot.directoryCount}\n  includedFiles: ${snapshot.includedFileCount}\n  truncated: ${snapshot.truncated}${extensions}${warnings}${tree}${included}`;
+}
+
 function contextItemToPart(item: ComposerContextItem): ComposerPayloadPart {
 	return {
 		type: contextPartTypeForItem(item.type),
 		label: item.label,
 		path: item.path,
 		description: item.description,
+		folderMode: item.folderMode,
+		folderSnapshot: item.folderSnapshot,
 	};
 }
 
@@ -159,7 +193,8 @@ function estimatePayloadMetrics(parts: ComposerPayloadPart[]) {
 			total +
 			part.label.length +
 			part.path.length +
-			(part.description?.length ?? 0)
+			(part.description?.length ?? 0) +
+			(part.folderSnapshot?.approxChars ?? 0)
 		);
 	}, 0);
 	return {

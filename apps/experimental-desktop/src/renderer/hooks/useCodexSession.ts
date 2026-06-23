@@ -8,10 +8,8 @@ import type {
 	SessionEvent,
 } from "../../preload/types";
 import type { PendingRequest, TranscriptItem } from "../app/types";
-import {
-	type ComposerPayload,
-	serializeComposerPayload,
-} from "../components/composer/composerPayload";
+import type { ComposerPayload } from "../components/composer/composerPayload";
+import { buildComposerProviderInput } from "../components/composer/composerProviderInput";
 import { defaultAnswers } from "./pendingRequestDefaults";
 
 export function useCodexSession(input: {
@@ -105,14 +103,9 @@ export function useCodexSession(input: {
 	}
 
 	async function sendMessage(payload: ComposerPayload) {
-		const trimmed = serializeComposerPayload(payload);
-		const composerPayload = {
-			mode: payload.mode,
-			contextItems: payload.contextItems,
-			attachments: payload.attachments,
-			parts: payload.parts,
-			metrics: payload.metrics,
-		};
+		const providerInput = buildComposerProviderInput(payload);
+		const trimmed = providerInput.text;
+		const composerPayload = providerInput.payload;
 		if (!trimmed) {
 			setStatus("Message required");
 			return false;

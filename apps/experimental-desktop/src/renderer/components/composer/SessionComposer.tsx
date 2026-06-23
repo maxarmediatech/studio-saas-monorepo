@@ -18,11 +18,9 @@ import { ComposerMenu } from "./ComposerMenu";
 import { resolvePrimaryAction } from "./ComposerPrimaryButton";
 import { ComposerTextarea } from "./ComposerTextarea";
 import { ComposerToolbar } from "./ComposerToolbar";
-import {
-	basenameFromPath,
-	createComposerAttachment,
-} from "./composerAttachments";
+import { basenameFromPath } from "./composerAttachments";
 import { collectContextTokens } from "./composerContext";
+import { createFolderContextItem } from "./composerFolderContext";
 import { nextSelectableIndex } from "./composerKeyboard";
 import { buildComposerMenuItems } from "./composerMenuItems";
 import {
@@ -34,6 +32,7 @@ import { type ComposerMode, detectComposerTrigger } from "./composerTriggers";
 import type { ComposerAttachment, ComposerContextItem } from "./composerTypes";
 import { PendingRequestDock } from "./PendingRequestDock";
 import { useComposerAttachments } from "./useComposerAttachments";
+import { useComposerContextItems } from "./useComposerContextItems";
 import { useComposerFileDrop } from "./useComposerFileDrop";
 import { useComposerHistory } from "./useComposerHistory";
 import { useComposerMenuSelection } from "./useComposerMenuSelection";
@@ -81,16 +80,20 @@ export function SessionComposer(props: {
 	const [dismissedTriggerKey, setDismissedTriggerKey] = useState<
 		string | null
 	>(null);
-	const [contextItems, setContextItems] = useState<ComposerContextItem[]>(
-		props.initialContextItems,
-	);
+	const { contextItems, setContextItems, addContextItem, changeFolderMode } =
+		useComposerContextItems({
+			initialContextItems: props.initialContextItems,
+			resetSignal: props.resetSignal,
+			onContextItemsChange: props.onContextItemsChange,
+		});
 	const {
 		attachments,
-		addAttachment,
+		addAttachmentPath,
 		addAttachmentFiles,
 		removeAttachment,
 		clearAttachments,
 		setAttachments,
+		attachmentIssue,
 	} = useComposerAttachments({
 		initialAttachments: props.initialAttachments,
 		resetSignal: props.resetSignal,
@@ -124,7 +127,6 @@ export function SessionComposer(props: {
 	}, [activeTrigger?.kind, activeTrigger?.query]);
 
 	useEffect(() => {
-		setContextItems(props.initialContextItems);
 		setHistoryIndex(-1);
 		setSavedDraft(null);
 		setDismissedTriggerKey(null);
@@ -135,10 +137,6 @@ export function SessionComposer(props: {
 		setHistoryIndex,
 		setSavedDraft,
 	]);
-
-	useEffect(() => {
-		props.onContextItemsChange(contextItems);
-	}, [contextItems, props.onContextItemsChange]);
 
 	const menuItems = useMemo(() => {
 		return buildComposerMenuItems(activeTrigger, fileSearch);
@@ -152,6 +150,9 @@ export function SessionComposer(props: {
 	async function send() {
 		const sentText = props.value;
 		if (mode === "shell" && !sentText.trim()) {
+			return;
+		}
+		if (attachmentIssue) {
 			return;
 		}
 		const sentContextItems = contextItems;
@@ -214,7 +215,7 @@ export function SessionComposer(props: {
 		if (!path) {
 			return;
 		}
-		addAttachment(createComposerAttachment(path));
+		await addAttachmentPath(path);
 	}
 
 	async function attachFolder() {
@@ -222,30 +223,26 @@ export function SessionComposer(props: {
 		if (!path) {
 			return;
 		}
-		addContextItem({
-			type: "directory",
-			label: basenameFromPath(path),
-			path,
-		});
+		addContextItem(
+			createFolderContextItem({
+				type: "directory",
+				label: basenameFromPath(path),
+				path,
+			}),
+		);
 	}
 
 	function attachWorkspace() {
 		if (!props.workspaceRoot) {
 			return;
 		}
-		addContextItem({
-			type: "workspace",
-			label: props.workspaceRoot,
-			path: props.workspaceRoot,
-			description: "Current workspace root",
-		});
-	}
-
-	function addContextItem(item: ComposerContextItem) {
-		setContextItems((items) =>
-			items.some((existing) => existing.path === item.path)
-				? items
-				: [...items, item],
+		addContextItem(
+			createFolderContextItem({
+				type: "workspace",
+				label: basenameFromPath(props.workspaceRoot),
+				path: props.workspaceRoot,
+				description: "Current workspace root",
+			}),
 		);
 	}
 
@@ -383,6 +380,7 @@ export function SessionComposer(props: {
 			props.value.trim() !== "" ||
 			contextItems.length > 0 ||
 			(mode !== "shell" && attachments.length > 0),
+		blocked: Boolean(attachmentIssue),
 	});
 
 	function onPrimaryAction() {
@@ -391,6 +389,9 @@ export function SessionComposer(props: {
 			return;
 		}
 		if (primaryAction === "send" || primaryAction === "run-shell") {
+			if (attachmentIssue) {
+				return;
+			}
 			void send();
 		}
 	}
@@ -440,11 +441,13 @@ export function SessionComposer(props: {
 							items.filter((item) => item.path !== path),
 						)
 					}
+					onChangeFolderMode={changeFolderMode}
 				/>
 			}
 			attachments={
 				<ComposerAttachmentStrip
 					attachments={attachments}
+					notice={attachmentIssue}
 					onRemove={removeAttachment}
 				/>
 			}

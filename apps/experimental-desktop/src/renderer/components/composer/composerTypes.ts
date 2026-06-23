@@ -1,10 +1,40 @@
 import type { ComposerMode } from "./composerTriggers";
 
+export type ComposerFolderMode =
+	| "reference"
+	| "tree"
+	| "pattern"
+	| "changed-files"
+	| "summary";
+
+export type ComposerFolderSnapshot = {
+	mode: ComposerFolderMode;
+	rootPath: string;
+	fileCount: number;
+	directoryCount: number;
+	includedFileCount: number;
+	ignoredCount: number;
+	visitedCount: number;
+	truncated: boolean;
+	patterns?: string[];
+	treeLines?: string[];
+	includedPaths?: string[];
+	extensions?: Array<{ extension: string; count: number }>;
+	warnings: string[];
+	approxChars: number;
+	approxTokens: number;
+	createdAt: string;
+};
+
 export type ComposerContextItem = {
 	type: "file" | "directory" | "workspace" | "skill" | "terminal";
 	label: string;
 	path: string;
 	description?: string;
+	folderMode?: ComposerFolderMode;
+	folderStatus?: "idle" | "scanning" | "ready" | "failed";
+	folderSnapshot?: ComposerFolderSnapshot;
+	folderError?: string;
 };
 
 export type ComposerAttachment = {

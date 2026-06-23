@@ -1,39 +1,47 @@
+import {
+	inferAttachmentMimeType,
+	isImageAttachmentMimeType,
+} from "../../../shared/composerAttachmentPolicy";
 import type { ComposerAttachment } from "./composerTypes";
 
-export function createComposerAttachment(path: string): ComposerAttachment {
+export function createComposerAttachment(input: {
+	path: string;
+	name?: string;
+	mimeType?: string;
+	size?: number;
+}): ComposerAttachment {
+	const mimeType = inferAttachmentMimeType(input);
 	return {
 		id: globalThis.crypto.randomUUID(),
-		kind: imageAttachmentKind(path),
-		name: basenameFromPath(path),
-		path,
+		kind: isImageAttachmentMimeType(mimeType) ? "image" : "file",
+		name: input.name || basenameFromPath(input.path),
+		path: input.path,
+		mimeType,
+		size: input.size,
 		status: "ready",
 	};
 }
 
 export function createComposerAttachmentFromFile(
 	file: File & { path?: string },
-	input?: { allowPathless?: boolean },
 ): ComposerAttachment {
 	const path = file.path;
-	const allowPathless = input?.allowPathless ?? false;
-	const kind =
-		allowPathless && !path
-			? "image"
-			: imageAttachmentKind(file.type || file.name || path || "");
-	const pathlessReady = allowPathless && kind === "image";
+	const mimeType = inferAttachmentMimeType({
+		name: file.name,
+		path,
+		mimeType: file.type,
+	});
 	return {
 		id: globalThis.crypto.randomUUID(),
-		kind,
+		kind: isImageAttachmentMimeType(mimeType) ? "image" : "file",
 		name: file.name || (path ? basenameFromPath(path) : "Attachment"),
 		path,
-		mimeType: file.type || undefined,
+		mimeType,
 		size: Number.isFinite(file.size) ? file.size : undefined,
-		previewUrl: pathlessReady ? URL.createObjectURL(file) : undefined,
-		status: path || pathlessReady ? "ready" : "failed",
-		error:
-			path || pathlessReady
-				? undefined
-				: "Could not read this file path from Electron.",
+		status: path ? "ready" : "failed",
+		error: path
+			? undefined
+			: "Could not read this file path from Electron.",
 	};
 }
 
@@ -44,21 +52,38 @@ export function createComposerAttachmentFromWrittenFile(input: {
 	size?: number;
 	previewFile?: File;
 }): ComposerAttachment {
-	const kind = imageAttachmentKind(
-		input.mimeType || input.name || input.path,
-	);
+	const mimeType = inferAttachmentMimeType(input);
+	const kind = isImageAttachmentMimeType(mimeType) ? "image" : "file";
 	return {
 		id: globalThis.crypto.randomUUID(),
 		kind,
 		name: input.name,
 		path: input.path,
-		mimeType: input.mimeType,
+		mimeType,
 		size: input.size,
 		previewUrl:
 			kind === "image" && input.previewFile
 				? URL.createObjectURL(input.previewFile)
 				: undefined,
 		status: "ready",
+	};
+}
+
+export function createFailedComposerAttachment(input: {
+	name: string;
+	mimeType?: string;
+	size?: number;
+	error: string;
+}): ComposerAttachment {
+	const mimeType = inferAttachmentMimeType(input);
+	return {
+		id: globalThis.crypto.randomUUID(),
+		kind: isImageAttachmentMimeType(mimeType) ? "image" : "file",
+		name: input.name,
+		mimeType,
+		size: input.size,
+		status: "failed",
+		error: input.error,
 	};
 }
 
@@ -74,10 +99,4 @@ export function revokeComposerAttachmentPreview(
 	if (attachment.previewUrl) {
 		URL.revokeObjectURL(attachment.previewUrl);
 	}
-}
-
-function imageAttachmentKind(path: string): ComposerAttachment["kind"] {
-	return /^image\//i.test(path) || /\.(avif|gif|jpe?g|png|webp)$/i.test(path)
-		? "image"
-		: "file";
 }

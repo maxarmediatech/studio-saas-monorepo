@@ -1,8 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import {
+	formatAttachmentLimitBytes,
+	isSupportedAttachmentMimeType,
+	MAX_ATTACHMENT_SIZE_BYTES,
+	MAX_COMPOSER_ATTACHMENTS,
+	MAX_TOTAL_ATTACHMENT_BYTES,
+} from "../../../shared/composerAttachmentPolicy";
+import {
+	basenameFromPath,
 	createComposerAttachment,
 	createComposerAttachmentFromFile,
 	createComposerAttachmentFromWrittenFile,
+	createFailedComposerAttachment,
 	revokeComposerAttachmentPreview,
 } from "./composerAttachments";
 import type { ComposerAttachment } from "./composerTypes";
@@ -49,28 +58,19 @@ export function useComposerAttachments(input: {
 	}, [attachments, input.onAttachmentsChange]);
 
 	function addAttachment(attachment: ComposerAttachment) {
-		setAttachments((items) =>
-			items.some((existing) => sameAttachment(existing, attachment))
-				? items
-				: [...items, attachment],
+		setAttachments((items) => appendAttachments(items, [attachment]));
+	}
+
+	async function addAttachmentPath(path: string) {
+		addAttachment(await createAttachmentFromPath(path));
+	}
+
+	async function addAttachmentPaths(paths: string[]) {
+		const attachments = await Promise.all(
+			paths.map(createAttachmentFromPath),
 		);
-	}
-
-	function addAttachmentPath(path: string) {
-		addAttachment(createComposerAttachment(path));
-	}
-
-	function addAttachmentPaths(paths: string[]) {
 		setAttachments((items) => {
-			const next = [...items];
-			for (const path of paths) {
-				const attachment = createComposerAttachment(path);
-				if (next.some((item) => sameAttachment(item, attachment))) {
-					continue;
-				}
-				next.push(attachment);
-			}
-			return next;
+			return appendAttachments(items, attachments);
 		});
 	}
 
@@ -87,15 +87,7 @@ export function useComposerAttachments(input: {
 			),
 		);
 		setAttachments((items) => {
-			const next = [...items];
-			for (const attachment of nextAttachments) {
-				if (next.some((item) => sameAttachment(item, attachment))) {
-					revokeComposerAttachmentPreview(attachment);
-					continue;
-				}
-				next.push(attachment);
-			}
-			return next;
+			return appendAttachments(items, nextAttachments);
 		});
 	}
 
@@ -128,15 +120,34 @@ export function useComposerAttachments(input: {
 		removeAttachment,
 		clearAttachments,
 		setAttachments,
+		attachmentIssue: composerAttachmentIssue(attachments),
 	};
+}
+
+async function createAttachmentFromPath(path: string) {
+	try {
+		const info =
+			await window.experimentalDesktop.getAttachmentFileInfo(path);
+		return createComposerAttachment(info);
+	} catch (error) {
+		return createFailedComposerAttachment({
+			name: basenameFromPath(path),
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
 }
 
 async function createAttachmentFromFile(
 	file: File & { path?: string },
 	input?: { allowPathless?: boolean; defaultMimeType?: string },
 ) {
-	if (file.path || !input?.allowPathless) {
-		return createComposerAttachmentFromFile(file, input);
+	const nativePath =
+		file.path || window.experimentalDesktop.getPathForFile(file);
+	if (nativePath) {
+		return createAttachmentFromPath(nativePath);
+	}
+	if (!input?.allowPathless) {
+		return createComposerAttachmentFromFile(file);
 	}
 	try {
 		const mimeType =
@@ -157,6 +168,95 @@ async function createAttachmentFromFile(
 			error: error instanceof Error ? error.message : String(error),
 		};
 	}
+}
+
+function appendAttachments(
+	items: ComposerAttachment[],
+	attachments: ComposerAttachment[],
+) {
+	const next = [...items];
+	for (const attachment of attachments) {
+		if (next.some((item) => sameAttachment(item, attachment))) {
+			revokeComposerAttachmentPreview(attachment);
+			continue;
+		}
+		const error = newAttachmentIssue(next, attachment);
+		next.push(
+			error
+				? createFailedComposerAttachment({
+						name: attachment.name,
+						mimeType: attachment.mimeType,
+						size: attachment.size,
+						error,
+					})
+				: attachment,
+		);
+		if (error) {
+			revokeComposerAttachmentPreview(attachment);
+		}
+	}
+	return next;
+}
+
+function newAttachmentIssue(
+	existing: ComposerAttachment[],
+	attachment: ComposerAttachment,
+) {
+	if (attachment.status === "failed") {
+		return undefined;
+	}
+	if (!attachment.path) {
+		return "Attachment needs a readable local file path.";
+	}
+	if (!isSupportedAttachmentMimeType(attachment.mimeType)) {
+		return "Unsupported attachment type.";
+	}
+	if (
+		typeof attachment.size === "number" &&
+		attachment.size > MAX_ATTACHMENT_SIZE_BYTES
+	) {
+		return `Attachment is larger than ${formatAttachmentLimitBytes(MAX_ATTACHMENT_SIZE_BYTES)}.`;
+	}
+	const readyAttachments = existing.filter(
+		(item) => item.status !== "failed",
+	);
+	if (readyAttachments.length >= MAX_COMPOSER_ATTACHMENTS) {
+		return `You can attach up to ${MAX_COMPOSER_ATTACHMENTS} files per message.`;
+	}
+	const nextTotal =
+		readyAttachments.reduce((total, item) => total + (item.size ?? 0), 0) +
+		(attachment.size ?? 0);
+	if (nextTotal > MAX_TOTAL_ATTACHMENT_BYTES) {
+		return `Attachments are larger than ${formatAttachmentLimitBytes(MAX_TOTAL_ATTACHMENT_BYTES)} total.`;
+	}
+	return undefined;
+}
+
+export function composerAttachmentIssue(attachments: ComposerAttachment[]) {
+	if (attachments.some((attachment) => attachment.status === "failed")) {
+		return "Remove failed attachments before sending.";
+	}
+	if (attachments.some((attachment) => !attachment.path)) {
+		return "Every attachment needs a readable local file path.";
+	}
+	if (
+		attachments.some(
+			(attachment) => !isSupportedAttachmentMimeType(attachment.mimeType),
+		)
+	) {
+		return "One or more attachments use an unsupported file type.";
+	}
+	const totalSize = attachments.reduce(
+		(total, attachment) => total + (attachment.size ?? 0),
+		0,
+	);
+	if (totalSize > MAX_TOTAL_ATTACHMENT_BYTES) {
+		return `Attachments are larger than ${formatAttachmentLimitBytes(MAX_TOTAL_ATTACHMENT_BYTES)} total.`;
+	}
+	if (attachments.length > MAX_COMPOSER_ATTACHMENTS) {
+		return `You can attach up to ${MAX_COMPOSER_ATTACHMENTS} files per message.`;
+	}
+	return undefined;
 }
 
 function fallbackAttachmentName(mimeType: string) {

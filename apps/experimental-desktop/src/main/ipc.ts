@@ -2,6 +2,14 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readdir, stat, writeFile } from "node:fs/promises";
 import { basename, extname, join, relative, resolve } from "node:path";
 import { app, dialog, ipcMain, shell } from "electron";
+import {
+	attachmentExtensionForMimeType,
+	formatAttachmentLimitBytes,
+	inferAttachmentMimeType,
+	isSupportedAttachmentMimeType,
+	MAX_ATTACHMENT_SIZE_BYTES,
+} from "../shared/composerAttachmentPolicy";
+import { scanComposerFolderContext } from "./composer-folder-context";
 import { createConversationController } from "./conversations/controller";
 import type { SidecarManager, SidecarRuntime } from "./server";
 import { openConversationDatabase } from "./storage/database";
@@ -56,8 +64,16 @@ export function registerIpcHandlers(sidecarManager: SidecarManager) {
 		writeAttachmentFile(input),
 	);
 
+	ipcMain.handle("attachment:get-file-info", async (_event, path) =>
+		getAttachmentFileInfo(path),
+	);
+
 	ipcMain.handle("workspace:search-files", (_event, input) =>
 		searchWorkspaceFiles(input),
+	);
+
+	ipcMain.handle("workspace:scan-folder-context", (_event, input) =>
+		scanComposerFolderContext(input),
 	);
 
 	ipcMain.handle("shell:open-external", async (_event, url: string) => {
@@ -413,24 +429,29 @@ async function writeAttachmentFile(input: unknown) {
 		throw new Error("Attachment input must be an object");
 	}
 	const body = input as {
-		data?: ArrayBuffer;
+		data?: ArrayBuffer | ArrayBufferView;
 		name?: string;
 		mimeType?: string;
 	};
-	if (!(body.data instanceof ArrayBuffer)) {
+	if (!(body.data instanceof ArrayBuffer) && !ArrayBuffer.isView(body.data)) {
 		throw new Error("Attachment data is required");
 	}
-	const buffer = Buffer.from(body.data);
+	const buffer = bufferFromAttachmentData(body.data);
 	if (buffer.byteLength === 0) {
 		throw new Error("Attachment data is empty");
 	}
-	if (buffer.byteLength > 25 * 1024 * 1024) {
-		throw new Error("Attachment is larger than 25 MB");
+	if (buffer.byteLength > MAX_ATTACHMENT_SIZE_BYTES) {
+		throw new Error(
+			`Attachment is larger than ${formatAttachmentLimitBytes(MAX_ATTACHMENT_SIZE_BYTES)}`,
+		);
 	}
-	const mimeType =
-		typeof body.mimeType === "string" && body.mimeType.trim()
-			? body.mimeType.trim()
-			: undefined;
+	const mimeType = inferAttachmentMimeType({
+		name: body.name,
+		mimeType: body.mimeType,
+	});
+	if (!isSupportedAttachmentMimeType(mimeType)) {
+		throw new Error("Unsupported attachment type");
+	}
 	const extension = attachmentExtension(body.name, mimeType);
 	const name = safeAttachmentName(body.name, extension);
 	const directory = join(app.getPath("userData"), "composer-attachments");
@@ -442,6 +463,41 @@ async function writeAttachmentFile(input: unknown) {
 		name,
 		mimeType,
 		size: buffer.byteLength,
+	};
+}
+
+function bufferFromAttachmentData(data: ArrayBuffer | ArrayBufferView) {
+	if (data instanceof ArrayBuffer) {
+		return Buffer.from(data);
+	}
+	return Buffer.from(
+		new Uint8Array(data.buffer, data.byteOffset, data.byteLength),
+	);
+}
+
+async function getAttachmentFileInfo(path: unknown) {
+	if (typeof path !== "string" || !path.trim()) {
+		throw new Error("Attachment path is required");
+	}
+	const resolvedPath = resolve(path);
+	const info = await stat(resolvedPath);
+	if (!info.isFile()) {
+		throw new Error("Attachment path must be a file");
+	}
+	if (info.size > MAX_ATTACHMENT_SIZE_BYTES) {
+		throw new Error(
+			`Attachment is larger than ${formatAttachmentLimitBytes(MAX_ATTACHMENT_SIZE_BYTES)}`,
+		);
+	}
+	const mimeType = inferAttachmentMimeType({ path: resolvedPath });
+	if (!isSupportedAttachmentMimeType(mimeType)) {
+		throw new Error("Unsupported attachment type");
+	}
+	return {
+		path: resolvedPath,
+		name: basename(resolvedPath),
+		mimeType,
+		size: info.size,
 	};
 }
 
@@ -464,20 +520,7 @@ function attachmentExtension(name: unknown, mimeType: string | undefined) {
 			return extension;
 		}
 	}
-	switch (mimeType) {
-		case "image/png":
-			return ".png";
-		case "image/jpeg":
-			return ".jpg";
-		case "image/gif":
-			return ".gif";
-		case "image/webp":
-			return ".webp";
-		case "image/avif":
-			return ".avif";
-		default:
-			return ".bin";
-	}
+	return attachmentExtensionForMimeType(mimeType) ?? ".bin";
 }
 
 async function streamSessionEvents(input: {

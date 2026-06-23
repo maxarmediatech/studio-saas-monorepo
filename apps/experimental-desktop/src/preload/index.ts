@@ -1,6 +1,7 @@
-import { contextBridge, ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer, webUtils } from "electron";
 import type {
 	AppInfo,
+	AttachmentFileInfo,
 	CodexAppServerProbe,
 	CodexProviderStatus,
 	CodexSession,
@@ -10,6 +11,7 @@ import type {
 	ConversationTreeNode,
 	DraftRecord,
 	ExperimentalDesktopApi,
+	FolderContextScanResult,
 	ForkedConversation,
 	OpenAiAuthStart,
 	OpenAiAuthStatus,
@@ -25,6 +27,12 @@ const api: ExperimentalDesktopApi = {
 		ipcRenderer.invoke("dialog:open-directory") as Promise<string | null>,
 	openFile: () =>
 		ipcRenderer.invoke("dialog:open-file") as Promise<string | null>,
+	getPathForFile: (file) => webUtils.getPathForFile(file),
+	getAttachmentFileInfo: (path) =>
+		ipcRenderer.invoke(
+			"attachment:get-file-info",
+			path,
+		) as Promise<AttachmentFileInfo>,
 	writeAttachmentFile: (input) =>
 		ipcRenderer.invoke(
 			"attachment:write-file",
@@ -34,6 +42,11 @@ const api: ExperimentalDesktopApi = {
 		ipcRenderer.invoke("workspace:search-files", input) as Promise<
 			WorkspaceFileMention[]
 		>,
+	scanFolderContext: (input) =>
+		ipcRenderer.invoke(
+			"workspace:scan-folder-context",
+			input,
+		) as Promise<FolderContextScanResult>,
 	openExternal: (url) =>
 		ipcRenderer.invoke("shell:open-external", url) as Promise<void>,
 	getOpenAiAuthStatus: () =>
