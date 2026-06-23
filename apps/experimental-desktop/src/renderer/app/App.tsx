@@ -6,7 +6,10 @@ import {
 	type ComposerPayload,
 } from "../components/composer/composerPayload";
 import type { ComposerMode } from "../components/composer/composerTriggers";
-import type { ComposerContextItem } from "../components/composer/composerTypes";
+import type {
+	ComposerAttachment,
+	ComposerContextItem,
+} from "../components/composer/composerTypes";
 import { SessionComposer } from "../components/composer/SessionComposer";
 import { Sidebar, TopBar } from "../components/layout";
 import { RightPanel } from "../components/right-panel";
@@ -36,6 +39,9 @@ export function App() {
 	const [composerContextItems, setComposerContextItems] = useState<
 		ComposerContextItem[]
 	>([]);
+	const [composerAttachments, setComposerAttachments] = useState<
+		ComposerAttachment[]
+	>([]);
 	const [composerResetSignal, setComposerResetSignal] = useState(0);
 	const { theme, toggleTheme } = useThemeMode();
 	const workspace = useWorkspaceSelection();
@@ -63,6 +69,7 @@ export function App() {
 			if (
 				message.trim() ||
 				composerContextItems.length > 0 ||
+				composerAttachments.length > 0 ||
 				session.draftId
 			) {
 				void session.persistDraft(
@@ -70,6 +77,7 @@ export function App() {
 						mode: composerMode,
 						text: message,
 						contextItems: composerContextItems,
+						attachments: composerAttachments,
 					}),
 				);
 			}
@@ -79,6 +87,7 @@ export function App() {
 		message,
 		composerMode,
 		composerContextItems,
+		composerAttachments,
 		model,
 		runtimeMode,
 		workspace.selectedFolderPath,
@@ -99,6 +108,7 @@ export function App() {
 		if (sent) {
 			setMessage("");
 			setComposerContextItems([]);
+			setComposerAttachments([]);
 		}
 		return sent;
 	}
@@ -107,6 +117,7 @@ export function App() {
 		setMessage("");
 		setComposerMode("ask");
 		setComposerContextItems([]);
+		setComposerAttachments([]);
 		setComposerResetSignal((signal) => signal + 1);
 		await session.createNewSession();
 	}
@@ -117,6 +128,7 @@ export function App() {
 			setMessage("");
 			setComposerMode("ask");
 			setComposerContextItems([]);
+			setComposerAttachments([]);
 			setComposerResetSignal((signal) => signal + 1);
 		}
 	}
@@ -157,9 +169,11 @@ export function App() {
 								workspaceRoot={workspace.selectedFolderPath}
 								resetSignal={composerResetSignal}
 								initialContextItems={composerContextItems}
+								initialAttachments={composerAttachments}
 								onChange={setMessage}
 								onModeChange={setComposerMode}
 								onContextItemsChange={setComposerContextItems}
+								onAttachmentsChange={setComposerAttachments}
 								onModelChange={setModel}
 								onRuntimeModeChange={setRuntimeMode}
 								onSend={sendMessage}

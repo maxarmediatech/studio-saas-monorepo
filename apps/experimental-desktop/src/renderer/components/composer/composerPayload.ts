@@ -2,21 +2,33 @@ import {
 	type ComposerMode,
 	serializeComposerSendText,
 } from "./composerTriggers";
-import type { ComposerContextItem } from "./composerTypes";
+import type { ComposerAttachment, ComposerContextItem } from "./composerTypes";
+
+type ComposerContextPayloadPart = {
+	type:
+		| "context_file"
+		| "context_directory"
+		| "context_workspace"
+		| "context_skill"
+		| "context_terminal";
+	label: string;
+	path: string;
+	description?: string;
+};
+
+type ComposerAttachmentPayloadPart = {
+	type: "attachment_file" | "attachment_image";
+	id: string;
+	name: string;
+	path: string;
+	mimeType?: string;
+	size?: number;
+};
 
 export type ComposerPayloadPart =
 	| { type: "user_text"; text: string }
-	| {
-			type:
-				| "context_file"
-				| "context_directory"
-				| "context_workspace"
-				| "context_skill"
-				| "context_terminal";
-			label: string;
-			path: string;
-			description?: string;
-	  };
+	| ComposerAttachmentPayloadPart
+	| ComposerContextPayloadPart;
 
 export type ComposerPayloadMetrics = {
 	itemCount: number;
@@ -28,6 +40,7 @@ export type ComposerPayload = {
 	mode: ComposerMode;
 	text: string;
 	contextItems: ComposerContextItem[];
+	attachments: ComposerAttachment[];
 	parts: ComposerPayloadPart[];
 	metrics: ComposerPayloadMetrics;
 };
@@ -36,24 +49,30 @@ export function buildComposerPayload(input: {
 	mode: ComposerMode;
 	text: string;
 	contextItems: ComposerContextItem[];
+	attachments?: ComposerAttachment[];
 }): ComposerPayload {
 	const text = input.text.trim();
 	const parts: ComposerPayloadPart[] = [
 		...input.contextItems.map(contextItemToPart),
+		...(input.attachments ?? []).map(attachmentToPart),
 		...(text ? [{ type: "user_text" as const, text }] : []),
 	];
 	return {
 		mode: input.mode,
 		text,
 		contextItems: input.contextItems,
+		attachments: input.attachments ?? [],
 		parts,
 		metrics: estimatePayloadMetrics(parts),
 	};
 }
 
 export function serializeComposerPayload(payload: ComposerPayload) {
-	const requestText = serializeComposerSendText(payload.text, payload.mode);
-	if (!payload.contextItems.length) {
+	const requestText = serializeComposerSendText(
+		payload.text || defaultRequestForMode(payload.mode),
+		payload.mode,
+	);
+	if (!payload.contextItems.length && !payload.attachments.length) {
 		return requestText.trim();
 	}
 	const context = payload.contextItems
@@ -64,7 +83,17 @@ export function serializeComposerPayload(payload: ComposerPayload) {
 			return `- ${item.type}: ${item.label}\n  ref: ${item.path}${description}`;
 		})
 		.join("\n");
-	return `Context parts:\n${context}\n\nUser request:\n${requestText}`.trim();
+	const attachments = payload.attachments
+		.map((item) => `- ${item.kind}: ${item.name}\n  ref: ${item.path}`)
+		.join("\n");
+	return [
+		context ? `Context parts:\n${context}` : "",
+		attachments ? `Attachments:\n${attachments}` : "",
+		`User request:\n${requestText}`,
+	]
+		.filter(Boolean)
+		.join("\n\n")
+		.trim();
 }
 
 export function estimateComposerContextMetrics(items: ComposerContextItem[]) {
@@ -80,9 +109,20 @@ function contextItemToPart(item: ComposerContextItem): ComposerPayloadPart {
 	};
 }
 
+function attachmentToPart(item: ComposerAttachment): ComposerPayloadPart {
+	return {
+		type: item.kind === "image" ? "attachment_image" : "attachment_file",
+		id: item.id,
+		name: item.name,
+		path: item.path,
+		mimeType: item.mimeType,
+		size: item.size,
+	};
+}
+
 function contextPartTypeForItem(
 	type: ComposerContextItem["type"],
-): Exclude<ComposerPayloadPart["type"], "user_text"> {
+): ComposerContextPayloadPart["type"] {
 	switch (type) {
 		case "file":
 			return "context_file";
@@ -102,6 +142,12 @@ function estimatePayloadMetrics(parts: ComposerPayloadPart[]) {
 		if (part.type === "user_text") {
 			return total + part.text.length;
 		}
+		if (isAttachmentPart(part)) {
+			return total + part.name.length + part.path.length;
+		}
+		if (!isContextPart(part)) {
+			return total;
+		}
 		return (
 			total +
 			part.label.length +
@@ -114,4 +160,31 @@ function estimatePayloadMetrics(parts: ComposerPayloadPart[]) {
 		approxChars,
 		approxTokens: Math.ceil(approxChars / 4),
 	};
+}
+
+function isAttachmentPart(
+	part: ComposerPayloadPart,
+): part is ComposerAttachmentPayloadPart {
+	return part.type === "attachment_file" || part.type === "attachment_image";
+}
+
+function isContextPart(
+	part: ComposerPayloadPart,
+): part is ComposerContextPayloadPart {
+	return part.type.startsWith("context_");
+}
+
+function defaultRequestForMode(mode: ComposerMode) {
+	switch (mode) {
+		case "ask":
+			return "Answer using the selected context.";
+		case "plan":
+			return "Plan changes for the selected context.";
+		case "build":
+			return "Improve or implement using the selected context.";
+		case "review":
+			return "Review the selected context and report issues.";
+		case "shell":
+			return "";
+	}
 }

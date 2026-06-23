@@ -10,6 +10,7 @@ import type {
 	RespondSessionRequestInput,
 } from "../../../preload/types";
 import type { PendingRequest, RuntimeOption } from "../../app/types";
+import { ComposerAttachmentStrip } from "./ComposerAttachmentStrip";
 import { ComposerContextChips } from "./ComposerContextChips";
 import { ComposerFooter } from "./ComposerFooter";
 import { ComposerFrame } from "./ComposerFrame";
@@ -26,7 +27,7 @@ import {
 	estimateComposerContextMetrics,
 } from "./composerPayload";
 import { type ComposerMode, detectComposerTrigger } from "./composerTriggers";
-import type { ComposerContextItem } from "./composerTypes";
+import type { ComposerAttachment, ComposerContextItem } from "./composerTypes";
 import { PendingRequestDock } from "./PendingRequestDock";
 import { useComposerHistory } from "./useComposerHistory";
 import { useComposerMenuSelection } from "./useComposerMenuSelection";
@@ -44,9 +45,11 @@ export function SessionComposer(props: {
 	workspaceRoot?: string;
 	resetSignal: number;
 	initialContextItems: ComposerContextItem[];
+	initialAttachments: ComposerAttachment[];
 	onChange: (value: string) => void;
 	onModeChange: (mode: ComposerMode) => void;
 	onContextItemsChange: (items: ComposerContextItem[]) => void;
+	onAttachmentsChange: (attachments: ComposerAttachment[]) => void;
 	onModelChange: (model: string) => void;
 	onRuntimeModeChange: (mode: CodexRuntimeMode) => void;
 	onSend: (payload: ComposerPayload) => Promise<boolean>;
@@ -74,6 +77,9 @@ export function SessionComposer(props: {
 	>(null);
 	const [contextItems, setContextItems] = useState<ComposerContextItem[]>(
 		props.initialContextItems,
+	);
+	const [attachments, setAttachments] = useState<ComposerAttachment[]>(
+		props.initialAttachments,
 	);
 	const [userInputDrafts, setUserInputDrafts] = useState<
 		Record<string, Record<string, string>>
@@ -103,6 +109,7 @@ export function SessionComposer(props: {
 
 	useEffect(() => {
 		setContextItems(props.initialContextItems);
+		setAttachments(props.initialAttachments);
 		setHistoryIndex(-1);
 		setSavedDraft(null);
 		setDismissedTriggerKey(null);
@@ -118,6 +125,10 @@ export function SessionComposer(props: {
 		props.onContextItemsChange(contextItems);
 	}, [contextItems, props.onContextItemsChange]);
 
+	useEffect(() => {
+		props.onAttachmentsChange(attachments);
+	}, [attachments, props.onAttachmentsChange]);
+
 	const menuItems = useMemo(() => {
 		return buildComposerMenuItems(activeTrigger, fileSearch);
 	}, [activeTrigger, fileSearch]);
@@ -129,11 +140,16 @@ export function SessionComposer(props: {
 
 	async function send() {
 		const sentText = props.value;
+		if (mode === "shell" && !sentText.trim()) {
+			return;
+		}
 		const sentContextItems = contextItems;
+		const sentAttachments = attachments;
 		const payload = buildComposerPayload({
 			mode,
 			text: sentText,
 			contextItems: sentContextItems,
+			attachments: sentAttachments,
 		});
 		if (!payload.parts.length) {
 			return;
@@ -148,11 +164,13 @@ export function SessionComposer(props: {
 					mode,
 					text: sentText,
 					contextItems: sentContextItems,
+					attachments: sentAttachments,
 				},
 				...entries,
 			].slice(0, 80),
 		);
 		setContextItems([]);
+		setAttachments([]);
 		setHistoryIndex(-1);
 		setSavedDraft(null);
 	}
@@ -160,6 +178,7 @@ export function SessionComposer(props: {
 	async function createNewSession() {
 		props.onChange("");
 		setContextItems([]);
+		setAttachments([]);
 		setHistoryIndex(-1);
 		setSavedDraft(null);
 		await props.onNewSession();
@@ -184,9 +203,10 @@ export function SessionComposer(props: {
 		if (!path) {
 			return;
 		}
-		addContextItem({
-			type: "file",
-			label: basenameFromPath(path),
+		addAttachment({
+			id: globalThis.crypto.randomUUID(),
+			kind: imageAttachmentKind(path),
+			name: basenameFromPath(path),
 			path,
 		});
 	}
@@ -223,6 +243,14 @@ export function SessionComposer(props: {
 		);
 	}
 
+	function addAttachment(attachment: ComposerAttachment) {
+		setAttachments((items) =>
+			items.some((existing) => existing.path === attachment.path)
+				? items
+				: [...items, attachment],
+		);
+	}
+
 	const { selectItem } = useComposerMenuSelection({
 		trigger,
 		value: props.value,
@@ -248,13 +276,19 @@ export function SessionComposer(props: {
 				return false;
 			}
 			if (historyIndex === -1) {
-				setSavedDraft({ mode, text: props.value, contextItems });
+				setSavedDraft({
+					mode,
+					text: props.value,
+					contextItems,
+					attachments,
+				});
 			}
 			const entry = history[nextIndex];
 			setHistoryIndex(nextIndex);
 			props.onModeChange(entry.mode);
 			props.onChange(entry.text);
 			setContextItems(entry.contextItems ?? []);
+			setAttachments(entry.attachments ?? []);
 			return true;
 		}
 		if (historyIndex <= -1) {
@@ -267,10 +301,12 @@ export function SessionComposer(props: {
 			props.onModeChange(entry.mode);
 			props.onChange(entry.text);
 			setContextItems(entry.contextItems ?? []);
+			setAttachments(entry.attachments ?? []);
 		} else {
 			props.onModeChange(savedDraft?.mode ?? "ask");
 			props.onChange(savedDraft?.text ?? "");
 			setContextItems(savedDraft?.contextItems ?? []);
+			setAttachments(savedDraft?.attachments ?? []);
 			setSavedDraft(null);
 		}
 		return true;
@@ -345,7 +381,10 @@ export function SessionComposer(props: {
 		mode,
 		disabled: props.disabled,
 		turnActive: props.turnActive,
-		hasText: props.value.trim() !== "" || contextItems.length > 0,
+		hasText:
+			props.value.trim() !== "" ||
+			contextItems.length > 0 ||
+			(mode !== "shell" && attachments.length > 0),
 	});
 
 	function onPrimaryAction() {
@@ -399,6 +438,16 @@ export function SessionComposer(props: {
 					}
 				/>
 			}
+			attachments={
+				<ComposerAttachmentStrip
+					attachments={attachments}
+					onRemove={(id) =>
+						setAttachments((items) =>
+							items.filter((item) => item.id !== id),
+						)
+					}
+				/>
+			}
 			editor={
 				<ComposerTextarea
 					ref={textareaRef}
@@ -441,4 +490,8 @@ function basenameFromPath(path: string) {
 	return path.slice(
 		Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\")) + 1,
 	);
+}
+
+function imageAttachmentKind(path: string): ComposerAttachment["kind"] {
+	return /\.(avif|gif|jpe?g|png|webp)$/i.test(path) ? "image" : "file";
 }

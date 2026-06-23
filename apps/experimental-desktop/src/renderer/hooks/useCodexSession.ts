@@ -53,9 +53,11 @@ export function useCodexSession(input: {
 			text: payload.text,
 			model: inputModel(),
 			runtimeMode: inputRuntimeMode(),
-			attachments: payload.contextItems,
+			attachments: payload.attachments,
 			payload: {
 				mode: payload.mode,
+				contextItems: payload.contextItems,
+				attachments: payload.attachments,
 				parts: payload.parts,
 				metrics: payload.metrics,
 			},
@@ -106,6 +108,8 @@ export function useCodexSession(input: {
 		const trimmed = serializeComposerPayload(payload);
 		const composerPayload = {
 			mode: payload.mode,
+			contextItems: payload.contextItems,
+			attachments: payload.attachments,
 			parts: payload.parts,
 			metrics: payload.metrics,
 		};

@@ -7,14 +7,25 @@ export type ComposerContextItem = {
 	description?: string;
 };
 
+export type ComposerAttachment = {
+	id: string;
+	kind: "file" | "image";
+	name: string;
+	path: string;
+	mimeType?: string;
+	size?: number;
+};
+
 export type ComposerHistoryEntry = {
 	mode: ComposerMode;
 	text: string;
 	contextItems?: ComposerContextItem[];
+	attachments?: ComposerAttachment[];
 };
 
 export type ComposerSavedDraft = {
 	mode: ComposerMode;
 	text: string;
 	contextItems: ComposerContextItem[];
+	attachments: ComposerAttachment[];
 };

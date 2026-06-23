@@ -7,6 +7,7 @@ export function ComposerFrame(props: {
 	pendingDock: ReactNode;
 	menu: ReactNode;
 	chips: ReactNode;
+	attachments: ReactNode;
 	editor: ReactNode;
 	toolbar: ReactNode;
 	footer: ReactNode;
@@ -32,6 +33,7 @@ export function ComposerFrame(props: {
 			>
 				{props.menu}
 				{props.chips}
+				{props.attachments}
 				{props.editor}
 				{props.toolbar}
 			</div>
