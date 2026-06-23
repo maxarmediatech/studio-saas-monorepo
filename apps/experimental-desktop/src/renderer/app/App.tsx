@@ -149,6 +149,7 @@ export function App() {
 								value={message}
 								disabled={session.isTurnRunning}
 								turnActive={session.isTurnActive}
+								mode={composerMode}
 								model={model}
 								runtimeMode={runtimeMode}
 								runtimeOptions={runtimeOptions}

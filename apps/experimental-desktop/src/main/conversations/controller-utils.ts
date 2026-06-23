@@ -52,6 +52,7 @@ export function validateSendBody(value: unknown): {
 	cwd?: string;
 	model?: string;
 	runtimeMode: CodexRuntimeMode;
+	payload?: unknown;
 } {
 	const body = validateObject(value, "Message body must be an object");
 	if (typeof body.text !== "string" || !body.text.trim()) {
@@ -68,6 +69,7 @@ export function validateSendBody(value: unknown): {
 		...(typeof body.model === "string" && body.model.trim()
 			? { model: body.model }
 			: {}),
+		...(body.payload !== undefined ? { payload: body.payload } : {}),
 		runtimeMode: validateRuntimeMode(body.runtimeMode),
 	};
 }

@@ -14,6 +14,7 @@ export type ComposerHistoryEntry = {
 };
 
 export type ComposerSavedDraft = {
+	mode: ComposerMode;
 	text: string;
 	contextItems: ComposerContextItem[];
 };

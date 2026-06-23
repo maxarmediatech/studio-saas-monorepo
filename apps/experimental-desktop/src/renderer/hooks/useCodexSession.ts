@@ -104,6 +104,11 @@ export function useCodexSession(input: {
 
 	async function sendMessage(payload: ComposerPayload) {
 		const trimmed = serializeComposerPayload(payload);
+		const composerPayload = {
+			mode: payload.mode,
+			parts: payload.parts,
+			metrics: payload.metrics,
+		};
 		if (!trimmed) {
 			setStatus("Message required");
 			return false;
@@ -120,6 +125,7 @@ export function useCodexSession(input: {
 							text: trimmed,
 							model: inputModel(),
 							runtimeMode: inputRuntimeMode(),
+							payload: composerPayload,
 						},
 					);
 				if (conversation) {
@@ -133,6 +139,7 @@ export function useCodexSession(input: {
 						text: trimmed,
 						model: inputModel(),
 						runtimeMode: inputRuntimeMode(),
+						payload: composerPayload,
 						...(input.selectedFolderPath
 							? { cwd: input.selectedFolderPath }
 							: {}),

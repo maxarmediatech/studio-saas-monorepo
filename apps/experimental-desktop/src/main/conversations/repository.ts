@@ -167,6 +167,7 @@ export class ConversationRepository {
 		cwd: string;
 		model?: string;
 		runtimeMode: CodexRuntimeMode;
+		payload?: unknown;
 		ids: {
 			conversationId: string;
 			providerSessionId: string;
@@ -224,7 +225,7 @@ export class ConversationRepository {
 				ordinal: 0,
 				type: "text",
 				text: input.text,
-				json: {},
+				json: userTextPartJson(input.payload),
 				now: input.now,
 			});
 			this.insertMessage({
@@ -284,6 +285,7 @@ export class ConversationRepository {
 		userMessageId: string;
 		assistantMessageId: string;
 		text: string;
+		payload?: unknown;
 		now: string;
 	}) {
 		const run = this.db.transaction(() => {
@@ -316,7 +318,7 @@ export class ConversationRepository {
 				ordinal: 0,
 				type: "text",
 				text: input.text,
-				json: {},
+				json: userTextPartJson(input.payload),
 				now: input.now,
 			});
 			this.insertMessage({
@@ -1579,6 +1581,10 @@ function mapDraft(row: DraftRow): DraftRecord {
 		updatedAt: row.updated_at,
 		promotedConversationId: row.promoted_conversation_id ?? undefined,
 	};
+}
+
+function userTextPartJson(payload: unknown) {
+	return payload === undefined ? {} : { composerPayload: payload };
 }
 
 function mapConversation(row: ConversationRow): ConversationSummary {

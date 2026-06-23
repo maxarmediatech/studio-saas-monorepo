@@ -126,6 +126,7 @@ export function createConversationController(input: {
 			cwd,
 			model: message.model,
 			runtimeMode: message.runtimeMode,
+			payload: message.payload,
 			ids,
 			now: now(),
 		});
@@ -228,6 +229,7 @@ export function createConversationController(input: {
 			userMessageId,
 			assistantMessageId,
 			text: message.text,
+			payload: message.payload,
 			now: now(),
 		});
 		activeTurnId = turn.turnId;

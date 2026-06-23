@@ -353,10 +353,16 @@ export type ExperimentalDesktopApi = {
 		cwd?: string;
 		model?: string;
 		runtimeMode?: CodexRuntimeMode;
+		payload?: unknown;
 	}) => Promise<ConversationDetail | undefined>;
 	sendConversationMessage: (
 		conversationId: string,
-		input: { text: string; model?: string; runtimeMode?: CodexRuntimeMode },
+		input: {
+			text: string;
+			model?: string;
+			runtimeMode?: CodexRuntimeMode;
+			payload?: unknown;
+		},
 	) => Promise<ConversationDetail | undefined>;
 	interruptConversation: (conversationId: string) => Promise<{ ok: true }>;
 	respondApproval: (

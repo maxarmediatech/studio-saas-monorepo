@@ -36,6 +36,7 @@ export function SessionComposer(props: {
 	value: string;
 	disabled: boolean;
 	turnActive: boolean;
+	mode: ComposerMode;
 	model: string;
 	runtimeMode: CodexRuntimeMode;
 	runtimeOptions: RuntimeOption[];
@@ -57,7 +58,7 @@ export function SessionComposer(props: {
 	) => Promise<void>;
 }) {
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
-	const [mode, setMode] = useState<ComposerMode>("ask");
+	const mode = props.mode;
 	const [activeIndex, setActiveIndex] = useState(0);
 	const {
 		history,
@@ -165,7 +166,6 @@ export function SessionComposer(props: {
 	}
 
 	function changeMode(nextMode: ComposerMode) {
-		setMode(nextMode);
 		props.onModeChange(nextMode);
 		if (nextMode === "shell") {
 			setContextItems([]);
@@ -248,11 +248,11 @@ export function SessionComposer(props: {
 				return false;
 			}
 			if (historyIndex === -1) {
-				setSavedDraft({ text: props.value, contextItems });
+				setSavedDraft({ mode, text: props.value, contextItems });
 			}
 			const entry = history[nextIndex];
 			setHistoryIndex(nextIndex);
-			setMode(entry.mode);
+			props.onModeChange(entry.mode);
 			props.onChange(entry.text);
 			setContextItems(entry.contextItems ?? []);
 			return true;
@@ -264,10 +264,11 @@ export function SessionComposer(props: {
 		setHistoryIndex(nextIndex);
 		const entry = nextIndex >= 0 ? history[nextIndex] : null;
 		if (entry) {
-			setMode(entry.mode);
+			props.onModeChange(entry.mode);
 			props.onChange(entry.text);
 			setContextItems(entry.contextItems ?? []);
 		} else {
+			props.onModeChange(savedDraft?.mode ?? "ask");
 			props.onChange(savedDraft?.text ?? "");
 			setContextItems(savedDraft?.contextItems ?? []);
 			setSavedDraft(null);
