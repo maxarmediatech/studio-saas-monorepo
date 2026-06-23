@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { SetStateAction } from "react";
 import {
 	createFolderContextItem,
 	DEFAULT_FOLDER_CONTEXT_PATTERNS,
@@ -15,17 +16,27 @@ export function useComposerContextItems(input: {
 		input.initialContextItems,
 	);
 	const folderScanVersionsRef = useRef<Record<string, number>>({});
+	const reportedContextItemsRef = useRef(contextItems);
+	const lastResetSignalRef = useRef(input.resetSignal);
 
 	useEffect(() => {
-		setContextItems(input.initialContextItems);
+		if (lastResetSignalRef.current === input.resetSignal) {
+			return;
+		}
+		lastResetSignalRef.current = input.resetSignal;
+		commitContextItems(input.initialContextItems);
 	}, [input.initialContextItems, input.resetSignal]);
 
 	useEffect(() => {
+		if (sameContextItemList(reportedContextItemsRef.current, contextItems)) {
+			return;
+		}
+		reportedContextItemsRef.current = contextItems;
 		input.onContextItemsChange(contextItems);
 	}, [contextItems, input.onContextItemsChange]);
 
 	function addContextItem(item: ComposerContextItem) {
-		setContextItems((items) =>
+		commitContextItems((items) =>
 			items.some((existing) => existing.path === item.path)
 				? items
 				: [...items, item],
@@ -39,7 +50,7 @@ export function useComposerContextItems(input: {
 		}
 		const version = (folderScanVersionsRef.current[path] ?? 0) + 1;
 		folderScanVersionsRef.current[path] = version;
-		setContextItems((items) =>
+		commitContextItems((items) =>
 			items.map((item) =>
 				item.path === path
 					? {
@@ -65,7 +76,7 @@ export function useComposerContextItems(input: {
 			if (folderScanVersionsRef.current[path] !== version) {
 				return;
 			}
-			setContextItems((items) =>
+			commitContextItems((items) =>
 				items.map((item) =>
 					item.path === path
 						? createFolderContextItem({
@@ -88,7 +99,7 @@ export function useComposerContextItems(input: {
 			}
 			const message =
 				error instanceof Error ? error.message : String(error);
-			setContextItems((items) =>
+			commitContextItems((items) =>
 				items.map((item) =>
 					item.path === path
 						? {
@@ -104,10 +115,46 @@ export function useComposerContextItems(input: {
 		}
 	}
 
+	function commitContextItems(
+		nextValue: SetStateAction<ComposerContextItem[]>,
+	) {
+		setContextItems((items) => {
+			const next =
+				typeof nextValue === "function" ? nextValue(items) : nextValue;
+			if (sameContextItemList(items, next)) {
+				return items;
+			}
+			return next;
+		});
+	}
+
 	return {
 		contextItems,
-		setContextItems,
+		setContextItems: commitContextItems,
 		addContextItem,
 		changeFolderMode,
 	};
+}
+
+function sameContextItemList(
+	a: ComposerContextItem[],
+	b: ComposerContextItem[],
+) {
+	return (
+		a.length === b.length &&
+		a.every((item, index) => {
+			const next = b[index];
+			return (
+				next &&
+				item.path === next.path &&
+				item.label === next.label &&
+				item.type === next.type &&
+				item.folderMode === next.folderMode &&
+				item.folderStatus === next.folderStatus &&
+				item.folderError === next.folderError &&
+				item.folderSnapshot === next.folderSnapshot &&
+				item.description === next.description
+			);
+		})
+	);
 }

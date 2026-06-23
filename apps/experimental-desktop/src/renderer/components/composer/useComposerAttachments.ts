@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { SetStateAction } from "react";
 import {
 	formatAttachmentLimitBytes,
 	isSupportedAttachmentMimeType,
@@ -26,23 +27,21 @@ export function useComposerAttachments(input: {
 	);
 	const [attachmentNotice, setAttachmentNotice] = useState<string>();
 	const attachmentsRef = useRef(attachments);
+	const reportedAttachmentsRef = useRef(attachments);
+	const lastResetSignalRef = useRef(input.resetSignal);
 
 	useEffect(() => {
 		attachmentsRef.current = attachments;
 	}, [attachments]);
 
 	useEffect(() => {
-		setAttachments((items) => {
-			for (const item of items) {
-				if (
-					!input.initialAttachments.some(
-						(next) => next.id === item.id,
-					)
-				) {
-					revokeComposerAttachmentPreview(item);
-				}
-			}
-			return input.initialAttachments;
+		if (lastResetSignalRef.current === input.resetSignal) {
+			return;
+		}
+		lastResetSignalRef.current = input.resetSignal;
+		commitAttachments(input.initialAttachments, {
+			revokeRemoved: true,
+			notice: undefined,
 		});
 	}, [input.initialAttachments, input.resetSignal]);
 
@@ -55,15 +54,17 @@ export function useComposerAttachments(input: {
 	}, []);
 
 	useEffect(() => {
+		if (sameAttachmentList(reportedAttachmentsRef.current, attachments)) {
+			return;
+		}
+		reportedAttachmentsRef.current = attachments;
 		input.onAttachmentsChange(attachments);
 	}, [attachments, input.onAttachmentsChange]);
 
 	function addAttachment(attachment: ComposerAttachment) {
-		setAttachments((items) => {
-			const result = appendAttachments(items, [attachment]);
-			setAttachmentNotice(result.notice);
-			return result.attachments;
-		});
+		const result = appendAttachments(attachmentsRef.current, [attachment]);
+		setAttachmentNotice(result.notice);
+		commitAttachments(result.attachments);
 	}
 
 	async function addAttachmentPath(path: string) {
@@ -74,11 +75,9 @@ export function useComposerAttachments(input: {
 		const attachments = await Promise.all(
 			paths.map(createAttachmentFromPath),
 		);
-		setAttachments((items) => {
-			const result = appendAttachments(items, attachments);
-			setAttachmentNotice(result.notice);
-			return result.attachments;
-		});
+		const result = appendAttachments(attachmentsRef.current, attachments);
+		setAttachmentNotice(result.notice);
+		commitAttachments(result.attachments);
 	}
 
 	async function addAttachmentFiles(
@@ -93,33 +92,60 @@ export function useComposerAttachments(input: {
 				),
 			),
 		);
-		setAttachments((items) => {
-			const result = appendAttachments(items, nextAttachments);
-			setAttachmentNotice(result.notice);
-			return result.attachments;
-		});
+		const result = appendAttachments(
+			attachmentsRef.current,
+			nextAttachments,
+		);
+		setAttachmentNotice(result.notice);
+		commitAttachments(result.attachments);
 	}
 
 	function removeAttachment(id: string) {
-		setAttachments((items) => {
-			for (const item of items) {
-				if (item.id === id) {
-					revokeComposerAttachmentPreview(item);
-				}
+		for (const item of attachmentsRef.current) {
+			if (item.id === id) {
+				revokeComposerAttachmentPreview(item);
 			}
-			setAttachmentNotice(undefined);
-			return items.filter((item) => item.id !== id);
-		});
+		}
+		setAttachmentNotice(undefined);
+		commitAttachments(
+			attachmentsRef.current.filter((item) => item.id !== id),
+		);
 	}
 
 	function clearAttachments() {
+		for (const item of attachmentsRef.current) {
+			revokeComposerAttachmentPreview(item);
+		}
+		setAttachmentNotice(undefined);
+		commitAttachments([]);
+	}
+
+	function commitAttachments(
+		nextValue: SetStateAction<ComposerAttachment[]>,
+		options?: {
+			revokeRemoved?: boolean;
+			notice?: string;
+		},
+	) {
 		setAttachments((items) => {
-			for (const item of items) {
-				revokeComposerAttachmentPreview(item);
+			const next =
+				typeof nextValue === "function" ? nextValue(items) : nextValue;
+			if (options?.revokeRemoved) {
+				for (const item of items) {
+					if (!next.some((nextItem) => nextItem.id === item.id)) {
+						revokeComposerAttachmentPreview(item);
+					}
+				}
 			}
-			setAttachmentNotice(undefined);
-			return [];
+			if (sameAttachmentList(items, next)) {
+				return items;
+			}
+			attachmentsRef.current = next;
+			return next;
 		});
+		if ("notice" in (options ?? {})) {
+			setAttachmentNotice(options?.notice);
+		}
 	}
 
 	return {
@@ -130,10 +156,31 @@ export function useComposerAttachments(input: {
 		addAttachmentFiles,
 		removeAttachment,
 		clearAttachments,
-		setAttachments,
+		setAttachments: commitAttachments,
 		attachmentIssue: composerAttachmentIssue(attachments),
 		attachmentNotice,
 	};
+}
+
+function sameAttachmentList(a: ComposerAttachment[], b: ComposerAttachment[]) {
+	return (
+		a.length === b.length &&
+		a.every((attachment, index) => {
+			const next = b[index];
+			return (
+				next &&
+				attachment.id === next.id &&
+				attachment.kind === next.kind &&
+				attachment.name === next.name &&
+				attachment.path === next.path &&
+				attachment.mimeType === next.mimeType &&
+				attachment.size === next.size &&
+				attachment.status === next.status &&
+				attachment.error === next.error &&
+				attachment.previewUrl === next.previewUrl
+			);
+		})
+	);
 }
 
 async function createAttachmentFromPath(path: string) {
