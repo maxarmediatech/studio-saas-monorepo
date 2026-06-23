@@ -18,6 +18,7 @@ const desktopShellClass =
 	"grid min-h-0 grid-cols-[276px_minmax(520px,1fr)_320px] max-[1200px]:grid-cols-[248px_minmax(500px,1fr)_292px]";
 const sessionStageInnerClass =
 	"flex h-full w-full flex-col gap-6 px-7 pb-7 pt-[clamp(34px,7vh,72px)] max-[1200px]:px-5";
+const modelStorageKey = "experimental-desktop:model";
 
 export function App() {
 	const [appInfo, setAppInfo] = useState<AppInfo>();
@@ -37,7 +38,15 @@ export function App() {
 
 	useEffect(() => {
 		void window.experimentalDesktop.getAppInfo().then(setAppInfo);
+		const savedModel = window.localStorage.getItem(modelStorageKey);
+		if (savedModel) {
+			setModel(savedModel);
+		}
 	}, []);
+
+	useEffect(() => {
+		window.localStorage.setItem(modelStorageKey, model);
+	}, [model]);
 
 	useEffect(() => {
 		const timeout = window.setTimeout(() => {

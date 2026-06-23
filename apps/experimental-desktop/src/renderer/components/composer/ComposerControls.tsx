@@ -73,18 +73,38 @@ export function ModelPill(props: {
 	model: string;
 	onModelChange: (model: string) => void;
 }) {
+	const modelOptions = ["gpt-5.5-thinking", "gpt-5.4", "gpt-5.4-mini"];
+
 	return (
-		<label className="hidden h-9 items-center gap-1.5 rounded-[10px] border border-[var(--desktop-inbox-border)] bg-[color-mix(in_srgb,var(--desktop-inbox-hover)_46%,transparent)] px-3 text-[13px] font-medium text-[var(--desktop-default)] min-[1180px]:inline-flex">
-			<IconBolt {...iconProps} size={16} />
-			<input
-				className="w-[112px] border-0 bg-transparent p-0 text-[13px] outline-none"
-				value={props.model}
-				aria-label="Model"
-				onChange={(event) =>
-					props.onModelChange(event.currentTarget.value)
+		<Select
+			items={modelOptions.map((model) => ({
+				value: model,
+				label: model,
+			}))}
+			value={props.model}
+			onValueChange={(value) => {
+				if (value) {
+					props.onModelChange(value);
 				}
-			/>
-		</label>
+			}}
+		>
+			<SelectTrigger
+				aria-label="Model"
+				className="hidden h-9 min-w-[156px] rounded-[10px] border border-[var(--desktop-inbox-border)] bg-[color-mix(in_srgb,var(--desktop-inbox-hover)_46%,transparent)] px-3 text-[13px] font-medium text-[var(--desktop-default)] shadow-none hover:bg-[color-mix(in_srgb,var(--desktop-inbox-hover)_68%,transparent)] min-[1180px]:inline-flex dark:bg-[color-mix(in_srgb,var(--desktop-inbox-hover)_46%,transparent)]"
+			>
+				<IconBolt {...iconProps} size={16} />
+				<SelectValue />
+			</SelectTrigger>
+			<SelectContent align="start" alignItemWithTrigger={false}>
+				<SelectGroup>
+					{modelOptions.map((model) => (
+						<SelectItem value={model} key={model}>
+							{model}
+						</SelectItem>
+					))}
+				</SelectGroup>
+			</SelectContent>
+		</Select>
 	);
 }
 

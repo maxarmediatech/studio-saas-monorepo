@@ -14,10 +14,11 @@ import { cn } from "../../lib/utils";
 import { ComposerContextChips } from "./ComposerContextChips";
 import { ComposerFooter } from "./ComposerFooter";
 import { ComposerMenu } from "./ComposerMenu";
-import type { ComposerPrimaryAction } from "./ComposerPrimaryButton";
+import { resolvePrimaryAction } from "./ComposerPrimaryButton";
 import { ComposerTextarea } from "./ComposerTextarea";
 import { ComposerToolbar } from "./ComposerToolbar";
 import { collectContextTokens, withContextItems } from "./composerContext";
+import { nextSelectableIndex } from "./composerKeyboard";
 import { buildComposerMenuItems } from "./composerMenuItems";
 import {
 	type ComposerCommand,
@@ -85,7 +86,7 @@ export function SessionComposer(props: {
 		: null;
 	const activeTrigger =
 		trigger && triggerKey !== dismissedTriggerKey ? trigger : null;
-	const fileResults = useWorkspaceFileMentions(
+	const fileSearch = useWorkspaceFileMentions(
 		activeTrigger,
 		props.workspaceRoot,
 	);
@@ -108,8 +109,13 @@ export function SessionComposer(props: {
 	]);
 
 	const menuItems = useMemo(() => {
-		return buildComposerMenuItems(activeTrigger, fileResults);
-	}, [activeTrigger, fileResults]);
+		return buildComposerMenuItems(activeTrigger, fileSearch);
+	}, [activeTrigger, fileSearch]);
+
+	const selectableMenuItems = useMemo(
+		() => menuItems.filter((item) => !item.disabled),
+		[menuItems],
+	);
 
 	async function send() {
 		const sentText = props.value;
@@ -190,8 +196,11 @@ export function SessionComposer(props: {
 
 	function selectItem(item: ComposerCommand) {
 		const workspaceRoot = props.workspaceRoot;
+		if (item.disabled) {
+			return;
+		}
 		if (item.id.startsWith("workspace-file:")) {
-			const file = fileResults.find(
+			const file = fileSearch.results.find(
 				(result) => `workspace-file:${result.path}` === item.id,
 			);
 			if (file && trigger) {
@@ -231,6 +240,15 @@ export function SessionComposer(props: {
 							},
 						],
 			);
+			const next = replaceComposerRange(
+				props.value,
+				trigger.rangeStart,
+				trigger.rangeEnd,
+				"@workspace ",
+			);
+			props.onChange(next.text);
+			focusAt(next.cursor);
+			return;
 		}
 		if (item.id === "choose-file") {
 			void chooseFile();
@@ -324,20 +342,28 @@ export function SessionComposer(props: {
 		if (menuItems.length > 0) {
 			if (event.key === "ArrowDown") {
 				event.preventDefault();
-				setActiveIndex((index) => (index + 1) % menuItems.length);
+				setActiveIndex((index) =>
+					nextSelectableIndex(menuItems, index, 1),
+				);
 				return;
 			}
 			if (event.key === "ArrowUp") {
 				event.preventDefault();
-				setActiveIndex(
-					(index) =>
-						(index - 1 + menuItems.length) % menuItems.length,
+				setActiveIndex((index) =>
+					nextSelectableIndex(menuItems, index, -1),
 				);
 				return;
 			}
-			if (event.key === "Enter" && !event.shiftKey) {
+			if (
+				(event.key === "Enter" && !event.shiftKey) ||
+				event.key === "Tab"
+			) {
 				event.preventDefault();
-				selectItem(menuItems[activeIndex] ?? menuItems[0]);
+				selectItem(
+					menuItems[activeIndex] ??
+						selectableMenuItems[0] ??
+						menuItems[0],
+				);
 				return;
 			}
 			if (event.key === "Escape") {
@@ -463,19 +489,4 @@ export function SessionComposer(props: {
 			<ComposerFooter mode={mode} />
 		</section>
 	);
-}
-
-function resolvePrimaryAction(input: {
-	mode: ComposerMode;
-	disabled: boolean;
-	turnActive: boolean;
-	hasText: boolean;
-}): ComposerPrimaryAction {
-	if (input.turnActive) {
-		return "stop";
-	}
-	if (input.disabled || !input.hasText) {
-		return "disabled";
-	}
-	return input.mode === "shell" ? "run-shell" : "send";
 }

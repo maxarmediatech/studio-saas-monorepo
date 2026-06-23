@@ -3,8 +3,24 @@ import { iconProps } from "../../app/icons";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { composerControlClass } from "./ComposerControls";
+import type { ComposerMode } from "./composerTriggers";
 
 export type ComposerPrimaryAction = "send" | "run-shell" | "stop" | "disabled";
+
+export function resolvePrimaryAction(input: {
+	mode: ComposerMode;
+	disabled: boolean;
+	turnActive: boolean;
+	hasText: boolean;
+}): ComposerPrimaryAction {
+	if (input.turnActive) {
+		return "stop";
+	}
+	if (input.disabled || !input.hasText) {
+		return "disabled";
+	}
+	return input.mode === "shell" ? "run-shell" : "send";
+}
 
 export function ComposerPrimaryButton(props: {
 	action: ComposerPrimaryAction;

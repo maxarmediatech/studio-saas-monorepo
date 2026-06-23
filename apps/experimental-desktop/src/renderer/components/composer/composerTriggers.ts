@@ -17,6 +17,9 @@ export type ComposerCommand = {
 	action: "insert" | "mode" | "new-session" | "clear";
 	insertText?: string;
 	mode?: ComposerMode;
+	section?: string;
+	shortcut?: string;
+	disabled?: boolean;
 };
 
 export const composerCommands: ComposerCommand[] = [

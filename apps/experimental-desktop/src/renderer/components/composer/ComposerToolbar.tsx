@@ -1,11 +1,8 @@
-import { IconMicrophone, IconPlus } from "@tabler/icons-react";
+import { IconPlus } from "@tabler/icons-react";
 import type { CodexRuntimeMode } from "../../../preload/types";
 import { iconProps } from "../../app/icons";
 import type { RuntimeOption } from "../../app/types";
-import { cn } from "../../lib/utils";
-import { Button } from "../ui/button";
 import {
-	composerControlClass,
 	IconButton,
 	ModelPill,
 	ModePill,
@@ -47,19 +44,6 @@ export function ComposerToolbar(props: {
 				/>
 			</div>
 			<div className="flex items-center gap-2">
-				<Button
-					className={cn(
-						composerControlClass,
-						"text-[var(--desktop-subtle)]",
-					)}
-					size="icon-sm"
-					variant="ghost"
-					type="button"
-					title="Voice input"
-					aria-label="Voice input"
-				>
-					<IconMicrophone {...iconProps} />
-				</Button>
 				<ComposerPrimaryButton
 					action={props.primaryAction}
 					onClick={props.onPrimaryAction}

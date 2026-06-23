@@ -9,13 +9,19 @@ export function useWorkspaceFileMentions(
 	workspaceRoot?: string,
 ) {
 	const [fileResults, setFileResults] = useState<WorkspaceFileMention[]>([]);
+	const [loading, setLoading] = useState(false);
+	const [error, setError] = useState(false);
 
 	useEffect(() => {
 		if (activeTrigger?.kind !== "file" || !workspaceRoot) {
 			setFileResults([]);
+			setLoading(false);
+			setError(false);
 			return;
 		}
 		let canceled = false;
+		setLoading(true);
+		setError(false);
 		void window.experimentalDesktop
 			.searchWorkspaceFiles({
 				rootPath: workspaceRoot,
@@ -30,6 +36,12 @@ export function useWorkspaceFileMentions(
 			.catch(() => {
 				if (!canceled) {
 					setFileResults([]);
+					setError(true);
+				}
+			})
+			.finally(() => {
+				if (!canceled) {
+					setLoading(false);
 				}
 			});
 		return () => {
@@ -37,5 +49,5 @@ export function useWorkspaceFileMentions(
 		};
 	}, [activeTrigger?.kind, activeTrigger?.query, workspaceRoot]);
 
-	return fileResults;
+	return { results: fileResults, loading, error };
 }
