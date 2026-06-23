@@ -87,7 +87,7 @@ export function SessionComposer(props: {
 	const {
 		attachments,
 		addAttachment,
-		addAttachmentPaths,
+		addAttachmentFiles,
 		removeAttachment,
 		clearAttachments,
 		setAttachments,
@@ -99,7 +99,7 @@ export function SessionComposer(props: {
 	const [userInputDrafts, setUserInputDrafts] = useState<
 		Record<string, Record<string, string>>
 	>({});
-	const fileDrop = useComposerFileDrop({ onDropPaths: addAttachmentPaths });
+	const fileDrop = useComposerFileDrop({ onFiles: addAttachmentFiles });
 
 	const trigger = useMemo(() => {
 		return mode === "shell"
@@ -403,6 +403,7 @@ export function SessionComposer(props: {
 			onDragOver={fileDrop.onDragOver}
 			onDragLeave={fileDrop.onDragLeave}
 			onDrop={fileDrop.onDrop}
+			onPaste={fileDrop.onPaste}
 			pendingDock={
 				<PendingRequestDock
 					requests={props.pendingRequests}

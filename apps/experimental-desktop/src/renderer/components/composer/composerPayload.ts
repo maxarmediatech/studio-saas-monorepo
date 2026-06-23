@@ -20,7 +20,7 @@ type ComposerAttachmentPayloadPart = {
 	type: "attachment_file" | "attachment_image";
 	id: string;
 	name: string;
-	path: string;
+	path?: string;
 	mimeType?: string;
 	size?: number;
 };
@@ -84,7 +84,14 @@ export function serializeComposerPayload(payload: ComposerPayload) {
 		})
 		.join("\n");
 	const attachments = payload.attachments
-		.map((item) => `- ${item.kind}: ${item.name}\n  ref: ${item.path}`)
+		.map((item) => {
+			const ref = item.path ? `\n  ref: ${item.path}` : "";
+			const status =
+				item.status === "failed" && item.error
+					? `\n  error: ${item.error}`
+					: "";
+			return `- ${item.kind}: ${item.name}${ref}${status}`;
+		})
 		.join("\n");
 	return [
 		context ? `Context parts:\n${context}` : "",
@@ -143,7 +150,7 @@ function estimatePayloadMetrics(parts: ComposerPayloadPart[]) {
 			return total + part.text.length;
 		}
 		if (isAttachmentPart(part)) {
-			return total + part.name.length + part.path.length;
+			return total + part.name.length + (part.path?.length ?? 0);
 		}
 		if (!isContextPart(part)) {
 			return total;

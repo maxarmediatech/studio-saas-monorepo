@@ -11,9 +11,12 @@ export type ComposerAttachment = {
 	id: string;
 	kind: "file" | "image";
 	name: string;
-	path: string;
+	path?: string;
 	mimeType?: string;
 	size?: number;
+	previewUrl?: string;
+	status?: "ready" | "failed";
+	error?: string;
 };
 
 export type ComposerHistoryEntry = {

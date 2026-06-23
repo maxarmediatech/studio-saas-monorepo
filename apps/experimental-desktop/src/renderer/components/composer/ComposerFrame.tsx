@@ -1,4 +1,4 @@
-import type { DragEvent, ReactNode } from "react";
+import type { ClipboardEvent, DragEvent, ReactNode } from "react";
 import { cn } from "../../lib/utils";
 import type { ComposerMode } from "./composerTriggers";
 
@@ -16,6 +16,7 @@ export function ComposerFrame(props: {
 	onDragOver?: (event: DragEvent<HTMLElement>) => void;
 	onDragLeave?: (event: DragEvent<HTMLElement>) => void;
 	onDrop?: (event: DragEvent<HTMLElement>) => void;
+	onPaste?: (event: ClipboardEvent<HTMLElement>) => void;
 }) {
 	return (
 		<section
@@ -25,6 +26,7 @@ export function ComposerFrame(props: {
 			onDragOver={props.onDragOver}
 			onDragLeave={props.onDragLeave}
 			onDrop={props.onDrop}
+			onPaste={props.onPaste}
 		>
 			{props.pendingDock}
 			<div
