@@ -1,17 +1,8 @@
 import {
 	type Icon,
-	IconArrowUp,
-	IconBrandFigma,
-	IconBrandGithub,
-	IconBrandGoogleDrive,
-	IconBrandNotion,
-	IconBrandSlack,
-	IconBrandTrello,
 	IconChartBar,
-	IconCirclesRelation,
 	IconFileText,
 	IconFolder,
-	IconMicrophone,
 	IconMoon,
 	IconPlus,
 	IconRosette,
@@ -19,7 +10,6 @@ import {
 	IconSun,
 	IconTemplate,
 } from "@tabler/icons-react";
-import type { ReactNode } from "react";
 import type {
 	CodexRuntimeMode,
 	ConversationSummary,
@@ -47,16 +37,6 @@ const topControlClass =
 	"inline-flex h-7 items-center rounded-[7px] text-[var(--desktop-subtle)] no-underline";
 const navItemClass =
 	"flex min-h-[34px] w-full items-center gap-3 rounded-[7px] border-0 bg-transparent px-3 text-left text-[var(--desktop-default)] no-underline hover:bg-[var(--desktop-selected)]";
-const composerControlClass =
-	"!size-9 !rounded-[10px] !p-0 [&_svg]:!size-[18px] [&_svg]:!stroke-[1.8]";
-const toolToneClass = {
-	drive: "text-[#1a73e8]",
-	figma: "text-[#f24e1e]",
-	github: "text-[var(--desktop-default)]",
-	notion: "text-[var(--desktop-default)]",
-	slack: "text-[#28a8ea]",
-	trello: "text-[#0c66e4]",
-};
 const starterToneClass = {
 	blue: "text-[#6d70ff]",
 	cyan: "text-[#18aee8]",
@@ -270,128 +250,6 @@ export function RuntimeModeSelect(props: {
 	);
 }
 
-export function SessionComposer(props: {
-	value: string;
-	disabled: boolean;
-	runtimeMode: CodexRuntimeMode;
-	runtimeOptions: RuntimeOption[];
-	onChange: (value: string) => void;
-	onRuntimeModeChange: (mode: CodexRuntimeMode) => void;
-	onSend: () => Promise<void>;
-	onNewSession: () => Promise<void>;
-}) {
-	return (
-		<section
-			className="isolate flex flex-col overflow-visible border-0 bg-transparent shadow-none"
-			aria-label="Codex session composer"
-		>
-			<div className="relative z-2 flex min-h-[118px] flex-col rounded-[18px] border border-[var(--desktop-inbox-border)] bg-[var(--desktop-inbox)] [box-shadow:0_1px_0_color-mix(in_srgb,var(--desktop-strong)_3%,transparent),0_10px_22px_-18px_var(--desktop-shadow)]">
-				<textarea
-					value={props.value}
-					className="min-h-[70px] resize-none border-0 bg-transparent px-[18px] pb-1.5 pt-4 text-[14px] font-[440] leading-[1.45] text-[var(--desktop-default)] shadow-none placeholder:text-[color-mix(in_srgb,var(--desktop-subtle)_58%,transparent)] focus-visible:shadow-none"
-					placeholder="What do you want to create?"
-					disabled={props.disabled}
-					onChange={(event) =>
-						props.onChange(event.currentTarget.value)
-					}
-					onKeyDown={(event) => {
-						if (
-							(event.metaKey || event.ctrlKey) &&
-							event.key === "Enter"
-						) {
-							event.preventDefault();
-							void props.onSend();
-						}
-					}}
-				/>
-				<div className="flex items-center justify-between gap-2 px-4 pb-3 [&_svg]:!stroke-[1.8]">
-					<div className="flex items-center gap-2">
-						<IconButton
-							label="New session"
-							onClick={props.onNewSession}
-						>
-							<IconPlus {...iconProps} />
-						</IconButton>
-						<RuntimeModeSelect
-							value={props.runtimeMode}
-							options={props.runtimeOptions}
-							onChange={props.onRuntimeModeChange}
-							variant="composer"
-						/>
-					</div>
-					<div className="flex items-center gap-2">
-						<Button
-							className={cn(
-								composerControlClass,
-								"text-[var(--desktop-subtle)]",
-							)}
-							size="icon-sm"
-							variant="ghost"
-							type="button"
-						>
-							<IconMicrophone {...iconProps} />
-						</Button>
-						<Button
-							className={cn(
-								composerControlClass,
-								"!bg-[color-mix(in_srgb,#0a84ff_62%,#ffffff)] text-white shadow-none",
-							)}
-							size="icon-sm"
-							type="button"
-							disabled={props.disabled}
-							onClick={() => void props.onSend()}
-						>
-							<IconArrowUp {...iconProps} />
-						</Button>
-					</div>
-				</div>
-			</div>
-			<ToolConnectStrip />
-		</section>
-	);
-}
-
-const toolIcons = [
-	{ icon: IconBrandGithub, label: "GitHub", tone: "github" },
-	{ icon: IconBrandSlack, label: "Slack", tone: "slack" },
-	{ icon: IconBrandTrello, label: "Trello", tone: "trello" },
-	{ icon: IconBrandNotion, label: "Notion", tone: "notion" },
-	{ icon: IconBrandFigma, label: "Figma", tone: "figma" },
-	{ icon: IconBrandGoogleDrive, label: "Google Drive", tone: "drive" },
-] as const;
-
-function ToolConnectStrip() {
-	return (
-		<div className="relative z-1 mt-[-12px] flex min-h-[58px] items-center justify-between gap-3 rounded-b-[18px] border border-t-0 border-[var(--desktop-inbox-border)] bg-[color-mix(in_srgb,var(--desktop-inbox-hover)_62%,var(--desktop-inbox))] px-4 pb-0 pt-3 [box-shadow:0_1px_0_color-mix(in_srgb,var(--desktop-strong)_3%,transparent)] [&_svg]:!size-[18px] [&_svg]:!stroke-[1.8]">
-			<div className="inline-flex min-w-0 items-center gap-2 text-[13px] font-medium text-[color-mix(in_srgb,var(--desktop-subtle)_88%,var(--desktop-default))]">
-				<IconCirclesRelation {...iconProps} />
-				<span className="overflow-hidden text-ellipsis whitespace-nowrap">
-					Connect your tools to workspace
-				</span>
-			</div>
-			<div className="flex flex-[0_0_auto] items-center gap-1.5">
-				{toolIcons.map((tool) => {
-					const ToolIcon = tool.icon;
-					return (
-						<button
-							className={cn(
-								"grid size-9 place-items-center rounded-[10px] border border-[var(--desktop-inbox-border)] bg-[color-mix(in_srgb,var(--desktop-inbox)_92%,var(--desktop-inbox-hover))] text-[var(--desktop-subtle)] [box-shadow:0_1px_0_color-mix(in_srgb,var(--desktop-strong)_4%,transparent)]",
-								toolToneClass[tool.tone],
-							)}
-							type="button"
-							key={tool.label}
-							title={tool.label}
-							aria-label={tool.label}
-						>
-							<ToolIcon {...iconProps} />
-						</button>
-					);
-				})}
-			</div>
-		</div>
-	);
-}
-
 const starterPrompts = [
 	{
 		icon: IconChartBar,
@@ -447,28 +305,5 @@ export function StarterPrompts(props: { onSelect: (prompt: string) => void }) {
 				})}
 			</div>
 		</section>
-	);
-}
-
-function IconButton(props: {
-	label: string;
-	children: ReactNode;
-	onClick: () => Promise<void>;
-}) {
-	return (
-		<Button
-			className={cn(
-				composerControlClass,
-				"border-[var(--desktop-inbox-border)] bg-transparent text-[var(--desktop-subtle)]",
-			)}
-			size="icon-sm"
-			variant="outline"
-			type="button"
-			title={props.label}
-			aria-label={props.label}
-			onClick={() => void props.onClick()}
-		>
-			{props.children}
-		</Button>
 	);
 }

@@ -4,13 +4,14 @@ import type {
 	ConversationDetail,
 	ConversationEvent,
 	ConversationSummary,
+	RespondSessionRequestInput,
 	SessionEvent,
 } from "../../preload/types";
 import type { PendingRequest, TranscriptItem } from "../app/types";
-
-const model = "gpt-5.4-mini";
+import { defaultAnswers } from "./pendingRequestDefaults";
 
 export function useCodexSession(input: {
+	model: string;
 	runtimeMode: CodexRuntimeMode;
 	selectedFolderPath?: string;
 }) {
@@ -46,7 +47,7 @@ export function useCodexSession(input: {
 		}
 		const draftInput = {
 			text,
-			model,
+			model: inputModel(),
 			runtimeMode: inputRuntimeMode(),
 			...(input.selectedFolderPath
 				? { cwd: input.selectedFolderPath }
@@ -106,7 +107,7 @@ export function useCodexSession(input: {
 						conversationId,
 						{
 							text: trimmed,
-							model,
+							model: inputModel(),
 							runtimeMode: inputRuntimeMode(),
 						},
 					);
@@ -119,7 +120,7 @@ export function useCodexSession(input: {
 					await window.experimentalDesktop.promoteDraftAndSend({
 						draftId,
 						text: trimmed,
-						model,
+						model: inputModel(),
 						runtimeMode: inputRuntimeMode(),
 						...(input.selectedFolderPath
 							? { cwd: input.selectedFolderPath }
@@ -149,17 +150,29 @@ export function useCodexSession(input: {
 
 	async function respondToRequest(
 		requestId: string,
-		decision: "accept" | "acceptForSession" | "decline" | "cancel",
+		responseOrDecision:
+			| RespondSessionRequestInput
+			| "accept"
+			| "acceptForSession"
+			| "decline"
+			| "cancel",
 	) {
 		if (!conversationId) {
 			return;
 		}
+		const response =
+			typeof responseOrDecision === "string"
+				? ({
+						decision: responseOrDecision,
+					} satisfies RespondSessionRequestInput)
+				: responseOrDecision;
 		const request = pendingRequests.find(
 			(request) => request.data.requestId === requestId,
 		);
 		if (
 			request?.data.requestKind === "user-input" &&
-			decision !== "cancel"
+			!("answers" in response) &&
+			response.decision !== "cancel"
 		) {
 			await window.experimentalDesktop.respondApproval(
 				conversationId,
@@ -170,14 +183,16 @@ export function useCodexSession(input: {
 			await window.experimentalDesktop.respondApproval(
 				conversationId,
 				requestId,
-				{ decision },
+				response,
 			);
 		}
 		setPendingRequests((requests) =>
 			requests.filter((request) => request.data.requestId !== requestId),
 		);
-		setStatus(decision === "cancel" ? "Canceled" : "Running...");
-		setIsTurnActive(decision !== "cancel");
+		const canceled =
+			"decision" in response && response.decision === "cancel";
+		setStatus(canceled ? "Canceled" : "Running...");
+		setIsTurnActive(!canceled);
 	}
 
 	function hydrateConversation(conversation: ConversationDetail) {
@@ -370,6 +385,10 @@ export function useCodexSession(input: {
 		return input.runtimeMode;
 	}
 
+	function inputModel() {
+		return input.model.trim() || "gpt-5.4-mini";
+	}
+
 	return {
 		sessionId: conversationId,
 		conversationId,
@@ -465,38 +484,4 @@ function formatRuntimeMode(mode: CodexRuntimeMode) {
 		return "Full Access";
 	}
 	return "Read Only";
-}
-
-function defaultAnswers(value: unknown) {
-	const answers: Record<string, string[]> = {};
-	if (!value || typeof value !== "object" || !("questions" in value)) {
-		return answers;
-	}
-	const questions = (value as { questions?: unknown }).questions;
-	if (!Array.isArray(questions)) {
-		return answers;
-	}
-	for (const question of questions) {
-		if (!question || typeof question !== "object") {
-			continue;
-		}
-		const record = question as {
-			id?: unknown;
-			options?: unknown;
-		};
-		if (typeof record.id !== "string") {
-			continue;
-		}
-		const firstOption = Array.isArray(record.options)
-			? record.options.find(
-					(option): option is { label: string } =>
-						!!option &&
-						typeof option === "object" &&
-						"label" in option &&
-						typeof option.label === "string",
-				)
-			: undefined;
-		answers[record.id] = [firstOption?.label ?? "ok"];
-	}
-	return answers;
 }

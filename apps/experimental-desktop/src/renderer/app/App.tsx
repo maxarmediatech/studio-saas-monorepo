@@ -1,7 +1,8 @@
 import { IconSparkles } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import type { AppInfo, CodexRuntimeMode } from "../../preload/types";
-import { SessionComposer, Sidebar, TopBar } from "../components/layout";
+import { SessionComposer } from "../components/composer/SessionComposer";
+import { Sidebar, TopBar } from "../components/layout";
 import { RightPanel } from "../components/right-panel";
 import { SessionPanel } from "../components/session";
 import { useCodexSession } from "../hooks/useCodexSession";
@@ -22,11 +23,13 @@ export function App() {
 	const [appInfo, setAppInfo] = useState<AppInfo>();
 	const [runtimeMode, setRuntimeMode] =
 		useState<CodexRuntimeMode>("read-only");
+	const [model, setModel] = useState("gpt-5.4-mini");
 	const [message, setMessage] = useState("");
 	const { theme, toggleTheme } = useThemeMode();
 	const workspace = useWorkspaceSelection();
 	const provider = useProviderStatus();
 	const session = useCodexSession({
+		model,
 		runtimeMode,
 		selectedFolderPath: workspace.selectedFolderPath,
 	});
@@ -44,6 +47,7 @@ export function App() {
 		return () => window.clearTimeout(timeout);
 	}, [
 		message,
+		model,
 		runtimeMode,
 		workspace.selectedFolderPath,
 		session.conversationId,
@@ -58,11 +62,12 @@ export function App() {
 			: []),
 	];
 
-	async function sendMessage() {
-		const sent = await session.sendMessage(message);
+	async function sendMessage(text: string) {
+		const sent = await session.sendMessage(text);
 		if (sent) {
 			setMessage("");
 		}
+		return sent;
 	}
 
 	return (
@@ -92,15 +97,19 @@ export function App() {
 							<SessionComposer
 								value={message}
 								disabled={session.isTurnRunning}
+								model={model}
 								runtimeMode={runtimeMode}
 								runtimeOptions={runtimeOptions}
+								pendingRequests={session.pendingRequests}
 								onChange={setMessage}
+								onModelChange={setModel}
 								onRuntimeModeChange={setRuntimeMode}
 								onSend={sendMessage}
 								onNewSession={async () => {
 									setMessage("");
 									await session.createNewSession();
 								}}
+								onRespondRequest={session.respondToRequest}
 							/>
 						</div>
 						<SessionPanel
