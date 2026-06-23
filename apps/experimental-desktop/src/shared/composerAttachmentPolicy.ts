@@ -22,6 +22,13 @@ export const SUPPORTED_ATTACHMENT_MIME_TYPES = new Set([
 	"text/xml",
 ]);
 
+export const PROVIDER_NATIVE_IMAGE_MIME_TYPES = new Set([
+	"image/gif",
+	"image/jpeg",
+	"image/png",
+	"image/webp",
+]);
+
 const EXTENSION_MIME_TYPES: Record<string, string> = {
 	".avif": "image/avif",
 	".css": "text/css",
@@ -93,6 +100,10 @@ export function inferAttachmentMimeType(input: {
 
 export function isImageAttachmentMimeType(mimeType: string | undefined) {
 	return Boolean(mimeType?.startsWith("image/"));
+}
+
+export function isProviderNativeImageMimeType(mimeType: string | undefined) {
+	return Boolean(mimeType && PROVIDER_NATIVE_IMAGE_MIME_TYPES.has(mimeType));
 }
 
 export function isSupportedAttachmentMimeType(mimeType: string | undefined) {
