@@ -3,6 +3,15 @@ import {
 	serializeComposerPayload,
 } from "./composerPayload";
 
+export type ComposerNativeInputPart =
+	| { type: "text"; text: string }
+	| {
+			type: "local_image";
+			path: string;
+			name: string;
+			mimeType: string;
+	  };
+
 export function buildComposerProviderInput(payload: ComposerPayload) {
 	const readyAttachments = payload.attachments.filter(
 		(attachment) => attachment.status !== "failed" && attachment.path,
@@ -24,14 +33,37 @@ export function buildComposerProviderInput(payload: ComposerPayload) {
 		attachments: readyAttachments,
 		parts,
 	};
+	const text = serializeComposerPayload(safePayload);
 	return {
-		text: serializeComposerPayload(safePayload),
+		text,
+		nativeInput: [
+			{ type: "text" as const, text },
+			...readyAttachments
+				.filter(
+					(attachment) =>
+						attachment.kind === "image" &&
+						attachment.path &&
+						attachment.mimeType,
+				)
+				.map((attachment) => ({
+					type: "local_image" as const,
+					path: attachment.path as string,
+					name: attachment.name,
+					mimeType: attachment.mimeType as string,
+				})),
+		] satisfies ComposerNativeInputPart[],
 		payload: {
 			mode: safePayload.mode,
 			contextItems: safePayload.contextItems,
 			attachments: safePayload.attachments,
 			parts: safePayload.parts,
 			metrics: safePayload.metrics,
+			nativeInput: {
+				kind: "codex-app-server-v1",
+				imageCount: readyAttachments.filter(
+					(attachment) => attachment.kind === "image",
+				).length,
+			},
 		},
 	};
 }

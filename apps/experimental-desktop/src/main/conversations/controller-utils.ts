@@ -52,6 +52,7 @@ export function validateSendBody(value: unknown): {
 	cwd?: string;
 	model?: string;
 	runtimeMode: CodexRuntimeMode;
+	nativeInput?: unknown[];
 	payload?: unknown;
 } {
 	const body = validateObject(value, "Message body must be an object");
@@ -68,6 +69,9 @@ export function validateSendBody(value: unknown): {
 			: {}),
 		...(typeof body.model === "string" && body.model.trim()
 			? { model: body.model }
+			: {}),
+		...(Array.isArray(body.nativeInput)
+			? { nativeInput: body.nativeInput }
 			: {}),
 		...(body.payload !== undefined ? { payload: body.payload } : {}),
 		runtimeMode: validateRuntimeMode(body.runtimeMode),

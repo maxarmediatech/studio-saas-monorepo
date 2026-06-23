@@ -122,6 +122,7 @@ export function useCodexSession(input: {
 							text: trimmed,
 							model: inputModel(),
 							runtimeMode: inputRuntimeMode(),
+							nativeInput: providerInput.nativeInput,
 							payload: composerPayload,
 						},
 					);
@@ -136,6 +137,7 @@ export function useCodexSession(input: {
 						text: trimmed,
 						model: inputModel(),
 						runtimeMode: inputRuntimeMode(),
+						nativeInput: providerInput.nativeInput,
 						payload: composerPayload,
 						...(input.selectedFolderPath
 							? { cwd: input.selectedFolderPath }

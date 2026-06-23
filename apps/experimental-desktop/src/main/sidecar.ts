@@ -456,6 +456,7 @@ function validateRuntimeThreadResumeBody(value: unknown): { threadId: string } {
 function validateRuntimeTurnStartBody(value: unknown): {
 	threadId: string;
 	text: string;
+	nativeInput?: unknown[];
 	cwd?: string;
 	model?: string;
 	runtimeMode?: CodexRuntimeMode;
@@ -470,6 +471,9 @@ function validateRuntimeTurnStartBody(value: unknown): {
 	return {
 		threadId: body.threadId,
 		text: body.text,
+		...(Array.isArray(body.nativeInput)
+			? { nativeInput: body.nativeInput }
+			: {}),
 		...(typeof body.cwd === "string" && body.cwd.trim()
 			? { cwd: body.cwd }
 			: {}),

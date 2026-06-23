@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { homedir } from "node:os";
+import { buildCodexTurnInput } from "./sidecar-codex-input";
 import {
 	type CodexIncomingRequest,
 	createCodexProtocol,
@@ -25,6 +26,7 @@ type CodexRuntime = {
 	sendTurn: (input: {
 		threadId: string;
 		text: string;
+		nativeInput?: unknown[];
 		cwd?: string;
 		model?: string;
 		runtimeMode?: CodexRuntimeMode;
@@ -76,6 +78,7 @@ export type CodexSessionRuntime = {
 	sendTurn: (input: {
 		threadId: string;
 		text: string;
+		nativeInput?: unknown[];
 		cwd?: string;
 		model?: string;
 		runtimeMode?: CodexRuntimeMode;
@@ -135,6 +138,7 @@ export function createCodexSessionRuntime(): CodexSessionRuntime {
 	async function sendTurn(input: {
 		threadId: string;
 		text: string;
+		nativeInput?: unknown[];
 		cwd?: string;
 		model?: string;
 		runtimeMode?: CodexRuntimeMode;
@@ -506,9 +510,10 @@ function startCodexRuntime(
 		});
 	}
 
-	function sendTurn(input: {
+	async function sendTurn(input: {
 		threadId: string;
 		text: string;
+		nativeInput?: unknown[];
 		cwd?: string;
 		model?: string;
 		runtimeMode?: CodexRuntimeMode;
@@ -522,7 +527,7 @@ function startCodexRuntime(
 			"turn/start",
 			{
 				threadId: input.threadId,
-				input: [{ type: "text", text: input.text }],
+				input: await buildCodexTurnInput(input),
 				cwd,
 				approvalPolicy: config.approvalPolicy,
 				sandboxPolicy: config.turnSandboxPolicy,

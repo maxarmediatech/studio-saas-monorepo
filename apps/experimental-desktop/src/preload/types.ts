@@ -406,6 +406,7 @@ export type ExperimentalDesktopApi = {
 		cwd?: string;
 		model?: string;
 		runtimeMode?: CodexRuntimeMode;
+		nativeInput?: unknown[];
 		payload?: unknown;
 	}) => Promise<ConversationDetail | undefined>;
 	sendConversationMessage: (
@@ -414,6 +415,7 @@ export type ExperimentalDesktopApi = {
 			text: string;
 			model?: string;
 			runtimeMode?: CodexRuntimeMode;
+			nativeInput?: unknown[];
 			payload?: unknown;
 		},
 	) => Promise<ConversationDetail | undefined>;

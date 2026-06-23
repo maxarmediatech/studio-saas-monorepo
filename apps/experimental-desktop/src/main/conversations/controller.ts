@@ -178,6 +178,7 @@ export function createConversationController(input: {
 			await startTurn(
 				{ ...activeTurn, threadId: thread.threadId },
 				promoted.text,
+				message.nativeInput,
 			);
 			return repo.getConversation(promoted.conversationId);
 		} catch (error) {
@@ -278,7 +279,11 @@ export function createConversationController(input: {
 					now: now(),
 				});
 			}
-			await startTurn({ ...turn, threadId }, runtimeText);
+			await startTurn(
+				{ ...turn, threadId },
+				runtimeText,
+				message.nativeInput,
+			);
 			return repo.getConversation(conversationId);
 		} catch (error) {
 			if (pendingTurns.has(turn.turnId) || activeTurnId === turn.turnId) {
@@ -490,6 +495,7 @@ export function createConversationController(input: {
 	async function startTurn(
 		input: ActiveTurn & { threadId: string },
 		text: string,
+		nativeInput?: unknown[],
 	) {
 		const turn = (await sidecarFetch("/runtime/turn/start", {
 			method: "POST",
@@ -497,6 +503,7 @@ export function createConversationController(input: {
 			body: JSON.stringify({
 				threadId: input.threadId,
 				text,
+				...(nativeInput ? { nativeInput } : {}),
 				cwd: input.cwd,
 				model: input.model,
 				runtimeMode: input.runtimeMode,
