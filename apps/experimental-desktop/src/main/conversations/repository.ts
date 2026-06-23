@@ -41,19 +41,21 @@ export class ConversationRepository {
 		cwd?: string;
 		model?: string;
 		runtimeMode: CodexRuntimeMode;
+		attachments?: unknown[];
 		now: string;
 	}) {
 		this.db
 			.prepare(
 				`INSERT INTO drafts
-				(id, text, cwd, model, runtime_mode, created_at, updated_at)
-				VALUES (@id, @text, @cwd, @model, @runtimeMode, @now, @now)`,
+				(id, text, cwd, model, runtime_mode, attachments_json, created_at, updated_at)
+				VALUES (@id, @text, @cwd, @model, @runtimeMode, @attachments, @now, @now)`,
 			)
 			.run({
 				...input,
 				text: input.text ?? "",
 				cwd: input.cwd ?? null,
 				model: input.model ?? null,
+				attachments: stringify(input.attachments ?? []),
 			});
 		return this.getDraft(input.id);
 	}
@@ -64,6 +66,7 @@ export class ConversationRepository {
 		cwd?: string;
 		model?: string;
 		runtimeMode?: CodexRuntimeMode;
+		attachments?: unknown[];
 		now: string;
 	}) {
 		const existing = this.getDraft(input.id);
@@ -74,6 +77,7 @@ export class ConversationRepository {
 				cwd: input.cwd,
 				model: input.model,
 				runtimeMode: input.runtimeMode ?? "read-only",
+				attachments: input.attachments,
 				now: input.now,
 			});
 		}
@@ -84,6 +88,7 @@ export class ConversationRepository {
 					cwd = @cwd,
 					model = @model,
 					runtime_mode = @runtimeMode,
+					attachments_json = @attachments,
 					updated_at = @now
 				WHERE id = @id`,
 			)
@@ -93,6 +98,9 @@ export class ConversationRepository {
 				cwd: input.cwd ?? existing.cwd ?? null,
 				model: input.model ?? existing.model ?? null,
 				runtimeMode: input.runtimeMode ?? existing.runtimeMode,
+				attachments: stringify(
+					input.attachments ?? existing.attachments,
+				),
 				now: input.now,
 			});
 		return this.getDraft(input.id);
@@ -1443,6 +1451,7 @@ type DraftRow = {
 	cwd: string | null;
 	model: string | null;
 	runtime_mode: CodexRuntimeMode;
+	attachments_json: string;
 	created_at: string;
 	updated_at: string;
 	promoted_conversation_id: string | null;
@@ -1557,6 +1566,7 @@ function mapDraft(row: DraftRow): DraftRecord {
 		cwd: row.cwd ?? undefined,
 		model: row.model ?? undefined,
 		runtimeMode: row.runtime_mode,
+		attachments: parseArray(row.attachments_json),
 		createdAt: row.created_at,
 		updatedAt: row.updated_at,
 		promotedConversationId: row.promoted_conversation_id ?? undefined,
@@ -1709,6 +1719,11 @@ function parseJson(value: string) {
 	} catch {
 		return null;
 	}
+}
+
+function parseArray(value: string) {
+	const parsed = parseJson(value);
+	return Array.isArray(parsed) ? parsed : [];
 }
 
 function titleFromText(text: string) {

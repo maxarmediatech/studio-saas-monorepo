@@ -1,9 +1,10 @@
 import type { ComposerMode } from "./composerTriggers";
 
 export type ComposerContextItem = {
-	type: "file" | "directory";
+	type: "file" | "directory" | "workspace" | "skill" | "terminal";
 	label: string;
 	path: string;
+	description?: string;
 };
 
 export type ComposerHistoryEntry = {

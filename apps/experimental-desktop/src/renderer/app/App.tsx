@@ -1,6 +1,7 @@
 import { IconSparkles } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import type { AppInfo, CodexRuntimeMode } from "../../preload/types";
+import type { ComposerContextItem } from "../components/composer/composerTypes";
 import { SessionComposer } from "../components/composer/SessionComposer";
 import { Sidebar, TopBar } from "../components/layout";
 import { RightPanel } from "../components/right-panel";
@@ -26,6 +27,9 @@ export function App() {
 		useState<CodexRuntimeMode>("read-only");
 	const [model, setModel] = useState("gpt-5.4-mini");
 	const [message, setMessage] = useState("");
+	const [composerContextItems, setComposerContextItems] = useState<
+		ComposerContextItem[]
+	>([]);
 	const [composerResetSignal, setComposerResetSignal] = useState(0);
 	const { theme, toggleTheme } = useThemeMode();
 	const workspace = useWorkspaceSelection();
@@ -50,13 +54,18 @@ export function App() {
 
 	useEffect(() => {
 		const timeout = window.setTimeout(() => {
-			if (message.trim() || session.draftId) {
-				void session.persistDraft(message);
+			if (
+				message.trim() ||
+				composerContextItems.length > 0 ||
+				session.draftId
+			) {
+				void session.persistDraft(message, composerContextItems);
 			}
 		}, 350);
 		return () => window.clearTimeout(timeout);
 	}, [
 		message,
+		composerContextItems,
 		model,
 		runtimeMode,
 		workspace.selectedFolderPath,
@@ -82,6 +91,7 @@ export function App() {
 
 	async function createNewSession() {
 		setMessage("");
+		setComposerContextItems([]);
 		setComposerResetSignal((signal) => signal + 1);
 		await session.createNewSession();
 	}
@@ -90,6 +100,7 @@ export function App() {
 		const opened = await session.openConversation(id);
 		if (opened) {
 			setMessage("");
+			setComposerContextItems([]);
 			setComposerResetSignal((signal) => signal + 1);
 		}
 	}
@@ -128,7 +139,9 @@ export function App() {
 								pendingRequests={session.pendingRequests}
 								workspaceRoot={workspace.selectedFolderPath}
 								resetSignal={composerResetSignal}
+								initialContextItems={composerContextItems}
 								onChange={setMessage}
+								onContextItemsChange={setComposerContextItems}
 								onModelChange={setModel}
 								onRuntimeModeChange={setRuntimeMode}
 								onSend={sendMessage}

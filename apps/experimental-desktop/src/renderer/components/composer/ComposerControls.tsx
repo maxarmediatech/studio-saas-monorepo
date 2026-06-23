@@ -142,6 +142,7 @@ export function IconButton(props: {
 	label: string;
 	children: ReactNode;
 	onClick: () => Promise<void>;
+	disabled?: boolean;
 }) {
 	return (
 		<Button
@@ -152,6 +153,7 @@ export function IconButton(props: {
 			size="icon-sm"
 			variant="outline"
 			type="button"
+			disabled={props.disabled}
 			title={props.label}
 			aria-label={props.label}
 			onClick={() => void props.onClick()}

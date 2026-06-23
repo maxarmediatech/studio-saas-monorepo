@@ -89,6 +89,7 @@ export function createConversationController(input: {
 			cwd: draft.cwd,
 			model: draft.model,
 			runtimeMode: draft.runtimeMode,
+			attachments: draft.attachments,
 			now: now(),
 		});
 	}
@@ -101,6 +102,7 @@ export function createConversationController(input: {
 			cwd: draft.cwd,
 			model: draft.model,
 			runtimeMode: draft.runtimeMode,
+			attachments: draft.attachments,
 			now: now(),
 		});
 	}

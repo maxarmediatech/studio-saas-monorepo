@@ -10,26 +10,26 @@ import type {
 	RespondSessionRequestInput,
 } from "../../../preload/types";
 import type { PendingRequest, RuntimeOption } from "../../app/types";
-import { cn } from "../../lib/utils";
 import { ComposerContextChips } from "./ComposerContextChips";
 import { ComposerFooter } from "./ComposerFooter";
+import { ComposerFrame } from "./ComposerFrame";
 import { ComposerMenu } from "./ComposerMenu";
 import { resolvePrimaryAction } from "./ComposerPrimaryButton";
 import { ComposerTextarea } from "./ComposerTextarea";
 import { ComposerToolbar } from "./ComposerToolbar";
-import { collectContextTokens, withContextItems } from "./composerContext";
+import { collectContextTokens } from "./composerContext";
 import { nextSelectableIndex } from "./composerKeyboard";
 import { buildComposerMenuItems } from "./composerMenuItems";
 import {
-	type ComposerCommand,
-	type ComposerMode,
-	detectComposerTrigger,
-	replaceComposerRange,
-	serializeComposerSendText,
-} from "./composerTriggers";
+	buildComposerPayload,
+	estimateComposerContextMetrics,
+	serializeComposerPayload,
+} from "./composerPayload";
+import { type ComposerMode, detectComposerTrigger } from "./composerTriggers";
 import type { ComposerContextItem } from "./composerTypes";
 import { PendingRequestDock } from "./PendingRequestDock";
 import { useComposerHistory } from "./useComposerHistory";
+import { useComposerMenuSelection } from "./useComposerMenuSelection";
 import { useWorkspaceFileMentions } from "./useWorkspaceFileMentions";
 
 export function SessionComposer(props: {
@@ -42,7 +42,9 @@ export function SessionComposer(props: {
 	pendingRequests: PendingRequest[];
 	workspaceRoot?: string;
 	resetSignal: number;
+	initialContextItems: ComposerContextItem[];
 	onChange: (value: string) => void;
+	onContextItemsChange: (items: ComposerContextItem[]) => void;
 	onModelChange: (model: string) => void;
 	onRuntimeModeChange: (mode: CodexRuntimeMode) => void;
 	onSend: (text: string) => Promise<boolean>;
@@ -68,7 +70,9 @@ export function SessionComposer(props: {
 	const [dismissedTriggerKey, setDismissedTriggerKey] = useState<
 		string | null
 	>(null);
-	const [contextItems, setContextItems] = useState<ComposerContextItem[]>([]);
+	const [contextItems, setContextItems] = useState<ComposerContextItem[]>(
+		props.initialContextItems,
+	);
 	const [userInputDrafts, setUserInputDrafts] = useState<
 		Record<string, Record<string, string>>
 	>({});
@@ -96,7 +100,7 @@ export function SessionComposer(props: {
 	}, [activeTrigger?.kind, activeTrigger?.query]);
 
 	useEffect(() => {
-		setContextItems([]);
+		setContextItems(props.initialContextItems);
 		setHistoryIndex(-1);
 		setSavedDraft(null);
 		setDismissedTriggerKey(null);
@@ -107,6 +111,10 @@ export function SessionComposer(props: {
 		setHistoryIndex,
 		setSavedDraft,
 	]);
+
+	useEffect(() => {
+		props.onContextItemsChange(contextItems);
+	}, [contextItems, props.onContextItemsChange]);
 
 	const menuItems = useMemo(() => {
 		return buildComposerMenuItems(activeTrigger, fileSearch);
@@ -123,10 +131,12 @@ export function SessionComposer(props: {
 			return;
 		}
 		const sentContextItems = contextItems;
-		const text = withContextItems(
-			serializeComposerSendText(sentText, mode),
-			sentContextItems,
-		);
+		const payload = buildComposerPayload({
+			mode,
+			text: sentText,
+			contextItems: sentContextItems,
+		});
+		const text = serializeComposerPayload(payload);
 		if (!text) {
 			return;
 		}
@@ -171,124 +181,61 @@ export function SessionComposer(props: {
 		});
 	}
 
-	async function chooseFile() {
+	async function attachFile() {
 		const path = await window.experimentalDesktop.openFile();
-		if (!path || !trigger) {
+		if (!path) {
 			return;
 		}
-		const label = path.slice(
-			Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\")) + 1,
-		);
-		setContextItems((items) =>
-			items.some((existing) => existing.path === path)
-				? items
-				: [...items, { type: "file", label, path }],
-		);
-		const next = replaceComposerRange(
-			props.value,
-			trigger.rangeStart,
-			trigger.rangeEnd,
-			`@${label} `,
-		);
-		props.onChange(next.text);
-		focusAt(next.cursor);
+		addContextItem({
+			type: "file",
+			label: basenameFromPath(path),
+			path,
+		});
 	}
 
-	function selectItem(item: ComposerCommand) {
-		const workspaceRoot = props.workspaceRoot;
-		if (item.disabled) {
+	async function attachFolder() {
+		const path = await window.experimentalDesktop.openDirectory();
+		if (!path) {
 			return;
 		}
-		if (item.id.startsWith("workspace-file:")) {
-			const file = fileSearch.results.find(
-				(result) => `workspace-file:${result.path}` === item.id,
-			);
-			if (file && trigger) {
-				setContextItems((items) =>
-					items.some((existing) => existing.path === file.path)
-						? items
-						: [
-								...items,
-								{
-									type: file.kind,
-									label: file.relativePath,
-									path: file.path,
-								},
-							],
-				);
-				const next = replaceComposerRange(
-					props.value,
-					trigger.rangeStart,
-					trigger.rangeEnd,
-					`@${file.name} `,
-				);
-				props.onChange(next.text);
-				focusAt(next.cursor);
-			}
-			return;
-		}
-		if (item.id === "current-workspace" && workspaceRoot && trigger) {
-			setContextItems((items) =>
-				items.some((existing) => existing.path === workspaceRoot)
-					? items
-					: [
-							...items,
-							{
-								type: "directory",
-								label: workspaceRoot,
-								path: workspaceRoot,
-							},
-						],
-			);
-			const next = replaceComposerRange(
-				props.value,
-				trigger.rangeStart,
-				trigger.rangeEnd,
-				"@workspace ",
-			);
-			props.onChange(next.text);
-			focusAt(next.cursor);
-			return;
-		}
-		if (item.id === "choose-file") {
-			void chooseFile();
-			return;
-		}
-		if (item.action === "mode" && item.mode) {
-			changeMode(item.mode);
-			if (trigger) {
-				const next = replaceComposerRange(
-					props.value,
-					trigger.rangeStart,
-					trigger.rangeEnd,
-					"",
-				);
-				props.onChange(next.text);
-				focusAt(next.cursor);
-			}
-			return;
-		}
-		if (item.action === "new-session") {
-			void createNewSession();
-			return;
-		}
-		if (item.action === "clear") {
-			props.onChange("");
-			setContextItems([]);
-			return;
-		}
-		if (!trigger) {
-			return;
-		}
-		const next = replaceComposerRange(
-			props.value,
-			trigger.rangeStart,
-			trigger.rangeEnd,
-			item.insertText ?? `/${item.trigger} `,
-		);
-		props.onChange(next.text);
-		focusAt(next.cursor);
+		addContextItem({
+			type: "directory",
+			label: basenameFromPath(path),
+			path,
+		});
 	}
+
+	function attachWorkspace() {
+		if (!props.workspaceRoot) {
+			return;
+		}
+		addContextItem({
+			type: "workspace",
+			label: props.workspaceRoot,
+			path: props.workspaceRoot,
+			description: "Current workspace root",
+		});
+	}
+
+	function addContextItem(item: ComposerContextItem) {
+		setContextItems((items) =>
+			items.some((existing) => existing.path === item.path)
+				? items
+				: [...items, item],
+		);
+	}
+
+	const { selectItem } = useComposerMenuSelection({
+		trigger,
+		value: props.value,
+		workspaceRoot: props.workspaceRoot,
+		fileResults: fileSearch.results,
+		onChange: props.onChange,
+		focusAt,
+		changeMode,
+		createNewSession,
+		setContextItems,
+	});
 
 	function navigateHistory(direction: "up" | "down") {
 		if (history.length === 0) {
@@ -394,6 +341,7 @@ export function SessionComposer(props: {
 		0,
 		Math.max(0, 8 - contextItems.length),
 	);
+	const contextMetrics = estimateComposerContextMetrics(contextItems);
 	const primaryAction = resolvePrimaryAction({
 		mode,
 		disabled: props.disabled,
@@ -412,54 +360,47 @@ export function SessionComposer(props: {
 	}
 
 	return (
-		<section
-			className="isolate flex flex-col overflow-visible border-0 bg-transparent shadow-none"
-			aria-label="Codex session composer"
-		>
-			<PendingRequestDock
-				requests={props.pendingRequests}
-				drafts={userInputDrafts}
-				onDraftChange={(requestId, questionId, value) =>
-					setUserInputDrafts((drafts) => ({
-						...drafts,
-						[requestId]: {
-							...(drafts[requestId] ?? {}),
-							[questionId]: value,
-						},
-					}))
-				}
-				onRespond={props.onRespondRequest}
-			/>
-			<div
-				className={cn(
-					"relative z-2 flex min-h-[132px] flex-col rounded-[18px] border border-[var(--desktop-inbox-border)] bg-[var(--desktop-inbox)] [box-shadow:0_1px_0_color-mix(in_srgb,var(--desktop-strong)_3%,transparent),0_10px_22px_-18px_var(--desktop-shadow)]",
-					mode === "shell" &&
-						"border-[color-mix(in_srgb,#32d583_34%,var(--desktop-inbox-border))]",
-					mode === "plan" &&
-						"border-[color-mix(in_srgb,#f7c948_34%,var(--desktop-inbox-border))]",
-					mode === "build" &&
-						"border-[color-mix(in_srgb,#0a84ff_34%,var(--desktop-inbox-border))]",
-					mode === "review" &&
-						"border-[color-mix(in_srgb,#ff7a45_30%,var(--desktop-inbox-border))]",
-				)}
-			>
-				{menuItems.length > 0 ? (
+		<ComposerFrame
+			mode={mode}
+			pendingDock={
+				<PendingRequestDock
+					requests={props.pendingRequests}
+					drafts={userInputDrafts}
+					onDraftChange={(requestId, questionId, value) =>
+						setUserInputDrafts((drafts) => ({
+							...drafts,
+							[requestId]: {
+								...(drafts[requestId] ?? {}),
+								[questionId]: value,
+							},
+						}))
+					}
+					onRespond={props.onRespondRequest}
+				/>
+			}
+			menu={
+				menuItems.length > 0 ? (
 					<ComposerMenu
 						items={menuItems}
 						activeIndex={activeIndex}
 						onHover={setActiveIndex}
 						onSelect={selectItem}
 					/>
-				) : null}
+				) : null
+			}
+			chips={
 				<ComposerContextChips
 					contextItems={contextItems}
 					textTokens={contextTokens}
+					metrics={contextMetrics}
 					onRemoveContext={(path) =>
 						setContextItems((items) =>
 							items.filter((item) => item.path !== path),
 						)
 					}
 				/>
+			}
+			editor={
 				<ComposerTextarea
 					ref={textareaRef}
 					value={props.value}
@@ -473,6 +414,8 @@ export function SessionComposer(props: {
 					onSelectionChange={syncSelection}
 					onKeyDown={onKeyDown}
 				/>
+			}
+			toolbar={
 				<ComposerToolbar
 					mode={mode}
 					model={props.model}
@@ -484,9 +427,19 @@ export function SessionComposer(props: {
 					onRuntimeModeChange={props.onRuntimeModeChange}
 					onNewSession={createNewSession}
 					onPrimaryAction={onPrimaryAction}
+					onAttachFile={attachFile}
+					onAttachFolder={attachFolder}
+					onAttachWorkspace={attachWorkspace}
+					canAttachWorkspace={Boolean(props.workspaceRoot)}
 				/>
-			</div>
-			<ComposerFooter mode={mode} />
-		</section>
+			}
+			footer={<ComposerFooter mode={mode} />}
+		/>
+	);
+}
+
+function basenameFromPath(path: string) {
+	return path.slice(
+		Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\")) + 1,
 	);
 }

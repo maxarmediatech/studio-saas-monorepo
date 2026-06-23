@@ -41,7 +41,7 @@ export function useCodexSession(input: {
 		setConversations(await window.experimentalDesktop.listConversations());
 	}
 
-	async function persistDraft(text: string) {
+	async function persistDraft(text: string, attachments: unknown[] = []) {
 		if (conversationId) {
 			return;
 		}
@@ -49,6 +49,7 @@ export function useCodexSession(input: {
 			text,
 			model: inputModel(),
 			runtimeMode: inputRuntimeMode(),
+			attachments,
 			...(input.selectedFolderPath
 				? { cwd: input.selectedFolderPath }
 				: {}),

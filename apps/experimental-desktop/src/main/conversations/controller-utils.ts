@@ -23,6 +23,7 @@ export function validateDraftBody(value: unknown): {
 	cwd?: string;
 	model?: string;
 	runtimeMode: CodexRuntimeMode;
+	attachments?: unknown[];
 } {
 	if (value === null || value === undefined) {
 		return { runtimeMode: "read-only" };
@@ -35,6 +36,9 @@ export function validateDraftBody(value: unknown): {
 			: {}),
 		...(typeof body.model === "string" && body.model.trim()
 			? { model: body.model }
+			: {}),
+		...(Array.isArray(body.attachments)
+			? { attachments: body.attachments }
 			: {}),
 		runtimeMode: validateRuntimeMode(body.runtimeMode),
 	};
