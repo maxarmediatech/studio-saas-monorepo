@@ -325,6 +325,13 @@ P0 progress:
 - `useCodexSession.ts` exposes `sendAdmittedRequest` and carries admitted request metadata through the legacy IPC payload for compatibility.
 - No new dependency was added for this slice; validation is currently `type-check` and `build` until the focused test runner decision is made.
 
+P0 slice 2 progress:
+- Added app-local Vitest config and scripts, using the repo's existing Vitest 2.x line.
+- Added focused tests for mode policy, send admission, and Codex adapter behavior.
+- Marked `useCodexSession.sendMessage(payload)` as legacy compatibility until `ComposerRegion` owns admission.
+- Added a small Codex admitted transport mapper so `useCodexSession.ts` no longer hand-builds the Codex IPC payload.
+- Admission warnings are now surfaced in the event log as `admission.warning` entries until a dedicated composer warning UI exists.
+
 ## P1 — Request Parts, Safety, Budget
 
 ### 1. Add Request Parts

@@ -11,6 +11,7 @@ import type { PendingRequest, TranscriptItem } from "../app/types";
 import type { ComposerPayload } from "../components/composer/composerPayload";
 import type { AdmittedComposerRequest } from "../components/composer/core/composerProviderTypes";
 import { admitComposerRequest } from "../components/composer/core/composerSendController";
+import { toCodexAdmittedSendInput } from "../conversations/codexAdmittedTransport";
 import { defaultAnswers } from "./pendingRequestDefaults";
 
 export function useCodexSession(input: {
@@ -104,6 +105,7 @@ export function useCodexSession(input: {
 	}
 
 	async function sendMessage(payload: ComposerPayload) {
+		// TODO(P0): legacy compatibility only. Remove once ComposerRegion owns admission.
 		const admission = admitComposerRequest({
 			payload,
 			model: inputModel(),
@@ -121,19 +123,12 @@ export function useCodexSession(input: {
 	}
 
 	async function sendAdmittedRequest(request: AdmittedComposerRequest) {
-		const trimmed = request.providerInput.prompt;
-		const composerPayload = {
-			...request.providerInput.legacyPayload,
-			admittedRequest: {
-				id: request.id,
-				requestParts: request.requestParts,
-				admission: request.admission,
-			},
-		};
-		if (!trimmed) {
+		const codexInput = toCodexAdmittedSendInput(request);
+		if (!codexInput.text.trim()) {
 			setStatus("Message required");
 			return false;
 		}
+		appendAdmissionWarnings(request);
 		setIsSending(true);
 		setIsTurnActive(true);
 		try {
@@ -143,11 +138,11 @@ export function useCodexSession(input: {
 					await window.experimentalDesktop.sendConversationMessage(
 						conversationId,
 						{
-							text: trimmed,
-							model: request.providerInput.model,
-							runtimeMode: request.providerInput.runtimeMode,
-							nativeInput: request.providerInput.nativeInput,
-							payload: composerPayload,
+							text: codexInput.text,
+							model: codexInput.model,
+							runtimeMode: codexInput.runtimeMode,
+							nativeInput: codexInput.nativeInput,
+							payload: codexInput.payload,
 						},
 					);
 				if (conversation) {
@@ -158,11 +153,11 @@ export function useCodexSession(input: {
 				const conversation =
 					await window.experimentalDesktop.promoteDraftAndSend({
 						draftId,
-						text: trimmed,
-						model: request.providerInput.model,
-						runtimeMode: request.providerInput.runtimeMode,
-						nativeInput: request.providerInput.nativeInput,
-						payload: composerPayload,
+						text: codexInput.text,
+						model: codexInput.model,
+						runtimeMode: codexInput.runtimeMode,
+						nativeInput: codexInput.nativeInput,
+						payload: codexInput.payload,
 						...(input.selectedFolderPath
 							? { cwd: input.selectedFolderPath }
 							: {}),
@@ -445,6 +440,25 @@ export function useCodexSession(input: {
 			[
 				...events,
 				`${new Date(event.time).toLocaleTimeString()} ${event.type} ${summarizeSessionEvent(event)}`,
+			].slice(-80),
+		);
+	}
+
+	function appendAdmissionWarnings(request: AdmittedComposerRequest) {
+		const warnings = [
+			...request.admission.warnings,
+			...request.admission.capabilityWarnings,
+		];
+		if (warnings.length === 0) {
+			return;
+		}
+		const timestamp = new Date().toLocaleTimeString();
+		setEventLog((events) =>
+			[
+				...events,
+				...warnings.map(
+					(warning) => `${timestamp} admission.warning ${warning}`,
+				),
 			].slice(-80),
 		);
 	}
