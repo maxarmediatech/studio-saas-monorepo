@@ -1,0 +1,419 @@
+# Composer + Conversation Execution Checklist
+
+Implementation checklist for `COMPOSER_CONVERSATION_MASTER_PLAN.md`.
+
+```txt
+Created: 2026-06-23
+Use with: COMPOSER_CONVERSATION_MASTER_PLAN.md, COMPOSER_PARITY_IMPLEMENTATION_PLAN.md
+```
+
+## Ground Rules
+
+- Optimize for the clean architecture, not easiest migration.
+- Current data can break.
+- Codex ships first.
+- Queue ships with the first real architecture pass.
+- Shell is tracked but blocked until capability policy is ready.
+- DB changes are allowed now.
+- Keep files focused and under the repo LOC guidance.
+
+## Phase 0 — Router And App Shell
+
+Goal: `App.tsx` stops being the owner of app behavior.
+
+Add:
+
+```txt
+src/renderer/app/router.tsx
+src/renderer/app/routeTree.tsx
+src/renderer/app/DesktopLayout.tsx
+src/renderer/app/providers.tsx
+src/renderer/routes/root.tsx
+src/renderer/routes/draft.$draftId.tsx
+src/renderer/routes/conversation.$conversationId.tsx
+src/renderer/routes/capture.tsx
+```
+
+Tasks:
+
+- Add TanStack Router dependency.
+- Create route tree with `/`, `/draft/:draftId`, `/conversation/:conversationId`, `/capture`.
+- Move shell grid/sidebar/right inspector into `DesktopLayout`.
+- Keep current UI mounted through compatibility route while stores are extracted.
+- Make sidebar actions navigate, not mutate global app state.
+- Add route not-found handling for missing conversations/drafts.
+
+Tests/gates:
+
+- Typecheck.
+- Route param parsing tests if practical.
+- Manual smoke: new route, conversation route, capture route render without send behavior changing.
+
+Done:
+
+- `App.tsx` is only providers + router.
+- Route owns active identity.
+- No composer draft state in `App.tsx`.
+
+## Phase 1 — Main DB And Domain Schema
+
+Goal: create durable storage for the real product shape before renderer depends on it.
+
+Add or migrate:
+
+```txt
+src/main/conversations/admitted-request.ts
+src/main/conversations/provider-envelope.ts
+src/main/conversations/message-parts.ts
+src/main/conversations/queue.ts
+src/main/conversations/quick-capture.ts
+src/main/conversations/projector.ts
+```
+
+Schema work:
+
+- Expand `message_parts.type` for text, file/image/context refs, tool calls/results, approvals, diffs, app actions, quick capture, compaction, errors, raw.
+- Add `admitted_requests`.
+- Add `queue_items`.
+- Add `quick_captures`.
+- Add provider envelope fields where needed.
+- Store request parts and admission result as durable JSON.
+- Store provider target separately from provider-native payload.
+
+Validation:
+
+- validate admitted request idempotency.
+- validate draft/conversation route target.
+- validate provider envelope against admitted parts.
+- validate local files and images at main boundary.
+- validate runtime mode against capability policy.
+- validate queue item again at execution time.
+
+Tests/gates:
+
+- Repository tests for new tables.
+- Validation tests for rejected injected file paths.
+- Typecheck/build.
+
+Done:
+
+- DB can persist all row types needed by the planned timeline.
+- Main can reject invalid admitted/provider envelopes before runtime.
+
+## Phase 2 — Conversation Client Layer
+
+Goal: replace `useCodexSession.ts` with smaller route/resource/projection pieces.
+
+Add:
+
+```txt
+src/renderer/conversations/conversationClient.ts
+src/renderer/conversations/conversationHistoryStore.ts
+src/renderer/conversations/conversationResourceStore.ts
+src/renderer/conversations/conversationEventStore.ts
+src/renderer/conversations/conversationProjection.ts
+src/renderer/conversations/conversationTransport.ts
+src/renderer/conversations/useConversationRoute.ts
+```
+
+Move out of `useCodexSession.ts`:
+
+- list conversations.
+- load conversation detail.
+- subscribe/unsubscribe.
+- event dedupe.
+- pending request derivation.
+- status derivation.
+- transcript/timeline projection.
+- interrupt/respond transport.
+
+Rules:
+
+- Event subscription is scoped to active route id.
+- Projection is pure/testable where possible.
+- Conversation history store is independent from active conversation detail.
+
+Tests/gates:
+
+- Projection tests for message created, delta, completed, failed, approval pending/resolved, compaction.
+- Subscription cleanup test if practical.
+- Typecheck/build.
+
+Done:
+
+- `useCodexSession.ts` is deleted or a thin compatibility shim.
+- Renderer projection no longer lives in the transport hook.
+
+## Phase 3 — Composer Domain Inside Routes
+
+Goal: composer becomes route-scoped and provider-neutral.
+
+Use `COMPOSER_PARITY_IMPLEMENTATION_PLAN.md` for detailed composer-domain implementation.
+
+Add:
+
+```txt
+src/renderer/components/composer/ComposerRegion.tsx
+src/renderer/components/composer/core/composerDraftTypes.ts
+src/renderer/components/composer/core/composerDraftStore.ts
+src/renderer/components/composer/core/composerDraftSync.ts
+src/renderer/components/composer/core/composerRequestParts.ts
+src/renderer/components/composer/core/composerSendController.ts
+src/renderer/components/composer/core/composerModePolicy.ts
+src/renderer/components/composer/core/runtimeCapabilityMap.ts
+src/renderer/components/composer/core/composerProviderTypes.ts
+src/renderer/components/composer/adapters/codexComposerAdapter.ts
+```
+
+Tasks:
+
+- Create `ComposerDraft` with text, mode, runtime selection, model target, context items, attachments, updatedAt.
+- Build `ComposerRequestPart[]` from draft.
+- Create `AdmittedComposerRequest`.
+- Create Codex adapter branch.
+- Move draft debounce/hydration/clear to `ComposerDraftSync`.
+- Remove parent echo state from `App.tsx`.
+- Keep current textarea initially.
+
+Tests/gates:
+
+- Request parts order/dedupe tests.
+- Attachment regression tests.
+- Admission tests.
+- Draft sync clear-on-success and preserve-on-failure tests.
+- Typecheck/build.
+
+Done:
+
+- `ComposerRegion` receives route/session context only.
+- `SessionComposer` no longer orchestrates admission.
+- `useCodexSession` does not build provider input.
+
+## Phase 4 — Admitted Send Endpoints
+
+Goal: renderer sends explicit admitted requests.
+
+Add IPC/main endpoints:
+
+```txt
+conversation:promote-draft-and-send-admitted
+conversation:send-admitted-message
+conversation:enqueue-admitted-message
+conversation:queue-update
+conversation:queue-execute-next
+```
+
+Tasks:
+
+- Promote draft route send into persisted conversation.
+- Continue conversation route send.
+- Persist admitted request before runtime handoff.
+- Create user/assistant placeholders from admitted request.
+- Start Codex runtime from Codex provider envelope.
+- Revalidate queued item before execution.
+- Return conversation id after promotion for route navigation.
+
+Tests/gates:
+
+- Promote draft succeeds and persists admitted request.
+- Promotion failure preserves draft.
+- Follow-up send creates turn/messages.
+- Invalid provider envelope rejected.
+- Queue item admitted while busy.
+- Typecheck/build.
+
+Done:
+
+- First send navigates from `/draft/:draftId` to `/conversation/:conversationId`.
+- Follow-up send uses admitted endpoints.
+- Main validates before provider runtime.
+
+## Phase 5 — Queue From Beginning
+
+Goal: queue is core behavior, not a later patch.
+
+Add:
+
+```txt
+src/renderer/components/composer/core/composerQueueStore.ts
+src/renderer/components/composer/ComposerQueuePanel.tsx
+src/main/conversations/queue.ts
+```
+
+Behavior:
+
+- If conversation is busy, admit to queue if enabled.
+- If queue disabled, block with clear busy state.
+- Queue item stores draft snapshot, request parts, admission result, provider target, validation status.
+- Edit/remove/reorder/clear/pause/resume.
+- Execute only when route/runtime gate is ready.
+- Revalidate before execution.
+
+Initial limits:
+
+- max queued sends: 20.
+- max input length: 20,000.
+- max serialized queue state: 256 KB.
+
+Tests/gates:
+
+- Queue admission while busy.
+- Queue rejection for invalid attachment.
+- Pause/resume.
+- Revalidation rejects stale unsafe path.
+- Typecheck/build.
+
+Done:
+
+- Queue works for Codex path.
+- Queue state appears in timeline or composer region.
+
+## Phase 6 — Quick Capture
+
+Goal: studio operations intake exists as first-class workflow.
+
+Add:
+
+```txt
+src/renderer/routes/capture.tsx
+src/renderer/capture/quickCaptureStore.ts
+src/renderer/capture/QuickCaptureView.tsx
+src/main/capture/controller.ts
+```
+
+Capture targets:
+
+- note
+- task
+- reminder
+- calendar item
+- client/project/shoot/deliverable reference
+- file/context attachment
+- later Stuwiz API sync
+
+Rules:
+
+- Quick capture can create an app action without provider runtime.
+- It can optionally create or append to a conversation.
+- It uses shared request parts and main validation for attachments.
+
+Tests/gates:
+
+- Create local quick capture.
+- Attach file safely.
+- Convert capture to conversation/action.
+- Typecheck/build.
+
+Done:
+
+- Everyday app path exists before UI polish.
+
+## Phase 7 — Timeline Projection And Renderer
+
+Goal: replace text-only `SessionPanel`.
+
+Add:
+
+```txt
+src/renderer/conversations/conversationTimelineModel.ts
+src/renderer/components/conversation/ConversationStage.tsx
+src/renderer/components/conversation/ConversationTimeline.tsx
+src/renderer/components/conversation/TimelineRow.tsx
+src/renderer/components/conversation/PendingRequestLayer.tsx
+src/renderer/components/conversation/ConversationStatusBar.tsx
+```
+
+Rows:
+
+- user message.
+- assistant message.
+- streaming delta.
+- file/image/context part.
+- approval/request.
+- queued item.
+- tool/command.
+- app action.
+- quick capture.
+- compaction.
+- error.
+
+Tasks:
+
+- Project DB detail + live events into timeline rows.
+- Render pending approvals outside text transcript.
+- Keep `SessionPanel` only as temporary debug view if needed.
+- Add attachment/image rendering from persisted message parts.
+
+Tests/gates:
+
+- Projection tests for row types.
+- Component smoke tests if available.
+- Typecheck/build.
+
+Done:
+
+- Timeline renders message parts, not text-only transcript.
+
+## Phase 8 — Provider Expansion Foundation
+
+Goal: Codex remains first, but architecture is ready.
+
+Add adapter stubs:
+
+```txt
+src/renderer/components/composer/adapters/opencodeComposerAdapter.ts
+src/renderer/components/composer/adapters/acpComposerAdapter.ts
+src/renderer/components/composer/adapters/apiChatComposerAdapter.ts
+```
+
+Tasks:
+
+- Keep stubs non-runtime until provider implementation starts.
+- Add capability records for OpenCode, ACP, API chat.
+- Add mode policy tests for provider differences.
+- Keep shell blocked unless provider capability explicitly allows it.
+
+Done:
+
+- Adding another provider means adding an adapter/capability branch, not rewriting composer.
+
+## Phase 9 — Editor And Polish
+
+Goal: improve interaction only after architecture is stable.
+
+Tasks:
+
+- Add highlight overlay for mentions/slash/skill/terminal tokens.
+- Revisit Lexical vs contenteditable only after parser/draft/send/timeline tests exist.
+- Add keyboard and IME tests where possible.
+- Add virtualization if timelines need it.
+
+Done:
+
+- UI richness builds on stable domain parts.
+
+## Final Validation Gate
+
+Before handoff:
+
+- `pnpm --filter @repo/experimental-desktop type-check` or repo equivalent.
+- `pnpm --filter @repo/experimental-desktop build` or repo equivalent.
+- targeted tests for composer request parts, admission, queue, projection, main validation.
+- manual smoke: draft route -> first send -> conversation route -> follow-up -> queue -> approval -> attachment render -> quick capture.
+
+## Implementation Order Summary
+
+```txt
+0. Router/app shell.
+1. DB/domain schema.
+2. Conversation client/projection stores.
+3. Route-scoped composer domain.
+4. Admitted send endpoints.
+5. Queue.
+6. Quick capture.
+7. Timeline renderer.
+8. Provider expansion foundation.
+9. Editor/polish.
+```
+
+Ship the spine first. Then make it beautiful.
