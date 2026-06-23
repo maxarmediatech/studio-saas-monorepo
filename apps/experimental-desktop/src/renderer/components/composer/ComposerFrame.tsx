@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { DragEvent, ReactNode } from "react";
 import { cn } from "../../lib/utils";
 import type { ComposerMode } from "./composerTriggers";
 
@@ -11,11 +11,20 @@ export function ComposerFrame(props: {
 	editor: ReactNode;
 	toolbar: ReactNode;
 	footer: ReactNode;
+	dragActive?: boolean;
+	onDragEnter?: (event: DragEvent<HTMLElement>) => void;
+	onDragOver?: (event: DragEvent<HTMLElement>) => void;
+	onDragLeave?: (event: DragEvent<HTMLElement>) => void;
+	onDrop?: (event: DragEvent<HTMLElement>) => void;
 }) {
 	return (
 		<section
 			className="isolate flex flex-col overflow-visible border-0 bg-transparent shadow-none"
 			aria-label="Codex session composer"
+			onDragEnter={props.onDragEnter}
+			onDragOver={props.onDragOver}
+			onDragLeave={props.onDragLeave}
+			onDrop={props.onDrop}
 		>
 			{props.pendingDock}
 			<div
@@ -31,6 +40,11 @@ export function ComposerFrame(props: {
 						"border-[color-mix(in_srgb,#ff7a45_30%,var(--desktop-inbox-border))]",
 				)}
 			>
+				{props.dragActive ? (
+					<div className="pointer-events-none absolute inset-2 z-10 grid place-items-center rounded-[14px] border border-dashed border-[color-mix(in_srgb,#0a84ff_48%,var(--desktop-inbox-border))] bg-[color-mix(in_srgb,var(--desktop-inbox)_88%,transparent)] text-[13px] font-semibold text-[var(--desktop-strong)]">
+						Drop files to attach
+					</div>
+				) : null}
 				{props.menu}
 				{props.chips}
 				{props.attachments}

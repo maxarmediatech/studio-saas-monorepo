@@ -18,6 +18,10 @@ import { ComposerMenu } from "./ComposerMenu";
 import { resolvePrimaryAction } from "./ComposerPrimaryButton";
 import { ComposerTextarea } from "./ComposerTextarea";
 import { ComposerToolbar } from "./ComposerToolbar";
+import {
+	basenameFromPath,
+	createComposerAttachment,
+} from "./composerAttachments";
 import { collectContextTokens } from "./composerContext";
 import { nextSelectableIndex } from "./composerKeyboard";
 import { buildComposerMenuItems } from "./composerMenuItems";
@@ -29,6 +33,8 @@ import {
 import { type ComposerMode, detectComposerTrigger } from "./composerTriggers";
 import type { ComposerAttachment, ComposerContextItem } from "./composerTypes";
 import { PendingRequestDock } from "./PendingRequestDock";
+import { useComposerAttachments } from "./useComposerAttachments";
+import { useComposerFileDrop } from "./useComposerFileDrop";
 import { useComposerHistory } from "./useComposerHistory";
 import { useComposerMenuSelection } from "./useComposerMenuSelection";
 import { useWorkspaceFileMentions } from "./useWorkspaceFileMentions";
@@ -78,12 +84,22 @@ export function SessionComposer(props: {
 	const [contextItems, setContextItems] = useState<ComposerContextItem[]>(
 		props.initialContextItems,
 	);
-	const [attachments, setAttachments] = useState<ComposerAttachment[]>(
-		props.initialAttachments,
-	);
+	const {
+		attachments,
+		addAttachment,
+		addAttachmentPaths,
+		removeAttachment,
+		clearAttachments,
+		setAttachments,
+	} = useComposerAttachments({
+		initialAttachments: props.initialAttachments,
+		resetSignal: props.resetSignal,
+		onAttachmentsChange: props.onAttachmentsChange,
+	});
 	const [userInputDrafts, setUserInputDrafts] = useState<
 		Record<string, Record<string, string>>
 	>({});
+	const fileDrop = useComposerFileDrop({ onDropPaths: addAttachmentPaths });
 
 	const trigger = useMemo(() => {
 		return mode === "shell"
@@ -109,7 +125,6 @@ export function SessionComposer(props: {
 
 	useEffect(() => {
 		setContextItems(props.initialContextItems);
-		setAttachments(props.initialAttachments);
 		setHistoryIndex(-1);
 		setSavedDraft(null);
 		setDismissedTriggerKey(null);
@@ -124,10 +139,6 @@ export function SessionComposer(props: {
 	useEffect(() => {
 		props.onContextItemsChange(contextItems);
 	}, [contextItems, props.onContextItemsChange]);
-
-	useEffect(() => {
-		props.onAttachmentsChange(attachments);
-	}, [attachments, props.onAttachmentsChange]);
 
 	const menuItems = useMemo(() => {
 		return buildComposerMenuItems(activeTrigger, fileSearch);
@@ -170,7 +181,7 @@ export function SessionComposer(props: {
 			].slice(0, 80),
 		);
 		setContextItems([]);
-		setAttachments([]);
+		clearAttachments();
 		setHistoryIndex(-1);
 		setSavedDraft(null);
 	}
@@ -178,7 +189,7 @@ export function SessionComposer(props: {
 	async function createNewSession() {
 		props.onChange("");
 		setContextItems([]);
-		setAttachments([]);
+		clearAttachments();
 		setHistoryIndex(-1);
 		setSavedDraft(null);
 		await props.onNewSession();
@@ -203,12 +214,7 @@ export function SessionComposer(props: {
 		if (!path) {
 			return;
 		}
-		addAttachment({
-			id: globalThis.crypto.randomUUID(),
-			kind: imageAttachmentKind(path),
-			name: basenameFromPath(path),
-			path,
-		});
+		addAttachment(createComposerAttachment(path));
 	}
 
 	async function attachFolder() {
@@ -240,14 +246,6 @@ export function SessionComposer(props: {
 			items.some((existing) => existing.path === item.path)
 				? items
 				: [...items, item],
-		);
-	}
-
-	function addAttachment(attachment: ComposerAttachment) {
-		setAttachments((items) =>
-			items.some((existing) => existing.path === attachment.path)
-				? items
-				: [...items, attachment],
 		);
 	}
 
@@ -400,6 +398,11 @@ export function SessionComposer(props: {
 	return (
 		<ComposerFrame
 			mode={mode}
+			dragActive={fileDrop.dragActive}
+			onDragEnter={fileDrop.onDragEnter}
+			onDragOver={fileDrop.onDragOver}
+			onDragLeave={fileDrop.onDragLeave}
+			onDrop={fileDrop.onDrop}
 			pendingDock={
 				<PendingRequestDock
 					requests={props.pendingRequests}
@@ -441,11 +444,7 @@ export function SessionComposer(props: {
 			attachments={
 				<ComposerAttachmentStrip
 					attachments={attachments}
-					onRemove={(id) =>
-						setAttachments((items) =>
-							items.filter((item) => item.id !== id),
-						)
-					}
+					onRemove={removeAttachment}
 				/>
 			}
 			editor={
@@ -484,14 +483,4 @@ export function SessionComposer(props: {
 			footer={<ComposerFooter mode={mode} />}
 		/>
 	);
-}
-
-function basenameFromPath(path: string) {
-	return path.slice(
-		Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\")) + 1,
-	);
-}
-
-function imageAttachmentKind(path: string): ComposerAttachment["kind"] {
-	return /\.(avif|gif|jpe?g|png|webp)$/i.test(path) ? "image" : "file";
 }
