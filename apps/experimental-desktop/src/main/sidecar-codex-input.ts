@@ -2,11 +2,11 @@ import { stat } from "node:fs/promises";
 import {
 	formatAttachmentLimitBytes,
 	isImageAttachmentMimeType,
+	isProviderNativeImageMimeType,
 	isSupportedAttachmentMimeType,
 	MAX_ATTACHMENT_SIZE_BYTES,
 	MAX_COMPOSER_ATTACHMENTS,
 } from "../shared/composerAttachmentPolicy";
-import { normalizeLocalImageAttachment } from "./composer-image-normalizer";
 
 export async function buildCodexTurnInput(input: {
 	text: string;
@@ -36,20 +36,9 @@ export async function buildCodexTurnInput(input: {
 			await validateLocalAttachment(record.path, record.mimeType, {
 				imageOnly: true,
 			});
-			const normalized = await normalizeLocalImageAttachment({
-				path: record.path,
-				mimeType: record.mimeType,
-			});
-			await validateLocalAttachment(
-				normalized.path,
-				normalized.mimeType,
-				{
-					imageOnly: true,
-				},
-			);
 			parts.push({
 				type: "localImage",
-				path: normalized.path,
+				path: record.path,
 			});
 			continue;
 		}
@@ -87,6 +76,11 @@ async function validateLocalAttachment(
 ) {
 	if (input?.imageOnly && !isImageAttachmentMimeType(mimeType)) {
 		throw new Error("Native image input must use an image MIME type.");
+	}
+	if (input?.imageOnly && !isProviderNativeImageMimeType(mimeType)) {
+		throw new Error(
+			"Native image input must be normalized before provider handoff.",
+		);
 	}
 	if (!isSupportedAttachmentMimeType(mimeType)) {
 		throw new Error("Native file input uses an unsupported MIME type.");

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { homedir } from "node:os";
+import { normalizeLocalImageAttachment } from "../composer-image-normalizer";
 import type { SidecarManager, SidecarRuntime } from "../server";
 import type {
 	CodexRuntimeEvent,
@@ -497,13 +498,17 @@ export function createConversationController(input: {
 		text: string,
 		nativeInput?: unknown[],
 	) {
+		const providerNativeInput =
+			await normalizeNativeInputForProvider(nativeInput);
 		const turn = (await sidecarFetch("/runtime/turn/start", {
 			method: "POST",
 			headers: { "content-type": "application/json" },
 			body: JSON.stringify({
 				threadId: input.threadId,
 				text,
-				...(nativeInput ? { nativeInput } : {}),
+				...(providerNativeInput
+					? { nativeInput: providerNativeInput }
+					: {}),
 				cwd: input.cwd,
 				model: input.model,
 				runtimeMode: input.runtimeMode,
@@ -517,6 +522,38 @@ export function createConversationController(input: {
 			providerTurnId: turn.turnId,
 			now: now(),
 		});
+	}
+
+	async function normalizeNativeInputForProvider(nativeInput?: unknown[]) {
+		if (!nativeInput?.length) {
+			return undefined;
+		}
+		const normalized = await Promise.all(
+			nativeInput.map(async (part) => {
+				if (!part || typeof part !== "object" || Array.isArray(part)) {
+					return part;
+				}
+				const record = part as Record<string, unknown>;
+				if (
+					record.type !== "local_image" ||
+					typeof record.path !== "string" ||
+					typeof record.mimeType !== "string"
+				) {
+					return part;
+				}
+				const image = await normalizeLocalImageAttachment({
+					path: record.path,
+					mimeType: record.mimeType,
+				});
+				return {
+					...record,
+					path: image.path,
+					mimeType: image.mimeType,
+					normalized: image.normalized,
+				};
+			}),
+		);
+		return normalized;
 	}
 
 	async function ensureRuntimeEvents() {
