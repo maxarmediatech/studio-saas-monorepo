@@ -212,6 +212,12 @@ async function handleApiRequest(req: IncomingMessage, res: ServerResponse) {
 			return;
 		}
 
+		if (req.method === "POST" && url.pathname === "/runtime/stop") {
+			await codexRuntime.stop();
+			writeJson(res, 200, { ok: true });
+			return;
+		}
+
 		const runtimeRequestMatch = url.pathname.match(
 			/^\/runtime\/requests\/([^/]+)\/respond$/,
 		);

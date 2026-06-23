@@ -1,10 +1,4 @@
 import {
-	IconArrowUp,
-	IconMicrophone,
-	IconPlus,
-	IconTerminal2,
-} from "@tabler/icons-react";
-import {
 	type KeyboardEvent,
 	useEffect,
 	useMemo,
@@ -15,20 +9,14 @@ import type {
 	CodexRuntimeMode,
 	RespondSessionRequestInput,
 } from "../../../preload/types";
-import { iconProps } from "../../app/icons";
 import type { PendingRequest, RuntimeOption } from "../../app/types";
 import { cn } from "../../lib/utils";
-import { Button } from "../ui/button";
 import { ComposerContextChips } from "./ComposerContextChips";
-import {
-	composerControlClass,
-	IconButton,
-	ModelPill,
-	ModePill,
-	RuntimeModeSelect,
-} from "./ComposerControls";
 import { ComposerFooter } from "./ComposerFooter";
 import { ComposerMenu } from "./ComposerMenu";
+import type { ComposerPrimaryAction } from "./ComposerPrimaryButton";
+import { ComposerTextarea } from "./ComposerTextarea";
+import { ComposerToolbar } from "./ComposerToolbar";
 import { collectContextTokens, withContextItems } from "./composerContext";
 import { buildComposerMenuItems } from "./composerMenuItems";
 import {
@@ -46,6 +34,7 @@ import { useWorkspaceFileMentions } from "./useWorkspaceFileMentions";
 export function SessionComposer(props: {
 	value: string;
 	disabled: boolean;
+	turnActive: boolean;
 	model: string;
 	runtimeMode: CodexRuntimeMode;
 	runtimeOptions: RuntimeOption[];
@@ -56,6 +45,7 @@ export function SessionComposer(props: {
 	onModelChange: (model: string) => void;
 	onRuntimeModeChange: (mode: CodexRuntimeMode) => void;
 	onSend: (text: string) => Promise<boolean>;
+	onInterrupt: () => Promise<void>;
 	onNewSession: () => Promise<void>;
 	onRespondRequest: (
 		requestId: string,
@@ -63,7 +53,7 @@ export function SessionComposer(props: {
 	) => Promise<void>;
 }) {
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
-	const [mode, setMode] = useState<ComposerMode>("normal");
+	const [mode, setMode] = useState<ComposerMode>("ask");
 	const [activeIndex, setActiveIndex] = useState(0);
 	const {
 		history,
@@ -123,6 +113,9 @@ export function SessionComposer(props: {
 
 	async function send() {
 		const sentText = props.value;
+		if (!sentText.trim()) {
+			return;
+		}
 		const sentContextItems = contextItems;
 		const text = withContextItems(
 			serializeComposerSendText(sentText, mode),
@@ -243,22 +236,25 @@ export function SessionComposer(props: {
 			void chooseFile();
 			return;
 		}
+		if (item.action === "mode" && item.mode) {
+			changeMode(item.mode);
+			if (trigger) {
+				const next = replaceComposerRange(
+					props.value,
+					trigger.rangeStart,
+					trigger.rangeEnd,
+					"",
+				);
+				props.onChange(next.text);
+				focusAt(next.cursor);
+			}
+			return;
+		}
 		if (item.action === "new-session") {
 			void createNewSession();
 			return;
 		}
 		if (item.action === "clear") {
-			props.onChange("");
-			setContextItems([]);
-			return;
-		}
-		if (item.action === "shell") {
-			changeMode("shell");
-			props.onChange("");
-			return;
-		}
-		if (item.action === "normal") {
-			changeMode("normal");
 			props.onChange("");
 			setContextItems([]);
 			return;
@@ -372,6 +368,22 @@ export function SessionComposer(props: {
 		0,
 		Math.max(0, 8 - contextItems.length),
 	);
+	const primaryAction = resolvePrimaryAction({
+		mode,
+		disabled: props.disabled,
+		turnActive: props.turnActive,
+		hasText: props.value.trim() !== "",
+	});
+
+	function onPrimaryAction() {
+		if (primaryAction === "stop") {
+			void props.onInterrupt();
+			return;
+		}
+		if (primaryAction === "send" || primaryAction === "run-shell") {
+			void send();
+		}
+	}
 
 	return (
 		<section
@@ -397,6 +409,12 @@ export function SessionComposer(props: {
 					"relative z-2 flex min-h-[132px] flex-col rounded-[18px] border border-[var(--desktop-inbox-border)] bg-[var(--desktop-inbox)] [box-shadow:0_1px_0_color-mix(in_srgb,var(--desktop-strong)_3%,transparent),0_10px_22px_-18px_var(--desktop-shadow)]",
 					mode === "shell" &&
 						"border-[color-mix(in_srgb,#32d583_34%,var(--desktop-inbox-border))]",
+					mode === "plan" &&
+						"border-[color-mix(in_srgb,#f7c948_34%,var(--desktop-inbox-border))]",
+					mode === "build" &&
+						"border-[color-mix(in_srgb,#0a84ff_34%,var(--desktop-inbox-border))]",
+					mode === "review" &&
+						"border-[color-mix(in_srgb,#ff7a45_30%,var(--desktop-inbox-border))]",
 				)}
 			>
 				{menuItems.length > 0 ? (
@@ -416,88 +434,48 @@ export function SessionComposer(props: {
 						)
 					}
 				/>
-				<textarea
+				<ComposerTextarea
 					ref={textareaRef}
 					value={props.value}
-					className={cn(
-						"min-h-[76px] resize-none border-0 bg-transparent px-[18px] pb-1.5 pt-4 text-[14px] font-[440] leading-[1.45] text-[var(--desktop-default)] shadow-none outline-none placeholder:text-[color-mix(in_srgb,var(--desktop-subtle)_58%,transparent)] focus-visible:shadow-none",
-						mode === "shell" &&
-							"font-mono text-[13px] text-[color-mix(in_srgb,#32d583_80%,var(--desktop-default))]",
-					)}
-					placeholder={
-						mode === "shell"
-							? "Run command..."
-							: "Ask, plan, edit, attach context..."
-					}
+					mode={mode}
 					disabled={props.disabled}
-					onChange={(event) => {
+					onChange={(value, target) => {
 						setActiveIndex(0);
-						syncSelection(event.currentTarget);
-						props.onChange(event.currentTarget.value);
+						syncSelection(target);
+						props.onChange(value);
 					}}
-					onClick={(event) => syncSelection(event.currentTarget)}
-					onKeyUp={(event) => syncSelection(event.currentTarget)}
-					onSelect={(event) => syncSelection(event.currentTarget)}
+					onSelectionChange={syncSelection}
 					onKeyDown={onKeyDown}
 				/>
-				<div className="flex items-center justify-between gap-2 px-4 pb-3 [&_svg]:!stroke-[1.8]">
-					<div className="flex min-w-0 items-center gap-2">
-						<IconButton
-							label="New session"
-							onClick={createNewSession}
-						>
-							<IconPlus {...iconProps} />
-						</IconButton>
-						<ModePill mode={mode} onModeChange={changeMode} />
-						<ModelPill
-							model={props.model}
-							onModelChange={props.onModelChange}
-						/>
-						<RuntimeModeSelect
-							value={props.runtimeMode}
-							options={props.runtimeOptions}
-							onChange={props.onRuntimeModeChange}
-						/>
-					</div>
-					<div className="flex items-center gap-2">
-						<Button
-							className={cn(
-								composerControlClass,
-								"text-[var(--desktop-subtle)]",
-							)}
-							size="icon-sm"
-							variant="ghost"
-							type="button"
-							title="Voice input"
-							aria-label="Voice input"
-						>
-							<IconMicrophone {...iconProps} />
-						</Button>
-						<Button
-							className={cn(
-								composerControlClass,
-								mode === "shell"
-									? "!bg-[color-mix(in_srgb,#32d583_70%,#101010)] text-white"
-									: "!bg-[color-mix(in_srgb,#0a84ff_62%,#ffffff)] text-white",
-								"shadow-none active:scale-[0.98]",
-							)}
-							size="icon-sm"
-							type="button"
-							disabled={props.disabled}
-							onClick={() => void send()}
-							title={mode === "shell" ? "Run" : "Send"}
-							aria-label={mode === "shell" ? "Run" : "Send"}
-						>
-							{mode === "shell" ? (
-								<IconTerminal2 {...iconProps} />
-							) : (
-								<IconArrowUp {...iconProps} />
-							)}
-						</Button>
-					</div>
-				</div>
+				<ComposerToolbar
+					mode={mode}
+					model={props.model}
+					runtimeMode={props.runtimeMode}
+					runtimeOptions={props.runtimeOptions}
+					primaryAction={primaryAction}
+					onModeChange={changeMode}
+					onModelChange={props.onModelChange}
+					onRuntimeModeChange={props.onRuntimeModeChange}
+					onNewSession={createNewSession}
+					onPrimaryAction={onPrimaryAction}
+				/>
 			</div>
 			<ComposerFooter mode={mode} />
 		</section>
 	);
+}
+
+function resolvePrimaryAction(input: {
+	mode: ComposerMode;
+	disabled: boolean;
+	turnActive: boolean;
+	hasText: boolean;
+}): ComposerPrimaryAction {
+	if (input.turnActive) {
+		return "stop";
+	}
+	if (input.disabled || !input.hasText) {
+		return "disabled";
+	}
+	return input.mode === "shell" ? "run-shell" : "send";
 }

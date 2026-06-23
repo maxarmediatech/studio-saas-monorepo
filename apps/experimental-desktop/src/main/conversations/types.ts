@@ -65,6 +65,12 @@ export type ConversationEvent =
 	  }
 	| {
 			id: string;
+			type: "turn.interrupted";
+			time: string;
+			data: { turnId?: string; providerTurnId?: string; message: string };
+	  }
+	| {
+			id: string;
 			type: "request.pending";
 			time: string;
 			data: {

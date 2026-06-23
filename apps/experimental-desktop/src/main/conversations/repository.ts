@@ -990,6 +990,34 @@ export class ConversationRepository {
 		});
 	}
 
+	interruptTurn(input: { turnId: string; message: string; now: string }) {
+		const turn = this.getTurn(input.turnId);
+		if (!turn) {
+			return undefined;
+		}
+		this.db
+			.prepare(
+				`UPDATE turns
+				SET status = 'canceled',
+					error_json = @error,
+					completed_at = @now,
+					updated_at = @now
+				WHERE id = @turnId`,
+			)
+			.run({
+				turnId: input.turnId,
+				error: stringify({ message: input.message }),
+				now: input.now,
+			});
+		this.db
+			.prepare(
+				"UPDATE messages SET status = 'interrupted', updated_at = ? WHERE id = ?",
+			)
+			.run(input.now, turn.assistant_message_id);
+		this.touchConversation(turn.conversation_id, "idle", input.now);
+		return turn;
+	}
+
 	createApproval(input: {
 		id: string;
 		conversationId: string;

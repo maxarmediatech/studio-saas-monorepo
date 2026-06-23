@@ -196,6 +196,18 @@ export function useCodexSession(input: {
 		setIsTurnActive(!canceled);
 	}
 
+	async function interruptConversation() {
+		if (!conversationId) {
+			return;
+		}
+		await window.experimentalDesktop.interruptConversation(conversationId);
+		setPendingRequests([]);
+		setIsTurnActive(false);
+		setIsSending(false);
+		setStatus("Interrupted");
+		await refreshConversations();
+	}
+
 	function hydrateConversation(conversation: ConversationDetail) {
 		setConversationId(conversation.id);
 		setThreadId(conversation.providerThreadId);
@@ -293,6 +305,21 @@ export function useCodexSession(input: {
 			setPendingRequests([]);
 			setIsTurnActive(false);
 			setStatus(`Failed · ${event.data.error}`);
+			void refreshConversations();
+			return;
+		}
+		if (event.type === "turn.interrupted") {
+			setTranscript((items) =>
+				items.map((item) =>
+					item.type === "assistant" &&
+					(!event.data.turnId || item.turnId === event.data.turnId)
+						? { ...item, status: "interrupted" }
+						: item,
+				),
+			);
+			setPendingRequests([]);
+			setIsTurnActive(false);
+			setStatus(event.data.message);
 			void refreshConversations();
 			return;
 		}
@@ -401,11 +428,13 @@ export function useCodexSession(input: {
 		eventLog,
 		pendingRequests,
 		isSending,
+		isTurnActive,
 		isTurnRunning: isSending || isTurnActive || pendingRequests.length > 0,
 		createNewSession,
 		openConversation,
 		persistDraft,
 		sendMessage,
+		interruptConversation,
 		respondToRequest,
 	};
 }
@@ -450,6 +479,9 @@ function summarizeSessionEvent(event: SessionEvent) {
 	}
 	if (event.type === "message.failed") {
 		return trimForLog(event.data.error);
+	}
+	if (event.type === "turn.interrupted") {
+		return trimForLog(event.data.message);
 	}
 	if (event.type === "request.pending") {
 		return [

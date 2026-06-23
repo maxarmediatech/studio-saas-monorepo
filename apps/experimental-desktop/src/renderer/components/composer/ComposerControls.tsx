@@ -1,4 +1,11 @@
-import { IconBolt, IconBrain, IconTerminal2 } from "@tabler/icons-react";
+import {
+	IconBolt,
+	IconBrain,
+	IconCode,
+	IconListCheck,
+	IconSearch,
+	IconTerminal2,
+} from "@tabler/icons-react";
 import type { ReactNode } from "react";
 import type { CodexRuntimeMode } from "../../../preload/types";
 import { iconProps } from "../../app/icons";
@@ -22,21 +29,43 @@ export function ModePill(props: {
 	mode: ComposerMode;
 	onModeChange: (mode: ComposerMode) => void;
 }) {
+	const modes: Array<{
+		mode: ComposerMode;
+		label: string;
+		icon: typeof IconBrain;
+	}> = [
+		{ mode: "ask", label: "Ask", icon: IconBrain },
+		{ mode: "plan", label: "Plan", icon: IconListCheck },
+		{ mode: "build", label: "Build", icon: IconCode },
+		{ mode: "review", label: "Review", icon: IconSearch },
+		{ mode: "shell", label: "Shell", icon: IconTerminal2 },
+	];
+
 	return (
-		<button
-			className="inline-flex h-9 items-center gap-1.5 rounded-[10px] border border-[var(--desktop-inbox-border)] bg-[color-mix(in_srgb,var(--desktop-inbox-hover)_46%,transparent)] px-3 text-[13px] font-medium text-[var(--desktop-default)]"
-			type="button"
-			onClick={() =>
-				props.onModeChange(props.mode === "shell" ? "normal" : "shell")
-			}
-		>
-			{props.mode === "shell" ? (
-				<IconTerminal2 {...iconProps} size={16} />
-			) : (
-				<IconBrain {...iconProps} size={16} />
-			)}
-			{props.mode === "shell" ? "Shell" : "Ask"}
-		</button>
+		<div className="inline-flex h-9 items-center rounded-[10px] border border-[var(--desktop-inbox-border)] bg-[color-mix(in_srgb,var(--desktop-inbox-hover)_38%,transparent)] p-0.5">
+			{modes.map((item) => {
+				const ModeIcon = item.icon;
+				const active = props.mode === item.mode;
+				return (
+					<button
+						className={cn(
+							"inline-flex h-8 items-center gap-1.5 rounded-[8px] border-0 bg-transparent px-2.5 text-[12px] font-semibold text-[var(--desktop-subtle)] transition-colors hover:text-[var(--desktop-default)]",
+							active &&
+								"bg-[var(--desktop-inbox)] text-[var(--desktop-strong)] shadow-[0_1px_0_color-mix(in_srgb,var(--desktop-strong)_4%,transparent)]",
+						)}
+						type="button"
+						key={item.mode}
+						aria-pressed={active}
+						onClick={() => props.onModeChange(item.mode)}
+					>
+						<ModeIcon {...iconProps} size={15} />
+						<span className="max-[1280px]:hidden">
+							{item.label}
+						</span>
+					</button>
+				);
+			})}
+		</div>
 	);
 }
 

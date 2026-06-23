@@ -112,6 +112,7 @@ export function App() {
 							<SessionComposer
 								value={message}
 								disabled={session.isTurnRunning}
+								turnActive={session.isTurnActive}
 								model={model}
 								runtimeMode={runtimeMode}
 								runtimeOptions={runtimeOptions}
@@ -122,6 +123,7 @@ export function App() {
 								onModelChange={setModel}
 								onRuntimeModeChange={setRuntimeMode}
 								onSend={sendMessage}
+								onInterrupt={session.interruptConversation}
 								onNewSession={createNewSession}
 								onRespondRequest={session.respondToRequest}
 							/>

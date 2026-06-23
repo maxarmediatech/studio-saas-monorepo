@@ -152,6 +152,10 @@ export function registerIpcHandlers(sidecarManager: SidecarManager) {
 			conversations.sendConversationMessage(conversationId, input),
 	);
 
+	ipcMain.handle("conversation:interrupt", (_event, conversationId: string) =>
+		conversations.interruptConversation(conversationId),
+	);
+
 	ipcMain.handle(
 		"approval:respond",
 		(_event, conversationId: string, requestId: string, input) =>

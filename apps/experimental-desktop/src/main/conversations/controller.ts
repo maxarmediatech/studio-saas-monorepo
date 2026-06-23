@@ -275,9 +275,57 @@ export function createConversationController(input: {
 			await startTurn({ ...turn, threadId }, runtimeText);
 			return repo.getConversation(conversationId);
 		} catch (error) {
-			failActiveTurn(turn, error);
+			if (pendingTurns.has(turn.turnId) || activeTurnId === turn.turnId) {
+				failActiveTurn(turn, error);
+			}
 			throw error;
 		}
+	}
+
+	async function interruptConversation(conversationId: string) {
+		const activeTurn = findActiveTurn(conversationId);
+		if (!activeTurn) {
+			return { ok: true as const };
+		}
+		const interruptedAt = now();
+		const message = "Interrupted";
+		await sidecarFetch("/runtime/stop", { method: "POST" }).catch(
+			(error) => {
+				console.warn("[conversations] failed to stop runtime", error);
+			},
+		);
+		runtimeStream?.abort();
+		runtimeStream = undefined;
+		repo.interruptTurn({
+			turnId: activeTurn.turnId,
+			message,
+			now: interruptedAt,
+		});
+		repo.expirePendingApprovalsForTurn({
+			turnId: activeTurn.turnId,
+			response: { decision: "cancel", reason: message },
+			now: interruptedAt,
+		});
+		const event: ConversationEvent = {
+			id: randomUUID(),
+			type: "turn.interrupted",
+			time: interruptedAt,
+			data: {
+				turnId: activeTurn.turnId,
+				providerTurnId: activeTurn.providerTurnId,
+				message,
+			},
+		};
+		persistAndBroadcast({
+			conversationId: activeTurn.conversationId,
+			providerSessionId: activeTurn.providerSessionId,
+			turnId: activeTurn.turnId,
+			type: event.type,
+			raw: event.data,
+			event,
+		});
+		clearTurn(activeTurn.turnId, activeTurn.providerTurnId);
+		return { ok: true as const };
 	}
 
 	async function respondApproval(
@@ -1051,6 +1099,20 @@ export function createConversationController(input: {
 		}
 	}
 
+	function findActiveTurn(conversationId: string) {
+		for (const turn of pendingTurns.values()) {
+			if (turn.conversationId === conversationId) {
+				return { ...turn, providerTurnId: undefined };
+			}
+		}
+		for (const [providerTurnId, turn] of activeTurnsByProviderTurnId) {
+			if (turn.conversationId === conversationId) {
+				return { ...turn, providerTurnId };
+			}
+		}
+		return undefined;
+	}
+
 	function broadcast(conversationId: string, event: ConversationEvent) {
 		const listeners = subscribers.get(conversationId);
 		if (!listeners) {
@@ -1075,6 +1137,7 @@ export function createConversationController(input: {
 		updateDraft,
 		promoteDraftAndSend,
 		sendConversationMessage,
+		interruptConversation,
 		respondApproval,
 		renameConversation,
 		archiveConversation,

@@ -1,4 +1,4 @@
-export type ComposerMode = "normal" | "shell";
+export type ComposerMode = "ask" | "plan" | "build" | "review" | "shell";
 
 export type ComposerTriggerKind = "slash" | "file" | "skill" | "terminal";
 
@@ -14,34 +14,43 @@ export type ComposerCommand = {
 	trigger: string;
 	label: string;
 	description: string;
-	action: "insert" | "new-session" | "clear" | "shell" | "normal";
+	action: "insert" | "mode" | "new-session" | "clear";
 	insertText?: string;
+	mode?: ComposerMode;
 };
 
 export const composerCommands: ComposerCommand[] = [
 	{
+		id: "ask",
+		trigger: "ask",
+		label: "Ask",
+		description: "Ask without changing files.",
+		action: "mode",
+		mode: "ask",
+	},
+	{
 		id: "plan",
 		trigger: "plan",
 		label: "Plan",
-		description: "Ask Codex to reason before editing.",
-		action: "insert",
-		insertText: "Plan first, then wait for approval: ",
+		description: "Plan first and wait.",
+		action: "mode",
+		mode: "plan",
 	},
 	{
 		id: "build",
 		trigger: "build",
 		label: "Build",
-		description: "Move directly into implementation.",
-		action: "insert",
-		insertText: "Build this now: ",
+		description: "Make changes and validate.",
+		action: "mode",
+		mode: "build",
 	},
 	{
 		id: "review",
 		trigger: "review",
 		label: "Review",
-		description: "Inspect current Electron app changes.",
-		action: "insert",
-		insertText: "Review the Electron app composer changes: ",
+		description: "Inspect risks and issues.",
+		action: "mode",
+		mode: "review",
 	},
 	{
 		id: "fix",
@@ -72,14 +81,16 @@ export const composerCommands: ComposerCommand[] = [
 		trigger: "shell",
 		label: "Shell",
 		description: "Switch composer into command mode.",
-		action: "shell",
+		action: "mode",
+		mode: "shell",
 	},
 	{
 		id: "default",
 		trigger: "default",
-		label: "Default",
-		description: "Return to normal prompt mode.",
-		action: "normal",
+		label: "Ask",
+		description: "Return to ask mode.",
+		action: "mode",
+		mode: "ask",
 	},
 	{
 		id: "new",
@@ -176,8 +187,29 @@ export function replaceComposerRange(
 
 export function serializeComposerSendText(text: string, mode: ComposerMode) {
 	const trimmed = text.trim();
-	if (mode === "shell") {
-		return `Run this shell command and report the result:\n\n\`\`\`sh\n${trimmed}\n\`\`\``;
+	switch (mode) {
+		case "plan":
+			return `Plan first, then wait for approval before editing:\n\n${trimmed}`;
+		case "build":
+			return `Make the requested changes, then run the relevant validation:\n\n${trimmed}`;
+		case "review":
+			return `Review the current context and report concrete risks, bugs, and missing validation. Do not edit files unless asked:\n\n${trimmed}`;
+		case "shell":
+			return `Run this shell command and report the result:\n\n\`\`\`sh\n${trimmed}\n\`\`\``;
+		case "ask":
+			return trimmed;
 	}
-	return trimmed;
+}
+
+export function normalizeComposerMode(mode: string): ComposerMode {
+	if (
+		mode === "ask" ||
+		mode === "plan" ||
+		mode === "build" ||
+		mode === "review" ||
+		mode === "shell"
+	) {
+		return mode;
+	}
+	return "ask";
 }

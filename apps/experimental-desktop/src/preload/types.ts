@@ -136,6 +136,12 @@ export type ConversationEvent =
 	  }
 	| {
 			id: string;
+			type: "turn.interrupted";
+			time: string;
+			data: { turnId?: string; providerTurnId?: string; message: string };
+	  }
+	| {
+			id: string;
 			type: "request.pending";
 			time: string;
 			data: {
@@ -346,6 +352,7 @@ export type ExperimentalDesktopApi = {
 		conversationId: string,
 		input: { text: string; model?: string; runtimeMode?: CodexRuntimeMode },
 	) => Promise<ConversationDetail | undefined>;
+	interruptConversation: (conversationId: string) => Promise<{ ok: true }>;
 	respondApproval: (
 		conversationId: string,
 		requestId: string,

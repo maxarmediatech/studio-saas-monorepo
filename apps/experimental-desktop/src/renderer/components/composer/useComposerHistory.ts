@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { normalizeComposerMode } from "./composerTriggers";
 import type { ComposerHistoryEntry, ComposerSavedDraft } from "./composerTypes";
 
 export function useComposerHistory(workspaceRoot?: string) {
@@ -25,7 +26,14 @@ export function useComposerHistory(workspaceRoot?: string) {
 		}
 		try {
 			const parsed = JSON.parse(saved) as ComposerHistoryEntry[];
-			setHistory(Array.isArray(parsed) ? parsed.slice(0, 80) : []);
+			setHistory(
+				Array.isArray(parsed)
+					? parsed.slice(0, 80).map((entry) => ({
+							...entry,
+							mode: normalizeComposerMode(entry.mode),
+						}))
+					: [],
+			);
 		} catch {
 			setHistory([]);
 		}

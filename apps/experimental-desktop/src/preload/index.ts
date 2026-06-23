@@ -96,6 +96,11 @@ const api: ExperimentalDesktopApi = {
 			conversationId,
 			input,
 		) as Promise<ConversationDetail | undefined>,
+	interruptConversation: (conversationId) =>
+		ipcRenderer.invoke(
+			"conversation:interrupt",
+			conversationId,
+		) as Promise<{ ok: true }>,
 	respondApproval: (conversationId, requestId, input) =>
 		ipcRenderer.invoke(
 			"approval:respond",
