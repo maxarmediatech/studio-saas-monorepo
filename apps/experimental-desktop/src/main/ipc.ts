@@ -323,7 +323,9 @@ async function searchWorkspaceFiles(input: unknown) {
 	}
 	const rootPath = resolve(record.rootPath);
 	const query =
-		typeof record.query === "string" ? record.query.trim().toLowerCase() : "";
+		typeof record.query === "string"
+			? record.query.trim().toLowerCase()
+			: "";
 	const limit =
 		typeof record.limit === "number" && Number.isFinite(record.limit)
 			? Math.max(1, Math.min(80, Math.floor(record.limit)))
@@ -349,19 +351,31 @@ async function searchWorkspaceFiles(input: unknown) {
 			break;
 		}
 		visited += 1;
-		const entries = await readdir(current, { withFileTypes: true }).catch(() => []);
+		const entries = await readdir(current, { withFileTypes: true }).catch(
+			() => [],
+		);
 		for (const entry of entries) {
-			if (entry.isSymbolicLink() || WORKSPACE_SEARCH_IGNORED_NAMES.has(entry.name)) {
+			if (
+				entry.isSymbolicLink() ||
+				WORKSPACE_SEARCH_IGNORED_NAMES.has(entry.name)
+			) {
 				continue;
 			}
 			const fullPath = join(current, entry.name);
 			const relativePath = relative(rootPath, fullPath);
 			const normalizedRelativePath = relativePath.split("\\").join("/");
-			const kind = entry.isDirectory() ? "directory" : entry.isFile() ? "file" : null;
+			const kind = entry.isDirectory()
+				? "directory"
+				: entry.isFile()
+					? "file"
+					: null;
 			if (!kind) {
 				continue;
 			}
-			if (!query || normalizedRelativePath.toLowerCase().includes(query)) {
+			if (
+				!query ||
+				normalizedRelativePath.toLowerCase().includes(query)
+			) {
 				results.push({
 					path: fullPath,
 					name: basename(fullPath),

@@ -7,7 +7,13 @@ import {
 	IconPlus,
 	IconTerminal2,
 } from "@tabler/icons-react";
-import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
+import {
+	type KeyboardEvent,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import type {
 	CodexRuntimeMode,
 	RespondSessionRequestInput,
@@ -75,7 +81,9 @@ export function SessionComposer(props: {
 	const [historyIndex, setHistoryIndex] = useState(-1);
 	const [savedDraft, setSavedDraft] = useState<string | null>(null);
 	const [selectionStart, setSelectionStart] = useState(0);
-	const [dismissedTriggerKey, setDismissedTriggerKey] = useState<string | null>(null);
+	const [dismissedTriggerKey, setDismissedTriggerKey] = useState<
+		string | null
+	>(null);
 	const [contextItems, setContextItems] = useState<ComposerContextItem[]>([]);
 	const [fileResults, setFileResults] = useState<WorkspaceFileMention[]>([]);
 	const [fileSearchLoading, setFileSearchLoading] = useState(false);
@@ -86,15 +94,26 @@ export function SessionComposer(props: {
 	const trigger = useMemo(() => {
 		return mode === "shell"
 			? null
-			: detectComposerTrigger(props.value, selectionStart || props.value.length);
-	}, [props.value, mode, selectionStart, fileResults, fileSearchLoading, dismissedTriggerKey]);
+			: detectComposerTrigger(
+					props.value,
+					selectionStart || props.value.length,
+				);
+	}, [
+		props.value,
+		mode,
+		selectionStart,
+		fileResults,
+		fileSearchLoading,
+		dismissedTriggerKey,
+	]);
 	const triggerKey = trigger
 		? `${trigger.kind}:${trigger.rangeStart}:${trigger.query}`
 		: null;
 	const activeTrigger =
 		trigger && triggerKey !== dismissedTriggerKey ? trigger : null;
 	const historyStorageKey = useMemo(
-		() => `experimental-desktop:composer-history:${props.workspaceRoot ?? "global"}`,
+		() =>
+			`experimental-desktop:composer-history:${props.workspaceRoot ?? "global"}`,
 		[props.workspaceRoot],
 	);
 
@@ -117,7 +136,10 @@ export function SessionComposer(props: {
 	}, [historyStorageKey]);
 
 	useEffect(() => {
-		window.localStorage.setItem(historyStorageKey, JSON.stringify(history.slice(0, 80)));
+		window.localStorage.setItem(
+			historyStorageKey,
+			JSON.stringify(history.slice(0, 80)),
+		);
 	}, [history, historyStorageKey]);
 
 	useEffect(() => {
@@ -128,15 +150,22 @@ export function SessionComposer(props: {
 		}
 		let canceled = false;
 		setFileSearchLoading(true);
-		void window.experimentalDesktop.searchWorkspaceFiles({
-			rootPath: props.workspaceRoot,
-			query: activeTrigger.query,
-			limit: 24,
-		}).then((results) => {
-			if (!canceled) setFileResults(results);
-		}).finally(() => {
-			if (!canceled) setFileSearchLoading(false);
-		});
+		void window.experimentalDesktop
+			.searchWorkspaceFiles({
+				rootPath: props.workspaceRoot,
+				query: activeTrigger.query,
+				limit: 24,
+			})
+			.then((results) => {
+				if (!canceled) {
+					setFileResults(results);
+				}
+			})
+			.finally(() => {
+				if (!canceled) {
+					setFileSearchLoading(false);
+				}
+			});
 		return () => {
 			canceled = true;
 		};
@@ -216,7 +245,10 @@ export function SessionComposer(props: {
 	}, [trigger]);
 
 	async function send() {
-		const text = serializeComposerSendText(props.value, mode);
+		const text = withContextItems(
+			serializeComposerSendText(props.value, mode),
+			contextItems,
+		);
 		if (!text) {
 			return;
 		}
@@ -263,13 +295,13 @@ export function SessionComposer(props: {
 					items.some((existing) => existing.path === file.path)
 						? items
 						: [
-							...items,
-							{
-								type: file.kind,
-								label: file.relativePath,
-								path: file.path,
-							},
-						],
+								...items,
+								{
+									type: file.kind,
+									label: file.relativePath,
+									path: file.path,
+								},
+							],
 				);
 				const next = replaceComposerRange(
 					props.value,
@@ -386,7 +418,9 @@ export function SessionComposer(props: {
 			}
 			if (event.key === "Escape") {
 				event.preventDefault();
-				props.onChange(props.value);
+				if (triggerKey) {
+					setDismissedTriggerKey(triggerKey);
+				}
 				return;
 			}
 		}
@@ -596,4 +630,15 @@ function ComposerMenu(props: {
 function collectContextTokens(text: string) {
 	const matches = text.match(/(?:^|\s)([@$>][^\s]+)/g) ?? [];
 	return matches.map((match) => match.trim()).slice(0, 6);
+}
+
+function withContextItems(text: string, items: ComposerContextItem[]) {
+	const trimmed = text.trim();
+	if (!items.length) {
+		return trimmed;
+	}
+	const context = items
+		.map((item) => `- ${item.type}: ${item.label}\n  path: ${item.path}`)
+		.join("\n");
+	return `Context files:\n${context}\n\nUser request:\n${trimmed}`.trim();
 }
