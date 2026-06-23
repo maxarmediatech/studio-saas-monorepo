@@ -332,6 +332,13 @@ P0 slice 2 progress:
 - Added a small Codex admitted transport mapper so `useCodexSession.ts` no longer hand-builds the Codex IPC payload.
 - Admission warnings are now surfaced in the event log as `admission.warning` entries until a dedicated composer warning UI exists.
 
+P0 slice 3 progress:
+- Added `composerDraftTypes.ts` and `composerDraftSync.ts`.
+- `App.tsx` still owns live composer state for compatibility, but no longer owns draft persistence debounce.
+- `ComposerDraftSync` owns the persist/no-persist decision and converts live draft state into the legacy DB payload.
+- `useCodexSession.persistDraft` now accepts a draft-sync persistence input instead of raw `ComposerPayload`.
+- Added focused draft-sync tests for persist gating and payload conversion.
+
 ## P1 — Request Parts, Safety, Budget
 
 ### 1. Add Request Parts

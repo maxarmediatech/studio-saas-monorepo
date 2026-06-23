@@ -1,15 +1,14 @@
 import { IconSparkles } from "@tabler/icons-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { AppInfo, CodexRuntimeMode } from "../../preload/types";
-import {
-	buildComposerPayload,
-	type ComposerPayload,
-} from "../components/composer/composerPayload";
+import type { ComposerPayload } from "../components/composer/composerPayload";
 import type { ComposerMode } from "../components/composer/composerTriggers";
 import type {
 	ComposerAttachment,
 	ComposerContextItem,
 } from "../components/composer/composerTypes";
+import { useComposerDraftSync } from "../components/composer/core/composerDraftSync";
+import { createComposerDraft } from "../components/composer/core/composerDraftTypes";
 import { admitComposerRequest } from "../components/composer/core/composerSendController";
 import { SessionComposer } from "../components/composer/SessionComposer";
 import { Sidebar, TopBar } from "../components/layout";
@@ -65,36 +64,31 @@ export function App() {
 		window.localStorage.setItem(modelStorageKey, model);
 	}, [model]);
 
-	useEffect(() => {
-		const timeout = window.setTimeout(() => {
-			if (
-				message.trim() ||
-				composerContextItems.length > 0 ||
-				composerAttachments.length > 0 ||
-				session.draftId
-			) {
-				void session.persistDraft(
-					buildComposerPayload({
-						mode: composerMode,
-						text: message,
-						contextItems: composerContextItems,
-						attachments: composerAttachments,
-					}),
-				);
-			}
-		}, 350);
-		return () => window.clearTimeout(timeout);
+	const composerDraft = useMemo(() => {
+		return createComposerDraft({
+			text: message,
+			mode: composerMode,
+			model,
+			runtimeMode,
+			contextItems: composerContextItems,
+			attachments: composerAttachments,
+		});
 	}, [
 		message,
 		composerMode,
-		composerContextItems,
-		composerAttachments,
 		model,
 		runtimeMode,
-		workspace.selectedFolderPath,
-		session.conversationId,
-		session.draftId,
+		composerContextItems,
+		composerAttachments,
 	]);
+
+	useComposerDraftSync({
+		draft: composerDraft,
+		draftId: session.draftId,
+		conversationId: session.conversationId,
+		scopeKey: workspace.selectedFolderPath,
+		persistDraft: session.persistDraft,
+	});
 
 	const runtimeOptions: RuntimeOption[] = [
 		{ value: "read-only", label: "Read Only" },

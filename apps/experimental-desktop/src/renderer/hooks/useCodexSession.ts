@@ -9,6 +9,7 @@ import type {
 } from "../../preload/types";
 import type { PendingRequest, TranscriptItem } from "../app/types";
 import type { ComposerPayload } from "../components/composer/composerPayload";
+import type { ComposerDraftPersistInput } from "../components/composer/core/composerDraftSync";
 import type { AdmittedComposerRequest } from "../components/composer/core/composerProviderTypes";
 import { admitComposerRequest } from "../components/composer/core/composerSendController";
 import { toCodexAdmittedSendInput } from "../conversations/codexAdmittedTransport";
@@ -45,21 +46,21 @@ export function useCodexSession(input: {
 		setConversations(await window.experimentalDesktop.listConversations());
 	}
 
-	async function persistDraft(payload: ComposerPayload) {
+	async function persistDraft(draft: ComposerDraftPersistInput) {
 		if (conversationId) {
 			return;
 		}
 		const draftInput = {
-			text: payload.text,
-			model: inputModel(),
-			runtimeMode: inputRuntimeMode(),
-			attachments: payload.attachments,
+			text: draft.payload.text,
+			model: draft.model,
+			runtimeMode: draft.runtimeMode,
+			attachments: draft.payload.attachments,
 			payload: {
-				mode: payload.mode,
-				contextItems: payload.contextItems,
-				attachments: payload.attachments,
-				parts: payload.parts,
-				metrics: payload.metrics,
+				mode: draft.payload.mode,
+				contextItems: draft.payload.contextItems,
+				attachments: draft.payload.attachments,
+				parts: draft.payload.parts,
+				metrics: draft.payload.metrics,
 			},
 			...(input.selectedFolderPath
 				? { cwd: input.selectedFolderPath }
@@ -69,8 +70,9 @@ export function useCodexSession(input: {
 			await window.experimentalDesktop.updateDraft(draftId, draftInput);
 			return;
 		}
-		const draft = await window.experimentalDesktop.createDraft(draftInput);
-		setDraftId(draft.id);
+		const persistedDraft =
+			await window.experimentalDesktop.createDraft(draftInput);
+		setDraftId(persistedDraft.id);
 	}
 
 	async function openConversation(id: string) {
