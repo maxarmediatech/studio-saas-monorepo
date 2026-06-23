@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
 	createFolderContextItem,
 	DEFAULT_FOLDER_CONTEXT_PATTERNS,
@@ -14,6 +14,7 @@ export function useComposerContextItems(input: {
 	const [contextItems, setContextItems] = useState<ComposerContextItem[]>(
 		input.initialContextItems,
 	);
+	const folderScanVersionsRef = useRef<Record<string, number>>({});
 
 	useEffect(() => {
 		setContextItems(input.initialContextItems);
@@ -36,6 +37,8 @@ export function useComposerContextItems(input: {
 		if (!target) {
 			return;
 		}
+		const version = (folderScanVersionsRef.current[path] ?? 0) + 1;
+		folderScanVersionsRef.current[path] = version;
 		setContextItems((items) =>
 			items.map((item) =>
 				item.path === path
@@ -59,6 +62,9 @@ export function useComposerContextItems(input: {
 							: undefined,
 				},
 			);
+			if (folderScanVersionsRef.current[path] !== version) {
+				return;
+			}
 			setContextItems((items) =>
 				items.map((item) =>
 					item.path === path
@@ -77,6 +83,9 @@ export function useComposerContextItems(input: {
 				),
 			);
 		} catch (error) {
+			if (folderScanVersionsRef.current[path] !== version) {
+				return;
+			}
 			const message =
 				error instanceof Error ? error.message : String(error);
 			setContextItems((items) =>

@@ -94,6 +94,7 @@ export function SessionComposer(props: {
 		clearAttachments,
 		setAttachments,
 		attachmentIssue,
+		attachmentNotice,
 	} = useComposerAttachments({
 		initialAttachments: props.initialAttachments,
 		resetSignal: props.resetSignal,
@@ -447,7 +448,7 @@ export function SessionComposer(props: {
 			attachments={
 				<ComposerAttachmentStrip
 					attachments={attachments}
-					notice={attachmentIssue}
+					notice={attachmentIssue || attachmentNotice}
 					onRemove={removeAttachment}
 				/>
 			}

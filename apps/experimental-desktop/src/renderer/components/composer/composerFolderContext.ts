@@ -17,22 +17,22 @@ export const FOLDER_CONTEXT_MODES: Array<{
 	{
 		mode: "tree",
 		label: "Tree",
-		description: "Include a bounded folder tree.",
+		description: "Include bounded folder tree metadata.",
 	},
 	{
 		mode: "pattern",
 		label: "Pattern",
-		description: "Include matching source/doc files by pattern.",
+		description: "Include matching source/doc file refs by pattern.",
 	},
 	{
 		mode: "changed-files",
 		label: "Changed",
-		description: "Include Git changed files under this folder.",
+		description: "Include Git changed file refs under this folder.",
 	},
 	{
 		mode: "summary",
 		label: "Summary",
-		description: "Include a compact folder summary and extension counts.",
+		description: "Include compact folder metadata and extension counts.",
 	},
 ];
 
@@ -76,7 +76,7 @@ export function folderDescription(
 		return "Folder reference only; contents are not included.";
 	}
 	const truncated = snapshot.truncated ? ", truncated" : "";
-	const base = `${modeLabel(mode)} · ${snapshot.includedFileCount.toLocaleString()} included file${snapshot.includedFileCount === 1 ? "" : "s"} · ${snapshot.fileCount.toLocaleString()} total file${snapshot.fileCount === 1 ? "" : "s"}${truncated}`;
+	const base = `${modeLabel(mode)} · ${snapshot.includedFileCount.toLocaleString()} file ref${snapshot.includedFileCount === 1 ? "" : "s"} · ${snapshot.fileCount.toLocaleString()} total file${snapshot.fileCount === 1 ? "" : "s"}${truncated}`;
 	return snapshot.warnings.length > 0
 		? `${base} · ${snapshot.warnings[0]}`
 		: base;
@@ -91,7 +91,7 @@ export function modeLabel(mode: ComposerFolderMode) {
 		case "pattern":
 			return "Pattern";
 		case "changed-files":
-			return "Changed files";
+			return "Changed refs";
 		case "summary":
 			return "Summary";
 	}

@@ -24,6 +24,7 @@ export function useComposerAttachments(input: {
 	const [attachments, setAttachments] = useState<ComposerAttachment[]>(
 		input.initialAttachments,
 	);
+	const [attachmentNotice, setAttachmentNotice] = useState<string>();
 	const attachmentsRef = useRef(attachments);
 
 	useEffect(() => {
@@ -58,7 +59,11 @@ export function useComposerAttachments(input: {
 	}, [attachments, input.onAttachmentsChange]);
 
 	function addAttachment(attachment: ComposerAttachment) {
-		setAttachments((items) => appendAttachments(items, [attachment]));
+		setAttachments((items) => {
+			const result = appendAttachments(items, [attachment]);
+			setAttachmentNotice(result.notice);
+			return result.attachments;
+		});
 	}
 
 	async function addAttachmentPath(path: string) {
@@ -70,7 +75,9 @@ export function useComposerAttachments(input: {
 			paths.map(createAttachmentFromPath),
 		);
 		setAttachments((items) => {
-			return appendAttachments(items, attachments);
+			const result = appendAttachments(items, attachments);
+			setAttachmentNotice(result.notice);
+			return result.attachments;
 		});
 	}
 
@@ -87,7 +94,9 @@ export function useComposerAttachments(input: {
 			),
 		);
 		setAttachments((items) => {
-			return appendAttachments(items, nextAttachments);
+			const result = appendAttachments(items, nextAttachments);
+			setAttachmentNotice(result.notice);
+			return result.attachments;
 		});
 	}
 
@@ -98,6 +107,7 @@ export function useComposerAttachments(input: {
 					revokeComposerAttachmentPreview(item);
 				}
 			}
+			setAttachmentNotice(undefined);
 			return items.filter((item) => item.id !== id);
 		});
 	}
@@ -107,6 +117,7 @@ export function useComposerAttachments(input: {
 			for (const item of items) {
 				revokeComposerAttachmentPreview(item);
 			}
+			setAttachmentNotice(undefined);
 			return [];
 		});
 	}
@@ -121,6 +132,7 @@ export function useComposerAttachments(input: {
 		clearAttachments,
 		setAttachments,
 		attachmentIssue: composerAttachmentIssue(attachments),
+		attachmentNotice,
 	};
 }
 
@@ -141,8 +153,7 @@ async function createAttachmentFromFile(
 	file: File & { path?: string },
 	input?: { allowPathless?: boolean; defaultMimeType?: string },
 ) {
-	const nativePath =
-		file.path || window.experimentalDesktop.getPathForFile(file);
+	const nativePath = getNativeFilePath(file);
 	if (nativePath) {
 		return createAttachmentFromPath(nativePath);
 	}
@@ -170,32 +181,50 @@ async function createAttachmentFromFile(
 	}
 }
 
+function getNativeFilePath(file: File & { path?: string }) {
+	if (file.path) {
+		return file.path;
+	}
+	try {
+		return window.experimentalDesktop.getPathForFile(file);
+	} catch {
+		return "";
+	}
+}
+
 function appendAttachments(
 	items: ComposerAttachment[],
 	attachments: ComposerAttachment[],
 ) {
 	const next = [...items];
+	let skippedCount = 0;
+	let firstSkipReason: string | undefined;
 	for (const attachment of attachments) {
 		if (next.some((item) => sameAttachment(item, attachment))) {
 			revokeComposerAttachmentPreview(attachment);
 			continue;
 		}
 		const error = newAttachmentIssue(next, attachment);
-		next.push(
-			error
-				? createFailedComposerAttachment({
-						name: attachment.name,
-						mimeType: attachment.mimeType,
-						size: attachment.size,
-						error,
-					})
-				: attachment,
-		);
 		if (error) {
+			skippedCount += 1;
+			firstSkipReason ??= error;
 			revokeComposerAttachmentPreview(attachment);
+			continue;
 		}
+		next.push(attachment);
 	}
-	return next;
+	return {
+		attachments: next,
+		notice:
+			skippedCount > 0
+				? skippedAttachmentNotice(skippedCount, firstSkipReason)
+				: undefined,
+	};
+}
+
+function skippedAttachmentNotice(count: number, reason: string | undefined) {
+	const files = count === 1 ? "file" : "files";
+	return `Skipped ${count} ${files}${reason ? `: ${reason}` : "."}`;
 }
 
 function newAttachmentIssue(

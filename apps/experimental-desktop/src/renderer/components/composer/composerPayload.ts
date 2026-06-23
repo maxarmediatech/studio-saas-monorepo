@@ -136,7 +136,7 @@ function serializeFolderDetails(item: ComposerContextItem) {
 	const warnings = snapshot.warnings.length
 		? `\n  warnings: ${snapshot.warnings.join("; ")}`
 		: "";
-	return `\n  folderMode: ${snapshot.mode}\n  files: ${snapshot.fileCount}\n  directories: ${snapshot.directoryCount}\n  includedFiles: ${snapshot.includedFileCount}\n  truncated: ${snapshot.truncated}${extensions}${warnings}${tree}${included}`;
+	return `\n  folderMode: ${snapshot.mode}\n  files: ${snapshot.fileCount}\n  directories: ${snapshot.directoryCount}\n  includedFileRefs: ${snapshot.includedFileCount}\n  truncated: ${snapshot.truncated}${extensions}${warnings}${tree}${included}`;
 }
 
 function contextItemToPart(item: ComposerContextItem): ComposerPayloadPart {

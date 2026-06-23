@@ -42,7 +42,7 @@ export function ComposerContextChips(props: {
 								? "Scanning..."
 								: modeLabel(item.folderMode ?? "reference")}
 							{item.folderSnapshot
-								? ` · ${item.folderSnapshot.includedFileCount}/${item.folderSnapshot.fileCount} files`
+								? ` · ${item.folderSnapshot.includedFileCount}/${item.folderSnapshot.fileCount} refs`
 								: ""}
 						</span>
 					) : null}
