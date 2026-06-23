@@ -9,7 +9,8 @@ import type {
 } from "../../preload/types";
 import type { PendingRequest, TranscriptItem } from "../app/types";
 import type { ComposerPayload } from "../components/composer/composerPayload";
-import { buildComposerProviderInput } from "../components/composer/composerProviderInput";
+import type { AdmittedComposerRequest } from "../components/composer/core/composerProviderTypes";
+import { admitComposerRequest } from "../components/composer/core/composerSendController";
 import { defaultAnswers } from "./pendingRequestDefaults";
 
 export function useCodexSession(input: {
@@ -103,9 +104,32 @@ export function useCodexSession(input: {
 	}
 
 	async function sendMessage(payload: ComposerPayload) {
-		const providerInput = buildComposerProviderInput(payload);
-		const trimmed = providerInput.text;
-		const composerPayload = providerInput.payload;
+		const admission = admitComposerRequest({
+			payload,
+			model: inputModel(),
+			runtimeMode: inputRuntimeMode(),
+		});
+		if (!admission.ok) {
+			setStatus(admission.reason);
+			return false;
+		}
+		return sendAdmittedRequest(admission.request);
+	}
+
+	function reportComposerAdmissionBlock(reason: string) {
+		setStatus(reason);
+	}
+
+	async function sendAdmittedRequest(request: AdmittedComposerRequest) {
+		const trimmed = request.providerInput.prompt;
+		const composerPayload = {
+			...request.providerInput.legacyPayload,
+			admittedRequest: {
+				id: request.id,
+				requestParts: request.requestParts,
+				admission: request.admission,
+			},
+		};
 		if (!trimmed) {
 			setStatus("Message required");
 			return false;
@@ -120,9 +144,9 @@ export function useCodexSession(input: {
 						conversationId,
 						{
 							text: trimmed,
-							model: inputModel(),
-							runtimeMode: inputRuntimeMode(),
-							nativeInput: providerInput.nativeInput,
+							model: request.providerInput.model,
+							runtimeMode: request.providerInput.runtimeMode,
+							nativeInput: request.providerInput.nativeInput,
 							payload: composerPayload,
 						},
 					);
@@ -135,9 +159,9 @@ export function useCodexSession(input: {
 					await window.experimentalDesktop.promoteDraftAndSend({
 						draftId,
 						text: trimmed,
-						model: inputModel(),
-						runtimeMode: inputRuntimeMode(),
-						nativeInput: providerInput.nativeInput,
+						model: request.providerInput.model,
+						runtimeMode: request.providerInput.runtimeMode,
+						nativeInput: request.providerInput.nativeInput,
 						payload: composerPayload,
 						...(input.selectedFolderPath
 							? { cwd: input.selectedFolderPath }
@@ -450,6 +474,8 @@ export function useCodexSession(input: {
 		openConversation,
 		persistDraft,
 		sendMessage,
+		sendAdmittedRequest,
+		reportComposerAdmissionBlock,
 		interruptConversation,
 		respondToRequest,
 	};

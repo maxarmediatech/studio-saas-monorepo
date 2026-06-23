@@ -177,6 +177,11 @@ Rules:
 - full-access requires visible escalation warning.
 - shell blocks attachments/context until selected provider/backend explicitly supports them.
 
+Current P0 decision:
+- Until the UI has an explicit runtime lock/escalation affordance, `build` keeps the user-selected runtime mode instead of silently moving read-only to workspace-write.
+- `ask`, `plan`, and `review` still de-escalate to read-only in admission.
+- `shell` is blocked for Codex until a direct shell-capable path exists.
+
 Initial tests:
 
 ```txt
@@ -313,6 +318,12 @@ src/renderer/components/composer/core/runtimeCapabilityMap.ts
 Adapters hide provider-specific input shape from `useCodexSession.ts` and composer UI. Start with Codex, but design the union for OpenCode, ACP backends, and API chat providers.
 
 P0 done when primitive tests lock current payload/attachment behavior, admission tests own rejection behavior, send path enters one controller before provider/session call, mode policy exists and is tested, draft sync contract exists, and `App.tsx` no longer owns draft persistence debounce directly.
+
+P0 progress:
+- Added `composerSendController.ts`, `composerModePolicy.ts`, `composerProviderTypes.ts`, `runtimeCapabilityMap.ts`, and `adapters/codexComposerAdapter.ts`.
+- Current send path now admits a composer payload into an `AdmittedComposerRequest` before transport.
+- `useCodexSession.ts` exposes `sendAdmittedRequest` and carries admitted request metadata through the legacy IPC payload for compatibility.
+- No new dependency was added for this slice; validation is currently `type-check` and `build` until the focused test runner decision is made.
 
 ## P1 — Request Parts, Safety, Budget
 

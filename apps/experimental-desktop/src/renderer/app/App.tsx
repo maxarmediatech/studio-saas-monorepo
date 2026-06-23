@@ -10,6 +10,7 @@ import type {
 	ComposerAttachment,
 	ComposerContextItem,
 } from "../components/composer/composerTypes";
+import { admitComposerRequest } from "../components/composer/core/composerSendController";
 import { SessionComposer } from "../components/composer/SessionComposer";
 import { Sidebar, TopBar } from "../components/layout";
 import { RightPanel } from "../components/right-panel";
@@ -104,7 +105,16 @@ export function App() {
 	];
 
 	async function sendMessage(payload: ComposerPayload) {
-		const sent = await session.sendMessage(payload);
+		const admission = admitComposerRequest({
+			payload,
+			model,
+			runtimeMode,
+		});
+		if (!admission.ok) {
+			session.reportComposerAdmissionBlock(admission.reason);
+			return false;
+		}
+		const sent = await session.sendAdmittedRequest(admission.request);
 		if (sent) {
 			setMessage("");
 			setComposerContextItems([]);
