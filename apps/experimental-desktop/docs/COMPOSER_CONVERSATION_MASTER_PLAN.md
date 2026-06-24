@@ -42,6 +42,8 @@ The composer is the everyday command surface. The conversation system is the dur
 
 Do not optimize for the easiest migration. Optimize for clean seams that survive provider changes and product expansion.
 
+Before implementing any planned slice, reread the relevant local reference repo files, even when they were reviewed before. Use the reference maps to locate the source evidence, understand what the reference app chose and why, then compare that choice against this app's constraints before coding. Do not infer best practice from this repo alone.
+
 Adopt the best ideas from the three reference apps:
 
 ```txt

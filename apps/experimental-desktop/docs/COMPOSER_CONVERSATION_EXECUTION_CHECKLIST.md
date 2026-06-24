@@ -9,6 +9,11 @@ Use with: COMPOSER_CONVERSATION_MASTER_PLAN.md, COMPOSER_PARITY_IMPLEMENTATION_P
 
 ## Ground Rules
 
+- Before starting any doc-plan slice, reread the relevant local reference repos/files even if they were reviewed before.
+- Use the reference maps to find the right source files first, then inspect the current reference implementation behavior before coding.
+- When a slice borrows from a specific app or pattern, such as T3Code routes, OpenCode request parts, or AionUI shell/resource ownership, revisit that repo's relevant files before deciding our implementation.
+- Do not assume best practice from this repo alone. Understand what the reference app chose, compare it with our product constraints, then implement the smallest fitting version here.
+- Record any new reference-driven decision in this checklist or the companion plan before or alongside the code change.
 - Optimize for the clean architecture, not easiest migration.
 - Current data can break.
 - Codex ships first.
