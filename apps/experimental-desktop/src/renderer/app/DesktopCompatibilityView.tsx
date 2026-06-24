@@ -69,6 +69,26 @@ export function DesktopCompatibilityView(props: {
 		runtimeMode,
 		selectedFolderPath: workspace.selectedFolderPath,
 	});
+	const sessionActionsRef = useRef({
+		openLoadedConversation: session.openLoadedConversation,
+		reportComposerAdmissionBlock: session.reportComposerAdmissionBlock,
+	});
+	const routeKind = props.route.kind;
+	const routeConversationId =
+		props.route.kind === "conversation"
+			? props.route.conversationId
+			: undefined;
+	const routeResource =
+		props.route.kind === "conversation" ? props.route.resource : undefined;
+	const routeDraftId =
+		props.route.kind === "draft" ? props.route.draftId : undefined;
+
+	useEffect(() => {
+		sessionActionsRef.current = {
+			openLoadedConversation: session.openLoadedConversation,
+			reportComposerAdmissionBlock: session.reportComposerAdmissionBlock,
+		};
+	}, [session.openLoadedConversation, session.reportComposerAdmissionBlock]);
 
 	useEffect(() => {
 		void window.experimentalDesktop.getAppInfo().then(setAppInfo);
@@ -110,43 +130,51 @@ export function DesktopCompatibilityView(props: {
 	});
 
 	useEffect(() => {
-		if (props.route.kind !== "conversation") {
-			return;
-		}
-		if (props.route.resource.status === "loading") {
-			return;
-		}
-		if (props.route.resource.status === "missing") {
-			session.reportComposerAdmissionBlock("Conversation not found");
-			return;
-		}
-		if (props.route.resource.status === "error") {
-			session.reportComposerAdmissionBlock(props.route.resource.error);
-			return;
-		}
 		if (
-			openedConversationRouteRef.current === props.route.conversationId ||
-			session.conversationId === props.route.conversationId
+			routeKind !== "conversation" ||
+			!routeConversationId ||
+			!routeResource
 		) {
 			return;
 		}
-		openedConversationRouteRef.current = props.route.conversationId;
-		void openLoadedConversationRoute(props.route.resource.conversation);
-	}, [props.route, session]);
-
-	useEffect(() => {
-		if (props.route.kind !== "draft") {
+		if (routeResource.status === "loading") {
 			return;
 		}
-		if (openedDraftRouteRef.current === props.route.draftId) {
+		if (routeResource.status === "missing") {
+			sessionActionsRef.current.reportComposerAdmissionBlock(
+				"Conversation not found",
+			);
 			return;
 		}
-		openedDraftRouteRef.current = props.route.draftId;
-		void createNewSession({ draftScopeId: props.route.draftId });
-	}, [props.route]);
+		if (routeResource.status === "error") {
+			sessionActionsRef.current.reportComposerAdmissionBlock(
+				routeResource.error,
+			);
+			return;
+		}
+		if (
+			openedConversationRouteRef.current === routeConversationId ||
+			session.conversationId === routeConversationId
+		) {
+			return;
+		}
+		openedConversationRouteRef.current = routeConversationId;
+		void openLoadedConversationRoute(routeResource.conversation);
+	}, [routeKind, routeConversationId, routeResource, session.conversationId]);
 
 	useEffect(() => {
-		if (props.route.kind !== "draft" || !session.conversationId) {
+		if (routeKind !== "draft" || !routeDraftId) {
+			return;
+		}
+		if (openedDraftRouteRef.current === routeDraftId) {
+			return;
+		}
+		openedDraftRouteRef.current = routeDraftId;
+		void createNewSession({ draftScopeId: routeDraftId });
+	}, [routeKind, routeDraftId]);
+
+	useEffect(() => {
+		if (routeKind !== "draft" || !session.conversationId) {
 			return;
 		}
 		void navigate({
@@ -154,7 +182,7 @@ export function DesktopCompatibilityView(props: {
 			params: { conversationId: session.conversationId },
 			replace: true,
 		});
-	}, [props.route, session.conversationId, navigate]);
+	}, [routeKind, session.conversationId, navigate]);
 
 	const runtimeOptions: RuntimeOption[] = [
 		{ value: "read-only", label: "Read Only" },
@@ -192,7 +220,10 @@ export function DesktopCompatibilityView(props: {
 	async function openLoadedConversationRoute(
 		conversation: ConversationDetail,
 	) {
-		const opened = await session.openLoadedConversation(conversation);
+		const opened =
+			await sessionActionsRef.current.openLoadedConversation(
+				conversation,
+			);
 		if (opened) {
 			resetComposer();
 		}
