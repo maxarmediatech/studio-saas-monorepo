@@ -1450,7 +1450,7 @@ export class ConversationRepository {
 				ORDER BY message_path.depth DESC`,
 			)
 			.all({ conversationId, messageId }) as MessageRow[];
-		return rows.map(mapMessage);
+		return this.withMessageParts(rows.map(mapMessage));
 	}
 
 	private listMessages(conversationId: string): ConversationMessage[] {
@@ -1481,7 +1481,44 @@ export class ConversationRepository {
 				ORDER BY active_path.ordinal ASC`,
 			)
 			.all({ conversationId }) as MessageRow[];
-		return rows.map(mapMessage);
+		return this.withMessageParts(rows.map(mapMessage));
+	}
+
+	private withMessageParts(
+		messages: ConversationMessage[],
+	): ConversationMessage[] {
+		if (messages.length === 0) {
+			return messages;
+		}
+		const partsByMessage = this.listPartsByMessageIds(
+			messages.map((message) => message.id),
+		);
+		return messages.map((message) => ({
+			...message,
+			parts: partsByMessage.get(message.id) ?? [],
+		}));
+	}
+
+	private listPartsByMessageIds(messageIds: string[]) {
+		const partsByMessage = new Map<
+			string,
+			NonNullable<ConversationMessage["parts"]>
+		>();
+		for (const chunk of chunksOf(messageIds)) {
+			const rows = this.db
+				.prepare(
+					`SELECT * FROM message_parts
+					WHERE message_id IN (${placeholders(chunk)})
+					ORDER BY message_id ASC, ordinal ASC`,
+				)
+				.all(...chunk) as MessagePartRow[];
+			for (const row of rows) {
+				const parts = partsByMessage.get(row.message_id) ?? [];
+				parts.push(mapMessagePart(row));
+				partsByMessage.set(row.message_id, parts);
+			}
+		}
+		return partsByMessage;
 	}
 
 	private listPendingApprovals(conversationId: string): PendingApproval[] {
@@ -1699,12 +1736,17 @@ type TreeMessageRow = MessageRow & {
 };
 
 type MessagePartRow = {
+	id: string;
+	conversation_id: string;
 	message_id: string;
+	turn_id: string | null;
 	provider_item_id: string | null;
 	ordinal: number;
-	type: "tool_call" | "tool_result" | "approval" | "raw";
+	type: "text" | "tool_call" | "tool_result" | "approval" | "raw";
 	text: string | null;
 	json: string;
+	created_at: string;
+	updated_at: string;
 };
 
 type SummaryApprovalRow = {
@@ -1872,6 +1914,24 @@ function mapMessage(row: MessageRow): ConversationMessage {
 		role: row.role,
 		status: row.status,
 		text: row.text,
+		createdAt: row.created_at,
+		updatedAt: row.updated_at,
+	};
+}
+
+function mapMessagePart(
+	row: MessagePartRow,
+): NonNullable<ConversationMessage["parts"]>[number] {
+	return {
+		id: row.id,
+		conversationId: row.conversation_id,
+		messageId: row.message_id,
+		turnId: row.turn_id ?? undefined,
+		providerItemId: row.provider_item_id ?? undefined,
+		ordinal: row.ordinal,
+		type: row.type,
+		text: row.text ?? undefined,
+		json: parseJson(row.json),
 		createdAt: row.created_at,
 		updatedAt: row.updated_at,
 	};

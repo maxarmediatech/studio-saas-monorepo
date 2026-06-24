@@ -294,6 +294,13 @@ Initial timeline rows:
 
 `SessionPanel` can remain temporarily as a debug compatibility renderer only. It is not the long-term conversation UI.
 
+Phase 7 implementation note:
+
+- `ConversationDetail.messages[].parts` is now exposed through the main/preload contract for persisted `message_parts`.
+- The first renderer stage uses `conversationTimelineModel.ts` as the pure projection layer and `ConversationStage`/`ConversationTimeline`/`TimelineRow` as the UI layer.
+- Pending approvals render in `PendingRequestLayer`, separate from the message transcript, while request rows remain visible in the timeline for chronology.
+- The current DB enum still stores text/tool/approval/raw parts. Admitted attachment/context details are recovered from the text part composer payload until the later schema slice promotes `file_ref`, `image_ref`, and `context_ref` to first-class durable rows.
+
 ## Dependency Decisions
 
 Add dependencies when they buy durable architecture.

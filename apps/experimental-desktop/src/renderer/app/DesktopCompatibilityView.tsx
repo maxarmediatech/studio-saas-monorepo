@@ -6,11 +6,12 @@ import type {
 	CodexRuntimeMode,
 	ConversationDetail,
 } from "../../preload/types";
+import { ConversationStage } from "../components/conversation/ConversationStage";
 import { ComposerRegion } from "../components/composer/ComposerRegion";
 import { Sidebar } from "../components/layout";
 import { RightPanel } from "../components/right-panel";
-import { SessionPanel } from "../components/session";
 import type { ConversationResourceState } from "../conversations/conversationResourceStore";
+import { projectConversationTimeline } from "../conversations/conversationTimelineModel";
 import { useCodexSession } from "../hooks/useCodexSession";
 import { useProviderStatus } from "../hooks/useProviderStatus";
 import { useThemeMode } from "../hooks/useThemeMode";
@@ -63,6 +64,23 @@ export function DesktopCompatibilityView(props: {
 		props.route.kind === "conversation" ? props.route.resource : undefined;
 	const routeDraftId =
 		props.route.kind === "draft" ? props.route.draftId : undefined;
+	const routeConversation =
+		routeResource?.status === "ready" ? routeResource.conversation : undefined;
+	const timelineModel = useMemo(
+		() =>
+			projectConversationTimeline({
+				conversation: routeConversation,
+				transcript: session.transcript,
+				pendingRequests: session.pendingRequests,
+				eventLog: session.eventLog,
+			}),
+		[
+			routeConversation,
+			session.eventLog,
+			session.pendingRequests,
+			session.transcript,
+		],
+	);
 
 	useEffect(() => {
 		sessionActionsRef.current = {
@@ -207,41 +225,42 @@ export function DesktopCompatibilityView(props: {
 							Where should we begin?
 						</h1>
 					</div>
-					<div className="flex w-[min(100%,1080px)] flex-col gap-0 self-center">
-						<ComposerRegion
-							session={session}
-							model={model}
-							runtimeMode={runtimeMode}
-							runtimeOptions={runtimeOptions}
-							workspaceRoot={workspace.selectedFolderPath}
-							draftScopeId={
-								routeDraftId ??
-								session.draftId ??
-								`${routeKind}:composer`
-							}
-							routeDraftId={routeDraftId}
-							resetKey={composerResetKey}
-							onModelChange={setModel}
-							onRuntimeModeChange={setRuntimeMode}
-							onNewDraftRoute={startNewDraftRoute}
-							onDraftSendStarted={(draftId) => {
-								pendingDraftPromotionRef.current = draftId;
-							}}
-							onDraftSendFailed={(draftId) => {
-								if (pendingDraftPromotionRef.current === draftId) {
-									pendingDraftPromotionRef.current =
-										undefined;
-								}
-							}}
-						/>
-					</div>
-					<SessionPanel
+					<ConversationStage
 						status={session.status}
 						threadId={session.threadId ?? session.conversationId}
-						transcript={session.transcript}
-						eventLog={session.eventLog}
-						pendingRequests={session.pendingRequests}
+						model={timelineModel}
 						onRespond={session.respondToRequest}
+						composer={
+							<ComposerRegion
+								session={session}
+								model={model}
+								runtimeMode={runtimeMode}
+								runtimeOptions={runtimeOptions}
+								workspaceRoot={workspace.selectedFolderPath}
+								draftScopeId={
+									routeDraftId ??
+									session.draftId ??
+									`${routeKind}:composer`
+								}
+								routeDraftId={routeDraftId}
+								resetKey={composerResetKey}
+								onModelChange={setModel}
+								onRuntimeModeChange={setRuntimeMode}
+								onNewDraftRoute={startNewDraftRoute}
+								onDraftSendStarted={(draftId) => {
+									pendingDraftPromotionRef.current = draftId;
+								}}
+								onDraftSendFailed={(draftId) => {
+									if (
+										pendingDraftPromotionRef.current ===
+										draftId
+									) {
+										pendingDraftPromotionRef.current =
+											undefined;
+									}
+								}}
+							/>
+						}
 					/>
 				</div>
 			</section>

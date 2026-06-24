@@ -149,7 +149,22 @@ export type ConversationMessage = {
 	role: "user" | "assistant" | "system";
 	status: "pending" | "streaming" | "completed" | "failed" | "interrupted";
 	text: string;
+	parts?: ConversationMessagePart[];
 	summaryContext?: string[];
+	createdAt: string;
+	updatedAt: string;
+};
+
+export type ConversationMessagePart = {
+	id: string;
+	conversationId: string;
+	messageId: string;
+	turnId?: string;
+	providerItemId?: string;
+	ordinal: number;
+	type: "text" | "tool_call" | "tool_result" | "approval" | "raw";
+	text?: string;
+	json: unknown;
 	createdAt: string;
 	updatedAt: string;
 };

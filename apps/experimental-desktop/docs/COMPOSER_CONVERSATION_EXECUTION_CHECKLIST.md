@@ -442,6 +442,16 @@ Done:
 
 - Timeline renders message parts, not text-only transcript.
 
+Progress:
+
+- Reread current reference files before coding: OpenCode timeline model/projection, T3Code `deriveTimelineEntries` + `deriveMessagesTimelineRows`, T3Code `MessagesTimeline`, AionUI message-list hooks/list rendering, AionUI ACP stream/send-box/queue files.
+- Reference-driven decision: keep the same two-step shape as OpenCode/T3Code, with a pure row model first and renderer components second; keep Aion-style request/permission state outside the text transcript instead of burying approval controls in normal message rows.
+- Added `conversationTimelineModel.ts` to project transcript rows, pending approvals, persisted DB message parts, attachment/context summaries from admitted composer payloads, tool/provider parts, compaction rows, and error/system rows into timeline rows.
+- Exposed ordered `message_parts` on `ConversationMessage` across main/preload detail loading so renderer rows can render persisted parts instead of relying only on flattened text.
+- Added `ConversationStage`, `ConversationTimeline`, `TimelineRow`, `PendingRequestLayer`, and `ConversationStatusBar`; `DesktopCompatibilityView` now mounts the stage instead of the text-only `SessionPanel`.
+- Added projection tests for persisted context/image/text parts, pending approval request rows, and compaction event rows.
+- Still deferred: durable queue rows inside the timeline, richer DB `message_parts` enum for first-class `file_ref`/`image_ref`/`context_ref` rows, live provider-context part refresh after streaming events, quick-capture/app-action/diff-specific row renderers, and virtualization/polish once row volume requires it.
+
 ## Phase 8 — Provider Expansion Foundation
 
 Goal: Codex remains first, but architecture is ready.
