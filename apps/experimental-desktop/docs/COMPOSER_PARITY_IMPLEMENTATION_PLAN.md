@@ -339,6 +339,12 @@ P0 slice 3 progress:
 - `useCodexSession.persistDraft` now accepts a draft-sync persistence input instead of raw `ComposerPayload`.
 - Added focused draft-sync tests for persist gating and payload conversion.
 
+P0 slice 3 follow-up decision:
+- Current app has no route-owned draft identity yet, so `ComposerDraftSync` accepts a temporary `draftScopeId` to distinguish same-content draft lifecycles.
+- `App.tsx` passes `session.draftId` when available, otherwise a local new-draft scope id that resets on New Session.
+- When `/draft/:draftId` lands, replace the local scope id with the route param and remove the temporary bridge.
+- Admission now rejects ready attachments that have a path but no MIME type, because Codex native input would otherwise silently drop them.
+
 ## P1 — Request Parts, Safety, Budget
 
 ### 1. Add Request Parts

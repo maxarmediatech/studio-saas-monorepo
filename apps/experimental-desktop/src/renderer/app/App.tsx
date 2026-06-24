@@ -43,6 +43,9 @@ export function App() {
 		ComposerAttachment[]
 	>([]);
 	const [composerResetSignal, setComposerResetSignal] = useState(0);
+	const [localDraftScopeId, setLocalDraftScopeId] = useState(() =>
+		crypto.randomUUID(),
+	);
 	const { theme, toggleTheme } = useThemeMode();
 	const workspace = useWorkspaceSelection();
 	const provider = useProviderStatus();
@@ -86,6 +89,7 @@ export function App() {
 		draft: composerDraft,
 		draftId: session.draftId,
 		conversationId: session.conversationId,
+		draftScopeId: session.draftId ?? localDraftScopeId,
 		scopeKey: workspace.selectedFolderPath,
 		persistDraft: session.persistDraft,
 	});
@@ -122,6 +126,7 @@ export function App() {
 		setComposerMode("ask");
 		setComposerContextItems([]);
 		setComposerAttachments([]);
+		setLocalDraftScopeId(crypto.randomUUID());
 		setComposerResetSignal((signal) => signal + 1);
 		await session.createNewSession();
 	}

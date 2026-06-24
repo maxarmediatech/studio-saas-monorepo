@@ -42,7 +42,10 @@ export function admitComposerRequest(input: {
 	}
 
 	const unresolvedAttachments = input.payload.attachments.filter(
-		(attachment) => attachment.status === "failed" || !attachment.path,
+		(attachment) =>
+			attachment.status === "failed" ||
+			!attachment.path ||
+			!attachment.mimeType,
 	);
 	if (unresolvedAttachments.length > 0) {
 		return {
@@ -50,7 +53,7 @@ export function admitComposerRequest(input: {
 			reason: "Resolve attachments before sending.",
 			blocks: unresolvedAttachments.map(
 				(attachment) =>
-					`${attachment.name}: ${attachment.error ?? "missing path"}`,
+					`${attachment.name}: ${attachmentIssue(attachment)}`,
 			),
 		};
 	}
@@ -92,6 +95,19 @@ export function admitComposerRequest(input: {
 			compatibilityPayload: input.payload,
 		},
 	};
+}
+
+function attachmentIssue(attachment: ComposerPayload["attachments"][number]) {
+	if (attachment.error) {
+		return attachment.error;
+	}
+	if (!attachment.path) {
+		return "missing path";
+	}
+	if (!attachment.mimeType) {
+		return "missing MIME type";
+	}
+	return "unresolved";
 }
 
 function buildComposerRequestParts(

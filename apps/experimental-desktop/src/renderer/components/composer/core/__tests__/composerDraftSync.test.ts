@@ -109,4 +109,22 @@ describe("createComposerDraftPersistKey", () => {
 			}),
 		);
 	});
+
+	it("changes when a same-content draft gets a new lifecycle identity", () => {
+		const currentDraft = draft({ text: "hello" });
+
+		expect(
+			createComposerDraftPersistKey({
+				draft: currentDraft,
+				scopeKey: "/tmp/project",
+				draftScopeId: "draft-a",
+			}),
+		).not.toBe(
+			createComposerDraftPersistKey({
+				draft: currentDraft,
+				scopeKey: "/tmp/project",
+				draftScopeId: "draft-b",
+			}),
+		);
+	});
 });

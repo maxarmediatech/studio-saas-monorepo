@@ -82,6 +82,33 @@ describe("admitComposerRequest", () => {
 		expect(result.blocks).toEqual(["missing.txt: missing path"]);
 	});
 
+	it("rejects MIME-less ready attachments before transport", () => {
+		const result = admitComposerRequest({
+			payload: buildComposerPayload({
+				mode: "ask",
+				text: "Use this file",
+				contextItems: [],
+				attachments: [
+					{
+						id: "attachment-1",
+						kind: "image",
+						name: "missing-mime.png",
+						path: "/tmp/missing-mime.png",
+						status: "ready",
+					},
+				],
+			}),
+			model: "gpt-5.4-mini",
+			runtimeMode: "read-only",
+		});
+
+		expect(result.ok).toBe(false);
+		if (result.ok) {
+			return;
+		}
+		expect(result.blocks).toEqual(["missing-mime.png: missing MIME type"]);
+	});
+
 	it("blocks shell requests with context and attachments", () => {
 		const result = admitComposerRequest({
 			payload: buildComposerPayload({

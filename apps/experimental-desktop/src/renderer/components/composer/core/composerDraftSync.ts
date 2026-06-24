@@ -41,9 +41,11 @@ export function composerDraftToPersistInput(
 
 export function createComposerDraftPersistKey(input: {
 	draft: ComposerDraft;
+	draftScopeId?: string;
 	scopeKey?: string;
 }) {
 	return JSON.stringify({
+		draftScopeId: input.draftScopeId ?? null,
 		scopeKey: input.scopeKey ?? null,
 		draft: composerDraftToPersistInput(input.draft),
 	});
@@ -54,6 +56,7 @@ export function useComposerDraftSync(input: {
 	draftId?: string;
 	conversationId?: string;
 	debounceMs?: number;
+	draftScopeId?: string;
 	scopeKey?: string;
 	persistDraft: (draft: ComposerDraftPersistInput) => Promise<void>;
 }) {
@@ -62,9 +65,10 @@ export function useComposerDraftSync(input: {
 		() =>
 			createComposerDraftPersistKey({
 				draft: input.draft,
+				draftScopeId: input.draftScopeId,
 				scopeKey: input.scopeKey,
 			}),
-		[input.draft, input.scopeKey],
+		[input.draft, input.draftScopeId, input.scopeKey],
 	);
 
 	useEffect(() => {
@@ -90,6 +94,7 @@ export function useComposerDraftSync(input: {
 		input.draftId,
 		input.conversationId,
 		input.debounceMs,
+		input.draftScopeId,
 		input.persistDraft,
 		input.scopeKey,
 		persistKey,
