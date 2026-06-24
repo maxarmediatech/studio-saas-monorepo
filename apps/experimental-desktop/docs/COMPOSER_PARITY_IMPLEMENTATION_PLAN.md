@@ -345,6 +345,20 @@ P0 slice 3 follow-up decision:
 - When `/draft/:draftId` lands, replace the local scope id with the route param and remove the temporary bridge.
 - Admission now rejects ready attachments that have a path but no MIME type, because Codex native input would otherwise silently drop them.
 
+P0 slice 4 progress:
+- Added `ComposerRegion.tsx` as the route-owned composer boundary around the existing `SessionComposer` UI.
+- Moved live composer text, mode, context items, attachments, reset signal, draft sync, admission, and clear-on-success behavior out of `DesktopCompatibilityView`.
+- `DesktopCompatibilityView` now passes route/session context into `ComposerRegion`; model/runtime preference still stays at the desktop shell level until provider-instance state lands.
+- Added focused `ComposerRegion` tests for draft-route reset, persisted draft sync, successful send clearing, and failed send preservation.
+- The current region still admits the compatibility `ComposerPayload` produced by `SessionComposer`; the next request-parts slice should move deterministic request-part building into `composerRequestParts.ts` and make `SessionComposer` stop being the payload builder.
+
+P0 slice 5 progress:
+- Added `composerRequestParts.ts` as the provider-agnostic request-part builder.
+- Moved request-part construction out of `composerSendController.ts`; the send controller now consumes request parts instead of owning parser details.
+- Request parts preserve payload order and dedupe repeated file/context refs while keeping distinct folder modes.
+- Added focused request-part tests for order and dedupe.
+- Remaining compatibility: `SessionComposer` still produces `ComposerPayload` for admission. Next slice should let `ComposerRegion` build the admitted snapshot from `ComposerDraft`/request parts and make `SessionComposer` a UI-only input shell.
+
 ## P1 — Request Parts, Safety, Budget
 
 ### 1. Add Request Parts

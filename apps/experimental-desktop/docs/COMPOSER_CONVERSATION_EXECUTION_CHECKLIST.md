@@ -190,6 +190,13 @@ Goal: composer becomes route-scoped and provider-neutral.
 
 Use `COMPOSER_PARITY_IMPLEMENTATION_PLAN.md` for detailed composer-domain implementation.
 
+Reference-first decision:
+
+- Reread OpenCode `session-composer-region.tsx`, `session-composer-state.ts`, `context/prompt.tsx`, and `build-request-parts.ts`; keep the region as the owner of scoped prompt/draft composition while the input component stays mostly presentational.
+- Reread T3Code `ChatComposer.tsx` and `composerDraftStore.ts`; keep editable draft state keyed by route/draft identity and preserve draft on failed sends.
+- Reread AionUI `AcpSendBox.tsx` and `ChatConversation.tsx`; keep provider/runtime policy outside the raw input component and avoid pushing route state into the send box.
+- For this app, start with `ComposerRegion.tsx` as a compatibility boundary around `SessionComposer`: it owns live draft state, draft sync, admission, send clearing, and draft-route reset while preserving the current textarea UI.
+
 Add:
 
 ```txt
@@ -228,6 +235,13 @@ Done:
 - `ComposerRegion` receives route/session context only.
 - `SessionComposer` no longer orchestrates admission.
 - `useCodexSession` does not build provider input.
+
+Progress:
+
+- Added `ComposerRegion.tsx` and moved live composer state, draft persistence sync, admission/send clearing, and draft-route reset out of `DesktopCompatibilityView`.
+- `DesktopCompatibilityView` now owns shell/layout/route loading/model preference; it no longer owns message text, composer mode, context items, attachments, or composer draft persistence.
+- Added `ComposerRegion` tests for route draft reset, draft persistence through `ComposerDraftSync`, clear-on-success, and preserve-on-failure.
+- Added `composerRequestParts.ts` and moved provider-agnostic request-part building out of `composerSendController.ts`; tests now lock ordering and dedupe behavior.
 
 ## Phase 4 — Admitted Send Endpoints
 

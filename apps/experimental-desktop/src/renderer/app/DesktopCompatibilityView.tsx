@@ -6,16 +6,7 @@ import type {
 	CodexRuntimeMode,
 	ConversationDetail,
 } from "../../preload/types";
-import type { ComposerPayload } from "../components/composer/composerPayload";
-import type { ComposerMode } from "../components/composer/composerTriggers";
-import type {
-	ComposerAttachment,
-	ComposerContextItem,
-} from "../components/composer/composerTypes";
-import { useComposerDraftSync } from "../components/composer/core/composerDraftSync";
-import { createComposerDraft } from "../components/composer/core/composerDraftTypes";
-import { admitComposerRequest } from "../components/composer/core/composerSendController";
-import { SessionComposer } from "../components/composer/SessionComposer";
+import { ComposerRegion } from "../components/composer/ComposerRegion";
 import { Sidebar } from "../components/layout";
 import { RightPanel } from "../components/right-panel";
 import { SessionPanel } from "../components/session";
@@ -47,20 +38,8 @@ export function DesktopCompatibilityView(props: {
 	const [runtimeMode, setRuntimeMode] =
 		useState<CodexRuntimeMode>("read-only");
 	const [model, setModel] = useState("gpt-5.4-mini");
-	const [message, setMessage] = useState("");
-	const [composerMode, setComposerMode] = useState<ComposerMode>("ask");
-	const [composerContextItems, setComposerContextItems] = useState<
-		ComposerContextItem[]
-	>([]);
-	const [composerAttachments, setComposerAttachments] = useState<
-		ComposerAttachment[]
-	>([]);
-	const [composerResetSignal, setComposerResetSignal] = useState(0);
-	const [localDraftScopeId, setLocalDraftScopeId] = useState<string>(() =>
-		crypto.randomUUID(),
-	);
+	const [composerResetKey, setComposerResetKey] = useState<string>();
 	const openedConversationRouteRef = useRef<string | undefined>(undefined);
-	const openedDraftRouteRef = useRef<string | undefined>(undefined);
 	const { theme, toggleTheme } = useThemeMode();
 	const workspace = useWorkspaceSelection();
 	const provider = useProviderStatus();
@@ -102,33 +81,6 @@ export function DesktopCompatibilityView(props: {
 		window.localStorage.setItem(modelStorageKey, model);
 	}, [model]);
 
-	const composerDraft = useMemo(() => {
-		return createComposerDraft({
-			text: message,
-			mode: composerMode,
-			model,
-			runtimeMode,
-			contextItems: composerContextItems,
-			attachments: composerAttachments,
-		});
-	}, [
-		message,
-		composerMode,
-		model,
-		runtimeMode,
-		composerContextItems,
-		composerAttachments,
-	]);
-
-	useComposerDraftSync({
-		draft: composerDraft,
-		draftId: session.draftId,
-		conversationId: session.conversationId,
-		draftScopeId: session.draftId ?? localDraftScopeId,
-		scopeKey: workspace.selectedFolderPath,
-		persistDraft: session.persistDraft,
-	});
-
 	useEffect(() => {
 		if (
 			routeKind !== "conversation" ||
@@ -163,17 +115,6 @@ export function DesktopCompatibilityView(props: {
 	}, [routeKind, routeConversationId, routeResource, session.conversationId]);
 
 	useEffect(() => {
-		if (routeKind !== "draft" || !routeDraftId) {
-			return;
-		}
-		if (openedDraftRouteRef.current === routeDraftId) {
-			return;
-		}
-		openedDraftRouteRef.current = routeDraftId;
-		void createNewSession({ draftScopeId: routeDraftId });
-	}, [routeKind, routeDraftId]);
-
-	useEffect(() => {
 		if (routeKind !== "draft" || !session.conversationId) {
 			return;
 		}
@@ -192,31 +133,6 @@ export function DesktopCompatibilityView(props: {
 			: []),
 	];
 
-	async function sendMessage(payload: ComposerPayload) {
-		const admission = admitComposerRequest({
-			payload,
-			model,
-			runtimeMode,
-		});
-		if (!admission.ok) {
-			session.reportComposerAdmissionBlock(admission.reason);
-			return false;
-		}
-		const sent = await session.sendAdmittedRequest(admission.request);
-		if (sent) {
-			setMessage("");
-			setComposerContextItems([]);
-			setComposerAttachments([]);
-		}
-		return sent;
-	}
-
-	async function createNewSession(input?: { draftScopeId?: string }) {
-		resetComposer();
-		setLocalDraftScopeId(input?.draftScopeId ?? crypto.randomUUID());
-		await session.createNewSession();
-	}
-
 	async function openLoadedConversationRoute(
 		conversation: ConversationDetail,
 	) {
@@ -225,16 +141,8 @@ export function DesktopCompatibilityView(props: {
 				conversation,
 			);
 		if (opened) {
-			resetComposer();
+			setComposerResetKey(`conversation:${conversation.id}`);
 		}
-	}
-
-	function resetComposer() {
-		setMessage("");
-		setComposerMode("ask");
-		setComposerContextItems([]);
-		setComposerAttachments([]);
-		setComposerResetSignal((signal) => signal + 1);
 	}
 
 	async function startNewDraftRoute() {
@@ -286,29 +194,22 @@ export function DesktopCompatibilityView(props: {
 						</h1>
 					</div>
 					<div className="flex w-[min(100%,1080px)] flex-col gap-0 self-center">
-						<SessionComposer
-							value={message}
-							disabled={session.isTurnRunning}
-							turnActive={session.isTurnActive}
-							mode={composerMode}
+						<ComposerRegion
+							session={session}
 							model={model}
 							runtimeMode={runtimeMode}
 							runtimeOptions={runtimeOptions}
-							pendingRequests={session.pendingRequests}
 							workspaceRoot={workspace.selectedFolderPath}
-							resetSignal={composerResetSignal}
-							initialContextItems={composerContextItems}
-							initialAttachments={composerAttachments}
-							onChange={setMessage}
-							onModeChange={setComposerMode}
-							onContextItemsChange={setComposerContextItems}
-							onAttachmentsChange={setComposerAttachments}
+							draftScopeId={
+								routeDraftId ??
+								session.draftId ??
+								`${routeKind}:composer`
+							}
+							routeDraftId={routeDraftId}
+							resetKey={composerResetKey}
 							onModelChange={setModel}
 							onRuntimeModeChange={setRuntimeMode}
-							onSend={sendMessage}
-							onInterrupt={session.interruptConversation}
-							onNewSession={startNewDraftRoute}
-							onRespondRequest={session.respondToRequest}
+							onNewDraftRoute={startNewDraftRoute}
 						/>
 					</div>
 					<SessionPanel

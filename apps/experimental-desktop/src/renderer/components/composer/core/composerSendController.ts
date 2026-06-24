@@ -1,12 +1,9 @@
 import type { CodexRuntimeMode } from "../../../../preload/types";
 import { buildCodexProviderSendInput } from "../adapters/codexComposerAdapter";
-import type { ComposerPayload, ComposerPayloadPart } from "../composerPayload";
-import type { ComposerContextItem } from "../composerTypes";
+import type { ComposerPayload } from "../composerPayload";
 import { resolveComposerModePolicy } from "./composerModePolicy";
-import type {
-	AdmittedComposerRequest,
-	ComposerRequestPart,
-} from "./composerProviderTypes";
+import { buildComposerRequestParts } from "./composerRequestParts";
+import type { AdmittedComposerRequest } from "./composerProviderTypes";
 import { codexRuntimeCapabilities } from "./runtimeCapabilityMap";
 
 export type ComposerAdmissionResult =
@@ -108,81 +105,4 @@ function attachmentIssue(attachment: ComposerPayload["attachments"][number]) {
 		return "missing MIME type";
 	}
 	return "unresolved";
-}
-
-function buildComposerRequestParts(
-	payload: ComposerPayload,
-): ComposerRequestPart[] {
-	return payload.parts.flatMap((part) => requestPartFromPayloadPart(part));
-}
-
-function requestPartFromPayloadPart(
-	part: ComposerPayloadPart,
-): ComposerRequestPart[] {
-	switch (part.type) {
-		case "user_text":
-			return part.text.trim()
-				? [{ type: "text", text: part.text.trim() }]
-				: [];
-		case "attachment_image":
-			return part.path
-				? [
-						{
-							type: "image_ref",
-							path: part.path,
-							name: part.name,
-							mimeType: part.mimeType,
-						},
-					]
-				: [];
-		case "attachment_file":
-			return part.path
-				? [
-						{
-							type: "file_ref",
-							path: part.path,
-							name: part.name,
-							mimeType: part.mimeType,
-						},
-					]
-				: [];
-		case "context_directory":
-		case "context_workspace":
-			return [
-				{
-					type: "folder_ref",
-					path: part.path,
-					label: part.label,
-					mode: part.folderMode,
-				},
-			];
-		case "context_file":
-		case "context_skill":
-		case "context_terminal":
-			return [
-				{
-					type: "context_ref",
-					path: part.path,
-					label: part.label,
-					contextType: contextTypeFromPartType(part.type),
-				},
-			];
-	}
-}
-
-function contextTypeFromPartType(
-	type: Extract<ComposerPayloadPart, { type: `context_${string}` }>["type"],
-): ComposerContextItem["type"] {
-	switch (type) {
-		case "context_file":
-			return "file";
-		case "context_directory":
-			return "directory";
-		case "context_workspace":
-			return "workspace";
-		case "context_skill":
-			return "skill";
-		case "context_terminal":
-			return "terminal";
-	}
 }
