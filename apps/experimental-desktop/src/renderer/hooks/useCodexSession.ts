@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type {
 	CodexRuntimeMode,
 	ConversationDetail,
+	ConversationEvent,
 	ConversationSummary,
 	RespondSessionRequestInput,
 } from "../../preload/types";
@@ -11,6 +12,7 @@ import type { ComposerDraftPersistInput } from "../components/composer/core/comp
 import type { AdmittedComposerRequest } from "../components/composer/core/composerProviderTypes";
 import { admitComposerRequest } from "../components/composer/core/composerSendController";
 import { toCodexAdmittedSendInput } from "../conversations/codexAdmittedTransport";
+import { createConversationEventStore } from "../conversations/conversationEventStore";
 import {
 	applyConversationEventProjection,
 	type ConversationProjectionState,
@@ -18,10 +20,7 @@ import {
 	projectConversationDetail,
 	summarizeConversationEvent,
 } from "../conversations/conversationProjection";
-import {
-	loadConversationDetail,
-	subscribeConversationEvents,
-} from "../conversations/conversationTransport";
+import { loadConversationDetail } from "../conversations/conversationTransport";
 import { defaultAnswers } from "./pendingRequestDefaults";
 
 export function useCodexSession(input: {
@@ -46,12 +45,11 @@ export function useCodexSession(input: {
 	const projectionStateRef = useRef<ConversationProjectionState>(
 		createEmptyConversationProjection(),
 	);
-	const unsubscribeRef = useRef<(() => void) | undefined>(undefined);
-	const seenEventsRef = useRef(new Set<string>());
+	const eventStoreRef = useRef(createConversationEventStore());
 
 	useEffect(() => {
 		void refreshConversations();
-		return () => unsubscribeRef.current?.();
+		return () => eventStoreRef.current.clear();
 	}, []);
 
 	async function refreshConversations() {
@@ -88,8 +86,7 @@ export function useCodexSession(input: {
 	}
 
 	async function openConversation(id: string) {
-		unsubscribeRef.current?.();
-		seenEventsRef.current.clear();
+		eventStoreRef.current.clear();
 		const conversation = await loadConversationDetail(id);
 		if (!conversation) {
 			setStatus("Conversation not found");
@@ -100,10 +97,9 @@ export function useCodexSession(input: {
 	}
 
 	async function openLoadedConversation(conversation: ConversationDetail) {
-		unsubscribeRef.current?.();
-		seenEventsRef.current.clear();
+		eventStoreRef.current.clear();
 		hydrateConversation(conversation);
-		unsubscribeRef.current = await subscribeConversationEvents(
+		await eventStoreRef.current.subscribe(
 			conversation.id,
 			handleSessionEvent,
 		);
@@ -111,8 +107,7 @@ export function useCodexSession(input: {
 	}
 
 	async function createNewSession() {
-		unsubscribeRef.current?.();
-		seenEventsRef.current.clear();
+		eventStoreRef.current.clear();
 		setDraftId(undefined);
 		setConversationId(undefined);
 		setThreadId(undefined);
@@ -180,8 +175,8 @@ export function useCodexSession(input: {
 					});
 				if (conversation) {
 					hydrateConversation(conversation);
-					unsubscribeRef.current?.();
-					unsubscribeRef.current = await subscribeConversationEvents(
+					eventStoreRef.current.clear();
+					await eventStoreRef.current.subscribe(
 						conversation.id,
 						handleSessionEvent,
 					);
@@ -268,13 +263,7 @@ export function useCodexSession(input: {
 		applyProjectionState(projectConversationDetail(conversation));
 	}
 
-	function handleSessionEvent(
-		event: Parameters<typeof summarizeConversationEvent>[0],
-	) {
-		if (seenEventsRef.current.has(event.id)) {
-			return;
-		}
-		seenEventsRef.current.add(event.id);
+	function handleSessionEvent(event: ConversationEvent) {
 		appendEventLog(event);
 		const result = applyConversationEventProjection(
 			projectionStateRef.current,
