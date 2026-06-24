@@ -55,6 +55,16 @@ Done:
 - Route owns active identity.
 - No composer draft state in `App.tsx`.
 
+Compatibility strategy:
+
+- First router slice uses code-based TanStack Router routes so Electron/Vite does not need route generation yet.
+- `App.tsx` becomes `AppProviders` + `RouterProvider`.
+- Current desktop behavior is parked in `DesktopCompatibilityView` while route/resource extraction continues.
+- Sidebar new/open actions navigate to `/draft/:draftId` and `/conversation/:conversationId`; compatibility route effects perform the current session reset/open calls.
+- `/capture` mounts the compatibility shell for now so the route exists without inventing quick-capture state early.
+- Replace `DesktopCompatibilityView` with route-owned draft/conversation resources in the later Phase 2/3 slices.
+- First send still uses the legacy boolean transport, so draft-to-conversation URL promotion is deferred until admitted endpoints return the promoted conversation id.
+
 ## Phase 1 — Main DB And Domain Schema
 
 Goal: create durable storage for the real product shape before renderer depends on it.
