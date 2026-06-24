@@ -5,6 +5,7 @@ const desktopRootClass =
 	"grid h-dvh w-screen min-w-[980px] grid-rows-[44px_minmax(0,1fr)] bg-[var(--desktop-bg)]";
 const desktopShellClass =
 	"grid min-h-0 grid-cols-[276px_minmax(520px,1fr)] max-[1200px]:grid-cols-[248px_minmax(500px,1fr)]";
+const desktopTopLevelClass = "min-h-0 overflow-hidden";
 type DesktopTopTab = "chat" | "settings";
 
 export function DesktopLayout(props: {
@@ -24,10 +25,14 @@ export function DesktopLayout(props: {
 				onSelectTab={setActiveTab}
 				onToggleTheme={props.onToggleTheme}
 			/>
-			<main className={desktopShellClass}>
-				{props.sidebar}
-				{activeTab === "settings" ? props.settings : props.children}
-			</main>
+			{activeTab === "settings" ? (
+				<main className={desktopTopLevelClass}>{props.settings}</main>
+			) : (
+				<main className={desktopShellClass}>
+					{props.sidebar}
+					{props.children}
+				</main>
+			)}
 		</div>
 	);
 }
