@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { CodexRuntimeMode } from "../sidecar-codex-runtime";
 import type { ConversationDatabase } from "../storage/database";
+import type { ValidatedAdmittedComposerRequest } from "./admitted-request";
 import { estimateTokens } from "./summarizer";
 import type {
 	ApprovalKind,
@@ -350,6 +351,123 @@ export class ConversationRepository {
 			this.touchConversation(input.conversationId, "active", input.now);
 		});
 		run();
+	}
+
+	recordAdmittedRequest(input: {
+		request: ValidatedAdmittedComposerRequest;
+		conversationId?: string;
+		draftId?: string;
+		turnId?: string;
+		status: "admitted" | "queued" | "running" | "completed" | "failed" | "canceled";
+		now: string;
+	}) {
+		this.db
+			.prepare(
+				`INSERT INTO admitted_requests
+				(id, conversation_id, draft_id, turn_id, provider, status, draft_snapshot_json, request_parts_json, provider_input_json, admission_json, compatibility_payload_json, created_at, updated_at)
+				VALUES (@id, @conversationId, @draftId, @turnId, @provider, @status, @draftSnapshot, @requestParts, @providerInput, @admission, @compatibilityPayload, @now, @now)
+				ON CONFLICT(id) DO UPDATE SET
+					conversation_id = COALESCE(excluded.conversation_id, admitted_requests.conversation_id),
+					draft_id = COALESCE(excluded.draft_id, admitted_requests.draft_id),
+					turn_id = COALESCE(excluded.turn_id, admitted_requests.turn_id),
+					status = excluded.status,
+					updated_at = excluded.updated_at`,
+			)
+			.run({
+				id: input.request.id,
+				conversationId: input.conversationId ?? null,
+				draftId: input.draftId ?? null,
+				turnId: input.turnId ?? null,
+				provider: input.request.providerInput.provider,
+				status: input.status,
+				draftSnapshot: stringify(input.request.draftSnapshot),
+				requestParts: stringify(input.request.requestParts),
+				providerInput: stringify(input.request.providerInput),
+				admission: stringify(input.request.admission),
+				compatibilityPayload: stringify(
+					input.request.compatibilityPayload ?? {},
+				),
+				now: input.now,
+			});
+	}
+
+	markAdmittedRequestStatus(input: {
+		id: string;
+		status: "admitted" | "queued" | "running" | "completed" | "failed" | "canceled";
+		error?: unknown;
+		now: string;
+	}) {
+		this.db
+			.prepare(
+				`UPDATE admitted_requests
+				SET status = @status,
+					error_json = @error,
+					updated_at = @now
+				WHERE id = @id`,
+			)
+			.run({
+				id: input.id,
+				status: input.status,
+				error: input.error ? stringify(input.error) : null,
+				now: input.now,
+			});
+	}
+
+	createQueueItem(input: {
+		id: string;
+		conversationId: string;
+		admittedRequestId: string;
+		now: string;
+	}) {
+		const position = this.nextQueuePosition(input.conversationId);
+		this.db
+			.prepare(
+				`INSERT INTO queue_items
+				(id, conversation_id, admitted_request_id, position, status, created_at, updated_at)
+				VALUES (@id, @conversationId, @admittedRequestId, @position, 'queued', @now, @now)`,
+			)
+			.run({ ...input, position });
+		return {
+			id: input.id,
+			conversationId: input.conversationId,
+			admittedRequestId: input.admittedRequestId,
+			position,
+			status: "queued" as const,
+			createdAt: input.now,
+			updatedAt: input.now,
+		};
+	}
+
+	updateQueueItem(input: {
+		queueItemId: string;
+		status: "queued" | "running" | "completed" | "failed" | "canceled";
+		error?: unknown;
+		now: string;
+	}) {
+		this.db
+			.prepare(
+				`UPDATE queue_items
+				SET status = @status,
+					error_json = @error,
+					updated_at = @now
+				WHERE id = @queueItemId`,
+			)
+			.run({
+				...input,
+				error: input.error ? stringify(input.error) : null,
+			});
+		return this.getQueueItem(input.queueItemId);
+	}
+
+	getNextQueuedItem(conversationId: string) {
+		return this.db
+			.prepare(
+				`SELECT * FROM queue_items
+				WHERE conversation_id = ? AND status = 'queued'
+				ORDER BY position ASC, created_at ASC
+				LIMIT 1`,
+			)
+			.get(conversationId) as QueueItemRow | undefined;
 	}
 
 	listConversations() {
@@ -1222,6 +1340,23 @@ export class ConversationRepository {
 		return row.ordinal;
 	}
 
+	private nextQueuePosition(conversationId: string) {
+		const row = this.db
+			.prepare(
+				`SELECT COALESCE(MAX(position), -1) + 1 AS position
+				FROM queue_items
+				WHERE conversation_id = ? AND status = 'queued'`,
+			)
+			.get(conversationId) as { position: number };
+		return row.position;
+	}
+
+	private getQueueItem(queueItemId: string) {
+		return this.db
+			.prepare("SELECT * FROM queue_items WHERE id = ?")
+			.get(queueItemId) as QueueItemRow | undefined;
+	}
+
 	private setActiveLeafMessage(
 		conversationId: string,
 		messageId: string,
@@ -1566,6 +1701,17 @@ type ConversationSummaryRow = {
 	tail_start_message_id: string | null;
 	tokens_before: number | null;
 	created_at: string;
+};
+
+type QueueItemRow = {
+	id: string;
+	conversation_id: string;
+	admitted_request_id: string;
+	position: number;
+	status: "queued" | "running" | "completed" | "failed" | "canceled";
+	error_json: string | null;
+	created_at: string;
+	updated_at: string;
 };
 
 function mapDraft(row: DraftRow): DraftRecord {

@@ -109,12 +109,48 @@ const api: ExperimentalDesktopApi = {
 		ipcRenderer.invoke("draft:promote-and-send", input) as Promise<
 			ConversationDetail | undefined
 		>,
+	promoteDraftAndSendAdmitted: (input) =>
+		ipcRenderer.invoke(
+			"conversation:promote-draft-and-send-admitted",
+			input,
+		) as Promise<ConversationDetail | undefined>,
 	sendConversationMessage: (conversationId, input) =>
 		ipcRenderer.invoke(
 			"conversation:send-message",
 			conversationId,
 			input,
 		) as Promise<ConversationDetail | undefined>,
+	sendAdmittedMessage: (conversationId, input) =>
+		ipcRenderer.invoke(
+			"conversation:send-admitted-message",
+			conversationId,
+			input,
+		) as Promise<ConversationDetail | undefined>,
+	enqueueAdmittedMessage: (conversationId, input) =>
+		ipcRenderer.invoke(
+			"conversation:enqueue-admitted-message",
+			conversationId,
+			input,
+		) as Promise<{
+			id: string;
+			conversationId: string;
+			admittedRequestId: string;
+			position: number;
+			status: "queued";
+			createdAt: string;
+			updatedAt: string;
+		}>,
+	updateConversationQueueItem: (queueItemId, input) =>
+		ipcRenderer.invoke(
+			"conversation:queue-update",
+			queueItemId,
+			input,
+		) as Promise<unknown>,
+	executeNextConversationQueueItem: (conversationId) =>
+		ipcRenderer.invoke(
+			"conversation:queue-execute-next",
+			conversationId,
+		) as Promise<unknown>,
 	interruptConversation: (conversationId) =>
 		ipcRenderer.invoke(
 			"conversation:interrupt",

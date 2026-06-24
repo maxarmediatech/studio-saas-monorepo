@@ -110,6 +110,12 @@ composer snapshot
 
 Renderer policy is UX. Main policy is the trust boundary.
 
+Phase 4 progress:
+- Renderer `conversationClient.sendAdmittedRequest` now sends the full `AdmittedComposerRequest` through admitted IPC endpoints instead of rematerializing the legacy Codex send body.
+- Main validates the Codex provider envelope against provider-neutral `ComposerRequestPart[]`, including native file/image path and MIME matching, before any runtime call.
+- Main persists `admitted_requests` before Codex handoff and stores admitted metadata in the compatibility message payload so current text timeline keeps working while Phase 7 can project richer request parts.
+- Queue admission now has durable `queue_items`; richer queue store/UI, caps display, edit/remove/reorder, pause/resume, and execute-next runtime promotion remain Phase 5 work.
+
 File-safety and budget checks must not live only in UI because files can enter through picker, paste, drag/drop, folder context, mentions, restored drafts, queued sends, future programmatic insertion, or IPC/provider payloads.
 
 ## Controller / Session Contract

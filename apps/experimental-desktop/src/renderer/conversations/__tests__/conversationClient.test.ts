@@ -40,15 +40,15 @@ describe("conversationClient", () => {
 		const calls: string[] = [];
 		const client = createConversationClient({
 			...fakeTransport(),
-			sendConversationMessage: async (conversationId, input) => {
+			sendAdmittedMessage: async (conversationId, input) => {
 				calls.push(
-					`send:${conversationId}:${input.text}:${input.model}:${input.runtimeMode}`,
+					`send:${conversationId}:${input.request.providerInput.prompt}:${input.request.providerInput.model}:${input.request.providerInput.runtimeMode}`,
 				);
 				return undefined;
 			},
-			promoteDraftAndSend: async (input) => {
+			promoteDraftAndSendAdmitted: async (input) => {
 				calls.push(
-					`promote:${input.draftId}:${input.cwd}:${input.text}:${input.model}`,
+					`promote:${input.draftId}:${input.cwd}:${input.request.providerInput.prompt}:${input.request.providerInput.model}`,
 				);
 				return undefined;
 			},
@@ -75,11 +75,11 @@ describe("conversationClient", () => {
 		const calls: string[] = [];
 		const client = createConversationClient({
 			...fakeTransport(),
-			sendConversationMessage: async () => {
+			sendAdmittedMessage: async () => {
 				calls.push("send");
 				return undefined;
 			},
-			promoteDraftAndSend: async () => {
+			promoteDraftAndSendAdmitted: async () => {
 				calls.push("promote");
 				return undefined;
 			},
@@ -179,7 +179,18 @@ function fakeTransport() {
 		createDraft: async () => draftRecord("draft-1"),
 		updateDraft: async (draftId: string) => draftRecord(draftId),
 		promoteDraftAndSend: async () => undefined,
+		promoteDraftAndSendAdmitted: async () => undefined,
 		sendConversationMessage: async () => undefined,
+		sendAdmittedMessage: async () => undefined,
+		enqueueAdmittedMessage: async () => ({
+			id: "queue-1",
+			conversationId: "conversation-1",
+			admittedRequestId: "admitted-1",
+			position: 0,
+			status: "queued" as const,
+			createdAt: "2026-06-24T00:00:00.000Z",
+			updatedAt: "2026-06-24T00:00:00.000Z",
+		}),
 		interruptConversation: async () => ({ ok: true as const }),
 		respondApproval: async () => ({ ok: true as const }),
 	};

@@ -6,6 +6,7 @@ import type {
 	DraftRecord,
 	RespondSessionRequestInput,
 } from "../../preload/types";
+import type { AdmittedComposerRequest } from "../components/composer/core/composerProviderTypes";
 
 export type DraftPersistTransportInput = {
 	text?: string;
@@ -49,11 +50,39 @@ export function promoteDraftAndSend(
 	return window.experimentalDesktop.promoteDraftAndSend(input);
 }
 
+export function promoteDraftAndSendAdmitted(input: {
+	draftId?: string;
+	cwd?: string;
+	request: AdmittedComposerRequest;
+}) {
+	return window.experimentalDesktop.promoteDraftAndSendAdmitted(input);
+}
+
 export function sendConversationMessage(
 	conversationId: string,
 	input: ConversationSendTransportInput,
 ) {
 	return window.experimentalDesktop.sendConversationMessage(
+		conversationId,
+		input,
+	);
+}
+
+export function sendAdmittedMessage(
+	conversationId: string,
+	input: { request: AdmittedComposerRequest },
+) {
+	return window.experimentalDesktop.sendAdmittedMessage(
+		conversationId,
+		input,
+	);
+}
+
+export function enqueueAdmittedMessage(
+	conversationId: string,
+	input: { request: AdmittedComposerRequest },
+) {
+	return window.experimentalDesktop.enqueueAdmittedMessage(
 		conversationId,
 		input,
 	);
@@ -91,7 +120,10 @@ export type ConversationDetailTransport = {
 	createDraft: typeof createDraft;
 	updateDraft: typeof updateDraft;
 	promoteDraftAndSend: typeof promoteDraftAndSend;
+	promoteDraftAndSendAdmitted: typeof promoteDraftAndSendAdmitted;
 	sendConversationMessage: typeof sendConversationMessage;
+	sendAdmittedMessage: typeof sendAdmittedMessage;
+	enqueueAdmittedMessage: typeof enqueueAdmittedMessage;
 	interruptConversation: typeof interruptConversation;
 	respondApproval: typeof respondApproval;
 	subscribeConversationEvents: typeof subscribeConversationEvents;

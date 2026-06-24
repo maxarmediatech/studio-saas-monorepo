@@ -253,6 +253,13 @@ Progress:
 
 Goal: renderer sends explicit admitted requests.
 
+Reference-first decision:
+
+- Reread OpenCode `packages/core/src/session/input.ts` and `packages/core/src/session/prompt.ts`; keep admission as an explicit durable object before the provider prompt is promoted, and preserve provider-native prompt/file shapes inside the provider envelope.
+- Reread AionUI `packages/desktop/src/renderer/pages/conversation/platforms/useConversationCommandQueue.ts`; queue admission should normalize and cap queued state, with full edit/pause/resume UI deferred to Phase 5.
+- Reread T3Code mobile composer draft state; route-keyed drafts stay preserved on failed send, and admitted transport should not rebuild a legacy text-only payload in the session layer.
+- For this app, Phase 4 keeps the legacy send IPC path for compatibility but moves the real `conversationClient.sendAdmittedRequest` path to full `AdmittedComposerRequest` transport. Main validates Codex provider envelopes against admitted `ComposerRequestPart[]` before runtime handoff.
+
 Add IPC/main endpoints:
 
 ```txt
@@ -284,9 +291,14 @@ Tests/gates:
 
 Done:
 
-- First send navigates from `/draft/:draftId` to `/conversation/:conversationId`.
-- Follow-up send uses admitted endpoints.
-- Main validates before provider runtime.
+- Added durable `admitted_requests` and `queue_items` tables in migration `0006_admitted_requests_queue`.
+- Added main validation for admitted Codex requests, including rejecting provider native file/image paths not present in admitted request parts.
+- Added IPC/preload endpoints for admitted draft promotion, admitted follow-up send, admitted enqueue, queue update, and queue execute-next.
+- `conversationClient.sendAdmittedRequest` now transports the full admitted request instead of converting back to legacy `{ text, nativeInput, payload }`.
+- Draft promotion and follow-up sends persist the admitted request before starting the Codex runtime, while still storing legacy composer payload metadata in the user text part for current timeline compatibility.
+- First send returns the promoted conversation detail, so `/draft/:draftId` can navigate to `/conversation/:conversationId` from the endpoint result.
+- Queue admission stores the admitted request and queued item while a conversation is busy; full queue execution/reorder/pause UI stays in Phase 5.
+- Added pure main validation regressions for valid admitted bodies, injected native paths, matched file refs, and queue status updates. SQLite-backed controller persistence tests were not added because the repo's `better-sqlite3` binary is currently built for Electron's Node ABI and fails under Node Vitest; keep DB persistence covered by build/type gates until an Electron/Vitest DB harness exists.
 
 ## Phase 5 — Queue From Beginning
 

@@ -1,14 +1,16 @@
 import type { RespondSessionRequestInput } from "../../preload/types";
 import type { ComposerDraftPersistInput } from "../components/composer/core/composerDraftSync";
 import type { AdmittedComposerRequest } from "../components/composer/core/composerProviderTypes";
-import { toCodexAdmittedSendInput } from "./codexAdmittedTransport";
 import {
 	createDraft,
 	type DraftPersistTransportInput,
+	enqueueAdmittedMessage,
 	interruptConversation,
 	loadConversationDetail,
 	promoteDraftAndSend,
+	promoteDraftAndSendAdmitted,
 	respondApproval,
+	sendAdmittedMessage,
 	sendConversationMessage,
 	updateDraft,
 } from "./conversationTransport";
@@ -18,7 +20,10 @@ export type ConversationClientTransport = {
 	createDraft: typeof createDraft;
 	updateDraft: typeof updateDraft;
 	promoteDraftAndSend: typeof promoteDraftAndSend;
+	promoteDraftAndSendAdmitted: typeof promoteDraftAndSendAdmitted;
 	sendConversationMessage: typeof sendConversationMessage;
+	sendAdmittedMessage: typeof sendAdmittedMessage;
+	enqueueAdmittedMessage: typeof enqueueAdmittedMessage;
 	interruptConversation: typeof interruptConversation;
 	respondApproval: typeof respondApproval;
 };
@@ -28,7 +33,10 @@ const defaultTransport: ConversationClientTransport = {
 	createDraft,
 	updateDraft,
 	promoteDraftAndSend,
+	promoteDraftAndSendAdmitted,
 	sendConversationMessage,
+	sendAdmittedMessage,
+	enqueueAdmittedMessage,
 	interruptConversation,
 	respondApproval,
 };
@@ -54,17 +62,16 @@ export function createConversationClient(
 		cwd?: string;
 		request: AdmittedComposerRequest;
 	}) {
-		const codexInput = toCodexAdmittedSendInput(input.request);
+		assertSupportedProvider(input.request);
 		if (input.conversationId) {
-			return transport.sendConversationMessage(
-				input.conversationId,
-				codexInput,
-			);
+			return transport.sendAdmittedMessage(input.conversationId, {
+				request: input.request,
+			});
 		}
-		return transport.promoteDraftAndSend({
-			...codexInput,
+		return transport.promoteDraftAndSendAdmitted({
 			draftId: input.draftId,
 			...(input.cwd ? { cwd: input.cwd } : {}),
+			request: input.request,
 		});
 	}
 
@@ -91,6 +98,14 @@ export function createConversationClient(
 		respondToApproval,
 		interrupt,
 	};
+}
+
+function assertSupportedProvider(request: AdmittedComposerRequest) {
+	if (request.providerInput.provider !== "codex") {
+		throw new Error(
+			`Unsupported provider: ${request.providerInput.provider}`,
+		);
+	}
 }
 
 export const conversationClient = createConversationClient();

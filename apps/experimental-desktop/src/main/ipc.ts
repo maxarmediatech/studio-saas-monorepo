@@ -161,9 +161,36 @@ export function registerIpcHandlers(sidecarManager: SidecarManager) {
 	);
 
 	ipcMain.handle(
+		"conversation:promote-draft-and-send-admitted",
+		(_event, input) => conversations.promoteDraftAndSendAdmitted(input),
+	);
+
+	ipcMain.handle(
 		"conversation:send-message",
 		(_event, conversationId: string, input) =>
 			conversations.sendConversationMessage(conversationId, input),
+	);
+
+	ipcMain.handle(
+		"conversation:send-admitted-message",
+		(_event, conversationId: string, input) =>
+			conversations.sendAdmittedMessage(conversationId, input),
+	);
+
+	ipcMain.handle(
+		"conversation:enqueue-admitted-message",
+		(_event, conversationId: string, input) =>
+			conversations.enqueueAdmittedMessage(conversationId, input),
+	);
+
+	ipcMain.handle("conversation:queue-update", (_event, queueItemId, input) =>
+		conversations.updateQueueItem(queueItemId, input),
+	);
+
+	ipcMain.handle(
+		"conversation:queue-execute-next",
+		(_event, conversationId: string) =>
+			conversations.executeNextQueuedItem(conversationId),
 	);
 
 	ipcMain.handle("conversation:interrupt", (_event, conversationId: string) =>

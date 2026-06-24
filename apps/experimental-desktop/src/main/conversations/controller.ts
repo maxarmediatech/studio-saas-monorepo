@@ -8,6 +8,11 @@ import type {
 } from "../sidecar-codex-runtime";
 import type { ConversationDatabase } from "../storage/database";
 import {
+	validateAdmittedSendBody,
+	validateQueueUpdateBody,
+	type ValidatedAdmittedComposerRequest,
+} from "./admitted-request";
+import {
 	approvalStatusFromResponse,
 	isFailedTurn,
 	now,
@@ -292,6 +297,264 @@ export function createConversationController(input: {
 			}
 			throw error;
 		}
+	}
+
+	async function promoteDraftAndSendAdmitted(body: unknown) {
+		const admitted = validateAdmittedSendBody(body);
+		const providerInput = admitted.request.providerInput;
+		const cwd = admitted.cwd ?? homedir();
+		assertNoActiveTurn();
+		const ids = {
+			conversationId: randomUUID(),
+			providerSessionId: randomUUID(),
+			turnId: randomUUID(),
+			userMessageId: randomUUID(),
+			assistantMessageId: randomUUID(),
+		};
+		const promoted = repo.promoteDraft({
+			draftId: admitted.draftId,
+			text: providerInput.prompt,
+			cwd,
+			model: providerInput.model,
+			runtimeMode: providerInput.runtimeMode,
+			payload: buildAdmittedMessagePayload(admitted.request),
+			ids,
+			now: now(),
+		});
+		repo.recordAdmittedRequest({
+			request: admitted.request,
+			conversationId: promoted.conversationId,
+			draftId: admitted.draftId,
+			turnId: promoted.turnId,
+			status: "admitted",
+			now: now(),
+		});
+		const activeTurn: ActiveTurn = {
+			conversationId: promoted.conversationId,
+			providerSessionId: promoted.providerSessionId,
+			turnId: promoted.turnId,
+			assistantMessageId: promoted.assistantMessageId,
+			cwd: promoted.cwd,
+			model: promoted.model,
+			runtimeMode: promoted.runtimeMode,
+		};
+		activeTurnId = promoted.turnId;
+		pendingTurns.set(promoted.turnId, activeTurn);
+		persistAndBroadcastMessageCreated(promoted);
+		try {
+			await ensureRuntimeEvents();
+			const thread = (await sidecarFetch("/runtime/thread/start", {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({
+					cwd: promoted.cwd,
+					model: promoted.model,
+					runtimeMode: promoted.runtimeMode,
+				}),
+			})) as { threadId: string };
+			repo.setProviderThread({
+				providerSessionId: promoted.providerSessionId,
+				threadId: thread.threadId,
+				state: thread,
+				now: now(),
+			});
+			await startTurn(
+				{ ...activeTurn, threadId: thread.threadId },
+				providerInput.prompt,
+				providerInput.nativeInput,
+			);
+			repo.markAdmittedRequestStatus({
+				id: admitted.request.id,
+				status: "running",
+				now: now(),
+			});
+			return repo.getConversation(promoted.conversationId);
+		} catch (error) {
+			repo.markAdmittedRequestStatus({
+				id: admitted.request.id,
+				status: "failed",
+				error: errorPayload(error),
+				now: now(),
+			});
+			failActiveTurn(activeTurn, error);
+			throw error;
+		}
+	}
+
+	async function sendAdmittedMessage(conversationId: string, body: unknown) {
+		const admitted = validateAdmittedSendBody(body);
+		return sendValidatedAdmittedMessage(conversationId, admitted.request);
+	}
+
+	async function sendValidatedAdmittedMessage(
+		conversationId: string,
+		request: ValidatedAdmittedComposerRequest,
+	) {
+		const providerInput = request.providerInput;
+		assertNoActiveTurn();
+		const conversation = repo.getConversation(conversationId);
+		let providerSession = repo.getProviderSession(conversationId);
+		if (!conversation || !providerSession) {
+			throw new Error("Conversation is not ready to continue");
+		}
+		await maybeAutoCompactConversation(conversationId, {
+			model: providerInput.model ?? conversation.model,
+		});
+		providerSession = repo.getProviderSession(conversationId);
+		if (!providerSession) {
+			throw new Error("Conversation provider session is missing");
+		}
+		const shouldResumeProviderThread =
+			!!providerSession.provider_thread_id &&
+			providerSession.provider_leaf_message_id ===
+				conversation.activeLeafMessageId;
+		const runtimeText = shouldResumeProviderThread
+			? providerInput.prompt
+			: repo.buildReplayPrompt(conversationId, providerInput.prompt);
+		const userMessageId = randomUUID();
+		const assistantMessageId = randomUUID();
+		const turn: ActiveTurn = {
+			conversationId,
+			providerSessionId: providerSession.id,
+			turnId: randomUUID(),
+			assistantMessageId,
+			cwd: conversation.cwd,
+			model: providerInput.model ?? conversation.model,
+			runtimeMode: providerInput.runtimeMode,
+		};
+		repo.createTurn({
+			conversationId,
+			providerSessionId: providerSession.id,
+			turnId: turn.turnId,
+			userMessageId,
+			assistantMessageId,
+			text: providerInput.prompt,
+			payload: buildAdmittedMessagePayload(request),
+			now: now(),
+		});
+		repo.recordAdmittedRequest({
+			request,
+			conversationId,
+			turnId: turn.turnId,
+			status: "admitted",
+			now: now(),
+		});
+		activeTurnId = turn.turnId;
+		pendingTurns.set(turn.turnId, turn);
+		persistAndBroadcast({
+			conversationId,
+			providerSessionId: providerSession.id,
+			turnId: turn.turnId,
+			type: "message.created",
+			raw: { text: providerInput.prompt },
+			event: {
+				id: randomUUID(),
+				type: "message.created",
+				time: now(),
+				data: {
+					text: providerInput.prompt,
+					messageId: userMessageId,
+					turnId: turn.turnId,
+				},
+			},
+		});
+		try {
+			await ensureRuntimeEvents();
+			let threadId = providerSession.provider_thread_id ?? undefined;
+			if (shouldResumeProviderThread && threadId) {
+				await sidecarFetch("/runtime/thread/resume", {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({ threadId }),
+				});
+			} else {
+				const thread = (await sidecarFetch("/runtime/thread/start", {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({
+						cwd: turn.cwd,
+						model: turn.model,
+						runtimeMode: turn.runtimeMode,
+					}),
+				})) as { threadId: string };
+				threadId = thread.threadId;
+				repo.setProviderThread({
+					providerSessionId: providerSession.id,
+					threadId,
+					state: thread,
+					now: now(),
+				});
+			}
+			await startTurn(
+				{ ...turn, threadId },
+				runtimeText,
+				providerInput.nativeInput,
+			);
+			repo.markAdmittedRequestStatus({
+				id: request.id,
+				status: "running",
+				now: now(),
+			});
+			return repo.getConversation(conversationId);
+		} catch (error) {
+			repo.markAdmittedRequestStatus({
+				id: request.id,
+				status: "failed",
+				error: errorPayload(error),
+				now: now(),
+			});
+			if (pendingTurns.has(turn.turnId) || activeTurnId === turn.turnId) {
+				failActiveTurn(turn, error);
+			}
+			throw error;
+		}
+	}
+
+	function enqueueAdmittedMessage(conversationId: string, body: unknown) {
+		const admitted = validateAdmittedSendBody(body);
+		const conversation = repo.getConversation(conversationId);
+		if (!conversation) {
+			throw new Error("Conversation is not ready to queue");
+		}
+		const createdAt = now();
+		repo.recordAdmittedRequest({
+			request: admitted.request,
+			conversationId,
+			draftId: admitted.draftId,
+			status: "queued",
+			now: createdAt,
+		});
+		return repo.createQueueItem({
+			id: randomUUID(),
+			conversationId,
+			admittedRequestId: admitted.request.id,
+			now: createdAt,
+		});
+	}
+
+	function updateQueueItem(queueItemId: string, body: unknown) {
+		const update = validateQueueUpdateBody(body);
+		if (!update.status) {
+			return { ok: true as const };
+		}
+		return repo.updateQueueItem({
+			queueItemId,
+			status: update.status,
+			now: now(),
+		});
+	}
+
+	async function executeNextQueuedItem(conversationId: string) {
+		assertNoActiveTurn();
+		const item = repo.getNextQueuedItem(conversationId);
+		if (!item) {
+			return { ok: true as const, executed: false as const };
+		}
+		return repo.updateQueueItem({
+			queueItemId: item.id,
+			status: "running",
+			now: now(),
+		});
 	}
 
 	async function interruptConversation(conversationId: string) {
@@ -1179,6 +1442,32 @@ export function createConversationController(input: {
 		}
 	}
 
+	function persistAndBroadcastMessageCreated(input: {
+		conversationId: string;
+		providerSessionId: string;
+		turnId: string;
+		userMessageId: string;
+		text: string;
+	}) {
+		persistAndBroadcast({
+			conversationId: input.conversationId,
+			providerSessionId: input.providerSessionId,
+			turnId: input.turnId,
+			type: "message.created",
+			raw: { text: input.text },
+			event: {
+				id: randomUUID(),
+				type: "message.created",
+				time: now(),
+				data: {
+					text: input.text,
+					messageId: input.userMessageId,
+					turnId: input.turnId,
+				},
+			},
+		});
+	}
+
 	return {
 		listConversations,
 		getConversation,
@@ -1187,6 +1476,11 @@ export function createConversationController(input: {
 		updateDraft,
 		promoteDraftAndSend,
 		sendConversationMessage,
+		promoteDraftAndSendAdmitted,
+		sendAdmittedMessage,
+		enqueueAdmittedMessage,
+		updateQueueItem,
+		executeNextQueuedItem,
 		interruptConversation,
 		respondApproval,
 		renameConversation,
@@ -1281,6 +1575,37 @@ function providerContextFromEvent(
 		};
 	}
 	return undefined;
+}
+
+function buildAdmittedMessagePayload(
+	request: ValidatedAdmittedComposerRequest,
+) {
+	const legacyPayload =
+		request.providerInput.legacyPayload &&
+		typeof request.providerInput.legacyPayload === "object" &&
+		!Array.isArray(request.providerInput.legacyPayload)
+			? request.providerInput.legacyPayload
+			: {};
+	return {
+		...legacyPayload,
+		admittedRequest: {
+			id: request.id,
+			requestParts: request.requestParts,
+			admission: request.admission,
+			provider: request.providerInput.provider,
+		},
+	};
+}
+
+function errorPayload(error: unknown) {
+	return {
+		message:
+			error instanceof Error
+				? error.message
+				: typeof error === "string"
+					? error
+					: "Unknown error",
+	};
 }
 
 function readPayloadItem(value: unknown) {

@@ -234,6 +234,48 @@ CREATE INDEX conversation_summaries_conversation_type_created_at_idx
 ALTER TABLE drafts ADD COLUMN payload_json TEXT NOT NULL DEFAULT '{}';
 `,
 	},
+	{
+		id: "0006_admitted_requests_queue",
+		sql: `
+CREATE TABLE admitted_requests (
+	id TEXT PRIMARY KEY,
+	conversation_id TEXT REFERENCES conversations(id) ON DELETE CASCADE,
+	draft_id TEXT REFERENCES drafts(id) ON DELETE SET NULL,
+	turn_id TEXT REFERENCES turns(id) ON DELETE SET NULL,
+	provider TEXT NOT NULL CHECK (provider IN ('codex')),
+	status TEXT NOT NULL CHECK (status IN ('admitted', 'queued', 'running', 'completed', 'failed', 'canceled')),
+	draft_snapshot_json TEXT NOT NULL DEFAULT '{}',
+	request_parts_json TEXT NOT NULL DEFAULT '[]',
+	provider_input_json TEXT NOT NULL DEFAULT '{}',
+	admission_json TEXT NOT NULL DEFAULT '{}',
+	compatibility_payload_json TEXT NOT NULL DEFAULT '{}',
+	error_json TEXT,
+	created_at TEXT NOT NULL,
+	updated_at TEXT NOT NULL
+);
+
+CREATE INDEX admitted_requests_conversation_id_idx
+	ON admitted_requests(conversation_id, created_at);
+CREATE INDEX admitted_requests_turn_id_idx ON admitted_requests(turn_id);
+
+CREATE TABLE queue_items (
+	id TEXT PRIMARY KEY,
+	conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+	admitted_request_id TEXT NOT NULL REFERENCES admitted_requests(id) ON DELETE CASCADE,
+	position INTEGER NOT NULL,
+	status TEXT NOT NULL CHECK (status IN ('queued', 'running', 'completed', 'failed', 'canceled')),
+	error_json TEXT,
+	created_at TEXT NOT NULL,
+	updated_at TEXT NOT NULL
+);
+
+CREATE UNIQUE INDEX queue_items_conversation_position_unique
+	ON queue_items(conversation_id, position)
+	WHERE status = 'queued';
+CREATE INDEX queue_items_conversation_status_idx
+	ON queue_items(conversation_id, status, position);
+`,
+	},
 ];
 
 export type ConversationDatabase = Database.Database;

@@ -409,6 +409,11 @@ export type ExperimentalDesktopApi = {
 		nativeInput?: unknown[];
 		payload?: unknown;
 	}) => Promise<ConversationDetail | undefined>;
+	promoteDraftAndSendAdmitted: (input: {
+		draftId?: string;
+		cwd?: string;
+		request: unknown;
+	}) => Promise<ConversationDetail | undefined>;
 	sendConversationMessage: (
 		conversationId: string,
 		input: {
@@ -419,6 +424,33 @@ export type ExperimentalDesktopApi = {
 			payload?: unknown;
 		},
 	) => Promise<ConversationDetail | undefined>;
+	sendAdmittedMessage: (
+		conversationId: string,
+		input: {
+			request: unknown;
+		},
+	) => Promise<ConversationDetail | undefined>;
+	enqueueAdmittedMessage: (
+		conversationId: string,
+		input: {
+			request: unknown;
+		},
+	) => Promise<{
+		id: string;
+		conversationId: string;
+		admittedRequestId: string;
+		position: number;
+		status: "queued";
+		createdAt: string;
+		updatedAt: string;
+	}>;
+	updateConversationQueueItem: (
+		queueItemId: string,
+		input: { status?: "queued" | "running" | "completed" | "failed" | "canceled" },
+	) => Promise<unknown>;
+	executeNextConversationQueueItem: (
+		conversationId: string,
+	) => Promise<unknown>;
 	interruptConversation: (conversationId: string) => Promise<{ ok: true }>;
 	respondApproval: (
 		conversationId: string,
