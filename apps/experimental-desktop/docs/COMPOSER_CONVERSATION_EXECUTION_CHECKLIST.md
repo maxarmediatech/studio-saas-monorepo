@@ -137,6 +137,7 @@ Reference-first decision:
 - For this app, start with a small pure `conversationProjection.ts` that projects current `ConversationDetail` and live `ConversationEvent` into the existing compatibility transcript/pending/status shape before extracting larger stores.
 - Next event-store slice keeps subscription cleanup and duplicate-event suppression outside `useCodexSession`, following the reference pattern where stream lifecycle is scoped to the active route/session id.
 - Projection treats `request.pending` as idempotent by provider request id / approval row identity so route-loaded pending approvals do not duplicate when the stream replays an equivalent pending event.
+- Conversation history/sidebar state now follows the reference pattern of an independent list store: `conversationHistoryStore.ts` owns list refresh, subscriber snapshots, stale refresh suppression, and refresh errors outside the active session hook.
 
 Add:
 

@@ -1,7 +1,12 @@
 import type {
 	ConversationDetail,
 	ConversationEvent,
+	ConversationSummary,
 } from "../../preload/types";
+
+export function listConversationSummaries() {
+	return window.experimentalDesktop.listConversations();
+}
 
 export function loadConversationDetail(conversationId: string) {
 	return window.experimentalDesktop.getConversation(conversationId);
@@ -18,8 +23,10 @@ export function subscribeConversationEvents(
 }
 
 export type ConversationDetailTransport = {
+	listConversationSummaries: typeof listConversationSummaries;
 	loadConversationDetail: typeof loadConversationDetail;
 	subscribeConversationEvents: typeof subscribeConversationEvents;
 };
 
 export type LoadedConversationDetail = NonNullable<ConversationDetail>;
+export type LoadedConversationSummary = ConversationSummary;

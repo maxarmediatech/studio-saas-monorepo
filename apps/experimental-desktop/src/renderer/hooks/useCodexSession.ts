@@ -3,7 +3,6 @@ import type {
 	CodexRuntimeMode,
 	ConversationDetail,
 	ConversationEvent,
-	ConversationSummary,
 	RespondSessionRequestInput,
 } from "../../preload/types";
 import type { PendingRequest, TranscriptItem } from "../app/types";
@@ -13,6 +12,7 @@ import type { AdmittedComposerRequest } from "../components/composer/core/compos
 import { admitComposerRequest } from "../components/composer/core/composerSendController";
 import { toCodexAdmittedSendInput } from "../conversations/codexAdmittedTransport";
 import { createConversationEventStore } from "../conversations/conversationEventStore";
+import { useConversationHistoryStore } from "../conversations/conversationHistoryStore";
 import {
 	applyConversationEventProjection,
 	type ConversationProjectionState,
@@ -32,9 +32,6 @@ export function useCodexSession(input: {
 	const [conversationId, setConversationId] = useState<string>();
 	const [threadId, setThreadId] = useState<string>();
 	const [status, setStatus] = useState("No conversation");
-	const [conversations, setConversations] = useState<ConversationSummary[]>(
-		[],
-	);
 	const [transcript, setTranscript] = useState<TranscriptItem[]>([]);
 	const [eventLog, setEventLog] = useState<string[]>([]);
 	const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>(
@@ -46,15 +43,11 @@ export function useCodexSession(input: {
 		createEmptyConversationProjection(),
 	);
 	const eventStoreRef = useRef(createConversationEventStore());
+	const history = useConversationHistoryStore();
 
 	useEffect(() => {
-		void refreshConversations();
 		return () => eventStoreRef.current.clear();
 	}, []);
-
-	async function refreshConversations() {
-		setConversations(await window.experimentalDesktop.listConversations());
-	}
 
 	async function persistDraft(draft: ComposerDraftPersistInput) {
 		if (conversationId) {
@@ -182,7 +175,7 @@ export function useCodexSession(input: {
 					);
 				}
 			}
-			await refreshConversations();
+			await history.refreshConversations();
 			setStatus("Running...");
 			return true;
 		} catch (error) {
@@ -254,7 +247,7 @@ export function useCodexSession(input: {
 			isTurnActive: false,
 			status: "Interrupted",
 		});
-		await refreshConversations();
+		await history.refreshConversations();
 	}
 
 	function hydrateConversation(conversation: ConversationDetail) {
@@ -271,7 +264,7 @@ export function useCodexSession(input: {
 		);
 		applyProjectionState(result.state);
 		if (result.shouldRefreshConversations) {
-			void refreshConversations();
+			void history.refreshConversations();
 		}
 	}
 
@@ -334,7 +327,7 @@ export function useCodexSession(input: {
 		draftId,
 		threadId,
 		status,
-		conversations,
+		conversations: history.conversations,
 		transcript,
 		eventLog,
 		pendingRequests,
