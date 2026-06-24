@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { ConversationDetail } from "../../preload/types";
 import { loadConversationDetail } from "./conversationTransport";
 
@@ -30,7 +30,7 @@ export function useConversationResource(
 	conversationId: string,
 ): ConversationResourceState {
 	const [reloadKey, setReloadKey] = useState(0);
-	const retry = () => setReloadKey((key) => key + 1);
+	const retry = useCallback(() => setReloadKey((key) => key + 1), []);
 	const [state, setState] = useState<ConversationResourceState>({
 		status: "loading",
 		conversationId,
@@ -71,7 +71,7 @@ export function useConversationResource(
 		return () => {
 			canceled = true;
 		};
-	}, [conversationId, reloadKey]);
+	}, [conversationId, reloadKey, retry]);
 
 	return state;
 }

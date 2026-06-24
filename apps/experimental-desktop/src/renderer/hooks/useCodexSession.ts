@@ -10,7 +10,7 @@ import type { ComposerPayload } from "../components/composer/composerPayload";
 import type { ComposerDraftPersistInput } from "../components/composer/core/composerDraftSync";
 import type { AdmittedComposerRequest } from "../components/composer/core/composerProviderTypes";
 import { admitComposerRequest } from "../components/composer/core/composerSendController";
-import { toCodexAdmittedSendInput } from "../conversations/codexAdmittedTransport";
+import { conversationClient } from "../conversations/conversationClient";
 import { createConversationEventStore } from "../conversations/conversationEventStore";
 import { useConversationHistoryStore } from "../conversations/conversationHistoryStore";
 import {
@@ -20,7 +20,6 @@ import {
 	projectConversationDetail,
 	summarizeConversationEvent,
 } from "../conversations/conversationProjection";
-import { loadConversationDetail } from "../conversations/conversationTransport";
 import { defaultAnswers } from "./pendingRequestDefaults";
 
 export function useCodexSession(input: {
@@ -53,34 +52,20 @@ export function useCodexSession(input: {
 		if (conversationId) {
 			return;
 		}
-		const draftInput = {
-			text: draft.payload.text,
-			model: draft.model,
-			runtimeMode: draft.runtimeMode,
-			attachments: draft.payload.attachments,
-			payload: {
-				mode: draft.payload.mode,
-				contextItems: draft.payload.contextItems,
-				attachments: draft.payload.attachments,
-				parts: draft.payload.parts,
-				metrics: draft.payload.metrics,
-			},
-			...(input.selectedFolderPath
-				? { cwd: input.selectedFolderPath }
-				: {}),
-		};
-		if (draftId) {
-			await window.experimentalDesktop.updateDraft(draftId, draftInput);
-			return;
+		const persistedDraft = await conversationClient.persistDraft({
+			draftId,
+			draft,
+			cwd: input.selectedFolderPath,
+		});
+		if (!draftId) {
+			setDraftId(persistedDraft.id);
 		}
-		const persistedDraft =
-			await window.experimentalDesktop.createDraft(draftInput);
-		setDraftId(persistedDraft.id);
 	}
 
 	async function openConversation(id: string) {
 		eventStoreRef.current.clear();
-		const conversation = await loadConversationDetail(id);
+		const conversation =
+			await conversationClient.loadConversationDetail(id);
 		if (!conversation) {
 			setStatus("Conversation not found");
 			return false;
@@ -127,8 +112,7 @@ export function useCodexSession(input: {
 	}
 
 	async function sendAdmittedRequest(request: AdmittedComposerRequest) {
-		const codexInput = toCodexAdmittedSendInput(request);
-		if (!codexInput.text.trim()) {
+		if (!request.providerInput.prompt.trim()) {
 			setStatus("Message required");
 			return false;
 		}
@@ -139,32 +123,20 @@ export function useCodexSession(input: {
 			if (conversationId) {
 				setStatus("Sending...");
 				const conversation =
-					await window.experimentalDesktop.sendConversationMessage(
+					await conversationClient.sendAdmittedRequest({
 						conversationId,
-						{
-							text: codexInput.text,
-							model: codexInput.model,
-							runtimeMode: codexInput.runtimeMode,
-							nativeInput: codexInput.nativeInput,
-							payload: codexInput.payload,
-						},
-					);
+						request,
+					});
 				if (conversation) {
 					hydrateConversation(conversation);
 				}
 			} else {
 				setStatus("Starting conversation...");
 				const conversation =
-					await window.experimentalDesktop.promoteDraftAndSend({
+					await conversationClient.sendAdmittedRequest({
 						draftId,
-						text: codexInput.text,
-						model: codexInput.model,
-						runtimeMode: codexInput.runtimeMode,
-						nativeInput: codexInput.nativeInput,
-						payload: codexInput.payload,
-						...(input.selectedFolderPath
-							? { cwd: input.selectedFolderPath }
-							: {}),
+						cwd: input.selectedFolderPath,
+						request,
 					});
 				if (conversation) {
 					hydrateConversation(conversation);
@@ -213,17 +185,17 @@ export function useCodexSession(input: {
 			!("answers" in response) &&
 			response.decision !== "cancel"
 		) {
-			await window.experimentalDesktop.respondApproval(
+			await conversationClient.respondToApproval({
 				conversationId,
 				requestId,
-				{ answers: defaultAnswers(request.data.raw) },
-			);
+				response: { answers: defaultAnswers(request.data.raw) },
+			});
 		} else {
-			await window.experimentalDesktop.respondApproval(
+			await conversationClient.respondToApproval({
 				conversationId,
 				requestId,
 				response,
-			);
+			});
 		}
 		const canceled =
 			"decision" in response && response.decision === "cancel";
@@ -240,7 +212,7 @@ export function useCodexSession(input: {
 		if (!conversationId) {
 			return;
 		}
-		await window.experimentalDesktop.interruptConversation(conversationId);
+		await conversationClient.interrupt({ conversationId });
 		setIsSending(false);
 		patchProjectionState({
 			pendingRequests: [],
