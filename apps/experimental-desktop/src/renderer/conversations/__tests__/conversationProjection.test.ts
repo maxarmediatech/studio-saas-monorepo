@@ -226,6 +226,50 @@ describe("conversationProjection", () => {
 		expect(resolved.state.status).toBe("Running...");
 	});
 
+	it("does not duplicate pending approval rows when a pending request is replayed", () => {
+		const projected = projectConversationDetail({
+			...baseConversation,
+			status: "waiting_approval",
+			pendingApprovals: [
+				{
+					id: "approval-1",
+					conversationId: "conversation-1",
+					turnId: "turn-1",
+					providerRequestId: "request-1",
+					providerItemId: "item-1",
+					kind: "command",
+					status: "pending",
+					request: { command: "npm test" },
+					createdAt: "2026-06-24T00:00:02.000Z",
+				},
+			],
+		});
+
+		const replayed = applyConversationEventProjection(projected, {
+			id: "event-replayed-request",
+			type: "request.pending",
+			time: "2026-06-24T00:00:03.000Z",
+			data: {
+				requestId: "request-1",
+				approvalId: "approval-replayed",
+				method: "command",
+				requestKind: "command",
+				turnId: "turn-1",
+				itemId: "item-1",
+				raw: {},
+			},
+		});
+
+		expect(replayed.state.pendingRequests).toHaveLength(1);
+		expect(
+			replayed.state.transcript.filter(
+				(item) =>
+					item.type === "approval" && item.requestId === "request-1",
+			),
+		).toHaveLength(1);
+		expect(replayed.state).toBe(projected);
+	});
+
 	it("projects compaction and event log summaries", () => {
 		const result = applyConversationEventProjection(
 			createEmptyConversationProjection(),

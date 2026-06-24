@@ -137,6 +137,19 @@ export function applyConversationEventProjection(
 		};
 	}
 	if (event.type === "request.pending") {
+		if (
+			state.pendingRequests.some(
+				(request) => request.data.requestId === event.data.requestId,
+			) ||
+			state.transcript.some(
+				(item) =>
+					item.type === "approval" &&
+					(item.requestId === event.data.requestId ||
+						item.id === (event.data.approvalId ?? event.id)),
+			)
+		) {
+			return { state, shouldRefreshConversations: false };
+		}
 		return {
 			state: {
 				...state,
