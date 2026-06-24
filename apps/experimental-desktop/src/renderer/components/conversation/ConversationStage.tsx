@@ -13,7 +13,7 @@ export function ConversationStage(props: {
 	) => Promise<void>;
 }) {
 	return (
-		<section className="flex min-h-0 w-[min(100%,980px)] flex-1 flex-col self-center overflow-hidden">
+		<section className="flex min-h-0 w-full flex-1 flex-col overflow-hidden">
 			<div className="min-h-0 flex-1">
 				<ConversationTimeline rows={props.model.rows} />
 			</div>
