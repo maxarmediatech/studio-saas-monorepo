@@ -43,7 +43,7 @@ Tasks:
 
 - Add TanStack Router dependency.
 - Create route tree with `/`, `/draft/:draftId`, `/conversation/:conversationId`, `/capture`.
-- Move shell grid/sidebar/right inspector into `DesktopLayout`.
+- Move shell grid/sidebar into `DesktopLayout`; diagnostics belong in the top `Settings` tab, not a right inspector column.
 - Keep current UI mounted through compatibility route while stores are extracted.
 - Make sidebar actions navigate, not mutate global app state.
 - Add route not-found handling for missing conversations/drafts.
@@ -449,7 +449,8 @@ Progress:
 - Exposed ordered `message_parts` on `ConversationMessage` across main/preload detail loading so renderer rows can render persisted parts instead of relying only on flattened text.
 - Added `ConversationStage`, `ConversationTimeline`, `TimelineRow`, and `PendingRequestLayer`; `DesktopCompatibilityView` now mounts the stage instead of the text-only `SessionPanel` when timeline content exists.
 - Review correction: empty draft routes must not mount an empty conversation panel, status bar, row counter, or right inspector. The draft surface is composer-first; the timeline stage appears only after there are actual rows or pending approvals.
-- Review correction: the chat route must not show the runtime/OAuth/Codex/event-log right rail; those diagnostics belong behind a future settings/status surface, not beside every conversation.
+- Review correction: the chat route must not show or reserve space for the runtime/OAuth/Codex/event-log right rail. Diagnostics now live behind the top `Settings` tab; the shell is a permanent two-column layout of sidebar plus content.
+- Review correction: the empty "Where should we begin?" header appears only on empty draft/composer-first routes, never above an active conversation timeline.
 - Review correction: Codex app-server can deliver final assistant text through `item/completed` with `item.type: "agentMessage"` even when no `item/agentMessage/delta` arrived. The controller now persists that final text, emits only the missing live delta suffix, and the timeline hides empty assistant placeholders.
 - Review correction: provider errors such as Codex usage/rate-limit failures must be visible in the conversation timeline as error rows, clear running/pending state, and survive refresh when tied to a turn. This follows the reference apps: OpenCode renders assistant errors as timeline `Error` rows, T3Code projects provider failures with `tone: "error"` while clearing pending approval state, and AionUI turns ACP/agent failures into user-facing message/error surfaces.
 - Added projection tests for persisted context/image/text parts, pending approval request rows, and compaction event rows.

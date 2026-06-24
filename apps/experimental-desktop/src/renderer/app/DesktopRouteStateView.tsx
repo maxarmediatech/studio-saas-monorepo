@@ -11,7 +11,7 @@ import type React from "react";
 import { useEffect, useState } from "react";
 import type { AppInfo, CodexRuntimeMode } from "../../preload/types";
 import { Sidebar } from "../components/layout";
-import { RightPanel } from "../components/right-panel";
+import { SettingsPanel } from "../components/right-panel";
 import { Button } from "../components/ui/button";
 import { useConversationHistoryStore } from "../conversations/conversationHistoryStore";
 import { useProviderStatus } from "../hooks/useProviderStatus";
@@ -103,8 +103,8 @@ export function DesktopRouteStateView(props: { state: DesktopRouteState }) {
 					onOpenConversation={openConversationRoute}
 				/>
 			}
-			inspector={
-				<RightPanel
+			settings={
+				<SettingsPanel
 					appInfo={appInfo}
 					selectionMessage={workspace.selectionMessage}
 					provider={provider}

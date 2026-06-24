@@ -21,7 +21,11 @@ route/app shell -> conversation selection -> draft lifecycle -> composer state
 Current renderer shape:
 
 ```txt
-main.tsx -> App -> TopBar / Sidebar / SessionComposer / SessionPanel / RightPanel
+main.tsx -> App -> DesktopLayout
+  -> TopBar tabs: Chat / Settings
+  -> Sidebar
+  -> Chat content: ConversationStage or empty draft ComposerRegion
+  -> Settings content: runtime/OAuth/Codex diagnostics
 ```
 
 There is no real route layer. `App.tsx` owns shell, active conversation state, selected folder, model, runtime mode, message text, context items, attachments, and draft persistence trigger.

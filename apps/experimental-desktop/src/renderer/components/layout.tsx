@@ -6,6 +6,7 @@ import {
 	IconMoon,
 	IconPlus,
 	IconRosette,
+	IconSettings,
 	IconSparkles,
 	IconSun,
 	IconTemplate,
@@ -44,7 +45,12 @@ const starterToneClass = {
 	pink: "text-[#ff3d73]",
 };
 
-export function TopBar(props: { theme: string; onToggleTheme: () => void }) {
+export function TopBar(props: {
+	activeTab: "chat" | "settings";
+	theme: string;
+	onSelectTab: (tab: "chat" | "settings") => void;
+	onToggleTheme: () => void;
+}) {
 	return (
 		<header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border bg-[color-mix(in_srgb,var(--desktop-bg)_90%,transparent)] px-3.5 [-webkit-app-region:drag]">
 			<nav
@@ -62,7 +68,18 @@ export function TopBar(props: { theme: string; onToggleTheme: () => void }) {
 				>
 					<IconSparkles {...iconProps} size={26} />
 				</button>
-				<TopTab active icon={IconSparkles} label="Chat" />
+				<TopTab
+					active={props.activeTab === "chat"}
+					icon={IconSparkles}
+					label="Chat"
+					onClick={() => props.onSelectTab("chat")}
+				/>
+				<TopTab
+					active={props.activeTab === "settings"}
+					icon={IconSettings}
+					label="Settings"
+					onClick={() => props.onSelectTab("settings")}
+				/>
 			</nav>
 			<Button
 				className={cn(
@@ -85,7 +102,12 @@ export function TopBar(props: { theme: string; onToggleTheme: () => void }) {
 	);
 }
 
-function TopTab(props: { active?: boolean; icon: Icon; label: string }) {
+function TopTab(props: {
+	active?: boolean;
+	icon: Icon;
+	label: string;
+	onClick: () => void;
+}) {
 	const TabIcon = props.icon;
 	return (
 		<button
@@ -97,6 +119,7 @@ function TopTab(props: { active?: boolean; icon: Icon; label: string }) {
 					"bg-[var(--desktop-selected)] text-[var(--desktop-default)]",
 			)}
 			type="button"
+			onClick={props.onClick}
 			aria-current={props.active ? "page" : undefined}
 		>
 			<TabIcon {...iconProps} />

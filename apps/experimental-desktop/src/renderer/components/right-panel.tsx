@@ -13,7 +13,7 @@ const panelClass =
 	"flex flex-col gap-3.5 rounded-xl border border-border bg-[var(--desktop-panel)] px-4 py-3.5";
 const panelHeadingClass = "flex items-center justify-between gap-3 p-0";
 
-export function RightPanel(props: {
+export function SettingsPanel(props: {
 	appInfo?: AppInfo;
 	selectionMessage: string;
 	provider: ReturnType<typeof useProviderStatus>;
@@ -25,161 +25,178 @@ export function RightPanel(props: {
 	const codexNeedsUpdate = codexAdvisory?.status === "behind_latest";
 
 	return (
-		<aside className="flex min-h-0 flex-col gap-3.5 border-l border-border bg-[var(--desktop-panel)] p-[18px]">
-			<section className={panelClass}>
-				<div className={panelHeadingClass}>
-					<p className={labelClass}>Runtime</p>
-					<span className="size-[9px] rounded-full bg-[#30d158] shadow-[0_0_0_4px_rgba(48,209,88,0.12)]" />
+		<section className="min-h-0 overflow-auto bg-[var(--desktop-bg)] px-7 py-6">
+			<div className="mx-auto flex w-full max-w-[920px] flex-col gap-4">
+				<div className="flex items-end justify-between gap-4 border-b border-border pb-4">
+					<div>
+						<p className={labelClass}>Desktop</p>
+						<h1 className="m-0 mt-1 text-[22px] font-semibold tracking-normal text-[var(--desktop-strong)]">
+							Settings
+						</h1>
+					</div>
+					<Badge variant="secondary">{props.provider.statusLabel}</Badge>
 				</div>
-				<p className={valueClass}>
-					{props.appInfo
-						? `${props.appInfo.name} ${props.appInfo.version} · ${props.appInfo.platform}`
-						: "Loading..."}
-				</p>
-				<p className={mutedClass}>{props.selectionMessage}</p>
-				<Button
-					size="sm"
-					variant="outline"
-					type="button"
-					onClick={() =>
-						void window.experimentalDesktop.openExternal(
-							"https://www.electronjs.org/docs/latest",
-						)
-					}
-				>
-					Electron Docs
-				</Button>
-			</section>
-			<section className={panelClass}>
-				<div className={panelHeadingClass}>
-					<p className={labelClass}>OpenAI OAuth</p>
-					<Badge variant="secondary">
-						{props.provider.statusLabel}
-					</Badge>
-				</div>
-				<p className={mutedClass}>{props.provider.detail}</p>
-				<div className="flex flex-wrap gap-2">
+				<section className={panelClass}>
+					<div className={panelHeadingClass}>
+						<p className={labelClass}>Runtime</p>
+						<span className="size-[9px] rounded-full bg-[#30d158] shadow-[0_0_0_4px_rgba(48,209,88,0.12)]" />
+					</div>
+					<p className={valueClass}>
+						{props.appInfo
+							? `${props.appInfo.name} ${props.appInfo.version} · ${props.appInfo.platform}`
+							: "Loading..."}
+					</p>
+					<p className={mutedClass}>{props.selectionMessage}</p>
 					<Button
-						size="xs"
+						size="sm"
+						variant="outline"
 						type="button"
-						onClick={props.provider.connect}
+						onClick={() =>
+							void window.experimentalDesktop.openExternal(
+								"https://www.electronjs.org/docs/latest",
+							)
+						}
 					>
-						Connect
+						Electron Docs
 					</Button>
-					<Button
-						size="xs"
-						variant="secondary"
-						type="button"
-						onClick={props.provider.refreshAuth}
-					>
-						Refresh
-					</Button>
-					<Button
-						size="xs"
-						variant="ghost"
-						type="button"
-						onClick={props.provider.logout}
-					>
-						Disconnect
-					</Button>
-				</div>
-			</section>
-			<section className={panelClass}>
-				<div className={panelHeadingClass}>
-					<p className={labelClass}>Codex CLI</p>
-					<Badge variant={codexNeedsUpdate ? "default" : "secondary"}>
-						{codexAdvisory?.status === "current"
-							? "Current"
-							: codexNeedsUpdate
-								? "Update available"
-								: "Unknown"}
-					</Badge>
-				</div>
-				<p className={mutedClass}>
-					Codex {codexAdvisory?.currentVersion ?? "unknown"} → Latest{" "}
-					{codexAdvisory?.latestVersion ?? "unknown"}
-				</p>
-				<p className={mutedClass}>
-					Source {codexAdvisory?.source ?? "unknown"}
-				</p>
-				{codexStatus?.binary.resolvedPath ? (
-					<pre className="m-0 overflow-hidden whitespace-pre-wrap break-all rounded-md border border-border bg-background/40 px-2 py-1.5 text-[11px] text-[var(--desktop-subtle)]">
-						{codexStatus.binary.resolvedPath}
-					</pre>
-				) : null}
-				{codexAdvisory?.message ? (
-					<p className={mutedClass}>{codexAdvisory.message}</p>
-				) : null}
-				{codexNeedsUpdate ? (
+				</section>
+				<section className={panelClass}>
+					<div className={panelHeadingClass}>
+						<p className={labelClass}>OpenAI OAuth</p>
+						<Badge variant="secondary">
+							{props.provider.statusLabel}
+						</Badge>
+					</div>
+					<p className={mutedClass}>{props.provider.detail}</p>
 					<div className="flex flex-wrap gap-2">
 						<Button
 							size="xs"
 							type="button"
-							disabled={
-								props.provider.busy || !codexAdvisory.canUpdate
-							}
-							onClick={props.provider.updateCodex}
+							onClick={props.provider.connect}
 						>
-							Update Codex
+							Connect
+						</Button>
+						<Button
+							size="xs"
+							variant="secondary"
+							type="button"
+							onClick={props.provider.refreshAuth}
+						>
+							Refresh
+						</Button>
+						<Button
+							size="xs"
+							variant="ghost"
+							type="button"
+							onClick={props.provider.logout}
+						>
+							Disconnect
 						</Button>
 					</div>
-				) : null}
-				<div className="flex flex-wrap gap-2">
-					<Button
-						size="xs"
-						variant="secondary"
-						type="button"
-						onClick={props.provider.probe}
-					>
-						Probe
-					</Button>
-					<Button
-						size="xs"
-						variant="secondary"
-						type="button"
-						onClick={props.provider.refresh}
-					>
-						Recheck
-					</Button>
-				</div>
-				{codexNeedsUpdate && !codexAdvisory.canUpdate ? (
-					<p className={mutedClass}>Manual update required.</p>
-				) : null}
-				{codexNeedsUpdate && codexAdvisory.updateCommand ? (
-					<pre className="m-0 overflow-hidden whitespace-pre-wrap break-all rounded-md border border-border bg-background/40 px-2 py-1.5 text-[11px] text-[var(--desktop-subtle)]">
-						{codexAdvisory.updateCommand}
-					</pre>
-				) : null}
-			</section>
-			<section className={`${panelClass} gap-2.5`}>
-				<div className={panelHeadingClass}>
-					<p className={labelClass}>Pending approvals</p>
-					<Badge variant="outline">
-						{props.pendingRequests.length}
-					</Badge>
-				</div>
-				{props.pendingRequests.length === 0 ? (
-					<p className={mutedClass}>No pending requests.</p>
-				) : (
-					props.pendingRequests.map((request) => (
-						<p className={mutedClass} key={request.data.requestId}>
-							{request.data.requestKind} ·{" "}
-							{request.data.requestId}
-						</p>
-					))
-				)}
-			</section>
-			<section className={`${panelClass} min-h-[180px] flex-1`}>
-				<div className={panelHeadingClass}>
-					<p className={labelClass}>Event log</p>
-					<Badge variant="outline">{props.eventLog.length}</Badge>
-				</div>
-				<ScrollArea className="min-h-0 flex-1">
-					<pre className="m-0 overflow-hidden whitespace-pre-wrap text-[12px] text-[var(--desktop-subtle)]">
-						{props.eventLog.join("\n")}
-					</pre>
-				</ScrollArea>
-			</section>
-		</aside>
+				</section>
+				<section className={panelClass}>
+					<div className={panelHeadingClass}>
+						<p className={labelClass}>Codex CLI</p>
+						<Badge
+							variant={codexNeedsUpdate ? "default" : "secondary"}
+						>
+							{codexAdvisory?.status === "current"
+								? "Current"
+								: codexNeedsUpdate
+									? "Update available"
+									: "Unknown"}
+						</Badge>
+					</div>
+					<p className={mutedClass}>
+						Codex {codexAdvisory?.currentVersion ?? "unknown"} → Latest{" "}
+						{codexAdvisory?.latestVersion ?? "unknown"}
+					</p>
+					<p className={mutedClass}>
+						Source {codexAdvisory?.source ?? "unknown"}
+					</p>
+					{codexStatus?.binary.resolvedPath ? (
+						<pre className="m-0 overflow-hidden whitespace-pre-wrap break-all rounded-md border border-border bg-background/40 px-2 py-1.5 text-[11px] text-[var(--desktop-subtle)]">
+							{codexStatus.binary.resolvedPath}
+						</pre>
+					) : null}
+					{codexAdvisory?.message ? (
+						<p className={mutedClass}>{codexAdvisory.message}</p>
+					) : null}
+					{codexNeedsUpdate ? (
+						<div className="flex flex-wrap gap-2">
+							<Button
+								size="xs"
+								type="button"
+								disabled={
+									props.provider.busy ||
+									!codexAdvisory.canUpdate
+								}
+								onClick={props.provider.updateCodex}
+							>
+								Update Codex
+							</Button>
+						</div>
+					) : null}
+					<div className="flex flex-wrap gap-2">
+						<Button
+							size="xs"
+							variant="secondary"
+							type="button"
+							onClick={props.provider.probe}
+						>
+							Probe
+						</Button>
+						<Button
+							size="xs"
+							variant="secondary"
+							type="button"
+							onClick={props.provider.refresh}
+						>
+							Recheck
+						</Button>
+					</div>
+					{codexNeedsUpdate && !codexAdvisory.canUpdate ? (
+						<p className={mutedClass}>Manual update required.</p>
+					) : null}
+					{codexNeedsUpdate && codexAdvisory.updateCommand ? (
+						<pre className="m-0 overflow-hidden whitespace-pre-wrap break-all rounded-md border border-border bg-background/40 px-2 py-1.5 text-[11px] text-[var(--desktop-subtle)]">
+							{codexAdvisory.updateCommand}
+						</pre>
+					) : null}
+				</section>
+				<section className={`${panelClass} gap-2.5`}>
+					<div className={panelHeadingClass}>
+						<p className={labelClass}>Pending approvals</p>
+						<Badge variant="outline">
+							{props.pendingRequests.length}
+						</Badge>
+					</div>
+					{props.pendingRequests.length === 0 ? (
+						<p className={mutedClass}>No pending requests.</p>
+					) : (
+						props.pendingRequests.map((request) => (
+							<p
+								className={mutedClass}
+								key={request.data.requestId}
+							>
+								{request.data.requestKind} ·{" "}
+								{request.data.requestId}
+							</p>
+						))
+					)}
+				</section>
+				<section className={`${panelClass} min-h-[180px] flex-1`}>
+					<div className={panelHeadingClass}>
+						<p className={labelClass}>Event log</p>
+						<Badge variant="outline">{props.eventLog.length}</Badge>
+					</div>
+					<ScrollArea className="min-h-0 flex-1">
+						<pre className="m-0 overflow-hidden whitespace-pre-wrap text-[12px] text-[var(--desktop-subtle)]">
+							{props.eventLog.join("\n")}
+						</pre>
+					</ScrollArea>
+				</section>
+			</div>
+		</section>
 	);
 }

@@ -9,9 +9,11 @@ import type {
 import { ConversationStage } from "../components/conversation/ConversationStage";
 import { ComposerRegion } from "../components/composer/ComposerRegion";
 import { Sidebar } from "../components/layout";
+import { SettingsPanel } from "../components/right-panel";
 import type { ConversationResourceState } from "../conversations/conversationResourceStore";
 import { projectConversationTimeline } from "../conversations/conversationTimelineModel";
 import { useCodexSession } from "../hooks/useCodexSession";
+import { useProviderStatus } from "../hooks/useProviderStatus";
 import { useThemeMode } from "../hooks/useThemeMode";
 import { useWorkspaceSelection } from "../hooks/useWorkspaceSelection";
 import { shouldShowConversationSurface } from "./desktopConversationSurface";
@@ -44,6 +46,7 @@ export function DesktopCompatibilityView(props: {
 	const pendingDraftPromotionRef = useRef<string | undefined>(undefined);
 	const { theme, toggleTheme } = useThemeMode();
 	const workspace = useWorkspaceSelection();
+	const provider = useProviderStatus();
 	const session = useCodexSession({
 		model,
 		runtimeMode,
@@ -231,7 +234,15 @@ export function DesktopCompatibilityView(props: {
 					onOpenConversation={openConversationRoute}
 				/>
 			}
-			inspector={null}
+			settings={
+				<SettingsPanel
+					appInfo={appInfo}
+					selectionMessage={workspace.selectionMessage}
+					provider={provider}
+					pendingRequests={session.pendingRequests}
+					eventLog={session.eventLog}
+				/>
+			}
 		>
 			<section className="min-h-0 min-w-0 overflow-hidden">
 				<div
@@ -241,12 +252,6 @@ export function DesktopCompatibilityView(props: {
 							: sessionStageInnerClass
 					}
 				>
-					<div className="flex flex-col items-center gap-3.5">
-						<IconSparkles {...iconProps} size={24} />
-						<h1 className="m-0 text-[18px] font-medium tracking-normal text-[var(--desktop-strong)]">
-							Where should we begin?
-						</h1>
-					</div>
 					{hasConversationSurface ? (
 						<ConversationStage
 							model={timelineModel}
@@ -254,9 +259,17 @@ export function DesktopCompatibilityView(props: {
 							composer={composer}
 						/>
 					) : (
-						<div className="mt-6 flex w-[min(100%,920px)] flex-col self-center">
-							{composer}
-						</div>
+						<>
+							<div className="flex flex-col items-center gap-3.5">
+								<IconSparkles {...iconProps} size={24} />
+								<h1 className="m-0 text-[18px] font-medium tracking-normal text-[var(--desktop-strong)]">
+									Where should we begin?
+								</h1>
+							</div>
+							<div className="mt-6 flex w-[min(100%,920px)] flex-col self-center">
+								{composer}
+							</div>
+						</>
 					)}
 				</div>
 			</section>
