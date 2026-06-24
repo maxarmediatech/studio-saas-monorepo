@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildComposerPayload } from "../../components/composer/composerPayload";
 import type { ComposerDraftPersistInput } from "../../components/composer/core/composerDraftSync";
+import type { AdmittedComposerRequest } from "../../components/composer/core/composerProviderTypes";
 import { admitComposerRequest } from "../../components/composer/core/composerSendController";
 import { createConversationClient } from "../conversationClient";
 
@@ -68,6 +69,33 @@ describe("conversationClient", () => {
 			"send:conversation-1:Ship it:gpt-5.4-mini:read-only",
 			"promote:draft-1:/workspace:Ship it:gpt-5.4-mini",
 		]);
+	});
+
+	it("rejects unsupported provider sends before transport", async () => {
+		const calls: string[] = [];
+		const client = createConversationClient({
+			...fakeTransport(),
+			sendConversationMessage: async () => {
+				calls.push("send");
+				return undefined;
+			},
+			promoteDraftAndSend: async () => {
+				calls.push("promote");
+				return undefined;
+			},
+		});
+		const request = {
+			...admittedRequest("Ship it"),
+			providerInput: { provider: "opencode" },
+		} as unknown as AdmittedComposerRequest;
+
+		await expect(
+			client.sendAdmittedRequest({
+				conversationId: "conversation-1",
+				request,
+			}),
+		).rejects.toThrow("Unsupported provider: opencode");
+		expect(calls).toEqual([]);
 	});
 
 	it("routes approval responses and interrupts through transport", async () => {
