@@ -1,17 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import type {
 	CodexRuntimeMode,
 	RespondSessionRequestInput,
 } from "../../../preload/types";
 import type { PendingRequest, RuntimeOption } from "../../app/types";
-import type { ComposerPayload } from "./composerPayload";
-import { createComposerDraft } from "./core/composerDraftTypes";
+import { useComposerDraftStore } from "./core/composerDraftStore";
 import { useComposerDraftSync } from "./core/composerDraftSync";
 import type { AdmittedComposerRequest } from "./core/composerProviderTypes";
-import { admitComposerRequest } from "./core/composerSendController";
+import { admitComposerDraft } from "./core/composerSendController";
 import { SessionComposer } from "./SessionComposer";
-import type { ComposerMode } from "./composerTriggers";
-import type { ComposerAttachment, ComposerContextItem } from "./composerTypes";
 
 export type ComposerRegionSession = {
 	draftId?: string;
@@ -45,13 +42,10 @@ export function ComposerRegion(props: {
 	onRuntimeModeChange: (mode: CodexRuntimeMode) => void;
 	onNewDraftRoute: () => Promise<void>;
 }) {
-	const [message, setMessage] = useState("");
-	const [composerMode, setComposerMode] = useState<ComposerMode>("ask");
-	const [contextItems, setContextItems] = useState<ComposerContextItem[]>(
-		[],
-	);
-	const [attachments, setAttachments] = useState<ComposerAttachment[]>([]);
-	const [resetSignal, setResetSignal] = useState(0);
+	const composer = useComposerDraftStore({
+		model: props.model,
+		runtimeMode: props.runtimeMode,
+	});
 	const openedDraftScopeRef = useRef<string | undefined>(undefined);
 	const resetKeyRef = useRef<string | undefined>(props.resetKey);
 	const sessionRef = useRef(props.session);
@@ -60,26 +54,8 @@ export function ComposerRegion(props: {
 		sessionRef.current = props.session;
 	}, [props.session]);
 
-	const composerDraft = useMemo(() => {
-		return createComposerDraft({
-			text: message,
-			mode: composerMode,
-			model: props.model,
-			runtimeMode: props.runtimeMode,
-			contextItems,
-			attachments,
-		});
-	}, [
-		message,
-		composerMode,
-		props.model,
-		props.runtimeMode,
-		contextItems,
-		attachments,
-	]);
-
 	useComposerDraftSync({
-		draft: composerDraft,
+		draft: composer.draft,
 		draftId: props.session.draftId,
 		conversationId: props.session.conversationId,
 		draftScopeId: props.session.draftId ?? props.draftScopeId,
@@ -95,23 +71,21 @@ export function ComposerRegion(props: {
 			return;
 		}
 		openedDraftScopeRef.current = props.routeDraftId;
-		resetComposer();
+		composer.reset();
 		void sessionRef.current.createNewSession();
-	}, [props.routeDraftId]);
+	}, [props.routeDraftId, composer.reset]);
 
 	useEffect(() => {
 		if (!props.resetKey || resetKeyRef.current === props.resetKey) {
 			return;
 		}
 		resetKeyRef.current = props.resetKey;
-		resetComposer();
-	}, [props.resetKey]);
+		composer.reset();
+	}, [props.resetKey, composer.reset]);
 
-	async function sendMessage(payload: ComposerPayload) {
-		const payloadAdmission = admitComposerRequest({
-			payload,
-			model: props.model,
-			runtimeMode: props.runtimeMode,
+	async function sendMessage() {
+		const payloadAdmission = admitComposerDraft({
+			draft: composer.draft,
 		});
 		if (!payloadAdmission.ok) {
 			props.session.reportComposerAdmissionBlock(payloadAdmission.reason);
@@ -121,37 +95,29 @@ export function ComposerRegion(props: {
 			payloadAdmission.request,
 		);
 		if (sent) {
-			resetComposer();
+			composer.reset();
 		}
 		return sent;
 	}
 
-	function resetComposer() {
-		setMessage("");
-		setComposerMode("ask");
-		setContextItems([]);
-		setAttachments([]);
-		setResetSignal((signal) => signal + 1);
-	}
-
 	return (
 		<SessionComposer
-			value={message}
+			value={composer.text}
 			disabled={props.session.isTurnRunning}
 			turnActive={props.session.isTurnActive}
-			mode={composerMode}
+			mode={composer.mode}
 			model={props.model}
 			runtimeMode={props.runtimeMode}
 			runtimeOptions={props.runtimeOptions}
 			pendingRequests={props.session.pendingRequests}
 			workspaceRoot={props.workspaceRoot}
-			resetSignal={resetSignal}
-			initialContextItems={contextItems}
-			initialAttachments={attachments}
-			onChange={setMessage}
-			onModeChange={setComposerMode}
-			onContextItemsChange={setContextItems}
-			onAttachmentsChange={setAttachments}
+			resetSignal={composer.resetSignal}
+			initialContextItems={composer.contextItems}
+			initialAttachments={composer.attachments}
+			onChange={composer.setText}
+			onModeChange={composer.setMode}
+			onContextItemsChange={composer.setContextItems}
+			onAttachmentsChange={composer.setAttachments}
 			onModelChange={props.onModelChange}
 			onRuntimeModeChange={props.onRuntimeModeChange}
 			onSend={sendMessage}

@@ -2,7 +2,8 @@ import type { CodexRuntimeMode } from "../../../../preload/types";
 import type { ComposerPayload } from "../composerPayload";
 import type { ComposerNativeInputPart } from "../composerProviderInput";
 import type { ComposerMode } from "../composerTriggers";
-import type { ComposerAttachment, ComposerContextItem } from "../composerTypes";
+import type { ComposerContextItem } from "../composerTypes";
+import type { ComposerDraft } from "./composerDraftTypes";
 
 export type ComposerRequestPart =
 	| { type: "text"; text: string }
@@ -31,12 +32,7 @@ export type RuntimeModeSelection = {
 	locked?: boolean;
 };
 
-export type ComposerDraftSnapshot = {
-	mode: ComposerMode;
-	text: string;
-	contextItems: ComposerContextItem[];
-	attachments: ComposerAttachment[];
-};
+export type ComposerDraftSnapshot = ComposerDraft;
 
 export type CodexProviderSendInput = {
 	provider: "codex";

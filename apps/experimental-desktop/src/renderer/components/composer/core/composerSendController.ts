@@ -1,7 +1,11 @@
 import type { CodexRuntimeMode } from "../../../../preload/types";
 import { buildCodexProviderSendInput } from "../adapters/codexComposerAdapter";
-import type { ComposerPayload } from "../composerPayload";
+import {
+	buildComposerPayload,
+	type ComposerPayload,
+} from "../composerPayload";
 import { resolveComposerModePolicy } from "./composerModePolicy";
+import type { ComposerDraft } from "./composerDraftTypes";
 import { buildComposerRequestParts } from "./composerRequestParts";
 import type { AdmittedComposerRequest } from "./composerProviderTypes";
 import { codexRuntimeCapabilities } from "./runtimeCapabilityMap";
@@ -16,9 +20,34 @@ export function admitComposerRequest(input: {
 	runtimeMode: CodexRuntimeMode;
 	createId?: () => string;
 }): ComposerAdmissionResult {
+	return admitComposerDraft({
+		draft: {
+			version: 1,
+			text: input.payload.text,
+			mode: input.payload.mode,
+			model: input.model,
+			runtimeMode: input.runtimeMode,
+			contextItems: input.payload.contextItems,
+			attachments: input.payload.attachments,
+			updatedAt: Date.now(),
+		},
+		createId: input.createId,
+	});
+}
+
+export function admitComposerDraft(input: {
+	draft: ComposerDraft;
+	createId?: () => string;
+}): ComposerAdmissionResult {
+	const payload = buildComposerPayload({
+		mode: input.draft.mode,
+		text: input.draft.text,
+		contextItems: input.draft.contextItems,
+		attachments: input.draft.attachments,
+	});
 	const policy = resolveComposerModePolicy({
-		payload: input.payload,
-		runtimeMode: input.runtimeMode,
+		payload,
+		runtimeMode: input.draft.runtimeMode,
 		capabilities: codexRuntimeCapabilities,
 	});
 	if (!policy.ok) {
@@ -29,7 +58,7 @@ export function admitComposerRequest(input: {
 		};
 	}
 
-	const requestParts = buildComposerRequestParts(input.payload);
+	const requestParts = buildComposerRequestParts(payload);
 	if (requestParts.length === 0) {
 		return {
 			ok: false,
@@ -38,7 +67,7 @@ export function admitComposerRequest(input: {
 		};
 	}
 
-	const unresolvedAttachments = input.payload.attachments.filter(
+	const unresolvedAttachments = payload.attachments.filter(
 		(attachment) =>
 			attachment.status === "failed" ||
 			!attachment.path ||
@@ -56,8 +85,8 @@ export function admitComposerRequest(input: {
 	}
 
 	const providerInput = buildCodexProviderSendInput({
-		payload: input.payload,
-		model: input.model,
+		payload,
+		model: input.draft.model,
 		runtimeMode: policy.runtimeMode,
 	});
 	if (!providerInput.prompt.trim()) {
@@ -72,16 +101,11 @@ export function admitComposerRequest(input: {
 		ok: true,
 		request: {
 			id: input.createId?.() ?? crypto.randomUUID(),
-			draftSnapshot: {
-				mode: input.payload.mode,
-				text: input.payload.text,
-				contextItems: input.payload.contextItems,
-				attachments: input.payload.attachments,
-			},
+			draftSnapshot: input.draft,
 			requestParts,
 			providerInput,
 			admission: {
-				mode: input.payload.mode,
+				mode: input.draft.mode,
 				effectiveRuntime: {
 					provider: "codex",
 					mode: policy.runtimeMode,
@@ -89,7 +113,7 @@ export function admitComposerRequest(input: {
 				capabilityWarnings: policy.capabilityWarnings,
 				warnings: policy.warnings,
 			},
-			compatibilityPayload: input.payload,
+			compatibilityPayload: payload,
 		},
 	};
 }

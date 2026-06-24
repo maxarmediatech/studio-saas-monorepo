@@ -359,6 +359,14 @@ P0 slice 5 progress:
 - Added focused request-part tests for order and dedupe.
 - Remaining compatibility: `SessionComposer` still produces `ComposerPayload` for admission. Next slice should let `ComposerRegion` build the admitted snapshot from `ComposerDraft`/request parts and make `SessionComposer` a UI-only input shell.
 
+P0 slice 6 progress:
+- Added `composerDraftStore.ts` and moved live editable draft state behind that hook.
+- `ComposerRegion` now admits from `ComposerDraft` via `admitComposerDraft`.
+- `SessionComposer` no longer builds `ComposerPayload` on submit; it stays responsible for input UI, local menu/history interactions, and calling `onSend`.
+- `AdmittedComposerRequest.draftSnapshot` now carries the full `ComposerDraft` shape, including model/runtime/version metadata.
+- `admitComposerRequest` remains as a compatibility wrapper for existing low-level tests and any legacy caller that still holds a `ComposerPayload`.
+- Phase 3 is complete for the current compatibility UI. Remaining work moves to Phase 4 admitted IPC/main endpoints and Phase 5 queue, with richer request-part parsing/file-safety/budget continuing under the P1 section below.
+
 ## P1 — Request Parts, Safety, Budget
 
 ### 1. Add Request Parts

@@ -4,7 +4,6 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { RespondSessionRequestInput } from "../../../../preload/types";
-import { buildComposerPayload, type ComposerPayload } from "../composerPayload";
 import type { SessionComposer } from "../SessionComposer";
 import {
 	ComposerRegion,
@@ -95,14 +94,17 @@ describe("ComposerRegion", () => {
 			latestComposerProps?.onChange("Ship it");
 		});
 		await act(async () => {
-			const sent = await latestComposerProps?.onSend(
-				payload("Ship it"),
-			);
+			const sent = await latestComposerProps?.onSend();
 			expect(sent).toBe(true);
 		});
 
 		expect(sendAdmittedRequest).toHaveBeenCalledWith(
 			expect.objectContaining({
+				draftSnapshot: expect.objectContaining({
+					text: "Ship it",
+					model: "gpt-5.4-mini",
+					runtimeMode: "read-only",
+				}),
 				providerInput: expect.objectContaining({ prompt: "Ship it" }),
 			}),
 		);
@@ -121,9 +123,7 @@ describe("ComposerRegion", () => {
 			latestComposerProps?.onChange("Keep me");
 		});
 		await act(async () => {
-			const sent = await latestComposerProps?.onSend(
-				payload("Keep me"),
-			);
+			const sent = await latestComposerProps?.onSend();
 			expect(sent).toBe(false);
 		});
 
@@ -193,13 +193,4 @@ function sessionStub(
 			),
 		...overrides,
 	};
-}
-
-function payload(text: string): ComposerPayload {
-	return buildComposerPayload({
-		mode: "ask",
-		text,
-		contextItems: [],
-		attachments: [],
-	});
 }

@@ -242,6 +242,9 @@ Progress:
 - `DesktopCompatibilityView` now owns shell/layout/route loading/model preference; it no longer owns message text, composer mode, context items, attachments, or composer draft persistence.
 - Added `ComposerRegion` tests for route draft reset, draft persistence through `ComposerDraftSync`, clear-on-success, and preserve-on-failure.
 - Added `composerRequestParts.ts` and moved provider-agnostic request-part building out of `composerSendController.ts`; tests now lock ordering and dedupe behavior.
+- Added `composerDraftStore.ts` as the live editable draft state seam used by `ComposerRegion`.
+- `ComposerRegion` now admits from `ComposerDraft`; `SessionComposer` submits without building a `ComposerPayload`.
+- `admitComposerRequest` remains only as a compatibility wrapper around draft admission for existing tests/legacy callers.
 
 ## Phase 4 — Admitted Send Endpoints
 

@@ -23,11 +23,7 @@ import { collectContextTokens } from "./composerContext";
 import { createFolderContextItem } from "./composerFolderContext";
 import { nextSelectableIndex } from "./composerKeyboard";
 import { buildComposerMenuItems } from "./composerMenuItems";
-import {
-	buildComposerPayload,
-	type ComposerPayload,
-	estimateComposerContextMetrics,
-} from "./composerPayload";
+import { estimateComposerContextMetrics } from "./composerPayload";
 import { type ComposerMode, detectComposerTrigger } from "./composerTriggers";
 import type { ComposerAttachment, ComposerContextItem } from "./composerTypes";
 import { PendingRequestDock } from "./PendingRequestDock";
@@ -57,7 +53,7 @@ export function SessionComposer(props: {
 	onAttachmentsChange: (attachments: ComposerAttachment[]) => void;
 	onModelChange: (model: string) => void;
 	onRuntimeModeChange: (mode: CodexRuntimeMode) => void;
-	onSend: (payload: ComposerPayload) => Promise<boolean>;
+	onSend: () => Promise<boolean>;
 	onInterrupt: () => Promise<void>;
 	onNewSession: () => Promise<void>;
 	onRespondRequest: (
@@ -158,16 +154,7 @@ export function SessionComposer(props: {
 		}
 		const sentContextItems = contextItems;
 		const sentAttachments = attachments;
-		const payload = buildComposerPayload({
-			mode,
-			text: sentText,
-			contextItems: sentContextItems,
-			attachments: sentAttachments,
-		});
-		if (!payload.parts.length) {
-			return;
-		}
-		const sent = await props.onSend(payload);
+		const sent = await props.onSend();
 		if (!sent) {
 			return;
 		}
