@@ -1,5 +1,5 @@
-import { DesktopCompatibilityView } from "../app/DesktopCompatibilityView";
+import { DesktopRouteStateView } from "../app/DesktopRouteStateView";
 
 export function CaptureRoute() {
-	return <DesktopCompatibilityView route={{ kind: "capture" }} />;
+	return <DesktopRouteStateView state={{ kind: "capture" }} />;
 }

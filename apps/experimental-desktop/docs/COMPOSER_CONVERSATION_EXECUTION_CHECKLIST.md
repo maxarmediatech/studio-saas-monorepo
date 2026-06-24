@@ -73,12 +73,14 @@ Compatibility strategy:
 
 Route resource progress:
 
+- Reread AionUI conversation not-found redirect, T3Code draft/thread route guards, and OpenCode session loading patterns before adding route-state UI.
 - Added `conversationTransport.ts` as the renderer transport wrapper for loading conversation detail and subscribing to conversation events.
 - Added `conversationResourceStore.ts` so `/conversation/:conversationId` owns the initial `ConversationDetail` load state.
 - `DesktopCompatibilityView` now hydrates compatibility session state from the route-loaded conversation resource instead of fetching directly from the route effect.
 - Route-loaded conversation opens still reset the local composer state through the compatibility bridge, matching the previous sidebar-open behavior.
 - Route effects depend on route identity/resource primitives instead of the whole compatibility session object.
-- Missing/error route resources still surface through compatibility status for now; dedicated not-found/error route UI comes with the full conversation route extraction.
+- `/conversation/:conversationId` now renders route-owned loading, missing, and error states before mounting the compatibility view.
+- `/capture` now has its own route-state surface instead of pretending to be the normal chat route; real quick-capture storage comes later.
 
 ## Phase 1 — Main DB And Domain Schema
 
