@@ -142,6 +142,7 @@ Reference-first decision:
 - Conversation history/sidebar state now follows the reference pattern of an independent list store: `conversationHistoryStore.ts` owns list refresh, subscriber snapshots, stale refresh suppression, and refresh errors outside the active session hook.
 - `conversationClient.ts` now owns draft persistence, admitted send/promotion, approval response, interrupt, and detail load transport calls so `useCodexSession` remains a compatibility orchestrator instead of the IPC edge.
 - `useConversationRoute.ts` now starts the ready-route controller boundary for route-owned conversation identity, projection state, live event subscription, event log, and history refresh. Send/respond/interrupt remain in the compatibility session until the composer route pass.
+- `useConversationSessionController.ts` now owns the remaining compatibility session action/projection orchestration under the conversation layer; `useCodexSession.ts` is only a legacy wrapper for the current compatibility view.
 
 Add:
 

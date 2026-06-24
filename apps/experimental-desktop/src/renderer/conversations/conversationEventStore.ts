@@ -11,6 +11,10 @@ export type ConversationEventSubscriptionTransport = {
 	) => MaybePromise<Unsubscribe>;
 };
 
+export type ConversationEventStore = ReturnType<
+	typeof createConversationEventStore
+>;
+
 export function createConversationEventStore(
 	transport: ConversationEventSubscriptionTransport = {
 		subscribeConversationEvents,
