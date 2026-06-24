@@ -12,8 +12,8 @@ export function PendingRequestLayer(props: {
 		return null;
 	}
 	return (
-		<div className="border-t border-border bg-[var(--desktop-selected)]/75 px-4 py-3">
-			<div className="mx-auto flex w-full max-w-[860px] flex-col gap-2">
+		<div className="px-2 py-3">
+			<div className="mx-auto flex w-full max-w-[820px] flex-col gap-2">
 				{props.requests.map((request) => (
 					<PendingRequestCard
 						key={request.data.requestId}

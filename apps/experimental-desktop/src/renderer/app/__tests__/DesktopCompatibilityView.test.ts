@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { shouldShowConversationSurface } from "../desktopConversationSurface";
 import { shouldNavigatePromotedDraft } from "../desktopRoutePromotion";
 
 describe("shouldNavigatePromotedDraft", () => {
@@ -25,6 +26,33 @@ describe("shouldNavigatePromotedDraft", () => {
 				routeDraftId: "draft-new",
 				conversationId: "conversation-promoted",
 				pendingDraftId: "draft-new",
+			}),
+		).toBe(true);
+	});
+});
+
+describe("shouldShowConversationSurface", () => {
+	it("keeps empty draft routes composer-first", () => {
+		expect(
+			shouldShowConversationSurface({
+				rows: [],
+				pendingRequests: [],
+			}),
+		).toBe(false);
+		expect(
+			shouldShowConversationSurface({
+				rows: [
+					{
+						id: "message-1",
+						kind: "message",
+						role: "user",
+						status: "completed",
+						text: "hello",
+						time: "2026-06-24T00:00:00.000Z",
+						parts: [],
+					},
+				],
+				pendingRequests: [],
 			}),
 		).toBe(true);
 	});

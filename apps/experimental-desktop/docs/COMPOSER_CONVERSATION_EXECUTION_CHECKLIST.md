@@ -408,7 +408,6 @@ src/renderer/components/conversation/ConversationStage.tsx
 src/renderer/components/conversation/ConversationTimeline.tsx
 src/renderer/components/conversation/TimelineRow.tsx
 src/renderer/components/conversation/PendingRequestLayer.tsx
-src/renderer/components/conversation/ConversationStatusBar.tsx
 ```
 
 Rows:
@@ -448,7 +447,8 @@ Progress:
 - Reference-driven decision: keep the same two-step shape as OpenCode/T3Code, with a pure row model first and renderer components second; keep Aion-style request/permission state outside the text transcript instead of burying approval controls in normal message rows.
 - Added `conversationTimelineModel.ts` to project transcript rows, pending approvals, persisted DB message parts, attachment/context summaries from admitted composer payloads, tool/provider parts, compaction rows, and error/system rows into timeline rows.
 - Exposed ordered `message_parts` on `ConversationMessage` across main/preload detail loading so renderer rows can render persisted parts instead of relying only on flattened text.
-- Added `ConversationStage`, `ConversationTimeline`, `TimelineRow`, `PendingRequestLayer`, and `ConversationStatusBar`; `DesktopCompatibilityView` now mounts the stage instead of the text-only `SessionPanel`.
+- Added `ConversationStage`, `ConversationTimeline`, `TimelineRow`, and `PendingRequestLayer`; `DesktopCompatibilityView` now mounts the stage instead of the text-only `SessionPanel` when timeline content exists.
+- Review correction: empty draft routes must not mount an empty conversation panel, status bar, row counter, or right inspector. The draft surface is composer-first; the timeline stage appears only after there are actual rows or pending approvals.
 - Added projection tests for persisted context/image/text parts, pending approval request rows, and compaction event rows.
 - Still deferred: durable queue rows inside the timeline, richer DB `message_parts` enum for first-class `file_ref`/`image_ref`/`context_ref` rows, live provider-context part refresh after streaming events, quick-capture/app-action/diff-specific row renderers, and virtualization/polish once row volume requires it.
 

@@ -16,13 +16,14 @@ import { useCodexSession } from "../hooks/useCodexSession";
 import { useProviderStatus } from "../hooks/useProviderStatus";
 import { useThemeMode } from "../hooks/useThemeMode";
 import { useWorkspaceSelection } from "../hooks/useWorkspaceSelection";
+import { shouldShowConversationSurface } from "./desktopConversationSurface";
 import { DesktopLayout } from "./DesktopLayout";
 import { shouldNavigatePromotedDraft } from "./desktopRoutePromotion";
 import { iconProps } from "./icons";
 import type { RuntimeOption } from "./types";
 
 const sessionStageInnerClass =
-	"flex h-full w-full flex-col gap-6 px-7 pb-7 pt-[clamp(34px,7vh,72px)] max-[1200px]:px-5";
+	"flex h-full w-full flex-col px-7 pb-7 pt-[clamp(72px,16vh,150px)] max-[1200px]:px-5";
 const modelStorageKey = "experimental-desktop:model";
 
 export function DesktopCompatibilityView(props: {
@@ -81,6 +82,7 @@ export function DesktopCompatibilityView(props: {
 			session.transcript,
 		],
 	);
+	const hasConversationSurface = shouldShowConversationSurface(timelineModel);
 
 	useEffect(() => {
 		sessionActionsRef.current = {
@@ -164,6 +166,31 @@ export function DesktopCompatibilityView(props: {
 			? [{ value: "full-access" as const, label: "Full Access" }]
 			: []),
 	];
+	const composer = (
+		<ComposerRegion
+			session={session}
+			model={model}
+			runtimeMode={runtimeMode}
+			runtimeOptions={runtimeOptions}
+			workspaceRoot={workspace.selectedFolderPath}
+			draftScopeId={
+				routeDraftId ?? session.draftId ?? `${routeKind}:composer`
+			}
+			routeDraftId={routeDraftId}
+			resetKey={composerResetKey}
+			onModelChange={setModel}
+			onRuntimeModeChange={setRuntimeMode}
+			onNewDraftRoute={startNewDraftRoute}
+			onDraftSendStarted={(draftId) => {
+				pendingDraftPromotionRef.current = draftId;
+			}}
+			onDraftSendFailed={(draftId) => {
+				if (pendingDraftPromotionRef.current === draftId) {
+					pendingDraftPromotionRef.current = undefined;
+				}
+			}}
+		/>
+	);
 
 	async function openLoadedConversationRoute(
 		conversation: ConversationDetail,
@@ -208,60 +235,42 @@ export function DesktopCompatibilityView(props: {
 				/>
 			}
 			inspector={
-				<RightPanel
-					appInfo={appInfo}
-					selectionMessage={workspace.selectionMessage}
-					provider={provider}
-					pendingRequests={session.pendingRequests}
-					eventLog={session.eventLog}
-				/>
+				hasConversationSurface ? (
+					<RightPanel
+						appInfo={appInfo}
+						selectionMessage={workspace.selectionMessage}
+						provider={provider}
+						pendingRequests={session.pendingRequests}
+						eventLog={session.eventLog}
+					/>
+				) : null
 			}
 		>
 			<section className="min-h-0 min-w-0 overflow-hidden">
-				<div className={sessionStageInnerClass}>
+				<div
+					className={
+						hasConversationSurface
+							? "flex h-full w-full flex-col px-7 pb-7 pt-8 max-[1200px]:px-5"
+							: sessionStageInnerClass
+					}
+				>
 					<div className="flex flex-col items-center gap-3.5">
 						<IconSparkles {...iconProps} size={24} />
 						<h1 className="m-0 text-[18px] font-medium tracking-normal text-[var(--desktop-strong)]">
 							Where should we begin?
 						</h1>
 					</div>
-					<ConversationStage
-						status={session.status}
-						threadId={session.threadId ?? session.conversationId}
-						model={timelineModel}
-						onRespond={session.respondToRequest}
-						composer={
-							<ComposerRegion
-								session={session}
-								model={model}
-								runtimeMode={runtimeMode}
-								runtimeOptions={runtimeOptions}
-								workspaceRoot={workspace.selectedFolderPath}
-								draftScopeId={
-									routeDraftId ??
-									session.draftId ??
-									`${routeKind}:composer`
-								}
-								routeDraftId={routeDraftId}
-								resetKey={composerResetKey}
-								onModelChange={setModel}
-								onRuntimeModeChange={setRuntimeMode}
-								onNewDraftRoute={startNewDraftRoute}
-								onDraftSendStarted={(draftId) => {
-									pendingDraftPromotionRef.current = draftId;
-								}}
-								onDraftSendFailed={(draftId) => {
-									if (
-										pendingDraftPromotionRef.current ===
-										draftId
-									) {
-										pendingDraftPromotionRef.current =
-											undefined;
-									}
-								}}
-							/>
-						}
-					/>
+					{hasConversationSurface ? (
+						<ConversationStage
+							model={timelineModel}
+							onRespond={session.respondToRequest}
+							composer={composer}
+						/>
+					) : (
+						<div className="mt-6 flex w-[min(100%,920px)] flex-col self-center">
+							{composer}
+						</div>
+					)}
 				</div>
 			</section>
 		</DesktopLayout>

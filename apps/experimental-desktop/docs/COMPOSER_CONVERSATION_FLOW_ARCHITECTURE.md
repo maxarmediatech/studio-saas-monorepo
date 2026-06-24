@@ -401,7 +401,6 @@ src/renderer/components/conversation/
   ConversationTimeline.tsx
   TimelineRow.tsx
   PendingRequestLayer.tsx
-  ConversationStatusBar.tsx
 src/main/conversations/
   admitted-request.ts
   native-attachment-validation.ts
