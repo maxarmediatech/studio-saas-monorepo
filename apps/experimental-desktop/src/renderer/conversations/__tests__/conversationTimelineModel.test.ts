@@ -124,6 +124,24 @@ describe("conversationTimelineModel", () => {
 			}),
 		]);
 	});
+
+	it("does not render empty assistant placeholders", () => {
+		const model = projectConversationTimeline({
+			transcript: [
+				{
+					id: "assistant-1",
+					type: "assistant",
+					text: "",
+					status: "streaming",
+					turnId: "turn-1",
+					time: "2026-06-24T00:00:02.000Z",
+				},
+			],
+			pendingRequests: [],
+		});
+
+		expect(model.rows).toEqual([]);
+	});
 });
 
 const baseConversation: ConversationDetail = {

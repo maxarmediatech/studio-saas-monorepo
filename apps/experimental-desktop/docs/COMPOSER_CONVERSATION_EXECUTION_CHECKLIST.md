@@ -449,7 +449,10 @@ Progress:
 - Exposed ordered `message_parts` on `ConversationMessage` across main/preload detail loading so renderer rows can render persisted parts instead of relying only on flattened text.
 - Added `ConversationStage`, `ConversationTimeline`, `TimelineRow`, and `PendingRequestLayer`; `DesktopCompatibilityView` now mounts the stage instead of the text-only `SessionPanel` when timeline content exists.
 - Review correction: empty draft routes must not mount an empty conversation panel, status bar, row counter, or right inspector. The draft surface is composer-first; the timeline stage appears only after there are actual rows or pending approvals.
+- Review correction: the chat route must not show the runtime/OAuth/Codex/event-log right rail; those diagnostics belong behind a future settings/status surface, not beside every conversation.
+- Review correction: Codex app-server can deliver final assistant text through `item/completed` with `item.type: "agentMessage"` even when no `item/agentMessage/delta` arrived. The controller now persists that final text, emits only the missing live delta suffix, and the timeline hides empty assistant placeholders.
 - Added projection tests for persisted context/image/text parts, pending approval request rows, and compaction event rows.
+- Added a projection regression for empty assistant placeholders. A DB-level regression for final assistant persistence is still blocked by the current `better-sqlite3` Node ABI mismatch in Vitest.
 - Still deferred: durable queue rows inside the timeline, richer DB `message_parts` enum for first-class `file_ref`/`image_ref`/`context_ref` rows, live provider-context part refresh after streaming events, quick-capture/app-action/diff-specific row renderers, and virtualization/polish once row volume requires it.
 
 ## Phase 8 — Provider Expansion Foundation

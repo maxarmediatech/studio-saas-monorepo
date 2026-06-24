@@ -1104,6 +1104,40 @@ export class ConversationRepository {
 		return turn;
 	}
 
+	setAssistantText(input: {
+		turnId: string;
+		text: string;
+		raw: JsonValue;
+		now: string;
+	}) {
+		const turn = this.getTurn(input.turnId);
+		if (!turn) {
+			return undefined;
+		}
+		const partId = `${turn.assistant_message_id}:text`;
+		this.db
+			.prepare(
+				`UPDATE message_parts
+				SET text = @text,
+					json = @raw,
+					updated_at = @now
+				WHERE id = @partId`,
+			)
+			.run({
+				partId,
+				text: input.text,
+				raw: stringify(input.raw),
+				now: input.now,
+			});
+		this.db
+			.prepare(
+				"UPDATE messages SET status = 'streaming', updated_at = ? WHERE id = ?",
+			)
+			.run(input.now, turn.assistant_message_id);
+		this.touchConversation(turn.conversation_id, "active", input.now);
+		return turn;
+	}
+
 	completeTurn(input: {
 		turnId: string;
 		raw: JsonValue;

@@ -301,6 +301,8 @@ Phase 7 implementation note:
 - Pending approvals render in `PendingRequestLayer`, separate from the message transcript, while request rows remain visible in the timeline for chronology.
 - The current DB enum still stores text/tool/approval/raw parts. Admitted attachment/context details are recovered from the text part composer payload until the later schema slice promotes `file_ref`, `image_ref`, and `context_ref` to first-class durable rows.
 - Empty draft routes stay composer-first and do not show an empty timeline/debug panel or inspector column. The conversation stage is only visible once the route has actual timeline rows or pending approvals.
+- Chat routes do not show the runtime/OAuth/Codex diagnostics rail. Those controls should move behind a dedicated settings/status surface later.
+- Codex final-answer ingestion must handle `item/completed` `agentMessage` payloads, not only streaming delta events.
 
 ## Dependency Decisions
 

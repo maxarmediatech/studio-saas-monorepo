@@ -69,6 +69,7 @@ export function createConversationController(input: {
 	>();
 	const activeTurnsByProviderTurnId = new Map<string, ActiveTurn>();
 	const pendingTurns = new Map<string, ActiveTurn>();
+	const assistantTextByTurn = new Map<string, string>();
 	const activeApprovals = new Map<string, ActiveApproval>();
 	let runtimeStream: AbortController | undefined;
 	let activeTurnId: string | undefined;
@@ -1127,6 +1128,11 @@ export function createConversationController(input: {
 			handleAssistantDelta(activeTurn, event, providerTurnId);
 			return;
 		}
+		if (event.method === "item/completed") {
+			if (handleCompletedAgentMessage(activeTurn, event, providerTurnId)) {
+				return;
+			}
+		}
 		if (event.method === "turn/completed") {
 			handleTurnCompleted(activeTurn, event, providerTurnId);
 			return;
@@ -1259,6 +1265,12 @@ export function createConversationController(input: {
 		providerTurnId?: string,
 	) {
 		const text = readDeltaText(event.params);
+		if (text) {
+			assistantTextByTurn.set(
+				activeTurn.turnId,
+				`${assistantTextByTurn.get(activeTurn.turnId) ?? ""}${text}`,
+			);
+		}
 		repo.appendAssistantDelta({
 			turnId: activeTurn.turnId,
 			text,
@@ -1285,6 +1297,52 @@ export function createConversationController(input: {
 			raw: event.params,
 			event: persisted,
 		});
+	}
+
+	function handleCompletedAgentMessage(
+		activeTurn: ActiveTurn,
+		event: Extract<CodexRuntimeEvent, { kind: "notification" }>,
+		providerTurnId?: string,
+	) {
+		const text = readCompletedAgentMessageText(event.params);
+		if (!text) {
+			return false;
+		}
+		const previous = assistantTextByTurn.get(activeTurn.turnId) ?? "";
+		assistantTextByTurn.set(activeTurn.turnId, text);
+		repo.setAssistantText({
+			turnId: activeTurn.turnId,
+			text,
+			raw: event.params,
+			now: now(),
+		});
+		const delta = text.startsWith(previous)
+			? text.slice(previous.length)
+			: text;
+		if (delta) {
+			const persisted: ConversationEvent = {
+				id: randomUUID(),
+				type: "assistant.delta",
+				time: now(),
+				data: {
+					text: delta,
+					turnId: activeTurn.turnId,
+					providerTurnId,
+					messageId: activeTurn.assistantMessageId,
+					raw: event.params,
+				},
+			};
+			persistAndBroadcast({
+				conversationId: activeTurn.conversationId,
+				providerSessionId: activeTurn.providerSessionId,
+				turnId: activeTurn.turnId,
+				type: persisted.type,
+				raw: event.params,
+				event: persisted,
+			});
+		}
+		recordProviderContext(activeTurn, event);
+		return true;
 	}
 
 	function handleTurnCompleted(
@@ -1461,6 +1519,7 @@ export function createConversationController(input: {
 	function clearTurn(turnId?: string, providerTurnId?: string) {
 		if (turnId) {
 			pendingTurns.delete(turnId);
+			assistantTextByTurn.delete(turnId);
 			if (activeTurnId === turnId) {
 				activeTurnId = undefined;
 			}
@@ -1684,6 +1743,14 @@ function readPayloadItem(value: unknown) {
 		return undefined;
 	}
 	return value.item;
+}
+
+function readCompletedAgentMessageText(value: unknown) {
+	const item = readPayloadItem(value);
+	if (!item || item.type !== "agentMessage") {
+		return undefined;
+	}
+	return readString(item.text);
 }
 
 function normalizeProviderItemType(value: unknown) {

@@ -89,10 +89,10 @@ export function projectConversationTimeline(input: {
 			request,
 		]),
 	);
-	const rows = input.transcript.map((item): ConversationTimelineRow => {
+	const rows = input.transcript.flatMap((item): ConversationTimelineRow[] => {
 		if (item.type === "approval") {
 			const pending = pendingByRequestId.get(item.requestId);
-			return {
+			return [{
 				id: item.id,
 				kind: "request",
 				requestId: item.requestId,
@@ -100,19 +100,23 @@ export function projectConversationTimeline(input: {
 				time: item.time,
 				pending: Boolean(pending),
 				raw: pending?.data.raw,
-			};
+			}];
 		}
 		if (item.type === "system") {
-			return {
+			return [{
 				id: item.id,
 				kind: "event",
 				tone: eventTone(item.text),
 				title: eventTitle(item.text),
 				text: item.text,
 				time: item.time,
-			};
+			}];
 		}
-		return {
+		const parts = partsByMessage.get(item.id) ?? fallbackTextPart(item);
+		if (item.type === "assistant" && parts.length === 0) {
+			return [];
+		}
+		return [{
 			id: item.id,
 			kind: "message",
 			role: item.type,
@@ -123,8 +127,8 @@ export function projectConversationTimeline(input: {
 			text: item.text,
 			time: item.time,
 			turnId: item.type === "assistant" ? item.turnId : undefined,
-			parts: partsByMessage.get(item.id) ?? fallbackTextPart(item),
-		};
+			parts,
+		}];
 	});
 
 	return {

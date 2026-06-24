@@ -9,11 +9,9 @@ import type {
 import { ConversationStage } from "../components/conversation/ConversationStage";
 import { ComposerRegion } from "../components/composer/ComposerRegion";
 import { Sidebar } from "../components/layout";
-import { RightPanel } from "../components/right-panel";
 import type { ConversationResourceState } from "../conversations/conversationResourceStore";
 import { projectConversationTimeline } from "../conversations/conversationTimelineModel";
 import { useCodexSession } from "../hooks/useCodexSession";
-import { useProviderStatus } from "../hooks/useProviderStatus";
 import { useThemeMode } from "../hooks/useThemeMode";
 import { useWorkspaceSelection } from "../hooks/useWorkspaceSelection";
 import { shouldShowConversationSurface } from "./desktopConversationSurface";
@@ -46,7 +44,6 @@ export function DesktopCompatibilityView(props: {
 	const pendingDraftPromotionRef = useRef<string | undefined>(undefined);
 	const { theme, toggleTheme } = useThemeMode();
 	const workspace = useWorkspaceSelection();
-	const provider = useProviderStatus();
 	const session = useCodexSession({
 		model,
 		runtimeMode,
@@ -234,17 +231,7 @@ export function DesktopCompatibilityView(props: {
 					onOpenConversation={openConversationRoute}
 				/>
 			}
-			inspector={
-				hasConversationSurface ? (
-					<RightPanel
-						appInfo={appInfo}
-						selectionMessage={workspace.selectionMessage}
-						provider={provider}
-						pendingRequests={session.pendingRequests}
-						eventLog={session.eventLog}
-					/>
-				) : null
-			}
+			inspector={null}
 		>
 			<section className="min-h-0 min-w-0 overflow-hidden">
 				<div
