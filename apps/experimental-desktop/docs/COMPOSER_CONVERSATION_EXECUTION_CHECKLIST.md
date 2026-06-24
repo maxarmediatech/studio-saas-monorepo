@@ -63,7 +63,8 @@ Compatibility strategy:
 - Sidebar new/open actions navigate to `/draft/:draftId` and `/conversation/:conversationId`; compatibility route effects perform the current session reset/open calls.
 - `/capture` mounts the compatibility shell for now so the route exists without inventing quick-capture state early.
 - Replace `DesktopCompatibilityView` with route-owned draft/conversation resources in the later Phase 2/3 slices.
-- First send still uses the legacy boolean transport, so draft-to-conversation URL promotion is deferred until admitted endpoints return the promoted conversation id.
+- First send from a draft route promotes the URL to `/conversation/:conversationId` when the compatibility session hydrates the promoted conversation.
+- Long-term admitted endpoints should return the promoted conversation id directly instead of relying on compatibility session state.
 
 ## Phase 1 — Main DB And Domain Schema
 

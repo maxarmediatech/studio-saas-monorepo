@@ -125,6 +125,17 @@ export function DesktopCompatibilityView(props: {
 		void createNewSession({ draftScopeId: props.route.draftId });
 	}, [props.route]);
 
+	useEffect(() => {
+		if (props.route.kind !== "draft" || !session.conversationId) {
+			return;
+		}
+		void navigate({
+			to: "/conversation/$conversationId",
+			params: { conversationId: session.conversationId },
+			replace: true,
+		});
+	}, [props.route, session.conversationId, navigate]);
+
 	const runtimeOptions: RuntimeOption[] = [
 		{ value: "read-only", label: "Read Only" },
 		{ value: "workspace-write", label: "Workspace Edit" },
