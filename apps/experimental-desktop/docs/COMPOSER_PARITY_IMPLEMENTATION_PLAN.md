@@ -120,8 +120,10 @@ Phase 4 progress:
 Phase 5 progress:
 - `ComposerQueueStore` now owns route-local queued admitted requests, queue limits, pause/resume, local ordering, running/failed state, and state-size validation.
 - Busy sends from a persisted conversation use an explicit Queue primary action, durably enqueue the admitted request, and clear the composer only after enqueue succeeds.
-- `ComposerQueuePanel` makes queued items visible in the composer region with pause/resume, remove, and local move controls; execution auto-starts through `queue-execute-next` once the active turn is idle.
-- Durable queue hydration, persisted reorder, and edit-in-place remain deferred; edit should be remove + re-admit while admitted ids remain immutable.
+- `ComposerQueuePanel` makes queued items visible in the composer region with pause/resume and remove controls; execution auto-starts through `queue-execute-next` once the active turn is idle.
+- Local reorder controls were removed until backend reorder persistence exists, so the visible next item cannot diverge from DB execution order.
+- Queue execution now removes local rows only after `queue-execute-next` reports `ok: true` and `executed: true`; no-op execution is marked failed in the panel.
+- Durable queue hydration, persisted reorder, durable pause/resume, and edit-in-place remain deferred; edit should be remove + re-admit while admitted ids remain immutable.
 
 File-safety and budget checks must not live only in UI because files can enter through picker, paste, drag/drop, folder context, mentions, restored drafts, queued sends, future programmatic insertion, or IPC/provider payloads.
 

@@ -5,24 +5,30 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { RespondSessionRequestInput } from "../../../../preload/types";
 import type { SessionComposer } from "../SessionComposer";
+import type { ComposerQueuePanel } from "../ComposerQueuePanel";
 import {
 	ComposerRegion,
 	type ComposerRegionSession,
 } from "../ComposerRegion";
 
 type SessionComposerProps = Parameters<typeof SessionComposer>[0];
+type ComposerQueuePanelProps = Parameters<typeof ComposerQueuePanel>[0];
 
 let latestComposerProps: SessionComposerProps | undefined;
+let latestQueuePanelProps: ComposerQueuePanelProps | undefined;
 
 vi.mock("../SessionComposer", () => ({
 	SessionComposer: (props: SessionComposerProps) => {
 		latestComposerProps = props;
-		return null;
+		return <>{props.queuePanel}</>;
 	},
 }));
 
 vi.mock("../ComposerQueuePanel", () => ({
-	ComposerQueuePanel: () => null,
+	ComposerQueuePanel: (props: ComposerQueuePanelProps) => {
+		latestQueuePanelProps = props;
+		return null;
+	},
 }));
 
 describe("ComposerRegion", () => {
@@ -30,6 +36,7 @@ describe("ComposerRegion", () => {
 		(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT =
 			true;
 		latestComposerProps = undefined;
+		latestQueuePanelProps = undefined;
 		vi.useFakeTimers();
 	});
 
@@ -173,6 +180,115 @@ describe("ComposerRegion", () => {
 			}),
 		);
 		expect(latestComposerProps?.value).toBe("");
+		harness.unmount();
+	});
+
+	it("marks queued item failed when execute-next does not start execution", async () => {
+		const executeNextQueuedRequest = vi
+			.fn()
+			.mockResolvedValue({ ok: false, executed: false });
+		const harness = renderRegion({
+			session: sessionStub({
+				conversationId: "conversation-1",
+				isTurnRunning: true,
+				isTurnActive: true,
+				enqueueAdmittedRequest: vi.fn().mockResolvedValue({
+					id: "queue-1",
+					conversationId: "conversation-1",
+					admittedRequestId: "admitted-1",
+					position: 0,
+					status: "queued",
+					createdAt: "2026-06-24T00:00:00.000Z",
+					updatedAt: "2026-06-24T00:00:00.000Z",
+				}),
+				executeNextQueuedRequest,
+			}),
+		});
+
+		await act(async () => {
+			latestComposerProps?.onChange("Queue me");
+		});
+		await act(async () => {
+			await latestComposerProps?.onSend();
+		});
+		await vi.waitFor(() => {
+			expect(latestQueuePanelProps?.items[0]?.status).toBe("queued");
+		});
+		await act(async () => {
+			harness.rerender({
+				session: sessionStub({
+					conversationId: "conversation-1",
+					isTurnRunning: false,
+					isTurnActive: false,
+					executeNextQueuedRequest,
+				}),
+			});
+			await Promise.resolve();
+			await Promise.resolve();
+		});
+
+		expect(executeNextQueuedRequest).toHaveBeenCalledTimes(1);
+		await vi.waitFor(() => {
+			expect(latestQueuePanelProps?.items[0]?.status).toBe("failed");
+			expect(latestQueuePanelProps?.items[0]?.error).toBe(
+				"Queue execution did not start",
+			);
+		});
+		harness.unmount();
+	});
+
+	it("does not auto-execute while the queue is paused", async () => {
+		const executeNextQueuedRequest = vi
+			.fn()
+			.mockResolvedValue({ ok: true, executed: true });
+		const harness = renderRegion({
+			session: sessionStub({
+				conversationId: "conversation-1",
+				isTurnRunning: true,
+				isTurnActive: true,
+				enqueueAdmittedRequest: vi.fn().mockResolvedValue({
+					id: "queue-1",
+					conversationId: "conversation-1",
+					admittedRequestId: "admitted-1",
+					position: 0,
+					status: "queued",
+					createdAt: "2026-06-24T00:00:00.000Z",
+					updatedAt: "2026-06-24T00:00:00.000Z",
+				}),
+				executeNextQueuedRequest,
+			}),
+		});
+
+		await act(async () => {
+			latestComposerProps?.onChange("Queue me");
+		});
+		await act(async () => {
+			await latestComposerProps?.onSend();
+		});
+		await vi.waitFor(() => {
+			expect(latestQueuePanelProps?.items[0]?.status).toBe("queued");
+		});
+		await act(async () => {
+			latestQueuePanelProps?.onPause();
+			await Promise.resolve();
+		});
+		await vi.waitFor(() => {
+			expect(latestQueuePanelProps?.isPaused).toBe(true);
+		});
+		await act(async () => {
+			harness.rerender({
+				session: sessionStub({
+					conversationId: "conversation-1",
+					isTurnRunning: false,
+					isTurnActive: false,
+					executeNextQueuedRequest,
+				}),
+			});
+		});
+
+		expect(executeNextQueuedRequest).not.toHaveBeenCalled();
+		expect(latestQueuePanelProps?.items[0]?.status).toBe("queued");
+		expect(latestQueuePanelProps?.isPaused).toBe(true);
 		harness.unmount();
 	});
 

@@ -1,6 +1,4 @@
 import {
-	IconArrowDown,
-	IconArrowUp,
 	IconPlayerPause,
 	IconPlayerPlay,
 	IconTrash,
@@ -16,7 +14,6 @@ export function ComposerQueuePanel(props: {
 	onPause: () => void;
 	onResume: () => void;
 	onRemove: (queueItemId: string) => void;
-	onMove: (queueItemId: string, direction: -1 | 1) => void;
 }) {
 	if (props.items.length === 0 && !props.lastError) {
 		return null;
@@ -52,7 +49,7 @@ export function ComposerQueuePanel(props: {
 				</div>
 			) : null}
 			<div className="flex flex-col gap-1.5">
-				{props.items.map((item, index) => (
+				{props.items.map((item) => (
 					<div
 						key={item.queueItemId}
 						className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-[10px] bg-[color-mix(in_srgb,var(--desktop-strong)_4%,transparent)] px-2.5 py-2"
@@ -67,27 +64,6 @@ export function ComposerQueuePanel(props: {
 							</div>
 						</div>
 						<div className="flex items-center gap-1">
-							<IconButton
-								label="Move up"
-								disabled={index === 0 || item.status === "running"}
-								onClick={async () =>
-									props.onMove(item.queueItemId, -1)
-								}
-							>
-								<IconArrowUp {...iconProps} />
-							</IconButton>
-							<IconButton
-								label="Move down"
-								disabled={
-									index === props.items.length - 1 ||
-									item.status === "running"
-								}
-								onClick={async () =>
-									props.onMove(item.queueItemId, 1)
-								}
-							>
-								<IconArrowDown {...iconProps} />
-							</IconButton>
 							<IconButton
 								label="Remove queued request"
 								disabled={item.status === "running"}

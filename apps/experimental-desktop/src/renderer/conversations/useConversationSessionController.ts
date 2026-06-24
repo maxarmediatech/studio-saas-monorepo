@@ -207,6 +207,9 @@ export function useConversationSessionController(input: {
 			const result = await client.executeNextQueuedRequest({
 				conversationId,
 			});
+			if (!didExecuteQueuedRequest(result)) {
+				throw new Error("Queue execution did not start");
+			}
 			const conversation = readExecutedConversation(result);
 			if (conversation) {
 				hydrateConversation(conversation);
@@ -399,4 +402,12 @@ function readExecutedConversation(value: unknown): ConversationDetail | undefine
 		return conversation as ConversationDetail;
 	}
 	return undefined;
+}
+
+function didExecuteQueuedRequest(value: unknown) {
+	if (!value || typeof value !== "object" || Array.isArray(value)) {
+		return false;
+	}
+	const result = value as Record<string, unknown>;
+	return result.ok === true && result.executed === true;
 }

@@ -102,8 +102,16 @@ export function ComposerRegion(props: {
 		queue.mark(next.queueItemId, "running");
 		void props.session
 			.executeNextQueuedRequest()
-			.then(() => {
-				queue.remove(next.queueItemId);
+			.then((result) => {
+				if (didExecuteQueuedRequest(result)) {
+					queue.remove(next.queueItemId);
+					return;
+				}
+				queue.mark(
+					next.queueItemId,
+					"failed",
+					"Queue execution did not start",
+				);
 			})
 			.catch((error) => {
 				queue.mark(
@@ -256,11 +264,18 @@ export function ComposerRegion(props: {
 					onPause={queue.pause}
 					onResume={queue.resume}
 					onRemove={removeQueuedRequest}
-					onMove={queue.move}
 				/>
 			}
 		/>
 	);
+}
+
+function didExecuteQueuedRequest(value: unknown) {
+	if (!value || typeof value !== "object" || Array.isArray(value)) {
+		return false;
+	}
+	const result = value as Record<string, unknown>;
+	return result.ok === true && result.executed === true;
 }
 
 function queueValidationMessage(
