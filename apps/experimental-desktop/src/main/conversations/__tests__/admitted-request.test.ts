@@ -76,6 +76,62 @@ describe("admitted request validation", () => {
 		]);
 	});
 
+	it("rejects native files whose display name differs from the admitted part", () => {
+		expect(() =>
+			validateAdmittedComposerRequest(
+				admittedRequest({
+					id: "admitted-name-mismatch",
+					prompt: "Use file",
+					requestParts: [
+						{ type: "text", text: "Use file" },
+						{
+							type: "file_ref",
+							path: "/tmp/source.txt",
+							name: "source.txt",
+							mimeType: "text/plain",
+						},
+					],
+					nativeInput: [
+						{
+							type: "local_file",
+							path: "/tmp/source.txt",
+							name: "renamed.txt",
+							mimeType: "text/plain",
+						},
+					],
+				}),
+			),
+		).toThrow("name does not match");
+	});
+
+	it("rejects native files whose MIME type differs from the admitted part", () => {
+		expect(() =>
+			validateAdmittedComposerRequest(
+				admittedRequest({
+					id: "admitted-mime-mismatch",
+					prompt: "Use file",
+					requestParts: [
+						{ type: "text", text: "Use file" },
+						{
+							type: "file_ref",
+							path: "/tmp/source.txt",
+							name: "source.txt",
+							mimeType: "text/plain",
+						},
+					],
+					nativeInput: [
+						{
+							type: "local_file",
+							path: "/tmp/source.txt",
+							name: "source.txt",
+							mimeType: "application/json",
+						},
+					],
+				}),
+			),
+		).toThrow("MIME type does not match");
+	});
+
 	it("validates explicit queue status updates", () => {
 		expect(validateQueueUpdateBody({ status: "canceled" })).toEqual({
 			status: "canceled",

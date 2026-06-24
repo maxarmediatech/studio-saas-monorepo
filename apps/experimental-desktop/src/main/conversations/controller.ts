@@ -8,6 +8,7 @@ import type {
 } from "../sidecar-codex-runtime";
 import type { ConversationDatabase } from "../storage/database";
 import {
+	validateAdmittedComposerRequest,
 	validateAdmittedSendBody,
 	validateQueueUpdateBody,
 	type ValidatedAdmittedComposerRequest,
@@ -550,11 +551,42 @@ export function createConversationController(input: {
 		if (!item) {
 			return { ok: true as const, executed: false as const };
 		}
-		return repo.updateQueueItem({
+		const storedRequest = repo.getAdmittedRequestForQueueItem(item.id);
+		if (!storedRequest) {
+			repo.updateQueueItem({
+				queueItemId: item.id,
+				status: "failed",
+				error: { message: "Queued admitted request is missing" },
+				now: now(),
+			});
+			return { ok: false as const, executed: false as const };
+		}
+		const request = validateAdmittedComposerRequest(storedRequest);
+		repo.updateQueueItem({
 			queueItemId: item.id,
 			status: "running",
 			now: now(),
 		});
+		try {
+			const conversation = await sendValidatedAdmittedMessage(
+				conversationId,
+				request,
+			);
+			repo.updateQueueItem({
+				queueItemId: item.id,
+				status: "completed",
+				now: now(),
+			});
+			return { ok: true as const, executed: true as const, conversation };
+		} catch (error) {
+			repo.updateQueueItem({
+				queueItemId: item.id,
+				status: "failed",
+				error: errorPayload(error),
+				now: now(),
+			});
+			throw error;
+		}
 	}
 
 	async function interruptConversation(conversationId: string) {
@@ -574,6 +606,12 @@ export function createConversationController(input: {
 		repo.interruptTurn({
 			turnId: activeTurn.turnId,
 			message,
+			now: interruptedAt,
+		});
+		repo.markAdmittedRequestStatusForTurn({
+			turnId: activeTurn.turnId,
+			status: "canceled",
+			error: { message },
 			now: interruptedAt,
 		});
 		repo.expirePendingApprovalsForTurn({
@@ -1058,6 +1096,14 @@ export function createConversationController(input: {
 					})
 				: undefined;
 			if (turn) {
+				repo.markAdmittedRequestStatusForTurn({
+					turnId: turn.id,
+					status: "failed",
+					error: {
+						message: `Codex request timed out waiting for response: ${event.method}`,
+					},
+					now: now(),
+				});
 				broadcastFailure(
 					approval.conversationId,
 					approval.turnId,
@@ -1086,11 +1132,18 @@ export function createConversationController(input: {
 			return;
 		}
 		if (event.method === "error") {
+			const failedAt = now();
 			repo.failTurn({
 				turnId: activeTurn.turnId,
 				error: readErrorMessage(event.params),
 				raw: event.params,
-				now: now(),
+				now: failedAt,
+			});
+			repo.markAdmittedRequestStatusForTurn({
+				turnId: activeTurn.turnId,
+				status: "failed",
+				error: { message: readErrorMessage(event.params) },
+				now: failedAt,
 			});
 			broadcastFailure(
 				activeTurn.conversationId,
@@ -1241,11 +1294,18 @@ export function createConversationController(input: {
 	) {
 		if (isFailedTurn(event.params)) {
 			const error = readTurnError(event.params);
+			const failedAt = now();
 			repo.failTurn({
 				turnId: activeTurn.turnId,
 				error,
 				raw: event.params,
-				now: now(),
+				now: failedAt,
+			});
+			repo.markAdmittedRequestStatusForTurn({
+				turnId: activeTurn.turnId,
+				status: "failed",
+				error: { message: error },
+				now: failedAt,
 			});
 			broadcastFailure(
 				activeTurn.conversationId,
@@ -1260,6 +1320,11 @@ export function createConversationController(input: {
 				raw: event.params,
 				now: completedAt,
 				status: "completed",
+			});
+			repo.markAdmittedRequestStatusForTurn({
+				turnId: activeTurn.turnId,
+				status: "completed",
+				now: completedAt,
 			});
 			repo.setProviderLeaf({
 				providerSessionId: activeTurn.providerSessionId,
@@ -1337,6 +1402,12 @@ export function createConversationController(input: {
 			turnId: activeTurn.turnId,
 			error: message,
 			raw: { error: message },
+			now: failedAt,
+		});
+		repo.markAdmittedRequestStatusForTurn({
+			turnId: activeTurn.turnId,
+			status: "failed",
+			error: { message },
 			now: failedAt,
 		});
 		repo.expirePendingApprovalsForTurn({

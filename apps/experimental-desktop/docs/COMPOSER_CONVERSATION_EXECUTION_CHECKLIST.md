@@ -297,8 +297,11 @@ Done:
 - `conversationClient.sendAdmittedRequest` now transports the full admitted request instead of converting back to legacy `{ text, nativeInput, payload }`.
 - Draft promotion and follow-up sends persist the admitted request before starting the Codex runtime, while still storing legacy composer payload metadata in the user text part for current timeline compatibility.
 - First send returns the promoted conversation detail, so `/draft/:draftId` can navigate to `/conversation/:conversationId` from the endpoint result.
-- Queue admission stores the admitted request and queued item while a conversation is busy; full queue execution/reorder/pause UI stays in Phase 5.
-- Added pure main validation regressions for valid admitted bodies, injected native paths, matched file refs, and queue status updates. SQLite-backed controller persistence tests were not added because the repo's `better-sqlite3` binary is currently built for Electron's Node ABI and fails under Node Vitest; keep DB persistence covered by build/type gates until an Electron/Vitest DB harness exists.
+- Runtime completion, runtime failure, approval timeout, explicit interrupt, and runtime disconnect now update admitted request terminal status by `turn_id`.
+- `queue-execute-next` now loads the queued admitted request, revalidates the stored envelope, starts the same admitted send path, and marks the queue item completed or failed around that promotion. Full queue reorder/pause/resume UI stays in Phase 5.
+- Admitted request idempotency now rejects the same admitted id with different draft/request/provider/admission/compatibility JSON, following the OpenCode lifecycle-conflict model.
+- Main validation is provider-envelope validation, not full file-safety enforcement yet: it rejects unadmitted native paths and now also checks native file/image name and MIME against admitted request parts. Path normalization, existence checks, and symlink/alias hardening remain future file-safety work.
+- Added pure main validation regressions for valid admitted bodies, injected native paths, matched file refs, native name/MIME mismatches, and queue status updates. SQLite-backed controller persistence tests were not added because the repo's `better-sqlite3` binary is currently built for Electron's Node ABI and fails under Node Vitest; keep DB persistence covered by build/type gates until an Electron/Vitest DB harness exists.
 
 ## Phase 5 — Queue From Beginning
 

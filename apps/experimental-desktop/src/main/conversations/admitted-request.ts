@@ -206,6 +206,9 @@ function validateProviderInputMatchesParts(
 		if (requestPart.mimeType && requestPart.mimeType !== nativePart.mimeType) {
 			throw new Error("Provider native input MIME type does not match request part");
 		}
+		if (requestPart.name !== nativePart.name) {
+			throw new Error("Provider native input name does not match request part");
+		}
 	}
 }
 

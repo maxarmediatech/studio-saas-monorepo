@@ -361,6 +361,11 @@ export class ConversationRepository {
 		status: "admitted" | "queued" | "running" | "completed" | "failed" | "canceled";
 		now: string;
 	}) {
+		const stored = this.getAdmittedRequestRow(input.request.id);
+		const encoded = encodeAdmittedRequest(input.request);
+		if (stored && !matchesAdmittedRequest(stored, encoded)) {
+			throw new Error("Admitted request id was reused with different content");
+		}
 		this.db
 			.prepare(
 				`INSERT INTO admitted_requests
@@ -380,13 +385,7 @@ export class ConversationRepository {
 				turnId: input.turnId ?? null,
 				provider: input.request.providerInput.provider,
 				status: input.status,
-				draftSnapshot: stringify(input.request.draftSnapshot),
-				requestParts: stringify(input.request.requestParts),
-				providerInput: stringify(input.request.providerInput),
-				admission: stringify(input.request.admission),
-				compatibilityPayload: stringify(
-					input.request.compatibilityPayload ?? {},
-				),
+				...encoded,
 				now: input.now,
 			});
 	}
@@ -411,6 +410,33 @@ export class ConversationRepository {
 				error: input.error ? stringify(input.error) : null,
 				now: input.now,
 			});
+	}
+
+	markAdmittedRequestStatusForTurn(input: {
+		turnId: string;
+		status: "completed" | "failed" | "canceled";
+		error?: unknown;
+		now: string;
+	}) {
+		this.db
+			.prepare(
+				`UPDATE admitted_requests
+				SET status = @status,
+					error_json = @error,
+					updated_at = @now
+				WHERE turn_id = @turnId`,
+			)
+			.run({
+				turnId: input.turnId,
+				status: input.status,
+				error: input.error ? stringify(input.error) : null,
+				now: input.now,
+			});
+	}
+
+	getAdmittedRequest(id: string): ValidatedAdmittedComposerRequest | undefined {
+		const row = this.getAdmittedRequestRow(id);
+		return row ? mapAdmittedRequest(row) : undefined;
 	}
 
 	createQueueItem(input: {
@@ -468,6 +494,18 @@ export class ConversationRepository {
 				LIMIT 1`,
 			)
 			.get(conversationId) as QueueItemRow | undefined;
+	}
+
+	getAdmittedRequestForQueueItem(queueItemId: string) {
+		const row = this.db
+			.prepare(
+				`SELECT ar.*
+				FROM admitted_requests ar
+				JOIN queue_items qi ON qi.admitted_request_id = ar.id
+				WHERE qi.id = ?`,
+			)
+			.get(queueItemId) as AdmittedRequestRow | undefined;
+		return row ? mapAdmittedRequest(row) : undefined;
 	}
 
 	listConversations() {
@@ -1357,6 +1395,12 @@ export class ConversationRepository {
 			.get(queueItemId) as QueueItemRow | undefined;
 	}
 
+	private getAdmittedRequestRow(id: string) {
+		return this.db
+			.prepare("SELECT * FROM admitted_requests WHERE id = ?")
+			.get(id) as AdmittedRequestRow | undefined;
+	}
+
 	private setActiveLeafMessage(
 		conversationId: string,
 		messageId: string,
@@ -1714,6 +1758,31 @@ type QueueItemRow = {
 	updated_at: string;
 };
 
+type AdmittedRequestRow = {
+	id: string;
+	conversation_id: string | null;
+	draft_id: string | null;
+	turn_id: string | null;
+	provider: "codex";
+	status: "admitted" | "queued" | "running" | "completed" | "failed" | "canceled";
+	draft_snapshot_json: string;
+	request_parts_json: string;
+	provider_input_json: string;
+	admission_json: string;
+	compatibility_payload_json: string;
+	error_json: string | null;
+	created_at: string;
+	updated_at: string;
+};
+
+type EncodedAdmittedRequest = {
+	draftSnapshot: string;
+	requestParts: string;
+	providerInput: string;
+	admission: string;
+	compatibilityPayload: string;
+};
+
 function mapDraft(row: DraftRow): DraftRecord {
 	return {
 		id: row.id,
@@ -1727,6 +1796,44 @@ function mapDraft(row: DraftRow): DraftRecord {
 		updatedAt: row.updated_at,
 		promotedConversationId: row.promoted_conversation_id ?? undefined,
 	};
+}
+
+function mapAdmittedRequest(
+	row: AdmittedRequestRow,
+): ValidatedAdmittedComposerRequest {
+	return {
+		id: row.id,
+		draftSnapshot: parseJson(row.draft_snapshot_json) ?? {},
+		requestParts: parseArray(row.request_parts_json) as ValidatedAdmittedComposerRequest["requestParts"],
+		providerInput: parseJson(row.provider_input_json) as ValidatedAdmittedComposerRequest["providerInput"],
+		admission: parseJson(row.admission_json) ?? {},
+		compatibilityPayload: parseJson(row.compatibility_payload_json) ?? {},
+	};
+}
+
+function encodeAdmittedRequest(
+	request: ValidatedAdmittedComposerRequest,
+): EncodedAdmittedRequest {
+	return {
+		draftSnapshot: stringify(request.draftSnapshot),
+		requestParts: stringify(request.requestParts),
+		providerInput: stringify(request.providerInput),
+		admission: stringify(request.admission),
+		compatibilityPayload: stringify(request.compatibilityPayload ?? {}),
+	};
+}
+
+function matchesAdmittedRequest(
+	row: AdmittedRequestRow,
+	expected: EncodedAdmittedRequest,
+) {
+	return (
+		row.draft_snapshot_json === expected.draftSnapshot &&
+		row.request_parts_json === expected.requestParts &&
+		row.provider_input_json === expected.providerInput &&
+		row.admission_json === expected.admission &&
+		row.compatibility_payload_json === expected.compatibilityPayload
+	);
 }
 
 function userTextPartJson(payload: unknown) {

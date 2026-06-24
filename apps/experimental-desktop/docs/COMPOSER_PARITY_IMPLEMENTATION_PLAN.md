@@ -112,9 +112,10 @@ Renderer policy is UX. Main policy is the trust boundary.
 
 Phase 4 progress:
 - Renderer `conversationClient.sendAdmittedRequest` now sends the full `AdmittedComposerRequest` through admitted IPC endpoints instead of rematerializing the legacy Codex send body.
-- Main validates the Codex provider envelope against provider-neutral `ComposerRequestPart[]`, including native file/image path and MIME matching, before any runtime call.
+- Main validates the Codex provider envelope against provider-neutral `ComposerRequestPart[]`, including native file/image path, name, and MIME matching, before any runtime call. This is envelope validation only; full path normalization/existence/symlink hardening remains file-safety work.
 - Main persists `admitted_requests` before Codex handoff and stores admitted metadata in the compatibility message payload so current text timeline keeps working while Phase 7 can project richer request parts.
-- Queue admission now has durable `queue_items`; richer queue store/UI, caps display, edit/remove/reorder, pause/resume, and execute-next runtime promotion remain Phase 5 work.
+- Admitted request lifecycle now follows runtime terminal events by `turn_id`, and reused admitted ids with different content are rejected.
+- Queue admission now has durable `queue_items`, and execute-next promotes the next queued admitted request through the same admitted send path. Richer queue store/UI, caps display, edit/remove/reorder, and pause/resume remain Phase 5 work.
 
 File-safety and budget checks must not live only in UI because files can enter through picker, paste, drag/drop, folder context, mentions, restored drafts, queued sends, future programmatic insertion, or IPC/provider payloads.
 
