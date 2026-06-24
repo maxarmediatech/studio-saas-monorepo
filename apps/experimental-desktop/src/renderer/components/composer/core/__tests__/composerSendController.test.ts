@@ -56,6 +56,34 @@ describe("admitComposerRequest", () => {
 		expect(result.blocks).toEqual(["broken.txt: too large"]);
 	});
 
+	it("rejects broken attachments before empty-message validation", () => {
+		const result = admitComposerRequest({
+			payload: buildComposerPayload({
+				mode: "ask",
+				text: "",
+				contextItems: [],
+				attachments: [
+					{
+						id: "attachment-1",
+						kind: "file",
+						name: "broken.txt",
+						status: "failed",
+						error: "too large",
+					},
+				],
+			}),
+			model: "gpt-5.4-mini",
+			runtimeMode: "read-only",
+		});
+
+		expect(result.ok).toBe(false);
+		if (result.ok) {
+			return;
+		}
+		expect(result.reason).toBe("Resolve attachments before sending.");
+		expect(result.blocks).toEqual(["broken.txt: too large"]);
+	});
+
 	it("rejects pathless attachments before transport", () => {
 		const result = admitComposerRequest({
 			payload: buildComposerPayload({

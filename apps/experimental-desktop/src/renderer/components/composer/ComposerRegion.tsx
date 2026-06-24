@@ -41,6 +41,8 @@ export function ComposerRegion(props: {
 	onModelChange: (model: string) => void;
 	onRuntimeModeChange: (mode: CodexRuntimeMode) => void;
 	onNewDraftRoute: () => Promise<void>;
+	onDraftSendStarted?: (draftId: string) => void;
+	onDraftSendFailed?: (draftId: string) => void;
 }) {
 	const composer = useComposerDraftStore({
 		model: props.model,
@@ -84,10 +86,16 @@ export function ComposerRegion(props: {
 	}, [props.resetKey, composer.reset]);
 
 	async function sendMessage() {
+		if (props.routeDraftId) {
+			props.onDraftSendStarted?.(props.routeDraftId);
+		}
 		const payloadAdmission = admitComposerDraft({
 			draft: composer.draft,
 		});
 		if (!payloadAdmission.ok) {
+			if (props.routeDraftId) {
+				props.onDraftSendFailed?.(props.routeDraftId);
+			}
 			props.session.reportComposerAdmissionBlock(payloadAdmission.reason);
 			return false;
 		}
@@ -96,6 +104,8 @@ export function ComposerRegion(props: {
 		);
 		if (sent) {
 			composer.reset();
+		} else if (props.routeDraftId) {
+			props.onDraftSendFailed?.(props.routeDraftId);
 		}
 		return sent;
 	}

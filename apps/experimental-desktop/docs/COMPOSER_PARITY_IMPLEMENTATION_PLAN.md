@@ -367,6 +367,13 @@ P0 slice 6 progress:
 - `admitComposerRequest` remains as a compatibility wrapper for existing low-level tests and any legacy caller that still holds a `ComposerPayload`.
 - Phase 3 is complete for the current compatibility UI. Remaining work moves to Phase 4 admitted IPC/main endpoints and Phase 5 queue, with richer request-part parsing/file-safety/budget continuing under the P1 section below.
 
+P0 slice 6 review follow-up:
+- Fixed stale draft-route promotion by tracking the draft id that actually started a send; `/draft/:draftId` no longer redirects merely because a stale `session.conversationId` exists for one render.
+- Fixed admission validation ordering so broken/pathless/MIME-less attachments return attachment resolution errors before empty-message errors.
+- Fixed `ComposerDraftSync` debounce starvation caused by unstable `persistDraft` function identities; the debounce effect now calls a ref to the latest persistence function.
+- Added regressions for draft promotion gating, failed draft send marker cleanup, attachment-before-empty validation, and draft-sync debounce stability.
+- Still intentionally legacy: `useConversationSessionController.sendMessage(payload)` and `admitComposerRequest(payload)` remain compatibility wrappers. New UI paths should use admitted requests from `ComposerRegion`.
+
 ## P1 — Request Parts, Safety, Budget
 
 ### 1. Add Request Parts

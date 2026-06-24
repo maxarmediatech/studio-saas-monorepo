@@ -58,15 +58,6 @@ export function admitComposerDraft(input: {
 		};
 	}
 
-	const requestParts = buildComposerRequestParts(payload);
-	if (requestParts.length === 0) {
-		return {
-			ok: false,
-			reason: "Message required.",
-			blocks: ["Message required."],
-		};
-	}
-
 	const unresolvedAttachments = payload.attachments.filter(
 		(attachment) =>
 			attachment.status === "failed" ||
@@ -81,6 +72,15 @@ export function admitComposerDraft(input: {
 				(attachment) =>
 					`${attachment.name}: ${attachmentIssue(attachment)}`,
 			),
+		};
+	}
+
+	const requestParts = buildComposerRequestParts(payload);
+	if (requestParts.length === 0) {
+		return {
+			ok: false,
+			reason: "Message required.",
+			blocks: ["Message required."],
 		};
 	}
 

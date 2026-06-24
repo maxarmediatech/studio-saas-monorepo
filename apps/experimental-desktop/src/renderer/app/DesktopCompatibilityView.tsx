@@ -16,6 +16,7 @@ import { useProviderStatus } from "../hooks/useProviderStatus";
 import { useThemeMode } from "../hooks/useThemeMode";
 import { useWorkspaceSelection } from "../hooks/useWorkspaceSelection";
 import { DesktopLayout } from "./DesktopLayout";
+import { shouldNavigatePromotedDraft } from "./desktopRoutePromotion";
 import { iconProps } from "./icons";
 import type { RuntimeOption } from "./types";
 
@@ -40,6 +41,7 @@ export function DesktopCompatibilityView(props: {
 	const [model, setModel] = useState("gpt-5.4-mini");
 	const [composerResetKey, setComposerResetKey] = useState<string>();
 	const openedConversationRouteRef = useRef<string | undefined>(undefined);
+	const pendingDraftPromotionRef = useRef<string | undefined>(undefined);
 	const { theme, toggleTheme } = useThemeMode();
 	const workspace = useWorkspaceSelection();
 	const provider = useProviderStatus();
@@ -115,15 +117,27 @@ export function DesktopCompatibilityView(props: {
 	}, [routeKind, routeConversationId, routeResource, session.conversationId]);
 
 	useEffect(() => {
-		if (routeKind !== "draft" || !session.conversationId) {
+		const promotedConversationId = session.conversationId;
+		if (!promotedConversationId) {
 			return;
 		}
+		if (
+			!shouldNavigatePromotedDraft({
+				routeKind,
+				routeDraftId,
+				conversationId: promotedConversationId,
+				pendingDraftId: pendingDraftPromotionRef.current,
+			})
+		) {
+			return;
+		}
+		pendingDraftPromotionRef.current = undefined;
 		void navigate({
 			to: "/conversation/$conversationId",
-			params: { conversationId: session.conversationId },
+			params: { conversationId: promotedConversationId },
 			replace: true,
 		});
-	}, [routeKind, session.conversationId, navigate]);
+	}, [routeKind, routeDraftId, session.conversationId, navigate]);
 
 	const runtimeOptions: RuntimeOption[] = [
 		{ value: "read-only", label: "Read Only" },
@@ -210,6 +224,15 @@ export function DesktopCompatibilityView(props: {
 							onModelChange={setModel}
 							onRuntimeModeChange={setRuntimeMode}
 							onNewDraftRoute={startNewDraftRoute}
+							onDraftSendStarted={(draftId) => {
+								pendingDraftPromotionRef.current = draftId;
+							}}
+							onDraftSendFailed={(draftId) => {
+								if (pendingDraftPromotionRef.current === draftId) {
+									pendingDraftPromotionRef.current =
+										undefined;
+								}
+							}}
 						/>
 					</div>
 					<SessionPanel

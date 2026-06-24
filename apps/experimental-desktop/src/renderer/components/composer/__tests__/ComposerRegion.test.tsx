@@ -130,6 +130,32 @@ describe("ComposerRegion", () => {
 		expect(latestComposerProps?.value).toBe("Keep me");
 		harness.unmount();
 	});
+
+	it("marks draft send start and clears the marker on failed draft sends", async () => {
+		const onDraftSendStarted = vi.fn();
+		const onDraftSendFailed = vi.fn();
+		const harness = renderRegion({
+			routeDraftId: "draft-route-1",
+			session: sessionStub({
+				createNewSession: vi.fn().mockResolvedValue(undefined),
+				sendAdmittedRequest: vi.fn().mockResolvedValue(false),
+			}),
+			onDraftSendStarted,
+			onDraftSendFailed,
+		});
+
+		await act(async () => {
+			latestComposerProps?.onChange("Try it");
+		});
+		await act(async () => {
+			const sent = await latestComposerProps?.onSend();
+			expect(sent).toBe(false);
+		});
+
+		expect(onDraftSendStarted).toHaveBeenCalledWith("draft-route-1");
+		expect(onDraftSendFailed).toHaveBeenCalledWith("draft-route-1");
+		harness.unmount();
+	});
 });
 
 function renderRegion(input?: Partial<Parameters<typeof ComposerRegion>[0]>) {

@@ -245,6 +245,9 @@ Progress:
 - Added `composerDraftStore.ts` as the live editable draft state seam used by `ComposerRegion`.
 - `ComposerRegion` now admits from `ComposerDraft`; `SessionComposer` submits without building a `ComposerPayload`.
 - `admitComposerRequest` remains only as a compatibility wrapper around draft admission for existing tests/legacy callers.
+- Review follow-up fixed stale draft-route promotion: draft routes now navigate to a conversation only after that same draft starts a send.
+- Review follow-up fixed admission ordering so broken/pathless/MIME-less attachments are reported before empty-message validation.
+- Review follow-up fixed draft-sync debounce starvation by keeping `persistDraft` in a ref instead of restarting the timer on function identity churn.
 
 ## Phase 4 — Admitted Send Endpoints
 

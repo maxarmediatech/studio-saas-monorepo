@@ -61,6 +61,7 @@ export function useComposerDraftSync(input: {
 	persistDraft: (draft: ComposerDraftPersistInput) => Promise<void>;
 }) {
 	const lastPersistKeyRef = useRef<string | undefined>(undefined);
+	const persistDraftRef = useRef(input.persistDraft);
 	const persistKey = useMemo(
 		() =>
 			createComposerDraftPersistKey({
@@ -70,6 +71,10 @@ export function useComposerDraftSync(input: {
 			}),
 		[input.draft, input.draftScopeId, input.scopeKey],
 	);
+
+	useEffect(() => {
+		persistDraftRef.current = input.persistDraft;
+	}, [input.persistDraft]);
 
 	useEffect(() => {
 		if (
@@ -86,7 +91,9 @@ export function useComposerDraftSync(input: {
 		}
 		const timeout = window.setTimeout(() => {
 			lastPersistKeyRef.current = persistKey;
-			void input.persistDraft(composerDraftToPersistInput(input.draft));
+			void persistDraftRef.current(
+				composerDraftToPersistInput(input.draft),
+			);
 		}, input.debounceMs ?? 350);
 		return () => window.clearTimeout(timeout);
 	}, [
@@ -95,7 +102,6 @@ export function useComposerDraftSync(input: {
 		input.conversationId,
 		input.debounceMs,
 		input.draftScopeId,
-		input.persistDraft,
 		input.scopeKey,
 		persistKey,
 	]);
