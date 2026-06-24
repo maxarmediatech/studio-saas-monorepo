@@ -66,6 +66,14 @@ Compatibility strategy:
 - First send from a draft route promotes the URL to `/conversation/:conversationId` when the compatibility session hydrates the promoted conversation.
 - Long-term admitted endpoints should return the promoted conversation id directly instead of relying on compatibility session state.
 
+Route resource progress:
+
+- Added `conversationTransport.ts` as the renderer transport wrapper for loading conversation detail and subscribing to conversation events.
+- Added `conversationResourceStore.ts` so `/conversation/:conversationId` owns the initial `ConversationDetail` load state.
+- `DesktopCompatibilityView` now hydrates compatibility session state from the route-loaded conversation resource instead of fetching directly from the route effect.
+- Route-loaded conversation opens still reset the local composer state through the compatibility bridge, matching the previous sidebar-open behavior.
+- Missing/error route resources still surface through compatibility status for now; dedicated not-found/error route UI comes with the full conversation route extraction.
+
 ## Phase 1 — Main DB And Domain Schema
 
 Goal: create durable storage for the real product shape before renderer depends on it.

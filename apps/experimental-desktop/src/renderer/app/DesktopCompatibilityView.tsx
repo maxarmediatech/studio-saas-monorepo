@@ -1,7 +1,11 @@
 import { IconSparkles } from "@tabler/icons-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { AppInfo, CodexRuntimeMode } from "../../preload/types";
+import type {
+	AppInfo,
+	CodexRuntimeMode,
+	ConversationDetail,
+} from "../../preload/types";
 import type { ComposerPayload } from "../components/composer/composerPayload";
 import type { ComposerMode } from "../components/composer/composerTriggers";
 import type {
@@ -15,6 +19,7 @@ import { SessionComposer } from "../components/composer/SessionComposer";
 import { Sidebar } from "../components/layout";
 import { RightPanel } from "../components/right-panel";
 import { SessionPanel } from "../components/session";
+import type { ConversationResourceState } from "../conversations/conversationResourceStore";
 import { useCodexSession } from "../hooks/useCodexSession";
 import { useProviderStatus } from "../hooks/useProviderStatus";
 import { useThemeMode } from "../hooks/useThemeMode";
@@ -30,7 +35,11 @@ const modelStorageKey = "experimental-desktop:model";
 export function DesktopCompatibilityView(props: {
 	route:
 		| { kind: "draft"; draftId: string }
-		| { kind: "conversation"; conversationId: string }
+		| {
+				kind: "conversation";
+				conversationId: string;
+				resource: ConversationResourceState;
+		  }
 		| { kind: "capture" };
 }) {
 	const navigate = useNavigate();
@@ -104,6 +113,17 @@ export function DesktopCompatibilityView(props: {
 		if (props.route.kind !== "conversation") {
 			return;
 		}
+		if (props.route.resource.status === "loading") {
+			return;
+		}
+		if (props.route.resource.status === "missing") {
+			session.reportComposerAdmissionBlock("Conversation not found");
+			return;
+		}
+		if (props.route.resource.status === "error") {
+			session.reportComposerAdmissionBlock(props.route.resource.error);
+			return;
+		}
 		if (
 			openedConversationRouteRef.current === props.route.conversationId ||
 			session.conversationId === props.route.conversationId
@@ -111,8 +131,8 @@ export function DesktopCompatibilityView(props: {
 			return;
 		}
 		openedConversationRouteRef.current = props.route.conversationId;
-		void openConversation(props.route.conversationId);
-	}, [props.route, session.conversationId]);
+		void openLoadedConversationRoute(props.route.resource.conversation);
+	}, [props.route, session]);
 
 	useEffect(() => {
 		if (props.route.kind !== "draft") {
@@ -164,13 +184,26 @@ export function DesktopCompatibilityView(props: {
 	}
 
 	async function createNewSession(input?: { draftScopeId?: string }) {
+		resetComposer();
+		setLocalDraftScopeId(input?.draftScopeId ?? crypto.randomUUID());
+		await session.createNewSession();
+	}
+
+	async function openLoadedConversationRoute(
+		conversation: ConversationDetail,
+	) {
+		const opened = await session.openLoadedConversation(conversation);
+		if (opened) {
+			resetComposer();
+		}
+	}
+
+	function resetComposer() {
 		setMessage("");
 		setComposerMode("ask");
 		setComposerContextItems([]);
 		setComposerAttachments([]);
-		setLocalDraftScopeId(input?.draftScopeId ?? crypto.randomUUID());
 		setComposerResetSignal((signal) => signal + 1);
-		await session.createNewSession();
 	}
 
 	async function startNewDraftRoute() {
@@ -178,17 +211,6 @@ export function DesktopCompatibilityView(props: {
 			to: "/draft/$draftId",
 			params: { draftId: crypto.randomUUID() },
 		});
-	}
-
-	async function openConversation(id: string) {
-		const opened = await session.openConversation(id);
-		if (opened) {
-			setMessage("");
-			setComposerMode("ask");
-			setComposerContextItems([]);
-			setComposerAttachments([]);
-			setComposerResetSignal((signal) => signal + 1);
-		}
 	}
 
 	async function openConversationRoute(id: string) {

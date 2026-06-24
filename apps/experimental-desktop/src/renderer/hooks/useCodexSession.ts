@@ -13,6 +13,10 @@ import type { ComposerDraftPersistInput } from "../components/composer/core/comp
 import type { AdmittedComposerRequest } from "../components/composer/core/composerProviderTypes";
 import { admitComposerRequest } from "../components/composer/core/composerSendController";
 import { toCodexAdmittedSendInput } from "../conversations/codexAdmittedTransport";
+import {
+	loadConversationDetail,
+	subscribeConversationEvents,
+} from "../conversations/conversationTransport";
 import { defaultAnswers } from "./pendingRequestDefaults";
 
 export function useCodexSession(input: {
@@ -78,18 +82,23 @@ export function useCodexSession(input: {
 	async function openConversation(id: string) {
 		unsubscribeRef.current?.();
 		seenEventsRef.current.clear();
-		const conversation =
-			await window.experimentalDesktop.getConversation(id);
+		const conversation = await loadConversationDetail(id);
 		if (!conversation) {
 			setStatus("Conversation not found");
 			return false;
 		}
+		await openLoadedConversation(conversation);
+		return true;
+	}
+
+	async function openLoadedConversation(conversation: ConversationDetail) {
+		unsubscribeRef.current?.();
+		seenEventsRef.current.clear();
 		hydrateConversation(conversation);
-		unsubscribeRef.current =
-			await window.experimentalDesktop.subscribeConversationEvents(
-				conversation.id,
-				handleSessionEvent,
-			);
+		unsubscribeRef.current = await subscribeConversationEvents(
+			conversation.id,
+			handleSessionEvent,
+		);
 		return true;
 	}
 
@@ -167,11 +176,10 @@ export function useCodexSession(input: {
 				if (conversation) {
 					hydrateConversation(conversation);
 					unsubscribeRef.current?.();
-					unsubscribeRef.current =
-						await window.experimentalDesktop.subscribeConversationEvents(
-							conversation.id,
-							handleSessionEvent,
-						);
+					unsubscribeRef.current = await subscribeConversationEvents(
+						conversation.id,
+						handleSessionEvent,
+					);
 				}
 			}
 			await refreshConversations();
@@ -488,6 +496,7 @@ export function useCodexSession(input: {
 		isTurnRunning: isSending || isTurnActive || pendingRequests.length > 0,
 		createNewSession,
 		openConversation,
+		openLoadedConversation,
 		persistDraft,
 		sendMessage,
 		sendAdmittedRequest,
