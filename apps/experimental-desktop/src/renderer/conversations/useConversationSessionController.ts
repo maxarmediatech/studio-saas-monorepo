@@ -173,6 +173,56 @@ export function useConversationSessionController(input: {
 		}
 	}
 
+	async function enqueueAdmittedRequest(request: AdmittedComposerRequest) {
+		if (!conversationId) {
+			setStatus("Start a conversation before queueing follow-ups");
+			return undefined;
+		}
+		appendAdmissionWarnings(request);
+		try {
+			const queued = await client.enqueueAdmittedRequest({
+				conversationId,
+				request,
+			});
+			setStatus("Queued");
+			return queued;
+		} catch (error) {
+			setStatus(error instanceof Error ? error.message : String(error));
+			return undefined;
+		}
+	}
+
+	async function cancelQueuedRequest(queueItemId: string) {
+		await client.cancelQueuedRequest({ queueItemId });
+		setStatus("Removed from queue");
+	}
+
+	async function executeNextQueuedRequest() {
+		if (!conversationId) {
+			return { ok: false as const, executed: false as const };
+		}
+		setIsSending(true);
+		setIsTurnActive(true);
+		try {
+			const result = await client.executeNextQueuedRequest({
+				conversationId,
+			});
+			const conversation = readExecutedConversation(result);
+			if (conversation) {
+				hydrateConversation(conversation);
+			}
+			await history.refreshConversations();
+			setStatus("Running...");
+			return result;
+		} catch (error) {
+			setIsTurnActive(false);
+			setStatus(error instanceof Error ? error.message : String(error));
+			return { ok: false as const, executed: false as const };
+		} finally {
+			setIsSending(false);
+		}
+	}
+
 	async function respondToRequest(
 		requestId: string,
 		responseOrDecision:
@@ -299,9 +349,9 @@ export function useConversationSessionController(input: {
 		);
 	}
 
-	function inputRuntimeMode() {
-		return input.runtimeMode;
-	}
+function inputRuntimeMode() {
+	return input.runtimeMode;
+}
 
 	function inputModel() {
 		return input.model.trim() || "gpt-5.4-mini";
@@ -326,8 +376,27 @@ export function useConversationSessionController(input: {
 		persistDraft,
 		sendMessage,
 		sendAdmittedRequest,
+		enqueueAdmittedRequest,
+		cancelQueuedRequest,
+		executeNextQueuedRequest,
 		reportComposerAdmissionBlock,
 		interruptConversation,
 		respondToRequest,
 	};
+}
+
+function readExecutedConversation(value: unknown): ConversationDetail | undefined {
+	if (!value || typeof value !== "object" || Array.isArray(value)) {
+		return undefined;
+	}
+	const record = value as Record<string, unknown>;
+	const conversation = record.conversation;
+	if (
+		conversation &&
+		typeof conversation === "object" &&
+		!Array.isArray(conversation)
+	) {
+		return conversation as ConversationDetail;
+	}
+	return undefined;
 }

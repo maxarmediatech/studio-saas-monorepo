@@ -1,19 +1,33 @@
-import { IconArrowUp, IconSquare, IconTerminal2 } from "@tabler/icons-react";
+import {
+	IconArrowUp,
+	IconPlaylistAdd,
+	IconSquare,
+	IconTerminal2,
+} from "@tabler/icons-react";
 import { iconProps } from "../../app/icons";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { composerControlClass } from "./ComposerControls";
 import type { ComposerMode } from "./composerTriggers";
 
-export type ComposerPrimaryAction = "send" | "run-shell" | "stop" | "disabled";
+export type ComposerPrimaryAction =
+	| "send"
+	| "queue"
+	| "run-shell"
+	| "stop"
+	| "disabled";
 
 export function resolvePrimaryAction(input: {
 	mode: ComposerMode;
 	disabled: boolean;
 	turnActive: boolean;
+	queueActive?: boolean;
 	hasText: boolean;
 	blocked?: boolean;
 }): ComposerPrimaryAction {
+	if (input.queueActive && input.hasText && !input.blocked) {
+		return "queue";
+	}
 	if (input.turnActive) {
 		return "stop";
 	}
@@ -58,6 +72,8 @@ function titleForAction(action: ComposerPrimaryAction) {
 			return "Run";
 		case "stop":
 			return "Stop";
+		case "queue":
+			return "Queue";
 		case "send":
 		case "disabled":
 			return "Send";
@@ -70,6 +86,8 @@ function iconForAction(action: ComposerPrimaryAction) {
 			return <IconTerminal2 {...iconProps} />;
 		case "stop":
 			return <IconSquare {...iconProps} />;
+		case "queue":
+			return <IconPlaylistAdd {...iconProps} />;
 		case "send":
 		case "disabled":
 			return <IconArrowUp {...iconProps} />;

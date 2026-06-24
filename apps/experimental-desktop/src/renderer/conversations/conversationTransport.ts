@@ -88,6 +88,24 @@ export function enqueueAdmittedMessage(
 	);
 }
 
+export function updateConversationQueueItem(
+	queueItemId: string,
+	input: {
+		status?: "queued" | "running" | "completed" | "failed" | "canceled";
+	},
+) {
+	return window.experimentalDesktop.updateConversationQueueItem(
+		queueItemId,
+		input,
+	);
+}
+
+export function executeNextConversationQueueItem(conversationId: string) {
+	return window.experimentalDesktop.executeNextConversationQueueItem(
+		conversationId,
+	);
+}
+
 export function interruptConversation(conversationId: string) {
 	return window.experimentalDesktop.interruptConversation(conversationId);
 }
@@ -124,6 +142,8 @@ export type ConversationDetailTransport = {
 	sendConversationMessage: typeof sendConversationMessage;
 	sendAdmittedMessage: typeof sendAdmittedMessage;
 	enqueueAdmittedMessage: typeof enqueueAdmittedMessage;
+	updateConversationQueueItem: typeof updateConversationQueueItem;
+	executeNextConversationQueueItem: typeof executeNextConversationQueueItem;
 	interruptConversation: typeof interruptConversation;
 	respondApproval: typeof respondApproval;
 	subscribeConversationEvents: typeof subscribeConversationEvents;

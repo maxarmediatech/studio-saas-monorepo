@@ -5,6 +5,7 @@ import {
 	createDraft,
 	type DraftPersistTransportInput,
 	enqueueAdmittedMessage,
+	executeNextConversationQueueItem,
 	interruptConversation,
 	loadConversationDetail,
 	promoteDraftAndSend,
@@ -12,6 +13,7 @@ import {
 	respondApproval,
 	sendAdmittedMessage,
 	sendConversationMessage,
+	updateConversationQueueItem,
 	updateDraft,
 } from "./conversationTransport";
 
@@ -24,6 +26,8 @@ export type ConversationClientTransport = {
 	sendConversationMessage: typeof sendConversationMessage;
 	sendAdmittedMessage: typeof sendAdmittedMessage;
 	enqueueAdmittedMessage: typeof enqueueAdmittedMessage;
+	updateConversationQueueItem: typeof updateConversationQueueItem;
+	executeNextConversationQueueItem: typeof executeNextConversationQueueItem;
 	interruptConversation: typeof interruptConversation;
 	respondApproval: typeof respondApproval;
 };
@@ -37,6 +41,8 @@ const defaultTransport: ConversationClientTransport = {
 	sendConversationMessage,
 	sendAdmittedMessage,
 	enqueueAdmittedMessage,
+	updateConversationQueueItem,
+	executeNextConversationQueueItem,
 	interruptConversation,
 	respondApproval,
 };
@@ -75,6 +81,28 @@ export function createConversationClient(
 		});
 	}
 
+	async function enqueueAdmittedRequest(input: {
+		conversationId: string;
+		request: AdmittedComposerRequest;
+	}) {
+		assertSupportedProvider(input.request);
+		return transport.enqueueAdmittedMessage(input.conversationId, {
+			request: input.request,
+		});
+	}
+
+	function cancelQueuedRequest(input: { queueItemId: string }) {
+		return transport.updateConversationQueueItem(input.queueItemId, {
+			status: "canceled",
+		});
+	}
+
+	function executeNextQueuedRequest(input: { conversationId: string }) {
+		return transport.executeNextConversationQueueItem(
+			input.conversationId,
+		);
+	}
+
 	function respondToApproval(input: {
 		conversationId: string;
 		requestId: string;
@@ -95,6 +123,9 @@ export function createConversationClient(
 		loadConversationDetail: transport.loadConversationDetail,
 		persistDraft,
 		sendAdmittedRequest,
+		enqueueAdmittedRequest,
+		cancelQueuedRequest,
+		executeNextQueuedRequest,
 		respondToApproval,
 		interrupt,
 	};

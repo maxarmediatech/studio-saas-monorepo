@@ -21,6 +21,10 @@ vi.mock("../SessionComposer", () => ({
 	},
 }));
 
+vi.mock("../ComposerQueuePanel", () => ({
+	ComposerQueuePanel: () => null,
+}));
+
 describe("ComposerRegion", () => {
 	beforeEach(() => {
 		(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT =
@@ -131,6 +135,47 @@ describe("ComposerRegion", () => {
 		harness.unmount();
 	});
 
+	it("queues admitted requests while an existing conversation is running", async () => {
+		const sendAdmittedRequest = vi.fn().mockResolvedValue(true);
+		const enqueueAdmittedRequest = vi.fn().mockResolvedValue({
+			id: "queue-1",
+			conversationId: "conversation-1",
+			admittedRequestId: "admitted-1",
+			position: 0,
+			status: "queued",
+			createdAt: "2026-06-24T00:00:00.000Z",
+			updatedAt: "2026-06-24T00:00:00.000Z",
+		});
+		const harness = renderRegion({
+			session: sessionStub({
+				conversationId: "conversation-1",
+				isTurnRunning: true,
+				isTurnActive: true,
+				sendAdmittedRequest,
+				enqueueAdmittedRequest,
+			}),
+		});
+
+		expect(latestComposerProps?.disabled).toBe(false);
+		expect(latestComposerProps?.queueActive).toBe(true);
+		await act(async () => {
+			latestComposerProps?.onChange("Queue me");
+		});
+		await act(async () => {
+			const queued = await latestComposerProps?.onSend();
+			expect(queued).toBe(true);
+		});
+
+		expect(sendAdmittedRequest).not.toHaveBeenCalled();
+		expect(enqueueAdmittedRequest).toHaveBeenCalledWith(
+			expect.objectContaining({
+				providerInput: expect.objectContaining({ prompt: "Queue me" }),
+			}),
+		);
+		expect(latestComposerProps?.value).toBe("");
+		harness.unmount();
+	});
+
 	it("marks draft send start and clears the marker on failed draft sends", async () => {
 		const onDraftSendStarted = vi.fn();
 		const onDraftSendFailed = vi.fn();
@@ -208,6 +253,19 @@ function sessionStub(
 		pendingRequests: [],
 		persistDraft: vi.fn().mockResolvedValue(undefined),
 		sendAdmittedRequest: vi.fn().mockResolvedValue(true),
+		enqueueAdmittedRequest: vi.fn().mockResolvedValue({
+			id: "queue-1",
+			conversationId: "conversation-1",
+			admittedRequestId: "admitted-1",
+			position: 0,
+			status: "queued",
+			createdAt: "2026-06-24T00:00:00.000Z",
+			updatedAt: "2026-06-24T00:00:00.000Z",
+		}),
+		cancelQueuedRequest: vi.fn().mockResolvedValue(undefined),
+		executeNextQueuedRequest: vi
+			.fn()
+			.mockResolvedValue({ ok: true, executed: false }),
 		reportComposerAdmissionBlock: vi.fn(),
 		interruptConversation: vi.fn().mockResolvedValue(undefined),
 		createNewSession: vi.fn().mockResolvedValue(undefined),

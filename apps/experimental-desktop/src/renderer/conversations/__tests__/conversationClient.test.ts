@@ -128,6 +128,50 @@ describe("conversationClient", () => {
 			"interrupt:conversation-1",
 		]);
 	});
+
+	it("routes queue admission, cancel, and execute through transport", async () => {
+		const calls: string[] = [];
+		const client = createConversationClient({
+			...fakeTransport(),
+			enqueueAdmittedMessage: async (conversationId, input) => {
+				calls.push(
+					`queue:${conversationId}:${input.request.providerInput.prompt}`,
+				);
+				return {
+					id: "queue-1",
+					conversationId,
+					admittedRequestId: input.request.id,
+					position: 0,
+					status: "queued" as const,
+					createdAt: "2026-06-24T00:00:00.000Z",
+					updatedAt: "2026-06-24T00:00:00.000Z",
+				};
+			},
+			updateConversationQueueItem: async (queueItemId, input) => {
+				calls.push(`queue-update:${queueItemId}:${input.status}`);
+				return undefined;
+			},
+			executeNextConversationQueueItem: async (conversationId) => {
+				calls.push(`queue-execute:${conversationId}`);
+				return { ok: true, executed: false };
+			},
+		});
+
+		await client.enqueueAdmittedRequest({
+			conversationId: "conversation-1",
+			request: admittedRequest("Later"),
+		});
+		await client.cancelQueuedRequest({ queueItemId: "queue-1" });
+		await client.executeNextQueuedRequest({
+			conversationId: "conversation-1",
+		});
+
+		expect(calls).toEqual([
+			"queue:conversation-1:Later",
+			"queue-update:queue-1:canceled",
+			"queue-execute:conversation-1",
+		]);
+	});
 });
 
 function admittedRequest(text: string) {
@@ -190,6 +234,11 @@ function fakeTransport() {
 			status: "queued" as const,
 			createdAt: "2026-06-24T00:00:00.000Z",
 			updatedAt: "2026-06-24T00:00:00.000Z",
+		}),
+		updateConversationQueueItem: async () => undefined,
+		executeNextConversationQueueItem: async () => ({
+			ok: true as const,
+			executed: false as const,
 		}),
 		interruptConversation: async () => ({ ok: true as const }),
 		respondApproval: async () => ({ ok: true as const }),

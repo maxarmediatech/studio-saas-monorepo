@@ -1,5 +1,6 @@
 import {
 	type KeyboardEvent,
+	type ReactNode,
 	useEffect,
 	useMemo,
 	useRef,
@@ -38,6 +39,7 @@ export function SessionComposer(props: {
 	value: string;
 	disabled: boolean;
 	turnActive: boolean;
+	queueActive?: boolean;
 	mode: ComposerMode;
 	model: string;
 	runtimeMode: CodexRuntimeMode;
@@ -60,6 +62,7 @@ export function SessionComposer(props: {
 		requestId: string,
 		response: RespondSessionRequestInput,
 	) => Promise<void>;
+	queuePanel?: ReactNode;
 }) {
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const mode = props.mode;
@@ -364,6 +367,7 @@ export function SessionComposer(props: {
 		mode,
 		disabled: props.disabled,
 		turnActive: props.turnActive,
+		queueActive: props.queueActive,
 		hasText:
 			props.value.trim() !== "" ||
 			contextItems.length > 0 ||
@@ -376,7 +380,11 @@ export function SessionComposer(props: {
 			void props.onInterrupt();
 			return;
 		}
-		if (primaryAction === "send" || primaryAction === "run-shell") {
+		if (
+			primaryAction === "send" ||
+			primaryAction === "queue" ||
+			primaryAction === "run-shell"
+		) {
 			if (attachmentIssue) {
 				return;
 			}
@@ -394,20 +402,23 @@ export function SessionComposer(props: {
 			onDrop={fileDrop.onDrop}
 			onPaste={fileDrop.onPaste}
 			pendingDock={
-				<PendingRequestDock
-					requests={props.pendingRequests}
-					drafts={userInputDrafts}
-					onDraftChange={(requestId, questionId, value) =>
-						setUserInputDrafts((drafts) => ({
-							...drafts,
-							[requestId]: {
-								...(drafts[requestId] ?? {}),
-								[questionId]: value,
-							},
-						}))
-					}
-					onRespond={props.onRespondRequest}
-				/>
+				<>
+					<PendingRequestDock
+						requests={props.pendingRequests}
+						drafts={userInputDrafts}
+						onDraftChange={(requestId, questionId, value) =>
+							setUserInputDrafts((drafts) => ({
+								...drafts,
+								[requestId]: {
+									...(drafts[requestId] ?? {}),
+									[questionId]: value,
+								},
+							}))
+						}
+						onRespond={props.onRespondRequest}
+					/>
+					{props.queuePanel}
+				</>
 			}
 			menu={
 				menuItems.length > 0 ? (

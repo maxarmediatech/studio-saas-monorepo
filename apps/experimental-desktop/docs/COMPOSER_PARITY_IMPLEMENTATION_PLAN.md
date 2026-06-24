@@ -117,6 +117,12 @@ Phase 4 progress:
 - Admitted request lifecycle now follows runtime terminal events by `turn_id`, and reused admitted ids with different content are rejected.
 - Queue admission now has durable `queue_items`, and execute-next promotes the next queued admitted request through the same admitted send path. Richer queue store/UI, caps display, edit/remove/reorder, and pause/resume remain Phase 5 work.
 
+Phase 5 progress:
+- `ComposerQueueStore` now owns route-local queued admitted requests, queue limits, pause/resume, local ordering, running/failed state, and state-size validation.
+- Busy sends from a persisted conversation use an explicit Queue primary action, durably enqueue the admitted request, and clear the composer only after enqueue succeeds.
+- `ComposerQueuePanel` makes queued items visible in the composer region with pause/resume, remove, and local move controls; execution auto-starts through `queue-execute-next` once the active turn is idle.
+- Durable queue hydration, persisted reorder, and edit-in-place remain deferred; edit should be remove + re-admit while admitted ids remain immutable.
+
 File-safety and budget checks must not live only in UI because files can enter through picker, paste, drag/drop, folder context, mentions, restored drafts, queued sends, future programmatic insertion, or IPC/provider payloads.
 
 ## Controller / Session Contract

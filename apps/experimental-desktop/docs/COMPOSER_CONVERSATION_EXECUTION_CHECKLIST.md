@@ -307,6 +307,12 @@ Done:
 
 Goal: queue is core behavior, not a later patch.
 
+Reference-first decision:
+
+- Reread AionUI `useConversationCommandQueue.ts`; keep queue admission separate from editable draft state, enforce item/input/state limits, and make pause/resume explicit state instead of overloading runtime busy state.
+- Reread the Phase 4 admitted send endpoint implementation before UI wiring; queued sends must reuse durable admitted requests and `queue-execute-next`, not rebuild legacy send bodies in the renderer.
+- For this app, Phase 5 starts with a route-local visible queue in `ComposerRegion`: busy conversation sends are admitted and durably enqueued, the composer clears only after enqueue succeeds, and queued execution starts automatically when the active turn is idle and the queue is not paused.
+
 Add:
 
 ```txt
@@ -340,8 +346,14 @@ Tests/gates:
 
 Done:
 
-- Queue works for Codex path.
-- Queue state appears in timeline or composer region.
+- Added `composerQueueStore.ts` with queue limits, local ordering, pause/resume, running/failed state, and state-size validation.
+- Added `ComposerQueuePanel.tsx` above the composer input with queued prompt rows, pause/resume, remove, and local move up/down controls.
+- Busy conversation sends now use a Queue primary action and call the admitted enqueue endpoint instead of blocking the composer.
+- The composer remains editable while a conversation turn is running, but draft-route promotion still blocks queueing until a persisted conversation exists.
+- Queue execution runs automatically when the conversation is idle and the queue is not paused; it calls `executeNextQueuedRequest`, removes the local item on success, and marks failure in the panel on error.
+- Queue cancellation calls `conversation:queue-update` with `canceled` before removing the local row.
+- Added tests for queue admission limits, busy-send queue admission, and queue client transport wiring.
+- Not yet done: durable queue list hydration after app restart, backend reorder persistence, and edit-in-place of an already admitted queued request. Editing should be modeled as remove + re-admit unless a new admitted-request replacement endpoint is added.
 
 ## Phase 6 — Quick Capture
 

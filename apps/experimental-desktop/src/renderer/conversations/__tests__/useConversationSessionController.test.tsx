@@ -204,6 +204,19 @@ function renderController(input?: {
 		loadConversationDetail: vi.fn().mockResolvedValue(undefined),
 		persistDraft: vi.fn().mockResolvedValue(draftRecord("draft-1")),
 		sendAdmittedRequest: vi.fn().mockResolvedValue(undefined),
+		enqueueAdmittedRequest: vi.fn().mockResolvedValue({
+			id: "queue-1",
+			conversationId: "conversation-1",
+			admittedRequestId: "admitted-1",
+			position: 0,
+			status: "queued",
+			createdAt: "2026-06-24T00:00:00.000Z",
+			updatedAt: "2026-06-24T00:00:00.000Z",
+		}),
+		cancelQueuedRequest: vi.fn().mockResolvedValue(undefined),
+		executeNextQueuedRequest: vi
+			.fn()
+			.mockResolvedValue({ ok: true, executed: false }),
 		respondToApproval: vi.fn().mockResolvedValue({ ok: true }),
 		interrupt: vi.fn().mockResolvedValue({ ok: true }),
 		...input?.client,

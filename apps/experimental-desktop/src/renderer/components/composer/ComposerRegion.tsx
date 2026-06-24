@@ -7,7 +7,14 @@ import type { PendingRequest, RuntimeOption } from "../../app/types";
 import { useComposerDraftStore } from "./core/composerDraftStore";
 import { useComposerDraftSync } from "./core/composerDraftSync";
 import type { AdmittedComposerRequest } from "./core/composerProviderTypes";
+import {
+	createPendingQueueItem,
+	type QueueValidationResult,
+	useComposerQueueStore,
+	validateQueueAdmission,
+} from "./core/composerQueueStore";
 import { admitComposerDraft } from "./core/composerSendController";
+import { ComposerQueuePanel } from "./ComposerQueuePanel";
 import { SessionComposer } from "./SessionComposer";
 
 export type ComposerRegionSession = {
@@ -20,6 +27,22 @@ export type ComposerRegionSession = {
 	sendAdmittedRequest: (
 		request: AdmittedComposerRequest,
 	) => Promise<boolean>;
+	enqueueAdmittedRequest: (
+		request: AdmittedComposerRequest,
+	) => Promise<
+		| {
+				id: string;
+				conversationId: string;
+				admittedRequestId: string;
+				position: number;
+				status: "queued";
+				createdAt: string;
+				updatedAt: string;
+		  }
+		| undefined
+	>;
+	cancelQueuedRequest: (queueItemId: string) => Promise<void>;
+	executeNextQueuedRequest: () => Promise<unknown>;
 	reportComposerAdmissionBlock: (reason: string) => void;
 	interruptConversation: () => Promise<void>;
 	createNewSession: () => Promise<void>;
@@ -48,13 +71,57 @@ export function ComposerRegion(props: {
 		model: props.model,
 		runtimeMode: props.runtimeMode,
 	});
+	const queue = useComposerQueueStore();
 	const openedDraftScopeRef = useRef<string | undefined>(undefined);
 	const resetKeyRef = useRef<string | undefined>(props.resetKey);
 	const sessionRef = useRef(props.session);
+	const executingQueueItemRef = useRef<string | undefined>(undefined);
 
 	useEffect(() => {
 		sessionRef.current = props.session;
 	}, [props.session]);
+
+	useEffect(() => {
+		if (
+			!props.session.conversationId ||
+			props.session.isTurnActive ||
+			props.session.isTurnRunning ||
+			queue.state.isPaused
+		) {
+			return;
+		}
+		const next = queue.state.items.find(
+			(item) =>
+				item.status === "queued" &&
+				item.queueItemId !== executingQueueItemRef.current,
+		);
+		if (!next) {
+			return;
+		}
+		executingQueueItemRef.current = next.queueItemId;
+		queue.mark(next.queueItemId, "running");
+		void props.session
+			.executeNextQueuedRequest()
+			.then(() => {
+				queue.remove(next.queueItemId);
+			})
+			.catch((error) => {
+				queue.mark(
+					next.queueItemId,
+					"failed",
+					error instanceof Error ? error.message : String(error),
+				);
+			})
+			.finally(() => {
+				executingQueueItemRef.current = undefined;
+			});
+	}, [
+		props.session.conversationId,
+		props.session.isTurnActive,
+		props.session.isTurnRunning,
+		props.session.executeNextQueuedRequest,
+		queue,
+	]);
 
 	useComposerDraftSync({
 		draft: composer.draft,
@@ -99,6 +166,13 @@ export function ComposerRegion(props: {
 			props.session.reportComposerAdmissionBlock(payloadAdmission.reason);
 			return false;
 		}
+		if (shouldQueueInsteadOfSend()) {
+			const queued = await enqueueRequest(payloadAdmission.request);
+			if (queued) {
+				composer.reset();
+			}
+			return queued;
+		}
 		const sent = await props.session.sendAdmittedRequest(
 			payloadAdmission.request,
 		);
@@ -110,11 +184,51 @@ export function ComposerRegion(props: {
 		return sent;
 	}
 
+	function shouldQueueInsteadOfSend() {
+		return Boolean(
+			props.session.conversationId &&
+				props.session.isTurnRunning &&
+				!props.routeDraftId,
+		);
+	}
+
+	async function enqueueRequest(request: AdmittedComposerRequest) {
+		const validation = validateQueueAdmission(queue.state, request);
+		if (!validation.ok) {
+			props.session.reportComposerAdmissionBlock(
+				queueValidationMessage(validation.reason) ??
+					"Could not queue request",
+			);
+			return false;
+		}
+		const serverItem = await props.session.enqueueAdmittedRequest(request);
+		if (!serverItem) {
+			return false;
+		}
+		queue.add(
+			createPendingQueueItem({
+				request,
+				queueItemId: serverItem.id,
+				position: serverItem.position,
+				createdAt: serverItem.createdAt,
+			}),
+		);
+		return true;
+	}
+
+	async function removeQueuedRequest(queueItemId: string) {
+		await props.session.cancelQueuedRequest(queueItemId);
+		queue.remove(queueItemId);
+	}
+
 	return (
 		<SessionComposer
 			value={composer.text}
-			disabled={props.session.isTurnRunning}
+			disabled={
+				props.session.isTurnRunning && !props.session.conversationId
+			}
 			turnActive={props.session.isTurnActive}
+			queueActive={shouldQueueInsteadOfSend()}
 			mode={composer.mode}
 			model={props.model}
 			runtimeMode={props.runtimeMode}
@@ -134,6 +248,32 @@ export function ComposerRegion(props: {
 			onInterrupt={props.session.interruptConversation}
 			onNewSession={props.onNewDraftRoute}
 			onRespondRequest={props.session.respondToRequest}
+			queuePanel={
+				<ComposerQueuePanel
+					items={queue.state.items}
+					isPaused={queue.state.isPaused}
+					lastError={queue.state.lastError}
+					onPause={queue.pause}
+					onResume={queue.resume}
+					onRemove={removeQueuedRequest}
+					onMove={queue.move}
+				/>
+			}
 		/>
 	);
+}
+
+function queueValidationMessage(
+	reason: Extract<QueueValidationResult, { ok: false }>["reason"],
+) {
+	switch (reason) {
+		case "queueFull":
+			return "Queue limit reached";
+		case "inputTooLong":
+			return "Queued request is too long";
+		case "queueTooLarge":
+			return "Queue is too large";
+		case "emptyInput":
+			return "Message required";
+	}
 }
