@@ -129,6 +129,13 @@ Done:
 
 Goal: replace `useCodexSession.ts` with smaller route/resource/projection pieces.
 
+Reference-first decision:
+
+- Reread OpenCode `packages/core/src/session/projector.ts`, `packages/app/src/pages/session/timeline/model.ts`, and `packages/app/src/pages/session/timeline/projection.ts`; keep projection as a pure layer feeding UI state, not as component-local stream mutation.
+- Reread T3Code `MessagesTimeline.logic.ts` and `state/threads.ts`; derive stable timeline state outside the React view and keep route/thread state separate.
+- Reread AionUI conversation route and ACP stream hook; keep route fetch/subscription boundaries separate from message rendering.
+- For this app, start with a small pure `conversationProjection.ts` that projects current `ConversationDetail` and live `ConversationEvent` into the existing compatibility transcript/pending/status shape before extracting larger stores.
+
 Add:
 
 ```txt
