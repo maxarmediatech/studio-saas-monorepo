@@ -115,6 +115,22 @@ describe("conversationProjection", () => {
 		expect(second.state.status).toBe("Streaming...");
 	});
 
+	it("ignores empty assistant deltas instead of creating blank streaming rows", () => {
+		const result = applyConversationEventProjection(
+			createEmptyConversationProjection(),
+			{
+				id: "event-empty-delta",
+				type: "assistant.delta",
+				time: "2026-06-24T00:00:01.000Z",
+				data: { text: undefined, turnId: "turn-1", raw: {} },
+			},
+		);
+
+		expect(result.shouldRefreshConversations).toBe(false);
+		expect(result.state.transcript).toEqual([]);
+		expect(result.state.status).toBe("No conversation");
+	});
+
 	it("marks assistant completion and requests conversation refresh", () => {
 		const state = {
 			...createEmptyConversationProjection(),
@@ -183,8 +199,38 @@ describe("conversationProjection", () => {
 		);
 		expect(interrupted.shouldRefreshConversations).toBe(true);
 		expect(interrupted.state.pendingRequests).toEqual([]);
-		expect(interrupted.state.transcript[0]).toEqual(
-			expect.objectContaining({ status: "interrupted" }),
+			expect(interrupted.state.transcript[0]).toEqual(
+				expect.objectContaining({ status: "interrupted" }),
+			);
+		});
+
+	it("surfaces usage-limit failures and clears active state", () => {
+		const activeState = {
+			...createEmptyConversationProjection(),
+			pendingRequests: [pendingRequest("request-1")],
+			isTurnActive: true,
+			status: "Running...",
+		};
+
+		const result = applyConversationEventProjection(activeState, {
+			id: "event-usage-limit",
+			type: "message.failed",
+			time: "2026-06-24T00:00:02.000Z",
+			data: {
+				error:
+					"You've hit your usage limit. Upgrade to Pro or try again at 8:04 PM.",
+				turnId: "turn-1",
+			},
+		});
+
+		expect(result.shouldRefreshConversations).toBe(true);
+		expect(result.state.pendingRequests).toEqual([]);
+		expect(result.state.isTurnActive).toBe(false);
+		expect(result.state.transcript.at(-1)).toEqual(
+			expect.objectContaining({
+				type: "system",
+				text: expect.stringContaining("usage limit"),
+			}),
 		);
 	});
 

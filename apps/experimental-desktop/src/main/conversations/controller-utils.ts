@@ -175,10 +175,42 @@ export function readRequestKind(method: string): ApprovalKind {
 }
 
 export function readDeltaText(value: unknown) {
+	return readTextDelta(value);
+}
+
+function readTextDelta(value: unknown): string | undefined {
+	if (typeof value === "string") {
+		return value;
+	}
+	if (Array.isArray(value)) {
+		return joinTextDeltas(value);
+	}
 	if (!isRecord(value)) {
 		return undefined;
 	}
-	return typeof value.delta === "string" ? value.delta : undefined;
+	for (const key of ["delta", "text", "value", "content"] as const) {
+		const direct = readTextDelta(value[key]);
+		if (direct) {
+			return direct;
+		}
+	}
+	for (const key of ["item", "message", "part"] as const) {
+		const nested = readTextDelta(value[key]);
+		if (nested) {
+			return nested;
+		}
+	}
+	if (Array.isArray(value.parts)) {
+		return joinTextDeltas(value.parts);
+	}
+	return undefined;
+}
+
+function joinTextDeltas(values: unknown[]) {
+	const text = values
+		.map((value) => readTextDelta(value) ?? "")
+		.join("");
+	return text || undefined;
 }
 
 export function isFailedTurn(value: unknown) {

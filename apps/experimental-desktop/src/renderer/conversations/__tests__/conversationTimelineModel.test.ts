@@ -122,6 +122,28 @@ describe("conversationTimelineModel", () => {
 				tone: "compaction",
 				title: "Compaction",
 			}),
+			]);
+		});
+
+	it("titles usage-limit failures explicitly", () => {
+		const model = projectConversationTimeline({
+			transcript: [
+				{
+					id: "event-usage-limit",
+					type: "system",
+					text: "You've hit your usage limit. Try again at 8:04 PM.",
+					time: "2026-06-24T00:00:02.000Z",
+				},
+			],
+			pendingRequests: [],
+		});
+
+		expect(model.rows).toEqual([
+			expect.objectContaining({
+				kind: "event",
+				tone: "error",
+				title: "Usage limit reached",
+			}),
 		]);
 	});
 

@@ -243,6 +243,9 @@ function eventTone(text: string): "info" | "error" | "compaction" {
 	if (
 		lower.includes("failed") ||
 		lower.includes("error") ||
+		lower.includes("usage limit") ||
+		lower.includes("rate limit") ||
+		lower.includes("credits") ||
 		lower.includes("boom")
 	) {
 		return "error";
@@ -255,6 +258,13 @@ function eventTone(text: string): "info" | "error" | "compaction" {
 
 function eventTitle(text: string) {
 	const lower = text.toLowerCase();
+	if (
+		lower.includes("usage limit") ||
+		lower.includes("rate limit") ||
+		lower.includes("credits")
+	) {
+		return "Usage limit reached";
+	}
 	if (lower.includes("compacted")) {
 		return "Compaction";
 	}

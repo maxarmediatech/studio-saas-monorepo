@@ -73,6 +73,9 @@ export function applyConversationEventProjection(
 		};
 	}
 	if (event.type === "assistant.delta") {
+		if (!event.data.text) {
+			return { state, shouldRefreshConversations: false };
+		}
 		return {
 			state: {
 				...state,

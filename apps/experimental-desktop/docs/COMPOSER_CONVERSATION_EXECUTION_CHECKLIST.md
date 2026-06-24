@@ -451,8 +451,9 @@ Progress:
 - Review correction: empty draft routes must not mount an empty conversation panel, status bar, row counter, or right inspector. The draft surface is composer-first; the timeline stage appears only after there are actual rows or pending approvals.
 - Review correction: the chat route must not show the runtime/OAuth/Codex/event-log right rail; those diagnostics belong behind a future settings/status surface, not beside every conversation.
 - Review correction: Codex app-server can deliver final assistant text through `item/completed` with `item.type: "agentMessage"` even when no `item/agentMessage/delta` arrived. The controller now persists that final text, emits only the missing live delta suffix, and the timeline hides empty assistant placeholders.
+- Review correction: provider errors such as Codex usage/rate-limit failures must be visible in the conversation timeline as error rows, clear running/pending state, and survive refresh when tied to a turn. This follows the reference apps: OpenCode renders assistant errors as timeline `Error` rows, T3Code projects provider failures with `tone: "error"` while clearing pending approval state, and AionUI turns ACP/agent failures into user-facing message/error surfaces.
 - Added projection tests for persisted context/image/text parts, pending approval request rows, and compaction event rows.
-- Added a projection regression for empty assistant placeholders. A DB-level regression for final assistant persistence is still blocked by the current `better-sqlite3` Node ABI mismatch in Vitest.
+- Added projection regressions for empty assistant placeholders and usage-limit failure rows. A DB-level regression for final assistant persistence is still blocked by the current `better-sqlite3` Node ABI mismatch in Vitest.
 - Still deferred: durable queue rows inside the timeline, richer DB `message_parts` enum for first-class `file_ref`/`image_ref`/`context_ref` rows, live provider-context part refresh after streaming events, quick-capture/app-action/diff-specific row renderers, and virtualization/polish once row volume requires it.
 
 ## Phase 8 — Provider Expansion Foundation

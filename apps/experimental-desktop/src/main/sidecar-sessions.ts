@@ -241,11 +241,14 @@ export function createSessionController(input: {
 			return;
 		}
 		if (event.method === "item/agentMessage/delta") {
-			pushEvent(session, "assistant.delta", {
-				text: readDeltaText(event.params),
-				turnId,
-				raw: event.params,
-			});
+			const text = readDeltaText(event.params);
+			if (text) {
+				pushEvent(session, "assistant.delta", {
+					text,
+					turnId,
+					raw: event.params,
+				});
+			}
 			return;
 		}
 		if (event.method === "turn/completed") {
@@ -493,11 +496,34 @@ function readRequestKind(method: string) {
 	return "unknown";
 }
 
-function readDeltaText(value: unknown) {
+function readDeltaText(value: unknown): string | undefined {
+	if (typeof value === "string") {
+		return value;
+	}
+	if (Array.isArray(value)) {
+		return joinTextDeltas(value);
+	}
 	if (!isRecord(value)) {
 		return undefined;
 	}
-	return typeof value.delta === "string" ? value.delta : undefined;
+	for (const key of ["delta", "text", "value", "content"] as const) {
+		const text = readDeltaText(value[key]);
+		if (text) {
+			return text;
+		}
+	}
+	for (const key of ["item", "message", "part"] as const) {
+		const text = readDeltaText(value[key]);
+		if (text) {
+			return text;
+		}
+	}
+	return Array.isArray(value.parts) ? joinTextDeltas(value.parts) : undefined;
+}
+
+function joinTextDeltas(values: unknown[]): string | undefined {
+	const text = values.map((value) => readDeltaText(value) ?? "").join("");
+	return text || undefined;
 }
 
 function isFailedTurn(value: unknown) {

@@ -1116,6 +1116,10 @@ export function createConversationController(input: {
 			return;
 		}
 		const providerTurnId = readTurnId(event.params);
+		if (event.kind === "notification" && event.method === "error") {
+			handleProviderError(event, providerTurnId);
+			return;
+		}
 		const activeTurn = resolveActiveTurn(providerTurnId);
 		if (!activeTurn) {
 			return;
@@ -1135,29 +1139,6 @@ export function createConversationController(input: {
 		}
 		if (event.method === "turn/completed") {
 			handleTurnCompleted(activeTurn, event, providerTurnId);
-			return;
-		}
-		if (event.method === "error") {
-			const failedAt = now();
-			repo.failTurn({
-				turnId: activeTurn.turnId,
-				error: readErrorMessage(event.params),
-				raw: event.params,
-				now: failedAt,
-			});
-			repo.markAdmittedRequestStatusForTurn({
-				turnId: activeTurn.turnId,
-				status: "failed",
-				error: { message: readErrorMessage(event.params) },
-				now: failedAt,
-			});
-			broadcastFailure(
-				activeTurn.conversationId,
-				activeTurn.turnId,
-				readErrorMessage(event.params),
-				event.params,
-			);
-			clearTurn(activeTurn.turnId, providerTurnId);
 			return;
 		}
 		recordProviderContext(activeTurn, event);
@@ -1265,12 +1246,14 @@ export function createConversationController(input: {
 		providerTurnId?: string,
 	) {
 		const text = readDeltaText(event.params);
-		if (text) {
-			assistantTextByTurn.set(
-				activeTurn.turnId,
-				`${assistantTextByTurn.get(activeTurn.turnId) ?? ""}${text}`,
-			);
+		if (!text) {
+			recordProviderContext(activeTurn, event);
+			return;
 		}
+		assistantTextByTurn.set(
+			activeTurn.turnId,
+			`${assistantTextByTurn.get(activeTurn.turnId) ?? ""}${text}`,
+		);
 		repo.appendAssistantDelta({
 			turnId: activeTurn.turnId,
 			text,
@@ -1345,6 +1328,50 @@ export function createConversationController(input: {
 		return true;
 	}
 
+	function handleProviderError(
+		event: Extract<CodexRuntimeEvent, { kind: "notification" }>,
+		providerTurnId?: string,
+	) {
+		const error = readErrorMessage(event.params);
+		const activeTurn = resolveActiveTurn(providerTurnId);
+		if (activeTurn) {
+			failTurnAndBroadcast(activeTurn, error, event.params, providerTurnId);
+			return;
+		}
+		const turn =
+			(providerTurnId
+				? repo.getTurnByProviderTurnId(providerTurnId) ??
+					repo.getTurn(providerTurnId)
+				: undefined) ?? (activeTurnId ? repo.getTurn(activeTurnId) : undefined);
+		if (turn) {
+			const failedAt = now();
+			repo.failTurn({
+				turnId: turn.id,
+				error,
+				raw: event.params,
+				now: failedAt,
+			});
+			repo.markAdmittedRequestStatusForTurn({
+				turnId: turn.id,
+				status: "failed",
+				error: { message: error },
+				now: failedAt,
+			});
+			repo.expirePendingApprovalsForTurn({
+				turnId: turn.id,
+				response: { error },
+				now: failedAt,
+			});
+			broadcastFailure(turn.conversation_id, turn.id, error, event.params);
+			clearTurn(turn.id, providerTurnId);
+			return;
+		}
+		if (subscribers.size === 1) {
+			const [conversationId] = subscribers.keys();
+			broadcastFailure(conversationId, undefined, error, event.params);
+		}
+	}
+
 	function handleTurnCompleted(
 		activeTurn: ActiveTurn,
 		event: Extract<CodexRuntimeEvent, { kind: "notification" }>,
@@ -1352,25 +1379,7 @@ export function createConversationController(input: {
 	) {
 		if (isFailedTurn(event.params)) {
 			const error = readTurnError(event.params);
-			const failedAt = now();
-			repo.failTurn({
-				turnId: activeTurn.turnId,
-				error,
-				raw: event.params,
-				now: failedAt,
-			});
-			repo.markAdmittedRequestStatusForTurn({
-				turnId: activeTurn.turnId,
-				status: "failed",
-				error: { message: error },
-				now: failedAt,
-			});
-			broadcastFailure(
-				activeTurn.conversationId,
-				activeTurn.turnId,
-				error,
-				event.params,
-			);
+			failTurnAndBroadcast(activeTurn, error, event.params, providerTurnId);
 		} else {
 			const completedAt = now();
 			repo.completeTurn({
@@ -1453,28 +1462,42 @@ export function createConversationController(input: {
 		});
 	}
 
-	function failActiveTurn(activeTurn: ActiveTurn, error: unknown) {
-		const message = error instanceof Error ? error.message : String(error);
+	function failTurnAndBroadcast(
+		activeTurn: ActiveTurn,
+		error: string,
+		raw: unknown,
+		providerTurnId?: string,
+	) {
 		const failedAt = now();
 		repo.failTurn({
 			turnId: activeTurn.turnId,
-			error: message,
-			raw: { error: message },
+			error,
+			raw,
 			now: failedAt,
 		});
 		repo.markAdmittedRequestStatusForTurn({
 			turnId: activeTurn.turnId,
 			status: "failed",
-			error: { message },
+			error: { message: error },
 			now: failedAt,
 		});
 		repo.expirePendingApprovalsForTurn({
 			turnId: activeTurn.turnId,
-			response: { error: message },
+			response: { error },
 			now: failedAt,
 		});
-		broadcastFailure(activeTurn.conversationId, activeTurn.turnId, message);
-		clearTurn(activeTurn.turnId);
+		broadcastFailure(
+			activeTurn.conversationId,
+			activeTurn.turnId,
+			error,
+			raw,
+		);
+		clearTurn(activeTurn.turnId, providerTurnId);
+	}
+
+	function failActiveTurn(activeTurn: ActiveTurn, error: unknown) {
+		const message = error instanceof Error ? error.message : String(error);
+		failTurnAndBroadcast(activeTurn, message, { error: message });
 	}
 
 	function failRuntimeDisconnected() {
