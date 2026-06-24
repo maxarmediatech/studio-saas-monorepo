@@ -21,7 +21,7 @@ export function ConversationStage(props: {
 				requests={props.model.pendingRequests}
 				onRespond={props.onRespond}
 			/>
-			<div className="pt-4">
+			<div className="mx-auto w-full max-w-[980px] pt-4">
 				{props.composer}
 			</div>
 		</section>

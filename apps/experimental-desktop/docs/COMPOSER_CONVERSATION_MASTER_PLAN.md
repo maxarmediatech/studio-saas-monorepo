@@ -302,7 +302,7 @@ Phase 7 implementation note:
 - The current DB enum still stores text/tool/approval/raw parts. Admitted attachment/context details are recovered from the text part composer payload until the later schema slice promotes `file_ref`, `image_ref`, and `context_ref` to first-class durable rows.
 - Empty draft routes stay composer-first and do not show an empty timeline/debug panel or inspector column. The conversation stage is only visible once the route has actual timeline rows or pending approvals.
 - Chat routes do not show or reserve space for the runtime/OAuth/Codex diagnostics rail. Those controls live behind the top `Settings` tab. Top tabs own whole-page composition: `Chat` uses the sidebar/content shell; `Settings` is a separate full-width page with no chat sidebar.
-- Active conversation timelines fill the chat content column. Do not cap/center the stage in a way that leaves a fake sidebar gutter inside the conversation panel.
+- Active conversation routes fill the chat content column, while timeline rows and composer share a centered max-width rail. Do not create a separate inspector/gutter column inside the conversation panel.
 - The empty "Where should we begin?" prompt belongs only to empty draft routes; it must not render above an active timeline.
 - Codex final-answer ingestion must handle `item/completed` `agentMessage` payloads, not only streaming delta events.
 - Codex provider failures, including usage-limit/rate-limit errors, must be projected into the main conversation timeline as error rows and clear pending/running state. Reference alignment: OpenCode timeline error rows, T3Code error-tone provider activities, and AionUI user-facing agent error messages.
