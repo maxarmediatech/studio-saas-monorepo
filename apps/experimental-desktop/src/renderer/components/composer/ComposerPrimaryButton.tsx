@@ -8,34 +8,12 @@ import { iconProps } from "../../app/icons";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { composerControlClass } from "./ComposerControls";
-import type { ComposerMode } from "./composerTriggers";
+import {
+	resolvePrimaryAction,
+	type ComposerPrimaryAction,
+} from "./composerPrimaryAction";
 
-export type ComposerPrimaryAction =
-	| "send"
-	| "queue"
-	| "run-shell"
-	| "stop"
-	| "disabled";
-
-export function resolvePrimaryAction(input: {
-	mode: ComposerMode;
-	disabled: boolean;
-	turnActive: boolean;
-	queueActive?: boolean;
-	hasText: boolean;
-	blocked?: boolean;
-}): ComposerPrimaryAction {
-	if (input.queueActive && input.hasText && !input.blocked) {
-		return "queue";
-	}
-	if (input.turnActive) {
-		return "stop";
-	}
-	if (input.disabled || input.blocked || !input.hasText) {
-		return "disabled";
-	}
-	return input.mode === "shell" ? "run-shell" : "send";
-}
+export { resolvePrimaryAction, type ComposerPrimaryAction };
 
 export function ComposerPrimaryButton(props: {
 	action: ComposerPrimaryAction;

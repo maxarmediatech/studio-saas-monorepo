@@ -8,15 +8,16 @@ import type {
 } from "../sidecar-codex-runtime";
 import type { ConversationDatabase } from "../storage/database";
 import {
+	type ValidatedAdmittedComposerRequest,
 	validateAdmittedComposerRequest,
 	validateAdmittedSendBody,
 	validateQueueUpdateBody,
-	type ValidatedAdmittedComposerRequest,
 } from "./admitted-request";
 import {
 	approvalStatusFromResponse,
 	isFailedTurn,
 	now,
+	parseSseEvent,
 	parseSseMessage,
 	readDeltaText,
 	readErrorMessage,
@@ -29,6 +30,7 @@ import {
 	validateRequestResponse,
 	validateSendBody,
 } from "./controller-utils";
+import { buildProviderNativeInput } from "./provider-context";
 import { ConversationRepository } from "./repository";
 import {
 	buildSummaryRequest,
@@ -72,6 +74,7 @@ export function createConversationController(input: {
 	const assistantTextByTurn = new Map<string, string>();
 	const activeApprovals = new Map<string, ActiveApproval>();
 	let runtimeStream: AbortController | undefined;
+	let runtimeStreamReady: Promise<void> | undefined;
 	let activeTurnId: string | undefined;
 
 	repo.recoverInterruptedState(now());
@@ -213,13 +216,10 @@ export function createConversationController(input: {
 		if (!providerSession) {
 			throw new Error("Conversation provider session is missing");
 		}
-		const shouldResumeProviderThread =
-			!!providerSession.provider_thread_id &&
-			providerSession.provider_leaf_message_id ===
-				conversation.activeLeafMessageId;
-		const runtimeText = shouldResumeProviderThread
-			? message.text
-			: repo.buildReplayPrompt(conversationId, message.text);
+		const runtimeText = repo.buildReplayPrompt(
+			conversationId,
+			message.text,
+		);
 		const userMessageId = randomUUID();
 		const assistantMessageId = randomUUID();
 		const turn: ActiveTurn = {
@@ -262,35 +262,26 @@ export function createConversationController(input: {
 		});
 		try {
 			await ensureRuntimeEvents();
-			let threadId = providerSession.provider_thread_id ?? undefined;
-			if (shouldResumeProviderThread && threadId) {
-				await sidecarFetch("/runtime/thread/resume", {
-					method: "POST",
-					headers: { "content-type": "application/json" },
-					body: JSON.stringify({ threadId }),
-				});
-			} else {
-				const thread = (await sidecarFetch("/runtime/thread/start", {
-					method: "POST",
-					headers: { "content-type": "application/json" },
-					body: JSON.stringify({
-						cwd: turn.cwd,
-						model: turn.model,
-						runtimeMode: turn.runtimeMode,
-					}),
-				})) as { threadId: string };
-				threadId = thread.threadId;
-				repo.setProviderThread({
-					providerSessionId: providerSession.id,
-					threadId,
-					state: thread,
-					now: now(),
-				});
-			}
+			const thread = (await sidecarFetch("/runtime/thread/start", {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({
+					cwd: turn.cwd,
+					model: turn.model,
+					runtimeMode: turn.runtimeMode,
+				}),
+			})) as { threadId: string };
+			const threadId = thread.threadId;
+			repo.setProviderThread({
+				providerSessionId: providerSession.id,
+				threadId,
+				state: thread,
+				now: now(),
+			});
 			await startTurn(
 				{ ...turn, threadId },
 				runtimeText,
-				message.nativeInput,
+				buildProviderNativeInput(runtimeText, message.nativeInput),
 			);
 			return repo.getConversation(conversationId);
 		} catch (error) {
@@ -365,19 +356,8 @@ export function createConversationController(input: {
 				providerInput.prompt,
 				providerInput.nativeInput,
 			);
-			repo.markAdmittedRequestStatus({
-				id: admitted.request.id,
-				status: "running",
-				now: now(),
-			});
 			return repo.getConversation(promoted.conversationId);
 		} catch (error) {
-			repo.markAdmittedRequestStatus({
-				id: admitted.request.id,
-				status: "failed",
-				error: errorPayload(error),
-				now: now(),
-			});
 			failActiveTurn(activeTurn, error);
 			throw error;
 		}
@@ -406,13 +386,10 @@ export function createConversationController(input: {
 		if (!providerSession) {
 			throw new Error("Conversation provider session is missing");
 		}
-		const shouldResumeProviderThread =
-			!!providerSession.provider_thread_id &&
-			providerSession.provider_leaf_message_id ===
-				conversation.activeLeafMessageId;
-		const runtimeText = shouldResumeProviderThread
-			? providerInput.prompt
-			: repo.buildReplayPrompt(conversationId, providerInput.prompt);
+		const runtimeText = repo.buildReplayPrompt(
+			conversationId,
+			providerInput.prompt,
+		);
 		const userMessageId = randomUUID();
 		const assistantMessageId = randomUUID();
 		const turn: ActiveTurn = {
@@ -462,49 +439,32 @@ export function createConversationController(input: {
 		});
 		try {
 			await ensureRuntimeEvents();
-			let threadId = providerSession.provider_thread_id ?? undefined;
-			if (shouldResumeProviderThread && threadId) {
-				await sidecarFetch("/runtime/thread/resume", {
-					method: "POST",
-					headers: { "content-type": "application/json" },
-					body: JSON.stringify({ threadId }),
-				});
-			} else {
-				const thread = (await sidecarFetch("/runtime/thread/start", {
-					method: "POST",
-					headers: { "content-type": "application/json" },
-					body: JSON.stringify({
-						cwd: turn.cwd,
-						model: turn.model,
-						runtimeMode: turn.runtimeMode,
-					}),
-				})) as { threadId: string };
-				threadId = thread.threadId;
-				repo.setProviderThread({
-					providerSessionId: providerSession.id,
-					threadId,
-					state: thread,
-					now: now(),
-				});
-			}
+			const thread = (await sidecarFetch("/runtime/thread/start", {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({
+					cwd: turn.cwd,
+					model: turn.model,
+					runtimeMode: turn.runtimeMode,
+				}),
+			})) as { threadId: string };
+			const threadId = thread.threadId;
+			repo.setProviderThread({
+				providerSessionId: providerSession.id,
+				threadId,
+				state: thread,
+				now: now(),
+			});
 			await startTurn(
 				{ ...turn, threadId },
 				runtimeText,
-				providerInput.nativeInput,
+				buildProviderNativeInput(
+					runtimeText,
+					providerInput.nativeInput,
+				),
 			);
-			repo.markAdmittedRequestStatus({
-				id: request.id,
-				status: "running",
-				now: now(),
-			});
 			return repo.getConversation(conversationId);
 		} catch (error) {
-			repo.markAdmittedRequestStatus({
-				id: request.id,
-				status: "failed",
-				error: errorPayload(error),
-				now: now(),
-			});
 			if (pendingTurns.has(turn.turnId) || activeTurnId === turn.turnId) {
 				failActiveTurn(turn, error);
 			}
@@ -604,17 +564,15 @@ export function createConversationController(input: {
 		);
 		runtimeStream?.abort();
 		runtimeStream = undefined;
-		repo.interruptTurn({
+		const interruptedTurn = repo.interruptTurn({
 			turnId: activeTurn.turnId,
 			message,
 			now: interruptedAt,
 		});
-		repo.markAdmittedRequestStatusForTurn({
-			turnId: activeTurn.turnId,
-			status: "canceled",
-			error: { message },
-			now: interruptedAt,
-		});
+		if (!interruptedTurn) {
+			clearTurn(activeTurn.turnId, activeTurn.providerTurnId);
+			return { ok: true as const };
+		}
 		repo.expirePendingApprovalsForTurn({
 			turnId: activeTurn.turnId,
 			response: { decision: "cancel", reason: message },
@@ -816,14 +774,21 @@ export function createConversationController(input: {
 				runtimeMode: input.runtimeMode,
 			}),
 		})) as { turnId?: string };
-		if (turn.turnId) {
-			activeTurnsByProviderTurnId.set(turn.turnId, input);
+		if (!pendingTurns.has(input.turnId)) {
+			return false;
 		}
-		repo.setTurnRunning({
+		const runningTurn = repo.setTurnRunning({
 			turnId: input.turnId,
 			providerTurnId: turn.turnId,
 			now: now(),
 		});
+		if (!runningTurn) {
+			return false;
+		}
+		if (turn.turnId) {
+			activeTurnsByProviderTurnId.set(turn.turnId, input);
+		}
+		return true;
 	}
 
 	async function normalizeNativeInputForProvider(nativeInput?: unknown[]) {
@@ -859,14 +824,45 @@ export function createConversationController(input: {
 	}
 
 	async function ensureRuntimeEvents() {
-		if (runtimeStream) {
-			return;
+		if (runtimeStream && runtimeStreamReady) {
+			return runtimeStreamReady;
 		}
 		const runtime = await input.sidecarManager.ensure();
 		const abort = new AbortController();
+		let readySettled = false;
+		let resolveReady: () => void = () => {};
+		let rejectReady: (error: unknown) => void = () => {};
+		let readyTimeout: ReturnType<typeof setTimeout> | undefined;
+		const ready = new Promise<void>((resolve, reject) => {
+			resolveReady = () => {
+				if (readySettled) {
+					return;
+				}
+				readySettled = true;
+				if (readyTimeout) {
+					clearTimeout(readyTimeout);
+				}
+				resolve();
+			};
+			rejectReady = (error: unknown) => {
+				if (readySettled) {
+					return;
+				}
+				readySettled = true;
+				if (readyTimeout) {
+					clearTimeout(readyTimeout);
+				}
+				reject(error);
+			};
+		});
+		readyTimeout = setTimeout(() => {
+			rejectReady(new Error("Runtime event stream did not become ready"));
+		}, 5_000);
 		runtimeStream = abort;
-		void streamRuntimeEvents(runtime, abort.signal)
+		runtimeStreamReady = ready;
+		void streamRuntimeEvents(runtime, abort.signal, resolveReady)
 			.catch((error) => {
+				rejectReady(error);
 				if (!abort.signal.aborted) {
 					console.warn(
 						"[conversations] runtime event stream failed",
@@ -875,13 +871,27 @@ export function createConversationController(input: {
 				}
 			})
 			.finally(() => {
+				rejectReady(
+					new Error("Runtime event stream closed before ready"),
+				);
 				if (runtimeStream === abort) {
 					runtimeStream = undefined;
+					runtimeStreamReady = undefined;
 				}
 				if (!abort.signal.aborted) {
 					failRuntimeDisconnected();
 				}
 			});
+		try {
+			await ready;
+		} catch (error) {
+			abort.abort();
+			if (runtimeStream === abort) {
+				runtimeStream = undefined;
+				runtimeStreamReady = undefined;
+			}
+			throw error;
+		}
 	}
 
 	async function sidecarFetch(path: string, init: RequestInit) {
@@ -1045,6 +1055,7 @@ export function createConversationController(input: {
 	async function streamRuntimeEvents(
 		runtime: SidecarRuntime,
 		signal: AbortSignal,
+		onReady: () => void,
 	) {
 		const response = await fetch(new URL("/runtime/events", runtime.url), {
 			headers: {
@@ -1067,6 +1078,11 @@ export function createConversationController(input: {
 			const messages = buffer.split("\n\n");
 			buffer = messages.pop() ?? "";
 			for (const message of messages) {
+				const event = parseSseEvent(message);
+				if (event?.eventName === "ready") {
+					onReady();
+					continue;
+				}
 				const payload = parseSseMessage(message);
 				if (payload) {
 					handleRuntimeEvent(payload);
@@ -1097,14 +1113,6 @@ export function createConversationController(input: {
 					})
 				: undefined;
 			if (turn) {
-				repo.markAdmittedRequestStatusForTurn({
-					turnId: turn.id,
-					status: "failed",
-					error: {
-						message: `Codex request timed out waiting for response: ${event.method}`,
-					},
-					now: now(),
-				});
 				broadcastFailure(
 					approval.conversationId,
 					approval.turnId,
@@ -1133,7 +1141,9 @@ export function createConversationController(input: {
 			return;
 		}
 		if (event.method === "item/completed") {
-			if (handleCompletedAgentMessage(activeTurn, event, providerTurnId)) {
+			if (
+				handleCompletedAgentMessage(activeTurn, event, providerTurnId)
+			) {
 				return;
 			}
 		}
@@ -1196,13 +1206,8 @@ export function createConversationController(input: {
 		providerTurnId?: string,
 	) {
 		const approvalId = randomUUID();
-		activeApprovals.set(event.requestId, {
-			conversationId: activeTurn.conversationId,
-			turnId: activeTurn.turnId,
-			approvalId,
-		});
 		const time = now();
-		repo.createApproval({
+		const created = repo.createApproval({
 			id: approvalId,
 			conversationId: activeTurn.conversationId,
 			turnId: activeTurn.turnId,
@@ -1212,6 +1217,14 @@ export function createConversationController(input: {
 			request: event.params,
 			now: time,
 			expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+		});
+		if (!created) {
+			return;
+		}
+		activeApprovals.set(event.requestId, {
+			conversationId: activeTurn.conversationId,
+			turnId: activeTurn.turnId,
+			approvalId,
 		});
 		const persisted: ConversationEvent = {
 			id: randomUUID(),
@@ -1325,6 +1338,9 @@ export function createConversationController(input: {
 			});
 		}
 		recordProviderContext(activeTurn, event);
+		if (isFinalAgentMessage(event.params)) {
+			completeTurnAndBroadcast(activeTurn, event.params, providerTurnId);
+		}
 		return true;
 	}
 
@@ -1335,34 +1351,42 @@ export function createConversationController(input: {
 		const error = readErrorMessage(event.params);
 		const activeTurn = resolveActiveTurn(providerTurnId);
 		if (activeTurn) {
-			failTurnAndBroadcast(activeTurn, error, event.params, providerTurnId);
+			failTurnAndBroadcast(
+				activeTurn,
+				error,
+				event.params,
+				providerTurnId,
+			);
 			return;
 		}
 		const turn =
 			(providerTurnId
-				? repo.getTurnByProviderTurnId(providerTurnId) ??
-					repo.getTurn(providerTurnId)
-				: undefined) ?? (activeTurnId ? repo.getTurn(activeTurnId) : undefined);
+				? (repo.getTurnByProviderTurnId(providerTurnId) ??
+					repo.getTurn(providerTurnId))
+				: undefined) ??
+			(activeTurnId ? repo.getTurn(activeTurnId) : undefined);
 		if (turn) {
 			const failedAt = now();
-			repo.failTurn({
+			const failedTurn = repo.failTurn({
 				turnId: turn.id,
 				error,
 				raw: event.params,
 				now: failedAt,
 			});
-			repo.markAdmittedRequestStatusForTurn({
-				turnId: turn.id,
-				status: "failed",
-				error: { message: error },
-				now: failedAt,
-			});
+			if (!failedTurn) {
+				return;
+			}
 			repo.expirePendingApprovalsForTurn({
 				turnId: turn.id,
 				response: { error },
 				now: failedAt,
 			});
-			broadcastFailure(turn.conversation_id, turn.id, error, event.params);
+			broadcastFailure(
+				turn.conversation_id,
+				turn.id,
+				error,
+				event.params,
+			);
 			clearTurn(turn.id, providerTurnId);
 			return;
 		}
@@ -1379,45 +1403,56 @@ export function createConversationController(input: {
 	) {
 		if (isFailedTurn(event.params)) {
 			const error = readTurnError(event.params);
-			failTurnAndBroadcast(activeTurn, error, event.params, providerTurnId);
+			failTurnAndBroadcast(
+				activeTurn,
+				error,
+				event.params,
+				providerTurnId,
+			);
 		} else {
-			const completedAt = now();
-			repo.completeTurn({
-				turnId: activeTurn.turnId,
-				raw: event.params,
-				now: completedAt,
-				status: "completed",
-			});
-			repo.markAdmittedRequestStatusForTurn({
-				turnId: activeTurn.turnId,
-				status: "completed",
-				now: completedAt,
-			});
-			repo.setProviderLeaf({
-				providerSessionId: activeTurn.providerSessionId,
-				messageId: activeTurn.assistantMessageId,
-				now: completedAt,
-			});
-			const persisted: ConversationEvent = {
-				id: randomUUID(),
-				type: "assistant.completed",
-				time: now(),
-				data: {
-					turnId: activeTurn.turnId,
-					providerTurnId,
-					messageId: activeTurn.assistantMessageId,
-					raw: event.params,
-				},
-			};
-			persistAndBroadcast({
-				conversationId: activeTurn.conversationId,
-				providerSessionId: activeTurn.providerSessionId,
-				turnId: activeTurn.turnId,
-				type: persisted.type,
-				raw: event.params,
-				event: persisted,
-			});
+			completeTurnAndBroadcast(activeTurn, event.params, providerTurnId);
 		}
+	}
+
+	function completeTurnAndBroadcast(
+		activeTurn: ActiveTurn,
+		raw: unknown,
+		providerTurnId?: string,
+	) {
+		const completedAt = now();
+		const completedTurn = repo.completeTurn({
+			turnId: activeTurn.turnId,
+			raw,
+			now: completedAt,
+			status: "completed",
+		});
+		if (!completedTurn) {
+			return;
+		}
+		repo.setProviderLeaf({
+			providerSessionId: activeTurn.providerSessionId,
+			messageId: activeTurn.assistantMessageId,
+			now: completedAt,
+		});
+		const persisted: ConversationEvent = {
+			id: randomUUID(),
+			type: "assistant.completed",
+			time: completedAt,
+			data: {
+				turnId: activeTurn.turnId,
+				providerTurnId,
+				messageId: activeTurn.assistantMessageId,
+				raw,
+			},
+		};
+		persistAndBroadcast({
+			conversationId: activeTurn.conversationId,
+			providerSessionId: activeTurn.providerSessionId,
+			turnId: activeTurn.turnId,
+			type: persisted.type,
+			raw,
+			event: persisted,
+		});
 		clearTurn(activeTurn.turnId, providerTurnId);
 	}
 
@@ -1469,18 +1504,15 @@ export function createConversationController(input: {
 		providerTurnId?: string,
 	) {
 		const failedAt = now();
-		repo.failTurn({
+		const failedTurn = repo.failTurn({
 			turnId: activeTurn.turnId,
 			error,
 			raw,
 			now: failedAt,
 		});
-		repo.markAdmittedRequestStatusForTurn({
-			turnId: activeTurn.turnId,
-			status: "failed",
-			error: { message: error },
-			now: failedAt,
-		});
+		if (!failedTurn) {
+			return;
+		}
 		repo.expirePendingApprovalsForTurn({
 			turnId: activeTurn.turnId,
 			response: { error },
@@ -1521,12 +1553,15 @@ export function createConversationController(input: {
 			}
 			const pending = getSinglePendingTurn();
 			if (pending) {
-				activeTurnsByProviderTurnId.set(providerTurnId, pending);
-				repo.setTurnRunning({
+				const runningTurn = repo.setTurnRunning({
 					turnId: pending.turnId,
 					providerTurnId,
 					now: now(),
 				});
+				if (!runningTurn) {
+					return undefined;
+				}
+				activeTurnsByProviderTurnId.set(providerTurnId, pending);
 				return pending;
 			}
 		}
@@ -1774,6 +1809,11 @@ function readCompletedAgentMessageText(value: unknown) {
 		return undefined;
 	}
 	return readString(item.text);
+}
+
+function isFinalAgentMessage(value: unknown) {
+	const item = readPayloadItem(value);
+	return item?.type === "agentMessage" && item.phase === "final_answer";
 }
 
 function normalizeProviderItemType(value: unknown) {

@@ -1,5 +1,42 @@
 import { describe, expect, it } from "vitest";
-import { readDeltaText } from "../controller-utils";
+import {
+	parseSseEvent,
+	parseSseMessage,
+	readDeltaText,
+} from "../controller-utils";
+
+describe("parseSseEvent", () => {
+	it("reads event names and multiline data", () => {
+		expect(
+			parseSseEvent('event: runtime\ndata: {"a":1}\ndata: {"b":2}'),
+		).toEqual({
+			eventName: "runtime",
+			data: '{"a":1}\n{"b":2}',
+		});
+	});
+
+	it("ignores messages without data", () => {
+		expect(parseSseEvent("event: ping")).toBeUndefined();
+	});
+});
+
+describe("parseSseMessage", () => {
+	it("ignores ready and ping events", () => {
+		expect(parseSseMessage("event: ready\ndata: {}")).toBeUndefined();
+		expect(parseSseMessage("event: ping\ndata: {}")).toBeUndefined();
+	});
+
+	it("parses runtime event payloads", () => {
+		expect(
+			parseSseMessage(
+				'event: runtime\ndata: {"kind":"notification","method":"turn/completed"}',
+			),
+		).toEqual({
+			kind: "notification",
+			method: "turn/completed",
+		});
+	});
+});
 
 describe("readDeltaText", () => {
 	it("reads legacy string deltas", () => {

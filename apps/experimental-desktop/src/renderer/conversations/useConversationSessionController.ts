@@ -12,8 +12,8 @@ import type { AdmittedComposerRequest } from "../components/composer/core/compos
 import { admitComposerRequest } from "../components/composer/core/composerSendController";
 import { conversationClient } from "./conversationClient";
 import {
-	createConversationEventStore,
 	type ConversationEventStore,
+	createConversationEventStore,
 } from "./conversationEventStore";
 import { useConversationHistoryStore } from "./conversationHistoryStore";
 import {
@@ -48,6 +48,11 @@ export function useConversationSessionController(input: {
 	);
 	const [isSending, setIsSending] = useState(false);
 	const [isTurnActive, setIsTurnActive] = useState(false);
+	const eventVersionRef = useRef(0);
+	const reconciliationRef = useRef<{
+		generation: number;
+		timer?: ReturnType<typeof setTimeout>;
+	}>({ generation: 0 });
 	const projectionStateRef = useRef<ConversationProjectionState>(
 		createEmptyConversationProjection(),
 	);
@@ -60,7 +65,10 @@ export function useConversationSessionController(input: {
 	const history = useHistoryStore();
 
 	useEffect(() => {
-		return () => eventStoreRef.current.clear();
+		return () => {
+			eventStoreRef.current.clear();
+			clearReconciliation();
+		};
 	}, []);
 
 	async function persistDraft(draft: ComposerDraftPersistInput) {
@@ -79,8 +87,8 @@ export function useConversationSessionController(input: {
 
 	async function openConversation(id: string) {
 		eventStoreRef.current.clear();
-		const conversation =
-			await client.loadConversationDetail(id);
+		clearReconciliation();
+		const conversation = await client.loadConversationDetail(id);
 		if (!conversation) {
 			setStatus("Conversation not found");
 			return false;
@@ -91,6 +99,7 @@ export function useConversationSessionController(input: {
 
 	async function openLoadedConversation(conversation: ConversationDetail) {
 		eventStoreRef.current.clear();
+		clearReconciliation();
 		hydrateConversation(conversation);
 		await eventStoreRef.current.subscribe(
 			conversation.id,
@@ -101,6 +110,7 @@ export function useConversationSessionController(input: {
 
 	async function createNewSession() {
 		eventStoreRef.current.clear();
+		clearReconciliation();
 		setDraftId(undefined);
 		setConversationId(undefined);
 		setThreadId(undefined);
@@ -134,24 +144,29 @@ export function useConversationSessionController(input: {
 		setIsSending(true);
 		setIsTurnActive(true);
 		try {
+			const eventsBeforeSend = eventVersionRef.current;
 			if (conversationId) {
 				setStatus("Sending...");
-				const conversation =
-					await client.sendAdmittedRequest({
-						conversationId,
-						request,
-					});
-				if (conversation) {
+				const conversation = await client.sendAdmittedRequest({
+					conversationId,
+					request,
+				});
+				if (
+					conversation &&
+					eventVersionRef.current === eventsBeforeSend
+				) {
 					hydrateConversation(conversation);
 				}
+				await reconcileConversation(conversationId, {
+					untilSettled: true,
+				});
 			} else {
 				setStatus("Starting conversation...");
-				const conversation =
-					await client.sendAdmittedRequest({
-						draftId,
-						cwd: input.selectedFolderPath,
-						request,
-					});
+				const conversation = await client.sendAdmittedRequest({
+					draftId,
+					cwd: input.selectedFolderPath,
+					request,
+				});
 				if (conversation) {
 					hydrateConversation(conversation);
 					eventStoreRef.current.clear();
@@ -159,10 +174,15 @@ export function useConversationSessionController(input: {
 						conversation.id,
 						handleSessionEvent,
 					);
+					await reconcileConversation(conversation.id, {
+						untilSettled: true,
+					});
 				}
 			}
 			await history.refreshConversations();
-			setStatus("Running...");
+			if (projectionStateRef.current.isTurnActive) {
+				setStatus("Running...");
+			}
 			return true;
 		} catch (error) {
 			setIsTurnActive(false);
@@ -214,8 +234,13 @@ export function useConversationSessionController(input: {
 			if (conversation) {
 				hydrateConversation(conversation);
 			}
+			await reconcileConversation(conversationId, {
+				untilSettled: true,
+			});
 			await history.refreshConversations();
-			setStatus("Running...");
+			if (projectionStateRef.current.isTurnActive) {
+				setStatus("Running...");
+			}
 			return result;
 		} catch (error) {
 			setIsTurnActive(false);
@@ -296,6 +321,7 @@ export function useConversationSessionController(input: {
 	}
 
 	function handleSessionEvent(event: ConversationEvent) {
+		eventVersionRef.current += 1;
 		appendEventLog(event);
 		const result = applyConversationEventProjection(
 			projectionStateRef.current,
@@ -304,6 +330,41 @@ export function useConversationSessionController(input: {
 		applyProjectionState(result.state);
 		if (result.shouldRefreshConversations) {
 			void history.refreshConversations();
+		}
+	}
+
+	async function reconcileConversation(
+		id: string,
+		options: { untilSettled?: boolean } = {},
+	) {
+		const generation = ++reconciliationRef.current.generation;
+		const eventVersion = eventVersionRef.current;
+		clearReconciliationTimer();
+		const conversation = await client.loadConversationDetail(id);
+		if (
+			generation !== reconciliationRef.current.generation ||
+			eventVersion !== eventVersionRef.current ||
+			!conversation
+		) {
+			return;
+		}
+		hydrateConversation(conversation);
+		if (options.untilSettled && isConversationRunning(conversation)) {
+			reconciliationRef.current.timer = setTimeout(() => {
+				void reconcileConversation(id, options);
+			}, 750);
+		}
+	}
+
+	function clearReconciliation() {
+		reconciliationRef.current.generation += 1;
+		clearReconciliationTimer();
+	}
+
+	function clearReconciliationTimer() {
+		if (reconciliationRef.current.timer) {
+			clearTimeout(reconciliationRef.current.timer);
+			reconciliationRef.current.timer = undefined;
 		}
 	}
 
@@ -352,9 +413,9 @@ export function useConversationSessionController(input: {
 		);
 	}
 
-function inputRuntimeMode() {
-	return input.runtimeMode;
-}
+	function inputRuntimeMode() {
+		return input.runtimeMode;
+	}
 
 	function inputModel() {
 		return input.model.trim() || "gpt-5.4-mini";
@@ -388,7 +449,9 @@ function inputRuntimeMode() {
 	};
 }
 
-function readExecutedConversation(value: unknown): ConversationDetail | undefined {
+function readExecutedConversation(
+	value: unknown,
+): ConversationDetail | undefined {
 	if (!value || typeof value !== "object" || Array.isArray(value)) {
 		return undefined;
 	}
@@ -410,4 +473,11 @@ function didExecuteQueuedRequest(value: unknown) {
 	}
 	const result = value as Record<string, unknown>;
 	return result.ok === true && result.executed === true;
+}
+
+function isConversationRunning(conversation: ConversationDetail) {
+	return (
+		conversation.status === "active" ||
+		conversation.status === "waiting_approval"
+	);
 }

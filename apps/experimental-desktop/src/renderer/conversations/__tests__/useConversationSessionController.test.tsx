@@ -1,12 +1,11 @@
 // @vitest-environment happy-dom
 
 import { act } from "react";
-import { createRoot, type Root } from "react-dom/client";
+import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
 	ConversationDetail,
 	ConversationEvent,
-	RespondSessionRequestInput,
 } from "../../../preload/types";
 import { buildComposerPayload } from "../../components/composer/composerPayload";
 import type { ComposerDraftPersistInput } from "../../components/composer/core/composerDraftSync";
@@ -14,14 +13,15 @@ import type { AdmittedComposerRequest } from "../../components/composer/core/com
 import { admitComposerRequest } from "../../components/composer/core/composerSendController";
 import type { ConversationEventStore } from "../conversationEventStore";
 import {
-	useConversationSessionController,
 	type ConversationSessionControllerDeps,
+	useConversationSessionController,
 } from "../useConversationSessionController";
 
 describe("useConversationSessionController", () => {
 	beforeEach(() => {
-		(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT =
-			true;
+		(
+			globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+		).IS_REACT_ACT_ENVIRONMENT = true;
 	});
 
 	afterEach(() => {
@@ -83,11 +83,12 @@ describe("useConversationSessionController", () => {
 	});
 
 	it("sendAdmittedRequest promotes draft and refreshes history", async () => {
-		const sendAdmittedRequest = vi
-			.fn()
-			.mockResolvedValue(
-				conversationDetail({ id: "conversation-promoted" }),
-			);
+		const sendAdmittedRequest = vi.fn().mockResolvedValue(
+			conversationDetail({
+				id: "conversation-promoted",
+				status: "active",
+			}),
+		);
 		const refreshConversations = vi.fn().mockResolvedValue(undefined);
 		const harness = renderController({
 			client: { sendAdmittedRequest },
@@ -115,6 +116,119 @@ describe("useConversationSessionController", () => {
 		expect(harness.subscribeCalls).toEqual(["conversation-promoted"]);
 		expect(harness.current.conversationId).toBe("conversation-promoted");
 		expect(harness.current.status).toBe("Running...");
+		harness.unmount();
+	});
+
+	it("does not rewind completed live events with a stale send response", async () => {
+		const pendingSend = deferred<ConversationDetail | undefined>();
+		const sendAdmittedRequest = vi
+			.fn()
+			.mockReturnValue(pendingSend.promise);
+		const harness = renderController({
+			client: {
+				sendAdmittedRequest,
+				loadConversationDetail: vi.fn().mockResolvedValue(undefined),
+			},
+		});
+
+		await act(async () => {
+			await harness.current.openLoadedConversation(
+				conversationDetail({
+					messages: [messageRecord("message-1", "user", "hello")],
+				}),
+			);
+		});
+
+		let sendPromise!: Promise<boolean>;
+		act(() => {
+			sendPromise = harness.current.sendAdmittedRequest(
+				admittedRequest("are you sure"),
+			);
+		});
+		act(() => {
+			harness.emit(
+				assistantDeltaEvent("delta-1", {
+					text: "Yes.",
+					turnId: "turn-1",
+					messageId: "assistant-1",
+				}),
+			);
+			harness.emit(
+				assistantCompletedEvent("completed-1", {
+					turnId: "turn-1",
+					messageId: "assistant-1",
+				}),
+			);
+		});
+		await act(async () => {
+			pendingSend.resolve(
+				conversationDetail({
+					status: "active",
+					messages: [messageRecord("message-1", "user", "hello")],
+				}),
+			);
+			expect(await sendPromise).toBe(true);
+		});
+
+		expect(harness.current.transcript).toEqual([
+			expect.objectContaining({ id: "message-1", type: "user" }),
+			expect.objectContaining({
+				id: "assistant-1",
+				type: "assistant",
+				text: "Yes.",
+				status: "done",
+			}),
+		]);
+		expect(harness.current.isTurnRunning).toBe(false);
+		harness.unmount();
+	});
+
+	it("reconciles the DB snapshot after send when live events are missed", async () => {
+		const sendAdmittedRequest = vi.fn().mockResolvedValue(
+			conversationDetail({
+				status: "active",
+				messages: [messageRecord("message-1", "user", "hello")],
+			}),
+		);
+		const loadConversationDetail = vi.fn().mockResolvedValue(
+			conversationDetail({
+				status: "idle",
+				messages: [
+					messageRecord("message-1", "user", "hello"),
+					messageRecord("assistant-1", "assistant", "Recovered"),
+				],
+			}),
+		);
+		const harness = renderController({
+			client: { sendAdmittedRequest, loadConversationDetail },
+		});
+
+		await act(async () => {
+			await harness.current.openLoadedConversation(
+				conversationDetail({
+					messages: [messageRecord("message-1", "user", "hello")],
+				}),
+			);
+		});
+		await act(async () => {
+			expect(
+				await harness.current.sendAdmittedRequest(
+					admittedRequest("are you sure"),
+				),
+			).toBe(true);
+		});
+
+		expect(loadConversationDetail).toHaveBeenCalledWith("conversation-1");
+		expect(harness.current.transcript).toEqual([
+			expect.objectContaining({ id: "message-1", type: "user" }),
+			expect.objectContaining({
+				id: "assistant-1",
+				type: "assistant",
+				text: "Recovered",
+				status: "done",
+			}),
+		]);
+		expect(harness.current.isTurnRunning).toBe(false);
 		harness.unmount();
 	});
 
@@ -335,6 +449,39 @@ function messageCreatedEvent(id: string, text: string): ConversationEvent {
 	};
 }
 
+function assistantDeltaEvent(
+	id: string,
+	input: { text: string; turnId: string; messageId: string },
+): ConversationEvent {
+	return {
+		id,
+		type: "assistant.delta",
+		time: "2026-06-24T00:00:03.000Z",
+		data: {
+			text: input.text,
+			turnId: input.turnId,
+			messageId: input.messageId,
+			raw: {},
+		},
+	};
+}
+
+function assistantCompletedEvent(
+	id: string,
+	input: { turnId: string; messageId: string },
+): ConversationEvent {
+	return {
+		id,
+		type: "assistant.completed",
+		time: "2026-06-24T00:00:04.000Z",
+		data: {
+			turnId: input.turnId,
+			messageId: input.messageId,
+			raw: {},
+		},
+	};
+}
+
 function admittedRequest(text: string): AdmittedComposerRequest {
 	const result = admitComposerRequest({
 		payload: buildComposerPayload({
@@ -376,4 +523,14 @@ function draftRecord(id: string) {
 		createdAt: "2026-06-24T00:00:00.000Z",
 		updatedAt: "2026-06-24T00:00:00.000Z",
 	};
+}
+
+function deferred<T>() {
+	let resolve!: (value: T | PromiseLike<T>) => void;
+	let reject!: (reason?: unknown) => void;
+	const promise = new Promise<T>((nextResolve, nextReject) => {
+		resolve = nextResolve;
+		reject = nextReject;
+	});
+	return { promise, resolve, reject };
 }

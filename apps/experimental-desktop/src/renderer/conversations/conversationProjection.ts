@@ -93,7 +93,7 @@ export function applyConversationEventProjection(
 				transcript: state.transcript.map((item) =>
 					item.type === "assistant" &&
 					(!event.data.turnId || item.turnId === event.data.turnId)
-						? { ...item, status: "done" }
+						? { ...item, status: "done", completedAt: event.time }
 						: item,
 				),
 				isTurnActive: false,
@@ -107,7 +107,12 @@ export function applyConversationEventProjection(
 			state: {
 				...state,
 				transcript: [
-					...state.transcript,
+					...state.transcript.map((item) =>
+						item.type === "assistant" &&
+						(!event.data.turnId || item.turnId === event.data.turnId)
+							? { ...item, status: "failed" as const, completedAt: event.time }
+							: item,
+					),
 					{
 						id: event.id,
 						type: "system",
@@ -129,7 +134,7 @@ export function applyConversationEventProjection(
 				transcript: state.transcript.map((item) =>
 					item.type === "assistant" &&
 					(!event.data.turnId || item.turnId === event.data.turnId)
-						? { ...item, status: "interrupted" }
+						? { ...item, status: "interrupted", completedAt: event.time }
 						: item,
 				),
 				pendingRequests: [],
@@ -267,6 +272,7 @@ function appendAssistantDelta(
 				status: "streaming" as const,
 				turnId: event.data.turnId,
 				time: event.time,
+				startedAt: event.time,
 			},
 		];
 	}
@@ -326,7 +332,15 @@ function messageToTranscript(
 							? "interrupted"
 							: "streaming",
 			turnId: message.turnId,
-			time: message.createdAt,
+			time: message.turnStartedAt ?? message.createdAt,
+			startedAt: message.turnStartedAt ?? message.createdAt,
+			completedAt:
+				message.turnCompletedAt ??
+				(message.status === "completed" ||
+				message.status === "failed" ||
+				message.status === "interrupted"
+					? message.updatedAt
+					: undefined),
 		};
 	}
 	return {

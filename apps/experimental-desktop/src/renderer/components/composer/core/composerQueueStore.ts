@@ -159,6 +159,8 @@ export function useComposerQueueStore() {
 	return { state, add, remove, move, mark, pause, resume, clearError };
 }
 
+export type ComposerQueueController = ReturnType<typeof useComposerQueueStore>;
+
 function composerQueueReducer(
 	state: ComposerQueueState,
 	action: QueueAction,

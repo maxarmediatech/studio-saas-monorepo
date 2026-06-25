@@ -2,6 +2,10 @@ import { randomUUID } from "node:crypto";
 import type { CodexRuntimeMode } from "../sidecar-codex-runtime";
 import type { ConversationDatabase } from "../storage/database";
 import type { ValidatedAdmittedComposerRequest } from "./admitted-request";
+import {
+	buildProviderHandoffPrompt,
+	replayBoundaryId,
+} from "./provider-context";
 import { estimateTokens } from "./summarizer";
 import type {
 	ApprovalKind,
@@ -358,13 +362,21 @@ export class ConversationRepository {
 		conversationId?: string;
 		draftId?: string;
 		turnId?: string;
-		status: "admitted" | "queued" | "running" | "completed" | "failed" | "canceled";
+		status:
+			| "admitted"
+			| "queued"
+			| "running"
+			| "completed"
+			| "failed"
+			| "canceled";
 		now: string;
 	}) {
 		const stored = this.getAdmittedRequestRow(input.request.id);
 		const encoded = encodeAdmittedRequest(input.request);
 		if (stored && !matchesAdmittedRequest(stored, encoded)) {
-			throw new Error("Admitted request id was reused with different content");
+			throw new Error(
+				"Admitted request id was reused with different content",
+			);
 		}
 		this.db
 			.prepare(
@@ -390,29 +402,7 @@ export class ConversationRepository {
 			});
 	}
 
-	markAdmittedRequestStatus(input: {
-		id: string;
-		status: "admitted" | "queued" | "running" | "completed" | "failed" | "canceled";
-		error?: unknown;
-		now: string;
-	}) {
-		this.db
-			.prepare(
-				`UPDATE admitted_requests
-				SET status = @status,
-					error_json = @error,
-					updated_at = @now
-				WHERE id = @id`,
-			)
-			.run({
-				id: input.id,
-				status: input.status,
-				error: input.error ? stringify(input.error) : null,
-				now: input.now,
-			});
-	}
-
-	markAdmittedRequestStatusForTurn(input: {
+	private markAdmittedRequestStatusForTurn(input: {
 		turnId: string;
 		status: "completed" | "failed" | "canceled";
 		error?: unknown;
@@ -424,7 +414,8 @@ export class ConversationRepository {
 				SET status = @status,
 					error_json = @error,
 					updated_at = @now
-				WHERE turn_id = @turnId`,
+				WHERE turn_id = @turnId
+					AND status NOT IN ('completed', 'failed', 'canceled')`,
 			)
 			.run({
 				turnId: input.turnId,
@@ -434,7 +425,9 @@ export class ConversationRepository {
 			});
 	}
 
-	getAdmittedRequest(id: string): ValidatedAdmittedComposerRequest | undefined {
+	getAdmittedRequest(
+		id: string,
+	): ValidatedAdmittedComposerRequest | undefined {
 		const row = this.getAdmittedRequestRow(id);
 		return row ? mapAdmittedRequest(row) : undefined;
 	}
@@ -554,11 +547,14 @@ export class ConversationRepository {
 				SELECT
 					m.*,
 					COALESCE(text_parts.text, '') AS text,
+					turns.started_at AS turn_started_at,
+					turns.completed_at AS turn_completed_at,
 					(SELECT COUNT(*) FROM messages child WHERE child.parent_message_id = m.id) AS child_count,
 					CASE WHEN m.id = c.active_leaf_message_id THEN 1 ELSE 0 END AS is_active_leaf
 				FROM messages m
 				JOIN conversations c ON c.id = m.conversation_id
 				LEFT JOIN text_parts ON text_parts.message_id = m.id
+				LEFT JOIN turns ON turns.id = m.turn_id
 				WHERE m.conversation_id = ?
 				ORDER BY m.ordinal ASC`,
 			)
@@ -702,79 +698,34 @@ export class ConversationRepository {
 	}
 
 	buildReplayPrompt(conversationId: string, userText: string) {
+		return buildProviderHandoffPrompt(
+			this.getProviderContextSource(conversationId),
+			userText,
+		);
+	}
+
+	getProviderContextSource(conversationId: string) {
 		const messages = this.withSummaryContext(
 			this.listMessages(conversationId),
 		);
-		if (messages.length === 0) {
-			return userText;
-		}
-		const compactionSummary = this.getLatestApplicableSummary(
-			conversationId,
+		return {
 			messages,
-			"compaction",
-		);
-		const branchSummary = this.getLatestApplicableSummary(
-			conversationId,
-			messages,
-			"branch",
-		);
-		const forkSummary = this.getLatestApplicableSummary(
-			conversationId,
-			messages,
-			"fork",
-		);
-		const replayBoundarySummary =
-			compactionSummary ?? branchSummary ?? forkSummary;
-		const boundaryId = replayBoundarySummary
-			? replayBoundaryId(replayBoundarySummary)
-			: undefined;
-		const boundaryIndex = boundaryId
-			? messages.findIndex((message) => message.id === boundaryId)
-			: -1;
-		const transcriptMessages =
-			replayBoundarySummary && boundaryIndex >= 0
-				? messages.slice(
-						replayBoundarySummary.type === "compaction"
-							? boundaryIndex
-							: boundaryIndex + 1,
-					)
-				: messages.slice(-12);
-		const transcript = transcriptMessages
-			.map(formatReplayMessage)
-			.join("\n\n");
-		const prompt = [
-			compactionSummary
-				? "Continue this local smart-agent session from the compacted checkpoint."
-				: "Continue from this local conversation transcript.",
-			"Use the checkpoint, branch context, and recent transcript as context, but answer only the latest user message.",
-			"",
-		];
-		if (compactionSummary) {
-			prompt.push("SESSION CHECKPOINT:", compactionSummary.summary, "");
-		}
-		if (branchSummary) {
-			prompt.push("ABANDONED BRANCH CONTEXT:", branchSummary.summary, "");
-		}
-		if (forkSummary) {
-			prompt.push("FORK HANDOFF CONTEXT:", forkSummary.summary, "");
-		}
-		if (
-			!compactionSummary &&
-			!branchSummary &&
-			!forkSummary &&
-			replayBoundarySummary
-		) {
-			prompt.push(
-				"CHECKPOINT SUMMARY:",
-				replayBoundarySummary.summary,
-				"",
-			);
-		}
-		if (transcript) {
-			prompt.push("RECENT TRANSCRIPT:", transcript, "");
-		}
-		prompt.push(`USER: ${userText}`);
-		return prompt.join("\n");
+			compactionSummary: this.getLatestApplicableSummary(
+				conversationId,
+				messages,
+				"compaction",
+			),
+			branchSummary: this.getLatestApplicableSummary(
+				conversationId,
+				messages,
+				"branch",
+			),
+			forkSummary: this.getLatestApplicableSummary(
+				conversationId,
+				messages,
+				"fork",
+			),
+		};
 	}
 
 	getSummarySource(input: {
@@ -958,20 +909,22 @@ export class ConversationRepository {
 		providerTurnId?: string;
 		now: string;
 	}) {
-		this.db
+		const result = this.db
 			.prepare(
 				`UPDATE turns
 				SET provider_turn_id = COALESCE(@providerTurnId, provider_turn_id),
 					status = 'running',
 					started_at = COALESCE(started_at, @now),
 					updated_at = @now
-				WHERE id = @turnId`,
+				WHERE id = @turnId
+					AND status IN ('queued', 'running', 'waiting_approval')`,
 			)
 			.run({
 				turnId: input.turnId,
 				providerTurnId: input.providerTurnId ?? null,
 				now: input.now,
 			});
+		return result.changes > 0 ? this.getTurn(input.turnId) : undefined;
 	}
 
 	setProviderLeaf(input: {
@@ -1077,7 +1030,7 @@ export class ConversationRepository {
 		now: string;
 	}) {
 		const turn = this.getTurn(input.turnId);
-		if (!turn) {
+		if (!turn || isTerminalTurnStatus(turn.status)) {
 			return undefined;
 		}
 		const partId = `${turn.assistant_message_id}:text`;
@@ -1111,7 +1064,7 @@ export class ConversationRepository {
 		now: string;
 	}) {
 		const turn = this.getTurn(input.turnId);
-		if (!turn) {
+		if (!turn || isTerminalTurnStatus(turn.status)) {
 			return undefined;
 		}
 		const partId = `${turn.assistant_message_id}:text`;
@@ -1153,14 +1106,15 @@ export class ConversationRepository {
 			input.status === "completed" ? "completed" : "failed";
 		const messageStatus =
 			input.status === "completed" ? "completed" : "failed";
-		this.db
+		const result = this.db
 			.prepare(
 				`UPDATE turns
 				SET status = @turnStatus,
 					error_json = @error,
-					completed_at = @now,
+					completed_at = COALESCE(completed_at, @now),
 					updated_at = @now
-				WHERE id = @turnId`,
+				WHERE id = @turnId
+					AND status IN ('queued', 'running', 'waiting_approval')`,
 			)
 			.run({
 				turnId: input.turnId,
@@ -1168,17 +1122,26 @@ export class ConversationRepository {
 				error: input.error ? stringify({ message: input.error }) : null,
 				now: input.now,
 			});
+		if (result.changes === 0) {
+			return undefined;
+		}
 		this.db
 			.prepare(
 				"UPDATE messages SET status = ?, updated_at = ? WHERE id = ?",
 			)
 			.run(messageStatus, input.now, turn.assistant_message_id);
+		this.markAdmittedRequestStatusForTurn({
+			turnId: input.turnId,
+			status: input.status,
+			error: input.error ? { message: input.error } : undefined,
+			now: input.now,
+		});
 		this.touchConversation(
 			turn.conversation_id,
 			input.status === "completed" ? "idle" : "failed",
 			input.now,
 		);
-		return turn;
+		return this.getTurn(input.turnId) ?? turn;
 	}
 
 	failTurn(input: {
@@ -1201,27 +1164,37 @@ export class ConversationRepository {
 		if (!turn) {
 			return undefined;
 		}
-		this.db
+		const result = this.db
 			.prepare(
 				`UPDATE turns
 				SET status = 'canceled',
 					error_json = @error,
-					completed_at = @now,
+					completed_at = COALESCE(completed_at, @now),
 					updated_at = @now
-				WHERE id = @turnId`,
+				WHERE id = @turnId
+					AND status IN ('queued', 'running', 'waiting_approval')`,
 			)
 			.run({
 				turnId: input.turnId,
 				error: stringify({ message: input.message }),
 				now: input.now,
 			});
+		if (result.changes === 0) {
+			return undefined;
+		}
 		this.db
 			.prepare(
 				"UPDATE messages SET status = 'interrupted', updated_at = ? WHERE id = ?",
 			)
 			.run(input.now, turn.assistant_message_id);
+		this.markAdmittedRequestStatusForTurn({
+			turnId: input.turnId,
+			status: "canceled",
+			error: { message: input.message },
+			now: input.now,
+		});
 		this.touchConversation(turn.conversation_id, "idle", input.now);
-		return turn;
+		return this.getTurn(input.turnId) ?? turn;
 	}
 
 	createApproval(input: {
@@ -1235,6 +1208,19 @@ export class ConversationRepository {
 		now: string;
 		expiresAt: string;
 	}) {
+		if (input.turnId) {
+			const result = this.db
+				.prepare(
+					`UPDATE turns
+					SET status = 'waiting_approval', updated_at = @now
+					WHERE id = @turnId
+						AND status IN ('running', 'waiting_approval')`,
+				)
+				.run({ turnId: input.turnId, now: input.now });
+			if (result.changes === 0) {
+				return undefined;
+			}
+		}
 		this.db
 			.prepare(
 				`INSERT INTO approvals
@@ -1247,18 +1233,12 @@ export class ConversationRepository {
 				providerItemId: input.providerItemId ?? null,
 				request: stringify(input.request),
 			});
-		if (input.turnId) {
-			this.db
-				.prepare(
-					"UPDATE turns SET status = 'waiting_approval', updated_at = ? WHERE id = ?",
-				)
-				.run(input.now, input.turnId);
-		}
 		this.touchConversation(
 			input.conversationId,
 			"waiting_approval",
 			input.now,
 		);
+		return true as const;
 	}
 
 	resolveApproval(input: {
@@ -1478,9 +1458,14 @@ export class ConversationRepository {
 					WHERE p.type = 'text'
 					GROUP BY p.message_id
 				)
-				SELECT message_path.*, COALESCE(text_parts.text, '') AS text
+				SELECT
+					message_path.*,
+					COALESCE(text_parts.text, '') AS text,
+					turns.started_at AS turn_started_at,
+					turns.completed_at AS turn_completed_at
 				FROM message_path
 				LEFT JOIN text_parts ON text_parts.message_id = message_path.id
+				LEFT JOIN turns ON turns.id = message_path.turn_id
 				ORDER BY message_path.depth DESC`,
 			)
 			.all({ conversationId, messageId }) as MessageRow[];
@@ -1509,9 +1494,14 @@ export class ConversationRepository {
 					WHERE p.type = 'text'
 					GROUP BY p.message_id
 				)
-				SELECT active_path.*, COALESCE(text_parts.text, '') AS text
+				SELECT
+					active_path.*,
+					COALESCE(text_parts.text, '') AS text,
+					turns.started_at AS turn_started_at,
+					turns.completed_at AS turn_completed_at
 				FROM active_path
 				LEFT JOIN text_parts ON text_parts.message_id = active_path.id
+				LEFT JOIN turns ON turns.id = active_path.turn_id
 				ORDER BY active_path.ordinal ASC`,
 			)
 			.all({ conversationId }) as MessageRow[];
@@ -1749,6 +1739,9 @@ type TurnRow = {
 	provider_turn_id: string | null;
 	user_message_id: string;
 	assistant_message_id: string;
+	status: TurnStatus;
+	started_at: string | null;
+	completed_at: string | null;
 };
 
 type MessageRow = {
@@ -1762,6 +1755,8 @@ type MessageRow = {
 	text: string;
 	created_at: string;
 	updated_at: string;
+	turn_started_at?: string | null;
+	turn_completed_at?: string | null;
 };
 
 type TreeMessageRow = MessageRow & {
@@ -1840,7 +1835,13 @@ type AdmittedRequestRow = {
 	draft_id: string | null;
 	turn_id: string | null;
 	provider: "codex";
-	status: "admitted" | "queued" | "running" | "completed" | "failed" | "canceled";
+	status:
+		| "admitted"
+		| "queued"
+		| "running"
+		| "completed"
+		| "failed"
+		| "canceled";
 	draft_snapshot_json: string;
 	request_parts_json: string;
 	provider_input_json: string;
@@ -1880,8 +1881,12 @@ function mapAdmittedRequest(
 	return {
 		id: row.id,
 		draftSnapshot: parseJson(row.draft_snapshot_json) ?? {},
-		requestParts: parseArray(row.request_parts_json) as ValidatedAdmittedComposerRequest["requestParts"],
-		providerInput: parseJson(row.provider_input_json) as ValidatedAdmittedComposerRequest["providerInput"],
+		requestParts: parseArray(
+			row.request_parts_json,
+		) as ValidatedAdmittedComposerRequest["requestParts"],
+		providerInput: parseJson(
+			row.provider_input_json,
+		) as ValidatedAdmittedComposerRequest["providerInput"],
 		admission: parseJson(row.admission_json) ?? {},
 		compatibilityPayload: parseJson(row.compatibility_payload_json) ?? {},
 	};
@@ -1914,6 +1919,10 @@ function matchesAdmittedRequest(
 
 function userTextPartJson(payload: unknown) {
 	return payload === undefined ? {} : { composerPayload: payload };
+}
+
+function isTerminalTurnStatus(status: TurnStatus) {
+	return status === "completed" || status === "failed" || status === "canceled";
 }
 
 function mapConversation(row: ConversationRow): ConversationSummary {
@@ -1950,6 +1959,8 @@ function mapMessage(row: MessageRow): ConversationMessage {
 		text: row.text,
 		createdAt: row.created_at,
 		updatedAt: row.updated_at,
+		turnStartedAt: row.turn_started_at ?? undefined,
+		turnCompletedAt: row.turn_completed_at ?? undefined,
 	};
 }
 
@@ -1994,22 +2005,6 @@ function mapCheckpointSummary(
 		tokensBefore: row.tokens_before ?? undefined,
 		createdAt: row.created_at,
 	};
-}
-
-function replayBoundaryId(summary: ConversationCheckpointSummary) {
-	return summary.type === "compaction"
-		? (summary.tailStartMessageId ?? summary.firstKeptMessageId)
-		: (summary.checkpointMessageId ?? summary.firstKeptMessageId);
-}
-
-function formatReplayMessage(message: ConversationMessage) {
-	const lines = [
-		`${message.role.toUpperCase()}: ${message.text.trim() || "(empty)"}`,
-	];
-	if (message.summaryContext?.length) {
-		lines.push("Context:", ...message.summaryContext);
-	}
-	return lines.join("\n");
 }
 
 function findTailStartIndex(

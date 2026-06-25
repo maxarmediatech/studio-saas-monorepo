@@ -45,6 +45,10 @@ describe("shouldShowConversationSurface", () => {
 					{
 						id: "message-1",
 						kind: "message",
+						semanticKind: "user_message",
+						anchorId: "message-1",
+						signature: "message-1:user",
+						sizeHint: "message",
 						role: "user",
 						status: "completed",
 						text: "hello",

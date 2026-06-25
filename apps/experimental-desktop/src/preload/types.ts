@@ -260,6 +260,8 @@ export type ConversationMessage = {
 	summaryContext?: string[];
 	createdAt: string;
 	updatedAt: string;
+	turnStartedAt?: string;
+	turnCompletedAt?: string;
 };
 
 export type ConversationMessagePart = {

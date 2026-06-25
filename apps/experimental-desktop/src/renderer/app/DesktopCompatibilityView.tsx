@@ -8,10 +8,14 @@ import type {
 } from "../../preload/types";
 import { ConversationStage } from "../components/conversation/ConversationStage";
 import { ComposerRegion } from "../components/composer/ComposerRegion";
+import { useComposerQueueStore } from "../components/composer/core/composerQueueStore";
 import { Sidebar } from "../components/layout";
 import { SettingsPanel } from "../components/right-panel";
 import type { ConversationResourceState } from "../conversations/conversationResourceStore";
-import { projectConversationTimeline } from "../conversations/conversationTimelineModel";
+import {
+	createConversationTimelineRowStabilizer,
+	projectConversationTimeline,
+} from "../conversations/conversationTimelineModel";
 import { useCodexSession } from "../hooks/useCodexSession";
 import { useProviderStatus } from "../hooks/useProviderStatus";
 import { useThemeMode } from "../hooks/useThemeMode";
@@ -44,9 +48,13 @@ export function DesktopCompatibilityView(props: {
 	const [composerResetKey, setComposerResetKey] = useState<string>();
 	const openedConversationRouteRef = useRef<string | undefined>(undefined);
 	const pendingDraftPromotionRef = useRef<string | undefined>(undefined);
+	const stabilizeTimelineRowsRef = useRef(
+		createConversationTimelineRowStabilizer(),
+	);
 	const { theme, toggleTheme } = useThemeMode();
 	const workspace = useWorkspaceSelection();
 	const provider = useProviderStatus();
+	const composerQueue = useComposerQueueStore();
 	const session = useCodexSession({
 		model,
 		runtimeMode,
@@ -68,13 +76,18 @@ export function DesktopCompatibilityView(props: {
 	const routeConversation =
 		routeResource?.status === "ready" ? routeResource.conversation : undefined;
 	const timelineModel = useMemo(
-		() =>
-			projectConversationTimeline({
+		() => {
+			const model = projectConversationTimeline({
 				conversation: routeConversation,
 				transcript: session.transcript,
 				pendingRequests: session.pendingRequests,
 				eventLog: session.eventLog,
-			}),
+			});
+			return {
+				...model,
+				rows: stabilizeTimelineRowsRef.current(model.rows),
+			};
+		},
 		[
 			routeConversation,
 			session.eventLog,
@@ -166,6 +179,11 @@ export function DesktopCompatibilityView(props: {
 			? [{ value: "full-access" as const, label: "Full Access" }]
 			: []),
 	];
+	async function removeQueuedRequest(queueItemId: string) {
+		await session.cancelQueuedRequest(queueItemId);
+		composerQueue.remove(queueItemId);
+	}
+
 	const composer = (
 		<ComposerRegion
 			session={session}
@@ -189,6 +207,9 @@ export function DesktopCompatibilityView(props: {
 					pendingDraftPromotionRef.current = undefined;
 				}
 			}}
+			queue={composerQueue}
+			renderQueueInComposer={!hasConversationSurface}
+			renderPendingRequestsInComposer={!hasConversationSurface}
 		/>
 	);
 
@@ -255,7 +276,12 @@ export function DesktopCompatibilityView(props: {
 					{hasConversationSurface ? (
 						<ConversationStage
 							model={timelineModel}
+							isTurnActive={session.isTurnActive}
 							onRespond={session.respondToRequest}
+							queueState={composerQueue.state}
+							onPauseQueue={composerQueue.pause}
+							onResumeQueue={composerQueue.resume}
+							onRemoveQueuedRequest={removeQueuedRequest}
 							composer={composer}
 						/>
 					) : (

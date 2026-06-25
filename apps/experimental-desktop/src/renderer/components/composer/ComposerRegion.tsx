@@ -9,6 +9,7 @@ import { useComposerDraftSync } from "./core/composerDraftSync";
 import type { AdmittedComposerRequest } from "./core/composerProviderTypes";
 import {
 	createPendingQueueItem,
+	type ComposerQueueController,
 	type QueueValidationResult,
 	useComposerQueueStore,
 	validateQueueAdmission,
@@ -66,12 +67,16 @@ export function ComposerRegion(props: {
 	onNewDraftRoute: () => Promise<void>;
 	onDraftSendStarted?: (draftId: string) => void;
 	onDraftSendFailed?: (draftId: string) => void;
+	queue?: ComposerQueueController;
+	renderQueueInComposer?: boolean;
+	renderPendingRequestsInComposer?: boolean;
 }) {
 	const composer = useComposerDraftStore({
 		model: props.model,
 		runtimeMode: props.runtimeMode,
 	});
-	const queue = useComposerQueueStore();
+	const internalQueue = useComposerQueueStore();
+	const queue = props.queue ?? internalQueue;
 	const openedDraftScopeRef = useRef<string | undefined>(undefined);
 	const resetKeyRef = useRef<string | undefined>(props.resetKey);
 	const sessionRef = useRef(props.session);
@@ -241,7 +246,11 @@ export function ComposerRegion(props: {
 			model={props.model}
 			runtimeMode={props.runtimeMode}
 			runtimeOptions={props.runtimeOptions}
-			pendingRequests={props.session.pendingRequests}
+			pendingRequests={
+				props.renderPendingRequestsInComposer === false
+					? []
+					: props.session.pendingRequests
+			}
 			workspaceRoot={props.workspaceRoot}
 			resetSignal={composer.resetSignal}
 			initialContextItems={composer.contextItems}
@@ -257,14 +266,16 @@ export function ComposerRegion(props: {
 			onNewSession={props.onNewDraftRoute}
 			onRespondRequest={props.session.respondToRequest}
 			queuePanel={
-				<ComposerQueuePanel
-					items={queue.state.items}
-					isPaused={queue.state.isPaused}
-					lastError={queue.state.lastError}
-					onPause={queue.pause}
-					onResume={queue.resume}
-					onRemove={removeQueuedRequest}
-				/>
+				props.renderQueueInComposer === false ? null : (
+					<ComposerQueuePanel
+						items={queue.state.items}
+						isPaused={queue.state.isPaused}
+						lastError={queue.state.lastError}
+						onPause={queue.pause}
+						onResume={queue.resume}
+						onRemove={removeQueuedRequest}
+					/>
+				)
 			}
 		/>
 	);

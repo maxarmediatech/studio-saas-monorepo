@@ -16,6 +16,8 @@ export type TranscriptItem =
 			status: "streaming" | "done" | "failed" | "interrupted";
 			turnId?: string;
 			time: string;
+			startedAt?: string;
+			completedAt?: string;
 	  }
 	| {
 			id: string;

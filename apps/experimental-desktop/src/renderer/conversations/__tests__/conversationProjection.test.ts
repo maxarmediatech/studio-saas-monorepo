@@ -37,6 +37,7 @@ describe("conversationProjection", () => {
 					text: "hi",
 					createdAt: "2026-06-24T00:00:01.000Z",
 					updatedAt: "2026-06-24T00:00:01.000Z",
+					turnStartedAt: "2026-06-24T00:00:01.250Z",
 				},
 			],
 			pendingApprovals: [
@@ -62,6 +63,8 @@ describe("conversationProjection", () => {
 				id: "message-assistant",
 				type: "assistant",
 				status: "streaming",
+				time: "2026-06-24T00:00:01.250Z",
+				startedAt: "2026-06-24T00:00:01.250Z",
 			}),
 			expect.objectContaining({
 				id: "approval-1",
@@ -110,6 +113,7 @@ describe("conversationProjection", () => {
 				type: "assistant",
 				text: "hello",
 				status: "streaming",
+				startedAt: "2026-06-24T00:00:01.000Z",
 			}),
 		]);
 		expect(second.state.status).toBe("Streaming...");
@@ -156,7 +160,10 @@ describe("conversationProjection", () => {
 
 		expect(result.shouldRefreshConversations).toBe(true);
 		expect(result.state.transcript[0]).toEqual(
-			expect.objectContaining({ status: "done" }),
+			expect.objectContaining({
+				status: "done",
+				completedAt: "2026-06-24T00:00:02.000Z",
+			}),
 		);
 		expect(result.state.isTurnActive).toBe(false);
 		expect(result.state.status).toBe("Completed");
@@ -194,15 +201,24 @@ describe("conversationProjection", () => {
 
 		expect(failed.shouldRefreshConversations).toBe(true);
 		expect(failed.state.pendingRequests).toEqual([]);
+		expect(failed.state.transcript[0]).toEqual(
+			expect.objectContaining({
+				status: "failed",
+				completedAt: "2026-06-24T00:00:02.000Z",
+			}),
+		);
 		expect(failed.state.transcript.at(-1)).toEqual(
 			expect.objectContaining({ type: "system", text: "boom" }),
 		);
 		expect(interrupted.shouldRefreshConversations).toBe(true);
 		expect(interrupted.state.pendingRequests).toEqual([]);
-			expect(interrupted.state.transcript[0]).toEqual(
-				expect.objectContaining({ status: "interrupted" }),
-			);
-		});
+		expect(interrupted.state.transcript[0]).toEqual(
+			expect.objectContaining({
+				status: "interrupted",
+				completedAt: "2026-06-24T00:00:03.000Z",
+			}),
+		);
+	});
 
 	it("surfaces usage-limit failures and clears active state", () => {
 		const activeState = {

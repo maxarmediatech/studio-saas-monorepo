@@ -392,7 +392,6 @@ function writeRuntimeEvents(req: IncomingMessage, res: ServerResponse) {
 		Connection: "keep-alive",
 		"Access-Control-Allow-Origin": "*",
 	});
-	res.write("event: ready\ndata: {}\n\n");
 	const unsubscribe = codexRuntime.subscribe((event) => {
 		if (isResponseClosed(res)) {
 			return;
@@ -400,6 +399,7 @@ function writeRuntimeEvents(req: IncomingMessage, res: ServerResponse) {
 		res.write("event: runtime\n");
 		res.write(`data: ${JSON.stringify(event)}\n\n`);
 	});
+	res.write("event: ready\ndata: {}\n\n");
 	const heartbeat = setInterval(() => {
 		if (!isResponseClosed(res)) {
 			res.write("event: ping\ndata: {}\n\n");

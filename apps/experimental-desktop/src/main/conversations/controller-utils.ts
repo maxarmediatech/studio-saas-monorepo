@@ -5,17 +5,34 @@ import type {
 import type { ApprovalKind, ApprovalStatus } from "./types";
 
 export function parseSseMessage(message: string) {
-	const dataLine = message
-		.split("\n")
-		.find((line) => line.startsWith("data:"));
-	if (!dataLine) {
+	const event = parseSseEvent(message);
+	if (
+		!event ||
+		event.eventName === "ready" ||
+		event.eventName === "ping" ||
+		!event.data
+	) {
 		return undefined;
 	}
-	const data = dataLine.slice("data:".length).trim();
-	if (!data || data === "{}") {
+	return JSON.parse(event.data) as CodexRuntimeEvent;
+}
+
+export function parseSseEvent(message: string) {
+	let eventName = "";
+	const dataLines: string[] = [];
+	for (const line of message.split("\n")) {
+		if (line.startsWith("event:")) {
+			eventName = line.slice("event:".length).trim();
+		}
+		if (line.startsWith("data:")) {
+			dataLines.push(line.slice("data:".length).trimStart());
+		}
+	}
+	if (!dataLines.length) {
 		return undefined;
 	}
-	return JSON.parse(data) as CodexRuntimeEvent;
+	const data = dataLines.join("\n").trim();
+	return { eventName, data };
 }
 
 export function validateDraftBody(value: unknown): {
@@ -207,9 +224,7 @@ function readTextDelta(value: unknown): string | undefined {
 }
 
 function joinTextDeltas(values: unknown[]) {
-	const text = values
-		.map((value) => readTextDelta(value) ?? "")
-		.join("");
+	const text = values.map((value) => readTextDelta(value) ?? "").join("");
 	return text || undefined;
 }
 
