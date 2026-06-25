@@ -276,6 +276,7 @@ export function DesktopCompatibilityView(props: {
 					{hasConversationSurface ? (
 						<ConversationStage
 							model={timelineModel}
+							conversationId={session.conversationId}
 							isTurnActive={session.isTurnActive}
 							onRespond={session.respondToRequest}
 							queueState={composerQueue.state}

@@ -7,6 +7,7 @@ import { ConversationTimeline } from "./ConversationTimeline";
 
 export function ConversationStage(props: {
 	model: ConversationTimelineModel;
+	conversationId?: string;
 	composer: ReactNode;
 	isTurnActive: boolean;
 	onRespond: (
@@ -21,7 +22,10 @@ export function ConversationStage(props: {
 	return (
 		<section className="flex min-h-0 w-full flex-1 flex-col overflow-hidden">
 			<div className="min-h-0 flex-1">
-				<ConversationTimeline rows={props.model.rows} />
+				<ConversationTimeline
+					rows={props.model.rows}
+					conversationId={props.conversationId}
+				/>
 			</div>
 			<ConversationLowerDock
 				rows={props.model.rows}
