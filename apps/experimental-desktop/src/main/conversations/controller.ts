@@ -1,5 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { homedir } from "node:os";
+import {
+	type ComposerDraftEnvelopeV2,
+	normalizeComposerDraftEnvelope,
+	rebuildComposerDraftEnvelopeFromLegacy,
+} from "../../shared/composer-draft-envelope";
+import {
+	parseComposerTarget,
+	validateRouteDraftId,
+} from "../../shared/composer-target";
 import { normalizeLocalImageAttachment } from "../composer-image-normalizer";
 import type { SidecarManager, SidecarRuntime } from "../server";
 import type {
@@ -9,6 +18,7 @@ import type {
 import type { ConversationDatabase } from "../storage/database";
 import {
 	type ValidatedAdmittedComposerRequest,
+	validateAdmittedAttachmentFiles,
 	validateAdmittedComposerRequest,
 	validateAdmittedSendBody,
 	validateQueueUpdateBody,
@@ -93,6 +103,9 @@ export function createConversationController(input: {
 	}
 
 	function createDraft(body: unknown) {
+		console.warn("[conversations] legacy draft create used", {
+			warningCode: "draft_legacy_api_used",
+		});
 		const draft = validateDraftBody(body);
 		return repo.createDraft({
 			id: randomUUID(),
@@ -107,6 +120,10 @@ export function createConversationController(input: {
 	}
 
 	function updateDraft(draftId: string, body: unknown) {
+		console.warn("[conversations] legacy draft update used", {
+			warningCode: "draft_legacy_api_used",
+			draftId,
+		});
 		const draft = validateDraftBody(body);
 		return repo.updateDraft({
 			id: draftId,
@@ -120,9 +137,102 @@ export function createConversationController(input: {
 		});
 	}
 
+	function loadComposerDraft(body: unknown) {
+		const target = parseComposerDraftTargetBody(body);
+		const draft = repo.loadComposerDraft(target);
+		if (!draft) {
+			return undefined;
+		}
+		const parsed = isComposerDraftEnvelopeV2(draft.payload)
+			? normalizeComposerDraftEnvelope({
+					target,
+					envelope: draft.payload,
+					updatedAt: draft.updatedAt,
+				})
+			: rebuildComposerDraftEnvelopeFromLegacy({
+					id: draft.id,
+					text: draft.text,
+					model: draft.model,
+					runtimeMode: draft.runtimeMode,
+					attachments: draft.attachments,
+					payload: draft.payload,
+					updatedAt: draft.updatedAt,
+					target,
+				});
+		if (parsed.warnings.length > 0) {
+			console.warn("[conversations] composer draft restore warning", {
+				targetKey: `${target.kind}:${target.id}`,
+				warningCode: parsed.warnings[0],
+			});
+		}
+		return {
+			...draft,
+			text: parsed.envelope.input.text,
+			model: parsed.envelope.input.model ?? undefined,
+			runtimeMode: parsed.envelope.input.runtimeMode,
+			attachments: parsed.envelope.input.attachments,
+			payload: parsed.envelope,
+			version: parsed.envelope.version,
+			mode: parsed.envelope.input.mode,
+			warnings: parsed.warnings,
+		};
+	}
+
+	function upsertComposerDraft(body: unknown) {
+		const object = validateObject(
+			body,
+			"Composer draft body must be an object",
+		);
+		const target = parseComposerTarget(object.target);
+		const updatedAt = now();
+		const parsed = normalizeComposerDraftEnvelope({
+			target,
+			envelope: object.envelope,
+			updatedAt,
+		});
+		if (parsed.warnings.length > 0) {
+			console.warn("[conversations] composer draft parse warning", {
+				targetKey: `${target.kind}:${target.id}`,
+				warningCode: parsed.warnings[0],
+			});
+		}
+		return repo.upsertComposerDraft({
+			target,
+			envelope: parsed.envelope as ComposerDraftEnvelopeV2,
+			cwd: typeof object.cwd === "string" ? object.cwd : undefined,
+			now: updatedAt,
+		});
+	}
+
+	function clearComposerDraft(body: unknown) {
+		const target = parseComposerDraftTargetBody(body);
+		return repo.clearComposerDraft({ target, now: now() });
+	}
+
+	function restorePromotedComposerDraft(body: unknown) {
+		const target = parseComposerDraftTargetBody(body);
+		const draft = repo.loadComposerDraft(target);
+		if (!draft?.promotedConversationId) {
+			return { ok: false as const, reason: "not-promoted" as const };
+		}
+		return {
+			ok: true as const,
+			conversation: repo.getConversation(draft.promotedConversationId),
+		};
+	}
+
 	async function promoteDraftAndSend(body: unknown) {
 		const message = validateSendBody(body);
 		const cwd = message.cwd ?? homedir();
+		if (message.draftId) {
+			console.warn("[conversations] legacy draft promotion rejected", {
+				warningCode: "draft_legacy_promotion_rejected",
+				draftId: message.draftId,
+			});
+			throw new Error(
+				"Legacy draft promotion does not accept draft ids; use admitted draft promotion",
+			);
+		}
 		assertNoActiveTurn();
 		const ids = {
 			conversationId: randomUUID(),
@@ -132,7 +242,6 @@ export function createConversationController(input: {
 			assistantMessageId: randomUUID(),
 		};
 		const promoted = repo.promoteDraft({
-			draftId: message.draftId,
 			text: message.text,
 			cwd,
 			model: message.model,
@@ -294,6 +403,7 @@ export function createConversationController(input: {
 
 	async function promoteDraftAndSendAdmitted(body: unknown) {
 		const admitted = validateAdmittedSendBody(body);
+		validateAdmittedAttachmentFiles(admitted.request);
 		const providerInput = admitted.request.providerInput;
 		const cwd = admitted.cwd ?? homedir();
 		assertNoActiveTurn();
@@ -304,24 +414,26 @@ export function createConversationController(input: {
 			userMessageId: randomUUID(),
 			assistantMessageId: randomUUID(),
 		};
-		const promoted = repo.promoteDraft({
-			draftId: admitted.draftId,
-			text: providerInput.prompt,
+		if (!admitted.draftId) {
+			throw new Error("Route draft id is required for draft promotion");
+		}
+		const draftId = validateRouteDraftId(admitted.draftId);
+		const promoted = repo.promoteDraftWithAdmittedRequest({
+			draftId,
+			request: admitted.request,
 			cwd,
-			model: providerInput.model,
-			runtimeMode: providerInput.runtimeMode,
-			payload: buildAdmittedMessagePayload(admitted.request),
 			ids,
 			now: now(),
 		});
-		repo.recordAdmittedRequest({
-			request: admitted.request,
-			conversationId: promoted.conversationId,
-			draftId: admitted.draftId,
-			turnId: promoted.turnId,
-			status: "admitted",
-			now: now(),
-		});
+		if (promoted.idempotentReplay) {
+			console.warn("[conversations] promotion replay", {
+				warningCode: "draft_promotion_idempotent_replay",
+				draftId,
+				requestId: admitted.request.id,
+				conversationId: promoted.conversationId,
+			});
+			return repo.getConversation(promoted.conversationId);
+		}
 		const activeTurn: ActiveTurn = {
 			conversationId: promoted.conversationId,
 			providerSessionId: promoted.providerSessionId,
@@ -372,6 +484,7 @@ export function createConversationController(input: {
 		conversationId: string,
 		request: ValidatedAdmittedComposerRequest,
 	) {
+		validateAdmittedAttachmentFiles(request);
 		const providerInput = request.providerInput;
 		assertNoActiveTurn();
 		const conversation = repo.getConversation(conversationId);
@@ -474,6 +587,7 @@ export function createConversationController(input: {
 
 	function enqueueAdmittedMessage(conversationId: string, body: unknown) {
 		const admitted = validateAdmittedSendBody(body);
+		validateAdmittedAttachmentFiles(admitted.request);
 		const conversation = repo.getConversation(conversationId);
 		if (!conversation) {
 			throw new Error("Conversation is not ready to queue");
@@ -504,6 +618,10 @@ export function createConversationController(input: {
 			status: update.status,
 			now: now(),
 		});
+	}
+
+	function listConversationQueueItems(conversationId: string) {
+		return repo.listQueueItemsForConversation(conversationId);
 	}
 
 	async function executeNextQueuedItem(conversationId: string) {
@@ -1662,12 +1780,17 @@ export function createConversationController(input: {
 		getConversationTree,
 		createDraft,
 		updateDraft,
+		loadComposerDraft,
+		upsertComposerDraft,
+		clearComposerDraft,
+		restorePromotedComposerDraft,
 		promoteDraftAndSend,
 		sendConversationMessage,
 		promoteDraftAndSendAdmitted,
 		sendAdmittedMessage,
 		enqueueAdmittedMessage,
 		updateQueueItem,
+		listConversationQueueItems,
 		executeNextQueuedItem,
 		interruptConversation,
 		respondApproval,
@@ -1679,6 +1802,25 @@ export function createConversationController(input: {
 		subscribe,
 		stop,
 	};
+}
+
+function parseComposerDraftTargetBody(body: unknown) {
+	const object = validateObject(
+		body,
+		"Composer draft target body must be an object",
+	);
+	return parseComposerTarget(object.target ?? object);
+}
+
+function isComposerDraftEnvelopeV2(
+	value: unknown,
+): value is ComposerDraftEnvelopeV2 {
+	return (
+		Boolean(value) &&
+		typeof value === "object" &&
+		!Array.isArray(value) &&
+		(value as { version?: unknown }).version === 2
+	);
 }
 
 type ProviderContextPart = {

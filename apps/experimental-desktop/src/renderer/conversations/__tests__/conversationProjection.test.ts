@@ -233,8 +233,7 @@ describe("conversationProjection", () => {
 			type: "message.failed",
 			time: "2026-06-24T00:00:02.000Z",
 			data: {
-				error:
-					"You've hit your usage limit. Upgrade to Pro or try again at 8:04 PM.",
+				error: "You've hit your usage limit. Upgrade to Pro or try again at 8:04 PM.",
 				turnId: "turn-1",
 			},
 		});

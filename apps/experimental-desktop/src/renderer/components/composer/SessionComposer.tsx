@@ -27,6 +27,7 @@ import { buildComposerMenuItems } from "./composerMenuItems";
 import { estimateComposerContextMetrics } from "./composerPayload";
 import { type ComposerMode, detectComposerTrigger } from "./composerTriggers";
 import type { ComposerAttachment, ComposerContextItem } from "./composerTypes";
+import type { PendingRequestAnswerDrafts } from "./core/composerDraftSync";
 import { PendingRequestDock } from "./PendingRequestDock";
 import { useComposerAttachments } from "./useComposerAttachments";
 import { useComposerContextItems } from "./useComposerContextItems";
@@ -49,12 +50,15 @@ export function SessionComposer(props: {
 	resetSignal: number;
 	initialContextItems: ComposerContextItem[];
 	initialAttachments: ComposerAttachment[];
+	selection: { start: number; end: number };
 	onChange: (value: string) => void;
 	onModeChange: (mode: ComposerMode) => void;
 	onContextItemsChange: (items: ComposerContextItem[]) => void;
 	onAttachmentsChange: (attachments: ComposerAttachment[]) => void;
+	onSelectionChange: (selection: { start: number; end: number }) => void;
 	onModelChange: (model: string) => void;
 	onRuntimeModeChange: (mode: CodexRuntimeMode) => void;
+	onBlur?: () => void;
 	onSend: () => Promise<boolean>;
 	onInterrupt: () => Promise<void>;
 	onNewSession: () => Promise<void>;
@@ -62,6 +66,12 @@ export function SessionComposer(props: {
 		requestId: string,
 		response: RespondSessionRequestInput,
 	) => Promise<void>;
+	pendingRequestAnswerDrafts?: PendingRequestAnswerDrafts;
+	onPendingRequestAnswerDraftChange?: (
+		requestId: string,
+		questionId: string,
+		value: string,
+	) => void;
 	queuePanel?: ReactNode;
 }) {
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -99,9 +109,10 @@ export function SessionComposer(props: {
 		resetSignal: props.resetSignal,
 		onAttachmentsChange: props.onAttachmentsChange,
 	});
-	const [userInputDrafts, setUserInputDrafts] = useState<
-		Record<string, Record<string, string>>
-	>({});
+	const [localUserInputDrafts, setLocalUserInputDrafts] =
+		useState<PendingRequestAnswerDrafts>({});
+	const userInputDrafts =
+		props.pendingRequestAnswerDrafts ?? localUserInputDrafts;
 	const fileDrop = useComposerFileDrop({ onFiles: addAttachmentFiles });
 
 	const trigger = useMemo(() => {
@@ -131,9 +142,21 @@ export function SessionComposer(props: {
 		setSavedDraft(null);
 		setDismissedTriggerKey(null);
 		setActiveIndex(0);
+		window.requestAnimationFrame(() => {
+			const textarea = textareaRef.current;
+			if (!textarea) {
+				return;
+			}
+			textarea.setSelectionRange(
+				props.selection.start,
+				props.selection.end,
+			);
+		});
 	}, [
 		props.workspaceRoot,
 		props.resetSignal,
+		props.selection.start,
+		props.selection.end,
 		setHistoryIndex,
 		setSavedDraft,
 	]);
@@ -299,7 +322,15 @@ export function SessionComposer(props: {
 	}
 
 	function syncSelection(target: HTMLTextAreaElement) {
-		setSelectionStart(target.selectionStart ?? props.value.length);
+		const next = {
+			start: target.selectionStart ?? props.value.length,
+			end:
+				target.selectionEnd ??
+				target.selectionStart ??
+				props.value.length,
+		};
+		setSelectionStart(next.start);
+		props.onSelectionChange(next);
 	}
 
 	function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -375,6 +406,24 @@ export function SessionComposer(props: {
 		blocked: Boolean(attachmentIssue),
 	});
 
+	function handlePendingRequestAnswerDraftChange(
+		requestId: string,
+		questionId: string,
+		value: string,
+	) {
+		props.onPendingRequestAnswerDraftChange?.(requestId, questionId, value);
+		if (props.pendingRequestAnswerDrafts) {
+			return;
+		}
+		setLocalUserInputDrafts((drafts) => ({
+			...drafts,
+			[requestId]: {
+				...(drafts[requestId] ?? {}),
+				[questionId]: value,
+			},
+		}));
+	}
+
 	function onPrimaryAction() {
 		if (primaryAction === "stop") {
 			void props.onInterrupt();
@@ -406,15 +455,7 @@ export function SessionComposer(props: {
 					<PendingRequestDock
 						requests={props.pendingRequests}
 						drafts={userInputDrafts}
-						onDraftChange={(requestId, questionId, value) =>
-							setUserInputDrafts((drafts) => ({
-								...drafts,
-								[requestId]: {
-									...(drafts[requestId] ?? {}),
-									[questionId]: value,
-								},
-							}))
-						}
+						onDraftChange={handlePendingRequestAnswerDraftChange}
 						onRespond={props.onRespondRequest}
 					/>
 					{props.queuePanel}
@@ -463,6 +504,7 @@ export function SessionComposer(props: {
 					}}
 					onSelectionChange={syncSelection}
 					onKeyDown={onKeyDown}
+					onBlur={props.onBlur}
 				/>
 			}
 			toolbar={

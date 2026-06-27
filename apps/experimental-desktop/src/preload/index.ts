@@ -15,6 +15,7 @@ import type {
 	ForkedConversation,
 	OpenAiAuthStart,
 	OpenAiAuthStatus,
+	PersistedQueueItem,
 	SendSessionMessageResult,
 	SessionEvent,
 	WorkspaceFileMention,
@@ -105,6 +106,24 @@ const api: ExperimentalDesktopApi = {
 			draftId,
 			input,
 		) as Promise<DraftRecord>,
+	loadComposerDraft: (input) =>
+		ipcRenderer.invoke("composer-draft:load", input) as Promise<
+			DraftRecord | undefined
+		>,
+	upsertComposerDraft: (input) =>
+		ipcRenderer.invoke("composer-draft:upsert", input) as Promise<
+			DraftRecord | undefined
+		>,
+	clearComposerDraft: (input) =>
+		ipcRenderer.invoke("composer-draft:clear", input) as Promise<{
+			ok: true;
+			hardDeleted: boolean;
+		}>,
+	restorePromotedComposerDraft: (input) =>
+		ipcRenderer.invoke("composer-draft:restore-promoted", input) as Promise<
+			| { ok: true; conversation: ConversationDetail | undefined }
+			| { ok: false; reason: "not-promoted" }
+		>,
 	promoteDraftAndSend: (input) =>
 		ipcRenderer.invoke("draft:promote-and-send", input) as Promise<
 			ConversationDetail | undefined
@@ -146,6 +165,11 @@ const api: ExperimentalDesktopApi = {
 			queueItemId,
 			input,
 		) as Promise<unknown>,
+	listConversationQueueItems: (conversationId) =>
+		ipcRenderer.invoke(
+			"conversation:list-queue-items",
+			conversationId,
+		) as Promise<PersistedQueueItem[]>,
 	executeNextConversationQueueItem: (conversationId) =>
 		ipcRenderer.invoke(
 			"conversation:queue-execute-next",

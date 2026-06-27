@@ -1,4 +1,6 @@
-export type ComposerMode = "ask" | "plan" | "build" | "review" | "shell";
+export type { ComposerMode } from "../../../shared/composer-types";
+
+import type { ComposerMode } from "../../../shared/composer-types";
 
 export type ComposerTriggerKind = "slash" | "file" | "skill" | "terminal";
 

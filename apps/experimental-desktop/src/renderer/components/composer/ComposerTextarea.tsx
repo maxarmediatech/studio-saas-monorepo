@@ -11,6 +11,7 @@ export const ComposerTextarea = forwardRef<
 		onChange: (value: string, target: HTMLTextAreaElement) => void;
 		onSelectionChange: (target: HTMLTextAreaElement) => void;
 		onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
+		onBlur?: () => void;
 	}
 >(function ComposerTextarea(props, ref) {
 	return (
@@ -31,6 +32,7 @@ export const ComposerTextarea = forwardRef<
 			onKeyUp={(event) => props.onSelectionChange(event.currentTarget)}
 			onSelect={(event) => props.onSelectionChange(event.currentTarget)}
 			onKeyDown={props.onKeyDown}
+			onBlur={props.onBlur}
 		/>
 	);
 });

@@ -276,6 +276,28 @@ CREATE INDEX queue_items_conversation_status_idx
 	ON queue_items(conversation_id, status, position);
 `,
 	},
+	{
+		id: "0007_composer_draft_targets",
+		sql: `
+ALTER TABLE drafts ADD COLUMN version INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE drafts ADD COLUMN mode TEXT NOT NULL DEFAULT 'ask';
+ALTER TABLE drafts ADD COLUMN conversation_id TEXT REFERENCES conversations(id) ON DELETE CASCADE;
+ALTER TABLE drafts ADD COLUMN scope_key TEXT;
+ALTER TABLE drafts ADD COLUMN status TEXT NOT NULL DEFAULT 'active'
+	CHECK (status IN ('active', 'promoting', 'promoted', 'discarded'));
+ALTER TABLE drafts ADD COLUMN last_restored_at TEXT;
+ALTER TABLE drafts ADD COLUMN last_error TEXT;
+
+UPDATE drafts
+SET status = 'promoted'
+WHERE promoted_conversation_id IS NOT NULL;
+
+CREATE INDEX drafts_target_status_idx
+	ON drafts(conversation_id, scope_key, status, updated_at);
+CREATE INDEX drafts_status_updated_at_idx
+	ON drafts(status, updated_at);
+`,
+	},
 ];
 
 export type ConversationDatabase = Database.Database;

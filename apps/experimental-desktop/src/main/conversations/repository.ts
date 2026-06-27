@@ -1,4 +1,14 @@
 import { randomUUID } from "node:crypto";
+import {
+	type ComposerDraftEnvelopeV2,
+	stripNonDurableAttachmentFields,
+} from "../../shared/composer-draft-envelope";
+import {
+	type ComposerTarget,
+	draftIdForComposerTarget,
+	targetKeyForComposerTarget,
+} from "../../shared/composer-target";
+import type { ComposerMode } from "../../shared/composer-types";
 import type { CodexRuntimeMode } from "../sidecar-codex-runtime";
 import type { ConversationDatabase } from "../storage/database";
 import type { ValidatedAdmittedComposerRequest } from "./admitted-request";
@@ -20,6 +30,7 @@ import type {
 	DraftRecord,
 	ForkedConversation,
 	PendingApproval,
+	PersistedQueueItem,
 	TurnStatus,
 } from "./types";
 
@@ -35,6 +46,7 @@ export type PromotedTurn = {
 	model?: string;
 	runtimeMode: CodexRuntimeMode;
 	text: string;
+	idempotentReplay?: boolean;
 };
 
 export class ConversationRepository {
@@ -53,15 +65,20 @@ export class ConversationRepository {
 		this.db
 			.prepare(
 				`INSERT INTO drafts
-				(id, text, cwd, model, runtime_mode, attachments_json, payload_json, created_at, updated_at)
-				VALUES (@id, @text, @cwd, @model, @runtimeMode, @attachments, @payload, @now, @now)`,
+				(id, text, cwd, model, runtime_mode, attachments_json, payload_json, version, mode, conversation_id, scope_key, status, created_at, updated_at)
+				VALUES (@id, @text, @cwd, @model, @runtimeMode, @attachments, @payload, 1, @mode, NULL, NULL, 'active', @now, @now)`,
 			)
 			.run({
 				...input,
 				text: input.text ?? "",
 				cwd: input.cwd ?? null,
 				model: input.model ?? null,
-				attachments: stringify(input.attachments ?? []),
+				mode: composerModeFromPayload(input.payload),
+				attachments: stringify(
+					stripNonDurableAttachmentFields(
+						(input.attachments ?? []) as never,
+					),
+				),
 				payload: stringify(input.payload ?? {}),
 			});
 		return this.getDraft(input.id);
@@ -90,6 +107,7 @@ export class ConversationRepository {
 				now: input.now,
 			});
 		}
+		const payload = input.payload ?? existing.payload ?? {};
 		this.db
 			.prepare(
 				`UPDATE drafts
@@ -99,6 +117,9 @@ export class ConversationRepository {
 					runtime_mode = @runtimeMode,
 					attachments_json = @attachments,
 					payload_json = @payload,
+					version = @version,
+					mode = @mode,
+					status = CASE WHEN status = 'discarded' THEN 'active' ELSE status END,
 					updated_at = @now
 				WHERE id = @id`,
 			)
@@ -109,9 +130,13 @@ export class ConversationRepository {
 				model: input.model ?? existing.model ?? null,
 				runtimeMode: input.runtimeMode ?? existing.runtimeMode,
 				attachments: stringify(
-					input.attachments ?? existing.attachments,
+					stripNonDurableAttachmentFields(
+						(input.attachments ?? existing.attachments) as never,
+					),
 				),
-				payload: stringify(input.payload ?? existing.payload ?? {}),
+				payload: stringify(payload),
+				version: existing.version ?? 1,
+				mode: composerModeFromPayload(payload),
 				now: input.now,
 			});
 		return this.getDraft(input.id);
@@ -122,6 +147,85 @@ export class ConversationRepository {
 			.prepare("SELECT * FROM drafts WHERE id = ?")
 			.get(id);
 		return row ? mapDraft(row as DraftRow) : undefined;
+	}
+
+	loadComposerDraft(target: ComposerTarget) {
+		return this.getDraft(draftIdForComposerTarget(target));
+	}
+
+	upsertComposerDraft(input: {
+		target: ComposerTarget;
+		envelope: ComposerDraftEnvelopeV2;
+		cwd?: string;
+		now: string;
+	}) {
+		const target = input.envelope.target;
+		const id = draftIdForComposerTarget(target);
+		const scopeKey = targetKeyForComposerTarget(target);
+		const draftInput = input.envelope.input;
+		const attachments = stripNonDurableAttachmentFields(
+			draftInput.attachments as never,
+		);
+		const existing = this.getDraftRow(id);
+		if (
+			existing?.status === "active" &&
+			!composerEnvelopeHasUserContent(input.envelope) &&
+			draftRowHasUserContent(existing)
+		) {
+			return mapDraft(existing);
+		}
+		this.db
+			.prepare(
+				`INSERT INTO drafts
+				(id, text, cwd, model, runtime_mode, attachments_json, payload_json, version, mode, conversation_id, scope_key, status, created_at, updated_at)
+				VALUES (@id, @text, @cwd, @model, @runtimeMode, @attachments, @payload, 2, @mode, @conversationId, @scopeKey, 'active', @now, @now)
+				ON CONFLICT(id) DO UPDATE SET
+					text = excluded.text,
+					cwd = excluded.cwd,
+					model = excluded.model,
+					runtime_mode = excluded.runtime_mode,
+					attachments_json = excluded.attachments_json,
+					payload_json = excluded.payload_json,
+					version = excluded.version,
+					mode = excluded.mode,
+					conversation_id = excluded.conversation_id,
+					scope_key = excluded.scope_key,
+					status = 'active',
+					last_error = NULL,
+					updated_at = excluded.updated_at
+				WHERE drafts.status != 'promoted'`,
+			)
+			.run({
+				id,
+				text: draftInput.text,
+				cwd: input.cwd ?? null,
+				model: draftInput.model,
+				runtimeMode: draftInput.runtimeMode,
+				attachments: stringify(attachments),
+				payload: stringify(input.envelope),
+				mode: draftInput.mode,
+				conversationId:
+					target.kind === "conversation" ? target.id : null,
+				scopeKey,
+				now: input.now,
+			});
+		return this.getDraft(id);
+	}
+
+	clearComposerDraft(input: { target: ComposerTarget; now: string }) {
+		const id = draftIdForComposerTarget(input.target);
+		if (input.target.kind === "conversation") {
+			this.db.prepare("DELETE FROM drafts WHERE id = ?").run(id);
+			return { ok: true as const, hardDeleted: true as const };
+		}
+		this.db
+			.prepare(
+				`UPDATE drafts
+				SET status = 'discarded', updated_at = @now
+				WHERE id = @id AND status != 'promoted'`,
+			)
+			.run({ id, now: input.now });
+		return { ok: true as const, hardDeleted: false as const };
 	}
 
 	recoverInterruptedState(now: string) {
@@ -162,12 +266,250 @@ export class ConversationRepository {
 					WHERE status IN ('active', 'waiting_approval')`,
 				)
 				.run({ now });
+			this.db
+				.prepare(
+					`UPDATE queue_items
+					SET status = 'failed',
+						error_json = @queueError,
+						updated_at = @now
+					WHERE status = 'running'`,
+				)
+				.run({
+					now,
+					queueError: stringify({
+						message: "Queue execution interrupted by app restart",
+						warningCode: "queue_recovery_interrupted_running_item",
+					}),
+				});
+			this.expirePendingApprovalAnswerDrafts(now);
 		});
 		run();
 	}
 
+	cleanupDraftRetention(input: {
+		discardedBefore: string;
+		promotedBefore: string;
+		now: string;
+	}) {
+		const run = this.db.transaction(() => {
+			const discardedDeleted = this.db
+				.prepare(
+					`DELETE FROM drafts
+					WHERE status = 'discarded'
+						AND updated_at < @discardedBefore
+						AND promoted_conversation_id IS NULL
+						AND NOT EXISTS (
+							SELECT 1 FROM admitted_requests
+							WHERE admitted_requests.draft_id = drafts.id
+						)`,
+				)
+				.run({ discardedBefore: input.discardedBefore }).changes;
+			const promotedRows = this.db
+				.prepare(
+					`SELECT * FROM drafts
+					WHERE status = 'promoted'
+						AND updated_at < @promotedBefore
+						AND payload_json NOT LIKE '%"redacted":true%'`,
+				)
+				.all({ promotedBefore: input.promotedBefore }) as DraftRow[];
+			let promotedCompacted = 0;
+			for (const row of promotedRows) {
+				this.db
+					.prepare(
+						`UPDATE drafts
+						SET text = '',
+							attachments_json = '[]',
+							payload_json = @payload,
+							updated_at = @now
+						WHERE id = @id
+							AND status = 'promoted'`,
+					)
+					.run({
+						id: row.id,
+						now: input.now,
+						payload: stringify(
+							redactedPromotedDraftPayload(row, input.now),
+						),
+					});
+				promotedCompacted += 1;
+			}
+			return { discardedDeleted, promotedCompacted };
+		});
+		return run();
+	}
+
+	promoteDraftWithAdmittedRequest(input: {
+		draftId: string;
+		request: ValidatedAdmittedComposerRequest;
+		cwd: string;
+		ids: {
+			conversationId: string;
+			providerSessionId: string;
+			turnId: string;
+			userMessageId: string;
+			assistantMessageId: string;
+		};
+		now: string;
+	}) {
+		const run = this.db.transaction(() => {
+			const providerInput = input.request.providerInput;
+			const text = providerInput.prompt;
+			const encoded = encodeAdmittedRequest(input.request);
+			const storedRequest = this.getAdmittedRequestRow(input.request.id);
+			if (
+				storedRequest &&
+				!matchesAdmittedRequest(storedRequest, encoded)
+			) {
+				throw new Error(
+					"Admitted request id was reused with different content",
+				);
+			}
+			const draftRow = this.getDraftRow(input.draftId);
+			if (draftRow?.status === "discarded") {
+				throw new Error("Discarded draft cannot be promoted");
+			}
+			if (
+				draftRow?.status === "promoted" &&
+				draftRow.promoted_conversation_id
+			) {
+				return {
+					...this.getPromotedTurnForConversation(
+						draftRow.promoted_conversation_id,
+						text,
+					),
+					idempotentReplay: true,
+				} satisfies PromotedTurn;
+			}
+			if (storedRequest?.conversation_id) {
+				return {
+					...this.getPromotedTurnForConversation(
+						storedRequest.conversation_id,
+						text,
+					),
+					idempotentReplay: true,
+				} satisfies PromotedTurn;
+			}
+
+			this.ensureDraftForPromotion({
+				draftId: input.draftId,
+				text,
+				cwd: input.cwd,
+				model: providerInput.model,
+				runtimeMode: providerInput.runtimeMode,
+				payload: admittedMessagePayload(input.request),
+				now: input.now,
+			});
+
+			const title = titleFromText(text);
+			this.db
+				.prepare(
+					`INSERT INTO conversations
+					(id, title, cwd, model, runtime_mode, status, created_at, updated_at, last_message_at)
+					VALUES (@conversationId, @title, @cwd, @model, @runtimeMode, 'active', @now, @now, @now)`,
+				)
+				.run({
+					...input.ids,
+					title,
+					cwd: input.cwd,
+					model: providerInput.model ?? null,
+					runtimeMode: providerInput.runtimeMode,
+					now: input.now,
+				});
+			this.db
+				.prepare(
+					`INSERT INTO provider_sessions
+					(id, conversation_id, provider, status, created_at, updated_at)
+					VALUES (@providerSessionId, @conversationId, 'codex', 'starting', @now, @now)`,
+				)
+				.run({ ...input.ids, now: input.now });
+			this.db
+				.prepare(
+					`INSERT INTO turns
+					(id, conversation_id, provider_session_id, user_message_id, assistant_message_id, status, created_at, updated_at)
+					VALUES (@turnId, @conversationId, @providerSessionId, @userMessageId, @assistantMessageId, 'queued', @now, @now)`,
+				)
+				.run({ ...input.ids, now: input.now });
+			this.insertMessage({
+				id: input.ids.userMessageId,
+				conversationId: input.ids.conversationId,
+				turnId: input.ids.turnId,
+				parentMessageId: undefined,
+				ordinal: 0,
+				role: "user",
+				status: "completed",
+				now: input.now,
+			});
+			this.insertPart({
+				id: `${input.ids.userMessageId}:text`,
+				conversationId: input.ids.conversationId,
+				messageId: input.ids.userMessageId,
+				turnId: input.ids.turnId,
+				ordinal: 0,
+				type: "text",
+				text,
+				json: userTextPartJson(admittedMessagePayload(input.request)),
+				now: input.now,
+			});
+			this.insertMessage({
+				id: input.ids.assistantMessageId,
+				conversationId: input.ids.conversationId,
+				turnId: input.ids.turnId,
+				parentMessageId: input.ids.userMessageId,
+				ordinal: 1,
+				role: "assistant",
+				status: "streaming",
+				now: input.now,
+			});
+			this.insertPart({
+				id: `${input.ids.assistantMessageId}:text`,
+				conversationId: input.ids.conversationId,
+				messageId: input.ids.assistantMessageId,
+				turnId: input.ids.turnId,
+				ordinal: 0,
+				type: "text",
+				text: "",
+				json: {},
+				now: input.now,
+			});
+			this.recordAdmittedRequest({
+				request: input.request,
+				conversationId: input.ids.conversationId,
+				draftId: input.draftId,
+				turnId: input.ids.turnId,
+				status: "admitted",
+				now: input.now,
+			});
+			this.setActiveLeafMessage(
+				input.ids.conversationId,
+				input.ids.assistantMessageId,
+				input.now,
+			);
+			this.db
+				.prepare(
+					`UPDATE drafts
+					SET status = 'promoted',
+						promoted_conversation_id = @conversationId,
+						updated_at = @now
+					WHERE id = @draftId`,
+				)
+				.run({
+					draftId: input.draftId,
+					conversationId: input.ids.conversationId,
+					now: input.now,
+				});
+			return {
+				...input.ids,
+				cwd: input.cwd,
+				model: providerInput.model,
+				runtimeMode: providerInput.runtimeMode,
+				text,
+				idempotentReplay: false,
+			} satisfies PromotedTurn;
+		});
+		return run();
+	}
+
 	promoteDraft(input: {
-		draftId?: string;
 		text: string;
 		cwd: string;
 		model?: string;
@@ -259,19 +601,6 @@ export class ConversationRepository {
 				input.ids.assistantMessageId,
 				input.now,
 			);
-			if (input.draftId) {
-				this.db
-					.prepare(
-						`UPDATE drafts
-						SET promoted_conversation_id = @conversationId, updated_at = @now
-						WHERE id = @draftId`,
-					)
-					.run({
-						draftId: input.draftId,
-						conversationId: input.ids.conversationId,
-						now: input.now,
-					});
-			}
 		});
 		run();
 		return {
@@ -499,6 +828,31 @@ export class ConversationRepository {
 			)
 			.get(queueItemId) as AdmittedRequestRow | undefined;
 		return row ? mapAdmittedRequest(row) : undefined;
+	}
+
+	listQueueItemsForConversation(conversationId: string) {
+		const rows = this.db
+			.prepare(
+				`SELECT
+					qi.*,
+					ar.draft_snapshot_json,
+					ar.request_parts_json,
+					ar.provider_input_json,
+					ar.admission_json,
+					ar.compatibility_payload_json,
+					ar.provider,
+					ar.status AS admitted_status,
+					ar.conversation_id AS admitted_conversation_id,
+					ar.draft_id,
+					ar.turn_id,
+					ar.error_json AS admitted_error_json
+				FROM queue_items qi
+				JOIN admitted_requests ar ON ar.id = qi.admitted_request_id
+				WHERE qi.conversation_id = ?
+				ORDER BY qi.position ASC, qi.created_at ASC`,
+			)
+			.all(conversationId) as QueueItemWithRequestRow[];
+		return rows.map(mapPersistedQueueItem);
 	}
 
 	listConversations() {
@@ -1415,6 +1769,119 @@ export class ConversationRepository {
 			.get(id) as AdmittedRequestRow | undefined;
 	}
 
+	private getDraftRow(id: string) {
+		return this.db.prepare("SELECT * FROM drafts WHERE id = ?").get(id) as
+			| DraftRow
+			| undefined;
+	}
+
+	private expirePendingApprovalAnswerDrafts(now: string) {
+		const rows = this.db
+			.prepare(
+				`SELECT * FROM drafts
+				WHERE status = 'active'
+					AND conversation_id IS NOT NULL
+					AND payload_json LIKE '%pendingRequestAnswerDrafts%'`,
+			)
+			.all() as DraftRow[];
+		for (const row of rows) {
+			const payload = clearPendingAnswerDraftsFromPayload(
+				row.payload_json,
+			);
+			if (!payload) {
+				continue;
+			}
+			this.db
+				.prepare(
+					`UPDATE drafts
+					SET payload_json = @payload,
+						updated_at = @now,
+						last_error = @lastError
+					WHERE id = @id`,
+				)
+				.run({
+					id: row.id,
+					now,
+					payload: stringify(payload),
+					lastError: stringify({
+						warningCode:
+							"draft_approval_answers_expired_on_restart",
+					}),
+				});
+		}
+	}
+
+	private ensureDraftForPromotion(input: {
+		draftId: string;
+		text: string;
+		cwd: string;
+		model?: string;
+		runtimeMode: CodexRuntimeMode;
+		payload: unknown;
+		now: string;
+	}) {
+		this.db
+			.prepare(
+				`INSERT OR IGNORE INTO drafts
+				(id, text, cwd, model, runtime_mode, attachments_json, payload_json, version, mode, conversation_id, scope_key, status, created_at, updated_at)
+				VALUES (@draftId, @text, @cwd, @model, @runtimeMode, '[]', @payload, 1, @mode, NULL, NULL, 'active', @now, @now)`,
+			)
+			.run({
+				...input,
+				model: input.model ?? null,
+				payload: stringify(input.payload ?? {}),
+				mode: composerModeFromPayload(input.payload),
+			});
+	}
+
+	private getPromotedTurnForConversation(
+		conversationId: string,
+		fallbackText: string,
+	): PromotedTurn {
+		const row = this.db
+			.prepare(
+				`SELECT
+					c.id AS conversation_id,
+					c.cwd,
+					c.model,
+					c.runtime_mode,
+					ps.id AS provider_session_id,
+					t.id AS turn_id,
+					t.user_message_id,
+					t.assistant_message_id,
+					COALESCE(p.text, @fallbackText) AS text
+				FROM conversations c
+				JOIN provider_sessions ps ON ps.conversation_id = c.id
+				JOIN turns t ON t.conversation_id = c.id
+				LEFT JOIN message_parts p
+					ON p.message_id = t.user_message_id
+					AND p.type = 'text'
+					AND p.ordinal = 0
+				WHERE c.id = @conversationId
+				ORDER BY t.created_at ASC
+				LIMIT 1`,
+			)
+			.get({ conversationId, fallbackText }) as
+			| PromotedTurnRow
+			| undefined;
+		if (!row) {
+			throw new Error(
+				"Promoted draft conversation is missing turn state",
+			);
+		}
+		return {
+			conversationId: row.conversation_id,
+			providerSessionId: row.provider_session_id,
+			turnId: row.turn_id,
+			userMessageId: row.user_message_id,
+			assistantMessageId: row.assistant_message_id,
+			cwd: row.cwd,
+			model: row.model ?? undefined,
+			runtimeMode: row.runtime_mode,
+			text: row.text,
+		};
+	}
+
 	private setActiveLeafMessage(
 		conversationId: string,
 		messageId: string,
@@ -1701,9 +2168,28 @@ type DraftRow = {
 	runtime_mode: CodexRuntimeMode;
 	attachments_json: string;
 	payload_json: string;
+	version: number;
+	mode: ComposerMode;
+	conversation_id: string | null;
+	scope_key: string | null;
+	status: "active" | "promoting" | "promoted" | "discarded";
+	last_restored_at: string | null;
+	last_error: string | null;
 	created_at: string;
 	updated_at: string;
 	promoted_conversation_id: string | null;
+};
+
+type PromotedTurnRow = {
+	conversation_id: string;
+	provider_session_id: string;
+	turn_id: string;
+	user_message_id: string;
+	assistant_message_id: string;
+	cwd: string;
+	model: string | null;
+	runtime_mode: CodexRuntimeMode;
+	text: string;
 };
 
 type ConversationRow = {
@@ -1829,6 +2315,26 @@ type QueueItemRow = {
 	updated_at: string;
 };
 
+type QueueItemWithRequestRow = QueueItemRow & {
+	draft_snapshot_json: string;
+	request_parts_json: string;
+	provider_input_json: string;
+	admission_json: string;
+	compatibility_payload_json: string;
+	provider: "codex";
+	admitted_status:
+		| "admitted"
+		| "queued"
+		| "running"
+		| "completed"
+		| "failed"
+		| "canceled";
+	admitted_conversation_id: string | null;
+	draft_id: string | null;
+	turn_id: string | null;
+	admitted_error_json: string | null;
+};
+
 type AdmittedRequestRow = {
 	id: string;
 	conversation_id: string | null;
@@ -1869,6 +2375,13 @@ function mapDraft(row: DraftRow): DraftRecord {
 		runtimeMode: row.runtime_mode,
 		attachments: parseArray(row.attachments_json),
 		payload: parseJson(row.payload_json) ?? {},
+		version: row.version,
+		mode: row.mode,
+		conversationId: row.conversation_id ?? undefined,
+		scopeKey: row.scope_key ?? undefined,
+		status: row.status,
+		lastRestoredAt: row.last_restored_at ?? undefined,
+		lastError: row.last_error ?? undefined,
 		createdAt: row.created_at,
 		updatedAt: row.updated_at,
 		promotedConversationId: row.promoted_conversation_id ?? undefined,
@@ -1889,6 +2402,30 @@ function mapAdmittedRequest(
 		) as ValidatedAdmittedComposerRequest["providerInput"],
 		admission: parseJson(row.admission_json) ?? {},
 		compatibilityPayload: parseJson(row.compatibility_payload_json) ?? {},
+	};
+}
+
+function mapPersistedQueueItem(
+	row: QueueItemWithRequestRow,
+): PersistedQueueItem {
+	return {
+		id: row.id,
+		conversationId: row.conversation_id,
+		admittedRequestId: row.admitted_request_id,
+		position: row.position,
+		status: row.status,
+		request: {
+			id: row.admitted_request_id,
+			draftSnapshot: parseJson(row.draft_snapshot_json) ?? {},
+			requestParts: parseArray(row.request_parts_json),
+			providerInput: parseJson(row.provider_input_json) ?? {},
+			admission: parseJson(row.admission_json) ?? {},
+			compatibilityPayload:
+				parseJson(row.compatibility_payload_json) ?? {},
+		},
+		error: queueErrorMessage(row.error_json),
+		createdAt: row.created_at,
+		updatedAt: row.updated_at,
 	};
 }
 
@@ -1921,8 +2458,71 @@ function userTextPartJson(payload: unknown) {
 	return payload === undefined ? {} : { composerPayload: payload };
 }
 
+function admittedMessagePayload(request: ValidatedAdmittedComposerRequest) {
+	return {
+		admittedRequestId: request.id,
+		parts: request.requestParts,
+		admission: request.admission,
+		compatibilityPayload: request.compatibilityPayload ?? {},
+	};
+}
+
+function composerModeFromPayload(payload: unknown): ComposerMode {
+	if (
+		payload &&
+		typeof payload === "object" &&
+		"mode" in payload &&
+		(payload as { mode?: unknown }).mode === "plan"
+	) {
+		return "plan";
+	}
+	if (
+		payload &&
+		typeof payload === "object" &&
+		"mode" in payload &&
+		(payload as { mode?: unknown }).mode === "build"
+	) {
+		return "build";
+	}
+	if (
+		payload &&
+		typeof payload === "object" &&
+		"mode" in payload &&
+		(payload as { mode?: unknown }).mode === "review"
+	) {
+		return "review";
+	}
+	if (
+		payload &&
+		typeof payload === "object" &&
+		"mode" in payload &&
+		(payload as { mode?: unknown }).mode === "shell"
+	) {
+		return "shell";
+	}
+	return "ask";
+}
+
+function queueErrorMessage(value: string | null) {
+	if (!value) {
+		return undefined;
+	}
+	const parsed = parseJson(value);
+	if (
+		parsed &&
+		typeof parsed === "object" &&
+		"message" in parsed &&
+		typeof (parsed as { message?: unknown }).message === "string"
+	) {
+		return (parsed as { message: string }).message;
+	}
+	return value;
+}
+
 function isTerminalTurnStatus(status: TurnStatus) {
-	return status === "completed" || status === "failed" || status === "canceled";
+	return (
+		status === "completed" || status === "failed" || status === "canceled"
+	);
 }
 
 function mapConversation(row: ConversationRow): ConversationSummary {
@@ -2063,6 +2663,105 @@ function mapApproval(row: ApprovalRow): PendingApproval {
 		createdAt: row.created_at,
 		expiresAt: row.expires_at ?? undefined,
 	};
+}
+
+function composerEnvelopeHasUserContent(envelope: ComposerDraftEnvelopeV2) {
+	return (
+		envelope.input.text.trim().length > 0 ||
+		envelope.input.contextItems.length > 0 ||
+		envelope.input.attachments.length > 0 ||
+		Object.keys(envelope.pendingRequestAnswerDrafts).length > 0
+	);
+}
+
+function draftRowHasUserContent(row: DraftRow) {
+	if (row.text.trim()) {
+		return true;
+	}
+	if (parseArray(row.attachments_json).length > 0) {
+		return true;
+	}
+	const payload = parseJson(row.payload_json);
+	if (!payload || typeof payload !== "object") {
+		return false;
+	}
+	const object = payload as {
+		input?: {
+			contextItems?: unknown;
+			attachments?: unknown;
+			text?: unknown;
+		};
+		contextItems?: unknown;
+		attachments?: unknown;
+		pendingRequestAnswerDrafts?: unknown;
+	};
+	return (
+		(typeof object.input?.text === "string" &&
+			object.input.text.trim().length > 0) ||
+		arrayHasItems(object.input?.contextItems) ||
+		arrayHasItems(object.input?.attachments) ||
+		arrayHasItems(object.contextItems) ||
+		arrayHasItems(object.attachments) ||
+		isNonEmptyObject(object.pendingRequestAnswerDrafts)
+	);
+}
+
+function arrayHasItems(value: unknown) {
+	return Array.isArray(value) && value.length > 0;
+}
+
+function isNonEmptyObject(value: unknown) {
+	return Boolean(
+		value &&
+			typeof value === "object" &&
+			!Array.isArray(value) &&
+			Object.keys(value).length > 0,
+	);
+}
+
+function clearPendingAnswerDraftsFromPayload(payloadJson: string) {
+	const payload = parseJson(payloadJson);
+	if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+		return undefined;
+	}
+	const object = payload as { pendingRequestAnswerDrafts?: unknown };
+	if (!isNonEmptyObject(object.pendingRequestAnswerDrafts)) {
+		return undefined;
+	}
+	return {
+		...(payload as Record<string, unknown>),
+		pendingRequestAnswerDrafts: {},
+	};
+}
+
+function redactedPromotedDraftPayload(row: DraftRow, updatedAt: string) {
+	return {
+		version: 2,
+		redacted: true,
+		target: targetFromDraftRow(row),
+		input: {
+			text: "",
+			mode: row.mode,
+			model: row.model,
+			runtimeMode: row.runtime_mode,
+			contextItems: [],
+			attachments: [],
+			payload: {
+				redacted: true,
+				status: row.status,
+				promotedConversationId: row.promoted_conversation_id,
+			},
+		},
+		pendingRequestAnswerDrafts: {},
+		updatedAt,
+	};
+}
+
+function targetFromDraftRow(row: DraftRow) {
+	if (row.conversation_id) {
+		return { kind: "conversation", id: row.conversation_id };
+	}
+	return { kind: "draft", id: row.id };
 }
 
 function stringify(value: JsonValue) {

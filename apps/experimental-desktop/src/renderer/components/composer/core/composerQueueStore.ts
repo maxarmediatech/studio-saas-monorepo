@@ -67,8 +67,7 @@ export function validateQueueAdmission(
 		return { ok: false, reason: "emptyInput" };
 	}
 	if (
-		request.providerInput.prompt.length >
-		MAX_QUEUED_COMPOSER_INPUT_LENGTH
+		request.providerInput.prompt.length > MAX_QUEUED_COMPOSER_INPUT_LENGTH
 	) {
 		return { ok: false, reason: "inputTooLong" };
 	}
@@ -152,10 +151,7 @@ export function useComposerQueueStore() {
 	);
 	const pause = useCallback(() => dispatch({ type: "pause" }), []);
 	const resume = useCallback(() => dispatch({ type: "resume" }), []);
-	const clearError = useCallback(
-		() => dispatch({ type: "clearError" }),
-		[],
-	);
+	const clearError = useCallback(() => dispatch({ type: "clearError" }), []);
 	return { state, add, remove, move, mark, pause, resume, clearError };
 }
 
@@ -184,11 +180,7 @@ function composerQueueReducer(
 				(item) => item.queueItemId === action.queueItemId,
 			);
 			const nextIndex = index + action.direction;
-			if (
-				index < 0 ||
-				nextIndex < 0 ||
-				nextIndex >= state.items.length
-			) {
+			if (index < 0 || nextIndex < 0 || nextIndex >= state.items.length) {
 				return state;
 			}
 			const items = [...state.items];

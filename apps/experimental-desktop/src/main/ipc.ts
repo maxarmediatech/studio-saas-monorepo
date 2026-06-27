@@ -156,6 +156,22 @@ export function registerIpcHandlers(sidecarManager: SidecarManager) {
 		conversations.updateDraft(draftId, input),
 	);
 
+	ipcMain.handle("composer-draft:load", (_event, input) =>
+		conversations.loadComposerDraft(input),
+	);
+
+	ipcMain.handle("composer-draft:upsert", (_event, input) =>
+		conversations.upsertComposerDraft(input),
+	);
+
+	ipcMain.handle("composer-draft:clear", (_event, input) =>
+		conversations.clearComposerDraft(input),
+	);
+
+	ipcMain.handle("composer-draft:restore-promoted", (_event, input) =>
+		conversations.restorePromotedComposerDraft(input),
+	);
+
 	ipcMain.handle("draft:promote-and-send", (_event, input) =>
 		conversations.promoteDraftAndSend(input),
 	);
@@ -185,6 +201,12 @@ export function registerIpcHandlers(sidecarManager: SidecarManager) {
 
 	ipcMain.handle("conversation:queue-update", (_event, queueItemId, input) =>
 		conversations.updateQueueItem(queueItemId, input),
+	);
+
+	ipcMain.handle(
+		"conversation:list-queue-items",
+		(_event, conversationId: string) =>
+			conversations.listConversationQueueItems(conversationId),
 	);
 
 	ipcMain.handle(

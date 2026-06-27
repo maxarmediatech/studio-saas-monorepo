@@ -1,12 +1,16 @@
 import type { RespondSessionRequestInput } from "../../preload/types";
+import { stripNonDurableAttachmentFields } from "../../shared/composer-draft-envelope";
+import type { ComposerTarget } from "../../shared/composer-target";
 import type { ComposerDraftPersistInput } from "../components/composer/core/composerDraftSync";
 import type { AdmittedComposerRequest } from "../components/composer/core/composerProviderTypes";
 import {
+	clearComposerDraft,
 	createDraft,
-	type DraftPersistTransportInput,
 	enqueueAdmittedMessage,
 	executeNextConversationQueueItem,
 	interruptConversation,
+	listConversationQueueItems,
+	loadComposerDraft,
 	loadConversationDetail,
 	promoteDraftAndSend,
 	promoteDraftAndSendAdmitted,
@@ -15,18 +19,23 @@ import {
 	sendConversationMessage,
 	updateConversationQueueItem,
 	updateDraft,
+	upsertComposerDraft,
 } from "./conversationTransport";
 
 export type ConversationClientTransport = {
 	loadConversationDetail: typeof loadConversationDetail;
 	createDraft: typeof createDraft;
 	updateDraft: typeof updateDraft;
+	loadComposerDraft: typeof loadComposerDraft;
+	upsertComposerDraft: typeof upsertComposerDraft;
+	clearComposerDraft: typeof clearComposerDraft;
 	promoteDraftAndSend: typeof promoteDraftAndSend;
 	promoteDraftAndSendAdmitted: typeof promoteDraftAndSendAdmitted;
 	sendConversationMessage: typeof sendConversationMessage;
 	sendAdmittedMessage: typeof sendAdmittedMessage;
 	enqueueAdmittedMessage: typeof enqueueAdmittedMessage;
 	updateConversationQueueItem: typeof updateConversationQueueItem;
+	listConversationQueueItems: typeof listConversationQueueItems;
 	executeNextConversationQueueItem: typeof executeNextConversationQueueItem;
 	interruptConversation: typeof interruptConversation;
 	respondApproval: typeof respondApproval;
@@ -36,12 +45,16 @@ const defaultTransport: ConversationClientTransport = {
 	loadConversationDetail,
 	createDraft,
 	updateDraft,
+	loadComposerDraft,
+	upsertComposerDraft,
+	clearComposerDraft,
 	promoteDraftAndSend,
 	promoteDraftAndSendAdmitted,
 	sendConversationMessage,
 	sendAdmittedMessage,
 	enqueueAdmittedMessage,
 	updateConversationQueueItem,
+	listConversationQueueItems,
 	executeNextConversationQueueItem,
 	interruptConversation,
 	respondApproval,
@@ -51,15 +64,23 @@ export function createConversationClient(
 	transport: ConversationClientTransport = defaultTransport,
 ) {
 	async function persistDraft(input: {
-		draftId?: string;
+		target: ComposerTarget;
 		draft: ComposerDraftPersistInput;
 		cwd?: string;
 	}) {
-		const draftInput = toDraftPersistTransportInput(input);
-		if (input.draftId) {
-			return transport.updateDraft(input.draftId, draftInput);
-		}
-		return transport.createDraft(draftInput);
+		return transport.upsertComposerDraft({
+			target: input.target,
+			envelope: toComposerDraftEnvelope(input),
+			...(input.cwd ? { cwd: input.cwd } : {}),
+		});
+	}
+
+	function loadComposerDraftForTarget(input: { target: ComposerTarget }) {
+		return transport.loadComposerDraft(input);
+	}
+
+	function clearComposerDraftForTarget(input: { target: ComposerTarget }) {
+		return transport.clearComposerDraft(input);
 	}
 
 	async function sendAdmittedRequest(input: {
@@ -97,10 +118,12 @@ export function createConversationClient(
 		});
 	}
 
+	function listQueuedRequests(input: { conversationId: string }) {
+		return transport.listConversationQueueItems(input.conversationId);
+	}
+
 	function executeNextQueuedRequest(input: { conversationId: string }) {
-		return transport.executeNextConversationQueueItem(
-			input.conversationId,
-		);
+		return transport.executeNextConversationQueueItem(input.conversationId);
 	}
 
 	function respondToApproval(input: {
@@ -121,10 +144,13 @@ export function createConversationClient(
 
 	return {
 		loadConversationDetail: transport.loadConversationDetail,
+		loadComposerDraft: loadComposerDraftForTarget,
 		persistDraft,
+		clearComposerDraft: clearComposerDraftForTarget,
 		sendAdmittedRequest,
 		enqueueAdmittedRequest,
 		cancelQueuedRequest,
+		listQueuedRequests,
 		executeNextQueuedRequest,
 		respondToApproval,
 		interrupt,
@@ -141,22 +167,37 @@ function assertSupportedProvider(request: AdmittedComposerRequest) {
 
 export const conversationClient = createConversationClient();
 
-function toDraftPersistTransportInput(input: {
+function toComposerDraftEnvelope(input: {
+	target: ComposerTarget;
 	draft: ComposerDraftPersistInput;
-	cwd?: string;
-}): DraftPersistTransportInput {
+}) {
+	const now = new Date().toISOString();
+	const payload = input.draft.payload;
 	return {
-		text: input.draft.payload.text,
-		model: input.draft.model,
-		runtimeMode: input.draft.runtimeMode,
-		attachments: input.draft.payload.attachments,
-		payload: {
-			mode: input.draft.payload.mode,
-			contextItems: input.draft.payload.contextItems,
-			attachments: input.draft.payload.attachments,
-			parts: input.draft.payload.parts,
-			metrics: input.draft.payload.metrics,
+		version: 2 as const,
+		target: input.target,
+		input: {
+			text: payload.text,
+			mode: payload.mode,
+			model: input.draft.model,
+			runtimeMode: input.draft.runtimeMode,
+			contextItems: payload.contextItems,
+			attachments: stripNonDurableAttachmentFields(payload.attachments),
+			selection: input.draft.selection,
+			payload: {
+				mode: payload.mode,
+				text: payload.text,
+				contextItems: payload.contextItems,
+				attachments: stripNonDurableAttachmentFields(
+					payload.attachments,
+				),
+				parts: payload.parts,
+				metrics: payload.metrics,
+				selection: input.draft.selection,
+			},
 		},
-		...(input.cwd ? { cwd: input.cwd } : {}),
+		pendingRequestAnswerDrafts:
+			input.draft.pendingRequestAnswerDrafts ?? {},
+		updatedAt: now,
 	};
 }

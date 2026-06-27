@@ -3,13 +3,14 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { RespondSessionRequestInput } from "../../../../preload/types";
-import type { SessionComposer } from "../SessionComposer";
+import type {
+	DraftRecord,
+	PersistedQueueItem,
+	RespondSessionRequestInput,
+} from "../../../../preload/types";
 import type { ComposerQueuePanel } from "../ComposerQueuePanel";
-import {
-	ComposerRegion,
-	type ComposerRegionSession,
-} from "../ComposerRegion";
+import { ComposerRegion, type ComposerRegionSession } from "../ComposerRegion";
+import type { SessionComposer } from "../SessionComposer";
 
 type SessionComposerProps = Parameters<typeof SessionComposer>[0];
 type ComposerQueuePanelProps = Parameters<typeof ComposerQueuePanel>[0];
@@ -33,8 +34,9 @@ vi.mock("../ComposerQueuePanel", () => ({
 
 describe("ComposerRegion", () => {
 	beforeEach(() => {
-		(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT =
-			true;
+		(
+			globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+		).IS_REACT_ACT_ENVIRONMENT = true;
 		latestComposerProps = undefined;
 		latestQueuePanelProps = undefined;
 		vi.useFakeTimers();
@@ -87,11 +89,244 @@ describe("ComposerRegion", () => {
 
 		expect(persistDraft).toHaveBeenCalledWith(
 			expect.objectContaining({
-				model: "gpt-5.4-mini",
-				runtimeMode: "read-only",
-				payload: expect.objectContaining({ text: "remember this" }),
+				target: { kind: "draft", id: "draft-db-1" },
+				draft: expect.objectContaining({
+					model: "gpt-5.4-mini",
+					runtimeMode: "read-only",
+					payload: expect.objectContaining({ text: "remember this" }),
+				}),
 			}),
 		);
+		harness.unmount();
+	});
+
+	it("does not overwrite user input when draft hydration resolves late", async () => {
+		let resolveDraft:
+			| ((value: DraftRecord | undefined) => void)
+			| undefined;
+		const loadComposerDraft = vi.fn(
+			() =>
+				new Promise<DraftRecord | undefined>((resolve) => {
+					resolveDraft = resolve;
+				}),
+		);
+		const harness = renderRegion({
+			session: sessionStub({ loadComposerDraft }),
+			routeDraftId: "550e8400-e29b-41d4-a716-446655440010",
+			draftScopeId: "550e8400-e29b-41d4-a716-446655440010",
+		});
+
+		await act(async () => {
+			latestComposerProps?.onChange("Fresh user input");
+		});
+		await act(async () => {
+			resolveDraft?.(
+				draftRecord({
+					id: "550e8400-e29b-41d4-a716-446655440010",
+					payload: {
+						version: 2,
+						target: {
+							kind: "draft",
+							id: "550e8400-e29b-41d4-a716-446655440010",
+						},
+						input: {
+							text: "Stored stale text",
+							mode: "ask",
+							model: "gpt-5.4-mini",
+							runtimeMode: "read-only",
+							contextItems: [],
+							attachments: [],
+							payload: {},
+						},
+						pendingRequestAnswerDrafts: {},
+						updatedAt: "2026-06-24T00:00:00.000Z",
+					},
+				}),
+			);
+			await Promise.resolve();
+		});
+
+		expect(latestComposerProps?.value).toBe("Fresh user input");
+		harness.unmount();
+	});
+
+	it("hydrates a route draft after resetting previous draft text", async () => {
+		const routeDraftId = "550e8400-e29b-41d4-a716-446655440013";
+		const loadComposerDraft = vi.fn((target) =>
+			Promise.resolve(
+				target.kind === "draft" && target.id === routeDraftId
+					? draftRecord({
+							id: routeDraftId,
+							payload: {
+								version: 2,
+								target: { kind: "draft", id: routeDraftId },
+								input: {
+									text: "Restored route draft",
+									mode: "ask",
+									model: "gpt-5.4-mini",
+									runtimeMode: "read-only",
+									contextItems: [],
+									attachments: [],
+									selection: { start: 20, end: 20 },
+									payload: {},
+								},
+								pendingRequestAnswerDrafts: {},
+								updatedAt: "2026-06-24T00:00:00.000Z",
+							},
+						})
+					: undefined,
+			),
+		);
+		const harness = renderRegion({
+			session: sessionStub({ loadComposerDraft }),
+		});
+
+		await act(async () => {
+			latestComposerProps?.onChange("Old unsent text");
+		});
+		await act(async () => {
+			harness.rerender({
+				routeDraftId,
+				draftScopeId: routeDraftId,
+				session: sessionStub({ loadComposerDraft }),
+			});
+			await Promise.resolve();
+			await Promise.resolve();
+		});
+
+		expect(latestComposerProps?.value).toBe("Restored route draft");
+		harness.unmount();
+	});
+
+	it("does not overwrite pending answer drafts when draft hydration resolves late", async () => {
+		let resolveDraft:
+			| ((value: DraftRecord | undefined) => void)
+			| undefined;
+		const loadComposerDraft = vi.fn(
+			() =>
+				new Promise<DraftRecord | undefined>((resolve) => {
+					resolveDraft = resolve;
+				}),
+		);
+		const harness = renderRegion({
+			session: sessionStub({
+				conversationId: "550e8400-e29b-41d4-a716-446655440020",
+				draftId: undefined,
+				loadComposerDraft,
+			}),
+		});
+
+		await act(async () => {
+			latestComposerProps?.onPendingRequestAnswerDraftChange?.(
+				"request-1",
+				"question-1",
+				"Fresh answer",
+			);
+		});
+		await act(async () => {
+			resolveDraft?.(
+				draftRecord({
+					id: "composer:conversation:550e8400-e29b-41d4-a716-446655440020",
+					payload: {
+						version: 2,
+						target: {
+							kind: "conversation",
+							id: "550e8400-e29b-41d4-a716-446655440020",
+						},
+						input: {
+							text: "",
+							mode: "ask",
+							model: "gpt-5.4-mini",
+							runtimeMode: "read-only",
+							contextItems: [],
+							attachments: [],
+							payload: {},
+						},
+						pendingRequestAnswerDrafts: {
+							"request-1": { "question-1": "Stored answer" },
+						},
+						updatedAt: "2026-06-24T00:00:00.000Z",
+					},
+				}),
+			);
+			await Promise.resolve();
+		});
+
+		expect(
+			latestComposerProps?.pendingRequestAnswerDrafts?.["request-1"]?.[
+				"question-1"
+			],
+		).toBe("Fresh answer");
+		harness.unmount();
+	});
+
+	it("hydrates pending answer drafts after switching conversation targets", async () => {
+		const conversationA = "550e8400-e29b-41d4-a716-446655440021";
+		const conversationB = "550e8400-e29b-41d4-a716-446655440022";
+		const loadComposerDraftA = vi.fn(
+			() => new Promise<DraftRecord | undefined>(() => undefined),
+		);
+		const loadComposerDraftB = vi.fn().mockResolvedValue(
+			draftRecord({
+				id: `composer:conversation:${conversationB}`,
+				payload: {
+					version: 2,
+					target: {
+						kind: "conversation",
+						id: conversationB,
+					},
+					input: {
+						text: "",
+						mode: "ask",
+						model: "gpt-5.4-mini",
+						runtimeMode: "read-only",
+						contextItems: [],
+						attachments: [],
+						payload: {},
+					},
+					pendingRequestAnswerDrafts: {
+						"request-b": { "question-b": "Stored B answer" },
+					},
+					updatedAt: "2026-06-24T00:00:00.000Z",
+				},
+			}),
+		);
+		const harness = renderRegion({
+			session: sessionStub({
+				conversationId: conversationA,
+				draftId: undefined,
+				loadComposerDraft: loadComposerDraftA,
+			}),
+		});
+
+		await act(async () => {
+			latestComposerProps?.onPendingRequestAnswerDraftChange?.(
+				"request-a",
+				"question-a",
+				"Unsaved A answer",
+			);
+		});
+		await act(async () => {
+			harness.rerender({
+				session: sessionStub({
+					conversationId: conversationB,
+					draftId: undefined,
+					loadComposerDraft: loadComposerDraftB,
+				}),
+			});
+			await Promise.resolve();
+		});
+
+		await vi.waitFor(() => {
+			expect(
+				latestComposerProps?.pendingRequestAnswerDrafts?.[
+					"request-b"
+				]?.["question-b"],
+			).toBe("Stored B answer");
+		});
+		expect(
+			latestComposerProps?.pendingRequestAnswerDrafts?.["request-a"],
+		).toBeUndefined();
 		harness.unmount();
 	});
 
@@ -118,9 +353,124 @@ describe("ComposerRegion", () => {
 				}),
 				providerInput: expect.objectContaining({ prompt: "Ship it" }),
 			}),
+			{ target: { kind: "draft", id: "draft-db-1" } },
 		);
 		expect(latestComposerProps?.value).toBe("");
 		expect(latestComposerProps?.mode).toBe("ask");
+		harness.unmount();
+	});
+
+	it("uses route draft target even while the previous conversation session is still present", async () => {
+		const sendAdmittedRequest = vi.fn().mockResolvedValue(true);
+		const harness = renderRegion({
+			routeDraftId: "550e8400-e29b-41d4-a716-446655440011",
+			session: sessionStub({
+				conversationId: "conversation-previous",
+				draftId: "draft-db-1",
+				sendAdmittedRequest,
+			}),
+		});
+
+		await vi.waitFor(() => {
+			expect(document.body.textContent).toContain("No saved draft found");
+		});
+		await act(async () => {
+			latestComposerProps?.onChange("Send from route draft");
+		});
+		await act(async () => {
+			const sent = await latestComposerProps?.onSend();
+			expect(sent).toBe(true);
+		});
+
+		expect(sendAdmittedRequest).toHaveBeenCalledWith(expect.anything(), {
+			target: {
+				kind: "draft",
+				id: "550e8400-e29b-41d4-a716-446655440011",
+			},
+		});
+		harness.unmount();
+	});
+
+	it("does not clear newer text typed after a send starts", async () => {
+		let resolveSend: ((value: boolean) => void) | undefined;
+		const sendAdmittedRequest = vi.fn(
+			() =>
+				new Promise<boolean>((resolve) => {
+					resolveSend = resolve;
+				}),
+		);
+		const harness = renderRegion({
+			session: sessionStub({ sendAdmittedRequest }),
+		});
+
+		await act(async () => {
+			latestComposerProps?.onChange("Submitted");
+		});
+		let sendPromise: Promise<unknown> | undefined;
+		await act(async () => {
+			sendPromise = latestComposerProps?.onSend();
+			await Promise.resolve();
+		});
+		await act(async () => {
+			latestComposerProps?.onChange("New draft");
+		});
+		await act(async () => {
+			resolveSend?.(true);
+			await sendPromise;
+		});
+
+		expect(latestComposerProps?.value).toBe("New draft");
+		harness.unmount();
+	});
+
+	it("preserves pending answer drafts when normal conversation input clears", async () => {
+		const persistDraft = vi.fn().mockResolvedValue(undefined);
+		const clearComposerDraft = vi.fn().mockResolvedValue(undefined);
+		const sendAdmittedRequest = vi.fn().mockResolvedValue(true);
+		const harness = renderRegion({
+			session: sessionStub({
+				conversationId: "550e8400-e29b-41d4-a716-446655440001",
+				draftId: undefined,
+				persistDraft,
+				clearComposerDraft,
+				sendAdmittedRequest,
+			}),
+		});
+
+		await act(async () => {
+			latestComposerProps?.onPendingRequestAnswerDraftChange?.(
+				"request-1",
+				"question-1",
+				"answer me",
+			);
+			latestComposerProps?.onChange("Follow up");
+		});
+		await act(async () => {
+			const sent = await latestComposerProps?.onSend();
+			expect(sent).toBe(true);
+		});
+
+		expect(clearComposerDraft).not.toHaveBeenCalled();
+		expect(persistDraft).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				target: {
+					kind: "conversation",
+					id: "550e8400-e29b-41d4-a716-446655440001",
+				},
+				draft: expect.objectContaining({
+					payload: expect.objectContaining({ text: "" }),
+					pendingRequestAnswerDrafts: {
+						"request-1": { "question-1": "answer me" },
+					},
+				}),
+			}),
+		);
+		expect(latestComposerProps?.value).toBe("");
+		expect(
+			latestComposerProps?.pendingRequestAnswerDrafts?.["request-1"]?.[
+				"question-1"
+			],
+		).toBe("answer me");
 		harness.unmount();
 	});
 
@@ -292,6 +642,122 @@ describe("ComposerRegion", () => {
 		harness.unmount();
 	});
 
+	it("does not start a second queued request while one is executing", async () => {
+		let resolveExecute: ((value: unknown) => void) | undefined;
+		const executeNextQueuedRequest = vi.fn(
+			() =>
+				new Promise((resolve) => {
+					resolveExecute = resolve;
+				}),
+		);
+		const harness = renderRegion({
+			session: sessionStub({
+				conversationId: "conversation-1",
+				listQueuedRequests: vi
+					.fn()
+					.mockResolvedValue([
+						persistedQueueItem("queue-1", "First"),
+						persistedQueueItem("queue-2", "Second"),
+					]),
+				executeNextQueuedRequest,
+			}),
+		});
+
+		await vi.waitFor(() => {
+			expect(executeNextQueuedRequest).toHaveBeenCalledTimes(1);
+			expect(latestQueuePanelProps?.items[0]?.status).toBe("running");
+			expect(latestQueuePanelProps?.items[1]?.status).toBe("queued");
+		});
+		await act(async () => {
+			harness.rerender({
+				session: sessionStub({
+					conversationId: "conversation-1",
+					executeNextQueuedRequest,
+				}),
+			});
+			await Promise.resolve();
+		});
+
+		expect(executeNextQueuedRequest).toHaveBeenCalledTimes(1);
+		await act(async () => {
+			resolveExecute?.({ ok: true, executed: true });
+			await Promise.resolve();
+		});
+		harness.unmount();
+	});
+
+	it("keeps hydrated running queue items running", async () => {
+		const harness = renderRegion({
+			session: sessionStub({
+				conversationId: "conversation-1",
+				listQueuedRequests: vi.fn().mockResolvedValue([
+					{
+						id: "queue-running",
+						conversationId: "conversation-1",
+						admittedRequestId: "admitted-1",
+						position: 0,
+						status: "running",
+						request: {
+							id: "request-1",
+							draftSnapshot: {},
+							requestParts: [],
+							providerInput: { provider: "codex", prompt: "Run" },
+							admission: {},
+						},
+						createdAt: "2026-06-24T00:00:00.000Z",
+						updatedAt: "2026-06-24T00:00:00.000Z",
+					},
+				]),
+			}),
+		});
+
+		await vi.waitFor(() => {
+			expect(latestQueuePanelProps?.items[0]?.status).toBe("running");
+			expect(latestQueuePanelProps?.items[0]?.error).toBeUndefined();
+		});
+		harness.unmount();
+	});
+
+	it("shows draft restore warnings returned from main", async () => {
+		const harness = renderRegion({
+			routeDraftId: "550e8400-e29b-41d4-a716-446655440012",
+			draftScopeId: "550e8400-e29b-41d4-a716-446655440012",
+			session: sessionStub({
+				loadComposerDraft: vi.fn().mockResolvedValue(
+					draftRecord({
+						id: "550e8400-e29b-41d4-a716-446655440012",
+						warnings: ["draft_parse_rebuilt_legacy_payload"],
+						payload: {
+							version: 2,
+							target: {
+								kind: "draft",
+								id: "550e8400-e29b-41d4-a716-446655440012",
+							},
+							input: {
+								text: "Restored",
+								mode: "ask",
+								model: "gpt-5.4-mini",
+								runtimeMode: "read-only",
+								contextItems: [],
+								attachments: [],
+								payload: {},
+							},
+							pendingRequestAnswerDrafts: {},
+							updatedAt: "2026-06-24T00:00:00.000Z",
+						},
+					}),
+				),
+			}),
+		});
+
+		await vi.waitFor(() => {
+			expect(document.body.textContent).toContain(
+				"Draft restored with warnings: draft_parse_rebuilt_legacy_payload",
+			);
+		});
+		harness.unmount();
+	});
+
 	it("marks draft send start and clears the marker on failed draft sends", async () => {
 		const onDraftSendStarted = vi.fn();
 		const onDraftSendFailed = vi.fn();
@@ -367,7 +833,9 @@ function sessionStub(
 		isTurnRunning: false,
 		isTurnActive: false,
 		pendingRequests: [],
+		loadComposerDraft: vi.fn().mockResolvedValue(undefined),
 		persistDraft: vi.fn().mockResolvedValue(undefined),
+		clearComposerDraft: vi.fn().mockResolvedValue(undefined),
 		sendAdmittedRequest: vi.fn().mockResolvedValue(true),
 		enqueueAdmittedRequest: vi.fn().mockResolvedValue({
 			id: "queue-1",
@@ -379,6 +847,7 @@ function sessionStub(
 			updatedAt: "2026-06-24T00:00:00.000Z",
 		}),
 		cancelQueuedRequest: vi.fn().mockResolvedValue(undefined),
+		listQueuedRequests: vi.fn().mockResolvedValue([]),
 		executeNextQueuedRequest: vi
 			.fn()
 			.mockResolvedValue({ ok: true, executed: false }),
@@ -391,6 +860,56 @@ function sessionStub(
 				(_requestId: string, _response: RespondSessionRequestInput) =>
 					Promise.resolve(),
 			),
+		...overrides,
+	};
+}
+
+function persistedQueueItem(id: string, prompt: string): PersistedQueueItem {
+	return {
+		id,
+		conversationId: "conversation-1",
+		admittedRequestId: `${id}:admitted`,
+		position: id.endsWith("1") ? 0 : 1,
+		status: "queued",
+		request: {
+			id: `${id}:request`,
+			draftSnapshot: {},
+			requestParts: [],
+			providerInput: { provider: "codex", prompt },
+			admission: {},
+		},
+		createdAt: "2026-06-24T00:00:00.000Z",
+		updatedAt: "2026-06-24T00:00:00.000Z",
+	};
+}
+
+function draftRecord(overrides: Partial<DraftRecord> = {}): DraftRecord {
+	return {
+		id: "draft-db-1",
+		text: "",
+		runtimeMode: "read-only",
+		attachments: [],
+		payload: {
+			version: 2,
+			target: { kind: "draft", id: "draft-db-1" },
+			input: {
+				text: "",
+				mode: "ask",
+				model: "gpt-5.4-mini",
+				runtimeMode: "read-only",
+				contextItems: [],
+				attachments: [],
+				selection: { start: 0, end: 0 },
+				payload: {},
+			},
+			pendingRequestAnswerDrafts: {},
+			updatedAt: "2026-06-24T00:00:00.000Z",
+		},
+		version: 2,
+		mode: "ask",
+		status: "active",
+		createdAt: "2026-06-24T00:00:00.000Z",
+		updatedAt: "2026-06-24T00:00:00.000Z",
 		...overrides,
 	};
 }

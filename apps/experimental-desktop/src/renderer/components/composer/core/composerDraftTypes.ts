@@ -12,6 +12,7 @@ export type ComposerDraft = {
 	runtimeMode: CodexRuntimeMode;
 	contextItems: ComposerContextItem[];
 	attachments: ComposerAttachment[];
+	selection: { start: number; end: number };
 	updatedAt: number;
 };
 
@@ -22,8 +23,10 @@ export function createComposerDraft(input: {
 	runtimeMode: CodexRuntimeMode;
 	contextItems: ComposerContextItem[];
 	attachments: ComposerAttachment[];
+	selection?: { start: number; end: number };
 	updatedAt?: number;
 }): ComposerDraft {
+	const selection = normalizeSelection(input.selection, input.text.length);
 	return {
 		version: composerDraftVersion,
 		text: input.text,
@@ -32,6 +35,25 @@ export function createComposerDraft(input: {
 		runtimeMode: input.runtimeMode,
 		contextItems: input.contextItems,
 		attachments: input.attachments,
+		selection,
 		updatedAt: input.updatedAt ?? Date.now(),
 	};
+}
+
+function normalizeSelection(
+	selection: { start: number; end: number } | undefined,
+	length: number,
+) {
+	if (!selection) {
+		return { start: length, end: length };
+	}
+	const start = clamp(selection.start, length);
+	const end = clamp(selection.end, length);
+	return start <= end ? { start, end } : { start: end, end: start };
+}
+
+function clamp(value: number, length: number) {
+	return Number.isFinite(value)
+		? Math.min(length, Math.max(0, Math.trunc(value)))
+		: length;
 }

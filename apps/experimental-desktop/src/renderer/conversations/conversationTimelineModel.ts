@@ -130,10 +130,7 @@ export function projectConversationTimeline(input: {
 	const partsByMessage = new Map(
 		(input.conversation?.messages ?? []).map(
 			(message) =>
-				[
-					message.id,
-					projectMessageParts(message.parts ?? []),
-				] as const,
+				[message.id, projectMessageParts(message.parts ?? [])] as const,
 		),
 	);
 	const pendingByRequestId = new Map(
@@ -145,80 +142,90 @@ export function projectConversationTimeline(input: {
 	const rows = input.transcript.flatMap((item): ConversationTimelineRow[] => {
 		if (item.type === "approval") {
 			const pending = pendingByRequestId.get(item.requestId);
-			return [{
-				id: item.id,
-				kind: "request",
-				semanticKind: "approval",
-				anchorId: item.id,
-				signature: timelineSignature([
-					"request",
-					item.id,
-					item.requestId,
-					item.requestKind,
-					Boolean(pending),
-					pending?.data.raw,
-				]),
-				sizeHint: "compact",
-				requestId: item.requestId,
-				requestKind: item.requestKind,
-				time: item.time,
-				pending: Boolean(pending),
-				raw: pending?.data.raw,
-			}];
+			return [
+				{
+					id: item.id,
+					kind: "request",
+					semanticKind: "approval",
+					anchorId: item.id,
+					signature: timelineSignature([
+						"request",
+						item.id,
+						item.requestId,
+						item.requestKind,
+						Boolean(pending),
+						pending?.data.raw,
+					]),
+					sizeHint: "compact",
+					requestId: item.requestId,
+					requestKind: item.requestKind,
+					time: item.time,
+					pending: Boolean(pending),
+					raw: pending?.data.raw,
+				},
+			];
 		}
 		if (item.type === "system") {
 			const tone = eventTone(item.text);
-			return [{
-				id: item.id,
-				kind: "event",
-				semanticKind: eventSemanticKind(tone),
-				anchorId: item.id,
-				signature: timelineSignature([
-					"event",
-					item.id,
+			return [
+				{
+					id: item.id,
+					kind: "event",
+					semanticKind: eventSemanticKind(tone),
+					anchorId: item.id,
+					signature: timelineSignature([
+						"event",
+						item.id,
+						tone,
+						eventTitle(item.text),
+						item.text,
+					]),
+					sizeHint: "compact",
 					tone,
-					eventTitle(item.text),
-					item.text,
-				]),
-				sizeHint: "compact",
-				tone,
-				title: eventTitle(item.text),
-				text: item.text,
-				time: item.time,
-			}];
+					title: eventTitle(item.text),
+					text: item.text,
+					time: item.time,
+				},
+			];
 		}
 		const parts = partsByMessage.get(item.id) ?? fallbackTextPart(item);
 		if (item.type === "assistant" && parts.length === 0) {
 			return [];
 		}
 		const status =
-			item.type === "assistant" ? statusFromTranscript(item.status) : "completed";
-		return [{
-			id: item.id,
-			kind: "message",
-			semanticKind: messageSemanticKind(item.type),
-			anchorId: item.id,
-			signature: timelineSignature([
-				"message",
-				item.id,
-				item.type,
+			item.type === "assistant"
+				? statusFromTranscript(item.status)
+				: "completed";
+		return [
+			{
+				id: item.id,
+				kind: "message",
+				semanticKind: messageSemanticKind(item.type),
+				anchorId: item.id,
+				signature: timelineSignature([
+					"message",
+					item.id,
+					item.type,
+					status,
+					item.text,
+					item.type === "assistant" ? item.turnId : undefined,
+					item.type === "assistant" ? item.startedAt : undefined,
+					item.type === "assistant" ? item.completedAt : undefined,
+					parts.map(partSignature),
+				]),
+				sizeHint: messageSizeHint(item.type, parts),
+				role: item.type,
 				status,
-				item.text,
-				item.type === "assistant" ? item.turnId : undefined,
-				item.type === "assistant" ? item.startedAt : undefined,
-				item.type === "assistant" ? item.completedAt : undefined,
-				parts.map(partSignature),
-			]),
-			sizeHint: messageSizeHint(item.type, parts),
-			role: item.type,
-			status,
-			text: item.text,
-			time: item.time,
-			turnId: item.type === "assistant" ? item.turnId : undefined,
-			startedAt: item.type === "assistant" ? item.startedAt : undefined,
-			completedAt: item.type === "assistant" ? item.completedAt : undefined,
-			parts,
-		}];
+				text: item.text,
+				time: item.time,
+				turnId: item.type === "assistant" ? item.turnId : undefined,
+				startedAt:
+					item.type === "assistant" ? item.startedAt : undefined,
+				completedAt:
+					item.type === "assistant" ? item.completedAt : undefined,
+				parts,
+			},
+		];
 	});
 
 	return {
@@ -246,8 +253,12 @@ function projectMediaGridRow(
 	row: Extract<ConversationTimelineRow, { kind: "message" }>,
 ): ConversationTimelineRow | undefined {
 	const images = row.parts.filter(
-		(part): part is Extract<ConversationTimelinePart, { kind: "file" | "image" }> =>
-			part.kind === "image",
+		(
+			part,
+		): part is Extract<
+			ConversationTimelinePart,
+			{ kind: "file" | "image" }
+		> => part.kind === "image",
 	);
 	if (images.length === 0) {
 		return undefined;
@@ -283,7 +294,10 @@ function projectActivityGroupRow(
 		): part is Extract<
 			ConversationTimelinePart,
 			{ kind: "tool" | "approval" | "raw" }
-		> => part.kind === "tool" || part.kind === "approval" || part.kind === "raw",
+		> =>
+			part.kind === "tool" ||
+			part.kind === "approval" ||
+			part.kind === "raw",
 	);
 	if (providerParts.length < 2) {
 		return undefined;
@@ -314,7 +328,8 @@ export function createConversationTimelineRowStabilizer() {
 		const stableRows = rows.map((row) => {
 			const previous = previousRows.get(row.id);
 			const stable =
-				previous?.signature === row.signature && previous.kind === row.kind
+				previous?.signature === row.signature &&
+				previous.kind === row.kind
 					? previous
 					: row;
 			nextRows.set(row.id, stable);

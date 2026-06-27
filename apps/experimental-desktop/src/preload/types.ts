@@ -1,3 +1,9 @@
+import type {
+	ComposerDraftEnvelopeV2,
+	ComposerDraftWarningCode,
+} from "../shared/composer-draft-envelope";
+import type { ComposerTarget } from "../shared/composer-target";
+
 export type AppInfo = {
 	name: string;
 	version: string;
@@ -209,6 +215,8 @@ export type WorkspaceFileMention = {
 	kind: "file" | "directory";
 };
 
+export type DraftStatus = "active" | "promoting" | "promoted" | "discarded";
+
 export type DraftRecord = {
 	id: string;
 	text: string;
@@ -217,9 +225,36 @@ export type DraftRecord = {
 	runtimeMode: CodexRuntimeMode;
 	attachments: unknown[];
 	payload: unknown;
+	version: number;
+	mode: "ask" | "plan" | "build" | "review" | "shell";
+	conversationId?: string;
+	scopeKey?: string;
+	status: DraftStatus;
+	lastRestoredAt?: string;
+	lastError?: string;
 	createdAt: string;
 	updatedAt: string;
 	promotedConversationId?: string;
+	warnings?: ComposerDraftWarningCode[];
+};
+
+export type PersistedQueueItem = {
+	id: string;
+	conversationId: string;
+	admittedRequestId: string;
+	position: number;
+	status: "queued" | "running" | "completed" | "failed" | "canceled";
+	request: {
+		id: string;
+		draftSnapshot: unknown;
+		requestParts: unknown[];
+		providerInput: unknown;
+		admission: unknown;
+		compatibilityPayload?: unknown;
+	};
+	error?: string;
+	createdAt: string;
+	updatedAt: string;
 };
 
 export type ConversationSummary = {
@@ -417,8 +452,24 @@ export type ExperimentalDesktopApi = {
 			payload?: unknown;
 		},
 	) => Promise<DraftRecord>;
+	loadComposerDraft: (input: {
+		target: ComposerTarget;
+	}) => Promise<DraftRecord | undefined>;
+	upsertComposerDraft: (input: {
+		target: ComposerTarget;
+		envelope: ComposerDraftEnvelopeV2;
+		cwd?: string;
+	}) => Promise<DraftRecord | undefined>;
+	clearComposerDraft: (input: {
+		target: ComposerTarget;
+	}) => Promise<{ ok: true; hardDeleted: boolean }>;
+	restorePromotedComposerDraft: (input: {
+		target: ComposerTarget;
+	}) => Promise<
+		| { ok: true; conversation: ConversationDetail | undefined }
+		| { ok: false; reason: "not-promoted" }
+	>;
 	promoteDraftAndSend: (input: {
-		draftId?: string;
 		text: string;
 		cwd?: string;
 		model?: string;
@@ -463,8 +514,13 @@ export type ExperimentalDesktopApi = {
 	}>;
 	updateConversationQueueItem: (
 		queueItemId: string,
-		input: { status?: "queued" | "running" | "completed" | "failed" | "canceled" },
+		input: {
+			status?: "queued" | "running" | "completed" | "failed" | "canceled";
+		},
 	) => Promise<unknown>;
+	listConversationQueueItems: (
+		conversationId: string,
+	) => Promise<PersistedQueueItem[]>;
 	executeNextConversationQueueItem: (
 		conversationId: string,
 	) => Promise<unknown>;

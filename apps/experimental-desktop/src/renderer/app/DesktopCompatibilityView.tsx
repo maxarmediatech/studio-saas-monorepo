@@ -6,9 +6,9 @@ import type {
 	CodexRuntimeMode,
 	ConversationDetail,
 } from "../../preload/types";
-import { ConversationStage } from "../components/conversation/ConversationStage";
 import { ComposerRegion } from "../components/composer/ComposerRegion";
 import { useComposerQueueStore } from "../components/composer/core/composerQueueStore";
+import { ConversationStage } from "../components/conversation/ConversationStage";
 import { Sidebar } from "../components/layout";
 import { SettingsPanel } from "../components/right-panel";
 import type { ConversationResourceState } from "../conversations/conversationResourceStore";
@@ -20,8 +20,8 @@ import { useCodexSession } from "../hooks/useCodexSession";
 import { useProviderStatus } from "../hooks/useProviderStatus";
 import { useThemeMode } from "../hooks/useThemeMode";
 import { useWorkspaceSelection } from "../hooks/useWorkspaceSelection";
-import { shouldShowConversationSurface } from "./desktopConversationSurface";
 import { DesktopLayout } from "./DesktopLayout";
+import { shouldShowConversationSurface } from "./desktopConversationSurface";
 import { shouldNavigatePromotedDraft } from "./desktopRoutePromotion";
 import { iconProps } from "./icons";
 import type { RuntimeOption } from "./types";
@@ -74,27 +74,26 @@ export function DesktopCompatibilityView(props: {
 	const routeDraftId =
 		props.route.kind === "draft" ? props.route.draftId : undefined;
 	const routeConversation =
-		routeResource?.status === "ready" ? routeResource.conversation : undefined;
-	const timelineModel = useMemo(
-		() => {
-			const model = projectConversationTimeline({
-				conversation: routeConversation,
-				transcript: session.transcript,
-				pendingRequests: session.pendingRequests,
-				eventLog: session.eventLog,
-			});
-			return {
-				...model,
-				rows: stabilizeTimelineRowsRef.current(model.rows),
-			};
-		},
-		[
-			routeConversation,
-			session.eventLog,
-			session.pendingRequests,
-			session.transcript,
-		],
-	);
+		routeResource?.status === "ready"
+			? routeResource.conversation
+			: undefined;
+	const timelineModel = useMemo(() => {
+		const model = projectConversationTimeline({
+			conversation: routeConversation,
+			transcript: session.transcript,
+			pendingRequests: session.pendingRequests,
+			eventLog: session.eventLog,
+		});
+		return {
+			...model,
+			rows: stabilizeTimelineRowsRef.current(model.rows),
+		};
+	}, [
+		routeConversation,
+		session.eventLog,
+		session.pendingRequests,
+		session.transcript,
+	]);
 	const hasConversationSurface = shouldShowConversationSurface(timelineModel);
 
 	useEffect(() => {
@@ -206,6 +205,9 @@ export function DesktopCompatibilityView(props: {
 				if (pendingDraftPromotionRef.current === draftId) {
 					pendingDraftPromotionRef.current = undefined;
 				}
+			}}
+			onOpenPromotedConversation={(conversationId) => {
+				void openConversationRoute(conversationId);
 			}}
 			queue={composerQueue}
 			renderQueueInComposer={!hasConversationSurface}

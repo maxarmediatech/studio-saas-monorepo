@@ -6,33 +6,38 @@ import { admitComposerRequest } from "../../components/composer/core/composerSen
 import { createConversationClient } from "../conversationClient";
 
 describe("conversationClient", () => {
-	it("persists new and existing drafts through the transport boundary", async () => {
+	it("persists target-keyed composer drafts through the transport boundary", async () => {
 		const calls: string[] = [];
 		const client = createConversationClient({
 			...fakeTransport(),
-			createDraft: async (input) => {
-				calls.push(`create:${input?.text}:${input?.cwd}`);
-				return draftRecord("draft-new");
-			},
-			updateDraft: async (draftId, input) => {
-				calls.push(`update:${draftId}:${input.text}:${input.cwd}`);
-				return draftRecord(draftId);
+			upsertComposerDraft: async (input) => {
+				calls.push(
+					`upsert:${input.target.kind}:${input.target.id}:${input.envelope.input.text}:${input.cwd}`,
+				);
+				return draftRecord(input.target.id);
 			},
 		});
 
 		await client.persistDraft({
+			target: {
+				kind: "draft",
+				id: "550e8400-e29b-41d4-a716-446655440000",
+			},
 			draft: draftInput("hello"),
 			cwd: "/workspace",
 		});
 		await client.persistDraft({
-			draftId: "draft-existing",
+			target: {
+				kind: "conversation",
+				id: "550e8400-e29b-41d4-a716-446655440001",
+			},
 			draft: draftInput("again"),
 			cwd: "/workspace",
 		});
 
 		expect(calls).toEqual([
-			"create:hello:/workspace",
-			"update:draft-existing:again:/workspace",
+			"upsert:draft:550e8400-e29b-41d4-a716-446655440000:hello:/workspace",
+			"upsert:conversation:550e8400-e29b-41d4-a716-446655440001:again:/workspace",
 		]);
 	});
 
@@ -196,6 +201,7 @@ function draftInput(text: string): ComposerDraftPersistInput {
 	return {
 		model: "gpt-5.4-mini",
 		runtimeMode: "workspace-write",
+		selection: { start: text.length, end: text.length },
 		payload: buildComposerPayload({
 			mode: "ask",
 			text,
@@ -212,6 +218,9 @@ function draftRecord(id: string) {
 		runtimeMode: "read-only" as const,
 		attachments: [],
 		payload: {},
+		version: 1,
+		mode: "ask" as const,
+		status: "active" as const,
 		createdAt: "2026-06-24T00:00:00.000Z",
 		updatedAt: "2026-06-24T00:00:00.000Z",
 	};
@@ -222,6 +231,12 @@ function fakeTransport() {
 		loadConversationDetail: async () => undefined,
 		createDraft: async () => draftRecord("draft-1"),
 		updateDraft: async (draftId: string) => draftRecord(draftId),
+		loadComposerDraft: async () => undefined,
+		upsertComposerDraft: async () => draftRecord("draft-1"),
+		clearComposerDraft: async () => ({
+			ok: true as const,
+			hardDeleted: true,
+		}),
 		promoteDraftAndSend: async () => undefined,
 		promoteDraftAndSendAdmitted: async () => undefined,
 		sendConversationMessage: async () => undefined,
@@ -236,6 +251,7 @@ function fakeTransport() {
 			updatedAt: "2026-06-24T00:00:00.000Z",
 		}),
 		updateConversationQueueItem: async () => undefined,
+		listConversationQueueItems: async () => [],
 		executeNextConversationQueueItem: async () => ({
 			ok: true as const,
 			executed: false as const,

@@ -5,6 +5,7 @@ import type {
 	ConversationEvent,
 	RespondSessionRequestInput,
 } from "../../preload/types";
+import type { ComposerTarget } from "../../shared/composer-target";
 import type { PendingRequest, TranscriptItem } from "../app/types";
 import type { ComposerPayload } from "../components/composer/composerPayload";
 import type { ComposerDraftPersistInput } from "../components/composer/core/composerDraftSync";
@@ -71,17 +72,34 @@ export function useConversationSessionController(input: {
 		};
 	}, []);
 
-	async function persistDraft(draft: ComposerDraftPersistInput) {
-		if (conversationId) {
-			return;
-		}
+	async function loadComposerDraft(target: ComposerTarget) {
+		return client.loadComposerDraft({ target });
+	}
+
+	async function persistDraft(
+		inputDraft:
+			| { target: ComposerTarget; draft: ComposerDraftPersistInput }
+			| ComposerDraftPersistInput,
+	) {
+		const target =
+			"target" in inputDraft
+				? inputDraft.target
+				: draftTargetFromSession({ draftId, conversationId });
+		const draft = "target" in inputDraft ? inputDraft.draft : inputDraft;
 		const persistedDraft = await client.persistDraft({
-			draftId,
+			target,
 			draft,
 			cwd: input.selectedFolderPath,
 		});
-		if (!draftId) {
-			setDraftId(persistedDraft.id);
+		if (target.kind === "draft") {
+			setDraftId(persistedDraft?.id ?? target.id);
+		}
+	}
+
+	async function clearComposerDraft(target: ComposerTarget) {
+		await client.clearComposerDraft({ target });
+		if (target.kind === "draft" && draftId === target.id) {
+			setDraftId(undefined);
 		}
 	}
 
@@ -135,7 +153,10 @@ export function useConversationSessionController(input: {
 		setStatus(reason);
 	}
 
-	async function sendAdmittedRequest(request: AdmittedComposerRequest) {
+	async function sendAdmittedRequest(
+		request: AdmittedComposerRequest,
+		options?: { target?: ComposerTarget },
+	) {
 		if (!request.providerInput.prompt.trim()) {
 			setStatus("Message required");
 			return false;
@@ -145,7 +166,29 @@ export function useConversationSessionController(input: {
 		setIsTurnActive(true);
 		try {
 			const eventsBeforeSend = eventVersionRef.current;
-			if (conversationId) {
+			const routeDraftId =
+				options?.target?.kind === "draft"
+					? options.target.id
+					: undefined;
+			if (routeDraftId) {
+				setStatus("Starting conversation...");
+				const conversation = await client.sendAdmittedRequest({
+					draftId: routeDraftId,
+					cwd: input.selectedFolderPath,
+					request,
+				});
+				if (conversation) {
+					hydrateConversation(conversation);
+					eventStoreRef.current.clear();
+					await eventStoreRef.current.subscribe(
+						conversation.id,
+						handleSessionEvent,
+					);
+					await reconcileConversation(conversation.id, {
+						untilSettled: true,
+					});
+				}
+			} else if (conversationId) {
 				setStatus("Sending...");
 				const conversation = await client.sendAdmittedRequest({
 					conversationId,
@@ -161,6 +204,11 @@ export function useConversationSessionController(input: {
 					untilSettled: true,
 				});
 			} else {
+				if (!draftId) {
+					throw new Error(
+						"Route draft id is required before sending",
+					);
+				}
 				setStatus("Starting conversation...");
 				const conversation = await client.sendAdmittedRequest({
 					draftId,
@@ -215,6 +263,13 @@ export function useConversationSessionController(input: {
 	async function cancelQueuedRequest(queueItemId: string) {
 		await client.cancelQueuedRequest({ queueItemId });
 		setStatus("Removed from queue");
+	}
+
+	async function listQueuedRequests() {
+		if (!conversationId) {
+			return [];
+		}
+		return client.listQueuedRequests({ conversationId });
 	}
 
 	async function executeNextQueuedRequest() {
@@ -437,16 +492,32 @@ export function useConversationSessionController(input: {
 		createNewSession,
 		openConversation,
 		openLoadedConversation,
+		loadComposerDraft,
 		persistDraft,
+		clearComposerDraft,
 		sendMessage,
 		sendAdmittedRequest,
 		enqueueAdmittedRequest,
 		cancelQueuedRequest,
+		listQueuedRequests,
 		executeNextQueuedRequest,
 		reportComposerAdmissionBlock,
 		interruptConversation,
 		respondToRequest,
 	};
+}
+
+function draftTargetFromSession(input: {
+	draftId?: string;
+	conversationId?: string;
+}): ComposerTarget {
+	if (input.conversationId) {
+		return { kind: "conversation", id: input.conversationId };
+	}
+	if (!input.draftId) {
+		throw new Error("Composer draft target is required");
+	}
+	return { kind: "draft", id: input.draftId };
 }
 
 function readExecutedConversation(

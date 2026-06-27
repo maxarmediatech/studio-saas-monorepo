@@ -8,8 +8,9 @@ import { createComposerDraft } from "../composerDraftTypes";
 
 describe("useComposerDraftSync", () => {
 	beforeEach(() => {
-		(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT =
-			true;
+		(
+			globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+		).IS_REACT_ACT_ENVIRONMENT = true;
 		vi.useFakeTimers();
 	});
 
@@ -35,7 +36,9 @@ describe("useComposerDraftSync", () => {
 		});
 
 		function Harness(props: {
-			persistDraft: Parameters<typeof useComposerDraftSync>[0]["persistDraft"];
+			persistDraft: Parameters<
+				typeof useComposerDraftSync
+			>[0]["persistDraft"];
 		}) {
 			useComposerDraftSync({
 				draft,

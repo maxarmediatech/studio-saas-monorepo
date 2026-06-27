@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
 import type { SetStateAction } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
 	createFolderContextItem,
 	DEFAULT_FOLDER_CONTEXT_PATTERNS,
@@ -28,7 +28,9 @@ export function useComposerContextItems(input: {
 	}, [input.initialContextItems, input.resetSignal]);
 
 	useEffect(() => {
-		if (sameContextItemList(reportedContextItemsRef.current, contextItems)) {
+		if (
+			sameContextItemList(reportedContextItemsRef.current, contextItems)
+		) {
 			return;
 		}
 		reportedContextItemsRef.current = contextItems;

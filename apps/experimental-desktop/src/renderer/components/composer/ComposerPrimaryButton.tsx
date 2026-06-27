@@ -9,8 +9,8 @@ import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { composerControlClass } from "./ComposerControls";
 import {
-	resolvePrimaryAction,
 	type ComposerPrimaryAction,
+	resolvePrimaryAction,
 } from "./composerPrimaryAction";
 
 export { resolvePrimaryAction, type ComposerPrimaryAction };

@@ -4,8 +4,11 @@ import type {
 	ConversationEvent,
 	ConversationSummary,
 	DraftRecord,
+	PersistedQueueItem,
 	RespondSessionRequestInput,
 } from "../../preload/types";
+import type { ComposerDraftEnvelopeV2 } from "../../shared/composer-draft-envelope";
+import type { ComposerTarget } from "../../shared/composer-target";
 import type { AdmittedComposerRequest } from "../components/composer/core/composerProviderTypes";
 
 export type DraftPersistTransportInput = {
@@ -33,10 +36,12 @@ export function loadConversationDetail(conversationId: string) {
 	return window.experimentalDesktop.getConversation(conversationId);
 }
 
+/** Legacy compatibility only. Route-owned composer code must use upsertComposerDraft. */
 export function createDraft(input?: DraftPersistTransportInput) {
 	return window.experimentalDesktop.createDraft(input);
 }
 
+/** Legacy compatibility only. Route-owned composer code must use upsertComposerDraft. */
 export function updateDraft(
 	draftId: string,
 	input: DraftPersistTransportInput,
@@ -44,8 +49,24 @@ export function updateDraft(
 	return window.experimentalDesktop.updateDraft(draftId, input);
 }
 
+export function loadComposerDraft(input: { target: ComposerTarget }) {
+	return window.experimentalDesktop.loadComposerDraft(input);
+}
+
+export function upsertComposerDraft(input: {
+	target: ComposerTarget;
+	envelope: ComposerDraftEnvelopeV2;
+	cwd?: string;
+}) {
+	return window.experimentalDesktop.upsertComposerDraft(input);
+}
+
+export function clearComposerDraft(input: { target: ComposerTarget }) {
+	return window.experimentalDesktop.clearComposerDraft(input);
+}
+
 export function promoteDraftAndSend(
-	input: ConversationSendTransportInput & { draftId?: string; cwd?: string },
+	input: ConversationSendTransportInput & { cwd?: string },
 ) {
 	return window.experimentalDesktop.promoteDraftAndSend(input);
 }
@@ -100,6 +121,12 @@ export function updateConversationQueueItem(
 	);
 }
 
+export function listConversationQueueItems(conversationId: string) {
+	return window.experimentalDesktop.listConversationQueueItems(
+		conversationId,
+	);
+}
+
 export function executeNextConversationQueueItem(conversationId: string) {
 	return window.experimentalDesktop.executeNextConversationQueueItem(
 		conversationId,
@@ -137,12 +164,16 @@ export type ConversationDetailTransport = {
 	loadConversationDetail: typeof loadConversationDetail;
 	createDraft: typeof createDraft;
 	updateDraft: typeof updateDraft;
+	loadComposerDraft: typeof loadComposerDraft;
+	upsertComposerDraft: typeof upsertComposerDraft;
+	clearComposerDraft: typeof clearComposerDraft;
 	promoteDraftAndSend: typeof promoteDraftAndSend;
 	promoteDraftAndSendAdmitted: typeof promoteDraftAndSendAdmitted;
 	sendConversationMessage: typeof sendConversationMessage;
 	sendAdmittedMessage: typeof sendAdmittedMessage;
 	enqueueAdmittedMessage: typeof enqueueAdmittedMessage;
 	updateConversationQueueItem: typeof updateConversationQueueItem;
+	listConversationQueueItems: typeof listConversationQueueItems;
 	executeNextConversationQueueItem: typeof executeNextConversationQueueItem;
 	interruptConversation: typeof interruptConversation;
 	respondApproval: typeof respondApproval;
@@ -152,3 +183,4 @@ export type ConversationDetailTransport = {
 export type LoadedConversationDetail = NonNullable<ConversationDetail>;
 export type LoadedConversationSummary = ConversationSummary;
 export type LoadedDraftRecord = DraftRecord;
+export type LoadedQueueItem = PersistedQueueItem;

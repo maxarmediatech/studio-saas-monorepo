@@ -96,7 +96,13 @@ describe("useConversationSessionController", () => {
 		});
 
 		await act(async () => {
-			await harness.current.persistDraft(draftInput("draft text"));
+			await harness.current.persistDraft({
+				target: {
+					kind: "draft",
+					id: "550e8400-e29b-41d4-a716-446655440030",
+				},
+				draft: draftInput("draft text"),
+			});
 		});
 		await act(async () => {
 			const sent = await harness.current.sendAdmittedRequest(
@@ -106,7 +112,7 @@ describe("useConversationSessionController", () => {
 		});
 
 		expect(sendAdmittedRequest).toHaveBeenCalledWith({
-			draftId: "draft-1",
+			draftId: "550e8400-e29b-41d4-a716-446655440030",
 			cwd: "/workspace",
 			request: expect.objectContaining({
 				providerInput: expect.objectContaining({ prompt: "Ship it" }),
@@ -116,6 +122,54 @@ describe("useConversationSessionController", () => {
 		expect(harness.subscribeCalls).toEqual(["conversation-promoted"]);
 		expect(harness.current.conversationId).toBe("conversation-promoted");
 		expect(harness.current.status).toBe("Running...");
+		harness.unmount();
+	});
+
+	it("sendAdmittedRequest promotes an explicit draft target before using a loaded conversation", async () => {
+		const sendAdmittedRequest = vi.fn().mockResolvedValue(
+			conversationDetail({
+				id: "conversation-promoted",
+				status: "active",
+			}),
+		);
+		const harness = renderController({
+			client: { sendAdmittedRequest },
+		});
+
+		await act(async () => {
+			await harness.current.openLoadedConversation(
+				conversationDetail({ id: "conversation-old" }),
+			);
+		});
+		await act(async () => {
+			const sent = await harness.current.sendAdmittedRequest(
+				admittedRequest("Ship route draft"),
+				{
+					target: {
+						kind: "draft",
+						id: "550e8400-e29b-41d4-a716-446655440031",
+					},
+				},
+			);
+			expect(sent).toBe(true);
+		});
+
+		expect(sendAdmittedRequest).toHaveBeenCalledWith({
+			draftId: "550e8400-e29b-41d4-a716-446655440031",
+			cwd: "/workspace",
+			request: expect.objectContaining({
+				providerInput: expect.objectContaining({
+					prompt: "Ship route draft",
+				}),
+			}),
+		});
+		expect(sendAdmittedRequest).not.toHaveBeenCalledWith(
+			expect.objectContaining({ conversationId: "conversation-old" }),
+		);
+		expect(harness.subscribeCalls).toEqual([
+			"conversation-old",
+			"conversation-promoted",
+		]);
 		harness.unmount();
 	});
 
@@ -316,7 +370,15 @@ function renderController(input?: {
 		input?.refreshConversations ?? vi.fn().mockResolvedValue(undefined);
 	const client = {
 		loadConversationDetail: vi.fn().mockResolvedValue(undefined),
-		persistDraft: vi.fn().mockResolvedValue(draftRecord("draft-1")),
+		loadComposerDraft: vi.fn().mockResolvedValue(undefined),
+		persistDraft: vi
+			.fn()
+			.mockImplementation((input: { target: { id: string } }) =>
+				Promise.resolve(draftRecord(input.target.id)),
+			),
+		clearComposerDraft: vi
+			.fn()
+			.mockResolvedValue({ ok: true, hardDeleted: true }),
 		sendAdmittedRequest: vi.fn().mockResolvedValue(undefined),
 		enqueueAdmittedRequest: vi.fn().mockResolvedValue({
 			id: "queue-1",
@@ -328,6 +390,7 @@ function renderController(input?: {
 			updatedAt: "2026-06-24T00:00:00.000Z",
 		}),
 		cancelQueuedRequest: vi.fn().mockResolvedValue(undefined),
+		listQueuedRequests: vi.fn().mockResolvedValue([]),
 		executeNextQueuedRequest: vi
 			.fn()
 			.mockResolvedValue({ ok: true, executed: false }),
@@ -504,6 +567,7 @@ function draftInput(text: string): ComposerDraftPersistInput {
 	return {
 		model: "gpt-5.4-mini",
 		runtimeMode: "read-only",
+		selection: { start: text.length, end: text.length },
 		payload: buildComposerPayload({
 			mode: "ask",
 			text,

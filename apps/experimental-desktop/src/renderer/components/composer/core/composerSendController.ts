@@ -1,13 +1,10 @@
 import type { CodexRuntimeMode } from "../../../../preload/types";
 import { buildCodexProviderSendInput } from "../adapters/codexComposerAdapter";
-import {
-	buildComposerPayload,
-	type ComposerPayload,
-} from "../composerPayload";
-import { resolveComposerModePolicy } from "./composerModePolicy";
+import { buildComposerPayload, type ComposerPayload } from "../composerPayload";
 import type { ComposerDraft } from "./composerDraftTypes";
-import { buildComposerRequestParts } from "./composerRequestParts";
+import { resolveComposerModePolicy } from "./composerModePolicy";
 import type { AdmittedComposerRequest } from "./composerProviderTypes";
+import { buildComposerRequestParts } from "./composerRequestParts";
 import { codexRuntimeCapabilities } from "./runtimeCapabilityMap";
 
 export type ComposerAdmissionResult =
@@ -29,6 +26,10 @@ export function admitComposerRequest(input: {
 			runtimeMode: input.runtimeMode,
 			contextItems: input.payload.contextItems,
 			attachments: input.payload.attachments,
+			selection: {
+				start: input.payload.text.length,
+				end: input.payload.text.length,
+			},
 			updatedAt: Date.now(),
 		},
 		createId: input.createId,

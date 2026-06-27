@@ -62,13 +62,34 @@ describe("shouldPersistComposerDraft", () => {
 		).toBe(true);
 	});
 
-	it("does not persist once route/session is a conversation", () => {
+	it("persists non-empty conversation follow-up drafts", () => {
 		expect(
 			shouldPersistComposerDraft({
 				draft: draft({ text: "hello" }),
 				conversationId: "conversation-1",
 			}),
+		).toBe(true);
+	});
+
+	it("does not persist empty conversation follow-up drafts", () => {
+		expect(
+			shouldPersistComposerDraft({
+				draft: draft(),
+				target: { kind: "conversation", id: "conversation-1" },
+			}),
 		).toBe(false);
+	});
+
+	it("persists answer-only conversation follow-up drafts", () => {
+		expect(
+			shouldPersistComposerDraft({
+				draft: draft(),
+				target: { kind: "conversation", id: "conversation-1" },
+				pendingRequestAnswerDrafts: {
+					"request-1": { "question-1": "answer" },
+				},
+			}),
+		).toBe(true);
 	});
 });
 
@@ -80,11 +101,13 @@ describe("composerDraftToPersistInput", () => {
 				mode: "plan",
 				model: "gpt-5.4",
 				runtimeMode: "workspace-write",
+				selection: { start: 2, end: 7 },
 			}),
 		);
 
 		expect(input.model).toBe("gpt-5.4");
 		expect(input.runtimeMode).toBe("workspace-write");
+		expect(input.selection).toEqual({ start: 2, end: 7 });
 		expect(input.payload.mode).toBe("plan");
 		expect(input.payload.text).toBe("hello");
 		expect(input.payload.parts).toEqual([

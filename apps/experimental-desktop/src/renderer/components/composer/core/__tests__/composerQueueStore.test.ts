@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildComposerPayload } from "../../composerPayload";
 import type { AdmittedComposerRequest } from "../composerProviderTypes";
-import { admitComposerRequest } from "../composerSendController";
 import {
 	createEmptyComposerQueueState,
 	createPendingQueueItem,
@@ -9,6 +8,7 @@ import {
 	MAX_QUEUED_COMPOSER_REQUESTS,
 	validateQueueAdmission,
 } from "../composerQueueStore";
+import { admitComposerRequest } from "../composerSendController";
 
 describe("composerQueueStore", () => {
 	it("accepts queued requests under limits", () => {
@@ -24,16 +24,13 @@ describe("composerQueueStore", () => {
 	it("rejects empty, long, and full queue admissions", () => {
 		const emptyRequest = request("valid");
 		expect(
-			validateQueueAdmission(
-				createEmptyComposerQueueState(),
-				{
-					...emptyRequest,
-					providerInput: {
-						...emptyRequest.providerInput,
-						prompt: "",
-					},
+			validateQueueAdmission(createEmptyComposerQueueState(), {
+				...emptyRequest,
+				providerInput: {
+					...emptyRequest.providerInput,
+					prompt: "",
 				},
-			),
+			}),
 		).toEqual({ ok: false, reason: "emptyInput" });
 		expect(
 			validateQueueAdmission(

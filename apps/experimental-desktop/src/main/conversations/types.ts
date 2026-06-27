@@ -1,3 +1,4 @@
+import type { ComposerDraftWarningCode } from "../../shared/composer-draft-envelope";
 import type { CodexRuntimeMode } from "../sidecar-codex-runtime";
 
 export type ConversationStatus =
@@ -108,6 +109,8 @@ export type ConversationEvent =
 			};
 	  };
 
+export type DraftStatus = "active" | "promoting" | "promoted" | "discarded";
+
 export type DraftRecord = {
 	id: string;
 	text: string;
@@ -116,9 +119,38 @@ export type DraftRecord = {
 	runtimeMode: CodexRuntimeMode;
 	attachments: unknown[];
 	payload: unknown;
+	version: number;
+	mode: "ask" | "plan" | "build" | "review" | "shell";
+	conversationId?: string;
+	scopeKey?: string;
+	status: DraftStatus;
+	lastRestoredAt?: string;
+	lastError?: string;
 	createdAt: string;
 	updatedAt: string;
 	promotedConversationId?: string;
+	warnings?: ComposerDraftWarningCode[];
+};
+
+export type PersistedQueueItem = {
+	id: string;
+	conversationId: string;
+	admittedRequestId: string;
+	position: number;
+	status: "queued" | "running" | "completed" | "failed" | "canceled";
+	request: ValidatedAdmittedComposerRequestShape;
+	error?: string;
+	createdAt: string;
+	updatedAt: string;
+};
+
+export type ValidatedAdmittedComposerRequestShape = {
+	id: string;
+	draftSnapshot: unknown;
+	requestParts: unknown[];
+	providerInput: unknown;
+	admission: unknown;
+	compatibilityPayload?: unknown;
 };
 
 export type ConversationSummary = {

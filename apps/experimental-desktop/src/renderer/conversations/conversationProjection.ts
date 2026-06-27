@@ -109,8 +109,13 @@ export function applyConversationEventProjection(
 				transcript: [
 					...state.transcript.map((item) =>
 						item.type === "assistant" &&
-						(!event.data.turnId || item.turnId === event.data.turnId)
-							? { ...item, status: "failed" as const, completedAt: event.time }
+						(!event.data.turnId ||
+							item.turnId === event.data.turnId)
+							? {
+									...item,
+									status: "failed" as const,
+									completedAt: event.time,
+								}
 							: item,
 					),
 					{
@@ -134,7 +139,11 @@ export function applyConversationEventProjection(
 				transcript: state.transcript.map((item) =>
 					item.type === "assistant" &&
 					(!event.data.turnId || item.turnId === event.data.turnId)
-						? { ...item, status: "interrupted", completedAt: event.time }
+						? {
+								...item,
+								status: "interrupted",
+								completedAt: event.time,
+							}
 						: item,
 				),
 				pendingRequests: [],
