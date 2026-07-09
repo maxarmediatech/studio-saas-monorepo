@@ -1,0 +1,19 @@
+{
+  "decisionDate": "YYYY-MM-DD",
+  "decider": "Finance or product decision owner",
+  "evidence": [
+    "financial-report.json#mismatch-id"
+  ],
+  "options": [
+    "Describe each considered resolution"
+  ],
+  "rationale": "Why the selected action is appropriate for this financial history.",
+  "consequences": [
+    "Expected accounting, product, and operational consequences"
+  ],
+  "revisitCondition": "When or what evidence causes this decision to be revisited.",
+  "mismatchIds": [
+    "mismatch_type:organization_id:entity_type:entity_id"
+  ],
+  "intendedAction": "The approved manual action, including owner and execution notes."
+}

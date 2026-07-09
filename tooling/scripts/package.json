@@ -20,6 +20,8 @@
 		"create:user": "dotenv -c -e ../../.env -- tsx ./src/create-user.ts",
 		"backfill:checkin-dates": "dotenv -c -e ../../.env -- tsx ./src/backfill-checkin-dates.ts",
 		"notifications:deadlines": "dotenv -c -e ../../.env -- tsx ./src/send-deadline-reminders.ts",
+		"financial-reconciliation": "dotenv -c -e ../../.env -- tsx ./src/reconcile-financials.ts",
+		"test": "tsx --test ./src/financial-reconciliation.test.ts",
 		"type-check": "tsc --noEmit"
 	},
 	"version": "0.0.0"
