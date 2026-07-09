@@ -1,5 +1,9 @@
 "use client";
 
+import type {
+	DeliverableListItem,
+	ListDeliverablesOutput,
+} from "@repo/api/modules/studio/schemas/deliverable";
 import {
 	Sheet,
 	SheetContent,
@@ -8,9 +12,10 @@ import {
 } from "@repo/ui/components/sheet";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
-import { orpc } from "@shared/lib/orpc-query-utils";
+import { useAllCrewOptions } from "@saas/studio/components/shared";
 import { useDeliverableParams } from "@saas/studio/hooks/params/use-deliverable-params";
 import { deliverablesApi, deliverablesMutations } from "@saas/studio/lib/api";
+import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -19,11 +24,35 @@ import {
 	type DeliverableFormValues,
 } from "../DeliverableForm";
 
+function patchDeliverableCrew(
+	previous: ListDeliverablesOutput | undefined,
+	deliverableId: string,
+	assignedCrew: DeliverableListItem["assignedCrew"],
+) {
+	if (!previous) {
+		return previous;
+	}
+
+	return {
+		...previous,
+		data: previous.data.map((item) =>
+			item.id === deliverableId
+				? {
+						...item,
+						assignmentsCount: assignedCrew.length,
+						assignedCrew,
+					}
+				: item,
+		),
+	};
+}
+
 export function DeliverableEditSheet() {
 	const { deliverableId, close } = useDeliverableParams();
 	const isOpen = Boolean(deliverableId);
 	const queryClient = useQueryClient();
 	const [isScrolled, setIsScrolled] = useState(false);
+	const { data: crews = [] } = useAllCrewOptions(isOpen);
 
 	const { data: deliverable, isLoading } = useQuery({
 		...deliverablesApi.getOptions(deliverableId ?? ""),
@@ -38,8 +67,14 @@ export function DeliverableEditSheet() {
 		return deliverable?.data?.assignments ?? [];
 	}, [deliverable?.data?.assignments]);
 
+	const crewNameById = useMemo(() => {
+		return new Map(crews.map((crew) => [crew.id, crew.name]));
+	}, [crews]);
+
 	const handleSubmit = async (data: DeliverableFormValues) => {
-		if (!deliverableId) return;
+		if (!deliverableId) {
+			return;
+		}
 
 		try {
 			await updateMutation.mutateAsync({
@@ -82,15 +117,56 @@ export function DeliverableEditSheet() {
 				),
 			]);
 
-			await queryClient.invalidateQueries({
-				queryKey: orpc.deliverables.key(),
+			const assignedCrew = newAssignments.map((assignment) => {
+				const existingAssignment = existingAssignments.find(
+					(item) => item.crewId === assignment.crewId,
+				);
+
+				return {
+					id: assignment.crewId,
+					name:
+						existingAssignment?.crew.name ??
+						crewNameById.get(assignment.crewId) ??
+						"Assigned crew",
+					avatarUrl: null,
+				};
 			});
-			await queryClient.invalidateQueries({
-				queryKey: orpc.bookings.key(),
-			});
-			await queryClient.invalidateQueries({
-				queryKey: orpc.activities.key(),
-			});
+			const bookingId = deliverable?.data?.bookingId ?? data.bookingId;
+			const bookingDeliverablesQueries = [
+				deliverablesApi.listOptions({ bookingId, limit: 100 }).queryKey,
+				deliverablesApi.listOptions({ bookingId, limit: 50 }).queryKey,
+			];
+
+			for (const queryKey of bookingDeliverablesQueries) {
+				queryClient.setQueryData<ListDeliverablesOutput | undefined>(
+					queryKey,
+					(previous) =>
+						patchDeliverableCrew(
+							previous,
+							deliverableId,
+							assignedCrew,
+						),
+				);
+			}
+
+			await Promise.all([
+				queryClient.invalidateQueries({
+					queryKey:
+						deliverablesApi.getOptions(deliverableId).queryKey,
+				}),
+				...bookingDeliverablesQueries.map((queryKey) =>
+					queryClient.invalidateQueries({ queryKey }),
+				),
+				queryClient.invalidateQueries({
+					queryKey: orpc.deliverables.key(),
+				}),
+				queryClient.invalidateQueries({
+					queryKey: orpc.bookings.key(),
+				}),
+				queryClient.invalidateQueries({
+					queryKey: orpc.activities.key(),
+				}),
+			]);
 			toast.success("Deliverable updated successfully");
 			close();
 		} catch (error) {

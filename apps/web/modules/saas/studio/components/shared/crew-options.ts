@@ -14,9 +14,10 @@ export interface CrewOptionRecord {
 	dailyRate?: string | null;
 }
 
-export function useAllCrewOptions() {
+export function useAllCrewOptions(enabled = true) {
 	return useQuery({
 		queryKey: [...orpc.crews.key(), "all-options"],
+		enabled,
 		queryFn: async () => {
 			const allCrews: CrewOptionRecord[] = [];
 			let page = 1;

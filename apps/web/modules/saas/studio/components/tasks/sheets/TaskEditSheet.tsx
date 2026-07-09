@@ -8,9 +8,9 @@ import {
 } from "@repo/ui/components/sheet";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
-import { orpc } from "@shared/lib/orpc-query-utils";
 import { useTaskParams } from "@saas/studio/hooks/params/use-task-params";
 import { tasksApi, tasksMutations } from "@saas/studio/lib/api";
+import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -32,7 +32,9 @@ export function TaskEditSheet() {
 	const unassignMutation = useMutation(tasksMutations.unassign());
 
 	const handleSubmit = async (data: TaskFormValues) => {
-		if (!taskId) return;
+		if (!taskId) {
+			return;
+		}
 
 		try {
 			await updateMutation.mutateAsync({
@@ -76,6 +78,9 @@ export function TaskEditSheet() {
 
 			await queryClient.invalidateQueries({
 				queryKey: orpc.tasks.key(),
+			});
+			await queryClient.invalidateQueries({
+				queryKey: orpc.bookings.key(),
 			});
 			await queryClient.invalidateQueries({
 				queryKey: orpc.activities.key(),

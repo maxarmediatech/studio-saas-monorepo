@@ -7,6 +7,7 @@ import {
 	deliverableAssignments,
 	deliverables,
 	eq,
+	inArray,
 	isNull,
 	shootAssignments,
 	shoots,
@@ -80,35 +81,21 @@ export const listBookingCrews = studioProtectedProcedure
 
 		// Create lookup maps for entity names
 		const shootNameMap = new Map(
-			bookingShoots.map((s) => [s.id, s.name || s.shootType || "Unnamed Shoot"]),
+			bookingShoots.map((s) => [
+				s.id,
+				s.name || s.shootType || "Unnamed Shoot",
+			]),
 		);
 		const taskNameMap = new Map(
 			bookingTasks.map((t) => [t.id, t.name || "Unnamed Task"]),
 		);
 		const deliverableNameMap = new Map(
-			bookingDeliverables.map((d) => [d.id, d.name || "Unnamed Deliverable"]),
+			bookingDeliverables.map((d) => [
+				d.id,
+				d.name || "Unnamed Deliverable",
+			]),
 		);
 
-		// Get crew assignments from shoots
-		const shootCrewAssignments =
-			bookingShoots.length > 0
-				? await db
-						.select({
-							crewId: shootAssignments.crewId,
-							entityId: shootAssignments.shootId,
-						})
-						.from(shootAssignments)
-						.where(
-							and(
-								eq(shootAssignments.shootId, bookingShoots[0]?.id ?? ""),
-								...bookingShoots.slice(1).map((s) =>
-									eq(shootAssignments.shootId, s.id),
-								),
-							),
-						)
-				: [];
-
-		// Actually, let me fetch all assignments properly
 		const shootIds = bookingShoots.map((s) => s.id);
 		const taskIds = bookingTasks.map((t) => t.id);
 		const deliverableIds = bookingDeliverables.map((d) => d.id);
@@ -153,7 +140,10 @@ export const listBookingCrews = studioProtectedProcedure
 				.from(taskAssignments)
 				.innerJoin(tasks, eq(taskAssignments.taskId, tasks.id))
 				.where(
-					and(eq(tasks.bookingId, bookingId), isNull(tasks.deletedAt)),
+					and(
+						eq(tasks.bookingId, bookingId),
+						isNull(tasks.deletedAt),
+					),
 				);
 
 			for (const row of taskAssignmentRows) {
@@ -210,6 +200,7 @@ export const listBookingCrews = studioProtectedProcedure
 		const crewDetails = await db.query.crews.findMany({
 			where: and(
 				eq(crews.organizationId, context.organizationId),
+				inArray(crews.id, crewIds),
 				isNull(crews.deletedAt),
 			),
 			columns: {
@@ -227,7 +218,9 @@ export const listBookingCrews = studioProtectedProcedure
 		const data: BookingCrewMember[] = crewIds
 			.map((crewId) => {
 				const crew = crewDetailsMap.get(crewId);
-				if (!crew) return null;
+				if (!crew) {
+					return null;
+				}
 
 				return {
 					id: crew.id,

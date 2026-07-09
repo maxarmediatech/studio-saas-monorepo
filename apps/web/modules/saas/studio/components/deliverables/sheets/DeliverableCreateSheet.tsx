@@ -9,7 +9,7 @@ import {
 import { cn } from "@repo/ui/lib/utils";
 import { useDeliverableParams } from "@saas/studio/hooks/params/use-deliverable-params";
 import { useContextBookingId } from "@saas/studio/hooks/use-context-booking-id";
-import { deliverablesMutations } from "@saas/studio/lib/api";
+import { deliverablesApi, deliverablesMutations } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -56,15 +56,31 @@ export function DeliverableCreateSheet() {
 				);
 			}
 
-			await queryClient.invalidateQueries({
-				queryKey: orpc.deliverables.key(),
-			});
-			await queryClient.invalidateQueries({
-				queryKey: orpc.bookings.key(),
-			});
-			await queryClient.invalidateQueries({
-				queryKey: orpc.activities.key(),
-			});
+			const bookingDeliverablesQueries = [
+				deliverablesApi.listOptions({
+					bookingId: data.bookingId,
+					limit: 100,
+				}).queryKey,
+				deliverablesApi.listOptions({
+					bookingId: data.bookingId,
+					limit: 50,
+				}).queryKey,
+			];
+
+			await Promise.all([
+				...bookingDeliverablesQueries.map((queryKey) =>
+					queryClient.invalidateQueries({ queryKey }),
+				),
+				queryClient.invalidateQueries({
+					queryKey: orpc.deliverables.key(),
+				}),
+				queryClient.invalidateQueries({
+					queryKey: orpc.bookings.key(),
+				}),
+				queryClient.invalidateQueries({
+					queryKey: orpc.activities.key(),
+				}),
+			]);
 			toast.success("Deliverable added successfully");
 			close();
 		} catch (error) {
