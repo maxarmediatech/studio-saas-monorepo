@@ -121,7 +121,7 @@ Suggested modes:
 --fix-approved <decision-file>
 ~~~
 
-The report should be repeatable and later run as a scheduled domain-integrity check. Alert only on actionable invariant failures; this is financial reconciliation, not a generic observability project.
+Phase 0.3 implementation lives in [financial-mismatch-reconciliation.md](./financial-mismatch-reconciliation.md). It requires `--organization-id`, supports `--report` and conservative `--fix-safe`, and emits sorted machine-readable JSON. Alert only on actionable invariant failures; this is financial reconciliation, not a generic observability project. The approved-decision shape is [financial-mismatch-decision-template.json](./financial-mismatch-decision-template.json). `--fix-safe` never changes issued-document history; ambiguous records remain for manual review.
 
 ### 0.4 Payment API idempotency
 
