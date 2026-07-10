@@ -100,3 +100,66 @@ export async function assertCancellationFailureState(ctx: any) {
 		nextAttemptAt: null,
 	});
 }
+
+// biome-ignore lint/suspicious/noExportsInTest: baseline suite imports this executable scenario.
+export async function assertDurableCompensationRetry(ctx: any) {
+	const { calendarSyncJobs, db, eq, expect, id, mailBarrier, processJob } =
+		ctx;
+	const candidates = await db
+		.select()
+		.from(calendarSyncJobs)
+		.where(eq(calendarSyncJobs.shootId, id));
+	const source = candidates.find(
+		(job: any) =>
+			job.payload?.operation === "delivery" &&
+			job.payload?.target?.deliveryMethod === "ics",
+	);
+	if (!source) {
+		throw new Error("Expected a completed provider result to compensate");
+	}
+	const firstToken = `compensation-first-${id}`;
+	const [firstClaim] = await db
+		.update(calendarSyncJobs)
+		.set({
+			status: "processing",
+			effectState: "compensating",
+			providerResult: { googleEventId: null },
+			claimToken: firstToken,
+			lockedAt: new Date(),
+			attempts: 1,
+			maxAttempts: 3,
+		})
+		.where(eq(calendarSyncJobs.id, source.id))
+		.returning();
+	mailBarrier.failNext("injected compensation failure");
+	await processJob(firstClaim);
+	const failed = await db.query.calendarSyncJobs.findFirst({
+		where: eq(calendarSyncJobs.id, source.id),
+	});
+	expect(failed).toMatchObject({
+		status: "failed",
+		effectState: "compensating",
+		lastError: "injected compensation failure",
+	});
+	expect(failed?.compensationSequence).toBeTypeOf("number");
+	const sequence = failed?.compensationSequence;
+	const [retry] = await db
+		.update(calendarSyncJobs)
+		.set({
+			status: "processing",
+			claimToken: `compensation-retry-${id}`,
+			lockedAt: new Date(),
+			attempts: 2,
+		})
+		.where(eq(calendarSyncJobs.id, source.id))
+		.returning();
+	await processJob(retry);
+	const completed = await db.query.calendarSyncJobs.findFirst({
+		where: eq(calendarSyncJobs.id, source.id),
+	});
+	expect(completed).toMatchObject({
+		status: "completed",
+		effectState: "completed",
+		compensationSequence: sequence,
+	});
+}

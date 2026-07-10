@@ -231,17 +231,23 @@ export async function runCalendarDeliveryAdversarialAssertions(ctx: any) {
 	mailBarrier.block();
 	const inFlight = processJob(claimed);
 	await mailBarrier.waitForCalls(callsBeforeBarrier + 1);
-	await db
+	const reclaim = db
 		.update(calendarSyncJobs)
 		.set({ claimToken: `reclaimed-${suffix}`, lockedAt: new Date() })
-		.where(eq(calendarSyncJobs.id, processing.id));
+		.where(
+			and(
+				eq(calendarSyncJobs.id, processing.id),
+				eq(calendarSyncJobs.status, "processing"),
+				eq(calendarSyncJobs.claimToken, `barrier-${suffix}`),
+			),
+		);
 	await db
 		.update(crews)
 		.set({ email: `newer-${suffix}@example.com` })
 		.where(eq(crews.id, ids.externalIcs));
-	await route(ids.externalIcs);
+	const reroute = route(ids.externalIcs);
 	mailBarrier.release();
-	await inFlight;
+	await Promise.all([inFlight, reclaim, reroute]);
 	const [afterBarrier] = await db
 		.select()
 		.from(shootCalendarEvents)
@@ -260,19 +266,15 @@ export async function runCalendarDeliveryAdversarialAssertions(ctx: any) {
 		.from(calendarSyncJobs)
 		.where(eq(calendarSyncJobs.id, processing.id));
 	expect(reclaimedJob).toMatchObject({
-		status: "processing",
-		claimToken: `reclaimed-${suffix}`,
+		status: "completed",
+		claimToken: null,
 	});
 	const staleProviderCalls = mailBarrier.calls.slice(callsBeforeBarrier);
-	expect(staleProviderCalls).toHaveLength(2);
+	expect(staleProviderCalls).toHaveLength(1);
 	expect(staleProviderCalls).toEqual([
 		expect.objectContaining({
 			to: `current-${suffix}@example.com`,
 			subject: expect.stringContaining("Calendar Invite"),
-		}),
-		expect.objectContaining({
-			to: `current-${suffix}@example.com`,
-			subject: expect.stringContaining("Cancelled"),
 		}),
 	]);
 
@@ -332,6 +334,17 @@ export async function runCalendarDeliveryAdversarialAssertions(ctx: any) {
 		},
 	]);
 	const staleLockedAt = new Date(Date.now() - 20 * 60 * 1000);
+	await db.insert(shootCalendarEvents).values({
+		organizationId,
+		shootId: staleIds.terminalShoot,
+		crewId: staleIds.terminalCrew,
+		deliveryMethod: "ics",
+		recipientEmail: `stale-terminal-${suffix}@example.com`,
+		intentGeneration: 1,
+		intentState: "active",
+		syncStatus: "pending",
+		deliverySyncStatus: "pending",
+	});
 	await db.insert(calendarSyncJobs).values([
 		{
 			organizationId,
@@ -352,6 +365,7 @@ export async function runCalendarDeliveryAdversarialAssertions(ctx: any) {
 			jobType: "ics_send_invite",
 			shootId: staleIds.terminalShoot,
 			crewId: staleIds.terminalCrew,
+			generation: 1,
 			attempts: 5,
 			maxAttempts: 5,
 			lockedAt: staleLockedAt,
@@ -387,6 +401,20 @@ export async function runCalendarDeliveryAdversarialAssertions(ctx: any) {
 			}),
 		]),
 	);
+	const exhaustedMapping = await db.query.shootCalendarEvents.findFirst({
+		where: and(
+			eq(shootCalendarEvents.organizationId, organizationId),
+			eq(shootCalendarEvents.shootId, staleIds.terminalShoot),
+		),
+	});
+	expect(exhaustedMapping).toMatchObject({
+		syncStatus: "error",
+		deliverySyncStatus: "error",
+		deliveryLastError: "Calendar worker lease exhausted",
+	});
+	await db
+		.delete(shootCalendarEvents)
+		.where(eq(shootCalendarEvents.id, exhaustedMapping?.id ?? ""));
 	expect(await claimJobBatch()).toEqual(
 		expect.arrayContaining([
 			expect.objectContaining({
@@ -464,8 +492,8 @@ export async function runCalendarDeliveryAdversarialAssertions(ctx: any) {
 	expect(cancellationIntents[0]?.payload).toMatchObject({
 		eventInput: { date: "2026-12-31" },
 		target: {
-			recipientEmail: `external-${suffix}@example.com`,
-			icalSequence: 4,
+			recipientEmail: `current-${suffix}@example.com`,
+			icalSequence: 5,
 		},
 	});
 	await assertCancellationFailureState({

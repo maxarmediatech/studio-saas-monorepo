@@ -17,6 +17,9 @@ export type Snapshot = {
 		deliveryMethod: "google" | "ics" | "unsendable";
 		recipientEmail: string | null;
 		googleUserId: string | null;
+		googleConnectionId: string | null;
+		googleAccountEmail: string | null;
+		googleCreateId: string | null;
 		calendarId: string | null;
 		googleEventId: string | null;
 		icalUid: string | null;
@@ -28,12 +31,12 @@ type Job = typeof calendarSyncJobs.$inferSelect;
 
 export async function performProviderEffect(job: Job, snapshot: Snapshot) {
 	if (snapshot.target.deliveryMethod === "google") {
-		if (!snapshot.target.googleUserId) {
-			throw new Error("Snapshot has no Google user");
+		if (!snapshot.target.googleConnectionId) {
+			throw new Error("Snapshot has no Google connection identity");
 		}
 		const { config, accessToken } = await getGoogleAccessToken({
 			organizationId: job.organizationId,
-			userId: snapshot.target.googleUserId,
+			connectionId: snapshot.target.googleConnectionId,
 			allowDisconnected: snapshot.operation === "cancellation",
 		});
 		if (snapshot.operation === "cancellation") {
@@ -59,6 +62,7 @@ export async function performProviderEffect(job: Job, snapshot: Snapshot) {
 			config,
 			accessToken,
 			input: snapshot.eventInput,
+			eventId: snapshot.target.googleCreateId ?? undefined,
 		});
 		return { googleEventId: created.googleEventId };
 	}
@@ -72,24 +76,30 @@ export async function compensateStaleEffect(
 	job: Job,
 	snapshot: Snapshot,
 	googleEventId: string | null,
+	compensationSequence: number | null,
 ) {
-	if (snapshot.operation !== "delivery") {
-		return;
-	}
 	if (
 		snapshot.target.deliveryMethod === "google" &&
 		googleEventId &&
 		!snapshot.target.googleEventId &&
-		snapshot.target.googleUserId
+		snapshot.target.googleConnectionId
 	) {
 		const { config, accessToken } = await getGoogleAccessToken({
 			organizationId: job.organizationId,
-			userId: snapshot.target.googleUserId,
+			connectionId: snapshot.target.googleConnectionId,
 			allowDisconnected: true,
 		});
 		await deleteEvent({ config, accessToken, googleEventId });
 	} else if (snapshot.target.deliveryMethod === "ics") {
-		await sendIcs(job, snapshot, true, snapshot.target.icalSequence + 1);
+		if (compensationSequence == null) {
+			throw new Error("ICS compensation has no allocated sequence");
+		}
+		await sendIcs(
+			job,
+			snapshot,
+			snapshot.operation === "delivery",
+			compensationSequence,
+		);
 	}
 }
 

@@ -32,8 +32,8 @@ export function parseCalendarReconciliationArguments(args: string[]) {
 		}
 		throw new Error(`Unknown argument: ${argument}`);
 	}
-	if (apply && !organizationId) {
-		throw new Error("--apply requires --organization-id");
+	if (!organizationId) {
+		throw new Error("--organization-id is required");
 	}
 	return { apply, organizationId };
 }
@@ -50,7 +50,7 @@ export async function main(args = process.argv.slice(2)) {
 		JSON.stringify(
 			{
 				mode: apply ? "apply" : "report",
-				organizationId: organizationId ?? "all",
+				organizationId,
 				...result,
 			},
 			null,

@@ -1,5 +1,6 @@
 import {
 	and,
+	calendarRouteChanges,
 	db,
 	eq,
 	isNull,
@@ -22,15 +23,19 @@ import {
  * cancellation even when the crew can no longer be joined.
  */
 export async function reconcileCalendarDeliveries(params: {
-	organizationId?: string;
+	organizationId: string;
 	crewId?: string;
 	apply: boolean;
 }) {
-	if (params.apply && !params.organizationId) {
-		throw new Error(
-			"Calendar reconciliation apply requires organizationId",
-		);
+	if (!params.organizationId) {
+		throw new Error("Calendar reconciliation requires organizationId");
 	}
+	const pendingRouteChanges = await db.query.calendarRouteChanges.findMany({
+		where: and(
+			eq(calendarRouteChanges.organizationId, params.organizationId),
+			eq(calendarRouteChanges.status, "pending"),
+		),
+	});
 	const activeAssignments = await db
 		.select({
 			organizationId: shoots.organizationId,
@@ -43,9 +48,7 @@ export async function reconcileCalendarDeliveries(params: {
 			and(
 				isNull(shoots.deletedAt),
 				sql`${shoots.status} NOT IN ('completed', 'cancelled')`,
-				params.organizationId
-					? eq(shoots.organizationId, params.organizationId)
-					: undefined,
+				eq(shoots.organizationId, params.organizationId),
 				params.crewId
 					? eq(shootAssignments.crewId, params.crewId)
 					: undefined,
@@ -68,12 +71,7 @@ export async function reconcileCalendarDeliveries(params: {
 		.leftJoin(shoots, eq(shootCalendarEvents.shootId, shoots.id))
 		.where(
 			and(
-				params.organizationId
-					? eq(
-							shootCalendarEvents.organizationId,
-							params.organizationId,
-						)
-					: undefined,
+				eq(shootCalendarEvents.organizationId, params.organizationId),
 				params.crewId
 					? eq(shootCalendarEvents.crewId, params.crewId)
 					: undefined,
@@ -122,6 +120,20 @@ export async function reconcileCalendarDeliveries(params: {
 				error: error instanceof Error ? error.message : String(error),
 			});
 		}
+	}
+	if (failed === 0 && pendingRouteChanges.length > 0) {
+		await db
+			.update(calendarRouteChanges)
+			.set({ status: "completed", completedAt: new Date() })
+			.where(
+				and(
+					eq(
+						calendarRouteChanges.organizationId,
+						params.organizationId,
+					),
+					eq(calendarRouteChanges.status, "pending"),
+				),
+			);
 	}
 	return {
 		candidates: activeAssignments.length + staleMappings.length,

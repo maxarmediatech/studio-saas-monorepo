@@ -6,6 +6,7 @@ import {
 	and,
 	crews,
 	db,
+	desc,
 	eq,
 	googleCalendarConnections,
 	isNull,
@@ -241,37 +242,36 @@ export const app = new Hono()
 			: null;
 
 		const crew = await db.transaction(async (tx) => {
-			await tx
-				.insert(googleCalendarConnections)
-				.values({
-					organizationId,
-					userId: session.user.id,
-					googleAccountEmail: googleAccountEmail ?? null,
-					accessToken: accessToken ? encryptToken(accessToken) : null,
-					refreshToken: encryptToken(refreshToken),
-					scope: tokenResponse.scope ?? null,
-					accessTokenExpiresAt: tokenResponse.accessTokenExpiresAt,
-					disconnectedAt: null,
-					updatedAt: new Date(),
-				})
-				.onConflictDoUpdate({
-					target: [
-						googleCalendarConnections.organizationId,
-						googleCalendarConnections.userId,
-					],
-					set: {
-						googleAccountEmail: googleAccountEmail ?? null,
-						accessToken: accessToken
-							? encryptToken(accessToken)
-							: null,
-						refreshToken: encryptToken(refreshToken),
-						scope: tokenResponse.scope ?? null,
-						accessTokenExpiresAt:
-							tokenResponse.accessTokenExpiresAt,
-						disconnectedAt: null,
-						updatedAt: new Date(),
-					},
-				});
+			const previous = await tx.query.googleCalendarConnections.findFirst(
+				{
+					where: and(
+						eq(
+							googleCalendarConnections.organizationId,
+							organizationId,
+						),
+						eq(googleCalendarConnections.userId, session.user.id),
+					),
+					orderBy: desc(googleCalendarConnections.version),
+				},
+			);
+			if (previous && !previous.disconnectedAt) {
+				await tx
+					.update(googleCalendarConnections)
+					.set({ disconnectedAt: new Date(), updatedAt: new Date() })
+					.where(eq(googleCalendarConnections.id, previous.id));
+			}
+			await tx.insert(googleCalendarConnections).values({
+				organizationId,
+				userId: session.user.id,
+				version: (previous?.version ?? 0) + 1,
+				googleAccountEmail: googleAccountEmail ?? null,
+				accessToken: accessToken ? encryptToken(accessToken) : null,
+				refreshToken: encryptToken(refreshToken),
+				scope: tokenResponse.scope ?? null,
+				accessTokenExpiresAt: tokenResponse.accessTokenExpiresAt,
+				disconnectedAt: null,
+				updatedAt: new Date(),
+			});
 			return mutateCrewCalendarRoute(tx, {
 				organizationId,
 				userId: session.user.id,

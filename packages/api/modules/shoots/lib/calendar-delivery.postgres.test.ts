@@ -4,13 +4,16 @@ import {
 	runCalendarDeliveryIdempotencyAssertions,
 } from "./calendar-delivery-adversarial.postgres.test";
 import {
+	assertDurableCompensationRetry,
 	expectWrappedProducerFailure,
 	makeCalendarIds,
 } from "./calendar-delivery-worker-state.postgres.test";
+import { assertRouteIdentityTransitions } from "./calendar-route-identity.postgres.test";
 
 const mailBarrier = vi.hoisted(() => {
 	let release: (() => void) | undefined;
 	let wait: Promise<void> | undefined;
+	let failure: Error | undefined;
 	return {
 		calls: [] as unknown[],
 		block() {
@@ -22,8 +25,16 @@ const mailBarrier = vi.hoisted(() => {
 			release?.();
 			wait = undefined;
 		},
+		failNext(message: string) {
+			failure = new Error(message);
+		},
 		async send(input: unknown) {
 			this.calls.push(input);
+			if (failure) {
+				const error = failure;
+				failure = undefined;
+				throw error;
+			}
 			await wait;
 		},
 		async waitForCalls(count: number) {
@@ -56,6 +67,7 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 			and,
 			bookings,
 			calendarDeliveryIntents,
+			calendarRouteChanges,
 			calendarSyncJobs,
 			crews,
 			db,
@@ -79,6 +91,9 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 		const { buildEventInput } = await import(
 			"../../../../../services/calendar-worker/src/event-input"
 		);
+		const { ensureCrewForMember } = await import(
+			"../../../../../packages/auth/lib/organization"
+		);
 
 		const suffix = `${process.pid}_${Date.now()}`;
 		const organizationId = `calendar_org_${suffix}`;
@@ -99,6 +114,9 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 		let triggerCreated = false;
 
 		try {
+			await expect(
+				reconcileCalendarDeliveries({ apply: false } as any),
+			).rejects.toThrow("requires organizationId");
 			await db.insert(organizations).values([
 				{
 					id: organizationId,
@@ -205,7 +223,6 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 					role: "Photographer",
 				})),
 			);
-
 			const route = (id: string) =>
 				db.transaction((tx) =>
 					ensureAssignmentCalendarDelivery(tx, {
@@ -230,52 +247,24 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 				state: "unsendable",
 			});
 
-			await db.insert(googleCalendarConnections).values({
+			await assertRouteIdentityTransitions({
+				and,
+				calendarDeliveryIntents,
+				calendarRouteChanges,
+				calendarSyncJobs,
+				crews,
+				db,
+				eq,
+				ensureCrewForMember,
+				expect,
+				googleCalendarConnections,
+				ids,
 				organizationId,
-				userId: registeredUserId,
-				refreshToken: "encrypted-registered-test-token",
-			});
-			await reconcileCalendarDeliveries({
-				organizationId,
-				crewId: ids.registeredIcs,
-				apply: true,
-			});
-			const [reroutedMapping] = await db
-				.select()
-				.from(shootCalendarEvents)
-				.where(
-					and(
-						eq(shootCalendarEvents.organizationId, organizationId),
-						eq(shootCalendarEvents.shootId, ids.registeredIcs),
-					),
-				);
-			const reroutedJobs = await db
-				.select()
-				.from(calendarSyncJobs)
-				.where(
-					and(
-						eq(calendarSyncJobs.organizationId, organizationId),
-						eq(calendarSyncJobs.shootId, ids.registeredIcs),
-					),
-				);
-			expect(reroutedMapping).toMatchObject({
-				deliveryMethod: "google",
-				intentGeneration: 2,
-			});
-			const reroutedJob = reroutedJobs.find(
-				(job) => job.generation === reroutedMapping?.intentGeneration,
-			);
-			expect(reroutedJob).toMatchObject({
-				jobType: "google_create",
-				attempts: 0,
-				generation: 2,
-			});
-			expect(reroutedJob?.payload).toMatchObject({
-				operation: "delivery",
-				target: {
-					deliveryMethod: "google",
-					googleUserId: registeredUserId,
-				},
+				reconcileCalendarDeliveries,
+				registeredUserId,
+				shootCalendarEvents,
+				suffix,
+				users,
 			});
 
 			let jobs: (typeof calendarSyncJobs.$inferSelect)[] =
@@ -464,6 +453,16 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 				shoots,
 				staleIds,
 				suffix,
+			});
+			await assertDurableCompensationRetry({
+				and,
+				calendarSyncJobs,
+				db,
+				eq,
+				expect,
+				id: ids.externalIcs,
+				mailBarrier,
+				processJob,
 			});
 		} finally {
 			if (triggerCreated) {

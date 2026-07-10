@@ -19,7 +19,7 @@ export async function getNextIcalSequence(
 	params: { organizationId: string; shootId: string; crewId: string },
 	floor = -1,
 ) {
-	const [row] = await tx
+	const [intentRow] = await tx
 		.select({
 			sequence: sql<number>`COALESCE(MAX(${calendarDeliveryIntents.icalSequence}), -1)`,
 		})
@@ -34,7 +34,25 @@ export async function getNextIcalSequence(
 				eq(calendarDeliveryIntents.crewId, params.crewId),
 			),
 		);
-	return Math.max(Number(row?.sequence ?? -1), floor) + 1;
+	const [compensationRow] = await tx
+		.select({
+			sequence: sql<number>`COALESCE(MAX(${calendarSyncJobs.compensationSequence}), -1)`,
+		})
+		.from(calendarSyncJobs)
+		.where(
+			and(
+				eq(calendarSyncJobs.organizationId, params.organizationId),
+				eq(calendarSyncJobs.shootId, params.shootId),
+				eq(calendarSyncJobs.crewId, params.crewId),
+			),
+		);
+	return (
+		Math.max(
+			Number(intentRow?.sequence ?? -1),
+			Number(compensationRow?.sequence ?? -1),
+			floor,
+		) + 1
+	);
 }
 
 export function getCalendarDeliveryKey(params: {
@@ -120,6 +138,8 @@ export async function createIntent(
 		googleEventId?: string | null;
 		icalUid?: string | null;
 		icalSequence?: number | null;
+		googleConnectionId?: string | null;
+		googleAccountEmail?: string | null;
 		snapshot: CalendarSnapshot;
 	},
 ) {
@@ -137,6 +157,8 @@ export async function createIntent(
 			googleEventId: params.googleEventId ?? null,
 			icalUid: params.icalUid ?? null,
 			icalSequence: params.icalSequence ?? 0,
+			googleConnectionId: params.googleConnectionId ?? null,
+			googleAccountEmail: params.googleAccountEmail ?? null,
 			payload: params.snapshot,
 		})
 		.returning({ id: calendarDeliveryIntents.id });
