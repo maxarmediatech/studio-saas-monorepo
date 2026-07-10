@@ -3,8 +3,73 @@ import { describe, expect, it } from "vitest";
 describe("calendar delivery adversarial PostgreSQL assertions", () => {
 	it("exports the scenario invoked by the migrated baseline suite", () => {
 		expect(runCalendarDeliveryAdversarialAssertions).toBeTypeOf("function");
+		expect(runCalendarDeliveryIdempotencyAssertions).toBeTypeOf("function");
 	});
 });
+
+// biome-ignore lint/suspicious/noExportsInTest: baseline suite imports this executable scenario.
+export async function runCalendarDeliveryIdempotencyAssertions(ctx: any) {
+	const {
+		calendarDeliveryIntents,
+		calendarSyncJobs,
+		db,
+		eq,
+		expect,
+		id,
+		organizationId,
+		route,
+		shoots,
+	} = ctx;
+	await route(id);
+	await route(id);
+	const repeated = await Promise.allSettled([
+		route(id),
+		route(id),
+		route(id),
+	]);
+	expect(repeated.every((result) => result.status === "fulfilled")).toBe(
+		true,
+	);
+
+	let intents = await db
+		.select()
+		.from(calendarDeliveryIntents)
+		.where(eq(calendarDeliveryIntents.shootId, id));
+	let jobs = await db
+		.select()
+		.from(calendarSyncJobs)
+		.where(eq(calendarSyncJobs.shootId, id));
+	expect(intents).toHaveLength(1);
+	expect(intents[0]).toMatchObject({ generation: 1, state: "active" });
+	expect(jobs).toHaveLength(1);
+	expect(jobs[0]).toMatchObject({ generation: 1, status: "pending" });
+
+	await db
+		.update(shoots)
+		.set({ name: "Material calendar update" })
+		.where(eq(shoots.id, id));
+	const updated = await Promise.allSettled([route(id), route(id), route(id)]);
+	expect(updated.every((result) => result.status === "fulfilled")).toBe(true);
+	intents = await db
+		.select()
+		.from(calendarDeliveryIntents)
+		.where(eq(calendarDeliveryIntents.shootId, id));
+	jobs = await db
+		.select()
+		.from(calendarSyncJobs)
+		.where(eq(calendarSyncJobs.shootId, id));
+	expect(intents).toHaveLength(2);
+	expect(
+		intents.filter((intent: any) => intent.generation === 2),
+	).toHaveLength(1);
+	expect(jobs.filter((job: any) => job.status === "pending")).toEqual([
+		expect.objectContaining({ generation: 2 }),
+	]);
+	return db
+		.select()
+		.from(calendarSyncJobs)
+		.where(eq(calendarSyncJobs.organizationId, organizationId));
+}
 
 /** Shared adversarial portion of the migrated Calendar PostgreSQL suite. */
 // biome-ignore lint/suspicious/noExportsInTest: baseline suite imports this executable scenario.

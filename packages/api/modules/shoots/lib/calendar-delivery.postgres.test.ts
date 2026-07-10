@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { runCalendarDeliveryAdversarialAssertions } from "./calendar-delivery-adversarial.postgres.test";
+import {
+	runCalendarDeliveryAdversarialAssertions,
+	runCalendarDeliveryIdempotencyAssertions,
+} from "./calendar-delivery-adversarial.postgres.test";
 
 const mailBarrier = vi.hoisted(() => {
 	let release: (() => void) | undefined;
@@ -276,33 +279,17 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 				},
 			});
 
-			const concurrentRoutes = await Promise.allSettled([
-				route(ids.missing),
-				route(ids.missing),
-				route(ids.missing),
-			]);
-			expect(concurrentRoutes).toEqual(
-				expect.arrayContaining([
-					expect.objectContaining({ status: "fulfilled" }),
-					expect.objectContaining({ status: "fulfilled" }),
-					expect.objectContaining({ status: "fulfilled" }),
-				]),
-			);
-			let jobs = await db
-				.select()
-				.from(calendarSyncJobs)
-				.where(eq(calendarSyncJobs.organizationId, organizationId));
-			expect(
-				jobs.filter((job) => job.shootId === ids.missing),
-			).toHaveLength(1);
-			expect(jobs.filter((job) => job.shootId === ids.missing)).toEqual(
-				expect.arrayContaining([
-					expect.objectContaining({
-						generation: 1,
-						status: "pending",
-					}),
-				]),
-			);
+			let jobs = await runCalendarDeliveryIdempotencyAssertions({
+				calendarDeliveryIntents,
+				calendarSyncJobs,
+				db,
+				eq,
+				expect,
+				id: ids.missing,
+				organizationId,
+				route,
+				shoots,
+			});
 
 			await route(ids.retry);
 			const retryAt = new Date(Date.now() + 60_000);
