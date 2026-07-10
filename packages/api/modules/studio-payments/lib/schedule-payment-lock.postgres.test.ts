@@ -22,6 +22,9 @@ describePostgres("schedule payment row-lock concurrency", () => {
 			getLockedBookingForReceipt,
 			getLockedScheduleForReceipt,
 		} = await import("../../receipts/lib/locked-invoice-for-receipt");
+		const { buildSchedulePaymentTransition } = await import(
+			"./schedule-payment-transition"
+		);
 
 		const suffix = `${process.pid}_${Date.now()}`;
 		const organizationId = `schedule_race_org_${suffix}`;
@@ -68,6 +71,11 @@ describePostgres("schedule payment row-lock concurrency", () => {
 					});
 					return existing?.id;
 				}
+				const transition = buildSchedulePaymentTransition(
+					schedule!,
+					"100.00",
+					"Cancelled schedule cannot be converted",
+				);
 
 				const [payment] = await tx
 					.insert(receivedAmounts)
@@ -75,14 +83,18 @@ describePostgres("schedule payment row-lock concurrency", () => {
 						organizationId,
 						bookingId,
 						paymentScheduleId: scheduleId,
-						amount: "100.00",
+						amount: transition.amount,
 						paymentMethod: "cash",
 						receivedDate: "2026-01-01",
 					})
 					.returning({ id: receivedAmounts.id });
 				await tx
 					.update(paymentSchedules)
-					.set({ paidAmount: "100.00", status: "completed" })
+					.set({
+						paidAmount: transition.paidAmount,
+						paidAt: transition.paidAt,
+						status: transition.status,
+					})
 					.where(eq(paymentSchedules.id, scheduleId));
 				return payment?.id;
 			});
@@ -114,6 +126,9 @@ describePostgres("schedule payment row-lock concurrency", () => {
 			getLockedBookingForReceipt,
 			getLockedScheduleForReceipt,
 		} = await import("../../receipts/lib/locked-invoice-for-receipt");
+		const { buildSchedulePaymentTransition } = await import(
+			"./schedule-payment-transition"
+		);
 
 		const suffix = `${process.pid}_${Date.now()}`;
 		const organizationId = `schedule_overpay_org_${suffix}`;
@@ -151,13 +166,18 @@ describePostgres("schedule payment row-lock concurrency", () => {
 					bookingId,
 					paymentScheduleId: scheduleId,
 				});
-				const paidAmount = Number(schedule?.paidAmount ?? 0);
-				if (paidAmount + 60 > Number(schedule?.amount ?? 0)) {
-					throw new Error("overpayment");
-				}
+				const transition = buildSchedulePaymentTransition(
+					schedule!,
+					"60.00",
+					"Cancelled schedule cannot receive payments",
+				);
 				await tx
 					.update(paymentSchedules)
-					.set({ paidAmount: `${paidAmount + 60}.00`, status: "partial" })
+					.set({
+						paidAmount: transition.paidAmount,
+						paidAt: transition.paidAt,
+						status: transition.status,
+					})
 					.where(eq(paymentSchedules.id, scheduleId));
 			});
 

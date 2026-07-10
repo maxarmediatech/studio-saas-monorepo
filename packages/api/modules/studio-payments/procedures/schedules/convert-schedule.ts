@@ -22,12 +22,12 @@ import {
 	generateReceiptNumber,
 	updateInvoicePaymentStatus,
 } from "../../../receipts/lib/receipt-helpers";
-import { centsToMoney, moneyToCents } from "../../../studio/lib/money";
 import { requirePermission } from "../../../studio/lib/permissions";
 import {
 	convertScheduleInputSchema,
 	convertScheduleOutputSchema,
 } from "../../../studio/schemas/payment";
+import { buildSchedulePaymentTransition } from "../../lib/schedule-payment-transition";
 
 const MAX_RECEIPT_INSERT_ATTEMPTS = 5;
 
@@ -162,51 +162,11 @@ export const convertSchedule = studioProtectedProcedure
 				};
 			}
 
-			if (schedule.status === "cancelled") {
-				throw new ORPCError("CONFLICT", {
-					message: "Cancelled schedule cannot be converted",
-				});
-			}
-
-			const convertedAmountCents = moneyToCents(amount);
-			const scheduleAmountCents = moneyToCents(schedule.amount);
-			const existingPaidAmountCents = moneyToCents(schedule.paidAmount);
-			const remainingAmountCents =
-				scheduleAmountCents - existingPaidAmountCents;
-			const newPaidAmountCents =
-				existingPaidAmountCents + convertedAmountCents;
-			const newScheduleStatus =
-				newPaidAmountCents >= scheduleAmountCents
-					? "completed"
-					: "partial";
-			const paidAt =
-				newScheduleStatus === "completed"
-					? (schedule.paidAt ?? new Date())
-					: schedule.paidAt;
-
-			if (
-				!Number.isFinite(convertedAmountCents) ||
-				convertedAmountCents <= 0
-			) {
-				throw new ORPCError("BAD_REQUEST", {
-					message: "Amount must be greater than zero",
-				});
-			}
-
-			if (remainingAmountCents <= 0) {
-				throw new ORPCError("CONFLICT", {
-					message: "Schedule is already fully paid",
-				});
-			}
-
-			if (convertedAmountCents > remainingAmountCents) {
-				throw new ORPCError("BAD_REQUEST", {
-					message: "Amount cannot exceed remaining scheduled balance",
-				});
-			}
-
-			const convertedAmountString = centsToMoney(convertedAmountCents);
-			const newPaidAmountString = centsToMoney(newPaidAmountCents);
+			const schedulePayment = buildSchedulePaymentTransition(
+				schedule,
+				amount,
+				"Cancelled schedule cannot be converted",
+			);
 
 			// Use current date if not provided
 			const actualReceivedDate =
@@ -217,7 +177,7 @@ export const convertSchedule = studioProtectedProcedure
 				.values({
 					organizationId: context.organizationId,
 					bookingId: schedule.bookingId,
-					amount: convertedAmountString,
+					amount: schedulePayment.amount,
 					paymentMethod,
 					transactionReference: transactionReference ?? null,
 					receivedDate: actualReceivedDate,
@@ -273,7 +233,7 @@ export const convertSchedule = studioProtectedProcedure
 										invoiceId: linkedInvoice.id,
 										receivedAmountId: created.id,
 										receiptNumber,
-										amount: convertedAmountString,
+						amount: schedulePayment.amount,
 										paymentMethod,
 										receiptDate: actualReceivedDate,
 										notes: notes ?? null,
@@ -325,9 +285,9 @@ export const convertSchedule = studioProtectedProcedure
 			await tx
 				.update(paymentSchedules)
 				.set({
-					paidAmount: newPaidAmountString,
-					paidAt,
-					status: newScheduleStatus,
+					paidAmount: schedulePayment.paidAmount,
+					paidAt: schedulePayment.paidAt,
+					status: schedulePayment.status,
 					updatedAt: new Date(),
 					updatedBy: context.user.id,
 				})
@@ -337,7 +297,7 @@ export const convertSchedule = studioProtectedProcedure
 			await tx
 				.update(bookings)
 				.set({
-					totalReceived: sql`${bookings.totalReceived} + ${convertedAmountString}`,
+					totalReceived: sql`${bookings.totalReceived} + ${schedulePayment.amount}`,
 					updatedAt: new Date(),
 					updatedBy: context.user.id,
 				})
@@ -353,9 +313,9 @@ export const convertSchedule = studioProtectedProcedure
 				parentEntityId: schedule.bookingId,
 				parentEntityName: lockedBooking.name,
 				metadata: {
-					paidAmount: convertedAmountString,
-					totalPaidAmount: newPaidAmountString,
-					scheduleStatus: newScheduleStatus,
+					paidAmount: schedulePayment.amount,
+					totalPaidAmount: schedulePayment.paidAmount,
+					scheduleStatus: schedulePayment.status,
 					receivedId: created.id,
 					receiptId,
 				},
