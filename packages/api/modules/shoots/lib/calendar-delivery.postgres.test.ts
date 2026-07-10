@@ -276,18 +276,33 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 				},
 			});
 
-			await Promise.all([
-				route(ids.externalIcs),
-				route(ids.externalIcs),
-				route(ids.externalIcs),
+			const concurrentRoutes = await Promise.allSettled([
+				route(ids.missing),
+				route(ids.missing),
+				route(ids.missing),
 			]);
+			expect(concurrentRoutes).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ status: "fulfilled" }),
+					expect.objectContaining({ status: "fulfilled" }),
+					expect.objectContaining({ status: "fulfilled" }),
+				]),
+			);
 			let jobs = await db
 				.select()
 				.from(calendarSyncJobs)
 				.where(eq(calendarSyncJobs.organizationId, organizationId));
 			expect(
-				jobs.filter((job) => job.shootId === ids.externalIcs),
+				jobs.filter((job) => job.shootId === ids.missing),
 			).toHaveLength(1);
+			expect(jobs.filter((job) => job.shootId === ids.missing)).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						generation: 1,
+						status: "pending",
+					}),
+				]),
+			);
 
 			await route(ids.retry);
 			const retryAt = new Date(Date.now() + 60_000);

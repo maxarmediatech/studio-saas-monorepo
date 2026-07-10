@@ -1,4 +1,13 @@
+import { describe, expect, it } from "vitest";
+
+describe("calendar delivery adversarial PostgreSQL assertions", () => {
+	it("exports the scenario invoked by the migrated baseline suite", () => {
+		expect(runCalendarDeliveryAdversarialAssertions).toBeTypeOf("function");
+	});
+});
+
 /** Shared adversarial portion of the migrated Calendar PostgreSQL suite. */
+// biome-ignore lint/suspicious/noExportsInTest: baseline suite imports this executable scenario.
 export async function runCalendarDeliveryAdversarialAssertions(ctx: any) {
 	const {
 		and,
