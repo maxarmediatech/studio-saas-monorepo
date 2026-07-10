@@ -51,7 +51,7 @@ export async function generateReceiptNumber(
 	const existing = await dbOrTx.query.receipts.findFirst({
 		where: and(
 			eq(receipts.organizationId, orgId),
-			sql`${receipts.receiptNumber} LIKE ${baseNumber + "%"}`,
+			sql`${receipts.receiptNumber} LIKE ${`${baseNumber}%`}`,
 			isNull(receipts.deletedAt),
 		),
 		orderBy: desc(receipts.receiptNumber),
@@ -62,9 +62,15 @@ export async function generateReceiptNumber(
 }
 
 function getDateOnlyString(value: unknown): string | null {
-	if (!value) return null;
-	if (typeof value === "string") return value;
-	if (value instanceof Date) return value.toISOString().slice(0, 10);
+	if (!value) {
+		return null;
+	}
+	if (typeof value === "string") {
+		return value;
+	}
+	if (value instanceof Date) {
+		return value.toISOString().slice(0, 10);
+	}
 	return null;
 }
 

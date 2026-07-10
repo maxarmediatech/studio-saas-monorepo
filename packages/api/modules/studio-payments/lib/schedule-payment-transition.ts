@@ -1,5 +1,5 @@
 import { ORPCError } from "@orpc/server";
-import { paymentSchedules } from "@repo/database";
+import type { paymentSchedules } from "@repo/database";
 import { centsToMoney, moneyToCents } from "../../studio/lib/money";
 
 type PaymentSchedule = typeof paymentSchedules.$inferSelect;
@@ -58,7 +58,10 @@ export function buildSchedulePaymentTransition(
 		amountCents,
 		paidAmount: centsToMoney(nextPaidAmountCents),
 		paidAmountCents: nextPaidAmountCents,
-		paidAt: status === "completed" ? (schedule.paidAt ?? new Date()) : schedule.paidAt,
+		paidAt:
+			status === "completed"
+				? (schedule.paidAt ?? new Date())
+				: schedule.paidAt,
 		status,
 	};
 }

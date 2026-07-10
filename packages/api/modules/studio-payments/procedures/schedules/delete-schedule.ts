@@ -47,7 +47,9 @@ export const deleteSchedule = studioProtectedProcedure
 				bookingId: lockPlan.bookingId,
 			});
 			if (!booking) {
-				throw new ORPCError("NOT_FOUND", { message: "Booking not found" });
+				throw new ORPCError("NOT_FOUND", {
+					message: "Booking not found",
+				});
 			}
 			const schedule = await getLockedScheduleForReceipt(tx, {
 				organizationId: context.organizationId,

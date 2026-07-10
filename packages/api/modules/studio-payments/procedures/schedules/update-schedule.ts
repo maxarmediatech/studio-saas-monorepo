@@ -1,11 +1,5 @@
 import { ORPCError } from "@orpc/server";
-import {
-	and,
-	db,
-	eq,
-	isNull,
-	paymentSchedules,
-} from "@repo/database";
+import { and, db, eq, isNull, paymentSchedules } from "@repo/database";
 import { studioProtectedProcedure } from "../../../../orpc/procedures";
 import {
 	detectChanges,
@@ -60,7 +54,9 @@ export const updateSchedule = studioProtectedProcedure
 					bookingId: lockPlan.bookingId,
 				});
 				if (!booking) {
-					throw new ORPCError("NOT_FOUND", { message: "Booking not found" });
+					throw new ORPCError("NOT_FOUND", {
+						message: "Booking not found",
+					});
 				}
 
 				const schedule = await getLockedScheduleForReceipt(tx, {
@@ -88,7 +84,9 @@ export const updateSchedule = studioProtectedProcedure
 					updatedAt: new Date(),
 					updatedBy: context.user.id,
 				};
-				if (updates.name !== undefined) updateData.name = updates.name;
+				if (updates.name !== undefined) {
+					updateData.name = updates.name;
+				}
 				if (updates.amount !== undefined) {
 					const newAmount = Number.parseFloat(updates.amount);
 					const paidAmount = Number.parseFloat(schedule.paidAmount);
@@ -101,16 +99,27 @@ export const updateSchedule = studioProtectedProcedure
 					updateData.amount = updates.amount;
 					if (paidAmount >= newAmount) {
 						updateData.status = "completed";
-						if (!schedule.paidAt) updateData.paidAt = new Date();
+						if (!schedule.paidAt) {
+							updateData.paidAt = new Date();
+						}
 					} else if (paidAmount > 0) {
 						updateData.status = "partial";
-					} else updateData.status = "pending";
+					} else {
+						updateData.status = "pending";
+					}
 				}
-				if (updates.dueDate !== undefined) updateData.dueDate = updates.dueDate;
-				if (updates.taxType !== undefined) updateData.taxType = updates.taxType;
-				if (updates.notes !== undefined) updateData.notes = updates.notes;
-				if (updates.sortOrder !== undefined)
+				if (updates.dueDate !== undefined) {
+					updateData.dueDate = updates.dueDate;
+				}
+				if (updates.taxType !== undefined) {
+					updateData.taxType = updates.taxType;
+				}
+				if (updates.notes !== undefined) {
+					updateData.notes = updates.notes;
+				}
+				if (updates.sortOrder !== undefined) {
 					updateData.sortOrder = updates.sortOrder;
+				}
 
 				await tx
 					.update(paymentSchedules)
