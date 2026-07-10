@@ -121,36 +121,6 @@ export async function ensureAssignmentCalendarDelivery(
 		hasGoogleConnection: Boolean(connection),
 		email: target.crewEmail,
 	});
-	const generation = (mapping?.intentGeneration ?? 0) + 1;
-	const continuesDeliveredIcs =
-		route.deliveryMethod === "ics" &&
-		mapping?.deliveredDeliveryMethod === "ics" &&
-		mapping.deliveredRecipientEmail === route.recipientEmail &&
-		Boolean(mapping.deliveredIcalUid);
-	const icalUid =
-		route.deliveryMethod === "ics"
-			? continuesDeliveredIcs
-				? (mapping?.deliveredIcalUid ?? null)
-				: getIcalUid(params.shootId, params.crewId, generation)
-			: null;
-	const snapshot = buildSnapshot(
-		target,
-		{ operation: "delivery", intentState: "active" },
-		{
-			deliveryMethod: route.deliveryMethod,
-			recipientEmail: route.recipientEmail,
-			googleEventId:
-				route.deliveryMethod === "google" &&
-				mapping?.deliveredDeliveryMethod === "google"
-					? mapping.deliveredGoogleEventId
-					: null,
-			icalUid,
-			icalSequence: continuesDeliveredIcs
-				? (mapping?.deliveredIcalSequence ?? 0) + 1
-				: 0,
-		},
-	);
-
 	const currentIntent = mapping
 		? await tx.query.calendarDeliveryIntents.findFirst({
 				where: and(
@@ -167,10 +137,61 @@ export async function ensureAssignmentCalendarDelivery(
 				),
 			})
 		: null;
-	if (
+	const generation = (mapping?.intentGeneration ?? 0) + 1;
+	const continuesDeliveredIcs =
+		route.deliveryMethod === "ics" &&
+		mapping?.deliveredDeliveryMethod === "ics" &&
+		mapping.deliveredRecipientEmail === route.recipientEmail &&
+		Boolean(mapping.deliveredIcalUid);
+	const icalUid =
+		route.deliveryMethod === "ics"
+			? continuesDeliveredIcs
+				? (mapping?.deliveredIcalUid ?? null)
+				: getIcalUid(params.shootId, params.crewId, generation)
+			: null;
+	const currentSnapshot = currentIntent?.payload as
+		| CalendarSnapshot
+		| undefined;
+	const pendingActiveSnapshot =
 		mapping?.intentState === "active" &&
+		mapping.deliveredGeneration !== mapping.intentGeneration &&
 		currentIntent?.deliveryMethod === route.deliveryMethod &&
-		sameSnapshot(currentIntent.payload, snapshot)
+		currentIntent.recipientEmail === route.recipientEmail &&
+		currentSnapshot?.operation === "delivery"
+			? currentSnapshot
+			: null;
+	const nextTarget = {
+		deliveryMethod: route.deliveryMethod,
+		recipientEmail: route.recipientEmail,
+		googleEventId:
+			route.deliveryMethod === "google" &&
+			mapping?.deliveredDeliveryMethod === "google"
+				? mapping.deliveredGoogleEventId
+				: null,
+		icalUid,
+		icalSequence: continuesDeliveredIcs
+			? (mapping?.deliveredIcalSequence ?? 0) + 1
+			: 0,
+	};
+	const comparisonSnapshot = buildSnapshot(
+		target,
+		{ operation: "delivery", intentState: "active" },
+		{
+			...nextTarget,
+			calendarId: pendingActiveSnapshot?.target.calendarId,
+			googleEventId:
+				pendingActiveSnapshot?.target.googleEventId ??
+				nextTarget.googleEventId,
+			icalUid:
+				pendingActiveSnapshot?.target.icalUid ?? nextTarget.icalUid,
+			icalSequence:
+				pendingActiveSnapshot?.target.icalSequence ??
+				nextTarget.icalSequence,
+		},
+	);
+	if (
+		pendingActiveSnapshot &&
+		sameSnapshot(pendingActiveSnapshot, comparisonSnapshot)
 	) {
 		return {
 			...params,
@@ -180,6 +201,11 @@ export async function ensureAssignmentCalendarDelivery(
 				route.deliveryMethod === "unsendable" ? "unsendable" : "queued",
 		};
 	}
+	const snapshot = buildSnapshot(
+		target,
+		{ operation: "delivery", intentState: "active" },
+		nextTarget,
+	);
 
 	await supersedeUnstartedGenerations(tx, params);
 	const intent = await createIntent(tx, {
