@@ -81,9 +81,18 @@ describe("financial reconciliation taxonomy", () => {
 			actualStatus: "draft",
 			expectedStatus: "partial",
 		});
+		const draftAmountOnly = classifyMismatch({
+			...base,
+			entityType: "invoice",
+			mismatchType: "invoice_paid_status_vs_valid_applications",
+			actualStatus: "draft",
+			expectedStatus: "draft",
+		});
 
 		assert.equal(cancelled.safeFixAvailable, false);
 		assert.equal(draft.safeFixAvailable, false);
+		assert.equal(draftAmountOnly.safeFixAvailable, false);
+		assert.equal(draftAmountOnly.intendedAction, null);
 	});
 
 	it("does not auto-fix schedule or invoice aggregates with invalid parents", () => {

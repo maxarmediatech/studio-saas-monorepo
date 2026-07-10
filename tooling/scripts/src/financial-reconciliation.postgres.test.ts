@@ -34,6 +34,16 @@ describePostgres("financial reconciliation on migrated PostgreSQL", () => {
 		const draftRaceReceiptId = `reconcile_draft_race_receipt_${suffix}`;
 		const crossTenantScheduleId = `reconcile_cross_tenant_schedule_${suffix}`;
 		const crossTenantInvoiceId = `reconcile_cross_tenant_invoice_${suffix}`;
+		const mismatchedInvoiceScheduleId = `reconcile_mismatched_invoice_schedule_${suffix}`;
+		const mismatchedInvoiceId = `reconcile_mismatched_invoice_${suffix}`;
+		const mismatchedPaymentId = `reconcile_mismatched_payment_${suffix}`;
+		const mismatchedReceiptId = `reconcile_mismatched_receipt_${suffix}`;
+		const cancelledScheduleId = `reconcile_cancelled_schedule_${suffix}`;
+		const cancelledScheduleInvoiceId = `reconcile_cancelled_schedule_invoice_${suffix}`;
+		const draftAmountOnlyInvoiceId = `reconcile_draft_amount_only_${suffix}`;
+		const deletedChainScheduleId = `reconcile_deleted_chain_schedule_${suffix}`;
+		const deletedChainPaymentId = `reconcile_deleted_chain_payment_${suffix}`;
+		const crossTenantChainPaymentId = `reconcile_cross_tenant_chain_payment_${suffix}`;
 		const receivedAmountId = `reconcile_payment_${suffix}`;
 		const receiptId = `reconcile_receipt_${suffix}`;
 		const historyReceiptId = `reconcile_history_receipt_${suffix}`;
@@ -173,6 +183,83 @@ describePostgres("financial reconciliation on migrated PostgreSQL", () => {
 				invoice?.paidAt?.toISOString(),
 				"2026-01-02T03:04:05.000Z",
 			);
+
+			await db.insert(paymentSchedules).values({
+				id: mismatchedInvoiceScheduleId,
+				organizationId,
+				bookingId,
+				name: "Mismatched invoice schedule",
+				amount: "100.00",
+				dueDate: "2026-12-31",
+				paidAmount: "0.00",
+				status: "pending",
+			});
+			await db.insert(invoices).values({
+				id: mismatchedInvoiceId,
+				organizationId,
+				bookingId,
+				paymentScheduleId: mismatchedInvoiceScheduleId,
+				invoiceNumber: `RECON-MISMATCHED-SCHEDULE-${suffix}`,
+				issueDate: "2026-01-01",
+				dueDate: "2026-12-31",
+				totalAmount: "100.00",
+				paidAmount: "15.00",
+				status: "partial",
+			});
+			await db.insert(receivedAmounts).values({
+				id: mismatchedPaymentId,
+				organizationId,
+				bookingId,
+				paymentScheduleId: scheduleId,
+				invoiceId: mismatchedInvoiceId,
+				amount: "15.00",
+				paymentMethod: "cash",
+				receivedDate: "2026-02-01",
+			});
+			await db.insert(receipts).values({
+				id: mismatchedReceiptId,
+				organizationId,
+				bookingId,
+				invoiceId: mismatchedInvoiceId,
+				receivedAmountId: mismatchedPaymentId,
+				receiptNumber: `RECON-MISMATCHED-RCPT-${suffix}`,
+				amount: "15.00",
+				paymentMethod: "cash",
+				receiptDate: "2026-02-01",
+			});
+			await db.insert(paymentSchedules).values({
+				id: cancelledScheduleId,
+				organizationId,
+				bookingId,
+				name: "Cancelled parent schedule",
+				amount: "100.00",
+				dueDate: "2026-12-31",
+				paidAmount: "0.00",
+				status: "cancelled",
+			});
+			await db.insert(invoices).values({
+				id: cancelledScheduleInvoiceId,
+				organizationId,
+				bookingId,
+				paymentScheduleId: cancelledScheduleId,
+				invoiceNumber: `RECON-CANCELLED-SCHEDULE-${suffix}`,
+				issueDate: "2026-01-01",
+				dueDate: "2026-12-31",
+				totalAmount: "100.00",
+				paidAmount: "10.00",
+				status: "sent",
+			});
+			await db.insert(invoices).values({
+				id: draftAmountOnlyInvoiceId,
+				organizationId,
+				bookingId,
+				invoiceNumber: `RECON-DRAFT-AMOUNT-ONLY-${suffix}`,
+				issueDate: "2026-01-01",
+				dueDate: "2026-12-31",
+				totalAmount: "100.00",
+				paidAmount: "10.00",
+				status: "draft",
+			});
 
 			await db.insert(invoices).values({
 				id: draftRaceInvoiceId,
@@ -458,6 +545,40 @@ describePostgres("financial reconciliation on migrated PostgreSQL", () => {
 				status: "sent",
 				deletedAt: new Date(),
 			});
+			await db.insert(paymentSchedules).values({
+				id: deletedChainScheduleId,
+				organizationId,
+				bookingId,
+				name: "Deleted payment chain schedule",
+				amount: "100.00",
+				dueDate: "2026-12-31",
+				paidAmount: "0.00",
+				status: "pending",
+			});
+			await db
+				.update(paymentSchedules)
+				.set({ deletedAt: new Date() })
+				.where(eq(paymentSchedules.id, deletedChainScheduleId));
+			await db.insert(receivedAmounts).values([
+				{
+					id: deletedChainPaymentId,
+					organizationId,
+					bookingId,
+					paymentScheduleId: deletedChainScheduleId,
+					amount: "6.00",
+					paymentMethod: "cash",
+					receivedDate: "2026-02-01",
+				},
+				{
+					id: crossTenantChainPaymentId,
+					organizationId,
+					bookingId,
+					invoiceId: crossOrganizationInvoiceId,
+					amount: "7.00",
+					paymentMethod: "cash",
+					receivedDate: "2026-02-01",
+				},
+			]);
 			await db.insert(bookings).values([
 				{
 					id: failedRepairBookingId,
@@ -675,6 +796,46 @@ describePostgres("financial reconciliation on migrated PostgreSQL", () => {
 			);
 			assert.equal(crossTenantScheduleMismatch.safeFixAvailable, false);
 			assert.equal(crossTenantInvoiceMismatch.safeFixAvailable, false);
+			const mismatchedScheduleMismatch = guarded.mismatches.find(
+				(mismatch) =>
+					mismatch.mismatchType ===
+						"schedule_total_vs_assigned_active_payments" &&
+					mismatch.entityId === scheduleId,
+			);
+			const mismatchedInvoiceMismatch = guarded.mismatches.find(
+				(mismatch) =>
+					mismatch.mismatchType ===
+						"invoice_paid_status_vs_valid_applications" &&
+					mismatch.entityId === mismatchedInvoiceId,
+			);
+			const cancelledScheduleInvoiceMismatch = guarded.mismatches.find(
+				(mismatch) => mismatch.entityId === cancelledScheduleInvoiceId,
+			);
+			const draftAmountOnlyMismatch = guarded.mismatches.find(
+				(mismatch) => mismatch.entityId === draftAmountOnlyInvoiceId,
+			);
+			const invalidBookingMismatch = guarded.mismatches.find(
+				(mismatch) =>
+					mismatch.mismatchType ===
+						"booking_total_vs_active_payments" &&
+					mismatch.entityId === bookingId,
+			);
+			assert.ok(mismatchedScheduleMismatch);
+			assert.ok(mismatchedInvoiceMismatch);
+			assert.ok(cancelledScheduleInvoiceMismatch);
+			assert.ok(draftAmountOnlyMismatch);
+			assert.ok(invalidBookingMismatch);
+			assert.equal(mismatchedScheduleMismatch.safeFixAvailable, false);
+			assert.equal(mismatchedInvoiceMismatch.safeFixAvailable, false);
+			assert.equal(
+				cancelledScheduleInvoiceMismatch.safeFixAvailable,
+				false,
+			);
+			assert.equal(draftAmountOnlyMismatch.safeFixAvailable, false);
+			assert.equal(draftAmountOnlyMismatch.expectedStatus, "draft");
+			assert.equal(draftAmountOnlyMismatch.intendedAction, null);
+			assert.equal(invalidBookingMismatch.safeFixAvailable, false);
+			assert.equal(invalidBookingMismatch.safeRepairLinksValid, false);
 
 			const forcedParentMutations = await applySafeFinancialFixes(
 				organizationId,
@@ -690,6 +851,16 @@ describePostgres("financial reconciliation on migrated PostgreSQL", () => {
 						safeFixAvailable: true,
 						intendedAction: "recalculate_invoice_paid_status",
 					},
+					{
+						...mismatchedInvoiceMismatch,
+						safeFixAvailable: true,
+						intendedAction: "recalculate_invoice_paid_status",
+					},
+					{
+						...cancelledScheduleInvoiceMismatch,
+						safeFixAvailable: true,
+						intendedAction: "recalculate_invoice_paid_status",
+					},
 				],
 			);
 			assert.deepEqual(forcedParentMutations.applied, []);
@@ -702,18 +873,76 @@ describePostgres("financial reconciliation on migrated PostgreSQL", () => {
 					mismatchId: crossTenantInvoiceMismatch.id,
 					reason: "repair_guard_prevented_update",
 				},
+				{
+					mismatchId: mismatchedInvoiceMismatch.id,
+					reason: "repair_guard_prevented_update",
+				},
+				{
+					mismatchId: cancelledScheduleInvoiceMismatch.id,
+					reason: "repair_guard_prevented_update",
+				},
 			]);
-			const [unchangedCrossTenantSchedule, unchangedCrossTenantInvoice] =
-				await Promise.all([
-					db.query.paymentSchedules.findFirst({
-						where: eq(paymentSchedules.id, crossTenantScheduleId),
-					}),
-					db.query.invoices.findFirst({
-						where: eq(invoices.id, crossTenantInvoiceId),
-					}),
-				]);
+			const [
+				unchangedCrossTenantSchedule,
+				unchangedCrossTenantInvoice,
+				unchangedMismatchedInvoice,
+				unchangedCancelledScheduleInvoice,
+			] = await Promise.all([
+				db.query.paymentSchedules.findFirst({
+					where: eq(paymentSchedules.id, crossTenantScheduleId),
+				}),
+				db.query.invoices.findFirst({
+					where: eq(invoices.id, crossTenantInvoiceId),
+				}),
+				db.query.invoices.findFirst({
+					where: eq(invoices.id, mismatchedInvoiceId),
+				}),
+				db.query.invoices.findFirst({
+					where: eq(invoices.id, cancelledScheduleInvoiceId),
+				}),
+			]);
 			assert.equal(unchangedCrossTenantSchedule?.paidAmount, "10.00");
 			assert.equal(unchangedCrossTenantInvoice?.paidAmount, "10.00");
+			assert.equal(unchangedMismatchedInvoice?.paidAmount, "15.00");
+			assert.equal(
+				unchangedCancelledScheduleInvoice?.paidAmount,
+				"10.00",
+			);
+
+			const deterministicReport = await queryFinancialMismatches(
+				organizationId,
+				"2026-07-10",
+			);
+			const deterministicReportAgain = await queryFinancialMismatches(
+				organizationId,
+				"2026-07-10",
+			);
+			assert.deepEqual(deterministicReportAgain, deterministicReport);
+			const reportOnlyBefore = await Promise.all([
+				db.query.bookings.findFirst({
+					where: eq(bookings.id, bookingId),
+				}),
+				db.query.invoices.findFirst({
+					where: eq(invoices.id, draftAmountOnlyInvoiceId),
+				}),
+			]);
+			const reportOnlyCode = await main([
+				"--organization-id",
+				organizationId,
+				"--report",
+				"--as-of",
+				"2026-07-10",
+			]);
+			assert.equal(reportOnlyCode, 1);
+			const reportOnlyAfter = await Promise.all([
+				db.query.bookings.findFirst({
+					where: eq(bookings.id, bookingId),
+				}),
+				db.query.invoices.findFirst({
+					where: eq(invoices.id, draftAmountOnlyInvoiceId),
+				}),
+			]);
+			assert.deepEqual(reportOnlyAfter, reportOnlyBefore);
 
 			const overBookingMismatch = guarded.mismatches.find(
 				(mismatch) => mismatch.entityId === overBookingId,
