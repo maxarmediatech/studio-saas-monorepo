@@ -34,7 +34,12 @@ export interface SendTemplateParams {
 	to: string;
 	templateName: string;
 	language: string;
-	components?: Array<{ type: string; parameters?: Array<Record<string, unknown>> }>;
+	components?: Array<{
+		type: string;
+		parameters?: Array<Record<string, unknown>>;
+		subType?: string;
+		index?: number;
+	}>;
 }
 
 export interface SendResult {
@@ -45,7 +50,9 @@ export interface SendResult {
 
 export interface ProvisioningPort {
 	startLink(): Promise<StartLinkResult>;
-	getStatus(): Promise<"connected" | "disconnected" | "qr_pending" | "banned">;
+	getStatus(): Promise<
+		"connected" | "disconnected" | "qr_pending" | "banned"
+	>;
 	disconnect(): Promise<void>;
 	verifyWebhook?(challenge: string, verifyToken: string): string | null;
 }

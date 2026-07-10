@@ -22,6 +22,16 @@ export type GetSignedUrlHander = (
 	},
 ) => Promise<string>;
 
+export type PutObjectHandler = (
+	path: string,
+	options: {
+		bucket: string;
+		body: Uint8Array | Buffer | string;
+		contentType?: string;
+		contentLength?: number;
+	},
+) => Promise<void>;
+
 export type DeleteObjectHandler = (
 	path: string,
 	options: {

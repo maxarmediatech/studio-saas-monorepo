@@ -27,7 +27,8 @@ const parseError = (data: unknown) => {
 		return { code: "UNKNOWN_ERROR", message: "Unknown error" };
 	}
 
-	const error = (data as { error?: { code?: number; message?: string } }).error;
+	const error = (data as { error?: { code?: number; message?: string } })
+		.error;
 	if (!error) {
 		return { code: "UNKNOWN_ERROR", message: "Unknown error" };
 	}
@@ -52,7 +53,10 @@ class CloudApiProvisioning implements ProvisioningPort {
 
 	async startLink(): Promise<StartLinkResult> {
 		if (!this.config.accessToken || !this.config.phoneNumberId) {
-			return { status: "error" as const, error: "Missing Cloud API credentials" };
+			return {
+				status: "error" as const,
+				error: "Missing Cloud API credentials",
+			};
 		}
 
 		return { status: "connected" as const };
@@ -71,14 +75,18 @@ class CloudApiProvisioning implements ProvisioningPort {
 			return null;
 		}
 
-		return this.config.webhookVerifyToken === verifyToken ? challenge : null;
+		return this.config.webhookVerifyToken === verifyToken
+			? challenge
+			: null;
 	}
 }
 
 class CloudApiMessaging implements MessagingPort {
 	public constructor(private readonly config: CloudApiConfig) {}
 
-	private async sendRequest(payload: Record<string, unknown>): Promise<SendResult> {
+	private async sendRequest(
+		payload: Record<string, unknown>,
+	): Promise<SendResult> {
 		const apiVersion = this.config.apiVersion ?? DEFAULT_VERSION;
 		const url = `${buildBaseUrl(apiVersion, this.config.phoneNumberId)}/messages`;
 
@@ -138,6 +146,16 @@ class CloudApiMessaging implements MessagingPort {
 	}
 
 	async sendTemplate(params: SendTemplateParams): Promise<SendResult> {
+		const components =
+			params.components?.map((component) => ({
+				type: component.type,
+				parameters: component.parameters,
+				...(component.subType ? { sub_type: component.subType } : {}),
+				...(component.index !== undefined
+					? { index: String(component.index) }
+					: {}),
+			})) ?? [];
+
 		return this.sendRequest({
 			messaging_product: "whatsapp",
 			recipient_type: "individual",
@@ -146,7 +164,7 @@ class CloudApiMessaging implements MessagingPort {
 			template: {
 				name: params.templateName,
 				language: { code: params.language },
-				components: params.components ?? [],
+				components,
 			},
 		});
 	}
@@ -199,7 +217,7 @@ export class CloudApiProvider implements WhatsAppProvider {
 	readonly provisioning: ProvisioningPort;
 	readonly messaging: MessagingPort;
 
-	constructor(private readonly config: CloudApiConfig) {
+	constructor(config: CloudApiConfig) {
 		this.provisioning = new CloudApiProvisioning(config);
 		this.messaging = new CloudApiMessaging(config);
 	}

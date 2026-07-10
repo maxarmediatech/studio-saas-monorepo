@@ -1,9 +1,12 @@
 {
 	"dependencies": {
 		"@repo/database": "workspace:*",
+		"@repo/env": "workspace:*",
 		"@repo/logs": "workspace:*",
+		"@repo/storage": "workspace:*",
+		"@repo/whatsapp-core": "workspace:*",
 		"@repo/whatsapp-db": "workspace:*",
-		"@repo/whatsapp-providers": "workspace:*",
+		"@repo/whatsapp-outbox": "workspace:*",
 		"drizzle-orm": "^0.45.1"
 	},
 	"devDependencies": {
@@ -15,7 +18,7 @@
 	"main": "./src/index.ts",
 	"name": "@repo/whatsapp-worker",
 	"scripts": {
-		"dev": "tsx src/index.ts",
+		"dev": "dotenv -c -e ../../.env.local -- tsx src/index.ts",
 		"type-check": "tsc --noEmit"
 	},
 	"version": "0.0.0"

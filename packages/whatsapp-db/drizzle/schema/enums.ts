@@ -61,6 +61,13 @@ export const waMediaStorageTypeEnum = pgEnum("wa_media_storage_type", [
 	"provider",
 ]);
 
+export const waMediaIngestStatusEnum = pgEnum("wa_media_ingest_status", [
+	"pending",
+	"processing",
+	"ready",
+	"failed",
+]);
+
 export const waCampaignStatusEnum = pgEnum("wa_campaign_status", [
 	"draft",
 	"scheduled",

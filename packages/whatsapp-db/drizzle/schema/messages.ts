@@ -24,7 +24,9 @@ export const waMessages = pgTable(
 		conversationId: varchar("conversation_id", { length: 255 }).notNull(),
 		contactId: varchar("contact_id", { length: 255 }).notNull(),
 		providerMessageId: text("provider_message_id"),
-		providerTimestamp: timestamp("provider_timestamp", { withTimezone: true }),
+		providerTimestamp: timestamp("provider_timestamp", {
+			withTimezone: true,
+		}),
 		direction: waMessageDirectionEnum("direction").notNull(),
 		type: waMessageTypeEnum("type").notNull(),
 		textBody: text("text_body"),
@@ -39,6 +41,7 @@ export const waMessages = pgTable(
 		errorMessage: text("error_message"),
 		sentByUserId: text("sent_by_user_id"),
 		sentByBotFlowId: varchar("sent_by_bot_flow_id", { length: 255 }),
+		sentByCampaignId: varchar("sent_by_campaign_id", { length: 255 }),
 		rawPayload: jsonb("raw_payload"),
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.defaultNow()
@@ -49,8 +52,11 @@ export const waMessages = pgTable(
 		index("wa_messages_account_id_idx").on(table.accountId),
 		index("wa_messages_conversation_id_idx").on(table.conversationId),
 		index("wa_messages_contact_id_idx").on(table.contactId),
-		index("wa_messages_provider_message_id_idx").on(table.providerMessageId),
+		index("wa_messages_provider_message_id_idx").on(
+			table.providerMessageId,
+		),
 		index("wa_messages_created_at_idx").on(table.createdAt),
 		index("wa_messages_status_idx").on(table.status),
+		index("wa_messages_sent_by_campaign_id_idx").on(table.sentByCampaignId),
 	],
 );

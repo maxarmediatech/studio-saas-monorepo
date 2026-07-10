@@ -1,0 +1,288 @@
+const DEFAULT_CLOUD_API_VERSION = "v22.0";
+
+type GraphErrorPayload = {
+	error?: {
+		message?: string;
+		error_user_msg?: string;
+		error_user_title?: string;
+	};
+};
+
+type PhoneNumberResponse = {
+	display_phone_number?: string;
+	verified_name?: string;
+	quality_rating?: string;
+	messaging_limit_tier?: string;
+};
+
+type PhoneNumberListResponse = {
+	data?: Array<{
+		id?: string;
+	}>;
+};
+
+type MessageTemplateResponse = {
+	id?: string;
+	name?: string;
+	language?: string;
+	status?: string;
+	category?: string;
+	components?: unknown;
+	rejected_reason?: string;
+};
+
+type MessageTemplateListResponse = {
+	data?: MessageTemplateResponse[];
+	paging?: {
+		cursors?: {
+			after?: string;
+		};
+	};
+};
+
+type OAuthAccessTokenResponse = {
+	access_token?: string;
+	token_type?: string;
+	expires_in?: number;
+};
+
+export interface CloudApiValidationResult {
+	apiVersion: string;
+	displayPhoneNumber: string | null;
+	verifiedName: string | null;
+	qualityRating: string | null;
+	messagingLimitTier: string | null;
+}
+
+export interface CloudApiTemplateSummary {
+	providerTemplateId: string | null;
+	name: string;
+	language: string;
+	status: string;
+	category: string;
+	components: unknown;
+	rejectedReason: string | null;
+}
+
+const parseGraphError = (payload: unknown, fallback: string) => {
+	const error = (payload as GraphErrorPayload | null)?.error;
+	return (
+		error?.error_user_msg ??
+		error?.message ??
+		error?.error_user_title ??
+		fallback
+	);
+};
+
+const fetchGraph = async <T>(
+	path: string,
+	accessToken: string,
+	fallbackMessage: string,
+) => {
+	const response = await fetch(`https://graph.facebook.com/${path}`, {
+		headers: accessToken
+			? {
+					Authorization: `Bearer ${accessToken}`,
+				}
+			: undefined,
+	});
+
+	const payload = (await response.json().catch(() => null)) as T | null;
+	if (!response.ok) {
+		throw new Error(parseGraphError(payload, fallbackMessage));
+	}
+
+	if (!payload) {
+		throw new Error(fallbackMessage);
+	}
+
+	return payload;
+};
+
+const postGraph = async (
+	path: string,
+	accessToken: string,
+	body: Record<string, unknown>,
+	fallbackMessage: string,
+) => {
+	const response = await fetch(`https://graph.facebook.com/${path}`, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			Authorization: `Bearer ${accessToken}`,
+		},
+		body: JSON.stringify(body),
+	});
+
+	const payload = (await response.json().catch(() => null)) as unknown;
+	if (!response.ok) {
+		throw new Error(parseGraphError(payload, fallbackMessage));
+	}
+};
+
+export const validateCloudApiAccount = async (params: {
+	accessToken: string;
+	phoneNumberId: string;
+	wabaId?: string | null;
+	apiVersion?: string | null;
+}) => {
+	const apiVersion = params.apiVersion?.trim() || DEFAULT_CLOUD_API_VERSION;
+
+	const phone = await fetchGraph<PhoneNumberResponse>(
+		`${apiVersion}/${params.phoneNumberId}?fields=display_phone_number,verified_name,quality_rating,messaging_limit_tier`,
+		params.accessToken,
+		"Failed to validate WhatsApp phone number",
+	);
+
+	if (params.wabaId) {
+		const phoneNumbers = await fetchGraph<PhoneNumberListResponse>(
+			`${apiVersion}/${params.wabaId}/phone_numbers?fields=id`,
+			params.accessToken,
+			"Failed to validate WhatsApp business account",
+		);
+
+		const matchingPhone = phoneNumbers.data?.find(
+			(item) => item.id === params.phoneNumberId,
+		);
+
+		if (!matchingPhone) {
+			throw new Error(
+				`Phone number ID ${params.phoneNumberId} does not belong to WABA ${params.wabaId}`,
+			);
+		}
+	}
+
+	return {
+		apiVersion,
+		displayPhoneNumber: phone.display_phone_number ?? null,
+		verifiedName: phone.verified_name ?? null,
+		qualityRating: phone.quality_rating ?? null,
+		messagingLimitTier: phone.messaging_limit_tier ?? null,
+	} satisfies CloudApiValidationResult;
+};
+
+export const markCloudApiMessagesRead = async (params: {
+	accessToken: string;
+	phoneNumberId: string;
+	messageIds: string[];
+	apiVersion?: string | null;
+}) => {
+	const apiVersion = params.apiVersion?.trim() || DEFAULT_CLOUD_API_VERSION;
+
+	await Promise.all(
+		params.messageIds.map(async (messageId) => {
+			await postGraph(
+				`${apiVersion}/${params.phoneNumberId}/messages`,
+				params.accessToken,
+				{
+					messaging_product: "whatsapp",
+					status: "read",
+					message_id: messageId,
+				},
+				`Failed to mark WhatsApp message ${messageId} as read`,
+			);
+		}),
+	);
+};
+
+export const subscribeCloudApiApp = async (params: {
+	accessToken: string;
+	wabaId: string;
+	apiVersion?: string | null;
+}) => {
+	const apiVersion = params.apiVersion?.trim() || DEFAULT_CLOUD_API_VERSION;
+
+	await postGraph(
+		`${apiVersion}/${params.wabaId}/subscribed_apps`,
+		params.accessToken,
+		{},
+		"Failed to subscribe WhatsApp account to webhook events",
+	);
+};
+
+export const exchangeEmbeddedSignupCode = async (params: {
+	appId: string;
+	appSecret: string;
+	code: string;
+	apiVersion?: string | null;
+}) => {
+	const apiVersion = params.apiVersion?.trim() || DEFAULT_CLOUD_API_VERSION;
+	const query = new URLSearchParams({
+		client_id: params.appId,
+		client_secret: params.appSecret,
+		code: params.code,
+	});
+
+	const payload = await fetchGraph<OAuthAccessTokenResponse>(
+		`${apiVersion}/oauth/access_token?${query.toString()}`,
+		"",
+		"Failed to exchange WhatsApp embedded signup code",
+	);
+
+	if (!payload.access_token) {
+		throw new Error("Meta did not return an access token");
+	}
+
+	return {
+		accessToken: payload.access_token,
+		tokenType: payload.token_type ?? null,
+		expiresIn: payload.expires_in ?? null,
+	};
+};
+
+export const listCloudApiTemplates = async (params: {
+	accessToken: string;
+	wabaId: string;
+	apiVersion?: string | null;
+}) => {
+	const apiVersion = params.apiVersion?.trim() || DEFAULT_CLOUD_API_VERSION;
+	const templates: CloudApiTemplateSummary[] = [];
+	let afterCursor: string | null = null;
+
+	do {
+		const query = new URLSearchParams({
+			fields: "id,name,language,status,category,components,rejected_reason",
+			limit: "100",
+		});
+
+		if (afterCursor) {
+			query.set("after", afterCursor);
+		}
+
+		const payload = await fetchGraph<MessageTemplateListResponse>(
+			`${apiVersion}/${params.wabaId}/message_templates?${query.toString()}`,
+			params.accessToken,
+			"Failed to fetch WhatsApp templates",
+		);
+
+		for (const item of payload.data ?? []) {
+			if (
+				!item.name ||
+				!item.language ||
+				!item.status ||
+				!item.category
+			) {
+				continue;
+			}
+
+			templates.push({
+				providerTemplateId: item.id ?? null,
+				name: item.name,
+				language: item.language,
+				status: item.status,
+				category: item.category,
+				components: item.components ?? null,
+				rejectedReason: item.rejected_reason ?? null,
+			});
+		}
+
+		afterCursor = payload.paging?.cursors?.after ?? null;
+	} while (afterCursor);
+
+	return {
+		apiVersion,
+		templates,
+	};
+};
+
+export { DEFAULT_CLOUD_API_VERSION };
