@@ -148,6 +148,32 @@ describe("schedule conversion invoice locking", () => {
 		expect(mocks.tx.insert).not.toHaveBeenCalled();
 	});
 
+	it("propagates a changed invoice schedule relationship before payment", async () => {
+		mocks.mockGetLockedScheduleInvoiceForReceipt.mockRejectedValue(
+			new Error(
+				"Invoice payment schedule relationship changed. Retry the request.",
+			),
+		);
+
+		await expect(
+			mocks.getHandler()?.({
+				context: {
+					organizationId: "org_1",
+					user: { id: "user_1" },
+				},
+				input: {
+					scheduleId: "schedule_1",
+					amount: "100.00",
+					paymentMethod: "cash",
+					receivedDate: "2026-01-01",
+				},
+			}),
+		).rejects.toThrow(
+			"Invoice payment schedule relationship changed. Retry the request.",
+		);
+		expect(mocks.tx.insert).not.toHaveBeenCalled();
+	});
+
 	it("locks booking, invoice, then schedule on a successful conversion", async () => {
 		const order: string[] = [];
 		mocks.mockGetLockedBookingForReceipt.mockImplementation(async () => {

@@ -63,7 +63,11 @@ describe("locked invoice receipt context", () => {
 	});
 
 	it("locks and returns the current active invoice", async () => {
-		const invoice = { id: "invoice_1", status: "sent" };
+		const invoice = {
+			id: "invoice_1",
+			status: "sent",
+			paymentScheduleId: "schedule_1",
+		};
 		const tx = {
 			execute: vi.fn(),
 			query: {
@@ -105,8 +109,42 @@ describe("locked invoice receipt context", () => {
 		expect(tx.execute).toHaveBeenCalledOnce();
 	});
 
+	it.each([
+		"schedule_2",
+		null,
+	])("rejects when the locked invoice schedule changed to %s", async (lockedPaymentScheduleId) => {
+		const findFirst = vi
+			.fn()
+			.mockResolvedValueOnce({ id: "invoice_1" })
+			.mockResolvedValueOnce({
+				id: "invoice_1",
+				status: "sent",
+				paymentScheduleId: lockedPaymentScheduleId,
+			});
+		const tx = {
+			execute: vi.fn(),
+			query: { invoices: { findFirst } },
+		};
+
+		await expect(
+			getLockedScheduleInvoiceForReceipt(tx as never, {
+				organizationId: "org_1",
+				bookingId: "booking_1",
+				paymentScheduleId: "schedule_1",
+			}),
+		).rejects.toThrow(
+			"Invoice payment schedule relationship changed. Retry the request.",
+		);
+		expect(findFirst).toHaveBeenCalledTimes(2);
+		expect(tx.execute).toHaveBeenCalledOnce();
+	});
+
 	it("resolves a schedule invoice through the same locked validation", async () => {
-		const invoice = { id: "invoice_1", status: "sent" };
+		const invoice = {
+			id: "invoice_1",
+			status: "sent",
+			paymentScheduleId: "schedule_1",
+		};
 		const findFirst = vi
 			.fn()
 			.mockResolvedValueOnce({ id: "invoice_1" })
