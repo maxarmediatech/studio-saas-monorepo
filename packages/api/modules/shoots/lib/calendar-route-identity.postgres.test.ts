@@ -70,6 +70,10 @@ export async function assertRouteIdentityTransitions(ctx: any) {
 		crewId: ids.registeredIcs,
 		apply: true,
 	});
+	const unrelatedRouteChange = await db.query.calendarRouteChanges.findFirst({
+		where: eq(calendarRouteChanges.id, routeChange?.id ?? ""),
+	});
+	expect(unrelatedRouteChange).toMatchObject({ status: "pending" });
 	const mapping = await db.query.shootCalendarEvents.findFirst({
 		where: and(
 			eq(shootCalendarEvents.organizationId, organizationId),
