@@ -179,7 +179,9 @@ describe("create received invoice locking", () => {
 					receivedDate: "2026-01-01",
 				},
 			}),
-		).rejects.toThrow("Invoice does not belong to the selected payment schedule");
+		).rejects.toThrow(
+			"Invoice does not belong to the selected payment schedule",
+		);
 		expect(mocks.tx.insert).not.toHaveBeenCalled();
 	});
 });
