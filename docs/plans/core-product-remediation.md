@@ -391,6 +391,8 @@ Otherwise → explicit unsendable status
 
 ### 4.4 Subscription ownership and seats
 
+**Implemented on `codex/core-product-remediation` (2026-07-11).** Only explicitly seat-based catalog prices synchronize quantities. Member additions and removals trigger best-effort reconciliation, a repeatable organization-wide command repairs missed events, and each organization records the last applied count, success time, or actionable failure. Multi-role owners use the shared normalized role helper.
+
 - Replace raw role string equality with normalized role/permission helpers.
 - Trigger best-effort seat updates after all membership mutations.
 - Add a periodic idempotent reconciliation that computes desired seats from active membership and pushes provider state.

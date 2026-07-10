@@ -1,7 +1,6 @@
 import { config } from "@repo/config";
 import {
 	db,
-	getInvitationById,
 	getOrganizationsByUserId,
 	getPurchasesByOrganizationId,
 	getPurchasesByUserId,
@@ -213,32 +212,6 @@ export const auth = betterAuth({
 	},
 	hooks: {
 		after: createAuthMiddleware(async (ctx) => {
-			if (ctx.path.startsWith("/organization/accept-invitation")) {
-				const { invitationId } = ctx.body;
-
-				if (!invitationId) {
-					return;
-				}
-
-				const invitation = await getInvitationById(invitationId);
-
-				if (!invitation) {
-					return;
-				}
-
-				await updateSeatsInOrganizationSubscription(
-					invitation.organizationId,
-				);
-			} else if (ctx.path.startsWith("/organization/remove-member")) {
-				const { organizationId } = ctx.body;
-
-				if (!organizationId) {
-					return;
-				}
-
-				await updateSeatsInOrganizationSubscription(organizationId);
-			}
-
 			const sessionCookieHeader =
 				ctx.context.responseHeaders?.get("set-cookie");
 			const sessionTokenName = ctx.context.authCookies.sessionToken.name;
@@ -468,6 +441,14 @@ export const auth = betterAuth({
 						memberId: member.id,
 						source: "after_add_member",
 					});
+					await updateSeatsInOrganizationSubscription(
+						member.organizationId,
+					);
+				},
+				afterRemoveMember: async ({ member }) => {
+					await updateSeatsInOrganizationSubscription(
+						member.organizationId,
+					);
 				},
 				beforeCreateInvitation: async ({ invitation }) => ({
 					data: {
@@ -487,6 +468,9 @@ export const auth = betterAuth({
 						memberId: member.id,
 						source: "after_accept_invitation",
 					});
+					await updateSeatsInOrganizationSubscription(
+						member.organizationId,
+					);
 				},
 			},
 			schema: {

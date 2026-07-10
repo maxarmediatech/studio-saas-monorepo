@@ -337,6 +337,13 @@
       "when": 1783716334436,
       "tag": "0047_canonical_expense_profitability",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1783717162110,
+      "tag": "0048_nifty_vulture",
+      "breakpoints": true
     }
   ]
 }
