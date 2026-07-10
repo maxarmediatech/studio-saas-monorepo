@@ -4,6 +4,10 @@ import {
 	fetchDueWhatsAppOutboxItems,
 	processWhatsAppOutboxItem,
 } from "@repo/whatsapp-outbox";
+import {
+	processDueAutomationRuns,
+	processDueWhatsAppCampaigns,
+} from "@repo/whatsapp-runtime";
 import { fetchDueInboundMedia, processInboundMediaItem } from "./media-worker";
 
 const pollIntervalMs = Number(process.env.WHATSAPP_OUTBOX_INTERVAL_MS ?? 5000);
@@ -12,6 +16,9 @@ const workerId =
 	process.env.WHATSAPP_WORKER_ID ?? `whatsapp-${crypto.randomUUID()}`;
 
 const runBatch = async () => {
+	await processDueWhatsAppCampaigns({ limit: batchSize });
+	await processDueAutomationRuns({ workerId, limit: batchSize });
+
 	const mediaBatch = await fetchDueInboundMedia({ limit: batchSize });
 	for (const item of mediaBatch) {
 		const result = await processInboundMediaItem(item, { workerId });

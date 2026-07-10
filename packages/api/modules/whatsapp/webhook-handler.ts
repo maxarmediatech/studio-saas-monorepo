@@ -12,6 +12,10 @@ import {
 	waMedia,
 	waMessages,
 } from "@repo/whatsapp-db";
+import {
+	enqueueInboundAutomationRuns,
+	transitionWhatsAppMessage,
+} from "@repo/whatsapp-runtime";
 
 type WhatsAppAccount = typeof waAccounts.$inferSelect;
 type WhatsAppTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -227,6 +231,16 @@ const processInboundEvent = async (
 			updatedAt: new Date(),
 		})
 		.where(eq(waConversations.id, conversationId));
+
+	await enqueueInboundAutomationRuns(tx, {
+		organizationId: account.organizationId,
+		accountId: account.id,
+		contactId,
+		conversationId,
+		inboundMessageId: created.id,
+		inboundText: event.content.text ?? "",
+		triggerIdentity: `inbound:${event.providerMessageId}`,
+	});
 };
 
 const processStatusEvent = async (
@@ -234,30 +248,17 @@ const processStatusEvent = async (
 	event: Extract<CloudApiWebhookEvent, { type: "message.status" }>,
 	account: WhatsAppAccount,
 ) => {
-	const [message] = await tx
-		.select({ id: waMessages.id })
-		.from(waMessages)
-		.where(
-			and(
-				eq(waMessages.providerMessageId, event.providerMessageId),
-				eq(waMessages.accountId, account.id),
-			),
-		)
-		.limit(1);
-
-	if (!message) {
+	const result = await transitionWhatsAppMessage(tx, {
+		accountId: account.id,
+		lookupProviderMessageId: event.providerMessageId,
+		status: event.status,
+		at: event.timestamp,
+		errorCode: event.error?.code ?? null,
+		errorMessage: event.error?.message ?? null,
+	});
+	if (result.reason === "not_found") {
 		throw new Error("Message not found for WhatsApp status update");
 	}
-
-	await tx
-		.update(waMessages)
-		.set({
-			status: event.status,
-			statusUpdatedAt: new Date(),
-			errorCode: event.error?.code ?? null,
-			errorMessage: event.error?.message ?? null,
-		})
-		.where(eq(waMessages.id, message.id));
 };
 
 const processStoredEvent = async (params: {
