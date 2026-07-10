@@ -355,6 +355,8 @@ Initial stale-claim policy:
 
 ### 4.2 Expense profitability
 
+**Implemented on `codex/core-product-remediation` (2026-07-11).** `expense_assignments` is the allocation ledger. Booking totals are rebuilt transactionally from live assignments after create, amount update, and deletion; booking rows are locked in stable order to prevent lost concurrent updates. Shoot allocations resolve to the shoot's parent booking, while crew-only expenses remain organization overhead.
+
 Product must decide:
 
 - Whether shoot expenses roll up to the booking.

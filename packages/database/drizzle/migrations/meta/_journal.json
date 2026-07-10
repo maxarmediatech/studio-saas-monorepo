@@ -330,6 +330,13 @@
       "when": 1783715116688,
       "tag": "0046_lean_triton",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1783716334436,
+      "tag": "0047_canonical_expense_profitability",
+      "breakpoints": true
     }
   ]
 }
