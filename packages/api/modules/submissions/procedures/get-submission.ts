@@ -20,6 +20,7 @@ import {
 	getSubmissionInputSchema,
 	getSubmissionOutputSchema,
 } from "../../studio/schemas/submission";
+import { reviewClaimStaleAt } from "../lib/review-claim-policy";
 
 export const getSubmission = studioProtectedProcedure
 	.route({
@@ -182,6 +183,19 @@ export const getSubmission = studioProtectedProcedure
 					(link): link is string => typeof link === "string",
 				)
 			: null;
+		const previousEntityCondition = submission.taskId
+			? eq(assignmentSubmissions.taskId, submission.taskId)
+			: submission.deliverableId
+				? eq(
+						assignmentSubmissions.deliverableId,
+						submission.deliverableId,
+					)
+				: null;
+		if (!previousEntityCondition) {
+			throw new ORPCError("CONFLICT", {
+				message: "Submission does not have a valid parent",
+			});
+		}
 
 		// Get previous submissions for the same entity
 		const previousSubmissions =
@@ -191,12 +205,7 @@ export const getSubmission = studioProtectedProcedure
 						assignmentSubmissions.organizationId,
 						context.organizationId,
 					),
-					submission.taskId
-						? eq(assignmentSubmissions.taskId, submission.taskId)
-						: eq(
-								assignmentSubmissions.deliverableId,
-								submission.deliverableId!,
-							),
+					previousEntityCondition,
 					ne(assignmentSubmissions.id, id),
 				),
 				orderBy: [desc(assignmentSubmissions.submittedAt)],
@@ -221,6 +230,14 @@ export const getSubmission = studioProtectedProcedure
 				submissionLinks,
 				submittedAt: submission.submittedAt?.toISOString() ?? null,
 				reviewedBy: submission.reviewedBy,
+				reviewClaimedAt:
+					submission.reviewClaimedAt?.toISOString() ?? null,
+				reviewClaimStaleAt:
+					reviewClaimStaleAt(
+						submission.status === "in_review"
+							? submission.reviewClaimedAt
+							: null,
+					)?.toISOString() ?? null,
 				reviewedAt: submission.reviewedAt?.toISOString() ?? null,
 				reviewNote: submission.reviewNote,
 				createdAt: submission.createdAt.toISOString(),

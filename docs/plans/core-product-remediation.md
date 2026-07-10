@@ -327,6 +327,14 @@ revision_requested → submitted
 
 Define an administrative reassignment action and a stale-claim policy. Do not silently expire active review work without recording who released or reassigned it.
 
+Initial stale-claim policy:
+
+- A claim becomes administratively actionable 24 hours after `review_claimed_at`. The threshold lives behind the named `REVIEW_CLAIM_STALE_AFTER_MS` policy seam so it can later become organization configuration without rewriting transition SQL.
+- The assigned reviewer may release their own claim immediately, with a reason.
+- Staleness never changes state by itself. Only an explicit owner/admin release or reassignment may override a stale claim.
+- Every claim, release, reassignment, decision, and resubmission records the actor, reason or decision, prior/new reviewer, claim time, and action time in the same transaction as the state change.
+- Reassignment targets an existing member of the same organization and resets `review_claimed_at`; administrative actions require a reason.
+
 ### 4.2 Expense profitability
 
 Product must decide:

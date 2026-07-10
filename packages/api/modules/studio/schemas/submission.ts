@@ -60,6 +60,7 @@ export const submissionSchema = z.object({
 	submissionLinks: z.array(z.string().url()).nullable(),
 	submittedAt: z.string().nullable(),
 	reviewedBy: idSchema.nullable(),
+	reviewClaimedAt: z.string().nullable(),
 	reviewedAt: z.string().nullable(),
 	reviewNote: z.string().nullable(),
 	createdAt: z.string(),
@@ -108,6 +109,7 @@ export const submissionListItemSchema = submissionSchema.extend({
 	submittedByName: z.string(),
 	// Reviewer info
 	reviewedByName: z.string().nullable(),
+	reviewClaimStaleAt: z.string().nullable(),
 });
 
 export type SubmissionListItem = z.infer<typeof submissionListItemSchema>;
@@ -132,6 +134,7 @@ export type GetSubmissionInput = z.infer<typeof getSubmissionInputSchema>;
  * Submission detail with entity, crew, files, and history
  */
 export const submissionDetailSchema = submissionSchema.extend({
+	reviewClaimStaleAt: z.string().nullable(),
 	// Entity info
 	entityType: z.enum(["task", "deliverable"]),
 	entityId: idSchema,
@@ -190,6 +193,33 @@ export type ClaimSubmissionInput = z.infer<typeof claimSubmissionInputSchema>;
 export const claimSubmissionOutputSchema = mutationResponseSchema;
 
 export type ClaimSubmissionOutput = z.infer<typeof claimSubmissionOutputSchema>;
+
+const reviewClaimReasonSchema = z.string().trim().min(3).max(500);
+
+export const releaseSubmissionInputSchema = z.object({
+	id: idSchema,
+	reason: reviewClaimReasonSchema,
+});
+
+export type ReleaseSubmissionInput = z.infer<
+	typeof releaseSubmissionInputSchema
+>;
+
+export const releaseSubmissionOutputSchema = mutationResponseSchema;
+
+export const adminReleaseSubmissionInputSchema = releaseSubmissionInputSchema;
+
+export const reassignSubmissionInputSchema = z.object({
+	id: idSchema,
+	reviewerId: idSchema,
+	reason: reviewClaimReasonSchema,
+});
+
+export type ReassignSubmissionInput = z.infer<
+	typeof reassignSubmissionInputSchema
+>;
+
+export const reassignSubmissionOutputSchema = mutationResponseSchema;
 
 // ============================================================================
 // REVIEW SUBMISSION
