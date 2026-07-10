@@ -46,8 +46,38 @@ export function getIcalUid(
 	return `shoot-${shootId}-crew-${crewId}-g${generation}@studio-saas.invalid`;
 }
 
-export function sameSnapshot(left: unknown, right: CalendarSnapshot) {
-	return JSON.stringify(left) === JSON.stringify(right);
+export function sameMaterialSnapshot(
+	left: CalendarSnapshot,
+	right: CalendarSnapshot,
+) {
+	return (
+		stableJson(left) ===
+		stableJson({
+			...right,
+			target: {
+				...right.target,
+				calendarId: left.target.calendarId,
+				googleEventId: left.target.googleEventId,
+				icalUid: left.target.icalUid,
+				icalSequence: left.target.icalSequence,
+			},
+		})
+	);
+}
+
+function stableJson(value: unknown): string {
+	if (Array.isArray(value)) {
+		return `[${value.map(stableJson).join(",")}]`;
+	}
+	if (value && typeof value === "object") {
+		return `{${Object.entries(value)
+			.sort(([left], [right]) => left.localeCompare(right))
+			.map(
+				([key, entry]) => `${JSON.stringify(key)}:${stableJson(entry)}`,
+			)
+			.join(",")}}`;
+	}
+	return JSON.stringify(value) ?? "undefined";
 }
 
 export async function getActiveAssignmentTarget(

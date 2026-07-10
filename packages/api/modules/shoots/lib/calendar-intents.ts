@@ -22,7 +22,7 @@ import {
 	getActiveAssignmentTarget,
 	getIcalUid,
 	type IntentTarget,
-	sameSnapshot,
+	sameMaterialSnapshot,
 } from "./calendar-intent-snapshot";
 import { resolveCalendarDeliveryRoute } from "./calendar-routing";
 
@@ -152,9 +152,8 @@ export async function ensureAssignmentCalendarDelivery(
 	const currentSnapshot = currentIntent?.payload as
 		| CalendarSnapshot
 		| undefined;
-	const pendingActiveSnapshot =
+	const comparableActiveSnapshot =
 		mapping?.intentState === "active" &&
-		mapping.deliveredGeneration !== mapping.intentGeneration &&
 		currentIntent?.deliveryMethod === route.deliveryMethod &&
 		currentIntent.recipientEmail === route.recipientEmail &&
 		currentSnapshot?.operation === "delivery"
@@ -173,25 +172,14 @@ export async function ensureAssignmentCalendarDelivery(
 			? (mapping?.deliveredIcalSequence ?? 0) + 1
 			: 0,
 	};
-	const comparisonSnapshot = buildSnapshot(
+	const snapshot = buildSnapshot(
 		target,
 		{ operation: "delivery", intentState: "active" },
-		{
-			...nextTarget,
-			calendarId: pendingActiveSnapshot?.target.calendarId,
-			googleEventId:
-				pendingActiveSnapshot?.target.googleEventId ??
-				nextTarget.googleEventId,
-			icalUid:
-				pendingActiveSnapshot?.target.icalUid ?? nextTarget.icalUid,
-			icalSequence:
-				pendingActiveSnapshot?.target.icalSequence ??
-				nextTarget.icalSequence,
-		},
+		nextTarget,
 	);
 	if (
-		pendingActiveSnapshot &&
-		sameSnapshot(pendingActiveSnapshot, comparisonSnapshot)
+		comparableActiveSnapshot &&
+		sameMaterialSnapshot(comparableActiveSnapshot, snapshot)
 	) {
 		return {
 			...params,
@@ -201,12 +189,6 @@ export async function ensureAssignmentCalendarDelivery(
 				route.deliveryMethod === "unsendable" ? "unsendable" : "queued",
 		};
 	}
-	const snapshot = buildSnapshot(
-		target,
-		{ operation: "delivery", intentState: "active" },
-		nextTarget,
-	);
-
 	await supersedeUnstartedGenerations(tx, params);
 	const intent = await createIntent(tx, {
 		...params,
