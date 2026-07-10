@@ -220,6 +220,13 @@ Persist conversion status, start/completion times, and converted payment ID. If 
 
 ### 1.5 Enforcement
 
+**Implemented 2026-07-11:** active receipt/payment and invoice/schedule
+uniqueness is enforced by migration 0038. Migration 0043 adds preflight checks and
+write-time database guards that prevent invoices, received payments, schedules,
+and receipts from crossing organization, booking, invoice, or schedule
+boundaries. Parent identity updates are guarded as well, so an existing valid
+chain cannot be made inconsistent by moving one parent row.
+
 Database-level:
 
 - Unique active receipt per received payment.
