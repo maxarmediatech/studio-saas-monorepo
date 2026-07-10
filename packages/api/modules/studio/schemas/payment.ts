@@ -43,6 +43,12 @@ export const receivedAmountSchema = z.object({
 	notes: z.string().nullable(),
 	proofAttachment: uploadedAttachmentSchema.nullable(),
 	paymentScheduleId: idSchema.nullable(),
+	invoiceId: idSchema.nullable(),
+	replacesPaymentId: idSchema.nullable(),
+	replacementPaymentId: idSchema.nullable(),
+	reversedAt: z.string().nullable(),
+	reversedBy: idSchema.nullable(),
+	reversalReason: z.string().nullable(),
 	createdBy: idSchema.nullable(),
 	updatedBy: idSchema.nullable(),
 	createdAt: z.string(),
@@ -192,6 +198,17 @@ export const receivedAmountDetailSchema = receivedAmountSchema.extend({
 		canDelete: z.boolean(),
 		reasons: z.array(z.enum(["invoice", "receipt", "schedule"])),
 	}),
+	correction: z
+		.object({
+			originalPaymentId: idSchema,
+			originalAmount: z.string(),
+			originalPaymentMethod: paymentMethodSchema,
+			originalReceivedDate: z.string(),
+			reason: z.string(),
+			reversedAt: z.string(),
+			voidedReceiptNumber: z.string().nullable(),
+		})
+		.nullable(),
 });
 
 export type ReceivedAmountDetail = z.infer<typeof receivedAmountDetailSchema>;
@@ -254,6 +271,33 @@ export type UpdateReceivedInput = z.infer<typeof updateReceivedInputSchema>;
 export const updateReceivedOutputSchema = mutationResponseSchema;
 
 export type UpdateReceivedOutput = z.infer<typeof updateReceivedOutputSchema>;
+
+// ============================================================================
+// CORRECT RECEIVED AMOUNT
+// ============================================================================
+
+export const correctReceivedInputSchema = z.object({
+	id: idSchema,
+	idempotencyKey: paymentIdempotencyKeySchema,
+	amount: moneySchema,
+	paymentMethod: paymentMethodSchema,
+	transactionReference: z.string().max(100).optional().nullable(),
+	receivedDate: dateSchema,
+	notes: notesSchema.nullable(),
+	reason: z.string().trim().min(5).max(1000),
+});
+
+export type CorrectReceivedInput = z.infer<typeof correctReceivedInputSchema>;
+
+export const correctReceivedOutputSchema = z.object({
+	data: z.object({
+		originalId: idSchema,
+		replacementId: idSchema,
+	}),
+	message: z.string(),
+});
+
+export type CorrectReceivedOutput = z.infer<typeof correctReceivedOutputSchema>;
 
 // ============================================================================
 // DELETE RECEIVED AMOUNT

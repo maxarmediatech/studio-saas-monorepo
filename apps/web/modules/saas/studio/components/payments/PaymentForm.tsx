@@ -71,6 +71,7 @@ const paymentFormSchema = z.object({
 	receivedDate: z.string().min(1, "Date is required"),
 	transactionReference: z.string().max(100).optional().or(z.literal("")),
 	notes: z.string().max(10000).optional().or(z.literal("")),
+	correctionReason: z.string().max(1000).optional().or(z.literal("")),
 });
 
 export type PaymentFormValues = z.infer<typeof paymentFormSchema>;
@@ -91,7 +92,7 @@ interface PaymentFormProps {
 	/** Booking info for edit mode (read-only display) */
 	booking?: BookingInfo;
 	onSubmit: (data: PaymentFormValues) => Promise<void>;
-	mode: "create" | "edit";
+	mode: "create" | "edit" | "correct";
 	isPending?: boolean;
 	onScrollChange?: (isScrolled: boolean) => void;
 }
@@ -136,6 +137,7 @@ export function PaymentForm({
 			receivedDate: new Date().toISOString().split("T")[0],
 			transactionReference: "",
 			notes: "",
+			correctionReason: "",
 		},
 	});
 
@@ -160,6 +162,7 @@ export function PaymentForm({
 				receivedDate: defaultValues.receivedDate,
 				transactionReference: defaultValues.transactionReference ?? "",
 				notes: defaultValues.notes ?? "",
+				correctionReason: "",
 			});
 
 			// Auto-expand details if there's content
@@ -241,6 +244,45 @@ export function PaymentForm({
 			>
 				<div className="px-4 py-4">
 					<FieldGroup>
+						{mode === "correct" && (
+							<Controller
+								name="correctionReason"
+								control={form.control}
+								rules={{
+									required:
+										"Explain why this payment is being corrected",
+									minLength: {
+										value: 5,
+										message:
+											"Please provide a little more detail",
+									},
+								}}
+								render={({ field, fieldState }) => (
+									<Field data-invalid={fieldState.invalid}>
+										<FieldLabel htmlFor={field.name}>
+											Reason for correction *
+										</FieldLabel>
+										<Textarea
+											{...field}
+											id={field.name}
+											rows={3}
+											placeholder="For example: amount entered incorrectly from the bank statement"
+										/>
+										<p className="text-xs text-muted-foreground">
+											The original payment and receipt
+											will be preserved as reversed. A new
+											receipt will be issued for the
+											corrected payment.
+										</p>
+										{fieldState.invalid && (
+											<FieldError
+												errors={[fieldState.error]}
+											/>
+										)}
+									</Field>
+								)}
+							/>
+						)}
 						{/* Booking - Searchable Combobox */}
 						<Controller
 							name="bookingId"
@@ -556,10 +598,14 @@ export function PaymentForm({
 
 			<div className="shrink-0 border-t p-4 bg-background">
 				<FormActions
-					mode={mode}
+					mode={mode === "create" ? "create" : "edit"}
 					isSubmitting={isSubmitting}
 					submitLabel={
-						mode === "edit" ? "Save Changes" : "Record Payment"
+						mode === "correct"
+							? "Reverse & Create Replacement"
+							: mode === "edit"
+								? "Save Changes"
+								: "Record Payment"
 					}
 				/>
 			</div>

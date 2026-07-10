@@ -1,4 +1,5 @@
 import { getPaymentStats } from "./procedures/get-payment-stats";
+import { correctReceived } from "./procedures/received/correct-received";
 import { createReceived } from "./procedures/received/create-received";
 import { deleteReceived } from "./procedures/received/delete-received";
 import { getReceived } from "./procedures/received/get-received";
@@ -17,6 +18,7 @@ export const studioPaymentsRouter = {
 	listReceived,
 	getReceived,
 	createReceived,
+	correctReceived,
 	updateReceived,
 	deleteReceived,
 

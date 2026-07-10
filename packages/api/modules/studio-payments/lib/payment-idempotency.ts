@@ -11,11 +11,15 @@ import type { TransactionClient } from "../../studio/lib/transactions";
 import type {
 	ConvertScheduleInput,
 	ConvertScheduleOutput,
+	CorrectReceivedInput,
+	CorrectReceivedOutput,
 	CreateReceivedInput,
 	CreateReceivedOutput,
 } from "../../studio/schemas/payment";
+import { correctReceivedPaymentTransition } from "./payment-correction-service";
 import {
 	convertSchedulePaymentFingerprint,
+	correctReceivedPaymentFingerprint,
 	createReceivedPaymentFingerprint,
 } from "./payment-request-fingerprint";
 import {
@@ -29,6 +33,7 @@ export const PAYMENT_IDEMPOTENCY_CONFLICT_MESSAGE =
 export const PAYMENT_IDEMPOTENCY_OPERATIONS = {
 	createReceived: "create_received_payment",
 	convertSchedule: "convert_schedule_payment",
+	correctReceived: "correct_received_payment",
 } as const;
 
 type PaymentIdempotencyOperation =
@@ -43,6 +48,8 @@ interface PaymentActor {
 export const CREATE_RECEIVED_SUCCESS_MESSAGE = "Payment recorded successfully";
 export const CONVERT_SCHEDULE_SUCCESS_MESSAGE =
 	"Payment schedule converted successfully";
+export const CORRECT_RECEIVED_SUCCESS_MESSAGE =
+	"Payment corrected and previous receipt voided successfully";
 
 async function executeIdempotently<T extends Record<string, unknown>>({
 	tx,
@@ -234,6 +241,51 @@ export async function convertSchedulePaymentIdempotently(
 				resourceId: result.receivedId,
 				result: response,
 			};
+		},
+	});
+}
+
+export async function correctReceivedPaymentIdempotently(
+	tx: TransactionClient,
+	input: CorrectReceivedInput & PaymentActor,
+) {
+	return executeIdempotently({
+		tx,
+		organizationId: input.organizationId,
+		operation: PAYMENT_IDEMPOTENCY_OPERATIONS.correctReceived,
+		idempotencyKey: input.idempotencyKey,
+		requestFingerprint: correctReceivedPaymentFingerprint(input),
+		execute: async () => {
+			const result = await correctReceivedPaymentTransition(tx, input);
+			const response = {
+				data: {
+					originalId: result.originalId,
+					replacementId: result.replacementId,
+				},
+				message: CORRECT_RECEIVED_SUCCESS_MESSAGE,
+			} satisfies CorrectReceivedOutput;
+			await trackActivityWithExecutor(
+				tx,
+				{
+					organizationId: input.organizationId,
+					user: { id: input.userId, name: input.actorName },
+				},
+				{
+					entityType: "received_amount",
+					entityId: result.replacementId,
+					entityName: `${formatAmount(input.amount)} via ${input.paymentMethod}`,
+					action: "updated",
+					parentEntityType: "booking",
+					parentEntityId: result.bookingId,
+					parentEntityName: result.bookingName,
+					metadata: {
+						originalPaymentId: result.originalId,
+						replacementPaymentId: result.replacementId,
+						reason: input.reason.trim(),
+					},
+				},
+			);
+			return { resourceId: result.replacementId, result: response };
 		},
 	});
 }
