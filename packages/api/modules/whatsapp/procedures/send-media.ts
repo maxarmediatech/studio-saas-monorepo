@@ -1,14 +1,9 @@
 import { ORPCError } from "@orpc/server";
-import { and, db, eq } from "@repo/database";
-import {
-	waContacts,
-	waConversations,
-	waMedia,
-	waMessages,
-	waOutbox,
-} from "@repo/whatsapp-db";
+import { db } from "@repo/database";
+import { waMedia, waMessages, waOutbox } from "@repo/whatsapp-db";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { findActiveWhatsAppAccount } from "../lib/account-repository";
+import { ensureWhatsAppContactConversation } from "../lib/contact-conversation";
 import { recordOutboundConversationActivity } from "../lib/outbound-activity";
 import { triggerWhatsAppOutbox } from "../lib/trigger-outbox";
 import { sendMediaInputSchema, sendMediaOutputSchema } from "../types";
@@ -45,59 +40,12 @@ export const sendMedia = studioProtectedProcedure
 			});
 		}
 
-		const existingContact = await db.query.waContacts.findFirst({
-			where: and(
-				eq(waContacts.organizationId, context.organizationId),
-				eq(waContacts.waId, input.to),
-			),
-		});
-
-		const contactId = existingContact
-			? existingContact.id
-			: (
-					await db
-						.insert(waContacts)
-						.values({
-							organizationId: context.organizationId,
-							accountId: account.id,
-							waId: input.to,
-							phoneNumber: input.to,
-						})
-						.returning({ id: waContacts.id })
-				)[0]?.id;
-
-		if (!contactId) {
-			throw new ORPCError("INTERNAL_SERVER_ERROR", {
-				message: "Failed to create contact",
+		const { contactId, conversationId } =
+			await ensureWhatsAppContactConversation({
+				organizationId: context.organizationId,
+				accountId: account.id,
+				waId: input.to,
 			});
-		}
-
-		const existingConversation = await db.query.waConversations.findFirst({
-			where: and(
-				eq(waConversations.organizationId, context.organizationId),
-				eq(waConversations.accountId, account.id),
-				eq(waConversations.contactId, contactId),
-			),
-		});
-
-		const conversationId = existingConversation
-			? existingConversation.id
-			: (
-					await db
-						.insert(waConversations)
-						.values({
-							organizationId: context.organizationId,
-							accountId: account.id,
-							contactId,
-						})
-						.returning({ id: waConversations.id })
-				)[0]?.id;
-
-		if (!conversationId) {
-			throw new ORPCError("INTERNAL_SERVER_ERROR", {
-				message: "Failed to create conversation",
-			});
-		}
 
 		const [createdMedia] = await db
 			.insert(waMedia)

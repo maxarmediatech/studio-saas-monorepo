@@ -631,6 +631,9 @@ importers:
       '@repo/whatsapp-db':
         specifier: workspace:*
         version: link:../whatsapp-db
+      '@repo/whatsapp-runtime':
+        specifier: workspace:*
+        version: link:../whatsapp-runtime
       '@scalar/hono-api-reference':
         specifier: ^0.9.30
         version: 0.9.30(hono@4.11.1)
@@ -1299,12 +1302,18 @@ importers:
       '@repo/storage':
         specifier: workspace:*
         version: link:../storage
+      '@repo/whatsapp-core':
+        specifier: workspace:*
+        version: link:../whatsapp-core
       '@repo/whatsapp-db':
         specifier: workspace:*
         version: link:../whatsapp-db
       '@repo/whatsapp-providers':
         specifier: workspace:*
         version: link:../whatsapp-providers
+      '@repo/whatsapp-runtime':
+        specifier: workspace:*
+        version: link:../whatsapp-runtime
     devDependencies:
       '@biomejs/biome':
         specifier: 2.3.10
@@ -1318,6 +1327,9 @@ importers:
       typescript:
         specifier: 5.9.3
         version: 5.9.3
+      vitest:
+        specifier: ^2.0.0
+        version: 2.1.9(@types/node@24.10.4)(happy-dom@20.3.4)(jsdom@26.1.0)(lightningcss@1.32.0)(msw@2.12.10(@types/node@24.10.4)(typescript@5.9.3))
 
   packages/whatsapp-providers:
     dependencies:
@@ -1334,6 +1346,31 @@ importers:
       '@types/node':
         specifier: 24.10.4
         version: 24.10.4
+
+  packages/whatsapp-runtime:
+    dependencies:
+      '@repo/database':
+        specifier: workspace:*
+        version: link:../database
+      '@repo/whatsapp-db':
+        specifier: workspace:*
+        version: link:../whatsapp-db
+    devDependencies:
+      '@biomejs/biome':
+        specifier: 2.3.10
+        version: 2.3.10
+      '@repo/tsconfig':
+        specifier: workspace:*
+        version: link:../../tooling/typescript
+      '@types/node':
+        specifier: 24.10.4
+        version: 24.10.4
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.0.0
+        version: 2.1.9(@types/node@24.10.4)(happy-dom@20.3.4)(jsdom@26.1.0)(lightningcss@1.32.0)(msw@2.12.10(@types/node@24.10.4)(typescript@5.9.3))
 
   services/calendar-worker:
     dependencies:
@@ -1448,6 +1485,12 @@ importers:
       '@repo/whatsapp-outbox':
         specifier: workspace:*
         version: link:../../packages/whatsapp-outbox
+      '@repo/whatsapp-providers':
+        specifier: workspace:*
+        version: link:../../packages/whatsapp-providers
+      '@repo/whatsapp-runtime':
+        specifier: workspace:*
+        version: link:../../packages/whatsapp-runtime
       drizzle-orm:
         specifier: ^0.45.1
         version: 0.45.1(@opentelemetry/api@1.9.0)(@prisma/client@6.15.0(prisma@6.15.0(typescript@5.9.3))(typescript@5.9.3))(@types/pg@8.16.0)(kysely@0.28.8)(pg@8.16.3)(prisma@6.15.0(typescript@5.9.3))
@@ -1464,6 +1507,9 @@ importers:
       tsx:
         specifier: ^4.21.0
         version: 4.21.0
+      vitest:
+        specifier: ^2.0.0
+        version: 2.1.9(@types/node@24.10.4)(happy-dom@20.3.4)(jsdom@26.1.0)(lightningcss@1.32.0)(msw@2.12.10(@types/node@24.10.4)(typescript@5.9.3))
 
   tooling/scripts:
     dependencies:

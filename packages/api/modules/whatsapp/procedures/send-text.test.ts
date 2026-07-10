@@ -37,10 +37,12 @@ const mocks = vi.hoisted(() => {
 		mockAnd: vi.fn((...args) => args),
 		mockDbInsert: vi.fn(),
 		mockEq: vi.fn((left, right) => ({ eq: [left, right] })),
+		mockEnsureContactConversation: vi.fn(),
 		mockFindActiveWhatsAppAccount: vi.fn(),
 		mockFindContact: vi.fn(),
 		mockFindConversation: vi.fn(),
 		mockRecordOutboundConversationActivity: vi.fn(),
+		mockTriggerWhatsAppOutbox: vi.fn(),
 		procedureChain,
 	};
 });
@@ -53,9 +55,17 @@ vi.mock("../lib/account-repository", () => ({
 	findActiveWhatsAppAccount: mocks.mockFindActiveWhatsAppAccount,
 }));
 
+vi.mock("../lib/contact-conversation", () => ({
+	ensureWhatsAppContactConversation: mocks.mockEnsureContactConversation,
+}));
+
 vi.mock("../lib/outbound-activity", () => ({
 	recordOutboundConversationActivity:
 		mocks.mockRecordOutboundConversationActivity,
+}));
+
+vi.mock("../lib/trigger-outbox", () => ({
+	triggerWhatsAppOutbox: mocks.mockTriggerWhatsAppOutbox,
 }));
 
 vi.mock("@repo/database", () => ({
@@ -132,6 +142,11 @@ describe("sendText", () => {
 		mocks.mockRecordOutboundConversationActivity.mockResolvedValue(
 			undefined,
 		);
+		mocks.mockEnsureContactConversation.mockResolvedValue({
+			contactId: "contact_1",
+			conversationId: "conversation_1",
+		});
+		mocks.mockTriggerWhatsAppOutbox.mockResolvedValue(undefined);
 	});
 
 	it("rejects missing or cross-organization accounts before writes", async () => {
@@ -199,5 +214,9 @@ describe("sendText", () => {
 				messageId: "message_1",
 			}),
 		);
+		expect(mocks.mockTriggerWhatsAppOutbox).toHaveBeenCalledWith({
+			messageId: "message_1",
+			outboxId: "outbox_1",
+		});
 	});
 });
