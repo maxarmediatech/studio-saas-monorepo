@@ -45,13 +45,13 @@ The report emits exactly these `mismatchType` values:
 7. `multiple_receipts_per_payment`
 8. `multiple_invoices_per_schedule`
 
-All SQL is organization-scoped, joins compare organization and booking ownership, and active-record calculations exclude soft-deleted rows. Receipt/payment checks also compare their invoice IDs, so records tied to different invoices are manual-review mismatches even when organization and booking agree. Issuance-history checks include voided receipts and soft-deleted invoices, while their details distinguish active records. The report includes deterministic relation-qualified evidence IDs and expected/actual values needed for review.
+All SQL is organization-scoped, joins compare organization and booking ownership, and active-record calculations exclude soft-deleted rows. Receipt/payment checks also compare their invoice IDs, so records tied to different invoices are manual-review mismatches even when organization and booking agree. Issuance-history checks begin with the tenant-owned payment or schedule, then include every linked receipt or invoice regardless of its stored organization, while their details distinguish active records. The report includes deterministic relation-qualified evidence IDs and expected/actual values needed for review.
 
 ## Safe-fix boundary
 
-`--fix-safe` recalculates only cached booking totals, schedule paid amounts, and invoice paid amount/status when all linked active payments have valid organization and booking links. Schedule and invoice overpayments, cancelled schedules/invoices, ambiguous draft invoices, missing or duplicate active receipts, and receipt/payment amount disagreements are review-only. Invoice `paidAt` is preserved because timestamp correction is outside this Phase 0 boundary. Receipt amounts, deleted-payment receipts, cross-entity links, and issued-document history are never changed by this command.
+`--fix-safe` recalculates only cached booking totals, schedule paid amounts, and invoice paid amount/status when all linked active payments have valid organization and booking links. Booking, schedule, and invoice overpayments, cancelled schedules/invoices, ambiguous draft invoices, missing or duplicate active receipts, and receipt/payment amount disagreements are review-only. Invoice `paidAt` is preserved because timestamp correction is outside this Phase 0 boundary. Receipt amounts, deleted-payment receipts, cross-entity links, and issued-document history are never changed by this command.
 
-The command re-checks the ownership guards inside one database transaction before updating. It returns before/after reports and the IDs of applied safe fixes.
+Each safe repair runs in its own transaction. A failed or newly unsafe repair records a deterministic mismatch ID and reason, while unrelated safe repairs continue. The command returns before/after reports, applied IDs, and failed repair records.
 
 ## Approved decision record
 

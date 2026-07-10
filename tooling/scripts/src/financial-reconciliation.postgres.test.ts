@@ -5,7 +5,7 @@ const databaseUrl = process.env.POSTGRES_RECONCILIATION_DATABASE_URL;
 const describePostgres = databaseUrl ? describe : describe.skip;
 
 describePostgres("financial reconciliation on migrated PostgreSQL", () => {
-	it("reports, safely repairs, and detects receipt/payment invoice disagreement", async () => {
+	it("executes schedule aggregates, safely repairs, and detects tenant-bound history", async () => {
 		const originalDatabaseUrl = process.env.DATABASE_URL;
 		process.env.DATABASE_URL = databaseUrl;
 
@@ -18,10 +18,10 @@ describePostgres("financial reconciliation on migrated PostgreSQL", () => {
 			paymentSchedules,
 			receipts,
 			receivedAmounts,
+			sql,
 		} = await import("@repo/database");
-		const { main, queryFinancialMismatches } = await import(
-			"./reconcile-financials"
-		);
+		const { applySafeFinancialFixes, main, queryFinancialMismatches } =
+			await import("./reconcile-financials");
 
 		const suffix = `${process.pid}_${Date.now()}`;
 		const organizationId = `reconcile_org_${suffix}`;
@@ -33,6 +33,12 @@ describePostgres("financial reconciliation on migrated PostgreSQL", () => {
 		const receiptId = `reconcile_receipt_${suffix}`;
 		const historyReceiptId = `reconcile_history_receipt_${suffix}`;
 		const historyInvoiceId = `reconcile_history_invoice_${suffix}`;
+		const crossOrganizationReceiptId = `reconcile_cross_receipt_${suffix}`;
+		const crossOrganizationInvoiceId = `reconcile_cross_invoice_${suffix}`;
+		const failedRepairBookingId = `reconcile_failed_repair_booking_${suffix}`;
+		const successfulRepairBookingId = `reconcile_successful_repair_booking_${suffix}`;
+		const failedRepairPaymentId = `reconcile_failed_repair_payment_${suffix}`;
+		const successfulRepairPaymentId = `reconcile_successful_repair_payment_${suffix}`;
 		const overBookingId = `reconcile_over_booking_${suffix}`;
 		const overScheduleId = `reconcile_over_schedule_${suffix}`;
 		const overInvoiceId = `reconcile_over_invoice_${suffix}`;
@@ -331,6 +337,136 @@ describePostgres("financial reconciliation on migrated PostgreSQL", () => {
 				packageCost: "10.00",
 				totalReceived: "9.00",
 			});
+			await db.insert(receipts).values({
+				id: crossOrganizationReceiptId,
+				organizationId: otherOrganizationId,
+				bookingId,
+				invoiceId,
+				receivedAmountId,
+				receiptNumber: `RECON-CROSS-RCPT-${suffix}`,
+				amount: "40.00",
+				paymentMethod: "cash",
+				receiptDate: "2026-01-15",
+				deletedAt: new Date(),
+			});
+			await db.insert(invoices).values({
+				id: crossOrganizationInvoiceId,
+				organizationId: otherOrganizationId,
+				bookingId,
+				paymentScheduleId: scheduleId,
+				invoiceNumber: `RECON-CROSS-INV-${suffix}`,
+				issueDate: "2026-01-01",
+				totalAmount: "100.00",
+				status: "sent",
+				deletedAt: new Date(),
+			});
+			await db.insert(bookings).values([
+				{
+					id: failedRepairBookingId,
+					organizationId,
+					referenceNumber: `RECON-FAIL-${suffix}`,
+					name: "Financial reconciliation forced repair failure",
+					bookingType: "test",
+					packageType: "test",
+					packageCost: "100.00",
+					totalReceived: "0.00",
+				},
+				{
+					id: successfulRepairBookingId,
+					organizationId,
+					referenceNumber: `RECON-SUCCESS-${suffix}`,
+					name: "Financial reconciliation independent repair",
+					bookingType: "test",
+					packageType: "test",
+					packageCost: "100.00",
+					totalReceived: "0.00",
+				},
+			]);
+			await db.insert(receivedAmounts).values([
+				{
+					id: failedRepairPaymentId,
+					organizationId,
+					bookingId: failedRepairBookingId,
+					amount: "25.00",
+					paymentMethod: "cash",
+					receivedDate: "2026-02-01",
+				},
+				{
+					id: successfulRepairPaymentId,
+					organizationId,
+					bookingId: successfulRepairBookingId,
+					amount: "25.00",
+					paymentMethod: "cash",
+					receivedDate: "2026-02-01",
+				},
+			]);
+			await db.execute(sql`
+				CREATE OR REPLACE FUNCTION financial_reconciliation_fail_booking_update()
+				RETURNS trigger AS $$
+				BEGIN
+					IF NEW.name = 'Financial reconciliation forced repair failure' THEN
+						RAISE EXCEPTION 'forced reconciliation repair failure';
+					END IF;
+					RETURN NEW;
+				END;
+				$$ LANGUAGE plpgsql
+			`);
+			await db.execute(sql`
+				DROP TRIGGER IF EXISTS financial_reconciliation_fail_booking_update ON bookings
+			`);
+			await db.execute(sql`
+				CREATE TRIGGER financial_reconciliation_fail_booking_update
+				BEFORE UPDATE OF total_received ON bookings
+				FOR EACH ROW EXECUTE FUNCTION financial_reconciliation_fail_booking_update()
+			`);
+
+			const repairIsolationReport = await queryFinancialMismatches(
+				organizationId,
+				"2026-07-10",
+			);
+			const failedRepairMismatch = repairIsolationReport.mismatches.find(
+				(mismatch) => mismatch.entityId === failedRepairBookingId,
+			);
+			const successfulRepairMismatch =
+				repairIsolationReport.mismatches.find(
+					(mismatch) =>
+						mismatch.entityId === successfulRepairBookingId,
+				);
+			assert.ok(failedRepairMismatch);
+			assert.ok(successfulRepairMismatch);
+			assert.equal(failedRepairMismatch.safeFixAvailable, true);
+			assert.equal(successfulRepairMismatch.safeFixAvailable, true);
+			const repairIsolation = await applySafeFinancialFixes(
+				organizationId,
+				"2026-07-10",
+				[failedRepairMismatch, successfulRepairMismatch],
+			);
+			assert.deepEqual(repairIsolation.applied, [
+				successfulRepairMismatch.id,
+			]);
+			assert.deepEqual(repairIsolation.failed, [
+				{
+					mismatchId: failedRepairMismatch.id,
+					reason: "repair_transaction_failed",
+				},
+			]);
+			const [failedRepairBooking, successfulRepairBooking] =
+				await Promise.all([
+					db.query.bookings.findFirst({
+						where: eq(bookings.id, failedRepairBookingId),
+					}),
+					db.query.bookings.findFirst({
+						where: eq(bookings.id, successfulRepairBookingId),
+					}),
+				]);
+			assert.equal(failedRepairBooking?.totalReceived, "0.00");
+			assert.equal(successfulRepairBooking?.totalReceived, "25.00");
+			await db.execute(sql`
+				DROP TRIGGER financial_reconciliation_fail_booking_update ON bookings
+			`);
+			await db.execute(sql`
+				DROP FUNCTION financial_reconciliation_fail_booking_update()
+			`);
 
 			const guarded = await queryFinancialMismatches(
 				organizationId,
@@ -357,13 +493,71 @@ describePostgres("financial reconciliation on migrated PostgreSQL", () => {
 						mismatch.entityId === scheduleId,
 				),
 			);
-			for (const entityId of [overScheduleId, overInvoiceId]) {
+			for (const entityId of [
+				overBookingId,
+				overScheduleId,
+				overInvoiceId,
+			]) {
 				const overpayment = guarded.mismatches.find(
 					(mismatch) => mismatch.entityId === entityId,
 				);
 				assert.equal(overpayment?.exceedsUpperBound, true);
 				assert.equal(overpayment?.safeFixAvailable, false);
 			}
+			const receiptHistory = guarded.mismatches.find(
+				(mismatch) =>
+					mismatch.mismatchType === "multiple_receipts_per_payment" &&
+					mismatch.entityId === receivedAmountId,
+			);
+			const invoiceHistory = guarded.mismatches.find(
+				(mismatch) =>
+					mismatch.mismatchType ===
+						"multiple_invoices_per_schedule" &&
+					mismatch.entityId === scheduleId,
+			);
+			assert.ok(receiptHistory);
+			assert.ok(invoiceHistory);
+			assert.ok(
+				(
+					receiptHistory.details as {
+						allReceipts: Array<{ organizationId: string }>;
+					}
+				).allReceipts.some(
+					(receipt) => receipt.organizationId === otherOrganizationId,
+				),
+			);
+			assert.ok(
+				(
+					invoiceHistory.details as {
+						allInvoices: Array<{ organizationId: string }>;
+					}
+				).allInvoices.some(
+					(invoice) => invoice.organizationId === otherOrganizationId,
+				),
+			);
+
+			const overBookingMismatch = guarded.mismatches.find(
+				(mismatch) => mismatch.entityId === overBookingId,
+			);
+			assert.ok(overBookingMismatch);
+			const forcedMutation = await applySafeFinancialFixes(
+				organizationId,
+				"2026-07-10",
+				[
+					{
+						...overBookingMismatch,
+						safeFixAvailable: true,
+						intendedAction: "recalculate_booking_total",
+					},
+				],
+			);
+			assert.deepEqual(forcedMutation.applied, []);
+			assert.deepEqual(forcedMutation.failed, [
+				{
+					mismatchId: overBookingMismatch.id,
+					reason: "repair_guard_prevented_update",
+				},
+			]);
 
 			const guardedFixCode = await main([
 				"--organization-id",
@@ -374,7 +568,7 @@ describePostgres("financial reconciliation on migrated PostgreSQL", () => {
 			]);
 			assert.equal(guardedFixCode, 1);
 			const [
-				fixedOverBooking,
+				unchangedOverBooking,
 				unchangedOverSchedule,
 				unchangedOverInvoice,
 			] = await Promise.all([
@@ -388,11 +582,17 @@ describePostgres("financial reconciliation on migrated PostgreSQL", () => {
 					where: eq(invoices.id, overInvoiceId),
 				}),
 			]);
-			assert.equal(fixedOverBooking?.totalReceived, "60.00");
+			assert.equal(unchangedOverBooking?.totalReceived, "0.00");
 			assert.equal(unchangedOverSchedule?.paidAmount, "0.00");
 			assert.equal(unchangedOverInvoice?.paidAmount, "0.00");
 		} finally {
 			console.log = originalLog;
+			await db.execute(sql`
+				DROP TRIGGER IF EXISTS financial_reconciliation_fail_booking_update ON bookings
+			`);
+			await db.execute(sql`
+				DROP FUNCTION IF EXISTS financial_reconciliation_fail_booking_update()
+			`);
 			await db
 				.delete(organizations)
 				.where(eq(organizations.id, organizationId));

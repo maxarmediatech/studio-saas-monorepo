@@ -4,6 +4,7 @@ import {
 	classifyMismatch,
 	isCalendarDate,
 	MISMATCH_TYPES,
+	runIsolatedSafeFixes,
 	sortMismatches,
 	validateDecisionRecord,
 } from "./financial-reconciliation";
@@ -99,8 +100,9 @@ describe("financial reconciliation taxonomy", () => {
 		assert.equal(missingReceipt.intendedAction, null);
 	});
 
-	it("does not auto-fix schedule or invoice overpayments", () => {
+	it("does not auto-fix booking, schedule, or invoice overpayments", () => {
 		for (const mismatchType of [
+			"booking_total_vs_active_payments",
 			"schedule_total_vs_assigned_active_payments",
 			"invoice_paid_status_vs_valid_applications",
 		] as const) {
@@ -112,6 +114,38 @@ describe("financial reconciliation taxonomy", () => {
 			assert.equal(overpayment.safeFixAvailable, false);
 			assert.equal(overpayment.intendedAction, null);
 		}
+	});
+
+	it("isolates failed safe repairs and preserves deterministic results", async () => {
+		const mismatches = ["booking-1", "booking-2", "booking-3"].map(
+			(entityId) =>
+				classifyMismatch({
+					...base,
+					entityId,
+					mismatchType: "booking_total_vs_active_payments",
+				}),
+		);
+		const attempted: string[] = [];
+
+		const result = await runIsolatedSafeFixes(
+			mismatches,
+			async (mismatch) => {
+				attempted.push(mismatch.entityId);
+				if (mismatch.entityId === "booking-2") {
+					throw new Error("simulated transaction failure");
+				}
+				return true;
+			},
+		);
+
+		assert.deepEqual(attempted, ["booking-1", "booking-2", "booking-3"]);
+		assert.deepEqual(result.applied, [mismatches[0].id, mismatches[2].id]);
+		assert.deepEqual(result.failed, [
+			{
+				mismatchId: mismatches[1].id,
+				reason: "repair_transaction_failed",
+			},
+		]);
 	});
 
 	it("uses relation discriminators for collision-free deterministic ordering", () => {

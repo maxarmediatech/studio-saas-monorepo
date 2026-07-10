@@ -4,6 +4,7 @@ import type { RawMismatch } from "./financial-reconciliation";
 import {
 	classifyMismatch,
 	MISMATCH_TYPES,
+	runIsolatedSafeFixes,
 	sortMismatches,
 	summarize,
 } from "./financial-reconciliation";
@@ -40,12 +41,15 @@ export async function queryFinancialMismatches(
 				COALESCE(SUM(CASE WHEN p.deleted_at IS NULL
 					AND p.organization_id = b.organization_id AND p.booking_id = b.id
 					THEN p.amount ELSE 0 END), 0)::text AS "expectedValue",
+				COALESCE(SUM(CASE WHEN p.deleted_at IS NULL
+					AND p.organization_id = b.organization_id AND p.booking_id = b.id
+					THEN p.amount ELSE 0 END), 0) > b.package_cost AS "exceedsUpperBound",
 				COUNT(p.id) FILTER (WHERE p.deleted_at IS NULL
 					AND (p.organization_id <> b.organization_id OR p.booking_id <> b.id)) AS "invalidLinkCount"
 			FROM bookings b
 			LEFT JOIN received_amounts p ON p.booking_id = b.id
 			WHERE b.organization_id = ${organizationId} AND b.deleted_at IS NULL
-			GROUP BY b.organization_id, b.id, b.total_received
+			GROUP BY b.organization_id, b.id, b.package_cost, b.total_received
 			HAVING b.total_received <> COALESCE(SUM(CASE WHEN p.deleted_at IS NULL
 				AND p.organization_id = b.organization_id AND p.booking_id = b.id
 				THEN p.amount ELSE 0 END), 0)
@@ -68,7 +72,7 @@ export async function queryFinancialMismatches(
 			FROM payment_schedules s
 			LEFT JOIN received_amounts p ON p.payment_schedule_id = s.id
 			WHERE s.organization_id = ${organizationId} AND s.deleted_at IS NULL
-				GROUP BY s.organization_id, s.id, s.booking_id, s.amount, s.paid_amount
+			GROUP BY s.organization_id, s.id, s.booking_id, s.amount, s.paid_amount, s.status
 			HAVING s.paid_amount <> COALESCE(SUM(CASE WHEN p.deleted_at IS NULL
 				AND p.organization_id = s.organization_id AND p.booking_id = s.booking_id
 				AND p.payment_schedule_id = s.id THEN p.amount ELSE 0 END), 0)
@@ -156,33 +160,39 @@ export async function queryFinancialMismatches(
 				AND r.received_amount_id IS NOT NULL AND (p.id IS NULL OR p.deleted_at IS NOT NULL)
 		`),
 		db.execute(sql`
-				SELECT r.organization_id AS "organizationId",
+				SELECT p.organization_id AS "organizationId",
 					'multiple_receipts_per_payment' AS "mismatchType",
-					'received_amount' AS "entityType", r.received_amount_id AS "entityId",
+					'received_amount' AS "entityType", p.id AS "entityId",
 					COUNT(*)::text AS "actualValue",
 					json_build_object(
-						'allReceiptIds', json_agg(r.id ORDER BY r.id),
+						'allReceipts', json_agg(json_build_object(
+							'id', r.id, 'organizationId', r.organization_id, 'deletedAt', r.deleted_at
+						) ORDER BY r.id),
 						'activeReceiptIds', COALESCE(json_agg(r.id ORDER BY r.id) FILTER (WHERE r.deleted_at IS NULL), '[]'::json),
 						'activeCount', COUNT(*) FILTER (WHERE r.deleted_at IS NULL)
 					) AS "details"
-				FROM receipts r
-				WHERE r.organization_id = ${organizationId} AND r.received_amount_id IS NOT NULL
-				GROUP BY r.organization_id, r.received_amount_id
+				FROM received_amounts p
+				INNER JOIN receipts r ON r.received_amount_id = p.id
+				WHERE p.organization_id = ${organizationId}
+				GROUP BY p.organization_id, p.id
 				HAVING COUNT(*) > 1
 			`),
 		db.execute(sql`
-				SELECT i.organization_id AS "organizationId",
+				SELECT s.organization_id AS "organizationId",
 					'multiple_invoices_per_schedule' AS "mismatchType",
-					'payment_schedule' AS "entityType", i.payment_schedule_id AS "entityId",
+					'payment_schedule' AS "entityType", s.id AS "entityId",
 					COUNT(*)::text AS "actualValue",
 					json_build_object(
-						'allInvoiceIds', json_agg(i.id ORDER BY i.id),
+						'allInvoices', json_agg(json_build_object(
+							'id', i.id, 'organizationId', i.organization_id, 'deletedAt', i.deleted_at
+						) ORDER BY i.id),
 						'activeInvoiceIds', COALESCE(json_agg(i.id ORDER BY i.id) FILTER (WHERE i.deleted_at IS NULL), '[]'::json),
 						'activeCount', COUNT(*) FILTER (WHERE i.deleted_at IS NULL)
 					) AS "details"
-				FROM invoices i
-				WHERE i.organization_id = ${organizationId} AND i.payment_schedule_id IS NOT NULL
-			GROUP BY i.organization_id, i.payment_schedule_id
+				FROM payment_schedules s
+				INNER JOIN invoices i ON i.payment_schedule_id = s.id
+				WHERE s.organization_id = ${organizationId}
+				GROUP BY s.organization_id, s.id
 			HAVING COUNT(*) > 1
 		`),
 		db.execute(sql`
@@ -304,9 +314,8 @@ export async function applySafeFinancialFixes(
 	mismatches: FinancialReconciliationReport["mismatches"],
 ) {
 	const safe = mismatches.filter((mismatch) => mismatch.safeFixAvailable);
-	const applied: string[] = [];
-	await db.transaction(async (tx) => {
-		for (const mismatch of safe) {
+	return runIsolatedSafeFixes(safe, async (mismatch) =>
+		db.transaction(async (tx) => {
 			let updated = false;
 			if (mismatch.intendedAction === "recalculate_booking_total") {
 				const result = await tx.execute(sql`
@@ -315,6 +324,8 @@ export async function applySafeFinancialFixes(
 						WHERE p.organization_id = b.organization_id AND p.booking_id = b.id AND p.deleted_at IS NULL
 					), 0), updated_at = NOW()
 					WHERE b.id = ${mismatch.entityId} AND b.organization_id = ${organizationId} AND b.deleted_at IS NULL
+					AND COALESCE((SELECT SUM(p.amount) FROM received_amounts p
+						WHERE p.organization_id = b.organization_id AND p.booking_id = b.id AND p.deleted_at IS NULL), 0) <= b.package_cost
 					AND NOT EXISTS (SELECT 1 FROM received_amounts p WHERE p.booking_id = b.id
 						AND p.deleted_at IS NULL AND (p.organization_id <> b.organization_id OR p.booking_id <> b.id))
 					RETURNING b.id
@@ -400,12 +411,9 @@ export async function applySafeFinancialFixes(
 					`);
 				updated = result.rows.length > 0;
 			}
-			if (updated) {
-				applied.push(mismatch.id);
-			}
-		}
-	});
-	return applied;
+			return updated;
+		}),
+	);
 }
 
 export async function main(argv = process.argv.slice(2)) {
@@ -417,13 +425,21 @@ export async function main(argv = process.argv.slice(2)) {
 		return before.mismatches.length > 0 ? 1 : 0;
 	}
 
-	const applied = await applySafeFinancialFixes(
+	const repairResult = await applySafeFinancialFixes(
 		organizationId,
 		asOf,
 		before.mismatches,
 	);
 	const after = await queryFinancialMismatches(organizationId, asOf);
-	console.log(JSON.stringify({ mode, before, applied, after }));
+	console.log(
+		JSON.stringify({
+			mode,
+			before,
+			applied: repairResult.applied,
+			failed: repairResult.failed,
+			after,
+		}),
+	);
 	return after.mismatches.length > 0 ? 1 : 0;
 }
 
