@@ -46,7 +46,7 @@ const parseMessageContent = (message: Record<string, unknown>) => {
 
 	const text = message.text as { body?: string } | undefined;
 	const image = message.image as
-		| { id?: string; caption?: string }
+		| { id?: string; caption?: string; mime_type?: string }
 		| undefined;
 	const video = message.video as
 		| { id?: string; caption?: string; mime_type?: string }
@@ -65,9 +65,6 @@ const parseMessageContent = (message: Record<string, unknown>) => {
 	const sticker = message.sticker as
 		| { id?: string; mime_type?: string }
 		| undefined;
-	const imageWithMime = message.image as
-		| { id?: string; caption?: string; mime_type?: string }
-		| undefined;
 
 	const content = {
 		text: text?.body,
@@ -76,7 +73,7 @@ const parseMessageContent = (message: Record<string, unknown>) => {
 		mediaId:
 			image?.id ?? video?.id ?? audio?.id ?? document?.id ?? sticker?.id,
 		mimeType:
-			imageWithMime?.mime_type ??
+			image?.mime_type ??
 			video?.mime_type ??
 			audio?.mime_type ??
 			document?.mime_type ??
