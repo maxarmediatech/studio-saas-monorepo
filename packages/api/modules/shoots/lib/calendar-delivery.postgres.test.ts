@@ -36,10 +36,9 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 			ensureAssignmentCalendarDelivery,
 			reconcileCalendarDeliveries,
 		} = await import("./calendar-delivery");
-		const {
-			claimJobBatch,
-			recoverStaleProcessingJobs,
-		} = await import("../../../../../services/calendar-worker/src/index");
+		const { claimJobBatch, recoverStaleProcessingJobs } = await import(
+			"../../../../../services/calendar-worker/src/index"
+		);
 		const { buildEventInput } = await import(
 			"../../../../../services/calendar-worker/src/event-input"
 		);
@@ -62,8 +61,12 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 			retry: `calendar_retry_${suffix}`,
 			missing: `calendar_missing_${suffix}`,
 			pending: `calendar_pending_${suffix}`,
-			stale: `calendar_stale_${suffix}`,
-			staleTerminal: `calendar_stale_terminal_${suffix}`,
+		};
+		const staleIds = {
+			retryableCrew: `calendar_stale_crew_${suffix}`,
+			retryableShoot: `calendar_stale_shoot_${suffix}`,
+			terminalCrew: `calendar_stale_terminal_crew_${suffix}`,
+			terminalShoot: `calendar_stale_terminal_shoot_${suffix}`,
 		};
 		let triggerCreated = false;
 
@@ -135,8 +138,6 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 					[ids.retry]: `retry-${suffix}@example.com`,
 					[ids.missing]: `missing-${suffix}@example.com`,
 					[ids.pending]: `pending-${suffix}@example.com`,
-					[ids.stale]: `stale-${suffix}@example.com`,
-					[ids.staleTerminal]: `stale-terminal-${suffix}@example.com`,
 				}).map(([id, email]) => ({
 					id,
 					organizationId,
@@ -186,7 +187,7 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 					}),
 				);
 			const [google, registeredIcs, externalIcs, unsendable] =
-			await Promise.all([
+				await Promise.all([
 					route(ids.google),
 					route(ids.registeredIcs),
 					route(ids.externalIcs),
@@ -235,7 +236,7 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 				attempts: 0,
 			});
 
-				await Promise.all([
+			await Promise.all([
 				route(ids.externalIcs),
 				route(ids.externalIcs),
 				route(ids.externalIcs),
@@ -295,7 +296,10 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 				.select()
 				.from(calendarSyncJobs)
 				.where(eq(calendarSyncJobs.id, retryJob.id));
-			expect(terminalJob).toMatchObject({ status: "failed", attempts: 5 });
+			expect(terminalJob).toMatchObject({
+				status: "failed",
+				attempts: 5,
+			});
 
 			const failedDeliveryKey = `calendar:${organizationId}:${ids.failed}:${ids.failed}:delivery`;
 			await db.execute(
@@ -393,15 +397,51 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 				}),
 			).rejects.toThrow("Shoot not found");
 
+			await db.insert(crews).values([
+				{
+					id: staleIds.retryableCrew,
+					organizationId,
+					name: "Stale retryable crew",
+					email: `stale-retryable-${suffix}@example.com`,
+				},
+				{
+					id: staleIds.terminalCrew,
+					organizationId,
+					name: "Stale terminal crew",
+					email: `stale-terminal-${suffix}@example.com`,
+				},
+			]);
+			await db.insert(shoots).values([
+				{
+					id: staleIds.retryableShoot,
+					organizationId,
+					bookingId,
+					name: "Stale retryable shoot",
+					shootType: "wedding",
+					shootDate: "2026-12-31",
+					startTime: "09:30",
+					status: "scheduled",
+				},
+				{
+					id: staleIds.terminalShoot,
+					organizationId,
+					bookingId,
+					name: "Stale terminal shoot",
+					shootType: "wedding",
+					shootDate: "2026-12-31",
+					startTime: "09:30",
+					status: "scheduled",
+				},
+			]);
 			const staleLockedAt = new Date(Date.now() - 20 * 60 * 1000);
 			await db.insert(calendarSyncJobs).values([
 				{
 					organizationId,
-					deliveryKey: `calendar:${organizationId}:${ids.stale}:${ids.stale}:delivery`,
+					deliveryKey: `calendar:${organizationId}:${staleIds.retryableShoot}:${staleIds.retryableCrew}:delivery`,
 					status: "processing",
 					jobType: "ics_send_invite",
-					shootId: ids.stale,
-					crewId: ids.stale,
+					shootId: staleIds.retryableShoot,
+					crewId: staleIds.retryableCrew,
 					attempts: 1,
 					maxAttempts: 5,
 					lockedAt: staleLockedAt,
@@ -409,11 +449,11 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 				},
 				{
 					organizationId,
-					deliveryKey: `calendar:${organizationId}:${ids.staleTerminal}:${ids.staleTerminal}:delivery`,
+					deliveryKey: `calendar:${organizationId}:${staleIds.terminalShoot}:${staleIds.terminalCrew}:delivery`,
 					status: "processing",
 					jobType: "ics_send_invite",
-					shootId: ids.staleTerminal,
-					crewId: ids.staleTerminal,
+					shootId: staleIds.terminalShoot,
+					crewId: staleIds.terminalCrew,
 					attempts: 5,
 					maxAttempts: 5,
 					lockedAt: staleLockedAt,
@@ -427,21 +467,21 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 					and(
 						eq(calendarSyncJobs.organizationId, organizationId),
 						inArray(calendarSyncJobs.shootId, [
-							ids.stale,
-							ids.staleTerminal,
+							staleIds.retryableShoot,
+							staleIds.terminalShoot,
 						]),
 					),
 				);
 			expect(staleJobs).toEqual(
 				expect.arrayContaining([
 					expect.objectContaining({
-						shootId: ids.stale,
+						shootId: staleIds.retryableShoot,
 						status: "failed",
 						attempts: 1,
 						lockedAt: null,
 					}),
 					expect.objectContaining({
-						shootId: ids.staleTerminal,
+						shootId: staleIds.terminalShoot,
 						status: "failed",
 						attempts: 5,
 						nextAttemptAt: null,
@@ -453,11 +493,11 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 			expect(claimed).toEqual(
 				expect.arrayContaining([
 					expect.objectContaining({
-					shootId: ids.stale,
-					status: "processing",
-					attempts: 2,
-				}),
-			]),
+						shootId: staleIds.retryableShoot,
+						status: "processing",
+						attempts: 2,
+					}),
+				]),
 			);
 
 			await db
@@ -533,7 +573,7 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 			restoreEnvironment("BETTER_AUTH_SECRET", originalAuthSecret);
 			restoreEnvironment("NEXT_PUBLIC_SITE_URL", originalSiteUrl);
 		}
-	});
+	}, 15_000);
 });
 
 function restoreEnvironment(name: string, value: string | undefined) {

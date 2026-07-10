@@ -78,10 +78,10 @@ async function queueJob(
 			nextAttemptAt: params.nextAttemptAt ?? null,
 			updatedAt: now,
 		})
-		.onConflictDoNothing({
-			target: calendarSyncJobs.deliveryKey,
-			targetWhere: sql`${calendarSyncJobs.status} <> 'completed'`,
-		})
+		// Drizzle's typed conflict-target form does not emit a partial-index
+		// predicate for DO NOTHING. Targetless PostgreSQL conflict handling
+		// correctly covers the active-delivery partial unique index.
+		.onConflictDoNothing()
 		.returning({ id: calendarSyncJobs.id });
 
 	if (inserted.length > 0) {
@@ -536,9 +536,12 @@ export async function reconcileCalendarDeliveries(params: {
 			);
 			if (result.state === "error") {
 				failed += 1;
-				logger.error("Calendar delivery reconciliation could not queue work", {
-					...candidate,
-				});
+				logger.error(
+					"Calendar delivery reconciliation could not queue work",
+					{
+						...candidate,
+					},
+				);
 				continue;
 			}
 			reconciled += 1;
