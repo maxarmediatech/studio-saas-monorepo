@@ -4,7 +4,10 @@ const mocks = vi.hoisted(() => {
 	let handler:
 		| ((options: {
 				input: Record<string, unknown>;
-				context: { organizationId: string; user: { id: string } };
+				context: {
+					organizationId: string;
+					user: { id: string; name?: string };
+				};
 		  }) => Promise<unknown>)
 		| null = null;
 	const chain = {
@@ -34,7 +37,6 @@ const mocks = vi.hoisted(() => {
 		mockGetLockedScheduleInvoiceForReceipt: vi.fn(),
 		mockConvertSchedulePaymentIdempotently: vi.fn(),
 		mockRequirePermission: vi.fn(),
-		mockSafeTrackActivity: vi.fn(),
 		mockTransaction: vi.fn(async (callback) => callback(tx)),
 		tx,
 	};
@@ -46,11 +48,6 @@ vi.mock("../../../../orpc/procedures", () => ({
 
 vi.mock("../../../studio/lib/permissions", () => ({
 	requirePermission: mocks.mockRequirePermission,
-}));
-
-vi.mock("../../../activities/lib", () => ({
-	formatAmount: vi.fn((amount: string) => amount),
-	safeTrackActivity: mocks.mockSafeTrackActivity,
 }));
 
 vi.mock("../../../receipts/lib/locked-invoice-for-receipt", () => ({
@@ -105,20 +102,13 @@ describe("schedule conversion invoice locking", () => {
 					input,
 				);
 				return {
-					activity: {
-						bookingName: result.bookingName,
-						paidAmount: result.paidAmount,
-						schedule: {
-							amount: result.schedule.amount,
-							bookingId: result.schedule.bookingId,
-							name: result.schedule.name,
-						},
-						scheduleStatus: result.scheduleStatus,
-					},
 					result: {
-						receivedId: result.receivedId,
-						receiptId: result.receiptId,
-						scheduleId: result.scheduleId,
+						data: {
+							receivedId: result.receivedId,
+							receiptId: result.receiptId,
+							scheduleId: result.scheduleId,
+						},
+						message: "Payment schedule converted successfully",
 					},
 					replayed: false,
 				};
@@ -150,12 +140,15 @@ describe("schedule conversion invoice locking", () => {
 		});
 	});
 
-	it("does not emit activity when an idempotent conversion replays", async () => {
+	it("returns the stored response when an idempotent conversion replays", async () => {
 		mocks.mockConvertSchedulePaymentIdempotently.mockResolvedValueOnce({
 			result: {
-				receivedId: "payment_1",
-				scheduleId: "schedule_1",
-				receiptId: null,
+				data: {
+					receivedId: "payment_1",
+					scheduleId: "schedule_1",
+					receiptId: null,
+				},
+				message: "Stored conversion response",
 			},
 			replayed: true,
 		});
@@ -171,10 +164,14 @@ describe("schedule conversion invoice locking", () => {
 			},
 		});
 
-		expect(response).toMatchObject({
-			data: { receivedId: "payment_1", scheduleId: "schedule_1" },
+		expect(response).toEqual({
+			data: {
+				receivedId: "payment_1",
+				receiptId: null,
+				scheduleId: "schedule_1",
+			},
+			message: "Stored conversion response",
 		});
-		expect(mocks.mockSafeTrackActivity).not.toHaveBeenCalled();
 	});
 
 	it("rejects a cancelled linked invoice before creating the payment", async () => {

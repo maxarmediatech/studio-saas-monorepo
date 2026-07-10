@@ -32,6 +32,7 @@ import {
 } from "@repo/ui/components/sheet";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { Textarea } from "@repo/ui/components/textarea";
+import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
 import { useScheduleConvertParams } from "@saas/studio/hooks/params/use-schedule-convert-params";
 import { usePaymentSubmissionKey } from "@saas/studio/hooks/use-payment-submission-key";
 import {
@@ -85,9 +86,16 @@ function formatAmountInput(value: number): string {
 
 export function ScheduleConvertSheet() {
 	const { convertScheduleId, close } = useScheduleConvertParams();
+	const { activeOrganization } = useActiveOrganization();
 	const isOpen = Boolean(convertScheduleId);
 	const queryClient = useQueryClient();
-	const submissionKey = usePaymentSubmissionKey();
+	const submissionKey = usePaymentSubmissionKey(
+		`${activeOrganization?.id ?? "unknown-org"}:convert-schedule`,
+	);
+	const handleClose = () => {
+		submissionKey.abandon();
+		close();
+	};
 
 	const { data: schedule, isLoading } = useQuery({
 		...studioPaymentsApi.getScheduleOptions(convertScheduleId ?? ""),
@@ -193,7 +201,7 @@ export function ScheduleConvertSheet() {
 	};
 
 	return (
-		<Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
+		<Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
 			<SheetContent
 				side="right"
 				className="sm:max-w-xl p-0 gap-0 flex flex-col"
@@ -433,7 +441,7 @@ export function ScheduleConvertSheet() {
 									type="button"
 									variant="outline"
 									className="w-full"
-									onClick={close}
+									onClick={handleClose}
 									disabled={
 										form.formState.isSubmitting ||
 										convertMutation.isPending

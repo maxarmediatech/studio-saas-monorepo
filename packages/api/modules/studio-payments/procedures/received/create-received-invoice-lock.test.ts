@@ -4,7 +4,10 @@ const mocks = vi.hoisted(() => {
 	let handler:
 		| ((options: {
 				input: Record<string, unknown>;
-				context: { organizationId: string; user: { id: string } };
+				context: {
+					organizationId: string;
+					user: { id: string; name?: string };
+				};
 		  }) => Promise<unknown>)
 		| null = null;
 	const chain = {
@@ -26,7 +29,6 @@ const mocks = vi.hoisted(() => {
 		mockGetLockedScheduleForReceipt: vi.fn(),
 		mockCreateReceivedPaymentIdempotently: vi.fn(),
 		mockRequirePermission: vi.fn(),
-		mockSafeTrackActivity: vi.fn(),
 		mockTransaction: vi.fn(async (callback) => callback(tx)),
 		tx,
 	};
@@ -38,11 +40,6 @@ vi.mock("../../../../orpc/procedures", () => ({
 
 vi.mock("../../../studio/lib/permissions", () => ({
 	requirePermission: mocks.mockRequirePermission,
-}));
-
-vi.mock("../../../activities/lib", () => ({
-	formatAmount: vi.fn((amount: string) => amount),
-	safeTrackActivity: mocks.mockSafeTrackActivity,
 }));
 
 vi.mock("../../../receipts/lib/locked-invoice-for-receipt", () => ({
@@ -92,8 +89,10 @@ describe("create received invoice locking", () => {
 			async (tx, input) => {
 				const result = await createReceivedPaymentTransition(tx, input);
 				return {
-					activity: { bookingName: result.bookingName },
-					result: { id: result.id },
+					result: {
+						data: { id: result.id },
+						message: "Payment recorded successfully",
+					},
 					replayed: false,
 				};
 			},
@@ -104,9 +103,12 @@ describe("create received invoice locking", () => {
 		});
 	});
 
-	it("does not emit activity when an idempotent request replays", async () => {
+	it("returns the stored response when an idempotent request replays", async () => {
 		mocks.mockCreateReceivedPaymentIdempotently.mockResolvedValueOnce({
-			result: { id: "payment_1" },
+			result: {
+				data: { id: "payment_1" },
+				message: "Stored payment response",
+			},
 			replayed: true,
 		});
 
@@ -121,8 +123,10 @@ describe("create received invoice locking", () => {
 			},
 		});
 
-		expect(response).toMatchObject({ data: { id: "payment_1" } });
-		expect(mocks.mockSafeTrackActivity).not.toHaveBeenCalled();
+		expect(response).toEqual({
+			data: { id: "payment_1" },
+			message: "Stored payment response",
+		});
 	});
 
 	it("rejects a cancelled invoice before creating the payment", async () => {

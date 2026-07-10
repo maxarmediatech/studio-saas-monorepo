@@ -1,7 +1,6 @@
 import { ORPCError } from "@orpc/server";
 import { db } from "@repo/database";
 import { studioProtectedProcedure } from "../../../../orpc/procedures";
-import { formatAmount, safeTrackActivity } from "../../../activities/lib";
 import { requirePermission } from "../../../studio/lib/permissions";
 import {
 	createReceivedInputSchema,
@@ -37,32 +36,11 @@ export const createReceived = studioProtectedProcedure
 		const execution = await db.transaction((tx) =>
 			createReceivedPaymentIdempotently(tx, {
 				...input,
+				actorName: context.user.name || "Unknown User",
 				organizationId: context.organizationId,
 				userId: context.user.id,
 			}),
 		);
 
-		if (!execution.replayed) {
-			await safeTrackActivity(
-				{ organizationId: context.organizationId, user: context.user },
-				{
-					entityType: "received_amount",
-					entityId: execution.result.id,
-					entityName: `${formatAmount(input.amount)} via ${input.paymentMethod}`,
-					action: "payment_received",
-					parentEntityType: "booking",
-					parentEntityId: input.bookingId,
-					parentEntityName: execution.activity.bookingName,
-					metadata: {
-						amount: input.amount,
-						paymentMethod: input.paymentMethod,
-					},
-				},
-			);
-		}
-
-		return {
-			data: execution.result,
-			message: "Payment recorded successfully",
-		};
+		return execution.result;
 	});
