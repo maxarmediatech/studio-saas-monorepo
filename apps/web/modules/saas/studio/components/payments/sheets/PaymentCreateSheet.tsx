@@ -7,6 +7,7 @@ import {
 	SheetTitle,
 } from "@repo/ui/components/sheet";
 import { cn } from "@repo/ui/lib/utils";
+import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
 import { usePaymentParams } from "@saas/studio/hooks/params/use-payment-params";
 import { useContextBookingId } from "@saas/studio/hooks/use-context-booking-id";
 import { usePaymentSubmissionKey } from "@saas/studio/hooks/use-payment-submission-key";
@@ -20,14 +21,21 @@ import { PaymentForm, type PaymentFormValues } from "../PaymentForm";
 export function PaymentCreateSheet() {
 	const { createPayment, close } = usePaymentParams();
 	const bookingId = useContextBookingId();
+	const { activeOrganization } = useActiveOrganization();
 	const isOpen = Boolean(createPayment);
 	const queryClient = useQueryClient();
 	const [isScrolled, setIsScrolled] = useState(false);
-	const submissionKey = usePaymentSubmissionKey();
+	const submissionKey = usePaymentSubmissionKey(
+		`${activeOrganization?.id ?? "unknown-org"}:create-payment`,
+	);
 
 	const createMutation = useMutation(
 		studioPaymentsMutations.createReceived(),
 	);
+	const handleClose = () => {
+		submissionKey.abandon();
+		close();
+	};
 
 	const handleSubmit = async (data: PaymentFormValues) => {
 		try {
@@ -68,7 +76,7 @@ export function PaymentCreateSheet() {
 	};
 
 	return (
-		<Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
+		<Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
 			<SheetContent
 				side="right"
 				className="sm:max-w-xl p-0 gap-0 flex flex-col"

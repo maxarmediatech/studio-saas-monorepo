@@ -110,6 +110,7 @@ describePostgres("payment idempotency production orchestration", () => {
 				idempotencyKey: key,
 				organizationId,
 				userId: actorId,
+				actorName: "Payment idempotency actor",
 				bookingId,
 				amount: "100.00",
 				paymentMethod: "cash" as const,
@@ -124,7 +125,8 @@ describePostgres("payment idempotency production orchestration", () => {
 			try {
 				const concurrent = await Promise.all([create(), create()]);
 				expect(
-					new Set(concurrent.map(({ result }) => result.id)).size,
+					new Set(concurrent.map(({ result }) => result.data.id))
+						.size,
 				).toBe(1);
 				expect(
 					concurrent.map(({ replayed }) => replayed).sort(),
@@ -169,6 +171,7 @@ describePostgres("payment idempotency production orchestration", () => {
 						idempotencyKey: key,
 						organizationId,
 						userId: actorId,
+						actorName: "Payment idempotency actor",
 						scheduleId,
 						amount: "100.00",
 						paymentMethod: "cash",
@@ -185,6 +188,7 @@ describePostgres("payment idempotency production orchestration", () => {
 						idempotencyKey: key,
 						organizationId,
 						userId: actorId,
+						actorName: "Payment idempotency actor",
 						scheduleId,
 						amount: "100.00",
 						paymentMethod: "cash",
@@ -226,13 +230,13 @@ describePostgres("payment idempotency production orchestration", () => {
 					}),
 				);
 				expect(otherTenant.replayed).toBe(false);
-				expect(otherTenant.result.id).not.toBe(
-					concurrent[0]?.result.id,
+				expect(otherTenant.result.data.id).not.toBe(
+					concurrent[0]?.result.data.id,
 				);
 				await db
 					.update(receivedAmounts)
 					.set({ deletedAt: new Date() })
-					.where(eq(receivedAmounts.id, otherTenant.result.id));
+					.where(eq(receivedAmounts.id, otherTenant.result.data.id));
 				await expect(
 					db.transaction((tx) =>
 						createReceivedPaymentIdempotently(tx, {
@@ -353,6 +357,7 @@ describePostgres("payment idempotency production orchestration", () => {
 				idempotencyKey: key,
 				organizationId,
 				userId: actorId,
+				actorName: "Payment idempotency rollback actor",
 				bookingId,
 				amount: "100.00",
 				paymentMethod: "cash" as const,

@@ -6,10 +6,13 @@ import {
 	paymentIdempotencyRecords,
 	receivedAmounts,
 } from "@repo/database";
+import { formatAmount, trackActivityWithExecutor } from "../../activities/lib";
 import type { TransactionClient } from "../../studio/lib/transactions";
 import type {
 	ConvertScheduleInput,
+	ConvertScheduleOutput,
 	CreateReceivedInput,
+	CreateReceivedOutput,
 } from "../../studio/schemas/payment";
 import {
 	convertSchedulePaymentFingerprint,
@@ -32,15 +35,16 @@ type PaymentIdempotencyOperation =
 	(typeof PAYMENT_IDEMPOTENCY_OPERATIONS)[keyof typeof PAYMENT_IDEMPOTENCY_OPERATIONS];
 
 interface PaymentActor {
+	actorName: string;
 	organizationId: string;
 	userId: string;
 }
 
-type IdempotentExecution<T, TActivity> =
-	| { result: T; replayed: true }
-	| { activity: TActivity; result: T; replayed: false };
+export const CREATE_RECEIVED_SUCCESS_MESSAGE = "Payment recorded successfully";
+export const CONVERT_SCHEDULE_SUCCESS_MESSAGE =
+	"Payment schedule converted successfully";
 
-async function executeIdempotently<T, TActivity>({
+async function executeIdempotently<T extends Record<string, unknown>>({
 	tx,
 	organizationId,
 	operation,
@@ -54,11 +58,10 @@ async function executeIdempotently<T, TActivity>({
 	idempotencyKey: string;
 	requestFingerprint: string;
 	execute: () => Promise<{
-		activity: TActivity;
 		resourceId: string;
 		result: T;
 	}>;
-}): Promise<IdempotentExecution<T, TActivity>> {
+}): Promise<{ result: T; replayed: boolean }> {
 	const [claim] = await tx
 		.insert(paymentIdempotencyRecords)
 		.values({
@@ -137,11 +140,7 @@ async function executeIdempotently<T, TActivity>({
 		})
 		.where(eq(paymentIdempotencyRecords.id, claim.id));
 
-	return {
-		activity: execution.activity,
-		result: execution.result,
-		replayed: false,
-	};
+	return { result: execution.result, replayed: false };
 }
 
 export async function createReceivedPaymentIdempotently(
@@ -156,10 +155,33 @@ export async function createReceivedPaymentIdempotently(
 		requestFingerprint: createReceivedPaymentFingerprint(input),
 		execute: async () => {
 			const result = await createReceivedPaymentTransition(tx, input);
+			const response = {
+				data: { id: result.id },
+				message: CREATE_RECEIVED_SUCCESS_MESSAGE,
+			} satisfies CreateReceivedOutput;
+			await trackActivityWithExecutor(
+				tx,
+				{
+					organizationId: input.organizationId,
+					user: { id: input.userId, name: input.actorName },
+				},
+				{
+					entityType: "received_amount",
+					entityId: result.id,
+					entityName: `${formatAmount(input.amount)} via ${input.paymentMethod}`,
+					action: "payment_received",
+					parentEntityType: "booking",
+					parentEntityId: input.bookingId,
+					parentEntityName: result.bookingName,
+					metadata: {
+						amount: input.amount,
+						paymentMethod: input.paymentMethod,
+					},
+				},
+			);
 			return {
-				activity: { bookingName: result.bookingName },
 				resourceId: result.id,
-				result: { id: result.id },
+				result: response,
 			};
 		},
 	});
@@ -177,23 +199,40 @@ export async function convertSchedulePaymentIdempotently(
 		requestFingerprint: convertSchedulePaymentFingerprint(input),
 		execute: async () => {
 			const result = await convertSchedulePaymentTransition(tx, input);
-			return {
-				activity: {
-					bookingName: result.bookingName,
-					paidAmount: result.paidAmount,
-					schedule: {
-						amount: result.schedule.amount,
-						bookingId: result.schedule.bookingId,
-						name: result.schedule.name,
-					},
-					scheduleStatus: result.scheduleStatus,
-				},
-				resourceId: result.receivedId,
-				result: {
+			const response = {
+				data: {
 					receivedId: result.receivedId,
 					receiptId: result.receiptId,
 					scheduleId: result.scheduleId,
 				},
+				message: CONVERT_SCHEDULE_SUCCESS_MESSAGE,
+			} satisfies ConvertScheduleOutput;
+			await trackActivityWithExecutor(
+				tx,
+				{
+					organizationId: input.organizationId,
+					user: { id: input.userId, name: input.actorName },
+				},
+				{
+					entityType: "payment_schedule",
+					entityId: input.scheduleId,
+					entityName: `${result.schedule.name} (${formatAmount(result.schedule.amount)})`,
+					action: "marked_paid",
+					parentEntityType: "booking",
+					parentEntityId: result.schedule.bookingId,
+					parentEntityName: result.bookingName,
+					metadata: {
+						paidAmount: input.amount,
+						totalPaidAmount: result.paidAmount,
+						scheduleStatus: result.scheduleStatus,
+						receivedId: result.receivedId,
+						receiptId: result.receiptId,
+					},
+				},
+			);
+			return {
+				resourceId: result.receivedId,
+				result: response,
 			};
 		},
 	});
