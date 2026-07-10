@@ -22,7 +22,8 @@
 		"db:seed": "turbo db:seed",
 		"db:studio": "pnpm --filter @repo/database studio",
 		"notifications:deadlines": "pnpm --filter @repo/scripts notifications:deadlines",
-		"financial:migration-preflight": "pnpm --filter @repo/scripts financial:migration-preflight"
+		"financial:migration-preflight": "pnpm --filter @repo/scripts financial:migration-preflight",
+		"calendar:reconcile": "pnpm --filter @repo/scripts calendar:reconcile"
 	},
 	"engines": {
 		"node": ">=20"

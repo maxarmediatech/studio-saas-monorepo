@@ -4,33 +4,26 @@ import {
 	crews,
 	db,
 	eq,
-	googleCalendarConnections,
 	inArray,
 	isNotNull,
 	isNull,
 	lte,
-	organizations,
-	shootAssignments,
 	shootCalendarEvents,
-	shoots,
 	sql,
 } from "@repo/database";
 import {
-	buildShootAllDayEventInput,
 	createAllDayEvent,
 	createAllDayIcsFromGoogleInput,
-	decryptToken,
 	deleteEvent,
-	encryptToken,
-	getGoogleCalendarEnv,
-	refreshGoogleCalendarAccessToken,
 	updateAllDayEvent,
 } from "@repo/google-calendar";
 import { logger } from "@repo/logs";
 import { sendCalendarInviteEmail } from "@repo/mail";
+import { buildEventInput } from "./event-input";
+import { getGoogleAccessToken } from "./google-access-token";
 import {
-	DEFAULT_MAX_ATTEMPTS,
 	computeNextAttemptAfterFailure,
+	DEFAULT_MAX_ATTEMPTS,
 } from "./queue-helpers";
 
 const pollIntervalMs = Number(process.env.CALENDAR_WORKER_INTERVAL_MS ?? 5000);
@@ -159,141 +152,6 @@ async function markJobFailure(params: {
 		.where(eq(calendarSyncJobs.id, params.jobId));
 }
 
-async function getGoogleAccessToken(params: {
-	organizationId: string;
-	userId: string;
-}) {
-	const connection = await db.query.googleCalendarConnections.findFirst({
-		where: and(
-			eq(googleCalendarConnections.organizationId, params.organizationId),
-			eq(googleCalendarConnections.userId, params.userId),
-			isNull(googleCalendarConnections.disconnectedAt),
-		),
-	});
-
-	if (!connection?.refreshToken) {
-		throw new Error("Google Calendar not connected");
-	}
-
-	const env = getGoogleCalendarEnv();
-	const config = {
-		clientId: env.clientId,
-		clientSecret: env.clientSecret,
-		redirectUri: env.redirectUri,
-	};
-
-	const now = Date.now();
-	const accessTokenExpiresAtMs =
-		connection.accessTokenExpiresAt?.getTime() ?? 0;
-	const hasValidAccessToken =
-		Boolean(connection.accessToken) &&
-		accessTokenExpiresAtMs - now > 60_000;
-
-	if (hasValidAccessToken) {
-		if (!connection.accessToken) {
-			throw new Error("Missing encrypted access token");
-		}
-		return {
-			config,
-			accessToken: decryptToken(connection.accessToken),
-		};
-	}
-
-	const refreshed = await refreshGoogleCalendarAccessToken({
-		config,
-		refreshToken: decryptToken(connection.refreshToken),
-	});
-
-	if (!refreshed.accessToken) {
-		throw new Error("Failed to refresh Google access token");
-	}
-
-	await db
-		.update(googleCalendarConnections)
-		.set({
-			accessToken: encryptToken(refreshed.accessToken),
-			accessTokenExpiresAt: refreshed.accessTokenExpiresAt,
-			scope: refreshed.scope,
-			updatedAt: new Date(),
-		})
-		.where(eq(googleCalendarConnections.id, connection.id));
-
-	return { config, accessToken: refreshed.accessToken };
-}
-
-async function buildEventInput(params: { shootId: string; crewId: string }) {
-	const shoot = await db.query.shoots.findFirst({
-		where: eq(shoots.id, params.shootId),
-		with: {
-			booking: {
-				columns: { name: true, referenceNumber: true },
-			},
-		},
-	});
-	if (!shoot) {
-		throw new Error("Shoot not found");
-	}
-
-	const crew = await db.query.crews.findFirst({
-		where: eq(crews.id, params.crewId),
-		columns: { name: true, email: true },
-	});
-	if (!crew) {
-		throw new Error("Crew not found");
-	}
-
-	const assignment = await db.query.shootAssignments.findFirst({
-		where: and(
-			eq(shootAssignments.shootId, params.shootId),
-			eq(shootAssignments.crewId, params.crewId),
-		),
-		columns: { role: true },
-	});
-
-	const org = await db.query.organizations.findFirst({
-		where: eq(organizations.id, shoot.organizationId),
-		columns: { slug: true },
-	});
-
-	const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-	const shootUrl = org?.slug
-		? `${baseUrl}/app/${org.slug}/shoots/${shoot.id}`
-		: null;
-
-	return {
-		crew,
-		shoot,
-		input: buildShootAllDayEventInput({
-			shootName: shoot.name,
-			shootType: shoot.shootType,
-			shootDate: normalizeYmd(shoot.shootDate),
-			startTime: shoot.startTime ? String(shoot.startTime) : null,
-			venue: shoot.venue,
-			venueAddress: shoot.venueAddress,
-			notes: shoot.notes,
-			bookingName: shoot.booking?.name ?? null,
-			bookingReferenceNumber: shoot.booking?.referenceNumber ?? null,
-			crewName: crew.name,
-			crewRole: assignment?.role ?? null,
-			shootUrl,
-		}),
-	};
-}
-
-function normalizeYmd(value: unknown): string {
-	if (typeof value === "string") {
-		// Drizzle date column often returns YYYY-MM-DD
-		return value.slice(0, 10);
-	}
-	if (value instanceof Date) {
-		const yyyy = value.getUTCFullYear();
-		const mm = String(value.getUTCMonth() + 1).padStart(2, "0");
-		const dd = String(value.getUTCDate()).padStart(2, "0");
-		return `${yyyy}-${mm}-${dd}`;
-	}
-	throw new Error("Invalid shootDate type");
-}
-
 async function processJob(job: typeof calendarSyncJobs.$inferSelect) {
 	const attempts = job.attempts ?? 0;
 	const maxAttempts = job.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
@@ -305,7 +163,11 @@ async function processJob(job: typeof calendarSyncJobs.$inferSelect) {
 
 		if (job.jobType.startsWith("google_")) {
 			const crew = await db.query.crews.findFirst({
-				where: eq(crews.id, job.crewId),
+				where: and(
+					eq(crews.id, job.crewId),
+					eq(crews.organizationId, job.organizationId),
+					isNull(crews.deletedAt),
+				),
 				columns: { userId: true },
 			});
 			if (!crew?.userId) {
@@ -324,10 +186,17 @@ async function processJob(job: typeof calendarSyncJobs.$inferSelect) {
 					eq(shootCalendarEvents.crewId, job.crewId),
 				),
 			});
+			if (!mapping || mapping.deliveryMethod !== "google") {
+				throw new Error(
+					"Google calendar mapping not found for this organization",
+				);
+			}
 
 			const { input } = await buildEventInput({
+				organizationId: job.organizationId,
 				shootId: job.shootId,
 				crewId: job.crewId,
+				allowMissingAssignment: job.jobType === "google_delete",
 			});
 
 			if (job.jobType === "google_create") {
@@ -338,6 +207,15 @@ async function processJob(job: typeof calendarSyncJobs.$inferSelect) {
 						googleEventId: mapping.googleEventId,
 						input,
 					});
+					await db
+						.update(shootCalendarEvents)
+						.set({
+							syncStatus: "synced",
+							lastSyncedAt: new Date(),
+							lastError: null,
+							updatedAt: new Date(),
+						})
+						.where(eq(shootCalendarEvents.id, mapping.id));
 				} else {
 					const created = await createAllDayEvent({
 						config,
@@ -467,17 +345,25 @@ async function processJob(job: typeof calendarSyncJobs.$inferSelect) {
 					eq(shootCalendarEvents.crewId, job.crewId),
 				),
 			});
-			if (!mapping?.recipientEmail) {
-				throw new Error("Missing recipient email");
+			if (!mapping || mapping.deliveryMethod !== "ics") {
+				throw new Error(
+					"ICS calendar mapping not found for this organization",
+				);
 			}
 			if (!mapping.icalUid) {
 				throw new Error("Missing iCal UID");
 			}
 
-			const { input } = await buildEventInput({
+			const { crew, input } = await buildEventInput({
+				organizationId: job.organizationId,
 				shootId: job.shootId,
 				crewId: job.crewId,
+				allowMissingAssignment: job.jobType === "ics_send_cancel",
 			});
+			const recipientEmail = crew.email?.trim();
+			if (!recipientEmail) {
+				throw new Error("Crew has no current email address");
+			}
 
 			const method =
 				job.jobType === "ics_send_cancel" ? "CANCEL" : "REQUEST";
@@ -499,7 +385,7 @@ async function processJob(job: typeof calendarSyncJobs.$inferSelect) {
 					: "Calendar Invite";
 
 			await sendCalendarInviteEmail({
-				to: mapping.recipientEmail,
+				to: recipientEmail,
 				subject: `${subjectPrefix}: ${input.title}`,
 				text: input.description ?? input.title,
 				html: input.description
@@ -513,6 +399,7 @@ async function processJob(job: typeof calendarSyncJobs.$inferSelect) {
 				.update(shootCalendarEvents)
 				.set({
 					deliveryMethod: "ics",
+					recipientEmail,
 					icalSequence: nextSequence,
 					syncStatus: method === "CANCEL" ? "deleted" : "synced",
 					lastSyncedAt: new Date(),

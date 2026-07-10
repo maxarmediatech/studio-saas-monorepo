@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
 	index,
 	integer,
@@ -136,6 +136,7 @@ export const calendarSyncJobs = pgTable(
 
 		status: calendarJobStatusEnum("status").notNull().default("pending"),
 		jobType: calendarJobTypeEnum("job_type").notNull(),
+		deliveryKey: text("delivery_key").notNull(),
 		payload: jsonb("payload"),
 
 		shootId: varchar("shoot_id", { length: 255 }).references(
@@ -171,6 +172,9 @@ export const calendarSyncJobs = pgTable(
 			table.nextAttemptAt,
 		),
 		index("calendar_sync_jobs_target_idx").on(table.shootId, table.crewId),
+		uniqueIndex("calendar_sync_jobs_active_delivery_key_idx")
+			.on(table.deliveryKey)
+			.where(sql`${table.status} <> 'completed'`),
 	],
 );
 
