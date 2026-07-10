@@ -182,6 +182,15 @@ Each operation owns one database transaction covering:
 - Activity record.
 - Idempotency result.
 
+### Financial transition lock order
+
+For every payment, receipt issuance, receipt void, or schedule mutation, acquire
+row locks in one order: **booking → invoice → payment schedule → received
+payment → receipt**. A preliminary lookup may discover IDs only; re-read and
+validate every row after its lock. Operations that do not involve a row simply
+skip that position. This keeps schedule application compatible with the existing
+booking/invoice/payment protocol and avoids schedule/invoice lock inversions.
+
 Procedures should validate input/authorization and delegate the business transition.
 
 ### 1.3 Financial invariants

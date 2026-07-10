@@ -72,6 +72,7 @@ export async function updateInvoicePaymentStatus(
 	dbOrTx: DbOrTx,
 	invoiceId: string,
 	userId: string,
+	{ allowCancelled = false }: { allowCancelled?: boolean } = {},
 ): Promise<void> {
 	const invoice = await dbOrTx.query.invoices.findFirst({
 		where: and(eq(invoices.id, invoiceId), isNull(invoices.deletedAt)),
@@ -90,7 +91,7 @@ export async function updateInvoicePaymentStatus(
 	}
 
 	const currentStatus = invoice.status as InvoiceStatus;
-	if (currentStatus === "cancelled") {
+	if (currentStatus === "cancelled" && !allowCancelled) {
 		throw new ORPCError("CONFLICT", {
 			message: "Cannot record payments for a cancelled invoice",
 		});
@@ -138,12 +139,13 @@ export async function updateInvoicePaymentStatus(
 		invoiceTotalCents,
 		baseStatus,
 	);
+	const status = currentStatus === "cancelled" ? "cancelled" : newStatus;
 
 	await dbOrTx
 		.update(invoices)
 		.set({
 			paidAmount: centsToMoney(totalPaidCents),
-			status: newStatus,
+			status,
 			paidAt: isPaid ? (invoice.paidAt ?? new Date()) : null,
 			updatedAt: new Date(),
 			updatedBy: userId,

@@ -1,7 +1,11 @@
 import { ORPCError } from "@orpc/server";
-import { and, bookings, db, eq, isNull, paymentSchedules } from "@repo/database";
+import { and, db, eq, isNull, paymentSchedules } from "@repo/database";
 import { studioProtectedProcedure } from "../../../../orpc/procedures";
 import { formatAmount, safeTrackActivity } from "../../../activities/lib";
+import {
+	getLockedBookingForReceipt,
+	getLockedScheduleForReceipt,
+} from "../../../receipts/lib/locked-invoice-for-receipt";
 import { requirePermission } from "../../../studio/lib/permissions";
 import {
 	deleteScheduleInputSchema,
@@ -23,8 +27,7 @@ export const deleteSchedule = studioProtectedProcedure
 
 		const { id } = input;
 
-		// Verify schedule exists and belongs to organization
-		const schedule = await db.query.paymentSchedules.findFirst({
+		const lockPlan = await db.query.paymentSchedules.findFirst({
 			where: and(
 				eq(paymentSchedules.id, id),
 				eq(paymentSchedules.organizationId, context.organizationId),
@@ -32,42 +35,51 @@ export const deleteSchedule = studioProtectedProcedure
 			),
 		});
 
-		if (!schedule) {
+		if (!lockPlan) {
 			throw new ORPCError("NOT_FOUND", {
 				message: "Payment schedule not found",
 			});
 		}
 
-		if (
-			schedule.status === "partial" ||
-			schedule.status === "completed" ||
-			schedule.status === "cancelled"
-		) {
-			throw new ORPCError("CONFLICT", {
-				message:
-					"Partially paid, completed, or cancelled schedules cannot be deleted",
+		const { bookingName, schedule } = await db.transaction(async (tx) => {
+			const booking = await getLockedBookingForReceipt(tx, {
+				organizationId: context.organizationId,
+				bookingId: lockPlan.bookingId,
 			});
-		}
-
-		// Fetch booking for activity context (org-scoped for safety)
-		const booking = await db.query.bookings.findFirst({
-			where: and(
-				eq(bookings.id, schedule.bookingId),
-				eq(bookings.organizationId, context.organizationId),
-			),
-			columns: { name: true },
+			if (!booking) {
+				throw new ORPCError("NOT_FOUND", { message: "Booking not found" });
+			}
+			const schedule = await getLockedScheduleForReceipt(tx, {
+				organizationId: context.organizationId,
+				bookingId: lockPlan.bookingId,
+				paymentScheduleId: id,
+			});
+			if (!schedule) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Payment schedule not found",
+				});
+			}
+			if (
+				schedule.status === "partial" ||
+				schedule.status === "completed" ||
+				schedule.status === "cancelled"
+			) {
+				throw new ORPCError("CONFLICT", {
+					message:
+						"Partially paid, completed, or cancelled schedules cannot be deleted",
+				});
+			}
+			await tx
+				.update(paymentSchedules)
+				.set({
+					deletedAt: new Date(),
+					deletedBy: context.user.id,
+					updatedAt: new Date(),
+					updatedBy: context.user.id,
+				})
+				.where(eq(paymentSchedules.id, id));
+			return { bookingName: booking.name, schedule };
 		});
-
-		// Soft delete
-		await db
-			.update(paymentSchedules)
-			.set({
-				deletedAt: new Date(),
-				deletedBy: context.user.id,
-				updatedAt: new Date(),
-				updatedBy: context.user.id,
-			})
-			.where(eq(paymentSchedules.id, id));
 
 		// Track activity (non-blocking)
 		await safeTrackActivity(context, {
@@ -77,7 +89,7 @@ export const deleteSchedule = studioProtectedProcedure
 			action: "deleted",
 			parentEntityType: "booking",
 			parentEntityId: schedule.bookingId,
-			parentEntityName: booking?.name ?? "Unknown Booking",
+			parentEntityName: bookingName,
 		});
 
 		return {

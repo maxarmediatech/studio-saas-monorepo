@@ -15,6 +15,7 @@ import { studioProtectedProcedure } from "../../../../orpc/procedures";
 import { formatAmount, safeTrackActivity } from "../../../activities/lib";
 import {
 	getLockedBookingForReceipt,
+	getLockedScheduleForReceipt,
 	getLockedScheduleInvoiceForReceipt,
 } from "../../../receipts/lib/locked-invoice-for-receipt";
 import {
@@ -71,15 +72,44 @@ export const convertSchedule = studioProtectedProcedure
 			notes,
 		} = input;
 
-		// Use transaction for atomicity
+		// A lookup only discovers the booking ID. The schedule is re-read after
+		// booking and invoice locks, per the financial transition lock order.
 		return await db.transaction(async (tx) => {
-			// Fetch schedule with lock
-			const schedule = await tx.query.paymentSchedules.findFirst({
+			const lockPlan = await tx.query.paymentSchedules.findFirst({
 				where: and(
 					eq(paymentSchedules.id, scheduleId),
 					eq(paymentSchedules.organizationId, context.organizationId),
 					isNull(paymentSchedules.deletedAt),
 				),
+			});
+
+			if (!lockPlan) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Payment schedule not found",
+				});
+			}
+
+			const lockedBooking = await getLockedBookingForReceipt(tx, {
+				organizationId: context.organizationId,
+				bookingId: lockPlan.bookingId,
+			});
+
+			if (!lockedBooking) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Booking not found",
+				});
+			}
+
+			const linkedInvoice = await getLockedScheduleInvoiceForReceipt(tx, {
+				organizationId: context.organizationId,
+				bookingId: lockPlan.bookingId,
+				paymentScheduleId: scheduleId,
+			});
+
+			const schedule = await getLockedScheduleForReceipt(tx, {
+				organizationId: context.organizationId,
+				bookingId: lockPlan.bookingId,
+				paymentScheduleId: scheduleId,
 			});
 
 			if (!schedule) {
@@ -96,6 +126,10 @@ export const convertSchedule = studioProtectedProcedure
 					await tx.query.receivedAmounts.findFirst({
 						where: and(
 							eq(receivedAmounts.paymentScheduleId, scheduleId),
+							eq(
+								receivedAmounts.organizationId,
+								context.organizationId,
+							),
 							isNull(receivedAmounts.deletedAt),
 						),
 						columns: { id: true },
@@ -107,6 +141,10 @@ export const convertSchedule = studioProtectedProcedure
 								eq(
 									receipts.receivedAmountId,
 									existingReceived.id,
+								),
+								eq(
+									receipts.organizationId,
+									context.organizationId,
 								),
 								isNull(receipts.deletedAt),
 							),
@@ -173,23 +211,6 @@ export const convertSchedule = studioProtectedProcedure
 			// Use current date if not provided
 			const actualReceivedDate =
 				receivedDate ?? new Date().toISOString().split("T")[0];
-
-			const lockedBooking = await getLockedBookingForReceipt(tx, {
-				organizationId: context.organizationId,
-				bookingId: schedule.bookingId,
-			});
-
-			if (!lockedBooking) {
-				throw new ORPCError("NOT_FOUND", {
-					message: "Booking not found",
-				});
-			}
-
-			const linkedInvoice = await getLockedScheduleInvoiceForReceipt(tx, {
-				organizationId: context.organizationId,
-				bookingId: schedule.bookingId,
-				paymentScheduleId: scheduleId,
-			});
 
 			const [created] = await tx
 				.insert(receivedAmounts)

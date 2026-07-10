@@ -29,6 +29,7 @@ const mocks = vi.hoisted(() => {
 		chain,
 		getHandler: () => handler,
 		mockGetLockedBookingForReceipt: vi.fn(),
+		mockGetLockedScheduleForReceipt: vi.fn(),
 		mockGetLockedScheduleInvoiceForReceipt: vi.fn(),
 		mockRequirePermission: vi.fn(),
 		mockTransaction: vi.fn(async (callback) => callback(tx)),
@@ -51,6 +52,7 @@ vi.mock("../../../activities/lib", () => ({
 
 vi.mock("../../../receipts/lib/locked-invoice-for-receipt", () => ({
 	getLockedBookingForReceipt: mocks.mockGetLockedBookingForReceipt,
+	getLockedScheduleForReceipt: mocks.mockGetLockedScheduleForReceipt,
 	getLockedScheduleInvoiceForReceipt:
 		mocks.mockGetLockedScheduleInvoiceForReceipt,
 }));
@@ -101,6 +103,16 @@ describe("schedule conversion invoice locking", () => {
 			id: "booking_1",
 			name: "Booking",
 		});
+		mocks.mockGetLockedScheduleForReceipt.mockResolvedValue({
+			id: "schedule_1",
+			organizationId: "org_1",
+			bookingId: "booking_1",
+			name: "Final payment",
+			amount: "100.00",
+			paidAmount: "0.00",
+			paidAt: null,
+			status: "pending",
+		});
 	});
 
 	it("rejects a cancelled linked invoice before creating the payment", async () => {
@@ -133,5 +145,13 @@ describe("schedule conversion invoice locking", () => {
 			paymentScheduleId: "schedule_1",
 		});
 		expect(mocks.tx.insert).not.toHaveBeenCalled();
+		expect(mocks.mockGetLockedScheduleForReceipt).toHaveBeenCalledWith(
+			mocks.tx,
+			{
+				organizationId: "org_1",
+				bookingId: "booking_1",
+				paymentScheduleId: "schedule_1",
+			},
+		);
 	});
 });
