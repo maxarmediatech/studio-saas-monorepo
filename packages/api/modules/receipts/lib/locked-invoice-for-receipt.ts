@@ -6,9 +6,19 @@ import {
 	eq,
 	invoices,
 	isNull,
+	paymentSchedules,
+	receipts,
 	sql,
 } from "@repo/database";
 
+/**
+ * Financial transitions acquire rows in this order:
+ * booking -> invoice -> schedule -> received payment -> receipt.
+ *
+ * Read-only lookups may happen before the transaction to discover IDs, but every
+ * decision that writes one of these records must use the value re-read after its
+ * lock. Keeping schedule after invoice preserves the established receipt order.
+ */
 type InvoiceLockTransaction = Pick<typeof db, "execute" | "query">;
 
 interface InvoiceReceiptContext {
@@ -50,7 +60,8 @@ export async function getLockedInvoiceForReceipt(
 		organizationId,
 		bookingId,
 		invoiceId,
-	}: InvoiceReceiptContext & { invoiceId: string },
+		allowCancelled = false,
+	}: InvoiceReceiptContext & { invoiceId: string; allowCancelled?: boolean },
 ) {
 	await tx.execute(sql`
 		SELECT ${invoices.id}
@@ -71,13 +82,41 @@ export async function getLockedInvoiceForReceipt(
 		),
 	});
 
-	if (invoice?.status === "cancelled") {
+	if (invoice?.status === "cancelled" && !allowCancelled) {
 		throw new ORPCError("CONFLICT", {
 			message: "Cannot issue a receipt for a cancelled invoice",
 		});
 	}
 
 	return invoice ?? null;
+}
+
+export async function getLockedReceiptForVoid(
+	tx: InvoiceLockTransaction,
+	{
+		organizationId,
+		receiptId,
+	}: {
+		organizationId: string;
+		receiptId: string;
+	},
+) {
+	await tx.execute(sql`
+		SELECT ${receipts.id}
+		FROM ${receipts}
+		WHERE ${receipts.id} = ${receiptId}
+			AND ${receipts.organizationId} = ${organizationId}
+			AND ${receipts.deletedAt} IS NULL
+		FOR UPDATE
+	`);
+
+	return tx.query.receipts.findFirst({
+		where: and(
+			eq(receipts.id, receiptId),
+			eq(receipts.organizationId, organizationId),
+			isNull(receipts.deletedAt),
+		),
+	});
 }
 
 export async function getLockedScheduleInvoiceForReceipt(
@@ -106,5 +145,33 @@ export async function getLockedScheduleInvoiceForReceipt(
 		organizationId,
 		bookingId,
 		invoiceId: linked.id,
+	});
+}
+
+export async function getLockedScheduleForReceipt(
+	tx: InvoiceLockTransaction,
+	{
+		organizationId,
+		bookingId,
+		paymentScheduleId,
+	}: InvoiceReceiptContext & { paymentScheduleId: string },
+) {
+	await tx.execute(sql`
+		SELECT ${paymentSchedules.id}
+		FROM ${paymentSchedules}
+		WHERE ${paymentSchedules.id} = ${paymentScheduleId}
+			AND ${paymentSchedules.organizationId} = ${organizationId}
+			AND ${paymentSchedules.bookingId} = ${bookingId}
+			AND ${paymentSchedules.deletedAt} IS NULL
+		FOR UPDATE
+	`);
+
+	return tx.query.paymentSchedules.findFirst({
+		where: and(
+			eq(paymentSchedules.id, paymentScheduleId),
+			eq(paymentSchedules.organizationId, organizationId),
+			eq(paymentSchedules.bookingId, bookingId),
+			isNull(paymentSchedules.deletedAt),
+		),
 	});
 }

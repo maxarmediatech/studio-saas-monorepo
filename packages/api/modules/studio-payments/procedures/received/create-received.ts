@@ -1,10 +1,8 @@
 import { ORPCError } from "@orpc/server";
 import {
-	and,
 	bookings,
 	db,
 	eq,
-	isNull,
 	paymentSchedules,
 	receipts,
 	receivedAmounts,
@@ -15,11 +13,13 @@ import { formatAmount, safeTrackActivity } from "../../../activities/lib";
 import {
 	getLockedBookingForReceipt,
 	getLockedInvoiceForReceipt,
+	getLockedScheduleForReceipt,
 } from "../../../receipts/lib/locked-invoice-for-receipt";
 import {
 	generateReceiptNumber,
 	updateInvoicePaymentStatus,
 } from "../../../receipts/lib/receipt-helpers";
+import { centsToMoney, moneyToCents } from "../../../studio/lib/money";
 import { requirePermission } from "../../../studio/lib/permissions";
 import {
 	createReceivedInputSchema,
@@ -50,24 +50,6 @@ export const createReceived = studioProtectedProcedure
 			paymentScheduleId,
 			invoiceId,
 		} = input;
-
-		// If payment schedule is specified, verify it exists and belongs to the booking
-		if (paymentScheduleId) {
-			const schedule = await db.query.paymentSchedules.findFirst({
-				where: and(
-					eq(paymentSchedules.id, paymentScheduleId),
-					eq(paymentSchedules.bookingId, bookingId),
-					eq(paymentSchedules.organizationId, context.organizationId),
-					isNull(paymentSchedules.deletedAt),
-				),
-			});
-
-			if (!schedule) {
-				throw new ORPCError("NOT_FOUND", {
-					message: "Payment schedule not found",
-				});
-			}
-		}
 
 		// Security: Validate S3 key belongs to this organization (prevents IDOR)
 		if (proofAttachment?.key) {
@@ -107,6 +89,69 @@ export const createReceived = studioProtectedProcedure
 						"Invoice not found or does not belong to this booking",
 				});
 			}
+
+			const schedule = paymentScheduleId
+				? await getLockedScheduleForReceipt(tx, {
+						organizationId: context.organizationId,
+						bookingId,
+						paymentScheduleId,
+					})
+				: null;
+
+			if (paymentScheduleId && !schedule) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Payment schedule not found",
+				});
+			}
+
+			const amountCents = moneyToCents(amount);
+			if (!Number.isFinite(amountCents) || amountCents <= 0) {
+				throw new ORPCError("BAD_REQUEST", {
+					message: "Amount must be greater than zero",
+				});
+			}
+
+			const scheduleUpdate = schedule
+				? (() => {
+						if (schedule.status === "cancelled") {
+							throw new ORPCError("CONFLICT", {
+								message: "Cancelled schedule cannot receive payments",
+							});
+						}
+
+						const paidAmountCents = moneyToCents(schedule.paidAmount);
+						const scheduleAmountCents = moneyToCents(schedule.amount);
+						const remainingAmountCents =
+							scheduleAmountCents - paidAmountCents;
+
+						if (remainingAmountCents <= 0) {
+							throw new ORPCError("CONFLICT", {
+								message: "Schedule is already fully paid",
+							});
+						}
+						if (amountCents > remainingAmountCents) {
+							throw new ORPCError("BAD_REQUEST", {
+								message:
+									"Amount cannot exceed remaining scheduled balance",
+							});
+						}
+
+						const newPaidAmountCents = paidAmountCents + amountCents;
+						const status =
+							newPaidAmountCents >= scheduleAmountCents
+								? "completed"
+								: "partial";
+
+						return {
+							paidAmount: centsToMoney(newPaidAmountCents),
+							paidAt:
+								status === "completed"
+									? (schedule.paidAt ?? new Date())
+									: schedule.paidAt,
+							status,
+						};
+					})()
+				: null;
 
 			// Create received amount
 			const [created] = await tx
@@ -171,39 +216,15 @@ export const createReceived = studioProtectedProcedure
 				})
 				.where(eq(bookings.id, bookingId));
 
-			// If linked to a schedule, update the schedule's paid amount
-			if (paymentScheduleId) {
-				const schedule = await tx.query.paymentSchedules.findFirst({
-					where: eq(paymentSchedules.id, paymentScheduleId),
-				});
-
-				if (schedule) {
-					const newPaidAmount =
-						Number.parseFloat(schedule.paidAmount) +
-						Number.parseFloat(amount);
-					const scheduleAmount = Number.parseFloat(schedule.amount);
-
-					let newStatus = schedule.status;
-					if (newPaidAmount >= scheduleAmount) {
-						newStatus = "completed";
-					} else if (newPaidAmount > 0) {
-						newStatus = "partial";
-					}
-
-					await tx
-						.update(paymentSchedules)
-						.set({
-							paidAmount: newPaidAmount.toFixed(2),
-							paidAt:
-								newStatus === "completed"
-									? new Date()
-									: schedule.paidAt,
-							status: newStatus,
-							updatedAt: new Date(),
-							updatedBy: context.user.id,
-						})
-						.where(eq(paymentSchedules.id, paymentScheduleId));
-				}
+			if (paymentScheduleId && scheduleUpdate) {
+				await tx
+					.update(paymentSchedules)
+					.set({
+						...scheduleUpdate,
+						updatedAt: new Date(),
+						updatedBy: context.user.id,
+					})
+					.where(eq(paymentSchedules.id, paymentScheduleId));
 			}
 
 			// Track activity (non-blocking, outside transaction)
