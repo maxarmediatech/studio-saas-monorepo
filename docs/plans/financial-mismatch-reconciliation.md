@@ -16,6 +16,22 @@ pnpm --filter @repo/scripts financial-reconciliation -- \
 
 `--as-of YYYY-MM-DD` is optional and makes invoice status evaluation repeatable. The report emits deterministic, sorted JSON. Exit code `1` means actionable mismatches remain; exit code `0` means none remain; exit code `2` means the command could not run.
 
+Flag values are mandatory when their flag is present, unknown/duplicate flags are rejected, and `--as-of` must be a real calendar date (not only date-shaped text).
+
+## Verification
+
+The PostgreSQL integration test is skipped unless
+`POSTGRES_RECONCILIATION_DATABASE_URL` points to an isolated, fully migrated
+database. The test creates a uniquely named organization and cascading fixtures,
+runs both `--report` and `--fix-safe`, verifies persisted repairs and invoice-link
+disagreement detection, then deletes the organization. Never point this variable
+at production.
+
+```bash
+POSTGRES_RECONCILIATION_DATABASE_URL=postgresql://... \
+  pnpm --filter @repo/scripts test
+```
+
 ## Taxonomy
 
 The report emits exactly these `mismatchType` values:
@@ -29,7 +45,7 @@ The report emits exactly these `mismatchType` values:
 7. `duplicate_active_receipts_per_payment`
 8. `duplicate_invoices_per_schedule`
 
-All SQL is organization-scoped, joins compare organization and booking ownership, and active-record calculations exclude soft-deleted rows. The report includes the evidence IDs and expected/actual values needed for review.
+All SQL is organization-scoped, joins compare organization and booking ownership, and active-record calculations exclude soft-deleted rows. Receipt/payment checks also compare their invoice IDs, so records tied to different invoices are manual-review mismatches even when organization and booking agree. The report includes the evidence IDs and expected/actual values needed for review.
 
 ## Safe-fix boundary
 
