@@ -3,6 +3,7 @@
 		"@repo/database": "workspace:*",
 		"@repo/env": "workspace:*",
 		"@repo/storage": "workspace:*",
+		"@repo/whatsapp-core": "workspace:*",
 		"@repo/whatsapp-db": "workspace:*",
 		"@repo/whatsapp-providers": "workspace:*"
 	},
@@ -10,11 +11,13 @@
 		"@biomejs/biome": "2.3.10",
 		"@repo/tsconfig": "workspace:*",
 		"@types/node": "24.10.4",
-		"typescript": "5.9.3"
+		"typescript": "5.9.3",
+		"vitest": "^2.0.0"
 	},
 	"main": "./index.ts",
 	"name": "@repo/whatsapp-outbox",
 	"scripts": {
+		"test": "vitest run --passWithNoTests",
 		"type-check": "tsc --noEmit"
 	},
 	"types": "./**/.ts",

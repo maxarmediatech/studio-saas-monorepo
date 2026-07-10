@@ -83,6 +83,25 @@ services/
 
 ## Remaining Work (Detailed)
 
+## P1 Reliability Merge Gates
+
+The first remediation slice keeps the existing Phase 1A/1B API surface and the useful dev-branch worker/media design, without importing unrelated campaign, automation, Trigger.dev, or UI changes.
+
+- [x] Existing webhook rows retry while `processedAt` is null; processing and business writes share one transaction.
+- [x] Contact identity is unique by account and WhatsApp ID.
+- [x] Conversation and inbound-message creation are conflict-safe.
+- [x] Outbox and inbound-media claims use expiring owner leases and recover stale pre-dispatch work.
+- [x] Provider-dispatched work with an unknown local outcome enters `delivery_unknown` and is excluded from automatic retry.
+- [ ] Campaign recipients have a durable unique campaign/contact ledger.
+- [ ] Campaign counts represent committed recipient transitions rather than enqueue attempts.
+- [ ] Delivery webhook states are monotonic and idempotent.
+- [ ] Opt-out, block, and account state are rechecked immediately before provider dispatch.
+- [ ] Automation runs/actions are durable and wait actions resume after interruption.
+
+Migration `0040_whatsapp_delivery_reliability.sql` refuses to add identity constraints when duplicate contact or provider-message identities exist. Existing failed webhook rows become retryable. Legacy outbox rows already in `processing` are conservatively made terminal for manual reconciliation because the old schema cannot prove whether provider dispatch happened.
+
+Worker contract comparison and the decision not to adopt a queue library in this slice are recorded in [worker-state-contract-inventory.md](./worker-state-contract-inventory.md).
+
 ## Phase 1C (Next)
 
 ### 1) Template Sync (Meta)
