@@ -206,26 +206,33 @@ describePostgres("financial reconciliation on migrated PostgreSQL", () => {
 				paidAmount: "15.00",
 				status: "partial",
 			});
-			await db.insert(receivedAmounts).values({
-				id: mismatchedPaymentId,
-				organizationId,
-				bookingId,
-				paymentScheduleId: scheduleId,
-				invoiceId: mismatchedInvoiceId,
-				amount: "15.00",
-				paymentMethod: "cash",
-				receivedDate: "2026-02-01",
-			});
-			await db.insert(receipts).values({
-				id: mismatchedReceiptId,
-				organizationId,
-				bookingId,
-				invoiceId: mismatchedInvoiceId,
-				receivedAmountId: mismatchedPaymentId,
-				receiptNumber: `RECON-MISMATCHED-RCPT-${suffix}`,
-				amount: "15.00",
-				paymentMethod: "cash",
-				receiptDate: "2026-02-01",
+			await db.transaction(async (tx) => {
+				// Model corruption that predates migration 0043. Normal writes must
+				// continue through the production relationship guards.
+				await tx.execute(
+					sql`SET LOCAL session_replication_role = replica`,
+				);
+				await tx.insert(receivedAmounts).values({
+					id: mismatchedPaymentId,
+					organizationId,
+					bookingId,
+					paymentScheduleId: scheduleId,
+					invoiceId: mismatchedInvoiceId,
+					amount: "15.00",
+					paymentMethod: "cash",
+					receivedDate: "2026-02-01",
+				});
+				await tx.insert(receipts).values({
+					id: mismatchedReceiptId,
+					organizationId,
+					bookingId,
+					invoiceId: mismatchedInvoiceId,
+					receivedAmountId: mismatchedPaymentId,
+					receiptNumber: `RECON-MISMATCHED-RCPT-${suffix}`,
+					amount: "15.00",
+					paymentMethod: "cash",
+					receiptDate: "2026-02-01",
+				});
 			});
 			await db.insert(paymentSchedules).values({
 				id: cancelledScheduleId,
@@ -342,10 +349,15 @@ describePostgres("financial reconciliation on migrated PostgreSQL", () => {
 				totalAmount: "100.00",
 				status: "sent",
 			});
-			await db
-				.update(receipts)
-				.set({ invoiceId: otherInvoiceId })
-				.where(eq(receipts.id, receiptId));
+			await db.transaction(async (tx) => {
+				await tx.execute(
+					sql`SET LOCAL session_replication_role = replica`,
+				);
+				await tx
+					.update(receipts)
+					.set({ invoiceId: otherInvoiceId })
+					.where(eq(receipts.id, receiptId));
+			});
 
 			const disagreement = await queryFinancialMismatches(
 				organizationId,
@@ -500,50 +512,55 @@ describePostgres("financial reconciliation on migrated PostgreSQL", () => {
 				packageCost: "10.00",
 				totalReceived: "9.00",
 			});
-			await db.insert(paymentSchedules).values({
-				id: crossTenantScheduleId,
-				organizationId,
-				bookingId: otherBookingId,
-				name: "Cross-tenant parent schedule",
-				amount: "100.00",
-				dueDate: "2026-12-31",
-				paidAmount: "10.00",
-				status: "pending",
-			});
-			await db.insert(invoices).values({
-				id: crossTenantInvoiceId,
-				organizationId,
-				bookingId: otherBookingId,
-				paymentScheduleId: crossTenantScheduleId,
-				invoiceNumber: `RECON-CROSS-TENANT-${suffix}`,
-				issueDate: "2026-01-01",
-				dueDate: "2026-12-31",
-				totalAmount: "100.00",
-				paidAmount: "10.00",
-				status: "sent",
-			});
-			await db.insert(receipts).values({
-				id: crossOrganizationReceiptId,
-				organizationId: otherOrganizationId,
-				bookingId,
-				invoiceId,
-				receivedAmountId,
-				receiptNumber: `RECON-CROSS-RCPT-${suffix}`,
-				amount: "40.00",
-				paymentMethod: "cash",
-				receiptDate: "2026-01-15",
-				deletedAt: new Date(),
-			});
-			await db.insert(invoices).values({
-				id: crossOrganizationInvoiceId,
-				organizationId: otherOrganizationId,
-				bookingId,
-				paymentScheduleId: scheduleId,
-				invoiceNumber: `RECON-CROSS-INV-${suffix}`,
-				issueDate: "2026-01-01",
-				totalAmount: "100.00",
-				status: "sent",
-				deletedAt: new Date(),
+			await db.transaction(async (tx) => {
+				await tx.execute(
+					sql`SET LOCAL session_replication_role = replica`,
+				);
+				await tx.insert(paymentSchedules).values({
+					id: crossTenantScheduleId,
+					organizationId,
+					bookingId: otherBookingId,
+					name: "Cross-tenant parent schedule",
+					amount: "100.00",
+					dueDate: "2026-12-31",
+					paidAmount: "10.00",
+					status: "pending",
+				});
+				await tx.insert(invoices).values({
+					id: crossTenantInvoiceId,
+					organizationId,
+					bookingId: otherBookingId,
+					paymentScheduleId: crossTenantScheduleId,
+					invoiceNumber: `RECON-CROSS-TENANT-${suffix}`,
+					issueDate: "2026-01-01",
+					dueDate: "2026-12-31",
+					totalAmount: "100.00",
+					paidAmount: "10.00",
+					status: "sent",
+				});
+				await tx.insert(receipts).values({
+					id: crossOrganizationReceiptId,
+					organizationId: otherOrganizationId,
+					bookingId,
+					invoiceId,
+					receivedAmountId,
+					receiptNumber: `RECON-CROSS-RCPT-${suffix}`,
+					amount: "40.00",
+					paymentMethod: "cash",
+					receiptDate: "2026-01-15",
+					deletedAt: new Date(),
+				});
+				await tx.insert(invoices).values({
+					id: crossOrganizationInvoiceId,
+					organizationId: otherOrganizationId,
+					bookingId,
+					paymentScheduleId: scheduleId,
+					invoiceNumber: `RECON-CROSS-INV-${suffix}`,
+					issueDate: "2026-01-01",
+					totalAmount: "100.00",
+					status: "sent",
+					deletedAt: new Date(),
+				});
 			});
 			await db.insert(paymentSchedules).values({
 				id: deletedChainScheduleId,
@@ -559,26 +576,31 @@ describePostgres("financial reconciliation on migrated PostgreSQL", () => {
 				.update(paymentSchedules)
 				.set({ deletedAt: new Date() })
 				.where(eq(paymentSchedules.id, deletedChainScheduleId));
-			await db.insert(receivedAmounts).values([
-				{
-					id: deletedChainPaymentId,
-					organizationId,
-					bookingId,
-					paymentScheduleId: deletedChainScheduleId,
-					amount: "6.00",
-					paymentMethod: "cash",
-					receivedDate: "2026-02-01",
-				},
-				{
-					id: crossTenantChainPaymentId,
-					organizationId,
-					bookingId,
-					invoiceId: crossOrganizationInvoiceId,
-					amount: "7.00",
-					paymentMethod: "cash",
-					receivedDate: "2026-02-01",
-				},
-			]);
+			await db.transaction(async (tx) => {
+				await tx.execute(
+					sql`SET LOCAL session_replication_role = replica`,
+				);
+				await tx.insert(receivedAmounts).values([
+					{
+						id: deletedChainPaymentId,
+						organizationId,
+						bookingId,
+						paymentScheduleId: deletedChainScheduleId,
+						amount: "6.00",
+						paymentMethod: "cash",
+						receivedDate: "2026-02-01",
+					},
+					{
+						id: crossTenantChainPaymentId,
+						organizationId,
+						bookingId,
+						invoiceId: crossOrganizationInvoiceId,
+						amount: "7.00",
+						paymentMethod: "cash",
+						receivedDate: "2026-02-01",
+					},
+				]);
+			});
 			await db.insert(bookings).values([
 				{
 					id: failedRepairBookingId,

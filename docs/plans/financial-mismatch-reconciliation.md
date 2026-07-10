@@ -7,10 +7,10 @@
 Run against one organization at a time. The organization scope is mandatory so a report cannot accidentally mix tenant data.
 
 ```bash
-pnpm --filter @repo/scripts financial-reconciliation -- \
+pnpm --filter @repo/scripts financial-reconciliation \
   --organization-id <organization-id> --report
 
-pnpm --filter @repo/scripts financial-reconciliation -- \
+pnpm --filter @repo/scripts financial-reconciliation \
   --organization-id <organization-id> --fix-safe
 ```
 
