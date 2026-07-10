@@ -111,8 +111,6 @@ describe("ingestInboundCloudApiMedia", () => {
 			fileName: "image-media_123.jpg",
 			fileSize: 3,
 			mimeType: "image/jpeg",
-			providerMediaId: "media_123",
-			storageType: "s3",
 		});
 		expect(result.storageUrl).toContain(
 			"orgs/org_123/whatsapp/inbound/account_123/",

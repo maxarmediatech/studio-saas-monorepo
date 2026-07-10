@@ -288,6 +288,8 @@ Count remaining line items only after the lock. Finalized invoice totals are imm
 
 WhatsApp implementation details belong in [whatsapp-module.md](./whatsapp-module.md). Before merging the dev implementation into main, that plan must cover these P1 gates:
 
+**Implemented on `codex/core-product-remediation` (2026-07-11).** The scoped dev runtime was integrated without merging unrelated dev work. Migrations 0045–0046 and the runtime now enforce the gates below; focused API, worker, PostgreSQL concurrency, webhook security, and type-check suites cover the critical paths.
+
 - Existing webhook rows are retried unless they are actually processed.
 - Contact identity is unique by account and WhatsApp ID.
 - Conversation creation is conflict-safe.
@@ -429,7 +431,7 @@ Do not combine payment, invoice, and WhatsApp schema changes in one release.
 
 ### WhatsApp track
 
-Maintain its PR sequence in [whatsapp-module.md](./whatsapp-module.md), gated by the P1 requirements above.
+Implemented as focused commits documented in [whatsapp-module.md](./whatsapp-module.md), gated by the P1 requirements above.
 
 ### Workflow track
 

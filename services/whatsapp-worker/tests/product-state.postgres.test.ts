@@ -271,7 +271,7 @@ describe("WhatsApp product state PostgreSQL invariants", () => {
 			).length,
 		).toBe(1);
 
-		const start = new Date("2026-07-10T12:00:00.000Z");
+		const start = new Date(Date.now() + 1000);
 		await Promise.all([
 			processAutomationRun(run.id, {
 				workerId: "automation-a",

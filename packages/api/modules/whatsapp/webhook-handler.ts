@@ -1,4 +1,4 @@
-import { and, db, eq, sql } from "@repo/database";
+import { and, db, eq, or, sql } from "@repo/database";
 import { logger } from "@repo/logs";
 import {
 	type CloudApiWebhookEvent,
@@ -16,6 +16,11 @@ import {
 	enqueueInboundAutomationRuns,
 	transitionWhatsAppMessage,
 } from "@repo/whatsapp-runtime";
+import {
+	decryptWhatsAppSecret,
+	hashWebhookVerifyToken,
+} from "./lib/account-secrets";
+import { verifyWebhookSignature } from "./lib/webhook-security";
 
 type WhatsAppAccount = typeof waAccounts.$inferSelect;
 type WhatsAppTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -23,11 +28,17 @@ type WhatsAppTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 const getStatusEventId = (messageId: string, status: string, timestamp: Date) =>
 	`${messageId}:${status}:${timestamp.getTime()}`;
 
+const buildWebhookTokenClause = (token: string) =>
+	or(
+		eq(waAccounts.webhookVerifyToken, token),
+		eq(waAccounts.webhookVerifyToken, hashWebhookVerifyToken(token)),
+	);
+
 const resolveAccount = (phoneNumberId: string, token: string) =>
 	db.query.waAccounts.findFirst({
 		where: and(
 			eq(waAccounts.phoneNumberId, phoneNumberId),
-			eq(waAccounts.webhookVerifyToken, token),
+			buildWebhookTokenClause(token),
 		),
 	});
 
@@ -314,7 +325,7 @@ export const verifyCloudWebhook = async (params: {
 	}
 
 	const account = await db.query.waAccounts.findFirst({
-		where: eq(waAccounts.webhookVerifyToken, params.token),
+		where: buildWebhookTokenClause(params.token),
 	});
 	if (!account || params.verifyToken !== params.token) {
 		return new Response("Invalid verification token", { status: 403 });
@@ -329,6 +340,7 @@ export const handleCloudWebhook = async (req: Request, token: string) => {
 	}
 
 	const rawBody = await req.text();
+	const signatureHeader = req.headers.get("x-hub-signature-256");
 	if (!rawBody.length) {
 		return new Response("Empty webhook body", { status: 400 });
 	}
@@ -348,6 +360,19 @@ export const handleCloudWebhook = async (req: Request, token: string) => {
 				phoneNumberId: event.phoneNumberId,
 			});
 			continue;
+		}
+
+		if (account.appSecret && !signatureHeader) {
+			return new Response("Missing signature", { status: 403 });
+		}
+		if (account.appSecret && signatureHeader) {
+			const appSecret = decryptWhatsAppSecret(account.appSecret);
+			if (
+				!appSecret ||
+				!verifyWebhookSignature(rawBody, signatureHeader, appSecret)
+			) {
+				return new Response("Invalid signature", { status: 403 });
+			}
 		}
 
 		const providerEventId =
