@@ -30,7 +30,7 @@ export type CalendarDeliveryResult = {
 	shootId: string;
 	deliveryMethod: DeliveryMethod;
 	jobType: CalendarJobType | null;
-	state: "queued" | "unsendable" | "terminal";
+	state: "queued" | "error" | "unsendable" | "terminal";
 };
 
 export function getCalendarDeliveryKey(params: {
@@ -81,7 +81,11 @@ async function queueJob(
 		.onConflictDoUpdate({
 			target: calendarSyncJobs.deliveryKey,
 			targetWhere: sql`${calendarSyncJobs.status} <> 'completed'`,
-			setWhere: ne(calendarSyncJobs.status, "processing"),
+			// Existing pending/processing/retryable failed jobs already carry the
+			// current target identity. Do not reset their lease, backoff, or attempt
+			// count when a producer retries. Only revive an exhausted job.
+			setWhere: sql`${calendarSyncJobs.status} = 'failed'
+				AND COALESCE(${calendarSyncJobs.attempts}, 0) >= COALESCE(${calendarSyncJobs.maxAttempts}, 5)`,
 			set: {
 				jobType: params.jobType,
 				status: "pending",
@@ -228,7 +232,11 @@ export async function ensureAssignmentCalendarDelivery(
 			updatedAt: now,
 		})
 		.onConflictDoUpdate({
-			target: [shootCalendarEvents.shootId, shootCalendarEvents.crewId],
+			target: [
+				shootCalendarEvents.organizationId,
+				shootCalendarEvents.shootId,
+				shootCalendarEvents.crewId,
+			],
 			set: {
 				organizationId: params.organizationId,
 				deliveryMethod,
@@ -268,6 +276,13 @@ export async function ensureAssignmentCalendarDelivery(
 		);
 	} catch (error) {
 		await markProducerFailure(tx, params, error);
+		return {
+			crewId: target.crewId,
+			shootId: target.shootId,
+			deliveryMethod,
+			jobType,
+			state: "error",
+		};
 	}
 
 	return {
