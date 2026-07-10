@@ -4,6 +4,7 @@ import {
 	classifyMismatch,
 	isCalendarDate,
 	MISMATCH_TYPES,
+	sortMismatches,
 	validateDecisionRecord,
 } from "./financial-reconciliation";
 import {
@@ -28,8 +29,8 @@ describe("financial reconciliation taxonomy", () => {
 			"receipt_payment_amount_mismatch",
 			"active_receipt_for_deleted_payment",
 			"cross_entity_booking_org_disagreement",
-			"duplicate_active_receipts_per_payment",
-			"duplicate_invoices_per_schedule",
+			"multiple_receipts_per_payment",
+			"multiple_invoices_per_schedule",
 		]);
 	});
 
@@ -55,8 +56,8 @@ describe("financial reconciliation taxonomy", () => {
 			"receipt_payment_amount_mismatch",
 			"active_receipt_for_deleted_payment",
 			"cross_entity_booking_org_disagreement",
-			"duplicate_active_receipts_per_payment",
-			"duplicate_invoices_per_schedule",
+			"multiple_receipts_per_payment",
+			"multiple_invoices_per_schedule",
 		] as const) {
 			const result = classifyMismatch({ ...base, mismatchType });
 			assert.equal(result.safeFixAvailable, false);
@@ -96,6 +97,49 @@ describe("financial reconciliation taxonomy", () => {
 
 		assert.equal(missingReceipt.safeFixAvailable, false);
 		assert.equal(missingReceipt.intendedAction, null);
+	});
+
+	it("does not auto-fix schedule or invoice overpayments", () => {
+		for (const mismatchType of [
+			"schedule_total_vs_assigned_active_payments",
+			"invoice_paid_status_vs_valid_applications",
+		] as const) {
+			const overpayment = classifyMismatch({
+				...base,
+				mismatchType,
+				exceedsUpperBound: true,
+			});
+			assert.equal(overpayment.safeFixAvailable, false);
+			assert.equal(overpayment.intendedAction, null);
+		}
+	});
+
+	it("uses relation discriminators for collision-free deterministic ordering", () => {
+		const paymentRelation = classifyMismatch({
+			...base,
+			mismatchType: "cross_entity_booking_org_disagreement",
+			relationKey: "receipt.payment",
+			relatedId: "same-id",
+		});
+		const invoiceRelation = classifyMismatch({
+			...base,
+			mismatchType: "cross_entity_booking_org_disagreement",
+			relationKey: "receipt.invoice",
+			relatedId: "same-id",
+		});
+
+		assert.notEqual(paymentRelation.id, invoiceRelation.id);
+		const sorted = sortMismatches([paymentRelation, invoiceRelation]);
+		assert.deepEqual(
+			sorted.map((mismatch) => mismatch.relationKey),
+			["receipt.invoice", "receipt.payment"],
+		);
+		assert.deepEqual(
+			sortMismatches([invoiceRelation, paymentRelation]).map(
+				(mismatch) => mismatch.id,
+			),
+			sorted.map((mismatch) => mismatch.id),
+		);
 	});
 });
 

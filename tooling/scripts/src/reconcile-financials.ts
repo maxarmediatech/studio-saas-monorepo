@@ -56,16 +56,19 @@ export async function queryFinancialMismatches(
 				'payment_schedule' AS "entityType", s.id AS "entityId",
 				s.paid_amount AS "actualValue",
 				s.status AS "actualStatus",
-				COALESCE(SUM(CASE WHEN p.deleted_at IS NULL
-					AND p.organization_id = s.organization_id AND p.booking_id = s.booking_id
-					AND p.payment_schedule_id = s.id THEN p.amount ELSE 0 END), 0)::text AS "expectedValue",
+					COALESCE(SUM(CASE WHEN p.deleted_at IS NULL
+						AND p.organization_id = s.organization_id AND p.booking_id = s.booking_id
+						AND p.payment_schedule_id = s.id THEN p.amount ELSE 0 END), 0)::text AS "expectedValue",
+					COALESCE(SUM(CASE WHEN p.deleted_at IS NULL
+						AND p.organization_id = s.organization_id AND p.booking_id = s.booking_id
+						AND p.payment_schedule_id = s.id THEN p.amount ELSE 0 END), 0) > s.amount AS "exceedsUpperBound",
 				COUNT(p.id) FILTER (WHERE p.deleted_at IS NULL
 					AND (p.organization_id <> s.organization_id OR p.booking_id <> s.booking_id
 					OR p.payment_schedule_id <> s.id)) AS "invalidLinkCount"
 			FROM payment_schedules s
 			LEFT JOIN received_amounts p ON p.payment_schedule_id = s.id
 			WHERE s.organization_id = ${organizationId} AND s.deleted_at IS NULL
-			GROUP BY s.organization_id, s.id, s.booking_id, s.paid_amount
+				GROUP BY s.organization_id, s.id, s.booking_id, s.amount, s.paid_amount
 			HAVING s.paid_amount <> COALESCE(SUM(CASE WHEN p.deleted_at IS NULL
 				AND p.organization_id = s.organization_id AND p.booking_id = s.booking_id
 				AND p.payment_schedule_id = s.id THEN p.amount ELSE 0 END), 0)
@@ -118,7 +121,8 @@ export async function queryFinancialMismatches(
 				'invoice_paid_status_vs_valid_applications' AS "mismatchType",
 				'invoice' AS "entityType", i.id AS "entityId",
 				i.paid_amount AS "actualValue", paid.amount::text AS "expectedValue",
-				i.status AS "actualStatus",
+					i.status AS "actualStatus",
+					paid.amount > i.total_amount AS "exceedsUpperBound",
 				CASE WHEN paid.amount >= i.total_amount THEN 'paid'
 					WHEN i.status = 'overdue' OR (i.due_date IS NOT NULL AND i.due_date < ${asOf}) THEN 'overdue'
 					WHEN paid.amount > 0 THEN 'partial'
@@ -152,26 +156,32 @@ export async function queryFinancialMismatches(
 				AND r.received_amount_id IS NOT NULL AND (p.id IS NULL OR p.deleted_at IS NOT NULL)
 		`),
 		db.execute(sql`
-			SELECT r.organization_id AS "organizationId",
-				'duplicate_active_receipts_per_payment' AS "mismatchType",
-				'received_amount' AS "entityType", r.received_amount_id AS "entityId",
-				COUNT(*)::text AS "actualValue",
-				json_agg(r.id ORDER BY r.id) AS "details"
-			FROM receipts r
-			WHERE r.organization_id = ${organizationId} AND r.deleted_at IS NULL
-				AND r.received_amount_id IS NOT NULL
-			GROUP BY r.organization_id, r.received_amount_id
-			HAVING COUNT(*) > 1
-		`),
+				SELECT r.organization_id AS "organizationId",
+					'multiple_receipts_per_payment' AS "mismatchType",
+					'received_amount' AS "entityType", r.received_amount_id AS "entityId",
+					COUNT(*)::text AS "actualValue",
+					json_build_object(
+						'allReceiptIds', json_agg(r.id ORDER BY r.id),
+						'activeReceiptIds', COALESCE(json_agg(r.id ORDER BY r.id) FILTER (WHERE r.deleted_at IS NULL), '[]'::json),
+						'activeCount', COUNT(*) FILTER (WHERE r.deleted_at IS NULL)
+					) AS "details"
+				FROM receipts r
+				WHERE r.organization_id = ${organizationId} AND r.received_amount_id IS NOT NULL
+				GROUP BY r.organization_id, r.received_amount_id
+				HAVING COUNT(*) > 1
+			`),
 		db.execute(sql`
-			SELECT i.organization_id AS "organizationId",
-				'duplicate_invoices_per_schedule' AS "mismatchType",
-				'payment_schedule' AS "entityType", i.payment_schedule_id AS "entityId",
-				COUNT(*)::text AS "actualValue",
-				json_agg(i.id ORDER BY i.id) AS "details"
-			FROM invoices i
-			WHERE i.organization_id = ${organizationId} AND i.deleted_at IS NULL
-				AND i.payment_schedule_id IS NOT NULL
+				SELECT i.organization_id AS "organizationId",
+					'multiple_invoices_per_schedule' AS "mismatchType",
+					'payment_schedule' AS "entityType", i.payment_schedule_id AS "entityId",
+					COUNT(*)::text AS "actualValue",
+					json_build_object(
+						'allInvoiceIds', json_agg(i.id ORDER BY i.id),
+						'activeInvoiceIds', COALESCE(json_agg(i.id ORDER BY i.id) FILTER (WHERE i.deleted_at IS NULL), '[]'::json),
+						'activeCount', COUNT(*) FILTER (WHERE i.deleted_at IS NULL)
+					) AS "details"
+				FROM invoices i
+				WHERE i.organization_id = ${organizationId} AND i.payment_schedule_id IS NOT NULL
 			GROUP BY i.organization_id, i.payment_schedule_id
 			HAVING COUNT(*) > 1
 		`),
@@ -180,6 +190,7 @@ export async function queryFinancialMismatches(
 				'cross_entity_booking_org_disagreement' AS "mismatchType",
 				'received_amount' AS "entityType", p.id AS "entityId",
 				p.booking_id AS "relatedId",
+				'received_amount.booking' AS "relationKey",
 				json_build_object('relation', 'booking', 'relatedOrganizationId', b.organization_id,
 					'relatedBookingId', b.id) AS "details"
 			FROM received_amounts p LEFT JOIN bookings b ON b.id = p.booking_id
@@ -188,6 +199,7 @@ export async function queryFinancialMismatches(
 			UNION ALL
 			SELECT p.organization_id, 'cross_entity_booking_org_disagreement', 'received_amount', p.id,
 				p.payment_schedule_id,
+				'received_amount.payment_schedule',
 				json_build_object('relation', 'payment_schedule', 'relatedOrganizationId', s.organization_id,
 					'relatedBookingId', s.booking_id)
 			FROM received_amounts p LEFT JOIN payment_schedules s ON s.id = p.payment_schedule_id
@@ -196,6 +208,7 @@ export async function queryFinancialMismatches(
 			UNION ALL
 			SELECT p.organization_id, 'cross_entity_booking_org_disagreement', 'received_amount', p.id,
 				p.invoice_id,
+				'received_amount.invoice',
 				json_build_object('relation', 'invoice', 'relatedOrganizationId', i.organization_id,
 					'relatedBookingId', i.booking_id)
 			FROM received_amounts p LEFT JOIN invoices i ON i.id = p.invoice_id
@@ -204,6 +217,7 @@ export async function queryFinancialMismatches(
 				UNION ALL
 				SELECT p.organization_id, 'cross_entity_booking_org_disagreement', 'received_amount', p.id,
 					p.invoice_id,
+					'received_amount.invoice_receipt',
 					json_build_object('relation', 'invoice_application_receipt',
 						'paymentInvoiceId', p.invoice_id, 'activeValidReceiptCount', 0)
 				FROM received_amounts p
@@ -216,6 +230,7 @@ export async function queryFinancialMismatches(
 				UNION ALL
 				SELECT s.organization_id, 'cross_entity_booking_org_disagreement', 'payment_schedule', s.id,
 				s.booking_id,
+				'payment_schedule.booking',
 				json_build_object('relation', 'booking', 'relatedOrganizationId', b.organization_id,
 					'relatedBookingId', b.id)
 			FROM payment_schedules s LEFT JOIN bookings b ON b.id = s.booking_id
@@ -224,6 +239,7 @@ export async function queryFinancialMismatches(
 			UNION ALL
 			SELECT i.organization_id, 'cross_entity_booking_org_disagreement', 'invoice', i.id,
 				i.booking_id,
+				'invoice.booking',
 				json_build_object('relation', 'booking', 'relatedOrganizationId', b.organization_id,
 					'relatedBookingId', b.id)
 			FROM invoices i LEFT JOIN bookings b ON b.id = i.booking_id
@@ -232,6 +248,7 @@ export async function queryFinancialMismatches(
 			UNION ALL
 			SELECT i.organization_id, 'cross_entity_booking_org_disagreement', 'invoice', i.id,
 				i.payment_schedule_id,
+				'invoice.payment_schedule',
 				json_build_object('relation', 'payment_schedule', 'relatedOrganizationId', s.organization_id,
 					'relatedBookingId', s.booking_id)
 			FROM invoices i LEFT JOIN payment_schedules s ON s.id = i.payment_schedule_id
@@ -240,6 +257,7 @@ export async function queryFinancialMismatches(
 			UNION ALL
 			SELECT r.organization_id, 'cross_entity_booking_org_disagreement', 'receipt', r.id,
 				r.booking_id,
+				'receipt.booking',
 				json_build_object('relation', 'booking', 'relatedOrganizationId', b.organization_id,
 					'relatedBookingId', b.id)
 			FROM receipts r LEFT JOIN bookings b ON b.id = r.booking_id
@@ -248,6 +266,7 @@ export async function queryFinancialMismatches(
 			UNION ALL
 			SELECT r.organization_id, 'cross_entity_booking_org_disagreement', 'receipt', r.id,
 				r.invoice_id,
+				'receipt.invoice',
 				json_build_object('relation', 'invoice', 'relatedOrganizationId', i.organization_id,
 					'relatedBookingId', i.booking_id)
 			FROM receipts r LEFT JOIN invoices i ON i.id = r.invoice_id
@@ -256,6 +275,7 @@ export async function queryFinancialMismatches(
 			UNION ALL
 				SELECT r.organization_id, 'cross_entity_booking_org_disagreement', 'receipt', r.id,
 					r.received_amount_id,
+					'receipt.received_amount',
 					json_build_object('relation', 'received_amount', 'relatedOrganizationId', p.organization_id,
 						'relatedBookingId', p.booking_id, 'receiptInvoiceId', r.invoice_id,
 						'paymentInvoiceId', p.invoice_id)
@@ -309,9 +329,12 @@ export async function applySafeFinancialFixes(
 						WHERE p.organization_id = s.organization_id AND p.booking_id = s.booking_id
 						AND p.payment_schedule_id = s.id AND p.deleted_at IS NULL
 					), 0), updated_at = NOW()
-					WHERE s.id = ${mismatch.entityId} AND s.organization_id = ${organizationId}
-					AND s.deleted_at IS NULL AND s.status <> 'cancelled'
-					AND NOT EXISTS (SELECT 1 FROM received_amounts p WHERE p.payment_schedule_id = s.id
+						WHERE s.id = ${mismatch.entityId} AND s.organization_id = ${organizationId}
+						AND s.deleted_at IS NULL AND s.status <> 'cancelled'
+						AND COALESCE((SELECT SUM(p.amount) FROM received_amounts p
+							WHERE p.organization_id = s.organization_id AND p.booking_id = s.booking_id
+								AND p.payment_schedule_id = s.id AND p.deleted_at IS NULL), 0) <= s.amount
+						AND NOT EXISTS (SELECT 1 FROM received_amounts p WHERE p.payment_schedule_id = s.id
 						AND p.deleted_at IS NULL AND (p.organization_id <> s.organization_id OR p.booking_id <> s.booking_id))
 					RETURNING s.id
 				`);
@@ -369,11 +392,10 @@ export async function applySafeFinancialFixes(
 								WHEN i.status = 'overdue' OR (i.due_date IS NOT NULL AND i.due_date < ${asOf}) THEN 'overdue'
 								WHEN totals.amount > 0 THEN 'partial'
 								WHEN i.status IN ('paid', 'partial') THEN 'sent' ELSE i.status END,
-							paid_at = CASE WHEN totals.amount >= i.total_amount
-								THEN COALESCE(i.paid_at, NOW()) ELSE NULL END,
 							updated_at = NOW()
 						FROM totals
 						WHERE i.id = totals.id AND totals.invalid_links = 0
+							AND totals.amount <= i.total_amount
 						RETURNING i.id
 					`);
 				updated = result.rows.length > 0;
