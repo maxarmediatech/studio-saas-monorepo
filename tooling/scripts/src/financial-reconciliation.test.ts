@@ -86,6 +86,26 @@ describe("financial reconciliation taxonomy", () => {
 		assert.equal(draft.safeFixAvailable, false);
 	});
 
+	it("does not auto-fix schedule or invoice aggregates with invalid parents", () => {
+		for (const mismatchType of [
+			"schedule_total_vs_assigned_active_payments",
+			"invoice_paid_status_vs_valid_applications",
+		] as const) {
+			const mismatch = classifyMismatch({
+				...base,
+				entityType:
+					mismatchType === "invoice_paid_status_vs_valid_applications"
+						? "invoice"
+						: "payment_schedule",
+				mismatchType,
+				parentLinksValid: false,
+			});
+
+			assert.equal(mismatch.safeFixAvailable, false);
+			assert.equal(mismatch.intendedAction, null);
+		}
+	});
+
 	it("does not auto-fix an invoice application without one valid receipt", () => {
 		const missingReceipt = classifyMismatch({
 			...base,
