@@ -10,16 +10,15 @@ import {
 	googleCalendarConnections,
 	isNull,
 	organizations,
+	shootAssignments,
 } from "@repo/database";
 import {
 	createSignedGoogleOAuthState,
-	decryptToken,
 	encryptToken,
 	exchangeGoogleCalendarCode,
 	fetchGoogleAccountEmail,
 	getGoogleCalendarAuthUrl,
 	getGoogleCalendarEnv,
-	revokeGoogleToken,
 	verifySignedGoogleOAuthState,
 } from "@repo/google-calendar";
 import { logger } from "@repo/logs";
@@ -30,13 +29,42 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger as honoLogger } from "hono/logger";
 import { mergeOpenApiSchemas } from "./lib/openapi-schema";
-import { reconcileCalendarDeliveries } from "./modules/shoots/lib/calendar-delivery";
+import { ensureAssignmentCalendarDelivery } from "./modules/shoots/lib/calendar-intents";
 import {
 	handleCloudWebhook,
 	verifyCloudWebhook,
 } from "./modules/whatsapp/webhook-handler";
 import { openApiHandler, rpcHandler } from "./orpc/handler";
 import { router } from "./orpc/router";
+
+async function mutateCrewCalendarRoute(
+	tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+	params: { organizationId: string; userId: string },
+) {
+	const crew = await tx.query.crews.findFirst({
+		where: and(
+			eq(crews.organizationId, params.organizationId),
+			eq(crews.userId, params.userId),
+			isNull(crews.deletedAt),
+		),
+		columns: { id: true },
+	});
+	if (!crew) {
+		return null;
+	}
+	const assignments = await tx.query.shootAssignments.findMany({
+		where: eq(shootAssignments.crewId, crew.id),
+		columns: { shootId: true },
+	});
+	for (const assignment of assignments) {
+		await ensureAssignmentCalendarDelivery(tx, {
+			organizationId: params.organizationId,
+			shootId: assignment.shootId,
+			crewId: crew.id,
+		});
+	}
+	return crew;
+}
 
 export const app = new Hono()
 	.basePath("/api")
@@ -198,6 +226,7 @@ export const app = new Hono()
 				400,
 			);
 		}
+		const refreshToken = tokenResponse.refreshToken;
 
 		const accessToken = tokenResponse.accessToken;
 		const googleAccountEmail = accessToken
@@ -211,43 +240,42 @@ export const app = new Hono()
 				})
 			: null;
 
-		await db
-			.insert(googleCalendarConnections)
-			.values({
-				organizationId,
-				userId: session.user.id,
-				googleAccountEmail: googleAccountEmail ?? null,
-				accessToken: accessToken ? encryptToken(accessToken) : null,
-				refreshToken: encryptToken(tokenResponse.refreshToken),
-				scope: tokenResponse.scope ?? null,
-				accessTokenExpiresAt: tokenResponse.accessTokenExpiresAt,
-				disconnectedAt: null,
-				updatedAt: new Date(),
-			})
-			.onConflictDoUpdate({
-				target: [
-					googleCalendarConnections.organizationId,
-					googleCalendarConnections.userId,
-				],
-				set: {
+		const crew = await db.transaction(async (tx) => {
+			await tx
+				.insert(googleCalendarConnections)
+				.values({
+					organizationId,
+					userId: session.user.id,
 					googleAccountEmail: googleAccountEmail ?? null,
 					accessToken: accessToken ? encryptToken(accessToken) : null,
-					refreshToken: encryptToken(tokenResponse.refreshToken),
+					refreshToken: encryptToken(refreshToken),
 					scope: tokenResponse.scope ?? null,
 					accessTokenExpiresAt: tokenResponse.accessTokenExpiresAt,
 					disconnectedAt: null,
 					updatedAt: new Date(),
-				},
+				})
+				.onConflictDoUpdate({
+					target: [
+						googleCalendarConnections.organizationId,
+						googleCalendarConnections.userId,
+					],
+					set: {
+						googleAccountEmail: googleAccountEmail ?? null,
+						accessToken: accessToken
+							? encryptToken(accessToken)
+							: null,
+						refreshToken: encryptToken(refreshToken),
+						scope: tokenResponse.scope ?? null,
+						accessTokenExpiresAt:
+							tokenResponse.accessTokenExpiresAt,
+						disconnectedAt: null,
+						updatedAt: new Date(),
+					},
+				});
+			return mutateCrewCalendarRoute(tx, {
+				organizationId,
+				userId: session.user.id,
 			});
-
-		// Reconcile calendar delivery for this crew after Google is connected.
-		const crew = await db.query.crews.findFirst({
-			where: and(
-				eq(crews.organizationId, organizationId),
-				eq(crews.userId, session.user.id),
-				isNull(crews.deletedAt),
-			),
-			columns: { id: true },
 		});
 
 		if (crew) {
@@ -255,12 +283,6 @@ export const app = new Hono()
 				where: eq(organizations.id, organizationId),
 				columns: { slug: true },
 			});
-			await reconcileCalendarDeliveries({
-				organizationId,
-				crewId: crew.id,
-				apply: true,
-			});
-
 			if (org?.slug) {
 				return c.redirect(
 					`${getBaseUrl()}/app/${org.slug}/settings/integrations?googleCalendar=connected`,
@@ -323,41 +345,19 @@ export const app = new Hono()
 			return c.json({ ok: true });
 		}
 
-		try {
-			const env = getGoogleCalendarEnv();
-			const tokenToRevoke = connection.accessToken
-				? decryptToken(connection.accessToken)
-				: connection.refreshToken
-					? decryptToken(connection.refreshToken)
-					: null;
-
-			if (tokenToRevoke) {
-				await revokeGoogleToken({
-					config: {
-						clientId: env.clientId,
-						clientSecret: env.clientSecret,
-						redirectUri: env.redirectUri,
-					},
-					token: tokenToRevoke,
-				});
-			}
-		} catch (error) {
-			logger.warn("Failed to revoke Google Calendar token", {
-				error: error instanceof Error ? error.message : String(error),
+		await db.transaction(async (tx) => {
+			await tx
+				.update(googleCalendarConnections)
+				.set({
+					disconnectedAt: new Date(),
+					updatedAt: new Date(),
+				})
+				.where(eq(googleCalendarConnections.id, connection.id));
+			await mutateCrewCalendarRoute(tx, {
+				organizationId,
+				userId: session.user.id,
 			});
-		}
-
-		await db
-			.update(googleCalendarConnections)
-			.set({
-				disconnectedAt: new Date(),
-				accessToken: null,
-				refreshToken: null,
-				scope: null,
-				accessTokenExpiresAt: null,
-				updatedAt: new Date(),
-			})
-			.where(eq(googleCalendarConnections.id, connection.id));
+		});
 
 		return c.json({ ok: true });
 	})

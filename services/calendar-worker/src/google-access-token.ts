@@ -9,12 +9,15 @@ import {
 export async function getGoogleAccessToken(params: {
 	organizationId: string;
 	userId: string;
+	allowDisconnected?: boolean;
 }) {
 	const connection = await db.query.googleCalendarConnections.findFirst({
 		where: and(
 			eq(googleCalendarConnections.organizationId, params.organizationId),
 			eq(googleCalendarConnections.userId, params.userId),
-			isNull(googleCalendarConnections.disconnectedAt),
+			params.allowDisconnected
+				? undefined
+				: isNull(googleCalendarConnections.disconnectedAt),
 		),
 	});
 
