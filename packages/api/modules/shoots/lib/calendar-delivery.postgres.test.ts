@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-// Set to an isolated database migrated through 0042_calendar_delivery_identity.
+// Set to an isolated database migrated through 0041_calendar_delivery_identity.
 const databaseUrl = process.env.POSTGRES_CALENDAR_DATABASE_URL;
 const describePostgres = databaseUrl ? describe : describe.skip;
 
