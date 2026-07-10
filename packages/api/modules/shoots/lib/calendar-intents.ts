@@ -7,6 +7,7 @@ import {
 	isNotNull,
 	isNull,
 	shootCalendarEvents,
+	sql,
 } from "@repo/database";
 import type { GoogleAllDayEventInput } from "@repo/google-calendar";
 import type { TransactionClient } from "../../studio/lib/transactions";
@@ -61,10 +62,23 @@ export type CalendarSnapshot = {
 
 export { getCalendarDeliveryKey } from "./calendar-intent-persistence";
 
+async function lockCalendarIntent(
+	tx: TransactionClient,
+	params: { organizationId: string; shootId: string; crewId: string },
+) {
+	// A mapping may not exist yet, so a row lock cannot serialize first intent
+	// creation. PostgreSQL's transaction-scoped advisory lock serializes every
+	// transition for this organization-scoped target without outliving the tx.
+	await tx.execute(
+		sql`SELECT pg_advisory_xact_lock(hashtextextended(${`${params.organizationId}:${params.shootId}:${params.crewId}`}, 0))`,
+	);
+}
+
 export async function ensureAssignmentCalendarDelivery(
 	tx: TransactionClient,
 	params: { organizationId: string; shootId: string; crewId: string },
 ): Promise<CalendarDeliveryResult> {
+	await lockCalendarIntent(tx, params);
 	const target = await getActiveAssignmentTarget(tx, params);
 	if (!target) {
 		throw new Error(
@@ -313,6 +327,7 @@ export async function enqueueCalendarCancellation(
 	tx: TransactionClient,
 	params: { organizationId: string; shootId: string; crewId: string },
 ) {
+	await lockCalendarIntent(tx, params);
 	const mapping = await tx.query.shootCalendarEvents.findFirst({
 		where: and(
 			eq(shootCalendarEvents.organizationId, params.organizationId),
