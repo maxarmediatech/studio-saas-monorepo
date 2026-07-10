@@ -33,6 +33,9 @@ export async function reconcileCalendarDeliveries(params: {
 	const pendingRouteChanges = await db.query.calendarRouteChanges.findMany({
 		where: and(
 			eq(calendarRouteChanges.organizationId, params.organizationId),
+			params.crewId
+				? eq(calendarRouteChanges.crewId, params.crewId)
+				: undefined,
 			eq(calendarRouteChanges.status, "pending"),
 		),
 	});
@@ -132,6 +135,9 @@ export async function reconcileCalendarDeliveries(params: {
 						params.organizationId,
 					),
 					eq(calendarRouteChanges.status, "pending"),
+					params.crewId
+						? eq(calendarRouteChanges.crewId, params.crewId)
+						: undefined,
 				),
 			);
 	}
