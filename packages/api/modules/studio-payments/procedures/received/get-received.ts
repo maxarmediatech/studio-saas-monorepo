@@ -14,6 +14,7 @@ import {
 	getReceivedInputSchema,
 	getReceivedOutputSchema,
 } from "../../../studio/schemas/payment";
+import { getPaymentFinancialProtection } from "../../lib/payment-financial-protection";
 
 export const getReceived = studioProtectedProcedure
 	.route({
@@ -44,6 +45,7 @@ export const getReceived = studioProtectedProcedure
 				notes: receivedAmounts.notes,
 				proofAttachment: receivedAmounts.proofAttachment,
 				paymentScheduleId: receivedAmounts.paymentScheduleId,
+				invoiceId: receivedAmounts.invoiceId,
 				createdBy: receivedAmounts.createdBy,
 				updatedBy: receivedAmounts.updatedBy,
 				createdAt: receivedAmounts.createdAt,
@@ -72,22 +74,26 @@ export const getReceived = studioProtectedProcedure
 			});
 		}
 
-		// Get schedule info if linked
-		let schedule: { id: string; name: string } | null = null;
-		if (received.paymentScheduleId) {
-			const scheduleResult = await db
-				.select({
-					id: paymentSchedules.id,
-					name: paymentSchedules.name,
-				})
-				.from(paymentSchedules)
-				.where(eq(paymentSchedules.id, received.paymentScheduleId))
-				.limit(1);
-
-			if (scheduleResult[0]) {
-				schedule = scheduleResult[0];
-			}
-		}
+		const [scheduleResult, financialProtection] = await Promise.all([
+			received.paymentScheduleId
+				? db
+						.select({
+							id: paymentSchedules.id,
+							name: paymentSchedules.name,
+						})
+						.from(paymentSchedules)
+						.where(
+							eq(paymentSchedules.id, received.paymentScheduleId),
+						)
+						.limit(1)
+				: Promise.resolve([]),
+			getPaymentFinancialProtection(db, {
+				organizationId: context.organizationId,
+				receivedAmountId: received.id,
+				invoiceId: received.invoiceId,
+				paymentScheduleId: received.paymentScheduleId,
+			}),
+		]);
 
 		return {
 			data: {
@@ -118,7 +124,8 @@ export const getReceived = studioProtectedProcedure
 					name: received.bookingName,
 					referenceNumber: received.bookingReferenceNumber,
 				},
-				schedule,
+				schedule: scheduleResult[0] ?? null,
+				financialProtection,
 			},
 		};
 	});

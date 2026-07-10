@@ -187,6 +187,11 @@ export const receivedAmountDetailSchema = receivedAmountSchema.extend({
 			name: z.string(),
 		})
 		.nullable(),
+	financialProtection: z.object({
+		canEditFinancialDetails: z.boolean(),
+		canDelete: z.boolean(),
+		reasons: z.array(z.enum(["invoice", "receipt", "schedule"])),
+	}),
 });
 
 export type ReceivedAmountDetail = z.infer<typeof receivedAmountDetailSchema>;

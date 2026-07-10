@@ -1,13 +1,5 @@
 import { ORPCError } from "@orpc/server";
-import {
-	and,
-	bookings,
-	db,
-	eq,
-	invoices,
-	isNull,
-	receipts,
-} from "@repo/database";
+import { and, db, eq, isNull, receipts } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { formatAmount, safeTrackActivity } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
@@ -15,6 +7,11 @@ import {
 	createReceiptFromPaymentInputSchema,
 	createReceiptFromPaymentOutputSchema,
 } from "../../studio/schemas/receipt";
+import { getLockedReceivedPayment } from "../../studio-payments/lib/received-payment-lock";
+import {
+	getLockedBookingForReceipt,
+	getLockedInvoiceForReceipt,
+} from "../lib/locked-invoice-for-receipt";
 import {
 	generateReceiptNumber,
 	updateInvoicePaymentStatus,
@@ -34,47 +31,70 @@ export const createReceiptFromPayment = studioProtectedProcedure
 	.handler(async ({ input, context }) => {
 		await requirePermission(context, "payment", "create");
 
-		const {
-			bookingId,
-			invoiceId,
-			receivedAmountId,
-			amount,
-			paymentMethod,
-			receiptDate,
-			notes,
-		} = input;
-
-		const booking = await db.query.bookings.findFirst({
-			where: and(
-				eq(bookings.id, bookingId),
-				eq(bookings.organizationId, context.organizationId),
-				isNull(bookings.deletedAt),
-			),
-			columns: { id: true, name: true },
-		});
-
-		if (!booking) {
-			throw new ORPCError("NOT_FOUND", {
-				message: "Booking not found",
-			});
-		}
-
-		const invoice = await db.query.invoices.findFirst({
-			where: and(
-				eq(invoices.id, invoiceId),
-				eq(invoices.organizationId, context.organizationId),
-				isNull(invoices.deletedAt),
-			),
-			columns: { id: true, invoiceNumber: true },
-		});
-
-		if (!invoice) {
-			throw new ORPCError("NOT_FOUND", {
-				message: "Invoice not found",
-			});
-		}
+		const { bookingId, invoiceId, receivedAmountId } = input;
 
 		return await db.transaction(async (tx) => {
+			const booking = await getLockedBookingForReceipt(tx, {
+				organizationId: context.organizationId,
+				bookingId,
+			});
+
+			if (!booking) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Booking not found",
+				});
+			}
+
+			const invoice = await getLockedInvoiceForReceipt(tx, {
+				organizationId: context.organizationId,
+				bookingId,
+				invoiceId,
+			});
+
+			if (!invoice) {
+				throw new ORPCError("NOT_FOUND", {
+					message:
+						"Invoice not found or does not belong to this booking",
+				});
+			}
+
+			const received = await getLockedReceivedPayment(tx, {
+				organizationId: context.organizationId,
+				receivedAmountId,
+			});
+
+			if (!received) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Received payment not found",
+				});
+			}
+
+			if (
+				received.bookingId !== bookingId ||
+				received.invoiceId !== invoiceId
+			) {
+				throw new ORPCError("CONFLICT", {
+					message:
+						"Received payment does not match the supplied booking or invoice",
+				});
+			}
+
+			const existingReceipt = await tx.query.receipts.findFirst({
+				where: and(
+					eq(receipts.organizationId, context.organizationId),
+					eq(receipts.receivedAmountId, received.id),
+					isNull(receipts.deletedAt),
+				),
+				columns: { id: true },
+			});
+
+			if (existingReceipt) {
+				return {
+					data: { id: existingReceipt.id },
+					message: "Receipt already exists",
+				};
+			}
+
 			const receiptNumber = await generateReceiptNumber(
 				bookingId,
 				context.organizationId,
@@ -89,10 +109,10 @@ export const createReceiptFromPayment = studioProtectedProcedure
 					invoiceId,
 					receivedAmountId,
 					receiptNumber,
-					amount,
-					paymentMethod: paymentMethod ?? null,
-					receiptDate,
-					notes: notes ?? null,
+					amount: received.amount,
+					paymentMethod: received.paymentMethod,
+					receiptDate: received.receivedDate,
+					notes: received.notes,
 					createdBy: context.user.id,
 					updatedBy: context.user.id,
 				})
@@ -104,19 +124,19 @@ export const createReceiptFromPayment = studioProtectedProcedure
 				});
 			}
 
-				await updateInvoicePaymentStatus(tx, invoiceId, context.user.id);
+			await updateInvoicePaymentStatus(tx, invoiceId, context.user.id);
 
 			await safeTrackActivity(context, {
 				entityType: "received_amount",
 				entityId: created.id,
-				entityName: `Receipt ${receiptNumber} (${formatAmount(amount)})`,
+				entityName: `Receipt ${receiptNumber} (${formatAmount(received.amount)})`,
 				action: "created",
 				parentEntityType: "booking",
 				parentEntityId: bookingId,
 				parentEntityName: booking.name,
 				metadata: {
 					receiptNumber,
-					amount,
+					amount: received.amount,
 					invoiceNumber: invoice.invoiceNumber,
 					type: "receipt",
 				},

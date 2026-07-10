@@ -4,7 +4,6 @@ import {
 	bookings,
 	db,
 	eq,
-	invoices,
 	isNull,
 	paymentSchedules,
 	receipts,
@@ -13,6 +12,10 @@ import {
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../../orpc/procedures";
 import { formatAmount, safeTrackActivity } from "../../../activities/lib";
+import {
+	getLockedBookingForReceipt,
+	getLockedInvoiceForReceipt,
+} from "../../../receipts/lib/locked-invoice-for-receipt";
 import {
 	generateReceiptNumber,
 	updateInvoicePaymentStatus,
@@ -48,41 +51,6 @@ export const createReceived = studioProtectedProcedure
 			invoiceId,
 		} = input;
 
-		// Verify booking exists and belongs to organization
-		const booking = await db.query.bookings.findFirst({
-			where: and(
-				eq(bookings.id, bookingId),
-				eq(bookings.organizationId, context.organizationId),
-				isNull(bookings.deletedAt),
-			),
-		});
-
-		if (!booking) {
-			throw new ORPCError("NOT_FOUND", {
-				message: "Booking not found",
-			});
-		}
-
-		let invoice = null;
-		if (invoiceId) {
-			invoice = await db.query.invoices.findFirst({
-				where: and(
-					eq(invoices.id, invoiceId),
-					eq(invoices.bookingId, bookingId),
-					eq(invoices.organizationId, context.organizationId),
-					isNull(invoices.deletedAt),
-				),
-				columns: { id: true, invoiceNumber: true },
-			});
-
-			if (!invoice) {
-				throw new ORPCError("NOT_FOUND", {
-					message:
-						"Invoice not found or does not belong to this booking",
-				});
-			}
-		}
-
 		// If payment schedule is specified, verify it exists and belongs to the booking
 		if (paymentScheduleId) {
 			const schedule = await db.query.paymentSchedules.findFirst({
@@ -114,6 +82,32 @@ export const createReceived = studioProtectedProcedure
 
 		// Use transaction to create received amount and update booking totals
 		return await db.transaction(async (tx) => {
+			const lockedBooking = await getLockedBookingForReceipt(tx, {
+				organizationId: context.organizationId,
+				bookingId,
+			});
+
+			if (!lockedBooking) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Booking not found",
+				});
+			}
+
+			const invoice = invoiceId
+				? await getLockedInvoiceForReceipt(tx, {
+						organizationId: context.organizationId,
+						bookingId,
+						invoiceId,
+					})
+				: null;
+
+			if (invoiceId && !invoice) {
+				throw new ORPCError("NOT_FOUND", {
+					message:
+						"Invoice not found or does not belong to this booking",
+				});
+			}
+
 			// Create received amount
 			const [created] = await tx
 				.insert(receivedAmounts)
@@ -146,22 +140,26 @@ export const createReceived = studioProtectedProcedure
 					tx,
 				);
 
-					await tx.insert(receipts).values({
-						organizationId: context.organizationId,
-						bookingId,
-						invoiceId,
+				await tx.insert(receipts).values({
+					organizationId: context.organizationId,
+					bookingId,
+					invoiceId,
 					receivedAmountId: created.id,
 					receiptNumber,
 					amount,
 					paymentMethod,
 					receiptDate: receivedDate,
 					notes: notes ?? null,
-						createdBy: context.user.id,
-						updatedBy: context.user.id,
-					});
+					createdBy: context.user.id,
+					updatedBy: context.user.id,
+				});
 
-					await updateInvoicePaymentStatus(tx, invoiceId, context.user.id);
-				}
+				await updateInvoicePaymentStatus(
+					tx,
+					invoiceId,
+					context.user.id,
+				);
+			}
 
 			// Update booking total received
 			await tx
@@ -218,7 +216,7 @@ export const createReceived = studioProtectedProcedure
 					action: "payment_received",
 					parentEntityType: "booking",
 					parentEntityId: bookingId,
-					parentEntityName: booking.name,
+					parentEntityName: lockedBooking.name,
 					metadata: { amount, paymentMethod },
 				},
 			);

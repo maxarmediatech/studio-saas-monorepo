@@ -1,7 +1,6 @@
 import { ORPCError } from "@orpc/server";
 import {
 	and,
-	bookings,
 	db,
 	desc,
 	eq,
@@ -16,6 +15,11 @@ import {
 	generateReceiptFromReceivedInputSchema,
 	generateReceiptFromReceivedOutputSchema,
 } from "../../studio/schemas/receipt";
+import { getLockedReceivedPayment } from "../../studio-payments/lib/received-payment-lock";
+import {
+	getLockedBookingForReceipt,
+	getLockedInvoiceForReceipt,
+} from "../lib/locked-invoice-for-receipt";
 import {
 	generateReceiptNumber,
 	updateInvoicePaymentStatus,
@@ -58,26 +62,65 @@ export const generateReceiptFromReceived = studioProtectedProcedure
 		const { receivedAmountId } = input;
 
 		return await db.transaction(async (tx) => {
-			const received = await tx.query.receivedAmounts.findFirst({
+			const lockPlan = await tx.query.receivedAmounts.findFirst({
 				where: and(
 					eq(receivedAmounts.id, receivedAmountId),
 					eq(receivedAmounts.organizationId, context.organizationId),
 					isNull(receivedAmounts.deletedAt),
 				),
-				columns: {
-					id: true,
-					bookingId: true,
-					invoiceId: true,
-					amount: true,
-					paymentMethod: true,
-					receivedDate: true,
-					notes: true,
-				},
+				columns: { bookingId: true, invoiceId: true },
+			});
+
+			if (!lockPlan) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Received payment not found",
+				});
+			}
+
+			const booking = await getLockedBookingForReceipt(tx, {
+				organizationId: context.organizationId,
+				bookingId: lockPlan.bookingId,
+			});
+
+			if (!booking) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Booking not found",
+				});
+			}
+
+			if (lockPlan.invoiceId) {
+				const invoice = await getLockedInvoiceForReceipt(tx, {
+					organizationId: context.organizationId,
+					bookingId: lockPlan.bookingId,
+					invoiceId: lockPlan.invoiceId,
+				});
+
+				if (!invoice) {
+					throw new ORPCError("NOT_FOUND", {
+						message:
+							"Invoice not found or does not belong to this booking",
+					});
+				}
+			}
+
+			const received = await getLockedReceivedPayment(tx, {
+				organizationId: context.organizationId,
+				receivedAmountId,
 			});
 
 			if (!received) {
 				throw new ORPCError("NOT_FOUND", {
 					message: "Received payment not found",
+				});
+			}
+
+			if (
+				received.bookingId !== lockPlan.bookingId ||
+				received.invoiceId !== lockPlan.invoiceId
+			) {
+				throw new ORPCError("CONFLICT", {
+					message:
+						"Received payment relationships changed during receipt generation. Retry the request.",
 				});
 			}
 
@@ -100,24 +143,8 @@ export const generateReceiptFromReceived = studioProtectedProcedure
 				};
 			}
 
-			const booking = await tx.query.bookings.findFirst({
-				where: and(
-					eq(bookings.id, received.bookingId),
-					eq(bookings.organizationId, context.organizationId),
-					isNull(bookings.deletedAt),
-				),
-				columns: { id: true, name: true },
-			});
-
-			if (!booking) {
-				throw new ORPCError("NOT_FOUND", {
-					message: "Booking not found",
-				});
-			}
-
-			let createdReceipt:
-				| { id: string; receiptNumber: string }
-				| null = null;
+			let createdReceipt: { id: string; receiptNumber: string } | null =
+				null;
 
 			for (
 				let attempt = 0;

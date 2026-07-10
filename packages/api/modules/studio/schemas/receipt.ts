@@ -15,9 +15,7 @@ import {
 	idSchema,
 	moneySchema,
 	mutationResponseSchema,
-	notesSchema,
 	paginationSchema,
-	paymentMethodSchema,
 	searchSchema,
 } from "./common";
 
@@ -142,10 +140,6 @@ export const createReceiptFromPaymentInputSchema = z.object({
 	bookingId: idSchema,
 	invoiceId: idSchema,
 	receivedAmountId: idSchema,
-	amount: moneySchema,
-	paymentMethod: paymentMethodSchema.optional(),
-	receiptDate: dateSchema,
-	notes: notesSchema,
 });
 
 export type CreateReceiptFromPaymentInput = z.infer<
