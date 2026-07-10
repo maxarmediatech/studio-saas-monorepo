@@ -6,7 +6,6 @@ import {
 	invoices,
 	isNull,
 	paymentSchedules,
-	receipts,
 	receivedAmounts,
 	sql,
 } from "@repo/database";
@@ -29,6 +28,9 @@ interface PaymentActor {
 	organizationId: string;
 	userId: string;
 }
+
+export const SCHEDULE_ALREADY_CONVERTED_MESSAGE =
+	"Payment schedule has already been converted";
 
 export async function createReceivedPaymentTransition(
 	tx: TransactionClient,
@@ -186,34 +188,9 @@ export async function convertSchedulePaymentTransition(
 	}
 
 	if (schedule.status === "partial" || schedule.status === "completed") {
-		const existingReceived = await tx.query.receivedAmounts.findFirst({
-			where: and(
-				eq(receivedAmounts.paymentScheduleId, input.scheduleId),
-				eq(receivedAmounts.organizationId, input.organizationId),
-				isNull(receivedAmounts.deletedAt),
-			),
-			columns: { id: true },
+		throw new ORPCError("CONFLICT", {
+			message: SCHEDULE_ALREADY_CONVERTED_MESSAGE,
 		});
-		const existingReceipt = existingReceived
-			? await tx.query.receipts.findFirst({
-					where: and(
-						eq(receipts.receivedAmountId, existingReceived.id),
-						eq(receipts.organizationId, input.organizationId),
-						isNull(receipts.deletedAt),
-					),
-					columns: { id: true },
-				})
-			: null;
-		return {
-			receivedId: existingReceived?.id ?? input.scheduleId,
-			scheduleId: input.scheduleId,
-			receiptId: existingReceipt?.id ?? null,
-			created: false,
-			bookingName: booking.name,
-			schedule,
-			paidAmount: schedule.paidAmount,
-			scheduleStatus: schedule.status,
-		};
 	}
 
 	const transition = buildSchedulePaymentTransition(

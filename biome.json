@@ -45,7 +45,13 @@
 	},
 	"assist": { "actions": { "source": { "organizeImports": "on" } } },
 	"files": {
-		"includes": ["**", "!zod/index.ts", "!tailwind-animate.css", "!.claude"]
+		"includes": [
+			"**",
+			"!zod/index.ts",
+			"!tailwind-animate.css",
+			"!.claude",
+			"!packages/database/drizzle/migrations/meta"
+		]
 	},
 	"overrides": [
 		{

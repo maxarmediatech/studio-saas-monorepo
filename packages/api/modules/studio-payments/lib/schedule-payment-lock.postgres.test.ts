@@ -6,7 +6,7 @@ const describePostgres = databaseUrl ? describe : describe.skip;
 describePostgres(
 	"schedule payment production orchestration concurrency",
 	() => {
-		it("allows only one concurrent schedule conversion effect", async () => {
+		it("conflicts identical and differing retries after one conversion effect", async () => {
 			const originalDatabaseUrl = process.env.DATABASE_URL;
 			process.env.DATABASE_URL = databaseUrl;
 			const {
@@ -49,30 +49,88 @@ describePostgres(
 				dueDate: "2026-01-01",
 			});
 
-			const convert = () =>
+			const cashConversion = {
+				organizationId,
+				userId: "race_test_actor",
+				scheduleId,
+				amount: "100.00",
+				paymentMethod: "cash" as const,
+				receivedDate: "2026-01-01",
+			};
+			const bankConversion = {
+				organizationId,
+				userId: "race_test_actor",
+				scheduleId,
+				amount: "90.00",
+				paymentMethod: "bank_transfer" as const,
+				transactionReference: "DIFFERENT-REQUEST",
+				receivedDate: "2026-01-02",
+			};
+			const convert = (
+				request: typeof cashConversion | typeof bankConversion,
+			) =>
 				db.transaction((tx) =>
-					convertSchedulePaymentTransition(tx, {
-						organizationId,
-						userId: "race_test_actor",
-						scheduleId,
-						amount: "100.00",
-						paymentMethod: "cash",
-						receivedDate: "2026-01-01",
-					}),
+					convertSchedulePaymentTransition(tx, request),
 				);
 
 			try {
-				const [first, second] = await Promise.all([
-					convert(),
-					convert(),
+				const outcomes = await Promise.allSettled([
+					convert(cashConversion),
+					convert(bankConversion),
 				]);
-				expect(first.receivedId).toBeTruthy();
-				expect(second.receivedId).toBe(first.receivedId);
+				expect(
+					outcomes.filter(
+						(outcome) => outcome.status === "fulfilled",
+					),
+				).toHaveLength(1);
+				const rejected = outcomes.find(
+					(outcome) => outcome.status === "rejected",
+				);
+				expect(rejected).toMatchObject({
+					status: "rejected",
+					reason: {
+						message: "Payment schedule has already been converted",
+					},
+				});
 				const [payments] = await db
 					.select({ count: count() })
 					.from(receivedAmounts)
 					.where(eq(receivedAmounts.paymentScheduleId, scheduleId));
 				expect(Number(payments?.count)).toBe(1);
+				const persistedPayment =
+					await db.query.receivedAmounts.findFirst({
+						where: eq(
+							receivedAmounts.paymentScheduleId,
+							scheduleId,
+						),
+						columns: {
+							amount: true,
+							paymentMethod: true,
+							receivedDate: true,
+							transactionReference: true,
+						},
+					});
+				expect([
+					{
+						amount: "100.00",
+						paymentMethod: "cash",
+						receivedDate: "2026-01-01",
+						transactionReference: null,
+					},
+					{
+						amount: "90.00",
+						paymentMethod: "bank_transfer",
+						receivedDate: "2026-01-02",
+						transactionReference: "DIFFERENT-REQUEST",
+					},
+				]).toContainEqual(persistedPayment);
+				const winningRequest =
+					persistedPayment?.amount === "100.00"
+						? cashConversion
+						: bankConversion;
+				await expect(convert(winningRequest)).rejects.toThrow(
+					"Payment schedule has already been converted",
+				);
 			} finally {
 				await db
 					.delete(organizations)
@@ -215,7 +273,7 @@ describePostgres(
 			});
 
 			try {
-				await Promise.allSettled([
+				const outcomes = await Promise.allSettled([
 					db.transaction((tx) =>
 						convertSchedulePaymentTransition(tx, {
 							organizationId,
@@ -235,22 +293,36 @@ describePostgres(
 						}),
 					),
 				]);
+				expect(outcomes[0]?.status).toBe("fulfilled");
 
 				const [payments] = await db
 					.select({ count: count() })
 					.from(receivedAmounts)
 					.where(eq(receivedAmounts.paymentScheduleId, scheduleId));
 				expect(Number(payments?.count)).toBe(1);
-				const linkedInvoice = await db.query.invoices.findFirst({
-					where: eq(invoices.paymentScheduleId, scheduleId),
-					columns: { id: true },
-				});
-				if (linkedInvoice) {
+				const [invoiceRows] = await db
+					.select({ count: count() })
+					.from(invoices)
+					.where(eq(invoices.paymentScheduleId, scheduleId));
+				const invoiceCount = Number(invoiceRows?.count);
+				if (outcomes[1]?.status === "fulfilled") {
+					expect(invoiceCount).toBe(1);
 					const [activeReceipts] = await db
 						.select({ count: count() })
 						.from(receipts)
-						.where(eq(receipts.invoiceId, linkedInvoice.id));
+						.where(eq(receipts.invoiceId, outcomes[1].value.id));
 					expect(Number(activeReceipts?.count)).toBe(1);
+				} else {
+					expect(outcomes[1]?.reason).toMatchObject({
+						message:
+							"Invoices cannot be generated from partially paid, completed, or cancelled schedules",
+					});
+					expect(invoiceCount).toBe(0);
+					const [activeReceipts] = await db
+						.select({ count: count() })
+						.from(receipts)
+						.where(eq(receipts.organizationId, organizationId));
+					expect(Number(activeReceipts?.count)).toBe(0);
 				}
 			} finally {
 				await db

@@ -6,6 +6,8 @@ import {
 	getLockedBookingForReceipt,
 	getLockedInvoiceForReceipt,
 	getLockedReceiptForVoid,
+	getLockedReceiptHistoryForPayment,
+	getLockedScheduleForReceipt,
 } from "./locked-invoice-for-receipt";
 import {
 	generateReceiptNumber,
@@ -90,7 +92,7 @@ export async function issueReceiptForReceivedPayment(
 			eq(receivedAmounts.organizationId, input.organizationId),
 			isNull(receivedAmounts.deletedAt),
 		),
-		columns: { bookingId: true, invoiceId: true },
+		columns: { bookingId: true, invoiceId: true, paymentScheduleId: true },
 	});
 
 	if (!lockPlan) {
@@ -124,6 +126,18 @@ export async function issueReceiptForReceivedPayment(
 		});
 	}
 
+	const schedule = lockPlan.paymentScheduleId
+		? await getLockedScheduleForReceipt(tx, {
+				organizationId: input.organizationId,
+				bookingId,
+				paymentScheduleId: lockPlan.paymentScheduleId,
+			})
+		: null;
+	if (lockPlan.paymentScheduleId && !schedule) {
+		throw new ORPCError("CONFLICT", {
+			message: "Payment schedule no longer exists for this payment",
+		});
+	}
 	const received = await getLockedReceivedPayment(tx, {
 		organizationId: input.organizationId,
 		receivedAmountId: input.receivedAmountId,
@@ -137,7 +151,8 @@ export async function issueReceiptForReceivedPayment(
 
 	if (
 		received.bookingId !== bookingId ||
-		received.invoiceId !== (invoiceId ?? null)
+		received.invoiceId !== (invoiceId ?? null) ||
+		received.paymentScheduleId !== lockPlan.paymentScheduleId
 	) {
 		throw new ORPCError("CONFLICT", {
 			message: input.expectedBookingId
@@ -145,15 +160,27 @@ export async function issueReceiptForReceivedPayment(
 				: "Received payment relationships changed during receipt generation. Retry the request.",
 		});
 	}
+	if (invoice && invoice.paymentScheduleId !== received.paymentScheduleId) {
+		throw new ORPCError("CONFLICT", {
+			message:
+				"Payment and invoice belong to different payment schedules",
+		});
+	}
 
-	const existingReceipt = await tx.query.receipts.findFirst({
-		where: and(
-			eq(receipts.organizationId, input.organizationId),
-			eq(receipts.receivedAmountId, received.id),
-			isNull(receipts.deletedAt),
-		),
-		columns: { id: true, receiptNumber: true },
+	const receiptHistory = await getLockedReceiptHistoryForPayment(tx, {
+		organizationId: input.organizationId,
+		receivedAmountId: received.id,
 	});
+	const voidedReceipt = receiptHistory.find((receipt) => receipt.deletedAt);
+	if (voidedReceipt) {
+		throw new ORPCError("CONFLICT", {
+			message:
+				"A receipt for this payment was voided and cannot be reissued",
+		});
+	}
+	const existingReceipt = receiptHistory.find(
+		(receipt) => !receipt.deletedAt,
+	);
 
 	if (existingReceipt) {
 		return {
@@ -162,6 +189,7 @@ export async function issueReceiptForReceivedPayment(
 			created: false,
 			booking,
 			invoice,
+			schedule,
 			received,
 		};
 	}
@@ -192,6 +220,7 @@ export async function issueReceiptForReceivedPayment(
 		created: true,
 		booking,
 		invoice,
+		schedule,
 		received,
 	};
 }
@@ -224,6 +253,25 @@ export async function voidReceiptTransition(
 			voided: false,
 		};
 	}
+	const paymentPlan = lockPlan.receivedAmountId
+		? await tx.query.receivedAmounts.findFirst({
+				where: and(
+					eq(receivedAmounts.id, lockPlan.receivedAmountId),
+					eq(receivedAmounts.organizationId, input.organizationId),
+					isNull(receivedAmounts.deletedAt),
+				),
+				columns: {
+					bookingId: true,
+					invoiceId: true,
+					paymentScheduleId: true,
+				},
+			})
+		: null;
+	if (lockPlan.receivedAmountId && !paymentPlan) {
+		throw new ORPCError("CONFLICT", {
+			message: "Receipt payment no longer exists",
+		});
+	}
 
 	const booking = await getLockedBookingForReceipt(tx, {
 		organizationId: input.organizationId,
@@ -233,20 +281,32 @@ export async function voidReceiptTransition(
 		throw new ORPCError("NOT_FOUND", { message: "Booking not found" });
 	}
 
-	if (lockPlan.invoiceId) {
-		const invoice = await getLockedInvoiceForReceipt(tx, {
-			organizationId: input.organizationId,
-			bookingId: lockPlan.bookingId,
-			invoiceId: lockPlan.invoiceId,
-			allowCancelled: true,
+	const invoice = lockPlan.invoiceId
+		? await getLockedInvoiceForReceipt(tx, {
+				organizationId: input.organizationId,
+				bookingId: lockPlan.bookingId,
+				invoiceId: lockPlan.invoiceId,
+				allowCancelled: true,
+			})
+		: null;
+	if (lockPlan.invoiceId && !invoice) {
+		throw new ORPCError("NOT_FOUND", {
+			message: "Invoice not found or does not belong to this booking",
 		});
-		if (!invoice) {
-			throw new ORPCError("NOT_FOUND", {
-				message: "Invoice not found or does not belong to this booking",
-			});
-		}
 	}
 
+	const schedule = paymentPlan?.paymentScheduleId
+		? await getLockedScheduleForReceipt(tx, {
+				organizationId: input.organizationId,
+				bookingId: lockPlan.bookingId,
+				paymentScheduleId: paymentPlan.paymentScheduleId,
+			})
+		: null;
+	if (paymentPlan?.paymentScheduleId && !schedule) {
+		throw new ORPCError("CONFLICT", {
+			message: "Payment schedule no longer exists for this payment",
+		});
+	}
 	if (lockPlan.receivedAmountId) {
 		const received = await getLockedReceivedPayment(tx, {
 			organizationId: input.organizationId,
@@ -259,11 +319,21 @@ export async function voidReceiptTransition(
 		}
 		if (
 			received.bookingId !== lockPlan.bookingId ||
-			received.invoiceId !== lockPlan.invoiceId
+			received.invoiceId !== lockPlan.invoiceId ||
+			received.paymentScheduleId !== paymentPlan?.paymentScheduleId
 		) {
 			throw new ORPCError("CONFLICT", {
 				message:
 					"Receipt payment relationships changed. Retry the request.",
+			});
+		}
+		if (
+			invoice &&
+			invoice.paymentScheduleId !== received.paymentScheduleId
+		) {
+			throw new ORPCError("CONFLICT", {
+				message:
+					"Payment and invoice belong to different payment schedules",
 			});
 		}
 	}

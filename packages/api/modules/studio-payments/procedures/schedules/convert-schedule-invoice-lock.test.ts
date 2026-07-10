@@ -194,4 +194,31 @@ describe("schedule conversion invoice locking", () => {
 		expect(order).toEqual(["booking", "invoice", "schedule"]);
 		expect(result).toMatchObject({ data: { receivedId: "received_1" } });
 	});
+
+	it("returns a deterministic conflict after a schedule was converted", async () => {
+		mocks.mockGetLockedScheduleInvoiceForReceipt.mockResolvedValue(null);
+		mocks.mockGetLockedScheduleForReceipt.mockResolvedValue({
+			id: "schedule_1",
+			organizationId: "org_1",
+			bookingId: "booking_1",
+			name: "Final payment",
+			amount: "100.00",
+			paidAmount: "100.00",
+			paidAt: new Date(),
+			status: "completed",
+		});
+
+		await expect(
+			mocks.getHandler()?.({
+				context: { organizationId: "org_1", user: { id: "user_1" } },
+				input: {
+					scheduleId: "schedule_1",
+					amount: "100.00",
+					paymentMethod: "cash",
+					receivedDate: "2026-01-01",
+				},
+			}),
+		).rejects.toThrow("Payment schedule has already been converted");
+		expect(mocks.tx.insert).not.toHaveBeenCalled();
+	});
 });
