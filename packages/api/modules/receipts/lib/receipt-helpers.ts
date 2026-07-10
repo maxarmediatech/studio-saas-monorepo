@@ -3,18 +3,16 @@ import {
 	and,
 	bookings,
 	db,
-	desc,
 	eq,
 	invoices,
 	isNull,
 	receipts,
-	sql,
 } from "@repo/database";
+import { allocateDocumentNumber } from "../../financial-documents/lib/document-number-service";
 import { centsToMoney, moneyToCents } from "../../studio/lib/money";
 import {
 	buildReceiptNumber,
 	determineInvoiceStatus,
-	getNextReceiptNumber,
 	type InvoiceStatus,
 } from "./receipt-utils";
 
@@ -48,17 +46,13 @@ export async function generateReceiptNumber(
 
 	const baseNumber = buildReceiptNumber(booking.referenceNumber, new Date());
 
-	const existing = await dbOrTx.query.receipts.findFirst({
-		where: and(
-			eq(receipts.organizationId, orgId),
-			sql`${receipts.receiptNumber} LIKE ${`${baseNumber}%`}`,
-			isNull(receipts.deletedAt),
-		),
-		orderBy: desc(receipts.receiptNumber),
-		columns: { receiptNumber: true },
-	});
-
-	return getNextReceiptNumber(baseNumber, existing?.receiptNumber ?? null);
+	return dbOrTx.transaction((tx) =>
+		allocateDocumentNumber(tx, {
+			organizationId: orgId,
+			documentType: "receipt",
+			baseNumber,
+		}),
+	);
 }
 
 function getDateOnlyString(value: unknown): string | null {

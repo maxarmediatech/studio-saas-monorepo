@@ -1,5 +1,5 @@
 import { ORPCError } from "@orpc/server";
-import { and, bookings, db, eq, invoices, isNull } from "@repo/database";
+import { bookings, db, eq, invoices } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import {
 	detectChanges,
@@ -7,13 +7,18 @@ import {
 	formatDate,
 	safeTrackFieldChanges,
 } from "../../activities/lib";
-import { requirePermission } from "../../studio/lib/permissions";
 import { centsToMoney, moneyToCents } from "../../studio/lib/money";
+import { requirePermission } from "../../studio/lib/permissions";
 import {
 	updateInvoiceInputSchema,
 	updateInvoiceOutputSchema,
 } from "../../studio/schemas/invoice";
-import { calculateGst, type InvoiceStatus, type TaxType } from "../lib/invoice-helpers";
+import {
+	calculateGst,
+	type InvoiceStatus,
+	type TaxType,
+} from "../lib/invoice-helpers";
+import { getLockedInvoice } from "../lib/invoice-lock";
 
 export const updateInvoice = studioProtectedProcedure
 	.route({
@@ -30,91 +35,104 @@ export const updateInvoice = studioProtectedProcedure
 
 		const { id, ...updates } = input;
 
-		const invoice = await db.query.invoices.findFirst({
-			where: and(
-				eq(invoices.id, id),
-				eq(invoices.organizationId, context.organizationId),
-				isNull(invoices.deletedAt),
-			),
-		});
-
-		if (!invoice) {
-			throw new ORPCError("NOT_FOUND", {
-				message: "Invoice not found",
+		const invoice = await db.transaction(async (tx) => {
+			const invoice = await getLockedInvoice(tx, {
+				organizationId: context.organizationId,
+				invoiceId: id,
 			});
-		}
 
-		const status = invoice.status as InvoiceStatus;
-		const editableStatuses: InvoiceStatus[] = ["draft", "sent", "overdue"];
-		const hasPaidAmount = Number(invoice.paidAmount ?? "0") > 0;
-		if (!editableStatuses.includes(status) || hasPaidAmount) {
-			throw new ORPCError("CONFLICT", {
-				message:
-					"This invoice cannot be edited because it has received payments or has been cancelled.",
-			});
-		}
-
-		const updateData: Record<string, unknown> = {
-			updatedAt: new Date(),
-			updatedBy: context.user.id,
-		};
-
-		if (updates.issueDate !== undefined) {
-			updateData.issueDate = updates.issueDate;
-		}
-
-		if (updates.dueDate !== undefined) {
-			updateData.dueDate = updates.dueDate;
-		}
-
-		if (updates.notes !== undefined) {
-			updateData.notes = updates.notes;
-		}
-
-		if (updates.terms !== undefined) {
-			updateData.terms = updates.terms;
-		}
-
-		if (updates.taxType !== undefined) {
-			updateData.taxType = updates.taxType;
-		}
-
-		// Recalculate totals if discount or tax type changed
-		const needsRecalc =
-			updates.discountAmount !== undefined ||
-			updates.taxType !== undefined;
-
-		if (needsRecalc) {
-			const subtotalCents = moneyToCents(invoice.subtotal);
-			const newDiscountCents =
-				updates.discountAmount !== undefined
-					? moneyToCents(updates.discountAmount)
-					: moneyToCents(invoice.discountAmount);
-
-			if (newDiscountCents > subtotalCents) {
-				throw new ORPCError("BAD_REQUEST", {
-					message: "Discount cannot exceed subtotal",
+			if (!invoice) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Invoice not found",
 				});
 			}
 
-			const effectiveTaxType = (updates.taxType ??
-				invoice.taxType) as TaxType;
-
-			const { taxAmount, totalAmount } = await calculateGst(
-				centsToMoney(subtotalCents),
-				context.organizationId,
-				centsToMoney(newDiscountCents),
-				effectiveTaxType,
-			);
-
-			if (updates.discountAmount !== undefined) {
-				updateData.discountAmount = centsToMoney(newDiscountCents);
+			const status = invoice.status as InvoiceStatus;
+			const editableStatuses: InvoiceStatus[] = [
+				"draft",
+				"sent",
+				"overdue",
+			];
+			const hasPaidAmount = Number(invoice.paidAmount ?? "0") > 0;
+			if (!editableStatuses.includes(status) || hasPaidAmount) {
+				throw new ORPCError("CONFLICT", {
+					message:
+						"This invoice cannot be edited because it has received payments or has been cancelled.",
+				});
 			}
-			updateData.taxAmount = taxAmount;
-			updateData.totalAmount = totalAmount;
-		}
 
-		await db.update(invoices).set(updateData).where(eq(invoices.id, id));
+			const updateData: Record<string, unknown> = {
+				updatedAt: new Date(),
+				updatedBy: context.user.id,
+			};
+
+			if (updates.issueDate !== undefined) {
+				updateData.issueDate = updates.issueDate;
+			}
+
+			if (updates.dueDate !== undefined) {
+				updateData.dueDate = updates.dueDate;
+			}
+
+			if (updates.notes !== undefined) {
+				updateData.notes = updates.notes;
+			}
+
+			if (updates.terms !== undefined) {
+				updateData.terms = updates.terms;
+			}
+
+			if (updates.taxType !== undefined) {
+				updateData.taxType = updates.taxType;
+			}
+
+			// Recalculate totals if discount or tax type changed
+			const needsRecalc =
+				updates.discountAmount !== undefined ||
+				updates.taxType !== undefined;
+			if (needsRecalc && status !== "draft") {
+				throw new ORPCError("CONFLICT", {
+					message:
+						"Financial totals cannot be changed after an invoice has been sent.",
+				});
+			}
+
+			if (needsRecalc) {
+				const subtotalCents = moneyToCents(invoice.subtotal);
+				const newDiscountCents =
+					updates.discountAmount !== undefined
+						? moneyToCents(updates.discountAmount)
+						: moneyToCents(invoice.discountAmount);
+
+				if (newDiscountCents > subtotalCents) {
+					throw new ORPCError("BAD_REQUEST", {
+						message: "Discount cannot exceed subtotal",
+					});
+				}
+
+				const effectiveTaxType = (updates.taxType ??
+					invoice.taxType) as TaxType;
+
+				const { taxAmount, totalAmount } = await calculateGst(
+					centsToMoney(subtotalCents),
+					context.organizationId,
+					centsToMoney(newDiscountCents),
+					effectiveTaxType,
+				);
+
+				if (updates.discountAmount !== undefined) {
+					updateData.discountAmount = centsToMoney(newDiscountCents);
+				}
+				updateData.taxAmount = taxAmount;
+				updateData.totalAmount = totalAmount;
+			}
+
+			await tx
+				.update(invoices)
+				.set(updateData)
+				.where(eq(invoices.id, id));
+			return invoice;
+		});
 
 		const booking = await db.query.bookings.findFirst({
 			where: eq(bookings.id, invoice.bookingId),
@@ -140,7 +158,14 @@ export const updateInvoice = studioProtectedProcedure
 				discountAmount: updates.discountAmount,
 				taxType: updates.taxType,
 			},
-			["issueDate", "dueDate", "notes", "terms", "discountAmount", "taxType"],
+			[
+				"issueDate",
+				"dueDate",
+				"notes",
+				"terms",
+				"discountAmount",
+				"taxType",
+			],
 		).map((c) => ({
 			...c,
 			oldValue:
