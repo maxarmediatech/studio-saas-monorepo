@@ -4,6 +4,7 @@ import {
 	pgTable,
 	text,
 	timestamp,
+	uniqueIndex,
 	varchar,
 } from "drizzle-orm/pg-core";
 import { v7 as uuidv7 } from "uuid";
@@ -37,6 +38,7 @@ export const waOutbox = pgTable(
 	(table) => [
 		index("wa_outbox_organization_id_idx").on(table.organizationId),
 		index("wa_outbox_account_id_idx").on(table.accountId),
+		uniqueIndex("wa_outbox_message_id_idx").on(table.messageId),
 		index("wa_outbox_status_idx").on(table.status),
 		index("wa_outbox_next_attempt_idx").on(table.nextAttemptAt),
 		index("wa_outbox_lease_expiry_idx").on(table.leaseExpiresAt),

@@ -43,6 +43,8 @@ export const waMessages = pgTable(
 		sentByUserId: text("sent_by_user_id"),
 		sentByBotFlowId: varchar("sent_by_bot_flow_id", { length: 255 }),
 		sentByCampaignId: varchar("sent_by_campaign_id", { length: 255 }),
+		campaignRecipientId: varchar("campaign_recipient_id", { length: 255 }),
+		automationActionId: varchar("automation_action_id", { length: 255 }),
 		rawPayload: jsonb("raw_payload"),
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.defaultNow()
@@ -59,6 +61,12 @@ export const waMessages = pgTable(
 		uniqueIndex("wa_messages_account_provider_message_id_idx").on(
 			table.accountId,
 			table.providerMessageId,
+		),
+		uniqueIndex("wa_messages_campaign_recipient_idx").on(
+			table.campaignRecipientId,
+		),
+		uniqueIndex("wa_messages_automation_action_idx").on(
+			table.automationActionId,
 		),
 		index("wa_messages_created_at_idx").on(table.createdAt),
 		index("wa_messages_status_idx").on(table.status),
