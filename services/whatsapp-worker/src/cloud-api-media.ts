@@ -35,125 +35,54 @@ const parseFileSize = (value: GraphMediaMetadata["file_size"]) => {
 	if (typeof value === "number" && Number.isFinite(value)) {
 		return value;
 	}
-
 	if (typeof value === "string") {
 		const parsed = Number.parseInt(value, 10);
-		if (Number.isFinite(parsed)) {
-			return parsed;
-		}
+		return Number.isFinite(parsed) ? parsed : null;
 	}
-
 	return null;
 };
 
-const sanitizeFileName = (value: string) => {
-	const sanitized = value
+const sanitizeFileName = (value: string) =>
+	value
 		.trim()
 		.replace(/[/\\?%*:|"<>]/g, "-")
 		.replace(/\s+/g, "-")
-		.replace(/-+/g, "-");
-
-	return sanitized || "attachment";
-};
-
-const getExtensionForMimeType = (mimeType: string | null) => {
-	if (!mimeType) {
-		return null;
-	}
-
-	return MIME_EXTENSION_MAP[mimeType.toLowerCase()] ?? null;
-};
+		.replace(/-+/g, "-") || "attachment";
 
 const resolveFileName = (params: {
 	fileName?: string | null;
 	messageType: MessageType;
 	mediaId: string;
-	mimeType: string | null;
+	mimeType: string;
 }) => {
-	const providedName = params.fileName?.trim();
-	if (providedName) {
-		return sanitizeFileName(providedName);
+	if (params.fileName?.trim()) {
+		return sanitizeFileName(params.fileName);
 	}
-
-	const baseName =
-		FALLBACK_FILE_NAME_BY_TYPE[params.messageType] ?? "attachment";
-	const extension = getExtensionForMimeType(params.mimeType);
-
+	const base = FALLBACK_FILE_NAME_BY_TYPE[params.messageType] ?? "attachment";
+	const extension = MIME_EXTENSION_MAP[params.mimeType.toLowerCase()];
 	return sanitizeFileName(
 		extension
-			? `${baseName}-${params.mediaId}.${extension}`
-			: `${baseName}-${params.mediaId}`,
+			? `${base}-${params.mediaId}.${extension}`
+			: `${base}-${params.mediaId}`,
 	);
 };
 
-const buildStorageKey = (params: {
-	organizationId: string;
-	accountId: string;
-	fileName: string;
-	mediaId: string;
-}) =>
-	`orgs/${params.organizationId}/whatsapp/inbound/${params.accountId}/${Date.now()}-${params.mediaId}-${params.fileName}`;
-
-const fetchGraphPayload = async <T>(
+const fetchJson = async <T>(
 	url: string,
 	accessToken: string,
-	fallbackMessage: string,
+	message: string,
 ) => {
 	const response = await fetch(url, {
-		headers: {
-			Authorization: `Bearer ${accessToken}`,
-		},
+		headers: { Authorization: `Bearer ${accessToken}` },
 	});
-
 	if (!response.ok) {
-		throw new Error(fallbackMessage);
+		throw new Error(message);
 	}
-
 	const payload = (await response.json().catch(() => null)) as T | null;
 	if (!payload) {
-		throw new Error(fallbackMessage);
+		throw new Error(message);
 	}
-
 	return payload;
-};
-
-const fetchMediaMetadata = async (params: {
-	accessToken: string;
-	apiVersion: string;
-	mediaId: string;
-}) =>
-	fetchGraphPayload<GraphMediaMetadata>(
-		`https://graph.facebook.com/${params.apiVersion}/${params.mediaId}`,
-		params.accessToken,
-		`Failed to fetch WhatsApp media metadata for ${params.mediaId}`,
-	);
-
-const downloadMediaBytes = async (params: {
-	accessToken: string;
-	mediaId: string;
-	url: string;
-}) => {
-	const response = await fetch(params.url, {
-		headers: {
-			Authorization: `Bearer ${params.accessToken}`,
-		},
-	});
-
-	if (!response.ok) {
-		throw new Error(`Failed to download WhatsApp media ${params.mediaId}`);
-	}
-
-	const bytes = new Uint8Array(await response.arrayBuffer());
-	const contentType = response.headers.get("content-type");
-	const contentLength = response.headers.get("content-length");
-
-	return {
-		bytes,
-		contentType,
-		contentLength: contentLength
-			? Number.parseInt(contentLength, 10)
-			: null,
-	};
 };
 
 export const ingestCloudApiMediaAsset = async (params: {
@@ -166,62 +95,52 @@ export const ingestCloudApiMediaAsset = async (params: {
 	fileName?: string | null;
 	mimeType?: string | null;
 }) => {
-	const metadata = await fetchMediaMetadata({
-		accessToken: params.accessToken,
-		apiVersion: params.apiVersion,
-		mediaId: params.mediaId,
-	});
-
+	const metadata = await fetchJson<GraphMediaMetadata>(
+		`https://graph.facebook.com/${params.apiVersion}/${params.mediaId}`,
+		params.accessToken,
+		`Failed to fetch WhatsApp media metadata for ${params.mediaId}`,
+	);
 	if (!metadata.url) {
 		throw new Error(
 			`WhatsApp media ${params.mediaId} did not include a URL`,
 		);
 	}
 
-	const download = await downloadMediaBytes({
-		accessToken: params.accessToken,
-		mediaId: params.mediaId,
-		url: metadata.url,
+	const response = await fetch(metadata.url, {
+		headers: { Authorization: `Bearer ${params.accessToken}` },
 	});
+	if (!response.ok) {
+		throw new Error(`Failed to download WhatsApp media ${params.mediaId}`);
+	}
 
+	const bytes = new Uint8Array(await response.arrayBuffer());
 	const mimeType =
-		download.contentType ?? metadata.mime_type ?? params.mimeType ?? null;
+		response.headers.get("content-type") ??
+		metadata.mime_type ??
+		params.mimeType;
 	if (!mimeType) {
 		throw new Error(
 			`WhatsApp media ${params.mediaId} is missing a mime type`,
 		);
 	}
-
 	const fileName = resolveFileName({
 		fileName: params.fileName,
 		messageType: params.messageType,
 		mediaId: params.mediaId,
 		mimeType,
 	});
-	const storageKey = buildStorageKey({
-		organizationId: params.organizationId,
-		accountId: params.accountId,
-		fileName,
-		mediaId: params.mediaId,
-	});
+	const storageKey = `orgs/${params.organizationId}/whatsapp/inbound/${params.accountId}/${params.mediaId}-${fileName}`;
+	const headerSize = response.headers.get("content-length");
+	const fileSize = headerSize
+		? Number.parseInt(headerSize, 10)
+		: parseFileSize(metadata.file_size);
 
 	await putObject(storageKey, {
 		bucket: getUploadsBucketName(),
-		body: download.bytes,
+		body: bytes,
 		contentType: mimeType,
-		contentLength:
-			download.contentLength ??
-			parseFileSize(metadata.file_size) ??
-			undefined,
+		contentLength: fileSize ?? undefined,
 	});
 
-	return {
-		fileName,
-		fileSize:
-			download.contentLength ?? parseFileSize(metadata.file_size) ?? null,
-		mimeType,
-		providerMediaId: params.mediaId,
-		storageType: "s3" as const,
-		storageUrl: storageKey,
-	};
+	return { fileName, fileSize, mimeType, storageUrl: storageKey };
 };

@@ -7,18 +7,21 @@
 		"@repo/whatsapp-core": "workspace:*",
 		"@repo/whatsapp-db": "workspace:*",
 		"@repo/whatsapp-outbox": "workspace:*",
+		"@repo/whatsapp-providers": "workspace:*",
 		"drizzle-orm": "^0.45.1"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.3.10",
 		"@repo/tsconfig": "workspace:*",
 		"@types/node": "24.10.4",
-		"tsx": "^4.21.0"
+		"tsx": "^4.21.0",
+		"vitest": "^2.0.0"
 	},
 	"main": "./src/index.ts",
 	"name": "@repo/whatsapp-worker",
 	"scripts": {
-		"dev": "dotenv -c -e ../../.env.local -- tsx src/index.ts",
+		"dev": "tsx src/index.ts",
+		"test": "vitest run",
 		"type-check": "tsc --noEmit"
 	},
 	"version": "0.0.0"
