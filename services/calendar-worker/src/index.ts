@@ -19,6 +19,8 @@ import {
 } from "@repo/google-calendar";
 import { logger } from "@repo/logs";
 import { sendCalendarInviteEmail } from "@repo/mail";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { buildEventInput } from "./event-input";
 import { getGoogleAccessToken } from "./google-access-token";
 import {
@@ -36,7 +38,7 @@ const staleThresholdMinutes =
 		? staleThresholdMinutesRaw
 		: 15;
 
-async function claimJobBatch() {
+export async function claimJobBatch() {
 	const now = new Date();
 	return db.transaction(async (tx) => {
 		const claimableQuery = sql`
@@ -84,7 +86,7 @@ async function claimJobBatch() {
 	});
 }
 
-async function recoverStaleProcessingJobs() {
+export async function recoverStaleProcessingJobs() {
 	const threshold = new Date(Date.now() - staleThresholdMinutes * 60 * 1000);
 	const recoveredJobs = await db
 		.update(calendarSyncJobs)
@@ -114,6 +116,8 @@ async function recoverStaleProcessingJobs() {
 			staleThresholdMinutes,
 		});
 	}
+
+	return recoveredJobs;
 }
 
 async function markJobSuccess(jobId: string) {
@@ -422,7 +426,14 @@ async function processJob(job: typeof calendarSyncJobs.$inferSelect) {
 			error: errorMessage,
 		});
 
-		if (job.shootId && job.crewId) {
+		const [currentJob] = await db
+			.select({ jobType: calendarSyncJobs.jobType })
+			.from(calendarSyncJobs)
+			.where(eq(calendarSyncJobs.id, job.id));
+
+		// A producer may have replaced this job's route while it was leased. The
+		// claimed snapshot must not overwrite the current route's mapping state.
+		if (job.shootId && job.crewId && currentJob?.jobType === job.jobType) {
 			await db
 				.update(shootCalendarEvents)
 				.set({
@@ -488,4 +499,9 @@ async function main() {
 	}
 }
 
-void main();
+if (
+	process.argv[1] &&
+	import.meta.url === pathToFileURL(resolve(process.argv[1])).href
+) {
+	void main();
+}
