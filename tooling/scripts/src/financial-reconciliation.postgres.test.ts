@@ -31,6 +31,21 @@ describePostgres("financial reconciliation on migrated PostgreSQL", () => {
 		const otherInvoiceId = `reconcile_other_invoice_${suffix}`;
 		const receivedAmountId = `reconcile_payment_${suffix}`;
 		const receiptId = `reconcile_receipt_${suffix}`;
+		const historyReceiptId = `reconcile_history_receipt_${suffix}`;
+		const historyInvoiceId = `reconcile_history_invoice_${suffix}`;
+		const overBookingId = `reconcile_over_booking_${suffix}`;
+		const overScheduleId = `reconcile_over_schedule_${suffix}`;
+		const overInvoiceId = `reconcile_over_invoice_${suffix}`;
+		const overPaymentIds = [
+			`reconcile_over_payment_a_${suffix}`,
+			`reconcile_over_payment_b_${suffix}`,
+		];
+		const overReceiptIds = [
+			`reconcile_over_receipt_a_${suffix}`,
+			`reconcile_over_receipt_b_${suffix}`,
+		];
+		const otherOrganizationId = `reconcile_other_org_${suffix}`;
+		const otherBookingId = `reconcile_other_booking_${suffix}`;
 		const logs: string[] = [];
 		const originalLog = console.log;
 
@@ -71,6 +86,7 @@ describePostgres("financial reconciliation on migrated PostgreSQL", () => {
 				totalAmount: "100.00",
 				paidAmount: "0.00",
 				status: "sent",
+				paidAt: new Date("2026-01-02T03:04:05.000Z"),
 			});
 			await db.insert(receivedAmounts).values({
 				id: receivedAmountId,
@@ -142,6 +158,10 @@ describePostgres("financial reconciliation on migrated PostgreSQL", () => {
 			assert.equal(schedule?.paidAmount, "40.00");
 			assert.equal(invoice?.paidAmount, "40.00");
 			assert.equal(invoice?.status, "partial");
+			assert.equal(
+				invoice?.paidAt?.toISOString(),
+				"2026-01-02T03:04:05.000Z",
+			);
 
 			await db.insert(invoices).values({
 				id: otherInvoiceId,
@@ -215,11 +235,170 @@ describePostgres("financial reconciliation on migrated PostgreSQL", () => {
 			});
 			assert.equal(unchangedInvoice?.paidAmount, "99.00");
 			assert.equal(unchangedInvoice?.status, "paid");
+
+			await db.insert(receipts).values({
+				id: historyReceiptId,
+				organizationId,
+				bookingId,
+				invoiceId,
+				receivedAmountId,
+				receiptNumber: `RECON-HISTORY-RCPT-${suffix}`,
+				amount: "40.00",
+				paymentMethod: "cash",
+				receiptDate: "2026-01-15",
+				deletedAt: new Date(),
+			});
+			await db.insert(invoices).values({
+				id: historyInvoiceId,
+				organizationId,
+				bookingId,
+				paymentScheduleId: scheduleId,
+				invoiceNumber: `RECON-HISTORY-INV-${suffix}`,
+				issueDate: "2026-01-01",
+				totalAmount: "100.00",
+				status: "sent",
+				deletedAt: new Date(),
+			});
+
+			await db.insert(bookings).values({
+				id: overBookingId,
+				organizationId,
+				referenceNumber: `RECON-OVER-${suffix}`,
+				name: "Overpayment test booking",
+				bookingType: "test",
+				packageType: "test",
+				packageCost: "50.00",
+				totalReceived: "0.00",
+			});
+			await db.insert(paymentSchedules).values({
+				id: overScheduleId,
+				organizationId,
+				bookingId: overBookingId,
+				name: "Overpaid deposit",
+				amount: "50.00",
+				dueDate: "2026-12-31",
+				paidAmount: "0.00",
+				status: "pending",
+			});
+			await db.insert(invoices).values({
+				id: overInvoiceId,
+				organizationId,
+				bookingId: overBookingId,
+				paymentScheduleId: overScheduleId,
+				invoiceNumber: `RECON-OVER-INV-${suffix}`,
+				issueDate: "2026-01-01",
+				dueDate: "2026-12-31",
+				totalAmount: "50.00",
+				paidAmount: "0.00",
+				status: "sent",
+			});
+			for (const [index, paymentId] of overPaymentIds.entries()) {
+				await db.insert(receivedAmounts).values({
+					id: paymentId,
+					organizationId,
+					bookingId: overBookingId,
+					paymentScheduleId: overScheduleId,
+					invoiceId: overInvoiceId,
+					amount: "30.00",
+					paymentMethod: "cash",
+					receivedDate: "2026-02-01",
+				});
+				await db.insert(receipts).values({
+					id: overReceiptIds[index],
+					organizationId,
+					bookingId: overBookingId,
+					invoiceId: overInvoiceId,
+					receivedAmountId: paymentId,
+					receiptNumber: `RECON-OVER-RCPT-${index}-${suffix}`,
+					amount: "30.00",
+					paymentMethod: "cash",
+					receiptDate: "2026-02-01",
+				});
+			}
+
+			await db.insert(organizations).values({
+				id: otherOrganizationId,
+				name: "Unrelated reconciliation tenant",
+				slug: `unrelated-financial-reconciliation-${suffix}`,
+			});
+			await db.insert(bookings).values({
+				id: otherBookingId,
+				organizationId: otherOrganizationId,
+				referenceNumber: `OTHER-${suffix}`,
+				name: "Other tenant booking",
+				bookingType: "test",
+				packageType: "test",
+				packageCost: "10.00",
+				totalReceived: "9.00",
+			});
+
+			const guarded = await queryFinancialMismatches(
+				organizationId,
+				"2026-07-10",
+			);
+			assert.ok(
+				guarded.mismatches.every(
+					(mismatch) => mismatch.organizationId === organizationId,
+				),
+			);
+			assert.ok(
+				guarded.mismatches.some(
+					(mismatch) =>
+						mismatch.mismatchType ===
+							"multiple_receipts_per_payment" &&
+						mismatch.entityId === receivedAmountId,
+				),
+			);
+			assert.ok(
+				guarded.mismatches.some(
+					(mismatch) =>
+						mismatch.mismatchType ===
+							"multiple_invoices_per_schedule" &&
+						mismatch.entityId === scheduleId,
+				),
+			);
+			for (const entityId of [overScheduleId, overInvoiceId]) {
+				const overpayment = guarded.mismatches.find(
+					(mismatch) => mismatch.entityId === entityId,
+				);
+				assert.equal(overpayment?.exceedsUpperBound, true);
+				assert.equal(overpayment?.safeFixAvailable, false);
+			}
+
+			const guardedFixCode = await main([
+				"--organization-id",
+				organizationId,
+				"--fix-safe",
+				"--as-of",
+				"2026-07-10",
+			]);
+			assert.equal(guardedFixCode, 1);
+			const [
+				fixedOverBooking,
+				unchangedOverSchedule,
+				unchangedOverInvoice,
+			] = await Promise.all([
+				db.query.bookings.findFirst({
+					where: eq(bookings.id, overBookingId),
+				}),
+				db.query.paymentSchedules.findFirst({
+					where: eq(paymentSchedules.id, overScheduleId),
+				}),
+				db.query.invoices.findFirst({
+					where: eq(invoices.id, overInvoiceId),
+				}),
+			]);
+			assert.equal(fixedOverBooking?.totalReceived, "60.00");
+			assert.equal(unchangedOverSchedule?.paidAmount, "0.00");
+			assert.equal(unchangedOverInvoice?.paidAmount, "0.00");
 		} finally {
 			console.log = originalLog;
 			await db
 				.delete(organizations)
 				.where(eq(organizations.id, organizationId));
+			await db
+				.delete(organizations)
+				.where(eq(organizations.id, otherOrganizationId));
 			process.env.DATABASE_URL = originalDatabaseUrl;
 			await (
 				db as unknown as { $client: { end(): Promise<void> } }

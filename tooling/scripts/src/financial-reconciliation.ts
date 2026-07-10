@@ -5,8 +5,8 @@ export const MISMATCH_TYPES = [
 	"receipt_payment_amount_mismatch",
 	"active_receipt_for_deleted_payment",
 	"cross_entity_booking_org_disagreement",
-	"duplicate_active_receipts_per_payment",
-	"duplicate_invoices_per_schedule",
+	"multiple_receipts_per_payment",
+	"multiple_invoices_per_schedule",
 ] as const;
 
 export type MismatchType = (typeof MISMATCH_TYPES)[number];
@@ -22,11 +22,13 @@ export type RawMismatch = {
 	entityType: string;
 	entityId: string;
 	relatedId?: string | null;
+	relationKey?: string | null;
 	actualValue?: string | null;
 	expectedValue?: string | null;
 	actualStatus?: string | null;
 	expectedStatus?: string | null;
 	invalidLinkCount?: number | string | null;
+	exceedsUpperBound?: boolean | string | null;
 	details?: unknown;
 };
 
@@ -63,6 +65,20 @@ function toInteger(value: number | string | null | undefined): number {
 	return typeof value === "number" ? value : Number.parseInt(value, 10) || 0;
 }
 
+function toBoolean(value: boolean | string | null | undefined): boolean {
+	return value === true || value === "true" || value === "t";
+}
+
+function encodeIdentityPart(value: string | null | undefined): string {
+	if (value === undefined) {
+		return "u";
+	}
+	if (value === null) {
+		return "n";
+	}
+	return `s${value.length}:${value}`;
+}
+
 export function isCalendarDate(value: string): boolean {
 	if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
 		return false;
@@ -85,6 +101,7 @@ export function isCalendarDate(value: string): boolean {
 export function classifyMismatch(raw: RawMismatch): Mismatch {
 	const action = SAFE_ACTIONS[raw.mismatchType] ?? null;
 	const noInvalidLinks = toInteger(raw.invalidLinkCount) === 0;
+	const withinUpperBound = !toBoolean(raw.exceedsUpperBound);
 	const isCancelled = raw.actualStatus === "cancelled";
 	const draftHasApplication =
 		raw.actualStatus === "draft" &&
@@ -93,12 +110,22 @@ export function classifyMismatch(raw: RawMismatch): Mismatch {
 	const safeFixAvailable =
 		action !== null &&
 		noInvalidLinks &&
+		withinUpperBound &&
 		!isCancelled &&
 		!draftHasApplication;
 
 	return {
 		...raw,
-		id: `${raw.mismatchType}:${raw.organizationId}:${raw.entityType}:${raw.entityId}${raw.relatedId ? `:${raw.relatedId}` : ""}`,
+		id: [
+			raw.mismatchType,
+			raw.organizationId,
+			raw.entityType,
+			raw.entityId,
+			raw.relationKey,
+			raw.relatedId,
+		]
+			.map(encodeIdentityPart)
+			.join("|"),
 		safeFixAvailable,
 		intendedAction: safeFixAvailable ? action : null,
 	};
@@ -118,6 +145,7 @@ export function sortMismatches(mismatches: Mismatch[]): Mismatch[] {
 			compareNullable(a.mismatchType, b.mismatchType) ||
 			compareNullable(a.entityType, b.entityType) ||
 			compareNullable(a.entityId, b.entityId) ||
+			compareNullable(a.relationKey, b.relationKey) ||
 			compareNullable(a.relatedId, b.relatedId),
 	);
 }
