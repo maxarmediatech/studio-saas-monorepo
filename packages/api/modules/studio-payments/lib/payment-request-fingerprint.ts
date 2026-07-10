@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { centsToMoney, moneyToCents } from "../../studio/lib/money";
 import type {
 	ConvertScheduleInput,
+	CorrectReceivedInput,
 	CreateReceivedInput,
 } from "../../studio/schemas/payment";
 
@@ -66,6 +67,20 @@ export function convertSchedulePaymentFingerprint(
 		paymentMethod: input.paymentMethod,
 		receivedDate: input.receivedDate,
 		scheduleId: input.scheduleId,
+		transactionReference: input.transactionReference ?? null,
+	});
+}
+
+export function correctReceivedPaymentFingerprint(
+	input: CorrectReceivedInput,
+): string {
+	return fingerprint({
+		amount: normalizeMoney(input.amount),
+		id: input.id,
+		notes: input.notes ?? null,
+		paymentMethod: input.paymentMethod,
+		reason: input.reason.trim(),
+		receivedDate: input.receivedDate,
 		transactionReference: input.transactionReference ?? null,
 	});
 }

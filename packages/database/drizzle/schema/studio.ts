@@ -876,6 +876,19 @@ export const receivedAmounts = pgTable(
 			length: 255,
 		}).references(() => invoices.id, { onDelete: "set null" }),
 
+		// Corrections preserve the original payment and link it to one active
+		// replacement. Reversed rows are also soft-deleted from operational totals.
+		replacesPaymentId: varchar("replaces_payment_id", { length: 255 }),
+		replacementPaymentId: varchar("replacement_payment_id", {
+			length: 255,
+		}),
+		reversedAt: timestamp("reversed_at", { withTimezone: true }),
+		reversedBy: varchar("reversed_by", { length: 255 }).references(
+			() => users.id,
+			{ onDelete: "set null" },
+		),
+		reversalReason: text("reversal_reason"),
+
 		createdBy: varchar("created_by", { length: 255 }).references(
 			() => users.id,
 			{ onDelete: "set null" },
@@ -903,6 +916,22 @@ export const receivedAmounts = pgTable(
 		index("received_amounts_date_idx").on(table.receivedDate),
 		index("received_amounts_schedule_idx").on(table.paymentScheduleId),
 		index("received_amounts_invoice_idx").on(table.invoiceId),
+		uniqueIndex("received_amounts_replaces_payment_idx")
+			.on(table.replacesPaymentId)
+			.where(sql`replaces_payment_id IS NOT NULL`),
+		uniqueIndex("received_amounts_replacement_payment_idx")
+			.on(table.replacementPaymentId)
+			.where(sql`replacement_payment_id IS NOT NULL`),
+		foreignKey({
+			columns: [table.replacesPaymentId],
+			foreignColumns: [table.id],
+			name: "received_amounts_replaces_payment_id_fk",
+		}).onDelete("restrict"),
+		foreignKey({
+			columns: [table.replacementPaymentId],
+			foreignColumns: [table.id],
+			name: "received_amounts_replacement_payment_id_fk",
+		}).onDelete("restrict"),
 		check("received_amounts_amount_positive", sql`amount > 0`),
 	],
 );
@@ -951,7 +980,7 @@ export const paymentIdempotencyRecords = pgTable(
 		index("payment_idempotency_result_idx").on(table.resultResourceId),
 		check(
 			"payment_idempotency_operation_check",
-			sql`operation IN ('create_received_payment', 'convert_schedule_payment')`,
+			sql`operation IN ('create_received_payment', 'convert_schedule_payment', 'correct_received_payment')`,
 		),
 		check(
 			"payment_idempotency_status_check",

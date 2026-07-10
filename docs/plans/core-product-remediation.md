@@ -74,6 +74,8 @@ Ship independently of the long-term accounting design:
 
 This safety behavior remains until product/finance approves either reversal/replacement or a fully specified correction workflow.
 
+**Decision approved 2026-07-11:** preserve finalized financial history through an automatic reversal-and-replacement flow. The user supplies corrected financial fields and a reason; the system atomically voids the old receipt, reverses invoice/schedule/booking effects, creates the replacement payment and receipt, and links both records. See [payment-corrections.md](../payment-corrections.md).
+
 ### 0.2 Regression tests
 
 Add tests before permanent implementation for:
