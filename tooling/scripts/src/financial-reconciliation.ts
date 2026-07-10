@@ -57,8 +57,29 @@ const SAFE_ACTIONS: Partial<Record<MismatchType, SafeFixAction>> = {
 };
 
 function toInteger(value: number | string | null | undefined): number {
-	if (value === null || value === undefined) return 0;
+	if (value === null || value === undefined) {
+		return 0;
+	}
 	return typeof value === "number" ? value : Number.parseInt(value, 10) || 0;
+}
+
+export function isCalendarDate(value: string): boolean {
+	if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+		return false;
+	}
+
+	const [year, month, day] = value.split("-").map(Number);
+	if (!year || !month || !day) {
+		return false;
+	}
+
+	const parsed = new Date(`${value}T00:00:00.000Z`);
+	return (
+		!Number.isNaN(parsed.getTime()) &&
+		parsed.getUTCFullYear() === year &&
+		parsed.getUTCMonth() + 1 === month &&
+		parsed.getUTCDate() === day
+	);
 }
 
 export function classifyMismatch(raw: RawMismatch): Mismatch {
@@ -70,7 +91,10 @@ export function classifyMismatch(raw: RawMismatch): Mismatch {
 		raw.expectedStatus !== undefined &&
 		raw.expectedStatus !== "draft";
 	const safeFixAvailable =
-		action !== null && noInvalidLinks && !isCancelled && !draftHasApplication;
+		action !== null &&
+		noInvalidLinks &&
+		!isCancelled &&
+		!draftHasApplication;
 
 	return {
 		...raw,
@@ -80,7 +104,10 @@ export function classifyMismatch(raw: RawMismatch): Mismatch {
 	};
 }
 
-function compareNullable(a: string | null | undefined, b: string | null | undefined) {
+function compareNullable(
+	a: string | null | undefined,
+	b: string | null | undefined,
+) {
 	return (a ?? "").localeCompare(b ?? "");
 }
 
@@ -116,16 +143,34 @@ export function validateDecisionRecord(
 			errors.push(`${key} must be a non-empty string`);
 		}
 	}
-	for (const key of ["evidence", "options", "consequences", "mismatchIds"] as const) {
+	if (
+		typeof record.decisionDate === "string" &&
+		record.decisionDate.trim() !== "" &&
+		!isCalendarDate(record.decisionDate)
+	) {
+		errors.push(
+			"decisionDate must be a real calendar date in YYYY-MM-DD format",
+		);
+	}
+	for (const key of [
+		"evidence",
+		"options",
+		"consequences",
+		"mismatchIds",
+	] as const) {
 		if (
 			!Array.isArray(record[key]) ||
-			record[key].some((item) => typeof item !== "string" || item.trim() === "")
+			record[key].some(
+				(item) => typeof item !== "string" || item.trim() === "",
+			)
 		) {
 			errors.push(`${key} must be an array of non-empty strings`);
 		}
 	}
 
-	if (errors.length > 0) return { valid: false, errors };
+	if (errors.length > 0) {
+		return { valid: false, errors };
+	}
 	return { valid: true, value: record as unknown as DecisionRecord };
 }
 
@@ -133,7 +178,8 @@ export function summarize(mismatches: Mismatch[]) {
 	const byType = Object.fromEntries(
 		MISMATCH_TYPES.map((type) => [
 			type,
-			mismatches.filter((mismatch) => mismatch.mismatchType === type).length,
+			mismatches.filter((mismatch) => mismatch.mismatchType === type)
+				.length,
 		]),
 	) as Record<MismatchType, number>;
 
@@ -141,8 +187,9 @@ export function summarize(mismatches: Mismatch[]) {
 		actionable: mismatches.length,
 		safeFixable: mismatches.filter((mismatch) => mismatch.safeFixAvailable)
 			.length,
-		manualReview: mismatches.filter((mismatch) => !mismatch.safeFixAvailable)
-			.length,
+		manualReview: mismatches.filter(
+			(mismatch) => !mismatch.safeFixAvailable,
+		).length,
 		byType,
 	};
 }
