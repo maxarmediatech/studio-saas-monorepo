@@ -1,3 +1,5 @@
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import {
 	and,
 	calendarSyncJobs,
@@ -19,8 +21,6 @@ import {
 } from "@repo/google-calendar";
 import { logger } from "@repo/logs";
 import { sendCalendarInviteEmail } from "@repo/mail";
-import { resolve } from "node:path";
-import { pathToFileURL } from "node:url";
 import { buildEventInput } from "./event-input";
 import { getGoogleAccessToken } from "./google-access-token";
 import {
