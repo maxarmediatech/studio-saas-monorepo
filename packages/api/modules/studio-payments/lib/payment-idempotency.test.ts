@@ -67,6 +67,15 @@ describe("payment request fingerprints", () => {
 		);
 	});
 
+	it("includes the selected invoice in the idempotency fingerprint", () => {
+		expect(
+			createReceivedPaymentFingerprint({
+				...createInput,
+				invoiceId: "018f47c6-9aba-7a16-b6d8-c6e280000005",
+			}),
+		).not.toBe(createReceivedPaymentFingerprint(createInput));
+	});
+
 	it("includes every conversion field that can change payment effects", () => {
 		const input: ConvertScheduleInput = {
 			idempotencyKey: "018f47c6-9aba-7a16-b6d8-c6e280000003",

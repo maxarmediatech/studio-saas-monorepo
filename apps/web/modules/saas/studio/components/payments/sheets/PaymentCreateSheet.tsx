@@ -12,6 +12,7 @@ import { usePaymentParams } from "@saas/studio/hooks/params/use-payment-params";
 import { useContextBookingId } from "@saas/studio/hooks/use-context-booking-id";
 import { usePaymentSubmissionKey } from "@saas/studio/hooks/use-payment-submission-key";
 import { studioPaymentsMutations } from "@saas/studio/lib/api";
+import { buildCreatePaymentRequest } from "@saas/studio/lib/payment-create-request";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -39,14 +40,7 @@ export function PaymentCreateSheet() {
 
 	const handleSubmit = async (data: PaymentFormValues) => {
 		try {
-			const request = {
-				bookingId: data.bookingId,
-				amount: Number(data.amount).toFixed(2),
-				paymentMethod: data.paymentMethod,
-				receivedDate: data.receivedDate,
-				transactionReference: data.transactionReference || undefined,
-				notes: data.notes || undefined,
-			};
+			const request = buildCreatePaymentRequest(data);
 			await createMutation.mutateAsync({
 				...request,
 				idempotencyKey: submissionKey.keyFor(request),
