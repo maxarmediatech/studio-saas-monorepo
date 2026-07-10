@@ -107,6 +107,7 @@ export const createInvoice = studioProtectedProcedure
 			const invoiceNumber = await generateInvoiceNumber(
 				bookingId,
 				context.organizationId,
+				tx,
 			);
 
 			const [created] = await tx

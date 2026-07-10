@@ -241,6 +241,13 @@ Service-level:
 
 ## Phase 2 — Invoice integrity and numbering
 
+**Implemented 2026-07-11:** financial document numbers now use transactional
+organization/type/prefix sequence rows while preserving the existing visible
+invoice and receipt formats. Existing numbers, including soft-deleted history,
+seed the first allocation. Invoice line-item mutations, invoice financial edits,
+and the draft-to-sent transition now serialize on the invoice row; financial
+totals become immutable once the invoice is sent.
+
 ### 2.1 Document number allocation
 
 Replace MAX + 1 with an organization/document-type sequence:

@@ -72,6 +72,7 @@ export async function createInvoiceFromScheduleTransition(
 	const invoiceNumber = await generateInvoiceNumber(
 		schedule.bookingId,
 		input.organizationId,
+		tx,
 	);
 	const [created] = await tx
 		.insert(invoices)

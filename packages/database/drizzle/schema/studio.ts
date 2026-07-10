@@ -1278,6 +1278,41 @@ export const invoices = pgTable(
 	],
 );
 
+// Transactional counters for human-facing financial document numbers. scopeKey
+// preserves the existing booking/date prefix while making allocation atomic.
+export const documentSequences = pgTable(
+	"document_sequences",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 })
+			.notNull()
+			.references(() => organizations.id, { onDelete: "cascade" }),
+		documentType: varchar("document_type", { length: 32 }).notNull(),
+		scopeKey: varchar("scope_key", { length: 255 }).notNull(),
+		nextValue: integer("next_value").notNull(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		uniqueIndex("document_sequences_org_type_scope_idx").on(
+			table.organizationId,
+			table.documentType,
+			table.scopeKey,
+		),
+		check(
+			"document_sequences_type_check",
+			sql`document_type IN ('invoice', 'receipt')`,
+		),
+		check("document_sequences_next_value_positive", sql`next_value > 0`),
+	],
+);
+
 export const invoiceLineItems = pgTable(
 	"invoice_line_items",
 	{
