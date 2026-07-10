@@ -499,6 +499,9 @@ export const submissionsApi = {
 
 export const submissionsMutations = {
 	claim: () => orpc.submissions.claim.mutationOptions(),
+	release: () => orpc.submissions.release.mutationOptions(),
+	adminRelease: () => orpc.submissions.adminRelease.mutationOptions(),
+	reassign: () => orpc.submissions.reassign.mutationOptions(),
 	review: () => orpc.submissions.review.mutationOptions(),
 };
 
