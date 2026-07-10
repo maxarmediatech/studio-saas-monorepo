@@ -12,6 +12,7 @@ import type {
 	GetObjectHandler,
 	GetSignedUploadUrlHandler,
 	GetSignedUrlHander,
+	PutObjectHandler,
 } from "../../types";
 
 let s3Client: S3Client | null = null;
@@ -79,6 +80,27 @@ export const getSignedUrl: GetSignedUrlHander = async (
 	} catch (e) {
 		logger.error(e);
 		throw new Error("Could not get signed url");
+	}
+};
+
+export const putObject: PutObjectHandler = async (
+	path,
+	{ bucket, body, contentType, contentLength },
+) => {
+	const s3Client = getS3Client();
+	try {
+		await s3Client.send(
+			new PutObjectCommand({
+				Bucket: bucket,
+				Key: path,
+				Body: body,
+				ContentType: contentType || "application/octet-stream",
+				ContentLength: contentLength,
+			}),
+		);
+	} catch (e) {
+		logger.error(e);
+		throw new Error("Could not put object");
 	}
 };
 
