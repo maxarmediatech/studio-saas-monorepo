@@ -4,6 +4,7 @@ import {
 	pgTable,
 	text,
 	timestamp,
+	uniqueIndex,
 	varchar,
 } from "drizzle-orm/pg-core";
 import { v7 as uuidv7 } from "uuid";
@@ -53,6 +54,10 @@ export const waMessages = pgTable(
 		index("wa_messages_conversation_id_idx").on(table.conversationId),
 		index("wa_messages_contact_id_idx").on(table.contactId),
 		index("wa_messages_provider_message_id_idx").on(
+			table.providerMessageId,
+		),
+		uniqueIndex("wa_messages_account_provider_message_id_idx").on(
+			table.accountId,
 			table.providerMessageId,
 		),
 		index("wa_messages_created_at_idx").on(table.createdAt),

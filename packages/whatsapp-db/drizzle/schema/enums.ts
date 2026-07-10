@@ -40,6 +40,7 @@ export const waMessageStatusEnum = pgEnum("wa_message_status", [
 	"delivered",
 	"read",
 	"failed",
+	"delivery_unknown",
 ]);
 
 export const waConversationStatusEnum = pgEnum("wa_conversation_status", [
@@ -53,6 +54,7 @@ export const waOutboxStatusEnum = pgEnum("wa_outbox_status", [
 	"processing",
 	"sent",
 	"failed",
+	"delivery_unknown",
 ]);
 
 export const waMediaStorageTypeEnum = pgEnum("wa_media_storage_type", [
