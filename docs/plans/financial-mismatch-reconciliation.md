@@ -45,7 +45,7 @@ The report emits exactly these `mismatchType` values:
 7. `multiple_receipts_per_payment`
 8. `multiple_invoices_per_schedule`
 
-All SQL is organization-scoped, joins compare organization and booking ownership, and active-record calculations exclude soft-deleted rows. Receipt/payment checks also compare their invoice IDs, so records tied to different invoices are manual-review mismatches even when organization and booking agree. Issuance-history checks begin with the tenant-owned payment or schedule, then include every linked receipt or invoice regardless of its stored organization, while their details distinguish active records. The report includes deterministic relation-qualified evidence IDs and expected/actual values needed for review.
+All SQL is organization-scoped, joins compare organization and booking ownership, and active-record calculations exclude soft-deleted rows. Receipt/payment checks also compare their invoice IDs, so records tied to different invoices are manual-review mismatches even when organization and booking agree. A linked payment and invoice must have exactly the same schedule identity, including null versus non-null; the class-6 relationship evidence is emitted even when aggregate caches already match, including cancelled linked documents. Issuance-history checks begin with the tenant-owned payment or schedule, then include every linked receipt or invoice regardless of its stored organization, while their details distinguish active records. The report includes deterministic relation-qualified evidence IDs and expected/actual values needed for review.
 
 ## Safe-fix boundary
 

@@ -68,10 +68,7 @@ payment_chain AS (
 						AND ic.organization_id = p.organization_id
 						AND ic.booking_id = p.booking_id
 						AND ic.chain_valid
-						AND (
-							ic.payment_schedule_id IS NULL OR
-							ic.payment_schedule_id = p.payment_schedule_id
-						)
+						AND ic.payment_schedule_id IS NOT DISTINCT FROM p.payment_schedule_id
 				)
 			)
 			AND (
@@ -231,8 +228,7 @@ export async function queryFinancialMismatches(
 						WHERE p.invoice_id = i.id AND p.deleted_at IS NULL
 							AND p.organization_id = i.organization_id
 							AND p.booking_id = i.booking_id
-							AND (i.payment_schedule_id IS NULL
-								OR p.payment_schedule_id = i.payment_schedule_id)
+							AND p.payment_schedule_id IS NOT DISTINCT FROM i.payment_schedule_id
 							AND p.chain_valid), 0) AS amount,
 					(
 						SELECT COUNT(*) FROM payment_chain p
@@ -241,8 +237,7 @@ export async function queryFinancialMismatches(
 								p.organization_id <> i.organization_id
 								OR p.booking_id <> i.booking_id
 								OR NOT p.chain_valid
-								OR (i.payment_schedule_id IS NOT NULL
-									AND p.payment_schedule_id IS DISTINCT FROM i.payment_schedule_id)
+								OR p.payment_schedule_id IS DISTINCT FROM i.payment_schedule_id
 							)
 					) + (
 						SELECT COUNT(*) FROM receipts r
@@ -376,7 +371,7 @@ export async function queryFinancialMismatches(
 				GROUP BY s.organization_id, s.id
 			HAVING COUNT(*) > 1
 		`),
-		db.execute(sql`
+		db.execute(sql`${SAFE_RELATIONSHIP_CTES}
 			SELECT p.organization_id AS "organizationId",
 				'cross_entity_booking_org_disagreement' AS "mismatchType",
 				'received_amount' AS "entityType", p.id AS "entityId",
@@ -412,12 +407,41 @@ export async function queryFinancialMismatches(
 					json_build_object('relation', 'invoice_application_receipt',
 						'paymentInvoiceId', p.invoice_id, 'activeValidReceiptCount', 0)
 				FROM received_amounts p
-				WHERE p.organization_id = ${organizationId} AND p.deleted_at IS NULL AND p.invoice_id IS NOT NULL
+			WHERE p.organization_id = ${organizationId} AND p.deleted_at IS NULL AND p.invoice_id IS NOT NULL
 					AND NOT EXISTS (SELECT 1 FROM receipts r
 						WHERE r.received_amount_id = p.id AND r.deleted_at IS NULL
 							AND r.organization_id = p.organization_id
 							AND r.booking_id = p.booking_id AND r.invoice_id = p.invoice_id
 							AND r.amount = p.amount)
+				UNION ALL
+				SELECT p.organization_id, 'cross_entity_booking_org_disagreement', 'received_amount', p.id,
+					p.invoice_id,
+					'received_amount.invoice_payment_schedule',
+					json_build_object('relation', 'invoice_payment_schedule',
+						'defect', 'schedule_identity_disagreement',
+						'paymentScheduleId', p.payment_schedule_id,
+						'invoiceScheduleId', i.payment_schedule_id)
+				FROM payment_chain p JOIN invoices i ON i.id = p.invoice_id
+				WHERE p.organization_id = ${organizationId} AND p.deleted_at IS NULL
+					AND p.payment_schedule_id IS DISTINCT FROM i.payment_schedule_id
+				UNION ALL
+				SELECT p.organization_id, 'cross_entity_booking_org_disagreement', 'received_amount', p.id,
+					p.payment_schedule_id,
+					'received_amount.payment_schedule.cancelled',
+					json_build_object('relation', 'payment_schedule', 'defect', 'cancelled',
+						'paymentScheduleId', p.payment_schedule_id, 'status', s.status)
+				FROM payment_chain p JOIN payment_schedules s ON s.id = p.payment_schedule_id
+				WHERE p.organization_id = ${organizationId} AND p.deleted_at IS NULL
+					AND s.status = 'cancelled'
+				UNION ALL
+				SELECT p.organization_id, 'cross_entity_booking_org_disagreement', 'received_amount', p.id,
+					p.invoice_id,
+					'received_amount.invoice.cancelled',
+					json_build_object('relation', 'invoice', 'defect', 'cancelled',
+						'invoiceId', p.invoice_id, 'status', i.status)
+				FROM payment_chain p JOIN invoices i ON i.id = p.invoice_id
+				WHERE p.organization_id = ${organizationId} AND p.deleted_at IS NULL
+					AND i.status = 'cancelled'
 				UNION ALL
 				SELECT s.organization_id, 'cross_entity_booking_org_disagreement', 'payment_schedule', s.id,
 				s.booking_id,
@@ -445,6 +469,15 @@ export async function queryFinancialMismatches(
 			FROM invoices i LEFT JOIN payment_schedules s ON s.id = i.payment_schedule_id
 			WHERE i.organization_id = ${organizationId} AND i.deleted_at IS NULL AND i.payment_schedule_id IS NOT NULL
 				AND (s.id IS NULL OR s.organization_id <> i.organization_id OR s.booking_id <> i.booking_id OR s.deleted_at IS NOT NULL)
+			UNION ALL
+			SELECT i.organization_id, 'cross_entity_booking_org_disagreement', 'invoice', i.id,
+				i.payment_schedule_id,
+				'invoice.payment_schedule.cancelled',
+				json_build_object('relation', 'payment_schedule', 'defect', 'cancelled',
+					'paymentScheduleId', i.payment_schedule_id, 'status', s.status)
+			FROM invoices i JOIN payment_schedules s ON s.id = i.payment_schedule_id
+			WHERE i.organization_id = ${organizationId} AND i.deleted_at IS NULL
+				AND s.status = 'cancelled'
 			UNION ALL
 			SELECT r.organization_id, 'cross_entity_booking_org_disagreement', 'receipt', r.id,
 				r.booking_id,
@@ -552,8 +585,7 @@ export async function applySafeFinancialFixes(
 									WHERE p.invoice_id = i.id AND p.deleted_at IS NULL
 										AND p.organization_id = i.organization_id
 										AND p.booking_id = i.booking_id
-										AND (i.payment_schedule_id IS NULL
-											OR p.payment_schedule_id = i.payment_schedule_id)
+									AND p.payment_schedule_id IS NOT DISTINCT FROM i.payment_schedule_id
 										AND p.chain_valid), 0) AS amount,
 								(
 									SELECT COUNT(*) FROM payment_chain p
@@ -562,8 +594,7 @@ export async function applySafeFinancialFixes(
 											p.organization_id <> i.organization_id
 											OR p.booking_id <> i.booking_id
 											OR NOT p.chain_valid
-											OR (i.payment_schedule_id IS NOT NULL
-												AND p.payment_schedule_id IS DISTINCT FROM i.payment_schedule_id)
+									OR p.payment_schedule_id IS DISTINCT FROM i.payment_schedule_id
 										)
 								) + (
 									SELECT COUNT(*) FROM receipts r
