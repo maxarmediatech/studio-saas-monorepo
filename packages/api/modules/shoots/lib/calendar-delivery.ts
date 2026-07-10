@@ -62,11 +62,11 @@ async function queueJob(
 		kind?: "delivery" | "cancellation";
 		nextAttemptAt?: Date | null;
 	},
-) {
+): Promise<"queued" | "terminal"> {
 	const now = new Date();
 	const deliveryKey = getCalendarDeliveryKey(params);
 
-	await tx
+	const inserted = await tx
 		.insert(calendarSyncJobs)
 		.values({
 			organizationId: params.organizationId,
@@ -78,25 +78,59 @@ async function queueJob(
 			nextAttemptAt: params.nextAttemptAt ?? null,
 			updatedAt: now,
 		})
-		.onConflictDoUpdate({
+		.onConflictDoNothing({
 			target: calendarSyncJobs.deliveryKey,
 			targetWhere: sql`${calendarSyncJobs.status} <> 'completed'`,
-			// Existing pending/processing/retryable failed jobs already carry the
-			// current target identity. Do not reset their lease, backoff, or attempt
-			// count when a producer retries. Only revive an exhausted job.
-			setWhere: sql`${calendarSyncJobs.status} = 'failed'
-				AND COALESCE(${calendarSyncJobs.attempts}, 0) >= COALESCE(${calendarSyncJobs.maxAttempts}, 5)`,
-			set: {
+		})
+		.returning({ id: calendarSyncJobs.id });
+
+	if (inserted.length > 0) {
+		return "queued";
+	}
+
+	const [existing] = await tx
+		.select({
+			id: calendarSyncJobs.id,
+			status: calendarSyncJobs.status,
+			jobType: calendarSyncJobs.jobType,
+			attempts: calendarSyncJobs.attempts,
+			maxAttempts: calendarSyncJobs.maxAttempts,
+		})
+		.from(calendarSyncJobs)
+		.where(
+			and(
+				eq(calendarSyncJobs.deliveryKey, deliveryKey),
+				ne(calendarSyncJobs.status, "completed"),
+			),
+		)
+		.limit(1);
+
+	if (!existing) {
+		// A concurrent worker may have completed the conflicting job between the
+		// insert and lookup. Retrying the insert preserves the partial-key contract.
+		return queueJob(tx, params);
+	}
+
+	if (
+		existing.status === "failed" &&
+		(existing.attempts ?? 0) >= (existing.maxAttempts ?? 5)
+	) {
+		return "terminal";
+	}
+
+	if (existing.jobType !== params.jobType) {
+		// A routing change changes the work, not its retry lifecycle. Keep the
+		// current attempt count, backoff, and processing lease intact.
+		await tx
+			.update(calendarSyncJobs)
+			.set({
 				jobType: params.jobType,
-				status: "pending",
-				attempts: 0,
-				lastAttemptAt: null,
-				nextAttemptAt: params.nextAttemptAt ?? null,
-				lockedAt: null,
-				lastError: null,
 				updatedAt: now,
-			},
-		});
+			})
+			.where(eq(calendarSyncJobs.id, existing.id));
+	}
+
+	return "queued";
 }
 
 async function markProducerFailure(
@@ -119,6 +153,27 @@ async function markProducerFailure(
 		...params,
 		error: message,
 	});
+}
+
+async function markTerminalDelivery(
+	tx: TransactionClient,
+	params: { organizationId: string; shootId: string; crewId: string },
+) {
+	await tx
+		.update(shootCalendarEvents)
+		.set({
+			syncStatus: "error",
+			lastError:
+				"Calendar delivery exhausted its retry budget; create a new delivery intent after correcting the target",
+			updatedAt: new Date(),
+		})
+		.where(
+			and(
+				eq(shootCalendarEvents.organizationId, params.organizationId),
+				eq(shootCalendarEvents.shootId, params.shootId),
+				eq(shootCalendarEvents.crewId, params.crewId),
+			),
+		);
 }
 
 function getErrorMessage(error: unknown): string {
@@ -271,9 +326,19 @@ export async function ensureAssignmentCalendarDelivery(
 				: "ics_send_invite";
 
 	try {
-		await tx.transaction((jobTx) =>
+		const queueResult = await tx.transaction((jobTx) =>
 			queueJob(jobTx, { ...params, jobType }),
 		);
+		if (queueResult === "terminal") {
+			await markTerminalDelivery(tx, params);
+			return {
+				crewId: target.crewId,
+				shootId: target.shootId,
+				deliveryMethod,
+				jobType,
+				state: "error",
+			};
+		}
 	} catch (error) {
 		await markProducerFailure(tx, params, error);
 		return {
@@ -378,6 +443,14 @@ export async function reconcileCalendarDeliveries(params: {
 	crewId?: string;
 	apply: boolean;
 }) {
+	const hasActiveGoogleConnection = sql`EXISTS (
+		SELECT 1 FROM ${googleCalendarConnections}
+		WHERE ${googleCalendarConnections.organizationId} = ${organizations.id}
+		AND ${googleCalendarConnections.userId} = ${crews.userId}
+		AND ${googleCalendarConnections.disconnectedAt} IS NULL
+		AND ${googleCalendarConnections.refreshToken} IS NOT NULL
+	)`;
+	const crewEmail = sql`NULLIF(BTRIM(${crews.email}), '')`;
 	const candidates = await db
 		.select({
 			organizationId: organizations.id,
@@ -422,6 +495,21 @@ export async function reconcileCalendarDeliveries(params: {
 					${shootCalendarEvents.id} IS NULL
 					OR ${shootCalendarEvents.syncStatus} IN ('error', 'unsendable')
 					OR (
+						${shootCalendarEvents.deliveryMethod} = 'google'
+						AND NOT (${hasActiveGoogleConnection})
+					)
+					OR (
+						${shootCalendarEvents.deliveryMethod} = 'ics'
+						AND (
+							${hasActiveGoogleConnection}
+							OR ${shootCalendarEvents.recipientEmail} IS DISTINCT FROM ${crewEmail}
+						)
+					)
+					OR (
+						${shootCalendarEvents.deliveryMethod} = 'unsendable'
+						AND (${hasActiveGoogleConnection} OR ${crewEmail} IS NOT NULL)
+					)
+					OR (
 						${shootCalendarEvents.syncStatus} = 'pending'
 						AND NOT EXISTS (
 							SELECT 1 FROM ${calendarSyncJobs}
@@ -443,9 +531,16 @@ export async function reconcileCalendarDeliveries(params: {
 	let failed = 0;
 	for (const candidate of candidates) {
 		try {
-			await db.transaction((tx) =>
+			const result = await db.transaction((tx) =>
 				ensureAssignmentCalendarDelivery(tx, candidate),
 			);
+			if (result.state === "error") {
+				failed += 1;
+				logger.error("Calendar delivery reconciliation could not queue work", {
+					...candidate,
+				});
+				continue;
+			}
 			reconciled += 1;
 		} catch (error) {
 			failed += 1;

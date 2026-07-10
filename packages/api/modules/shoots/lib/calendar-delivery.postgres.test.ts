@@ -5,7 +5,7 @@ const databaseUrl = process.env.POSTGRES_CALENDAR_DATABASE_URL;
 const describePostgres = databaseUrl ? describe : describe.skip;
 
 describePostgres("calendar delivery on migrated PostgreSQL", () => {
-	it("routes, deduplicates, records producer errors, reconciles, and rejects cross-organization targets", async () => {
+	it("routes, preserves retries, reconciles delivery changes, and recovers stale worker jobs", async () => {
 		const originalDatabaseUrl = process.env.DATABASE_URL;
 		const originalAuthSecret = process.env.BETTER_AUTH_SECRET;
 		const originalSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
@@ -23,6 +23,7 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 			db,
 			eq,
 			googleCalendarConnections,
+			inArray,
 			organizations,
 			shootAssignments,
 			shootCalendarEvents,
@@ -35,6 +36,10 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 			ensureAssignmentCalendarDelivery,
 			reconcileCalendarDeliveries,
 		} = await import("./calendar-delivery");
+		const {
+			claimJobBatch,
+			recoverStaleProcessingJobs,
+		} = await import("../../../../../services/calendar-worker/src/index");
 		const { buildEventInput } = await import(
 			"../../../../../services/calendar-worker/src/event-input"
 		);
@@ -57,6 +62,8 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 			retry: `calendar_retry_${suffix}`,
 			missing: `calendar_missing_${suffix}`,
 			pending: `calendar_pending_${suffix}`,
+			stale: `calendar_stale_${suffix}`,
+			staleTerminal: `calendar_stale_terminal_${suffix}`,
 		};
 		let triggerCreated = false;
 
@@ -128,6 +135,8 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 					[ids.retry]: `retry-${suffix}@example.com`,
 					[ids.missing]: `missing-${suffix}@example.com`,
 					[ids.pending]: `pending-${suffix}@example.com`,
+					[ids.stale]: `stale-${suffix}@example.com`,
+					[ids.staleTerminal]: `stale-terminal-${suffix}@example.com`,
 				}).map(([id, email]) => ({
 					id,
 					organizationId,
@@ -177,7 +186,7 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 					}),
 				);
 			const [google, registeredIcs, externalIcs, unsendable] =
-				await Promise.all([
+			await Promise.all([
 					route(ids.google),
 					route(ids.registeredIcs),
 					route(ids.externalIcs),
@@ -192,7 +201,41 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 				state: "unsendable",
 			});
 
-			await Promise.all([
+			await db.insert(googleCalendarConnections).values({
+				organizationId,
+				userId: registeredUserId,
+				refreshToken: "encrypted-registered-test-token",
+			});
+			await reconcileCalendarDeliveries({
+				organizationId,
+				crewId: ids.registeredIcs,
+				apply: true,
+			});
+			const [reroutedMapping] = await db
+				.select()
+				.from(shootCalendarEvents)
+				.where(
+					and(
+						eq(shootCalendarEvents.organizationId, organizationId),
+						eq(shootCalendarEvents.shootId, ids.registeredIcs),
+					),
+				);
+			const [reroutedJob] = await db
+				.select()
+				.from(calendarSyncJobs)
+				.where(
+					and(
+						eq(calendarSyncJobs.organizationId, organizationId),
+						eq(calendarSyncJobs.shootId, ids.registeredIcs),
+					),
+				);
+			expect(reroutedMapping).toMatchObject({ deliveryMethod: "google" });
+			expect(reroutedJob).toMatchObject({
+				jobType: "google_create",
+				attempts: 0,
+			});
+
+				await Promise.all([
 				route(ids.externalIcs),
 				route(ids.externalIcs),
 				route(ids.externalIcs),
@@ -213,6 +256,7 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 					status: "failed",
 					attempts: 2,
 					maxAttempts: 5,
+					jobType: "google_create",
 					nextAttemptAt: retryAt,
 				})
 				.where(
@@ -231,8 +275,27 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 						eq(calendarSyncJobs.shootId, ids.retry),
 					),
 				);
-			expect(retryJob).toMatchObject({ status: "failed", attempts: 2 });
+			if (!retryJob) {
+				throw new Error("Expected retry calendar job");
+			}
+			expect(retryJob).toMatchObject({
+				status: "failed",
+				attempts: 2,
+				jobType: "ics_send_invite",
+			});
 			expect(retryJob?.nextAttemptAt?.getTime()).toBe(retryAt.getTime());
+
+			await db
+				.update(calendarSyncJobs)
+				.set({ status: "failed", attempts: 5, nextAttemptAt: null })
+				.where(eq(calendarSyncJobs.id, retryJob.id));
+			const terminalRetry = await route(ids.retry);
+			expect(terminalRetry.state).toBe("error");
+			const [terminalJob] = await db
+				.select()
+				.from(calendarSyncJobs)
+				.where(eq(calendarSyncJobs.id, retryJob.id));
+			expect(terminalJob).toMatchObject({ status: "failed", attempts: 5 });
 
 			const failedDeliveryKey = `calendar:${organizationId}:${ids.failed}:${ids.failed}:delivery`;
 			await db.execute(
@@ -329,6 +392,73 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 					crewId: ids.externalIcs,
 				}),
 			).rejects.toThrow("Shoot not found");
+
+			const staleLockedAt = new Date(Date.now() - 20 * 60 * 1000);
+			await db.insert(calendarSyncJobs).values([
+				{
+					organizationId,
+					deliveryKey: `calendar:${organizationId}:${ids.stale}:${ids.stale}:delivery`,
+					status: "processing",
+					jobType: "ics_send_invite",
+					shootId: ids.stale,
+					crewId: ids.stale,
+					attempts: 1,
+					maxAttempts: 5,
+					lockedAt: staleLockedAt,
+					createdAt: new Date(0),
+				},
+				{
+					organizationId,
+					deliveryKey: `calendar:${organizationId}:${ids.staleTerminal}:${ids.staleTerminal}:delivery`,
+					status: "processing",
+					jobType: "ics_send_invite",
+					shootId: ids.staleTerminal,
+					crewId: ids.staleTerminal,
+					attempts: 5,
+					maxAttempts: 5,
+					lockedAt: staleLockedAt,
+				},
+			]);
+			await recoverStaleProcessingJobs();
+			const staleJobs = await db
+				.select()
+				.from(calendarSyncJobs)
+				.where(
+					and(
+						eq(calendarSyncJobs.organizationId, organizationId),
+						inArray(calendarSyncJobs.shootId, [
+							ids.stale,
+							ids.staleTerminal,
+						]),
+					),
+				);
+			expect(staleJobs).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						shootId: ids.stale,
+						status: "failed",
+						attempts: 1,
+						lockedAt: null,
+					}),
+					expect.objectContaining({
+						shootId: ids.staleTerminal,
+						status: "failed",
+						attempts: 5,
+						nextAttemptAt: null,
+						lockedAt: null,
+					}),
+				]),
+			);
+			const claimed = await claimJobBatch();
+			expect(claimed).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+					shootId: ids.stale,
+					status: "processing",
+					attempts: 2,
+				}),
+			]),
+			);
 
 			await db
 				.update(calendarSyncJobs)
