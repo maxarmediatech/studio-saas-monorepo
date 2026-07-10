@@ -38,6 +38,16 @@ export type Mismatch = RawMismatch & {
 	intendedAction: SafeFixAction | null;
 };
 
+export type SafeFixFailure = {
+	mismatchId: string;
+	reason: "repair_guard_prevented_update" | "repair_transaction_failed";
+};
+
+export type SafeFixResult = {
+	applied: string[];
+	failed: SafeFixFailure[];
+};
+
 export type DecisionRecord = {
 	decisionDate: string;
 	decider: string;
@@ -220,4 +230,32 @@ export function summarize(mismatches: Mismatch[]) {
 		).length,
 		byType,
 	};
+}
+
+export async function runIsolatedSafeFixes(
+	mismatches: Mismatch[],
+	apply: (mismatch: Mismatch) => Promise<boolean>,
+): Promise<SafeFixResult> {
+	const applied: string[] = [];
+	const failed: SafeFixFailure[] = [];
+
+	for (const mismatch of mismatches) {
+		try {
+			if (await apply(mismatch)) {
+				applied.push(mismatch.id);
+			} else {
+				failed.push({
+					mismatchId: mismatch.id,
+					reason: "repair_guard_prevented_update",
+				});
+			}
+		} catch {
+			failed.push({
+				mismatchId: mismatch.id,
+				reason: "repair_transaction_failed",
+			});
+		}
+	}
+
+	return { applied, failed };
 }
