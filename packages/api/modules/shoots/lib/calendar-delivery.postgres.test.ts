@@ -54,6 +54,7 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 			externalIcs: `calendar_external_ics_${suffix}`,
 			unsendable: `calendar_unsendable_${suffix}`,
 			failed: `calendar_failed_${suffix}`,
+			retry: `calendar_retry_${suffix}`,
 			missing: `calendar_missing_${suffix}`,
 			pending: `calendar_pending_${suffix}`,
 		};
@@ -124,6 +125,7 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 				...Object.entries({
 					[ids.externalIcs]: `external-${suffix}@example.com`,
 					[ids.failed]: `failed-${suffix}@example.com`,
+					[ids.retry]: `retry-${suffix}@example.com`,
 					[ids.missing]: `missing-${suffix}@example.com`,
 					[ids.pending]: `pending-${suffix}@example.com`,
 				}).map(([id, email]) => ({
@@ -203,6 +205,35 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 				jobs.filter((job) => job.shootId === ids.externalIcs),
 			).toHaveLength(1);
 
+			await route(ids.retry);
+			const retryAt = new Date(Date.now() + 60_000);
+			await db
+				.update(calendarSyncJobs)
+				.set({
+					status: "failed",
+					attempts: 2,
+					maxAttempts: 5,
+					nextAttemptAt: retryAt,
+				})
+				.where(
+					and(
+						eq(calendarSyncJobs.organizationId, organizationId),
+						eq(calendarSyncJobs.shootId, ids.retry),
+					),
+				);
+			await route(ids.retry);
+			const [retryJob] = await db
+				.select()
+				.from(calendarSyncJobs)
+				.where(
+					and(
+						eq(calendarSyncJobs.organizationId, organizationId),
+						eq(calendarSyncJobs.shootId, ids.retry),
+					),
+				);
+			expect(retryJob).toMatchObject({ status: "failed", attempts: 2 });
+			expect(retryJob?.nextAttemptAt?.getTime()).toBe(retryAt.getTime());
+
 			const failedDeliveryKey = `calendar:${organizationId}:${ids.failed}:${ids.failed}:delivery`;
 			await db.execute(
 				sql.raw(`CREATE FUNCTION "${functionName}"() RETURNS trigger AS $$
@@ -219,7 +250,8 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 					ON calendar_sync_jobs FOR EACH ROW EXECUTE FUNCTION "${functionName}"()`),
 			);
 			triggerCreated = true;
-			await route(ids.failed);
+			const failedResult = await route(ids.failed);
+			expect(failedResult.state).toBe("error");
 			const failedMapping = await db.query.shootCalendarEvents.findFirst({
 				where: and(
 					eq(shootCalendarEvents.organizationId, organizationId),

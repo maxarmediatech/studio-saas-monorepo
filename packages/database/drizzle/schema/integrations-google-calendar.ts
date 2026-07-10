@@ -113,7 +113,8 @@ export const shootCalendarEvents = pgTable(
 			.notNull(),
 	},
 	(table) => [
-		uniqueIndex("shoot_calendar_events_shoot_crew_idx").on(
+		uniqueIndex("shoot_calendar_events_org_shoot_crew_idx").on(
+			table.organizationId,
 			table.shootId,
 			table.crewId,
 		),

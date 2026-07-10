@@ -33,7 +33,7 @@ export async function buildEventInput(params: {
 		throw new Error("Active shoot not found for calendar delivery");
 	}
 
-	const [crew, booking, assignment, organization] = await Promise.all([
+	const [crew, booking, organization] = await Promise.all([
 		db.query.crews.findFirst({
 			where: and(
 				eq(crews.id, params.crewId),
@@ -49,18 +49,36 @@ export async function buildEventInput(params: {
 			),
 			columns: { name: true, referenceNumber: true },
 		}),
-		db.query.shootAssignments.findFirst({
-			where: and(
-				eq(shootAssignments.shootId, params.shootId),
-				eq(shootAssignments.crewId, params.crewId),
-			),
-			columns: { role: true },
-		}),
 		db.query.organizations.findFirst({
 			where: eq(organizations.id, params.organizationId),
 			columns: { slug: true, timezone: true },
 		}),
 	]);
+	const [assignment] = await db
+		.select({ role: shootAssignments.role })
+		.from(shootAssignments)
+		.innerJoin(
+			shoots,
+			and(
+				eq(shootAssignments.shootId, shoots.id),
+				eq(shoots.organizationId, params.organizationId),
+			),
+		)
+		.innerJoin(
+			crews,
+			and(
+				eq(shootAssignments.crewId, crews.id),
+				eq(crews.organizationId, params.organizationId),
+				isNull(crews.deletedAt),
+			),
+		)
+		.where(
+			and(
+				eq(shootAssignments.shootId, params.shootId),
+				eq(shootAssignments.crewId, params.crewId),
+			),
+		)
+		.limit(1);
 
 	if (!crew) {
 		throw new Error("Crew not found in calendar job organization");
