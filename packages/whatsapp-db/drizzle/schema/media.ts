@@ -36,6 +36,10 @@ export const waMedia = pgTable(
 		nextIngestAttemptAt: timestamp("next_ingest_attempt_at", {
 			withTimezone: true,
 		}),
+		ingestLockedBy: text("ingest_locked_by"),
+		ingestLeaseExpiresAt: timestamp("ingest_lease_expires_at", {
+			withTimezone: true,
+		}),
 		ingestErrorMessage: text("ingest_error_message"),
 		storageUrl: text("storage_url"),
 		thumbnailUrl: text("thumbnail_url"),
@@ -46,5 +50,12 @@ export const waMedia = pgTable(
 	(table) => [
 		index("wa_media_organization_id_idx").on(table.organizationId),
 		index("wa_media_provider_media_id_idx").on(table.providerMediaId),
+		index("wa_media_ingest_queue_idx").on(
+			table.ingestStatus,
+			table.nextIngestAttemptAt,
+		),
+		index("wa_media_ingest_lease_expiry_idx").on(
+			table.ingestLeaseExpiresAt,
+		),
 	],
 );

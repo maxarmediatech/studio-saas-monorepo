@@ -1,5 +1,6 @@
 import {
 	index,
+	integer,
 	jsonb,
 	pgTable,
 	text,
@@ -22,6 +23,8 @@ export const waEvents = pgTable(
 		payload: jsonb("payload"),
 		processedAt: timestamp("processed_at", { withTimezone: true }),
 		errorMessage: text("error_message"),
+		attempts: integer("attempts").notNull().default(0),
+		lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.defaultNow()
 			.notNull(),

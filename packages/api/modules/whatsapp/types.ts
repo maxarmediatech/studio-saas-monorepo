@@ -372,6 +372,7 @@ export const messageItemSchema = z.object({
 		"delivered",
 		"read",
 		"failed",
+		"delivery_unknown",
 	]),
 	statusUpdatedAt: z.date().nullable(),
 	providerMessageId: z.string().nullable(),
