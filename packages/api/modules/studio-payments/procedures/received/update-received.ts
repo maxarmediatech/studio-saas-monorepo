@@ -5,16 +5,21 @@ import {
 	db,
 	eq,
 	isNull,
-	paymentSchedules,
 	receivedAmounts,
 	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../../orpc/procedures";
+import { getLockedBookingForReceipt } from "../../../receipts/lib/locked-invoice-for-receipt";
 import { requirePermission } from "../../../studio/lib/permissions";
 import {
 	updateReceivedInputSchema,
 	updateReceivedOutputSchema,
 } from "../../../studio/schemas/payment";
+import {
+	assertPaymentFinancialDetailsEditable,
+	getPaymentFinancialProtection,
+} from "../../lib/payment-financial-protection";
+import { getLockedReceivedPayment } from "../../lib/received-payment-lock";
 
 export const updateReceived = studioProtectedProcedure
 	.route({
@@ -31,55 +36,6 @@ export const updateReceived = studioProtectedProcedure
 
 		const { id, ...updates } = input;
 
-		// Verify received payment exists and belongs to organization
-		const received = await db.query.receivedAmounts.findFirst({
-			where: and(
-				eq(receivedAmounts.id, id),
-				eq(receivedAmounts.organizationId, context.organizationId),
-				isNull(receivedAmounts.deletedAt),
-			),
-		});
-
-		if (!received) {
-			throw new ORPCError("NOT_FOUND", {
-				message: "Received payment not found",
-			});
-		}
-
-		// If amount is being updated, we need to update booking totals
-		const amountChanged =
-			updates.amount !== undefined && updates.amount !== received.amount;
-		const oldAmount = Number.parseFloat(received.amount);
-		const newAmount = updates.amount
-			? Number.parseFloat(updates.amount)
-			: oldAmount;
-
-		// Build update object
-		const updateData: Record<string, unknown> = {
-			updatedAt: new Date(),
-			updatedBy: context.user.id,
-		};
-
-		if (updates.amount !== undefined) {
-			updateData.amount = updates.amount;
-		}
-
-		if (updates.paymentMethod !== undefined) {
-			updateData.paymentMethod = updates.paymentMethod;
-		}
-
-		if (updates.transactionReference !== undefined) {
-			updateData.transactionReference = updates.transactionReference;
-		}
-
-		if (updates.receivedDate !== undefined) {
-			updateData.receivedDate = updates.receivedDate;
-		}
-
-		if (updates.notes !== undefined) {
-			updateData.notes = updates.notes;
-		}
-
 		// Security: Validate S3 key belongs to this organization (prevents IDOR)
 		if (updates.proofAttachment?.key) {
 			const expectedPrefix = `orgs/${context.organizationId}/`;
@@ -91,19 +47,111 @@ export const updateReceived = studioProtectedProcedure
 			}
 		}
 
-		if (updates.proofAttachment !== undefined) {
-			updateData.proofAttachment = updates.proofAttachment;
-		}
+		return await db.transaction(async (tx) => {
+			const lockPlan = await tx.query.receivedAmounts.findFirst({
+				where: and(
+					eq(receivedAmounts.id, id),
+					eq(receivedAmounts.organizationId, context.organizationId),
+					isNull(receivedAmounts.deletedAt),
+				),
+				columns: { bookingId: true },
+			});
 
-		// Use transaction if amount changed
-		if (amountChanged) {
-			return await db.transaction(async (tx) => {
-				// Update received amount
-				await tx
-					.update(receivedAmounts)
-					.set(updateData)
-					.where(eq(receivedAmounts.id, id));
+			if (!lockPlan) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Received payment not found",
+				});
+			}
 
+			const booking = await getLockedBookingForReceipt(tx, {
+				organizationId: context.organizationId,
+				bookingId: lockPlan.bookingId,
+			});
+
+			if (!booking) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Booking not found",
+				});
+			}
+
+			const received = await getLockedReceivedPayment(tx, {
+				organizationId: context.organizationId,
+				receivedAmountId: id,
+			});
+
+			if (!received) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Received payment not found",
+				});
+			}
+
+			if (received.bookingId !== lockPlan.bookingId) {
+				throw new ORPCError("CONFLICT", {
+					message:
+						"Received payment booking changed during update. Retry the request.",
+				});
+			}
+
+			const oldAmount = Number.parseFloat(received.amount);
+			const newAmount = updates.amount
+				? Number.parseFloat(updates.amount)
+				: oldAmount;
+			const amountChanged =
+				updates.amount !== undefined && newAmount !== oldAmount;
+			const financialDetailsChanged =
+				amountChanged ||
+				(updates.paymentMethod !== undefined &&
+					updates.paymentMethod !== received.paymentMethod) ||
+				(updates.receivedDate !== undefined &&
+					updates.receivedDate !== received.receivedDate);
+
+			if (financialDetailsChanged) {
+				const protection = await getPaymentFinancialProtection(tx, {
+					organizationId: context.organizationId,
+					receivedAmountId: received.id,
+					invoiceId: received.invoiceId,
+					paymentScheduleId: received.paymentScheduleId,
+				});
+
+				assertPaymentFinancialDetailsEditable(protection);
+			}
+
+			const updateData: Record<string, unknown> = {
+				updatedAt: new Date(),
+				updatedBy: context.user.id,
+			};
+
+			if (updates.amount !== undefined) {
+				updateData.amount = updates.amount;
+			}
+
+			if (updates.paymentMethod !== undefined) {
+				updateData.paymentMethod = updates.paymentMethod;
+			}
+
+			if (updates.transactionReference !== undefined) {
+				updateData.transactionReference = updates.transactionReference;
+			}
+
+			if (updates.receivedDate !== undefined) {
+				updateData.receivedDate = updates.receivedDate;
+			}
+
+			if (updates.notes !== undefined) {
+				updateData.notes = updates.notes;
+			}
+
+			if (updates.proofAttachment !== undefined) {
+				updateData.proofAttachment = updates.proofAttachment;
+			}
+
+			// Update received amount
+			await tx
+				.update(receivedAmounts)
+				.set(updateData)
+				.where(eq(receivedAmounts.id, id));
+
+			if (amountChanged) {
 				// Update booking total (subtract old, add new)
 				const amountDiff = newAmount - oldAmount;
 				await tx
@@ -114,88 +162,11 @@ export const updateReceived = studioProtectedProcedure
 						updatedBy: context.user.id,
 					})
 					.where(eq(bookings.id, received.bookingId));
+			}
 
-				if (received.paymentScheduleId) {
-					const schedule = await tx.query.paymentSchedules.findFirst({
-						where: and(
-							eq(paymentSchedules.id, received.paymentScheduleId),
-							eq(
-								paymentSchedules.organizationId,
-								context.organizationId,
-							),
-							isNull(paymentSchedules.deletedAt),
-						),
-					});
-
-					if (!schedule) {
-						throw new ORPCError("NOT_FOUND", {
-							message: "Linked payment schedule not found",
-						});
-					}
-
-					const [paidResult] = await tx
-						.select({
-							sum: sql<string>`COALESCE(SUM(${receivedAmounts.amount}), 0)`,
-						})
-						.from(receivedAmounts)
-						.where(
-							and(
-								eq(
-									receivedAmounts.paymentScheduleId,
-									received.paymentScheduleId,
-								),
-								isNull(receivedAmounts.deletedAt),
-							),
-						);
-
-					const totalPaid = Number.parseFloat(paidResult?.sum ?? "0");
-					const scheduleAmount = Number.parseFloat(schedule.amount);
-
-					if (totalPaid > scheduleAmount) {
-						throw new ORPCError("CONFLICT", {
-							message:
-								"Total received exceeds schedule amount. Update the schedule amount before changing this payment.",
-						});
-					}
-
-					const status =
-						totalPaid >= scheduleAmount
-							? "completed"
-							: totalPaid > 0
-								? "partial"
-								: "pending";
-					const paidAt =
-						status === "completed"
-							? (schedule.paidAt ?? new Date())
-							: null;
-
-					await tx
-						.update(paymentSchedules)
-						.set({
-							paidAmount: totalPaid.toFixed(2),
-							status,
-							paidAt,
-							updatedAt: new Date(),
-							updatedBy: context.user.id,
-						})
-						.where(eq(paymentSchedules.id, schedule.id));
-				}
-
-				return {
-					data: { id },
-					message: "Payment updated successfully",
-				};
-			});
-		}
-
-		// No amount change, simple update
-		await db
-			.update(receivedAmounts)
-			.set(updateData)
-			.where(eq(receivedAmounts.id, id));
-
-		return {
-			data: { id },
-			message: "Payment updated successfully",
-		};
+			return {
+				data: { id },
+				message: "Payment updated successfully",
+			};
+		});
 	});

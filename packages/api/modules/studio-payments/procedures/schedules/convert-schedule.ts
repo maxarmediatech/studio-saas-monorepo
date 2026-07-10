@@ -14,6 +14,10 @@ import {
 import { studioProtectedProcedure } from "../../../../orpc/procedures";
 import { formatAmount, safeTrackActivity } from "../../../activities/lib";
 import {
+	getLockedBookingForReceipt,
+	getLockedScheduleInvoiceForReceipt,
+} from "../../../receipts/lib/locked-invoice-for-receipt";
+import {
 	generateReceiptNumber,
 	updateInvoicePaymentStatus,
 } from "../../../receipts/lib/receipt-helpers";
@@ -88,22 +92,26 @@ export const convertSchedule = studioProtectedProcedure
 				schedule.status === "partial" ||
 				schedule.status === "completed"
 			) {
-				const existingReceived = await tx.query.receivedAmounts.findFirst({
-					where: and(
-						eq(receivedAmounts.paymentScheduleId, scheduleId),
-						isNull(receivedAmounts.deletedAt),
-					),
-					columns: { id: true },
-				});
+				const existingReceived =
+					await tx.query.receivedAmounts.findFirst({
+						where: and(
+							eq(receivedAmounts.paymentScheduleId, scheduleId),
+							isNull(receivedAmounts.deletedAt),
+						),
+						columns: { id: true },
+					});
 
 				const existingReceipt = existingReceived
 					? await tx.query.receipts.findFirst({
-						where: and(
-							eq(receipts.receivedAmountId, existingReceived.id),
-							isNull(receipts.deletedAt),
-						),
-						columns: { id: true },
-					})
+							where: and(
+								eq(
+									receipts.receivedAmountId,
+									existingReceived.id,
+								),
+								isNull(receipts.deletedAt),
+							),
+							columns: { id: true },
+						})
 					: null;
 
 				return {
@@ -125,7 +133,8 @@ export const convertSchedule = studioProtectedProcedure
 			const convertedAmountCents = moneyToCents(amount);
 			const scheduleAmountCents = moneyToCents(schedule.amount);
 			const existingPaidAmountCents = moneyToCents(schedule.paidAmount);
-			const remainingAmountCents = scheduleAmountCents - existingPaidAmountCents;
+			const remainingAmountCents =
+				scheduleAmountCents - existingPaidAmountCents;
 			const newPaidAmountCents =
 				existingPaidAmountCents + convertedAmountCents;
 			const newScheduleStatus =
@@ -137,7 +146,10 @@ export const convertSchedule = studioProtectedProcedure
 					? (schedule.paidAt ?? new Date())
 					: schedule.paidAt;
 
-			if (!Number.isFinite(convertedAmountCents) || convertedAmountCents <= 0) {
+			if (
+				!Number.isFinite(convertedAmountCents) ||
+				convertedAmountCents <= 0
+			) {
 				throw new ORPCError("BAD_REQUEST", {
 					message: "Amount must be greater than zero",
 				});
@@ -151,8 +163,7 @@ export const convertSchedule = studioProtectedProcedure
 
 			if (convertedAmountCents > remainingAmountCents) {
 				throw new ORPCError("BAD_REQUEST", {
-					message:
-						"Amount cannot exceed remaining scheduled balance",
+					message: "Amount cannot exceed remaining scheduled balance",
 				});
 			}
 
@@ -163,16 +174,21 @@ export const convertSchedule = studioProtectedProcedure
 			const actualReceivedDate =
 				receivedDate ?? new Date().toISOString().split("T")[0];
 
-			const linkedInvoice = await tx.query.invoices.findFirst({
-				where: and(
-					eq(invoices.paymentScheduleId, scheduleId),
-					eq(invoices.organizationId, context.organizationId),
-					isNull(invoices.deletedAt),
-				),
-				columns: {
-					id: true,
-					status: true,
-				},
+			const lockedBooking = await getLockedBookingForReceipt(tx, {
+				organizationId: context.organizationId,
+				bookingId: schedule.bookingId,
+			});
+
+			if (!lockedBooking) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Booking not found",
+				});
+			}
+
+			const linkedInvoice = await getLockedScheduleInvoiceForReceipt(tx, {
+				organizationId: context.organizationId,
+				bookingId: schedule.bookingId,
+				paymentScheduleId: scheduleId,
 			});
 
 			const [created] = await tx
@@ -201,13 +217,6 @@ export const convertSchedule = studioProtectedProcedure
 			let receiptId: string | null = null;
 
 			if (linkedInvoice) {
-				if (linkedInvoice.status === "cancelled") {
-					throw new ORPCError("CONFLICT", {
-						message:
-							"Cannot convert schedule linked to a cancelled invoice",
-					});
-				}
-
 				if (linkedInvoice.status === "draft") {
 					await tx
 						.update(invoices)
@@ -228,11 +237,12 @@ export const convertSchedule = studioProtectedProcedure
 					try {
 						const attemptReceiptId = await tx.transaction(
 							async (receiptTx) => {
-								const receiptNumber = await generateReceiptNumber(
-									schedule.bookingId,
-									context.organizationId,
-									receiptTx,
-								);
+								const receiptNumber =
+									await generateReceiptNumber(
+										schedule.bookingId,
+										context.organizationId,
+										receiptTx,
+									);
 
 								const [createdReceipt] = await receiptTx
 									.insert(receipts)
@@ -252,9 +262,12 @@ export const convertSchedule = studioProtectedProcedure
 									.returning({ id: receipts.id });
 
 								if (!createdReceipt) {
-									throw new ORPCError("INTERNAL_SERVER_ERROR", {
-										message: "Failed to create receipt",
-									});
+									throw new ORPCError(
+										"INTERNAL_SERVER_ERROR",
+										{
+											message: "Failed to create receipt",
+										},
+									);
 								}
 
 								return createdReceipt.id;
@@ -299,12 +312,6 @@ export const convertSchedule = studioProtectedProcedure
 				})
 				.where(eq(paymentSchedules.id, scheduleId));
 
-			// Fetch booking for activity context
-			const booking = await tx.query.bookings.findFirst({
-				where: eq(bookings.id, schedule.bookingId),
-				columns: { name: true },
-			});
-
 			// Update booking total received
 			await tx
 				.update(bookings)
@@ -323,7 +330,7 @@ export const convertSchedule = studioProtectedProcedure
 				action: "marked_paid",
 				parentEntityType: "booking",
 				parentEntityId: schedule.bookingId,
-				parentEntityName: booking?.name ?? "Unknown Booking",
+				parentEntityName: lockedBooking.name,
 				metadata: {
 					paidAmount: convertedAmountString,
 					totalPaidAmount: newPaidAmountString,

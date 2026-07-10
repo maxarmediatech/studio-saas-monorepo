@@ -174,6 +174,9 @@ export function PaymentForm({
 	// ========================================================================
 
 	const isSubmitting = form.formState.isSubmitting || isPending;
+	const areFinancialDetailsLocked =
+		mode === "edit" &&
+		defaultValues?.financialProtection.canEditFinancialDetails === false;
 	const transactionRef = form.watch("transactionReference");
 	const notesValue = form.watch("notes");
 
@@ -332,6 +335,14 @@ export function PaymentForm({
 												{...field}
 												id={field.name}
 												placeholder="0.00"
+												disabled={
+													areFinancialDetailsLocked
+												}
+												aria-describedby={
+													areFinancialDetailsLocked
+														? "payment-financial-details-lock-reason"
+														: undefined
+												}
 												aria-invalid={
 													fieldState.invalid
 												}
@@ -356,6 +367,17 @@ export function PaymentForm({
 												}}
 											/>
 										</InputGroup>
+										{areFinancialDetailsLocked && (
+											<p
+												id="payment-financial-details-lock-reason"
+												className="text-xs text-muted-foreground"
+											>
+												Amount, method, and date are
+												locked because this payment is
+												already applied. Notes and
+												reference can still be updated.
+											</p>
+										)}
 										{fieldState.invalid && (
 											<FieldError
 												errors={[fieldState.error]}
@@ -376,6 +398,7 @@ export function PaymentForm({
 										<Select
 											onValueChange={field.onChange}
 											value={field.value}
+											disabled={areFinancialDetailsLocked}
 										>
 											<SelectTrigger
 												id={field.name}
@@ -418,6 +441,7 @@ export function PaymentForm({
 										<DatePicker
 											value={field.value}
 											onValueChange={field.onChange}
+											disabled={areFinancialDetailsLocked}
 											id={field.name}
 											aria-invalid={fieldState.invalid}
 										/>

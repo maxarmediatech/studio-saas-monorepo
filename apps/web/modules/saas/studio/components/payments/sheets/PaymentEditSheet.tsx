@@ -33,6 +33,8 @@ export function PaymentEditSheet() {
 	const updateMutation = useMutation(
 		studioPaymentsMutations.updateReceived(),
 	);
+	const canEditFinancialDetails =
+		payment?.data.financialProtection.canEditFinancialDetails ?? false;
 
 	const handleSubmit = async (data: PaymentFormValues) => {
 		if (!paymentId) {
@@ -42,9 +44,13 @@ export function PaymentEditSheet() {
 		try {
 			await updateMutation.mutateAsync({
 				id: paymentId,
-				amount: data.amount,
-				paymentMethod: data.paymentMethod,
-				receivedDate: data.receivedDate,
+				amount: canEditFinancialDetails ? data.amount : undefined,
+				paymentMethod: canEditFinancialDetails
+					? data.paymentMethod
+					: undefined,
+				receivedDate: canEditFinancialDetails
+					? data.receivedDate
+					: undefined,
 				transactionReference: data.transactionReference || null,
 				notes: data.notes || null,
 			});
