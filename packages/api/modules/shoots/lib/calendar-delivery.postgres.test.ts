@@ -3,6 +3,10 @@ import {
 	runCalendarDeliveryAdversarialAssertions,
 	runCalendarDeliveryIdempotencyAssertions,
 } from "./calendar-delivery-adversarial.postgres.test";
+import {
+	expectWrappedProducerFailure,
+	makeCalendarIds,
+} from "./calendar-delivery-worker-state.postgres.test";
 
 const mailBarrier = vi.hoisted(() => {
 	let release: (() => void) | undefined;
@@ -22,6 +26,11 @@ const mailBarrier = vi.hoisted(() => {
 			this.calls.push(input);
 			await wait;
 		},
+		async waitForCalls(count: number) {
+			while (this.calls.length < count) {
+				await new Promise((resolve) => setTimeout(resolve, 5));
+			}
+		},
 	};
 });
 
@@ -29,7 +38,6 @@ vi.mock("@repo/mail", () => ({
 	sendCalendarInviteEmail: (input: unknown) => mailBarrier.send(input),
 }));
 
-// Set to an isolated database migrated through 0041_calendar_delivery_identity.
 const databaseUrl = process.env.POSTGRES_CALENDAR_DATABASE_URL;
 const describePostgres = databaseUrl ? describe : describe.skip;
 
@@ -81,16 +89,7 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 		const registeredUserId = `calendar_registered_user_${suffix}`;
 		const triggerName = `calendar_job_failure_${suffix}`;
 		const functionName = `${triggerName}_fn`;
-		const ids = {
-			google: `calendar_google_${suffix}`,
-			registeredIcs: `calendar_registered_ics_${suffix}`,
-			externalIcs: `calendar_external_ics_${suffix}`,
-			unsendable: `calendar_unsendable_${suffix}`,
-			failed: `calendar_failed_${suffix}`,
-			retry: `calendar_retry_${suffix}`,
-			missing: `calendar_missing_${suffix}`,
-			pending: `calendar_pending_${suffix}`,
-		};
+		const ids = makeCalendarIds(suffix);
 		const staleIds = {
 			retryableCrew: `calendar_stale_crew_${suffix}`,
 			retryableShoot: `calendar_stale_shoot_${suffix}`,
@@ -292,6 +291,22 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 					shootCalendarEvents,
 					shoots,
 				});
+			await db
+				.delete(calendarSyncJobs)
+				.where(
+					and(
+						eq(calendarSyncJobs.shootId, ids.missing),
+						eq(calendarSyncJobs.generation, 3),
+					),
+				);
+			await route(ids.missing);
+			jobs = await db
+				.select()
+				.from(calendarSyncJobs)
+				.where(eq(calendarSyncJobs.shootId, ids.missing));
+			expect(jobs.filter((job) => job.generation === 3)).toEqual([
+				expect.objectContaining({ status: "pending" }),
+			]);
 
 			await route(ids.retry);
 			const retryAt = new Date(Date.now() + 60_000);
@@ -335,7 +350,7 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 				.set({ status: "failed", attempts: 5, nextAttemptAt: null })
 				.where(eq(calendarSyncJobs.id, retryJob.id));
 			const terminalRetry = await route(ids.retry);
-			expect(terminalRetry.state).toBe("queued");
+			expect(terminalRetry.state).toBe("error");
 			const [terminalJob] = await db
 				.select()
 				.from(calendarSyncJobs)
@@ -344,6 +359,14 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 				status: "failed",
 				attempts: 5,
 			});
+			const terminalMapping =
+				await db.query.shootCalendarEvents.findFirst({
+					where: and(
+						eq(shootCalendarEvents.organizationId, organizationId),
+						eq(shootCalendarEvents.shootId, ids.retry),
+					),
+				});
+			expect(terminalMapping).toMatchObject({ syncStatus: "error" });
 
 			const failedDeliveryKey = `calendar:${organizationId}:${ids.failed}:${ids.failed}:delivery:1`;
 			await db.execute(
@@ -361,13 +384,7 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 					ON calendar_sync_jobs FOR EACH ROW EXECUTE FUNCTION "${functionName}"()`),
 			);
 			triggerCreated = true;
-			const producerFailure = await route(ids.failed).catch(
-				(error: unknown) => error,
-			);
-			expect(producerFailure).toBeInstanceOf(Error);
-			expect(
-				(producerFailure as Error & { cause?: Error }).cause?.message,
-			).toContain("injected calendar producer failure");
+			await expectWrappedProducerFailure(route(ids.failed));
 			await expect(
 				db.query.shootCalendarEvents.findFirst({
 					where: and(
@@ -440,6 +457,7 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 				otherOrganizationId,
 				processJob,
 				recoverStaleProcessingJobs,
+				reconcileCalendarDeliveries,
 				route,
 				shootAssignments,
 				shootCalendarEvents,

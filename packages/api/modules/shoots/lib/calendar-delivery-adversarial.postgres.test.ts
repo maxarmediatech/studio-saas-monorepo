@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { assertCancellationFailureState } from "./calendar-delivery-worker-state.postgres.test";
 
 describe("calendar delivery adversarial PostgreSQL assertions", () => {
 	it("exports the scenario invoked by the migrated baseline suite", () => {
@@ -98,7 +99,7 @@ export async function runCalendarDeliveryIdempotencyAssertions(ctx: any) {
 		payload: {
 			target: {
 				icalUid: generationTwo.payload.target.icalUid,
-				icalSequence: 1,
+				icalSequence: generationTwo.payload.target.icalSequence + 1,
 			},
 		},
 	});
@@ -126,6 +127,7 @@ export async function runCalendarDeliveryAdversarialAssertions(ctx: any) {
 		otherOrganizationId,
 		processJob,
 		recoverStaleProcessingJobs,
+		reconcileCalendarDeliveries,
 		route,
 		shootAssignments,
 		shootCalendarEvents,
@@ -134,7 +136,6 @@ export async function runCalendarDeliveryAdversarialAssertions(ctx: any) {
 		suffix,
 		ids,
 		buildEventInput,
-		enqueueCalendarCancellation,
 	} = ctx;
 
 	await db
@@ -226,9 +227,14 @@ export async function runCalendarDeliveryAdversarialAssertions(ctx: any) {
 	if (!claimed) {
 		throw new Error("Expected claimed replacement delivery job");
 	}
+	const callsBeforeBarrier = mailBarrier.calls.length;
 	mailBarrier.block();
 	const inFlight = processJob(claimed);
-	await new Promise((resolve) => setTimeout(resolve, 0));
+	await mailBarrier.waitForCalls(callsBeforeBarrier + 1);
+	await db
+		.update(calendarSyncJobs)
+		.set({ claimToken: `reclaimed-${suffix}`, lockedAt: new Date() })
+		.where(eq(calendarSyncJobs.id, processing.id));
 	await db
 		.update(crews)
 		.set({ email: `newer-${suffix}@example.com` })
@@ -249,6 +255,26 @@ export async function runCalendarDeliveryAdversarialAssertions(ctx: any) {
 		intentGeneration: 3,
 		recipientEmail: `newer-${suffix}@example.com`,
 	});
+	const [reclaimedJob] = await db
+		.select()
+		.from(calendarSyncJobs)
+		.where(eq(calendarSyncJobs.id, processing.id));
+	expect(reclaimedJob).toMatchObject({
+		status: "processing",
+		claimToken: `reclaimed-${suffix}`,
+	});
+	const staleProviderCalls = mailBarrier.calls.slice(callsBeforeBarrier);
+	expect(staleProviderCalls).toHaveLength(2);
+	expect(staleProviderCalls).toEqual([
+		expect.objectContaining({
+			to: `current-${suffix}@example.com`,
+			subject: expect.stringContaining("Calendar Invite"),
+		}),
+		expect.objectContaining({
+			to: `current-${suffix}@example.com`,
+			subject: expect.stringContaining("Cancelled"),
+		}),
+	]);
 
 	await db
 		.update(shoots)
@@ -370,6 +396,23 @@ export async function runCalendarDeliveryAdversarialAssertions(ctx: any) {
 			}),
 		]),
 	);
+	await db
+		.update(shoots)
+		.set({ status: "cancelled" })
+		.where(eq(shoots.id, ids.unsendable));
+	await route(ids.unsendable);
+	const unsendableCancellation = await db.query.shootCalendarEvents.findFirst(
+		{
+			where: and(
+				eq(shootCalendarEvents.organizationId, organizationId),
+				eq(shootCalendarEvents.shootId, ids.unsendable),
+			),
+		},
+	);
+	expect(unsendableCancellation).toMatchObject({
+		intentState: "cancelled",
+		syncStatus: "deleted",
+	});
 
 	await db
 		.update(calendarSyncJobs)
@@ -380,21 +423,16 @@ export async function runCalendarDeliveryAdversarialAssertions(ctx: any) {
 				eq(calendarSyncJobs.shootId, ids.externalIcs),
 			),
 		);
-	await db.transaction(async (tx: any) => {
-		await enqueueCalendarCancellation(tx, {
-			organizationId,
-			shootId: ids.externalIcs,
-			crewId: ids.externalIcs,
-		});
-		await tx
-			.delete(shootAssignments)
-			.where(
-				and(
-					eq(shootAssignments.shootId, ids.externalIcs),
-					eq(shootAssignments.crewId, ids.externalIcs),
-				),
-			);
-	});
+	await db
+		.delete(shootAssignments)
+		.where(
+			and(
+				eq(shootAssignments.shootId, ids.externalIcs),
+				eq(shootAssignments.crewId, ids.externalIcs),
+			),
+		);
+	await reconcileCalendarDeliveries({ organizationId, apply: true });
+	await reconcileCalendarDeliveries({ organizationId, apply: true });
 	const cancellationJobs = await db
 		.select()
 		.from(calendarSyncJobs)
@@ -412,6 +450,35 @@ export async function runCalendarDeliveryAdversarialAssertions(ctx: any) {
 			}),
 		]),
 	);
+	const cancellationIntents = await db
+		.select()
+		.from(calendarDeliveryIntents)
+		.where(
+			and(
+				eq(calendarDeliveryIntents.organizationId, organizationId),
+				eq(calendarDeliveryIntents.shootId, ids.externalIcs),
+				eq(calendarDeliveryIntents.state, "cancelled"),
+			),
+		);
+	expect(cancellationIntents).toHaveLength(1);
+	expect(cancellationIntents[0]?.payload).toMatchObject({
+		eventInput: { date: "2026-12-31" },
+		target: {
+			recipientEmail: `external-${suffix}@example.com`,
+			icalSequence: 4,
+		},
+	});
+	await assertCancellationFailureState({
+		and,
+		calendarSyncJobs,
+		db,
+		eq,
+		expect,
+		id: ids.externalIcs,
+		organizationId,
+		processJob,
+		shootCalendarEvents,
+	});
 	await expect(
 		buildEventInput({
 			organizationId,

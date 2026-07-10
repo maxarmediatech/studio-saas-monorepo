@@ -4,6 +4,7 @@ import {
 	calendarSyncJobs,
 	eq,
 	ne,
+	sql,
 } from "@repo/database";
 import type { TransactionClient } from "../../studio/lib/transactions";
 import type {
@@ -12,6 +13,29 @@ import type {
 	DeliveryMethod,
 	IntentState,
 } from "./calendar-intents";
+
+export async function getNextIcalSequence(
+	tx: TransactionClient,
+	params: { organizationId: string; shootId: string; crewId: string },
+	floor = -1,
+) {
+	const [row] = await tx
+		.select({
+			sequence: sql<number>`COALESCE(MAX(${calendarDeliveryIntents.icalSequence}), -1)`,
+		})
+		.from(calendarDeliveryIntents)
+		.where(
+			and(
+				eq(
+					calendarDeliveryIntents.organizationId,
+					params.organizationId,
+				),
+				eq(calendarDeliveryIntents.shootId, params.shootId),
+				eq(calendarDeliveryIntents.crewId, params.crewId),
+			),
+		);
+	return Math.max(Number(row?.sequence ?? -1), floor) + 1;
+}
 
 export function getCalendarDeliveryKey(params: {
 	organizationId: string;
