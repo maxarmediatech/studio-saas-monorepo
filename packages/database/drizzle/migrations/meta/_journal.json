@@ -274,6 +274,13 @@
       "when": 1784133515996,
       "tag": "0038_payment_invoice_additive_state",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1783713512742,
+      "tag": "0043_financial_relationship_constraints",
+      "breakpoints": true
     }
   ]
 }

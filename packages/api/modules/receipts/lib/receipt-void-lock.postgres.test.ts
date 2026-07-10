@@ -3,6 +3,20 @@ import { describe, expect, it } from "vitest";
 const databaseUrl = process.env.POSTGRES_CONCURRENCY_DATABASE_URL;
 const describePostgres = databaseUrl ? describe : describe.skip;
 
+async function expectDatabaseCause(
+	operation: Promise<unknown>,
+	expectedMessage: string,
+) {
+	try {
+		await operation;
+		expect.unreachable("Expected the database to reject the operation");
+	} catch (error) {
+		expect((error as { cause?: Error }).cause?.message).toContain(
+			expectedMessage,
+		);
+	}
+}
+
 describePostgres("receipt issue and void concurrency", () => {
 	it("rolls back a receipt insert when invoice aggregation rejects it", async () => {
 		const originalDatabaseUrl = process.env.DATABASE_URL;
@@ -222,7 +236,7 @@ describePostgres("receipt issue and void concurrency", () => {
 		}
 	});
 
-	it("rejects receipt issuance across mismatched payment schedules", async () => {
+	it("rejects payments linked across mismatched payment schedules", async () => {
 		const originalDatabaseUrl = process.env.DATABASE_URL;
 		process.env.DATABASE_URL = databaseUrl;
 		const {
@@ -233,11 +247,8 @@ describePostgres("receipt issue and void concurrency", () => {
 			invoices,
 			organizations,
 			paymentSchedules,
-			receipts,
 			receivedAmounts,
 		} = await import("@repo/database");
-		const { issueReceiptForReceivedPayment, voidReceiptTransition } =
-			await import("./receipt-transition-service");
 		const suffix = `${process.pid}_${Date.now()}`;
 		const organizationId = `receipt_schedule_org_${suffix}`;
 		const bookingId = `receipt_schedule_booking_${suffix}`;
@@ -288,65 +299,25 @@ describePostgres("receipt issue and void concurrency", () => {
 			totalAmount: "100.00",
 			status: "sent",
 		});
-		await db.insert(receivedAmounts).values({
-			id: paymentId,
-			organizationId,
-			bookingId,
-			invoiceId,
-			paymentScheduleId,
-			amount: "100.00",
-			paymentMethod: "cash",
-			receivedDate: "2026-01-01",
-		});
-
 		try {
-			await expect(
-				db.transaction((tx) =>
-					issueReceiptForReceivedPayment(tx, {
-						organizationId,
-						userId: "race_test_actor",
-						receivedAmountId: paymentId,
-						expectedBookingId: bookingId,
-						expectedInvoiceId: invoiceId,
-					}),
-				),
-			).rejects.toThrow(
-				"Payment and invoice belong to different payment schedules",
-			);
-			const [receiptRows] = await db
-				.select({ count: count() })
-				.from(receipts)
-				.where(eq(receipts.receivedAmountId, paymentId));
-			expect(Number(receiptRows?.count)).toBe(0);
-			const [corruptedReceipt] = await db
-				.insert(receipts)
-				.values({
+			await expectDatabaseCause(
+				db.insert(receivedAmounts).values({
+					id: paymentId,
 					organizationId,
 					bookingId,
 					invoiceId,
-					receivedAmountId: paymentId,
-					receiptNumber: `RCPT-SCHEDULE-${suffix}`,
+					paymentScheduleId,
 					amount: "100.00",
 					paymentMethod: "cash",
-					receiptDate: "2026-01-01",
-				})
-				.returning({ id: receipts.id });
-			await expect(
-				db.transaction((tx) =>
-					voidReceiptTransition(tx, {
-						organizationId,
-						userId: "race_test_actor",
-						receiptId: corruptedReceipt?.id ?? "missing",
-					}),
-				),
-			).rejects.toThrow(
-				"Payment and invoice belong to different payment schedules",
+					receivedDate: "2026-01-01",
+				}),
+				"Received payment invoice and schedule do not describe the same financial obligation",
 			);
-			const unchangedReceipt = await db.query.receipts.findFirst({
-				where: eq(receipts.id, corruptedReceipt?.id ?? "missing"),
-				columns: { deletedAt: true },
-			});
-			expect(unchangedReceipt?.deletedAt).toBeNull();
+			const [paymentRows] = await db
+				.select({ count: count() })
+				.from(receivedAmounts)
+				.where(eq(receivedAmounts.id, paymentId));
+			expect(Number(paymentRows?.count)).toBe(0);
 		} finally {
 			await db
 				.delete(organizations)
