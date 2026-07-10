@@ -125,16 +125,15 @@ Phase 0.3 implementation lives in [financial-mismatch-reconciliation.md](./finan
 
 ### 0.4 Payment API idempotency
 
-Add a client-generated idempotency key to payment creation and schedule conversion:
+Decision implemented in the payment-creation idempotency PR:
 
-- API/DB engineering owns the request contract and records it in the payment-creation idempotency PR design. Product review is required only if the client-visible workflow changes.
-
-- Scope uniqueness by organization and operation type.
-- Store request fingerprint, processing status, and resulting resource ID.
-- Same key and same request returns the original result.
-- Same key and different request returns conflict.
-- The idempotency record and business effects commit transactionally.
-- Define stale-processing recovery for requests that crash after claiming the key.
+- API/DB engineering owns this request contract. Product review is required only if the client-visible workflow changes.
+- `idempotencyKey` is required for received-payment creation and schedule conversion. It is an opaque, UUID-compatible token of 16–128 characters using letters, numbers, `.`, `_`, `:`, or `-`.
+- Uniqueness scope is organization + operation (`create_received_payment` or `convert_schedule_payment`) + key. Reuse across organizations or operations is valid.
+- The server fingerprints a canonical request: normalized two-decimal money, explicit nulls/defaults, fixed attachment fields, and the supplied effective date. Property order, key, and actor do not affect it. Every business-effect field does. Schedule conversion therefore requires `receivedDate` rather than choosing a server-time default.
+- The browser keeps one key for the same normalized submitted payload and all retries. It rotates only after acknowledged API success or when the submitted business payload changes; a transport retry never generates a new key.
+- The record stores fingerprint, status, resulting received-payment ID, and an immutable response snapshot. Same key and fingerprint returns that original snapshot after permission and tenant/resource validation, without repeating payment, receipt, cache, or activity effects. A different fingerprint returns deterministic conflict. Product deletion is a soft delete: replay then returns a clear unavailable conflict and cannot recreate under the key. A future hard-purge job must delete the idempotency tombstone in the same purge transaction before deleting its referenced payment.
+- Claim insert, business effects, immutable snapshot, and completion commit in one database transaction. `processing` is only an in-transaction state and is never intentionally committed, so a crash rolls back both claim and effects. No lease or stale-processing recovery job is needed for this invariant; a committed processing row is treated as exceptional corruption and returns retry conflict.
 
 ## Phase 1 — Permanent payment ledger
 

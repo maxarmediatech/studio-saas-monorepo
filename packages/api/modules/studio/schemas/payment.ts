@@ -206,7 +206,18 @@ export type GetReceivedOutput = z.infer<typeof getReceivedOutputSchema>;
 // CREATE RECEIVED AMOUNT
 // ============================================================================
 
+export const paymentIdempotencyKeySchema = z
+	.string()
+	.trim()
+	.min(16, "Idempotency key must be at least 16 characters")
+	.max(128, "Idempotency key must be at most 128 characters")
+	.regex(
+		/^[A-Za-z0-9._:-]+$/,
+		"Idempotency key must be an opaque token using letters, numbers, '.', '_', ':', or '-'",
+	);
+
 export const createReceivedInputSchema = z.object({
+	idempotencyKey: paymentIdempotencyKeySchema,
 	bookingId: idSchema,
 	amount: moneySchema,
 	paymentMethod: paymentMethodSchema,
@@ -416,11 +427,12 @@ export type DeleteScheduleOutput = z.infer<typeof deleteScheduleOutputSchema>;
 // ============================================================================
 
 export const convertScheduleInputSchema = z.object({
+	idempotencyKey: paymentIdempotencyKeySchema,
 	scheduleId: idSchema,
 	amount: moneySchema,
 	paymentMethod: paymentMethodSchema,
 	transactionReference: z.string().max(100).optional(),
-	receivedDate: dateSchema.optional(),
+	receivedDate: dateSchema,
 	notes: notesSchema,
 });
 
