@@ -119,6 +119,37 @@ export async function getLockedReceiptForVoid(
 	});
 }
 
+export async function getLockedReceiptHistoryForPayment(
+	tx: InvoiceLockTransaction,
+	{
+		organizationId,
+		receivedAmountId,
+	}: {
+		organizationId: string;
+		receivedAmountId: string;
+	},
+) {
+	await tx.execute(sql`
+		SELECT ${receipts.id}
+		FROM ${receipts}
+		WHERE ${receipts.organizationId} = ${organizationId}
+			AND ${receipts.receivedAmountId} = ${receivedAmountId}
+		FOR UPDATE
+	`);
+
+	return tx.query.receipts.findMany({
+		where: and(
+			eq(receipts.organizationId, organizationId),
+			eq(receipts.receivedAmountId, receivedAmountId),
+		),
+		columns: {
+			id: true,
+			receiptNumber: true,
+			deletedAt: true,
+		},
+	});
+}
+
 export async function getLockedScheduleInvoiceForReceipt(
 	tx: InvoiceLockTransaction,
 	{

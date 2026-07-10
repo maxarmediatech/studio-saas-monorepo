@@ -30,24 +30,22 @@ export const convertSchedule = studioProtectedProcedure
 			}),
 		);
 
-		if (result.created) {
-			await safeTrackActivity(context, {
-				entityType: "payment_schedule",
-				entityId: input.scheduleId,
-				entityName: `${result.schedule.name} (${formatAmount(result.schedule.amount)})`,
-				action: "marked_paid",
-				parentEntityType: "booking",
-				parentEntityId: result.schedule.bookingId,
-				parentEntityName: result.bookingName,
-				metadata: {
-					paidAmount: input.amount,
-					totalPaidAmount: result.paidAmount,
-					scheduleStatus: result.scheduleStatus,
-					receivedId: result.receivedId,
-					receiptId: result.receiptId,
-				},
-			});
-		}
+		await safeTrackActivity(context, {
+			entityType: "payment_schedule",
+			entityId: input.scheduleId,
+			entityName: `${result.schedule.name} (${formatAmount(result.schedule.amount)})`,
+			action: "marked_paid",
+			parentEntityType: "booking",
+			parentEntityId: result.schedule.bookingId,
+			parentEntityName: result.bookingName,
+			metadata: {
+				paidAmount: input.amount,
+				totalPaidAmount: result.paidAmount,
+				scheduleStatus: result.scheduleStatus,
+				receivedId: result.receivedId,
+				receiptId: result.receiptId,
+			},
+		});
 
 		return {
 			data: {
@@ -55,8 +53,6 @@ export const convertSchedule = studioProtectedProcedure
 				scheduleId: result.scheduleId,
 				receiptId: result.receiptId,
 			},
-			message: result.created
-				? "Payment schedule converted successfully"
-				: "Schedule already converted to payment",
+			message: "Payment schedule converted successfully",
 		};
 	});

@@ -27,12 +27,18 @@ vi.mock("@repo/database", () => ({
 		paymentScheduleId: "paymentScheduleId",
 	},
 	isNull: mocks.isNull,
+	receipts: {
+		id: "receiptId",
+		organizationId: "receiptOrganizationId",
+		receivedAmountId: "receivedAmountId",
+	},
 	sql: mocks.sql,
 }));
 
 import {
 	getLockedBookingForReceipt,
 	getLockedInvoiceForReceipt,
+	getLockedReceiptHistoryForPayment,
 	getLockedScheduleInvoiceForReceipt,
 } from "./locked-invoice-for-receipt";
 
@@ -119,5 +125,29 @@ describe("locked invoice receipt context", () => {
 		).resolves.toBe(invoice);
 		expect(findFirst).toHaveBeenCalledTimes(2);
 		expect(tx.execute).toHaveBeenCalledOnce();
+	});
+
+	it("locks active and voided receipt history for a received payment", async () => {
+		const history = [
+			{ id: "receipt_1", deletedAt: null },
+			{ id: "receipt_2", deletedAt: new Date() },
+		];
+		const tx = {
+			execute: vi.fn(),
+			query: {
+				receipts: { findMany: vi.fn().mockResolvedValue(history) },
+			},
+		};
+
+		await expect(
+			getLockedReceiptHistoryForPayment(tx as never, {
+				organizationId: "org_1",
+				receivedAmountId: "payment_1",
+			}),
+		).resolves.toBe(history);
+		expect(tx.execute).toHaveBeenCalledOnce();
+		const latestSqlCall =
+			mocks.sql.mock.calls[mocks.sql.mock.calls.length - 1];
+		expect(latestSqlCall?.[0]?.join("")).toContain("FOR UPDATE");
 	});
 });
