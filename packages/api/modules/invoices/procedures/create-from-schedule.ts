@@ -1,7 +1,6 @@
 import { ORPCError } from "@orpc/server";
 import {
 	and,
-	bookings,
 	db,
 	eq,
 	invoiceLineItems,
@@ -12,6 +11,11 @@ import {
 import { format } from "date-fns";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { formatAmount, safeTrackActivity } from "../../activities/lib";
+import {
+	getLockedBookingForReceipt,
+	getLockedScheduleForReceipt,
+	getLockedScheduleInvoiceForReceipt,
+} from "../../receipts/lib/locked-invoice-for-receipt";
 import { centsToMoney, moneyToCents } from "../../studio/lib/money";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
@@ -47,7 +51,7 @@ export const createInvoiceFromSchedule = studioProtectedProcedure
 			taxType: inputTaxType,
 		} = input;
 
-		const schedule = await db.query.paymentSchedules.findFirst({
+		const lockPlan = await db.query.paymentSchedules.findFirst({
 			where: and(
 				eq(paymentSchedules.id, paymentScheduleId),
 				eq(paymentSchedules.organizationId, context.organizationId),
@@ -55,67 +59,63 @@ export const createInvoiceFromSchedule = studioProtectedProcedure
 			),
 		});
 
-		if (!schedule) {
+		if (!lockPlan) {
 			throw new ORPCError("NOT_FOUND", {
 				message: "Payment schedule not found",
 			});
 		}
 
-		if (
-			schedule.status === "partial" ||
-			schedule.status === "completed" ||
-			schedule.status === "cancelled"
-		) {
-			throw new ORPCError("CONFLICT", {
-				message:
-					"Invoices cannot be generated from partially paid, completed, or cancelled schedules",
-			});
-		}
-
-		const existingInvoice = await db.query.invoices.findFirst({
-			where: and(
-				eq(invoices.paymentScheduleId, paymentScheduleId),
-				eq(invoices.organizationId, context.organizationId),
-				isNull(invoices.deletedAt),
-			),
-			columns: { id: true, invoiceNumber: true },
-		});
-
-		if (existingInvoice) {
-			throw new ORPCError("CONFLICT", {
-				message: `An invoice (${existingInvoice.invoiceNumber}) already exists for this payment schedule`,
-			});
-		}
-
-		const booking = await db.query.bookings.findFirst({
-			where: and(
-				eq(bookings.id, schedule.bookingId),
-				eq(bookings.organizationId, context.organizationId),
-			),
-			columns: { id: true, name: true },
-		});
-
-		if (!booking) {
-			throw new ORPCError("NOT_FOUND", {
-				message: "Booking not found",
-			});
-		}
-
-		const subtotalCents = moneyToCents(schedule.amount);
-
-		// Resolve tax type: explicit input -> schedule setting -> default
-		const taxType = (inputTaxType ??
-			(schedule.taxType as TaxType) ??
-			"exclusive") as TaxType;
-
-		const { taxAmount, totalAmount } = await calculateGst(
-			centsToMoney(subtotalCents),
-			context.organizationId,
-			"0.00",
-			taxType,
-		);
-
 		return await db.transaction(async (tx) => {
+			const booking = await getLockedBookingForReceipt(tx, {
+				organizationId: context.organizationId,
+				bookingId: lockPlan.bookingId,
+			});
+			if (!booking) {
+				throw new ORPCError("NOT_FOUND", { message: "Booking not found" });
+			}
+
+			const existingInvoice = await getLockedScheduleInvoiceForReceipt(tx, {
+				organizationId: context.organizationId,
+				bookingId: lockPlan.bookingId,
+				paymentScheduleId,
+			});
+			if (existingInvoice) {
+				throw new ORPCError("CONFLICT", {
+					message: `An invoice (${existingInvoice.invoiceNumber}) already exists for this payment schedule`,
+				});
+			}
+
+			const schedule = await getLockedScheduleForReceipt(tx, {
+				organizationId: context.organizationId,
+				bookingId: lockPlan.bookingId,
+				paymentScheduleId,
+			});
+			if (!schedule) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Payment schedule not found",
+				});
+			}
+			if (
+				schedule.status === "partial" ||
+				schedule.status === "completed" ||
+				schedule.status === "cancelled"
+			) {
+				throw new ORPCError("CONFLICT", {
+					message:
+						"Invoices cannot be generated from partially paid, completed, or cancelled schedules",
+				});
+			}
+
+			const subtotalCents = moneyToCents(schedule.amount);
+			const taxType = (inputTaxType ??
+				(schedule.taxType as TaxType) ??
+				"exclusive") as TaxType;
+			const { taxAmount, totalAmount } = await calculateGst(
+				centsToMoney(subtotalCents),
+				context.organizationId,
+				"0.00",
+				taxType,
+			);
 			const invoiceNumber = await generateInvoiceNumber(
 				schedule.bookingId,
 				context.organizationId,

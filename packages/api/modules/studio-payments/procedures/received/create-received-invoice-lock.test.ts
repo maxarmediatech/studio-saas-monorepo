@@ -153,4 +153,33 @@ describe("create received invoice locking", () => {
 		);
 		expect(mocks.tx.insert).not.toHaveBeenCalled();
 	});
+
+	it("rejects an invoice that belongs to a different locked schedule", async () => {
+		mocks.mockGetLockedInvoiceForReceipt.mockResolvedValue({
+			id: "invoice_1",
+			paymentScheduleId: "schedule_other",
+		});
+		mocks.mockGetLockedScheduleForReceipt.mockResolvedValue({
+			id: "schedule_1",
+			amount: "100.00",
+			paidAmount: "0.00",
+			paidAt: null,
+			status: "pending",
+		});
+
+		await expect(
+			mocks.getHandler()?.({
+				context: { organizationId: "org_1", user: { id: "user_1" } },
+				input: {
+					bookingId: "booking_1",
+					invoiceId: "invoice_1",
+					paymentScheduleId: "schedule_1",
+					amount: "100.00",
+					paymentMethod: "cash",
+					receivedDate: "2026-01-01",
+				},
+			}),
+		).rejects.toThrow("Invoice does not belong to the selected payment schedule");
+		expect(mocks.tx.insert).not.toHaveBeenCalled();
+	});
 });

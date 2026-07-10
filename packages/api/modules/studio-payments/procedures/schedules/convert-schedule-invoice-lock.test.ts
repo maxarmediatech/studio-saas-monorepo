@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => {
 	};
 	const tx = {
 		insert: vi.fn(),
+		update: vi.fn(),
 		query: {
 			paymentSchedules: { findFirst: vi.fn() },
 			receipts: { findFirst: vi.fn() },
@@ -145,13 +146,50 @@ describe("schedule conversion invoice locking", () => {
 			paymentScheduleId: "schedule_1",
 		});
 		expect(mocks.tx.insert).not.toHaveBeenCalled();
-		expect(mocks.mockGetLockedScheduleForReceipt).toHaveBeenCalledWith(
-			mocks.tx,
-			{
-				organizationId: "org_1",
+	});
+
+	it("locks booking, invoice, then schedule on a successful conversion", async () => {
+		const order: string[] = [];
+		mocks.mockGetLockedBookingForReceipt.mockImplementation(async () => {
+			order.push("booking");
+			return { id: "booking_1", name: "Booking" };
+		});
+		mocks.mockGetLockedScheduleInvoiceForReceipt.mockImplementation(async () => {
+			order.push("invoice");
+			return null;
+		});
+		mocks.mockGetLockedScheduleForReceipt.mockImplementation(async () => {
+			order.push("schedule");
+			return {
+				id: "schedule_1",
 				bookingId: "booking_1",
-				paymentScheduleId: "schedule_1",
+				name: "Final payment",
+				amount: "100.00",
+				paidAmount: "0.00",
+				paidAt: null,
+				status: "pending",
+			};
+		});
+		mocks.tx.insert.mockReturnValue({
+			values: vi.fn(() => ({
+				returning: vi.fn(async () => [{ id: "received_1" }]),
+			})),
+		});
+		mocks.tx.update.mockReturnValue({
+			set: vi.fn(() => ({ where: vi.fn(async () => undefined) })),
+		}));
+
+		const result = await mocks.getHandler()?.({
+			context: { organizationId: "org_1", user: { id: "user_1" } },
+			input: {
+				scheduleId: "schedule_1",
+				amount: "100.00",
+				paymentMethod: "cash",
+				receivedDate: "2026-01-01",
 			},
-		);
+		});
+
+		expect(order).toEqual(["booking", "invoice", "schedule"]);
+		expect(result).toMatchObject({ data: { receivedId: "received_1" } });
 	});
 });

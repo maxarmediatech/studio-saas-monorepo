@@ -19,12 +19,12 @@ import {
 	generateReceiptNumber,
 	updateInvoicePaymentStatus,
 } from "../../../receipts/lib/receipt-helpers";
-import { centsToMoney, moneyToCents } from "../../../studio/lib/money";
 import { requirePermission } from "../../../studio/lib/permissions";
 import {
 	createReceivedInputSchema,
 	createReceivedOutputSchema,
 } from "../../../studio/schemas/payment";
+import { buildSchedulePaymentTransition } from "../../lib/schedule-payment-transition";
 
 export const createReceived = studioProtectedProcedure
 	.route({
@@ -104,53 +104,23 @@ export const createReceived = studioProtectedProcedure
 				});
 			}
 
-			const amountCents = moneyToCents(amount);
-			if (!Number.isFinite(amountCents) || amountCents <= 0) {
-				throw new ORPCError("BAD_REQUEST", {
-					message: "Amount must be greater than zero",
+			if (
+				invoice &&
+				schedule &&
+				invoice.paymentScheduleId !== schedule.id
+			) {
+				throw new ORPCError("CONFLICT", {
+					message:
+						"Invoice does not belong to the selected payment schedule",
 				});
 			}
 
 			const scheduleUpdate = schedule
-				? (() => {
-						if (schedule.status === "cancelled") {
-							throw new ORPCError("CONFLICT", {
-								message: "Cancelled schedule cannot receive payments",
-							});
-						}
-
-						const paidAmountCents = moneyToCents(schedule.paidAmount);
-						const scheduleAmountCents = moneyToCents(schedule.amount);
-						const remainingAmountCents =
-							scheduleAmountCents - paidAmountCents;
-
-						if (remainingAmountCents <= 0) {
-							throw new ORPCError("CONFLICT", {
-								message: "Schedule is already fully paid",
-							});
-						}
-						if (amountCents > remainingAmountCents) {
-							throw new ORPCError("BAD_REQUEST", {
-								message:
-									"Amount cannot exceed remaining scheduled balance",
-							});
-						}
-
-						const newPaidAmountCents = paidAmountCents + amountCents;
-						const status =
-							newPaidAmountCents >= scheduleAmountCents
-								? "completed"
-								: "partial";
-
-						return {
-							paidAmount: centsToMoney(newPaidAmountCents),
-							paidAt:
-								status === "completed"
-									? (schedule.paidAt ?? new Date())
-									: schedule.paidAt,
-							status,
-						};
-					})()
+				? buildSchedulePaymentTransition(
+						schedule,
+						amount,
+						"Cancelled schedule cannot receive payments",
+					)
 				: null;
 
 			// Create received amount
@@ -220,7 +190,9 @@ export const createReceived = studioProtectedProcedure
 				await tx
 					.update(paymentSchedules)
 					.set({
-						...scheduleUpdate,
+						paidAmount: scheduleUpdate.paidAmount,
+						paidAt: scheduleUpdate.paidAt,
+						status: scheduleUpdate.status,
 						updatedAt: new Date(),
 						updatedBy: context.user.id,
 					})
