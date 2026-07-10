@@ -60,6 +60,20 @@ export async function queryFinancialMismatches(
 				'payment_schedule' AS "entityType", s.id AS "entityId",
 				s.paid_amount AS "actualValue",
 				s.status AS "actualStatus",
+				b.id IS NOT NULL AND b.organization_id = s.organization_id
+					AND b.deleted_at IS NULL AS "parentLinksValid",
+				json_build_object(
+					'parentLinks', json_build_object(
+						'booking', json_build_object(
+							'id', b.id,
+							'organizationId', b.organization_id,
+							'deletedAt', b.deleted_at,
+							'valid', b.id IS NOT NULL
+								AND b.organization_id = s.organization_id
+								AND b.deleted_at IS NULL
+						)
+					)
+				) AS "details",
 					COALESCE(SUM(CASE WHEN p.deleted_at IS NULL
 						AND p.organization_id = s.organization_id AND p.booking_id = s.booking_id
 						AND p.payment_schedule_id = s.id THEN p.amount ELSE 0 END), 0)::text AS "expectedValue",
@@ -71,8 +85,10 @@ export async function queryFinancialMismatches(
 					OR p.payment_schedule_id <> s.id)) AS "invalidLinkCount"
 			FROM payment_schedules s
 			LEFT JOIN received_amounts p ON p.payment_schedule_id = s.id
+			LEFT JOIN bookings b ON b.id = s.booking_id
 			WHERE s.organization_id = ${organizationId} AND s.deleted_at IS NULL
-			GROUP BY s.organization_id, s.id, s.booking_id, s.amount, s.paid_amount, s.status
+				GROUP BY s.organization_id, s.id, s.booking_id, s.amount, s.paid_amount, s.status,
+					b.id, b.organization_id, b.deleted_at
 			HAVING s.paid_amount <> COALESCE(SUM(CASE WHEN p.deleted_at IS NULL
 				AND p.organization_id = s.organization_id AND p.booking_id = s.booking_id
 				AND p.payment_schedule_id = s.id THEN p.amount ELSE 0 END), 0)
@@ -126,13 +142,56 @@ export async function queryFinancialMismatches(
 				'invoice' AS "entityType", i.id AS "entityId",
 				i.paid_amount AS "actualValue", paid.amount::text AS "expectedValue",
 					i.status AS "actualStatus",
-					paid.amount > i.total_amount AS "exceedsUpperBound",
+				(
+					b.id IS NOT NULL AND b.organization_id = i.organization_id
+						AND b.deleted_at IS NULL
+					AND (
+						i.payment_schedule_id IS NULL OR (
+							s.id IS NOT NULL AND s.organization_id = i.organization_id
+								AND s.booking_id = i.booking_id AND s.deleted_at IS NULL
+								AND sb.id IS NOT NULL AND sb.organization_id = s.organization_id
+								AND sb.deleted_at IS NULL
+						)
+					)
+				) AS "parentLinksValid",
+				json_build_object(
+					'parentLinks', json_build_object(
+						'booking', json_build_object(
+							'id', b.id,
+							'organizationId', b.organization_id,
+							'deletedAt', b.deleted_at,
+							'valid', b.id IS NOT NULL
+								AND b.organization_id = i.organization_id
+								AND b.deleted_at IS NULL
+						),
+						'paymentSchedule', CASE WHEN i.payment_schedule_id IS NULL THEN NULL
+							ELSE json_build_object(
+								'id', s.id,
+								'organizationId', s.organization_id,
+								'bookingId', s.booking_id,
+								'deletedAt', s.deleted_at,
+								'valid', s.id IS NOT NULL
+									AND s.organization_id = i.organization_id
+									AND s.booking_id = i.booking_id
+									AND s.deleted_at IS NULL
+									AND sb.id IS NOT NULL
+									AND sb.organization_id = s.organization_id
+									AND sb.deleted_at IS NULL
+							)
+						END
+					)
+				) AS "details",
+				paid.amount > i.total_amount AS "exceedsUpperBound",
 				CASE WHEN paid.amount >= i.total_amount THEN 'paid'
 					WHEN i.status = 'overdue' OR (i.due_date IS NOT NULL AND i.due_date < ${asOf}) THEN 'overdue'
 					WHEN paid.amount > 0 THEN 'partial'
 					WHEN i.status IN ('paid', 'partial') THEN 'sent' ELSE i.status END AS "expectedStatus",
 				paid.invalid_links AS "invalidLinkCount"
-			FROM invoices i JOIN paid ON paid.id = i.id
+			FROM invoices i
+			JOIN paid ON paid.id = i.id
+			LEFT JOIN bookings b ON b.id = i.booking_id
+			LEFT JOIN payment_schedules s ON s.id = i.payment_schedule_id
+			LEFT JOIN bookings sb ON sb.id = s.booking_id
 			WHERE i.organization_id = ${organizationId} AND i.deleted_at IS NULL
 				AND (i.paid_amount <> paid.amount OR i.status <> CASE
 					WHEN paid.amount >= i.total_amount THEN 'paid'
@@ -342,6 +401,10 @@ export async function applySafeFinancialFixes(
 					), 0), updated_at = NOW()
 						WHERE s.id = ${mismatch.entityId} AND s.organization_id = ${organizationId}
 						AND s.deleted_at IS NULL AND s.status <> 'cancelled'
+						AND EXISTS (SELECT 1 FROM bookings parent_booking
+							WHERE parent_booking.id = s.booking_id
+							AND parent_booking.organization_id = s.organization_id
+							AND parent_booking.deleted_at IS NULL)
 						AND COALESCE((SELECT SUM(p.amount) FROM received_amounts p
 							WHERE p.organization_id = s.organization_id AND p.booking_id = s.booking_id
 								AND p.payment_schedule_id = s.id AND p.deleted_at IS NULL), 0) <= s.amount
@@ -407,6 +470,22 @@ export async function applySafeFinancialFixes(
 						FROM totals
 						WHERE i.id = totals.id AND totals.invalid_links = 0
 							AND totals.amount <= i.total_amount
+							AND i.status <> 'draft'
+							AND EXISTS (SELECT 1 FROM bookings parent_booking
+								WHERE parent_booking.id = i.booking_id
+								AND parent_booking.organization_id = i.organization_id
+								AND parent_booking.deleted_at IS NULL)
+							AND (i.payment_schedule_id IS NULL OR EXISTS (
+								SELECT 1 FROM payment_schedules parent_schedule
+								JOIN bookings parent_schedule_booking
+									ON parent_schedule_booking.id = parent_schedule.booking_id
+								WHERE parent_schedule.id = i.payment_schedule_id
+								AND parent_schedule.organization_id = i.organization_id
+								AND parent_schedule.booking_id = i.booking_id
+								AND parent_schedule.deleted_at IS NULL
+								AND parent_schedule_booking.organization_id = parent_schedule.organization_id
+								AND parent_schedule_booking.deleted_at IS NULL
+							))
 						RETURNING i.id
 					`);
 				updated = result.rows.length > 0;

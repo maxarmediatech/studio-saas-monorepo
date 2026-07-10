@@ -27,6 +27,7 @@ export type RawMismatch = {
 	expectedValue?: string | null;
 	actualStatus?: string | null;
 	expectedStatus?: string | null;
+	parentLinksValid?: boolean | string | null;
 	invalidLinkCount?: number | string | null;
 	exceedsUpperBound?: boolean | string | null;
 	details?: unknown;
@@ -112,6 +113,8 @@ export function classifyMismatch(raw: RawMismatch): Mismatch {
 	const action = SAFE_ACTIONS[raw.mismatchType] ?? null;
 	const noInvalidLinks = toInteger(raw.invalidLinkCount) === 0;
 	const withinUpperBound = !toBoolean(raw.exceedsUpperBound);
+	const parentLinksValid =
+		raw.parentLinksValid === undefined || toBoolean(raw.parentLinksValid);
 	const isCancelled = raw.actualStatus === "cancelled";
 	const draftHasApplication =
 		raw.actualStatus === "draft" &&
@@ -120,6 +123,7 @@ export function classifyMismatch(raw: RawMismatch): Mismatch {
 	const safeFixAvailable =
 		action !== null &&
 		noInvalidLinks &&
+		parentLinksValid &&
 		withinUpperBound &&
 		!isCancelled &&
 		!draftHasApplication;

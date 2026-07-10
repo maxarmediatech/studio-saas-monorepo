@@ -49,7 +49,7 @@ All SQL is organization-scoped, joins compare organization and booking ownership
 
 ## Safe-fix boundary
 
-`--fix-safe` recalculates only cached booking totals, schedule paid amounts, and invoice paid amount/status when all linked active payments have valid organization and booking links. Booking, schedule, and invoice overpayments, cancelled schedules/invoices, ambiguous draft invoices, missing or duplicate active receipts, and receipt/payment amount disagreements are review-only. Invoice `paidAt` is preserved because timestamp correction is outside this Phase 0 boundary. Receipt amounts, deleted-payment receipts, cross-entity links, and issued-document history are never changed by this command.
+`--fix-safe` recalculates only cached booking totals, schedule paid amounts, and invoice paid amount/status when all linked active payments have valid organization and booking links and schedule/invoice parent organization, booking, and schedule links are valid. Booking, schedule, and invoice overpayments, cancelled schedules/invoices, draft invoices, missing or duplicate active receipts, and receipt/payment amount disagreements are review-only. Invoice `paidAt` is preserved because timestamp correction is outside this Phase 0 boundary. Receipt amounts, deleted-payment receipts, cross-entity links, and issued-document history are never changed by this command.
 
 Each safe repair runs in its own transaction. A failed or newly unsafe repair records a deterministic mismatch ID and reason, while unrelated safe repairs continue. The command returns before/after reports, applied IDs, and failed repair records.
 
