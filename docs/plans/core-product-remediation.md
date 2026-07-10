@@ -6,6 +6,8 @@
 >
 > **Accountable:** Rakesh. Engineering and product/finance owners must be assigned per milestone before implementation.
 
+Final clean-database and release-gate evidence is recorded in [core-product-remediation-final-validation.md](./core-product-remediation-final-validation.md). Code validation passes; production rollout remains conditional on real-data reconciliation, sanitized migration rehearsal, and authenticated staging acceptance.
+
 ## Outcome
 
 Stop active financial inconsistency first, determine whether existing production data has drifted, then repair transactional and asynchronous workflows in severity order.

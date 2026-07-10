@@ -28,13 +28,13 @@ Report candidates without changing data:
 
 ```bash
 pnpm calendar:reconcile
-pnpm calendar:reconcile -- --organization-id <organization-id>
+pnpm calendar:reconcile --organization-id <organization-id>
 ```
 
 Repair candidates for one organization:
 
 ```bash
-pnpm calendar:reconcile -- --organization-id <organization-id> --apply
+pnpm calendar:reconcile --organization-id <organization-id> --apply
 ```
 
 `--apply` requires a non-blank `--organization-id`; it can never become an accidental global mutation. The command repairs active assignments with absent/stale mapping or job state and mapping-only terminal/deleted/unassigned targets requiring cancellation. It is idempotent and safe to invoke concurrently.

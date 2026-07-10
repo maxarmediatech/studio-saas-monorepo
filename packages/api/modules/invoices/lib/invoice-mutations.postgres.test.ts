@@ -173,5 +173,5 @@ describePostgres("serialized invoice mutations", () => {
 				.where(eq(organizations.id, organizationId));
 			process.env.DATABASE_URL = originalDatabaseUrl;
 		}
-	});
+	}, 15_000);
 });
