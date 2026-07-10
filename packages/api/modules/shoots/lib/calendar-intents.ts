@@ -14,6 +14,7 @@ import type { TransactionClient } from "../../studio/lib/transactions";
 import { isTerminalShootStatus } from "../calendar-sync";
 import {
 	createIntent,
+	getNextIcalSequence,
 	queueGeneration,
 	supersedeUnstartedGenerations,
 } from "./calendar-intent-persistence";
@@ -24,6 +25,7 @@ import {
 	type IntentTarget,
 	sameMaterialSnapshot,
 } from "./calendar-intent-snapshot";
+import { ensureActiveDeliveryJob } from "./calendar-job-recovery";
 import { resolveCalendarDeliveryRoute } from "./calendar-routing";
 
 const UNSENDABLE_REASON =
@@ -138,6 +140,11 @@ export async function ensureAssignmentCalendarDelivery(
 			})
 		: null;
 	const generation = (mapping?.intentGeneration ?? 0) + 1;
+	const nextIcalSequence = await getNextIcalSequence(
+		tx,
+		params,
+		mapping?.deliveredIcalSequence ?? -1,
+	);
 	const continuesDeliveredIcs =
 		route.deliveryMethod === "ics" &&
 		mapping?.deliveredDeliveryMethod === "ics" &&
@@ -168,9 +175,7 @@ export async function ensureAssignmentCalendarDelivery(
 				? mapping.deliveredGoogleEventId
 				: null,
 		icalUid,
-		icalSequence: continuesDeliveredIcs
-			? (mapping?.deliveredIcalSequence ?? 0) + 1
-			: 0,
+		icalSequence: route.deliveryMethod === "ics" ? nextIcalSequence : 0,
 	};
 	const snapshot = buildSnapshot(
 		target,
@@ -181,6 +186,23 @@ export async function ensureAssignmentCalendarDelivery(
 		comparableActiveSnapshot &&
 		sameMaterialSnapshot(comparableActiveSnapshot, snapshot)
 	) {
+		if (route.deliveryMethod !== "unsendable" && currentIntent && mapping) {
+			const state = await ensureActiveDeliveryJob(tx, {
+				...params,
+				mappingId: mapping.id,
+				deliveryMethod: route.deliveryMethod,
+				intent: currentIntent,
+				snapshot: comparableActiveSnapshot,
+			});
+			if (state === "error") {
+				return {
+					...params,
+					deliveryMethod: route.deliveryMethod,
+					jobType: null,
+					state: "error",
+				};
+			}
+		}
 		return {
 			...params,
 			deliveryMethod: route.deliveryMethod,
@@ -320,7 +342,7 @@ async function queueReplacementCancellation(
 			calendarId: params.mapping.deliveredCalendarId,
 			googleEventId: params.mapping.deliveredGoogleEventId,
 			icalUid: params.mapping.deliveredIcalUid,
-			icalSequence: params.mapping.deliveredIcalSequence,
+			icalSequence: (params.mapping.deliveredIcalSequence ?? 0) + 1,
 		},
 	);
 	await queueGeneration(tx, {
@@ -346,45 +368,78 @@ export async function enqueueCalendarCancellation(
 	if (!mapping) {
 		return null;
 	}
+	if (mapping.intentState === "cancelled") {
+		return mapping.deliveryMethod === "unsendable"
+			? null
+			: mapping.deliveryMethod === "ics"
+				? "ics_send_cancel"
+				: "google_delete";
+	}
 	const target = await getActiveAssignmentTarget(tx, params);
-	const snapshotTarget = target ?? {
-		shootId: params.shootId,
-		shootStatus: "cancelled",
-		crewId: params.crewId,
-		crewUserId: null,
-		crewEmail: mapping.deliveredRecipientEmail,
-		crewName: "Former crew",
-		assignmentRole: null,
-		shootName: "Cancelled shoot",
-		shootType: "event",
-		shootDate: "1970-01-01",
-		startTime: null,
-		endTime: null,
-		venue: null,
-		venueAddress: null,
-		notes: null,
-		bookingName: "",
-		bookingReferenceNumber: null,
-		organizationTimezone: null,
-		organizationSlug: null,
-	};
+	const deliveredIntent = mapping.deliveredGeneration
+		? await tx.query.calendarDeliveryIntents.findFirst({
+				where: and(
+					eq(
+						calendarDeliveryIntents.organizationId,
+						params.organizationId,
+					),
+					eq(calendarDeliveryIntents.shootId, params.shootId),
+					eq(calendarDeliveryIntents.crewId, params.crewId),
+					eq(
+						calendarDeliveryIntents.generation,
+						mapping.deliveredGeneration,
+					),
+				),
+			})
+		: null;
+	const deliveredSnapshot = deliveredIntent?.payload as
+		| CalendarSnapshot
+		| undefined;
+	if (!target && !deliveredSnapshot) {
+		throw new Error(
+			"Cannot cancel stale calendar mapping without a delivered immutable intent snapshot",
+		);
+	}
 	const generation = mapping.intentGeneration + 1;
 	const method = mapping.deliveredDeliveryMethod ?? mapping.deliveryMethod;
-	const snapshot = buildSnapshot(
-		snapshotTarget,
-		{ operation: "cancellation", intentState: "cancelled" },
-		{
-			deliveryMethod: method,
-			recipientEmail:
-				mapping.deliveredRecipientEmail ?? mapping.recipientEmail,
-			calendarId: mapping.deliveredCalendarId ?? mapping.calendarId,
-			googleEventId:
-				mapping.deliveredGoogleEventId ?? mapping.googleEventId,
-			icalUid: mapping.deliveredIcalUid ?? mapping.icalUid,
-			icalSequence:
-				(mapping.deliveredIcalSequence ?? mapping.icalSequence) + 1,
-		},
+	const nextIcalSequence = await getNextIcalSequence(
+		tx,
+		params,
+		mapping.deliveredIcalSequence ?? mapping.icalSequence,
 	);
+	const cancellationTarget = {
+		deliveryMethod: method,
+		recipientEmail:
+			mapping.deliveredRecipientEmail ??
+			deliveredSnapshot?.target.recipientEmail ??
+			mapping.recipientEmail,
+		calendarId:
+			mapping.deliveredCalendarId ??
+			deliveredSnapshot?.target.calendarId ??
+			mapping.calendarId,
+		googleEventId:
+			mapping.deliveredGoogleEventId ??
+			deliveredSnapshot?.target.googleEventId ??
+			mapping.googleEventId,
+		googleUserId: deliveredSnapshot?.target.googleUserId ?? null,
+		icalUid:
+			mapping.deliveredIcalUid ??
+			deliveredSnapshot?.target.icalUid ??
+			mapping.icalUid,
+		icalSequence: nextIcalSequence,
+	};
+	const snapshot: CalendarSnapshot = deliveredSnapshot
+		? {
+				...deliveredSnapshot,
+				operation: "cancellation",
+				intentState: "cancelled",
+				target: { ...deliveredSnapshot.target, ...cancellationTarget },
+			}
+		: buildSnapshot(
+				target as IntentTarget,
+				{ operation: "cancellation", intentState: "cancelled" },
+				cancellationTarget,
+			);
 	await supersedeUnstartedGenerations(tx, params);
 	const intent = await createIntent(tx, {
 		...params,
@@ -403,7 +458,8 @@ export async function enqueueCalendarCancellation(
 		.set({
 			intentGeneration: generation,
 			intentState: "cancelled",
-			syncStatus: "pending",
+			syncStatus: method === "unsendable" ? "deleted" : "pending",
+			lastSyncedAt: method === "unsendable" ? new Date() : undefined,
 			lastError: null,
 			updatedAt: new Date(),
 		})
