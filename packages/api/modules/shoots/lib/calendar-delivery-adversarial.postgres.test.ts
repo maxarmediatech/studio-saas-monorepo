@@ -18,6 +18,7 @@ export async function runCalendarDeliveryIdempotencyAssertions(ctx: any) {
 		id,
 		organizationId,
 		route,
+		shootCalendarEvents,
 		shoots,
 	} = ctx;
 	await route(id);
@@ -65,6 +66,42 @@ export async function runCalendarDeliveryIdempotencyAssertions(ctx: any) {
 	expect(jobs.filter((job: any) => job.status === "pending")).toEqual([
 		expect.objectContaining({ generation: 2 }),
 	]);
+	const generationTwo = intents.find(
+		(intent: any) => intent.generation === 2,
+	);
+	if (!generationTwo) {
+		throw new Error("Expected material update generation");
+	}
+	await db
+		.update(shootCalendarEvents)
+		.set({
+			deliveredGeneration: 2,
+			deliveredDeliveryMethod: "ics",
+			deliveredRecipientEmail: generationTwo.recipientEmail,
+			deliveredIcalUid: generationTwo.payload.target.icalUid,
+			deliveredIcalSequence: generationTwo.payload.target.icalSequence,
+		})
+		.where(eq(shootCalendarEvents.shootId, id));
+	await db
+		.update(shoots)
+		.set({ name: "Delivered same-route update" })
+		.where(eq(shoots.id, id));
+	await route(id);
+	const deliveredUpdate = (
+		await db
+			.select()
+			.from(calendarDeliveryIntents)
+			.where(eq(calendarDeliveryIntents.shootId, id))
+	).find((intent: any) => intent.generation === 3);
+	expect(deliveredUpdate).toMatchObject({
+		generation: 3,
+		payload: {
+			target: {
+				icalUid: generationTwo.payload.target.icalUid,
+				icalSequence: 1,
+			},
+		},
+	});
 	return db
 		.select()
 		.from(calendarSyncJobs)

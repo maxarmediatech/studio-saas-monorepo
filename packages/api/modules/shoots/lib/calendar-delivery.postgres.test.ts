@@ -279,17 +279,19 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 				},
 			});
 
-			let jobs = await runCalendarDeliveryIdempotencyAssertions({
-				calendarDeliveryIntents,
-				calendarSyncJobs,
-				db,
-				eq,
-				expect,
-				id: ids.missing,
-				organizationId,
-				route,
-				shoots,
-			});
+			let jobs: (typeof calendarSyncJobs.$inferSelect)[] =
+				await runCalendarDeliveryIdempotencyAssertions({
+					calendarDeliveryIntents,
+					calendarSyncJobs,
+					db,
+					eq,
+					expect,
+					id: ids.missing,
+					organizationId,
+					route,
+					shootCalendarEvents,
+					shoots,
+				});
 
 			await route(ids.retry);
 			const retryAt = new Date(Date.now() + 60_000);
