@@ -172,11 +172,20 @@ export async function getLockedScheduleInvoiceForReceipt(
 		return null;
 	}
 
-	return getLockedInvoiceForReceipt(tx, {
+	const invoice = await getLockedInvoiceForReceipt(tx, {
 		organizationId,
 		bookingId,
 		invoiceId: linked.id,
 	});
+
+	if (invoice && invoice.paymentScheduleId !== paymentScheduleId) {
+		throw new ORPCError("CONFLICT", {
+			message:
+				"Invoice payment schedule relationship changed. Retry the request.",
+		});
+	}
+
+	return invoice;
 }
 
 export async function getLockedScheduleForReceipt(
