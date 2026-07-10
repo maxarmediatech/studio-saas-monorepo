@@ -21,6 +21,10 @@ describe("calendar reconciliation CLI", () => {
 		["--organization-id", "--apply"],
 		["--organization-id="],
 		["--organization-id=--apply"],
+		["--unknown"],
+		["org_1"],
+		["--apply", "--apply", "--organization-id", "org_1"],
+		["--organization-id", "org_1", "--organization-id=org_2"],
 	]) {
 		it(`rejects ${args.join(" ") || "missing value"}`, () => {
 			assert.throws(() => parseCalendarReconciliationArguments(args));

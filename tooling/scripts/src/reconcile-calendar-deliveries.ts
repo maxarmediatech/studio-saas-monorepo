@@ -1,32 +1,41 @@
 import { reconcileCalendarDeliveries } from "../../../packages/api/modules/shoots/lib/calendar-delivery";
 
 export function parseCalendarReconciliationArguments(args: string[]) {
-	const apply = args.includes("--apply");
-	const organizationId = getRequiredOption(args, "--organization-id");
+	let apply = false;
+	let organizationId: string | undefined;
+	for (let index = 0; index < args.length; index += 1) {
+		const argument = args[index];
+		if (argument === "--apply") {
+			if (apply) {
+				throw new Error("Duplicate argument: --apply");
+			}
+			apply = true;
+			continue;
+		}
+		if (
+			argument === "--organization-id" ||
+			argument?.startsWith("--organization-id=")
+		) {
+			if (organizationId !== undefined) {
+				throw new Error("Duplicate argument: --organization-id");
+			}
+			const value = argument.includes("=")
+				? argument.slice(argument.indexOf("=") + 1).trim()
+				: args[++index]?.trim();
+			if (!value || value.startsWith("-")) {
+				throw new Error(
+					"--organization-id requires a non-blank organization id",
+				);
+			}
+			organizationId = value;
+			continue;
+		}
+		throw new Error(`Unknown argument: ${argument}`);
+	}
 	if (apply && !organizationId) {
 		throw new Error("--apply requires --organization-id");
 	}
 	return { apply, organizationId };
-}
-
-function getRequiredOption(args: string[], name: string) {
-	const inline = args.find((arg) => arg.startsWith(`${name}=`));
-	if (inline) {
-		const value = inline.slice(name.length + 1).trim();
-		if (!value || value.startsWith("-")) {
-			throw new Error(`${name} requires a non-blank organization id`);
-		}
-		return value;
-	}
-	const index = args.indexOf(name);
-	if (index < 0) {
-		return undefined;
-	}
-	const value = args[index + 1]?.trim();
-	if (!value || value.startsWith("-")) {
-		throw new Error(`${name} requires a non-blank organization id`);
-	}
-	return value;
 }
 
 export async function main(args = process.argv.slice(2)) {
