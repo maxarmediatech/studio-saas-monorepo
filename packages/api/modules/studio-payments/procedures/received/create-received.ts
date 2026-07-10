@@ -7,7 +7,7 @@ import {
 	createReceivedInputSchema,
 	createReceivedOutputSchema,
 } from "../../../studio/schemas/payment";
-import { createReceivedPaymentTransition } from "../../lib/schedule-payment-service";
+import { createReceivedPaymentIdempotently } from "../../lib/payment-idempotency";
 
 export const createReceived = studioProtectedProcedure
 	.route({
@@ -34,33 +34,35 @@ export const createReceived = studioProtectedProcedure
 			});
 		}
 
-		const result = await db.transaction((tx) =>
-			createReceivedPaymentTransition(tx, {
+		const execution = await db.transaction((tx) =>
+			createReceivedPaymentIdempotently(tx, {
 				...input,
 				organizationId: context.organizationId,
 				userId: context.user.id,
 			}),
 		);
 
-		await safeTrackActivity(
-			{ organizationId: context.organizationId, user: context.user },
-			{
-				entityType: "received_amount",
-				entityId: result.id,
-				entityName: `${formatAmount(input.amount)} via ${input.paymentMethod}`,
-				action: "payment_received",
-				parentEntityType: "booking",
-				parentEntityId: input.bookingId,
-				parentEntityName: result.bookingName,
-				metadata: {
-					amount: input.amount,
-					paymentMethod: input.paymentMethod,
+		if (!execution.replayed) {
+			await safeTrackActivity(
+				{ organizationId: context.organizationId, user: context.user },
+				{
+					entityType: "received_amount",
+					entityId: execution.result.id,
+					entityName: `${formatAmount(input.amount)} via ${input.paymentMethod}`,
+					action: "payment_received",
+					parentEntityType: "booking",
+					parentEntityId: input.bookingId,
+					parentEntityName: execution.activity.bookingName,
+					metadata: {
+						amount: input.amount,
+						paymentMethod: input.paymentMethod,
+					},
 				},
-			},
-		);
+			);
+		}
 
 		return {
-			data: { id: result.id },
+			data: execution.result,
 			message: "Payment recorded successfully",
 		};
 	});

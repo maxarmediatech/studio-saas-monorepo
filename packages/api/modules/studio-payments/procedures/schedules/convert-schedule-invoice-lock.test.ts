@@ -32,7 +32,9 @@ const mocks = vi.hoisted(() => {
 		mockGetLockedBookingForReceipt: vi.fn(),
 		mockGetLockedScheduleForReceipt: vi.fn(),
 		mockGetLockedScheduleInvoiceForReceipt: vi.fn(),
+		mockConvertSchedulePaymentIdempotently: vi.fn(),
 		mockRequirePermission: vi.fn(),
+		mockSafeTrackActivity: vi.fn(),
 		mockTransaction: vi.fn(async (callback) => callback(tx)),
 		tx,
 	};
@@ -48,7 +50,7 @@ vi.mock("../../../studio/lib/permissions", () => ({
 
 vi.mock("../../../activities/lib", () => ({
 	formatAmount: vi.fn((amount: string) => amount),
-	safeTrackActivity: vi.fn(),
+	safeTrackActivity: mocks.mockSafeTrackActivity,
 }));
 
 vi.mock("../../../receipts/lib/locked-invoice-for-receipt", () => ({
@@ -68,6 +70,11 @@ vi.mock("../../../studio/lib/money", () => ({
 	moneyToCents: vi.fn((money: string) => Math.round(Number(money) * 100)),
 }));
 
+vi.mock("../../lib/payment-idempotency", () => ({
+	convertSchedulePaymentIdempotently:
+		mocks.mockConvertSchedulePaymentIdempotently,
+}));
+
 vi.mock("@repo/database", () => ({
 	and: vi.fn((...conditions: unknown[]) => conditions),
 	bookings: {},
@@ -85,11 +92,38 @@ vi.mock("@repo/database", () => ({
 	sql: vi.fn(),
 }));
 
+import { convertSchedulePaymentTransition } from "../../lib/schedule-payment-service";
 import "./convert-schedule";
 
 describe("schedule conversion invoice locking", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mocks.mockConvertSchedulePaymentIdempotently.mockImplementation(
+			async (tx, input) => {
+				const result = await convertSchedulePaymentTransition(
+					tx,
+					input,
+				);
+				return {
+					activity: {
+						bookingName: result.bookingName,
+						paidAmount: result.paidAmount,
+						schedule: {
+							amount: result.schedule.amount,
+							bookingId: result.schedule.bookingId,
+							name: result.schedule.name,
+						},
+						scheduleStatus: result.scheduleStatus,
+					},
+					result: {
+						receivedId: result.receivedId,
+						receiptId: result.receiptId,
+						scheduleId: result.scheduleId,
+					},
+					replayed: false,
+				};
+			},
+		);
 		mocks.tx.query.paymentSchedules.findFirst.mockResolvedValue({
 			id: "schedule_1",
 			organizationId: "org_1",
@@ -114,6 +148,33 @@ describe("schedule conversion invoice locking", () => {
 			paidAt: null,
 			status: "pending",
 		});
+	});
+
+	it("does not emit activity when an idempotent conversion replays", async () => {
+		mocks.mockConvertSchedulePaymentIdempotently.mockResolvedValueOnce({
+			result: {
+				receivedId: "payment_1",
+				scheduleId: "schedule_1",
+				receiptId: null,
+			},
+			replayed: true,
+		});
+
+		const response = await mocks.getHandler()?.({
+			context: { organizationId: "org_1", user: { id: "user_1" } },
+			input: {
+				idempotencyKey: "payment-idempotency-key-1",
+				scheduleId: "schedule_1",
+				amount: "100.00",
+				paymentMethod: "cash",
+				receivedDate: "2026-01-01",
+			},
+		});
+
+		expect(response).toMatchObject({
+			data: { receivedId: "payment_1", scheduleId: "schedule_1" },
+		});
+		expect(mocks.mockSafeTrackActivity).not.toHaveBeenCalled();
 	});
 
 	it("rejects a cancelled linked invoice before creating the payment", async () => {

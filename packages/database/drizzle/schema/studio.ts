@@ -902,6 +902,63 @@ export const receivedAmounts = pgTable(
 );
 
 // ============================================================================
+// PAYMENT IDEMPOTENCY RECORDS
+// A processing row is never intentionally committed: claim, payment effects,
+// and completion all live in one transaction.
+// ============================================================================
+
+export const paymentIdempotencyRecords = pgTable(
+	"payment_idempotency_records",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 })
+			.notNull()
+			.references(() => organizations.id, { onDelete: "cascade" }),
+		operation: varchar("operation", { length: 50 }).notNull(),
+		idempotencyKey: varchar("idempotency_key", { length: 128 }).notNull(),
+		requestFingerprint: varchar("request_fingerprint", {
+			length: 64,
+		}).notNull(),
+		status: varchar("status", { length: 20 })
+			.default("processing")
+			.notNull(),
+		resultResourceId: varchar("result_resource_id", {
+			length: 255,
+		}).references(() => receivedAmounts.id, { onDelete: "restrict" }),
+		resultPayload: jsonb("result_payload").$type<Record<string, unknown>>(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		completedAt: timestamp("completed_at", { withTimezone: true }),
+	},
+	(table) => [
+		uniqueIndex("payment_idempotency_org_operation_key_idx").on(
+			table.organizationId,
+			table.operation,
+			table.idempotencyKey,
+		),
+		index("payment_idempotency_result_idx").on(table.resultResourceId),
+		check(
+			"payment_idempotency_operation_check",
+			sql`operation IN ('create_received_payment', 'convert_schedule_payment')`,
+		),
+		check(
+			"payment_idempotency_status_check",
+			sql`status IN ('processing', 'completed')`,
+		),
+		check(
+			"payment_idempotency_completion_check",
+			sql`(status = 'processing' AND result_resource_id IS NULL AND result_payload IS NULL AND completed_at IS NULL) OR (status = 'completed' AND result_resource_id IS NOT NULL AND result_payload IS NOT NULL AND completed_at IS NOT NULL)`,
+		),
+	],
+);
+
+// ============================================================================
 // PAYMENT SCHEDULES TABLE
 // Scheduled payment milestones for bookings
 // ============================================================================

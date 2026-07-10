@@ -3,6 +3,30 @@ import { describe, expect, it } from "vitest";
 const databaseUrl = process.env.POSTGRES_CONCURRENCY_DATABASE_URL;
 const describePostgres = databaseUrl ? describe : describe.skip;
 
+async function expectUniqueViolation(
+	operation: Promise<unknown>,
+	constraint: string,
+) {
+	let rejection: unknown;
+	try {
+		await operation;
+	} catch (error) {
+		rejection = error;
+	}
+	expect(
+		rejection,
+		`Expected unique constraint ${constraint} to reject`,
+	).toBeDefined();
+	const postgresError =
+		typeof rejection === "object" &&
+		rejection !== null &&
+		"cause" in rejection &&
+		rejection.cause
+			? rejection.cause
+			: rejection;
+	expect(postgresError).toMatchObject({ code: "23505", constraint });
+}
+
 describePostgres("migrated financial uniqueness constraints", () => {
 	it("enforces one active invoice per schedule and receipt per payment", async () => {
 		const originalDatabaseUrl = process.env.DATABASE_URL;
@@ -63,16 +87,14 @@ describePostgres("migrated financial uniqueness constraints", () => {
 		});
 
 		try {
-			await expect(
+			await expectUniqueViolation(
 				db.insert(invoices).values({
 					...invoiceValues,
 					id: secondInvoiceId,
 					invoiceNumber: `FIN-UNIQUE-INV-2-${suffix}`,
 				}),
-			).rejects.toMatchObject({
-				code: "23505",
-				constraint: "invoices_active_payment_schedule_idx",
-			});
+				"invoices_active_payment_schedule_idx",
+			);
 
 			await db
 				.update(invoices)
@@ -108,15 +130,13 @@ describePostgres("migrated financial uniqueness constraints", () => {
 				id: firstReceiptId,
 				receiptNumber: `FIN-UNIQUE-RCPT-1-${suffix}`,
 			});
-			await expect(
+			await expectUniqueViolation(
 				db.insert(receipts).values({
 					...receiptValues,
 					receiptNumber: `FIN-UNIQUE-RCPT-2-${suffix}`,
 				}),
-			).rejects.toMatchObject({
-				code: "23505",
-				constraint: "receipts_active_received_amount_idx",
-			});
+				"receipts_active_received_amount_idx",
+			);
 
 			await db
 				.update(receipts)

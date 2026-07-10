@@ -9,6 +9,7 @@ import {
 import { cn } from "@repo/ui/lib/utils";
 import { usePaymentParams } from "@saas/studio/hooks/params/use-payment-params";
 import { useContextBookingId } from "@saas/studio/hooks/use-context-booking-id";
+import { usePaymentSubmissionKey } from "@saas/studio/hooks/use-payment-submission-key";
 import { studioPaymentsMutations } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -22,6 +23,7 @@ export function PaymentCreateSheet() {
 	const isOpen = Boolean(createPayment);
 	const queryClient = useQueryClient();
 	const [isScrolled, setIsScrolled] = useState(false);
+	const submissionKey = usePaymentSubmissionKey();
 
 	const createMutation = useMutation(
 		studioPaymentsMutations.createReceived(),
@@ -29,25 +31,31 @@ export function PaymentCreateSheet() {
 
 	const handleSubmit = async (data: PaymentFormValues) => {
 		try {
-			await createMutation.mutateAsync({
+			const request = {
 				bookingId: data.bookingId,
-				amount: data.amount,
+				amount: Number(data.amount).toFixed(2),
 				paymentMethod: data.paymentMethod,
 				receivedDate: data.receivedDate,
 				transactionReference: data.transactionReference || undefined,
 				notes: data.notes || undefined,
+			};
+			await createMutation.mutateAsync({
+				...request,
+				idempotencyKey: submissionKey.keyFor(request),
 			});
+			submissionKey.acknowledgeSuccess();
 
-			await queryClient.invalidateQueries({
-				queryKey: orpc.studioPayments.key(),
-			});
-			await queryClient.invalidateQueries({
-				queryKey: orpc.bookings.key(),
-			});
-			// Invalidate activities feed to show new payment activity
-			await queryClient.invalidateQueries({
-				queryKey: orpc.activities.key(),
-			});
+			await Promise.allSettled([
+				queryClient.invalidateQueries({
+					queryKey: orpc.studioPayments.key(),
+				}),
+				queryClient.invalidateQueries({
+					queryKey: orpc.bookings.key(),
+				}),
+				queryClient.invalidateQueries({
+					queryKey: orpc.activities.key(),
+				}),
+			]);
 			toast.success("Payment recorded successfully");
 			close();
 		} catch (error) {

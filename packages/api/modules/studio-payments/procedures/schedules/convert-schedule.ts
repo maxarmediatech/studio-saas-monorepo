@@ -6,7 +6,7 @@ import {
 	convertScheduleInputSchema,
 	convertScheduleOutputSchema,
 } from "../../../studio/schemas/payment";
-import { convertSchedulePaymentTransition } from "../../lib/schedule-payment-service";
+import { convertSchedulePaymentIdempotently } from "../../lib/payment-idempotency";
 
 export const convertSchedule = studioProtectedProcedure
 	.route({
@@ -22,37 +22,36 @@ export const convertSchedule = studioProtectedProcedure
 	.handler(async ({ input, context }) => {
 		await requirePermission(context, "payment", "create");
 
-		const result = await db.transaction((tx) =>
-			convertSchedulePaymentTransition(tx, {
+		const execution = await db.transaction((tx) =>
+			convertSchedulePaymentIdempotently(tx, {
 				...input,
 				organizationId: context.organizationId,
 				userId: context.user.id,
 			}),
 		);
 
-		await safeTrackActivity(context, {
-			entityType: "payment_schedule",
-			entityId: input.scheduleId,
-			entityName: `${result.schedule.name} (${formatAmount(result.schedule.amount)})`,
-			action: "marked_paid",
-			parentEntityType: "booking",
-			parentEntityId: result.schedule.bookingId,
-			parentEntityName: result.bookingName,
-			metadata: {
-				paidAmount: input.amount,
-				totalPaidAmount: result.paidAmount,
-				scheduleStatus: result.scheduleStatus,
-				receivedId: result.receivedId,
-				receiptId: result.receiptId,
-			},
-		});
+		if (!execution.replayed) {
+			const { activity, result } = execution;
+			await safeTrackActivity(context, {
+				entityType: "payment_schedule",
+				entityId: input.scheduleId,
+				entityName: `${activity.schedule.name} (${formatAmount(activity.schedule.amount)})`,
+				action: "marked_paid",
+				parentEntityType: "booking",
+				parentEntityId: activity.schedule.bookingId,
+				parentEntityName: activity.bookingName,
+				metadata: {
+					paidAmount: input.amount,
+					totalPaidAmount: activity.paidAmount,
+					scheduleStatus: activity.scheduleStatus,
+					receivedId: result.receivedId,
+					receiptId: result.receiptId,
+				},
+			});
+		}
 
 		return {
-			data: {
-				receivedId: result.receivedId,
-				scheduleId: result.scheduleId,
-				receiptId: result.receiptId,
-			},
+			data: execution.result,
 			message: "Payment schedule converted successfully",
 		};
 	});

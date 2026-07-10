@@ -34,7 +34,7 @@ export const SCHEDULE_ALREADY_CONVERTED_MESSAGE =
 
 export async function createReceivedPaymentTransition(
 	tx: TransactionClient,
-	input: CreateReceivedInput & PaymentActor,
+	input: Omit<CreateReceivedInput, "idempotencyKey"> & PaymentActor,
 ) {
 	const booking = await getLockedBookingForReceipt(tx, input);
 	if (!booking) {
@@ -149,7 +149,7 @@ export async function createReceivedPaymentTransition(
 
 export async function convertSchedulePaymentTransition(
 	tx: TransactionClient,
-	input: ConvertScheduleInput & PaymentActor,
+	input: Omit<ConvertScheduleInput, "idempotencyKey"> & PaymentActor,
 ) {
 	const lockPlan = await tx.query.paymentSchedules.findFirst({
 		where: and(
@@ -198,8 +198,7 @@ export async function convertSchedulePaymentTransition(
 		input.amount,
 		"Cancelled schedule cannot be converted",
 	);
-	const receivedDate =
-		input.receivedDate ?? new Date().toISOString().split("T")[0];
+	const receivedDate = input.receivedDate;
 	const [created] = await tx
 		.insert(receivedAmounts)
 		.values({

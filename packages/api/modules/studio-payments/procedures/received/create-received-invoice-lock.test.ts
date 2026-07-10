@@ -24,7 +24,9 @@ const mocks = vi.hoisted(() => {
 		mockGetLockedBookingForReceipt: vi.fn(),
 		mockGetLockedInvoiceForReceipt: vi.fn(),
 		mockGetLockedScheduleForReceipt: vi.fn(),
+		mockCreateReceivedPaymentIdempotently: vi.fn(),
 		mockRequirePermission: vi.fn(),
+		mockSafeTrackActivity: vi.fn(),
 		mockTransaction: vi.fn(async (callback) => callback(tx)),
 		tx,
 	};
@@ -40,7 +42,7 @@ vi.mock("../../../studio/lib/permissions", () => ({
 
 vi.mock("../../../activities/lib", () => ({
 	formatAmount: vi.fn((amount: string) => amount),
-	safeTrackActivity: vi.fn(),
+	safeTrackActivity: mocks.mockSafeTrackActivity,
 }));
 
 vi.mock("../../../receipts/lib/locked-invoice-for-receipt", () => ({
@@ -52,6 +54,11 @@ vi.mock("../../../receipts/lib/locked-invoice-for-receipt", () => ({
 vi.mock("../../../receipts/lib/receipt-helpers", () => ({
 	generateReceiptNumber: vi.fn(),
 	updateInvoicePaymentStatus: vi.fn(),
+}));
+
+vi.mock("../../lib/payment-idempotency", () => ({
+	createReceivedPaymentIdempotently:
+		mocks.mockCreateReceivedPaymentIdempotently,
 }));
 
 vi.mock("@repo/database", () => ({
@@ -75,15 +82,47 @@ vi.mock("@repo/database", () => ({
 	sql: vi.fn(),
 }));
 
+import { createReceivedPaymentTransition } from "../../lib/schedule-payment-service";
 import "./create-received";
 
 describe("create received invoice locking", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mocks.mockCreateReceivedPaymentIdempotently.mockImplementation(
+			async (tx, input) => {
+				const result = await createReceivedPaymentTransition(tx, input);
+				return {
+					activity: { bookingName: result.bookingName },
+					result: { id: result.id },
+					replayed: false,
+				};
+			},
+		);
 		mocks.mockGetLockedBookingForReceipt.mockResolvedValue({
 			id: "booking_1",
 			name: "Booking",
 		});
+	});
+
+	it("does not emit activity when an idempotent request replays", async () => {
+		mocks.mockCreateReceivedPaymentIdempotently.mockResolvedValueOnce({
+			result: { id: "payment_1" },
+			replayed: true,
+		});
+
+		const response = await mocks.getHandler()?.({
+			context: { organizationId: "org_1", user: { id: "user_1" } },
+			input: {
+				idempotencyKey: "payment-idempotency-key-1",
+				bookingId: "booking_1",
+				amount: "100.00",
+				paymentMethod: "cash",
+				receivedDate: "2026-01-01",
+			},
+		});
+
+		expect(response).toMatchObject({ data: { id: "payment_1" } });
+		expect(mocks.mockSafeTrackActivity).not.toHaveBeenCalled();
 	});
 
 	it("rejects a cancelled invoice before creating the payment", async () => {
