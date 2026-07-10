@@ -1,17 +1,37 @@
 import { reconcileCalendarDeliveries } from "../../../packages/api/modules/shoots/lib/calendar-delivery";
 
-function getOption(args: string[], name: string) {
+export function parseCalendarReconciliationArguments(args: string[]) {
+	const apply = args.includes("--apply");
+	const organizationId = getRequiredOption(args, "--organization-id");
+	if (apply && !organizationId) {
+		throw new Error("--apply requires --organization-id");
+	}
+	return { apply, organizationId };
+}
+
+function getRequiredOption(args: string[], name: string) {
 	const inline = args.find((arg) => arg.startsWith(`${name}=`));
 	if (inline) {
-		return inline.slice(name.length + 1);
+		const value = inline.slice(name.length + 1).trim();
+		if (!value || value.startsWith("-")) {
+			throw new Error(`${name} requires a non-blank organization id`);
+		}
+		return value;
 	}
 	const index = args.indexOf(name);
-	return index >= 0 ? args[index + 1] : undefined;
+	if (index < 0) {
+		return undefined;
+	}
+	const value = args[index + 1]?.trim();
+	if (!value || value.startsWith("-")) {
+		throw new Error(`${name} requires a non-blank organization id`);
+	}
+	return value;
 }
 
 export async function main(args = process.argv.slice(2)) {
-	const apply = args.includes("--apply");
-	const organizationId = getOption(args, "--organization-id");
+	const { apply, organizationId } =
+		parseCalendarReconciliationArguments(args);
 	const result = await reconcileCalendarDeliveries({
 		organizationId,
 		apply,

@@ -1,14 +1,12 @@
+import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
 	and,
 	calendarSyncJobs,
-	crews,
 	db,
 	eq,
-	inArray,
 	isNotNull,
-	isNull,
 	lte,
 	shootCalendarEvents,
 	sql,
@@ -17,11 +15,11 @@ import {
 	createAllDayEvent,
 	createAllDayIcsFromGoogleInput,
 	deleteEvent,
+	type GoogleAllDayEventInput,
 	updateAllDayEvent,
 } from "@repo/google-calendar";
 import { logger } from "@repo/logs";
 import { sendCalendarInviteEmail } from "@repo/mail";
-import { buildEventInput } from "./event-input";
 import { getGoogleAccessToken } from "./google-access-token";
 import {
 	computeNextAttemptAfterFailure,
@@ -38,67 +36,94 @@ const staleThresholdMinutes =
 		? staleThresholdMinutesRaw
 		: 15;
 
+type Snapshot = {
+	operation: "delivery" | "cancellation";
+	intentState: "active" | "cancelled";
+	eventInput: GoogleAllDayEventInput;
+	target: {
+		deliveryMethod: "google" | "ics" | "unsendable";
+		recipientEmail: string | null;
+		googleUserId: string | null;
+		calendarId: string | null;
+		googleEventId: string | null;
+		icalUid: string | null;
+		icalSequence: number;
+	};
+};
+
+function getSnapshot(job: typeof calendarSyncJobs.$inferSelect): Snapshot {
+	if (!job.payload || typeof job.payload !== "object") {
+		throw new Error(
+			"Calendar job is missing its immutable intent snapshot",
+		);
+	}
+	return job.payload as Snapshot;
+}
+
+function claimWhere(job: typeof calendarSyncJobs.$inferSelect) {
+	if (!job.claimToken) {
+		throw new Error("Processing job has no claim token");
+	}
+	return and(
+		eq(calendarSyncJobs.id, job.id),
+		eq(calendarSyncJobs.generation, job.generation),
+		eq(calendarSyncJobs.status, "processing"),
+		eq(calendarSyncJobs.claimToken, job.claimToken),
+	);
+}
+
 export async function claimJobBatch() {
 	const now = new Date();
 	return db.transaction(async (tx) => {
-		const claimableQuery = sql`
+		const claimable = await tx.execute(sql`
 			SELECT id FROM ${calendarSyncJobs}
 			WHERE (
 				${calendarSyncJobs.status} = 'pending'
-				OR (
-					${calendarSyncJobs.status} = 'failed'
-					AND COALESCE(${calendarSyncJobs.attempts}, 0) < COALESCE(${calendarSyncJobs.maxAttempts}, ${DEFAULT_MAX_ATTEMPTS})
-				)
+				OR (${calendarSyncJobs.status} = 'failed'
+					AND COALESCE(${calendarSyncJobs.attempts}, 0) < COALESCE(${calendarSyncJobs.maxAttempts}, ${DEFAULT_MAX_ATTEMPTS}))
 			)
-			AND (
-				${calendarSyncJobs.nextAttemptAt} IS NULL
-				OR ${calendarSyncJobs.nextAttemptAt} <= ${now}
-			)
+			AND (${calendarSyncJobs.nextAttemptAt} IS NULL OR ${calendarSyncJobs.nextAttemptAt} <= ${now})
 			ORDER BY ${calendarSyncJobs.createdAt} ASC
 			LIMIT ${batchSize}
 			FOR UPDATE SKIP LOCKED
-		`;
-
-		const claimableResult = await tx.execute(claimableQuery);
-		const jobIds = (claimableResult.rows as { id: string }[]).map(
-			(row) => row.id,
-		);
-
-		if (jobIds.length === 0) {
+		`);
+		const ids = (claimable.rows as { id: string }[]).map((row) => row.id);
+		if (ids.length === 0) {
 			return [];
 		}
-
-		await tx
-			.update(calendarSyncJobs)
-			.set({
-				status: "processing",
-				attempts: sql`COALESCE(${calendarSyncJobs.attempts}, 0) + 1`,
-				lastAttemptAt: now,
-				lockedAt: now,
-				updatedAt: now,
-			})
-			.where(inArray(calendarSyncJobs.id, jobIds));
-
-		return tx
-			.select()
-			.from(calendarSyncJobs)
-			.where(inArray(calendarSyncJobs.id, jobIds));
+		const claimed = await Promise.all(
+			ids.map(async (id) => {
+				const [job] = await tx
+					.update(calendarSyncJobs)
+					.set({
+						status: "processing",
+						attempts: sql`COALESCE(${calendarSyncJobs.attempts}, 0) + 1`,
+						lastAttemptAt: now,
+						lockedAt: now,
+						claimToken: randomUUID(),
+						updatedAt: now,
+					})
+					.where(eq(calendarSyncJobs.id, id))
+					.returning();
+				return job;
+			}),
+		);
+		return claimed.filter(
+			(job): job is typeof calendarSyncJobs.$inferSelect => Boolean(job),
+		);
 	});
 }
 
 export async function recoverStaleProcessingJobs() {
 	const threshold = new Date(Date.now() - staleThresholdMinutes * 60 * 1000);
-	const recoveredJobs = await db
+	return db
 		.update(calendarSyncJobs)
 		.set({
 			status: "failed",
-			nextAttemptAt: sql`CASE
-				WHEN COALESCE(${calendarSyncJobs.attempts}, 0) < COALESCE(${calendarSyncJobs.maxAttempts}, ${DEFAULT_MAX_ATTEMPTS})
-				THEN NOW()
-				ELSE NULL
-			END`,
+			nextAttemptAt: sql`CASE WHEN COALESCE(${calendarSyncJobs.attempts}, 0) < COALESCE(${calendarSyncJobs.maxAttempts}, ${DEFAULT_MAX_ATTEMPTS}) THEN NOW() ELSE NULL END`,
 			lastError: "Recovered stale processing lock",
 			lockedAt: null,
+			claimToken: null,
 			updatedAt: new Date(),
 		})
 		.where(
@@ -109,331 +134,274 @@ export async function recoverStaleProcessingJobs() {
 			),
 		)
 		.returning({ id: calendarSyncJobs.id });
-
-	if (recoveredJobs.length > 0) {
-		logger.warn("Recovered stale calendar sync jobs", {
-			count: recoveredJobs.length,
-			staleThresholdMinutes,
-		});
-	}
-
-	return recoveredJobs;
 }
 
-async function markJobSuccess(jobId: string) {
-	await db
+async function completeClaim(job: typeof calendarSyncJobs.$inferSelect) {
+	return db
 		.update(calendarSyncJobs)
 		.set({
 			status: "completed",
 			nextAttemptAt: null,
 			lastError: null,
 			lockedAt: null,
+			claimToken: null,
 			updatedAt: new Date(),
 		})
-		.where(eq(calendarSyncJobs.id, jobId));
+		.where(claimWhere(job))
+		.returning({ id: calendarSyncJobs.id });
 }
 
-async function markJobFailure(params: {
-	jobId: string;
-	attempts: number;
-	maxAttempts: number;
-	errorMessage: string;
-}) {
+async function failClaim(
+	job: typeof calendarSyncJobs.$inferSelect,
+	errorMessage: string,
+) {
 	const nextAttemptAt = computeNextAttemptAfterFailure({
-		attempts: params.attempts,
-		maxAttempts: params.maxAttempts,
+		attempts: job.attempts ?? 0,
+		maxAttempts: job.maxAttempts ?? DEFAULT_MAX_ATTEMPTS,
 	});
-
-	await db
+	return db
 		.update(calendarSyncJobs)
 		.set({
 			status: "failed",
 			nextAttemptAt,
-			lastError: params.errorMessage,
+			lastError: errorMessage,
 			lockedAt: null,
+			claimToken: null,
 			updatedAt: new Date(),
 		})
-		.where(eq(calendarSyncJobs.id, params.jobId));
+		.where(claimWhere(job))
+		.returning({ id: calendarSyncJobs.id });
 }
 
-async function processJob(job: typeof calendarSyncJobs.$inferSelect) {
-	const attempts = job.attempts ?? 0;
-	const maxAttempts = job.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
+async function deliveryIsCurrent(job: typeof calendarSyncJobs.$inferSelect) {
+	const mapping = await db.query.shootCalendarEvents.findFirst({
+		where: and(
+			eq(shootCalendarEvents.organizationId, job.organizationId),
+			eq(shootCalendarEvents.shootId, job.shootId ?? ""),
+			eq(shootCalendarEvents.crewId, job.crewId ?? ""),
+		),
+	});
+	return (
+		mapping?.intentGeneration === job.generation &&
+		mapping.intentState === "active"
+	);
+}
 
-	try {
-		if (!job.shootId || !job.crewId) {
-			throw new Error("Job missing shootId/crewId");
+async function cancellationIsCurrent(
+	job: typeof calendarSyncJobs.$inferSelect,
+	snapshot: Snapshot,
+) {
+	const mapping = await db.query.shootCalendarEvents.findFirst({
+		where: and(
+			eq(shootCalendarEvents.organizationId, job.organizationId),
+			eq(shootCalendarEvents.shootId, job.shootId ?? ""),
+			eq(shootCalendarEvents.crewId, job.crewId ?? ""),
+		),
+	});
+	if (!mapping || mapping.intentGeneration !== job.generation) {
+		return false;
+	}
+	if (mapping.intentState === "cancelled") {
+		return true;
+	}
+	return (
+		mapping.deliveryMethod !== snapshot.target.deliveryMethod ||
+		mapping.recipientEmail !== snapshot.target.recipientEmail
+	);
+}
+
+async function processGoogle(
+	job: typeof calendarSyncJobs.$inferSelect,
+	snapshot: Snapshot,
+) {
+	if (!snapshot.target.googleUserId) {
+		throw new Error("Snapshot has no Google user");
+	}
+	const { config, accessToken } = await getGoogleAccessToken({
+		organizationId: job.organizationId,
+		userId: snapshot.target.googleUserId,
+	});
+	if (snapshot.operation === "cancellation") {
+		if (snapshot.target.googleEventId) {
+			await deleteEvent({
+				config,
+				accessToken,
+				googleEventId: snapshot.target.googleEventId,
+			});
 		}
+		return { googleEventId: null };
+	}
+	if (snapshot.target.googleEventId) {
+		await updateAllDayEvent({
+			config,
+			accessToken,
+			googleEventId: snapshot.target.googleEventId,
+			input: snapshot.eventInput,
+		});
+		return { googleEventId: snapshot.target.googleEventId };
+	}
+	const created = await createAllDayEvent({
+		config,
+		accessToken,
+		input: snapshot.eventInput,
+	});
+	return { googleEventId: created.googleEventId };
+}
 
-		if (job.jobType.startsWith("google_")) {
-			const crew = await db.query.crews.findFirst({
-				where: and(
-					eq(crews.id, job.crewId),
-					eq(crews.organizationId, job.organizationId),
-					isNull(crews.deletedAt),
-				),
-				columns: { userId: true },
-			});
-			if (!crew?.userId) {
-				throw new Error("Crew has no linked userId");
-			}
+async function processIcs(
+	job: typeof calendarSyncJobs.$inferSelect,
+	snapshot: Snapshot,
+) {
+	const recipient = snapshot.target.recipientEmail?.trim();
+	const uid = snapshot.target.icalUid;
+	if (!recipient || !uid) {
+		throw new Error("Snapshot has no ICS recipient or UID");
+	}
+	const cancellation = snapshot.operation === "cancellation";
+	const ics = createAllDayIcsFromGoogleInput({
+		uid,
+		sequence: snapshot.target.icalSequence,
+		method: cancellation ? "CANCEL" : "REQUEST",
+		input: snapshot.eventInput,
+	});
+	await sendCalendarInviteEmail({
+		to: recipient,
+		subject: `${cancellation ? "Cancelled" : "Calendar Invite"}: ${snapshot.eventInput.title}`,
+		text: snapshot.eventInput.description ?? snapshot.eventInput.title,
+		html: snapshot.eventInput.description
+			? `<pre style="white-space:pre-wrap">${escapeHtml(snapshot.eventInput.description)}</pre>`
+			: undefined,
+		icsFilename: `shoot-${job.shootId}.ics`,
+		icsContent: ics,
+	});
+}
 
-			const { config, accessToken } = await getGoogleAccessToken({
-				organizationId: job.organizationId,
-				userId: crew.userId,
-			});
-
-			const mapping = await db.query.shootCalendarEvents.findFirst({
-				where: and(
-					eq(shootCalendarEvents.organizationId, job.organizationId),
-					eq(shootCalendarEvents.shootId, job.shootId),
-					eq(shootCalendarEvents.crewId, job.crewId),
-				),
-			});
-			if (!mapping || mapping.deliveryMethod !== "google") {
-				throw new Error(
-					"Google calendar mapping not found for this organization",
-				);
-			}
-
-			const { input } = await buildEventInput({
-				organizationId: job.organizationId,
-				shootId: job.shootId,
-				crewId: job.crewId,
-				allowMissingAssignment: job.jobType === "google_delete",
-			});
-
-			if (job.jobType === "google_create") {
-				if (mapping?.googleEventId) {
-					await updateAllDayEvent({
-						config,
-						accessToken,
-						googleEventId: mapping.googleEventId,
-						input,
-					});
-					await db
-						.update(shootCalendarEvents)
-						.set({
-							syncStatus: "synced",
-							lastSyncedAt: new Date(),
-							lastError: null,
-							updatedAt: new Date(),
-						})
-						.where(eq(shootCalendarEvents.id, mapping.id));
-				} else {
-					const created = await createAllDayEvent({
-						config,
-						accessToken,
-						input,
-					});
-					await db
-						.update(shootCalendarEvents)
-						.set({
-							deliveryMethod: "google",
-							calendarId: "primary",
-							googleEventId: created.googleEventId,
-							syncStatus: "synced",
-							lastSyncedAt: new Date(),
-							lastError: null,
-							updatedAt: new Date(),
-						})
-						.where(
-							and(
-								eq(
-									shootCalendarEvents.organizationId,
-									job.organizationId,
-								),
-								eq(shootCalendarEvents.shootId, job.shootId),
-								eq(shootCalendarEvents.crewId, job.crewId),
-							),
-						);
-				}
-			}
-
-			if (job.jobType === "google_update") {
-				if (!mapping?.googleEventId) {
-					const created = await createAllDayEvent({
-						config,
-						accessToken,
-						input,
-					});
-					await db
-						.update(shootCalendarEvents)
-						.set({
-							deliveryMethod: "google",
-							calendarId: "primary",
-							googleEventId: created.googleEventId,
-							syncStatus: "synced",
-							lastSyncedAt: new Date(),
-							lastError: null,
-							updatedAt: new Date(),
-						})
-						.where(
-							and(
-								eq(
-									shootCalendarEvents.organizationId,
-									job.organizationId,
-								),
-								eq(shootCalendarEvents.shootId, job.shootId),
-								eq(shootCalendarEvents.crewId, job.crewId),
-							),
-						);
-				} else {
-					await updateAllDayEvent({
-						config,
-						accessToken,
-						googleEventId: mapping.googleEventId,
-						input,
-					});
-					await db
-						.update(shootCalendarEvents)
-						.set({
-							syncStatus: "synced",
-							lastSyncedAt: new Date(),
-							lastError: null,
-							updatedAt: new Date(),
-						})
-						.where(
-							and(
-								eq(
-									shootCalendarEvents.organizationId,
-									job.organizationId,
-								),
-								eq(shootCalendarEvents.shootId, job.shootId),
-								eq(shootCalendarEvents.crewId, job.crewId),
-							),
-						);
-				}
-			}
-
-			if (job.jobType === "google_delete") {
-				if (mapping?.googleEventId) {
-					await deleteEvent({
-						config,
-						accessToken,
-						googleEventId: mapping.googleEventId,
-					});
-				}
-
-				await db
-					.update(shootCalendarEvents)
-					.set({
-						syncStatus: "deleted",
-						googleEventId: null,
-						calendarId: null,
-						lastSyncedAt: new Date(),
-						lastError: null,
-						updatedAt: new Date(),
-					})
-					.where(
-						and(
-							eq(
-								shootCalendarEvents.organizationId,
-								job.organizationId,
-							),
-							eq(shootCalendarEvents.shootId, job.shootId),
-							eq(shootCalendarEvents.crewId, job.crewId),
-						),
-					);
-			}
-
-			await markJobSuccess(job.id);
-			return;
-		}
-
-		if (job.jobType.startsWith("ics_")) {
-			const mapping = await db.query.shootCalendarEvents.findFirst({
-				where: and(
-					eq(shootCalendarEvents.organizationId, job.organizationId),
-					eq(shootCalendarEvents.shootId, job.shootId),
-					eq(shootCalendarEvents.crewId, job.crewId),
-				),
-			});
-			if (!mapping || mapping.deliveryMethod !== "ics") {
-				throw new Error(
-					"ICS calendar mapping not found for this organization",
-				);
-			}
-			if (!mapping.icalUid) {
-				throw new Error("Missing iCal UID");
-			}
-
-			const { crew, input } = await buildEventInput({
-				organizationId: job.organizationId,
-				shootId: job.shootId,
-				crewId: job.crewId,
-				allowMissingAssignment: job.jobType === "ics_send_cancel",
-			});
-			const recipientEmail = crew.email?.trim();
-			if (!recipientEmail) {
-				throw new Error("Crew has no current email address");
-			}
-
-			const method =
-				job.jobType === "ics_send_cancel" ? "CANCEL" : "REQUEST";
-			const nextSequence =
-				job.jobType === "ics_send_invite"
-					? mapping.icalSequence
-					: mapping.icalSequence + 1;
-
-			const ics = createAllDayIcsFromGoogleInput({
-				uid: mapping.icalUid,
-				sequence: nextSequence,
-				method,
-				input,
-			});
-
-			const subjectPrefix =
-				job.jobType === "ics_send_cancel"
-					? "Cancelled"
-					: "Calendar Invite";
-
-			await sendCalendarInviteEmail({
-				to: recipientEmail,
-				subject: `${subjectPrefix}: ${input.title}`,
-				text: input.description ?? input.title,
-				html: input.description
-					? `<pre style="white-space:pre-wrap">${escapeHtml(input.description)}</pre>`
-					: undefined,
-				icsFilename: `shoot-${job.shootId}.ics`,
-				icsContent: ics,
-			});
-
-			await db
+async function recordSuccess(
+	job: typeof calendarSyncJobs.$inferSelect,
+	snapshot: Snapshot,
+	googleEventId: string | null,
+) {
+	const current =
+		snapshot.operation === "cancellation"
+			? await cancellationIsCurrent(job, snapshot)
+			: await deliveryIsCurrent(job);
+	if (!current) {
+		return completeClaim(job);
+	}
+	await db.transaction(async (tx) => {
+		if (snapshot.operation === "delivery") {
+			await tx
 				.update(shootCalendarEvents)
 				.set({
-					deliveryMethod: "ics",
-					recipientEmail,
-					icalSequence: nextSequence,
-					syncStatus: method === "CANCEL" ? "deleted" : "synced",
+					deliveryMethod: snapshot.target.deliveryMethod,
+					recipientEmail: snapshot.target.recipientEmail,
+					calendarId:
+						snapshot.target.deliveryMethod === "google"
+							? "primary"
+							: null,
+					googleEventId,
+					icalUid: snapshot.target.icalUid,
+					icalSequence: snapshot.target.icalSequence,
+					deliveredGeneration: job.generation,
+					deliveredDeliveryMethod: snapshot.target.deliveryMethod,
+					deliveredRecipientEmail: snapshot.target.recipientEmail,
+					deliveredCalendarId:
+						snapshot.target.deliveryMethod === "google"
+							? "primary"
+							: null,
+					deliveredGoogleEventId: googleEventId,
+					deliveredIcalUid: snapshot.target.icalUid,
+					deliveredIcalSequence: snapshot.target.icalSequence,
+					syncStatus: "synced",
 					lastSyncedAt: new Date(),
 					lastError: null,
 					updatedAt: new Date(),
 				})
-				.where(eq(shootCalendarEvents.id, mapping.id));
+				.where(
+					and(
+						eq(
+							shootCalendarEvents.organizationId,
+							job.organizationId,
+						),
+						eq(shootCalendarEvents.shootId, job.shootId ?? ""),
+						eq(shootCalendarEvents.crewId, job.crewId ?? ""),
+						eq(
+							shootCalendarEvents.intentGeneration,
+							job.generation,
+						),
+						eq(shootCalendarEvents.intentState, "active"),
+					),
+				);
+		} else if (snapshot.intentState === "cancelled") {
+			await tx
+				.update(shootCalendarEvents)
+				.set({
+					syncStatus: "deleted",
+					lastSyncedAt: new Date(),
+					lastError: null,
+					updatedAt: new Date(),
+				})
+				.where(
+					and(
+						eq(
+							shootCalendarEvents.organizationId,
+							job.organizationId,
+						),
+						eq(shootCalendarEvents.shootId, job.shootId ?? ""),
+						eq(shootCalendarEvents.crewId, job.crewId ?? ""),
+						eq(
+							shootCalendarEvents.intentGeneration,
+							job.generation,
+						),
+						eq(shootCalendarEvents.intentState, "cancelled"),
+					),
+				);
+		}
+		await tx
+			.update(calendarSyncJobs)
+			.set({
+				status: "completed",
+				nextAttemptAt: null,
+				lastError: null,
+				lockedAt: null,
+				claimToken: null,
+				updatedAt: new Date(),
+			})
+			.where(claimWhere(job));
+	});
+}
 
-			await markJobSuccess(job.id);
+export async function processJob(job: typeof calendarSyncJobs.$inferSelect) {
+	try {
+		if (!job.shootId || !job.crewId) {
+			throw new Error("Job missing shootId/crewId");
+		}
+		const snapshot = getSnapshot(job);
+		const current =
+			snapshot.operation === "cancellation"
+				? await cancellationIsCurrent(job, snapshot)
+				: await deliveryIsCurrent(job);
+		if (!current) {
+			await completeClaim(job);
 			return;
 		}
-
-		throw new Error(`Unsupported jobType: ${job.jobType}`);
+		let result: { googleEventId: string | null } = { googleEventId: null };
+		if (snapshot.target.deliveryMethod === "google") {
+			result = await processGoogle(job, snapshot);
+		} else if (snapshot.target.deliveryMethod === "ics") {
+			await processIcs(job, snapshot);
+		}
+		await recordSuccess(job, snapshot, result.googleEventId);
 	} catch (error) {
 		const errorMessage =
 			error instanceof Error ? error.message : String(error);
 		logger.error("Calendar job failed", {
 			jobId: job.id,
 			jobType: job.jobType,
+			generation: job.generation,
 			error: errorMessage,
 		});
-
-		const [currentJob] = await db
-			.select({ jobType: calendarSyncJobs.jobType })
-			.from(calendarSyncJobs)
-			.where(eq(calendarSyncJobs.id, job.id));
-
-		// A producer may have replaced this job's route while it was leased. The
-		// claimed snapshot must not overwrite the current route's mapping state.
-		if (job.shootId && job.crewId && currentJob?.jobType === job.jobType) {
+		if (await deliveryIsCurrent(job)) {
 			await db
 				.update(shootCalendarEvents)
 				.set({
@@ -447,18 +415,16 @@ async function processJob(job: typeof calendarSyncJobs.$inferSelect) {
 							shootCalendarEvents.organizationId,
 							job.organizationId,
 						),
-						eq(shootCalendarEvents.shootId, job.shootId),
-						eq(shootCalendarEvents.crewId, job.crewId),
+						eq(shootCalendarEvents.shootId, job.shootId ?? ""),
+						eq(shootCalendarEvents.crewId, job.crewId ?? ""),
+						eq(
+							shootCalendarEvents.intentGeneration,
+							job.generation,
+						),
 					),
 				);
 		}
-
-		await markJobFailure({
-			jobId: job.id,
-			attempts,
-			maxAttempts,
-			errorMessage,
-		});
+		await failClaim(job, errorMessage);
 	}
 }
 
@@ -473,8 +439,7 @@ function escapeHtml(value: string) {
 
 async function loop() {
 	await recoverStaleProcessingJobs();
-	const batch = await claimJobBatch();
-	for (const job of batch) {
+	for (const job of await claimJobBatch()) {
 		await processJob(job);
 	}
 }
@@ -485,8 +450,6 @@ async function main() {
 		batchSize,
 		staleThresholdMinutes,
 	});
-
-	// eslint-disable-next-line no-constant-condition
 	while (true) {
 		try {
 			await loop();
@@ -495,7 +458,7 @@ async function main() {
 				error: error instanceof Error ? error.message : String(error),
 			});
 		}
-		await new Promise((r) => setTimeout(r, pollIntervalMs));
+		await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
 	}
 }
 
