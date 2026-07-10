@@ -44,6 +44,6 @@ The command prints JSON and exits non-zero when any candidate fails. Operators s
 
 ## Migration and rollback
 
-Migration `0042_calendar_delivery_identity.sql` adds enum values and the job delivery key. Apply it before deploying producers that write `unsendable` or `delivery_key`.
+Migration `0041_calendar_delivery_identity.sql` adds enum values and the job delivery key. Apply it before deploying producers that write `unsendable` or `delivery_key`.
 
 Rollback the application before the schema. PostgreSQL enum values are intentionally retained on rollback; drop only the partial index and `delivery_key` column after confirming no deployed producer depends on them.
