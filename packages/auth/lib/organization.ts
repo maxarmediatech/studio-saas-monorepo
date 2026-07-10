@@ -1,5 +1,6 @@
 import {
 	and,
+	calendarRouteChanges,
 	crews,
 	db,
 	eq,
@@ -73,15 +74,22 @@ export async function ensureCrewForMember({
 			});
 
 			if (matchingCrew) {
-				await db
-					.update(crews)
-					.set({
-						userId: user.id,
-						email: user.email,
-						updatedBy: user.id,
-						updatedAt: new Date(),
-					})
-					.where(eq(crews.id, matchingCrew.id));
+				await db.transaction(async (tx) => {
+					await tx
+						.update(crews)
+						.set({
+							userId: user.id,
+							email: user.email,
+							updatedBy: user.id,
+							updatedAt: new Date(),
+						})
+						.where(eq(crews.id, matchingCrew.id));
+					await tx.insert(calendarRouteChanges).values({
+						organizationId,
+						crewId: matchingCrew.id,
+						reason: "crew_user_linked",
+					});
+				});
 
 				logger.info("crew.auto_create.linked_existing", {
 					memberId,
@@ -135,6 +143,7 @@ export async function ensureCrewForMember({
 			source,
 			error: error instanceof Error ? error.message : String(error),
 		});
+		throw error;
 	}
 }
 

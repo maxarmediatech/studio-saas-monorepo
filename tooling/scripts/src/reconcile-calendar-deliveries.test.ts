@@ -13,6 +13,12 @@ describe("calendar reconciliation CLI", () => {
 			{ apply: true, organizationId: "org_1" },
 		);
 	});
+	it("rejects a global report", () => {
+		assert.throws(
+			() => parseCalendarReconciliationArguments([]),
+			/--organization-id is required/,
+		);
+	});
 
 	for (const args of [
 		["--apply"],

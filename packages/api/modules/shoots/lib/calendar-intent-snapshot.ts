@@ -57,6 +57,7 @@ export function sameMaterialSnapshot(
 			target: {
 				...right.target,
 				calendarId: left.target.calendarId,
+				googleCreateId: left.target.googleCreateId,
 				googleEventId: left.target.googleEventId,
 				icalUid: left.target.icalUid,
 				icalSequence: left.target.icalSequence,
@@ -154,6 +155,9 @@ export function buildSnapshot(
 		calendarId?: string | null;
 		icalUid?: string | null;
 		icalSequence?: number | null;
+		googleConnectionId?: string | null;
+		googleAccountEmail?: string | null;
+		googleCreateId?: string | null;
 	},
 ): CalendarSnapshot {
 	const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
@@ -185,6 +189,9 @@ export function buildSnapshot(
 			deliveryMethod: route.deliveryMethod,
 			recipientEmail: route.recipientEmail,
 			googleUserId: target.crewUserId,
+			googleConnectionId: route.googleConnectionId ?? null,
+			googleAccountEmail: route.googleAccountEmail ?? null,
+			googleCreateId: route.googleCreateId ?? null,
 			calendarId: route.calendarId ?? null,
 			googleEventId: route.googleEventId ?? null,
 			icalUid: route.icalUid ?? null,

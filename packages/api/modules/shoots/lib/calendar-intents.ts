@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
 	and,
 	calendarDeliveryIntents,
@@ -25,7 +26,11 @@ import {
 	type IntentTarget,
 	sameMaterialSnapshot,
 } from "./calendar-intent-snapshot";
-import { ensureActiveDeliveryJob } from "./calendar-job-recovery";
+import {
+	ensureActiveDeliveryJob,
+	repairCancellationJob,
+} from "./calendar-job-recovery";
+import { queueReplacementCancellation } from "./calendar-replacement-cancellation";
 import { resolveCalendarDeliveryRoute } from "./calendar-routing";
 
 const UNSENDABLE_REASON =
@@ -55,6 +60,9 @@ export type CalendarSnapshot = {
 		deliveryMethod: DeliveryMethod;
 		recipientEmail: string | null;
 		googleUserId: string | null;
+		googleConnectionId: string | null;
+		googleAccountEmail: string | null;
+		googleCreateId: string | null;
 		calendarId: string | null;
 		googleEventId: string | null;
 		icalUid: string | null;
@@ -169,6 +177,22 @@ export async function ensureAssignmentCalendarDelivery(
 	const nextTarget = {
 		deliveryMethod: route.deliveryMethod,
 		recipientEmail: route.recipientEmail,
+		googleConnectionId:
+			route.deliveryMethod === "google" ? (connection?.id ?? null) : null,
+		googleAccountEmail:
+			route.deliveryMethod === "google"
+				? (connection?.googleAccountEmail ?? null)
+				: null,
+		googleCreateId:
+			route.deliveryMethod === "google" &&
+			!mapping?.deliveredGoogleEventId
+				? createHash("sha256")
+						.update(
+							`${params.organizationId}:${params.shootId}:${params.crewId}:${generation}:${connection?.id}`,
+						)
+						.digest("hex")
+						.slice(0, 32)
+				: null,
 		googleEventId:
 			route.deliveryMethod === "google" &&
 			mapping?.deliveredDeliveryMethod === "google"
@@ -219,6 +243,8 @@ export async function ensureAssignmentCalendarDelivery(
 		deliveryMethod: route.deliveryMethod,
 		recipientEmail: route.recipientEmail,
 		icalUid,
+		googleConnectionId: snapshot.target.googleConnectionId,
+		googleAccountEmail: snapshot.target.googleAccountEmail,
 		snapshot,
 	});
 
@@ -256,6 +282,16 @@ export async function ensureAssignmentCalendarDelivery(
 				route.deliveryMethod === "unsendable"
 					? UNSENDABLE_REASON
 					: null,
+			deliverySyncStatus:
+				route.deliveryMethod === "unsendable"
+					? "unsendable"
+					: "pending",
+			deliveryLastError:
+				route.deliveryMethod === "unsendable"
+					? UNSENDABLE_REASON
+					: null,
+			cancellationSyncStatus: deliveredRouteChanged ? "pending" : "none",
+			cancellationLastError: null,
 			updatedAt: new Date(),
 		})
 		.onConflictDoUpdate({
@@ -281,6 +317,20 @@ export async function ensureAssignmentCalendarDelivery(
 					route.deliveryMethod === "unsendable"
 						? UNSENDABLE_REASON
 						: null,
+				deliverySyncStatus:
+					route.deliveryMethod === "unsendable"
+						? "unsendable"
+						: "pending",
+				deliveryLastError:
+					route.deliveryMethod === "unsendable"
+						? UNSENDABLE_REASON
+						: null,
+				cancellationSyncStatus: deliveredRouteChanged
+					? "pending"
+					: (mapping?.cancellationSyncStatus ?? "none"),
+				cancellationLastError: deliveredRouteChanged
+					? null
+					: mapping?.cancellationLastError,
 				updatedAt: new Date(),
 			},
 		});
@@ -317,42 +367,6 @@ export async function ensureAssignmentCalendarDelivery(
 	};
 }
 
-async function queueReplacementCancellation(
-	tx: TransactionClient,
-	params: {
-		organizationId: string;
-		shootId: string;
-		crewId: string;
-		generation: number;
-		intentId: string;
-		mapping: typeof shootCalendarEvents.$inferSelect;
-		target: IntentTarget;
-	},
-) {
-	const method = params.mapping.deliveredDeliveryMethod;
-	if (!method || method === "unsendable") {
-		return;
-	}
-	const snapshot = buildSnapshot(
-		params.target,
-		{ operation: "cancellation", intentState: "active" },
-		{
-			deliveryMethod: method,
-			recipientEmail: params.mapping.deliveredRecipientEmail,
-			calendarId: params.mapping.deliveredCalendarId,
-			googleEventId: params.mapping.deliveredGoogleEventId,
-			icalUid: params.mapping.deliveredIcalUid,
-			icalSequence: (params.mapping.deliveredIcalSequence ?? 0) + 1,
-		},
-	);
-	await queueGeneration(tx, {
-		...params,
-		jobType: method === "ics" ? "ics_send_cancel" : "google_delete",
-		kind: "cancellation",
-		snapshot,
-	});
-}
-
 export async function enqueueCalendarCancellation(
 	tx: TransactionClient,
 	params: { organizationId: string; shootId: string; crewId: string },
@@ -369,11 +383,32 @@ export async function enqueueCalendarCancellation(
 		return null;
 	}
 	if (mapping.intentState === "cancelled") {
-		return mapping.deliveryMethod === "unsendable"
-			? null
-			: mapping.deliveryMethod === "ics"
-				? "ics_send_cancel"
-				: "google_delete";
+		if (mapping.deliveryMethod === "unsendable") {
+			return null;
+		}
+		const intent = await tx.query.calendarDeliveryIntents.findFirst({
+			where: and(
+				eq(
+					calendarDeliveryIntents.organizationId,
+					params.organizationId,
+				),
+				eq(calendarDeliveryIntents.shootId, params.shootId),
+				eq(calendarDeliveryIntents.crewId, params.crewId),
+				eq(
+					calendarDeliveryIntents.generation,
+					mapping.intentGeneration,
+				),
+			),
+		});
+		if (!intent) {
+			throw new Error("Cancelled mapping has no immutable intent");
+		}
+		return repairCancellationJob(tx, {
+			...params,
+			mappingId: mapping.id,
+			intent,
+			deliveryMethod: mapping.deliveryMethod,
+		});
 	}
 	const target = await getActiveAssignmentTarget(tx, params);
 	const deliveredIntent = mapping.deliveredGeneration
@@ -422,6 +457,11 @@ export async function enqueueCalendarCancellation(
 			deliveredSnapshot?.target.googleEventId ??
 			mapping.googleEventId,
 		googleUserId: deliveredSnapshot?.target.googleUserId ?? null,
+		googleConnectionId:
+			deliveredSnapshot?.target.googleConnectionId ?? null,
+		googleAccountEmail:
+			deliveredSnapshot?.target.googleAccountEmail ?? null,
+		googleCreateId: null,
 		icalUid:
 			mapping.deliveredIcalUid ??
 			deliveredSnapshot?.target.icalUid ??
@@ -451,6 +491,8 @@ export async function enqueueCalendarCancellation(
 		googleEventId: snapshot.target.googleEventId,
 		icalUid: snapshot.target.icalUid,
 		icalSequence: snapshot.target.icalSequence,
+		googleConnectionId: snapshot.target.googleConnectionId,
+		googleAccountEmail: snapshot.target.googleAccountEmail,
 		snapshot,
 	});
 	await tx
@@ -461,6 +503,9 @@ export async function enqueueCalendarCancellation(
 			syncStatus: method === "unsendable" ? "deleted" : "pending",
 			lastSyncedAt: method === "unsendable" ? new Date() : undefined,
 			lastError: null,
+			cancellationSyncStatus:
+				method === "unsendable" ? "synced" : "pending",
+			cancellationLastError: null,
 			updatedAt: new Date(),
 		})
 		.where(eq(shootCalendarEvents.id, mapping.id));

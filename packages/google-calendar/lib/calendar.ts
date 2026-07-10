@@ -30,6 +30,7 @@ export async function createAllDayEvent(params: {
 	config: GoogleCalendarOAuthConfig;
 	accessToken: string;
 	input: GoogleAllDayEventInput;
+	eventId?: string;
 }): Promise<GoogleEventResult> {
 	const calendar = createCalendarApiClient({
 		config: params.config,
@@ -39,6 +40,7 @@ export async function createAllDayEvent(params: {
 	const res = await calendar.events.insert({
 		calendarId: "primary",
 		requestBody: {
+			id: params.eventId,
 			summary: params.input.title,
 			location: params.input.location ?? undefined,
 			description: params.input.description ?? undefined,

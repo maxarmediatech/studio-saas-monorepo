@@ -70,3 +70,57 @@ export async function ensureActiveDeliveryJob(
 	}
 	return "queued" as const;
 }
+
+export async function repairCancellationJob(
+	tx: TransactionClient,
+	params: {
+		organizationId: string;
+		shootId: string;
+		crewId: string;
+		mappingId: string;
+		intent: { id: string; generation: number; payload: unknown };
+		deliveryMethod: DeliveryMethod;
+	},
+) {
+	const deliveryKey = getCalendarDeliveryKey({
+		...params,
+		generation: params.intent.generation,
+		kind: "cancellation",
+	});
+	const job = await tx.query.calendarSyncJobs.findFirst({
+		where: and(
+			eq(calendarSyncJobs.organizationId, params.organizationId),
+			eq(calendarSyncJobs.deliveryKey, deliveryKey),
+		),
+	});
+	const jobType: CalendarJobType =
+		params.deliveryMethod === "ics" ? "ics_send_cancel" : "google_delete";
+	if (!job) {
+		await queueGeneration(tx, {
+			...params,
+			intentId: params.intent.id,
+			generation: params.intent.generation,
+			jobType,
+			kind: "cancellation",
+			snapshot: params.intent.payload as CalendarSnapshot,
+		});
+	} else if (
+		job.status === "failed" &&
+		(job.attempts ?? 0) >= (job.maxAttempts ?? 5)
+	) {
+		await tx
+			.update(shootCalendarEvents)
+			.set({
+				syncStatus: "error",
+				cancellationSyncStatus: "error",
+				cancellationLastError:
+					job.lastError ??
+					"Calendar cancellation retry limit exhausted",
+				lastError:
+					job.lastError ??
+					"Calendar cancellation retry limit exhausted",
+			})
+			.where(eq(shootCalendarEvents.id, params.mappingId));
+	}
+	return jobType;
+}
