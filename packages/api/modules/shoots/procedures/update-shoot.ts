@@ -1,14 +1,5 @@
 import { ORPCError } from "@orpc/server";
-import {
-	and,
-	crews,
-	db,
-	eq,
-	isNull,
-	shootAssignments,
-	shoots,
-} from "@repo/database";
-import { logger } from "@repo/logs";
+import { and, db, eq, shootAssignments, shoots } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import {
 	detectChanges,
@@ -21,7 +12,6 @@ import {
 	updateShootInputSchema,
 	updateShootOutputSchema,
 } from "../../studio/schemas/shoot";
-import { isTerminalShootStatus } from "../calendar-sync";
 import {
 	enqueueCalendarCancellation,
 	ensureAssignmentCalendarDelivery,
@@ -121,7 +111,55 @@ export const updateShoot = studioProtectedProcedure
 			updates.status = status;
 		}
 
-		await db.update(shoots).set(updates).where(eq(shoots.id, id));
+		const shouldSyncCalendar = [
+			name,
+			shootType,
+			shootDate,
+			startTime,
+			endTime,
+			venue,
+			venueAddress,
+			notes,
+		].some((value) => value !== undefined);
+		const statusChanged =
+			status !== undefined && status !== existing.status;
+
+		// The changed shoot and its calendar intents commit together. A producer
+		// error therefore rolls back the mutation instead of leaving a shoot whose
+		// external representation can never be recovered deterministically.
+		await db.transaction(async (tx) => {
+			await tx
+				.update(shoots)
+				.set(updates)
+				.where(
+					and(
+						eq(shoots.id, id),
+						eq(shoots.organizationId, context.organizationId),
+					),
+				);
+			if (!shouldSyncCalendar && !statusChanged) {
+				return;
+			}
+			const assignees = await tx
+				.select({ crewId: shootAssignments.crewId })
+				.from(shootAssignments)
+				.where(eq(shootAssignments.shootId, id));
+			for (const assignee of assignees) {
+				if (status === "completed" || status === "cancelled") {
+					await enqueueCalendarCancellation(tx, {
+						organizationId: context.organizationId,
+						shootId: id,
+						crewId: assignee.crewId,
+					});
+				} else {
+					await ensureAssignmentCalendarDelivery(tx, {
+						organizationId: context.organizationId,
+						shootId: id,
+						crewId: assignee.crewId,
+					});
+				}
+			}
+		});
 
 		// Track status change separately (non-blocking)
 		if (status !== undefined && status !== existing.status) {
@@ -202,70 +240,6 @@ export const updateShoot = studioProtectedProcedure
 					changes,
 				},
 			);
-		}
-
-		// Calendar delivery intent follows the current shoot and assignment truth.
-		const calendarRelevantFields = new Set([
-			"name",
-			"shootType",
-			"shootDate",
-			"startTime",
-			"endTime",
-			"venue",
-			"venueAddress",
-			"notes",
-		]);
-
-		const shouldSyncCalendar = changes.some((c) =>
-			calendarRelevantFields.has(c.field),
-		);
-		const statusChanged =
-			status !== undefined && status !== existing.status;
-		if (shouldSyncCalendar || statusChanged) {
-			try {
-				const effectiveStatus = status ?? existing.status;
-				const assignees = await db
-					.select({ crewId: shootAssignments.crewId })
-					.from(shootAssignments)
-					.innerJoin(
-						crews,
-						and(
-							eq(shootAssignments.crewId, crews.id),
-							eq(crews.organizationId, context.organizationId),
-							isNull(crews.deletedAt),
-						),
-					)
-					.where(eq(shootAssignments.shootId, id));
-
-				for (const assignee of assignees) {
-					await db.transaction(async (tx) => {
-						if (isTerminalShootStatus(effectiveStatus)) {
-							await enqueueCalendarCancellation(tx, {
-								organizationId: context.organizationId,
-								shootId: id,
-								crewId: assignee.crewId,
-							});
-							return;
-						}
-						await ensureAssignmentCalendarDelivery(tx, {
-							organizationId: context.organizationId,
-							shootId: id,
-							crewId: assignee.crewId,
-						});
-					});
-				}
-			} catch (error) {
-				logger.error(
-					"Failed to enqueue calendar jobs on shoot update",
-					{
-						shootId: id,
-						error:
-							error instanceof Error
-								? error.message
-								: String(error),
-					},
-				);
-			}
 		}
 
 		return {

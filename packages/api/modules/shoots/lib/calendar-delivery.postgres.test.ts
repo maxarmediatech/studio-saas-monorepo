@@ -1,4 +1,30 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { runCalendarDeliveryAdversarialAssertions } from "./calendar-delivery-adversarial.postgres.test";
+
+const mailBarrier = vi.hoisted(() => {
+	let release: (() => void) | undefined;
+	let wait: Promise<void> | undefined;
+	return {
+		calls: [] as unknown[],
+		block() {
+			wait = new Promise<void>((resolve) => {
+				release = resolve;
+			});
+		},
+		release() {
+			release?.();
+			wait = undefined;
+		},
+		async send(input: unknown) {
+			this.calls.push(input);
+			await wait;
+		},
+	};
+});
+
+vi.mock("@repo/mail", () => ({
+	sendCalendarInviteEmail: (input: unknown) => mailBarrier.send(input),
+}));
 
 // Set to an isolated database migrated through 0041_calendar_delivery_identity.
 const databaseUrl = process.env.POSTGRES_CALENDAR_DATABASE_URL;
@@ -18,6 +44,7 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 		const {
 			and,
 			bookings,
+			calendarDeliveryIntents,
 			calendarSyncJobs,
 			crews,
 			db,
@@ -36,9 +63,8 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 			ensureAssignmentCalendarDelivery,
 			reconcileCalendarDeliveries,
 		} = await import("./calendar-delivery");
-		const { claimJobBatch, recoverStaleProcessingJobs } = await import(
-			"../../../../../services/calendar-worker/src/index"
-		);
+		const { claimJobBatch, processJob, recoverStaleProcessingJobs } =
+			await import("../../../../../services/calendar-worker/src/index");
 		const { buildEventInput } = await import(
 			"../../../../../services/calendar-worker/src/event-input"
 		);
@@ -221,7 +247,7 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 						eq(shootCalendarEvents.shootId, ids.registeredIcs),
 					),
 				);
-			const [reroutedJob] = await db
+			const reroutedJobs = await db
 				.select()
 				.from(calendarSyncJobs)
 				.where(
@@ -230,10 +256,24 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 						eq(calendarSyncJobs.shootId, ids.registeredIcs),
 					),
 				);
-			expect(reroutedMapping).toMatchObject({ deliveryMethod: "google" });
+			expect(reroutedMapping).toMatchObject({
+				deliveryMethod: "google",
+				intentGeneration: 2,
+			});
+			const reroutedJob = reroutedJobs.find(
+				(job) => job.generation === reroutedMapping?.intentGeneration,
+			);
 			expect(reroutedJob).toMatchObject({
 				jobType: "google_create",
 				attempts: 0,
+				generation: 2,
+			});
+			expect(reroutedJob?.payload).toMatchObject({
+				operation: "delivery",
+				target: {
+					deliveryMethod: "google",
+					googleUserId: registeredUserId,
+				},
 			});
 
 			await Promise.all([
@@ -282,7 +322,7 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 			expect(retryJob).toMatchObject({
 				status: "failed",
 				attempts: 2,
-				jobType: "ics_send_invite",
+				jobType: "google_create",
 			});
 			expect(retryJob?.nextAttemptAt?.getTime()).toBe(retryAt.getTime());
 
@@ -291,7 +331,7 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 				.set({ status: "failed", attempts: 5, nextAttemptAt: null })
 				.where(eq(calendarSyncJobs.id, retryJob.id));
 			const terminalRetry = await route(ids.retry);
-			expect(terminalRetry.state).toBe("error");
+			expect(terminalRetry.state).toBe("queued");
 			const [terminalJob] = await db
 				.select()
 				.from(calendarSyncJobs)
@@ -301,7 +341,7 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 				attempts: 5,
 			});
 
-			const failedDeliveryKey = `calendar:${organizationId}:${ids.failed}:${ids.failed}:delivery`;
+			const failedDeliveryKey = `calendar:${organizationId}:${ids.failed}:${ids.failed}:delivery:1`;
 			await db.execute(
 				sql.raw(`CREATE FUNCTION "${functionName}"() RETURNS trigger AS $$
 					BEGIN
@@ -317,18 +357,17 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 					ON calendar_sync_jobs FOR EACH ROW EXECUTE FUNCTION "${functionName}"()`),
 			);
 			triggerCreated = true;
-			const failedResult = await route(ids.failed);
-			expect(failedResult.state).toBe("error");
-			const failedMapping = await db.query.shootCalendarEvents.findFirst({
-				where: and(
-					eq(shootCalendarEvents.organizationId, organizationId),
-					eq(shootCalendarEvents.shootId, ids.failed),
-				),
-			});
-			expect(failedMapping?.syncStatus).toBe("error");
-			expect(failedMapping?.lastError).toContain(
+			await expect(route(ids.failed)).rejects.toThrow(
 				"injected calendar producer failure",
 			);
+			await expect(
+				db.query.shootCalendarEvents.findFirst({
+					where: and(
+						eq(shootCalendarEvents.organizationId, organizationId),
+						eq(shootCalendarEvents.shootId, ids.failed),
+					),
+				}),
+			).resolves.toBeUndefined();
 
 			await db.execute(
 				sql.raw(`DROP TRIGGER "${triggerName}" ON calendar_sync_jobs`),
@@ -336,15 +375,18 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 			await db.execute(sql.raw(`DROP FUNCTION "${functionName}"()`));
 			triggerCreated = false;
 
-			await db.insert(shootCalendarEvents).values({
-				organizationId,
-				shootId: ids.pending,
-				crewId: ids.pending,
-				deliveryMethod: "ics",
-				recipientEmail: `pending-${suffix}@example.com`,
-				icalUid: `pending-${suffix}@example.invalid`,
-				syncStatus: "pending",
-			});
+			await db
+				.insert(shootCalendarEvents)
+				.values({
+					organizationId,
+					shootId: ids.pending,
+					crewId: ids.pending,
+					deliveryMethod: "ics",
+					recipientEmail: `pending-${suffix}@example.com`,
+					icalUid: `pending-${suffix}@example.invalid`,
+					syncStatus: "pending",
+				})
+				.onConflictDoNothing();
 			await Promise.all([
 				reconcileCalendarDeliveries({ organizationId, apply: true }),
 				reconcileCalendarDeliveries({ organizationId, apply: true }),
@@ -369,187 +411,32 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 				),
 			).rejects.toThrow("not an active assignment");
 
-			await db
-				.update(crews)
-				.set({ email: `current-${suffix}@example.com` })
-				.where(eq(crews.id, ids.externalIcs));
-			await db
-				.update(shoots)
-				.set({ name: "Current shoot truth" })
-				.where(eq(shoots.id, ids.externalIcs));
-			const workerInput = await buildEventInput({
+			await runCalendarDeliveryAdversarialAssertions({
+				and,
+				bookingId,
+				buildEventInput,
+				calendarDeliveryIntents,
+				calendarSyncJobs,
+				claimJobBatch,
+				crews,
+				db,
+				enqueueCalendarCancellation,
+				eq,
+				expect,
+				ids,
+				inArray,
+				mailBarrier,
 				organizationId,
-				shootId: ids.externalIcs,
-				crewId: ids.externalIcs,
+				otherOrganizationId,
+				processJob,
+				recoverStaleProcessingJobs,
+				route,
+				shootAssignments,
+				shootCalendarEvents,
+				shoots,
+				staleIds,
+				suffix,
 			});
-			expect(workerInput.crew.email).toBe(
-				`current-${suffix}@example.com`,
-			);
-			expect(workerInput.input.title).toContain("Current shoot truth");
-			expect(workerInput.input.description).toContain(
-				"Time zone: Asia/Kolkata",
-			);
-			await expect(
-				buildEventInput({
-					organizationId: otherOrganizationId,
-					shootId: ids.externalIcs,
-					crewId: ids.externalIcs,
-				}),
-			).rejects.toThrow("Shoot not found");
-
-			await db.insert(crews).values([
-				{
-					id: staleIds.retryableCrew,
-					organizationId,
-					name: "Stale retryable crew",
-					email: `stale-retryable-${suffix}@example.com`,
-				},
-				{
-					id: staleIds.terminalCrew,
-					organizationId,
-					name: "Stale terminal crew",
-					email: `stale-terminal-${suffix}@example.com`,
-				},
-			]);
-			await db.insert(shoots).values([
-				{
-					id: staleIds.retryableShoot,
-					organizationId,
-					bookingId,
-					name: "Stale retryable shoot",
-					shootType: "wedding",
-					shootDate: "2026-12-31",
-					startTime: "09:30",
-					status: "scheduled",
-				},
-				{
-					id: staleIds.terminalShoot,
-					organizationId,
-					bookingId,
-					name: "Stale terminal shoot",
-					shootType: "wedding",
-					shootDate: "2026-12-31",
-					startTime: "09:30",
-					status: "scheduled",
-				},
-			]);
-			const staleLockedAt = new Date(Date.now() - 20 * 60 * 1000);
-			await db.insert(calendarSyncJobs).values([
-				{
-					organizationId,
-					deliveryKey: `calendar:${organizationId}:${staleIds.retryableShoot}:${staleIds.retryableCrew}:delivery`,
-					status: "processing",
-					jobType: "ics_send_invite",
-					shootId: staleIds.retryableShoot,
-					crewId: staleIds.retryableCrew,
-					attempts: 1,
-					maxAttempts: 5,
-					lockedAt: staleLockedAt,
-					createdAt: new Date(0),
-				},
-				{
-					organizationId,
-					deliveryKey: `calendar:${organizationId}:${staleIds.terminalShoot}:${staleIds.terminalCrew}:delivery`,
-					status: "processing",
-					jobType: "ics_send_invite",
-					shootId: staleIds.terminalShoot,
-					crewId: staleIds.terminalCrew,
-					attempts: 5,
-					maxAttempts: 5,
-					lockedAt: staleLockedAt,
-				},
-			]);
-			await recoverStaleProcessingJobs();
-			const staleJobs = await db
-				.select()
-				.from(calendarSyncJobs)
-				.where(
-					and(
-						eq(calendarSyncJobs.organizationId, organizationId),
-						inArray(calendarSyncJobs.shootId, [
-							staleIds.retryableShoot,
-							staleIds.terminalShoot,
-						]),
-					),
-				);
-			expect(staleJobs).toEqual(
-				expect.arrayContaining([
-					expect.objectContaining({
-						shootId: staleIds.retryableShoot,
-						status: "failed",
-						attempts: 1,
-						lockedAt: null,
-					}),
-					expect.objectContaining({
-						shootId: staleIds.terminalShoot,
-						status: "failed",
-						attempts: 5,
-						nextAttemptAt: null,
-						lockedAt: null,
-					}),
-				]),
-			);
-			const claimed = await claimJobBatch();
-			expect(claimed).toEqual(
-				expect.arrayContaining([
-					expect.objectContaining({
-						shootId: staleIds.retryableShoot,
-						status: "processing",
-						attempts: 2,
-					}),
-				]),
-			);
-
-			await db
-				.update(calendarSyncJobs)
-				.set({ status: "processing", lockedAt: new Date() })
-				.where(
-					and(
-						eq(calendarSyncJobs.organizationId, organizationId),
-						eq(calendarSyncJobs.shootId, ids.externalIcs),
-					),
-				);
-			await db.transaction(async (tx) => {
-				await enqueueCalendarCancellation(tx, {
-					organizationId,
-					shootId: ids.externalIcs,
-					crewId: ids.externalIcs,
-				});
-				await tx
-					.delete(shootAssignments)
-					.where(
-						and(
-							eq(shootAssignments.shootId, ids.externalIcs),
-							eq(shootAssignments.crewId, ids.externalIcs),
-						),
-					);
-			});
-			const cancellationJobs = await db
-				.select()
-				.from(calendarSyncJobs)
-				.where(
-					and(
-						eq(calendarSyncJobs.organizationId, organizationId),
-						eq(calendarSyncJobs.shootId, ids.externalIcs),
-					),
-				);
-			expect(cancellationJobs).toHaveLength(2);
-			expect(cancellationJobs).toEqual(
-				expect.arrayContaining([
-					expect.objectContaining({
-						jobType: "ics_send_cancel",
-						status: "pending",
-					}),
-				]),
-			);
-			await expect(
-				buildEventInput({
-					organizationId,
-					shootId: ids.externalIcs,
-					crewId: ids.externalIcs,
-					allowMissingAssignment: true,
-				}),
-			).resolves.toBeDefined();
 		} finally {
 			if (triggerCreated) {
 				await db.execute(

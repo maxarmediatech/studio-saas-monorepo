@@ -12,15 +12,15 @@ For each active shoot assignment:
 2. Otherwise, any crew profile with an email uses `ics`, including registered crew users without Google connected.
 3. Otherwise, the mapping is stored as `unsendable` with an actionable reason and no worker job.
 
-`shoot_calendar_events` is the durable assignment-to-delivery mapping. The unique `(organization_id, shoot_id, crew_id)` identity prevents cross-tenant and duplicate mappings. `calendar_sync_jobs.delivery_key` provides a deterministic delivery/cancellation identity, and its partial unique index permits at most one non-completed job for each identity.
+`shoot_calendar_events` is the organization-scoped current intent pointer. Every material shoot, route, recipient, terminal, assignment, or deletion change advances `intent_generation`. `calendar_delivery_intents` retains the immutable target/content snapshot for each generation, and each `calendar_sync_jobs` row points at that intent with the same generation and its own snapshot.
 
-Cancellation supersedes a delivery job that has not started. If delivery is already processing, cancellation gets its own deterministic job delayed by one minute, so the worker can finish the in-flight operation before removing the event.
+`calendar_sync_jobs.delivery_key` includes the operation and generation. Producers may supersede pending/failed work, but never mutate processing work. A lease has a per-claim token; worker completion/failure writes compare job id, generation, processing state, and token. Route replacement writes a cancellation snapshot for the previously delivered recipient/event and a delivery snapshot for the new target. Cancellation revalidates the current generation before calling a provider, so old unassign/reopen work becomes a no-op.
 
 Producer job insertion runs in a savepoint after the mapping is written. A job failure therefore leaves the mapping in `error` with `last_error` instead of silently losing the delivery request. Assignment creation and cancellation intent are committed with their assignment/shoot mutation.
 
-Repeated producer calls preserve an active job's attempts, retry time, and lease. A route change updates the active job type without resetting that lifecycle. Exhausted jobs remain terminal and surface an actionable mapping error; they are not silently revived by reconciliation.
+Repeated producer calls with an identical snapshot are idempotent. A changed intent creates a new generation and preserves old attempts, backoff, and leases as immutable history. ICS update selection uses durable delivered history rather than transient `sync_status`, so a failed update retries as an update. Crew deletion and cancellation use the captured recipient/event identity, not current mutable crew data.
 
-The worker resolves the shoot, booking, crew, assignment, organization time zone, and ICS recipient from current organization-scoped data. Invite/update jobs require an active assignment; cancellation jobs may run after unassignment. Cross-organization targets fail without reading or writing the other tenant's data.
+The worker uses the immutable intent snapshot for provider target, event payload, and ICS recipient. Invite/update work is revalidated against the active generation; cancellation may run after unassignment or crew soft deletion only when its generation remains current. Cross-organization targets fail without reading or writing the other tenant's data.
 
 ## Reconciliation
 
@@ -31,19 +31,20 @@ pnpm calendar:reconcile
 pnpm calendar:reconcile -- --organization-id <organization-id>
 ```
 
-Repair candidates:
+Repair candidates for one organization:
 
 ```bash
-pnpm calendar:reconcile -- --apply
 pnpm calendar:reconcile -- --organization-id <organization-id> --apply
 ```
 
-The command repairs active, non-terminal assignments that have no mapping, an error/unsendable mapping, a pending mapping without an active job, or a mapping that no longer matches the current Google/email route. It is organization-scoped when requested, idempotent, and safe to invoke concurrently. Schedule the all-organization `--apply` command in the existing job runner; a 5–15 minute interval keeps producer failures bounded without replacing the worker queue.
+`--apply` requires a non-blank `--organization-id`; it can never become an accidental global mutation. The command repairs active assignments with absent/stale mapping or job state and mapping-only terminal/deleted/unassigned targets requiring cancellation. It is idempotent and safe to invoke concurrently.
 
 The command prints JSON and exits non-zero when any candidate fails. Operators should inspect `shoot_calendar_events.last_error`, correct invalid crew/contact/integration data, and rerun reconciliation.
 
 ## Migration and rollback
 
-Migration `0041_calendar_delivery_identity.sql` adds enum values and the job delivery key. Apply it before deploying producers that write `unsendable` or `delivery_key`.
+Migration `0041_calendar_delivery_identity.sql` adds enum values, generation columns, immutable `calendar_delivery_intents`, job intent/generation/claim-token columns, and the partial job key. Apply it before deploying producers/workers that use intent snapshots.
+
+This hand-authored migration intentionally has no `0041_snapshot.json`. After stacking payment `0039` and Submission `0040`, generate the Drizzle metadata snapshot from this exact SQL/schema state and record the resulting `0041_calendar_delivery_identity` entry in `_journal.json`; do not invent a snapshot against an incomplete base.
 
 Rollback the application before the schema. PostgreSQL enum values are intentionally retained on rollback; drop only the partial index and `delivery_key` column after confirming no deployed producer depends on them.
