@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 
 const databaseUrl = process.env.POSTGRES_CONCURRENCY_DATABASE_URL;
 const describePostgres = databaseUrl ? describe : describe.skip;
@@ -6,6 +6,21 @@ const describePostgres = databaseUrl ? describe : describe.skip;
 describePostgres(
 	"schedule payment production orchestration concurrency",
 	() => {
+		beforeAll(async () => {
+			const originalDatabaseUrl = process.env.DATABASE_URL;
+			process.env.DATABASE_URL = databaseUrl;
+			const { db, users } = await import("@repo/database");
+			await db
+				.insert(users)
+				.values({
+					id: "race_test_actor",
+					name: "Race test actor",
+					email: "schedule-race-test@example.invalid",
+				})
+				.onConflictDoNothing();
+			process.env.DATABASE_URL = originalDatabaseUrl;
+		});
+
 		it("conflicts identical and differing retries after one conversion effect", async () => {
 			const originalDatabaseUrl = process.env.DATABASE_URL;
 			process.env.DATABASE_URL = databaseUrl;

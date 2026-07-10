@@ -1,9 +1,24 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 
 const databaseUrl = process.env.POSTGRES_CONCURRENCY_DATABASE_URL;
 const describePostgres = databaseUrl ? describe : describe.skip;
 
 describePostgres("receipt issue and void concurrency", () => {
+	beforeAll(async () => {
+		const originalDatabaseUrl = process.env.DATABASE_URL;
+		process.env.DATABASE_URL = databaseUrl;
+		const { db, users } = await import("@repo/database");
+		await db
+			.insert(users)
+			.values({
+				id: "race_test_actor",
+				name: "Race test actor",
+				email: "receipt-race-test@example.invalid",
+			})
+			.onConflictDoNothing();
+		process.env.DATABASE_URL = originalDatabaseUrl;
+	});
+
 	it("rolls back a receipt insert when invoice aggregation rejects it", async () => {
 		const originalDatabaseUrl = process.env.DATABASE_URL;
 		process.env.DATABASE_URL = databaseUrl;
