@@ -361,9 +361,13 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 					ON calendar_sync_jobs FOR EACH ROW EXECUTE FUNCTION "${functionName}"()`),
 			);
 			triggerCreated = true;
-			await expect(route(ids.failed)).rejects.toThrow(
-				"injected calendar producer failure",
+			const producerFailure = await route(ids.failed).catch(
+				(error: unknown) => error,
 			);
+			expect(producerFailure).toBeInstanceOf(Error);
+			expect(
+				(producerFailure as Error & { cause?: Error }).cause?.message,
+			).toContain("injected calendar producer failure");
 			await expect(
 				db.query.shootCalendarEvents.findFirst({
 					where: and(
@@ -400,9 +404,11 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 				.from(calendarSyncJobs)
 				.where(eq(calendarSyncJobs.organizationId, organizationId));
 			for (const id of [ids.failed, ids.missing, ids.pending]) {
-				expect(jobs.filter((job) => job.shootId === id)).toHaveLength(
-					1,
-				);
+				expect(
+					jobs.filter(
+						(job) => job.shootId === id && job.status === "pending",
+					),
+				).toHaveLength(1);
 			}
 
 			await expect(
