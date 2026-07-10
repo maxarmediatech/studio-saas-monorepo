@@ -1,23 +1,15 @@
-import { TZDate } from "@date-fns/tz";
 import { OpenAPIGenerator } from "@orpc/openapi";
 import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
 import { auth } from "@repo/auth";
 import { config } from "@repo/config";
 import {
 	and,
-	calendarSyncJobs,
 	crews,
 	db,
 	eq,
 	googleCalendarConnections,
-	gte,
-	inArray,
 	isNull,
 	organizations,
-	shootAssignments,
-	shootCalendarEvents,
-	shoots,
-	sql,
 } from "@repo/database";
 import {
 	createSignedGoogleOAuthState,
@@ -34,11 +26,11 @@ import { logger } from "@repo/logs";
 import { webhookHandler as paymentsWebhookHandler } from "@repo/payments";
 import { getBaseUrl } from "@repo/utils";
 import { Scalar } from "@scalar/hono-api-reference";
-import { format } from "date-fns";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger as honoLogger } from "hono/logger";
 import { mergeOpenApiSchemas } from "./lib/openapi-schema";
+import { reconcileCalendarDeliveries } from "./modules/shoots/lib/calendar-delivery";
 import {
 	handleCloudWebhook,
 	verifyCloudWebhook,
@@ -248,7 +240,7 @@ export const app = new Hono()
 				},
 			});
 
-		// Backfill: enqueue calendar events for upcoming assigned shoots for this crew user.
+		// Reconcile calendar delivery for this crew after Google is connected.
 		const crew = await db.query.crews.findFirst({
 			where: and(
 				eq(crews.organizationId, organizationId),
@@ -261,74 +253,13 @@ export const app = new Hono()
 		if (crew) {
 			const org = await db.query.organizations.findFirst({
 				where: eq(organizations.id, organizationId),
-				columns: { timezone: true, slug: true },
+				columns: { slug: true },
 			});
-
-			const timezone = org?.timezone ?? "UTC";
-			const today = format(
-				new TZDate(new Date(), timezone),
-				"yyyy-MM-dd",
-			);
-
-			const assignedShootRows = await db
-				.select({ shootId: shootAssignments.shootId })
-				.from(shootAssignments)
-				.innerJoin(shoots, eq(shootAssignments.shootId, shoots.id))
-				.where(
-					and(
-						eq(shootAssignments.crewId, crew.id),
-						eq(shoots.organizationId, organizationId),
-						isNull(shoots.deletedAt),
-						sql`${shoots.status} NOT IN ('completed', 'cancelled')`,
-						gte(shoots.shootDate, today),
-					),
-				);
-
-			const shootIds = assignedShootRows.map((r) => r.shootId);
-			if (shootIds.length > 0) {
-				const existing = await db
-					.select({ shootId: shootCalendarEvents.shootId })
-					.from(shootCalendarEvents)
-					.where(
-						and(
-							eq(shootCalendarEvents.crewId, crew.id),
-							eq(
-								shootCalendarEvents.organizationId,
-								organizationId,
-							),
-							inArray(shootCalendarEvents.shootId, shootIds),
-						),
-					);
-
-				const existingIds = new Set(existing.map((e) => e.shootId));
-				const missingShootIds = shootIds.filter(
-					(id) => !existingIds.has(id),
-				);
-
-				if (missingShootIds.length > 0) {
-					await db.insert(shootCalendarEvents).values(
-						missingShootIds.map((shootId) => ({
-							organizationId,
-							shootId,
-							crewId: crew.id,
-							deliveryMethod: "google" as const,
-							syncStatus: "pending" as const,
-							updatedAt: new Date(),
-						})),
-					);
-
-					await db.insert(calendarSyncJobs).values(
-						missingShootIds.map((shootId) => ({
-							organizationId,
-							status: "pending" as const,
-							jobType: "google_create" as const,
-							shootId,
-							crewId: crew.id,
-							updatedAt: new Date(),
-						})),
-					);
-				}
-			}
+			await reconcileCalendarDeliveries({
+				organizationId,
+				crewId: crew.id,
+				apply: true,
+			});
 
 			if (org?.slug) {
 				return c.redirect(

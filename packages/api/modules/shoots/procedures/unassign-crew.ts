@@ -1,16 +1,13 @@
 import { ORPCError } from "@orpc/server";
 import {
 	and,
-	calendarSyncJobs,
 	crews,
 	db,
 	eq,
 	isNull,
 	shootAssignments,
-	shootCalendarEvents,
 	shoots,
 } from "@repo/database";
-import { logger } from "@repo/logs";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { safeTrackAssignment } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
@@ -18,6 +15,7 @@ import {
 	unassignCrewInputSchema,
 	unassignCrewOutputSchema,
 } from "../../studio/schemas/shoot";
+import { enqueueCalendarCancellation } from "../lib/calendar-delivery";
 
 export const unassignCrew = studioProtectedProcedure
 	.route({
@@ -65,64 +63,42 @@ export const unassignCrew = studioProtectedProcedure
 
 		// Get crew info for activity tracking + calendar handling
 		const crew = await db.query.crews.findFirst({
-			where: eq(crews.id, crewId),
+			where: and(
+				eq(crews.id, crewId),
+				eq(crews.organizationId, context.organizationId),
+				isNull(crews.deletedAt),
+			),
 			columns: { id: true, name: true, userId: true, email: true },
 		});
+		if (!crew) {
+			throw new ORPCError("NOT_FOUND", {
+				message: "Crew member not found in this organization",
+			});
+		}
 
-		// Delete assignment
-		await db
-			.delete(shootAssignments)
-			.where(eq(shootAssignments.id, assignment.id));
+		await db.transaction(async (tx) => {
+			await enqueueCalendarCancellation(tx, {
+				organizationId: context.organizationId,
+				shootId,
+				crewId,
+			});
+			await tx
+				.delete(shootAssignments)
+				.where(eq(shootAssignments.id, assignment.id));
+		});
 
 		// Track activity (non-blocking)
 		// entityName = target of assignment (shoot), crewName in metadata
-		if (crew) {
-			await safeTrackAssignment(context, {
-				entityType: "shoot_assignment",
-				entityId: assignment.id,
-				entityName: shoot.name,
-				action: "unassigned",
-				parentEntityType: "shoot",
-				parentEntityId: shoot.id,
-				parentEntityName: shoot.name,
-				metadata: { crewId: crew.id, crewName: crew.name },
-			});
-		}
-
-		// Calendar side-effects (non-blocking): enqueue delete/cancel for existing mapping.
-		try {
-			const mapping = await db.query.shootCalendarEvents.findFirst({
-				where: and(
-					eq(
-						shootCalendarEvents.organizationId,
-						context.organizationId,
-					),
-					eq(shootCalendarEvents.shootId, shootId),
-					eq(shootCalendarEvents.crewId, crewId),
-				),
-				columns: { id: true, deliveryMethod: true },
-			});
-
-			if (mapping) {
-				await db.insert(calendarSyncJobs).values({
-					organizationId: context.organizationId,
-					status: "pending",
-					jobType:
-						mapping.deliveryMethod === "ics"
-							? "ics_send_cancel"
-							: "google_delete",
-					shootId,
-					crewId,
-					updatedAt: new Date(),
-				});
-			}
-		} catch (error) {
-			logger.error("Failed to enqueue calendar job on unassignment", {
-				shootId,
-				crewId,
-				error: error instanceof Error ? error.message : String(error),
-			});
-		}
+		await safeTrackAssignment(context, {
+			entityType: "shoot_assignment",
+			entityId: assignment.id,
+			entityName: shoot.name,
+			action: "unassigned",
+			parentEntityType: "shoot",
+			parentEntityId: shoot.id,
+			parentEntityName: shoot.name,
+			metadata: { crewId: crew.id, crewName: crew.name },
+		});
 
 		return {
 			data: { id: assignment.id },

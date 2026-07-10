@@ -13,7 +13,10 @@ export function isTerminalShootStatus(
 }
 
 export function getCalendarDeleteJobType(
-	deliveryMethod: "google" | "ics",
-): "google_delete" | "ics_send_cancel" {
+	deliveryMethod: "google" | "ics" | "unsendable",
+): "google_delete" | "ics_send_cancel" | null {
+	if (deliveryMethod === "unsendable") {
+		return null;
+	}
 	return deliveryMethod === "ics" ? "ics_send_cancel" : "google_delete";
 }

@@ -1,21 +1,13 @@
 import { ORPCError } from "@orpc/server";
-import {
-	and,
-	calendarSyncJobs,
-	db,
-	eq,
-	shootCalendarEvents,
-	shoots,
-} from "@repo/database";
-import { logger } from "@repo/logs";
+import { and, db, eq, shootCalendarEvents, shoots } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { safeTrackActivity } from "../../activities/lib";
-import { getCalendarDeleteJobType } from "../calendar-sync";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	deleteShootInputSchema,
 	deleteShootOutputSchema,
 } from "../../studio/schemas/shoot";
+import { enqueueCalendarCancellation } from "../lib/calendar-delivery";
 
 export const deleteShoot = studioProtectedProcedure
 	.route({
@@ -58,24 +50,9 @@ export const deleteShoot = studioProtectedProcedure
 			});
 		}
 
-		// Soft delete shoot
-		await db
-			.update(shoots)
-			.set({
-				deletedAt: new Date(),
-				deletedBy: context.user.id,
-				updatedAt: new Date(),
-				updatedBy: context.user.id,
-			})
-			.where(eq(shoots.id, id));
-
-		// Calendar side-effects (non-blocking): remove/cancel existing events.
-		try {
-			const mappings = await db
-				.select({
-					crewId: shootCalendarEvents.crewId,
-					deliveryMethod: shootCalendarEvents.deliveryMethod,
-				})
+		await db.transaction(async (tx) => {
+			const mappings = await tx
+				.select({ crewId: shootCalendarEvents.crewId })
 				.from(shootCalendarEvents)
 				.where(
 					and(
@@ -87,26 +64,29 @@ export const deleteShoot = studioProtectedProcedure
 					),
 				);
 
-			if (mappings.length > 0) {
-				await db.insert(calendarSyncJobs).values(
-					mappings.map((mapping) => ({
-						organizationId: context.organizationId,
-						status: "pending" as const,
-						jobType: getCalendarDeleteJobType(
-							mapping.deliveryMethod,
-						),
-						shootId: id,
-						crewId: mapping.crewId,
-						updatedAt: new Date(),
-					})),
-				);
+			for (const mapping of mappings) {
+				await enqueueCalendarCancellation(tx, {
+					organizationId: context.organizationId,
+					shootId: id,
+					crewId: mapping.crewId,
+				});
 			}
-		} catch (error) {
-			logger.error("Failed to enqueue calendar jobs on shoot delete", {
-				shootId: id,
-				error: error instanceof Error ? error.message : String(error),
-			});
-		}
+
+			await tx
+				.update(shoots)
+				.set({
+					deletedAt: new Date(),
+					deletedBy: context.user.id,
+					updatedAt: new Date(),
+					updatedBy: context.user.id,
+				})
+				.where(
+					and(
+						eq(shoots.id, id),
+						eq(shoots.organizationId, context.organizationId),
+					),
+				);
+		});
 
 		// Track activity (non-blocking)
 		await safeTrackActivity(

@@ -21,7 +21,8 @@
 		"db:push": "pnpm --filter @repo/database push",
 		"db:seed": "turbo db:seed",
 		"db:studio": "pnpm --filter @repo/database studio",
-		"notifications:deadlines": "pnpm --filter @repo/scripts notifications:deadlines"
+		"notifications:deadlines": "pnpm --filter @repo/scripts notifications:deadlines",
+		"calendar:reconcile": "pnpm --filter @repo/scripts calendar:reconcile"
 	},
 	"engines": {
 		"node": ">=20"

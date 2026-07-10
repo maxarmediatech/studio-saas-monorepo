@@ -32,5 +32,6 @@ describe("getCalendarDeleteJobType", () => {
 	it("maps delivery methods to delete/cancel jobs", () => {
 		expect(getCalendarDeleteJobType("google")).toBe("google_delete");
 		expect(getCalendarDeleteJobType("ics")).toBe("ics_send_cancel");
+		expect(getCalendarDeleteJobType("unsendable")).toBeNull();
 	});
 });
