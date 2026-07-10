@@ -17,12 +17,9 @@ describePostgres("receipt issue and void concurrency", () => {
 			receipts,
 			receivedAmounts,
 		} = await import("@repo/database");
-		const { getLockedBookingForReceipt, getLockedInvoiceForReceipt } =
-			await import("./locked-invoice-for-receipt");
-		const { getLockedReceivedPayment } = await import(
-			"../../studio-payments/lib/received-payment-lock"
+		const { issueReceiptForReceivedPayment } = await import(
+			"./receipt-transition-service"
 		);
-		const { updateInvoicePaymentStatus } = await import("./receipt-helpers");
 
 		const suffix = `${process.pid}_${Date.now()}`;
 		const organizationId = `receipt_rollback_org_${suffix}`;
@@ -64,29 +61,15 @@ describePostgres("receipt issue and void concurrency", () => {
 
 		try {
 			await expect(
-				db.transaction(async (tx) => {
-					await getLockedBookingForReceipt(tx, { organizationId, bookingId });
-					await getLockedInvoiceForReceipt(tx, {
-						organizationId,
-						bookingId,
-						invoiceId,
-					});
-					await getLockedReceivedPayment(tx, {
+				db.transaction((tx) =>
+					issueReceiptForReceivedPayment(tx, {
 						organizationId,
 						receivedAmountId: paymentId,
-					});
-					await tx.insert(receipts).values({
-						organizationId,
-						bookingId,
-						invoiceId,
-						receivedAmountId: paymentId,
-						receiptNumber: `ROLLBACK-RCPT-${suffix}`,
-						amount: "100.00",
-						paymentMethod: "cash",
-						receiptDate: "2026-01-01",
-					});
-					await updateInvoicePaymentStatus(tx, invoiceId, "race_test_actor");
-				}),
+						expectedBookingId: bookingId,
+						expectedInvoiceId: invoiceId,
+						userId: "race_test_actor",
+					}),
+				),
 			).rejects.toThrow("Payment total exceeds invoice total");
 
 			const [rows] = await db
@@ -95,7 +78,9 @@ describePostgres("receipt issue and void concurrency", () => {
 				.where(eq(receipts.invoiceId, invoiceId));
 			expect(Number(rows?.count)).toBe(0);
 		} finally {
-			await db.delete(organizations).where(eq(organizations.id, organizationId));
+			await db
+				.delete(organizations)
+				.where(eq(organizations.id, organizationId));
 			process.env.DATABASE_URL = originalDatabaseUrl;
 		}
 	});
@@ -112,15 +97,8 @@ describePostgres("receipt issue and void concurrency", () => {
 			receipts,
 			receivedAmounts,
 		} = await import("@repo/database");
-		const {
-			getLockedBookingForReceipt,
-			getLockedInvoiceForReceipt,
-			getLockedReceiptForVoid,
-		} = await import("./locked-invoice-for-receipt");
-		const { getLockedReceivedPayment } = await import(
-			"../../studio-payments/lib/received-payment-lock"
-		);
-		const { updateInvoicePaymentStatus } = await import("./receipt-helpers");
+		const { issueReceiptForReceivedPayment, voidReceiptTransition } =
+			await import("./receipt-transition-service");
 
 		const suffix = `${process.pid}_${Date.now()}`;
 		const organizationId = `receipt_void_org_${suffix}`;
@@ -186,51 +164,23 @@ describePostgres("receipt issue and void concurrency", () => {
 		});
 
 		const issue = () =>
-			db.transaction(async (tx) => {
-				await getLockedBookingForReceipt(tx, { organizationId, bookingId });
-				await getLockedInvoiceForReceipt(tx, {
-					organizationId,
-					bookingId,
-					invoiceId,
-				});
-				const payment = await getLockedReceivedPayment(tx, {
+			db.transaction((tx) =>
+				issueReceiptForReceivedPayment(tx, {
 					organizationId,
 					receivedAmountId: newPaymentId,
-				});
-				await tx.insert(receipts).values({
-					organizationId,
-					bookingId,
-					invoiceId,
-					receivedAmountId: payment?.id,
-					receiptNumber: `VOID-RCPT-NEW-${suffix}`,
-					amount: "100.00",
-					paymentMethod: "cash",
-					receiptDate: "2026-01-02",
-				});
-				await updateInvoicePaymentStatus(tx, invoiceId, "race_test_actor");
-			});
+					expectedBookingId: bookingId,
+					expectedInvoiceId: invoiceId,
+					userId: "race_test_actor",
+				}),
+			);
 		const voidReceipt = () =>
-			db.transaction(async (tx) => {
-				await getLockedBookingForReceipt(tx, { organizationId, bookingId });
-				await getLockedInvoiceForReceipt(tx, {
-					organizationId,
-					bookingId,
-					invoiceId,
-				});
-				await getLockedReceivedPayment(tx, {
-					organizationId,
-					receivedAmountId: oldPaymentId,
-				});
-				const receipt = await getLockedReceiptForVoid(tx, {
+			db.transaction((tx) =>
+				voidReceiptTransition(tx, {
 					organizationId,
 					receiptId: oldReceiptId,
-				});
-				await tx
-					.update(receipts)
-					.set({ deletedAt: new Date() })
-					.where(eq(receipts.id, receipt?.id ?? oldReceiptId));
-				await updateInvoicePaymentStatus(tx, invoiceId, "race_test_actor");
-			});
+					userId: "race_test_actor",
+				}),
+			);
 
 		try {
 			await Promise.all([issue(), voidReceipt()]);
@@ -238,9 +188,14 @@ describePostgres("receipt issue and void concurrency", () => {
 				where: eq(invoices.id, invoiceId),
 				columns: { paidAmount: true, status: true },
 			});
-			expect(invoice).toEqual({ paidAmount: "100.00", status: "partial" });
+			expect(invoice).toEqual({
+				paidAmount: "100.00",
+				status: "partial",
+			});
 		} finally {
-			await db.delete(organizations).where(eq(organizations.id, organizationId));
+			await db
+				.delete(organizations)
+				.where(eq(organizations.id, organizationId));
 			process.env.DATABASE_URL = originalDatabaseUrl;
 		}
 	});

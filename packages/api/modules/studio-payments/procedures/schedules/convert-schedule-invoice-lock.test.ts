@@ -154,10 +154,12 @@ describe("schedule conversion invoice locking", () => {
 			order.push("booking");
 			return { id: "booking_1", name: "Booking" };
 		});
-		mocks.mockGetLockedScheduleInvoiceForReceipt.mockImplementation(async () => {
-			order.push("invoice");
-			return null;
-		});
+		mocks.mockGetLockedScheduleInvoiceForReceipt.mockImplementation(
+			async () => {
+				order.push("invoice");
+				return null;
+			},
+		);
 		mocks.mockGetLockedScheduleForReceipt.mockImplementation(async () => {
 			order.push("schedule");
 			return {
@@ -177,7 +179,7 @@ describe("schedule conversion invoice locking", () => {
 		});
 		mocks.tx.update.mockReturnValue({
 			set: vi.fn(() => ({ where: vi.fn(async () => undefined) })),
-		}));
+		});
 
 		const result = await mocks.getHandler()?.({
 			context: { organizationId: "org_1", user: { id: "user_1" } },
