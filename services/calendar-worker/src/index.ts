@@ -11,16 +11,12 @@ import {
 	shootCalendarEvents,
 	sql,
 } from "@repo/database";
-import {
-	createAllDayEvent,
-	createAllDayIcsFromGoogleInput,
-	deleteEvent,
-	type GoogleAllDayEventInput,
-	updateAllDayEvent,
-} from "@repo/google-calendar";
 import { logger } from "@repo/logs";
-import { sendCalendarInviteEmail } from "@repo/mail";
-import { getGoogleAccessToken } from "./google-access-token";
+import {
+	compensateStaleEffect,
+	performProviderEffect,
+	type Snapshot,
+} from "./provider-effects";
 import {
 	computeNextAttemptAfterFailure,
 	DEFAULT_MAX_ATTEMPTS,
@@ -35,21 +31,6 @@ const staleThresholdMinutes =
 	Number.isFinite(staleThresholdMinutesRaw) && staleThresholdMinutesRaw > 0
 		? staleThresholdMinutesRaw
 		: 15;
-
-type Snapshot = {
-	operation: "delivery" | "cancellation";
-	intentState: "active" | "cancelled";
-	eventInput: GoogleAllDayEventInput;
-	target: {
-		deliveryMethod: "google" | "ics" | "unsendable";
-		recipientEmail: string | null;
-		googleUserId: string | null;
-		calendarId: string | null;
-		googleEventId: string | null;
-		icalUid: string | null;
-		icalSequence: number;
-	};
-};
 
 function getSnapshot(job: typeof calendarSyncJobs.$inferSelect): Snapshot {
 	if (!job.payload || typeof job.payload !== "object") {
@@ -151,26 +132,13 @@ async function completeClaim(job: typeof calendarSyncJobs.$inferSelect) {
 		.returning({ id: calendarSyncJobs.id });
 }
 
-async function failClaim(
-	job: typeof calendarSyncJobs.$inferSelect,
-	errorMessage: string,
-) {
-	const nextAttemptAt = computeNextAttemptAfterFailure({
-		attempts: job.attempts ?? 0,
-		maxAttempts: job.maxAttempts ?? DEFAULT_MAX_ATTEMPTS,
-	});
-	return db
+async function renewClaim(job: typeof calendarSyncJobs.$inferSelect) {
+	const renewed = await db
 		.update(calendarSyncJobs)
-		.set({
-			status: "failed",
-			nextAttemptAt,
-			lastError: errorMessage,
-			lockedAt: null,
-			claimToken: null,
-			updatedAt: new Date(),
-		})
+		.set({ lockedAt: new Date(), updatedAt: new Date() })
 		.where(claimWhere(job))
 		.returning({ id: calendarSyncJobs.id });
+	return renewed.length === 1;
 }
 
 async function deliveryIsCurrent(job: typeof calendarSyncJobs.$inferSelect) {
@@ -210,87 +178,29 @@ async function cancellationIsCurrent(
 	);
 }
 
-async function processGoogle(
-	job: typeof calendarSyncJobs.$inferSelect,
-	snapshot: Snapshot,
-) {
-	if (!snapshot.target.googleUserId) {
-		throw new Error("Snapshot has no Google user");
-	}
-	const { config, accessToken } = await getGoogleAccessToken({
-		organizationId: job.organizationId,
-		userId: snapshot.target.googleUserId,
-	});
-	if (snapshot.operation === "cancellation") {
-		if (snapshot.target.googleEventId) {
-			await deleteEvent({
-				config,
-				accessToken,
-				googleEventId: snapshot.target.googleEventId,
-			});
-		}
-		return { googleEventId: null };
-	}
-	if (snapshot.target.googleEventId) {
-		await updateAllDayEvent({
-			config,
-			accessToken,
-			googleEventId: snapshot.target.googleEventId,
-			input: snapshot.eventInput,
-		});
-		return { googleEventId: snapshot.target.googleEventId };
-	}
-	const created = await createAllDayEvent({
-		config,
-		accessToken,
-		input: snapshot.eventInput,
-	});
-	return { googleEventId: created.googleEventId };
-}
-
-async function processIcs(
-	job: typeof calendarSyncJobs.$inferSelect,
-	snapshot: Snapshot,
-) {
-	const recipient = snapshot.target.recipientEmail?.trim();
-	const uid = snapshot.target.icalUid;
-	if (!recipient || !uid) {
-		throw new Error("Snapshot has no ICS recipient or UID");
-	}
-	const cancellation = snapshot.operation === "cancellation";
-	const ics = createAllDayIcsFromGoogleInput({
-		uid,
-		sequence: snapshot.target.icalSequence,
-		method: cancellation ? "CANCEL" : "REQUEST",
-		input: snapshot.eventInput,
-	});
-	await sendCalendarInviteEmail({
-		to: recipient,
-		subject: `${cancellation ? "Cancelled" : "Calendar Invite"}: ${snapshot.eventInput.title}`,
-		text: snapshot.eventInput.description ?? snapshot.eventInput.title,
-		html: snapshot.eventInput.description
-			? `<pre style="white-space:pre-wrap">${escapeHtml(snapshot.eventInput.description)}</pre>`
-			: undefined,
-		icsFilename: `shoot-${job.shootId}.ics`,
-		icsContent: ics,
-	});
-}
-
 async function recordSuccess(
 	job: typeof calendarSyncJobs.$inferSelect,
 	snapshot: Snapshot,
 	googleEventId: string | null,
 ) {
-	const current =
-		snapshot.operation === "cancellation"
-			? await cancellationIsCurrent(job, snapshot)
-			: await deliveryIsCurrent(job);
-	if (!current) {
-		return completeClaim(job);
-	}
-	await db.transaction(async (tx) => {
+	return db.transaction(async (tx) => {
+		const consumed = await tx
+			.update(calendarSyncJobs)
+			.set({
+				status: "completed",
+				nextAttemptAt: null,
+				lastError: null,
+				lockedAt: null,
+				claimToken: null,
+				updatedAt: new Date(),
+			})
+			.where(claimWhere(job))
+			.returning({ id: calendarSyncJobs.id });
+		if (consumed.length !== 1) {
+			return false;
+		}
 		if (snapshot.operation === "delivery") {
-			await tx
+			const updated = await tx
 				.update(shootCalendarEvents)
 				.set({
 					deliveryMethod: snapshot.target.deliveryMethod,
@@ -331,9 +241,12 @@ async function recordSuccess(
 						),
 						eq(shootCalendarEvents.intentState, "active"),
 					),
-				);
-		} else if (snapshot.intentState === "cancelled") {
-			await tx
+				)
+				.returning({ id: shootCalendarEvents.id });
+			return updated.length === 1;
+		}
+		if (snapshot.intentState === "cancelled") {
+			const updated = await tx
 				.update(shootCalendarEvents)
 				.set({
 					syncStatus: "deleted",
@@ -355,28 +268,71 @@ async function recordSuccess(
 						),
 						eq(shootCalendarEvents.intentState, "cancelled"),
 					),
-				);
+				)
+				.returning({ id: shootCalendarEvents.id });
+			return updated.length === 1;
 		}
-		await tx
+		return true;
+	});
+}
+
+async function recordFailure(
+	job: typeof calendarSyncJobs.$inferSelect,
+	snapshot: Snapshot | null,
+	errorMessage: string,
+) {
+	const nextAttemptAt = computeNextAttemptAfterFailure({
+		attempts: job.attempts ?? 0,
+		maxAttempts: job.maxAttempts ?? DEFAULT_MAX_ATTEMPTS,
+	});
+	await db.transaction(async (tx) => {
+		const failed = await tx
 			.update(calendarSyncJobs)
 			.set({
-				status: "completed",
-				nextAttemptAt: null,
-				lastError: null,
+				status: "failed",
+				nextAttemptAt,
+				lastError: errorMessage,
 				lockedAt: null,
 				claimToken: null,
 				updatedAt: new Date(),
 			})
-			.where(claimWhere(job));
+			.where(claimWhere(job))
+			.returning({ id: calendarSyncJobs.id });
+		if (failed.length !== 1 || !snapshot) {
+			return;
+		}
+		const current =
+			snapshot.operation === "cancellation"
+				? await cancellationIsCurrent(job, snapshot)
+				: await deliveryIsCurrent(job);
+		if (!current) {
+			return;
+		}
+		await tx
+			.update(shootCalendarEvents)
+			.set({
+				syncStatus: "error",
+				lastError: errorMessage,
+				updatedAt: new Date(),
+			})
+			.where(
+				and(
+					eq(shootCalendarEvents.organizationId, job.organizationId),
+					eq(shootCalendarEvents.shootId, job.shootId ?? ""),
+					eq(shootCalendarEvents.crewId, job.crewId ?? ""),
+					eq(shootCalendarEvents.intentGeneration, job.generation),
+				),
+			);
 	});
 }
 
 export async function processJob(job: typeof calendarSyncJobs.$inferSelect) {
+	let snapshot: Snapshot | null = null;
 	try {
 		if (!job.shootId || !job.crewId) {
 			throw new Error("Job missing shootId/crewId");
 		}
-		const snapshot = getSnapshot(job);
+		snapshot = getSnapshot(job);
 		const current =
 			snapshot.operation === "cancellation"
 				? await cancellationIsCurrent(job, snapshot)
@@ -385,13 +341,27 @@ export async function processJob(job: typeof calendarSyncJobs.$inferSelect) {
 			await completeClaim(job);
 			return;
 		}
-		let result: { googleEventId: string | null } = { googleEventId: null };
-		if (snapshot.target.deliveryMethod === "google") {
-			result = await processGoogle(job, snapshot);
-		} else if (snapshot.target.deliveryMethod === "ics") {
-			await processIcs(job, snapshot);
+		if (!(await renewClaim(job))) {
+			return;
 		}
-		await recordSuccess(job, snapshot, result.googleEventId);
+		const result = await performProviderEffect(job, snapshot);
+		const stillCurrent =
+			snapshot.operation === "cancellation"
+				? await cancellationIsCurrent(job, snapshot)
+				: await deliveryIsCurrent(job);
+		if (!stillCurrent) {
+			await compensateStaleEffect(job, snapshot, result.googleEventId);
+			await completeClaim(job);
+			return;
+		}
+		const recorded = await recordSuccess(
+			job,
+			snapshot,
+			result.googleEventId,
+		);
+		if (!recorded) {
+			await compensateStaleEffect(job, snapshot, result.googleEventId);
+		}
 	} catch (error) {
 		const errorMessage =
 			error instanceof Error ? error.message : String(error);
@@ -401,40 +371,8 @@ export async function processJob(job: typeof calendarSyncJobs.$inferSelect) {
 			generation: job.generation,
 			error: errorMessage,
 		});
-		if (await deliveryIsCurrent(job)) {
-			await db
-				.update(shootCalendarEvents)
-				.set({
-					syncStatus: "error",
-					lastError: errorMessage,
-					updatedAt: new Date(),
-				})
-				.where(
-					and(
-						eq(
-							shootCalendarEvents.organizationId,
-							job.organizationId,
-						),
-						eq(shootCalendarEvents.shootId, job.shootId ?? ""),
-						eq(shootCalendarEvents.crewId, job.crewId ?? ""),
-						eq(
-							shootCalendarEvents.intentGeneration,
-							job.generation,
-						),
-					),
-				);
-		}
-		await failClaim(job, errorMessage);
+		await recordFailure(job, snapshot, errorMessage);
 	}
-}
-
-function escapeHtml(value: string) {
-	return value
-		.replaceAll("&", "&amp;")
-		.replaceAll("<", "&lt;")
-		.replaceAll(">", "&gt;")
-		.replaceAll('"', "&quot;")
-		.replaceAll("'", "&#39;");
 }
 
 async function loop() {
