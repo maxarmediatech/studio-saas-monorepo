@@ -2,6 +2,7 @@ import {
 	and,
 	db,
 	eq,
+	isNull,
 	shootAssignments,
 	shootCalendarEvents,
 	shoots,
@@ -25,6 +26,11 @@ export async function reconcileCalendarDeliveries(params: {
 	crewId?: string;
 	apply: boolean;
 }) {
+	if (params.apply && !params.organizationId) {
+		throw new Error(
+			"Calendar reconciliation apply requires organizationId",
+		);
+	}
 	const activeAssignments = await db
 		.select({
 			organizationId: shoots.organizationId,
@@ -35,6 +41,8 @@ export async function reconcileCalendarDeliveries(params: {
 		.innerJoin(shoots, eq(shootAssignments.shootId, shoots.id))
 		.where(
 			and(
+				isNull(shoots.deletedAt),
+				sql`${shoots.status} NOT IN ('completed', 'cancelled')`,
 				params.organizationId
 					? eq(shoots.organizationId, params.organizationId)
 					: undefined,
