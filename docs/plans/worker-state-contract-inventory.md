@@ -12,6 +12,8 @@ Keep worker behavior comparable without hiding table-specific correctness behind
 | SMS | `pending`, due `failed` | Conditional update with row locking and `lockedBy` | `nextAttemptAt`, exponential backoff | `lockedAt` + `processingStartedAt` | `recoverStuckMessages` clears stale ownership and schedules retry | `sent`, exhausted `failed` |
 | WhatsApp outbox | `pending`, due `failed` | Conditional update with `lockedBy` and `leaseExpiresAt` | `nextAttemptAt`, bounded backoff | Explicit owner and expiry | Pre-dispatch expiry returns to `pending`; post-dispatch expiry becomes `delivery_unknown` | `sent`, exhausted `failed`, `delivery_unknown` |
 | WhatsApp inbound media | Due `pending` | Conditional update with `ingestLockedBy` and `ingestLeaseExpiresAt` | `nextIngestAttemptAt`, bounded backoff | Explicit owner and expiry | Expired processing returns to `pending`; the storage key is deterministic for safe replay | `ready`, exhausted `failed` |
+| WhatsApp campaign recipient | Ledger `pending` | Recipient row lock; unique campaign/account/contact identity | Re-enter campaign processing; committed recipients are no-ops | Transaction-scoped recipient lock | Running campaigns may be re-entered; unique message/outbox effects prevent duplicates | `queued`, `sent`, `delivered`, `read`, `failed`, `suppressed`, `delivery_unknown` |
+| WhatsApp automation | Due run/action `pending`, retryable `failed`, due `waiting` | Conditional run claim plus persisted action owner | `nextAttemptAt`, bounded backoff | `lockedBy` + `leaseExpiresAt` on run and action | Expired run/action processing returns to `pending`; action effects have deterministic unique identities | `completed`, exhausted `failed`; waits persist until due |
 
 ## Shared semantics
 

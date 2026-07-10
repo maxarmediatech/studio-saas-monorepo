@@ -85,20 +85,42 @@ services/
 
 ## P1 Reliability Merge Gates
 
-The first remediation slice keeps the existing Phase 1A/1B API surface and the useful dev-branch worker/media design, without importing unrelated campaign, automation, Trigger.dev, or UI changes.
+The remediation keeps the existing Phase 1A/1B API surface and selectively ports the useful dev-branch campaign and automation behavior without importing Trigger.dev or unrelated UI changes.
 
 - [x] Existing webhook rows retry while `processedAt` is null; processing and business writes share one transaction.
 - [x] Contact identity is unique by account and WhatsApp ID.
 - [x] Conversation and inbound-message creation are conflict-safe.
 - [x] Outbox and inbound-media claims use expiring owner leases and recover stale pre-dispatch work.
 - [x] Provider-dispatched work with an unknown local outcome enters `delivery_unknown` and is excluded from automatic retry.
-- [ ] Campaign recipients have a durable unique campaign/contact ledger.
-- [ ] Campaign counts represent committed recipient transitions rather than enqueue attempts.
-- [ ] Delivery webhook states are monotonic and idempotent.
-- [ ] Opt-out, block, and account state are rechecked immediately before provider dispatch.
-- [ ] Automation runs/actions are durable and wait actions resume after interruption.
+- [x] Campaign recipients have a durable unique campaign/account/contact ledger and a frozen audience snapshot.
+- [x] Campaign counts derive from committed recipient timestamps and terminal states rather than enqueue attempts.
+- [x] Delivery webhook states are monotonic and idempotent, including resolution of `delivery_unknown`.
+- [x] Opt-out, block, deleted-account, and connection state are rechecked immediately before provider dispatch.
+- [x] Automation runs/actions are durable, duplicate triggers are unique, expired leases recover, and wait actions resume.
 
 Migration `0040_whatsapp_delivery_reliability.sql` refuses to add identity constraints when duplicate contact or provider-message identities exist. Existing failed webhook rows become retryable. Legacy outbox rows already in `processing` are conservatively made terminal for manual reconciliation because the old schema cannot prove whether provider dispatch happened.
+
+The same logical `0040` migration now owns all WhatsApp P1 state. Integration ordering is payment `0039`, WhatsApp `0040`, submission `0041`; no second WhatsApp migration or generated journal/snapshot is added in the isolated lane.
+
+### Campaign truth contract
+
+- The first execution locks the campaign, captures the eligible contact IDs once, and records `audienceCapturedAt`. Retries never add contacts who became eligible later.
+- `(campaignId, accountId, contactId)` is unique. Each recipient has at most one message, and each message has at most one outbox effect.
+- Queued/sent/delivered/read totals are cumulative reached-state counts from recipient timestamps. Failed, suppressed, and delivery-unknown totals reflect the recipient's current terminal/uncertain state.
+- A retry may re-enter campaign processing, but per-recipient row locking makes already committed effects no-ops.
+
+### Delivery admission boundary
+
+The worker rechecks current account/contact state after claiming and again in a row-locking transaction immediately before it records `dispatchStartedAt`. Ineligible work becomes `suppressed`, has no retry clock, updates campaign truth, and never calls the provider.
+
+The database transaction cannot remain open across the external Meta request. A block, opt-out, disconnect, or delete committed after the final admission transaction can therefore race with the provider call. That boundary is explicit: once `dispatchStartedAt` is committed, an uncertain outcome is quarantined as `delivery_unknown` and is never blindly resent; provider callbacks or manual reconciliation resolve it.
+
+### Automation execution contract
+
+- `(flowId, triggerIdentity)` uniquely identifies a run; the inbound webhook creates the run and immutable action snapshot in the same transaction as the inbound message.
+- Each action has persisted status, attempts, retry time, owner lease, error, and deterministic run/index identity.
+- Send actions use a unique `automationActionId` on the message plus a unique message outbox effect, so crash recovery cannot enqueue the non-idempotent effect twice.
+- Wait deadlines are persisted once. Due waits advance the run; expired processing leases return to pending work.
 
 Worker contract comparison and the decision not to adopt a queue library in this slice are recorded in [worker-state-contract-inventory.md](./worker-state-contract-inventory.md).
 

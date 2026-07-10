@@ -191,6 +191,45 @@ describe("WhatsApp worker PostgreSQL reliability", () => {
 		expect(outbox.status).toBe("sent");
 	});
 
+	it("suppresses a newly opted-out contact without calling the provider", async () => {
+		const fixture = await createFixture("suppressed");
+		const fixtureOutbox = requireOutbox(fixture);
+		const due = await fetchDueWhatsAppOutboxItems({ limit: 100 });
+		const item = due.find((row) => row.outbox.id === fixtureOutbox.id);
+		if (!item) {
+			throw new Error("Expected suppression fixture to be due");
+		}
+		await db
+			.update(waContacts)
+			.set({ isOptedOut: true })
+			.where(eq(waContacts.id, fixture.contact.id));
+		let sends = 0;
+		const result = await processWhatsAppOutboxItem(item, {
+			workerId: "suppression-worker",
+			providerFactory: () =>
+				provider(async () => {
+					sends += 1;
+					return {
+						success: true,
+						providerMessageId: "must-not-send",
+					};
+				}),
+		});
+		expect(result.status).toBe("suppressed");
+		expect(sends).toBe(0);
+		const [storedMessage] = await db
+			.select()
+			.from(waMessages)
+			.where(eq(waMessages.id, fixture.message.id));
+		const [storedOutbox] = await db
+			.select()
+			.from(waOutbox)
+			.where(eq(waOutbox.id, fixtureOutbox.id));
+		expect(storedMessage.status).toBe("suppressed");
+		expect(storedOutbox.status).toBe("suppressed");
+		expect(storedOutbox.nextAttemptAt).toBeNull();
+	});
+
 	it("recovers expired pre-dispatch leases but quarantines post-dispatch leases", async () => {
 		const safe = await createFixture("safe-lease");
 		const unknown = await createFixture("unknown-lease");

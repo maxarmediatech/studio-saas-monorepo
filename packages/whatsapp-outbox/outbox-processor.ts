@@ -18,6 +18,7 @@ import {
 	waMessages,
 	waOutbox,
 } from "@repo/whatsapp-db";
+import { transitionWhatsAppMessage } from "@repo/whatsapp-runtime";
 import {
 	defaultProviderFactory,
 	isPermanentProviderError,
@@ -57,20 +58,15 @@ export const recoverExpiredWhatsAppOutboxLeases = async (now = new Date()) =>
 			.returning({ messageId: waOutbox.messageId });
 
 		if (unknownRows.length > 0) {
-			await tx
-				.update(waMessages)
-				.set({
+			for (const row of unknownRows) {
+				await transitionWhatsAppMessage(tx, {
+					messageId: row.messageId,
 					status: "delivery_unknown",
-					statusUpdatedAt: now,
+					at: now,
 					errorMessage:
 						"Provider dispatch started, but the local delivery result was not committed",
-				})
-				.where(
-					inArray(
-						waMessages.id,
-						unknownRows.map((row) => row.messageId),
-					),
-				);
+				});
+			}
 		}
 
 		const recoveredRows = await tx
@@ -167,26 +163,81 @@ const claimOutboxItem = async (params: {
 	return claimed ?? null;
 };
 
-const markDispatchStarted = async (params: {
+const checkDeliveryEligibility = async (params: {
 	outboxId: string;
 	workerId: string;
 	now: Date;
+	markDispatch: boolean;
 }) => {
-	const [row] = await db
-		.update(waOutbox)
-		.set({ dispatchStartedAt: params.now })
-		.where(
-			and(
-				eq(waOutbox.id, params.outboxId),
-				eq(waOutbox.status, "processing"),
-				eq(waOutbox.lockedBy, params.workerId),
-				gt(waOutbox.leaseExpiresAt, params.now),
-				isNull(waOutbox.dispatchStartedAt),
-			),
-		)
-		.returning({ id: waOutbox.id });
+	return db.transaction(async (tx) => {
+		const [outbox] = await tx
+			.select()
+			.from(waOutbox)
+			.where(
+				and(
+					eq(waOutbox.id, params.outboxId),
+					eq(waOutbox.status, "processing"),
+					eq(waOutbox.lockedBy, params.workerId),
+					gt(waOutbox.leaseExpiresAt, params.now),
+					isNull(waOutbox.dispatchStartedAt),
+				),
+			)
+			.for("update");
+		if (!outbox) {
+			return { status: "lost_lease" as const };
+		}
 
-	return Boolean(row);
+		const [message] = await tx
+			.select()
+			.from(waMessages)
+			.where(eq(waMessages.id, outbox.messageId))
+			.for("update");
+		if (!message) {
+			throw new Error("WhatsApp outbox message not found");
+		}
+		const [account] = await tx
+			.select()
+			.from(waAccounts)
+			.where(eq(waAccounts.id, outbox.accountId))
+			.for("update");
+		const [contact] = await tx
+			.select()
+			.from(waContacts)
+			.where(eq(waContacts.id, message.contactId))
+			.for("update");
+
+		let suppressionReason: string | null = null;
+		if (!account || account.deletedAt) {
+			suppressionReason = "WhatsApp account is disabled";
+		} else if (account.connectionStatus !== "connected") {
+			suppressionReason = "WhatsApp account is not connected";
+		} else if (!contact) {
+			suppressionReason = "WhatsApp contact no longer exists";
+		} else if (contact.isBlocked) {
+			suppressionReason = "WhatsApp contact is blocked";
+		} else if (contact.isOptedOut) {
+			suppressionReason = "WhatsApp contact opted out";
+		}
+
+		if (suppressionReason) {
+			await transitionWhatsAppMessage(tx, {
+				messageId: message.id,
+				status: "suppressed",
+				at: params.now,
+				errorMessage: suppressionReason,
+				suppressionReason,
+			});
+			return { status: "suppressed" as const, reason: suppressionReason };
+		}
+
+		if (params.markDispatch) {
+			await tx
+				.update(waOutbox)
+				.set({ dispatchStartedAt: params.now })
+				.where(eq(waOutbox.id, outbox.id));
+		}
+		return { status: "eligible" as const };
+	});
 };
 
 const markOutboxSuccess = (params: {
@@ -221,16 +272,12 @@ const markOutboxSuccess = (params: {
 			);
 		}
 
-		await tx
-			.update(waMessages)
-			.set({
-				status: "sent",
-				statusUpdatedAt: new Date(),
-				providerMessageId: params.providerMessageId ?? null,
-				errorMessage: null,
-				errorCode: null,
-			})
-			.where(eq(waMessages.id, params.messageId));
+		await transitionWhatsAppMessage(tx, {
+			messageId: params.messageId,
+			status: "sent",
+			at: new Date(),
+			acceptedProviderMessageId: params.providerMessageId,
+		});
 	});
 
 const markOutboxFailure = (params: {
@@ -269,15 +316,21 @@ const markOutboxFailure = (params: {
 			)
 			.returning({ id: waOutbox.id });
 
-		if (updated) {
+		if (updated && nextAttemptAt) {
 			await tx
 				.update(waMessages)
 				.set({
-					status: "failed",
-					statusUpdatedAt: new Date(),
+					status: "queued",
 					errorMessage: params.errorMessage,
 				})
 				.where(eq(waMessages.id, params.messageId));
+		} else if (updated) {
+			await transitionWhatsAppMessage(tx, {
+				messageId: params.messageId,
+				status: "failed",
+				at: new Date(),
+				errorMessage: params.errorMessage,
+			});
 		}
 	});
 
@@ -308,14 +361,12 @@ const markDeliveryUnknown = (params: {
 			.returning({ id: waOutbox.id });
 
 		if (updated) {
-			await tx
-				.update(waMessages)
-				.set({
-					status: "delivery_unknown",
-					statusUpdatedAt: new Date(),
-					errorMessage: params.errorMessage,
-				})
-				.where(eq(waMessages.id, params.messageId));
+			await transitionWhatsAppMessage(tx, {
+				messageId: params.messageId,
+				status: "delivery_unknown",
+				at: new Date(),
+				errorMessage: params.errorMessage,
+			});
 		}
 	});
 
@@ -343,6 +394,18 @@ export const processWhatsAppOutboxItem = async (
 	let dispatchStarted = false;
 
 	try {
+		const initialEligibility = await checkDeliveryEligibility({
+			outboxId: item.outbox.id,
+			workerId: options.workerId,
+			now: new Date(),
+			markDispatch: false,
+		});
+		if (initialEligibility.status === "suppressed") {
+			return { status: "suppressed" as const };
+		}
+		if (initialEligibility.status === "lost_lease") {
+			return { status: "skipped" as const };
+		}
 		if (item.account.provider !== "cloud_api") {
 			throw new Error("Unsupported provider");
 		}
@@ -350,12 +413,16 @@ export const processWhatsAppOutboxItem = async (
 			item,
 		);
 		const send = await prepareProviderSend({ item, provider });
-		const started = await markDispatchStarted({
+		const admission = await checkDeliveryEligibility({
 			outboxId: item.outbox.id,
 			workerId: options.workerId,
 			now: new Date(),
+			markDispatch: true,
 		});
-		if (!started) {
+		if (admission.status === "suppressed") {
+			return { status: "suppressed" as const };
+		}
+		if (admission.status !== "eligible") {
 			throw new Error(
 				"WhatsApp outbox lease expired before provider dispatch",
 			);
