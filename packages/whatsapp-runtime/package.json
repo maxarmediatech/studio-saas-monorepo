@@ -1,6 +1,7 @@
 {
 	"dependencies": {
 		"@repo/database": "workspace:*",
+		"@repo/whatsapp-core": "workspace:*",
 		"@repo/whatsapp-db": "workspace:*"
 	},
 	"devDependencies": {

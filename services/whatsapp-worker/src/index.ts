@@ -7,6 +7,7 @@ import {
 import {
 	processDueAutomationRuns,
 	processDueWhatsAppCampaigns,
+	processDueWhatsAppEvents,
 } from "@repo/whatsapp-runtime";
 import { fetchDueInboundMedia, processInboundMediaItem } from "./media-worker";
 
@@ -16,6 +17,7 @@ const workerId =
 	process.env.WHATSAPP_WORKER_ID ?? `whatsapp-${crypto.randomUUID()}`;
 
 const runBatch = async () => {
+	await processDueWhatsAppEvents({ workerId, limit: batchSize });
 	await processDueWhatsAppCampaigns({ limit: batchSize });
 	await processDueAutomationRuns({ workerId, limit: batchSize });
 
