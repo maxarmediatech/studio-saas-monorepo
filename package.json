@@ -25,7 +25,8 @@
 		"jobs:deploy": "pnpm dlx trigger.dev@4.4.5 deploy",
 		"notifications:deadlines": "pnpm --filter @repo/scripts notifications:deadlines",
 		"calendar:reconcile": "pnpm --filter @repo/scripts calendar:reconcile",
-		"subscriptions:reconcile-seats": "pnpm --filter @repo/scripts subscriptions:reconcile-seats"
+		"subscriptions:reconcile-seats": "pnpm --filter @repo/scripts subscriptions:reconcile-seats",
+		"whatsapp:migration-preflight": "pnpm --filter @repo/scripts whatsapp:migration-preflight"
 	},
 	"engines": {
 		"node": ">=20"

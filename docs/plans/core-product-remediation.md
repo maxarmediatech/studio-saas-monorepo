@@ -119,13 +119,9 @@ Every mismatch must be repaired or assigned a documented resolution state and ow
 
 For every manual or product/finance decision, record the decision date, decider, evidence, options considered, rationale, consequences, and revisit condition. When one person holds multiple roles, preserve the reasoning explicitly rather than implying an independent sign-off.
 
-Suggested modes:
-
-~~~text
---report
---fix-safe
---fix-approved <decision-file>
-~~~
+Implemented executable modes are `--report` and `--fix-safe`. The approved
+decision file records evidence and authorization for a reviewed manual repair;
+there is no `--fix-approved` executor, and runbooks must not imply otherwise.
 
 Phase 0.3 implementation lives in [financial-mismatch-reconciliation.md](./financial-mismatch-reconciliation.md). It requires `--organization-id`, supports `--report` and conservative `--fix-safe`, and emits sorted machine-readable JSON. Alert only on actionable invariant failures; this is financial reconciliation, not a generic observability project. The approved-decision shape is [financial-mismatch-decision-template.json](./financial-mismatch-decision-template.json). `--fix-safe` never changes issued-document history; ambiguous records remain for manual review.
 

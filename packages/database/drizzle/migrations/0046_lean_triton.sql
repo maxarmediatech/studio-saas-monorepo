@@ -19,7 +19,7 @@ BEGIN
 	) duplicates LIMIT 1;
 
 	IF mismatch.parent_id IS NOT NULL THEN
-		RAISE EXCEPTION 'WhatsApp reliability migration blocked: duplicate % under %. Reconcile it before retrying migration 0046.', mismatch.kind, mismatch.parent_id;
+		RAISE EXCEPTION 'WhatsApp reliability migration blocked: duplicate % under %. Run pnpm whatsapp:migration-preflight, review the reported identities, and resolve them before migration 0046.', mismatch.kind, mismatch.parent_id;
 	END IF;
 END $$;--> statement-breakpoint
 CREATE TYPE "public"."wa_automation_action_status" AS ENUM('pending', 'processing', 'waiting', 'completed', 'failed');--> statement-breakpoint

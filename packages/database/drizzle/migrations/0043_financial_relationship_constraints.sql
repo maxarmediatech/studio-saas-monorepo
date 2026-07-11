@@ -51,7 +51,7 @@ BEGIN
 	LIMIT 1;
 
 	IF mismatch.record_id IS NOT NULL THEN
-		RAISE EXCEPTION 'Migration blocked: invalid financial relationship % on record %. Resolve it with the financial mismatch workflow before retrying migration 0043.', mismatch.relationship, mismatch.record_id;
+		RAISE EXCEPTION 'Migration blocked: invalid financial relationship % on record %. Run the documented financial-reconciliation --report command for every organization, then apply only reviewed safe/manual repairs before migration 0043.', mismatch.relationship, mismatch.record_id;
 	END IF;
 END $$;--> statement-breakpoint
 
