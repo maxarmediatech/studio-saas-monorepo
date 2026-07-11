@@ -8,6 +8,7 @@ import {
 	waMessages,
 	waOutbox,
 } from "@repo/whatsapp-db";
+import { processDueWhatsAppEvents } from "@repo/whatsapp-runtime";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { handleCloudWebhook } from "./webhook-handler";
 
@@ -232,7 +233,7 @@ describe("WhatsApp webhook PostgreSQL invariants", () => {
 		);
 	});
 
-	it("retries a stored failed status event until it is actually processed", async () => {
+	it("replays a stored failed status event without provider redelivery", async () => {
 		const account = await createAccount("retry");
 		const payload = statusPayload({
 			phoneNumberId: account.phoneNumberId,
@@ -246,6 +247,7 @@ describe("WhatsApp webhook PostgreSQL invariants", () => {
 			.where(eq(waEvents.accountId, account.id));
 		expect(failedEvent.processedAt).toBeNull();
 		expect(failedEvent.errorMessage).toContain("Message not found");
+		expect(failedEvent.processingStatus).toBe("failed");
 
 		const [contact] = await db
 			.insert(waContacts)
@@ -279,7 +281,16 @@ describe("WhatsApp webhook PostgreSQL invariants", () => {
 			})
 			.returning();
 
-		await postWebhook(payload);
+		await Promise.all([
+			processDueWhatsAppEvents({
+				workerId: "webhook-replay-a",
+				now: new Date("2030-01-01T00:00:00.000Z"),
+			}),
+			processDueWhatsAppEvents({
+				workerId: "webhook-replay-b",
+				now: new Date("2030-01-01T00:00:00.000Z"),
+			}),
+		]);
 		const [processedEvent] = await db
 			.select()
 			.from(waEvents)
@@ -290,6 +301,7 @@ describe("WhatsApp webhook PostgreSQL invariants", () => {
 			.where(eq(waMessages.id, message.id));
 		expect(processedEvent.processedAt).not.toBeNull();
 		expect(processedEvent.errorMessage).toBeNull();
+		expect(processedEvent.processingStatus).toBe("processed");
 		expect(processedEvent.attempts).toBe(2);
 		expect(updatedMessage.status).toBe("delivered");
 	});

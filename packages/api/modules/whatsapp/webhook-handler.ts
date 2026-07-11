@@ -1,29 +1,14 @@
-import { and, db, eq, or, sql } from "@repo/database";
+import crypto from "node:crypto";
+import { and, db, eq, isNull, or } from "@repo/database";
 import { logger } from "@repo/logs";
-import {
-	type CloudApiWebhookEvent,
-	parseCloudApiWebhook,
-} from "@repo/whatsapp-core";
-import {
-	waAccounts,
-	waContacts,
-	waConversations,
-	waEvents,
-	waMedia,
-	waMessages,
-} from "@repo/whatsapp-db";
-import {
-	enqueueInboundAutomationRuns,
-	transitionWhatsAppMessage,
-} from "@repo/whatsapp-runtime";
+import { parseCloudApiWebhook } from "@repo/whatsapp-core";
+import { waAccounts, waEvents } from "@repo/whatsapp-db";
+import { processWhatsAppEventById } from "@repo/whatsapp-runtime";
 import {
 	decryptWhatsAppSecret,
 	hashWebhookVerifyToken,
 } from "./lib/account-secrets";
 import { verifyWebhookSignature } from "./lib/webhook-security";
-
-type WhatsAppAccount = typeof waAccounts.$inferSelect;
-type WhatsAppTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 const getStatusEventId = (messageId: string, status: string, timestamp: Date) =>
 	`${messageId}:${status}:${timestamp.getTime()}`;
@@ -47,269 +32,56 @@ const ensureStoredEvent = async (params: {
 	accountId: string;
 	providerEventId: string;
 	eventType: string;
-	payload: unknown;
+	event: unknown;
+	rawPayload: unknown;
 }) => {
+	const now = new Date();
 	const [created] = await db
 		.insert(waEvents)
-		.values(params)
+		.values({
+			organizationId: params.organizationId,
+			accountId: params.accountId,
+			providerEventId: params.providerEventId,
+			eventType: params.eventType,
+			payload: { event: params.event, rawPayload: params.rawPayload },
+			processingStatus: "pending",
+			nextAttemptAt: now,
+		})
 		.onConflictDoNothing({
 			target: [waEvents.accountId, waEvents.providerEventId],
 		})
 		.returning({ id: waEvents.id });
-
 	if (created) {
 		return created.id;
 	}
 
-	const existing = await db.query.waEvents.findFirst({
+	const [existing] = await db
+		.update(waEvents)
+		.set({ nextAttemptAt: now })
+		.where(
+			and(
+				eq(waEvents.accountId, params.accountId),
+				eq(waEvents.providerEventId, params.providerEventId),
+				isNull(waEvents.processedAt),
+			),
+		)
+		.returning({ id: waEvents.id });
+	if (existing) {
+		return existing.id;
+	}
+
+	const stored = await db.query.waEvents.findFirst({
 		columns: { id: true },
 		where: and(
 			eq(waEvents.accountId, params.accountId),
 			eq(waEvents.providerEventId, params.providerEventId),
 		),
 	});
-
-	if (!existing) {
-		throw new Error("Failed to find stored WhatsApp event after conflict");
+	if (!stored) {
+		throw new Error("Failed to resolve stored WhatsApp event");
 	}
-
-	return existing.id;
+	return stored.id;
 };
-
-const ensureContact = async (
-	tx: WhatsAppTransaction,
-	params: { organizationId: string; accountId: string; waId: string },
-) => {
-	const [created] = await tx
-		.insert(waContacts)
-		.values({
-			organizationId: params.organizationId,
-			accountId: params.accountId,
-			waId: params.waId,
-			phoneNumber: params.waId,
-		})
-		.onConflictDoNothing({
-			target: [waContacts.accountId, waContacts.waId],
-		})
-		.returning({ id: waContacts.id });
-
-	if (created) {
-		return created.id;
-	}
-
-	const [existing] = await tx
-		.select({ id: waContacts.id })
-		.from(waContacts)
-		.where(
-			and(
-				eq(waContacts.organizationId, params.organizationId),
-				eq(waContacts.accountId, params.accountId),
-				eq(waContacts.waId, params.waId),
-			),
-		)
-		.limit(1);
-
-	if (!existing) {
-		throw new Error("Failed to find WhatsApp contact after conflict");
-	}
-
-	return existing.id;
-};
-
-const ensureConversation = async (
-	tx: WhatsAppTransaction,
-	params: { organizationId: string; accountId: string; contactId: string },
-) => {
-	const [created] = await tx
-		.insert(waConversations)
-		.values(params)
-		.onConflictDoNothing({
-			target: [waConversations.accountId, waConversations.contactId],
-		})
-		.returning({ id: waConversations.id });
-
-	if (created) {
-		return created.id;
-	}
-
-	const [existing] = await tx
-		.select({ id: waConversations.id })
-		.from(waConversations)
-		.where(
-			and(
-				eq(waConversations.organizationId, params.organizationId),
-				eq(waConversations.accountId, params.accountId),
-				eq(waConversations.contactId, params.contactId),
-			),
-		)
-		.limit(1);
-
-	if (!existing) {
-		throw new Error("Failed to find WhatsApp conversation after conflict");
-	}
-
-	return existing.id;
-};
-
-const processInboundEvent = async (
-	tx: WhatsAppTransaction,
-	event: Extract<CloudApiWebhookEvent, { type: "message.inbound" }>,
-	account: WhatsAppAccount,
-	payload: unknown,
-) => {
-	const [existingMessage] = await tx
-		.select({ id: waMessages.id })
-		.from(waMessages)
-		.where(
-			and(
-				eq(waMessages.accountId, account.id),
-				eq(waMessages.providerMessageId, event.providerMessageId),
-			),
-		)
-		.limit(1);
-	if (existingMessage) {
-		return;
-	}
-
-	const contactId = await ensureContact(tx, {
-		organizationId: account.organizationId,
-		accountId: account.id,
-		waId: event.from,
-	});
-	const conversationId = await ensureConversation(tx, {
-		organizationId: account.organizationId,
-		accountId: account.id,
-		contactId,
-	});
-
-	let mediaId: string | null = null;
-	if (event.content.mediaId) {
-		const [media] = await tx
-			.insert(waMedia)
-			.values({
-				organizationId: account.organizationId,
-				providerMediaId: event.content.mediaId,
-				mimeType: event.content.mimeType ?? "application/octet-stream",
-				fileName: event.content.fileName ?? null,
-				storageType: "s3",
-				storageUrl: null,
-				ingestStatus: "pending",
-				ingestAttempts: 0,
-				nextIngestAttemptAt: new Date(),
-			})
-			.returning({ id: waMedia.id });
-
-		if (!media) {
-			throw new Error("Failed to create WhatsApp media");
-		}
-		mediaId = media.id;
-	}
-
-	const [created] = await tx
-		.insert(waMessages)
-		.values({
-			organizationId: account.organizationId,
-			accountId: account.id,
-			conversationId,
-			contactId,
-			providerMessageId: event.providerMessageId,
-			providerTimestamp: event.timestamp,
-			direction: "inbound",
-			type: event.messageType,
-			textBody: event.content.text ?? null,
-			caption: event.content.caption ?? null,
-			mediaId,
-			status: "delivered",
-			statusUpdatedAt: new Date(),
-			rawPayload: payload,
-		})
-		.onConflictDoNothing({
-			target: [waMessages.accountId, waMessages.providerMessageId],
-		})
-		.returning({ id: waMessages.id });
-
-	if (!created) {
-		return;
-	}
-
-	await tx
-		.update(waConversations)
-		.set({
-			lastMessageId: created.id,
-			lastMessageAt: event.timestamp,
-			lastMessagePreview: event.content.text ?? event.messageType,
-			unreadCount: sql`coalesce(${waConversations.unreadCount}, 0) + 1`,
-			updatedAt: new Date(),
-		})
-		.where(eq(waConversations.id, conversationId));
-
-	await enqueueInboundAutomationRuns(tx, {
-		organizationId: account.organizationId,
-		accountId: account.id,
-		contactId,
-		conversationId,
-		inboundMessageId: created.id,
-		inboundText: event.content.text ?? "",
-		triggerIdentity: `inbound:${event.providerMessageId}`,
-	});
-};
-
-const processStatusEvent = async (
-	tx: WhatsAppTransaction,
-	event: Extract<CloudApiWebhookEvent, { type: "message.status" }>,
-	account: WhatsAppAccount,
-) => {
-	const result = await transitionWhatsAppMessage(tx, {
-		accountId: account.id,
-		lookupProviderMessageId: event.providerMessageId,
-		status: event.status,
-		at: event.timestamp,
-		errorCode: event.error?.code ?? null,
-		errorMessage: event.error?.message ?? null,
-	});
-	if (result.reason === "not_found") {
-		throw new Error("Message not found for WhatsApp status update");
-	}
-};
-
-const processStoredEvent = async (params: {
-	eventId: string;
-	event: CloudApiWebhookEvent;
-	account: WhatsAppAccount;
-	payload: unknown;
-}) =>
-	db.transaction(async (tx) => {
-		const [stored] = await tx
-			.select({ processedAt: waEvents.processedAt })
-			.from(waEvents)
-			.where(eq(waEvents.id, params.eventId))
-			.for("update");
-
-		if (!stored) {
-			throw new Error("Stored WhatsApp event disappeared");
-		}
-		if (stored.processedAt) {
-			return "already_processed" as const;
-		}
-
-		if (params.event.type === "message.inbound") {
-			await processInboundEvent(
-				tx,
-				params.event,
-				params.account,
-				params.payload,
-			);
-		} else {
-			await processStatusEvent(tx, params.event, params.account);
-		}
-
-		await tx
-			.update(waEvents)
-			.set({ processedAt: new Date(), errorMessage: null })
-			.where(eq(waEvents.id, params.eventId));
-
-		return "processed" as const;
-	});
 
 export const verifyCloudWebhook = async (params: {
 	token: string;
@@ -323,14 +95,12 @@ export const verifyCloudWebhook = async (params: {
 	if (!params.challenge || !params.verifyToken) {
 		return new Response("Missing verification parameters", { status: 400 });
 	}
-
 	const account = await db.query.waAccounts.findFirst({
 		where: buildWebhookTokenClause(params.token),
 	});
 	if (!account || params.verifyToken !== params.token) {
 		return new Response("Invalid verification token", { status: 403 });
 	}
-
 	return new Response(params.challenge, { status: 200 });
 };
 
@@ -338,7 +108,6 @@ export const handleCloudWebhook = async (req: Request, token: string) => {
 	if (!req.body) {
 		return new Response("Missing request body", { status: 400 });
 	}
-
 	const rawBody = await req.text();
 	const signatureHeader = req.headers.get("x-hub-signature-256");
 	if (!rawBody.length) {
@@ -361,7 +130,6 @@ export const handleCloudWebhook = async (req: Request, token: string) => {
 			});
 			continue;
 		}
-
 		if (account.appSecret && !signatureHeader) {
 			return new Response("Missing signature", { status: 403 });
 		}
@@ -383,50 +151,28 @@ export const handleCloudWebhook = async (req: Request, token: string) => {
 						event.timestamp,
 					)
 				: event.providerMessageId;
-
-		let eventId: string | null = null;
 		try {
-			eventId = await ensureStoredEvent({
+			const eventId = await ensureStoredEvent({
 				organizationId: account.organizationId,
 				accountId: account.id,
 				providerEventId,
 				eventType: event.type,
-				payload: event,
+				event,
+				rawPayload: payload,
 			});
-			await db
-				.update(waEvents)
-				.set({
-					attempts: sql`coalesce(${waEvents.attempts}, 0) + 1`,
-					lastAttemptAt: new Date(),
-				})
-				.where(eq(waEvents.id, eventId));
-
-			await processStoredEvent({ eventId, event, account, payload });
-		} catch (error) {
-			const errorMessage =
-				error instanceof Error ? error.message : "Unknown error";
-			logger.error("Failed to process WhatsApp webhook event", {
+			const result = await processWhatsAppEventById({
 				eventId,
-				error,
+				workerId: `webhook-http:${crypto.randomUUID()}`,
 			});
-
-			if (eventId) {
-				await db
-					.update(waEvents)
-					.set({ processedAt: null, errorMessage })
-					.where(eq(waEvents.id, eventId))
-					.catch((markError) => {
-						logger.error(
-							"Failed to mark WhatsApp event retryable",
-							{
-								eventId,
-								error: markError,
-							},
-						);
-					});
+			if (result.status === "failed") {
+				logger.error("Failed to process stored WhatsApp event", {
+					eventId,
+					error: result.errorMessage,
+				});
 			}
+		} catch (error) {
+			logger.error("Failed to store WhatsApp webhook event", { error });
 		}
 	}
-
 	return new Response(null, { status: 200 });
 };

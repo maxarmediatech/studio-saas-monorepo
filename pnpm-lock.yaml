@@ -1355,6 +1355,9 @@ importers:
       '@repo/database':
         specifier: workspace:*
         version: link:../database
+      '@repo/whatsapp-core':
+        specifier: workspace:*
+        version: link:../whatsapp-core
       '@repo/whatsapp-db':
         specifier: workspace:*
         version: link:../whatsapp-db
