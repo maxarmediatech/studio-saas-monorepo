@@ -1,14 +1,22 @@
 import { db, sql } from "@repo/database";
 
 type DuplicateIdentity = {
-	kind: "contact_wa_id" | "provider_message_id";
-	accountId: string;
+	kind: "contact_missing_account" | "contact_wa_id" | "provider_message_id";
+	accountId: string | null;
 	identity: string;
 	count: number | string;
 };
 
 export async function queryWhatsAppIdentityDuplicates() {
 	const result = await db.execute<DuplicateIdentity>(sql`
+		SELECT 'contact_missing_account' AS kind,
+			NULL::text AS "accountId",
+			organization_id AS identity,
+			COUNT(*)::int AS count
+		FROM wa_contacts
+		WHERE account_id IS NULL
+		GROUP BY organization_id
+		UNION ALL
 		SELECT 'contact_wa_id' AS kind,
 			account_id AS "accountId",
 			wa_id AS identity,

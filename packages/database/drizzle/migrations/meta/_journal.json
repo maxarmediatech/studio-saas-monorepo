@@ -358,6 +358,13 @@
       "when": 1783745097537,
       "tag": "0050_lowly_purple_man",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1783746343776,
+      "tag": "0051_whatsapp-contact-account-ownership",
+      "breakpoints": true
     }
   ]
 }

@@ -17,7 +17,7 @@ export const waContacts = pgTable(
 			.$defaultFn(() => uuidv7())
 			.primaryKey(),
 		organizationId: text("organization_id").notNull(),
-		accountId: varchar("account_id", { length: 255 }),
+		accountId: varchar("account_id", { length: 255 }).notNull(),
 		waId: text("wa_id").notNull(),
 		phoneNumber: text("phone_number").notNull(),
 		pushName: text("push_name"),
