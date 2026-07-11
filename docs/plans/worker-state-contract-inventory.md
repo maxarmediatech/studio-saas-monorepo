@@ -11,6 +11,7 @@ Keep worker behavior comparable without hiding table-specific correctness behind
 | Calendar | `pending`, due `retry` | Batch update with `FOR UPDATE SKIP LOCKED` | `nextAttemptAt`, bounded backoff | `processingStartedAt` timeout | `recoverStaleProcessingJobs` returns stale rows to retry or terminal failure | `completed`, exhausted `failed` |
 | SMS | `pending`, due `failed` | Conditional update with row locking and `lockedBy` | `nextAttemptAt`, exponential backoff | `lockedAt` + `processingStartedAt` | `recoverStuckMessages` clears stale ownership and schedules retry | `sent`, exhausted `failed` |
 | WhatsApp outbox | `pending`, due `failed` | Conditional update with `lockedBy` and `leaseExpiresAt` | `nextAttemptAt`, bounded backoff | Explicit owner and expiry | Pre-dispatch expiry returns to `pending`; post-dispatch expiry becomes `delivery_unknown` | `sent`, exhausted `failed`, `delivery_unknown` |
+| WhatsApp webhook event | `pending`, due `failed` | Conditional update with `lockedBy` and `leaseExpiresAt` | `nextAttemptAt`, bounded backoff | Explicit owner and expiry | Expired processing is claimable; business effects and completion commit together | `processed`, exhausted `failed` |
 | WhatsApp inbound media | Due `pending` | Conditional update with `ingestLockedBy` and `ingestLeaseExpiresAt` | `nextIngestAttemptAt`, bounded backoff | Explicit owner and expiry | Expired processing returns to `pending`; the storage key is deterministic for safe replay | `ready`, exhausted `failed` |
 | WhatsApp campaign recipient | Ledger `pending` | Recipient row lock; unique campaign/account/contact identity | Re-enter campaign processing; committed recipients are no-ops | Transaction-scoped recipient lock | Running campaigns may be re-entered; unique message/outbox effects prevent duplicates | `queued`, `sent`, `delivered`, `read`, `failed`, `suppressed`, `delivery_unknown` |
 | WhatsApp automation | Due run/action `pending`, retryable `failed`, due `waiting` | Conditional run claim plus persisted action owner | `nextAttemptAt`, bounded backoff | `lockedBy` + `leaseExpiresAt` on run and action | Expired run/action processing returns to `pending`; action effects have deterministic unique identities | `completed`, exhausted `failed`; waits persist until due |
@@ -23,6 +24,7 @@ Keep worker behavior comparable without hiding table-specific correctness behind
 - Completion/failure updates require the current lease owner.
 - Stale recovery is part of every poll cycle.
 - External dispatch needs a durable boundary. Work that expired before dispatch can be retried; work that may have reached a provider must not be blindly resent.
+- An outbox claim that expires before provider dispatch restores the unused provider attempt; otherwise the final claim could become permanently ineligible.
 - Backoff/time helpers may be shared later. Claim SQL remains table-specific where it expresses materially different safety rules.
 
 ## Deliberate non-decision

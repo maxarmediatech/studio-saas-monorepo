@@ -2,18 +2,18 @@
 
 > **Read when:** reviewing, merging, deploying, or testing `codex/core-product-remediation`.
 >
-> **Validated:** 2026-07-11 at commit `179c23f3`, plus the release-gate fixes documented below.
+> **Validated:** 2026-07-11 through commit `d50647b7`, plus the documentation reconciliation in the final commit.
 
 ## Verdict
 
 **Code and clean-database validation: pass. Production rollout: conditional.**
 
-The branch is internally consistent, applies migrations `0000` through `0048` on a new PostgreSQL database, has no Drizzle schema drift, passes the complete API and worker test suites, passes monorepo type-check, and produces a successful Next.js production build.
+The branch is internally consistent, applies migrations `0000` through `0050` on a new PostgreSQL database, has no Drizzle schema drift, passes the complete API and worker test suites, passes monorepo type-check, and produces a successful Next.js production build.
 
 Production rollout still requires the data-dependent gates that cannot be proved from a local clean database:
 
 1. Run the financial mismatch report for every production organization before migrations `0038` and `0043` enforce the new relationships.
-2. Rehearse migrations on a recent sanitized production-size database, including WhatsApp duplicate preflights in `0046` and the expense backfill in `0047`.
+2. Rehearse migrations on a recent sanitized production-size database, including WhatsApp duplicate preflights in `0046`, the expense backfill in `0047`, and the report-first rollout preflight before enforcement migrations.
 3. Resolve or explicitly assign every reported financial mismatch.
 4. Run authenticated browser acceptance tests against staging. The local browser smoke tests reached the production server but skipped because the disposable database had no authenticated user or product fixtures.
 
@@ -58,6 +58,9 @@ Do not treat those four rollout gates as optional test debt. They depend on real
 - Added durable campaign-recipient and automation run/action ledgers.
 - Rechecks opt-out, block, account deletion, and connection state immediately before provider dispatch.
 - Preserved hashed verification-token handling and Meta webhook signature validation.
+- Removed the competing legacy campaign send engine; immediate and scheduled campaigns now use one recipient-ledger execution path.
+- Added autonomous webhook event claims, bounded replay, lease recovery, and a shared API/worker processor.
+- Restores an outbox attempt when a lease expires before provider dispatch, so a final unused attempt cannot strand the message.
 
 ### Expenses and billing
 
@@ -65,6 +68,12 @@ Do not treat those four rollout gates as optional test debt. They depend on real
 - Rolls shoot expenses into the shoot's booking; crew-only expenses remain organization overhead.
 - Synchronizes provider quantities only for explicitly seat-based catalog prices.
 - Added best-effort membership hooks, recorded reconciliation state, normalized owner-role checks, and an idempotent seat-repair command.
+
+### Operations and rollout
+
+- Added recurring Calendar, seat, and report-only financial reconciliation tasks through the existing Trigger.dev runtime.
+- Added deterministic financial and WhatsApp migration preflight commands and replaced references to the nonexistent `--fix-approved` workflow.
+- Added transactional booking-number allocation, including soft-deleted historical numbers.
 
 ## Migration order and rollout notes
 
@@ -81,6 +90,8 @@ Do not treat those four rollout gates as optional test debt. They depend on real
 | `0046` | WhatsApp reliability, campaigns, automations, uniqueness | Duplicate contact/provider identities intentionally stop migration. |
 | `0047` | Canonical expense profitability backfill | Compare booking totals before/after on sanitized production data. |
 | `0048` | Billing seat reconciliation state | Additive; run reconciliation after deployment. |
+| `0049` | WhatsApp webhook replay leases and retry state | Additive; deploy before relying on autonomous replay. |
+| `0050` | Booking document sequence support | Additive; seeds from active and soft-deleted booking history. |
 
 The migrations are forward migrations; there is no verified automatic down-migration path. Take a database backup/snapshot before rollout and prefer roll-forward correction. Financial documents, reversals, receipt numbers, and idempotency tombstones must not be removed during rollback handling.
 
@@ -90,7 +101,7 @@ All commands used Node `24.14.0`, pnpm `10.23.0`, and PostgreSQL 17.
 
 | Gate | Result |
 |---|---|
-| Fresh migrations `0000` → `0048` | Pass; 49 migration records. |
+| Fresh migrations `0000` → `0050` | Pass; 51 migration records. |
 | Drizzle schema generation | Pass; no schema changes. |
 | Critical table/index/trigger inspection | Pass; payment, submission, Calendar, WhatsApp, sequence, and four financial guard objects present. |
 | Monorepo type-check | Pass; 28/28 tasks with `NODE_OPTIONS=--max-old-space-size=6144`. |
@@ -100,6 +111,8 @@ All commands used Node `24.14.0`, pnpm `10.23.0`, and PostgreSQL 17.
 | Financial and Calendar scripts | Pass; 30 tests. |
 | Auth seat synchronization | Pass; 3 tests. |
 | Web payment idempotency helpers | Pass; 7 tests. |
+| WhatsApp migration preflight | Pass on disposable database; zero duplicate identities. |
+| Trigger.dev build (`jobs:deploy --dry-run --skip-sync-env-vars`) | Pass; reconciliation and worker tasks bundled. |
 | Changed non-generated files — Biome | Pass. |
 | `git diff --check` | Pass. |
 | Next.js production build | Pass; compilation, TypeScript, and 96 static pages. |
@@ -152,6 +165,8 @@ pnpm --filter @repo/scripts financial-reconciliation \
 
 pnpm calendar:reconcile --organization-id <organization-id>
 pnpm subscriptions:reconcile-seats
+pnpm whatsapp:migration-preflight
+pnpm financial:migration-preflight
 ```
 
 Use `--fix-safe` only after reading the report and confirming the record is within the documented safe-fix boundary. Use Calendar `--apply` only with an explicit organization ID.
@@ -166,7 +181,7 @@ Use `--fix-safe` only after reading the report and confirming the record is with
 6. Have two reviewers claim the same submission; verify only one wins. Verify release, stale admin reassignment, decision ownership, and resubmission.
 7. Create direct-booking and shoot-linked expenses; verify booking profitability agrees across booking details, dashboard, and reports.
 8. Assign crew with Google, email-only, and no usable email; verify Google, ICS, and unsendable routes respectively. Run reconciliation twice and confirm the second run is a no-op.
-9. Replay a WhatsApp webhook, retry a failed event, test an opt-out immediately before dispatch, and verify uncertain provider acceptance is not resent automatically.
+9. Replay a WhatsApp webhook, force an event failure and verify autonomous recovery, test immediate and scheduled campaigns through the same recipient ledger, test an opt-out immediately before dispatch, and verify uncertain provider acceptance is not resent automatically.
 10. Add and remove members on an explicitly seat-based test plan, simulate one provider failure, and verify the reconciliation command repairs the recorded drift.
 
 ## Merge and deployment handoff

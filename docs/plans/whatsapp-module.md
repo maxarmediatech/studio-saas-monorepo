@@ -87,7 +87,7 @@ services/
 
 The remediation keeps the existing Phase 1A/1B API surface and selectively ports the useful dev-branch campaign and automation behavior without importing Trigger.dev or unrelated UI changes.
 
-- [x] Existing webhook rows retry while `processedAt` is null; processing and business writes share one transaction.
+- [x] Existing webhook rows are autonomously claimed and replayed while unprocessed; processing and business writes share one transaction.
 - [x] Contact identity is unique by account and WhatsApp ID.
 - [x] Conversation and inbound-message creation are conflict-safe.
 - [x] Outbox and inbound-media claims use expiring owner leases and recover stale pre-dispatch work.
@@ -99,6 +99,10 @@ The remediation keeps the existing Phase 1A/1B API surface and selectively ports
 - [x] Automation runs/actions are durable, duplicate triggers are unique, expired leases recover, and wait actions resume.
 
 Migration `0040_whatsapp_delivery_reliability.sql` refuses to add identity constraints when duplicate contact or provider-message identities exist. Existing failed webhook rows become retryable. Legacy outbox rows already in `processing` are conservatively made terminal for manual reconciliation because the old schema cannot prove whether provider dispatch happened.
+
+Post-review migrations `0049` and `0050` add explicit webhook event leases/retry clocks and booking sequence support. The API and worker now share the same webhook event processor. Provider redelivery improves latency but is no longer required for recovery.
+
+All campaign actions now use the recipient ledger. `send` persists a campaign due immediately; `schedule` persists a future due time. The removed legacy campaign engine no longer creates messages or counters directly.
 
 The same logical `0040` migration now owns all WhatsApp P1 state. Integration ordering is payment `0039`, WhatsApp `0040`, submission `0041`; no second WhatsApp migration or generated journal/snapshot is added in the isolated lane.
 

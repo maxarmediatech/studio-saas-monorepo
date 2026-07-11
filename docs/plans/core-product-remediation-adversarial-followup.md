@@ -2,7 +2,7 @@
 
 > **Read when:** continuing, reviewing, merging, or deploying `codex/core-product-remediation` after the adversarial review.
 >
-> **Status:** approved implementation plan; production deployment remains blocked.
+> **Status:** implementation complete through rollout tooling; final validation and real-data deployment gates remain.
 >
 > **Accountable:** Rakesh. When Rakesh fills engineering, product, finance, and operations roles, each decision record must preserve evidence, alternatives, reasoning, and consequences instead of implying an independent sign-off.
 
