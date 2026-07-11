@@ -1,12 +1,10 @@
 import { ORPCError } from "@orpc/server";
 import { and, db, eq, sql } from "@repo/database";
 import { waCampaigns, waContacts, waTemplates } from "@repo/whatsapp-db";
+import { getCampaignAudienceConditions } from "@repo/whatsapp-runtime";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { findActiveWhatsAppAccount } from "../lib/account-repository";
-import {
-	getCampaignAudienceConditions,
-	runCampaignNow,
-} from "../lib/campaign-engine";
+import { buildCampaignTemplateParams } from "../lib/campaign-template-params";
 import { inspectWhatsAppTemplate } from "../lib/template-inspector";
 import {
 	createCampaignInputSchema,
@@ -112,12 +110,18 @@ export const createCampaign = studioProtectedProcedure
 			.where(and(...audienceConditions));
 
 		const now = new Date();
-		const status =
-			input.action === "schedule"
-				? "scheduled"
-				: input.action === "send"
-					? "running"
-					: "draft";
+		const status = input.action === "draft" ? "draft" : "scheduled";
+		const templateParams =
+			input.action === "draft"
+				? {
+						language: input.language,
+						variableValues: input.variableValues,
+					}
+				: buildCampaignTemplateParams({
+						language: input.language,
+						variables: inspection.variables,
+						variableValues: input.variableValues,
+					});
 		const [campaign] = await db
 			.insert(waCampaigns)
 			.values({
@@ -128,15 +132,15 @@ export const createCampaign = studioProtectedProcedure
 				status,
 				messageType: "template",
 				templateName: input.templateName,
-				templateParams: {
-					language: input.language,
-					variableValues: input.variableValues,
-				},
+				templateParams,
 				audienceFilter: input.audienceFilter,
 				estimatedRecipients: recipientCount?.count ?? 0,
 				scheduledAt:
-					input.action === "schedule" ? input.scheduledAt : null,
-				startedAt: input.action === "send" ? now : null,
+					input.action === "schedule"
+						? input.scheduledAt
+						: input.action === "send"
+							? now
+							: null,
 				createdByUserId: context.user.id,
 				updatedAt: now,
 			})
@@ -146,18 +150,6 @@ export const createCampaign = studioProtectedProcedure
 			throw new ORPCError("INTERNAL_SERVER_ERROR", {
 				message: "Failed to create broadcast",
 			});
-		}
-
-		if (input.action === "send") {
-			await runCampaignNow(campaign.id);
-			const refreshed = await db.query.waCampaigns.findFirst({
-				where: eq(waCampaigns.id, campaign.id),
-			});
-
-			return {
-				data: toCampaignItem(refreshed ?? campaign),
-				message: "Broadcast sent",
-			};
 		}
 
 		return {

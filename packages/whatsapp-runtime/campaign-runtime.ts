@@ -17,7 +17,7 @@ type AudienceFilter = {
 	excludeBlocked?: boolean;
 };
 
-const audienceConditions = (
+export const getCampaignAudienceConditions = (
 	organizationId: string,
 	accountId: string,
 	filter: AudienceFilter,
@@ -104,7 +104,7 @@ export const materializeCampaignRecipients = async (campaignId: string) => {
 			.from(waContacts)
 			.where(
 				and(
-					...audienceConditions(
+					...getCampaignAudienceConditions(
 						campaign.organizationId,
 						campaign.accountId,
 						filter,
