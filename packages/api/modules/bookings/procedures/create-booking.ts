@@ -9,10 +9,10 @@ import {
 	eq,
 	inArray,
 	isNull,
-	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { safeTrackActivity } from "../../activities/lib";
+import { allocateDocumentSequenceValue } from "../../financial-documents/lib/document-number-service";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	type TransactionClient,
@@ -44,29 +44,11 @@ async function generateReferenceNumber(
 	const studioPrefix = deriveStudioPrefix(orgName);
 	const yearMonth = `${String(now.getFullYear()).slice(-2)}${String(now.getMonth() + 1).padStart(2, "0")}`;
 	const prefix = `${studioPrefix}-${yearMonth}-`;
-
-	// Get the highest reference number for this month
-	const [lastBooking] = await tx
-		.select({ referenceNumber: bookings.referenceNumber })
-		.from(bookings)
-		.where(
-			and(
-				eq(bookings.organizationId, organizationId),
-				sql`${bookings.referenceNumber} LIKE ${`${prefix}%`}`,
-			),
-		)
-		.orderBy(sql`${bookings.referenceNumber} DESC`)
-		.limit(1);
-
-	let nextNumber = 1;
-	if (lastBooking?.referenceNumber) {
-		// Extract the last 4 digits (sequence number)
-		const lastNumberStr = lastBooking.referenceNumber.slice(-4);
-		const lastNumber = Number.parseInt(lastNumberStr, 10);
-		if (!Number.isNaN(lastNumber)) {
-			nextNumber = lastNumber + 1;
-		}
-	}
+	const nextNumber = await allocateDocumentSequenceValue(tx, {
+		organizationId,
+		documentType: "booking",
+		baseNumber: prefix,
+	});
 
 	if (nextNumber > 9999) {
 		throw new ORPCError("CONFLICT", {

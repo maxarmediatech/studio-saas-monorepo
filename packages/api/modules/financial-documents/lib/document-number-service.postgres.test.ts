@@ -10,13 +10,13 @@ describePostgres("financial document number allocation", () => {
 		const { bookings, db, eq, invoices, organizations } = await import(
 			"@repo/database"
 		);
-		const { allocateDocumentNumber } = await import(
-			"./document-number-service"
-		);
+		const { allocateDocumentNumber, allocateDocumentSequenceValue } =
+			await import("./document-number-service");
 		const suffix = `${process.pid}_${Date.now()}`;
 		const organizationId = `document_sequence_org_${suffix}`;
 		const bookingId = `document_sequence_booking_${suffix}`;
 		const baseNumber = `INV-DOC-${suffix}`;
+		const bookingBase = `BKG-${suffix}-`;
 
 		try {
 			await db.insert(organizations).values({
@@ -33,6 +33,25 @@ describePostgres("financial document number allocation", () => {
 				packageType: "test",
 				packageCost: "100.00",
 			});
+			await db.insert(bookings).values([
+				{
+					organizationId,
+					referenceNumber: `${bookingBase}0007`,
+					name: "Historical booking sequence",
+					bookingType: "test",
+					packageType: "test",
+					packageCost: "100.00",
+				},
+				{
+					organizationId,
+					referenceNumber: `${bookingBase}0009`,
+					name: "Deleted historical booking sequence",
+					bookingType: "test",
+					packageType: "test",
+					packageCost: "100.00",
+					deletedAt: new Date(),
+				},
+			]);
 			await db.insert(invoices).values([
 				{
 					organizationId,
@@ -95,6 +114,22 @@ describePostgres("financial document number allocation", () => {
 				}),
 			);
 			expect(receiptNumber).toBe(baseNumber);
+
+			const bookingValues = await Promise.all(
+				Array.from({ length: 10 }, () =>
+					db.transaction((tx) =>
+						allocateDocumentSequenceValue(tx, {
+							organizationId,
+							documentType: "booking",
+							baseNumber: bookingBase,
+						}),
+					),
+				),
+			);
+			expect(new Set(bookingValues).size).toBe(10);
+			expect(bookingValues.sort((a, b) => a - b)).toEqual(
+				Array.from({ length: 10 }, (_, index) => index + 10),
+			);
 		} finally {
 			await db
 				.delete(organizations)

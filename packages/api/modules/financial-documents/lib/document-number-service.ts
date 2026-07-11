@@ -1,5 +1,6 @@
 import {
 	and,
+	bookings,
 	documentSequences,
 	eq,
 	invoices,
@@ -8,9 +9,20 @@ import {
 } from "@repo/database";
 import type { TransactionClient } from "../../studio/lib/transactions";
 
-type DocumentType = "invoice" | "receipt";
+type DocumentType = "booking" | "invoice" | "receipt";
 
-function getAllocatedValue(baseNumber: string, documentNumber: string): number {
+function getAllocatedValue(
+	documentType: DocumentType,
+	baseNumber: string,
+	documentNumber: string,
+): number {
+	if (documentType === "booking") {
+		if (!documentNumber.startsWith(baseNumber)) {
+			return -1;
+		}
+		const suffix = documentNumber.slice(baseNumber.length);
+		return /^\d{4}$/.test(suffix) ? Number.parseInt(suffix, 10) : -1;
+	}
 	if (documentNumber === baseNumber) {
 		return 0;
 	}
@@ -31,46 +43,66 @@ async function getInitialValue(
 	},
 ): Promise<number> {
 	const rows =
-		input.documentType === "invoice"
+		input.documentType === "booking"
 			? await tx
-					.select({ documentNumber: invoices.invoiceNumber })
-					.from(invoices)
+					.select({ documentNumber: bookings.referenceNumber })
+					.from(bookings)
 					.where(
 						and(
-							eq(invoices.organizationId, input.organizationId),
-							sql`${invoices.invoiceNumber} LIKE ${`${input.baseNumber}%`}`,
+							eq(bookings.organizationId, input.organizationId),
+							sql`${bookings.referenceNumber} LIKE ${`${input.baseNumber}%`}`,
 						),
 					)
-			: await tx
-					.select({ documentNumber: receipts.receiptNumber })
-					.from(receipts)
-					.where(
-						and(
-							eq(receipts.organizationId, input.organizationId),
-							sql`${receipts.receiptNumber} LIKE ${`${input.baseNumber}%`}`,
-						),
-					);
+			: input.documentType === "invoice"
+				? await tx
+						.select({ documentNumber: invoices.invoiceNumber })
+						.from(invoices)
+						.where(
+							and(
+								eq(
+									invoices.organizationId,
+									input.organizationId,
+								),
+								sql`${invoices.invoiceNumber} LIKE ${`${input.baseNumber}%`}`,
+							),
+						)
+				: await tx
+						.select({ documentNumber: receipts.receiptNumber })
+						.from(receipts)
+						.where(
+							and(
+								eq(
+									receipts.organizationId,
+									input.organizationId,
+								),
+								sql`${receipts.receiptNumber} LIKE ${`${input.baseNumber}%`}`,
+							),
+						);
 
 	return (
 		rows.reduce(
 			(maximum, row) =>
 				Math.max(
 					maximum,
-					getAllocatedValue(input.baseNumber, row.documentNumber),
+					getAllocatedValue(
+						input.documentType,
+						input.baseNumber,
+						row.documentNumber,
+					),
 				),
-			-1,
+			input.documentType === "booking" ? 0 : -1,
 		) + 1
 	);
 }
 
-export async function allocateDocumentNumber(
+export async function allocateDocumentSequenceValue(
 	tx: TransactionClient,
 	input: {
 		organizationId: string;
 		documentType: DocumentType;
 		baseNumber: string;
 	},
-): Promise<string> {
+): Promise<number> {
 	const initialValue = await getInitialValue(tx, input);
 	const now = new Date();
 	const [sequence] = await tx
@@ -96,10 +128,20 @@ export async function allocateDocumentNumber(
 		.returning({ nextValue: documentSequences.nextValue });
 
 	if (!sequence) {
-		throw new Error("Failed to allocate financial document number");
+		throw new Error("Failed to allocate document sequence value");
 	}
+	return sequence.nextValue - 1;
+}
 
-	const allocatedValue = sequence.nextValue - 1;
+export async function allocateDocumentNumber(
+	tx: TransactionClient,
+	input: {
+		organizationId: string;
+		documentType: DocumentType;
+		baseNumber: string;
+	},
+): Promise<string> {
+	const allocatedValue = await allocateDocumentSequenceValue(tx, input);
 	return allocatedValue === 0
 		? input.baseNumber
 		: `${input.baseNumber}-${allocatedValue}`;

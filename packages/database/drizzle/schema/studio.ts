@@ -1307,7 +1307,7 @@ export const documentSequences = pgTable(
 		),
 		check(
 			"document_sequences_type_check",
-			sql`document_type IN ('invoice', 'receipt')`,
+			sql`document_type IN ('booking', 'invoice', 'receipt')`,
 		),
 		check("document_sequences_next_value_positive", sql`next_value > 0`),
 	],
