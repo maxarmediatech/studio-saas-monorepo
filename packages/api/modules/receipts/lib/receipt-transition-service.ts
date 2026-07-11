@@ -16,16 +16,24 @@ import {
 
 const MAX_RECEIPT_INSERT_ATTEMPTS = 5;
 
-function isReceiptNumberConflict(error: unknown): boolean {
-	const code = (error as { code?: string })?.code;
-	const constraint = (error as { constraint?: string })?.constraint;
-
-	return (
-		code === "23505" ||
-		constraint === "receipts_org_number_idx" ||
-		(error instanceof Error &&
-			error.message.toLowerCase().includes("receipts_org_number_idx"))
-	);
+export function isReceiptNumberConflict(error: unknown): boolean {
+	let current: unknown = error;
+	for (let depth = 0; depth < 4 && current; depth += 1) {
+		const candidate = current as {
+			code?: string;
+			constraint?: string;
+			message?: string;
+			cause?: unknown;
+		};
+		if (
+			candidate.constraint === "receipts_org_number_idx" ||
+			candidate.message?.toLowerCase().includes("receipts_org_number_idx")
+		) {
+			return candidate.code === undefined || candidate.code === "23505";
+		}
+		current = candidate.cause;
+	}
+	return false;
 }
 
 interface IssueReceiptInput {
