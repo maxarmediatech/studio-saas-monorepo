@@ -1,6 +1,5 @@
 import {
 	fetchDueWhatsAppOutboxItems,
-	markWhatsAppOutboxFailure,
 	processWhatsAppOutboxById,
 	processWhatsAppOutboxItem,
 } from "@repo/whatsapp-outbox";
@@ -43,24 +42,9 @@ export const recoverWhatsAppOutbox = schedules.task({
 						outboxId: item.outbox.id,
 					});
 				} catch (error) {
-					const attempts = (item.outbox.attempts ?? 0) + 1;
-					const maxAttempts = item.outbox.maxAttempts ?? 3;
-					const errorMessage =
-						error instanceof Error
-							? error.message
-							: "Failed to trigger WhatsApp outbox task";
-
 					logger.error("Failed to trigger WhatsApp recovery item", {
 						outboxId: item.outbox.id,
 						error,
-					});
-
-					await markWhatsAppOutboxFailure({
-						outboxId: item.outbox.id,
-						messageId: item.message.id,
-						attempts,
-						maxAttempts,
-						errorMessage,
 					});
 				}
 			}),
@@ -83,7 +67,9 @@ export const processWhatsAppOutboxBatch = schemaTask({
 		const items = await fetchDueWhatsAppOutboxItems({ limit });
 
 		for (const item of items) {
-			await processWhatsAppOutboxItem(item);
+			await processWhatsAppOutboxItem(item, {
+				workerId: `trigger-batch:${item.outbox.id}`,
+			});
 		}
 
 		return { processed: items.length };
