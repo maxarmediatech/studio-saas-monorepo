@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import {
 	and,
 	db,
@@ -125,6 +126,30 @@ export const fetchDueWhatsAppOutboxItems = async ({
 		)
 		.orderBy(desc(waOutbox.priority), waOutbox.createdAt)
 		.limit(limit);
+};
+
+export const processWhatsAppOutboxById = async (outboxId: string) => {
+	const [item] = await db
+		.select({
+			outbox: waOutbox,
+			message: waMessages,
+			account: waAccounts,
+			contact: waContacts,
+			media: waMedia,
+		})
+		.from(waOutbox)
+		.innerJoin(waMessages, eq(waOutbox.messageId, waMessages.id))
+		.innerJoin(waAccounts, eq(waOutbox.accountId, waAccounts.id))
+		.innerJoin(waContacts, eq(waMessages.contactId, waContacts.id))
+		.leftJoin(waMedia, eq(waMessages.mediaId, waMedia.id))
+		.where(eq(waOutbox.id, outboxId))
+		.limit(1);
+	if (!item) {
+		return { status: "skipped" as const };
+	}
+	return processWhatsAppOutboxItem(item, {
+		workerId: `trigger:${crypto.randomUUID()}`,
+	});
 };
 
 const claimOutboxItem = async (params: {
