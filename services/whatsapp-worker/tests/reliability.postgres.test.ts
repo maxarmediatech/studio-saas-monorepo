@@ -240,6 +240,8 @@ describe("WhatsApp worker PostgreSQL reliability", () => {
 			.update(waOutbox)
 			.set({
 				status: "processing",
+				attempts: 3,
+				maxAttempts: 3,
 				lockedBy: "dead-worker",
 				leaseExpiresAt: expired,
 				dispatchStartedAt: null,
@@ -257,6 +259,8 @@ describe("WhatsApp worker PostgreSQL reliability", () => {
 
 		const result = await recoverExpiredWhatsAppOutboxLeases();
 		expect(result).toEqual({ recovered: 1, unknown: 1 });
+		const repeated = await recoverExpiredWhatsAppOutboxLeases();
+		expect(repeated).toEqual({ recovered: 0, unknown: 0 });
 		const rows = await db
 			.select()
 			.from(waOutbox)
@@ -269,6 +273,10 @@ describe("WhatsApp worker PostgreSQL reliability", () => {
 		expect(rows.map((row) => row.id)).toContain(unknownOutbox.id);
 		const due = await fetchDueWhatsAppOutboxItems({ limit: 100 });
 		expect(due.map((item) => item.outbox.id)).toContain(safeOutbox.id);
+		expect(
+			due.find((item) => item.outbox.id === safeOutbox.id)?.outbox
+				.attempts,
+		).toBe(2);
 		expect(due.map((item) => item.outbox.id)).not.toContain(
 			unknownOutbox.id,
 		);
