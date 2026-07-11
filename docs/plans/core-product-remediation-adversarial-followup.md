@@ -31,6 +31,11 @@ This is a follow-up to [core-product-remediation.md](./core-product-remediation.
 | Voided receipts should not protect payments | Reject | Voided receipts are financial history. Ordinary edit/delete must stay blocked; correction uses reversal and replacement. Existing tests deliberately assert this policy. |
 | `--fix-approved` is implied but absent | Accept documentation gap; P1 | The decision file records approval but no executor exists. Do not imply that it mutates data. |
 | Repeated enqueue and claim code should be standardized | Accept as bounded cleanup; P2 | Share contracts and safe helpers, but keep table-specific SQL and do not introduce a queue library without an ADR. |
+| Campaign completes when recipients are only queued | Accept; P1; fixed | Completion is now derived from recipient terminal state. Enqueue failures remain pending with recorded error details for worker retry. |
+| `wa_contacts.account_id` permits NULL identities | Accept; P1; fixed | Preflight reports unowned contacts; migration `0051` safely assigns single-account organizations, aborts ambiguous rows, then enforces `NOT NULL`. |
+| Original create idempotency key replays after correction | Already fixed and tested | Correction soft-deletes the original payment. Replay requires an active result resource and returns `The original payment is no longer available` after correction/removal. |
+| Any `23505` is treated as a receipt-number collision | Accept; P1; fixed | Retry classification now requires `receipts_org_number_idx`, including wrapped driver errors. Other uniqueness failures surface immediately. |
+| Campaign counter projection is O(N²) during enqueue | Accept; P1; fixed | Per-recipient aggregation was removed. The campaign is projected once after the enqueue batch and thereafter once per delivery event. |
 
 ## Fixed decisions
 

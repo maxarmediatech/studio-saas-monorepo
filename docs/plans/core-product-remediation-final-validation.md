@@ -8,7 +8,7 @@
 
 **Code and clean-database validation: pass. Production rollout: conditional.**
 
-The branch is internally consistent, applies migrations `0000` through `0050` on a new PostgreSQL database, has no Drizzle schema drift, passes the complete API and worker test suites, passes monorepo type-check, and produces a successful Next.js production build.
+The branch is internally consistent, applies migrations `0000` through `0051` on a new PostgreSQL database, has no Drizzle schema drift, passes the complete API and worker test suites, passes monorepo type-check, and produces a successful Next.js production build.
 
 Production rollout still requires the data-dependent gates that cannot be proved from a local clean database:
 
@@ -61,6 +61,8 @@ Do not treat those four rollout gates as optional test debt. They depend on real
 - Removed the competing legacy campaign send engine; immediate and scheduled campaigns now use one recipient-ledger execution path.
 - Added autonomous webhook event claims, bounded replay, lease recovery, and a shared API/worker processor.
 - Restores an outbox attempt when a lease expires before provider dispatch, so a final unused attempt cannot strand the message.
+- Keeps campaigns running while recipients are merely queued; completion is derived from terminal recipient state and enqueue failures remain visible and retryable.
+- Enforces account ownership for every contact after a report-first, ambiguity-safe backfill.
 
 ### Expenses and billing
 
@@ -92,6 +94,7 @@ Do not treat those four rollout gates as optional test debt. They depend on real
 | `0048` | Billing seat reconciliation state | Additive; run reconciliation after deployment. |
 | `0049` | WhatsApp webhook replay leases and retry state | Additive; deploy before relying on autonomous replay. |
 | `0050` | Booking document sequence support | Additive; seeds from active and soft-deleted booking history. |
+| `0051` | WhatsApp contact account ownership | Reports NULL ownership, backfills only unambiguous single-account organizations, and aborts before `NOT NULL` when manual assignment is required. |
 
 The migrations are forward migrations; there is no verified automatic down-migration path. Take a database backup/snapshot before rollout and prefer roll-forward correction. Financial documents, reversals, receipt numbers, and idempotency tombstones must not be removed during rollback handling.
 
@@ -101,11 +104,11 @@ All commands used Node `24.14.0`, pnpm `10.23.0`, and PostgreSQL 17.
 
 | Gate | Result |
 |---|---|
-| Fresh migrations `0000` → `0050` | Pass; 51 migration records. |
+| Fresh migrations `0000` → `0051` | Pass; 52 migration records. |
 | Drizzle schema generation | Pass; no schema changes. |
 | Critical table/index/trigger inspection | Pass; payment, submission, Calendar, WhatsApp, sequence, and four financial guard objects present. |
 | Monorepo type-check | Pass; 28/28 tasks with `NODE_OPTIONS=--max-old-space-size=6144`. |
-| Full API suite with PostgreSQL gates | Pass; 70 files, 296 tests. |
+| Full API suite with PostgreSQL gates | Pass; 71 files, 298 tests. |
 | WhatsApp worker | Pass; 2 files, 8 tests. |
 | Calendar worker | Pass; 4 tests. |
 | Financial and Calendar scripts | Pass; 30 tests. |
