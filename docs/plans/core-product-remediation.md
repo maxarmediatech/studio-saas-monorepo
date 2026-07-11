@@ -8,6 +8,8 @@
 
 Final clean-database and release-gate evidence is recorded in [core-product-remediation-final-validation.md](./core-product-remediation-final-validation.md). Code validation passes; production rollout remains conditional on real-data reconciliation, sanitized migration rehearsal, and authenticated staging acceptance.
 
+The post-validation adversarial review found release-blocking gaps in WhatsApp campaign ownership, webhook replay, final-attempt outbox recovery, and cross-domain rollout sequencing. The approved follow-up and its superseding production gates are recorded in [core-product-remediation-adversarial-followup.md](./core-product-remediation-adversarial-followup.md).
+
 ## Outcome
 
 Stop active financial inconsistency first, determine whether existing production data has drifted, then repair transactional and asynchronous workflows in severity order.
