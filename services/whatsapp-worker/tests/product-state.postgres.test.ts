@@ -13,8 +13,8 @@ import {
 } from "@repo/whatsapp-db";
 import {
 	enqueueInboundAutomationRuns,
-	enqueueWhatsAppCampaign,
 	processAutomationRun,
+	processDueWhatsAppCampaigns,
 	recoverExpiredAutomationLeases,
 	transitionWhatsAppMessage,
 } from "@repo/whatsapp-runtime";
@@ -91,7 +91,7 @@ describe("WhatsApp product state PostgreSQL invariants", () => {
 	beforeAll(cleanup);
 	afterAll(cleanup);
 
-	it("materializes and enqueues one durable effect per campaign recipient", async () => {
+	it("uses one durable path for due campaigns under concurrent polling", async () => {
 		const first = await createConversation("campaign-a");
 		const [secondContact] = await db
 			.insert(waContacts)
@@ -113,15 +113,18 @@ describe("WhatsApp product state PostgreSQL invariants", () => {
 				organizationId: ORGANIZATION_ID,
 				accountId: first.account.id,
 				name: "Concurrent campaign",
+				status: "scheduled",
+				scheduledAt: new Date("2026-07-10T09:00:00.000Z"),
 				messageType: "text",
 				textBody: "hello",
 				audienceFilter: { linkType: "all" },
 			})
 			.returning();
 
+		const now = new Date("2026-07-10T10:00:00.000Z");
 		await Promise.all([
-			enqueueWhatsAppCampaign(campaign.id),
-			enqueueWhatsAppCampaign(campaign.id),
+			processDueWhatsAppCampaigns({ now }),
+			processDueWhatsAppCampaigns({ now }),
 		]);
 		await db.insert(waContacts).values({
 			organizationId: ORGANIZATION_ID,
@@ -129,7 +132,7 @@ describe("WhatsApp product state PostgreSQL invariants", () => {
 			waId: "91campaign-late",
 			phoneNumber: "91campaign-late",
 		});
-		await enqueueWhatsAppCampaign(campaign.id);
+		await processDueWhatsAppCampaigns({ now });
 		const recipients = await db
 			.select()
 			.from(waCampaignRecipients)
