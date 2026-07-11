@@ -220,7 +220,6 @@ export const enqueueCampaignRecipient = async (recipientId: string) =>
 				updatedAt: now,
 			})
 			.where(eq(waConversations.id, conversationId));
-		await refreshCampaignCounts(tx, campaign.id);
 		return { enqueued: true as const, recipientId: recipient.id };
 	});
 
@@ -252,21 +251,28 @@ export const enqueueWhatsAppCampaign = async (campaignId: string) => {
 			if (result.enqueued) {
 				enqueued += 1;
 			}
-		} catch {
+		} catch (error) {
 			failedRecipientIds.push(recipient.id);
+			await db
+				.update(waCampaignRecipients)
+				.set({
+					failureCode: "enqueue_failed",
+					failureMessage:
+						error instanceof Error
+							? error.message
+							: "Unknown enqueue failure",
+					updatedAt: new Date(),
+				})
+				.where(
+					and(
+						eq(waCampaignRecipients.id, recipient.id),
+						eq(waCampaignRecipients.status, "pending"),
+					),
+				);
 		}
 	}
 
-	if (failedRecipientIds.length === 0) {
-		await db
-			.update(waCampaigns)
-			.set({
-				status: "completed",
-				completedAt: new Date(),
-				updatedAt: new Date(),
-			})
-			.where(eq(waCampaigns.id, campaignId));
-	}
+	await db.transaction((tx) => refreshCampaignCounts(tx, campaignId));
 	return { enqueued, failedRecipientIds, recipients: recipients.length };
 };
 

@@ -61,6 +61,7 @@ export const refreshCampaignCounts = async (
 			totalFailed: sql<number>`count(*) filter (where ${waCampaignRecipients.status} = 'failed')::int`,
 			totalSuppressed: sql<number>`count(*) filter (where ${waCampaignRecipients.status} = 'suppressed')::int`,
 			totalDeliveryUnknown: sql<number>`count(*) filter (where ${waCampaignRecipients.status} = 'delivery_unknown')::int`,
+			activeRecipients: sql<number>`count(*) filter (where ${waCampaignRecipients.status} in ('pending', 'queued'))::int`,
 		})
 		.from(waCampaignRecipients)
 		.where(eq(waCampaignRecipients.campaignId, campaignId));
@@ -69,10 +70,24 @@ export const refreshCampaignCounts = async (
 		return;
 	}
 
+	const { activeRecipients, ...persistedCounts } = counts;
+	const now = new Date();
 	await tx
 		.update(waCampaigns)
-		.set({ ...counts, updatedAt: new Date() })
+		.set({ ...persistedCounts, updatedAt: now })
 		.where(eq(waCampaigns.id, campaignId));
+
+	if (activeRecipients === 0) {
+		await tx
+			.update(waCampaigns)
+			.set({ status: "completed", completedAt: now, updatedAt: now })
+			.where(
+				and(
+					eq(waCampaigns.id, campaignId),
+					eq(waCampaigns.status, "running"),
+				),
+			);
+	}
 };
 
 const updateRecipient = async (
