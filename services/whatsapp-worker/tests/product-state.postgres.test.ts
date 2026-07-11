@@ -150,6 +150,17 @@ describe("WhatsApp product state PostgreSQL invariants", () => {
 		expect(messages).toHaveLength(2);
 		expect(outbox).toHaveLength(2);
 		expect(recipients.every((row) => row.status === "queued")).toBe(true);
+		const [enqueuedCampaign] = await db
+			.select({
+				status: waCampaigns.status,
+				completedAt: waCampaigns.completedAt,
+			})
+			.from(waCampaigns)
+			.where(eq(waCampaigns.id, campaign.id));
+		expect(enqueuedCampaign).toEqual({
+			status: "running",
+			completedAt: null,
+		});
 
 		const [firstMessage, secondMessage] = messages;
 		const unknownAt = new Date("2026-07-10T10:00:00.000Z");
@@ -199,6 +210,8 @@ describe("WhatsApp product state PostgreSQL invariants", () => {
 			.where(eq(waMessages.id, firstMessage.id));
 		expect(updatedMessage.status).toBe("read");
 		expect(updatedCampaign).toMatchObject({
+			status: "completed",
+			completedAt: expect.any(Date),
 			totalRecipients: 2,
 			totalQueued: 2,
 			totalSent: 1,
