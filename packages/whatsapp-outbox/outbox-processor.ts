@@ -73,6 +73,7 @@ export const recoverExpiredWhatsAppOutboxLeases = async (now = new Date()) =>
 			.update(waOutbox)
 			.set({
 				status: "pending",
+				attempts: sql`greatest(coalesce(${waOutbox.attempts}, 0) - 1, 0)`,
 				lockedBy: null,
 				leaseExpiresAt: null,
 				nextAttemptAt: now,
