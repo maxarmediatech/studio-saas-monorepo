@@ -84,6 +84,22 @@ describePostgres("canonical booking expense totals", () => {
 			});
 			await db.transaction(async (tx) => {
 				await tx
+					.update(shoots)
+					.set({ deletedAt: new Date() })
+					.where(eq(shoots.id, shootId));
+				await refreshBookingExpenseTotalsForExpense(
+					tx,
+					shootExpense?.id ?? "missing",
+					null,
+				);
+			});
+			const afterShootDelete = await db.query.bookings.findFirst({
+				where: eq(bookings.id, bookingId),
+			});
+			expect(afterShootDelete?.totalExpenses).toBe("125.00");
+
+			await db.transaction(async (tx) => {
+				await tx
 					.update(expenses)
 					.set({ deletedAt: new Date() })
 					.where(eq(expenses.id, shootExpense?.id ?? "missing"));
