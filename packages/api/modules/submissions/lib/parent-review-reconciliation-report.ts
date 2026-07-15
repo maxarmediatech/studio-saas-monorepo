@@ -46,14 +46,29 @@ function buildMismatch(input: {
 	actualStatus: AggregateWorkflowStatus;
 	actualApprovalTime: Date | null;
 	expectedStatus: AggregateWorkflowStatus;
+	expectedApprovalTime: Date | null;
 	approvalTimeEvidenceComplete: boolean;
 }): ParentReviewMismatch | null {
-	const expectedApprovalTime =
+	const approvalEvidenceFloor =
 		input.expectedStatus === "approved" &&
-		input.actualStatus === "approved" &&
-		input.actualApprovalTime
-			? input.actualApprovalTime
+		input.approvalTimeEvidenceComplete
+			? input.expectedApprovalTime
 			: null;
+	const approvalTimePrecedesEvidence = Boolean(
+		input.expectedStatus === "approved" &&
+			input.actualStatus === "approved" &&
+			input.actualApprovalTime &&
+			approvalEvidenceFloor &&
+			input.actualApprovalTime < approvalEvidenceFloor,
+	);
+	const expectedApprovalTime =
+		approvalTimePrecedesEvidence && approvalEvidenceFloor
+			? approvalEvidenceFloor
+			: input.expectedStatus === "approved" &&
+					input.actualStatus === "approved" &&
+					input.actualApprovalTime
+				? input.actualApprovalTime
+				: null;
 	const statusMismatch = input.actualStatus !== input.expectedStatus;
 	const missingApprovalTime =
 		input.expectedStatus === "approved" &&
@@ -68,7 +83,8 @@ function buildMismatch(input: {
 		!statusMismatch &&
 		!missingApprovalTime &&
 		!staleApprovalTime &&
-		!approvalEvidenceIncomplete
+		!approvalEvidenceIncomplete &&
+		!approvalTimePrecedesEvidence
 	) {
 		return null;
 	}
@@ -79,14 +95,17 @@ function buildMismatch(input: {
 				? ("complete" as const)
 				: ("incomplete" as const);
 	// Submission review times prove the aggregate status, but they cannot prove
-	// when an assignment change made the aggregate approved. Existing approval
-	// timestamps are therefore preserved, and any missing approved transition
-	// time requires manual historical review.
+	// when an assignment change made the aggregate approved. They are only a
+	// lower bound: equal/later approval timestamps are preserved, while earlier
+	// or missing transition times require manual historical review.
 	const repairable = input.expectedStatus !== "approved";
 	const reasons = [
 		statusMismatch ? "workflow_status_mismatch" : null,
 		missingApprovalTime ? "approval_timestamp_missing" : null,
 		staleApprovalTime ? "approval_timestamp_stale" : null,
+		approvalTimePrecedesEvidence
+			? "approval_timestamp_precedes_evidence"
+			: null,
 		approvalEvidenceIncomplete ? "approval_evidence_incomplete" : null,
 	].filter((reason): reason is string => reason !== null);
 	return {
@@ -328,6 +347,7 @@ export async function queryParentReviewMismatches(
 					actualStatus: row.workflowStatus,
 					actualApprovalTime: row.approvalTime,
 					expectedStatus: projection.workflowStatus,
+					expectedApprovalTime: projection.approvalTime,
 					approvalTimeEvidenceComplete:
 						projection.approvalTimeEvidenceComplete,
 				});

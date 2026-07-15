@@ -427,10 +427,18 @@ describePostgres("parent review reconciliation on PostgreSQL", () => {
 			repairable: true,
 		});
 		expect(
-			report.mismatches.some(
+			report.mismatches.find(
 				(mismatch) => mismatch.parentId === ids.approvedDeliverable,
 			),
-		).toBe(false);
+		).toMatchObject({
+			actualStatus: "approved",
+			expectedStatus: "approved",
+			actualApprovalTime: staleApproval.toISOString(),
+			expectedApprovalTime: finalApproval.toISOString(),
+			approvalTimeEvidence: "complete",
+			repairable: false,
+			reason: "approval_timestamp_precedes_evidence",
+		});
 		expect(
 			report.mismatches.find(
 				(mismatch) => mismatch.parentId === ids.incompleteTask,
@@ -461,6 +469,10 @@ describePostgres("parent review reconciliation on PostgreSQL", () => {
 		expect(repaired.skipped).toContainEqual({
 			parentId: ids.incompleteTask,
 			reason: "approval_evidence_incomplete",
+		});
+		expect(repaired.skipped).toContainEqual({
+			parentId: ids.approvedDeliverable,
+			reason: "approval_timestamp_precedes_evidence",
 		});
 		expect(
 			await db.query.tasks.findFirst({
@@ -515,6 +527,10 @@ describePostgres("parent review reconciliation on PostgreSQL", () => {
 		expect(second.skipped).toContainEqual({
 			parentId: ids.incompleteTask,
 			reason: "approval_evidence_incomplete",
+		});
+		expect(second.skipped).toContainEqual({
+			parentId: ids.approvedDeliverable,
+			reason: "approval_timestamp_precedes_evidence",
 		});
 	});
 });

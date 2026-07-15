@@ -78,7 +78,11 @@ export async function repairReviewedParentReviewMismatches(input: {
 				parentId: mismatch.parentId,
 				reason: mismatch.reason.includes("approval_evidence_incomplete")
 					? "approval_evidence_incomplete"
-					: "approval_transition_time_unavailable",
+					: mismatch.reason.includes(
+								"approval_timestamp_precedes_evidence",
+							)
+						? "approval_timestamp_precedes_evidence"
+						: "approval_transition_time_unavailable",
 			});
 			continue;
 		}
