@@ -2,6 +2,7 @@ import { pathToFileURL } from "node:url";
 import { db, sql } from "@repo/database";
 import type { RawMismatch } from "./financial-reconciliation";
 import {
+	COLLECTIBLE_INVOICE_STATUSES,
 	classifyMismatch,
 	MISMATCH_TYPES,
 	runIsolatedSafeFixes,
@@ -12,6 +13,30 @@ import {
 	parseReconciliationArguments,
 	resultRows,
 } from "./financial-reconciliation-command";
+
+const COLLECTIBLE_INVOICE_STATUSES_SQL = sql.raw(
+	COLLECTIBLE_INVOICE_STATUSES.map((status) => `'${status}'`).join(", "),
+);
+
+function expectedInvoiceStatusSql(input: {
+	status: string;
+	paidAmount: string;
+	totalAmount: string;
+	dueDate: string;
+	asOf: string;
+}) {
+	const status = sql.raw(input.status);
+	const paidAmount = sql.raw(input.paidAmount);
+	const totalAmount = sql.raw(input.totalAmount);
+	const dueDate = sql.raw(input.dueDate);
+	return sql`CASE
+		WHEN ${status} NOT IN (${COLLECTIBLE_INVOICE_STATUSES_SQL}) THEN ${status}
+		WHEN ${paidAmount} >= ${totalAmount} THEN 'paid'
+		WHEN ${status} = 'overdue' OR (${dueDate} IS NOT NULL AND ${dueDate} < ${input.asOf}) THEN 'overdue'
+		WHEN ${paidAmount} > 0 THEN 'partial'
+		ELSE 'sent'
+	END`;
+}
 
 type QueryRow = RawMismatch & {
 	actualStatus?: string | null;
@@ -114,6 +139,13 @@ export async function queryFinancialMismatches(
 	organizationId: string,
 	asOf: string,
 ) {
+	const expectedInvoiceStatus = expectedInvoiceStatusSql({
+		status: "i.status",
+		paidAmount: "totals.amount",
+		totalAmount: "i.total_amount",
+		dueDate: "i.due_date",
+		asOf,
+	});
 	const results = await Promise.all([
 		db.execute(sql`${SAFE_RELATIONSHIP_CTES}
 			SELECT b.organization_id AS "organizationId",
@@ -295,13 +327,15 @@ export async function queryFinancialMismatches(
 							)
 						END
 						),
-						'applicationInvalidCount', totals.invalid_links
+						'applicationInvalidCount', totals.invalid_links,
+						'collectibleState', i.status IN (${COLLECTIBLE_INVOICE_STATUSES_SQL}),
+						'historicalStateInconsistency',
+							i.status NOT IN (${COLLECTIBLE_INVOICE_STATUSES_SQL}) AND (
+								totals.amount > 0 OR (i.status = 'paid' AND totals.amount < i.total_amount)
+							)
 					) AS "details",
 				totals.amount > i.total_amount AS "exceedsUpperBound",
-				CASE WHEN totals.amount >= i.total_amount THEN 'paid'
-					WHEN i.status = 'overdue' OR (i.due_date IS NOT NULL AND i.due_date < ${asOf}) THEN 'overdue'
-					WHEN totals.amount > 0 THEN 'partial'
-					WHEN i.status IN ('paid', 'partial') THEN 'sent' ELSE i.status END AS "expectedStatus",
+				${expectedInvoiceStatus} AS "expectedStatus",
 				totals.invalid_links AS "invalidLinkCount"
 			FROM invoices i
 			JOIN invoice_totals totals ON totals.id = i.id
@@ -310,11 +344,13 @@ export async function queryFinancialMismatches(
 			LEFT JOIN payment_schedules s ON s.id = i.payment_schedule_id
 			LEFT JOIN bookings sb ON sb.id = s.booking_id
 			WHERE i.organization_id = ${organizationId} AND i.deleted_at IS NULL
-				AND (i.paid_amount <> totals.amount OR i.status <> CASE
-					WHEN totals.amount >= i.total_amount THEN 'paid'
-					WHEN i.status = 'overdue' OR (i.due_date IS NOT NULL AND i.due_date < ${asOf}) THEN 'overdue'
-					WHEN totals.amount > 0 THEN 'partial'
-					WHEN i.status IN ('paid', 'partial') THEN 'sent' ELSE i.status END)
+				AND (
+					i.paid_amount <> totals.amount
+					OR i.status <> ${expectedInvoiceStatus}
+					OR (i.status NOT IN (${COLLECTIBLE_INVOICE_STATUSES_SQL}) AND (
+						totals.amount > 0 OR (i.status = 'paid' AND totals.amount < i.total_amount)
+					))
+				)
 		`),
 		db.execute(sql`
 			SELECT r.organization_id AS "organizationId",
@@ -527,6 +563,13 @@ export async function applySafeFinancialFixes(
 	asOf: string,
 	mismatches: FinancialReconciliationReport["mismatches"],
 ) {
+	const expectedInvoiceStatus = expectedInvoiceStatusSql({
+		status: "i.status",
+		paidAmount: "invoice_totals.amount",
+		totalAmount: "i.total_amount",
+		dueDate: "i.due_date",
+		asOf,
+	});
 	const safe = mismatches.filter((mismatch) => mismatch.safeFixAvailable);
 	return runIsolatedSafeFixes(safe, async (mismatch) =>
 		db.transaction(async (tx) => {
@@ -620,15 +663,12 @@ export async function applySafeFinancialFixes(
 								AND i.deleted_at IS NULL
 						)
 						UPDATE invoices i SET paid_amount = invoice_totals.amount,
-							status = CASE WHEN invoice_totals.amount >= i.total_amount THEN 'paid'
-								WHEN i.status = 'overdue' OR (i.due_date IS NOT NULL AND i.due_date < ${asOf}) THEN 'overdue'
-								WHEN invoice_totals.amount > 0 THEN 'partial'
-								WHEN i.status IN ('paid', 'partial') THEN 'sent' ELSE i.status END,
+							status = ${expectedInvoiceStatus},
 							updated_at = NOW()
 						FROM invoice_totals
 						WHERE i.id = invoice_totals.id AND invoice_totals.invalid_links = 0
 							AND invoice_totals.amount <= i.total_amount
-							AND i.status <> 'draft'
+							AND i.status IN (${COLLECTIBLE_INVOICE_STATUSES_SQL})
 							AND EXISTS (SELECT 1 FROM invoice_chain ic
 								WHERE ic.id = i.id AND ic.chain_valid)
 							AND EXISTS (SELECT 1 FROM bookings parent_booking

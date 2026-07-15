@@ -11,6 +11,20 @@ export const MISMATCH_TYPES = [
 
 export type MismatchType = (typeof MISMATCH_TYPES)[number];
 
+export const COLLECTIBLE_INVOICE_STATUSES = [
+	"sent",
+	"partial",
+	"overdue",
+] as const;
+
+export function isCollectibleInvoiceStatus(
+	status: string | null | undefined,
+): boolean {
+	return COLLECTIBLE_INVOICE_STATUSES.some(
+		(collectibleStatus) => collectibleStatus === status,
+	);
+}
+
 export type SafeFixAction =
 	| "recalculate_booking_total"
 	| "recalculate_schedule_paid_amount"
@@ -120,14 +134,16 @@ export function classifyMismatch(raw: RawMismatch): Mismatch {
 				toBoolean(raw.parentLinksValid)
 			: toBoolean(raw.safeRepairLinksValid);
 	const isCancelled = raw.actualStatus === "cancelled";
-	const isDraft = raw.actualStatus === "draft";
+	const invoiceStateAllowsSafeFix =
+		raw.mismatchType !== "invoice_paid_status_vs_valid_applications" ||
+		isCollectibleInvoiceStatus(raw.actualStatus);
 	const safeFixAvailable =
 		action !== null &&
 		noInvalidLinks &&
 		safeRepairLinksValid &&
 		withinUpperBound &&
 		!isCancelled &&
-		!isDraft;
+		invoiceStateAllowsSafeFix;
 
 	return {
 		...raw,

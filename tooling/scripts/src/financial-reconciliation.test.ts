@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
 	classifyMismatch,
 	isCalendarDate,
+	isCollectibleInvoiceStatus,
 	MISMATCH_TYPES,
 	runIsolatedSafeFixes,
 	sortMismatches,
@@ -93,6 +94,24 @@ describe("financial reconciliation taxonomy", () => {
 		assert.equal(draft.safeFixAvailable, false);
 		assert.equal(draftAmountOnly.safeFixAvailable, false);
 		assert.equal(draftAmountOnly.intendedAction, null);
+	});
+
+	it("allows safe repair only for collectible invoice states", () => {
+		for (const status of ["sent", "partial", "overdue"]) {
+			assert.equal(isCollectibleInvoiceStatus(status), true);
+		}
+		for (const status of ["draft", "cancelled", "paid", "voided"]) {
+			assert.equal(isCollectibleInvoiceStatus(status), false);
+			const mismatch = classifyMismatch({
+				...base,
+				entityType: "invoice",
+				mismatchType: "invoice_paid_status_vs_valid_applications",
+				actualStatus: status,
+				expectedStatus: status,
+			});
+			assert.equal(mismatch.safeFixAvailable, false);
+			assert.equal(mismatch.intendedAction, null);
+		}
 	});
 
 	it("does not auto-fix schedule or invoice aggregates with invalid parents", () => {

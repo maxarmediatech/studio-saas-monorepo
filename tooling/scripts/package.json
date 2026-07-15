@@ -21,7 +21,7 @@
 		"backfill:checkin-dates": "dotenv -c -e ../../.env -- tsx ./src/backfill-checkin-dates.ts",
 		"notifications:deadlines": "dotenv -c -e ../../.env -- tsx ./src/send-deadline-reminders.ts",
 		"financial-reconciliation": "dotenv -c -e ../../.env -- tsx ./src/reconcile-financials.ts",
-		"test": "tsx --test ./src/financial-reconciliation.test.ts ./src/financial-reconciliation.postgres.test.ts ./src/financial-reconciliation.relationships.postgres.test.ts",
+		"test": "tsx --test ./src/financial-reconciliation.test.ts ./src/financial-reconciliation.postgres.test.ts ./src/financial-reconciliation.relationships.postgres.test.ts ./src/financial-reconciliation-terminal-invoices.postgres.test.ts",
 		"type-check": "tsc --noEmit"
 	},
 	"version": "0.0.0"
