@@ -23,8 +23,9 @@
 		"calendar:reconcile": "dotenv -c -e ../../.env -- tsx ./src/reconcile-calendar-deliveries.ts",
 		"financial-reconciliation": "dotenv -c -e ../../.env -- tsx ./src/reconcile-financials.ts",
 		"financial:migration-preflight": "dotenv -c -e ../../.env -- tsx ./src/financial-migration-preflight.ts",
+		"whatsapp:migration-preflight": "dotenv -c -e ../../.env -- tsx ./src/whatsapp-migration-preflight.ts",
 		"submissions:reconcile-parent-review": "dotenv -c -e ../../.env -- tsx ./src/reconcile-parent-review-aggregates.ts",
-		"test": "tsx --test ./src/financial-reconciliation.test.ts ./src/financial-reconciliation.postgres.test.ts ./src/financial-reconciliation.relationships.postgres.test.ts ./src/financial-reconciliation-terminal-invoices.postgres.test.ts ./src/financial-migration-preflight.test.ts ./src/reconcile-calendar-deliveries.test.ts ./src/reconcile-parent-review-aggregates.test.ts",
+		"test": "tsx --test ./src/financial-reconciliation.test.ts ./src/financial-reconciliation.postgres.test.ts ./src/financial-reconciliation.relationships.postgres.test.ts ./src/financial-reconciliation-terminal-invoices.postgres.test.ts ./src/financial-migration-preflight.test.ts ./src/reconcile-calendar-deliveries.test.ts ./src/reconcile-parent-review-aggregates.test.ts ./src/whatsapp-migration-preflight.test.ts ./src/whatsapp-migration-preflight.postgres.test.ts",
 		"type-check": "tsc --noEmit"
 	},
 	"version": "0.0.0"
