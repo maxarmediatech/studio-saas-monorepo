@@ -19,7 +19,10 @@ const mocks = vi.hoisted(() => {
 			return chain;
 		}),
 	};
-	const tx = { insert: vi.fn() };
+	const tx = {
+		insert: vi.fn(),
+		query: { invoices: { findFirst: vi.fn() } },
+	};
 
 	return {
 		chain,
@@ -72,6 +75,7 @@ vi.mock("@repo/database", () => ({
 		transaction: mocks.mockTransaction,
 	},
 	eq: vi.fn((column: unknown, value: unknown) => ({ column, value })),
+	invoices: {},
 	isNull: vi.fn((column: unknown) => ({ column })),
 	paymentSchedules: {},
 	receipts: {},
@@ -85,6 +89,7 @@ import "./create-received";
 describe("create received invoice locking", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mocks.tx.query.invoices.findFirst.mockResolvedValue(null);
 		mocks.mockCreateReceivedPaymentIdempotently.mockImplementation(
 			async (tx, input) => {
 				const result = await createReceivedPaymentTransition(tx, input);

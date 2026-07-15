@@ -9,12 +9,7 @@ import {
 	receivedAmounts,
 	sql,
 } from "@repo/database";
-import {
-	getLockedBookingForReceipt,
-	getLockedInvoiceForReceipt,
-	getLockedScheduleForReceipt,
-	getLockedScheduleInvoiceForReceipt,
-} from "../../receipts/lib/locked-invoice-for-receipt";
+import { getLockedBookingForReceipt } from "../../receipts/lib/locked-invoice-for-receipt";
 import { updateInvoicePaymentStatus } from "../../receipts/lib/receipt-helpers";
 import { insertReceiptWithGeneratedNumber } from "../../receipts/lib/receipt-transition-service";
 import type { TransactionClient } from "../../studio/lib/transactions";
@@ -22,6 +17,7 @@ import type {
 	ConvertScheduleInput,
 	CreateReceivedInput,
 } from "../../studio/schemas/payment";
+import { resolveLockedPaymentRelationships } from "./payment-relationship-closure";
 import { buildSchedulePaymentTransition } from "./schedule-payment-transition";
 
 interface PaymentActor {
@@ -41,36 +37,8 @@ export async function createReceivedPaymentTransition(
 		throw new ORPCError("NOT_FOUND", { message: "Booking not found" });
 	}
 
-	const invoice = input.invoiceId
-		? await getLockedInvoiceForReceipt(tx, {
-				organizationId: input.organizationId,
-				bookingId: input.bookingId,
-				invoiceId: input.invoiceId,
-			})
-		: null;
-	if (input.invoiceId && !invoice) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Invoice not found or does not belong to this booking",
-		});
-	}
-
-	const schedule = input.paymentScheduleId
-		? await getLockedScheduleForReceipt(tx, {
-				organizationId: input.organizationId,
-				bookingId: input.bookingId,
-				paymentScheduleId: input.paymentScheduleId,
-			})
-		: null;
-	if (input.paymentScheduleId && !schedule) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Payment schedule not found",
-		});
-	}
-	if (invoice && schedule && invoice.paymentScheduleId !== schedule.id) {
-		throw new ORPCError("CONFLICT", {
-			message: "Invoice does not belong to the selected payment schedule",
-		});
-	}
+	const relationships = await resolveLockedPaymentRelationships(tx, input);
+	const { invoice, schedule } = relationships;
 
 	const scheduleUpdate = schedule
 		? buildSchedulePaymentTransition(
@@ -90,8 +58,8 @@ export async function createReceivedPaymentTransition(
 			receivedDate: input.receivedDate,
 			notes: input.notes ?? null,
 			proofAttachment: input.proofAttachment ?? null,
-			paymentScheduleId: input.paymentScheduleId ?? null,
-			invoiceId: input.invoiceId ?? null,
+			paymentScheduleId: relationships.paymentScheduleId,
+			invoiceId: relationships.invoiceId,
 			createdBy: input.userId,
 			updatedBy: input.userId,
 		})
@@ -102,14 +70,14 @@ export async function createReceivedPaymentTransition(
 		});
 	}
 
-	if (invoice && input.invoiceId) {
+	if (invoice) {
 		await insertReceiptWithGeneratedNumber(tx, {
 			organizationId: input.organizationId,
 			bookingId: input.bookingId,
 			values: {
 				organizationId: input.organizationId,
 				bookingId: input.bookingId,
-				invoiceId: input.invoiceId,
+				invoiceId: invoice.id,
 				receivedAmountId: created.id,
 				amount: input.amount,
 				paymentMethod: input.paymentMethod,
@@ -119,7 +87,7 @@ export async function createReceivedPaymentTransition(
 				updatedBy: input.userId,
 			},
 		});
-		await updateInvoicePaymentStatus(tx, input.invoiceId, input.userId);
+		await updateInvoicePaymentStatus(tx, invoice.id, input.userId);
 	}
 
 	await tx
@@ -131,7 +99,7 @@ export async function createReceivedPaymentTransition(
 		})
 		.where(eq(bookings.id, input.bookingId));
 
-	if (input.paymentScheduleId && scheduleUpdate) {
+	if (schedule && scheduleUpdate) {
 		await tx
 			.update(paymentSchedules)
 			.set({
@@ -141,7 +109,7 @@ export async function createReceivedPaymentTransition(
 				updatedAt: new Date(),
 				updatedBy: input.userId,
 			})
-			.where(eq(paymentSchedules.id, input.paymentScheduleId));
+			.where(eq(paymentSchedules.id, schedule.id));
 	}
 
 	return { id: created.id, bookingName: booking.name };
@@ -171,16 +139,13 @@ export async function convertSchedulePaymentTransition(
 	if (!booking) {
 		throw new ORPCError("NOT_FOUND", { message: "Booking not found" });
 	}
-	const linkedInvoice = await getLockedScheduleInvoiceForReceipt(tx, {
+	const relationships = await resolveLockedPaymentRelationships(tx, {
 		organizationId: input.organizationId,
 		bookingId: lockPlan.bookingId,
 		paymentScheduleId: input.scheduleId,
 	});
-	const schedule = await getLockedScheduleForReceipt(tx, {
-		organizationId: input.organizationId,
-		bookingId: lockPlan.bookingId,
-		paymentScheduleId: input.scheduleId,
-	});
+	const linkedInvoice = relationships.invoice;
+	const schedule = relationships.schedule;
 	if (!schedule) {
 		throw new ORPCError("NOT_FOUND", {
 			message: "Payment schedule not found",

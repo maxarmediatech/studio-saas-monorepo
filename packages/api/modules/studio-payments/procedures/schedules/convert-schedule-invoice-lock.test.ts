@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => {
 		insert: vi.fn(),
 		update: vi.fn(),
 		query: {
+			invoices: { findFirst: vi.fn() },
 			paymentSchedules: { findFirst: vi.fn() },
 			receipts: { findFirst: vi.fn() },
 			receivedAmounts: { findFirst: vi.fn() },
@@ -33,8 +34,11 @@ const mocks = vi.hoisted(() => {
 		chain,
 		getHandler: () => handler,
 		mockGetLockedBookingForReceipt: vi.fn(),
+		mockGetLockedInvoiceForReceipt: vi.fn(),
 		mockGetLockedScheduleForReceipt: vi.fn(),
-		mockGetLockedScheduleInvoiceForReceipt: vi.fn(),
+		mockInsertReceiptWithGeneratedNumber: vi.fn(async () => ({
+			id: "receipt_1",
+		})),
 		mockConvertSchedulePaymentIdempotently: vi.fn(),
 		mockRequirePermission: vi.fn(),
 		mockTransaction: vi.fn(async (callback) => callback(tx)),
@@ -52,14 +56,18 @@ vi.mock("../../../studio/lib/permissions", () => ({
 
 vi.mock("../../../receipts/lib/locked-invoice-for-receipt", () => ({
 	getLockedBookingForReceipt: mocks.mockGetLockedBookingForReceipt,
+	getLockedInvoiceForReceipt: mocks.mockGetLockedInvoiceForReceipt,
 	getLockedScheduleForReceipt: mocks.mockGetLockedScheduleForReceipt,
-	getLockedScheduleInvoiceForReceipt:
-		mocks.mockGetLockedScheduleInvoiceForReceipt,
 }));
 
 vi.mock("../../../receipts/lib/receipt-helpers", () => ({
 	generateReceiptNumber: vi.fn(),
 	updateInvoicePaymentStatus: vi.fn(),
+}));
+
+vi.mock("../../../receipts/lib/receipt-transition-service", () => ({
+	insertReceiptWithGeneratedNumber:
+		mocks.mockInsertReceiptWithGeneratedNumber,
 }));
 
 vi.mock("../../../studio/lib/money", () => ({
@@ -95,6 +103,7 @@ import "./convert-schedule";
 describe("schedule conversion invoice locking", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mocks.tx.query.invoices.findFirst.mockResolvedValue(null);
 		mocks.mockConvertSchedulePaymentIdempotently.mockImplementation(
 			async (tx, input) => {
 				const result = await convertSchedulePaymentTransition(
@@ -175,7 +184,10 @@ describe("schedule conversion invoice locking", () => {
 	});
 
 	it("rejects a cancelled linked invoice before creating the payment", async () => {
-		mocks.mockGetLockedScheduleInvoiceForReceipt.mockRejectedValue(
+		mocks.tx.query.invoices.findFirst.mockResolvedValue({
+			id: "invoice_1",
+		});
+		mocks.mockGetLockedInvoiceForReceipt.mockRejectedValue(
 			new Error("Cannot issue a receipt for a cancelled invoice"),
 		);
 		const handler = mocks.getHandler();
@@ -196,22 +208,25 @@ describe("schedule conversion invoice locking", () => {
 			}),
 		).rejects.toThrow("Cannot issue a receipt for a cancelled invoice");
 
-		expect(
-			mocks.mockGetLockedScheduleInvoiceForReceipt,
-		).toHaveBeenCalledWith(mocks.tx, {
-			organizationId: "org_1",
-			bookingId: "booking_1",
-			paymentScheduleId: "schedule_1",
-		});
+		expect(mocks.mockGetLockedInvoiceForReceipt).toHaveBeenCalledWith(
+			mocks.tx,
+			{
+				organizationId: "org_1",
+				bookingId: "booking_1",
+				invoiceId: "invoice_1",
+			},
+		);
 		expect(mocks.tx.insert).not.toHaveBeenCalled();
 	});
 
 	it("propagates a changed invoice schedule relationship before payment", async () => {
-		mocks.mockGetLockedScheduleInvoiceForReceipt.mockRejectedValue(
-			new Error(
-				"Invoice payment schedule relationship changed. Retry the request.",
-			),
-		);
+		mocks.tx.query.invoices.findFirst
+			.mockResolvedValueOnce({ id: "invoice_1" })
+			.mockResolvedValueOnce(null);
+		mocks.mockGetLockedInvoiceForReceipt.mockResolvedValue({
+			id: "invoice_1",
+			paymentScheduleId: "schedule_1",
+		});
 
 		await expect(
 			mocks.getHandler()?.({
@@ -238,12 +253,13 @@ describe("schedule conversion invoice locking", () => {
 			order.push("booking");
 			return { id: "booking_1", name: "Booking" };
 		});
-		mocks.mockGetLockedScheduleInvoiceForReceipt.mockImplementation(
-			async () => {
-				order.push("invoice");
-				return null;
-			},
-		);
+		mocks.tx.query.invoices.findFirst.mockResolvedValue({
+			id: "invoice_1",
+		});
+		mocks.mockGetLockedInvoiceForReceipt.mockImplementation(async () => {
+			order.push("invoice");
+			return { id: "invoice_1", paymentScheduleId: "schedule_1" };
+		});
 		mocks.mockGetLockedScheduleForReceipt.mockImplementation(async () => {
 			order.push("schedule");
 			return {
@@ -280,7 +296,6 @@ describe("schedule conversion invoice locking", () => {
 	});
 
 	it("returns a deterministic conflict after a schedule was converted", async () => {
-		mocks.mockGetLockedScheduleInvoiceForReceipt.mockResolvedValue(null);
 		mocks.mockGetLockedScheduleForReceipt.mockResolvedValue({
 			id: "schedule_1",
 			organizationId: "org_1",

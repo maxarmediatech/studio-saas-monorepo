@@ -11,15 +11,14 @@ import {
 } from "@repo/database";
 import {
 	getLockedBookingForReceipt,
-	getLockedInvoiceForReceipt,
 	getLockedReceiptHistoryForPayment,
-	getLockedScheduleForReceipt,
 } from "../../receipts/lib/locked-invoice-for-receipt";
 import { updateInvoicePaymentStatus } from "../../receipts/lib/receipt-helpers";
 import { insertReceiptWithGeneratedNumber } from "../../receipts/lib/receipt-transition-service";
 import { centsToMoney, moneyToCents } from "../../studio/lib/money";
 import type { TransactionClient } from "../../studio/lib/transactions";
 import type { CorrectReceivedInput } from "../../studio/schemas/payment";
+import { resolveLockedPaymentRelationships } from "./payment-relationship-closure";
 import { getLockedReceivedPayment } from "./received-payment-lock";
 import { createReceivedPaymentTransition } from "./schedule-payment-service";
 
@@ -57,30 +56,12 @@ export async function correctReceivedPaymentTransition(
 	if (!booking) {
 		throw new ORPCError("NOT_FOUND", { message: "Booking not found" });
 	}
-	if (lockPlan.invoiceId) {
-		const invoice = await getLockedInvoiceForReceipt(tx, {
-			organizationId: input.organizationId,
-			bookingId: lockPlan.bookingId,
-			invoiceId: lockPlan.invoiceId,
-		});
-		if (!invoice) {
-			throw new ORPCError("CONFLICT", {
-				message: "The payment invoice is no longer available",
-			});
-		}
-	}
-	if (lockPlan.paymentScheduleId) {
-		const schedule = await getLockedScheduleForReceipt(tx, {
-			organizationId: input.organizationId,
-			bookingId: lockPlan.bookingId,
-			paymentScheduleId: lockPlan.paymentScheduleId,
-		});
-		if (!schedule) {
-			throw new ORPCError("CONFLICT", {
-				message: "The payment schedule is no longer available",
-			});
-		}
-	}
+	const relationships = await resolveLockedPaymentRelationships(tx, {
+		organizationId: input.organizationId,
+		bookingId: lockPlan.bookingId,
+		invoiceId: lockPlan.invoiceId ?? undefined,
+		paymentScheduleId: lockPlan.paymentScheduleId ?? undefined,
+	});
 
 	const original = await getLockedReceivedPayment(tx, {
 		organizationId: input.organizationId,
@@ -218,8 +199,8 @@ export async function correctReceivedPaymentTransition(
 		organizationId: input.organizationId,
 		userId: input.userId,
 		bookingId: original.bookingId,
-		invoiceId: original.invoiceId ?? undefined,
-		paymentScheduleId: original.paymentScheduleId ?? undefined,
+		invoiceId: relationships.invoiceId ?? undefined,
+		paymentScheduleId: relationships.paymentScheduleId ?? undefined,
 		amount: input.amount,
 		paymentMethod: input.paymentMethod,
 		transactionReference: input.transactionReference ?? undefined,
