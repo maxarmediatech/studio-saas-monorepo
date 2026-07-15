@@ -45,6 +45,20 @@ export async function runCalendarDeliveryIdempotencyAssertions(ctx: any) {
 	expect(intents[0]).toMatchObject({ generation: 1, state: "active" });
 	expect(jobs).toHaveLength(1);
 	expect(jobs[0]).toMatchObject({ generation: 1, status: "pending" });
+	await db.insert(calendarSyncJobs).values({
+		organizationId,
+		deliveryKey: `calendar:${organizationId}:${id}:${id}:cancellation:1`,
+		status: "pending",
+		jobType: "ics_send_cancel",
+		shootId: id,
+		crewId: id,
+		generation: 1,
+		payload: {
+			operation: "cancellation",
+			intentState: "active",
+			target: { deliveryMethod: "ics" },
+		},
+	});
 
 	await db
 		.update(shoots)
@@ -64,9 +78,17 @@ export async function runCalendarDeliveryIdempotencyAssertions(ctx: any) {
 	expect(
 		intents.filter((intent: any) => intent.generation === 2),
 	).toHaveLength(1);
-	expect(jobs.filter((job: any) => job.status === "pending")).toEqual([
-		expect.objectContaining({ generation: 2 }),
-	]);
+	const pendingJobs = jobs.filter((job: any) => job.status === "pending");
+	expect(pendingJobs).toHaveLength(2);
+	expect(pendingJobs).toEqual(
+		expect.arrayContaining([
+			expect.objectContaining({
+				generation: 1,
+				jobType: "ics_send_cancel",
+			}),
+			expect.objectContaining({ generation: 2 }),
+		]),
+	);
 	const generationTwo = intents.find(
 		(intent: any) => intent.generation === 2,
 	);

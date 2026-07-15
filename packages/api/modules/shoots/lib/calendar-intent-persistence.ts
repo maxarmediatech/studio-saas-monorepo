@@ -3,7 +3,7 @@ import {
 	calendarDeliveryIntents,
 	calendarSyncJobs,
 	eq,
-	ne,
+	inArray,
 	sql,
 } from "@repo/database";
 import type { TransactionClient } from "../../studio/lib/transactions";
@@ -119,7 +119,13 @@ export async function supersedeUnstartedGenerations(
 				eq(calendarSyncJobs.organizationId, params.organizationId),
 				eq(calendarSyncJobs.shootId, params.shootId),
 				eq(calendarSyncJobs.crewId, params.crewId),
-				ne(calendarSyncJobs.status, "processing"),
+				inArray(calendarSyncJobs.status, ["pending", "failed"]),
+				inArray(calendarSyncJobs.jobType, [
+					"google_create",
+					"google_update",
+					"ics_send_invite",
+					"ics_send_update",
+				]),
 			),
 		);
 }

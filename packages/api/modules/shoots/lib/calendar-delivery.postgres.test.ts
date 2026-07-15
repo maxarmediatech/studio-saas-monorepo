@@ -412,7 +412,11 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 			for (const id of [ids.failed, ids.missing, ids.pending]) {
 				expect(
 					jobs.filter(
-						(job) => job.shootId === id && job.status === "pending",
+						(job) =>
+							job.shootId === id &&
+							job.status === "pending" &&
+							(job.payload as { operation?: string } | null)
+								?.operation !== "cancellation",
 					),
 				).toHaveLength(1);
 			}
