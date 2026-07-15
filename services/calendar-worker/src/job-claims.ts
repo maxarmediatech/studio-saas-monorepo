@@ -80,17 +80,15 @@ export async function recoverStaleCalendarJobs(staleThresholdMinutes: number) {
 			.update(calendarSyncJobs)
 			.set({
 				status: "failed",
-				effectState: sql`CASE
-					WHEN ${calendarSyncJobs.effectState} = 'dispatching' THEN 'provider_outcome_uncertain'
-					ELSE ${calendarSyncJobs.effectState}
-				END`,
 				nextAttemptAt: sql`CASE
 					WHEN ${calendarSyncJobs.effectState} = 'provider_applied' THEN NOW()
-					WHEN ${calendarSyncJobs.effectState} = 'dispatching' THEN NULL
+					WHEN ${calendarSyncJobs.effectState} IN ('dispatching', 'compensation_dispatching') THEN NULL
 					WHEN COALESCE(${calendarSyncJobs.attempts}, 0) < COALESCE(${calendarSyncJobs.maxAttempts}, ${DEFAULT_MAX_ATTEMPTS}) THEN NOW()
 					ELSE NULL
 				END`,
 				lastError: sql`CASE
+					WHEN ${calendarSyncJobs.effectState} = 'compensation_dispatching'
+						THEN 'Recovered ambiguous ICS compensation dispatch after worker termination'
 					WHEN ${calendarSyncJobs.effectState} = 'dispatching'
 						THEN 'Recovered ambiguous ICS provider dispatch after worker termination'
 					ELSE 'Recovered stale processing lock'
@@ -108,17 +106,29 @@ export async function recoverStaleCalendarJobs(staleThresholdMinutes: number) {
 			)
 			.returning();
 		for (const job of recovered) {
-			if (job.effectState === "provider_outcome_uncertain") {
+			if (
+				job.effectState === "dispatching" ||
+				job.effectState === "compensation_dispatching"
+			) {
+				const compensation =
+					job.effectState === "compensation_dispatching";
 				const snapshot = job.payload as Snapshot | null;
 				const errorMessage =
 					job.lastError ??
-					"Recovered ambiguous ICS provider dispatch after worker termination";
+					(compensation
+						? "Recovered ambiguous ICS compensation dispatch after worker termination"
+						: "Recovered ambiguous ICS provider dispatch after worker termination");
+				await tx
+					.update(calendarSyncJobs)
+					.set({ effectState: "provider_outcome_uncertain" })
+					.where(eq(calendarSyncJobs.id, job.id));
 				await tx
 					.update(shootCalendarEvents)
 					.set({
 						syncStatus: "error",
 						lastError: errorMessage,
-						...(snapshot?.operation === "cancellation"
+						...(snapshot?.operation === "cancellation" &&
+						!compensation
 							? {
 									cancellationSyncStatus:
 										"manual_reconciliation",

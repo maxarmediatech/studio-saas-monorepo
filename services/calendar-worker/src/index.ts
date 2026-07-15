@@ -39,11 +39,17 @@ const staleThresholdMinutes =
 		: 15;
 
 class ProviderOutcomeUncertainError extends Error {
-	constructor(cause: unknown) {
+	readonly phase: "provider" | "compensation";
+
+	constructor(
+		cause: unknown,
+		phase: "provider" | "compensation" = "provider",
+	) {
 		super(
-			`Calendar provider outcome is uncertain after dispatch began: ${cause instanceof Error ? cause.message : String(cause)}`,
+			`Calendar ${phase === "compensation" ? "compensation" : "provider"} outcome is uncertain after dispatch began: ${cause instanceof Error ? cause.message : String(cause)}`,
 		);
 		this.name = "ProviderOutcomeUncertainError";
+		this.phase = phase;
 	}
 }
 
@@ -72,8 +78,12 @@ function targetLockKey(job: typeof calendarSyncJobs.$inferSelect) {
 	return `${job.organizationId}:${job.shootId}:${job.crewId}`;
 }
 
-async function beginIcsProviderDispatch(
+async function beginIcsDispatch(
 	job: typeof calendarSyncJobs.$inferSelect,
+	state: {
+		from: "pending" | "compensating";
+		to: "dispatching" | "compensation_dispatching";
+	},
 ) {
 	return db.transaction(async (tx) => {
 		await tx.execute(
@@ -82,14 +92,14 @@ async function beginIcsProviderDispatch(
 		const started = await tx
 			.update(calendarSyncJobs)
 			.set({
-				effectState: "dispatching",
+				effectState: state.to,
 				lockedAt: new Date(),
 				updatedAt: new Date(),
 			})
 			.where(
 				and(
 					claimWhere(job),
-					eq(calendarSyncJobs.effectState, "pending"),
+					eq(calendarSyncJobs.effectState, state.from),
 				),
 			)
 			.returning({ id: calendarSyncJobs.id });
@@ -260,7 +270,13 @@ async function performAndPersistProviderEffect(
 	if (durableIcsDispatch) {
 		readIcsDispatchIdentity(snapshot);
 	}
-	if (durableIcsDispatch && !(await beginIcsProviderDispatch(job))) {
+	if (
+		durableIcsDispatch &&
+		!(await beginIcsDispatch(job, {
+			from: "pending",
+			to: "dispatching",
+		}))
+	) {
 		return null;
 	}
 	let providerReturned = false;
@@ -455,6 +471,7 @@ async function recordUncertainProviderOutcome(
 	job: typeof calendarSyncJobs.$inferSelect,
 	snapshot: Snapshot,
 	errorMessage: string,
+	compensation = false,
 ) {
 	await db.transaction(async (tx) => {
 		const quarantined = await tx
@@ -478,7 +495,7 @@ async function recordUncertainProviderOutcome(
 			.set({
 				syncStatus: "error",
 				lastError: errorMessage,
-				...(snapshot.operation === "cancellation"
+				...(snapshot.operation === "cancellation" && !compensation
 					? {
 							cancellationSyncStatus: "manual_reconciliation",
 							cancellationLastError: errorMessage,
@@ -525,6 +542,37 @@ export async function processJob(job: typeof calendarSyncJobs.$inferSelect) {
 				snapshot.target.deliveryMethod === "ics"
 					? await getCompensationSequence(job)
 					: null;
+			if (snapshot.target.deliveryMethod === "ics") {
+				readIcsDispatchIdentity(snapshot);
+				if (
+					!(await beginIcsDispatch(job, {
+						from: "compensating",
+						to: "compensation_dispatching",
+					}))
+				) {
+					return;
+				}
+				try {
+					await compensateStaleEffect(
+						job,
+						snapshot,
+						result.googleEventId ?? null,
+						sequence,
+					);
+					const completed = await completeClaim(job);
+					if (completed.length !== 1) {
+						throw new Error(
+							"Calendar claim lost while completing ICS compensation",
+						);
+					}
+				} catch (error) {
+					throw new ProviderOutcomeUncertainError(
+						error,
+						"compensation",
+					);
+				}
+				return;
+			}
 			await compensateStaleEffect(
 				job,
 				snapshot,
@@ -590,7 +638,12 @@ export async function processJob(job: typeof calendarSyncJobs.$inferSelect) {
 			error: errorMessage,
 		});
 		if (error instanceof ProviderOutcomeUncertainError && snapshot) {
-			await recordUncertainProviderOutcome(job, snapshot, errorMessage);
+			await recordUncertainProviderOutcome(
+				job,
+				snapshot,
+				errorMessage,
+				error.phase === "compensation",
+			);
 		} else {
 			await recordFailure(job, snapshot, errorMessage);
 		}

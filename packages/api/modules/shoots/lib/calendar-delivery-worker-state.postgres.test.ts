@@ -106,9 +106,19 @@ export async function assertCancellationFailureState(ctx: any) {
 }
 
 // biome-ignore lint/suspicious/noExportsInTest: baseline suite imports this executable scenario.
-export async function assertDurableCompensationRetry(ctx: any) {
-	const { calendarSyncJobs, db, eq, expect, id, mailBarrier, processJob } =
-		ctx;
+export async function assertAmbiguousCompensationRecovery(ctx: any) {
+	const {
+		and,
+		calendarSyncJobs,
+		db,
+		eq,
+		expect,
+		id,
+		mailBarrier,
+		processJob,
+		recoverStaleProcessingJobs,
+		shootCalendarEvents,
+	} = ctx;
 	const candidates = await db
 		.select()
 		.from(calendarSyncJobs)
@@ -121,7 +131,7 @@ export async function assertDurableCompensationRetry(ctx: any) {
 	if (!source) {
 		throw new Error("Expected a completed provider result to compensate");
 	}
-	const firstToken = `compensation-first-${id}`;
+	const firstToken = `compensation-crash-${id}`;
 	const [firstClaim] = await db
 		.update(calendarSyncJobs)
 		.set({
@@ -135,35 +145,59 @@ export async function assertDurableCompensationRetry(ctx: any) {
 		})
 		.where(eq(calendarSyncJobs.id, source.id))
 		.returning();
-	mailBarrier.failNext("injected compensation failure");
-	await processJob(firstClaim);
-	const failed = await db.query.calendarSyncJobs.findFirst({
-		where: eq(calendarSyncJobs.id, source.id),
-	});
-	expect(failed).toMatchObject({
-		status: "failed",
-		effectState: "compensating",
-		lastError: "injected compensation failure",
-	});
-	expect(failed?.compensationSequence).toBeTypeOf("number");
-	const sequence = failed?.compensationSequence;
-	const [retry] = await db
-		.update(calendarSyncJobs)
-		.set({
+	const callsBeforeCompensation = mailBarrier.calls.length;
+	let inFlight: Promise<void> | undefined;
+	try {
+		mailBarrier.block();
+		inFlight = processJob(firstClaim);
+		await mailBarrier.waitForCalls(callsBeforeCompensation + 1);
+		expect(
+			await db.query.calendarSyncJobs.findFirst({
+				where: eq(calendarSyncJobs.id, source.id),
+			}),
+		).toMatchObject({
 			status: "processing",
-			claimToken: `compensation-retry-${id}`,
-			lockedAt: new Date(),
-			attempts: 2,
-		})
-		.where(eq(calendarSyncJobs.id, source.id))
-		.returning();
-	await processJob(retry);
-	const completed = await db.query.calendarSyncJobs.findFirst({
+			effectState: "compensation_dispatching",
+			compensationSequence: expect.any(Number),
+		});
+		await db
+			.update(calendarSyncJobs)
+			.set({
+				claimToken: `compensation-crashed-${id}`,
+				lockedAt: new Date(Date.now() - 20 * 60 * 1000),
+			})
+			.where(eq(calendarSyncJobs.id, source.id));
+		mailBarrier.release();
+		await inFlight;
+	} finally {
+		mailBarrier.release();
+		await inFlight;
+	}
+	expect(mailBarrier.calls).toHaveLength(callsBeforeCompensation + 1);
+	await recoverStaleProcessingJobs();
+	const quarantined = await db.query.calendarSyncJobs.findFirst({
 		where: eq(calendarSyncJobs.id, source.id),
 	});
-	expect(completed).toMatchObject({
-		status: "completed",
-		effectState: "completed",
-		compensationSequence: sequence,
+	expect(quarantined).toMatchObject({
+		status: "failed",
+		effectState: "provider_outcome_uncertain",
+		nextAttemptAt: null,
+		claimToken: null,
+		lastError:
+			"Recovered ambiguous ICS compensation dispatch after worker termination",
+		compensationSequence: expect.any(Number),
 	});
+	expect(
+		await db.query.shootCalendarEvents.findFirst({
+			where: and(
+				eq(shootCalendarEvents.shootId, source.shootId),
+				eq(shootCalendarEvents.crewId, source.crewId),
+			),
+		}),
+	).toMatchObject({
+		deliverySyncStatus: "manual_reconciliation",
+		cancellationSyncStatus: "manual_reconciliation",
+	});
+	await recoverStaleProcessingJobs();
+	expect(mailBarrier.calls).toHaveLength(callsBeforeCompensation + 1);
 }

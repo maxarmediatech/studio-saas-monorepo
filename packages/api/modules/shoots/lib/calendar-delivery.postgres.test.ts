@@ -5,7 +5,7 @@ import {
 	runCalendarDeliveryIdempotencyAssertions,
 } from "./calendar-delivery-adversarial.postgres.test";
 import {
-	assertDurableCompensationRetry,
+	assertAmbiguousCompensationRecovery,
 	expectWrappedProducerFailure,
 	makeCalendarIds,
 } from "./calendar-delivery-worker-state.postgres.test";
@@ -486,7 +486,7 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 				sql,
 				suffix,
 			});
-			await assertDurableCompensationRetry({
+			await assertAmbiguousCompensationRecovery({
 				and,
 				calendarSyncJobs,
 				db,
@@ -495,6 +495,8 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 				id: ids.externalIcs,
 				mailBarrier,
 				processJob,
+				recoverStaleProcessingJobs,
+				shootCalendarEvents,
 			});
 		} finally {
 			if (triggerCreated) {
