@@ -54,6 +54,24 @@ describe("delivered calendar identity", () => {
 		});
 	});
 
+	it("treats a successfully cancelled identity as retired", () => {
+		expect(
+			resolveDeliveredCalendarIdentity({
+				mapping: mapping({
+					cancellationSyncStatus: "synced",
+					deliveredGeneration: 1,
+					deliveredDeliveryMethod: "ics",
+					deliveredRecipientEmail: "crew@example.com",
+					deliveredIcalUid: "cancelled-uid",
+					deliveredIcalSequence: 4,
+				}),
+			}),
+		).toMatchObject({
+			kind: "no_effect",
+			reason: expect.stringContaining("was cancelled"),
+		});
+	});
+
 	it("accepts effect evidence retained only by an immutable snapshot", () => {
 		expect(
 			resolveDeliveredCalendarIdentity({

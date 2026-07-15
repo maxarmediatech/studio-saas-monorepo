@@ -29,6 +29,15 @@ export type Snapshot = {
 
 type Job = typeof calendarSyncJobs.$inferSelect;
 
+export function readIcsDispatchIdentity(snapshot: Snapshot) {
+	const recipient = snapshot.target.recipientEmail?.trim();
+	const uid = snapshot.target.icalUid;
+	if (snapshot.target.deliveryMethod !== "ics" || !recipient || !uid) {
+		throw new Error("Snapshot has no ICS recipient or UID");
+	}
+	return { recipient, uid };
+}
+
 export async function performProviderEffect(job: Job, snapshot: Snapshot) {
 	if (snapshot.target.deliveryMethod === "google") {
 		if (!snapshot.target.googleConnectionId) {
@@ -44,6 +53,7 @@ export async function performProviderEffect(job: Job, snapshot: Snapshot) {
 				await deleteEvent({
 					config,
 					accessToken,
+					calendarId: snapshot.target.calendarId ?? "primary",
 					googleEventId: snapshot.target.googleEventId,
 				});
 			}
@@ -53,6 +63,7 @@ export async function performProviderEffect(job: Job, snapshot: Snapshot) {
 			await updateAllDayEvent({
 				config,
 				accessToken,
+				calendarId: snapshot.target.calendarId ?? "primary",
 				googleEventId: snapshot.target.googleEventId,
 				input: snapshot.eventInput,
 			});
@@ -61,6 +72,7 @@ export async function performProviderEffect(job: Job, snapshot: Snapshot) {
 		const created = await createAllDayEvent({
 			config,
 			accessToken,
+			calendarId: snapshot.target.calendarId ?? "primary",
 			input: snapshot.eventInput,
 			eventId: snapshot.target.googleCreateId ?? undefined,
 		});
@@ -89,7 +101,12 @@ export async function compensateStaleEffect(
 			connectionId: snapshot.target.googleConnectionId,
 			allowDisconnected: true,
 		});
-		await deleteEvent({ config, accessToken, googleEventId });
+		await deleteEvent({
+			config,
+			accessToken,
+			calendarId: snapshot.target.calendarId ?? "primary",
+			googleEventId,
+		});
 	} else if (snapshot.target.deliveryMethod === "ics") {
 		if (compensationSequence == null) {
 			throw new Error("ICS compensation has no allocated sequence");
@@ -109,11 +126,7 @@ async function sendIcs(
 	cancellation: boolean,
 	sequence = snapshot.target.icalSequence,
 ) {
-	const recipient = snapshot.target.recipientEmail?.trim();
-	const uid = snapshot.target.icalUid;
-	if (!recipient || !uid) {
-		throw new Error("Snapshot has no ICS recipient or UID");
-	}
+	const { recipient, uid } = readIcsDispatchIdentity(snapshot);
 	const ics = createAllDayIcsFromGoogleInput({
 		uid,
 		sequence,

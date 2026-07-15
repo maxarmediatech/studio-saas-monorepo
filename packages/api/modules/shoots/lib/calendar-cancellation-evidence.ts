@@ -44,6 +44,12 @@ export function resolveDeliveredCalendarIdentity(input: {
 				"Calendar provider outcome requires manual reconciliation",
 		};
 	}
+	if (mapping.cancellationSyncStatus === "synced") {
+		return {
+			kind: "no_effect",
+			reason: "The previously delivered calendar effect was cancelled",
+		};
+	}
 	const hasEffectEvidence = Boolean(
 		mapping.deliveredGeneration != null ||
 			mapping.syncStatus === "synced" ||

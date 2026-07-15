@@ -29,6 +29,7 @@ export function createCalendarApiClient(params: {
 export async function createAllDayEvent(params: {
 	config: GoogleCalendarOAuthConfig;
 	accessToken: string;
+	calendarId: string;
 	input: GoogleAllDayEventInput;
 	eventId?: string;
 }): Promise<GoogleEventResult> {
@@ -39,7 +40,7 @@ export async function createAllDayEvent(params: {
 
 	try {
 		const res = await calendar.events.insert({
-			calendarId: "primary",
+			calendarId: params.calendarId,
 			requestBody: {
 				id: params.eventId,
 				summary: params.input.title,
@@ -66,7 +67,7 @@ export async function createAllDayEvent(params: {
 		// the result commits. Treat the conflict as a retry of that same create,
 		// and converge the existing event to the immutable intent snapshot.
 		await calendar.events.patch({
-			calendarId: "primary",
+			calendarId: params.calendarId,
 			eventId: params.eventId,
 			requestBody: {
 				summary: params.input.title,
@@ -84,6 +85,7 @@ export async function createAllDayEvent(params: {
 export async function updateAllDayEvent(params: {
 	config: GoogleCalendarOAuthConfig;
 	accessToken: string;
+	calendarId: string;
 	googleEventId: string;
 	input: GoogleAllDayEventInput;
 }): Promise<void> {
@@ -93,7 +95,7 @@ export async function updateAllDayEvent(params: {
 	});
 
 	await calendar.events.patch({
-		calendarId: "primary",
+		calendarId: params.calendarId,
 		eventId: params.googleEventId,
 		requestBody: {
 			summary: params.input.title,
@@ -109,6 +111,7 @@ export async function updateAllDayEvent(params: {
 export async function deleteEvent(params: {
 	config: GoogleCalendarOAuthConfig;
 	accessToken: string;
+	calendarId: string;
 	googleEventId: string;
 }): Promise<void> {
 	const calendar = createCalendarApiClient({
@@ -118,7 +121,7 @@ export async function deleteEvent(params: {
 
 	try {
 		await calendar.events.delete({
-			calendarId: "primary",
+			calendarId: params.calendarId,
 			eventId: params.googleEventId,
 			sendUpdates: "all",
 		});

@@ -18,11 +18,13 @@ export async function claimCalendarJobBatch(batchSize: number) {
 		const claimable = await tx.execute(sql`
 			SELECT id FROM ${calendarSyncJobs}
 			WHERE (
-				${calendarSyncJobs.status} = 'pending'
+				(${calendarSyncJobs.status} = 'pending'
+					AND ${calendarSyncJobs.effectState} = 'pending')
 				OR (${calendarSyncJobs.status} = 'failed'
 					AND (
 						${calendarSyncJobs.effectState} = 'provider_applied'
-						OR COALESCE(${calendarSyncJobs.attempts}, 0) < COALESCE(${calendarSyncJobs.maxAttempts}, ${DEFAULT_MAX_ATTEMPTS})
+						OR (${calendarSyncJobs.effectState} IN ('pending', 'compensating')
+							AND COALESCE(${calendarSyncJobs.attempts}, 0) < COALESCE(${calendarSyncJobs.maxAttempts}, ${DEFAULT_MAX_ATTEMPTS}))
 					))
 			)
 			AND (${calendarSyncJobs.nextAttemptAt} IS NULL OR ${calendarSyncJobs.nextAttemptAt} <= ${now})
@@ -78,12 +80,21 @@ export async function recoverStaleCalendarJobs(staleThresholdMinutes: number) {
 			.update(calendarSyncJobs)
 			.set({
 				status: "failed",
+				effectState: sql`CASE
+					WHEN ${calendarSyncJobs.effectState} = 'dispatching' THEN 'provider_outcome_uncertain'
+					ELSE ${calendarSyncJobs.effectState}
+				END`,
 				nextAttemptAt: sql`CASE
 					WHEN ${calendarSyncJobs.effectState} = 'provider_applied' THEN NOW()
+					WHEN ${calendarSyncJobs.effectState} = 'dispatching' THEN NULL
 					WHEN COALESCE(${calendarSyncJobs.attempts}, 0) < COALESCE(${calendarSyncJobs.maxAttempts}, ${DEFAULT_MAX_ATTEMPTS}) THEN NOW()
 					ELSE NULL
 				END`,
-				lastError: "Recovered stale processing lock",
+				lastError: sql`CASE
+					WHEN ${calendarSyncJobs.effectState} = 'dispatching'
+						THEN 'Recovered ambiguous ICS provider dispatch after worker termination'
+					ELSE 'Recovered stale processing lock'
+				END`,
 				lockedAt: null,
 				claimToken: null,
 				updatedAt: new Date(),
@@ -97,6 +108,43 @@ export async function recoverStaleCalendarJobs(staleThresholdMinutes: number) {
 			)
 			.returning();
 		for (const job of recovered) {
+			if (job.effectState === "provider_outcome_uncertain") {
+				const snapshot = job.payload as Snapshot | null;
+				const errorMessage =
+					job.lastError ??
+					"Recovered ambiguous ICS provider dispatch after worker termination";
+				await tx
+					.update(shootCalendarEvents)
+					.set({
+						syncStatus: "error",
+						lastError: errorMessage,
+						...(snapshot?.operation === "cancellation"
+							? {
+									cancellationSyncStatus:
+										"manual_reconciliation",
+									cancellationLastError: errorMessage,
+								}
+							: {
+									deliverySyncStatus: "manual_reconciliation",
+									deliveryLastError: errorMessage,
+									cancellationSyncStatus:
+										"manual_reconciliation",
+									cancellationLastError: errorMessage,
+								}),
+						updatedAt: new Date(),
+					})
+					.where(
+						and(
+							eq(
+								shootCalendarEvents.organizationId,
+								job.organizationId,
+							),
+							eq(shootCalendarEvents.shootId, job.shootId ?? ""),
+							eq(shootCalendarEvents.crewId, job.crewId ?? ""),
+						),
+					);
+				continue;
+			}
 			if (job.effectState === "provider_applied") {
 				// The provider result is already durable. Reclaim this job even when
 				// its provider-attempt budget is exhausted so processJob can finish

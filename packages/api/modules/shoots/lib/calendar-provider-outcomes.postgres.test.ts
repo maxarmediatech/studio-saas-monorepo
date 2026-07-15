@@ -33,8 +33,15 @@ export async function assertProviderOutcomeRecovery(ctx: any) {
 
 	const providerUncertainId = `calendar_provider_uncertain_${suffix}`;
 	const providerAppliedId = `calendar_provider_applied_${suffix}`;
+	const crashWindowId = `calendar_provider_crash_window_${suffix}`;
+	const retiredIdentityId = `calendar_retired_identity_${suffix}`;
 	await db.insert(crews).values(
-		[providerUncertainId, providerAppliedId].map((id) => ({
+		[
+			providerUncertainId,
+			providerAppliedId,
+			crashWindowId,
+			retiredIdentityId,
+		].map((id) => ({
 			id,
 			organizationId,
 			name: id,
@@ -42,7 +49,12 @@ export async function assertProviderOutcomeRecovery(ctx: any) {
 		})),
 	);
 	await db.insert(shoots).values(
-		[providerUncertainId, providerAppliedId].map((id) => ({
+		[
+			providerUncertainId,
+			providerAppliedId,
+			crashWindowId,
+			retiredIdentityId,
+		].map((id) => ({
 			id,
 			organizationId,
 			bookingId,
@@ -53,7 +65,12 @@ export async function assertProviderOutcomeRecovery(ctx: any) {
 		})),
 	);
 	await db.insert(shootAssignments).values(
-		[providerUncertainId, providerAppliedId].map((id) => ({
+		[
+			providerUncertainId,
+			providerAppliedId,
+			crashWindowId,
+			retiredIdentityId,
+		].map((id) => ({
 			shootId: id,
 			crewId: id,
 			role: "Photographer",
@@ -127,9 +144,24 @@ export async function assertProviderOutcomeRecovery(ctx: any) {
 			ON calendar_sync_jobs FOR EACH ROW EXECUTE FUNCTION "${persistenceFunction}"()`),
 	);
 	const callsBeforeUncertainDelivery = mailBarrier.calls.length;
+	let uncertainProcessing: Promise<void> | undefined;
 	try {
-		await processJob(uncertainDeliveryJob);
+		mailBarrier.block();
+		uncertainProcessing = processJob(uncertainDeliveryJob);
+		await mailBarrier.waitForCalls(callsBeforeUncertainDelivery + 1);
+		expect(
+			await db.query.calendarSyncJobs.findFirst({
+				where: eq(calendarSyncJobs.id, uncertainDeliveryJob.id),
+			}),
+		).toMatchObject({
+			status: "processing",
+			effectState: "dispatching",
+		});
+		mailBarrier.release();
+		await uncertainProcessing;
 	} finally {
+		mailBarrier.release();
+		await uncertainProcessing;
 		await db.execute(
 			sql.raw(
 				`DROP TRIGGER IF EXISTS "${persistenceTrigger}" ON calendar_sync_jobs`,
@@ -149,7 +181,7 @@ export async function assertProviderOutcomeRecovery(ctx: any) {
 		effectState: "provider_outcome_uncertain",
 		nextAttemptAt: null,
 		lastError: expect.stringContaining(
-			"provider succeeded but its result was not durably recorded",
+			"provider outcome is uncertain after dispatch began",
 		),
 	});
 	expect(
@@ -176,6 +208,163 @@ export async function assertProviderOutcomeRecovery(ctx: any) {
 			.from(calendarSyncJobs)
 			.where(eq(calendarSyncJobs.shootId, providerUncertainId)),
 	).toHaveLength(uncertainJobCount);
+
+	const crashSnapshot = {
+		...uncertainSnapshot,
+		target: {
+			...uncertainSnapshot.target,
+			recipientEmail: `${crashWindowId}@example.com`,
+			icalUid: `${crashWindowId}@example.invalid`,
+		},
+	};
+	await db.insert(shootCalendarEvents).values({
+		organizationId,
+		shootId: crashWindowId,
+		crewId: crashWindowId,
+		deliveryMethod: "ics",
+		recipientEmail: `${crashWindowId}@example.com`,
+		icalUid: `${crashWindowId}@example.invalid`,
+		icalSequence: 1,
+		intentGeneration: 1,
+		intentState: "active",
+		syncStatus: "pending",
+		deliverySyncStatus: "pending",
+	});
+	const [crashedDispatch] = await db
+		.insert(calendarSyncJobs)
+		.values({
+			organizationId,
+			deliveryKey: `calendar:${organizationId}:${crashWindowId}:${crashWindowId}:delivery:1`,
+			status: "processing",
+			jobType: "ics_send_invite",
+			shootId: crashWindowId,
+			crewId: crashWindowId,
+			generation: 1,
+			attempts: 1,
+			maxAttempts: 5,
+			claimToken: `crashed-dispatch-${suffix}`,
+			lockedAt: new Date(Date.now() - 20 * 60 * 1000),
+			effectState: "dispatching",
+			payload: crashSnapshot,
+		})
+		.returning();
+	const callsBeforeCrashRecovery = mailBarrier.calls.length;
+	await recoverStaleProcessingJobs();
+	expect(mailBarrier.calls).toHaveLength(callsBeforeCrashRecovery);
+	expect(
+		await db.query.calendarSyncJobs.findFirst({
+			where: eq(calendarSyncJobs.id, crashedDispatch.id),
+		}),
+	).toMatchObject({
+		status: "failed",
+		effectState: "provider_outcome_uncertain",
+		nextAttemptAt: null,
+		claimToken: null,
+		lastError:
+			"Recovered ambiguous ICS provider dispatch after worker termination",
+	});
+	expect(
+		await db.query.shootCalendarEvents.findFirst({
+			where: eq(shootCalendarEvents.shootId, crashWindowId),
+		}),
+	).toMatchObject({
+		deliverySyncStatus: "manual_reconciliation",
+		cancellationSyncStatus: "manual_reconciliation",
+	});
+	await expect(route(crashWindowId)).resolves.toMatchObject({
+		state: "manual_reconciliation",
+		jobType: null,
+	});
+
+	const oldRecipient = `old-${retiredIdentityId}@example.com`;
+	const oldUid = `old-${retiredIdentityId}@example.invalid`;
+	await db.insert(shootCalendarEvents).values({
+		organizationId,
+		shootId: retiredIdentityId,
+		crewId: retiredIdentityId,
+		deliveryMethod: "ics",
+		recipientEmail: oldRecipient,
+		icalUid: oldUid,
+		icalSequence: 1,
+		intentGeneration: 1,
+		intentState: "active",
+		syncStatus: "synced",
+		deliverySyncStatus: "synced",
+		cancellationSyncStatus: "none",
+		deliveredGeneration: 1,
+		deliveredDeliveryMethod: "ics",
+		deliveredRecipientEmail: oldRecipient,
+		deliveredIcalUid: oldUid,
+		deliveredIcalSequence: 1,
+	});
+	await expect(route(retiredIdentityId)).resolves.toMatchObject({
+		jobType: "ics_send_invite",
+		state: "queued",
+	});
+	const initialRouteJobs = await db
+		.select()
+		.from(calendarSyncJobs)
+		.where(eq(calendarSyncJobs.shootId, retiredIdentityId));
+	const cancellationJob = initialRouteJobs.find(
+		(job: any) => job.jobType === "ics_send_cancel",
+	);
+	if (!cancellationJob) {
+		throw new Error("Expected cancellation for the delivered ICS identity");
+	}
+	const [claimedRetirement] = await db
+		.update(calendarSyncJobs)
+		.set({
+			status: "processing",
+			attempts: 1,
+			claimToken: `retire-identity-${suffix}`,
+			lockedAt: new Date(),
+		})
+		.where(eq(calendarSyncJobs.id, cancellationJob.id))
+		.returning();
+	await processJob(claimedRetirement);
+	expect(
+		await db.query.shootCalendarEvents.findFirst({
+			where: eq(shootCalendarEvents.shootId, retiredIdentityId),
+		}),
+	).toMatchObject({
+		cancellationSyncStatus: "synced",
+		deliveredGeneration: null,
+		deliveredDeliveryMethod: null,
+		deliveredRecipientEmail: null,
+		deliveredIcalUid: null,
+		deliveredIcalSequence: null,
+	});
+	const replacementRecipient = `replacement-${retiredIdentityId}@example.com`;
+	await db
+		.update(crews)
+		.set({ email: replacementRecipient })
+		.where(eq(crews.id, retiredIdentityId));
+	await expect(route(retiredIdentityId)).resolves.toMatchObject({
+		jobType: "ics_send_invite",
+		state: "queued",
+	});
+	const reroutedJobs = await db
+		.select()
+		.from(calendarSyncJobs)
+		.where(eq(calendarSyncJobs.shootId, retiredIdentityId));
+	expect(
+		reroutedJobs.filter((job: any) => job.jobType === "ics_send_cancel"),
+	).toHaveLength(1);
+	expect(reroutedJobs).toEqual(
+		expect.arrayContaining([
+			expect.objectContaining({
+				generation: 3,
+				jobType: "ics_send_invite",
+				status: "pending",
+				payload: expect.objectContaining({
+					target: expect.objectContaining({
+						recipientEmail: replacementRecipient,
+						icalUid: expect.not.stringContaining(oldUid),
+					}),
+				}),
+			}),
+		]),
+	);
 
 	const appliedCancellationSnapshot = {
 		...uncertainSnapshot,

@@ -226,6 +226,12 @@ export async function ensureAssignmentCalendarDelivery(
 	const nextTarget = {
 		deliveryMethod: route.deliveryMethod,
 		recipientEmail: route.recipientEmail,
+		calendarId:
+			route.deliveryMethod === "google"
+				? continuesDeliveredGoogle
+					? deliveredIdentity.target.calendarId
+					: "primary"
+				: null,
 		googleConnectionId:
 			route.deliveryMethod === "google" ? (connection?.id ?? null) : null,
 		googleAccountEmail:
@@ -287,6 +293,8 @@ export async function ensureAssignmentCalendarDelivery(
 		state: "active",
 		deliveryMethod: route.deliveryMethod,
 		recipientEmail: route.recipientEmail,
+		calendarId: snapshot.target.calendarId,
+		googleEventId: snapshot.target.googleEventId,
 		icalUid,
 		googleConnectionId: snapshot.target.googleConnectionId,
 		googleAccountEmail: snapshot.target.googleAccountEmail,

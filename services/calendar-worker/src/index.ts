@@ -20,6 +20,7 @@ import {
 import {
 	compensateStaleEffect,
 	performProviderEffect,
+	readIcsDispatchIdentity,
 	type Snapshot,
 } from "./provider-effects";
 import {
@@ -40,7 +41,7 @@ const staleThresholdMinutes =
 class ProviderOutcomeUncertainError extends Error {
 	constructor(cause: unknown) {
 		super(
-			`Calendar provider succeeded but its result was not durably recorded: ${cause instanceof Error ? cause.message : String(cause)}`,
+			`Calendar provider outcome is uncertain after dispatch began: ${cause instanceof Error ? cause.message : String(cause)}`,
 		);
 		this.name = "ProviderOutcomeUncertainError";
 	}
@@ -65,6 +66,35 @@ function claimWhere(job: typeof calendarSyncJobs.$inferSelect) {
 		eq(calendarSyncJobs.status, "processing"),
 		eq(calendarSyncJobs.claimToken, job.claimToken),
 	);
+}
+
+function targetLockKey(job: typeof calendarSyncJobs.$inferSelect) {
+	return `${job.organizationId}:${job.shootId}:${job.crewId}`;
+}
+
+async function beginIcsProviderDispatch(
+	job: typeof calendarSyncJobs.$inferSelect,
+) {
+	return db.transaction(async (tx) => {
+		await tx.execute(
+			sql`SELECT pg_advisory_xact_lock(hashtextextended(${targetLockKey(job)}, 0))`,
+		);
+		const started = await tx
+			.update(calendarSyncJobs)
+			.set({
+				effectState: "dispatching",
+				lockedAt: new Date(),
+				updatedAt: new Date(),
+			})
+			.where(
+				and(
+					claimWhere(job),
+					eq(calendarSyncJobs.effectState, "pending"),
+				),
+			)
+			.returning({ id: calendarSyncJobs.id });
+		return started.length === 1;
+	});
 }
 
 export const claimJobBatch = () => claimCalendarJobBatch(batchSize);
@@ -121,25 +151,23 @@ async function transitionSuccess(
 ) {
 	let mappingUpdated = true;
 	if (snapshot.operation === "delivery") {
+		const calendarId =
+			snapshot.target.deliveryMethod === "google"
+				? (snapshot.target.calendarId ?? "primary")
+				: null;
 		const updated = await tx
 			.update(shootCalendarEvents)
 			.set({
 				deliveryMethod: snapshot.target.deliveryMethod,
 				recipientEmail: snapshot.target.recipientEmail,
-				calendarId:
-					snapshot.target.deliveryMethod === "google"
-						? "primary"
-						: null,
+				calendarId,
 				googleEventId,
 				icalUid: snapshot.target.icalUid,
 				icalSequence: snapshot.target.icalSequence,
 				deliveredGeneration: job.generation,
 				deliveredDeliveryMethod: snapshot.target.deliveryMethod,
 				deliveredRecipientEmail: snapshot.target.recipientEmail,
-				deliveredCalendarId:
-					snapshot.target.deliveryMethod === "google"
-						? "primary"
-						: null,
+				deliveredCalendarId: calendarId,
 				deliveredGoogleEventId: googleEventId,
 				deliveredIcalUid: snapshot.target.icalUid,
 				deliveredIcalSequence: snapshot.target.icalSequence,
@@ -152,6 +180,8 @@ async function transitionSuccess(
 				lastError: null,
 				deliverySyncStatus: "synced",
 				deliveryLastError: null,
+				cancellationSyncStatus: "none",
+				cancellationLastError: null,
 				updatedAt: new Date(),
 			})
 			.where(
@@ -180,6 +210,13 @@ async function transitionSuccess(
 				lastError: null,
 				cancellationSyncStatus: "synced",
 				cancellationLastError: null,
+				deliveredGeneration: null,
+				deliveredDeliveryMethod: null,
+				deliveredRecipientEmail: null,
+				deliveredCalendarId: null,
+				deliveredGoogleEventId: null,
+				deliveredIcalUid: null,
+				deliveredIcalSequence: null,
 				updatedAt: new Date(),
 			})
 			.where(
@@ -219,11 +256,18 @@ async function performAndPersistProviderEffect(
 	job: typeof calendarSyncJobs.$inferSelect,
 	snapshot: Snapshot,
 ) {
+	const durableIcsDispatch = snapshot.target.deliveryMethod === "ics";
+	if (durableIcsDispatch) {
+		readIcsDispatchIdentity(snapshot);
+	}
+	if (durableIcsDispatch && !(await beginIcsProviderDispatch(job))) {
+		return null;
+	}
 	let providerReturned = false;
 	try {
 		return await db.transaction(async (tx) => {
 			await tx.execute(
-				sql`SELECT pg_advisory_xact_lock(hashtextextended(${`${job.organizationId}:${job.shootId}:${job.crewId}`}, 0))`,
+				sql`SELECT pg_advisory_xact_lock(hashtextextended(${targetLockKey(job)}, 0))`,
 			);
 			const claimed = await tx.execute(sql`
 			SELECT id FROM ${calendarSyncJobs}
@@ -285,7 +329,7 @@ async function performAndPersistProviderEffect(
 			return { result, recorded };
 		});
 	} catch (error) {
-		if (providerReturned) {
+		if (providerReturned || durableIcsDispatch) {
 			throw new ProviderOutcomeUncertainError(error);
 		}
 		throw error;
@@ -454,12 +498,6 @@ async function recordUncertainProviderOutcome(
 					eq(shootCalendarEvents.organizationId, job.organizationId),
 					eq(shootCalendarEvents.shootId, job.shootId ?? ""),
 					eq(shootCalendarEvents.crewId, job.crewId ?? ""),
-					snapshot.operation === "delivery"
-						? eq(
-								shootCalendarEvents.intentGeneration,
-								job.generation,
-							)
-						: undefined,
 				),
 			);
 	});
