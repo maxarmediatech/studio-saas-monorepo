@@ -1,25 +1,25 @@
 import { ORPCError } from "@orpc/server";
 import {
 	and,
-	bookings,
 	db,
 	eq,
 	expenseAssignments,
 	expenses,
 	isNull,
-	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { detectChanges, formatAmount, safeTrackFieldChanges } from "../../activities/lib";
+import {
+	detectChanges,
+	formatAmount,
+	safeTrackFieldChanges,
+} from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	updateExpenseInputSchema,
 	updateExpenseOutputSchema,
 } from "../../studio/schemas/expense";
-import {
-	getAllocatedExpenseAmount,
-	validateExpenseAllocations,
-} from "../lib/expense-allocations";
+import { refreshBookingExpenseTotalsForExpense } from "../lib/booking-expense-totals";
+import { validateExpenseAllocations } from "../lib/expense-allocations";
 
 export const updateExpense = studioProtectedProcedure
 	.route({
@@ -54,10 +54,6 @@ export const updateExpense = studioProtectedProcedure
 		// Check if amount is changing
 		const amountChanged =
 			updates.amount !== undefined && updates.amount !== expense.amount;
-		const oldAmount = Number.parseFloat(expense.amount);
-		const newAmount = updates.amount
-			? Number.parseFloat(updates.amount)
-			: oldAmount;
 
 		// Build update object
 		const updateData: Record<string, unknown> = {
@@ -110,18 +106,18 @@ export const updateExpense = studioProtectedProcedure
 			return await db.transaction(async (tx) => {
 				const assignments = await tx
 					.select({
-						bookingId: expenseAssignments.bookingId,
 						allocationPercentage:
 							expenseAssignments.allocationPercentage,
 						allocationAmount: expenseAssignments.allocationAmount,
 					})
 					.from(expenseAssignments)
 					.where(eq(expenseAssignments.expenseId, id));
-
-				const allocationMode = validateExpenseAllocations(
-					assignments,
-					newAmount,
-				);
+				if (assignments.length > 0) {
+					validateExpenseAllocations(
+						assignments,
+						Number.parseFloat(updates.amount ?? expense.amount),
+					);
+				}
 
 				// Update expense
 				await tx
@@ -129,41 +125,11 @@ export const updateExpense = studioProtectedProcedure
 					.set(updateData)
 					.where(eq(expenses.id, id));
 
-				const bookingAssignments = assignments.filter(
-					(assignment) => assignment.bookingId,
+				await refreshBookingExpenseTotalsForExpense(
+					tx,
+					id,
+					context.user.id,
 				);
-
-				// Update each booking's total expenses
-				for (const assignment of bookingAssignments) {
-					if (!assignment.bookingId) {
-						continue;
-					}
-
-					const oldAllocated = getAllocatedExpenseAmount(
-						oldAmount,
-						assignment,
-						allocationMode,
-					);
-
-					const newAllocated = getAllocatedExpenseAmount(
-						newAmount,
-						assignment,
-						allocationMode,
-					);
-
-					const diff = newAllocated - oldAllocated;
-
-					if (diff !== 0) {
-						await tx
-							.update(bookings)
-							.set({
-								totalExpenses: sql`${bookings.totalExpenses} + ${diff.toFixed(2)}`,
-								updatedAt: new Date(),
-								updatedBy: context.user.id,
-							})
-							.where(eq(bookings.id, assignment.bookingId));
-					}
-				}
 
 				// Track activity (non-blocking)
 				const changes = detectChanges(expense, updates, [
@@ -179,8 +145,12 @@ export const updateExpense = studioProtectedProcedure
 						if (c.field === "amount") {
 							return {
 								...c,
-								oldValue: c.oldValue ? formatAmount(c.oldValue) : null,
-								newValue: c.newValue ? formatAmount(c.newValue) : null,
+								oldValue: c.oldValue
+									? formatAmount(c.oldValue)
+									: null,
+								newValue: c.newValue
+									? formatAmount(c.newValue)
+									: null,
 							};
 						}
 						return c;

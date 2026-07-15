@@ -9,7 +9,6 @@ import {
 	expenses,
 	isNull,
 	shoots,
-	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { formatAmount, safeTrackActivity } from "../../activities/lib";
@@ -18,10 +17,8 @@ import {
 	createExpenseInputSchema,
 	createExpenseOutputSchema,
 } from "../../studio/schemas/expense";
-import {
-	getAllocatedExpenseAmount,
-	validateExpenseAllocations,
-} from "../lib/expense-allocations";
+import { refreshBookingExpenseTotalsForExpense } from "../lib/booking-expense-totals";
+import { validateExpenseAllocations } from "../lib/expense-allocations";
 
 export const createExpense = studioProtectedProcedure
 	.route({
@@ -51,10 +48,9 @@ export const createExpense = studioProtectedProcedure
 		} = input;
 
 		const amountValue = Number.parseFloat(amount);
-		const allocationMode =
-			assignments && assignments.length > 0
-				? validateExpenseAllocations(assignments, amountValue)
-				: "none";
+		if (assignments && assignments.length > 0) {
+			validateExpenseAllocations(assignments, amountValue);
+		}
 
 		// Validate assignments if provided
 		if (assignments && assignments.length > 0) {
@@ -147,27 +143,11 @@ export const createExpense = studioProtectedProcedure
 					})),
 				);
 
-				// Update booking total expenses if assigned to bookings
-				// Type predicate narrows bookingId to string (not undefined/null)
-				const bookingAssignments = assignments.filter(
-					(a): a is typeof a & { bookingId: string } => !!a.bookingId,
+				await refreshBookingExpenseTotalsForExpense(
+					tx,
+					created.id,
+					context.user.id,
 				);
-				for (const assignment of bookingAssignments) {
-					const allocatedAmount = getAllocatedExpenseAmount(
-						amountValue,
-						assignment,
-						allocationMode,
-					);
-
-					await tx
-						.update(bookings)
-						.set({
-							totalExpenses: sql`${bookings.totalExpenses} + ${allocatedAmount.toFixed(2)}`,
-							updatedAt: new Date(),
-							updatedBy: context.user.id,
-						})
-						.where(eq(bookings.id, assignment.bookingId));
-				}
 
 				// Track activity (non-blocking)
 				await safeTrackActivity(context, {

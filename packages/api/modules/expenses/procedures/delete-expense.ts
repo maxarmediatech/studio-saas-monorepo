@@ -7,7 +7,6 @@ import {
 	expenseAssignments,
 	expenses,
 	isNull,
-	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { formatAmount, safeTrackActivity } from "../../activities/lib";
@@ -16,6 +15,7 @@ import {
 	deleteExpenseInputSchema,
 	deleteExpenseOutputSchema,
 } from "../../studio/schemas/expense";
+import { refreshBookingExpenseTotalsForExpense } from "../lib/booking-expense-totals";
 
 export const deleteExpense = studioProtectedProcedure
 	.route({
@@ -47,24 +47,15 @@ export const deleteExpense = studioProtectedProcedure
 			});
 		}
 
-		const amount = Number.parseFloat(expense.amount);
-
 		// Get booking assignments to update totals (also get booking name for activity context)
 		const assignments = await db
 			.select({
 				bookingId: expenseAssignments.bookingId,
 				bookingName: bookings.name,
-				allocationPercentage: expenseAssignments.allocationPercentage,
-				allocationAmount: expenseAssignments.allocationAmount,
 			})
 			.from(expenseAssignments)
 			.leftJoin(bookings, eq(expenseAssignments.bookingId, bookings.id))
-			.where(
-				and(
-					eq(expenseAssignments.expenseId, id),
-					sql`${expenseAssignments.bookingId} IS NOT NULL`,
-				),
-			);
+			.where(eq(expenseAssignments.expenseId, id));
 
 		// Use transaction to soft delete and update booking totals
 		return await db.transaction(async (tx) => {
@@ -79,35 +70,17 @@ export const deleteExpense = studioProtectedProcedure
 				})
 				.where(eq(expenses.id, id));
 
-			// Update each booking's total expenses
-			for (const assignment of assignments) {
-				if (!assignment.bookingId) {
-					continue;
-				}
-
-				const allocated = assignment.allocationAmount
-					? Number.parseFloat(assignment.allocationAmount)
-					: assignment.allocationPercentage
-						? (amount *
-								Number.parseFloat(
-									assignment.allocationPercentage,
-								)) /
-							100
-						: amount;
-
-				await tx
-					.update(bookings)
-					.set({
-						totalExpenses: sql`${bookings.totalExpenses} - ${allocated.toFixed(2)}`,
-						updatedAt: new Date(),
-						updatedBy: context.user.id,
-					})
-					.where(eq(bookings.id, assignment.bookingId));
-			}
+			await refreshBookingExpenseTotalsForExpense(
+				tx,
+				id,
+				context.user.id,
+			);
 
 			// Track activity (non-blocking) - use first booking as parent context if available
 			const firstBooking = assignments.find(
-				(a): a is typeof a & { bookingId: string; bookingName: string } =>
+				(
+					a,
+				): a is typeof a & { bookingId: string; bookingName: string } =>
 					a.bookingId !== null && a.bookingName !== null,
 			);
 			await safeTrackActivity(context, {
