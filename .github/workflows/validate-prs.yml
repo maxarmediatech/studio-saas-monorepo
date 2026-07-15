@@ -5,7 +5,6 @@ on:
     branches: [main]
 
 env:
-  DATABASE_URL: ${{ secrets.DATABASE_URL }}
   BETTER_AUTH_SECRET: ci-local-secret-32-characters-minimum
   NEXT_PUBLIC_SITE_URL: http://localhost:3000
 
@@ -45,6 +44,22 @@ jobs:
     name: Run e2e tests
     timeout-minutes: 60
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/studio_saas_ci
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: studio_saas_ci
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d studio_saas_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -52,7 +67,9 @@ jobs:
           node-version: lts/*
       - uses: pnpm/action-setup@v4
       - name: Install dependencies
-        run: pnpm install && pnpm --filter database generate
+        run: pnpm install
+      - name: Migrate disposable test database
+        run: pnpm --filter @repo/database migrate
       - name: Validate required env
         run: pnpm env:check
       - name: Run Playwright tests
