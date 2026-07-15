@@ -8,7 +8,10 @@ import {
 	isNull,
 	receipts,
 } from "@repo/database";
-import { allocateDocumentNumber } from "../../financial-documents/lib/document-number-service";
+import {
+	advanceDocumentSequenceFloor,
+	allocateDocumentNumber,
+} from "../../financial-documents/lib/document-number-service";
 import { centsToMoney, moneyToCents } from "../../studio/lib/money";
 import {
 	buildReceiptNumber,
@@ -27,10 +30,10 @@ export {
 type Tx = Parameters<Parameters<(typeof db)["transaction"]>[0]>[0];
 type DbOrTx = typeof db | Tx;
 
-export async function generateReceiptNumber(
+async function getReceiptNumberBase(
 	bookingId: string,
 	orgId: string,
-	dbOrTx: DbOrTx = db,
+	dbOrTx: DbOrTx,
 ): Promise<string> {
 	const booking = await dbOrTx.query.bookings.findFirst({
 		where: and(
@@ -44,7 +47,15 @@ export async function generateReceiptNumber(
 		throw new Error("Booking not found for receipt number generation");
 	}
 
-	const baseNumber = buildReceiptNumber(booking.referenceNumber, new Date());
+	return buildReceiptNumber(booking.referenceNumber, new Date());
+}
+
+export async function generateReceiptNumber(
+	bookingId: string,
+	orgId: string,
+	dbOrTx: DbOrTx = db,
+): Promise<string> {
+	const baseNumber = await getReceiptNumberBase(bookingId, orgId, dbOrTx);
 
 	return dbOrTx.transaction((tx) =>
 		allocateDocumentNumber(tx, {
@@ -53,6 +64,19 @@ export async function generateReceiptNumber(
 			baseNumber,
 		}),
 	);
+}
+
+export async function advanceReceiptNumberSequenceFloor(
+	bookingId: string,
+	orgId: string,
+	tx: Tx,
+): Promise<number> {
+	const baseNumber = await getReceiptNumberBase(bookingId, orgId, tx);
+	return advanceDocumentSequenceFloor(tx, {
+		organizationId: orgId,
+		documentType: "receipt",
+		baseNumber,
+	});
 }
 
 function getDateOnlyString(value: unknown): string | null {

@@ -27,4 +27,13 @@ describe("receipt number conflict classification", () => {
 			}),
 		).toBe(true);
 	});
+
+	it("rejects the right constraint when the PostgreSQL code is not unique", () => {
+		expect(
+			isReceiptNumberConflict({
+				code: "23514",
+				constraint: "receipts_org_number_idx",
+			}),
+		).toBe(false);
+	});
 });

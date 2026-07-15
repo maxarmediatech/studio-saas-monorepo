@@ -1,5 +1,9 @@
 import { ORPCError } from "@orpc/server";
 import { and, eq, isNull, receipts, receivedAmounts } from "@repo/database";
+import {
+	isDocumentNumberUniqueConflict,
+	retryDocumentNumberInsert,
+} from "../../financial-documents/lib/document-number-service";
 import type { TransactionClient } from "../../studio/lib/transactions";
 import { getLockedReceivedPayment } from "../../studio-payments/lib/received-payment-lock";
 import {
@@ -10,30 +14,15 @@ import {
 	getLockedScheduleForReceipt,
 } from "./locked-invoice-for-receipt";
 import {
+	advanceReceiptNumberSequenceFloor,
 	generateReceiptNumber,
 	updateInvoicePaymentStatus,
 } from "./receipt-helpers";
 
-const MAX_RECEIPT_INSERT_ATTEMPTS = 5;
+const RECEIPT_NUMBER_CONSTRAINT = "receipts_org_number_idx";
 
 export function isReceiptNumberConflict(error: unknown): boolean {
-	let current: unknown = error;
-	for (let depth = 0; depth < 4 && current; depth += 1) {
-		const candidate = current as {
-			code?: string;
-			constraint?: string;
-			message?: string;
-			cause?: unknown;
-		};
-		if (
-			candidate.constraint === "receipts_org_number_idx" ||
-			candidate.message?.toLowerCase().includes("receipts_org_number_idx")
-		) {
-			return candidate.code === undefined || candidate.code === "23505";
-		}
-		current = candidate.cause;
-	}
-	return false;
+	return isDocumentNumberUniqueConflict(error, RECEIPT_NUMBER_CONSTRAINT);
 }
 
 interface IssueReceiptInput {
@@ -52,9 +41,10 @@ export async function insertReceiptWithGeneratedNumber(
 		values: Omit<typeof receipts.$inferInsert, "receiptNumber">;
 	},
 ) {
-	for (let attempt = 0; attempt < MAX_RECEIPT_INSERT_ATTEMPTS; attempt++) {
-		try {
-			return await tx.transaction(async (receiptTx) => {
+	return retryDocumentNumberInsert({
+		constraintName: RECEIPT_NUMBER_CONSTRAINT,
+		attempt: () =>
+			tx.transaction(async (receiptTx) => {
 				const receiptNumber = await generateReceiptNumber(
 					input.bookingId,
 					input.organizationId,
@@ -73,20 +63,13 @@ export async function insertReceiptWithGeneratedNumber(
 					});
 				}
 				return created;
-			});
-		} catch (error) {
-			if (
-				isReceiptNumberConflict(error) &&
-				attempt < MAX_RECEIPT_INSERT_ATTEMPTS - 1
-			) {
-				continue;
-			}
-			throw error;
-		}
-	}
-
-	throw new ORPCError("INTERNAL_SERVER_ERROR", {
-		message: "Failed to create receipt",
+			}),
+		repairSequenceFloor: () =>
+			advanceReceiptNumberSequenceFloor(
+				input.bookingId,
+				input.organizationId,
+				tx,
+			),
 	});
 }
 
