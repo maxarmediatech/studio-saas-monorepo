@@ -1,8 +1,12 @@
-import { describe, expect, it } from "vitest";
-import type {
-	ManualSendPersistenceStep,
-	ManualSendRequest,
-} from "./manual-send-service";
+import type { SendTemplateParams, WhatsAppProvider } from "@repo/whatsapp-core";
+import { describe, expect, it, vi } from "vitest";
+import type { ManualSendRequest } from "./manual-send-service";
+
+const triggerMocks = vi.hoisted(() => ({ trigger: vi.fn() }));
+
+vi.mock("@trigger.dev/sdk/v3", () => ({
+	tasks: { trigger: triggerMocks.trigger },
+}));
 
 const databaseUrl = process.env.POSTGRES_CONCURRENCY_DATABASE_URL;
 const describePostgres = databaseUrl ? describe : describe.skip;
@@ -230,188 +234,177 @@ describePostgres("manual WhatsApp send atomicity", () => {
 	);
 
 	it(
-		"rolls back all durable effects when every persistence boundary fails",
+		"polls and sends the exact durable row once when Trigger wake-up fails",
 		async () => {
 			const originalDatabaseUrl = process.env.DATABASE_URL;
 			process.env.DATABASE_URL = databaseUrl;
 			const {
-				count,
 				db,
 				eq,
 				waAccounts,
 				waContacts,
 				waConversations,
 				waManualSendIdempotency,
-				waMedia,
 				waMessages,
 				waOutbox,
 				waTemplates,
 			} = await import("@repo/database");
+			const { fetchDueWhatsAppOutboxItems, processWhatsAppOutboxItem } =
+				await import("@repo/whatsapp-outbox");
 			const { acceptManualWhatsAppSend } = await import(
 				"./manual-send-service"
 			);
+			const { triggerWhatsAppOutbox } = await import("./trigger-outbox");
 			const suffix = `${process.pid}_${Date.now()}`;
-			const organizationId = `wa_atomic_rollback_${suffix}`;
-			const accountId = `wa_atomic_rollback_account_${suffix}`;
+			const organizationId = `wa_atomic_poller_${suffix}`;
+			const accountId = `wa_atomic_poller_account_${suffix}`;
+			let providerCalls = 0;
+			let providerTemplate: SendTemplateParams | undefined;
+
 			try {
 				await db.insert(waAccounts).values({
 					id: accountId,
 					organizationId,
-					name: "Manual send rollback",
+					name: "Manual send poller fallback",
 					provider: "cloud_api",
+					connectionStatus: "connected",
 				});
 				await db.insert(waTemplates).values({
 					organizationId,
 					accountId,
-					name: "rollback_template",
+					name: "dynamic_booking_link",
 					language: "en_US",
 					status: "APPROVED",
 					category: "UTILITY",
-					components: [{ type: "BODY", text: "Hello" }],
+					components: [{ type: "BUTTONS" }],
 				});
 
-				const cases: Array<{
-					payload: ManualSendRequest["payload"];
-					steps: ManualSendPersistenceStep[];
-				}> = [
-					{
-						payload: {
-							kind: "text",
-							accountId,
-							to: "919999999981",
-							text: "Rollback text",
-						},
-						steps: [
-							"idempotency_claim",
-							"contact",
-							"conversation",
-							"message",
-							"activity",
-							"outbox",
-							"idempotency_completion",
+				const accepted = await acceptManualWhatsAppSend({
+					organizationId,
+					actorId: "actor_poller",
+					idempotencyKey: `wa-poller-${suffix}`,
+					payload: {
+						kind: "template",
+						accountId,
+						to: "919999999977",
+						templateName: "dynamic_booking_link",
+						language: "en_US",
+						components: [
+							{
+								type: "button",
+								subType: "url",
+								index: 1,
+								parameters: [
+									{ type: "text", text: "booking-42" },
+								],
+							},
 						],
 					},
-					{
-						payload: {
-							kind: "template",
-							accountId,
-							to: "919999999982",
-							templateName: "rollback_template",
-							language: "en_US",
-						},
-						steps: ["message", "outbox"],
-					},
-					{
-						payload: {
-							kind: "media",
-							accountId,
-							to: "919999999983",
-							mediaType: "image",
-							mediaKey: `orgs/${organizationId}/whatsapp-media/rollback.jpg`,
-							mimeType: "image/jpeg",
-						},
-						steps: ["media", "message", "outbox"],
-					},
-				];
+				});
 
-				let attempt = 0;
-				for (const testCase of cases) {
-					for (const failingStep of testCase.steps) {
-						attempt += 1;
-						await expect(
-							acceptManualWhatsAppSend(
-								{
-									organizationId,
-									actorId: "actor_rollback",
-									idempotencyKey: `wa-rollback-${suffix}-${attempt}`,
-									payload: testCase.payload,
-								},
-								{
-									afterPersist: (step) => {
-										if (step === failingStep) {
-											throw new Error(
-												`forced ${step} failure`,
-											);
-										}
-									},
-								},
-							),
-						).rejects.toThrow(`forced ${failingStep} failure`);
+				triggerMocks.trigger.mockRejectedValueOnce(
+					new Error("Trigger unavailable"),
+				);
+				expect(
+					await triggerWhatsAppOutbox({
+						outboxId: accepted.outboxId,
+					}),
+				).toBe(false);
 
-						const rowCount = (rows: Array<{ count: unknown }>) =>
-							Number(rows[0]?.count);
-						const counts = [
-							rowCount(
-								await db
-									.select({ count: count() })
-									.from(waManualSendIdempotency)
-									.where(
-										eq(
-											waManualSendIdempotency.organizationId,
-											organizationId,
-										),
-									),
-							),
-							rowCount(
-								await db
-									.select({ count: count() })
-									.from(waOutbox)
-									.where(
-										eq(
-											waOutbox.organizationId,
-											organizationId,
-										),
-									),
-							),
-							rowCount(
-								await db
-									.select({ count: count() })
-									.from(waMessages)
-									.where(
-										eq(
-											waMessages.organizationId,
-											organizationId,
-										),
-									),
-							),
-							rowCount(
-								await db
-									.select({ count: count() })
-									.from(waMedia)
-									.where(
-										eq(
-											waMedia.organizationId,
-											organizationId,
-										),
-									),
-							),
-							rowCount(
-								await db
-									.select({ count: count() })
-									.from(waConversations)
-									.where(
-										eq(
-											waConversations.organizationId,
-											organizationId,
-										),
-									),
-							),
-							rowCount(
-								await db
-									.select({ count: count() })
-									.from(waContacts)
-									.where(
-										eq(
-											waContacts.organizationId,
-											organizationId,
-										),
-									),
-							),
-						];
-						expect(counts).toEqual([0, 0, 0, 0, 0, 0]);
-					}
+				const due = await fetchDueWhatsAppOutboxItems({ limit: 100 });
+				const exactItem = due.find(
+					(item) => item.outbox.id === accepted.outboxId,
+				);
+				if (!exactItem) {
+					throw new Error(
+						"Accepted manual send was not found by poller",
+					);
 				}
+
+				const provider = {
+					type: "cloud_api",
+					capabilities: new Set(["templates"] as const),
+					provisioning: {
+						startLink: async () => ({
+							status: "connected" as const,
+						}),
+						getStatus: async () => "connected" as const,
+						disconnect: async () => undefined,
+					},
+					messaging: {
+						sendText: async () => ({ success: false }),
+						sendMedia: async () => ({ success: false }),
+						sendTemplate: async (params: SendTemplateParams) => {
+							providerCalls += 1;
+							providerTemplate = params;
+							return {
+								success: true,
+								providerMessageId: "provider-poller-once",
+							};
+						},
+						markRead: async () => undefined,
+						supports: () => true,
+					},
+					destroy: async () => undefined,
+				} satisfies WhatsAppProvider;
+				expect(
+					await processWhatsAppOutboxItem(exactItem, {
+						workerId: "manual-send-poller",
+						providerFactory: () => provider,
+					}),
+				).toEqual({ status: "sent" });
+				expect(providerCalls).toBe(1);
+				expect(providerTemplate).toMatchObject({
+					to: "919999999977",
+					templateName: "dynamic_booking_link",
+					language: "en_US",
+					components: [
+						{
+							type: "button",
+							subType: "url",
+							index: 1,
+							parameters: [{ type: "text", text: "booking-42" }],
+						},
+					],
+				});
+
+				const nextDue = await fetchDueWhatsAppOutboxItems({
+					limit: 100,
+				});
+				expect(
+					nextDue.some(
+						(item) => item.outbox.id === accepted.outboxId,
+					),
+				).toBe(false);
+				const storedMessage = await db.query.waMessages.findFirst({
+					where: eq(waMessages.id, accepted.messageId),
+				});
+				expect(storedMessage).toMatchObject({
+					status: "sent",
+					providerMessageId: "provider-poller-once",
+				});
 			} finally {
+				triggerMocks.trigger.mockReset();
+				await db
+					.delete(waManualSendIdempotency)
+					.where(
+						eq(
+							waManualSendIdempotency.organizationId,
+							organizationId,
+						),
+					);
+				await db
+					.delete(waOutbox)
+					.where(eq(waOutbox.organizationId, organizationId));
+				await db
+					.delete(waMessages)
+					.where(eq(waMessages.organizationId, organizationId));
+				await db
+					.delete(waConversations)
+					.where(eq(waConversations.organizationId, organizationId));
+				await db
+					.delete(waContacts)
+					.where(eq(waContacts.organizationId, organizationId));
 				await db
 					.delete(waTemplates)
 					.where(eq(waTemplates.organizationId, organizationId));

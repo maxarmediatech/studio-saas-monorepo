@@ -56,6 +56,16 @@ const parseTemplateComponents = (value: unknown) => {
 				parameters: Array.isArray(component.parameters)
 					? component.parameters.filter(isRecord)
 					: undefined,
+				subType:
+					typeof component.subType === "string" && component.subType
+						? component.subType
+						: undefined,
+				index:
+					typeof component.index === "number" &&
+					Number.isInteger(component.index) &&
+					component.index >= 0
+						? component.index
+						: undefined,
 			},
 		];
 	});

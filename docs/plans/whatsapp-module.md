@@ -112,6 +112,7 @@ The earlier reliability lane remains in `0040`. The staged core-product remediat
 - `send-text`, `send-template`, and `send-media` require an opaque 16–128 character `idempotencyKey`.
 - A retry must keep the same key while its semantic payload is unchanged. Editing the account, destination, contact, message, template, or media payload requires a new key.
 - Same organization + actor + account + key replays the original message/outbox IDs. Reusing that scoped key for a changed payload returns a conflict.
+- Template component metadata is preserved end to end, including dynamic button `subType` and `index` fields required by the Cloud API payload.
 - Trigger.dev only wakes the worker after the database commit. Wake-up failure is logged and still returns `Message queued`; the database poller remains the delivery owner.
 - No first-party web caller currently invokes these procedures. Any external caller must add stable-key retry behavior before the required-key API is rolled out.
 
