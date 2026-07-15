@@ -25,7 +25,8 @@
 		"db:staging:init-guard": "pnpm --filter @repo/database staging:init-guard",
 		"db:staging:publish": "pnpm --filter @repo/database staging:publish",
 		"db:staging:verify": "pnpm --filter @repo/database staging:verify",
-		"notifications:deadlines": "pnpm --filter @repo/scripts notifications:deadlines"
+		"notifications:deadlines": "pnpm --filter @repo/scripts notifications:deadlines",
+		"financial:migration-preflight": "pnpm --filter @repo/scripts financial:migration-preflight"
 	},
 	"engines": {
 		"node": ">=20"

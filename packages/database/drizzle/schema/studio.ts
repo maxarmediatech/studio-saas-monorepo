@@ -1254,6 +1254,9 @@ export const invoices = pgTable(
 		uniqueIndex("invoices_org_number_idx")
 			.on(table.organizationId, table.invoiceNumber)
 			.where(sql`deleted_at IS NULL`),
+		uniqueIndex("invoices_active_payment_schedule_idx")
+			.on(table.paymentScheduleId)
+			.where(sql`payment_schedule_id IS NOT NULL AND deleted_at IS NULL`),
 		index("invoices_org_idx").on(table.organizationId),
 		index("invoices_booking_idx").on(table.bookingId),
 		index("invoices_status_idx").on(table.status),
@@ -1406,6 +1409,9 @@ export const receipts = pgTable(
 		uniqueIndex("receipts_org_number_idx")
 			.on(table.organizationId, table.receiptNumber)
 			.where(sql`deleted_at IS NULL`),
+		uniqueIndex("receipts_active_received_amount_idx")
+			.on(table.receivedAmountId)
+			.where(sql`received_amount_id IS NOT NULL AND deleted_at IS NULL`),
 		check("receipts_amount_positive", sql`amount > 0`),
 	],
 );
