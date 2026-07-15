@@ -2,7 +2,6 @@ import { and, db, eq, inArray, isNull, lte, or, sql } from "@repo/database";
 import type { CloudApiWebhookEvent } from "@repo/whatsapp-core";
 import {
 	waAccounts,
-	waContacts,
 	waConversations,
 	waEvents,
 	waMedia,
@@ -10,6 +9,10 @@ import {
 } from "@repo/whatsapp-db";
 import { enqueueInboundAutomationRuns } from "./automation-triggers";
 import { transitionWhatsAppMessage } from "./delivery-transitions";
+import {
+	ensureWhatsAppContactIdentity,
+	findWhatsAppProviderMessageIdentity,
+} from "./identity-compat";
 import type { WhatsAppTransaction } from "./types";
 
 type WhatsAppAccount = typeof waAccounts.$inferSelect;
@@ -56,38 +59,6 @@ const storedEventPayload = (payload: unknown) => {
 	throw new Error("Stored WhatsApp event payload is invalid");
 };
 
-const ensureContact = async (
-	tx: WhatsAppTransaction,
-	params: { organizationId: string; accountId: string; waId: string },
-) => {
-	const [created] = await tx
-		.insert(waContacts)
-		.values({ ...params, phoneNumber: params.waId })
-		.onConflictDoNothing({
-			target: [waContacts.accountId, waContacts.waId],
-		})
-		.returning({ id: waContacts.id });
-	if (created) {
-		return created.id;
-	}
-
-	const [existing] = await tx
-		.select({ id: waContacts.id })
-		.from(waContacts)
-		.where(
-			and(
-				eq(waContacts.organizationId, params.organizationId),
-				eq(waContacts.accountId, params.accountId),
-				eq(waContacts.waId, params.waId),
-			),
-		)
-		.limit(1);
-	if (!existing) {
-		throw new Error("Failed to resolve WhatsApp contact");
-	}
-	return existing.id;
-};
-
 const ensureConversation = async (
 	tx: WhatsAppTransaction,
 	params: { organizationId: string; accountId: string; contactId: string },
@@ -126,7 +97,15 @@ const processInbound = async (
 	account: WhatsAppAccount,
 	rawPayload: unknown,
 ) => {
-	const contactId = await ensureContact(tx, {
+	const existingMessageId = await findWhatsAppProviderMessageIdentity(tx, {
+		accountId: account.id,
+		providerMessageId: event.providerMessageId,
+	});
+	if (existingMessageId) {
+		return;
+	}
+
+	const contactId = await ensureWhatsAppContactIdentity(tx, {
 		organizationId: account.organizationId,
 		accountId: account.id,
 		waId: event.from,
@@ -176,9 +155,6 @@ const processInbound = async (
 			status: "delivered",
 			statusUpdatedAt: new Date(),
 			rawPayload,
-		})
-		.onConflictDoNothing({
-			target: [waMessages.accountId, waMessages.providerMessageId],
 		})
 		.returning({ id: waMessages.id });
 	if (!created) {

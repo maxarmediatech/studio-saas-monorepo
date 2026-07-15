@@ -1,6 +1,6 @@
 {
-  "id": "63a3e51d-ddca-4010-8c59-230db8382fa1",
-  "prevId": "0245d03c-db19-4c51-b24b-eb9ab20566b8",
+  "id": "3ad71676-cd95-43ef-aae3-9ac1db0ac1b4",
+  "prevId": "a5e91949-0aec-420b-b9a4-4ec297b61036",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1728,24 +1728,6 @@
         },
         "payments_customer_id": {
           "name": "payments_customer_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "billing_seat_count": {
-          "name": "billing_seat_count",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "billing_seat_synced_at": {
-          "name": "billing_seat_synced_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "billing_seat_sync_error": {
-          "name": "billing_seat_sync_error",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -4493,7 +4475,7 @@
           "name": "account_id",
           "type": "varchar(255)",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "wa_id": {
           "name": "wa_id",
@@ -4648,27 +4630,6 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "wa_contacts_account_wa_id_idx": {
-          "name": "wa_contacts_account_wa_id_idx",
-          "columns": [
-            {
-              "expression": "account_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "wa_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -5703,27 +5664,6 @@
           "method": "btree",
           "with": {}
         },
-        "wa_messages_account_provider_message_id_idx": {
-          "name": "wa_messages_account_provider_message_id_idx",
-          "columns": [
-            {
-              "expression": "account_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "provider_message_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
         "wa_messages_campaign_recipient_idx": {
           "name": "wa_messages_campaign_recipient_idx",
           "columns": [
@@ -5887,6 +5827,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "dispatch_token": {
+          "name": "dispatch_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "error_message": {
           "name": "error_message",
           "type": "text",
@@ -5939,21 +5885,6 @@
           "method": "btree",
           "with": {}
         },
-        "wa_outbox_message_id_idx": {
-          "name": "wa_outbox_message_id_idx",
-          "columns": [
-            {
-              "expression": "message_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
         "wa_outbox_status_idx": {
           "name": "wa_outbox_status_idx",
           "columns": [
@@ -5989,6 +5920,21 @@
           "columns": [
             {
               "expression": "lease_expires_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "wa_outbox_dispatch_token_idx": {
+          "name": "wa_outbox_dispatch_token_idx",
+          "columns": [
+            {
+              "expression": "dispatch_token",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -6556,7 +6502,8 @@
           "name": "delivery_key",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "default": "'legacy:' || gen_random_uuid()::text"
         },
         "payload": {
           "name": "payload",
@@ -10356,7 +10303,7 @@
       "checkConstraints": {
         "document_sequences_type_check": {
           "name": "document_sequences_type_check",
-          "value": "document_type IN ('booking', 'invoice', 'receipt')"
+          "value": "document_type IN ('invoice', 'receipt')"
         },
         "document_sequences_next_value_positive": {
           "name": "document_sequences_next_value_positive",

@@ -43,10 +43,6 @@ export const waContacts = pgTable(
 		index("wa_contacts_account_id_idx").on(table.accountId),
 		index("wa_contacts_wa_id_idx").on(table.waId),
 		index("wa_contacts_phone_number_idx").on(table.phoneNumber),
-		uniqueIndex("wa_contacts_account_wa_id_idx").on(
-			table.accountId,
-			table.waId,
-		),
 		uniqueIndex("wa_contacts_external_link_idx").on(
 			table.organizationId,
 			table.externalSource,

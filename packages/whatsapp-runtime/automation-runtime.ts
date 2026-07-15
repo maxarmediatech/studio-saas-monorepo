@@ -15,9 +15,9 @@ import {
 	waContacts,
 	waConversations,
 	waMessages,
-	waOutbox,
 } from "@repo/whatsapp-db";
 import { parseAutomationAction } from "./automation-triggers";
+import { ensureWhatsAppOutboxEffect } from "./identity-compat";
 import type { AutomationAction, WhatsAppTransaction } from "./types";
 
 const DEFAULT_LEASE_MS = 5 * 60 * 1000;
@@ -219,14 +219,11 @@ const ensureAutomationMessage = async (
 	if (!message) {
 		throw new Error("Failed to resolve automation message effect");
 	}
-	await tx
-		.insert(waOutbox)
-		.values({
-			organizationId: params.run.organizationId,
-			accountId: params.run.accountId,
-			messageId: message.id,
-		})
-		.onConflictDoNothing({ target: waOutbox.messageId });
+	await ensureWhatsAppOutboxEffect(tx, {
+		organizationId: params.run.organizationId,
+		accountId: params.run.accountId,
+		messageId: message.id,
+	});
 	await tx
 		.update(waConversations)
 		.set({

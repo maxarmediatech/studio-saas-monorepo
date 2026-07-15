@@ -1,5 +1,6 @@
-import { db, sql } from "@repo/database";
-import { waContacts, waConversations } from "@repo/whatsapp-db";
+import { db } from "@repo/database";
+import { waConversations } from "@repo/whatsapp-db";
+import { ensureWhatsAppContactIdentity } from "@repo/whatsapp-runtime";
 import type { WhatsAppTransactionClient } from "./transaction-client";
 
 export type ContactConversationPersistenceStep = "contact" | "conversation";
@@ -21,26 +22,7 @@ export async function ensureWhatsAppContactConversation(
 	options: ContactConversationOptions = {},
 ) {
 	const persist = async (tx: WhatsAppTransactionClient) => {
-		const [contact] = await tx
-			.insert(waContacts)
-			.values({
-				organizationId: input.organizationId,
-				accountId: input.accountId,
-				waId: input.waId,
-				phoneNumber: input.waId,
-				name: input.contactName ?? null,
-			})
-			.onConflictDoUpdate({
-				target: [waContacts.accountId, waContacts.waId],
-				set: {
-					name: sql`coalesce(${waContacts.name}, excluded.name)`,
-					updatedAt: new Date(),
-				},
-			})
-			.returning({ id: waContacts.id });
-		if (!contact) {
-			throw new Error("Failed to resolve WhatsApp contact");
-		}
+		const contactId = await ensureWhatsAppContactIdentity(tx, input);
 		await options.afterPersist?.("contact");
 
 		const [conversation] = await tx
@@ -48,7 +30,7 @@ export async function ensureWhatsAppContactConversation(
 			.values({
 				organizationId: input.organizationId,
 				accountId: input.accountId,
-				contactId: contact.id,
+				contactId,
 			})
 			.onConflictDoUpdate({
 				target: [waConversations.accountId, waConversations.contactId],
@@ -60,7 +42,7 @@ export async function ensureWhatsAppContactConversation(
 		}
 		await options.afterPersist?.("conversation");
 
-		return { contactId: contact.id, conversationId: conversation.id };
+		return { contactId, conversationId: conversation.id };
 	};
 
 	return options.tx ? persist(options.tx) : db.transaction(persist);

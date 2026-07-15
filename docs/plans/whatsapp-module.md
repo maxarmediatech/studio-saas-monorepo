@@ -88,7 +88,8 @@ services/
 The remediation keeps the existing Phase 1A/1B API surface and selectively ports the useful dev-branch campaign and automation behavior without importing Trigger.dev or unrelated UI changes.
 
 - [x] Existing webhook rows retry while `processedAt` is null; processing and business writes share one transaction.
-- [x] Contact identity is unique by account and WhatsApp ID.
+- [x] New contact identities are serialized by account and WhatsApp ID;
+  historical ambiguity is quarantined until the Release Batch 5 report/cleanup.
 - [x] Conversation and inbound-message creation are conflict-safe.
 - [x] Outbox and inbound-media claims use expiring owner leases and recover stale pre-dispatch work.
 - [x] Provider-dispatched work with an unknown local outcome enters `delivery_unknown` and is excluded from automatic retry.
@@ -99,13 +100,25 @@ The remediation keeps the existing Phase 1A/1B API surface and selectively ports
 - [x] Automation runs/actions are durable, duplicate triggers are unique, expired leases recover, and wait actions resume.
 - [x] Manual text/template/media sends require a client idempotency key and commit one durable message/outbox effect atomically.
 
-Migration `0040_whatsapp_delivery_reliability.sql` refuses to add identity constraints when duplicate contact or provider-message identities exist. Existing failed webhook rows become retryable. Legacy outbox rows already in `processing` are conservatively made terminal for manual reconciliation because the old schema cannot prove whether provider dispatch happened.
+Release Batch 4 migration `0041_whatsapp_additive_reliability.sql` adds the
+durable reliability state without adding historical identity constraints.
+Existing failed webhook rows become retryable. A short-lived compatibility
+trigger preserves that behavior for writes from the old API during cutover.
+Legacy outbox rows already in `processing` are conservatively made terminal for
+manual reconciliation because the old schema cannot prove whether provider
+dispatch happened. The API and worker share the same webhook event processor;
+provider redelivery improves latency but is no longer required for recovery.
 
-Post-review migrations `0049` and `0050` add explicit webhook event leases/retry clocks and booking sequence support. The API and worker now share the same webhook event processor. Provider redelivery improves latency but is no longer required for recovery.
+Release Batch 5 owns the read-only identity report, reviewed cleanup, contact
+account ownership, and the three database uniqueness constraints. Until then,
+new writes use transaction advisory locks and refuse historical ambiguity.
 
 All campaign actions now use the recipient ledger. `send` persists a campaign due immediately; `schedule` persists a future due time. The removed legacy campaign engine no longer creates messages or counters directly.
 
-The earlier reliability lane remains in `0040`. The staged core-product remediation adds the manual-send claim table in generated migration `0052_whatsapp_manual_send_idempotency` and immutable outbox dispatch tokens in `0053_whatsapp_late_provider_acceptance`; Package 6 will reconstruct the unapplied development tail from `main` before shared rollout.
+The manual-send claim table, immutable outbox dispatch tokens, webhook retry
+clocks, campaign recipient ledger, automation state, and media ingest leases are
+all part of the reconstructed additive migration `0041`. The old development
+migration numbers are not deployable release history.
 
 ### Manual-send acceptance contract
 

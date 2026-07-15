@@ -198,7 +198,9 @@ export const listConversations = studioProtectedProcedure
 			data: items.map(({ conversation, contact }) => {
 				const item = toConversationItem(conversation, contact);
 				const savedName =
-					savedNamesByPhone.get(normalizePhone(contact.phoneNumber)) ??
+					savedNamesByPhone.get(
+						normalizePhone(contact.phoneNumber),
+					) ??
 					savedNamesByPhone.get(normalizePhone(contact.waId)) ??
 					null;
 
