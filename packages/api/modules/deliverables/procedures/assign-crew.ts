@@ -19,6 +19,11 @@ import {
 	assignCrewToDeliverableInputSchema,
 	assignCrewToDeliverableOutputSchema,
 } from "../../studio/schemas/deliverable";
+import {
+	lockParentReviewEvidence,
+	lockSubmissionParent,
+	recomputeParentReviewAggregate,
+} from "../../submissions/lib/parent-review-aggregate";
 
 export const assignCrewToDeliverable = studioProtectedProcedure
 	.route({
@@ -80,34 +85,51 @@ export const assignCrewToDeliverable = studioProtectedProcedure
 			});
 		}
 
-		// Create assignment
-		const [created] = await db
-			.insert(deliverableAssignments)
-			.values({
-				deliverableId,
-				crewId,
-				isLead: isLead ?? false,
-				assignedBy: context.user.id,
-			})
-			.returning({ id: deliverableAssignments.id });
-
-		if (!created) {
-			throw new ORPCError("INTERNAL_SERVER_ERROR", {
-				message: "Failed to create assignment",
+		const created = await db.transaction(async (tx) => {
+			const parent = await lockSubmissionParent(
+				tx,
+				context.organizationId,
+				{ id: deliverableId, type: "deliverable" },
+			);
+			if (!parent) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Deliverable not found",
+				});
+			}
+			await lockParentReviewEvidence(tx, context.organizationId, parent);
+			const duplicate = await tx.query.deliverableAssignments.findFirst({
+				where: and(
+					eq(deliverableAssignments.deliverableId, deliverableId),
+					eq(deliverableAssignments.crewId, crewId),
+				),
+				columns: { id: true },
 			});
-		}
-
-		// Update workflow status if first assignment
-		if (deliverable.workflowStatus === "not_started") {
-			await db
-				.update(deliverables)
-				.set({
-					workflowStatus: "assigned",
-					updatedAt: new Date(),
-					updatedBy: context.user.id,
+			if (duplicate) {
+				throw new ORPCError("CONFLICT", {
+					message:
+						"Crew member is already assigned to this deliverable",
+				});
+			}
+			const [assignment] = await tx
+				.insert(deliverableAssignments)
+				.values({
+					deliverableId,
+					crewId,
+					isLead: isLead ?? false,
+					assignedBy: context.user.id,
 				})
-				.where(eq(deliverables.id, deliverableId));
-		}
+				.returning({ id: deliverableAssignments.id });
+			if (!assignment) {
+				throw new ORPCError("INTERNAL_SERVER_ERROR", {
+					message: "Failed to create assignment",
+				});
+			}
+			await recomputeParentReviewAggregate(tx, context, parent, {
+				actionTime: new Date(),
+				cause: "assignment_added",
+			});
+			return assignment;
+		});
 
 		// Track activity (non-blocking)
 		// entityName = target of assignment (deliverable), crewName in metadata

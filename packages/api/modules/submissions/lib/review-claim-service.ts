@@ -9,13 +9,53 @@ import {
 	users,
 } from "@repo/database";
 import type { TransactionClient } from "../../studio/lib/transactions";
+import {
+	type LockedSubmissionParent,
+	lockParentReviewEvidence,
+	lockSubmissionParent,
+	recomputeParentReviewAggregate,
+} from "./parent-review-aggregate";
 import { recordReviewActivity } from "./review-activity";
 import { REVIEW_CLAIM_STALE_AFTER_MS } from "./review-claim-policy";
 import {
 	findScopedSubmission,
-	getSubmissionParent,
 	type ReviewActorContext,
+	type SubmissionRelationship,
 } from "./review-transition-helpers";
+
+async function lockTransitionParent(
+	tx: TransactionClient,
+	context: ReviewActorContext,
+	submission: SubmissionRelationship,
+): Promise<LockedSubmissionParent> {
+	const parentRef =
+		submission.taskId && !submission.deliverableId
+			? { id: submission.taskId, type: "task" as const }
+			: submission.deliverableId && !submission.taskId
+				? {
+						id: submission.deliverableId,
+						type: "deliverable" as const,
+					}
+				: null;
+	if (!parentRef) {
+		throw new ORPCError("CONFLICT", {
+			message: "Submission parent relationship is invalid",
+		});
+	}
+	const parent = await lockSubmissionParent(
+		tx,
+		context.organizationId,
+		parentRef,
+	);
+	if (!parent) {
+		throw new ORPCError("CONFLICT", {
+			message:
+				"Submission parent is no longer available in this organization",
+		});
+	}
+	await lockParentReviewEvidence(tx, context.organizationId, parent);
+	return parent;
+}
 
 export async function claimSubmissionForReview(
 	context: ReviewActorContext,
@@ -23,6 +63,17 @@ export async function claimSubmissionForReview(
 ) {
 	return db.transaction(async (tx) => {
 		const actionTime = new Date();
+		const existing = await findScopedSubmission(
+			tx,
+			context.organizationId,
+			id,
+		);
+		if (!existing) {
+			throw new ORPCError("NOT_FOUND", {
+				message: "Submission not found",
+			});
+		}
+		const parent = await lockTransitionParent(tx, context, existing);
 		const [claimed] = await tx
 			.update(assignmentSubmissions)
 			.set({
@@ -50,23 +101,23 @@ export async function claimSubmissionForReview(
 			});
 
 		if (!claimed) {
-			const existing = await findScopedSubmission(
+			const current = await findScopedSubmission(
 				tx,
 				context.organizationId,
 				id,
 			);
-			if (!existing) {
+			if (!current) {
 				throw new ORPCError("NOT_FOUND", {
 					message: "Submission not found",
 				});
 			}
 			if (
-				existing.status === "in_review" &&
-				existing.reviewedBy === context.user.id
+				current.status === "in_review" &&
+				current.reviewedBy === context.user.id
 			) {
 				return { alreadyClaimed: true, id };
 			}
-			if (existing.status === "in_review") {
+			if (current.status === "in_review") {
 				throw new ORPCError("CONFLICT", {
 					message:
 						"Submission is already being reviewed by another user",
@@ -77,11 +128,6 @@ export async function claimSubmissionForReview(
 			});
 		}
 
-		const parent = await getSubmissionParent(
-			tx,
-			context.organizationId,
-			claimed,
-		);
 		await recordReviewActivity(tx, context, {
 			submissionId: id,
 			entityName: parent.name,
@@ -97,6 +143,10 @@ export async function claimSubmissionForReview(
 				claimTimestamp: actionTime.toISOString(),
 				actionTime: actionTime.toISOString(),
 			},
+		});
+		await recomputeParentReviewAggregate(tx, context, parent, {
+			actionTime,
+			cause: "claim",
 		});
 
 		return { alreadyClaimed: false, id };
@@ -118,6 +168,7 @@ export async function releaseSubmissionReview(
 				message: "Submission not found",
 			});
 		}
+		const parent = await lockTransitionParent(tx, context, existing);
 		if (
 			existing.status !== "in_review" ||
 			existing.reviewedBy !== context.user.id ||
@@ -166,11 +217,6 @@ export async function releaseSubmissionReview(
 			});
 		}
 
-		const parent = await getSubmissionParent(
-			tx,
-			context.organizationId,
-			released,
-		);
 		await recordReviewActivity(tx, context, {
 			submissionId: input.id,
 			entityName: parent.name,
@@ -186,6 +232,10 @@ export async function releaseSubmissionReview(
 				claimTimestamp: existing.reviewClaimedAt.toISOString(),
 				actionTime: actionTime.toISOString(),
 			},
+		});
+		await recomputeParentReviewAggregate(tx, context, parent, {
+			actionTime,
+			cause: "release",
 		});
 		return { id: input.id };
 	});
@@ -248,6 +298,7 @@ export async function administrativelyReleaseReview(
 			input.id,
 			cutoff,
 		);
+		const parent = await lockTransitionParent(tx, context, existing);
 		const [released] = await tx
 			.update(assignmentSubmissions)
 			.set({
@@ -281,11 +332,6 @@ export async function administrativelyReleaseReview(
 				message: "Review claim changed before it could be released",
 			});
 		}
-		const parent = await getSubmissionParent(
-			tx,
-			context.organizationId,
-			released,
-		);
 		await recordReviewActivity(tx, context, {
 			submissionId: input.id,
 			entityName: parent.name,
@@ -302,6 +348,10 @@ export async function administrativelyReleaseReview(
 				claimTimestamp: existing.reviewClaimedAt.toISOString(),
 				actionTime: actionTime.toISOString(),
 			},
+		});
+		await recomputeParentReviewAggregate(tx, context, parent, {
+			actionTime,
+			cause: "admin_release",
 		});
 		return { id: input.id };
 	});
@@ -322,6 +372,7 @@ export async function administrativelyReassignReview(
 			input.id,
 			cutoff,
 		);
+		const parent = await lockTransitionParent(tx, context, existing);
 		if (existing.reviewedBy === input.reviewerId) {
 			return { alreadyAssigned: true, id: input.id };
 		}
@@ -376,11 +427,6 @@ export async function administrativelyReassignReview(
 			});
 		}
 
-		const parent = await getSubmissionParent(
-			tx,
-			context.organizationId,
-			reassigned,
-		);
 		await recordReviewActivity(tx, context, {
 			submissionId: input.id,
 			entityName: parent.name,

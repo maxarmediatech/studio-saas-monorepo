@@ -3,15 +3,19 @@ import {
 	and,
 	assignmentSubmissions,
 	db,
-	deliverables,
+	deliverableAssignments,
 	desc,
 	eq,
-	isNull,
 	sql,
 	submissionFiles,
-	tasks,
+	taskAssignments,
 } from "@repo/database";
 import type { StudioContext } from "../../studio/lib/permissions";
+import {
+	lockParentReviewEvidence,
+	lockSubmissionParent,
+	recomputeParentReviewAggregate,
+} from "./parent-review-aggregate";
 import { recordReviewActivity } from "./review-activity";
 
 interface SubmissionFileInput {
@@ -34,24 +38,50 @@ export async function persistWorkSubmission(
 	input: PersistWorkSubmissionInput,
 ) {
 	return db.transaction(async (tx) => {
-		if (input.entity.type === "task") {
-			await tx.execute(sql`
-				SELECT ${tasks.id}
-				FROM ${tasks}
-				WHERE ${tasks.id} = ${input.entity.id}
-					AND ${tasks.organizationId} = ${context.organizationId}
-					AND ${tasks.deletedAt} IS NULL
-				FOR UPDATE
-			`);
-		} else {
-			await tx.execute(sql`
-				SELECT ${deliverables.id}
-				FROM ${deliverables}
-				WHERE ${deliverables.id} = ${input.entity.id}
-					AND ${deliverables.organizationId} = ${context.organizationId}
-					AND ${deliverables.deletedAt} IS NULL
-				FOR UPDATE
-			`);
+		const parent = await lockSubmissionParent(
+			tx,
+			context.organizationId,
+			input.entity,
+		);
+		if (!parent) {
+			throw new ORPCError("CONFLICT", {
+				message: `The ${input.entity.type} is no longer available`,
+			});
+		}
+		await lockParentReviewEvidence(tx, context.organizationId, parent);
+
+		const [currentAssignment] =
+			input.entity.type === "task"
+				? await tx
+						.select({ id: taskAssignments.id })
+						.from(taskAssignments)
+						.where(
+							and(
+								eq(taskAssignments.taskId, input.entity.id),
+								eq(taskAssignments.crewId, input.crew.id),
+							),
+						)
+						.limit(1)
+				: await tx
+						.select({ id: deliverableAssignments.id })
+						.from(deliverableAssignments)
+						.where(
+							and(
+								eq(
+									deliverableAssignments.deliverableId,
+									input.entity.id,
+								),
+								eq(
+									deliverableAssignments.crewId,
+									input.crew.id,
+								),
+							),
+						)
+						.limit(1);
+		if (!currentAssignment) {
+			throw new ORPCError("FORBIDDEN", {
+				message: `You are not assigned to this ${input.entity.type}`,
+			});
 		}
 
 		const entityFilter =
@@ -177,71 +207,10 @@ export async function persistWorkSubmission(
 			);
 		}
 
-		const parentUpdate =
-			input.entity.type === "task"
-				? await tx
-						.update(tasks)
-						.set({
-							workflowStatus: "submitted",
-							updatedAt: actionTime,
-							updatedBy: context.user.id,
-						})
-						.where(
-							and(
-								eq(tasks.id, input.entity.id),
-								eq(
-									tasks.organizationId,
-									context.organizationId,
-								),
-								isNull(tasks.deletedAt),
-								...(wasResubmitted
-									? [
-											eq(
-												tasks.workflowStatus,
-												"revision_requested",
-											),
-										]
-									: []),
-							),
-						)
-						.returning({ id: tasks.id })
-				: await tx
-						.update(deliverables)
-						.set({
-							workflowStatus: "submitted",
-							updatedAt: actionTime,
-							updatedBy: context.user.id,
-						})
-						.where(
-							and(
-								eq(deliverables.id, input.entity.id),
-								eq(
-									deliverables.organizationId,
-									context.organizationId,
-								),
-								isNull(deliverables.deletedAt),
-								...(wasResubmitted
-									? [
-											eq(
-												deliverables.workflowStatus,
-												"revision_requested",
-											),
-										]
-									: []),
-							),
-						)
-						.returning({ id: deliverables.id });
-		if (parentUpdate.length !== 1) {
-			throw new ORPCError("CONFLICT", {
-				message:
-					"Submission parent changed before work could be submitted",
-			});
-		}
-
 		await recordReviewActivity(tx, context, {
 			submissionId,
-			entityName: input.entity.name,
-			parent: input.entity,
+			entityName: parent.name,
+			parent,
 			action: "submitted",
 			oldValue: wasResubmitted ? "revision_requested" : null,
 			newValue: "submitted",
@@ -255,6 +224,15 @@ export async function persistWorkSubmission(
 				actionTime: actionTime.toISOString(),
 			},
 		});
-		return { id: submissionId, wasResubmitted };
+		const parentTransition = await recomputeParentReviewAggregate(
+			tx,
+			context,
+			parent,
+			{
+				actionTime,
+				cause: wasResubmitted ? "resubmit" : "submit",
+			},
+		);
+		return { id: submissionId, wasResubmitted, parentTransition };
 	});
 }

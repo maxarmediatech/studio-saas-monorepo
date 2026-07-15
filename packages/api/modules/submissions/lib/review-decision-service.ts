@@ -1,20 +1,15 @@
 import { ORPCError } from "@orpc/server";
-import {
-	and,
-	assignmentSubmissions,
-	db,
-	deliverables,
-	eq,
-	isNull,
-	sql,
-	tasks,
-} from "@repo/database";
+import { and, assignmentSubmissions, db, eq } from "@repo/database";
 import { safeNotifySubscribers } from "../../notifications/lib/notification-service";
 import type { ReviewSubmissionInput } from "../../studio/schemas/submission";
+import {
+	lockParentReviewEvidence,
+	lockSubmissionParent,
+	recomputeParentReviewAggregate,
+} from "./parent-review-aggregate";
 import { recordReviewActivity } from "./review-activity";
 import {
 	findScopedSubmission,
-	getSubmissionParent,
 	type ReviewActorContext,
 } from "./review-transition-helpers";
 
@@ -24,12 +19,6 @@ const decisionStatus = {
 	reject: "rejected",
 } as const;
 
-const decisionWorkflowStatus = {
-	approve: "approved",
-	request_revision: "revision_requested",
-	reject: "revision_requested",
-} as const;
-
 export async function decideSubmissionReview(
 	context: ReviewActorContext,
 	input: ReviewSubmissionInput,
@@ -37,7 +26,42 @@ export async function decideSubmissionReview(
 	const committed = await db.transaction(async (tx) => {
 		const actionTime = new Date();
 		const newStatus = decisionStatus[input.decision];
-		const newWorkflowStatus = decisionWorkflowStatus[input.decision];
+		const existing = await findScopedSubmission(
+			tx,
+			context.organizationId,
+			input.id,
+		);
+		if (!existing) {
+			throw new ORPCError("NOT_FOUND", {
+				message: "Submission not found",
+			});
+		}
+		const parentRef =
+			existing.taskId && !existing.deliverableId
+				? { id: existing.taskId, type: "task" as const }
+				: existing.deliverableId && !existing.taskId
+					? {
+							id: existing.deliverableId,
+							type: "deliverable" as const,
+						}
+					: null;
+		if (!parentRef) {
+			throw new ORPCError("CONFLICT", {
+				message: "Submission parent relationship is invalid",
+			});
+		}
+		const parent = await lockSubmissionParent(
+			tx,
+			context.organizationId,
+			parentRef,
+		);
+		if (!parent) {
+			throw new ORPCError("CONFLICT", {
+				message:
+					"Submission parent is no longer available in this organization",
+			});
+		}
+		await lockParentReviewEvidence(tx, context.organizationId, parent);
 		const [decided] = await tx
 			.update(assignmentSubmissions)
 			.set({
@@ -64,19 +88,19 @@ export async function decideSubmissionReview(
 			});
 
 		if (!decided) {
-			const existing = await findScopedSubmission(
+			const current = await findScopedSubmission(
 				tx,
 				context.organizationId,
 				input.id,
 			);
-			if (!existing) {
+			if (!current) {
 				throw new ORPCError("NOT_FOUND", {
 					message: "Submission not found",
 				});
 			}
 			if (
-				existing.status === "in_review" &&
-				existing.reviewedBy !== context.user.id
+				current.status === "in_review" &&
+				current.reviewedBy !== context.user.id
 			) {
 				throw new ORPCError("CONFLICT", {
 					message:
@@ -85,66 +109,6 @@ export async function decideSubmissionReview(
 			}
 			throw new ORPCError("CONFLICT", {
 				message: "Submission review state changed before this decision",
-			});
-		}
-
-		const parent = await getSubmissionParent(
-			tx,
-			context.organizationId,
-			decided,
-		);
-		const parentUpdate =
-			parent.type === "task"
-				? await tx
-						.update(tasks)
-						.set({
-							workflowStatus: newWorkflowStatus,
-							completedAt:
-								input.decision === "approve"
-									? actionTime
-									: null,
-							updatedAt: actionTime,
-							updatedBy: context.user.id,
-						})
-						.where(
-							and(
-								eq(tasks.id, parent.id),
-								eq(
-									tasks.organizationId,
-									context.organizationId,
-								),
-								isNull(tasks.deletedAt),
-								sql`${tasks.workflowStatus} IN ('submitted', 'in_review')`,
-							),
-						)
-						.returning({ id: tasks.id })
-				: await tx
-						.update(deliverables)
-						.set({
-							workflowStatus: newWorkflowStatus,
-							deliveredAt:
-								input.decision === "approve"
-									? actionTime
-									: null,
-							updatedAt: actionTime,
-							updatedBy: context.user.id,
-						})
-						.where(
-							and(
-								eq(deliverables.id, parent.id),
-								eq(
-									deliverables.organizationId,
-									context.organizationId,
-								),
-								isNull(deliverables.deletedAt),
-								sql`${deliverables.workflowStatus} IN ('submitted', 'in_review')`,
-							),
-						)
-						.returning({ id: deliverables.id });
-		if (parentUpdate.length !== 1) {
-			throw new ORPCError("CONFLICT", {
-				message:
-					"Submission parent workflow changed before this decision",
 			});
 		}
 
@@ -170,7 +134,13 @@ export async function decideSubmissionReview(
 				actionTime: actionTime.toISOString(),
 			},
 		});
-		return { id: input.id, newStatus, parent };
+		const parentTransition = await recomputeParentReviewAggregate(
+			tx,
+			context,
+			parent,
+			{ actionTime, cause: "decision" },
+		);
+		return { id: input.id, newStatus, parent, parentTransition };
 	});
 
 	const notificationType = {

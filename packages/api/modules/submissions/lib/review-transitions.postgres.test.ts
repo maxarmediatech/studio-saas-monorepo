@@ -24,14 +24,20 @@ let assignmentSubmissions: DatabaseModule["assignmentSubmissions"];
 let bookings: DatabaseModule["bookings"];
 let crews: DatabaseModule["crews"];
 let db: DatabaseModule["db"];
+let deliverableAssignments: DatabaseModule["deliverableAssignments"];
+let deliverables: DatabaseModule["deliverables"];
 let eq: DatabaseModule["eq"];
 let members: DatabaseModule["members"];
 let organizations: DatabaseModule["organizations"];
 let sql: DatabaseModule["sql"];
 let submissionFiles: DatabaseModule["submissionFiles"];
+let taskAssignments: DatabaseModule["taskAssignments"];
 let tasks: DatabaseModule["tasks"];
 let users: DatabaseModule["users"];
 let persistWorkSubmission: typeof import("./persist-work-submission")["persistWorkSubmission"];
+let lockParentReviewEvidence: typeof import("./parent-review-aggregate")["lockParentReviewEvidence"];
+let lockSubmissionParent: typeof import("./parent-review-aggregate")["lockSubmissionParent"];
+let recomputeParentReviewAggregate: typeof import("./parent-review-aggregate")["recomputeParentReviewAggregate"];
 let administrativelyReassignReview: ClaimServiceModule["administrativelyReassignReview"];
 let administrativelyReleaseReview: ClaimServiceModule["administrativelyReleaseReview"];
 let claimSubmissionForReview: ClaimServiceModule["claimSubmissionForReview"];
@@ -46,6 +52,7 @@ const ids = {
 	reviewerB: `submission_reviewer_b_${suffix}`,
 	crewUser: `submission_crew_user_${suffix}`,
 	crew: `submission_crew_${suffix}`,
+	crewB: `submission_crew_b_${suffix}`,
 	booking: `submission_booking_${suffix}`,
 };
 
@@ -101,6 +108,11 @@ async function createTaskSubmission({
 				? "revision_requested"
 				: "submitted",
 	});
+	await db.insert(taskAssignments).values({
+		taskId,
+		crewId: ids.crew,
+		assignedBy: ids.admin,
+	});
 	await db.insert(assignmentSubmissions).values({
 		id: submissionId,
 		organizationId,
@@ -122,6 +134,106 @@ async function getSubmission(id: string) {
 	});
 }
 
+async function createReviewPair(type: "task" | "deliverable") {
+	const token = `${type}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+	const bookingId = `${ids.organization}_booking_${token}`;
+	const parentId = `${ids.organization}_${type}_${token}`;
+	const submissionA = `${ids.organization}_submission_a_${token}`;
+	const submissionB = `${ids.organization}_submission_b_${token}`;
+	await db.insert(bookings).values({
+		id: bookingId,
+		organizationId: ids.organization,
+		referenceNumber: `PAIR-${token}`,
+		name: "Aggregate review booking",
+		bookingType: "test",
+		packageType: "test",
+		packageCost: "100.00",
+	});
+	if (type === "task") {
+		await db.insert(tasks).values({
+			id: parentId,
+			organizationId: ids.organization,
+			bookingId,
+			name: "Aggregate review task",
+			workflowStatus: "in_review",
+		});
+		await db.insert(taskAssignments).values([
+			{ taskId: parentId, crewId: ids.crew, assignedBy: ids.admin },
+			{ taskId: parentId, crewId: ids.crewB, assignedBy: ids.admin },
+		]);
+	} else {
+		await db.insert(deliverables).values({
+			id: parentId,
+			organizationId: ids.organization,
+			bookingId,
+			name: "Aggregate review deliverable",
+			workflowStatus: "in_review",
+		});
+		await db.insert(deliverableAssignments).values([
+			{
+				deliverableId: parentId,
+				crewId: ids.crew,
+				assignedBy: ids.admin,
+			},
+			{
+				deliverableId: parentId,
+				crewId: ids.crewB,
+				assignedBy: ids.admin,
+			},
+		]);
+	}
+	await db.insert(assignmentSubmissions).values([
+		{
+			id: submissionA,
+			organizationId: ids.organization,
+			taskId: type === "task" ? parentId : null,
+			deliverableId: type === "deliverable" ? parentId : null,
+			submittedBy: ids.crew,
+			status: "in_review",
+			submittedAt: new Date(),
+			reviewedBy: reviewerA.user.id,
+			reviewClaimedAt: new Date(),
+		},
+		{
+			id: submissionB,
+			organizationId: ids.organization,
+			taskId: type === "task" ? parentId : null,
+			deliverableId: type === "deliverable" ? parentId : null,
+			submittedBy: ids.crewB,
+			status: "in_review",
+			submittedAt: new Date(),
+			reviewedBy: reviewerB.user.id,
+			reviewClaimedAt: new Date(),
+		},
+	]);
+	return { parentId, submissionA, submissionB, type };
+}
+
+async function getParent(type: "task" | "deliverable", id: string) {
+	if (type === "task") {
+		const task = await db.query.tasks.findFirst({
+			where: eq(tasks.id, id),
+			columns: { workflowStatus: true, completedAt: true },
+		});
+		return task
+			? {
+					workflowStatus: task.workflowStatus,
+					approvedAt: task.completedAt,
+				}
+			: undefined;
+	}
+	const deliverable = await db.query.deliverables.findFirst({
+		where: eq(deliverables.id, id),
+		columns: { workflowStatus: true, deliveredAt: true },
+	});
+	return deliverable
+		? {
+				workflowStatus: deliverable.workflowStatus,
+				approvedAt: deliverable.deliveredAt,
+			}
+		: undefined;
+}
+
 describePostgres("submission review transitions on PostgreSQL", () => {
 	beforeAll(async () => {
 		if (!databaseUrl) {
@@ -136,15 +248,23 @@ describePostgres("submission review transitions on PostgreSQL", () => {
 			bookings,
 			crews,
 			db,
+			deliverableAssignments,
+			deliverables,
 			eq,
 			members,
 			organizations,
 			sql,
 			submissionFiles,
+			taskAssignments,
 			tasks,
 			users,
 		} = database);
 		({ persistWorkSubmission } = await import("./persist-work-submission"));
+		({
+			lockParentReviewEvidence,
+			lockSubmissionParent,
+			recomputeParentReviewAggregate,
+		} = await import("./parent-review-aggregate"));
 		({
 			administrativelyReassignReview,
 			administrativelyReleaseReview,
@@ -197,12 +317,19 @@ describePostgres("submission review transitions on PostgreSQL", () => {
 				}),
 			),
 		);
-		await db.insert(crews).values({
-			id: ids.crew,
-			organizationId: ids.organization,
-			userId: ids.crewUser,
-			name: "Submission Crew",
-		});
+		await db.insert(crews).values([
+			{
+				id: ids.crew,
+				organizationId: ids.organization,
+				userId: ids.crewUser,
+				name: "Submission Crew",
+			},
+			{
+				id: ids.crewB,
+				organizationId: ids.organization,
+				name: "Submission Crew B",
+			},
+		]);
 	});
 
 	beforeEach(() => {
@@ -279,7 +406,7 @@ describePostgres("submission review transitions on PostgreSQL", () => {
 		expect(
 			(await db.query.tasks.findFirst({ where: eq(tasks.id, taskId) }))
 				?.workflowStatus,
-		).toBe("submitted");
+		).toBe("in_review");
 		expect(safeNotifySubscribers).not.toHaveBeenCalled();
 	});
 
@@ -323,22 +450,47 @@ describePostgres("submission review transitions on PostgreSQL", () => {
 		).toHaveLength(1);
 	});
 
-	it("rolls back the decision and suppresses notification when parent update loses", async () => {
+	it("rolls back the decision and suppresses notification when aggregate parent update fails", async () => {
 		const { submissionId, taskId } = await createTaskSubmission();
 		await claimSubmissionForReview(reviewerA, submissionId);
-		await db
-			.update(tasks)
-			.set({ workflowStatus: "approved" })
-			.where(eq(tasks.id, taskId));
-		await expect(
-			decideSubmissionReview(reviewerA, {
-				id: submissionId,
-				decision: "reject",
-				reviewNote: "Cannot accept",
-			}),
-		).rejects.toThrow("parent workflow changed");
-		expect((await getSubmission(submissionId))?.status).toBe("in_review");
-		expect(safeNotifySubscribers).not.toHaveBeenCalled();
+		await db.execute(
+			sql.raw(`
+				CREATE OR REPLACE FUNCTION reject_parent_aggregate_test()
+				RETURNS trigger AS $$
+				BEGIN
+					IF NEW.id = '${taskId}' THEN
+						RAISE EXCEPTION 'forced aggregate update failure';
+					END IF;
+					RETURN NEW;
+				END;
+				$$ LANGUAGE plpgsql
+			`),
+		);
+		await db.execute(sql`
+			CREATE TRIGGER reject_parent_aggregate_test_trigger
+			BEFORE UPDATE ON tasks
+			FOR EACH ROW EXECUTE FUNCTION reject_parent_aggregate_test()
+		`);
+		try {
+			await expect(
+				decideSubmissionReview(reviewerA, {
+					id: submissionId,
+					decision: "reject",
+					reviewNote: "Cannot accept",
+				}),
+			).rejects.toThrow("Failed query");
+			expect((await getSubmission(submissionId))?.status).toBe(
+				"in_review",
+			);
+			expect(safeNotifySubscribers).not.toHaveBeenCalled();
+		} finally {
+			await db.execute(sql`
+				DROP TRIGGER IF EXISTS reject_parent_aggregate_test_trigger ON tasks
+			`);
+			await db.execute(sql`
+				DROP FUNCTION IF EXISTS reject_parent_aggregate_test()
+			`);
+		}
 	});
 
 	it("notifies only after a successful decision commit", async () => {
@@ -356,6 +508,208 @@ describePostgres("submission review transitions on PostgreSQL", () => {
 		});
 		expect(safeNotifySubscribers).toHaveBeenCalledOnce();
 		expect(statusObservedByNotification).toBe("approved");
+	});
+
+	it.each([
+		"task",
+		"deliverable",
+	] as const)("approves a %s only after both assignees approve", async (type) => {
+		const pair = await createReviewPair(type);
+		await decideSubmissionReview(reviewerA, {
+			id: pair.submissionA,
+			decision: "approve",
+		});
+		const afterFirst = await getParent(type, pair.parentId);
+		expect(afterFirst?.workflowStatus).toBe("in_review");
+		expect(afterFirst?.approvedAt).toBeNull();
+
+		await decideSubmissionReview(reviewerB, {
+			id: pair.submissionB,
+			decision: "approve",
+		});
+		const approved = await getParent(type, pair.parentId);
+		expect(approved?.workflowStatus).toBe("approved");
+		expect(approved?.approvedAt).toBeInstanceOf(Date);
+		expect(safeNotifySubscribers).toHaveBeenCalledTimes(2);
+		expect(
+			vi
+				.mocked(safeNotifySubscribers)
+				.mock.calls.every(
+					([notification]) => notification.entityType === type,
+				),
+		).toBe(true);
+	});
+
+	it("serializes concurrent sibling approvals without rejecting either decision", async () => {
+		const pair = await createReviewPair("task");
+		const results = await Promise.allSettled([
+			decideSubmissionReview(reviewerA, {
+				id: pair.submissionA,
+				decision: "approve",
+			}),
+			decideSubmissionReview(reviewerB, {
+				id: pair.submissionB,
+				decision: "approve",
+			}),
+		]);
+		expect(results.every((result) => result.status === "fulfilled")).toBe(
+			true,
+		);
+		expect((await getParent("task", pair.parentId))?.workflowStatus).toBe(
+			"approved",
+		);
+	});
+
+	it("gives revision precedence and converges after resubmission and approval", async () => {
+		const pair = await createReviewPair("deliverable");
+		await decideSubmissionReview(reviewerA, {
+			id: pair.submissionA,
+			decision: "approve",
+		});
+		await decideSubmissionReview(reviewerB, {
+			id: pair.submissionB,
+			decision: "request_revision",
+			reviewNote: "Please revise",
+		});
+		expect(
+			(await getParent("deliverable", pair.parentId))?.workflowStatus,
+		).toBe("revision_requested");
+
+		await persistWorkSubmission(crewActor, {
+			crew: { id: ids.crewB, name: "Submission Crew B" },
+			entity: {
+				id: pair.parentId,
+				name: "Aggregate review deliverable",
+				type: "deliverable",
+			},
+			submissionNote: "Revised",
+		});
+		expect(
+			(await getParent("deliverable", pair.parentId))?.workflowStatus,
+		).toBe("submitted");
+
+		await claimSubmissionForReview(reviewerB, pair.submissionB);
+		await decideSubmissionReview(reviewerB, {
+			id: pair.submissionB,
+			decision: "approve",
+		});
+		expect(
+			(await getParent("deliverable", pair.parentId))?.workflowStatus,
+		).toBe("approved");
+	});
+
+	it("adding and removing assignments reopens and reapproves atomically", async () => {
+		const pair = await createReviewPair("task");
+		await decideSubmissionReview(reviewerA, {
+			id: pair.submissionA,
+			decision: "approve",
+		});
+		await decideSubmissionReview(reviewerB, {
+			id: pair.submissionB,
+			decision: "approve",
+		});
+		const extraCrewId = `${ids.crewB}_extra_${Date.now()}`;
+		await db.insert(crews).values({
+			id: extraCrewId,
+			organizationId: ids.organization,
+			name: "Extra Crew",
+		});
+
+		await db.transaction(async (tx) => {
+			const parent = await lockSubmissionParent(tx, ids.organization, {
+				id: pair.parentId,
+				type: "task",
+			});
+			expect(parent).not.toBeNull();
+			if (!parent) {
+				return;
+			}
+			await lockParentReviewEvidence(tx, ids.organization, parent);
+			await tx.insert(taskAssignments).values({
+				taskId: pair.parentId,
+				crewId: extraCrewId,
+				assignedBy: admin.user.id,
+			});
+			await recomputeParentReviewAggregate(tx, admin, parent, {
+				actionTime: new Date(),
+				cause: "assignment_added",
+			});
+		});
+		const reopened = await getParent("task", pair.parentId);
+		expect(reopened?.workflowStatus).toBe("submitted");
+		expect(reopened?.approvedAt).toBeNull();
+
+		await db.transaction(async (tx) => {
+			const parent = await lockSubmissionParent(tx, ids.organization, {
+				id: pair.parentId,
+				type: "task",
+			});
+			if (!parent) {
+				return;
+			}
+			await lockParentReviewEvidence(tx, ids.organization, parent);
+			await tx
+				.delete(taskAssignments)
+				.where(
+					and(
+						eq(taskAssignments.taskId, pair.parentId),
+						eq(taskAssignments.crewId, extraCrewId),
+					),
+				);
+			await recomputeParentReviewAggregate(tx, admin, parent, {
+				actionTime: new Date(),
+				cause: "assignment_removed",
+			});
+		});
+		const reapproved = await getParent("task", pair.parentId);
+		expect(reapproved?.workflowStatus).toBe("approved");
+		expect(reapproved?.approvedAt).toBeInstanceOf(Date);
+	});
+
+	it("makes unchanged aggregation a no-op and preserves approval time", async () => {
+		const pair = await createReviewPair("deliverable");
+		await decideSubmissionReview(reviewerA, {
+			id: pair.submissionA,
+			decision: "approve",
+		});
+		await decideSubmissionReview(reviewerB, {
+			id: pair.submissionB,
+			decision: "approve",
+		});
+		const before = await getParent("deliverable", pair.parentId);
+		const activitiesBefore = await db.query.activities.findMany({
+			where: and(
+				eq(activities.entityId, pair.parentId),
+				eq(activities.action, "workflow_changed"),
+			),
+		});
+
+		const transition = await db.transaction(async (tx) => {
+			const parent = await lockSubmissionParent(tx, ids.organization, {
+				id: pair.parentId,
+				type: "deliverable",
+			});
+			if (!parent) {
+				throw new Error("Missing test deliverable");
+			}
+			await lockParentReviewEvidence(tx, ids.organization, parent);
+			return recomputeParentReviewAggregate(tx, admin, parent, {
+				actionTime: new Date(Date.now() + 60_000),
+				cause: "test_noop",
+			});
+		});
+
+		expect(transition.changed).toBe(false);
+		expect(
+			(await getParent("deliverable", pair.parentId))?.approvedAt,
+		).toEqual(before?.approvedAt);
+		const activitiesAfter = await db.query.activities.findMany({
+			where: and(
+				eq(activities.entityId, pair.parentId),
+				eq(activities.action, "workflow_changed"),
+			),
+		});
+		expect(activitiesAfter).toHaveLength(activitiesBefore.length);
 	});
 
 	it("rolls back ownership when its transaction-consistent audit insert fails", async () => {
@@ -477,7 +831,7 @@ describePostgres("submission review transitions on PostgreSQL", () => {
 			],
 			submissionNote: "Updated work",
 		});
-		expect(result).toEqual({
+		expect(result).toMatchObject({
 			id: revision.submissionId,
 			wasResubmitted: true,
 		});
