@@ -142,6 +142,65 @@ export async function getActiveAssignmentTarget(
 	return target ?? null;
 }
 
+export async function getCancellationEnrichmentTarget(
+	tx: TransactionClient,
+	params: { organizationId: string; shootId: string; crewId: string },
+): Promise<IntentTarget | null> {
+	const [target] = await tx
+		.select({
+			shootId: shoots.id,
+			shootStatus: shoots.status,
+			crewId: crews.id,
+			crewUserId: crews.userId,
+			crewEmail: crews.email,
+			crewName: crews.name,
+			assignmentRole: shootAssignments.role,
+			shootName: shoots.name,
+			shootType: shoots.shootType,
+			shootDate: shoots.shootDate,
+			startTime: shoots.startTime,
+			endTime: shoots.endTime,
+			venue: shoots.venue,
+			venueAddress: shoots.venueAddress,
+			notes: shoots.notes,
+			bookingName: bookings.name,
+			bookingReferenceNumber: bookings.referenceNumber,
+			organizationTimezone: organizations.timezone,
+			organizationSlug: organizations.slug,
+		})
+		.from(shoots)
+		.innerJoin(
+			crews,
+			and(
+				eq(crews.id, params.crewId),
+				eq(crews.organizationId, params.organizationId),
+			),
+		)
+		.leftJoin(
+			shootAssignments,
+			and(
+				eq(shootAssignments.shootId, shoots.id),
+				eq(shootAssignments.crewId, crews.id),
+			),
+		)
+		.innerJoin(
+			bookings,
+			and(
+				eq(shoots.bookingId, bookings.id),
+				eq(bookings.organizationId, params.organizationId),
+			),
+		)
+		.innerJoin(organizations, eq(shoots.organizationId, organizations.id))
+		.where(
+			and(
+				eq(shoots.id, params.shootId),
+				eq(shoots.organizationId, params.organizationId),
+			),
+		)
+		.limit(1);
+	return target ?? null;
+}
+
 export function buildSnapshot(
 	target: IntentTarget,
 	params: {

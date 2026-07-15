@@ -23,6 +23,26 @@ export async function claimCalendarJobBatch(batchSize: number) {
 					AND COALESCE(${calendarSyncJobs.attempts}, 0) < COALESCE(${calendarSyncJobs.maxAttempts}, ${DEFAULT_MAX_ATTEMPTS}))
 			)
 			AND (${calendarSyncJobs.nextAttemptAt} IS NULL OR ${calendarSyncJobs.nextAttemptAt} <= ${now})
+			AND (
+				job_type IN ('google_delete', 'ics_send_cancel')
+				OR (
+					NOT EXISTS (
+						SELECT 1 FROM calendar_sync_jobs AS cancellation_job
+						WHERE cancellation_job.organization_id = calendar_sync_jobs.organization_id
+							AND cancellation_job.shoot_id = calendar_sync_jobs.shoot_id
+							AND cancellation_job.crew_id = calendar_sync_jobs.crew_id
+							AND cancellation_job.job_type IN ('google_delete', 'ics_send_cancel')
+							AND cancellation_job.status <> 'completed'
+					)
+					AND NOT EXISTS (
+						SELECT 1 FROM shoot_calendar_events AS mapping
+						WHERE mapping.organization_id = calendar_sync_jobs.organization_id
+							AND mapping.shoot_id = calendar_sync_jobs.shoot_id
+							AND mapping.crew_id = calendar_sync_jobs.crew_id
+							AND mapping.cancellation_sync_status IN ('pending', 'error', 'manual_reconciliation')
+					)
+				)
+			)
 			ORDER BY ${calendarSyncJobs.createdAt} ASC
 			LIMIT ${batchSize}
 			FOR UPDATE SKIP LOCKED
@@ -77,6 +97,12 @@ export async function recoverStaleCalendarJobs(staleThresholdMinutes: number) {
 			}
 			const cancellation =
 				(job.payload as Snapshot | null)?.operation === "cancellation";
+			if (cancellation) {
+				await tx
+					.update(calendarSyncJobs)
+					.set({ effectState: "manual_reconciliation" })
+					.where(eq(calendarSyncJobs.id, job.id));
+			}
 			await tx
 				.update(shootCalendarEvents)
 				.set({
@@ -84,7 +110,7 @@ export async function recoverStaleCalendarJobs(staleThresholdMinutes: number) {
 					lastError: "Calendar worker lease exhausted",
 					...(cancellation
 						? {
-								cancellationSyncStatus: "error",
+								cancellationSyncStatus: "manual_reconciliation",
 								cancellationLastError:
 									"Calendar worker lease exhausted",
 							}
@@ -103,10 +129,12 @@ export async function recoverStaleCalendarJobs(staleThresholdMinutes: number) {
 						),
 						eq(shootCalendarEvents.shootId, job.shootId ?? ""),
 						eq(shootCalendarEvents.crewId, job.crewId ?? ""),
-						eq(
-							shootCalendarEvents.intentGeneration,
-							job.generation,
-						),
+						cancellation
+							? undefined
+							: eq(
+									shootCalendarEvents.intentGeneration,
+									job.generation,
+								),
 					),
 				);
 		}

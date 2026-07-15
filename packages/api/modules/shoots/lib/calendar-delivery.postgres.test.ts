@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { assertLegacyCancellationConvergence } from "./calendar-cancellation-convergence.postgres.test";
 import {
 	runCalendarDeliveryAdversarialAssertions,
 	runCalendarDeliveryIdempotencyAssertions,
@@ -456,6 +457,25 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 				shootCalendarEvents,
 				shoots,
 				staleIds,
+				suffix,
+			});
+			await assertLegacyCancellationConvergence({
+				and,
+				bookingId,
+				calendarDeliveryIntents,
+				calendarSyncJobs,
+				crews,
+				db,
+				eq,
+				expect,
+				ids,
+				mailBarrier,
+				organizationId,
+				processJob,
+				recoverStaleProcessingJobs,
+				reconcileCalendarDeliveries,
+				shootCalendarEvents,
+				shoots,
 				suffix,
 			});
 			await assertDurableCompensationRetry({

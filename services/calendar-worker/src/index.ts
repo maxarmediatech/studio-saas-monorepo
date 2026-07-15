@@ -12,7 +12,11 @@ import {
 import { logger } from "@repo/logs";
 import { revokeCleanedUpConnections } from "./connection-cleanup";
 import { claimCalendarJobBatch, recoverStaleCalendarJobs } from "./job-claims";
-import { cancellationIsCurrent, deliveryIsCurrent } from "./mapping-current";
+import {
+	cancellationIsCurrent,
+	deliveryIsCurrent,
+	deliveryWaitsForCancellation,
+} from "./mapping-current";
 import {
 	compensateStaleEffect,
 	performProviderEffect,
@@ -72,6 +76,22 @@ async function completeClaim(job: typeof calendarSyncJobs.$inferSelect) {
 		})
 		.where(claimWhere(job))
 		.returning({ id: calendarSyncJobs.id });
+}
+
+async function deferClaimForCancellation(
+	job: typeof calendarSyncJobs.$inferSelect,
+) {
+	return db
+		.update(calendarSyncJobs)
+		.set({
+			status: "pending",
+			nextAttemptAt: null,
+			lockedAt: null,
+			claimToken: null,
+			lastError: "Waiting for prior calendar cancellation",
+			updatedAt: new Date(),
+		})
+		.where(claimWhere(job));
 }
 
 async function recordSuccess(
@@ -137,11 +157,16 @@ async function transitionSuccess(
 			.returning({ id: shootCalendarEvents.id });
 		mappingUpdated = updated.length === 1;
 	}
-	if (snapshot.intentState === "cancelled") {
+	if (snapshot.operation === "cancellation") {
 		const updated = await tx
 			.update(shootCalendarEvents)
 			.set({
-				syncStatus: "deleted",
+				syncStatus: sql`CASE
+						WHEN ${shootCalendarEvents.intentState} = 'cancelled' THEN 'deleted'::calendar_event_sync_status
+						WHEN ${shootCalendarEvents.deliverySyncStatus} = 'error' THEN 'error'::calendar_event_sync_status
+						WHEN ${shootCalendarEvents.deliverySyncStatus} = 'pending' THEN 'pending'::calendar_event_sync_status
+						ELSE 'synced'::calendar_event_sync_status
+					END`,
 				lastSyncedAt: new Date(),
 				lastError: null,
 				cancellationSyncStatus: "synced",
@@ -153,31 +178,7 @@ async function transitionSuccess(
 					eq(shootCalendarEvents.organizationId, job.organizationId),
 					eq(shootCalendarEvents.shootId, job.shootId ?? ""),
 					eq(shootCalendarEvents.crewId, job.crewId ?? ""),
-					eq(shootCalendarEvents.intentGeneration, job.generation),
-					eq(shootCalendarEvents.intentState, "cancelled"),
-				),
-			)
-			.returning({ id: shootCalendarEvents.id });
-		mappingUpdated = updated.length === 1;
-	} else if (snapshot.operation === "cancellation") {
-		const updated = await tx
-			.update(shootCalendarEvents)
-			.set({
-				cancellationSyncStatus: "synced",
-				cancellationLastError: null,
-				syncStatus: sql`CASE
-						WHEN ${shootCalendarEvents.deliverySyncStatus} = 'error' THEN 'error'::calendar_event_sync_status
-						WHEN ${shootCalendarEvents.deliverySyncStatus} = 'pending' THEN 'pending'::calendar_event_sync_status
-						ELSE 'synced'::calendar_event_sync_status
-					END`,
-				updatedAt: new Date(),
-			})
-			.where(
-				and(
-					eq(shootCalendarEvents.organizationId, job.organizationId),
-					eq(shootCalendarEvents.shootId, job.shootId ?? ""),
-					eq(shootCalendarEvents.crewId, job.crewId ?? ""),
-					eq(shootCalendarEvents.intentGeneration, job.generation),
+					sql`${shootCalendarEvents.cancellationSyncStatus} <> 'manual_reconciliation'`,
 				),
 			)
 			.returning({ id: shootCalendarEvents.id });
@@ -232,12 +233,18 @@ async function performAndPersistProviderEffect(
 			),
 		});
 		const current =
-			mapping?.intentGeneration === job.generation &&
-			(snapshot.operation === "delivery"
-				? mapping.intentState === "active"
-				: mapping.intentState === "cancelled" ||
-					mapping.deliveryMethod !== snapshot.target.deliveryMethod ||
-					mapping.recipientEmail !== snapshot.target.recipientEmail);
+			snapshot.operation === "delivery"
+				? mapping?.intentGeneration === job.generation &&
+					mapping.intentState === "active" &&
+					!["pending", "error", "manual_reconciliation"].includes(
+						mapping.cancellationSyncStatus,
+					)
+				: Boolean(
+						mapping &&
+							!["synced", "manual_reconciliation"].includes(
+								mapping.cancellationSyncStatus,
+							),
+					);
 		if (!current) {
 			return null;
 		}
@@ -320,11 +327,16 @@ async function recordFailure(
 		attempts: job.attempts ?? 0,
 		maxAttempts: job.maxAttempts ?? DEFAULT_MAX_ATTEMPTS,
 	});
+	const requiresManualReconciliation =
+		snapshot?.operation === "cancellation" && nextAttemptAt === null;
 	await db.transaction(async (tx) => {
 		const failed = await tx
 			.update(calendarSyncJobs)
 			.set({
 				status: "failed",
+				effectState: requiresManualReconciliation
+					? "manual_reconciliation"
+					: job.effectState,
 				nextAttemptAt,
 				lastError: errorMessage,
 				lockedAt: null,
@@ -350,7 +362,9 @@ async function recordFailure(
 				lastError: errorMessage,
 				...(snapshot.operation === "cancellation"
 					? {
-							cancellationSyncStatus: "error",
+							cancellationSyncStatus: requiresManualReconciliation
+								? "manual_reconciliation"
+								: "error",
 							cancellationLastError: errorMessage,
 						}
 					: {
@@ -364,7 +378,12 @@ async function recordFailure(
 					eq(shootCalendarEvents.organizationId, job.organizationId),
 					eq(shootCalendarEvents.shootId, job.shootId ?? ""),
 					eq(shootCalendarEvents.crewId, job.crewId ?? ""),
-					eq(shootCalendarEvents.intentGeneration, job.generation),
+					snapshot.operation === "delivery"
+						? eq(
+								shootCalendarEvents.intentGeneration,
+								job.generation,
+							)
+						: undefined,
 				),
 			);
 	});
@@ -377,6 +396,13 @@ export async function processJob(job: typeof calendarSyncJobs.$inferSelect) {
 			throw new Error("Job missing shootId/crewId");
 		}
 		snapshot = getSnapshot(job);
+		if (
+			snapshot.operation === "delivery" &&
+			(await deliveryWaitsForCancellation(job))
+		) {
+			await deferClaimForCancellation(job);
+			return;
+		}
 		if (job.effectState === "compensating") {
 			const result = (job.providerResult ?? {}) as {
 				googleEventId?: string | null;

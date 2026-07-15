@@ -83,6 +83,10 @@ export async function reconcileCalendarDeliveries(params: {
 					OR ${shoots.deletedAt} IS NOT NULL
 					OR ${shoots.status} IN ('completed', 'cancelled')
 				)`,
+				sql`NOT (
+					${shootCalendarEvents.intentState} = 'cancelled'
+					AND ${shootCalendarEvents.cancellationSyncStatus} IN ('synced', 'manual_reconciliation')
+				)`,
 			),
 		);
 

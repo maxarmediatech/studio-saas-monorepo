@@ -109,10 +109,14 @@ export async function repairCancellationJob(
 		(job.attempts ?? 0) >= (job.maxAttempts ?? 5)
 	) {
 		await tx
+			.update(calendarSyncJobs)
+			.set({ effectState: "manual_reconciliation" })
+			.where(eq(calendarSyncJobs.id, job.id));
+		await tx
 			.update(shootCalendarEvents)
 			.set({
 				syncStatus: "error",
-				cancellationSyncStatus: "error",
+				cancellationSyncStatus: "manual_reconciliation",
 				cancellationLastError:
 					job.lastError ??
 					"Calendar cancellation retry limit exhausted",

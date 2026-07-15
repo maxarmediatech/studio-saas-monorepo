@@ -23,18 +23,30 @@ export async function deliveryIsCurrent(job: Job) {
 	const mapping = await getMapping(job);
 	return (
 		mapping?.intentGeneration === job.generation &&
-		mapping.intentState === "active"
+		mapping.intentState === "active" &&
+		!["pending", "error", "manual_reconciliation"].includes(
+			mapping.cancellationSyncStatus,
+		)
 	);
 }
 
-export async function cancellationIsCurrent(job: Job, snapshot: Snapshot) {
+export async function deliveryWaitsForCancellation(job: Job) {
 	const mapping = await getMapping(job);
-	if (!mapping || mapping.intentGeneration !== job.generation) {
-		return false;
-	}
-	return (
-		mapping.intentState === "cancelled" ||
-		mapping.deliveryMethod !== snapshot.target.deliveryMethod ||
-		mapping.recipientEmail !== snapshot.target.recipientEmail
+	return Boolean(
+		mapping?.intentGeneration === job.generation &&
+			mapping.intentState === "active" &&
+			["pending", "error", "manual_reconciliation"].includes(
+				mapping.cancellationSyncStatus,
+			),
+	);
+}
+
+export async function cancellationIsCurrent(job: Job, _snapshot: Snapshot) {
+	const mapping = await getMapping(job);
+	return Boolean(
+		mapping &&
+			!["synced", "manual_reconciliation"].includes(
+				mapping.cancellationSyncStatus,
+			),
 	);
 }

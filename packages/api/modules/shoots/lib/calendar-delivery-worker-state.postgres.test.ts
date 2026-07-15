@@ -91,12 +91,16 @@ export async function assertCancellationFailureState(ctx: any) {
 			eq(shootCalendarEvents.shootId, id),
 		),
 	});
-	expect(mapping).toMatchObject({ syncStatus: "error" });
+	expect(mapping).toMatchObject({
+		syncStatus: "error",
+		cancellationSyncStatus: "manual_reconciliation",
+	});
 	const failed = await db.query.calendarSyncJobs.findFirst({
 		where: eq(calendarSyncJobs.id, job.id),
 	});
 	expect(failed).toMatchObject({
 		status: "failed",
+		effectState: "manual_reconciliation",
 		nextAttemptAt: null,
 	});
 }
