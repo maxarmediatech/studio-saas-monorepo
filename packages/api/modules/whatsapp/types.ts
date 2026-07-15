@@ -207,7 +207,18 @@ export const syncTemplatesOutputSchema = z.object({
 	message: z.string(),
 });
 
+export const whatsappManualSendIdempotencyKeySchema = z
+	.string()
+	.trim()
+	.min(16, "Idempotency key must be at least 16 characters")
+	.max(128, "Idempotency key must be at most 128 characters")
+	.regex(
+		/^[A-Za-z0-9._:-]+$/,
+		"Idempotency key must use letters, numbers, '.', '_', ':', or '-'",
+	);
+
 export const sendTextInputSchema = z.object({
+	idempotencyKey: whatsappManualSendIdempotencyKeySchema,
 	accountId: z.string(),
 	to: z.string(),
 	text: z.string().min(1),
@@ -229,6 +240,7 @@ const waMediaTypeSchema = z.enum([
 
 export const sendMediaInputSchema = z
 	.object({
+		idempotencyKey: whatsappManualSendIdempotencyKeySchema,
 		accountId: z.string(),
 		to: z.string(),
 		mediaType: waMediaTypeSchema,
@@ -266,6 +278,7 @@ const waTemplateComponentSchema = z.object({
 });
 
 export const sendTemplateInputSchema = z.object({
+	idempotencyKey: whatsappManualSendIdempotencyKeySchema,
 	accountId: z.string(),
 	to: z.string(),
 	templateName: z.string().min(1),

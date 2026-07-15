@@ -1,13 +1,26 @@
 import { db, sql } from "@repo/database";
 import { waContacts, waConversations } from "@repo/whatsapp-db";
+import type { WhatsAppTransactionClient } from "./transaction-client";
 
-export async function ensureWhatsAppContactConversation(input: {
-	organizationId: string;
-	accountId: string;
-	waId: string;
-	contactName?: string;
-}) {
-	return db.transaction(async (tx) => {
+export type ContactConversationPersistenceStep = "contact" | "conversation";
+
+interface ContactConversationOptions {
+	tx?: WhatsAppTransactionClient;
+	afterPersist?: (
+		step: ContactConversationPersistenceStep,
+	) => void | Promise<void>;
+}
+
+export async function ensureWhatsAppContactConversation(
+	input: {
+		organizationId: string;
+		accountId: string;
+		waId: string;
+		contactName?: string;
+	},
+	options: ContactConversationOptions = {},
+) {
+	const persist = async (tx: WhatsAppTransactionClient) => {
 		const [contact] = await tx
 			.insert(waContacts)
 			.values({
@@ -28,6 +41,7 @@ export async function ensureWhatsAppContactConversation(input: {
 		if (!contact) {
 			throw new Error("Failed to resolve WhatsApp contact");
 		}
+		await options.afterPersist?.("contact");
 
 		const [conversation] = await tx
 			.insert(waConversations)
@@ -44,7 +58,10 @@ export async function ensureWhatsAppContactConversation(input: {
 		if (!conversation) {
 			throw new Error("Failed to resolve WhatsApp conversation");
 		}
+		await options.afterPersist?.("conversation");
 
 		return { contactId: contact.id, conversationId: conversation.id };
-	});
+	};
+
+	return options.tx ? persist(options.tx) : db.transaction(persist);
 }

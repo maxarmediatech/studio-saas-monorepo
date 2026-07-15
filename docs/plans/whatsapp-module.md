@@ -60,9 +60,9 @@ services/
 - [x] Enqueue procedures:
   - [x] `connect-baileys` (creates account `qr_pending`)
   - [x] `connect-cloud-api` (creates account `connected`)
-  - [x] `send-text` (insert `wa_messages` + `wa_outbox`)
-  - [x] `send-media` (insert `wa_media` + `wa_messages` + `wa_outbox`)
-  - [x] `send-template` (insert `wa_messages` + `wa_outbox`)
+  - [x] `send-text` (atomic idempotency claim + contact/conversation + message + outbox)
+  - [x] `send-media` (same atomic path, including `wa_media`)
+  - [x] `send-template` (same atomic path after template validation)
 
 - [x] Worker delivery:
   - [x] Polls `wa_outbox` (`pending`/`failed` with retry schedule)
@@ -97,10 +97,23 @@ The remediation keeps the existing Phase 1A/1B API surface and selectively ports
 - [x] Delivery webhook states are monotonic and idempotent, including resolution of `delivery_unknown`.
 - [x] Opt-out, block, deleted-account, and connection state are rechecked immediately before provider dispatch.
 - [x] Automation runs/actions are durable, duplicate triggers are unique, expired leases recover, and wait actions resume.
+- [x] Manual text/template/media sends require a client idempotency key and commit one durable message/outbox effect atomically.
 
 Migration `0040_whatsapp_delivery_reliability.sql` refuses to add identity constraints when duplicate contact or provider-message identities exist. Existing failed webhook rows become retryable. Legacy outbox rows already in `processing` are conservatively made terminal for manual reconciliation because the old schema cannot prove whether provider dispatch happened.
 
-The same logical `0040` migration now owns all WhatsApp P1 state. Integration ordering is payment `0039`, WhatsApp `0040`, submission `0041`; no second WhatsApp migration or generated journal/snapshot is added in the isolated lane.
+Post-review migrations `0049` and `0050` add explicit webhook event leases/retry clocks and booking sequence support. The API and worker now share the same webhook event processor. Provider redelivery improves latency but is no longer required for recovery.
+
+All campaign actions now use the recipient ledger. `send` persists a campaign due immediately; `schedule` persists a future due time. The removed legacy campaign engine no longer creates messages or counters directly.
+
+The earlier reliability lane remains in `0040`. The staged core-product remediation adds the manual-send claim table in generated migration `0052_whatsapp_manual_send_idempotency`; Package 6 will reconstruct the unapplied development tail from `main` before shared rollout.
+
+### Manual-send acceptance contract
+
+- `send-text`, `send-template`, and `send-media` require an opaque 16–128 character `idempotencyKey`.
+- A retry must keep the same key while its semantic payload is unchanged. Editing the account, destination, contact, message, template, or media payload requires a new key.
+- Same organization + actor + account + key replays the original message/outbox IDs. Reusing that scoped key for a changed payload returns a conflict.
+- Trigger.dev only wakes the worker after the database commit. Wake-up failure is logged and still returns `Message queued`; the database poller remains the delivery owner.
+- No first-party web caller currently invokes these procedures. Any external caller must add stable-key retry behavior before the required-key API is rolled out.
 
 ### Campaign truth contract
 

@@ -5,6 +5,7 @@ export * from "./contacts";
 export * from "./conversations";
 export * from "./enums";
 export * from "./events";
+export * from "./manual-send-idempotency";
 export * from "./media";
 export * from "./messages";
 export * from "./outbox";
