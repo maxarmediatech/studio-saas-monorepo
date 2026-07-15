@@ -76,7 +76,9 @@ export async function repairReviewedParentReviewMismatches(input: {
 		if (!mismatch.repairable) {
 			skipped.push({
 				parentId: mismatch.parentId,
-				reason: "approval_evidence_incomplete",
+				reason: mismatch.reason.includes("approval_evidence_incomplete")
+					? "approval_evidence_incomplete"
+					: "approval_transition_time_unavailable",
 			});
 			continue;
 		}
@@ -104,25 +106,18 @@ export async function repairReviewedParentReviewMismatches(input: {
 			);
 			if (
 				projection.workflowStatus !== mismatch.expectedStatus ||
-				(projection.workflowStatus === "approved" &&
-					(!projection.approvalTimeEvidenceComplete ||
-						projection.approvalTime?.toISOString() !==
-							mismatch.expectedApprovalTime))
+				projection.workflowStatus === "approved"
 			) {
 				return false;
 			}
 			const actionTime = new Date();
-			const approvalTime =
-				projection.workflowStatus === "approved"
-					? projection.approvalTime
-					: null;
 			let update: Array<{ id: string }>;
 			if (parent.type === "task") {
 				update = await tx
 					.update(tasks)
 					.set({
 						workflowStatus: projection.workflowStatus,
-						completedAt: approvalTime,
+						completedAt: null,
 						updatedAt: actionTime,
 						updatedBy: actor.user.id,
 					})
@@ -140,7 +135,7 @@ export async function repairReviewedParentReviewMismatches(input: {
 					.update(deliverables)
 					.set({
 						workflowStatus: projection.workflowStatus,
-						deliveredAt: approvalTime,
+						deliveredAt: null,
 						updatedAt: actionTime,
 						updatedBy: actor.user.id,
 					})
@@ -187,12 +182,12 @@ export async function repairReviewedParentReviewMismatches(input: {
 						: parent.workflowStatus,
 				newValue:
 					parent.workflowStatus === projection.workflowStatus
-						? approvalTime?.toISOString()
+						? undefined
 						: projection.workflowStatus,
 				metadata: {
 					transition: "reviewed_submission_aggregate_repair",
 					reviewedReportHash: input.reviewedReportHash,
-					approvalTime: approvalTime?.toISOString() ?? null,
+					approvalTime: null,
 				},
 			});
 			return true;

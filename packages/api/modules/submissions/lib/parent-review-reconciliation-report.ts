@@ -46,19 +46,30 @@ function buildMismatch(input: {
 	actualStatus: AggregateWorkflowStatus;
 	actualApprovalTime: Date | null;
 	expectedStatus: AggregateWorkflowStatus;
-	expectedApprovalTime: Date | null;
 	approvalTimeEvidenceComplete: boolean;
 }): ParentReviewMismatch | null {
 	const expectedApprovalTime =
-		input.expectedStatus === "approved" ? input.expectedApprovalTime : null;
-	const statusMismatch = input.actualStatus !== input.expectedStatus;
-	const timestampMismatch =
 		input.expectedStatus === "approved" &&
-		!input.approvalTimeEvidenceComplete
-			? input.actualApprovalTime === null
-			: input.actualApprovalTime?.getTime() !==
-				expectedApprovalTime?.getTime();
-	if (!statusMismatch && !timestampMismatch) {
+		input.actualStatus === "approved" &&
+		input.actualApprovalTime
+			? input.actualApprovalTime
+			: null;
+	const statusMismatch = input.actualStatus !== input.expectedStatus;
+	const missingApprovalTime =
+		input.expectedStatus === "approved" &&
+		input.actualApprovalTime === null;
+	const staleApprovalTime =
+		input.expectedStatus !== "approved" &&
+		input.actualApprovalTime !== null;
+	const approvalEvidenceIncomplete =
+		input.expectedStatus === "approved" &&
+		!input.approvalTimeEvidenceComplete;
+	if (
+		!statusMismatch &&
+		!missingApprovalTime &&
+		!staleApprovalTime &&
+		!approvalEvidenceIncomplete
+	) {
 		return null;
 	}
 	const approvalTimeEvidence =
@@ -67,11 +78,16 @@ function buildMismatch(input: {
 			: input.approvalTimeEvidenceComplete
 				? ("complete" as const)
 				: ("incomplete" as const);
-	const repairable = approvalTimeEvidence !== "incomplete";
+	// Submission review times prove the aggregate status, but they cannot prove
+	// when an assignment change made the aggregate approved. Existing approval
+	// timestamps are therefore preserved, and any missing approved transition
+	// time requires manual historical review.
+	const repairable = input.expectedStatus !== "approved";
 	const reasons = [
 		statusMismatch ? "workflow_status_mismatch" : null,
-		timestampMismatch ? "approval_timestamp_mismatch" : null,
-		!repairable ? "approval_evidence_incomplete" : null,
+		missingApprovalTime ? "approval_timestamp_missing" : null,
+		staleApprovalTime ? "approval_timestamp_stale" : null,
+		approvalEvidenceIncomplete ? "approval_evidence_incomplete" : null,
 	].filter((reason): reason is string => reason !== null);
 	return {
 		parentType: input.parentType,
@@ -312,7 +328,6 @@ export async function queryParentReviewMismatches(
 					actualStatus: row.workflowStatus,
 					actualApprovalTime: row.approvalTime,
 					expectedStatus: projection.workflowStatus,
-					expectedApprovalTime: projection.approvalTime,
 					approvalTimeEvidenceComplete:
 						projection.approvalTimeEvidenceComplete,
 				});

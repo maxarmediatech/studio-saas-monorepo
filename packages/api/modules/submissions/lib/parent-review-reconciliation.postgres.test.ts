@@ -32,6 +32,9 @@ const ids = {
 	staleTask: `parent_review_repair_stale_task_${suffix}`,
 	approvedDeliverable: `parent_review_repair_deliverable_${suffix}`,
 	incompleteTask: `parent_review_repair_incomplete_${suffix}`,
+	incompleteApprovedTask: `parent_review_repair_incomplete_approved_${suffix}`,
+	missingApprovalTimeTask: `parent_review_repair_missing_time_${suffix}`,
+	assignmentRemovalTask: `parent_review_repair_assignment_removal_${suffix}`,
 	otherTask: `parent_review_repair_other_task_${suffix}`,
 };
 
@@ -132,6 +135,170 @@ describePostgres("parent review reconciliation on PostgreSQL", () => {
 		} else {
 			delete process.env.DATABASE_URL;
 		}
+	});
+
+	it("preserves the runtime approval time after an assignment removal", async () => {
+		const firstApproval = new Date("2025-04-10T10:00:00.000Z");
+		const assignmentRemovalTime = new Date("2025-04-12T09:00:00.000Z");
+		await db.insert(tasks).values({
+			id: ids.assignmentRemovalTask,
+			organizationId: ids.organization,
+			bookingId: ids.booking,
+			name: "Approved after pending assignee removal",
+			workflowStatus: "approved",
+			completedAt: assignmentRemovalTime,
+		});
+		await db.insert(taskAssignments).values({
+			taskId: ids.assignmentRemovalTask,
+			crewId: ids.crewA,
+			assignedBy: ids.admin,
+		});
+		await db.insert(assignmentSubmissions).values([
+			{
+				organizationId: ids.organization,
+				taskId: ids.assignmentRemovalTask,
+				submittedBy: ids.crewA,
+				status: "approved",
+				submittedAt: firstApproval,
+				reviewedAt: firstApproval,
+			},
+			{
+				organizationId: ids.organization,
+				taskId: ids.assignmentRemovalTask,
+				submittedBy: ids.crewB,
+				status: "in_review",
+				submittedAt: firstApproval,
+			},
+		]);
+
+		const report = await queryParentReviewMismatches(ids.organization);
+		expect(
+			report.mismatches.some(
+				(mismatch) => mismatch.parentId === ids.assignmentRemovalTask,
+			),
+		).toBe(false);
+		const repaired = await repairReviewedParentReviewMismatches({
+			organizationId: ids.organization,
+			reviewedReportHash: report.reportHash,
+			reviewedByUserId: ids.admin,
+		});
+		expect(repaired.applied).toHaveLength(0);
+		expect(
+			await db.query.tasks.findFirst({
+				where: eq(tasks.id, ids.assignmentRemovalTask),
+			}),
+		).toMatchObject({
+			workflowStatus: "approved",
+			completedAt: assignmentRemovalTime,
+		});
+	});
+
+	it("reports incomplete evidence even when approval state and time exist", async () => {
+		const approvalTime = new Date("2025-04-12T09:00:00.000Z");
+		await db.insert(tasks).values({
+			id: ids.incompleteApprovedTask,
+			organizationId: ids.organization,
+			bookingId: ids.booking,
+			name: "Approved with incomplete timestamp evidence",
+			workflowStatus: "approved",
+			completedAt: approvalTime,
+		});
+		await db.insert(taskAssignments).values({
+			taskId: ids.incompleteApprovedTask,
+			crewId: ids.crewA,
+			assignedBy: ids.admin,
+		});
+		await db.insert(assignmentSubmissions).values({
+			organizationId: ids.organization,
+			taskId: ids.incompleteApprovedTask,
+			submittedBy: ids.crewA,
+			status: "approved",
+			submittedAt: approvalTime,
+			reviewedAt: null,
+		});
+
+		const report = await queryParentReviewMismatches(ids.organization);
+		const mismatch = report.mismatches.find(
+			(candidate) => candidate.parentId === ids.incompleteApprovedTask,
+		);
+		expect(mismatch).toMatchObject({
+			actualStatus: "approved",
+			expectedStatus: "approved",
+			actualApprovalTime: approvalTime.toISOString(),
+			expectedApprovalTime: approvalTime.toISOString(),
+			approvalTimeEvidence: "incomplete",
+			repairable: false,
+			reason: "approval_evidence_incomplete",
+		});
+		const repaired = await repairReviewedParentReviewMismatches({
+			organizationId: ids.organization,
+			reviewedReportHash: report.reportHash,
+			reviewedByUserId: ids.admin,
+		});
+		expect(repaired.skipped).toContainEqual({
+			parentId: ids.incompleteApprovedTask,
+			reason: "approval_evidence_incomplete",
+		});
+		expect(
+			await db.query.tasks.findFirst({
+				where: eq(tasks.id, ids.incompleteApprovedTask),
+			}),
+		).toMatchObject({
+			workflowStatus: "approved",
+			completedAt: approvalTime,
+		});
+	});
+
+	it("requires manual review when an approved transition time is missing", async () => {
+		const approvalTime = new Date("2025-04-10T10:00:00.000Z");
+		await db.insert(tasks).values({
+			id: ids.missingApprovalTimeTask,
+			organizationId: ids.organization,
+			bookingId: ids.booking,
+			name: "Approved evidence without transition time",
+			workflowStatus: "assigned",
+		});
+		await db.insert(taskAssignments).values({
+			taskId: ids.missingApprovalTimeTask,
+			crewId: ids.crewA,
+			assignedBy: ids.admin,
+		});
+		await db.insert(assignmentSubmissions).values({
+			organizationId: ids.organization,
+			taskId: ids.missingApprovalTimeTask,
+			submittedBy: ids.crewA,
+			status: "approved",
+			submittedAt: approvalTime,
+			reviewedAt: approvalTime,
+		});
+
+		const report = await queryParentReviewMismatches(ids.organization);
+		expect(
+			report.mismatches.find(
+				(mismatch) => mismatch.parentId === ids.missingApprovalTimeTask,
+			),
+		).toMatchObject({
+			actualStatus: "assigned",
+			expectedStatus: "approved",
+			expectedApprovalTime: null,
+			approvalTimeEvidence: "complete",
+			repairable: false,
+			reason: "workflow_status_mismatch,approval_timestamp_missing",
+		});
+		const repaired = await repairReviewedParentReviewMismatches({
+			organizationId: ids.organization,
+			reviewedReportHash: report.reportHash,
+			reviewedByUserId: ids.admin,
+		});
+		expect(repaired.skipped).toContainEqual({
+			parentId: ids.missingApprovalTimeTask,
+			reason: "approval_transition_time_unavailable",
+		});
+		expect(
+			await db.query.tasks.findFirst({
+				where: eq(tasks.id, ids.missingApprovalTimeTask),
+			}),
+		).toMatchObject({ workflowStatus: "assigned", completedAt: null });
 	});
 
 	it("repairs safe mismatches while preserving unreconstructable approval history", async () => {
@@ -260,17 +427,10 @@ describePostgres("parent review reconciliation on PostgreSQL", () => {
 			repairable: true,
 		});
 		expect(
-			report.mismatches.find(
+			report.mismatches.some(
 				(mismatch) => mismatch.parentId === ids.approvedDeliverable,
 			),
-		).toMatchObject({
-			actualStatus: "approved",
-			expectedStatus: "approved",
-			actualApprovalTime: staleApproval.toISOString(),
-			expectedApprovalTime: finalApproval.toISOString(),
-			approvalTimeEvidence: "complete",
-			repairable: true,
-		});
+		).toBe(false);
 		expect(
 			report.mismatches.find(
 				(mismatch) => mismatch.parentId === ids.incompleteTask,
@@ -295,8 +455,9 @@ describePostgres("parent review reconciliation on PostgreSQL", () => {
 			reviewedByUserId: ids.admin,
 		});
 		expect(repaired.applied).toEqual(
-			expect.arrayContaining([ids.staleTask, ids.approvedDeliverable]),
+			expect.arrayContaining([ids.staleTask]),
 		);
+		expect(repaired.applied).not.toContain(ids.approvedDeliverable);
 		expect(repaired.skipped).toContainEqual({
 			parentId: ids.incompleteTask,
 			reason: "approval_evidence_incomplete",
@@ -312,7 +473,7 @@ describePostgres("parent review reconciliation on PostgreSQL", () => {
 			}),
 		).toMatchObject({
 			workflowStatus: "approved",
-			deliveredAt: finalApproval,
+			deliveredAt: staleApproval,
 		});
 		expect(
 			await db.query.tasks.findFirst({
@@ -343,19 +504,7 @@ describePostgres("parent review reconciliation on PostgreSQL", () => {
 					eq(activities.entityId, ids.approvedDeliverable),
 				),
 			}),
-		).toEqual([
-			expect.objectContaining({
-				actorId: ids.admin,
-				action: "updated",
-				field: "deliveredAt",
-				oldValue: staleApproval.toISOString(),
-				newValue: finalApproval.toISOString(),
-				metadata: expect.objectContaining({
-					transition: "reviewed_submission_aggregate_repair",
-					approvalTime: finalApproval.toISOString(),
-				}),
-			}),
-		]);
+		).toEqual([]);
 
 		const second = await repairReviewedParentReviewMismatches({
 			organizationId: ids.organization,
