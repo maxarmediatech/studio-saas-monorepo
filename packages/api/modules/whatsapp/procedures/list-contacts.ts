@@ -1,5 +1,9 @@
 import { and, db, desc, eq, sql } from "@repo/database";
 import { waContacts } from "@repo/whatsapp-db";
+import {
+	whatsAppClientContactExists,
+	whatsAppCrewContactExists,
+} from "@repo/whatsapp-runtime";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { listContactsInputSchema, listContactsOutputSchema } from "../types";
 
@@ -72,11 +76,11 @@ export const listContacts = studioProtectedProcedure
 		}
 
 		if (input.linkType === "client") {
-			conditions.push(eq(waContacts.externalSource, "client"));
+			conditions.push(whatsAppClientContactExists());
 		}
 
 		if (input.linkType === "crew") {
-			conditions.push(eq(waContacts.externalSource, "crew"));
+			conditions.push(whatsAppCrewContactExists());
 		}
 
 		if (input.cursor) {

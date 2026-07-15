@@ -121,6 +121,9 @@ The earlier reliability lane remains in `0040`. The staged core-product remediat
 - `(campaignId, accountId, contactId)` is unique. Each recipient has at most one message, and each message has at most one outbox effect.
 - Queued/sent/delivered/read totals are cumulative reached-state counts from recipient timestamps. Failed, suppressed, and delivery-unknown totals reflect the recipient's current terminal/uncertain state.
 - A retry may re-enter campaign processing, but per-recipient row locking makes already committed effects no-ops.
+- Due scheduled campaigns are selected first in deterministic due/creation order. Running campaigns re-enter only when audience capture is unfinished or a recipient remains pending, so old running rows cannot consume every scheduler slot.
+- `startedAt` is written only on the first scheduled-to-running transition. Paused or terminal campaigns cannot be revived by a stale worker, and recipient effects require the campaign row to remain running while locked.
+- Client and crew audiences use normalized phone relationships to active Studio client/crew records. They no longer trust stale `externalSource` labels or define a client as merely “not crew”; dual relationships appear in both audiences and unrelated contacts in neither.
 
 ### Delivery admission boundary
 

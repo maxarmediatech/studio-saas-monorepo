@@ -1,4 +1,4 @@
-import { db, eq } from "@repo/database";
+import { and, clients, crews, db, eq, organizations } from "@repo/database";
 import {
 	waAccounts,
 	waAutomationActions,
@@ -13,6 +13,8 @@ import {
 } from "@repo/whatsapp-db";
 import {
 	enqueueInboundAutomationRuns,
+	enqueueWhatsAppCampaign,
+	getCampaignAudienceConditions,
 	processAutomationRun,
 	processDueWhatsAppCampaigns,
 	recoverExpiredAutomationLeases,
@@ -53,6 +55,9 @@ const cleanup = async () => {
 	await db
 		.delete(waAccounts)
 		.where(eq(waAccounts.organizationId, ORGANIZATION_ID));
+	await db.delete(clients).where(eq(clients.organizationId, ORGANIZATION_ID));
+	await db.delete(crews).where(eq(crews.organizationId, ORGANIZATION_ID));
+	await db.delete(organizations).where(eq(organizations.id, ORGANIZATION_ID));
 };
 
 const createConversation = async (suffix: string) => {
@@ -88,8 +93,116 @@ const createConversation = async (suffix: string) => {
 };
 
 describe("WhatsApp product state PostgreSQL invariants", () => {
-	beforeAll(cleanup);
+	beforeAll(async () => {
+		await cleanup();
+		await db.insert(organizations).values({
+			id: ORGANIZATION_ID,
+			name: "WhatsApp product state test",
+			slug: ORGANIZATION_ID,
+		});
+	});
 	afterAll(cleanup);
+
+	it("schedules due campaigns deterministically before resumable pending work", async () => {
+		const fixture = await createConversation("campaign-fairness");
+		const now = new Date("2026-07-15T10:00:00.000Z");
+		const [inertRunning, resumable, laterScheduled, earlierScheduled] =
+			await db
+				.insert(waCampaigns)
+				.values([
+					{
+						organizationId: ORGANIZATION_ID,
+						accountId: fixture.account.id,
+						name: "Inert running",
+						status: "running",
+						startedAt: new Date("2026-07-15T08:00:00.000Z"),
+						audienceCapturedAt: new Date(
+							"2026-07-15T08:00:00.000Z",
+						),
+						messageType: "text",
+						textBody: "inert",
+					},
+					{
+						organizationId: ORGANIZATION_ID,
+						accountId: fixture.account.id,
+						name: "Resumable pending",
+						status: "running",
+						startedAt: new Date("2026-07-15T08:30:00.000Z"),
+						audienceCapturedAt: new Date(
+							"2026-07-15T08:30:00.000Z",
+						),
+						messageType: "text",
+						textBody: "resume",
+					},
+					{
+						organizationId: ORGANIZATION_ID,
+						accountId: fixture.account.id,
+						name: "Later due",
+						status: "scheduled",
+						scheduledAt: new Date("2026-07-15T09:30:00.000Z"),
+						messageType: "text",
+						textBody: "later",
+						audienceFilter: { linkType: "all" },
+					},
+					{
+						organizationId: ORGANIZATION_ID,
+						accountId: fixture.account.id,
+						name: "Earlier due",
+						status: "scheduled",
+						scheduledAt: new Date("2026-07-15T09:00:00.000Z"),
+						messageType: "text",
+						textBody: "earlier",
+						audienceFilter: { linkType: "all" },
+					},
+				])
+				.returning();
+		await db.insert(waCampaignRecipients).values({
+			organizationId: ORGANIZATION_ID,
+			accountId: fixture.account.id,
+			campaignId: resumable.id,
+			contactId: fixture.contact.id,
+			status: "pending",
+		});
+
+		expect(await processDueWhatsAppCampaigns({ limit: 1, now })).toBe(1);
+		const [firstEarly, firstLate, firstResumable] = await Promise.all([
+			db.query.waCampaigns.findFirst({
+				where: eq(waCampaigns.id, earlierScheduled.id),
+			}),
+			db.query.waCampaigns.findFirst({
+				where: eq(waCampaigns.id, laterScheduled.id),
+			}),
+			db.query.waCampaignRecipients.findFirst({
+				where: eq(waCampaignRecipients.campaignId, resumable.id),
+			}),
+		]);
+		expect(firstEarly?.status).toBe("running");
+		expect(firstEarly?.startedAt).toEqual(now);
+		expect(firstLate?.status).toBe("scheduled");
+		expect(firstResumable?.status).toBe("pending");
+
+		expect(await processDueWhatsAppCampaigns({ limit: 1, now })).toBe(1);
+		expect(
+			await db.query.waCampaigns.findFirst({
+				where: eq(waCampaigns.id, laterScheduled.id),
+			}),
+		).toMatchObject({ status: "running", startedAt: now });
+		expect(await processDueWhatsAppCampaigns({ limit: 1, now })).toBe(1);
+		expect(
+			await db.query.waCampaignRecipients.findFirst({
+				where: eq(waCampaignRecipients.campaignId, resumable.id),
+			}),
+		).toMatchObject({ status: "queued" });
+		expect(await processDueWhatsAppCampaigns({ limit: 1, now })).toBe(0);
+		expect(
+			await db.query.waCampaigns.findFirst({
+				where: eq(waCampaigns.id, inertRunning.id),
+			}),
+		).toMatchObject({
+			status: "running",
+			startedAt: new Date("2026-07-15T08:00:00.000Z"),
+		});
+	});
 
 	it("uses one durable path for due campaigns under concurrent polling", async () => {
 		const first = await createConversation("campaign-a");
@@ -144,7 +257,7 @@ describe("WhatsApp product state PostgreSQL invariants", () => {
 		const outbox = await db
 			.select()
 			.from(waOutbox)
-			.where(eq(waOutbox.organizationId, ORGANIZATION_ID));
+			.where(eq(waOutbox.accountId, first.account.id));
 		expect(recipients).toHaveLength(2);
 		expect(new Set(recipients.map((row) => row.contactId)).size).toBe(2);
 		expect(messages).toHaveLength(2);
@@ -153,14 +266,25 @@ describe("WhatsApp product state PostgreSQL invariants", () => {
 		const [enqueuedCampaign] = await db
 			.select({
 				status: waCampaigns.status,
+				startedAt: waCampaigns.startedAt,
 				completedAt: waCampaigns.completedAt,
 			})
 			.from(waCampaigns)
 			.where(eq(waCampaigns.id, campaign.id));
 		expect(enqueuedCampaign).toEqual({
 			status: "running",
+			startedAt: now,
 			completedAt: null,
 		});
+		await enqueueWhatsAppCampaign(
+			campaign.id,
+			new Date("2026-07-11T10:00:00.000Z"),
+		);
+		expect(
+			await db.query.waCampaigns.findFirst({
+				where: eq(waCampaigns.id, campaign.id),
+			}),
+		).toMatchObject({ status: "running", startedAt: now });
 
 		const [firstMessage, secondMessage] = messages;
 		const unknownAt = new Date("2026-07-10T10:00:00.000Z");
@@ -220,6 +344,124 @@ describe("WhatsApp product state PostgreSQL invariants", () => {
 			totalFailed: 1,
 			totalDeliveryUnknown: 0,
 		});
+		const completedAt = updatedCampaign.completedAt;
+		const terminalRetry = await enqueueWhatsAppCampaign(
+			campaign.id,
+			new Date("2026-07-11T10:00:00.000Z"),
+		);
+		expect(terminalRetry).toMatchObject({
+			skipped: true,
+			reason: "terminal_or_paused",
+		});
+		const [terminalCampaign] = await db
+			.select()
+			.from(waCampaigns)
+			.where(eq(waCampaigns.id, campaign.id));
+		expect(terminalCampaign.status).toBe("completed");
+		expect(terminalCampaign.startedAt).toEqual(now);
+		expect(terminalCampaign.completedAt).toEqual(completedAt);
+		expect(
+			await db
+				.select()
+				.from(waMessages)
+				.where(eq(waMessages.sentByCampaignId, campaign.id)),
+		).toHaveLength(2);
+	});
+
+	it("uses real client and crew relationships for campaign audiences", async () => {
+		const fixture = await createConversation("audience-relationships");
+		await db
+			.update(waContacts)
+			.set({
+				waId: "919100000001",
+				phoneNumber: "+91 91000 00001",
+				externalSource: "crew",
+			})
+			.where(eq(waContacts.id, fixture.contact.id));
+		const [crewOnly, dual, neither] = await db
+			.insert(waContacts)
+			.values([
+				{
+					organizationId: ORGANIZATION_ID,
+					accountId: fixture.account.id,
+					waId: "919100000002",
+					phoneNumber: "919100000002",
+					externalSource: "client",
+				},
+				{
+					organizationId: ORGANIZATION_ID,
+					accountId: fixture.account.id,
+					waId: "919100000003",
+					phoneNumber: "919100000003",
+					externalSource: null,
+				},
+				{
+					organizationId: ORGANIZATION_ID,
+					accountId: fixture.account.id,
+					waId: "919100000004",
+					phoneNumber: "919100000004",
+					externalSource: "client",
+				},
+			])
+			.returning();
+		await db.insert(clients).values([
+			{
+				organizationId: ORGANIZATION_ID,
+				name: "Client only",
+				alternatePhone: "91-91000-00001",
+			},
+			{
+				organizationId: ORGANIZATION_ID,
+				name: "Dual relationship",
+				phoneNumber: "+91 91000 00003",
+			},
+		]);
+		await db.insert(crews).values([
+			{
+				organizationId: ORGANIZATION_ID,
+				name: "Crew only",
+				phoneNumber: "+91 91000 00002",
+			},
+			{
+				organizationId: ORGANIZATION_ID,
+				name: "Dual relationship",
+				phoneNumber: "919100000003",
+			},
+		]);
+
+		const clientAudience = await db
+			.select({ id: waContacts.id })
+			.from(waContacts)
+			.where(
+				and(
+					...getCampaignAudienceConditions(
+						ORGANIZATION_ID,
+						fixture.account.id,
+						{ linkType: "client" },
+					),
+				),
+			);
+		const crewAudience = await db
+			.select({ id: waContacts.id })
+			.from(waContacts)
+			.where(
+				and(
+					...getCampaignAudienceConditions(
+						ORGANIZATION_ID,
+						fixture.account.id,
+						{ linkType: "crew" },
+					),
+				),
+			);
+
+		expect(clientAudience.map((row) => row.id).sort()).toEqual(
+			[fixture.contact.id, dual.id].sort(),
+		);
+		expect(crewAudience.map((row) => row.id).sort()).toEqual(
+			[crewOnly.id, dual.id].sort(),
+		);
+		expect(clientAudience.map((row) => row.id)).not.toContain(neither.id);
+		expect(crewAudience.map((row) => row.id)).not.toContain(neither.id);
 	});
 
 	it("deduplicates automation triggers and resumes a persisted wait", async () => {

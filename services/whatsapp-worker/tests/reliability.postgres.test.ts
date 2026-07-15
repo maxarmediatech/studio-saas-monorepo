@@ -162,7 +162,11 @@ describe("WhatsApp worker PostgreSQL reliability", () => {
 	it("allows only one worker to claim and dispatch an outbox row", async () => {
 		const fixture = await createFixture("concurrent-outbox");
 		const fixtureOutbox = requireOutbox(fixture);
-		const [item] = await fetchDueWhatsAppOutboxItems({ limit: 1 });
+		const due = await fetchDueWhatsAppOutboxItems({ limit: 100 });
+		const item = due.find((row) => row.outbox.id === fixtureOutbox.id);
+		if (!item) {
+			throw new Error("Expected concurrent outbox fixture to be due");
+		}
 		let sends = 0;
 		const factory = () =>
 			provider(async () => {

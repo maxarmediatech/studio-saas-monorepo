@@ -1,4 +1,4 @@
-import { and, db, eq, isNull, lte, or, sql } from "@repo/database";
+import { and, db, eq, isNull, lte, sql } from "@repo/database";
 import {
 	waCampaignRecipients,
 	waCampaigns,
@@ -7,6 +7,10 @@ import {
 	waMessages,
 	waOutbox,
 } from "@repo/whatsapp-db";
+import {
+	whatsAppClientContactExists,
+	whatsAppCrewContactExists,
+} from "./contact-relationships";
 import { refreshCampaignCounts } from "./delivery-transitions";
 import type { WhatsAppTransaction } from "./types";
 
@@ -44,7 +48,11 @@ export const getCampaignAudienceConditions = (
 		conditions.push(sql`${waContacts.externalId} is null`);
 	}
 	if (filter.linkType === "client" || filter.linkType === "crew") {
-		conditions.push(eq(waContacts.externalSource, filter.linkType));
+		conditions.push(
+			filter.linkType === "client"
+				? whatsAppClientContactExists()
+				: whatsAppCrewContactExists(),
+		);
 	}
 	return conditions;
 };
@@ -89,6 +97,9 @@ export const materializeCampaignRecipients = async (campaignId: string) => {
 			.for("update");
 		if (!campaign) {
 			throw new Error("WhatsApp campaign not found");
+		}
+		if (campaign.status !== "running") {
+			return 0;
 		}
 		if (campaign.audienceCapturedAt) {
 			const [count] = await tx
@@ -148,6 +159,22 @@ export const materializeCampaignRecipients = async (campaignId: string) => {
 
 export const enqueueCampaignRecipient = async (recipientId: string) =>
 	db.transaction(async (tx) => {
+		const [candidate] = await tx
+			.select({ campaignId: waCampaignRecipients.campaignId })
+			.from(waCampaignRecipients)
+			.where(eq(waCampaignRecipients.id, recipientId))
+			.limit(1);
+		if (!candidate) {
+			return { enqueued: false as const, recipient: undefined };
+		}
+		const [campaign] = await tx
+			.select()
+			.from(waCampaigns)
+			.where(eq(waCampaigns.id, candidate.campaignId))
+			.for("update");
+		if (!campaign || campaign.status !== "running") {
+			return { enqueued: false as const, recipient: undefined };
+		}
 		const [recipient] = await tx
 			.select()
 			.from(waCampaignRecipients)
@@ -155,15 +182,6 @@ export const enqueueCampaignRecipient = async (recipientId: string) =>
 			.for("update");
 		if (!recipient || recipient.status !== "pending") {
 			return { enqueued: false as const, recipient };
-		}
-
-		const [campaign] = await tx
-			.select()
-			.from(waCampaigns)
-			.where(eq(waCampaigns.id, recipient.campaignId))
-			.limit(1);
-		if (!campaign) {
-			throw new Error("Campaign disappeared while enqueueing recipient");
 		}
 
 		const conversationId = await ensureConversation(tx, {
@@ -223,16 +241,59 @@ export const enqueueCampaignRecipient = async (recipientId: string) =>
 		return { enqueued: true as const, recipientId: recipient.id };
 	});
 
-export const enqueueWhatsAppCampaign = async (campaignId: string) => {
+const claimWhatsAppCampaign = async (campaignId: string, now: Date) =>
+	db.transaction(async (tx) => {
+		const [campaign] = await tx
+			.select()
+			.from(waCampaigns)
+			.where(eq(waCampaigns.id, campaignId))
+			.for("update");
+		if (!campaign) {
+			return { claimed: false as const, reason: "not_found" as const };
+		}
+		if (campaign.status === "scheduled") {
+			if (!campaign.scheduledAt || campaign.scheduledAt > now) {
+				return { claimed: false as const, reason: "not_due" as const };
+			}
+			await tx
+				.update(waCampaigns)
+				.set({
+					status: "running",
+					startedAt: sql`coalesce(${waCampaigns.startedAt}, ${now})`,
+					updatedAt: now,
+				})
+				.where(
+					and(
+						eq(waCampaigns.id, campaign.id),
+						eq(waCampaigns.status, "scheduled"),
+					),
+				);
+			return { claimed: true as const, started: true as const };
+		}
+		if (campaign.status === "running") {
+			return { claimed: true as const, started: false as const };
+		}
+		return {
+			claimed: false as const,
+			reason: "terminal_or_paused" as const,
+		};
+	});
+
+export const enqueueWhatsAppCampaign = async (
+	campaignId: string,
+	now = new Date(),
+) => {
+	const claim = await claimWhatsAppCampaign(campaignId, now);
+	if (!claim.claimed) {
+		return {
+			enqueued: 0,
+			failedRecipientIds: [] as string[],
+			recipients: 0,
+			skipped: true as const,
+			reason: claim.reason,
+		};
+	}
 	await materializeCampaignRecipients(campaignId);
-	await db
-		.update(waCampaigns)
-		.set({
-			status: "running",
-			startedAt: new Date(),
-			updatedAt: new Date(),
-		})
-		.where(eq(waCampaigns.id, campaignId));
 
 	const recipients = await db
 		.select({ id: waCampaignRecipients.id })
@@ -273,7 +334,12 @@ export const enqueueWhatsAppCampaign = async (campaignId: string) => {
 	}
 
 	await db.transaction((tx) => refreshCampaignCounts(tx, campaignId));
-	return { enqueued, failedRecipientIds, recipients: recipients.length };
+	return {
+		enqueued,
+		failedRecipientIds,
+		recipients: recipients.length,
+		skipped: false as const,
+	};
 };
 
 export const processDueWhatsAppCampaigns = async ({
@@ -283,25 +349,52 @@ export const processDueWhatsAppCampaigns = async ({
 	limit?: number;
 	now?: Date;
 } = {}) => {
-	const due = await db
+	if (limit <= 0) {
+		return 0;
+	}
+	const scheduled = await db
 		.select({ id: waCampaigns.id })
 		.from(waCampaigns)
 		.where(
-			or(
-				and(
-					eq(waCampaigns.status, "scheduled"),
-					lte(waCampaigns.scheduledAt, now),
-				),
-				and(
-					eq(waCampaigns.status, "running"),
-					isNull(waCampaigns.completedAt),
-				),
+			and(
+				eq(waCampaigns.status, "scheduled"),
+				lte(waCampaigns.scheduledAt, now),
 			),
 		)
+		.orderBy(waCampaigns.scheduledAt, waCampaigns.createdAt, waCampaigns.id)
 		.limit(limit);
 
-	for (const campaign of due) {
-		await enqueueWhatsAppCampaign(campaign.id);
+	for (const campaign of scheduled) {
+		await enqueueWhatsAppCampaign(campaign.id, now);
 	}
-	return due.length;
+
+	const remaining = limit - scheduled.length;
+	if (remaining <= 0) {
+		return scheduled.length;
+	}
+	const resumable = await db
+		.select({ id: waCampaigns.id })
+		.from(waCampaigns)
+		.where(
+			and(
+				eq(waCampaigns.status, "running"),
+				isNull(waCampaigns.completedAt),
+				sql`(
+					${waCampaigns.audienceCapturedAt} IS NULL
+					OR EXISTS (
+						SELECT 1
+						FROM ${waCampaignRecipients}
+						WHERE ${waCampaignRecipients.campaignId} = ${waCampaigns.id}
+							AND ${waCampaignRecipients.status} = 'pending'
+					)
+				)`,
+			),
+		)
+		.orderBy(waCampaigns.startedAt, waCampaigns.createdAt, waCampaigns.id)
+		.limit(remaining);
+
+	for (const campaign of resumable) {
+		await enqueueWhatsAppCampaign(campaign.id, now);
+	}
+	return scheduled.length + resumable.length;
 };

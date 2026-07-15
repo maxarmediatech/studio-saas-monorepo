@@ -10,6 +10,10 @@ import {
 	sql,
 } from "@repo/database";
 import { waContacts, waConversations } from "@repo/whatsapp-db";
+import {
+	whatsAppClientContactExists,
+	whatsAppCrewContactExists,
+} from "@repo/whatsapp-runtime";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { toConversationItem } from "../lib/conversation-presenter";
 import {
@@ -42,39 +46,8 @@ function normalizePhone(value: string | null | undefined) {
 	return value?.replace(/\D/g, "") ?? "";
 }
 
-const normalizedWaContactPhone = sql<string>`regexp_replace(coalesce(${waContacts.phoneNumber}, ''), '[^0-9]', '', 'g')`;
-const normalizedWaContactId = sql<string>`regexp_replace(coalesce(${waContacts.waId}, ''), '[^0-9]', '', 'g')`;
 const normalizedClientPhone = sql<string>`regexp_replace(coalesce(${clients.phoneNumber}, ''), '[^0-9]', '', 'g')`;
 const normalizedCrewPhone = sql<string>`regexp_replace(coalesce(${crews.phoneNumber}, ''), '[^0-9]', '', 'g')`;
-
-const clientPhoneMatchesContact = sql`
-	${normalizedClientPhone} IN (${normalizedWaContactPhone}, ${normalizedWaContactId})
-`;
-const crewPhoneMatchesContact = sql`
-	${normalizedCrewPhone} IN (${normalizedWaContactPhone}, ${normalizedWaContactId})
-`;
-
-function clientContactExists(search?: string) {
-	return sql`EXISTS (
-		SELECT 1
-		FROM ${clients}
-		WHERE ${clients.organizationId} = ${waContacts.organizationId}
-			AND ${clients.deletedAt} IS NULL
-			${search ? sql`AND ${clients.name} ILIKE ${search}` : sql``}
-			AND ${clientPhoneMatchesContact}
-	)`;
-}
-
-function crewContactExists(search?: string) {
-	return sql`EXISTS (
-		SELECT 1
-		FROM ${crews}
-		WHERE ${crews.organizationId} = ${waContacts.organizationId}
-			AND ${crews.deletedAt} IS NULL
-			${search ? sql`AND ${crews.name} ILIKE ${search}` : sql``}
-			AND ${crewPhoneMatchesContact}
-	)`;
-}
 
 async function getSavedContactNameByPhone(params: {
 	organizationId: string;
@@ -162,11 +135,11 @@ export const listConversations = studioProtectedProcedure
 		}
 
 		if (input.contactType === "client") {
-			conditions.push(sql`NOT ${crewContactExists()}`);
+			conditions.push(whatsAppClientContactExists());
 		}
 
 		if (input.contactType === "crew") {
-			conditions.push(crewContactExists());
+			conditions.push(whatsAppCrewContactExists());
 		}
 
 		if (input.search) {
@@ -177,8 +150,8 @@ export const listConversations = studioProtectedProcedure
 					OR coalesce(${waContacts.pushName}, '') ILIKE ${search}
 					OR ${waContacts.phoneNumber} ILIKE ${search}
 					OR ${waContacts.waId} ILIKE ${search}
-					OR ${clientContactExists(search)}
-					OR ${crewContactExists(search)}
+					OR ${whatsAppClientContactExists(search)}
+					OR ${whatsAppCrewContactExists(search)}
 				)`,
 			);
 		}
