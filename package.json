@@ -27,7 +27,8 @@
 		"financial:migration-preflight": "pnpm --filter @repo/scripts financial:migration-preflight",
 		"calendar:reconcile": "pnpm --filter @repo/scripts calendar:reconcile",
 		"submissions:reconcile-parent-review": "pnpm --filter @repo/scripts submissions:reconcile-parent-review",
-		"whatsapp:migration-preflight": "pnpm --filter @repo/scripts whatsapp:migration-preflight"
+		"whatsapp:migration-preflight": "pnpm --filter @repo/scripts whatsapp:migration-preflight",
+		"subscriptions:reconcile-seats": "pnpm --filter @repo/scripts subscriptions:reconcile-seats"
 	},
 	"engines": {
 		"node": ">=20"

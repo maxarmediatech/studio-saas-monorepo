@@ -1,4 +1,5 @@
 import { ORPCError } from "@orpc/client";
+import { hasAnyRole } from "@repo/auth/lib/permissions";
 import { getOrganizationMembership, getPurchaseById } from "@repo/database";
 
 export async function getManageablePurchase({
@@ -20,7 +21,7 @@ export async function getManageablePurchase({
 			userId,
 		);
 
-		if (!membership || membership.role !== "owner") {
+		if (!membership || !hasAnyRole(membership.role, ["owner"])) {
 			throw new ORPCError("FORBIDDEN");
 		}
 	}
