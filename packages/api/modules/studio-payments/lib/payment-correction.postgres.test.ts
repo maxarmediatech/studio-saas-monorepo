@@ -207,5 +207,5 @@ describePostgres("payment correction on migrated PostgreSQL", () => {
 			.delete(organizations)
 			.where(eq(organizations.id, ids.organization));
 		process.env.DATABASE_URL = originalDatabaseUrl;
-	});
+	}, 15_000);
 });
