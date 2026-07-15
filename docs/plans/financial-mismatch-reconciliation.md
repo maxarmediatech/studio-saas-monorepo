@@ -6,6 +6,13 @@
 
 Run against one organization at a time. The organization scope is mandatory so a report cannot accidentally mix tenant data.
 
+Before financial enforcement, run the report-only all-organization gate. It
+never repairs data and exits non-zero when any mismatch remains:
+
+```bash
+pnpm financial:migration-preflight --as-of YYYY-MM-DD
+```
+
 ```bash
 pnpm --filter @repo/scripts financial-reconciliation \
   --organization-id <organization-id> --report
