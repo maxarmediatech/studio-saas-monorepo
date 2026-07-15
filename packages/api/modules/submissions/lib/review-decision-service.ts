@@ -153,19 +153,27 @@ export async function decideSubmissionReview(
 		request_revision: "needs changes",
 		reject: "rejected",
 	} as const;
+	const parentApproved =
+		committed.parentTransition.changed &&
+		committed.parentTransition.to === "approved";
 	await safeNotifySubscribers({
 		organizationId: context.organizationId,
 		entityType: committed.parent.type,
 		entityId: committed.parent.id,
 		entityName: committed.parent.name,
 		type: notificationType[input.decision],
-		title: `${committed.parent.type === "task" ? "Task" : "Deliverable"} ${titleOutcome[input.decision]}: ${committed.parent.name}`,
-		body:
-			input.decision === "request_revision"
+		title: parentApproved
+			? `${committed.parent.type === "task" ? "Task" : "Deliverable"} approved: ${committed.parent.name}`
+			: `Submission ${titleOutcome[input.decision]} for ${committed.parent.type === "task" ? "Task" : "Deliverable"}: ${committed.parent.name}`,
+		body: parentApproved
+			? "All current assignee submissions are approved"
+			: input.decision === "request_revision"
 				? `Changes requested by ${context.user.name}`
 				: `${titleOutcome[input.decision][0]?.toUpperCase()}${titleOutcome[input.decision].slice(1)} by ${context.user.name}`,
 		metadata: {
 			outcome: committed.newStatus,
+			parentStatus: committed.parentTransition.to,
+			scope: parentApproved ? "parent_aggregate" : "submission_decision",
 			reviewerName: context.user.name,
 			reviewNote: input.reviewNote ?? null,
 		},

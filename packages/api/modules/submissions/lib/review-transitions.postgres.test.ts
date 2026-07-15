@@ -10,7 +10,12 @@ import {
 import { safeNotifySubscribers } from "../../notifications/lib/notification-service";
 
 vi.mock("../../notifications/lib/notification-service", () => ({
+	safeAutoSubscribe: vi.fn(),
 	safeNotifySubscribers: vi.fn(),
+}));
+
+vi.mock("../../studio/lib/permissions", () => ({
+	requirePermission: vi.fn(),
 }));
 
 const databaseUrl = process.env.POSTGRES_CONCURRENCY_DATABASE_URL;
@@ -43,6 +48,10 @@ let administrativelyReleaseReview: ClaimServiceModule["administrativelyReleaseRe
 let claimSubmissionForReview: ClaimServiceModule["claimSubmissionForReview"];
 let releaseSubmissionReview: ClaimServiceModule["releaseSubmissionReview"];
 let decideSubmissionReview: typeof import("./review-decision-service")["decideSubmissionReview"];
+let assignCrewToTask: typeof import("../../tasks/procedures/assign-crew")["assignCrewToTask"];
+let unassignCrewFromTask: typeof import("../../tasks/procedures/unassign-crew")["unassignCrewFromTask"];
+let assignCrewToDeliverable: typeof import("../../deliverables/procedures/assign-crew")["assignCrewToDeliverable"];
+let unassignCrewFromDeliverable: typeof import("../../deliverables/procedures/unassign-crew")["unassignCrewFromDeliverable"];
 const suffix = `${process.pid}_${Date.now()}`;
 const ids = {
 	organization: `submission_org_${suffix}`,
@@ -273,6 +282,18 @@ describePostgres("submission review transitions on PostgreSQL", () => {
 		} = await import("./review-claim-service"));
 		({ decideSubmissionReview } = await import(
 			"./review-decision-service"
+		));
+		({ assignCrewToTask } = await import(
+			"../../tasks/procedures/assign-crew"
+		));
+		({ unassignCrewFromTask } = await import(
+			"../../tasks/procedures/unassign-crew"
+		));
+		({ assignCrewToDeliverable } = await import(
+			"../../deliverables/procedures/assign-crew"
+		));
+		({ unassignCrewFromDeliverable } = await import(
+			"../../deliverables/procedures/unassign-crew"
 		));
 		await db.insert(organizations).values([
 			{
@@ -511,20 +532,44 @@ describePostgres("submission review transitions on PostgreSQL", () => {
 	});
 
 	it.each([
-		"task",
-		"deliverable",
-	] as const)("approves a %s only after both assignees approve", async (type) => {
+		{ type: "task", order: "A→B" },
+		{ type: "task", order: "B→A" },
+		{ type: "deliverable", order: "A→B" },
+		{ type: "deliverable", order: "B→A" },
+	] as const)("approves a $type only after both assignees approve in $order order", async ({
+		type,
+		order,
+	}) => {
 		const pair = await createReviewPair(type);
-		await decideSubmissionReview(reviewerA, {
-			id: pair.submissionA,
+		const first =
+			order === "A→B"
+				? { actor: reviewerA, id: pair.submissionA }
+				: { actor: reviewerB, id: pair.submissionB };
+		const second =
+			order === "A→B"
+				? { actor: reviewerB, id: pair.submissionB }
+				: { actor: reviewerA, id: pair.submissionA };
+		await decideSubmissionReview(first.actor, {
+			id: first.id,
 			decision: "approve",
 		});
 		const afterFirst = await getParent(type, pair.parentId);
 		expect(afterFirst?.workflowStatus).toBe("in_review");
 		expect(afterFirst?.approvedAt).toBeNull();
+		expect(safeNotifySubscribers).toHaveBeenCalledTimes(1);
+		expect(
+			vi.mocked(safeNotifySubscribers).mock.calls[0]?.[0],
+		).toMatchObject({
+			title: `Submission approved for ${type === "task" ? "Task" : "Deliverable"}: Aggregate review ${type}`,
+			metadata: {
+				outcome: "approved",
+				parentStatus: "in_review",
+				scope: "submission_decision",
+			},
+		});
 
-		await decideSubmissionReview(reviewerB, {
-			id: pair.submissionB,
+		await decideSubmissionReview(second.actor, {
+			id: second.id,
 			decision: "approve",
 		});
 		const approved = await getParent(type, pair.parentId);
@@ -538,6 +583,44 @@ describePostgres("submission review transitions on PostgreSQL", () => {
 					([notification]) => notification.entityType === type,
 				),
 		).toBe(true);
+		expect(
+			vi.mocked(safeNotifySubscribers).mock.calls[1]?.[0],
+		).toMatchObject({
+			title: `${type === "task" ? "Task" : "Deliverable"} approved: Aggregate review ${type}`,
+			metadata: {
+				outcome: "approved",
+				parentStatus: "approved",
+				scope: "parent_aggregate",
+			},
+		});
+	});
+
+	it.each([
+		"task",
+		"deliverable",
+	] as const)("keeps a %s unapproved when a sibling is assigned but has not submitted", async (type) => {
+		const pair = await createReviewPair(type);
+		await db
+			.delete(assignmentSubmissions)
+			.where(eq(assignmentSubmissions.id, pair.submissionB));
+		await decideSubmissionReview(reviewerA, {
+			id: pair.submissionA,
+			decision: "approve",
+		});
+		expect(await getParent(type, pair.parentId)).toMatchObject({
+			workflowStatus: "submitted",
+			approvedAt: null,
+		});
+		expect(safeNotifySubscribers).toHaveBeenCalledOnce();
+		expect(
+			vi.mocked(safeNotifySubscribers).mock.calls[0]?.[0],
+		).toMatchObject({
+			title: `Submission approved for ${type === "task" ? "Task" : "Deliverable"}: Aggregate review ${type}`,
+			metadata: {
+				parentStatus: "submitted",
+				scope: "submission_decision",
+			},
+		});
 	});
 
 	it("serializes concurrent sibling approvals without rejecting either decision", async () => {
@@ -664,6 +747,66 @@ describePostgres("submission review transitions on PostgreSQL", () => {
 		const reapproved = await getParent("task", pair.parentId);
 		expect(reapproved?.workflowStatus).toBe("approved");
 		expect(reapproved?.approvedAt).toBeInstanceOf(Date);
+	});
+
+	it.each([
+		"task",
+		"deliverable",
+	] as const)("recomputes a %s through its real assign and unassign procedures", async (type) => {
+		const pair = await createReviewPair(type);
+		await decideSubmissionReview(reviewerA, {
+			id: pair.submissionA,
+			decision: "approve",
+		});
+		await decideSubmissionReview(reviewerB, {
+			id: pair.submissionB,
+			decision: "approve",
+		});
+		const extraCrewId = `${ids.crewB}_${type}_procedure_${Date.now()}`;
+		await db.insert(crews).values({
+			id: extraCrewId,
+			organizationId: ids.organization,
+			name: `Procedure ${type} crew`,
+		});
+		const context = { ...admin, headers: new Headers() };
+		if (type === "task") {
+			await (assignCrewToTask as any)["~orpc"].handler({
+				context,
+				input: { taskId: pair.parentId, crewId: extraCrewId },
+			});
+		} else {
+			await (assignCrewToDeliverable as any)["~orpc"].handler({
+				context,
+				input: {
+					deliverableId: pair.parentId,
+					crewId: extraCrewId,
+					isLead: false,
+				},
+			});
+		}
+		expect(await getParent(type, pair.parentId)).toMatchObject({
+			workflowStatus: "submitted",
+			approvedAt: null,
+		});
+
+		if (type === "task") {
+			await (unassignCrewFromTask as any)["~orpc"].handler({
+				context,
+				input: { taskId: pair.parentId, crewId: extraCrewId },
+			});
+		} else {
+			await (unassignCrewFromDeliverable as any)["~orpc"].handler({
+				context,
+				input: {
+					deliverableId: pair.parentId,
+					crewId: extraCrewId,
+				},
+			});
+		}
+		expect(await getParent(type, pair.parentId)).toMatchObject({
+			workflowStatus: "approved",
+			approvedAt: expect.any(Date),
+		});
 	});
 
 	it("makes unchanged aggregation a no-op and preserves approval time", async () => {

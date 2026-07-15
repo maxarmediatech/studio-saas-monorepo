@@ -45,11 +45,15 @@ describe("notification metadata", () => {
 		expect(
 			reviewDecisionNotificationMetadataSchema.parse({
 				outcome: "revision_requested",
+				scope: "submission_decision",
+				parentStatus: "revision_requested",
 				reviewerName: "Rakesh",
 				reviewNote: "Please tighten the first cut",
 			}),
 		).toEqual({
 			outcome: "revision_requested",
+			scope: "submission_decision",
+			parentStatus: "revision_requested",
 			reviewerName: "Rakesh",
 			reviewNote: "Please tighten the first cut",
 		});

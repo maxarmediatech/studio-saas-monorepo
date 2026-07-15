@@ -14,7 +14,6 @@ import type { TransactionClient } from "../../studio/lib/transactions";
 import {
 	type AggregateWorkflowStatus,
 	deriveParentReviewStatus,
-	type SubmissionEvidenceStatus,
 } from "./parent-review-state";
 import type {
 	ReviewActorContext,
@@ -30,6 +29,25 @@ interface AggregateTransition {
 	changed: boolean;
 	from: AggregateWorkflowStatus;
 	to: AggregateWorkflowStatus;
+}
+
+export interface ParentReviewProjection {
+	workflowStatus: AggregateWorkflowStatus;
+	approvalTime: Date | null;
+	approvalTimeEvidenceComplete: boolean;
+}
+
+interface ParentReviewAssignment {
+	crewId: string;
+}
+
+interface ParentReviewSubmission {
+	id: string;
+	submittedBy: string;
+	status: typeof assignmentSubmissions.$inferSelect.status;
+	reviewedAt: Date | null;
+	submittedAt: Date | null;
+	createdAt: Date;
 }
 
 export async function lockSubmissionParent(
@@ -114,11 +132,11 @@ export async function lockParentReviewEvidence(
 		.for("update");
 }
 
-async function readLatestStatuses(
+export async function readParentReviewProjection(
 	tx: TransactionClient,
 	organizationId: string,
 	parent: Pick<SubmissionParent, "id" | "type">,
-): Promise<Array<SubmissionEvidenceStatus | null>> {
+): Promise<ParentReviewProjection> {
 	const assignments =
 		parent.type === "task"
 			? await tx
@@ -133,7 +151,11 @@ async function readLatestStatuses(
 					.orderBy(asc(deliverableAssignments.id));
 
 	if (assignments.length === 0) {
-		return [];
+		return {
+			workflowStatus: "not_started",
+			approvalTime: null,
+			approvalTimeEvidenceComplete: true,
+		};
 	}
 
 	const parentFilter =
@@ -145,6 +167,7 @@ async function readLatestStatuses(
 			id: assignmentSubmissions.id,
 			submittedBy: assignmentSubmissions.submittedBy,
 			status: assignmentSubmissions.status,
+			reviewedAt: assignmentSubmissions.reviewedAt,
 			submittedAt: assignmentSubmissions.submittedAt,
 			createdAt: assignmentSubmissions.createdAt,
 		})
@@ -156,7 +179,22 @@ async function readLatestStatuses(
 			),
 		);
 
-	const latestByCrew = new Map<string, (typeof submissions)[number]>();
+	return deriveParentReviewProjection(assignments, submissions);
+}
+
+export function deriveParentReviewProjection(
+	assignments: ParentReviewAssignment[],
+	submissions: ParentReviewSubmission[],
+): ParentReviewProjection {
+	if (assignments.length === 0) {
+		return {
+			workflowStatus: "not_started",
+			approvalTime: null,
+			approvalTimeEvidenceComplete: true,
+		};
+	}
+
+	const latestByCrew = new Map<string, ParentReviewSubmission>();
 	for (const submission of submissions) {
 		const existing = latestByCrew.get(submission.submittedBy);
 		if (!existing || isLaterSubmission(submission, existing)) {
@@ -164,9 +202,32 @@ async function readLatestStatuses(
 		}
 	}
 
-	return assignments.map(
-		(assignment) => latestByCrew.get(assignment.crewId)?.status ?? null,
+	const latestEvidence = assignments.map(
+		(assignment) => latestByCrew.get(assignment.crewId) ?? null,
 	);
+	const workflowStatus = deriveParentReviewStatus(
+		latestEvidence.map((evidence) => evidence?.status ?? null),
+	);
+	if (workflowStatus !== "approved") {
+		return {
+			workflowStatus,
+			approvalTime: null,
+			approvalTimeEvidenceComplete: true,
+		};
+	}
+	const approvalTimes = latestEvidence.map(
+		(evidence) => evidence?.reviewedAt ?? null,
+	);
+	const approvalTimeEvidenceComplete = approvalTimes.every(
+		(time): time is Date => time instanceof Date,
+	);
+	return {
+		workflowStatus,
+		approvalTime: approvalTimeEvidenceComplete
+			? new Date(Math.max(...approvalTimes.map((time) => time.getTime())))
+			: null,
+		approvalTimeEvidenceComplete,
+	};
 }
 
 function isLaterSubmission(
@@ -198,16 +259,21 @@ export async function recomputeParentReviewAggregate(
 	tx: TransactionClient,
 	context: ReviewActorContext,
 	parent: LockedSubmissionParent,
-	input: { actionTime: Date; cause: string },
+	input: { actionTime: Date; cause: string; approvalTime?: Date },
 ): Promise<AggregateTransition> {
-	const nextStatus = deriveParentReviewStatus(
-		await readLatestStatuses(tx, context.organizationId, parent),
+	const { workflowStatus: nextStatus } = await readParentReviewProjection(
+		tx,
+		context.organizationId,
+		parent,
 	);
 	if (nextStatus === parent.workflowStatus) {
 		return { changed: false, from: parent.workflowStatus, to: nextStatus };
 	}
 
-	const timestamp = nextStatus === "approved" ? input.actionTime : null;
+	const timestamp =
+		nextStatus === "approved"
+			? (input.approvalTime ?? input.actionTime)
+			: null;
 	const update =
 		parent.type === "task"
 			? await tx
