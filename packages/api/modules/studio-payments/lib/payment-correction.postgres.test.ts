@@ -33,6 +33,7 @@ describePostgres("payment correction on migrated PostgreSQL", () => {
 			payment: `correction_payment_${suffix}`,
 			receipt: `correction_receipt_${suffix}`,
 		};
+		const historicalSchedulePaidAt = new Date("2026-01-01T08:30:00.000Z");
 		await db.insert(users).values({
 			id: ids.user,
 			name: "Correction actor",
@@ -62,7 +63,7 @@ describePostgres("payment correction on migrated PostgreSQL", () => {
 			dueDate: "2026-01-01",
 			paidAmount: "100.00",
 			status: "completed",
-			paidAt: new Date(),
+			paidAt: historicalSchedulePaidAt,
 		});
 		await db.insert(invoices).values({
 			id: ids.invoice,
@@ -134,8 +135,13 @@ describePostgres("payment correction on migrated PostgreSQL", () => {
 				isNull(receipts.deletedAt),
 			),
 		});
+		const unchangedSchedule = await db.query.paymentSchedules.findFirst({
+			where: eq(paymentSchedules.id, ids.schedule),
+			columns: { paidAt: true },
+		});
 		expect(unchangedOriginal?.replacementPaymentId).toBeNull();
 		expect(unchangedReceipt?.id).toBe(ids.receipt);
+		expect(unchangedSchedule?.paidAt).toEqual(historicalSchedulePaidAt);
 
 		const first = await db.transaction((tx) =>
 			correctReceivedPaymentIdempotently(tx, request),
@@ -193,6 +199,7 @@ describePostgres("payment correction on migrated PostgreSQL", () => {
 		});
 		expect(schedule).toMatchObject({
 			paidAmount: "80.00",
+			paidAt: null,
 			status: "partial",
 		});
 

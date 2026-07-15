@@ -20,6 +20,7 @@ import type { TransactionClient } from "../../studio/lib/transactions";
 import type { CorrectReceivedInput } from "../../studio/schemas/payment";
 import { resolveLockedPaymentRelationships } from "./payment-relationship-closure";
 import { getLockedReceivedPayment } from "./received-payment-lock";
+import { getCorrectedSchedulePaidAt } from "./schedule-completion-history";
 import { createReceivedPaymentTransition } from "./schedule-payment-service";
 
 interface PaymentCorrectionActor {
@@ -62,6 +63,11 @@ export async function correctReceivedPaymentTransition(
 		invoiceId: lockPlan.invoiceId ?? undefined,
 		paymentScheduleId: lockPlan.paymentScheduleId ?? undefined,
 	});
+	const scheduleBeforeCorrection = relationships.schedule;
+	const scheduleWasCompleted = scheduleBeforeCorrection
+		? moneyToCents(scheduleBeforeCorrection.paidAmount) >=
+			moneyToCents(scheduleBeforeCorrection.amount)
+		: false;
 
 	const original = await getLockedReceivedPayment(tx, {
 		organizationId: input.organizationId,
@@ -167,7 +173,7 @@ export async function correctReceivedPaymentTransition(
 		const paidCents = moneyToCents(paidAmount);
 		const schedule = await tx.query.paymentSchedules.findFirst({
 			where: eq(paymentSchedules.id, original.paymentScheduleId),
-			columns: { amount: true, status: true },
+			columns: { amount: true, paidAt: true, status: true },
 		});
 		if (!schedule) {
 			throw new ORPCError("CONFLICT", {
@@ -187,7 +193,7 @@ export async function correctReceivedPaymentTransition(
 			.update(paymentSchedules)
 			.set({
 				paidAmount: centsToMoney(paidCents),
-				paidAt: status === "completed" ? reversedAt : null,
+				paidAt: status === "completed" ? schedule.paidAt : null,
 				status,
 				updatedAt: reversedAt,
 				updatedBy: input.userId,
@@ -214,6 +220,32 @@ export async function correctReceivedPaymentTransition(
 			url: string;
 		} | null,
 	});
+	if (scheduleBeforeCorrection && relationships.paymentScheduleId) {
+		const activeSchedulePayments = await tx.query.receivedAmounts.findMany({
+			where: and(
+				eq(receivedAmounts.organizationId, input.organizationId),
+				eq(
+					receivedAmounts.paymentScheduleId,
+					relationships.paymentScheduleId,
+				),
+				isNull(receivedAmounts.deletedAt),
+			),
+			columns: { amount: true, receivedDate: true },
+		});
+		await tx
+			.update(paymentSchedules)
+			.set({
+				paidAt: getCorrectedSchedulePaidAt({
+					wasCompleted: scheduleWasCompleted,
+					previousPaidAt: scheduleBeforeCorrection.paidAt,
+					scheduleAmount: scheduleBeforeCorrection.amount,
+					activePayments: activeSchedulePayments,
+				}),
+				updatedAt: new Date(),
+				updatedBy: input.userId,
+			})
+			.where(eq(paymentSchedules.id, relationships.paymentScheduleId));
+	}
 	if (activeReceipt && !original.invoiceId) {
 		await insertReceiptWithGeneratedNumber(tx, {
 			organizationId: input.organizationId,
