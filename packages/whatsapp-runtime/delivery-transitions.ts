@@ -237,7 +237,40 @@ export const transitionWhatsAppMessage = async (
 	if (!message) {
 		return { changed: false, reason: "not_found" as const };
 	}
+	if (
+		params.acceptedProviderMessageId &&
+		message.providerMessageId &&
+		message.providerMessageId !== params.acceptedProviderMessageId
+	) {
+		const errorMessage = `Provider identity conflict: stored ${message.providerMessageId}, accepted ${params.acceptedProviderMessageId}`;
+		const [updated] = await tx
+			.update(waMessages)
+			.set({
+				errorCode: "provider_identity_conflict",
+				errorMessage,
+			})
+			.where(eq(waMessages.id, message.id))
+			.returning();
+		return {
+			changed: false,
+			reason: "provider_identity_conflict" as const,
+			message: updated ?? message,
+			errorMessage,
+		};
+	}
 	if (!canTransition(message.status, params.status)) {
+		if (params.acceptedProviderMessageId && !message.providerMessageId) {
+			const [updated] = await tx
+				.update(waMessages)
+				.set({ providerMessageId: params.acceptedProviderMessageId })
+				.where(eq(waMessages.id, message.id))
+				.returning();
+			return {
+				changed: true,
+				reason: "provider_identity_attached" as const,
+				message: updated ?? message,
+			};
+		}
 		return {
 			changed: false,
 			reason: "ignored_transition" as const,

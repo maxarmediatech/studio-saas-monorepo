@@ -230,6 +230,64 @@ const applyEvent = async (
 	}
 };
 
+export const reconcileStoredWhatsAppStatusEvents = async (
+	tx: WhatsAppTransaction,
+	params: {
+		accountId: string;
+		messageId: string;
+		providerMessageId: string;
+		now?: Date;
+	},
+) => {
+	const storedEvents = await tx
+		.select()
+		.from(waEvents)
+		.where(
+			and(
+				eq(waEvents.accountId, params.accountId),
+				eq(waEvents.eventType, "message.status"),
+				isNull(waEvents.processedAt),
+				sql`coalesce(
+					${waEvents.payload}->'event'->>'providerMessageId',
+					${waEvents.payload}->>'providerMessageId'
+				) = ${params.providerMessageId}`,
+			),
+		)
+		.orderBy(waEvents.createdAt, waEvents.id)
+		.for("update");
+
+	const processedAt = params.now ?? new Date();
+	for (const stored of storedEvents) {
+		const payload = storedEventPayload(stored.payload);
+		if (
+			payload.event.type !== "message.status" ||
+			payload.event.providerMessageId !== params.providerMessageId
+		) {
+			continue;
+		}
+		await transitionWhatsAppMessage(tx, {
+			messageId: params.messageId,
+			status: payload.event.status,
+			at: payload.event.timestamp,
+			errorCode: payload.event.error?.code ?? null,
+			errorMessage: payload.event.error?.message ?? null,
+		});
+		await tx
+			.update(waEvents)
+			.set({
+				processingStatus: "processed",
+				processedAt,
+				nextAttemptAt: processedAt,
+				lockedBy: null,
+				leaseExpiresAt: null,
+				errorMessage: null,
+			})
+			.where(eq(waEvents.id, stored.id));
+	}
+
+	return storedEvents.length;
+};
+
 export const processWhatsAppEventById = async (params: {
 	eventId: string;
 	workerId: string;

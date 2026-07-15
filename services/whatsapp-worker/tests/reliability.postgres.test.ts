@@ -4,6 +4,7 @@ import {
 	waAccounts,
 	waContacts,
 	waConversations,
+	waEvents,
 	waMedia,
 	waMessages,
 	waOutbox,
@@ -11,6 +12,7 @@ import {
 import {
 	fetchDueWhatsAppOutboxItems,
 	processWhatsAppOutboxItem,
+	recordWhatsAppProviderAcceptance,
 	recoverExpiredWhatsAppOutboxLeases,
 } from "@repo/whatsapp-outbox";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -23,6 +25,9 @@ import {
 const ORGANIZATION_ID = "whatsapp-worker-pg-test";
 
 const cleanup = async () => {
+	await db
+		.delete(waEvents)
+		.where(eq(waEvents.organizationId, ORGANIZATION_ID));
 	await db
 		.delete(waOutbox)
 		.where(eq(waOutbox.organizationId, ORGANIZATION_ID));
@@ -279,6 +284,163 @@ describe("WhatsApp worker PostgreSQL reliability", () => {
 		).toBe(2);
 		expect(due.map((item) => item.outbox.id)).not.toContain(
 			unknownOutbox.id,
+		);
+	});
+
+	it("reconciles late provider acceptance with stored status events", async () => {
+		const fixture = await createFixture("late-acceptance");
+		const fixtureOutbox = requireOutbox(fixture);
+		const due = await fetchDueWhatsAppOutboxItems({ limit: 100 });
+		const item = due.find((row) => row.outbox.id === fixtureOutbox.id);
+		if (!item) {
+			throw new Error("Expected late-acceptance fixture to be due");
+		}
+
+		let releaseProvider!: () => void;
+		let observeDispatch!: () => void;
+		const providerReleased = new Promise<void>((resolve) => {
+			releaseProvider = resolve;
+		});
+		const dispatchObserved = new Promise<void>((resolve) => {
+			observeDispatch = resolve;
+		});
+		const processing = processWhatsAppOutboxItem(item, {
+			workerId: "late-worker",
+			providerFactory: () =>
+				provider(async () => {
+					observeDispatch();
+					await providerReleased;
+					return {
+						success: true,
+						providerMessageId: "provider-late-accepted",
+					};
+				}),
+		});
+		await dispatchObserved;
+
+		const [dispatched] = await db
+			.select()
+			.from(waOutbox)
+			.where(eq(waOutbox.id, fixtureOutbox.id));
+		expect(dispatched.dispatchToken).toBeTruthy();
+		await db.insert(waEvents).values({
+			organizationId: ORGANIZATION_ID,
+			accountId: fixture.account.id,
+			providerEventId: "provider-late-accepted:delivered:1",
+			eventType: "message.status",
+			payload: {
+				event: {
+					type: "message.status",
+					phoneNumberId: fixture.account.phoneNumberId,
+					providerMessageId: "provider-late-accepted",
+					status: "delivered",
+					timestamp: new Date("2026-07-15T08:00:00.000Z"),
+				},
+				rawPayload: {},
+			},
+			processingStatus: "failed",
+			attempts: 10,
+			maxAttempts: 10,
+			errorMessage: "Message not found for WhatsApp status update",
+			nextAttemptAt: new Date("2026-07-15T08:00:00.000Z"),
+		});
+		await db
+			.update(waOutbox)
+			.set({ leaseExpiresAt: new Date("2026-07-15T07:59:00.000Z") })
+			.where(eq(waOutbox.id, fixtureOutbox.id));
+		expect(
+			await recoverExpiredWhatsAppOutboxLeases(
+				new Date("2026-07-15T08:00:00.000Z"),
+			),
+		).toEqual({ recovered: 0, unknown: 1 });
+
+		releaseProvider();
+		expect(await processing).toEqual({ status: "sent" });
+
+		const repeated = await recordWhatsAppProviderAcceptance({
+			outboxId: fixtureOutbox.id,
+			messageId: fixture.message.id,
+			workerId: "late-worker",
+			dispatchToken: dispatched.dispatchToken ?? "",
+			providerMessageId: "provider-late-accepted",
+		});
+		expect(repeated.status).toBe("already_accepted");
+		const [storedOutbox] = await db
+			.select()
+			.from(waOutbox)
+			.where(eq(waOutbox.id, fixtureOutbox.id));
+		const [storedMessage] = await db
+			.select()
+			.from(waMessages)
+			.where(eq(waMessages.id, fixture.message.id));
+		const [storedEvent] = await db
+			.select()
+			.from(waEvents)
+			.where(eq(waEvents.accountId, fixture.account.id));
+		expect(storedOutbox.status).toBe("sent");
+		expect(storedOutbox.dispatchToken).toBe(dispatched.dispatchToken);
+		expect(storedMessage.providerMessageId).toBe("provider-late-accepted");
+		expect(storedMessage.status).toBe("delivered");
+		expect(storedEvent.processingStatus).toBe("processed");
+		expect(storedEvent.processedAt).not.toBeNull();
+		expect(storedEvent.attempts).toBe(10);
+	});
+
+	it("quarantines conflicting provider identity evidence without resend", async () => {
+		const fixture = await createFixture("identity-conflict");
+		const fixtureOutbox = requireOutbox(fixture);
+		await db
+			.update(waMessages)
+			.set({
+				status: "delivery_unknown",
+				providerMessageId: "provider-original",
+			})
+			.where(eq(waMessages.id, fixture.message.id));
+		await db
+			.update(waOutbox)
+			.set({
+				status: "delivery_unknown",
+				dispatchStartedAt: new Date(),
+				dispatchToken: "dispatch-conflict",
+				nextAttemptAt: null,
+			})
+			.where(eq(waOutbox.id, fixtureOutbox.id));
+
+		await expect(
+			recordWhatsAppProviderAcceptance({
+				outboxId: fixtureOutbox.id,
+				messageId: fixture.message.id,
+				workerId: "stale-worker",
+				dispatchToken: "wrong-dispatch",
+				providerMessageId: "provider-conflicting",
+			}),
+		).rejects.toThrow("did not match the active dispatch");
+		const acceptance = await recordWhatsAppProviderAcceptance({
+			outboxId: fixtureOutbox.id,
+			messageId: fixture.message.id,
+			workerId: "stale-worker",
+			dispatchToken: "dispatch-conflict",
+			providerMessageId: "provider-conflicting",
+		});
+		expect(acceptance.status).toBe("provider_identity_conflict");
+		const [storedOutbox] = await db
+			.select()
+			.from(waOutbox)
+			.where(eq(waOutbox.id, fixtureOutbox.id));
+		const [storedMessage] = await db
+			.select()
+			.from(waMessages)
+			.where(eq(waMessages.id, fixture.message.id));
+		expect(storedOutbox.status).toBe("delivery_unknown");
+		expect(storedOutbox.nextAttemptAt).toBeNull();
+		expect(storedOutbox.errorMessage).toContain(
+			"Provider identity conflict",
+		);
+		expect(storedMessage.providerMessageId).toBe("provider-original");
+		expect(storedMessage.errorCode).toBe("provider_identity_conflict");
+		const nextDue = await fetchDueWhatsAppOutboxItems({ limit: 100 });
+		expect(nextDue.map((candidate) => candidate.outbox.id)).not.toContain(
+			fixtureOutbox.id,
 		);
 	});
 

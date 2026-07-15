@@ -19,7 +19,10 @@ import {
 	waMessages,
 	waOutbox,
 } from "@repo/whatsapp-db";
-import { transitionWhatsAppMessage } from "@repo/whatsapp-runtime";
+import {
+	reconcileStoredWhatsAppStatusEvents,
+	transitionWhatsAppMessage,
+} from "@repo/whatsapp-runtime";
 import {
 	defaultProviderFactory,
 	isPermanentProviderError,
@@ -168,6 +171,7 @@ const claimOutboxItem = async (params: {
 			lockedBy: params.workerId,
 			leaseExpiresAt: new Date(params.now.getTime() + params.leaseMs),
 			dispatchStartedAt: null,
+			dispatchToken: null,
 			errorMessage: null,
 		})
 		.where(
@@ -194,6 +198,7 @@ const checkDeliveryEligibility = async (params: {
 	workerId: string;
 	now: Date;
 	markDispatch: boolean;
+	dispatchToken?: string;
 }) => {
 	return db.transaction(async (tx) => {
 		const [outbox] = await tx
@@ -257,23 +262,99 @@ const checkDeliveryEligibility = async (params: {
 		}
 
 		if (params.markDispatch) {
-			await tx
+			if (!params.dispatchToken) {
+				throw new Error("WhatsApp dispatch token is required");
+			}
+			const [marked] = await tx
 				.update(waOutbox)
-				.set({ dispatchStartedAt: params.now })
-				.where(eq(waOutbox.id, outbox.id));
+				.set({
+					dispatchStartedAt: params.now,
+					dispatchToken: params.dispatchToken,
+				})
+				.where(
+					and(
+						eq(waOutbox.id, outbox.id),
+						eq(waOutbox.lockedBy, params.workerId),
+						isNull(waOutbox.dispatchToken),
+					),
+				)
+				.returning({ dispatchToken: waOutbox.dispatchToken });
+			if (!marked) {
+				return { status: "lost_lease" as const };
+			}
+			return {
+				status: "eligible" as const,
+				dispatchToken: marked.dispatchToken ?? params.dispatchToken,
+			};
 		}
 		return { status: "eligible" as const };
 	});
 };
 
-const markOutboxSuccess = (params: {
+export const recordWhatsAppProviderAcceptance = (params: {
 	outboxId: string;
 	messageId: string;
 	workerId: string;
+	dispatchToken: string;
 	providerMessageId?: string;
 }) =>
 	db.transaction(async (tx) => {
-		const [updated] = await tx
+		const [outbox] = await tx
+			.select()
+			.from(waOutbox)
+			.where(
+				and(
+					eq(waOutbox.id, params.outboxId),
+					eq(waOutbox.messageId, params.messageId),
+					eq(waOutbox.dispatchToken, params.dispatchToken),
+				),
+			)
+			.for("update");
+
+		if (
+			!outbox ||
+			(outbox.status === "processing" &&
+				outbox.lockedBy !== params.workerId) ||
+			!["processing", "delivery_unknown", "sent"].includes(outbox.status)
+		) {
+			throw new Error(
+				"WhatsApp provider acceptance did not match the active dispatch",
+			);
+		}
+
+		const transition = await transitionWhatsAppMessage(tx, {
+			messageId: params.messageId,
+			status: "sent",
+			at: new Date(),
+			acceptedProviderMessageId: params.providerMessageId,
+		});
+		if (transition.reason === "provider_identity_conflict") {
+			await transitionWhatsAppMessage(tx, {
+				messageId: params.messageId,
+				status: "delivery_unknown",
+				at: new Date(),
+				errorCode: "provider_identity_conflict",
+				errorMessage: transition.errorMessage,
+			});
+			await tx
+				.update(waOutbox)
+				.set({
+					status: "delivery_unknown",
+					nextAttemptAt: null,
+					lockedBy: null,
+					leaseExpiresAt: null,
+					errorMessage: transition.errorMessage,
+				})
+				.where(
+					and(
+						eq(waOutbox.id, params.outboxId),
+						eq(waOutbox.dispatchToken, params.dispatchToken),
+					),
+				);
+			return { status: "provider_identity_conflict" as const };
+		}
+
+		await tx
 			.update(waOutbox)
 			.set({
 				status: "sent",
@@ -285,31 +366,33 @@ const markOutboxSuccess = (params: {
 			.where(
 				and(
 					eq(waOutbox.id, params.outboxId),
-					eq(waOutbox.status, "processing"),
-					eq(waOutbox.lockedBy, params.workerId),
-					isNotNull(waOutbox.dispatchStartedAt),
+					eq(waOutbox.dispatchToken, params.dispatchToken),
 				),
-			)
-			.returning({ id: waOutbox.id });
-
-		if (!updated) {
-			throw new Error(
-				"WhatsApp outbox lease lost after provider acceptance",
 			);
+
+		if (params.providerMessageId) {
+			await reconcileStoredWhatsAppStatusEvents(tx, {
+				accountId: outbox.accountId,
+				messageId: params.messageId,
+				providerMessageId: params.providerMessageId,
+			});
 		}
 
-		await transitionWhatsAppMessage(tx, {
-			messageId: params.messageId,
-			status: "sent",
-			at: new Date(),
-			acceptedProviderMessageId: params.providerMessageId,
-		});
+		return {
+			status:
+				outbox.status === "delivery_unknown"
+					? ("late_accepted" as const)
+					: outbox.status === "sent"
+						? ("already_accepted" as const)
+						: ("accepted" as const),
+		};
 	});
 
 const markOutboxFailure = (params: {
 	outboxId: string;
 	messageId: string;
 	workerId: string;
+	dispatchToken?: string;
 	attempts: number;
 	maxAttempts: number;
 	errorMessage: string;
@@ -331,6 +414,7 @@ const markOutboxFailure = (params: {
 				lockedBy: null,
 				leaseExpiresAt: null,
 				dispatchStartedAt: null,
+				dispatchToken: null,
 				errorMessage: params.errorMessage,
 			})
 			.where(
@@ -338,6 +422,9 @@ const markOutboxFailure = (params: {
 					eq(waOutbox.id, params.outboxId),
 					eq(waOutbox.status, "processing"),
 					eq(waOutbox.lockedBy, params.workerId),
+					params.dispatchToken
+						? eq(waOutbox.dispatchToken, params.dispatchToken)
+						: isNull(waOutbox.dispatchToken),
 				),
 			)
 			.returning({ id: waOutbox.id });
@@ -358,12 +445,14 @@ const markOutboxFailure = (params: {
 				errorMessage: params.errorMessage,
 			});
 		}
+		return Boolean(updated);
 	});
 
 const markDeliveryUnknown = (params: {
 	outboxId: string;
 	messageId: string;
 	workerId: string;
+	dispatchToken: string;
 	errorMessage: string;
 }) =>
 	db.transaction(async (tx) => {
@@ -382,6 +471,7 @@ const markDeliveryUnknown = (params: {
 					eq(waOutbox.status, "processing"),
 					eq(waOutbox.lockedBy, params.workerId),
 					isNotNull(waOutbox.dispatchStartedAt),
+					eq(waOutbox.dispatchToken, params.dispatchToken),
 				),
 			)
 			.returning({ id: waOutbox.id });
@@ -394,6 +484,7 @@ const markDeliveryUnknown = (params: {
 				errorMessage: params.errorMessage,
 			});
 		}
+		return Boolean(updated);
 	});
 
 export const processWhatsAppOutboxItem = async (
@@ -418,6 +509,7 @@ export const processWhatsAppOutboxItem = async (
 	const attempts = claim.attempts ?? (item.outbox.attempts ?? 0) + 1;
 	const maxAttempts = claim.maxAttempts ?? item.outbox.maxAttempts ?? 3;
 	let dispatchStarted = false;
+	const dispatchToken = crypto.randomUUID();
 
 	try {
 		const initialEligibility = await checkDeliveryEligibility({
@@ -444,6 +536,7 @@ export const processWhatsAppOutboxItem = async (
 			workerId: options.workerId,
 			now: new Date(),
 			markDispatch: true,
+			dispatchToken,
 		});
 		if (admission.status === "suppressed") {
 			return { status: "suppressed" as const };
@@ -457,24 +550,33 @@ export const processWhatsAppOutboxItem = async (
 		const result = await send();
 
 		if (!result.success) {
-			await markOutboxFailure({
+			const recorded = await markOutboxFailure({
 				outboxId: item.outbox.id,
 				messageId: item.message.id,
 				workerId: options.workerId,
+				dispatchToken,
 				attempts,
 				maxAttempts,
 				errorMessage: result.error?.message ?? "Failed to send message",
 				retryable: !isPermanentProviderError(result.error),
 			});
-			return { status: "failed" as const };
+			return {
+				status: recorded
+					? ("failed" as const)
+					: ("delivery_unknown" as const),
+			};
 		}
 
-		await markOutboxSuccess({
+		const accepted = await recordWhatsAppProviderAcceptance({
 			outboxId: item.outbox.id,
 			messageId: item.message.id,
 			workerId: options.workerId,
+			dispatchToken,
 			providerMessageId: result.providerMessageId,
 		});
+		if (accepted.status === "provider_identity_conflict") {
+			return { status: "delivery_unknown" as const };
+		}
 		return { status: "sent" as const };
 	} catch (error) {
 		const errorMessage =
@@ -486,6 +588,7 @@ export const processWhatsAppOutboxItem = async (
 				outboxId: item.outbox.id,
 				messageId: item.message.id,
 				workerId: options.workerId,
+				dispatchToken,
 				errorMessage,
 			}).catch(() => undefined);
 			return { status: "delivery_unknown" as const };

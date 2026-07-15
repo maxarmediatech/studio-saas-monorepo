@@ -105,7 +105,7 @@ Post-review migrations `0049` and `0050` add explicit webhook event leases/retry
 
 All campaign actions now use the recipient ledger. `send` persists a campaign due immediately; `schedule` persists a future due time. The removed legacy campaign engine no longer creates messages or counters directly.
 
-The earlier reliability lane remains in `0040`. The staged core-product remediation adds the manual-send claim table in generated migration `0052_whatsapp_manual_send_idempotency`; Package 6 will reconstruct the unapplied development tail from `main` before shared rollout.
+The earlier reliability lane remains in `0040`. The staged core-product remediation adds the manual-send claim table in generated migration `0052_whatsapp_manual_send_idempotency` and immutable outbox dispatch tokens in `0053_whatsapp_late_provider_acceptance`; Package 6 will reconstruct the unapplied development tail from `main` before shared rollout.
 
 ### Manual-send acceptance contract
 
@@ -127,6 +127,8 @@ The earlier reliability lane remains in `0040`. The staged core-product remediat
 The worker rechecks current account/contact state after claiming and again in a row-locking transaction immediately before it records `dispatchStartedAt`. Ineligible work becomes `suppressed`, has no retry clock, updates campaign truth, and never calls the provider.
 
 The database transaction cannot remain open across the external Meta request. A block, opt-out, disconnect, or delete committed after the final admission transaction can therefore race with the provider call. That boundary is explicit: once `dispatchStartedAt` is committed, an uncertain outcome is quarantined as `delivery_unknown` and is never blindly resent; provider callbacks or manual reconciliation resolve it.
+
+Each provider attempt now records a random immutable `dispatchToken` with `dispatchStartedAt`. Normal success still requires the processing owner; success arriving after lease recovery may resolve the same `delivery_unknown` row only when that token matches. The provider identity is attached once, stored status webhooks are reconciled atomically, and conflicting identities remain quarantined with explicit manual-reconciliation evidence.
 
 ### Automation execution contract
 
