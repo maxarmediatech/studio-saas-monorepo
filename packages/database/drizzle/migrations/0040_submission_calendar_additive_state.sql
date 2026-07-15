@@ -31,11 +31,7 @@ CREATE TABLE "calendar_route_changes" (
 --> statement-breakpoint
 DROP INDEX "google_calendar_connections_org_user_idx";--> statement-breakpoint
 DROP INDEX "shoot_calendar_events_shoot_crew_idx";--> statement-breakpoint
-ALTER TABLE "calendar_sync_jobs" ADD COLUMN "delivery_key" text;--> statement-breakpoint
-UPDATE "calendar_sync_jobs"
-SET "delivery_key" = 'legacy:' || "id"
-WHERE "delivery_key" IS NULL;--> statement-breakpoint
-ALTER TABLE "calendar_sync_jobs" ALTER COLUMN "delivery_key" SET NOT NULL;--> statement-breakpoint
+ALTER TABLE "calendar_sync_jobs" ADD COLUMN "delivery_key" text DEFAULT 'legacy:' || gen_random_uuid()::text NOT NULL;--> statement-breakpoint
 ALTER TABLE "calendar_sync_jobs" ADD COLUMN "intent_id" varchar(255);--> statement-breakpoint
 ALTER TABLE "calendar_sync_jobs" ADD COLUMN "generation" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
 ALTER TABLE "calendar_sync_jobs" ADD COLUMN "claim_token" varchar(255);--> statement-breakpoint
@@ -57,6 +53,7 @@ ALTER TABLE "shoot_calendar_events" ADD COLUMN "delivered_calendar_id" text;--> 
 ALTER TABLE "shoot_calendar_events" ADD COLUMN "delivered_google_event_id" text;--> statement-breakpoint
 ALTER TABLE "shoot_calendar_events" ADD COLUMN "delivered_ical_uid" text;--> statement-breakpoint
 ALTER TABLE "shoot_calendar_events" ADD COLUMN "delivered_ical_sequence" integer;--> statement-breakpoint
+ALTER TABLE "assignment_submissions" ADD COLUMN "review_claimed_at" timestamp with time zone;--> statement-breakpoint
 UPDATE "shoot_calendar_events"
 SET
 	"delivery_sync_status" = "sync_status"::text,
@@ -68,6 +65,11 @@ SET
 	"delivered_google_event_id" = CASE WHEN "sync_status" = 'synced' THEN "google_event_id" ELSE NULL END,
 	"delivered_ical_uid" = CASE WHEN "sync_status" = 'synced' THEN "ical_uid" ELSE NULL END,
 	"delivered_ical_sequence" = CASE WHEN "sync_status" = 'synced' THEN "ical_sequence" ELSE NULL END;--> statement-breakpoint
+UPDATE "assignment_submissions"
+SET "review_claimed_at" = COALESCE("reviewed_at", "updated_at", "submitted_at", "created_at")
+WHERE "status" = 'in_review'
+	AND "reviewed_by" IS NOT NULL
+	AND "review_claimed_at" IS NULL;--> statement-breakpoint
 ALTER TABLE "calendar_delivery_intents" ADD CONSTRAINT "calendar_delivery_intents_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "calendar_delivery_intents" ADD CONSTRAINT "calendar_delivery_intents_shoot_id_shoots_id_fk" FOREIGN KEY ("shoot_id") REFERENCES "public"."shoots"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "calendar_delivery_intents" ADD CONSTRAINT "calendar_delivery_intents_crew_id_crews_id_fk" FOREIGN KEY ("crew_id") REFERENCES "public"."crews"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -80,4 +82,5 @@ CREATE INDEX "calendar_sync_jobs_intent_idx" ON "calendar_sync_jobs" USING btree
 CREATE UNIQUE INDEX "calendar_sync_jobs_active_delivery_key_idx" ON "calendar_sync_jobs" USING btree ("delivery_key") WHERE "calendar_sync_jobs"."status" <> 'completed';--> statement-breakpoint
 CREATE UNIQUE INDEX "google_calendar_connections_active_org_user_idx" ON "google_calendar_connections" USING btree ("organization_id","user_id") WHERE "google_calendar_connections"."disconnected_at" IS NULL;--> statement-breakpoint
 CREATE UNIQUE INDEX "google_calendar_connections_org_user_version_idx" ON "google_calendar_connections" USING btree ("organization_id","user_id","version");--> statement-breakpoint
-CREATE UNIQUE INDEX "shoot_calendar_events_org_shoot_crew_idx" ON "shoot_calendar_events" USING btree ("organization_id","shoot_id","crew_id");
+CREATE UNIQUE INDEX "shoot_calendar_events_org_shoot_crew_idx" ON "shoot_calendar_events" USING btree ("organization_id","shoot_id","crew_id");--> statement-breakpoint
+CREATE INDEX "assignment_submissions_review_claim_idx" ON "assignment_submissions" USING btree ("organization_id","status","review_claimed_at");

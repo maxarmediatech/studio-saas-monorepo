@@ -240,7 +240,9 @@ export const calendarSyncJobs = pgTable(
 
 		status: calendarJobStatusEnum("status").notNull().default("pending"),
 		jobType: calendarJobTypeEnum("job_type").notNull(),
-		deliveryKey: text("delivery_key").notNull(),
+		deliveryKey: text("delivery_key")
+			.default(sql`'legacy:' || gen_random_uuid()::text`)
+			.notNull(),
 		payload: jsonb("payload"),
 		intentId: varchar("intent_id", { length: 255 }).references(
 			() => calendarDeliveryIntents.id,

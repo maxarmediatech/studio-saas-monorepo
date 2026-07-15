@@ -27,14 +27,13 @@ The worker uses the immutable intent snapshot for provider target, event payload
 Report candidates without changing data:
 
 ```bash
-pnpm calendar:reconcile
-pnpm calendar:reconcile -- --organization-id <organization-id>
+pnpm calendar:reconcile --organization-id <organization-id>
 ```
 
 Repair candidates for one organization:
 
 ```bash
-pnpm calendar:reconcile -- --organization-id <organization-id> --apply
+pnpm calendar:reconcile --organization-id <organization-id> --apply
 ```
 
 `--apply` requires a non-blank `--organization-id`; it can never become an accidental global mutation. The command repairs active assignments with absent/stale mapping or job state and mapping-only terminal/deleted/unassigned targets requiring cancellation. It is idempotent and safe to invoke concurrently.
@@ -43,8 +42,10 @@ The command prints JSON and exits non-zero when any candidate fails. Operators s
 
 ## Migration and rollback
 
-Migration `0041_calendar_delivery_identity.sql` adds enum values, generation columns, immutable `calendar_delivery_intents`, job intent/generation/claim-token columns, and the partial job key. Apply it before deploying producers/workers that use intent snapshots.
+Migration `0040_submission_calendar_additive_state.sql` adds enum values, generation columns, immutable `calendar_delivery_intents`, job intent/generation/claim-token/provider-effect columns, and the partial job key. Apply it before deploying producers/workers that use intent snapshots.
 
-This hand-authored migration intentionally has no `0041_snapshot.json`. After stacking payment `0039` and Submission `0040`, generate the Drizzle metadata snapshot from this exact SQL/schema state and record the resulting `0041_calendar_delivery_identity` entry in `_journal.json`; do not invent a snapshot against an incomplete base.
+The migration gives `delivery_key` a database-generated `legacy:<uuid>` default. This keeps the previous application and worker compatible while they drain after the additive migration. It also copies safely known legacy delivery identity into the new delivered fields; Google cleanup still requires one provable historical connection/account and never guesses it.
 
-Rollback the application before the schema. PostgreSQL enum values are intentionally retained on rollback; drop only the partial index and `delivery_key` column after confirming no deployed producer depends on them.
+Before the new worker starts, stop the previous calendar producers, drain the previous worker, and run `packages/database/drizzle/preflight/0040_submission_calendar_cutover.sql`. The gate rejects any unfinished job without an immutable intent snapshot. Do not start the new worker by hoping it can interpret old payloads.
+
+If cutover stops before new intent-backed jobs exist, the previous application and worker can continue on the additive schema. Once new intent-backed work exists, stop external effects and roll forward. Do not drop enum values, identity columns, intent history, or provider evidence as rollback.
