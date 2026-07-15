@@ -58,6 +58,10 @@ export const waMessages = pgTable(
 		index("wa_messages_provider_message_id_idx").on(
 			table.providerMessageId,
 		),
+		uniqueIndex("wa_messages_account_provider_message_id_idx").on(
+			table.accountId,
+			table.providerMessageId,
+		),
 		uniqueIndex("wa_messages_campaign_recipient_idx").on(
 			table.campaignRecipientId,
 		),
