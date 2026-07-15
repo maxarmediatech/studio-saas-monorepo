@@ -70,9 +70,8 @@ export function isDocumentNumberUniqueConflict(
 	constraintName: string,
 ): boolean {
 	let current: unknown = error;
-	let foundConstraintWithoutCode = false;
+	let foundConstraint = false;
 	let foundUniqueViolation = false;
-	let foundOtherPostgresCode = false;
 
 	for (let depth = 0; depth < 8 && current; depth += 1) {
 		const candidate = current as {
@@ -91,25 +90,18 @@ export function isDocumentNumberUniqueConflict(
 
 		if (candidate.code === "23505") {
 			foundUniqueViolation = true;
-		} else if (candidate.code) {
-			foundOtherPostgresCode = true;
 		}
 
 		if (matchesConstraint) {
-			if (candidate.code === "23505") {
-				return true;
-			}
-			if (!candidate.code) {
-				foundConstraintWithoutCode = true;
-			}
+			foundConstraint = true;
+		}
+		if (foundConstraint && foundUniqueViolation) {
+			return true;
 		}
 		current = candidate.cause;
 	}
 
-	return (
-		foundConstraintWithoutCode &&
-		(foundUniqueViolation || !foundOtherPostgresCode)
-	);
+	return false;
 }
 
 export async function retryDocumentNumberInsert<T>(input: {

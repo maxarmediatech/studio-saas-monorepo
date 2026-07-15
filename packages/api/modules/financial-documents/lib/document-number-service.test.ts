@@ -19,6 +19,42 @@ describe("document number conflict handling", () => {
 		).toBe(true);
 	});
 
+	it("does not classify a message-only constraint match", () => {
+		expect(
+			isDocumentNumberUniqueConflict(
+				{
+					message:
+						'duplicate key value violates unique constraint "invoices_org_number_idx"',
+				},
+				"invoices_org_number_idx",
+			),
+		).toBe(false);
+	});
+
+	it("classifies a wrapped constraint and unique code at different levels", () => {
+		expect(
+			isDocumentNumberUniqueConflict(
+				{
+					code: "23505",
+					cause: { constraint: "invoices_org_number_idx" },
+				},
+				"invoices_org_number_idx",
+			),
+		).toBe(true);
+	});
+
+	it("does not classify the expected constraint with another PostgreSQL code", () => {
+		expect(
+			isDocumentNumberUniqueConflict(
+				{
+					code: "23503",
+					constraint: "invoices_org_number_idx",
+				},
+				"invoices_org_number_idx",
+			),
+		).toBe(false);
+	});
+
 	it("does not classify unrelated uniqueness failures", () => {
 		expect(
 			isDocumentNumberUniqueConflict(
