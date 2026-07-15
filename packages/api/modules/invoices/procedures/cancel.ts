@@ -12,6 +12,7 @@ import {
 	type InvoiceStatus,
 	isValidStatusTransition,
 } from "../lib/invoice-helpers";
+import { cancelUnpaidInvoice } from "../lib/unpaid-invoice-transitions";
 
 export const cancelInvoice = studioProtectedProcedure
 	.route({
@@ -67,21 +68,59 @@ export const cancelInvoice = studioProtectedProcedure
 			};
 		}
 
-		const updateData: Record<string, unknown> = {
-			status: "cancelled",
-			updatedAt: new Date(),
-			updatedBy: context.user.id,
-		};
-
+		let updatedNotes: string | undefined;
 		if (reason) {
 			const existingNotes = invoice.notes ?? "";
 			const cancellationNote = `[Cancelled: ${reason}]`;
-			updateData.notes = existingNotes
+			updatedNotes = existingNotes
 				? `${existingNotes}\n\n${cancellationNote}`
 				: cancellationNote;
 		}
 
-		await db.update(invoices).set(updateData).where(eq(invoices.id, id));
+		const cancelled = await cancelUnpaidInvoice(db, {
+			organizationId: context.organizationId,
+			invoiceId: id,
+			actorId: context.user.id,
+			expectedStatus: currentStatus,
+			notes: updatedNotes,
+		});
+
+		if (!cancelled) {
+			const current = await db.query.invoices.findFirst({
+				where: and(
+					eq(invoices.id, id),
+					eq(invoices.organizationId, context.organizationId),
+					isNull(invoices.deletedAt),
+				),
+			});
+
+			if (!current) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Invoice not found",
+				});
+			}
+
+			if (current.status === "cancelled") {
+				return {
+					data: { id },
+					message: "Invoice is already cancelled",
+				};
+			}
+
+			if (Number.parseFloat(current.paidAmount) > 0) {
+				throw new ORPCError("CONFLICT", {
+					message:
+						"Cannot cancel an invoice with recorded payments. Void the receipts first.",
+				});
+			}
+
+			throw new ORPCError("CONFLICT", {
+				message: getInvalidTransitionMessage(
+					current.status as InvoiceStatus,
+					"cancelled",
+				),
+			});
+		}
 
 		const booking = await db.query.bookings.findFirst({
 			where: eq(bookings.id, invoice.bookingId),
@@ -91,11 +130,11 @@ export const cancelInvoice = studioProtectedProcedure
 		await safeTrackStatusChange(context, {
 			entityType: "invoice",
 			entityId: id,
-			entityName: `${invoice.invoiceNumber} (${formatAmount(invoice.totalAmount)})`,
+			entityName: `${cancelled.invoiceNumber} (${formatAmount(cancelled.totalAmount)})`,
 			oldStatus: currentStatus,
 			newStatus: "cancelled",
 			parentEntityType: "booking",
-			parentEntityId: invoice.bookingId,
+			parentEntityId: cancelled.bookingId,
 			parentEntityName: booking?.name ?? "Unknown Booking",
 			metadata: reason ? { reason } : undefined,
 		});

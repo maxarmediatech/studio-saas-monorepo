@@ -547,6 +547,8 @@ export const studioPaymentsApi = {
 export const studioPaymentsMutations = {
 	// Received amounts
 	createReceived: () => orpc.studioPayments.createReceived.mutationOptions(),
+	correctReceived: () =>
+		orpc.studioPayments.correctReceived.mutationOptions(),
 	updateReceived: () => orpc.studioPayments.updateReceived.mutationOptions(),
 	deleteReceived: () => orpc.studioPayments.deleteReceived.mutationOptions(),
 

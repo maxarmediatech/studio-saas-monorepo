@@ -379,7 +379,7 @@ importers:
         version: 3.15.3
       better-auth:
         specifier: 1.4.7
-        version: 1.4.7(drizzle-kit@0.31.8)(next@16.1.0(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(pg@8.16.3)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        version: 1.4.7(drizzle-kit@0.31.8)(next@16.1.0(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(pg@8.16.3)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@2.1.9(@types/node@24.10.1)(happy-dom@20.3.4)(jsdom@26.1.0)(lightningcss@1.32.0)(msw@2.12.10(@types/node@24.10.1)(typescript@5.9.3)))
       boring-avatars:
         specifier: ^2.0.4
         version: 2.0.4(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -552,6 +552,9 @@ importers:
       typescript:
         specifier: 5.9.3
         version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@24.10.1)(happy-dom@20.3.4)(jsdom@26.1.0)(lightningcss@1.32.0)(msw@2.12.10(@types/node@24.10.1)(typescript@5.9.3))
       zod:
         specifier: ^4.2.1
         version: 4.2.1
@@ -700,7 +703,7 @@ importers:
         version: link:../utils
       better-auth:
         specifier: 1.4.7
-        version: 1.4.7(drizzle-kit@0.31.8)(next@16.1.0(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(pg@8.16.3)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        version: 1.4.7(drizzle-kit@0.31.8)(next@16.1.0(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(pg@8.16.3)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@2.1.9(@types/node@24.10.1)(happy-dom@20.3.4)(jsdom@26.1.0)(lightningcss@1.32.0)(msw@2.12.10(@types/node@24.10.1)(typescript@5.9.3)))
       cookie:
         specifier: ^1.1.1
         version: 1.1.1
@@ -15161,7 +15164,7 @@ snapshots:
 
   batch-processor@1.0.0: {}
 
-  better-auth@1.4.7(drizzle-kit@0.31.8)(next@16.1.0(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(pg@8.16.3)(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
+  better-auth@1.4.7(drizzle-kit@0.31.8)(next@16.1.0(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(pg@8.16.3)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@2.1.9(@types/node@24.10.1)(happy-dom@20.3.4)(jsdom@26.1.0)(lightningcss@1.32.0)(msw@2.12.10(@types/node@24.10.1)(typescript@5.9.3))):
     dependencies:
       '@better-auth/core': 1.4.7(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.5(zod@4.2.1))(jose@6.1.2)(kysely@0.28.8)(nanostores@1.1.0)
       '@better-auth/telemetry': 1.4.7(@better-auth/core@1.4.7(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.5(zod@4.2.1))(jose@6.1.2)(kysely@0.28.8)(nanostores@1.1.0))
@@ -15181,6 +15184,7 @@ snapshots:
       pg: 8.16.3
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
+      vitest: 2.1.9(@types/node@24.10.1)(happy-dom@20.3.4)(jsdom@26.1.0)(lightningcss@1.32.0)(msw@2.12.10(@types/node@24.10.1)(typescript@5.9.3))
 
   better-call@1.1.5(zod@4.2.1):
     dependencies:
@@ -19636,7 +19640,7 @@ snapshots:
 
   tsx@4.21.0:
     dependencies:
-      esbuild: 0.27.2
+      esbuild: 0.27.7
       get-tsconfig: 4.10.1
     optionalDependencies:
       fsevents: 2.3.3

@@ -3,30 +3,29 @@ import {
 	bookings,
 	configurations,
 	db,
-	desc,
 	eq,
 	invoices,
-	isNull,
-	sql,
 } from "@repo/database";
+import { allocateDocumentNumber } from "../../financial-documents/lib/document-number-service";
 import { centsToMoney, moneyToCents } from "../../studio/lib/money";
-import {
+import { buildInvoiceNumber } from "./invoice-number-utils";
+
+export {
 	buildInvoiceNumber,
 	getNextInvoiceNumber,
 } from "./invoice-number-utils";
-
 export {
 	getInvalidTransitionMessage,
 	type InvoiceStatus,
 	isValidStatusTransition,
 } from "./status-transitions";
-export { buildInvoiceNumber, getNextInvoiceNumber } from "./invoice-number-utils";
 
 export async function generateInvoiceNumber(
 	bookingId: string,
 	orgId: string,
+	dbOrTx: DbOrTx = db,
 ): Promise<string> {
-	const booking = await db.query.bookings.findFirst({
+	const booking = await dbOrTx.query.bookings.findFirst({
 		where: and(
 			eq(bookings.id, bookingId),
 			eq(bookings.organizationId, orgId),
@@ -41,17 +40,13 @@ export async function generateInvoiceNumber(
 	const today = new Date();
 	const baseNumber = buildInvoiceNumber(booking.referenceNumber, today);
 
-	const existing = await db.query.invoices.findFirst({
-		where: and(
-			eq(invoices.organizationId, orgId),
-			sql`${invoices.invoiceNumber} LIKE ${baseNumber + "%"}`,
-			isNull(invoices.deletedAt),
-		),
-		orderBy: desc(invoices.invoiceNumber),
-		columns: { invoiceNumber: true },
-	});
-
-	return getNextInvoiceNumber(baseNumber, existing?.invoiceNumber ?? null);
+	return dbOrTx.transaction((tx) =>
+		allocateDocumentNumber(tx, {
+			organizationId: orgId,
+			documentType: "invoice",
+			baseNumber,
+		}),
+	);
 }
 
 export interface GstCalculation {
