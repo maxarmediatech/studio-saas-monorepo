@@ -1,6 +1,21 @@
-import { and, db, desc, eq, sql } from "@repo/database";
+import {
+	and,
+	clients,
+	crews,
+	db,
+	desc,
+	eq,
+	inArray,
+	isNull,
+	sql,
+} from "@repo/database";
 import { waContacts, waConversations } from "@repo/whatsapp-db";
+import {
+	whatsAppClientContactExists,
+	whatsAppCrewContactExists,
+} from "@repo/whatsapp-runtime";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { toConversationItem } from "../lib/conversation-presenter";
 import {
 	listConversationsInputSchema,
 	listConversationsOutputSchema,
@@ -27,6 +42,66 @@ function encodeCursor(createdAt: Date, id: string): string {
 	return `${createdAt.toISOString()}_${id}`;
 }
 
+function normalizePhone(value: string | null | undefined) {
+	return value?.replace(/\D/g, "") ?? "";
+}
+
+const normalizedClientPhone = sql<string>`regexp_replace(coalesce(${clients.phoneNumber}, ''), '[^0-9]', '', 'g')`;
+const normalizedCrewPhone = sql<string>`regexp_replace(coalesce(${crews.phoneNumber}, ''), '[^0-9]', '', 'g')`;
+
+async function getSavedContactNameByPhone(params: {
+	organizationId: string;
+	phoneNumbers: string[];
+}) {
+	const normalizedPhones = [
+		...new Set(params.phoneNumbers.map(normalizePhone).filter(Boolean)),
+	];
+
+	if (normalizedPhones.length === 0) {
+		return new Map<string, string>();
+	}
+
+	const [clientMatches, crewMatches] = await Promise.all([
+		db
+			.select({
+				name: clients.name,
+				phoneNumber: clients.phoneNumber,
+			})
+			.from(clients)
+			.where(
+				and(
+					eq(clients.organizationId, params.organizationId),
+					isNull(clients.deletedAt),
+					inArray(normalizedClientPhone, normalizedPhones),
+				),
+			),
+		db
+			.select({
+				name: crews.name,
+				phoneNumber: crews.phoneNumber,
+			})
+			.from(crews)
+			.where(
+				and(
+					eq(crews.organizationId, params.organizationId),
+					isNull(crews.deletedAt),
+					inArray(normalizedCrewPhone, normalizedPhones),
+				),
+			),
+	]);
+
+	const namesByPhone = new Map<string, string>();
+
+	for (const match of [...crewMatches, ...clientMatches]) {
+		const normalizedPhone = normalizePhone(match.phoneNumber);
+		if (normalizedPhone) {
+			namesByPhone.set(normalizedPhone, match.name);
+		}
+	}
+
+	return namesByPhone;
+}
+
 export const listConversations = studioProtectedProcedure
 	.route({
 		method: "GET",
@@ -49,10 +124,35 @@ export const listConversations = studioProtectedProcedure
 			conditions.push(eq(waConversations.status, input.status));
 		}
 
+		if (input.assignment === "mine") {
+			conditions.push(
+				eq(waConversations.assignedToUserId, context.user.id),
+			);
+		}
+
+		if (input.assignment === "unassigned") {
+			conditions.push(sql`${waConversations.assignedToUserId} IS NULL`);
+		}
+
+		if (input.contactType === "client") {
+			conditions.push(whatsAppClientContactExists());
+		}
+
+		if (input.contactType === "crew") {
+			conditions.push(whatsAppCrewContactExists());
+		}
+
 		if (input.search) {
 			const search = `%${input.search}%`;
 			conditions.push(
-				sql`(coalesce(${waContacts.name}, '') ILIKE ${search} OR coalesce(${waContacts.pushName}, '') ILIKE ${search} OR ${waContacts.phoneNumber} ILIKE ${search} OR ${waContacts.waId} ILIKE ${search})`,
+				sql`(
+					coalesce(${waContacts.name}, '') ILIKE ${search}
+					OR coalesce(${waContacts.pushName}, '') ILIKE ${search}
+					OR ${waContacts.phoneNumber} ILIKE ${search}
+					OR ${waContacts.waId} ILIKE ${search}
+					OR ${whatsAppClientContactExists(search)}
+					OR ${whatsAppCrewContactExists(search)}
+				)`,
 			);
 		}
 
@@ -83,29 +183,39 @@ export const listConversations = studioProtectedProcedure
 		const items = hasMore ? results.slice(0, input.limit) : results;
 		const lastItem = items[items.length - 1];
 		const nextCursor =
-			hasMore && lastItem ? encodeCursor(lastItem.sortAt, lastItem.conversation.id) : null;
+			hasMore && lastItem
+				? encodeCursor(lastItem.sortAt, lastItem.conversation.id)
+				: null;
+		const savedNamesByPhone = await getSavedContactNameByPhone({
+			organizationId: context.organizationId,
+			phoneNumbers: items.flatMap(({ contact }) => [
+				contact.phoneNumber,
+				contact.waId,
+			]),
+		});
 
 		return {
-			data: items.map(({ conversation, contact }) => ({
-				id: conversation.id,
-				accountId: conversation.accountId,
-				contactId: conversation.contactId,
-				status: conversation.status,
-				unreadCount: conversation.unreadCount ?? 0,
-				lastMessageId: conversation.lastMessageId ?? null,
-				lastMessageAt: conversation.lastMessageAt ?? null,
-				lastMessagePreview: conversation.lastMessagePreview ?? null,
-				createdAt: conversation.createdAt,
-				updatedAt: conversation.updatedAt,
-				contact: {
-					id: contact.id,
-					waId: contact.waId,
-					phoneNumber: contact.phoneNumber,
-					pushName: contact.pushName ?? null,
-					name: contact.name ?? null,
-					lastMessageAt: contact.lastMessageAt ?? null,
-				},
-			})),
+			data: items.map(({ conversation, contact }) => {
+				const item = toConversationItem(conversation, contact);
+				const savedName =
+					savedNamesByPhone.get(
+						normalizePhone(contact.phoneNumber),
+					) ??
+					savedNamesByPhone.get(normalizePhone(contact.waId)) ??
+					null;
+
+				if (item.contact.name || !savedName) {
+					return item;
+				}
+
+				return {
+					...item,
+					contact: {
+						...item.contact,
+						name: savedName,
+					},
+				};
+			}),
 			nextCursor,
 		};
 	});

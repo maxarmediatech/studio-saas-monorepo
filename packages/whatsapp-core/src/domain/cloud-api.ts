@@ -11,7 +11,9 @@ export type CloudApiWebhookEvent =
 			content: {
 				text?: string;
 				caption?: string;
+				fileName?: string;
 				mediaId?: string;
+				mimeType?: string;
 			};
 	  }
 	| {
@@ -43,27 +45,47 @@ const parseMessageContent = (message: Record<string, unknown>) => {
 	}
 
 	const text = message.text as { body?: string } | undefined;
-	const image = message.image as { id?: string; caption?: string } | undefined;
-	const video = message.video as { id?: string; caption?: string } | undefined;
-	const audio = message.audio as { id?: string } | undefined;
-	const document = message.document as { id?: string; caption?: string } | undefined;
-	const sticker = message.sticker as { id?: string } | undefined;
+	const image = message.image as
+		| { id?: string; caption?: string; mime_type?: string }
+		| undefined;
+	const video = message.video as
+		| { id?: string; caption?: string; mime_type?: string }
+		| undefined;
+	const audio = message.audio as
+		| { id?: string; mime_type?: string }
+		| undefined;
+	const document = message.document as
+		| {
+				id?: string;
+				caption?: string;
+				filename?: string;
+				mime_type?: string;
+		  }
+		| undefined;
+	const sticker = message.sticker as
+		| { id?: string; mime_type?: string }
+		| undefined;
 
 	const content = {
 		text: text?.body,
 		caption: image?.caption ?? video?.caption ?? document?.caption,
+		fileName: document?.filename,
 		mediaId:
-			image?.id ??
-			video?.id ??
-			audio?.id ??
-			document?.id ??
-			sticker?.id,
+			image?.id ?? video?.id ?? audio?.id ?? document?.id ?? sticker?.id,
+		mimeType:
+			image?.mime_type ??
+			video?.mime_type ??
+			audio?.mime_type ??
+			document?.mime_type ??
+			sticker?.mime_type,
 	};
 
 	return { type, content };
 };
 
-export const parseCloudApiWebhook = (payload: unknown): CloudApiWebhookEvent[] => {
+export const parseCloudApiWebhook = (
+	payload: unknown,
+): CloudApiWebhookEvent[] => {
 	if (!payload || typeof payload !== "object") {
 		return [];
 	}
@@ -97,7 +119,9 @@ export const parseCloudApiWebhook = (payload: unknown): CloudApiWebhookEvent[] =
 				return;
 			}
 
-			const messages = value.messages as Array<Record<string, unknown>> | undefined;
+			const messages = value.messages as
+				| Array<Record<string, unknown>>
+				| undefined;
 			if (Array.isArray(messages)) {
 				messages.forEach((message) => {
 					const messageId = message.id;
@@ -126,7 +150,9 @@ export const parseCloudApiWebhook = (payload: unknown): CloudApiWebhookEvent[] =
 				});
 			}
 
-			const statuses = value.statuses as Array<Record<string, unknown>> | undefined;
+			const statuses = value.statuses as
+				| Array<Record<string, unknown>>
+				| undefined;
 			if (Array.isArray(statuses)) {
 				statuses.forEach((status) => {
 					const statusId = status.id;
@@ -151,7 +177,11 @@ export const parseCloudApiWebhook = (payload: unknown): CloudApiWebhookEvent[] =
 					}
 
 					const errors = status.errors as
-						| Array<{ code?: number | string; title?: string; message?: string }>
+						| Array<{
+								code?: number | string;
+								title?: string;
+								message?: string;
+						  }>
 						| undefined;
 					const firstError = errors?.[0];
 
@@ -163,12 +193,14 @@ export const parseCloudApiWebhook = (payload: unknown): CloudApiWebhookEvent[] =
 						timestamp,
 						error: firstError
 							? {
-									code: String(firstError.code ?? "UNKNOWN_ERROR"),
+									code: String(
+										firstError.code ?? "UNKNOWN_ERROR",
+									),
 									message:
 										firstError.message ??
 										firstError.title ??
 										"Unknown error",
-							  }
+								}
 							: undefined,
 					});
 				});

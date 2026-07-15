@@ -18,14 +18,20 @@ export type MessageStatus =
 	| "sent"
 	| "delivered"
 	| "read"
-	| "failed";
+	| "failed"
+	| "delivery_unknown";
 
 export interface WhatsAppAccount {
 	id: string;
 	organizationId: string;
 	name: string;
 	provider: "baileys" | "cloud_api";
-	connectionStatus: "disconnected" | "connecting" | "qr_pending" | "connected" | "banned";
+	connectionStatus:
+		| "disconnected"
+		| "connecting"
+		| "qr_pending"
+		| "connected"
+		| "banned";
 }
 
 export interface WhatsAppContact {

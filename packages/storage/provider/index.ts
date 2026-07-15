@@ -3,4 +3,5 @@ export {
 	getObject,
 	getSignedUploadUrl,
 	getSignedUrl,
+	putObject,
 } from "./s3";

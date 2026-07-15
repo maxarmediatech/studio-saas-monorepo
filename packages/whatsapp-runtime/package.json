@@ -1,0 +1,22 @@
+{
+	"dependencies": {
+		"@repo/database": "workspace:*",
+		"@repo/whatsapp-core": "workspace:*",
+		"@repo/whatsapp-db": "workspace:*"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.3.10",
+		"@repo/tsconfig": "workspace:*",
+		"@types/node": "24.10.4",
+		"typescript": "5.9.3",
+		"vitest": "^2.0.0"
+	},
+	"main": "./index.ts",
+	"name": "@repo/whatsapp-runtime",
+	"scripts": {
+		"test": "vitest run --passWithNoTests",
+		"type-check": "tsc --noEmit"
+	},
+	"types": "./**/.ts",
+	"version": "0.0.0"
+}
