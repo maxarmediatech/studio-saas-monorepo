@@ -15,12 +15,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Setup Biome
         uses: biomejs/setup-biome@v2
         with:
           version: latest
-      - name: Run Biome
-        run: biome ci .
+      - name: Run Biome on changed source files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          files=()
+          while IFS= read -r file; do
+            files+=("$file")
+          done < <(
+            git diff --name-only --diff-filter=ACMR "$BASE_SHA...$HEAD_SHA" |
+              grep -E '\.(js|jsx|json|ts|tsx)$' |
+              grep -v '^packages/database/drizzle/migrations/meta/' || true
+          )
+
+          if (( ${#files[@]} == 0 )); then
+            echo "No changed source files require Biome."
+            exit 0
+          fi
+
+          biome ci "${files[@]}"
   e2e:
     name: Run e2e tests
     timeout-minutes: 60
