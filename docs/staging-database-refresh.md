@@ -12,19 +12,24 @@ long-lived Git branch or continuous database replica.
 
 ## Staging database layout
 
-The PlanetScale staging branch uses the dedicated `stuwiz_staging` logical
-database. Refresh administration and staging application URLs must therefore use
-`/stuwiz_staging` as their database path. The application should continue using
-its normal limited role; only refresh operations use the staging
-default/schema-owner role.
+Staging has its own PlanetScale database, separate from production. It uses that
+database's normal `/postgres` logical database; no second logical database or
+long-lived PlanetScale branch is required. The sanitized snapshot mirrors the
+production schema and useful data shape without retaining production customer
+data or credentials.
 
-This dedicated database exists because the branch's original `/postgres`
-database contains schemas owned by an internal PlanetScale import role and
-cannot be replaced by ordinary credentials. `stuwiz_staging` was created by the
-staging default role, so the refresh can replace its schemas and produce an
-exact match to the validated sanitized production snapshot. The old `/postgres`
-database remains a temporary rollback source until staging is accepted; it is
-not the active staging application database.
+Use two credentials for this database:
+
+- The refresh credential inherits the database-owner role and is used only by
+  the guarded publish command. Never deploy it with the application.
+- The staging application credential is a separate limited role used by the web
+  app and workers after the refresh has been verified.
+
+Keeping staging in a separate PlanetScale database makes its lifecycle and cost
+explicit and prevents an ownership problem in an old development database from
+blocking refreshes. Delete superseded PlanetScale databases or branches only
+after the new staging application has passed smoke tests and their rollback
+window has closed.
 
 ## Commands
 
