@@ -10,6 +10,22 @@ Staging uses the existing remote PostgreSQL database. Local development uses loc
 PostgreSQL. The refresh is an on-demand pipeline owned by `main`; it is not a
 long-lived Git branch or continuous database replica.
 
+## Staging database layout
+
+The PlanetScale staging branch uses the dedicated `stuwiz_staging` logical
+database. Refresh administration and staging application URLs must therefore use
+`/stuwiz_staging` as their database path. The application should continue using
+its normal limited role; only refresh operations use the staging
+default/schema-owner role.
+
+This dedicated database exists because the branch's original `/postgres`
+database contains schemas owned by an internal PlanetScale import role and
+cannot be replaced by ordinary credentials. `stuwiz_staging` was created by the
+staging default role, so the refresh can replace its schemas and produce an
+exact match to the validated sanitized production snapshot. The old `/postgres`
+database remains a temporary rollback source until staging is accepted; it is
+not the active staging application database.
+
 ## Commands
 
 The commands read credentials from the current process only. They do not load or
