@@ -3,7 +3,7 @@ import type { CalendarSnapshot } from "./calendar-intents";
 
 type Mapping = typeof shootCalendarEvents.$inferSelect;
 
-export type CancellationEvidenceResolution =
+export type DeliveredCalendarIdentityResolution =
 	| {
 			kind: "no_effect";
 			reason: string;
@@ -16,13 +16,34 @@ export type CancellationEvidenceResolution =
 			kind: "actionable";
 			deliveryMethod: "google" | "ics";
 			target: CalendarSnapshot["target"];
+			deliveredSnapshot: CalendarSnapshot | null;
+			source: "durable" | "legacy";
 	  };
 
-export function resolveCancellationEvidence(input: {
+export type LegacyGoogleConnection = {
+	id: string;
+	googleAccountEmail: string | null;
+};
+
+export function resolveDeliveredCalendarIdentity(input: {
 	mapping: Mapping;
 	deliveredSnapshot?: CalendarSnapshot | null;
-}): CancellationEvidenceResolution {
+	legacyGoogleConnection?: LegacyGoogleConnection | null;
+	legacyGoogleIdentityAmbiguous?: boolean;
+}): DeliveredCalendarIdentityResolution {
 	const { mapping, deliveredSnapshot } = input;
+	if (
+		mapping.deliverySyncStatus === "manual_reconciliation" ||
+		mapping.cancellationSyncStatus === "manual_reconciliation"
+	) {
+		return {
+			kind: "manual_reconciliation",
+			reason:
+				mapping.deliveryLastError ??
+				mapping.cancellationLastError ??
+				"Calendar provider outcome requires manual reconciliation",
+		};
+	}
 	const hasEffectEvidence = Boolean(
 		mapping.deliveredGeneration != null ||
 			mapping.syncStatus === "synced" ||
@@ -53,9 +74,13 @@ export function resolveCancellationEvidence(input: {
 			mapping.recipientEmail,
 		googleUserId: deliveredSnapshot?.target.googleUserId ?? null,
 		googleConnectionId:
-			deliveredSnapshot?.target.googleConnectionId ?? null,
+			deliveredSnapshot?.target.googleConnectionId ??
+			input.legacyGoogleConnection?.id ??
+			null,
 		googleAccountEmail:
-			deliveredSnapshot?.target.googleAccountEmail ?? null,
+			deliveredSnapshot?.target.googleAccountEmail ??
+			input.legacyGoogleConnection?.googleAccountEmail ??
+			null,
 		googleCreateId: null,
 		calendarId:
 			mapping.deliveredCalendarId ??
@@ -77,20 +102,25 @@ export function resolveCancellationEvidence(input: {
 
 	if (method === "google") {
 		const missing = [
-			!baseTarget.googleConnectionId ? "connection" : null,
+			input.legacyGoogleIdentityAmbiguous ||
+			!baseTarget.googleConnectionId
+				? "connection/account"
+				: null,
 			!baseTarget.calendarId ? "calendar" : null,
 			!baseTarget.googleEventId ? "event" : null,
 		].filter(Boolean);
 		if (missing.length > 0) {
 			return {
 				kind: "manual_reconciliation",
-				reason: `Delivered Google effect lacks immutable ${missing.join(", ")} identity`,
+				reason: `Delivered Google effect lacks provable immutable ${missing.join(", ")} identity`,
 			};
 		}
 		return {
 			kind: "actionable",
 			deliveryMethod: "google",
 			target: baseTarget,
+			deliveredSnapshot: deliveredSnapshot ?? null,
+			source: deliveredSnapshot ? "durable" : "legacy",
 		};
 	}
 
@@ -110,6 +140,8 @@ export function resolveCancellationEvidence(input: {
 			kind: "actionable",
 			deliveryMethod: "ics",
 			target: baseTarget,
+			deliveredSnapshot: deliveredSnapshot ?? null,
+			source: deliveredSnapshot ? "durable" : "legacy",
 		};
 	}
 

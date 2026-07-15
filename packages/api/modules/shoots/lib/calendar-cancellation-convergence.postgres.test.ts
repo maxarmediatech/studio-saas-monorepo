@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { assertProviderOutcomeRecovery } from "./calendar-provider-outcomes.postgres.test";
 
 describe("calendar cancellation convergence PostgreSQL assertions", () => {
 	it("exports the scenario invoked by the migrated baseline suite", () => {
@@ -146,7 +147,9 @@ export async function assertLegacyCancellationConvergence(ctx: any) {
 		organizationId,
 		apply: true,
 	});
-	expect(first.failed).toBe(0);
+	// Existing active quarantines remain visible to reconciliation instead of
+	// being reported as successfully replaced.
+	expect(first.failed).toBeGreaterThanOrEqual(2);
 	const mappings = await Promise.all(
 		Object.values(legacyIds).map((shootId) =>
 			db.query.shootCalendarEvents.findFirst({
@@ -167,7 +170,9 @@ export async function assertLegacyCancellationConvergence(ctx: any) {
 		intentState: "cancelled",
 		syncStatus: "error",
 		cancellationSyncStatus: "manual_reconciliation",
-		cancellationLastError: expect.stringContaining("lacks immutable"),
+		cancellationLastError: expect.stringContaining(
+			"lacks provable immutable",
+		),
 	});
 
 	const jobs = await db
@@ -235,7 +240,7 @@ export async function assertLegacyCancellationConvergence(ctx: any) {
 		organizationId,
 		apply: true,
 	});
-	expect(second.failed).toBe(0);
+	expect(second.failed).toBeGreaterThanOrEqual(2);
 	const afterSecondRun = (
 		await db
 			.select()
@@ -297,4 +302,6 @@ export async function assertLegacyCancellationConvergence(ctx: any) {
 		effectState: "manual_reconciliation",
 		nextAttemptAt: null,
 	});
+
+	await assertProviderOutcomeRecovery(ctx);
 }

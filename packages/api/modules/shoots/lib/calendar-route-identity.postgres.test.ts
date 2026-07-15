@@ -10,6 +10,7 @@ describe("calendar route identity PostgreSQL assertions", () => {
 export async function assertRouteIdentityTransitions(ctx: any) {
 	const {
 		and,
+		bookingId,
 		calendarDeliveryIntents,
 		calendarRouteChanges,
 		calendarSyncJobs,
@@ -23,7 +24,10 @@ export async function assertRouteIdentityTransitions(ctx: any) {
 		organizationId,
 		reconcileCalendarDeliveries,
 		registeredUserId,
+		route,
+		shootAssignments,
 		shootCalendarEvents,
+		shoots,
 		suffix,
 		users,
 	} = ctx;
@@ -125,4 +129,226 @@ export async function assertRouteIdentityTransitions(ctx: any) {
 	});
 	expect((intent?.payload as any).target.googleConnectionId).toBe(second?.id);
 	expect(firstConnectionId).not.toBe(second?.id);
+
+	const legacy = {
+		ics: `calendar_active_legacy_ics_${suffix}`,
+		icsUser: `calendar_active_legacy_ics_user_${suffix}`,
+		google: `calendar_active_legacy_google_${suffix}`,
+		googleUser: `calendar_active_legacy_google_user_${suffix}`,
+		ambiguous: `calendar_active_legacy_ambiguous_${suffix}`,
+		ambiguousUser: `calendar_active_legacy_ambiguous_user_${suffix}`,
+	};
+	await db.insert(users).values([
+		{
+			id: legacy.googleUser,
+			name: "Legacy Google user",
+			email: `${legacy.googleUser}@example.com`,
+		},
+		{
+			id: legacy.ambiguousUser,
+			name: "Ambiguous legacy Google user",
+			email: `${legacy.ambiguousUser}@example.com`,
+		},
+	]);
+	await db.insert(crews).values([
+		{
+			id: legacy.ics,
+			organizationId,
+			name: "Legacy ICS crew",
+			email: `${legacy.ics}@example.com`,
+		},
+		{
+			id: legacy.google,
+			organizationId,
+			userId: legacy.googleUser,
+			name: "Legacy Google crew",
+			email: `${legacy.google}@example.com`,
+		},
+		{
+			id: legacy.ambiguous,
+			organizationId,
+			userId: legacy.ambiguousUser,
+			name: "Ambiguous legacy Google crew",
+			email: `${legacy.ambiguous}@example.com`,
+		},
+	]);
+	await db.insert(shoots).values(
+		[legacy.ics, legacy.google, legacy.ambiguous].map((id) => ({
+			id,
+			organizationId,
+			bookingId,
+			name: `Active legacy ${id}`,
+			shootType: "wedding",
+			shootDate: "2027-02-20",
+			startTime: "10:00",
+			status: "scheduled",
+		})),
+	);
+	await db.insert(shootAssignments).values(
+		[legacy.ics, legacy.google, legacy.ambiguous].map((id) => ({
+			shootId: id,
+			crewId: id,
+			role: "Photographer",
+		})),
+	);
+	const [legacyGoogleConnection] = await db
+		.insert(googleCalendarConnections)
+		.values({
+			organizationId,
+			userId: legacy.googleUser,
+			googleAccountEmail: `${legacy.googleUser}@calendar.example.com`,
+			refreshToken: "encrypted-legacy-google-token",
+		})
+		.returning();
+	await db.insert(googleCalendarConnections).values([
+		{
+			organizationId,
+			userId: legacy.ambiguousUser,
+			version: 1,
+			googleAccountEmail: "old-account@example.com",
+			refreshToken: "encrypted-old-ambiguous-token",
+			disconnectedAt: new Date("2026-01-01T00:00:00.000Z"),
+		},
+		{
+			organizationId,
+			userId: legacy.ambiguousUser,
+			version: 2,
+			googleAccountEmail: "new-account@example.com",
+			refreshToken: "encrypted-new-ambiguous-token",
+		},
+	]);
+	await db.insert(shootCalendarEvents).values([
+		{
+			organizationId,
+			shootId: legacy.ics,
+			crewId: legacy.ics,
+			deliveryMethod: "ics",
+			recipientEmail: `${legacy.ics}@example.com`,
+			icalUid: `legacy-${legacy.ics}@example.invalid`,
+			icalSequence: 4,
+			syncStatus: "synced",
+			deliverySyncStatus: "synced",
+		},
+		{
+			organizationId,
+			shootId: legacy.google,
+			crewId: legacy.google,
+			deliveryMethod: "google",
+			calendarId: "primary",
+			googleEventId: `event-${legacy.google}`,
+			syncStatus: "synced",
+			deliverySyncStatus: "synced",
+		},
+		{
+			organizationId,
+			shootId: legacy.ambiguous,
+			crewId: legacy.ambiguous,
+			deliveryMethod: "google",
+			calendarId: "primary",
+			googleEventId: `event-${legacy.ambiguous}`,
+			syncStatus: "synced",
+			deliverySyncStatus: "synced",
+		},
+	]);
+
+	await expect(route(legacy.ics)).resolves.toMatchObject({
+		jobType: "ics_send_update",
+	});
+	await expect(route(legacy.google)).resolves.toMatchObject({
+		jobType: "google_update",
+	});
+	const legacyGoogleUpdate = await db.query.calendarSyncJobs.findFirst({
+		where: and(
+			eq(calendarSyncJobs.shootId, legacy.google),
+			eq(calendarSyncJobs.jobType, "google_update"),
+		),
+	});
+	expect(legacyGoogleUpdate?.payload).toMatchObject({
+		target: {
+			googleConnectionId: legacyGoogleConnection?.id,
+			googleEventId: `event-${legacy.google}`,
+		},
+	});
+	expect(
+		await db.query.shootCalendarEvents.findFirst({
+			where: eq(shootCalendarEvents.shootId, legacy.google),
+		}),
+	).toMatchObject({
+		calendarId: "primary",
+		googleEventId: `event-${legacy.google}`,
+	});
+
+	await db.insert(users).values({
+		id: legacy.icsUser,
+		name: "Legacy ICS linked user",
+		email: `${legacy.icsUser}@example.com`,
+	});
+	await db
+		.update(crews)
+		.set({ userId: legacy.icsUser })
+		.where(eq(crews.id, legacy.ics));
+	await db.insert(googleCalendarConnections).values({
+		organizationId,
+		userId: legacy.icsUser,
+		refreshToken: "encrypted-legacy-ics-route-token",
+	});
+	await expect(route(legacy.ics)).resolves.toMatchObject({
+		jobType: "google_create",
+	});
+	const legacyIcsCancellation = await db.query.calendarSyncJobs.findFirst({
+		where: and(
+			eq(calendarSyncJobs.shootId, legacy.ics),
+			eq(calendarSyncJobs.jobType, "ics_send_cancel"),
+		),
+	});
+	expect(legacyIcsCancellation?.payload).toMatchObject({
+		target: {
+			recipientEmail: `${legacy.ics}@example.com`,
+			icalUid: `legacy-${legacy.ics}@example.invalid`,
+			icalSequence: 5,
+		},
+	});
+
+	await db
+		.update(googleCalendarConnections)
+		.set({ disconnectedAt: new Date() })
+		.where(
+			eq(googleCalendarConnections.id, legacyGoogleConnection?.id ?? ""),
+		);
+	await expect(route(legacy.google)).resolves.toMatchObject({
+		jobType: "ics_send_invite",
+	});
+	const legacyGoogleCancellation = await db.query.calendarSyncJobs.findFirst({
+		where: and(
+			eq(calendarSyncJobs.shootId, legacy.google),
+			eq(calendarSyncJobs.jobType, "google_delete"),
+		),
+	});
+	expect(legacyGoogleCancellation?.payload).toMatchObject({
+		target: {
+			googleConnectionId: legacyGoogleConnection?.id,
+			calendarId: "primary",
+			googleEventId: `event-${legacy.google}`,
+		},
+	});
+
+	await expect(route(legacy.ambiguous)).resolves.toMatchObject({
+		state: "manual_reconciliation",
+		jobType: null,
+	});
+	expect(
+		await db.query.shootCalendarEvents.findFirst({
+			where: eq(shootCalendarEvents.shootId, legacy.ambiguous),
+		}),
+	).toMatchObject({
+		intentGeneration: 0,
+		calendarId: "primary",
+		googleEventId: `event-${legacy.ambiguous}`,
+		cancellationSyncStatus: "manual_reconciliation",
+	});
+	expect(
+		await db.query.calendarSyncJobs.findMany({
+			where: eq(calendarSyncJobs.shootId, legacy.ambiguous),
+		}),
+	).toHaveLength(0);
 }

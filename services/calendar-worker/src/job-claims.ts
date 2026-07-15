@@ -20,7 +20,10 @@ export async function claimCalendarJobBatch(batchSize: number) {
 			WHERE (
 				${calendarSyncJobs.status} = 'pending'
 				OR (${calendarSyncJobs.status} = 'failed'
-					AND COALESCE(${calendarSyncJobs.attempts}, 0) < COALESCE(${calendarSyncJobs.maxAttempts}, ${DEFAULT_MAX_ATTEMPTS}))
+					AND (
+						${calendarSyncJobs.effectState} = 'provider_applied'
+						OR COALESCE(${calendarSyncJobs.attempts}, 0) < COALESCE(${calendarSyncJobs.maxAttempts}, ${DEFAULT_MAX_ATTEMPTS})
+					))
 			)
 			AND (${calendarSyncJobs.nextAttemptAt} IS NULL OR ${calendarSyncJobs.nextAttemptAt} <= ${now})
 			AND (
@@ -75,7 +78,11 @@ export async function recoverStaleCalendarJobs(staleThresholdMinutes: number) {
 			.update(calendarSyncJobs)
 			.set({
 				status: "failed",
-				nextAttemptAt: sql`CASE WHEN COALESCE(${calendarSyncJobs.attempts}, 0) < COALESCE(${calendarSyncJobs.maxAttempts}, ${DEFAULT_MAX_ATTEMPTS}) THEN NOW() ELSE NULL END`,
+				nextAttemptAt: sql`CASE
+					WHEN ${calendarSyncJobs.effectState} = 'provider_applied' THEN NOW()
+					WHEN COALESCE(${calendarSyncJobs.attempts}, 0) < COALESCE(${calendarSyncJobs.maxAttempts}, ${DEFAULT_MAX_ATTEMPTS}) THEN NOW()
+					ELSE NULL
+				END`,
 				lastError: "Recovered stale processing lock",
 				lockedAt: null,
 				claimToken: null,
@@ -90,6 +97,12 @@ export async function recoverStaleCalendarJobs(staleThresholdMinutes: number) {
 			)
 			.returning();
 		for (const job of recovered) {
+			if (job.effectState === "provider_applied") {
+				// The provider result is already durable. Reclaim this job even when
+				// its provider-attempt budget is exhausted so processJob can finish
+				// only the local mapping transition.
+				continue;
+			}
 			if (
 				(job.attempts ?? 0) < (job.maxAttempts ?? DEFAULT_MAX_ATTEMPTS)
 			) {

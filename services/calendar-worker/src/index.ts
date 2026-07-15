@@ -37,6 +37,15 @@ const staleThresholdMinutes =
 		? staleThresholdMinutesRaw
 		: 15;
 
+class ProviderOutcomeUncertainError extends Error {
+	constructor(cause: unknown) {
+		super(
+			`Calendar provider succeeded but its result was not durably recorded: ${cause instanceof Error ? cause.message : String(cause)}`,
+		);
+		this.name = "ProviderOutcomeUncertainError";
+	}
+}
+
 function getSnapshot(job: typeof calendarSyncJobs.$inferSelect): Snapshot {
 	if (!job.payload || typeof job.payload !== "object") {
 		throw new Error(
@@ -210,11 +219,13 @@ async function performAndPersistProviderEffect(
 	job: typeof calendarSyncJobs.$inferSelect,
 	snapshot: Snapshot,
 ) {
-	return db.transaction(async (tx) => {
-		await tx.execute(
-			sql`SELECT pg_advisory_xact_lock(hashtextextended(${`${job.organizationId}:${job.shootId}:${job.crewId}`}, 0))`,
-		);
-		const claimed = await tx.execute(sql`
+	let providerReturned = false;
+	try {
+		return await db.transaction(async (tx) => {
+			await tx.execute(
+				sql`SELECT pg_advisory_xact_lock(hashtextextended(${`${job.organizationId}:${job.shootId}:${job.crewId}`}, 0))`,
+			);
+			const claimed = await tx.execute(sql`
 			SELECT id FROM ${calendarSyncJobs}
 			WHERE id = ${job.id}
 				AND generation = ${job.generation}
@@ -222,56 +233,63 @@ async function performAndPersistProviderEffect(
 				AND claim_token = ${job.claimToken}
 			FOR UPDATE
 		`);
-		if (claimed.rows.length !== 1) {
-			return null;
-		}
-		const mapping = await tx.query.shootCalendarEvents.findFirst({
-			where: and(
-				eq(shootCalendarEvents.organizationId, job.organizationId),
-				eq(shootCalendarEvents.shootId, job.shootId ?? ""),
-				eq(shootCalendarEvents.crewId, job.crewId ?? ""),
-			),
-		});
-		const current =
-			snapshot.operation === "delivery"
-				? mapping?.intentGeneration === job.generation &&
-					mapping.intentState === "active" &&
-					!["pending", "error", "manual_reconciliation"].includes(
-						mapping.cancellationSyncStatus,
-					)
-				: Boolean(
-						mapping &&
-							!["synced", "manual_reconciliation"].includes(
-								mapping.cancellationSyncStatus,
-							),
-					);
-		if (!current) {
-			return null;
-		}
-		const result = await performProviderEffect(job, snapshot);
-		const persisted = await tx
-			.update(calendarSyncJobs)
-			.set({
-				effectState: "provider_applied",
-				providerResult: result,
-				lockedAt: new Date(),
-				updatedAt: new Date(),
-			})
-			.where(claimWhere(job))
-			.returning({ id: calendarSyncJobs.id });
-		if (persisted.length !== 1) {
-			throw new Error(
-				"Calendar claim lost while persisting provider result",
+			if (claimed.rows.length !== 1) {
+				return null;
+			}
+			const mapping = await tx.query.shootCalendarEvents.findFirst({
+				where: and(
+					eq(shootCalendarEvents.organizationId, job.organizationId),
+					eq(shootCalendarEvents.shootId, job.shootId ?? ""),
+					eq(shootCalendarEvents.crewId, job.crewId ?? ""),
+				),
+			});
+			const current =
+				snapshot.operation === "delivery"
+					? mapping?.intentGeneration === job.generation &&
+						mapping.intentState === "active" &&
+						!["pending", "error", "manual_reconciliation"].includes(
+							mapping.cancellationSyncStatus,
+						)
+					: Boolean(
+							mapping &&
+								!["synced", "manual_reconciliation"].includes(
+									mapping.cancellationSyncStatus,
+								),
+						);
+			if (!current) {
+				return null;
+			}
+			const result = await performProviderEffect(job, snapshot);
+			providerReturned = true;
+			const persisted = await tx
+				.update(calendarSyncJobs)
+				.set({
+					effectState: "provider_applied",
+					providerResult: result,
+					lockedAt: new Date(),
+					updatedAt: new Date(),
+				})
+				.where(claimWhere(job))
+				.returning({ id: calendarSyncJobs.id });
+			if (persisted.length !== 1) {
+				throw new Error(
+					"Calendar claim lost while persisting provider result",
+				);
+			}
+			const recorded = await transitionSuccess(
+				tx,
+				job,
+				snapshot,
+				result.googleEventId,
 			);
+			return { result, recorded };
+		});
+	} catch (error) {
+		if (providerReturned) {
+			throw new ProviderOutcomeUncertainError(error);
 		}
-		const recorded = await transitionSuccess(
-			tx,
-			job,
-			snapshot,
-			result.googleEventId,
-		);
-		return { result, recorded };
-	});
+		throw error;
+	}
 }
 
 async function markCompensating(job: typeof calendarSyncJobs.$inferSelect) {
@@ -389,6 +407,64 @@ async function recordFailure(
 	});
 }
 
+async function recordUncertainProviderOutcome(
+	job: typeof calendarSyncJobs.$inferSelect,
+	snapshot: Snapshot,
+	errorMessage: string,
+) {
+	await db.transaction(async (tx) => {
+		const quarantined = await tx
+			.update(calendarSyncJobs)
+			.set({
+				status: "failed",
+				effectState: "provider_outcome_uncertain",
+				nextAttemptAt: null,
+				lastError: errorMessage,
+				lockedAt: null,
+				claimToken: null,
+				updatedAt: new Date(),
+			})
+			.where(claimWhere(job))
+			.returning({ id: calendarSyncJobs.id });
+		if (quarantined.length !== 1) {
+			return;
+		}
+		await tx
+			.update(shootCalendarEvents)
+			.set({
+				syncStatus: "error",
+				lastError: errorMessage,
+				...(snapshot.operation === "cancellation"
+					? {
+							cancellationSyncStatus: "manual_reconciliation",
+							cancellationLastError: errorMessage,
+						}
+					: {
+							deliverySyncStatus: "manual_reconciliation",
+							deliveryLastError: errorMessage,
+							// This is a replacement fence: an external delivery may
+							// exist, but its cleanup identity was never committed.
+							cancellationSyncStatus: "manual_reconciliation",
+							cancellationLastError: errorMessage,
+						}),
+				updatedAt: new Date(),
+			})
+			.where(
+				and(
+					eq(shootCalendarEvents.organizationId, job.organizationId),
+					eq(shootCalendarEvents.shootId, job.shootId ?? ""),
+					eq(shootCalendarEvents.crewId, job.crewId ?? ""),
+					snapshot.operation === "delivery"
+						? eq(
+								shootCalendarEvents.intentGeneration,
+								job.generation,
+							)
+						: undefined,
+				),
+			);
+	});
+}
+
 export async function processJob(job: typeof calendarSyncJobs.$inferSelect) {
 	let snapshot: Snapshot | null = null;
 	try {
@@ -475,7 +551,11 @@ export async function processJob(job: typeof calendarSyncJobs.$inferSelect) {
 			generation: job.generation,
 			error: errorMessage,
 		});
-		await recordFailure(job, snapshot, errorMessage);
+		if (error instanceof ProviderOutcomeUncertainError && snapshot) {
+			await recordUncertainProviderOutcome(job, snapshot, errorMessage);
+		} else {
+			await recordFailure(job, snapshot, errorMessage);
+		}
 	}
 }
 

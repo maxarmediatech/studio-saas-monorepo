@@ -102,9 +102,14 @@ export async function reconcileCalendarDeliveries(params: {
 	let failed = 0;
 	for (const candidate of activeAssignments) {
 		try {
-			await db.transaction((tx) =>
+			const result = await db.transaction((tx) =>
 				ensureAssignmentCalendarDelivery(tx, candidate),
 			);
+			if (result.state === "manual_reconciliation") {
+				throw new Error(
+					"Calendar delivery requires manual reconciliation",
+				);
+			}
 			reconciled += 1;
 		} catch (error) {
 			failed += 1;

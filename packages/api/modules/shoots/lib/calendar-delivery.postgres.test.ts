@@ -250,6 +250,7 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 
 			await assertRouteIdentityTransitions({
 				and,
+				bookingId,
 				calendarDeliveryIntents,
 				calendarRouteChanges,
 				calendarSyncJobs,
@@ -263,7 +264,10 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 				organizationId,
 				reconcileCalendarDeliveries,
 				registeredUserId,
+				route,
+				shootAssignments,
 				shootCalendarEvents,
+				shoots,
 				suffix,
 				users,
 			});
@@ -464,6 +468,7 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 				bookingId,
 				calendarDeliveryIntents,
 				calendarSyncJobs,
+				claimJobBatch,
 				crews,
 				db,
 				eq,
@@ -474,8 +479,11 @@ describePostgres("calendar delivery on migrated PostgreSQL", () => {
 				processJob,
 				recoverStaleProcessingJobs,
 				reconcileCalendarDeliveries,
+				route,
+				shootAssignments,
 				shootCalendarEvents,
 				shoots,
+				sql,
 				suffix,
 			});
 			await assertDurableCompensationRetry({

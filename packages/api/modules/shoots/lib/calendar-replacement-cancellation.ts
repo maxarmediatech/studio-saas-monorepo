@@ -1,6 +1,5 @@
 import {
 	and,
-	calendarDeliveryIntents,
 	calendarSyncJobs,
 	eq,
 	inArray,
@@ -8,14 +7,18 @@ import {
 	type shootCalendarEvents,
 } from "@repo/database";
 import type { TransactionClient } from "../../studio/lib/transactions";
-import { resolveCancellationEvidence } from "./calendar-cancellation-evidence";
+import type { DeliveredCalendarIdentityResolution } from "./calendar-cancellation-evidence";
 import { markCancellationForManualReconciliation } from "./calendar-cancellation-state";
 import {
 	getNextIcalSequence,
 	queueGeneration,
 } from "./calendar-intent-persistence";
 import { buildSnapshot, type IntentTarget } from "./calendar-intent-snapshot";
-import type { CalendarSnapshot } from "./calendar-intents";
+
+type ActionableIdentity = Extract<
+	DeliveredCalendarIdentityResolution,
+	{ kind: "actionable" }
+>;
 
 export async function queueReplacementCancellation(
 	tx: TransactionClient,
@@ -27,6 +30,7 @@ export async function queueReplacementCancellation(
 		intentId: string;
 		mapping: typeof shootCalendarEvents.$inferSelect;
 		target: IntentTarget;
+		deliveredIdentity: ActionableIdentity;
 	},
 ) {
 	if (params.mapping.cancellationSyncStatus === "manual_reconciliation") {
@@ -48,6 +52,12 @@ export async function queueReplacementCancellation(
 		),
 	});
 	if (unresolved) {
+		if (unresolved.effectState === "provider_applied") {
+			// The external cancellation result is already known. Keep the
+			// replacement fenced while stale recovery reclaims this job and
+			// completes only its database transition.
+			return { state: "pending" as const };
+		}
 		if (
 			unresolved.status === "failed" &&
 			(unresolved.attempts ?? 0) >= (unresolved.maxAttempts ?? 5)
@@ -69,49 +79,7 @@ export async function queueReplacementCancellation(
 		}
 		return { state: "pending" as const };
 	}
-	const method = params.mapping.deliveredDeliveryMethod;
-	if (!method || method === "unsendable") {
-		return { state: "none" as const };
-	}
-	const deliveredIntent =
-		params.mapping.deliveredGeneration != null
-			? await tx.query.calendarDeliveryIntents.findFirst({
-					where: and(
-						eq(
-							calendarDeliveryIntents.organizationId,
-							params.organizationId,
-						),
-						eq(calendarDeliveryIntents.shootId, params.shootId),
-						eq(calendarDeliveryIntents.crewId, params.crewId),
-						eq(
-							calendarDeliveryIntents.generation,
-							params.mapping.deliveredGeneration,
-						),
-					),
-				})
-			: null;
-	const deliveredSnapshot = deliveredIntent?.payload as
-		| CalendarSnapshot
-		| undefined;
-	const evidence = resolveCancellationEvidence({
-		mapping: params.mapping,
-		deliveredSnapshot,
-	});
-	if (evidence.kind === "no_effect") {
-		return { state: "none" as const };
-	}
-	if (evidence.kind === "manual_reconciliation") {
-		await markCancellationForManualReconciliation(
-			tx,
-			params.mapping.id,
-			evidence.reason,
-			false,
-		);
-		return {
-			state: "manual_reconciliation" as const,
-			reason: evidence.reason,
-		};
-	}
+	const evidence = params.deliveredIdentity;
 	const sequence =
 		evidence.deliveryMethod === "ics"
 			? await getNextIcalSequence(

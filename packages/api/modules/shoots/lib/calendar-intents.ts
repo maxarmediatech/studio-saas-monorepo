@@ -13,8 +13,8 @@ import {
 import type { GoogleAllDayEventInput } from "@repo/google-calendar";
 import type { TransactionClient } from "../../studio/lib/transactions";
 import { isTerminalShootStatus } from "../calendar-sync";
-import { resolveCancellationEvidence } from "./calendar-cancellation-evidence";
 import { markCancellationForManualReconciliation } from "./calendar-cancellation-state";
+import { readDeliveredCalendarIdentity } from "./calendar-delivered-identity";
 import {
 	createIntent,
 	getNextIcalSequence,
@@ -52,7 +52,12 @@ export type CalendarDeliveryResult = {
 	shootId: string;
 	deliveryMethod: DeliveryMethod;
 	jobType: CalendarJobType | null;
-	state: "queued" | "error" | "unsendable" | "terminal";
+	state:
+		| "queued"
+		| "error"
+		| "unsendable"
+		| "terminal"
+		| "manual_reconciliation";
 };
 
 export type CalendarSnapshot = {
@@ -150,21 +155,62 @@ export async function ensureAssignmentCalendarDelivery(
 				),
 			})
 		: null;
+	const deliveredIdentity = mapping
+		? await readDeliveredCalendarIdentity(tx, {
+				mapping,
+				crewUserId: target.crewUserId,
+			})
+		: ({
+				kind: "no_effect",
+				reason: "No calendar mapping exists",
+			} as const);
+	if (mapping && deliveredIdentity.kind === "manual_reconciliation") {
+		await markCancellationForManualReconciliation(
+			tx,
+			mapping.id,
+			deliveredIdentity.reason,
+			false,
+		);
+		return {
+			...params,
+			deliveryMethod: route.deliveryMethod,
+			jobType: null,
+			state: "manual_reconciliation",
+		};
+	}
 	const generation = (mapping?.intentGeneration ?? 0) + 1;
+	const sameDeliveredRoute =
+		deliveredIdentity.kind === "actionable" &&
+		(deliveredIdentity.deliveryMethod === "google"
+			? route.deliveryMethod === "google" &&
+				deliveredIdentity.target.googleConnectionId === connection?.id
+			: route.deliveryMethod === "ics" &&
+				deliveredIdentity.target.recipientEmail ===
+					route.recipientEmail);
+	const deliveredRouteChanged =
+		deliveredIdentity.kind === "actionable" && !sameDeliveredRoute;
 	const nextIcalSequence = await getNextIcalSequence(
 		tx,
 		params,
-		mapping?.deliveredIcalSequence ?? -1,
+		deliveredIdentity.kind === "actionable" &&
+			deliveredIdentity.deliveryMethod === "ics"
+			? deliveredIdentity.target.icalSequence
+			: -1,
 	);
 	const continuesDeliveredIcs =
 		route.deliveryMethod === "ics" &&
-		mapping?.deliveredDeliveryMethod === "ics" &&
-		mapping.deliveredRecipientEmail === route.recipientEmail &&
-		Boolean(mapping.deliveredIcalUid);
+		sameDeliveredRoute &&
+		deliveredIdentity.kind === "actionable" &&
+		deliveredIdentity.deliveryMethod === "ics";
+	const continuesDeliveredGoogle =
+		route.deliveryMethod === "google" &&
+		sameDeliveredRoute &&
+		deliveredIdentity.kind === "actionable" &&
+		deliveredIdentity.deliveryMethod === "google";
 	const icalUid =
 		route.deliveryMethod === "ics"
 			? continuesDeliveredIcs
-				? (mapping?.deliveredIcalUid ?? null)
+				? deliveredIdentity.target.icalUid
 				: getIcalUid(params.shootId, params.crewId, generation)
 			: null;
 	const currentSnapshot = currentIntent?.payload as
@@ -187,8 +233,7 @@ export async function ensureAssignmentCalendarDelivery(
 				? (connection?.googleAccountEmail ?? null)
 				: null,
 		googleCreateId:
-			route.deliveryMethod === "google" &&
-			!mapping?.deliveredGoogleEventId
+			route.deliveryMethod === "google" && !continuesDeliveredGoogle
 				? createHash("sha256")
 						.update(
 							`${params.organizationId}:${params.shootId}:${params.crewId}:${generation}:${connection?.id}`,
@@ -196,11 +241,9 @@ export async function ensureAssignmentCalendarDelivery(
 						.digest("hex")
 						.slice(0, 32)
 				: null,
-		googleEventId:
-			route.deliveryMethod === "google" &&
-			mapping?.deliveredDeliveryMethod === "google"
-				? mapping.deliveredGoogleEventId
-				: null,
+		googleEventId: continuesDeliveredGoogle
+			? deliveredIdentity.target.googleEventId
+			: null,
 		icalUid,
 		icalSequence: route.deliveryMethod === "ics" ? nextIcalSequence : 0,
 	};
@@ -238,7 +281,6 @@ export async function ensureAssignmentCalendarDelivery(
 				route.deliveryMethod === "unsendable" ? "unsendable" : "queued",
 		};
 	}
-	await supersedeUnstartedGenerations(tx, params);
 	const intent = await createIntent(tx, {
 		...params,
 		generation,
@@ -251,28 +293,39 @@ export async function ensureAssignmentCalendarDelivery(
 		snapshot,
 	});
 
-	const deliveredRouteChanged =
-		mapping?.deliveredGeneration != null &&
-		(mapping.deliveredDeliveryMethod !== route.deliveryMethod ||
-			mapping.deliveredRecipientEmail !== route.recipientEmail);
 	let replacementCancellation:
 		| Awaited<ReturnType<typeof queueReplacementCancellation>>
 		| undefined;
-	if (mapping?.deliveredGeneration != null && deliveredRouteChanged) {
+	if (
+		mapping &&
+		deliveredRouteChanged &&
+		deliveredIdentity.kind === "actionable"
+	) {
 		replacementCancellation = await queueReplacementCancellation(tx, {
 			...params,
 			generation,
 			intentId: intent.id,
 			mapping,
 			target,
+			deliveredIdentity,
 		});
+		if (replacementCancellation.state === "manual_reconciliation") {
+			await tx
+				.delete(calendarDeliveryIntents)
+				.where(eq(calendarDeliveryIntents.id, intent.id));
+			return {
+				...params,
+				deliveryMethod: route.deliveryMethod,
+				jobType: null,
+				state: "manual_reconciliation",
+			};
+		}
 	}
+	await supersedeUnstartedGenerations(tx, params);
 	const cancellationSyncStatus = deliveredRouteChanged
 		? replacementCancellation?.state === "manual_reconciliation"
 			? "manual_reconciliation"
-			: replacementCancellation?.state === "none"
-				? "synced"
-				: "pending"
+			: "pending"
 		: (mapping?.cancellationSyncStatus ?? "none");
 	const cancellationLastError = deliveredRouteChanged
 		? replacementCancellation?.state === "manual_reconciliation"
@@ -280,6 +333,22 @@ export async function ensureAssignmentCalendarDelivery(
 				"Calendar cancellation requires manual reconciliation")
 			: null
 		: mapping?.cancellationLastError;
+	const retainedDeliveredIdentity =
+		mapping && deliveredIdentity.kind === "actionable"
+			? {
+					deliveredGeneration:
+						mapping.deliveredGeneration ?? mapping.intentGeneration,
+					deliveredDeliveryMethod: deliveredIdentity.deliveryMethod,
+					deliveredRecipientEmail:
+						deliveredIdentity.target.recipientEmail,
+					deliveredCalendarId: deliveredIdentity.target.calendarId,
+					deliveredGoogleEventId:
+						deliveredIdentity.target.googleEventId,
+					deliveredIcalUid: deliveredIdentity.target.icalUid,
+					deliveredIcalSequence:
+						deliveredIdentity.target.icalSequence,
+				}
+			: {};
 
 	await tx
 		.insert(shootCalendarEvents)
@@ -289,6 +358,12 @@ export async function ensureAssignmentCalendarDelivery(
 			crewId: params.crewId,
 			deliveryMethod: route.deliveryMethod,
 			recipientEmail: route.recipientEmail,
+			calendarId: continuesDeliveredGoogle
+				? deliveredIdentity.target.calendarId
+				: null,
+			googleEventId: continuesDeliveredGoogle
+				? deliveredIdentity.target.googleEventId
+				: null,
 			icalUid,
 			icalSequence: snapshot.target.icalSequence,
 			intentGeneration: generation,
@@ -320,12 +395,17 @@ export async function ensureAssignmentCalendarDelivery(
 				shootCalendarEvents.crewId,
 			],
 			set: {
+				...retainedDeliveredIdentity,
 				deliveryMethod: route.deliveryMethod,
 				recipientEmail: route.recipientEmail,
 				icalUid,
 				icalSequence: snapshot.target.icalSequence,
-				googleEventId: null,
-				calendarId: null,
+				googleEventId: continuesDeliveredGoogle
+					? deliveredIdentity.target.googleEventId
+					: null,
+				calendarId: continuesDeliveredGoogle
+					? deliveredIdentity.target.calendarId
+					: null,
 				intentGeneration: generation,
 				intentState: "active",
 				syncStatus:
@@ -360,10 +440,10 @@ export async function ensureAssignmentCalendarDelivery(
 	}
 	const jobType: CalendarJobType =
 		route.deliveryMethod === "google"
-			? mapping?.deliveredGoogleEventId
+			? continuesDeliveredGoogle
 				? "google_update"
 				: "google_create"
-			: mapping?.deliveredIcalUid
+			: continuesDeliveredIcs
 				? "ics_send_update"
 				: "ics_send_invite";
 	await queueGeneration(tx, {
@@ -397,6 +477,9 @@ export async function enqueueCalendarCancellation(
 	if (!mapping) {
 		return null;
 	}
+	const activeTarget = await getActiveAssignmentTarget(tx, params);
+	const target =
+		activeTarget ?? (await getCancellationEnrichmentTarget(tx, params));
 	if (mapping.intentState === "cancelled") {
 		if (
 			mapping.cancellationSyncStatus === "synced" ||
@@ -421,8 +504,9 @@ export async function enqueueCalendarCancellation(
 			),
 		});
 		if (intent) {
-			const evidence = resolveCancellationEvidence({
+			const evidence = await readDeliveredCalendarIdentity(tx, {
 				mapping,
+				crewUserId: target?.crewUserId ?? null,
 				deliveredSnapshot: intent.payload as CalendarSnapshot,
 			});
 			if (evidence.kind === "no_effect") {
@@ -456,30 +540,9 @@ export async function enqueueCalendarCancellation(
 			});
 		}
 	}
-	const activeTarget = await getActiveAssignmentTarget(tx, params);
-	const deliveredIntent =
-		mapping.deliveredGeneration != null
-			? await tx.query.calendarDeliveryIntents.findFirst({
-					where: and(
-						eq(
-							calendarDeliveryIntents.organizationId,
-							params.organizationId,
-						),
-						eq(calendarDeliveryIntents.shootId, params.shootId),
-						eq(calendarDeliveryIntents.crewId, params.crewId),
-						eq(
-							calendarDeliveryIntents.generation,
-							mapping.deliveredGeneration,
-						),
-					),
-				})
-			: null;
-	const deliveredSnapshot = deliveredIntent?.payload as
-		| CalendarSnapshot
-		| undefined;
-	const evidence = resolveCancellationEvidence({
+	const evidence = await readDeliveredCalendarIdentity(tx, {
 		mapping,
-		deliveredSnapshot,
+		crewUserId: target?.crewUserId ?? null,
 	});
 	if (evidence.kind === "no_effect") {
 		await tx
@@ -505,8 +568,7 @@ export async function enqueueCalendarCancellation(
 		);
 		return "manual_reconciliation" as const;
 	}
-	const target =
-		activeTarget ?? (await getCancellationEnrichmentTarget(tx, params));
+	const deliveredSnapshot = evidence.deliveredSnapshot;
 	if (!deliveredSnapshot && !target) {
 		await markCancellationForManualReconciliation(
 			tx,
@@ -521,7 +583,7 @@ export async function enqueueCalendarCancellation(
 	const nextIcalSequence = await getNextIcalSequence(
 		tx,
 		params,
-		mapping.deliveredIcalSequence ?? mapping.icalSequence,
+		evidence.target.icalSequence,
 	);
 	const cancellationTarget = {
 		...evidence.target,

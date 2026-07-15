@@ -218,7 +218,7 @@ export async function runCalendarDeliveryAdversarialAssertions(ctx: any) {
 				}),
 			}),
 			expect.objectContaining({
-				jobType: "ics_send_update",
+				jobType: "ics_send_invite",
 				payload: expect.objectContaining({
 					target: expect.objectContaining({
 						recipientEmail: `current-${suffix}@example.com`,
@@ -228,7 +228,7 @@ export async function runCalendarDeliveryAdversarialAssertions(ctx: any) {
 		]),
 	);
 	const processing = jobs.find(
-		(job: any) => job.jobType === "ics_send_update",
+		(job: any) => job.jobType === "ics_send_invite",
 	);
 	const priorCancellation = jobs.find(
 		(job: any) => job.jobType === "ics_send_cancel",
@@ -574,12 +574,28 @@ export async function runCalendarDeliveryAdversarialAssertions(ctx: any) {
 		processJob,
 		shootCalendarEvents,
 	});
+	const quarantinedBeforeReplacement =
+		await db.query.shootCalendarEvents.findFirst({
+			where: and(
+				eq(shootCalendarEvents.organizationId, organizationId),
+				eq(shootCalendarEvents.shootId, ids.externalIcs),
+			),
+		});
+	const jobsBeforeQuarantinedReplacement = (
+		await db
+			.select()
+			.from(calendarSyncJobs)
+			.where(eq(calendarSyncJobs.shootId, ids.externalIcs))
+	).length;
 	await db.insert(shootAssignments).values({
 		shootId: ids.externalIcs,
 		crewId: ids.externalIcs,
 		role: "Photographer",
 	});
-	await route(ids.externalIcs);
+	await expect(route(ids.externalIcs)).resolves.toMatchObject({
+		state: "manual_reconciliation",
+		jobType: null,
+	});
 	const quarantinedReplacement = await db.query.shootCalendarEvents.findFirst(
 		{
 			where: and(
@@ -589,51 +605,16 @@ export async function runCalendarDeliveryAdversarialAssertions(ctx: any) {
 		},
 	);
 	expect(quarantinedReplacement).toMatchObject({
-		intentState: "active",
+		intentGeneration: quarantinedBeforeReplacement?.intentGeneration,
+		intentState: "cancelled",
 		cancellationSyncStatus: "manual_reconciliation",
 	});
-	const [replacementAfterUncertainCancellation] = await db
-		.select()
-		.from(calendarSyncJobs)
-		.where(
-			and(
-				eq(calendarSyncJobs.organizationId, organizationId),
-				eq(calendarSyncJobs.shootId, ids.externalIcs),
-				eq(
-					calendarSyncJobs.generation,
-					quarantinedReplacement?.intentGeneration ?? -1,
-				),
-			),
-		);
-	if (!replacementAfterUncertainCancellation) {
-		throw new Error("Expected quarantined replacement job");
-	}
-	const providerCallsBeforeQuarantineFence = mailBarrier.calls.length;
-	const [claimedReplacement] = await db
-		.update(calendarSyncJobs)
-		.set({
-			status: "processing",
-			attempts: 1,
-			lockedAt: new Date(),
-			claimToken: `manual-fence-${suffix}`,
-		})
-		.where(
-			eq(calendarSyncJobs.id, replacementAfterUncertainCancellation.id),
-		)
-		.returning();
-	await processJob(claimedReplacement);
-	expect(mailBarrier.calls).toHaveLength(providerCallsBeforeQuarantineFence);
 	expect(
-		await db.query.calendarSyncJobs.findFirst({
-			where: eq(
-				calendarSyncJobs.id,
-				replacementAfterUncertainCancellation.id,
-			),
-		}),
-	).toMatchObject({
-		status: "pending",
-		lastError: "Waiting for prior calendar cancellation",
-	});
+		await db
+			.select()
+			.from(calendarSyncJobs)
+			.where(eq(calendarSyncJobs.shootId, ids.externalIcs)),
+	).toHaveLength(jobsBeforeQuarantinedReplacement);
 	await expect(
 		buildEventInput({
 			organizationId,

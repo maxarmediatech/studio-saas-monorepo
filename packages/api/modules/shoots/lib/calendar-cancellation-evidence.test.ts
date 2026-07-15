@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveCancellationEvidence } from "./calendar-cancellation-evidence";
+import { resolveDeliveredCalendarIdentity } from "./calendar-cancellation-evidence";
 
 function mapping(overrides: Record<string, unknown> = {}) {
 	return {
@@ -11,10 +11,10 @@ function mapping(overrides: Record<string, unknown> = {}) {
 	} as never;
 }
 
-describe("calendar cancellation evidence", () => {
+describe("delivered calendar identity", () => {
 	it("completes rows with no evidence of an external effect as a no-op", () => {
 		expect(
-			resolveCancellationEvidence({ mapping: mapping() }),
+			resolveDeliveredCalendarIdentity({ mapping: mapping() }),
 		).toMatchObject({
 			kind: "no_effect",
 		});
@@ -22,7 +22,7 @@ describe("calendar cancellation evidence", () => {
 
 	it("accepts complete immutable Google identity", () => {
 		expect(
-			resolveCancellationEvidence({
+			resolveDeliveredCalendarIdentity({
 				mapping: mapping({
 					deliveredGeneration: 1,
 					deliveredDeliveryMethod: "google",
@@ -38,7 +38,7 @@ describe("calendar cancellation evidence", () => {
 
 	it("accepts complete immutable ICS identity", () => {
 		expect(
-			resolveCancellationEvidence({
+			resolveDeliveredCalendarIdentity({
 				mapping: mapping({
 					deliveredGeneration: 1,
 					deliveredDeliveryMethod: "ics",
@@ -56,7 +56,7 @@ describe("calendar cancellation evidence", () => {
 
 	it("accepts effect evidence retained only by an immutable snapshot", () => {
 		expect(
-			resolveCancellationEvidence({
+			resolveDeliveredCalendarIdentity({
 				mapping: mapping(),
 				deliveredSnapshot: {
 					target: {
@@ -72,12 +72,64 @@ describe("calendar cancellation evidence", () => {
 
 	it("quarantines delivered effects with incomplete identity", () => {
 		expect(
-			resolveCancellationEvidence({
+			resolveDeliveredCalendarIdentity({
 				mapping: mapping({
 					deliveredGeneration: 1,
 					deliveredDeliveryMethod: "google",
 					deliveredGoogleEventId: "event-1",
 				}),
+			}),
+		).toMatchObject({ kind: "manual_reconciliation" });
+	});
+
+	it("recognises a safe legacy ICS identity without delivered columns", () => {
+		expect(
+			resolveDeliveredCalendarIdentity({
+				mapping: mapping({
+					syncStatus: "synced",
+					deliverySyncStatus: "synced",
+					recipientEmail: "legacy@example.com",
+					icalUid: "legacy-uid",
+					icalSequence: 7,
+				}),
+			}),
+		).toMatchObject({
+			kind: "actionable",
+			deliveryMethod: "ics",
+			source: "legacy",
+			target: {
+				recipientEmail: "legacy@example.com",
+				icalUid: "legacy-uid",
+				icalSequence: 7,
+			},
+		});
+	});
+
+	it("requires a provable account for a legacy Google identity", () => {
+		const legacyGoogleMapping = mapping({
+			deliveryMethod: "google",
+			syncStatus: "synced",
+			deliverySyncStatus: "synced",
+			calendarId: "primary",
+			googleEventId: "legacy-event",
+		});
+		expect(
+			resolveDeliveredCalendarIdentity({
+				mapping: legacyGoogleMapping,
+				legacyGoogleConnection: {
+					id: "only-connection",
+					googleAccountEmail: "calendar@example.com",
+				},
+			}),
+		).toMatchObject({
+			kind: "actionable",
+			source: "legacy",
+			target: { googleConnectionId: "only-connection" },
+		});
+		expect(
+			resolveDeliveredCalendarIdentity({
+				mapping: legacyGoogleMapping,
+				legacyGoogleIdentityAmbiguous: true,
 			}),
 		).toMatchObject({ kind: "manual_reconciliation" });
 	});
