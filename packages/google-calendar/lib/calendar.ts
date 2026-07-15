@@ -29,39 +29,63 @@ export function createCalendarApiClient(params: {
 export async function createAllDayEvent(params: {
 	config: GoogleCalendarOAuthConfig;
 	accessToken: string;
+	calendarId: string;
 	input: GoogleAllDayEventInput;
+	eventId?: string;
 }): Promise<GoogleEventResult> {
 	const calendar = createCalendarApiClient({
 		config: params.config,
 		accessToken: params.accessToken,
 	});
 
-	const res = await calendar.events.insert({
-		calendarId: "primary",
-		requestBody: {
-			summary: params.input.title,
-			location: params.input.location ?? undefined,
-			description: params.input.description ?? undefined,
-			start: { date: params.input.date },
-			end: { date: addDays(params.input.date, 1) },
-		},
-		sendUpdates: "all",
-	});
-
-	const googleEventId = res.data.id;
-	if (!googleEventId) {
-		throw new Error("Google Calendar did not return event id");
+	try {
+		const res = await calendar.events.insert({
+			calendarId: params.calendarId,
+			requestBody: {
+				id: params.eventId,
+				summary: params.input.title,
+				location: params.input.location ?? undefined,
+				description: params.input.description ?? undefined,
+				start: { date: params.input.date },
+				end: { date: addDays(params.input.date, 1) },
+			},
+			sendUpdates: "all",
+		});
+		const googleEventId = res.data.id;
+		if (!googleEventId) {
+			throw new Error("Google Calendar did not return event id");
+		}
+		return {
+			googleEventId,
+			htmlLink: res.data.htmlLink ?? null,
+		};
+	} catch (error) {
+		if (!params.eventId || getGoogleErrorStatus(error) !== 409) {
+			throw error;
+		}
+		// A worker can crash after Google accepts the deterministic id but before
+		// the result commits. Treat the conflict as a retry of that same create,
+		// and converge the existing event to the immutable intent snapshot.
+		await calendar.events.patch({
+			calendarId: params.calendarId,
+			eventId: params.eventId,
+			requestBody: {
+				summary: params.input.title,
+				location: params.input.location ?? undefined,
+				description: params.input.description ?? undefined,
+				start: { date: params.input.date },
+				end: { date: addDays(params.input.date, 1) },
+			},
+			sendUpdates: "all",
+		});
+		return { googleEventId: params.eventId, htmlLink: null };
 	}
-
-	return {
-		googleEventId,
-		htmlLink: res.data.htmlLink ?? null,
-	};
 }
 
 export async function updateAllDayEvent(params: {
 	config: GoogleCalendarOAuthConfig;
 	accessToken: string;
+	calendarId: string;
 	googleEventId: string;
 	input: GoogleAllDayEventInput;
 }): Promise<void> {
@@ -71,7 +95,7 @@ export async function updateAllDayEvent(params: {
 	});
 
 	await calendar.events.patch({
-		calendarId: "primary",
+		calendarId: params.calendarId,
 		eventId: params.googleEventId,
 		requestBody: {
 			summary: params.input.title,
@@ -87,6 +111,7 @@ export async function updateAllDayEvent(params: {
 export async function deleteEvent(params: {
 	config: GoogleCalendarOAuthConfig;
 	accessToken: string;
+	calendarId: string;
 	googleEventId: string;
 }): Promise<void> {
 	const calendar = createCalendarApiClient({
@@ -94,11 +119,35 @@ export async function deleteEvent(params: {
 		accessToken: params.accessToken,
 	});
 
-	await calendar.events.delete({
-		calendarId: "primary",
-		eventId: params.googleEventId,
-		sendUpdates: "all",
-	});
+	try {
+		await calendar.events.delete({
+			calendarId: params.calendarId,
+			eventId: params.googleEventId,
+			sendUpdates: "all",
+		});
+	} catch (error) {
+		if (![404, 410].includes(getGoogleErrorStatus(error) ?? -1)) {
+			throw error;
+		}
+	}
+}
+
+function getGoogleErrorStatus(error: unknown): number | undefined {
+	if (!error || typeof error !== "object") {
+		return undefined;
+	}
+	const candidate = error as {
+		code?: number | string;
+		response?: { status?: number };
+	};
+	const status = candidate.response?.status ?? candidate.code;
+	if (typeof status === "number") {
+		return status;
+	}
+	if (typeof status === "string" && /^\d+$/.test(status)) {
+		return Number(status);
+	}
+	return undefined;
 }
 
 function addDays(date: string, days: number): string {

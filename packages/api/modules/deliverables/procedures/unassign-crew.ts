@@ -1,7 +1,6 @@
 import { ORPCError } from "@orpc/server";
 import {
 	and,
-	count,
 	crews,
 	db,
 	deliverableAssignments,
@@ -16,6 +15,11 @@ import {
 	unassignCrewFromDeliverableInputSchema,
 	unassignCrewFromDeliverableOutputSchema,
 } from "../../studio/schemas/deliverable";
+import {
+	lockParentReviewEvidence,
+	lockSubmissionParent,
+	recomputeParentReviewAggregate,
+} from "../../submissions/lib/parent-review-aggregate";
 
 export const unassignCrewFromDeliverable = studioProtectedProcedure
 	.route({
@@ -67,17 +71,46 @@ export const unassignCrewFromDeliverable = studioProtectedProcedure
 			columns: { id: true, name: true },
 		});
 
-		// Delete the assignment
-		await db
-			.delete(deliverableAssignments)
-			.where(eq(deliverableAssignments.id, assignment.id));
+		const removed = await db.transaction(async (tx) => {
+			const parent = await lockSubmissionParent(
+				tx,
+				context.organizationId,
+				{ id: deliverableId, type: "deliverable" },
+			);
+			if (!parent) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Deliverable not found",
+				});
+			}
+			await lockParentReviewEvidence(tx, context.organizationId, parent);
+			const current = await tx.query.deliverableAssignments.findFirst({
+				where: and(
+					eq(deliverableAssignments.deliverableId, deliverableId),
+					eq(deliverableAssignments.crewId, crewId),
+				),
+				columns: { id: true },
+			});
+			if (!current) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Assignment not found",
+				});
+			}
+			await tx
+				.delete(deliverableAssignments)
+				.where(eq(deliverableAssignments.id, current.id));
+			await recomputeParentReviewAggregate(tx, context, parent, {
+				actionTime: new Date(),
+				cause: "assignment_removed",
+			});
+			return current;
+		});
 
 		// Track activity (non-blocking)
 		// entityName = target of assignment (deliverable), crewName in metadata
 		if (crew) {
 			await safeTrackAssignment(context, {
 				entityType: "deliverable_assignment",
-				entityId: assignment.id,
+				entityId: removed.id,
 				entityName: deliverable.name,
 				action: "unassigned",
 				parentEntityType: "deliverable",
@@ -87,29 +120,8 @@ export const unassignCrewFromDeliverable = studioProtectedProcedure
 			});
 		}
 
-		// Check if there are any remaining assignments
-		const [remainingCount] = await db
-			.select({ count: count().mapWith(Number) })
-			.from(deliverableAssignments)
-			.where(eq(deliverableAssignments.deliverableId, deliverableId));
-
-		// If no assignments remain and workflow is "assigned", revert to "not_started"
-		if (
-			remainingCount?.count === 0 &&
-			deliverable.workflowStatus === "assigned"
-		) {
-			await db
-				.update(deliverables)
-				.set({
-					workflowStatus: "not_started",
-					updatedAt: new Date(),
-					updatedBy: context.user.id,
-				})
-				.where(eq(deliverables.id, deliverableId));
-		}
-
 		return {
-			data: { id: assignment.id },
+			data: { id: removed.id },
 			message: "Crew member unassigned from deliverable",
 		};
 	});

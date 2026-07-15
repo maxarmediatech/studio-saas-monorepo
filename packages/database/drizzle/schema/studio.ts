@@ -751,6 +751,7 @@ export const assignmentSubmissions = pgTable(
 			() => users.id,
 			{ onDelete: "set null" },
 		),
+		reviewClaimedAt: timestamp("review_claimed_at", { withTimezone: true }),
 		reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
 		reviewNote: text("review_note"),
 
@@ -767,6 +768,11 @@ export const assignmentSubmissions = pgTable(
 		index("assignment_submissions_deliverable_idx").on(table.deliverableId),
 		index("assignment_submissions_crew_idx").on(table.submittedBy),
 		index("assignment_submissions_status_idx").on(table.status),
+		index("assignment_submissions_review_claim_idx").on(
+			table.organizationId,
+			table.status,
+			table.reviewClaimedAt,
+		),
 		check(
 			"assignment_submissions_task_or_deliverable",
 			sql`(task_id IS NOT NULL AND deliverable_id IS NULL) OR (task_id IS NULL AND deliverable_id IS NOT NULL)`,

@@ -1,24 +1,21 @@
 import { ORPCError } from "@orpc/server";
 import {
 	and,
-	assignmentSubmissions,
 	crews,
 	db,
 	eq,
 	isNull,
-	sql,
-	submissionFiles,
 	taskAssignments,
 	tasks,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { safeTrackActivity } from "../../activities/lib";
 import { safeNotifySubscribers } from "../../notifications/lib/notification-service";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	submitTaskInputSchema,
 	submitTaskOutputSchema,
 } from "../../studio/schemas/task";
+import { persistWorkSubmission } from "../../submissions/lib/persist-work-submission";
 
 export const submitTask = studioProtectedProcedure
 	.route({
@@ -26,16 +23,13 @@ export const submitTask = studioProtectedProcedure
 		path: "/tasks/{taskId}/submissions",
 		tags: ["Tasks"],
 		summary: "Submit task for review",
-		description: "Submit work on a task for review",
+		description: "Submit or resubmit work on a task for review",
 	})
 	.input(submitTaskInputSchema)
 	.output(submitTaskOutputSchema)
 	.handler(async ({ input, context }) => {
 		await requirePermission(context, "task", "submit");
-
 		const { taskId, submissionNote, submissionLinks, files } = input;
-
-		// Verify task exists and belongs to organization
 		const task = await db.query.tasks.findFirst({
 			where: and(
 				eq(tasks.id, taskId),
@@ -43,14 +37,10 @@ export const submitTask = studioProtectedProcedure
 				isNull(tasks.deletedAt),
 			),
 		});
-
 		if (!task) {
-			throw new ORPCError("NOT_FOUND", {
-				message: "Task not found",
-			});
+			throw new ORPCError("NOT_FOUND", { message: "Task not found" });
 		}
 
-		// Find crew member for the current user
 		const crew = await db.query.crews.findFirst({
 			where: and(
 				eq(crews.organizationId, context.organizationId),
@@ -58,99 +48,30 @@ export const submitTask = studioProtectedProcedure
 				isNull(crews.deletedAt),
 			),
 		});
-
 		if (!crew) {
 			throw new ORPCError("FORBIDDEN", {
 				message: "You must be a crew member to submit work",
 			});
 		}
 
-		// Verify user is assigned to this task
 		const assignment = await db.query.taskAssignments.findFirst({
 			where: and(
 				eq(taskAssignments.taskId, taskId),
 				eq(taskAssignments.crewId, crew.id),
 			),
 		});
-
 		if (!assignment) {
 			throw new ORPCError("FORBIDDEN", {
 				message: "You are not assigned to this task",
 			});
 		}
 
-		// Check for existing active submission
-		const existingSubmission =
-			await db.query.assignmentSubmissions.findFirst({
-				where: and(
-					eq(assignmentSubmissions.taskId, taskId),
-					eq(assignmentSubmissions.submittedBy, crew.id),
-					sql`${assignmentSubmissions.status} IN ('submitted', 'in_review')`,
-				),
-			});
-
-		if (existingSubmission) {
-			throw new ORPCError("CONFLICT", {
-				message: "You already have a pending submission for this task",
-			});
-		}
-
-		const created = await db.transaction(async (tx) => {
-			const [submission] = await tx
-				.insert(assignmentSubmissions)
-				.values({
-					organizationId: context.organizationId,
-					taskId,
-					submittedBy: crew.id,
-					status: "submitted",
-					submissionNote: submissionNote ?? null,
-					submissionLinks: submissionLinks?.length
-						? submissionLinks
-						: null,
-					submittedAt: new Date(),
-				})
-				.returning({ id: assignmentSubmissions.id });
-
-			if (!submission) {
-				throw new ORPCError("INTERNAL_SERVER_ERROR", {
-					message: "Failed to create submission",
-				});
-			}
-
-			if (files?.length) {
-				await tx.insert(submissionFiles).values(
-					files.map((file) => ({
-						submissionId: submission.id,
-						fileName: file.name,
-						fileUrl: file.key,
-						fileSize: file.size,
-						mimeType: file.type,
-					})),
-				);
-			}
-
-			await tx
-				.update(tasks)
-				.set({
-					workflowStatus: "submitted",
-					updatedAt: new Date(),
-					updatedBy: context.user.id,
-				})
-				.where(eq(tasks.id, taskId));
-
-			return submission;
-		});
-
-		// Track activity (non-blocking)
-		await safeTrackActivity(context, {
-			entityType: "submission",
-			entityId: created.id,
-			entityName: task.name,
-			action: "submitted",
-			parentEntityType: "task",
-			parentEntityId: task.id,
-			parentEntityName: task.name,
-			metadata: { crewId: crew.id, crewName: crew.name },
+		const saved = await persistWorkSubmission(context, {
+			crew: { id: crew.id, name: crew.name },
+			entity: { id: task.id, name: task.name, type: "task" },
+			files,
+			submissionLinks,
+			submissionNote,
 		});
 
 		await safeNotifySubscribers({
@@ -159,7 +80,7 @@ export const submitTask = studioProtectedProcedure
 			entityId: task.id,
 			entityName: task.name,
 			type: "review_requested",
-			title: `Task submitted for review: ${task.name}`,
+			title: `Task ${saved.wasResubmitted ? "resubmitted" : "submitted"} for review: ${task.name}`,
 			body: `Submitted by ${crew.name}`,
 			metadata: {
 				submittedByName: crew.name,
@@ -170,7 +91,9 @@ export const submitTask = studioProtectedProcedure
 		});
 
 		return {
-			data: { id: created.id },
-			message: "Task submitted for review",
+			data: { id: saved.id },
+			message: saved.wasResubmitted
+				? "Task resubmitted for review"
+				: "Task submitted for review",
 		};
 	});

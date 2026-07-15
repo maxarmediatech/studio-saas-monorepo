@@ -1,14 +1,11 @@
 import { ORPCError } from "@orpc/server";
 import {
 	and,
-	calendarSyncJobs,
 	crews,
 	db,
 	eq,
-	googleCalendarConnections,
 	isNull,
 	shootAssignments,
-	shootCalendarEvents,
 	shoots,
 	smsOutbox,
 } from "@repo/database";
@@ -24,7 +21,7 @@ import {
 	assignCrewInputSchema,
 	assignCrewOutputSchema,
 } from "../../studio/schemas/shoot";
-import { isTerminalShootStatus } from "../calendar-sync";
+import { ensureAssignmentCalendarDelivery } from "../lib/calendar-delivery";
 
 export const assignCrew = studioProtectedProcedure
 	.route({
@@ -87,17 +84,28 @@ export const assignCrew = studioProtectedProcedure
 
 		const assignmentRole = role || "Crew";
 
-		const [created] = await db
-			.insert(shootAssignments)
-			.values({
-				shootId,
-				crewId,
-				role: assignmentRole,
-				isLead: isLead ?? false,
-				rate: rate ?? null,
-				assignedBy: context.user.id,
-			})
-			.returning({ id: shootAssignments.id });
+		const created = await db.transaction(async (tx) => {
+			const [assignment] = await tx
+				.insert(shootAssignments)
+				.values({
+					shootId,
+					crewId,
+					role: assignmentRole,
+					isLead: isLead ?? false,
+					rate: rate ?? null,
+					assignedBy: context.user.id,
+				})
+				.returning({ id: shootAssignments.id });
+
+			if (assignment) {
+				await ensureAssignmentCalendarDelivery(tx, {
+					organizationId: context.organizationId,
+					shootId,
+					crewId,
+				});
+			}
+			return assignment;
+		});
 
 		if (!created) {
 			throw new ORPCError("INTERNAL_SERVER_ERROR", {
@@ -199,115 +207,6 @@ export const assignCrew = studioProtectedProcedure
 					});
 				}
 			}
-		}
-
-		// Calendar side-effects (non-blocking):
-		// - Connected user crew -> enqueue Google create
-		// - Non-user crew with email -> enqueue .ics invite
-		try {
-			const terminalShootStatus = isTerminalShootStatus(shoot.status);
-			if (!terminalShootStatus && crew.userId) {
-				const connection =
-					await db.query.googleCalendarConnections.findFirst({
-						where: and(
-							eq(
-								googleCalendarConnections.organizationId,
-								context.organizationId,
-							),
-							eq(googleCalendarConnections.userId, crew.userId),
-							isNull(googleCalendarConnections.disconnectedAt),
-						),
-						columns: { id: true, refreshToken: true },
-					});
-
-				if (connection?.refreshToken) {
-					const mapping =
-						await db.query.shootCalendarEvents.findFirst({
-							where: and(
-								eq(
-									shootCalendarEvents.organizationId,
-									context.organizationId,
-								),
-								eq(shootCalendarEvents.shootId, shoot.id),
-								eq(shootCalendarEvents.crewId, crew.id),
-							),
-							columns: { id: true },
-						});
-
-					if (!mapping) {
-						await db.insert(shootCalendarEvents).values({
-							organizationId: context.organizationId,
-							shootId: shoot.id,
-							crewId: crew.id,
-							deliveryMethod: "google",
-							syncStatus: "pending",
-							updatedAt: new Date(),
-						});
-					}
-
-					await db.insert(calendarSyncJobs).values({
-						organizationId: context.organizationId,
-						status: "pending",
-						jobType: "google_create",
-						shootId: shoot.id,
-						crewId: crew.id,
-						updatedAt: new Date(),
-					});
-				}
-			} else if (!terminalShootStatus && crew.email) {
-				const mapping = await db.query.shootCalendarEvents.findFirst({
-					where: and(
-						eq(
-							shootCalendarEvents.organizationId,
-							context.organizationId,
-						),
-						eq(shootCalendarEvents.shootId, shoot.id),
-						eq(shootCalendarEvents.crewId, crew.id),
-					),
-				});
-
-				const icalUid =
-					mapping?.icalUid ??
-					`shoot-${shoot.id}-crew-${crew.id}@studio-saas.invalid`;
-
-				if (!mapping) {
-					await db.insert(shootCalendarEvents).values({
-						organizationId: context.organizationId,
-						shootId: shoot.id,
-						crewId: crew.id,
-						deliveryMethod: "ics",
-						recipientEmail: crew.email,
-						icalUid,
-						syncStatus: "pending",
-						updatedAt: new Date(),
-					});
-				} else {
-					await db
-						.update(shootCalendarEvents)
-						.set({
-							deliveryMethod: "ics",
-							recipientEmail: crew.email,
-							icalUid,
-							updatedAt: new Date(),
-						})
-						.where(eq(shootCalendarEvents.id, mapping.id));
-				}
-
-				await db.insert(calendarSyncJobs).values({
-					organizationId: context.organizationId,
-					status: "pending",
-					jobType: "ics_send_invite",
-					shootId: shoot.id,
-					crewId: crew.id,
-					updatedAt: new Date(),
-				});
-			}
-		} catch (error) {
-			logger.error("Failed to enqueue calendar job on assignment", {
-				shootId: shoot.id,
-				crewId: crew.id,
-				error: error instanceof Error ? error.message : String(error),
-			});
 		}
 
 		return {

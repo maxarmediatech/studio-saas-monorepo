@@ -1,20 +1,10 @@
-import { ORPCError } from "@orpc/server";
-import {
-	and,
-	assignmentSubmissions,
-	db,
-	deliverables,
-	eq,
-	tasks,
-} from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { type ActionType, safeTrackActivity } from "../../activities/lib";
-import { safeNotifySubscribers } from "../../notifications/lib/notification-service";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	reviewSubmissionInputSchema,
 	reviewSubmissionOutputSchema,
 } from "../../studio/schemas/submission";
+import { decideSubmissionReview } from "../lib/review-decision-service";
 
 export const reviewSubmission = studioProtectedProcedure
 	.route({
@@ -22,203 +12,17 @@ export const reviewSubmission = studioProtectedProcedure
 		path: "/submissions/{id}/review",
 		tags: ["Submissions"],
 		summary: "Review submission",
-		description:
-			"Submit a review decision (approve, request revision, or reject)",
+		description: "Decide a submission currently claimed by this reviewer",
 	})
 	.input(reviewSubmissionInputSchema)
 	.output(reviewSubmissionOutputSchema)
 	.handler(async ({ input, context }) => {
 		await requirePermission(context, "review", "review");
-
-		const { id, decision, reviewNote } = input;
-
-		// Fetch submission
-		const submission = await db.query.assignmentSubmissions.findFirst({
-			where: and(
-				eq(assignmentSubmissions.id, id),
-				eq(
-					assignmentSubmissions.organizationId,
-					context.organizationId,
-				),
-			),
-		});
-
-		if (!submission) {
-			throw new ORPCError("NOT_FOUND", {
-				message: "Submission not found",
-			});
-		}
-
-		// Check if already completed
-		if (["approved", "rejected"].includes(submission.status)) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: `Submission has already been ${submission.status}`,
-			});
-		}
-
-		if (submission.status !== "in_review") {
-			throw new ORPCError("BAD_REQUEST", {
-				message: "Submission must be claimed before review",
-			});
-		}
-
-		if (
-			submission.reviewedBy &&
-			submission.reviewedBy !== context.user.id
-		) {
-			throw new ORPCError("CONFLICT", {
-				message: "Submission is already being reviewed by another user",
-			});
-		}
-
-		if (!submission.reviewedBy) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: "Submission must be claimed before review",
-			});
-		}
-
-		// Map decision to status
-		const statusMap = {
-			approve: "approved" as const,
-			request_revision: "revision_requested" as const,
-			reject: "rejected" as const,
-		};
-		const newStatus = statusMap[decision];
-
-		// Map decision to workflow status for the entity
-		const workflowStatusMap = {
-			approve: "approved" as const,
-			request_revision: "revision_requested" as const,
-			reject: "revision_requested" as const, // Rejected still allows retry
-		};
-		const newWorkflowStatus = workflowStatusMap[decision];
-
-		// Use transaction to update both submission and entity
-		await db.transaction(async (tx) => {
-			// Update submission
-			await tx
-				.update(assignmentSubmissions)
-				.set({
-					status: newStatus,
-					reviewedBy: context.user.id,
-					reviewedAt: new Date(),
-					reviewNote: reviewNote ?? null,
-					updatedAt: new Date(),
-				})
-				.where(eq(assignmentSubmissions.id, id));
-
-			// Update the associated entity's workflow status
-			if (submission.taskId) {
-				await tx
-					.update(tasks)
-					.set({
-						workflowStatus: newWorkflowStatus,
-						completedAt: decision === "approve" ? new Date() : null,
-						updatedAt: new Date(),
-						updatedBy: context.user.id,
-					})
-					.where(eq(tasks.id, submission.taskId));
-			} else if (submission.deliverableId) {
-				await tx
-					.update(deliverables)
-					.set({
-						workflowStatus: newWorkflowStatus,
-						deliveredAt: decision === "approve" ? new Date() : null,
-						updatedAt: new Date(),
-						updatedBy: context.user.id,
-					})
-					.where(eq(deliverables.id, submission.deliverableId));
-			}
-		});
-
-		// Get parent entity name for activity tracking
-		let parentEntityName = "Unknown";
-		let parentEntityType: "task" | "deliverable" | undefined;
-		let parentEntityId: string | undefined;
-
-		if (submission.taskId) {
-			const task = await db.query.tasks.findFirst({
-				where: eq(tasks.id, submission.taskId),
-				columns: { id: true, name: true },
-			});
-			if (task) {
-				parentEntityName = task.name;
-				parentEntityType = "task";
-				parentEntityId = task.id;
-			}
-		} else if (submission.deliverableId) {
-			const deliverable = await db.query.deliverables.findFirst({
-				where: eq(deliverables.id, submission.deliverableId),
-				columns: { id: true, name: true },
-			});
-			if (deliverable) {
-				parentEntityName = deliverable.name;
-				parentEntityType = "deliverable";
-				parentEntityId = deliverable.id;
-			}
-		}
-
-		// Track activity (non-blocking)
-		const actionMap: Record<typeof decision, ActionType> = {
-			approve: "approved",
-			request_revision: "revision_requested",
-			reject: "rejected",
-		};
-		await safeTrackActivity(context, {
-			entityType: "submission",
-			entityId: id,
-			entityName: parentEntityName,
-			action: actionMap[decision],
-			parentEntityType,
-			parentEntityId,
-			parentEntityName,
-			metadata: reviewNote ? { reviewNote } : undefined,
-		});
-
-		if (parentEntityType && parentEntityId) {
-			const notificationTypeMap = {
-				approve: "review_approved",
-				request_revision: "review_revision_requested",
-				reject: "review_rejected",
-			} as const;
-			const notificationBodyMap = {
-				approve: `Approved by ${context.user.name}`,
-				request_revision: `Changes requested by ${context.user.name}`,
-				reject: `Rejected by ${context.user.name}`,
-			} as const;
-			const notificationTitleMap = {
-				approve: `${parentEntityType === "task" ? "Task" : "Deliverable"} approved: ${parentEntityName}`,
-				request_revision: `${parentEntityType === "task" ? "Task" : "Deliverable"} needs changes: ${parentEntityName}`,
-				reject: `${parentEntityType === "task" ? "Task" : "Deliverable"} rejected: ${parentEntityName}`,
-			} as const;
-
-			await safeNotifySubscribers({
-				organizationId: context.organizationId,
-				entityType: parentEntityType,
-				entityId: parentEntityId,
-				entityName: parentEntityName,
-				type: notificationTypeMap[decision],
-				title: notificationTitleMap[decision],
-				body: notificationBodyMap[decision],
-				metadata: {
-					outcome: newStatus,
-					reviewerName: context.user.name,
-					reviewNote: reviewNote ?? null,
-				},
-				actorId: context.user.id,
-				actorName: context.user.name,
-				excludeUserId: context.user.id,
-			});
-		}
-
+		await decideSubmissionReview(context, input);
 		const messages = {
 			approve: "Submission approved",
 			request_revision: "Revision requested",
 			reject: "Submission rejected",
 		};
-
-		return {
-			data: { id },
-			message: messages[decision],
-		};
+		return { data: { id: input.id }, message: messages[input.decision] };
 	});

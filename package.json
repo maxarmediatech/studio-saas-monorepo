@@ -26,7 +26,9 @@
 		"db:staging:publish": "pnpm --filter @repo/database staging:publish",
 		"db:staging:verify": "pnpm --filter @repo/database staging:verify",
 		"notifications:deadlines": "pnpm --filter @repo/scripts notifications:deadlines",
-		"financial:migration-preflight": "pnpm --filter @repo/scripts financial:migration-preflight"
+		"financial:migration-preflight": "pnpm --filter @repo/scripts financial:migration-preflight",
+		"calendar:reconcile": "pnpm --filter @repo/scripts calendar:reconcile",
+		"submissions:reconcile-parent-review": "pnpm --filter @repo/scripts submissions:reconcile-parent-review"
 	},
 	"engines": {
 		"node": ">=20"
