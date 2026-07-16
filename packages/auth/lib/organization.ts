@@ -1,3 +1,4 @@
+import { type Config, config } from "@repo/config";
 import {
 	and,
 	calendarRouteChanges,
@@ -7,6 +8,7 @@ import {
 	getOrganizationWithPurchasesAndMembersCount,
 	ilike,
 	isNull,
+	organizations,
 	users,
 } from "@repo/database";
 import { logger } from "@repo/logs";
@@ -150,35 +152,87 @@ export async function ensureCrewForMember({
 export async function updateSeatsInOrganizationSubscription(
 	organizationId: string,
 ) {
-	const organization =
-		await getOrganizationWithPurchasesAndMembersCount(organizationId);
-	const activeSubscriptionStatuses = new Set(["active", "trialing"]);
-
-	if (!organization?.purchases.length) {
-		return;
-	}
-
-	const activeSubscription = organization.purchases.find(
-		(purchase) =>
-			purchase.type === "SUBSCRIPTION" &&
-			activeSubscriptionStatuses.has(
-				(purchase.status ?? "").toLowerCase(),
-			),
-	);
-
-	if (!activeSubscription?.subscriptionId) {
-		return;
-	}
-
 	try {
+		const organization =
+			await getOrganizationWithPurchasesAndMembersCount(organizationId);
+		const activeSubscriptionStatuses = new Set(["active", "trialing"]);
+
+		if (!organization?.purchases.length) {
+			return {
+				status: "skipped" as const,
+				reason: "no_subscription" as const,
+			};
+		}
+
+		const activeSubscription = [...organization.purchases]
+			.sort((a, b) => {
+				const aTime = a.updatedAt ?? a.createdAt;
+				const bTime = b.updatedAt ?? b.createdAt;
+				return bTime.getTime() - aTime.getTime();
+			})
+			.find(
+				(purchase) =>
+					purchase.type === "SUBSCRIPTION" &&
+					activeSubscriptionStatuses.has(
+						(purchase.status ?? "").toLowerCase(),
+					),
+			);
+
+		if (!activeSubscription?.subscriptionId) {
+			return {
+				status: "skipped" as const,
+				reason: "no_subscription" as const,
+			};
+		}
+
+		const plans = config.payments.plans as Config["payments"]["plans"];
+		const configuredPrice = Object.values(plans)
+			.flatMap((plan) => plan.prices ?? [])
+			.find((price) => price.priceKey === activeSubscription.priceKey);
+		if (
+			!configuredPrice ||
+			!("seatBased" in configuredPrice) ||
+			!configuredPrice.seatBased
+		) {
+			return {
+				status: "skipped" as const,
+				reason: "not_seat_based" as const,
+			};
+		}
+
 		await setSubscriptionSeats({
 			id: activeSubscription.subscriptionId,
 			seats: organization.membersCount,
 		});
+		await db
+			.update(organizations)
+			.set({
+				billingSeatCount: organization.membersCount,
+				billingSeatSyncedAt: new Date(),
+				billingSeatSyncError: null,
+			})
+			.where(eq(organizations.id, organizationId));
+		return { status: "synced" as const, seats: organization.membersCount };
 	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		try {
+			await db
+				.update(organizations)
+				.set({ billingSeatSyncError: message })
+				.where(eq(organizations.id, organizationId));
+		} catch (recordError) {
+			logger.error("Could not record subscription seat sync failure", {
+				organizationId,
+				error:
+					recordError instanceof Error
+						? recordError.message
+						: String(recordError),
+			});
+		}
 		logger.error("Could not update seats in organization subscription", {
 			organizationId,
-			error,
+			error: message,
 		});
+		return { status: "failed" as const, error: message };
 	}
 }

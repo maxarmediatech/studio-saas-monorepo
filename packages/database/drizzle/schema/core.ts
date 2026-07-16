@@ -2,6 +2,7 @@ import { relations } from "drizzle-orm";
 import {
 	boolean,
 	index,
+	integer,
 	pgTable,
 	text,
 	timestamp,
@@ -32,6 +33,11 @@ export const organizations = pgTable(
 			.notNull(),
 		metadata: text("metadata"),
 		paymentsCustomerId: text("payments_customer_id"),
+		billingSeatCount: integer("billing_seat_count"),
+		billingSeatSyncedAt: timestamp("billing_seat_synced_at", {
+			withTimezone: true,
+		}),
+		billingSeatSyncError: text("billing_seat_sync_error"),
 	},
 	(table) => [uniqueIndex("organizations_slug_idx").on(table.slug)],
 );
@@ -110,7 +116,9 @@ export const invitations = pgTable("invitations", {
 		.references(() => organizations.id, { onDelete: "cascade" }),
 	email: text("email").notNull(),
 	role: text("role"),
-	teamId: text("team_id").references(() => teams.id, { onDelete: "set null" }),
+	teamId: text("team_id").references(() => teams.id, {
+		onDelete: "set null",
+	}),
 	status: text("status").notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true })
 		.defaultNow()
@@ -173,9 +181,7 @@ export const purchases = pgTable("purchases", {
 	planKey: text("plan_key").default("legacy-unknown").notNull(),
 	priceKey: text("price_key").default("legacy-unknown").notNull(),
 	billingInterval: text("billing_interval"),
-	catalogVersion: text("catalog_version")
-		.default("2026-04-basics")
-		.notNull(),
+	catalogVersion: text("catalog_version").default("2026-04-basics").notNull(),
 	productId: text("product_id").notNull(),
 	status: text("status"),
 	createdAt: timestamp("created_at", { withTimezone: true })
