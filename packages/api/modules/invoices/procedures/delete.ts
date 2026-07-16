@@ -6,7 +6,8 @@ import { requirePermission } from "../../studio/lib/permissions";
 import {
 	deleteInvoiceInputSchema,
 	deleteInvoiceOutputSchema,
-	} from "../../studio/schemas/invoice";
+} from "../../studio/schemas/invoice";
+import { softDeleteUnpaidInvoice } from "../lib/unpaid-invoice-transitions";
 
 export const deleteInvoice = studioProtectedProcedure
 	.route({
@@ -23,27 +24,33 @@ export const deleteInvoice = studioProtectedProcedure
 
 		const { id } = input;
 
-		const invoice = await db.query.invoices.findFirst({
-			where: and(
-				eq(invoices.id, id),
-				eq(invoices.organizationId, context.organizationId),
-				isNull(invoices.deletedAt),
-			),
+		const invoice = await softDeleteUnpaidInvoice(db, {
+			organizationId: context.organizationId,
+			invoiceId: id,
+			actorId: context.user.id,
 		});
 
 		if (!invoice) {
-			throw new ORPCError("NOT_FOUND", {
-				message: "Invoice not found",
+			const current = await db.query.invoices.findFirst({
+				where: and(
+					eq(invoices.id, id),
+					eq(invoices.organizationId, context.organizationId),
+					isNull(invoices.deletedAt),
+				),
+				columns: { id: true },
 			});
-			}
 
-			const paidAmount = Number.parseFloat(invoice.paidAmount);
-			if (paidAmount > 0) {
-				throw new ORPCError("CONFLICT", {
-					message:
-						"Cannot delete invoices with payments. Cancel the invoice instead.",
+			if (!current) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Invoice not found",
 				});
 			}
+
+			throw new ORPCError("CONFLICT", {
+				message:
+					"Cannot delete invoices with payments. Cancel the invoice instead.",
+			});
+		}
 
 		const booking = await db.query.bookings.findFirst({
 			where: and(
@@ -52,16 +59,6 @@ export const deleteInvoice = studioProtectedProcedure
 			),
 			columns: { name: true },
 		});
-
-		await db
-			.update(invoices)
-			.set({
-				deletedAt: new Date(),
-				deletedBy: context.user.id,
-				updatedAt: new Date(),
-				updatedBy: context.user.id,
-			})
-			.where(eq(invoices.id, id));
 
 		await safeTrackActivity(context, {
 			entityType: "invoice",

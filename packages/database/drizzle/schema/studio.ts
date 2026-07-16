@@ -870,6 +870,19 @@ export const receivedAmounts = pgTable(
 			length: 255,
 		}).references(() => invoices.id, { onDelete: "set null" }),
 
+		// Corrections preserve the original payment and link it to one active
+		// replacement. Reversed rows are also soft-deleted from operational totals.
+		replacesPaymentId: varchar("replaces_payment_id", { length: 255 }),
+		replacementPaymentId: varchar("replacement_payment_id", {
+			length: 255,
+		}),
+		reversedAt: timestamp("reversed_at", { withTimezone: true }),
+		reversedBy: varchar("reversed_by", { length: 255 }).references(
+			() => users.id,
+			{ onDelete: "set null" },
+		),
+		reversalReason: text("reversal_reason"),
+
 		createdBy: varchar("created_by", { length: 255 }).references(
 			() => users.id,
 			{ onDelete: "set null" },
@@ -897,7 +910,80 @@ export const receivedAmounts = pgTable(
 		index("received_amounts_date_idx").on(table.receivedDate),
 		index("received_amounts_schedule_idx").on(table.paymentScheduleId),
 		index("received_amounts_invoice_idx").on(table.invoiceId),
+		uniqueIndex("received_amounts_replaces_payment_idx")
+			.on(table.replacesPaymentId)
+			.where(sql`replaces_payment_id IS NOT NULL`),
+		uniqueIndex("received_amounts_replacement_payment_idx")
+			.on(table.replacementPaymentId)
+			.where(sql`replacement_payment_id IS NOT NULL`),
+		foreignKey({
+			columns: [table.replacesPaymentId],
+			foreignColumns: [table.id],
+			name: "received_amounts_replaces_payment_id_fk",
+		}).onDelete("restrict"),
+		foreignKey({
+			columns: [table.replacementPaymentId],
+			foreignColumns: [table.id],
+			name: "received_amounts_replacement_payment_id_fk",
+		}).onDelete("restrict"),
 		check("received_amounts_amount_positive", sql`amount > 0`),
+	],
+);
+
+// ============================================================================
+// PAYMENT IDEMPOTENCY RECORDS
+// A processing row is never intentionally committed: claim, payment effects,
+// and completion all live in one transaction.
+// ============================================================================
+
+export const paymentIdempotencyRecords = pgTable(
+	"payment_idempotency_records",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 })
+			.notNull()
+			.references(() => organizations.id, { onDelete: "cascade" }),
+		operation: varchar("operation", { length: 50 }).notNull(),
+		idempotencyKey: varchar("idempotency_key", { length: 128 }).notNull(),
+		requestFingerprint: varchar("request_fingerprint", {
+			length: 64,
+		}).notNull(),
+		status: varchar("status", { length: 20 })
+			.default("processing")
+			.notNull(),
+		resultResourceId: varchar("result_resource_id", {
+			length: 255,
+		}).references(() => receivedAmounts.id, { onDelete: "restrict" }),
+		resultPayload: jsonb("result_payload").$type<Record<string, unknown>>(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		completedAt: timestamp("completed_at", { withTimezone: true }),
+	},
+	(table) => [
+		uniqueIndex("payment_idempotency_org_operation_key_idx").on(
+			table.organizationId,
+			table.operation,
+			table.idempotencyKey,
+		),
+		index("payment_idempotency_result_idx").on(table.resultResourceId),
+		check(
+			"payment_idempotency_operation_check",
+			sql`operation IN ('create_received_payment', 'convert_schedule_payment', 'correct_received_payment')`,
+		),
+		check(
+			"payment_idempotency_status_check",
+			sql`status IN ('processing', 'completed')`,
+		),
+		check(
+			"payment_idempotency_completion_check",
+			sql`(status = 'processing' AND result_resource_id IS NULL AND result_payload IS NULL AND completed_at IS NULL) OR (status = 'completed' AND result_resource_id IS NOT NULL AND result_payload IS NOT NULL AND completed_at IS NOT NULL)`,
+		),
 	],
 );
 
@@ -1180,6 +1266,41 @@ export const invoices = pgTable(
 			"invoices_paid_amount_range",
 			sql`paid_amount >= 0 AND paid_amount <= total_amount`,
 		),
+	],
+);
+
+// Transactional counters for human-facing financial document numbers. scopeKey
+// preserves the existing booking/date prefix while making allocation atomic.
+export const documentSequences = pgTable(
+	"document_sequences",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 })
+			.notNull()
+			.references(() => organizations.id, { onDelete: "cascade" }),
+		documentType: varchar("document_type", { length: 32 }).notNull(),
+		scopeKey: varchar("scope_key", { length: 255 }).notNull(),
+		nextValue: integer("next_value").notNull(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		uniqueIndex("document_sequences_org_type_scope_idx").on(
+			table.organizationId,
+			table.documentType,
+			table.scopeKey,
+		),
+		check(
+			"document_sequences_type_check",
+			sql`document_type IN ('invoice', 'receipt')`,
+		),
+		check("document_sequences_next_value_positive", sql`next_value > 0`),
 	],
 );
 

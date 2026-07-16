@@ -5,17 +5,22 @@ import {
 	db,
 	eq,
 	isNull,
-	paymentSchedules,
 	receivedAmounts,
 	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../../orpc/procedures";
 import { formatAmount, safeTrackActivity } from "../../../activities/lib";
+import { getLockedBookingForReceipt } from "../../../receipts/lib/locked-invoice-for-receipt";
 import { requirePermission } from "../../../studio/lib/permissions";
 import {
 	deleteReceivedInputSchema,
 	deleteReceivedOutputSchema,
 } from "../../../studio/schemas/payment";
+import {
+	assertPaymentDeletable,
+	getPaymentFinancialProtection,
+} from "../../lib/payment-financial-protection";
+import { getLockedReceivedPayment } from "../../lib/received-payment-lock";
 
 export const deleteReceived = studioProtectedProcedure
 	.route({
@@ -32,34 +37,63 @@ export const deleteReceived = studioProtectedProcedure
 
 		const { id } = input;
 
-		// Verify received payment exists and belongs to organization
-		const received = await db.query.receivedAmounts.findFirst({
-			where: and(
-				eq(receivedAmounts.id, id),
-				eq(receivedAmounts.organizationId, context.organizationId),
-				isNull(receivedAmounts.deletedAt),
-			),
-		});
-
-		if (!received) {
-			throw new ORPCError("NOT_FOUND", {
-				message: "Received payment not found",
-			});
-		}
-
-		// Fetch booking for activity tracking (org-scoped for safety)
-		const booking = await db.query.bookings.findFirst({
-			where: and(
-				eq(bookings.id, received.bookingId),
-				eq(bookings.organizationId, context.organizationId),
-			),
-			columns: { name: true },
-		});
-
-		const amount = Number.parseFloat(received.amount);
-
 		// Use transaction to soft delete and update booking totals
 		return await db.transaction(async (tx) => {
+			const lockPlan = await tx.query.receivedAmounts.findFirst({
+				where: and(
+					eq(receivedAmounts.id, id),
+					eq(receivedAmounts.organizationId, context.organizationId),
+					isNull(receivedAmounts.deletedAt),
+				),
+				columns: { bookingId: true },
+			});
+
+			if (!lockPlan) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Received payment not found",
+				});
+			}
+
+			const booking = await getLockedBookingForReceipt(tx, {
+				organizationId: context.organizationId,
+				bookingId: lockPlan.bookingId,
+			});
+
+			if (!booking) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Booking not found",
+				});
+			}
+
+			const received = await getLockedReceivedPayment(tx, {
+				organizationId: context.organizationId,
+				receivedAmountId: id,
+			});
+
+			if (!received) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Received payment not found",
+				});
+			}
+
+			if (received.bookingId !== lockPlan.bookingId) {
+				throw new ORPCError("CONFLICT", {
+					message:
+						"Received payment booking changed during deletion. Retry the request.",
+				});
+			}
+
+			const protection = await getPaymentFinancialProtection(tx, {
+				organizationId: context.organizationId,
+				receivedAmountId: received.id,
+				invoiceId: received.invoiceId,
+				paymentScheduleId: received.paymentScheduleId,
+			});
+
+			assertPaymentDeletable(protection);
+
+			const amount = Number.parseFloat(received.amount);
+
 			// Soft delete
 			await tx
 				.update(receivedAmounts)
@@ -81,72 +115,6 @@ export const deleteReceived = studioProtectedProcedure
 				})
 				.where(eq(bookings.id, received.bookingId));
 
-			if (received.paymentScheduleId) {
-				const schedule = await tx.query.paymentSchedules.findFirst({
-					where: and(
-						eq(paymentSchedules.id, received.paymentScheduleId),
-						eq(
-							paymentSchedules.organizationId,
-							context.organizationId,
-						),
-						isNull(paymentSchedules.deletedAt),
-					),
-				});
-
-				if (!schedule) {
-					throw new ORPCError("NOT_FOUND", {
-						message: "Linked payment schedule not found",
-					});
-				}
-
-				const [paidResult] = await tx
-					.select({
-						sum: sql<string>`COALESCE(SUM(${receivedAmounts.amount}), 0)`,
-					})
-					.from(receivedAmounts)
-					.where(
-						and(
-							eq(
-								receivedAmounts.paymentScheduleId,
-								received.paymentScheduleId,
-							),
-							isNull(receivedAmounts.deletedAt),
-						),
-					);
-
-				const totalPaid = Number.parseFloat(paidResult?.sum ?? "0");
-				const scheduleAmount = Number.parseFloat(schedule.amount);
-
-				if (totalPaid > scheduleAmount) {
-					throw new ORPCError("CONFLICT", {
-						message:
-							"Total received exceeds schedule amount. Update the schedule amount before deleting this payment.",
-					});
-				}
-
-				const status =
-					totalPaid >= scheduleAmount
-						? "completed"
-						: totalPaid > 0
-							? "partial"
-							: "pending";
-				const paidAt =
-					status === "completed"
-						? (schedule.paidAt ?? new Date())
-						: null;
-
-				await tx
-					.update(paymentSchedules)
-					.set({
-						paidAmount: totalPaid.toFixed(2),
-						status,
-						paidAt,
-						updatedAt: new Date(),
-						updatedBy: context.user.id,
-					})
-					.where(eq(paymentSchedules.id, schedule.id));
-			}
-
 			// Track activity (non-blocking)
 			await safeTrackActivity(
 				{ organizationId: context.organizationId, user: context.user },
@@ -157,8 +125,11 @@ export const deleteReceived = studioProtectedProcedure
 					action: "deleted",
 					parentEntityType: "booking",
 					parentEntityId: received.bookingId,
-					parentEntityName: booking?.name ?? "Unknown Booking",
-					metadata: { amount: received.amount, paymentMethod: received.paymentMethod },
+					parentEntityName: booking.name,
+					metadata: {
+						amount: received.amount,
+						paymentMethod: received.paymentMethod,
+					},
 				},
 			);
 

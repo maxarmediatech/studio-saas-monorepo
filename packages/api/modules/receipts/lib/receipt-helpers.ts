@@ -3,18 +3,19 @@ import {
 	and,
 	bookings,
 	db,
-	desc,
 	eq,
 	invoices,
 	isNull,
 	receipts,
-	sql,
 } from "@repo/database";
+import {
+	advanceDocumentSequenceFloor,
+	allocateDocumentNumber,
+} from "../../financial-documents/lib/document-number-service";
 import { centsToMoney, moneyToCents } from "../../studio/lib/money";
 import {
 	buildReceiptNumber,
 	determineInvoiceStatus,
-	getNextReceiptNumber,
 	type InvoiceStatus,
 } from "./receipt-utils";
 
@@ -29,10 +30,10 @@ export {
 type Tx = Parameters<Parameters<(typeof db)["transaction"]>[0]>[0];
 type DbOrTx = typeof db | Tx;
 
-export async function generateReceiptNumber(
+async function getReceiptNumberBase(
 	bookingId: string,
 	orgId: string,
-	dbOrTx: DbOrTx = db,
+	dbOrTx: DbOrTx,
 ): Promise<string> {
 	const booking = await dbOrTx.query.bookings.findFirst({
 		where: and(
@@ -46,25 +47,48 @@ export async function generateReceiptNumber(
 		throw new Error("Booking not found for receipt number generation");
 	}
 
-	const baseNumber = buildReceiptNumber(booking.referenceNumber, new Date());
+	return buildReceiptNumber(booking.referenceNumber, new Date());
+}
 
-	const existing = await dbOrTx.query.receipts.findFirst({
-		where: and(
-			eq(receipts.organizationId, orgId),
-			sql`${receipts.receiptNumber} LIKE ${baseNumber + "%"}`,
-			isNull(receipts.deletedAt),
-		),
-		orderBy: desc(receipts.receiptNumber),
-		columns: { receiptNumber: true },
+export async function generateReceiptNumber(
+	bookingId: string,
+	orgId: string,
+	dbOrTx: DbOrTx = db,
+): Promise<string> {
+	const baseNumber = await getReceiptNumberBase(bookingId, orgId, dbOrTx);
+
+	return dbOrTx.transaction((tx) =>
+		allocateDocumentNumber(tx, {
+			organizationId: orgId,
+			documentType: "receipt",
+			baseNumber,
+		}),
+	);
+}
+
+export async function advanceReceiptNumberSequenceFloor(
+	bookingId: string,
+	orgId: string,
+	tx: Tx,
+): Promise<number> {
+	const baseNumber = await getReceiptNumberBase(bookingId, orgId, tx);
+	return advanceDocumentSequenceFloor(tx, {
+		organizationId: orgId,
+		documentType: "receipt",
+		baseNumber,
 	});
-
-	return getNextReceiptNumber(baseNumber, existing?.receiptNumber ?? null);
 }
 
 function getDateOnlyString(value: unknown): string | null {
-	if (!value) return null;
-	if (typeof value === "string") return value;
-	if (value instanceof Date) return value.toISOString().slice(0, 10);
+	if (!value) {
+		return null;
+	}
+	if (typeof value === "string") {
+		return value;
+	}
+	if (value instanceof Date) {
+		return value.toISOString().slice(0, 10);
+	}
 	return null;
 }
 
@@ -72,6 +96,7 @@ export async function updateInvoicePaymentStatus(
 	dbOrTx: DbOrTx,
 	invoiceId: string,
 	userId: string,
+	{ allowCancelled = false }: { allowCancelled?: boolean } = {},
 ): Promise<void> {
 	const invoice = await dbOrTx.query.invoices.findFirst({
 		where: and(eq(invoices.id, invoiceId), isNull(invoices.deletedAt)),
@@ -90,7 +115,7 @@ export async function updateInvoicePaymentStatus(
 	}
 
 	const currentStatus = invoice.status as InvoiceStatus;
-	if (currentStatus === "cancelled") {
+	if (currentStatus === "cancelled" && !allowCancelled) {
 		throw new ORPCError("CONFLICT", {
 			message: "Cannot record payments for a cancelled invoice",
 		});
@@ -138,12 +163,13 @@ export async function updateInvoicePaymentStatus(
 		invoiceTotalCents,
 		baseStatus,
 	);
+	const status = currentStatus === "cancelled" ? "cancelled" : newStatus;
 
 	await dbOrTx
 		.update(invoices)
 		.set({
 			paidAmount: centsToMoney(totalPaidCents),
-			status: newStatus,
+			status,
 			paidAt: isPaid ? (invoice.paidAt ?? new Date()) : null,
 			updatedAt: new Date(),
 			updatedBy: userId,

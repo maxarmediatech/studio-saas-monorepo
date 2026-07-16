@@ -1,12 +1,10 @@
 import { ORPCError } from "@orpc/server";
 import {
-	and,
 	bookings,
 	db,
 	eq,
 	invoiceLineItems,
 	invoices,
-	isNull,
 	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
@@ -20,6 +18,7 @@ import {
 	type InvoiceStatus,
 	recalculateInvoiceTotals,
 } from "../lib/invoice-helpers";
+import { getLockedInvoice } from "../lib/invoice-lock";
 import { computeLineItemFields } from "../lib/line-item-helpers";
 
 export const addLineItem = studioProtectedProcedure
@@ -45,27 +44,6 @@ export const addLineItem = studioProtectedProcedure
 			sortOrder,
 		} = input;
 
-		const invoice = await db.query.invoices.findFirst({
-			where: and(
-				eq(invoices.id, invoiceId),
-				eq(invoices.organizationId, context.organizationId),
-				isNull(invoices.deletedAt),
-			),
-		});
-
-		if (!invoice) {
-			throw new ORPCError("NOT_FOUND", {
-				message: "Invoice not found",
-			});
-		}
-
-		const status = invoice.status as InvoiceStatus;
-		if (status !== "draft") {
-			throw new ORPCError("CONFLICT", {
-				message: "Can only add line items to draft invoices",
-			});
-		}
-
 		const effectiveType = type ?? "item";
 		const fields = computeLineItemFields(
 			{ type: effectiveType, quantity, unitPrice, amount },
@@ -73,6 +51,21 @@ export const addLineItem = studioProtectedProcedure
 		);
 
 		return await db.transaction(async (tx) => {
+			const invoice = await getLockedInvoice(tx, {
+				organizationId: context.organizationId,
+				invoiceId,
+			});
+			if (!invoice) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Invoice not found",
+				});
+			}
+			if ((invoice.status as InvoiceStatus) !== "draft") {
+				throw new ORPCError("CONFLICT", {
+					message: "Can only add line items to draft invoices",
+				});
+			}
+
 			let finalSortOrder = sortOrder;
 			if (finalSortOrder === undefined) {
 				const [maxSort] = await tx

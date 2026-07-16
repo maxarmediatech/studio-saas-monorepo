@@ -1,4 +1,5 @@
 import { activities, db } from "@repo/database";
+import type { TransactionClient } from "../../studio/lib/transactions";
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -175,8 +176,11 @@ export interface TrackActivityInput {
  * Create a single activity record.
  * This is the low-level function that writes to the database.
  */
-export async function createActivity(input: CreateActivityInput): Promise<void> {
-	await db.insert(activities).values({
+export async function createActivityWithExecutor(
+	executor: typeof db | TransactionClient,
+	input: CreateActivityInput,
+): Promise<void> {
+	await executor.insert(activities).values({
 		organizationId: input.organizationId,
 		actorId: input.actorId,
 		actorType: input.actorType,
@@ -198,6 +202,12 @@ export async function createActivity(input: CreateActivityInput): Promise<void> 
 	});
 }
 
+export async function createActivity(
+	input: CreateActivityInput,
+): Promise<void> {
+	await createActivityWithExecutor(db, input);
+}
+
 /**
  * Track an activity from a procedure context.
  * Automatically extracts actor info from context.
@@ -216,7 +226,15 @@ export async function trackActivity(
 	context: ActivityContext,
 	input: TrackActivityInput,
 ): Promise<void> {
-	await createActivity({
+	await trackActivityWithExecutor(db, context, input);
+}
+
+export async function trackActivityWithExecutor(
+	executor: typeof db | TransactionClient,
+	context: ActivityContext,
+	input: TrackActivityInput,
+): Promise<void> {
+	await createActivityWithExecutor(executor, {
 		organizationId: context.organizationId,
 		actorId: context.user.id,
 		actorType: "user",

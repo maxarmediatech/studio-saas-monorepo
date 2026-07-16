@@ -32,7 +32,9 @@ import {
 } from "@repo/ui/components/sheet";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { Textarea } from "@repo/ui/components/textarea";
+import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
 import { useScheduleConvertParams } from "@saas/studio/hooks/params/use-schedule-convert-params";
+import { usePaymentSubmissionKey } from "@saas/studio/hooks/use-payment-submission-key";
 import {
 	studioPaymentsApi,
 	studioPaymentsMutations,
@@ -45,14 +47,15 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { FormActions } from "../../ui/FormActions";
 
-const PAYMENT_METHODS: ReadonlyArray<{ value: PaymentMethod; label: string }> = [
-	{ value: "cash", label: "Cash" },
-	{ value: "upi", label: "UPI" },
-	{ value: "bank_transfer", label: "Bank Transfer" },
-	{ value: "cheque", label: "Cheque" },
-	{ value: "card", label: "Card" },
-	{ value: "other", label: "Other" },
-];
+const PAYMENT_METHODS: ReadonlyArray<{ value: PaymentMethod; label: string }> =
+	[
+		{ value: "cash", label: "Cash" },
+		{ value: "upi", label: "UPI" },
+		{ value: "bank_transfer", label: "Bank Transfer" },
+		{ value: "cheque", label: "Cheque" },
+		{ value: "card", label: "Card" },
+		{ value: "other", label: "Other" },
+	];
 
 const convertScheduleFormSchema = z.object({
 	amount: z
@@ -83,8 +86,16 @@ function formatAmountInput(value: number): string {
 
 export function ScheduleConvertSheet() {
 	const { convertScheduleId, close } = useScheduleConvertParams();
+	const { activeOrganization } = useActiveOrganization();
 	const isOpen = Boolean(convertScheduleId);
 	const queryClient = useQueryClient();
+	const submissionKey = usePaymentSubmissionKey(
+		`${activeOrganization?.id ?? "unknown-org"}:convert-schedule`,
+	);
+	const handleClose = () => {
+		submissionKey.abandon();
+		close();
+	};
 
 	const { data: schedule, isLoading } = useQuery({
 		...studioPaymentsApi.getScheduleOptions(convertScheduleId ?? ""),
@@ -94,14 +105,23 @@ export function ScheduleConvertSheet() {
 	const convertMutation = useMutation({
 		...studioPaymentsMutations.convertSchedule(),
 		onSuccess: async () => {
-			await Promise.all([
+			submissionKey.acknowledgeSuccess();
+			await Promise.allSettled([
 				queryClient.invalidateQueries({
 					queryKey: orpc.studioPayments.key(),
 				}),
-				queryClient.invalidateQueries({ queryKey: orpc.bookings.key() }),
-				queryClient.invalidateQueries({ queryKey: orpc.invoices.key() }),
-				queryClient.invalidateQueries({ queryKey: orpc.receipts.key() }),
-				queryClient.invalidateQueries({ queryKey: orpc.activities.key() }),
+				queryClient.invalidateQueries({
+					queryKey: orpc.bookings.key(),
+				}),
+				queryClient.invalidateQueries({
+					queryKey: orpc.invoices.key(),
+				}),
+				queryClient.invalidateQueries({
+					queryKey: orpc.receipts.key(),
+				}),
+				queryClient.invalidateQueries({
+					queryKey: orpc.activities.key(),
+				}),
 			]);
 			toast.success("Payment recorded successfully");
 			close();
@@ -166,25 +186,29 @@ export function ScheduleConvertSheet() {
 			return;
 		}
 
-		await convertMutation.mutateAsync({
+		const request = {
 			scheduleId: convertScheduleId,
-			amount: values.amount,
+			amount: Number(values.amount).toFixed(2),
 			paymentMethod: values.paymentMethod,
 			transactionReference: values.transactionReference || undefined,
 			receivedDate: values.receivedDate,
 			notes: values.notes || undefined,
+		};
+		await convertMutation.mutateAsync({
+			...request,
+			idempotencyKey: submissionKey.keyFor(request),
 		});
 	};
 
 	return (
-		<Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
-				<SheetContent
-					side="right"
-					className="sm:max-w-xl p-0 gap-0 flex flex-col"
-				>
-					<SheetHeader className="shrink-0 p-4">
-						<SheetTitle className="text-xl">Record Payment</SheetTitle>
-					</SheetHeader>
+		<Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+			<SheetContent
+				side="right"
+				className="sm:max-w-xl p-0 gap-0 flex flex-col"
+			>
+				<SheetHeader className="shrink-0 p-4">
+					<SheetTitle className="text-xl">Record Payment</SheetTitle>
+				</SheetHeader>
 				<div className="flex-1 min-h-0 overflow-y-auto px-4 py-4">
 					{isLoading ? (
 						<div className="space-y-4">
@@ -194,7 +218,7 @@ export function ScheduleConvertSheet() {
 							<Skeleton className="h-10 w-full" />
 						</div>
 					) : schedule?.data ? (
-							<form onSubmit={form.handleSubmit(onSubmit)}>
+						<form onSubmit={form.handleSubmit(onSubmit)}>
 							{isLockedSchedule && (
 								<p className="mb-4 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
 									{lockedScheduleMessage}
@@ -203,7 +227,9 @@ export function ScheduleConvertSheet() {
 
 							<FieldGroup>
 								<Field>
-									<FieldLabel htmlFor="schedule-name">Schedule</FieldLabel>
+									<FieldLabel htmlFor="schedule-name">
+										Schedule
+									</FieldLabel>
 									<Input
 										id="schedule-name"
 										value={schedule.data.name}
@@ -216,24 +242,40 @@ export function ScheduleConvertSheet() {
 									name="amount"
 									control={form.control}
 									render={({ field, fieldState }) => (
-										<Field data-invalid={fieldState.invalid}>
-											<FieldLabel htmlFor={field.name}>Amount *</FieldLabel>
+										<Field
+											data-invalid={fieldState.invalid}
+										>
+											<FieldLabel htmlFor={field.name}>
+												Amount *
+											</FieldLabel>
 											<InputGroup>
 												<InputGroupAddon>
-													<InputGroupText>₹</InputGroupText>
+													<InputGroupText>
+														₹
+													</InputGroupText>
 												</InputGroupAddon>
 												<InputGroupInput
 													{...field}
 													id={field.name}
 													placeholder="0.00"
-													aria-invalid={fieldState.invalid}
+													aria-invalid={
+														fieldState.invalid
+													}
 													onChange={(event) => {
-														const value = event.target.value.replace(/[^0-9.]/g, "");
-														const parts = value.split(".");
+														const value =
+															event.target.value.replace(
+																/[^0-9.]/g,
+																"",
+															);
+														const parts =
+															value.split(".");
 														if (parts.length > 2) {
 															return;
 														}
-														if (parts[1] && parts[1].length > 2) {
+														if (
+															parts[1] &&
+															parts[1].length > 2
+														) {
 															return;
 														}
 														field.onChange(value);
@@ -241,7 +283,9 @@ export function ScheduleConvertSheet() {
 												/>
 											</InputGroup>
 											{fieldState.invalid && (
-												<FieldError errors={[fieldState.error]} />
+												<FieldError
+													errors={[fieldState.error]}
+												/>
 											)}
 										</Field>
 									)}
@@ -251,22 +295,45 @@ export function ScheduleConvertSheet() {
 									name="paymentMethod"
 									control={form.control}
 									render={({ field, fieldState }) => (
-										<Field data-invalid={fieldState.invalid}>
-											<FieldLabel htmlFor={field.name}>Payment Method *</FieldLabel>
-											<Select value={field.value} onValueChange={field.onChange}>
-												<SelectTrigger id={field.name} aria-invalid={fieldState.invalid}>
+										<Field
+											data-invalid={fieldState.invalid}
+										>
+											<FieldLabel htmlFor={field.name}>
+												Payment Method *
+											</FieldLabel>
+											<Select
+												value={field.value}
+												onValueChange={field.onChange}
+											>
+												<SelectTrigger
+													id={field.name}
+													aria-invalid={
+														fieldState.invalid
+													}
+												>
 													<SelectValue placeholder="Select payment method" />
 												</SelectTrigger>
 												<SelectContent>
-													{PAYMENT_METHODS.map((method) => (
-														<SelectItem key={method.value} value={method.value}>
-															{method.label}
-														</SelectItem>
-													))}
+													{PAYMENT_METHODS.map(
+														(method) => (
+															<SelectItem
+																key={
+																	method.value
+																}
+																value={
+																	method.value
+																}
+															>
+																{method.label}
+															</SelectItem>
+														),
+													)}
 												</SelectContent>
 											</Select>
 											{fieldState.invalid && (
-												<FieldError errors={[fieldState.error]} />
+												<FieldError
+													errors={[fieldState.error]}
+												/>
 											)}
 										</Field>
 									)}
@@ -276,17 +343,25 @@ export function ScheduleConvertSheet() {
 									name="receivedDate"
 									control={form.control}
 									render={({ field, fieldState }) => (
-										<Field data-invalid={fieldState.invalid}>
-											<FieldLabel htmlFor={field.name}>Received Date *</FieldLabel>
+										<Field
+											data-invalid={fieldState.invalid}
+										>
+											<FieldLabel htmlFor={field.name}>
+												Received Date *
+											</FieldLabel>
 											<DatePicker
 												value={field.value}
 												onValueChange={field.onChange}
 												onBlur={field.onBlur}
 												id={field.name}
-												aria-invalid={fieldState.invalid}
+												aria-invalid={
+													fieldState.invalid
+												}
 											/>
 											{fieldState.invalid && (
-												<FieldError errors={[fieldState.error]} />
+												<FieldError
+													errors={[fieldState.error]}
+												/>
 											)}
 										</Field>
 									)}
@@ -296,17 +371,25 @@ export function ScheduleConvertSheet() {
 									name="transactionReference"
 									control={form.control}
 									render={({ field, fieldState }) => (
-										<Field data-invalid={fieldState.invalid}>
-											<FieldLabel htmlFor={field.name}>Transaction Reference</FieldLabel>
+										<Field
+											data-invalid={fieldState.invalid}
+										>
+											<FieldLabel htmlFor={field.name}>
+												Transaction Reference
+											</FieldLabel>
 											<Input
 												{...field}
 												id={field.name}
 												placeholder="UTR / Ref no."
 												value={field.value ?? ""}
-												aria-invalid={fieldState.invalid}
+												aria-invalid={
+													fieldState.invalid
+												}
 											/>
 											{fieldState.invalid && (
-												<FieldError errors={[fieldState.error]} />
+												<FieldError
+													errors={[fieldState.error]}
+												/>
 											)}
 										</Field>
 									)}
@@ -316,8 +399,12 @@ export function ScheduleConvertSheet() {
 									name="notes"
 									control={form.control}
 									render={({ field, fieldState }) => (
-										<Field data-invalid={fieldState.invalid}>
-											<FieldLabel htmlFor={field.name}>Notes</FieldLabel>
+										<Field
+											data-invalid={fieldState.invalid}
+										>
+											<FieldLabel htmlFor={field.name}>
+												Notes
+											</FieldLabel>
 											<Textarea
 												{...field}
 												id={field.name}
@@ -325,10 +412,14 @@ export function ScheduleConvertSheet() {
 												value={field.value ?? ""}
 												className="resize-none"
 												rows={3}
-												aria-invalid={fieldState.invalid}
+												aria-invalid={
+													fieldState.invalid
+												}
 											/>
 											{fieldState.invalid && (
-												<FieldError errors={[fieldState.error]} />
+												<FieldError
+													errors={[fieldState.error]}
+												/>
 											)}
 										</Field>
 									)}
@@ -350,9 +441,10 @@ export function ScheduleConvertSheet() {
 									type="button"
 									variant="outline"
 									className="w-full"
-									onClick={close}
+									onClick={handleClose}
 									disabled={
-										form.formState.isSubmitting || convertMutation.isPending
+										form.formState.isSubmitting ||
+										convertMutation.isPending
 									}
 								>
 									Cancel
