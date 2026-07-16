@@ -23,6 +23,12 @@ export const waOutbox = pgTable(
 		maxAttempts: integer("max_attempts").default(3),
 		lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
 		nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }),
+		lockedBy: text("locked_by"),
+		leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
+		dispatchStartedAt: timestamp("dispatch_started_at", {
+			withTimezone: true,
+		}),
+		dispatchToken: text("dispatch_token"),
 		errorMessage: text("error_message"),
 		priority: integer("priority").default(0),
 		createdAt: timestamp("created_at", { withTimezone: true })
@@ -34,6 +40,8 @@ export const waOutbox = pgTable(
 		index("wa_outbox_account_id_idx").on(table.accountId),
 		index("wa_outbox_status_idx").on(table.status),
 		index("wa_outbox_next_attempt_idx").on(table.nextAttemptAt),
+		index("wa_outbox_lease_expiry_idx").on(table.leaseExpiresAt),
+		index("wa_outbox_dispatch_token_idx").on(table.dispatchToken),
 		index("wa_outbox_queue_idx").on(
 			table.status,
 			table.nextAttemptAt,

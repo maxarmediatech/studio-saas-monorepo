@@ -60,9 +60,9 @@ services/
 - [x] Enqueue procedures:
   - [x] `connect-baileys` (creates account `qr_pending`)
   - [x] `connect-cloud-api` (creates account `connected`)
-  - [x] `send-text` (insert `wa_messages` + `wa_outbox`)
-  - [x] `send-media` (insert `wa_media` + `wa_messages` + `wa_outbox`)
-  - [x] `send-template` (insert `wa_messages` + `wa_outbox`)
+  - [x] `send-text` (atomic idempotency claim + contact/conversation + message + outbox)
+  - [x] `send-media` (same atomic path, including `wa_media`)
+  - [x] `send-template` (same atomic path after template validation)
 
 - [x] Worker delivery:
   - [x] Polls `wa_outbox` (`pending`/`failed` with retry schedule)
@@ -82,6 +82,79 @@ services/
 ---
 
 ## Remaining Work (Detailed)
+
+## P1 Reliability Merge Gates
+
+The remediation keeps the existing Phase 1A/1B API surface and selectively ports the useful dev-branch campaign and automation behavior without importing Trigger.dev or unrelated UI changes.
+
+- [x] Existing webhook rows retry while `processedAt` is null; processing and business writes share one transaction.
+- [x] New contact identities are serialized by account and WhatsApp ID;
+  historical ambiguity is quarantined until the Release Batch 5 report/cleanup.
+- [x] Conversation and inbound-message creation are conflict-safe.
+- [x] Outbox and inbound-media claims use expiring owner leases and recover stale pre-dispatch work.
+- [x] Provider-dispatched work with an unknown local outcome enters `delivery_unknown` and is excluded from automatic retry.
+- [x] Campaign recipients have a durable unique campaign/account/contact ledger and a frozen audience snapshot.
+- [x] Campaign counts derive from committed recipient timestamps and terminal states rather than enqueue attempts.
+- [x] Delivery webhook states are monotonic and idempotent, including resolution of `delivery_unknown`.
+- [x] Opt-out, block, deleted-account, and connection state are rechecked immediately before provider dispatch.
+- [x] Automation runs/actions are durable, duplicate triggers are unique, expired leases recover, and wait actions resume.
+- [x] Manual text/template/media sends require a client idempotency key and commit one durable message/outbox effect atomically.
+
+Release Batch 4 migration `0041_whatsapp_additive_reliability.sql` adds the
+durable reliability state without adding historical identity constraints.
+Existing failed webhook rows become retryable. A short-lived compatibility
+trigger preserves that behavior for writes from the old API during cutover.
+Legacy outbox rows already in `processing` are conservatively made terminal for
+manual reconciliation because the old schema cannot prove whether provider
+dispatch happened. The API and worker share the same webhook event processor;
+provider redelivery improves latency but is no longer required for recovery.
+
+Release Batch 5 owns the read-only identity report, reviewed cleanup, contact
+account ownership, and the three database uniqueness constraints. Until then,
+new writes use transaction advisory locks and refuse historical ambiguity.
+
+All campaign actions now use the recipient ledger. `send` persists a campaign due immediately; `schedule` persists a future due time. The removed legacy campaign engine no longer creates messages or counters directly.
+
+The manual-send claim table, immutable outbox dispatch tokens, webhook retry
+clocks, campaign recipient ledger, automation state, and media ingest leases are
+all part of the reconstructed additive migration `0041`. The old development
+migration numbers are not deployable release history.
+
+### Manual-send acceptance contract
+
+- `send-text`, `send-template`, and `send-media` require an opaque 16–128 character `idempotencyKey`.
+- A retry must keep the same key while its semantic payload is unchanged. Editing the account, destination, contact, message, template, or media payload requires a new key.
+- Same organization + actor + account + key replays the original message/outbox IDs. Reusing that scoped key for a changed payload returns a conflict.
+- Template component metadata is preserved end to end, including dynamic button `subType` and `index` fields required by the Cloud API payload.
+- Trigger.dev only wakes the worker after the database commit. Wake-up failure is logged and still returns `Message queued`; the database poller remains the delivery owner.
+- No first-party web caller currently invokes these procedures. Any external caller must add stable-key retry behavior before the required-key API is rolled out.
+
+### Campaign truth contract
+
+- The first execution locks the campaign, captures the eligible contact IDs once, and records `audienceCapturedAt`. Retries never add contacts who became eligible later.
+- `(campaignId, accountId, contactId)` is unique. Each recipient has at most one message, and each message has at most one outbox effect.
+- Queued/sent/delivered/read totals are cumulative reached-state counts from recipient timestamps. Failed, suppressed, and delivery-unknown totals reflect the recipient's current terminal/uncertain state.
+- A retry may re-enter campaign processing, but per-recipient row locking makes already committed effects no-ops.
+- Due scheduled campaigns are selected first in deterministic due/creation order. Running campaigns re-enter only when audience capture is unfinished or a recipient remains pending, so old running rows cannot consume every scheduler slot.
+- `startedAt` is written only on the first scheduled-to-running transition. Paused or terminal campaigns cannot be revived by a stale worker, and recipient effects require the campaign row to remain running while locked.
+- Client and crew audiences use normalized phone relationships to active Studio client/crew records. They no longer trust stale `externalSource` labels or define a client as merely “not crew”; dual relationships appear in both audiences and unrelated contacts in neither.
+
+### Delivery admission boundary
+
+The worker rechecks current account/contact state after claiming and again in a row-locking transaction immediately before it records `dispatchStartedAt`. Ineligible work becomes `suppressed`, has no retry clock, updates campaign truth, and never calls the provider.
+
+The database transaction cannot remain open across the external Meta request. A block, opt-out, disconnect, or delete committed after the final admission transaction can therefore race with the provider call. That boundary is explicit: once `dispatchStartedAt` is committed, an uncertain outcome is quarantined as `delivery_unknown` and is never blindly resent; provider callbacks or manual reconciliation resolve it.
+
+Each provider attempt now records a random immutable `dispatchToken` with `dispatchStartedAt`. Normal success still requires the processing owner; success arriving after lease recovery may resolve the same `delivery_unknown` row only when that token matches. The provider identity is attached once, stored status webhooks are reconciled atomically, and conflicting identities remain quarantined with explicit manual-reconciliation evidence.
+
+### Automation execution contract
+
+- `(flowId, triggerIdentity)` uniquely identifies a run; the inbound webhook creates the run and immutable action snapshot in the same transaction as the inbound message.
+- Each action has persisted status, attempts, retry time, owner lease, error, and deterministic run/index identity.
+- Send actions use a unique `automationActionId` on the message plus a unique message outbox effect, so crash recovery cannot enqueue the non-idempotent effect twice.
+- Wait deadlines are persisted once. Due waits advance the run; expired processing leases return to pending work.
+
+Worker contract comparison and the decision not to adopt a queue library in this slice are recorded in [worker-state-contract-inventory.md](./worker-state-contract-inventory.md).
 
 ## Phase 1C (Next)
 
