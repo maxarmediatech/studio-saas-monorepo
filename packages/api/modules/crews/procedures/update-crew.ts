@@ -1,13 +1,22 @@
 import { ORPCError } from "@orpc/server";
-import { and, crews, db, eq, isNull, ne } from "@repo/database";
+import {
+	and,
+	crews,
+	db,
+	eq,
+	isNull,
+	ne,
+	shootAssignments,
+} from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { detectChanges, safeTrackFieldChanges } from "../../activities/lib";
-import { applySpecializationsToMetadata } from "../lib/crew-presentation";
+import { ensureAssignmentCalendarDelivery } from "../../shoots/lib/calendar-delivery";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	updateCrewInputSchema,
 	updateCrewOutputSchema,
 } from "../../studio/schemas/crew";
+import { applySpecializationsToMetadata } from "../lib/crew-presentation";
 
 export const updateCrew = studioProtectedProcedure
 	.route({
@@ -88,14 +97,29 @@ export const updateCrew = studioProtectedProcedure
 		}
 		if (metadata !== undefined || specializations !== undefined) {
 			updates.metadata = applySpecializationsToMetadata(
-				(metadata ??
-					(existing.metadata as Record<string, unknown> | null)) ??
+				metadata ??
+					(existing.metadata as Record<string, unknown> | null) ??
 					null,
 				specializations,
 			);
 		}
 
-		await db.update(crews).set(updates).where(eq(crews.id, id));
+		await db.transaction(async (tx) => {
+			await tx.update(crews).set(updates).where(eq(crews.id, id));
+			if (email !== undefined && email !== existing.email) {
+				const assignments = await tx
+					.select({ shootId: shootAssignments.shootId })
+					.from(shootAssignments)
+					.where(eq(shootAssignments.crewId, id));
+				for (const assignment of assignments) {
+					await ensureAssignmentCalendarDelivery(tx, {
+						organizationId: context.organizationId,
+						shootId: assignment.shootId,
+						crewId: id,
+					});
+				}
+			}
+		});
 
 		// Track activity (non-blocking)
 		const changes = detectChanges(existing, input, [

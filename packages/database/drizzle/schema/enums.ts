@@ -270,9 +270,10 @@ export const calendarJobTypeEnum = pgEnum("calendar_job_type", [
 export const calendarDeliveryMethodEnum = pgEnum("calendar_delivery_method", [
 	"google",
 	"ics",
+	"unsendable",
 ]);
 
 export const calendarEventSyncStatusEnum = pgEnum(
 	"calendar_event_sync_status",
-	["pending", "synced", "error", "deleted"],
+	["pending", "synced", "error", "deleted", "unsendable"],
 );

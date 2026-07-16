@@ -1,7 +1,8 @@
 import { ORPCError } from "@orpc/server";
-import { and, crews, db, eq } from "@repo/database";
+import { and, crews, db, eq, shootCalendarEvents } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { safeTrackActivity } from "../../activities/lib";
+import { enqueueCalendarCancellation } from "../../shoots/lib/calendar-delivery";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	deleteCrewInputSchema,
@@ -44,16 +45,41 @@ export const deleteCrew = studioProtectedProcedure
 			});
 		}
 
-		// Soft delete crew
-		await db
-			.update(crews)
-			.set({
-				deletedAt: new Date(),
-				deletedBy: context.user.id,
-				updatedAt: new Date(),
-				updatedBy: context.user.id,
-			})
-			.where(eq(crews.id, id));
+		await db.transaction(async (tx) => {
+			const mappings = await tx
+				.select({ shootId: shootCalendarEvents.shootId })
+				.from(shootCalendarEvents)
+				.where(
+					and(
+						eq(
+							shootCalendarEvents.organizationId,
+							context.organizationId,
+						),
+						eq(shootCalendarEvents.crewId, id),
+					),
+				);
+			for (const mapping of mappings) {
+				await enqueueCalendarCancellation(tx, {
+					organizationId: context.organizationId,
+					shootId: mapping.shootId,
+					crewId: id,
+				});
+			}
+			await tx
+				.update(crews)
+				.set({
+					deletedAt: new Date(),
+					deletedBy: context.user.id,
+					updatedAt: new Date(),
+					updatedBy: context.user.id,
+				})
+				.where(
+					and(
+						eq(crews.id, id),
+						eq(crews.organizationId, context.organizationId),
+					),
+				);
+		});
 
 		// Track activity (non-blocking)
 		await safeTrackActivity(context, {

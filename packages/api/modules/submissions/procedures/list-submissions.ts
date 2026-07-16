@@ -22,6 +22,7 @@ import {
 	listSubmissionsOutputSchema,
 } from "../../studio/schemas/submission";
 import { assertListSubmissionsAccess } from "../lib/list-submissions-access";
+import { reviewClaimStaleAt } from "../lib/review-claim-policy";
 
 export const listSubmissions = studioProtectedProcedure
 	.route({
@@ -139,6 +140,7 @@ export const listSubmissions = studioProtectedProcedure
 				submissionLinks: assignmentSubmissions.submissionLinks,
 				submittedAt: assignmentSubmissions.submittedAt,
 				reviewedBy: assignmentSubmissions.reviewedBy,
+				reviewClaimedAt: assignmentSubmissions.reviewClaimedAt,
 				reviewedAt: assignmentSubmissions.reviewedAt,
 				reviewNote: assignmentSubmissions.reviewNote,
 				createdAt: assignmentSubmissions.createdAt,
@@ -215,6 +217,14 @@ export const listSubmissions = studioProtectedProcedure
 				submissionLinks,
 				submittedAt: submission.submittedAt?.toISOString() ?? null,
 				reviewedBy: submission.reviewedBy,
+				reviewClaimedAt:
+					submission.reviewClaimedAt?.toISOString() ?? null,
+				reviewClaimStaleAt:
+					reviewClaimStaleAt(
+						submission.status === "in_review"
+							? submission.reviewClaimedAt
+							: null,
+					)?.toISOString() ?? null,
 				reviewedAt: submission.reviewedAt?.toISOString() ?? null,
 				reviewNote: submission.reviewNote,
 				createdAt: submission.createdAt.toISOString(),

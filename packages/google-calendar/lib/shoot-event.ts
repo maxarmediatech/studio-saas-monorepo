@@ -5,6 +5,7 @@ export interface ShootCalendarEventContext {
 	shootType: string;
 	shootDate: string; // YYYY-MM-DD
 	startTime?: string | null;
+	endTime?: string | null;
 	venue?: string | null;
 	venueAddress?: string | null;
 	notes?: string | null;
@@ -12,6 +13,7 @@ export interface ShootCalendarEventContext {
 	bookingReferenceNumber?: string | null;
 	crewName?: string | null;
 	crewRole?: string | null;
+	organizationTimezone?: string | null;
 	shootUrl?: string | null;
 }
 
@@ -34,7 +36,12 @@ export function buildShootAllDayEventInput(
 		descriptionLines.push(`Shoot type: ${ctx.shootType}`);
 	}
 	if (ctx.startTime) {
-		descriptionLines.push(`Call time: ${ctx.startTime}`);
+		descriptionLines.push(
+			`Call time: ${ctx.startTime}${ctx.endTime ? ` – ${ctx.endTime}` : ""}`,
+		);
+		if (ctx.organizationTimezone) {
+			descriptionLines.push(`Time zone: ${ctx.organizationTimezone}`);
+		}
 	}
 	if (ctx.crewName) {
 		descriptionLines.push(`Crew: ${ctx.crewName}`);
@@ -76,7 +83,8 @@ function buildShootEventTitle(ctx: ShootCalendarEventContext): string {
 
 	if (
 		shootName &&
-		(!shootType || !equalsIgnoreCaseAndSpaceInsensitive(shootName, shootType))
+		(!shootType ||
+			!equalsIgnoreCaseAndSpaceInsensitive(shootName, shootType))
 	) {
 		titleParts.push(shootName);
 	}

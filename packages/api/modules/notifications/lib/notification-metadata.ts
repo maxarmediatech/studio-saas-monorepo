@@ -16,6 +16,17 @@ export const reviewRequestedNotificationMetadataSchema = z.object({
 
 export const reviewDecisionNotificationMetadataSchema = z.object({
 	outcome: z.enum(["approved", "rejected", "revision_requested"]),
+	scope: z.enum(["submission_decision", "parent_aggregate"]).optional(),
+	parentStatus: z
+		.enum([
+			"not_started",
+			"assigned",
+			"submitted",
+			"in_review",
+			"revision_requested",
+			"approved",
+		])
+		.optional(),
 	reviewerName: z.string().nullable().optional(),
 	reviewNote: z.string().nullable().optional(),
 });

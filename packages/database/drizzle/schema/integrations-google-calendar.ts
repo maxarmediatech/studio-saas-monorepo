@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
 	index,
 	integer,
@@ -20,6 +20,29 @@ import {
 } from "./enums";
 import { crews, shoots } from "./studio";
 
+export const calendarRouteChanges = pgTable(
+	"calendar_route_changes",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 }).notNull(),
+		crewId: varchar("crew_id", { length: 255 }).notNull(),
+		reason: text("reason").notNull(),
+		status: text("status").notNull().default("pending"),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		completedAt: timestamp("completed_at", { withTimezone: true }),
+	},
+	(table) => [
+		index("calendar_route_changes_pending_idx").on(
+			table.organizationId,
+			table.status,
+		),
+	],
+);
+
 // =========================================================================
 // Google Calendar Integration (per user) + iCalendar fallback (per email)
 // =========================================================================
@@ -36,6 +59,7 @@ export const googleCalendarConnections = pgTable(
 		userId: varchar("user_id", { length: 255 })
 			.notNull()
 			.references(() => users.id, { onDelete: "cascade" }),
+		version: integer("version").notNull().default(1),
 
 		// Display-only metadata
 		googleAccountEmail: text("google_account_email"),
@@ -52,6 +76,7 @@ export const googleCalendarConnections = pgTable(
 			.defaultNow()
 			.notNull(),
 		disconnectedAt: timestamp("disconnected_at", { withTimezone: true }),
+		revokedAt: timestamp("revoked_at", { withTimezone: true }),
 
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.defaultNow()
@@ -61,9 +86,13 @@ export const googleCalendarConnections = pgTable(
 			.notNull(),
 	},
 	(table) => [
-		uniqueIndex("google_calendar_connections_org_user_idx").on(
+		uniqueIndex("google_calendar_connections_active_org_user_idx")
+			.on(table.organizationId, table.userId)
+			.where(sql`${table.disconnectedAt} IS NULL`),
+		uniqueIndex("google_calendar_connections_org_user_version_idx").on(
 			table.organizationId,
 			table.userId,
+			table.version,
 		),
 		index("google_calendar_connections_org_idx").on(table.organizationId),
 		index("google_calendar_connections_user_idx").on(table.userId),
@@ -104,6 +133,30 @@ export const shootCalendarEvents = pgTable(
 			.default("pending"),
 		lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }),
 		lastError: text("last_error"),
+		deliverySyncStatus: text("delivery_sync_status")
+			.notNull()
+			.default("pending"),
+		deliveryLastError: text("delivery_last_error"),
+		cancellationSyncStatus: text("cancellation_sync_status")
+			.notNull()
+			.default("none"),
+		cancellationLastError: text("cancellation_last_error"),
+
+		// The current desired operation is an intent, not a mutable worker lease.
+		// Every material target/content change advances this counter.  The delivered
+		// columns retain the external identity needed to cancel/patch an older
+		// generation after the current route has moved on.
+		intentGeneration: integer("intent_generation").notNull().default(0),
+		intentState: text("intent_state").notNull().default("active"),
+		deliveredGeneration: integer("delivered_generation"),
+		deliveredDeliveryMethod: calendarDeliveryMethodEnum(
+			"delivered_delivery_method",
+		),
+		deliveredRecipientEmail: text("delivered_recipient_email"),
+		deliveredCalendarId: text("delivered_calendar_id"),
+		deliveredGoogleEventId: text("delivered_google_event_id"),
+		deliveredIcalUid: text("delivered_ical_uid"),
+		deliveredIcalSequence: integer("delivered_ical_sequence"),
 
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.defaultNow()
@@ -113,7 +166,8 @@ export const shootCalendarEvents = pgTable(
 			.notNull(),
 	},
 	(table) => [
-		uniqueIndex("shoot_calendar_events_shoot_crew_idx").on(
+		uniqueIndex("shoot_calendar_events_org_shoot_crew_idx").on(
+			table.organizationId,
 			table.shootId,
 			table.crewId,
 		),
@@ -121,6 +175,56 @@ export const shootCalendarEvents = pgTable(
 		index("shoot_calendar_events_shoot_idx").on(table.shootId),
 		index("shoot_calendar_events_crew_idx").on(table.crewId),
 		index("shoot_calendar_events_status_idx").on(table.syncStatus),
+	],
+);
+
+/** Immutable external target/content intent. One row per target generation. */
+export const calendarDeliveryIntents = pgTable(
+	"calendar_delivery_intents",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 })
+			.notNull()
+			.references(() => organizations.id, { onDelete: "cascade" }),
+		shootId: varchar("shoot_id", { length: 255 })
+			.notNull()
+			.references(() => shoots.id, { onDelete: "cascade" }),
+		crewId: varchar("crew_id", { length: 255 })
+			.notNull()
+			.references(() => crews.id, { onDelete: "cascade" }),
+		generation: integer("generation").notNull(),
+		state: text("state").notNull(),
+		deliveryMethod: calendarDeliveryMethodEnum("delivery_method").notNull(),
+		recipientEmail: text("recipient_email"),
+		calendarId: text("calendar_id"),
+		googleEventId: text("google_event_id"),
+		icalUid: text("ical_uid"),
+		icalSequence: integer("ical_sequence").notNull().default(0),
+		googleConnectionId: varchar("google_connection_id", {
+			length: 255,
+		}).references(() => googleCalendarConnections.id, {
+			onDelete: "restrict",
+		}),
+		googleAccountEmail: text("google_account_email"),
+		payload: jsonb("payload").notNull(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		uniqueIndex("calendar_delivery_intents_org_target_generation_idx").on(
+			table.organizationId,
+			table.shootId,
+			table.crewId,
+			table.generation,
+		),
+		index("calendar_delivery_intents_org_target_idx").on(
+			table.organizationId,
+			table.shootId,
+			table.crewId,
+		),
 	],
 );
 
@@ -136,7 +240,19 @@ export const calendarSyncJobs = pgTable(
 
 		status: calendarJobStatusEnum("status").notNull().default("pending"),
 		jobType: calendarJobTypeEnum("job_type").notNull(),
+		deliveryKey: text("delivery_key")
+			.default(sql`'legacy:' || gen_random_uuid()::text`)
+			.notNull(),
 		payload: jsonb("payload"),
+		intentId: varchar("intent_id", { length: 255 }).references(
+			() => calendarDeliveryIntents.id,
+			{ onDelete: "cascade" },
+		),
+		generation: integer("generation").notNull().default(0),
+		claimToken: varchar("claim_token", { length: 255 }),
+		effectState: text("effect_state").notNull().default("pending"),
+		providerResult: jsonb("provider_result"),
+		compensationSequence: integer("compensation_sequence"),
 
 		shootId: varchar("shoot_id", { length: 255 }).references(
 			() => shoots.id,
@@ -171,6 +287,13 @@ export const calendarSyncJobs = pgTable(
 			table.nextAttemptAt,
 		),
 		index("calendar_sync_jobs_target_idx").on(table.shootId, table.crewId),
+		index("calendar_sync_jobs_intent_idx").on(
+			table.intentId,
+			table.generation,
+		),
+		uniqueIndex("calendar_sync_jobs_active_delivery_key_idx")
+			.on(table.deliveryKey)
+			.where(sql`${table.status} <> 'completed'`),
 	],
 );
 

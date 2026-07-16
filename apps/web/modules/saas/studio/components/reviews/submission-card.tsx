@@ -12,6 +12,7 @@ import {
 	CardTitle,
 } from "@repo/ui/components/card";
 import { useSession } from "@saas/auth/hooks/use-session";
+import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
 import { submissionsMutations } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -19,12 +20,15 @@ import { formatDistanceToNow } from "date-fns";
 import {
 	CheckCircle,
 	Clock,
+	RotateCcw,
 	ThumbsUp,
 	UserPlus,
+	UserRoundCog,
 	XCircle,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { ReviewClaimActionDialog } from "./review-claim-action-dialog";
 import { ReviewSubmissionDialog } from "./review-submission-dialog";
 
 const STATUS_CONFIG = {
@@ -66,12 +70,34 @@ interface SubmissionCardProps {
 
 export function SubmissionCard({ submission }: SubmissionCardProps) {
 	const { user } = useSession();
+	const { activeOrganization, isOrganizationAdmin } = useActiveOrganization();
 	const queryClient = useQueryClient();
 	const [isReviewOpen, setIsReviewOpen] = useState(false);
+	const [claimAction, setClaimAction] = useState<
+		"admin_release" | "reassign" | "release" | null
+	>(null);
 
 	const isAssignedToMe = submission.reviewedBy === user?.id;
-	const canClaim = submission.status === "submitted" && !submission.reviewedBy;
+	const canClaim =
+		submission.status === "submitted" && !submission.reviewedBy;
 	const canReview = submission.status === "in_review" && isAssignedToMe;
+	const isStaleClaim =
+		submission.status === "in_review" &&
+		!!submission.reviewClaimStaleAt &&
+		new Date(submission.reviewClaimStaleAt).getTime() <= Date.now();
+	const reviewerOptions = useMemo(
+		() =>
+			activeOrganization?.members
+				.filter((member) => member.userId !== submission.reviewedBy)
+				.map((member) => ({
+					id: member.userId,
+					label:
+						member.user?.name ??
+						member.user?.email ??
+						"Organization member",
+				})) ?? [],
+		[activeOrganization?.members, submission.reviewedBy],
+	);
 
 	const statusConfig =
 		STATUS_CONFIG[submission.status as keyof typeof STATUS_CONFIG];
@@ -86,6 +112,14 @@ export function SubmissionCard({ submission }: SubmissionCardProps) {
 			addSuffix: true,
 		});
 	}, [submission.submittedAt]);
+	const claimedAtLabel = useMemo(() => {
+		if (!submission.reviewClaimedAt) {
+			return null;
+		}
+		return formatDistanceToNow(new Date(submission.reviewClaimedAt), {
+			addSuffix: true,
+		});
+	}, [submission.reviewClaimedAt]);
 
 	const claimMutation = useMutation({
 		...submissionsMutations.claim(),
@@ -156,14 +190,15 @@ export function SubmissionCard({ submission }: SubmissionCardProps) {
 					<div className="flex flex-wrap items-center gap-2 text-xs">
 						<div
 							className={`flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-medium ${
-								statusConfig?.className ?? "bg-muted text-muted-foreground"
+								statusConfig?.className ??
+								"bg-muted text-muted-foreground"
 							}`}
 						>
 							<StatusIcon className="h-3.5 w-3.5" />
 							{statusConfig?.label ?? submission.status}
 						</div>
 						{submission.reviewedByName ? (
-							<p className="text-muted-foreground">
+							<div className="text-muted-foreground">
 								{submission.status === "in_review"
 									? "Assigned to"
 									: "Reviewed by"}{" "}
@@ -172,7 +207,14 @@ export function SubmissionCard({ submission }: SubmissionCardProps) {
 										? "You"
 										: submission.reviewedByName}
 								</span>
-							</p>
+								{submission.status === "in_review" &&
+									claimedAtLabel && (
+										<span className="ml-1">
+											· claimed {claimedAtLabel}
+											{isStaleClaim ? " · stale" : ""}
+										</span>
+									)}
+							</div>
 						) : submission.status === "submitted" ? (
 							<p className="text-amber-600">Unassigned</p>
 						) : null}
@@ -183,22 +225,60 @@ export function SubmissionCard({ submission }: SubmissionCardProps) {
 							<Button
 								size="sm"
 								variant="outline"
-								onClick={() => claimMutation.mutate({ id: submission.id })}
+								onClick={() =>
+									claimMutation.mutate({ id: submission.id })
+								}
 								disabled={claimMutation.isPending}
 							>
 								<UserPlus className="mr-2 h-4 w-4" />
-								{claimMutation.isPending ? "Claiming..." : "Claim"}
+								{claimMutation.isPending
+									? "Claiming..."
+									: "Claim"}
 							</Button>
 						)}
 						{canReview && (
-							<Button
-								size="sm"
-								variant="default"
-								onClick={() => setIsReviewOpen(true)}
-							>
-								<ThumbsUp className="mr-2 h-4 w-4" />
-								Review
-							</Button>
+							<>
+								<Button
+									size="sm"
+									variant="outline"
+									onClick={() => setClaimAction("release")}
+								>
+									<RotateCcw className="mr-2 h-4 w-4" />
+									Release
+								</Button>
+								<Button
+									size="sm"
+									variant="default"
+									onClick={() => setIsReviewOpen(true)}
+								>
+									<ThumbsUp className="mr-2 h-4 w-4" />
+									Review
+								</Button>
+							</>
+						)}
+						{isOrganizationAdmin && isStaleClaim && (
+							<>
+								{!isAssignedToMe && (
+									<Button
+										size="sm"
+										variant="outline"
+										onClick={() =>
+											setClaimAction("admin_release")
+										}
+									>
+										<RotateCcw className="mr-2 h-4 w-4" />
+										Admin release
+									</Button>
+								)}
+								<Button
+									size="sm"
+									variant="outline"
+									onClick={() => setClaimAction("reassign")}
+								>
+									<UserRoundCog className="mr-2 h-4 w-4" />
+									Reassign
+								</Button>
+							</>
 						)}
 					</div>
 				</CardFooter>
@@ -209,6 +289,15 @@ export function SubmissionCard({ submission }: SubmissionCardProps) {
 				isOpen={isReviewOpen}
 				onOpenChange={setIsReviewOpen}
 			/>
+			{claimAction && (
+				<ReviewClaimActionDialog
+					action={claimAction}
+					members={reviewerOptions}
+					onOpenChange={(open) => !open && setClaimAction(null)}
+					open
+					submissionId={submission.id}
+				/>
+			)}
 		</>
 	);
 }
