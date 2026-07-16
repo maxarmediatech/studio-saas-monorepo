@@ -88,8 +88,8 @@ services/
 The remediation keeps the existing Phase 1A/1B API surface and selectively ports the useful dev-branch campaign and automation behavior without importing Trigger.dev or unrelated UI changes.
 
 - [x] Existing webhook rows retry while `processedAt` is null; processing and business writes share one transaction.
-- [x] New contact identities are serialized by account and WhatsApp ID;
-  historical ambiguity is quarantined until the Release Batch 5 report/cleanup.
+- [x] Contact identities are serialized and database-unique by account and
+  WhatsApp ID after the Release Batch 5 report/cleanup gate.
 - [x] Conversation and inbound-message creation are conflict-safe.
 - [x] Outbox and inbound-media claims use expiring owner leases and recover stale pre-dispatch work.
 - [x] Provider-dispatched work with an unknown local outcome enters `delivery_unknown` and is excluded from automatic retry.
@@ -109,9 +109,11 @@ manual reconciliation because the old schema cannot prove whether provider
 dispatch happened. The API and worker share the same webhook event processor;
 provider redelivery improves latency but is no longer required for recovery.
 
-Release Batch 5 owns the read-only identity report, reviewed cleanup, contact
-account ownership, and the three database uniqueness constraints. Until then,
-new writes use transaction advisory locks and refuse historical ambiguity.
+Release Batch 5 migration `0042_whatsapp_identity_enforcement.sql` follows the
+read-only organization/global identity report and reviewed cleanup. It makes
+contact account ownership non-null and enforces unique contact,
+provider-message, and outbox identities. Runtime advisory locks remain as the
+pre-insert concurrency boundary and refuse any historical ambiguity.
 
 All campaign actions now use the recipient ledger. `send` persists a campaign due immediately; `schedule` persists a future due time. The removed legacy campaign engine no longer creates messages or counters directly.
 

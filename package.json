@@ -30,7 +30,8 @@
 		"notifications:deadlines": "pnpm --filter @repo/scripts notifications:deadlines",
 		"financial:migration-preflight": "pnpm --filter @repo/scripts financial:migration-preflight",
 		"calendar:reconcile": "pnpm --filter @repo/scripts calendar:reconcile",
-		"submissions:reconcile-parent-review": "pnpm --filter @repo/scripts submissions:reconcile-parent-review"
+		"submissions:reconcile-parent-review": "pnpm --filter @repo/scripts submissions:reconcile-parent-review",
+		"whatsapp:migration-preflight": "pnpm --filter @repo/scripts whatsapp:migration-preflight"
 	},
 	"engines": {
 		"node": ">=20"
