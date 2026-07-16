@@ -20,6 +20,9 @@
 		"create:user": "dotenv -c -e ../../.env -- tsx ./src/create-user.ts",
 		"backfill:checkin-dates": "dotenv -c -e ../../.env -- tsx ./src/backfill-checkin-dates.ts",
 		"notifications:deadlines": "dotenv -c -e ../../.env -- tsx ./src/send-deadline-reminders.ts",
+		"financial-reconciliation": "dotenv -c -e ../../.env -- tsx ./src/reconcile-financials.ts",
+		"financial:migration-preflight": "dotenv -c -e ../../.env -- tsx ./src/financial-migration-preflight.ts",
+		"test": "tsx --test ./src/financial-reconciliation.test.ts ./src/financial-reconciliation.postgres.test.ts ./src/financial-reconciliation.relationships.postgres.test.ts ./src/financial-reconciliation-terminal-invoices.postgres.test.ts ./src/financial-migration-preflight.test.ts",
 		"type-check": "tsc --noEmit"
 	},
 	"version": "0.0.0"
