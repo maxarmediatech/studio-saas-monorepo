@@ -53,7 +53,6 @@ export const config = {
 			"onboarding",
 			"choose-plan",
 			"dashboard",
-			"share",
 		],
 	},
 	// Users

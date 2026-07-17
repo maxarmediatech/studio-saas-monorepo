@@ -36,14 +36,12 @@ export function ClientProviders({
 					defaultTheme={singleTheme ?? defaultTheme}
 					themes={themes}
 				>
-					<ApiClientProvider>
-						{children}
+					{children}
 
-						<Toaster position="top-right" />
-						{/* Todo - comeback to it when goes international */}
-						{/* <ConsentBanner /> */}
-						<AnalyticsScript />
-					</ApiClientProvider>
+					<Toaster position="top-right" />
+					{/* Todo - comeback to it when goes international */}
+					{/* <ConsentBanner /> */}
+					<AnalyticsScript />
 				</ThemeProvider>
 			</ProgressProvider>
 		</ApiClientProvider>

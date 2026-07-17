@@ -27,7 +27,6 @@ import { stickiesRouter } from "../modules/stickies/router";
 import { studioPaymentsRouter } from "../modules/studio-payments/router";
 import { submissionsRouter } from "../modules/submissions/router";
 import { tasksRouter } from "../modules/tasks/router";
-import { usersRouter } from "../modules/users/router";
 import { yourWorkRouter } from "../modules/your-work/router";
 import { publicProcedure } from "./procedures";
 
@@ -39,7 +38,6 @@ export const router = publicProcedure
 		newsletter: newsletterRouter,
 		contact: contactRouter,
 		organizations: organizationsRouter,
-		users: usersRouter,
 		payments: paymentsRouter,
 
 		// Studio domain routers
