@@ -4,6 +4,10 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 env:
   BETTER_AUTH_SECRET: ci-local-secret-32-characters-minimum
   NEXT_PUBLIC_SITE_URL: http://localhost:3000
@@ -62,12 +66,13 @@ jobs:
           --health-retries 5
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: lts/*
-      - uses: pnpm/action-setup@v4
+          node-version-file: .nvmrc
+          cache: pnpm
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
       - name: Migrate disposable test database
         run: pnpm --filter @repo/database migrate
       - name: Validate required env
