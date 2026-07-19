@@ -11,10 +11,10 @@
 		"cookie": "^1.1.1"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "2.3.10",
+		"@biomejs/biome": "2.5.4",
 		"@repo/tsconfig": "workspace:*",
-		"@types/node": "^24.10.4",
-		"vitest": "^2.1.9"
+		"@types/node": "^26.1.1",
+		"vitest": "^4.1.10"
 	},
 	"main": "./index.ts",
 	"name": "@repo/auth",

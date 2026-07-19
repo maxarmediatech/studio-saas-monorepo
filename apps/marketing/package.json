@@ -47,13 +47,13 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.5",
-    "@tailwindcss/typography": "^0.5.19",
-    "@tailwindcss/vite": "^4.1.14",
+    "@tailwindcss/typography": "^0.5.20",
+    "@tailwindcss/vite": "^4.3.3",
     "@types/react": "^19.1.17",
     "@types/react-dom": "^19.1.11",
     "prettier": "^3.6.2",
     "prettier-plugin-astro": "^0.14.1",
-    "prettier-plugin-tailwindcss": "^0.6.14",
-    "tailwindcss": "^4.1.14"
+    "prettier-plugin-tailwindcss": "^0.8.1",
+    "tailwindcss": "^4.3.3"
   }
 }

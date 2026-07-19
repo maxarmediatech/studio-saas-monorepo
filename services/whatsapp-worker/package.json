@@ -12,11 +12,11 @@
 		"drizzle-orm": "^0.45.1"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "2.3.10",
+		"@biomejs/biome": "2.5.4",
 		"@repo/tsconfig": "workspace:*",
-		"@types/node": "24.10.4",
-		"tsx": "^4.21.0",
-		"vitest": "^2.0.0"
+		"@types/node": "26.1.1",
+		"tsx": "^4.23.1",
+		"vitest": "^4.1.10"
 	},
 	"main": "./src/index.ts",
 	"name": "@repo/whatsapp-worker",

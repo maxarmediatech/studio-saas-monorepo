@@ -33,12 +33,12 @@
 		"zod": "^4.2.1"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "2.3.10",
+		"@biomejs/biome": "2.5.4",
 		"@repo/tsconfig": "workspace:*",
 		"@types/react": "19.2.7",
 		"encoding": "^0.1.13",
-		"typescript": "5.9.3",
-		"vitest": "^2.1.8"
+		"typescript": "7.0.2",
+		"vitest": "^4.1.10"
 	},
 	"main": "./index.ts",
 	"name": "@repo/api",
