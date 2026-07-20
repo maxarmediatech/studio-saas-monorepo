@@ -9,7 +9,7 @@
 		"@repo/whatsapp-outbox": "workspace:*",
 		"@repo/whatsapp-providers": "workspace:*",
 		"@repo/whatsapp-runtime": "workspace:*",
-		"drizzle-orm": "^0.45.1"
+		"drizzle-orm": "^0.45.2"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.3.10",

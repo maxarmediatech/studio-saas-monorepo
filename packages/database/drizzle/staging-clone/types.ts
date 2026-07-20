@@ -1,5 +1,6 @@
 export const SNAPSHOT_MANIFEST_VERSION = 1;
-export const SANITIZER_REVIEWED_SNAPSHOT_TAG = "0037_absurd_shriek";
+export const SANITIZER_REVIEWED_SNAPSHOT_TAG =
+	"0045_better_auth_two_factor_lockout";
 
 export type TableCounts = Record<string, string>;
 

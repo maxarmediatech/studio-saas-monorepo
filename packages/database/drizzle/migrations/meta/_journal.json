@@ -316,6 +316,13 @@
       "when": 1784139529495,
       "tag": "0044_canonical_expense_profitability",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1784550431955,
+      "tag": "0045_better_auth_two_factor_lockout",
+      "breakpoints": true
     }
   ]
 }

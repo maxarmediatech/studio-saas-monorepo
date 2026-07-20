@@ -16,7 +16,14 @@ export async function sanitizeFinancial(
 		`UPDATE received_amounts SET
 			transaction_reference = CASE WHEN transaction_reference IS NULL THEN NULL ELSE 'txn_sanitized_' || ${fakeHash("received-transaction")} END,
 			notes = CASE WHEN notes IS NULL THEN NULL ELSE 'Sanitized payment notes' END,
-			proof_attachment = CASE WHEN proof_attachment IS NULL THEN NULL ELSE '{}'::jsonb END`,
+			proof_attachment = CASE WHEN proof_attachment IS NULL THEN NULL ELSE '{}'::jsonb END,
+			reversal_reason = CASE WHEN reversal_reason IS NULL THEN NULL ELSE 'Sanitized reversal reason' END`,
+		`UPDATE payment_idempotency_records SET
+			idempotency_key = left(${fakeHash("payment-idempotency")}, 32),
+			request_fingerprint = ${fakeHash("payment-request-fingerprint")},
+			result_payload = CASE WHEN result_payload IS NULL THEN NULL ELSE '{}'::jsonb END`,
+		`UPDATE document_sequences SET
+			scope_key = ${fakeHash("document-sequence-scope")}`,
 		`UPDATE payment_schedules SET
 			name = 'Payment ' || left(${fakeHash("payment-schedule")}, 10),
 			notes = CASE WHEN notes IS NULL THEN NULL ELSE 'Sanitized payment schedule notes' END`,

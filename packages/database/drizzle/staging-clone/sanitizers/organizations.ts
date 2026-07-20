@@ -11,6 +11,7 @@ export async function sanitizeOrganizations(
 			slug = CASE WHEN slug IS NULL THEN NULL ELSE 'studio-' || left(${fakeHash("organization-slug")}, 20) END,
 			logo = NULL,
 			metadata = NULL,
+			billing_seat_sync_error = NULL,
 			payments_customer_id = CASE WHEN payments_customer_id IS NULL THEN NULL ELSE 'cus_sanitized_' || ${fakeHash("organization-customer")} END`,
 		`UPDATE teams SET name = 'Team ' || left(${fakeHash("team")}, 10)`,
 		`UPDATE invitations SET email = 'invite+' || ${fakeHash("invitation-email")} || '@example.invalid'`,
