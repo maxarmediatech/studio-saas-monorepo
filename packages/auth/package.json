@@ -7,7 +7,7 @@
 		"@repo/mail": "workspace:*",
 		"@repo/payments": "workspace:*",
 		"@repo/utils": "workspace:*",
-		"better-auth": "1.4.7",
+		"better-auth": "1.6.23",
 		"cookie": "^1.1.1"
 	},
 	"devDependencies": {
@@ -19,7 +19,7 @@
 	"main": "./index.ts",
 	"name": "@repo/auth",
 	"scripts": {
-		"migrate": "dotenv -e ../../.env.local -- pnpm dlx @better-auth/cli@latest generate --config ./auth.ts --output ../database/drizzle/schema/auth.ts",
+		"migrate": "dotenv -e ../../.env.local -- pnpm dlx auth@1.6.23 generate --config ./auth.ts --output ../database/drizzle/schema/auth.ts",
 		"type-check": "tsc --noEmit"
 	},
 	"types": "./**/.tsx",

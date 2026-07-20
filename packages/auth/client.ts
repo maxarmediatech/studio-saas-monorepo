@@ -1,6 +1,5 @@
 import {
 	adminClient,
-	apiKeyClient,
 	inferAdditionalFields,
 	inferOrgAdditionalFields,
 	magicLinkClient,
@@ -27,7 +26,6 @@ export const authClient = createAuthClient({
 			schema: inferOrgAdditionalFields<typeof auth>(),
 		}),
 		adminClient(),
-		apiKeyClient(),
 		twoFactorClient(),
 	],
 });

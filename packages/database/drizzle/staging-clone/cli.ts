@@ -22,6 +22,7 @@ import {
 import { sanitizeDatabase } from "./sanitize";
 import { CLEARED_AUTH_TABLES } from "./sanitizers/auth";
 import {
+	assertCriticalSchemaStructures,
 	assertSchemaMatchesContract,
 	fingerprintSchema,
 	loadSchemaContract,
@@ -75,6 +76,7 @@ async function buildSnapshot(): Promise<void> {
 		const contract = await loadSchemaContract();
 		const sourceSchema = await readApplicationSchema(client);
 		assertSchemaMatchesContract(contract, sourceSchema);
+		await assertCriticalSchemaStructures(client);
 		const sourceSchemaFingerprint = await fingerprintSchema(
 			client,
 			sourceSchema,

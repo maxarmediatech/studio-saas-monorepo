@@ -7,6 +7,7 @@ import {
 } from "./sanitizers/auth";
 import type { SchemaContract } from "./schema-contract";
 import {
+	assertCriticalSchemaStructures,
 	assertSchemaMatchesContract,
 	fingerprintSchema,
 	readApplicationSchema,
@@ -39,7 +40,10 @@ const checks: ValidationCheck[] = [
 			(SELECT count(*) FROM crews WHERE email IS NOT NULL AND email NOT LIKE '%@example.invalid') +
 			(SELECT count(*) FROM wa_contacts WHERE email IS NOT NULL AND email NOT LIKE '%@example.invalid') +
 			(SELECT count(*) FROM google_calendar_connections WHERE google_account_email IS NOT NULL AND google_account_email NOT LIKE '%@example.invalid') +
-			(SELECT count(*) FROM shoot_calendar_events WHERE recipient_email IS NOT NULL AND recipient_email NOT LIKE '%@example.invalid') AS count`,
+			(SELECT count(*) FROM shoot_calendar_events WHERE recipient_email IS NOT NULL AND recipient_email NOT LIKE '%@example.invalid') +
+			(SELECT count(*) FROM shoot_calendar_events WHERE delivered_recipient_email IS NOT NULL AND delivered_recipient_email NOT LIKE '%@example.invalid') +
+			(SELECT count(*) FROM calendar_delivery_intents WHERE recipient_email IS NOT NULL AND recipient_email NOT LIKE '%@example.invalid') +
+			(SELECT count(*) FROM calendar_delivery_intents WHERE google_account_email IS NOT NULL AND google_account_email NOT LIKE '%@example.invalid') AS count`,
 	},
 	{
 		name: "authentication or provider secrets",
@@ -56,7 +60,7 @@ const checks: ValidationCheck[] = [
 				AND users.email NOT LIKE '%@example.invalid'
 			 ))) +
 			(SELECT count(*) FROM google_calendar_connections WHERE access_token IS NOT NULL OR refresh_token IS NOT NULL) +
-			(SELECT count(*) FROM wa_accounts WHERE access_token IS NOT NULL OR session_key IS NOT NULL OR session_data IS NOT NULL OR webhook_verify_token IS NOT NULL OR qr_code IS NOT NULL) +
+			(SELECT count(*) FROM wa_accounts WHERE access_token IS NOT NULL OR app_secret IS NOT NULL OR session_key IS NOT NULL OR session_data IS NOT NULL OR webhook_verify_token IS NOT NULL OR qr_code IS NOT NULL) +
 			CASE WHEN (SELECT count(*) FROM accounts WHERE password IS NOT NULL AND provider_id = 'credential') = 1 THEN 0 ELSE 1 END AS count`,
 	},
 	{
@@ -72,11 +76,41 @@ const checks: ValidationCheck[] = [
 	{
 		name: "runnable outbound work",
 		query: `SELECT
-			(SELECT count(*) FROM wa_outbox WHERE status IN ('pending', 'processing')) +
+			(SELECT count(*) FROM wa_outbox WHERE status IN ('pending', 'processing') OR (status = 'failed' AND COALESCE(attempts, 0) < COALESCE(max_attempts, 3))) +
+			(SELECT count(*) FROM wa_events WHERE processed_at IS NULL AND processing_status IN ('pending', 'processing', 'failed') AND attempts < max_attempts) +
+			(SELECT count(*) FROM wa_media WHERE ingest_status IN ('pending', 'processing')) +
+			(SELECT count(*) FROM wa_automation_runs WHERE status IN ('pending', 'processing') OR (status IN ('failed', 'waiting') AND next_attempt_at IS NOT NULL)) +
+			(SELECT count(*) FROM wa_automation_actions WHERE status IN ('pending', 'processing', 'waiting') OR (status = 'failed' AND attempts < max_attempts)) +
+			(SELECT count(*) FROM wa_campaign_recipients WHERE status IN ('pending', 'queued')) +
 			(SELECT count(*) FROM sms_outbox WHERE status IN ('pending', 'processing')) +
-			(SELECT count(*) FROM calendar_sync_jobs WHERE status IN ('pending', 'processing')) +
+			(SELECT count(*) FROM calendar_sync_jobs WHERE status IN ('pending', 'processing') OR (status = 'failed' AND (effect_state = 'provider_applied' OR effect_state IN ('pending', 'compensating')))) +
+			(SELECT count(*) FROM calendar_route_changes WHERE status = 'pending') +
 			(SELECT count(*) FROM wa_campaigns WHERE status IN ('scheduled', 'running', 'paused')) +
 			(SELECT count(*) FROM wa_accounts WHERE connection_status <> 'disconnected') AS count`,
+	},
+	{
+		name: "unsanitized integration payloads",
+		query: `SELECT
+			(SELECT count(*) FROM calendar_delivery_intents WHERE payload <> '{}'::jsonb) +
+			(SELECT count(*) FROM calendar_sync_jobs WHERE payload IS NOT NULL AND payload <> '{}'::jsonb) +
+			(SELECT count(*) FROM calendar_sync_jobs WHERE provider_result IS NOT NULL AND provider_result <> '{}'::jsonb) +
+			(SELECT count(*) FROM wa_events WHERE payload <> '{}'::jsonb) +
+			(SELECT count(*) FROM wa_automation_runs WHERE action_snapshot <> '{}'::jsonb) +
+			(SELECT count(*) FROM wa_automation_actions WHERE payload <> '{}'::jsonb) +
+			(SELECT count(*) FROM wa_templates WHERE components IS NOT NULL AND components <> '[]'::jsonb) +
+			(SELECT count(*) FROM payment_idempotency_records WHERE result_payload IS NOT NULL AND result_payload <> '{}'::jsonb) AS count`,
+	},
+	{
+		name: "unsanitized provider metadata or operational errors",
+		query: `SELECT
+			(SELECT count(*) FROM document_sequences WHERE scope_key !~ '^[0-9a-f]{32}$') +
+			(SELECT count(*) FROM wa_accounts WHERE verified_name IS NOT NULL AND verified_name NOT LIKE 'Verified business %') +
+			(SELECT count(*) FROM wa_outbox WHERE dispatch_token IS NOT NULL OR dispatch_started_at IS NOT NULL OR locked_by IS NOT NULL OR lease_expires_at IS NOT NULL) +
+			(SELECT count(*) FROM calendar_sync_jobs WHERE claim_token IS NOT NULL OR locked_at IS NOT NULL) +
+			(SELECT count(*) FROM wa_media WHERE ingest_error_message IS NOT NULL AND ingest_error_message NOT IN ('Disabled in sanitized staging snapshot', 'Sanitized media ingestion failure')) +
+			(SELECT count(*) FROM wa_campaign_recipients WHERE suppression_reason IS NOT NULL AND suppression_reason NOT IN ('Disabled in sanitized staging snapshot', 'Sanitized suppression reason')) +
+			(SELECT count(*) FROM wa_outbox WHERE error_message IS NOT NULL AND error_message NOT IN ('Disabled in sanitized staging snapshot', 'Sanitized delivery failure')) +
+			(SELECT count(*) FROM calendar_sync_jobs WHERE last_error IS NOT NULL AND last_error NOT IN ('Disabled in sanitized staging snapshot', 'Sanitized calendar delivery failure')) AS count`,
 	},
 	{
 		name: "live file or link URLs",
@@ -126,6 +160,7 @@ export async function validateSanitizedDatabase(
 }> {
 	const schema = await readApplicationSchema(client);
 	assertSchemaMatchesContract(contract, schema);
+	await assertCriticalSchemaStructures(client);
 	const sanitizedSchemaFingerprint = await fingerprintSchema(client, schema);
 	if (sanitizedSchemaFingerprint !== beforeSchemaFingerprint) {
 		throw new Error(

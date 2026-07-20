@@ -462,7 +462,9 @@ export function checkStaticRolePermission(
 		return false;
 	}
 
-	const permissions = rolePermissions.statements as Record<string, string[]>;
+	const permissions = rolePermissions.statements as Readonly<
+		Record<string, readonly string[]>
+	>;
 	const resourceActions = permissions[resource];
 	if (!resourceActions) {
 		return false;
