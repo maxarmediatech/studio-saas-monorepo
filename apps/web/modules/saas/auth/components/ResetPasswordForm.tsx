@@ -13,6 +13,7 @@ import {
 	FormLabel,
 	FormMessage,
 } from "@repo/ui/components/form";
+import { PasswordInput } from "@repo/ui/components/password-input";
 import { useAuthErrorMessages } from "@saas/auth/hooks/errors-messages";
 import { useSession } from "@saas/auth/hooks/use-session";
 import { useRouter } from "@shared/hooks/router";
@@ -27,7 +28,6 @@ import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { PasswordInput } from "@/modules/ui/components/password-input";
 
 const formSchema = z.object({
 	password: z.string().min(8),

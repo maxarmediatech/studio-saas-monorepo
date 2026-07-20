@@ -87,4 +87,22 @@ test.describe("auth callback recovery", () => {
 			page.getByRole("link", { name: "Create account" }),
 		).toHaveAttribute("href", "/auth/signup");
 	});
+
+	test("reset password field remains labelled and toggles visibility", async ({
+		page,
+	}) => {
+		await page.goto("/auth/reset-password?token=test-token", {
+			waitUntil: "domcontentloaded",
+		});
+
+		const passwordInput = page.getByLabel("New password");
+		await expect(passwordInput).toHaveAttribute("type", "password");
+
+		await page.getByRole("button", { name: "Show password" }).click();
+
+		await expect(passwordInput).toHaveAttribute("type", "text");
+		await expect(
+			page.getByRole("button", { name: "Hide password" }),
+		).toBeVisible();
+	});
 });
