@@ -263,7 +263,13 @@ pnpm --filter @repo/sms-worker start
 ```env
 DODO_PAYMENTS_API_KEY="your-api-key"
 DODO_PAYMENTS_WEBHOOK_SECRET="whsec_xxxx"
+DODO_PAYMENTS_ENVIRONMENT="test_mode"
 ```
+
+`DODO_PAYMENTS_ENVIRONMENT` accepts `test_mode` or `live_mode`. Set staging
+deployments such as `dev.stuwiz.com` to `test_mode`; set production to
+`live_mode`. When omitted, local development uses test mode and production
+builds use live mode.
 
 ### Product IDs
 
