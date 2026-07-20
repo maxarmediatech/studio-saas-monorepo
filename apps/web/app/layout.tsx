@@ -2,6 +2,7 @@ import "../modules/shared/lib/orpc-client.server";
 
 import { config } from "@repo/config";
 import "@repo/ui/globals.css";
+import "./reduced-motion.css";
 import { cn } from "@repo/ui/lib/utils";
 import { ClientProviders } from "@shared/components/ClientProviders";
 import { ConsentProvider } from "@shared/components/ConsentProvider";

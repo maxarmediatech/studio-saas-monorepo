@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Calendar, Clock } from "lucide-react";
+import { ArrowRight, Clock } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -13,7 +13,7 @@ const BlogPosts = ({ posts }: { posts: any[] }) => {
     <div className="relative">
       {/* Hero Section with Featured Post */}
       <div className="bg-muted/30 relative overflow-hidden pt-16 md:pt-20 lg:pt-24">
-        <div className="bg-grid-pattern absolute inset-0 opacity-5"></div>
+        <div className="bg-grid-pattern absolute inset-0 opacity-5" />
         <div className="container relative z-10 max-w-6xl">
           <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-5 lg:gap-16">
             <div className="flex flex-col justify-center lg:col-span-2">
@@ -41,7 +41,7 @@ const BlogPosts = ({ posts }: { posts: any[] }) => {
               <div className="relative lg:col-span-3">
                 <a href={`/blog/${featuredPost.id}/`} className="group block">
                   <div className="relative aspect-[16/10] overflow-hidden rounded-2xl">
-                    <div className="absolute inset-0 bg-black/10 transition-opacity group-hover:bg-black/20"></div>
+                    <div className="absolute inset-0 bg-black/10 transition-opacity group-hover:bg-black/20" />
                     <img
                       src={featuredPost.data.image}
                       alt={featuredPost.data.title}
@@ -82,7 +82,7 @@ const BlogPosts = ({ posts }: { posts: any[] }) => {
             )}
           </div>
         </div>
-        <div className="from-background h-16 w-full bg-gradient-to-t to-transparent"></div>
+        <div className="from-background h-16 w-full bg-gradient-to-t to-transparent" />
       </div>
 
       {/* Latest Articles Section */}
@@ -98,6 +98,7 @@ const BlogPosts = ({ posts }: { posts: any[] }) => {
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
             {restOfPosts.map((post) => (
               <a
+				key={post.id}
                 className="bg-card group flex flex-col overflow-hidden rounded-xl border transition-all hover:shadow-md"
                 href={`/blog/${post.id}/`}
               >

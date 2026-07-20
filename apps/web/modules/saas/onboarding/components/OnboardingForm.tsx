@@ -5,7 +5,6 @@ import { Button } from "@repo/ui/components/button";
 import { Progress } from "@repo/ui/components/progress";
 import { setActiveOrganizationSlugCookie } from "@saas/organizations/lib/active-organization-cookie";
 import { useRouter } from "@shared/hooks/router";
-import { clearCache } from "@shared/lib/cache";
 import { sanitizeRedirectPath } from "@shared/lib/sanitize-redirect-path";
 import { ArrowLeftIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
@@ -57,7 +56,6 @@ export function OnboardingForm() {
 	};
 
 	const onCompleted = async () => {
-		await clearCache();
 		const safeRedirectPath = sanitizeRedirectPath(
 			redirectTo,
 			config.auth.redirectAfterSignIn,
@@ -65,6 +63,7 @@ export function OnboardingForm() {
 		const resolvedRedirectPath =
 			await resolveRedirectPath(safeRedirectPath);
 		router.replace(resolvedRedirectPath);
+		router.refresh();
 	};
 
 	const steps = [

@@ -60,10 +60,13 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function formatDate(date: string | null | undefined) {
-	if (!date) return "Not set";
+	if (!date) {
+		return "Not set";
+	}
 	return new Date(date).toLocaleDateString("en-IN", {
 		day: "numeric",
 		month: "short",
+		timeZone: "UTC",
 		year: "numeric",
 	});
 }
@@ -74,10 +77,18 @@ function formatRelativeTime(date: string) {
 	const diffMs = now.getTime() - then.getTime();
 	const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-	if (diffDays === 0) return "Today";
-	if (diffDays === 1) return "Yesterday";
-	if (diffDays < 30) return `${diffDays}d ago`;
-	if (diffDays < 365) return `${Math.floor(diffDays / 30)}mo ago`;
+	if (diffDays === 0) {
+		return "Today";
+	}
+	if (diffDays === 1) {
+		return "Yesterday";
+	}
+	if (diffDays < 30) {
+		return `${diffDays}d ago`;
+	}
+	if (diffDays < 365) {
+		return `${Math.floor(diffDays / 30)}mo ago`;
+	}
 	return `${Math.floor(diffDays / 365)}y ago`;
 }
 

@@ -8,8 +8,10 @@ import {
 } from "@repo/ui/components/hover-card";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
-import { format, isToday, parseISO } from "date-fns";
+import { useCurrentTime } from "@saas/studio/hooks/use-current-time";
+import { format, parseISO } from "date-fns";
 import * as React from "react";
+import { getCalendarDateKey, getTimeZoneLabel } from "./calendar-timezone";
 import {
 	formatShootClockTime,
 	getShootCalendarTitle,
@@ -19,6 +21,7 @@ import {
 	getShootStatusAppearance,
 	getShootTimeLabel,
 } from "./calendar-utils";
+import { CurrentTimeIndicator } from "./current-time-indicator";
 
 const TIME_AXIS_WIDTH = 64;
 const HOUR_HEIGHT = 56;
@@ -42,12 +45,14 @@ export function WeeklyShootsCalendar({
 	shootsByDay,
 	isLoading,
 	selectedShootId,
+	timeZone,
 	onShootSelect,
 }: {
 	days: Date[];
 	shootsByDay: Map<string, ShootListItem[]>;
 	isLoading: boolean;
 	selectedShootId: string | null;
+	timeZone: string;
 	onShootSelect: (shoot: ShootListItem) => void;
 }) {
 	const { noTimeShootsByDay, timedShootsByDay, maxNoTimeRows } =
@@ -61,46 +66,9 @@ export function WeeklyShootsCalendar({
 				32,
 				maxNoTimeRows * (TOP_ROW_EVENT_HEIGHT + TOP_ROW_EVENT_GAP) + 8,
 			);
-	const todayIndex = days.findIndex((day) => isToday(day));
-
 	return (
 		<div className="flex min-h-0 flex-1 flex-col bg-white">
-			<div
-				className="grid border-b border-neutral-200 bg-white"
-				style={{
-					gridTemplateColumns: `${TIME_AXIS_WIDTH}px repeat(${days.length}, minmax(0, 1fr))`,
-				}}
-			>
-				<div className="flex items-center justify-end pr-2 text-[11px] font-medium tracking-[0.08em] text-neutral-400 uppercase">
-					{getTimezoneAbbreviation()}
-				</div>
-				{days.map((day) => (
-					<div
-						key={day.toISOString()}
-						className="flex items-center justify-center py-2 text-sm"
-					>
-						<span
-							className={cn(
-								isToday(day)
-									? "font-medium text-neutral-950"
-									: "font-normal text-neutral-500",
-							)}
-						>
-							{format(day, "EEE")}
-						</span>
-						<span
-							className={cn(
-								"ml-1.5 flex h-5 min-w-5 items-center justify-center rounded-[6px] px-1.5 text-sm leading-none",
-								isToday(day)
-									? "bg-neutral-950 font-medium text-white"
-									: "text-neutral-500",
-							)}
-						>
-							{format(day, "d")}
-						</span>
-					</div>
-				))}
-			</div>
+			<WeeklyCalendarHeader days={days} timeZone={timeZone} />
 
 			<div
 				className="grid border-b border-neutral-200 bg-white"
@@ -232,14 +200,70 @@ export function WeeklyShootsCalendar({
 						</div>
 					</div>
 
-					{todayIndex >= 0 ? (
-						<CurrentTimeIndicator
-							daysCount={days.length}
-							todayIndex={todayIndex}
-						/>
-					) : null}
+					<CurrentTimeIndicator
+						dayKeys={days.map((day) => format(day, "yyyy-MM-dd"))}
+						timelineHeight={HOURS.length * HOUR_HEIGHT}
+						timeZone={timeZone}
+					/>
 				</div>
 			</div>
+		</div>
+	);
+}
+
+function WeeklyCalendarHeader({
+	days,
+	timeZone,
+}: {
+	days: Date[];
+	timeZone: string;
+}) {
+	const { currentTime } = useCurrentTime();
+	const todayKey = currentTime
+		? getCalendarDateKey(currentTime, timeZone)
+		: null;
+
+	return (
+		<div
+			className="grid border-b border-neutral-200 bg-white"
+			style={{
+				gridTemplateColumns: `${TIME_AXIS_WIDTH}px repeat(${days.length}, minmax(0, 1fr))`,
+			}}
+		>
+			<div className="flex items-center justify-end pr-2 text-[11px] font-medium tracking-[0.08em] text-neutral-400 uppercase">
+				{getTimeZoneLabel(days[0] ?? new Date(0), timeZone)}
+			</div>
+			{days.map((day) => {
+				const dayKey = format(day, "yyyy-MM-dd");
+				const isCurrentDay = dayKey === todayKey;
+
+				return (
+					<div
+						key={dayKey}
+						className="flex items-center justify-center py-2 text-sm"
+					>
+						<span
+							className={cn(
+								isCurrentDay
+									? "font-medium text-neutral-950"
+									: "font-normal text-neutral-500",
+							)}
+						>
+							{format(day, "EEE")}
+						</span>
+						<span
+							className={cn(
+								"ml-1.5 flex h-5 min-w-5 items-center justify-center rounded-[6px] px-1.5 text-sm leading-none",
+								isCurrentDay
+									? "bg-neutral-950 font-medium text-white"
+									: "text-neutral-500",
+							)}
+						>
+							{format(day, "d")}
+						</span>
+					</div>
+				);
+			})}
 		</div>
 	);
 }
@@ -402,62 +426,6 @@ function TopRowSkeletons() {
 	);
 }
 
-function CurrentTimeIndicator({
-	daysCount,
-	todayIndex,
-}: {
-	daysCount: number;
-	todayIndex: number;
-}) {
-	const [currentTime] = useNow();
-	const minutesSinceMidnight =
-		currentTime.getHours() * 60 + currentTime.getMinutes();
-	const top = (minutesSinceMidnight / (24 * 60)) * HOURS.length * HOUR_HEIGHT;
-
-	return (
-		<div
-			className="pointer-events-none absolute inset-x-0 z-10"
-			style={{ top }}
-		>
-			<div className="flex -translate-y-1/2 items-center">
-				<div className="flex w-16 shrink-0 items-center justify-end pr-1">
-					<span className="rounded-[6px] bg-[#e85d55] px-1.5 py-0.5 text-[11px] font-medium text-white">
-						{format(currentTime, "h:mma")}
-					</span>
-				</div>
-				<div className="flex flex-1 items-center">
-					{Array.from({ length: daysCount }, (_, index) => (
-						<div key={index} className="flex flex-1 items-center">
-							{index === todayIndex ? (
-								<>
-									<div className="h-3 w-[3px] rounded-full bg-[#e85d55]" />
-									<div className="h-[3px] flex-1 rounded-r-full bg-[#e85d55]" />
-								</>
-							) : (
-								<div className="h-px flex-1 bg-[#e85d55]/55" />
-							)}
-						</div>
-					))}
-				</div>
-			</div>
-		</div>
-	);
-}
-
-function useNow() {
-	const [currentTime, setCurrentTime] = React.useState(() => new Date());
-
-	React.useEffect(() => {
-		const interval = window.setInterval(() => {
-			setCurrentTime(new Date());
-		}, 60000);
-
-		return () => window.clearInterval(interval);
-	}, []);
-
-	return [currentTime] as const;
-}
-
 function buildShootLayouts(
 	days: Date[],
 	shootsByDay: Map<string, ShootListItem[]>,
@@ -521,16 +489,6 @@ function buildTimedShootLayout(shoot: ShootListItem): TimedShootLayout | null {
 			(durationMinutes / 60) * HOUR_HEIGHT,
 		),
 	};
-}
-
-function getTimezoneAbbreviation() {
-	const match = new Date()
-		.toLocaleTimeString("en-US", {
-			timeZoneName: "short",
-		})
-		.match(/\s([A-Z]{2,5})$/);
-
-	return match?.[1] ?? "Local";
 }
 
 function isWeekend(day: Date) {

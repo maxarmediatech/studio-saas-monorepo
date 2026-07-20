@@ -13,27 +13,29 @@ import {
 } from "@repo/ui/components/dropdown-menu";
 import { LanguagesIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 
 const { locales, defaultLocale, localeCookieName } = config.i18n;
 
 function getLocaleFromCookie(): string {
-	if (typeof document === "undefined") {
-		return defaultLocale;
-	}
 	const match = document.cookie.match(
 		new RegExp(`(^| )${localeCookieName}=([^;]+)`),
 	);
 	return match?.[2] ?? defaultLocale;
 }
 
+const subscribeToLocaleCookie = () => () => {};
+const getServerLocale = () => defaultLocale;
+
 export function LocaleSwitch() {
 	const router = useRouter();
-	const [value, setValue] = useState<string>(defaultLocale);
-
-	useEffect(() => {
-		setValue(getLocaleFromCookie());
-	}, []);
+	const cookieLocale = useSyncExternalStore(
+		subscribeToLocaleCookie,
+		getLocaleFromCookie,
+		getServerLocale,
+	);
+	const [selectedLocale, setSelectedLocale] = useState<string | null>(null);
+	const value = selectedLocale ?? cookieLocale;
 
 	return (
 		<DropdownMenu modal={false}>
@@ -47,7 +49,7 @@ export function LocaleSwitch() {
 				<DropdownMenuRadioGroup
 					value={value}
 					onValueChange={(newValue) => {
-						setValue(newValue);
+						setSelectedLocale(newValue);
 						updateLocale(newValue as Locale);
 						router.refresh();
 					}}

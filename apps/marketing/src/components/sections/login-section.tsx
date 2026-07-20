@@ -41,7 +41,10 @@ const LoginSection = () => {
                       Remember me
                     </label>
                   </div>
-                  <a href="#" className="text-primary text-sm font-medium">
+				<a
+					href="https://app.stuwiz.com/auth/forgot-password"
+					className="text-primary text-sm font-medium"
+				>
                     Forgot password
                   </a>
                 </div>

@@ -167,6 +167,7 @@ export function TeamMembersDialog({
 								return (
 									<label
 										key={member.id}
+										htmlFor={`team-member-${member.id}`}
 										className="flex items-center justify-between gap-3 rounded-md border px-3 py-2"
 									>
 										<div className="flex items-center gap-3">
@@ -184,6 +185,7 @@ export function TeamMembersDialog({
 											</div>
 										</div>
 										<Checkbox
+											id={`team-member-${member.id}`}
 											checked={isChecked}
 											onCheckedChange={(checked) =>
 												toggleMember(member.userId, Boolean(checked))

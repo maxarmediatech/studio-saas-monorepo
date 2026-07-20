@@ -1,4 +1,4 @@
-export function buildCheckoutLaunchPath({
+export function submitCheckoutLaunch({
 	checkoutUrl,
 	checkoutSessionId,
 	expectedPriceKeys,
@@ -11,16 +11,27 @@ export function buildCheckoutLaunchPath({
 	postCheckoutPath: string;
 	mode: "hosted" | "inline";
 }) {
-	const searchParams = new URLSearchParams({
-		checkoutUrl,
-		checkoutSessionId,
-		mode,
-		redirectTo: postCheckoutPath,
-	});
+	const form = document.createElement("form");
+	form.action = "/checkout/launch";
+	form.hidden = true;
+	form.method = "POST";
 
-	if (expectedPriceKeys.length > 0) {
-		searchParams.set("prices", expectedPriceKeys.join(","));
+	const values = {
+		checkoutSessionId,
+		checkoutUrl,
+		mode,
+		prices: expectedPriceKeys.join(","),
+		redirectTo: postCheckoutPath,
+	};
+
+	for (const [name, value] of Object.entries(values)) {
+		const input = document.createElement("input");
+		input.name = name;
+		input.type = "hidden";
+		input.value = value;
+		form.append(input);
 	}
 
-	return `/checkout/launch?${searchParams.toString()}`;
+	document.body.append(form);
+	form.submit();
 }

@@ -2,7 +2,6 @@
 
 import { authClient } from "@repo/auth/client";
 import { isOrganizationAdmin } from "@repo/auth/lib/helper";
-import { Button } from "@repo/ui/components/button";
 import {
 	AlertDialog,
 	AlertDialogAction,

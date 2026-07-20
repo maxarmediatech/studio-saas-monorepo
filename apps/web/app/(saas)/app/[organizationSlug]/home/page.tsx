@@ -31,6 +31,7 @@ export default async function HomePage({ params }: Props) {
 	return (
 		<HomeView
 			organizationSlug={organizationSlug}
+			timeZone={session?.user?.timezone ?? "UTC"}
 			userName={session?.user?.name ?? ""}
 		/>
 	);
