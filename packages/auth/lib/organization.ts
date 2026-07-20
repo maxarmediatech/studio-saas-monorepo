@@ -19,7 +19,6 @@ type EnsureCrewForMemberInput = {
 	userId: string;
 	memberId?: string;
 	source:
-		| "db_hook"
 		| "after_add_member"
 		| "after_accept_invitation"
 		| "session_auto_heal";

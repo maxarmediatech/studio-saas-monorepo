@@ -3,7 +3,7 @@
 		"@repo/config": "workspace:*",
 		"@repo/env": "workspace:*",
 		"@repo/whatsapp-db": "workspace:*",
-		"drizzle-orm": "^0.45.1",
+		"drizzle-orm": "^0.45.2",
 
 		"drizzle-zod": "0.8.3",
 		"pg": "^8.16.0",
@@ -15,6 +15,7 @@
 		"@repo/tsconfig": "workspace:*",
 		"@types/node": "24.10.1",
 		"@types/pg": "^8.15.5",
+		"better-auth": "1.6.23",
 		"dotenv-cli": "^11.0.0",
 		"drizzle-kit": "^0.31.8",
 		"tsx": "^4.21.0"
@@ -33,6 +34,7 @@
 		"staging:publish": "tsx drizzle/staging-clone/cli.ts publish",
 		"staging:verify": "tsx drizzle/staging-clone/cli.ts verify",
 		"test:staging-clone": "tsx --test drizzle/staging-clone/*.test.ts",
+		"test:schema": "tsx --test drizzle/tests/*-schema.test.ts",
 		"backfill:crew-role-cleanup": "dotenv -c -e ../../.env -- tsx drizzle/backfill-crew-role-cleanup.ts",
 		"type-check": "tsc --noEmit",
 		"db:generate": "pnpm run generate",
