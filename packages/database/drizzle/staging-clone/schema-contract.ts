@@ -30,6 +30,67 @@ export type SchemaContract = {
 	tables: Record<string, Record<string, { type: string; notNull: boolean }>>;
 };
 
+const REQUIRED_INDEXES = [
+	"document_sequences_org_type_scope_idx",
+	"payment_idempotency_org_operation_key_idx",
+	"invoices_active_payment_schedule_idx",
+	"receipts_active_received_amount_idx",
+	"calendar_delivery_intents_org_target_generation_idx",
+	"calendar_sync_jobs_active_delivery_key_idx",
+	"google_calendar_connections_active_org_user_idx",
+	"shoot_calendar_events_org_shoot_crew_idx",
+	"wa_automation_actions_run_index_idx",
+	"wa_automation_runs_trigger_identity_idx",
+	"wa_campaign_recipients_identity_idx",
+	"wa_manual_send_idempotency_scope_key_idx",
+	"wa_templates_account_name_language_uidx",
+	"wa_contacts_account_wa_id_idx",
+	"wa_messages_account_provider_message_id_idx",
+	"wa_outbox_message_id_idx",
+] as const;
+
+const REQUIRED_TRIGGERS = [
+	"payment_schedules_financial_relationship_guard",
+	"invoices_financial_relationship_guard",
+	"received_amounts_financial_relationship_guard",
+	"receipts_financial_relationship_guard",
+	"received_amounts_relationship_closure_guard",
+	"invoices_payment_relationship_closure_guard",
+	"wa_events_preserve_retryable_failures_trigger",
+] as const;
+
+const REQUIRED_ENUM_VALUES: Record<string, readonly string[]> = {
+	calendar_delivery_method: ["unsendable"],
+	calendar_event_sync_status: ["unsendable"],
+	wa_automation_action_status: [
+		"pending",
+		"processing",
+		"waiting",
+		"completed",
+		"failed",
+	],
+	wa_automation_run_status: [
+		"pending",
+		"processing",
+		"waiting",
+		"completed",
+		"failed",
+	],
+	wa_campaign_recipient_status: ["suppressed", "delivery_unknown"],
+	wa_media_ingest_status: ["pending", "processing", "ready", "failed"],
+	wa_message_status: ["suppressed", "delivery_unknown"],
+	wa_outbox_status: ["suppressed", "delivery_unknown"],
+};
+
+const REQUIRED_DEFAULTS: Record<string, string> = {
+	"two_factors.verified": "true",
+	"two_factors.failed_verification_count": "0",
+	"wa_events.processing_status": "'pending'::text",
+	"wa_events.next_attempt_at": "now()",
+	"wa_media.ingest_status": "'ready'::wa_media_ingest_status",
+	"calendar_sync_jobs.effect_state": "'pending'::text",
+};
+
 const migrationsDirectory = fileURLToPath(
 	new URL("../migrations", import.meta.url),
 );
@@ -167,6 +228,86 @@ export async function fingerprintSchema(
 			}),
 		)
 		.digest("hex");
+}
+
+export async function assertCriticalSchemaStructures(
+	client: Client,
+): Promise<void> {
+	const [indexes, triggers, enums, defaults] = await Promise.all([
+		client.query<{ name: string }>(`
+			SELECT indexname AS name FROM pg_indexes WHERE schemaname = 'public'
+		`),
+		client.query<{ name: string }>(`
+			SELECT DISTINCT trigger_name AS name
+			FROM information_schema.triggers
+			WHERE trigger_schema = 'public'
+		`),
+		client.query<{ name: string; value: string }>(`
+			SELECT type_record.typname AS name, enum_record.enumlabel AS value
+			FROM pg_type type_record
+			JOIN pg_enum enum_record ON enum_record.enumtypid = type_record.oid
+			JOIN pg_namespace namespace ON namespace.oid = type_record.typnamespace
+			WHERE namespace.nspname = 'public'
+		`),
+		client.query<{
+			tableName: string;
+			columnName: string;
+			defaultValue: string | null;
+		}>(`
+			SELECT table_name AS "tableName", column_name AS "columnName",
+				column_default AS "defaultValue"
+			FROM information_schema.columns
+			WHERE table_schema = 'public'
+		`),
+	]);
+
+	const indexNames = new Set(indexes.rows.map(({ name }) => name));
+	const triggerNames = new Set(triggers.rows.map(({ name }) => name));
+	const enumValues = new Map<string, Set<string>>();
+	for (const { name, value } of enums.rows) {
+		const values = enumValues.get(name) ?? new Set<string>();
+		values.add(value);
+		enumValues.set(name, values);
+	}
+	const defaultValues = new Map(
+		defaults.rows.map(({ tableName, columnName, defaultValue }) => [
+			`${tableName}.${columnName}`,
+			defaultValue,
+		]),
+	);
+
+	const missingIndexes = REQUIRED_INDEXES.filter(
+		(name) => !indexNames.has(name),
+	);
+	const missingTriggers = REQUIRED_TRIGGERS.filter(
+		(name) => !triggerNames.has(name),
+	);
+	const missingEnumValues = Object.entries(REQUIRED_ENUM_VALUES).flatMap(
+		([name, expected]) =>
+			expected
+				.filter((value) => !enumValues.get(name)?.has(value))
+				.map((value) => `${name}.${value}`),
+	);
+	const mismatchedDefaults = Object.entries(REQUIRED_DEFAULTS)
+		.filter(([name, expected]) => defaultValues.get(name) !== expected)
+		.map(([name]) => name);
+
+	if (
+		missingIndexes.length > 0 ||
+		missingTriggers.length > 0 ||
+		missingEnumValues.length > 0 ||
+		mismatchedDefaults.length > 0
+	) {
+		throw new Error(
+			[
+				"Database is missing critical structures required through migration 0045.",
+				`Indexes: ${missingIndexes.join(", ") || "none"}.`,
+				`Triggers: ${missingTriggers.join(", ") || "none"}.`,
+				`Enum values: ${missingEnumValues.join(", ") || "none"}.`,
+				`Defaults: ${mismatchedDefaults.join(", ") || "none"}.`,
+			].join(" "),
+		);
+	}
 }
 
 export function assertSchemaMatchesContract(

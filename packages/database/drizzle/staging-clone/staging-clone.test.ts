@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { verifyPassword } from "better-auth/crypto";
 import {
 	assertDifferentDatabases,
 	databaseIdentity,
@@ -124,11 +125,28 @@ describe("staging clone safeguards", () => {
 		const second = await hashStagingPassword("staging-password-123");
 		assert.match(first, /^[0-9a-f]{32}:[0-9a-f]{128}$/);
 		assert.notEqual(first, second);
+		assert.equal(
+			await verifyPassword({
+				hash: first,
+				password: "staging-password-123",
+			}),
+			true,
+		);
+		assert.equal(
+			await verifyPassword({
+				hash: first,
+				password: "wrong-password",
+			}),
+			false,
+		);
 	});
 
 	it("is pinned to the reviewed Drizzle snapshot", async () => {
 		const contract = await loadSchemaContract();
-		assert.equal(contract.snapshotTag, "0037_absurd_shriek");
+		assert.equal(
+			contract.snapshotTag,
+			"0045_better_auth_two_factor_lockout",
+		);
 		assert.ok(Object.keys(contract.tables).length > 60);
 	});
 });

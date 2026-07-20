@@ -12,7 +12,7 @@
 		"@repo/google-calendar": "workspace:*",
 		"@repo/logs": "workspace:*",
 		"@repo/mail": "workspace:*",
-		"drizzle-orm": "^0.45.1"
+		"drizzle-orm": "^0.45.2"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.3.10",

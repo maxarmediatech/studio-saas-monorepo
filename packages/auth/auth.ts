@@ -5,7 +5,6 @@ import {
 	getPurchasesByOrganizationId,
 	getPurchasesByUserId,
 	getUserByEmail,
-	type members,
 } from "@repo/database";
 import type { Locale } from "@repo/i18n";
 import { logger } from "@repo/logs";
@@ -14,9 +13,9 @@ import { cancelSubscription } from "@repo/payments";
 import { getBaseUrl, getRequestBaseUrl, toRequestAppUrl } from "@repo/utils";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { createAuthMiddleware } from "better-auth/api";
 import {
 	admin,
-	createAuthMiddleware,
 	magicLink,
 	openAPI,
 	organization,
@@ -197,18 +196,6 @@ export const auth = betterAuth({
 				},
 			},
 		},
-		member: {
-			create: {
-				after: async (member: typeof members.$inferSelect) => {
-					await ensureCrewForMember({
-						organizationId: member.organizationId,
-						userId: member.userId,
-						memberId: member.id,
-						source: "db_hook",
-					});
-				},
-			},
-		},
 	},
 	hooks: {
 		after: createAuthMiddleware(async (ctx) => {
@@ -227,7 +214,7 @@ export const auth = betterAuth({
 
 			if (!userId || !config.organizations.enable) {
 				ctx.setCookie("activeOrganizationSlug", "", {
-					...ctx.context.authCookies.sessionToken.options,
+					...ctx.context.authCookies.sessionToken.attributes,
 					httpOnly: false,
 					maxAge: 0,
 				});
@@ -259,7 +246,7 @@ export const auth = betterAuth({
 
 			if (!activeOrganizationSlug) {
 				ctx.setCookie("activeOrganizationSlug", "", {
-					...ctx.context.authCookies.sessionToken.options,
+					...ctx.context.authCookies.sessionToken.attributes,
 					httpOnly: false,
 					maxAge: 0,
 				});
@@ -267,7 +254,7 @@ export const auth = betterAuth({
 			}
 
 			ctx.setCookie("activeOrganizationSlug", activeOrganizationSlug, {
-				...ctx.context.authCookies.sessionToken.options,
+				...ctx.context.authCookies.sessionToken.attributes,
 				httpOnly: false,
 			});
 		}),
@@ -322,7 +309,7 @@ export const auth = betterAuth({
 		},
 		changeEmail: {
 			enabled: true,
-			sendChangeEmailVerification: async (
+			sendChangeEmailConfirmation: async (
 				{ user: { email, name }, url },
 				request,
 			) => {

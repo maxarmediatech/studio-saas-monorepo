@@ -18,14 +18,37 @@ export async function sanitizeIntegrations(
 			google_event_id = CASE WHEN google_event_id IS NULL THEN NULL ELSE 'event_' || ${fakeHash("shoot-google-event")} END,
 			ical_uid = CASE WHEN ical_uid IS NULL THEN NULL ELSE ${fakeHash("shoot-ical-uid")} || '@example.invalid' END,
 			recipient_email = CASE WHEN recipient_email IS NULL THEN NULL ELSE 'calendar-recipient+' || ${fakeHash("shoot-calendar-recipient")} || '@example.invalid' END,
-			last_error = NULL`,
+			delivered_recipient_email = CASE WHEN delivered_recipient_email IS NULL THEN NULL ELSE 'calendar-delivered+' || ${fakeHash("shoot-calendar-delivered-recipient")} || '@example.invalid' END,
+			delivered_calendar_id = CASE WHEN delivered_calendar_id IS NULL THEN NULL ELSE 'calendar_' || ${fakeHash("shoot-delivered-calendar-id")} END,
+			delivered_google_event_id = CASE WHEN delivered_google_event_id IS NULL THEN NULL ELSE 'event_' || ${fakeHash("shoot-delivered-google-event")} END,
+			delivered_ical_uid = CASE WHEN delivered_ical_uid IS NULL THEN NULL ELSE ${fakeHash("shoot-delivered-ical-uid")} || '@example.invalid' END,
+			last_error = NULL,
+			delivery_last_error = NULL,
+			cancellation_last_error = NULL`,
+		`UPDATE calendar_delivery_intents SET
+			recipient_email = CASE WHEN recipient_email IS NULL THEN NULL ELSE 'calendar-intent+' || ${fakeHash("calendar-intent-recipient")} || '@example.invalid' END,
+			google_account_email = CASE WHEN google_account_email IS NULL THEN NULL ELSE 'calendar-intent-account+' || ${fakeHash("calendar-intent-account")} || '@example.invalid' END,
+			calendar_id = CASE WHEN calendar_id IS NULL THEN NULL ELSE 'calendar_' || ${fakeHash("calendar-intent-calendar-id")} END,
+			google_event_id = CASE WHEN google_event_id IS NULL THEN NULL ELSE 'event_' || ${fakeHash("calendar-intent-google-event")} END,
+			ical_uid = CASE WHEN ical_uid IS NULL THEN NULL ELSE ${fakeHash("calendar-intent-ical-uid")} || '@example.invalid' END,
+			payload = '{}'::jsonb`,
+		`UPDATE calendar_route_changes SET
+			status = 'completed',
+			completed_at = COALESCE(completed_at, now())
+		WHERE status = 'pending'`,
+		`UPDATE calendar_sync_jobs SET
+			payload = CASE WHEN payload IS NULL THEN NULL ELSE '{}'::jsonb END,
+			provider_result = CASE WHEN provider_result IS NULL THEN NULL ELSE '{}'::jsonb END,
+			claim_token = NULL,
+			locked_at = NULL,
+			last_error = CASE WHEN last_error IS NULL THEN NULL ELSE 'Sanitized calendar delivery failure' END`,
 		`UPDATE calendar_sync_jobs SET
 			status = 'failed',
-			payload = CASE WHEN payload IS NULL THEN NULL ELSE '{}'::jsonb END,
+			attempts = COALESCE(max_attempts, 5),
+			effect_state = 'manual_reconciliation',
 			next_attempt_at = NULL,
-			locked_at = NULL,
 			last_error = 'Disabled in sanitized staging snapshot'
-		WHERE status IN ('pending', 'processing')`,
+		WHERE status IN ('pending', 'processing', 'failed')`,
 		`UPDATE sms_outbox SET
 			phone_number = ${fakePhone("sms-phone")},
 			template_id = 'template_sanitized_' || left(${fakeHash("sms-template")}, 20),

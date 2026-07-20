@@ -41,7 +41,7 @@ export async function hasPermission<R extends Resource>(
 	const result = await auth.api.hasPermission({
 		headers: context.headers,
 		body: {
-			permission: { [resource]: [action] },
+			permissions: { [resource]: [action] },
 		},
 	});
 	return !!result?.success;

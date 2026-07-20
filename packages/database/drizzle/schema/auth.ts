@@ -1,6 +1,7 @@
 import { relations } from "drizzle-orm";
 import {
 	boolean,
+	integer,
 	pgTable,
 	text,
 	timestamp,
@@ -111,6 +112,11 @@ export const twoFactors = pgTable(
 		userId: text("user_id")
 			.notNull()
 			.references(() => users.id, { onDelete: "cascade" }),
+		verified: boolean("verified").default(true),
+		failedVerificationCount: integer("failed_verification_count").default(
+			0,
+		),
+		lockedUntil: timestamp("locked_until", { withTimezone: true }),
 	},
 	(table) => [uniqueIndex("two_factors_user_id_idx").on(table.userId)],
 );
