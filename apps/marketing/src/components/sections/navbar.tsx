@@ -140,6 +140,7 @@ export const Navbar = ({ currentPage }: { currentPage: string }) => {
             </a>
             {/* Hamburger Menu Button (Mobile Only) */}
             <button
+				type="button"
               className="text-muted-foreground relative flex size-8 lg:hidden"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
             >
@@ -148,15 +149,15 @@ export const Navbar = ({ currentPage }: { currentPage: string }) => {
                 <span
                   aria-hidden="true"
                   className={`absolute block h-0.5 w-full rounded-full bg-current transition duration-500 ease-in-out ${isMenuOpen ? "rotate-45" : "-translate-y-1.5"}`}
-                ></span>
+                />
                 <span
                   aria-hidden="true"
                   className={`absolute block h-0.5 w-full rounded-full bg-current transition duration-500 ease-in-out ${isMenuOpen ? "opacity-0" : ""}`}
-                ></span>
+                />
                 <span
                   aria-hidden="true"
                   className={`absolute block h-0.5 w-full rounded-full bg-current transition duration-500 ease-in-out ${isMenuOpen ? "-rotate-45" : "translate-y-1.5"}`}
-                ></span>
+                />
               </div>
             </button>
           </div>
@@ -198,6 +199,7 @@ export const Navbar = ({ currentPage }: { currentPage: string }) => {
             link.dropdownItems ? (
               <div key={link.label} className="">
                 <button
+					type="button"
                   onClick={() =>
                     setOpenDropdown(
                       openDropdown === link.label ? null : link.label,

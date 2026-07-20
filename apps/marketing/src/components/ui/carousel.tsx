@@ -44,8 +44,8 @@ function useCarousel() {
 }
 
 const Carousel = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & CarouselProps
+	HTMLDivElement,
+	React.HTMLAttributes<HTMLDivElement> & CarouselProps
 >(
   (
     {
@@ -135,16 +135,17 @@ const Carousel = React.forwardRef<
           canScrollNext,
         }}
       >
-        <div
+		{/* biome-ignore lint/a11y/useSemanticElements: The WAI-ARIA carousel pattern requires an explicitly described region. */}
+		<div
           ref={ref}
           onKeyDownCapture={handleKeyDown}
           className={cn('relative', className)}
-          role="region"
+		  role="region"
           aria-roledescription="carousel"
           {...props}
         >
           {children}
-        </div>
+		</div>
       </CarouselContext.Provider>
     );
   },
@@ -180,6 +181,7 @@ const CarouselItem = React.forwardRef<
   const { orientation } = useCarousel();
 
   return (
+	// biome-ignore lint/a11y/useSemanticElements: WAI-ARIA carousel slides use role="group"; fieldset would imply form controls.
     <div
       ref={ref}
       role="group"

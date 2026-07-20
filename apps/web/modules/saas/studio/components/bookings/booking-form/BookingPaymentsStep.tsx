@@ -132,9 +132,11 @@ export function BookingPaymentsStep() {
 			);
 			const shootDate = isoDateMatch
 				? new Date(
-						Number(isoDateMatch[1]),
-						Number(isoDateMatch[2]) - 1,
-						Number(isoDateMatch[3]),
+						Date.UTC(
+							Number(isoDateMatch[1]),
+							Number(isoDateMatch[2]) - 1,
+							Number(isoDateMatch[3]),
+						),
 					)
 				: new Date(shoot.shootDate);
 			const hasValidDate = !Number.isNaN(shootDate.getTime());
@@ -144,6 +146,7 @@ export function BookingPaymentsStep() {
 					? shootDate.toLocaleDateString("en-IN", {
 							day: "numeric",
 							month: "short",
+							timeZone: "UTC",
 							year: "numeric",
 						})
 					: shoot.shootDate,

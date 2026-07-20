@@ -211,7 +211,7 @@ const PlanHeaders = ({
 
       {/* Desktop View */}
       <div className="grid grid-cols-4 max-md:hidden">
-        <div className="col-span-1"></div>
+        <div className="col-span-1" />
         {pricingPlans.map((plan, index) => (
           <div key={index} className="flex flex-col">
             <h3 className="mb-4 text-2xl font-semibold">{plan.name}</h3>

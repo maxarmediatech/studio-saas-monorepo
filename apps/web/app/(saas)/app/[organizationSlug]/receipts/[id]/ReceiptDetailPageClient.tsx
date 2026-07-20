@@ -42,10 +42,13 @@ function StatusBadge({ isVoided }: { isVoided: boolean }) {
 }
 
 function formatDate(date: string | null | undefined) {
-	if (!date) return "Not set";
+	if (!date) {
+		return "Not set";
+	}
 	return new Date(date).toLocaleDateString("en-IN", {
 		day: "numeric",
 		month: "short",
+		timeZone: "UTC",
 		year: "numeric",
 	});
 }
@@ -56,10 +59,18 @@ function formatRelativeTime(date: string) {
 	const diffMs = now.getTime() - then.getTime();
 	const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-	if (diffDays === 0) return "Today";
-	if (diffDays === 1) return "Yesterday";
-	if (diffDays < 30) return `${diffDays}d ago`;
-	if (diffDays < 365) return `${Math.floor(diffDays / 30)}mo ago`;
+	if (diffDays === 0) {
+		return "Today";
+	}
+	if (diffDays === 1) {
+		return "Yesterday";
+	}
+	if (diffDays < 30) {
+		return `${diffDays}d ago`;
+	}
+	if (diffDays < 365) {
+		return `${Math.floor(diffDays / 30)}mo ago`;
+	}
 	return `${Math.floor(diffDays / 365)}y ago`;
 }
 
@@ -176,9 +187,7 @@ export function ReceiptDetailPageClient({
 	if (isVoided && receipt.deletedAt) {
 		activityItems.push({
 			label: (
-				<span className="font-medium text-red-600">
-					Receipt voided
-				</span>
+				<span className="font-medium text-red-600">Receipt voided</span>
 			),
 			date: receipt.deletedAt,
 			icon: "default",
@@ -241,9 +250,7 @@ export function ReceiptDetailPageClient({
 						</p>
 					</div>
 
-					{isVoided && (
-						<StatusBadge isVoided />
-					)}
+					{isVoided && <StatusBadge isVoided />}
 				</div>
 			</div>
 
@@ -271,9 +278,7 @@ export function ReceiptDetailPageClient({
 							{receipt.booking && (
 								<div className="mt-6 flex w-full flex-none gap-x-4 border-t border-gray-900/5 px-6 pt-6">
 									<dt className="flex-none">
-										<span className="sr-only">
-											Booking
-										</span>
+										<span className="sr-only">Booking</span>
 										<UserCircle className="h-6 w-5 text-gray-400" />
 									</dt>
 									<dd className="text-sm/6 font-medium text-gray-900">
@@ -376,7 +381,10 @@ export function ReceiptDetailPageClient({
 										<>
 											<br />
 											<span className="font-mono text-xs text-gray-400">
-												{receipt.booking.referenceNumber}
+												{
+													receipt.booking
+														.referenceNumber
+												}
 											</span>
 										</>
 									)}
@@ -447,9 +455,7 @@ export function ReceiptDetailPageClient({
 						<div className="mt-6 flex items-center gap-x-4 border-t border-gray-900/5 pt-6">
 							<FileTextIcon className="h-5 w-5 text-gray-400" />
 							<div className="text-sm/6">
-								<span className="text-gray-500">
-									Invoice{" "}
-								</span>
+								<span className="text-gray-500">Invoice </span>
 								<Link
 									href={`/app/${organizationSlug}/invoices/${receipt.invoiceId}`}
 									className="font-medium text-blue-600 hover:text-blue-500"

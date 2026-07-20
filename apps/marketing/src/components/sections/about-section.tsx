@@ -97,11 +97,12 @@ export const AboutSection = () => {
               like to collaborate, check out our open roles:
             </p>
             <Button
+				asChild
               variant="outline"
               size="lg"
               className="border-foreground/20 mt-6 rounded-sm border md:mt-8 lg:mt-10"
             >
-              <a href="#" className="">
+				<a href="mailto:careers@stuwiz.com">
                 <span className="flex items-center gap-2 whitespace-pre-wrap text-start">
                   View Open roles
                   <ArrowRight className="stroke-3 size-4" />

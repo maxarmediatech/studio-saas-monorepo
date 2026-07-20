@@ -4,7 +4,7 @@ import { type Config, config } from "@repo/config";
 import { Button } from "@repo/ui/components/button";
 import { cn } from "@repo/ui/lib/utils";
 import { usePlanData } from "@saas/payments/hooks/plan-data";
-import { buildCheckoutLaunchPath } from "@saas/payments/lib/checkout-launch";
+import { submitCheckoutLaunch } from "@saas/payments/lib/checkout-launch";
 import type { PlanId } from "@saas/payments/types";
 import { useLocaleCurrency } from "@shared/hooks/locale-currency";
 import { useRouter } from "@shared/hooks/router";
@@ -87,7 +87,7 @@ export function PricingTable({
 				throw new Error("Checkout session did not return a link.");
 			}
 
-			const launchPath = buildCheckoutLaunchPath({
+			submitCheckoutLaunch({
 				checkoutUrl: checkoutLink,
 				checkoutSessionId,
 				expectedPriceKeys:
@@ -101,12 +101,7 @@ export function PricingTable({
 						: "hosted",
 			});
 
-			if (inlineCheckoutEnabled && !requiresHostedCheckout) {
-				router.push(launchPath);
-				return;
-			}
-
-			window.location.href = launchPath;
+			return;
 		} catch (error) {
 			console.error(error);
 

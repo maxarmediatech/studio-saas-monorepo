@@ -1,7 +1,7 @@
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, Share2, ChevronLeft } from "lucide-react";
+import { Clock, } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 

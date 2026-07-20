@@ -1,22 +1,43 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
-interface UseCurrentTimeOptions {
-	intervalMs?: number;
+let currentTimestamp = Date.now();
+const listeners = new Set<() => void>();
+let timer: ReturnType<typeof setInterval> | null = null;
+
+function emitCurrentTime() {
+	currentTimestamp = Date.now();
+	for (const listener of listeners) {
+		listener();
+	}
 }
 
-export function useCurrentTime(options: UseCurrentTimeOptions = {}) {
-	const { intervalMs = 60000 } = options;
-	const [currentTime, setCurrentTime] = useState(() => new Date());
+function subscribe(listener: () => void) {
+	listeners.add(listener);
+	if (!timer) {
+		emitCurrentTime();
+		timer = setInterval(emitCurrentTime, 60000);
+	}
 
-	useEffect(() => {
-		const timer = setInterval(() => {
-			setCurrentTime(new Date());
-		}, intervalMs);
+	return () => {
+		listeners.delete(listener);
+		if (listeners.size === 0 && timer) {
+			clearInterval(timer);
+			timer = null;
+		}
+	};
+}
 
-		return () => clearInterval(timer);
-	}, [intervalMs]);
+const getSnapshot = () => currentTimestamp;
+const getServerSnapshot = () => null;
 
-	return { currentTime };
+export function useCurrentTime() {
+	const timestamp = useSyncExternalStore(
+		subscribe,
+		getSnapshot,
+		getServerSnapshot,
+	);
+
+	return { currentTime: timestamp === null ? null : new Date(timestamp) };
 }

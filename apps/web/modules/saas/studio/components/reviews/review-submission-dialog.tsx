@@ -208,6 +208,7 @@ export function ReviewSubmissionDialog({
 								<div className="space-y-2">
 									{fileList.map((file) => (
 										<button
+											type="button"
 											key={file.id}
 											onClick={() => handleFileOpen(file.id)}
 											disabled={loadingFileId === file.id}

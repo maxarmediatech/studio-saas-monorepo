@@ -19,7 +19,6 @@ import { useOrganizationListQuery } from "@saas/organizations/lib/api";
 import { ActivePlanBadge } from "@saas/payments/components/ActivePlanBadge";
 import { UserAvatar } from "@shared/components/UserAvatar";
 import { useRouter } from "@shared/hooks/router";
-import { clearCache } from "@shared/lib/cache";
 import { ChevronsUpDownIcon, PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -87,10 +86,10 @@ export function OrganzationSelect({ className }: { className?: string }) {
 								onValueChange={async (value: string) => {
 									if (value === user.id) {
 										setActiveOrganizationSlugCookie(null);
-										await clearCache();
 										router.replace(
 											resolveAppRedirectPath("/app"),
 										);
+										router.refresh();
 									}
 								}}
 							>
@@ -119,8 +118,7 @@ export function OrganzationSelect({ className }: { className?: string }) {
 					<DropdownMenuRadioGroup
 						value={activeOrganization?.slug}
 						onValueChange={async (organizationSlug: string) => {
-							await clearCache();
-							setActiveOrganization(organizationSlug);
+							await setActiveOrganization(organizationSlug);
 						}}
 					>
 						<DropdownMenuLabel className="text-foreground/60 text-xs">

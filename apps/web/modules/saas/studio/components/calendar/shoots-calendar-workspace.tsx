@@ -2,6 +2,7 @@
 
 import type { ShootListItem } from "@repo/api/modules/studio/schemas/shoot";
 import { Button } from "@repo/ui/components/button";
+import { useSession } from "@saas/auth/hooks/use-session";
 import { shootsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -30,7 +31,9 @@ import { ShootCalendarDetailSidebar } from "./shoot-calendar-detail-sidebar";
 import { useCalendarRouteState } from "./use-calendar-route-state";
 import { WeeklyShootsCalendar } from "./weekly-shoots-calendar";
 
-export function ShootsCalendarWorkspace() {
+export function ShootsCalendarWorkspace({ timeZone }: { timeZone: string }) {
+	const { user } = useSession();
+	const calendarTimeZone = user?.timezone ?? timeZone;
 	const { focusDate, setFocusDate, setView, setWeekStart, view, weekStart } =
 		useCalendarRouteState();
 	const weekEnd = getWeekEnd(weekStart);
@@ -193,6 +196,7 @@ export function ShootsCalendarWorkspace() {
 								shootsByDay={shootsByDay}
 								isLoading={isLoading}
 								selectedShootId={selectedShootId}
+								timeZone={calendarTimeZone}
 								onShootSelect={handleShootSelect}
 							/>
 						)}

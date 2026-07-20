@@ -28,27 +28,37 @@ type AttachmentsCardProps = {
 };
 
 function formatFileSize(bytes: number): string {
-	if (bytes === 0) return "0 B";
+	if (bytes === 0) {
+		return "0 B";
+	}
 	const k = 1024;
 	const sizes = ["B", "KB", "MB", "GB"];
 	const i = Math.floor(Math.log(bytes) / Math.log(k));
 	return `${Number.parseFloat((bytes / k ** i).toFixed(1))} ${sizes[i]}`;
 }
 
-function getFileIcon(mimeType: string) {
-	if (mimeType.startsWith("image/")) return ImageIcon;
-	if (mimeType === "application/pdf") return FileTextIcon;
-	return FileIcon;
+function FileTypeIcon({ mimeType }: { mimeType: string }) {
+	if (mimeType.startsWith("image/")) {
+		return <ImageIcon className="h-4 w-4 text-muted-foreground" />;
+	}
+	if (mimeType === "application/pdf") {
+		return <FileTextIcon className="h-4 w-4 text-muted-foreground" />;
+	}
+	return <FileIcon className="h-4 w-4 text-muted-foreground" />;
 }
 
-function AttachmentRow({ attachment, label }: { attachment: Attachment; label: string }) {
-	const Icon = getFileIcon(attachment.type);
-
+function AttachmentRow({
+	attachment,
+	label,
+}: {
+	attachment: Attachment;
+	label: string;
+}) {
 	return (
 		<div className="flex items-center justify-between rounded-lg border bg-muted/10 px-3 py-2">
 			<div className="flex items-center gap-3 min-w-0">
 				<div className="rounded-md border bg-background p-2 shrink-0">
-					<Icon className="h-4 w-4 text-muted-foreground" />
+					<FileTypeIcon mimeType={attachment.type} />
 				</div>
 				<div className="min-w-0">
 					<p className="text-sm font-medium truncate">{label}</p>
@@ -57,13 +67,12 @@ function AttachmentRow({ attachment, label }: { attachment: Attachment; label: s
 					</p>
 				</div>
 			</div>
-			<Button
-				size="icon"
-				variant="ghost"
-				className="shrink-0"
-				asChild
-			>
-				<a href={attachment.url} target="_blank" rel="noopener noreferrer">
+			<Button size="icon" variant="ghost" className="shrink-0" asChild>
+				<a
+					href={attachment.url}
+					target="_blank"
+					rel="noopener noreferrer"
+				>
 					<ExternalLinkIcon className="h-4 w-4" />
 					<span className="sr-only">Open {label}</span>
 				</a>
