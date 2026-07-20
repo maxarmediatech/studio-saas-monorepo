@@ -20,9 +20,7 @@ export default async function AppHomePage() {
 		) || organizations.at(0);
 
 	if (!activeOrganization?.slug) {
-		redirect(
-			`/new-organization?redirectTo=${encodeURIComponent("/app")}`,
-		);
+		redirect(`/new-organization?redirectTo=${encodeURIComponent("/app")}`);
 	}
 
 	redirect(`/app/${activeOrganization.slug}/home`);
