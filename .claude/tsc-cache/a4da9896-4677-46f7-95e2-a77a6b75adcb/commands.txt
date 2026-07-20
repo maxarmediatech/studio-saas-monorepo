@@ -1,1 +1,0 @@
-packages/api:tsc:cd /Users/rakesh/Developer/agency/studio-saas-monorepo-personal/packages/api && npx tsc --noEmit
