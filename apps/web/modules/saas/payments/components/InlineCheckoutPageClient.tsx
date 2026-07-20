@@ -3,7 +3,7 @@
 import { sanitizeCheckoutSessionId } from "@repo/payments/lib/checkout";
 import { Alert, AlertDescription } from "@repo/ui/components/alert";
 import { Button } from "@repo/ui/components/button";
-import { buildCheckoutLaunchPath } from "@saas/payments/lib/checkout-launch";
+import { submitCheckoutLaunch } from "@saas/payments/lib/checkout-launch";
 import {
 	AlertCircleIcon,
 	ArrowLeftIcon,
@@ -221,18 +221,8 @@ export function InlineCheckoutPageClient({
 			);
 		};
 
-		const bindIframeLoad = (iframe: HTMLIFrameElement) => {
-			if (iframe.dataset.inlineReadyBound === "1") {
-				return;
-			}
-
-			iframe.dataset.inlineReadyBound = "1";
-			iframe.addEventListener("load", maybeMarkReady, { once: true });
-		};
-
 		const existingIframe = container.querySelector("iframe");
 		if (existingIframe instanceof HTMLIFrameElement) {
-			bindIframeLoad(existingIframe);
 			// Some browsers insert a fully loaded iframe before we attach listeners.
 			window.requestAnimationFrame(maybeMarkReady);
 		}
@@ -240,7 +230,6 @@ export function InlineCheckoutPageClient({
 		const observer = new MutationObserver(() => {
 			const iframe = container.querySelector("iframe");
 			if (iframe instanceof HTMLIFrameElement) {
-				bindIframeLoad(iframe);
 				maybeMarkReady();
 			}
 		});
@@ -284,18 +273,16 @@ export function InlineCheckoutPageClient({
 							return;
 						}
 
-						window.location.replace(
-							buildCheckoutLaunchPath({
-								checkoutUrl,
-								checkoutSessionId: normalizedCheckoutSessionId,
-								expectedPriceKeys: expectedPriceKeys
-									.split(",")
-									.map((item) => item.trim())
-									.filter(Boolean),
-								postCheckoutPath,
-								mode: "hosted",
-							}),
-						);
+						submitCheckoutLaunch({
+							checkoutUrl,
+							checkoutSessionId: normalizedCheckoutSessionId,
+							expectedPriceKeys: expectedPriceKeys
+								.split(",")
+								.map((item) => item.trim())
+								.filter(Boolean),
+							postCheckoutPath,
+							mode: "hosted",
+						});
 					}}
 				>
 					Open full-page checkout

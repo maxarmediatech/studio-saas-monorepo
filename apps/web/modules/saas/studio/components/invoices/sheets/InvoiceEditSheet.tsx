@@ -356,10 +356,11 @@ export function InvoiceEditSheet() {
 													>
 														{taxTypeOptions.map(
 															(option) => (
-																<label
-																	key={
-																		option.value
-																	}
+															<label
+																key={
+																	option.value
+																}
+																htmlFor={`invoice-edit-tax-${option.value}`}
 																	className={cn(
 																		"flex cursor-pointer flex-col items-center gap-1 rounded-md border p-3 text-center transition-colors hover:bg-muted/50",
 																		field.value ===
@@ -367,7 +368,8 @@ export function InvoiceEditSheet() {
 																			"border-primary bg-primary/5",
 																	)}
 																>
-																	<RadioGroupItem
+																<RadioGroupItem
+																	id={`invoice-edit-tax-${option.value}`}
 																		value={
 																			option.value
 																		}

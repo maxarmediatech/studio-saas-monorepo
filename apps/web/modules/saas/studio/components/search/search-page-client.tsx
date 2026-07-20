@@ -2,6 +2,7 @@
 
 import { ScrollArea, ScrollBar } from "@repo/ui/components/scroll-area";
 import { cn } from "@repo/ui/lib/utils";
+import { getPreferredScrollBehavior } from "@shared/lib/motion";
 import { orpcClient } from "@shared/lib/orpc-client";
 import { Loader2, SearchIcon, XIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -138,7 +139,10 @@ export function SearchPageClient({ organizationSlug }: SearchPageClientProps) {
 		);
 
 		if (target) {
-			target.scrollIntoView({ block: "nearest", behavior: "smooth" });
+			target.scrollIntoView({
+				block: "nearest",
+				behavior: getPreferredScrollBehavior(),
+			});
 		}
 	}, [selectedIndex, results, activeTab]);
 

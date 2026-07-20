@@ -184,6 +184,7 @@ const SlideIndicator = ({
       <div className="flex gap-2">
         {slides.map((_, index) => (
           <button
+			type="button"
             key={index}
             onClick={() => api?.scrollTo(index)}
             aria-label={`Go to slide ${index + 1}`}

@@ -6,7 +6,7 @@ import { Input } from "@repo/ui/components/input";
 import { useSession } from "@saas/auth/hooks/use-session";
 import { SettingsItem } from "@saas/shared/components/SettingsItem";
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 
 function isValidTimeZone(value: string): boolean {
@@ -20,21 +20,29 @@ function isValidTimeZone(value: string): boolean {
 	}
 }
 
+const subscribeToBrowserTimeZone = () => () => {};
+const getServerTimeZone = () => null;
+const getBrowserTimeZone = () =>
+	Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC";
+
 export function UserTimezoneForm() {
 	const t = useTranslations();
 	const { user, reloadSession } = useSession();
 
-	const browserTimeZone = useMemo(
-		() => Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
-		[],
+	const browserTimeZone = useSyncExternalStore(
+		subscribeToBrowserTimeZone,
+		getBrowserTimeZone,
+		getServerTimeZone,
 	);
-
-	const [timezone, setTimezone] = useState(user?.timezone ?? browserTimeZone);
+	const [editedTimezone, setEditedTimezone] = useState<string | null>(null);
 	const [isSaving, setIsSaving] = useState(false);
+	const timezone = editedTimezone ?? user?.timezone ?? browserTimeZone ?? "";
 
 	const save = async (nextTimeZone: string) => {
 		const trimmed = nextTimeZone.trim();
-		if (!trimmed) return;
+		if (!trimmed) {
+			return;
+		}
 		if (!isValidTimeZone(trimmed)) {
 			toast.error(t("settings.account.timezone.notifications.invalid"));
 			return;
@@ -50,7 +58,7 @@ export function UserTimezoneForm() {
 				return;
 			}
 			await reloadSession();
-			setTimezone(trimmed);
+			setEditedTimezone(trimmed);
 			toast.success(t("settings.account.timezone.notifications.success"));
 		} finally {
 			setIsSaving(false);
@@ -61,13 +69,13 @@ export function UserTimezoneForm() {
 		<SettingsItem
 			title={t("settings.account.timezone.title")}
 			description={t("settings.account.timezone.description", {
-				detected: browserTimeZone,
+				detected: browserTimeZone ?? "…",
 			})}
 		>
 			<div className="flex flex-col gap-3">
 				<Input
 					value={timezone}
-					onChange={(e) => setTimezone(e.target.value)}
+					onChange={(e) => setEditedTimezone(e.target.value)}
 					disabled={isSaving}
 					autoCapitalize="none"
 					autoCorrect="off"
@@ -77,9 +85,12 @@ export function UserTimezoneForm() {
 					<Button
 						type="button"
 						variant="outline"
-						disabled={isSaving}
+						disabled={isSaving || !browserTimeZone}
 						onClick={() => {
-							setTimezone(browserTimeZone);
+							if (!browserTimeZone) {
+								return;
+							}
+							setEditedTimezone(browserTimeZone);
 							void save(browserTimeZone);
 						}}
 					>

@@ -1,18 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 
 const PORTAL_TARGET_ID = "settings-header-actions";
+const subscribeToPortalTarget = () => () => {};
+const getServerPortalTarget = () => null;
+const getPortalTarget = () => document.getElementById(PORTAL_TARGET_ID);
 
-export function SettingsHeaderPortal({ children }: { children: React.ReactNode }) {
-	const [target, setTarget] = useState<HTMLElement | null>(null);
+export function SettingsHeaderPortal({
+	children,
+}: {
+	children: React.ReactNode;
+}) {
+	const target = useSyncExternalStore(
+		subscribeToPortalTarget,
+		getPortalTarget,
+		getServerPortalTarget,
+	);
 
-	useEffect(() => {
-		setTarget(document.getElementById(PORTAL_TARGET_ID));
-	}, []);
-
-	if (!target) return null;
+	if (!target) {
+		return null;
+	}
 
 	return createPortal(children, target);
 }

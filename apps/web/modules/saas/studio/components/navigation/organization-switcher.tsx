@@ -15,7 +15,6 @@ import { useActiveOrganization } from "@saas/organizations/hooks/use-active-orga
 import { useOrganizationListQuery } from "@saas/organizations/lib/api";
 import { usePlanData } from "@saas/payments/hooks/plan-data";
 import { useOrganizationPurchases } from "@saas/payments/hooks/purchases";
-import { clearCache } from "@shared/lib/cache";
 import {
 	BadgeCheck,
 	ChevronDown,
@@ -62,8 +61,7 @@ export function OrganizationSwitcher({
 	const handleOrgSwitch = async (slug: string) => {
 		setSwitchingToSlug(slug);
 		try {
-			await clearCache();
-			setActiveOrganization(slug);
+			await setActiveOrganization(slug);
 		} finally {
 			setSwitchingToSlug(null);
 		}

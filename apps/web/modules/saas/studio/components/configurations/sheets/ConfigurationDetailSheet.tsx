@@ -17,6 +17,7 @@ import {
 } from "@repo/ui/components/sheet";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
+import { useSession } from "@saas/auth/hooks/use-session";
 import { useConfigurationParams } from "@saas/studio/hooks/params/use-configuration-params";
 import { useConfigurationViewParams } from "@saas/studio/hooks/params/use-configuration-view-params";
 import { configurationsApi } from "@saas/studio/lib/api";
@@ -60,10 +61,11 @@ function formatCurrency(value: string | number): string {
 	}).format(Number(value));
 }
 
-function formatDate(dateString: string): string {
+function formatDate(dateString: string, timeZone: string): string {
 	return new Date(dateString).toLocaleDateString("en-IN", {
 		day: "numeric",
 		month: "short",
+		timeZone,
 		year: "numeric",
 	});
 }
@@ -88,9 +90,7 @@ function normalizeDeliverable(
 
 	const deliverable = value as { title?: unknown; quantity?: unknown };
 	const title =
-		typeof deliverable.title === "string"
-			? deliverable.title.trim()
-			: "";
+		typeof deliverable.title === "string" ? deliverable.title.trim() : "";
 	const quantity =
 		typeof deliverable.quantity === "number"
 			? deliverable.quantity
@@ -106,6 +106,8 @@ function normalizeDeliverable(
 }
 
 export function ConfigurationDetailSheet() {
+	const { user } = useSession();
+	const timeZone = user?.timezone ?? "UTC";
 	const { configurationId, close } = useConfigurationViewParams();
 	const { openEdit } = useConfigurationParams();
 	const { configurationCreateOrUpdate } = useStudioCapabilities();
@@ -425,13 +427,13 @@ export function ConfigurationDetailSheet() {
 															Qty
 														</span>
 													</div>
-														{defaultDeliverables.map(
-															(d, index) => (
-																<div
-																	key={d.rowKey}
-																	className={cn(
-																		"grid grid-cols-[1fr_auto] gap-2 px-3 py-2",
-																		index <
+													{defaultDeliverables.map(
+														(d, index) => (
+															<div
+																key={d.rowKey}
+																className={cn(
+																	"grid grid-cols-[1fr_auto] gap-2 px-3 py-2",
+																	index <
 																		defaultDeliverables.length -
 																			1 &&
 																		"border-b",
@@ -498,14 +500,14 @@ export function ConfigurationDetailSheet() {
 									<CalendarIcon className="h-3.5 w-3.5" />
 									<span>
 										Created{" "}
-										{formatDate(config.createdAt)}
+										{formatDate(config.createdAt, timeZone)}
 									</span>
 								</div>
 								<div className="flex items-center gap-2 text-xs text-muted-foreground">
 									<ClockIcon className="h-3.5 w-3.5" />
 									<span>
 										Updated{" "}
-										{formatDate(config.updatedAt)}
+										{formatDate(config.updatedAt, timeZone)}
 									</span>
 								</div>
 							</div>

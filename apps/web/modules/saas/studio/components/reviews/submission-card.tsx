@@ -13,10 +13,11 @@ import {
 } from "@repo/ui/components/card";
 import { useSession } from "@saas/auth/hooks/use-session";
 import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
+import { useCurrentTime } from "@saas/studio/hooks/use-current-time";
 import { submissionsMutations } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistance } from "date-fns";
 import {
 	CheckCircle,
 	Clock,
@@ -26,7 +27,7 @@ import {
 	UserRoundCog,
 	XCircle,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { ReviewClaimActionDialog } from "./review-claim-action-dialog";
 import { ReviewSubmissionDialog } from "./review-submission-dialog";
@@ -69,6 +70,7 @@ interface SubmissionCardProps {
 }
 
 export function SubmissionCard({ submission }: SubmissionCardProps) {
+	const { currentTime } = useCurrentTime();
 	const { user } = useSession();
 	const { activeOrganization, isOrganizationAdmin } = useActiveOrganization();
 	const queryClient = useQueryClient();
@@ -82,44 +84,53 @@ export function SubmissionCard({ submission }: SubmissionCardProps) {
 		submission.status === "submitted" && !submission.reviewedBy;
 	const canReview = submission.status === "in_review" && isAssignedToMe;
 	const isStaleClaim =
+		currentTime !== null &&
 		submission.status === "in_review" &&
 		!!submission.reviewClaimStaleAt &&
-		new Date(submission.reviewClaimStaleAt).getTime() <= Date.now();
-	const reviewerOptions = useMemo(
-		() =>
-			activeOrganization?.members
-				.filter((member) => member.userId !== submission.reviewedBy)
-				.map((member) => ({
-					id: member.userId,
-					label:
-						member.user?.name ??
-						member.user?.email ??
-						"Organization member",
-				})) ?? [],
-		[activeOrganization?.members, submission.reviewedBy],
-	);
+		new Date(submission.reviewClaimStaleAt).getTime() <=
+			currentTime.getTime();
+	const reviewerOptions =
+		activeOrganization?.members
+			.filter((member) => member.userId !== submission.reviewedBy)
+			.map((member) => ({
+				id: member.userId,
+				label:
+					member.user?.name ??
+					member.user?.email ??
+					"Organization member",
+			})) ?? [];
 
 	const statusConfig =
 		STATUS_CONFIG[submission.status as keyof typeof STATUS_CONFIG];
 	const StatusIcon = statusConfig?.icon ?? Clock;
 
-	const submittedAtLabel = useMemo(() => {
+	const submittedAtLabel = (() => {
 		if (!submission.submittedAt) {
 			return "Unknown submission time";
 		}
+		if (!currentTime) {
+			return "Submitted";
+		}
 
-		return formatDistanceToNow(new Date(submission.submittedAt), {
+		return formatDistance(new Date(submission.submittedAt), currentTime, {
 			addSuffix: true,
 		});
-	}, [submission.submittedAt]);
-	const claimedAtLabel = useMemo(() => {
+	})();
+	const claimedAtLabel = (() => {
 		if (!submission.reviewClaimedAt) {
 			return null;
 		}
-		return formatDistanceToNow(new Date(submission.reviewClaimedAt), {
-			addSuffix: true,
-		});
-	}, [submission.reviewClaimedAt]);
+		if (!currentTime) {
+			return "Claimed";
+		}
+		return formatDistance(
+			new Date(submission.reviewClaimedAt),
+			currentTime,
+			{
+				addSuffix: true,
+			},
+		);
+	})();
 
 	const claimMutation = useMutation({
 		...submissionsMutations.claim(),

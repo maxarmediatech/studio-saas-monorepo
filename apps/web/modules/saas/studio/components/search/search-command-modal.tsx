@@ -2,11 +2,18 @@
 
 import { ScrollArea, ScrollBar } from "@repo/ui/components/scroll-area";
 import { cn } from "@repo/ui/lib/utils";
+import { getPreferredScrollBehavior } from "@shared/lib/motion";
 import { orpcClient } from "@shared/lib/orpc-client";
 import { Loader2, SearchIcon, XIcon } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+	useSyncExternalStore,
+} from "react";
 import { createPortal } from "react-dom";
 import { ENTITY_DISPLAY_CONFIG, getEntityCount, SEARCH_TABS } from "./config";
 import type {
@@ -25,6 +32,10 @@ const EMPTY_RESULTS: SearchResults = {
 	expenses: [],
 	invoices: [],
 };
+
+const subscribeToClient = () => () => {};
+const getClientSnapshot = () => true;
+const getServerSnapshot = () => false;
 
 interface SearchCommandModalProps {
 	isOpen: boolean;
@@ -47,20 +58,27 @@ export function SearchCommandModal({
 	const [results, setResults] = useState<SearchResults>(EMPTY_RESULTS);
 	const [isLoading, setIsLoading] = useState(false);
 	const [selectedIndex, setSelectedIndex] = useState(0);
-	const [mounted, setMounted] = useState(false);
+	const mounted = useSyncExternalStore(
+		subscribeToClient,
+		getClientSnapshot,
+		getServerSnapshot,
+	);
 
 	useEffect(() => {
-		setMounted(true);
-	}, []);
-
-	useEffect(() => {
-		if (isOpen) {
-			setQuery("");
-			setResults(EMPTY_RESULTS);
-			setSelectedIndex(0);
-			setActiveTab("all");
-			setTimeout(() => inputRef.current?.focus(), 0);
+		if (!isOpen) {
+			return;
 		}
+
+		setQuery("");
+		setResults(EMPTY_RESULTS);
+		setSelectedIndex(0);
+		setActiveTab("all");
+		const focusTimer = window.setTimeout(
+			() => inputRef.current?.focus(),
+			0,
+		);
+
+		return () => window.clearTimeout(focusTimer);
 	}, [isOpen]);
 
 	const flatResults = useCallback(() => {
@@ -138,14 +156,19 @@ export function SearchCommandModal({
 
 	useEffect(() => {
 		const container = resultsRef.current;
-		if (!container) return;
+		if (!container) {
+			return;
+		}
 
 		const target = container.querySelector<HTMLElement>(
 			`[data-search-index="${selectedIndex}"]`,
 		);
 
 		if (target) {
-			target.scrollIntoView({ block: "nearest", behavior: "smooth" });
+			target.scrollIntoView({
+				block: "nearest",
+				behavior: getPreferredScrollBehavior(),
+			});
 		}
 	}, [selectedIndex, results, activeTab]);
 
@@ -199,12 +222,15 @@ export function SearchCommandModal({
 
 	let flatIndex = 0;
 
-	if (!mounted || !isOpen) return null;
+	if (!mounted || !isOpen) {
+		return null;
+	}
 
 	return createPortal(
 		<div
 			role="dialog"
 			aria-modal="true"
+			aria-label="Search studio"
 			className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 pt-[10vh]"
 			onClick={handleOverlayClick}
 			onKeyDown={handleKeyDown}
@@ -213,6 +239,7 @@ export function SearchCommandModal({
 				<div className="flex items-center gap-3 border-b border-neutral-200 px-4 py-3">
 					<SearchIcon className="size-5 shrink-0 text-neutral-400" />
 					<input
+						aria-label="Search studio"
 						ref={inputRef}
 						type="text"
 						value={query}
@@ -224,6 +251,7 @@ export function SearchCommandModal({
 					/>
 					{query && !isLoading && (
 						<button
+							aria-label="Clear search"
 							type="button"
 							onClick={() => {
 								setQuery("");
@@ -306,7 +334,9 @@ export function SearchCommandModal({
 								: [activeTab]
 							).map((entityType) => {
 								const items = results[entityType];
-								if (!items || items.length === 0) return null;
+								if (!items || items.length === 0) {
+									return null;
+								}
 
 								const config =
 									ENTITY_DISPLAY_CONFIG[entityType];

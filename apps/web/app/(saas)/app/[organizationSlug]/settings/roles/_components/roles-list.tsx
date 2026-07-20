@@ -73,6 +73,15 @@ function parsePermissions(value: string): Record<string, string[]> {
 	}
 }
 
+function getStaticRolePermissions(role: AppRole): Record<string, string[]> {
+	return Object.fromEntries(
+		Object.entries(appRoles[role].statements).map(([resource, actions]) => [
+			resource,
+			[...actions],
+		]),
+	);
+}
+
 export function RolesList({ canManage, createSignal }: RolesListProps) {
 	const queryClient = useQueryClient();
 	const [isCreateMode, setIsCreateMode] = useState(false);
@@ -110,10 +119,7 @@ export function RolesList({ canManage, createSignal }: RolesListProps) {
 			name: role.label,
 			description: role.description,
 			type: "static",
-			permissions: appRoles[role.key as AppRole].statements as Record<
-				string,
-				string[]
-			>,
+			permissions: getStaticRolePermissions(role.key as AppRole),
 		}));
 
 		const customItems: RoleListItem[] = (customRoles ?? []).map((role) => ({

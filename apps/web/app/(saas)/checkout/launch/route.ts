@@ -24,19 +24,26 @@ function parseExpectedPriceKeys(value: string | null) {
 	];
 }
 
-export async function GET(request: Request) {
+export async function POST(request: Request) {
 	const requestUrl = new URL(request.url);
-	const checkoutUrl = requestUrl.searchParams.get("checkoutUrl");
+	const requestOrigin = request.headers.get("origin");
+	if (requestOrigin !== requestUrl.origin) {
+		return NextResponse.redirect(new URL("/choose-plan", requestUrl), 303);
+	}
+
+	const formData = await request.formData();
+	const getFormValue = (name: string) => {
+		const value = formData.get(name);
+		return typeof value === "string" ? value : null;
+	};
+	const checkoutUrl = getFormValue("checkoutUrl");
 	const checkoutSessionId = sanitizeCheckoutSessionId(
-		requestUrl.searchParams.get("checkoutSessionId"),
+		getFormValue("checkoutSessionId"),
 	);
-	const redirectTo = sanitizePostCheckoutPath(
-		requestUrl.searchParams.get("redirectTo"),
-	);
-	const mode = requestUrl.searchParams.get("mode");
+	const redirectTo = sanitizePostCheckoutPath(getFormValue("redirectTo"));
+	const mode = getFormValue("mode");
 	const expectedPriceKeys = parseExpectedPriceKeys(
-		requestUrl.searchParams.get("prices") ??
-			requestUrl.searchParams.get("products"),
+		getFormValue("prices") ?? getFormValue("products"),
 	);
 
 	if (
@@ -44,7 +51,7 @@ export async function GET(request: Request) {
 		!checkoutSessionId ||
 		!(mode === "inline" || mode === "hosted")
 	) {
-		return NextResponse.redirect(new URL("/choose-plan", requestUrl));
+		return NextResponse.redirect(new URL("/choose-plan", requestUrl), 303);
 	}
 
 	const response =
@@ -62,8 +69,9 @@ export async function GET(request: Request) {
 						)}`,
 						requestUrl,
 					),
+					303,
 				)
-			: NextResponse.redirect(checkoutUrl);
+			: NextResponse.redirect(checkoutUrl, 303);
 
 	response.cookies.set({
 		name: PENDING_CHECKOUT_COOKIE_NAME,
