@@ -6,7 +6,6 @@
 			"@analytics": ["./modules/analytics"],
 
 			"@saas/*": ["./modules/saas/*"],
-			// "@repo/ui/*": ["./modules/ui/*"],
 			"@i18n": ["./modules/i18n"],
 			"@i18n/*": ["./modules/i18n/*"],
 			"@shared/*": ["./modules/shared/*"],
