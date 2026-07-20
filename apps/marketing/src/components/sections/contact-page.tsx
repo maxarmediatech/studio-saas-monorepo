@@ -91,19 +91,22 @@ export const ContactPage = () => {
               <h2 className="text-lg font-semibold">Follow us</h2>
               <div className="mt-3 flex gap-6">
                 <a
-                  href="#"
+				href="https://facebook.com"
+				aria-label="Facebook"
                   className="text-muted-foreground hover:text-foreground"
                 >
                   <Facebook className="size-6" />
                 </a>
                 <a
-                  href="#"
+				href="https://twitter.com"
+				aria-label="Twitter"
                   className="text-muted-foreground hover:text-foreground"
                 >
                   <Twitter className="size-6" />
                 </a>
                 <a
-                  href="#"
+				href="https://linkedin.com"
+				aria-label="LinkedIn"
                   className="text-muted-foreground hover:text-foreground"
                 >
                   <Linkedin className="size-6" />

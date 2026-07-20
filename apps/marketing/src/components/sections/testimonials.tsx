@@ -133,7 +133,7 @@ export default function Testimonials() {
                             className={cn(
                               "size-full object-cover transition-all",
                               testimonial.className,
-                              current != index && "mix-blend-luminosity",
+							current !== index && "mix-blend-luminosity",
                             )}
                           />
                         </div>
@@ -162,6 +162,7 @@ export default function Testimonials() {
                 <div className="flex gap-2">
                   {TESTIMONIALS.map((_, index) => (
                     <button
+					type="button"
                       key={index}
                       className={`size-4 rounded-full transition-colors ${
                         current === index

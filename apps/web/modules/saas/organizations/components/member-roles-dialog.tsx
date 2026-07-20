@@ -68,9 +68,11 @@ export function MemberRolesDialog({
 							roleOptions.map((role) => (
 								<label
 									key={role.value}
+									htmlFor={`member-role-${role.value}`}
 									className="flex items-center gap-2 text-sm"
 								>
 									<Checkbox
+										id={`member-role-${role.value}`}
 										checked={roles.includes(role.value)}
 										onCheckedChange={(checked) => {
 											setRoles((current) =>

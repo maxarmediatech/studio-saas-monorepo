@@ -146,6 +146,7 @@ export function ReviewQueueView() {
 							<nav className="space-y-1 p-2">
 								{ASSIGNMENT_TYPE_OPTIONS.map((option) => (
 									<button
+										type="button"
 										key={option.id}
 										onClick={() =>
 											setAssignmentType(option.id)

@@ -26,18 +26,12 @@ interface DataTableViewOptionsProps<TData> {
 export function DataTableViewOptions<TData>({
 	table,
 }: DataTableViewOptionsProps<TData>) {
-	const columns = React.useMemo(
-		() =>
-			table
-				.getAllColumns()
-				.filter(
-					(column) =>
-						typeof column.accessorFn !== "undefined" &&
-						column.getCanHide(),
-				),
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-		[table, table.getState().columnVisibility],
-	);
+	const columns = table
+		.getAllColumns()
+		.filter(
+			(column) =>
+				typeof column.accessorFn !== "undefined" && column.getCanHide(),
+		);
 
 	if (columns.length === 0) {
 		return null;

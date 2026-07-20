@@ -162,7 +162,7 @@ export const FAQPage = () => {
               const distanceFromThreshold = Math.abs(rect.top - TOP_PADDING);
               const closestDistance = closest
                 ? Math.abs(closest.boundingClientRect.top - TOP_PADDING)
-                : Infinity;
+                : Number.POSITIVE_INFINITY;
 
               return distanceFromThreshold < closestDistance
                 ? current
@@ -272,7 +272,7 @@ export const FAQPage = () => {
                     categoryRefs.current[category] = el;
                   }}
                   className={cn(
-                    `rounded-xl`,
+                    "rounded-xl",
                     activeCategory === category
                       ? "bg-background"
                       : "bg-background/40",

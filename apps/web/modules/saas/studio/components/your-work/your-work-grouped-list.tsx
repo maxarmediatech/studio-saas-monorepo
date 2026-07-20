@@ -32,8 +32,9 @@ function formatDate(dateString: string | null): string {
 	}
 	const date = new Date(dateString);
 	return date.toLocaleDateString("en-US", {
-		month: "short",
 		day: "numeric",
+		month: "short",
+		timeZone: "UTC",
 		year: "numeric",
 	});
 }

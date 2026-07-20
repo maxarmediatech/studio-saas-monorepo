@@ -16,6 +16,11 @@ export async function generateMetadata() {
 		title: t("auth.signup.title"),
 	};
 }
+
+function invitationHasExpired(expiresAt: Date) {
+	return expiresAt.getTime() < Date.now();
+}
+
 export default async function SignupPage({
 	searchParams,
 }: {
@@ -37,7 +42,7 @@ export default async function SignupPage({
 		if (
 			!invitation ||
 			invitation.status !== "pending" ||
-			invitation.expiresAt.getTime() < Date.now()
+			invitationHasExpired(invitation.expiresAt)
 		) {
 			redirect(withQuery("/auth/login", params));
 		}

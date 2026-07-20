@@ -50,7 +50,7 @@ export const Diamonds = ({
 
     // Animation timing function (cubic ease-in-out)
     const easeInOutCubic = (t: number) => {
-      return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
     };
 
     // Get staggered animation progress based on position
@@ -88,10 +88,10 @@ export const Diamonds = ({
 
       // Get the computed style to check for borders
       const parentStyle = getComputedStyle(parent);
-      const borderTopWidth = parseFloat(parentStyle.borderTopWidth) || 0;
-      const borderBottomWidth = parseFloat(parentStyle.borderBottomWidth) || 0;
-      const borderLeftWidth = parseFloat(parentStyle.borderLeftWidth) || 0;
-      const borderRightWidth = parseFloat(parentStyle.borderRightWidth) || 0;
+      const borderTopWidth = Number.parseFloat(parentStyle.borderTopWidth) || 0;
+      const borderBottomWidth = Number.parseFloat(parentStyle.borderBottomWidth) || 0;
+      const borderLeftWidth = Number.parseFloat(parentStyle.borderLeftWidth) || 0;
+      const borderRightWidth = Number.parseFloat(parentStyle.borderRightWidth) || 0;
 
       // Calculate inner dimensions (excluding borders)
       const parentRect = parent.getBoundingClientRect();

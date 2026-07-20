@@ -8,13 +8,18 @@ import { StickiesWidget } from "./widgets/stickies";
 
 interface HomeViewProps {
 	organizationSlug: string;
+	timeZone: string;
 	userName: string;
 }
 
-export function HomeView({ organizationSlug, userName }: HomeViewProps) {
+export function HomeView({
+	organizationSlug,
+	timeZone,
+	userName,
+}: HomeViewProps) {
 	return (
 		<div className="mx-auto w-full max-w-[800px] pb-8 sm:pb-10">
-			<UserGreeting userName={userName} />
+			<UserGreeting timeZone={timeZone} userName={userName} />
 			<div className="flex flex-col gap-5 sm:gap-7">
 				<QuickstartGuide organizationSlug={organizationSlug} />
 				<QuickLinksWidget />
