@@ -1,24 +1,12 @@
-import { and, eq, ilike, isNull, or } from "@repo/database";
+import { and, eq, isNull } from "@repo/database";
+import { buildLiteralTextSearchCondition } from "../../studio/lib/entity-search";
 
 /**
  * Build ILIKE conditions for multiple text fields
  * Returns undefined if query is empty
  */
 export function buildTextSearchCondition(query: string, ...fields: unknown[]) {
-	const trimmed = query.trim();
-	if (!trimmed) return undefined;
-
-	const searchTerm = `%${trimmed}%`;
-	const validFields = fields.filter((field) => field != null);
-
-	if (validFields.length === 0) return undefined;
-
-	// biome-ignore lint/suspicious/noExplicitAny: Drizzle column types are complex
-	const conditions = validFields.map((field: any) =>
-		ilike(field, searchTerm),
-	);
-
-	return conditions.length === 1 ? conditions[0] : or(...conditions);
+	return buildLiteralTextSearchCondition(query, ...fields);
 }
 
 /**
@@ -52,11 +40,7 @@ export function extractIdentifier(query: string): {
 /**
  * Build base conditions for organization-scoped soft-deletable entities
  */
-export function buildBaseConditions(
-	// biome-ignore lint/suspicious/noExplicitAny: Drizzle table types are complex
-	table: any,
-	organizationId: string,
-) {
+export function buildBaseConditions(table: any, organizationId: string) {
 	return [eq(table.organizationId, organizationId), isNull(table.deletedAt)];
 }
 
@@ -66,8 +50,11 @@ export function buildBaseConditions(
  */
 export function combineWithAnd(...conditions: unknown[]) {
 	const valid = conditions.filter((c) => c != null);
-	if (valid.length === 0) return undefined;
-	if (valid.length === 1) return valid[0];
-	// biome-ignore lint/suspicious/noExplicitAny: Drizzle SQL types
+	if (valid.length === 0) {
+		return undefined;
+	}
+	if (valid.length === 1) {
+		return valid[0];
+	}
 	return and(...(valid as any[]));
 }
