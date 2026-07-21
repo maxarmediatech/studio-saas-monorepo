@@ -1,26 +1,29 @@
 import { and, db, desc, eq, isNull, shoots } from "@repo/database";
+import { buildShootSearchCondition } from "../../../studio/lib/entity-search";
 import type { ShootSearchResult } from "../../types";
-import { buildTextSearchCondition } from "../search-utils";
+
+interface SearchShootsOptions {
+	includeClientNames?: boolean;
+}
 
 export async function searchShoots(
 	organizationId: string,
 	query: string,
 	limit: number,
+	options: SearchShootsOptions = {},
 ): Promise<ShootSearchResult[]> {
 	const conditions = [
 		eq(shoots.organizationId, organizationId),
 		isNull(shoots.deletedAt),
 	];
-
-	const textSearch = buildTextSearchCondition(
+	const searchCondition = buildShootSearchCondition(
 		query,
-		shoots.name,
-		shoots.venue,
-		shoots.shootType,
+		organizationId,
+		options,
 	);
 
-	if (textSearch) {
-		conditions.push(textSearch);
+	if (searchCondition) {
+		conditions.push(searchCondition);
 	}
 
 	const results = await db

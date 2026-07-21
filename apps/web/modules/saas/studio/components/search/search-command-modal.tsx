@@ -244,7 +244,7 @@ export function SearchCommandModal({
 						type="text"
 						value={query}
 						onChange={(e) => setQuery(e.target.value)}
-						placeholder="Search..."
+						placeholder="Search clients, bookings, venues, amounts..."
 						className="flex-1 bg-transparent text-base outline-none placeholder:text-neutral-400"
 						autoComplete="off"
 						spellCheck={false}

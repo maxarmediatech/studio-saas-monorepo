@@ -163,7 +163,7 @@ export function DeliverablesFilters() {
 			isFiltered={isFiltered}
 			showSearch
 			searchValue={filters.search ?? ""}
-			searchPlaceholder="Search deliverables..."
+			searchPlaceholder="Search deliverable, client, booking, description or crew..."
 			onSearchChange={handleSearchChange}
 			showViewOptions={false}
 		>

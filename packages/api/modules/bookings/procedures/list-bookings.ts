@@ -1,20 +1,23 @@
 import {
 	and,
+	asc,
 	bookingParticipants,
 	bookings,
 	clients,
 	count,
 	db,
+	desc,
 	eq,
 	gte,
 	inArray,
 	isNull,
 	lte,
 	shoots,
-	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { requirePermission } from "../../studio/lib/permissions";
+import { buildBookingSearchCondition } from "../../studio/lib/entity-search";
+import { hasPermission, requirePermission } from "../../studio/lib/permissions";
+import { parseExactMoneyQuery } from "../../studio/lib/search-input";
 import {
 	listBookingsInputSchema,
 	listBookingsOutputSchema,
@@ -116,9 +119,17 @@ export const listBookings = studioProtectedProcedure
 		}
 
 		if (search) {
-			conditions.push(
-				sql`(${bookings.name} ILIKE ${`%${search}%`} OR ${bookings.referenceNumber} ILIKE ${`%${search}%`})`,
+			const canSearchPaymentAmounts = parseExactMoneyQuery(search)
+				? await hasPermission(context, "payment", "list")
+				: false;
+			const searchCondition = buildBookingSearchCondition(
+				search,
+				context.organizationId,
+				{ includePaymentAmounts: canSearchPaymentAmounts },
 			);
+			if (searchCondition) {
+				conditions.push(searchCondition);
+			}
 		}
 
 		if (clientId) {
@@ -161,15 +172,15 @@ export const listBookings = studioProtectedProcedure
 									? bookings.updatedAt
 									: bookings.createdAt;
 
-		const data = await db.query.bookings.findMany({
-			where: and(...conditions),
-			orderBy: (_table, { asc, desc }) =>
-				sortDirection === "asc"
-					? [asc(orderColumn)]
-					: [desc(orderColumn)],
-			limit,
-			offset,
-		});
+		const data = await db
+			.select()
+			.from(bookings)
+			.where(and(...conditions))
+			.orderBy(
+				sortDirection === "asc" ? asc(orderColumn) : desc(orderColumn),
+			)
+			.limit(limit)
+			.offset(offset);
 
 		// Get participant counts and data, and shoot counts
 		const bookingIds = data.map((b) => b.id);
