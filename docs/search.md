@@ -52,7 +52,7 @@ Structured ranges, dates, and statuses belong in filters. A whole-query monetary
 - Individual received-payment matching requires `payment:list`.
 - Related records use correlated `EXISTS` predicates to avoid duplicate list rows and incorrect pagination counts.
 - User-entered `%`, `_`, and `\\` characters are treated literally.
-- Identifier-like reference queries ignore separators while preserving normal text matching.
+- Identifier-like reference queries ignore hyphens, spaces, and slashes only; wildcard-like and other punctuation remain literal.
 
 ## Deferred
 

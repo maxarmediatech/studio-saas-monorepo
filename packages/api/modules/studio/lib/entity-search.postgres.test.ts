@@ -162,6 +162,25 @@ describePostgres("entity search PostgreSQL integration", () => {
 			}
 			expect(permissionMocks.hasPermission).not.toHaveBeenCalled();
 
+			for (const literalQuery of [
+				"RAK%2604-0001",
+				"RAK_2604-0001",
+				"RAK\\2604-0001",
+			]) {
+				const bookingResult = await callList(literalQuery);
+				expect(bookingResult.data, literalQuery).toHaveLength(0);
+			}
+
+			const shootByLiteralWildcardReference = await searchShoots(
+				organizationId,
+				"RAK%2604-0001",
+				10,
+			);
+			expect(shootByLiteralWildcardReference).toHaveLength(0);
+			const deliverableByLiteralWildcardReference =
+				await searchDeliverables(organizationId, "RAK%2604-0001", 10);
+			expect(deliverableByLiteralWildcardReference).toHaveLength(0);
+
 			const shootByLabel = await searchShoots(
 				organizationId,
 				"Infant Story",

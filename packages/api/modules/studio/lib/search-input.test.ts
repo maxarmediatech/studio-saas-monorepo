@@ -36,6 +36,10 @@ describe("buildCompactReferenceQuery", () => {
 		"123",
 		"BK",
 		"",
+		"RAK%2604-0001",
+		"RAK_2604-0001",
+		"RAK\\2604-0001",
+		"RAK@2604-0001",
 	])("does not interpret %s as a reference", (query) => {
 		expect(buildCompactReferenceQuery(query)).toBeNull();
 	});
