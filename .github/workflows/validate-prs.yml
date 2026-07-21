@@ -79,6 +79,12 @@ jobs:
           pnpm --filter @repo/database test:staging-clone
       - name: Migrate disposable test database
         run: pnpm --filter @repo/database migrate
+      - name: Run CRM search regression tests
+        run: |
+          POSTGRES_CONCURRENCY_DATABASE_URL="$DATABASE_URL" \
+            pnpm --filter @repo/api exec vitest run \
+              modules/studio/lib/search-input.test.ts \
+              modules/studio/lib/entity-search.postgres.test.ts
       - name: Validate required env
         run: pnpm env:check
       - name: Run Playwright tests

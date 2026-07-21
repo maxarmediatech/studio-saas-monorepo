@@ -1,10 +1,12 @@
 import {
 	and,
+	asc,
 	bookingParticipants,
 	bookings,
 	clients,
 	count,
 	db,
+	desc,
 	eq,
 	gte,
 	inArray,
@@ -171,15 +173,15 @@ export const listBookings = studioProtectedProcedure
 									? bookings.updatedAt
 									: bookings.createdAt;
 
-		const data = await db.query.bookings.findMany({
-			where: and(...conditions),
-			orderBy: (_table, { asc, desc }) =>
-				sortDirection === "asc"
-					? [asc(orderColumn)]
-					: [desc(orderColumn)],
-			limit,
-			offset,
-		});
+		const data = await db
+			.select()
+			.from(bookings)
+			.where(and(...conditions))
+			.orderBy(
+				sortDirection === "asc" ? asc(orderColumn) : desc(orderColumn),
+			)
+			.limit(limit)
+			.offset(offset);
 
 		// Get participant counts and data, and shoot counts
 		const bookingIds = data.map((b) => b.id);
