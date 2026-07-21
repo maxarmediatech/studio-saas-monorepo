@@ -2,6 +2,7 @@ import {
 	bookingParticipants,
 	bookings,
 	clients,
+	configurations,
 	crews,
 	deliverableAssignments,
 	deliverables,
@@ -12,7 +13,11 @@ import {
 	shoots,
 	sql,
 } from "@repo/database";
-import { buildContainsPattern, parseExactMoneyQuery } from "./search-input";
+import {
+	buildCompactReferenceQuery,
+	buildContainsPattern,
+	parseExactMoneyQuery,
+} from "./search-input";
 
 /** Build literal, case-insensitive contains matching across text columns. */
 export function buildLiteralTextSearchCondition(
@@ -38,6 +43,16 @@ export function buildLiteralTextSearchCondition(
 }
 
 type SqlCondition = Exclude<ReturnType<typeof or>, undefined>;
+
+function buildCompactReferenceSearchCondition(
+	query: string,
+	field: unknown,
+): SqlCondition | undefined {
+	const compactReference = buildCompactReferenceQuery(query);
+	return compactReference
+		? sql`REGEXP_REPLACE(UPPER(${field}), '[^A-Z0-9]', '', 'g') LIKE ${`%${compactReference}%`}`
+		: undefined;
+}
 
 function combineWithOr(
 	...conditions: Array<SqlCondition | undefined>
@@ -72,6 +87,26 @@ export function buildBookingSearchCondition(
 		bookings.bookingType,
 		bookings.packageType,
 	);
+	const compactReferenceMatch = buildCompactReferenceSearchCondition(
+		query,
+		bookings.referenceNumber,
+	);
+	const configurationLabelMatch = buildLiteralTextSearchCondition(
+		query,
+		configurations.label,
+	);
+	const configurationMatch = configurationLabelMatch
+		? sql`EXISTS (
+			SELECT 1
+			FROM ${configurations}
+			WHERE ${configurations.organizationId} = ${organizationId}
+				AND ${configurationLabelMatch}
+				AND (
+					(${configurations.type} = ${"booking_type"} AND ${configurations.key} = ${bookings.bookingType})
+					OR (${configurations.type} = ${"package_type"} AND ${configurations.key} = ${bookings.packageType})
+				)
+		)`
+		: undefined;
 	const clientNameMatch = buildLiteralTextSearchCondition(
 		query,
 		clients.name,
@@ -109,7 +144,13 @@ export function buildBookingSearchCondition(
 			)
 		: undefined;
 
-	return combineWithOr(directMatch, clientMatch, amountMatch);
+	return combineWithOr(
+		directMatch,
+		compactReferenceMatch,
+		configurationMatch,
+		clientMatch,
+		amountMatch,
+	);
 }
 
 export function buildShootSearchCondition(
@@ -124,22 +165,44 @@ export function buildShootSearchCondition(
 		shoots.venue,
 		shoots.venueAddress,
 	);
+	const configurationLabelMatch = buildLiteralTextSearchCondition(
+		query,
+		configurations.label,
+	);
+	const configurationMatch = configurationLabelMatch
+		? sql`EXISTS (
+			SELECT 1
+			FROM ${configurations}
+			WHERE ${configurations.organizationId} = ${organizationId}
+				AND ${configurations.type} = ${"event_type"}
+				AND ${configurations.key} = ${shoots.shootType}
+				AND ${configurationLabelMatch}
+		)`
+		: undefined;
 	const bookingTextMatch = buildLiteralTextSearchCondition(
 		query,
 		bookings.name,
 		bookings.referenceNumber,
 	);
+	const compactBookingReferenceMatch = buildCompactReferenceSearchCondition(
+		query,
+		bookings.referenceNumber,
+	);
+	const relatedBookingSearchMatch = combineWithOr(
+		bookingTextMatch,
+		compactBookingReferenceMatch,
+	);
 	const clientNameMatch = options.includeClientNames
 		? buildLiteralTextSearchCondition(query, clients.name)
 		: undefined;
-	const relatedBookingMatch = bookingTextMatch
+	const relatedBookingMatch = relatedBookingSearchMatch
 		? sql`EXISTS (
 			SELECT 1
 			FROM ${bookings}
 			WHERE ${bookings.id} = ${shoots.bookingId}
 				AND ${bookings.organizationId} = ${organizationId}
 				AND ${bookings.deletedAt} IS NULL
-				AND ${bookingTextMatch}
+				AND ${relatedBookingSearchMatch}
 		)`
 		: undefined;
 	const relatedClientMatch = clientNameMatch
@@ -174,6 +237,7 @@ export function buildShootSearchCondition(
 
 	return combineWithOr(
 		directMatch,
+		configurationMatch,
 		relatedBookingMatch,
 		relatedClientMatch,
 		relatedCrewMatch,
@@ -195,17 +259,25 @@ export function buildDeliverableSearchCondition(
 		bookings.name,
 		bookings.referenceNumber,
 	);
+	const compactBookingReferenceMatch = buildCompactReferenceSearchCondition(
+		query,
+		bookings.referenceNumber,
+	);
+	const relatedBookingSearchMatch = combineWithOr(
+		bookingTextMatch,
+		compactBookingReferenceMatch,
+	);
 	const clientNameMatch = options.includeClientNames
 		? buildLiteralTextSearchCondition(query, clients.name)
 		: undefined;
-	const relatedBookingMatch = bookingTextMatch
+	const relatedBookingMatch = relatedBookingSearchMatch
 		? sql`EXISTS (
 			SELECT 1
 			FROM ${bookings}
 			WHERE ${bookings.id} = ${deliverables.bookingId}
 				AND ${bookings.organizationId} = ${organizationId}
 				AND ${bookings.deletedAt} IS NULL
-				AND ${bookingTextMatch}
+				AND ${relatedBookingSearchMatch}
 		)`
 		: undefined;
 	const relatedClientMatch = clientNameMatch

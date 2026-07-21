@@ -1,5 +1,8 @@
 const MONEY_QUERY_PATTERN = /^\d+(?:\.\d{1,2})?$/;
 const LEADING_CURRENCY_PATTERN = /^[₹$€£]\s*/;
+const REFERENCE_LETTER_PATTERN = /[A-Z]/;
+const REFERENCE_DIGIT_PATTERN = /\d/;
+const REFERENCE_SEPARATOR_PATTERN = /[^A-Z0-9]/g;
 
 /** Escape user input so PostgreSQL LIKE wildcard characters remain literal. */
 export function buildContainsPattern(query: string): string | null {
@@ -10,6 +13,24 @@ export function buildContainsPattern(query: string): string | null {
 
 	const escaped = trimmed.replace(/[\\%_]/g, "\\$&");
 	return `%${escaped}%`;
+}
+
+/** Normalize identifier-like input for separator-insensitive reference matching. */
+export function buildCompactReferenceQuery(query: string): string | null {
+	const compact = query
+		.trim()
+		.toUpperCase()
+		.replace(REFERENCE_SEPARATOR_PATTERN, "");
+
+	if (
+		compact.length < 3 ||
+		!REFERENCE_LETTER_PATTERN.test(compact) ||
+		!REFERENCE_DIGIT_PATTERN.test(compact)
+	) {
+		return null;
+	}
+
+	return compact;
 }
 
 /** Normalize a whole-query monetary value for exact decimal comparisons. */

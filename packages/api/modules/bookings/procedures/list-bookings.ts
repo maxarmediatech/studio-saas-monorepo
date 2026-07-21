@@ -17,6 +17,7 @@ import {
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { buildBookingSearchCondition } from "../../studio/lib/entity-search";
 import { hasPermission, requirePermission } from "../../studio/lib/permissions";
+import { parseExactMoneyQuery } from "../../studio/lib/search-input";
 import {
 	listBookingsInputSchema,
 	listBookingsOutputSchema,
@@ -118,11 +119,9 @@ export const listBookings = studioProtectedProcedure
 		}
 
 		if (search) {
-			const canSearchPaymentAmounts = await hasPermission(
-				context,
-				"payment",
-				"list",
-			);
+			const canSearchPaymentAmounts = parseExactMoneyQuery(search)
+				? await hasPermission(context, "payment", "list")
+				: false;
 			const searchCondition = buildBookingSearchCondition(
 				search,
 				context.organizationId,

@@ -18,9 +18,9 @@ Structured ranges, dates, and statuses belong in filters. A whole-query monetary
 ### Bookings
 
 - Name
-- Reference number
-- Booking type
-- Package type
+- Reference number, including separator-insensitive input
+- Booking type key or organization-configured label
+- Package type key or organization-configured label
 - Participant/client name
 - Exact package cost
 - Exact total received
@@ -30,7 +30,7 @@ Structured ranges, dates, and statuses belong in filters. A whole-query monetary
 ### Shoots
 
 - Name
-- Type
+- Type key or organization-configured event-type label
 - Venue and venue address
 - Parent booking name and reference
 - Assigned crew name
@@ -52,6 +52,7 @@ Structured ranges, dates, and statuses belong in filters. A whole-query monetary
 - Individual received-payment matching requires `payment:list`.
 - Related records use correlated `EXISTS` predicates to avoid duplicate list rows and incorrect pagination counts.
 - User-entered `%`, `_`, and `\\` characters are treated literally.
+- Identifier-like reference queries ignore separators while preserving normal text matching.
 
 ## Deferred
 

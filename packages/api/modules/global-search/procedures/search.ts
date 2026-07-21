@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { hasPermission } from "../../studio/lib/permissions";
+import { parseExactMoneyQuery } from "../../studio/lib/search-input";
 import {
 	searchBookings,
 	searchClients,
@@ -62,20 +63,29 @@ export const search = studioProtectedProcedure
 			);
 			return results.some(Boolean);
 		};
+		const isMoneyQuery = parseExactMoneyQuery(query) !== null;
+		const needsClientListPermission =
+			shouldSearch("client") ||
+			shouldSearch("shoot") ||
+			shouldSearch("deliverable");
+		const needsPaymentListPermission =
+			shouldSearch("invoice") ||
+			(shouldSearch("booking") && isMoneyQuery);
 		const [
 			canSearchBookings,
-			canSearchClients,
+			canListClients,
 			canSearchCrews,
 			canSearchShoots,
 			canSearchTasks,
 			canSearchDeliverables,
 			canSearchExpenses,
-			canSearchInvoices,
+			canListPayments,
+			canReferencePayments,
 		] = await Promise.all([
 			shouldSearch("booking")
 				? canSearchAny([{ resource: "booking", action: "list" }])
 				: Promise.resolve(false),
-			shouldSearch("client")
+			needsClientListPermission
 				? canSearchAny([{ resource: "client", action: "list" }])
 				: Promise.resolve(false),
 			shouldSearch("crew")
@@ -96,25 +106,19 @@ export const search = studioProtectedProcedure
 						{ resource: "expense", action: "reference" },
 					])
 				: Promise.resolve(false),
+			needsPaymentListPermission
+				? canSearchAny([{ resource: "payment", action: "list" }])
+				: Promise.resolve(false),
 			shouldSearch("invoice")
-				? canSearchAny([
-						{ resource: "payment", action: "list" },
-						{ resource: "payment", action: "reference" },
-					])
+				? canSearchAny([{ resource: "payment", action: "reference" }])
 				: Promise.resolve(false),
 		]);
-
-		const [canReadRelatedClientNames, canReadPaymentAmounts] =
-			await Promise.all([
-				canSearchClients
-					? Promise.resolve(true)
-					: canSearchShoots || canSearchDeliverables
-						? canSearchAny([{ resource: "client", action: "list" }])
-						: Promise.resolve(false),
-				canSearchBookings
-					? canSearchAny([{ resource: "payment", action: "list" }])
-					: Promise.resolve(false),
-			]);
+		const canSearchClients = shouldSearch("client") && canListClients;
+		const canReadRelatedClientNames = canListClients;
+		const canReadPaymentAmounts = isMoneyQuery && canListPayments;
+		const canSearchInvoices =
+			shouldSearch("invoice") &&
+			(canListPayments || canReferencePayments);
 
 		// Execute all searches in parallel
 		const [

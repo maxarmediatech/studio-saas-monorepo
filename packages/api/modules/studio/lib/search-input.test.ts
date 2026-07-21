@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildContainsPattern, parseExactMoneyQuery } from "./search-input";
+import {
+	buildCompactReferenceQuery,
+	buildContainsPattern,
+	parseExactMoneyQuery,
+} from "./search-input";
 
 describe("buildContainsPattern", () => {
 	it("trims input and creates a contains pattern", () => {
@@ -14,6 +18,26 @@ describe("buildContainsPattern", () => {
 
 	it("returns null for an empty query", () => {
 		expect(buildContainsPattern("   ")).toBeNull();
+	});
+});
+
+describe("buildCompactReferenceQuery", () => {
+	it.each([
+		["BK123", "BK123"],
+		["RAK2604-0001", "RAK26040001"],
+		["RAK-2604-0001", "RAK26040001"],
+		["rak 2604/0001", "RAK26040001"],
+	])("normalizes %s for separator-insensitive matching", (query, expected) => {
+		expect(buildCompactReferenceQuery(query)).toBe(expected);
+	});
+
+	it.each([
+		"Priya",
+		"123",
+		"BK",
+		"",
+	])("does not interpret %s as a reference", (query) => {
+		expect(buildCompactReferenceQuery(query)).toBeNull();
 	});
 });
 

@@ -84,7 +84,8 @@ jobs:
           POSTGRES_CONCURRENCY_DATABASE_URL="$DATABASE_URL" \
             pnpm --filter @repo/api exec vitest run \
               modules/studio/lib/search-input.test.ts \
-              modules/studio/lib/entity-search.postgres.test.ts
+              modules/studio/lib/entity-search.postgres.test.ts \
+              modules/global-search/procedures/search.test.ts
       - name: Validate required env
         run: pnpm env:check
       - name: Run Playwright tests
