@@ -1,41 +1,29 @@
-import { and, bookings, db, desc, eq, ilike, isNull, or } from "@repo/database";
+import { and, bookings, db, desc, eq, isNull } from "@repo/database";
+import { buildBookingSearchCondition } from "../../../studio/lib/entity-search";
 import type { BookingSearchResult } from "../../types";
-import { buildTextSearchCondition, extractIdentifier } from "../search-utils";
+
+interface SearchBookingsOptions {
+	includePaymentAmounts?: boolean;
+}
 
 export async function searchBookings(
 	organizationId: string,
 	query: string,
 	limit: number,
+	options: SearchBookingsOptions = {},
 ): Promise<BookingSearchResult[]> {
 	const conditions = [
 		eq(bookings.organizationId, organizationId),
 		isNull(bookings.deletedAt),
 	];
-
-	// Text search on name and reference number
-	const textSearch = buildTextSearchCondition(
+	const searchCondition = buildBookingSearchCondition(
 		query,
-		bookings.name,
-		bookings.referenceNumber,
+		organizationId,
+		options,
 	);
 
-	// Identifier pattern matching (e.g., "BK-123")
-	const { pattern, number } = extractIdentifier(query);
-
-	if (pattern) {
-		// Exact match on pattern takes priority
-		const referenceMatch = or(
-			eq(bookings.referenceNumber, pattern),
-			ilike(bookings.referenceNumber, `%${pattern}%`),
-		);
-		if (referenceMatch) {
-			conditions.push(referenceMatch);
-		}
-	} else if (number) {
-		// Search by number within reference
-		conditions.push(ilike(bookings.referenceNumber, `%${number}%`));
-	} else if (textSearch) {
-		conditions.push(textSearch);
+	if (searchCondition) {
+		conditions.push(searchCondition);
 	}
 
 	const results = await db

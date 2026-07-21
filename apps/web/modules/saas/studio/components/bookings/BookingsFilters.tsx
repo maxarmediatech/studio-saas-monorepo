@@ -255,7 +255,7 @@ export function BookingsFilters() {
 			isFiltered={isFiltered}
 			showSearch
 			searchValue={filters.search ?? ""}
-			searchPlaceholder="Search bookings..."
+			searchPlaceholder="Search name, client, reference or amount..."
 			onSearchChange={handleSearchChange}
 			showViewOptions={false}
 		>

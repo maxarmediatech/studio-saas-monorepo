@@ -11,10 +11,10 @@ import {
 	isNull,
 	lte,
 	shoots,
-	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { requirePermission } from "../../studio/lib/permissions";
+import { buildBookingSearchCondition } from "../../studio/lib/entity-search";
+import { hasPermission, requirePermission } from "../../studio/lib/permissions";
 import {
 	listBookingsInputSchema,
 	listBookingsOutputSchema,
@@ -116,9 +116,19 @@ export const listBookings = studioProtectedProcedure
 		}
 
 		if (search) {
-			conditions.push(
-				sql`(${bookings.name} ILIKE ${`%${search}%`} OR ${bookings.referenceNumber} ILIKE ${`%${search}%`})`,
+			const canSearchPaymentAmounts = await hasPermission(
+				context,
+				"payment",
+				"list",
 			);
+			const searchCondition = buildBookingSearchCondition(
+				search,
+				context.organizationId,
+				{ includePaymentAmounts: canSearchPaymentAmounts },
+			);
+			if (searchCondition) {
+				conditions.push(searchCondition);
+			}
 		}
 
 		if (clientId) {

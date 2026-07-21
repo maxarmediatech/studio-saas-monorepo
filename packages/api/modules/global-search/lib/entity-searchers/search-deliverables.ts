@@ -1,25 +1,29 @@
 import { and, db, deliverables, desc, eq, isNull } from "@repo/database";
+import { buildDeliverableSearchCondition } from "../../../studio/lib/entity-search";
 import type { DeliverableSearchResult } from "../../types";
-import { buildTextSearchCondition } from "../search-utils";
+
+interface SearchDeliverablesOptions {
+	includeClientNames?: boolean;
+}
 
 export async function searchDeliverables(
 	organizationId: string,
 	query: string,
 	limit: number,
+	options: SearchDeliverablesOptions = {},
 ): Promise<DeliverableSearchResult[]> {
 	const conditions = [
 		eq(deliverables.organizationId, organizationId),
 		isNull(deliverables.deletedAt),
 	];
-
-	const textSearch = buildTextSearchCondition(
+	const searchCondition = buildDeliverableSearchCondition(
 		query,
-		deliverables.name,
-		deliverables.description,
+		organizationId,
+		options,
 	);
 
-	if (textSearch) {
-		conditions.push(textSearch);
+	if (searchCondition) {
+		conditions.push(searchCondition);
 	}
 
 	const results = await db

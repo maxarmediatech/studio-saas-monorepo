@@ -208,7 +208,7 @@ export function ShootsFilters() {
 			isFiltered={isFiltered}
 			showSearch
 			searchValue={filters.search ?? ""}
-			searchPlaceholder="Search shoots..."
+			searchPlaceholder="Search shoot, client, booking, venue or crew..."
 			onSearchChange={handleSearchChange}
 			showViewOptions={false}
 		>

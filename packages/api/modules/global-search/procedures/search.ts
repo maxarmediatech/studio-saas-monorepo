@@ -104,6 +104,18 @@ export const search = studioProtectedProcedure
 				: Promise.resolve(false),
 		]);
 
+		const [canReadRelatedClientNames, canReadPaymentAmounts] =
+			await Promise.all([
+				canSearchClients
+					? Promise.resolve(true)
+					: canSearchShoots || canSearchDeliverables
+						? canSearchAny([{ resource: "client", action: "list" }])
+						: Promise.resolve(false),
+				canSearchBookings
+					? canSearchAny([{ resource: "payment", action: "list" }])
+					: Promise.resolve(false),
+			]);
+
 		// Execute all searches in parallel
 		const [
 			bookings,
@@ -116,7 +128,9 @@ export const search = studioProtectedProcedure
 			invoices,
 		] = await Promise.all([
 			canSearchBookings
-				? searchBookings(organizationId, query, limit)
+				? searchBookings(organizationId, query, limit, {
+						includePaymentAmounts: canReadPaymentAmounts,
+					})
 				: Promise.resolve([]),
 			canSearchClients
 				? searchClients(organizationId, query, limit)
@@ -125,13 +139,17 @@ export const search = studioProtectedProcedure
 				? searchCrews(organizationId, query, limit)
 				: Promise.resolve([]),
 			canSearchShoots
-				? searchShoots(organizationId, query, limit)
+				? searchShoots(organizationId, query, limit, {
+						includeClientNames: canReadRelatedClientNames,
+					})
 				: Promise.resolve([]),
 			canSearchTasks
 				? searchTasks(organizationId, query, limit)
 				: Promise.resolve([]),
 			canSearchDeliverables
-				? searchDeliverables(organizationId, query, limit)
+				? searchDeliverables(organizationId, query, limit, {
+						includeClientNames: canReadRelatedClientNames,
+					})
 				: Promise.resolve([]),
 			canSearchExpenses
 				? searchExpenses(organizationId, query, limit)

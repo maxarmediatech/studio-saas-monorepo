@@ -14,7 +14,8 @@ import {
 	users,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { requirePermission } from "../../studio/lib/permissions";
+import { buildShootSearchCondition } from "../../studio/lib/entity-search";
+import { hasPermission, requirePermission } from "../../studio/lib/permissions";
 import { createPaginationResponse } from "../../studio/schemas/common";
 import {
 	listShootsInputSchema,
@@ -98,9 +99,19 @@ export const listShoots = studioProtectedProcedure
 		}
 
 		if (search) {
-			conditions.push(
-				sql`(${shoots.name} ILIKE ${`%${search}%`} OR ${shoots.venue} ILIKE ${`%${search}%`})`,
+			const canSearchClientNames = await hasPermission(
+				context,
+				"client",
+				"list",
 			);
+			const searchCondition = buildShootSearchCondition(
+				search,
+				context.organizationId,
+				{ includeClientNames: canSearchClientNames },
+			);
+			if (searchCondition) {
+				conditions.push(searchCondition);
+			}
 		}
 
 		if (crewId) {
