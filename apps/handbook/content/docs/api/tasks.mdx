@@ -91,6 +91,9 @@ All task procedures use `studioProtectedProcedure` and active organization scope
 - `bookingName`
 - `bookingReferenceNumber`
 
+Converted source-deliverable ID/name metadata is redacted unless the caller also has
+`deliverable:read`.
+
 `listMinimal` accepts:
 
 - `bookingId`
@@ -103,11 +106,13 @@ It returns `id`, `name`, `status`, `priority`, `workflowStatus`, `dueDate`, `boo
 `get` returns the base task plus:
 
 - assignments with crew id/name/phone, assigned-by name, and progress details
-- active linked deliverables with relationship kind and workflow state
+- active linked deliverables with relationship kind and workflow state when the caller also has `deliverable:read`
 - booking id/name/reference number
 - metadata with converted-deliverable compatibility
 
-If a converted task does not have `metadata.convertedFromDeliverableId`, `get` checks legacy
+Without `deliverable:read`, `get` returns an empty `deliverableLinks` array and redacts converted
+source-deliverable ID/name metadata. If an authorized converted-task read does not have
+`metadata.convertedFromDeliverableId`, `get` checks legacy
 deliverable metadata where `convertedToTaskId` equals the task id and synthesizes the source fields.
 
 `stats` returns:
@@ -134,12 +139,17 @@ Optional fields:
 - `priority`, defaults to `normal`
 - `dueDate`
 - `metadata`
+- `deliverableIds`, up to 100 unique same-booking deliverables
 
 Create behavior:
 
 - verifies booking exists, belongs to active organization, and is not deleted
+- when deliverables are linked, also requires `deliverable:update`
+- validates all linked deliverables before writing and creates the task and informational links atomically
+- task-created links are references only; task and deliverable statuses, assignments, and workflows remain independent
 - creates task with default workflow status from DB: `not_started`
-- tracks non-blocking `created` activity under the booking
+- ignores client-supplied converted-source metadata keys
+- tracks non-blocking `created` and task-link activities
 - auto-subscribes creator to the task
 
 Deliverable conversion can also create tasks through `deliverables.convertToTask`; that path writes
@@ -160,6 +170,7 @@ Update behavior:
 
 - verifies task belongs to active organization
 - updates only provided fields
+- preserves system-owned converted-source metadata keys
 - tracks status changes separately from other field changes
 - notifies subscribers on status change
 

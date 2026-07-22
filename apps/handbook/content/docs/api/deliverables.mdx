@@ -64,7 +64,7 @@ All deliverable procedures use `studioProtectedProcedure` and active organizatio
 | --- | --- | --- | --- | --- | --- |
 | `deliverables.list` | `GET /deliverables` | `listDeliverablesInputSchema` | `listDeliverablesOutputSchema` | `deliverable:list` | Paginated list with booking info and assigned crew summary. |
 | `deliverables.listMinimal` | `GET /deliverables/minimal` | `listDeliverablesMinimalInputSchema` | `listDeliverablesMinimalOutputSchema` | `deliverable:list` | Paginated lightweight list for selectors/references. |
-| `deliverables.get` | `GET /deliverables/{id}` | `getDeliverableInputSchema` | `getDeliverableOutputSchema` | `deliverable:read` | Detail with assignments, booking, and active task links. |
+| `deliverables.get` | `GET /deliverables/{id}` | `getDeliverableInputSchema` | `getDeliverableOutputSchema` | `deliverable:read` | Detail with assignments and booking; task links require `task:read`. |
 | `deliverables.create` | `POST /deliverables` | `createDeliverableInputSchema` | `createDeliverableOutputSchema` | `deliverable:create` | Creates one custom deliverable under an active booking. |
 | `deliverables.update` | `PUT /deliverables/{id}` | `updateDeliverableInputSchema` | `updateDeliverableOutputSchema` | `deliverable:update` | Updates fields and notifies on status change. |
 | `deliverables.delete` | `DELETE /deliverables/{id}` | `deleteDeliverableInputSchema` | `deleteDeliverableOutputSchema` | `deliverable:delete` | Soft delete. |
@@ -74,8 +74,8 @@ All deliverable procedures use `studioProtectedProcedure` and active organizatio
 | `deliverables.updateAssignmentStatus` | `PUT /deliverables/{id}/assignment-status` | `updateDeliverableAssignmentStatusInputSchema` | `updateDeliverableAssignmentStatusOutputSchema` | `deliverable:submit` | Updates the caller's direct assignment progress. |
 | `deliverables.submit` | `POST /deliverables/{deliverableId}/submissions` | `submitDeliverableInputSchema` | `submitDeliverableOutputSchema` | `deliverable:submit` | Assigned crew submits work for review. |
 | `deliverables.convertToTask` | `POST /deliverables/{deliverableId}/convert-to-task` | `convertDeliverableToTaskInputSchema` | `convertDeliverableToTaskOutputSchema` | `deliverable:update` + `task:create` | Creates task, copies assignments, marks metadata. |
-| `deliverables.linkTask` | `PUT /deliverables/{deliverableId}/tasks/{taskId}` | `linkTaskToDeliverableInputSchema` | mutation response | `deliverable:update` + `task:read` | Upserts a same-booking required/optional/reference link. |
-| `deliverables.unlinkTask` | `DELETE /deliverables/{deliverableId}/tasks/{taskId}` | `unlinkTaskFromDeliverableInputSchema` | mutation response | `deliverable:update` | Removes a link and recomputes tracking mode/rollup. |
+| `deliverables.linkTask` | `PUT /deliverables/{deliverableId}/tasks/{taskId}` | `linkTaskToDeliverableInputSchema` | mutation response | `deliverable:update` + `task:read` | Creates an informational same-booking link without changing either workflow. |
+| `deliverables.unlinkTask` | `DELETE /deliverables/{deliverableId}/tasks/{taskId}` | `unlinkTaskFromDeliverableInputSchema` | mutation response | `deliverable:update` + `task:read` | Removes informational links; required production links cannot be removed generically. |
 | `deliverables.setDelivery` | `PUT /deliverables/{id}/delivery` | `setDeliverableDeliveryInputSchema` | mutation response | `deliverable:update` | Marks an internally complete deliverable delivered, or clears delivery. |
 
 ## Read Contracts
@@ -92,11 +92,14 @@ All deliverable procedures use `studioProtectedProcedure` and active organizatio
 
 `list` returns each deliverable plus:
 
+- `canConvertToTask`, derived before conversion metadata is permission-redacted
 - `assignmentsCount`
 - `assignedCrew`: crew id/name/avatar
 - `bookingName`
 - `bookingReferenceNumber`
 - `bookingPackageType`
+
+Conversion task IDs in list metadata are redacted unless the caller also has `task:read`.
 
 `listMinimal` accepts:
 
@@ -109,10 +112,14 @@ It returns `id`, `name`, `status`, `workflowStatus`, `dueDate`, `bookingId`.
 
 `get` returns the base deliverable plus:
 
+- `canConvertToTask`, false for current and legacy conversions
 - assignments with crew id/name/phone
 - assignment progress state, note, and timestamps
-- active task links with link kind and task workflow state
+- active task links with link kind and task workflow state when the caller also has `task:read`
 - booking id/name/reference number
+
+Without `task:read`, `get` returns an empty `taskLinks` array and redacts `convertedToTaskId` from
+metadata.
 
 `stats` returns:
 
@@ -144,6 +151,7 @@ Create behavior:
 - verifies booking exists, belongs to active organization, and is not deleted
 - sets `isPackageIncluded` to `false`
 - sets `workflowStatus` to `not_started`
+- ignores client-supplied conversion metadata keys
 - tracks non-blocking `created` activity under the booking
 - auto-subscribes creator to the deliverable
 
@@ -166,6 +174,7 @@ Update behavior:
 
 - verifies deliverable exists, belongs to active organization, and is not deleted
 - updates only non-undefined fields
+- preserves system-owned `convertedToTaskId` and `convertedAt` metadata keys
 - tracks status changes separately from other field changes
 - notifies subscribers on status change
 
@@ -228,15 +237,17 @@ then assigned. Direct submissions are rejected when `trackingMode` is `task_base
 
 ## Task Link and Rollup Contract
 
-- Required links switch the deliverable to `task_based`; optional/reference links do not.
-- A required link is rejected while direct assignments or direct submissions exist.
+- Ordinary `linkTask` links are informational references; task and deliverable statuses, assignments, and workflows remain independent.
+- Required links are created only by the explicit `convertToTask` workflow and switch the deliverable to `task_based`.
+- Conversion to a required link is rejected while direct submissions exist; direct assignments move to the generated task.
 - Same organization and booking are checked in the procedure and enforced by composite foreign keys.
 - Required task states roll up automatically whenever task assignment/submission/review state changes.
 - All required tasks approved produces deliverable `ready` and sets `completedAt`.
 - Regression clears `completedAt`; `deliveredAt` remains an explicit historical delivery event.
 - A delivered deliverable that later regresses is intentionally not silently undelivered. The detail
   UI surfaces the inconsistency and keeps the clear-delivery action available.
-- Removing/changing the last required link returns the deliverable to direct `not_started` mode.
+- Generic unlinking is limited to informational links. Required production links are protected;
+  reversing conversion requires a future explicit undo-conversion workflow.
 - Soft-deleting a deliverable removes its task-link rows in the same transaction.
 - Shoot relationships remain reference-only; shoots do not drive deliverable status.
 
