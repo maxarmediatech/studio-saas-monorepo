@@ -20,6 +20,7 @@ import {
 } from "../../studio/schemas/deliverable";
 import {
 	buildConvertedDeliverableMetadata,
+	deriveConvertedTaskWorkflowStatus,
 	getConvertedTaskIdFromMetadata,
 } from "../lib/convert-to-task";
 import { recomputeTaskBasedDeliverable } from "../lib/task-rollup";
@@ -179,7 +180,11 @@ export const convertDeliverableToTask = studioProtectedProcedure
 				await tx
 					.update(tasks)
 					.set({
-						workflowStatus: "assigned",
+						workflowStatus: deriveConvertedTaskWorkflowStatus(
+							existingAssignments.map(
+								(assignment) => assignment.progressStatus,
+							),
+						),
 						updatedAt: new Date(),
 						updatedBy: context.user.id,
 					})

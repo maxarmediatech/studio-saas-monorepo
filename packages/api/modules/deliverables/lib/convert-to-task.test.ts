@@ -2,8 +2,20 @@ import { describe, expect, it } from "vitest";
 import {
 	buildConvertedDeliverableMetadata,
 	canConvertDeliverableToTask,
+	deriveConvertedTaskWorkflowStatus,
 	getConvertedTaskIdFromMetadata,
 } from "./convert-to-task";
+
+describe("deriveConvertedTaskWorkflowStatus", () => {
+	it.each([
+		[[], "not_started"],
+		[["assigned"], "assigned"],
+		[["assigned", "in_progress"], "in_progress"],
+		[["in_progress", "blocked"], "blocked"],
+	] as const)("maps %j assignment progress to %s", (progress, expected) => {
+		expect(deriveConvertedTaskWorkflowStatus([...progress])).toBe(expected);
+	});
+});
 
 describe("getConvertedTaskIdFromMetadata", () => {
 	it("returns null for missing metadata", () => {
