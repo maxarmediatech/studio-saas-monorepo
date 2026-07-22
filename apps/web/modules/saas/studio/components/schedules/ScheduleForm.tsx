@@ -4,13 +4,18 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import type { PaymentScheduleDetail } from "@repo/api/modules/studio/schemas/payment";
 import { Button } from "@repo/ui/components/button";
 import { Combobox, type ComboboxOption } from "@repo/ui/components/combobox";
-import { DatePicker } from "@repo/ui/components/date-picker";
 import {
 	Field,
 	FieldError,
 	FieldGroup,
 	FieldLabel,
 } from "@repo/ui/components/field";
+import {
+	CustomField,
+	DateField,
+	SelectField,
+} from "@repo/ui/components/form-fields";
+import { FieldRow, FormSection } from "@repo/ui/components/form-section";
 import { Input } from "@repo/ui/components/input";
 import {
 	InputGroup,
@@ -19,13 +24,6 @@ import {
 	InputGroupText,
 } from "@repo/ui/components/input-group";
 import { ScrollArea } from "@repo/ui/components/scroll-area";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@repo/ui/components/select";
 import { Textarea } from "@repo/ui/components/textarea";
 import { formatMoney } from "@saas/shared/lib";
 import { PAYMENT_SCHEDULE_PRESETS } from "@saas/studio/components/bookings/booking-form";
@@ -281,100 +279,96 @@ export function ScheduleForm({
 			>
 				<div className="px-4 py-4">
 					<FieldGroup>
-						<Controller
-							name="bookingId"
-							control={form.control}
-							render={({ field, fieldState }) => (
-								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>
-										Booking {mode === "create" && "*"}
-									</FieldLabel>
-									<Combobox
-										id={field.name}
-										value={field.value}
-										onValueChange={field.onChange}
-										options={bookingOptions}
-										placeholder={
-											isLoadingBookings
-												? "Loading..."
-												: "Select booking..."
-										}
-										searchPlaceholder="Search bookings..."
-										emptyText="No bookings found"
-										disabled={
-											mode === "edit" || isLoadingBookings
-										}
-										aria-invalid={fieldState.invalid}
-									/>
-									{fieldState.invalid && (
-										<FieldError
-											errors={[fieldState.error]}
+						<FormSection>
+							<CustomField
+								control={form.control}
+								name="bookingId"
+								label="Booking"
+								required={mode === "create"}
+							>
+								{({ field, fieldState }) => (
+									<>
+										<Combobox
+											id={field.name}
+											value={field.value}
+											onValueChange={field.onChange}
+											options={bookingOptions}
+											placeholder={
+												isLoadingBookings
+													? "Loading..."
+													: "Select booking..."
+											}
+											searchPlaceholder="Search bookings..."
+											emptyText="No bookings found"
+											disabled={
+												mode === "edit" ||
+												isLoadingBookings
+											}
+											aria-invalid={fieldState.invalid}
+											className="h-8 px-2.5 text-13"
 										/>
-									)}
-									{isRemainingLoading && (
-										<p className="text-xs text-muted-foreground">
-											Checking amount left to schedule...
-										</p>
-									)}
-									{showLeftToSchedule &&
-										leftToScheduleDisplay && (
-											<p
-												className={`text-xs ${isScheduleAmountExhausted ? "text-destructive" : "text-muted-foreground"}`}
-											>
-												Left to schedule:{" "}
-												<span className="font-medium">
-													{leftToScheduleDisplay}
-												</span>
+										{isRemainingLoading && (
+											<p className="text-xs text-muted-foreground">
+												Checking amount left to
+												schedule...
 											</p>
 										)}
-								</Field>
-							)}
-						/>
+										{showLeftToSchedule &&
+											leftToScheduleDisplay && (
+												<p
+													className={`text-xs ${isScheduleAmountExhausted ? "text-destructive" : "text-muted-foreground"}`}
+												>
+													Left to schedule:{" "}
+													<span className="font-medium">
+														{leftToScheduleDisplay}
+													</span>
+												</p>
+											)}
+									</>
+								)}
+							</CustomField>
 
-						<Controller
-							name="name"
-							control={form.control}
-							render={({ field, fieldState }) => (
-								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>
-										Schedule Name *
-									</FieldLabel>
-									<Input
-										{...field}
-										id={field.name}
-										placeholder="e.g., Advance, Before Wedding, Final Payment"
-										list="schedule-name-presets"
-										autoComplete="off"
-										aria-invalid={fieldState.invalid}
-									/>
-									<datalist id="schedule-name-presets">
-										{PAYMENT_SCHEDULE_PRESETS.map(
-											(preset) => (
-												<option
-													key={preset.value}
-													value={preset.label}
-												/>
-											),
-										)}
-									</datalist>
-									{fieldState.invalid && (
-										<FieldError
-											errors={[fieldState.error]}
-										/>
-									)}
-								</Field>
-							)}
-						/>
-
-						<div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-							<Controller
-								name="amount"
+							<CustomField
 								control={form.control}
-								render={({ field, fieldState }) => (
-									<Field data-invalid={fieldState.invalid}>
-										<FieldLabel htmlFor={field.name}>
-											Amount *
-										</FieldLabel>
+								name="name"
+								label="Schedule Name"
+								required
+							>
+								{({ field, fieldState }) => (
+									<>
+										<Input
+											{...field}
+											id={field.name}
+											size="sm"
+											placeholder="e.g., Advance, Before Wedding, Final Payment"
+											list="schedule-name-presets"
+											autoComplete="off"
+											aria-invalid={fieldState.invalid}
+										/>
+										<datalist id="schedule-name-presets">
+											{PAYMENT_SCHEDULE_PRESETS.map(
+												(preset) => (
+													<option
+														key={preset.value}
+														value={preset.label}
+													/>
+												),
+											)}
+										</datalist>
+									</>
+								)}
+							</CustomField>
+						</FormSection>
+
+						<FormSection>
+							<FieldRow cols={3}>
+								<CustomField
+									control={form.control}
+									name="amount"
+									label="Amount"
+									required
+								>
+									{({ field, fieldState }) => (
 										<InputGroup>
 											<InputGroupAddon>
 												<InputGroupText>
@@ -384,6 +378,7 @@ export function ScheduleForm({
 											<InputGroupInput
 												{...field}
 												id={field.name}
+												size="sm"
 												placeholder="0.00"
 												aria-invalid={
 													fieldState.invalid
@@ -409,80 +404,26 @@ export function ScheduleForm({
 												}}
 											/>
 										</InputGroup>
-										{fieldState.invalid && (
-											<FieldError
-												errors={[fieldState.error]}
-											/>
-										)}
-									</Field>
-								)}
-							/>
+									)}
+								</CustomField>
 
-							<Controller
-								name="taxType"
-								control={form.control}
-								render={({ field, fieldState }) => (
-									<Field data-invalid={fieldState.invalid}>
-										<FieldLabel htmlFor={field.name}>
-											GST Type *
-										</FieldLabel>
-										<Select
-											value={field.value}
-											onValueChange={field.onChange}
-										>
-											<SelectTrigger
-												id={field.name}
-												aria-invalid={
-													fieldState.invalid
-												}
-											>
-												<SelectValue placeholder="Select GST type" />
-											</SelectTrigger>
-											<SelectContent>
-												{taxTypeOptions.map(
-													(option) => (
-														<SelectItem
-															key={option.value}
-															value={option.value}
-														>
-															{option.label}
-														</SelectItem>
-													),
-												)}
-											</SelectContent>
-										</Select>
-										{fieldState.invalid && (
-											<FieldError
-												errors={[fieldState.error]}
-											/>
-										)}
-									</Field>
-								)}
-							/>
+								<SelectField
+									control={form.control}
+									name="taxType"
+									label="GST Type"
+									placeholder="Select GST type"
+									required
+									options={taxTypeOptions}
+								/>
 
-							<Controller
-								name="dueDate"
-								control={form.control}
-								render={({ field, fieldState }) => (
-									<Field data-invalid={fieldState.invalid}>
-										<FieldLabel htmlFor={field.name}>
-											Due Date *
-										</FieldLabel>
-										<DatePicker
-											value={field.value}
-											onValueChange={field.onChange}
-											id={field.name}
-											aria-invalid={fieldState.invalid}
-										/>
-										{fieldState.invalid && (
-											<FieldError
-												errors={[fieldState.error]}
-											/>
-										)}
-									</Field>
-								)}
-							/>
-						</div>
+								<DateField
+									control={form.control}
+									name="dueDate"
+									label="Due Date"
+									required
+								/>
+							</FieldRow>
+						</FormSection>
 
 						{(showNotes || notesValue) && (
 							<Controller
@@ -491,7 +432,10 @@ export function ScheduleForm({
 								render={({ field, fieldState }) => (
 									<Field data-invalid={fieldState.invalid}>
 										<div className="flex items-center justify-between">
-											<FieldLabel htmlFor={field.name}>
+											<FieldLabel
+												variant="micro"
+												htmlFor={field.name}
+											>
 												Notes
 											</FieldLabel>
 											{showNotes && !notesValue && (

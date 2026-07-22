@@ -6,13 +6,19 @@ import { Avatar, AvatarFallback } from "@repo/ui/components/avatar";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Combobox, type ComboboxOption } from "@repo/ui/components/combobox";
-import { DatePicker } from "@repo/ui/components/date-picker";
 import {
 	Field,
 	FieldError,
 	FieldGroup,
 	FieldLabel,
 } from "@repo/ui/components/field";
+import {
+	CustomField,
+	DateField,
+	SelectField,
+	TextField,
+} from "@repo/ui/components/form-fields";
+import { FieldRow, FormSection } from "@repo/ui/components/form-section";
 import { Input } from "@repo/ui/components/input";
 import {
 	InputGroup,
@@ -22,13 +28,6 @@ import {
 } from "@repo/ui/components/input-group";
 import { MultiSelectCombobox } from "@repo/ui/components/multi-select-combobox";
 import { ScrollArea } from "@repo/ui/components/scroll-area";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@repo/ui/components/select";
 import { Textarea } from "@repo/ui/components/textarea";
 import { useAllCrewOptions } from "@saas/studio/components/shared";
 import { useStudioCapabilities } from "@saas/studio/components/studio-capabilities-context";
@@ -200,14 +199,14 @@ export function DeliverableForm({
 			>
 				<div className="px-4 py-4">
 					<FieldGroup>
-						<Controller
-							name="bookingId"
-							control={form.control}
-							render={({ field, fieldState }) => (
-								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>
-										Booking {mode === "create" && "*"}
-									</FieldLabel>
+						<FormSection>
+							<CustomField
+								control={form.control}
+								name="bookingId"
+								label="Booking"
+								required={mode === "create"}
+							>
+								{({ field, fieldState }) => (
 									<Combobox
 										id={field.name}
 										value={field.value}
@@ -224,59 +223,33 @@ export function DeliverableForm({
 											mode === "edit" || isLoadingBookings
 										}
 										aria-invalid={fieldState.invalid}
+										className="h-8 px-2.5 text-13"
 									/>
-									{fieldState.invalid && (
-										<FieldError
-											errors={[fieldState.error]}
-										/>
-									)}
-								</Field>
-							)}
-						/>
+								)}
+							</CustomField>
 
-						<div className="grid gap-4 md:grid-cols-4">
-							<div className="md:col-span-2">
-								<Controller
-									name="name"
+							<div className="grid gap-3 md:grid-cols-4">
+								<TextField
 									control={form.control}
-									render={({ field, fieldState }) => (
-										<Field
-											data-invalid={fieldState.invalid}
-										>
-											<FieldLabel htmlFor={field.name}>
-												Name *
-											</FieldLabel>
-											<Input
-												{...field}
-												id={field.name}
-												placeholder="e.g. Wedding Album"
-												aria-invalid={
-													fieldState.invalid
-												}
-											/>
-											{fieldState.invalid && (
-												<FieldError
-													errors={[fieldState.error]}
-												/>
-											)}
-										</Field>
-									)}
+									name="name"
+									label="Name"
+									required
+									placeholder="e.g. Wedding Album"
+									className="md:col-span-2"
 								/>
-							</div>
 
-							<Controller
-								name="quantity"
-								control={form.control}
-								render={({ field, fieldState }) => (
-									<Field data-invalid={fieldState.invalid}>
-										<FieldLabel htmlFor={field.name}>
-											Qty
-										</FieldLabel>
+								<CustomField
+									control={form.control}
+									name="quantity"
+									label="Qty"
+								>
+									{({ field, fieldState }) => (
 										<Input
 											id={field.name}
 											name={field.name}
 											ref={field.ref}
 											onBlur={field.onBlur}
+											size="sm"
 											type="number"
 											min={1}
 											value={String(field.value ?? 1)}
@@ -287,23 +260,15 @@ export function DeliverableForm({
 											}
 											aria-invalid={fieldState.invalid}
 										/>
-										{fieldState.invalid && (
-											<FieldError
-												errors={[fieldState.error]}
-											/>
-										)}
-									</Field>
-								)}
-							/>
+									)}
+								</CustomField>
 
-							<Controller
-								name="cost"
-								control={form.control}
-								render={({ field, fieldState }) => (
-									<Field data-invalid={fieldState.invalid}>
-										<FieldLabel htmlFor={field.name}>
-											Cost
-										</FieldLabel>
+								<CustomField
+									control={form.control}
+									name="cost"
+									label="Cost"
+								>
+									{({ field, fieldState }) => (
 										<InputGroup>
 											<InputGroupAddon>
 												<InputGroupText>
@@ -313,6 +278,7 @@ export function DeliverableForm({
 											<InputGroupInput
 												{...field}
 												id={field.name}
+												size="sm"
 												placeholder="0.00"
 												value={field.value ?? ""}
 												aria-invalid={
@@ -339,84 +305,42 @@ export function DeliverableForm({
 												}}
 											/>
 										</InputGroup>
-										{fieldState.invalid && (
-											<FieldError
-												errors={[fieldState.error]}
-											/>
-										)}
-									</Field>
-								)}
-							/>
-						</div>
+									)}
+								</CustomField>
+							</div>
+						</FormSection>
 
-						<div className="grid gap-4 md:grid-cols-2">
-							<Controller
-								name="dueDate"
-								control={form.control}
-								render={({ field, fieldState }) => (
-									<Field data-invalid={fieldState.invalid}>
-										<FieldLabel htmlFor={field.name}>
-											Due Date
-										</FieldLabel>
-										<DatePicker
-											id={field.name}
-											value={field.value || undefined}
-											onValueChange={field.onChange}
-											aria-invalid={fieldState.invalid}
-										/>
-										{fieldState.invalid && (
-											<FieldError
-												errors={[fieldState.error]}
-											/>
-										)}
-									</Field>
-								)}
-							/>
+						<FormSection>
+							<FieldRow>
+								<DateField
+									control={form.control}
+									name="dueDate"
+									label="Due Date"
+								/>
 
-							<Controller
-								name="status"
-								control={form.control}
-								render={({ field, fieldState }) => (
-									<Field data-invalid={fieldState.invalid}>
-										<FieldLabel htmlFor={field.name}>
-											Status
-										</FieldLabel>
-										<Select
-											onValueChange={field.onChange}
-											value={field.value}
-										>
-											<SelectTrigger
-												id={field.name}
-												aria-invalid={
-													fieldState.invalid
-												}
-											>
-												<SelectValue placeholder="Select status" />
-											</SelectTrigger>
-											<SelectContent>
-												<SelectItem value="pending">
-													Pending
-												</SelectItem>
-												<SelectItem value="in_progress">
-													In Progress
-												</SelectItem>
-												<SelectItem value="completed">
-													Completed
-												</SelectItem>
-												<SelectItem value="delivered">
-													Delivered
-												</SelectItem>
-											</SelectContent>
-										</Select>
-										{fieldState.invalid && (
-											<FieldError
-												errors={[fieldState.error]}
-											/>
-										)}
-									</Field>
-								)}
-							/>
-						</div>
+								<SelectField
+									control={form.control}
+									name="status"
+									label="Status"
+									placeholder="Select status"
+									options={[
+										{ value: "pending", label: "Pending" },
+										{
+											value: "in_progress",
+											label: "In Progress",
+										},
+										{
+											value: "completed",
+											label: "Completed",
+										},
+										{
+											value: "delivered",
+											label: "Delivered",
+										},
+									]}
+								/>
+							</FieldRow>
+						</FormSection>
 
 						{(showDetails ||
 							descriptionValue ||
@@ -431,6 +355,7 @@ export function DeliverableForm({
 										>
 											<div className="flex items-center justify-between">
 												<FieldLabel
+													variant="micro"
 													htmlFor={field.name}
 												>
 													Notes
@@ -473,89 +398,83 @@ export function DeliverableForm({
 									)}
 								/>
 
-								<Controller
-									name="crewAssignments"
+								<CustomField
 									control={form.control}
-									render={({ field }) => {
+									name="crewAssignments"
+									label="Assigned Team"
+								>
+									{({ field }) => {
 										const selectedIds = (
 											field.value ?? []
 										).map((a) => a.crewId);
 
 										return (
-											<Field>
-												<FieldLabel>
-													Assigned Team
-												</FieldLabel>
-												<MultiSelectCombobox
-													options={crewOptions}
-													value={selectedIds}
-													onValueChange={(ids) => {
-														field.onChange(
-															ids.map((id) => ({
-																crewId: id,
-															})),
-														);
-													}}
-													placeholder="Select team members..."
-													searchPlaceholder="Search team..."
-													emptyText="No team members found"
-													renderOption={(option) => (
-														<div className="flex items-center gap-2">
-															<Avatar className="h-6 w-6">
-																<AvatarFallback className="text-[10px]">
-																	{getInitials(
-																		option.label,
-																	)}
-																</AvatarFallback>
-															</Avatar>
-															<span>
-																{option.label}
-															</span>
-														</div>
-													)}
-													renderSelectedItem={(
-														option,
-														onRemove,
-													) => (
-														<Badge
-															variant="secondary"
-															className="flex items-center gap-1.5 pr-1"
+											<MultiSelectCombobox
+												options={crewOptions}
+												value={selectedIds}
+												onValueChange={(ids) => {
+													field.onChange(
+														ids.map((id) => ({
+															crewId: id,
+														})),
+													);
+												}}
+												placeholder="Select team members..."
+												searchPlaceholder="Search team..."
+												emptyText="No team members found"
+												className="min-h-8 px-2.5 text-13"
+												renderOption={(option) => (
+													<div className="flex items-center gap-2">
+														<Avatar className="h-6 w-6">
+															<AvatarFallback className="text-[10px]">
+																{getInitials(
+																	option.label,
+																)}
+															</AvatarFallback>
+														</Avatar>
+														<span>
+															{option.label}
+														</span>
+													</div>
+												)}
+												renderSelectedItem={(
+													option,
+													onRemove,
+												) => (
+													<Badge
+														variant="secondary"
+														className="flex items-center gap-1.5 pr-1"
+													>
+														<Avatar className="h-4 w-4">
+															<AvatarFallback className="text-[8px]">
+																{getInitials(
+																	option.label,
+																)}
+															</AvatarFallback>
+														</Avatar>
+														<span className="truncate">
+															{option.label}
+														</span>
+														<button
+															type="button"
+															onClick={(e) => {
+																e.stopPropagation();
+																onRemove();
+															}}
+															className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
 														>
-															<Avatar className="h-4 w-4">
-																<AvatarFallback className="text-[8px]">
-																	{getInitials(
-																		option.label,
-																	)}
-																</AvatarFallback>
-															</Avatar>
-															<span className="truncate">
+															<XIcon className="size-3" />
+															<span className="sr-only">
+																Remove{" "}
 																{option.label}
 															</span>
-															<button
-																type="button"
-																onClick={(
-																	e,
-																) => {
-																	e.stopPropagation();
-																	onRemove();
-																}}
-																className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
-															>
-																<XIcon className="size-3" />
-																<span className="sr-only">
-																	Remove{" "}
-																	{
-																		option.label
-																	}
-																</span>
-															</button>
-														</Badge>
-													)}
-												/>
-											</Field>
+														</button>
+													</Badge>
+												)}
+											/>
 										);
 									}}
-								/>
+								</CustomField>
 							</>
 						)}
 

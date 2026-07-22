@@ -6,31 +6,24 @@ import { Avatar, AvatarFallback } from "@repo/ui/components/avatar";
 import { Badge } from "@repo/ui/components/badge";
 
 import { Combobox, type ComboboxOption } from "@repo/ui/components/combobox";
-import { DatePicker } from "@repo/ui/components/date-picker";
+import { FieldGroup } from "@repo/ui/components/field";
 import {
-	Field,
-	FieldError,
-	FieldGroup,
-	FieldLabel,
-} from "@repo/ui/components/field";
-import { Input } from "@repo/ui/components/input";
+	CustomField,
+	DateField,
+	SelectField,
+	TextareaField,
+	TextField,
+} from "@repo/ui/components/form-fields";
+import { FieldRow, FormSection } from "@repo/ui/components/form-section";
 import { MultiSelectCombobox } from "@repo/ui/components/multi-select-combobox";
 import { ScrollArea } from "@repo/ui/components/scroll-area";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@repo/ui/components/select";
-import { Textarea } from "@repo/ui/components/textarea";
 import { useAllCrewOptions } from "@saas/studio/components/shared";
 import { useStudioCapabilities } from "@saas/studio/components/studio-capabilities-context";
 import { bookingsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { XIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { FormActions } from "../ui/FormActions";
 
@@ -221,15 +214,14 @@ export function TaskForm({
 			>
 				<div className="px-4 py-4">
 					<FieldGroup>
-						{/* Booking */}
-						<Controller
-							name="bookingId"
-							control={form.control}
-							render={({ field, fieldState }) => (
-								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>
-										Booking {mode === "create" && "*"}
-									</FieldLabel>
+						<FormSection>
+							<CustomField
+								control={form.control}
+								name="bookingId"
+								label="Booking"
+								required={mode === "create"}
+							>
+								{({ field, fieldState }) => (
 									<Combobox
 										id={field.name}
 										value={field.value}
@@ -246,167 +238,78 @@ export function TaskForm({
 											mode === "edit" || bookingsLoading
 										}
 										aria-invalid={fieldState.invalid}
+										className="h-8 px-2.5 text-13"
 									/>
-									{fieldState.invalid && (
-										<FieldError
-											errors={[fieldState.error]}
-										/>
-									)}
-								</Field>
-							)}
-						/>
-
-						{/* Name */}
-						<Controller
-							name="name"
-							control={form.control}
-							render={({ field, fieldState }) => (
-								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>
-										Name *
-									</FieldLabel>
-									<Input
-										{...field}
-										id={field.name}
-										placeholder="Enter task name"
-										autoComplete="off"
-										aria-invalid={fieldState.invalid}
-									/>
-									{fieldState.invalid && (
-										<FieldError
-											errors={[fieldState.error]}
-										/>
-									)}
-								</Field>
-							)}
-						/>
-
-						{/* Status, Priority & Due Date */}
-						<div className="grid grid-cols-3 gap-4">
-							<Controller
-								name="status"
-								control={form.control}
-								render={({ field, fieldState }) => (
-									<Field data-invalid={fieldState.invalid}>
-										<FieldLabel htmlFor={field.name}>
-											Status
-										</FieldLabel>
-										<Select
-											onValueChange={field.onChange}
-											value={field.value}
-										>
-											<SelectTrigger
-												id={field.name}
-												aria-invalid={
-													fieldState.invalid
-												}
-											>
-												<SelectValue placeholder="Select status" />
-											</SelectTrigger>
-											<SelectContent>
-												<SelectItem value="pending">
-													Pending
-												</SelectItem>
-												<SelectItem value="in_progress">
-													In Progress
-												</SelectItem>
-												<SelectItem value="completed">
-													Completed
-												</SelectItem>
-												<SelectItem value="cancelled">
-													Cancelled
-												</SelectItem>
-											</SelectContent>
-										</Select>
-										{fieldState.invalid && (
-											<FieldError
-												errors={[fieldState.error]}
-											/>
-										)}
-									</Field>
 								)}
-							/>
+							</CustomField>
 
-							<Controller
-								name="priority"
+							<TextField
 								control={form.control}
-								render={({ field, fieldState }) => (
-									<Field data-invalid={fieldState.invalid}>
-										<FieldLabel htmlFor={field.name}>
-											Priority
-										</FieldLabel>
-										<Select
-											onValueChange={field.onChange}
-											value={field.value}
-										>
-											<SelectTrigger
-												id={field.name}
-												aria-invalid={
-													fieldState.invalid
-												}
-											>
-												<SelectValue placeholder="Select priority" />
-											</SelectTrigger>
-											<SelectContent>
-												<SelectItem value="low">
-													Low
-												</SelectItem>
-												<SelectItem value="normal">
-													Normal
-												</SelectItem>
-												<SelectItem value="medium">
-													Medium
-												</SelectItem>
-												<SelectItem value="high">
-													High
-												</SelectItem>
-											</SelectContent>
-										</Select>
-										{fieldState.invalid && (
-											<FieldError
-												errors={[fieldState.error]}
-											/>
-										)}
-									</Field>
-								)}
+								name="name"
+								label="Name"
+								required
+								placeholder="Enter task name"
+								autoComplete="off"
 							/>
+						</FormSection>
 
-							<Controller
-								name="dueDate"
+						<FormSection>
+							<FieldRow cols={3}>
+								<SelectField
+									control={form.control}
+									name="status"
+									label="Status"
+									placeholder="Select status"
+									options={[
+										{ value: "pending", label: "Pending" },
+										{
+											value: "in_progress",
+											label: "In Progress",
+										},
+										{
+											value: "completed",
+											label: "Completed",
+										},
+										{
+											value: "cancelled",
+											label: "Cancelled",
+										},
+									]}
+								/>
+
+								<SelectField
+									control={form.control}
+									name="priority"
+									label="Priority"
+									placeholder="Select priority"
+									options={[
+										{ value: "low", label: "Low" },
+										{ value: "normal", label: "Normal" },
+										{ value: "medium", label: "Medium" },
+										{ value: "high", label: "High" },
+									]}
+								/>
+
+								<DateField
+									control={form.control}
+									name="dueDate"
+									label="Due Date"
+								/>
+							</FieldRow>
+						</FormSection>
+
+						<FormSection>
+							<CustomField
 								control={form.control}
-								render={({ field, fieldState }) => (
-									<Field data-invalid={fieldState.invalid}>
-										<FieldLabel htmlFor={field.name}>
-											Due Date
-										</FieldLabel>
-										<DatePicker
-											value={field.value}
-											onValueChange={field.onChange}
-											id={field.name}
-											aria-invalid={fieldState.invalid}
-										/>
-										{fieldState.invalid && (
-											<FieldError
-												errors={[fieldState.error]}
-											/>
-										)}
-									</Field>
-								)}
-							/>
-						</div>
+								name="crewAssignments"
+								label="Assigned Team"
+							>
+								{({ field }) => {
+									const selectedIds = (field.value ?? []).map(
+										(a) => a.crewId,
+									);
 
-						{/* Crew Assignments */}
-						<Controller
-							name="crewAssignments"
-							control={form.control}
-							render={({ field }) => {
-								const selectedIds = (field.value ?? []).map(
-									(a) => a.crewId,
-								);
-
-								return (
-									<Field>
-										<FieldLabel>Assigned Team</FieldLabel>
+									return (
 										<MultiSelectCombobox
 											options={crewOptions}
 											value={selectedIds}
@@ -420,6 +323,7 @@ export function TaskForm({
 											placeholder="Select team members..."
 											searchPlaceholder="Search team..."
 											emptyText="No team members found"
+											className="min-h-8 px-2.5 text-13"
 											renderOption={(option) => (
 												<div className="flex items-center gap-2">
 													<Avatar className="h-6 w-6">
@@ -467,36 +371,20 @@ export function TaskForm({
 												</Badge>
 											)}
 										/>
-									</Field>
-								);
-							}}
-						/>
+									);
+								}}
+							</CustomField>
+						</FormSection>
 
-						{/* Description */}
-						<Controller
-							name="description"
-							control={form.control}
-							render={({ field, fieldState }) => (
-								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>
-										Description
-									</FieldLabel>
-									<Textarea
-										{...field}
-										id={field.name}
-										placeholder="Enter task description"
-										className="resize-none"
-										rows={2}
-										aria-invalid={fieldState.invalid}
-									/>
-									{fieldState.invalid && (
-										<FieldError
-											errors={[fieldState.error]}
-										/>
-									)}
-								</Field>
-							)}
-						/>
+						<FormSection>
+							<TextareaField
+								control={form.control}
+								name="description"
+								label="Description"
+								placeholder="Enter task description"
+								rows={2}
+							/>
+						</FormSection>
 					</FieldGroup>
 				</div>
 			</ScrollArea>

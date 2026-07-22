@@ -147,7 +147,7 @@ export function BookingStepperSidebar({
 									Submitting...
 								</>
 							) : (
-								primaryActionLabel ?? "Submit"
+								(primaryActionLabel ?? "Submit")
 							)}
 						</Button>
 					)}

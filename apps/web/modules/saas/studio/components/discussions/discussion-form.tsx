@@ -4,18 +4,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import type { EditorContentJson } from "@repo/editor";
 import { RichTextEditor } from "@repo/editor";
 import { Combobox, type ComboboxOption } from "@repo/ui/components/combobox";
-import {
-	Field,
-	FieldError,
-	FieldGroup,
-	FieldLabel,
-} from "@repo/ui/components/field";
-import { Input } from "@repo/ui/components/input";
+import { FieldGroup } from "@repo/ui/components/field";
+import { CustomField, TextField } from "@repo/ui/components/form-fields";
+import { FormSection } from "@repo/ui/components/form-section";
 import { ScrollArea } from "@repo/ui/components/scroll-area";
 import { discussionsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { FormActions } from "../ui/FormActions";
 import { type EntityLink, EntityLinkPicker } from "./entity-link-picker";
@@ -138,14 +134,14 @@ export function DiscussionForm({
 			>
 				<div className="px-4 py-4">
 					<FieldGroup>
-						<Controller
-							name="channelId"
-							control={form.control}
-							render={({ field, fieldState }) => (
-								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>
-										Channel *
-									</FieldLabel>
+						<FormSection>
+							<CustomField
+								control={form.control}
+								name="channelId"
+								label="Channel"
+								required
+							>
+								{({ field, fieldState }) => (
 									<Combobox
 										id={field.name}
 										value={field.value}
@@ -160,45 +156,25 @@ export function DiscussionForm({
 										emptyText="No channels found"
 										disabled={channelsLoading}
 										aria-invalid={fieldState.invalid}
+										className="h-8 px-2.5 text-13"
 									/>
-									{fieldState.invalid && (
-										<FieldError
-											errors={[fieldState.error]}
-										/>
-									)}
-								</Field>
-							)}
-						/>
+								)}
+							</CustomField>
 
-						<Controller
-							name="title"
-							control={form.control}
-							render={({ field, fieldState }) => (
-								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>
-										Title *
-									</FieldLabel>
-									<Input
-										{...field}
-										id={field.name}
-										placeholder="What do you want to discuss?"
-										aria-invalid={fieldState.invalid}
-									/>
-									{fieldState.invalid && (
-										<FieldError
-											errors={[fieldState.error]}
-										/>
-									)}
-								</Field>
-							)}
-						/>
+							<TextField
+								control={form.control}
+								name="title"
+								label="Title"
+								placeholder="What do you want to discuss?"
+								required
+							/>
 
-						<Controller
-							name="contentJson"
-							control={form.control}
-							render={({ field, fieldState }) => (
-								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel>Details</FieldLabel>
+							<CustomField
+								control={form.control}
+								name="contentJson"
+								label="Details"
+							>
+								{({ field }) => (
 									<RichTextEditor
 										value={coerceEditorContentJson(
 											field.value,
@@ -213,29 +189,23 @@ export function DiscussionForm({
 										placeholder="Add more context (optional)"
 										className="min-h-[150px]"
 									/>
-									{fieldState.invalid && (
-										<FieldError
-											errors={[fieldState.error]}
-										/>
-									)}
-								</Field>
-							)}
-						/>
+								)}
+							</CustomField>
 
-						<Controller
-							name="links"
-							control={form.control}
-							render={({ field }) => (
-								<Field>
-									<FieldLabel>Related Items</FieldLabel>
+							<CustomField
+								control={form.control}
+								name="links"
+								label="Related Items"
+							>
+								{({ field }) => (
 									<EntityLinkPicker
 										value={field.value}
 										onChange={field.onChange}
 										disabled={isSubmitting}
 									/>
-								</Field>
-							)}
-						/>
+								)}
+							</CustomField>
+						</FormSection>
 					</FieldGroup>
 				</div>
 			</ScrollArea>

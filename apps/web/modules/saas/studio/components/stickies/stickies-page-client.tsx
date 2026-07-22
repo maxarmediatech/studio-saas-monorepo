@@ -11,7 +11,10 @@ import {
 	getRandomStickyColor,
 	type StickyColor,
 } from "../home/widgets/stickies/constants";
-import { StickyNote, type StickyData } from "../home/widgets/stickies/sticky-note";
+import {
+	type StickyData,
+	StickyNote,
+} from "../home/widgets/stickies/sticky-note";
 
 interface Sticky {
 	id: string;

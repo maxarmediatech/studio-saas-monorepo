@@ -115,7 +115,8 @@ export function ConfigurationEditSheet() {
 		}
 
 		// Only defaultDeliverables stays in metadata (genuinely polymorphic)
-		const hasDeliverables = data.defaultDeliverables && data.defaultDeliverables.length > 0;
+		const hasDeliverables =
+			data.defaultDeliverables && data.defaultDeliverables.length > 0;
 
 		await updateMutation.mutateAsync({
 			id: configurationId,
@@ -126,7 +127,9 @@ export function ConfigurationEditSheet() {
 			isDefault: data.isDefault,
 			defaultCost: data.defaultCost || null,
 			bookingTypeFilter: data.bookingType || null,
-			metadata: hasDeliverables ? { defaultDeliverables: data.defaultDeliverables } : null,
+			metadata: hasDeliverables
+				? { defaultDeliverables: data.defaultDeliverables }
+				: null,
 		});
 	};
 

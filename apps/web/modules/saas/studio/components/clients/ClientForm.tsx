@@ -3,17 +3,17 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { Client } from "@repo/api/modules/studio/schemas/client";
 import { Badge } from "@repo/ui/components/badge";
+import { FieldGroup } from "@repo/ui/components/field";
 import {
-	Field,
-	FieldError,
-	FieldGroup,
-	FieldLabel,
-} from "@repo/ui/components/field";
+	CustomField,
+	TextareaField,
+	TextField,
+} from "@repo/ui/components/form-fields";
+import { FieldRow, FormSection } from "@repo/ui/components/form-section";
 import { Input } from "@repo/ui/components/input";
 import { ScrollArea } from "@repo/ui/components/scroll-area";
-import { Textarea } from "@repo/ui/components/textarea";
 import { useCallback, useEffect } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { CollapsibleSection } from "../ui/CollapsibleSection";
 import { FormActions } from "../ui/FormActions";
@@ -127,173 +127,73 @@ export function ClientForm({
 				<div className="px-4 py-4">
 					<FieldGroup>
 						{/* Essential Fields */}
-						<Controller
-							name="name"
-							control={form.control}
-							render={({ field, fieldState }) => (
-								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>
-										Name *
-									</FieldLabel>
-									<Input
-										{...field}
-										id={field.name}
-										placeholder="Enter client name"
-										aria-invalid={fieldState.invalid}
-									/>
-									{fieldState.invalid && (
-										<FieldError
-											errors={[fieldState.error]}
-										/>
-									)}
-								</Field>
-							)}
-						/>
-
-						<Controller
-							name="email"
-							control={form.control}
-							render={({ field, fieldState }) => (
-								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>
-										Email
-									</FieldLabel>
-									<Input
-										{...field}
-										id={field.name}
-										type="email"
-										placeholder="email@example.com"
-										aria-invalid={fieldState.invalid}
-									/>
-									{fieldState.invalid && (
-										<FieldError
-											errors={[fieldState.error]}
-										/>
-									)}
-								</Field>
-							)}
-						/>
-
-						{/* Contact Details - Always visible */}
-						<div className="grid grid-cols-2 gap-4">
-							<Controller
-								name="phoneNumber"
+						<FormSection>
+							<TextField
 								control={form.control}
-								render={({ field, fieldState }) => (
-									<Field data-invalid={fieldState.invalid}>
-										<FieldLabel htmlFor={field.name}>
-											Phone
-										</FieldLabel>
-										<Input
-											{...field}
-											id={field.name}
-											placeholder="+91 9876543210"
-											aria-invalid={fieldState.invalid}
-										/>
-										{fieldState.invalid && (
-											<FieldError
-												errors={[fieldState.error]}
-											/>
-										)}
-									</Field>
-								)}
+								name="name"
+								label="Name"
+								placeholder="Enter client name"
+								required
 							/>
 
-							<Controller
-								name="alternatePhone"
+							<TextField
 								control={form.control}
-								render={({ field, fieldState }) => (
-									<Field data-invalid={fieldState.invalid}>
-										<FieldLabel htmlFor={field.name}>
-											Alternate Phone
-										</FieldLabel>
-										<Input
-											{...field}
-											id={field.name}
-											placeholder="+91 9876543210"
-											aria-invalid={fieldState.invalid}
-										/>
-										{fieldState.invalid && (
-											<FieldError
-												errors={[fieldState.error]}
-											/>
-										)}
-									</Field>
-								)}
+								name="email"
+								label="Email"
+								type="email"
+								placeholder="email@example.com"
 							/>
-						</div>
 
-						<Controller
-							name="address"
-							control={form.control}
-							render={({ field, fieldState }) => (
-								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>
-										Address
-									</FieldLabel>
-									<Textarea
-										{...field}
-										id={field.name}
-										placeholder="Enter full address"
-										className="resize-none"
-										rows={2}
-										aria-invalid={fieldState.invalid}
-									/>
-									{fieldState.invalid && (
-										<FieldError
-											errors={[fieldState.error]}
-										/>
-									)}
-								</Field>
-							)}
-						/>
+							{/* Contact Details - Always visible */}
+							<FieldRow>
+								<TextField
+									control={form.control}
+									name="phoneNumber"
+									label="Phone"
+									placeholder="+91 9876543210"
+								/>
+
+								<TextField
+									control={form.control}
+									name="alternatePhone"
+									label="Alternate Phone"
+									placeholder="+91 9876543210"
+								/>
+							</FieldRow>
+
+							<TextareaField
+								control={form.control}
+								name="address"
+								label="Address"
+								placeholder="Enter full address"
+								rows={2}
+							/>
+						</FormSection>
 
 						{/* Additional Info (Collapsible) - all fields full width */}
 						<CollapsibleSection
 							title="Additional Info"
 							defaultOpen={mode === "edit"}
 						>
-							<FieldGroup>
-								<Controller
-									name="profession"
+							<FormSection>
+								<TextField
 									control={form.control}
-									render={({ field, fieldState }) => (
-										<Field
-											data-invalid={fieldState.invalid}
-										>
-											<FieldLabel htmlFor={field.name}>
-												Profession
-											</FieldLabel>
-											<Input
-												{...field}
-												id={field.name}
-												placeholder="e.g. Software Engineer, Doctor"
-												aria-invalid={
-													fieldState.invalid
-												}
-											/>
-											{fieldState.invalid && (
-												<FieldError
-													errors={[fieldState.error]}
-												/>
-											)}
-										</Field>
-									)}
+									name="profession"
+									label="Profession"
+									placeholder="e.g. Software Engineer, Doctor"
 								/>
 
-								<Controller
-									name="source"
+								<CustomField
 									control={form.control}
-									render={({ field, fieldState }) => (
-										<Field
-											data-invalid={fieldState.invalid}
-										>
-											<FieldLabel htmlFor={field.name}>
-												How did they find you?
-											</FieldLabel>
+									name="source"
+									label="How did they find you?"
+								>
+									{({ field, fieldState }) => (
+										<>
 											<Input
 												{...field}
 												id={field.name}
+												size="sm"
 												placeholder="e.g. Instagram, Friend's referral"
 												aria-invalid={
 													fieldState.invalid
@@ -317,71 +217,25 @@ export function ClientForm({
 													),
 												)}
 											</div>
-											{fieldState.invalid && (
-												<FieldError
-													errors={[fieldState.error]}
-												/>
-											)}
-										</Field>
+										</>
 									)}
-								/>
+								</CustomField>
 
-								<Controller
+								<TextField
+									control={form.control}
 									name="socialHandle"
-									control={form.control}
-									render={({ field, fieldState }) => (
-										<Field
-											data-invalid={fieldState.invalid}
-										>
-											<FieldLabel htmlFor={field.name}>
-												Social Handle
-											</FieldLabel>
-											<Input
-												{...field}
-												id={field.name}
-												placeholder="@instagram_handle"
-												aria-invalid={
-													fieldState.invalid
-												}
-											/>
-											{fieldState.invalid && (
-												<FieldError
-													errors={[fieldState.error]}
-												/>
-											)}
-										</Field>
-									)}
+									label="Social Handle"
+									placeholder="@instagram_handle"
 								/>
 
-								<Controller
-									name="notes"
+								<TextareaField
 									control={form.control}
-									render={({ field, fieldState }) => (
-										<Field
-											data-invalid={fieldState.invalid}
-										>
-											<FieldLabel htmlFor={field.name}>
-												Notes
-											</FieldLabel>
-											<Textarea
-												{...field}
-												id={field.name}
-												placeholder="Preferences, expectations, cultural considerations..."
-												className="resize-none"
-												rows={3}
-												aria-invalid={
-													fieldState.invalid
-												}
-											/>
-											{fieldState.invalid && (
-												<FieldError
-													errors={[fieldState.error]}
-												/>
-											)}
-										</Field>
-									)}
+									name="notes"
+									label="Notes"
+									placeholder="Preferences, expectations, cultural considerations..."
+									rows={3}
 								/>
-							</FieldGroup>
+							</FormSection>
 						</CollapsibleSection>
 					</FieldGroup>
 				</div>

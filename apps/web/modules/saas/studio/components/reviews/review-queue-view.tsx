@@ -61,7 +61,10 @@ export function ReviewQueueView() {
 			case "ready_for_review":
 				return { status: undefined, pendingReviewOnly: true };
 			case "changes_requested":
-				return { status: "revision_requested", pendingReviewOnly: false };
+				return {
+					status: "revision_requested",
+					pendingReviewOnly: false,
+				};
 			case "approved":
 				return { status: "approved", pendingReviewOnly: false };
 			case "rejected":
@@ -128,9 +131,7 @@ export function ReviewQueueView() {
 			: `Showing ${totalSubmissions} ${statusLabel.toLowerCase()}`;
 
 	return (
-		<PageContent
-			title="Review Queue"
-		>
+		<PageContent title="Review Queue">
 			<div className="grid grid-cols-1 gap-10 lg:grid-cols-[260px_1fr]">
 				<aside className="flex flex-col gap-4">
 					<Card className="py-0">
@@ -188,9 +189,7 @@ export function ReviewQueueView() {
 							<Button
 								key={option.id}
 								variant={
-									status === option.id
-										? "secondary"
-										: "ghost"
+									status === option.id ? "secondary" : "ghost"
 								}
 								size="sm"
 								onClick={() => setStatus(option.id)}
@@ -231,12 +230,8 @@ export function ReviewQueueView() {
 						<div className="flex justify-center">
 							<Button
 								variant="outline"
-								onClick={() =>
-									submissionsQuery.fetchNextPage()
-								}
-								disabled={
-									submissionsQuery.isFetchingNextPage
-								}
+								onClick={() => submissionsQuery.fetchNextPage()}
+								disabled={submissionsQuery.isFetchingNextPage}
 							>
 								{submissionsQuery.isFetchingNextPage
 									? "Loading..."

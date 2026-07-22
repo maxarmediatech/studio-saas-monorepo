@@ -206,7 +206,9 @@ function StickiesModal({
 	const handleCreate = useCallback(async () => {
 		try {
 			if (hasBlankSticky) {
-				toast.error("Finish the current sticky before creating another.");
+				toast.error(
+					"Finish the current sticky before creating another.",
+				);
 				return;
 			}
 			const created = await onCreate();
@@ -260,7 +262,9 @@ function StickiesModal({
 									onClick={() => setIsSearchOpen(true)}
 								>
 									<SearchIcon className="size-4 text-muted-foreground" />
-									<span className="sr-only">Search stickies</span>
+									<span className="sr-only">
+										Search stickies
+									</span>
 								</Button>
 							)}
 							<Button
@@ -292,7 +296,10 @@ function StickiesModal({
 						{isLoading ? (
 							<div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
 								{Array.from({ length: 6 }).map((_, index) => (
-									<Skeleton key={index} className="h-52 rounded-lg" />
+									<Skeleton
+										key={index}
+										className="h-52 rounded-lg"
+									/>
 								))}
 							</div>
 						) : hasStickies ? (
@@ -303,17 +310,21 @@ function StickiesModal({
 										sticky={{
 											id: sticky.id,
 											content: sticky.content,
-											descriptionHtml: sticky.descriptionHtml,
+											descriptionHtml:
+												sticky.descriptionHtml,
 											color: sticky.color as StickyColor,
 										}}
 										autoFocus={sticky.id === focusStickyId}
 										onAutoFocus={() => {
 											setFocusStickyId(null);
 										}}
-										onUpdate={(data) => onUpdate(sticky.id, data)}
+										onUpdate={(data) =>
+											onUpdate(sticky.id, data)
+										}
 										onDelete={() => onDelete(sticky.id)}
 										isDeleting={
-											isDeleting && deletingId === sticky.id
+											isDeleting &&
+											deletingId === sticky.id
 										}
 										showToolbar
 									/>
@@ -336,7 +347,9 @@ function StickiesModal({
 	);
 }
 
-export function StickiesActionBar({ organizationSlug }: StickiesActionBarProps) {
+export function StickiesActionBar({
+	organizationSlug,
+}: StickiesActionBarProps) {
 	const [isExpanded, setIsExpanded] = useState(false);
 	const [showNewSticky, setShowNewSticky] = useState(false);
 	const [isAllStickiesOpen, setIsAllStickiesOpen] = useState(false);
@@ -384,9 +397,9 @@ export function StickiesActionBar({ organizationSlug }: StickiesActionBarProps) 
 			predicate: ({ queryKey }) => isStickiesListQuery(queryKey),
 		});
 		return queries.some((query) => {
-			const data = queryClient.getQueryData(
-				query.queryKey,
-			) as StickiesResponse | undefined;
+			const data = queryClient.getQueryData(query.queryKey) as
+				| StickiesResponse
+				| undefined;
 			return data?.data?.some(isStickyBlank) ?? false;
 		});
 	}, [queryClient]);
@@ -444,7 +457,8 @@ export function StickiesActionBar({ organizationSlug }: StickiesActionBarProps) 
 									updated.content = variables.content ?? null;
 								}
 								if (variables.descriptionHtml !== undefined) {
-									updated.descriptionHtml = variables.descriptionHtml ?? null;
+									updated.descriptionHtml =
+										variables.descriptionHtml ?? null;
 								}
 								if (variables.color !== undefined) {
 									updated.color = variables.color;
@@ -480,7 +494,9 @@ export function StickiesActionBar({ organizationSlug }: StickiesActionBarProps) 
 		},
 		onError: (_err, _variables, context) => {
 			if (context?.previousData) {
-				for (const [key, data] of Object.entries(context.previousData)) {
+				for (const [key, data] of Object.entries(
+					context.previousData,
+				)) {
 					queryClient.setQueryData(JSON.parse(key), data);
 				}
 			}
@@ -533,7 +549,9 @@ export function StickiesActionBar({ organizationSlug }: StickiesActionBarProps) 
 		},
 		onError: (_err, _variables, context) => {
 			if (context?.previousData) {
-				for (const [key, data] of Object.entries(context.previousData)) {
+				for (const [key, data] of Object.entries(
+					context.previousData,
+				)) {
 					queryClient.setQueryData(JSON.parse(key), data);
 				}
 			}
@@ -578,12 +596,7 @@ export function StickiesActionBar({ organizationSlug }: StickiesActionBarProps) 
 			content: "",
 			color,
 		});
-	}, [
-		createMutation,
-		hasBlankStickyInCache,
-		newStickyData,
-		showNewSticky,
-	]);
+	}, [createMutation, hasBlankStickyInCache, newStickyData, showNewSticky]);
 
 	const handleCreateFromModal = useCallback(async () => {
 		const color = getRandomStickyColor();
@@ -665,19 +678,25 @@ export function StickiesActionBar({ organizationSlug }: StickiesActionBarProps) 
 									sticky={previewSticky}
 									onUpdate={(data) => {
 										if (previewSticky.id) {
-											handleUpdateSticky(previewSticky.id, data);
+											handleUpdateSticky(
+												previewSticky.id,
+												data,
+											);
 										}
 									}}
 									onDelete={
 										previewSticky.id
 											? () =>
-													handleDeleteSticky(previewSticky.id!)
+													handleDeleteSticky(
+														previewSticky.id!,
+													)
 											: undefined
 									}
 									onClose={handleClosePreview}
 									isDeleting={
 										deleteMutation.isPending &&
-										deleteMutation.variables?.id === previewSticky.id
+										deleteMutation.variables?.id ===
+											previewSticky.id
 									}
 									showToolbar
 									autoFocus={showNewSticky}
@@ -707,7 +726,9 @@ export function StickiesActionBar({ organizationSlug }: StickiesActionBarProps) 
 											onClick={handleOpenAllStickies}
 										>
 											<ListIcon className="h-4 w-4" />
-											<span className="sr-only">All stickies</span>
+											<span className="sr-only">
+												All stickies
+											</span>
 										</Button>
 									</TooltipTrigger>
 									<TooltipContent side="left" sideOffset={10}>
@@ -738,7 +759,9 @@ export function StickiesActionBar({ organizationSlug }: StickiesActionBarProps) 
 										</Button>
 									</TooltipTrigger>
 									<TooltipContent side="left" sideOffset={10}>
-										<span className="text-xs font-medium">Add sticky</span>
+										<span className="text-xs font-medium">
+											Add sticky
+										</span>
 									</TooltipContent>
 								</Tooltip>
 							</div>

@@ -319,17 +319,17 @@ export function InvoicesTableClient({
 						<div className="flex flex-col items-center gap-2">
 							<p className="text-muted-foreground">
 								No invoices found
-								</p>
-								<Button variant="outline" size="sm" asChild>
-									<Link
-										href={`/app/${organizationSlug}/bookings`}
-									>
-										<PlusIcon className="mr-2 h-4 w-4" />
-										Go to bookings
-									</Link>
-								</Button>
-							</div>
-						}
+							</p>
+							<Button variant="outline" size="sm" asChild>
+								<Link
+									href={`/app/${organizationSlug}/bookings`}
+								>
+									<PlusIcon className="mr-2 h-4 w-4" />
+									Go to bookings
+								</Link>
+							</Button>
+						</div>
+					}
 				/>
 			</SortProvider>
 

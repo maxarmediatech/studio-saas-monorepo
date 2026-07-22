@@ -73,7 +73,9 @@ export function ReviewSubmissionDialog({
 		enabled: isOpen,
 	});
 
-	const submission = submissionQuery.data?.data as SubmissionDetail | undefined;
+	const submission = submissionQuery.data?.data as
+		| SubmissionDetail
+		| undefined;
 
 	const reviewMutation = useMutation({
 		...submissionsMutations.review(),
@@ -90,7 +92,8 @@ export function ReviewSubmissionDialog({
 		},
 	});
 
-	const submitDisabled = reviewMutation.isPending || submissionQuery.isLoading;
+	const submitDisabled =
+		reviewMutation.isPending || submissionQuery.isLoading;
 
 	useEffect(() => {
 		if (!isOpen) {
@@ -106,7 +109,10 @@ export function ReviewSubmissionDialog({
 		});
 	};
 
-	const fileList = useMemo(() => submission?.files ?? [], [submission?.files]);
+	const fileList = useMemo(
+		() => submission?.files ?? [],
+		[submission?.files],
+	);
 	const linkList = useMemo(
 		() => submission?.submissionLinks ?? [],
 		[submission?.submissionLinks],
@@ -152,8 +158,12 @@ export function ReviewSubmissionDialog({
 					<div className="space-y-4">
 						<div className="space-y-2 text-sm">
 							<div>
-								<p className="text-xs text-muted-foreground">Submission</p>
-								<p className="font-medium">{submission.entityName}</p>
+								<p className="text-xs text-muted-foreground">
+									Submission
+								</p>
+								<p className="font-medium">
+									{submission.entityName}
+								</p>
 								{submission.entityDescription && (
 									<p className="text-xs text-muted-foreground">
 										{submission.entityDescription}
@@ -161,7 +171,9 @@ export function ReviewSubmissionDialog({
 								)}
 							</div>
 							<div>
-								<p className="text-xs text-muted-foreground">Booking</p>
+								<p className="text-xs text-muted-foreground">
+									Booking
+								</p>
 								<p className="font-medium">
 									{submission.booking.name}
 									{submission.booking.referenceNumber
@@ -170,7 +182,9 @@ export function ReviewSubmissionDialog({
 								</p>
 							</div>
 							<div>
-								<p className="text-xs text-muted-foreground">Submitted by</p>
+								<p className="text-xs text-muted-foreground">
+									Submitted by
+								</p>
 								<p className="font-medium">
 									{submission.submittedByCrew.name}
 								</p>
@@ -210,7 +224,9 @@ export function ReviewSubmissionDialog({
 										<button
 											type="button"
 											key={file.id}
-											onClick={() => handleFileOpen(file.id)}
+											onClick={() =>
+												handleFileOpen(file.id)
+											}
 											disabled={loadingFileId === file.id}
 											className="flex w-full items-center gap-2 text-left text-sm text-primary hover:underline disabled:opacity-60"
 										>
@@ -219,20 +235,24 @@ export function ReviewSubmissionDialog({
 											) : (
 												<FileText className="h-4 w-4" />
 											)}
-											<span className="truncate">{file.fileName}</span>
+											<span className="truncate">
+												{file.fileName}
+											</span>
 										</button>
 									))}
 								</div>
 							</div>
 						)}
-
 					</div>
 				)}
 
 				<Separator />
 
 				<Form {...form}>
-					<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+					<form
+						onSubmit={form.handleSubmit(onSubmit)}
+						className="space-y-6"
+					>
 						<FormField
 							control={form.control}
 							name="decision"
@@ -302,13 +322,10 @@ export function ReviewSubmissionDialog({
 							>
 								Cancel
 							</Button>
-						<Button
-							type="submit"
-							disabled={submitDisabled}
-						>
-							{reviewMutation.isPending
-								? "Submitting..."
-								: "Submit Review"}
+							<Button type="submit" disabled={submitDisabled}>
+								{reviewMutation.isPending
+									? "Submitting..."
+									: "Submit Review"}
 							</Button>
 						</DialogFooter>
 					</form>

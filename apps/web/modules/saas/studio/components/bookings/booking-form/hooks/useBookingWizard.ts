@@ -198,11 +198,20 @@ export function useBookingWizard({ form }: UseBookingWizardOptions) {
 			saveFormData();
 			router.push(bookingFormRoutes.step(organizationSlug, step));
 		},
-		[canNavigateToStep, currentStep, form, organizationSlug, router, saveFormData],
+		[
+			canNavigateToStep,
+			currentStep,
+			form,
+			organizationSlug,
+			router,
+			saveFormData,
+		],
 	);
 
 	const getFirstStepWithErrors = useCallback(
-		(formErrors: FieldErrors<BookingFormValues>): BookingTab | undefined => {
+		(
+			formErrors: FieldErrors<BookingFormValues>,
+		): BookingTab | undefined => {
 			const rootFieldsWithErrors = new Set(
 				Object.keys(formErrors) as (keyof BookingFormValues)[],
 			);
@@ -225,7 +234,9 @@ export function useBookingWizard({ form }: UseBookingWizardOptions) {
 		// Clear any previous validation error message
 		setValidationErrorMessage(null);
 
-		const fieldsToValidate = BOOKING_TABS.flatMap((step) => TAB_FIELD_MAPPING[step]);
+		const fieldsToValidate = BOOKING_TABS.flatMap(
+			(step) => TAB_FIELD_MAPPING[step],
+		);
 		const isFormValid = await form.trigger(fieldsToValidate, {
 			shouldFocus: true,
 		});
@@ -235,9 +246,13 @@ export function useBookingWizard({ form }: UseBookingWizardOptions) {
 				"Validation errors. Please fix the highlighted fields.",
 			);
 
-			const firstErrorStep = getFirstStepWithErrors(form.formState.errors);
+			const firstErrorStep = getFirstStepWithErrors(
+				form.formState.errors,
+			);
 			if (firstErrorStep && firstErrorStep !== currentStep) {
-				router.push(bookingFormRoutes.step(organizationSlug, firstErrorStep));
+				router.push(
+					bookingFormRoutes.step(organizationSlug, firstErrorStep),
+				);
 			}
 			return false;
 		}
@@ -396,14 +411,14 @@ export function useBookingWizard({ form }: UseBookingWizardOptions) {
 		// Validation announcements (for screen readers)
 		validationErrorMessage,
 
-			// Navigation
-			canNavigateToStep,
-			goToStep,
-			goToReview,
-			next,
-			skip,
-			previous,
-			cancel,
+		// Navigation
+		canNavigateToStep,
+		goToStep,
+		goToReview,
+		next,
+		skip,
+		previous,
+		cancel,
 		getFirstIncompleteStep,
 
 		// Helpers

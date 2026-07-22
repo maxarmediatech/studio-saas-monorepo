@@ -137,14 +137,14 @@ export function ExpenseEditSheet() {
 							<Skeleton className="h-24 w-full" />
 						</div>
 					) : (
-							<ExpenseForm
-								defaultValues={expense?.data}
-								existingAssignments={expense?.data?.assignments}
-								booking={bookingInfo}
-								crewIdsFromMetadata={crewIdsFromMetadata}
-								onSubmit={handleSubmit}
-								mode="edit"
-								isPending={updateMutation.isPending}
+						<ExpenseForm
+							defaultValues={expense?.data}
+							existingAssignments={expense?.data?.assignments}
+							booking={bookingInfo}
+							crewIdsFromMetadata={crewIdsFromMetadata}
+							onSubmit={handleSubmit}
+							mode="edit"
+							isPending={updateMutation.isPending}
 							onScrollChange={setIsScrolled}
 						/>
 					)}

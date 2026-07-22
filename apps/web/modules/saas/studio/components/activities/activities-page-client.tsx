@@ -12,7 +12,10 @@ export function ActivitiesPageClient({
 }: ActivitiesPageClientProps) {
 	return (
 		<PageContent title="Activities">
-			<ActivityFeedWidget organizationSlug={organizationSlug} limit={50} />
+			<ActivityFeedWidget
+				organizationSlug={organizationSlug}
+				limit={50}
+			/>
 		</PageContent>
 	);
 }

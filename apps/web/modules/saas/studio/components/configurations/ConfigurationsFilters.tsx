@@ -5,8 +5,8 @@ import {
 	DataTableToolbar,
 	type ToolbarFilterConfig,
 } from "@saas/shared/components/data-table";
-import { useConfigurationsTable } from "@saas/studio/hooks/tables";
 import type { ConfigType } from "@saas/studio/hooks/tables";
+import { useConfigurationsTable } from "@saas/studio/hooks/tables";
 
 interface ConfigurationsFiltersProps {
 	configType: ConfigType;

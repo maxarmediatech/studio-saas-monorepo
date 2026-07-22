@@ -1,8 +1,8 @@
 "use client";
 
 import { Button } from "@repo/ui/components/button";
-import { orpc } from "@shared/lib/orpc-query-utils";
 import { yourWorkMutations } from "@saas/studio/lib/api";
+import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -23,7 +23,9 @@ export function SubscribeButton({
 		...yourWorkMutations.subscribe(),
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: orpc.yourWork.key() });
-			queryClient.invalidateQueries({ queryKey: orpc.notifications.key() });
+			queryClient.invalidateQueries({
+				queryKey: orpc.notifications.key(),
+			});
 			toast.success("Subscribed to updates");
 		},
 		onError: (error) => {
@@ -35,7 +37,9 @@ export function SubscribeButton({
 		...yourWorkMutations.unsubscribe(),
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: orpc.yourWork.key() });
-			queryClient.invalidateQueries({ queryKey: orpc.notifications.key() });
+			queryClient.invalidateQueries({
+				queryKey: orpc.notifications.key(),
+			});
 			toast.success("Unsubscribed from updates");
 		},
 		onError: (error) => {
@@ -43,7 +47,8 @@ export function SubscribeButton({
 		},
 	});
 
-	const isLoading = subscribeMutation.isPending || unsubscribeMutation.isPending;
+	const isLoading =
+		subscribeMutation.isPending || unsubscribeMutation.isPending;
 
 	const handleClick = () => {
 		if (isSubscribed) {

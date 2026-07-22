@@ -5,21 +5,24 @@ import type { Configuration } from "@repo/api/modules/studio/schemas/configurati
 import { Card, CardContent } from "@repo/ui/components/card";
 import { Checkbox } from "@repo/ui/components/checkbox";
 import {
-	Field,
 	FieldDescription,
-	FieldError,
 	FieldGroup,
 	FieldLabel,
 } from "@repo/ui/components/field";
+import {
+	CustomField,
+	TextareaField,
+	TextField,
+} from "@repo/ui/components/form-fields";
+import { FieldRow, FormSection } from "@repo/ui/components/form-section";
 import { Input } from "@repo/ui/components/input";
 import { Label } from "@repo/ui/components/label";
 import { ScrollArea } from "@repo/ui/components/scroll-area";
 import { Switch } from "@repo/ui/components/switch";
-import { Textarea } from "@repo/ui/components/textarea";
 import { configurationsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { CollapsibleSection } from "../ui/CollapsibleSection";
 import { FormActions } from "../ui/FormActions";
@@ -145,239 +148,182 @@ export function RelationTypeForm({
 			>
 				<div className="px-4 py-4">
 					<FieldGroup>
-						<Controller
-							name="label"
-							control={form.control}
-							render={({ field, fieldState }) => (
-								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>
-										Label *
-									</FieldLabel>
-									<Input
-										{...field}
-										id={field.name}
-										placeholder="e.g., Bride, Groom, Event Coordinator"
-										aria-invalid={fieldState.invalid}
-									/>
-									{fieldState.invalid && (
-										<FieldError
-											errors={[fieldState.error]}
-										/>
-									)}
-								</Field>
-							)}
-						/>
+						<FormSection>
+							<TextField
+								control={form.control}
+								name="label"
+								label="Label"
+								placeholder="e.g., Bride, Groom, Event Coordinator"
+								required
+							/>
 
-						{/* Applicable Booking Types Section */}
-						<div className="space-y-3 pt-2">
-							<div>
-								<h4 className="text-sm font-medium">
-									Applicable Booking Types
-								</h4>
-								<p className="text-xs text-muted-foreground">
-									Select which booking types this role applies
-									to
-								</p>
+							{/* Applicable Booking Types Section */}
+							<div className="space-y-3 pt-2">
+								<div>
+									<h4 className="text-sm font-medium">
+										Applicable Booking Types
+									</h4>
+									<p className="text-xs text-muted-foreground">
+										Select which booking types this role
+										applies to
+									</p>
+								</div>
+
+								{bookingTypes.length === 0 ? (
+									<Card className="border-dashed">
+										<CardContent className="py-4 text-center text-sm text-muted-foreground">
+											No booking types configured yet. Add
+											booking types in the Configurations
+											section first.
+										</CardContent>
+									</Card>
+								) : (
+									<Card>
+										<CardContent className="py-3">
+											<div className="grid grid-cols-2 gap-3">
+												{bookingTypes.map(
+													(bookingType) => {
+														const isChecked =
+															selectedBookingTypes.includes(
+																bookingType.key,
+															);
+														return (
+															<div
+																key={
+																	bookingType.key
+																}
+																className="flex items-center space-x-2"
+															>
+																<Checkbox
+																	id={`booking-type-${bookingType.key}`}
+																	checked={
+																		isChecked
+																	}
+																	onCheckedChange={(
+																		checked,
+																	) =>
+																		handleBookingTypeToggle(
+																			bookingType.key,
+																			checked ===
+																				true,
+																		)
+																	}
+																/>
+																<Label
+																	htmlFor={`booking-type-${bookingType.key}`}
+																	className="text-sm font-normal cursor-pointer"
+																>
+																	{
+																		bookingType.label
+																	}
+																</Label>
+															</div>
+														);
+													},
+												)}
+											</div>
+											{selectedBookingTypes.length ===
+												0 && (
+												<p className="text-xs text-muted-foreground mt-3 pt-3 border-t">
+													No booking types selected —
+													this role will be available
+													based on booking type
+													settings
+												</p>
+											)}
+										</CardContent>
+									</Card>
+								)}
 							</div>
-
-							{bookingTypes.length === 0 ? (
-								<Card className="border-dashed">
-									<CardContent className="py-4 text-center text-sm text-muted-foreground">
-										No booking types configured yet. Add
-										booking types in the Configurations
-										section first.
-									</CardContent>
-								</Card>
-							) : (
-								<Card>
-									<CardContent className="py-3">
-										<div className="grid grid-cols-2 gap-3">
-											{bookingTypes.map((bookingType) => {
-												const isChecked =
-													selectedBookingTypes.includes(
-														bookingType.key,
-													);
-												return (
-													<div
-														key={bookingType.key}
-														className="flex items-center space-x-2"
-													>
-														<Checkbox
-															id={`booking-type-${bookingType.key}`}
-															checked={isChecked}
-															onCheckedChange={(
-																checked,
-															) =>
-																handleBookingTypeToggle(
-																	bookingType.key,
-																	checked ===
-																		true,
-																)
-															}
-														/>
-														<Label
-															htmlFor={`booking-type-${bookingType.key}`}
-															className="text-sm font-normal cursor-pointer"
-														>
-															{bookingType.label}
-														</Label>
-													</div>
-												);
-											})}
-										</div>
-										{selectedBookingTypes.length === 0 && (
-											<p className="text-xs text-muted-foreground mt-3 pt-3 border-t">
-												No booking types selected — this
-												role will be available based on
-												booking type settings
-											</p>
-										)}
-									</CardContent>
-								</Card>
-							)}
-						</div>
+						</FormSection>
 
 						{/* Advanced Options (Collapsible) */}
 						<CollapsibleSection
 							title="Advanced Options"
 							defaultOpen={mode === "edit"}
 						>
-							<FieldGroup>
-								<Controller
-									name="description"
+							<FormSection>
+								<TextareaField
 									control={form.control}
-									render={({ field, fieldState }) => (
-										<Field
-											data-invalid={fieldState.invalid}
-										>
-											<FieldLabel htmlFor={field.name}>
-												Description
-											</FieldLabel>
-											<Textarea
-												{...field}
-												id={field.name}
-												placeholder="Optional description for this role"
-												className="resize-none"
-												rows={2}
-												aria-invalid={
-													fieldState.invalid
-												}
-											/>
-											{fieldState.invalid && (
-												<FieldError
-													errors={[fieldState.error]}
-												/>
-											)}
-										</Field>
-									)}
+									name="description"
+									label="Description"
+									placeholder="Optional description for this role"
+									rows={2}
 								/>
 
-								<div className="grid grid-cols-2 gap-4">
-									<Controller
+								<FieldRow>
+									<CustomField
+										control={form.control}
 										name="color"
-										control={form.control}
-										render={({ field, fieldState }) => (
-											<Field
-												data-invalid={
-													fieldState.invalid
-												}
-											>
-												<FieldLabel
-													htmlFor={field.name}
-												>
-													Color
-												</FieldLabel>
-												<div className="flex gap-2">
-													<Input
-														type="color"
-														className="w-12 h-10 p-1 cursor-pointer"
-														value={
-															field.value ||
-															"#6B7280"
-														}
-														onChange={(e) =>
-															field.onChange(
-																e.target.value,
-															)
-														}
-													/>
-													<Input
-														{...field}
-														id={field.name}
-														placeholder="#6B7280"
-														className="flex-1"
-														aria-invalid={
-															fieldState.invalid
-														}
-													/>
-												</div>
-												{fieldState.invalid && (
-													<FieldError
-														errors={[
-															fieldState.error,
-														]}
-													/>
-												)}
-											</Field>
-										)}
-									/>
-
-									<Controller
-										name="sortOrder"
-										control={form.control}
-										render={({ field, fieldState }) => (
-											<Field
-												data-invalid={
-													fieldState.invalid
-												}
-											>
-												<FieldLabel
-													htmlFor={field.name}
-												>
-													Sort Order
-												</FieldLabel>
+										label="Color"
+									>
+										{({ field, fieldState }) => (
+											<div className="flex gap-2">
 												<Input
-													id={field.name}
-													type="number"
-													min={0}
-													placeholder="0"
-													value={field.value ?? 0}
+													type="color"
+													className="w-12 h-10 p-1 cursor-pointer"
+													value={
+														field.value || "#6B7280"
+													}
 													onChange={(e) =>
 														field.onChange(
-															e.target.value
-																? Number(
-																		e.target
-																			.value,
-																	)
-																: 0,
+															e.target.value,
 														)
 													}
+												/>
+												<Input
+													{...field}
+													id={field.name}
+													size="sm"
+													placeholder="#6B7280"
+													className="flex-1"
 													aria-invalid={
 														fieldState.invalid
 													}
 												/>
-												{fieldState.invalid && (
-													<FieldError
-														errors={[
-															fieldState.error,
-														]}
-													/>
-												)}
-											</Field>
+											</div>
 										)}
-									/>
-								</div>
+									</CustomField>
 
-								<Controller
-									name="isDefault"
+									<CustomField
+										control={form.control}
+										name="sortOrder"
+										label="Sort Order"
+									>
+										{({ field, fieldState }) => (
+											<Input
+												id={field.name}
+												type="number"
+												size="sm"
+												min={0}
+												placeholder="0"
+												value={field.value ?? 0}
+												onChange={(e) =>
+													field.onChange(
+														e.target.value
+															? Number(
+																	e.target
+																		.value,
+																)
+															: 0,
+													)
+												}
+												aria-invalid={
+													fieldState.invalid
+												}
+											/>
+										)}
+									</CustomField>
+								</FieldRow>
+
+								<CustomField
 									control={form.control}
-									render={({ field, fieldState }) => (
-										<Field
-											data-invalid={fieldState.invalid}
-											orientation="horizontal"
-											className="rounded-lg border p-3"
-										>
-											<div className="space-y-0.5">
+									name="isDefault"
+									className="rounded-lg border p-3"
+								>
+									{({ field }) => (
+										<div className="flex flex-row items-center gap-2">
+											<div className="flex-1 space-y-0.5">
 												<FieldLabel
 													htmlFor={field.name}
 												>
@@ -393,10 +339,10 @@ export function RelationTypeForm({
 												checked={field.value}
 												onCheckedChange={field.onChange}
 											/>
-										</Field>
+										</div>
 									)}
-								/>
-							</FieldGroup>
+								</CustomField>
+							</FormSection>
 						</CollapsibleSection>
 					</FieldGroup>
 				</div>

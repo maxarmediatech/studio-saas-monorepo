@@ -4,11 +4,11 @@ import { cn } from "@repo/ui/lib/utils";
 import { Minimize2Icon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { STICKY_COLORS, type StickyColor } from "./constants";
+import { useStickiesMasonryLayout } from "./stickies-masonry";
 import { StickyDeleteModal } from "./sticky-delete-modal";
 import { StickyEditor, type StickyEditorRef } from "./sticky-editor";
 import { StickyFormatToolbar } from "./sticky-format-toolbar";
 import { StickyToolbar } from "./sticky-toolbar";
-import { useStickiesMasonryLayout } from "./stickies-masonry";
 
 export interface StickyData {
 	id?: string;
@@ -239,7 +239,9 @@ export function StickyNote({
 								onDelete={() => setIsDeleteModalOpen(true)}
 								formatToolbar={
 									<StickyFormatToolbar
-										editor={editorRef.current?.editor ?? null}
+										editor={
+											editorRef.current?.editor ?? null
+										}
 									/>
 								}
 							/>

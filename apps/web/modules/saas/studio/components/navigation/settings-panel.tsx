@@ -28,7 +28,11 @@ function isItemActive(pathname: string, itemPath: string): boolean {
  * Check if any item in a section is active (for compressed section highlighting).
  * The basePath guard prevents the settings root from greedy-matching all sub-paths.
  */
-function isSectionActive(pathname: string, section: NavSectionConfig, basePath: string): boolean {
+function isSectionActive(
+	pathname: string,
+	section: NavSectionConfig,
+	basePath: string,
+): boolean {
 	return section.items.some((item) => {
 		if (pathname === item.path) return true;
 		if (item.path === basePath) return false;
@@ -99,7 +103,9 @@ function SettingsNavItem({
 											: "text-neutral-600 hover:bg-black/5 hover:text-neutral-900",
 									)}
 								>
-									<span className="truncate">{child.label}</span>
+									<span className="truncate">
+										{child.label}
+									</span>
 								</Link>
 							</li>
 						);
@@ -123,7 +129,11 @@ function SettingsNavItem({
 	);
 }
 
-export function SettingsPanel({ area, organizationId, studioSlug }: SettingsPanelProps) {
+export function SettingsPanel({
+	area,
+	organizationId,
+	studioSlug,
+}: SettingsPanelProps) {
 	const pathname = usePathname();
 	const { data: organization } = useFullOrganizationQuery(organizationId);
 	const teams = organization?.teams ?? [];
@@ -187,7 +197,11 @@ export function SettingsPanel({ area, organizationId, studioSlug }: SettingsPane
 								</div>
 								<nav className="flex flex-col gap-0.5">
 									{section.items.map((item) => (
-										<SettingsNavItem key={item.id} item={item} pathname={pathname} />
+										<SettingsNavItem
+											key={item.id}
+											item={item}
+											pathname={pathname}
+										/>
 									))}
 								</nav>
 							</div>
@@ -217,7 +231,9 @@ export function SettingsPanel({ area, organizationId, studioSlug }: SettingsPane
 									name={icon}
 									className={cn(
 										"size-4 shrink-0",
-										active ? "text-blue-600" : "text-neutral-600",
+										active
+											? "text-blue-600"
+											: "text-neutral-600",
 									)}
 								/>
 							)}

@@ -307,7 +307,7 @@ export function SelectField<
 	options,
 }: BaseFieldProps<TFieldValues, TName> & {
 	placeholder?: string;
-	options: Array<{ value: string; label: React.ReactNode }>;
+	options: ReadonlyArray<{ value: string; label: React.ReactNode }>;
 }) {
 	return (
 		<Controller

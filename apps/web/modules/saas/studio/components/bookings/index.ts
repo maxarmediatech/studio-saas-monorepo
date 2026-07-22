@@ -3,10 +3,6 @@
 export { BookingsFilters } from "./BookingsFilters";
 export { BookingsTableClient } from "./BookingsTableClient";
 export { BookingsTableSkeleton } from "./BookingsTableSkeleton";
-
-// Sheets - CLIENT
-export { BookingDetailSheet } from "./sheets";
-
 // Form components - CLIENT
 export {
 	BOOKING_STEP_SCHEMAS,
@@ -49,3 +45,5 @@ export {
 	// Store
 	useBookingFormStore,
 } from "./booking-form";
+// Sheets - CLIENT
+export { BookingDetailSheet } from "./sheets";

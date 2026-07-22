@@ -53,7 +53,12 @@ export const PaymentsTab = memo(function PaymentsTab({
 	totalReceived,
 	balance,
 }: PaymentsTabProps) {
-	const { data: payments, isLoading, isError, refetch } = useQuery({
+	const {
+		data: payments,
+		isLoading,
+		isError,
+		refetch,
+	} = useQuery({
 		...studioPaymentsApi.listReceivedOptions({ bookingId, limit: 50 }),
 		enabled: !!bookingId,
 	});
@@ -103,7 +108,9 @@ export const PaymentsTab = memo(function PaymentsTab({
 		return (
 			<div className="flex flex-col items-center gap-2 py-8 text-center">
 				<AlertCircleIcon className="h-10 w-10 text-destructive/50" />
-				<p className="text-sm text-destructive">Failed to load payments</p>
+				<p className="text-sm text-destructive">
+					Failed to load payments
+				</p>
 				<Button variant="outline" size="sm" onClick={() => refetch()}>
 					Try again
 				</Button>
@@ -157,10 +164,7 @@ export const PaymentsTab = memo(function PaymentsTab({
 			) : (
 				<div className="space-y-3">
 					{paymentsList.map((payment) => (
-						<div
-							key={payment.id}
-							className="border rounded-lg p-4"
-						>
+						<div key={payment.id} className="border rounded-lg p-4">
 							<div className="space-y-2">
 								<div className="flex items-center gap-3">
 									<span className="text-lg font-semibold">
