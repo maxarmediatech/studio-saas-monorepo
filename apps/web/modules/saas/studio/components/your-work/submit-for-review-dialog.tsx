@@ -14,22 +14,12 @@ import {
 	DialogTitle,
 } from "@repo/ui/components/dialog";
 import {
-	Form,
-	FormControl,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
-} from "@repo/ui/components/form";
+	CustomField,
+	SelectField,
+	TextareaField,
+} from "@repo/ui/components/form-fields";
 import { Input } from "@repo/ui/components/input";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@repo/ui/components/select";
-import { Textarea } from "@repo/ui/components/textarea";
+import { Label } from "@repo/ui/components/label";
 import { orpcClient } from "@shared/lib/orpc-client";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import {
@@ -58,6 +48,11 @@ const submissionSchema = z.object({
 });
 
 type SubmissionFormValues = z.infer<typeof submissionSchema>;
+
+const STATUS_OPTIONS = [
+	{ value: "ready_for_review", label: "Ready for review" },
+	{ value: "blocked", label: "Blocked" },
+] as const;
 
 type SubmissionAttachment = {
 	name: string;
@@ -361,235 +356,201 @@ export function SubmitForReviewDialog({
 					{item.bookingName && <p>Booking: {item.bookingName}</p>}
 				</div>
 
-				<Form {...form}>
-					<form
-						onSubmit={form.handleSubmit((values) =>
-							submitMutation.mutate(values),
-						)}
-						className="space-y-6"
-					>
-						<FormField
-							control={form.control}
-							name="status"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Status update</FormLabel>
-									<Select
-										onValueChange={field.onChange}
-										value={field.value}
-									>
-										<FormControl>
-											<SelectTrigger>
-												<SelectValue placeholder="Select a status" />
-											</SelectTrigger>
-										</FormControl>
-										<SelectContent>
-											<SelectItem value="ready_for_review">
-												Ready for review
-											</SelectItem>
-											<SelectItem value="blocked">
-												Blocked
-											</SelectItem>
-										</SelectContent>
-									</Select>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
+				<form
+					onSubmit={form.handleSubmit((values) =>
+						submitMutation.mutate(values),
+					)}
+					className="space-y-6"
+				>
+					<SelectField
+						control={form.control}
+						name="status"
+						label="Status update"
+						placeholder="Select a status"
+						options={STATUS_OPTIONS}
+					/>
 
-						<FormField
-							control={form.control}
-							name="submissionNote"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>
-										{isReadyForReview
-											? "Submission note"
-											: "Blocker details"}
-									</FormLabel>
-									<FormControl>
-										<Textarea
-											placeholder={
-												isReadyForReview
-													? "Share context or a link to proof of work..."
-													: "Explain what is blocking this assignment..."
-											}
-											className="min-h-[120px]"
-											{...field}
-										/>
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
+					<TextareaField
+						control={form.control}
+						name="submissionNote"
+						label={
+							isReadyForReview
+								? "Submission note"
+								: "Blocker details"
+						}
+						placeholder={
+							isReadyForReview
+								? "Share context or a link to proof of work..."
+								: "Explain what is blocking this assignment..."
+						}
+						rows={5}
+					/>
 
-						{isReadyForReview && (
-							<div className="space-y-3">
-								<div className="flex items-center justify-between">
-									<FormLabel className="text-sm font-medium">
-										Submission links
-									</FormLabel>
-									<Button
-										type="button"
-										variant="outline"
-										size="sm"
-										onClick={handleAddLink}
-									>
-										<Link2 className="mr-2 h-4 w-4" />
-										Add link
-									</Button>
-								</div>
-								{fields.length === 0 ? (
-									<p className="text-xs text-muted-foreground">
-										No links added.
-									</p>
-								) : (
-									<div className="space-y-2">
-										{fields.map((linkField, index) => (
-											<FormField
-												key={linkField.id}
+					{isReadyForReview && (
+						<div className="space-y-3">
+							<div className="flex items-center justify-between">
+								<Label className="text-sm font-medium">
+									Submission links
+								</Label>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									onClick={handleAddLink}
+								>
+									<Link2 className="mr-2 h-4 w-4" />
+									Add link
+								</Button>
+							</div>
+							{fields.length === 0 ? (
+								<p className="text-xs text-muted-foreground">
+									No links added.
+								</p>
+							) : (
+								<div className="space-y-2">
+									{fields.map((linkField, index) => (
+										<div
+											key={linkField.id}
+											className="flex items-start gap-2"
+										>
+											<CustomField
 												control={form.control}
 												name={`submissionLinks.${index}.value`}
-												render={({ field }) => (
-													<FormItem>
-														<div className="flex items-center gap-2">
-															<FormControl>
-																<Input
-																	placeholder="https://drive.google.com/..."
-																	{...field}
-																/>
-															</FormControl>
-															<Button
-																type="button"
-																variant="outline"
-																size="icon"
-																onClick={() =>
-																	remove(
-																		index,
-																	)
-																}
-															>
-																<X className="h-4 w-4" />
-															</Button>
-														</div>
-														<FormMessage />
-													</FormItem>
-												)}
-											/>
-										))}
-									</div>
-								)}
-							</div>
-						)}
-
-						{isReadyForReview && (
-							<div className="space-y-3">
-								<div className="flex items-center justify-between">
-									<FormLabel className="text-sm font-medium">
-										Attachments
-									</FormLabel>
-									<Button
-										type="button"
-										variant="outline"
-										size="sm"
-										onClick={() =>
-											fileInputRef.current?.click()
-										}
-										disabled={isUploading}
-									>
-										{isUploading ? (
-											<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-										) : (
-											<Paperclip className="mr-2 h-4 w-4" />
-										)}
-										Upload files
-									</Button>
-									<input
-										ref={fileInputRef}
-										type="file"
-										multiple
-										className="hidden"
-										accept={SUBMISSION_UPLOAD_ACCEPT}
-										onChange={handleFileInput}
-									/>
-								</div>
-								<p className="text-xs text-muted-foreground">
-									{SUBMISSION_UPLOAD_HELPER_TEXT}
-								</p>
-
-								{attachments.length === 0 ? (
-									<p className="text-xs text-muted-foreground">
-										No files uploaded.
-									</p>
-								) : (
-									<div className="space-y-2">
-										{attachments.map((attachment) => (
-											<div
-												key={attachment.key}
-												className="flex items-center justify-between rounded-md border border-border p-2"
+												className="flex-1"
 											>
-												<div className="flex min-w-0 items-center gap-2">
-													<FileText className="h-4 w-4 text-muted-foreground" />
-													<div className="min-w-0">
-														<p className="truncate text-sm font-medium">
-															{attachment.name}
-														</p>
-														<p className="text-xs text-muted-foreground">
-															{formatFileSize(
-																attachment.size,
-															)}
-														</p>
-													</div>
-												</div>
-												<Button
-													type="button"
-													variant="ghost"
-													size="icon"
-													onClick={() =>
-														handleRemoveAttachment(
-															attachment,
-														)
-													}
-													disabled={
-														deletingKey ===
-														attachment.key
-													}
-												>
-													{deletingKey ===
-													attachment.key ? (
-														<Loader2 className="h-4 w-4 animate-spin" />
-													) : (
-														<Trash2 className="h-4 w-4" />
-													)}
-												</Button>
-											</div>
-										))}
-									</div>
-								)}
-							</div>
-						)}
+												{({ field, fieldState }) => (
+													<Input
+														{...field}
+														size="sm"
+														placeholder="https://drive.google.com/..."
+														aria-invalid={
+															fieldState.invalid
+														}
+													/>
+												)}
+											</CustomField>
+											<Button
+												type="button"
+												variant="outline"
+												size="icon"
+												onClick={() => remove(index)}
+											>
+												<X className="h-4 w-4" />
+											</Button>
+										</div>
+									))}
+								</div>
+							)}
+						</div>
+					)}
 
-						<DialogFooter className="gap-2">
-							<Button
-								type="button"
-								variant="ghost"
-								onClick={() => onOpenChange(false)}
-							>
-								Cancel
-							</Button>
-							<Button
-								type="submit"
-								disabled={isSubmitting || isUploading}
-							>
-								{isSubmitting
-									? "Updating..."
-									: selectedStatus === "blocked"
-										? "Mark as blocked"
-										: "Submit for review"}
-							</Button>
-						</DialogFooter>
-					</form>
-				</Form>
+					{isReadyForReview && (
+						<div className="space-y-3">
+							<div className="flex items-center justify-between">
+								<Label className="text-sm font-medium">
+									Attachments
+								</Label>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									onClick={() =>
+										fileInputRef.current?.click()
+									}
+									disabled={isUploading}
+								>
+									{isUploading ? (
+										<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+									) : (
+										<Paperclip className="mr-2 h-4 w-4" />
+									)}
+									Upload files
+								</Button>
+								<input
+									ref={fileInputRef}
+									type="file"
+									multiple
+									className="hidden"
+									accept={SUBMISSION_UPLOAD_ACCEPT}
+									onChange={handleFileInput}
+								/>
+							</div>
+							<p className="text-xs text-muted-foreground">
+								{SUBMISSION_UPLOAD_HELPER_TEXT}
+							</p>
+
+							{attachments.length === 0 ? (
+								<p className="text-xs text-muted-foreground">
+									No files uploaded.
+								</p>
+							) : (
+								<div className="space-y-2">
+									{attachments.map((attachment) => (
+										<div
+											key={attachment.key}
+											className="flex items-center justify-between rounded-md border border-border p-2"
+										>
+											<div className="flex min-w-0 items-center gap-2">
+												<FileText className="h-4 w-4 text-muted-foreground" />
+												<div className="min-w-0">
+													<p className="truncate text-sm font-medium">
+														{attachment.name}
+													</p>
+													<p className="text-xs text-muted-foreground">
+														{formatFileSize(
+															attachment.size,
+														)}
+													</p>
+												</div>
+											</div>
+											<Button
+												type="button"
+												variant="ghost"
+												size="icon"
+												onClick={() =>
+													handleRemoveAttachment(
+														attachment,
+													)
+												}
+												disabled={
+													deletingKey ===
+													attachment.key
+												}
+											>
+												{deletingKey ===
+												attachment.key ? (
+													<Loader2 className="h-4 w-4 animate-spin" />
+												) : (
+													<Trash2 className="h-4 w-4" />
+												)}
+											</Button>
+										</div>
+									))}
+								</div>
+							)}
+						</div>
+					)}
+
+					<DialogFooter className="gap-2">
+						<Button
+							type="button"
+							variant="ghost"
+							onClick={() => onOpenChange(false)}
+						>
+							Cancel
+						</Button>
+						<Button
+							type="submit"
+							disabled={isSubmitting || isUploading}
+						>
+							{isSubmitting
+								? "Updating..."
+								: selectedStatus === "blocked"
+									? "Mark as blocked"
+									: "Submit for review"}
+						</Button>
+					</DialogFooter>
+				</form>
 			</DialogContent>
 		</Dialog>
 	);

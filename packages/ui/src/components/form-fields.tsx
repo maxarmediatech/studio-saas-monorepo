@@ -107,10 +107,12 @@ export function TextField<
 	type = "text",
 	placeholder,
 	autoComplete,
+	readOnly,
 }: BaseFieldProps<TFieldValues, TName> & {
 	type?: React.HTMLInputTypeAttribute;
 	placeholder?: string;
 	autoComplete?: string;
+	readOnly?: boolean;
 }) {
 	return (
 		<Controller
@@ -133,6 +135,7 @@ export function TextField<
 						type={type}
 						placeholder={placeholder}
 						autoComplete={autoComplete}
+						readOnly={readOnly}
 						disabled={disabled}
 						aria-invalid={fieldState.invalid}
 					/>

@@ -2,15 +2,18 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { Configuration } from "@repo/api/modules/studio/schemas/configuration";
-import { Button } from "@repo/ui/components/button";
 import { Card, CardContent } from "@repo/ui/components/card";
 import {
-	Field,
 	FieldDescription,
-	FieldError,
 	FieldGroup,
 	FieldLabel,
 } from "@repo/ui/components/field";
+import {
+	CustomField,
+	TextareaField,
+	TextField,
+} from "@repo/ui/components/form-fields";
+import { FieldRow, FormSection } from "@repo/ui/components/form-section";
 import { Input } from "@repo/ui/components/input";
 import {
 	InputGroup,
@@ -18,6 +21,11 @@ import {
 	InputGroupInput,
 	InputGroupText,
 } from "@repo/ui/components/input-group";
+import {
+	AddItemButton,
+	ItemCard,
+	ItemCardHeader,
+} from "@repo/ui/components/item-list";
 import { ScrollArea } from "@repo/ui/components/scroll-area";
 import {
 	Select,
@@ -27,12 +35,10 @@ import {
 	SelectValue,
 } from "@repo/ui/components/select";
 import { Switch } from "@repo/ui/components/switch";
-import { Textarea } from "@repo/ui/components/textarea";
 import { configurationsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
-import { PlusIcon, TrashIcon } from "lucide-react";
 import { useCallback, useEffect } from "react";
-import { Controller, useFieldArray, useForm } from "react-hook-form";
+import { useFieldArray, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { CollapsibleSection } from "../ui/CollapsibleSection";
@@ -186,150 +192,98 @@ export function PackageTypeForm({
 			>
 				<div className="px-4 py-4">
 					<FieldGroup>
-						<Controller
-							name="label"
-							control={form.control}
-							render={({ field, fieldState }) => (
-								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>
-										Label *
-									</FieldLabel>
-									<Input
-										{...field}
-										id={field.name}
-										placeholder="e.g., Premium Wedding Package"
-										aria-invalid={fieldState.invalid}
-									/>
-									{fieldState.invalid && (
-										<FieldError
-											errors={[fieldState.error]}
-										/>
-									)}
-								</Field>
-							)}
-						/>
+						<FormSection>
+							<TextField
+								control={form.control}
+								name="label"
+								label="Label"
+								placeholder="e.g., Premium Wedding Package"
+								required
+							/>
 
-						{/* Package Settings (Always Visible - Core Feature) */}
-						<div className="space-y-4 pt-2">
-							<h4 className="text-sm font-medium text-muted-foreground">
-								Package Settings
-							</h4>
+							{/* Package Settings (Always Visible - Core Feature) */}
+							<div className="space-y-4 pt-2">
+								<h4 className="text-sm font-medium text-muted-foreground">
+									Package Settings
+								</h4>
 
-							<FieldGroup>
-								<div className="grid grid-cols-2 gap-4">
-									<Controller
+								<FieldRow>
+									<CustomField
+										control={form.control}
 										name="bookingType"
-										control={form.control}
-										render={({ field, fieldState }) => (
-											<Field
-												data-invalid={
-													fieldState.invalid
+										label="Booking Type Filter"
+									>
+										{({ field, fieldState }) => (
+											<Select
+												value={field.value || "__all__"}
+												onValueChange={(value) =>
+													field.onChange(
+														value === "__all__"
+															? ""
+															: value,
+													)
 												}
 											>
-												<FieldLabel
-													htmlFor={field.name}
-												>
-													Booking Type Filter
-												</FieldLabel>
-												<Select
-													value={
-														field.value || "__all__"
-													}
-													onValueChange={(value) =>
-														field.onChange(
-															value === "__all__"
-																? ""
-																: value,
-														)
+												<SelectTrigger
+													id={field.name}
+													size="sm"
+													className="w-full text-13"
+													aria-invalid={
+														fieldState.invalid
 													}
 												>
-													<SelectTrigger
-														id={field.name}
-														aria-invalid={
-															fieldState.invalid
-														}
-													>
-														<SelectValue placeholder="All booking types" />
-													</SelectTrigger>
-													<SelectContent>
-														<SelectItem value="__all__">
-															All booking types
-														</SelectItem>
-														{bookingTypes.map(
-															(type) => (
-																<SelectItem
-																	key={
-																		type.key
-																	}
-																	value={
-																		type.key
-																	}
-																>
-																	{type.label}
-																</SelectItem>
-															),
-														)}
-													</SelectContent>
-												</Select>
-												{fieldState.invalid && (
-													<FieldError
-														errors={[
-															fieldState.error,
-														]}
-													/>
-												)}
-											</Field>
+													<SelectValue placeholder="All booking types" />
+												</SelectTrigger>
+												<SelectContent>
+													<SelectItem value="__all__">
+														All booking types
+													</SelectItem>
+													{bookingTypes.map(
+														(type) => (
+															<SelectItem
+																key={type.key}
+																value={type.key}
+															>
+																{type.label}
+															</SelectItem>
+														),
+													)}
+												</SelectContent>
+											</Select>
 										)}
-									/>
+									</CustomField>
 
-									<Controller
+									<CustomField
+										control={form.control}
 										name="defaultCost"
-										control={form.control}
-										render={({ field, fieldState }) => (
-											<Field
-												data-invalid={
-													fieldState.invalid
-												}
-											>
-												<FieldLabel
-													htmlFor={field.name}
-												>
-													Default Cost *
-												</FieldLabel>
-												<InputGroup>
-													<InputGroupAddon>
-														<InputGroupText>
-															₹
-														</InputGroupText>
-													</InputGroupAddon>
-													<InputGroupInput
-														{...field}
-														id={field.name}
-														type="number"
-														step="0.01"
-														min="0.01"
-														placeholder="0.00"
-														aria-invalid={
-															fieldState.invalid
-														}
-													/>
-												</InputGroup>
-												{fieldState.invalid && (
-													<FieldError
-														errors={[
-															fieldState.error,
-														]}
-													/>
-												)}
-											</Field>
+										label="Default Cost"
+										required
+									>
+										{({ field, fieldState }) => (
+											<InputGroup>
+												<InputGroupAddon>
+													<InputGroupText>
+														₹
+													</InputGroupText>
+												</InputGroupAddon>
+												<InputGroupInput
+													{...field}
+													id={field.name}
+													type="number"
+													step="0.01"
+													min="0.01"
+													placeholder="0.00"
+													aria-invalid={
+														fieldState.invalid
+													}
+												/>
+											</InputGroup>
 										)}
-									/>
-								</div>
-							</FieldGroup>
+									</CustomField>
+								</FieldRow>
 
-							{/* Default Deliverables */}
-							<div className="space-y-3">
-								<div className="flex items-center justify-between">
+								{/* Default Deliverables */}
+								<div className="space-y-3">
 									<div>
 										<h4 className="text-sm font-medium">
 											Default Deliverables
@@ -339,83 +293,68 @@ export function PackageTypeForm({
 											selected
 										</p>
 									</div>
-									<Button
-										type="button"
-										variant="outline"
-										size="sm"
-										onClick={handleAddDeliverable}
-									>
-										<PlusIcon className="h-4 w-4 mr-1" />
-										Add
-									</Button>
-								</div>
 
-								{fields.length === 0 ? (
-									<Card className="border-dashed">
-										<CardContent className="py-4 text-center text-sm text-muted-foreground">
-											No default deliverables. Click "Add"
-											to include deliverables with this
-											package.
-										</CardContent>
-									</Card>
-								) : (
-									<Card>
-										<CardContent className="space-y-3 py-3">
+									{fields.length === 0 ? (
+										<Card className="border-dashed">
+											<CardContent className="py-4 text-center text-sm text-muted-foreground">
+												No default deliverables. Click
+												"Add" to include deliverables
+												with this package.
+											</CardContent>
+										</Card>
+									) : (
+										<div className="space-y-3">
 											{fields.map((fieldItem, index) => (
-												<div
-													key={fieldItem.id}
-													className="grid grid-cols-[1fr_70px_32px] gap-2 items-start"
-												>
-													<Controller
-														name={`defaultDeliverables.${index}.title`}
-														control={form.control}
-														render={({
-															field,
-															fieldState,
-														}) => (
-															<Field
-																data-invalid={
-																	fieldState.invalid
-																}
-															>
+												<ItemCard key={fieldItem.id}>
+													<ItemCardHeader
+														title={`Deliverable ${index + 1}`}
+														onRemove={() =>
+															remove(index)
+														}
+													/>
+													<FieldRow>
+														<CustomField
+															control={
+																form.control
+															}
+															name={`defaultDeliverables.${index}.title`}
+															label="Name"
+														>
+															{({
+																field,
+																fieldState,
+															}) => (
 																<Input
 																	{...field}
 																	id={
 																		field.name
 																	}
+																	size="sm"
 																	placeholder="Name"
 																	aria-invalid={
 																		fieldState.invalid
 																	}
 																/>
-																{fieldState.invalid && (
-																	<FieldError
-																		errors={[
-																			fieldState.error,
-																		]}
-																	/>
-																)}
-															</Field>
-														)}
-													/>
+															)}
+														</CustomField>
 
-													<Controller
-														name={`defaultDeliverables.${index}.quantity`}
-														control={form.control}
-														render={({
-															field,
-															fieldState,
-														}) => (
-															<Field
-																data-invalid={
-																	fieldState.invalid
-																}
-															>
+														<CustomField
+															control={
+																form.control
+															}
+															name={`defaultDeliverables.${index}.quantity`}
+															label="Qty"
+														>
+															{({
+																field,
+																fieldState,
+															}) => (
 																<Input
 																	id={
 																		field.name
 																	}
 																	type="number"
+																	size="sm"
 																	min={1}
 																	placeholder="Qty"
 																	value={
@@ -440,177 +379,110 @@ export function PackageTypeForm({
 																		fieldState.invalid
 																	}
 																/>
-																{fieldState.invalid && (
-																	<FieldError
-																		errors={[
-																			fieldState.error,
-																		]}
-																	/>
-																)}
-															</Field>
-														)}
-													/>
-
-													<Button
-														type="button"
-														variant="ghost"
-														size="icon"
-														className="h-10 w-10 text-muted-foreground hover:text-destructive"
-														onClick={() =>
-															remove(index)
-														}
-													>
-														<TrashIcon className="h-4 w-4" />
-													</Button>
-												</div>
+															)}
+														</CustomField>
+													</FieldRow>
+												</ItemCard>
 											))}
-										</CardContent>
-									</Card>
-								)}
+										</div>
+									)}
+
+									<AddItemButton
+										onClick={handleAddDeliverable}
+									>
+										Add
+									</AddItemButton>
+								</div>
 							</div>
-						</div>
+						</FormSection>
 
 						{/* Advanced Options (Collapsible) */}
 						<CollapsibleSection
 							title="Advanced Options"
 							defaultOpen={mode === "edit"}
 						>
-							<FieldGroup>
-								<Controller
-									name="description"
+							<FormSection>
+								<TextareaField
 									control={form.control}
-									render={({ field, fieldState }) => (
-										<Field
-											data-invalid={fieldState.invalid}
-										>
-											<FieldLabel htmlFor={field.name}>
-												Description
-											</FieldLabel>
-											<Textarea
-												{...field}
-												id={field.name}
-												placeholder="Optional package description"
-												className="resize-none"
-												rows={2}
-												aria-invalid={
-													fieldState.invalid
-												}
-											/>
-											{fieldState.invalid && (
-												<FieldError
-													errors={[fieldState.error]}
-												/>
-											)}
-										</Field>
-									)}
+									name="description"
+									label="Description"
+									placeholder="Optional package description"
+									rows={2}
 								/>
 
-								<div className="grid grid-cols-2 gap-4">
-									<Controller
+								<FieldRow>
+									<CustomField
+										control={form.control}
 										name="color"
-										control={form.control}
-										render={({ field, fieldState }) => (
-											<Field
-												data-invalid={
-													fieldState.invalid
-												}
-											>
-												<FieldLabel
-													htmlFor={field.name}
-												>
-													Color
-												</FieldLabel>
-												<div className="flex gap-2">
-													<Input
-														type="color"
-														className="w-12 h-10 p-1 cursor-pointer"
-														value={
-															field.value ||
-															"#6B7280"
-														}
-														onChange={(e) =>
-															field.onChange(
-																e.target.value,
-															)
-														}
-													/>
-													<Input
-														{...field}
-														id={field.name}
-														placeholder="#6B7280"
-														className="flex-1"
-														aria-invalid={
-															fieldState.invalid
-														}
-													/>
-												</div>
-												{fieldState.invalid && (
-													<FieldError
-														errors={[
-															fieldState.error,
-														]}
-													/>
-												)}
-											</Field>
-										)}
-									/>
-
-									<Controller
-										name="sortOrder"
-										control={form.control}
-										render={({ field, fieldState }) => (
-											<Field
-												data-invalid={
-													fieldState.invalid
-												}
-											>
-												<FieldLabel
-													htmlFor={field.name}
-												>
-													Sort Order
-												</FieldLabel>
+										label="Color"
+									>
+										{({ field, fieldState }) => (
+											<div className="flex gap-2">
 												<Input
-													id={field.name}
-													type="number"
-													min={0}
-													placeholder="0"
-													value={field.value ?? 0}
+													type="color"
+													className="w-12 h-10 p-1 cursor-pointer"
+													value={
+														field.value || "#6B7280"
+													}
 													onChange={(e) =>
 														field.onChange(
-															e.target.value
-																? Number(
-																		e.target
-																			.value,
-																	)
-																: 0,
+															e.target.value,
 														)
 													}
+												/>
+												<Input
+													{...field}
+													id={field.name}
+													size="sm"
+													placeholder="#6B7280"
+													className="flex-1"
 													aria-invalid={
 														fieldState.invalid
 													}
 												/>
-												{fieldState.invalid && (
-													<FieldError
-														errors={[
-															fieldState.error,
-														]}
-													/>
-												)}
-											</Field>
+											</div>
 										)}
-									/>
-								</div>
+									</CustomField>
 
-								<Controller
-									name="isDefault"
+									<CustomField
+										control={form.control}
+										name="sortOrder"
+										label="Sort Order"
+									>
+										{({ field, fieldState }) => (
+											<Input
+												id={field.name}
+												type="number"
+												size="sm"
+												min={0}
+												placeholder="0"
+												value={field.value ?? 0}
+												onChange={(e) =>
+													field.onChange(
+														e.target.value
+															? Number(
+																	e.target
+																		.value,
+																)
+															: 0,
+													)
+												}
+												aria-invalid={
+													fieldState.invalid
+												}
+											/>
+										)}
+									</CustomField>
+								</FieldRow>
+
+								<CustomField
 									control={form.control}
-									render={({ field, fieldState }) => (
-										<Field
-											data-invalid={fieldState.invalid}
-											orientation="horizontal"
-											className="rounded-lg border p-3"
-										>
-											<div className="space-y-0.5">
+									name="isDefault"
+									className="rounded-lg border p-3"
+								>
+									{({ field }) => (
+										<div className="flex flex-row items-center gap-2">
+											<div className="flex-1 space-y-0.5">
 												<FieldLabel
 													htmlFor={field.name}
 												>
@@ -626,10 +498,10 @@ export function PackageTypeForm({
 												checked={field.value}
 												onCheckedChange={field.onChange}
 											/>
-										</Field>
+										</div>
 									)}
-								/>
-							</FieldGroup>
+								</CustomField>
+							</FormSection>
 						</CollapsibleSection>
 					</FieldGroup>
 				</div>

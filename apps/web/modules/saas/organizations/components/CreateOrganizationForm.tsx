@@ -3,15 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { authClient } from "@repo/auth/client";
 import { Button } from "@repo/ui/components/button";
-import {
-	Form,
-	FormControl,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
-} from "@repo/ui/components/form";
-import { Input } from "@repo/ui/components/input";
+import { TextField } from "@repo/ui/components/form-fields";
 import { setActiveOrganizationSlugCookie } from "@saas/organizations/lib/active-organization-cookie";
 import {
 	organizationListQueryKey,
@@ -165,43 +157,32 @@ export function CreateOrganizationForm({
 				{t("organizations.createForm.subtitle")}
 			</p>
 
-			<Form {...form}>
-				<form onSubmit={onSubmit}>
-					<FormField
-						control={form.control}
-						name="name"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>
-									{t("organizations.createForm.name")}
-								</FormLabel>
-								<FormControl>
-									<Input {...field} autoComplete="email" />
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
+			<form onSubmit={onSubmit}>
+				<TextField
+					control={form.control}
+					name="name"
+					label={t("organizations.createForm.name")}
+					autoComplete="email"
+				/>
 
-					<Button
-						className="mt-6 w-full"
-						type="submit"
-						disabled={form.formState.isSubmitting}
-					>
-						<span className="inline-flex items-center justify-center gap-2">
-							{form.formState.isSubmitting && (
-								<Loader2Icon
-									className="size-4 animate-spin"
-									aria-hidden="true"
-								/>
-							)}
-							{organizationToEdit
-								? "Continue"
-								: t("organizations.createForm.submit")}
-						</span>
-					</Button>
-				</form>
-			</Form>
+				<Button
+					className="mt-6 w-full"
+					type="submit"
+					disabled={form.formState.isSubmitting}
+				>
+					<span className="inline-flex items-center justify-center gap-2">
+						{form.formState.isSubmitting && (
+							<Loader2Icon
+								className="size-4 animate-spin"
+								aria-hidden="true"
+							/>
+						)}
+						{organizationToEdit
+							? "Continue"
+							: t("organizations.createForm.submit")}
+					</span>
+				</Button>
+			</form>
 		</div>
 	);
 }

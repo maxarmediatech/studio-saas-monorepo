@@ -5,30 +5,19 @@ import { authClient } from "@repo/auth/client";
 import { config } from "@repo/config";
 import { Alert, AlertDescription } from "@repo/ui/components/alert";
 import { Button } from "@repo/ui/components/button";
-import {
-	Form,
-	FormControl,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
-} from "@repo/ui/components/form";
-import { Input } from "@repo/ui/components/input";
+import { PasswordField, TextField } from "@repo/ui/components/form-fields";
 import { useAuthErrorMessages } from "@saas/auth/hooks/errors-messages";
 import { OrganizationInvitationAlert } from "@saas/organizations/components/OrganizationInvitationAlert";
 import { sanitizeRedirectPath } from "@shared/lib/sanitize-redirect-path";
 import {
 	AlertTriangleIcon,
 	ArrowRightIcon,
-	EyeIcon,
-	EyeOffIcon,
 	Loader2Icon,
 	MailboxIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { withQuery } from "ufo";
 import { z } from "zod";
@@ -50,7 +39,6 @@ export function SignupForm({ prefillEmail }: { prefillEmail?: string }) {
 	const { getAuthErrorMessage } = useAuthErrorMessages();
 	const searchParams = useSearchParams();
 
-	const [showPassword, setShowPassword] = useState(false);
 	const invitationId = searchParams.get("invitationId");
 	const email = searchParams.get("email");
 	const redirectTo = searchParams.get("redirectTo");
@@ -159,117 +147,59 @@ export function SignupForm({ prefillEmail }: { prefillEmail?: string }) {
 							</>
 						)}
 
-					<Form {...form}>
-						<form
-							className="flex flex-col items-stretch gap-4"
-							onSubmit={onSubmit}
-						>
-							{form.formState.isSubmitted &&
-								form.formState.errors.root && (
-									<Alert variant="destructive">
-										<AlertTriangleIcon />
-										<AlertDescription>
-											{form.formState.errors.root.message}
-										</AlertDescription>
-									</Alert>
-								)}
-
-							<FormField
-								control={form.control}
-								name="name"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>
-											{t("auth.signup.name")}
-										</FormLabel>
-										<FormControl>
-											<Input {...field} />
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-
-							<FormField
-								control={form.control}
-								name="email"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>
-											{t("auth.signup.email")}
-										</FormLabel>
-										<FormControl>
-											<Input
-												{...field}
-												autoComplete="email"
-												readOnly={!!prefillEmail}
-											/>
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-
-							{config.auth.enablePasswordLogin && (
-								<FormField
-									control={form.control}
-									name="password"
-									render={({ field }) => (
-										<FormItem>
-											<FormLabel>
-												{t("auth.signup.password")}
-											</FormLabel>
-											<FormControl>
-												<div className="relative">
-													<Input
-														type={
-															showPassword
-																? "text"
-																: "password"
-														}
-														className="pr-10"
-														{...field}
-														autoComplete="new-password"
-													/>
-													<button
-														type="button"
-														onClick={() =>
-															setShowPassword(
-																!showPassword,
-															)
-														}
-														className="absolute inset-y-0 right-0 flex items-center pr-4 text-primary text-xl"
-													>
-														{showPassword ? (
-															<EyeOffIcon className="size-4" />
-														) : (
-															<EyeIcon className="size-4" />
-														)}
-													</button>
-												</div>
-											</FormControl>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
+					<form
+						className="flex flex-col items-stretch gap-4"
+						onSubmit={onSubmit}
+					>
+						{form.formState.isSubmitted &&
+							form.formState.errors.root && (
+								<Alert variant="destructive">
+									<AlertTriangleIcon />
+									<AlertDescription>
+										{form.formState.errors.root.message}
+									</AlertDescription>
+								</Alert>
 							)}
 
-							<Button
-								type="submit"
-								disabled={form.formState.isSubmitting}
-							>
-								<span className="inline-flex items-center justify-center gap-2">
-									{form.formState.isSubmitting && (
-										<Loader2Icon
-											className="size-4 animate-spin"
-											aria-hidden="true"
-										/>
-									)}
-									{t("auth.signup.submit")}
-								</span>
-							</Button>
-						</form>
-					</Form>
+						<TextField
+							control={form.control}
+							name="name"
+							label={t("auth.signup.name")}
+						/>
+
+						<TextField
+							control={form.control}
+							name="email"
+							label={t("auth.signup.email")}
+							type="email"
+							autoComplete="email"
+							readOnly={!!prefillEmail}
+						/>
+
+						{config.auth.enablePasswordLogin && (
+							<PasswordField
+								control={form.control}
+								name="password"
+								label={t("auth.signup.password")}
+								autoComplete="new-password"
+							/>
+						)}
+
+						<Button
+							type="submit"
+							disabled={form.formState.isSubmitting}
+						>
+							<span className="inline-flex items-center justify-center gap-2">
+								{form.formState.isSubmitting && (
+									<Loader2Icon
+										className="size-4 animate-spin"
+										aria-hidden="true"
+									/>
+								)}
+								{t("auth.signup.submit")}
+							</span>
+						</Button>
+					</form>
 				</>
 			)}
 

@@ -8,15 +8,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@repo/ui/components/card";
-import {
-	Form,
-	FormControl,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
-} from "@repo/ui/components/form";
-import { Input } from "@repo/ui/components/input";
+import { TextField } from "@repo/ui/components/form-fields";
 import { getAdminPath } from "@saas/admin/lib/links";
 import { InviteMemberForm } from "@saas/organizations/components/InviteMemberForm";
 import { OrganizationMembersBlock } from "@saas/organizations/components/OrganizationMembersBlock";
@@ -109,40 +101,28 @@ export function OrganizationForm({
 					</CardTitle>
 				</CardHeader>
 				<CardContent>
-					<Form {...form}>
-						<form
-							onSubmit={onSubmit}
-							className="grid grid-cols-1 gap-4"
-						>
-							<FormField
-								control={form.control}
-								name="name"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>
-											{t("admin.organizations.form.name")}
-										</FormLabel>
-										<FormControl>
-											<Input {...field} />
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
+					<form
+						onSubmit={onSubmit}
+						className="grid grid-cols-1 gap-4"
+					>
+						<TextField
+							control={form.control}
+							name="name"
+							label={t("admin.organizations.form.name")}
+						/>
 
-							<div className="flex justify-end">
-								<Button
-									type="submit"
-									// loading={
-									// 	updateOrganizationMutation.isPending ||
-									// 	createOrganizationMutation.isPending
-									// }
-								>
-									{t("admin.organizations.form.save")}
-								</Button>
-							</div>
-						</form>
-					</Form>
+						<div className="flex justify-end">
+							<Button
+								type="submit"
+								// loading={
+								// 	updateOrganizationMutation.isPending ||
+								// 	createOrganizationMutation.isPending
+								// }
+							>
+								{t("admin.organizations.form.save")}
+							</Button>
+						</div>
+					</form>
 				</CardContent>
 			</Card>
 

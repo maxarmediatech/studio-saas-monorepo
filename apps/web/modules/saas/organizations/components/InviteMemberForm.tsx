@@ -3,14 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { authClient } from "@repo/auth/client";
 import { Button } from "@repo/ui/components/button";
-import {
-	Form,
-	FormControl,
-	FormField,
-	FormItem,
-	FormLabel,
-} from "@repo/ui/components/form";
-import { Input } from "@repo/ui/components/input";
+import { CustomField, TextField } from "@repo/ui/components/form-fields";
 import { OrganizationRoleSelect } from "@saas/organizations/components/OrganizationRoleSelect";
 import { OrganizationTeamSelect } from "@saas/organizations/components/OrganizationTeamSelect";
 import { fullOrganizationQueryKey } from "@saas/organizations/lib/api";
@@ -92,85 +85,64 @@ export function InviteMemberForm({
 				"organizations.settings.members.inviteMember.description",
 			)}
 		>
-			<Form {...form}>
-				<form
-					onSubmit={form.handleSubmit(onSubmit)}
-					className="@container"
-				>
-					<div className="flex @md:flex-row flex-col gap-2">
-						<div className="flex-1">
-							<FormField
-								control={form.control}
-								name="email"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>
-											{t(
-												"organizations.settings.members.inviteMember.email",
-											)}
-										</FormLabel>
-										<FormControl>
-											<Input type="email" {...field} />
-										</FormControl>
-									</FormItem>
-								)}
-							/>
-						</div>
-
-						<div>
-							<FormField
-								control={form.control}
-								name="role"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>
-											{t(
-												"organizations.settings.members.inviteMember.role",
-											)}
-										</FormLabel>
-										<FormControl>
-											<OrganizationRoleSelect
-												value={field.value}
-												onSelect={field.onChange}
-												excludeOwnerRole
-											/>
-										</FormControl>
-									</FormItem>
-								)}
-							/>
-						</div>
-						<div>
-							<FormField
-								control={form.control}
-								name="teamId"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Team</FormLabel>
-										<FormControl>
-											<OrganizationTeamSelect
-												organizationId={organizationId}
-												value={field.value}
-												onSelect={field.onChange}
-											/>
-										</FormControl>
-									</FormItem>
-								)}
-							/>
-						</div>
-					</div>
-
-					<div className="mt-4 flex justify-end">
-						<Button
-							type="submit"
-							// loading={form.formState.isSubmitting}
-						>
-							{t(
-								"organizations.settings.members.inviteMember.submit",
+			<form onSubmit={form.handleSubmit(onSubmit)} className="@container">
+				<div className="flex @md:flex-row flex-col gap-2">
+					<div className="flex-1">
+						<TextField
+							control={form.control}
+							name="email"
+							label={t(
+								"organizations.settings.members.inviteMember.email",
 							)}
-						</Button>
+							type="email"
+						/>
 					</div>
-				</form>
-			</Form>
+
+					<div>
+						<CustomField
+							control={form.control}
+							name="role"
+							label={t(
+								"organizations.settings.members.inviteMember.role",
+							)}
+						>
+							{({ field }) => (
+								<OrganizationRoleSelect
+									value={field.value}
+									onSelect={field.onChange}
+									excludeOwnerRole
+								/>
+							)}
+						</CustomField>
+					</div>
+					<div>
+						<CustomField
+							control={form.control}
+							name="teamId"
+							label="Team"
+						>
+							{({ field }) => (
+								<OrganizationTeamSelect
+									organizationId={organizationId}
+									value={field.value}
+									onSelect={field.onChange}
+								/>
+							)}
+						</CustomField>
+					</div>
+				</div>
+
+				<div className="mt-4 flex justify-end">
+					<Button
+						type="submit"
+						// loading={form.formState.isSubmitting}
+					>
+						{t(
+							"organizations.settings.members.inviteMember.submit",
+						)}
+					</Button>
+				</div>
+			</form>
 		</SettingsItem>
 	);
 }

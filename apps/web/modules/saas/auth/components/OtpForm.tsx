@@ -5,14 +5,7 @@ import { authClient } from "@repo/auth/client";
 import { config } from "@repo/config";
 import { Alert, AlertTitle } from "@repo/ui/components/alert";
 import { Button } from "@repo/ui/components/button";
-import {
-	Form,
-	FormControl,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
-} from "@repo/ui/components/form";
+import { CustomField } from "@repo/ui/components/form-fields";
 import {
 	InputOTP,
 	InputOTPGroup,
@@ -111,79 +104,73 @@ export function OtpForm() {
 				{t("auth.verify.message")}
 			</p>
 
-			<Form {...form}>
-				<form
-					className="flex flex-col items-stretch gap-4"
-					onSubmit={onSubmit}
+			<form
+				className="flex flex-col items-stretch gap-4"
+				onSubmit={onSubmit}
+			>
+				{form.formState.errors.root && (
+					<Alert variant="destructive">
+						<AlertTriangleIcon />
+						<AlertTitle>
+							{form.formState.errors.root.message}
+						</AlertTitle>
+					</Alert>
+				)}
+
+				<CustomField
+					control={form.control}
+					name="code"
+					label={t("auth.verify.code")}
 				>
-					{form.formState.errors.root && (
-						<Alert variant="destructive">
-							<AlertTriangleIcon />
-							<AlertTitle>
-								{form.formState.errors.root.message}
-							</AlertTitle>
-						</Alert>
+					{({ field }) => (
+						<InputOTP
+							maxLength={6}
+							{...field}
+							autoComplete="one-time-code"
+							onChange={(value) => {
+								field.onChange(value);
+								onSubmit();
+							}}
+						>
+							<InputOTPGroup>
+								<InputOTPSlot
+									className="size-10 text-lg"
+									index={0}
+								/>
+								<InputOTPSlot
+									className="size-10 text-lg"
+									index={1}
+								/>
+								<InputOTPSlot
+									className="size-10 text-lg"
+									index={2}
+								/>
+							</InputOTPGroup>
+							<InputOTPSeparator className="opacity-40" />
+							<InputOTPGroup>
+								<InputOTPSlot
+									className="size-10 text-lg"
+									index={3}
+								/>
+								<InputOTPSlot
+									className="size-10 text-lg"
+									index={4}
+								/>
+								<InputOTPSlot
+									className="size-10 text-lg"
+									index={5}
+								/>
+							</InputOTPGroup>
+						</InputOTP>
 					)}
+				</CustomField>
 
-					<FormField
-						control={form.control}
-						name="code"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>{t("auth.verify.code")}</FormLabel>
-								<FormControl>
-									<InputOTP
-										maxLength={6}
-										{...field}
-										autoComplete="one-time-code"
-										onChange={(value) => {
-											field.onChange(value);
-											onSubmit();
-										}}
-									>
-										<InputOTPGroup>
-											<InputOTPSlot
-												className="size-10 text-lg"
-												index={0}
-											/>
-											<InputOTPSlot
-												className="size-10 text-lg"
-												index={1}
-											/>
-											<InputOTPSlot
-												className="size-10 text-lg"
-												index={2}
-											/>
-										</InputOTPGroup>
-										<InputOTPSeparator className="opacity-40" />
-										<InputOTPGroup>
-											<InputOTPSlot
-												className="size-10 text-lg"
-												index={3}
-											/>
-											<InputOTPSlot
-												className="size-10 text-lg"
-												index={4}
-											/>
-											<InputOTPSlot
-												className="size-10 text-lg"
-												index={5}
-											/>
-										</InputOTPGroup>
-									</InputOTP>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-
-					<Button
-					// loading={form.formState.isSubmitting}
-					>
-						{t("auth.verify.submit")}
-					</Button>
-				</form>
-			</Form>
+				<Button
+				// loading={form.formState.isSubmitting}
+				>
+					{t("auth.verify.submit")}
+				</Button>
+			</form>
 
 			<div className="mt-6 text-center text-sm">
 				<Link href="/auth/login">

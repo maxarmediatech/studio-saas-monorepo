@@ -19,15 +19,8 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@repo/ui/components/dialog";
-import {
-	Form,
-	FormControl,
-	FormDescription,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
-} from "@repo/ui/components/form";
+import { FieldDescription } from "@repo/ui/components/field";
+import { CustomField } from "@repo/ui/components/form-fields";
 import { Textarea } from "@repo/ui/components/textarea";
 import { cn } from "@repo/ui/lib/utils";
 import { OrganizationRoleSelect } from "@saas/organizations/components/OrganizationRoleSelect";
@@ -253,219 +246,208 @@ export function InviteMemberDialog({
 					</DialogDescription>
 				</DialogHeader>
 
-				<Form {...form}>
-					<form
-						onSubmit={form.handleSubmit(onSubmit)}
-						className="space-y-4"
+				<form
+					onSubmit={form.handleSubmit(onSubmit)}
+					className="space-y-4"
+				>
+					<CustomField
+						control={form.control}
+						name="emails"
+						label={t(
+							"organizations.settings.members.bulkInvite.emails",
+						)}
 					>
-						<FormField
-							control={form.control}
-							name="emails"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>
-										{t(
-											"organizations.settings.members.bulkInvite.emails",
-										)}
-									</FormLabel>
-									<FormControl>
-										<Textarea
-											{...field}
-											rows={5}
-											autoCapitalize="none"
-											autoCorrect="off"
-											placeholder="alex@example.com, sam@example.com"
-										/>
-									</FormControl>
-									<FormDescription
+						{({ field, fieldState }) => (
+							<>
+								<Textarea
+									{...field}
+									id="emails"
+									size="sm"
+									rows={5}
+									autoCapitalize="none"
+									autoCorrect="off"
+									placeholder="alex@example.com, sam@example.com"
+									aria-invalid={fieldState.invalid}
+								/>
+								<FieldDescription
+									className={cn(
+										"text-13",
+										limitExceeded && "text-destructive",
+									)}
+								>
+									{t(
+										"organizations.settings.members.bulkInvite.hint",
+										{
+											max: BULK_INVITE_MAX_EMAILS,
+										},
+									)}
+								</FieldDescription>
+								<div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+									<span
 										className={cn(
 											limitExceeded && "text-destructive",
 										)}
 									>
 										{t(
-											"organizations.settings.members.bulkInvite.hint",
+											"organizations.settings.members.bulkInvite.parsedCount",
+											{
+												count: parsedEmails.normalizedCount,
+											},
+										)}
+									</span>
+									{parsedEmails.duplicateCount > 0 ? (
+										<span>
+											{t(
+												"organizations.settings.members.bulkInvite.duplicateCount",
+												{
+													count: parsedEmails.duplicateCount,
+												},
+											)}
+										</span>
+									) : null}
+									{parsedEmails.invalidCount > 0 ? (
+										<span>
+											{t(
+												"organizations.settings.members.bulkInvite.invalidCount",
+												{
+													count: parsedEmails.invalidCount,
+												},
+											)}
+										</span>
+									) : null}
+								</div>
+								{limitExceeded ? (
+									<p className="text-destructive text-xs">
+										{t(
+											"organizations.settings.members.bulkInvite.limitError",
 											{
 												max: BULK_INVITE_MAX_EMAILS,
 											},
 										)}
-									</FormDescription>
-									<div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-										<span
-											className={cn(
-												limitExceeded &&
-													"text-destructive",
-											)}
-										>
-											{t(
-												"organizations.settings.members.bulkInvite.parsedCount",
-												{
-													count: parsedEmails.normalizedCount,
-												},
-											)}
-										</span>
-										{parsedEmails.duplicateCount > 0 ? (
-											<span>
-												{t(
-													"organizations.settings.members.bulkInvite.duplicateCount",
-													{
-														count: parsedEmails.duplicateCount,
-													},
-												)}
-											</span>
-										) : null}
-										{parsedEmails.invalidCount > 0 ? (
-											<span>
-												{t(
-													"organizations.settings.members.bulkInvite.invalidCount",
-													{
-														count: parsedEmails.invalidCount,
-													},
-												)}
-											</span>
-										) : null}
-									</div>
-									{limitExceeded ? (
-										<p className="text-destructive text-xs">
-											{t(
-												"organizations.settings.members.bulkInvite.limitError",
-												{
-													max: BULK_INVITE_MAX_EMAILS,
-												},
-											)}
-										</p>
-									) : null}
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-
-						<FormField
-							control={form.control}
-							name="role"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>
-										{t(
-											"organizations.settings.members.inviteMember.role",
-										)}
-									</FormLabel>
-									<FormControl>
-										<OrganizationRoleSelect
-											value={field.value}
-											onSelect={field.onChange}
-											enabled={open}
-											excludeOwnerRole
-										/>
-									</FormControl>
-								</FormItem>
-							)}
-						/>
-
-						<FormField
-							control={form.control}
-							name="teamId"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Team</FormLabel>
-									<FormControl>
-										<OrganizationTeamSelect
-											organizationId={organizationId}
-											value={field.value}
-											onSelect={field.onChange}
-											enabled={open}
-										/>
-									</FormControl>
-								</FormItem>
-							)}
-						/>
-
-						{bulkInviteResult ? (
-							<div className="space-y-3 rounded-lg border bg-muted/30 p-3">
-								<div className="space-y-1">
-									<p className="text-sm font-medium">
-										{t(
-											"organizations.settings.members.bulkInvite.resultsTitle",
-										)}
 									</p>
-									<p className="text-xs text-muted-foreground">
-										{t(
-											"organizations.settings.members.bulkInvite.resultsSummary",
-											{
-												created:
-													bulkInviteResult.summary
-														.created,
-												skipped:
-													bulkInviteResult.summary
-														.skipped,
-												failed: bulkInviteResult.summary
-													.failed,
-											},
-										)}
-									</p>
-								</div>
+								) : null}
+							</>
+						)}
+					</CustomField>
 
-								<div className="max-h-60 space-y-2 overflow-y-auto pr-1">
-									{bulkInviteResult.results.map(
-										(result, index) => (
-											<div
-												key={`${result.email}-${result.status}-${index}`}
-												className="flex items-start justify-between gap-3 rounded-md border bg-background p-3"
-											>
-												<div className="min-w-0">
-													<p className="truncate text-sm font-medium">
-														{result.email}
-													</p>
-													{result.message ? (
-														<p className="mt-1 text-xs text-muted-foreground">
-															{result.message}
-														</p>
-													) : null}
-												</div>
-												<span
-													className={cn(
-														"shrink-0 rounded-full border px-2 py-1 text-[11px] font-medium",
-														resultToneByStatus[
-															result.status
-														],
-													)}
-												>
-													{t(
-														`organizations.settings.members.bulkInvite.status.${result.status}`,
-													)}
-												</span>
-											</div>
-										),
+					<CustomField
+						control={form.control}
+						name="role"
+						label={t(
+							"organizations.settings.members.inviteMember.role",
+						)}
+					>
+						{({ field }) => (
+							<OrganizationRoleSelect
+								value={field.value}
+								onSelect={field.onChange}
+								enabled={open}
+								excludeOwnerRole
+							/>
+						)}
+					</CustomField>
+
+					<CustomField
+						control={form.control}
+						name="teamId"
+						label="Team"
+					>
+						{({ field }) => (
+							<OrganizationTeamSelect
+								organizationId={organizationId}
+								value={field.value}
+								onSelect={field.onChange}
+								enabled={open}
+							/>
+						)}
+					</CustomField>
+
+					{bulkInviteResult ? (
+						<div className="space-y-3 rounded-lg border bg-muted/30 p-3">
+							<div className="space-y-1">
+								<p className="text-sm font-medium">
+									{t(
+										"organizations.settings.members.bulkInvite.resultsTitle",
 									)}
-								</div>
+								</p>
+								<p className="text-xs text-muted-foreground">
+									{t(
+										"organizations.settings.members.bulkInvite.resultsSummary",
+										{
+											created:
+												bulkInviteResult.summary
+													.created,
+											skipped:
+												bulkInviteResult.summary
+													.skipped,
+											failed: bulkInviteResult.summary
+												.failed,
+										},
+									)}
+								</p>
 							</div>
-						) : null}
 
-						<DialogFooter>
-							<Button
-								type="button"
-								variant="outline"
-								onClick={() => handleOpenChange(false)}
-								disabled={form.formState.isSubmitting}
-							>
-								Cancel
-							</Button>
-							<Button
-								type="submit"
-								disabled={
-									form.formState.isSubmitting || limitExceeded
-								}
-							>
-								{form.formState.isSubmitting && (
-									<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+							<div className="max-h-60 space-y-2 overflow-y-auto pr-1">
+								{bulkInviteResult.results.map(
+									(result, index) => (
+										<div
+											key={`${result.email}-${result.status}-${index}`}
+											className="flex items-start justify-between gap-3 rounded-md border bg-background p-3"
+										>
+											<div className="min-w-0">
+												<p className="truncate text-sm font-medium">
+													{result.email}
+												</p>
+												{result.message ? (
+													<p className="mt-1 text-xs text-muted-foreground">
+														{result.message}
+													</p>
+												) : null}
+											</div>
+											<span
+												className={cn(
+													"shrink-0 rounded-full border px-2 py-1 text-[11px] font-medium",
+													resultToneByStatus[
+														result.status
+													],
+												)}
+											>
+												{t(
+													`organizations.settings.members.bulkInvite.status.${result.status}`,
+												)}
+											</span>
+										</div>
+									),
 								)}
-								{submitLabel ??
-									t(
-										"organizations.settings.members.bulkInvite.submit",
-									)}
-							</Button>
-						</DialogFooter>
-					</form>
-				</Form>
+							</div>
+						</div>
+					) : null}
+
+					<DialogFooter>
+						<Button
+							type="button"
+							variant="outline"
+							onClick={() => handleOpenChange(false)}
+							disabled={form.formState.isSubmitting}
+						>
+							Cancel
+						</Button>
+						<Button
+							type="submit"
+							disabled={
+								form.formState.isSubmitting || limitExceeded
+							}
+						>
+							{form.formState.isSubmitting && (
+								<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+							)}
+							{submitLabel ??
+								t(
+									"organizations.settings.members.bulkInvite.submit",
+								)}
+						</Button>
+					</DialogFooter>
+				</form>
 			</DialogContent>
 		</Dialog>
 	);

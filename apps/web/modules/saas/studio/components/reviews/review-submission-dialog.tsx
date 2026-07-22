@@ -10,17 +10,10 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@repo/ui/components/dialog";
-import {
-	Form,
-	FormControl,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
-} from "@repo/ui/components/form";
+import { CustomField, TextareaField } from "@repo/ui/components/form-fields";
+import { Label } from "@repo/ui/components/label";
 import { RadioGroup, RadioGroupItem } from "@repo/ui/components/radio-group";
 import { Separator } from "@repo/ui/components/separator";
-import { Textarea } from "@repo/ui/components/textarea";
 import { submissionsApi, submissionsMutations } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -38,6 +31,12 @@ const reviewSchema = z.object({
 });
 
 type ReviewFormData = z.infer<typeof reviewSchema>;
+
+const DECISION_OPTIONS = [
+	{ value: "approve", label: "Approve" },
+	{ value: "request_revision", label: "Request Changes" },
+	{ value: "reject", label: "Reject" },
+] as const;
 
 interface ReviewSubmissionDialogProps {
 	submissionId: string;
@@ -248,88 +247,65 @@ export function ReviewSubmissionDialog({
 
 				<Separator />
 
-				<Form {...form}>
-					<form
-						onSubmit={form.handleSubmit(onSubmit)}
-						className="space-y-6"
+				<form
+					onSubmit={form.handleSubmit(onSubmit)}
+					className="space-y-6"
+				>
+					<CustomField
+						control={form.control}
+						name="decision"
+						label="Decision"
 					>
-						<FormField
-							control={form.control}
-							name="decision"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Decision</FormLabel>
-									<FormControl>
-										<RadioGroup
-											onValueChange={field.onChange}
-											defaultValue={field.value}
-											className="flex flex-wrap gap-4"
-										>
-											<FormItem className="flex items-center space-x-2">
-												<FormControl>
-													<RadioGroupItem value="approve" />
-												</FormControl>
-												<FormLabel className="font-normal">
-													Approve
-												</FormLabel>
-											</FormItem>
-											<FormItem className="flex items-center space-x-2">
-												<FormControl>
-													<RadioGroupItem value="request_revision" />
-												</FormControl>
-												<FormLabel className="font-normal">
-													Request Changes
-												</FormLabel>
-											</FormItem>
-											<FormItem className="flex items-center space-x-2">
-												<FormControl>
-													<RadioGroupItem value="reject" />
-												</FormControl>
-												<FormLabel className="font-normal">
-													Reject
-												</FormLabel>
-											</FormItem>
-										</RadioGroup>
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-
-						<FormField
-							control={form.control}
-							name="reviewNote"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Feedback</FormLabel>
-									<FormControl>
-										<Textarea
-											placeholder="Share feedback for the crew member..."
-											className="min-h-[120px]"
-											{...field}
-										/>
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-
-						<DialogFooter className="gap-2">
-							<Button
-								type="button"
-								variant="ghost"
-								onClick={() => onOpenChange(false)}
+						{({ field }) => (
+							<RadioGroup
+								onValueChange={field.onChange}
+								defaultValue={field.value}
+								className="flex flex-wrap gap-4"
 							>
-								Cancel
-							</Button>
-							<Button type="submit" disabled={submitDisabled}>
-								{reviewMutation.isPending
-									? "Submitting..."
-									: "Submit Review"}
-							</Button>
-						</DialogFooter>
-					</form>
-				</Form>
+								{DECISION_OPTIONS.map((option) => (
+									<div
+										key={option.value}
+										className="flex items-center space-x-2"
+									>
+										<RadioGroupItem
+											value={option.value}
+											id={`review-decision-${option.value}`}
+										/>
+										<Label
+											htmlFor={`review-decision-${option.value}`}
+											className="font-normal"
+										>
+											{option.label}
+										</Label>
+									</div>
+								))}
+							</RadioGroup>
+						)}
+					</CustomField>
+
+					<TextareaField
+						control={form.control}
+						name="reviewNote"
+						label="Feedback"
+						placeholder="Share feedback for the crew member..."
+						rows={5}
+					/>
+
+					<DialogFooter className="gap-2">
+						<Button
+							type="button"
+							variant="ghost"
+							onClick={() => onOpenChange(false)}
+						>
+							Cancel
+						</Button>
+						<Button type="submit" disabled={submitDisabled}>
+							{reviewMutation.isPending
+								? "Submitting..."
+								: "Submit Review"}
+						</Button>
+					</DialogFooter>
+				</form>
 			</DialogContent>
 		</Dialog>
 	);

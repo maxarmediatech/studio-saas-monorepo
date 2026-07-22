@@ -4,15 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { authClient } from "@repo/auth/client";
 import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
 import { Button } from "@repo/ui/components/button";
-import {
-	Form,
-	FormControl,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
-} from "@repo/ui/components/form";
-import { Input } from "@repo/ui/components/input";
+import { TextField } from "@repo/ui/components/form-fields";
 import { useAuthErrorMessages } from "@saas/auth/hooks/errors-messages";
 import {
 	AlertTriangleIcon,
@@ -88,55 +80,42 @@ export function ForgotPasswordForm() {
 					</AlertDescription>
 				</Alert>
 			) : (
-				<Form {...form}>
-					<form
-						className="flex flex-col items-stretch gap-4"
-						onSubmit={onSubmit}
+				<form
+					className="flex flex-col items-stretch gap-4"
+					onSubmit={onSubmit}
+				>
+					{form.formState.errors.root && (
+						<Alert variant="destructive">
+							<AlertTriangleIcon />
+							<AlertTitle>
+								{form.formState.errors.root.message}
+							</AlertTitle>
+						</Alert>
+					)}
+
+					<TextField
+						control={form.control}
+						name="email"
+						label={t("auth.forgotPassword.email")}
+						type="email"
+						autoComplete="email"
+					/>
+
+					<Button
+						type="submit"
+						disabled={form.formState.isSubmitting}
 					>
-						{form.formState.errors.root && (
-							<Alert variant="destructive">
-								<AlertTriangleIcon />
-								<AlertTitle>
-									{form.formState.errors.root.message}
-								</AlertTitle>
-							</Alert>
-						)}
-
-						<FormField
-							control={form.control}
-							name="email"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>
-										{t("auth.forgotPassword.email")}
-									</FormLabel>
-									<FormControl>
-										<Input
-											{...field}
-											autoComplete="email"
-										/>
-									</FormControl>
-									<FormMessage />
-								</FormItem>
+						<span className="inline-flex items-center justify-center gap-2">
+							{form.formState.isSubmitting && (
+								<Loader2Icon
+									className="size-4 animate-spin"
+									aria-hidden="true"
+								/>
 							)}
-						/>
-
-						<Button
-							type="submit"
-							disabled={form.formState.isSubmitting}
-						>
-							<span className="inline-flex items-center justify-center gap-2">
-								{form.formState.isSubmitting && (
-									<Loader2Icon
-										className="size-4 animate-spin"
-										aria-hidden="true"
-									/>
-								)}
-								{t("auth.forgotPassword.submit")}
-							</span>
-						</Button>
-					</form>
-				</Form>
+							{t("auth.forgotPassword.submit")}
+						</span>
+					</Button>
+				</form>
 			)}
 
 			<div className="mt-6 text-center text-sm">

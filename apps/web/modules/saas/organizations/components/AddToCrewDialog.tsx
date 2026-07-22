@@ -10,14 +10,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@repo/ui/components/dialog";
-import {
-	Form,
-	FormControl,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
-} from "@repo/ui/components/form";
+import { CustomField } from "@repo/ui/components/form-fields";
 import {
 	InputGroup,
 	InputGroupAddon,
@@ -103,78 +96,68 @@ export function AddToCrewDialog({
 					</DialogDescription>
 				</DialogHeader>
 
-				<Form {...form}>
-					<form
-						onSubmit={form.handleSubmit(onSubmit)}
-						className="space-y-4"
+				<form
+					onSubmit={form.handleSubmit(onSubmit)}
+					className="space-y-4"
+				>
+					<CustomField
+						control={form.control}
+						name="specializations"
+						label="Specialisations"
 					>
-						<FormField
-							control={form.control}
-							name="specializations"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Specialisations</FormLabel>
-									<FormControl>
-										<MultiSelectCombobox
-											options={specializationOptions}
-											value={field.value ?? []}
-											onValueChange={field.onChange}
-											placeholder="Select specialisations"
-											searchPlaceholder="Search specialisations..."
-											emptyText="No specialisation found."
-										/>
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
+						{({ field }) => (
+							<MultiSelectCombobox
+								options={specializationOptions}
+								value={field.value ?? []}
+								onValueChange={field.onChange}
+								placeholder="Select specialisations"
+								searchPlaceholder="Search specialisations..."
+								emptyText="No specialisation found."
+							/>
+						)}
+					</CustomField>
 
-						<FormField
-							control={form.control}
-							name="dailyRate"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Daily Rate (INR)</FormLabel>
-									<FormControl>
-										<InputGroup>
-											<InputGroupAddon>
-												<InputGroupText>
-													₹
-												</InputGroupText>
-											</InputGroupAddon>
-											<InputGroupInput
-												type="number"
-												placeholder="5000"
-												{...field}
-											/>
-										</InputGroup>
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
+					<CustomField
+						control={form.control}
+						name="dailyRate"
+						label="Daily Rate (INR)"
+					>
+						{({ field, fieldState }) => (
+							<InputGroup>
+								<InputGroupAddon>
+									<InputGroupText>₹</InputGroupText>
+								</InputGroupAddon>
+								<InputGroupInput
+									type="number"
+									placeholder="5000"
+									size="sm"
+									aria-invalid={fieldState.invalid}
+									{...field}
+								/>
+							</InputGroup>
+						)}
+					</CustomField>
 
-						<DialogFooter>
-							<Button
-								type="button"
-								variant="outline"
-								onClick={() => onOpenChange(false)}
-								disabled={createFromMemberMutation.isPending}
-							>
-								Cancel
-							</Button>
-							<Button
-								type="submit"
-								disabled={createFromMemberMutation.isPending}
-							>
-								{createFromMemberMutation.isPending && (
-									<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-								)}
-								Add to Crew
-							</Button>
-						</DialogFooter>
-					</form>
-				</Form>
+					<DialogFooter>
+						<Button
+							type="button"
+							variant="outline"
+							onClick={() => onOpenChange(false)}
+							disabled={createFromMemberMutation.isPending}
+						>
+							Cancel
+						</Button>
+						<Button
+							type="submit"
+							disabled={createFromMemberMutation.isPending}
+						>
+							{createFromMemberMutation.isPending && (
+								<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+							)}
+							Add to Crew
+						</Button>
+					</DialogFooter>
+				</form>
 			</DialogContent>
 		</Dialog>
 	);

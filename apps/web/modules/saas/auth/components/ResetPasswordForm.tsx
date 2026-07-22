@@ -5,15 +5,7 @@ import { authClient } from "@repo/auth/client";
 import { config } from "@repo/config";
 import { Alert, AlertTitle } from "@repo/ui/components/alert";
 import { Button } from "@repo/ui/components/button";
-import {
-	Form,
-	FormControl,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
-} from "@repo/ui/components/form";
-import { PasswordInput } from "@repo/ui/components/password-input";
+import { PasswordField } from "@repo/ui/components/form-fields";
 import { useAuthErrorMessages } from "@saas/auth/hooks/errors-messages";
 import { useSession } from "@saas/auth/hooks/use-session";
 import { useRouter } from "@shared/hooks/router";
@@ -92,55 +84,41 @@ export function ResetPasswordForm() {
 					</AlertTitle>
 				</Alert>
 			) : (
-				<Form {...form}>
-					<form
-						className="flex flex-col items-stretch gap-4"
-						onSubmit={onSubmit}
+				<form
+					className="flex flex-col items-stretch gap-4"
+					onSubmit={onSubmit}
+				>
+					{form.formState.errors.root && (
+						<Alert variant="destructive">
+							<AlertTriangleIcon />
+							<AlertTitle>
+								{form.formState.errors.root.message}
+							</AlertTitle>
+						</Alert>
+					)}
+
+					<PasswordField
+						control={form.control}
+						name="password"
+						label={t("auth.resetPassword.newPassword")}
+						autoComplete="new-password"
+					/>
+
+					<Button
+						type="submit"
+						disabled={form.formState.isSubmitting}
 					>
-						{form.formState.errors.root && (
-							<Alert variant="destructive">
-								<AlertTriangleIcon />
-								<AlertTitle>
-									{form.formState.errors.root.message}
-								</AlertTitle>
-							</Alert>
-						)}
-
-						<FormField
-							control={form.control}
-							name="password"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>
-										{t("auth.resetPassword.newPassword")}
-									</FormLabel>
-									<FormControl>
-										<PasswordInput
-											autoComplete="new-password"
-											{...field}
-										/>
-									</FormControl>
-									<FormMessage />
-								</FormItem>
+						<span className="inline-flex items-center justify-center gap-2">
+							{form.formState.isSubmitting && (
+								<Loader2Icon
+									className="size-4 animate-spin"
+									aria-hidden="true"
+								/>
 							)}
-						/>
-
-						<Button
-							type="submit"
-							disabled={form.formState.isSubmitting}
-						>
-							<span className="inline-flex items-center justify-center gap-2">
-								{form.formState.isSubmitting && (
-									<Loader2Icon
-										className="size-4 animate-spin"
-										aria-hidden="true"
-									/>
-								)}
-								{t("auth.resetPassword.submit")}
-							</span>
-						</Button>
-					</form>
-				</Form>
+							{t("auth.resetPassword.submit")}
+						</span>
+					</Button>
+				</form>
 			)}
 
 			<div className="mt-6 text-center text-sm">

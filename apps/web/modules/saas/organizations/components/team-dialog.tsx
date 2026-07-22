@@ -10,15 +10,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@repo/ui/components/dialog";
-import {
-	Form,
-	FormControl,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
-} from "@repo/ui/components/form";
-import { Input } from "@repo/ui/components/input";
+import { TextField } from "@repo/ui/components/form-fields";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -77,42 +69,30 @@ export function TeamDialog({
 					</DialogDescription>
 				</DialogHeader>
 
-				<Form {...form}>
-					<form
-						onSubmit={form.handleSubmit(onSubmit)}
-						className="space-y-4"
-					>
-						<FormField
-							control={form.control}
-							name="name"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Team name</FormLabel>
-									<FormControl>
-										<Input
-											placeholder="Production"
-											{...field}
-										/>
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
+				<form
+					onSubmit={form.handleSubmit(onSubmit)}
+					className="space-y-4"
+				>
+					<TextField
+						control={form.control}
+						name="name"
+						label="Team name"
+						placeholder="Production"
+					/>
 
-						<DialogFooter>
-							<Button
-								variant="ghost"
-								onClick={() => onOpenChange(false)}
-								disabled={isSaving}
-							>
-								Cancel
-							</Button>
-							<Button type="submit" disabled={isSaving}>
-								{mode === "create" ? "Create Team" : "Save Changes"}
-							</Button>
-						</DialogFooter>
-					</form>
-				</Form>
+					<DialogFooter>
+						<Button
+							variant="ghost"
+							onClick={() => onOpenChange(false)}
+							disabled={isSaving}
+						>
+							Cancel
+						</Button>
+						<Button type="submit" disabled={isSaving}>
+							{mode === "create" ? "Create Team" : "Save Changes"}
+						</Button>
+					</DialogFooter>
+				</form>
 			</DialogContent>
 		</Dialog>
 	);

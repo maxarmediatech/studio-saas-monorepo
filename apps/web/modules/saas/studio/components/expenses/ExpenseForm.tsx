@@ -6,14 +6,14 @@ import { Avatar, AvatarFallback } from "@repo/ui/components/avatar";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Combobox, type ComboboxOption } from "@repo/ui/components/combobox";
-import { DatePicker } from "@repo/ui/components/date-picker";
+import { FieldGroup } from "@repo/ui/components/field";
 import {
-	Field,
-	FieldError,
-	FieldGroup,
-	FieldLabel,
-} from "@repo/ui/components/field";
-import { Input } from "@repo/ui/components/input";
+	CustomField,
+	DateField,
+	SelectField,
+	TextField,
+} from "@repo/ui/components/form-fields";
+import { FieldRow, FormSection } from "@repo/ui/components/form-section";
 import {
 	InputGroup,
 	InputGroupAddon,
@@ -24,13 +24,6 @@ import {
 } from "@repo/ui/components/input-group";
 import { MultiSelectCombobox } from "@repo/ui/components/multi-select-combobox";
 import { ScrollArea } from "@repo/ui/components/scroll-area";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@repo/ui/components/select";
 import { Separator } from "@repo/ui/components/separator";
 import { useAllCrewOptions } from "@saas/studio/components/shared";
 import { useStudioCapabilities } from "@saas/studio/components/studio-capabilities-context";
@@ -51,7 +44,7 @@ import {
 	XIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { FormActions } from "../ui/FormActions";
@@ -437,14 +430,14 @@ export function ExpenseForm({
 			>
 				<div className="px-4 py-4">
 					<FieldGroup>
-						<Controller
-							name="bookingId"
-							control={form.control}
-							render={({ field, fieldState }) => (
-								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>
-										Booking *
-									</FieldLabel>
+						<FormSection>
+							<CustomField
+								control={form.control}
+								name="bookingId"
+								label="Booking"
+								required
+							>
+								{({ field, fieldState }) => (
 									<Combobox
 										id={field.name}
 										value={field.value}
@@ -461,24 +454,17 @@ export function ExpenseForm({
 											mode === "edit" || isLoadingBookings
 										}
 										aria-invalid={fieldState.invalid}
+										className="h-8 px-2.5 text-13"
 									/>
-									{fieldState.invalid && (
-										<FieldError
-											errors={[fieldState.error]}
-										/>
-									)}
-								</Field>
-							)}
-						/>
+								)}
+							</CustomField>
 
-						<Controller
-							name="shootId"
-							control={form.control}
-							render={({ field, fieldState }) => (
-								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>
-										Shoot (optional)
-									</FieldLabel>
+							<CustomField
+								control={form.control}
+								name="shootId"
+								label="Shoot (optional)"
+							>
+								{({ field, fieldState }) => (
 									<Combobox
 										id={field.name}
 										value={field.value ?? ""}
@@ -502,48 +488,27 @@ export function ExpenseForm({
 											shoots.length === 0
 										}
 										aria-invalid={fieldState.invalid}
+										className="h-8 px-2.5 text-13"
 									/>
-									{fieldState.invalid && (
-										<FieldError
-											errors={[fieldState.error]}
-										/>
-									)}
-								</Field>
-							)}
-						/>
+								)}
+							</CustomField>
 
-						<Controller
-							name="description"
-							control={form.control}
-							render={({ field, fieldState }) => (
-								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>
-										Description *
-									</FieldLabel>
-									<Input
-										{...field}
-										id={field.name}
-										placeholder="What was this expense for?"
-										aria-invalid={fieldState.invalid}
-									/>
-									{fieldState.invalid && (
-										<FieldError
-											errors={[fieldState.error]}
-										/>
-									)}
-								</Field>
-							)}
-						/>
-
-						<div className="grid grid-cols-3 gap-4">
-							<Controller
-								name="amount"
+							<TextField
 								control={form.control}
-								render={({ field, fieldState }) => (
-									<Field data-invalid={fieldState.invalid}>
-										<FieldLabel htmlFor={field.name}>
-											Amount *
-										</FieldLabel>
+								name="description"
+								label="Description"
+								required
+								placeholder="What was this expense for?"
+							/>
+
+							<FieldRow cols={3}>
+								<CustomField
+									control={form.control}
+									name="amount"
+									label="Amount"
+									required
+								>
+									{({ field, fieldState }) => (
 										<InputGroup>
 											<InputGroupAddon>
 												<InputGroupText>
@@ -553,6 +518,7 @@ export function ExpenseForm({
 											<InputGroupInput
 												{...field}
 												id={field.name}
+												size="sm"
 												placeholder="0.00"
 												aria-invalid={
 													fieldState.invalid
@@ -578,100 +544,40 @@ export function ExpenseForm({
 												}}
 											/>
 										</InputGroup>
-										{fieldState.invalid && (
-											<FieldError
-												errors={[fieldState.error]}
-											/>
-										)}
-									</Field>
-								)}
-							/>
+									)}
+								</CustomField>
 
-							<Controller
-								name="expenseDate"
-								control={form.control}
-								render={({ field, fieldState }) => (
-									<Field data-invalid={fieldState.invalid}>
-										<FieldLabel htmlFor={field.name}>
-											Date *
-										</FieldLabel>
-										<DatePicker
-											value={field.value}
-											onValueChange={field.onChange}
-											id={field.name}
-											aria-invalid={fieldState.invalid}
-										/>
-										{fieldState.invalid && (
-											<FieldError
-												errors={[fieldState.error]}
-											/>
-										)}
-									</Field>
-								)}
-							/>
+								<DateField
+									control={form.control}
+									name="expenseDate"
+									label="Date"
+									required
+								/>
 
-							<Controller
-								name="billTo"
+								<SelectField
+									control={form.control}
+									name="billTo"
+									label="Bill To"
+									required
+									placeholder="Who pays?"
+									options={[
+										{ value: "studio", label: "Studio" },
+										{ value: "client", label: "Client" },
+									]}
+								/>
+							</FieldRow>
+
+							<CustomField
 								control={form.control}
-								render={({ field, fieldState }) => {
-									const value =
-										field.value === "studio" ||
-										field.value === "client"
-											? field.value
-											: "studio";
+								name="crewAssignments"
+								label="Expense By (Crew)"
+							>
+								{({ field }) => {
+									const selectedIds = (field.value ?? []).map(
+										(a) => a.crewId,
+									);
 
 									return (
-										<Field
-											data-invalid={fieldState.invalid}
-										>
-											<FieldLabel htmlFor={field.name}>
-												Bill To *
-											</FieldLabel>
-											<Select
-												onValueChange={field.onChange}
-												value={value}
-											>
-												<SelectTrigger
-													id={field.name}
-													aria-invalid={
-														fieldState.invalid
-													}
-												>
-													<SelectValue placeholder="Who pays?" />
-												</SelectTrigger>
-												<SelectContent>
-													<SelectItem value="studio">
-														Studio
-													</SelectItem>
-													<SelectItem value="client">
-														Client
-													</SelectItem>
-												</SelectContent>
-											</Select>
-											{fieldState.invalid && (
-												<FieldError
-													errors={[fieldState.error]}
-												/>
-											)}
-										</Field>
-									);
-								}}
-							/>
-						</div>
-
-						<Controller
-							name="crewAssignments"
-							control={form.control}
-							render={({ field }) => {
-								const selectedIds = (field.value ?? []).map(
-									(a) => a.crewId,
-								);
-
-								return (
-									<Field>
-										<FieldLabel>
-											Expense By (Crew)
-										</FieldLabel>
 										<MultiSelectCombobox
 											options={crewOptions}
 											value={selectedIds}
@@ -685,6 +591,7 @@ export function ExpenseForm({
 											placeholder="Who made this expense?"
 											searchPlaceholder="Search crew..."
 											emptyText="No crew members found"
+											className="min-h-8 px-2.5 text-13"
 											renderOption={(option) => (
 												<div className="flex items-center gap-2">
 													<Avatar className="h-6 w-6">
@@ -732,10 +639,10 @@ export function ExpenseForm({
 												</Badge>
 											)}
 										/>
-									</Field>
-								);
-							}}
-						/>
+									);
+								}}
+							</CustomField>
+						</FormSection>
 
 						{(showDetails ||
 							form.watch("category") ||
@@ -743,7 +650,7 @@ export function ExpenseForm({
 							form.watch("paymentMethod") ||
 							form.watch("notes") ||
 							receiptAttachment) && (
-							<>
+							<FormSection>
 								<div className="flex items-center justify-between">
 									<span className="text-sm font-medium text-muted-foreground">
 										Additional Details
@@ -769,237 +676,147 @@ export function ExpenseForm({
 										)}
 								</div>
 
-								<div className="grid grid-cols-3 gap-4">
-									<Controller
+								<FieldRow cols={3}>
+									<TextField
+										control={form.control}
 										name="category"
-										control={form.control}
-										render={({ field, fieldState }) => (
-											<Field
-												data-invalid={
-													fieldState.invalid
-												}
-											>
-												<FieldLabel
-													htmlFor={field.name}
-												>
-													Category
-												</FieldLabel>
-												<Input
-													{...field}
-													id={field.name}
-													placeholder="e.g., Travel"
-													aria-invalid={
-														fieldState.invalid
-													}
-												/>
-											</Field>
-										)}
+										label="Category"
+										placeholder="e.g., Travel"
 									/>
 
-									<Controller
+									<TextField
+										control={form.control}
 										name="vendor"
-										control={form.control}
-										render={({ field, fieldState }) => (
-											<Field
-												data-invalid={
-													fieldState.invalid
-												}
-											>
-												<FieldLabel
-													htmlFor={field.name}
-												>
-													Vendor
-												</FieldLabel>
-												<Input
-													{...field}
-													id={field.name}
-													placeholder="e.g., Amazon"
-													aria-invalid={
-														fieldState.invalid
-													}
-												/>
-											</Field>
-										)}
+										label="Vendor"
+										placeholder="e.g., Amazon"
 									/>
 
-									<Controller
+									<SelectField
+										control={form.control}
 										name="paymentMethod"
-										control={form.control}
-										render={({ field, fieldState }) => (
-											<Field
-												data-invalid={
-													fieldState.invalid
-												}
-											>
-												<FieldLabel
-													htmlFor={field.name}
-												>
-													Payment
-												</FieldLabel>
-												<Select
-													onValueChange={
-														field.onChange
-													}
-													value={field.value}
-												>
-													<SelectTrigger
-														id={field.name}
-														aria-invalid={
-															fieldState.invalid
-														}
-													>
-														<SelectValue placeholder="Method" />
-													</SelectTrigger>
-													<SelectContent>
-														{PAYMENT_METHODS.map(
-															(method) => (
-																<SelectItem
-																	key={
-																		method.value
-																	}
-																	value={
-																		method.value
-																	}
-																>
-																	{
-																		method.label
-																	}
-																</SelectItem>
-															),
-														)}
-													</SelectContent>
-												</Select>
-											</Field>
+										label="Payment"
+										placeholder="Method"
+										options={PAYMENT_METHODS.map(
+											(method) => ({
+												value: method.value,
+												label: method.label,
+											}),
 										)}
 									/>
-								</div>
+								</FieldRow>
 
-								<Controller
-									name="notes"
+								<CustomField
 									control={form.control}
-									render={({ field, fieldState }) => (
-										<Field
-											data-invalid={fieldState.invalid}
-										>
-											<FieldLabel htmlFor={field.name}>
-												Notes & Receipt
-											</FieldLabel>
-											<InputGroup>
-												<InputGroupTextarea
-													{...field}
-													id={field.name}
-													placeholder="Add notes or reference information..."
-													rows={2}
-													aria-invalid={
-														fieldState.invalid
+									name="notes"
+									label="Notes & Receipt"
+								>
+									{({ field, fieldState }) => (
+										<InputGroup>
+											<InputGroupTextarea
+												{...field}
+												id={field.name}
+												placeholder="Add notes or reference information..."
+												rows={2}
+												aria-invalid={
+													fieldState.invalid
+												}
+											/>
+											<InputGroupAddon align="block-end">
+												<input
+													ref={fileInputRef}
+													type="file"
+													className="hidden"
+													accept={
+														RECEIPT_UPLOAD_ACCEPT
 													}
-												/>
-												<InputGroupAddon align="block-end">
-													<input
-														ref={fileInputRef}
-														type="file"
-														className="hidden"
-														accept={
-															RECEIPT_UPLOAD_ACCEPT
+													onChange={(e) => {
+														const file =
+															e.target.files?.[0];
+														if (file) {
+															handleFileUpload(
+																file,
+															);
 														}
-														onChange={(e) => {
-															const file =
-																e.target
-																	.files?.[0];
-															if (file) {
-																handleFileUpload(
-																	file,
-																);
-															}
-															e.target.value = "";
-														}}
-													/>
+														e.target.value = "";
+													}}
+												/>
 
-													{isUploading ? (
-														<InputGroupText>
-															<Loader2Icon className="h-4 w-4 animate-spin" />
-															<span className="text-xs">
-																Uploading...
+												{isUploading ? (
+													<InputGroupText>
+														<Loader2Icon className="h-4 w-4 animate-spin" />
+														<span className="text-xs">
+															Uploading...
+														</span>
+													</InputGroupText>
+												) : receiptAttachment ? (
+													<>
+														<InputGroupText className="gap-1.5">
+															<FileTextIcon className="h-4 w-4 text-primary" />
+															<span
+																className="max-w-[150px] truncate text-xs"
+																title={
+																	receiptAttachment.name
+																}
+															>
+																{
+																	receiptAttachment.name
+																}
+															</span>
+															<span className="text-xs text-muted-foreground">
+																(
+																{formatFileSize(
+																	receiptAttachment.size,
+																)}
+																)
 															</span>
 														</InputGroupText>
-													) : receiptAttachment ? (
-														<>
-															<InputGroupText className="gap-1.5">
-																<FileTextIcon className="h-4 w-4 text-primary" />
-																<span
-																	className="max-w-[150px] truncate text-xs"
-																	title={
-																		receiptAttachment.name
-																	}
-																>
-																	{
-																		receiptAttachment.name
-																	}
-																</span>
-																<span className="text-xs text-muted-foreground">
-																	(
-																	{formatFileSize(
-																		receiptAttachment.size,
-																	)}
-																	)
-																</span>
-															</InputGroupText>
-															<InputGroupButton
-																variant="ghost"
-																size="icon-xs"
-																onClick={
-																	handleFileRemove
-																}
-																disabled={
-																	isDeleting
-																}
-																className="text-destructive hover:text-destructive"
-															>
-																{isDeleting ? (
-																	<Loader2Icon className="h-3.5 w-3.5 animate-spin" />
-																) : (
-																	<XIcon className="h-3.5 w-3.5" />
-																)}
-																<span className="sr-only">
-																	Remove
-																	receipt
-																</span>
-															</InputGroupButton>
-														</>
-													) : (
 														<InputGroupButton
 															variant="ghost"
-															size="xs"
-															onClick={() =>
-																fileInputRef.current?.click()
+															size="icon-xs"
+															onClick={
+																handleFileRemove
 															}
+															disabled={
+																isDeleting
+															}
+															className="text-destructive hover:text-destructive"
 														>
-															<PaperclipIcon className="h-4 w-4" />
-															Attach Receipt
+															{isDeleting ? (
+																<Loader2Icon className="h-3.5 w-3.5 animate-spin" />
+															) : (
+																<XIcon className="h-3.5 w-3.5" />
+															)}
+															<span className="sr-only">
+																Remove receipt
+															</span>
 														</InputGroupButton>
-													)}
-
-													<Separator
-														orientation="vertical"
-														className="!h-4 ml-auto"
-													/>
-
-													<InputGroupText className="text-xs text-muted-foreground">
-														{
-															RECEIPT_UPLOAD_HELPER_TEXT
+													</>
+												) : (
+													<InputGroupButton
+														variant="ghost"
+														size="xs"
+														onClick={() =>
+															fileInputRef.current?.click()
 														}
-													</InputGroupText>
-												</InputGroupAddon>
-											</InputGroup>
-											{fieldState.invalid && (
-												<FieldError
-													errors={[fieldState.error]}
+													>
+														<PaperclipIcon className="h-4 w-4" />
+														Attach Receipt
+													</InputGroupButton>
+												)}
+
+												<Separator
+													orientation="vertical"
+													className="!h-4 ml-auto"
 												/>
-											)}
-										</Field>
+
+												<InputGroupText className="text-xs text-muted-foreground">
+													{RECEIPT_UPLOAD_HELPER_TEXT}
+												</InputGroupText>
+											</InputGroupAddon>
+										</InputGroup>
 									)}
-								/>
-							</>
+								</CustomField>
+							</FormSection>
 						)}
 
 						{!showDetails &&

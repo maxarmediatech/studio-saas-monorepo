@@ -4,14 +4,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { authClient } from "@repo/auth/client";
 import { Button } from "@repo/ui/components/button";
 import {
-	Form,
-	FormControl,
-	FormDescription,
-	FormField,
-	FormItem,
-	FormLabel,
-} from "@repo/ui/components/form";
-import { Input } from "@repo/ui/components/input";
+	Field,
+	FieldContent,
+	FieldDescription,
+	FieldLabel,
+} from "@repo/ui/components/field";
+import { TextField } from "@repo/ui/components/form-fields";
 import { useSession } from "@saas/auth/hooks/use-session";
 import { UserAvatarUpload } from "@saas/settings/components/UserAvatarUpload";
 import { ArrowRightIcon, Loader2Icon } from "lucide-react";
@@ -74,67 +72,50 @@ export function OnboardingStep1({
 
 	return (
 		<div>
-			<Form {...form}>
-				<form
-					className="flex flex-col items-stretch gap-8"
-					onSubmit={form.handleSubmit(onSubmit)}
-				>
-					<FormField
-						control={form.control}
-						name="name"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>
-									{t("onboarding.account.name")}
-								</FormLabel>
-								<FormControl>
-									<Input {...field} />
-								</FormControl>
-							</FormItem>
-						)}
+			<form
+				className="flex flex-col items-stretch gap-8"
+				onSubmit={form.handleSubmit(onSubmit)}
+			>
+				<TextField
+					control={form.control}
+					name="name"
+					label={t("onboarding.account.name")}
+				/>
+
+				<Field orientation="horizontal" className="justify-between">
+					<FieldContent>
+						<FieldLabel>
+							{t("onboarding.account.avatar")}
+						</FieldLabel>
+						<FieldDescription>
+							{t("onboarding.account.avatarDescription")}
+						</FieldDescription>
+					</FieldContent>
+					<UserAvatarUpload
+						onSuccess={() => {
+							return;
+						}}
+						onError={() => {
+							return;
+						}}
 					/>
+				</Field>
 
-					<FormItem className="flex items-center justify-between gap-4">
-						<div>
-							<FormLabel>
-								{t("onboarding.account.avatar")}
-							</FormLabel>
-
-							<FormDescription>
-								{t("onboarding.account.avatarDescription")}
-							</FormDescription>
-						</div>
-						<FormControl>
-							<UserAvatarUpload
-								onSuccess={() => {
-									return;
-								}}
-								onError={() => {
-									return;
-								}}
-							/>
-						</FormControl>
-					</FormItem>
-
-					<Button
-						type="submit"
-						disabled={form.formState.isSubmitting}
-					>
-						<span className="inline-flex items-center gap-2">
-							{form.formState.isSubmitting && (
-								<Loader2Icon className="size-4 animate-spin" />
-							)}
-							{t("onboarding.continue")}
-						</span>
-						<ArrowRightIcon className="ml-2 size-4" />
-					</Button>
-					{form.formState.errors.root?.message && (
-						<p className="text-destructive text-sm">
-							{form.formState.errors.root.message}
-						</p>
-					)}
-				</form>
-			</Form>
+				<Button type="submit" disabled={form.formState.isSubmitting}>
+					<span className="inline-flex items-center gap-2">
+						{form.formState.isSubmitting && (
+							<Loader2Icon className="size-4 animate-spin" />
+						)}
+						{t("onboarding.continue")}
+					</span>
+					<ArrowRightIcon className="ml-2 size-4" />
+				</Button>
+				{form.formState.errors.root?.message && (
+					<p className="text-destructive text-sm">
+						{form.formState.errors.root.message}
+					</p>
+				)}
+			</form>
 		</div>
 	);
 }

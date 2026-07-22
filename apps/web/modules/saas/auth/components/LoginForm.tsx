@@ -5,14 +5,9 @@ import { authClient } from "@repo/auth/client";
 import { config } from "@repo/config";
 import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
 import { Button } from "@repo/ui/components/button";
-import {
-	Form,
-	FormControl,
-	FormField,
-	FormItem,
-	FormLabel,
-} from "@repo/ui/components/form";
-import { Input } from "@repo/ui/components/input";
+import { FieldLabel } from "@repo/ui/components/field";
+import { CustomField, TextField } from "@repo/ui/components/form-fields";
+import { PasswordInput } from "@repo/ui/components/password-input";
 import { useAuthErrorMessages } from "@saas/auth/hooks/errors-messages";
 import { sessionQueryKey } from "@saas/auth/lib/api";
 import { OrganizationInvitationAlert } from "@saas/organizations/components/OrganizationInvitationAlert";
@@ -23,15 +18,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
 	AlertTriangleIcon,
 	ArrowRightIcon,
-	EyeIcon,
-	EyeOffIcon,
 	Loader2Icon,
 	MailboxIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import type { SubmitHandler } from "react-hook-form";
 import { useForm } from "react-hook-form";
 import { withQuery } from "ufo";
@@ -66,7 +59,6 @@ export function LoginForm() {
 	const searchParams = useSearchParams();
 	const { user, loaded: sessionLoaded } = useSession();
 
-	const [showPassword, setShowPassword] = useState(false);
 	const invitationId = searchParams.get("invitationId");
 	const email = searchParams.get("email");
 	const redirectTo = searchParams.get("redirectTo");
@@ -216,129 +208,99 @@ export function LoginForm() {
 							</>
 						)}
 
-					<Form {...form}>
-						<form
-							className="space-y-4"
-							onSubmit={form.handleSubmit(onSubmit)}
-						>
-							{config.auth.enableMagicLink &&
-								config.auth.enablePasswordLogin && (
-									<LoginModeSwitch
-										activeMode={signinMode}
-										onChange={(mode) =>
-											form.setValue(
-												"mode",
-												mode as typeof signinMode,
-											)
-										}
-									/>
-								)}
+					<form
+						className="space-y-4"
+						onSubmit={form.handleSubmit(onSubmit)}
+					>
+						{config.auth.enableMagicLink &&
+							config.auth.enablePasswordLogin && (
+								<LoginModeSwitch
+									activeMode={signinMode}
+									onChange={(mode) =>
+										form.setValue(
+											"mode",
+											mode as typeof signinMode,
+										)
+									}
+								/>
+							)}
 
-							{form.formState.isSubmitted &&
-								form.formState.errors.root?.message && (
-									<Alert variant="destructive">
-										<AlertTriangleIcon />
-										<AlertTitle>
-											{form.formState.errors.root.message}
-										</AlertTitle>
-									</Alert>
-								)}
+						{form.formState.isSubmitted &&
+							form.formState.errors.root?.message && (
+								<Alert variant="destructive">
+									<AlertTriangleIcon />
+									<AlertTitle>
+										{form.formState.errors.root.message}
+									</AlertTitle>
+								</Alert>
+							)}
 
-							<FormField
-								control={form.control}
-								name="email"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>
-											{t("auth.signup.email")}
-										</FormLabel>
-										<FormControl>
-											<Input
+						<TextField
+							control={form.control}
+							name="email"
+							label={t("auth.signup.email")}
+							type="email"
+							autoComplete="email"
+						/>
+
+						{config.auth.enablePasswordLogin &&
+							signinMode === "password" && (
+								<CustomField
+									control={form.control}
+									name="password"
+								>
+									{({ field, fieldState }) => (
+										<>
+											<div className="flex justify-between gap-4">
+												<FieldLabel
+													variant="micro"
+													htmlFor={field.name}
+												>
+													{t("auth.signup.password")}
+												</FieldLabel>
+
+												<Link
+													href="/auth/forgot-password"
+													className="text-foreground/60 text-xs"
+												>
+													{t(
+														"auth.login.forgotPassword",
+													)}
+												</Link>
+											</div>
+											<PasswordInput
 												{...field}
-												autoComplete="email"
+												id={field.name}
+												size="sm"
+												autoComplete="current-password"
+												aria-invalid={
+													fieldState.invalid
+												}
 											/>
-										</FormControl>
-									</FormItem>
-								)}
-							/>
+										</>
+									)}
+								</CustomField>
+							)}
 
-							{config.auth.enablePasswordLogin &&
-								signinMode === "password" && (
-									<FormField
-										control={form.control}
-										name="password"
-										render={({ field }) => (
-											<FormItem>
-												<div className="flex justify-between gap-4">
-													<FormLabel>
-														{t(
-															"auth.signup.password",
-														)}
-													</FormLabel>
-
-													<Link
-														href="/auth/forgot-password"
-														className="text-foreground/60 text-xs"
-													>
-														{t(
-															"auth.login.forgotPassword",
-														)}
-													</Link>
-												</div>
-												<FormControl>
-													<div className="relative">
-														<Input
-															type={
-																showPassword
-																	? "text"
-																	: "password"
-															}
-															className="pr-10"
-															{...field}
-															autoComplete="current-password"
-														/>
-														<button
-															type="button"
-															onClick={() =>
-																setShowPassword(
-																	!showPassword,
-																)
-															}
-															className="absolute inset-y-0 right-0 flex items-center pr-4 text-primary text-xl"
-														>
-															{showPassword ? (
-																<EyeOffIcon className="size-4" />
-															) : (
-																<EyeIcon className="size-4" />
-															)}
-														</button>
-													</div>
-												</FormControl>
-											</FormItem>
-										)}
+						<Button
+							className="w-full"
+							type="submit"
+							variant="default"
+							disabled={form.formState.isSubmitting}
+						>
+							<span className="inline-flex items-center justify-center gap-2">
+								{form.formState.isSubmitting && (
+									<Loader2Icon
+										className="size-4 animate-spin"
+										aria-hidden="true"
 									/>
 								)}
-
-							<Button
-								className="w-full"
-								type="submit"
-								variant="default"
-								disabled={form.formState.isSubmitting}
-							>
-								<span className="inline-flex items-center justify-center gap-2">
-									{form.formState.isSubmitting && (
-										<Loader2Icon
-											className="size-4 animate-spin"
-											aria-hidden="true"
-										/>
-									)}
-									{signinMode === "magic-link"
-										? t("auth.login.sendMagicLink")
-										: t("auth.login.submit")}
-								</span>
-							</Button>
-						</form>
-					</Form>
+								{signinMode === "magic-link"
+									? t("auth.login.sendMagicLink")
+									: t("auth.login.submit")}
+							</span>
+						</Button>
+					</form>
 
 					{config.auth.enableSignup && (
 						<div className="mt-6 text-center text-sm">
