@@ -13,6 +13,11 @@ import {
 	listAuthorizedSavedViewEntityTypes,
 } from "./saved-view-permissions";
 
+const context = {
+	headers: new Headers(),
+	organizationId: "organization-1",
+};
+
 describe("listAuthorizedSavedViewEntityTypes", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -24,10 +29,7 @@ describe("listAuthorizedSavedViewEntityTypes", () => {
 		);
 
 		await expect(
-			listAuthorizedSavedViewEntityTypes(
-				{ headers: new Headers() },
-				"list",
-			),
+			listAuthorizedSavedViewEntityTypes(context, "list"),
 		).resolves.toEqual(["task"]);
 	});
 
@@ -37,10 +39,7 @@ describe("listAuthorizedSavedViewEntityTypes", () => {
 		);
 
 		await expect(
-			listAuthorizedSavedViewEntityTypes(
-				{ headers: new Headers() },
-				"list",
-			),
+			listAuthorizedSavedViewEntityTypes(context, "list"),
 		).resolves.toEqual(["payment", "schedule", "invoice"]);
 	});
 
@@ -48,10 +47,7 @@ describe("listAuthorizedSavedViewEntityTypes", () => {
 		mocks.mockHasPermission.mockResolvedValue(false);
 
 		await expect(
-			listAuthorizedSavedViewEntityTypes(
-				{ headers: new Headers() },
-				"list",
-			),
+			listAuthorizedSavedViewEntityTypes(context, "list"),
 		).resolves.toEqual([]);
 	});
 });

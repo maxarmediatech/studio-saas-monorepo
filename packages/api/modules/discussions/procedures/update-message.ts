@@ -1,10 +1,11 @@
 import { ORPCError } from "@orpc/server";
 import { and, db, discussionMessages, eq, isNull } from "@repo/database";
-import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { updateMessageInputSchema } from "../schemas";
+import { organizationRouteMiddleware } from "../../../orpc/organization-route";
+import { protectedProcedure } from "../../../orpc/procedures";
 import { buildRichTextContent } from "../lib/rich-text";
+import { updateMessageInputSchema } from "../schemas";
 
-export const updateMessage = studioProtectedProcedure
+export const updateMessage = protectedProcedure
 	.route({
 		method: "PATCH",
 		path: "/discussions/messages/{messageId}",
@@ -12,6 +13,7 @@ export const updateMessage = studioProtectedProcedure
 		summary: "Update a message",
 	})
 	.input(updateMessageInputSchema)
+	.use(organizationRouteMiddleware, (input) => input.organizationSlug)
 	.handler(async ({ input, context }) => {
 		const message = await db.query.discussionMessages.findFirst({
 			where: and(

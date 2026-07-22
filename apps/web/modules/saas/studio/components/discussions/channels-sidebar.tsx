@@ -11,11 +11,12 @@ import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 
 export function ChannelsSidebar() {
-	const params = useParams();
-	const organizationSlug = params.organizationSlug as string;
+	const { organizationSlug } = useParams<{ organizationSlug: string }>();
 	const pathname = usePathname();
 
-	const { data, isLoading } = useQuery(discussionsApi.listChannelsOptions());
+	const { data, isLoading } = useQuery(
+		discussionsApi.listChannelsOptions(organizationSlug),
+	);
 	const channels = (data as any)?.data ?? data ?? [];
 
 	if (isLoading) {

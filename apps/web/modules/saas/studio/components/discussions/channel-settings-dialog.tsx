@@ -119,6 +119,7 @@ export function ChannelSettingsDialog({
 
 	const onSubmit = (values: ChannelFormValues) => {
 		updateMutation.mutate({
+			organizationSlug,
 			channelId: channel.id,
 			name: values.name,
 			description: values.description || undefined,
@@ -126,7 +127,7 @@ export function ChannelSettingsDialog({
 	};
 
 	const handleDelete = () => {
-		deleteMutation.mutate({ channelId: channel.id });
+		deleteMutation.mutate({ organizationSlug, channelId: channel.id });
 	};
 
 	return (

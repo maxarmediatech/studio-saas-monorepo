@@ -50,7 +50,9 @@ export const adminProcedure = protectedProcedure.use(
  * 3. Validates user is a member of that organization
  * 4. Injects organizationId and membership into context
  *
- * All studio domain procedures MUST use this instead of protectedProcedure.
+ * Studio procedures without an organization in their input MUST use this.
+ * Route-scoped procedures may use protectedProcedure with an explicit
+ * organization resolver so multiple browser tabs remain independent.
  */
 export const studioProtectedProcedure = protectedProcedure.use(
 	async ({ context, next }) => {

@@ -9,12 +9,13 @@ import {
 	isNull,
 	sql,
 } from "@repo/database";
-import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { organizationRouteMiddleware } from "../../../orpc/organization-route";
+import { protectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
-import { createMessageInputSchema } from "../schemas";
 import { buildRichTextContent } from "../lib/rich-text";
+import { createMessageInputSchema } from "../schemas";
 
-export const createMessage = studioProtectedProcedure
+export const createMessage = protectedProcedure
 	.route({
 		method: "POST",
 		path: "/discussions/messages",
@@ -22,6 +23,7 @@ export const createMessage = studioProtectedProcedure
 		summary: "Create a message or reply",
 	})
 	.input(createMessageInputSchema)
+	.use(organizationRouteMiddleware, (input) => input.organizationSlug)
 	.handler(async ({ input, context }) => {
 		await requirePermission(context, "conversation", "create");
 

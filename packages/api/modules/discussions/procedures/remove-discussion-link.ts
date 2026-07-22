@@ -1,10 +1,11 @@
 import { ORPCError } from "@orpc/server";
 import { db, discussionLinks, eq } from "@repo/database";
-import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { organizationRouteMiddleware } from "../../../orpc/organization-route";
+import { protectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import { removeDiscussionLinkInputSchema } from "../schemas";
 
-export const removeDiscussionLink = studioProtectedProcedure
+export const removeDiscussionLink = protectedProcedure
 	.route({
 		method: "DELETE",
 		path: "/discussions/links/{linkId}",
@@ -12,6 +13,7 @@ export const removeDiscussionLink = studioProtectedProcedure
 		summary: "Remove a link from a discussion",
 	})
 	.input(removeDiscussionLinkInputSchema)
+	.use(organizationRouteMiddleware, (input) => input.organizationSlug)
 	.handler(async ({ input, context }) => {
 		await requirePermission(context, "discussion", "update");
 

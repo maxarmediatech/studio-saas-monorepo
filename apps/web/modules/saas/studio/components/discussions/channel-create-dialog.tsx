@@ -29,11 +29,13 @@ const channelSchema = z.object({
 type ChannelFormValues = z.infer<typeof channelSchema>;
 
 interface ChannelCreateDialogProps {
+	organizationSlug: string;
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 }
 
 export function ChannelCreateDialog({
+	organizationSlug,
 	open,
 	onOpenChange,
 }: ChannelCreateDialogProps) {
@@ -75,6 +77,7 @@ export function ChannelCreateDialog({
 
 	const onSubmit = (values: ChannelFormValues) => {
 		createMutation.mutate({
+			organizationSlug,
 			name: values.name,
 			description: values.description || undefined,
 		});

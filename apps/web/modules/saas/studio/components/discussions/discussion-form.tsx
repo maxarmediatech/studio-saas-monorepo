@@ -1,6 +1,8 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { EditorContentJson } from "@repo/editor";
+import { RichTextEditor } from "@repo/editor";
 import { Combobox, type ComboboxOption } from "@repo/ui/components/combobox";
 import {
 	Field,
@@ -10,8 +12,6 @@ import {
 } from "@repo/ui/components/field";
 import { Input } from "@repo/ui/components/input";
 import { ScrollArea } from "@repo/ui/components/scroll-area";
-import { RichTextEditor } from "@repo/editor";
-import type { EditorContentJson } from "@repo/editor";
 import { discussionsApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo } from "react";
@@ -61,6 +61,7 @@ function coerceEditorContentJson(value: unknown): EditorContentJson {
 // ============================================================================
 
 interface DiscussionFormProps {
+	organizationSlug: string;
 	defaultChannelId?: string;
 	defaultLinks?: EntityLink[];
 	onSubmit: (data: DiscussionFormValues) => Promise<void>;
@@ -73,6 +74,7 @@ interface DiscussionFormProps {
 // ============================================================================
 
 export function DiscussionForm({
+	organizationSlug,
 	defaultChannelId,
 	defaultLinks,
 	onSubmit,
@@ -80,7 +82,7 @@ export function DiscussionForm({
 	onScrollChange,
 }: DiscussionFormProps) {
 	const { data: channelsData, isLoading: channelsLoading } = useQuery(
-		discussionsApi.listChannelsOptions(),
+		discussionsApi.listChannelsOptions(organizationSlug),
 	);
 	const channels = channelsData?.data ?? [];
 
@@ -198,10 +200,15 @@ export function DiscussionForm({
 								<Field data-invalid={fieldState.invalid}>
 									<FieldLabel>Details</FieldLabel>
 									<RichTextEditor
-										value={coerceEditorContentJson(field.value)}
+										value={coerceEditorContentJson(
+											field.value,
+										)}
 										onChange={(payload) => {
 											field.onChange(payload.json);
-											form.setValue("content", payload.text);
+											form.setValue(
+												"content",
+												payload.text,
+											);
 										}}
 										placeholder="Add more context (optional)"
 										className="min-h-[150px]"
