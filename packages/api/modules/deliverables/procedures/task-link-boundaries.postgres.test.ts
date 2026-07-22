@@ -85,6 +85,10 @@ const ids = {
 	deliverable: crypto.randomUUID(),
 	legacyTask: crypto.randomUUID(),
 	legacyDeliverable: crypto.randomUUID(),
+	staleTask: crypto.randomUUID(),
+	staleDeliverable: crypto.randomUUID(),
+	unsafeStaleTask: crypto.randomUUID(),
+	unsafeStaleDeliverable: crypto.randomUUID(),
 	requiredTask: crypto.randomUUID(),
 	requiredDeliverable: crypto.randomUUID(),
 	linkTask: crypto.randomUUID(),
@@ -192,6 +196,29 @@ describePostgres("task-deliverable relationship boundaries", () => {
 				name: "Legacy converted task",
 			},
 			{
+				id: ids.staleTask,
+				organizationId: ids.organization,
+				bookingId: ids.booking,
+				name: "Deleted legacy converted task",
+				status: "completed",
+				metadata: {
+					convertedFromDeliverableId: ids.staleDeliverable,
+					convertedFromDeliverableName: "Stale converted deliverable",
+				},
+				deletedAt: new Date("2026-07-01T00:00:00.000Z"),
+			},
+			{
+				id: ids.unsafeStaleTask,
+				organizationId: ids.organization,
+				bookingId: ids.booking,
+				name: "Unsafe deleted converted task",
+				workflowStatus: "in_progress",
+				metadata: {
+					convertedFromDeliverableId: ids.unsafeStaleDeliverable,
+				},
+				deletedAt: new Date("2026-07-02T00:00:00.000Z"),
+			},
+			{
 				id: ids.requiredTask,
 				organizationId: ids.organization,
 				bookingId: ids.booking,
@@ -221,6 +248,28 @@ describePostgres("task-deliverable relationship boundaries", () => {
 				bookingId: ids.booking,
 				name: "Legacy converted deliverable",
 				metadata: { convertedToTaskId: ids.legacyTask },
+			},
+			{
+				id: ids.staleDeliverable,
+				organizationId: ids.organization,
+				bookingId: ids.booking,
+				name: "Stale converted deliverable",
+				status: "completed",
+				metadata: {
+					convertedToTaskId: ids.staleTask,
+					convertedAt: "2026-06-01T00:00:00.000Z",
+					preservedKey: "preserved",
+				},
+			},
+			{
+				id: ids.unsafeStaleDeliverable,
+				organizationId: ids.organization,
+				bookingId: ids.booking,
+				name: "Unsafe stale converted deliverable",
+				metadata: {
+					convertedToTaskId: ids.unsafeStaleTask,
+					convertedAt: "2026-06-02T00:00:00.000Z",
+				},
 			},
 			{
 				id: ids.requiredDeliverable,
@@ -257,6 +306,20 @@ describePostgres("task-deliverable relationship boundaries", () => {
 				bookingId: ids.booking,
 				deliverableId: ids.legacyDeliverable,
 				taskId: ids.legacyTask,
+				kind: "reference",
+			},
+			{
+				organizationId: ids.organization,
+				bookingId: ids.booking,
+				deliverableId: ids.staleDeliverable,
+				taskId: ids.staleTask,
+				kind: "reference",
+			},
+			{
+				organizationId: ids.organization,
+				bookingId: ids.booking,
+				deliverableId: ids.unsafeStaleDeliverable,
+				taskId: ids.unsafeStaleTask,
 				kind: "reference",
 			},
 			{
@@ -315,6 +378,82 @@ describePostgres("task-deliverable relationship boundaries", () => {
 		const { idSchema } = await import("../../studio/schemas/common");
 		expect(repaired?.id).not.toBe(legacyLinkId);
 		expect(idSchema.safeParse(repaired?.id).success).toBe(true);
+	});
+
+	it("repairs only the safe stale conversion while preserving business state", async () => {
+		const migrationPath = fileURLToPath(
+			new URL(
+				"../../../../database/drizzle/migrations/0049_repair_stale_deliverable_task_links.sql",
+				import.meta.url,
+			),
+		);
+		const migrationSql = await readFile(migrationPath, "utf8");
+		await database.db.execute(database.sql.raw(migrationSql));
+
+		const [link, deliverable, task, unsafeLink, unsafeDeliverable] =
+			await Promise.all([
+				database.db.query.deliverableTaskLinks.findFirst({
+					where: database.and(
+						database.eq(
+							database.deliverableTaskLinks.deliverableId,
+							ids.staleDeliverable,
+						),
+						database.eq(
+							database.deliverableTaskLinks.taskId,
+							ids.staleTask,
+						),
+					),
+				}),
+				database.db.query.deliverables.findFirst({
+					where: database.eq(
+						database.deliverables.id,
+						ids.staleDeliverable,
+					),
+				}),
+				database.db.query.tasks.findFirst({
+					where: database.eq(database.tasks.id, ids.staleTask),
+				}),
+				database.db.query.deliverableTaskLinks.findFirst({
+					where: database.and(
+						database.eq(
+							database.deliverableTaskLinks.deliverableId,
+							ids.unsafeStaleDeliverable,
+						),
+						database.eq(
+							database.deliverableTaskLinks.taskId,
+							ids.unsafeStaleTask,
+						),
+					),
+				}),
+				database.db.query.deliverables.findFirst({
+					where: database.eq(
+						database.deliverables.id,
+						ids.unsafeStaleDeliverable,
+					),
+				}),
+			]);
+
+		expect(link).toBeUndefined();
+		expect(deliverable).toMatchObject({
+			status: "completed",
+			workflowStatus: "not_started",
+			trackingMode: "direct",
+			metadata: { preservedKey: "preserved" },
+		});
+		expect(task).toMatchObject({
+			status: "completed",
+			workflowStatus: "not_started",
+			metadata: {
+				convertedFromDeliverableId: ids.staleDeliverable,
+				convertedFromDeliverableName: "Stale converted deliverable",
+			},
+		});
+		expect(task?.deletedAt).toEqual(new Date("2026-07-01T00:00:00.000Z"));
+		expect(unsafeLink).toBeDefined();
+		expect(unsafeDeliverable?.metadata).toEqual({
+			convertedToTaskId: ids.unsafeStaleTask,
+			convertedAt: "2026-06-02T00:00:00.000Z",
+		});
 	});
 
 	it("redacts nested relationship data without target-resource read access", async () => {
