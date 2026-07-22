@@ -8,6 +8,7 @@ import {
 	FieldLabel,
 } from "@repo/ui/components/field";
 import { Input } from "@repo/ui/components/input";
+import { PasswordInput } from "@repo/ui/components/password-input";
 import {
 	Select,
 	SelectContent,
@@ -41,7 +42,11 @@ type BaseFieldProps<
 > = {
 	control: Control<TFieldValues>;
 	name: TName;
-	label: string;
+	/**
+	 * Omit when the surrounding layout already labels the field
+	 * (e.g. single-field settings rows).
+	 */
+	label?: string;
 	description?: string;
 	required?: boolean;
 	disabled?: boolean;
@@ -57,7 +62,7 @@ function FieldShell({
 	fieldState,
 	children,
 }: {
-	label: string;
+	label?: string;
 	name: string;
 	required?: boolean;
 	description?: string;
@@ -70,9 +75,11 @@ function FieldShell({
 			data-invalid={fieldState.invalid}
 			className={className ? `gap-2 ${className}` : "gap-2"}
 		>
-			<FieldLabel variant="micro" htmlFor={name}>
-				{required ? `${label} *` : label}
-			</FieldLabel>
+			{label ? (
+				<FieldLabel variant="micro" htmlFor={name}>
+					{required ? `${label} *` : label}
+				</FieldLabel>
+			) : null}
 			{children}
 			{description ? (
 				<FieldDescription className="text-13">
@@ -124,6 +131,52 @@ export function TextField<
 						id={name}
 						size="sm"
 						type={type}
+						placeholder={placeholder}
+						autoComplete={autoComplete}
+						disabled={disabled}
+						aria-invalid={fieldState.invalid}
+					/>
+				</FieldShell>
+			)}
+		/>
+	);
+}
+
+export function PasswordField<
+	TFieldValues extends FieldValues,
+	TName extends FieldPath<TFieldValues>,
+>({
+	control,
+	name,
+	label,
+	description,
+	required,
+	disabled,
+	className,
+	placeholder,
+	autoComplete,
+}: BaseFieldProps<TFieldValues, TName> & {
+	placeholder?: string;
+	autoComplete?: string;
+}) {
+	return (
+		<Controller
+			name={name}
+			control={control}
+			render={({ field, fieldState }) => (
+				<FieldShell
+					label={label}
+					name={name}
+					required={required}
+					description={description}
+					className={className}
+					fieldState={fieldState}
+				>
+					<PasswordInput
+						{...field}
+						value={field.value ?? ""}
+						id={name}
+						size="sm"
 						placeholder={placeholder}
 						autoComplete={autoComplete}
 						disabled={disabled}

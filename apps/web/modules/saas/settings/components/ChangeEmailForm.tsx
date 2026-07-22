@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { authClient } from "@repo/auth/client";
 import { Button } from "@repo/ui/components/button";
-import { Input } from "@repo/ui/components/input";
+import { TextField } from "@repo/ui/components/form-fields";
 import { useSession } from "@saas/auth/hooks/use-session";
 import { SettingsItem } from "@saas/shared/components/SettingsItem";
 import { useTranslations } from "next-intl";
@@ -54,7 +54,7 @@ export function ChangeEmailForm() {
 					onSubmit();
 				}}
 			>
-				<Input type="email" {...form.register("email")} />
+				<TextField control={form.control} name="email" type="email" />
 
 				<div className="mt-4 flex justify-end">
 					<Button

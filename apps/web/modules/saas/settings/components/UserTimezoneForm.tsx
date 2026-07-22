@@ -76,6 +76,7 @@ export function UserTimezoneForm() {
 				<Input
 					value={timezone}
 					onChange={(e) => setEditedTimezone(e.target.value)}
+					size="sm"
 					disabled={isSaving}
 					autoCapitalize="none"
 					autoCorrect="off"

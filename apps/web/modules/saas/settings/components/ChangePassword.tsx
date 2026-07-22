@@ -2,15 +2,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { authClient } from "@repo/auth/client";
 import { Button } from "@repo/ui/components/button";
-import {
-	Form,
-	FormControl,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
-} from "@repo/ui/components/form";
-import { PasswordInput } from "@repo/ui/components/password-input";
+import { PasswordField } from "@repo/ui/components/form-fields";
 import { SettingsItem } from "@saas/shared/components/SettingsItem";
 import { useRouter } from "@shared/hooks/router";
 import { useTranslations } from "next-intl";
@@ -62,69 +54,42 @@ export function ChangePasswordForm() {
 		<SettingsItem
 			title={t("settings.account.security.changePassword.title")}
 		>
-			<Form {...form}>
-				<form onSubmit={onSubmit}>
-					<div className="grid grid-cols-1 gap-4">
-						<FormField
-							control={form.control}
-							name="currentPassword"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>
-										{t(
-											"settings.account.security.changePassword.currentPassword",
-										)}
-									</FormLabel>
+			<form onSubmit={onSubmit}>
+				<div className="grid grid-cols-1 gap-4">
+					<PasswordField
+						control={form.control}
+						name="currentPassword"
+						label={t(
+							"settings.account.security.changePassword.currentPassword",
+						)}
+						autoComplete="current-password"
+					/>
 
-									<FormControl>
-										<PasswordInput
-											autoComplete="current-password"
-											{...field}
-										/>
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-
-						<FormField
-							control={form.control}
-							name="newPassword"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>
-										{t(
-											"settings.account.security.changePassword.newPassword",
-										)}
-									</FormLabel>
-									<FormControl>
-										<PasswordInput
-											autoComplete="new-password"
-											{...field}
-										/>
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<div className="flex justify-end">
-							<Button
-								type="submit"
-								// loading={form.formState.isSubmitting}
-								disabled={
-									!(
-										form.formState.isValid &&
-										Object.keys(form.formState.dirtyFields)
-											.length
-									)
-								}
-							>
-								{t("settings.save")}
-							</Button>
-						</div>
+					<PasswordField
+						control={form.control}
+						name="newPassword"
+						label={t(
+							"settings.account.security.changePassword.newPassword",
+						)}
+						autoComplete="new-password"
+					/>
+					<div className="flex justify-end">
+						<Button
+							type="submit"
+							// loading={form.formState.isSubmitting}
+							disabled={
+								!(
+									form.formState.isValid &&
+									Object.keys(form.formState.dirtyFields)
+										.length
+								)
+							}
+						>
+							{t("settings.save")}
+						</Button>
 					</div>
-				</form>
-			</Form>
+				</div>
+			</form>
 		</SettingsItem>
 	);
 }

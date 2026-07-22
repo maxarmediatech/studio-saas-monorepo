@@ -2,7 +2,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { authClient } from "@repo/auth/client";
 import { Button } from "@repo/ui/components/button";
-import { Input } from "@repo/ui/components/input";
+import { TextField } from "@repo/ui/components/form-fields";
 import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
 import { organizationListQueryKey } from "@saas/organizations/lib/api";
 import { SettingsItem } from "@saas/shared/components/SettingsItem";
@@ -71,7 +71,7 @@ export function ChangeOrganizationNameForm() {
 	return (
 		<SettingsItem title={t("organizations.settings.changeName.title")}>
 			<form onSubmit={onSubmit}>
-				<Input {...form.register("name")} />
+				<TextField control={form.control} name="name" />
 
 				<div className="mt-4 flex justify-end">
 					<Button

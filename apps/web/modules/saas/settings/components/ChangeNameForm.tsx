@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { authClient } from "@repo/auth/client";
 import { Button } from "@repo/ui/components/button";
-import { Input } from "@repo/ui/components/input";
+import { TextField } from "@repo/ui/components/form-fields";
 import { useSession } from "@saas/auth/hooks/use-session";
 import { SettingsItem } from "@saas/shared/components/SettingsItem";
 import { useTranslations } from "next-intl";
@@ -50,7 +50,7 @@ export function ChangeNameForm() {
 	return (
 		<SettingsItem title={t("settings.account.changeName.title")}>
 			<form onSubmit={onSubmit}>
-				<Input type="text" {...form.register("name")} />
+				<TextField control={form.control} name="name" />
 
 				<div className="mt-4 flex justify-end">
 					<Button

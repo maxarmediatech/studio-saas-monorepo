@@ -65,7 +65,7 @@ export function UserLanguageForm() {
 				}}
 				disabled={updateLocaleMutation.isPending}
 			>
-				<SelectTrigger>
+				<SelectTrigger size="sm">
 					<SelectValue />
 				</SelectTrigger>
 				<SelectContent>
