@@ -62,6 +62,7 @@ export const taskDeliverableLinkSchema = z.object({
 	deliverable: z.object({
 		id: idSchema,
 		name: z.string(),
+		status: z.string(),
 		workflowStatus: workflowStatusSchema,
 	}),
 });
@@ -219,6 +220,13 @@ export const createTaskInputSchema = z.object({
 	priority: z.string().min(1).max(50).optional(),
 	dueDate: dateSchema.optional(),
 	metadata: z.record(z.string(), z.unknown()).optional(),
+	deliverableIds: z
+		.array(idSchema)
+		.max(100)
+		.refine((ids) => new Set(ids).size === ids.length, {
+			message: "Each deliverable can only be linked once",
+		})
+		.optional(),
 });
 
 export type CreateTaskInput = z.infer<typeof createTaskInputSchema>;

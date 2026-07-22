@@ -13,12 +13,14 @@ import {
 	tasks,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { requirePermission } from "../../studio/lib/permissions";
+import { hasPermission, requirePermission } from "../../studio/lib/permissions";
+import { deliverableMetadataForTaskAccess } from "../../studio/lib/relationship-metadata";
 import {
 	type DeliverableAssignmentWithCrew,
 	getDeliverableInputSchema,
 	getDeliverableOutputSchema,
 } from "../../studio/schemas/deliverable";
+import { canConvertDeliverableToTask } from "../lib/convert-to-task";
 
 export const getDeliverable = studioProtectedProcedure
 	.route({
@@ -34,6 +36,7 @@ export const getDeliverable = studioProtectedProcedure
 		await requirePermission(context, "deliverable", "read");
 
 		const { id } = input;
+		const canReadLinkedTasks = await hasPermission(context, "task", "read");
 
 		// Get deliverable with booking info
 		const result = await db
@@ -102,27 +105,33 @@ export const getDeliverable = studioProtectedProcedure
 				.from(deliverableAssignments)
 				.innerJoin(crews, eq(deliverableAssignments.crewId, crews.id))
 				.where(eq(deliverableAssignments.deliverableId, id)),
-			db
-				.select({
-					id: deliverableTaskLinks.id,
-					deliverableId: deliverableTaskLinks.deliverableId,
-					taskId: deliverableTaskLinks.taskId,
-					kind: deliverableTaskLinks.kind,
-					createdBy: deliverableTaskLinks.createdBy,
-					createdAt: deliverableTaskLinks.createdAt,
-					taskName: tasks.name,
-					taskWorkflowStatus: tasks.workflowStatus,
-					taskDueDate: tasks.dueDate,
-				})
-				.from(deliverableTaskLinks)
-				.innerJoin(tasks, eq(deliverableTaskLinks.taskId, tasks.id))
-				.where(
-					and(
-						eq(deliverableTaskLinks.deliverableId, id),
-						isNull(tasks.deletedAt),
-					),
-				)
-				.orderBy(asc(deliverableTaskLinks.createdAt)),
+			canReadLinkedTasks
+				? db
+						.select({
+							id: deliverableTaskLinks.id,
+							deliverableId: deliverableTaskLinks.deliverableId,
+							taskId: deliverableTaskLinks.taskId,
+							kind: deliverableTaskLinks.kind,
+							createdBy: deliverableTaskLinks.createdBy,
+							createdAt: deliverableTaskLinks.createdAt,
+							taskName: tasks.name,
+							taskStatus: tasks.status,
+							taskWorkflowStatus: tasks.workflowStatus,
+							taskDueDate: tasks.dueDate,
+						})
+						.from(deliverableTaskLinks)
+						.innerJoin(
+							tasks,
+							eq(deliverableTaskLinks.taskId, tasks.id),
+						)
+						.where(
+							and(
+								eq(deliverableTaskLinks.deliverableId, id),
+								isNull(tasks.deletedAt),
+							),
+						)
+						.orderBy(asc(deliverableTaskLinks.createdAt))
+				: Promise.resolve([]),
 		]);
 
 		const assignments: DeliverableAssignmentWithCrew[] = assignmentRows.map(
@@ -146,6 +155,11 @@ export const getDeliverable = studioProtectedProcedure
 			}),
 		);
 
+		const metadata = deliverableMetadataForTaskAccess(
+			deliverable.metadata,
+			canReadLinkedTasks,
+		);
+
 		return {
 			data: {
 				id: deliverable.id,
@@ -159,13 +173,14 @@ export const getDeliverable = studioProtectedProcedure
 				status: deliverable.status,
 				workflowStatus: deliverable.workflowStatus,
 				trackingMode: deliverable.trackingMode,
+				canConvertToTask: canConvertDeliverableToTask(
+					deliverable.metadata,
+					deliverable.trackingMode,
+				),
 				dueDate: deliverable.dueDate,
 				completedAt: deliverable.completedAt?.toISOString() ?? null,
 				deliveredAt: deliverable.deliveredAt?.toISOString() ?? null,
-				metadata: deliverable.metadata as Record<
-					string,
-					unknown
-				> | null,
+				metadata,
 				createdBy: deliverable.createdBy,
 				updatedBy: deliverable.updatedBy,
 				createdAt: deliverable.createdAt.toISOString(),
@@ -183,6 +198,7 @@ export const getDeliverable = studioProtectedProcedure
 					task: {
 						id: link.taskId,
 						name: link.taskName,
+						status: link.taskStatus,
 						workflowStatus: link.taskWorkflowStatus,
 						dueDate: link.taskDueDate,
 					},

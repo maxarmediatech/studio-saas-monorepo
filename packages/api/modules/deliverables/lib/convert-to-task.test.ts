@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
 	buildConvertedDeliverableMetadata,
+	canConvertDeliverableToTask,
 	getConvertedTaskIdFromMetadata,
 } from "./convert-to-task";
 
@@ -23,6 +24,22 @@ describe("getConvertedTaskIdFromMetadata", () => {
 				convertedToTaskId: " task-123 ",
 			}),
 		).toBe("task-123");
+	});
+});
+
+describe("canConvertDeliverableToTask", () => {
+	it("rejects legacy metadata conversions that remain in direct mode", () => {
+		expect(
+			canConvertDeliverableToTask(
+				{ convertedToTaskId: "legacy-task" },
+				"direct",
+			),
+		).toBe(false);
+	});
+
+	it("allows only unconverted direct-tracking deliverables", () => {
+		expect(canConvertDeliverableToTask(null, "direct")).toBe(true);
+		expect(canConvertDeliverableToTask(null, "task_based")).toBe(false);
 	});
 });
 

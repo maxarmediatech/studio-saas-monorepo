@@ -15,10 +15,6 @@ import {
 	unlinkTaskFromDeliverableInputSchema,
 	unlinkTaskFromDeliverableOutputSchema,
 } from "../../studio/schemas/deliverable";
-import {
-	recomputeTaskBasedDeliverable,
-	switchDeliverableToDirectTracking,
-} from "../lib/task-rollup";
 
 export const unlinkTaskFromDeliverable = studioProtectedProcedure
 	.route({
@@ -31,7 +27,7 @@ export const unlinkTaskFromDeliverable = studioProtectedProcedure
 	.output(unlinkTaskFromDeliverableOutputSchema)
 	.handler(async ({ input, context }) => {
 		await requirePermission(context, "deliverable", "update");
-		const actionTime = new Date();
+		await requirePermission(context, "task", "read");
 		const result = await db.transaction(async (tx) => {
 			const [task] = await tx
 				.select({ id: tasks.id, name: tasks.name })
@@ -49,8 +45,6 @@ export const unlinkTaskFromDeliverable = studioProtectedProcedure
 					id: deliverables.id,
 					name: deliverables.name,
 					bookingId: deliverables.bookingId,
-					trackingMode: deliverables.trackingMode,
-					workflowStatus: deliverables.workflowStatus,
 				})
 				.from(deliverables)
 				.where(
@@ -68,8 +62,12 @@ export const unlinkTaskFromDeliverable = studioProtectedProcedure
 						: "Deliverable not found",
 				});
 			}
-			const removed = await tx
-				.delete(deliverableTaskLinks)
+			const [link] = await tx
+				.select({
+					id: deliverableTaskLinks.id,
+					kind: deliverableTaskLinks.kind,
+				})
+				.from(deliverableTaskLinks)
 				.where(
 					and(
 						eq(
@@ -80,35 +78,22 @@ export const unlinkTaskFromDeliverable = studioProtectedProcedure
 						eq(deliverableTaskLinks.taskId, task.id),
 					),
 				)
-				.returning({ id: deliverableTaskLinks.id });
-			if (removed.length === 0) {
+				.for("update");
+			if (!link) {
 				throw new ORPCError("NOT_FOUND", {
 					message: "Task link not found",
 				});
 			}
-
-			const requiredLink = await tx.query.deliverableTaskLinks.findFirst({
-				where: and(
-					eq(deliverableTaskLinks.deliverableId, deliverable.id),
-					eq(deliverableTaskLinks.kind, "required"),
-				),
-				columns: { id: true },
-			});
-			if (!requiredLink && deliverable.trackingMode === "task_based") {
-				await switchDeliverableToDirectTracking(
-					tx,
-					context,
-					deliverable,
-					actionTime,
-				);
-			} else {
-				await recomputeTaskBasedDeliverable(
-					tx,
-					context,
-					deliverable.id,
-					actionTime,
-				);
+			if (link.kind === "required") {
+				throw new ORPCError("CONFLICT", {
+					message:
+						"Production task links cannot be removed. Undo conversion is not supported.",
+				});
 			}
+
+			await tx
+				.delete(deliverableTaskLinks)
+				.where(eq(deliverableTaskLinks.id, link.id));
 			return { deliverable, task };
 		});
 

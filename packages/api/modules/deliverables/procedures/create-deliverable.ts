@@ -4,6 +4,7 @@ import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { safeTrackActivity } from "../../activities/lib";
 import { safeAutoSubscribe } from "../../notifications/lib/notification-service";
 import { requirePermission } from "../../studio/lib/permissions";
+import { deliverableMetadataForCreate } from "../../studio/lib/relationship-metadata";
 import {
 	createDeliverableInputSchema,
 	createDeliverableOutputSchema,
@@ -62,7 +63,7 @@ export const createDeliverable = studioProtectedProcedure
 				status: status ?? "pending",
 				workflowStatus: "not_started",
 				dueDate: dueDate ?? null,
-				metadata: metadata ?? null,
+				metadata: deliverableMetadataForCreate(metadata ?? null),
 				createdBy: context.user.id,
 				updatedBy: context.user.id,
 			})

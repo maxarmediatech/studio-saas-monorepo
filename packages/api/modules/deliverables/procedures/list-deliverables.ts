@@ -18,12 +18,14 @@ import {
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { buildDeliverableSearchCondition } from "../../studio/lib/entity-search";
 import { hasPermission, requirePermission } from "../../studio/lib/permissions";
+import { deliverableMetadataForTaskAccess } from "../../studio/lib/relationship-metadata";
 import { createPaginationResponse } from "../../studio/schemas/common";
 import {
 	type DeliverableListItem,
 	listDeliverablesInputSchema,
 	listDeliverablesOutputSchema,
 } from "../../studio/schemas/deliverable";
+import { canConvertDeliverableToTask } from "../lib/convert-to-task";
 
 export const listDeliverables = studioProtectedProcedure
 	.route({
@@ -38,6 +40,7 @@ export const listDeliverables = studioProtectedProcedure
 	.output(listDeliverablesOutputSchema)
 	.handler(async ({ input, context }) => {
 		await requirePermission(context, "deliverable", "list");
+		const canReadLinkedTasks = await hasPermission(context, "task", "read");
 
 		const {
 			page,
@@ -231,10 +234,17 @@ export const listDeliverables = studioProtectedProcedure
 			status: row.status,
 			workflowStatus: row.workflowStatus,
 			trackingMode: row.trackingMode,
+			canConvertToTask: canConvertDeliverableToTask(
+				row.metadata,
+				row.trackingMode,
+			),
 			dueDate: row.dueDate,
 			completedAt: row.completedAt?.toISOString() ?? null,
 			deliveredAt: row.deliveredAt?.toISOString() ?? null,
-			metadata: row.metadata as Record<string, unknown> | null,
+			metadata: deliverableMetadataForTaskAccess(
+				row.metadata,
+				canReadLinkedTasks,
+			),
 			createdBy: row.createdBy,
 			updatedBy: row.updatedBy,
 			createdAt: row.createdAt.toISOString(),

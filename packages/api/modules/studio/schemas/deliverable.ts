@@ -74,6 +74,7 @@ export const deliverableTaskLinkSchema = z.object({
 	task: z.object({
 		id: idSchema,
 		name: z.string(),
+		status: z.string(),
 		workflowStatus: workflowStatusSchema,
 		dueDate: z.string().nullable(),
 	}),
@@ -161,6 +162,7 @@ export type ListDeliverablesInput = z.infer<typeof listDeliverablesInputSchema>;
  * Deliverable list item with assignment count and booking info
  */
 export const deliverableListItemSchema = deliverableSchema.extend({
+	canConvertToTask: z.boolean(),
 	assignmentsCount: z.number(),
 	assignedCrew: z.array(assignedCrewSummarySchema),
 	bookingName: z.string(),
@@ -216,6 +218,7 @@ export type GetDeliverableInput = z.infer<typeof getDeliverableInputSchema>;
  * Deliverable detail with assignments and booking info
  */
 export const deliverableDetailSchema = deliverableSchema.extend({
+	canConvertToTask: z.boolean(),
 	assignments: z.array(deliverableAssignmentWithCrewSchema),
 	taskLinks: z.array(deliverableTaskLinkSchema),
 	booking: z.object({
@@ -321,7 +324,6 @@ export type UpdateDeliverableAssignmentStatusOutput = z.infer<
 export const linkTaskToDeliverableInputSchema = z.object({
 	deliverableId: idSchema,
 	taskId: idSchema,
-	kind: deliverableTaskLinkKindSchema.default("required"),
 });
 
 export type LinkTaskToDeliverableInput = z.infer<

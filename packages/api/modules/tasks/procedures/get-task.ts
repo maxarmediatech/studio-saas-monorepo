@@ -9,13 +9,13 @@ import {
 	deliverableTaskLinks,
 	eq,
 	isNull,
-	sql,
 	taskAssignments,
 	tasks,
 	users,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { requirePermission } from "../../studio/lib/permissions";
+import { hasPermission, requirePermission } from "../../studio/lib/permissions";
+import { taskMetadataForDeliverableAccess } from "../../studio/lib/relationship-metadata";
 import {
 	getTaskInputSchema,
 	getTaskOutputSchema,
@@ -36,6 +36,11 @@ export const getTask = studioProtectedProcedure
 		await requirePermission(context, "task", "read");
 
 		const { id } = input;
+		const canReadLinkedDeliverables = await hasPermission(
+			context,
+			"deliverable",
+			"read",
+		);
 
 		// Get task with organization scope
 		const task = await db.query.tasks.findFirst({
@@ -92,26 +97,34 @@ export const getTask = studioProtectedProcedure
 				.innerJoin(crews, eq(taskAssignments.crewId, crews.id))
 				.leftJoin(users, eq(taskAssignments.assignedBy, users.id))
 				.where(eq(taskAssignments.taskId, id)),
-			db
-				.select({
-					id: deliverableTaskLinks.id,
-					deliverableId: deliverableTaskLinks.deliverableId,
-					kind: deliverableTaskLinks.kind,
-					deliverableName: deliverables.name,
-					deliverableWorkflowStatus: deliverables.workflowStatus,
-				})
-				.from(deliverableTaskLinks)
-				.innerJoin(
-					deliverables,
-					eq(deliverableTaskLinks.deliverableId, deliverables.id),
-				)
-				.where(
-					and(
-						eq(deliverableTaskLinks.taskId, id),
-						isNull(deliverables.deletedAt),
-					),
-				)
-				.orderBy(asc(deliverableTaskLinks.createdAt)),
+			canReadLinkedDeliverables
+				? db
+						.select({
+							id: deliverableTaskLinks.id,
+							deliverableId: deliverableTaskLinks.deliverableId,
+							kind: deliverableTaskLinks.kind,
+							deliverableName: deliverables.name,
+							deliverableStatus: deliverables.status,
+							deliverableWorkflowStatus:
+								deliverables.workflowStatus,
+							deliverableMetadata: deliverables.metadata,
+						})
+						.from(deliverableTaskLinks)
+						.innerJoin(
+							deliverables,
+							eq(
+								deliverableTaskLinks.deliverableId,
+								deliverables.id,
+							),
+						)
+						.where(
+							and(
+								eq(deliverableTaskLinks.taskId, id),
+								isNull(deliverables.deletedAt),
+							),
+						)
+						.orderBy(asc(deliverableTaskLinks.createdAt))
+				: Promise.resolve([]),
 		]);
 
 		let metadata = task.metadata as Record<string, unknown> | null;
@@ -120,31 +133,36 @@ export const getTask = studioProtectedProcedure
 				? metadata.convertedFromDeliverableId.trim()
 				: null;
 
-		// Backward compatibility for older converted tasks where metadata was not
-		// written on task records.
-		if (!convertedFromDeliverableId) {
-			const legacyConversionResult = await db.execute(sql`
-				SELECT d.id, d.name
-				FROM deliverables d
-				WHERE
-					d.organization_id = ${context.organizationId}
-					AND d.deleted_at IS NULL
-					AND d.metadata ->> 'convertedToTaskId' = ${id}
-				LIMIT 1
-			`);
-
-			const linkedDeliverable = legacyConversionResult.rows[0] as
-				| { id: string; name: string }
-				| undefined;
-
-			if (linkedDeliverable) {
+		// Backward compatibility for 0047 reference links where conversion metadata
+		// exists only on the linked deliverable.
+		if (canReadLinkedDeliverables && !convertedFromDeliverableId) {
+			const legacyConvertedDeliverable = deliverableLinkRows.find(
+				(link) => {
+					const linkMetadata = link.deliverableMetadata;
+					return (
+						linkMetadata !== null &&
+						typeof linkMetadata === "object" &&
+						!Array.isArray(linkMetadata) &&
+						(linkMetadata as Record<string, unknown>)
+							.convertedToTaskId === id
+					);
+				},
+			);
+			if (legacyConvertedDeliverable) {
 				metadata = {
 					...(metadata ?? {}),
-					convertedFromDeliverableId: linkedDeliverable.id,
-					convertedFromDeliverableName: linkedDeliverable.name,
+					convertedFromDeliverableId:
+						legacyConvertedDeliverable.deliverableId,
+					convertedFromDeliverableName:
+						legacyConvertedDeliverable.deliverableName,
 				};
 			}
 		}
+
+		metadata = taskMetadataForDeliverableAccess(
+			metadata,
+			canReadLinkedDeliverables,
+		);
 
 		return {
 			data: {
@@ -169,6 +187,7 @@ export const getTask = studioProtectedProcedure
 					deliverable: {
 						id: link.deliverableId,
 						name: link.deliverableName,
+						status: link.deliverableStatus,
 						workflowStatus: link.deliverableWorkflowStatus,
 					},
 				})),

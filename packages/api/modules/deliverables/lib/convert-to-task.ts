@@ -20,6 +20,16 @@ export function getConvertedTaskIdFromMetadata(
 	return trimmed.length > 0 ? trimmed : null;
 }
 
+export function canConvertDeliverableToTask(
+	metadata: unknown,
+	trackingMode: "direct" | "task_based",
+): boolean {
+	return (
+		trackingMode === "direct" &&
+		getConvertedTaskIdFromMetadata(metadata) === null
+	);
+}
+
 export function buildConvertedDeliverableMetadata(
 	metadata: unknown,
 	taskId: string,

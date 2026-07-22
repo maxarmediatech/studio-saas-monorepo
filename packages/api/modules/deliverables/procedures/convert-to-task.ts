@@ -57,6 +57,7 @@ export const convertDeliverableToTask = studioProtectedProcedure
 					d.name,
 					d.description,
 					d.due_date AS "dueDate",
+					d.tracking_mode AS "trackingMode",
 					d.metadata,
 					b.name AS "bookingName"
 				FROM deliverables d
@@ -75,6 +76,7 @@ export const convertDeliverableToTask = studioProtectedProcedure
 						name: string;
 						description: string | null;
 						dueDate: string | null;
+						trackingMode: "direct" | "task_based";
 						metadata: unknown;
 						bookingName: string;
 				  }
@@ -89,9 +91,14 @@ export const convertDeliverableToTask = studioProtectedProcedure
 			const existingTaskId = getConvertedTaskIdFromMetadata(
 				lockedDeliverable.metadata,
 			);
-			if (existingTaskId) {
+			if (
+				existingTaskId ||
+				lockedDeliverable.trackingMode === "task_based"
+			) {
 				throw new ORPCError("CONFLICT", {
-					message: `Deliverable already converted to task (${existingTaskId})`,
+					message: existingTaskId
+						? `Deliverable already converted to task (${existingTaskId})`
+						: "Deliverable already uses task-based tracking",
 				});
 			}
 			const existingSubmission =

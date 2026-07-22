@@ -1,9 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import {
 	and,
-	assignmentSubmissions,
 	db,
-	deliverableAssignments,
 	deliverables,
 	deliverableTaskLinks,
 	eq,
@@ -17,10 +15,6 @@ import {
 	linkTaskToDeliverableInputSchema,
 	linkTaskToDeliverableOutputSchema,
 } from "../../studio/schemas/deliverable";
-import {
-	recomputeTaskBasedDeliverable,
-	switchDeliverableToDirectTracking,
-} from "../lib/task-rollup";
 
 export const linkTaskToDeliverable = studioProtectedProcedure
 	.route({
@@ -29,50 +23,31 @@ export const linkTaskToDeliverable = studioProtectedProcedure
 		tags: ["Deliverables"],
 		summary: "Link task to deliverable",
 		description:
-			"Create or update a same-booking task link. Required links drive deliverable workflow.",
+			"Create an informational same-booking task link without changing either workflow",
 	})
 	.input(linkTaskToDeliverableInputSchema)
 	.output(linkTaskToDeliverableOutputSchema)
 	.handler(async ({ input, context }) => {
 		await requirePermission(context, "deliverable", "update");
 		await requirePermission(context, "task", "read");
-		const actionTime = new Date();
 
 		const result = await db.transaction(async (tx) => {
-			// Global lock order: task first, then deliverable. Task fanout uses the
-			// same order and locks multiple deliverables by ID.
-			const [task] = await tx
-				.select({
-					id: tasks.id,
-					name: tasks.name,
-					bookingId: tasks.bookingId,
-				})
-				.from(tasks)
-				.where(
-					and(
-						eq(tasks.id, input.taskId),
-						eq(tasks.organizationId, context.organizationId),
-						isNull(tasks.deletedAt),
-					),
-				)
-				.for("update");
-			const [deliverable] = await tx
-				.select({
-					id: deliverables.id,
-					name: deliverables.name,
-					bookingId: deliverables.bookingId,
-					trackingMode: deliverables.trackingMode,
-					workflowStatus: deliverables.workflowStatus,
-				})
-				.from(deliverables)
-				.where(
-					and(
-						eq(deliverables.id, input.deliverableId),
-						eq(deliverables.organizationId, context.organizationId),
-						isNull(deliverables.deletedAt),
-					),
-				)
-				.for("update");
+			const task = await tx.query.tasks.findFirst({
+				where: and(
+					eq(tasks.id, input.taskId),
+					eq(tasks.organizationId, context.organizationId),
+					isNull(tasks.deletedAt),
+				),
+				columns: { id: true, name: true, bookingId: true },
+			});
+			const deliverable = await tx.query.deliverables.findFirst({
+				where: and(
+					eq(deliverables.id, input.deliverableId),
+					eq(deliverables.organizationId, context.organizationId),
+					isNull(deliverables.deletedAt),
+				),
+				columns: { id: true, name: true, bookingId: true },
+			});
 			if (!task || !deliverable) {
 				throw new ORPCError("NOT_FOUND", {
 					message: !task ? "Task not found" : "Deliverable not found",
@@ -85,42 +60,6 @@ export const linkTaskToDeliverable = studioProtectedProcedure
 				});
 			}
 
-			if (
-				input.kind === "required" &&
-				deliverable.trackingMode === "direct"
-			) {
-				const [assignment, submission] = await Promise.all([
-					tx.query.deliverableAssignments.findFirst({
-						where: eq(
-							deliverableAssignments.deliverableId,
-							deliverable.id,
-						),
-						columns: { id: true },
-					}),
-					tx.query.assignmentSubmissions.findFirst({
-						where: eq(
-							assignmentSubmissions.deliverableId,
-							deliverable.id,
-						),
-						columns: { id: true },
-					}),
-				]);
-				if (assignment || submission) {
-					throw new ORPCError("CONFLICT", {
-						message:
-							"Remove direct deliverable assignments and submissions before adding a required task",
-					});
-				}
-				await tx
-					.update(deliverables)
-					.set({
-						trackingMode: "task_based",
-						updatedAt: actionTime,
-						updatedBy: context.user.id,
-					})
-					.where(eq(deliverables.id, deliverable.id));
-			}
-
 			const [link] = await tx
 				.insert(deliverableTaskLinks)
 				.values({
@@ -128,44 +67,17 @@ export const linkTaskToDeliverable = studioProtectedProcedure
 					bookingId: deliverable.bookingId,
 					deliverableId: deliverable.id,
 					taskId: task.id,
-					kind: input.kind,
+					kind: "reference",
 					createdBy: context.user.id,
 				})
-				.onConflictDoUpdate({
-					target: [
-						deliverableTaskLinks.deliverableId,
-						deliverableTaskLinks.taskId,
-					],
-					set: { kind: input.kind },
-				})
+				.onConflictDoNothing()
 				.returning({ id: deliverableTaskLinks.id });
 			if (!link) {
-				throw new ORPCError("INTERNAL_SERVER_ERROR", {
-					message: "Failed to link task",
+				throw new ORPCError("CONFLICT", {
+					message: "Task is already linked to this deliverable",
 				});
 			}
-			const requiredLink = await tx.query.deliverableTaskLinks.findFirst({
-				where: and(
-					eq(deliverableTaskLinks.deliverableId, deliverable.id),
-					eq(deliverableTaskLinks.kind, "required"),
-				),
-				columns: { id: true },
-			});
-			if (!requiredLink && deliverable.trackingMode === "task_based") {
-				await switchDeliverableToDirectTracking(
-					tx,
-					context,
-					deliverable,
-					actionTime,
-				);
-			} else {
-				await recomputeTaskBasedDeliverable(
-					tx,
-					context,
-					deliverable.id,
-					actionTime,
-				);
-			}
+
 			return { linkId: link.id, deliverable, task };
 		});
 
@@ -179,7 +91,7 @@ export const linkTaskToDeliverable = studioProtectedProcedure
 			metadata: {
 				taskId: result.task.id,
 				taskName: result.task.name,
-				kind: input.kind,
+				kind: "reference",
 			},
 		});
 		return {
