@@ -138,9 +138,11 @@ export default function DeliverableDetailPage() {
 	}>();
 	const {
 		bookingReadOrList,
-		deliverableCreateOrUpdate,
+		deliverableUpdate,
 		deliverableReadOrList,
-		taskReadOrList,
+		taskCreate,
+		taskRead,
+		taskListOrReference,
 	} = useStudioCapabilities();
 	const { openEdit } = useDeliverableParams();
 	const [convertDialogOpen, setConvertDialogOpen] = useState(false);
@@ -211,11 +213,10 @@ export default function DeliverableDetailPage() {
 
 	const booking = deliverable.booking;
 	const convertedTaskId = getConvertedTaskId(deliverable.metadata);
-	const taskHref = convertedTaskId
-		? taskReadOrList
+	const taskHref =
+		convertedTaskId && taskRead
 			? `/app/${params.organizationSlug}/tasks/${convertedTaskId}`
-			: null
-		: null;
+			: null;
 
 	return (
 		<div className="mx-auto w-full max-w-[800px] py-6 px-4">
@@ -252,7 +253,9 @@ export default function DeliverableDetailPage() {
 								View Task
 							</Link>
 						</Button>
-					) : (
+					) : deliverable.canConvertToTask &&
+						deliverableUpdate &&
+						taskCreate ? (
 						<Button
 							variant="outline"
 							size="sm"
@@ -261,15 +264,17 @@ export default function DeliverableDetailPage() {
 							<ListTodoIcon className="mr-1 size-4" />
 							Convert to Task
 						</Button>
-					)}
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={() => openEdit(deliverable.id)}
-					>
-						<PencilIcon className="mr-1 size-4" />
-						Edit
-					</Button>
+					) : null}
+					{deliverableUpdate ? (
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => openEdit(deliverable.id)}
+						>
+							<PencilIcon className="mr-1 size-4" />
+							Edit
+						</Button>
+					) : null}
 				</div>
 			</div>
 
@@ -406,11 +411,14 @@ export default function DeliverableDetailPage() {
 				bookingId={deliverable.bookingId}
 				organizationSlug={params.organizationSlug}
 				trackingMode={deliverable.trackingMode}
+				status={deliverable.status}
 				completedAt={deliverable.completedAt}
 				deliveredAt={deliverable.deliveredAt}
 				taskLinks={deliverable.taskLinks}
-				canManage={deliverableCreateOrUpdate}
-				canLinkTasks={deliverableCreateOrUpdate && taskReadOrList}
+				canManage={deliverableUpdate}
+				canLinkTasks={
+					deliverableUpdate && taskRead && taskListOrReference
+				}
 			/>
 
 			<div className="mt-8 border-t pt-6">

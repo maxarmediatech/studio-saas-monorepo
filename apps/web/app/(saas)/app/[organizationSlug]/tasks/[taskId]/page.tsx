@@ -364,8 +364,8 @@ export default function TaskDetailPage() {
 					<div>
 						<h2 className="font-semibold">Linked deliverables</h2>
 						<p className="mt-1 text-sm text-muted-foreground">
-							Task progress automatically updates required
-							deliverables.
+							Linked deliverables keep their own status and
+							assignments.
 						</p>
 					</div>
 					<div className="divide-y rounded-lg border">
@@ -384,11 +384,14 @@ export default function TaskDetailPage() {
 									</Link>
 								</div>
 								<div className="flex gap-2">
-									<Badge variant="secondary">
-										{deliverableLink.kind}
-									</Badge>
+									{deliverableLink.kind === "required" ? (
+										<Badge variant="secondary">
+											Production task
+										</Badge>
+									) : null}
 									<Badge variant="outline">
-										{deliverableLink.deliverable.workflowStatus.replaceAll(
+										Deliverable status:{" "}
+										{deliverableLink.deliverable.status.replaceAll(
 											"_",
 											" ",
 										)}

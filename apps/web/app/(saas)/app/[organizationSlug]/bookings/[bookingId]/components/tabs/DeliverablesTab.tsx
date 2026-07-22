@@ -16,18 +16,22 @@ import {
 } from "@repo/ui/components/dropdown-menu";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
+import { ConvertToTaskDialog } from "@saas/studio/components/deliverables/ConvertToTaskDialog";
+import { useStudioCapabilities } from "@saas/studio/components/studio-capabilities-context";
 import { useDeliverableParams } from "@saas/studio/hooks/params";
 import { deliverablesApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
 	AlertCircleIcon,
+	ListTodoIcon,
 	MoreVertical,
 	PackageIcon,
 	PlusIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useState } from "react";
 import { CrewAvatarStack } from "./CrewAvatarStack";
 
 interface DeliverablesTabProps {
@@ -38,8 +42,11 @@ type Deliverable = {
 	id: string;
 	name: string;
 	status: string;
-	dueDate?: string | null;
-	description?: string | null;
+	dueDate: string | null;
+	description: string | null;
+	metadata: Record<string, unknown> | null;
+	trackingMode: "direct" | "task_based";
+	canConvertToTask: boolean;
 	assignedCrew: Array<{
 		id: string;
 		name: string;
@@ -67,14 +74,27 @@ function getStatusStyle(status: string) {
 	return STATUS_STYLES[status] || "text-gray-600 bg-gray-50 ring-gray-500/10";
 }
 
+function getConvertedTaskId(
+	metadata: Record<string, unknown> | null,
+): string | null {
+	const value = metadata?.convertedToTaskId;
+	return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
 function DeliverableRow({
 	deliverable,
 	detailHref,
 	onEdit,
+	onConvert,
+	convertedTaskHref,
+	canConvert,
 }: {
 	deliverable: Deliverable;
 	detailHref?: string;
 	onEdit: (id: string) => void;
+	onConvert: (deliverable: Deliverable) => void;
+	convertedTaskHref?: string;
+	canConvert: boolean;
 }) {
 	const isCompleted = deliverable.status === "completed";
 	const dateStr = deliverable.dueDate
@@ -152,6 +172,25 @@ function DeliverableRow({
 						>
 							Edit
 						</DropdownMenuItem>
+						{convertedTaskHref ? (
+							<DropdownMenuItem asChild>
+								<Link
+									href={convertedTaskHref}
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									<ListTodoIcon className="size-4" />
+									View task
+								</Link>
+							</DropdownMenuItem>
+						) : canConvert ? (
+							<DropdownMenuItem
+								onClick={() => onConvert(deliverable)}
+							>
+								<ListTodoIcon className="size-4" />
+								Convert to task
+							</DropdownMenuItem>
+						) : null}
 						<DropdownMenuItem
 							onClick={() =>
 								console.log("Delete", deliverable.id)
@@ -168,7 +207,10 @@ function DeliverableRow({
 
 export function DeliverablesTab({ bookingId }: DeliverablesTabProps) {
 	const { openCreate, openEdit } = useDeliverableParams();
+	const { deliverableUpdate, taskCreate, taskRead } = useStudioCapabilities();
 	const { organizationSlug } = useParams<{ organizationSlug: string }>();
+	const [deliverableToConvert, setDeliverableToConvert] =
+		useState<Deliverable | null>(null);
 
 	const {
 		data: deliverables,
@@ -217,48 +259,82 @@ export function DeliverablesTab({ bookingId }: DeliverablesTabProps) {
 	}
 
 	return (
-		<Card className="rounded-lg">
-			<CardHeader className="flex flex-row items-center justify-between space-y-0">
-				<div className="space-y-1">
-					<CardTitle className="text-base">Deliverables</CardTitle>
-					<CardDescription>
-						Photos, videos, and other deliverable items.
-					</CardDescription>
-				</div>
-				<Button
-					variant="outline"
-					size="sm"
-					onClick={() => openCreate()}
-				>
-					<PlusIcon className="h-4 w-4 mr-1.5" />
-					Add Deliverable
-				</Button>
-			</CardHeader>
-			<CardContent>
-				{items.length === 0 ? (
-					<div className="flex flex-col items-center gap-2 py-8 text-center">
-						<PackageIcon className="h-8 w-8 text-muted-foreground/30" />
-						<p className="text-sm text-muted-foreground">
-							No deliverables
-						</p>
+		<>
+			<Card className="rounded-lg">
+				<CardHeader className="flex flex-row items-center justify-between space-y-0">
+					<div className="space-y-1">
+						<CardTitle className="text-base">
+							Deliverables
+						</CardTitle>
+						<CardDescription>
+							Photos, videos, and other deliverable items.
+						</CardDescription>
 					</div>
-				) : (
-					<ul className="divide-y divide-border">
-						{sortedItems.map((item) => (
-							<DeliverableRow
-								key={item.id}
-								deliverable={item}
-								detailHref={
-									organizationSlug
-										? `/app/${organizationSlug}/deliverables/${item.id}`
-										: undefined
-								}
-								onEdit={openEdit}
-							/>
-						))}
-					</ul>
-				)}
-			</CardContent>
-		</Card>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => openCreate()}
+					>
+						<PlusIcon className="h-4 w-4 mr-1.5" />
+						Add Deliverable
+					</Button>
+				</CardHeader>
+				<CardContent>
+					{items.length === 0 ? (
+						<div className="flex flex-col items-center gap-2 py-8 text-center">
+							<PackageIcon className="h-8 w-8 text-muted-foreground/30" />
+							<p className="text-sm text-muted-foreground">
+								No deliverables
+							</p>
+						</div>
+					) : (
+						<ul className="divide-y divide-border">
+							{sortedItems.map((item) => {
+								const convertedTaskId = getConvertedTaskId(
+									item.metadata,
+								);
+								return (
+									<DeliverableRow
+										key={item.id}
+										deliverable={item}
+										detailHref={
+											organizationSlug
+												? `/app/${organizationSlug}/deliverables/${item.id}`
+												: undefined
+										}
+										onEdit={openEdit}
+										onConvert={setDeliverableToConvert}
+										convertedTaskHref={
+											organizationSlug &&
+											convertedTaskId &&
+											taskRead
+												? `/app/${organizationSlug}/tasks/${convertedTaskId}`
+												: undefined
+										}
+										canConvert={
+											item.canConvertToTask &&
+											deliverableUpdate &&
+											taskCreate
+										}
+									/>
+								);
+							})}
+						</ul>
+					)}
+				</CardContent>
+			</Card>
+			{organizationSlug ? (
+				<ConvertToTaskDialog
+					deliverable={deliverableToConvert}
+					organizationSlug={organizationSlug}
+					open={Boolean(deliverableToConvert)}
+					onOpenChange={(open) => {
+						if (!open) {
+							setDeliverableToConvert(null);
+						}
+					}}
+				/>
+			) : null}
+		</>
 	);
 }
