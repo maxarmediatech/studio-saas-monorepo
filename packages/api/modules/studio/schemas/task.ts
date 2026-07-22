@@ -7,6 +7,7 @@
 import { z } from "zod";
 import {
 	assignedCrewSummarySchema,
+	assignmentProgressStatusSchema,
 	baseListFiltersSchema,
 	createItemResponseSchema,
 	createListResponseSchema,
@@ -32,7 +33,12 @@ export const taskAssignmentSchema = z.object({
 	crewId: idSchema,
 	assignedBy: idSchema.nullable(),
 	assignedByName: z.string().nullable(),
+	progressStatus: assignmentProgressStatusSchema,
+	progressNote: z.string().nullable(),
+	startedAt: z.string().nullable(),
+	blockedAt: z.string().nullable(),
 	createdAt: z.string(),
+	updatedAt: z.string(),
 });
 
 export type TaskAssignment = z.infer<typeof taskAssignmentSchema>;
@@ -48,6 +54,17 @@ export const taskAssignmentWithCrewSchema = taskAssignmentSchema.extend({
 export type TaskAssignmentWithCrew = z.infer<
 	typeof taskAssignmentWithCrewSchema
 >;
+
+export const taskDeliverableLinkSchema = z.object({
+	id: idSchema,
+	deliverableId: idSchema,
+	kind: z.enum(["required", "optional", "reference"]),
+	deliverable: z.object({
+		id: idSchema,
+		name: z.string(),
+		workflowStatus: workflowStatusSchema,
+	}),
+});
 
 // ============================================================================
 // TASK SCHEMA
@@ -176,6 +193,7 @@ export type GetTaskInput = z.infer<typeof getTaskInputSchema>;
  */
 export const taskDetailSchema = taskSchema.extend({
 	assignments: z.array(taskAssignmentWithCrewSchema),
+	deliverableLinks: z.array(taskDeliverableLinkSchema),
 	booking: z.object({
 		id: idSchema,
 		name: z.string(),
@@ -327,11 +345,21 @@ export type UpdateTaskStatusOutput = z.infer<
 // UPDATE TASK ASSIGNMENT STATUS (ASSIGNEE)
 // ============================================================================
 
-export const updateTaskAssignmentStatusInputSchema = z.object({
-	id: idSchema,
-	status: z.enum(["blocked"]),
-	note: z.string().max(5000).optional(),
-});
+export const updateTaskAssignmentStatusInputSchema = z
+	.object({
+		id: idSchema,
+		status: assignmentProgressStatusSchema,
+		note: z.string().max(5000).optional(),
+	})
+	.superRefine((input, context) => {
+		if (input.status === "blocked" && !input.note?.trim()) {
+			context.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ["note"],
+				message: "Explain what is blocking this assignment",
+			});
+		}
+	});
 
 export type UpdateTaskAssignmentStatusInput = z.infer<
 	typeof updateTaskAssignmentStatusInputSchema

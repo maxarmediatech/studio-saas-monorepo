@@ -21,6 +21,24 @@ describe("notification metadata", () => {
 		});
 	});
 
+	it("accepts assignment progress metadata without conflating parent status", () => {
+		expect(
+			statusChangedNotificationMetadataSchema.parse({
+				oldStatus: "assigned",
+				newStatus: "blocked",
+				changeScope: "assignment_progress",
+				crewId: "crew_1",
+				crewName: "Asha",
+			}),
+		).toEqual({
+			oldStatus: "assigned",
+			newStatus: "blocked",
+			changeScope: "assignment_progress",
+			crewId: "crew_1",
+			crewName: "Asha",
+		});
+	});
+
 	it("accepts assignment metadata", () => {
 		expect(
 			assignedNotificationMetadataSchema.parse({

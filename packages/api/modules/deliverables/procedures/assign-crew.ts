@@ -96,6 +96,12 @@ export const assignCrewToDeliverable = studioProtectedProcedure
 					message: "Deliverable not found",
 				});
 			}
+			if (parent.trackingMode === "task_based") {
+				throw new ORPCError("CONFLICT", {
+					message:
+						"Crew is assigned to linked tasks for task-based deliverables",
+				});
+			}
 			await lockParentReviewEvidence(tx, context.organizationId, parent);
 			const duplicate = await tx.query.deliverableAssignments.findFirst({
 				where: and(

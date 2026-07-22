@@ -124,7 +124,7 @@ export const getDeliverableStats = studioProtectedProcedure
 				and(
 					...baseConditions,
 					sql`${deliverables.dueDate} < ${today}`,
-					sql`${deliverables.workflowStatus} NOT IN ('approved')`,
+					sql`${deliverables.workflowStatus} NOT IN ('approved', 'ready')`,
 				),
 			);
 

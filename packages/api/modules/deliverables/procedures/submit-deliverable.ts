@@ -42,6 +42,12 @@ export const submitDeliverable = studioProtectedProcedure
 				message: "Deliverable not found",
 			});
 		}
+		if (deliverable.trackingMode === "task_based") {
+			throw new ORPCError("CONFLICT", {
+				message:
+					"Submit work on linked tasks for task-based deliverables",
+			});
+		}
 
 		const crew = await db.query.crews.findFirst({
 			where: and(

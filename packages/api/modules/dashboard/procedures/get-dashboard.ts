@@ -250,7 +250,7 @@ export const getDashboard = studioProtectedProcedure
 				and(
 					eq(tasks.organizationId, context.organizationId),
 					isNull(tasks.deletedAt),
-					sql`${tasks.workflowStatus} IN ('not_started', 'assigned')`,
+					sql`${tasks.workflowStatus} IN ('not_started', 'assigned', 'blocked')`,
 				),
 			);
 
@@ -262,7 +262,7 @@ export const getDashboard = studioProtectedProcedure
 				and(
 					eq(tasks.organizationId, context.organizationId),
 					isNull(tasks.deletedAt),
-					sql`${tasks.workflowStatus} IN ('not_started', 'assigned', 'submitted', 'in_review', 'revision_requested')`,
+					sql`${tasks.workflowStatus} NOT IN ('approved')`,
 					sql`${tasks.dueDate} < ${today}`,
 				),
 			);
@@ -275,7 +275,7 @@ export const getDashboard = studioProtectedProcedure
 				and(
 					eq(deliverables.organizationId, context.organizationId),
 					isNull(deliverables.deletedAt),
-					sql`${deliverables.workflowStatus} IN ('not_started', 'assigned')`,
+					sql`${deliverables.workflowStatus} IN ('not_started', 'assigned', 'blocked')`,
 				),
 			);
 
@@ -287,7 +287,7 @@ export const getDashboard = studioProtectedProcedure
 				and(
 					eq(deliverables.organizationId, context.organizationId),
 					isNull(deliverables.deletedAt),
-					sql`${deliverables.workflowStatus} IN ('not_started', 'assigned', 'submitted', 'in_review', 'revision_requested')`,
+					sql`${deliverables.workflowStatus} NOT IN ('approved', 'ready')`,
 					sql`${deliverables.dueDate} < ${today}`,
 				),
 			);

@@ -1,5 +1,13 @@
 import { ORPCError } from "@orpc/server";
-import { and, db, eq, tasks } from "@repo/database";
+import {
+	and,
+	db,
+	deliverables,
+	deliverableTaskLinks,
+	eq,
+	isNull,
+	tasks,
+} from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { safeTrackActivity } from "../../activities/lib";
 import { requirePermission } from "../../studio/lib/permissions";
@@ -23,42 +31,82 @@ export const deleteTask = studioProtectedProcedure
 
 		const { id } = input;
 
-		// Verify task exists and belongs to organization (include booking for activity context)
-		const existing = await db.query.tasks.findFirst({
-			where: and(
-				eq(tasks.id, id),
-				eq(tasks.organizationId, context.organizationId),
-			),
-			with: {
-				booking: {
-					columns: { id: true, name: true },
-				},
-			},
+		const deletedTask = await db.transaction(async (tx) => {
+			const [lockedTask] = await tx
+				.select({
+					id: tasks.id,
+					name: tasks.name,
+					bookingId: tasks.bookingId,
+					deletedAt: tasks.deletedAt,
+				})
+				.from(tasks)
+				.where(
+					and(
+						eq(tasks.id, id),
+						eq(tasks.organizationId, context.organizationId),
+					),
+				)
+				.for("update");
+			if (!lockedTask) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Task not found",
+				});
+			}
+			if (lockedTask.deletedAt) {
+				throw new ORPCError("CONFLICT", {
+					message: "Task is already deleted",
+				});
+			}
+			const [requiredActiveLink] = await tx
+				.select({ id: deliverableTaskLinks.id })
+				.from(deliverableTaskLinks)
+				.innerJoin(
+					deliverables,
+					eq(deliverableTaskLinks.deliverableId, deliverables.id),
+				)
+				.where(
+					and(
+						eq(deliverableTaskLinks.taskId, id),
+						eq(
+							deliverableTaskLinks.organizationId,
+							context.organizationId,
+						),
+						eq(deliverableTaskLinks.kind, "required"),
+						isNull(deliverables.deletedAt),
+					),
+				)
+				.limit(1);
+			if (requiredActiveLink) {
+				throw new ORPCError("CONFLICT", {
+					message:
+						"Remove required deliverable links before deleting this task",
+				});
+			}
+			const actionTime = new Date();
+			// Optional/reference links and links to deleted deliverables do not own
+			// task lifecycle. Remove them so soft deletion cannot leave hidden links.
+			await tx
+				.delete(deliverableTaskLinks)
+				.where(
+					and(
+						eq(deliverableTaskLinks.taskId, id),
+						eq(
+							deliverableTaskLinks.organizationId,
+							context.organizationId,
+						),
+					),
+				);
+			await tx
+				.update(tasks)
+				.set({
+					deletedAt: actionTime,
+					deletedBy: context.user.id,
+					updatedAt: actionTime,
+					updatedBy: context.user.id,
+				})
+				.where(eq(tasks.id, id));
+			return lockedTask;
 		});
-
-		if (!existing) {
-			throw new ORPCError("NOT_FOUND", {
-				message: "Task not found",
-			});
-		}
-
-		// Check if already deleted
-		if (existing.deletedAt) {
-			throw new ORPCError("CONFLICT", {
-				message: "Task is already deleted",
-			});
-		}
-
-		// Soft delete task
-		await db
-			.update(tasks)
-			.set({
-				deletedAt: new Date(),
-				deletedBy: context.user.id,
-				updatedAt: new Date(),
-				updatedBy: context.user.id,
-			})
-			.where(eq(tasks.id, id));
 
 		// Track activity (non-blocking)
 		await safeTrackActivity(
@@ -66,11 +114,10 @@ export const deleteTask = studioProtectedProcedure
 			{
 				entityType: "task",
 				entityId: id,
-				entityName: existing.name,
+				entityName: deletedTask.name,
 				action: "deleted",
 				parentEntityType: "booking",
-				parentEntityId: existing.bookingId,
-				parentEntityName: existing.booking.name,
+				parentEntityId: deletedTask.bookingId,
 			},
 		);
 

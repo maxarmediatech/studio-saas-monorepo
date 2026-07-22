@@ -1,10 +1,14 @@
 import { ORPCError } from "@orpc/server";
 import {
 	and,
+	asc,
 	bookings,
 	crews,
 	db,
+	deliverables,
+	deliverableTaskLinks,
 	eq,
+	isNull,
 	sql,
 	taskAssignments,
 	tasks,
@@ -64,24 +68,51 @@ export const getTask = studioProtectedProcedure
 		}
 
 		// Get assignments with crew info
-		const assignments = await db
-			.select({
-				id: taskAssignments.id,
-				taskId: taskAssignments.taskId,
-				crewId: taskAssignments.crewId,
-				assignedBy: taskAssignments.assignedBy,
-				assignedByName: users.name,
-				createdAt: taskAssignments.createdAt,
-				crew: {
-					id: crews.id,
-					name: crews.name,
-					phoneNumber: crews.phoneNumber,
-				},
-			})
-			.from(taskAssignments)
-			.innerJoin(crews, eq(taskAssignments.crewId, crews.id))
-			.leftJoin(users, eq(taskAssignments.assignedBy, users.id))
-			.where(eq(taskAssignments.taskId, id));
+		const [assignments, deliverableLinkRows] = await Promise.all([
+			db
+				.select({
+					id: taskAssignments.id,
+					taskId: taskAssignments.taskId,
+					crewId: taskAssignments.crewId,
+					assignedBy: taskAssignments.assignedBy,
+					assignedByName: users.name,
+					progressStatus: taskAssignments.progressStatus,
+					progressNote: taskAssignments.progressNote,
+					startedAt: taskAssignments.startedAt,
+					blockedAt: taskAssignments.blockedAt,
+					createdAt: taskAssignments.createdAt,
+					updatedAt: taskAssignments.updatedAt,
+					crew: {
+						id: crews.id,
+						name: crews.name,
+						phoneNumber: crews.phoneNumber,
+					},
+				})
+				.from(taskAssignments)
+				.innerJoin(crews, eq(taskAssignments.crewId, crews.id))
+				.leftJoin(users, eq(taskAssignments.assignedBy, users.id))
+				.where(eq(taskAssignments.taskId, id)),
+			db
+				.select({
+					id: deliverableTaskLinks.id,
+					deliverableId: deliverableTaskLinks.deliverableId,
+					kind: deliverableTaskLinks.kind,
+					deliverableName: deliverables.name,
+					deliverableWorkflowStatus: deliverables.workflowStatus,
+				})
+				.from(deliverableTaskLinks)
+				.innerJoin(
+					deliverables,
+					eq(deliverableTaskLinks.deliverableId, deliverables.id),
+				)
+				.where(
+					and(
+						eq(deliverableTaskLinks.taskId, id),
+						isNull(deliverables.deletedAt),
+					),
+				)
+				.orderBy(asc(deliverableTaskLinks.createdAt)),
+		]);
 
 		let metadata = task.metadata as Record<string, unknown> | null;
 		const convertedFromDeliverableId =
@@ -126,7 +157,20 @@ export const getTask = studioProtectedProcedure
 				deletedAt: task.deletedAt?.toISOString() ?? null,
 				assignments: assignments.map((a) => ({
 					...a,
+					startedAt: a.startedAt?.toISOString() ?? null,
+					blockedAt: a.blockedAt?.toISOString() ?? null,
 					createdAt: a.createdAt.toISOString(),
+					updatedAt: a.updatedAt.toISOString(),
+				})),
+				deliverableLinks: deliverableLinkRows.map((link) => ({
+					id: link.id,
+					deliverableId: link.deliverableId,
+					kind: link.kind,
+					deliverable: {
+						id: link.deliverableId,
+						name: link.deliverableName,
+						workflowStatus: link.deliverableWorkflowStatus,
+					},
 				})),
 				booking,
 			},

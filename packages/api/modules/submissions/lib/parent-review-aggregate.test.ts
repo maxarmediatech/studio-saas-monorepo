@@ -14,7 +14,24 @@ describe("deriveParentReviewStatus", () => {
 		[["approved", "rejected"], "revision_requested"],
 		[["approved", "approved"], "approved"],
 	] as const)("maps %j to %s", (statuses, expected) => {
-		expect(deriveParentReviewStatus([...statuses])).toBe(expected);
+		expect(
+			deriveParentReviewStatus(
+				[...statuses],
+				statuses.map(() => "assigned"),
+			),
+		).toBe(expected);
+	});
+
+	it.each([
+		[[null], ["in_progress"], "in_progress"],
+		[[null], ["blocked"], "blocked"],
+		[["submitted"], ["blocked"], "submitted"],
+		[[null, "submitted"], ["blocked", "assigned"], "blocked"],
+		[[null, "approved"], ["in_progress", "assigned"], "submitted"],
+	] as const)("combines submission evidence %j and assignment progress %j as %s", (statuses, progress, expected) => {
+		expect(deriveParentReviewStatus([...statuses], [...progress])).toBe(
+			expected,
+		);
 	});
 });
 
@@ -32,7 +49,10 @@ describe("deriveParentReviewProjection", () => {
 	it("derives approval time from the final relevant sibling approval", () => {
 		expect(
 			deriveParentReviewProjection(
-				[{ crewId: "crew-a" }, { crewId: "crew-b" }],
+				[
+					{ crewId: "crew-a", progressStatus: "assigned" },
+					{ crewId: "crew-b", progressStatus: "assigned" },
+				],
 				[
 					submission({
 						id: "submission-a",
@@ -60,7 +80,7 @@ describe("deriveParentReviewProjection", () => {
 	it("marks approved history with a missing review timestamp incomplete", () => {
 		expect(
 			deriveParentReviewProjection(
-				[{ crewId: "crew-a" }],
+				[{ crewId: "crew-a", progressStatus: "assigned" }],
 				[
 					submission({
 						id: "submission-a",
@@ -81,7 +101,7 @@ describe("deriveParentReviewProjection", () => {
 	it("uses only each assignee's latest submission", () => {
 		expect(
 			deriveParentReviewProjection(
-				[{ crewId: "crew-a" }],
+				[{ crewId: "crew-a", progressStatus: "assigned" }],
 				[
 					submission({
 						id: "older-approved",

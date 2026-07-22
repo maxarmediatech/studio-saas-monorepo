@@ -112,7 +112,7 @@ export const getQuickActions = studioProtectedProcedure
 				and(
 					eq(tasks.organizationId, context.organizationId),
 					isNull(tasks.deletedAt),
-					sql`${tasks.workflowStatus} IN ('not_started', 'assigned', 'revision_requested')`,
+					sql`${tasks.workflowStatus} NOT IN ('approved')`,
 					sql`${tasks.dueDate} < ${todayStr}`,
 					isNull(bookings.deletedAt),
 				),
@@ -149,7 +149,7 @@ export const getQuickActions = studioProtectedProcedure
 				and(
 					eq(deliverables.organizationId, context.organizationId),
 					isNull(deliverables.deletedAt),
-					sql`${deliverables.workflowStatus} IN ('not_started', 'assigned', 'revision_requested')`,
+					sql`${deliverables.workflowStatus} NOT IN ('approved', 'ready')`,
 					sql`${deliverables.dueDate} < ${todayStr}`,
 					isNull(bookings.deletedAt),
 				),

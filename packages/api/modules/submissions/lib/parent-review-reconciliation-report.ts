@@ -177,12 +177,13 @@ export async function queryParentReviewMismatches(
 						id: deliverables.id,
 						name: deliverables.name,
 						workflowStatus: deliverables.workflowStatus,
-						approvalTime: deliverables.deliveredAt,
+						approvalTime: deliverables.completedAt,
 					})
 					.from(deliverables)
 					.where(
 						and(
 							eq(deliverables.organizationId, organizationId),
+							eq(deliverables.trackingMode, "direct"),
 							isNull(deliverables.deletedAt),
 						),
 					),
@@ -190,6 +191,7 @@ export async function queryParentReviewMismatches(
 					.select({
 						parentId: taskAssignments.taskId,
 						crewId: taskAssignments.crewId,
+						progressStatus: taskAssignments.progressStatus,
 					})
 					.from(taskAssignments)
 					.innerJoin(tasks, eq(tasks.id, taskAssignments.taskId))
@@ -203,6 +205,7 @@ export async function queryParentReviewMismatches(
 					.select({
 						parentId: deliverableAssignments.deliverableId,
 						crewId: deliverableAssignments.crewId,
+						progressStatus: deliverableAssignments.progressStatus,
 					})
 					.from(deliverableAssignments)
 					.innerJoin(
@@ -215,6 +218,7 @@ export async function queryParentReviewMismatches(
 					.where(
 						and(
 							eq(deliverables.organizationId, organizationId),
+							eq(deliverables.trackingMode, "direct"),
 							isNull(deliverables.deletedAt),
 						),
 					),
@@ -268,17 +272,24 @@ export async function queryParentReviewMismatches(
 								organizationId,
 							),
 							eq(deliverables.organizationId, organizationId),
+							eq(deliverables.trackingMode, "direct"),
 							isNull(deliverables.deletedAt),
 						),
 					),
 			]);
 			const taskAssignmentsByParent = new Map<
 				string,
-				Array<{ crewId: string }>
+				Array<{
+					crewId: string;
+					progressStatus: "assigned" | "in_progress" | "blocked";
+				}>
 			>();
 			const deliverableAssignmentsByParent = new Map<
 				string,
-				Array<{ crewId: string }>
+				Array<{
+					crewId: string;
+					progressStatus: "assigned" | "in_progress" | "blocked";
+				}>
 			>();
 			const taskSubmissionsByParent = new Map<
 				string,
@@ -290,12 +301,24 @@ export async function queryParentReviewMismatches(
 					Omit<(typeof deliverableSubmissionRows)[number], "parentId">
 				>
 			>();
-			for (const { parentId, crewId } of taskAssignmentRows) {
-				appendGrouped(taskAssignmentsByParent, parentId, { crewId });
+			for (const {
+				parentId,
+				crewId,
+				progressStatus,
+			} of taskAssignmentRows) {
+				appendGrouped(taskAssignmentsByParent, parentId, {
+					crewId,
+					progressStatus,
+				});
 			}
-			for (const { parentId, crewId } of deliverableAssignmentRows) {
+			for (const {
+				parentId,
+				crewId,
+				progressStatus,
+			} of deliverableAssignmentRows) {
 				appendGrouped(deliverableAssignmentsByParent, parentId, {
 					crewId,
+					progressStatus,
 				});
 			}
 			for (const { parentId, ...submission } of taskSubmissionRows) {
