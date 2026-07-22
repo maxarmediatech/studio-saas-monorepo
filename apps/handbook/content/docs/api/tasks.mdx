@@ -23,7 +23,8 @@ assignments, submissions, and conversion metadata when they come from deliverabl
 | Table | Owns | Notes |
 | --- | --- | --- |
 | `tasks` | Core task fields, status, priority, workflow state, due/completed dates, metadata, audit columns, soft delete. | Tenant-scoped by `organizationId`; belongs to one booking. |
-| `task_assignments` | Crew assigned to a task. | Unique on `taskId`, `crewId`; physically deleted on unassign. |
+| `task_assignments` | Crew assignment plus progress status, note, and start/block timestamps. | Unique on `taskId`, `crewId`; physically deleted on unassign. |
+| `deliverable_task_links` | Many-to-many deliverable relationships. | Required links consume task workflow automatically. |
 | `assignment_submissions` | Crew work submissions for tasks or deliverables. | Polymorphic check requires exactly one of `taskId` or `deliverableId`. |
 | `submission_files` | Files attached to a submission. | Cascades with submission. |
 | `submission_feedback` | Review comments/ratings on submissions. | Rating constrained to 1-5 when present. |
@@ -47,7 +48,8 @@ Status fields:
 | --- | --- | --- |
 | `status` | text | Configurable via settings (`config_type: task_status`). |
 | `priority` | text | Configurable via settings (`config_type: task_priority`). |
-| `workflowStatus` | enum | System workflow: `not_started`, `assigned`, `submitted`, `in_review`, `revision_requested`, `approved`. |
+| `workflowStatus` | enum | System workflow: `not_started`, `assigned`, `in_progress`, `blocked`, `submitted`, `in_review`, `revision_requested`, `approved`. |
+| `task_assignments.progressStatus` | enum | Crew-owned state: `assigned`, `in_progress`, `blocked`. |
 | `assignment_submissions.status` | enum | Submission state: `draft`, `submitted`, `in_review`, `approved`, `rejected`, `revision_requested`. |
 
 ## API Operations
@@ -66,7 +68,7 @@ All task procedures use `studioProtectedProcedure` and active organization scope
 | `tasks.assign` | `POST /tasks/{taskId}/assignments` | `assignCrewToTaskInputSchema` | `assignCrewToTaskOutputSchema` | `task:assign` | Creates assignment and may move workflow to `assigned`. |
 | `tasks.unassign` | `DELETE /tasks/{taskId}/assignments/{crewId}` | `unassignCrewFromTaskInputSchema` | `unassignCrewFromTaskOutputSchema` | `task:assign` | Deletes assignment. |
 | `tasks.updateStatus` | `PUT /tasks/{id}/status` | `updateTaskStatusInputSchema` | `updateTaskStatusOutputSchema` | `task:update` | Updates configurable task `status`. |
-| `tasks.updateAssignmentStatus` | `PUT /tasks/{id}/assignment-status` | `updateTaskAssignmentStatusInputSchema` | `updateTaskAssignmentStatusOutputSchema` | `task:submit` | Assignee-only status update; currently only accepts `blocked`. |
+| `tasks.updateAssignmentStatus` | `PUT /tasks/{id}/assignment-status` | `updateTaskAssignmentStatusInputSchema` | `updateTaskAssignmentStatusOutputSchema` | `task:submit` | Updates the caller's assignment progress and recomputes consumers. |
 | `tasks.submit` | `POST /tasks/{taskId}/submissions` | `submitTaskInputSchema` | `submitTaskOutputSchema` | `task:submit` | Assigned crew submits work for review. |
 
 ## Read Contracts
@@ -100,7 +102,8 @@ It returns `id`, `name`, `status`, `priority`, `workflowStatus`, `dueDate`, `boo
 
 `get` returns the base task plus:
 
-- assignments with crew id/name/phone and assigned-by name
+- assignments with crew id/name/phone, assigned-by name, and progress details
+- active linked deliverables with relationship kind and workflow state
 - booking id/name/reference number
 - metadata with converted-deliverable compatibility
 
@@ -208,8 +211,14 @@ Submit behavior:
 - tracks submission activity
 - notifies subscribers with `review_requested`
 
-`updateAssignmentStatus` is for assigned crew status updates. Current input only accepts
-`status: "blocked"` plus optional note, and writes to task `status`, not `workflowStatus`.
+`updateAssignmentStatus` accepts `assigned`, `in_progress`, or `blocked` plus optional note. It
+updates only the caller's assignment row. Parent task workflow and every required linked
+deliverable are recomputed in the same transaction.
+
+Multi-assignee precedence is deterministic: a submitted/reviewed item overrides that assignee's
+progress state; across assignees `blocked` wins, followed by revision requested, in review,
+submitted, in progress, then assigned. All current assignees must have approved latest submissions
+before the task becomes approved.
 
 ## Delete Contract
 
@@ -220,7 +229,10 @@ Submit behavior:
 - `updatedAt`
 - `updatedBy`
 
-It rejects already-deleted tasks. Activity tracking records the deletion under the parent booking.
+It rejects already-deleted tasks and tasks with a required link to an active deliverable.
+Optional/reference links and links to deleted deliverables are removed in the delete transaction,
+so they cannot leave hidden relationship rows. Activity tracking records the deletion under the
+parent booking.
 
 ## Related Surfaces
 
@@ -250,8 +262,5 @@ When changing task behavior:
 ## Known Gaps
 
 - `status` and `priority` are configurable text; API does not validate against configuration values yet.
-- `updateAssignmentStatus` only accepts `blocked` and writes to `status`; the naming can be confused with `workflowStatus`.
 - `get` and `update` include deleted tasks unless callers avoid those IDs.
-- `unassign` does not revert workflow status when the last assignment is removed.
 - Assignment delete is physical, not soft delete.
-

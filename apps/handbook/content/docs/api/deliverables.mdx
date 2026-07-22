@@ -1,6 +1,6 @@
 ---
 title: Deliverables API
-description: Deliverable CRUD, crew assignments, submission workflow, review state, and task conversion.
+description: Deliverable CRUD, direct work, task-based rollups, client delivery, and task conversion.
 ---
 
 ## Ownership
@@ -23,12 +23,13 @@ status, crew assignments, submissions, and conversion into production tasks.
 
 | Table | Owns | Notes |
 | --- | --- | --- |
-| `deliverables` | Core deliverable fields, package relation fields, workflow state, due/delivery dates, metadata, audit columns, soft delete. | Tenant-scoped by `organizationId`; belongs to one booking. |
-| `deliverable_assignments` | Crew assigned to a deliverable with lead flag. | Unique on `deliverableId`, `crewId`; physically deleted on unassign. |
+| `deliverables` | Core fields, `trackingMode`, workflow state, separate completion/delivery dates, metadata, audit columns, soft delete. | `direct` mode uses deliverable assignments; `task_based` mode uses required links. |
+| `deliverable_assignments` | Crew assigned directly to a deliverable, including assignment progress and blocker note/timestamps. | Unique on `deliverableId`, `crewId`; not used in task-based mode. |
+| `deliverable_task_links` | Relational many-to-many links to tasks, with `required`, `optional`, or `reference` kind. | Composite foreign keys enforce the same organization and booking. Only required links roll up. |
 | `assignment_submissions` | Crew work submissions for tasks or deliverables. | Polymorphic check requires exactly one of `taskId` or `deliverableId`. |
 | `submission_files` | Files attached to a submission. | Cascades with submission. |
 | `submission_feedback` | Review comments/ratings on submissions. | Rating constrained to 1-5 when present. |
-| `tasks` / `task_assignments` | Target records when converting a deliverable into a task. | Conversion copies deliverable assignments to task assignments. |
+| `tasks` / `task_assignments` | Production work linked to deliverables. | Conversion moves direct assignments to the generated required task. |
 
 Important indexes:
 
@@ -48,7 +49,11 @@ Status fields:
 | Field | Type | Source |
 | --- | --- | --- |
 | `status` | text | Configurable via settings (`config_type: deliverable_status`). |
-| `workflowStatus` | enum | System workflow: `not_started`, `assigned`, `submitted`, `in_review`, `revision_requested`, `approved`. |
+| `workflowStatus` | enum | System workflow: `not_started`, `assigned`, `in_progress`, `blocked`, `submitted`, `in_review`, `revision_requested`, `ready`, `approved`. |
+| `trackingMode` | enum | `direct` or `task_based`; selected by required task-link presence. |
+| `completedAt` | timestamp | Internal completion: approval in direct mode, all required tasks approved in task-based mode. |
+| `deliveredAt` | timestamp | Explicit client-delivery event; never set by internal approval. |
+| `deliverable_assignments.progressStatus` | enum | Crew-owned state: `assigned`, `in_progress`, `blocked`. |
 | `assignment_submissions.status` | enum | Submission state: `draft`, `submitted`, `in_review`, `approved`, `rejected`, `revision_requested`. |
 
 ## API Operations
@@ -59,16 +64,19 @@ All deliverable procedures use `studioProtectedProcedure` and active organizatio
 | --- | --- | --- | --- | --- | --- |
 | `deliverables.list` | `GET /deliverables` | `listDeliverablesInputSchema` | `listDeliverablesOutputSchema` | `deliverable:list` | Paginated list with booking info and assigned crew summary. |
 | `deliverables.listMinimal` | `GET /deliverables/minimal` | `listDeliverablesMinimalInputSchema` | `listDeliverablesMinimalOutputSchema` | `deliverable:list` | Paginated lightweight list for selectors/references. |
-| `deliverables.get` | `GET /deliverables/{id}` | `getDeliverableInputSchema` | `getDeliverableOutputSchema` | `deliverable:read` | Detail with assignments and booking reference. |
+| `deliverables.get` | `GET /deliverables/{id}` | `getDeliverableInputSchema` | `getDeliverableOutputSchema` | `deliverable:read` | Detail with assignments, booking, and active task links. |
 | `deliverables.create` | `POST /deliverables` | `createDeliverableInputSchema` | `createDeliverableOutputSchema` | `deliverable:create` | Creates one custom deliverable under an active booking. |
 | `deliverables.update` | `PUT /deliverables/{id}` | `updateDeliverableInputSchema` | `updateDeliverableOutputSchema` | `deliverable:update` | Updates fields and notifies on status change. |
 | `deliverables.delete` | `DELETE /deliverables/{id}` | `deleteDeliverableInputSchema` | `deleteDeliverableOutputSchema` | `deliverable:delete` | Soft delete. |
 | `deliverables.stats` | `GET /deliverables/stats` | `getDeliverableStatsInputSchema` | `getDeliverableStatsOutputSchema` | `deliverable:list` | Aggregate counts, optionally booking-scoped. |
 | `deliverables.assign` | `POST /deliverables/{deliverableId}/assignments` | `assignCrewToDeliverableInputSchema` | `assignCrewToDeliverableOutputSchema` | `deliverable:assign` | Creates assignment and may move workflow to `assigned`. |
 | `deliverables.unassign` | `DELETE /deliverables/{deliverableId}/assignments/{crewId}` | `unassignCrewFromDeliverableInputSchema` | `unassignCrewFromDeliverableOutputSchema` | `deliverable:assign` | Deletes assignment and may revert workflow to `not_started`. |
-| `deliverables.updateAssignmentStatus` | `PUT /deliverables/{id}/assignment-status` | `updateDeliverableAssignmentStatusInputSchema` | `updateDeliverableAssignmentStatusOutputSchema` | `deliverable:submit` | Assignee-only status update; currently only accepts `blocked`. |
+| `deliverables.updateAssignmentStatus` | `PUT /deliverables/{id}/assignment-status` | `updateDeliverableAssignmentStatusInputSchema` | `updateDeliverableAssignmentStatusOutputSchema` | `deliverable:submit` | Updates the caller's direct assignment progress. |
 | `deliverables.submit` | `POST /deliverables/{deliverableId}/submissions` | `submitDeliverableInputSchema` | `submitDeliverableOutputSchema` | `deliverable:submit` | Assigned crew submits work for review. |
 | `deliverables.convertToTask` | `POST /deliverables/{deliverableId}/convert-to-task` | `convertDeliverableToTaskInputSchema` | `convertDeliverableToTaskOutputSchema` | `deliverable:update` + `task:create` | Creates task, copies assignments, marks metadata. |
+| `deliverables.linkTask` | `PUT /deliverables/{deliverableId}/tasks/{taskId}` | `linkTaskToDeliverableInputSchema` | mutation response | `deliverable:update` + `task:read` | Upserts a same-booking required/optional/reference link. |
+| `deliverables.unlinkTask` | `DELETE /deliverables/{deliverableId}/tasks/{taskId}` | `unlinkTaskFromDeliverableInputSchema` | mutation response | `deliverable:update` | Removes a link and recomputes tracking mode/rollup. |
+| `deliverables.setDelivery` | `PUT /deliverables/{id}/delivery` | `setDeliverableDeliveryInputSchema` | mutation response | `deliverable:update` | Marks an internally complete deliverable delivered, or clears delivery. |
 
 ## Read Contracts
 
@@ -102,6 +110,8 @@ It returns `id`, `name`, `status`, `workflowStatus`, `dueDate`, `bookingId`.
 `get` returns the base deliverable plus:
 
 - assignments with crew id/name/phone
+- assignment progress state, note, and timestamps
+- active task links with link kind and task workflow state
 - booking id/name/reference number
 
 `stats` returns:
@@ -109,7 +119,7 @@ It returns `id`, `name`, `status`, `workflowStatus`, `dueDate`, `bookingId`.
 - `totalDeliverables`
 - `byStatus`
 - `byWorkflowStatus`
-- `overdueDeliverables`, where due date is before today and workflow status is not `approved`
+- `overdueDeliverables`, where due date is before today and workflow status is neither `approved` nor `ready`
 - `deliveredDeliverables`, based on non-null `deliveredAt`
 - `deliverablesThisMonth`, based on created date in organization timezone
 
@@ -209,8 +219,31 @@ Submit behavior:
 - tracks submission activity
 - notifies subscribers with `review_requested`
 
-`updateAssignmentStatus` is for assigned crew status updates. Current input only accepts
-`status: "blocked"` plus optional note, and writes to deliverable `status`, not `workflowStatus`.
+`updateAssignmentStatus` accepts `assigned`, `in_progress`, or `blocked` plus an optional note. It
+writes only the caller's assignment row, then recomputes the parent workflow transactionally.
+
+Multi-assignee precedence is deterministic: approved evidence overrides that assignee's progress;
+across assignees `blocked` wins, followed by revision requested, in review, submitted, in progress,
+then assigned. Direct submissions are rejected when `trackingMode` is `task_based`.
+
+## Task Link and Rollup Contract
+
+- Required links switch the deliverable to `task_based`; optional/reference links do not.
+- A required link is rejected while direct assignments or direct submissions exist.
+- Same organization and booking are checked in the procedure and enforced by composite foreign keys.
+- Required task states roll up automatically whenever task assignment/submission/review state changes.
+- All required tasks approved produces deliverable `ready` and sets `completedAt`.
+- Regression clears `completedAt`; `deliveredAt` remains an explicit historical delivery event.
+- A delivered deliverable that later regresses is intentionally not silently undelivered. The detail
+  UI surfaces the inconsistency and keeps the clear-delivery action available.
+- Removing/changing the last required link returns the deliverable to direct `not_started` mode.
+- Soft-deleting a deliverable removes its task-link rows in the same transaction.
+- Shoot relationships remain reference-only; shoots do not drive deliverable status.
+
+Legacy migration note: before this contract, internal approval was the only application workflow
+that wrote `deliveredAt`. Migration `0046` moves those timestamps to `completedAt` and clears
+`deliveredAt`; preserving them as client deliveries would retain false delivery history. Existing
+delivered counts therefore reset to explicit client-delivery events after migration.
 
 ## Convert To Task Contract
 
@@ -230,7 +263,9 @@ Conversion behavior:
 - locks the deliverable row with `FOR UPDATE`
 - rejects deleted or already-converted deliverables
 - creates a task under the same booking
-- copies deliverable assignments to task assignments
+- rejects deliverables that already have direct submissions
+- moves deliverable assignments, including progress, to task assignments
+- creates a required relational link and switches the deliverable to task-based tracking
 - moves task workflow to `assigned` if assignments were copied
 - writes `convertedToTaskId` and `convertedAt` into deliverable metadata
 - tracks task creation and deliverable conversion activity
@@ -245,8 +280,9 @@ Conversion behavior:
 - `updatedAt`
 - `updatedBy`
 
-It verifies the deliverable is active and belongs to the organization. Activity tracking records the
-deletion under the parent booking.
+It verifies the deliverable is active and belongs to the organization, locks it, removes task links,
+and soft-deletes it in one transaction. Activity tracking records the deletion under the parent
+booking.
 
 ## Related Surfaces
 
@@ -276,8 +312,6 @@ When changing deliverable behavior:
 ## Known Gaps
 
 - `status` is configurable text; API does not validate against configuration values yet.
-- `updateAssignmentStatus` only accepts `blocked` and writes to `status`; the naming can be confused with `workflowStatus`.
-- `delete` soft-deletes only the deliverable row; assignments/submissions remain unless later physical delete cascades.
+- `delete` retains assignments/submissions until later physical delete cascades; task-link rows are removed immediately.
 - Assignment delete is physical, not soft delete.
 - `list` schema allows array status, but string handling does not split comma-separated values.
-
