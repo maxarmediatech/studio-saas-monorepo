@@ -50,7 +50,6 @@ interface DeliverableTaskLinkItem {
 	task: {
 		id: string;
 		name: string;
-		status: string;
 		workflowStatus: string;
 		dueDate: string | null;
 	};
@@ -154,7 +153,10 @@ export function DeliverableTaskLinks({
 							Linked task status:{" "}
 							{informationalTasks
 								.map((link) =>
-									link.task.status.replaceAll("_", " "),
+									link.task.workflowStatus.replaceAll(
+										"_",
+										" ",
+									),
 								)
 								.join(", ")}
 							. Deliverable status: {status.replaceAll("_", " ")}.
@@ -272,7 +274,7 @@ export function DeliverableTaskLinks({
 										) : null}
 										<Badge variant="outline">
 											Task status:{" "}
-											{taskLink.task.status.replaceAll(
+											{taskLink.task.workflowStatus.replaceAll(
 												"_",
 												" ",
 											)}
