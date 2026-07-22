@@ -139,13 +139,17 @@ export default function DiscussionDetailPage() {
 	const entityNameLookup = useEntityNameLookup();
 
 	const { data: discussionData, isLoading: discussionLoading } = useQuery(
-		discussionsApi.getDiscussionOptions(params.discussionId),
+		discussionsApi.getDiscussionOptions(
+			params.organizationSlug,
+			params.discussionId,
+		),
 	);
 
 	const discussion = discussionData?.data;
 
 	const { data: messagesData, isLoading: messagesLoading } = useQuery({
 		...discussionsApi.listMessagesOptions({
+			organizationSlug: params.organizationSlug,
 			discussionId: params.discussionId,
 		}),
 		enabled: !!params.discussionId,
@@ -249,6 +253,7 @@ export default function DiscussionDetailPage() {
 	const handleNewThread = () => {
 		if (!newThreadText.trim()) return;
 		createMessageMutation.mutate({
+			organizationSlug: params.organizationSlug,
 			discussionId: params.discussionId,
 			contentJson: newThreadDoc,
 		});
@@ -256,6 +261,7 @@ export default function DiscussionDetailPage() {
 
 	const handleReply = (parentId: string, contentJson: EditorContentJson) => {
 		createMessageMutation.mutate({
+			organizationSlug: params.organizationSlug,
 			discussionId: params.discussionId,
 			contentJson,
 			parentId,
@@ -320,6 +326,7 @@ export default function DiscussionDetailPage() {
 							size="sm"
 							onClick={() =>
 								resolveMutation.mutate({
+									organizationSlug: params.organizationSlug,
 									discussionId: params.discussionId,
 									resolution: "Marked as resolved",
 								})
@@ -335,6 +342,7 @@ export default function DiscussionDetailPage() {
 							size="sm"
 							onClick={() =>
 								reopenMutation.mutate({
+									organizationSlug: params.organizationSlug,
 									discussionId: params.discussionId,
 								})
 							}

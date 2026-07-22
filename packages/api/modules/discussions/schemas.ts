@@ -12,50 +12,56 @@ export const discussionLinkEntityTypes = [
 export type DiscussionLinkEntityType =
 	(typeof discussionLinkEntityTypes)[number];
 
-export const createChannelInputSchema = z.object({
+const organizationRouteInputSchema = z.object({
+	organizationSlug: z.string().min(1),
+});
+
+export const createChannelInputSchema = organizationRouteInputSchema.extend({
 	name: z.string().min(1).max(100),
 	description: z.string().max(500).optional(),
 });
 
-export const updateChannelInputSchema = z.object({
+export const updateChannelInputSchema = organizationRouteInputSchema.extend({
 	channelId: z.string().min(1),
 	name: z.string().min(1).max(100).optional(),
 	description: z.string().max(500).optional(),
 	isArchived: z.boolean().optional(),
 });
 
-export const getChannelBySlugInputSchema = z.object({
+export const getChannelBySlugInputSchema = organizationRouteInputSchema.extend({
 	slug: z.string().min(1),
 });
 
-export const getChannelInputSchema = z.object({
+export const getChannelInputSchema = organizationRouteInputSchema.extend({
 	channelId: z.string().min(1),
 });
 
-export const listChannelsInputSchema = z.object({
+export const listChannelsInputSchema = organizationRouteInputSchema.extend({
 	includeArchived: z.boolean().default(false),
 });
 
-export const deleteChannelInputSchema = z.object({
+export const deleteChannelInputSchema = organizationRouteInputSchema.extend({
 	channelId: z.string().min(1),
 });
 
-export const addChannelMemberInputSchema = z.object({
-	channelId: z.string().min(1),
-	userId: z.string().min(1),
-});
-
-export const removeChannelMemberInputSchema = z.object({
+export const addChannelMemberInputSchema = organizationRouteInputSchema.extend({
 	channelId: z.string().min(1),
 	userId: z.string().min(1),
 });
 
-export const toggleSubscriptionInputSchema = z.object({
-	channelId: z.string().min(1),
-	isSubscribed: z.boolean(),
-});
+export const removeChannelMemberInputSchema =
+	organizationRouteInputSchema.extend({
+		channelId: z.string().min(1),
+		userId: z.string().min(1),
+	});
 
-export const createDiscussionInputSchema = z.object({
+export const toggleSubscriptionInputSchema =
+	organizationRouteInputSchema.extend({
+		channelId: z.string().min(1),
+		isSubscribed: z.boolean(),
+	});
+
+export const createDiscussionInputSchema = organizationRouteInputSchema.extend({
 	channelId: z.string().min(1),
 	title: z.string().min(1).max(200),
 	content: z.string().max(10000).optional(),
@@ -70,14 +76,14 @@ export const createDiscussionInputSchema = z.object({
 		.optional(),
 });
 
-export const updateDiscussionInputSchema = z.object({
+export const updateDiscussionInputSchema = organizationRouteInputSchema.extend({
 	discussionId: z.string().min(1),
 	title: z.string().min(1).max(200).optional(),
 	content: z.string().max(10000).optional(),
 	contentJson: z.unknown().optional(),
 });
 
-export const listDiscussionsInputSchema = z.object({
+export const listDiscussionsInputSchema = organizationRouteInputSchema.extend({
 	channelId: z.string().min(1),
 	status: z.enum(["open", "resolved", "all"]).default("all"),
 	sortBy: z.enum(["created", "activity"]).default("created"),
@@ -90,35 +96,40 @@ export const listDiscussionsInputSchema = z.object({
 	limit: z.number().min(1).max(100).default(20),
 });
 
-export const getDiscussionInputSchema = z.object({
+export const getDiscussionInputSchema = organizationRouteInputSchema.extend({
 	discussionId: z.string().min(1),
 });
 
-export const resolveDiscussionInputSchema = z.object({
-	discussionId: z.string().min(1),
-	resolution: z.string().min(1).max(5000),
-});
+export const resolveDiscussionInputSchema = organizationRouteInputSchema.extend(
+	{
+		discussionId: z.string().min(1),
+		resolution: z.string().min(1).max(5000),
+	},
+);
 
-export const reopenDiscussionInputSchema = z.object({
-	discussionId: z.string().min(1),
-});
-
-export const deleteDiscussionInputSchema = z.object({
+export const reopenDiscussionInputSchema = organizationRouteInputSchema.extend({
 	discussionId: z.string().min(1),
 });
 
-export const addDiscussionLinkInputSchema = z.object({
+export const deleteDiscussionInputSchema = organizationRouteInputSchema.extend({
 	discussionId: z.string().min(1),
-	entityType: z.enum(discussionLinkEntityTypes),
-	entityId: z.string().min(1),
 });
 
-export const removeDiscussionLinkInputSchema = z.object({
-	linkId: z.string().min(1),
-});
+export const addDiscussionLinkInputSchema = organizationRouteInputSchema.extend(
+	{
+		discussionId: z.string().min(1),
+		entityType: z.enum(discussionLinkEntityTypes),
+		entityId: z.string().min(1),
+	},
+);
 
-export const createMessageInputSchema = z
-	.object({
+export const removeDiscussionLinkInputSchema =
+	organizationRouteInputSchema.extend({
+		linkId: z.string().min(1),
+	});
+
+export const createMessageInputSchema = organizationRouteInputSchema
+	.extend({
 		discussionId: z.string().min(1),
 		content: z.string().min(1).max(5000).optional(),
 		contentJson: z.unknown().optional(),
@@ -128,8 +139,8 @@ export const createMessageInputSchema = z
 		message: "content or contentJson is required",
 	});
 
-export const updateMessageInputSchema = z
-	.object({
+export const updateMessageInputSchema = organizationRouteInputSchema
+	.extend({
 		messageId: z.string().min(1),
 		content: z.string().min(1).max(5000).optional(),
 		contentJson: z.unknown().optional(),
@@ -138,11 +149,11 @@ export const updateMessageInputSchema = z
 		message: "content or contentJson is required",
 	});
 
-export const deleteMessageInputSchema = z.object({
+export const deleteMessageInputSchema = organizationRouteInputSchema.extend({
 	messageId: z.string().min(1),
 });
 
-export const listMessagesInputSchema = z.object({
+export const listMessagesInputSchema = organizationRouteInputSchema.extend({
 	discussionId: z.string().min(1),
 	threadRootId: z.string().min(1).optional(),
 });

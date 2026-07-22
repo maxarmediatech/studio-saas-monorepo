@@ -12,12 +12,14 @@ import { useDiscussionParams } from "@saas/studio/hooks/params/use-discussion-pa
 import { discussionsMutations, studioQueryKeys } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { DiscussionForm, type DiscussionFormValues } from "../discussion-form";
 import type { EntityLink } from "../entity-link-picker";
 
 export function DiscussionCreateSheet() {
+	const { organizationSlug } = useParams<{ organizationSlug: string }>();
 	const { createDiscussion, channelId, linkType, linkId, close } =
 		useDiscussionParams();
 	const isOpen = Boolean(createDiscussion);
@@ -41,6 +43,7 @@ export function DiscussionCreateSheet() {
 	const handleSubmit = async (data: DiscussionFormValues) => {
 		try {
 			await createMutation.mutateAsync({
+				organizationSlug,
 				channelId: data.channelId,
 				title: data.title,
 				content: data.content || undefined,
@@ -88,6 +91,7 @@ export function DiscussionCreateSheet() {
 				</SheetHeader>
 				<div className="flex-1 min-h-0">
 					<DiscussionForm
+						organizationSlug={organizationSlug}
 						onSubmit={handleSubmit}
 						isPending={createMutation.isPending}
 						onScrollChange={setIsScrolled}

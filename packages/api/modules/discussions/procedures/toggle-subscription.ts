@@ -1,9 +1,10 @@
 import { and, channelMembers, db, eq } from "@repo/database";
-import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { organizationRouteMiddleware } from "../../../orpc/organization-route";
+import { protectedProcedure } from "../../../orpc/procedures";
 import { assertChannelAccess } from "../lib/channel-access";
 import { toggleSubscriptionInputSchema } from "../schemas";
 
-export const toggleSubscription = studioProtectedProcedure
+export const toggleSubscription = protectedProcedure
 	.route({
 		method: "PATCH",
 		path: "/discussions/channels/{channelId}/subscription",
@@ -11,6 +12,7 @@ export const toggleSubscription = studioProtectedProcedure
 		summary: "Toggle subscription to a channel",
 	})
 	.input(toggleSubscriptionInputSchema)
+	.use(organizationRouteMiddleware, (input) => input.organizationSlug)
 	.handler(async ({ input, context }) => {
 		await assertChannelAccess(input.channelId, context);
 

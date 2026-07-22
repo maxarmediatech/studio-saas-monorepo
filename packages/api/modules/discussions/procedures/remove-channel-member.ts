@@ -1,10 +1,11 @@
 import { ORPCError } from "@orpc/server";
 import { and, channelMembers, channels, db, eq, isNull } from "@repo/database";
-import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { organizationRouteMiddleware } from "../../../orpc/organization-route";
+import { protectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import { removeChannelMemberInputSchema } from "../schemas";
 
-export const removeChannelMember = studioProtectedProcedure
+export const removeChannelMember = protectedProcedure
 	.route({
 		method: "DELETE",
 		path: "/discussions/channels/{channelId}/members/{userId}",
@@ -12,6 +13,7 @@ export const removeChannelMember = studioProtectedProcedure
 		summary: "Remove a member from a channel",
 	})
 	.input(removeChannelMemberInputSchema)
+	.use(organizationRouteMiddleware, (input) => input.organizationSlug)
 	.handler(async ({ input, context }) => {
 		await requirePermission(context, "channel", "update");
 

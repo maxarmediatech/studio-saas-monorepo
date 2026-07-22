@@ -698,14 +698,20 @@ export const notificationsMutations = {
 // ============================================================================
 
 export const discussionsApi = {
-	listChannelsOptions: () =>
-		orpc.discussions.listChannels.queryOptions({ input: {} }),
+	listChannelsOptions: (organizationSlug: string) =>
+		orpc.discussions.listChannels.queryOptions({
+			input: { organizationSlug },
+		}),
 
-	getChannelOptions: (channelId: string) =>
-		orpc.discussions.getChannel.queryOptions({ input: { channelId } }),
+	getChannelOptions: (organizationSlug: string, channelId: string) =>
+		orpc.discussions.getChannel.queryOptions({
+			input: { organizationSlug, channelId },
+		}),
 
-	getChannelBySlugOptions: (slug: string) =>
-		orpc.discussions.getChannelBySlug.queryOptions({ input: { slug } }),
+	getChannelBySlugOptions: (organizationSlug: string, slug: string) =>
+		orpc.discussions.getChannelBySlug.queryOptions({
+			input: { organizationSlug, slug },
+		}),
 
 	listDiscussionsOptions: (
 		input: Parameters<
@@ -713,9 +719,9 @@ export const discussionsApi = {
 		>[0]["input"],
 	) => orpc.discussions.listDiscussions.queryOptions({ input }),
 
-	getDiscussionOptions: (discussionId: string) =>
+	getDiscussionOptions: (organizationSlug: string, discussionId: string) =>
 		orpc.discussions.getDiscussion.queryOptions({
-			input: { discussionId },
+			input: { organizationSlug, discussionId },
 		}),
 
 	listMessagesOptions: (

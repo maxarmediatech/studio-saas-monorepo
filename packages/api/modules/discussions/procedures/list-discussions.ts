@@ -1,9 +1,10 @@
 import { and, db, desc, discussions, eq, isNull, lt, or } from "@repo/database";
-import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { organizationRouteMiddleware } from "../../../orpc/organization-route";
+import { protectedProcedure } from "../../../orpc/procedures";
 import { assertChannelAccess } from "../lib/channel-access";
 import { listDiscussionsInputSchema } from "../schemas";
 
-export const listDiscussions = studioProtectedProcedure
+export const listDiscussions = protectedProcedure
 	.route({
 		method: "GET",
 		path: "/discussions/posts",
@@ -11,6 +12,7 @@ export const listDiscussions = studioProtectedProcedure
 		summary: "List discussions in a channel",
 	})
 	.input(listDiscussionsInputSchema)
+	.use(organizationRouteMiddleware, (input) => input.organizationSlug)
 	.handler(async ({ input, context }) => {
 		await assertChannelAccess(input.channelId, context);
 

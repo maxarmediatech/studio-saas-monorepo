@@ -23,7 +23,7 @@ function isDeliverableScopedRequest(input: ListSubmissionsInput): boolean {
 
 export async function assertListSubmissionsAccess(
 	input: ListSubmissionsInput,
-	context: Pick<StudioContext, "headers">,
+	context: Pick<StudioContext, "headers" | "organizationId">,
 ): Promise<void> {
 	if (await hasPermission(context, "review", "list")) {
 		return;
