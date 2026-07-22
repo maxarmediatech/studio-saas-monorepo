@@ -8,11 +8,7 @@ import {
 	DateField,
 	TextareaField,
 } from "@repo/ui/components/form-fields";
-import {
-	FieldRow,
-	FormSection,
-	FormSectionHeading,
-} from "@repo/ui/components/form-section";
+import { FieldRow, FormSection } from "@repo/ui/components/form-section";
 import {
 	InputGroup,
 	InputGroupAddon,
@@ -33,7 +29,6 @@ import { useInvoiceEditParams } from "@saas/studio/hooks/params/use-invoice-edit
 import { invoicesApi, invoicesMutations } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FileText, HandCoins, ScrollText } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -193,10 +188,6 @@ export function InvoiceEditSheet() {
 								<div className="px-4 py-4">
 									<FieldGroup>
 										<FormSection>
-											<FormSectionHeading
-												icon={FileText}
-												title="Invoice Details"
-											/>
 											<FieldRow>
 												<DateField
 													control={form.control}
@@ -214,10 +205,6 @@ export function InvoiceEditSheet() {
 										</FormSection>
 
 										<FormSection>
-											<FormSectionHeading
-												icon={HandCoins}
-												title="Settlement"
-											/>
 											<CustomField
 												control={form.control}
 												name="discountAmount"
@@ -323,10 +310,6 @@ export function InvoiceEditSheet() {
 										</FormSection>
 
 										<FormSection>
-											<FormSectionHeading
-												icon={ScrollText}
-												title="Notes & Terms"
-											/>
 											<TextareaField
 												control={form.control}
 												name="notes"

@@ -8,11 +8,7 @@ import {
 	DateField,
 	TextareaField,
 } from "@repo/ui/components/form-fields";
-import {
-	FieldRow,
-	FormSection,
-	FormSectionHeading,
-} from "@repo/ui/components/form-section";
+import { FieldRow, FormSection } from "@repo/ui/components/form-section";
 import { RadioGroup, RadioGroupItem } from "@repo/ui/components/radio-group";
 import { ScrollArea } from "@repo/ui/components/scroll-area";
 import {
@@ -28,7 +24,6 @@ import { useInvoiceGenerateParams } from "@saas/studio/hooks/params/use-invoice-
 import { invoicesMutations, studioPaymentsApi } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FileText, ScrollText } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -196,10 +191,6 @@ export function InvoiceGenerateSheet() {
 								<div className="px-4 py-4">
 									<FieldGroup>
 										<FormSection>
-											<FormSectionHeading
-												icon={FileText}
-												title="Invoice Details"
-											/>
 											<FieldRow>
 												<DateField
 													control={form.control}
@@ -267,10 +258,6 @@ export function InvoiceGenerateSheet() {
 										</FormSection>
 
 										<FormSection>
-											<FormSectionHeading
-												icon={ScrollText}
-												title="Notes & Terms"
-											/>
 											<TextareaField
 												control={form.control}
 												name="notes"
