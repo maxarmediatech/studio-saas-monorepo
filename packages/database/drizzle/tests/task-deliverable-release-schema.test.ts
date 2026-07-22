@@ -34,10 +34,7 @@ test("task-driven deliverable release gates match the migration ledger", async (
 	const startEntry = startEntries[startEntries.length - 1];
 	const finalEntry = journal.entries[journal.entries.length - 1];
 
-	assert.equal(
-		startEntry?.tag,
-		"0045_better_auth_two_factor_lockout",
-	);
+	assert.equal(startEntry?.tag, "0045_better_auth_two_factor_lockout");
 	assert.equal(startEntry?.when, 1784550431955);
 	assert.equal(
 		hashes[45],
