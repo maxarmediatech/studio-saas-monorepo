@@ -123,9 +123,12 @@ pnpm db:staging:verify
 ## Preserved and removed data
 
 Business rows, IDs, relationships, dates, statuses, quantities, and financial
-amounts are preserved. Names, email addresses, phone numbers, addresses, free
-text, URLs, provider identifiers, webhook payloads, and integration metadata are
-replaced deterministically.
+amounts are preserved. Task metadata keeps only `convertedFromDeliverableId`;
+deliverable metadata keeps only `convertedToTaskId` and `convertedAt`. These
+structural markers let staging rehearse conversion migrations without retaining
+the copied task or deliverable name. Names, email addresses, phone numbers,
+addresses, free text, URLs, provider identifiers, webhook payloads, and other
+integration metadata are replaced deterministically.
 
 Sessions, verification codes, and two-factor secrets are removed. Production
 OAuth, WhatsApp, and password credentials are cleared. One existing owner is
