@@ -79,6 +79,7 @@ test("task-driven deliverable release gates match the migration ledger", async (
 	]) {
 		assert.match(preflight, new RegExp(expected));
 	}
+	assert.doesNotMatch(preflight, /btrim\(/);
 	for (const expected of [
 		"ledger.row_count = 50",
 		"1784752206666",

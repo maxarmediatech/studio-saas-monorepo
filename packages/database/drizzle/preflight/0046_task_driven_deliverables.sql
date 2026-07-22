@@ -86,7 +86,7 @@ WITH ledger AS (
 		d.id AS deliverable_id,
 		d.deleted_at AS deliverable_deleted_at,
 		d.workflow_status AS deliverable_workflow_status,
-		nullif(btrim(d.metadata ->> 'convertedToTaskId'), '') AS task_id,
+		d.metadata ->> 'convertedToTaskId' AS task_id,
 		t.id AS resolved_task_id,
 		t.deleted_at AS task_deleted_at,
 		t.workflow_status AS task_workflow_status,
@@ -114,10 +114,10 @@ WITH ledger AS (
 		) AS has_no_task_submissions
 	FROM deliverables AS d
 	LEFT JOIN tasks AS t
-		ON t.id = nullif(btrim(d.metadata ->> 'convertedToTaskId'), '')
+		ON t.id = d.metadata ->> 'convertedToTaskId'
 		AND t.organization_id = d.organization_id
 		AND t.booking_id = d.booking_id
-	WHERE nullif(btrim(d.metadata ->> 'convertedToTaskId'), '') IS NOT NULL
+	WHERE d.metadata ->> 'convertedToTaskId' IS NOT NULL
 ), legacy_state AS (
 	SELECT
 		count(*) AS reference_count,
