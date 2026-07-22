@@ -21,6 +21,7 @@ import {
 	ChevronRight,
 	CircleIcon,
 	ClipboardListIcon,
+	PackageIcon,
 	PencilIcon,
 	PlayCircleIcon,
 	XCircleIcon,
@@ -118,6 +119,10 @@ function getWorkflowStatusBadge(status: WorkflowStatus) {
 					Assigned
 				</Badge>
 			);
+		case "in_progress":
+			return <Badge variant="secondary">In progress</Badge>;
+		case "blocked":
+			return <Badge variant="destructive">Blocked</Badge>;
 		case "submitted":
 			return (
 				<Badge className="bg-purple-500/10 text-purple-600 border-purple-500/20">
@@ -136,6 +141,8 @@ function getWorkflowStatusBadge(status: WorkflowStatus) {
 					Revision Requested
 				</Badge>
 			);
+		case "ready":
+			return <Badge variant="secondary">Ready</Badge>;
 		case "approved":
 			return (
 				<Badge className="bg-green-500/10 text-green-600 border-green-500/20">
@@ -333,6 +340,13 @@ export default function TaskDetailPage() {
 									className="size-4"
 								/>
 								<span>{assignment.crew.name}</span>
+								<span className="text-muted-foreground">
+									·{" "}
+									{assignment.progressStatus.replaceAll(
+										"_",
+										" ",
+									)}
+								</span>
 								{assignment.assignedByName ? (
 									<span className="text-muted-foreground">
 										· assigned by{" "}
@@ -344,6 +358,47 @@ export default function TaskDetailPage() {
 					</div>
 				)}
 			</div>
+
+			{task.deliverableLinks.length > 0 ? (
+				<section className="mt-8 flex flex-col gap-3 border-t pt-6">
+					<div>
+						<h2 className="font-semibold">Linked deliverables</h2>
+						<p className="mt-1 text-sm text-muted-foreground">
+							Task progress automatically updates required
+							deliverables.
+						</p>
+					</div>
+					<div className="divide-y rounded-lg border">
+						{task.deliverableLinks.map((deliverableLink) => (
+							<div
+								key={deliverableLink.id}
+								className="flex items-center justify-between gap-3 px-4 py-3"
+							>
+								<div className="flex min-w-0 items-center gap-3">
+									<PackageIcon className="size-4 shrink-0 text-muted-foreground" />
+									<Link
+										href={`/app/${params.organizationSlug}/deliverables/${deliverableLink.deliverable.id}`}
+										className="truncate text-sm font-medium hover:underline"
+									>
+										{deliverableLink.deliverable.name}
+									</Link>
+								</div>
+								<div className="flex gap-2">
+									<Badge variant="secondary">
+										{deliverableLink.kind}
+									</Badge>
+									<Badge variant="outline">
+										{deliverableLink.deliverable.workflowStatus.replaceAll(
+											"_",
+											" ",
+										)}
+									</Badge>
+								</div>
+							</div>
+						))}
+					</div>
+				</section>
+			) : null}
 
 			<div className="mt-8 border-t pt-6">
 				<h2 className="font-semibold">Activity</h2>
@@ -397,6 +452,12 @@ export default function TaskDetailPage() {
 													{assignment.crew.name}
 												</span>
 												<span>assigned</span>
+												<Badge variant="outline">
+													{assignment.progressStatus.replaceAll(
+														"_",
+														" ",
+													)}
+												</Badge>
 												{assignment.assignedByName ? (
 													<span>
 														by{" "}

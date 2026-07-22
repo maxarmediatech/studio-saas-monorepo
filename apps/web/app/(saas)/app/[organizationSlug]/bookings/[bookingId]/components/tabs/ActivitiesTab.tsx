@@ -62,6 +62,7 @@ function getActionIcon(action: string) {
 		case "deleted":
 			return <Trash2Icon className="size-3.5 text-red-500" />;
 		case "status_changed":
+		case "assignment_progress_changed":
 			return <RefreshCwIcon className="size-3.5 text-orange-500" />;
 		case "assigned":
 			return <UserPlusIcon className="size-3.5 text-purple-500" />;
@@ -103,6 +104,8 @@ function getActivityMessage(activity: {
 			return `Deleted ${entityTypeLabel} "${entityName}"`;
 		case "status_changed":
 			return `Changed status from "${oldValue}" to "${newValue}"`;
+		case "assignment_progress_changed":
+			return `Changed assignment progress from "${oldValue}" to "${newValue}"`;
 		case "updated":
 			if (field) {
 				return `Updated ${field.replace(/_/g, " ")}`;
