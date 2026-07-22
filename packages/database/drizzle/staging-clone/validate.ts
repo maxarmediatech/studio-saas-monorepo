@@ -5,6 +5,10 @@ import {
 	CLEARED_AUTH_TABLES,
 	ROW_COUNT_MUTABLE_AUTH_TABLES,
 } from "./sanitizers/auth";
+import {
+	PRESERVED_DELIVERABLE_METADATA_KEYS,
+	PRESERVED_TASK_METADATA_KEYS,
+} from "./sanitizers/studio";
 import type { SchemaContract } from "./schema-contract";
 import {
 	assertCriticalSchemaStructures,
@@ -23,6 +27,13 @@ type ValidationCheck = {
 	name: string;
 	query: string;
 };
+
+function removeAllowedJsonKeys(
+	column: string,
+	keys: readonly string[],
+): string {
+	return keys.reduce((expression, key) => `${expression} - '${key}'`, column);
+}
 
 const checks: ValidationCheck[] = [
 	{
@@ -120,6 +131,41 @@ const checks: ValidationCheck[] = [
 			(SELECT count(*) FROM quick_links WHERE url NOT LIKE 'https://example.invalid/%') +
 			(SELECT count(*) FROM wa_media WHERE storage_url IS NOT NULL AND storage_url NOT LIKE 'https://example.invalid/%') +
 			(SELECT count(*) FROM wa_media WHERE thumbnail_url IS NOT NULL AND thumbnail_url NOT LIKE 'https://example.invalid/%') AS count`,
+	},
+	{
+		name: "non-structural or invalid task-deliverable metadata",
+		query: `SELECT
+			(SELECT count(*) FROM tasks
+			 WHERE metadata IS NOT NULL
+			 AND ${removeAllowedJsonKeys("metadata", PRESERVED_TASK_METADATA_KEYS)} <> '{}'::jsonb) +
+			(SELECT count(*) FROM deliverables
+			 WHERE metadata IS NOT NULL
+			 AND ${removeAllowedJsonKeys("metadata", PRESERVED_DELIVERABLE_METADATA_KEYS)} <> '{}'::jsonb) +
+			(SELECT count(*) FROM tasks task
+			 WHERE task.metadata ? 'convertedFromDeliverableId'
+			 AND (
+				jsonb_typeof(task.metadata -> 'convertedFromDeliverableId') <> 'string'
+				OR NOT EXISTS (
+					SELECT 1 FROM deliverables deliverable
+					WHERE deliverable.id = task.metadata ->> 'convertedFromDeliverableId'
+					AND deliverable.organization_id = task.organization_id
+					AND deliverable.booking_id = task.booking_id
+				)
+			)) +
+			(SELECT count(*) FROM deliverables deliverable
+			 WHERE deliverable.metadata ? 'convertedToTaskId'
+			 AND (
+				jsonb_typeof(deliverable.metadata -> 'convertedToTaskId') <> 'string'
+				OR NOT EXISTS (
+					SELECT 1 FROM tasks task
+					WHERE task.id = deliverable.metadata ->> 'convertedToTaskId'
+					AND task.organization_id = deliverable.organization_id
+					AND task.booking_id = deliverable.booking_id
+				)
+			)) +
+			(SELECT count(*) FROM deliverables deliverable
+			 WHERE deliverable.metadata ? 'convertedAt'
+			 AND jsonb_typeof(deliverable.metadata -> 'convertedAt') <> 'string') AS count`,
 	},
 ];
 

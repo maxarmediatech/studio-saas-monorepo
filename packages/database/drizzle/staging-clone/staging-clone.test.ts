@@ -8,6 +8,10 @@ import {
 } from "./config";
 import { nodeConnectionString } from "./postgres-tools";
 import { hashStagingPassword } from "./sanitizers/auth";
+import {
+	PRESERVED_DELIVERABLE_METADATA_KEYS,
+	PRESERVED_TASK_METADATA_KEYS,
+} from "./sanitizers/studio";
 import { loadSchemaContract } from "./schema-contract";
 import { SNAPSHOT_MANIFEST_VERSION } from "./types";
 import { parseManifest } from "./validate";
@@ -118,6 +122,7 @@ describe("staging clone safeguards", () => {
 				validation: { ...manifest.validation, secretsRemoved: false },
 			}),
 		);
+		assert.throws(() => parseManifest({ ...manifest, version: 1 }));
 	});
 
 	it("creates Better Auth-compatible password hash shapes", async () => {
@@ -138,6 +143,17 @@ describe("staging clone safeguards", () => {
 				password: "wrong-password",
 			}),
 			false,
+		);
+	});
+
+	it("preserves only non-customer conversion metadata", () => {
+		assert.deepEqual(
+			[...PRESERVED_TASK_METADATA_KEYS],
+			["convertedFromDeliverableId"],
+		);
+		assert.deepEqual(
+			[...PRESERVED_DELIVERABLE_METADATA_KEYS],
+			["convertedToTaskId", "convertedAt"],
 		);
 	});
 

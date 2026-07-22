@@ -1,6 +1,22 @@
 import type { Client } from "pg";
 import { executeSanitizer, fakeHash, fakePhone } from "./helpers";
 
+export const PRESERVED_TASK_METADATA_KEYS = [
+	"convertedFromDeliverableId",
+] as const;
+export const PRESERVED_DELIVERABLE_METADATA_KEYS = [
+	"convertedToTaskId",
+	"convertedAt",
+] as const;
+
+function preserveMetadataKeys(column: string, keys: readonly string[]): string {
+	const keyValuePairs = keys.flatMap((key) => [
+		`'${key}'`,
+		`${column} -> '${key}'`,
+	]);
+	return `CASE WHEN ${column} IS NULL THEN NULL ELSE jsonb_strip_nulls(jsonb_build_object(${keyValuePairs.join(", ")})) END`;
+}
+
 export async function sanitizeStudio(
 	client: Client,
 	sanitizationKey: string,
@@ -38,11 +54,11 @@ export async function sanitizeStudio(
 		`UPDATE tasks SET
 			name = 'Task ' || left(${fakeHash("task")}, 10),
 			description = CASE WHEN description IS NULL THEN NULL ELSE 'Sanitized task description' END,
-			metadata = CASE WHEN metadata IS NULL THEN NULL ELSE '{}'::jsonb END`,
+			metadata = ${preserveMetadataKeys("metadata", PRESERVED_TASK_METADATA_KEYS)}`,
 		`UPDATE deliverables SET
 			name = 'Deliverable ' || left(${fakeHash("deliverable")}, 10),
 			description = CASE WHEN description IS NULL THEN NULL ELSE 'Sanitized deliverable description' END,
-			metadata = CASE WHEN metadata IS NULL THEN NULL ELSE '{}'::jsonb END`,
+			metadata = ${preserveMetadataKeys("metadata", PRESERVED_DELIVERABLE_METADATA_KEYS)}`,
 		`UPDATE assignment_submissions SET
 			submission_note = CASE WHEN submission_note IS NULL THEN NULL ELSE 'Sanitized submission note' END,
 			submission_links = CASE WHEN submission_links IS NULL THEN NULL ELSE '[]'::jsonb END,
