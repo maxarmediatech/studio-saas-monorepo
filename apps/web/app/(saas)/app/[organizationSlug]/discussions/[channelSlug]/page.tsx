@@ -70,13 +70,17 @@ export default function ChannelPage() {
 	const [showSettings, setShowSettings] = useState(false);
 
 	const { data: channelData, isLoading: channelLoading } = useQuery(
-		discussionsApi.getChannelBySlugOptions(params.channelSlug),
+		discussionsApi.getChannelBySlugOptions(
+			params.organizationSlug,
+			params.channelSlug,
+		),
 	);
 
 	const channel = channelData?.data;
 
 	const { data: discussionsData, isLoading: discussionsLoading } = useQuery({
 		...discussionsApi.listDiscussionsOptions({
+			organizationSlug: params.organizationSlug,
 			channelId: channel?.id ?? "",
 			limit: 50,
 		}),
@@ -216,18 +220,24 @@ export default function ChannelPage() {
 																?.name ??
 																"Unknown"}
 														</span>
-									{(discussion.contentText ?? discussion.content) && (
-										<>
-											:{" "}
-											<span className="text-neutral-500">
-												{(discussion.contentText ?? discussion.content ?? "")
-													.length >
-												60
-													? `${(discussion.contentText ?? discussion.content ?? "").slice(0, 60)}...`
-													: (discussion.contentText ?? discussion.content ?? "")}
-											</span>
-										</>
-									)}
+														{(discussion.contentText ??
+															discussion.content) && (
+															<>
+																:{" "}
+																<span className="text-neutral-500">
+																	{(
+																		discussion.contentText ??
+																		discussion.content ??
+																		""
+																	).length >
+																	60
+																		? `${(discussion.contentText ?? discussion.content ?? "").slice(0, 60)}...`
+																		: (discussion.contentText ??
+																			discussion.content ??
+																			"")}
+																</span>
+															</>
+														)}
 													</p>
 												</div>
 												{discussion.messageCount >

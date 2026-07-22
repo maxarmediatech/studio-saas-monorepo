@@ -1,13 +1,14 @@
 import { ORPCError } from "@orpc/server";
 import { db, discussionLinks, discussions } from "@repo/database";
-import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { organizationRouteMiddleware } from "../../../orpc/organization-route";
+import { protectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import { assertChannelAccess } from "../lib/channel-access";
 import { buildRichTextContent } from "../lib/rich-text";
 import { verifyLinkEntityExists } from "../lib/verify-link-entity";
 import { createDiscussionInputSchema } from "../schemas";
 
-export const createDiscussion = studioProtectedProcedure
+export const createDiscussion = protectedProcedure
 	.route({
 		method: "POST",
 		path: "/discussions/posts",
@@ -15,6 +16,7 @@ export const createDiscussion = studioProtectedProcedure
 		summary: "Create a new discussion",
 	})
 	.input(createDiscussionInputSchema)
+	.use(organizationRouteMiddleware, (input) => input.organizationSlug)
 	.handler(async ({ input, context }) => {
 		await requirePermission(context, "discussion", "create");
 		await assertChannelAccess(input.channelId, context);

@@ -7,12 +7,13 @@ import {
 	eq,
 	isNull,
 } from "@repo/database";
-import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { organizationRouteMiddleware } from "../../../orpc/organization-route";
+import { protectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import { verifyLinkEntityExists } from "../lib/verify-link-entity";
 import { addDiscussionLinkInputSchema } from "../schemas";
 
-export const addDiscussionLink = studioProtectedProcedure
+export const addDiscussionLink = protectedProcedure
 	.route({
 		method: "POST",
 		path: "/discussions/posts/{discussionId}/links",
@@ -20,6 +21,7 @@ export const addDiscussionLink = studioProtectedProcedure
 		summary: "Add a link to a discussion",
 	})
 	.input(addDiscussionLinkInputSchema)
+	.use(organizationRouteMiddleware, (input) => input.organizationSlug)
 	.handler(async ({ input, context }) => {
 		await requirePermission(context, "discussion", "update");
 

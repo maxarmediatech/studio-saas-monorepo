@@ -7,10 +7,11 @@ import {
 	eq,
 	isNull,
 } from "@repo/database";
-import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { organizationRouteMiddleware } from "../../../orpc/organization-route";
+import { protectedProcedure } from "../../../orpc/procedures";
 import { listMessagesInputSchema } from "../schemas";
 
-export const listMessages = studioProtectedProcedure
+export const listMessages = protectedProcedure
 	.route({
 		method: "GET",
 		path: "/discussions/messages",
@@ -18,6 +19,7 @@ export const listMessages = studioProtectedProcedure
 		summary: "List messages for a discussion",
 	})
 	.input(listMessagesInputSchema)
+	.use(organizationRouteMiddleware, (input) => input.organizationSlug)
 	.handler(async ({ input, context }) => {
 		const discussion = await db.query.discussions.findFirst({
 			where: and(

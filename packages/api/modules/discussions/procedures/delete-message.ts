@@ -8,10 +8,11 @@ import {
 	isNull,
 	sql,
 } from "@repo/database";
-import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { organizationRouteMiddleware } from "../../../orpc/organization-route";
+import { protectedProcedure } from "../../../orpc/procedures";
 import { deleteMessageInputSchema } from "../schemas";
 
-export const deleteMessage = studioProtectedProcedure
+export const deleteMessage = protectedProcedure
 	.route({
 		method: "DELETE",
 		path: "/discussions/messages/{messageId}",
@@ -19,6 +20,7 @@ export const deleteMessage = studioProtectedProcedure
 		summary: "Delete a message (soft delete)",
 	})
 	.input(deleteMessageInputSchema)
+	.use(organizationRouteMiddleware, (input) => input.organizationSlug)
 	.handler(async ({ input, context }) => {
 		const message = await db.query.discussionMessages.findFirst({
 			where: and(

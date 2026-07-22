@@ -1,11 +1,12 @@
 import { ORPCError } from "@orpc/server";
 import { and, db, discussions, eq, isNull } from "@repo/database";
-import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { organizationRouteMiddleware } from "../../../orpc/organization-route";
+import { protectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import { buildRichTextContent } from "../lib/rich-text";
 import { updateDiscussionInputSchema } from "../schemas";
 
-export const updateDiscussion = studioProtectedProcedure
+export const updateDiscussion = protectedProcedure
 	.route({
 		method: "PATCH",
 		path: "/discussions/posts/{discussionId}",
@@ -13,6 +14,7 @@ export const updateDiscussion = studioProtectedProcedure
 		summary: "Update a discussion",
 	})
 	.input(updateDiscussionInputSchema)
+	.use(organizationRouteMiddleware, (input) => input.organizationSlug)
 	.handler(async ({ input, context }) => {
 		await requirePermission(context, "discussion", "update");
 

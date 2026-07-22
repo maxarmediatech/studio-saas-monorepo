@@ -1,10 +1,11 @@
 import { ORPCError } from "@orpc/server";
 import { and, channelMembers, channels, db, eq, isNull } from "@repo/database";
-import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { organizationRouteMiddleware } from "../../../orpc/organization-route";
+import { protectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import { addChannelMemberInputSchema } from "../schemas";
 
-export const addChannelMember = studioProtectedProcedure
+export const addChannelMember = protectedProcedure
 	.route({
 		method: "POST",
 		path: "/discussions/channels/{channelId}/members",
@@ -12,6 +13,7 @@ export const addChannelMember = studioProtectedProcedure
 		summary: "Add a member to a channel",
 	})
 	.input(addChannelMemberInputSchema)
+	.use(organizationRouteMiddleware, (input) => input.organizationSlug)
 	.handler(async ({ input, context }) => {
 		await requirePermission(context, "channel", "update");
 

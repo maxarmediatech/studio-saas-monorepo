@@ -1,4 +1,5 @@
 import type { Resource } from "@repo/auth/lib/permissions";
+import type { StudioContext } from "../../studio/lib/permissions";
 import type { SavedViewEntityType } from "../../studio/schemas/saved-view";
 
 const savedViewEntityResourceMap: Record<SavedViewEntityType, Resource> = {
@@ -21,7 +22,7 @@ export function getSavedViewPermissionResource(
 }
 
 export async function listAuthorizedSavedViewEntityTypes(
-	context: { headers: Headers },
+	context: Pick<StudioContext, "headers" | "organizationId">,
 	action: "create" | "update" | "delete" | "list",
 ): Promise<SavedViewEntityType[]> {
 	const { hasPermission } = await import("../../studio/lib/permissions");
@@ -53,7 +54,7 @@ export async function listAuthorizedSavedViewEntityTypes(
 }
 
 export async function requireSavedViewPermission(
-	context: { headers: Headers },
+	context: Pick<StudioContext, "headers" | "organizationId">,
 	entityType: SavedViewEntityType,
 	action: "create" | "update" | "delete" | "list",
 ): Promise<void> {

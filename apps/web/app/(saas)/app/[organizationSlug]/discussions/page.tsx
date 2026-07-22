@@ -9,7 +9,9 @@ import { useEffect } from "react";
 export default function DiscussionsIndexPage() {
 	const params = useParams<{ organizationSlug: string }>();
 	const router = useRouter();
-	const { data, isLoading } = useQuery(discussionsApi.listChannelsOptions());
+	const { data, isLoading } = useQuery(
+		discussionsApi.listChannelsOptions(params.organizationSlug),
+	);
 
 	const channels = data?.data ?? [];
 	const firstChannel = channels[0];

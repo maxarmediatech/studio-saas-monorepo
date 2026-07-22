@@ -34,13 +34,14 @@ export interface StudioContext {
 }
 
 export async function hasPermission<R extends Resource>(
-	context: Pick<StudioContext, "headers">,
+	context: Pick<StudioContext, "headers" | "organizationId">,
 	resource: R,
 	action: Action<R>,
 ): Promise<boolean> {
 	const result = await auth.api.hasPermission({
 		headers: context.headers,
 		body: {
+			organizationId: context.organizationId,
 			permissions: { [resource]: [action] },
 		},
 	});
@@ -48,7 +49,7 @@ export async function hasPermission<R extends Resource>(
 }
 
 export async function requirePermission<R extends Resource>(
-	context: Pick<StudioContext, "headers">,
+	context: Pick<StudioContext, "headers" | "organizationId">,
 	resource: R,
 	action: Action<R>,
 ): Promise<void> {
@@ -71,7 +72,7 @@ export function requireOrganizationAdmin(
 }
 
 export async function requireAnyPermission(
-	context: Pick<StudioContext, "headers">,
+	context: Pick<StudioContext, "headers" | "organizationId">,
 	permissions: Array<{ resource: Resource; action: AnyAction }>,
 ): Promise<void> {
 	const results = await Promise.all(
@@ -91,7 +92,7 @@ export async function requireAnyPermission(
 }
 
 export async function requireAllPermissions(
-	context: Pick<StudioContext, "headers">,
+	context: Pick<StudioContext, "headers" | "organizationId">,
 	permissions: Array<{ resource: Resource; action: AnyAction }>,
 ): Promise<void> {
 	for (const { resource, action } of permissions) {

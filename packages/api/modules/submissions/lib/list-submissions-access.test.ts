@@ -14,6 +14,7 @@ vi.mock("../../studio/lib/permissions", async () => {
 
 const context = {
 	headers: new Headers(),
+	organizationId: "organization-1",
 };
 
 const baseInput: ListSubmissionsInput = {

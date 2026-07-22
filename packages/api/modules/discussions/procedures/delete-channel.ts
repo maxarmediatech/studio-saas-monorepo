@@ -1,10 +1,11 @@
 import { ORPCError } from "@orpc/server";
 import { and, channels, db, eq, isNull } from "@repo/database";
-import { studioProtectedProcedure } from "../../../orpc/procedures";
+import { organizationRouteMiddleware } from "../../../orpc/organization-route";
+import { protectedProcedure } from "../../../orpc/procedures";
 import { requirePermission } from "../../studio/lib/permissions";
 import { deleteChannelInputSchema } from "../schemas";
 
-export const deleteChannel = studioProtectedProcedure
+export const deleteChannel = protectedProcedure
 	.route({
 		method: "DELETE",
 		path: "/discussions/channels/{channelId}",
@@ -12,6 +13,7 @@ export const deleteChannel = studioProtectedProcedure
 		summary: "Delete a channel (soft delete)",
 	})
 	.input(deleteChannelInputSchema)
+	.use(organizationRouteMiddleware, (input) => input.organizationSlug)
 	.handler(async ({ input, context }) => {
 		await requirePermission(context, "channel", "delete");
 
