@@ -1,6 +1,12 @@
 "use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@repo/ui/components/card";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@repo/ui/components/card";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { activitiesApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
@@ -91,8 +97,12 @@ function getActivityMessage(activity: {
 	parentEntityName?: string | null;
 	metadata?: unknown;
 }): string {
-	const { action, entityType, entityName, field, oldValue, newValue } = activity;
-	const metadata = activity.metadata as Record<string, unknown> | null | undefined;
+	const { action, entityType, entityName, field, oldValue, newValue } =
+		activity;
+	const metadata = activity.metadata as
+		| Record<string, unknown>
+		| null
+		| undefined;
 
 	// Format entity type for display
 	const entityTypeLabel = entityType.replace(/_/g, " ");
@@ -167,12 +177,13 @@ export function ActivitiesTab({ bookingId }: ActivitiesTabProps) {
 	const directActivities = directBookingData?.data ?? [];
 
 	// Combine and deduplicate by id, then sort by date
-	const activityMap = new Map<string, typeof childActivities[0]>();
+	const activityMap = new Map<string, (typeof childActivities)[0]>();
 	for (const activity of [...childActivities, ...directActivities]) {
 		activityMap.set(activity.id, activity);
 	}
 	const activities = Array.from(activityMap.values()).sort(
-		(a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+		(a, b) =>
+			new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
 	);
 
 	if (isLoading) {
@@ -217,7 +228,9 @@ export function ActivitiesTab({ bookingId }: ActivitiesTabProps) {
 				<CardContent>
 					<div className="flex flex-col items-center justify-center py-12 text-center">
 						<ActivityIcon className="size-12 text-red-300/50 mb-3" />
-						<p className="text-sm text-red-500">Failed to load activities</p>
+						<p className="text-sm text-red-500">
+							Failed to load activities
+						</p>
 						<p className="text-xs text-muted-foreground mt-1">
 							Please try again later
 						</p>
@@ -249,7 +262,9 @@ export function ActivitiesTab({ bookingId }: ActivitiesTabProps) {
 				) : (
 					<div className="space-y-0">
 						{activities.map((activity) => {
-							const entityIcon = getEntityIcon(activity.entityType);
+							const entityIcon = getEntityIcon(
+								activity.entityType,
+							);
 							const actionIcon = getActionIcon(activity.action);
 							const message = getActivityMessage(activity);
 
@@ -270,16 +285,21 @@ export function ActivitiesTab({ bookingId }: ActivitiesTabProps) {
 										<div className="font-medium text-xs text-muted-foreground">
 											{activity.actorName}
 										</div>
-										<div className="text-sm">
-											{message}
-										</div>
-										{activity.field && activity.oldValue && activity.newValue && activity.action === "updated" && (
-											<div className="text-xs text-muted-foreground mt-0.5">
-												<span className="line-through">{activity.oldValue}</span>
-												{" → "}
-												<span className="font-medium">{activity.newValue}</span>
-											</div>
-										)}
+										<div className="text-sm">{message}</div>
+										{activity.field &&
+											activity.oldValue &&
+											activity.newValue &&
+											activity.action === "updated" && (
+												<div className="text-xs text-muted-foreground mt-0.5">
+													<span className="line-through">
+														{activity.oldValue}
+													</span>
+													{" → "}
+													<span className="font-medium">
+														{activity.newValue}
+													</span>
+												</div>
+											)}
 									</div>
 									<div className="flex-shrink-0 font-medium text-xs text-muted-foreground whitespace-nowrap">
 										{formatDistanceToNow(

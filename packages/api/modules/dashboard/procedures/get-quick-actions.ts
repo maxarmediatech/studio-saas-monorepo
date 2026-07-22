@@ -286,7 +286,9 @@ export const getQuickActions = studioProtectedProcedure
 			const priorityOrder = { high: 0, medium: 1, low: 2 };
 			const priorityDiff =
 				priorityOrder[a.priority] - priorityOrder[b.priority];
-			if (priorityDiff !== 0) return priorityDiff;
+			if (priorityDiff !== 0) {
+				return priorityDiff;
+			}
 
 			// Then by due date (nulls last)
 			if (a.dueDate && b.dueDate) {
@@ -295,8 +297,12 @@ export const getQuickActions = studioProtectedProcedure
 					new Date(b.dueDate).getTime()
 				);
 			}
-			if (a.dueDate) return -1;
-			if (b.dueDate) return 1;
+			if (a.dueDate) {
+				return -1;
+			}
+			if (b.dueDate) {
+				return 1;
+			}
 
 			// Finally by creation date
 			return (

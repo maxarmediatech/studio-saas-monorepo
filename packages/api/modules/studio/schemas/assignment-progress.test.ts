@@ -9,9 +9,7 @@ describe.each([
 	const id = "00000000-0000-4000-8000-000000000001";
 
 	it("requires blocker details", () => {
-		expect(
-			schema.safeParse({ id, status: "blocked" }).success,
-		).toBe(false);
+		expect(schema.safeParse({ id, status: "blocked" }).success).toBe(false);
 		expect(
 			schema.safeParse({
 				id,
@@ -22,8 +20,8 @@ describe.each([
 	});
 
 	it("allows progress changes without a stale note", () => {
-		expect(
-			schema.safeParse({ id, status: "in_progress" }).success,
-		).toBe(true);
+		expect(schema.safeParse({ id, status: "in_progress" }).success).toBe(
+			true,
+		);
 	});
 });
