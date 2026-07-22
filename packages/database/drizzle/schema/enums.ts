@@ -33,11 +33,32 @@ export const bookingPhaseEnum = pgEnum("booking_phase", [
 export const workflowStatusEnum = pgEnum("workflow_status", [
 	"not_started",
 	"assigned",
+	"in_progress",
+	"blocked",
 	"submitted",
 	"in_review",
 	"revision_requested",
+	"ready",
 	"approved",
 ]);
+
+/**
+ * Assignment progress - crew-owned state before submission/review begins.
+ */
+export const assignmentProgressStatusEnum = pgEnum(
+	"assignment_progress_status",
+	["assigned", "in_progress", "blocked"],
+);
+
+export const deliverableTrackingModeEnum = pgEnum("deliverable_tracking_mode", [
+	"direct",
+	"task_based",
+]);
+
+export const deliverableTaskLinkKindEnum = pgEnum(
+	"deliverable_task_link_kind",
+	["required", "optional", "reference"],
+);
 
 /**
  * Submission status - tracks individual submission states in review workflow
