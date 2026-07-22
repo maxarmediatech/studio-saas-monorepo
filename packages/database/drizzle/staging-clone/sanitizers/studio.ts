@@ -39,10 +39,14 @@ export async function sanitizeStudio(
 			name = 'Task ' || left(${fakeHash("task")}, 10),
 			description = CASE WHEN description IS NULL THEN NULL ELSE 'Sanitized task description' END,
 			metadata = CASE WHEN metadata IS NULL THEN NULL ELSE '{}'::jsonb END`,
+		`UPDATE task_assignments SET
+			progress_note = CASE WHEN progress_note IS NULL THEN NULL ELSE 'Sanitized assignment progress note' END`,
 		`UPDATE deliverables SET
 			name = 'Deliverable ' || left(${fakeHash("deliverable")}, 10),
 			description = CASE WHEN description IS NULL THEN NULL ELSE 'Sanitized deliverable description' END,
 			metadata = CASE WHEN metadata IS NULL THEN NULL ELSE '{}'::jsonb END`,
+		`UPDATE deliverable_assignments SET
+			progress_note = CASE WHEN progress_note IS NULL THEN NULL ELSE 'Sanitized assignment progress note' END`,
 		`UPDATE assignment_submissions SET
 			submission_note = CASE WHEN submission_note IS NULL THEN NULL ELSE 'Sanitized submission note' END,
 			submission_links = CASE WHEN submission_links IS NULL THEN NULL ELSE '[]'::jsonb END,

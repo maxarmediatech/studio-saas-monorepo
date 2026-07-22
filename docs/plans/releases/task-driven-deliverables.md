@@ -21,5 +21,7 @@ approval timestamps move to `completedAt`; delivered counts restart from
 explicit client-delivery actions. Tell studio operators before rollout so the
 corrected count is not mistaken for lost deliverables.
 
-Required task links now drive deliverable workflow automatically. Optional and
-reference links remain informational. Shoots do not drive deliverable status.
+Ordinary task links are informational: task and deliverable statuses and
+assignees remain independent. Convert to Task is the explicit path that
+transfers assignments and enables task-driven production workflow. Shoots do
+not drive deliverable status.
