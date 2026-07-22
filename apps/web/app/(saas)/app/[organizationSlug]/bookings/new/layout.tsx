@@ -11,7 +11,6 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@repo/ui/components/alert-dialog";
-import { Form } from "@repo/ui/components/form";
 import {
 	BookingFormLayout,
 	BookingFormNavigation,
@@ -44,7 +43,7 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { type Resolver, useForm } from "react-hook-form";
+import { FormProvider, type Resolver, useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 const BOOKING_FORM_HTML_ID = "booking-form";
@@ -294,7 +293,7 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 	}
 
 	return (
-		<Form {...form}>
+		<FormProvider {...form}>
 			<form
 				id={BOOKING_FORM_HTML_ID}
 				className="flex min-h-0 flex-1 flex-col"
@@ -412,6 +411,6 @@ export default function NewBookingLayout({ children }: PropsWithChildren) {
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
-		</Form>
+		</FormProvider>
 	);
 }

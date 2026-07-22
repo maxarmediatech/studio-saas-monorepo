@@ -3,19 +3,22 @@
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Card, CardContent } from "@repo/ui/components/card";
-import { DatePicker } from "@repo/ui/components/date-picker";
 import {
 	Field,
-	FieldContent,
 	FieldDescription,
 	FieldError,
-	FieldGroup,
 	FieldLabel,
-	FieldLegend,
-	FieldSeparator,
-	FieldSet,
-	FieldTitle,
 } from "@repo/ui/components/field";
+import {
+	CustomField,
+	DateField,
+	SelectField,
+} from "@repo/ui/components/form-fields";
+import {
+	FieldRow,
+	FormSection,
+	FormSectionHeading,
+} from "@repo/ui/components/form-section";
 import { Input } from "@repo/ui/components/input";
 import {
 	InputGroup,
@@ -26,12 +29,10 @@ import {
 	InputGroupTextarea,
 } from "@repo/ui/components/input-group";
 import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@repo/ui/components/select";
+	AddItemButton,
+	ItemCard,
+	ItemCardHeader,
+} from "@repo/ui/components/item-list";
 import { Separator } from "@repo/ui/components/separator";
 import {
 	getUploadAccept,
@@ -48,7 +49,6 @@ import {
 	Loader2Icon,
 	PaperclipIcon,
 	PlusIcon,
-	TrashIcon,
 	XIcon,
 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
@@ -206,9 +206,11 @@ export function BookingPaymentsStep() {
 	return (
 		<div className="space-y-4">
 			<div className="flex items-center justify-between gap-3 flex-wrap">
-				<FieldSet className="gap-1">
-					<FieldLegend className="mb-0">Payment</FieldLegend>
-				</FieldSet>
+				<FormSectionHeading
+					title="Payment"
+					icon={BanknoteIcon}
+					className="flex-1 pb-0"
+				/>
 				<div className="flex gap-x-3 gap-y-1 text-sm text-right">
 					<div className="font-medium text-green-600 dark:text-green-400">
 						{formatCurrency(totalReceived)}
@@ -221,21 +223,20 @@ export function BookingPaymentsStep() {
 			</div>
 			<Card>
 				<CardContent>
-					<FieldSet>
-						<FieldGroup>
-							{/* Received sub-section */}
-							<Field orientation="responsive">
-								<div className="flex-1">
-									<FieldContent>
-										<FieldTitle className="flex items-center gap-2">
-											<BanknoteIcon className="h-4 w-4" />
-											Received
-										</FieldTitle>
-										<FieldDescription>
-											Payments already collected from the
-											client
-										</FieldDescription>
-									</FieldContent>
+					<div className="grid gap-7">
+						{/* Received sub-section */}
+						<FormSection>
+							<div className="flex flex-wrap items-start justify-between gap-3">
+								<div className="min-w-0 flex-1">
+									<FormSectionHeading
+										title="Received"
+										icon={BanknoteIcon}
+										className="pb-1"
+									/>
+									<FieldDescription className="text-13">
+										Payments already collected from the
+										client
+									</FieldDescription>
 								</div>
 								<Button
 									type="button"
@@ -246,7 +247,7 @@ export function BookingPaymentsStep() {
 									<PlusIcon className="mr-2 h-4 w-4" />
 									Add Payment
 								</Button>
-							</Field>
+							</div>
 							{paymentFields.length === 0 ? (
 								<div className="flex flex-col items-center gap-3 py-8 px-4 border border-dashed rounded-lg text-center">
 									<BanknoteIcon className="h-10 w-10 text-muted-foreground/40" />
@@ -266,7 +267,7 @@ export function BookingPaymentsStep() {
 									</Button>
 								</div>
 							) : (
-								<div className="space-y-3">
+								<div className="grid gap-3">
 									{paymentFields.map((payment, index) => (
 										<PaymentRow
 											key={payment.id}
@@ -276,33 +277,27 @@ export function BookingPaymentsStep() {
 											}
 										/>
 									))}
-									<Button
-										type="button"
-										variant="outline"
-										size="sm"
-										className="w-full justify-center border-dashed"
+									<AddItemButton
 										onClick={() => addNewPayment()}
 									>
-										<PlusIcon className="mr-2 h-4 w-4" />
 										Add another payment
-									</Button>
+									</AddItemButton>
 								</div>
 							)}
+						</FormSection>
 
-							<FieldSeparator />
-
-							{/* Scheduled sub-section */}
-							<Field orientation="responsive">
-								<div className="flex-1">
-									<FieldContent>
-										<FieldTitle className="flex items-center gap-2">
-											<CalendarIcon className="h-4 w-4" />
-											Scheduled
-										</FieldTitle>
-										<FieldDescription>
-											Upcoming payment milestones
-										</FieldDescription>
-									</FieldContent>
+						{/* Scheduled sub-section */}
+						<FormSection>
+							<div className="flex flex-wrap items-start justify-between gap-3">
+								<div className="min-w-0 flex-1">
+									<FormSectionHeading
+										title="Scheduled"
+										icon={CalendarIcon}
+										className="pb-1"
+									/>
+									<FieldDescription className="text-13">
+										Upcoming payment milestones
+									</FieldDescription>
 								</div>
 								<Button
 									type="button"
@@ -313,7 +308,7 @@ export function BookingPaymentsStep() {
 									<PlusIcon className="mr-2 h-4 w-4" />
 									Add Milestone
 								</Button>
-							</Field>
+							</div>
 							<div className="rounded-lg border bg-muted/20 p-3">
 								<div className="flex flex-wrap gap-2">
 									<Badge
@@ -370,7 +365,7 @@ export function BookingPaymentsStep() {
 									</div>
 								</div>
 							) : (
-								<div className="space-y-3">
+								<div className="grid gap-3">
 									{scheduleFields.map((schedule, index) => (
 										<ScheduleRow
 											key={schedule.id}
@@ -380,20 +375,15 @@ export function BookingPaymentsStep() {
 											}
 										/>
 									))}
-									<Button
-										type="button"
-										variant="outline"
-										size="sm"
-										className="w-full justify-center border-dashed"
+									<AddItemButton
 										onClick={() => addNewSchedule()}
 									>
-										<PlusIcon className="mr-2 h-4 w-4" />
 										Add another milestone
-									</Button>
+									</AddItemButton>
 								</div>
 							)}
-						</FieldGroup>
-					</FieldSet>
+						</FormSection>
+					</div>
 				</CardContent>
 			</Card>
 		</div>
@@ -524,272 +514,205 @@ function PaymentRow({ index, onRemove }: PaymentRowProps) {
 	};
 
 	return (
-		<div className="overflow-hidden rounded-lg border bg-muted/10">
-			{/* Header row */}
-			<div className="flex items-center justify-between gap-2 border-b bg-muted/20 px-4 py-3">
-				<div className="flex items-center gap-2">
-					<BanknoteIcon className="h-4 w-4 text-muted-foreground" />
-					<span className="text-sm font-medium">
-						Payment {index + 1}
-					</span>
-				</div>
+		<ItemCard>
+			<ItemCardHeader
+				title={`Payment ${index + 1}`}
+				onRemove={onRemove}
+				removeLabel="Remove payment"
+			/>
+
+			{/* Row 1: Amount, Method, Date */}
+			<FieldRow cols={3}>
+				{/* Amount */}
+				<CustomField
+					control={form.control}
+					name={`payments.${index}.amount`}
+					label="Amount"
+				>
+					{({ field, fieldState }) => (
+						<InputGroup>
+							<InputGroupAddon>
+								<InputGroupText>₹</InputGroupText>
+							</InputGroupAddon>
+							<InputGroupInput
+								{...field}
+								id={field.name}
+								size="sm"
+								placeholder="0.00"
+								aria-invalid={fieldState.invalid}
+								onChange={(e) => {
+									const value = e.target.value.replace(
+										/[^0-9.]/g,
+										"",
+									);
+									const parts = value.split(".");
+									if (parts.length > 2) {
+										return;
+									}
+									if (parts[1] && parts[1].length > 2) {
+										return;
+									}
+									field.onChange(value);
+								}}
+							/>
+						</InputGroup>
+					)}
+				</CustomField>
+
+				{/* Payment Method */}
+				<SelectField
+					control={form.control}
+					name={`payments.${index}.paymentMethod`}
+					label="Method"
+					placeholder="Select"
+					options={PAYMENT_METHOD_OPTIONS.map((method) => ({
+						value: method.value,
+						label: method.label,
+					}))}
+				/>
+
+				{/* Received Date */}
+				<DateField
+					control={form.control}
+					name={`payments.${index}.receivedDate`}
+					label="Date"
+				/>
+			</FieldRow>
+
+			{/* Collapsible Details Section */}
+			{isExpanded && (
+				<Field>
+					<div className="flex items-center justify-between">
+						<FieldLabel
+							variant="micro"
+							htmlFor={`payments.${index}.notes`}
+						>
+							Reference
+						</FieldLabel>
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							className="h-auto py-0 px-1 text-muted-foreground"
+							onClick={() => setIsExpanded(false)}
+						>
+							<ChevronUpIcon className="mr-1 h-3.5 w-3.5" />
+							Hide
+						</Button>
+					</div>
+					<InputGroup>
+						<Controller
+							name={`payments.${index}.notes`}
+							control={form.control}
+							render={({ field }) => (
+								<InputGroupTextarea
+									{...field}
+									id={`payments.${index}.notes`}
+									size="sm"
+									placeholder="Transaction ID, notes..."
+									rows={2}
+								/>
+							)}
+						/>
+						<InputGroupAddon align="block-end">
+							{/* Hidden file input */}
+							<input
+								ref={fileInputRef}
+								type="file"
+								className="hidden"
+								accept={PAYMENT_UPLOAD_ACCEPT}
+								onChange={(e) => {
+									const file = e.target.files?.[0];
+									if (file) {
+										handleFileUpload(file);
+									}
+									e.target.value = "";
+								}}
+							/>
+
+							{/* Attachment button or uploaded file display */}
+							{isUploading ? (
+								<InputGroupText>
+									<Loader2Icon className="h-4 w-4 animate-spin" />
+									<span className="text-xs">
+										Uploading...
+									</span>
+								</InputGroupText>
+							) : proofAttachment ? (
+								<>
+									<InputGroupText className="gap-1.5">
+										<FileTextIcon className="h-4 w-4 text-primary" />
+										<span
+											className="max-w-[150px] truncate text-xs"
+											title={proofAttachment.name}
+										>
+											{proofAttachment.name}
+										</span>
+										<span className="text-xs text-muted-foreground">
+											(
+											{formatFileSize(
+												proofAttachment.size,
+											)}
+											)
+										</span>
+									</InputGroupText>
+									<InputGroupButton
+										variant="ghost"
+										size="icon-xs"
+										onClick={handleFileRemove}
+										disabled={isDeleting}
+										className="text-destructive hover:text-destructive"
+									>
+										{isDeleting ? (
+											<Loader2Icon className="h-3.5 w-3.5 animate-spin" />
+										) : (
+											<XIcon className="h-3.5 w-3.5" />
+										)}
+										<span className="sr-only">
+											Remove proof
+										</span>
+									</InputGroupButton>
+								</>
+							) : (
+								<InputGroupButton
+									variant="ghost"
+									size="xs"
+									onClick={() =>
+										fileInputRef.current?.click()
+									}
+								>
+									<PaperclipIcon className="h-4 w-4" />
+									Attach Proof
+								</InputGroupButton>
+							)}
+
+							<Separator
+								orientation="vertical"
+								className="!h-4 ml-auto"
+							/>
+
+							<InputGroupText className="text-xs text-muted-foreground">
+								{PAYMENT_UPLOAD_HELPER_TEXT}
+							</InputGroupText>
+						</InputGroupAddon>
+					</InputGroup>
+				</Field>
+			)}
+
+			{/* Add Details button (when details hidden) */}
+			{!isExpanded && (
 				<Button
 					type="button"
 					variant="ghost"
-					size="icon"
-					className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-					onClick={onRemove}
+					size="sm"
+					className="w-fit text-muted-foreground"
+					onClick={() => setIsExpanded(true)}
 				>
-					<TrashIcon className="h-4 w-4" />
-					<span className="sr-only">Remove payment</span>
+					<ChevronDownIcon className="mr-1.5 h-3.5 w-3.5" />
+					Add reference
 				</Button>
-			</div>
-
-			{/* Content */}
-			<div className="p-4 space-y-3">
-				{/* Row 1: Amount, Method, Date */}
-				<div className="grid gap-3 grid-cols-2 md:grid-cols-3">
-					{/* Amount */}
-					<Controller
-						name={`payments.${index}.amount`}
-						control={form.control}
-						render={({ field, fieldState }) => (
-							<Field data-invalid={fieldState.invalid}>
-								<FieldLabel htmlFor={field.name}>
-									Amount
-								</FieldLabel>
-								<InputGroup>
-									<InputGroupAddon>
-										<InputGroupText>₹</InputGroupText>
-									</InputGroupAddon>
-									<InputGroupInput
-										{...field}
-										id={field.name}
-										placeholder="0.00"
-										aria-invalid={fieldState.invalid}
-										onChange={(e) => {
-											const value =
-												e.target.value.replace(
-													/[^0-9.]/g,
-													"",
-												);
-											const parts = value.split(".");
-											if (parts.length > 2) {
-												return;
-											}
-											if (
-												parts[1] &&
-												parts[1].length > 2
-											) {
-												return;
-											}
-											field.onChange(value);
-										}}
-									/>
-								</InputGroup>
-								{fieldState.invalid && (
-									<FieldError errors={[fieldState.error]} />
-								)}
-							</Field>
-						)}
-					/>
-
-					{/* Payment Method */}
-					<Controller
-						name={`payments.${index}.paymentMethod`}
-						control={form.control}
-						render={({ field, fieldState }) => (
-							<Field data-invalid={fieldState.invalid}>
-								<FieldLabel htmlFor={field.name}>
-									Method
-								</FieldLabel>
-								<Select
-									onValueChange={field.onChange}
-									value={field.value}
-								>
-									<SelectTrigger
-										id={field.name}
-										aria-invalid={fieldState.invalid}
-									>
-										<SelectValue placeholder="Select" />
-									</SelectTrigger>
-									<SelectContent>
-										{PAYMENT_METHOD_OPTIONS.map(
-											(method) => (
-												<SelectItem
-													key={method.value}
-													value={method.value}
-												>
-													{method.label}
-												</SelectItem>
-											),
-										)}
-									</SelectContent>
-								</Select>
-								{fieldState.invalid && (
-									<FieldError errors={[fieldState.error]} />
-								)}
-							</Field>
-						)}
-					/>
-
-					{/* Received Date */}
-					<Controller
-						name={`payments.${index}.receivedDate`}
-						control={form.control}
-						render={({ field, fieldState }) => (
-							<Field data-invalid={fieldState.invalid}>
-								<FieldLabel htmlFor={field.name}>
-									Date
-								</FieldLabel>
-								<DatePicker
-									value={field.value}
-									onValueChange={field.onChange}
-									id={field.name}
-									aria-invalid={fieldState.invalid}
-								/>
-								{fieldState.invalid && (
-									<FieldError errors={[fieldState.error]} />
-								)}
-							</Field>
-						)}
-					/>
-				</div>
-
-				{/* Collapsible Details Section */}
-				{isExpanded && (
-					<Field>
-						<div className="flex items-center justify-between">
-							<FieldLabel
-								htmlFor={`payments.${index}.notes`}
-								className="text-muted-foreground"
-							>
-								Reference
-							</FieldLabel>
-							<Button
-								type="button"
-								variant="ghost"
-								size="sm"
-								className="h-auto py-0 px-1 text-muted-foreground"
-								onClick={() => setIsExpanded(false)}
-							>
-								<ChevronUpIcon className="mr-1 h-3.5 w-3.5" />
-								Hide
-							</Button>
-						</div>
-						<InputGroup>
-							<Controller
-								name={`payments.${index}.notes`}
-								control={form.control}
-								render={({ field }) => (
-									<InputGroupTextarea
-										{...field}
-										id={`payments.${index}.notes`}
-										placeholder="Transaction ID, notes..."
-										rows={2}
-									/>
-								)}
-							/>
-							<InputGroupAddon align="block-end">
-								{/* Hidden file input */}
-								<input
-									ref={fileInputRef}
-									type="file"
-									className="hidden"
-									accept={PAYMENT_UPLOAD_ACCEPT}
-									onChange={(e) => {
-										const file = e.target.files?.[0];
-										if (file) {
-											handleFileUpload(file);
-										}
-										e.target.value = "";
-									}}
-								/>
-
-								{/* Attachment button or uploaded file display */}
-								{isUploading ? (
-									<InputGroupText>
-										<Loader2Icon className="h-4 w-4 animate-spin" />
-										<span className="text-xs">
-											Uploading...
-										</span>
-									</InputGroupText>
-								) : proofAttachment ? (
-									<>
-										<InputGroupText className="gap-1.5">
-											<FileTextIcon className="h-4 w-4 text-primary" />
-											<span
-												className="max-w-[150px] truncate text-xs"
-												title={proofAttachment.name}
-											>
-												{proofAttachment.name}
-											</span>
-											<span className="text-xs text-muted-foreground">
-												(
-												{formatFileSize(
-													proofAttachment.size,
-												)}
-												)
-											</span>
-										</InputGroupText>
-										<InputGroupButton
-											variant="ghost"
-											size="icon-xs"
-											onClick={handleFileRemove}
-											disabled={isDeleting}
-											className="text-destructive hover:text-destructive"
-										>
-											{isDeleting ? (
-												<Loader2Icon className="h-3.5 w-3.5 animate-spin" />
-											) : (
-												<XIcon className="h-3.5 w-3.5" />
-											)}
-											<span className="sr-only">
-												Remove proof
-											</span>
-										</InputGroupButton>
-									</>
-								) : (
-									<InputGroupButton
-										variant="ghost"
-										size="xs"
-										onClick={() =>
-											fileInputRef.current?.click()
-										}
-									>
-										<PaperclipIcon className="h-4 w-4" />
-										Attach Proof
-									</InputGroupButton>
-								)}
-
-								<Separator
-									orientation="vertical"
-									className="!h-4 ml-auto"
-								/>
-
-								<InputGroupText className="text-xs text-muted-foreground">
-									{PAYMENT_UPLOAD_HELPER_TEXT}
-								</InputGroupText>
-							</InputGroupAddon>
-						</InputGroup>
-					</Field>
-				)}
-
-				{/* Add Details button (when details hidden) */}
-				{!isExpanded && (
-					<Button
-						type="button"
-						variant="ghost"
-						size="sm"
-						className="w-fit text-muted-foreground"
-						onClick={() => setIsExpanded(true)}
-					>
-						<ChevronDownIcon className="mr-1.5 h-3.5 w-3.5" />
-						Add reference
-					</Button>
-				)}
-			</div>
-		</div>
+			)}
+		</ItemCard>
 	);
 }
 
@@ -808,186 +731,143 @@ function ScheduleRow({ index, onRemove }: ScheduleRowProps) {
 	const [isExpanded, setIsExpanded] = useState(Boolean(notesValue));
 
 	return (
-		<div className="overflow-hidden rounded-lg border bg-muted/10">
-			{/* Header row */}
-			<div className="flex items-center justify-between gap-2 border-b bg-muted/20 px-4 py-3">
-				<div className="flex items-center gap-2">
-					<CalendarIcon className="h-4 w-4 text-muted-foreground" />
-					<span className="text-sm font-medium">
-						Milestone {index + 1}
-					</span>
-				</div>
+		<ItemCard>
+			<ItemCardHeader
+				title={`Milestone ${index + 1}`}
+				onRemove={onRemove}
+				removeLabel="Remove milestone"
+			/>
+
+			{/* Row 1: Name, Amount, Due Date */}
+			<FieldRow cols={3}>
+				{/* Name */}
+				<CustomField
+					control={form.control}
+					name={`paymentSchedules.${index}.name`}
+					label="Payment Name"
+				>
+					{({ field, fieldState }) => (
+						<>
+							<Input
+								{...field}
+								id={field.name}
+								size="sm"
+								placeholder="e.g. Advance Payment"
+								list={`schedule-presets-${index}`}
+								autoComplete="off"
+								aria-invalid={fieldState.invalid}
+							/>
+							<datalist id={`schedule-presets-${index}`}>
+								{PAYMENT_SCHEDULE_PRESETS.map((preset) => (
+									<option
+										key={preset.value}
+										value={preset.label}
+									/>
+								))}
+							</datalist>
+						</>
+					)}
+				</CustomField>
+
+				{/* Amount */}
+				<CustomField
+					control={form.control}
+					name={`paymentSchedules.${index}.amount`}
+					label="Amount"
+				>
+					{({ field, fieldState }) => (
+						<InputGroup>
+							<InputGroupAddon>
+								<InputGroupText>₹</InputGroupText>
+							</InputGroupAddon>
+							<InputGroupInput
+								{...field}
+								id={field.name}
+								size="sm"
+								placeholder="0.00"
+								aria-invalid={fieldState.invalid}
+								onChange={(e) => {
+									const value = e.target.value.replace(
+										/[^0-9.]/g,
+										"",
+									);
+									const parts = value.split(".");
+									if (parts.length > 2) {
+										return;
+									}
+									if (parts[1] && parts[1].length > 2) {
+										return;
+									}
+									field.onChange(value);
+								}}
+							/>
+						</InputGroup>
+					)}
+				</CustomField>
+
+				{/* Due Date */}
+				<DateField
+					control={form.control}
+					name={`paymentSchedules.${index}.dueDate`}
+					label="Due Date"
+				/>
+			</FieldRow>
+
+			{/* Collapsible Notes Section */}
+			{isExpanded && (
+				<Controller
+					name={`paymentSchedules.${index}.notes`}
+					control={form.control}
+					render={({ field, fieldState }) => (
+						<Field data-invalid={fieldState.invalid}>
+							<div className="flex items-center justify-between">
+								<FieldLabel
+									variant="micro"
+									htmlFor={field.name}
+								>
+									Notes
+								</FieldLabel>
+								<Button
+									type="button"
+									variant="ghost"
+									size="sm"
+									className="h-auto py-0 px-1 text-muted-foreground"
+									onClick={() => setIsExpanded(false)}
+								>
+									<ChevronUpIcon className="mr-1 h-3.5 w-3.5" />
+									Hide
+								</Button>
+							</div>
+							<InputGroup>
+								<InputGroupTextarea
+									{...field}
+									id={field.name}
+									size="sm"
+									placeholder="Add notes about this milestone..."
+									rows={2}
+								/>
+							</InputGroup>
+							{fieldState.invalid && (
+								<FieldError errors={[fieldState.error]} />
+							)}
+						</Field>
+					)}
+				/>
+			)}
+
+			{/* Add Notes button (when notes hidden) */}
+			{!isExpanded && (
 				<Button
 					type="button"
 					variant="ghost"
-					size="icon"
-					className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-					onClick={onRemove}
+					size="sm"
+					className="w-fit text-muted-foreground"
+					onClick={() => setIsExpanded(true)}
 				>
-					<TrashIcon className="h-4 w-4" />
-					<span className="sr-only">Remove milestone</span>
+					<ChevronDownIcon className="mr-1.5 h-3.5 w-3.5" />
+					Add notes
 				</Button>
-			</div>
-
-			{/* Content */}
-			<div className="p-4 space-y-3">
-				{/* Row 1: Name, Amount, Due Date */}
-				<div className="grid gap-3 grid-cols-2 md:grid-cols-3">
-					{/* Name */}
-					<Controller
-						name={`paymentSchedules.${index}.name`}
-						control={form.control}
-						render={({ field, fieldState }) => (
-							<Field data-invalid={fieldState.invalid}>
-								<FieldLabel htmlFor={field.name}>
-									Payment Name
-								</FieldLabel>
-								<Input
-									{...field}
-									id={field.name}
-									placeholder="e.g. Advance Payment"
-									list={`schedule-presets-${index}`}
-									autoComplete="off"
-									aria-invalid={fieldState.invalid}
-								/>
-								<datalist id={`schedule-presets-${index}`}>
-									{PAYMENT_SCHEDULE_PRESETS.map((preset) => (
-										<option
-											key={preset.value}
-											value={preset.label}
-										/>
-									))}
-								</datalist>
-								{fieldState.invalid && (
-									<FieldError errors={[fieldState.error]} />
-								)}
-							</Field>
-						)}
-					/>
-
-					{/* Amount */}
-					<Controller
-						name={`paymentSchedules.${index}.amount`}
-						control={form.control}
-						render={({ field, fieldState }) => (
-							<Field data-invalid={fieldState.invalid}>
-								<FieldLabel htmlFor={field.name}>
-									Amount
-								</FieldLabel>
-								<InputGroup>
-									<InputGroupAddon>
-										<InputGroupText>₹</InputGroupText>
-									</InputGroupAddon>
-									<InputGroupInput
-										{...field}
-										id={field.name}
-										placeholder="0.00"
-										aria-invalid={fieldState.invalid}
-										onChange={(e) => {
-											const value =
-												e.target.value.replace(
-													/[^0-9.]/g,
-													"",
-												);
-											const parts = value.split(".");
-											if (parts.length > 2) {
-												return;
-											}
-											if (
-												parts[1] &&
-												parts[1].length > 2
-											) {
-												return;
-											}
-											field.onChange(value);
-										}}
-									/>
-								</InputGroup>
-								{fieldState.invalid && (
-									<FieldError errors={[fieldState.error]} />
-								)}
-							</Field>
-						)}
-					/>
-
-					{/* Due Date */}
-					<Controller
-						name={`paymentSchedules.${index}.dueDate`}
-						control={form.control}
-						render={({ field, fieldState }) => (
-							<Field data-invalid={fieldState.invalid}>
-								<FieldLabel htmlFor={field.name}>
-									Due Date
-								</FieldLabel>
-								<DatePicker
-									value={field.value}
-									onValueChange={field.onChange}
-									id={field.name}
-									aria-invalid={fieldState.invalid}
-								/>
-								{fieldState.invalid && (
-									<FieldError errors={[fieldState.error]} />
-								)}
-							</Field>
-						)}
-					/>
-				</div>
-
-				{/* Collapsible Notes Section */}
-				{isExpanded && (
-					<Controller
-						name={`paymentSchedules.${index}.notes`}
-						control={form.control}
-						render={({ field, fieldState }) => (
-							<Field data-invalid={fieldState.invalid}>
-								<div className="flex items-center justify-between">
-									<FieldLabel
-										htmlFor={field.name}
-										className="text-muted-foreground"
-									>
-										Notes
-									</FieldLabel>
-									<Button
-										type="button"
-										variant="ghost"
-										size="sm"
-										className="h-auto py-0 px-1 text-muted-foreground"
-										onClick={() => setIsExpanded(false)}
-									>
-										<ChevronUpIcon className="mr-1 h-3.5 w-3.5" />
-										Hide
-									</Button>
-								</div>
-								<InputGroup>
-									<InputGroupTextarea
-										{...field}
-										id={field.name}
-										placeholder="Add notes about this milestone..."
-										rows={2}
-									/>
-								</InputGroup>
-								{fieldState.invalid && (
-									<FieldError errors={[fieldState.error]} />
-								)}
-							</Field>
-						)}
-					/>
-				)}
-
-				{/* Add Notes button (when notes hidden) */}
-				{!isExpanded && (
-					<Button
-						type="button"
-						variant="ghost"
-						size="sm"
-						className="w-fit text-muted-foreground"
-						onClick={() => setIsExpanded(true)}
-					>
-						<ChevronDownIcon className="mr-1.5 h-3.5 w-3.5" />
-						Add notes
-					</Button>
-				)}
-			</div>
-		</div>
+			)}
+		</ItemCard>
 	);
 }

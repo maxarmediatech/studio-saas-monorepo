@@ -31,7 +31,7 @@ function ItemCardHeader({
 	onRemove,
 	removeLabel = "Remove item",
 	...props
-}: React.ComponentProps<"div"> & {
+}: Omit<React.ComponentProps<"div">, "title"> & {
 	title: React.ReactNode;
 	meta?: React.ReactNode;
 	onRemove?: () => void;
