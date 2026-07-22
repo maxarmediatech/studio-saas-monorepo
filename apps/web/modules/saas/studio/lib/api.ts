@@ -477,6 +477,9 @@ export const deliverablesMutations = {
 	assign: () => orpc.deliverables.assign.mutationOptions(),
 	unassign: () => orpc.deliverables.unassign.mutationOptions(),
 	convertToTask: () => orpc.deliverables.convertToTask.mutationOptions(),
+	linkTask: () => orpc.deliverables.linkTask.mutationOptions(),
+	unlinkTask: () => orpc.deliverables.unlinkTask.mutationOptions(),
+	setDelivery: () => orpc.deliverables.setDelivery.mutationOptions(),
 	updateAssignmentStatus: () =>
 		orpc.deliverables.updateAssignmentStatus.mutationOptions(),
 	submit: () => orpc.deliverables.submit.mutationOptions(),

@@ -26,7 +26,7 @@ import {
 import { Textarea } from "@repo/ui/components/textarea";
 import { useAllCrewOptions } from "@saas/studio/components/shared";
 import { useStudioCapabilities } from "@saas/studio/components/studio-capabilities-context";
-import { bookingsApi } from "@saas/studio/lib/api";
+import { bookingsApi, deliverablesApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { XIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo } from "react";
@@ -63,6 +63,7 @@ const taskFormSchema = z.object({
 	priority: z.string().max(50).optional().or(z.literal("")),
 	dueDate: z.string().optional().or(z.literal("")),
 	crewAssignments: z.array(crewAssignmentSchema).optional(),
+	deliverableIds: z.array(z.string().min(1)).optional(),
 });
 
 export type TaskFormValues = z.infer<typeof taskFormSchema>;
@@ -110,7 +111,8 @@ export function TaskForm({
 	isPending = false,
 	onScrollChange,
 }: TaskFormProps) {
-	const { bookingReadOrReference } = useStudioCapabilities();
+	const { bookingReadOrReference, deliverableUpdate, deliverableList } =
+		useStudioCapabilities();
 
 	// ========================================================================
 	// Data Fetching
@@ -138,8 +140,23 @@ export function TaskForm({
 			priority: "",
 			dueDate: "",
 			crewAssignments: [],
+			deliverableIds: [],
 		},
 	});
+
+	const selectedBookingId = form.watch("bookingId");
+	const canLinkDeliverables =
+		mode === "create" && deliverableUpdate && deliverableList;
+	const { data: deliverablesData, isLoading: deliverablesLoading } = useQuery(
+		{
+			...deliverablesApi.listMinimalOptions({
+				bookingId: selectedBookingId,
+				limit: 100,
+			}),
+			enabled: canLinkDeliverables && Boolean(selectedBookingId),
+		},
+	);
+	const deliverables = deliverablesData?.data ?? [];
 
 	// Reset form when defaultValues change (edit mode)
 	useEffect(() => {
@@ -157,6 +174,7 @@ export function TaskForm({
 				priority: defaultValues.priority ?? "",
 				dueDate: defaultValues.dueDate?.split("T")[0] ?? "",
 				crewAssignments: assignments,
+				deliverableIds: [],
 			});
 		}
 	}, [defaultValues, existingAssignments, form]);
@@ -191,6 +209,14 @@ export function TaskForm({
 				label: crew.name,
 			})),
 		[crews],
+	);
+	const deliverableOptions: ComboboxOption[] = useMemo(
+		() =>
+			deliverables.map((deliverable) => ({
+				value: deliverable.id,
+				label: deliverable.name,
+			})),
+		[deliverables],
 	);
 
 	// ========================================================================
@@ -233,7 +259,10 @@ export function TaskForm({
 									<Combobox
 										id={field.name}
 										value={field.value}
-										onValueChange={field.onChange}
+										onValueChange={(value) => {
+											field.onChange(value);
+											form.setValue("deliverableIds", []);
+										}}
 										options={bookingOptions}
 										placeholder={
 											bookingsLoading
@@ -255,6 +284,42 @@ export function TaskForm({
 								</Field>
 							)}
 						/>
+
+						{canLinkDeliverables ? (
+							<Controller
+								name="deliverableIds"
+								control={form.control}
+								render={({ field }) => (
+									<Field>
+										<FieldLabel>Deliverables</FieldLabel>
+										<MultiSelectCombobox
+											options={deliverableOptions}
+											value={field.value ?? []}
+											onValueChange={field.onChange}
+											placeholder={
+												deliverablesLoading
+													? "Loading deliverables..."
+													: "Link deliverables..."
+											}
+											searchPlaceholder="Search deliverables..."
+											emptyText={
+												selectedBookingId
+													? "No deliverables found"
+													: "Select a booking first"
+											}
+											disabled={
+												!selectedBookingId ||
+												deliverablesLoading
+											}
+										/>
+										<p className="text-xs text-muted-foreground">
+											Linked deliverables keep their own
+											status and assignments.
+										</p>
+									</Field>
+								)}
+							/>
+						) : null}
 
 						{/* Name */}
 						<Controller
@@ -281,6 +346,31 @@ export function TaskForm({
 							)}
 						/>
 
+						{/* Description */}
+						<Controller
+							name="description"
+							control={form.control}
+							render={({ field, fieldState }) => (
+								<Field data-invalid={fieldState.invalid}>
+									<FieldLabel htmlFor={field.name}>
+										Description
+									</FieldLabel>
+									<Textarea
+										{...field}
+										id={field.name}
+										placeholder="Enter task description"
+										className="resize-none"
+										rows={2}
+										aria-invalid={fieldState.invalid}
+									/>
+									{fieldState.invalid && (
+										<FieldError
+											errors={[fieldState.error]}
+										/>
+									)}
+								</Field>
+							)}
+						/>
 						{/* Status, Priority & Due Date */}
 						<div className="grid grid-cols-3 gap-4">
 							<Controller
@@ -470,32 +560,6 @@ export function TaskForm({
 									</Field>
 								);
 							}}
-						/>
-
-						{/* Description */}
-						<Controller
-							name="description"
-							control={form.control}
-							render={({ field, fieldState }) => (
-								<Field data-invalid={fieldState.invalid}>
-									<FieldLabel htmlFor={field.name}>
-										Description
-									</FieldLabel>
-									<Textarea
-										{...field}
-										id={field.name}
-										placeholder="Enter task description"
-										className="resize-none"
-										rows={2}
-										aria-invalid={fieldState.invalid}
-									/>
-									{fieldState.invalid && (
-										<FieldError
-											errors={[fieldState.error]}
-										/>
-									)}
-								</Field>
-							)}
 						/>
 					</FieldGroup>
 				</div>

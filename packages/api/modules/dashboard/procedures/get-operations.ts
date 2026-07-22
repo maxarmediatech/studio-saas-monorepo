@@ -138,7 +138,7 @@ export const getOperations = studioProtectedProcedure
 				and(
 					eq(tasks.organizationId, context.organizationId),
 					isNull(tasks.deletedAt),
-					sql`${tasks.workflowStatus} IN ('not_started', 'assigned', 'revision_requested')`,
+					sql`${tasks.workflowStatus} NOT IN ('approved')`,
 					sql`(
 						${tasks.dueDate} < ${todayStr}
 						OR (${tasks.dueDate} >= ${rangeStart} AND ${tasks.dueDate} <= ${rangeEnd})
@@ -204,7 +204,7 @@ export const getOperations = studioProtectedProcedure
 				and(
 					eq(deliverables.organizationId, context.organizationId),
 					isNull(deliverables.deletedAt),
-					sql`${deliverables.workflowStatus} IN ('not_started', 'assigned', 'revision_requested')`,
+					sql`${deliverables.workflowStatus} NOT IN ('approved', 'ready')`,
 					sql`(
 						${deliverables.dueDate} < ${todayStr}
 						OR (${deliverables.dueDate} >= ${rangeStart} AND ${deliverables.dueDate} <= ${rangeEnd})
@@ -284,7 +284,7 @@ export const getOperations = studioProtectedProcedure
 				and(
 					eq(tasks.organizationId, context.organizationId),
 					isNull(tasks.deletedAt),
-					sql`${tasks.workflowStatus} IN ('not_started', 'assigned', 'revision_requested')`,
+					sql`${tasks.workflowStatus} NOT IN ('approved')`,
 					sql`${tasks.dueDate} < ${todayStr}`,
 				),
 			);
@@ -296,7 +296,7 @@ export const getOperations = studioProtectedProcedure
 				and(
 					eq(deliverables.organizationId, context.organizationId),
 					isNull(deliverables.deletedAt),
-					sql`${deliverables.workflowStatus} IN ('not_started', 'assigned', 'revision_requested')`,
+					sql`${deliverables.workflowStatus} NOT IN ('approved', 'ready')`,
 					sql`${deliverables.dueDate} < ${todayStr}`,
 				),
 			);

@@ -6,6 +6,7 @@ import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
 import { formatMoney } from "@saas/shared/lib";
 import { ConvertToTaskDialog } from "@saas/studio/components/deliverables/ConvertToTaskDialog";
+import { DeliverableTaskLinks } from "@saas/studio/components/deliverables/DeliverableTaskLinks";
 import { SubmissionCard } from "@saas/studio/components/shared";
 import { useStudioCapabilities } from "@saas/studio/components/studio-capabilities-context";
 import { useDeliverableParams } from "@saas/studio/hooks/params";
@@ -95,6 +96,10 @@ function getWorkflowStatusBadge(status: WorkflowStatus) {
 					Assigned
 				</Badge>
 			);
+		case "in_progress":
+			return <Badge variant="secondary">In progress</Badge>;
+		case "blocked":
+			return <Badge variant="destructive">Blocked</Badge>;
 		case "submitted":
 			return (
 				<Badge className="bg-purple-500/10 text-purple-600 border-purple-500/20">
@@ -113,6 +118,8 @@ function getWorkflowStatusBadge(status: WorkflowStatus) {
 					Revision Requested
 				</Badge>
 			);
+		case "ready":
+			return <Badge variant="secondary">Ready for delivery</Badge>;
 		case "approved":
 			return (
 				<Badge className="bg-green-500/10 text-green-600 border-green-500/20">
@@ -129,8 +136,14 @@ export default function DeliverableDetailPage() {
 		organizationSlug: string;
 		deliverableId: string;
 	}>();
-	const { bookingReadOrList, deliverableReadOrList, taskReadOrList } =
-		useStudioCapabilities();
+	const {
+		bookingReadOrList,
+		deliverableUpdate,
+		deliverableReadOrList,
+		taskCreate,
+		taskRead,
+		taskListOrReference,
+	} = useStudioCapabilities();
 	const { openEdit } = useDeliverableParams();
 	const [convertDialogOpen, setConvertDialogOpen] = useState(false);
 
@@ -200,11 +213,10 @@ export default function DeliverableDetailPage() {
 
 	const booking = deliverable.booking;
 	const convertedTaskId = getConvertedTaskId(deliverable.metadata);
-	const taskHref = convertedTaskId
-		? taskReadOrList
+	const taskHref =
+		convertedTaskId && taskRead
 			? `/app/${params.organizationSlug}/tasks/${convertedTaskId}`
-			: null
-		: null;
+			: null;
 
 	return (
 		<div className="mx-auto w-full max-w-[800px] py-6 px-4">
@@ -241,7 +253,9 @@ export default function DeliverableDetailPage() {
 								View Task
 							</Link>
 						</Button>
-					) : (
+					) : deliverable.canConvertToTask &&
+						deliverableUpdate &&
+						taskCreate ? (
 						<Button
 							variant="outline"
 							size="sm"
@@ -250,15 +264,17 @@ export default function DeliverableDetailPage() {
 							<ListTodoIcon className="mr-1 size-4" />
 							Convert to Task
 						</Button>
-					)}
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={() => openEdit(deliverable.id)}
-					>
-						<PencilIcon className="mr-1 size-4" />
-						Edit
-					</Button>
+					) : null}
+					{deliverableUpdate ? (
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => openEdit(deliverable.id)}
+						>
+							<PencilIcon className="mr-1 size-4" />
+							Edit
+						</Button>
+					) : null}
 				</div>
 			</div>
 
@@ -337,6 +353,16 @@ export default function DeliverableDetailPage() {
 						)}
 					</div>
 				)}
+				{deliverable.completedAt && !deliverable.deliveredAt && (
+					<div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+						<CheckCircle2Icon className="size-4" />
+						Internally complete on{" "}
+						{format(
+							new Date(deliverable.completedAt),
+							"MMM d, yyyy",
+						)}
+					</div>
+				)}
 
 				{deliverable.description && (
 					<p className="mt-6 text-foreground whitespace-pre-wrap">
@@ -362,6 +388,13 @@ export default function DeliverableDetailPage() {
 										className="size-4"
 									/>
 									<span>{assignment.crew.name}</span>
+									<span className="text-muted-foreground">
+										·{" "}
+										{assignment.progressStatus.replaceAll(
+											"_",
+											" ",
+										)}
+									</span>
 									{assignment.isLead && (
 										<span className="text-xs text-primary">
 											Lead
@@ -372,6 +405,21 @@ export default function DeliverableDetailPage() {
 						</div>
 					)}
 			</div>
+
+			<DeliverableTaskLinks
+				deliverableId={deliverable.id}
+				bookingId={deliverable.bookingId}
+				organizationSlug={params.organizationSlug}
+				trackingMode={deliverable.trackingMode}
+				status={deliverable.status}
+				completedAt={deliverable.completedAt}
+				deliveredAt={deliverable.deliveredAt}
+				taskLinks={deliverable.taskLinks}
+				canManage={deliverableUpdate}
+				canLinkTasks={
+					deliverableUpdate && taskRead && taskListOrReference
+				}
+			/>
 
 			<div className="mt-8 border-t pt-6">
 				<h2 className="font-semibold">Activity</h2>
@@ -426,6 +474,12 @@ export default function DeliverableDetailPage() {
 													{assignment.crew.name}
 												</span>
 												<span>assigned</span>
+												<Badge variant="outline">
+													{assignment.progressStatus.replaceAll(
+														"_",
+														" ",
+													)}
+												</Badge>
 												{assignment.isLead && (
 													<Badge
 														variant="outline"

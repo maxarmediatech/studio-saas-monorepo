@@ -112,7 +112,7 @@ export const getQuickActions = studioProtectedProcedure
 				and(
 					eq(tasks.organizationId, context.organizationId),
 					isNull(tasks.deletedAt),
-					sql`${tasks.workflowStatus} IN ('not_started', 'assigned', 'revision_requested')`,
+					sql`${tasks.workflowStatus} NOT IN ('approved')`,
 					sql`${tasks.dueDate} < ${todayStr}`,
 					isNull(bookings.deletedAt),
 				),
@@ -149,7 +149,7 @@ export const getQuickActions = studioProtectedProcedure
 				and(
 					eq(deliverables.organizationId, context.organizationId),
 					isNull(deliverables.deletedAt),
-					sql`${deliverables.workflowStatus} IN ('not_started', 'assigned', 'revision_requested')`,
+					sql`${deliverables.workflowStatus} NOT IN ('approved', 'ready')`,
 					sql`${deliverables.dueDate} < ${todayStr}`,
 					isNull(bookings.deletedAt),
 				),
@@ -286,7 +286,9 @@ export const getQuickActions = studioProtectedProcedure
 			const priorityOrder = { high: 0, medium: 1, low: 2 };
 			const priorityDiff =
 				priorityOrder[a.priority] - priorityOrder[b.priority];
-			if (priorityDiff !== 0) return priorityDiff;
+			if (priorityDiff !== 0) {
+				return priorityDiff;
+			}
 
 			// Then by due date (nulls last)
 			if (a.dueDate && b.dueDate) {
@@ -295,8 +297,12 @@ export const getQuickActions = studioProtectedProcedure
 					new Date(b.dueDate).getTime()
 				);
 			}
-			if (a.dueDate) return -1;
-			if (b.dueDate) return 1;
+			if (a.dueDate) {
+				return -1;
+			}
+			if (b.dueDate) {
+				return 1;
+			}
 
 			// Finally by creation date
 			return (

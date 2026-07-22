@@ -26,9 +26,12 @@ import {
 	teams,
 } from "./core";
 import {
+	assignmentProgressStatusEnum,
 	billToEnum,
 	bookingPhaseEnum,
 	configTypeEnum,
+	deliverableTaskLinkKindEnum,
+	deliverableTrackingModeEnum,
 	invoiceStatusEnum,
 	lineItemTypeEnum,
 	paymentMethodEnum,
@@ -571,6 +574,11 @@ export const tasks = pgTable(
 			table.workflowStatus,
 		),
 		index("tasks_due_date_idx").on(table.dueDate),
+		uniqueIndex("tasks_org_booking_id_idx").on(
+			table.organizationId,
+			table.bookingId,
+			table.id,
+		),
 	],
 );
 
@@ -586,12 +594,21 @@ export const taskAssignments = pgTable(
 		crewId: varchar("crew_id", { length: 255 })
 			.notNull()
 			.references(() => crews.id, { onDelete: "cascade" }),
+		progressStatus: assignmentProgressStatusEnum("progress_status")
+			.default("assigned")
+			.notNull(),
+		progressNote: text("progress_note"),
+		startedAt: timestamp("started_at", { withTimezone: true }),
+		blockedAt: timestamp("blocked_at", { withTimezone: true }),
 
 		assignedBy: varchar("assigned_by", { length: 255 }).references(
 			() => users.id,
 			{ onDelete: "set null" },
 		),
 		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
 			.defaultNow()
 			.notNull(),
 	},
@@ -639,8 +656,12 @@ export const deliverables = pgTable(
 		workflowStatus: workflowStatusEnum("workflow_status")
 			.default("not_started")
 			.notNull(),
+		trackingMode: deliverableTrackingModeEnum("tracking_mode")
+			.default("direct")
+			.notNull(),
 
 		dueDate: date("due_date"),
+		completedAt: timestamp("completed_at", { withTimezone: true }),
 		deliveredAt: timestamp("delivered_at", { withTimezone: true }),
 
 		metadata: jsonb("metadata"),
@@ -678,6 +699,11 @@ export const deliverables = pgTable(
 			table.workflowStatus,
 		),
 		index("deliverables_due_date_idx").on(table.dueDate),
+		uniqueIndex("deliverables_org_booking_id_idx").on(
+			table.organizationId,
+			table.bookingId,
+			table.id,
+		),
 	],
 );
 
@@ -693,6 +719,12 @@ export const deliverableAssignments = pgTable(
 		crewId: varchar("crew_id", { length: 255 })
 			.notNull()
 			.references(() => crews.id, { onDelete: "cascade" }),
+		progressStatus: assignmentProgressStatusEnum("progress_status")
+			.default("assigned")
+			.notNull(),
+		progressNote: text("progress_note"),
+		startedAt: timestamp("started_at", { withTimezone: true }),
+		blockedAt: timestamp("blocked_at", { withTimezone: true }),
 
 		isLead: boolean("is_lead").default(false).notNull(),
 
@@ -703,6 +735,9 @@ export const deliverableAssignments = pgTable(
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.defaultNow()
 			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
 	},
 	(table) => [
 		uniqueIndex("deliverable_assignments_del_crew_idx").on(
@@ -710,6 +745,55 @@ export const deliverableAssignments = pgTable(
 			table.crewId,
 		),
 		index("deliverable_assignments_crew_idx").on(table.crewId),
+	],
+);
+
+export const deliverableTaskLinks = pgTable(
+	"deliverable_task_links",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 })
+			.notNull()
+			.references(() => organizations.id, { onDelete: "cascade" }),
+		bookingId: varchar("booking_id", { length: 255 }).notNull(),
+		deliverableId: varchar("deliverable_id", { length: 255 }).notNull(),
+		taskId: varchar("task_id", { length: 255 }).notNull(),
+		kind: deliverableTaskLinkKindEnum("kind").default("required").notNull(),
+		createdBy: varchar("created_by", { length: 255 }).references(
+			() => users.id,
+			{ onDelete: "set null" },
+		),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		uniqueIndex("deliverable_task_links_pair_idx").on(
+			table.deliverableId,
+			table.taskId,
+		),
+		index("deliverable_task_links_task_idx").on(table.taskId),
+		index("deliverable_task_links_deliverable_idx").on(table.deliverableId),
+		foreignKey({
+			columns: [
+				table.organizationId,
+				table.bookingId,
+				table.deliverableId,
+			],
+			foreignColumns: [
+				deliverables.organizationId,
+				deliverables.bookingId,
+				deliverables.id,
+			],
+			name: "deliverable_task_links_deliverable_scope_fk",
+		}).onDelete("cascade"),
+		foreignKey({
+			columns: [table.organizationId, table.bookingId, table.taskId],
+			foreignColumns: [tasks.organizationId, tasks.bookingId, tasks.id],
+			name: "deliverable_task_links_task_scope_fk",
+		}).onDelete("cascade"),
 	],
 );
 
@@ -2013,6 +2097,7 @@ export const taskRelations = relations(tasks, ({ one, many }) => ({
 		references: [bookings.id],
 	}),
 	assignments: many(taskAssignments),
+	deliverableLinks: many(deliverableTaskLinks),
 	submissions: many(assignmentSubmissions),
 	createdByUser: one(users, {
 		fields: [tasks.createdBy],
@@ -2065,6 +2150,7 @@ export const deliverableRelations = relations(
 			references: [bookings.id],
 		}),
 		assignments: many(deliverableAssignments),
+		taskLinks: many(deliverableTaskLinks),
 		submissions: many(assignmentSubmissions),
 		createdByUser: one(users, {
 			fields: [deliverables.createdBy],
@@ -2097,6 +2183,24 @@ export const deliverableAssignmentRelations = relations(
 		}),
 		assignedByUser: one(users, {
 			fields: [deliverableAssignments.assignedBy],
+			references: [users.id],
+		}),
+	}),
+);
+
+export const deliverableTaskLinkRelations = relations(
+	deliverableTaskLinks,
+	({ one }) => ({
+		deliverable: one(deliverables, {
+			fields: [deliverableTaskLinks.deliverableId],
+			references: [deliverables.id],
+		}),
+		task: one(tasks, {
+			fields: [deliverableTaskLinks.taskId],
+			references: [tasks.id],
+		}),
+		createdByUser: one(users, {
+			fields: [deliverableTaskLinks.createdBy],
 			references: [users.id],
 		}),
 	}),
@@ -2597,6 +2701,9 @@ export type NewDeliverable = typeof deliverables.$inferInsert;
 export type DeliverableAssignment = typeof deliverableAssignments.$inferSelect;
 export type NewDeliverableAssignment =
 	typeof deliverableAssignments.$inferInsert;
+
+export type DeliverableTaskLink = typeof deliverableTaskLinks.$inferSelect;
+export type NewDeliverableTaskLink = typeof deliverableTaskLinks.$inferInsert;
 
 export type AssignmentSubmission = typeof assignmentSubmissions.$inferSelect;
 export type NewAssignmentSubmission = typeof assignmentSubmissions.$inferInsert;

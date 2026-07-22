@@ -25,6 +25,7 @@ import { Input } from "@repo/ui/components/input";
 import {
 	Select,
 	SelectContent,
+	SelectGroup,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
@@ -45,17 +46,29 @@ import { useFieldArray, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
-const submissionSchema = z.object({
-	status: z.enum(["ready_for_review", "blocked"]),
-	submissionNote: z.string().max(5000).optional(),
-	submissionLinks: z
-		.array(
-			z.object({
-				value: z.union([z.string().url(), z.literal("")]).optional(),
-			}),
-		)
-		.optional(),
-});
+const submissionSchema = z
+	.object({
+		status: z.enum(["in_progress", "ready_for_review", "blocked"]),
+		submissionNote: z.string().max(5000).optional(),
+		submissionLinks: z
+			.array(
+				z.object({
+					value: z
+						.union([z.string().url(), z.literal("")])
+						.optional(),
+				}),
+			)
+			.optional(),
+	})
+	.superRefine((input, context) => {
+		if (input.status === "blocked" && !input.submissionNote?.trim()) {
+			context.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ["submissionNote"],
+				message: "Explain what is blocking this assignment",
+			});
+		}
+	});
 
 type SubmissionFormValues = z.infer<typeof submissionSchema>;
 
@@ -164,18 +177,18 @@ export function SubmitForReviewDialog({
 				throw new Error("No submission target selected");
 			}
 
-			if (values.status === "blocked") {
+			if (values.status !== "ready_for_review") {
 				const note = values.submissionNote?.trim() || undefined;
 				if (item.entityType === "task") {
 					return orpcClient.tasks.updateAssignmentStatus({
 						id: item.entityId,
-						status: "blocked",
+						status: values.status,
 						note,
 					});
 				}
 				return orpcClient.deliverables.updateAssignmentStatus({
 					id: item.entityId,
-					status: "blocked",
+					status: values.status,
 					note,
 				});
 			}
@@ -206,7 +219,7 @@ export function SubmitForReviewDialog({
 			});
 		},
 		onSuccess: (_data, variables) => {
-			if (variables.status === "blocked") {
+			if (variables.status !== "ready_for_review") {
 				toast.success("Status updated");
 			} else {
 				toast.success("Submission sent for review");
@@ -384,12 +397,17 @@ export function SubmitForReviewDialog({
 											</SelectTrigger>
 										</FormControl>
 										<SelectContent>
-											<SelectItem value="ready_for_review">
-												Ready for review
-											</SelectItem>
-											<SelectItem value="blocked">
-												Blocked
-											</SelectItem>
+											<SelectGroup>
+												<SelectItem value="in_progress">
+													In progress
+												</SelectItem>
+												<SelectItem value="ready_for_review">
+													Ready for review
+												</SelectItem>
+												<SelectItem value="blocked">
+													Blocked
+												</SelectItem>
+											</SelectGroup>
 										</SelectContent>
 									</Select>
 									<FormMessage />
@@ -405,14 +423,19 @@ export function SubmitForReviewDialog({
 									<FormLabel>
 										{isReadyForReview
 											? "Submission note"
-											: "Blocker details"}
+											: selectedStatus === "blocked"
+												? "Blocker details"
+												: "Progress note"}
 									</FormLabel>
 									<FormControl>
 										<Textarea
 											placeholder={
 												isReadyForReview
 													? "Share context or a link to proof of work..."
-													: "Explain what is blocking this assignment..."
+													: selectedStatus ===
+															"blocked"
+														? "Explain what is blocking this assignment..."
+														: "Share a short progress update..."
 											}
 											className="min-h-[120px]"
 											{...field}
