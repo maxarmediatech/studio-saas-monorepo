@@ -133,6 +133,12 @@ const checks: ValidationCheck[] = [
 			(SELECT count(*) FROM wa_media WHERE thumbnail_url IS NOT NULL AND thumbnail_url NOT LIKE 'https://example.invalid/%') AS count`,
 	},
 	{
+		name: "unsanitized assignment progress notes",
+		query: `SELECT
+			(SELECT count(*) FROM task_assignments WHERE progress_note IS NOT NULL AND progress_note <> 'Sanitized assignment progress note') +
+			(SELECT count(*) FROM deliverable_assignments WHERE progress_note IS NOT NULL AND progress_note <> 'Sanitized assignment progress note') AS count`,
+	},
+	{
 		name: "non-structural or invalid task-deliverable metadata",
 		query: `SELECT
 			(SELECT count(*) FROM tasks
