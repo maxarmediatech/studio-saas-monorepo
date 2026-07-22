@@ -2,17 +2,18 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@repo/ui/components/button";
-import { DatePicker } from "@repo/ui/components/date-picker";
+import { FieldGroup } from "@repo/ui/components/field";
 import {
-	Field,
-	FieldError,
-	FieldGroup,
-	FieldLabel,
-} from "@repo/ui/components/field";
+	CustomField,
+	DateField,
+	TextareaField,
+} from "@repo/ui/components/form-fields";
 import {
-	InputGroup,
-	InputGroupTextarea,
-} from "@repo/ui/components/input-group";
+	FieldRow,
+	FormSection,
+	FormSectionHeading,
+} from "@repo/ui/components/form-section";
+import { RadioGroup, RadioGroupItem } from "@repo/ui/components/radio-group";
 import { ScrollArea } from "@repo/ui/components/scroll-area";
 import {
 	Sheet,
@@ -21,21 +22,15 @@ import {
 	SheetTitle,
 } from "@repo/ui/components/sheet";
 import { Skeleton } from "@repo/ui/components/skeleton";
-import {
-	RadioGroup,
-	RadioGroupItem,
-} from "@repo/ui/components/radio-group";
 import { cn } from "@repo/ui/lib/utils";
-import { useInvoiceGenerateParams } from "@saas/studio/hooks/params/use-invoice-generate-params";
-import {
-	invoicesMutations,
-	studioPaymentsApi,
-} from "@saas/studio/lib/api";
 import { formatMoney } from "@saas/shared/lib";
+import { useInvoiceGenerateParams } from "@saas/studio/hooks/params/use-invoice-generate-params";
+import { invoicesMutations, studioPaymentsApi } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { FileText, ScrollText } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { FormActions } from "../../ui/FormActions";
@@ -139,15 +134,13 @@ export function InvoiceGenerateSheet() {
 		});
 	};
 
-	const isSubmitting = form.formState.isSubmitting || createMutation.isPending;
+	const isSubmitting =
+		form.formState.isSubmitting || createMutation.isPending;
 
-	const handleScroll = useCallback(
-		(event: React.UIEvent<HTMLDivElement>) => {
-			const target = event.target as HTMLDivElement;
-			setIsScrolled(target.scrollTop > 0);
-		},
-		[],
-	);
+	const handleScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
+		const target = event.target as HTMLDivElement;
+		setIsScrolled(target.scrollTop > 0);
+	}, []);
 
 	return (
 		<Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
@@ -202,93 +195,31 @@ export function InvoiceGenerateSheet() {
 							>
 								<div className="px-4 py-4">
 									<FieldGroup>
-										<Controller
-											name="issueDate"
-											control={form.control}
-											render={({
-												field,
-												fieldState,
-											}) => (
-												<Field
-													data-invalid={
-														fieldState.invalid
-													}
-												>
-													<FieldLabel
-														htmlFor={field.name}
-													>
-														Issue Date *
-													</FieldLabel>
-													<DatePicker
-														value={field.value}
-														onValueChange={
-															field.onChange
-														}
-														onBlur={field.onBlur}
-														id={field.name}
-														aria-invalid={
-															fieldState.invalid
-														}
-													/>
-													{fieldState.invalid && (
-														<FieldError
-															errors={[
-																fieldState.error,
-															]}
-														/>
-													)}
-												</Field>
-											)}
-										/>
-
-										<Controller
-											name="dueDate"
-											control={form.control}
-											render={({
-												field,
-												fieldState,
-											}) => (
-												<Field
-													data-invalid={
-														fieldState.invalid
-													}
-												>
-													<FieldLabel
-														htmlFor={field.name}
-													>
-														Due Date
-													</FieldLabel>
-													<DatePicker
-														value={field.value}
-														onValueChange={
-															field.onChange
-														}
-														onBlur={field.onBlur}
-														id={field.name}
-														aria-invalid={
-															fieldState.invalid
-														}
-														placeholder="Not set"
-													/>
-													{fieldState.invalid && (
-														<FieldError
-															errors={[
-																fieldState.error,
-															]}
-														/>
-													)}
-												</Field>
-											)}
-										/>
-
-										<Controller
-											name="taxType"
-											control={form.control}
-											render={({ field }) => (
-												<Field>
-													<FieldLabel>
-														GST Type
-													</FieldLabel>
+										<FormSection>
+											<FormSectionHeading
+												icon={FileText}
+												title="Invoice Details"
+											/>
+											<FieldRow>
+												<DateField
+													control={form.control}
+													name="issueDate"
+													label="Issue Date"
+													required
+												/>
+												<DateField
+													control={form.control}
+													name="dueDate"
+													label="Due Date"
+													placeholder="Not set"
+												/>
+											</FieldRow>
+											<CustomField
+												control={form.control}
+												name="taxType"
+												label="GST Type"
+											>
+												{({ field }) => (
 													<RadioGroup
 														value={field.value}
 														onValueChange={
@@ -298,11 +229,11 @@ export function InvoiceGenerateSheet() {
 													>
 														{taxTypeOptions.map(
 															(option) => (
-															<label
-																key={
-																	option.value
-																}
-																htmlFor={`invoice-generate-tax-${option.value}`}
+																<label
+																	key={
+																		option.value
+																	}
+																	htmlFor={`invoice-generate-tax-${option.value}`}
 																	className={cn(
 																		"flex cursor-pointer flex-col items-center gap-1 rounded-md border p-3 text-center transition-colors hover:bg-muted/50",
 																		field.value ===
@@ -310,8 +241,8 @@ export function InvoiceGenerateSheet() {
 																			"border-primary bg-primary/5",
 																	)}
 																>
-																<RadioGroupItem
-																	id={`invoice-generate-tax-${option.value}`}
+																	<RadioGroupItem
+																		id={`invoice-generate-tax-${option.value}`}
 																		value={
 																			option.value
 																		}
@@ -322,7 +253,7 @@ export function InvoiceGenerateSheet() {
 																			option.label
 																		}
 																	</span>
-																	<span className="text-[11px] text-muted-foreground">
+																	<span className="text-11 text-muted-foreground">
 																		{
 																			option.description
 																		}
@@ -331,87 +262,30 @@ export function InvoiceGenerateSheet() {
 															),
 														)}
 													</RadioGroup>
-												</Field>
-											)}
-										/>
+												)}
+											</CustomField>
+										</FormSection>
 
-										<Controller
-											name="notes"
-											control={form.control}
-											render={({
-												field,
-												fieldState,
-											}) => (
-												<Field
-													data-invalid={
-														fieldState.invalid
-													}
-												>
-													<FieldLabel
-														htmlFor={field.name}
-													>
-														Notes
-													</FieldLabel>
-													<InputGroup>
-														<InputGroupTextarea
-															{...field}
-															id={field.name}
-															placeholder="Add any notes for the client..."
-															rows={3}
-															aria-invalid={
-																fieldState.invalid
-															}
-														/>
-													</InputGroup>
-													{fieldState.invalid && (
-														<FieldError
-															errors={[
-																fieldState.error,
-															]}
-														/>
-													)}
-												</Field>
-											)}
-										/>
-
-										<Controller
-											name="terms"
-											control={form.control}
-											render={({
-												field,
-												fieldState,
-											}) => (
-												<Field
-													data-invalid={
-														fieldState.invalid
-													}
-												>
-													<FieldLabel
-														htmlFor={field.name}
-													>
-														Terms
-													</FieldLabel>
-													<InputGroup>
-														<InputGroupTextarea
-															{...field}
-															id={field.name}
-															placeholder="Payment terms and conditions..."
-															rows={3}
-															aria-invalid={
-																fieldState.invalid
-															}
-														/>
-													</InputGroup>
-													{fieldState.invalid && (
-														<FieldError
-															errors={[
-																fieldState.error,
-															]}
-														/>
-													)}
-												</Field>
-											)}
-										/>
+										<FormSection>
+											<FormSectionHeading
+												icon={ScrollText}
+												title="Notes & Terms"
+											/>
+											<TextareaField
+												control={form.control}
+												name="notes"
+												label="Notes"
+												placeholder="Add any notes for the client..."
+												rows={3}
+											/>
+											<TextareaField
+												control={form.control}
+												name="terms"
+												label="Terms"
+												placeholder="Payment terms and conditions..."
+												rows={3}
+											/>
+										</FormSection>
 									</FieldGroup>
 								</div>
 							</ScrollArea>
