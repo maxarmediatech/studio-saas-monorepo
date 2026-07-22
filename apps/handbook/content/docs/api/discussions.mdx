@@ -58,22 +58,25 @@ Link entity types:
 
 ## API Operations
 
-All discussion procedures use active organization scope.
+All discussion procedure inputs require `organizationSlug`. The server resolves that slug to an
+organization, verifies the current user's membership, and scopes database queries and permission
+checks to that route organization. Discussion procedures do not use the session's active
+organization for request scope, so different browser tabs can safely use different studios.
 
 | Operation | Method/path | Input schema | Permission/guard | Notes |
 | --- | --- | --- | --- | --- |
 | `discussions.createChannel` | `POST /discussions/channels` | `createChannelInputSchema` | `channel:create` | Creates channel and adds creator as member. |
-| `discussions.listChannels` | `GET /discussions/channels` | `listChannelsInputSchema` | protected studio context | Lists channels user can access. |
+| `discussions.listChannels` | `GET /discussions/channels` | `listChannelsInputSchema` | route organization membership | Lists channels user can access. |
 | `discussions.getChannel` | `GET /discussions/channels/{channelId}` | `getChannelInputSchema` | channel access helper | Returns one active channel. |
 | `discussions.getChannelBySlug` | `GET /discussions/channels/by-slug/{slug}` | `getChannelBySlugInputSchema` | channel access helper | Slug lookup for routes. |
 | `discussions.updateChannel` | `PUT /discussions/channels/{channelId}` | `updateChannelInputSchema` | `channel:update` | Updates name/description/archive flag. |
 | `discussions.deleteChannel` | `DELETE /discussions/channels/{channelId}` | `deleteChannelInputSchema` | `channel:delete` | Soft delete. |
 | `discussions.addChannelMember` | `POST /discussions/channels/{channelId}/members` | `addChannelMemberInputSchema` | `channel:update` | Adds membership, idempotent by DB conflict behavior. |
 | `discussions.removeChannelMember` | `DELETE /discussions/channels/{channelId}/members/{userId}` | `removeChannelMemberInputSchema` | `channel:update` | Physically removes membership. |
-| `discussions.toggleSubscription` | `PUT /discussions/channels/{channelId}/subscription` | `toggleSubscriptionInputSchema` | protected studio context | Updates or creates membership subscription state. |
+| `discussions.toggleSubscription` | `PUT /discussions/channels/{channelId}/subscription` | `toggleSubscriptionInputSchema` | route organization membership | Updates or creates membership subscription state. |
 | `discussions.createDiscussion` | `POST /discussions/posts` | `createDiscussionInputSchema` | `discussion:create` | Creates post and optional links. |
-| `discussions.listDiscussions` | `GET /discussions/posts` | `listDiscussionsInputSchema` | protected studio context | Cursor-paged channel post list. |
-| `discussions.getDiscussion` | `GET /discussions/posts/{discussionId}` | `getDiscussionInputSchema` | protected studio context | Detail with author/channel/links. |
+| `discussions.listDiscussions` | `GET /discussions/posts` | `listDiscussionsInputSchema` | route organization membership | Cursor-paged channel post list. |
+| `discussions.getDiscussion` | `GET /discussions/posts/{discussionId}` | `getDiscussionInputSchema` | route organization membership | Detail with author/channel/links. |
 | `discussions.updateDiscussion` | `PUT /discussions/posts/{discussionId}` | `updateDiscussionInputSchema` | `discussion:update` | Updates title/content. |
 | `discussions.deleteDiscussion` | `DELETE /discussions/posts/{discussionId}` | `deleteDiscussionInputSchema` | `discussion:delete` | Soft delete. |
 | `discussions.resolveDiscussion` | `POST /discussions/posts/{discussionId}/resolve` | `resolveDiscussionInputSchema` | `discussion:update` | Open to resolved with resolution. |
@@ -81,11 +84,18 @@ All discussion procedures use active organization scope.
 | `discussions.addDiscussionLink` | `POST /discussions/posts/{discussionId}/links` | `addDiscussionLinkInputSchema` | `discussion:update` plus entity permission | Adds validated entity link. |
 | `discussions.removeDiscussionLink` | `DELETE /discussions/links/{linkId}` | `removeDiscussionLinkInputSchema` | `discussion:update` | Physically deletes link. |
 | `discussions.createMessage` | `POST /discussions/messages` | `createMessageInputSchema` | `conversation:create` | Creates message or reply. |
-| `discussions.listMessages` | `GET /discussions/messages` | `listMessagesInputSchema` | protected studio context | Lists discussion messages or thread replies. |
+| `discussions.listMessages` | `GET /discussions/messages` | `listMessagesInputSchema` | route organization membership | Lists discussion messages or thread replies. |
 | `discussions.updateMessage` | `PUT /discussions/messages/{messageId}` | `updateMessageInputSchema` | author or allowed guard | Edits active message. |
 | `discussions.deleteMessage` | `DELETE /discussions/messages/{messageId}` | `deleteMessageInputSchema` | author or allowed guard | Soft delete; adjusts counts. |
 
 ## Read Contracts
+
+Every read input includes:
+
+- `organizationSlug`: required studio slug from the application route
+
+An unknown slug returns `NOT_FOUND`. A user without membership in the resolved organization receives
+`FORBIDDEN`.
 
 `listChannels` accepts:
 
@@ -123,6 +133,8 @@ display data.
 
 ## Channel Contracts
 
+Every channel mutation input includes the required `organizationSlug` route field.
+
 Create channel requires:
 
 - `name`
@@ -134,7 +146,7 @@ Optional:
 Create behavior:
 
 - generates a slug from channel name
-- inserts channel under active organization
+- inserts channel under the resolved route organization
 - adds current user to `channel_members`
 
 Update channel can change:
@@ -156,6 +168,8 @@ Membership:
 - `toggleSubscription` updates existing membership or creates one for the current user
 
 ## Discussion Contracts
+
+Every discussion mutation input includes the required `organizationSlug` route field.
 
 Create discussion requires:
 
@@ -200,6 +214,8 @@ Delete discussion:
 
 ## Message Contracts
 
+Every message mutation input includes the required `organizationSlug` route field.
+
 Create message requires:
 
 - `discussionId`
@@ -235,7 +251,8 @@ Delete message:
 
 ## Link Contract
 
-Link validation checks both entity existence and current user's permission for that entity type.
+Link validation checks both entity existence and the current user's permission in the resolved route
+organization for that entity type.
 
 Permission checks:
 
