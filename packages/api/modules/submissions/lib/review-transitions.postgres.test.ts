@@ -233,12 +233,12 @@ async function getParent(type: "task" | "deliverable", id: string) {
 	}
 	const deliverable = await db.query.deliverables.findFirst({
 		where: eq(deliverables.id, id),
-		columns: { workflowStatus: true, deliveredAt: true },
+		columns: { workflowStatus: true, completedAt: true },
 	});
 	return deliverable
 		? {
 				workflowStatus: deliverable.workflowStatus,
-				approvedAt: deliverable.deliveredAt,
+				approvedAt: deliverable.completedAt,
 			}
 		: undefined;
 }

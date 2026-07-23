@@ -31,6 +31,7 @@ const ids = {
 	booking: `parent_review_repair_booking_${suffix}`,
 	staleTask: `parent_review_repair_stale_task_${suffix}`,
 	approvedDeliverable: `parent_review_repair_deliverable_${suffix}`,
+	taskBasedDeliverable: `parent_review_repair_task_based_${suffix}`,
 	incompleteTask: `parent_review_repair_incomplete_${suffix}`,
 	incompleteApprovedTask: `parent_review_repair_incomplete_approved_${suffix}`,
 	missingApprovalTimeTask: `parent_review_repair_missing_time_${suffix}`,
@@ -117,7 +118,7 @@ describePostgres("parent review reconciliation on PostgreSQL", () => {
 				packageCost: "100.00",
 			},
 		]);
-	});
+	}, 120_000);
 
 	afterAll(async () => {
 		if (!databaseUrl) {
@@ -135,7 +136,7 @@ describePostgres("parent review reconciliation on PostgreSQL", () => {
 		} else {
 			delete process.env.DATABASE_URL;
 		}
-	});
+	}, 120_000);
 
 	it("preserves the runtime approval time after an assignment removal", async () => {
 		const firstApproval = new Date("2025-04-10T10:00:00.000Z");
@@ -190,6 +191,41 @@ describePostgres("parent review reconciliation on PostgreSQL", () => {
 		).toMatchObject({
 			workflowStatus: "approved",
 			completedAt: assignmentRemovalTime,
+		});
+	});
+
+	it("excludes task-based deliverables from direct-evidence reconciliation", async () => {
+		const completedAt = new Date("2025-04-13T09:00:00.000Z");
+		await db.insert(deliverables).values({
+			id: ids.taskBasedDeliverable,
+			organizationId: ids.organization,
+			bookingId: ids.booking,
+			name: "Task-based deliverable",
+			trackingMode: "task_based",
+			workflowStatus: "ready",
+			completedAt,
+		});
+
+		const report = await queryParentReviewMismatches(ids.organization);
+		expect(
+			report.mismatches.some(
+				(mismatch) => mismatch.parentId === ids.taskBasedDeliverable,
+			),
+		).toBe(false);
+		const repaired = await repairReviewedParentReviewMismatches({
+			organizationId: ids.organization,
+			reviewedReportHash: report.reportHash,
+			reviewedByUserId: ids.admin,
+		});
+		expect(repaired.applied).not.toContain(ids.taskBasedDeliverable);
+		expect(
+			await db.query.deliverables.findFirst({
+				where: eq(deliverables.id, ids.taskBasedDeliverable),
+			}),
+		).toMatchObject({
+			trackingMode: "task_based",
+			workflowStatus: "ready",
+			completedAt,
 		});
 	});
 
@@ -336,7 +372,7 @@ describePostgres("parent review reconciliation on PostgreSQL", () => {
 			bookingId: ids.booking,
 			name: "Historically approved deliverable",
 			workflowStatus: "approved",
-			deliveredAt: staleApproval,
+			completedAt: staleApproval,
 		});
 		await db.insert(taskAssignments).values([
 			{
@@ -485,7 +521,7 @@ describePostgres("parent review reconciliation on PostgreSQL", () => {
 			}),
 		).toMatchObject({
 			workflowStatus: "approved",
-			deliveredAt: staleApproval,
+			completedAt: staleApproval,
 		});
 		expect(
 			await db.query.tasks.findFirst({

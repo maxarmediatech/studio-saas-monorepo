@@ -9,9 +9,12 @@ export type SubmissionStatus =
 export type WorkflowStatus =
 	| "not_started"
 	| "assigned"
+	| "in_progress"
+	| "blocked"
 	| "submitted"
 	| "in_review"
 	| "revision_requested"
+	| "ready"
 	| "approved";
 
 export function getSubmissionStatusLabel(status: SubmissionStatus): string {

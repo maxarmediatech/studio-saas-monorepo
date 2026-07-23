@@ -1,10 +1,15 @@
 export type AggregateWorkflowStatus =
 	| "not_started"
 	| "assigned"
+	| "in_progress"
+	| "blocked"
 	| "submitted"
 	| "in_review"
 	| "revision_requested"
+	| "ready"
 	| "approved";
+
+export type AssignmentProgressStatus = "assigned" | "in_progress" | "blocked";
 
 export type SubmissionEvidenceStatus =
 	| "draft"
@@ -16,40 +21,43 @@ export type SubmissionEvidenceStatus =
 
 export function deriveParentReviewStatus(
 	latestStatuses: Array<SubmissionEvidenceStatus | null>,
+	assignmentProgress: AssignmentProgressStatus[],
 ): AggregateWorkflowStatus {
 	if (latestStatuses.length === 0) {
 		return "not_started";
 	}
 
-	const progressed = latestStatuses.filter(
-		(status): status is Exclude<SubmissionEvidenceStatus, "draft"> =>
-			status !== null && status !== "draft",
+	const effectiveStatuses = latestStatuses.map((status, index) =>
+		status !== null && status !== "draft"
+			? status
+			: (assignmentProgress[index] ?? "assigned"),
 	);
-	if (progressed.length === 0) {
-		return "assigned";
-	}
-	if (
-		progressed.length === latestStatuses.length &&
-		progressed.every((status) => status === "approved")
-	) {
+	if (effectiveStatuses.every((status) => status === "approved")) {
 		return "approved";
 	}
+	if (effectiveStatuses.some((status) => status === "blocked")) {
+		return "blocked";
+	}
 	if (
-		progressed.some(
+		effectiveStatuses.some(
 			(status) =>
 				status === "revision_requested" || status === "rejected",
 		)
 	) {
 		return "revision_requested";
 	}
-	if (progressed.some((status) => status === "in_review")) {
+	if (effectiveStatuses.some((status) => status === "in_review")) {
 		return "in_review";
 	}
-	if (progressed.some((status) => status === "submitted")) {
+	if (
+		effectiveStatuses.some(
+			(status) => status === "submitted" || status === "approved",
+		)
+	) {
 		return "submitted";
 	}
-
-	// At least one assignee progressed to approval, but another assignee has
-	// no submitted work. The parent remains submitted until all approve.
-	return "submitted";
+	if (effectiveStatuses.some((status) => status === "in_progress")) {
+		return "in_progress";
+	}
+	return "assigned";
 }

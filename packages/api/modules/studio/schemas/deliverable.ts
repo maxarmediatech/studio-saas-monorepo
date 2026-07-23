@@ -7,6 +7,7 @@
 import { z } from "zod";
 import {
 	assignedCrewSummarySchema,
+	assignmentProgressStatusSchema,
 	baseListFiltersSchema,
 	createItemResponseSchema,
 	createListResponseSchema,
@@ -27,13 +28,25 @@ import {
 // DELIVERABLE ASSIGNMENT SCHEMA
 // ============================================================================
 
+export const deliverableTrackingModeSchema = z.enum(["direct", "task_based"]);
+export const deliverableTaskLinkKindSchema = z.enum([
+	"required",
+	"optional",
+	"reference",
+]);
+
 export const deliverableAssignmentSchema = z.object({
 	id: idSchema,
 	deliverableId: idSchema,
 	crewId: idSchema,
 	isLead: z.boolean(),
 	assignedBy: idSchema.nullable(),
+	progressStatus: assignmentProgressStatusSchema,
+	progressNote: z.string().nullable(),
+	startedAt: z.string().nullable(),
+	blockedAt: z.string().nullable(),
 	createdAt: z.string(),
+	updatedAt: z.string(),
 });
 
 export type DeliverableAssignment = z.infer<typeof deliverableAssignmentSchema>;
@@ -50,6 +63,24 @@ export const deliverableAssignmentWithCrewSchema =
 export type DeliverableAssignmentWithCrew = z.infer<
 	typeof deliverableAssignmentWithCrewSchema
 >;
+
+export const deliverableTaskLinkSchema = z.object({
+	id: idSchema,
+	deliverableId: idSchema,
+	taskId: idSchema,
+	kind: deliverableTaskLinkKindSchema,
+	createdBy: idSchema.nullable(),
+	createdAt: z.string(),
+	task: z.object({
+		id: idSchema,
+		name: z.string(),
+		status: z.string(),
+		workflowStatus: workflowStatusSchema,
+		dueDate: z.string().nullable(),
+	}),
+});
+
+export type DeliverableTaskLink = z.infer<typeof deliverableTaskLinkSchema>;
 
 // ============================================================================
 // DELIVERABLE SCHEMA
@@ -70,7 +101,9 @@ export const deliverableSchema = z.object({
 	isPackageIncluded: z.boolean(),
 	status: z.string(),
 	workflowStatus: workflowStatusSchema,
+	trackingMode: deliverableTrackingModeSchema,
 	dueDate: z.string().nullable(),
+	completedAt: z.string().nullable(),
 	deliveredAt: z.string().nullable(),
 	metadata: z.record(z.string(), z.unknown()).nullable(),
 	createdBy: idSchema.nullable(),
@@ -129,6 +162,7 @@ export type ListDeliverablesInput = z.infer<typeof listDeliverablesInputSchema>;
  * Deliverable list item with assignment count and booking info
  */
 export const deliverableListItemSchema = deliverableSchema.extend({
+	canConvertToTask: z.boolean(),
 	assignmentsCount: z.number(),
 	assignedCrew: z.array(assignedCrewSummarySchema),
 	bookingName: z.string(),
@@ -184,7 +218,9 @@ export type GetDeliverableInput = z.infer<typeof getDeliverableInputSchema>;
  * Deliverable detail with assignments and booking info
  */
 export const deliverableDetailSchema = deliverableSchema.extend({
+	canConvertToTask: z.boolean(),
 	assignments: z.array(deliverableAssignmentWithCrewSchema),
+	taskLinks: z.array(deliverableTaskLinkSchema),
 	booking: z.object({
 		id: idSchema,
 		name: z.string(),
@@ -254,11 +290,21 @@ export type UpdateDeliverableOutput = z.infer<
 // UPDATE DELIVERABLE ASSIGNMENT STATUS (ASSIGNEE)
 // ============================================================================
 
-export const updateDeliverableAssignmentStatusInputSchema = z.object({
-	id: idSchema,
-	status: z.enum(["blocked"]),
-	note: z.string().max(5000).optional(),
-});
+export const updateDeliverableAssignmentStatusInputSchema = z
+	.object({
+		id: idSchema,
+		status: assignmentProgressStatusSchema,
+		note: z.string().max(5000).optional(),
+	})
+	.superRefine((input, context) => {
+		if (input.status === "blocked" && !input.note?.trim()) {
+			context.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ["note"],
+				message: "Explain what is blocking this assignment",
+			});
+		}
+	});
 
 export type UpdateDeliverableAssignmentStatusInput = z.infer<
 	typeof updateDeliverableAssignmentStatusInputSchema
@@ -270,6 +316,43 @@ export const updateDeliverableAssignmentStatusOutputSchema =
 export type UpdateDeliverableAssignmentStatusOutput = z.infer<
 	typeof updateDeliverableAssignmentStatusOutputSchema
 >;
+
+// ============================================================================
+// TASK LINKS AND CLIENT DELIVERY
+// ============================================================================
+
+export const linkTaskToDeliverableInputSchema = z.object({
+	deliverableId: idSchema,
+	taskId: idSchema,
+});
+
+export type LinkTaskToDeliverableInput = z.infer<
+	typeof linkTaskToDeliverableInputSchema
+>;
+
+export const linkTaskToDeliverableOutputSchema = mutationResponseSchema;
+
+export const unlinkTaskFromDeliverableInputSchema = z.object({
+	deliverableId: idSchema,
+	taskId: idSchema,
+});
+
+export type UnlinkTaskFromDeliverableInput = z.infer<
+	typeof unlinkTaskFromDeliverableInputSchema
+>;
+
+export const unlinkTaskFromDeliverableOutputSchema = mutationResponseSchema;
+
+export const setDeliverableDeliveryInputSchema = z.object({
+	id: idSchema,
+	deliveredAt: z.string().datetime().nullable().optional(),
+});
+
+export type SetDeliverableDeliveryInput = z.infer<
+	typeof setDeliverableDeliveryInputSchema
+>;
+
+export const setDeliverableDeliveryOutputSchema = mutationResponseSchema;
 
 // ============================================================================
 // DELETE DELIVERABLE

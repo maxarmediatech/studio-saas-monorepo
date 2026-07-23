@@ -8,6 +8,7 @@ import {
 } from "../../activities/lib";
 import { safeNotifySubscribers } from "../../notifications/lib/notification-service";
 import { requirePermission } from "../../studio/lib/permissions";
+import { taskMetadataForUpdate } from "../../studio/lib/relationship-metadata";
 import {
 	updateTaskInputSchema,
 	updateTaskOutputSchema,
@@ -70,7 +71,10 @@ export const updateTask = studioProtectedProcedure
 			updates.dueDate = dueDate;
 		}
 		if (metadata !== undefined) {
-			updates.metadata = metadata;
+			updates.metadata = taskMetadataForUpdate(
+				metadata,
+				existing.metadata,
+			);
 		}
 
 		await db.update(tasks).set(updates).where(eq(tasks.id, id));

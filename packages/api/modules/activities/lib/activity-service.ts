@@ -48,6 +48,7 @@ export const ACTION_TYPES = [
 	"deleted",
 	// Status changes
 	"status_changed",
+	"assignment_progress_changed",
 	"workflow_changed",
 	// Assignments
 	"assigned",
@@ -91,6 +92,10 @@ export const ACTION_TYPES = [
 	"member_removed",
 	// Conversions
 	"converted_to_task",
+	"task_linked",
+	"task_unlinked",
+	"delivered",
+	"delivery_cleared",
 ] as const;
 
 export type ActionType = (typeof ACTION_TYPES)[number];

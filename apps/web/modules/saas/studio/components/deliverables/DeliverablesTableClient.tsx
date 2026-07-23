@@ -228,7 +228,7 @@ export function DeliverablesTableClient({
 				label: "Convert to task",
 				icon: <ListTodoIcon className="h-4 w-4" />,
 				separator: true,
-				show: (row) => !getConvertedTaskId(row.metadata),
+				show: (row) => row.canConvertToTask,
 				onClick: (row) => {
 					setDeliverableToConvert(row);
 					setConvertDialogOpen(true);

@@ -1,8 +1,21 @@
 import { describe, expect, it } from "vitest";
 import {
 	buildConvertedDeliverableMetadata,
+	canConvertDeliverableToTask,
+	deriveConvertedTaskWorkflowStatus,
 	getConvertedTaskIdFromMetadata,
 } from "./convert-to-task";
+
+describe("deriveConvertedTaskWorkflowStatus", () => {
+	it.each([
+		[[], "not_started"],
+		[["assigned"], "assigned"],
+		[["assigned", "in_progress"], "in_progress"],
+		[["in_progress", "blocked"], "blocked"],
+	] as const)("maps %j assignment progress to %s", (progress, expected) => {
+		expect(deriveConvertedTaskWorkflowStatus([...progress])).toBe(expected);
+	});
+});
 
 describe("getConvertedTaskIdFromMetadata", () => {
 	it("returns null for missing metadata", () => {
@@ -23,6 +36,22 @@ describe("getConvertedTaskIdFromMetadata", () => {
 				convertedToTaskId: " task-123 ",
 			}),
 		).toBe("task-123");
+	});
+});
+
+describe("canConvertDeliverableToTask", () => {
+	it("rejects legacy metadata conversions that remain in direct mode", () => {
+		expect(
+			canConvertDeliverableToTask(
+				{ convertedToTaskId: "legacy-task" },
+				"direct",
+			),
+		).toBe(false);
+	});
+
+	it("allows only unconverted direct-tracking deliverables", () => {
+		expect(canConvertDeliverableToTask(null, "direct")).toBe(true);
+		expect(canConvertDeliverableToTask(null, "task_based")).toBe(false);
 	});
 });
 

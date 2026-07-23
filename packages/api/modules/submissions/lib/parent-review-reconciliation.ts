@@ -95,6 +95,15 @@ export async function repairReviewedParentReviewMismatches(input: {
 			if (!parent) {
 				return false;
 			}
+			// Task-based deliverables are projected by required-task rollup, never
+			// by direct assignment/submission evidence. Defend against stale or
+			// hand-crafted reports even though the report query excludes them.
+			if (
+				parent.type === "deliverable" &&
+				parent.trackingMode === "task_based"
+			) {
+				return false;
+			}
 			if (
 				parent.workflowStatus !== mismatch.actualStatus ||
 				(parent.completedAt?.toISOString() ?? null) !==
@@ -139,7 +148,7 @@ export async function repairReviewedParentReviewMismatches(input: {
 					.update(deliverables)
 					.set({
 						workflowStatus: projection.workflowStatus,
-						deliveredAt: null,
+						completedAt: null,
 						updatedAt: actionTime,
 						updatedBy: actor.user.id,
 					})
@@ -178,7 +187,7 @@ export async function repairReviewedParentReviewMismatches(input: {
 					parent.workflowStatus === projection.workflowStatus
 						? parent.type === "task"
 							? "completedAt"
-							: "deliveredAt"
+							: "completedAt"
 						: "workflowStatus",
 				oldValue:
 					parent.workflowStatus === projection.workflowStatus

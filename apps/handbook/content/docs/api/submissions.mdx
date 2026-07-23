@@ -160,7 +160,7 @@ Decision mapping:
 
 | Decision | Submission status | Task/deliverable workflow status | Entity completion field |
 | --- | --- | --- | --- |
-| `approve` | `approved` | `approved` | Sets task `completedAt` or deliverable `deliveredAt`. |
+| `approve` | `approved` | `approved` | Sets `completedAt` on the task or deliverable. Client delivery is tracked separately with deliverable `deliveredAt`. |
 | `request_revision` | `revision_requested` | `revision_requested` | Clears completion/delivery timestamp. |
 | `reject` | `rejected` | `revision_requested` | Clears completion/delivery timestamp. |
 
