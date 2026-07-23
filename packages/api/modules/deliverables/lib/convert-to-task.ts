@@ -1,9 +1,24 @@
+import {
+	type AggregateWorkflowStatus,
+	type AssignmentProgressStatus,
+	deriveParentReviewStatus,
+} from "../../submissions/lib/parent-review-state";
+
 function asMetadataRecord(metadata: unknown): Record<string, unknown> | null {
 	if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
 		return null;
 	}
 
 	return metadata as Record<string, unknown>;
+}
+
+export function deriveConvertedTaskWorkflowStatus(
+	assignmentProgress: AssignmentProgressStatus[],
+): AggregateWorkflowStatus {
+	return deriveParentReviewStatus(
+		assignmentProgress.map(() => null),
+		assignmentProgress,
+	);
 }
 
 export function getConvertedTaskIdFromMetadata(
@@ -18,6 +33,16 @@ export function getConvertedTaskIdFromMetadata(
 
 	const trimmed = value.trim();
 	return trimmed.length > 0 ? trimmed : null;
+}
+
+export function canConvertDeliverableToTask(
+	metadata: unknown,
+	trackingMode: "direct" | "task_based",
+): boolean {
+	return (
+		trackingMode === "direct" &&
+		getConvertedTaskIdFromMetadata(metadata) === null
+	);
 }
 
 export function buildConvertedDeliverableMetadata(

@@ -1,8 +1,10 @@
 import { ORPCError } from "@orpc/server";
 import {
+	assignmentSubmissions,
 	db,
 	deliverableAssignments,
 	deliverables,
+	deliverableTaskLinks,
 	eq,
 	sql,
 	taskAssignments,
@@ -18,8 +20,10 @@ import {
 } from "../../studio/schemas/deliverable";
 import {
 	buildConvertedDeliverableMetadata,
+	deriveConvertedTaskWorkflowStatus,
 	getConvertedTaskIdFromMetadata,
 } from "../lib/convert-to-task";
+import { recomputeTaskBasedDeliverable } from "../lib/task-rollup";
 
 export const convertDeliverableToTask = studioProtectedProcedure
 	.route({
@@ -54,6 +58,7 @@ export const convertDeliverableToTask = studioProtectedProcedure
 					d.name,
 					d.description,
 					d.due_date AS "dueDate",
+					d.tracking_mode AS "trackingMode",
 					d.metadata,
 					b.name AS "bookingName"
 				FROM deliverables d
@@ -72,6 +77,7 @@ export const convertDeliverableToTask = studioProtectedProcedure
 						name: string;
 						description: string | null;
 						dueDate: string | null;
+						trackingMode: "direct" | "task_based";
 						metadata: unknown;
 						bookingName: string;
 				  }
@@ -86,9 +92,28 @@ export const convertDeliverableToTask = studioProtectedProcedure
 			const existingTaskId = getConvertedTaskIdFromMetadata(
 				lockedDeliverable.metadata,
 			);
-			if (existingTaskId) {
+			if (
+				existingTaskId ||
+				lockedDeliverable.trackingMode === "task_based"
+			) {
 				throw new ORPCError("CONFLICT", {
-					message: `Deliverable already converted to task (${existingTaskId})`,
+					message: existingTaskId
+						? `Deliverable already converted to task (${existingTaskId})`
+						: "Deliverable already uses task-based tracking",
+				});
+			}
+			const existingSubmission =
+				await tx.query.assignmentSubmissions.findFirst({
+					where: eq(
+						assignmentSubmissions.deliverableId,
+						deliverableId,
+					),
+					columns: { id: true },
+				});
+			if (existingSubmission) {
+				throw new ORPCError("CONFLICT", {
+					message:
+						"A deliverable with direct submissions cannot be converted to task-based tracking",
 				});
 			}
 
@@ -130,6 +155,10 @@ export const convertDeliverableToTask = studioProtectedProcedure
 			const existingAssignments = await tx
 				.select({
 					crewId: deliverableAssignments.crewId,
+					progressStatus: deliverableAssignments.progressStatus,
+					progressNote: deliverableAssignments.progressNote,
+					startedAt: deliverableAssignments.startedAt,
+					blockedAt: deliverableAssignments.blockedAt,
 				})
 				.from(deliverableAssignments)
 				.where(eq(deliverableAssignments.deliverableId, deliverableId));
@@ -139,6 +168,10 @@ export const convertDeliverableToTask = studioProtectedProcedure
 					existingAssignments.map((assignment) => ({
 						taskId: createdTask.id,
 						crewId: assignment.crewId,
+						progressStatus: assignment.progressStatus,
+						progressNote: assignment.progressNote,
+						startedAt: assignment.startedAt,
+						blockedAt: assignment.blockedAt,
 						assignedBy: context.user.id,
 					})),
 				);
@@ -147,17 +180,36 @@ export const convertDeliverableToTask = studioProtectedProcedure
 				await tx
 					.update(tasks)
 					.set({
-						workflowStatus: "assigned",
+						workflowStatus: deriveConvertedTaskWorkflowStatus(
+							existingAssignments.map(
+								(assignment) => assignment.progressStatus,
+							),
+						),
 						updatedAt: new Date(),
 						updatedBy: context.user.id,
 					})
 					.where(eq(tasks.id, createdTask.id));
+				await tx
+					.delete(deliverableAssignments)
+					.where(
+						eq(deliverableAssignments.deliverableId, deliverableId),
+					);
 			}
+
+			await tx.insert(deliverableTaskLinks).values({
+				organizationId: context.organizationId,
+				bookingId: lockedDeliverable.bookingId,
+				deliverableId,
+				taskId: createdTask.id,
+				kind: "required",
+				createdBy: context.user.id,
+			});
 
 			// Update deliverable metadata to track conversion
 			await tx
 				.update(deliverables)
 				.set({
+					trackingMode: "task_based",
 					metadata: buildConvertedDeliverableMetadata(
 						lockedDeliverable.metadata,
 						createdTask.id,
@@ -167,6 +219,12 @@ export const convertDeliverableToTask = studioProtectedProcedure
 					updatedBy: context.user.id,
 				})
 				.where(eq(deliverables.id, deliverableId));
+			await recomputeTaskBasedDeliverable(
+				tx,
+				context,
+				deliverableId,
+				new Date(),
+			);
 
 			return {
 				taskId: createdTask.id,

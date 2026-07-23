@@ -14,7 +14,8 @@ import {
 	users,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { requirePermission } from "../../studio/lib/permissions";
+import { hasPermission, requirePermission } from "../../studio/lib/permissions";
+import { taskMetadataForDeliverableAccess } from "../../studio/lib/relationship-metadata";
 import { createPaginationResponse } from "../../studio/schemas/common";
 import {
 	listTasksInputSchema,
@@ -34,6 +35,11 @@ export const listTasks = studioProtectedProcedure
 	.output(listTasksOutputSchema)
 	.handler(async ({ input, context }) => {
 		await requirePermission(context, "task", "list");
+		const canReadLinkedDeliverables = await hasPermission(
+			context,
+			"deliverable",
+			"read",
+		);
 
 		const {
 			bookingId,
@@ -217,7 +223,10 @@ export const listTasks = studioProtectedProcedure
 				...task,
 				dueDate: task.dueDate ?? null,
 				completedAt: task.completedAt?.toISOString() ?? null,
-				metadata: task.metadata as Record<string, unknown> | null,
+				metadata: taskMetadataForDeliverableAccess(
+					task.metadata,
+					canReadLinkedDeliverables,
+				),
 				createdAt: task.createdAt.toISOString(),
 				updatedAt: task.updatedAt.toISOString(),
 				deletedAt: task.deletedAt?.toISOString() ?? null,

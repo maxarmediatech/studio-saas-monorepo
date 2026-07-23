@@ -10,6 +10,7 @@ import {
 	tasks,
 } from "@repo/database";
 import { createActivityWithExecutor } from "../../activities/lib";
+import { recomputeDeliverablesLinkedToTask } from "../../deliverables/lib/task-rollup";
 import type { TransactionClient } from "../../studio/lib/transactions";
 import {
 	type AggregateWorkflowStatus,
@@ -23,6 +24,7 @@ import type {
 export interface LockedSubmissionParent extends SubmissionParent {
 	completedAt: Date | null;
 	workflowStatus: AggregateWorkflowStatus;
+	trackingMode?: "direct" | "task_based";
 }
 
 interface AggregateTransition {
@@ -39,6 +41,7 @@ export interface ParentReviewProjection {
 
 interface ParentReviewAssignment {
 	crewId: string;
+	progressStatus: "assigned" | "in_progress" | "blocked";
 }
 
 interface ParentReviewSubmission {
@@ -80,7 +83,8 @@ export async function lockSubmissionParent(
 			id: deliverables.id,
 			name: deliverables.name,
 			workflowStatus: deliverables.workflowStatus,
-			completedAt: deliverables.deliveredAt,
+			completedAt: deliverables.completedAt,
+			trackingMode: deliverables.trackingMode,
 		})
 		.from(deliverables)
 		.where(
@@ -140,12 +144,18 @@ export async function readParentReviewProjection(
 	const assignments =
 		parent.type === "task"
 			? await tx
-					.select({ crewId: taskAssignments.crewId })
+					.select({
+						crewId: taskAssignments.crewId,
+						progressStatus: taskAssignments.progressStatus,
+					})
 					.from(taskAssignments)
 					.where(eq(taskAssignments.taskId, parent.id))
 					.orderBy(asc(taskAssignments.id))
 			: await tx
-					.select({ crewId: deliverableAssignments.crewId })
+					.select({
+						crewId: deliverableAssignments.crewId,
+						progressStatus: deliverableAssignments.progressStatus,
+					})
 					.from(deliverableAssignments)
 					.where(eq(deliverableAssignments.deliverableId, parent.id))
 					.orderBy(asc(deliverableAssignments.id));
@@ -207,6 +217,7 @@ export function deriveParentReviewProjection(
 	);
 	const workflowStatus = deriveParentReviewStatus(
 		latestEvidence.map((evidence) => evidence?.status ?? null),
+		assignments.map((assignment) => assignment.progressStatus),
 	);
 	if (workflowStatus !== "approved") {
 		return {
@@ -261,6 +272,13 @@ export async function recomputeParentReviewAggregate(
 	parent: LockedSubmissionParent,
 	input: { actionTime: Date; cause: string; approvalTime?: Date },
 ): Promise<AggregateTransition> {
+	if (parent.type === "deliverable" && parent.trackingMode === "task_based") {
+		return {
+			changed: false,
+			from: parent.workflowStatus,
+			to: parent.workflowStatus,
+		};
+	}
 	const { workflowStatus: nextStatus } = await readParentReviewProjection(
 		tx,
 		context.organizationId,
@@ -297,7 +315,7 @@ export async function recomputeParentReviewAggregate(
 					.update(deliverables)
 					.set({
 						workflowStatus: nextStatus,
-						deliveredAt: timestamp,
+						completedAt: timestamp,
 						updatedAt: input.actionTime,
 						updatedBy: context.user.id,
 					})
@@ -340,6 +358,14 @@ export async function recomputeParentReviewAggregate(
 			actionTime: input.actionTime.toISOString(),
 		},
 	});
+	if (parent.type === "task") {
+		await recomputeDeliverablesLinkedToTask(
+			tx,
+			context,
+			parent.id,
+			input.actionTime,
+		);
+	}
 
 	return { changed: true, from: parent.workflowStatus, to: nextStatus };
 }

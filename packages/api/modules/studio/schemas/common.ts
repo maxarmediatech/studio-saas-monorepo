@@ -246,13 +246,26 @@ export type BookingPhase = z.infer<typeof bookingPhaseSchema>;
 export const workflowStatusSchema = z.enum([
 	"not_started",
 	"assigned",
+	"in_progress",
+	"blocked",
 	"submitted",
 	"in_review",
 	"revision_requested",
+	"ready",
 	"approved",
 ]);
 
 export type WorkflowStatus = z.infer<typeof workflowStatusSchema>;
+
+export const assignmentProgressStatusSchema = z.enum([
+	"assigned",
+	"in_progress",
+	"blocked",
+]);
+
+export type AssignmentProgressStatus = z.infer<
+	typeof assignmentProgressStatusSchema
+>;
 
 /**
  * Submission status enum

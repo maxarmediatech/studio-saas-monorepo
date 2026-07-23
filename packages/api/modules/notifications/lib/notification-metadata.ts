@@ -3,6 +3,9 @@ import { z } from "zod";
 export const statusChangedNotificationMetadataSchema = z.object({
 	oldStatus: z.string(),
 	newStatus: z.string(),
+	changeScope: z.literal("assignment_progress").optional(),
+	crewId: z.string().optional(),
+	crewName: z.string().optional(),
 });
 
 export const assignedNotificationMetadataSchema = z.object({
@@ -21,9 +24,12 @@ export const reviewDecisionNotificationMetadataSchema = z.object({
 		.enum([
 			"not_started",
 			"assigned",
+			"in_progress",
+			"blocked",
 			"submitted",
 			"in_review",
 			"revision_requested",
+			"ready",
 			"approved",
 		])
 		.optional(),

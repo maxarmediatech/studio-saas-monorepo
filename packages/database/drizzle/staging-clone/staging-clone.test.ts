@@ -161,7 +161,7 @@ describe("staging clone safeguards", () => {
 		const contract = await loadSchemaContract();
 		assert.equal(
 			contract.snapshotTag,
-			"0045_better_auth_two_factor_lockout",
+			"0049_repair_stale_deliverable_task_links",
 		);
 		assert.ok(Object.keys(contract.tables).length > 60);
 	});

@@ -35,6 +35,7 @@ export function TaskCreateSheet() {
 				status: data.status || undefined,
 				priority: data.priority || undefined,
 				dueDate: data.dueDate || undefined,
+				deliverableIds: data.deliverableIds,
 			});
 
 			const crewAssignments = data.crewAssignments ?? [];
@@ -57,6 +58,9 @@ export function TaskCreateSheet() {
 			});
 			await queryClient.invalidateQueries({
 				queryKey: orpc.bookings.key(),
+			});
+			await queryClient.invalidateQueries({
+				queryKey: orpc.deliverables.key(),
 			});
 			await queryClient.invalidateQueries({
 				queryKey: orpc.activities.key(),

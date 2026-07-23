@@ -1,6 +1,6 @@
 export const SNAPSHOT_MANIFEST_VERSION = 2;
 export const SANITIZER_REVIEWED_SNAPSHOT_TAG =
-	"0045_better_auth_two_factor_lockout";
+	"0049_repair_stale_deliverable_task_links";
 
 export type TableCounts = Record<string, string>;
 

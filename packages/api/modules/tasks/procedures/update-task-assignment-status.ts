@@ -9,13 +9,18 @@ import {
 	tasks,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
-import { safeTrackStatusChange } from "../../activities/lib";
+import { safeTrackActivity } from "../../activities/lib";
 import { safeNotifySubscribers } from "../../notifications/lib/notification-service";
 import { requirePermission } from "../../studio/lib/permissions";
 import {
 	updateTaskAssignmentStatusInputSchema,
 	updateTaskAssignmentStatusOutputSchema,
 } from "../../studio/schemas/task";
+import {
+	lockParentReviewEvidence,
+	lockSubmissionParent,
+	recomputeParentReviewAggregate,
+} from "../../submissions/lib/parent-review-aggregate";
 
 export const updateTaskAssignmentStatus = studioProtectedProcedure
 	.route({
@@ -38,7 +43,7 @@ export const updateTaskAssignmentStatus = studioProtectedProcedure
 				eq(tasks.organizationId, context.organizationId),
 				isNull(tasks.deletedAt),
 			),
-			columns: { id: true, name: true, status: true, bookingId: true },
+			columns: { id: true, name: true, bookingId: true },
 		});
 
 		if (!task) {
@@ -60,46 +65,78 @@ export const updateTaskAssignmentStatus = studioProtectedProcedure
 			});
 		}
 
-		const assignment = await db.query.taskAssignments.findFirst({
-			where: and(
-				eq(taskAssignments.taskId, id),
-				eq(taskAssignments.crewId, crew.id),
-			),
+		const actionTime = new Date();
+		const result = await db.transaction(async (tx) => {
+			const parent = await lockSubmissionParent(
+				tx,
+				context.organizationId,
+				{ id, type: "task" },
+			);
+			if (!parent) {
+				throw new ORPCError("NOT_FOUND", { message: "Task not found" });
+			}
+			await lockParentReviewEvidence(tx, context.organizationId, parent);
+			const assignment = await tx.query.taskAssignments.findFirst({
+				where: and(
+					eq(taskAssignments.taskId, id),
+					eq(taskAssignments.crewId, crew.id),
+				),
+			});
+			if (!assignment) {
+				throw new ORPCError("FORBIDDEN", {
+					message: "You are not assigned to this task",
+				});
+			}
+			if (
+				assignment.progressStatus === status &&
+				assignment.progressNote === (note ?? null)
+			) {
+				return { changed: false, oldStatus: assignment.progressStatus };
+			}
+			await tx
+				.update(taskAssignments)
+				.set({
+					progressStatus: status,
+					progressNote: note ?? null,
+					startedAt:
+						status === "in_progress"
+							? (assignment.startedAt ?? actionTime)
+							: assignment.startedAt,
+					blockedAt: status === "blocked" ? actionTime : null,
+					updatedAt: actionTime,
+				})
+				.where(eq(taskAssignments.id, assignment.id));
+			await recomputeParentReviewAggregate(tx, context, parent, {
+				actionTime,
+				cause: "assignment_progress_changed",
+			});
+			return { changed: true, oldStatus: assignment.progressStatus };
 		});
 
-		if (!assignment) {
-			throw new ORPCError("FORBIDDEN", {
-				message: "You are not assigned to this task",
-			});
-		}
-
-		if (task.status === status) {
+		if (!result.changed) {
 			return {
 				data: { id },
-				message: `Task status already set to ${status}`,
+				message: `Task assignment already set to ${status}`,
 			};
 		}
 
-		await db
-			.update(tasks)
-			.set({
-				status,
-				updatedAt: new Date(),
-				updatedBy: context.user.id,
-			})
-			.where(eq(tasks.id, id));
-
-		await safeTrackStatusChange(
+		await safeTrackActivity(
 			{ organizationId: context.organizationId, user: context.user },
 			{
 				entityType: "task",
 				entityId: id,
 				entityName: task.name,
-				oldStatus: task.status,
-				newStatus: status,
+				action: "assignment_progress_changed",
+				field: "assignmentProgress",
+				oldValue: result.oldStatus,
+				newValue: status,
 				parentEntityType: "booking",
 				parentEntityId: task.bookingId,
-				metadata: note ? { note } : undefined,
+				metadata: {
+					crewId: crew.id,
+					crewName: crew.name,
+					...(note ? { note } : {}),
+				},
 			},
 		);
 
@@ -109,10 +146,13 @@ export const updateTaskAssignmentStatus = studioProtectedProcedure
 			entityId: id,
 			entityName: task.name,
 			type: "status_changed",
-			title: `Task status updated: ${task.name}`,
-			body: `${task.status} -> ${status}`,
+			title: `Task assignment progress updated: ${task.name}`,
+			body: `${crew.name}: ${result.oldStatus} -> ${status}`,
 			metadata: {
-				oldStatus: task.status,
+				changeScope: "assignment_progress",
+				crewId: crew.id,
+				crewName: crew.name,
+				oldStatus: result.oldStatus,
 				newStatus: status,
 			},
 			actorId: context.user.id,
@@ -122,6 +162,6 @@ export const updateTaskAssignmentStatus = studioProtectedProcedure
 
 		return {
 			data: { id },
-			message: `Task status updated to ${status}`,
+			message: `Task assignment updated to ${status}`,
 		};
 	});

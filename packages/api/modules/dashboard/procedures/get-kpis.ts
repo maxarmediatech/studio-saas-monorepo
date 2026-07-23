@@ -217,8 +217,8 @@ export const getKpis = studioProtectedProcedure
 		// On-time delivery rate (deliverables completed before or on due date)
 		const [deliverableStats] = await db
 			.select({
-				totalCompleted: sql<number>`COUNT(*) FILTER (WHERE ${deliverables.workflowStatus} = 'approved')`,
-				onTimeCompleted: sql<number>`COUNT(*) FILTER (WHERE ${deliverables.workflowStatus} = 'approved' AND (${deliverables.dueDate} IS NULL OR ${deliverables.deliveredAt} <= ${deliverables.dueDate}))`,
+				totalCompleted: sql<number>`COUNT(*) FILTER (WHERE ${deliverables.workflowStatus} IN ('approved', 'ready'))`,
+				onTimeCompleted: sql<number>`COUNT(*) FILTER (WHERE ${deliverables.workflowStatus} IN ('approved', 'ready') AND (${deliverables.dueDate} IS NULL OR ${deliverables.completedAt} <= ${deliverables.dueDate}))`,
 			})
 			.from(deliverables)
 			.where(

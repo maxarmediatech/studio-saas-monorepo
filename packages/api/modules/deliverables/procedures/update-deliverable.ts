@@ -8,6 +8,7 @@ import {
 } from "../../activities/lib";
 import { safeNotifySubscribers } from "../../notifications/lib/notification-service";
 import { requirePermission } from "../../studio/lib/permissions";
+import { deliverableMetadataForUpdate } from "../../studio/lib/relationship-metadata";
 import {
 	updateDeliverableInputSchema,
 	updateDeliverableOutputSchema,
@@ -79,7 +80,10 @@ export const updateDeliverable = studioProtectedProcedure
 		}
 
 		if (updates.metadata !== undefined) {
-			updateData.metadata = updates.metadata;
+			updateData.metadata = deliverableMetadataForUpdate(
+				updates.metadata,
+				existing.metadata,
+			);
 		}
 
 		// Update deliverable
