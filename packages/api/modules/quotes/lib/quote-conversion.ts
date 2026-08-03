@@ -1,9 +1,12 @@
+import { TZDate } from "@date-fns/tz";
 import { ORPCError } from "@orpc/server";
 import {
 	and,
 	bookings,
+	clients,
 	db,
 	eq,
+	inArray,
 	isNull,
 	quoteAcceptances,
 	quoteParticipants,
@@ -11,11 +14,19 @@ import {
 } from "@repo/database";
 import { trackActivityWithExecutor } from "../../activities/lib";
 import { materializeBooking } from "../../bookings/lib/materialize-booking";
+import { formatDateParts, getDateParts } from "../../studio/lib/date-helpers";
+import type { CreateBookingInput } from "../../studio/schemas/booking";
+import {
+	bookingBlueprintV2Schema,
+	quotationDocumentV1Schema,
+	quotationPdfSnapshotV1Schema,
+} from "../../studio/schemas/quotation-document";
 import {
 	acceptedQuoteOptionSnapshotSchema,
 	assembleBookingInputFromBlueprintV1,
 	bookingBlueprintV1Schema,
 } from "../../studio/schemas/quote";
+import { allocateMilestoneAmounts } from "./quotation-document";
 import type { QuoteServiceContext } from "./quote-service";
 
 export interface ConvertedBookingResult {
@@ -23,6 +34,44 @@ export interface ConvertedBookingResult {
 	referenceNumber: string;
 	status: string;
 	deletedAt: Date | null;
+}
+
+export function assertDocumentAcceptanceProvenance(
+	acceptance: {
+		documentSha256: string | null;
+		pdfSnapshot: unknown;
+	},
+	quote: {
+		documentSha256: string | null;
+		pdfSha256: string | null;
+		pdfStorageKey: string | null;
+		pdfRendererVersion: string | null;
+		pdfPageCount: number | null;
+		pdfByteSize: number | null;
+	},
+) {
+	const acceptedPdf = quotationPdfSnapshotV1Schema.safeParse(
+		acceptance.pdfSnapshot,
+	);
+	if (
+		acceptance.documentSha256 !== quote.documentSha256 ||
+		!acceptedPdf.success ||
+		acceptedPdf.data.sha256 !== quote.pdfSha256 ||
+		acceptedPdf.data.storageKey !== quote.pdfStorageKey ||
+		acceptedPdf.data.rendererVersion !== quote.pdfRendererVersion ||
+		acceptedPdf.data.pageCount !== quote.pdfPageCount ||
+		acceptedPdf.data.byteSize !== quote.pdfByteSize
+	) {
+		throw new ORPCError("INTERNAL_SERVER_ERROR", {
+			message: "Quotation acceptance document or PDF provenance mismatch",
+		});
+	}
+	return acceptedPdf.data;
+}
+
+function localMidnightIso(date: string, timezone: string): string {
+	const [year, month, day] = date.split("-").map(Number);
+	return new TZDate(year, month - 1, day, 0, 0, 0, 0, timezone).toISOString();
 }
 
 export async function convertAcceptedQuote(
@@ -97,9 +146,10 @@ export async function convertAcceptedQuote(
 				message: "Quote acceptance snapshot provenance mismatch",
 			});
 		}
-		const blueprint = bookingBlueprintV1Schema.parse(
-			snapshot.option.bookingBlueprint,
-		);
+		const isDocumentQuote = quote.documentVersion === 1;
+		const blueprint = isDocumentQuote
+			? bookingBlueprintV2Schema.parse(snapshot.option.bookingBlueprint)
+			: bookingBlueprintV1Schema.parse(snapshot.option.bookingBlueprint);
 		const participants = await tx.query.quoteParticipants.findMany({
 			where: and(
 				eq(quoteParticipants.quoteId, quote.id),
@@ -107,14 +157,130 @@ export async function convertAcceptedQuote(
 			),
 			orderBy: (table, { asc }) => [asc(table.sortOrder)],
 		});
-		const bookingInput = assembleBookingInputFromBlueprintV1({
-			blueprint,
-			participants: participants.map((participant) => ({
-				clientId: participant.clientId,
-				role: participant.role,
-			})),
-			packageCost: snapshot.option.totalAmount,
-		});
+		let bookingInput: CreateBookingInput;
+		if (isDocumentQuote) {
+			const documentBlueprint = bookingBlueprintV2Schema.parse(blueprint);
+			const document = quotationDocumentV1Schema.parse(
+				acceptance.documentSnapshot,
+			);
+			assertDocumentAcceptanceProvenance(acceptance, quote);
+			const acceptedPackage = document.packages.find(
+				(item) => item.key === documentBlueprint.optionKey,
+			);
+			if (!acceptedPackage) {
+				throw new ORPCError("INTERNAL_SERVER_ERROR", {
+					message:
+						"Accepted package is missing from quotation document",
+				});
+			}
+			const amounts = new Map(
+				allocateMilestoneAmounts(
+					snapshot.option.totalAmount,
+					document.paymentMilestones,
+				).map((row) => [row.key, row.amount]),
+			);
+			const bookingDate = formatDateParts(
+				getDateParts(
+					acceptance.acceptedAt,
+					context.membership.organization.timezone,
+				),
+			);
+			bookingInput = {
+				name: document.title,
+				bookingDate,
+				bookingType: document.quotationType.label,
+				packageType: acceptedPackage.name,
+				packageCost: snapshot.option.totalAmount,
+				participants: participants.map((participant, index) => ({
+					clientId: participant.clientId,
+					role: index === 0 ? "primary_client" : "client",
+				})),
+				events: documentBlueprint.booking.events.map((event) => ({
+					eventType: event.eventType,
+					eventDate: event.eventDate
+						? localMidnightIso(
+								event.eventDate,
+								context.membership.organization.timezone,
+							)
+						: null,
+					side: event.side,
+					guestCount: event.guestCount,
+					isTentative: event.isTentative,
+					dateWindow: event.dateWindow,
+					venue: event.location ?? undefined,
+					notes: event.notes ?? undefined,
+					coverageNotes: event.coverageNotes,
+				})),
+				deliverables: documentBlueprint.booking.deliverables.map(
+					(deliverable) => ({
+						name: deliverable.name,
+						quantity: deliverable.quantity,
+						description: deliverable.description ?? undefined,
+						dueDate: undefined,
+						crewAssignments: [],
+						isPackageIncluded: true,
+					}),
+				),
+				paymentSchedules:
+					documentBlueprint.booking.paymentMilestones.map(
+						(milestone, index) => ({
+							name: milestone.label,
+							amount:
+								amounts.get(milestone.documentKey) ?? "0.00",
+							dueDate: null,
+							percentage: milestone.percentage,
+							timing: milestone.timing,
+							sortOrder: index,
+						}),
+					),
+			};
+			const clientIds = participants.map(({ clientId }) => clientId);
+			const leads = clientIds.length
+				? await tx.query.clients.findMany({
+						where: and(
+							eq(clients.organizationId, context.organizationId),
+							eq(clients.lifecycleStage, "lead"),
+							inArray(clients.id, clientIds),
+						),
+					})
+				: [];
+			for (const lead of leads) {
+				await tx
+					.update(clients)
+					.set({
+						lifecycleStage: "client",
+						updatedAt: new Date(),
+						updatedBy: context.user.id,
+					})
+					.where(eq(clients.id, lead.id));
+				await trackActivityWithExecutor(
+					tx,
+					{
+						organizationId: context.organizationId,
+						user: context.user,
+					},
+					{
+						entityType: "client",
+						entityId: lead.id,
+						entityName: lead.name,
+						action: "status_changed",
+						field: "lifecycleStage",
+						oldValue: "lead",
+						newValue: "client",
+						metadata: { sourceQuoteId: quote.id },
+					},
+				);
+			}
+		} else {
+			bookingInput = assembleBookingInputFromBlueprintV1({
+				blueprint: bookingBlueprintV1Schema.parse(blueprint),
+				participants: participants.map((participant) => ({
+					clientId: participant.clientId,
+					role: participant.role,
+				})),
+				packageCost: snapshot.option.totalAmount,
+			});
+		}
 		const created = await materializeBooking(
 			tx,
 			{

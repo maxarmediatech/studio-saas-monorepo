@@ -7,6 +7,7 @@ import {
 	eq,
 	expenses,
 	gte,
+	isNotNull,
 	isNull,
 	paymentSchedules,
 	receivedAmounts,
@@ -182,6 +183,7 @@ export const getKpis = studioProtectedProcedure
 					isNull(paymentSchedules.deletedAt),
 					isNull(bookings.deletedAt),
 					sql`${paymentSchedules.status} IN ('pending', 'partial', 'overdue')`,
+					isNotNull(paymentSchedules.dueDate),
 					sql`${paymentSchedules.dueDate} < ${todayStr}`,
 				),
 			);
@@ -197,6 +199,7 @@ export const getKpis = studioProtectedProcedure
 					eq(paymentSchedules.organizationId, context.organizationId),
 					isNull(paymentSchedules.deletedAt),
 					isNull(bookings.deletedAt),
+					isNotNull(paymentSchedules.dueDate),
 					gte(paymentSchedules.dueDate, rangeStartStr),
 					sql`${paymentSchedules.dueDate} <= ${rangeEndStr}`,
 					sql`${paymentSchedules.status} NOT IN ('completed', 'cancelled')`,

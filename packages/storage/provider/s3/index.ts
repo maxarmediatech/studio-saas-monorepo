@@ -1,6 +1,7 @@
 import {
 	DeleteObjectCommand,
 	GetObjectCommand,
+	ListObjectsV2Command,
 	PutObjectCommand,
 	S3Client,
 } from "@aws-sdk/client-s3";
@@ -12,6 +13,7 @@ import type {
 	GetObjectHandler,
 	GetSignedUploadUrlHandler,
 	GetSignedUrlHander,
+	ListObjectsHandler,
 	PutObjectHandler,
 } from "../../types";
 
@@ -152,4 +154,25 @@ export const getObject: GetObjectHandler = async (path, { bucket }) => {
 		logger.error(e);
 		throw new Error("Could not get object");
 	}
+};
+
+export const listObjects: ListObjectsHandler = async (
+	prefix,
+	{ bucket, continuationToken },
+) => {
+	const response = await getS3Client().send(
+		new ListObjectsV2Command({
+			Bucket: bucket,
+			Prefix: prefix,
+			ContinuationToken: continuationToken,
+		}),
+	);
+	return {
+		objects: (response.Contents ?? []).flatMap((item) =>
+			item.Key
+				? [{ key: item.Key, lastModified: item.LastModified ?? null }]
+				: [],
+		),
+		nextContinuationToken: response.NextContinuationToken,
+	};
 };

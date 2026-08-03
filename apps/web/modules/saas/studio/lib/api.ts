@@ -213,6 +213,10 @@ export const quotesApi = {
 		input?: Parameters<typeof orpc.quotes.list.queryOptions>[0]["input"],
 	) => orpc.quotes.list.queryOptions({ input: input ?? {} }),
 	getOptions: (id: string) => orpc.quotes.get.queryOptions({ input: { id } }),
+	searchContactsOptions: (query: string) =>
+		orpc.quotes.searchContacts.queryOptions({
+			input: { query, limit: 20 },
+		}),
 };
 
 export const quotesMutations = {
@@ -225,6 +229,9 @@ export const quotesMutations = {
 	decline: () => orpc.quotes.decline.mutationOptions(),
 	expire: () => orpc.quotes.expire.mutationOptions(),
 	convert: () => orpc.quotes.convert.mutationOptions(),
+	createDocument: () => orpc.quotes.createDocument.mutationOptions(),
+	saveDocument: () => orpc.quotes.saveDocument.mutationOptions(),
+	sendDocument: () => orpc.quotes.sendDocument.mutationOptions(),
 };
 
 // ============================================================================
@@ -293,6 +300,7 @@ export const clientsMutations = {
 	create: () => orpc.clients.create.mutationOptions(),
 	update: () => orpc.clients.update.mutationOptions(),
 	delete: () => orpc.clients.delete.mutationOptions(),
+	promote: () => orpc.clients.promote.mutationOptions(),
 };
 
 // ============================================================================

@@ -114,7 +114,7 @@ export const invoiceDetailSchema = invoiceSchema.extend({
 			id: idSchema,
 			name: z.string(),
 			amount: z.string(),
-			dueDate: z.string(),
+			dueDate: z.string().nullable(),
 		})
 		.nullable(),
 });
@@ -200,44 +200,50 @@ export const createInvoiceInputSchema = z.object({
 					const isLumpSum =
 						data.type === "milestone" || data.type === "expense";
 					if (isLumpSum) {
-						if (!data.amount)
+						if (!data.amount) {
 							ctx.addIssue({
 								code: "custom",
 								path: ["amount"],
 								message: "Required for milestone/expense",
 							});
-						if (data.quantity)
+						}
+						if (data.quantity) {
 							ctx.addIssue({
 								code: "custom",
 								path: ["quantity"],
 								message: "Not applicable for milestone/expense",
 							});
-						if (data.unitPrice)
+						}
+						if (data.unitPrice) {
 							ctx.addIssue({
 								code: "custom",
 								path: ["unitPrice"],
 								message: "Not applicable for milestone/expense",
 							});
+						}
 					} else {
-						if (!data.quantity)
+						if (!data.quantity) {
 							ctx.addIssue({
 								code: "custom",
 								path: ["quantity"],
 								message: "Required for item/service",
 							});
-						if (!data.unitPrice)
+						}
+						if (!data.unitPrice) {
 							ctx.addIssue({
 								code: "custom",
 								path: ["unitPrice"],
 								message: "Required for item/service",
 							});
-						if (data.amount)
+						}
+						if (data.amount) {
 							ctx.addIssue({
 								code: "custom",
 								path: ["amount"],
 								message:
 									"Computed server-side for item/service",
 							});
+						}
 					}
 				}),
 		)
@@ -310,43 +316,49 @@ export const addLineItemInputSchema = z
 	.superRefine((data, ctx) => {
 		const isLumpSum = data.type === "milestone" || data.type === "expense";
 		if (isLumpSum) {
-			if (!data.amount)
+			if (!data.amount) {
 				ctx.addIssue({
 					code: "custom",
 					path: ["amount"],
 					message: "Required for milestone/expense",
 				});
-			if (data.quantity)
+			}
+			if (data.quantity) {
 				ctx.addIssue({
 					code: "custom",
 					path: ["quantity"],
 					message: "Not applicable for milestone/expense",
 				});
-			if (data.unitPrice)
+			}
+			if (data.unitPrice) {
 				ctx.addIssue({
 					code: "custom",
 					path: ["unitPrice"],
 					message: "Not applicable for milestone/expense",
 				});
+			}
 		} else {
-			if (!data.quantity)
+			if (!data.quantity) {
 				ctx.addIssue({
 					code: "custom",
 					path: ["quantity"],
 					message: "Required for item/service",
 				});
-			if (!data.unitPrice)
+			}
+			if (!data.unitPrice) {
 				ctx.addIssue({
 					code: "custom",
 					path: ["unitPrice"],
 					message: "Required for item/service",
 				});
-			if (data.amount)
+			}
+			if (data.amount) {
 				ctx.addIssue({
 					code: "custom",
 					path: ["amount"],
 					message: "Computed server-side for item/service",
 				});
+			}
 		}
 	});
 
@@ -383,43 +395,49 @@ export const updateLineItemInputSchema = z
 			const isLumpSum =
 				data.type === "milestone" || data.type === "expense";
 			if (isLumpSum) {
-				if (!data.amount)
+				if (!data.amount) {
 					ctx.addIssue({
 						code: "custom",
 						path: ["amount"],
 						message: "Required when switching to milestone/expense",
 					});
-				if (data.quantity)
+				}
+				if (data.quantity) {
 					ctx.addIssue({
 						code: "custom",
 						path: ["quantity"],
 						message: "Not applicable for milestone/expense",
 					});
-				if (data.unitPrice)
+				}
+				if (data.unitPrice) {
 					ctx.addIssue({
 						code: "custom",
 						path: ["unitPrice"],
 						message: "Not applicable for milestone/expense",
 					});
+				}
 			} else {
-				if (!data.quantity)
+				if (!data.quantity) {
 					ctx.addIssue({
 						code: "custom",
 						path: ["quantity"],
 						message: "Required when switching to item/service",
 					});
-				if (!data.unitPrice)
+				}
+				if (!data.unitPrice) {
 					ctx.addIssue({
 						code: "custom",
 						path: ["unitPrice"],
 						message: "Required when switching to item/service",
 					});
-				if (data.amount)
+				}
+				if (data.amount) {
 					ctx.addIssue({
 						code: "custom",
 						path: ["amount"],
 						message: "Computed server-side for item/service",
 					});
+				}
 			}
 			return;
 		}

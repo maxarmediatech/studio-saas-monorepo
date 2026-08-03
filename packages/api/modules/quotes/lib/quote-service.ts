@@ -3,13 +3,21 @@ import { and, db, eq, isNull, quotes, sql } from "@repo/database";
 import { trackActivityWithExecutor } from "../../activities/lib";
 import type { StudioContext } from "../../studio/lib/permissions";
 import type { TransactionClient } from "../../studio/lib/transactions";
+import { quotationDocumentV1Schema } from "../../studio/schemas/quotation-document";
 import {
 	type QuoteDraftContentInput,
 	quoteDraftContentInputSchema,
 } from "../../studio/schemas/quote";
+import { replaceNormalizedDocumentChildren } from "./quotation-document-service";
+import { sendDocumentQuotation } from "./quotation-pdf-service";
 import { readQuoteContent, replaceQuoteContent } from "./quote-content";
 import { isQuoteExpiryDue } from "./quote-lifecycle";
 import { allocateQuoteNumber } from "./quote-number";
+import {
+	assertLegacyDraftWriteBoundary,
+	buildDocumentRevisionFields,
+	resolveQuoteSendMode,
+} from "./quote-service-contracts";
 
 export type QuoteServiceContext = Pick<
 	StudioContext,
@@ -135,11 +143,7 @@ export async function updateDraftQuote(
 	const content = quoteDraftContentInputSchema.parse(input);
 	return db.transaction(async (tx) => {
 		const quote = await lockQuote(tx, context.organizationId, quoteId);
-		if (quote.status !== "draft") {
-			throw new ORPCError("CONFLICT", {
-				message: "Only draft quotes can be edited",
-			});
-		}
+		assertLegacyDraftWriteBoundary(quote);
 		const now = new Date();
 		await tx
 			.update(quotes)
@@ -277,6 +281,20 @@ export async function sendQuote(
 	context: QuoteServiceContext,
 	quoteId: string,
 ): Promise<{ id: string }> {
+	const documentQuote = await db.query.quotes.findFirst({
+		where: and(
+			eq(quotes.id, quoteId),
+			eq(quotes.organizationId, context.organizationId),
+			isNull(quotes.deletedAt),
+		),
+		columns: { documentVersion: true, documentRevision: true },
+	});
+	if (documentQuote) {
+		const mode = resolveQuoteSendMode(documentQuote);
+		if (mode.kind === "document") {
+			return sendDocumentQuotation(context, quoteId, mode.revision);
+		}
+	}
 	return db.transaction(async (tx) => {
 		const quote = await lockQuote(tx, context.organizationId, quoteId);
 		if (quote.status !== "draft") {
@@ -334,11 +352,13 @@ export async function reviseQuote(
 		await tx.execute(
 			sql`SELECT pg_advisory_xact_lock(hashtextextended(${`quote-revision:${context.organizationId}:${quote.quoteNumber}`}, 0))`,
 		);
-		const content = await readQuoteContent(
-			tx,
-			context.organizationId,
-			quote.id,
-		);
+		const document =
+			quote.documentVersion === 1
+				? quotationDocumentV1Schema.parse(quote.document)
+				: null;
+		const content = document
+			? null
+			: await readQuoteContent(tx, context.organizationId, quote.id);
 		const [latest] = await tx
 			.select({ version: quotes.version })
 			.from(quotes)
@@ -360,14 +380,26 @@ export async function reviseQuote(
 				version,
 				supersedesQuoteId: quote.id,
 				status: "draft",
-				title: content.title,
-				currency: content.currency,
-				expiresAt: content.expiresAt
+				title: document?.title ?? content?.title ?? quote.title,
+				currency:
+					document?.currency ?? content?.currency ?? quote.currency,
+				expiresAt: content?.expiresAt
 					? new Date(content.expiresAt)
-					: null,
-				terms: content.terms ?? null,
-				clientMessage: content.clientMessage ?? null,
-				internalNotes: content.internalNotes ?? null,
+					: quote.expiresAt,
+				terms: content?.terms ?? null,
+				clientMessage: content?.clientMessage ?? null,
+				internalNotes: content?.internalNotes ?? null,
+				...(document && quote.documentSha256
+					? buildDocumentRevisionFields({
+							document,
+							documentSha256: quote.documentSha256,
+						})
+					: {
+							documentVersion: null,
+							document: null,
+							documentSha256: null,
+							documentRevision: 0,
+						}),
 				createdBy: context.user.id,
 				updatedBy: context.user.id,
 			})
@@ -377,18 +409,27 @@ export async function reviseQuote(
 				message: "Failed to revise quote",
 			});
 		}
-		await replaceQuoteContent(tx, {
-			quoteId: created.id,
-			organizationId: context.organizationId,
-			content,
-		});
+		if (document) {
+			await replaceNormalizedDocumentChildren(
+				tx,
+				context.organizationId,
+				created.id,
+				document,
+			);
+		} else if (content) {
+			await replaceQuoteContent(tx, {
+				quoteId: created.id,
+				organizationId: context.organizationId,
+				content,
+			});
+		}
 		await trackActivityWithExecutor(
 			tx,
 			{ organizationId: context.organizationId, user: context.user },
 			{
 				entityType: "quote",
 				entityId: created.id,
-				entityName: content.title,
+				entityName: document?.title ?? content?.title ?? quote.title,
 				action: "created",
 				metadata: {
 					quoteNumber: quote.quoteNumber,

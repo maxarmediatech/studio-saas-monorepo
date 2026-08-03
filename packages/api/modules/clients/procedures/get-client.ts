@@ -7,6 +7,7 @@ import {
 	db,
 	eq,
 	isNull,
+	quoteParticipants,
 	sql,
 } from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
@@ -79,6 +80,22 @@ export const getClient = studioProtectedProcedure
 					sql`${bookings.status} NOT IN ('completed', 'cancelled')`,
 				),
 			);
+		const [quotationsCountResult] = await db
+			.select({
+				count: sql<number>`count(distinct ${quoteParticipants.quoteId})`.mapWith(
+					Number,
+				),
+			})
+			.from(quoteParticipants)
+			.where(
+				and(
+					eq(quoteParticipants.clientId, id),
+					eq(
+						quoteParticipants.organizationId,
+						context.organizationId,
+					),
+				),
+			);
 
 		return {
 			data: {
@@ -89,6 +106,7 @@ export const getClient = studioProtectedProcedure
 				deletedAt: client.deletedAt?.toISOString() ?? null,
 				bookingsCount: bookingsCountResult?.count ?? 0,
 				activeBookingsCount: activeBookingsResult?.count ?? 0,
+				quotationsCount: quotationsCountResult?.count ?? 0,
 			},
 		};
 	});

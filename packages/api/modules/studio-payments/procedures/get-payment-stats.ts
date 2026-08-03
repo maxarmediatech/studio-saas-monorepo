@@ -5,6 +5,7 @@ import {
 	db,
 	eq,
 	gte,
+	isNotNull,
 	isNull,
 	paymentSchedules,
 	receivedAmounts,
@@ -128,6 +129,7 @@ export const getPaymentStats = studioProtectedProcedure
 			.where(
 				and(
 					...scheduleConditions,
+					isNotNull(paymentSchedules.dueDate),
 					sql`${paymentSchedules.dueDate} < ${today}`,
 					sql`${paymentSchedules.status} NOT IN ('completed', 'cancelled')`,
 				),
@@ -190,6 +192,7 @@ export const getPaymentStats = studioProtectedProcedure
 			.where(
 				and(
 					...scheduleConditions,
+					isNotNull(paymentSchedules.dueDate),
 					gte(paymentSchedules.dueDate, today),
 					sql`${paymentSchedules.status} NOT IN ('completed', 'cancelled')`,
 				),

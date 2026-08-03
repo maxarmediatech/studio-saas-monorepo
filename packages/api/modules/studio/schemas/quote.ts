@@ -16,6 +16,12 @@ import {
 	paginationSchema,
 	sortDirectionSchema,
 } from "./common";
+import {
+	bookingBlueprintV2Schema,
+	quotationBrandingSnapshotV1Schema,
+	quotationDocumentV1Schema,
+	quotationPdfSnapshotV1Schema,
+} from "./quotation-document";
 
 export const BOOKING_BLUEPRINT_VERSION_V1 = 1 as const;
 
@@ -110,6 +116,7 @@ export const bookingBlueprintV1Schema = z.object({
 export type BookingBlueprintV1 = z.infer<typeof bookingBlueprintV1Schema>;
 export const bookingBlueprintSchema = z.discriminatedUnion("schemaVersion", [
 	bookingBlueprintV1Schema,
+	bookingBlueprintV2Schema,
 ]);
 export type BookingBlueprint = z.infer<typeof bookingBlueprintSchema>;
 
@@ -281,6 +288,12 @@ export const quoteDetailSchema = quoteSummarySchema.extend({
 	terms: z.array(z.string()).nullable(),
 	clientMessage: z.string().nullable(),
 	internalNotes: z.string().nullable(),
+	documentVersion: z.number().int().positive().nullable(),
+	document: quotationDocumentV1Schema.nullable(),
+	documentSha256: z.string().length(64).nullable(),
+	documentRevision: z.number().int().nonnegative(),
+	brandingSnapshot: quotationBrandingSnapshotV1Schema.nullable(),
+	pdfSnapshot: quotationPdfSnapshotV1Schema.nullable(),
 	sentAt: nullableDatetimeSchema,
 	convertedAt: nullableDatetimeSchema,
 	declinedAt: nullableDatetimeSchema,
@@ -359,4 +372,44 @@ export const convertQuoteOutputSchema = z.object({
 		deletedAt: nullableDatetimeSchema,
 	}),
 	message: z.string(),
+});
+
+export const createDocumentQuoteInputSchema = z.object({
+	document: quotationDocumentV1Schema,
+});
+export const saveDocumentQuoteInputSchema = idInputSchema.extend({
+	expectedDocumentRevision: z.number().int().nonnegative(),
+	document: quotationDocumentV1Schema,
+});
+export const sendDocumentQuoteInputSchema = idInputSchema.extend({
+	expectedDocumentRevision: z.number().int().positive(),
+});
+export const documentQuoteMutationOutputSchema = z.object({
+	data: z.object({
+		id: idSchema,
+		documentRevision: z.number().int().positive(),
+		document: quotationDocumentV1Schema,
+	}),
+	message: z.string(),
+});
+export const searchQuotationContactsInputSchema = z.object({
+	query: z.string().trim().min(1).max(255),
+	limit: z.number().int().min(1).max(20).default(20),
+});
+export const quotationContactSearchResultSchema = z.object({
+	id: idSchema,
+	lifecycleStage: z.enum(["lead", "client"]),
+	name: z.string(),
+	email: z.string().nullable(),
+	phoneNumber: z.string().nullable(),
+	alternatePhone: z.string().nullable(),
+	address: z.string().nullable(),
+	metadata: z.record(z.string(), z.unknown()).nullable(),
+	updatedAt: z.string().datetime(),
+});
+export const searchQuotationContactsOutputSchema = z.object({
+	data: z.object({
+		leads: z.array(quotationContactSearchResultSchema),
+		clients: z.array(quotationContactSearchResultSchema),
+	}),
 });

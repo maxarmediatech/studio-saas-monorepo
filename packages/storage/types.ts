@@ -51,3 +51,11 @@ export type GetObjectHandler = (
 		bucket: string;
 	},
 ) => Promise<GetObjectResult | null>;
+
+export type ListObjectsHandler = (
+	prefix: string,
+	options: { bucket: string; continuationToken?: string },
+) => Promise<{
+	objects: Array<{ key: string; lastModified: Date | null }>;
+	nextContinuationToken?: string;
+}>;

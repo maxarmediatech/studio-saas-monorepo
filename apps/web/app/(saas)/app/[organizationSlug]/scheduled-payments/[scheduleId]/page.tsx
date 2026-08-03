@@ -157,13 +157,15 @@ export default function ScheduleDetailPage() {
 								<div className="flex items-center gap-2 text-sm">
 									<CalendarIcon className="size-4 text-muted-foreground" />
 									<span className="text-muted-foreground">
-										Due on
+										Due
 									</span>
 									<span className="font-medium">
-										{format(
-											new Date(schedule.dueDate),
-											"MMMM d, yyyy",
-										)}
+										{schedule.dueDate
+											? format(
+													new Date(schedule.dueDate),
+													"MMMM d, yyyy",
+												)
+											: "Date not scheduled"}
 									</span>
 								</div>
 							</div>

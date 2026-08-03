@@ -1,5 +1,11 @@
 import { createQuote } from "./procedures/create";
 import { deleteQuote } from "./procedures/delete";
+import {
+	createDocumentQuote,
+	saveDocumentQuote,
+	searchContacts,
+	sendDocumentQuote,
+} from "./procedures/document";
 import { getQuote } from "./procedures/get";
 import {
 	acceptQuote,
@@ -16,6 +22,10 @@ export const quotesRouter = {
 	list: listQuotes,
 	get: getQuote,
 	create: createQuote,
+	createDocument: createDocumentQuote,
+	saveDocument: saveDocumentQuote,
+	sendDocument: sendDocumentQuote,
+	searchContacts,
 	update: updateQuote,
 	delete: deleteQuote,
 	send: sendQuote,

@@ -37,6 +37,15 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 					id: "workspace-core",
 					items: [
 						{
+							id: "leads",
+							label: "Leads",
+							path: url("/leads"),
+							icon: "Contact2",
+							permission: {
+								any: [{ resource: "client", action: "list" }],
+							},
+						},
+						{
 							id: "home",
 							label: "Home",
 							path: url("/home"),
@@ -137,7 +146,7 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 								any: [{ resource: "client", action: "list" }],
 							},
 						},
-						// Future: Leads, Communications
+						// Future: Communications
 					],
 				},
 				// Future: Pinned Bookings section

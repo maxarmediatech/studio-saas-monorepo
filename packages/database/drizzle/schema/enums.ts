@@ -36,6 +36,19 @@ export const quoteStatusEnum = pgEnum("quote_status", [
 	"superseded",
 ]);
 
+export const clientLifecycleStageEnum = pgEnum("client_lifecycle_stage", [
+	"lead",
+	"client",
+]);
+
+export const eventSideEnum = pgEnum("event_side", [
+	"common",
+	"bride",
+	"groom",
+	"both",
+	"separateCommon",
+]);
+
 // ----------------------------------------------------------------------------
 // Workflow & Submissions
 // ----------------------------------------------------------------------------

@@ -7,6 +7,7 @@ import {
 	deliverables,
 	eq,
 	gte,
+	isNotNull,
 	isNull,
 	paymentSchedules,
 	shootAssignments,
@@ -67,6 +68,7 @@ export const getQuickActions = studioProtectedProcedure
 				and(
 					eq(paymentSchedules.organizationId, context.organizationId),
 					sql`${paymentSchedules.status} IN ('pending', 'partial', 'overdue')`,
+					isNotNull(paymentSchedules.dueDate),
 					sql`${paymentSchedules.dueDate} < ${todayStr}`,
 					isNull(bookings.deletedAt),
 				),

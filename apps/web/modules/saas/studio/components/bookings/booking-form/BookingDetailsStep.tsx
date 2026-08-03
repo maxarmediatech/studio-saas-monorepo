@@ -49,6 +49,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import { toast } from "sonner";
+import { applyPackageConfiguration } from "../../configurations/apply-package-configuration";
 import { bookingFormQueries } from "./booking-form-queries";
 import type { BookingFormValues } from "./booking-form-schema";
 
@@ -383,16 +384,10 @@ export function BookingDetailsStep() {
 		});
 		const selectedPackage = packageTypes.find((p) => p.key === value);
 		if (selectedPackage) {
-			const metadata = selectedPackage.metadata as {
-				defaultCost?: string;
-				defaultDeliverables?: Array<{
-					title: string;
-					quantity: number;
-				}>;
-			} | null;
+			const applied = applyPackageConfiguration(selectedPackage);
 
 			// Auto-fill package cost — column first, fallback to metadata
-			const cost = selectedPackage.defaultCost ?? metadata?.defaultCost;
+			const cost = applied.cost;
 			if (cost) {
 				form.setValue("packageCost", cost, {
 					shouldDirty: true,
@@ -401,13 +396,13 @@ export function BookingDetailsStep() {
 			}
 
 			// Auto-populate deliverables from package metadata (replaces all existing per design decision)
-			const defaultDeliverables = metadata?.defaultDeliverables;
+			const defaultDeliverables = applied.deliverables;
 			if (defaultDeliverables && defaultDeliverables.length > 0) {
 				const packageDeliverables = defaultDeliverables.map((d) => ({
-					name: d.title,
+					name: d.name,
 					quantity: d.quantity,
 					isPackageIncluded: true,
-					description: "",
+					description: d.details,
 					dueDate: "",
 					crewAssignments: [],
 				}));

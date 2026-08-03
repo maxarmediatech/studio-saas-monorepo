@@ -137,6 +137,7 @@ export const bookingMaterializationOperations: BookingMaterializationOperations 
 			const existingClients = await tx.query.clients.findMany({
 				where: and(
 					eq(clients.organizationId, organizationId),
+					eq(clients.lifecycleStage, "client"),
 					isNull(clients.deletedAt),
 					inArray(clients.id, uniqueClientIds),
 				),
@@ -198,7 +199,14 @@ export const bookingMaterializationOperations: BookingMaterializationOperations 
 					bookingId,
 					organizationId: context.organizationId,
 					eventType: event.eventType,
-					eventDate: new Date(event.eventDate),
+					eventDate: event.eventDate
+						? new Date(event.eventDate)
+						: null,
+					side: event.side ?? "common",
+					guestCount: event.guestCount ?? null,
+					isTentative: event.isTentative ?? false,
+					dateWindow: event.dateWindow ?? null,
+					coverageNotes: event.coverageNotes ?? null,
 					venue: event.venue ?? null,
 					venueAddress: event.venueAddress ?? null,
 					notes: event.notes ?? null,

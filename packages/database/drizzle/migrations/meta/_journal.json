@@ -379,6 +379,13 @@
       "when": 1785677464916,
       "tag": "0053_manager_quote_permissions",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1785771591979,
+      "tag": "0054_thankful_forgotten_one",
+      "breakpoints": true
     }
   ]
 }

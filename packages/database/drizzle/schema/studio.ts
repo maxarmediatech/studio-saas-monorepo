@@ -31,9 +31,11 @@ import {
 	assignmentProgressStatusEnum,
 	billToEnum,
 	bookingPhaseEnum,
+	clientLifecycleStageEnum,
 	configTypeEnum,
 	deliverableTaskLinkKindEnum,
 	deliverableTrackingModeEnum,
+	eventSideEnum,
 	invoiceStatusEnum,
 	lineItemTypeEnum,
 	paymentMethodEnum,
@@ -119,6 +121,9 @@ export const clients = pgTable(
 		alternatePhone: text("alternate_phone"),
 		address: text("address"),
 		metadata: jsonb("metadata"),
+		lifecycleStage: clientLifecycleStageEnum("lifecycle_stage")
+			.default("client")
+			.notNull(),
 
 		createdBy: varchar("created_by", { length: 255 }).references(
 			() => users.id,
@@ -144,6 +149,16 @@ export const clients = pgTable(
 	(table) => [
 		unique("clients_id_org_unique").on(table.id, table.organizationId),
 		index("clients_organization_idx").on(table.organizationId),
+		index("clients_org_lifecycle_created_idx").on(
+			table.organizationId,
+			table.lifecycleStage,
+			table.createdAt,
+		),
+		index("clients_org_lifecycle_name_idx").on(
+			table.organizationId,
+			table.lifecycleStage,
+			sql`lower(${table.name})`,
+		),
 		uniqueIndex("clients_org_phone_idx")
 			.on(table.organizationId, table.phoneNumber)
 			.where(sql`phone_number IS NOT NULL AND deleted_at IS NULL`),
@@ -323,7 +338,12 @@ export const bookingEvents = pgTable(
 			.references(() => organizations.id, { onDelete: "cascade" }),
 
 		eventType: text("event_type").notNull(),
-		eventDate: timestamp("event_date", { withTimezone: true }).notNull(),
+		eventDate: timestamp("event_date", { withTimezone: true }),
+		side: eventSideEnum("side").default("common").notNull(),
+		guestCount: text("guest_count"),
+		isTentative: boolean("is_tentative").default(false).notNull(),
+		dateWindow: text("date_window"),
+		coverageNotes: text("coverage_notes"),
 		venue: text("venue"),
 		venueAddress: text("venue_address"),
 		notes: text("notes"),
@@ -342,6 +362,10 @@ export const bookingEvents = pgTable(
 			table.eventDate,
 		),
 		index("booking_events_date_idx").on(table.eventDate),
+		check(
+			"booking_events_timeline_shape",
+			sql`(is_tentative = false AND event_date IS NOT NULL AND date_window IS NULL) OR (is_tentative = true AND event_date IS NULL AND nullif(btrim(date_window), '') IS NOT NULL)`,
+		),
 	],
 );
 
@@ -370,6 +394,17 @@ export const quotes = pgTable(
 		terms: jsonb("terms"),
 		clientMessage: text("client_message"),
 		internalNotes: text("internal_notes"),
+		documentVersion: integer("document_version"),
+		document: jsonb("document"),
+		documentSha256: varchar("document_sha256", { length: 64 }),
+		documentRevision: integer("document_revision").default(0).notNull(),
+		brandingSnapshot: jsonb("branding_snapshot"),
+		pdfStorageKey: text("pdf_storage_key"),
+		pdfSha256: varchar("pdf_sha256", { length: 64 }),
+		pdfRenderedAt: timestamp("pdf_rendered_at", { withTimezone: true }),
+		pdfRendererVersion: varchar("pdf_renderer_version", { length: 100 }),
+		pdfPageCount: integer("pdf_page_count"),
+		pdfByteSize: integer("pdf_byte_size"),
 		sentAt: timestamp("sent_at", { withTimezone: true }),
 		convertedAt: timestamp("converted_at", { withTimezone: true }),
 		declinedAt: timestamp("declined_at", { withTimezone: true }),
@@ -420,6 +455,18 @@ export const quotes = pgTable(
 			sql`supersedes_quote_id IS NULL OR supersedes_quote_id <> id`,
 		),
 		check("quotes_currency_iso_length", sql`char_length(currency) = 3`),
+		check(
+			"quotes_document_revision_non_negative",
+			sql`document_revision >= 0`,
+		),
+		check(
+			"quotes_document_fields_complete",
+			sql`document_version IS NULL OR (document_version = 1 AND document IS NOT NULL AND document_sha256 IS NOT NULL)`,
+		),
+		check(
+			"quotes_pdf_fields_complete",
+			sql`(pdf_storage_key IS NULL AND pdf_sha256 IS NULL AND pdf_rendered_at IS NULL AND pdf_renderer_version IS NULL AND pdf_page_count IS NULL AND pdf_byte_size IS NULL) OR (pdf_storage_key IS NOT NULL AND pdf_sha256 IS NOT NULL AND pdf_rendered_at IS NOT NULL AND pdf_renderer_version IS NOT NULL AND pdf_page_count > 0 AND pdf_byte_size > 0)`,
+		),
 	],
 );
 
@@ -435,6 +482,8 @@ export const quoteParticipants = pgTable(
 		role: varchar("role", { length: 100 }).notNull(),
 		side: varchar("side", { length: 50 }),
 		isPrimary: boolean("is_primary").default(false).notNull(),
+		documentKey: varchar("document_key", { length: 255 }),
+		contactSnapshot: jsonb("contact_snapshot"),
 		sortOrder: integer("sort_order").default(0).notNull(),
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.defaultNow()
@@ -458,6 +507,9 @@ export const quoteParticipants = pgTable(
 			table.role,
 		),
 		index("quote_participants_quote_idx").on(table.quoteId),
+		uniqueIndex("quote_participants_document_key_unique_idx")
+			.on(table.quoteId, table.documentKey)
+			.where(sql`document_key IS NOT NULL`),
 		uniqueIndex("quote_participants_primary_unique_idx")
 			.on(table.quoteId)
 			.where(sql`is_primary = true`),
@@ -495,6 +547,7 @@ export const quoteOptions = pgTable(
 			.notNull(),
 		bookingBlueprint: jsonb("booking_blueprint").notNull(),
 		isRecommended: boolean("is_recommended").default(false).notNull(),
+		documentKey: varchar("document_key", { length: 255 }),
 		sortOrder: integer("sort_order").default(0).notNull(),
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.defaultNow()
@@ -525,6 +578,9 @@ export const quoteOptions = pgTable(
 			.on(table.quoteId)
 			.where(sql`is_recommended = true`),
 		index("quote_options_quote_idx").on(table.quoteId),
+		uniqueIndex("quote_options_document_key_unique_idx")
+			.on(table.quoteId, table.documentKey)
+			.where(sql`document_key IS NOT NULL`),
 		check(
 			"quote_options_amounts_non_negative",
 			sql`subtotal >= 0 AND discount_amount >= 0 AND tax_amount >= 0 AND total_amount >= 0`,
@@ -588,6 +644,9 @@ export const quoteAcceptances = pgTable(
 		organizationId: varchar("organization_id", { length: 255 }).notNull(),
 		quoteOptionId: varchar("quote_option_id", { length: 255 }).notNull(),
 		optionSnapshot: jsonb("option_snapshot").notNull(),
+		documentSnapshot: jsonb("document_snapshot"),
+		documentSha256: varchar("document_sha256", { length: 64 }),
+		pdfSnapshot: jsonb("pdf_snapshot"),
 		acceptedAt: timestamp("accepted_at", { withTimezone: true }).notNull(),
 		acceptedBy: varchar("accepted_by", { length: 255 }).references(
 			() => users.id,
@@ -1419,7 +1478,9 @@ export const paymentSchedules = pgTable(
 
 		name: text("name").notNull(), // "Advance", "Before Wedding", "Final Payment"
 		amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
-		dueDate: date("due_date").notNull(),
+		dueDate: date("due_date"),
+		percentage: decimal("percentage", { precision: 5, scale: 2 }),
+		timing: text("timing"),
 
 		status: paymentScheduleStatusEnum("status")
 			.default("pending")
@@ -1458,6 +1519,10 @@ export const paymentSchedules = pgTable(
 	(table) => [
 		index("payment_schedules_org_idx").on(table.organizationId),
 		index("payment_schedules_booking_idx").on(table.bookingId),
+		check(
+			"payment_schedules_percentage_range",
+			sql`percentage IS NULL OR (percentage >= 0 AND percentage <= 100)`,
+		),
 		index("payment_schedules_due_date_idx").on(table.dueDate),
 		index("payment_schedules_status_idx").on(table.status),
 		check("payment_schedules_amount_positive", sql`amount > 0`),

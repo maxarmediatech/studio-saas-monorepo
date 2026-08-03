@@ -296,13 +296,9 @@ export function FinancesTab({ bookingId }: FinancesTabProps) {
 												</td>
 												<td className="py-4 pr-6">
 													<span className="text-sm text-muted-foreground">
-														Due{" "}
-														{format(
-															new Date(
-																schedule.dueDate,
-															),
-															"MMM d, yyyy",
-														)}
+														{schedule.dueDate
+															? `Due ${format(new Date(schedule.dueDate), "MMM d, yyyy")}`
+															: "Date not scheduled"}
 													</span>
 												</td>
 												<td className="py-4 text-right">

@@ -162,8 +162,15 @@ export function QuotationDetail({
 						</AlertDescription>
 					</Alert>
 				) : null}
-				<Tabs defaultValue="options">
+				<Tabs
+					defaultValue={
+						quote.documentVersion === 1 ? "document" : "options"
+					}
+				>
 					<TabsList className="w-full justify-start overflow-x-auto">
+						{quote.documentVersion === 1 ? (
+							<TabsTrigger value="document">Document</TabsTrigger>
+						) : null}
 						<TabsTrigger value="options">Options</TabsTrigger>
 						<TabsTrigger value="blueprint">
 							Booking blueprint
@@ -171,6 +178,27 @@ export function QuotationDetail({
 						<TabsTrigger value="terms">Terms & notes</TabsTrigger>
 						<TabsTrigger value="history">History</TabsTrigger>
 					</TabsList>
+					{quote.documentVersion === 1 ? (
+						<TabsContent
+							value="document"
+							className="mt-6 space-y-3"
+						>
+							<div className="flex justify-end">
+								<Button asChild variant="outline">
+									<a
+										href={`/api/studio/quotations/${quote.id}/pdf?download=1`}
+									>
+										Download PDF
+									</a>
+								</Button>
+							</div>
+							<iframe
+								title="Quotation PDF"
+								src={`/api/studio/quotations/${quote.id}/pdf`}
+								className="h-[75dvh] min-h-[640px] w-full rounded-lg border"
+							/>
+						</TabsContent>
+					) : null}
 					<TabsContent value="options" className="mt-6">
 						<QuotationOptionsSection quote={quote} />
 					</TabsContent>

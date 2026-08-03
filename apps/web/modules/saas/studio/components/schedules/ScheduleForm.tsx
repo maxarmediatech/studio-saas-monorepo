@@ -76,7 +76,7 @@ interface ScheduleFormProps {
 
 function moneyToCents(value: string | undefined | null): number {
 	const [whole = "0", fraction = ""] = (value ?? "0").split(".");
-	const fractionPadded = (fraction + "00").slice(0, 2);
+	const fractionPadded = `${fraction}00`.slice(0, 2);
 	return Number(whole) * 100 + Number(fractionPadded);
 }
 
@@ -133,7 +133,7 @@ export function ScheduleForm({
 				bookingId: defaultValues.bookingId,
 				name: defaultValues.name,
 				amount: defaultValues.amount,
-				dueDate: defaultValues.dueDate,
+				dueDate: defaultValues.dueDate ?? "",
 				taxType: defaultValues.taxType ?? "no_gst",
 				notes: defaultValues.notes ?? "",
 			});

@@ -85,7 +85,7 @@ export function PaymentSchedulesEditor({
 							<Input
 								aria-label="Payment milestone due date"
 								type="date"
-								value={schedule.dueDate}
+								value={schedule.dueDate ?? ""}
 								onChange={(event) =>
 									updateSchedule(index, {
 										dueDate: event.target.value,

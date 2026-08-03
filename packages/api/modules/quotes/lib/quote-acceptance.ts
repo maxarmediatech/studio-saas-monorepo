@@ -10,6 +10,11 @@ import {
 } from "@repo/database";
 import { trackActivityWithExecutor } from "../../activities/lib";
 import {
+	quotationBrandingSnapshotV1Schema,
+	quotationDocumentV1Schema,
+	quotationPdfSnapshotV1Schema,
+} from "../../studio/schemas/quotation-document";
+import {
 	acceptedQuoteOptionSnapshotSchema,
 	bookingBlueprintSchema,
 } from "../../studio/schemas/quote";
@@ -110,6 +115,35 @@ export async function acceptQuote(
 			organizationId: context.organizationId,
 			quoteOptionId: option.id,
 			optionSnapshot: snapshot,
+			documentSnapshot:
+				quote.documentVersion === 1
+					? quotationDocumentV1Schema.parse(quote.document)
+					: null,
+			documentSha256:
+				quote.documentVersion === 1 ? quote.documentSha256 : null,
+			pdfSnapshot:
+				quote.documentVersion === 1 &&
+				quote.pdfStorageKey &&
+				quote.pdfSha256 &&
+				quote.pdfRenderedAt &&
+				quote.pdfRendererVersion &&
+				quote.pdfPageCount &&
+				quote.pdfByteSize &&
+				quotationBrandingSnapshotV1Schema.safeParse(
+					quote.brandingSnapshot,
+				).success
+					? quotationPdfSnapshotV1Schema.parse({
+							rendererVersion: quote.pdfRendererVersion,
+							storageKey: quote.pdfStorageKey,
+							sha256: quote.pdfSha256,
+							renderedAt: quote.pdfRenderedAt.toISOString(),
+							pageCount: quote.pdfPageCount,
+							byteSize: quote.pdfByteSize,
+							branding: quotationBrandingSnapshotV1Schema.parse(
+								quote.brandingSnapshot,
+							),
+						})
+					: null,
 			acceptedAt: now,
 			acceptedBy: context.user.id,
 		});

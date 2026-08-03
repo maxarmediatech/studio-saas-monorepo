@@ -1,6 +1,5 @@
 export const SNAPSHOT_MANIFEST_VERSION = 2;
-export const SANITIZER_REVIEWED_SNAPSHOT_TAG =
-	"0049_repair_stale_deliverable_task_links";
+export const SANITIZER_REVIEWED_SNAPSHOT_TAG = "0054_thankful_forgotten_one";
 
 export type TableCounts = Record<string, string>;
 

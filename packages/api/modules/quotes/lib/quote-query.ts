@@ -19,6 +19,11 @@ import {
 	sql,
 } from "@repo/database";
 import {
+	quotationBrandingSnapshotV1Schema,
+	quotationDocumentV1Schema,
+	quotationPdfSnapshotV1Schema,
+} from "../../studio/schemas/quotation-document";
+import {
 	acceptedQuoteOptionSnapshotSchema,
 	bookingBlueprintSchema,
 	type QuoteStatus,
@@ -268,6 +273,29 @@ export async function getOrganizationQuote(
 		terms: (quote.terms as string[] | null) ?? null,
 		clientMessage: quote.clientMessage,
 		internalNotes: quote.internalNotes,
+		documentVersion: quote.documentVersion,
+		document: quote.document
+			? quotationDocumentV1Schema.parse(quote.document)
+			: null,
+		documentSha256: quote.documentSha256,
+		documentRevision: quote.documentRevision,
+		brandingSnapshot: quote.brandingSnapshot
+			? quotationBrandingSnapshotV1Schema.parse(quote.brandingSnapshot)
+			: null,
+		pdfSnapshot:
+			quote.pdfStorageKey &&
+			quote.pdfSha256 &&
+			quote.pdfRenderedAt &&
+			quote.pdfRendererVersion
+				? quotationPdfSnapshotV1Schema.parse({
+						rendererVersion: quote.pdfRendererVersion,
+						storageKey: quote.pdfStorageKey,
+						sha256: quote.pdfSha256,
+						renderedAt: quote.pdfRenderedAt.toISOString(),
+						pageCount: quote.pdfPageCount ?? 1,
+						byteSize: quote.pdfByteSize ?? 1,
+					})
+				: null,
 		sentAt: iso(quote.sentAt),
 		convertedAt: iso(quote.convertedAt),
 		declinedAt: iso(quote.declinedAt),

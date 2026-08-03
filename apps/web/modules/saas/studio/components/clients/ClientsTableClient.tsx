@@ -43,10 +43,12 @@ import { OpenClientCreateSheet } from "./OpenClientSheet";
 
 interface ClientsTableClientProps {
 	organizationSlug?: string;
+	lifecycleStage?: "lead" | "client";
 }
 
 export function ClientsTableClient({
 	organizationSlug,
+	lifecycleStage = "client",
 }: ClientsTableClientProps) {
 	const router = useRouter();
 	const queryClient = useQueryClient();
@@ -82,6 +84,7 @@ export function ClientsTableClient({
 			| "updatedAt",
 		sortDirection: sorting.sortDirection,
 		includeDeleted: false,
+		lifecycleStage,
 	};
 
 	// Fetch clients with TanStack Query

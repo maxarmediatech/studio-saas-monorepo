@@ -5,9 +5,15 @@ import { Button } from "@repo/ui/components/button";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { formatMoney } from "@saas/shared/lib";
 import { useClientParams } from "@saas/studio/hooks/params/use-client-params";
-import { bookingsApi, clientsApi } from "@saas/studio/lib/api";
+import {
+	bookingsApi,
+	clientsApi,
+	clientsMutations,
+	quotesApi,
+} from "@saas/studio/lib/api";
 import { UserAvatar } from "@shared/components/UserAvatar";
-import { useQuery } from "@tanstack/react-query";
+import { orpc } from "@shared/lib/orpc-query-utils";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
 	CheckCircle2Icon,
 	ChevronRight,
@@ -75,6 +81,7 @@ function getBookingStatusBadge(status: string) {
 }
 
 export default function ClientDetailPage() {
+	const queryClient = useQueryClient();
 	const params = useParams<{
 		organizationSlug: string;
 		clientId: string;
@@ -98,6 +105,21 @@ export default function ClientDetailPage() {
 	});
 
 	const bookings = bookingsData?.data ?? [];
+	const { data: quotesData } = useQuery(
+		quotesApi.listOptions({ clientId: params.clientId, limit: 50 }),
+	);
+	const quotations = quotesData?.data ?? [];
+	const promote = useMutation({
+		...clientsMutations.promote(),
+		onSuccess: async () => {
+			await queryClient.invalidateQueries({
+				queryKey: orpc.clients.key(),
+			});
+			await queryClient.invalidateQueries({
+				queryKey: orpc.quotes.key(),
+			});
+		},
+	});
 
 	const clientsHref = `/app/${params.organizationSlug}/clients`;
 
@@ -140,14 +162,25 @@ export default function ClientDetailPage() {
 						{client.name}
 					</span>
 				</div>
-				<Button
-					variant="outline"
-					size="sm"
-					onClick={() => openEdit(client.id)}
-				>
-					<PencilIcon className="mr-1 size-4" />
-					Edit
-				</Button>
+				<div className="flex gap-2">
+					{client.lifecycleStage === "lead" ? (
+						<Button
+							size="sm"
+							onClick={() => promote.mutate({ id: client.id })}
+							disabled={promote.isPending}
+						>
+							Promote to client
+						</Button>
+					) : null}
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => openEdit(client.id)}
+					>
+						<PencilIcon className="mr-1 size-4" />
+						Edit
+					</Button>
+				</div>
 			</div>
 
 			<div className="mt-8">
@@ -157,6 +190,9 @@ export default function ClientDetailPage() {
 						<h1 className="text-2xl font-semibold">
 							{client.name}
 						</h1>
+						<Badge variant="outline" className="mt-2 capitalize">
+							{client.lifecycleStage}
+						</Badge>
 						<div className="mt-3 space-y-2">
 							{client.email && (
 								<div className="flex items-center gap-2 text-sm">
@@ -214,6 +250,31 @@ export default function ClientDetailPage() {
 							)}
 						</div>
 					</div>
+				</div>
+			</div>
+
+			<div className="mt-8 border-t pt-6">
+				<h2 className="font-semibold">
+					Quotations ({quotations.length})
+				</h2>
+				<div className="mt-4 space-y-2">
+					{quotations.map((quote) => (
+						<Link
+							key={quote.id}
+							href={`/app/${params.organizationSlug}/quotations/${quote.id}`}
+							className="flex justify-between rounded-lg border p-4 hover:bg-accent/50"
+						>
+							<span>{quote.title}</span>
+							<span className="text-sm text-muted-foreground">
+								{quote.quoteNumber}
+							</span>
+						</Link>
+					))}
+					{quotations.length === 0 ? (
+						<p className="text-sm text-muted-foreground">
+							No quotations yet.
+						</p>
+					) : null}
 				</div>
 			</div>
 

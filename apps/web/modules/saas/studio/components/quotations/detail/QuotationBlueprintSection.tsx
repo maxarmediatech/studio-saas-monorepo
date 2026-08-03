@@ -19,6 +19,14 @@ export function QuotationBlueprintSection({ quote }: { quote: QuoteDetail }) {
 		<div className="flex flex-col gap-5">
 			{quote.options.map((option) => {
 				const booking = option.bookingBlueprint.booking;
+				const legacy =
+					option.bookingBlueprint.schemaVersion === 1
+						? option.bookingBlueprint.booking
+						: null;
+				const documentBooking =
+					option.bookingBlueprint.schemaVersion === 2
+						? option.bookingBlueprint.booking
+						: null;
 				return (
 					<section
 						key={option.id}
@@ -40,7 +48,7 @@ export function QuotationBlueprintSection({ quote }: { quote: QuoteDetail }) {
 						<div className="grid gap-px bg-border sm:grid-cols-3">
 							<DetailMetric
 								label="Booking date"
-								value={booking.bookingDate}
+								value={legacy?.bookingDate ?? "Acceptance date"}
 							/>
 							<DetailMetric
 								label="Booking type"
@@ -60,7 +68,7 @@ export function QuotationBlueprintSection({ quote }: { quote: QuoteDetail }) {
 							<Count
 								icon={<FileTextIcon />}
 								label="Shoots"
-								value={booking.shoots?.length ?? 0}
+								value={legacy?.shoots?.length ?? 0}
 							/>
 							<Count
 								icon={<FileTextIcon />}
@@ -70,31 +78,38 @@ export function QuotationBlueprintSection({ quote }: { quote: QuoteDetail }) {
 							<Count
 								icon={<UsersIcon />}
 								label="Schedules"
-								value={booking.paymentSchedules?.length ?? 0}
+								value={
+									documentBooking?.paymentMilestones.length ??
+									legacy?.paymentSchedules?.length ??
+									0
+								}
 							/>
 						</div>
-						{booking.note || booking.contractAttachment ? (
+						{legacy?.note || legacy?.contractAttachment ? (
 							<>
 								<Separator />
 								<div className="flex flex-col gap-3 p-4 text-sm">
-									{booking.note ? (
+									{legacy.note ? (
 										<p className="whitespace-pre-wrap text-muted-foreground">
-											{booking.note}
+											{legacy.note}
 										</p>
 									) : null}
-									{booking.contractAttachment ? (
+									{legacy.contractAttachment ? (
 										<p className="flex items-center gap-2">
 											<PaperclipIcon
 												className="size-4"
 												aria-hidden="true"
 											/>
-											{booking.contractAttachment.name}
+											{legacy.contractAttachment.name}
 										</p>
 									) : null}
 								</div>
 							</>
 						) : null}
-						<OperationalLists quote={quote} booking={booking} />
+						<OperationalLists
+							quote={quote}
+							blueprint={option.bookingBlueprint}
+						/>
 					</section>
 				);
 			})}
@@ -104,39 +119,55 @@ export function QuotationBlueprintSection({ quote }: { quote: QuoteDetail }) {
 
 function OperationalLists({
 	quote,
-	booking,
+	blueprint,
 }: {
 	quote: QuoteDetail;
-	booking: QuoteDetail["options"][number]["bookingBlueprint"]["booking"];
+	blueprint: QuoteDetail["options"][number]["bookingBlueprint"];
 }) {
+	const booking = blueprint.booking;
+	const legacy = blueprint.schemaVersion === 1 ? blueprint.booking : null;
+	const documentBooking =
+		blueprint.schemaVersion === 2 ? blueprint.booking : null;
 	const sections = [
 		{
 			title: "Events",
-			rows: (booking.events ?? []).map(
-				(item) =>
-					`${item.eventType} · ${formatQuoteDate(item.eventDate)}${item.venue ? ` · ${item.venue}` : ""}`,
-			),
+			rows: (booking.events ?? []).map((item) => {
+				const venue = "location" in item ? item.location : item.venue;
+				const date = item.eventDate
+					? formatQuoteDate(item.eventDate)
+					: "Date not scheduled";
+				return `${item.eventType} · ${date}${venue ? ` · ${venue}` : ""}`;
+			}),
 		},
 		{
 			title: "Shoots",
-			rows: (booking.shoots ?? []).map(
+			rows: (legacy?.shoots ?? []).map(
 				(item) =>
 					`${item.name} · ${item.shootDate}${item.startTime ? ` at ${item.startTime}` : ""} · ${item.crewAssignments?.length ?? 0} crew`,
 			),
 		},
 		{
 			title: "Deliverables",
-			rows: (booking.deliverables ?? []).map(
-				(item) =>
-					`${item.name} · qty ${item.quantity}${item.dueDate ? ` · due ${item.dueDate}` : ""} · ${item.crewAssignments?.length ?? 0} crew`,
-			),
+			rows: (booking.deliverables ?? []).map((item) => {
+				const dueDate = "dueDate" in item ? item.dueDate : undefined;
+				const crew =
+					"crewAssignments" in item
+						? (item.crewAssignments?.length ?? 0)
+						: 0;
+				return `${item.name} · qty ${item.quantity}${dueDate ? ` · due ${dueDate}` : ""} · ${crew} crew`;
+			}),
 		},
 		{
 			title: "Payment schedule",
-			rows: (booking.paymentSchedules ?? []).map(
-				(item) =>
-					`${item.name} · ${formatMoney(quote.currency, item.amount)} · due ${item.dueDate}`,
-			),
+			rows: documentBooking
+				? documentBooking.paymentMilestones.map(
+						(item) =>
+							`${item.label} · ${item.percentage}% · Date not scheduled`,
+					)
+				: (legacy?.paymentSchedules ?? []).map(
+						(item) =>
+							`${item.name} · ${formatMoney(quote.currency, item.amount)} · ${item.dueDate ? `due ${item.dueDate}` : "Date not scheduled"}`,
+					),
 		},
 	].filter((section) => section.rows.length > 0);
 	if (sections.length === 0) {

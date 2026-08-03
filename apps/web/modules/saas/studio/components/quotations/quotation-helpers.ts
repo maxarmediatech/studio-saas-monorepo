@@ -212,6 +212,15 @@ export function createEmptyOption(): QuoteDraftContentInput["options"][number] {
 export function quoteDetailToDraft(
 	detail: QuoteDetail,
 ): QuoteDraftContentInput {
+	if (
+		detail.options.some(
+			(option) => option.bookingBlueprint.schemaVersion !== 1,
+		)
+	) {
+		throw new Error(
+			"Document quotations must be edited through the quotation wizard",
+		);
+	}
 	return {
 		title: detail.title,
 		currency: detail.currency,
@@ -225,38 +234,43 @@ export function quoteDetailToDraft(
 			side: participant.side ?? undefined,
 			isPrimary: participant.isPrimary,
 		})),
-		options: detail.options.map((option) => ({
-			name: option.name,
-			description: option.description,
-			discountAmount: option.discountAmount,
-			taxAmount: option.taxAmount,
-			bookingBlueprint: {
-				...option.bookingBlueprint,
-				booking: {
-					...option.bookingBlueprint.booking,
-					paymentSchedules:
-						option.bookingBlueprint.booking.paymentSchedules?.map(
-							({ sortOrder: _sortOrder, ...schedule }) =>
-								schedule,
-						),
+		options: detail.options.map((option) => {
+			if (option.bookingBlueprint.schemaVersion !== 1) {
+				throw new Error("Unexpected document quotation blueprint");
+			}
+			return {
+				name: option.name,
+				description: option.description,
+				discountAmount: option.discountAmount,
+				taxAmount: option.taxAmount,
+				bookingBlueprint: {
+					...option.bookingBlueprint,
+					booking: {
+						...option.bookingBlueprint.booking,
+						paymentSchedules:
+							option.bookingBlueprint.booking.paymentSchedules?.map(
+								({ sortOrder: _sortOrder, ...schedule }) =>
+									schedule,
+							),
+					},
 				},
-			},
-			isRecommended: option.isRecommended,
-			lineItems: option.lineItems.map((line) =>
-				line.type === "item" || line.type === "service"
-					? {
-							type: line.type,
-							description: line.description,
-							quantity: line.quantity ?? "1",
-							unitPrice: line.unitPrice ?? "0.00",
-						}
-					: {
-							type: line.type,
-							description: line.description,
-							amount: line.amount,
-						},
-			),
-		})),
+				isRecommended: option.isRecommended,
+				lineItems: option.lineItems.map((line) =>
+					line.type === "item" || line.type === "service"
+						? {
+								type: line.type,
+								description: line.description,
+								quantity: line.quantity ?? "1",
+								unitPrice: line.unitPrice ?? "0.00",
+							}
+						: {
+								type: line.type,
+								description: line.description,
+								amount: line.amount,
+							},
+				),
+			};
+		}),
 	};
 }
 

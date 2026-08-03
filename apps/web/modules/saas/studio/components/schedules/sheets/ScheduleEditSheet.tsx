@@ -99,7 +99,15 @@ export function ScheduleEditSheet() {
 						</div>
 					) : (
 						<ScheduleForm
-							defaultValues={schedule?.data}
+							defaultValues={
+								schedule?.data
+									? {
+											...schedule.data,
+											dueDate:
+												schedule.data.dueDate ?? "",
+										}
+									: undefined
+							}
 							booking={schedule?.data?.booking}
 							onSubmit={handleSubmit}
 							mode="edit"

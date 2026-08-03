@@ -64,6 +64,9 @@ function contentWithSchedules(
 	if (!option) {
 		throw new Error("Missing option fixture");
 	}
+	if (option.bookingBlueprint.schemaVersion !== 1) {
+		throw new Error("Expected blueprint v1 fixture");
+	}
 	return {
 		...input,
 		options: [
@@ -125,9 +128,11 @@ describe("quote domain normalization", () => {
 				},
 			]),
 		);
-		expect(
-			normalized.options[0]?.bookingBlueprint.booking.paymentSchedules,
-		).toEqual([
+		const blueprint = normalized.options[0]?.bookingBlueprint;
+		if (blueprint?.schemaVersion !== 1) {
+			throw new Error("Expected normalized blueprint v1");
+		}
+		expect(blueprint.booking.paymentSchedules).toEqual([
 			expect.objectContaining({ amount: "7.00", sortOrder: 0 }),
 			expect.objectContaining({ amount: "7.52", sortOrder: 1 }),
 		]);

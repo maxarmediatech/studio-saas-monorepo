@@ -108,7 +108,7 @@ export function EventsEditor({
 								aria-label="Event date and time"
 								type="datetime-local"
 								value={isoToDateTimeLocal(
-									event.eventDate,
+									event.eventDate ?? "",
 									organizationTimezone,
 								)}
 								onChange={(changeEvent) =>

@@ -80,9 +80,18 @@ interface OverviewTabProps {
 		}>;
 		events: Array<{
 			eventType: string;
-			eventDate: Date | string;
+			eventDate: Date | string | null;
+			side: "common" | "bride" | "groom" | "both" | "separateCommon";
+			guestCount: string | null;
+			isTentative: boolean;
+			dateWindow: string | null;
+			coverageNotes: string | null;
 			venue: string | null;
 		}>;
+		sourceQuotationCommitments: {
+			deliveryTimelines: string[];
+			fixedTerms: string[];
+		} | null;
 	};
 }
 
@@ -276,15 +285,65 @@ export const OverviewTab = memo(function OverviewTab({
 									<div className="flex items-center gap-1.5 text-sm text-muted-foreground">
 										<CalendarIcon className="h-3.5 w-3.5" />
 										<span>
-											{formatDate(event.eventDate)}
+											{event.eventDate
+												? formatDate(event.eventDate)
+												: (event.dateWindow ??
+													"Date not scheduled")}
 										</span>
 									</div>
+									<p className="text-xs capitalize text-muted-foreground">
+										{humanizeKey(event.side)}
+										{event.guestCount
+											? ` · ${event.guestCount} guests`
+											: ""}
+									</p>
+									{event.coverageNotes ? (
+										<p className="whitespace-pre-wrap text-sm text-muted-foreground">
+											{event.coverageNotes}
+										</p>
+									) : null}
 								</div>
 							))}
 						</div>
 					</CardContent>
 				</Card>
 			)}
+
+			{booking.sourceQuotationCommitments ? (
+				<Card>
+					<CardHeader>
+						<CardTitle className="text-base">
+							Quotation commitments
+						</CardTitle>
+					</CardHeader>
+					<CardContent className="grid gap-5 md:grid-cols-2">
+						<div>
+							<p className="mb-2 text-sm font-medium">
+								Delivery timelines
+							</p>
+							<ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
+								{booking.sourceQuotationCommitments.deliveryTimelines.map(
+									(item) => (
+										<li key={item}>{item}</li>
+									),
+								)}
+							</ul>
+						</div>
+						<div>
+							<p className="mb-2 text-sm font-medium">
+								Fixed terms
+							</p>
+							<ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
+								{booking.sourceQuotationCommitments.fixedTerms.map(
+									(item) => (
+										<li key={item}>{item}</li>
+									),
+								)}
+							</ul>
+						</div>
+					</CardContent>
+				</Card>
+			) : null}
 
 			{/* Booking Details Grid */}
 			<Card>
