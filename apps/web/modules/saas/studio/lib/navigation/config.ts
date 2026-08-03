@@ -158,6 +158,15 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 					id: "studio-bookings",
 					items: [
 						{
+							id: "quotations",
+							label: "Quotations",
+							path: url("/quotations"),
+							icon: "FileText",
+							permission: {
+								any: [{ resource: "quote", action: "list" }],
+							},
+						},
+						{
 							id: "bookings",
 							label: "Bookings",
 							path: url("/bookings"),

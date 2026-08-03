@@ -2,8 +2,8 @@ import { ORPCError } from "@orpc/server";
 import { auth } from "@repo/auth";
 import {
 	type Action,
-	type AnyAction,
 	hasAnyRole,
+	type PermissionAction,
 	type Resource,
 } from "@repo/auth/lib/permissions";
 
@@ -73,7 +73,7 @@ export function requireOrganizationAdmin(
 
 export async function requireAnyPermission(
 	context: Pick<StudioContext, "headers" | "organizationId">,
-	permissions: Array<{ resource: Resource; action: AnyAction }>,
+	permissions: Array<{ resource: Resource; action: PermissionAction }>,
 ): Promise<void> {
 	const results = await Promise.all(
 		permissions.map(({ resource, action }) =>
@@ -93,7 +93,7 @@ export async function requireAnyPermission(
 
 export async function requireAllPermissions(
 	context: Pick<StudioContext, "headers" | "organizationId">,
-	permissions: Array<{ resource: Resource; action: AnyAction }>,
+	permissions: Array<{ resource: Resource; action: PermissionAction }>,
 ): Promise<void> {
 	for (const { resource, action } of permissions) {
 		await requirePermission(
@@ -104,4 +104,9 @@ export async function requireAllPermissions(
 	}
 }
 
-export type { Action, AnyAction, Resource } from "@repo/auth/lib/permissions";
+export type {
+	Action,
+	AnyAction,
+	PermissionAction,
+	Resource,
+} from "@repo/auth/lib/permissions";

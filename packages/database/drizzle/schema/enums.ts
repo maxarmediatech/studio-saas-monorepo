@@ -22,6 +22,20 @@ export const bookingPhaseEnum = pgEnum("booking_phase", [
 	"cancelled",
 ]);
 
+/**
+ * Quote lifecycle - fixed because sending, acceptance, versioning, and
+ * conversion behavior depend on these states.
+ */
+export const quoteStatusEnum = pgEnum("quote_status", [
+	"draft",
+	"sent",
+	"accepted",
+	"converted",
+	"declined",
+	"expired",
+	"superseded",
+]);
+
 // ----------------------------------------------------------------------------
 // Workflow & Submissions
 // ----------------------------------------------------------------------------

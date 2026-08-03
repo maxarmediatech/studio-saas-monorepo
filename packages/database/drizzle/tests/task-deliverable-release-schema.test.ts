@@ -31,8 +31,9 @@ test("task-driven deliverable release gates match the migration ledger", async (
 		journal.entries.map((entry) => readMigrationHash(entry.tag)),
 	);
 	const startEntries = journal.entries.slice(0, 46);
+	const releaseEntries = journal.entries.slice(0, 50);
 	const startEntry = startEntries[startEntries.length - 1];
-	const finalEntry = journal.entries[journal.entries.length - 1];
+	const finalEntry = releaseEntries[releaseEntries.length - 1];
 
 	assert.equal(startEntry?.tag, "0045_better_auth_two_factor_lockout");
 	assert.equal(startEntry?.when, 1784550431955);
@@ -45,14 +46,17 @@ test("task-driven deliverable release gates match the migration ledger", async (
 		"6008232e9e0eeb05362ead618f145128",
 	);
 
-	assert.equal(journal.entries.length, 50);
+	assert.ok(journal.entries.length >= 50);
 	assert.equal(finalEntry?.tag, "0049_repair_stale_deliverable_task_links");
 	assert.equal(finalEntry?.when, 1784752206666);
 	assert.equal(
-		hashes[hashes.length - 1],
+		hashes[49],
 		"9f8143074b242b48b5cf4c0034e2d13b8359cc911e416ef278b50c7bda4f7ffe",
 	);
-	assert.equal(ledgerDigest(hashes), "6b988d4bb573534343a4cf3c5041ac47");
+	assert.equal(
+		ledgerDigest(hashes.slice(0, 50)),
+		"6b988d4bb573534343a4cf3c5041ac47",
+	);
 
 	const preflight = await readFile(
 		new URL(

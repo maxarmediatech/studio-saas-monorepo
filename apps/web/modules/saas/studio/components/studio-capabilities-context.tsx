@@ -5,6 +5,15 @@ import type { HeaderCapabilities } from "../lib/capability.server";
 
 const EMPTY_CAPABILITIES: HeaderCapabilities = {
 	bookingCreateOrUpdate: false,
+	quoteCreate: false,
+	quoteReadOperational: false,
+	quoteUpdate: false,
+	quoteSend: false,
+	quoteRevise: false,
+	quoteAccept: false,
+	quoteDecline: false,
+	quoteExpire: false,
+	quoteConvert: false,
 	shootCreateOrUpdate: false,
 	deliverableCreateOrUpdate: false,
 	deliverableUpdate: false,
@@ -24,6 +33,7 @@ const EMPTY_CAPABILITIES: HeaderCapabilities = {
 	paymentReadOrReference: false,
 	crewCreateOrUpdate: false,
 	clientCreateOrUpdate: false,
+	clientList: false,
 	configurationCreateOrUpdate: false,
 	activityRead: false,
 };

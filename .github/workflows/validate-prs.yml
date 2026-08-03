@@ -83,10 +83,21 @@ jobs:
         run: |
           POSTGRES_CONCURRENCY_DATABASE_URL="$DATABASE_URL" \
             pnpm --filter @repo/api exec vitest run \
+              modules/studio/schemas/quote.test.ts \
+              modules/quotes/lib/quote-domain.test.ts \
+              modules/quotes/lib/quote-permissions.test.ts \
+              modules/quotes/procedures/lifecycle-permissions.test.ts \
+              modules/bookings/lib/materialize-booking.test.ts \
+              modules/bookings/procedures/create-booking.test.ts \
+              modules/bookings/helpers/__tests__/generate-reference-number.test.ts \
               modules/studio/lib/search-input.test.ts \
               modules/studio/lib/entity-search.postgres.test.ts \
               modules/global-search/procedures/search.test.ts \
-              modules/deliverables/procedures/task-link-boundaries.postgres.test.ts
+              modules/deliverables/procedures/task-link-boundaries.postgres.test.ts \
+              modules/bookings/helpers/generate-reference-number.postgres.test.ts \
+              modules/quotes/lib/quote-integrity.postgres.test.ts \
+              modules/quotes/lib/quote-provenance-race.postgres.test.ts \
+              modules/quotes/lib/quote-lifecycle.postgres.test.ts
       - name: Validate required env
         run: pnpm env:check
       - name: Run Playwright tests

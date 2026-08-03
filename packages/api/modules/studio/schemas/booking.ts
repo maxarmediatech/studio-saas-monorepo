@@ -96,6 +96,11 @@ export const bookingSchema = z.object({
 	totalReceived: z.string(),
 	totalExpenses: z.string(),
 	note: z.string().nullable(),
+	sourceQuoteId: idSchema.nullable(),
+	sourceQuoteOptionId: idSchema.nullable(),
+	sourceQuoteNumber: z.string().nullable(),
+	sourceQuoteVersion: z.number().int().positive().nullable(),
+	sourceBookingBlueprintVersion: z.number().int().positive().nullable(),
 	createdBy: idSchema.nullable(),
 	updatedBy: idSchema.nullable(),
 	createdAt: z.string(),
@@ -247,7 +252,7 @@ export type GetBookingOutput = z.infer<typeof getBookingOutputSchema>;
 // ============================================================================
 
 // Crew assignment for shoots - role is auto-filled from crew profile if not provided
-const shootCrewAssignmentInputSchema = z.object({
+export const shootCrewAssignmentInputSchema = z.object({
 	crewId: idSchema,
 	role: z.string().min(1).max(100).optional(), // Auto-filled from crew profile
 	isLead: z.boolean().default(false).optional(), // Kept for backward compat, not used in UI
@@ -266,7 +271,7 @@ export type ShootCrewAssignmentInput = z.infer<
 >;
 
 // Crew assignment for deliverables - simplified to just crewId
-const deliverableCrewAssignmentInputSchema = z.object({
+export const deliverableCrewAssignmentInputSchema = z.object({
 	crewId: idSchema,
 	isLead: z.boolean().default(false).optional(), // Kept for backward compat, not used in UI
 });
@@ -276,7 +281,7 @@ export type DeliverableCrewAssignmentInput = z.infer<
 >;
 
 // Shoot input with embedded crew assignments
-const shootInputSchema = z.object({
+export const shootInputSchema = z.object({
 	name: nameSchema,
 	shootType: z.string().min(1).max(100),
 	shootDate: z.string().min(1), // Date string YYYY-MM-DD
@@ -294,7 +299,7 @@ const shootInputSchema = z.object({
 export type ShootInput = z.infer<typeof shootInputSchema>;
 
 // Deliverable input with embedded crew assignments
-const deliverableInputSchema = z.object({
+export const deliverableInputSchema = z.object({
 	name: nameSchema,
 	description: z.string().max(5000).optional(),
 	dueDate: z.string().optional(),
@@ -308,7 +313,7 @@ const deliverableInputSchema = z.object({
 export type DeliverableInput = z.infer<typeof deliverableInputSchema>;
 
 // Received payment input
-const receivedPaymentInputSchema = z.object({
+export const receivedPaymentInputSchema = z.object({
 	amount: moneySchema,
 	paymentMethod: paymentMethodSchema,
 	receivedDate: z.string().min(1), // Date string YYYY-MM-DD
@@ -320,7 +325,7 @@ const receivedPaymentInputSchema = z.object({
 export type ReceivedPaymentInput = z.infer<typeof receivedPaymentInputSchema>;
 
 // Payment schedule input
-const paymentScheduleInputSchema = z.object({
+export const paymentScheduleInputSchema = z.object({
 	name: nameSchema,
 	amount: moneySchema,
 	dueDate: z.string().min(1), // Date string YYYY-MM-DD

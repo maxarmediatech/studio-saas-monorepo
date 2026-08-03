@@ -13,6 +13,7 @@ import type { TransactionClient } from "../../studio/lib/transactions";
  */
 export const ENTITY_TYPES = [
 	"booking",
+	"quote",
 	"booking_participant",
 	"booking_event",
 	"shoot",

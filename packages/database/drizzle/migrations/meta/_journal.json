@@ -351,6 +351,34 @@
       "when": 1784752206666,
       "tag": "0049_repair_stale_deliverable_task_links",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1785663868436,
+      "tag": "0050_freezing_newton_destine",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1785665984086,
+      "tag": "0051_fluffy_dragon_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1785669230910,
+      "tag": "0052_magical_korath",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1785677464916,
+      "tag": "0053_manager_quote_permissions",
+      "breakpoints": true
     }
   ]
 }

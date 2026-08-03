@@ -8,10 +8,12 @@ import {
 	index,
 	integer,
 	jsonb,
+	type PgTableExtraConfigValue,
 	pgTable,
 	text,
 	time,
 	timestamp,
+	unique,
 	uniqueIndex,
 	varchar,
 } from "drizzle-orm/pg-core";
@@ -36,6 +38,7 @@ import {
 	lineItemTypeEnum,
 	paymentMethodEnum,
 	paymentScheduleStatusEnum,
+	quoteStatusEnum,
 	submissionStatusEnum,
 	taxTypeEnum,
 	workflowStatusEnum,
@@ -139,6 +142,7 @@ export const clients = pgTable(
 		),
 	},
 	(table) => [
+		unique("clients_id_org_unique").on(table.id, table.organizationId),
 		index("clients_organization_idx").on(table.organizationId),
 		uniqueIndex("clients_org_phone_idx")
 			.on(table.organizationId, table.phoneNumber)
@@ -186,6 +190,18 @@ export const bookings = pgTable(
 
 		note: text("note"),
 
+		// Migration-level triggers make sourced provenance and packageCost immutable,
+		// and lock/validate them against the immutable acceptance snapshot.
+		sourceQuoteId: varchar("source_quote_id", { length: 255 }),
+		sourceQuoteOptionId: varchar("source_quote_option_id", {
+			length: 255,
+		}),
+		sourceQuoteNumber: varchar("source_quote_number", { length: 50 }),
+		sourceQuoteVersion: integer("source_quote_version"),
+		sourceBookingBlueprintVersion: integer(
+			"source_booking_blueprint_version",
+		),
+
 		createdBy: varchar("created_by", { length: 255 }).references(
 			() => users.id,
 			{ onDelete: "set null" },
@@ -207,7 +223,7 @@ export const bookings = pgTable(
 			{ onDelete: "set null" },
 		),
 	},
-	(table) => [
+	(table): PgTableExtraConfigValue[] => [
 		uniqueIndex("bookings_id_org_idx").on(table.id, table.organizationId),
 		uniqueIndex("bookings_org_ref_idx")
 			.on(table.organizationId, table.referenceNumber)
@@ -220,6 +236,40 @@ export const bookings = pgTable(
 		index("bookings_org_booking_date_idx").on(
 			table.organizationId,
 			table.bookingDate,
+		),
+		index("bookings_source_quote_idx").on(
+			table.organizationId,
+			table.sourceQuoteId,
+		),
+		uniqueIndex("bookings_source_quote_unique_idx")
+			.on(table.organizationId, table.sourceQuoteId)
+			.where(sql`source_quote_id IS NOT NULL`),
+		uniqueIndex("bookings_source_quote_option_unique_idx")
+			.on(table.organizationId, table.sourceQuoteOptionId)
+			.where(sql`source_quote_option_id IS NOT NULL`),
+		foreignKey({
+			columns: [table.sourceQuoteId, table.organizationId],
+			foreignColumns: [quotes.id, quotes.organizationId],
+		}).onDelete("no action"),
+		foreignKey({
+			columns: [
+				table.sourceQuoteOptionId,
+				table.organizationId,
+				table.sourceQuoteId,
+			],
+			foreignColumns: [
+				quoteOptions.id,
+				quoteOptions.organizationId,
+				quoteOptions.quoteId,
+			],
+		}).onDelete("no action"),
+		check(
+			"bookings_source_quote_complete",
+			sql`(source_quote_id IS NULL AND source_quote_option_id IS NULL AND source_quote_number IS NULL AND source_quote_version IS NULL AND source_booking_blueprint_version IS NULL) OR (source_quote_id IS NOT NULL AND source_quote_option_id IS NOT NULL AND source_quote_number IS NOT NULL AND source_quote_version IS NOT NULL AND source_booking_blueprint_version IS NOT NULL)`,
+		),
+		check(
+			"bookings_source_versions_positive",
+			sql`(source_quote_version IS NULL OR source_quote_version > 0) AND (source_booking_blueprint_version IS NULL OR source_booking_blueprint_version > 0)`,
 		),
 	],
 );
@@ -292,6 +342,278 @@ export const bookingEvents = pgTable(
 			table.eventDate,
 		),
 		index("booking_events_date_idx").on(table.eventDate),
+	],
+);
+
+// ============================================================================
+// QUOTATION TABLES
+// Versioned commercial proposals. Accepted options carry a validated booking
+// blueprint so conversion materializes the existing booking graph exactly once.
+// ============================================================================
+
+export const quotes = pgTable(
+	"quotes",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 })
+			.notNull()
+			.references(() => organizations.id, { onDelete: "cascade" }),
+		quoteNumber: varchar("quote_number", { length: 50 }).notNull(),
+		version: integer("version").default(1).notNull(),
+		supersedesQuoteId: varchar("supersedes_quote_id", { length: 255 }),
+		status: quoteStatusEnum("status").default("draft").notNull(),
+		title: text("title").notNull(),
+		currency: varchar("currency", { length: 3 }).default("INR").notNull(),
+		expiresAt: timestamp("expires_at", { withTimezone: true }),
+		terms: jsonb("terms"),
+		clientMessage: text("client_message"),
+		internalNotes: text("internal_notes"),
+		sentAt: timestamp("sent_at", { withTimezone: true }),
+		convertedAt: timestamp("converted_at", { withTimezone: true }),
+		declinedAt: timestamp("declined_at", { withTimezone: true }),
+		expiredAt: timestamp("expired_at", { withTimezone: true }),
+		supersededAt: timestamp("superseded_at", { withTimezone: true }),
+		createdBy: varchar("created_by", { length: 255 }).references(
+			() => users.id,
+			{ onDelete: "set null" },
+		),
+		updatedBy: varchar("updated_by", { length: 255 }).references(
+			() => users.id,
+			{ onDelete: "set null" },
+		),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		deletedAt: timestamp("deleted_at", { withTimezone: true }),
+		deletedBy: varchar("deleted_by", { length: 255 }).references(
+			() => users.id,
+			{ onDelete: "set null" },
+		),
+	},
+	(table): PgTableExtraConfigValue[] => [
+		unique("quotes_id_org_unique").on(table.id, table.organizationId),
+		unique("quotes_org_number_version_unique").on(
+			table.organizationId,
+			table.quoteNumber,
+			table.version,
+		),
+		uniqueIndex("quotes_supersedes_unique_idx")
+			.on(table.organizationId, table.supersedesQuoteId)
+			.where(sql`supersedes_quote_id IS NOT NULL`),
+		foreignKey({
+			columns: [table.supersedesQuoteId, table.organizationId],
+			foreignColumns: [table.id, table.organizationId],
+		}).onDelete("no action"),
+		index("quotes_org_status_idx").on(table.organizationId, table.status),
+		index("quotes_org_expires_idx").on(
+			table.organizationId,
+			table.expiresAt,
+		),
+		check("quotes_version_positive", sql`version > 0`),
+		check(
+			"quotes_no_self_lineage",
+			sql`supersedes_quote_id IS NULL OR supersedes_quote_id <> id`,
+		),
+		check("quotes_currency_iso_length", sql`char_length(currency) = 3`),
+	],
+);
+
+export const quoteParticipants = pgTable(
+	"quote_participants",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 }).notNull(),
+		quoteId: varchar("quote_id", { length: 255 }).notNull(),
+		clientId: varchar("client_id", { length: 255 }).notNull(),
+		role: varchar("role", { length: 100 }).notNull(),
+		side: varchar("side", { length: 50 }),
+		isPrimary: boolean("is_primary").default(false).notNull(),
+		sortOrder: integer("sort_order").default(0).notNull(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		foreignKey({
+			columns: [table.quoteId, table.organizationId],
+			foreignColumns: [quotes.id, quotes.organizationId],
+		}).onDelete("cascade"),
+		foreignKey({
+			columns: [table.clientId, table.organizationId],
+			foreignColumns: [clients.id, clients.organizationId],
+		}).onDelete("cascade"),
+		uniqueIndex("quote_participants_unique_idx").on(
+			table.quoteId,
+			table.clientId,
+			table.role,
+		),
+		index("quote_participants_quote_idx").on(table.quoteId),
+		uniqueIndex("quote_participants_primary_unique_idx")
+			.on(table.quoteId)
+			.where(sql`is_primary = true`),
+		index("quote_participants_org_client_idx").on(
+			table.organizationId,
+			table.clientId,
+		),
+	],
+);
+
+export const quoteOptions = pgTable(
+	"quote_options",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 }).notNull(),
+		quoteId: varchar("quote_id", { length: 255 }).notNull(),
+		name: text("name").notNull(),
+		description: text("description"),
+		subtotal: decimal("subtotal", { precision: 12, scale: 2 })
+			.default("0")
+			.notNull(),
+		discountAmount: decimal("discount_amount", { precision: 12, scale: 2 })
+			.default("0")
+			.notNull(),
+		taxAmount: decimal("tax_amount", { precision: 12, scale: 2 })
+			.default("0")
+			.notNull(),
+		totalAmount: decimal("total_amount", { precision: 12, scale: 2 })
+			.default("0")
+			.notNull(),
+		bookingBlueprintVersion: integer("booking_blueprint_version")
+			.default(1)
+			.notNull(),
+		bookingBlueprint: jsonb("booking_blueprint").notNull(),
+		isRecommended: boolean("is_recommended").default(false).notNull(),
+		sortOrder: integer("sort_order").default(0).notNull(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table): PgTableExtraConfigValue[] => [
+		foreignKey({
+			columns: [table.quoteId, table.organizationId],
+			foreignColumns: [quotes.id, quotes.organizationId],
+		}).onDelete("cascade"),
+		unique("quote_options_id_org_unique").on(
+			table.id,
+			table.organizationId,
+		),
+		unique("quote_options_id_org_quote_unique").on(
+			table.id,
+			table.organizationId,
+			table.quoteId,
+		),
+		uniqueIndex("quote_options_quote_sort_idx").on(
+			table.quoteId,
+			table.sortOrder,
+		),
+		uniqueIndex("quote_options_recommended_unique_idx")
+			.on(table.quoteId)
+			.where(sql`is_recommended = true`),
+		index("quote_options_quote_idx").on(table.quoteId),
+		check(
+			"quote_options_amounts_non_negative",
+			sql`subtotal >= 0 AND discount_amount >= 0 AND tax_amount >= 0 AND total_amount >= 0`,
+		),
+		check(
+			"quote_options_total_formula",
+			sql`discount_amount <= subtotal AND total_amount = subtotal - discount_amount + tax_amount`,
+		),
+		check(
+			"quote_options_blueprint_version_positive",
+			sql`booking_blueprint_version > 0`,
+		),
+		check(
+			"quote_options_blueprint_version_matches_payload",
+			sql`CASE WHEN jsonb_typeof(booking_blueprint) = 'object' AND jsonb_typeof(booking_blueprint -> 'booking') = 'object' AND jsonb_typeof(booking_blueprint -> 'schemaVersion') = 'number' AND (booking_blueprint ->> 'schemaVersion') ~ '^[1-9][0-9]*$' THEN booking_blueprint_version = (booking_blueprint ->> 'schemaVersion')::integer ELSE false END`,
+		),
+	],
+);
+
+// A deferred migration-level constraint trigger enforces option.subtotal as the
+// final transaction-wide sum of line amounts while allowing option-first writes.
+export const quoteLineItems = pgTable(
+	"quote_line_items",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 }).notNull(),
+		quoteOptionId: varchar("quote_option_id", { length: 255 }).notNull(),
+		type: lineItemTypeEnum("type").default("item").notNull(),
+		description: text("description").notNull(),
+		quantity: decimal("quantity", { precision: 10, scale: 2 }),
+		unitPrice: decimal("unit_price", { precision: 12, scale: 2 }),
+		amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+		sortOrder: integer("sort_order").default(0).notNull(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		foreignKey({
+			columns: [table.quoteOptionId, table.organizationId],
+			foreignColumns: [quoteOptions.id, quoteOptions.organizationId],
+		}).onDelete("cascade"),
+		index("quote_line_items_option_idx").on(table.quoteOptionId),
+		check("quote_line_items_amount_non_negative", sql`amount >= 0`),
+		check(
+			"quote_line_items_shape",
+			sql`(type IN ('item', 'service') AND quantity IS NOT NULL AND quantity > 0 AND unit_price IS NOT NULL AND unit_price >= 0 AND amount = round(quantity * unit_price, 2)) OR (type IN ('milestone', 'expense') AND quantity IS NULL AND unit_price IS NULL)`,
+		),
+	],
+);
+
+export const quoteAcceptances = pgTable(
+	"quote_acceptances",
+	{
+		quoteId: varchar("quote_id", { length: 255 }).primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 }).notNull(),
+		quoteOptionId: varchar("quote_option_id", { length: 255 }).notNull(),
+		optionSnapshot: jsonb("option_snapshot").notNull(),
+		acceptedAt: timestamp("accepted_at", { withTimezone: true }).notNull(),
+		acceptedBy: varchar("accepted_by", { length: 255 }).references(
+			() => users.id,
+			{ onDelete: "set null" },
+		),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		foreignKey({
+			columns: [table.quoteId, table.organizationId],
+			foreignColumns: [quotes.id, quotes.organizationId],
+		}).onDelete("cascade"),
+		foreignKey({
+			columns: [table.quoteOptionId, table.organizationId, table.quoteId],
+			foreignColumns: [
+				quoteOptions.id,
+				quoteOptions.organizationId,
+				quoteOptions.quoteId,
+			],
+		}).onDelete("cascade"),
+		uniqueIndex("quote_acceptances_option_unique_idx").on(
+			table.organizationId,
+			table.quoteOptionId,
+		),
 	],
 );
 
@@ -1391,7 +1713,7 @@ export const documentSequences = pgTable(
 		),
 		check(
 			"document_sequences_type_check",
-			sql`document_type IN ('invoice', 'receipt')`,
+			sql`document_type IN ('invoice', 'receipt', 'quote')`,
 		),
 		check("document_sequences_next_value_positive", sql`next_value > 0`),
 	],
@@ -1904,6 +2226,7 @@ export const clientRelations = relations(clients, ({ one, many }) => ({
 		references: [organizations.id],
 	}),
 	bookingParticipants: many(bookingParticipants),
+	quoteParticipants: many(quoteParticipants),
 	createdByUser: one(users, {
 		fields: [clients.createdBy],
 		references: [users.id],
@@ -1935,6 +2258,14 @@ export const bookingRelations = relations(bookings, ({ one, many }) => ({
 	paymentSchedules: many(paymentSchedules),
 	invoices: many(invoices),
 	expenseAssignments: many(expenseAssignments),
+	sourceQuote: one(quotes, {
+		fields: [bookings.sourceQuoteId],
+		references: [quotes.id],
+	}),
+	sourceQuoteOption: one(quoteOptions, {
+		fields: [bookings.sourceQuoteOptionId],
+		references: [quoteOptions.id],
+	}),
 	createdByUser: one(users, {
 		fields: [bookings.createdBy],
 		references: [users.id],
@@ -1976,6 +2307,87 @@ export const bookingEventRelations = relations(bookingEvents, ({ one }) => ({
 		references: [organizations.id],
 	}),
 }));
+
+export const quoteRelations = relations(quotes, ({ one, many }) => ({
+	organization: one(organizations, {
+		fields: [quotes.organizationId],
+		references: [organizations.id],
+	}),
+	supersedesQuote: one(quotes, {
+		fields: [quotes.supersedesQuoteId],
+		references: [quotes.id],
+		relationName: "quoteVersions",
+	}),
+	supersededByQuote: one(quotes, {
+		fields: [quotes.id],
+		references: [quotes.supersedesQuoteId],
+		relationName: "quoteVersions",
+	}),
+	participants: many(quoteParticipants),
+	options: many(quoteOptions),
+	acceptance: one(quoteAcceptances, {
+		fields: [quotes.id],
+		references: [quoteAcceptances.quoteId],
+	}),
+	convertedBooking: one(bookings, {
+		fields: [quotes.id],
+		references: [bookings.sourceQuoteId],
+	}),
+}));
+
+export const quoteParticipantRelations = relations(
+	quoteParticipants,
+	({ one }) => ({
+		quote: one(quotes, {
+			fields: [quoteParticipants.quoteId],
+			references: [quotes.id],
+		}),
+		client: one(clients, {
+			fields: [quoteParticipants.clientId],
+			references: [clients.id],
+		}),
+	}),
+);
+
+export const quoteOptionRelations = relations(
+	quoteOptions,
+	({ one, many }) => ({
+		quote: one(quotes, {
+			fields: [quoteOptions.quoteId],
+			references: [quotes.id],
+		}),
+		lineItems: many(quoteLineItems),
+		acceptance: one(quoteAcceptances, {
+			fields: [quoteOptions.id],
+			references: [quoteAcceptances.quoteOptionId],
+		}),
+	}),
+);
+
+export const quoteLineItemRelations = relations(quoteLineItems, ({ one }) => ({
+	option: one(quoteOptions, {
+		fields: [quoteLineItems.quoteOptionId],
+		references: [quoteOptions.id],
+	}),
+}));
+
+export const quoteAcceptanceRelations = relations(
+	quoteAcceptances,
+	({ one }) => ({
+		quote: one(quotes, {
+			fields: [quoteAcceptances.quoteId],
+			references: [quotes.id],
+		}),
+		option: one(quoteOptions, {
+			fields: [quoteAcceptances.quoteOptionId],
+			references: [quoteOptions.id],
+		}),
+		acceptedByUser: one(users, {
+			fields: [quoteAcceptances.acceptedBy],
+			references: [users.id],
+		}),
+	}),
+);
 
 // ----------------------------------------------------------------------------
 // Crew Relations
@@ -2550,6 +2962,7 @@ export const organizationRelations = relations(organizations, ({ many }) => ({
 	configurations: many(configurations),
 	clients: many(clients),
 	bookings: many(bookings),
+	quotes: many(quotes),
 	crews: many(crews),
 	shoots: many(shoots),
 	tasks: many(tasks),
@@ -2673,6 +3086,17 @@ export type NewBookingParticipant = typeof bookingParticipants.$inferInsert;
 
 export type BookingEvent = typeof bookingEvents.$inferSelect;
 export type NewBookingEvent = typeof bookingEvents.$inferInsert;
+
+export type Quote = typeof quotes.$inferSelect;
+export type NewQuote = typeof quotes.$inferInsert;
+export type QuoteParticipant = typeof quoteParticipants.$inferSelect;
+export type NewQuoteParticipant = typeof quoteParticipants.$inferInsert;
+export type QuoteOption = typeof quoteOptions.$inferSelect;
+export type NewQuoteOption = typeof quoteOptions.$inferInsert;
+export type QuoteLineItem = typeof quoteLineItems.$inferSelect;
+export type NewQuoteLineItem = typeof quoteLineItems.$inferInsert;
+export type QuoteAcceptance = typeof quoteAcceptances.$inferSelect;
+export type NewQuoteAcceptance = typeof quoteAcceptances.$inferInsert;
 
 export type Crew = typeof crews.$inferSelect;
 export type NewCrew = typeof crews.$inferInsert;

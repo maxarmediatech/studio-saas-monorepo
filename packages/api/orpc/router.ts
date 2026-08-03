@@ -19,6 +19,7 @@ import { notificationsRouter } from "../modules/notifications/router";
 import { organizationsRouter } from "../modules/organizations/router";
 import { paymentsRouter } from "../modules/payments/router";
 import { quickLinksRouter } from "../modules/quick-links/router";
+import { quotesRouter } from "../modules/quotes/router";
 import { receiptsRouter } from "../modules/receipts/router";
 import { recentVisitsRouter } from "../modules/recent-visits/router";
 import { savedViewsRouter } from "../modules/saved-views/router";
@@ -51,6 +52,7 @@ export const router = publicProcedure
 		studioPayments: studioPaymentsRouter,
 		invoices: invoicesRouter,
 		receipts: receiptsRouter,
+		quotes: quotesRouter,
 		expenses: expensesRouter,
 		globalSearch: globalSearchRouter,
 

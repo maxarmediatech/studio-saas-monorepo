@@ -19,6 +19,20 @@ export const statement = {
 	...defaultStatements,
 	dashboard: ["read"],
 	booking: ["create", "read", "update", "delete", "list", "reference"],
+	quote: [
+		"create",
+		"read",
+		"readOperational",
+		"update",
+		"delete",
+		"list",
+		"send",
+		"revise",
+		"accept",
+		"decline",
+		"expire",
+		"convert",
+	],
 	client: ["create", "read", "update", "delete", "list"],
 	shoot: ["create", "read", "update", "delete", "list", "assign"],
 	deliverable: [
@@ -59,6 +73,9 @@ export const statement = {
 export type Resource = keyof typeof statement;
 export type Action<R extends Resource> = (typeof statement)[R][number];
 
+// Shared UI/navigation actions. Resource-specific operational actions remain
+// available through Action<R> and PermissionAction without forcing every generic
+// action-label map to expose internal commands.
 export type AnyAction =
 	| "create"
 	| "read"
@@ -71,6 +88,7 @@ export type AnyAction =
 	| "approve"
 	| "claim"
 	| "reference";
+export type PermissionAction = Action<Resource>;
 
 const ORGANIZATION_ADMIN_ROLES = ["owner", "admin"] as const;
 const SYSTEM_ROLE_KEYS = ["owner", "admin", "member"] as const;
@@ -192,6 +210,20 @@ export const owner = ac.newRole({
 	dashboard: ["read"],
 	review: ["list", "claim", "review", "approve"],
 	booking: ["create", "read", "update", "delete", "list"],
+	quote: [
+		"create",
+		"read",
+		"readOperational",
+		"update",
+		"delete",
+		"list",
+		"send",
+		"revise",
+		"accept",
+		"decline",
+		"expire",
+		"convert",
+	],
 	client: ["create", "read", "update", "delete", "list"],
 	shoot: ["create", "read", "update", "delete", "list", "assign"],
 	deliverable: [
@@ -233,6 +265,20 @@ export const admin = ac.newRole({
 	dashboard: ["read"],
 	review: ["list", "claim", "review", "approve"],
 	booking: ["create", "read", "update", "delete", "list"],
+	quote: [
+		"create",
+		"read",
+		"readOperational",
+		"update",
+		"delete",
+		"list",
+		"send",
+		"revise",
+		"accept",
+		"decline",
+		"expire",
+		"convert",
+	],
 	client: ["create", "read", "update", "delete", "list"],
 	shoot: ["create", "read", "update", "delete", "list", "assign"],
 	deliverable: [
@@ -275,6 +321,7 @@ export const manager = ac.newRole({
 	dashboard: ["read"],
 	review: ["list", "claim", "review", "approve"],
 	booking: ["read", "update", "list"],
+	quote: ["update", "list", "send", "revise"],
 	client: ["read", "list"],
 	shoot: ["create", "read", "update", "list", "assign"],
 	deliverable: [
@@ -455,7 +502,7 @@ export function getPermissionMatrix(): Array<{
 export function checkStaticRolePermission(
 	role: string,
 	resource: Resource,
-	action: AnyAction,
+	action: PermissionAction,
 ): boolean {
 	const rolePermissions = appRoles[role as AppRole];
 	if (!rolePermissions) {
@@ -502,7 +549,7 @@ export function mergeCustomRolePermissions(
 export function checkRolePermission(
 	role: string | string[],
 	resource: Resource,
-	action: AnyAction,
+	action: PermissionAction,
 	customRolePermissions?: CustomRolePermissions,
 ): boolean {
 	const roles = normalizeRoles(role);
