@@ -25,6 +25,10 @@ import { useStudioCapabilities } from "@saas/studio/components/studio-capabiliti
 import { useConfigurationParams } from "@saas/studio/hooks/params/use-configuration-params";
 import { bookingsApi, configurationsApi } from "@saas/studio/lib/api";
 import {
+	EVENT_SIDE_OPTIONS,
+	type EventSide,
+} from "@saas/studio/lib/event-side";
+import {
 	getShootExtraServiceLabel,
 	SHOOT_EXTRA_SERVICE_OPTIONS,
 } from "@saas/studio/lib/shoot-planning";
@@ -52,7 +56,9 @@ const crewAssignmentSchema = z.object({
 
 const shootFormSchema = z.object({
 	bookingId: z.string().min(1, "Booking is required"),
+	bookingEventId: z.string().optional(),
 	shootType: z.string().min(1, "Event type is required"),
+	side: z.enum(["common", "bride", "groom", "both", "separateCommon"]),
 	shootDate: z.string().min(1, "Date is required"),
 	startTime: z.string().optional().or(z.literal("")),
 	requiredCrewCount: z
@@ -137,7 +143,9 @@ export function ShootForm({
 		resolver: zodResolver(shootFormSchema),
 		defaultValues: {
 			bookingId: defaultBookingId ?? "",
+			bookingEventId: "",
 			shootType: "",
+			side: "common",
 			shootDate: "",
 			startTime: "",
 			requiredCrewCount: "",
@@ -163,7 +171,9 @@ export function ShootForm({
 		if (defaultValues) {
 			form.reset({
 				bookingId: defaultValues.bookingId ?? "",
+				bookingEventId: defaultValues.bookingEventId ?? "",
 				shootType: defaultValues.shootType ?? "",
+				side: defaultValues.side ?? "common",
 				shootDate: defaultValues.shootDate ?? "",
 				startTime: defaultValues.startTime ?? "",
 				requiredCrewCount: defaultValues.requiredCrewCount ?? "",
@@ -185,6 +195,12 @@ export function ShootForm({
 
 	const isSubmitting = form.formState.isSubmitting || isPending;
 	const notesValue = form.watch("notes");
+	const selectedBookingId = form.watch("bookingId");
+	const { data: bookingDetails, isLoading: isLoadingBookingEvents } =
+		useQuery({
+			...bookingsApi.getOptions(selectedBookingId),
+			enabled: Boolean(selectedBookingId) && bookingReadOrReference,
+		});
 
 	// Event type options from configurations
 	const eventTypeOptions = useMemo((): ComboboxOption[] => {
@@ -210,6 +226,25 @@ export function ShootForm({
 
 		return options;
 	}, [bookings, booking]);
+
+	const bookingEventOptions = useMemo((): ComboboxOption[] => {
+		const events = bookingDetails?.data?.events ?? [];
+		return [
+			{ value: "__none", label: "No linked booking event" },
+			...events.map((event) => ({
+				value: event.id,
+				label: `${event.eventType} · ${
+					event.eventDate?.slice(0, 10) ??
+					event.dateWindow ??
+					"Date TBD"
+				}`,
+				description:
+					EVENT_SIDE_OPTIONS.find(
+						(option) => option.value === event.side,
+					)?.label ?? event.side,
+			})),
+		];
+	}, [bookingDetails?.data?.events]);
 
 	// Crew options with filtering for already-assigned
 	const currentAssignments = form.watch("crewAssignments") ?? [];
@@ -295,7 +330,10 @@ export function ShootForm({
 									<Combobox
 										id={field.name}
 										value={field.value}
-										onValueChange={field.onChange}
+										onValueChange={(value) => {
+											field.onChange(value);
+											form.setValue("bookingEventId", "");
+										}}
 										options={bookingOptions}
 										placeholder={
 											isLoadingBookings
@@ -317,6 +355,71 @@ export function ShootForm({
 								</Field>
 							)}
 						/>
+
+						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+							<Controller
+								name="bookingEventId"
+								control={form.control}
+								render={({ field, fieldState }) => (
+									<Field data-invalid={fieldState.invalid}>
+										<FieldLabel htmlFor={field.name}>
+											Booking Event
+										</FieldLabel>
+										<Combobox
+											id={field.name}
+											value={field.value || "__none"}
+											onValueChange={(value) => {
+												const nextId =
+													value === "__none"
+														? ""
+														: value;
+												field.onChange(nextId);
+												const event =
+													bookingDetails?.data?.events.find(
+														(item) =>
+															item.id === nextId,
+													);
+												if (event) {
+													form.setValue(
+														"side",
+														event.side as EventSide,
+													);
+												}
+											}}
+											options={bookingEventOptions}
+											placeholder={
+												isLoadingBookingEvents
+													? "Loading events..."
+													: "Link a booking event"
+											}
+											disabled={
+												!selectedBookingId ||
+												isLoadingBookingEvents
+											}
+										/>
+									</Field>
+								)}
+							/>
+
+							<Controller
+								name="side"
+								control={form.control}
+								render={({ field, fieldState }) => (
+									<Field data-invalid={fieldState.invalid}>
+										<FieldLabel htmlFor={field.name}>
+											Side
+										</FieldLabel>
+										<Combobox
+											id={field.name}
+											value={field.value}
+											onValueChange={field.onChange}
+											options={[...EVENT_SIDE_OPTIONS]}
+											placeholder="Select side"
+										/>
+									</Field>
+								)}
+							/>
+						</div>
 
 						<div className="grid grid-cols-3 gap-4">
 							<Controller

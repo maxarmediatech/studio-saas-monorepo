@@ -14,6 +14,7 @@ import type { TransactionClient } from "../../studio/lib/transactions";
 import {
 	type CreateBookingInput,
 	createBookingInputSchema,
+	type ShootInput,
 } from "../../studio/schemas/booking";
 import {
 	type BookingBlueprint,
@@ -54,6 +55,10 @@ export interface BookingMaterializationResult {
 	referenceNumber: string;
 }
 
+export type MaterializedShootInput = ShootInput & {
+	bookingEventId?: string | null;
+};
+
 export interface BookingMaterializationOperations {
 	validateClients(
 		tx: TransactionClient,
@@ -87,12 +92,12 @@ export interface BookingMaterializationOperations {
 		context: BookingMaterializationContext,
 		bookingId: string,
 		events: NonNullable<CreateBookingInput["events"]>,
-	): Promise<void>;
+	): Promise<string[]>;
 	createShoots(
 		tx: TransactionClient,
 		context: BookingMaterializationContext,
 		bookingId: string,
-		shoots: NonNullable<CreateBookingInput["shoots"]>,
+		shoots: MaterializedShootInput[],
 	): Promise<void>;
 	createDeliverables(
 		tx: TransactionClient,
@@ -194,24 +199,35 @@ export const bookingMaterializationOperations: BookingMaterializationOperations 
 			);
 		},
 		async createEvents(tx, context, bookingId, events) {
-			await tx.insert(bookingEvents).values(
-				events.map((event) => ({
-					bookingId,
-					organizationId: context.organizationId,
-					eventType: event.eventType,
-					eventDate: event.eventDate
-						? new Date(event.eventDate)
-						: null,
-					side: event.side ?? "common",
-					guestCount: event.guestCount ?? null,
-					isTentative: event.isTentative ?? false,
-					dateWindow: event.dateWindow ?? null,
-					coverageNotes: event.coverageNotes ?? null,
-					venue: event.venue ?? null,
-					venueAddress: event.venueAddress ?? null,
-					notes: event.notes ?? null,
-				})),
-			);
+			const eventIds: string[] = [];
+			for (const event of events) {
+				const [created] = await tx
+					.insert(bookingEvents)
+					.values({
+						bookingId,
+						organizationId: context.organizationId,
+						eventType: event.eventType,
+						eventDate: event.eventDate
+							? new Date(event.eventDate)
+							: null,
+						side: event.side ?? "common",
+						guestCount: event.guestCount ?? null,
+						isTentative: event.isTentative ?? false,
+						dateWindow: event.dateWindow ?? null,
+						coverageNotes: event.coverageNotes ?? null,
+						venue: event.venue ?? null,
+						venueAddress: event.venueAddress ?? null,
+						notes: event.notes ?? null,
+					})
+					.returning({ id: bookingEvents.id });
+				if (!created) {
+					throw new ORPCError("INTERNAL_SERVER_ERROR", {
+						message: "Failed to create booking event",
+					});
+				}
+				eventIds.push(created.id);
+			}
+			return eventIds;
 		},
 		async createShoots(tx, context, bookingId, shoots) {
 			await createShootsBatch(
@@ -293,6 +309,7 @@ export async function materializeBooking(
 	options: {
 		provenance?: BookingQuoteProvenance;
 		operations?: BookingMaterializationOperations;
+		shootEventIndexes?: Array<number | null>;
 	} = {},
 ): Promise<BookingMaterializationResult> {
 	const validated = createBookingInputSchema.parse(input);
@@ -322,11 +339,36 @@ export async function materializeBooking(
 		provenance,
 	);
 	await operations.createParticipants(tx, id, validated.participants);
+	let eventIds: string[] = [];
 	if (validated.events?.length) {
-		await operations.createEvents(tx, context, id, validated.events);
+		eventIds = await operations.createEvents(
+			tx,
+			context,
+			id,
+			validated.events,
+		);
 	}
 	if (validated.shoots?.length) {
-		await operations.createShoots(tx, context, id, validated.shoots);
+		const indexes = options.shootEventIndexes;
+		if (indexes && indexes.length !== validated.shoots.length) {
+			throw new ORPCError("INTERNAL_SERVER_ERROR", {
+				message: "Shoot-to-event mapping does not match created shoots",
+			});
+		}
+		const materializedShoots = validated.shoots.map((shoot, index) => {
+			const eventIndex = indexes?.[index];
+			if (eventIndex === undefined || eventIndex === null) {
+				return shoot;
+			}
+			const bookingEventId = eventIds[eventIndex];
+			if (!bookingEventId) {
+				throw new ORPCError("INTERNAL_SERVER_ERROR", {
+					message: "Shoot references an unavailable booking event",
+				});
+			}
+			return { ...shoot, bookingEventId };
+		});
+		await operations.createShoots(tx, context, id, materializedShoots);
 	}
 	if (validated.deliverables?.length) {
 		await operations.createDeliverables(

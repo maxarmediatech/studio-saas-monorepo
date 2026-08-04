@@ -45,6 +45,7 @@ export const listShootsMinimal = studioProtectedProcedure
 				id: true,
 				name: true,
 				shootType: true,
+				side: true,
 				shootDate: true,
 				status: true,
 				bookingId: true,

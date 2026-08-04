@@ -9,7 +9,7 @@ import { isTerminalShootStatus } from "../../shoots/calendar-sync";
 import { ensureAssignmentCalendarDelivery } from "../../shoots/lib/calendar-delivery";
 import { buildShootPlanningMetadata } from "../../shoots/lib/shoot-planning";
 import type { TransactionClient } from "../../studio/lib/transactions";
-import type { ShootInput } from "../../studio/schemas/booking";
+import type { MaterializedShootInput } from "../lib/materialize-booking";
 
 export interface CreateShootsBatchResult {
 	shootIds: string[];
@@ -30,7 +30,7 @@ export async function createShootsBatch(
 	organizationId: string,
 	bookingId: string,
 	userId: string,
-	shootInputs: ShootInput[],
+	shootInputs: MaterializedShootInput[],
 ): Promise<CreateShootsBatchResult> {
 	if (shootInputs.length === 0) {
 		return { shootIds: [] };
@@ -45,8 +45,10 @@ export async function createShootsBatch(
 			.values({
 				organizationId,
 				bookingId,
+				bookingEventId: shootInput.bookingEventId ?? null,
 				name: shootInput.name,
 				shootType: shootInput.shootType,
+				side: shootInput.side ?? null,
 				shootDate: shootInput.shootDate,
 				startTime: shootInput.startTime ?? null,
 				endTime: shootInput.endTime ?? null,

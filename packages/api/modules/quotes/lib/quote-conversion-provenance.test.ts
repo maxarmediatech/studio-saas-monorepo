@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
 	assertDocumentAcceptanceProvenance,
+	documentEventsToShootPlan,
 	documentEventsToShoots,
 } from "./quote-conversion";
 
@@ -50,12 +51,51 @@ describe("document quote conversion provenance", () => {
 			{
 				name: "Wedding",
 				shootType: "Wedding",
+				side: "common",
 				shootDate: "2026-08-20",
 				venue: "Wedding venue",
 				notes: "Arrive early\n\nPromised crew coverage: 2 photographers, 1 cinematographer",
 				status: "scheduled",
 				crewAssignments: [],
 			},
+		]);
+	});
+
+	it("preserves side and the source event index used for transactional linking", () => {
+		const plan = documentEventsToShootPlan([
+			{
+				documentKey: "tentative",
+				eventType: "Tentative event",
+				side: "common",
+				guestCount: null,
+				isTentative: true,
+				eventDate: null,
+				dateWindow: "December 2026",
+				location: null,
+				notes: null,
+				coverageNotes: null,
+			},
+			{
+				documentKey: "separate-common",
+				eventType: "Wedding",
+				side: "separateCommon",
+				guestCount: "300",
+				isTentative: false,
+				eventDate: "2026-12-12",
+				dateWindow: null,
+				location: "Venue",
+				notes: null,
+				coverageNotes: null,
+			},
+		]);
+
+		expect(plan.eventIndexes).toEqual([1]);
+		expect(plan.shoots).toEqual([
+			expect.objectContaining({
+				shootType: "Wedding",
+				side: "separateCommon",
+				shootDate: "2026-12-12",
+			}),
 		]);
 	});
 

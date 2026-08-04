@@ -809,9 +809,14 @@ export const shoots = pgTable(
 		bookingId: varchar("booking_id", { length: 255 })
 			.notNull()
 			.references(() => bookings.id, { onDelete: "cascade" }),
+		bookingEventId: varchar("booking_event_id", { length: 255 }).references(
+			() => bookingEvents.id,
+			{ onDelete: "set null" },
+		),
 
 		name: text("name").notNull(),
 		shootType: text("shoot_type").notNull(), // pre-wedding, wedding, reception, etc.
+		side: eventSideEnum("side"),
 
 		// Proper date and time types (not text!)
 		shootDate: date("shoot_date").notNull(),
@@ -850,6 +855,7 @@ export const shoots = pgTable(
 	(table) => [
 		index("shoots_organization_idx").on(table.organizationId),
 		index("shoots_booking_idx").on(table.bookingId),
+		index("shoots_booking_event_idx").on(table.bookingEventId),
 		index("shoots_date_idx").on(table.shootDate),
 		index("shoots_org_date_idx").on(table.organizationId, table.shootDate),
 	],
@@ -2362,16 +2368,20 @@ export const bookingParticipantRelations = relations(
 	}),
 );
 
-export const bookingEventRelations = relations(bookingEvents, ({ one }) => ({
-	booking: one(bookings, {
-		fields: [bookingEvents.bookingId],
-		references: [bookings.id],
+export const bookingEventRelations = relations(
+	bookingEvents,
+	({ one, many }) => ({
+		booking: one(bookings, {
+			fields: [bookingEvents.bookingId],
+			references: [bookings.id],
+		}),
+		organization: one(organizations, {
+			fields: [bookingEvents.organizationId],
+			references: [organizations.id],
+		}),
+		shoots: many(shoots),
 	}),
-	organization: one(organizations, {
-		fields: [bookingEvents.organizationId],
-		references: [organizations.id],
-	}),
-}));
+);
 
 export const quoteRelations = relations(quotes, ({ one, many }) => ({
 	organization: one(organizations, {
@@ -2523,6 +2533,10 @@ export const shootRelations = relations(shoots, ({ one, many }) => ({
 	booking: one(bookings, {
 		fields: [shoots.bookingId],
 		references: [bookings.id],
+	}),
+	bookingEvent: one(bookingEvents, {
+		fields: [shoots.bookingEventId],
+		references: [bookingEvents.id],
 	}),
 	assignments: many(shootAssignments),
 	createdByUser: one(users, {

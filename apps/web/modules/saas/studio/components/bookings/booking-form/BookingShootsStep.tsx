@@ -25,6 +25,7 @@ import { Textarea } from "@repo/ui/components/textarea";
 import { TimePicker } from "@repo/ui/components/time-picker";
 import { useAllCrewOptions } from "@saas/studio/components/shared";
 import { useConfigurationParams } from "@saas/studio/hooks/params/use-configuration-params";
+import { EVENT_SIDE_OPTIONS } from "@saas/studio/lib/event-side";
 import {
 	getShootExtraServiceLabel,
 	SHOOT_EXTRA_SERVICE_OPTIONS,
@@ -140,6 +141,7 @@ export function BookingShootsStep() {
 		appendShoot(
 			{
 				shootType: "",
+				side: "common",
 				shootDate: "",
 				startTime: "",
 				requiredCrewCount: "",
@@ -464,7 +466,26 @@ function ShootSection({
 						/>
 					</div>
 
-					<div className="grid gap-3 grid-cols-1 md:grid-cols-2">
+					<div className="grid gap-3 grid-cols-1 md:grid-cols-3">
+						<Controller
+							name={`shoots.${shootIndex}.side`}
+							control={form.control}
+							render={({ field, fieldState }) => (
+								<Field data-invalid={fieldState.invalid}>
+									<FieldLabel htmlFor={field.name}>
+										Side
+									</FieldLabel>
+									<Combobox
+										id={field.name}
+										value={field.value}
+										onValueChange={field.onChange}
+										options={[...EVENT_SIDE_OPTIONS]}
+										placeholder="Select side"
+									/>
+								</Field>
+							)}
+						/>
+
 						<Controller
 							name={`shoots.${shootIndex}.requiredCrewCount`}
 							control={form.control}

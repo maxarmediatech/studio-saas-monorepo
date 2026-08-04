@@ -78,9 +78,20 @@ function localMidnightIso(date: string, timezone: string): string {
 export function documentEventsToShoots(
 	events: BookingBlueprintV2["booking"]["events"],
 ): NonNullable<CreateBookingInput["shoots"]> {
-	return events.flatMap((event) => {
+	return documentEventsToShootPlan(events).shoots;
+}
+
+export function documentEventsToShootPlan(
+	events: BookingBlueprintV2["booking"]["events"],
+): {
+	shoots: NonNullable<CreateBookingInput["shoots"]>;
+	eventIndexes: number[];
+} {
+	const shoots: NonNullable<CreateBookingInput["shoots"]> = [];
+	const eventIndexes: number[] = [];
+	events.forEach((event, eventIndex) => {
 		if (event.isTentative || !event.eventDate) {
-			return [];
+			return;
 		}
 		const coverageNotes = event.coverageNotes?.trim();
 		const eventNotes = event.notes?.trim();
@@ -91,18 +102,19 @@ export function documentEventsToShoots(
 			.filter(Boolean)
 			.join("\n\n");
 
-		return [
-			{
-				name: event.eventType,
-				shootType: event.eventType,
-				shootDate: event.eventDate,
-				venue: event.location ?? undefined,
-				notes: notes || undefined,
-				status: "scheduled",
-				crewAssignments: [],
-			},
-		];
+		shoots.push({
+			name: event.eventType,
+			shootType: event.eventType,
+			side: event.side,
+			shootDate: event.eventDate,
+			venue: event.location ?? undefined,
+			notes: notes || undefined,
+			status: "scheduled",
+			crewAssignments: [],
+		});
+		eventIndexes.push(eventIndex);
 	});
+	return { shoots, eventIndexes };
 }
 
 export async function convertAcceptedQuote(
@@ -189,6 +201,7 @@ export async function convertAcceptedQuote(
 			orderBy: (table, { asc }) => [asc(table.sortOrder)],
 		});
 		let bookingInput: CreateBookingInput;
+		let shootEventIndexes: number[] | undefined;
 		if (isDocumentQuote) {
 			const documentBlueprint = bookingBlueprintV2Schema.parse(blueprint);
 			const document = quotationDocumentV1Schema.parse(
@@ -216,6 +229,9 @@ export async function convertAcceptedQuote(
 					context.membership.organization.timezone,
 				),
 			);
+			const shootPlan = documentEventsToShootPlan(
+				documentBlueprint.booking.events,
+			);
 			bookingInput = {
 				name: document.title,
 				bookingDate,
@@ -242,9 +258,7 @@ export async function convertAcceptedQuote(
 					notes: event.notes ?? undefined,
 					coverageNotes: event.coverageNotes,
 				})),
-				shoots: documentEventsToShoots(
-					documentBlueprint.booking.events,
-				),
+				shoots: shootPlan.shoots,
 				deliverables: documentBlueprint.booking.deliverables.map(
 					(deliverable) => ({
 						name: deliverable.name,
@@ -268,6 +282,7 @@ export async function convertAcceptedQuote(
 						}),
 					),
 			};
+			shootEventIndexes = shootPlan.eventIndexes;
 			const clientIds = participants.map(({ clientId }) => clientId);
 			const leads = clientIds.length
 				? await tx.query.clients.findMany({
@@ -324,6 +339,7 @@ export async function convertAcceptedQuote(
 			},
 			bookingInput,
 			{
+				shootEventIndexes,
 				provenance: {
 					quoteId: quote.id,
 					quoteOptionId: acceptance.quoteOptionId,

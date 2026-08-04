@@ -18,6 +18,7 @@ import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
 import { useShootParams } from "@saas/studio/hooks/params";
 import { shootsApi } from "@saas/studio/lib/api";
+import { type EventSide, getEventSideLabel } from "@saas/studio/lib/event-side";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
@@ -38,6 +39,8 @@ type Shoot = {
 	id: string;
 	name?: string | null;
 	shootType?: string | null;
+	side?: EventSide | null;
+	bookingEvent?: { id: string; eventType: string } | null;
 	shootDate?: string | null;
 	startTime?: string | null;
 	endTime?: string | null;
@@ -98,6 +101,11 @@ function ShootRow({
 					>
 						{shoot.status.replace("_", " ")}
 					</p>
+					{shoot.side && (
+						<p className="mt-0.5 rounded-md bg-muted px-1.5 py-0.5 text-xs font-medium whitespace-nowrap">
+							{getEventSideLabel(shoot.side)}
+						</p>
+					)}
 				</div>
 				<div className="mt-1 flex items-center gap-x-2 text-xs/5 text-muted-foreground">
 					<p className="whitespace-nowrap">{dateStr}</p>
@@ -118,6 +126,11 @@ function ShootRow({
 					</svg>
 					<p className="truncate">{venueStr}</p>
 				</div>
+				{shoot.bookingEvent && (
+					<p className="mt-1 text-xs text-muted-foreground">
+						Linked booking event: {shoot.bookingEvent.eventType}
+					</p>
+				)}
 			</div>
 			<div className="flex flex-none items-center gap-x-4">
 				<CrewAvatarStack crew={shoot.assignedCrew} />

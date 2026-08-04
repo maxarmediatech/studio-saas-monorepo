@@ -30,6 +30,7 @@ import {
 	shootsApi,
 	shootsMutations,
 } from "@saas/studio/lib/api";
+import { getEventSideLabel } from "@saas/studio/lib/event-side";
 import { getShootExtraServiceLabel } from "@saas/studio/lib/shoot-planning";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -282,12 +283,19 @@ export function ShootsTableClient({
 				),
 				cell: ({ row }) => (
 					<div className="flex items-center gap-2">
-						<Link
-							href={`/app/${organizationSlug}/shoots/${row.original.id}`}
-							className="font-medium text-foreground hover:underline"
-						>
-							{formatShootType(row.original.shootType)}
-						</Link>
+						<div className="flex flex-col">
+							<Link
+								href={`/app/${organizationSlug}/shoots/${row.original.id}`}
+								className="font-medium text-foreground hover:underline"
+							>
+								{formatShootType(row.original.shootType)}
+							</Link>
+							{row.original.side && (
+								<span className="text-xs text-muted-foreground">
+									{getEventSideLabel(row.original.side)}
+								</span>
+							)}
+						</div>
 						<span className="text-muted-foreground">·</span>
 						<Link
 							href={`/app/${organizationSlug}/bookings/${row.original.bookingId}`}

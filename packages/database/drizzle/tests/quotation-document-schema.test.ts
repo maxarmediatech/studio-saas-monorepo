@@ -20,6 +20,10 @@ const termsBackfillMigration = readFileSync(
 	),
 	"utf8",
 );
+const shootLinkMigration = readFileSync(
+	new URL("../migrations/0057_chemical_frank_castle.sql", import.meta.url),
+	"utf8",
+);
 
 test("quotation document migration preserves lifecycle and immutable evidence", () => {
 	assert.match(migration, /client_lifecycle_stage/);
@@ -57,4 +61,14 @@ test("existing organizations receive an idempotent neutral terms preset", () => 
 		termsBackfillMigration,
 		/extra services|travel|accommodation|weather|cancellation/i,
 	);
+});
+
+test("quotation shoots retain their booking event and side", () => {
+	assert.match(shootLinkMigration, /ADD COLUMN "booking_event_id"/);
+	assert.match(shootLinkMigration, /ADD COLUMN "side" "event_side"/);
+	assert.match(
+		shootLinkMigration,
+		/FOREIGN KEY \("booking_event_id"\).*"booking_events"\("id"\).*ON DELETE set null/,
+	);
+	assert.match(shootLinkMigration, /CREATE INDEX "shoots_booking_event_idx"/);
 });

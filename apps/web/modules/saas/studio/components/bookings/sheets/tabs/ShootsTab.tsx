@@ -4,6 +4,7 @@ import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { shootsApi } from "@saas/studio/lib/api";
+import { getEventSideLabel } from "@saas/studio/lib/event-side";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
@@ -18,8 +19,15 @@ interface ShootsTabProps {
 	bookingId: string;
 }
 
-export const ShootsTab = memo(function ShootsTab({ bookingId }: ShootsTabProps) {
-	const { data: shoots, isLoading, isError, refetch } = useQuery({
+export const ShootsTab = memo(function ShootsTab({
+	bookingId,
+}: ShootsTabProps) {
+	const {
+		data: shoots,
+		isLoading,
+		isError,
+		refetch,
+	} = useQuery({
 		...shootsApi.listOptions({ bookingId, limit: 50 }),
 		enabled: !!bookingId,
 	});
@@ -37,7 +45,9 @@ export const ShootsTab = memo(function ShootsTab({ bookingId }: ShootsTabProps) 
 		return (
 			<div className="flex flex-col items-center gap-2 py-8 text-center">
 				<AlertCircleIcon className="h-10 w-10 text-destructive/50" />
-				<p className="text-sm text-destructive">Failed to load shoots</p>
+				<p className="text-sm text-destructive">
+					Failed to load shoots
+				</p>
 				<Button variant="outline" size="sm" onClick={() => refetch()}>
 					Try again
 				</Button>
@@ -76,10 +86,7 @@ export const ShootsTab = memo(function ShootsTab({ bookingId }: ShootsTabProps) 
 							: null;
 
 					return (
-						<div
-							key={shoot.id}
-							className="rounded-lg border p-4"
-						>
+						<div key={shoot.id} className="rounded-lg border p-4">
 							<div className="space-y-1">
 								<div className="flex items-center gap-2">
 									<h4 className="font-medium">
@@ -93,6 +100,11 @@ export const ShootsTab = memo(function ShootsTab({ bookingId }: ShootsTabProps) 
 									>
 										{shoot.status}
 									</Badge>
+									{shoot.side && (
+										<Badge variant="secondary">
+											{getEventSideLabel(shoot.side)}
+										</Badge>
+									)}
 								</div>
 
 								<div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -115,6 +127,12 @@ export const ShootsTab = memo(function ShootsTab({ bookingId }: ShootsTabProps) 
 										</div>
 									)}
 								</div>
+								{shoot.bookingEvent && (
+									<p className="text-xs text-muted-foreground">
+										Linked booking event:{" "}
+										{shoot.bookingEvent.eventType}
+									</p>
+								)}
 							</div>
 						</div>
 					);

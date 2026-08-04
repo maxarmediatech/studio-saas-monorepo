@@ -111,6 +111,9 @@ export type CrewAssignmentFormValue = z.infer<typeof crewAssignmentSchema>;
  */
 export const shootSchema = z.object({
 	shootType: z.string().min(1, "Event type is required"),
+	side: z
+		.enum(["common", "bride", "groom", "both", "separateCommon"])
+		.default("common"),
 	shootDate: z.string().min(1, "Shoot date is required"),
 	startTime: z.string().optional(),
 	requiredCrewCount: z
