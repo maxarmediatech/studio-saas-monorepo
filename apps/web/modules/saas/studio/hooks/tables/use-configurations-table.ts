@@ -10,7 +10,8 @@ export type ConfigType =
 	| "package_type"
 	| "relation_type"
 	| "crew_role"
-	| "event_type";
+	| "event_type"
+	| "quotation_terms";
 
 /**
  * Filter state for configurations table

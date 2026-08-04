@@ -11,7 +11,8 @@ runbook covers deployment and operational checks only.
 
 ## Rollout
 
-1. Apply migration `0054_thankful_forgotten_one.sql` before enabling new writes.
+1. Apply migrations `0054_thankful_forgotten_one.sql` and
+   `0055_quotation_terms_configuration.sql` before enabling new writes.
 2. Deploy the compatible API and web application with
    `QUOTATION_WIZARD_MODE=legacy`.
 3. Refresh sanitized staging. Seed organization-owned booking type, event type,

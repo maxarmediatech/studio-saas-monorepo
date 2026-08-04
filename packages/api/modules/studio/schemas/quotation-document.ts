@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const QUOTATION_DOCUMENT_VERSION = 1 as const;
+export const QUOTATION_TERMS_METADATA_VERSION = 1 as const;
 export const BOOKING_BLUEPRINT_VERSION_V2 = 2 as const;
 export const QUOTATION_PDF_RENDERER_VERSION = "quotation-pdf-v1" as const;
 
@@ -95,6 +96,79 @@ const milestoneSchema = z.object({
 	timing: z.string().max(500),
 });
 
+const quotationTermsContentSchema = z.object({
+	deliveryTimelines: z.array(clauseSchema).max(50),
+	paymentMilestones: z.array(milestoneSchema).length(3),
+	fixedTerms: z.array(clauseSchema).max(50),
+});
+
+function validatePaymentMilestones(
+	milestones: z.infer<typeof milestoneSchema>[],
+	ctx: z.RefinementCtx,
+	path: PropertyKey[] = ["paymentMilestones"],
+	requireEveryRow = false,
+): void {
+	const countedMilestones = requireEveryRow
+		? milestones
+		: milestones.filter(({ percentage }) => Number(percentage) > 0);
+	const totalBasisPoints = countedMilestones.reduce(
+		(total, row) => total + Math.round(Number(row.percentage) * 100),
+		0,
+	);
+	if (totalBasisPoints !== 10_000) {
+		addIssue(ctx, path, "Positive payment percentages must total 100.00");
+	}
+	if (!requireEveryRow) {
+		return;
+	}
+	milestones.forEach((row, index) => {
+		if (
+			!row.label.trim() ||
+			!row.timing.trim() ||
+			Number(row.percentage) <= 0
+		) {
+			addIssue(
+				ctx,
+				[...path, index],
+				"Each payment milestone requires a label, timing, and positive percentage",
+			);
+		}
+	});
+}
+
+export const quotationTermsMetadataV1Schema = quotationTermsContentSchema
+	.extend({ schemaVersion: z.literal(QUOTATION_TERMS_METADATA_VERSION) })
+	.superRefine((metadata, ctx) => {
+		requireUniqueKeys(
+			metadata.deliveryTimelines,
+			["deliveryTimelines"],
+			ctx,
+		);
+		requireUniqueKeys(
+			metadata.paymentMilestones,
+			["paymentMilestones"],
+			ctx,
+		);
+		requireUniqueKeys(metadata.fixedTerms, ["fixedTerms"], ctx);
+		validatePaymentMilestones(
+			metadata.paymentMilestones,
+			ctx,
+			["paymentMilestones"],
+			true,
+		);
+	});
+
+export type QuotationTermsMetadataV1 = z.infer<
+	typeof quotationTermsMetadataV1Schema
+>;
+
+export const quotationTermsConfigurationSnapshotSchema = z.object({
+	id: z.string().max(255).nullable(),
+	key: z.string().max(100).nullable(),
+	label: z.string().min(1).max(255),
+	metadataVersion: z.literal(QUOTATION_TERMS_METADATA_VERSION),
+});
+
 export const quotationDocumentV1Schema = z.object({
 	schemaVersion: z.literal(QUOTATION_DOCUMENT_VERSION),
 	quotationDate: z.union([z.literal(""), z.string().date()]),
@@ -105,6 +179,9 @@ export const quotationDocumentV1Schema = z.object({
 	events: z.array(eventSchema).max(50),
 	packages: z.array(packageSchema).max(10),
 	recommendedPackageKey: keySchema.nullable(),
+	termsConfiguration: quotationTermsConfigurationSnapshotSchema
+		.nullable()
+		.optional(),
 	deliveryTimelines: z.array(clauseSchema).max(50),
 	paymentMilestones: z.array(milestoneSchema).max(3),
 	fixedTerms: z.array(clauseSchema).max(50),
@@ -296,17 +373,7 @@ export const strictQuotationDocumentV1Schema =
 				"Positive payment rows require label and timing",
 			);
 		}
-		const totalBasisPoints = positive.reduce(
-			(total, row) => total + Math.round(Number(row.percentage) * 100),
-			0,
-		);
-		if (totalBasisPoints !== 10_000) {
-			addIssue(
-				ctx,
-				["paymentMilestones"],
-				"Positive payment percentages must total 100.00",
-			);
-		}
+		validatePaymentMilestones(document.paymentMilestones, ctx);
 	});
 
 export type QuotationDocumentV1 = z.infer<typeof quotationDocumentV1Schema>;

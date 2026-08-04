@@ -386,6 +386,20 @@
       "when": 1785771591979,
       "tag": "0054_thankful_forgotten_one",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1785840000000,
+      "tag": "0055_quotation_terms_configuration",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1785840000001,
+      "tag": "0056_quotation_terms_neutral_backfill",
+      "breakpoints": true
     }
   ]
 }

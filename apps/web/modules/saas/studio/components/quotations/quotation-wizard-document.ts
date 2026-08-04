@@ -83,6 +83,7 @@ export function quotationDraftToDocument(
 			})),
 		})),
 		recommendedPackageKey: draft.selectedPackageId || null,
+		termsConfiguration: draft.termsConfiguration,
 		deliveryTimelines: draft.timelines
 			.map((text, index) => ({
 				key:
@@ -179,6 +180,7 @@ export function quotationDetailToWizardDraft(
 				details: item.details ?? "",
 			})),
 		})),
+		termsConfiguration: document.termsConfiguration ?? null,
 		timelines: document.deliveryTimelines.map(({ text }) => text),
 		timelineKeys: document.deliveryTimelines.map(({ key }) => key),
 		terms: document.fixedTerms.map(({ text }) => text),

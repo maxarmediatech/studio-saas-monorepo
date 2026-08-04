@@ -23,6 +23,12 @@ export function normalizeQuotationDocument(
 			label: document.quotationType.label.trim(),
 		},
 		title: document.title.trim(),
+		termsConfiguration: document.termsConfiguration
+			? {
+					...document.termsConfiguration,
+					label: document.termsConfiguration.label.trim(),
+				}
+			: null,
 		participants: document.participants.map((participant) => ({
 			...participant,
 			contact: {

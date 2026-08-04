@@ -32,6 +32,10 @@ import {
 	type PackageTypeFormValues,
 } from "../PackageTypeForm";
 import {
+	QuotationTermsForm,
+	type QuotationTermsFormValues,
+} from "../QuotationTermsForm";
+import {
 	RelationTypeForm,
 	type RelationTypeFormValues,
 } from "../RelationTypeForm";
@@ -41,6 +45,7 @@ const CONFIG_TYPE_LABELS: Record<string, string> = {
 	package_type: "Package Type",
 	relation_type: "Relation Type",
 	event_type: "Event Type",
+	quotation_terms: "Quotation Terms",
 	shoot_status: "Shoot Status",
 	crew_role: "Specialisation",
 	task_status: "Task Status",
@@ -68,19 +73,34 @@ export function ConfigurationEditSheet() {
 		? (CONFIG_TYPE_LABELS[configurationType] ?? configurationType)
 		: "";
 
-	const { data: configuration, isLoading } = useQuery({
+	const {
+		data: configuration,
+		isLoading,
+		isFetching,
+	} = useQuery({
 		...configurationsApi.getOptions(configurationId ?? ""),
 		enabled: configurationCreateOrUpdate && isOpen && !!configurationId,
 	});
 
 	const updateMutation = useMutation({
 		...configurationsMutations.update(),
-		onSuccess: () => {
+		onSuccess: async () => {
 			toast.success(`${typeLabel} updated successfully`);
-			// Use ORPC's key generator to match the booking form's query keys
-			queryClient.invalidateQueries({
-				queryKey: orpc.configurations.key(),
-			});
+			const invalidations = [
+				queryClient.invalidateQueries({
+					queryKey: orpc.configurations.key(),
+				}),
+			];
+			if (configurationId) {
+				invalidations.push(
+					queryClient.invalidateQueries({
+						queryKey:
+							configurationsApi.getOptions(configurationId)
+								.queryKey,
+					}),
+				);
+			}
+			await Promise.all(invalidations);
 			close();
 		},
 		onError: (error) => {
@@ -201,10 +221,38 @@ export function ConfigurationEditSheet() {
 		});
 	};
 
+	const handleQuotationTermsSubmit = async (
+		data: QuotationTermsFormValues,
+	) => {
+		if (!configurationId) {
+			return;
+		}
+		await updateMutation.mutateAsync({
+			id: configurationId,
+			label: data.label,
+			description: data.description || null,
+			isDefault: data.isDefault,
+			bookingTypeFilter: data.bookingType
+				? data.bookingType === "all"
+					? null
+					: data.bookingType
+				: undefined,
+			metadata: {
+				schemaVersion: 1,
+				deliveryTimelines: data.deliveryTimelines.filter((item) =>
+					item.text.trim(),
+				),
+				paymentMilestones: data.paymentMilestones,
+				fixedTerms: data.fixedTerms.filter((item) => item.text.trim()),
+			},
+		});
+	};
+
 	const isPackageType = configurationType === "package_type";
 	const isBookingType = configurationType === "booking_type";
 	const isRelationType = configurationType === "relation_type";
 	const isEventType = configurationType === "event_type";
+	const isQuotationTerms = configurationType === "quotation_terms";
 
 	return (
 		<Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
@@ -215,7 +263,8 @@ export function ConfigurationEditSheet() {
 					isPackageType ||
 						isBookingType ||
 						isRelationType ||
-						isEventType
+						isEventType ||
+						isQuotationTerms
 						? "sm:max-w-xl"
 						: "sm:max-w-md",
 				)}
@@ -232,7 +281,7 @@ export function ConfigurationEditSheet() {
 					</SheetTitle>
 				</SheetHeader>
 				<div className="flex-1 min-h-0">
-					{isLoading ? (
+					{isLoading || isFetching ? (
 						<div className="space-y-4 p-4">
 							<Skeleton className="h-10 w-full" />
 							<Skeleton className="h-10 w-full" />
@@ -242,6 +291,14 @@ export function ConfigurationEditSheet() {
 								<Skeleton className="h-10 w-full" />
 							</div>
 						</div>
+					) : isQuotationTerms ? (
+						<QuotationTermsForm
+							defaultValues={configuration?.data}
+							onSubmit={handleQuotationTermsSubmit}
+							mode="edit"
+							isPending={updateMutation.isPending}
+							onScrollChange={setIsScrolled}
+						/>
 					) : isEventType ? (
 						<EventTypeForm
 							defaultValues={configuration?.data}

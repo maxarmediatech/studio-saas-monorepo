@@ -310,6 +310,20 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							},
 						},
 						{
+							id: "quotation-terms",
+							label: "Quotation Terms",
+							path: url("/configurations/quotation-terms"),
+							icon: "FileText",
+							permission: {
+								any: [
+									{
+										resource: "configuration",
+										action: "list",
+									},
+								],
+							},
+						},
+						{
 							id: "relation-types",
 							label: "Relation Types",
 							path: url("/configurations/relation-types"),

@@ -134,6 +134,23 @@ describe("quotation document v1", () => {
 		).toBe(false);
 	});
 
+	it("keeps historical unused zero-percent payment rows compatible", () => {
+		const document = documentFixture();
+		document.paymentMilestones = [
+			{
+				key: "payment-1",
+				label: "Full payment",
+				percentage: "100",
+				timing: "Booking",
+			},
+			{ key: "payment-2", label: "", percentage: "0", timing: "" },
+			{ key: "payment-3", label: "", percentage: "0", timing: "" },
+		];
+		expect(
+			strictQuotationDocumentV1Schema.safeParse(document).success,
+		).toBe(true);
+	});
+
 	it("validates event sides and fixed/tentative exclusivity", () => {
 		const document = documentFixture();
 		const event = document.events[0];
@@ -241,10 +258,10 @@ describe("quotation document v1", () => {
 	});
 
 	it("assembles blueprint v2 without operational inventions", () => {
-		const blueprint = assembleBookingBlueprintV2(
-			documentFixture(),
-			"package-1",
-		);
+		const document = documentFixture();
+		document.deliveryTimelines = [{ key: "timeline", text: "Eight weeks" }];
+		document.fixedTerms = [{ key: "backup", text: "Backup for 90 days" }];
+		const blueprint = assembleBookingBlueprintV2(document, "package-1");
 		expect(blueprint.booking.events[0]).toMatchObject({
 			side: "bride",
 			coverageNotes: "2 photographers",
@@ -254,6 +271,9 @@ describe("quotation document v1", () => {
 			isPackageIncluded: true,
 		});
 		expect(blueprint.booking).not.toHaveProperty("shoots");
+		expect(blueprint.booking.paymentMilestones).toHaveLength(3);
+		expect(blueprint.booking).not.toHaveProperty("deliveryTimelines");
+		expect(blueprint.booking).not.toHaveProperty("fixedTerms");
 	});
 
 	it("hashes canonical input stably", () => {

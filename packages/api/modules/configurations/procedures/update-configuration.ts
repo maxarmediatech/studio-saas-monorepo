@@ -7,6 +7,7 @@ import {
 	updateConfigurationInputSchema,
 	updateConfigurationOutputSchema,
 } from "../../studio/schemas/configuration";
+import { validateConfigurationFields } from "../lib/validate-configuration";
 
 export const updateConfiguration = studioProtectedProcedure
 	.route({
@@ -49,6 +50,27 @@ export const updateConfiguration = studioProtectedProcedure
 					message: "Configuration not found",
 				});
 			}
+			if (
+				existing.type === "quotation_terms" &&
+				existing.isDefault &&
+				(isDefault === false || isActive === false)
+			) {
+				throw new ORPCError("BAD_REQUEST", {
+					message: "Choose another default quotation terms preset before disabling this one",
+				});
+			}
+
+			const validatedMetadata = await validateConfigurationFields(
+				tx,
+				context.organizationId,
+				existing.type,
+				metadata === undefined
+					? (existing.metadata as Record<string, unknown> | null)
+					: metadata,
+				bookingTypeFilter === undefined
+					? existing.bookingTypeFilter
+					: bookingTypeFilter,
+			);
 
 			// System configurations cannot be modified (except sortOrder and isActive)
 			if (existing.isSystem) {
@@ -98,9 +120,12 @@ export const updateConfiguration = studioProtectedProcedure
 			if (sortOrder !== undefined) updates.sortOrder = sortOrder;
 			if (isDefault !== undefined) updates.isDefault = isDefault;
 			if (isActive !== undefined) updates.isActive = isActive;
-			if (metadata !== undefined) updates.metadata = metadata;
+			if (metadata !== undefined) updates.metadata = validatedMetadata;
 			if (defaultCost !== undefined) updates.defaultCost = defaultCost;
 			if (bookingTypeFilter !== undefined) updates.bookingTypeFilter = bookingTypeFilter;
+			if (existing.type === "quotation_terms" && isDefault === true) {
+				updates.isActive = true;
+			}
 
 			await tx
 				.update(configurations)

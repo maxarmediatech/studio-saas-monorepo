@@ -33,7 +33,8 @@ type Context = Pick<StudioContext, "organizationId" | "membership" | "user">;
 type QuotationConfigurationType =
 	| "booking_type"
 	| "event_type"
-	| "package_type";
+	| "package_type"
+	| "quotation_terms";
 
 type ConfigurationReference = {
 	id: string | null;
@@ -45,6 +46,13 @@ export function getQuotationConfigurationReferences(
 	document: QuotationDocumentV1,
 ): ConfigurationReference[] {
 	const references: ConfigurationReference[] = [];
+	if (document.termsConfiguration?.id || document.termsConfiguration?.key) {
+		references.push({
+			id: document.termsConfiguration.id,
+			key: document.termsConfiguration.key,
+			type: "quotation_terms",
+		});
+	}
 	if (document.quotationType.id || document.quotationType.key) {
 		references.push({
 			id: document.quotationType.id,

@@ -25,7 +25,11 @@ export async function sanitizeStudio(
 		`UPDATE configurations SET
 			label = 'Sanitized configuration ' || left(${fakeHash("configuration-label")}, 8),
 			description = CASE WHEN description IS NULL THEN NULL ELSE 'Sanitized configuration' END,
-			metadata = CASE WHEN metadata IS NULL THEN NULL ELSE '{}'::jsonb END`,
+			metadata = CASE
+				WHEN type = 'quotation_terms' THEN '{"schemaVersion":1,"deliveryTimelines":[],"paymentMilestones":[{"key":"advance","label":"Sanitized payment milestone","percentage":"40","timing":"Sanitized payment timing"},{"key":"raw-data","label":"Sanitized payment milestone","percentage":"50","timing":"Sanitized payment timing"},{"key":"delivery","label":"Sanitized payment milestone","percentage":"10","timing":"Sanitized payment timing"}],"fixedTerms":[]}'::jsonb
+				WHEN metadata IS NULL THEN NULL
+				ELSE '{}'::jsonb
+			END`,
 		`UPDATE clients SET
 			name = 'Client ' || left(${fakeHash("client")}, 10),
 			email = CASE WHEN email IS NULL THEN NULL ELSE 'client+' || ${fakeHash("client-email")} || '@example.invalid' END,
@@ -46,7 +50,10 @@ export async function sanitizeStudio(
 		LANGUAGE sql IMMUTABLE AS $$
 			SELECT CASE WHEN input IS NULL THEN NULL ELSE
 				jsonb_set(jsonb_set(jsonb_set(
-					jsonb_set(input || jsonb_build_object('quotationType', COALESCE(input -> 'quotationType', '{}'::jsonb) || jsonb_build_object('label', 'Sanitized quotation type')), '{title}', to_jsonb('Sanitized quotation'::text), true),
+					jsonb_set(input || jsonb_build_object(
+						'quotationType', COALESCE(input -> 'quotationType', '{}'::jsonb) || jsonb_build_object('label', 'Sanitized quotation type'),
+						'termsConfiguration', CASE WHEN input -> 'termsConfiguration' IS NULL OR input -> 'termsConfiguration' = 'null'::jsonb THEN NULL ELSE input -> 'termsConfiguration' || jsonb_build_object('label', 'Sanitized quotation terms') END
+					), '{title}', to_jsonb('Sanitized quotation'::text), true),
 					'{participants}', COALESCE((SELECT jsonb_agg(participant || jsonb_build_object('contact',
 						COALESCE(participant -> 'contact', '{}'::jsonb) || jsonb_build_object(
 							'name', 'Sanitized client', 'email', CASE WHEN participant #>> '{contact,email}' IS NULL THEN NULL ELSE 'client@example.invalid' END,

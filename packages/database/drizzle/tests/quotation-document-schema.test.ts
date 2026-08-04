@@ -6,6 +6,20 @@ const migration = readFileSync(
 	new URL("../migrations/0054_thankful_forgotten_one.sql", import.meta.url),
 	"utf8",
 );
+const termsMigration = readFileSync(
+	new URL(
+		"../migrations/0055_quotation_terms_configuration.sql",
+		import.meta.url,
+	),
+	"utf8",
+);
+const termsBackfillMigration = readFileSync(
+	new URL(
+		"../migrations/0056_quotation_terms_neutral_backfill.sql",
+		import.meta.url,
+	),
+	"utf8",
+);
 
 test("quotation document migration preserves lifecycle and immutable evidence", () => {
 	assert.match(migration, /client_lifecycle_stage/);
@@ -18,4 +32,27 @@ test("quotation document migration preserves lifecycle and immutable evidence", 
 	assert.match(migration, /q\.id = old_quote_id/);
 	assert.match(migration, /q\.id = new_quote_id/);
 	assert.match(migration, /quote_line_items_protect_immutable_document/);
+});
+
+test("quotation terms are an additive configuration type", () => {
+	assert.match(
+		termsMigration,
+		/ALTER TYPE "public"\."config_type" ADD VALUE 'quotation_terms'/,
+	);
+});
+
+test("existing organizations receive an idempotent neutral terms preset", () => {
+	assert.match(termsBackfillMigration, /FROM "organizations"/);
+	assert.match(termsBackfillMigration, /WHERE NOT EXISTS/);
+	assert.match(termsBackfillMigration, /'quotation_terms'::"config_type"/);
+	assert.match(termsBackfillMigration, /"is_default"/);
+	assert.match(termsBackfillMigration, /"percentage":"40"/);
+	assert.match(termsBackfillMigration, /"percentage":"50"/);
+	assert.match(termsBackfillMigration, /"percentage":"10"/);
+	assert.match(termsBackfillMigration, /"deliveryTimelines":\[\]/);
+	assert.match(termsBackfillMigration, /"fixedTerms":\[\]/);
+	assert.doesNotMatch(
+		termsBackfillMigration,
+		/extra services|travel|accommodation|weather|cancellation/i,
+	);
 });

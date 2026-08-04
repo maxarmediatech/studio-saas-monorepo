@@ -4,7 +4,11 @@ import { strictQuotationDocumentV1Schema } from "@repo/api/modules/studio/schema
 import { BookingFormLayout } from "@saas/studio/components/bookings";
 import { bookingFormQueries } from "@saas/studio/components/bookings/booking-form/booking-form-queries";
 import { selectQuotationBootstrap } from "@saas/studio/components/configurations/apply-package-configuration";
-import { quotesApi, quotesMutations } from "@saas/studio/lib/api";
+import {
+	configurationsApi,
+	quotesApi,
+	quotesMutations,
+} from "@saas/studio/lib/api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -18,8 +22,15 @@ import {
 } from "./quotation-autosave";
 import { ClientStep, EventsStep } from "./quotation-client-events-steps";
 import { PackagesStep } from "./quotation-package-deliverable-steps";
+import {
+	applyQuotationTermsPreset,
+	selectDefaultQuotationTermsPreset,
+} from "./quotation-terms-presets";
 import { PreviewStep, TermsStep } from "./quotation-terms-preview-steps";
-import { applyQuotationBootstrap } from "./quotation-wizard-bootstrap";
+import {
+	applyQuotationBootstrap,
+	quotationBootstrapQueriesReady,
+} from "./quotation-wizard-bootstrap";
 import { shouldAutosaveQuotationDraft } from "./quotation-wizard-conflict";
 import {
 	QuotationConflictDialog,
@@ -90,6 +101,7 @@ export function QuotationWizard({
 	const bookingTypes = useQuery(bookingFormQueries.bookingTypes());
 	useQuery(bookingFormQueries.eventTypes());
 	const packageTypes = useQuery(bookingFormQueries.packageTypes());
+	const quotationTerms = useQuery(configurationsApi.quotationTermsOptions());
 	const detail = useQuery({
 		...quotesApi.getOptions(quoteId ?? ""),
 		enabled: Boolean(quoteId),
@@ -99,36 +111,59 @@ export function QuotationWizard({
 	const sendMutation = useMutation(quotesMutations.sendDocument());
 
 	useEffect(() => {
+		const bookingTypeOptions = bookingTypes.data?.data;
+		const packageTypeOptions = packageTypes.data?.data;
+		const termsOptions = quotationTerms.data?.data;
 		if (
 			quoteId ||
 			defaultsApplied.current ||
-			!bookingTypes.data ||
-			!packageTypes.data
+			!quotationBootstrapQueriesReady({
+				bookingTypesReady: Boolean(bookingTypeOptions),
+				packageTypesReady: Boolean(packageTypeOptions),
+				termsReady: Boolean(termsOptions),
+				termsError: quotationTerms.isError,
+			})
 		) {
+			return;
+		}
+		if (!bookingTypeOptions || !packageTypeOptions) {
 			return;
 		}
 		defaultsApplied.current = true;
 		const bootstrap = selectQuotationBootstrap(
-			bookingTypes.data.data,
-			packageTypes.data.data,
+			bookingTypeOptions,
+			packageTypeOptions,
 		);
 		if (!bootstrap) {
 			return;
 		}
 		const { bookingType, packageType } = bootstrap;
 		setDraft((current) => {
-			const next = applyQuotationBootstrap(
+			let next = applyQuotationBootstrap(
 				current,
 				bookingType,
 				packageType,
 				createDraftId,
 			);
+			const termsPreset = selectDefaultQuotationTermsPreset(
+				termsOptions ?? [],
+				next.quotationTypeKey,
+			);
+			if (termsPreset) {
+				next = applyQuotationTermsPreset(next, termsPreset) ?? next;
+			}
 			markQuotationAutosaveEdit(autosave.current, next);
 			return next;
 		});
 		setDirty(true);
 		setSaveStatus("Unsaved");
-	}, [bookingTypes.data, packageTypes.data, quoteId]);
+	}, [
+		bookingTypes.data,
+		packageTypes.data,
+		quotationTerms.data,
+		quotationTerms.isError,
+		quoteId,
+	]);
 	const [activeStep, setActiveStep] = useState<QuotationStepId>("client");
 
 	const activeIndex = QUOTATION_STEPS.findIndex(
@@ -156,6 +191,14 @@ export function QuotationWizard({
 			markQuotationAutosaveEdit(autosave.current, next);
 			return next;
 		});
+		setDirty(true);
+		setSaveStatus("Unsaved");
+	};
+
+	const replaceDraft = (next: QuotationDraft) => {
+		setFieldErrors({});
+		setDraft(next);
+		markQuotationAutosaveEdit(autosave.current, next);
 		setDirty(true);
 		setSaveStatus("Unsaved");
 	};
@@ -415,7 +458,7 @@ export function QuotationWizard({
 			bookingTypes.data?.data ?? [],
 			packageTypes.data?.data ?? [],
 		);
-		const next = bootstrap
+		let next = bootstrap
 			? applyQuotationBootstrap(
 					blank,
 					bootstrap.bookingType,
@@ -423,10 +466,14 @@ export function QuotationWizard({
 					createDraftId,
 				)
 			: blank;
-		setDraft(next);
-		markQuotationAutosaveEdit(autosave.current, next);
-		setDirty(true);
-		setSaveStatus("Unsaved");
+		const termsPreset = selectDefaultQuotationTermsPreset(
+			quotationTerms.data?.data ?? [],
+			next.quotationTypeKey,
+		);
+		if (termsPreset) {
+			next = applyQuotationTermsPreset(next, termsPreset) ?? next;
+		}
+		replaceDraft(next);
 		setFieldErrors({});
 		setActiveStep("client");
 		toast.success("Quotation draft reset");
@@ -520,7 +567,10 @@ export function QuotationWizard({
 					{activeStep === "terms" && (
 						<TermsStep
 							draft={draft}
-							patchDraft={patchDraft}
+							replaceDraft={replaceDraft}
+							presets={quotationTerms.data?.data ?? []}
+							presetsError={quotationTerms.isError}
+							onRetryPresets={() => quotationTerms.refetch()}
 							errors={fieldErrors}
 						/>
 					)}

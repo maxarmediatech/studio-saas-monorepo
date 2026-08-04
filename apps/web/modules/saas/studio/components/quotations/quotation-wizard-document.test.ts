@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { QuoteDetail } from "@repo/api/modules/studio/schemas/quote";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import {
 	buildQuotationTitle,
@@ -7,7 +8,10 @@ import {
 	createLeadFromQuotationClient,
 	updateQuotationClientField,
 } from "./quotation-wizard-data";
-import { quotationDraftToDocument } from "./quotation-wizard-document";
+import {
+	quotationDetailToWizardDraft,
+	quotationDraftToDocument,
+} from "./quotation-wizard-document";
 
 beforeAll(() => {
 	vi.stubGlobal("crypto", { randomUUID });
@@ -76,6 +80,24 @@ describe("quotation wizard document", () => {
 			clientUpdatedAt: null,
 			persistAsLead: true,
 		});
+	});
+
+	it("retains applied terms provenance through document reload", () => {
+		const draft = createDefaultQuotationDraft("2026-08-03");
+		draft.termsConfiguration = {
+			id: "terms-id",
+			key: "wedding_terms",
+			label: "Wedding terms",
+			metadataVersion: 1,
+		};
+		const document = quotationDraftToDocument(draft);
+		const reloaded = quotationDetailToWizardDraft({
+			document,
+			documentVersion: 1,
+			status: "draft",
+			expiresAt: "2026-08-17",
+		} as QuoteDetail);
+		expect(reloaded?.termsConfiguration).toEqual(draft.termsConfiguration);
 	});
 
 	it("preserves unresolved contact fields without requesting CRM creation", () => {

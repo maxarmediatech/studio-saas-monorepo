@@ -4,6 +4,20 @@ import {
 } from "../configurations/apply-package-configuration";
 import type { QuotationDraft } from "./quotation-wizard-data";
 
+export function quotationBootstrapQueriesReady({
+	bookingTypesReady,
+	packageTypesReady,
+	termsReady,
+	termsError,
+}: {
+	bookingTypesReady: boolean;
+	packageTypesReady: boolean;
+	termsReady: boolean;
+	termsError: boolean;
+}): boolean {
+	return bookingTypesReady && packageTypesReady && (termsReady || termsError);
+}
+
 export function applyQuotationBootstrap(
 	draft: QuotationDraft,
 	bookingType: { id: string; key: string; label: string },

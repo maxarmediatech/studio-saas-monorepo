@@ -1,36 +1,199 @@
 "use client";
 
+import type { Configuration } from "@repo/api/modules/studio/schemas/configuration";
+import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@repo/ui/components/alert-dialog";
 import { Button } from "@repo/ui/components/button";
 import { Card, CardContent } from "@repo/ui/components/card";
 import { Input } from "@repo/ui/components/input";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@repo/ui/components/select";
 import { Textarea } from "@repo/ui/components/textarea";
 import { PlusIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
+import {
+	applyQuotationTermsPreset,
+	clearQuotationTermsPreset,
+	customizeQuotationTerms,
+	eligibleQuotationTermsPresets,
+	quotationTermsHaveContent,
+} from "./quotation-terms-presets";
 import type { PackageOption, QuotationDraft } from "./quotation-wizard-data";
-
-type PatchDraft = <K extends keyof QuotationDraft>(
-	key: K,
-	value: QuotationDraft[K],
-) => void;
 
 export function TermsStep({
 	draft,
-	patchDraft,
+	replaceDraft,
+	presets,
+	presetsError,
+	onRetryPresets,
 	errors,
 }: {
 	draft: QuotationDraft;
-	patchDraft: PatchDraft;
+	replaceDraft: (draft: QuotationDraft) => void;
+	presets: Configuration[];
+	presetsError: boolean;
+	onRetryPresets: () => unknown;
 	errors: Record<string, string>;
 }) {
+	const eligiblePresets = useMemo(
+		() => eligibleQuotationTermsPresets(presets, draft.quotationTypeKey),
+		[presets, draft.quotationTypeKey],
+	);
+	const appliedPreset = draft.termsConfiguration;
+	const [selectedPresetId, setSelectedPresetId] = useState(
+		appliedPreset?.id ?? "custom",
+	);
+	const [pendingAction, setPendingAction] = useState<
+		"apply" | "clear" | null
+	>(null);
+
+	useEffect(() => {
+		setSelectedPresetId(appliedPreset?.id ?? "custom");
+	}, [appliedPreset?.id]);
+
+	const selectedPreset = presets.find((item) => item.id === selectedPresetId);
+	const appliedPresetIsUnavailable = Boolean(
+		appliedPreset?.id &&
+			!eligiblePresets.some((item) => item.id === appliedPreset.id),
+	);
+	const markCustom = <
+		K extends
+			| "timelines"
+			| "timelineKeys"
+			| "payments"
+			| "terms"
+			| "termKeys",
+	>(
+		key: K,
+		value: QuotationDraft[K],
+	) => replaceDraft({ ...draft, [key]: value, termsConfiguration: null });
+	const runPendingAction = () => {
+		if (pendingAction === "apply" && selectedPreset) {
+			const next = applyQuotationTermsPreset(draft, selectedPreset);
+			if (next) {
+				replaceDraft(next);
+			}
+		}
+		if (pendingAction === "clear") {
+			replaceDraft(clearQuotationTermsPreset(draft));
+			setSelectedPresetId("custom");
+		}
+		setPendingAction(null);
+	};
+
 	const updateTimeline = (index: number, value: string) => {
 		const timelines = [...draft.timelines];
 		timelines[index] = value;
-		patchDraft("timelines", timelines);
+		markCustom("timelines", timelines);
 	};
 
 	return (
 		<div className="space-y-4" id="quotation-terms" tabIndex={-1}>
 			<h2 className="text-lg font-semibold">Terms & Payments</h2>
+			{presetsError ? (
+				<Alert variant="destructive">
+					<AlertTitle>Terms presets could not be loaded</AlertTitle>
+					<AlertDescription className="space-y-2">
+						<p>
+							The quotation remains editable with the neutral
+							40/50/10 payment schedule.
+						</p>
+						<Button
+							type="button"
+							variant="outline"
+							size="sm"
+							onClick={() => onRetryPresets()}
+						>
+							Retry preset load
+						</Button>
+					</AlertDescription>
+				</Alert>
+			) : null}
+			<Card>
+				<CardContent className="space-y-3">
+					<div>
+						<p className="text-sm font-medium">Terms preset</p>
+						<p className="text-sm text-muted-foreground">
+							Choose a studio preset, then apply it explicitly.
+							Manual edits become Custom.
+						</p>
+					</div>
+					<div className="flex flex-col gap-2 sm:flex-row">
+						<Select
+							value={selectedPresetId}
+							onValueChange={setSelectedPresetId}
+						>
+							<SelectTrigger
+								aria-label="Quotation terms preset"
+								className="sm:flex-1"
+							>
+								<SelectValue placeholder="Choose terms preset" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="custom">Custom</SelectItem>
+								{appliedPresetIsUnavailable &&
+								appliedPreset?.id ? (
+									<SelectItem value={appliedPreset.id}>
+										{appliedPreset.label} (saved snapshot)
+									</SelectItem>
+								) : null}
+								{eligiblePresets.map((preset) => (
+									<SelectItem
+										key={preset.id}
+										value={preset.id}
+									>
+										{preset.label}
+										{preset.isDefault ? " — Default" : ""}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+						<Button
+							type="button"
+							variant="outline"
+							disabled={
+								!selectedPreset || selectedPresetId === "custom"
+							}
+							onClick={() =>
+								quotationTermsHaveContent(draft)
+									? setPendingAction("apply")
+									: selectedPreset &&
+										replaceDraft(
+											applyQuotationTermsPreset(
+												draft,
+												selectedPreset,
+											) ?? draft,
+										)
+							}
+						>
+							{appliedPreset?.id === selectedPresetId
+								? "Reapply"
+								: "Apply"}
+						</Button>
+						<Button
+							type="button"
+							variant="ghost"
+							onClick={() => setPendingAction("clear")}
+						>
+							Clear
+						</Button>
+					</div>
+				</CardContent>
+			</Card>
 			<Card>
 				<CardContent className="space-y-6">
 					<TermsSection
@@ -58,14 +221,15 @@ export function TermsStep({
 								type="button"
 								variant="outline"
 								onClick={() => {
-									patchDraft("timelines", [
-										...draft.timelines,
-										"",
-									]);
-									patchDraft("timelineKeys", [
-										...draft.timelineKeys,
-										`timeline-${crypto.randomUUID()}`,
-									]);
+									replaceDraft(
+										customizeQuotationTerms(draft, {
+											timelines: [...draft.timelines, ""],
+											timelineKeys: [
+												...draft.timelineKeys,
+												`timeline-${crypto.randomUUID()}`,
+											],
+										}),
+									);
 								}}
 							>
 								<PlusIcon className="mr-2 size-4" />
@@ -94,7 +258,7 @@ export function TermsStep({
 												...payment,
 												label: event.target.value,
 											};
-											patchDraft("payments", payments);
+											markCustom("payments", payments);
 										}}
 									/>
 									<Input
@@ -113,7 +277,7 @@ export function TermsStep({
 												...payment,
 												percent: event.target.value,
 											};
-											patchDraft("payments", payments);
+											markCustom("payments", payments);
 										}}
 									/>
 									{errors[
@@ -140,7 +304,7 @@ export function TermsStep({
 												...payment,
 												timing: event.target.value,
 											};
-											patchDraft("payments", payments);
+											markCustom("payments", payments);
 										}}
 										className="min-h-16 sm:col-span-2"
 									/>
@@ -163,7 +327,7 @@ export function TermsStep({
 									onChange={(event) => {
 										const terms = [...draft.terms];
 										terms[index] = event.target.value;
-										patchDraft("terms", terms);
+										markCustom("terms", terms);
 									}}
 									className="min-h-16"
 								/>
@@ -172,11 +336,15 @@ export function TermsStep({
 								type="button"
 								variant="outline"
 								onClick={() => {
-									patchDraft("terms", [...draft.terms, ""]);
-									patchDraft("termKeys", [
-										...draft.termKeys,
-										`term-${crypto.randomUUID()}`,
-									]);
+									replaceDraft(
+										customizeQuotationTerms(draft, {
+											terms: [...draft.terms, ""],
+											termKeys: [
+												...draft.termKeys,
+												`term-${crypto.randomUUID()}`,
+											],
+										}),
+									);
 								}}
 							>
 								<PlusIcon className="mr-2 size-4" />
@@ -186,6 +354,33 @@ export function TermsStep({
 					</TermsSection>
 				</CardContent>
 			</Card>
+			<AlertDialog
+				open={pendingAction !== null}
+				onOpenChange={(open) => !open && setPendingAction(null)}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>
+							{pendingAction === "clear"
+								? "Clear quotation terms?"
+								: "Replace quotation terms?"}
+						</AlertDialogTitle>
+						<AlertDialogDescription>
+							{pendingAction === "clear"
+								? "Delivery timelines and fixed clauses will be removed. Payments return to the neutral 40/50/10 schedule."
+								: "This replaces the current timelines, all three payment milestones, and fixed clauses with the selected preset."}
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction onClick={runPendingAction}>
+							{pendingAction === "clear"
+								? "Clear terms"
+								: "Apply preset"}
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</div>
 	);
 }

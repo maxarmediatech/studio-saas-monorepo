@@ -330,6 +330,41 @@ export function ConfigurationsTableClient({
 						} satisfies ColumnDef<Configuration>,
 					]
 				: []),
+			...(configType === "quotation_terms"
+				? [
+						{
+							id: "bookingTypeFilter",
+							header: "Booking Type",
+							cell: ({ row }: { row: { original: Configuration } }) => {
+								const key = row.original.bookingTypeFilter;
+								const match = bookingTypes.find((item) => item.key === key);
+								return <span>{key ? (match?.label ?? key) : "All types"}</span>;
+							},
+							meta: { label: "Booking Type", width: 150, minWidth: 130 },
+							enableSorting: false,
+							enableHiding: true,
+						} satisfies ColumnDef<Configuration>,
+						{
+							id: "milestones",
+							header: "Payments",
+							cell: ({ row }: { row: { original: Configuration } }) => {
+								const metadata = row.original.metadata as {
+									paymentMilestones?: Array<{ percentage?: unknown }>;
+								} | null;
+								return (
+									<span className="font-mono text-sm">
+										{(metadata?.paymentMilestones ?? [])
+											.map((item) => String(item.percentage ?? ""))
+											.join(" / ")}
+									</span>
+								);
+							},
+							meta: { label: "Payments", width: 130, minWidth: 120 },
+							enableSorting: false,
+							enableHiding: true,
+						} satisfies ColumnDef<Configuration>,
+					]
+				: []),
 			// Booking type → "Applicable Roles" column (resolves metadata.roles keys to labels)
 			...(configType === "booking_type"
 				? [

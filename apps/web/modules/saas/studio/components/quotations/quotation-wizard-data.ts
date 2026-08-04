@@ -69,6 +69,13 @@ export type PaymentMilestone = {
 	timing: string;
 };
 
+export type AppliedTermsConfiguration = {
+	id: string | null;
+	key: string | null;
+	label: string;
+	metadataVersion: 1;
+};
+
 export type QuotationClient = {
 	id: string;
 	clientId: string | null;
@@ -98,6 +105,7 @@ export type QuotationDraft = {
 	selectedPackageId: string;
 	events: QuotationEvent[];
 	packages: PackageOption[];
+	termsConfiguration: AppliedTermsConfiguration | null;
 	timelines: string[];
 	timelineKeys: string[];
 	terms: string[];
@@ -245,29 +253,34 @@ export function createDefaultQuotationDraft(
 				deliverables: [],
 			},
 		],
+		termsConfiguration: null,
 		timelines: [],
 		timelineKeys: [],
 		terms: [],
 		termKeys: [],
-		payments: [
-			{
-				id: "advance",
-				label: "Advance",
-				percent: "40",
-				timing: "Booking confirmation and team allotment",
-			},
-			{
-				id: "raw-data",
-				label: "Second installment",
-				percent: "50",
-				timing: "At the time of raw data transfer",
-			},
-			{
-				id: "delivery",
-				label: "Final installment",
-				percent: "10",
-				timing: "At the time of delivery",
-			},
-		],
+		payments: createNeutralPaymentMilestones(),
 	};
+}
+
+export function createNeutralPaymentMilestones(): PaymentMilestone[] {
+	return [
+		{
+			id: "advance",
+			label: "Advance",
+			percent: "40",
+			timing: "Booking confirmation and team allotment",
+		},
+		{
+			id: "raw-data",
+			label: "Second installment",
+			percent: "50",
+			timing: "At the time of raw data transfer",
+		},
+		{
+			id: "delivery",
+			label: "Final installment",
+			percent: "10",
+			timing: "At the time of delivery",
+		},
+	];
 }

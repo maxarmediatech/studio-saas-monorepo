@@ -384,6 +384,16 @@ export const configurationsApi = {
 			input: { type: "package_type", limit: 100 },
 		}),
 
+	quotationTermsOptions: () =>
+		orpc.configurations.list.queryOptions({
+			input: {
+				type: "quotation_terms",
+				limit: 100,
+				sortBy: "sortOrder",
+				sortDirection: "asc",
+			},
+		}),
+
 	taskStatusOptions: () =>
 		orpc.configurations.list.queryOptions({
 			input: { type: "task_status", limit: 100 },

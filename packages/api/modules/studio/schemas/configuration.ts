@@ -13,6 +13,16 @@ import {
 	paginationSchema,
 	sortDirectionSchema,
 } from "./common";
+import { quotationTermsMetadataV1Schema } from "./quotation-document";
+
+export function parseConfigurationMetadata(
+	type: z.infer<typeof configTypeSchema>,
+	metadata: Record<string, unknown> | null | undefined,
+) {
+	return type === "quotation_terms"
+		? quotationTermsMetadataV1Schema.parse(metadata)
+		: metadata;
+}
 
 // ============================================================================
 // CONFIGURATION ITEM SCHEMA
@@ -358,4 +368,22 @@ export const defaultConfigurations: Record<
 		{ key: "other", label: "Other" },
 	],
 	gst_rate: [{ key: "default", label: "GST Rate (18%)", isDefault: true, metadata: { rate: 18, defaultTaxType: "exclusive" } }],
+	quotation_terms: [
+		{
+			key: "standard_payment_terms",
+			label: "Standard payment terms",
+			description: "Neutral payment schedule for new quotations",
+			isDefault: true,
+			metadata: {
+				schemaVersion: 1,
+				deliveryTimelines: [],
+				paymentMilestones: [
+					{ key: "advance", label: "Advance", percentage: "40", timing: "Booking confirmation and team allotment" },
+					{ key: "raw-data", label: "Second installment", percentage: "50", timing: "At the time of raw data transfer" },
+					{ key: "delivery", label: "Final installment", percentage: "10", timing: "At the time of delivery" },
+				],
+				fixedTerms: [],
+			},
+		},
+	],
 };
