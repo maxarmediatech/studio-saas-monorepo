@@ -159,10 +159,7 @@ describe("staging clone safeguards", () => {
 
 	it("is pinned to the reviewed Drizzle snapshot", async () => {
 		const contract = await loadSchemaContract();
-		assert.equal(
-			contract.snapshotTag,
-			"0056_quotation_terms_neutral_backfill",
-		);
+		assert.equal(contract.snapshotTag, "0057_chemical_frank_castle");
 		assert.ok(Object.keys(contract.tables).length > 60);
 	});
 });
