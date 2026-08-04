@@ -41,3 +41,13 @@ grandfathered so a deleted/deactivated preset does not strand that draft.
 Only copied payment milestones enter booking blueprint v2 and materialize as
 payment schedules. Delivery timelines, fixed clauses, and preset provenance stay
 quotation/acceptance evidence only.
+
+## Release compatibility
+
+Migration 0055 adds the `quotation_terms` enum value without creating rows. The
+compatible application must be deployed before migration 0056 inserts neutral
+presets, because older application schemas can reject the new type in unfiltered
+configuration responses. Apply 0056 only after the compatible deployment, then
+verify one active default preset per existing organization and complete the
+S3-backed send/PDF smoke. The exact staging and production sequence is maintained
+in the [quotation operations runbook](../runbooks/quotation-document-v1.md).
