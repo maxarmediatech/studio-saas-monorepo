@@ -34,11 +34,13 @@ test("quotation document migration preserves lifecycle and immutable evidence", 
 	assert.match(migration, /quote_line_items_protect_immutable_document/);
 });
 
-test("quotation terms are an additive configuration type", () => {
+test("quotation terms use a transaction-safe configuration enum migration", () => {
 	assert.match(
 		termsMigration,
-		/ALTER TYPE "public"\."config_type" ADD VALUE 'quotation_terms'/,
+		/CREATE TYPE "public"\."config_type" AS ENUM[\s\S]*'quotation_terms'/,
 	);
+	assert.match(termsMigration, /ALTER COLUMN "type" TYPE/);
+	assert.doesNotMatch(termsMigration, /ADD VALUE/);
 });
 
 test("existing organizations receive an idempotent neutral terms preset", () => {
