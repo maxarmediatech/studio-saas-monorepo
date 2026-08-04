@@ -1,4 +1,5 @@
 import { settingsRouteAccess } from "@saas/settings/lib/access";
+import { getCrmNavigationItems } from "./crm-navigation";
 import type {
 	NavAreaConfig,
 	NavItemConfig,
@@ -127,18 +128,7 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 				{
 					id: "workspace-crm",
 					label: "CRM",
-					items: [
-						{
-							id: "clients",
-							label: "Clients",
-							path: url("/clients"),
-							icon: "Contact2",
-							permission: {
-								any: [{ resource: "client", action: "list" }],
-							},
-						},
-						// Future: Leads, Communications
-					],
+					items: getCrmNavigationItems(url),
 				},
 				// Future: Pinned Bookings section
 				// {
@@ -310,6 +300,20 @@ export function getNavigationConfig(studioSlug: string): NavigationConfig {
 							label: "Event Types",
 							path: url("/configurations/event-types"),
 							icon: "Sparkles",
+							permission: {
+								any: [
+									{
+										resource: "configuration",
+										action: "list",
+									},
+								],
+							},
+						},
+						{
+							id: "quotation-terms",
+							label: "Quotation Terms",
+							path: url("/configurations/quotation-terms"),
+							icon: "FileText",
 							permission: {
 								any: [
 									{

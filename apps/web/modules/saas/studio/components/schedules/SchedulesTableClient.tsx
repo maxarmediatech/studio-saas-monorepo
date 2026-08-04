@@ -92,8 +92,8 @@ const formatDate = (dateStr: string) => {
 /**
  * Check if a date is overdue (before today)
  */
-const isOverdue = (dateStr: string, status: string) => {
-	if (status === "completed" || status === "cancelled") {
+const isOverdue = (dateStr: string | null, status: string) => {
+	if (!dateStr || status === "completed" || status === "cancelled") {
 		return false;
 	}
 	const dueDate = new Date(dateStr);
@@ -344,7 +344,9 @@ export function SchedulesTableClient({
 									: "text-muted-foreground"
 							}
 						>
-							{formatDate(row.original.dueDate)}
+							{row.original.dueDate
+								? formatDate(row.original.dueDate)
+								: "Date not scheduled"}
 						</span>
 					);
 				},

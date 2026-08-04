@@ -7,6 +7,7 @@ import {
 	createConfigurationInputSchema,
 	createConfigurationOutputSchema,
 } from "../../studio/schemas/configuration";
+import { validateConfigurationFields } from "../lib/validate-configuration";
 
 export const createConfiguration = studioProtectedProcedure
 	.route({
@@ -37,6 +38,13 @@ export const createConfiguration = studioProtectedProcedure
 		} = input;
 
 		return await withTransaction(async (tx) => {
+			const validatedMetadata = await validateConfigurationFields(
+				tx,
+				context.organizationId,
+				type,
+				metadata,
+				bookingTypeFilter,
+			);
 			// Check for duplicate key within same type
 			const existing = await tx.query.configurations.findFirst({
 				where: and(
@@ -51,9 +59,27 @@ export const createConfiguration = studioProtectedProcedure
 					message: `Configuration with key '${key}' already exists for type '${type}'`,
 				});
 			}
+			const existingDefault =
+				type === "quotation_terms"
+					? await tx.query.configurations.findFirst({
+							where: and(
+								eq(
+									configurations.organizationId,
+									context.organizationId,
+								),
+								eq(configurations.type, type),
+								eq(configurations.isDefault, true),
+							),
+							columns: { id: true },
+						})
+					: null;
+			const shouldBeDefault =
+				type === "quotation_terms"
+					? Boolean(isDefault || !existingDefault)
+					: isDefault;
 
 			// If this is marked as default, unset other defaults for this type
-			if (isDefault) {
+			if (shouldBeDefault) {
 				await tx
 					.update(configurations)
 					.set({ isDefault: false, updatedAt: new Date() })
@@ -97,10 +123,10 @@ export const createConfiguration = studioProtectedProcedure
 					color: color ?? null,
 					icon: icon ?? null,
 					sortOrder: finalSortOrder,
-					isDefault: isDefault ?? false,
+					isDefault: shouldBeDefault ?? false,
 					isSystem: false,
-					isActive: isActive ?? true,
-					metadata: metadata ?? null,
+					isActive: shouldBeDefault ? true : (isActive ?? true),
+					metadata: validatedMetadata ?? null,
 					defaultCost: defaultCost ?? null,
 					bookingTypeFilter: bookingTypeFilter ?? null,
 				})

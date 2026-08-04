@@ -1,5 +1,6 @@
 "use client";
 
+import { quotationTermsMetadataV1Schema } from "@repo/api/modules/studio/schemas/quotation-document";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import {
@@ -51,6 +52,7 @@ const CONFIG_TYPE_LABELS: Record<string, string> = {
 	deliverable_status: "Deliverable Status",
 	deliverable_priority: "Deliverable Priority",
 	expense_category: "Expense Category",
+	quotation_terms: "Quotation Terms",
 };
 
 function formatCurrency(value: string | number): string {
@@ -150,7 +152,10 @@ export function ConfigurationDetailSheet() {
 	const isBookingType = config?.type === "booking_type";
 	const isRelationType = config?.type === "relation_type";
 	const isEventType = config?.type === "event_type";
+	const isQuotationTerms = config?.type === "quotation_terms";
 	const metadata = config?.metadata as Record<string, unknown> | null;
+	const quotationTermsMetadata =
+		quotationTermsMetadataV1Schema.safeParse(metadata);
 	const defaultDeliverables = (() => {
 		if (!Array.isArray(metadata?.defaultDeliverables)) {
 			return [] as Deliverable[];
@@ -455,6 +460,52 @@ export function ConfigurationDetailSheet() {
 								</Card>
 							)}
 
+							{isQuotationTerms &&
+								quotationTermsMetadata.success && (
+									<Card className="gap-3 py-4">
+										<CardHeader className="px-4 py-0">
+											<CardTitle className="flex items-center gap-2 text-sm">
+												<ListIcon className="h-4 w-4 text-muted-foreground" />
+												Agreement content
+											</CardTitle>
+										</CardHeader>
+										<CardContent className="space-y-4 px-4">
+											<p className="text-sm">
+												<span className="text-muted-foreground">
+													Booking type:{" "}
+												</span>
+												{config.bookingTypeFilter
+													? (bookingTypes.find(
+															(item) =>
+																item.key ===
+																config.bookingTypeFilter,
+														)?.label ??
+														config.bookingTypeFilter)
+													: "All booking types"}
+											</p>
+											<DetailList
+												title="Delivery timelines"
+												values={quotationTermsMetadata.data.deliveryTimelines.map(
+													(item) => item.text,
+												)}
+											/>
+											<DetailList
+												title="Payment milestones"
+												values={quotationTermsMetadata.data.paymentMilestones.map(
+													(item) =>
+														`${item.percentage}% — ${item.label}: ${item.timing}`,
+												)}
+											/>
+											<DetailList
+												title="Fixed terms"
+												values={quotationTermsMetadata.data.fixedTerms.map(
+													(item) => item.text,
+												)}
+											/>
+										</CardContent>
+									</Card>
+								)}
+
 							{/* Card B — Booking Type → Applicable Roles */}
 							{isBookingType && (
 								<Card className="py-4 gap-3">
@@ -516,6 +567,23 @@ export function ConfigurationDetailSheet() {
 				</div>
 			</SheetContent>
 		</Sheet>
+	);
+}
+
+function DetailList({ title, values }: { title: string; values: string[] }) {
+	return (
+		<div>
+			<p className="mb-1 text-xs text-muted-foreground">{title}</p>
+			{values.length ? (
+				<ul className="list-disc space-y-1 pl-5 text-sm">
+					{values.map((value, index) => (
+						<li key={`${title}-${index}`}>{value}</li>
+					))}
+				</ul>
+			) : (
+				<p className="text-sm text-muted-foreground">None</p>
+			)}
+		</div>
 	);
 }
 

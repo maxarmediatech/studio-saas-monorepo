@@ -51,6 +51,7 @@ export function NewActionSwitcher({
 
 	const hasAnyAction =
 		caps.bookingCreateOrUpdate ||
+		caps.quoteCreate ||
 		caps.shootCreateOrUpdate ||
 		caps.deliverableCreateOrUpdate ||
 		caps.taskCreateOrUpdate ||
@@ -107,15 +108,24 @@ export function NewActionSwitcher({
 					</DropdownMenuItem>
 				) : (
 					<>
+						{caps.quoteCreate && (
+							<DropdownMenuItem asChild>
+								<Link href={`${basePath}/quotations/new`}>
+									New Quotation
+								</Link>
+							</DropdownMenuItem>
+						)}
+
 						{caps.bookingCreateOrUpdate && (
-							<>
-								<DropdownMenuItem asChild>
-									<Link href={`${basePath}/bookings/new`}>
-										New Booking
-									</Link>
-								</DropdownMenuItem>
-								<DropdownMenuSeparator />
-							</>
+							<DropdownMenuItem asChild>
+								<Link href={`${basePath}/bookings/new`}>
+									New Booking
+								</Link>
+							</DropdownMenuItem>
+						)}
+
+						{(caps.quoteCreate || caps.bookingCreateOrUpdate) && (
+							<DropdownMenuSeparator />
 						)}
 
 						{caps.shootCreateOrUpdate && (

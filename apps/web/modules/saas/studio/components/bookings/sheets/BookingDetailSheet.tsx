@@ -219,6 +219,8 @@ export function BookingDetailSheet() {
 											participants:
 												bookingData.participants ?? [],
 											events: bookingData.events ?? [],
+											sourceQuotationCommitments:
+												bookingData.sourceQuotationCommitments,
 										}}
 									/>
 								)}

@@ -12,11 +12,15 @@ import { useClientParams } from "@saas/studio/hooks/params/use-client-params";
 import { clientsMutations } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ClientForm, type ClientFormValues } from "../ClientForm";
 
 export function ClientCreateSheet() {
+	const pathname = usePathname();
+	const lifecycleStage = pathname.endsWith("/leads") ? "lead" : "client";
+	const contactLabel = lifecycleStage === "lead" ? "Lead" : "Client";
 	const { createClient, close } = useClientParams();
 	const { executeCallback, clearCallback } = useClientCallback();
 	const isOpen = Boolean(createClient);
@@ -26,7 +30,7 @@ export function ClientCreateSheet() {
 	const createMutation = useMutation({
 		...clientsMutations.create(),
 		onSuccess: (data) => {
-			toast.success("Client added successfully");
+			toast.success(`${contactLabel} added successfully`);
 			// Use ORPC's key generator to match the booking form's query keys
 			queryClient.invalidateQueries({
 				queryKey: orpc.clients.key(),
@@ -67,6 +71,7 @@ export function ClientCreateSheet() {
 
 		await createMutation.mutateAsync({
 			name: data.name,
+			lifecycleStage,
 			email: data.email || undefined,
 			phoneNumber: data.phoneNumber || undefined,
 			alternatePhone: data.alternatePhone || undefined,
@@ -88,7 +93,9 @@ export function ClientCreateSheet() {
 							"shadow-[0_4px_12px_-4px_rgba(0,0,0,0.15)]",
 					)}
 				>
-					<SheetTitle className="text-xl">Add Client</SheetTitle>
+					<SheetTitle className="text-xl">
+						Add {contactLabel}
+					</SheetTitle>
 				</SheetHeader>
 				<div className="flex-1 min-h-0">
 					<ClientForm

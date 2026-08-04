@@ -16,5 +16,6 @@ export {
 	type CreateShootsBatchResult,
 	createShootsBatch,
 } from "./create-shoots-batch";
-export { validateCrewIds } from "./validate-crew-ids";
 export { deriveStudioPrefix } from "./derive-studio-prefix";
+export { generateBookingReferenceNumber } from "./generate-reference-number";
+export { validateCrewIds } from "./validate-crew-ids";

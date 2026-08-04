@@ -30,6 +30,7 @@ export const clientSchema = z.object({
 	id: idSchema,
 	organizationId: idSchema,
 	name: z.string(),
+	lifecycleStage: z.enum(["lead", "client"]),
 	email: z.string().nullable(),
 	phoneNumber: z.string().nullable(),
 	alternatePhone: z.string().nullable(),
@@ -68,7 +69,8 @@ export const listClientsInputSchema = z
 	.merge(paginationSchema)
 	.merge(searchSchema)
 	.merge(baseListFiltersSchema)
-	.merge(createSortSchema(clientSortFields, "createdAt"));
+	.merge(createSortSchema(clientSortFields, "createdAt"))
+	.extend({ lifecycleStage: z.enum(["lead", "client"]).default("client") });
 
 export type ListClientsInput = z.infer<typeof listClientsInputSchema>;
 
@@ -92,6 +94,7 @@ export type GetClientInput = z.infer<typeof getClientInputSchema>;
 export const clientDetailSchema = clientSchema.extend({
 	bookingsCount: z.number(),
 	activeBookingsCount: z.number(),
+	quotationsCount: z.number(),
 });
 
 export type ClientDetail = z.infer<typeof clientDetailSchema>;
@@ -112,6 +115,7 @@ export const createClientInputSchema = z.object({
 	alternatePhone: phoneSchema,
 	address: z.string().max(1000).optional(),
 	metadata: z.record(z.string(), z.unknown()).optional(),
+	lifecycleStage: z.enum(["lead", "client"]).default("client"),
 });
 
 export type CreateClientInput = z.infer<typeof createClientInputSchema>;
@@ -139,6 +143,9 @@ export type UpdateClientInput = z.infer<typeof updateClientInputSchema>;
 export const updateClientOutputSchema = mutationResponseSchema;
 
 export type UpdateClientOutput = z.infer<typeof updateClientOutputSchema>;
+
+export const promoteLeadInputSchema = z.object({ id: idSchema });
+export const promoteLeadOutputSchema = mutationResponseSchema;
 
 // ============================================================================
 // DELETE CLIENT

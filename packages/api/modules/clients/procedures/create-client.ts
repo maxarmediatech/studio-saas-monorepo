@@ -21,8 +21,15 @@ export const createClient = studioProtectedProcedure
 	.handler(async ({ input, context }) => {
 		await requirePermission(context, "client", "create");
 
-		const { name, email, phoneNumber, alternatePhone, address, metadata } =
-			input;
+		const {
+			name,
+			email,
+			phoneNumber,
+			alternatePhone,
+			address,
+			metadata,
+			lifecycleStage,
+		} = input;
 
 		// Check for duplicate phone or email within organization
 		if (email || phoneNumber) {
@@ -63,6 +70,7 @@ export const createClient = studioProtectedProcedure
 			.values({
 				organizationId: context.organizationId,
 				name,
+				lifecycleStage,
 				email: email ?? null,
 				phoneNumber: phoneNumber ?? null,
 				alternatePhone: alternatePhone ?? null,

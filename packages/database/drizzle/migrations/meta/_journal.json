@@ -351,6 +351,55 @@
       "when": 1784752206666,
       "tag": "0049_repair_stale_deliverable_task_links",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1785663868436,
+      "tag": "0050_freezing_newton_destine",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1785665984086,
+      "tag": "0051_fluffy_dragon_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1785669230910,
+      "tag": "0052_magical_korath",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1785677464916,
+      "tag": "0053_manager_quote_permissions",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1785771591979,
+      "tag": "0054_thankful_forgotten_one",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1785840000000,
+      "tag": "0055_quotation_terms_configuration",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1785840000001,
+      "tag": "0056_quotation_terms_neutral_backfill",
+      "breakpoints": true
     }
   ]
 }

@@ -1,14 +1,14 @@
 import {
-	type AnyAction,
 	type CustomRolePermissions,
 	checkRolePermission,
+	type PermissionAction,
 	type Resource,
 } from "@repo/auth/lib/permissions";
 
 function any(
 	role: string | string[],
 	resource: Resource,
-	actions: AnyAction[],
+	actions: PermissionAction[],
 	customRolePermissions?: CustomRolePermissions,
 ): boolean {
 	return actions.some((action) =>
@@ -18,6 +18,15 @@ function any(
 
 export interface HeaderCapabilities {
 	bookingCreateOrUpdate: boolean;
+	quoteCreate: boolean;
+	quoteReadOperational: boolean;
+	quoteUpdate: boolean;
+	quoteSend: boolean;
+	quoteRevise: boolean;
+	quoteAccept: boolean;
+	quoteDecline: boolean;
+	quoteExpire: boolean;
+	quoteConvert: boolean;
 	shootCreateOrUpdate: boolean;
 	deliverableCreateOrUpdate: boolean;
 	deliverableUpdate: boolean;
@@ -37,6 +46,7 @@ export interface HeaderCapabilities {
 	paymentReadOrReference: boolean;
 	crewCreateOrUpdate: boolean;
 	clientCreateOrUpdate: boolean;
+	clientList: boolean;
 	configurationCreateOrUpdate: boolean;
 	activityRead: boolean;
 }
@@ -50,6 +60,30 @@ export function getCapabilities(
 			userRole,
 			"booking",
 			["create", "update"],
+			customRolePermissions,
+		),
+		quoteCreate: any(userRole, "quote", ["create"], customRolePermissions),
+		quoteReadOperational: any(
+			userRole,
+			"quote",
+			["readOperational"],
+			customRolePermissions,
+		),
+		quoteUpdate: any(userRole, "quote", ["update"], customRolePermissions),
+		quoteSend: any(userRole, "quote", ["send"], customRolePermissions),
+		quoteRevise: any(userRole, "quote", ["revise"], customRolePermissions),
+		quoteAccept: any(userRole, "quote", ["accept"], customRolePermissions),
+		quoteDecline: any(
+			userRole,
+			"quote",
+			["decline"],
+			customRolePermissions,
+		),
+		quoteExpire: any(userRole, "quote", ["expire"], customRolePermissions),
+		quoteConvert: any(
+			userRole,
+			"quote",
+			["convert"],
 			customRolePermissions,
 		),
 		shootCreateOrUpdate: any(
@@ -156,6 +190,7 @@ export function getCapabilities(
 			["create", "update"],
 			customRolePermissions,
 		),
+		clientList: any(userRole, "client", ["list"], customRolePermissions),
 		configurationCreateOrUpdate: any(
 			userRole,
 			"configuration",
@@ -174,6 +209,15 @@ export function getCapabilities(
 export function selectHeaderCaps(caps: HeaderCapabilities): HeaderCapabilities {
 	return {
 		bookingCreateOrUpdate: caps.bookingCreateOrUpdate,
+		quoteCreate: caps.quoteCreate,
+		quoteReadOperational: caps.quoteReadOperational,
+		quoteUpdate: caps.quoteUpdate,
+		quoteSend: caps.quoteSend,
+		quoteRevise: caps.quoteRevise,
+		quoteAccept: caps.quoteAccept,
+		quoteDecline: caps.quoteDecline,
+		quoteExpire: caps.quoteExpire,
+		quoteConvert: caps.quoteConvert,
 		shootCreateOrUpdate: caps.shootCreateOrUpdate,
 		deliverableCreateOrUpdate: caps.deliverableCreateOrUpdate,
 		deliverableUpdate: caps.deliverableUpdate,
@@ -193,6 +237,7 @@ export function selectHeaderCaps(caps: HeaderCapabilities): HeaderCapabilities {
 		paymentReadOrReference: caps.paymentReadOrReference,
 		crewCreateOrUpdate: caps.crewCreateOrUpdate,
 		clientCreateOrUpdate: caps.clientCreateOrUpdate,
+		clientList: caps.clientList,
 		configurationCreateOrUpdate: caps.configurationCreateOrUpdate,
 		activityRead: caps.activityRead,
 	};

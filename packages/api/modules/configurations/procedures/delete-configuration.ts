@@ -43,6 +43,12 @@ export const deleteConfiguration = studioProtectedProcedure
 				message: "System configurations cannot be deleted",
 			});
 		}
+		if (existing.type === "quotation_terms" && existing.isDefault) {
+			throw new ORPCError("BAD_REQUEST", {
+				message:
+					"Choose another default quotation terms preset before deleting this one",
+			});
+		}
 
 		// Delete configuration
 		await db.delete(configurations).where(eq(configurations.id, id));

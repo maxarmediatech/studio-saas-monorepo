@@ -65,6 +65,7 @@ Config types:
 - `expense_category`
 - `event_type`
 - `gst_rate`
+- `quotation_terms`
 
 ## API Operations
 
@@ -214,9 +215,17 @@ Known metadata shapes:
 - `relation_type`: `bookingTypes` array of booking-type keys
 - `event_type`: `bookingTypes` array of booking-type keys
 - `gst_rate`: `rate` plus `defaultTaxType`
+- `quotation_terms`: versioned `deliveryTimelines`, exactly three
+  `paymentMilestones` totaling 100%, and `fixedTerms`; optional
+  `bookingTypeFilter` limits availability to one booking type
 
 These metadata shapes are UI/procedure conventions. The API schema accepts generic JSON metadata, so
 consumers must validate expected metadata before use.
+
+Quotation terms are validated at the API boundary. A quote copies preset content
+into its document and retains only an optional provenance snapshot; later
+configuration edits never rewrite quotation or acceptance evidence. The seeded
+default contains the neutral 40/50/10 schedule and no tenant-specific clauses.
 
 ## Seed Contract
 

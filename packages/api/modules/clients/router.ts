@@ -3,6 +3,7 @@ import { deleteClient } from "./procedures/delete-client";
 import { getClient } from "./procedures/get-client";
 import { getClientStats } from "./procedures/get-client-stats";
 import { listClients } from "./procedures/list-clients";
+import { promoteLead } from "./procedures/promote-lead";
 import { updateClient } from "./procedures/update-client";
 
 export const clientsRouter = {
@@ -12,4 +13,5 @@ export const clientsRouter = {
 	update: updateClient,
 	delete: deleteClient,
 	stats: getClientStats,
+	promote: promoteLead,
 };

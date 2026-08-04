@@ -19,6 +19,13 @@ export const studioQueryKeys = {
 			["studio", "invoices", "list", filters] as const,
 		detail: (id: string) => ["studio", "invoices", "detail", id] as const,
 	},
+	// Quotations
+	quotes: {
+		all: ["studio", "quotes"] as const,
+		list: (filters?: Record<string, unknown>) =>
+			["studio", "quotes", "list", filters] as const,
+		detail: (id: string) => ["studio", "quotes", "detail", id] as const,
+	},
 	// Bookings
 	bookings: {
 		all: ["studio", "bookings"] as const,
@@ -198,6 +205,36 @@ export const receiptsMutations = {
 };
 
 // ============================================================================
+// QUOTATIONS
+// ============================================================================
+
+export const quotesApi = {
+	listOptions: (
+		input?: Parameters<typeof orpc.quotes.list.queryOptions>[0]["input"],
+	) => orpc.quotes.list.queryOptions({ input: input ?? {} }),
+	getOptions: (id: string) => orpc.quotes.get.queryOptions({ input: { id } }),
+	searchContactsOptions: (query: string) =>
+		orpc.quotes.searchContacts.queryOptions({
+			input: { query, limit: 20 },
+		}),
+};
+
+export const quotesMutations = {
+	create: () => orpc.quotes.create.mutationOptions(),
+	update: () => orpc.quotes.update.mutationOptions(),
+	delete: () => orpc.quotes.delete.mutationOptions(),
+	send: () => orpc.quotes.send.mutationOptions(),
+	revise: () => orpc.quotes.revise.mutationOptions(),
+	accept: () => orpc.quotes.accept.mutationOptions(),
+	decline: () => orpc.quotes.decline.mutationOptions(),
+	expire: () => orpc.quotes.expire.mutationOptions(),
+	convert: () => orpc.quotes.convert.mutationOptions(),
+	createDocument: () => orpc.quotes.createDocument.mutationOptions(),
+	saveDocument: () => orpc.quotes.saveDocument.mutationOptions(),
+	sendDocument: () => orpc.quotes.sendDocument.mutationOptions(),
+};
+
+// ============================================================================
 // BOOKINGS QUERY OPTIONS
 // ============================================================================
 
@@ -263,6 +300,7 @@ export const clientsMutations = {
 	create: () => orpc.clients.create.mutationOptions(),
 	update: () => orpc.clients.update.mutationOptions(),
 	delete: () => orpc.clients.delete.mutationOptions(),
+	promote: () => orpc.clients.promote.mutationOptions(),
 };
 
 // ============================================================================
@@ -344,6 +382,16 @@ export const configurationsApi = {
 	packageTypesOptions: () =>
 		orpc.configurations.list.queryOptions({
 			input: { type: "package_type", limit: 100 },
+		}),
+
+	quotationTermsOptions: () =>
+		orpc.configurations.list.queryOptions({
+			input: {
+				type: "quotation_terms",
+				limit: 100,
+				sortBy: "sortOrder",
+				sortDirection: "asc",
+			},
 		}),
 
 	taskStatusOptions: () =>

@@ -15,8 +15,8 @@ import { z } from "zod";
  * Standard pagination input schema
  */
 export const paginationSchema = z.object({
-	page: z.number().min(1).default(1),
-	limit: z.number().min(1).max(100).default(20),
+	page: z.number().int().min(1).default(1),
+	limit: z.number().int().min(1).max(100).default(20),
 });
 
 export type PaginationInput = z.infer<typeof paginationSchema>;
@@ -367,6 +367,7 @@ export const configTypeSchema = z.enum([
 	"expense_category",
 	"event_type",
 	"gst_rate",
+	"quotation_terms",
 ]);
 
 export type ConfigType = z.infer<typeof configTypeSchema>;

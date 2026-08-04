@@ -11,6 +11,7 @@ import {
 	deliverables,
 	eq,
 	isNull,
+	quoteAcceptances,
 	shoots,
 	tasks,
 } from "@repo/database";
@@ -20,6 +21,7 @@ import {
 	getBookingInputSchema,
 	getBookingOutputSchema,
 } from "../../studio/schemas/booking";
+import { quotationDocumentV1Schema } from "../../studio/schemas/quotation-document";
 
 export const getBooking = studioProtectedProcedure
 	.route({
@@ -128,6 +130,32 @@ export const getBooking = studioProtectedProcedure
 					url: contractAttachmentRow.fileUrl,
 				}
 			: null;
+		const acceptance = booking.sourceQuoteId
+			? await db.query.quoteAcceptances.findFirst({
+					where: and(
+						eq(quoteAcceptances.quoteId, booking.sourceQuoteId),
+						eq(
+							quoteAcceptances.organizationId,
+							context.organizationId,
+						),
+					),
+					columns: { documentSnapshot: true },
+				})
+			: null;
+		const acceptedDocument = quotationDocumentV1Schema.safeParse(
+			acceptance?.documentSnapshot,
+		);
+		const sourceQuotationCommitments = acceptedDocument.success
+			? {
+					deliveryTimelines:
+						acceptedDocument.data.deliveryTimelines.map(
+							({ text }) => text,
+						),
+					fixedTerms: acceptedDocument.data.fixedTerms.map(
+						({ text }) => text,
+					),
+				}
+			: null;
 
 		const packageCost = Number.parseFloat(booking.packageCost);
 		const totalReceived = Number.parseFloat(booking.totalReceived);
@@ -146,7 +174,7 @@ export const getBooking = studioProtectedProcedure
 				})),
 				events: events.map((e) => ({
 					...e,
-					eventDate: e.eventDate.toISOString(),
+					eventDate: e.eventDate?.toISOString() ?? null,
 					createdAt: e.createdAt.toISOString(),
 					updatedAt: e.updatedAt.toISOString(),
 				})),
@@ -155,6 +183,7 @@ export const getBooking = studioProtectedProcedure
 				deliverablesCount: deliverablesCountResult?.count ?? 0,
 				balance,
 				contractAttachment,
+				sourceQuotationCommitments,
 			},
 		};
 	});

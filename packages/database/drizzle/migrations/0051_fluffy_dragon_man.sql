@@ -1,0 +1,2 @@
+ALTER TABLE "document_sequences" DROP CONSTRAINT "document_sequences_type_check";--> statement-breakpoint
+ALTER TABLE "document_sequences" ADD CONSTRAINT "document_sequences_type_check" CHECK (document_type IN ('invoice', 'receipt', 'quote'));

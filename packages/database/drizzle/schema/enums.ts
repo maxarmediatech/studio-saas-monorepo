@@ -22,6 +22,33 @@ export const bookingPhaseEnum = pgEnum("booking_phase", [
 	"cancelled",
 ]);
 
+/**
+ * Quote lifecycle - fixed because sending, acceptance, versioning, and
+ * conversion behavior depend on these states.
+ */
+export const quoteStatusEnum = pgEnum("quote_status", [
+	"draft",
+	"sent",
+	"accepted",
+	"converted",
+	"declined",
+	"expired",
+	"superseded",
+]);
+
+export const clientLifecycleStageEnum = pgEnum("client_lifecycle_stage", [
+	"lead",
+	"client",
+]);
+
+export const eventSideEnum = pgEnum("event_side", [
+	"common",
+	"bride",
+	"groom",
+	"both",
+	"separateCommon",
+]);
+
 // ----------------------------------------------------------------------------
 // Workflow & Submissions
 // ----------------------------------------------------------------------------
@@ -168,6 +195,7 @@ export const configTypeEnum = pgEnum("config_type", [
 	"expense_category",
 	"event_type",
 	"gst_rate",
+	"quotation_terms",
 ]);
 
 // ----------------------------------------------------------------------------

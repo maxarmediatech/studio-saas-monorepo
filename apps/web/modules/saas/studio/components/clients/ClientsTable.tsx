@@ -10,11 +10,13 @@ import { ClientsTableClient } from "./ClientsTableClient";
 interface ClientsTableProps {
 	organizationSlug: string;
 	searchParams: Promise<Record<string, string | string[] | undefined>>;
+	lifecycleStage?: "lead" | "client";
 }
 
 export async function ClientsTable({
 	organizationSlug,
 	searchParams,
+	lifecycleStage = "client",
 }: ClientsTableProps) {
 	const queryClient = getServerQueryClient();
 
@@ -34,6 +36,7 @@ export async function ClientsTable({
 		sortBy: sortBy as "name" | "email" | "createdAt" | "updatedAt",
 		sortDirection,
 		includeDeleted: false,
+		lifecycleStage,
 	};
 
 	// Prefetch data on server
@@ -41,7 +44,10 @@ export async function ClientsTable({
 
 	return (
 		<HydrationBoundary state={dehydrate(queryClient)}>
-			<ClientsTableClient organizationSlug={organizationSlug} />
+			<ClientsTableClient
+				organizationSlug={organizationSlug}
+				lifecycleStage={lifecycleStage}
+			/>
 		</HydrationBoundary>
 	);
 }

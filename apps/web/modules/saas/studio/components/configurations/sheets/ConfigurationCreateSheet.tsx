@@ -28,6 +28,10 @@ import {
 	type PackageTypeFormValues,
 } from "../PackageTypeForm";
 import {
+	QuotationTermsForm,
+	type QuotationTermsFormValues,
+} from "../QuotationTermsForm";
+import {
 	RelationTypeForm,
 	type RelationTypeFormValues,
 } from "../RelationTypeForm";
@@ -72,6 +76,7 @@ const CONFIG_TYPE_LABELS: Record<string, string> = {
 	package_type: "Package Type",
 	relation_type: "Relation Type",
 	event_type: "Event Type",
+	quotation_terms: "Quotation Terms",
 	shoot_status: "Shoot Status",
 	crew_role: "Specialisation",
 	task_status: "Task Status",
@@ -136,7 +141,8 @@ export function ConfigurationCreateSheet() {
 				| "task_priority"
 				| "deliverable_status"
 				| "deliverable_priority"
-				| "expense_category",
+				| "expense_category"
+				| "quotation_terms",
 			key: generateKeyFromLabel(data.label),
 			label: data.label,
 			description: data.description || undefined,
@@ -151,9 +157,6 @@ export function ConfigurationCreateSheet() {
 			return;
 		}
 
-		// Only defaultDeliverables stays in metadata (genuinely polymorphic)
-		const hasDeliverables = data.defaultDeliverables && data.defaultDeliverables.length > 0;
-
 		await createMutation.mutateAsync({
 			type: "package_type",
 			key: generateKeyFromLabel(data.label),
@@ -164,7 +167,9 @@ export function ConfigurationCreateSheet() {
 			isDefault: data.isDefault,
 			defaultCost: data.defaultCost || undefined,
 			bookingTypeFilter: data.bookingType || undefined,
-			metadata: hasDeliverables ? { defaultDeliverables: data.defaultDeliverables } : undefined,
+			metadata: {
+				defaultDeliverables: data.defaultDeliverables ?? [],
+			},
 		});
 	};
 
@@ -243,10 +248,35 @@ export function ConfigurationCreateSheet() {
 		});
 	};
 
+	const handleQuotationTermsSubmit = async (
+		data: QuotationTermsFormValues,
+	) => {
+		await createMutation.mutateAsync({
+			type: "quotation_terms",
+			key: generateKeyFromLabel(data.label),
+			label: data.label,
+			description: data.description || undefined,
+			isDefault: data.isDefault,
+			bookingTypeFilter:
+				data.bookingType && data.bookingType !== "all"
+					? data.bookingType
+					: undefined,
+			metadata: {
+				schemaVersion: 1,
+				deliveryTimelines: data.deliveryTimelines.filter((item) =>
+					item.text.trim(),
+				),
+				paymentMilestones: data.paymentMilestones,
+				fixedTerms: data.fixedTerms.filter((item) => item.text.trim()),
+			},
+		});
+	};
+
 	const isPackageType = configurationType === "package_type";
 	const isBookingType = configurationType === "booking_type";
 	const isRelationType = configurationType === "relation_type";
 	const isEventType = configurationType === "event_type";
+	const isQuotationTerms = configurationType === "quotation_terms";
 
 	return (
 		<Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
@@ -257,7 +287,8 @@ export function ConfigurationCreateSheet() {
 					isPackageType ||
 						isBookingType ||
 						isRelationType ||
-						isEventType
+						isEventType ||
+						isQuotationTerms
 						? "sm:max-w-xl"
 						: "sm:max-w-md",
 				)}
@@ -272,7 +303,14 @@ export function ConfigurationCreateSheet() {
 					<SheetTitle className="text-xl">Add {typeLabel}</SheetTitle>
 				</SheetHeader>
 				<div className="flex-1 min-h-0">
-					{isEventType ? (
+					{isQuotationTerms ? (
+						<QuotationTermsForm
+							onSubmit={handleQuotationTermsSubmit}
+							mode="create"
+							isPending={createMutation.isPending}
+							onScrollChange={setIsScrolled}
+						/>
+					) : isEventType ? (
 						<EventTypeForm
 							onSubmit={handleEventTypeSubmit}
 							mode="create"

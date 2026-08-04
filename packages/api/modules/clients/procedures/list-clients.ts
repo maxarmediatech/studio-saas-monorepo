@@ -21,12 +21,22 @@ export const listClients = studioProtectedProcedure
 	.handler(async ({ input, context }) => {
 		await requirePermission(context, "client", "list");
 
-		const { search, sortBy, sortDirection, page, limit, includeDeleted } =
-			input;
+		const {
+			search,
+			sortBy,
+			sortDirection,
+			page,
+			limit,
+			includeDeleted,
+			lifecycleStage,
+		} = input;
 		const offset = (page - 1) * limit;
 
 		// Build where conditions
-		const conditions = [eq(clients.organizationId, context.organizationId)];
+		const conditions = [
+			eq(clients.organizationId, context.organizationId),
+			eq(clients.lifecycleStage, lifecycleStage),
+		];
 
 		if (!includeDeleted) {
 			conditions.push(isNull(clients.deletedAt));
@@ -56,7 +66,7 @@ export const listClients = studioProtectedProcedure
 
 		const data = await db.query.clients.findMany({
 			where: and(...conditions),
-			orderBy: (table, { asc, desc }) =>
+			orderBy: (_table, { asc, desc }) =>
 				sortDirection === "asc"
 					? [asc(orderColumn)]
 					: [desc(orderColumn)],

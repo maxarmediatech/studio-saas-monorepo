@@ -56,7 +56,12 @@ export const bookingEventSchema = z.object({
 	bookingId: idSchema,
 	organizationId: idSchema,
 	eventType: z.string(),
-	eventDate: datetimeSchema,
+	eventDate: datetimeSchema.nullable(),
+	side: z.enum(["common", "bride", "groom", "both", "separateCommon"]),
+	guestCount: z.string().nullable(),
+	isTentative: z.boolean(),
+	dateWindow: z.string().nullable(),
+	coverageNotes: z.string().nullable(),
 	venue: z.string().nullable(),
 	venueAddress: z.string().nullable(),
 	notes: z.string().nullable(),
@@ -66,13 +71,39 @@ export const bookingEventSchema = z.object({
 
 export type BookingEvent = z.infer<typeof bookingEventSchema>;
 
-export const bookingEventInputSchema = z.object({
-	eventType: z.string().min(1).max(100),
-	eventDate: datetimeSchema,
-	venue: z.string().max(255).optional(),
-	venueAddress: z.string().max(500).optional(),
-	notes: z.string().max(2000).optional(),
-});
+export const bookingEventInputSchema = z
+	.object({
+		eventType: z.string().min(1).max(100),
+		eventDate: datetimeSchema.nullable(),
+		side: z
+			.enum(["common", "bride", "groom", "both", "separateCommon"])
+			.optional(),
+		guestCount: z.string().max(255).nullable().optional(),
+		isTentative: z.boolean().optional(),
+		dateWindow: z.string().max(500).nullable().optional(),
+		coverageNotes: z.string().max(5000).nullable().optional(),
+		venue: z.string().max(500).optional(),
+		venueAddress: z.string().max(500).optional(),
+		notes: z.string().max(2000).optional(),
+	})
+	.superRefine((event, ctx) => {
+		if (event.isTentative) {
+			if (event.eventDate || !event.dateWindow?.trim()) {
+				ctx.addIssue({
+					code: "custom",
+					path: ["dateWindow"],
+					message:
+						"Tentative events require a date window and no date",
+				});
+			}
+		} else if (!event.eventDate || event.dateWindow) {
+			ctx.addIssue({
+				code: "custom",
+				path: ["eventDate"],
+				message: "Fixed events require a date and no date window",
+			});
+		}
+	});
 
 export type BookingEventInput = z.infer<typeof bookingEventInputSchema>;
 
@@ -96,6 +127,11 @@ export const bookingSchema = z.object({
 	totalReceived: z.string(),
 	totalExpenses: z.string(),
 	note: z.string().nullable(),
+	sourceQuoteId: idSchema.nullable(),
+	sourceQuoteOptionId: idSchema.nullable(),
+	sourceQuoteNumber: z.string().nullable(),
+	sourceQuoteVersion: z.number().int().positive().nullable(),
+	sourceBookingBlueprintVersion: z.number().int().positive().nullable(),
 	createdBy: idSchema.nullable(),
 	updatedBy: idSchema.nullable(),
 	createdAt: z.string(),
@@ -233,6 +269,12 @@ export const bookingDetailSchema = bookingSchema.extend({
 	deliverablesCount: z.number(),
 	balance: z.string(),
 	contractAttachment: uploadedAttachmentSchema.nullable(),
+	sourceQuotationCommitments: z
+		.object({
+			deliveryTimelines: z.array(z.string()),
+			fixedTerms: z.array(z.string()),
+		})
+		.nullable(),
 });
 
 export type BookingDetail = z.infer<typeof bookingDetailSchema>;
@@ -247,7 +289,7 @@ export type GetBookingOutput = z.infer<typeof getBookingOutputSchema>;
 // ============================================================================
 
 // Crew assignment for shoots - role is auto-filled from crew profile if not provided
-const shootCrewAssignmentInputSchema = z.object({
+export const shootCrewAssignmentInputSchema = z.object({
 	crewId: idSchema,
 	role: z.string().min(1).max(100).optional(), // Auto-filled from crew profile
 	isLead: z.boolean().default(false).optional(), // Kept for backward compat, not used in UI
@@ -266,7 +308,7 @@ export type ShootCrewAssignmentInput = z.infer<
 >;
 
 // Crew assignment for deliverables - simplified to just crewId
-const deliverableCrewAssignmentInputSchema = z.object({
+export const deliverableCrewAssignmentInputSchema = z.object({
 	crewId: idSchema,
 	isLead: z.boolean().default(false).optional(), // Kept for backward compat, not used in UI
 });
@@ -276,7 +318,7 @@ export type DeliverableCrewAssignmentInput = z.infer<
 >;
 
 // Shoot input with embedded crew assignments
-const shootInputSchema = z.object({
+export const shootInputSchema = z.object({
 	name: nameSchema,
 	shootType: z.string().min(1).max(100),
 	shootDate: z.string().min(1), // Date string YYYY-MM-DD
@@ -294,7 +336,7 @@ const shootInputSchema = z.object({
 export type ShootInput = z.infer<typeof shootInputSchema>;
 
 // Deliverable input with embedded crew assignments
-const deliverableInputSchema = z.object({
+export const deliverableInputSchema = z.object({
 	name: nameSchema,
 	description: z.string().max(5000).optional(),
 	dueDate: z.string().optional(),
@@ -308,7 +350,7 @@ const deliverableInputSchema = z.object({
 export type DeliverableInput = z.infer<typeof deliverableInputSchema>;
 
 // Received payment input
-const receivedPaymentInputSchema = z.object({
+export const receivedPaymentInputSchema = z.object({
 	amount: moneySchema,
 	paymentMethod: paymentMethodSchema,
 	receivedDate: z.string().min(1), // Date string YYYY-MM-DD
@@ -320,10 +362,16 @@ const receivedPaymentInputSchema = z.object({
 export type ReceivedPaymentInput = z.infer<typeof receivedPaymentInputSchema>;
 
 // Payment schedule input
-const paymentScheduleInputSchema = z.object({
+export const paymentScheduleInputSchema = z.object({
 	name: nameSchema,
 	amount: moneySchema,
-	dueDate: z.string().min(1), // Date string YYYY-MM-DD
+	dueDate: z.string().min(1).nullable(),
+	percentage: z
+		.string()
+		.regex(/^\d+(\.\d{1,2})?$/)
+		.nullable()
+		.optional(),
+	timing: z.string().max(500).nullable().optional(),
 	notes: z.string().max(10000).optional(),
 	sortOrder: z.number().min(0).default(0),
 });
