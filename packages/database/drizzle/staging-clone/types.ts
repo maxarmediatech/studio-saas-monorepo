@@ -1,5 +1,6 @@
 export const SNAPSHOT_MANIFEST_VERSION = 2;
-export const SANITIZER_REVIEWED_SNAPSHOT_TAG = "0054_thankful_forgotten_one";
+export const SANITIZER_REVIEWED_SNAPSHOT_TAG =
+	"0056_quotation_terms_neutral_backfill";
 
 export type TableCounts = Record<string, string>;
 
