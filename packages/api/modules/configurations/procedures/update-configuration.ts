@@ -56,7 +56,8 @@ export const updateConfiguration = studioProtectedProcedure
 				(isDefault === false || isActive === false)
 			) {
 				throw new ORPCError("BAD_REQUEST", {
-					message: "Choose another default quotation terms preset before disabling this one",
+					message:
+						"Choose another default quotation terms preset before disabling this one",
 				});
 			}
 
@@ -113,16 +114,36 @@ export const updateConfiguration = studioProtectedProcedure
 				updatedAt: new Date(),
 			};
 
-			if (label !== undefined) updates.label = label;
-			if (description !== undefined) updates.description = description;
-			if (color !== undefined) updates.color = color;
-			if (icon !== undefined) updates.icon = icon;
-			if (sortOrder !== undefined) updates.sortOrder = sortOrder;
-			if (isDefault !== undefined) updates.isDefault = isDefault;
-			if (isActive !== undefined) updates.isActive = isActive;
-			if (metadata !== undefined) updates.metadata = validatedMetadata;
-			if (defaultCost !== undefined) updates.defaultCost = defaultCost;
-			if (bookingTypeFilter !== undefined) updates.bookingTypeFilter = bookingTypeFilter;
+			if (label !== undefined) {
+				updates.label = label;
+			}
+			if (description !== undefined) {
+				updates.description = description;
+			}
+			if (color !== undefined) {
+				updates.color = color;
+			}
+			if (icon !== undefined) {
+				updates.icon = icon;
+			}
+			if (sortOrder !== undefined) {
+				updates.sortOrder = sortOrder;
+			}
+			if (isDefault !== undefined) {
+				updates.isDefault = isDefault;
+			}
+			if (isActive !== undefined) {
+				updates.isActive = isActive;
+			}
+			if (metadata !== undefined) {
+				updates.metadata = validatedMetadata;
+			}
+			if (defaultCost !== undefined) {
+				updates.defaultCost = defaultCost;
+			}
+			if (bookingTypeFilter !== undefined) {
+				updates.bookingTypeFilter = bookingTypeFilter;
+			}
 			if (existing.type === "quotation_terms" && isDefault === true) {
 				updates.isActive = true;
 			}

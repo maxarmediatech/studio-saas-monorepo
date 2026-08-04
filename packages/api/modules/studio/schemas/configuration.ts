@@ -140,7 +140,10 @@ export const createConfigurationInputSchema = z.object({
 	metadata: z.record(z.string(), z.unknown()).optional(),
 	defaultCost: z
 		.string()
-		.refine((val) => /^\d+(\.\d{1,2})?$/.test(val), "Must be a valid cost (e.g., 1000 or 1000.50)")
+		.refine(
+			(val) => /^\d+(\.\d{1,2})?$/.test(val),
+			"Must be a valid cost (e.g., 1000 or 1000.50)",
+		)
 		.optional(),
 	bookingTypeFilter: z.string().max(100).optional(),
 });
@@ -180,7 +183,10 @@ export const updateConfigurationInputSchema = z.object({
 	metadata: z.record(z.string(), z.unknown()).optional().nullable(),
 	defaultCost: z
 		.string()
-		.refine((val) => /^\d+(\.\d{1,2})?$/.test(val), "Must be a valid cost (e.g., 1000 or 1000.50)")
+		.refine(
+			(val) => /^\d+(\.\d{1,2})?$/.test(val),
+			"Must be a valid cost (e.g., 1000 or 1000.50)",
+		)
 		.optional()
 		.nullable(),
 	bookingTypeFilter: z.string().max(100).optional().nullable(),
@@ -326,9 +332,29 @@ export const defaultConfigurations: Record<
 	],
 	booking_type: [
 		{ key: "wedding", label: "Wedding", isDefault: true },
-		{ key: "pre_wedding", label: "Pre-Wedding", metadata: { roles: ["bride", "groom", "friend"] } },
-		{ key: "engagement", label: "Engagement", metadata: { roles: ["bride", "groom", "bride_family", "groom_family", "friend"] } },
-		{ key: "birthday", label: "Birthday", metadata: { roles: ["friend", "other"] } },
+		{
+			key: "pre_wedding",
+			label: "Pre-Wedding",
+			metadata: { roles: ["bride", "groom", "friend"] },
+		},
+		{
+			key: "engagement",
+			label: "Engagement",
+			metadata: {
+				roles: [
+					"bride",
+					"groom",
+					"bride_family",
+					"groom_family",
+					"friend",
+				],
+			},
+		},
+		{
+			key: "birthday",
+			label: "Birthday",
+			metadata: { roles: ["friend", "other"] },
+		},
 		{ key: "other", label: "Other" },
 	],
 	package_type: [
@@ -338,10 +364,31 @@ export const defaultConfigurations: Record<
 		{ key: "custom", label: "Custom Package" },
 	],
 	relation_type: [
-		{ key: "bride", label: "Bride", isDefault: true, metadata: { bookingTypes: ["wedding", "pre_wedding", "engagement"] } },
-		{ key: "groom", label: "Groom", metadata: { bookingTypes: ["wedding", "pre_wedding", "engagement"] } },
-		{ key: "bride_family", label: "Bride's Family", metadata: { bookingTypes: ["wedding", "engagement"] } },
-		{ key: "groom_family", label: "Groom's Family", metadata: { bookingTypes: ["wedding", "engagement"] } },
+		{
+			key: "bride",
+			label: "Bride",
+			isDefault: true,
+			metadata: {
+				bookingTypes: ["wedding", "pre_wedding", "engagement"],
+			},
+		},
+		{
+			key: "groom",
+			label: "Groom",
+			metadata: {
+				bookingTypes: ["wedding", "pre_wedding", "engagement"],
+			},
+		},
+		{
+			key: "bride_family",
+			label: "Bride's Family",
+			metadata: { bookingTypes: ["wedding", "engagement"] },
+		},
+		{
+			key: "groom_family",
+			label: "Groom's Family",
+			metadata: { bookingTypes: ["wedding", "engagement"] },
+		},
 		{ key: "friend", label: "Friend" },
 		{ key: "other", label: "Other" },
 	],
@@ -355,19 +402,55 @@ export const defaultConfigurations: Record<
 		{ key: "other", label: "Other", color: "#6B7280", isDefault: true },
 	],
 	event_type: [
-		{ key: "wedding", label: "Wedding", isDefault: true, metadata: { bookingTypes: ["wedding"] } },
-		{ key: "reception", label: "Reception", metadata: { bookingTypes: ["wedding"] } },
-		{ key: "engagement", label: "Engagement", metadata: { bookingTypes: ["wedding", "engagement"] } },
-		{ key: "pre_wedding", label: "Pre-Wedding", metadata: { bookingTypes: ["wedding", "pre_wedding"] } },
-		{ key: "haldi", label: "Haldi", metadata: { bookingTypes: ["wedding"] } },
-		{ key: "mehendi", label: "Mehendi", metadata: { bookingTypes: ["wedding"] } },
-		{ key: "sangeet", label: "Sangeet", metadata: { bookingTypes: ["wedding"] } },
+		{
+			key: "wedding",
+			label: "Wedding",
+			isDefault: true,
+			metadata: { bookingTypes: ["wedding"] },
+		},
+		{
+			key: "reception",
+			label: "Reception",
+			metadata: { bookingTypes: ["wedding"] },
+		},
+		{
+			key: "engagement",
+			label: "Engagement",
+			metadata: { bookingTypes: ["wedding", "engagement"] },
+		},
+		{
+			key: "pre_wedding",
+			label: "Pre-Wedding",
+			metadata: { bookingTypes: ["wedding", "pre_wedding"] },
+		},
+		{
+			key: "haldi",
+			label: "Haldi",
+			metadata: { bookingTypes: ["wedding"] },
+		},
+		{
+			key: "mehendi",
+			label: "Mehendi",
+			metadata: { bookingTypes: ["wedding"] },
+		},
+		{
+			key: "sangeet",
+			label: "Sangeet",
+			metadata: { bookingTypes: ["wedding"] },
+		},
 		{ key: "portrait", label: "Portrait" },
 		{ key: "maternity", label: "Maternity" },
 		{ key: "baby_shoot", label: "Baby Shoot" },
 		{ key: "other", label: "Other" },
 	],
-	gst_rate: [{ key: "default", label: "GST Rate (18%)", isDefault: true, metadata: { rate: 18, defaultTaxType: "exclusive" } }],
+	gst_rate: [
+		{
+			key: "default",
+			label: "GST Rate (18%)",
+			isDefault: true,
+			metadata: { rate: 18, defaultTaxType: "exclusive" },
+		},
+	],
 	quotation_terms: [
 		{
 			key: "standard_payment_terms",
@@ -378,9 +461,24 @@ export const defaultConfigurations: Record<
 				schemaVersion: 1,
 				deliveryTimelines: [],
 				paymentMilestones: [
-					{ key: "advance", label: "Advance", percentage: "40", timing: "Booking confirmation and team allotment" },
-					{ key: "raw-data", label: "Second installment", percentage: "50", timing: "At the time of raw data transfer" },
-					{ key: "delivery", label: "Final installment", percentage: "10", timing: "At the time of delivery" },
+					{
+						key: "advance",
+						label: "Advance",
+						percentage: "40",
+						timing: "Booking confirmation and team allotment",
+					},
+					{
+						key: "raw-data",
+						label: "Second installment",
+						percentage: "50",
+						timing: "At the time of raw data transfer",
+					},
+					{
+						key: "delivery",
+						label: "Final installment",
+						percentage: "10",
+						timing: "At the time of delivery",
+					},
 				],
 				fixedTerms: [],
 			},

@@ -44,8 +44,8 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { OpenConfigurationCreateSheet } from "./OpenConfigurationSheet";
 import { useStudioCapabilities } from "../studio-capabilities-context";
+import { OpenConfigurationCreateSheet } from "./OpenConfigurationSheet";
 
 interface ConfigurationsTableClientProps {
 	configType: ConfigType;
@@ -154,7 +154,8 @@ export function ConfigurationsTableClient({
 		},
 		onError: (error) => {
 			toast.error(
-				error.message || `Failed to update ${configTypeLabel.toLowerCase()}`,
+				error.message ||
+					`Failed to update ${configTypeLabel.toLowerCase()}`,
 			);
 		},
 	});
@@ -164,70 +165,65 @@ export function ConfigurationsTableClient({
 	};
 
 	// Define row actions
-	const rowActions: RowAction<Configuration>[] = useMemo(
-		() => {
-			const actions: RowAction<Configuration>[] = [
-				{
-					label: "View details",
-					icon: <EyeIcon className="h-4 w-4" />,
-					onClick: (row) => openView(row.id),
-				},
-			];
+	const rowActions: RowAction<Configuration>[] = useMemo(() => {
+		const actions: RowAction<Configuration>[] = [
+			{
+				label: "View details",
+				icon: <EyeIcon className="h-4 w-4" />,
+				onClick: (row) => openView(row.id),
+			},
+		];
 
-			if (!configurationCreateOrUpdate) {
-				return actions;
-			}
-
-			actions.push(
-				{
-					label: "Edit",
-					icon: <PencilIcon className="h-4 w-4" />,
-					onClick: handleOpenEdit,
-				},
-				{
-					label: "Deactivate",
-					icon: <EyeOffIcon className="h-4 w-4" />,
-					show: (row) => row.isActive,
-					onClick: (row) => {
-						toggleActiveMutation.mutate({
-							id: row.id,
-							isActive: false,
-						});
-					},
-				},
-				{
-					label: "Activate",
-					icon: <PowerIcon className="h-4 w-4" />,
-					show: (row) => !row.isActive,
-					onClick: (row) => {
-						toggleActiveMutation.mutate({
-							id: row.id,
-							isActive: true,
-						});
-					},
-				},
-				{
-					label: "Delete",
-					icon: <TrashIcon className="h-4 w-4" />,
-					variant: "destructive",
-					separator: true,
-					onClick: (row) => {
-						if (row.isSystem) {
-							toast.error(
-								"Cannot delete system configurations",
-							);
-							return;
-						}
-						setConfigToDelete(row);
-						setDeleteDialogOpen(true);
-					},
-				},
-			);
-
+		if (!configurationCreateOrUpdate) {
 			return actions;
-		},
-		[configurationCreateOrUpdate, toggleActiveMutation, openView],
-	);
+		}
+
+		actions.push(
+			{
+				label: "Edit",
+				icon: <PencilIcon className="h-4 w-4" />,
+				onClick: handleOpenEdit,
+			},
+			{
+				label: "Deactivate",
+				icon: <EyeOffIcon className="h-4 w-4" />,
+				show: (row) => row.isActive,
+				onClick: (row) => {
+					toggleActiveMutation.mutate({
+						id: row.id,
+						isActive: false,
+					});
+				},
+			},
+			{
+				label: "Activate",
+				icon: <PowerIcon className="h-4 w-4" />,
+				show: (row) => !row.isActive,
+				onClick: (row) => {
+					toggleActiveMutation.mutate({
+						id: row.id,
+						isActive: true,
+					});
+				},
+			},
+			{
+				label: "Delete",
+				icon: <TrashIcon className="h-4 w-4" />,
+				variant: "destructive",
+				separator: true,
+				onClick: (row) => {
+					if (row.isSystem) {
+						toast.error("Cannot delete system configurations");
+						return;
+					}
+					setConfigToDelete(row);
+					setDeleteDialogOpen(true);
+				},
+			},
+		);
+
+		return actions;
+	}, [configurationCreateOrUpdate, toggleActiveMutation, openView]);
 
 	// Define columns
 	const columns: ColumnDef<Configuration>[] = useMemo(
@@ -239,7 +235,9 @@ export function ConfigurationsTableClient({
 					<DataTableColumnHeader column={column} title="Label" />
 				),
 				cell: ({ row }) => (
-					<div className={`flex items-center gap-3 ${!row.original.isActive ? "opacity-50" : ""}`}>
+					<div
+						className={`flex items-center gap-3 ${!row.original.isActive ? "opacity-50" : ""}`}
+					>
 						{row.original.color && (
 							<div
 								className="h-4 w-4 rounded-full border"
@@ -273,9 +271,16 @@ export function ConfigurationsTableClient({
 							id: "defaultCost",
 							accessorKey: "defaultCost",
 							header: ({ column }: { column: unknown }) => (
-								<DataTableColumnHeader column={column as never} title="Default Cost" />
+								<DataTableColumnHeader
+									column={column as never}
+									title="Default Cost"
+								/>
 							),
-							cell: ({ row }: { row: { original: Configuration } }) => {
+							cell: ({
+								row,
+							}: {
+								row: { original: Configuration };
+							}) => {
 								const value = row.original.defaultCost;
 								if (!value) {
 									return (
@@ -306,9 +311,16 @@ export function ConfigurationsTableClient({
 							id: "bookingTypeFilter",
 							accessorKey: "bookingTypeFilter",
 							header: ({ column }: { column: unknown }) => (
-								<DataTableColumnHeader column={column as never} title="Booking Type" />
+								<DataTableColumnHeader
+									column={column as never}
+									title="Booking Type"
+								/>
 							),
-							cell: ({ row }: { row: { original: Configuration } }) => {
+							cell: ({
+								row,
+							}: {
+								row: { original: Configuration };
+							}) => {
 								const key = row.original.bookingTypeFilter;
 								if (!key) {
 									return (
@@ -317,7 +329,9 @@ export function ConfigurationsTableClient({
 										</span>
 									);
 								}
-								const match = bookingTypes.find((bt) => bt.key === key);
+								const match = bookingTypes.find(
+									(bt) => bt.key === key,
+								);
 								return <span>{match?.label ?? key}</span>;
 							},
 							meta: {
@@ -335,31 +349,59 @@ export function ConfigurationsTableClient({
 						{
 							id: "bookingTypeFilter",
 							header: "Booking Type",
-							cell: ({ row }: { row: { original: Configuration } }) => {
+							cell: ({
+								row,
+							}: {
+								row: { original: Configuration };
+							}) => {
 								const key = row.original.bookingTypeFilter;
-								const match = bookingTypes.find((item) => item.key === key);
-								return <span>{key ? (match?.label ?? key) : "All types"}</span>;
+								const match = bookingTypes.find(
+									(item) => item.key === key,
+								);
+								return (
+									<span>
+										{key
+											? (match?.label ?? key)
+											: "All types"}
+									</span>
+								);
 							},
-							meta: { label: "Booking Type", width: 150, minWidth: 130 },
+							meta: {
+								label: "Booking Type",
+								width: 150,
+								minWidth: 130,
+							},
 							enableSorting: false,
 							enableHiding: true,
 						} satisfies ColumnDef<Configuration>,
 						{
 							id: "milestones",
 							header: "Payments",
-							cell: ({ row }: { row: { original: Configuration } }) => {
+							cell: ({
+								row,
+							}: {
+								row: { original: Configuration };
+							}) => {
 								const metadata = row.original.metadata as {
-									paymentMilestones?: Array<{ percentage?: unknown }>;
+									paymentMilestones?: Array<{
+										percentage?: unknown;
+									}>;
 								} | null;
 								return (
 									<span className="font-mono text-sm">
 										{(metadata?.paymentMilestones ?? [])
-											.map((item) => String(item.percentage ?? ""))
+											.map((item) =>
+												String(item.percentage ?? ""),
+											)
 											.join(" / ")}
 									</span>
 								);
 							},
-							meta: { label: "Payments", width: 130, minWidth: 120 },
+							meta: {
+								label: "Payments",
+								width: 130,
+								minWidth: 120,
+							},
 							enableSorting: false,
 							enableHiding: true,
 						} satisfies ColumnDef<Configuration>,
@@ -371,23 +413,51 @@ export function ConfigurationsTableClient({
 						{
 							id: "applicableRoles",
 							header: ({ column }: { column: unknown }) => (
-								<DataTableColumnHeader column={column as never} title="Applicable Roles" />
+								<DataTableColumnHeader
+									column={column as never}
+									title="Applicable Roles"
+								/>
 							),
-							cell: ({ row }: { row: { original: Configuration } }) => {
-								const roles = (row.original.metadata as Record<string, unknown> | null)?.roles;
-								if (!Array.isArray(roles) || roles.length === 0) {
-									return <span className="text-muted-foreground">All roles</span>;
+							cell: ({
+								row,
+							}: {
+								row: { original: Configuration };
+							}) => {
+								const roles = (
+									row.original.metadata as Record<
+										string,
+										unknown
+									> | null
+								)?.roles;
+								if (
+									!Array.isArray(roles) ||
+									roles.length === 0
+								) {
+									return (
+										<span className="text-muted-foreground">
+											All roles
+										</span>
+									);
 								}
 								return (
 									<div className="flex flex-wrap gap-1">
 										{roles.map((key) => {
-											const match = relationTypes.find((rt) => rt.key === key);
+											const match = relationTypes.find(
+												(rt) => rt.key === key,
+											);
 											return (
-												<Badge key={key} variant="outline" className="gap-1.5 text-xs font-normal">
+												<Badge
+													key={key}
+													variant="outline"
+													className="gap-1.5 text-xs font-normal"
+												>
 													{match?.color && (
 														<div
 															className="h-2 w-2 rounded-full"
-															style={{ backgroundColor: match.color }}
+															style={{
+																backgroundColor:
+																	match.color,
+															}}
 														/>
 													)}
 													{match?.label ?? key}
@@ -413,23 +483,51 @@ export function ConfigurationsTableClient({
 						{
 							id: "applicableBookingTypes",
 							header: ({ column }: { column: unknown }) => (
-								<DataTableColumnHeader column={column as never} title="Booking Types" />
+								<DataTableColumnHeader
+									column={column as never}
+									title="Booking Types"
+								/>
 							),
-							cell: ({ row }: { row: { original: Configuration } }) => {
-								const bTypes = (row.original.metadata as Record<string, unknown> | null)?.bookingTypes;
-								if (!Array.isArray(bTypes) || bTypes.length === 0) {
-									return <span className="text-muted-foreground">All types</span>;
+							cell: ({
+								row,
+							}: {
+								row: { original: Configuration };
+							}) => {
+								const bTypes = (
+									row.original.metadata as Record<
+										string,
+										unknown
+									> | null
+								)?.bookingTypes;
+								if (
+									!Array.isArray(bTypes) ||
+									bTypes.length === 0
+								) {
+									return (
+										<span className="text-muted-foreground">
+											All types
+										</span>
+									);
 								}
 								return (
 									<div className="flex flex-wrap gap-1">
 										{bTypes.map((key) => {
-											const match = bookingTypes.find((bt) => bt.key === key);
+											const match = bookingTypes.find(
+												(bt) => bt.key === key,
+											);
 											return (
-												<Badge key={key} variant="outline" className="gap-1.5 text-xs font-normal">
+												<Badge
+													key={key}
+													variant="outline"
+													className="gap-1.5 text-xs font-normal"
+												>
 													{match?.color && (
 														<div
 															className="h-2 w-2 rounded-full"
-															style={{ backgroundColor: match.color }}
+															style={{
+																backgroundColor:
+																	match.color,
+															}}
 														/>
 													)}
 													{match?.label ?? key}
@@ -455,23 +553,51 @@ export function ConfigurationsTableClient({
 						{
 							id: "applicableBookingTypes",
 							header: ({ column }: { column: unknown }) => (
-								<DataTableColumnHeader column={column as never} title="Booking Types" />
+								<DataTableColumnHeader
+									column={column as never}
+									title="Booking Types"
+								/>
 							),
-							cell: ({ row }: { row: { original: Configuration } }) => {
-								const bTypes = (row.original.metadata as Record<string, unknown> | null)?.bookingTypes;
-								if (!Array.isArray(bTypes) || bTypes.length === 0) {
-									return <span className="text-muted-foreground">All types</span>;
+							cell: ({
+								row,
+							}: {
+								row: { original: Configuration };
+							}) => {
+								const bTypes = (
+									row.original.metadata as Record<
+										string,
+										unknown
+									> | null
+								)?.bookingTypes;
+								if (
+									!Array.isArray(bTypes) ||
+									bTypes.length === 0
+								) {
+									return (
+										<span className="text-muted-foreground">
+											All types
+										</span>
+									);
 								}
 								return (
 									<div className="flex flex-wrap gap-1">
 										{bTypes.map((key) => {
-											const match = bookingTypes.find((bt) => bt.key === key);
+											const match = bookingTypes.find(
+												(bt) => bt.key === key,
+											);
 											return (
-												<Badge key={key} variant="outline" className="gap-1.5 text-xs font-normal">
+												<Badge
+													key={key}
+													variant="outline"
+													className="gap-1.5 text-xs font-normal"
+												>
 													{match?.color && (
 														<div
 															className="h-2 w-2 rounded-full"
-															style={{ backgroundColor: match.color }}
+															style={{
+																backgroundColor:
+																	match.color,
+															}}
 														/>
 													)}
 													{match?.label ?? key}
@@ -552,11 +678,17 @@ export function ConfigurationsTableClient({
 				cell: ({ row }) => (
 					<div className="flex justify-center">
 						{row.original.isActive ? (
-							<Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">
+							<Badge
+								variant="outline"
+								className="text-green-600 border-green-200 bg-green-50"
+							>
 								Active
 							</Badge>
 						) : (
-							<Badge variant="outline" className="text-muted-foreground">
+							<Badge
+								variant="outline"
+								className="text-muted-foreground"
+							>
 								Inactive
 							</Badge>
 						)}
