@@ -17,6 +17,7 @@ import { materializeBooking } from "../../bookings/lib/materialize-booking";
 import { formatDateParts, getDateParts } from "../../studio/lib/date-helpers";
 import type { CreateBookingInput } from "../../studio/schemas/booking";
 import {
+	type BookingBlueprintV2,
 	bookingBlueprintV2Schema,
 	quotationDocumentV1Schema,
 	quotationPdfSnapshotV1Schema,
@@ -72,6 +73,36 @@ export function assertDocumentAcceptanceProvenance(
 function localMidnightIso(date: string, timezone: string): string {
 	const [year, month, day] = date.split("-").map(Number);
 	return new TZDate(year, month - 1, day, 0, 0, 0, 0, timezone).toISOString();
+}
+
+export function documentEventsToShoots(
+	events: BookingBlueprintV2["booking"]["events"],
+): NonNullable<CreateBookingInput["shoots"]> {
+	return events.flatMap((event) => {
+		if (event.isTentative || !event.eventDate) {
+			return [];
+		}
+		const coverageNotes = event.coverageNotes?.trim();
+		const eventNotes = event.notes?.trim();
+		const notes = [
+			eventNotes || null,
+			coverageNotes ? `Promised crew coverage: ${coverageNotes}` : null,
+		]
+			.filter(Boolean)
+			.join("\n\n");
+
+		return [
+			{
+				name: event.eventType,
+				shootType: event.eventType,
+				shootDate: event.eventDate,
+				venue: event.location ?? undefined,
+				notes: notes || undefined,
+				status: "scheduled",
+				crewAssignments: [],
+			},
+		];
+	});
 }
 
 export async function convertAcceptedQuote(
@@ -211,6 +242,9 @@ export async function convertAcceptedQuote(
 					notes: event.notes ?? undefined,
 					coverageNotes: event.coverageNotes,
 				})),
+				shoots: documentEventsToShoots(
+					documentBlueprint.booking.events,
+				),
 				deliverables: documentBlueprint.booking.deliverables.map(
 					(deliverable) => ({
 						name: deliverable.name,

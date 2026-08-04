@@ -30,7 +30,8 @@ version, lineage, status, and transition timestamps are server-owned Q2 fields.
 Current booking behavior has no explicit event-side, coverage, or terms columns. Therefore:
 
 - participant `side` remains quote evidence; booking materialization uses participant role;
-- coverage materializes through existing shoots, crew assignments, `requiredCrewCount`, and `additionalServices` metadata;
+- each fixed dated document event materializes as both booking event evidence and a scheduled shoot, copying its event type, date, location, notes, and promised coverage notes;
+- tentative events remain booking event evidence only and stay off the shoot calendar until the studio assigns a fixed date; no crew assignment is invented from free-text coverage;
 - quote terms remain quotation evidence and are not overloaded into booking notes.
 
 ## Materialization
