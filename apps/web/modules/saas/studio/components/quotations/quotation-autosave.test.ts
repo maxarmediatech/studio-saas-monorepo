@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import {
 	createQuotationAutosaveState,
 	markQuotationAutosaveEdit,
+	markQuotationAutosaveLoaded,
+	quotationAutosaveDisposition,
 	runQuotationAutosave,
 	shouldRunQuotationAutosave,
 } from "./quotation-autosave";
@@ -14,6 +16,16 @@ type Draft = {
 };
 
 describe("quotation autosave", () => {
+	it("distinguishes a reusable saved draft from an unchanged failed draft", () => {
+		const state = createQuotationAutosaveState({ value: "saved" });
+		markQuotationAutosaveLoaded(state, state.snapshot);
+		expect(quotationAutosaveDisposition(state)).toBe("saved");
+		expect(shouldRunQuotationAutosave(state)).toBe(false);
+
+		markQuotationAutosaveEdit(state, { value: "pending" });
+		expect(quotationAutosaveDisposition(state)).toBe("save");
+	});
+
 	it("serializes progressive contact edits and preserves returned identity", async () => {
 		const initial: Draft = {
 			name: "Client one",
@@ -75,6 +87,7 @@ describe("quotation autosave", () => {
 		await expect(
 			runQuotationAutosave(state, save, (latest) => latest),
 		).rejects.toThrow("409");
+		expect(quotationAutosaveDisposition(state)).toBe("failed");
 		expect(shouldRunQuotationAutosave(state)).toBe(false);
 		expect(
 			await runQuotationAutosave(state, save, (latest) => latest),

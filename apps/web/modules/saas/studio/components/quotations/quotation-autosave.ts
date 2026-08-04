@@ -38,10 +38,19 @@ export function markQuotationAutosaveLoaded<TDraft>(
 export function shouldRunQuotationAutosave<TDraft>(
 	state: QuotationAutosaveState<TDraft>,
 ): boolean {
-	return (
-		state.savedVersion !== state.editVersion &&
-		state.failedVersion !== state.editVersion
-	);
+	return quotationAutosaveDisposition(state) === "save";
+}
+
+export function quotationAutosaveDisposition<TDraft>(
+	state: QuotationAutosaveState<TDraft>,
+): "save" | "saved" | "failed" {
+	if (state.savedVersion === state.editVersion) {
+		return "saved";
+	}
+	if (state.failedVersion === state.editVersion) {
+		return "failed";
+	}
+	return "save";
 }
 
 export async function runQuotationAutosave<TDraft, TResult>(

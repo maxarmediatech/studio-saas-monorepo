@@ -151,9 +151,6 @@ export function ConfigurationCreateSheet() {
 			return;
 		}
 
-		// Only defaultDeliverables stays in metadata (genuinely polymorphic)
-		const hasDeliverables = data.defaultDeliverables && data.defaultDeliverables.length > 0;
-
 		await createMutation.mutateAsync({
 			type: "package_type",
 			key: generateKeyFromLabel(data.label),
@@ -164,7 +161,9 @@ export function ConfigurationCreateSheet() {
 			isDefault: data.isDefault,
 			defaultCost: data.defaultCost || undefined,
 			bookingTypeFilter: data.bookingType || undefined,
-			metadata: hasDeliverables ? { defaultDeliverables: data.defaultDeliverables } : undefined,
+			metadata: {
+				defaultDeliverables: data.defaultDeliverables ?? [],
+			},
 		});
 	};
 

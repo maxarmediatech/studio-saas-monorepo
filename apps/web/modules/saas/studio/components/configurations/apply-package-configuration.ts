@@ -1,3 +1,5 @@
+import { PACKAGE_DELIVERABLE_TEMPLATES } from "./package-deliverable-templates";
+
 export type PackageConfigurationLike = {
 	id: string;
 	key: string;
@@ -74,16 +76,19 @@ export function applyPackageConfiguration(
 			details?: string | null;
 		}>;
 	} | null;
+	const defaultDeliverables = Array.isArray(metadata?.defaultDeliverables)
+		? metadata.defaultDeliverables
+		: PACKAGE_DELIVERABLE_TEMPLATES;
 	return {
 		configurationId: configuration.id,
 		configurationKey: configuration.key,
 		name: configuration.label,
 		cost: configuration.defaultCost ?? metadata?.defaultCost ?? "",
 		description: configuration.description ?? "",
-		deliverables: (metadata?.defaultDeliverables ?? []).map((item) => ({
+		deliverables: defaultDeliverables.map((item) => ({
 			name: item.title,
 			quantity: Number(item.quantity) || 1,
-			details: item.details ?? "",
+			details: "details" in item ? (item.details ?? "") : "",
 		})),
 	};
 }

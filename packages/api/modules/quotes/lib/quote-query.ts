@@ -21,13 +21,13 @@ import {
 import {
 	quotationBrandingSnapshotV1Schema,
 	quotationDocumentV1Schema,
-	quotationPdfSnapshotV1Schema,
 } from "../../studio/schemas/quotation-document";
 import {
 	acceptedQuoteOptionSnapshotSchema,
 	bookingBlueprintSchema,
 	type QuoteStatus,
 } from "../../studio/schemas/quote";
+import { buildQuotationPdfSnapshot } from "./quotation-pdf-snapshot";
 
 function iso(value: Date | null): string | null {
 	return value?.toISOString() ?? null;
@@ -282,20 +282,7 @@ export async function getOrganizationQuote(
 		brandingSnapshot: quote.brandingSnapshot
 			? quotationBrandingSnapshotV1Schema.parse(quote.brandingSnapshot)
 			: null,
-		pdfSnapshot:
-			quote.pdfStorageKey &&
-			quote.pdfSha256 &&
-			quote.pdfRenderedAt &&
-			quote.pdfRendererVersion
-				? quotationPdfSnapshotV1Schema.parse({
-						rendererVersion: quote.pdfRendererVersion,
-						storageKey: quote.pdfStorageKey,
-						sha256: quote.pdfSha256,
-						renderedAt: quote.pdfRenderedAt.toISOString(),
-						pageCount: quote.pdfPageCount ?? 1,
-						byteSize: quote.pdfByteSize ?? 1,
-					})
-				: null,
+		pdfSnapshot: buildQuotationPdfSnapshot(quote),
 		sentAt: iso(quote.sentAt),
 		convertedAt: iso(quote.convertedAt),
 		declinedAt: iso(quote.declinedAt),

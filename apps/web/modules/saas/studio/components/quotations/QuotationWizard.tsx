@@ -13,8 +13,8 @@ import {
 	createQuotationAutosaveState,
 	markQuotationAutosaveEdit,
 	markQuotationAutosaveLoaded,
+	quotationAutosaveDisposition,
 	runQuotationAutosave,
-	shouldRunQuotationAutosave,
 } from "./quotation-autosave";
 import { ClientStep, EventsStep } from "./quotation-client-events-steps";
 import { PackagesStep } from "./quotation-package-deliverable-steps";
@@ -203,7 +203,15 @@ export function QuotationWizard({
 		) {
 			return null;
 		}
-		if (!shouldRunQuotationAutosave(autosave.current)) {
+		const disposition = quotationAutosaveDisposition(autosave.current);
+		if (disposition === "saved" && currentQuoteIdRef.current) {
+			return {
+				id: currentQuoteIdRef.current,
+				documentRevision: documentRevisionRef.current,
+				document: quotationDraftToDocument(autosave.current.snapshot),
+			};
+		}
+		if (disposition === "failed") {
 			return null;
 		}
 		setSaveStatus("Saving");

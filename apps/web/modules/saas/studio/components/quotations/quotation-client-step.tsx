@@ -137,11 +137,6 @@ export function ClientStep({
 
 	return (
 		<div className="space-y-4">
-			<QuotationDetailsSection
-				draft={draft}
-				patchDraft={patchDraft}
-				errors={errors}
-			/>
 			<h2 className="text-lg font-semibold">Client details</h2>
 			<Card>
 				<CardContent className="space-y-6">
@@ -391,6 +386,11 @@ export function ClientStep({
 					</div>
 				</CardContent>
 			</Card>
+			<QuotationDetailsSection
+				draft={draft}
+				patchDraft={patchDraft}
+				errors={errors}
+			/>
 		</div>
 	);
 }

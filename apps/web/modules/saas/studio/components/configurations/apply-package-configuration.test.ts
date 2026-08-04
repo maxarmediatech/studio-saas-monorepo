@@ -28,6 +28,41 @@ describe("applyPackageConfiguration", () => {
 		});
 	});
 
+	it("uses standard deliverables for legacy packages without defaults", () => {
+		expect(
+			applyPackageConfiguration({
+				id: "legacy-id",
+				key: "legacy",
+				label: "Legacy package",
+				defaultCost: "90000.00",
+				description: null,
+				metadata: {},
+			}).deliverables,
+		).toEqual([
+			{ name: "Wedding Album", quantity: 1, details: "" },
+			{ name: "Full Wedding Video", quantity: 1, details: "" },
+			{ name: "Wedding Highlight", quantity: 1, details: "" },
+			{
+				name: "Edited Photos of Each Event",
+				quantity: 1,
+				details: "",
+			},
+		]);
+	});
+
+	it("respects an explicit package with no deliverables", () => {
+		expect(
+			applyPackageConfiguration({
+				id: "empty-id",
+				key: "empty",
+				label: "No deliverables",
+				defaultCost: null,
+				description: null,
+				metadata: { defaultDeliverables: [] },
+			}).deliverables,
+		).toEqual([]);
+	});
+
 	it("distinguishes successful-empty configuration from failure", () => {
 		expect(
 			configurationControlMode({
