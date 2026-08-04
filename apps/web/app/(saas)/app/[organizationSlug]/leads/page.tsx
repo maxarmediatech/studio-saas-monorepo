@@ -9,6 +9,15 @@ type Props = {
 	searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
+export async function generateMetadata({ params }: Props) {
+	const { organizationSlug } = await params;
+	const organization = await getActiveOrganization(organizationSlug);
+
+	return {
+		title: `Leads | ${organization?.name ?? "Studio"}`,
+	};
+}
+
 export default async function LeadsPage({ params, searchParams }: Props) {
 	const { organizationSlug } = await params;
 	if (!(await getActiveOrganization(organizationSlug))) {

@@ -24,7 +24,9 @@ async function requireContactMutationPermissions(
 	if (
 		document.participants.some(
 			(participant) =>
-				!participant.clientId && participant.contact.name.trim(),
+				!participant.clientId &&
+				participant.resolutionIntent === "create_lead" &&
+				participant.contact.name.trim(),
 		)
 	) {
 		await requirePermission(context, "client", "create");

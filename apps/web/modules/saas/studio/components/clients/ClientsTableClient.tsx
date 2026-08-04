@@ -50,6 +50,7 @@ export function ClientsTableClient({
 	organizationSlug,
 	lifecycleStage = "client",
 }: ClientsTableClientProps) {
+	const contactLabel = lifecycleStage === "lead" ? "lead" : "client";
 	const router = useRouter();
 	const queryClient = useQueryClient();
 
@@ -104,7 +105,9 @@ export function ClientsTableClient({
 	const deleteMutation = useMutation({
 		...clientsMutations.delete(),
 		onSuccess: () => {
-			toast.success("Client deleted successfully");
+			toast.success(
+				`${contactLabel === "lead" ? "Lead" : "Client"} deleted successfully`,
+			);
 			setDeleteDialogOpen(false);
 			setClientToDelete(null);
 			queryClient.invalidateQueries({
@@ -327,12 +330,12 @@ export function ClientsTableClient({
 						<div className="flex flex-col items-center gap-2">
 							<UserIcon className="h-12 w-12 text-muted-foreground/50" />
 							<p className="text-muted-foreground">
-								No clients found
+								No {contactLabel}s found
 							</p>
 							<OpenClientCreateSheet
 								variant="outline"
 								size="sm"
-								label="Add your first client"
+								label={`Add your first ${contactLabel}`}
 							/>
 						</div>
 					}

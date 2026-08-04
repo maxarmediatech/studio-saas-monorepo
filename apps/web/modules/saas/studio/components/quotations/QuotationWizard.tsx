@@ -9,6 +9,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import {
+	createQuotationAutosaveState,
+	markQuotationAutosaveEdit,
+	markQuotationAutosaveLoaded,
+	runQuotationAutosave,
+} from "./quotation-autosave";
 import { ClientStep, EventsStep } from "./quotation-client-events-steps";
 import { PackagesStep } from "./quotation-package-deliverable-steps";
 import { PreviewStep, TermsStep } from "./quotation-terms-preview-steps";
@@ -76,7 +82,9 @@ export function QuotationWizard({
 	const [conflictOpen, setConflictOpen] = useState(false);
 	const [conflictPaused, setConflictPaused] = useState(false);
 	const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-	const editVersion = useRef(0);
+	const autosave = useRef(createQuotationAutosaveState(draft));
+	const currentQuoteIdRef = useRef(currentQuoteId);
+	const documentRevisionRef = useRef(documentRevision);
 	const defaultsApplied = useRef(false);
 	const bookingTypes = useQuery(bookingFormQueries.bookingTypes());
 	useQuery(bookingFormQueries.eventTypes());
@@ -107,15 +115,16 @@ export function QuotationWizard({
 			return;
 		}
 		const { bookingType, packageType } = bootstrap;
-		setDraft((current) =>
-			applyQuotationBootstrap(
+		setDraft((current) => {
+			const next = applyQuotationBootstrap(
 				current,
 				bookingType,
 				packageType,
 				createDraftId,
-			),
-		);
-		editVersion.current += 1;
+			);
+			markQuotationAutosaveEdit(autosave.current, next);
+			return next;
+		});
 		setDirty(true);
 		setSaveStatus("Unsaved");
 	}, [bookingTypes.data, packageTypes.data, quoteId]);
@@ -141,8 +150,11 @@ export function QuotationWizard({
 		value: QuotationDraft[K],
 	) => {
 		setFieldErrors({});
-		setDraft((current) => ({ ...current, [key]: value }));
-		editVersion.current += 1;
+		setDraft((current) => {
+			const next = { ...current, [key]: value };
+			markQuotationAutosaveEdit(autosave.current, next);
+			return next;
+		});
 		setDirty(true);
 		setSaveStatus("Unsaved");
 	};
@@ -172,42 +184,58 @@ export function QuotationWizard({
 			return;
 		}
 		setDraft(loadedDraft);
+		markQuotationAutosaveLoaded(autosave.current, loadedDraft);
 		setDocumentRevision(detail.data.data.documentRevision);
+		documentRevisionRef.current = detail.data.data.documentRevision;
 		setLoaded(true);
 		setDirty(false);
 		setSaveStatus("Draft saved");
 	}, [detail.data, loaded, organizationSlug, quoteId, router]);
 
-	const saveDraft = useCallback(
-		async (snapshot: QuotationDraft = draft) => {
-			if (
-				!shouldAutosaveQuotationDraft({
-					loaded,
-					dirty: true,
-					conflictPaused,
-				})
-			) {
-				return null;
-			}
-			const capturedVersion = editVersion.current;
-			setSaveStatus("Saving");
-			try {
-				const response = currentQuoteId
-					? await saveMutation.mutateAsync({
-							id: currentQuoteId,
-							expectedDocumentRevision: documentRevision,
-							document: quotationDraftToDocument(snapshot),
-						})
-					: await createMutation.mutateAsync({
-							document: quotationDraftToDocument(snapshot),
-						});
-				const saved = response.data;
-				setCurrentQuoteId(saved.id);
-				setDocumentRevision(saved.documentRevision);
-				setDraft((current) => ({
+	const saveDraft = useCallback(async () => {
+		if (
+			!shouldAutosaveQuotationDraft({
+				loaded,
+				dirty: true,
+				conflictPaused,
+			})
+		) {
+			return null;
+		}
+		setSaveStatus("Saving");
+		try {
+			const autosaved = await runQuotationAutosave(
+				autosave.current,
+				async (snapshot) => {
+					const response = currentQuoteIdRef.current
+						? await saveMutation.mutateAsync({
+								id: currentQuoteIdRef.current,
+								expectedDocumentRevision:
+									documentRevisionRef.current,
+								document: quotationDraftToDocument(snapshot),
+							})
+						: await createMutation.mutateAsync({
+								document: quotationDraftToDocument(snapshot),
+							});
+					const result = response.data;
+					const wasCreate = !currentQuoteIdRef.current;
+					currentQuoteIdRef.current = result.id;
+					documentRevisionRef.current = result.documentRevision;
+					setCurrentQuoteId(result.id);
+					setDocumentRevision(result.documentRevision);
+					if (wasCreate) {
+						window.history.replaceState(
+							null,
+							"",
+							`/app/${organizationSlug}/quotations/${result.id}/edit`,
+						);
+					}
+					return result;
+				},
+				(current, result) => ({
 					...current,
 					clients: current.clients.map((client) => {
-						const persisted = saved.document.participants.find(
+						const persisted = result.document.participants.find(
 							(item) => item.key === client.id,
 						);
 						return persisted
@@ -215,47 +243,55 @@ export function QuotationWizard({
 									...client,
 									clientId: persisted.clientId,
 									clientUpdatedAt: persisted.clientUpdatedAt,
+									persistAsLead: false,
 								}
 							: client;
 					}),
-				}));
-				if (!currentQuoteId) {
-					window.history.replaceState(
-						null,
-						"",
-						`/app/${organizationSlug}/quotations/${saved.id}/edit`,
-					);
-				}
-				if (capturedVersion === editVersion.current) {
-					setDirty(false);
-					setSaveStatus("Draft saved");
-				}
-				return saved;
-			} catch (error) {
-				const message = error instanceof Error ? error.message : "";
-				setSaveStatus("Could not save");
-				if (/conflict|revision|stale/i.test(message)) {
-					setConflictPaused(true);
-					setConflictOpen(true);
-				} else {
-					toast.error("Could not save quotation", {
-						description: message,
-					});
-				}
-				return null;
+				}),
+			);
+			setDraft(autosave.current.snapshot);
+			if (
+				autosave.current.savedVersion === autosave.current.editVersion
+			) {
+				setDirty(false);
+				setSaveStatus("Draft saved");
 			}
-		},
-		[
-			createMutation,
-			currentQuoteId,
-			documentRevision,
-			draft,
-			loaded,
-			conflictPaused,
-			organizationSlug,
-			saveMutation,
-		],
-	);
+			if (autosaved) {
+				return autosaved;
+			}
+			if (
+				currentQuoteIdRef.current &&
+				autosave.current.savedVersion === autosave.current.editVersion
+			) {
+				return {
+					id: currentQuoteIdRef.current,
+					documentRevision: documentRevisionRef.current,
+					document: quotationDraftToDocument(
+						autosave.current.snapshot,
+					),
+				};
+			}
+			return null;
+		} catch (error) {
+			const message = error instanceof Error ? error.message : "";
+			setSaveStatus("Could not save");
+			if (/conflict|revision|stale/i.test(message)) {
+				setConflictPaused(true);
+				setConflictOpen(true);
+			} else {
+				toast.error("Could not save quotation", {
+					description: message,
+				});
+			}
+			return null;
+		}
+	}, [
+		createMutation,
+		loaded,
+		conflictPaused,
+		organizationSlug,
+		saveMutation,
+	]);
 
 	useEffect(() => {
 		if (
@@ -367,17 +403,16 @@ export function QuotationWizard({
 			bookingTypes.data?.data ?? [],
 			packageTypes.data?.data ?? [],
 		);
-		setDraft(
-			bootstrap
-				? applyQuotationBootstrap(
-						blank,
-						bootstrap.bookingType,
-						bootstrap.packageType,
-						createDraftId,
-					)
-				: blank,
-		);
-		editVersion.current += 1;
+		const next = bootstrap
+			? applyQuotationBootstrap(
+					blank,
+					bootstrap.bookingType,
+					bootstrap.packageType,
+					createDraftId,
+				)
+			: blank;
+		setDraft(next);
+		markQuotationAutosaveEdit(autosave.current, next);
 		setDirty(true);
 		setSaveStatus("Unsaved");
 		setFieldErrors({});

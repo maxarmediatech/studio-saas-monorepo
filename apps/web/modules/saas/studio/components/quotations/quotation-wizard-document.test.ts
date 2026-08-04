@@ -55,6 +55,7 @@ describe("quotation wizard document", () => {
 			...firstClient,
 			clientId: "existing-client",
 			clientUpdatedAt: "2026-08-03T00:00:00.000Z",
+			persistAsLead: false,
 		};
 		expect(
 			updateQuotationClientField(selected, "name", "Nickname"),
@@ -68,6 +69,33 @@ describe("quotation wizard document", () => {
 			name: "New lead",
 			clientId: null,
 			clientUpdatedAt: null,
+			persistAsLead: true,
+		});
+	});
+
+	it("preserves unresolved contact fields without requesting CRM creation", () => {
+		const draft = createDefaultQuotationDraft("2026-08-03");
+		const client = draft.clients[0];
+		if (!client) {
+			throw new Error("Default client is missing");
+		}
+		client.name = "Client one";
+		client.email = "client@example.com";
+
+		expect(quotationDraftToDocument(draft).participants[0]).toMatchObject({
+			resolutionIntent: "none",
+			contact: {
+				name: "Client one",
+				email: "client@example.com",
+			},
+		});
+		draft.clients[0] = createLeadFromQuotationClient(client, client.name);
+		expect(quotationDraftToDocument(draft).participants[0]).toMatchObject({
+			resolutionIntent: "create_lead",
+			contact: {
+				name: "Client one",
+				email: "client@example.com",
+			},
 		});
 	});
 });

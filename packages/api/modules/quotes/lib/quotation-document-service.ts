@@ -18,6 +18,7 @@ import type { StudioContext } from "../../studio/lib/permissions";
 import type { TransactionClient } from "../../studio/lib/transactions";
 import type { QuotationDocumentV1 } from "../../studio/schemas/quotation-document";
 import { quotationDocumentV1Schema } from "../../studio/schemas/quotation-document";
+import { partitionQuotationContacts } from "./quotation-contact-search";
 import {
 	normalizeQuotationDocument,
 	quotationDocumentSha256,
@@ -154,7 +155,7 @@ async function duplicateContact(
 	});
 }
 
-async function resolveParticipants(
+export async function resolveParticipants(
 	tx: TransactionClient,
 	context: Context,
 	document: QuotationDocumentV1,
@@ -166,6 +167,13 @@ async function resolveParticipants(
 			continue;
 		}
 		if (!participant.clientId) {
+			if (participant.resolutionIntent !== "create_lead") {
+				participants.push({
+					...participant,
+					resolutionIntent: "none" as const,
+				});
+				continue;
+			}
 			const duplicate = await duplicateContact(
 				tx,
 				context.organizationId,
@@ -214,6 +222,7 @@ async function resolveParticipants(
 				...participant,
 				clientId: created.id,
 				clientUpdatedAt: created.updatedAt.toISOString(),
+				resolutionIntent: "none" as const,
 			});
 			continue;
 		}
@@ -271,11 +280,13 @@ async function resolveParticipants(
 			participants.push({
 				...participant,
 				clientUpdatedAt: now.toISOString(),
+				resolutionIntent: "none" as const,
 			});
 		} else {
 			participants.push({
 				...participant,
 				clientUpdatedAt: existing.updatedAt.toISOString(),
+				resolutionIntent: "none" as const,
 			});
 		}
 	}
@@ -472,12 +483,5 @@ export async function searchQuotationContacts(
 		metadata: row.metadata as Record<string, unknown> | null,
 		updatedAt: row.updatedAt.toISOString(),
 	});
-	return {
-		leads: rows
-			.filter(({ lifecycleStage }) => lifecycleStage === "lead")
-			.map(serialize),
-		clients: rows
-			.filter(({ lifecycleStage }) => lifecycleStage === "client")
-			.map(serialize),
-	};
+	return partitionQuotationContacts(rows.map(serialize));
 }

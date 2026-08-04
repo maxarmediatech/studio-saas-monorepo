@@ -73,6 +73,7 @@ export type QuotationClient = {
 	id: string;
 	clientId: string | null;
 	clientUpdatedAt: string | null;
+	persistAsLead: boolean;
 	name: string;
 	email: string;
 	phoneNumber: string;
@@ -175,6 +176,7 @@ export function createLeadFromQuotationClient(
 		name,
 		clientId: null,
 		clientUpdatedAt: null,
+		persistAsLead: true,
 	};
 }
 
@@ -202,6 +204,7 @@ export function createDefaultQuotationDraft(
 				id: participantId,
 				clientId: null,
 				clientUpdatedAt: null,
+				persistAsLead: false,
 				name: "",
 				email: "",
 				phoneNumber: "",

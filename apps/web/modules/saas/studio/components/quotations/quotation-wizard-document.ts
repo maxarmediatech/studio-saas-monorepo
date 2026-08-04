@@ -27,6 +27,7 @@ export function quotationDraftToDocument(
 			key: client.id,
 			clientId: client.clientId,
 			clientUpdatedAt: client.clientUpdatedAt,
+			resolutionIntent: client.persistAsLead ? "create_lead" : "none",
 			contact: {
 				name: client.name,
 				email: emptyToNull(client.email),
@@ -125,6 +126,7 @@ export function quotationDetailToWizardDraft(
 			id: participant.key,
 			clientId: participant.clientId,
 			clientUpdatedAt: participant.clientUpdatedAt,
+			persistAsLead: false,
 			name: participant.contact.name,
 			email: participant.contact.email ?? "",
 			phoneNumber: participant.contact.phoneNumber ?? "",

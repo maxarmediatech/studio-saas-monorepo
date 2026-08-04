@@ -4,6 +4,10 @@ import { Input } from "@repo/ui/components/input";
 import { quotesApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useId, useMemo, useState } from "react";
+import {
+	canOfferCreateLead,
+	getQuotationContactEnterAction,
+} from "./quotation-contact-options";
 import type { QuotationClient } from "./quotation-wizard-data";
 
 export function ClientNameField({
@@ -66,7 +70,12 @@ export function ClientNameField({
 		setActiveIndex(-1);
 	};
 	const createOptionIndex = results.length;
-	const hasCreateOption = Boolean(query.trim());
+	const hasCreateOption = canOfferCreateLead(
+		query,
+		results.map(({ name }) => name),
+		contacts.isFetching,
+		groups !== undefined,
+	);
 	const optionCount = results.length + (hasCreateOption ? 1 : 0);
 	return (
 		<div className="relative">
@@ -99,19 +108,19 @@ export function ClientNameField({
 						setActiveIndex((current) =>
 							current <= 0 ? optionCount - 1 : current - 1,
 						);
-					} else if (
-						event.key === "Enter" &&
-						activeIndex >= 0 &&
-						results[activeIndex]
-					) {
-						event.preventDefault();
-						choose(results[activeIndex]);
-					} else if (
-						event.key === "Enter" &&
-						activeIndex === createOptionIndex &&
-						hasCreateOption
-					) {
-						event.preventDefault();
+					} else if (event.key === "Enter") {
+						const action = getQuotationContactEnterAction(
+							activeIndex,
+							results.length,
+							hasCreateOption,
+						);
+						if (action === "select" && results[activeIndex]) {
+							event.preventDefault();
+							choose(results[activeIndex]);
+						} else if (action === "create") {
+							event.preventDefault();
+							createLead();
+						}
 					} else if (event.key === "Escape") {
 						setFocused(false);
 						setActiveIndex(-1);

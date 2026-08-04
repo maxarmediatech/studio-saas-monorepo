@@ -37,6 +37,7 @@ const participantSchema = z.object({
 	key: keySchema,
 	clientId: z.string().max(255).nullable(),
 	clientUpdatedAt: z.string().datetime().nullable(),
+	resolutionIntent: z.enum(["none", "create_lead"]).optional(),
 	contact: quotationContactSnapshotSchema,
 });
 
