@@ -5,6 +5,7 @@
  */
 
 import { z } from "zod";
+import { shootSideSchema } from "./booking";
 import {
 	assignedCrewSummarySchema,
 	baseListFiltersSchema,
@@ -61,8 +62,10 @@ export const shootSchema = z.object({
 	id: idSchema,
 	organizationId: idSchema,
 	bookingId: idSchema,
+	bookingEventId: idSchema.nullable(),
 	name: z.string(),
 	shootType: z.string(),
+	side: shootSideSchema.nullable(),
 	shootDate: z.string(),
 	startTime: z.string().nullable(),
 	endTime: z.string().nullable(),
@@ -89,6 +92,7 @@ export const shootMinimalSchema = z.object({
 	id: idSchema,
 	name: z.string(),
 	shootType: z.string(),
+	side: shootSideSchema.nullable(),
 	shootDate: z.string(),
 	status: z.string(),
 	bookingId: idSchema,
@@ -132,6 +136,12 @@ export const shootListItemSchema = shootSchema.extend({
 	assignedCrew: z.array(assignedCrewSummarySchema),
 	bookingName: z.string(),
 	bookingReferenceNumber: z.string(),
+	bookingEvent: z
+		.object({
+			id: idSchema,
+			eventType: z.string(),
+		})
+		.nullable(),
 });
 
 export type ShootListItem = z.infer<typeof shootListItemSchema>;
@@ -184,6 +194,12 @@ export const shootDetailSchema = shootSchema.extend({
 		name: z.string(),
 		referenceNumber: z.string(),
 	}),
+	bookingEvent: z
+		.object({
+			id: idSchema,
+			eventType: z.string(),
+		})
+		.nullable(),
 });
 
 export type ShootDetail = z.infer<typeof shootDetailSchema>;
@@ -198,8 +214,10 @@ export type GetShootOutput = z.infer<typeof getShootOutputSchema>;
 
 export const createShootInputSchema = z.object({
 	bookingId: idSchema,
+	bookingEventId: idSchema.optional(),
 	name: nameSchema,
 	shootType: z.string().min(1).max(100),
+	side: shootSideSchema.optional(),
 	shootDate: dateSchema,
 	startTime: timeSchema.optional(),
 	endTime: timeSchema.optional(),
@@ -223,8 +241,10 @@ export type CreateShootOutput = z.infer<typeof createShootOutputSchema>;
 
 export const updateShootInputSchema = z.object({
 	id: idSchema,
+	bookingEventId: idSchema.optional().nullable(),
 	name: nameSchema.optional(),
 	shootType: z.string().min(1).max(100).optional(),
+	side: shootSideSchema.optional().nullable(),
 	shootDate: dateSchema.optional(),
 	startTime: timeSchema.optional().nullable(),
 	endTime: timeSchema.optional().nullable(),

@@ -38,6 +38,11 @@ export const getShoot = studioProtectedProcedure
 				eq(shoots.id, id),
 				eq(shoots.organizationId, context.organizationId),
 			),
+			with: {
+				bookingEvent: {
+					columns: { id: true, eventType: true },
+				},
+			},
 		});
 
 		if (!shoot) {

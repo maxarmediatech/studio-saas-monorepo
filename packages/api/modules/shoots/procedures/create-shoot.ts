@@ -1,5 +1,13 @@
 import { ORPCError } from "@orpc/server";
-import { and, bookings, db, eq, isNull, shoots } from "@repo/database";
+import {
+	and,
+	bookingEvents,
+	bookings,
+	db,
+	eq,
+	isNull,
+	shoots,
+} from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import { safeTrackActivity } from "../../activities/lib";
 import { safeAutoSubscribe } from "../../notifications/lib/notification-service";
@@ -25,8 +33,10 @@ export const createShoot = studioProtectedProcedure
 
 		const {
 			bookingId,
+			bookingEventId,
 			name,
 			shootType,
+			side,
 			shootDate,
 			startTime,
 			endTime,
@@ -52,6 +62,21 @@ export const createShoot = studioProtectedProcedure
 				message: "Booking not found",
 			});
 		}
+		if (bookingEventId) {
+			const event = await db.query.bookingEvents.findFirst({
+				where: and(
+					eq(bookingEvents.id, bookingEventId),
+					eq(bookingEvents.bookingId, bookingId),
+					eq(bookingEvents.organizationId, context.organizationId),
+				),
+				columns: { id: true },
+			});
+			if (!event) {
+				throw new ORPCError("BAD_REQUEST", {
+					message: "Booking event does not belong to this booking",
+				});
+			}
+		}
 
 		// Create shoot
 		const [created] = await db
@@ -59,8 +84,10 @@ export const createShoot = studioProtectedProcedure
 			.values({
 				organizationId: context.organizationId,
 				bookingId,
+				bookingEventId: bookingEventId ?? null,
 				name,
 				shootType,
+				side: side ?? null,
 				shootDate,
 				startTime: startTime ?? null,
 				endTime: endTime ?? null,

@@ -16,7 +16,7 @@ function createOperations(): BookingMaterializationOperations {
 		generateReferenceNumber: vi.fn(async () => "STU-2604-0001"),
 		createBooking: vi.fn(async () => "booking-1"),
 		createParticipants: vi.fn(async () => undefined),
-		createEvents: vi.fn(async () => undefined),
+		createEvents: vi.fn(async () => ["event-1"]),
 		createShoots: vi.fn(async () => undefined),
 		createDeliverables: vi.fn(async () => undefined),
 		createPayments: vi.fn(async () => undefined),
@@ -150,6 +150,39 @@ describe("materializeBooking", () => {
 				bookingBlueprintVersion: 1,
 			},
 		);
+	});
+
+	it("links each generated shoot to the booking event created in the same transaction", async () => {
+		const operations = createOperations();
+
+		await materializeBooking(tx, context, completeInput, {
+			operations,
+			shootEventIndexes: [0],
+		});
+
+		expect(operations.createShoots).toHaveBeenCalledWith(
+			tx,
+			context,
+			"booking-1",
+			[
+				expect.objectContaining({
+					bookingEventId: "event-1",
+					shootType: "wedding",
+				}),
+			],
+		);
+	});
+
+	it("rejects an invalid shoot-to-event mapping before creating shoots", async () => {
+		const operations = createOperations();
+
+		await expect(
+			materializeBooking(tx, context, completeInput, {
+				operations,
+				shootEventIndexes: [1],
+			}),
+		).rejects.toThrow(/unavailable booking event/);
+		expect(operations.createShoots).not.toHaveBeenCalled();
 	});
 
 	it("rejects unvalidated blueprint versions before materialization", async () => {

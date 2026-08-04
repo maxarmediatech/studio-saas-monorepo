@@ -40,7 +40,9 @@ export function ShootEditSheet() {
 
 		return {
 			bookingId: shoot.data.bookingId,
+			bookingEventId: shoot.data.bookingEventId ?? "",
 			shootType: shoot.data.shootType,
+			side: shoot.data.side ?? "common",
 			shootDate: shoot.data.shootDate,
 			startTime: shoot.data.startTime ?? "",
 			requiredCrewCount: shoot.data.requiredCrewCount?.toString() ?? "",
@@ -67,8 +69,10 @@ export function ShootEditSheet() {
 		try {
 			await updateMutation.mutateAsync({
 				id: shootId,
+				bookingEventId: data.bookingEventId || null,
 				name: data.shootType,
 				shootType: data.shootType,
+				side: data.side,
 				shootDate: data.shootDate,
 				startTime: data.startTime || null,
 				endTime: null,

@@ -17,6 +17,7 @@ import { materializeBooking } from "../../bookings/lib/materialize-booking";
 import { formatDateParts, getDateParts } from "../../studio/lib/date-helpers";
 import type { CreateBookingInput } from "../../studio/schemas/booking";
 import {
+	type BookingBlueprintV2,
 	bookingBlueprintV2Schema,
 	quotationDocumentV1Schema,
 	quotationPdfSnapshotV1Schema,
@@ -72,6 +73,48 @@ export function assertDocumentAcceptanceProvenance(
 function localMidnightIso(date: string, timezone: string): string {
 	const [year, month, day] = date.split("-").map(Number);
 	return new TZDate(year, month - 1, day, 0, 0, 0, 0, timezone).toISOString();
+}
+
+export function documentEventsToShoots(
+	events: BookingBlueprintV2["booking"]["events"],
+): NonNullable<CreateBookingInput["shoots"]> {
+	return documentEventsToShootPlan(events).shoots;
+}
+
+export function documentEventsToShootPlan(
+	events: BookingBlueprintV2["booking"]["events"],
+): {
+	shoots: NonNullable<CreateBookingInput["shoots"]>;
+	eventIndexes: number[];
+} {
+	const shoots: NonNullable<CreateBookingInput["shoots"]> = [];
+	const eventIndexes: number[] = [];
+	events.forEach((event, eventIndex) => {
+		if (event.isTentative || !event.eventDate) {
+			return;
+		}
+		const coverageNotes = event.coverageNotes?.trim();
+		const eventNotes = event.notes?.trim();
+		const notes = [
+			eventNotes || null,
+			coverageNotes ? `Promised crew coverage: ${coverageNotes}` : null,
+		]
+			.filter(Boolean)
+			.join("\n\n");
+
+		shoots.push({
+			name: event.eventType,
+			shootType: event.eventType,
+			side: event.side,
+			shootDate: event.eventDate,
+			venue: event.location ?? undefined,
+			notes: notes || undefined,
+			status: "scheduled",
+			crewAssignments: [],
+		});
+		eventIndexes.push(eventIndex);
+	});
+	return { shoots, eventIndexes };
 }
 
 export async function convertAcceptedQuote(
@@ -158,6 +201,7 @@ export async function convertAcceptedQuote(
 			orderBy: (table, { asc }) => [asc(table.sortOrder)],
 		});
 		let bookingInput: CreateBookingInput;
+		let shootEventIndexes: number[] | undefined;
 		if (isDocumentQuote) {
 			const documentBlueprint = bookingBlueprintV2Schema.parse(blueprint);
 			const document = quotationDocumentV1Schema.parse(
@@ -185,6 +229,9 @@ export async function convertAcceptedQuote(
 					context.membership.organization.timezone,
 				),
 			);
+			const shootPlan = documentEventsToShootPlan(
+				documentBlueprint.booking.events,
+			);
 			bookingInput = {
 				name: document.title,
 				bookingDate,
@@ -211,6 +258,7 @@ export async function convertAcceptedQuote(
 					notes: event.notes ?? undefined,
 					coverageNotes: event.coverageNotes,
 				})),
+				shoots: shootPlan.shoots,
 				deliverables: documentBlueprint.booking.deliverables.map(
 					(deliverable) => ({
 						name: deliverable.name,
@@ -234,6 +282,7 @@ export async function convertAcceptedQuote(
 						}),
 					),
 			};
+			shootEventIndexes = shootPlan.eventIndexes;
 			const clientIds = participants.map(({ clientId }) => clientId);
 			const leads = clientIds.length
 				? await tx.query.clients.findMany({
@@ -290,6 +339,7 @@ export async function convertAcceptedQuote(
 			},
 			bookingInput,
 			{
+				shootEventIndexes,
 				provenance: {
 					quoteId: quote.id,
 					quoteOptionId: acceptance.quoteOptionId,

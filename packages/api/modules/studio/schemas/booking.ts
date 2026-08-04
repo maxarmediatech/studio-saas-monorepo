@@ -107,6 +107,16 @@ export const bookingEventInputSchema = z
 
 export type BookingEventInput = z.infer<typeof bookingEventInputSchema>;
 
+export const shootSideSchema = z.enum([
+	"common",
+	"bride",
+	"groom",
+	"both",
+	"separateCommon",
+]);
+
+export type ShootSide = z.infer<typeof shootSideSchema>;
+
 // ============================================================================
 // BOOKING SCHEMA
 // ============================================================================
@@ -321,6 +331,7 @@ export type DeliverableCrewAssignmentInput = z.infer<
 export const shootInputSchema = z.object({
 	name: nameSchema,
 	shootType: z.string().min(1).max(100),
+	side: shootSideSchema.optional(),
 	shootDate: z.string().min(1), // Date string YYYY-MM-DD
 	startTime: z.string().optional(),
 	endTime: z.string().optional(),

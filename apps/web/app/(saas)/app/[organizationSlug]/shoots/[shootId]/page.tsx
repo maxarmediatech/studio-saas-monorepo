@@ -7,6 +7,7 @@ import { formatMoney } from "@saas/shared/lib";
 import { useStudioCapabilities } from "@saas/studio/components/studio-capabilities-context";
 import { useShootParams } from "@saas/studio/hooks/params/use-shoot-params";
 import { shootsApi } from "@saas/studio/lib/api";
+import { getEventSideLabel } from "@saas/studio/lib/event-side";
 import { getShootExtraServiceLabel } from "@saas/studio/lib/shoot-planning";
 import { UserAvatar } from "@shared/components/UserAvatar";
 import { useQuery } from "@tanstack/react-query";
@@ -151,6 +152,11 @@ export default function ShootDetailPage() {
 						{formatShootType(shoot.shootType)}
 					</h1>
 					{getStatusBadge(shoot.status)}
+					{shoot.side && (
+						<Badge variant="secondary">
+							{getEventSideLabel(shoot.side)}
+						</Badge>
+					)}
 				</div>
 
 				<div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
@@ -171,6 +177,15 @@ export default function ShootDetailPage() {
 				</div>
 
 				<div className="mt-6 space-y-3">
+					{shoot.bookingEvent && (
+						<div className="flex items-center gap-3 text-sm">
+							<CameraIcon className="size-4 text-muted-foreground" />
+							<span>
+								Linked booking event:{" "}
+								{shoot.bookingEvent.eventType}
+							</span>
+						</div>
+					)}
 					<div className="flex items-center gap-3 text-sm">
 						<CalendarIcon className="size-4 text-muted-foreground" />
 						<span className="font-medium">

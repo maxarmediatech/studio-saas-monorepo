@@ -30,8 +30,10 @@ export function ShootCreateSheet() {
 		try {
 			const result = await createMutation.mutateAsync({
 				bookingId: data.bookingId,
+				bookingEventId: data.bookingEventId || undefined,
 				name: data.shootType,
 				shootType: data.shootType,
+				side: data.side,
 				shootDate: data.shootDate,
 				startTime: data.startTime || undefined,
 				endTime: undefined,

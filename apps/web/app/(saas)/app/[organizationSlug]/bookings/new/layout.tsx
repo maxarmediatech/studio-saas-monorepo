@@ -65,6 +65,7 @@ function buildCreateBookingInput(rawValues: BookingFormValues) {
 			// API requires name - use shootType as the name
 			name: shoot.shootType,
 			shootType: shoot.shootType,
+			side: shoot.side,
 			shootDate: shoot.shootDate,
 			startTime: shoot.startTime || undefined,
 			// endTime removed from form (Indian weddings have flexible end times)

@@ -1,5 +1,6 @@
 import {
 	and,
+	bookingEvents,
 	bookings,
 	count,
 	crews,
@@ -156,9 +157,17 @@ export const listShoots = studioProtectedProcedure
 				shoot: shoots,
 				bookingName: bookings.name,
 				bookingReferenceNumber: bookings.referenceNumber,
+				bookingEvent: {
+					id: bookingEvents.id,
+					eventType: bookingEvents.eventType,
+				},
 			})
 			.from(shoots)
 			.innerJoin(bookings, eq(shoots.bookingId, bookings.id))
+			.leftJoin(
+				bookingEvents,
+				eq(shoots.bookingEventId, bookingEvents.id),
+			)
 			.where(and(...conditions))
 			.orderBy(
 				sortDirection === "asc"
@@ -210,7 +219,12 @@ export const listShoots = studioProtectedProcedure
 
 		return {
 			data: data.map(
-				({ shoot, bookingName, bookingReferenceNumber }) => ({
+				({
+					shoot,
+					bookingName,
+					bookingReferenceNumber,
+					bookingEvent,
+				}) => ({
 					...shoot,
 					...extractShootPlanningFields(shoot.metadata),
 					createdAt: shoot.createdAt.toISOString(),
@@ -220,6 +234,7 @@ export const listShoots = studioProtectedProcedure
 					assignedCrew: assignedCrewByShoot[shoot.id] ?? [],
 					bookingName,
 					bookingReferenceNumber,
+					bookingEvent: bookingEvent?.id ? bookingEvent : null,
 				}),
 			),
 			pagination: createPaginationResponse(page, limit, total),

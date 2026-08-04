@@ -27,10 +27,12 @@ version, lineage, status, and transition timestamps are server-owned Q2 fields.
 
 `assembleBookingInputFromBlueprintV1` produces the existing validated booking input. Unknown blueprint versions fail validation.
 
-Current booking behavior has no explicit event-side, coverage, or terms columns. Therefore:
+Booking events preserve client-facing commitments while shoots remain the operational schedule. Therefore:
 
 - participant `side` remains quote evidence; booking materialization uses participant role;
-- coverage materializes through existing shoots, crew assignments, `requiredCrewCount`, and `additionalServices` metadata;
+- each fixed dated document event materializes as both booking event evidence and a scheduled shoot linked by `shoots.booking_event_id`, copying its event type, side, date, location, notes, and promised coverage notes;
+- tentative events remain booking event evidence only and stay off the shoot calendar until the studio assigns a fixed date; no crew assignment is invented from free-text coverage;
+- legacy and manually scheduled shoots may remain unlinked, and deleting an event clears the link without deleting operational shoot history;
 - quote terms remain quotation evidence and are not overloaded into booking notes.
 
 ## Materialization

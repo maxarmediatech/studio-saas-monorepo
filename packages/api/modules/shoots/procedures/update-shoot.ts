@@ -1,5 +1,12 @@
 import { ORPCError } from "@orpc/server";
-import { and, db, eq, shootAssignments, shoots } from "@repo/database";
+import {
+	and,
+	bookingEvents,
+	db,
+	eq,
+	shootAssignments,
+	shoots,
+} from "@repo/database";
 import { studioProtectedProcedure } from "../../../orpc/procedures";
 import {
 	detectChanges,
@@ -36,8 +43,10 @@ export const updateShoot = studioProtectedProcedure
 
 		const {
 			id,
+			bookingEventId,
 			name,
 			shootType,
+			side,
 			shootDate,
 			startTime,
 			endTime,
@@ -67,6 +76,21 @@ export const updateShoot = studioProtectedProcedure
 				message: "Shoot not found",
 			});
 		}
+		if (bookingEventId) {
+			const event = await db.query.bookingEvents.findFirst({
+				where: and(
+					eq(bookingEvents.id, bookingEventId),
+					eq(bookingEvents.bookingId, existing.bookingId),
+					eq(bookingEvents.organizationId, context.organizationId),
+				),
+				columns: { id: true },
+			});
+			if (!event) {
+				throw new ORPCError("BAD_REQUEST", {
+					message: "Booking event does not belong to this booking",
+				});
+			}
+		}
 
 		// Build update object
 		const updates: Partial<typeof shoots.$inferInsert> = {
@@ -79,6 +103,12 @@ export const updateShoot = studioProtectedProcedure
 		}
 		if (shootType !== undefined) {
 			updates.shootType = shootType;
+		}
+		if (bookingEventId !== undefined) {
+			updates.bookingEventId = bookingEventId;
+		}
+		if (side !== undefined) {
+			updates.side = side;
 		}
 		if (shootDate !== undefined) {
 			updates.shootDate = shootDate;
@@ -204,6 +234,8 @@ export const updateShoot = studioProtectedProcedure
 			{
 				name,
 				shootType,
+				bookingEventId,
+				side,
 				shootDate,
 				startTime,
 				endTime,
@@ -216,6 +248,8 @@ export const updateShoot = studioProtectedProcedure
 			[
 				"name",
 				"shootType",
+				"bookingEventId",
+				"side",
 				"shootDate",
 				"startTime",
 				"endTime",
