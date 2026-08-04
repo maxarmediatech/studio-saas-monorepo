@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { randomUUID } from "node:crypto";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import {
 	buildQuotationTitle,
 	createDefaultQuotationDraft,
@@ -7,6 +8,10 @@ import {
 	updateQuotationClientField,
 } from "./quotation-wizard-data";
 import { quotationDraftToDocument } from "./quotation-wizard-document";
+
+beforeAll(() => {
+	vi.stubGlobal("crypto", { randomUUID });
+});
 
 describe("quotation wizard document", () => {
 	it("starts with a genuinely empty tentative common event", () => {

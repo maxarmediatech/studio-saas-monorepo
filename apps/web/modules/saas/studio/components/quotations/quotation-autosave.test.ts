@@ -3,6 +3,7 @@ import {
 	createQuotationAutosaveState,
 	markQuotationAutosaveEdit,
 	runQuotationAutosave,
+	shouldRunQuotationAutosave,
 } from "./quotation-autosave";
 
 type Draft = {
@@ -74,11 +75,13 @@ describe("quotation autosave", () => {
 		await expect(
 			runQuotationAutosave(state, save, (latest) => latest),
 		).rejects.toThrow("409");
+		expect(shouldRunQuotationAutosave(state)).toBe(false);
 		expect(
 			await runQuotationAutosave(state, save, (latest) => latest),
 		).toBeNull();
 		expect(save).toHaveBeenCalledTimes(1);
 		markQuotationAutosaveEdit(state, { value: "selected-record" });
+		expect(shouldRunQuotationAutosave(state)).toBe(true);
 		await expect(
 			runQuotationAutosave(state, save, (latest) => latest),
 		).rejects.toThrow("409");

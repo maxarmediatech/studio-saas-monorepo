@@ -35,6 +35,15 @@ export function markQuotationAutosaveLoaded<TDraft>(
 	state.failedVersion = null;
 }
 
+export function shouldRunQuotationAutosave<TDraft>(
+	state: QuotationAutosaveState<TDraft>,
+): boolean {
+	return (
+		state.savedVersion !== state.editVersion &&
+		state.failedVersion !== state.editVersion
+	);
+}
+
 export async function runQuotationAutosave<TDraft, TResult>(
 	state: QuotationAutosaveState<TDraft>,
 	save: (snapshot: TDraft) => Promise<TResult>,
@@ -43,10 +52,7 @@ export async function runQuotationAutosave<TDraft, TResult>(
 	if (state.inFlight) {
 		return state.inFlight as Promise<TResult | null>;
 	}
-	if (
-		state.savedVersion === state.editVersion ||
-		state.failedVersion === state.editVersion
-	) {
+	if (!shouldRunQuotationAutosave(state)) {
 		return null;
 	}
 

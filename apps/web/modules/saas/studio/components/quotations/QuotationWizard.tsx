@@ -14,6 +14,7 @@ import {
 	markQuotationAutosaveEdit,
 	markQuotationAutosaveLoaded,
 	runQuotationAutosave,
+	shouldRunQuotationAutosave,
 } from "./quotation-autosave";
 import { ClientStep, EventsStep } from "./quotation-client-events-steps";
 import { PackagesStep } from "./quotation-package-deliverable-steps";
@@ -200,6 +201,9 @@ export function QuotationWizard({
 				conflictPaused,
 			})
 		) {
+			return null;
+		}
+		if (!shouldRunQuotationAutosave(autosave.current)) {
 			return null;
 		}
 		setSaveStatus("Saving");
