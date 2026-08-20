@@ -7,10 +7,12 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@repo/ui/components/popover";
+import { getDefaultDatePickerEndMonth } from "@repo/ui/lib/date-picker-range";
 import { cn } from "@repo/ui/lib/utils";
 import { format, isValid, parse } from "date-fns";
 import { CalendarIcon, ChevronDownIcon } from "lucide-react";
 import * as React from "react";
+import type { Matcher } from "react-day-picker";
 
 export interface DatePickerProps {
 	/** ISO date string value (YYYY-MM-DD) */
@@ -72,14 +74,18 @@ const DatePicker = React.forwardRef<HTMLButtonElement, DatePickerProps>(
 
 		// Parse ISO string to Date object
 		const selectedDate = React.useMemo(() => {
-			if (!value) return undefined;
+			if (!value) {
+				return undefined;
+			}
 			const parsed = parse(value, "yyyy-MM-dd", new Date());
 			return isValid(parsed) ? parsed : undefined;
 		}, [value]);
 
 		// Format date for display
 		const displayValue = React.useMemo(() => {
-			if (!selectedDate) return placeholder;
+			if (!selectedDate) {
+				return placeholder;
+			}
 			return format(selectedDate, "MMM d, yyyy");
 		}, [selectedDate, placeholder]);
 
@@ -97,17 +103,42 @@ const DatePicker = React.forwardRef<HTMLButtonElement, DatePickerProps>(
 		);
 
 		// Parse min/max dates
-		const fromDate = React.useMemo(() => {
-			if (!minDate) return undefined;
+		const startMonth = React.useMemo(() => {
+			if (!minDate) {
+				return undefined;
+			}
 			const parsed = parse(minDate, "yyyy-MM-dd", new Date());
 			return isValid(parsed) ? parsed : undefined;
 		}, [minDate]);
 
-		const toDate = React.useMemo(() => {
-			if (!maxDate) return undefined;
+		const explicitEndMonth = React.useMemo(() => {
+			if (!maxDate) {
+				return undefined;
+			}
 			const parsed = parse(maxDate, "yyyy-MM-dd", new Date());
 			return isValid(parsed) ? parsed : undefined;
 		}, [maxDate]);
+
+		const defaultEndMonth = React.useMemo(
+			() => getDefaultDatePickerEndMonth(),
+			[],
+		);
+
+		const disabledMatchers = React.useMemo<Matcher[]>(() => {
+			const matchers: Matcher[] = [];
+
+			if (startMonth) {
+				matchers.push({ before: startMonth });
+			}
+			if (explicitEndMonth) {
+				matchers.push({ after: explicitEndMonth });
+			}
+			if (disabledDays) {
+				matchers.push(disabledDays);
+			}
+
+			return matchers;
+		}, [disabledDays, explicitEndMonth, startMonth]);
 
 		return (
 			<Popover open={open} onOpenChange={handleOpenChange}>
@@ -143,9 +174,9 @@ const DatePicker = React.forwardRef<HTMLButtonElement, DatePickerProps>(
 						selected={selectedDate}
 						onSelect={handleSelect}
 						captionLayout={captionLayout}
-						fromDate={fromDate}
-						toDate={toDate}
-						disabled={disabledDays}
+						startMonth={startMonth}
+						endMonth={explicitEndMonth ?? defaultEndMonth}
+						disabled={disabledMatchers}
 						defaultMonth={selectedDate}
 						autoFocus
 					/>
