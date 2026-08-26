@@ -3,7 +3,7 @@ import { getSessionCookie } from "better-auth/cookies";
 import { type NextRequest, NextResponse } from "next/server";
 import { withQuery } from "ufo";
 
-export default async function middleware(req: NextRequest) {
+export default async function proxy(req: NextRequest) {
 	const { pathname, origin, search } = req.nextUrl;
 
 	const sessionCookie = getSessionCookie(req);
@@ -32,10 +32,7 @@ export default async function middleware(req: NextRequest) {
 
 			if (activeOrganizationSlug) {
 				return NextResponse.redirect(
-					new URL(
-						`/app/${activeOrganizationSlug}/home`,
-						origin,
-					),
+					new URL(`/app/${activeOrganizationSlug}/home`, origin),
 				);
 			}
 		}

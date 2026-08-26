@@ -39,7 +39,7 @@ pnpm dev
 
 ## Tech Stack
 
-- **Framework**: Next.js 15+ with App Router
+- **Framework**: Next.js 16 with App Router
 - **Build**: Turborepo + pnpm workspaces
 - **Database**: PostgreSQL + Drizzle ORM
 - **UI**: shadcn/ui + Tailwind CSS 4
@@ -56,5 +56,4 @@ pnpm lint         # Run linter
 pnpm db:generate  # Generate migrations
 pnpm db:migrate   # Apply migrations
 ```
-
 
