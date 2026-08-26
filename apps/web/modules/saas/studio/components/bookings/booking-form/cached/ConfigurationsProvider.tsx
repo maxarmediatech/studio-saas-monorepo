@@ -22,7 +22,7 @@
 import { configurationsApi } from "@saas/studio/lib/api";
 import { getServerQueryClient } from "@shared/lib/server";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
-import { cacheTag } from "next/dist/server/use-cache/cache-tag";
+import { cacheTag } from "next/cache";
 import type { ReactNode } from "react";
 
 interface ConfigurationsProviderProps {
