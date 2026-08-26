@@ -70,7 +70,7 @@ studio-saas-monorepo/
 The main Next.js application serving the frontend. Uses App Router for routing and React Server Components where appropriate.
 
 **Key technologies:**
-- Next.js 15+
+- Next.js 16
 - React 19
 - Tailwind CSS 4
 
