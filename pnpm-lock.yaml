@@ -607,8 +607,8 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3
       sharp:
-        specifier: ^0.34.5
-        version: 0.34.5
+        specifier: ^0.35.4
+        version: 0.35.4(@types/node@24.10.4)
       use-intl:
         specifier: ^4.6.1
         version: 4.6.1(react@19.2.3)
@@ -20592,7 +20592,6 @@ snapshots:
       '@img/sharp-win32-ia32': 0.35.4
       '@img/sharp-win32-x64': 0.35.4
       '@types/node': 24.10.4
-    optional: true
 
   shebang-command@2.0.0:
     dependencies:
