@@ -23,16 +23,16 @@
 		"@tiptap/html": "3.15.3",
 		"@tiptap/react": "3.15.3",
 		"@tiptap/starter-kit": "3.15.3",
-		"react": "^19.2.3",
-		"react-dom": "^19.2.3"
+		"react": "^19.2.8",
+		"react-dom": "^19.2.8"
 	},
 	"devDependencies": {
 		"@testing-library/react": "^16.1.0",
 		"@testing-library/user-event": "^14.6.1",
 		"@repo/tsconfig": "workspace:*",
 		"@types/node": "^24.10.4",
-		"@types/react": "19.2.7",
-		"@types/react-dom": "19.2.3",
+		"@types/react": "19.2.18",
+		"@types/react-dom": "19.2.5",
 		"jsdom": "^26.0.0",
 		"typescript": "5.9.3",
 		"vitest": "^2.1.8"
