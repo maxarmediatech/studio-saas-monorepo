@@ -30,7 +30,12 @@ const imageRemotePatterns: RemotePattern[] = [
 
 const nextConfig = {
 	cacheComponents: true,
+	partialPrefetching: true,
 	reactCompiler: true,
+	experimental: {
+		exposeTestingApiInProductionBuild:
+			process.env.NEXT_INSTANT_TESTS === "1",
+	},
 	transpilePackages: [
 		"@repo/api",
 		"@repo/auth",

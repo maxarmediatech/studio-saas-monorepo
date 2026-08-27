@@ -32,7 +32,8 @@ export default defineConfig({
 		},
 	],
 	webServer: {
-		command: "pnpm --filter web run build && pnpm --filter web run start",
+		command:
+			"NEXT_INSTANT_TESTS=1 pnpm --filter web run build && NEXT_INSTANT_TESTS=1 pnpm --filter web run start",
 		url: "http://localhost:3000",
 		reuseExistingServer: !process.env.CI,
 		stdout: "pipe",
