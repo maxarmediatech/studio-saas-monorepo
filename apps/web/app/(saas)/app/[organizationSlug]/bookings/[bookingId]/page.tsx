@@ -15,8 +15,6 @@ export const metadata = {
 	title: "Booking Details | Studio",
 };
 
-export const prefetch = "partial";
-
 export default function BookingDetailPage({ params }: Props) {
 	return (
 		<Suspense fallback={<BookingDetailPageSkeleton />}>
