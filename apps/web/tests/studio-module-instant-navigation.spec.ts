@@ -67,9 +67,7 @@ test.describe("studio module instant navigation", () => {
 			});
 
 			await expect(
-				page.locator(
-					`[data-route-content="${destination.segment}"]`,
-				),
+				page.locator(`[data-route-content="${destination.segment}"]`),
 			).toBeVisible();
 		}
 
