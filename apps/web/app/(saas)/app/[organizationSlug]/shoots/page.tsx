@@ -1,7 +1,6 @@
-import { getActiveOrganization } from "@saas/auth/lib/server";
 import { ShootsFilters, ShootsTableSkeleton } from "@saas/studio";
 import { ShootsTable } from "@saas/studio/components/shoots/index.server";
-import { notFound } from "next/navigation";
+import { getOrganizationPageMetadata } from "@saas/studio/lib/organization-page-metadata";
 import { Suspense } from "react";
 
 type Props = {
@@ -9,34 +8,29 @@ type Props = {
 	searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export async function generateMetadata({ params }: Props) {
-	const { organizationSlug } = await params;
-	const organization = await getActiveOrganization(organizationSlug);
-
-	return {
-		title: `Shoots | ${organization?.name ?? "Studio"}`,
-	};
+export function generateMetadata({ params }: Props) {
+	return getOrganizationPageMetadata(params, "Shoots");
 }
 
-export default async function ShootsPage({ params, searchParams }: Props) {
-	const { organizationSlug } = await params;
-
-	const organization = await getActiveOrganization(organizationSlug);
-
-	if (!organization) {
-		return notFound();
-	}
-
+export default function ShootsPage({ params, searchParams }: Props) {
 	return (
 		<div className="space-y-4">
 			<ShootsFilters />
 
 			<Suspense fallback={<ShootsTableSkeleton />}>
-				<ShootsTable
-					organizationSlug={organizationSlug}
-					searchParams={searchParams}
-				/>
+				<ShootsContent params={params} searchParams={searchParams} />
 			</Suspense>
 		</div>
+	);
+}
+
+async function ShootsContent({ params, searchParams }: Props) {
+	const { organizationSlug } = await params;
+
+	return (
+		<ShootsTable
+			organizationSlug={organizationSlug}
+			searchParams={searchParams}
+		/>
 	);
 }

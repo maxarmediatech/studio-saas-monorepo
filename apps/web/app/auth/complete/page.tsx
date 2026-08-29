@@ -7,6 +7,8 @@ import { getOrganizationList, getSession } from "@saas/auth/lib/server";
 import { sanitizeRedirectPath } from "@shared/lib/sanitize-redirect-path";
 import { redirect } from "next/navigation";
 
+export const instant = false;
+
 type Props = {
 	searchParams: Promise<{
 		redirectTo?: string | string[];

@@ -1,7 +1,6 @@
-import { buildStudioRoutePath } from "@saas/studio/lib/route-access";
-import { requireStudioRouteAccess } from "@saas/studio/lib/server-access";
-import { notFound } from "next/navigation";
-import type { ReactNode } from "react";
+import { PageContent } from "@saas/studio";
+import { StudioRouteGuard } from "@saas/studio/components/StudioRouteGuard";
+import { type ReactNode, Suspense } from "react";
 import { BookingsLayoutClient } from "./bookings-layout-client";
 
 type Props = {
@@ -9,20 +8,16 @@ type Props = {
 	children: ReactNode;
 };
 
-export default async function BookingsLayout({ params, children }: Props) {
-	const { organizationSlug } = await params;
-	if (
-		!(await requireStudioRouteAccess(
-			organizationSlug,
-			buildStudioRoutePath(organizationSlug, "/bookings"),
-		))
-	) {
-		notFound();
-	}
-
+export default function BookingsLayout({ params, children }: Props) {
 	return (
-		<BookingsLayoutClient organizationSlug={organizationSlug}>
-			{children}
-		</BookingsLayoutClient>
+		<Suspense fallback={<PageContent title="Bookings" />}>
+			<StudioRouteGuard params={params} routePath="/bookings">
+				{(organizationSlug) => (
+					<BookingsLayoutClient organizationSlug={organizationSlug}>
+						{children}
+					</BookingsLayoutClient>
+				)}
+			</StudioRouteGuard>
+		</Suspense>
 	);
 }

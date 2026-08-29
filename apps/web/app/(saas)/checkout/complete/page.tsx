@@ -19,6 +19,8 @@ import { orpcClient } from "@shared/lib/orpc-client";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
+export const instant = false;
+
 type Props = {
 	searchParams: Promise<{
 		checkoutSessionId?: string | string[];

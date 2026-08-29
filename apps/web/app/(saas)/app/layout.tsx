@@ -17,6 +17,8 @@ import { attemptAsync } from "es-toolkit";
 import { redirect } from "next/navigation";
 import type { PropsWithChildren } from "react";
 
+export const instant = false;
+
 export default async function ProtectedAppLayout({
 	children,
 }: PropsWithChildren) {

@@ -8,18 +8,22 @@ import { PasskeysBlock } from "@saas/settings/components/PasskeysBlock";
 import { SetPasswordForm } from "@saas/settings/components/SetPassword";
 import { SettingsList } from "@saas/shared/components/SettingsList";
 import { getServerQueryClient } from "@shared/lib/server";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { getTranslations } from "next-intl/server";
+import { Suspense } from "react";
+import { SettingsPageFallback } from "../_components/settings-page-fallback";
 
-export async function generateMetadata() {
-	const t = await getTranslations();
+export const metadata: Metadata = { title: "Security" };
 
-	return {
-		title: t("settings.account.security.title"),
-	};
+export default function SecuritySettingsPage() {
+	return (
+		<Suspense fallback={<SettingsPageFallback />}>
+			<SecuritySettingsContent />
+		</Suspense>
+	);
 }
 
-export default async function SecuritySettingsPage() {
+async function SecuritySettingsContent() {
 	const session = await getSession();
 
 	if (!session) {

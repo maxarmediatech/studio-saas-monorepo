@@ -1,16 +1,10 @@
 import { DeleteAccountForm } from "@saas/settings/components/DeleteAccountForm";
 import { SettingsList } from "@saas/shared/components/SettingsList";
-import { getTranslations } from "next-intl/server";
+import type { Metadata } from "next";
 
-export async function generateMetadata() {
-	const t = await getTranslations();
+export const metadata: Metadata = { title: "Danger zone" };
 
-	return {
-		title: t("settings.menu.account.dangerZone"),
-	};
-}
-
-export default async function AccountDangerZonePage() {
+export default function AccountDangerZonePage() {
 	return (
 		<SettingsList>
 			<DeleteAccountForm />
