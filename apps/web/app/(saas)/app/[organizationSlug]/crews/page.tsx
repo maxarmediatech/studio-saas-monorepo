@@ -5,6 +5,8 @@ type Props = {
 	searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
+export const instant = false;
+
 function toQueryString(
 	searchParams: Record<string, string | string[] | undefined>,
 ) {

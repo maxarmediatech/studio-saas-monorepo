@@ -14,6 +14,9 @@ export function createQueryClient() {
 				shouldDehydrateQuery: (query) =>
 					defaultShouldDehydrateQuery(query) ||
 					query.state.status === "pending",
+				// Let Next.js identify and redact its own server errors while
+				// preserving the digest used for dynamic route detection.
+				shouldRedactErrors: () => false,
 			},
 		},
 	});

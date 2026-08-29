@@ -1,28 +1,25 @@
-import { buildStudioRoutePath } from "@saas/studio/lib/route-access";
-import { requireStudioRouteAccess } from "@saas/studio/lib/server-access";
-import { notFound } from "next/navigation";
-import type { ReactNode } from "react";
-import { InvoicesLayoutClient } from "./invoices-layout-client";
+import { StudioRouteGuard } from "@saas/studio/components/StudioRouteGuard";
+import { type ReactNode, Suspense } from "react";
+import {
+	InvoicesLayoutClient,
+	InvoicesLayoutFallback,
+} from "./invoices-layout-client";
 
 type Props = {
 	params: Promise<{ organizationSlug: string }>;
 	children: ReactNode;
 };
 
-export default async function InvoicesLayout({ params, children }: Props) {
-	const { organizationSlug } = await params;
-	if (
-		!(await requireStudioRouteAccess(
-			organizationSlug,
-			buildStudioRoutePath(organizationSlug, "/invoices"),
-		))
-	) {
-		notFound();
-	}
+export const instant = true;
 
+export default function InvoicesLayout({ params, children }: Props) {
 	return (
-		<InvoicesLayoutClient organizationSlug={organizationSlug}>
-			{children}
+		<InvoicesLayoutClient>
+			<Suspense fallback={<InvoicesLayoutFallback />}>
+				<StudioRouteGuard params={params} routePath="/invoices">
+					{() => children}
+				</StudioRouteGuard>
+			</Suspense>
 		</InvoicesLayoutClient>
 	);
 }

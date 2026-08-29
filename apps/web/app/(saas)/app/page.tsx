@@ -2,6 +2,8 @@ import { config } from "@repo/config";
 import { getOrganizationList, getSession } from "@saas/auth/lib/server";
 import { redirect } from "next/navigation";
 
+export const instant = false;
+
 export default async function AppHomePage() {
 	const session = await getSession();
 

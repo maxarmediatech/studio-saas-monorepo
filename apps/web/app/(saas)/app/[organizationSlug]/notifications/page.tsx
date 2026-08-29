@@ -1,11 +1,10 @@
 import { NotificationsPageClient } from "@saas/studio/components/notifications/notifications-page-client";
+import type { Metadata } from "next";
 
-type Props = {
-	params: Promise<{ organizationSlug: string }>;
+export const metadata: Metadata = {
+	title: "Notifications",
 };
 
-export default async function NotificationsPage({ params }: Props) {
-	const { organizationSlug } = await params;
-
-	return <NotificationsPageClient organizationSlug={organizationSlug} />;
+export default function NotificationsPage() {
+	return <NotificationsPageClient />;
 }

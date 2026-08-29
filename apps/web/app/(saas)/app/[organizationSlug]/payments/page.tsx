@@ -1,10 +1,9 @@
-import { getActiveOrganization } from "@saas/auth/lib/server";
 import {
 	PaymentsFilters,
 	PaymentsTableSkeleton,
 } from "@saas/studio/components/payments";
 import { PaymentsTable } from "@saas/studio/components/payments/index.server";
-import { notFound } from "next/navigation";
+import { getOrganizationPageMetadata } from "@saas/studio/lib/organization-page-metadata";
 import { Suspense } from "react";
 
 type Props = {
@@ -12,34 +11,29 @@ type Props = {
 	searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export async function generateMetadata({ params }: Props) {
-	const { organizationSlug } = await params;
-	const organization = await getActiveOrganization(organizationSlug);
-
-	return {
-		title: `Payments | ${organization?.name ?? "Studio"}`,
-	};
+export function generateMetadata({ params }: Props) {
+	return getOrganizationPageMetadata(params, "Payments");
 }
 
-export default async function PaymentsPage({ params, searchParams }: Props) {
-	const { organizationSlug } = await params;
-
-	const organization = await getActiveOrganization(organizationSlug);
-
-	if (!organization) {
-		return notFound();
-	}
-
+export default function PaymentsPage({ params, searchParams }: Props) {
 	return (
-		<div className="space-y-4">
+		<div className="space-y-4" data-route-content="payments">
 			<PaymentsFilters />
 
 			<Suspense fallback={<PaymentsTableSkeleton />}>
-				<PaymentsTable
-					organizationSlug={organizationSlug}
-					searchParams={searchParams}
-				/>
+				<PaymentsContent params={params} searchParams={searchParams} />
 			</Suspense>
 		</div>
+	);
+}
+
+async function PaymentsContent({ params, searchParams }: Props) {
+	const { organizationSlug } = await params;
+
+	return (
+		<PaymentsTable
+			organizationSlug={organizationSlug}
+			searchParams={searchParams}
+		/>
 	);
 }

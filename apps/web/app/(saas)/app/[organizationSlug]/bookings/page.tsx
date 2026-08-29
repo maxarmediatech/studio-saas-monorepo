@@ -1,7 +1,6 @@
-import { getActiveOrganization } from "@saas/auth/lib/server";
 import { BookingsFilters, BookingsTableSkeleton } from "@saas/studio";
 import { BookingsTable } from "@saas/studio/components/bookings/index.server";
-import { notFound } from "next/navigation";
+import { getOrganizationPageMetadata } from "@saas/studio/lib/organization-page-metadata";
 import { Suspense } from "react";
 
 type Props = {
@@ -9,34 +8,29 @@ type Props = {
 	searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export async function generateMetadata({ params }: Props) {
-	const { organizationSlug } = await params;
-	const organization = await getActiveOrganization(organizationSlug);
-
-	return {
-		title: `Bookings | ${organization?.name ?? "Studio"}`,
-	};
+export function generateMetadata({ params }: Props) {
+	return getOrganizationPageMetadata(params, "Bookings");
 }
 
-export default async function BookingsPage({ params, searchParams }: Props) {
-	const { organizationSlug } = await params;
-
-	const organization = await getActiveOrganization(organizationSlug);
-
-	if (!organization) {
-		return notFound();
-	}
-
+export default function BookingsPage({ params, searchParams }: Props) {
 	return (
-		<div className="space-y-4">
+		<div className="space-y-4" data-route-content="bookings">
 			<BookingsFilters />
 
 			<Suspense fallback={<BookingsTableSkeleton />}>
-				<BookingsTable
-					organizationSlug={organizationSlug}
-					searchParams={searchParams}
-				/>
+				<BookingsContent params={params} searchParams={searchParams} />
 			</Suspense>
 		</div>
+	);
+}
+
+async function BookingsContent({ params, searchParams }: Props) {
+	const { organizationSlug } = await params;
+
+	return (
+		<BookingsTable
+			organizationSlug={organizationSlug}
+			searchParams={searchParams}
+		/>
 	);
 }

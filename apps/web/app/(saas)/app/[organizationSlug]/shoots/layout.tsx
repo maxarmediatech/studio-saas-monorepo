@@ -1,32 +1,33 @@
-import { PageContent } from "@saas/studio";
+import { PageContent, ShootsTableSkeleton } from "@saas/studio";
+import { StudioListRouteFallback } from "@saas/studio/components/StudioListRouteFallback";
+import { StudioRouteGuard } from "@saas/studio/components/StudioRouteGuard";
 import { OpenShootCreateSheet } from "@saas/studio/components/shoots/OpenShootSheet";
-import { buildStudioRoutePath } from "@saas/studio/lib/route-access";
-import { requireStudioRouteAccess } from "@saas/studio/lib/server-access";
-import { notFound } from "next/navigation";
-import type { ReactNode } from "react";
+import { type ReactNode, Suspense } from "react";
 
 type Props = {
 	params: Promise<{ organizationSlug: string }>;
 	children: ReactNode;
 };
 
-export default async function ShootsLayout({ children, params }: Props) {
-	const { organizationSlug } = await params;
-	if (
-		!(await requireStudioRouteAccess(
-			organizationSlug,
-			buildStudioRoutePath(organizationSlug, "/shoots"),
-		))
-	) {
-		notFound();
-	}
+export const instant = true;
 
+export default function ShootsLayout({ children, params }: Props) {
 	return (
 		<PageContent
 			title="Shoots"
 			controls={<OpenShootCreateSheet size="sm" />}
 		>
-			{children}
+			<Suspense
+				fallback={
+					<StudioListRouteFallback label="shoots">
+						<ShootsTableSkeleton />
+					</StudioListRouteFallback>
+				}
+			>
+				<StudioRouteGuard params={params} routePath="/shoots">
+					{() => children}
+				</StudioRouteGuard>
+			</Suspense>
 		</PageContent>
 	);
 }

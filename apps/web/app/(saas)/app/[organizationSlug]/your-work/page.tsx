@@ -1,6 +1,7 @@
-import { getActiveOrganization } from "@saas/auth/lib/server";
+import { Skeleton } from "@repo/ui/components/skeleton";
 import { YourWorkView } from "@saas/studio/components/your-work";
-import { notFound } from "next/navigation";
+import { getOrganizationPageMetadata } from "@saas/studio/lib/organization-page-metadata";
+import { Suspense } from "react";
 
 const ENTITY_OPTIONS = ["all", "shoot", "task", "deliverable"] as const;
 const VIEW_OPTIONS = ["grouped", "table"] as const;
@@ -10,24 +11,30 @@ type Props = {
 	searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export async function generateMetadata({ params }: Props) {
-	const { organizationSlug } = await params;
-	const organization = await getActiveOrganization(organizationSlug);
-
-	return {
-		title: `Your Work | ${organization?.name ?? "Studio"}`,
-	};
+export function generateMetadata({ params }: Props) {
+	return getOrganizationPageMetadata(params, "Your Work");
 }
 
-export default async function YourWorkPage({ params, searchParams }: Props) {
-	const { organizationSlug } = await params;
-	const organization = await getActiveOrganization(organizationSlug);
+export default function YourWorkPage({ params, searchParams }: Props) {
+	return (
+		<Suspense
+			fallback={
+				<div className="space-y-4" aria-hidden="true">
+					<Skeleton className="h-10 w-full max-w-xl" />
+					<Skeleton className="h-64 w-full" />
+				</div>
+			}
+		>
+			<YourWorkContent params={params} searchParams={searchParams} />
+		</Suspense>
+	);
+}
 
-	if (!organization) {
-		return notFound();
-	}
-
-	const resolvedSearchParams = await searchParams;
+async function YourWorkContent({ params, searchParams }: Props) {
+	const [{ organizationSlug }, resolvedSearchParams] = await Promise.all([
+		params,
+		searchParams,
+	]);
 	const entityTypeParam =
 		typeof resolvedSearchParams.entityType === "string"
 			? resolvedSearchParams.entityType

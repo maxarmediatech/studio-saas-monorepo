@@ -2,10 +2,7 @@
 
 import type { BookingMinimal } from "@repo/api/modules/studio/schemas/booking";
 import { cn } from "@repo/ui/lib/utils";
-import { bookingsApi } from "@saas/studio/lib/api";
-import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { useCallback } from "react";
 
 interface BookingListItemProps {
 	booking: BookingMinimal;
@@ -18,19 +15,9 @@ export function BookingListItem({
 	isSelected,
 	organizationSlug,
 }: BookingListItemProps) {
-	const queryClient = useQueryClient();
-
-	const prefetchBooking = useCallback(() => {
-		if (isSelected) return;
-		queryClient.prefetchQuery(bookingsApi.getOptions(booking.id));
-	}, [queryClient, booking.id, isSelected]);
-
 	return (
 		<Link
-			prefetch={true}
 			href={`/app/${organizationSlug}/bookings/${booking.id}`}
-			onMouseEnter={prefetchBooking}
-			onFocus={prefetchBooking}
 			className={cn(
 				"block px-3 py-3 rounded-lg transition-colors",
 				"hover:bg-muted/50",

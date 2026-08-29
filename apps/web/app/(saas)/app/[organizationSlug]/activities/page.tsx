@@ -1,27 +1,14 @@
-import { getActiveOrganization } from "@saas/auth/lib/server";
 import { ActivitiesPageClient } from "@saas/studio/components/activities";
-import { notFound } from "next/navigation";
+import { getOrganizationPageMetadata } from "@saas/studio/lib/organization-page-metadata";
 
 type Props = {
 	params: Promise<{ organizationSlug: string }>;
 };
 
-export async function generateMetadata({ params }: Props) {
-	const { organizationSlug } = await params;
-	const organization = await getActiveOrganization(organizationSlug);
-
-	return {
-		title: `Activities | ${organization?.name ?? "Studio"}`,
-	};
+export function generateMetadata({ params }: Props) {
+	return getOrganizationPageMetadata(params, "Activities");
 }
 
-export default async function ActivitiesPage({ params }: Props) {
-	const { organizationSlug } = await params;
-	const organization = await getActiveOrganization(organizationSlug);
-
-	if (!organization) {
-		return notFound();
-	}
-
-	return <ActivitiesPageClient organizationSlug={organizationSlug} />;
+export default function ActivitiesPage() {
+	return <ActivitiesPageClient />;
 }

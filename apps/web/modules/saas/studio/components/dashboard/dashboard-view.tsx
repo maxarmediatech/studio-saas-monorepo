@@ -6,7 +6,12 @@ import { dashboardApi } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { RefreshCwIcon } from "lucide-react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import {
+	useParams,
+	usePathname,
+	useRouter,
+	useSearchParams,
+} from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { DashboardSkeleton } from "./dashboard-skeleton";
 import {
@@ -26,11 +31,8 @@ const DASHBOARD_TABS = [
 	{ value: "financial", label: "Financial" },
 ] as const;
 
-interface DashboardViewProps {
-	organizationSlug: string;
-}
-
-export function DashboardView({ organizationSlug }: DashboardViewProps) {
+export function DashboardView() {
+	const { organizationSlug } = useParams<{ organizationSlug: string }>();
 	const router = useRouter();
 	const pathname = usePathname();
 	const searchParams = useSearchParams();

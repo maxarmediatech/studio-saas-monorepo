@@ -67,14 +67,7 @@ export function ExpenseDetailPageClient({
 	const expensesHref = `/app/${organizationSlug}/expenses`;
 
 	if (isLoading) {
-		return (
-			<div className="mx-auto w-full max-w-[860px] py-6 px-4">
-				<Skeleton className="h-6 w-64" />
-				<Skeleton className="mt-8 h-12 w-72" />
-				<Skeleton className="mt-4 h-4 w-80" />
-				<Skeleton className="mt-6 h-32 w-full" />
-			</div>
-		);
+		return <ExpenseDetailSkeleton />;
 	}
 
 	if (!expense) {
@@ -329,6 +322,17 @@ export function ExpenseDetailPageClient({
 					</div>
 				)}
 			</div>
+		</div>
+	);
+}
+
+export function ExpenseDetailSkeleton() {
+	return (
+		<div className="mx-auto w-full max-w-[860px] px-4 py-6">
+			<Skeleton className="h-6 w-64" />
+			<Skeleton className="mt-8 h-12 w-72" />
+			<Skeleton className="mt-4 h-4 w-80" />
+			<Skeleton className="mt-6 h-32 w-full" />
 		</div>
 	);
 }
