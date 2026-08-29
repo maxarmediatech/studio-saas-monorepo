@@ -47,8 +47,18 @@ test.describe("booking detail instant navigation", () => {
 		if (!firstHref) {
 			throw new Error("Expected the first booking link to have an href");
 		}
+		const firstBookingName = (await firstBookingLink.textContent())?.trim();
+		if (!firstBookingName) {
+			throw new Error("Expected the first booking link to have a name");
+		}
 
 		await page.goto(firstHref);
+		await expect(
+			page.getByRole("heading", {
+				name: firstBookingName,
+				exact: true,
+			}),
+		).toBeVisible();
 		await page.getByRole("button", { name: "Toggle booking list" }).click();
 
 		const siblingLink = page
@@ -61,6 +71,12 @@ test.describe("booking detail instant navigation", () => {
 		if (!siblingHref) {
 			throw new Error("Expected a sibling booking link to have an href");
 		}
+		const siblingName = (
+			await siblingLink.locator("span").first().textContent()
+		)?.trim();
+		if (!siblingName) {
+			throw new Error("Expected a sibling booking link to have a name");
+		}
 
 		const prefetchResponse = await shellPrefetch;
 		expect(prefetchResponse.ok()).toBe(true);
@@ -72,5 +88,9 @@ test.describe("booking detail instant navigation", () => {
 				page.getByTestId("booking-detail-page-skeleton"),
 			).toBeVisible();
 		});
+
+		await expect(
+			page.getByRole("heading", { name: siblingName, exact: true }),
+		).toBeVisible();
 	});
 });
