@@ -14,7 +14,7 @@ export function generateMetadata({ params }: Props) {
 
 export default function DeliverablesPage({ params, searchParams }: Props) {
 	return (
-		<div className="space-y-4">
+		<div className="space-y-4" data-route-content="deliverables">
 			<DeliverablesFilters />
 
 			<Suspense fallback={<DeliverablesTableSkeleton />}>

@@ -1,5 +1,6 @@
-import { PageContent } from "@saas/studio";
+import { DeliverablesTableSkeleton, PageContent } from "@saas/studio";
 import { OpenDeliverableCreateSheet } from "@saas/studio/components/deliverables/OpenDeliverableSheet";
+import { StudioListRouteFallback } from "@saas/studio/components/StudioListRouteFallback";
 import { StudioRouteGuard } from "@saas/studio/components/StudioRouteGuard";
 import { type ReactNode, Suspense } from "react";
 
@@ -8,19 +9,25 @@ type Props = {
 	children: ReactNode;
 };
 
+export const instant = true;
+
 export default function DeliverablesLayout({ children, params }: Props) {
 	return (
-		<Suspense fallback={<PageContent title="Deliverables" />}>
-			<StudioRouteGuard params={params} routePath="/deliverables">
-				{() => (
-					<PageContent
-						title="Deliverables"
-						controls={<OpenDeliverableCreateSheet size="sm" />}
-					>
-						{children}
-					</PageContent>
-				)}
-			</StudioRouteGuard>
-		</Suspense>
+		<PageContent
+			title="Deliverables"
+			controls={<OpenDeliverableCreateSheet size="sm" />}
+		>
+			<Suspense
+				fallback={
+					<StudioListRouteFallback label="deliverables">
+						<DeliverablesTableSkeleton />
+					</StudioListRouteFallback>
+				}
+			>
+				<StudioRouteGuard params={params} routePath="/deliverables">
+					{() => children}
+				</StudioRouteGuard>
+			</Suspense>
+		</PageContent>
 	);
 }
