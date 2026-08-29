@@ -1,5 +1,4 @@
 import { createPurchasesHelper } from "@repo/payments/lib/helper";
-import { getActiveOrganization, getSession } from "@saas/auth/lib/server";
 import { ActivePlan } from "@saas/payments/components/ActivePlan";
 import { ChangePlan } from "@saas/payments/components/ChangePlan";
 import { requireSettingsRouteAccess } from "@saas/settings/lib/server-access";
@@ -8,25 +7,26 @@ import { orpcClient } from "@shared/lib/orpc-client";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { getServerQueryClient } from "@shared/lib/server";
 import { attemptAsync } from "es-toolkit";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getTranslations } from "next-intl/server";
+import { Suspense } from "react";
+import { SettingsPageFallback } from "../_components/settings-page-fallback";
 
 type Props = {
 	params: Promise<{ organizationSlug: string }>;
 };
 
-export async function generateMetadata({ params }: Props) {
-	const t = await getTranslations();
-	const { organizationSlug } = await params;
-	const organization = await getActiveOrganization(organizationSlug);
+export const metadata: Metadata = { title: "Billing" };
 
-	return {
-		title: `${t("settings.billing.title")} | ${organization?.name ?? "Studio"}`,
-	};
+export default function BillingSettingsPage({ params }: Props) {
+	return (
+		<Suspense fallback={<SettingsPageFallback />}>
+			<BillingSettingsContent params={params} />
+		</Suspense>
+	);
 }
 
-export default async function BillingSettingsPage({ params }: Props) {
-	const session = await getSession();
+async function BillingSettingsContent({ params }: Props) {
 	const { organizationSlug } = await params;
 	const context = await requireSettingsRouteAccess(
 		organizationSlug,
@@ -67,7 +67,7 @@ export default async function BillingSettingsPage({ params }: Props) {
 			)}
 			<ChangePlan
 				organizationId={context.organization.id}
-				userId={session?.user.id}
+				userId={context.session.user.id}
 				activePlanId={activePlan?.id}
 				activePlanPurchaseId={activePlan?.purchaseId}
 				postCheckoutPath={`/app/${organizationSlug}/settings/billing`}

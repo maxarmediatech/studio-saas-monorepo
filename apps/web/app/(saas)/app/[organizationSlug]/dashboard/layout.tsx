@@ -1,24 +1,25 @@
 import { PageContent } from "@saas/studio";
-import { buildStudioRoutePath } from "@saas/studio/lib/route-access";
-import { requireStudioRouteAccess } from "@saas/studio/lib/server-access";
-import { notFound } from "next/navigation";
-import type { ReactNode } from "react";
+import { DashboardSkeleton } from "@saas/studio/components/dashboard/dashboard-skeleton";
+import { StudioRouteGuard } from "@saas/studio/components/StudioRouteGuard";
+import { type ReactNode, Suspense } from "react";
 
 type Props = {
 	params: Promise<{ organizationSlug: string }>;
 	children: ReactNode;
 };
 
-export default async function DashboardLayout({ children, params }: Props) {
-	const { organizationSlug } = await params;
-	if (
-		!(await requireStudioRouteAccess(
-			organizationSlug,
-			buildStudioRoutePath(organizationSlug, "/dashboard"),
-		))
-	) {
-		notFound();
-	}
-
-	return <PageContent title="Dashboard">{children}</PageContent>;
+export default function DashboardLayout({ children, params }: Props) {
+	return (
+		<Suspense
+			fallback={
+				<PageContent title="Dashboard">
+					<DashboardSkeleton />
+				</PageContent>
+			}
+		>
+			<StudioRouteGuard params={params} routePath="/dashboard">
+				{() => <PageContent title="Dashboard">{children}</PageContent>}
+			</StudioRouteGuard>
+		</Suspense>
+	);
 }

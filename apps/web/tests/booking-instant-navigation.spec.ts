@@ -25,8 +25,20 @@ test.describe("booking detail instant navigation", () => {
 		await signIn(page);
 		const organizationSlug = new URL(page.url()).pathname.split("/")[2];
 		const bookingsPath = `/app/${organizationSlug}/bookings`;
-		await page.goto(bookingsPath);
+		const shellPrefetch = page.waitForResponse(
+			(response) => {
+				const pathname = new URL(response.url()).pathname;
 
+				return (
+					pathname.startsWith(`${bookingsPath}/`) &&
+					!pathname.startsWith(`${bookingsPath}/new`) &&
+					response.request().headers()["next-router-prefetch"] === "1"
+				);
+			},
+			{ timeout: 20_000 },
+		);
+
+		await page.goto(bookingsPath);
 		const firstBookingLink = page
 			.locator('table a[href*="/bookings/"]')
 			.first();
@@ -36,14 +48,6 @@ test.describe("booking detail instant navigation", () => {
 			throw new Error("Expected the first booking link to have an href");
 		}
 
-		const shellPrefetch = page.waitForResponse(
-			(response) =>
-				new URL(response.url()).pathname.startsWith(
-					`${bookingsPath}/`,
-				) &&
-				response.request().headers()["next-router-prefetch"] === "1",
-			{ timeout: 20_000 },
-		);
 		await page.goto(firstHref);
 		await page.getByRole("button", { name: "Toggle booking list" }).click();
 

@@ -1,32 +1,31 @@
-import { getActiveOrganization } from "@saas/auth/lib/server";
 import { invoicesApi } from "@saas/studio/lib/api";
+import { getOrganizationPageMetadata } from "@saas/studio/lib/organization-page-metadata";
 import { getServerQueryClient } from "@shared/lib/server";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
-import { notFound } from "next/navigation";
-import { InvoiceDetailPageClient } from "./InvoiceDetailPageClient";
+import { Suspense } from "react";
+import {
+	InvoiceDetailPageClient,
+	InvoiceDetailSkeleton,
+} from "./InvoiceDetailPageClient";
 
 type Props = {
 	params: Promise<{ organizationSlug: string; id: string }>;
 };
 
-export async function generateMetadata({ params }: Props) {
-	const { organizationSlug } = await params;
-	const organization = await getActiveOrganization(organizationSlug);
-
-	return {
-		title: `Invoice Details | ${organization?.name ?? "Studio"}`,
-	};
+export function generateMetadata({ params }: Props) {
+	return getOrganizationPageMetadata(params, "Invoice Details");
 }
 
-export default async function InvoiceDetailPage({ params }: Props) {
+export default function InvoiceDetailPage({ params }: Props) {
+	return (
+		<Suspense fallback={<InvoiceDetailSkeleton />}>
+			<InvoiceDetailContent params={params} />
+		</Suspense>
+	);
+}
+
+async function InvoiceDetailContent({ params }: Props) {
 	const { organizationSlug, id } = await params;
-
-	const organization = await getActiveOrganization(organizationSlug);
-
-	if (!organization) {
-		return notFound();
-	}
-
 	const queryClient = getServerQueryClient();
 	await queryClient.prefetchQuery(invoicesApi.getOptions(id));
 
@@ -34,7 +33,6 @@ export default async function InvoiceDetailPage({ params }: Props) {
 		<HydrationBoundary state={dehydrate(queryClient)}>
 			<InvoiceDetailPageClient
 				organizationSlug={organizationSlug}
-				organizationName={organization.name}
 				invoiceId={id}
 			/>
 		</HydrationBoundary>

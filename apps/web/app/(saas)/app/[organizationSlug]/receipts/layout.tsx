@@ -1,7 +1,6 @@
-import { buildStudioRoutePath } from "@saas/studio/lib/route-access";
-import { requireStudioRouteAccess } from "@saas/studio/lib/server-access";
-import { notFound } from "next/navigation";
-import type { ReactNode } from "react";
+import { PageContent } from "@saas/studio";
+import { StudioRouteGuard } from "@saas/studio/components/StudioRouteGuard";
+import { type ReactNode, Suspense } from "react";
 import { ReceiptsLayoutClient } from "./receipts-layout-client";
 
 type Props = {
@@ -9,20 +8,16 @@ type Props = {
 	children: ReactNode;
 };
 
-export default async function ReceiptsLayout({ params, children }: Props) {
-	const { organizationSlug } = await params;
-	if (
-		!(await requireStudioRouteAccess(
-			organizationSlug,
-			buildStudioRoutePath(organizationSlug, "/receipts"),
-		))
-	) {
-		notFound();
-	}
-
+export default function ReceiptsLayout({ params, children }: Props) {
 	return (
-		<ReceiptsLayoutClient organizationSlug={organizationSlug}>
-			{children}
-		</ReceiptsLayoutClient>
+		<Suspense fallback={<PageContent title="Receipts" />}>
+			<StudioRouteGuard params={params} routePath="/receipts">
+				{(organizationSlug) => (
+					<ReceiptsLayoutClient organizationSlug={organizationSlug}>
+						{children}
+					</ReceiptsLayoutClient>
+				)}
+			</StudioRouteGuard>
+		</Suspense>
 	);
 }

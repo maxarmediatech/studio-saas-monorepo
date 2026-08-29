@@ -1,32 +1,26 @@
 import { PageContent } from "@saas/studio";
 import { OpenPaymentCreateSheet } from "@saas/studio/components/payments/OpenPaymentSheet";
-import { buildStudioRoutePath } from "@saas/studio/lib/route-access";
-import { requireStudioRouteAccess } from "@saas/studio/lib/server-access";
-import { notFound } from "next/navigation";
-import type { ReactNode } from "react";
+import { StudioRouteGuard } from "@saas/studio/components/StudioRouteGuard";
+import { type ReactNode, Suspense } from "react";
 
 type Props = {
 	params: Promise<{ organizationSlug: string }>;
 	children: ReactNode;
 };
 
-export default async function PaymentsLayout({ children, params }: Props) {
-	const { organizationSlug } = await params;
-	if (
-		!(await requireStudioRouteAccess(
-			organizationSlug,
-			buildStudioRoutePath(organizationSlug, "/payments"),
-		))
-	) {
-		notFound();
-	}
-
+export default function PaymentsLayout({ children, params }: Props) {
 	return (
-		<PageContent
-			title="Payments"
-			controls={<OpenPaymentCreateSheet size="sm" />}
-		>
-			{children}
-		</PageContent>
+		<Suspense fallback={<PageContent title="Payments" />}>
+			<StudioRouteGuard params={params} routePath="/payments">
+				{() => (
+					<PageContent
+						title="Payments"
+						controls={<OpenPaymentCreateSheet size="sm" />}
+					>
+						{children}
+					</PageContent>
+				)}
+			</StudioRouteGuard>
+		</Suspense>
 	);
 }

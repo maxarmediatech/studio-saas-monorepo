@@ -1,32 +1,26 @@
 import { PageContent } from "@saas/studio";
 import { OpenClientCreateSheet } from "@saas/studio/components/clients/OpenClientSheet";
-import { buildStudioRoutePath } from "@saas/studio/lib/route-access";
-import { requireStudioRouteAccess } from "@saas/studio/lib/server-access";
-import { notFound } from "next/navigation";
-import type { ReactNode } from "react";
+import { StudioRouteGuard } from "@saas/studio/components/StudioRouteGuard";
+import { type ReactNode, Suspense } from "react";
 
 type Props = {
 	params: Promise<{ organizationSlug: string }>;
 	children: ReactNode;
 };
 
-export default async function ClientsLayout({ children, params }: Props) {
-	const { organizationSlug } = await params;
-	if (
-		!(await requireStudioRouteAccess(
-			organizationSlug,
-			buildStudioRoutePath(organizationSlug, "/clients"),
-		))
-	) {
-		notFound();
-	}
-
+export default function ClientsLayout({ children, params }: Props) {
 	return (
-		<PageContent
-			title="Clients"
-			controls={<OpenClientCreateSheet size="sm" />}
-		>
-			{children}
-		</PageContent>
+		<Suspense fallback={<PageContent title="Clients" />}>
+			<StudioRouteGuard params={params} routePath="/clients">
+				{() => (
+					<PageContent
+						title="Clients"
+						controls={<OpenClientCreateSheet size="sm" />}
+					>
+						{children}
+					</PageContent>
+				)}
+			</StudioRouteGuard>
+		</Suspense>
 	);
 }

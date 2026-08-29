@@ -1,4 +1,5 @@
 import { SearchPageClient } from "@saas/studio/components/search";
+import type { Metadata } from "next";
 import { Suspense } from "react";
 
 interface SearchPageProps {
@@ -7,9 +8,11 @@ interface SearchPageProps {
 	}>;
 }
 
-export default async function SearchPage({ params }: SearchPageProps) {
-	const { organizationSlug } = await params;
+export const metadata: Metadata = {
+	title: "Search",
+};
 
+export default function SearchPage({ params }: SearchPageProps) {
 	return (
 		<Suspense
 			fallback={
@@ -20,7 +23,13 @@ export default async function SearchPage({ params }: SearchPageProps) {
 				</div>
 			}
 		>
-			<SearchPageClient organizationSlug={organizationSlug} />
+			<SearchContent params={params} />
 		</Suspense>
 	);
+}
+
+async function SearchContent({ params }: SearchPageProps) {
+	const { organizationSlug } = await params;
+
+	return <SearchPageClient organizationSlug={organizationSlug} />;
 }

@@ -1,7 +1,9 @@
-import { getActiveOrganization } from "@saas/auth/lib/server";
-import { ConfigurationsFilters, ConfigurationsTableSkeleton } from "@saas/studio";
+import {
+	ConfigurationsFilters,
+	ConfigurationsTableSkeleton,
+} from "@saas/studio";
 import { ConfigurationsTable } from "@saas/studio/components/configurations/index.server";
-import { notFound } from "next/navigation";
+import { getOrganizationPageMetadata } from "@saas/studio/lib/organization-page-metadata";
 import { Suspense } from "react";
 
 type Props = {
@@ -9,24 +11,11 @@ type Props = {
 	searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export async function generateMetadata({ params }: Props) {
-	const { organizationSlug } = await params;
-	const organization = await getActiveOrganization(organizationSlug);
-
-	return {
-		title: `Event Types | ${organization?.name ?? "Studio"}`,
-	};
+export function generateMetadata({ params }: Props) {
+	return getOrganizationPageMetadata(params, "Event Types");
 }
 
-export default async function EventTypesPage({ params, searchParams }: Props) {
-	const { organizationSlug } = await params;
-
-	const organization = await getActiveOrganization(organizationSlug);
-
-	if (!organization) {
-		return notFound();
-	}
-
+export default function EventTypesPage({ searchParams }: Props) {
 	return (
 		<div className="space-y-4">
 			<ConfigurationsFilters

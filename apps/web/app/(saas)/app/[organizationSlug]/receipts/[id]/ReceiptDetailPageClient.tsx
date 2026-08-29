@@ -3,6 +3,7 @@
 import { Button } from "@repo/ui/components/button";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
+import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
 import { formatMoney } from "@saas/shared/lib";
 import { PageContent } from "@saas/studio";
 import { receiptsApi } from "@saas/studio/lib/api";
@@ -20,7 +21,6 @@ import { toast } from "sonner";
 
 interface ReceiptDetailPageClientProps {
 	organizationSlug: string;
-	organizationName: string;
 	receiptId: string;
 }
 
@@ -78,9 +78,10 @@ function formatRelativeTime(date: string) {
 
 export function ReceiptDetailPageClient({
 	organizationSlug,
-	organizationName,
 	receiptId,
 }: ReceiptDetailPageClientProps) {
+	const { activeOrganization } = useActiveOrganization();
+	const organizationName = activeOrganization?.name ?? "Studio";
 	const {
 		data: receiptData,
 		isLoading,
@@ -530,15 +531,19 @@ export function ReceiptDetailPageClient({
 
 // ── Skeleton ─────────────────────────────────────────────────────
 
-function ReceiptDetailSkeleton({
+export function ReceiptDetailSkeleton({
 	organizationSlug,
 }: {
-	organizationSlug: string;
+	organizationSlug?: string;
 }) {
 	return (
 		<PageContent
 			title={<Skeleton className="h-5 w-40" />}
-			backHref={`/app/${organizationSlug}/receipts`}
+			backHref={
+				organizationSlug
+					? `/app/${organizationSlug}/receipts`
+					: undefined
+			}
 		>
 			{/* Banner skeleton */}
 			<div className="mb-8 rounded-lg border border-gray-200/70 bg-gray-50/70 p-6 sm:p-8">

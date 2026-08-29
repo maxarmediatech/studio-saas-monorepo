@@ -1,10 +1,9 @@
-import { getActiveOrganization } from "@saas/auth/lib/server";
 import {
 	ExpensesFilters,
 	ExpensesTableSkeleton,
 } from "@saas/studio/components/expenses";
 import { ExpensesTable } from "@saas/studio/components/expenses/index.server";
-import { notFound } from "next/navigation";
+import { getOrganizationPageMetadata } from "@saas/studio/lib/organization-page-metadata";
 import { Suspense } from "react";
 
 type Props = {
@@ -12,34 +11,29 @@ type Props = {
 	searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export async function generateMetadata({ params }: Props) {
-	const { organizationSlug } = await params;
-	const organization = await getActiveOrganization(organizationSlug);
-
-	return {
-		title: `Expenses | ${organization?.name ?? "Studio"}`,
-	};
+export function generateMetadata({ params }: Props) {
+	return getOrganizationPageMetadata(params, "Expenses");
 }
 
-export default async function ExpensesPage({ params, searchParams }: Props) {
-	const { organizationSlug } = await params;
-
-	const organization = await getActiveOrganization(organizationSlug);
-
-	if (!organization) {
-		return notFound();
-	}
-
+export default function ExpensesPage({ params, searchParams }: Props) {
 	return (
 		<div className="space-y-4">
 			<ExpensesFilters />
 
 			<Suspense fallback={<ExpensesTableSkeleton />}>
-				<ExpensesTable
-					organizationSlug={organizationSlug}
-					searchParams={searchParams}
-				/>
+				<ExpensesContent params={params} searchParams={searchParams} />
 			</Suspense>
 		</div>
+	);
+}
+
+async function ExpensesContent({ params, searchParams }: Props) {
+	const { organizationSlug } = await params;
+
+	return (
+		<ExpensesTable
+			organizationSlug={organizationSlug}
+			searchParams={searchParams}
+		/>
 	);
 }

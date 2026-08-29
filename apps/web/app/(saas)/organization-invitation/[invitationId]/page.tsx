@@ -6,6 +6,8 @@ import { AuthWrapper } from "@saas/shared/components/AuthWrapper";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+export const instant = false;
+
 type Props = {
 	params: Promise<{ invitationId: string }>;
 };

@@ -1,27 +1,29 @@
-import { getActiveOrganization } from "@saas/auth/lib/server";
 import { requireSettingsRouteAccess } from "@saas/settings/lib/server-access";
+import { getOrganizationPageMetadata } from "@saas/studio/lib/organization-page-metadata";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
+import { SettingsPageFallback } from "../_components/settings-page-fallback";
 import { RolesPageClient } from "./roles-page-client";
 
 type Props = {
 	params: Promise<{ organizationSlug: string }>;
 };
 
-export async function generateMetadata({ params }: Props) {
-	const { organizationSlug } = await params;
-	const organization = await getActiveOrganization(organizationSlug);
-
-	return {
-		title: `Roles | ${organization?.name ?? "Studio"}`,
-	};
+export function generateMetadata({ params }: Props) {
+	return getOrganizationPageMetadata(params, "Roles");
 }
 
-export default async function RolesSettingsPage({ params }: Props) {
-	const { organizationSlug } = await params;
-	const context = await requireSettingsRouteAccess(
-		organizationSlug,
-		"roles",
+export default function RolesSettingsPage({ params }: Props) {
+	return (
+		<Suspense fallback={<SettingsPageFallback />}>
+			<RolesSettingsContent params={params} />
+		</Suspense>
 	);
+}
+
+async function RolesSettingsContent({ params }: Props) {
+	const { organizationSlug } = await params;
+	const context = await requireSettingsRouteAccess(organizationSlug, "roles");
 
 	if (!context) {
 		return notFound();
