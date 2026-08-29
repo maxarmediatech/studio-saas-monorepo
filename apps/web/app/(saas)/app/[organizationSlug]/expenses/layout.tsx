@@ -1,5 +1,7 @@
 import { PageContent } from "@saas/studio";
+import { ExpensesTableSkeleton } from "@saas/studio/components/expenses";
 import { OpenExpenseCreateSheet } from "@saas/studio/components/expenses/OpenExpenseSheet";
+import { StudioListRouteFallback } from "@saas/studio/components/StudioListRouteFallback";
 import { StudioRouteGuard } from "@saas/studio/components/StudioRouteGuard";
 import { type ReactNode, Suspense } from "react";
 
@@ -8,19 +10,25 @@ type Props = {
 	children: ReactNode;
 };
 
+export const instant = true;
+
 export default function ExpensesLayout({ children, params }: Props) {
 	return (
-		<Suspense fallback={<PageContent title="Expenses" />}>
-			<StudioRouteGuard params={params} routePath="/expenses">
-				{() => (
-					<PageContent
-						title="Expenses"
-						controls={<OpenExpenseCreateSheet size="sm" />}
-					>
-						{children}
-					</PageContent>
-				)}
-			</StudioRouteGuard>
-		</Suspense>
+		<PageContent
+			title="Expenses"
+			controls={<OpenExpenseCreateSheet size="sm" />}
+		>
+			<Suspense
+				fallback={
+					<StudioListRouteFallback label="expenses">
+						<ExpensesTableSkeleton />
+					</StudioListRouteFallback>
+				}
+			>
+				<StudioRouteGuard params={params} routePath="/expenses">
+					{() => children}
+				</StudioRouteGuard>
+			</Suspense>
+		</PageContent>
 	);
 }

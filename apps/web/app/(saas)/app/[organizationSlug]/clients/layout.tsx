@@ -1,5 +1,6 @@
-import { PageContent } from "@saas/studio";
+import { ClientsTableSkeleton, PageContent } from "@saas/studio";
 import { OpenClientCreateSheet } from "@saas/studio/components/clients/OpenClientSheet";
+import { StudioListRouteFallback } from "@saas/studio/components/StudioListRouteFallback";
 import { StudioRouteGuard } from "@saas/studio/components/StudioRouteGuard";
 import { type ReactNode, Suspense } from "react";
 
@@ -8,19 +9,25 @@ type Props = {
 	children: ReactNode;
 };
 
+export const instant = true;
+
 export default function ClientsLayout({ children, params }: Props) {
 	return (
-		<Suspense fallback={<PageContent title="Clients" />}>
-			<StudioRouteGuard params={params} routePath="/clients">
-				{() => (
-					<PageContent
-						title="Clients"
-						controls={<OpenClientCreateSheet size="sm" />}
-					>
-						{children}
-					</PageContent>
-				)}
-			</StudioRouteGuard>
-		</Suspense>
+		<PageContent
+			title="Clients"
+			controls={<OpenClientCreateSheet size="sm" />}
+		>
+			<Suspense
+				fallback={
+					<StudioListRouteFallback label="clients">
+						<ClientsTableSkeleton />
+					</StudioListRouteFallback>
+				}
+			>
+				<StudioRouteGuard params={params} routePath="/clients">
+					{() => children}
+				</StudioRouteGuard>
+			</Suspense>
+		</PageContent>
 	);
 }

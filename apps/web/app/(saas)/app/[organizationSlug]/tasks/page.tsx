@@ -17,7 +17,7 @@ export function generateMetadata({ params }: Props) {
 
 export default function TasksPage({ params, searchParams }: Props) {
 	return (
-		<div className="space-y-4">
+		<div className="space-y-4" data-route-content="tasks">
 			<TasksFilters />
 
 			<Suspense fallback={<TasksTableSkeleton />}>

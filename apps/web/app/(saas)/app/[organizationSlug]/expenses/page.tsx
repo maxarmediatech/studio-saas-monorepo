@@ -17,7 +17,7 @@ export function generateMetadata({ params }: Props) {
 
 export default function ExpensesPage({ params, searchParams }: Props) {
 	return (
-		<div className="space-y-4">
+		<div className="space-y-4" data-route-content="expenses">
 			<ExpensesFilters />
 
 			<Suspense fallback={<ExpensesTableSkeleton />}>

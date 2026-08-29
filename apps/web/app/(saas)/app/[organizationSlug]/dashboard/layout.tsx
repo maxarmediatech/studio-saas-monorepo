@@ -8,18 +8,16 @@ type Props = {
 	children: ReactNode;
 };
 
+export const instant = true;
+
 export default function DashboardLayout({ children, params }: Props) {
 	return (
-		<Suspense
-			fallback={
-				<PageContent title="Dashboard">
-					<DashboardSkeleton />
-				</PageContent>
-			}
-		>
-			<StudioRouteGuard params={params} routePath="/dashboard">
-				{() => <PageContent title="Dashboard">{children}</PageContent>}
-			</StudioRouteGuard>
-		</Suspense>
+		<PageContent title="Dashboard">
+			<Suspense fallback={<DashboardSkeleton />}>
+				<StudioRouteGuard params={params} routePath="/dashboard">
+					{() => children}
+				</StudioRouteGuard>
+			</Suspense>
+		</PageContent>
 	);
 }
