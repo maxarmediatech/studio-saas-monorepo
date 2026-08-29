@@ -6,7 +6,6 @@ import { Card, CardContent } from "@repo/ui/components/card";
 import { Label } from "@repo/ui/components/label";
 import { Switch } from "@repo/ui/components/switch";
 import { useSession } from "@saas/auth/hooks/use-session";
-import { PageContent } from "@saas/studio";
 import { useReviewQueueParams } from "@saas/studio/hooks/params/use-review-queue-params";
 import { orpcClient } from "@shared/lib/orpc-client";
 import { orpc } from "@shared/lib/orpc-query-utils";
@@ -61,7 +60,10 @@ export function ReviewQueueView() {
 			case "ready_for_review":
 				return { status: undefined, pendingReviewOnly: true };
 			case "changes_requested":
-				return { status: "revision_requested", pendingReviewOnly: false };
+				return {
+					status: "revision_requested",
+					pendingReviewOnly: false,
+				};
 			case "approved":
 				return { status: "approved", pendingReviewOnly: false };
 			case "rejected":
@@ -128,125 +130,112 @@ export function ReviewQueueView() {
 			: `Showing ${totalSubmissions} ${statusLabel.toLowerCase()}`;
 
 	return (
-		<PageContent
-			title="Review Queue"
-		>
-			<div className="grid grid-cols-1 gap-10 lg:grid-cols-[260px_1fr]">
-				<aside className="flex flex-col gap-4">
-					<Card className="py-0">
-						<CardContent className="p-0">
-							<div className="border-b border-border px-4 py-3">
-								<h2 className="text-sm font-semibold">
-									Filter Submissions
-								</h2>
-								<p className="mt-1 text-xs text-muted-foreground">
-									Track and manage all review requests.
-								</p>
-							</div>
-							<nav className="space-y-1 p-2">
-								{ASSIGNMENT_TYPE_OPTIONS.map((option) => (
-									<button
-										type="button"
-										key={option.id}
-										onClick={() =>
-											setAssignmentType(option.id)
-										}
-										className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors ${
-											assignmentType === option.id
-												? "bg-primary/10 text-primary"
-												: "text-muted-foreground hover:bg-muted"
-										}`}
-									>
-										<option.icon className="h-4 w-4" />
-										{option.label}
-									</button>
-								))}
-							</nav>
-						</CardContent>
-					</Card>
-				</aside>
-
-				<main className="space-y-6">
-					<div className="flex items-center justify-between gap-4">
-						<span className="text-sm text-muted-foreground">
-							{headerDescription}
-						</span>
-						<div className="flex items-center justify-end gap-2">
-							<Switch
-								id="assigned-to-me"
-								checked={assignedToMe ?? false}
-								onCheckedChange={setAssignedToMe}
-							/>
-							<Label htmlFor="assigned-to-me">
-								Assigned to me
-							</Label>
+		<div className="grid grid-cols-1 gap-10 lg:grid-cols-[260px_1fr]">
+			<aside className="flex flex-col gap-4">
+				<Card className="py-0">
+					<CardContent className="p-0">
+						<div className="border-b border-border px-4 py-3">
+							<h2 className="text-sm font-semibold">
+								Filter Submissions
+							</h2>
+							<p className="mt-1 text-xs text-muted-foreground">
+								Track and manage all review requests.
+							</p>
 						</div>
-					</div>
+						<nav className="space-y-1 p-2">
+							{ASSIGNMENT_TYPE_OPTIONS.map((option) => (
+								<button
+									type="button"
+									key={option.id}
+									onClick={() => setAssignmentType(option.id)}
+									className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors ${
+										assignmentType === option.id
+											? "bg-primary/10 text-primary"
+											: "text-muted-foreground hover:bg-muted"
+									}`}
+								>
+									<option.icon className="h-4 w-4" />
+									{option.label}
+								</button>
+							))}
+						</nav>
+					</CardContent>
+				</Card>
+			</aside>
 
-					<div className="flex flex-wrap gap-2 border-b pb-4">
-						{STATUS_FILTER_OPTIONS.map((option) => (
-							<Button
-								key={option.id}
-								variant={
-									status === option.id
-										? "secondary"
-										: "ghost"
-								}
-								size="sm"
-								onClick={() => setStatus(option.id)}
-								className="rounded-full"
-							>
-								{option.label}
-							</Button>
+			<main className="space-y-6">
+				<div className="flex items-center justify-between gap-4">
+					<span className="text-sm text-muted-foreground">
+						{headerDescription}
+					</span>
+					<div className="flex items-center justify-end gap-2">
+						<Switch
+							id="assigned-to-me"
+							checked={assignedToMe ?? false}
+							onCheckedChange={setAssignedToMe}
+						/>
+						<Label htmlFor="assigned-to-me">Assigned to me</Label>
+					</div>
+				</div>
+
+				<div className="flex flex-wrap gap-2 border-b pb-4">
+					{STATUS_FILTER_OPTIONS.map((option) => (
+						<Button
+							key={option.id}
+							variant={
+								status === option.id ? "secondary" : "ghost"
+							}
+							size="sm"
+							onClick={() => setStatus(option.id)}
+							className="rounded-full"
+						>
+							{option.label}
+						</Button>
+					))}
+				</div>
+
+				{submissionsQuery.isLoading && (
+					<div className="text-sm text-muted-foreground">
+						Loading submissions...
+					</div>
+				)}
+
+				{submissionsQuery.isError && (
+					<div className="text-sm text-destructive">
+						Unable to load submissions right now.
+					</div>
+				)}
+
+				{!submissionsQuery.isLoading && submissions.length === 0 && (
+					<EmptyState />
+				)}
+
+				{submissions.length > 0 && (
+					<div className="space-y-4">
+						{submissions.map((submission) => (
+							<SubmissionCard
+								key={submission.id}
+								submission={submission}
+							/>
 						))}
 					</div>
+				)}
 
-					{submissionsQuery.isLoading && (
-						<div className="text-sm text-muted-foreground">
-							Loading submissions...
-						</div>
-					)}
-
-					{submissionsQuery.isError && (
-						<div className="text-sm text-destructive">
-							Unable to load submissions right now.
-						</div>
-					)}
-
-					{!submissionsQuery.isLoading &&
-						submissions.length === 0 && <EmptyState />}
-
-					{submissions.length > 0 && (
-						<div className="space-y-4">
-							{submissions.map((submission) => (
-								<SubmissionCard
-									key={submission.id}
-									submission={submission}
-								/>
-							))}
-						</div>
-					)}
-
-					{submissionsQuery.hasNextPage && (
-						<div className="flex justify-center">
-							<Button
-								variant="outline"
-								onClick={() =>
-									submissionsQuery.fetchNextPage()
-								}
-								disabled={
-									submissionsQuery.isFetchingNextPage
-								}
-							>
-								{submissionsQuery.isFetchingNextPage
-									? "Loading..."
-									: "Load More"}
-							</Button>
-						</div>
-					)}
-				</main>
-			</div>
-		</PageContent>
+				{submissionsQuery.hasNextPage && (
+					<div className="flex justify-center">
+						<Button
+							variant="outline"
+							onClick={() => submissionsQuery.fetchNextPage()}
+							disabled={submissionsQuery.isFetchingNextPage}
+						>
+							{submissionsQuery.isFetchingNextPage
+								? "Loading..."
+								: "Load More"}
+						</Button>
+					</div>
+				)}
+			</main>
+		</div>
 	);
 }
 

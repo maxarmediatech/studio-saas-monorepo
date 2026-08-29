@@ -1,7 +1,6 @@
-import { getActiveOrganization } from "@saas/auth/lib/server";
 import { ClientsFilters, ClientsTableSkeleton } from "@saas/studio";
 import { ClientsTable } from "@saas/studio/components/clients/index.server";
-import { notFound } from "next/navigation";
+import { getOrganizationPageMetadata } from "@saas/studio/lib/organization-page-metadata";
 import { Suspense } from "react";
 
 type Props = {
@@ -9,30 +8,29 @@ type Props = {
 	searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export async function generateMetadata({ params }: Props) {
-	const { organizationSlug } = await params;
-	const organization = await getActiveOrganization(organizationSlug);
-
-	return {
-		title: `Leads | ${organization?.name ?? "Studio"}`,
-	};
+export function generateMetadata({ params }: Props) {
+	return getOrganizationPageMetadata(params, "Leads");
 }
 
-export default async function LeadsPage({ params, searchParams }: Props) {
-	const { organizationSlug } = await params;
-	if (!(await getActiveOrganization(organizationSlug))) {
-		notFound();
-	}
+export default function LeadsPage({ params, searchParams }: Props) {
 	return (
-		<div className="space-y-4">
+		<div className="space-y-4" data-route-content="leads">
 			<ClientsFilters />
 			<Suspense fallback={<ClientsTableSkeleton />}>
-				<ClientsTable
-					organizationSlug={organizationSlug}
-					searchParams={searchParams}
-					lifecycleStage="lead"
-				/>
+				<LeadsContent params={params} searchParams={searchParams} />
 			</Suspense>
 		</div>
+	);
+}
+
+async function LeadsContent({ params, searchParams }: Props) {
+	const { organizationSlug } = await params;
+
+	return (
+		<ClientsTable
+			organizationSlug={organizationSlug}
+			searchParams={searchParams}
+			lifecycleStage="lead"
+		/>
 	);
 }

@@ -14,7 +14,7 @@ export function generateMetadata({ params }: Props) {
 
 export default function ClientsPage({ params, searchParams }: Props) {
 	return (
-		<div className="space-y-4">
+		<div className="space-y-4" data-route-content="clients">
 			<ClientsFilters />
 
 			<Suspense fallback={<ClientsTableSkeleton />}>

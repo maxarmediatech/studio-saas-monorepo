@@ -6,6 +6,7 @@ import { PageContent } from "@saas/studio";
 import { notificationsApi, notificationsMutations } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useParams } from "next/navigation";
 import { useState } from "react";
 import {
 	getNotificationEmptyStateCopy,
@@ -15,15 +16,10 @@ import {
 } from "./filters";
 import { NotificationList, NotificationsPagination } from "./notification-list";
 
-interface NotificationsPageClientProps {
-	organizationSlug: string;
-}
-
 const PAGE_SIZE = 25;
 
-export function NotificationsPageClient({
-	organizationSlug,
-}: NotificationsPageClientProps) {
+export function NotificationsPageClient() {
+	const { organizationSlug } = useParams<{ organizationSlug: string }>();
 	const queryClient = useQueryClient();
 	const [filter, setFilter] = useState<"all" | "unread">("all");
 	const [typeFilter, setTypeFilter] =

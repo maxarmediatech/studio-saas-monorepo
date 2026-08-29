@@ -2,6 +2,7 @@ import "server-only";
 
 import type { CustomRolePermissions } from "@repo/auth/lib/permissions";
 import { getActiveOrganization, getSession } from "@saas/auth/lib/server";
+import { cacheLife } from "next/cache";
 import { getCustomRolePermissions } from "./get-custom-role-permissions.server";
 import { matchesNavPermission } from "./navigation/access";
 import { getStudioRoutePermission } from "./route-access";
@@ -18,6 +19,10 @@ type StudioRouteAccessContext = {
 async function resolveStudioRouteAccessContext(
 	organizationSlug: string,
 ): Promise<StudioRouteAccessContext | null> {
+	"use cache: private";
+	// Private content needs a five-minute stale window to enter the App Shell.
+	cacheLife({ stale: 300, revalidate: 300, expire: 600 });
+
 	const [session, organization] = await Promise.all([
 		getSession(),
 		getActiveOrganization(organizationSlug),
