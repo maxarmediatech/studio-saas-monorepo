@@ -1,8 +1,6 @@
-import { getActiveOrganization } from "@saas/auth/lib/server";
 import { bookingsApi } from "@saas/studio/lib/api";
 import { getServerQueryClient } from "@shared/lib/server";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
-import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { BookingDetailPageClient } from "./BookingDetailPageClient";
 import { BookingDetailPageSkeleton } from "./components/BookingDetailPageSkeleton";
@@ -25,14 +23,6 @@ export default function BookingDetailPage({ params }: Props) {
 
 async function BookingDetailContent({ params }: Props) {
 	const { organizationSlug, bookingId } = await params;
-
-	const organization = await getActiveOrganization(organizationSlug);
-
-	if (!organization) {
-		return notFound();
-	}
-
-	// Prefetch booking data on the server
 	const queryClient = getServerQueryClient();
 	await queryClient.prefetchQuery(bookingsApi.getOptions(bookingId));
 

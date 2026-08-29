@@ -14,6 +14,8 @@ import { ChoosePlanRecoveryActions } from "@saas/payments/components/ChoosePlanR
 import { AuthWrapper } from "@saas/shared/components/AuthWrapper";
 import { redirect } from "next/navigation";
 
+export const instant = false;
+
 type Props = {
 	searchParams: Promise<{ redirectTo?: string }>;
 };

@@ -25,8 +25,20 @@ test.describe("booking detail instant navigation", () => {
 		await signIn(page);
 		const organizationSlug = new URL(page.url()).pathname.split("/")[2];
 		const bookingsPath = `/app/${organizationSlug}/bookings`;
-		await page.goto(bookingsPath);
+		const shellPrefetch = page.waitForResponse(
+			(response) => {
+				const pathname = new URL(response.url()).pathname;
 
+				return (
+					pathname.startsWith(`${bookingsPath}/`) &&
+					!pathname.startsWith(`${bookingsPath}/new`) &&
+					response.request().headers()["next-router-prefetch"] === "1"
+				);
+			},
+			{ timeout: 20_000 },
+		);
+
+		await page.goto(bookingsPath);
 		const firstBookingLink = page
 			.locator('table a[href*="/bookings/"]')
 			.first();
@@ -35,16 +47,18 @@ test.describe("booking detail instant navigation", () => {
 		if (!firstHref) {
 			throw new Error("Expected the first booking link to have an href");
 		}
+		const firstBookingName = (await firstBookingLink.textContent())?.trim();
+		if (!firstBookingName) {
+			throw new Error("Expected the first booking link to have a name");
+		}
 
-		const shellPrefetch = page.waitForResponse(
-			(response) =>
-				new URL(response.url()).pathname.startsWith(
-					`${bookingsPath}/`,
-				) &&
-				response.request().headers()["next-router-prefetch"] === "1",
-			{ timeout: 20_000 },
-		);
 		await page.goto(firstHref);
+		await expect(
+			page.getByRole("heading", {
+				name: firstBookingName,
+				exact: true,
+			}),
+		).toBeVisible();
 		await page.getByRole("button", { name: "Toggle booking list" }).click();
 
 		const siblingLink = page
@@ -57,6 +71,12 @@ test.describe("booking detail instant navigation", () => {
 		if (!siblingHref) {
 			throw new Error("Expected a sibling booking link to have an href");
 		}
+		const siblingName = (
+			await siblingLink.locator("span").first().textContent()
+		)?.trim();
+		if (!siblingName) {
+			throw new Error("Expected a sibling booking link to have a name");
+		}
 
 		const prefetchResponse = await shellPrefetch;
 		expect(prefetchResponse.ok()).toBe(true);
@@ -68,5 +88,9 @@ test.describe("booking detail instant navigation", () => {
 				page.getByTestId("booking-detail-page-skeleton"),
 			).toBeVisible();
 		});
+
+		await expect(
+			page.getByRole("heading", { name: siblingName, exact: true }),
+		).toBeVisible();
 	});
 });

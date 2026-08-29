@@ -1,27 +1,28 @@
-import { getActiveOrganization } from "@saas/auth/lib/server";
 import { ChangeOrganizationNameForm } from "@saas/organizations/components/ChangeOrganizationNameForm";
 import { OrganizationLogoForm } from "@saas/organizations/components/OrganizationLogoForm";
-import { requireSettingsRouteAccess } from "@saas/settings/lib/server-access";
 import { UserTimezoneForm } from "@saas/settings/components/UserTimezoneForm";
+import { requireSettingsRouteAccess } from "@saas/settings/lib/server-access";
 import { SettingsList } from "@saas/shared/components/SettingsList";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getTranslations } from "next-intl/server";
+import { Suspense } from "react";
+import { SettingsPageFallback } from "./_components/settings-page-fallback";
 
 type Props = {
 	params: Promise<{ organizationSlug: string }>;
 };
 
-export async function generateMetadata({ params }: Props) {
-	const t = await getTranslations();
-	const { organizationSlug } = await params;
-	const organization = await getActiveOrganization(organizationSlug);
+export const metadata: Metadata = { title: "General" };
 
-	return {
-		title: `${t("organizations.settings.general.title")} | ${organization?.name ?? "Studio"}`,
-	};
+export default function GeneralSettingsPage({ params }: Props) {
+	return (
+		<Suspense fallback={<SettingsPageFallback />}>
+			<GeneralSettingsContent params={params} />
+		</Suspense>
+	);
 }
 
-export default async function GeneralSettingsPage({ params }: Props) {
+async function GeneralSettingsContent({ params }: Props) {
 	const { organizationSlug } = await params;
 	const context = await requireSettingsRouteAccess(
 		organizationSlug,

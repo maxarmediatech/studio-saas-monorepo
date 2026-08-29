@@ -3,6 +3,7 @@
 import { Button } from "@repo/ui/components/button";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
+import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
 import { formatMoney } from "@saas/shared/lib";
 import { PageContent } from "@saas/studio";
 import { InvoiceEditSheet } from "@saas/studio/components/invoices/sheets/InvoiceEditSheet";
@@ -31,7 +32,6 @@ import { toast } from "sonner";
 
 interface InvoiceDetailPageClientProps {
 	organizationSlug: string;
-	organizationName: string;
 	invoiceId: string;
 }
 
@@ -96,9 +96,10 @@ function formatRelativeTime(date: string) {
 
 export function InvoiceDetailPageClient({
 	organizationSlug,
-	organizationName,
 	invoiceId,
 }: InvoiceDetailPageClientProps) {
+	const { activeOrganization } = useActiveOrganization();
+	const organizationName = activeOrganization?.name ?? "Studio";
 	const queryClient = useQueryClient();
 	const { openEdit } = useInvoiceEditParams();
 
@@ -897,15 +898,19 @@ export function InvoiceDetailPageClient({
 
 // ── Skeleton ─────────────────────────────────────────────────────
 
-function InvoiceDetailSkeleton({
+export function InvoiceDetailSkeleton({
 	organizationSlug,
 }: {
-	organizationSlug: string;
+	organizationSlug?: string;
 }) {
 	return (
 		<PageContent
 			title={<Skeleton className="h-5 w-40" />}
-			backHref={`/app/${organizationSlug}/invoices`}
+			backHref={
+				organizationSlug
+					? `/app/${organizationSlug}/invoices`
+					: undefined
+			}
 		>
 			<div className="mb-8 rounded-2xl border border-gray-200/70 bg-gray-50/70 p-6 sm:p-8">
 				<Skeleton className="h-3 w-28" />

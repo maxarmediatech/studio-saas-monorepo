@@ -31,8 +31,7 @@ export const bookingFormQueries = {
 	crews: () => crewsApi.listOptions({ limit: DROPDOWN_LIMIT }),
 
 	/**
-	 * Configuration types - these are also prefetched by ConfigurationsProvider
-	 * but can be called directly if needed
+	 * Configuration types used by booking form steps.
 	 */
 	bookingTypes: () => configurationsApi.bookingTypesOptions(),
 	packageTypes: () => configurationsApi.packageTypesOptions(),

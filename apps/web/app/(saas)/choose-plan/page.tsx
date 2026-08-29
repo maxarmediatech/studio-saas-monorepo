@@ -15,6 +15,8 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+export const instant = false;
+
 export const metadata: Metadata = {
 	title: "Choose Plan",
 };

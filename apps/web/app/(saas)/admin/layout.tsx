@@ -12,6 +12,8 @@ import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import type { PropsWithChildren } from "react";
 
+export const instant = false;
+
 export default async function AdminLayout({ children }: PropsWithChildren) {
 	const t = await getTranslations();
 	const session = await getSession();

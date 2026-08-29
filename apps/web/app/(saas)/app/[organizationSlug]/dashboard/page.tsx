@@ -1,27 +1,20 @@
-import { getActiveOrganization } from "@saas/auth/lib/server";
 import { DashboardView } from "@saas/studio/components/dashboard";
-import { notFound } from "next/navigation";
+import { DashboardSkeleton } from "@saas/studio/components/dashboard/dashboard-skeleton";
+import { getOrganizationPageMetadata } from "@saas/studio/lib/organization-page-metadata";
+import { Suspense } from "react";
 
 type Props = {
 	params: Promise<{ organizationSlug: string }>;
 };
 
-export async function generateMetadata({ params }: Props) {
-	const { organizationSlug } = await params;
-	const activeOrganization = await getActiveOrganization(organizationSlug);
-
-	return {
-		title: `Dashboard | ${activeOrganization?.name ?? "Studio"}`,
-	};
+export function generateMetadata({ params }: Props) {
+	return getOrganizationPageMetadata(params, "Dashboard");
 }
 
-export default async function DashboardPage({ params }: Props) {
-	const { organizationSlug } = await params;
-	const activeOrganization = await getActiveOrganization(organizationSlug);
-
-	if (!activeOrganization) {
-		return notFound();
-	}
-
-	return <DashboardView organizationSlug={organizationSlug} />;
+export default function DashboardPage() {
+	return (
+		<Suspense fallback={<DashboardSkeleton />}>
+			<DashboardView />
+		</Suspense>
+	);
 }
