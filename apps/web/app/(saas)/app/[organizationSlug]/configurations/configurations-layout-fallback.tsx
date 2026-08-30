@@ -9,6 +9,7 @@ const CONFIGURATION_TITLES: Record<string, string> = {
 	"booking-types": "Booking Types",
 	"event-types": "Event Types",
 	"package-types": "Package Types",
+	"quotation-terms": "Quotation Terms",
 	"relation-types": "Relation Types",
 	specialisations: "Specialisations",
 };

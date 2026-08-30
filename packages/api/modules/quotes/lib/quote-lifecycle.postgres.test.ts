@@ -130,7 +130,7 @@ describePostgres("quote lifecycle PostgreSQL integration", () => {
 			const beforeReads = await db.query.quotes.findFirst({
 				where: eq(quotes.id, dueReadQuote.id),
 			});
-			await listOrganizationQuotes({
+			const issuedQuotes = await listOrganizationQuotes({
 				organizationId,
 				includeDeleted: false,
 				sortBy: "createdAt",
@@ -138,6 +138,20 @@ describePostgres("quote lifecycle PostgreSQL integration", () => {
 				page: 1,
 				limit: 20,
 			});
+			expect(issuedQuotes.data.map((quote) => quote.id)).toEqual([
+				dueReadQuote.id,
+			]);
+			expect(issuedQuotes.total).toBe(1);
+			const workingDrafts = await listOrganizationQuotes({
+				organizationId,
+				statuses: ["draft"],
+				includeDeleted: false,
+				sortBy: "createdAt",
+				sortDirection: "desc",
+				page: 1,
+				limit: 20,
+			});
+			expect(workingDrafts.total).toBe(7);
 			await getOrganizationQuote(organizationId, dueReadQuote.id);
 			const afterReads = await db.query.quotes.findFirst({
 				where: eq(quotes.id, dueReadQuote.id),

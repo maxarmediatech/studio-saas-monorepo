@@ -1,23 +1,26 @@
-import { buildStudioRoutePath } from "@saas/studio/lib/route-access";
-import { requireStudioRouteAccess } from "@saas/studio/lib/server-access";
-import { notFound } from "next/navigation";
-import type { ReactNode } from "react";
+import { StudioRouteGuard } from "@saas/studio/components/StudioRouteGuard";
+import { type ReactNode, Suspense } from "react";
+import {
+	QuotationsLayoutClient,
+	QuotationsLayoutFallback,
+} from "./quotations-layout-client";
 
-export default async function QuotationsLayout({
+export const instant = true;
+
+export default function QuotationsLayout({
 	params,
 	children,
 }: {
 	params: Promise<{ organizationSlug: string }>;
 	children: ReactNode;
 }) {
-	const { organizationSlug } = await params;
-	if (
-		!(await requireStudioRouteAccess(
-			organizationSlug,
-			buildStudioRoutePath(organizationSlug, "/quotations"),
-		))
-	) {
-		notFound();
-	}
-	return children;
+	return (
+		<QuotationsLayoutClient>
+			<Suspense fallback={<QuotationsLayoutFallback />}>
+				<StudioRouteGuard params={params} routePath="/quotations">
+					{() => children}
+				</StudioRouteGuard>
+			</Suspense>
+		</QuotationsLayoutClient>
+	);
 }

@@ -48,10 +48,12 @@ export function NewActionSwitcher({
 
 	const hasConfigurationActions =
 		isSidebar && caps.configurationCreateOrUpdate;
+	const canCreateQuotation =
+		caps.quoteCreate && caps.quoteReadOperational && caps.quoteUpdate;
 
 	const hasAnyAction =
 		caps.bookingCreateOrUpdate ||
-		caps.quoteCreate ||
+		canCreateQuotation ||
 		caps.shootCreateOrUpdate ||
 		caps.deliverableCreateOrUpdate ||
 		caps.taskCreateOrUpdate ||
@@ -108,7 +110,7 @@ export function NewActionSwitcher({
 					</DropdownMenuItem>
 				) : (
 					<>
-						{caps.quoteCreate && (
+						{canCreateQuotation && (
 							<DropdownMenuItem asChild>
 								<Link href={`${basePath}/quotations/new`}>
 									New Quotation
@@ -124,7 +126,7 @@ export function NewActionSwitcher({
 							</DropdownMenuItem>
 						)}
 
-						{(caps.quoteCreate || caps.bookingCreateOrUpdate) && (
+						{(canCreateQuotation || caps.bookingCreateOrUpdate) && (
 							<DropdownMenuSeparator />
 						)}
 

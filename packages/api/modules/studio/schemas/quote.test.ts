@@ -70,6 +70,15 @@ const baseDraftContent = {
 };
 
 describe("quotation domain schemas", () => {
+	it("allows the draft workspace to request document quotations explicitly", () => {
+		expect(
+			listQuotesInputSchema.parse({
+				statuses: ["draft"],
+				documentVersion: 1,
+			}),
+		).toMatchObject({ statuses: ["draft"], documentVersion: 1 });
+	});
+
 	it("rounds fractional quantity pricing half-up without Number arithmetic", () => {
 		const result = quoteOptionInputSchema.safeParse({
 			name: "Premium",

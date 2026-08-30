@@ -26,6 +26,7 @@ import {
 	type SummaryAction,
 	SummaryActionDialog,
 } from "./list/SummaryActionDialog";
+import { QuotationDrafts } from "./QuotationDrafts";
 import {
 	getQuoteActions,
 	normalizeQuotationListParams,
@@ -42,6 +43,8 @@ export function QuotationsList({
 	organizationSlug: string;
 }) {
 	const caps = useStudioCapabilities();
+	const canCreateDraft =
+		caps.quoteCreate && caps.quoteReadOperational && caps.quoteUpdate;
 	const router = useRouter();
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
@@ -222,119 +225,136 @@ export function QuotationsList({
 		});
 
 	return (
-		<div className="flex flex-col gap-4">
-			<QuotationFilters
-				search={search}
-				status={normalized.status}
-				clientId={normalized.clientId}
-				sortBy={normalized.sortBy}
-				sortDirection={normalized.sortDirection}
-				clients={clients.data?.data ?? []}
-				canFilterClients={caps.clientList && !clients.isError}
-				onSearch={setSearch}
-				onStatus={(value) =>
-					setParams({
-						status: value === "all" ? null : value,
-						page: null,
-					})
-				}
-				onClient={(value) =>
-					setParams({
-						client: value === "all" ? null : value,
-						page: null,
-					})
-				}
-				onSort={updateSort}
-			/>
-			{rows.length === 0 ? (
-				<Empty className="min-h-80 border">
-					<EmptyHeader>
-						<EmptyMedia variant="icon">
-							<FileTextIcon />
-						</EmptyMedia>
-						<EmptyTitle>
-							{hasFilters
-								? "No matching quotations"
-								: "No quotations yet"}
-						</EmptyTitle>
-						<EmptyDescription>
-							{hasFilters
-								? "Clear or adjust filters to broaden the results."
-								: "Build a priced proposal and carry its booking plan through conversion."}
-						</EmptyDescription>
-					</EmptyHeader>
-					<EmptyContent>
-						{hasFilters ? (
-							<Button
-								type="button"
-								variant="outline"
-								onClick={() => {
-									setSearch("");
-									router.replace(pathname);
-								}}
-							>
-								Clear filters
-							</Button>
-						) : caps.quoteCreate ? (
-							<Button asChild>
-								<Link
-									href={`/app/${organizationSlug}/quotations/new`}
+		<div className="flex flex-col gap-6">
+			<QuotationDrafts organizationSlug={organizationSlug} />
+			<section
+				aria-labelledby="issued-quotations-heading"
+				className="flex flex-col gap-4"
+			>
+				<div>
+					<h2
+						id="issued-quotations-heading"
+						className="font-semibold text-lg"
+					>
+						Issued quotations
+					</h2>
+					<p className="text-muted-foreground text-sm">
+						Sent quotations and their outcomes.
+					</p>
+				</div>
+				<QuotationFilters
+					search={search}
+					status={normalized.status}
+					clientId={normalized.clientId}
+					sortBy={normalized.sortBy}
+					sortDirection={normalized.sortDirection}
+					clients={clients.data?.data ?? []}
+					canFilterClients={caps.clientList && !clients.isError}
+					onSearch={setSearch}
+					onStatus={(value) =>
+						setParams({
+							status: value === "all" ? null : value,
+							page: null,
+						})
+					}
+					onClient={(value) =>
+						setParams({
+							client: value === "all" ? null : value,
+							page: null,
+						})
+					}
+					onSort={updateSort}
+				/>
+				{rows.length === 0 ? (
+					<Empty className="min-h-80 border">
+						<EmptyHeader>
+							<EmptyMedia variant="icon">
+								<FileTextIcon />
+							</EmptyMedia>
+							<EmptyTitle>
+								{hasFilters
+									? "No matching quotations"
+									: "No issued quotations yet"}
+							</EmptyTitle>
+							<EmptyDescription>
+								{hasFilters
+									? "Clear or adjust filters to broaden the results."
+									: "Build a priced proposal and carry its booking plan through conversion."}
+							</EmptyDescription>
+						</EmptyHeader>
+						<EmptyContent>
+							{hasFilters ? (
+								<Button
+									type="button"
+									variant="outline"
+									onClick={() => {
+										setSearch("");
+										router.replace(pathname);
+									}}
 								>
-									<PlusIcon data-icon="inline-start" />
-									Create quotation
-								</Link>
-							</Button>
-						) : null}
-					</EmptyContent>
-				</Empty>
-			) : (
-				<>
-					<QuotationRows rows={rowProps} />
-					<div className="flex flex-col items-center justify-between gap-3 text-sm text-muted-foreground sm:flex-row">
-						<span>
-							{pagination?.total ?? rows.length} quotations
-						</span>
-						<div className="flex items-center gap-2">
-							<Button
-								type="button"
-								size="sm"
-								variant="outline"
-								disabled={
-									normalized.page <= 1 || query.isFetching
-								}
-								onClick={() =>
-									setParams({
-										page: String(normalized.page - 1),
-									})
-								}
-							>
-								Previous
-							</Button>
-							<span className="tabular-nums">
-								{normalized.page} /{" "}
-								{Math.max(1, pagination?.pageCount ?? 1)}
+									Clear filters
+								</Button>
+							) : canCreateDraft ? (
+								<Button asChild>
+									<Link
+										href={`/app/${organizationSlug}/quotations/new`}
+									>
+										<PlusIcon data-icon="inline-start" />
+										Create quotation
+									</Link>
+								</Button>
+							) : null}
+						</EmptyContent>
+					</Empty>
+				) : (
+					<>
+						<QuotationRows rows={rowProps} />
+						<div className="flex flex-col items-center justify-between gap-3 text-sm text-muted-foreground sm:flex-row">
+							<span>
+								{pagination?.total ?? rows.length} quotations
 							</span>
-							<Button
-								type="button"
-								size="sm"
-								variant="outline"
-								disabled={
-									normalized.page >=
-										(pagination?.pageCount ?? 1) ||
-									query.isFetching
-								}
-								onClick={() =>
-									setParams({
-										page: String(normalized.page + 1),
-									})
-								}
-							>
-								Next
-							</Button>
+							<div className="flex items-center gap-2">
+								<Button
+									type="button"
+									size="sm"
+									variant="outline"
+									disabled={
+										normalized.page <= 1 || query.isFetching
+									}
+									onClick={() =>
+										setParams({
+											page: String(normalized.page - 1),
+										})
+									}
+								>
+									Previous
+								</Button>
+								<span className="tabular-nums">
+									{normalized.page} /{" "}
+									{Math.max(1, pagination?.pageCount ?? 1)}
+								</span>
+								<Button
+									type="button"
+									size="sm"
+									variant="outline"
+									disabled={
+										normalized.page >=
+											(pagination?.pageCount ?? 1) ||
+										query.isFetching
+									}
+									onClick={() =>
+										setParams({
+											page: String(normalized.page + 1),
+										})
+									}
+								>
+									Next
+								</Button>
+							</div>
 						</div>
-					</div>
-				</>
-			)}
+					</>
+				)}
+			</section>
 			<SummaryActionDialog
 				pending={pending}
 				mutationPending={mutationPending}

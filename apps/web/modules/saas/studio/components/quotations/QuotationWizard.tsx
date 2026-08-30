@@ -11,7 +11,14 @@ import {
 } from "@saas/studio/lib/api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useId,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { toast } from "sonner";
 import {
 	createQuotationAutosaveState,
@@ -45,6 +52,7 @@ import {
 } from "./quotation-wizard-data";
 import {
 	quotationDetailToWizardDraft,
+	quotationDocumentToWizardDraft,
 	quotationDraftToDocument,
 } from "./quotation-wizard-document";
 import {
@@ -81,8 +89,12 @@ export function QuotationWizard({
 }: QuotationWizardProps) {
 	const router = useRouter();
 	const queryClient = useQueryClient();
+	const initialDraftSeed = useId();
 	const [draft, setDraft] = useState<QuotationDraft>(() =>
-		createDefaultQuotationDraft(todayInTimezone(organizationTimezone)),
+		createDefaultQuotationDraft(
+			todayInTimezone(organizationTimezone),
+			initialDraftSeed,
+		),
 	);
 	const [currentQuoteId, setCurrentQuoteId] = useState(quoteId);
 	const [documentRevision, setDocumentRevision] = useState(0);
@@ -152,11 +164,8 @@ export function QuotationWizard({
 			if (termsPreset) {
 				next = applyQuotationTermsPreset(next, termsPreset) ?? next;
 			}
-			markQuotationAutosaveEdit(autosave.current, next);
 			return next;
 		});
-		setDirty(true);
-		setSaveStatus("Unsaved");
 	}, [
 		bookingTypes.data,
 		packageTypes.data,
@@ -252,6 +261,7 @@ export function QuotationWizard({
 				id: currentQuoteIdRef.current,
 				documentRevision: documentRevisionRef.current,
 				document: quotationDraftToDocument(autosave.current.snapshot),
+				reused: false,
 			};
 		}
 		if (disposition === "failed") {
@@ -287,22 +297,27 @@ export function QuotationWizard({
 					}
 					return result;
 				},
-				(current, result) => ({
-					...current,
-					clients: current.clients.map((client) => {
-						const persisted = result.document.participants.find(
-							(item) => item.key === client.id,
-						);
-						return persisted
-							? {
-									...client,
-									clientId: persisted.clientId,
-									clientUpdatedAt: persisted.clientUpdatedAt,
-									persistAsLead: false,
-								}
-							: client;
-					}),
-				}),
+				(current, result) =>
+					result.reused
+						? quotationDocumentToWizardDraft(result.document)
+						: {
+								...current,
+								clients: current.clients.map((client) => {
+									const persisted =
+										result.document.participants.find(
+											(item) => item.key === client.id,
+										);
+									return persisted
+										? {
+												...client,
+												clientId: persisted.clientId,
+												clientUpdatedAt:
+													persisted.clientUpdatedAt,
+												persistAsLead: false,
+											}
+										: client;
+								}),
+							},
 			);
 			setDraft(autosave.current.snapshot);
 			if (
@@ -324,6 +339,7 @@ export function QuotationWizard({
 					document: quotationDraftToDocument(
 						autosave.current.snapshot,
 					),
+					reused: false,
 				};
 			}
 			return null;

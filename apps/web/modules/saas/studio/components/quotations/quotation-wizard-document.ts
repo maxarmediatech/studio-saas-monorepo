@@ -107,20 +107,17 @@ export function quotationDraftToDocument(
 	};
 }
 
-export function quotationDetailToWizardDraft(
-	detail: QuoteDetail,
-): QuotationDraft | null {
-	const document = detail.document;
-	if (!document || detail.documentVersion !== 1) {
-		return null;
-	}
+export function quotationDocumentToWizardDraft(
+	document: QuotationDocumentV1,
+	expiresAt?: string | null,
+): QuotationDraft {
 	return {
 		title: document.title,
 		quoteDate: document.quotationDate,
 		quotationType: document.quotationType.label,
 		quotationTypeId: document.quotationType.id,
 		quotationTypeKey: document.quotationType.key,
-		validUntil: detail.expiresAt ?? addDays(document.quotationDate, 14),
+		validUntil: expiresAt ?? addDays(document.quotationDate, 14),
 		weddingWindow: "",
 		notes: "",
 		clients: document.participants.map((participant) => ({
@@ -192,4 +189,13 @@ export function quotationDetailToWizardDraft(
 			timing: item.timing,
 		})),
 	};
+}
+
+export function quotationDetailToWizardDraft(
+	detail: QuoteDetail,
+): QuotationDraft | null {
+	if (!detail.document || detail.documentVersion !== 1) {
+		return null;
+	}
+	return quotationDocumentToWizardDraft(detail.document, detail.expiresAt);
 }

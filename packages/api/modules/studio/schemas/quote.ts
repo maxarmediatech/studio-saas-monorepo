@@ -324,6 +324,7 @@ export type QuoteDetail = z.infer<typeof quoteDetailSchema>;
 export const listQuotesInputSchema = paginationSchema.extend({
 	search: z.string().trim().max(255).optional(),
 	statuses: z.array(quoteStatusSchema).optional(),
+	documentVersion: z.literal(1).optional(),
 	clientId: idSchema.optional(),
 	includeDeleted: z.boolean().default(false),
 	sortBy: z
@@ -389,6 +390,7 @@ export const documentQuoteMutationOutputSchema = z.object({
 		id: idSchema,
 		documentRevision: z.number().int().positive(),
 		document: quotationDocumentV1Schema,
+		reused: z.boolean(),
 	}),
 	message: z.string(),
 });

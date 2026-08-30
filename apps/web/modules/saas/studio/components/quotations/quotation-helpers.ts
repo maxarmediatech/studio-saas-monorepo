@@ -6,7 +6,6 @@ import type {
 } from "@repo/api/modules/studio/schemas/quote";
 
 export const QUOTE_STATUSES: QuoteStatus[] = [
-	"draft",
 	"sent",
 	"accepted",
 	"converted",

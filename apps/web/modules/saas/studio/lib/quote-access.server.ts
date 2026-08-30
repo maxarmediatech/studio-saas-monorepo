@@ -1,6 +1,6 @@
 import "server-only";
 
-import { db } from "@repo/database";
+import { and, db, desc, eq, isNull, quotes } from "@repo/database";
 import { getActiveOrganization, getSession } from "@saas/auth/lib/server";
 import { resolveStudioAccess } from "./resolve-studio-access.server";
 
@@ -23,6 +23,25 @@ export async function resolveQuoteRouteAccess(organizationSlug: string) {
 	return {
 		...access,
 		organization,
+		userId: session.user.id,
 		organizationTimezone: organizationSettings?.timezone ?? "UTC",
 	};
+}
+
+export async function findReusableQuotationDraft(
+	organizationId: string,
+	userId: string,
+) {
+	return db.query.quotes.findFirst({
+		where: and(
+			eq(quotes.organizationId, organizationId),
+			eq(quotes.createdBy, userId),
+			eq(quotes.status, "draft"),
+			eq(quotes.documentVersion, 1),
+			isNull(quotes.supersedesQuoteId),
+			isNull(quotes.deletedAt),
+		),
+		columns: { id: true },
+		orderBy: [desc(quotes.updatedAt), desc(quotes.id)],
+	});
 }

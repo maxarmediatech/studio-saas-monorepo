@@ -318,6 +318,36 @@ export async function createDocumentDraft(context: Context, input: unknown) {
 		quotationDocumentV1Schema.parse(input),
 	);
 	return db.transaction(async (tx) => {
+		await tx.execute(
+			sql`select pg_advisory_xact_lock(hashtextextended(${`quotation-draft:${context.organizationId}:${context.user.id}`}, 0))`,
+		);
+		const existing = await tx.query.quotes.findFirst({
+			where: and(
+				eq(quotes.organizationId, context.organizationId),
+				eq(quotes.createdBy, context.user.id),
+				eq(quotes.status, "draft"),
+				eq(quotes.documentVersion, 1),
+				isNull(quotes.supersedesQuoteId),
+				isNull(quotes.deletedAt),
+			),
+			columns: {
+				id: true,
+				document: true,
+				documentRevision: true,
+			},
+			orderBy: (table, { desc }) => [
+				desc(table.updatedAt),
+				desc(table.id),
+			],
+		});
+		if (existing) {
+			return {
+				id: existing.id,
+				documentRevision: existing.documentRevision,
+				document: quotationDocumentV1Schema.parse(existing.document),
+				reused: true,
+			};
+		}
 		await validateQuotationConfigurationReferences(
 			tx,
 			context.organizationId,
@@ -374,7 +404,12 @@ export async function createDocumentDraft(context: Context, input: unknown) {
 				metadata: { documentVersion: 1, documentRevision: 1 },
 			},
 		);
-		return { id: created.id, documentRevision: 1, document };
+		return {
+			id: created.id,
+			documentRevision: 1,
+			document,
+			reused: false,
+		};
 	});
 }
 
@@ -454,7 +489,12 @@ export async function saveDocumentDraft(
 			quoteId,
 			document,
 		);
-		return { id: quoteId, documentRevision: updated.revision, document };
+		return {
+			id: quoteId,
+			documentRevision: updated.revision,
+			document,
+			reused: false,
+		};
 	});
 }
 

@@ -10,6 +10,7 @@ import {
 } from "./quotation-wizard-data";
 import {
 	quotationDetailToWizardDraft,
+	quotationDocumentToWizardDraft,
 	quotationDraftToDocument,
 } from "./quotation-wizard-document";
 
@@ -31,6 +32,16 @@ describe("quotation wizard document", () => {
 			dateWindow: null,
 			guestCount: null,
 		});
+	});
+
+	it("can use a stable render seed for hydration-safe initial field IDs", () => {
+		const server = createDefaultQuotationDraft("2026-08-03", ":R1:");
+		const client = createDefaultQuotationDraft("2026-08-03", ":R1:");
+
+		expect(client.clients[0]?.id).toBe(server.clients[0]?.id);
+		expect(client.events[0]?.id).toBe(server.events[0]?.id);
+		expect(client.packages[0]?.id).toBe(server.packages[0]?.id);
+		expect(client.clients[0]?.id).toBe("client-R1");
 	});
 
 	it("uses collision-resistant IDs and preserves term row keys", () => {
@@ -98,6 +109,26 @@ describe("quotation wizard document", () => {
 			expiresAt: "2026-08-17",
 		} as QuoteDetail);
 		expect(reloaded?.termsConfiguration).toEqual(draft.termsConfiguration);
+	});
+
+	it("hydrates a reused server draft instead of overwriting it with a new tab", () => {
+		const persisted = createDefaultQuotationDraft("2026-08-03");
+		persisted.title = "Persisted working draft";
+		const participant = persisted.clients[0];
+		if (!participant) {
+			throw new Error("Default client is missing");
+		}
+		persisted.clients[0] = {
+			...participant,
+			name: "Existing client",
+		};
+
+		const resumed = quotationDocumentToWizardDraft(
+			quotationDraftToDocument(persisted),
+		);
+
+		expect(resumed.title).toBe("Persisted working draft");
+		expect(resumed.clients[0]?.name).toBe("Existing client");
 	});
 
 	it("preserves unresolved contact fields without requesting CRM creation", () => {

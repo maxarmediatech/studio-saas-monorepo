@@ -1,10 +1,9 @@
-import { getActiveOrganization } from "@saas/auth/lib/server";
 import {
 	ConfigurationsFilters,
 	ConfigurationsTableSkeleton,
 } from "@saas/studio";
 import { ConfigurationsTable } from "@saas/studio/components/configurations/index.server";
-import { notFound } from "next/navigation";
+import { getOrganizationPageMetadata } from "@saas/studio/lib/organization-page-metadata";
 import { Suspense } from "react";
 
 type Props = {
@@ -12,23 +11,13 @@ type Props = {
 	searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export async function generateMetadata({ params }: Props) {
-	const { organizationSlug } = await params;
-	const organization = await getActiveOrganization(organizationSlug);
-	return { title: `Quotation Terms | ${organization?.name ?? "Studio"}` };
+export function generateMetadata({ params }: Props) {
+	return getOrganizationPageMetadata(params, "Quotation Terms");
 }
 
-export default async function QuotationTermsPage({
-	params,
-	searchParams,
-}: Props) {
-	const { organizationSlug } = await params;
-	if (!(await getActiveOrganization(organizationSlug))) {
-		return notFound();
-	}
-
+export default function QuotationTermsPage({ searchParams }: Props) {
 	return (
-		<div className="space-y-4">
+		<div className="space-y-4" data-route-content="quotation-terms">
 			<ConfigurationsFilters
 				configType="quotation_terms"
 				configTypeLabelPlural="Quotation Terms"

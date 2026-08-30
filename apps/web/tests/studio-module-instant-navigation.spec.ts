@@ -14,6 +14,7 @@ async function signIn(page: Page) {
 
 const destinations = [
 	{ label: "Bookings", segment: "bookings" },
+	{ label: "Quotations", segment: "quotations" },
 	{ label: "Shoots", segment: "shoots" },
 	{ label: "Deliverables", segment: "deliverables" },
 	{ label: "Tasks", segment: "tasks" },

@@ -194,10 +194,12 @@ export function createDraftId(prefix: string) {
 
 export function createDefaultQuotationDraft(
 	quotationDate = "",
+	stableSeed?: string,
 ): QuotationDraft {
-	const participantId = createDraftId("client");
-	const eventId = createDraftId("event");
-	const packageId = createDraftId("package");
+	const seed = stableSeed?.replaceAll(/[^a-zA-Z0-9_-]/g, "");
+	const participantId = seed ? `client-${seed}` : createDraftId("client");
+	const eventId = seed ? `event-${seed}` : createDraftId("event");
+	const packageId = seed ? `package-${seed}` : createDraftId("package");
 	return {
 		title: "",
 		quoteDate: quotationDate,

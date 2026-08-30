@@ -11,6 +11,7 @@ import {
 	ilike,
 	inArray,
 	isNull,
+	ne,
 	or,
 	quoteAcceptances,
 	quoteOptions,
@@ -37,6 +38,7 @@ export async function listOrganizationQuotes(input: {
 	organizationId: string;
 	search?: string;
 	statuses?: QuoteStatus[];
+	documentVersion?: 1;
 	clientId?: string;
 	includeDeleted: boolean;
 	sortBy:
@@ -56,6 +58,11 @@ export async function listOrganizationQuotes(input: {
 	}
 	if (input.statuses?.length) {
 		conditions.push(inArray(quotes.status, input.statuses));
+	} else {
+		conditions.push(ne(quotes.status, "draft"));
+	}
+	if (input.documentVersion) {
+		conditions.push(eq(quotes.documentVersion, input.documentVersion));
 	}
 	if (input.search) {
 		const pattern = `%${input.search}%`;
