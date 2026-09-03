@@ -30,6 +30,7 @@ import {
 	runQuotationAutosave,
 } from "./quotation-autosave";
 import { ClientStep, EventsStep } from "./quotation-client-events-steps";
+import { openQuotationInEditor } from "./quotation-editor-launch";
 import { PackagesStep } from "./quotation-package-deliverable-steps";
 import {
 	isQuotationPresentationConflict,
@@ -112,6 +113,7 @@ export function QuotationWizard({
 	>(quoteId ? "Draft saved" : "Unsaved");
 	const [conflictOpen, setConflictOpen] = useState(false);
 	const [conflictPaused, setConflictPaused] = useState(false);
+	const [openingEditor, setOpeningEditor] = useState(false);
 	const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 	const autosave = useRef(createQuotationAutosaveState(draft));
 	const currentQuoteIdRef = useRef(currentQuoteId);
@@ -529,6 +531,35 @@ export function QuotationWizard({
 		}
 	};
 
+	const launchEditor = async () => {
+		if (!caps.quoteReadOperational || !caps.quoteUpdate) {
+			toast.error("You do not have permission to edit quotations");
+			return;
+		}
+		const saved = await saveDraft();
+		if (!saved) {
+			return;
+		}
+		const validation = strictQuotationDocumentV1Schema.safeParse(
+			saved.document,
+		);
+		if (!validation.success) {
+			showValidationErrors(validateQuotationDocument(saved.document));
+			return;
+		}
+		setOpeningEditor(true);
+		try {
+			await openQuotationInEditor(saved.id);
+		} catch (error) {
+			setOpeningEditor(false);
+			toast.error(
+				error instanceof Error
+					? error.message
+					: "Could not open quotation in the editor",
+			);
+		}
+	};
+
 	const resetDraft = () => {
 		const blank = createDefaultQuotationDraft(
 			todayInTimezone(organizationTimezone),
@@ -609,7 +640,12 @@ export function QuotationWizard({
 						onNext={goNext}
 						onPrevious={goPrevious}
 						onSend={sendPreview}
+						onOpenEditor={launchEditor}
 						canSend={caps.quoteSend}
+						canOpenEditor={
+							caps.quoteReadOperational && caps.quoteUpdate
+						}
+						openingEditor={openingEditor}
 					/>
 				}
 			>

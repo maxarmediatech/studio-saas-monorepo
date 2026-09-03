@@ -10,7 +10,13 @@ import {
 	AlertDialogTitle,
 } from "@repo/ui/components/alert-dialog";
 import { Button } from "@repo/ui/components/button";
-import { ArrowLeftIcon, ArrowRightIcon, CheckIcon } from "lucide-react";
+import {
+	ArrowLeftIcon,
+	ArrowRightIcon,
+	CheckIcon,
+	ExternalLinkIcon,
+	Loader2Icon,
+} from "lucide-react";
 import { toast } from "sonner";
 import type { QuotationDraft, QuotationStepId } from "./quotation-wizard-data";
 
@@ -20,14 +26,20 @@ export function QuotationWizardFooter({
 	onNext,
 	onPrevious,
 	onSend,
+	onOpenEditor,
 	canSend,
+	canOpenEditor,
+	openingEditor,
 }: {
 	activeIndex: number;
 	activeStep: QuotationStepId;
 	onNext: () => void;
 	onPrevious: () => void;
 	onSend: () => void;
+	onOpenEditor: () => void;
 	canSend: boolean;
+	canOpenEditor: boolean;
+	openingEditor: boolean;
 }) {
 	return (
 		<div className="flex items-center justify-between">
@@ -41,10 +53,25 @@ export function QuotationWizardFooter({
 				Previous
 			</Button>
 			{activeStep === "preview" ? (
-				<Button type="button" onClick={onSend} disabled={!canSend}>
-					<CheckIcon className="mr-2 size-4" />
-					Mark ready
-				</Button>
+				<div className="flex items-center gap-2">
+					<Button
+						type="button"
+						variant="outline"
+						onClick={onOpenEditor}
+						disabled={!canOpenEditor || openingEditor}
+					>
+						{openingEditor ? (
+							<Loader2Icon className="mr-2 size-4 animate-spin" />
+						) : (
+							<ExternalLinkIcon className="mr-2 size-4" />
+						)}
+						Open in Editor
+					</Button>
+					<Button type="button" onClick={onSend} disabled={!canSend}>
+						<CheckIcon className="mr-2 size-4" />
+						Mark ready
+					</Button>
+				</div>
 			) : (
 				<Button type="button" onClick={onNext}>
 					Next

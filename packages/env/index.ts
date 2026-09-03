@@ -21,6 +21,8 @@ export const env = createEnv({
 		EMAIL_REPLY_TO: optionalString,
 		EMAIL_BASE_URL: optionalString,
 		EMAIL_ASSET_BASE_URL: optionalString,
+		STUDIO_EDITOR_URL: optionalString,
+		STUDIO_EDITOR_HANDOFF_SECRET: optionalString,
 		S3_ACCESS_KEY_ID: optionalString,
 		S3_SECRET_ACCESS_KEY: optionalString,
 		S3_ENDPOINT: optionalString,

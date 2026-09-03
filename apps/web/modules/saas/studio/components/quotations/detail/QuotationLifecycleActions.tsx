@@ -25,13 +25,19 @@ import {
 import { quotesApi, quotesMutations } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2Icon, PencilIcon, SendIcon } from "lucide-react";
+import {
+	ExternalLinkIcon,
+	Loader2Icon,
+	PencilIcon,
+	SendIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { QuotationPresentationState } from "../QuotationTemplateSelector";
 import { authoritativeQuotationQuery } from "../quotation-authoritative-query";
+import { openQuotationInEditor } from "../quotation-editor-launch";
 import {
 	getQuoteActions,
 	type QuoteAction,
@@ -76,6 +82,7 @@ export function QuotationLifecycleActions({
 	const queryClient = useQueryClient();
 	const [confirm, setConfirm] = useState<ConfirmAction | null>(null);
 	const [selectedOptionId, setSelectedOptionId] = useState("");
+	const [openingEditor, setOpeningEditor] = useState(false);
 	const legacySend = useMutation(quotesMutations.send());
 	const presentationSend = useMutation(
 		quotesMutations.startPresentationSend(),
@@ -101,6 +108,19 @@ export function QuotationLifecycleActions({
 		convert,
 	].some((mutation) => mutation.isPending);
 	const actions = getQuoteActions(quote, capabilities);
+	const launchEditor = async () => {
+		setOpeningEditor(true);
+		try {
+			await openQuotationInEditor(quote.id);
+		} catch (error) {
+			setOpeningEditor(false);
+			toast.error(
+				error instanceof Error
+					? error.message
+					: "Could not open quotation in the editor",
+			);
+		}
+	};
 
 	const openAction = (action: ConfirmAction) => {
 		setSelectedOptionId(
@@ -250,6 +270,24 @@ export function QuotationLifecycleActions({
 	return (
 		<>
 			<div className="flex flex-wrap justify-end gap-2">
+				{quote.documentVersion === 1 && capabilities.readOperational ? (
+					<Button
+						disabled={pending || openingEditor}
+						onClick={() => void launchEditor()}
+						size="sm"
+						variant="outline"
+					>
+						{openingEditor ? (
+							<Loader2Icon
+								className="animate-spin"
+								data-icon="inline-start"
+							/>
+						) : (
+							<ExternalLinkIcon data-icon="inline-start" />
+						)}
+						Open in Editor
+					</Button>
+				) : null}
 				{failedIntent && capabilities.send ? (
 					<>
 						<Button
