@@ -20,6 +20,8 @@ import {
 	useState,
 } from "react";
 import { toast } from "sonner";
+import { useStudioCapabilities } from "../studio-capabilities-context";
+import { authoritativeQuotationQuery } from "./quotation-authoritative-query";
 import {
 	createQuotationAutosaveState,
 	markQuotationAutosaveEdit,
@@ -29,6 +31,10 @@ import {
 } from "./quotation-autosave";
 import { ClientStep, EventsStep } from "./quotation-client-events-steps";
 import { PackagesStep } from "./quotation-package-deliverable-steps";
+import {
+	isQuotationPresentationConflict,
+	isQuotationTemplateAvailable,
+} from "./quotation-pdf-route";
 import {
 	applyQuotationTermsPreset,
 	selectDefaultQuotationTermsPreset,
@@ -89,6 +95,7 @@ export function QuotationWizard({
 }: QuotationWizardProps) {
 	const router = useRouter();
 	const queryClient = useQueryClient();
+	const caps = useStudioCapabilities();
 	const initialDraftSeed = useId();
 	const [draft, setDraft] = useState<QuotationDraft>(() =>
 		createDefaultQuotationDraft(
@@ -120,7 +127,7 @@ export function QuotationWizard({
 	});
 	const createMutation = useMutation(quotesMutations.createDocument());
 	const saveMutation = useMutation(quotesMutations.saveDocument());
-	const sendMutation = useMutation(quotesMutations.sendDocument());
+	const sendMutation = useMutation(quotesMutations.startPresentationSend());
 
 	useEffect(() => {
 		const bookingTypeOptions = bookingTypes.data?.data;
@@ -288,6 +295,10 @@ export function QuotationWizard({
 					documentRevisionRef.current = result.documentRevision;
 					setCurrentQuoteId(result.id);
 					setDocumentRevision(result.documentRevision);
+					void queryClient.invalidateQueries({
+						queryKey: quotesApi.getPresentationOptions(result.id)
+							.queryKey,
+					});
 					if (wasCreate) {
 						window.history.replaceState(
 							null,
@@ -361,6 +372,7 @@ export function QuotationWizard({
 		loaded,
 		conflictPaused,
 		organizationSlug,
+		queryClient,
 		saveMutation,
 	]);
 
@@ -444,6 +456,10 @@ export function QuotationWizard({
 	} = useQuotationWizardCollections(draft, patchDraft);
 
 	const sendPreview = async () => {
+		if (!caps.quoteSend) {
+			toast.error("You do not have permission to send quotations");
+			return;
+		}
 		const saved = await saveDraft();
 		if (!saved) {
 			return;
@@ -456,14 +472,61 @@ export function QuotationWizard({
 			showValidationErrors(validateQuotationDocument(saved.document));
 			return;
 		}
-		await sendMutation.mutateAsync({
-			id: savedQuoteId,
-			expectedDocumentRevision: saved.documentRevision,
-		});
-		await queryClient.invalidateQueries({
-			queryKey: quotesApi.getOptions(savedQuoteId).queryKey,
-		});
-		router.push(`/app/${organizationSlug}/quotations/${savedQuoteId}`);
+		try {
+			const [presentation, catalog] = await Promise.all([
+				queryClient.fetchQuery(
+					authoritativeQuotationQuery(
+						quotesApi.getPresentationOptions(savedQuoteId),
+					),
+				),
+				queryClient.fetchQuery(
+					authoritativeQuotationQuery(
+						quotesApi.listTemplatesOptions(),
+					),
+				),
+			]);
+			const selectedTemplateAvailable = isQuotationTemplateAvailable(
+				catalog.data,
+				presentation.data,
+			);
+			if (!selectedTemplateAvailable) {
+				toast.error(
+					"Choose an available quotation template before sending",
+				);
+				return;
+			}
+			await sendMutation.mutateAsync({
+				id: savedQuoteId,
+				expectedDocumentRevision: presentation.data.documentRevision,
+				expectedSelectionVersion: presentation.data.selectionVersion,
+			});
+			await queryClient.invalidateQueries({
+				queryKey: quotesApi.getOptions(savedQuoteId).queryKey,
+			});
+			router.push(`/app/${organizationSlug}/quotations/${savedQuoteId}`);
+		} catch (error) {
+			if (isQuotationPresentationConflict(error)) {
+				await Promise.all([
+					queryClient.invalidateQueries({
+						queryKey:
+							quotesApi.getPresentationOptions(savedQuoteId)
+								.queryKey,
+					}),
+					queryClient.invalidateQueries({
+						queryKey: quotesApi.getOptions(savedQuoteId).queryKey,
+					}),
+				]);
+				toast.error(
+					"Quotation changed elsewhere. Latest state loaded; review before sending.",
+				);
+				return;
+			}
+			toast.error(
+				error instanceof Error
+					? error.message
+					: "Could not send quotation",
+			);
+		}
 	};
 
 	const resetDraft = () => {
@@ -527,6 +590,9 @@ export function QuotationWizard({
 								? "Mark ready"
 								: "Review & Send"
 						}
+						primaryActionDisabled={
+							activeStep === "preview" && !caps.quoteSend
+						}
 					/>
 				}
 				mobileStepper={
@@ -543,6 +609,7 @@ export function QuotationWizard({
 						onNext={goNext}
 						onPrevious={goPrevious}
 						onSend={sendPreview}
+						canSend={caps.quoteSend}
 					/>
 				}
 			>
@@ -596,6 +663,8 @@ export function QuotationWizard({
 							selectedPackage={selectedPackage}
 							quoteId={currentQuoteId}
 							documentRevision={documentRevision}
+							canReadPresentation={caps.quoteReadOperational}
+							canSelectTemplate={caps.quoteUpdate}
 						/>
 					)}
 				</div>

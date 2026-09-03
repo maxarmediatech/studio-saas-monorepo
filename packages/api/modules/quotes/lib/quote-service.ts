@@ -9,7 +9,6 @@ import {
 	quoteDraftContentInputSchema,
 } from "../../studio/schemas/quote";
 import { replaceNormalizedDocumentChildren } from "./quotation-document-service";
-import { sendDocumentQuotation } from "./quotation-pdf-service";
 import { readQuoteContent, replaceQuoteContent } from "./quote-content";
 import { isQuoteExpiryDue } from "./quote-lifecycle";
 import { allocateQuoteNumber } from "./quote-number";
@@ -292,7 +291,10 @@ export async function sendQuote(
 	if (documentQuote) {
 		const mode = resolveQuoteSendMode(documentQuote);
 		if (mode.kind === "document") {
-			return sendDocumentQuotation(context, quoteId, mode.revision);
+			throw new ORPCError("BAD_REQUEST", {
+				message:
+					"Document quotations require the revision-aware document-v1 send endpoint",
+			});
 		}
 	}
 	return db.transaction(async (tx) => {

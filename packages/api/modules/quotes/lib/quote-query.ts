@@ -13,6 +13,8 @@ import {
 	isNull,
 	ne,
 	or,
+	quotationPdfRenderIntents,
+	quotationPresentations,
 	quoteAcceptances,
 	quoteOptions,
 	quoteParticipants,
@@ -242,6 +244,24 @@ export async function getOrganizationQuote(
 			eq(quoteAcceptances.organizationId, organizationId),
 		),
 	});
+	const presentation = await db.query.quotationPresentations.findFirst({
+		where: and(
+			eq(quotationPresentations.quoteId, quote.id),
+			eq(quotationPresentations.organizationId, organizationId),
+		),
+	});
+	const pdfProvenance = quote.pdfRenderIntentId
+		? await db.query.quotationPdfRenderIntents.findFirst({
+				where: and(
+					eq(quotationPdfRenderIntents.id, quote.pdfRenderIntentId),
+					eq(quotationPdfRenderIntents.quoteId, quote.id),
+					eq(
+						quotationPdfRenderIntents.organizationId,
+						organizationId,
+					),
+				),
+			})
+		: null;
 	const convertedBooking = await db.query.bookings.findFirst({
 		where: and(
 			eq(bookings.organizationId, organizationId),
@@ -289,7 +309,19 @@ export async function getOrganizationQuote(
 		brandingSnapshot: quote.brandingSnapshot
 			? quotationBrandingSnapshotV1Schema.parse(quote.brandingSnapshot)
 			: null,
-		pdfSnapshot: buildQuotationPdfSnapshot(quote),
+		presentation: presentation
+			? {
+					templateId: presentation.templateId,
+					templateVersion: presentation.templateVersion,
+					selectionVersion: presentation.selectionVersion,
+					selectedBy: presentation.selectedBy,
+					selectedAt: presentation.selectedAt.toISOString(),
+				}
+			: null,
+		pdfSnapshot: buildQuotationPdfSnapshot({
+			...quote,
+			pdfProvenance,
+		}),
 		sentAt: iso(quote.sentAt),
 		convertedAt: iso(quote.convertedAt),
 		declinedAt: iso(quote.declinedAt),

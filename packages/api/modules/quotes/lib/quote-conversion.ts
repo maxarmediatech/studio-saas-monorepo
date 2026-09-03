@@ -8,6 +8,7 @@ import {
 	eq,
 	inArray,
 	isNull,
+	quotationPdfRenderIntents,
 	quoteAcceptances,
 	quoteParticipants,
 	quotes,
@@ -19,6 +20,7 @@ import type { CreateBookingInput } from "../../studio/schemas/booking";
 import {
 	type BookingBlueprintV2,
 	bookingBlueprintV2Schema,
+	type QuotationPdfSnapshotV1,
 	quotationDocumentV1Schema,
 	quotationPdfSnapshotV1Schema,
 } from "../../studio/schemas/quotation-document";
@@ -28,6 +30,10 @@ import {
 	bookingBlueprintV1Schema,
 } from "../../studio/schemas/quote";
 import { allocateMilestoneAmounts } from "./quotation-document";
+import {
+	buildQuotationPdfSnapshot,
+	QUOTATION_PDF_PROVENANCE_INTEGRITY_ERROR,
+} from "./quotation-pdf-snapshot";
 import type { QuoteServiceContext } from "./quote-service";
 
 export interface ConvertedBookingResult {
@@ -43,28 +49,48 @@ export function assertDocumentAcceptanceProvenance(
 		pdfSnapshot: unknown;
 	},
 	quote: {
+		id: string;
+		version: number;
+		documentRevision: number;
 		documentSha256: string | null;
+		pdfRenderIntentId: string | null;
 		pdfSha256: string | null;
 		pdfStorageKey: string | null;
+		pdfRenderedAt: Date | null;
 		pdfRendererVersion: string | null;
 		pdfPageCount: number | null;
 		pdfByteSize: number | null;
+		brandingSnapshot: unknown;
 	},
+	pdfProvenance?: unknown,
 ) {
 	const acceptedPdf = quotationPdfSnapshotV1Schema.safeParse(
 		acceptance.pdfSnapshot,
 	);
+	if (quote.pdfRenderIntentId === null && pdfProvenance != null) {
+		throw new ORPCError("INTERNAL_SERVER_ERROR", {
+			message: QUOTATION_PDF_PROVENANCE_INTEGRITY_ERROR,
+		});
+	}
+	let expectedPdf: QuotationPdfSnapshotV1 | null;
+	try {
+		expectedPdf = buildQuotationPdfSnapshot({
+			...quote,
+			pdfProvenance,
+		});
+	} catch {
+		throw new ORPCError("INTERNAL_SERVER_ERROR", {
+			message: QUOTATION_PDF_PROVENANCE_INTEGRITY_ERROR,
+		});
+	}
 	if (
 		acceptance.documentSha256 !== quote.documentSha256 ||
 		!acceptedPdf.success ||
-		acceptedPdf.data.sha256 !== quote.pdfSha256 ||
-		acceptedPdf.data.storageKey !== quote.pdfStorageKey ||
-		acceptedPdf.data.rendererVersion !== quote.pdfRendererVersion ||
-		acceptedPdf.data.pageCount !== quote.pdfPageCount ||
-		acceptedPdf.data.byteSize !== quote.pdfByteSize
+		!expectedPdf ||
+		JSON.stringify(acceptedPdf.data) !== JSON.stringify(expectedPdf)
 	) {
 		throw new ORPCError("INTERNAL_SERVER_ERROR", {
-			message: "Quotation acceptance document or PDF provenance mismatch",
+			message: QUOTATION_PDF_PROVENANCE_INTEGRITY_ERROR,
 		});
 	}
 	return acceptedPdf.data;
@@ -207,7 +233,26 @@ export async function convertAcceptedQuote(
 			const document = quotationDocumentV1Schema.parse(
 				acceptance.documentSnapshot,
 			);
-			assertDocumentAcceptanceProvenance(acceptance, quote);
+			const pdfProvenance = quote.pdfRenderIntentId
+				? await tx.query.quotationPdfRenderIntents.findFirst({
+						where: and(
+							eq(
+								quotationPdfRenderIntents.id,
+								quote.pdfRenderIntentId,
+							),
+							eq(quotationPdfRenderIntents.quoteId, quote.id),
+							eq(
+								quotationPdfRenderIntents.organizationId,
+								context.organizationId,
+							),
+						),
+					})
+				: null;
+			assertDocumentAcceptanceProvenance(
+				acceptance,
+				quote,
+				pdfProvenance,
+			);
 			const acceptedPackage = document.packages.find(
 				(item) => item.key === documentBlueprint.optionKey,
 			);

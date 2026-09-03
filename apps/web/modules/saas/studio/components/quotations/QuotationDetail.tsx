@@ -21,8 +21,8 @@ import { PageContent } from "@saas/studio";
 import { useStudioCapabilities } from "@saas/studio/components/studio-capabilities-context";
 import { quotesApi } from "@saas/studio/lib/api";
 import { useQuery } from "@tanstack/react-query";
-import { AlertCircleIcon } from "lucide-react";
-import { useMemo } from "react";
+import { AlertCircleIcon, FileTextIcon, Loader2Icon } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
 import { QuotationBlueprintSection } from "./detail/QuotationBlueprintSection";
 import {
 	DetailMetric,
@@ -35,7 +35,17 @@ import {
 	QuotationHistory,
 	QuotationTerms,
 } from "./detail/QuotationTermsHistory";
+import { QuotationPdfPreview } from "./QuotationPdfPreview";
+import {
+	type QuotationPresentationState,
+	QuotationTemplateSelector,
+} from "./QuotationTemplateSelector";
+import { authoritativeQuotationQuery } from "./quotation-authoritative-query";
 import type { QuotePresentationCapabilities } from "./quotation-helpers";
+import {
+	buildQuotationPdfUrl,
+	type QuotationPresentationIdentity,
+} from "./quotation-pdf-route";
 
 export function QuotationDetail({
 	organizationSlug,
@@ -45,7 +55,35 @@ export function QuotationDetail({
 	quoteId: string;
 }) {
 	const caps = useStudioCapabilities();
-	const query = useQuery(quotesApi.getOptions(quoteId));
+	const renderIntentStatusRef = useRef<string | null>(null);
+	const [availablePreviewIdentity, setAvailablePreviewIdentity] =
+		useState<QuotationPresentationIdentity | null>(null);
+	const query = useQuery({
+		...quotesApi.getOptions(quoteId),
+		refetchInterval: (current) =>
+			current.state.data?.data.status === "preparing" &&
+			renderIntentStatusRef.current !== "failed"
+				? 3_000
+				: false,
+	});
+	const presentationQuery = useQuery({
+		...authoritativeQuotationQuery(
+			quotesApi.getPresentationOptions(quoteId),
+		),
+		enabled:
+			caps.quoteReadOperational && query.data?.data.documentVersion === 1,
+		refetchInterval: (current) => {
+			const status = current.state.data?.data.renderIntent?.status;
+			return status === "pending" || status === "rendering"
+				? 3_000
+				: false;
+		},
+	});
+	const presentation =
+		(presentationQuery.data?.data as
+			| QuotationPresentationState
+			| undefined) ?? null;
+	renderIntentStatusRef.current = presentation?.renderIntent?.status ?? null;
 	const capabilities = useMemo<QuotePresentationCapabilities>(
 		() => ({
 			readOperational: caps.quoteReadOperational,
@@ -99,6 +137,11 @@ export function QuotationDetail({
 	const expiryDue = Boolean(
 		quote.expiresAt && new Date(quote.expiresAt).getTime() <= Date.now(),
 	);
+	const previewIdentity =
+		quote.status === "draft" ? availablePreviewIdentity : presentation;
+	const pdfUrl = previewIdentity
+		? buildQuotationPdfUrl(quote.id, previewIdentity)
+		: null;
 	return (
 		<PageContent
 			title={
@@ -113,6 +156,7 @@ export function QuotationDetail({
 					quote={quote}
 					capabilities={capabilities}
 					organizationSlug={organizationSlug}
+					presentation={presentation}
 				/>
 			}
 		>
@@ -181,22 +225,74 @@ export function QuotationDetail({
 					{quote.documentVersion === 1 ? (
 						<TabsContent
 							value="document"
-							className="mt-6 space-y-3"
+							className="mt-6 space-y-4"
 						>
-							<div className="flex justify-end">
-								<Button asChild variant="outline">
-									<a
-										href={`/api/studio/quotations/${quote.id}/pdf?download=1`}
-									>
-										Download PDF
-									</a>
-								</Button>
+							<div className="rounded-lg border p-4">
+								<QuotationTemplateSelector
+									canRead={caps.quoteReadOperational}
+									canSelect={
+										quote.status === "draft" &&
+										caps.quoteUpdate
+									}
+									expectedDocumentRevision={
+										quote.documentRevision
+									}
+									historical={
+										quote.status !== "draft" &&
+										quote.status !== "preparing"
+									}
+									preparing={quote.status === "preparing"}
+									onPreviewIdentityChange={
+										setAvailablePreviewIdentity
+									}
+									quoteId={quote.id}
+								/>
 							</div>
-							<iframe
-								title="Quotation PDF"
-								src={`/api/studio/quotations/${quote.id}/pdf`}
-								className="h-[75dvh] min-h-[640px] w-full rounded-lg border"
-							/>
+							{pdfUrl && quote.status !== "preparing" ? (
+								<div className="flex justify-end">
+									<Button asChild variant="outline">
+										<a href={`${pdfUrl}&download=1`}>
+											Download PDF
+										</a>
+									</Button>
+								</div>
+							) : null}
+							{quote.status === "preparing" ? (
+								<div className="flex min-h-64 flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-8 text-center">
+									{presentation?.renderIntent?.status ===
+									"failed" ? (
+										<FileTextIcon className="size-8 text-destructive" />
+									) : (
+										<Loader2Icon className="size-8 animate-spin text-muted-foreground" />
+									)}
+									<p className="font-medium">
+										{presentation?.renderIntent?.status ===
+										"failed"
+											? "PDF preparation failed"
+											: "Preparing immutable PDF"}
+									</p>
+									{presentation?.renderIntent
+										?.lastErrorMessage ? (
+										<p className="max-w-lg text-sm text-muted-foreground">
+											{
+												presentation.renderIntent
+													.lastErrorMessage
+											}
+										</p>
+									) : null}
+								</div>
+							) : previewIdentity ? (
+								<QuotationPdfPreview
+									className="h-[75dvh] min-h-[640px]"
+									identity={previewIdentity}
+									quoteId={quote.id}
+								/>
+							) : (
+								<div className="flex min-h-64 items-center justify-center rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
+									An available template is required for draft
+									preview.
+								</div>
+							)}
 						</TabsContent>
 					) : null}
 					<TabsContent value="options" className="mt-6">

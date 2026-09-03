@@ -24,6 +24,10 @@ const shootLinkMigration = readFileSync(
 	new URL("../migrations/0057_chemical_frank_castle.sql", import.meta.url),
 	"utf8",
 );
+const presentationMigration = readFileSync(
+	new URL("../migrations/0058_big_jack_murdock.sql", import.meta.url),
+	"utf8",
+);
 
 test("quotation document migration preserves lifecycle and immutable evidence", () => {
 	assert.match(migration, /client_lifecycle_stage/);
@@ -60,6 +64,59 @@ test("existing organizations receive an idempotent neutral terms preset", () => 
 	assert.doesNotMatch(
 		termsBackfillMigration,
 		/extra services|travel|accommodation|weather|cancellation/i,
+	);
+});
+
+test("quotation template persistence freezes tenant-safe render evidence", () => {
+	assert.match(presentationMigration, /ADD VALUE 'preparing' BEFORE 'sent'/);
+	assert.match(
+		presentationMigration,
+		/CREATE TABLE "quotation_presentations"/,
+	);
+	assert.match(
+		presentationMigration,
+		/CREATE TABLE "quotation_pdf_render_intents"/,
+	);
+	assert.match(
+		presentationMigration,
+		/FOREIGN KEY \("quote_id","organization_id","quote_version"\)/,
+	);
+	assert.match(
+		presentationMigration,
+		/quotation_pdf_render_intents_idempotency_unique/,
+	);
+	assert.match(
+		presentationMigration,
+		/quotation_pdf_render_intents_completed_quote_version_unique/,
+	);
+	assert.match(
+		presentationMigration,
+		/quotation_presentations_protect_lifecycle/,
+	);
+	assert.match(
+		presentationMigration,
+		/quotation_pdf_render_intents_frozen_input_immutable/,
+	);
+	assert.match(
+		presentationMigration,
+		/quotation_pdf_render_intents_completed_immutable/,
+	);
+	assert.match(
+		presentationMigration,
+		/quotation_pdf_render_intents_require_completed_attachment/,
+	);
+	assert.match(presentationMigration, /quotes_pdf_provenance_matches_intent/);
+	assert.match(presentationMigration, /quotes_preparing_document_immutable/);
+	assert.doesNotMatch(
+		presentationMigration,
+		/INSERT INTO "?quotation_presentations"?[\s\S]+SELECT[\s\S]+FROM "?quotes"?/,
+	);
+	assert.ok(
+		presentationMigration.indexOf("quotes_id_org_version_unique") <
+			presentationMigration.indexOf(
+				"quotation_pdf_render_intents_quote_id_organization_id_quote_version",
+			),
+		"composite quote target must precede render-intent FK",
 	);
 });
 

@@ -72,6 +72,7 @@ export function QuotationStepper({
 	completedSteps,
 	onStepClick,
 	primaryActionLabel,
+	primaryActionDisabled = false,
 	onPrimaryAction,
 	onReset,
 	saveStatus = "Draft saved",
@@ -80,6 +81,7 @@ export function QuotationStepper({
 	completedSteps: Set<QuotationStepId>;
 	onStepClick: (step: QuotationStepId) => void;
 	primaryActionLabel?: string;
+	primaryActionDisabled?: boolean;
 	onPrimaryAction?: () => void;
 	onReset?: () => void;
 	saveStatus?: "Unsaved" | "Saving" | "Draft saved" | "Could not save";
@@ -195,6 +197,7 @@ export function QuotationStepper({
 							type="button"
 							className="w-full"
 							onClick={onPrimaryAction}
+							disabled={primaryActionDisabled}
 						>
 							{primaryActionLabel ?? "Review & Send"}
 						</Button>

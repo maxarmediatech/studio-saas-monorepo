@@ -18,6 +18,86 @@ const branding = {
 	logoSha256: null,
 };
 
+function quoteEvidence(pdfRenderIntentId: string | null) {
+	return {
+		id: "quote-1",
+		version: 1,
+		documentRevision: 2,
+		documentSha256: "a".repeat(64),
+		pdfRenderIntentId,
+		pdfSha256: "b".repeat(64),
+		pdfStorageKey: "quotations/org/quote/v1/pdf.pdf",
+		pdfRenderedAt: new Date("2026-08-03T00:00:00.000Z"),
+		pdfRendererVersion: "quotation-pdf-v1",
+		pdfPageCount: 3,
+		pdfByteSize: 1234,
+		brandingSnapshot: branding,
+	};
+}
+
+function completedIntent() {
+	const quote = quoteEvidence("intent-1");
+	return {
+		id: "intent-1",
+		quoteId: quote.id,
+		quoteVersion: quote.version,
+		documentRevision: quote.documentRevision,
+		selectionVersion: 1,
+		sourceFingerprint: "c".repeat(64),
+		brandingFingerprint: "d".repeat(64),
+		templateId: "classic",
+		templateVersion: 1,
+		copyProfileVersion: 1,
+		composerVersion: 1,
+		rendererVersion: quote.pdfRendererVersion,
+		artifactStorageKey: quote.pdfStorageKey,
+		artifactSha256: quote.pdfSha256,
+		artifactRenderedAt: quote.pdfRenderedAt,
+		artifactPageCount: quote.pdfPageCount,
+		artifactByteSize: quote.pdfByteSize,
+		status: "completed" as const,
+	};
+}
+
+function intentProvenance(intent = completedIntent()) {
+	return {
+		renderIntentId: intent.id,
+		quotationId: intent.quoteId,
+		quotationVersion: intent.quoteVersion,
+		documentRevision: intent.documentRevision,
+		selectionVersion: intent.selectionVersion,
+		sourceFingerprint: intent.sourceFingerprint,
+		brandingFingerprint: intent.brandingFingerprint,
+		templateId: intent.templateId,
+		templateVersion: intent.templateVersion,
+		copyProfileVersion: intent.copyProfileVersion,
+		composerVersion: intent.composerVersion,
+		rendererVersion: intent.rendererVersion,
+		artifactSha256: intent.artifactSha256,
+		artifactByteSize: intent.artifactByteSize,
+		pageCount: intent.artifactPageCount,
+		storageKey: intent.artifactStorageKey,
+		renderedAt: intent.artifactRenderedAt.toISOString(),
+	};
+}
+
+function acceptedPdf(provenance?: ReturnType<typeof intentProvenance>) {
+	const quote = quoteEvidence(provenance?.renderIntentId ?? null);
+	return {
+		documentSha256: quote.documentSha256,
+		pdfSnapshot: {
+			rendererVersion: quote.pdfRendererVersion,
+			storageKey: quote.pdfStorageKey,
+			sha256: quote.pdfSha256,
+			renderedAt: quote.pdfRenderedAt.toISOString(),
+			pageCount: quote.pdfPageCount,
+			byteSize: quote.pdfByteSize,
+			branding,
+			...(provenance ? { provenance } : {}),
+		},
+	};
+}
+
 describe("document quote conversion provenance", () => {
 	it("materializes fixed quotation events as scheduled shoots", () => {
 		expect(
@@ -99,14 +179,20 @@ describe("document quote conversion provenance", () => {
 		]);
 	});
 
-	it("rejects an accepted PDF identity that differs from the immutable quote", () => {
+	it("accepts legacy evidence and rejects an altered artifact", () => {
 		const quote = {
+			id: "quote-1",
+			version: 1,
+			documentRevision: 2,
 			documentSha256: "a".repeat(64),
+			pdfRenderIntentId: null,
 			pdfSha256: "b".repeat(64),
 			pdfStorageKey: "quotations/org/quote/v1/pdf.pdf",
+			pdfRenderedAt: new Date("2026-08-03T00:00:00.000Z"),
 			pdfRendererVersion: "quotation-pdf-v1",
 			pdfPageCount: 3,
 			pdfByteSize: 1234,
+			brandingSnapshot: branding,
 		};
 		const acceptance = {
 			documentSha256: quote.documentSha256,
@@ -134,6 +220,139 @@ describe("document quote conversion provenance", () => {
 				},
 				quote,
 			),
-		).toThrow(/provenance mismatch/);
+		).toThrow(/integrity check failed/);
+	});
+
+	it("requires accepted template provenance to match the completed intent", () => {
+		const quote = {
+			id: "quote-1",
+			version: 1,
+			documentRevision: 2,
+			documentSha256: "a".repeat(64),
+			pdfRenderIntentId: "intent-1",
+			pdfSha256: "b".repeat(64),
+			pdfStorageKey: "quotations/org/quote/v1/pdf.pdf",
+			pdfRenderedAt: new Date("2026-08-03T00:00:00.000Z"),
+			pdfRendererVersion: "quotation-pdf-v1",
+			pdfPageCount: 3,
+			pdfByteSize: 1234,
+			brandingSnapshot: branding,
+		};
+		const intent = {
+			id: "intent-1",
+			quoteId: "quote-1",
+			quoteVersion: 1,
+			documentRevision: 2,
+			selectionVersion: 1,
+			sourceFingerprint: "c".repeat(64),
+			brandingFingerprint: "d".repeat(64),
+			templateId: "classic",
+			templateVersion: 1,
+			copyProfileVersion: 1,
+			composerVersion: 1,
+			rendererVersion: quote.pdfRendererVersion,
+			artifactStorageKey: quote.pdfStorageKey,
+			artifactSha256: quote.pdfSha256,
+			artifactRenderedAt: new Date("2026-08-03T00:00:00.000Z"),
+			artifactPageCount: quote.pdfPageCount,
+			artifactByteSize: quote.pdfByteSize,
+			status: "completed",
+		};
+		const provenance = {
+			renderIntentId: intent.id,
+			quotationId: intent.quoteId,
+			quotationVersion: intent.quoteVersion,
+			documentRevision: intent.documentRevision,
+			selectionVersion: intent.selectionVersion,
+			sourceFingerprint: intent.sourceFingerprint,
+			brandingFingerprint: intent.brandingFingerprint,
+			templateId: intent.templateId,
+			templateVersion: intent.templateVersion,
+			copyProfileVersion: intent.copyProfileVersion,
+			composerVersion: intent.composerVersion,
+			rendererVersion: intent.rendererVersion,
+			artifactSha256: intent.artifactSha256,
+			artifactByteSize: intent.artifactByteSize,
+			pageCount: intent.artifactPageCount,
+			storageKey: intent.artifactStorageKey,
+			renderedAt: intent.artifactRenderedAt.toISOString(),
+		};
+		const acceptance = {
+			documentSha256: quote.documentSha256,
+			pdfSnapshot: {
+				rendererVersion: quote.pdfRendererVersion,
+				storageKey: quote.pdfStorageKey,
+				sha256: quote.pdfSha256,
+				renderedAt: intent.artifactRenderedAt.toISOString(),
+				pageCount: quote.pdfPageCount,
+				byteSize: quote.pdfByteSize,
+				branding,
+				provenance,
+			},
+		};
+		expect(() =>
+			assertDocumentAcceptanceProvenance(acceptance, quote, intent),
+		).not.toThrow();
+		expect(() =>
+			assertDocumentAcceptanceProvenance(
+				{
+					...acceptance,
+					pdfSnapshot: {
+						...acceptance.pdfSnapshot,
+						provenance: { ...provenance, templateVersion: 2 },
+					},
+				},
+				quote,
+				intent,
+			),
+		).toThrow(/integrity check failed/);
+	});
+
+	it("rejects any template provenance on legacy acceptance evidence", () => {
+		const quote = quoteEvidence(null);
+		expect(() =>
+			assertDocumentAcceptanceProvenance(
+				acceptedPdf(),
+				quote,
+				completedIntent(),
+			),
+		).toThrow(/integrity check failed/);
+		expect(() =>
+			assertDocumentAcceptanceProvenance(
+				acceptedPdf(intentProvenance()),
+				quote,
+			),
+		).toThrow(/integrity check failed/);
+	});
+
+	it("rejects a template pointer with missing or incomplete intent data", () => {
+		const quote = quoteEvidence("intent-1");
+		const acceptance = acceptedPdf(intentProvenance());
+		expect(() =>
+			assertDocumentAcceptanceProvenance(acceptance, quote, null),
+		).toThrow(/integrity check failed/);
+		expect(() =>
+			assertDocumentAcceptanceProvenance(acceptance, quote, {
+				...completedIntent(),
+				status: "rendering",
+			}),
+		).toThrow(/integrity check failed/);
+	});
+
+	it.each([
+		["pointer", { id: "intent-2" }],
+		["quote", { quoteId: "quote-2" }],
+		["version", { quoteVersion: 2 }],
+		["revision", { documentRevision: 3 }],
+		["artifact", { artifactSha256: "e".repeat(64) }],
+	])("rejects template intent %s mismatch", (_label, mutation) => {
+		const quote = quoteEvidence("intent-1");
+		expect(() =>
+			assertDocumentAcceptanceProvenance(
+				acceptedPdf(intentProvenance()),
+				quote,
+				{ ...completedIntent(), ...mutation },
+			),
+		).toThrow(/integrity check failed/);
 	});
 });

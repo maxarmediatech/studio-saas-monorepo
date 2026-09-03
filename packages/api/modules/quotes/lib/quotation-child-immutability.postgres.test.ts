@@ -89,32 +89,47 @@ describePostgres("document quotation child immutability", () => {
 				clientId,
 				role: "primary_client",
 			});
-			await db.insert(quoteOptions).values([
-				{
-					id: optionId,
-					organizationId,
-					quoteId: sentQuoteId,
-					name: "Sent option",
-					subtotal: "100.00",
-					totalAmount: "100.00",
-					bookingBlueprint,
-				},
-				{
-					id: draftOptionId,
-					organizationId,
-					quoteId: draftQuoteId,
-					name: "Draft option",
-					subtotal: "100.00",
-					totalAmount: "100.00",
-					bookingBlueprint,
-				},
-			]);
-			await db.insert(quoteLineItems).values({
-				organizationId,
-				quoteOptionId: optionId,
-				type: "service",
-				description: "Immutable line",
-				amount: "100.00",
+			await db.transaction(async (tx) => {
+				await tx.insert(quoteOptions).values([
+					{
+						id: optionId,
+						organizationId,
+						quoteId: sentQuoteId,
+						name: "Sent option",
+						subtotal: "100.00",
+						totalAmount: "100.00",
+						bookingBlueprint,
+					},
+					{
+						id: draftOptionId,
+						organizationId,
+						quoteId: draftQuoteId,
+						name: "Draft option",
+						subtotal: "100.00",
+						totalAmount: "100.00",
+						bookingBlueprint,
+					},
+				]);
+				await tx.insert(quoteLineItems).values([
+					{
+						organizationId,
+						quoteOptionId: optionId,
+						type: "service",
+						description: "Immutable line",
+						quantity: "1.00",
+						unitPrice: "100.00",
+						amount: "100.00",
+					},
+					{
+						organizationId,
+						quoteOptionId: draftOptionId,
+						type: "service",
+						description: "Draft line",
+						quantity: "1.00",
+						unitPrice: "100.00",
+						amount: "100.00",
+					},
+				]);
 			});
 			await db
 				.update(quotes)

@@ -1,0 +1,40 @@
+import type { QuotationPdfCopyProfile } from "./types";
+
+export const CLASSIC_COPY_PROFILE_V1 = Object.freeze({
+	id: "classic",
+	version: 1,
+	metadata: Object.freeze({
+		quote: "Quote",
+		quotationDate: "Quotation date",
+		validUntil: "Valid until",
+	}),
+	sections: Object.freeze({
+		quotation: "Quotation",
+		preparedFor: "Prepared for",
+		events: "Events",
+		packageOptions: "Package options",
+		coverage: "Coverage",
+		deliverables: "Deliverables",
+		paymentPlan: "Payment plan",
+		deliveryTimelines: "Delivery timelines",
+		paymentTiming: "Payment timing",
+		terms: "Terms",
+	}),
+	labels: Object.freeze({
+		email: "Email",
+		phone: "Phone",
+		address: "Address",
+		side: "Side",
+		guests: "Guests",
+		date: "Date",
+		location: "Location",
+		notes: "Notes",
+		milestone: "Milestone",
+		percentage: "%",
+		amount: "Amount",
+		recommended: "RECOMMENDED",
+		noDeliverables: "No deliverables listed",
+		notSpecified: "Not specified",
+		notScheduled: "Not scheduled",
+	}),
+} as const satisfies QuotationPdfCopyProfile);

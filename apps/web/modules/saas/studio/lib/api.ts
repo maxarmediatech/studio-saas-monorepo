@@ -217,6 +217,9 @@ export const quotesApi = {
 		orpc.quotes.searchContacts.queryOptions({
 			input: { query, limit: 20 },
 		}),
+	listTemplatesOptions: () => orpc.quotes.listTemplates.queryOptions(),
+	getPresentationOptions: (id: string) =>
+		orpc.quotes.getPresentation.queryOptions({ input: { id } }),
 };
 
 export const quotesMutations = {
@@ -232,6 +235,13 @@ export const quotesMutations = {
 	createDocument: () => orpc.quotes.createDocument.mutationOptions(),
 	saveDocument: () => orpc.quotes.saveDocument.mutationOptions(),
 	sendDocument: () => orpc.quotes.sendDocument.mutationOptions(),
+	selectTemplate: () => orpc.quotes.selectTemplate.mutationOptions(),
+	startPresentationSend: () =>
+		orpc.quotes.startPresentationSend.mutationOptions(),
+	retryPresentationRender: () =>
+		orpc.quotes.retryPresentationRender.mutationOptions(),
+	returnPresentationToDraft: () =>
+		orpc.quotes.returnPresentationToDraft.mutationOptions(),
 };
 
 // ============================================================================

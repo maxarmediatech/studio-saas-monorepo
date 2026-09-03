@@ -22,7 +22,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@repo/ui/components/select";
-import { quotesMutations } from "@saas/studio/lib/api";
+import { quotesApi, quotesMutations } from "@saas/studio/lib/api";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2Icon, PencilIcon, SendIcon } from "lucide-react";
@@ -30,11 +30,17 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import type { QuotationPresentationState } from "../QuotationTemplateSelector";
+import { authoritativeQuotationQuery } from "../quotation-authoritative-query";
 import {
 	getQuoteActions,
 	type QuoteAction,
 	type QuotePresentationCapabilities,
 } from "../quotation-helpers";
+import {
+	isQuotationPresentationConflict,
+	isQuotationTemplateAvailable,
+} from "../quotation-pdf-route";
 import { formatMoney } from "./QuotationDetailShared";
 
 type ConfirmAction = Exclude<QuoteAction, "edit">;
@@ -59,24 +65,41 @@ export function QuotationLifecycleActions({
 	quote,
 	capabilities,
 	organizationSlug,
+	presentation,
 }: {
 	quote: QuoteDetail;
 	capabilities: QuotePresentationCapabilities;
 	organizationSlug: string;
+	presentation: QuotationPresentationState | null;
 }) {
 	const router = useRouter();
 	const queryClient = useQueryClient();
 	const [confirm, setConfirm] = useState<ConfirmAction | null>(null);
 	const [selectedOptionId, setSelectedOptionId] = useState("");
-	const send = useMutation(quotesMutations.send());
+	const legacySend = useMutation(quotesMutations.send());
+	const presentationSend = useMutation(
+		quotesMutations.startPresentationSend(),
+	);
+	const retryRender = useMutation(quotesMutations.retryPresentationRender());
+	const returnToDraft = useMutation(
+		quotesMutations.returnPresentationToDraft(),
+	);
 	const revise = useMutation(quotesMutations.revise());
 	const accept = useMutation(quotesMutations.accept());
 	const decline = useMutation(quotesMutations.decline());
 	const expire = useMutation(quotesMutations.expire());
 	const convert = useMutation(quotesMutations.convert());
-	const pending = [send, revise, accept, decline, expire, convert].some(
-		(mutation) => mutation.isPending,
-	);
+	const pending = [
+		legacySend,
+		presentationSend,
+		retryRender,
+		returnToDraft,
+		revise,
+		accept,
+		decline,
+		expire,
+		convert,
+	].some((mutation) => mutation.isPending);
 	const actions = getQuoteActions(quote, capabilities);
 
 	const openAction = (action: ConfirmAction) => {
@@ -96,7 +119,38 @@ export function QuotationLifecycleActions({
 		}
 		try {
 			if (confirm === "send") {
-				await send.mutateAsync({ id: quote.id });
+				if (quote.documentVersion === 1) {
+					const [currentPresentation, catalog] = await Promise.all([
+						queryClient.fetchQuery(
+							authoritativeQuotationQuery(
+								quotesApi.getPresentationOptions(quote.id),
+							),
+						),
+						queryClient.fetchQuery(
+							authoritativeQuotationQuery(
+								quotesApi.listTemplatesOptions(),
+							),
+						),
+					]);
+					const selectedAvailable = isQuotationTemplateAvailable(
+						catalog.data,
+						currentPresentation.data,
+					);
+					if (!selectedAvailable) {
+						throw new Error(
+							"Choose an available quotation template before sending",
+						);
+					}
+					await presentationSend.mutateAsync({
+						id: quote.id,
+						expectedDocumentRevision:
+							currentPresentation.data.documentRevision,
+						expectedSelectionVersion:
+							currentPresentation.data.selectionVersion,
+					});
+				} else {
+					await legacySend.mutateAsync({ id: quote.id });
+				}
 			}
 			if (confirm === "decline") {
 				await decline.mutateAsync({ id: quote.id });
@@ -141,13 +195,54 @@ export function QuotationLifecycleActions({
 				return;
 			}
 			setConfirm(null);
-			toast.success(`${labels[confirm]} completed`);
+			toast.success(
+				confirm === "send" && quote.documentVersion === 1
+					? "Quotation PDF generated"
+					: `${labels[confirm]} completed`,
+			);
 			await invalidate();
 		} catch (error) {
+			await invalidate();
+			toast.error(
+				isQuotationPresentationConflict(error)
+					? "Quotation changed elsewhere. Latest state loaded; review before retrying."
+					: error instanceof Error
+						? error.message
+						: "Quotation action failed",
+			);
+		}
+	};
+
+	const failedIntent =
+		presentation?.renderIntent?.status === "failed"
+			? presentation.renderIntent
+			: null;
+	const runRecovery = async (action: "retry" | "return") => {
+		const current = presentation;
+		if (!failedIntent || !current || current.selectionVersion === null) {
+			return;
+		}
+		try {
+			const input = {
+				id: quote.id,
+				renderIntentId: failedIntent.id,
+				expectedDocumentRevision: current.documentRevision,
+				expectedSelectionVersion: current.selectionVersion,
+			};
+			if (action === "retry") {
+				await retryRender.mutateAsync(input);
+				toast.success("Quotation PDF generated");
+			} else {
+				await returnToDraft.mutateAsync(input);
+				toast.success("Quotation returned to draft");
+			}
+			await invalidate();
+		} catch (error) {
+			await invalidate();
 			toast.error(
 				error instanceof Error
 					? error.message
-					: "Quotation action failed",
+					: "Quotation recovery action failed",
 			);
 		}
 	};
@@ -155,6 +250,25 @@ export function QuotationLifecycleActions({
 	return (
 		<>
 			<div className="flex flex-wrap justify-end gap-2">
+				{failedIntent && capabilities.send ? (
+					<>
+						<Button
+							disabled={pending}
+							onClick={() => void runRecovery("return")}
+							size="sm"
+							variant="outline"
+						>
+							Return to draft
+						</Button>
+						<Button
+							disabled={pending}
+							onClick={() => void runRecovery("retry")}
+							size="sm"
+						>
+							Retry PDF
+						</Button>
+					</>
+				) : null}
 				{actions.includes("edit") ? (
 					<Button size="sm" variant="outline" asChild>
 						<Link

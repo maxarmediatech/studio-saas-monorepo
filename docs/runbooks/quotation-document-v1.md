@@ -35,8 +35,9 @@ exports.
    configuration wording.
 8. Set `QUOTATION_WIZARD_MODE=document-v1` in staging and complete the quotation
    acceptance flow: draft, preview, send, accept, revise, and convert.
-9. Confirm the daily Trigger.dev task `quotation-pdf-cleanup` is registered and
-   succeeding before enabling document-v1 in production.
+9. Confirm the synchronous quotation PDF send succeeds against private storage.
+   Confirm the Trigger.dev task `cleanup-unreferenced-quotation-pdfs` is
+   registered and succeeding before enabling document-v1 in production.
 10. Enable `document-v1` for new production quotations. Existing legacy and
    document-v1 rows continue to dispatch by `documentVersion`, independent of
    the switch.
@@ -44,6 +45,22 @@ exports.
 The compatibility window is after 0055 and before 0056. During this window the
 old application remains safe because no `quotation_terms` rows exist. After 0056
 has run, do not roll back to an application schema that omits the new enum value.
+
+### Selectable PDF template rollout
+
+Expose selection only through the authenticated server catalog. The web entry
+points remain organization-permission gated: operational read for catalog and
+preview, quote update for draft selection, and quote send for send/recovery.
+There is currently no organization-scoped feature-flag service in this codebase;
+do not substitute an environment variable or organization metadata convention.
+That infrastructure gap must be resolved before a tenant-by-tenant rollout.
+
+Classic v0 (`classic@2` internally) is the only active template for new drafts.
+Classic v1 and Neutral remain retired in the immutable registry so historical
+render intents and provenance can still resolve their exact renderer. Run the
+minimal, normal, boundary, preview, and send checks before promotion. Reversal
+is a compatible application deploy that changes catalog status only. Never
+remove a renderer once its identity has been persisted.
 
 ## Acceptance checks
 
@@ -67,6 +84,15 @@ has run, do not roll back to an application schema that omits the new enum value
   quotation evidence.
 - Complete an S3-backed send, download the stored PDF, and confirm the selected
   timelines, milestones, and clauses render in their saved order.
+- In wizard and detail previews, switch between every active template and verify
+  the prior iframe remains visible under progress until the replacement loads.
+  Confirm preview URLs carry revision, template ID/version, and selection version.
+- Force a stale selection write and confirm the 409 path refreshes authoritative
+  quotation/presentation state. Then deactivate the selected catalog entry and
+  confirm drafts require a replacement while immutable historical PDFs remain
+  downloadable.
+- Force a render failure and verify the quotation returns to draft, reports the
+  failure, and can be sent again with the same template selection.
 - Exercise all five event sides plus fixed and tentative timelines. Tentative
   booking events must remain off the calendar until dated.
 - Confirm converted payment schedules have no fabricated due dates and are
@@ -78,7 +104,17 @@ has run, do not roll back to an application schema that omits the new enum value
   verify document, normalized option/line-item, acceptance, branding, and PDF
   storage fields contain no production PII or object keys.
 
-## PDF cleanup and integrity
+## PDF rendering, recovery, cleanup, and integrity
+
+A document-v1 send persists a frozen render intent and renders in the same API
+request while the quotation remains `draft`. The renderer uses only that frozen
+source and presentation identity, verifies the private stored bytes, then
+atomically completes the intent and moves the quotation from `draft` to `sent`.
+A failed render leaves the quotation as `draft` and retains the incomplete
+intent, so the same template selection can resume safely on the next send.
+Existing failed intents retain
+manual retry and return-to-draft actions for operational recovery. Never edit
+intent source fields or attach an artifact manually.
 
 Sent PDFs use private, content-addressed keys. Reads recompute SHA-256 and verify
 the stored byte size before serving evidence. Integrity failures are availability

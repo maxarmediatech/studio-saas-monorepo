@@ -220,6 +220,11 @@ describe("quotation PDF", () => {
 				first,
 			);
 		}
+		expect(createHash("sha256").update(first).digest("hex")).toBe(
+			"f77bec68c86494d3abb536a5fd2e9ea6a7d2edcea0d82d2254bcd18d54a1a259",
+		);
+		expect(countPdfPages(first)).toBe(5);
+		expect(first.byteLength).toBe(23_377);
 		expect(first.subarray(0, 4).toString()).toBe("%PDF");
 		expect(countPdfPages(first)).toBeGreaterThanOrEqual(1);
 		expect(createHash("sha256").update(first).digest("hex")).toBe(
@@ -258,6 +263,11 @@ describe("quotation PDF", () => {
 			logoDataUri: `data:image/png;base64,${logo.toString("base64")}`,
 		};
 		const bytes = await renderQuotationPdf(input);
+		expect(createHash("sha256").update(bytes).digest("hex")).toBe(
+			"424861cee5be24b5ac7f025b95f77973471aa381c2e34bd2e72523cd85444fe8",
+		);
+		expect(countPdfPages(bytes)).toBe(4);
+		expect(bytes.byteLength).toBe(29_657);
 		const pages = await extractPdfPages(bytes);
 		expect(pages).toHaveLength(countExplicitQuotationPdfPages(input));
 		expectPageChrome(pages, input.quoteNumber);
@@ -301,6 +311,11 @@ describe("quotation PDF", () => {
 			createdAt: "2026-08-03T10:00:00.000Z",
 		};
 		const bytes = await renderQuotationPdf(input);
+		expect(createHash("sha256").update(bytes).digest("hex")).toBe(
+			"b383abd8081a867a010d71c63927b4fb8a5c786026e8300baad137318b0c2b17",
+		);
+		expect(countPdfPages(bytes)).toBe(36);
+		expect(bytes.byteLength).toBe(163_583);
 		expect(bytes.subarray(0, 4).toString()).toBe("%PDF");
 		expect(countPdfPages(bytes)).toBeGreaterThan(8);
 		const pages = await extractPdfPages(bytes);

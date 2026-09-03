@@ -73,6 +73,7 @@ export function normalizeQuotationListParams(
 
 export const QUOTE_STATUS_LABELS: Record<QuoteStatus, string> = {
 	draft: "Draft",
+	preparing: "Preparing",
 	sent: "Sent",
 	accepted: "Accepted",
 	converted: "Converted",

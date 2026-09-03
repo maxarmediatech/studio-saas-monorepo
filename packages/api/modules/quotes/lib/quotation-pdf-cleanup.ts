@@ -1,4 +1,10 @@
-import { db, isNotNull, quoteAcceptances, quotes } from "@repo/database";
+import {
+	db,
+	isNotNull,
+	quotationPdfRenderIntents,
+	quoteAcceptances,
+	quotes,
+} from "@repo/database";
 import { getUploadsBucketName } from "@repo/env";
 import { deleteObject, listObjects } from "@repo/storage";
 import { quotationPdfSnapshotV1Schema } from "../../studio/schemas/quotation-document";
@@ -20,10 +26,29 @@ export function selectUnreferencedQuotationPdfKeys(
 	);
 }
 
+export function collectQuotationPdfReferenceKeys(input: {
+	quoteKeys: Array<string | null>;
+	intentKeys: Array<string | null>;
+	acceptanceSnapshots: unknown[];
+}): Set<string> {
+	const referenced = new Set(
+		[...input.quoteKeys, ...input.intentKeys].flatMap((key) =>
+			key ? [key] : [],
+		),
+	);
+	for (const snapshot of input.acceptanceSnapshots) {
+		const parsed = quotationPdfSnapshotV1Schema.safeParse(snapshot);
+		if (parsed.success) {
+			referenced.add(parsed.data.storageKey);
+		}
+	}
+	return referenced;
+}
+
 export async function cleanupUnreferencedQuotationPdfs(
 	now = new Date(),
 ): Promise<{ scanned: number; deleted: number }> {
-	const [quoteRows, acceptanceRows] = await Promise.all([
+	const [quoteRows, acceptanceRows, intentRows] = await Promise.all([
 		db
 			.select({ key: quotes.pdfStorageKey })
 			.from(quotes)
@@ -32,16 +57,16 @@ export async function cleanupUnreferencedQuotationPdfs(
 			.select({ snapshot: quoteAcceptances.pdfSnapshot })
 			.from(quoteAcceptances)
 			.where(isNotNull(quoteAcceptances.pdfSnapshot)),
+		db
+			.select({ key: quotationPdfRenderIntents.artifactStorageKey })
+			.from(quotationPdfRenderIntents)
+			.where(isNotNull(quotationPdfRenderIntents.artifactStorageKey)),
 	]);
-	const referenced = new Set(
-		quoteRows.flatMap(({ key }) => (key ? [key] : [])),
-	);
-	for (const row of acceptanceRows) {
-		const snapshot = quotationPdfSnapshotV1Schema.safeParse(row.snapshot);
-		if (snapshot.success) {
-			referenced.add(snapshot.data.storageKey);
-		}
-	}
+	const referenced = collectQuotationPdfReferenceKeys({
+		quoteKeys: quoteRows.map(({ key }) => key),
+		intentKeys: intentRows.map(({ key }) => key),
+		acceptanceSnapshots: acceptanceRows.map(({ snapshot }) => snapshot),
+	});
 	const bucket = getUploadsBucketName();
 	const cutoff = new Date(now.getTime() - ONE_DAY_MS);
 	let continuationToken: string | undefined;

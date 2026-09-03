@@ -5,6 +5,8 @@ import { getTableConfig } from "drizzle-orm/pg-core";
 import {
 	bookings,
 	documentSequences,
+	quotationPdfRenderIntents,
+	quotationPresentations,
 	quoteAcceptances,
 	quoteLineItems,
 	quoteOptions,
@@ -77,9 +79,47 @@ test("quotation foreign keys have exact organization-scoped unique targets", () 
 	);
 	assert.equal(
 		hasForeignKey(
+			quotationPresentations,
+			["quote_id", "organization_id"],
+			["id", "organization_id"],
+		),
+		true,
+	);
+	assert.equal(
+		hasForeignKey(
+			quotationPdfRenderIntents,
+			["quote_id", "organization_id", "quote_version"],
+			["id", "organization_id", "version"],
+		),
+		true,
+	);
+	assert.equal(
+		hasForeignKey(
 			bookings,
 			["source_quote_option_id", "organization_id", "source_quote_id"],
 			["id", "organization_id", "quote_id"],
+		),
+		true,
+	);
+});
+
+test("quotation presentation and render-intent identities stay singular", () => {
+	const intentConfig = getTableConfig(quotationPdfRenderIntents);
+	assert.equal(quotationPresentations.quoteId.primary, true);
+	assert.equal(
+		intentConfig.uniqueConstraints.some(
+			(item) =>
+				item.name === "quotation_pdf_render_intents_idempotency_unique",
+		),
+		true,
+	);
+	assert.equal(
+		intentConfig.indexes.some(
+			(item) =>
+				item.config.name ===
+					"quotation_pdf_render_intents_completed_quote_version_unique" &&
+				item.config.unique &&
+				item.config.where !== undefined,
 		),
 		true,
 	);

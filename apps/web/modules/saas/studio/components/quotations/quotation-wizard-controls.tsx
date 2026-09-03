@@ -20,12 +20,14 @@ export function QuotationWizardFooter({
 	onNext,
 	onPrevious,
 	onSend,
+	canSend,
 }: {
 	activeIndex: number;
 	activeStep: QuotationStepId;
 	onNext: () => void;
 	onPrevious: () => void;
 	onSend: () => void;
+	canSend: boolean;
 }) {
 	return (
 		<div className="flex items-center justify-between">
@@ -39,7 +41,7 @@ export function QuotationWizardFooter({
 				Previous
 			</Button>
 			{activeStep === "preview" ? (
-				<Button type="button" onClick={onSend}>
+				<Button type="button" onClick={onSend} disabled={!canSend}>
 					<CheckIcon className="mr-2 size-4" />
 					Mark ready
 				</Button>

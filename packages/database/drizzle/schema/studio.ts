@@ -1,5 +1,6 @@
 import { relations, sql } from "drizzle-orm";
 import {
+	type AnyPgColumn,
 	boolean,
 	check,
 	date,
@@ -40,6 +41,7 @@ import {
 	lineItemTypeEnum,
 	paymentMethodEnum,
 	paymentScheduleStatusEnum,
+	quotationPdfRenderIntentStatusEnum,
 	quoteStatusEnum,
 	submissionStatusEnum,
 	taxTypeEnum,
@@ -405,6 +407,11 @@ export const quotes = pgTable(
 		pdfRendererVersion: varchar("pdf_renderer_version", { length: 100 }),
 		pdfPageCount: integer("pdf_page_count"),
 		pdfByteSize: integer("pdf_byte_size"),
+		pdfRenderIntentId: varchar("pdf_render_intent_id", {
+			length: 255,
+		}).references((): AnyPgColumn => quotationPdfRenderIntents.id, {
+			onDelete: "restrict",
+		}),
 		sentAt: timestamp("sent_at", { withTimezone: true }),
 		convertedAt: timestamp("converted_at", { withTimezone: true }),
 		declinedAt: timestamp("declined_at", { withTimezone: true }),
@@ -432,6 +439,11 @@ export const quotes = pgTable(
 	},
 	(table): PgTableExtraConfigValue[] => [
 		unique("quotes_id_org_unique").on(table.id, table.organizationId),
+		unique("quotes_id_org_version_unique").on(
+			table.id,
+			table.organizationId,
+			table.version,
+		),
 		unique("quotes_org_number_version_unique").on(
 			table.organizationId,
 			table.quoteNumber,
@@ -466,6 +478,142 @@ export const quotes = pgTable(
 		check(
 			"quotes_pdf_fields_complete",
 			sql`(pdf_storage_key IS NULL AND pdf_sha256 IS NULL AND pdf_rendered_at IS NULL AND pdf_renderer_version IS NULL AND pdf_page_count IS NULL AND pdf_byte_size IS NULL) OR (pdf_storage_key IS NOT NULL AND pdf_sha256 IS NOT NULL AND pdf_rendered_at IS NOT NULL AND pdf_renderer_version IS NOT NULL AND pdf_page_count > 0 AND pdf_byte_size > 0)`,
+		),
+	],
+);
+
+export const quotationPresentations = pgTable(
+	"quotation_presentations",
+	{
+		quoteId: varchar("quote_id", { length: 255 }).primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 }).notNull(),
+		templateId: varchar("template_id", { length: 100 }).notNull(),
+		templateVersion: integer("template_version").notNull(),
+		selectionVersion: integer("selection_version").default(1).notNull(),
+		selectedBy: varchar("selected_by", { length: 255 })
+			.notNull()
+			.references(() => users.id, { onDelete: "restrict" }),
+		selectedAt: timestamp("selected_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		foreignKey({
+			columns: [table.quoteId, table.organizationId],
+			foreignColumns: [quotes.id, quotes.organizationId],
+		}).onDelete("cascade"),
+		index("quotation_presentations_org_template_idx").on(
+			table.organizationId,
+			table.templateId,
+			table.templateVersion,
+		),
+		check(
+			"quotation_presentations_template_version_positive",
+			sql`template_version > 0`,
+		),
+		check(
+			"quotation_presentations_selection_version_positive",
+			sql`selection_version > 0`,
+		),
+	],
+);
+
+export const quotationPdfRenderIntents = pgTable(
+	"quotation_pdf_render_intents",
+	{
+		id: varchar("id", { length: 255 })
+			.$defaultFn(() => uuidv7())
+			.primaryKey(),
+		organizationId: varchar("organization_id", { length: 255 }).notNull(),
+		quoteId: varchar("quote_id", { length: 255 }).notNull(),
+		quoteVersion: integer("quote_version").notNull(),
+		documentRevision: integer("document_revision").notNull(),
+		selectionVersion: integer("selection_version").notNull(),
+		sourceDocument: jsonb("source_document").notNull(),
+		sourceFingerprint: varchar("source_fingerprint", {
+			length: 64,
+		}).notNull(),
+		brandingSnapshot: jsonb("branding_snapshot").notNull(),
+		brandingFingerprint: varchar("branding_fingerprint", {
+			length: 64,
+		}).notNull(),
+		templateId: varchar("template_id", { length: 100 }).notNull(),
+		templateVersion: integer("template_version").notNull(),
+		copyProfileVersion: integer("copy_profile_version").notNull(),
+		composerVersion: integer("composer_version").notNull(),
+		rendererVersion: varchar("renderer_version", { length: 100 }).notNull(),
+		idempotencyKey: text("idempotency_key").notNull(),
+		status: quotationPdfRenderIntentStatusEnum("status")
+			.default("pending")
+			.notNull(),
+		attemptCount: integer("attempt_count").default(0).notNull(),
+		taskId: varchar("task_id", { length: 255 }),
+		lastErrorCode: varchar("last_error_code", { length: 100 }),
+		lastErrorMessage: text("last_error_message"),
+		lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
+		artifactStorageKey: text("artifact_storage_key"),
+		artifactSha256: varchar("artifact_sha256", { length: 64 }),
+		artifactRenderedAt: timestamp("artifact_rendered_at", {
+			withTimezone: true,
+		}),
+		artifactPageCount: integer("artifact_page_count"),
+		artifactByteSize: integer("artifact_byte_size"),
+		completedAt: timestamp("completed_at", { withTimezone: true }),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		foreignKey({
+			columns: [table.quoteId, table.organizationId, table.quoteVersion],
+			foreignColumns: [quotes.id, quotes.organizationId, quotes.version],
+		}).onDelete("cascade"),
+		unique("quotation_pdf_render_intents_id_org_quote_version_unique").on(
+			table.id,
+			table.organizationId,
+			table.quoteId,
+			table.quoteVersion,
+		),
+		unique("quotation_pdf_render_intents_idempotency_unique").on(
+			table.idempotencyKey,
+		),
+		uniqueIndex(
+			"quotation_pdf_render_intents_completed_quote_version_unique",
+		)
+			.on(table.quoteId, table.quoteVersion)
+			.where(sql`status = 'completed'`),
+		index("quotation_pdf_render_intents_recovery_idx").on(
+			table.status,
+			table.updatedAt,
+		),
+		check(
+			"quotation_pdf_render_intents_versions_positive",
+			sql`quote_version > 0 AND document_revision >= 0 AND selection_version > 0 AND template_version > 0 AND copy_profile_version > 0 AND composer_version > 0`,
+		),
+		check(
+			"quotation_pdf_render_intents_attempt_count_non_negative",
+			sql`attempt_count >= 0`,
+		),
+		check(
+			"quotation_pdf_render_intents_idempotency_identity",
+			sql`idempotency_key = quote_id || ':' || document_revision::text || ':' || selection_version::text`,
+		),
+		check(
+			"quotation_pdf_render_intents_artifact_fields_complete",
+			sql`(artifact_storage_key IS NULL AND artifact_sha256 IS NULL AND artifact_rendered_at IS NULL AND artifact_page_count IS NULL AND artifact_byte_size IS NULL AND completed_at IS NULL) OR (artifact_storage_key IS NOT NULL AND artifact_sha256 IS NOT NULL AND artifact_rendered_at IS NOT NULL AND artifact_page_count > 0 AND artifact_byte_size > 0 AND completed_at IS NOT NULL)`,
+		),
+		check(
+			"quotation_pdf_render_intents_completed_artifact_required",
+			sql`(status = 'completed') = (completed_at IS NOT NULL)`,
 		),
 	],
 );
@@ -2400,6 +2548,18 @@ export const quoteRelations = relations(quotes, ({ one, many }) => ({
 	}),
 	participants: many(quoteParticipants),
 	options: many(quoteOptions),
+	presentation: one(quotationPresentations, {
+		fields: [quotes.id],
+		references: [quotationPresentations.quoteId],
+	}),
+	renderIntents: many(quotationPdfRenderIntents, {
+		relationName: "quotationRenderIntents",
+	}),
+	completedRenderIntent: one(quotationPdfRenderIntents, {
+		fields: [quotes.pdfRenderIntentId],
+		references: [quotationPdfRenderIntents.id],
+		relationName: "completedQuotationPdfRenderIntent",
+	}),
 	acceptance: one(quoteAcceptances, {
 		fields: [quotes.id],
 		references: [quoteAcceptances.quoteId],
@@ -2409,6 +2569,36 @@ export const quoteRelations = relations(quotes, ({ one, many }) => ({
 		references: [bookings.sourceQuoteId],
 	}),
 }));
+
+export const quotationPresentationRelations = relations(
+	quotationPresentations,
+	({ one }) => ({
+		quote: one(quotes, {
+			fields: [quotationPresentations.quoteId],
+			references: [quotes.id],
+		}),
+		selectedByUser: one(users, {
+			fields: [quotationPresentations.selectedBy],
+			references: [users.id],
+		}),
+	}),
+);
+
+export const quotationPdfRenderIntentRelations = relations(
+	quotationPdfRenderIntents,
+	({ one }) => ({
+		quote: one(quotes, {
+			fields: [quotationPdfRenderIntents.quoteId],
+			references: [quotes.id],
+			relationName: "quotationRenderIntents",
+		}),
+		completedQuote: one(quotes, {
+			fields: [quotationPdfRenderIntents.id],
+			references: [quotes.pdfRenderIntentId],
+			relationName: "completedQuotationPdfRenderIntent",
+		}),
+	}),
+);
 
 export const quoteParticipantRelations = relations(
 	quoteParticipants,

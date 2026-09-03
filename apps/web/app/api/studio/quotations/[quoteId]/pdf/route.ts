@@ -4,7 +4,10 @@ import {
 } from "@repo/api/modules/quotes/lib/quotation-pdf-service";
 import { auth } from "@repo/auth";
 import { and, db, eq, quotes } from "@repo/database";
-import { requestedQuotationRevision } from "@saas/studio/components/quotations/quotation-pdf-route";
+import {
+	requestedQuotationPresentation,
+	requestedQuotationRevision,
+} from "@saas/studio/components/quotations/quotation-pdf-route";
 import { NextResponse } from "next/server";
 
 function safeFilename(quoteNumber: string, version: number): string {
@@ -56,6 +59,14 @@ export async function GET(
 		url.searchParams,
 		quote.documentRevision,
 	);
+	const requestedPresentation = requestedQuotationPresentation(
+		url.searchParams,
+	);
+	if (requestedPresentation.provided && !requestedPresentation.identity) {
+		return new NextResponse("Invalid quotation presentation identity", {
+			status: 400,
+		});
+	}
 	try {
 		const rendered =
 			quote.status === "draft"
@@ -63,6 +74,7 @@ export async function GET(
 						organizationId,
 						quoteId,
 						requestedRevision,
+						requestedPresentation.identity ?? undefined,
 					)
 				: await readStoredQuotationPdf(organizationId, quoteId);
 		const disposition =
@@ -75,7 +87,7 @@ export async function GET(
 					quote.status === "draft"
 						? "private, no-store"
 						: "private, max-age=31536000, immutable",
-				ETag: `"${rendered.sha256}"`,
+				ETag: `"${"identityEtag" in rendered ? rendered.identityEtag : rendered.sha256}"`,
 				"Content-Length": rendered.bytes.byteLength.toString(),
 			},
 		});

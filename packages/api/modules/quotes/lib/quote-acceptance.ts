@@ -4,20 +4,18 @@ import {
 	db,
 	eq,
 	isNull,
+	quotationPdfRenderIntents,
 	quoteAcceptances,
 	quoteOptions,
 	quotes,
 } from "@repo/database";
 import { trackActivityWithExecutor } from "../../activities/lib";
-import {
-	quotationBrandingSnapshotV1Schema,
-	quotationDocumentV1Schema,
-	quotationPdfSnapshotV1Schema,
-} from "../../studio/schemas/quotation-document";
+import { quotationDocumentV1Schema } from "../../studio/schemas/quotation-document";
 import {
 	acceptedQuoteOptionSnapshotSchema,
 	bookingBlueprintSchema,
 } from "../../studio/schemas/quote";
+import { buildQuotationPdfSnapshot } from "./quotation-pdf-snapshot";
 import { isQuoteExpiryDue } from "./quote-lifecycle";
 import type { QuoteServiceContext } from "./quote-service";
 
@@ -110,6 +108,28 @@ export async function acceptQuote(
 				})),
 			},
 		});
+		const pdfProvenance = quote.pdfRenderIntentId
+			? await tx.query.quotationPdfRenderIntents.findFirst({
+					where: and(
+						eq(
+							quotationPdfRenderIntents.id,
+							quote.pdfRenderIntentId,
+						),
+						eq(quotationPdfRenderIntents.quoteId, quote.id),
+						eq(
+							quotationPdfRenderIntents.organizationId,
+							context.organizationId,
+						),
+					),
+				})
+			: null;
+		const pdfSnapshot =
+			quote.documentVersion === 1
+				? buildQuotationPdfSnapshot({
+						...quote,
+						pdfProvenance,
+					})
+				: null;
 		await tx.insert(quoteAcceptances).values({
 			quoteId: quote.id,
 			organizationId: context.organizationId,
@@ -121,29 +141,7 @@ export async function acceptQuote(
 					: null,
 			documentSha256:
 				quote.documentVersion === 1 ? quote.documentSha256 : null,
-			pdfSnapshot:
-				quote.documentVersion === 1 &&
-				quote.pdfStorageKey &&
-				quote.pdfSha256 &&
-				quote.pdfRenderedAt &&
-				quote.pdfRendererVersion &&
-				quote.pdfPageCount &&
-				quote.pdfByteSize &&
-				quotationBrandingSnapshotV1Schema.safeParse(
-					quote.brandingSnapshot,
-				).success
-					? quotationPdfSnapshotV1Schema.parse({
-							rendererVersion: quote.pdfRendererVersion,
-							storageKey: quote.pdfStorageKey,
-							sha256: quote.pdfSha256,
-							renderedAt: quote.pdfRenderedAt.toISOString(),
-							pageCount: quote.pdfPageCount,
-							byteSize: quote.pdfByteSize,
-							branding: quotationBrandingSnapshotV1Schema.parse(
-								quote.brandingSnapshot,
-							),
-						})
-					: null,
+			pdfSnapshot,
 			acceptedAt: now,
 			acceptedBy: context.user.id,
 		});
@@ -171,6 +169,23 @@ export async function acceptQuote(
 				field: "status",
 				oldValue: "sent",
 				newValue: "accepted",
+				metadata: pdfSnapshot
+					? {
+							pdfEvidence: pdfSnapshot.provenance
+								? {
+										kind: "template",
+										renderIntentId:
+											pdfSnapshot.provenance
+												.renderIntentId,
+										templateId:
+											pdfSnapshot.provenance.templateId,
+										templateVersion:
+											pdfSnapshot.provenance
+												.templateVersion,
+									}
+								: { kind: "legacy" },
+						}
+					: undefined,
 			},
 		);
 		return { id: quote.id };

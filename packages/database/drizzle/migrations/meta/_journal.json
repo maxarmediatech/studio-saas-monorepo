@@ -407,6 +407,13 @@
       "when": 1785843045586,
       "tag": "0057_chemical_frank_castle",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1788105807688,
+      "tag": "0058_big_jack_murdock",
+      "breakpoints": true
     }
   ]
 }

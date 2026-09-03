@@ -25,6 +25,9 @@ import {
 import { Textarea } from "@repo/ui/components/textarea";
 import { PlusIcon } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { QuotationPdfPreview } from "./QuotationPdfPreview";
+import { QuotationTemplateSelector } from "./QuotationTemplateSelector";
+import type { QuotationPresentationIdentity } from "./quotation-pdf-route";
 import {
 	applyQuotationTermsPreset,
 	clearQuotationTermsPreset,
@@ -408,23 +411,46 @@ function TermsSection({
 export function PreviewStep({
 	quoteId,
 	documentRevision,
+	canReadPresentation,
+	canSelectTemplate,
 }: {
 	draft: QuotationDraft;
 	selectedPackage?: PackageOption;
 	quoteId?: string;
 	documentRevision: number;
+	canReadPresentation: boolean;
+	canSelectTemplate: boolean;
 }) {
+	const [previewIdentity, setPreviewIdentity] =
+		useState<QuotationPresentationIdentity | null>(null);
+
 	return (
 		<div className="space-y-4">
 			<h2 className="text-lg font-semibold">Review Quotation</h2>
 			<Card>
-				<CardContent className="p-0">
+				<CardContent className="p-4">
 					{quoteId && documentRevision > 0 ? (
-						<iframe
-							title="Quotation PDF preview"
-							src={`/api/studio/quotations/${quoteId}/pdf?revision=${documentRevision}`}
-							className="h-[75dvh] min-h-[640px] w-full rounded-md"
-						/>
+						<div className="space-y-4">
+							<QuotationTemplateSelector
+								canRead={canReadPresentation}
+								canSelect={canSelectTemplate}
+								expectedDocumentRevision={documentRevision}
+								onPreviewIdentityChange={setPreviewIdentity}
+								quoteId={quoteId}
+							/>
+							{previewIdentity ? (
+								<QuotationPdfPreview
+									className="h-[75dvh] min-h-[640px]"
+									identity={previewIdentity}
+									quoteId={quoteId}
+								/>
+							) : (
+								<div className="flex min-h-64 items-center justify-center rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
+									Choose an available template to render its
+									PDF preview.
+								</div>
+							)}
+						</div>
 					) : (
 						<div className="p-8 text-center text-sm text-muted-foreground">
 							Save the quotation to render its PDF preview.

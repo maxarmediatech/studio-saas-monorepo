@@ -28,6 +28,7 @@ export const bookingPhaseEnum = pgEnum("booking_phase", [
  */
 export const quoteStatusEnum = pgEnum("quote_status", [
 	"draft",
+	"preparing",
 	"sent",
 	"accepted",
 	"converted",
@@ -35,6 +36,11 @@ export const quoteStatusEnum = pgEnum("quote_status", [
 	"expired",
 	"superseded",
 ]);
+
+export const quotationPdfRenderIntentStatusEnum = pgEnum(
+	"quotation_pdf_render_intent_status",
+	["pending", "rendering", "failed", "returned_to_draft", "completed"],
+);
 
 export const clientLifecycleStageEnum = pgEnum("client_lifecycle_stage", [
 	"lead",

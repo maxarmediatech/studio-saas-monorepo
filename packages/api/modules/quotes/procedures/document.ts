@@ -15,7 +15,7 @@ import {
 	saveDocumentDraft,
 	searchQuotationContacts,
 } from "../lib/quotation-document-service";
-import { sendDocumentQuotation } from "../lib/quotation-pdf-service";
+import { startQuotationPdfSend } from "../lib/quotation-render-intent-service";
 
 async function requireContactMutationPermissions(
 	context: Parameters<typeof requirePermission>[0],
@@ -96,19 +96,20 @@ export const sendDocumentQuote = studioProtectedProcedure
 		method: "POST",
 		path: "/quotes/{id}/document-v1/send",
 		tags: ["Quotes"],
-		summary: "Validate, render, store, and send document-v1 quotation",
+		summary: "Generate document-v1 quotation PDF and send",
 	})
 	.input(sendDocumentQuoteInputSchema)
 	.output(quoteMutationOutputSchema)
 	.handler(async ({ input, context }) => {
 		await requirePermission(context, "quote", "send");
+		const intent = await startQuotationPdfSend(context, {
+			quoteId: input.id,
+			expectedDocumentRevision: input.expectedDocumentRevision,
+			expectedSelectionVersion: input.expectedSelectionVersion,
+		});
 		return {
-			data: await sendDocumentQuotation(
-				context,
-				input.id,
-				input.expectedDocumentRevision,
-			),
-			message: "Quotation sent",
+			data: { id: intent.quoteId },
+			message: "Quotation PDF generated",
 		};
 	});
 

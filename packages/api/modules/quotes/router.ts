@@ -16,6 +16,14 @@ import {
 	sendQuote,
 } from "./procedures/lifecycle";
 import { listQuotes } from "./procedures/list";
+import {
+	chooseQuotationTemplate,
+	listQuotationTemplates,
+	readQuotationPresentation,
+	retryQuotationRender,
+	returnQuotationRenderToDraft,
+	startQuotationSend,
+} from "./procedures/presentation";
 import { updateQuote } from "./procedures/update";
 
 export const quotesRouter = {
@@ -26,6 +34,12 @@ export const quotesRouter = {
 	saveDocument: saveDocumentQuote,
 	sendDocument: sendDocumentQuote,
 	searchContacts,
+	listTemplates: listQuotationTemplates,
+	getPresentation: readQuotationPresentation,
+	selectTemplate: chooseQuotationTemplate,
+	startPresentationSend: startQuotationSend,
+	retryPresentationRender: retryQuotationRender,
+	returnPresentationToDraft: returnQuotationRenderToDraft,
 	update: updateQuote,
 	delete: deleteQuote,
 	send: sendQuote,

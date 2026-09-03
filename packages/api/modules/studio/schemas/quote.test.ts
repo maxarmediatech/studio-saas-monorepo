@@ -8,6 +8,7 @@ import {
 	quoteDraftContentInputSchema,
 	quoteLineItemInputSchema,
 	quoteOptionInputSchema,
+	quoteStatusSchema,
 } from "./quote";
 
 const CLIENT_ID = "00000000-0000-4000-8000-000000000001";
@@ -70,6 +71,10 @@ const baseDraftContent = {
 };
 
 describe("quotation domain schemas", () => {
+	it("recognizes the durable preparing lifecycle state", () => {
+		expect(quoteStatusSchema.parse("preparing")).toBe("preparing");
+	});
+
 	it("allows the draft workspace to request document quotations explicitly", () => {
 		expect(
 			listQuotesInputSchema.parse({

@@ -46,6 +46,7 @@ describe("quote service document contracts", () => {
 			pdfRendererVersion: null,
 			pdfPageCount: null,
 			pdfByteSize: null,
+			pdfRenderIntentId: null,
 		});
 	});
 });

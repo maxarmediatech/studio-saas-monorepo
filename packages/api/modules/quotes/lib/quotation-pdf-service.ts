@@ -1,24 +1,37 @@
 import { createHash } from "node:crypto";
 import { ORPCError } from "@orpc/server";
-import { and, db, eq, isNull, organizations, quotes } from "@repo/database";
+import {
+	and,
+	db,
+	eq,
+	isNull,
+	organizations,
+	quotationPresentations,
+	quotes,
+} from "@repo/database";
 import { getUploadsBucketName } from "@repo/env";
-import { getObject, putObject } from "@repo/storage";
+import { getObject } from "@repo/storage";
 import sharp from "sharp";
 import {
-	safeTrackActivity,
-	trackActivityWithExecutor,
-} from "../../activities/lib";
-import type { StudioContext } from "../../studio/lib/permissions";
-import {
-	QUOTATION_PDF_RENDERER_VERSION,
 	type QuotationBrandingSnapshotV1,
 	quotationBrandingSnapshotV1Schema,
 	strictQuotationDocumentV1Schema,
 } from "../../studio/schemas/quotation-document";
+import {
+	assertQuotationPdfOutputEnvelope,
+	assertQuotationPdfPagePlan,
+	assertQuotationPdfRenderingEnvelope,
+} from "../pdf/preflight";
 import { countPdfPages, renderQuotationPdf } from "../pdf/quotation-pdf";
-import { replaceNormalizedDocumentChildren } from "./quotation-document-service";
-
-type Context = Pick<StudioContext, "organizationId" | "membership" | "user">;
+import {
+	assertQuotationPdfTemplateCompatibility,
+	quotationPdfTemplateRegistry,
+} from "../pdf/registry";
+import {
+	CLASSIC_V0_QUOTATION_TEMPLATE_ID,
+	CLASSIC_V0_QUOTATION_TEMPLATE_VERSION,
+} from "../pdf/templates/classic-v0";
+import { canonicalQuotationJson } from "./quotation-document";
 
 const MAX_PDF_BYTES = 20 * 1024 * 1024;
 const RENDER_TIMEOUT_MS = 15_000;
@@ -60,7 +73,9 @@ function optionalMetadataText(
 	return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-async function readObjectBytes(key: string): Promise<Buffer | null> {
+export async function readQuotationObjectBytes(
+	key: string,
+): Promise<Buffer | null> {
 	const object = await getObject(key, { bucket: getUploadsBucketName() });
 	if (!object) {
 		return null;
@@ -82,7 +97,9 @@ async function readObjectBytes(key: string): Promise<Buffer | null> {
 	);
 }
 
-async function resolveBranding(organizationId: string): Promise<{
+export async function resolveQuotationBranding(
+	organizationId: string,
+): Promise<{
 	branding: QuotationBrandingSnapshotV1;
 	logoDataUri?: string;
 }> {
@@ -100,7 +117,7 @@ async function resolveBranding(organizationId: string): Promise<{
 	let logoSha256: string | null = null;
 	let logoDataUri: string | undefined;
 	if (logoKey && !logoKey.includes("..") && !logoKey.includes("\0")) {
-		const source = await readObjectBytes(logoKey);
+		const source = await readQuotationObjectBytes(logoKey);
 		if (source) {
 			try {
 				const normalized = await sharp(source)
@@ -142,6 +159,9 @@ async function resolveBranding(organizationId: string): Promise<{
 
 async function renderWithLimits(
 	input: Parameters<typeof renderQuotationPdf>[0],
+	render: (
+		input: Parameters<typeof renderQuotationPdf>[0],
+	) => Promise<Buffer> = renderQuotationPdf,
 ): Promise<{ bytes: Buffer; pageCount: number; durationMs: number }> {
 	const startedAt = Date.now();
 	let timeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -153,7 +173,7 @@ async function renderWithLimits(
 	});
 	let bytes: Buffer;
 	try {
-		bytes = await Promise.race([renderQuotationPdf(input), timeout]);
+		bytes = await Promise.race([render(input), timeout]);
 	} finally {
 		if (timeoutId) {
 			clearTimeout(timeoutId);
@@ -173,6 +193,11 @@ export async function renderDraftQuotationPdf(
 	organizationId: string,
 	quoteId: string,
 	documentRevision: number,
+	requestedPresentation?: {
+		templateId: string;
+		templateVersion: number;
+		selectionVersion: number | null;
+	},
 ) {
 	const quote = await db.query.quotes.findFirst({
 		where: and(
@@ -195,9 +220,49 @@ export async function renderDraftQuotationPdf(
 	if (quote.status !== "draft") {
 		return readStoredQuotationPdf(organizationId, quoteId);
 	}
+	const presentation = await db.query.quotationPresentations.findFirst({
+		where: and(
+			eq(quotationPresentations.quoteId, quoteId),
+			eq(quotationPresentations.organizationId, organizationId),
+		),
+	});
+	const currentPresentation = presentation
+		? {
+				templateId: presentation.templateId,
+				templateVersion: presentation.templateVersion,
+				selectionVersion: presentation.selectionVersion,
+			}
+		: {
+				templateId: CLASSIC_V0_QUOTATION_TEMPLATE_ID,
+				templateVersion: CLASSIC_V0_QUOTATION_TEMPLATE_VERSION,
+				selectionVersion: null,
+			};
+	if (presentation && !requestedPresentation) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "Preview presentation identity is required",
+		});
+	}
+	if (
+		requestedPresentation &&
+		(requestedPresentation.templateId !== currentPresentation.templateId ||
+			requestedPresentation.templateVersion !==
+				currentPresentation.templateVersion ||
+			requestedPresentation.selectionVersion !==
+				currentPresentation.selectionVersion)
+	) {
+		throw new ORPCError("CONFLICT", {
+			message: "Preview presentation is no longer current",
+			data: { current: { documentRevision, ...currentPresentation } },
+		});
+	}
 	const document = strictQuotationDocumentV1Schema.parse(quote.document);
-	const { branding, logoDataUri } = await resolveBranding(organizationId);
-	const rendered = await renderWithLimits({
+	const { branding, logoDataUri } =
+		await resolveQuotationBranding(organizationId);
+	const template = quotationPdfTemplateRegistry.getActive(
+		currentPresentation.templateId,
+		currentPresentation.templateVersion,
+	);
+	const input = {
 		document,
 		branding,
 		quoteNumber: quote.quoteNumber,
@@ -205,10 +270,52 @@ export async function renderDraftQuotationPdf(
 		validUntil: quote.expiresAt?.toISOString() ?? null,
 		createdAt: quote.createdAt.toISOString(),
 		logoDataUri,
+	};
+	assertQuotationPdfTemplateCompatibility(template, input);
+	await assertQuotationPdfRenderingEnvelope(input);
+	assertQuotationPdfPagePlan(template.countExplicitPages(input));
+	const rendered = await renderWithLimits(input, template.render);
+	assertQuotationPdfOutputEnvelope({
+		pageCount: rendered.pageCount,
+		durationMs: rendered.durationMs,
+		byteSize: rendered.bytes.byteLength,
 	});
+	const sourceIdentity = {
+		schemaVersion: 1,
+		document,
+		quoteNumber: quote.quoteNumber,
+		quoteVersion: quote.version,
+		validUntil: quote.expiresAt?.toISOString() ?? null,
+		createdAt: quote.createdAt.toISOString(),
+	};
+	const identityEtag = createHash("sha256")
+		.update(
+			canonicalQuotationJson({
+				quoteId,
+				documentRevision,
+				...currentPresentation,
+				sourceFingerprint: createHash("sha256")
+					.update(canonicalQuotationJson(sourceIdentity.document))
+					.digest("hex"),
+				renderMetadata: {
+					quoteNumber: sourceIdentity.quoteNumber,
+					quoteVersion: sourceIdentity.quoteVersion,
+					validUntil: sourceIdentity.validUntil,
+					createdAt: sourceIdentity.createdAt,
+				},
+				brandingFingerprint: createHash("sha256")
+					.update(canonicalQuotationJson(branding))
+					.digest("hex"),
+				copyProfileVersion: template.copyProfile.version,
+				composerVersion: template.manifest.composerVersion,
+				rendererVersion: template.manifest.rendererVersion,
+			}),
+		)
+		.digest("hex");
 	return {
 		...rendered,
 		sha256: createHash("sha256").update(rendered.bytes).digest("hex"),
+		identityEtag,
 	};
 }
 
@@ -244,7 +351,7 @@ export async function readStoredQuotationPdf(
 			message: "Invalid quotation PDF identity",
 		});
 	}
-	const bytes = await readObjectBytes(quote.pdfStorageKey);
+	const bytes = await readQuotationObjectBytes(quote.pdfStorageKey);
 	if (!bytes) {
 		throw new ORPCError("NOT_FOUND", {
 			message: "Historical quotation PDF bytes are missing",
@@ -260,139 +367,4 @@ export async function readStoredQuotationPdf(
 		pageCount: quote.pdfPageCount ?? countPdfPages(bytes),
 		durationMs: 0,
 	};
-}
-
-export async function sendDocumentQuotation(
-	context: Context,
-	quoteId: string,
-	expectedRevision: number,
-): Promise<{ id: string }> {
-	const quote = await db.query.quotes.findFirst({
-		where: and(
-			eq(quotes.id, quoteId),
-			eq(quotes.organizationId, context.organizationId),
-			eq(quotes.status, "draft"),
-			isNull(quotes.deletedAt),
-		),
-	});
-	if (!quote) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Quotation draft not found",
-		});
-	}
-	if (
-		quote.documentVersion !== 1 ||
-		quote.documentRevision !== expectedRevision
-	) {
-		throw new ORPCError("CONFLICT", {
-			message: "Quotation revision changed before send",
-		});
-	}
-	const document = strictQuotationDocumentV1Schema.parse(quote.document);
-	const { branding, logoDataUri } = await resolveBranding(
-		context.organizationId,
-	);
-	let uploadedKey: string | null = null;
-	try {
-		const rendered = await renderWithLimits({
-			document,
-			branding,
-			quoteNumber: quote.quoteNumber,
-			quoteVersion: quote.version,
-			validUntil: quote.expiresAt?.toISOString() ?? null,
-			createdAt: quote.createdAt.toISOString(),
-			logoDataUri,
-		});
-		const pdfSha256 = createHash("sha256")
-			.update(rendered.bytes)
-			.digest("hex");
-		uploadedKey = `quotations/${context.organizationId}/${quote.id}/v${quote.version}/${pdfSha256}.pdf`;
-		await putObject(uploadedKey, {
-			bucket: getUploadsBucketName(),
-			body: rendered.bytes,
-			contentType: "application/pdf",
-			contentLength: rendered.bytes.byteLength,
-		});
-		return await db.transaction(async (tx) => {
-			const [locked] = await tx
-				.select()
-				.from(quotes)
-				.where(
-					and(
-						eq(quotes.id, quoteId),
-						eq(quotes.organizationId, context.organizationId),
-					),
-				)
-				.for("update");
-			if (
-				!locked ||
-				locked.status !== "draft" ||
-				locked.documentRevision !== expectedRevision ||
-				locked.documentSha256 !== quote.documentSha256
-			) {
-				throw new ORPCError("CONFLICT", {
-					message: "Quotation changed while PDF was rendering",
-				});
-			}
-			const now = new Date();
-			await replaceNormalizedDocumentChildren(
-				tx,
-				context.organizationId,
-				quoteId,
-				document,
-			);
-			await tx
-				.update(quotes)
-				.set({
-					status: "sent",
-					sentAt: now,
-					brandingSnapshot: branding,
-					pdfStorageKey: uploadedKey,
-					pdfSha256,
-					pdfRenderedAt: now,
-					pdfRendererVersion: QUOTATION_PDF_RENDERER_VERSION,
-					pdfPageCount: rendered.pageCount,
-					pdfByteSize: rendered.bytes.byteLength,
-					updatedAt: now,
-					updatedBy: context.user.id,
-				})
-				.where(eq(quotes.id, quoteId));
-			await trackActivityWithExecutor(
-				tx,
-				{ organizationId: context.organizationId, user: context.user },
-				{
-					entityType: "quote",
-					entityId: quoteId,
-					entityName: quote.title,
-					action: "status_changed",
-					field: "status",
-					oldValue: "draft",
-					newValue: "sent",
-					metadata: {
-						pdfSha256,
-						pageCount: rendered.pageCount,
-						byteSize: rendered.bytes.byteLength,
-						rendererVersion: QUOTATION_PDF_RENDERER_VERSION,
-						renderDurationMs: rendered.durationMs,
-					},
-				},
-			);
-			return { id: quoteId };
-		});
-	} catch (error) {
-		// A concurrent send can share this content-addressed key. Immediate
-		// deletion could remove the winner's evidence; age-gated cleanup owns it.
-		await safeTrackActivity(context, {
-			entityType: "quote",
-			entityId: quoteId,
-			entityName: quote.title,
-			action: "updated",
-			metadata: {
-				event: "pdf_generation_failed",
-				documentRevision: expectedRevision,
-				rendererVersion: QUOTATION_PDF_RENDERER_VERSION,
-			},
-		});
-		throw error;
-	}
 }

@@ -394,6 +394,33 @@ export type QuotationBrandingSnapshotV1 = z.infer<
 	typeof quotationBrandingSnapshotV1Schema
 >;
 
+export const quotationPdfProvenanceV1Schema = z.object({
+	renderIntentId: z.string().min(1).max(255),
+	quotationId: z.string().min(1).max(255),
+	quotationVersion: z.number().int().positive(),
+	documentRevision: z.number().int().nonnegative(),
+	selectionVersion: z.number().int().positive(),
+	sourceFingerprint: z.string().length(64),
+	brandingFingerprint: z.string().length(64),
+	templateId: z.string().min(1).max(100),
+	templateVersion: z.number().int().positive(),
+	copyProfileVersion: z.number().int().positive(),
+	composerVersion: z.number().int().positive(),
+	rendererVersion: z.string().min(1).max(100),
+	artifactSha256: z.string().length(64),
+	artifactByteSize: z
+		.number()
+		.int()
+		.positive()
+		.max(20 * 1024 * 1024),
+	pageCount: z.number().int().positive(),
+	storageKey: z.string().min(1).max(2000),
+	renderedAt: z.string().datetime(),
+});
+export type QuotationPdfProvenanceV1 = z.infer<
+	typeof quotationPdfProvenanceV1Schema
+>;
+
 export const quotationPdfSnapshotV1Schema = z.object({
 	rendererVersion: z.string().min(1).max(100),
 	storageKey: z.string().min(1).max(2000),
@@ -406,6 +433,8 @@ export const quotationPdfSnapshotV1Schema = z.object({
 		.positive()
 		.max(20 * 1024 * 1024),
 	branding: quotationBrandingSnapshotV1Schema,
+	// Absent for immutable PDFs created before exact template provenance existed.
+	provenance: quotationPdfProvenanceV1Schema.optional(),
 });
 export type QuotationPdfSnapshotV1 = z.infer<
 	typeof quotationPdfSnapshotV1Schema

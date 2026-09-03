@@ -42,5 +42,6 @@ export function buildDocumentRevisionFields(input: {
 		pdfRendererVersion: null,
 		pdfPageCount: null,
 		pdfByteSize: null,
+		pdfRenderIntentId: null,
 	};
 }

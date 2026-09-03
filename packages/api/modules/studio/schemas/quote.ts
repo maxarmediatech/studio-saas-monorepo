@@ -27,6 +27,7 @@ export const BOOKING_BLUEPRINT_VERSION_V1 = 1 as const;
 
 export const quoteStatusSchema = z.enum([
 	"draft",
+	"preparing",
 	"sent",
 	"accepted",
 	"converted",
@@ -293,6 +294,15 @@ export const quoteDetailSchema = quoteSummarySchema.extend({
 	documentSha256: z.string().length(64).nullable(),
 	documentRevision: z.number().int().nonnegative(),
 	brandingSnapshot: quotationBrandingSnapshotV1Schema.nullable(),
+	presentation: z
+		.object({
+			templateId: z.string().min(1).max(100),
+			templateVersion: z.number().int().positive(),
+			selectionVersion: z.number().int().positive(),
+			selectedBy: idSchema,
+			selectedAt: z.string().datetime(),
+		})
+		.nullable(),
 	pdfSnapshot: quotationPdfSnapshotV1Schema.nullable(),
 	sentAt: nullableDatetimeSchema,
 	convertedAt: nullableDatetimeSchema,
@@ -382,8 +392,88 @@ export const saveDocumentQuoteInputSchema = idInputSchema.extend({
 	expectedDocumentRevision: z.number().int().nonnegative(),
 	document: quotationDocumentV1Schema,
 });
+export const quotationTemplateIdentitySchema = z.object({
+	templateId: z.string().trim().min(1).max(100),
+	templateVersion: z.number().int().positive(),
+});
+export const quotationPresentationIdentitySchema =
+	quotationTemplateIdentitySchema.extend({
+		documentRevision: z.number().int().nonnegative(),
+		selectionVersion: z.number().int().positive().nullable(),
+	});
+export const quotationTemplateSchema = quotationTemplateIdentitySchema.extend({
+	label: z.string(),
+	description: z.string(),
+	thumbnailPath: z.string().startsWith("/images/quotation-templates/"),
+	rendererVersion: z.string(),
+	composerVersion: z.number().int().positive(),
+	copyProfileVersion: z.number().int().positive(),
+	supportedFeatures: z.array(z.string()),
+});
+export const listQuotationTemplatesOutputSchema = z.object({
+	data: z.array(quotationTemplateSchema),
+});
+export const getQuotationPresentationInputSchema = idInputSchema;
+const quotationRenderIntentStatusSchema = z.enum([
+	"pending",
+	"rendering",
+	"failed",
+	"returned_to_draft",
+	"completed",
+]);
+export const getQuotationPresentationOutputSchema = z.object({
+	data: quotationPresentationIdentitySchema.extend({
+		persisted: z.boolean(),
+		renderIntent: z
+			.object({
+				id: idSchema,
+				status: quotationRenderIntentStatusSchema,
+				attemptCount: z.number().int().nonnegative(),
+				lastErrorCode: z.string().nullable(),
+				lastErrorMessage: z.string().nullable(),
+				lastAttemptAt: nullableDatetimeSchema,
+				createdAt: z.string().datetime(),
+				updatedAt: z.string().datetime(),
+			})
+			.nullable(),
+	}),
+});
+export const selectQuotationTemplateInputSchema = idInputSchema
+	.merge(quotationTemplateIdentitySchema)
+	.extend({
+		expectedDocumentRevision: z.number().int().positive(),
+		expectedSelectionVersion: z.number().int().positive().nullable(),
+	});
+export const quotationPresentationMutationOutputSchema = z.object({
+	data: quotationPresentationIdentitySchema,
+	message: z.string(),
+});
 export const sendDocumentQuoteInputSchema = idInputSchema.extend({
 	expectedDocumentRevision: z.number().int().positive(),
+	// Null identifies the unmaterialized active Classic v0 default used by drafts.
+	expectedSelectionVersion: z
+		.number()
+		.int()
+		.positive()
+		.nullable()
+		.default(null),
+});
+export const quotationRenderIntentInputSchema = idInputSchema.extend({
+	renderIntentId: idSchema,
+	expectedDocumentRevision: z.number().int().positive(),
+	expectedSelectionVersion: z.number().int().positive(),
+});
+export const quotationRenderIntentOutputSchema = z.object({
+	data: z.object({
+		id: idSchema,
+		quoteId: idSchema,
+		status: quotationRenderIntentStatusSchema,
+		documentRevision: z.number().int().nonnegative(),
+		selectionVersion: z.number().int().positive(),
+		templateId: z.string(),
+		templateVersion: z.number().int().positive(),
+	}),
+	message: z.string(),
 });
 export const documentQuoteMutationOutputSchema = z.object({
 	data: z.object({
