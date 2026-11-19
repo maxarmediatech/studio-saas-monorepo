@@ -57,3 +57,13 @@ pnpm db:generate  # Generate migrations
 pnpm db:migrate   # Apply migrations
 ```
 
+
+## License
+
+Copyright (C) 2025-2026 Maxar Media Private Limited
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, version 3 of the License.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the [LICENSE](LICENSE) file for details.
+
+If you run a modified version of this software as a network service, the AGPL requires you to make your modified source code available to its users.
