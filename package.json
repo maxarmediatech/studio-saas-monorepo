@@ -1,6 +1,7 @@
 {
 	"name": "stuwiz",
 	"private": true,
+	"license": "AGPL-3.0-only",
 	"scripts": {
 		"build": "dotenv -c -- turbo build --filter=@repo/web...",
 		"build:all": "dotenv -c -- turbo build",
