@@ -165,6 +165,13 @@ const Footer = () => {
 					>
 						Terms of Service
 					</a>
+					<span className="text-border">•</span>
+					<a
+						href="https://heydevteam.com"
+						className="hover:text-foreground transition-opacity hover:opacity-80"
+					>
+						Built by heydevteam
+					</a>
 				</div>
 
 				{/* Large Logo */}
