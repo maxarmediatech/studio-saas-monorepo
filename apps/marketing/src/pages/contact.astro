@@ -1,10 +1,54 @@
 ---
-import DefaultLayout from '@/layouts/DefaultLayout.astro';
-import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
+import Icon from '@/components/site/Icon.astro';
+import { links } from '@/data/site';
+import SiteLayout from '@/layouts/SiteLayout.astro';
 
-import { ContactPage } from '@/components/sections/contact-page';
+const cards = [
+  {
+    title: 'Talk to us',
+    copy: 'Questions about plans, setting up your studio, or moving your bookings over.',
+    label: links.email,
+    href: `mailto:${links.email}`,
+  },
+  {
+    title: 'Already a customer?',
+    copy: 'Log in to Stuwiz and reach us from your account.',
+    label: 'Log in',
+    href: links.login,
+  },
+];
 ---
 
-<DefaultLayout title={SITE_TITLE} description={SITE_DESCRIPTION}>
-  <ContactPage/>
-</DefaultLayout>
+<SiteLayout
+  title="Contact | Stuwiz"
+  description="Contact the Stuwiz team about plans, setting up your studio, or moving your bookings over."
+>
+  <section class="relative pt-[150px] pb-24">
+    <div class="mx-auto max-w-[1200px] px-6">
+      <div class="text-center">
+        <div class="reveal"><span class="badge-pill"><Icon name="mail" size={14} /> Contact</span></div>
+        <h1 class="reveal display-hero mx-auto mt-8 max-w-[720px] text-ink" style="transition-delay: 0.18s">
+          Get in touch
+        </h1>
+        <p class="reveal body-copy mx-auto mt-5 max-w-[460px]" style="transition-delay: 0.26s">
+          Write to us and a person on the Stuwiz team will reply.
+        </p>
+      </div>
+      <div class="mx-auto mt-14 grid max-w-[820px] gap-6 md:grid-cols-2">
+        {
+          cards.map((card, index) => (
+            <div class="reveal" style={`transition-delay: ${0.1 + index * 0.1}s`}>
+              <div class="flex h-full flex-col rounded-2xl border border-line bg-paper p-8">
+                <h2 class="text-[20px] font-semibold tracking-tight text-ink">{card.title}</h2>
+                <p class="body-copy mt-2 flex-1">{card.copy}</p>
+                <a href={card.href} class="mt-6 inline-flex items-center gap-2 text-[15px] font-medium text-royal">
+                  {card.label} <Icon name="arrow" size={15} />
+                </a>
+              </div>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+</SiteLayout>

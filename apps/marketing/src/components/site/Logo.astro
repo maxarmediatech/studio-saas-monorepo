@@ -1,0 +1,19 @@
+---
+interface Props {
+  /** Light wordmark for dark backgrounds. */
+  light?: boolean;
+  height?: number;
+  class?: string;
+}
+
+const { light = false, height = 30, class: className } = Astro.props;
+const src = light ? '/images/brand/stuwiz-logo-light.png' : '/images/brand/stuwiz-logo-dark.png';
+---
+
+<img
+  src={src}
+  alt="Stuwiz"
+  width={Math.round((height * 291) / 112)}
+  height={height}
+  class={className}
+/>

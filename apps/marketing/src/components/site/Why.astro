@@ -1,0 +1,40 @@
+---
+import Icon from './Icon.astro';
+import { why } from '@/data/site';
+---
+
+<section id="features" class="relative scroll-mt-24 pb-24 pt-12">
+  <div class="mx-auto max-w-[1200px] px-6">
+    <div class="text-center">
+      <div class="reveal"><span class="badge-pill"><Icon name="scissors" size={14} /> Why Stuwiz</span></div>
+      <h2 class="reveal display-h2 mt-6 text-ink" style="transition-delay: 0.18s">
+        Why studios run on Stuwiz
+      </h2>
+      <p class="reveal body-copy mx-auto mt-4 max-w-[560px]" style="transition-delay: 0.26s">
+        It is built around how a wedding studio actually works, so you stop rebuilding your
+        process in spreadsheets and chat groups.
+      </p>
+    </div>
+    <div class="mt-14 grid gap-8 md:grid-cols-3">
+      {
+        why.map((item, index) => (
+          <div class="reveal" style={`transition-delay: ${0.1 + index * 0.1}s`}>
+            <div class="h-[300px] overflow-hidden rounded-2xl border border-line bg-paper">
+              <img
+                src={item.image}
+                alt={item.alt}
+                width="2400"
+                height="1326"
+                loading="lazy"
+                decoding="async"
+                class="h-full w-full object-cover object-left-top"
+              />
+            </div>
+            <h3 class="mt-7 text-[20px] font-semibold tracking-tight text-ink">{item.title}</h3>
+            <p class="body-copy mt-2 max-w-[320px]">{item.copy}</p>
+          </div>
+        ))
+      }
+    </div>
+  </div>
+</section>

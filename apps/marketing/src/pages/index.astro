@@ -1,24 +1,31 @@
 ---
-import DefaultLayout from "@/layouts/DefaultLayout.astro";
-import { SITE_TITLE, SITE_DESCRIPTION } from "../consts";
-
-import { FAQ } from "@/components/sections/faq";
-import { Feature1 } from "@/components/sections/feature1";
-import { Feature2 } from "@/components/sections/feature2";
-import { Feature3 } from "@/components/sections/feature3";
-import { Hero } from "@/components/sections/hero";
-import Logos from "@/components/sections/logos";
-import { Pricing1 } from "@/components/sections/pricing1";
-import Testimonials from "@/components/sections/testimonials";
+import Faq from '@/components/site/Faq.astro';
+import FinalCta from '@/components/site/FinalCta.astro';
+import Hero from '@/components/site/Hero.astro';
+import Inside from '@/components/site/Inside.astro';
+import ModuleStrip from '@/components/site/ModuleStrip.astro';
+import Pricing from '@/components/site/Pricing.astro';
+import Screens from '@/components/site/Screens.astro';
+import Switches from '@/components/site/Switches.astro';
+import Tools from '@/components/site/Tools.astro';
+import Why from '@/components/site/Why.astro';
+import { faqSchema, organizationSchema, softwareSchema } from '@/data/schema';
+import SiteLayout from '@/layouts/SiteLayout.astro';
 ---
 
-<DefaultLayout title={SITE_TITLE} description={SITE_DESCRIPTION}>
-	<Hero client:load />
-	<Logos />
-	<Feature1 />
-	<Feature2 />
-	<Feature3 client:load />
-	<Testimonials client:load />
-	<Pricing1 client:load />
-	<FAQ client:load />
-</DefaultLayout>
+<SiteLayout
+  title="Stuwiz: studio management software for wedding and photography studios"
+  description="Run every wedding from first quote to final album. Quotations, bookings, shoots, deliverables, crew and payments in one place for photography studios."
+  jsonLd={[organizationSchema, softwareSchema, faqSchema]}
+>
+  <Hero />
+  <ModuleStrip />
+  <Why />
+  <Tools />
+  <Inside />
+  <Screens />
+  <Switches />
+  <Pricing />
+  <Faq />
+  <FinalCta />
+</SiteLayout>

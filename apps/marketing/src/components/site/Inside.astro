@@ -1,0 +1,48 @@
+---
+import Icon from './Icon.astro';
+import { features } from '@/data/site';
+---
+
+<section class="relative px-4 py-6">
+  <div class="relative mx-auto max-w-[1392px] overflow-hidden rounded-[32px] bg-night py-28">
+    <div
+      class="pointer-events-none absolute left-0 top-[128px] h-px w-[42%] bg-gradient-to-r from-transparent via-[#6927da] to-[#6927da]"
+      aria-hidden="true"
+    >
+    </div>
+    <div
+      class="pointer-events-none absolute right-0 top-[128px] h-px w-[42%] bg-gradient-to-l from-transparent via-[#f23d94] to-[#f23d94]"
+      aria-hidden="true"
+    >
+    </div>
+    <div class="mx-auto max-w-[1200px] px-6">
+      <div class="text-center">
+        <div class="reveal">
+          <span class="badge-pill badge-pill--dark"><Icon name="rocket" size={14} /> Studio Basics</span>
+        </div>
+        <h2 class="reveal display-h2 mt-6 text-white" style="transition-delay: 0.18s">What's inside Stuwiz?</h2>
+        <p
+          class="reveal mx-auto mt-4 max-w-[440px] text-[16px] leading-[1.7] text-[#9b9b9b]"
+          style="transition-delay: 0.26s"
+        >
+          Every plan starts with the tools a studio uses every day.
+        </p>
+      </div>
+      <div class="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {
+          features.map((feature, index) => (
+            <div class="reveal" style={`transition-delay: ${0.1 + (index % 3) * 0.1}s`}>
+              <div class="h-full rounded-2xl border border-white/[0.08] bg-white/[0.03] p-8 transition-colors duration-300 hover:border-white/[0.16]">
+                <span class="text-[#fb3b5c]">
+                  <Icon name={feature.icon as any} size={40} stroke={1.4} />
+                </span>
+                <h3 class="mt-8 text-[20px] font-semibold tracking-tight text-white">{feature.title}</h3>
+                <p class="mt-3 text-[15px] leading-[1.7] text-[#9b9b9b]">{feature.copy}</p>
+              </div>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </div>
+</section>
