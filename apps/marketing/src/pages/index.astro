@@ -13,12 +13,12 @@ import Testimonials from "@/components/sections/testimonials";
 ---
 
 <DefaultLayout title={SITE_TITLE} description={SITE_DESCRIPTION}>
-	<Hero client:only="react" />
+	<Hero client:load />
 	<Logos />
 	<Feature1 />
 	<Feature2 />
-	<Feature3 client:only="react" />
-	<Testimonials client:only="react" />
-	<Pricing1 client:only="react" />
-	<FAQ client:only="react" />
+	<Feature3 client:load />
+	<Testimonials client:load />
+	<Pricing1 client:load />
+	<FAQ client:load />
 </DefaultLayout>

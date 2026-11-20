@@ -8,7 +8,7 @@ import { FAQ } from '@/components/sections/faq';
 ---
 
 <DefaultLayout title={SITE_TITLE} description={SITE_DESCRIPTION}>
-    <Pricing1 headerTag="h1" client:only='react' />
+    <Pricing1 headerTag="h1" client:load />
     <Pricing2  />
-    <FAQ client:only='react' />
+    <FAQ client:load />
 </DefaultLayout>

@@ -10,6 +10,6 @@ const posts = (await getCollection('blog')).sort(
 ---
 
 <DefaultLayout title={SITE_TITLE} description={SITE_DESCRIPTION}>
-	<BlogPosts posts={posts} client:only='react' />
+	<BlogPosts posts={posts} client:load />
 </DefaultLayout>
 

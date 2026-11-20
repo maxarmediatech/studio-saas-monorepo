@@ -19,7 +19,7 @@ const { Content } = await render(post);
 
 ---
 <DefaultLayout>
-	<BlogPost post={post} client:only='react'>
+	<BlogPost post={post} client:load>
 		<Content />
 	</BlogPost>
 </DefaultLayout>

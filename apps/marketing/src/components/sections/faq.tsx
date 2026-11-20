@@ -9,50 +9,35 @@ const leftQuestions = [
   {
     question: "What is Stuwiz?",
     answer:
-      "Lorem ipsum dolor sit amet consectetur adipisicing elit. Minus voluptates deserunt officia temporibus dignissimos.",
+      "Stuwiz is studio management software for wedding and photography studios. Each wedding is one booking that holds the quote it came from, every shoot, every deliverable, the crew and every payment collected.",
   },
   {
     question: "How is Stuwiz different from generic project tools?",
     answer:
-      "Lorem ipsum dolor sit amet consectetur adipisicing elit. Minus voluptates deserunt officia temporibus dignissimos.",
+      "It is built around how studios work: quotations with versions, packages for one or both families over several days, deliverables with due dates, and in-house and contract crew. Generic tools make you rebuild all of that yourself.",
   },
   {
-    question: "How do I update my account ?",
+    question: "Can I turn a quotation into a booking?",
     answer:
-      "Lorem ipsum dolor sit amet consectetur adipisicing elit. Minus voluptates deserunt officia temporibus dignissimos.",
-  },
-  {
-    question: "Is support free, or do I need to Google everything?",
-    answer:
-      "Lorem ipsum dolor sit amet consectetur adipisicing elit. Minus voluptates deserunt officia temporibus dignissimos.",
-  },
-  {
-    question: "Are you going to be subsumed by AI?",
-    answer:
-      "Lorem ipsum dolor sit amet consectetur adipisicing elit. Minus voluptates deserunt officia temporibus dignissimos.",
+      "Yes. Quotations keep every version you send, and the accepted one becomes a booking in one step, with its package, cost and balance.",
   },
 ];
 
 const rightQuestions = [
   {
-    question: "Are you going to be subsumed by AI?",
+    question: "Does it handle contract crew?",
     answer:
-      "Lorem ipsum dolor sit amet consectetur adipisicing elit. Minus voluptates deserunt officia temporibus dignissimos.",
+      "Yes. Add in-house and contract crew with their rates, and give each person only the access they need.",
   },
   {
-    question: "How do I update my account?",
+    question: "How are payments tracked?",
     answer:
-      "Lorem ipsum dolor sit amet consectetur adipisicing elit. Minus voluptates deserunt officia temporibus dignissimos.",
+      "Payments are logged against each booking with the method and reference, including UPI. Scheduled payments and receipts sit in the same ledger, so balances due show on the bookings list.",
   },
   {
-    question: "What if I break my laptop using this app?",
+    question: "Will it work for video production studios too?",
     answer:
-      "Lorem ipsum dolor sit amet consectetur adipisicing elit. Minus voluptates deserunt officia temporibus dignissimos.",
-  },
-  {
-    question: "What is the best metaphor for using LLMs?",
-    answer:
-      "Lorem ipsum dolor sit amet consectetur adipisicing elit. Minus voluptates deserunt officia temporibus dignissimos.",
+      "Yes. Bookings, deliverables, crew and payments work the same way for videography and other creative studios.",
   },
 ];
 

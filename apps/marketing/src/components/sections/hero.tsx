@@ -70,7 +70,7 @@ export const Hero = () => {
         <div className="space-y-8 lg:space-y-12">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl lg:text-6xl">
-              Strategy guides product
+              Studio management software for wedding and photography studios
             </h1>
 
             <p className="text-sand-700 font-inter-tight leading-13 mt-3 text-3xl font-medium md:text-4xl lg:text-5xl">

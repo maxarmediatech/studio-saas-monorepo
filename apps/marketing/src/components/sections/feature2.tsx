@@ -17,9 +17,9 @@ type ItemType = {
 
 const ITEMS: ItemType[] = [
   {
-    title: "Reusable templates.",
+    title: "Quotations with versions.",
     description:
-      "Draft lightning-fast documents with our Smart Instructions and Templates.",
+      "Send a quote, keep every version, and turn the accepted one into a booking in one step.",
     image: {
       src: "/images/homepage/resource-allocation/cycle-37.webp",
       alt: "Cycle 37 graph showing Scope, Started, and Completed metrics",
@@ -29,7 +29,8 @@ const ITEMS: ItemType[] = [
   },
   {
     title: "Simplify your stack.",
-    description: "No more Confluence, SharePoint, or Microsoft Word.",
+    description:
+      "No more spreadsheets for quotes, WhatsApp for crew, and a notebook for payments.",
     image: {
       src: "/images/homepage/resource-allocation/triage.webp",
       alt: "Triage interface showing issue management options",
@@ -40,7 +41,7 @@ const ITEMS: ItemType[] = [
   {
     title: "Access controls.",
     description:
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do.",
+      "In-house and contract crew each get only the access they need.",
     image: {
       src: "/images/homepage/resource-allocation/access-controls.webp",
       alt: "Access controls interface showing People, Compliance, and Security options",
@@ -49,9 +50,9 @@ const ITEMS: ItemType[] = [
     fade: ["right", "top"],
   },
   {
-    title: "Task chat.",
+    title: "Linked tasks.",
     description:
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod.",
+      "Every deliverable carries its own production workflow and tasks, from shoot to album.",
     image: {
       src: "/images/homepage/resource-allocation/task-chat.webp",
       alt: "Task chat interface showing a conversation",
@@ -60,9 +61,9 @@ const ITEMS: ItemType[] = [
     fade: [],
   },
   {
-    title: "Cycle analysis.",
+    title: "Balances at a glance.",
     description:
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod.",
+      "Payments are logged against each booking, so what is due shows on the list.",
     image: {
       src: "/images/homepage/resource-allocation/cycle-analysis.webp",
       alt: "Cycle analysis showing backlog priorities and statistics",
