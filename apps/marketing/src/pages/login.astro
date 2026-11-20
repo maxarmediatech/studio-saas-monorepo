@@ -1,9 +1,13 @@
 ---
-import DefaultLayout from '@/layouts/DefaultLayout.astro';
-import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
-import LoginSection from '@/components/sections/login-section';
+// Accounts live in the app. This page only forwards old /login links there.
+import { links } from '@/data/site';
+import SiteLayout from '@/layouts/SiteLayout.astro';
 ---
 
-<DefaultLayout title={SITE_TITLE} description={SITE_DESCRIPTION}>
-    <LoginSection />
-</DefaultLayout>
+<SiteLayout title="Log in | Stuwiz" description="Log in on Stuwiz." noindex>
+  <meta slot="head" http-equiv="refresh" content={`0; url=${links.login}`} />
+  <section class="relative pt-[180px] pb-32 text-center">
+    <h1 class="display-h2 text-ink">Taking you to Stuwiz</h1>
+    <p class="body-copy mt-4">If nothing happens, <a href={links.login} class="text-royal underline">continue to Log in</a>.</p>
+  </section>
+</SiteLayout>

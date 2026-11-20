@@ -1,10 +1,17 @@
 ---
-import DefaultLayout from '@/layouts/DefaultLayout.astro';
-import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
-
-import { FAQPage } from '@/components/sections/faq-page';
+import Faq from '@/components/site/Faq.astro';
+import FinalCta from '@/components/site/FinalCta.astro';
+import { faqSchema } from '@/data/schema';
+import SiteLayout from '@/layouts/SiteLayout.astro';
 ---
 
-<DefaultLayout title={SITE_TITLE} description={SITE_DESCRIPTION}>
-    <FAQPage client:only='react' />
-</DefaultLayout>
+<SiteLayout
+  title="FAQ | Stuwiz"
+  description="Answers about Stuwiz: quotations that become bookings, contract crew, payment tracking with UPI, and whether it suits video studios."
+  jsonLd={[faqSchema]}
+>
+  <div class="pt-[110px]">
+    <Faq headingTag="h1" />
+  </div>
+  <FinalCta />
+</SiteLayout>

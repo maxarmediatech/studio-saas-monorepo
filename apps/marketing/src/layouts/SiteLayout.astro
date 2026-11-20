@@ -1,0 +1,104 @@
+---
+import BaseHead from '@/components/BaseHead.astro';
+import Footer from '@/components/site/Footer.astro';
+import Nav from '@/components/site/Nav.astro';
+
+interface Props {
+  title: string;
+  description: string;
+  jsonLd?: object[];
+  noindex?: boolean;
+}
+
+const { title, description, jsonLd, noindex } = Astro.props;
+---
+
+<html lang="en" class="scroll-smooth">
+  <head>
+    <BaseHead title={title} description={description} jsonLd={jsonLd} noindex={noindex} />
+    <script is:inline>
+      document.documentElement.classList.add('js');
+    </script>
+    <slot name="head" />
+  </head>
+  <body>
+    <div class="relative bg-white">
+      <div class="gradient-rail"></div>
+      <div
+        class="pointer-events-none absolute inset-x-0 bottom-0 top-2 z-0 mx-auto hidden max-w-[1130px] border-x border-line lg:block"
+        aria-hidden="true"
+      >
+      </div>
+      <div class="relative z-10">
+        <Nav />
+        <main>
+          <slot />
+        </main>
+        <Footer />
+      </div>
+    </div>
+
+    <script>
+      // Reveal on scroll (the blueprint's Framer appear: y 60 to 0, 0.6s).
+      const reveals = document.querySelectorAll<HTMLElement>('.reveal');
+      const revealObserver = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('in');
+              revealObserver.unobserve(entry.target);
+            }
+          }
+        },
+        { threshold: 0.1, rootMargin: '0px 0px -60px 0px' },
+      );
+      reveals.forEach((el) => revealObserver.observe(el));
+
+      // Sticky tool list: highlight the section in the middle of the screen.
+      const toolButtons = document.querySelectorAll<HTMLButtonElement>('[data-tool-target]');
+      const toolPanels = document.querySelectorAll<HTMLElement>('[data-tool-panel]');
+      if (toolButtons.length) {
+        const setActive = (id: string) =>
+          toolButtons.forEach((button) => {
+            const active = button.dataset.toolTarget === id;
+            button.classList.toggle('border-royal', active);
+            button.classList.toggle('text-royal', active);
+            button.classList.toggle('border-transparent', !active);
+          });
+        const toolObserver = new IntersectionObserver(
+          (entries) => {
+            for (const entry of entries) {
+              if (entry.isIntersecting) setActive((entry.target as HTMLElement).dataset.toolPanel ?? '');
+            }
+          },
+          { rootMargin: '-40% 0px -50% 0px' },
+        );
+        toolPanels.forEach((panel) => toolObserver.observe(panel));
+        toolButtons.forEach((button) =>
+          button.addEventListener('click', () =>
+            document
+              .querySelector(`[data-tool-panel="${button.dataset.toolTarget}"]`)
+              ?.scrollIntoView({ behavior: 'smooth', block: 'center' }),
+          ),
+        );
+      }
+
+      // Screen tabs.
+      const tabs = document.querySelectorAll<HTMLButtonElement>('[data-screen-tab]');
+      tabs.forEach((tab) =>
+        tab.addEventListener('click', () => {
+          const index = tab.dataset.screenTab;
+          tabs.forEach((other) => {
+            const active = other === tab;
+            other.setAttribute('aria-selected', String(active));
+            other.style.borderColor = active ? (other.dataset.color ?? '') : '';
+            other.classList.toggle('shadow-sm', active);
+          });
+          document.querySelectorAll<HTMLElement>('[data-screen-panel]').forEach((panel) => {
+            panel.hidden = panel.dataset.screenPanel !== index;
+          });
+        }),
+      );
+    </script>
+  </body>
+</html>

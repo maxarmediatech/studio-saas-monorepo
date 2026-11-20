@@ -8,8 +8,13 @@ import tailwindcss from "@tailwindcss/vite";
 
 // https://astro.build/config
 export default defineConfig({
-  site: "https://example.com",
-  integrations: [mdx(), sitemap(), react()],
+  site: "https://stuwiz.com",
+  integrations: [
+    mdx(),
+    // The login and signup pages only forward to app.stuwiz.com.
+    sitemap({ filter: (page) => !/\/(login|signup)\/$/.test(page) }),
+    react(),
+  ],
   output: "static",
 
   fonts: [
@@ -21,9 +26,9 @@ export default defineConfig({
     },
     {
       provider: fontProviders.google(),
-      name: "Inter Tight",
-      cssVariable: "--font-inter-tight",
-      weights: ["400", "500", "600", "700"],
+      name: "Geist",
+      cssVariable: "--font-geist",
+      weights: ["400", "500", "600"],
     },
   ],
 

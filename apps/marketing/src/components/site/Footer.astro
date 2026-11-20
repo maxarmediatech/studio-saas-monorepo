@@ -1,0 +1,69 @@
+---
+import Logo from './Logo.astro';
+import SectionRule from './SectionRule.astro';
+import { links } from '@/data/site';
+
+const columns = [
+  {
+    heading: 'Product',
+    items: [
+      { label: 'Features', href: '/#features' },
+      { label: 'Pricing', href: '/pricing' },
+      { label: 'FAQ', href: '/faq' },
+      { label: 'Log in', href: links.login },
+    ],
+  },
+  {
+    heading: 'Company',
+    items: [
+      { label: 'About', href: '/about' },
+      { label: 'Contact', href: '/contact' },
+      { label: links.email, href: `mailto:${links.email}` },
+    ],
+  },
+  {
+    heading: 'Legal',
+    items: [
+      { label: 'Terms', href: '/terms' },
+      { label: 'Privacy', href: '/privacy' },
+    ],
+  },
+];
+
+const year = new Date().getFullYear();
+---
+
+<footer class="relative pt-16">
+  <div class="mx-auto max-w-[1200px] px-6">
+    <div class="grid gap-12 pb-16 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
+      <div>
+        <Logo height={32} />
+        <p class="body-copy mt-6 max-w-[280px]">
+          Studio management software for wedding and photography studios.
+        </p>
+      </div>
+      {
+        columns.map((column) => (
+          <div>
+            <p class="text-[15px] font-semibold text-ink">{column.heading}</p>
+            <ul class="mt-6 flex flex-col gap-4">
+              {column.items.map((item) => (
+                <li>
+                  <a href={item.href} class="body-copy transition hover:text-royal">
+                    {item.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))
+      }
+    </div>
+    <SectionRule />
+    <div class="flex flex-col items-center justify-between gap-3 py-8 text-[14.5px] text-body sm:flex-row">
+      <p>© {year} Stuwiz. All rights reserved.</p>
+      <p>Built by <a href="https://heydevteam.com" class="underline-offset-4 hover:text-royal hover:underline">heydevteam</a></p>
+    </div>
+  </div>
+  <div class="gradient-rail"></div>
+</footer>

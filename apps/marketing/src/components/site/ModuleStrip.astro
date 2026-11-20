@@ -1,0 +1,29 @@
+---
+import SectionRule from './SectionRule.astro';
+import { modules } from '@/data/site';
+---
+
+<section class="relative py-20">
+  <SectionRule />
+  <div class="mx-auto max-w-[1200px] px-6 pt-16">
+    <p class="reveal text-center text-[17px] text-body">Everything a studio juggles, in one place</p>
+    <div class="reveal marquee-mask mt-10 overflow-hidden" style="transition-delay: 0.2s">
+      <div class="marquee-track items-center" aria-hidden="true">
+        {
+          [0, 1].map(() =>
+            modules.map((item) => (
+              <span class="font-display mx-10 flex items-center gap-2.5 text-[28px] font-semibold tracking-tight text-ink">
+                <span style={`color: ${item.color}; font-size: 24px`}>{item.glyph}</span>
+                {item.name}
+              </span>
+            )),
+          )
+        }
+      </div>
+      <p class="sr-only">{modules.map((item) => item.name).join(', ')}</p>
+    </div>
+  </div>
+  <div class="pt-16">
+    <SectionRule />
+  </div>
+</section>

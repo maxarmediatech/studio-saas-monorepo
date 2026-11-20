@@ -1,0 +1,53 @@
+---
+import { switches } from '@/data/site';
+
+/** The blueprint's testimonial bento, holding before-and-after instead of invented quotes. */
+const styles = [
+  { span: 'md:col-span-5', bg: '#F83D69', light: true },
+  { span: 'md:col-span-7', bg: '#161616', light: true },
+  { span: 'md:col-span-7', bg: '', light: false },
+  { span: 'md:col-span-5', bg: '#466CF3', light: true },
+];
+---
+
+<section class="relative py-24">
+  <div class="mx-auto max-w-[1200px] px-6">
+    <div class="text-center">
+      <div class="reveal"><span class="badge-pill">Why studios switch</span></div>
+      <h2 class="reveal display-h2 mx-auto mt-6 max-w-[720px] text-ink" style="transition-delay: 0.18s">
+        From scattered tools to one place for the studio
+      </h2>
+    </div>
+    <div class="mt-14 grid gap-5 md:grid-cols-12">
+      {
+        switches.map((item, index) => {
+          const style = styles[index % styles.length];
+          return (
+            <div class:list={['reveal', style.span]} style={`transition-delay: ${0.1 + (index % 2) * 0.1}s`}>
+              <div
+                class:list={[
+                  'flex h-full min-h-[240px] flex-col justify-between rounded-2xl p-9',
+                  !style.bg && 'border border-line bg-paper',
+                ]}
+                style={style.bg ? `background: ${style.bg}` : undefined}
+              >
+                <p
+                  class="text-[15px] line-through decoration-1"
+                  style={`color: ${style.light ? 'rgba(255,255,255,0.7)' : '#8a8d93'}`}
+                >
+                  {item.before}
+                </p>
+                <p
+                  class="font-display mt-10 text-[30px] font-medium leading-[1.15] tracking-[-1px]"
+                  style={`color: ${style.light ? '#fff' : '#181818'}`}
+                >
+                  {item.after}
+                </p>
+              </div>
+            </div>
+          );
+        })
+      }
+    </div>
+  </div>
+</section>

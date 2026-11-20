@@ -1,0 +1,39 @@
+---
+import { links } from '@/data/site';
+---
+
+<section class="relative overflow-hidden pt-20">
+  <div class="relative mx-auto max-w-[1000px] px-6">
+    <div
+      class="pointer-events-none mx-auto max-w-[880px]"
+      style="mask-image: linear-gradient(to bottom, black 0%, transparent 88%); -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 88%)"
+      aria-hidden="true"
+    >
+      <div class="max-h-[430px] overflow-hidden rounded-[20px] border border-line bg-white/70 p-2.5">
+        <img
+          src="/images/product/deliverables-sm.webp"
+          alt=""
+          width="1160"
+          height="749"
+          loading="lazy"
+          decoding="async"
+          class="block h-auto w-full rounded-[14px] border border-line"
+        />
+      </div>
+    </div>
+    <div class="relative -mt-28 text-center">
+      <div class="reveal flex justify-center">
+        <img src="/images/brand/stuwiz-mark-tight.png" alt="" width="110" height="56" />
+      </div>
+      <h2 class="reveal display-h2 mt-6 text-ink" style="transition-delay: 0.18s">
+        Ready to run the studio from one place?
+      </h2>
+      <p class="reveal body-copy mt-4" style="transition-delay: 0.26s">
+        Set up your packages and add this season's bookings today.
+      </p>
+      <div class="reveal mt-9 flex justify-center pb-4" style="transition-delay: 0.34s">
+        <span class="cta-glow"><a href={links.signup} class="btn-dark">Get started</a></span>
+      </div>
+    </div>
+  </div>
+</section>

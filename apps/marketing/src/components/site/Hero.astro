@@ -1,0 +1,52 @@
+---
+import ProductFrame from './ProductFrame.astro';
+import { links } from '@/data/site';
+---
+
+<section id="top" class="relative pt-[150px]">
+  <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+    <svg
+      class="absolute right-0 top-[240px] h-[520px] w-[62%] opacity-70"
+      viewBox="0 0 800 520"
+      preserveAspectRatio="none"
+    >
+      <path
+        d="M0 520 C 120 500 200 470 280 430 S 420 340 500 290 S 640 190 720 130 S 780 60 800 30"
+        fill="none"
+        stroke="#e8e6ef"
+        stroke-width="1.5"></path>
+      <circle cx="500" cy="290" r="7" fill="#fff" stroke="#dcd9e6" stroke-width="1.5"></circle>
+    </svg>
+  </div>
+  <div class="relative mx-auto max-w-[1200px] px-6 text-center">
+    <div class="reveal">
+      <span class="badge-pill">For wedding and photography studios</span>
+    </div>
+    <div class="reveal" style="transition-delay: 0.18s">
+      <h1 class="display-hero mx-auto mt-8 max-w-[820px] text-ink">
+        Studio management software, from first quote to final album
+      </h1>
+    </div>
+    <div class="reveal" style="transition-delay: 0.26s">
+      <p class="body-copy mx-auto mt-5 max-w-[520px]">
+        Stuwiz keeps every wedding in one booking: the quote it came from, every shoot, every
+        deliverable, the crew and every payment collected.
+      </p>
+    </div>
+    <div class="reveal" style="transition-delay: 0.34s">
+      <div class="mt-9 flex flex-wrap items-center justify-center gap-4">
+        <span class="cta-glow"><a href={links.signup} class="btn-dark">Get started</a></span>
+        <a href="/#features" class="btn-light">See how it works</a>
+      </div>
+      <p class="mt-6 text-[15px] text-body">Made for studios in India. Prices include taxes.</p>
+    </div>
+    <div class="dash-spring mx-auto mt-16 max-w-[940px]">
+      <ProductFrame
+        src="/images/product/bookings.webp"
+        srcSm="/images/product/bookings-sm.webp"
+        alt="Stuwiz bookings list with packages, costs and balances due for each wedding"
+        eager
+      />
+    </div>
+  </div>
+</section>

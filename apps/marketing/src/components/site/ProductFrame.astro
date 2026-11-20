@@ -1,0 +1,34 @@
+---
+/** A real Stuwiz screen in the Salix glass frame. */
+interface Props {
+  src: string;
+  srcSm?: string;
+  alt: string;
+  width?: number;
+  height?: number;
+  eager?: boolean;
+  class?: string;
+}
+
+const { src, srcSm, alt, width = 1934, height = 1248, eager = false, class: className } = Astro.props;
+---
+
+<div
+  class:list={[
+    'rounded-[20px] border border-line bg-white/70 p-2.5 shadow-[0_24px_60px_-20px_rgba(24,24,24,0.18)] backdrop-blur',
+    className,
+  ]}
+>
+  <img
+    src={src}
+    srcset={srcSm ? `${srcSm} 1160w, ${src} 1934w` : undefined}
+    sizes={srcSm ? '(max-width: 960px) 100vw, 940px' : undefined}
+    alt={alt}
+    width={width}
+    height={height}
+    loading={eager ? 'eager' : 'lazy'}
+    fetchpriority={eager ? 'high' : undefined}
+    decoding="async"
+    class="block h-auto w-full rounded-[14px] border border-line"
+  />
+</div>

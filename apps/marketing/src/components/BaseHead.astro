@@ -9,11 +9,14 @@ interface Props {
 	title: string;
 	description: string;
 	image?: string;
+	/** Structured data objects, each written as its own JSON-LD script. */
+	jsonLd?: object[];
+	noindex?: boolean;
 }
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 
-const { title, description, image } = Astro.props;
+const { title, description, image, jsonLd = [], noindex = false } = Astro.props;
 const finalTitle = title || SITE_METADATA.title.default;
 const finalDescription = description || SITE_METADATA.description;
 const finalImage = image || SITE_METADATA.openGraph.images[0].url;
@@ -25,23 +28,15 @@ const imageURL = new URL(finalImage, Astro.url);
 
 <!-- Fonts (managed by Astro Fonts API) -->
 <Font cssVariable="--font-inter" preload />
-<Font cssVariable="--font-inter-tight" preload />
+<Font cssVariable="--font-geist" preload />
 
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<meta name="robots" content={`${SITE_METADATA.robots.index ? 'index' : 'noindex'}, ${SITE_METADATA.robots.follow ? 'follow' : 'nofollow'}`} />
+<meta name="robots" content={noindex ? 'noindex, follow' : 'index, follow'} />
 <meta name="keywords" content={SITE_METADATA.keywords.join(', ')} />
 <meta name="author" content={SITE_METADATA.authors[0].name} />
 <meta name="creator" content={SITE_METADATA.creator} />
 <meta name="publisher" content={SITE_METADATA.publisher} />
 
-<!-- Theme Script -->
-<script is:inline>
-  const savedTheme = localStorage.getItem('theme');
-  const initialTheme = savedTheme || 'light';
-  
-  // Apply theme immediately to prevent flashing
-  document.documentElement.classList.toggle('dark', initialTheme === 'dark');
-</script>
 
 <!-- Favicon -->
 {SITE_METADATA.icons.icon.map((icon) => (
@@ -67,12 +62,6 @@ const imageURL = new URL(finalImage, Astro.url);
 ))}
 
 <link rel="sitemap" href="/sitemap-index.xml" />
-<link
-	rel="alternate"
-	type="application/rss+xml"
-	title={SITE_TITLE}
-	href={new URL('rss.xml', Astro.site)}
-/>
 <meta name="generator" content={Astro.generator} />
 
 <!-- Canonical URL -->
@@ -101,3 +90,5 @@ const imageURL = new URL(finalImage, Astro.url);
 <meta property="twitter:description" content={finalDescription} />
 <meta property="twitter:image" content={imageURL} />
 <meta property="twitter:creator" content={SITE_METADATA.twitter.creator} />
+
+{jsonLd.map((data) => <script type="application/ld+json" set:html={JSON.stringify(data)} />)}

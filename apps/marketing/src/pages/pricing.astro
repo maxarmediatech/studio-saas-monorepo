@@ -1,14 +1,19 @@
 ---
-import DefaultLayout from '@/layouts/DefaultLayout.astro';
-import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
-
-import { Pricing1 } from '@/components/sections/pricing1';
-import { Pricing2 } from '@/components/sections/pricing2';
-import { FAQ } from '@/components/sections/faq';
+import Faq from '@/components/site/Faq.astro';
+import FinalCta from '@/components/site/FinalCta.astro';
+import Pricing from '@/components/site/Pricing.astro';
+import { faqSchema } from '@/data/schema';
+import SiteLayout from '@/layouts/SiteLayout.astro';
 ---
 
-<DefaultLayout title={SITE_TITLE} description={SITE_DESCRIPTION}>
-    <Pricing1 headerTag="h1" client:only='react' />
-    <Pricing2  />
-    <FAQ client:only='react' />
-</DefaultLayout>
+<SiteLayout
+  title="Pricing | Stuwiz"
+  description="Stuwiz plans for photography studios in India: Studio Basics for bookings, crew and finance, and Studio Advance for lead replies and follow-ups. Prices include taxes."
+  jsonLd={[faqSchema]}
+>
+  <div class="pt-[110px]">
+    <Pricing headingTag="h1" />
+  </div>
+  <Faq />
+  <FinalCta />
+</SiteLayout>

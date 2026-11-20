@@ -1,0 +1,41 @@
+---
+import Icon from './Icon.astro';
+import { faqs } from '@/data/site';
+
+interface Props {
+  headingTag?: 'h1' | 'h2';
+}
+
+const { headingTag: Heading = 'h2' } = Astro.props;
+---
+
+<section class="relative py-24">
+  <div class="mx-auto grid max-w-[1200px] gap-14 px-6 lg:grid-cols-[380px_1fr]">
+    <div>
+      <div class="reveal"><span class="badge-pill"><Icon name="rocket" size={14} /> FAQ</span></div>
+      <Heading class="reveal display-h2 mt-6 text-ink" style="transition-delay: 0.18s">
+        Frequently asked questions
+      </Heading>
+      <p class="reveal body-copy mt-4" style="transition-delay: 0.26s">
+        Something else? Write to us from the <a href="/contact" class="text-royal underline-offset-4 hover:underline">contact page</a>.
+      </p>
+    </div>
+    <div class="flex flex-col gap-4">
+      {
+        faqs.map((item, index) => (
+          <div class="reveal" style={`transition-delay: ${0.1 + index * 0.06}s`}>
+            <details class="faq-item rounded-2xl border border-line bg-paper" open={index === 0}>
+              <summary class="flex w-full items-center justify-between gap-6 px-7 py-6 text-left">
+                <h3 class="text-[18px] font-semibold tracking-tight text-ink">{item.q}</h3>
+                <span class="faq-chevron shrink-0 text-body">
+                  <Icon name="chevron" size={18} />
+                </span>
+              </summary>
+              <p class="body-copy max-w-[600px] px-7 pb-6">{item.a}</p>
+            </details>
+          </div>
+        ))
+      }
+    </div>
+  </div>
+</section>

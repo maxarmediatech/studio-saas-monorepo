@@ -1,10 +1,61 @@
 ---
-import DefaultLayout from '@/layouts/DefaultLayout.astro';
-import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
-
-import { AboutSection } from '@/components/sections/about-section';
+import FinalCta from '@/components/site/FinalCta.astro';
+import Icon from '@/components/site/Icon.astro';
+import ProductFrame from '@/components/site/ProductFrame.astro';
+import { organizationSchema } from '@/data/schema';
+import { features } from '@/data/site';
+import SiteLayout from '@/layouts/SiteLayout.astro';
 ---
 
-<DefaultLayout title={SITE_TITLE} description={SITE_DESCRIPTION}>
- <AboutSection />
-</DefaultLayout>
+<SiteLayout
+  title="About | Stuwiz"
+  description="Why Stuwiz exists: wedding studios run quotes in spreadsheets, crew on WhatsApp and payments in a notebook. Stuwiz puts the whole job in one booking."
+  jsonLd={[organizationSchema]}
+>
+  <section class="relative pt-[150px] pb-16">
+    <div class="mx-auto max-w-[1200px] px-6 text-center">
+      <div class="reveal"><span class="badge-pill"><Icon name="rocket" size={14} /> About</span></div>
+      <h1 class="reveal display-hero mx-auto mt-8 max-w-[820px] text-ink" style="transition-delay: 0.18s">
+        Built for the way wedding studios work
+      </h1>
+      <p class="reveal body-copy mx-auto mt-5 max-w-[600px]" style="transition-delay: 0.26s">
+        Wedding studios juggle quotations in spreadsheets, crew on WhatsApp and payments in a
+        notebook. Stuwiz puts the whole job in one booking: the quote it came from, every shoot,
+        every deliverable and every rupee collected.
+      </p>
+    </div>
+  </section>
+
+  <section class="relative pb-24">
+    <div class="mx-auto grid max-w-[1200px] items-center gap-14 px-6 lg:grid-cols-2">
+      <div class="reveal">
+        <h2 class="display-h2 text-ink">One record for each wedding</h2>
+        <p class="body-copy mt-4 max-w-[480px]">
+          A wedding is not one event. It is packages for one or both families, several days of
+          shoots, albums and films due weeks later, a crew that changes from day to day, and
+          payments in instalments. Stuwiz keeps all of it on the booking, so anyone in the studio
+          can see where a wedding stands.
+        </p>
+        <ul class="mt-8 grid gap-3 sm:grid-cols-2">
+          {
+            features.map((feature) => (
+              <li class="flex items-center gap-2.5 text-[15px] text-ink">
+                <span class="text-royal"><Icon name="check" size={16} stroke={2} /></span>
+                {feature.title}
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+      <div class="reveal" style="transition-delay: 0.2s">
+        <ProductFrame
+          src="/images/product/quotations.webp"
+          srcSm="/images/product/quotations-sm.webp"
+          alt="Stuwiz quotations with drafts, versions and status"
+        />
+      </div>
+    </div>
+  </section>
+
+  <FinalCta />
+</SiteLayout>
