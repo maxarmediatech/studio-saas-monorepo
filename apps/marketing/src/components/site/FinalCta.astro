@@ -31,7 +31,9 @@ import { links } from '@/data/site';
       <p class="reveal body-copy mt-4" style="transition-delay: 0.26s">
         Set up your packages and add this season's bookings today.
       </p>
-      <div class="reveal mt-9 flex justify-center pb-4" style="transition-delay: 0.34s">
+      <!-- pb leaves room below the button: the section clips overflow, and the glow
+           extends about 40px past the pill. -->
+      <div class="reveal mt-9 flex justify-center pb-24" style="transition-delay: 0.34s">
         <span class="cta-glow"><a href={links.signup} class="btn-dark">Get started</a></span>
       </div>
     </div>
